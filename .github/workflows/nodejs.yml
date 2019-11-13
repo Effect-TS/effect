@@ -22,7 +22,7 @@ jobs:
         npm install -g lerna
         npm install -g yarn
         lerna bootstrap
-        lerna build
+        lerna run build
         lerna run test --parallel
       env:
         CI: true
