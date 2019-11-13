@@ -28,7 +28,7 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.1.4",
+    "@matechs/effect": "^0.0.1",
     "deepmerge": "^4.2.2",
     "fluture": "^11.0.3",
     "fp-ts": "^2.1.2",
