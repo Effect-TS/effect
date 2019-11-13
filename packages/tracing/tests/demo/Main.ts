@@ -16,14 +16,19 @@ export const module = pipe(
 );
 
 export const program = withTracer(
-  E.provide(C.counterState())(
-    Do(E.effectMonad)
-      .bind("start", C.currentCount())
-      .do(withControllerSpan("controller-a")(C.count()))
-      .do(withControllerSpan("controller-b")(C.count()))
-      .bind("end", C.currentCount())
-      .doL(({ start, end }) => P.print(`done - ${start} <-> ${end}`))
-      .done()
+  withControllerSpan(
+    "demo",
+    "demo-main"
+  )(
+    E.provide(C.counterState())(
+      Do(E.effectMonad)
+        .bind("start", C.currentCount())
+        .do(C.count())
+        .do(C.count())
+        .bind("end", C.currentCount())
+        .doL(({ start, end }) => P.print(`done - ${start} <-> ${end}`))
+        .done()
+    )
   )
 );
 

@@ -43,8 +43,8 @@ describe("Example", () => {
     const result = await E.run(pipe(program, E.provide(mockModule)))();
 
     assert.deepEqual(
-      spans.filter(s => s.name.indexOf("controller-") >= 0).length,
-      2
+      spans.filter(s => s.name.indexOf("demo-main") >= 0).length,
+      1
     );
     assert.deepEqual(
       spans.filter(s => s.name.indexOf("span-") >= 0).length,
