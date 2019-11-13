@@ -127,7 +127,7 @@ export const tracer: Tracer = {
       name: string
     ): <R, A>(
       ma: M.Effect<HasSpanContext & R, Error, A>
-    ) => M.Effect<HasSpanContext & R & HasTracerContext, Error, A> {
+    ) => M.Effect<HasSpanContext & HasTracerContext & R, Error, A> {
       return ma =>
         M.accessM(
           ({
