@@ -42,10 +42,15 @@ describe("Example", () => {
 
     const result = await E.run(pipe(program, E.provide(mockModule)))();
 
-    assert.deepEqual(spans, [
-      { name: "controller-a", options: undefined },
-      { name: "controller-b", options: undefined }
-    ]);
+    assert.deepEqual(
+      spans.filter(s => s.name.indexOf("controller-") >= 0).length,
+      2
+    );
+    assert.deepEqual(
+      spans.filter(s => s.name.indexOf("span-") >= 0).length,
+      20
+    );
+
     assert.deepEqual(result, Ei.right({ start: 0, end: 20 }));
     assert.deepEqual(messages, [
       "n: 1 (1)",

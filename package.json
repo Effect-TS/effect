@@ -3,6 +3,7 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "devDependencies": {
-    "lerna": "^3.5.1"
+    "lerna": "^3.5.1",
+    "prettier": "^1.19.1"
   }
 }

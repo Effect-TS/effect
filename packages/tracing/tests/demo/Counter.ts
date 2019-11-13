@@ -3,6 +3,7 @@ import * as A from "fp-ts/lib/Array";
 import { IO } from "fp-ts/lib/IO";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { print, Printer } from "./Printer";
+import { ChildContext, Tracer, withChildSpan } from "../../src";
 
 export interface CounterState {
   counter: {
@@ -35,7 +36,11 @@ export const counterState: IO<CounterState> = () => ({
 
 export interface Counter {
   counter: {
-    count(): E.Effect<Printer & CounterState, E.NoErr, void[]>;
+    count(): E.Effect<
+      Printer & Tracer & CounterState & ChildContext,
+      Error,
+      void[]
+    >;
   };
 }
 
@@ -49,7 +54,7 @@ export const counter: Counter = {
       return A.array.traverse(E.effectMonad)(A.range(1, 10), n =>
         Do(E.effectMonad)
           .do(increment())
-          .bind("count", currentCount())
+          .bind("count", withChildSpan("span-current-count")(currentCount()))
           .doL(({ count }) => print(`n: ${n} (${count})`))
           .return(() => {})
       );

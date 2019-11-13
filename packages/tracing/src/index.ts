@@ -3,6 +3,8 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Tracer as OT, Span as OS } from "opentracing";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { ERROR } from "opentracing/lib/ext/tags";
+import { Effect } from "@matechs/effect/lib";
+import Span from "opentracing/lib/span";
 
 export interface TracerFactory {
   tracer: {
@@ -40,9 +42,49 @@ export interface Tracer {
     withControllerSpan(
       name: string
     ): <R, A>(
-      ma: M.Effect<R, Error, A>
-    ) => M.Effect<R & HasTracerContext, Error, A>;
+      ma: M.Effect<HasSpanContext & R, Error, A>
+    ) => M.Effect<HasTracerContext & R, Error, A>;
+    withChildSpan(
+      name: string
+    ): <R, A>(
+      ma: M.Effect<HasSpanContext & R, Error, A>
+    ) => M.Effect<HasSpanContext & HasTracerContext & R, Error, A>;
   };
+}
+
+function runWithSpan<R, A>(
+  ma: Effect<HasSpanContext & R, Error, A>,
+  span: Span
+) {
+  return pipe(
+    M.chainLeft(
+      pipe(
+        ma,
+        M.chain(r =>
+          Do(M.effectMonad)
+            .do(
+              M.liftIO(() => {
+                span.finish();
+              })
+            )
+            .return(() => r)
+        )
+      ),
+      e =>
+        pipe(
+          M.liftIO(() => {
+            span.setTag(ERROR, e.message);
+            span.finish();
+          }),
+          M.chain(() => M.left(e))
+        )
+    ),
+    M.provide<HasSpanContext>({
+      span: {
+        context: { spanInstance: span }
+      }
+    })
+  );
 }
 
 export const tracer: Tracer = {
@@ -64,7 +106,7 @@ export const tracer: Tracer = {
     withControllerSpan(
       name: string
     ): <R, A>(
-      ma: M.Effect<R, Error, A>
+      ma: M.Effect<HasSpanContext & R, Error, A>
     ) => M.Effect<R & HasTracerContext, Error, A> {
       return ma =>
         M.accessM(
@@ -75,41 +117,34 @@ export const tracer: Tracer = {
           }: HasTracerContext) =>
             Do(M.effectMonad)
               .bindL("span", () =>
-                M.liftIO(() => {
-                  return tracerInstance.startSpan(name);
-                })
+                M.liftIO(() => tracerInstance.startSpan(name))
               )
-              .bindL("res", ({ span }) =>
-                pipe(
-                  M.chainLeft(
-                    pipe(
-                      ma,
-                      M.chain(r =>
-                        Do(M.effectMonad)
-                          .do(
-                            M.liftIO(() => {
-                              span.finish();
-                            })
-                          )
-                          .return(() => r)
-                      )
-                    ),
-                    e =>
-                      pipe(
-                        M.liftIO(() => {
-                          span.setTag(ERROR, e.message);
-                          span.finish();
-                        }),
-                        M.chain(() => M.left(e))
-                      )
-                  ),
-                  M.provide<HasSpanContext>({
-                    span: {
-                      context: { spanInstance: span }
-                    }
-                  })
+              .bindL("res", ({ span }) => runWithSpan(ma, span))
+              .return(s => s.res)
+        );
+    },
+    withChildSpan(
+      name: string
+    ): <R, A>(
+      ma: M.Effect<HasSpanContext & R, Error, A>
+    ) => M.Effect<HasSpanContext & R & HasTracerContext, Error, A> {
+      return ma =>
+        M.accessM(
+          ({
+            tracer: {
+              context: { tracerInstance }
+            },
+            span: {
+              context: { spanInstance }
+            }
+          }: HasTracerContext & HasSpanContext) =>
+            Do(M.effectMonad)
+              .bindL("span", () =>
+                M.liftIO(() =>
+                  tracerInstance.startSpan(name, { childOf: spanInstance })
                 )
               )
+              .bindL("res", ({ span }) => runWithSpan(ma, span))
               .return(s => s.res)
         );
     }
@@ -121,6 +156,17 @@ export function withTracer<R, E, A>(ma: M.Effect<HasTracerContext & R, E, A>) {
 }
 
 export function withControllerSpan(name: string) {
-  return <R, A>(ma: M.Effect<R, Error, A>) =>
+  return <R, A>(
+    ma: M.Effect<HasSpanContext & R, Error, A>
+  ): M.Effect<HasTracerContext & Tracer & R, Error, A> =>
     M.accessM(({ tracer }: Tracer) => tracer.withControllerSpan(name)(ma));
 }
+
+export function withChildSpan(name: string) {
+  return <R, A>(
+    ma: M.Effect<HasSpanContext & R, Error, A>
+  ): M.Effect<HasTracerContext & HasSpanContext & Tracer & R, Error, A> =>
+    M.accessM(({ tracer }: Tracer) => tracer.withChildSpan(name)(ma));
+}
+
+export type ChildContext = HasSpanContext & HasTracerContext;
