@@ -1,6 +1,7 @@
 {
   "name": "matechs",
   "private": true,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "devDependencies": {
     "lerna": "^3.5.1"
   }
