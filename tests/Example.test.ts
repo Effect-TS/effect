@@ -29,7 +29,7 @@ describe("Example", () => {
       counter: module.counter,
       tracer: {
         ...module.tracer,
-        factory: () => tracer
+        factory: E.liftIO(() => tracer)
       },
       printer: {
         print(s) {

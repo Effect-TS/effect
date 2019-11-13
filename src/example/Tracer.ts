@@ -6,13 +6,13 @@ import { ERROR } from "opentracing/lib/ext/tags";
 
 export interface TracerFactory {
   tracer: {
-    factory: () => OT;
+    factory: M.Effect<M.NoEnv, never, OT>;
   };
 }
 
 export const tracerFactoryDummy: TracerFactory = {
   tracer: {
-    factory: () => new OT()
+    factory: M.liftIO(() => new OT())
   }
 };
 
@@ -51,9 +51,14 @@ export const tracer: Tracer = {
       ma: M.Effect<HasTracerContext & R, E, A>
     ): M.Effect<R & TracerFactory, E, A> {
       return M.accessM(({ tracer: { factory } }: TracerFactory) =>
-        M.provide<HasTracerContext>({
-          tracer: { context: { tracerInstance: factory() } }
-        })(ma)
+        Do(M.effectMonad)
+          .bind("instance", factory)
+          .bindL("res", ({ instance }) =>
+            M.provide<HasTracerContext>({
+              tracer: { context: { tracerInstance: instance } }
+            })(ma)
+          )
+          .return(s => s.res)
       );
     },
     withControllerSpan(
