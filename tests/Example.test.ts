@@ -5,13 +5,32 @@ import * as Ei from "fp-ts/lib/Either";
 
 import { program, module } from "../src/example/Main";
 import { pipe } from "fp-ts/lib/pipeable";
+import { Span, SpanOptions, Tracer as OT } from "opentracing";
+
+class MockTracer extends OT {
+  constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
+    super();
+  }
+  startSpan(name: string, options?: SpanOptions): Span {
+    this.spans.push({ name, options });
+
+    return super.startSpan(name, options);
+  }
+}
 
 describe("Example", () => {
   it("should collect messages from log", async () => {
     const messages: Array<string> = [];
+    const spans: Array<{ name: string; options: SpanOptions }> = [];
+
+    const tracer = new MockTracer(spans);
 
     const mockModule: typeof module = {
       counter: module.counter,
+      tracer: {
+        ...module.tracer,
+        factory: () => tracer
+      },
       printer: {
         print(s) {
           return E.liftIO(() => {
@@ -23,6 +42,10 @@ describe("Example", () => {
 
     const result = await E.run(pipe(program, E.provide(mockModule)))();
 
+    assert.deepEqual(spans, [
+      { name: "controller-a", options: undefined },
+      { name: "controller-b", options: undefined }
+    ]);
     assert.deepEqual(result, Ei.right({ start: 0, end: 20 }));
     assert.deepEqual(messages, [
       "n: 1 (1)",

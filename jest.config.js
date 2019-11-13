@@ -1,7 +1,7 @@
 module.exports = {
   rootDir: "./",
   clearMocks: true,
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: "coverage",
   globals: {
     "ts-jest": {

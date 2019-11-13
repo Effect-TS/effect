@@ -129,6 +129,13 @@ export function tryCatchIO<A, E>(
   return _ => F.encase(f)({}).mapRej(onLeft);
 }
 
+export function chainLeft<R, E, E2, A, R2>(
+  ma: Effect<R, E, A>,
+  onLeft: (e: E) => Effect<R2, E2, A>
+): Effect<R & R2, E2, A> {
+  return r => ma(r).chainRej(e => onLeft(e)(r));
+}
+
 /* conditionals */
 
 export function when(
@@ -158,14 +165,14 @@ export function alt(
 /* manipulate environment */
 
 export function mergeEnv<A, B>(a: A): (b: B) => A & B {
-  return b => M.all([a, b]);
+  return b => M.all([a, b], { clone: false });
 }
 
 export const noEnv = {};
 
 export const provide = <R>(r: R) => <R2, E, A>(
   ma: Effect<R2 & R, E, A>
-): Effect<R2, E, A> => r2 => ma(M.all([r, r2]));
+): Effect<R2, E, A> => r2 => ma(M.all([r, r2], { clone: false }));
 
 /* use environment */
 

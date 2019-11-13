@@ -4,7 +4,8 @@
   "license": "MIT",
   "scripts": {
     "build": "rimraf lib && tsc",
-    "test": "jest"
+    "test": "jest",
+    "main": "ts-node src/example/_run.ts"
   },
   "files": [
     "lib"
@@ -24,6 +25,7 @@
     "deepmerge": "^4.2.2",
     "fluture": "^11.0.3",
     "fp-ts": "^2.1.2",
-    "fp-ts-contrib": "^0.1.6"
+    "fp-ts-contrib": "^0.1.6",
+    "opentracing": "^0.14.4"
   }
 }
