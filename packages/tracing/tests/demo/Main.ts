@@ -1,11 +1,11 @@
-import * as E from "../index";
+import * as E from "@matechs/effect";
 import * as P from "./Printer";
 import * as C from "./Counter";
-import * as T from "./Tracer";
+import * as T from "../../src";
 
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
-import { withControllerSpan, withTracer } from "./Tracer";
+import { withControllerSpan, withTracer } from "../../src";
 
 export const module = pipe(
   E.noEnv,

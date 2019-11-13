@@ -11,12 +11,13 @@
       "moduleResolution": "node",
       "noEmit": false,
       "lib": ["es2018"],
-      "outDir": "lib",
+      "outDir": "./lib",
       "sourceMap": true,
       "strictFunctionTypes": true,
       "typeRoots": ["node_modules/@types"],
-      "baseUrl": "./src"
+      "baseUrl": "src"
     },
-    "exclude": ["node_modules", "lib", "src/example", "tests"]
+    "exclude": [
+      "node_modules", "lib", "src/example", "tests"]
   }
   

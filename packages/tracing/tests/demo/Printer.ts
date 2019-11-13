@@ -1,4 +1,4 @@
-import * as E from "../index";
+import * as E from "@matechs/effect";
 import { console } from "fp-ts";
 
 export interface Printer {

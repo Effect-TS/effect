@@ -1,4 +1,4 @@
-import * as M from "../index";
+import * as M from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Tracer as OT, Span as OS } from "opentracing";
 import { Do } from "fp-ts-contrib/lib/Do";

@@ -1,9 +1,9 @@
 import * as assert from "assert";
 
-import * as E from "../src";
+import * as E from "@matechs/effect";
 import * as Ei from "fp-ts/lib/Either";
 
-import { program, module } from "../src/example/Main";
+import { program, module } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT } from "opentracing";
 
