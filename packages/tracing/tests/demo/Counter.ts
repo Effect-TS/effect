@@ -4,7 +4,6 @@ import { IO } from "fp-ts/lib/IO";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { print, Printer } from "./Printer";
 import { ChildContext, Tracer, withChildSpan } from "../../src";
-import * as D from "@matechs/effect/lib/derivation";
 
 export interface CounterState {
   counter: {
@@ -55,10 +54,14 @@ export const counter: Counter = {
   }
 };
 
-export const {
-  counter: { increment }
-} = D.derivePublicHelpers(counterState());
+export function increment(): E.Effect<CounterState, E.NoErr, void> {
+  return E.accessM(({ counter }: CounterState) => counter.increment());
+}
 
-export const {
-  counter: { count }
-} = D.derivePublicHelpers(counter);
+export function count(): E.Effect<
+  Counter & Printer & Tracer & CounterState & ChildContext,
+  Error,
+  void[]
+> {
+  return E.accessM(({ counter }: Counter) => counter.count());
+}
