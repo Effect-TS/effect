@@ -40,28 +40,3 @@ export function derivePublicHelpers<M extends Module>(module: M): PublicOf<M> {
 
   return r;
 }
-
-export interface CounterState {
-  counter: {
-    ref: number;
-
-    increment(): E.Effect<CounterState, E.NoErr, void>;
-  };
-}
-
-export function currentCount() {
-  return E.accessM(({ counter }: CounterState) => E.right(counter.ref));
-}
-
-export const counterState: IO<CounterState> = () => ({
-  counter: {
-    ref: 0,
-    increment() {
-      return E.accessM((s: CounterState) =>
-        E.liftIO(() => {
-          s.counter.ref += 1;
-        })
-      );
-    }
-  }
-});
