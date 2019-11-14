@@ -4,5 +4,5 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "exclude": ["tests", "node_modules"]
+  "exclude": ["tests", "node_modules", "jest-setup.ts"]
 }
