@@ -50,14 +50,14 @@ export interface Orm {
   };
 }
 
-export const orm: Orm = {
+export const orm: (factory: typeof createConnection) => Orm = factory => ({
   orm: {
     withPool<R, E, A>(
       op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
     ): Ef.Effect<HasOrmConfig & R, Error | E, A> {
       return Ef.accessM(({ orm: { options } }: HasOrmConfig) =>
         Ef.bracket(
-          Ef.tryCatch(() => createConnection(options), toError),
+          Ef.tryCatch(() => factory(options), toError),
           db =>
             Ef.provide<HasOrmPool & HasEntityManager>({
               orm: { connection: db, manager: db.manager }
@@ -68,12 +68,12 @@ export const orm: Orm = {
     },
     withRepository(target) {
       return f =>
-        Ef.accessM(({ orm: { manager } }: HasEntityManager) =>
-          Ef.tryCatch(f(manager.getRepository(target)), toError)
+        Ef.accessM(({ orm }: HasEntityManager) =>
+          Ef.tryCatch(f(orm.manager.getRepository(target)), toError)
         );
     }
   }
-};
+});
 
 export function withPool<R, E, A>(
   op: Ef.Effect<HasEntityManager & HasOrmPool & R, E, A>

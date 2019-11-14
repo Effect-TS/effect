@@ -1,24 +1,31 @@
 import * as E from "@matechs/effect";
-import { HasEntityManager, orm, ormConfig, withRepository } from "../src";
+import { orm, ormConfig, withPool, withRepository } from "../src";
 import {
   ConnectionOptions,
-  Entity,
   EntityManager,
   EntitySchema,
   FindOneOptions,
   ObjectID,
-  PrimaryColumn,
-  Repository
+  Repository,
+  createConnection,
+  Connection,
+  Entity,
+  PrimaryColumn
 } from "typeorm";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as assert from "assert";
 import { left } from "fp-ts/lib/Either";
-import { DemoEntity } from "./demo/DemoEntity";
+
+@Entity()
+export class DemoEntity {
+  @PrimaryColumn()
+  id: string;
+}
 
 describe("Orm", () => {
   it("should connect to database", async () => {
-    const mockEntityManager: HasEntityManager = {
-      orm: {
+    const mockFactory: typeof createConnection = () =>
+      Promise.resolve({
         manager: {
           getRepository<Entity>(
             target:
@@ -36,19 +43,22 @@ describe("Orm", () => {
               }
             } as Repository<Entity>;
           }
-        } as EntityManager
-      }
-    };
+        } as EntityManager,
+        close(): Promise<void> {
+          return Promise.resolve()
+        }
+      } as Connection);
 
     const module = pipe(
       E.noEnv,
-      E.mergeEnv(orm),
-      E.mergeEnv(ormConfig({} as ConnectionOptions)),
-      E.mergeEnv(mockEntityManager)
+      E.mergeEnv(orm(mockFactory)),
+      E.mergeEnv(ormConfig({} as ConnectionOptions))
     );
 
-    const program = withRepository(DemoEntity)(r => () =>
-      r.findOne({ where: { id: "test" } })
+    const program = withPool(
+      withRepository(DemoEntity)(r => () =>
+        r.findOne({ where: { id: "test" } })
+      )
     );
 
     const result = await E.run(E.provide(module)(program))();
