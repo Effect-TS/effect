@@ -2,7 +2,7 @@ import * as F from "fluture";
 import * as Ei from "fp-ts/lib/Either";
 import * as Op from "fp-ts/lib/Option";
 import * as M from "deepmerge";
-import { pipeable } from "fp-ts/lib/pipeable";
+import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Monad3E } from "./overload";
 import { Cancel, ConcurrentFutureInstance, Par } from "fluture";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
@@ -229,4 +229,39 @@ export function fork<A, E>(
   rej: (e: E) => void
 ): (ma: Effect<NoEnv, E, A>) => Cancel {
   return ma => F.fork(rej, res)(ma(noEnv));
+}
+
+/* bracket */
+
+export function bracket<R, E, A, B, E2>(
+  acquire: Effect<R, E, A>,
+  use: (a: A) => Effect<R, E2, B>,
+  release: (a: A, e: Ei.Either<E | E2, B>) => Effect<R, E, void>
+): Effect<R, E | E2, B> {
+  return effectMonad.chain(acquire, a =>
+    effectMonad.chain(toTaskLike(use(a)), e =>
+      effectMonad.chain(release(a, e), () =>
+        Ei.isLeft(e) ? left(e.left) : right(e.right)
+      )
+    )
+  );
+}
+
+/* Task-like converters, convert operations that can fail into non failing and vice versa */
+
+export function toTaskLike<R, E, A>(
+  ma: Effect<R, E, A>
+): Effect<R, NoErr, Ei.Either<E, A>> {
+  return r =>
+    ma(r)
+      .map(a => Ei.right<E, A>(a))
+      .chainRej(e => F.of(Ei.left(e)));
+}
+
+export function fromTaskLike<R, E, A>(
+  ma: Effect<R, never, Ei.Either<E, A>>
+): Effect<R, E, A> {
+  return effectMonad.chain(ma, r =>
+    Ei.isLeft(r) ? left(r.left) : right(r.right)
+  );
 }

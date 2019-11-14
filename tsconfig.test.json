@@ -17,6 +17,6 @@
     "typeRoots": ["node_modules/@types"],
     "baseUrl": "./"
   },
-  "include": ["packages/tracing"],
+  "include": ["packages/tracing", "packages/effect"],
   "exclude": ["node_modules", "lib"]
 }

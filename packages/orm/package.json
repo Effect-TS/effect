@@ -1,15 +1,15 @@
 {
-  "name": "@matechs/effect",
-  "version": "0.0.6",
+  "name": "@matechs/orm",
+  "version": "0.0.0",
   "license": "MIT",
   "private": false,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
     "build": "rimraf lib && tsc"
   },
   "publishConfig": {
     "access": "public"
   },
-  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "main": "lib/index.js",
   "files": [
     "lib"
@@ -19,16 +19,22 @@
     "@types/jest": "^24.0.23",
     "@types/node": "^12.12.7",
     "jest": "^24.9.0",
+    "lerna": "^3.18.4",
+    "prettier": "^1.19.1",
     "rimraf": "^3.0.0",
     "ts-jest": "^24.1.0",
     "ts-node": "^8.5.0",
     "typescript": "^3.7.2"
   },
   "dependencies": {
+    "@matechs/effect": "^0.0.6",
+    "@matechs/tracing": "^0.0.9",
     "deepmerge": "^4.2.2",
     "fluture": "^11.0.3",
     "fp-ts": "^2.1.2",
-    "fp-ts-contrib": "^0.1.6"
+    "fp-ts-contrib": "^0.1.6",
+    "opentracing": "^0.14.4",
+    "typeorm": "^0.2.20"
   },
   "gitHead": "083adfe9a484709608bc9f784781725ffa5ef7c9"
 }
