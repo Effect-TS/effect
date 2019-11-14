@@ -21,9 +21,8 @@ jobs:
       run: |
         npm install -g lerna
         npm install -g yarn
-        yarn
         lerna bootstrap
         lerna run build
-        yarn test
+        lerna run test
       env:
         CI: true

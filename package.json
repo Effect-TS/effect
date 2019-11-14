@@ -1,31 +1,13 @@
 {
   "name": "matechs",
   "private": true,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "workspaces": [
     "packages/*"
   ],
-  "scripts": {
-    "test": "jest"
-  },
-  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "devDependencies": {
-    "@types/deepmerge": "^2.2.0",
-    "@types/jest": "^24.0.23",
-    "@types/node": "^12.12.7",
-    "jest": "^24.9.0",
     "lerna": "^3.18.4",
     "prettier": "^1.19.1",
-    "rimraf": "^3.0.0",
-    "ts-jest": "^24.1.0",
-    "ts-node": "^8.5.0",
     "typescript": "^3.7.2"
-  },
-  "dependencies": {
-    "@matechs/effect": "^0.0.3",
-    "deepmerge": "^4.2.2",
-    "fluture": "^11.0.3",
-    "fp-ts": "^2.1.2",
-    "fp-ts-contrib": "^0.1.6",
-    "opentracing": "^0.14.4"
   }
 }

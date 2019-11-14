@@ -11,12 +11,7 @@
     "moduleResolution": "node",
     "noEmit": false,
     "lib": ["es2018"],
-    "outDir": "./lib",
     "sourceMap": true,
-    "strictFunctionTypes": true,
-    "typeRoots": ["node_modules/@types"],
-    "baseUrl": "./"
-  },
-  "include": ["packages/tracing", "packages/effect"],
-  "exclude": ["node_modules", "lib"]
+    "strictFunctionTypes": true
+  }
 }

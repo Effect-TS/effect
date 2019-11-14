@@ -2,5 +2,6 @@ module.exports = {
   rootDir: "./",
   clearMocks: true,
   collectCoverage: true,
-  coverageDirectory: "coverage"
+  coverageDirectory: "coverage",
+  setupFiles: ["./jest-setup.ts"]
 };

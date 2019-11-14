@@ -8,6 +8,7 @@ import { Cancel, ConcurrentFutureInstance, Par } from "fluture";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import { URIS3 } from "fp-ts/lib/HKT";
+import { fromNullable, Option } from "fp-ts/lib/Option";
 
 export const URI = "matechs/Effect";
 export const URIC = "matechs/ConcurrentEffect";
@@ -264,4 +265,12 @@ export function fromTaskLike<R, E, A>(
   return effectMonad.chain(ma, r =>
     Ei.isLeft(r) ? left(r.left) : right(r.right)
   );
+}
+
+/* utilities */
+
+export function fromNullableM<R, E, A>(
+  ma: Effect<R, E, A>
+): Effect<R, E, Option<A>> {
+  return effectMonad.map(ma, fromNullable);
 }

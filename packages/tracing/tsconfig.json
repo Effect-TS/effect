@@ -1,23 +1,8 @@
 {
-    "compilerOptions": {
-      "resolveJsonModule": true,
-      "esModuleInterop": true,
-      "target": "es5",
-      "declaration": true,
-      "skipLibCheck": false,
-      "emitDecoratorMetadata": true,
-      "experimentalDecorators": true,
-      "preserveSymlinks": true,
-      "moduleResolution": "node",
-      "noEmit": false,
-      "lib": ["es2018"],
-      "outDir": "./lib",
-      "sourceMap": true,
-      "strictFunctionTypes": true,
-      "typeRoots": ["node_modules/@types"],
-      "baseUrl": "src"
-    },
-    "exclude": [
-      "node_modules", "lib", "src/example", "tests"]
-  }
-  
+  "extends": "../../base.tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "./lib"
+  },
+  "exclude": ["./node_modules", "lib"]
+}
