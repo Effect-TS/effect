@@ -1,5 +1,11 @@
 import * as E from "@matechs/effect";
-import { orm, ormConfig, withPool, withRepository } from "../src";
+import {
+  orm,
+  ormConfig,
+  withPool,
+  withRepository,
+  withTransaction
+} from "../src";
 import {
   ConnectionOptions,
   EntityManager,
@@ -26,26 +32,31 @@ describe("Orm", () => {
   it("should connect to database", async () => {
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
-        manager: {
-          getRepository<Entity>(
-            target:
-              | { new (): Entity }
-              | Function
-              | EntitySchema<Entity>
-              | string
-          ): Repository<Entity> {
-            return {
-              findOne(
-                id?: string | number | Date | ObjectID,
-                options?: FindOneOptions<Entity>
-              ): Promise<Entity | undefined> {
-                return Promise.reject("not implemented");
-              }
-            } as Repository<Entity>;
-          }
-        } as EntityManager,
+        manager: {} as EntityManager,
         close(): Promise<void> {
-          return Promise.resolve()
+          return Promise.resolve();
+        },
+        transaction<T>(
+          runInTransaction: (entityManager: EntityManager) => Promise<T>
+        ): Promise<T> {
+          return runInTransaction({
+            getRepository<Entity>(
+              target:
+                | { new (): Entity }
+                | Function
+                | EntitySchema<Entity>
+                | string
+            ): Repository<Entity> {
+              return {
+                findOne(
+                  id?: string | number | Date | ObjectID,
+                  options?: FindOneOptions<Entity>
+                ): Promise<Entity | undefined> {
+                  return Promise.reject("not implemented");
+                }
+              } as Repository<Entity>;
+            }
+          } as EntityManager);
         }
       } as Connection);
 
@@ -56,8 +67,10 @@ describe("Orm", () => {
     );
 
     const program = withPool(
-      withRepository(DemoEntity)(r => () =>
-        r.findOne({ where: { id: "test" } })
+      withTransaction(
+        withRepository(DemoEntity)(r => () =>
+          r.findOne({ where: { id: "test" } })
+        )
       )
     );
 

@@ -10,6 +10,7 @@ import {
 import * as Ef from "@matechs/effect";
 import { toError } from "fp-ts/lib/Either";
 import { IO } from "fp-ts/lib/IO";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export interface HasOrmConfig {
   orm: {
@@ -47,6 +48,9 @@ export interface Orm {
     ): <A>(
       f: (r: Repository<Entity>) => IO<Promise<A>>
     ) => Ef.Effect<HasEntityManager, Error, A>;
+    withTransaction<R, E, A>(
+      op: Ef.Effect<HasEntityManager & R, E, A>
+    ): Ef.Effect<HasOrmPool & R, Error | E, A>;
   };
 }
 
@@ -71,6 +75,31 @@ export const orm: (factory: typeof createConnection) => Orm = factory => ({
         Ef.accessM(({ orm }: HasEntityManager) =>
           Ef.tryCatch(f(orm.manager.getRepository(target)), toError)
         );
+    },
+    withTransaction<R, E, A>(
+      op: Ef.Effect<HasEntityManager & R, E, A>
+    ): Ef.Effect<HasOrmPool & R, Error | E, A> {
+      return Ef.accessM(({ orm: { connection } }: HasOrmPool) =>
+        Ef.accessM((r: R) =>
+          Ef.tryCatch(
+            () =>
+              connection.transaction(tx =>
+                Ef.promise(
+                  pipe(
+                    op,
+                    Ef.provide(r),
+                    Ef.provide({
+                      orm: {
+                        manager: tx
+                      }
+                    } as HasEntityManager)
+                  )
+                )
+              ),
+            toError
+          )
+        )
+      );
     }
   }
 });
@@ -87,4 +116,10 @@ export function withRepository<Entity>(
   f: (r: Repository<Entity>) => IO<Promise<A>>
 ) => Ef.Effect<Orm & HasEntityManager, Error, A> {
   return f => Ef.accessM(({ orm }: Orm) => orm.withRepository(target)(f));
+}
+
+export function withTransaction<R, E, A>(
+  op: Ef.Effect<HasEntityManager & R, E, A>
+): Ef.Effect<Orm & HasOrmPool & R, Error | E, A> {
+  return Ef.accessM(({ orm }: Orm) => orm.withTransaction(op));
 }
