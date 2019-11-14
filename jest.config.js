@@ -13,5 +13,6 @@ module.exports = {
   transform: {
     "^.+\\.(ts|tsx)$": "ts-jest"
   },
-  modulePathIgnorePatterns: ["<rootDir>/dist/"]
+  moduleDirectories: ["<rootDir>/node_modules/"],
+  modulePathIgnorePatterns: ["<rootDir>/lib/"]
 };

@@ -11,11 +11,12 @@
     "moduleResolution": "node",
     "noEmit": false,
     "lib": ["es2018"],
-    "outDir": "./lib-test",
+    "outDir": "./lib",
     "sourceMap": true,
     "strictFunctionTypes": true,
     "typeRoots": ["node_modules/@types"],
-    "baseUrl": "./src"
+    "baseUrl": "./"
   },
+  "include": ["packages/tracing"],
   "exclude": ["node_modules", "lib"]
 }

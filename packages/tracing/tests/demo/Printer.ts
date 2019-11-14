@@ -1,14 +1,12 @@
 import * as E from "@matechs/effect";
+import * as D from "@matechs/effect/lib/derivation";
+
 import { console } from "fp-ts";
 
 export interface Printer {
   printer: {
     print(s: string): E.Effect<E.NoEnv, E.NoErr, void>;
   };
-}
-
-export function print(s: string) {
-  return E.accessM(({ printer }: Printer) => printer.print(s));
 }
 
 export const printer: Printer = {
@@ -19,3 +17,6 @@ export const printer: Printer = {
   }
 };
 
+export const {
+  printer: { print }
+} = D.derivePublicHelpers(printer);
