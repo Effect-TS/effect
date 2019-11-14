@@ -1,6 +1,7 @@
 import * as TO from "typeorm";
 import * as Ef from "@matechs/effect";
 import { toError } from "fp-ts/lib/Either";
+import { EntityManager } from "typeorm";
 
 export interface HasOrmConfig {
   orm: {
@@ -8,29 +9,33 @@ export interface HasOrmConfig {
   };
 }
 
-export interface HasOrmConnection {
+export interface HasOrmPool {
   orm: {
     connection: TO.Connection;
+    manager: EntityManager;
   };
 }
 
 export interface Orm {
   orm: {
-    withConnection<R, E, A>(
-      op: Ef.Effect<HasOrmConnection & R, E, A>
+    withPool<R, E, A>(
+      op: Ef.Effect<HasOrmPool & R, E, A>
     ): Ef.Effect<HasOrmConfig & R, Error | E, A>;
   };
 }
 
 export const orm: Orm = {
   orm: {
-    withConnection<R, E, A>(
-      op: Ef.Effect<HasOrmConnection & R, E, A>
+    withPool<R, E, A>(
+      op: Ef.Effect<HasOrmPool & R, E, A>
     ): Ef.Effect<HasOrmConfig & R, Error | E, A> {
       return Ef.accessM(({ orm: { options } }: HasOrmConfig) =>
         Ef.bracket(
           Ef.tryCatch(() => TO.createConnection(options), toError),
-          db => Ef.provide<HasOrmConnection>({ orm: { connection: db } })(op),
+          db =>
+            Ef.provide<HasOrmPool>({
+              orm: { connection: db, manager: db.manager }
+            })(op),
           db => Ef.tryCatch(db.close, toError)
         )
       );
@@ -38,8 +43,8 @@ export const orm: Orm = {
   }
 };
 
-export function withConnection<R, E, A>(
-  op: Ef.Effect<HasOrmConnection & R, E, A>
+export function withPool<R, E, A>(
+  op: Ef.Effect<HasOrmPool & R, E, A>
 ): Ef.Effect<Orm & HasOrmConfig & R, Error | E, A> {
-  return Ef.accessM(({ orm }: Orm) => orm.withConnection(op));
+  return Ef.accessM(({ orm }: Orm) => orm.withPool(op));
 }
