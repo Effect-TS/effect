@@ -54,7 +54,9 @@ export interface Orm {
   };
 }
 
-export const orm: (factory: typeof createConnection) => Orm = factory => ({
+export const ormFactory: (
+  factory: typeof createConnection
+) => Orm = factory => ({
   orm: {
     withPool<R, E, A>(
       op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
@@ -103,6 +105,8 @@ export const orm: (factory: typeof createConnection) => Orm = factory => ({
     }
   }
 });
+
+export const orm = ormFactory(createConnection);
 
 export function withPool<R, E, A>(
   op: Ef.Effect<HasEntityManager & HasOrmPool & R, E, A>

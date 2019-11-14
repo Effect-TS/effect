@@ -1,6 +1,6 @@
 import * as E from "@matechs/effect";
 import {
-  orm,
+  ormFactory,
   ormConfig,
   withPool,
   withRepository,
@@ -62,7 +62,7 @@ describe("Orm", () => {
 
     const module = pipe(
       E.noEnv,
-      E.mergeEnv(orm(mockFactory)),
+      E.mergeEnv(ormFactory(mockFactory)),
       E.mergeEnv(ormConfig({} as ConnectionOptions))
     );
 
