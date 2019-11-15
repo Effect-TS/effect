@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - rpc
 
 jobs:
   build:
