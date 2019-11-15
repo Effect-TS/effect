@@ -8,7 +8,7 @@ export interface HttpClient {
   };
 }
 
-export const httpClient: (X: typeof AX) => HttpClient = (X = AX) => ({
+export const httpClient: (X?: typeof AX) => HttpClient = (X = AX) => ({
   http: {
     post<A>(url: string, data: any): T.Effect<T.NoEnv, Error, A> {
       return T.effectMonad.map(
