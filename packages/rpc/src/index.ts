@@ -124,7 +124,7 @@ export function bindToApp<M extends CanRemote>(app: Express, module: M) {
             if (Ei.isLeft(r)) {
               res.status(500).send({ message: r.left.message });
             } else {
-              res.send(r.right);
+              res.send({ result: r.right });
             }
           }
         );

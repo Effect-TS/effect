@@ -3,7 +3,7 @@ import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { sayHiAndReturn, clientModuleA } from "./rpc/client";
+import { clientModuleA, notFailing, failing } from "./rpc/client";
 import { HttpClient } from "@matechs/http";
 import { moduleA } from "./rpc/server";
 import { bindToApp } from "../src";
@@ -12,7 +12,7 @@ import R from "supertest";
 import { isRight, toError } from "fp-ts/lib/Either";
 
 describe("RPC", () => {
-  it("should bind module to express and perform an rpc call", async () => {
+  it("perform call through rpc", async () => {
     // server
 
     const argsMap = {};
@@ -46,15 +46,10 @@ describe("RPC", () => {
             .doL(s =>
               T.when(s.r.status == 500)(T.left(T.error(s.r.body.message)))
             )
-            .return(s => s.r.body);
+            .return(s => s.r.body.result);
         }
       }
     };
-
-    const program = Do(T.effectMonad)
-      .bind("a", sayHiAndReturn("test-a"))
-      .bind("b", sayHiAndReturn("test-b"))
-      .return(s => `${s.a} - ${s.b}`);
 
     const clientModule = pipe(
       T.noEnv,
@@ -62,38 +57,12 @@ describe("RPC", () => {
       T.mergeEnv(mockHttpClient)
     );
 
-    const result = await T.run(T.provide(clientModule)(program))();
+    const result = await T.run(T.provide(clientModule)(failing("test")))();
+    const result2 = await T.run(T.provide(clientModule)(notFailing("test")))();
 
     s.close();
 
     assert.deepEqual(result, E.left(T.error("not implemented")));
-  });
-
-  it("should add remote interpreter", async () => {
-    const mockHttpClient: HttpClient = {
-      http: {
-        post<E, A>(url: string, data: any): T.Effect<T.NoEnv, Error | E, A> {
-          if (url === "url/moduleA/sayHiAndReturn") {
-            return T.liftIO(() => data["data"][0]) as any;
-          }
-          return T.left(T.error("wrong"));
-        }
-      }
-    };
-
-    const program = Do(T.effectMonad)
-      .bind("a", sayHiAndReturn("test-a"))
-      .bind("b", sayHiAndReturn("test-b"))
-      .return(s => `${s.a} - ${s.b}`);
-
-    const module = pipe(
-      T.noEnv,
-      T.mergeEnv(clientModuleA),
-      T.mergeEnv(mockHttpClient)
-    );
-
-    const result = await T.run(T.provide(module)(program))();
-
-    assert.deepEqual(result, E.right("test-a - test-b"));
+    assert.deepEqual(result2, E.right("test"));
   });
 });

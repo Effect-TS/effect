@@ -3,18 +3,22 @@ import { CanRemote, serverHelpers } from "../../src";
 
 export interface ModuleA extends CanRemote {
   moduleA: {
-    sayHiAndReturn(s: string): T.Effect<T.NoEnv, Error, string>;
+    notFailing(s: string): T.Effect<T.NoEnv, Error, string>;
+    failing(s: string): T.Effect<T.NoEnv, Error, string>;
   };
 }
 
 export const moduleA: ModuleA = {
   moduleA: {
-    sayHiAndReturn(s: string): T.Effect<T.NoEnv, Error, string> {
+    failing(s: string): T.Effect<T.NoEnv, Error, string> {
       return T.left(T.error("not implemented"));
+    },
+    notFailing(s: string): T.Effect<T.NoEnv, Error, string> {
+      return T.right(s);
     }
   }
 };
 
 export const {
-  moduleA: { sayHiAndReturn }
+  moduleA: { failing, notFailing }
 } = serverHelpers(moduleA);
