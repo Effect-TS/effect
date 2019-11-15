@@ -89,3 +89,32 @@ export function clientHelpers<M extends CanRemote>(
 
   return patched as any;
 }
+
+export type PatchedServerF<M, Z extends CanRemote> = M extends (
+  ...args: infer A
+) => T.Effect<infer R, Error, infer D>
+  ? (...args: A) => T.Effect<Z & R, Error, D>
+  : never;
+
+export type ServerHelpers<M> = M extends {
+  [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, any, any> };
+}
+  ? { [k in keyof M]: { [h in keyof M[k]]: PatchedServerF<M[k][h], M> } }
+  : never;
+
+export function serverHelpers<M extends CanRemote>(
+  module: M
+): ServerHelpers<M> {
+  const patched = {};
+
+  Object.keys(module).forEach(entry => {
+    patched[entry] = {};
+
+    Object.keys(module[entry]).forEach(k => {
+      patched[entry][k] = (...args) =>
+        T.accessM((r: M) => r[entry][k](...args));
+    });
+  });
+
+  return patched as any;
+}
