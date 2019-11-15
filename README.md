@@ -99,6 +99,12 @@ For details about the additional types and overloads please refer to documentati
 ## Notes
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
+## Ecosystem
+- `@matechs/tracing` : provides integration with opentracing-js
+- `@matechs/http` : provides integration with axios
+- `@matechs/orm` : provides integration with typeorm
+- `@matechs/rpc` : no boilerplate rpc for your effects
+
 ## Thanks
 This library would have not been feasibly possible without the strong fundations of [fp-ts](https://github.com/gcanti/fp-ts) and [Fluture](https://github.com/fluture-js/Fluture) huge thanks to the Authors.
 
