@@ -3,6 +3,9 @@ import * as T from "@matechs/effect";
 import * as H from "@matechs/http";
 import * as Ei from "fp-ts/lib/Either";
 import * as bodyParser from "body-parser";
+import { Tracer } from "@matechs/tracing";
+import { ChildContext, HasTracerContext } from "@matechs/tracing/lib";
+import { ModuleA } from "../tests/rpc/server";
 
 export type CanRemote = {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
@@ -115,20 +118,40 @@ export function serverHelpers<M extends CanRemote>(
   return patched as any;
 }
 
-export function bindToApp<M extends CanRemote>(app: Express, module: M) {
-  Object.keys(module).forEach(entry => {
-    Object.keys(module[entry]).forEach(k => {
-      app.post(`/${entry}/${k}`, bodyParser.json(), (req, res) => {
-        T.run(T.provide(module)(module[entry][k](...req.body["data"])))().then(
-          r => {
-            if (Ei.isLeft(r)) {
-              res.status(500).send({ message: r.left.message });
-            } else {
-              res.send({ result: r.right });
-            }
-          }
-        );
-      });
-    });
-  });
+export type Runtime<M> = M extends {
+  [h: string]: (...args: any[]) => T.Effect<infer Q & ChildContext, any, any>;
+}
+  ? Q
+  : never;
+
+export function bindToApp<M extends CanRemote, K extends keyof M>(
+  app: Express,
+  module: M,
+  entry: K,
+  runtime: Runtime<M[K]>
+) {
+  return T.accessM(
+    ({ tracer: { withControllerSpan, context } }: Tracer & HasTracerContext) =>
+      T.liftIO(() => {
+        Object.keys(module[entry]).forEach(k => {
+          app.post(`/${entry}/${k}`, bodyParser.json(), (req, res) => {
+            T.run(
+              T.provide(T.mergeEnv(runtime)({ tracer: { context } }))(
+                withControllerSpan(
+                  "RPC Server",
+                  `${entry}/${k}`,
+                  req.headers as any
+                )(module[entry][k](...req.body["data"]))
+              )
+            )().then(r => {
+              if (Ei.isLeft(r)) {
+                res.status(500).send({ message: r.left.message });
+              } else {
+                res.send({ result: r.right });
+              }
+            });
+          });
+        });
+      })
+  );
 }
