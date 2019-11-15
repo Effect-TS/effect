@@ -118,11 +118,11 @@ export function serverHelpers<M extends CanRemote>(
 export function bindToApp<M extends CanRemote>(app: Express, module: M) {
   Object.keys(module).forEach(entry => {
     Object.keys(module[entry]).forEach(k => {
-      app.post(`${entry}/${k}`, bodyParser.json(), (req, res) => {
+      app.post(`/${entry}/${k}`, bodyParser.json(), (req, res) => {
         T.run(T.provide(module)(module[entry][k](...req.body["data"])))().then(
           r => {
             if (Ei.isLeft(r)) {
-              res.status(500).send(r.left);
+              res.status(500).send({ message: r.left.message });
             } else {
               res.send(r.right);
             }
