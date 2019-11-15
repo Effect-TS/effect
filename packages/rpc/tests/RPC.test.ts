@@ -1,10 +1,10 @@
 import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
-import { HttpClient } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { sayHiAndReturn, clientModuleA } from "./rpc/client";
+import { HttpClient } from "@matechs/http";
 
 describe("RPC", () => {
   it("should add remote interpreter", async () => {
