@@ -11,7 +11,7 @@ describe("RPC", () => {
     const mockHttpClient: HttpClient = {
       http: {
         post<E, A>(url: string, data: any): T.Effect<T.NoEnv, Error | E, A> {
-          if (url === "url/moduleA/sayBye") {
+          if (url === "url/moduleA/sayHiAndReturn") {
             return T.liftIO(() => data["data"][0]) as any;
           }
           return T.left(T.error("wrong"));
