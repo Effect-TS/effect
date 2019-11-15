@@ -11,7 +11,18 @@ export interface HttpClient {
 export const httpClient: (X: typeof AX) => HttpClient = (X = AX) => ({
   http: {
     post<A>(url: string, data: any): T.Effect<T.NoEnv, Error, A> {
-      return T.tryCatch(() => X.post(url, data), toError);
+      return T.effectMonad.map(
+        T.tryCatch(
+          () => X.post(url, data),
+          e => {
+            if (e.response && e.response.data && e.response.data.message) {
+              return new Error(e.response.data.message);
+            }
+            return toError(e);
+          }
+        ),
+        r => r.data.result
+      );
     }
   }
 });

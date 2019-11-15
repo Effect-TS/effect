@@ -7,10 +7,10 @@ import { clientModuleA, notFailing, failing } from "./rpc/client";
 import { HttpClient } from "@matechs/http";
 import { moduleA, Printer } from "./rpc/server";
 import { bindToApp } from "../src";
-import express from "express";
-import R from "supertest";
 import { toError } from "fp-ts/lib/Either";
 import { tracer, tracerFactoryDummy, withTracer } from "@matechs/tracing/lib";
+import { httpClient } from "@matechs/http/lib";
+import express from "express";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
@@ -46,36 +46,10 @@ describe("RPC", () => {
 
     const s = app.listen(3000, "127.0.0.1");
 
-    // client
-    const mockHttpClient: HttpClient = {
-      http: {
-        post<E, A>(url: string, data: any): T.Effect<T.NoEnv, Error | E, A> {
-          const [_, entry, k] = url.split("/");
-
-          return Do(T.effectMonad)
-            .bindL("r", () =>
-              T.tryCatch(
-                () =>
-                  R(`http://localhost:3000`)
-                    .post(`/${entry}/${k}`)
-                    .send(data)
-                    .accept("text/json")
-                    .then(),
-                toError
-              )
-            )
-            .doL(s =>
-              T.when(s.r.status == 500)(T.left(T.error(s.r.body.message)))
-            )
-            .return(s => s.r.body.result);
-        }
-      }
-    };
-
     const clientModule = pipe(
       T.noEnv,
       T.mergeEnv(clientModuleA),
-      T.mergeEnv(mockHttpClient)
+      T.mergeEnv(httpClient())
     );
 
     const result = await T.run(T.provide(clientModule)(failing("test")))();
