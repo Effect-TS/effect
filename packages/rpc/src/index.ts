@@ -7,7 +7,7 @@ export type CanRemote = {
 export type PatchedF<M> = M extends (
   ...args: infer A
 ) => T.Effect<infer B, infer C, infer D>
-  ? (...args: A) => T.Effect<HttpClient & B, Error | C, D>
+  ? (...args: A) => T.Effect<HttpClient, Error, D>
   : never;
 
 export type Remote<M extends CanRemote> = M extends {
@@ -18,7 +18,7 @@ export type Remote<M extends CanRemote> = M extends {
 
 export interface HttpClient {
   http: {
-    post<E, A>(url: string, data: any): T.Effect<T.NoEnv, E | Error, A>;
+    post<A>(url: string, data: any): T.Effect<T.NoEnv, Error, A>;
   };
 }
 
@@ -36,13 +36,16 @@ export function remotely<A extends any[], R, E, B>(
 ): (...args: A) => T.Effect<HttpClient & R, Error | E, B> {
   return (...args: A) =>
     T.accessM(({ http }: HttpClient) =>
-      http.post<Error, B>(calculatePath(url, entry, k), {
+      http.post<B>(calculatePath(url, entry, k), {
         data: args
       } as Payload)
     );
 }
 
-export function deriveRemote<M extends CanRemote>(module: M, url: string): Remote<M> {
+export function deriveRemote<M extends CanRemote>(
+  module: M,
+  url: string
+): Remote<M> {
   const patched = {};
 
   Object.keys(module).forEach(entry => {
@@ -57,4 +60,3 @@ export function deriveRemote<M extends CanRemote>(module: M, url: string): Remot
 
   return patched as any;
 }
-
