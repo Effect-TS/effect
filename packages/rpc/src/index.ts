@@ -5,7 +5,6 @@ import * as Ei from "fp-ts/lib/Either";
 import * as bodyParser from "body-parser";
 import { Tracer } from "@matechs/tracing";
 import { ChildContext, HasTracerContext } from "@matechs/tracing/lib";
-import { ModuleA } from "../tests/rpc/server";
 
 export type CanRemote = {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
