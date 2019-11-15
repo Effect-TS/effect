@@ -1,53 +1,59 @@
 import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
-import { CanRemote, reinterpretRemotely, HttpClient } from "../src";
+import {
+  CanRemote,
+  reinterpretRemotely,
+  HttpClient,
+  clientHelpers
+} from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 interface ModuleA extends CanRemote {
   moduleA: {
-    sayBye(s: string): T.Effect<T.NoEnv, T.NoErr, string>;
+    sayBye(s: string): T.Effect<T.NoEnv, Error, string>;
   };
 }
 
 const moduleA: ModuleA = {
   moduleA: {
-    sayBye(s: string): T.Effect<T.NoEnv, T.NoErr, string> {
-      return T.liftIO(() => {
-        console.log(s);
-        return s;
-      });
+    sayBye(s: string): T.Effect<T.NoEnv, Error, string> {
+      return T.left(T.error("not implemented"));
     }
   }
 };
 
-function sayBye(s: string): T.Effect<ModuleA, T.NoErr, string> {
-  return T.accessM(({ moduleA }: ModuleA) => moduleA.sayBye(s));
-}
+const {
+  moduleA: { sayBye }
+} = clientHelpers(moduleA);
 
 describe("RPC", () => {
   it("should add remote interpreter", async () => {
-    const result = await T.run(
-      pipe(
-        sayBye("test-arg"),
-        T.provide(moduleA),
-        T.provide(reinterpretRemotely(moduleA, "url")),
-        T.provide({
-          http: {
-            post<E, A>(
-              url: string,
-              data: any
-            ): T.Effect<T.NoEnv, Error | E, A> {
-              if (url === "url/moduleA/sayBye") {
-                return T.liftIO(() => data["data"][0]) as any;
-              }
-              return T.left(T.error("wrong"));
-            }
+    const mockHttpClient: HttpClient = {
+      http: {
+        post<E, A>(url: string, data: any): T.Effect<T.NoEnv, Error | E, A> {
+          if (url === "url/moduleA/sayBye") {
+            return T.liftIO(() => data["data"][0]) as any;
           }
-        } as HttpClient)
-      )
-    )();
+          return T.left(T.error("wrong"));
+        }
+      }
+    };
 
-    assert.deepEqual(result, E.right("test-arg"));
+    const program = Do(T.effectMonad)
+      .bind("a", sayBye("test-a"))
+      .bind("b", sayBye("test-b"))
+      .return(s => `${s.a} - ${s.b}`);
+
+    const module = pipe(
+      T.noEnv,
+      T.mergeEnv(reinterpretRemotely(moduleA, "url")),
+      T.mergeEnv(mockHttpClient)
+    );
+
+    const result = await T.run(T.provide(module)(program))();
+
+    assert.deepEqual(result, E.right("test-a - test-b"));
   });
 });
