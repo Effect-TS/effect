@@ -5,8 +5,30 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { sayHiAndReturn, clientModuleA } from "./rpc/client";
 import { HttpClient } from "@matechs/http";
+import { moduleA } from "./rpc/server";
+import { bindToApp } from "../src";
+import { Express } from "express";
 
 describe("RPC", () => {
+  it("should bind module to express", async () => {
+    const argsList = [];
+
+    const module = pipe(T.noEnv, T.mergeEnv(moduleA));
+
+    const mockExpress: Express = {
+      post(...args) {
+        argsList.push(args);
+      }
+    } as Express;
+
+    bindToApp(mockExpress, module);
+
+    assert.deepEqual(
+      argsList.map(a => a[0]),
+      ["moduleA/sayHiAndReturn"]
+    );
+  });
+
   it("should add remote interpreter", async () => {
     const mockHttpClient: HttpClient = {
       http: {

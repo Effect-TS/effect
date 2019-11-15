@@ -1,5 +1,8 @@
+import { Express } from "express";
 import * as T from "@matechs/effect";
-import { HttpClient } from "@matechs/http";
+import * as H from "@matechs/http";
+import * as Ei from "fp-ts/lib/Either";
+import * as bodyParser from "body-parser";
 
 export type CanRemote = {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
@@ -8,7 +11,7 @@ export type CanRemote = {
 export type PatchedF<M> = M extends (
   ...args: infer A
 ) => T.Effect<any, Error, infer D>
-  ? (...args: A) => T.Effect<HttpClient, Error, D>
+  ? (...args: A) => T.Effect<H.HttpClient, Error, D>
   : never;
 
 export type Remote<M> = M extends {
@@ -28,13 +31,11 @@ export function remotely<A extends any[], R, E, B>(
   url: string,
   entry: string,
   k: string
-): (...args: A) => T.Effect<HttpClient & R, Error | E, B> {
+): (...args: A) => T.Effect<H.HttpClient & R, Error | E, B> {
   return (...args: A) =>
-    T.accessM(({ http }: HttpClient) =>
-      http.post<B>(calculatePath(url, entry, k), {
-        data: args
-      } as Payload)
-    );
+    H.post<B>(calculatePath(url, entry, k), {
+      data: args
+    } as Payload);
 }
 
 export function reinterpretRemotely<M extends CanRemote>(
@@ -59,7 +60,7 @@ export function reinterpretRemotely<M extends CanRemote>(
 export type PatchedClientF<M, Z extends CanRemote> = M extends (
   ...args: infer A
 ) => T.Effect<any, Error, infer D>
-  ? (...args: A) => T.Effect<HttpClient & Remote<Z>, Error, D>
+  ? (...args: A) => T.Effect<H.HttpClient & Remote<Z>, Error, D>
   : never;
 
 export type ClientHelpers<M> = M extends {
@@ -112,4 +113,22 @@ export function serverHelpers<M extends CanRemote>(
   });
 
   return patched as any;
+}
+
+export function bindToApp<M extends CanRemote>(app: Express, module: M) {
+  Object.keys(module).forEach(entry => {
+    Object.keys(module[entry]).forEach(k => {
+      app.post(`${entry}/${k}`, bodyParser.json(), (req, res) => {
+        T.run(T.provide(module)(module[entry][k](...req.body["data"])))().then(
+          r => {
+            if (Ei.isLeft(r)) {
+              res.status(500).send(r.left);
+            } else {
+              res.send(r.right);
+            }
+          }
+        );
+      });
+    });
+  });
 }
