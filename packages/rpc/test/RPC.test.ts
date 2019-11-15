@@ -1,24 +1,18 @@
 import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
-import { CanRemote, deriveRemote, HttpClient } from "../src";
+import { CanRemote, reinterpretRemotely, HttpClient } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 
 interface ModuleA extends CanRemote {
   moduleA: {
-    sayHi(s: string): T.Effect<T.NoEnv, T.NoErr, void>;
-    sayBye(s: string, s2: string): T.Effect<T.NoEnv, T.NoErr, string>;
+    sayBye(s: string): T.Effect<T.NoEnv, T.NoErr, string>;
   };
 }
 
 const moduleA: ModuleA = {
   moduleA: {
-    sayHi(s: string): T.Effect<T.NoEnv, T.NoErr, void> {
-      return T.liftIO(() => {
-        console.log(s);
-      });
-    },
-    sayBye(s: string, s2: string): T.Effect<T.NoEnv, T.NoErr, string> {
+    sayBye(s: string): T.Effect<T.NoEnv, T.NoErr, string> {
       return T.liftIO(() => {
         console.log(s);
         return s;
@@ -27,15 +21,17 @@ const moduleA: ModuleA = {
   }
 };
 
+function sayBye(s: string): T.Effect<ModuleA, T.NoErr, string> {
+  return T.accessM(({ moduleA }: ModuleA) => moduleA.sayBye(s));
+}
+
 describe("RPC", () => {
   it("should add remote interpreter", async () => {
-    const remoteA = deriveRemote(moduleA, "url");
-
-    const sayBye = remoteA.moduleA.sayBye("test-arg", "test");
-
     const result = await T.run(
       pipe(
-        sayBye,
+        sayBye("test-arg"),
+        T.provide(moduleA),
+        T.provide(reinterpretRemotely(moduleA, "url")),
         T.provide({
           http: {
             post<E, A>(
@@ -52,6 +48,6 @@ describe("RPC", () => {
       )
     )();
 
-    assert.deepEqual(result, E.right("test-arg"))
+    assert.deepEqual(result, E.right("test-arg"));
   });
 });

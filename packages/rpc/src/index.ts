@@ -42,7 +42,7 @@ export function remotely<A extends any[], R, E, B>(
     );
 }
 
-export function deriveRemote<M extends CanRemote>(
+export function reinterpretRemotely<M extends CanRemote>(
   module: M,
   url: string
 ): Remote<M> {
