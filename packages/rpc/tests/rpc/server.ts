@@ -14,13 +14,7 @@ export interface Printer {
   };
 }
 
-export const printer: Printer = {
-  printer: {
-    print(s) {
-      return T.liftIO(console.log(s));
-    }
-  }
-};
+export const printer: Printer = {} as Printer; // will not be used in tests <- real implementation
 
 export function print(s: string) {
   return T.accessM(({ printer }: Printer) => printer.print(s));
