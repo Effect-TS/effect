@@ -231,4 +231,18 @@ export function withChildSpan(operation: string) {
     M.accessM(({ tracer }: Tracer) => tracer.withChildSpan(operation)(ma));
 }
 
+// provide opt-out utility for components of the ecosystem that integrate tracing
+// this can be used if you don't want to configure tracing
+export function noTracing<R, A>(
+  op: M.Effect<
+    Tracer & TracerFactory & ChildContext & HasTracerContext & R,
+    Error,
+    A
+  >
+): M.Effect<R, Error, A> {
+  return M.provide(
+    pipe(M.noEnv, M.mergeEnv(tracer), M.mergeEnv(tracerFactoryDummy))
+  )(withTracer(withControllerSpan("no-tracing", "dummy-controller")(op)));
+}
+
 export type ChildContext = HasSpanContext & HasTracerContext;

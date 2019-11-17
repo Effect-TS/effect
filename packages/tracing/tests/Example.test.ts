@@ -7,10 +7,12 @@ import { program, module } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
 import {
+  noTracing,
   tracer,
   Tracer,
   TracerFactory,
   tracerFactoryDummy,
+  withChildSpan,
   withControllerSpan,
   withTracer
 } from "../src";
@@ -136,17 +138,11 @@ describe("Example", () => {
   });
 
   it("should use dummy tracer by default", async () => {
-    const mockModule = pipe(
-      E.noEnv,
-      E.mergeEnv(tracerFactoryDummy),
-      E.mergeEnv(tracer)
+    const program2 = noTracing(
+      withChildSpan("noop")(E.left(E.error("not implemented")))
     );
 
-    const program2 = withTracer(
-      withControllerSpan("", "", {})(E.left(E.error("not implemented")))
-    );
-
-    const result = await E.run(pipe(program2, E.provide(mockModule)))();
+    const result = await E.run(program2)();
 
     assert.deepEqual(result, Ei.left(E.error("not implemented")));
   });
