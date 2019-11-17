@@ -1,32 +1,11 @@
 import * as T from "@matechs/effect";
-import { CanRemote, serverHelpers } from "../../src";
+import { serverHelpers } from "../../src";
 
-import { console } from "fp-ts";
-import {
-  ChildContext,
-  Tracer,
-  withChildSpan
-} from "@matechs/tracing/lib";
-
-export interface Printer {
-  printer: {
-    print(s: string): T.Effect<T.NoEnv, T.NoErr, void>;
-  };
-}
-
-export const printer: Printer = {} as Printer; // will not be used in tests <- real implementation
+import { ChildContext, Tracer, withChildSpan } from "@matechs/tracing/lib";
+import { ModuleA, Printer } from "./interface";
 
 export function print(s: string) {
   return T.accessM(({ printer }: Printer) => printer.print(s));
-}
-
-export interface ModuleA extends CanRemote {
-  moduleA: {
-    notFailing(
-      s: string
-    ): T.Effect<Printer & ChildContext & Tracer, Error, string>;
-    failing(s: string): T.Effect<T.NoEnv, Error, string>;
-  };
 }
 
 export const moduleA: ModuleA = {

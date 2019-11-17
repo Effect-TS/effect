@@ -2,8 +2,6 @@ import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
-import { clientModuleA, notFailing, failing } from "./rpc/client";
-import { moduleA, Printer } from "./rpc/server";
 import { bindToApp, serverHelpers } from "../src";
 import {
   tracer,
@@ -13,6 +11,10 @@ import {
 } from "@matechs/tracing/lib";
 import { httpClient } from "@matechs/http/lib";
 import express from "express";
+
+import { clientModuleA, notFailing, failing } from "./rpc/client";
+import { moduleA } from "./rpc/server";
+import { Printer } from "./rpc/interface";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
