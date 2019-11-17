@@ -6,7 +6,14 @@ import * as Ei from "fp-ts/lib/Either";
 import { program, module } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
-import { Tracer, TracerFactory, withControllerSpan, withTracer } from "../src";
+import {
+  tracer,
+  Tracer,
+  TracerFactory,
+  tracerFactoryDummy,
+  withControllerSpan,
+  withTracer
+} from "../src";
 
 class MockTracer extends OT {
   constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
@@ -126,5 +133,21 @@ describe("Example", () => {
       spans[0]["options"]["references"][0]["_referencedContext"].toTraceId(),
       "demo-trace-id"
     );
+  });
+
+  it("should use dummy tracer by default", async () => {
+    const mockModule = pipe(
+      E.noEnv,
+      E.mergeEnv(tracerFactoryDummy),
+      E.mergeEnv(tracer)
+    );
+
+    const program2 = withTracer(
+      withControllerSpan("", "", {})(E.left(E.error("not implemented")))
+    );
+
+    const result = await E.run(pipe(program2, E.provide(mockModule)))();
+
+    assert.deepEqual(result, Ei.left(E.error("not implemented")));
   });
 });
