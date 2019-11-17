@@ -109,7 +109,11 @@ export function createControllerSpan(
     // <https://github.com/opentracing/opentracing-javascript/blob/master/src/tracer.ts>
     const parentSpanContext = tracer.extract(FORMAT_HTTP_HEADERS, headers);
 
-    if (parentSpanContext) {
+    if (
+      parentSpanContext &&
+      parentSpanContext.toSpanId &&
+      parentSpanContext.toSpanId().length > 0
+    ) {
       traceSpan = tracer.startSpan(operation, {
         childOf: parentSpanContext,
         tags: {
