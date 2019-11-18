@@ -2,6 +2,9 @@ import * as _ from "../src";
 import * as E from "fp-ts/lib/Either";
 import * as assert from "assert";
 import * as F from "fluture";
+import { toError } from "fp-ts/lib/Either";
+import { none, some } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 
 describe("Effect", () => {
   describe("Extra", () => {
@@ -15,6 +18,88 @@ describe("Effect", () => {
       const a = await _.run(_.liftPromise(() => Promise.reject(1)))();
 
       assert.deepEqual(a, E.left(1));
+    });
+
+    it("tryCatchIO", async () => {
+      const a = await _.run(
+        _.tryCatchIO(() => {
+          throw 100;
+        }, toError)
+      )();
+
+      assert.deepEqual(a, E.left(_.error("100")));
+    });
+
+    it("chainLeft", async () => {
+      const a = await _.run(
+        _.chainLeft(
+          _.tryCatchIO(() => {
+            throw 100;
+          }, toError),
+          e => _.right(1)
+        )
+      )();
+
+      assert.deepEqual(a, E.right(1));
+    });
+
+    it("when", async () => {
+      const a = await _.run(_.when(true)(_.right(1)))();
+      const b = await _.run(_.when(false)(_.right(1)))();
+
+      assert.deepEqual(a, E.right(some(1)));
+      assert.deepEqual(b, E.right(none));
+    });
+
+    it("or", async () => {
+      const a = await _.run(_.or(true)(_.right(1))(_.right(2)))();
+      const b = await _.run(_.or(false)(_.right(1))(_.right(2)))();
+
+      assert.deepEqual(a, E.right(E.left(1)));
+      assert.deepEqual(b, E.right(E.right(2)));
+    });
+
+    it("alt", async () => {
+      const a = await _.run(_.alt(true)(_.right(1))(_.right(2)))();
+      const b = await _.run(_.alt(false)(_.right(1))(_.right(2)))();
+
+      assert.deepEqual(a, E.right(1));
+      assert.deepEqual(b, E.right(2));
+    });
+
+    it("provide & access env", async () => {
+      const env = {
+        value: "ok"
+      };
+
+      const module = pipe(_.noEnv, _.mergeEnv(env));
+
+      const a = await _.run(
+        _.provide(module)(_.accessM(({ value }: typeof env) => _.right(value)))
+      )();
+
+      const b = await _.run(
+        _.provide(module)(_.access(({ value }: typeof env) => value))
+      )();
+
+      assert.deepEqual(a, E.right("ok"));
+      assert.deepEqual(b, E.right("ok"));
+    });
+  });
+
+  describe("Concurrent", () => {
+    it("ap", async () => {
+      const double = (n: number): number => n * 2;
+      const mab = _.right(double);
+      const ma = _.right(1);
+      const x = await _.run(_.concurrentEffectMonad.ap(mab, ma))();
+      assert.deepStrictEqual(x, E.right(2));
+    });
+
+    it("sequenceP", async () => {
+      const res = await _.run(_.sequenceP(1, [_.right(1), _.right(2)]))();
+
+      assert.deepEqual(res, E.right([1, 2]));
     });
   });
 
@@ -61,9 +146,8 @@ describe("Effect", () => {
     });
 
     it("mapLeft", async () => {
-      const double = (n: number): number => n * 2;
-      const e = await _.run(_.effectMonad.mapLeft(_.left(1), double))();
-      assert.deepStrictEqual(e, E.left(2));
+      const e = await _.run(_.effectMonad.mapLeft(_.left("1"), _.error))();
+      assert.deepStrictEqual(e, E.left(new Error("1")));
     });
   });
 
