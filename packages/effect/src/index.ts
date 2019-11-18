@@ -37,32 +37,32 @@ export type EffectMonad<T extends URIS3> = Monad3E<T> &
 
 export const effectMonad: EffectMonad<URI> = {
   URI,
-  of: a => _ => F.of(a),
-  map: (fa, f) => r => F.map(f, fa(r)),
-  ap: (fab, fa) => r => F.ap(fab(r), fa(r)),
+  of: a => _ => F.resolve(a),
+  map: (fa, f) => r => F.map(f)(fa(r)),
+  ap: (fab, fa) => r => F.ap(fa(r))(fab(r)),
   chain: <R, E, A, R2, E2, B>(
     fa: Effect<R, E, A>,
     f: (a: A) => Effect<R2, E2, B>
   ): Effect<R & R2, E | E2, B> => r =>
-    F.chain<E | E2, A, B>(x => f(x)(r), fa(r)),
+    F.chain<E | E2, A, B>(x => f(x)(r))(fa(r)),
   throwError: e => _ => F.reject(e),
-  bimap: (fea, f, g) => r => F.bimap(f, g, fea(r)),
-  mapLeft: (fea, f) => r => F.mapRej(f, fea(r))
+  bimap: (fea, f, g) => r => F.bimap(f)(g)(fea(r)),
+  mapLeft: (fea, f) => r => F.mapRej(f)(fea(r))
 };
 
 export const concurrentEffectMonad: EffectMonad<URIC> = {
   URI: URIC,
-  of: a => _ => Par(F.of(a)),
-  map: (fa, f) => r => F.map(f, fa(r)),
-  ap: (fab, fa) => r => F.ap(fab(r), fa(r)),
+  of: a => _ => Par(F.resolve(a)),
+  map: (fa, f) => r => Par(F.map(f)(fa(r).sequential)),
+  ap: (fab, fa) => r => F.ap(fa(r))(fab(r)),
   chain: <R, E, A, R2, E2, B>(
     fa: ConcurrentEffect<R, E, A>,
     f: (a: A) => ConcurrentEffect<R2, E2, B>
   ): ConcurrentEffect<R & R2, E | E2, B> => r =>
-    Par(F.chain<E | E2, A, B>(x => f(x)(r).sequential, fa(r).sequential)),
+    Par(F.chain<E | E2, A, B>(x => f(x)(r).sequential)(fa(r).sequential)),
   throwError: e => _ => Par(F.reject(e)),
-  bimap: (fea, f, g) => r => Par(F.bimap(f, g, fea(r).sequential)),
-  mapLeft: (fea, f) => r => Par(F.mapRej(f, fea(r).sequential))
+  bimap: (fea, f, g) => r => Par(F.bimap(f)(g)(fea(r).sequential)),
+  mapLeft: (fea, f) => r => Par(F.mapRej(f)(fea(r).sequential))
 };
 
 export const {
@@ -109,7 +109,7 @@ export function left<E>(e: E): Effect<NoEnv, E, never> {
 export function liftPromise<A, E>(
   f: () => Promise<A>
 ): Effect<NoEnv, never, A> {
-  return _ => F.tryP(f);
+  return _ => F.attemptP(f);
 }
 
 export function liftIO<A>(f: () => A): Effect<NoEnv, never, A> {
@@ -120,21 +120,25 @@ export function tryCatch<A, E>(
   f: () => Promise<A>,
   onLeft: (e: any) => E
 ): Effect<NoEnv, E, A> {
-  return _ => F.tryP(f).mapRej(onLeft);
+  return _ => F.mapRej(onLeft)(F.attemptP(f));
 }
 
 export function tryCatchIO<A, E>(
   f: () => A,
   onLeft: (e: any) => E
 ): Effect<NoEnv, E, A> {
-  return _ => F.encase(f)({}).mapRej(onLeft);
+  return _ => F.mapRej(onLeft)(F.encase(f)({}));
 }
 
 export function chainLeft<R, E, E2, A, R2>(
   ma: Effect<R, E, A>,
   onLeft: (e: E) => Effect<R2, E2, A>
 ): Effect<R & R2, E2, A> {
-  return r => ma(r).chainRej(e => onLeft(e)(r));
+  return r =>
+    pipe(
+      ma(r),
+      F.chainRej(e => onLeft(e)(r))
+    );
 }
 
 /* conditionals */
@@ -184,7 +188,7 @@ export function accessM<R, R2, E, A>(
 }
 
 export function access<R, A>(f: (r: R) => A): Effect<R, NoErr, A> {
-  return r => F.of(f(r));
+  return r => F.resolve(f(r));
 }
 
 /* convert par/seq */
@@ -202,11 +206,7 @@ export function sequenceP<R, E, A>(
   n: number,
   ops: Array<Effect<R, E, A>>
 ): Effect<R, E, Array<A>> {
-  return r =>
-    F.parallel(
-      n,
-      ops.map(op => op(r))
-    );
+  return r => F.parallel(n)(ops.map(op => op(r)));
 }
 
 /* execution */
@@ -214,22 +214,18 @@ export function sequenceP<R, E, A>(
 export function run<E, A>(
   ma: Effect<NoEnv, E, A>
 ): () => Promise<Ei.Either<E, A>> {
-  return () =>
-    ma(noEnv)
-      .map(r => Ei.right<E, A>(r))
-      .chainRej(e => F.of(Ei.left(e)))
-      .promise();
+  return () => F.promise(toTaskLike(ma)(noEnv));
 }
 
 export function promise<A>(ma: Effect<NoEnv, any, A>): Promise<A> {
-  return ma(noEnv).promise();
+  return F.promise(ma(noEnv));
 }
 
 export function fork<A, E>(
   res: (a: A) => void,
   rej: (e: E) => void
 ): (ma: Effect<NoEnv, E, A>) => Cancel {
-  return ma => F.fork(rej, res)(ma(noEnv));
+  return ma => F.fork(rej)(res)(ma(noEnv));
 }
 
 /* bracket */
@@ -254,9 +250,11 @@ export function toTaskLike<R, E, A>(
   ma: Effect<R, E, A>
 ): Effect<R, NoErr, Ei.Either<E, A>> {
   return r =>
-    ma(r)
-      .map(a => Ei.right<E, A>(a))
-      .chainRej(e => F.of(Ei.left(e)));
+    pipe(
+      ma(r),
+      F.map(a => Ei.right(a)),
+      F.chainRej(e => F.resolve(Ei.left(e)))
+    );
 }
 
 export function fromTaskLike<R, E, A>(

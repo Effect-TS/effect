@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "deepmerge": "^4.2.2",
-    "fluture": "^11.0.3",
+    "fluture": "^12.0.0",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6"
   },

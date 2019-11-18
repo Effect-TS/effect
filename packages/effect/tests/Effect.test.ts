@@ -1,8 +1,23 @@
 import * as _ from "../src";
 import * as E from "fp-ts/lib/Either";
 import * as assert from "assert";
+import * as F from "fluture";
 
 describe("Effect", () => {
+  describe("Extra", () => {
+    it("fromFuture", async () => {
+      const a = await _.run(_.fromFuture(F.resolve(1)))();
+
+      assert.deepEqual(a, E.right(1));
+    });
+
+    it("liftPromise", async () => {
+      const a = await _.run(_.liftPromise(() => Promise.reject(1)))();
+
+      assert.deepEqual(a, E.left(1));
+    });
+  });
+
   describe("Monad", () => {
     it("map", async () => {
       const double = (n: number): number => n * 2;
