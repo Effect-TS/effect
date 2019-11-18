@@ -4,30 +4,24 @@ import * as Op from "fp-ts/lib/Option";
 import * as M from "deepmerge";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Monad3E } from "./overload";
-import { Cancel, ConcurrentFutureInstance, Par } from "fluture";
+import { Cancel } from "fluture";
 import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import { URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 
 export const URI = "matechs/Effect";
-export const URIC = "matechs/ConcurrentEffect";
 
 export type URI = typeof URI;
-export type URIC = typeof URIC;
 
 export type NoEnv = unknown;
 export type NoErr = never;
 
 export type Effect<R, E, A> = (r: R) => F.FutureInstance<E, A>;
-export type ConcurrentEffect<R, E, A> = (
-  r: R
-) => ConcurrentFutureInstance<E, A>;
 
 declare module "fp-ts/lib/HKT" {
   interface URItoKind3<R, E, A> {
     [URI]: Effect<R, E, A>;
-    [URIC]: ConcurrentEffect<R, E, A>;
   }
 }
 
@@ -50,19 +44,9 @@ export const effectMonad: EffectMonad<URI> = {
   mapLeft: (fea, f) => r => F.mapRej(f)(fea(r))
 };
 
-export const concurrentEffectMonad: EffectMonad<URIC> = {
-  URI: URIC,
-  of: a => _ => Par(F.resolve(a)),
-  map: (fa, f) => r => Par(F.map(f)(fa(r).sequential)),
-  ap: (fab, fa) => r => F.ap(fa(r))(fab(r)),
-  chain: <R, E, A, R2, E2, B>(
-    fa: ConcurrentEffect<R, E, A>,
-    f: (a: A) => ConcurrentEffect<R2, E2, B>
-  ): ConcurrentEffect<R & R2, E | E2, B> => r =>
-    Par(F.chain<E | E2, A, B>(x => f(x)(r).sequential)(fa(r).sequential)),
-  throwError: e => _ => Par(F.reject(e)),
-  bimap: (fea, f, g) => r => Par(F.bimap(f)(g)(fea(r).sequential)),
-  mapLeft: (fea, f) => r => Par(F.mapRej(f)(fea(r).sequential))
+export const concurrentEffectMonad: EffectMonad<URI> = {
+  ...effectMonad,
+  ap: (fab, fa) => r => F.ap(fa(r))(fab(r))
 };
 
 export const {
@@ -78,12 +62,14 @@ export const {
   fromEither,
   fromOption,
   fromPredicate,
-  mapLeft,
-  pipeablePar
-} = {
-  ...pipeable(effectMonad),
-  pipeablePar: pipeable(concurrentEffectMonad)
-};
+  mapLeft
+} = pipeable(effectMonad);
+
+export const {
+  ap: parAp,
+  apFirst: parApFirst,
+  apSecond: parApSecond
+} = pipeable(concurrentEffectMonad);
 
 /* utils */
 export function error(message: string) {
@@ -189,15 +175,6 @@ export function accessM<R, R2, E, A>(
 
 export function access<R, A>(f: (r: R) => A): Effect<R, NoErr, A> {
   return r => F.resolve(f(r));
-}
-
-/* convert par/seq */
-export function par<R, E, A>(ma: Effect<R, E, A>): ConcurrentEffect<R, E, A> {
-  return r => Par(ma(r));
-}
-
-export function seq<R, E, A>(ma: ConcurrentEffect<R, E, A>): Effect<R, E, A> {
-  return r => ma(r).sequential;
 }
 
 /* parallel */
