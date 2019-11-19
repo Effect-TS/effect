@@ -3,8 +3,8 @@ import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
 import * as EX from "@matechs/express";
 import { pipe } from "fp-ts/lib/pipeable";
-import { bindToApp, reinterpretRemotely } from "../src";
-import { tracer, tracerFactoryDummy, withTracer } from "@matechs/tracing/lib";
+import * as RPC from "../src";
+import { tracer, tracerFactoryDummy } from "@matechs/tracing/lib";
 import { httpClient } from "@matechs/http/lib";
 
 import { moduleADef, Printer } from "./rpc/interface";
@@ -42,7 +42,7 @@ describe("RPC", () => {
 
     const main = EX.withApp(
       Do(T.effectMonad)
-        .do(withTracer(bindToApp(RS.moduleA, "moduleA", module)))
+        .do(RPC.bindToApp(RS.moduleA, "moduleA", module))
         .bind("server", EX.bind(3000, "127.0.0.1"))
         .return(s => s.server)
     );
@@ -60,7 +60,7 @@ describe("RPC", () => {
       T.provide(clientModule)(RC.notFailing("test"))
     )();
 
-    const clientModuleWrong = reinterpretRemotely(
+    const clientModuleWrong = RPC.reinterpretRemotely(
       moduleADef,
       "http://127.0.0.1:3002"
     );

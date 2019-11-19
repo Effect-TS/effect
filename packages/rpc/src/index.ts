@@ -3,7 +3,11 @@ import * as H from "@matechs/http";
 import * as A from "fp-ts/lib/Array";
 import * as EX from "@matechs/express/lib";
 import { Tracer } from "@matechs/tracing";
-import { ChildContext, HasTracerContext } from "@matechs/tracing/lib";
+import {
+  ChildContext,
+  HasTracerContext, TracerFactory,
+  withTracer
+} from "@matechs/tracing/lib";
 import { pipe } from "fp-ts/lib/pipeable";
 
 export type CanRemote = {
@@ -136,31 +140,32 @@ export type Runtime<M> = M extends {
 export function bindToApp<M extends CanRemote, K extends keyof M>(
   module: M,
   entry: K,
-  runtime: Runtime<M[K]>
-): T.Effect<
-  Tracer & HasTracerContext & EX.HasExpress & EX.Express,
-  never,
-  void
-> {
-  return T.accessM(
-    ({ tracer: { withControllerSpan, context } }: Tracer & HasTracerContext) =>
-      pipe(
-        A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
-          EX.post(`/${entry}/${k}`, req =>
-            pipe(
-              T.provide(runtime)(
-                withControllerSpan(
-                  "RPC Server",
-                  `${entry}/${k}`,
-                  req.headers as any
-                )(module[entry][k](...req.body["data"]))
-              ),
-              T.map(x => ({ result: x })),
-              T.mapLeft(x => ({ message: x.message }))
+  runtime: Runtime<M[K]>,
+  controller: string = `RPC Server - ${entry}`
+): T.Effect<Tracer & TracerFactory & EX.HasExpress & EX.Express, never, void> {
+  return withTracer(
+    T.accessM(
+      ({
+        tracer: { withControllerSpan, context }
+      }: Tracer & HasTracerContext) =>
+        pipe(
+          A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
+            EX.post(`/${entry}/${k}`, req =>
+              pipe(
+                T.provide(runtime)(
+                  withControllerSpan(
+                    controller,
+                    `${entry}/${k}`,
+                    req.headers as any
+                  )(module[entry][k](...req.body["data"]))
+                ),
+                T.map(x => ({ result: x })),
+                T.mapLeft(x => ({ message: x.message }))
+              )
             )
-          )
-        ),
-        T.map(() => {})
-      )
+          ),
+          T.map(() => {})
+        )
+    )
   );
 }
