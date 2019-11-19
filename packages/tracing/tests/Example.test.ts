@@ -146,4 +146,12 @@ describe("Example", () => {
 
     assert.deepEqual(result, Ei.left(E.error("not implemented")));
   });
+
+  it("skip tracing if out of context", async () => {
+    const program2 = withChildSpan("noop")(E.left(E.error("not implemented")));
+
+    const result = await E.run(E.provide(tracer)(program2))();
+
+    assert.deepEqual(result, Ei.left(E.error("not implemented")));
+  });
 });

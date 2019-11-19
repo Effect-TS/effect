@@ -6,7 +6,6 @@ import * as bodyParser from "body-parser";
 import { Tracer } from "@matechs/tracing";
 import { ChildContext, HasTracerContext } from "@matechs/tracing/lib";
 import { pipe } from "fp-ts/lib/pipeable";
-import { toError } from "fp-ts/lib/Either";
 
 export type CanRemote = {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
@@ -102,7 +101,7 @@ export function clientHelpers<M extends CanRemote>(
 
 export type PatchedServerF<M, Z extends CanRemote> = M extends (
   ...args: infer A
-) => T.Effect<infer R, Error, infer D>
+) => T.Effect<infer R & ChildContext, Error, infer D>
   ? (...args: A) => T.Effect<Z & R, Error, D>
   : never;
 

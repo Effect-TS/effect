@@ -12,9 +12,10 @@ import {
 import { httpClient } from "@matechs/http/lib";
 import express from "express";
 
-import { clientModuleA, notFailing, failing } from "./rpc/client";
-import { moduleA } from "./rpc/server";
 import { moduleADef, Printer } from "./rpc/interface";
+
+import * as RC from "./rpc/client";
+import * as RS from "./rpc/server";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
@@ -36,7 +37,7 @@ describe("RPC", () => {
 
     const module = pipe(
       T.noEnv,
-      T.mergeEnv(moduleA),
+      T.mergeEnv(RS.moduleA),
       T.mergeEnv(tracer),
       T.mergeEnv(tracerFactoryDummy),
       T.mergeEnv(mockPrinter)
@@ -44,7 +45,7 @@ describe("RPC", () => {
 
     const app = express();
 
-    const main = withTracer(bindToApp(app, moduleA, "moduleA", module));
+    const main = withTracer(bindToApp(app, RS.moduleA, "moduleA", module));
 
     await T.run(T.provide(module)(main))();
 
@@ -52,12 +53,14 @@ describe("RPC", () => {
 
     const clientModule = pipe(
       T.noEnv,
-      T.mergeEnv(clientModuleA),
+      T.mergeEnv(RC.clientModuleA),
       T.mergeEnv(httpClient())
     );
 
-    const result = await T.run(T.provide(clientModule)(failing("test")))();
-    const result2 = await T.run(T.provide(clientModule)(notFailing("test")))();
+    const result = await T.run(T.provide(clientModule)(RC.failing("test")))();
+    const result2 = await T.run(
+      T.provide(clientModule)(RC.notFailing("test"))
+    )();
 
     const clientModuleWrong = reinterpretRemotely(
       moduleADef,
@@ -67,20 +70,11 @@ describe("RPC", () => {
     const result3 = await T.run(
       T.provide(
         pipe(T.noEnv, T.mergeEnv(clientModuleWrong), T.mergeEnv(httpClient()))
-      )(notFailing("test"))
+      )(RC.notFailing("test"))
     )();
 
     // direct call in server <- tracing is supposed to be setup depending on your env
-    const result4 = await T.run(
-      T.provide(module)(
-        withTracer(
-          withControllerSpan(
-            "",
-            ""
-          )(serverHelpers(moduleA).moduleA.notFailing("test"))
-        )
-      )
-    )();
+    const result4 = await T.run(T.provide(module)(RS.notFailing("test")))();
 
     s.close();
 
