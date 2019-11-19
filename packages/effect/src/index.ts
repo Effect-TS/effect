@@ -226,12 +226,11 @@ export function fork<E, A>(
 export function toTaskLike<R, E, A>(
   ma: Effect<R, E, A>
 ): Effect<R, NoErr, Ei.Either<E, A>> {
-  return r =>
-    pipe(
-      ma(r),
-      F.map(a => Ei.right(a)),
-      F.chainRej(e => F.resolve(Ei.left(e)))
-    );
+  return pipe(
+    ma,
+    map(a => Ei.right(a)),
+    x => chainLeft(x, e => right(Ei.left(e)))
+  );
 }
 
 export function fromTaskLike<R, E, A>(

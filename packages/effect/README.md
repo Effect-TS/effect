@@ -3,11 +3,11 @@ Matechs Effect is a typescript library inspired by scala's ZIO and Haskell's RIO
 
 It aims to provide a strong fundational block to build typescript code in a more testable and standardized way.
 
-This library is composed at its core by the `@matechs/effect` package that exposes 2 effects 
-- `type Effect<R, E, A> = (r: R) => FutureInstance<E, A>`
-- `type ConcurrentEffect<R, E, A> = (r: R) => ConcurrentFutureInstance<E, A>;`
+This library is composed at its core by the `@matechs/effect` package that exposes 2 effects
 
-The underlying `FutureInstance/ConcurrentFutureInstance` is provided by `Fluture`.
+- `type Effect<R, E, A> = (r: R) => FutureInstance<E, A>`
+
+The underlying `FutureInstance` is provided by `Fluture`.
 
 You can think of this type as a computation that requires an environment `R` to run.
 
@@ -59,10 +59,11 @@ export interface Apply3E<F extends URIS3> extends Functor3<F> {
 In addition to that the `fp-ts-contrib/lib/Do` module has similar overloads. This workaround is necessary because typescript's lack of variance annotation on generics.
 
 The module exposes 2 instances of the typeclass `type EffectMonad<T extends URIS3> = Monad3E<T> & MonadThrow3<T> & Bifunctor3<T>`:
-- `effectMonad` for `Effect<R, E, A>`
-- `concurrentEffectMonad` for `ConcurrentEffect<R, E, A>`
 
-Pipeable functions are also exported for both instances (default `Effect`, parallel scoped under `pipeablePar`)
+- `effectMonad` for `Effect<R, E, A>`
+- `concurrentEffectMonad` for `Effect<R, E, A>` provides concurrent `ap`
+
+Pipeable functions are also exported for both instances (default `Effect`, `parAp`, `parApFirst`, `parApSecond` for parallel)
 
 In addition to default implementations additional exposed functions are:
 ```
@@ -115,12 +116,6 @@ export function accessM<R, R2, E, A>(f: (r: R) => Effect<R2, E, A>): Effect<R & 
 export function access<R, A>(f: (r: R) => A): Effect<R, NoErr, A>
 
 
-/* convert par/seq */
-export function par<R, E, A>(ma: Effect<R, E, A>): ConcurrentEffect<R, E, A>
-
-export function seq<R, E, A>(ma: ConcurrentEffect<R, E, A>): Effect<R, E, A>
-
-
 /* parallel */
 
 export function sequenceP<R, E, A>(n: number, ops: Array<Effect<R, E, A>>): Effect<R, E, Array<A>>
@@ -138,7 +133,7 @@ promise<A>(ma: Effect<NoEnv, any, A>): Promise<A>
 fork<A, E>(res: (a: A) => void, rej: (e: E) => void): (ma: Effect<NoEnv, E, A>) => Cancel
 ``` 
 
-An example of usage can be found in `packages/tracing` correspondent to `@matechs/tracing` and in its tests where an example implementation is used for testing.
+Interesting integrations and usage examples can be found in `packages/orm`, `packages/http`, `packages/rpc`, `packages/tracing`
 
 ## Notes
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!

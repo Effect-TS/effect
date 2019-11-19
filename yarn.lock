@@ -1817,10 +1817,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.12.7.tgz#01e4ea724d9e3bd50d90c11fd5980ba317d8fa11"
   integrity sha512-E6Zn0rffhgd130zbCbAr/JdXfXkoOUFAKNs/rF8qnafSJ8KYaA/j3oz7dcwal+lYjLA7xvdd5J4wdYpCTlP8+w==
 
-"@types/node@^12.12.7":
-  version "12.12.8"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-12.12.8.tgz#dab418655af39ce2fa99286a0bed21ef8072ac9d"
-  integrity sha512-XLla8N+iyfjvsa0KKV+BP/iGSoTmwxsu5Ci5sM33z9TjohF72DEz95iNvD6pPmemvbQgxAv/909G73gUn8QR7w==
+"@types/node@^12.12.11":
+  version "12.12.11"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-12.12.11.tgz#bec2961975888d964196bf0016a2f984d793d3ce"
+  integrity sha512-O+x6uIpa6oMNTkPuHDa9MhMMehlxLAd5QcOvKRjAFsBVpeFWTOPnXbDvILvFgFFZfQ1xh1EZi1FbXxUix+zpsQ==
 
 "@types/range-parser@*":
   version "1.2.3"
@@ -3518,10 +3518,10 @@ flush-write-stream@^1.0.0:
     inherits "^2.0.3"
     readable-stream "^2.3.6"
 
-fluture@^12.0.0:
-  version "12.0.0"
-  resolved "https://registry.yarnpkg.com/fluture/-/fluture-12.0.0.tgz#3c25ab8158331b6b42869b9295b0edb66e1cfeb9"
-  integrity sha512-GRYE1m2YCJsyRJ3N/5qxUbjLPF2mhx2xMiz6xskc48d52TRZTeaDYNH05SGWf8Fo0pTjVJi/6m0HC/Hu9aq0tw==
+fluture@^12.0.1:
+  version "12.0.1"
+  resolved "https://registry.yarnpkg.com/fluture/-/fluture-12.0.1.tgz#2bebebb62994ee8f09e3cef57f90b57bf9f2ed34"
+  integrity sha512-OIrk6b6e2vzcKJjg/M6Tu/UMyQerI6LNWSSiOi/d31nsleB0DaMPpmg/6bLv/gTY1bxrDH6ygCENpHBUf9VgVw==
   dependencies:
     concurrify "^2.0.0"
     sanctuary-show "^1.0.0"

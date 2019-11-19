@@ -32,11 +32,11 @@ describe("Effect", () => {
 
     it("chainLeft", async () => {
       const a = await _.run(
-        _.chainLeft(
+        pipe(
           _.tryCatchIO(() => {
             throw 100;
           }, toError),
-          e => _.right(1)
+          x => _.chainLeft(x, e => _.right(1))
         )
       )();
 

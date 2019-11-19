@@ -8,7 +8,6 @@ import {
 } from "opentracing";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { ERROR } from "opentracing/lib/ext/tags";
-import { Effect } from "@matechs/effect/lib";
 import Span from "opentracing/lib/span";
 import { IO } from "fp-ts/lib/IO";
 
@@ -60,25 +59,14 @@ export interface Tracer {
 }
 
 function runWithSpan<R, A>(
-  ma: Effect<HasSpanContext & R, Error, A>,
+  ma: M.Effect<HasSpanContext & R, Error, A>,
   span: Span,
   component: string
 ) {
   return pipe(
-    M.chainLeft(
-      pipe(
-        ma,
-        M.chain(r =>
-          Do(M.effectMonad)
-            .do(
-              M.liftIO(() => {
-                span.finish();
-              })
-            )
-            .return(() => r)
-        )
-      ),
-      e =>
+    ma,
+    x =>
+      M.chainLeft(x, e =>
         pipe(
           M.liftIO(() => {
             span.setTag(ERROR, e.message);
@@ -86,6 +74,15 @@ function runWithSpan<R, A>(
           }),
           M.chain(() => M.left(e))
         )
+      ),
+    M.chain(r =>
+      Do(M.effectMonad)
+        .do(
+          M.liftIO(() => {
+            span.finish();
+          })
+        )
+        .return(() => r)
     ),
     M.provide<HasSpanContext>({
       span: {
