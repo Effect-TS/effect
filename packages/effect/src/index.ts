@@ -113,7 +113,7 @@ export function tryCatchIO<A, E>(
   f: () => A,
   onLeft: (e: any) => E
 ): Effect<NoEnv, E, A> {
-  return _ => F.mapRej(onLeft)(F.encase(f)({}));
+  return _ => F.mapRej(onLeft)(F.attempt(f));
 }
 
 export function chainLeft<R, E, E2, A, R2>(
@@ -198,13 +198,6 @@ export function promise<A>(ma: Effect<NoEnv, any, A>): Promise<A> {
   return F.promise(ma(noEnv));
 }
 
-export function fork<A, E>(
-  res: (a: A) => void,
-  rej: (e: E) => void
-): (ma: Effect<NoEnv, E, A>) => Cancel {
-  return ma => F.fork(rej)(res)(ma(noEnv));
-}
-
 /* bracket */
 
 export function bracket<R, E, A, B, E2>(
@@ -219,6 +212,13 @@ export function bracket<R, E, A, B, E2>(
       )
     )
   );
+}
+
+export function fork<E, A>(
+  res: (a: A) => void,
+  rej: (e: E) => void
+): (op: Effect<NoEnv, E, A>) => Cancel {
+  return op => F.fork(rej)(res)(op(noEnv));
 }
 
 /* Task-like converters, convert operations that can fail into non failing and vice versa */

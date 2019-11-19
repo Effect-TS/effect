@@ -85,6 +85,59 @@ describe("Effect", () => {
       assert.deepEqual(a, E.right("ok"));
       assert.deepEqual(b, E.right("ok"));
     });
+
+    it("promise", async () => {
+      const a = await _.promise(_.right(1));
+
+      assert.deepEqual(a, 1);
+    });
+
+    it("fromNullableM", async () => {
+      const a = await _.run(_.fromNullableM(_.right(null)))();
+      const b = await _.run(_.fromNullableM(_.right(1)))();
+
+      assert.deepEqual(a, E.right(none));
+      assert.deepEqual(b, E.right(some(1)));
+    });
+
+    it("fromNullableM", async () => {
+      const a = await _.run(
+        _.fromTaskLike(_.right(E.left(_.error("error"))))
+      )();
+      const b = await _.run(_.fromTaskLike(_.right(E.right("ok"))))();
+
+      assert.deepEqual(a, E.left(_.error("error")));
+      assert.deepEqual(b, E.right("ok"));
+    });
+
+    it("fork", async () => {
+      let resCount = 0;
+      let rejCount = 0;
+
+      _.fork(
+        r => {
+          resCount += 1;
+        },
+        r => {
+          rejCount += 1;
+        }
+      )(_.right(1));
+
+      assert.deepEqual(resCount, 1);
+      assert.deepEqual(rejCount, 0);
+
+      _.fork(
+        r => {
+          resCount += 1;
+        },
+        r => {
+          rejCount += 1;
+        }
+      )(_.left(1));
+
+      assert.deepEqual(rejCount, 1);
+      assert.deepEqual(resCount, 1);
+    });
   });
 
   describe("Concurrent", () => {
