@@ -2,7 +2,7 @@ import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
-import { bindToApp, serverHelpers } from "../src";
+import { bindToApp, reinterpretRemotely, serverHelpers } from "../src";
 import {
   tracer,
   tracerFactoryDummy,
@@ -14,7 +14,7 @@ import express from "express";
 
 import { clientModuleA, notFailing, failing } from "./rpc/client";
 import { moduleA } from "./rpc/server";
-import { Printer } from "./rpc/interface";
+import { moduleADef, Printer } from "./rpc/interface";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
@@ -59,8 +59,19 @@ describe("RPC", () => {
     const result = await T.run(T.provide(clientModule)(failing("test")))();
     const result2 = await T.run(T.provide(clientModule)(notFailing("test")))();
 
-    // direct call in server <- tracing is supposed to be setup depending on your env
+    const clientModuleWrong = reinterpretRemotely(
+      moduleADef,
+      "http://127.0.0.1:3002"
+    );
+
     const result3 = await T.run(
+      T.provide(
+        pipe(T.noEnv, T.mergeEnv(clientModuleWrong), T.mergeEnv(httpClient()))
+      )(notFailing("test"))
+    )();
+
+    // direct call in server <- tracing is supposed to be setup depending on your env
+    const result4 = await T.run(
       T.provide(module)(
         withTracer(
           withControllerSpan(
@@ -75,7 +86,11 @@ describe("RPC", () => {
 
     assert.deepEqual(result, E.left(T.error("not implemented")));
     assert.deepEqual(result2, E.right("test"));
-    assert.deepEqual(result3, E.right("test"));
+    assert.deepEqual(
+      E.isLeft(result3) && result3.left.message,
+      "connect ECONNREFUSED 127.0.0.1:3002"
+    );
+    assert.deepEqual(result4, E.right("test"));
     assert.deepEqual(messages, ["test", "test"]);
   });
 });

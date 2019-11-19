@@ -5,6 +5,8 @@ import * as Ei from "fp-ts/lib/Either";
 import * as bodyParser from "body-parser";
 import { Tracer } from "@matechs/tracing";
 import { ChildContext, HasTracerContext } from "@matechs/tracing/lib";
+import { pipe } from "fp-ts/lib/pipeable";
+import { toError } from "fp-ts/lib/Either";
 
 export type CanRemote = {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
@@ -35,9 +37,19 @@ export function remotely<A extends any[], R, E, B>(
   k: string
 ): (...args: A) => T.Effect<H.HttpClient & R, Error | E, B> {
   return (...args: A) =>
-    H.post<B>(calculatePath(url, entry, k), {
-      data: args
-    } as Payload);
+    pipe(
+      H.post<{ message: string }, { result: B }>(calculatePath(url, entry, k), {
+        data: args
+      } as Payload),
+      T.map(r => r.data.result),
+      T.mapLeft(e => {
+        try {
+          return new Error(e.response.data.message);
+        } catch (_) {
+          return e as Error;
+        }
+      })
+    );
 }
 
 export function reinterpretRemotely<M extends CanRemote>(
