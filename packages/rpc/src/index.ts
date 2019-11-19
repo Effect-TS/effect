@@ -100,7 +100,7 @@ export function clientHelpers<M extends CanRemote>(
 
 export type PatchedServerF<M, Z extends CanRemote> = M extends (
   ...args: infer A
-) => T.Effect<infer R & ChildContext, Error, infer D>
+) => T.Effect<infer R, Error, infer D>
   ? (...args: A) => T.Effect<Z & R, Error, D>
   : never;
 

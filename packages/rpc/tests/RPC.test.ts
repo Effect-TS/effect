@@ -71,7 +71,7 @@ describe("RPC", () => {
       )(RC.notFailing("test"))
     )();
 
-    // direct call in server <- tracing is supposed to be setup depending on your env
+    // direct call in server
     const result4 = await T.run(T.provide(module)(RS.notFailing("test")))();
 
     s.close();

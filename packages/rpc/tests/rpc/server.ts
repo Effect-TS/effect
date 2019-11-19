@@ -15,7 +15,7 @@ export const moduleA: ModuleA = {
     },
     notFailing(
       s: string
-    ): T.Effect<Printer & ChildContext & Tracer, Error, string> {
+    ): T.Effect<Printer & Tracer, Error, string> {
       return withChildSpan("child")(
         T.effectMonad.chain(print(s), _ => T.right(s))
       );

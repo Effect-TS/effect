@@ -1,5 +1,5 @@
 import * as T from "@matechs/effect";
-import { ChildContext, Tracer } from "@matechs/tracing/lib";
+import { Tracer } from "@matechs/tracing/lib";
 
 /*
   this is an alternative way to provide a fake module definition that
@@ -21,7 +21,7 @@ export type Printer = typeof printerDef;
 // prettier-ignore
 export const moduleADef = {
   moduleA: {
-    notFailing: {} as (s: string) => T.Effect<Printer & ChildContext & Tracer, Error, string>,
+    notFailing: {} as (s: string) => T.Effect<Printer & Tracer, Error, string>,
     failing: {} as (s: string) => T.Effect<T.NoEnv, Error, string>
   }
 };
