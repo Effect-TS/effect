@@ -2,11 +2,10 @@ import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
-import { bindToApp, reinterpretRemotely, serverHelpers } from "../src";
+import { bindToApp, reinterpretRemotely } from "../src";
 import {
   tracer,
   tracerFactoryDummy,
-  withControllerSpan,
   withTracer
 } from "@matechs/tracing/lib";
 import { httpClient } from "@matechs/http/lib";
