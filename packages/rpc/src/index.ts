@@ -1,8 +1,7 @@
-import { Express } from "express";
 import * as T from "@matechs/effect";
 import * as H from "@matechs/http";
-import * as Ei from "fp-ts/lib/Either";
-import * as bodyParser from "body-parser";
+import * as A from "fp-ts/lib/Array";
+import * as EX from "@matechs/express/lib";
 import { Tracer } from "@matechs/tracing";
 import { ChildContext, HasTracerContext } from "@matechs/tracing/lib";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -135,33 +134,33 @@ export type Runtime<M> = M extends {
   : never;
 
 export function bindToApp<M extends CanRemote, K extends keyof M>(
-  app: Express,
   module: M,
   entry: K,
   runtime: Runtime<M[K]>
-) {
+): T.Effect<
+  Tracer & HasTracerContext & EX.HasExpress & EX.Express,
+  never,
+  void
+> {
   return T.accessM(
     ({ tracer: { withControllerSpan, context } }: Tracer & HasTracerContext) =>
-      T.liftIO(() => {
-        Object.keys(module[entry]).forEach(k => {
-          app.post(`/${entry}/${k}`, bodyParser.json(), (req, res) => {
-            T.run(
-              T.provide(T.mergeEnv(runtime)({ tracer: { context } }))(
+      pipe(
+        A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
+          EX.post(`/${entry}/${k}`, req =>
+            pipe(
+              T.provide(runtime)(
                 withControllerSpan(
                   "RPC Server",
                   `${entry}/${k}`,
                   req.headers as any
                 )(module[entry][k](...req.body["data"]))
-              )
-            )().then(r => {
-              if (Ei.isLeft(r)) {
-                res.status(500).send({ message: r.left.message });
-              } else {
-                res.send({ result: r.right });
-              }
-            });
-          });
-        });
-      })
+              ),
+              T.map(x => ({ result: x })),
+              T.mapLeft(x => ({ message: x.message }))
+            )
+          )
+        ),
+        T.map(() => {})
+      )
   );
 }

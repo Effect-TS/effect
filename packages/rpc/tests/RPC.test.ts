@@ -1,20 +1,17 @@
 import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
+import * as EX from "@matechs/express";
 import { pipe } from "fp-ts/lib/pipeable";
 import { bindToApp, reinterpretRemotely } from "../src";
-import {
-  tracer,
-  tracerFactoryDummy,
-  withTracer
-} from "@matechs/tracing/lib";
+import { tracer, tracerFactoryDummy, withTracer } from "@matechs/tracing/lib";
 import { httpClient } from "@matechs/http/lib";
-import express from "express";
 
 import { moduleADef, Printer } from "./rpc/interface";
 
 import * as RC from "./rpc/client";
 import * as RS from "./rpc/server";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
@@ -39,16 +36,18 @@ describe("RPC", () => {
       T.mergeEnv(RS.moduleA),
       T.mergeEnv(tracer),
       T.mergeEnv(tracerFactoryDummy),
-      T.mergeEnv(mockPrinter)
+      T.mergeEnv(mockPrinter),
+      T.mergeEnv(EX.express)
     );
 
-    const app = express();
+    const main = EX.withApp(
+      Do(T.effectMonad)
+        .do(withTracer(bindToApp(RS.moduleA, "moduleA", module)))
+        .bind("server", EX.bind(3000, "127.0.0.1"))
+        .return(s => s.server)
+    );
 
-    const main = withTracer(bindToApp(app, RS.moduleA, "moduleA", module));
-
-    await T.run(T.provide(module)(main))();
-
-    const s = app.listen(3000, "127.0.0.1");
+    const s = await T.promise(T.provide(module)(main));
 
     const clientModule = pipe(
       T.noEnv,
