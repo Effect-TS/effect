@@ -3,7 +3,7 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "doc": "yarn typedoc --module commonjs --out docs packages"
+    "doc": "yarn typedoc --module commonjs --out docs packages && echo.> ./docs/.nojekyll"
   },
   "workspaces": [
     "packages/*"
