@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@matechs/effect": "^0.0.14",
+    "@matechs/graceful": "^0.0.3",
     "@matechs/tracing": "^0.0.17",
     "deepmerge": "^4.2.2",
     "fluture": "^12.0.1",
