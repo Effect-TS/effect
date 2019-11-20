@@ -4,6 +4,8 @@ import * as EX from "express";
 import * as bodyParser from "body-parser";
 import { isLeft } from "fp-ts/lib/Either";
 import { Server } from "http";
+import * as G from "@matechs/graceful";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 export interface HasExpress {
   express: {
@@ -24,7 +26,7 @@ export interface Express {
     bind(
       port: number,
       hostname?: string
-    ): T.Effect<HasExpress, T.NoErr, Server>;
+    ): T.Effect<HasExpress & G.Graceful, T.NoErr, Server>;
   };
 }
 
@@ -55,11 +57,22 @@ export const express: Express = {
     bind(
       port: number,
       hostname?: string
-    ): T.Effect<HasExpress, T.NoErr, Server> {
+    ): T.Effect<HasExpress & G.Graceful, T.NoErr, Server> {
       return T.accessM(({ express: { app } }: HasExpress) =>
-        T.liftIO(() => {
-          return app.listen(port, hostname);
-        })
+        Do(T.effectMonad)
+          .bindL("s", () =>
+            T.liftIO(() => {
+              return app.listen(port, hostname);
+            })
+          )
+          .doL(({ s }) =>
+            G.onExit(
+              T.liftIO(() => {
+                s.close();
+              })
+            )
+          )
+          .return(s => s.s)
       );
     }
   }
@@ -82,6 +95,6 @@ export function route<R, E, RES>(
 export function bind(
   port: number,
   hostname?: string
-): T.Effect<HasExpress & Express, T.NoErr, Server> {
+): T.Effect<HasExpress & Express & G.Graceful, T.NoErr, Server> {
   return T.accessM(({ express }: Express) => express.bind(port, hostname));
 }

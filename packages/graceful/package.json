@@ -1,5 +1,5 @@
 {
-  "name": "@matechs/express",
+  "name": "@matechs/graceful",
   "version": "0.0.0",
   "license": "MIT",
   "private": false,
@@ -36,7 +36,6 @@
   },
   "dependencies": {
     "@matechs/effect": "^0.0.13",
-    "@matechs/graceful": "^0.0.0",
     "@matechs/tracing": "^0.0.16",
     "deepmerge": "^4.2.2",
     "fluture": "^12.0.1",

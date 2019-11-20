@@ -6,7 +6,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as RPC from "../src";
 import { tracer, tracerFactoryDummy } from "@matechs/tracing/lib";
 import { httpClient } from "@matechs/http/lib";
-
+import * as G from "@matechs/graceful";
 import { moduleADef, Printer } from "./rpc/interface";
 
 import * as RC from "./rpc/client";
@@ -37,7 +37,8 @@ describe("RPC", () => {
       T.mergeEnv(tracer),
       T.mergeEnv(tracerFactoryDummy),
       T.mergeEnv(mockPrinter),
-      T.mergeEnv(EX.express)
+      T.mergeEnv(EX.express),
+      T.mergeEnv(G.graceful())
     );
 
     const main = EX.withApp(
@@ -47,7 +48,7 @@ describe("RPC", () => {
         .return(s => s.server)
     );
 
-    const s = await T.promise(T.provide(module)(main));
+    await T.promise(T.provide(module)(main));
 
     const clientModule = pipe(
       T.noEnv,
@@ -74,7 +75,7 @@ describe("RPC", () => {
     // direct call in server
     const result4 = await T.run(T.provide(module)(RS.notFailing("test")))();
 
-    s.close();
+    await T.promise(T.provide(module)(G.trigger()));
 
     assert.deepEqual(result, E.left(T.error("not implemented")));
     assert.deepEqual(result2, E.right("test"));
