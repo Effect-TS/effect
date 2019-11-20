@@ -72,13 +72,6 @@ export function accessM<R, R2, E, A>(f: (r: R) => Effect<R2, E, A>): Effect<R & 
 
 export function access<R, A>(f: (r: R) => A): Effect<R, NoErr, A>
 
-
-/* convert par/seq */
-export function par<R, E, A>(ma: Effect<R, E, A>): ConcurrentEffect<R, E, A>
-
-export function seq<R, E, A>(ma: ConcurrentEffect<R, E, A>): Effect<R, E, A>
-
-
 /* parallel */
 
 export function sequenceP<R, E, A>(n: number, ops: Array<Effect<R, E, A>>): Effect<R, E, Array<A>>
