@@ -5,7 +5,8 @@ import * as EX from "@matechs/express/lib";
 import { Tracer } from "@matechs/tracing";
 import {
   ChildContext,
-  HasTracerContext, TracerFactory,
+  HasTracerContext,
+  TracerFactory,
   withTracer
 } from "@matechs/tracing/lib";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -150,7 +151,7 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
       }: Tracer & HasTracerContext) =>
         pipe(
           A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
-            EX.post(`/${entry}/${k}`, req =>
+            EX.route("post", `/${entry}/${k}`, req =>
               pipe(
                 T.provide(runtime)(
                   withControllerSpan(

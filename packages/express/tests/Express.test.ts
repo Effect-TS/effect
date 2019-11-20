@@ -10,8 +10,8 @@ describe("Express", () => {
   it("should use express", async () => {
     const program = EX.withApp(
       Do(T.effectMonad)
-        .do(EX.post("/", () => T.right({ res: 1 })))
-        .do(EX.post("/bad", () => T.left({ res: 1 })))
+        .do(EX.route("post", "/", () => T.right({ res: 1 })))
+        .do(EX.route("post", "/bad", () => T.left({ res: 1 })))
         .bind("s", EX.bind(3003, "127.0.0.1"))
         .return(s => s.s)
     );

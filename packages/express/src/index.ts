@@ -11,10 +11,13 @@ export interface HasExpress {
   };
 }
 
+export type Method = "post" | "get" | "put" | "patch" | "delete";
+
 export interface Express {
   express: {
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
-    post<R, E, RES>(
+    route<R, E, RES>(
+      method: Method,
       path: string,
       f: (req: EX.Request) => T.Effect<R, E, RES>
     ): T.Effect<R & HasExpress, T.NoErr, void>;
@@ -27,13 +30,14 @@ export interface Express {
 
 export const express: Express = {
   express: {
-    post<R, E, RES>(
+    route<R, E, RES>(
+      method: Method,
       path: string,
       f: (req: EX.Request) => T.Effect<R, E, RES>
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
         T.liftIO(() => {
-          r.express.app.post(path, bodyParser.json(), (req, res) => {
+          r.express.app[method](path, bodyParser.json(), (req, res) => {
             T.run(T.provide(r)(f(req)))().then(o => {
               if (isLeft(o)) {
                 res.status(500).send(o.left);
@@ -67,11 +71,12 @@ export function withApp<R, E, A>(
   return T.accessM(({ express }: Express) => express.withApp(op));
 }
 
-export function post<R, E, RES>(
+export function route<R, E, RES>(
+  method: Method,
   path: string,
   f: (req: EX.Request) => T.Effect<R, E, RES>
 ): T.Effect<R & HasExpress & Express, T.NoErr, void> {
-  return T.accessM(({ express }: Express) => express.post(path, f));
+  return T.accessM(({ express }: Express) => express.route(method, path, f));
 }
 
 export function bind(
