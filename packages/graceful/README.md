@@ -1,3 +1,3 @@
 # Introduction
 
-This package provides integration with `express`. Refer to documentation in `packages/effect` for more details.
+This package provides a utility to handle graceful shutdown. Example usages in `packages/express`

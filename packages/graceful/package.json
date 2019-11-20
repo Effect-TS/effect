@@ -44,5 +44,6 @@
     "opentracing": "^0.14.4",
     "reflect-metadata": "^0.1.13",
     "typeorm": "^0.2.20"
-  }
+  },
+  "gitHead": "7744c3ae4ebc46daed3bd7927a47d846ed36a4f8"
 }
