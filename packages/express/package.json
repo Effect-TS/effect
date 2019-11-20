@@ -1,6 +1,6 @@
 {
   "name": "@matechs/express",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@matechs/effect": "^0.0.13",
-    "@matechs/graceful": "^0.0.1",
+    "@matechs/graceful": "^0.0.2",
     "@matechs/tracing": "^0.0.16",
     "deepmerge": "^4.2.2",
     "fluture": "^12.0.1",

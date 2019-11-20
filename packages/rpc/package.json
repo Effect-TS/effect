@@ -1,6 +1,6 @@
 {
   "name": "@matechs/rpc",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@matechs/effect": "^0.0.13",
-    "@matechs/express": "^0.0.1",
+    "@matechs/express": "^0.0.2",
     "@matechs/http": "^0.0.8",
     "@matechs/tracing": "^0.0.16",
     "body-parser": "^1.19.0",
