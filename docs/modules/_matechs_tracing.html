@@ -1,0 +1,1127 @@
+<!doctype html>
+<html class="default no-js">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>@matechs/tracing | @matechs/effect</title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body>
+<header>
+	<div class="tsd-page-toolbar">
+		<div class="container">
+			<div class="table-wrap">
+				<div class="table-cell" id="tsd-search" data-index="../assets/js/search.js" data-base="..">
+					<div class="field">
+						<label for="tsd-search-field" class="tsd-widget search no-caption">Search</label>
+						<input id="tsd-search-field" type="text" />
+					</div>
+					<ul class="results">
+						<li class="state loading">Preparing search index...</li>
+						<li class="state failure">The search index is not available</li>
+					</ul>
+					<a href="../index.html" class="title">@matechs/effect</a>
+				</div>
+				<div class="table-cell" id="tsd-widgets">
+					<div id="tsd-filter">
+						<a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a>
+						<div class="tsd-filter-group">
+							<div class="tsd-select" id="tsd-filter-visibility">
+								<span class="tsd-select-label">All</span>
+								<ul class="tsd-select-list">
+									<li data-value="public">Public</li>
+									<li data-value="protected">Public/Protected</li>
+									<li data-value="private" class="selected">All</li>
+								</ul>
+							</div>
+							<input type="checkbox" id="tsd-filter-inherited" checked />
+							<label class="tsd-widget" for="tsd-filter-inherited">Inherited</label>
+							<input type="checkbox" id="tsd-filter-externals" checked />
+							<label class="tsd-widget" for="tsd-filter-externals">Externals</label>
+							<input type="checkbox" id="tsd-filter-only-exported" />
+							<label class="tsd-widget" for="tsd-filter-only-exported">Only exported</label>
+						</div>
+					</div>
+					<a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="tsd-page-title">
+		<div class="container">
+			<ul class="tsd-breadcrumb">
+				<li>
+					<a href="../globals.html">Globals</a>
+				</li>
+				<li>
+					<a href="_matechs_tracing.html">@matechs/tracing</a>
+				</li>
+			</ul>
+			<h1>Module @matechs/tracing</h1>
+		</div>
+	</div>
+</header>
+<div class="container container-main">
+	<div class="row">
+		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<a href="#introduction" id="introduction" style="color: inherit; text-decoration: none;">
+						<h1>Introduction</h1>
+					</a>
+					<p>This package provides integration with <code>opentracing</code>. Refer to documentation in <code>packages/effect</code> for more details.</p>
+				</div>
+			</section>
+			<section class="tsd-panel-group tsd-index-group">
+				<h2>Index</h2>
+				<section class="tsd-panel tsd-index-panel">
+					<div class="tsd-index-content">
+						<section class="tsd-index-section tsd-is-not-exported">
+							<h3>Classes</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-class tsd-parent-kind-module tsd-is-not-exported"><a href="../classes/_matechs_tracing.mocktracer.html" class="tsd-kind-icon">Mock<wbr>Tracer</a></li>
+								<li class="tsd-kind-class tsd-parent-kind-module tsd-is-not-exported"><a href="../classes/_matechs_tracing.mocktracer2.html" class="tsd-kind-icon">Mock<wbr>Tracer2</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Interfaces</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.counter.html" class="tsd-kind-icon">Counter</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.counterstate.html" class="tsd-kind-icon">Counter<wbr>State</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-kind-icon">Has<wbr>Span<wbr>Context</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-kind-icon">Has<wbr>Tracer<wbr>Context</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.printer.html" class="tsd-kind-icon">Printer</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-kind-icon">Tracer</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-kind-icon">Tracer<wbr>Factory</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Type aliases</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-type-alias tsd-parent-kind-module"><a href="_matechs_tracing.html#childcontext" class="tsd-kind-icon">Child<wbr>Context</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Variables</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="_matechs_tracing.html#main" class="tsd-kind-icon">main</a></li>
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="_matechs_tracing.html#module" class="tsd-kind-icon">module</a></li>
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="_matechs_tracing.html#printer-1" class="tsd-kind-icon">printer</a></li>
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="_matechs_tracing.html#program" class="tsd-kind-icon">program</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Functions</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#count" class="tsd-kind-icon">count</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#counterstate-1" class="tsd-kind-icon">counter<wbr>State</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#createcontrollerspan" class="tsd-kind-icon">create<wbr>Controller<wbr>Span</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#currentcount" class="tsd-kind-icon">current<wbr>Count</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#haschildcontext" class="tsd-kind-icon">has<wbr>Child<wbr>Context</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#increment" class="tsd-kind-icon">increment</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_tracing.html#notracing" class="tsd-kind-icon">no<wbr>Tracing</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#print" class="tsd-kind-icon">print</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_tracing.html#runwithspan" class="tsd-kind-icon">run<wbr>With<wbr>Span</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#withchildspan" class="tsd-kind-icon">with<wbr>Child<wbr>Span</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_tracing.html#withcontrollerspan" class="tsd-kind-icon">with<wbr>Controller<wbr>Span</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_tracing.html#withtracer" class="tsd-kind-icon">with<wbr>Tracer</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Object literals</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-object-literal tsd-parent-kind-module"><a href="_matechs_tracing.html#counter-1" class="tsd-kind-icon">counter</a></li>
+								<li class="tsd-kind-object-literal tsd-parent-kind-module"><a href="_matechs_tracing.html#tracer-1" class="tsd-kind-icon">tracer</a></li>
+								<li class="tsd-kind-object-literal tsd-parent-kind-module"><a href="_matechs_tracing.html#tracerfactorydummy" class="tsd-kind-icon">tracer<wbr>Factory<wbr>Dummy</a></li>
+							</ul>
+						</section>
+					</div>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Type aliases</h2>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module">
+					<a name="childcontext" class="tsd-anchor"></a>
+					<h3>Child<wbr>Context</h3>
+					<div class="tsd-signature tsd-kind-icon">Child<wbr>Context<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-signature-type">HasSpanContext</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L237">packages/tracing/src/index.ts:237</a></li>
+						</ul>
+					</aside>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Variables</h2>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="main" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> main</h3>
+					<div class="tsd-signature tsd-kind-icon">main<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span><span class="tsd-signature-symbol"> =&nbsp;E.run(pipe(program, E.provide(module)))</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Main.ts#L35">packages/tracing/tests/demo/Main.ts:35</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-variable tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Ei.Either</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+								</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Ei.Either</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="module" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> module</h3>
+					<div class="tsd-signature tsd-kind-icon">module<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-signature-type">TracerFactory</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-signature-type">Tracer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.counter.html" class="tsd-signature-type">Counter</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.printer.html" class="tsd-signature-type">Printer</a><span class="tsd-signature-symbol"> =&nbsp;pipe(E.noEnv,E.mergeEnv(P.printer),E.mergeEnv(C.counter),E.mergeEnv(T.tracer),E.mergeEnv(T.tracerFactoryDummy))</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Main.ts#L10">packages/tracing/tests/demo/Main.ts:10</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="printer-1" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> printer</h3>
+					<div class="tsd-signature tsd-kind-icon">printer<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_tracing.printer.html" class="tsd-signature-type">Printer</a><span class="tsd-signature-symbol"> =&nbsp;{} as Printer</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Printer.ts#L9">packages/tracing/tests/demo/Printer.ts:9</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="program" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> program</h3>
+					<div class="tsd-signature tsd-kind-icon">program<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span><span class="tsd-signature-symbol"> =&nbsp;withTracer(withControllerSpan(&quot;demo&quot;,&quot;demo-main&quot;)(E.provide(C.counterState())(Do(E.effectMonad).bind(&quot;start&quot;, C.currentCount()).do(C.count()).do(C.count()).bind(&quot;end&quot;, C.currentCount()).doL(({ start, end }) &#x3D;&gt; P.print(&#x60;done - ${start} &lt;-&gt; ${end}&#x60;)).done())))</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Main.ts#L18">packages/tracing/tests/demo/Main.ts:18</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-variable tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+								</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-parameters-title">Parameters</h4>
+										<ul class="tsd-parameters">
+											<li>
+												<h5>r: <span class="tsd-signature-type">R</span></h5>
+											</li>
+										</ul>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Functions</h2>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="count" class="tsd-anchor"></a>
+					<h3>count</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">count<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">E.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.counter.html" class="tsd-signature-type">Counter</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.printer.html" class="tsd-signature-type">Printer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-signature-type">Tracer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.counterstate.html" class="tsd-signature-type">CounterState</a><span class="tsd-signature-symbol"> &amp; </span><a href="_matechs_tracing.html#childcontext" class="tsd-signature-type">ChildContext</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L61">packages/tracing/tests/demo/Counter.ts:61</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">E.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.counter.html" class="tsd-signature-type">Counter</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.printer.html" class="tsd-signature-type">Printer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-signature-type">Tracer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.counterstate.html" class="tsd-signature-type">CounterState</a><span class="tsd-signature-symbol"> &amp; </span><a href="_matechs_tracing.html#childcontext" class="tsd-signature-type">ChildContext</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="counterstate-1" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> counter<wbr>State</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">counter<wbr>State<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L20">packages/tracing/tests/demo/Counter.ts:20</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">object</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter">
+									<h5>counter<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span></h5>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter">
+											<h5>ref<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span></h5>
+										</li>
+										<li class="tsd-parameter">
+											<h5>increment<span class="tsd-signature-symbol">: </span>function</h5>
+											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon">increment<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<aside class="tsd-sources">
+														<ul>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L23">packages/tracing/tests/demo/Counter.ts:23</a></li>
+														</ul>
+													</aside>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+													<ul class="tsd-parameters">
+														<li class="tsd-parameter-siganture">
+															<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+																<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+															</ul>
+															<ul class="tsd-descriptions">
+																<li class="tsd-description">
+																	<h4 class="tsd-parameters-title">Parameters</h4>
+																	<ul class="tsd-parameters">
+																		<li>
+																			<h5>r: <span class="tsd-signature-type">R</span></h5>
+																		</li>
+																	</ul>
+																	<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+																</li>
+															</ul>
+														</li>
+													</ul>
+												</li>
+										</ul>        </li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="createcontrollerspan" class="tsd-anchor"></a>
+					<h3>create<wbr>Controller<wbr>Span</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">create<wbr>Controller<wbr>Span<span class="tsd-signature-symbol">(</span>tracer<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">OT</span>, component<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, operation<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">IO</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Span</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L95">packages/tracing/src/index.ts:95</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>tracer: <span class="tsd-signature-type">OT</span></h5>
+								</li>
+								<li>
+									<h5>component: <span class="tsd-signature-type">string</span></h5>
+								</li>
+								<li>
+									<h5>operation: <span class="tsd-signature-type">string</span></h5>
+								</li>
+								<li>
+									<h5>headers: <span class="tsd-signature-type">any</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">IO</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Span</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="currentcount" class="tsd-anchor"></a>
+					<h3>current<wbr>Count</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">current<wbr>Count<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L16">packages/tracing/tests/demo/Counter.ts:16</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter-siganture">
+									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+									</ul>
+									<ul class="tsd-descriptions">
+										<li class="tsd-description">
+											<h4 class="tsd-parameters-title">Parameters</h4>
+											<ul class="tsd-parameters">
+												<li>
+													<h5>r: <span class="tsd-signature-type">R</span></h5>
+												</li>
+											</ul>
+											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="haschildcontext" class="tsd-anchor"></a>
+					<h3>has<wbr>Child<wbr>Context</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">has<wbr>Child<wbr>Context<span class="tsd-signature-symbol">(</span>t<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">t</span><span class="tsd-signature-symbol"> is </span><span class="tsd-signature-type">ChildContext</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L239">packages/tracing/src/index.ts:239</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>t: <span class="tsd-signature-type">any</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">t</span><span class="tsd-signature-symbol"> is </span><span class="tsd-signature-type">ChildContext</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="increment" class="tsd-anchor"></a>
+					<h3>increment</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">increment<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">E.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.counterstate.html" class="tsd-signature-type">CounterState</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L57">packages/tracing/tests/demo/Counter.ts:57</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">E.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.counterstate.html" class="tsd-signature-type">CounterState</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+					<a name="notracing" class="tsd-anchor"></a>
+					<h3>no<wbr>Tracing</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<li class="tsd-signature tsd-kind-icon">no<wbr>Tracing&lt;R, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-signature-type">Tracer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-signature-type">TracerFactory</a><span class="tsd-signature-symbol"> &amp; </span><a href="_matechs_tracing.html#childcontext" class="tsd-signature-type">ChildContext</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L225">packages/tracing/src/index.ts:225</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>R</h4>
+								</li>
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>op: <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-signature-type">Tracer</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-signature-type">TracerFactory</a><span class="tsd-signature-symbol"> &amp; </span><a href="_matechs_tracing.html#childcontext" class="tsd-signature-type">ChildContext</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="print" class="tsd-anchor"></a>
+					<h3>print</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">print<span class="tsd-signature-symbol">(</span>s<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Printer.ts#L11">packages/tracing/tests/demo/Printer.ts:11</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>s: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter-siganture">
+									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+									</ul>
+									<ul class="tsd-descriptions">
+										<li class="tsd-description">
+											<h4 class="tsd-parameters-title">Parameters</h4>
+											<ul class="tsd-parameters">
+												<li>
+													<h5>r: <span class="tsd-signature-type">R</span></h5>
+												</li>
+											</ul>
+											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+					<a name="runwithspan" class="tsd-anchor"></a>
+					<h3>run<wbr>With<wbr>Span</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">run<wbr>With<wbr>Span&lt;R, A&gt;<span class="tsd-signature-symbol">(</span>ma<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-signature-type">HasSpanContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span>, span<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Span</span>, component<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L61">packages/tracing/src/index.ts:61</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>R</h4>
+								</li>
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>ma: <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-signature-type">HasSpanContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+								<li>
+									<h5>span: <span class="tsd-signature-type">Span</span></h5>
+								</li>
+								<li>
+									<h5>component: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter-siganture">
+									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+									</ul>
+									<ul class="tsd-descriptions">
+										<li class="tsd-description">
+											<h4 class="tsd-parameters-title">Parameters</h4>
+											<ul class="tsd-parameters">
+												<li>
+													<h5>r: <span class="tsd-signature-type">R</span></h5>
+												</li>
+											</ul>
+											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="withchildspan" class="tsd-anchor"></a>
+					<h3>with<wbr>Child<wbr>Span</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">with<wbr>Child<wbr>Span<span class="tsd-signature-symbol">(</span>operation<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">(Anonymous function)</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L218">packages/tracing/src/index.ts:218</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>operation: <span class="tsd-signature-type">string</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">(Anonymous function)</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="withcontrollerspan" class="tsd-anchor"></a>
+					<h3>with<wbr>Controller<wbr>Span</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">with<wbr>Controller<wbr>Span<span class="tsd-signature-symbol">(</span>component<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, operation<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">(Anonymous function)</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L205">packages/tracing/src/index.ts:205</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>component: <span class="tsd-signature-type">string</span></h5>
+								</li>
+								<li>
+									<h5>operation: <span class="tsd-signature-type">string</span></h5>
+								</li>
+								<li>
+									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> headers: <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> =&nbsp;{}</span></h5>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-index-signature">
+											<h5><span class="tsd-signature-symbol">[</span>k: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">string</span></h5>
+										</li>
+									</ul>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">(Anonymous function)</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+					<a name="withtracer" class="tsd-anchor"></a>
+					<h3>with<wbr>Tracer</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<li class="tsd-signature tsd-kind-icon">with<wbr>Tracer&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>ma<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L201">packages/tracing/src/index.ts:201</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>R</h4>
+								</li>
+								<li>
+									<h4>E</h4>
+								</li>
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>ma: <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter-siganture">
+									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+									</ul>
+									<ul class="tsd-descriptions">
+										<li class="tsd-description">
+											<h4 class="tsd-parameters-title">Parameters</h4>
+											<ul class="tsd-parameters">
+												<li>
+													<h5>r: <span class="tsd-signature-type">R</span></h5>
+												</li>
+											</ul>
+											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+					</ul>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Object literals</h2>
+				<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-module">
+					<a name="counter-1" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> counter</h3>
+					<div class="tsd-signature tsd-kind-icon">counter<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L43">packages/tracing/tests/demo/Counter.ts:43</a></li>
+						</ul>
+					</aside>
+					<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-object-literal">
+						<a name="counter-1.counter-2" class="tsd-anchor"></a>
+						<h3>counter</h3>
+						<div class="tsd-signature tsd-kind-icon">counter<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L44">packages/tracing/tests/demo/Counter.ts:44</a></li>
+							</ul>
+						</aside>
+						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal">
+							<a name="counter-1.counter-2.count-1" class="tsd-anchor"></a>
+							<h3>count</h3>
+							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal">
+								<li class="tsd-signature tsd-kind-icon">count<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+							</ul>
+							<ul class="tsd-descriptions">
+								<li class="tsd-description">
+									<aside class="tsd-sources">
+										<ul>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/tests/demo/Counter.ts#L45">packages/tracing/tests/demo/Counter.ts:45</a></li>
+										</ul>
+									</aside>
+									<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-siganture">
+											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<h4 class="tsd-parameters-title">Parameters</h4>
+													<ul class="tsd-parameters">
+														<li>
+															<h5>r: <span class="tsd-signature-type">R</span></h5>
+														</li>
+													</ul>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</section>
+					</section>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-module">
+					<a name="tracer-1" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> tracer</h3>
+					<div class="tsd-signature tsd-kind-icon">tracer<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L132">packages/tracing/src/index.ts:132</a></li>
+						</ul>
+					</aside>
+					<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-object-literal">
+						<a name="tracer-1.tracer-2" class="tsd-anchor"></a>
+						<h3>tracer</h3>
+						<div class="tsd-signature tsd-kind-icon">tracer<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L133">packages/tracing/src/index.ts:133</a></li>
+							</ul>
+						</aside>
+						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal">
+							<a name="tracer-1.tracer-2.withchildspan-1" class="tsd-anchor"></a>
+							<h3>with<wbr>Child<wbr>Span</h3>
+							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal">
+								<li class="tsd-signature tsd-kind-icon">with<wbr>Child<wbr>Span<span class="tsd-signature-symbol">(</span>operation<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+							</ul>
+							<ul class="tsd-descriptions">
+								<li class="tsd-description">
+									<aside class="tsd-sources">
+										<ul>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L177">packages/tracing/src/index.ts:177</a></li>
+										</ul>
+									</aside>
+									<h4 class="tsd-parameters-title">Parameters</h4>
+									<ul class="tsd-parameters">
+										<li>
+											<h5>operation: <span class="tsd-signature-type">string</span></h5>
+										</li>
+									</ul>
+									<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-siganture">
+											<ul class="tsd-signatures tsd-kind-type-literal tsd-has-type-parameter tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon">&lt;R, A&gt;<span class="tsd-signature-symbol">(</span>ma<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<h4 class="tsd-type-parameters-title">Type parameters</h4>
+													<ul class="tsd-type-parameters">
+														<li>
+															<h4>R</h4>
+														</li>
+														<li>
+															<h4>A</h4>
+														</li>
+													</ul>
+													<h4 class="tsd-parameters-title">Parameters</h4>
+													<ul class="tsd-parameters">
+														<li>
+															<h5>ma: <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+														</li>
+													</ul>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</section>
+						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal">
+							<a name="tracer-1.tracer-2.withcontrollerspan-1" class="tsd-anchor"></a>
+							<h3>with<wbr>Controller<wbr>Span</h3>
+							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal">
+								<li class="tsd-signature tsd-kind-icon">with<wbr>Controller<wbr>Span<span class="tsd-signature-symbol">(</span>component<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, operation<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+							</ul>
+							<ul class="tsd-descriptions">
+								<li class="tsd-description">
+									<aside class="tsd-sources">
+										<ul>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L148">packages/tracing/src/index.ts:148</a></li>
+										</ul>
+									</aside>
+									<h4 class="tsd-parameters-title">Parameters</h4>
+									<ul class="tsd-parameters">
+										<li>
+											<h5>component: <span class="tsd-signature-type">string</span></h5>
+										</li>
+										<li>
+											<h5>operation: <span class="tsd-signature-type">string</span></h5>
+										</li>
+										<li>
+											<h5>headers: <span class="tsd-signature-type">object</span></h5>
+											<ul class="tsd-parameters">
+												<li class="tsd-parameter-index-signature">
+													<h5><span class="tsd-signature-symbol">[</span>k: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]: </span><span class="tsd-signature-type">string</span></h5>
+												</li>
+											</ul>
+										</li>
+									</ul>
+									<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-siganture">
+											<ul class="tsd-signatures tsd-kind-type-literal tsd-has-type-parameter tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon">&lt;R, A&gt;<span class="tsd-signature-symbol">(</span>ma<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-signature-type">HasSpanContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<h4 class="tsd-type-parameters-title">Type parameters</h4>
+													<ul class="tsd-type-parameters">
+														<li>
+															<h4>R</h4>
+														</li>
+														<li>
+															<h4>A</h4>
+														</li>
+													</ul>
+													<h4 class="tsd-parameters-title">Parameters</h4>
+													<ul class="tsd-parameters">
+														<li>
+															<h5>ma: <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-signature-type">HasSpanContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+														</li>
+													</ul>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</li>
+							</ul>
+						</section>
+						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter">
+							<a name="tracer-1.tracer-2.withtracer-1" class="tsd-anchor"></a>
+							<h3>with<wbr>Tracer</h3>
+							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter">
+								<li class="tsd-signature tsd-kind-icon">with<wbr>Tracer&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>ma<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-signature-type">TracerFactory</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+							</ul>
+							<ul class="tsd-descriptions">
+								<li class="tsd-description">
+									<aside class="tsd-sources">
+										<ul>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L134">packages/tracing/src/index.ts:134</a></li>
+										</ul>
+									</aside>
+									<h4 class="tsd-type-parameters-title">Type parameters</h4>
+									<ul class="tsd-type-parameters">
+										<li>
+											<h4>R</h4>
+										</li>
+										<li>
+											<h4>E</h4>
+										</li>
+										<li>
+											<h4>A</h4>
+										</li>
+									</ul>
+									<h4 class="tsd-parameters-title">Parameters</h4>
+									<ul class="tsd-parameters">
+										<li>
+											<h5>ma: <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-signature-type">HasTracerContext</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+										</li>
+									</ul>
+									<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">M.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-signature-type">TracerFactory</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+								</li>
+							</ul>
+						</section>
+					</section>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-module">
+					<a name="tracerfactorydummy" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> tracer<wbr>Factory<wbr>Dummy</h3>
+					<div class="tsd-signature tsd-kind-icon">tracer<wbr>Factory<wbr>Dummy<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L20">packages/tracing/src/index.ts:20</a></li>
+						</ul>
+					</aside>
+					<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-object-literal">
+						<a name="tracerfactorydummy.tracer-3" class="tsd-anchor"></a>
+						<h3>tracer</h3>
+						<div class="tsd-signature tsd-kind-icon">tracer<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L21">packages/tracing/src/index.ts:21</a></li>
+							</ul>
+						</aside>
+						<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
+							<a name="tracerfactorydummy.tracer-3.factory" class="tsd-anchor"></a>
+							<h3>factory</h3>
+							<div class="tsd-signature tsd-kind-icon">factory<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span><span class="tsd-signature-symbol"> =&nbsp;M.liftIO(() &#x3D;&gt; new OT())</span></div>
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/8343371/packages/tracing/src/index.ts#L22">packages/tracing/src/index.ts:22</a></li>
+								</ul>
+							</aside>
+							<div class="tsd-type-declaration">
+								<h4>Type declaration</h4>
+								<ul class="tsd-parameters">
+									<li class="tsd-parameter-siganture">
+										<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-variable tsd-is-not-exported">
+											<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+										</ul>
+										<ul class="tsd-descriptions">
+											<li class="tsd-description">
+												<h4 class="tsd-parameters-title">Parameters</h4>
+												<ul class="tsd-parameters">
+													<li>
+														<h5>r: <span class="tsd-signature-type">R</span></h5>
+													</li>
+												</ul>
+												<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+											</li>
+										</ul>
+									</li>
+								</ul>
+							</div>
+						</section>
+					</section>
+				</section>
+			</section>
+		</div>
+		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
+			<nav class="tsd-navigation primary">
+				<ul>
+					<li class="globals  ">
+						<a href="../globals.html"><em>Globals</em></a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_effect.html">@matechs/effect</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_express.html">@matechs/express</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_graceful.html">@matechs/graceful</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_http.html">@matechs/http</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_orm.html">@matechs/orm</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_rpc.html">@matechs/rpc</a>
+					</li>
+					<li class="current tsd-kind-module">
+						<a href="_matechs_tracing.html">@matechs/tracing</a>
+					</li>
+				</ul>
+			</nav>
+			<nav class="tsd-navigation secondary menu-sticky">
+				<ul class="before-current">
+					<li class=" tsd-kind-class tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../classes/_matechs_tracing.mocktracer.html" class="tsd-kind-icon">Mock<wbr>Tracer</a>
+					</li>
+					<li class=" tsd-kind-class tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../classes/_matechs_tracing.mocktracer2.html" class="tsd-kind-icon">Mock<wbr>Tracer2</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.counter.html" class="tsd-kind-icon">Counter</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.counterstate.html" class="tsd-kind-icon">Counter<wbr>State</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.hasspancontext.html" class="tsd-kind-icon">Has<wbr>Span<wbr>Context</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.hastracercontext.html" class="tsd-kind-icon">Has<wbr>Tracer<wbr>Context</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.printer.html" class="tsd-kind-icon">Printer</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.tracer.html" class="tsd-kind-icon">Tracer</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="../interfaces/_matechs_tracing.tracerfactory.html" class="tsd-kind-icon">Tracer<wbr>Factory</a>
+					</li>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#childcontext" class="tsd-kind-icon">Child<wbr>Context</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#main" class="tsd-kind-icon">main</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#module" class="tsd-kind-icon">module</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#printer-1" class="tsd-kind-icon">printer</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#program" class="tsd-kind-icon">program</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#count" class="tsd-kind-icon">count</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#counterstate-1" class="tsd-kind-icon">counter<wbr>State</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#createcontrollerspan" class="tsd-kind-icon">create<wbr>Controller<wbr>Span</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#currentcount" class="tsd-kind-icon">current<wbr>Count</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#haschildcontext" class="tsd-kind-icon">has<wbr>Child<wbr>Context</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#increment" class="tsd-kind-icon">increment</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_tracing.html#notracing" class="tsd-kind-icon">no<wbr>Tracing</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#print" class="tsd-kind-icon">print</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_tracing.html#runwithspan" class="tsd-kind-icon">run<wbr>With<wbr>Span</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#withchildspan" class="tsd-kind-icon">with<wbr>Child<wbr>Span</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#withcontrollerspan" class="tsd-kind-icon">with<wbr>Controller<wbr>Span</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_tracing.html#withtracer" class="tsd-kind-icon">with<wbr>Tracer</a>
+					</li>
+					<li class=" tsd-kind-object-literal tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#counter-1" class="tsd-kind-icon">counter</a>
+					</li>
+					<li class=" tsd-kind-object-literal tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#tracer-1" class="tsd-kind-icon">tracer</a>
+					</li>
+					<li class=" tsd-kind-object-literal tsd-parent-kind-module">
+						<a href="_matechs_tracing.html#tracerfactorydummy" class="tsd-kind-icon">tracer<wbr>Factory<wbr>Dummy</a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+</div>
+<footer class="with-border-bottom">
+	<div class="container">
+		<h2>Legend</h2>
+		<div class="tsd-legend-group">
+			<ul class="tsd-legend">
+				<li class="tsd-kind-module"><span class="tsd-kind-icon">Module</span></li>
+				<li class="tsd-kind-object-literal"><span class="tsd-kind-icon">Object literal</span></li>
+				<li class="tsd-kind-variable"><span class="tsd-kind-icon">Variable</span></li>
+				<li class="tsd-kind-function"><span class="tsd-kind-icon">Function</span></li>
+				<li class="tsd-kind-function tsd-has-type-parameter"><span class="tsd-kind-icon">Function with type parameter</span></li>
+				<li class="tsd-kind-index-signature"><span class="tsd-kind-icon">Index signature</span></li>
+				<li class="tsd-kind-type-alias"><span class="tsd-kind-icon">Type alias</span></li>
+				<li class="tsd-kind-type-alias tsd-has-type-parameter"><span class="tsd-kind-icon">Type alias with type parameter</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-enum"><span class="tsd-kind-icon">Enumeration</span></li>
+				<li class="tsd-kind-enum-member"><span class="tsd-kind-icon">Enumeration member</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-enum"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-enum"><span class="tsd-kind-icon">Method</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-interface"><span class="tsd-kind-icon">Interface</span></li>
+				<li class="tsd-kind-interface tsd-has-type-parameter"><span class="tsd-kind-icon">Interface with type parameter</span></li>
+				<li class="tsd-kind-constructor tsd-parent-kind-interface"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-interface"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-interface"><span class="tsd-kind-icon">Method</span></li>
+				<li class="tsd-kind-index-signature tsd-parent-kind-interface"><span class="tsd-kind-icon">Index signature</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-class"><span class="tsd-kind-icon">Class</span></li>
+				<li class="tsd-kind-class tsd-has-type-parameter"><span class="tsd-kind-icon">Class with type parameter</span></li>
+				<li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class"><span class="tsd-kind-icon">Method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class"><span class="tsd-kind-icon">Accessor</span></li>
+				<li class="tsd-kind-index-signature tsd-parent-kind-class"><span class="tsd-kind-icon">Index signature</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited constructor</span></li>
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-inherited"><span class="tsd-kind-icon">Inherited accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-protected"><span class="tsd-kind-icon">Protected accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private property</span></li>
+				<li class="tsd-kind-method tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private method</span></li>
+				<li class="tsd-kind-accessor tsd-parent-kind-class tsd-is-private"><span class="tsd-kind-icon">Private accessor</span></li>
+			</ul>
+			<ul class="tsd-legend">
+				<li class="tsd-kind-property tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static property</span></li>
+				<li class="tsd-kind-call-signature tsd-parent-kind-class tsd-is-static"><span class="tsd-kind-icon">Static method</span></li>
+			</ul>
+		</div>
+	</div>
+</footer>
+<div class="container tsd-generator">
+	<p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p>
+</div>
+<div class="overlay"></div>
+<script src="../assets/js/main.js"></script>
+<script>if (location.protocol == 'file:') document.write('<script src="../assets/js/search.js"><' + '/script>');</script>
+</body>
+</html>

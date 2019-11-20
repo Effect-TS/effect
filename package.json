@@ -2,12 +2,17 @@
   "name": "matechs",
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "scripts": {
+    "doc": "yarn typedoc --module commonjs --out docs packages"
+  },
   "workspaces": [
     "packages/*"
   ],
   "devDependencies": {
     "lerna": "^3.18.4",
     "prettier": "^1.19.1",
+    "typedoc": "0.15",
+    "typedoc-plugin-lerna-packages": "^0.2.1",
     "typescript": "^3.7.2"
   }
 }
