@@ -78,45 +78,46 @@
 				<p>You can think of this type as a computation that requires an environment <code>R</code> to run.</p>
 				<p>An important point to note in the implementation is the <code>src/overload.ts</code> file where we extend and define the new abstract types required to specialize <code>fp-ts</code> behaviour to respect the variance of <code>R</code> &amp; <code>E</code>.</p>
 				<p>The key difference is expressed in:</p>
-				<pre><code><span class="hljs-builtin-name">export</span><span class="hljs-built_in"> interface </span>Chain3E&lt;F extends URIS3&gt; extends Apply3&lt;F&gt; {
+				<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> Chain3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> Apply3&lt;F&gt; {
   readonly chain: &lt;R, E, A, R2, E2, B&gt;(
     fa: Kind3&lt;F, R, E, A&gt;,
-    f: (a: A) =&gt; Kind3&lt;F, R2, E2, B&gt;
+    f: <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> Kind3&lt;F, R2, E2, B&gt;
   ) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
 }
 
-<span class="hljs-builtin-name">export</span><span class="hljs-built_in"> interface </span>Monad3E&lt;M extends URIS3&gt; extends Applicative3&lt;M&gt;, Chain3E&lt;M&gt; {}
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> Monad3E&lt;M <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> Applicative3&lt;M&gt;, Chain3E&lt;M&gt; {}
 
-<span class="hljs-builtin-name">export</span><span class="hljs-built_in"> interface </span>PipeableChain3E&lt;F extends URIS3&gt; extends PipeableApply3E&lt;F&gt; {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> PipeableChain3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> PipeableApply3E&lt;F&gt; {
   readonly chain: &lt;R, E, A, B&gt;(
-    f: (a: A) =&gt; Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;R2, E2&gt;(ma: Kind3&lt;F, R2, E2, A&gt;) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
+    f: <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> Kind3&lt;F, R, E, B&gt;
+  ) =&gt; &lt;R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">ma: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
   readonly chainFirst: &lt;R, E, A, B&gt;(
-    f: (a: A) =&gt; Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;R2, E2&gt;(ma: Kind3&lt;F, R2, E2, A&gt;) =&gt; Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
+    f: <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> Kind3&lt;F, R, E, B&gt;
+  ) =&gt; &lt;R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">ma: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
   readonly flatten: &lt;R, E, R2, E2, A&gt;(
     mma: Kind3&lt;F, R, E, Kind3&lt;F, R2, E2, A&gt;&gt;
   ) =&gt; Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
 }
 
-<span class="hljs-builtin-name">export</span><span class="hljs-built_in"> interface </span>PipeableApply3E&lt;F extends URIS3&gt; extends PipeableFunctor3&lt;F&gt; {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> PipeableApply3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> PipeableFunctor3&lt;F&gt; {
   readonly ap: &lt;R, E, A, R2, E2&gt;(
     fa: Kind3&lt;F, R, E, A&gt;
-  ) =&gt; &lt;B&gt;(fab: Kind3&lt;F, R2, E2, (a: A) =&gt; B&gt;) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
+  ) =&gt; &lt;B&gt;<span class="hljs-function">(<span class="hljs-params">fab: Kind3&lt;F, R2, E2, (<span class="hljs-params">a: A</span>) =&gt; B&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
   readonly apFirst: &lt;R, E, B&gt;(
     fb: Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;A, R2, E2&gt;(fa: Kind3&lt;F, R2, E2, A&gt;) =&gt; Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
+  ) =&gt; &lt;A, R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">fa: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
   readonly apSecond: &lt;R, E, B&gt;(
     fb: Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;A, R2, E2&gt;(fa: Kind3&lt;F, R2, E2, A&gt;) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
+  ) =&gt; &lt;A, R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">fa: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
 }
 
-<span class="hljs-builtin-name">export</span><span class="hljs-built_in"> interface </span>Apply3E&lt;F extends URIS3&gt; extends Functor3&lt;F&gt; {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> Apply3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> Functor3&lt;F&gt; {
   readonly ap: &lt;R, E, A, B, R2, E2&gt;(
-    fab: Kind3&lt;F, R, E, (a: A) =&gt; B&gt;,
+    fab: Kind3&lt;F, R, E, <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> B&gt;,
     fa: Kind3&lt;F, R2, E2, A&gt;
   ) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
-}</code></pre><p>In addition to that the <code>fp-ts-contrib/lib/Do</code> module has similar overloads. This workaround is necessary because typescript&#39;s lack of variance annotation on generics.</p>
+}</code></pre>
+				<p>In addition to that the <code>fp-ts-contrib/lib/Do</code> module has similar overloads. This workaround is necessary because typescript&#39;s lack of variance annotation on generics.</p>
 				<p>The module exposes 2 instances of the typeclass <code>type EffectMonad&lt;T extends URIS3&gt; = Monad3E&lt;T&gt; &amp; MonadThrow3&lt;T&gt; &amp; Bifunctor3&lt;T&gt;</code>:</p>
 				<ul>
 					<li><code>effectMonad</code> for <code>Effect&lt;R, E, A&gt;</code></li>
@@ -124,7 +125,7 @@
 				</ul>
 				<p>Pipeable functions are also exported for both instances (default <code>Effect</code>, <code>parAp</code>, <code>parApFirst</code>, <code>parApSecond</code> for parallel)</p>
 				<p>In addition to default implementations additional exposed functions are:</p>
-				<pre><code><span class="hljs-comment">/* utils */</span>
+				<pre><code class="language-ts"><span class="hljs-comment">/* utils */</span>
 <span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">error</span>(<span class="hljs-params">message: <span class="hljs-built_in">string</span></span>) </span>{
   <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(message);
 }
@@ -187,7 +188,8 @@
 <span class="hljs-title">promise</span>&lt;<span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;NoEnv, <span class="hljs-built_in">any</span>, A&gt;</span>): <span class="hljs-title">Promise</span>&lt;<span class="hljs-title">A</span>&gt;
 
 /* <span class="hljs-title">run</span> <span class="hljs-title">an</span> <span class="hljs-title">effect</span> <span class="hljs-title">that</span> <span class="hljs-title">requires</span> <span class="hljs-title">no</span> <span class="hljs-title">environment</span>, <span class="hljs-title">return</span> <span class="hljs-title">underlying</span> <span class="hljs-title">Fluture</span> <span class="hljs-title">fork</span> */
-<span class="hljs-title">fork</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">E</span>&gt;(<span class="hljs-params">res: (a: A) =&gt; <span class="hljs-built_in">void</span>, rej: (e: E) =&gt; <span class="hljs-built_in">void</span></span>): (<span class="hljs-params">ma: Effect&lt;NoEnv, E, A&gt;</span>) =&gt; <span class="hljs-title">Cancel</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></code></pre><p>Interesting integrations and usage examples can be found in <code>packages/orm</code>, <code>packages/http</code>, <code>packages/rpc</code>, <code>packages/tracing</code></p>
+<span class="hljs-title">fork</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">E</span>&gt;(<span class="hljs-params">res: (a: A) =&gt; <span class="hljs-built_in">void</span>, rej: (e: E) =&gt; <span class="hljs-built_in">void</span></span>): (<span class="hljs-params">ma: Effect&lt;NoEnv, E, A&gt;</span>) =&gt; <span class="hljs-title">Cancel</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></code></pre>
+				<p>Interesting integrations and usage examples can be found in <code>packages/orm</code>, <code>packages/http</code>, <code>packages/rpc</code>, <code>packages/tracing</code></p>
 				<a href="#notes" id="notes" style="color: inherit; text-decoration: none;">
 					<h2>Notes</h2>
 				</a>

@@ -74,64 +74,70 @@
 					<p>The idea behind this package is to allow you to easily derive an RPC implementation for your effects.</p>
 					<p>Docs at <a href="https://mikearnaldi.github.io/matechs-effect/modules/_matechs_rpc.html">https://mikearnaldi.github.io/matechs-effect/modules/_matechs_rpc.html</a></p>
 					<p>In general we cannot allow any effect to be serialized, in particular an effect that supports RPC integration has to satisfy:</p>
-					<pre><code><span class="hljs-builtin-name">export</span><span class="hljs-built_in"> type </span>CanRemote = {
-  [k: string]: { [h: string]: (<span class="hljs-built_in">..</span>.args: any[]) =&gt; T.Effect&lt;any, Error, any&gt; };
-};</code></pre><p>An example effect that support RPC:</p>
-					<pre><code><span class="hljs-selector-tag">interface</span> <span class="hljs-selector-tag">ModuleA</span> <span class="hljs-selector-tag">extends</span> <span class="hljs-selector-tag">CanRemote</span> {
-  <span class="hljs-attribute">moduleA</span>: {
-    <span class="hljs-built_in">sayHi</span>(a: Serializable, b: Serializable): T.Effect&lt;YourEnv, Error, SerializableOutput&gt;;
+					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> CanRemote = {
+  [k: <span class="hljs-built_in">string</span>]: { [h: <span class="hljs-built_in">string</span>]: <span class="hljs-function">(<span class="hljs-params">...args: <span class="hljs-built_in">any</span>[]</span>) =&gt;</span> T.Effect&lt;<span class="hljs-built_in">any</span>, <span class="hljs-built_in">Error</span>, <span class="hljs-built_in">any</span>&gt; };
+};</code></pre>
+					<p>An example effect that support RPC:</p>
+					<pre><code class="language-ts"><span class="hljs-keyword">interface</span> ModuleA <span class="hljs-keyword">extends</span> CanRemote {
+  moduleA: {
+    sayHi(a: Serializable, b: Serializable): T.Effect&lt;YourEnv, <span class="hljs-built_in">Error</span>, SerializableOutput&gt;;
   };
-}</code></pre><p>An example effect that cannot support RPC:</p>
-					<pre><code><span class="hljs-keyword">interface</span> ModuleA {
+}</code></pre>
+					<p>An example effect that cannot support RPC:</p>
+					<pre><code class="language-ts"><span class="hljs-keyword">interface</span> ModuleA {
   moduleA: {
     runStuff&lt;A&gt;<span class="hljs-function">(<span class="hljs-params">f: (<span class="hljs-params">a:A</span>) =&gt; <span class="hljs-built_in">void</span></span>): <span class="hljs-params">T</span>.<span class="hljs-params">Effect</span>&lt;<span class="hljs-params">YourEnv</span>, <span class="hljs-params">Error</span>, <span class="hljs-params">SerializableOutput</span>&gt;;
   };
-}</span></code></pre><p>Note: you can always extract the RPC part as a separate effect and have your full effect extending the base RPC one.</p>
-					<pre><code>interface ModuleARPC extends CanRemote {
+}</span></code></pre>
+					<p>Note: you can always extract the RPC part as a separate effect and have your full effect extending the base RPC one.</p>
+					<pre><code class="language-ts"><span class="hljs-keyword">interface</span> ModuleARPC <span class="hljs-keyword">extends</span> CanRemote {
   moduleA: {
-    sayHi(a: Serializable, b: Serializable): T.Effect&lt;YourEnv, Error, SerializableOutput&gt;;
+    sayHi(a: Serializable, b: Serializable): T.Effect&lt;YourEnv, <span class="hljs-built_in">Error</span>, SerializableOutput&gt;;
   };
-}<span class="hljs-built_in">
-interface </span>ModuleANoRPC {
+}
+<span class="hljs-keyword">interface</span> ModuleANoRPC {
   moduleA: {
-    runStuff&lt;A&gt;(f: (a:A) =&gt; void): T.Effect&lt;YourEnv, Error, SerializableOutput&gt;;
+    runStuff&lt;A&gt;<span class="hljs-function">(<span class="hljs-params">f: (<span class="hljs-params">a:A</span>) =&gt; <span class="hljs-built_in">void</span></span>): <span class="hljs-params">T</span>.<span class="hljs-params">Effect</span>&lt;<span class="hljs-params">YourEnv</span>, <span class="hljs-params">Error</span>, <span class="hljs-params">SerializableOutput</span>&gt;;
   };
-}<span class="hljs-built_in">
-type </span>ModuleA = ModuleARPC &amp; ModuleANoRPC</code></pre><p>In order to implement a client suppose you have an effect on the server side:</p>
-					<pre><code>export interface ModuleA extends CanRemote {
+}
+<span class="hljs-params">type</span> <span class="hljs-params">ModuleA</span> = <span class="hljs-params">ModuleARPC</span> &amp; <span class="hljs-params">ModuleANoRPC</span></span></code></pre>
+					<p>In order to implement a client suppose you have an effect on the server side:</p>
+					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> ModuleA <span class="hljs-keyword">extends</span> CanRemote {
   moduleA: {
-    say<span class="hljs-constructor">HiAndReturn(<span class="hljs-params">s</span>: <span class="hljs-params">string</span>)</span>: T.Effect&lt;T.NoEnv, Error, <span class="hljs-built_in">string</span>&gt;;
+    sayHiAndReturn(s: <span class="hljs-built_in">string</span>): T.Effect&lt;T.NoEnv, <span class="hljs-built_in">Error</span>, <span class="hljs-built_in">string</span>&gt;;
   };
 }
 
-export const moduleA: ModuleA = {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> moduleA: ModuleA = {
   moduleA: {
-    say<span class="hljs-constructor">HiAndReturn(<span class="hljs-params">s</span>: <span class="hljs-params">string</span>)</span>: T.Effect&lt;T.NoEnv, Error, <span class="hljs-built_in">string</span>&gt; {
-      return <span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">T</span>.</span></span>left(<span class="hljs-module-access"><span class="hljs-module"><span class="hljs-identifier">T</span>.</span></span>error(<span class="hljs-string">"not implemented"</span>));
+    sayHiAndReturn(s: <span class="hljs-built_in">string</span>): T.Effect&lt;T.NoEnv, <span class="hljs-built_in">Error</span>, <span class="hljs-built_in">string</span>&gt; {
+      <span class="hljs-keyword">return</span> T.left(T.error(<span class="hljs-string">"not implemented"</span>));
     }
   }
 };
 
 <span class="hljs-comment">// in general you need to write this manually for effects that don't support CanRemote,</span>
 <span class="hljs-comment">// in case of CanRemote you can use automatic derivation.</span>
-export const {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> {
   moduleA: { sayHiAndReturn }
-} = server<span class="hljs-constructor">Helpers(<span class="hljs-params">moduleA</span>)</span>;
+} = serverHelpers(moduleA);
 
 <span class="hljs-comment">// this gets translated to:</span>
-export <span class="hljs-keyword">function</span> say<span class="hljs-constructor">HiAndReturn(<span class="hljs-params">s</span>: <span class="hljs-params">string</span>)</span>: Effect&lt;ModuleA, Error, <span class="hljs-built_in">string</span>&gt; {
-    return access<span class="hljs-constructor">M(({<span class="hljs-params">moduleA</span>}: ModuleA)</span> =&gt; moduleA.say<span class="hljs-constructor">HiAndReturn(<span class="hljs-params">s</span>)</span>)
-}</code></pre><p>You can implement a client in this way:</p>
-					<pre><code>export const clientModuleA = reinterpret<span class="hljs-constructor">Remotely(<span class="hljs-params">moduleA</span>, <span class="hljs-string">"url"</span>)</span>;
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sayHiAndReturn</span>(<span class="hljs-params">s: <span class="hljs-built_in">string</span></span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">ModuleA</span>, <span class="hljs-title">Error</span>, <span class="hljs-title">string</span>&gt; </span>{
+    <span class="hljs-keyword">return</span> accessM(<span class="hljs-function">(<span class="hljs-params">{moduleA}: ModuleA</span>) =&gt;</span> moduleA.sayHiAndReturn(s))
+}</code></pre>
+					<p>You can implement a client in this way:</p>
+					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> clientModuleA = reinterpretRemotely(moduleA, <span class="hljs-string">"url"</span>);
 
-export const {
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> {
   moduleA: { sayHiAndReturn }
-} = client<span class="hljs-constructor">Helpers(<span class="hljs-params">moduleA</span>)</span>;
+} = clientHelpers(moduleA);
 
 <span class="hljs-comment">// this gets translated to:</span>
-export <span class="hljs-keyword">function</span> say<span class="hljs-constructor">HiAndReturn(<span class="hljs-params">s</span>: <span class="hljs-params">string</span>)</span>: Effect&lt;Remote&lt;ModuleA&gt;, Error, <span class="hljs-built_in">string</span>&gt; {
-    return access<span class="hljs-constructor">M(({<span class="hljs-params">moduleA</span>}: Remote&lt;ModuleA&gt;)</span> =&gt; moduleA.say<span class="hljs-constructor">HiAndReturn(<span class="hljs-params">s</span>)</span>)
-}</code></pre><p>Your module gets reinterpreted in terms of http calls by <code>reinterpretRemotely</code> and <code>clientHelpers/serverHelpers</code> fix up the dependencies accordingly to server/client context.</p>
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sayHiAndReturn</span>(<span class="hljs-params">s: <span class="hljs-built_in">string</span></span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">Remote</span>&lt;<span class="hljs-title">ModuleA</span>&gt;, <span class="hljs-title">Error</span>, <span class="hljs-title">string</span>&gt; </span>{
+    <span class="hljs-keyword">return</span> accessM(<span class="hljs-function">(<span class="hljs-params">{moduleA}: Remote&lt;ModuleA&gt;</span>) =&gt;</span> moduleA.sayHiAndReturn(s))
+}</code></pre>
+					<p>Your module gets reinterpreted in terms of http calls by <code>reinterpretRemotely</code> and <code>clientHelpers/serverHelpers</code> fix up the dependencies accordingly to server/client context.</p>
 					<p>You can then compose <code>sayHiAndReturn</code> in your program in exactly the same way for both client and server.</p>
 					<p>Examples available in <code>test/rpc</code> and <code>demo/</code></p>
 				</div>
@@ -176,7 +182,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Can<wbr>Remote<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L14">packages/rpc/src/index.ts:14</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L13">packages/rpc/src/index.ts:13</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -217,7 +223,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Client<wbr>Helpers&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ClientHelpers&lt;M&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L83">packages/rpc/src/index.ts:83</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L82">packages/rpc/src/index.ts:82</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -233,7 +239,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Patched<wbr>ClientF&lt;M, Z&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PatchedClientF&lt;M, Z&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L77">packages/rpc/src/index.ts:77</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L76">packages/rpc/src/index.ts:76</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -252,7 +258,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">PatchedF&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PatchedF&lt;M&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L18">packages/rpc/src/index.ts:18</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L17">packages/rpc/src/index.ts:17</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -268,7 +274,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Patched<wbr>ServerF&lt;M, Z&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PatchedServerF&lt;M, Z&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L106">packages/rpc/src/index.ts:106</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L105">packages/rpc/src/index.ts:105</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -287,7 +293,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Payload<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L34">packages/rpc/src/index.ts:34</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L33">packages/rpc/src/index.ts:33</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -305,7 +311,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Remote&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Remote&lt;M&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L24">packages/rpc/src/index.ts:24</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L23">packages/rpc/src/index.ts:23</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -321,7 +327,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Runtime&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Runtime&lt;M&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L135">packages/rpc/src/index.ts:135</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L134">packages/rpc/src/index.ts:134</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -337,7 +343,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<div class="tsd-signature tsd-kind-icon">Server<wbr>Helpers&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ServerHelpers&lt;M&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L112">packages/rpc/src/index.ts:112</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L111">packages/rpc/src/index.ts:111</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -354,13 +360,13 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 					<a name="bindtoapp" class="tsd-anchor"></a>
 					<h3>bind<wbr>ToApp</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">bind<wbr>ToApp&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>module<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, entry<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span>, runtime<span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#runtime" class="tsd-signature-type">Runtime</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">&gt;</span>, controller<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">T.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tracer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">TracerFactory</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">HasExpress</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Express</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">bind<wbr>ToApp&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>module<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, entry<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span>, runtime<span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#runtime" class="tsd-signature-type">Runtime</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">&gt;</span>, controller<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">T.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tracer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">HasExpress</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Express</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L141">packages/rpc/src/index.ts:141</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L140">packages/rpc/src/index.ts:140</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -387,7 +393,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> controller: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> =&nbsp;&#x60;RPC Server - ${entry}&#x60;</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">T.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tracer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">TracerFactory</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">HasExpress</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Express</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">T.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tracer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">HasExpress</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Express</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -401,7 +407,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L30">packages/rpc/src/index.ts:30</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L29">packages/rpc/src/index.ts:29</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -430,7 +436,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L89">packages/rpc/src/index.ts:89</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L88">packages/rpc/src/index.ts:88</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -459,7 +465,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L58">packages/rpc/src/index.ts:58</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L57">packages/rpc/src/index.ts:57</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -491,7 +497,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L36">packages/rpc/src/index.ts:36</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L35">packages/rpc/src/index.ts:35</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -574,7 +580,7 @@ export <span class="hljs-keyword">function</span> say<span class="hljs-construct
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/rpc/src/index.ts#L118">packages/rpc/src/index.ts:118</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/rpc/src/index.ts#L117">packages/rpc/src/index.ts:117</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>

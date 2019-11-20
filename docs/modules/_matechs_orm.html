@@ -97,9 +97,11 @@
 						<section class="tsd-index-section ">
 							<h3>Functions</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_orm.html#bracketpool" class="tsd-kind-icon">bracket<wbr>Pool</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_orm.html#createpool" class="tsd-kind-icon">create<wbr>Pool</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_orm.html#ormconfig" class="tsd-kind-icon">orm<wbr>Config</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_orm.html#ormfactory" class="tsd-kind-icon">orm<wbr>Factory</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_orm.html#withpool" class="tsd-kind-icon">with<wbr>Pool</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_orm.html#usepool" class="tsd-kind-icon">use<wbr>Pool</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_orm.html#withrepository" class="tsd-kind-icon">with<wbr>Repository</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_orm.html#withtransaction" class="tsd-kind-icon">with<wbr>Transaction</a></li>
 							</ul>
@@ -115,13 +117,65 @@
 					<div class="tsd-signature tsd-kind-icon">orm<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol"> =&nbsp;ormFactory(createConnection)</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L109">packages/orm/src/index.ts:109</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L140">packages/orm/src/index.ts:140</a></li>
 						</ul>
 					</aside>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Functions</h2>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+					<a name="bracketpool" class="tsd-anchor"></a>
+					<h3>bracket<wbr>Pool</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<li class="tsd-signature tsd-kind-icon">bracket<wbr>Pool&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L142">packages/orm/src/index.ts:142</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>R</h4>
+								</li>
+								<li>
+									<h4>E</h4>
+								</li>
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>op: <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="createpool" class="tsd-anchor"></a>
+					<h3>create<wbr>Pool</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">create<wbr>Pool<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Graceful</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Connection</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L162">packages/orm/src/index.ts:162</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Graceful</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Connection</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
 					<a name="ormconfig" class="tsd-anchor"></a>
 					<h3>orm<wbr>Config</h3>
@@ -132,7 +186,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L21">packages/orm/src/index.ts:21</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L23">packages/orm/src/index.ts:23</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -155,7 +209,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L59">packages/orm/src/index.ts:59</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L67">packages/orm/src/index.ts:67</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -170,15 +224,15 @@
 									<h5>orm<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span></h5>
 									<ul class="tsd-parameters">
 										<li class="tsd-parameter">
-											<h5>with<wbr>Pool<span class="tsd-signature-symbol">: </span>function</h5>
+											<h5>bracket<wbr>Pool<span class="tsd-signature-symbol">: </span>function</h5>
 											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon">with<wbr>Pool&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+												<li class="tsd-signature tsd-kind-icon">bracket<wbr>Pool&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 											</ul>
 											<ul class="tsd-descriptions">
 												<li class="tsd-description">
 													<aside class="tsd-sources">
 														<ul>
-															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L61">packages/orm/src/index.ts:61</a></li>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L92">packages/orm/src/index.ts:92</a></li>
 														</ul>
 													</aside>
 													<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -203,6 +257,60 @@
 												</li>
 										</ul>        </li>
 										<li class="tsd-parameter">
+											<h5>create<wbr>Pool<span class="tsd-signature-symbol">: </span>function</h5>
+											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon">create<wbr>Pool<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<aside class="tsd-sources">
+														<ul>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L69">packages/orm/src/index.ts:69</a></li>
+														</ul>
+													</aside>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+													<ul class="tsd-parameters">
+														<li class="tsd-parameter-siganture">
+															<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+																<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+															</ul>
+															<ul class="tsd-descriptions">
+																<li class="tsd-description">
+																	<h4 class="tsd-parameters-title">Parameters</h4>
+																	<ul class="tsd-parameters">
+																		<li>
+																			<h5>r: <span class="tsd-signature-type">R</span></h5>
+																		</li>
+																	</ul>
+																	<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+																</li>
+															</ul>
+														</li>
+													</ul>
+												</li>
+										</ul>        </li>
+										<li class="tsd-parameter">
+											<h5>use<wbr>Pool<span class="tsd-signature-symbol">: </span>function</h5>
+											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon">use<wbr>Pool<span class="tsd-signature-symbol">(</span>pool<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Connection</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">(Anonymous function)</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<aside class="tsd-sources">
+														<ul>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L84">packages/orm/src/index.ts:84</a></li>
+														</ul>
+													</aside>
+													<h4 class="tsd-parameters-title">Parameters</h4>
+													<ul class="tsd-parameters">
+														<li>
+															<h5>pool: <span class="tsd-signature-type">Connection</span></h5>
+														</li>
+													</ul>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">(Anonymous function)</span></h4>
+												</li>
+										</ul>        </li>
+										<li class="tsd-parameter">
 											<h5>with<wbr>Repository<span class="tsd-signature-symbol">: </span>function</h5>
 											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-is-not-exported">
 												<li class="tsd-signature tsd-kind-icon">with<wbr>Repository<span class="tsd-signature-symbol">(</span>target<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">Function</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">EntitySchema</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Entity</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">(Anonymous function)</span></li>
@@ -211,7 +319,7 @@
 												<li class="tsd-description">
 													<aside class="tsd-sources">
 														<ul>
-															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L75">packages/orm/src/index.ts:75</a></li>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L106">packages/orm/src/index.ts:106</a></li>
 														</ul>
 													</aside>
 													<h4 class="tsd-parameters-title">Parameters</h4>
@@ -232,7 +340,7 @@
 												<li class="tsd-description">
 													<aside class="tsd-sources">
 														<ul>
-															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L81">packages/orm/src/index.ts:81</a></li>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L112">packages/orm/src/index.ts:112</a></li>
 														</ul>
 													</aside>
 													<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -262,38 +370,56 @@
 						</li>
 					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="withpool" class="tsd-anchor"></a>
-					<h3>with<wbr>Pool</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">with<wbr>Pool&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
+					<a name="usepool" class="tsd-anchor"></a>
+					<h3>use<wbr>Pool</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
+						<li class="tsd-signature tsd-kind-icon">use<wbr>Pool<span class="tsd-signature-symbol">(</span>pool<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Connection</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L111">packages/orm/src/index.ts:111</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L170">packages/orm/src/index.ts:170</a></li>
 								</ul>
 							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>R</h4>
-								</li>
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>A</h4>
-								</li>
-							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>op: <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+									<h5>pool: <span class="tsd-signature-type">Connection</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasormconfig.html" class="tsd-signature-type">HasOrmConfig</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter-siganture">
+									<ul class="tsd-signatures tsd-kind-type-literal tsd-has-type-parameter tsd-is-not-exported">
+										<li class="tsd-signature tsd-kind-icon">&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+									</ul>
+									<ul class="tsd-descriptions">
+										<li class="tsd-description">
+											<h4 class="tsd-type-parameters-title">Type parameters</h4>
+											<ul class="tsd-type-parameters">
+												<li>
+													<h4>R</h4>
+												</li>
+												<li>
+													<h4>E</h4>
+												</li>
+												<li>
+													<h4>A</h4>
+												</li>
+											</ul>
+											<h4 class="tsd-parameters-title">Parameters</h4>
+											<ul class="tsd-parameters">
+												<li>
+													<h5>op: <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_orm.hasormpool.html" class="tsd-signature-type">HasOrmPool</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.hasentitymanager.html" class="tsd-signature-type">HasEntityManager</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+												</li>
+											</ul>
+											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Ef.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_orm.orm.html" class="tsd-signature-type">Orm</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										</li>
+									</ul>
+								</li>
+							</ul>
 						</li>
 					</ul>
 				</section>
@@ -307,7 +433,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L117">packages/orm/src/index.ts:117</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L148">packages/orm/src/index.ts:148</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -378,7 +504,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/c8786d2/packages/orm/src/index.ts#L125">packages/orm/src/index.ts:125</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/orm/src/index.ts#L156">packages/orm/src/index.ts:156</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -451,14 +577,20 @@
 					<li class=" tsd-kind-variable tsd-parent-kind-module">
 						<a href="_matechs_orm.html#orm-1" class="tsd-kind-icon">orm</a>
 					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_orm.html#bracketpool" class="tsd-kind-icon">bracket<wbr>Pool</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_orm.html#createpool" class="tsd-kind-icon">create<wbr>Pool</a>
+					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module">
 						<a href="_matechs_orm.html#ormconfig" class="tsd-kind-icon">orm<wbr>Config</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module">
 						<a href="_matechs_orm.html#ormfactory" class="tsd-kind-icon">orm<wbr>Factory</a>
 					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_orm.html#withpool" class="tsd-kind-icon">with<wbr>Pool</a>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="_matechs_orm.html#usepool" class="tsd-kind-icon">use<wbr>Pool</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_orm.html#withrepository" class="tsd-kind-icon">with<wbr>Repository</a>
