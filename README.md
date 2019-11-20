@@ -25,7 +25,7 @@ Pipeable functions are also exported for both instances (default `Effect`, `parA
 
 In addition to default implementations additional exposed functions are:
 
-```
+```ts
 /* utils */
 export function error(message: string) {
   return new Error(message);
