@@ -4,7 +4,7 @@ The idea behind this package is to allow you to easily derive an RPC implementat
 
 In general we cannot allow any effect to be serialized, in particular an effect that supports RPC integration has to satisfy:
 
-```
+```ts
 export type CanRemote = {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
 };
@@ -12,7 +12,7 @@ export type CanRemote = {
 
 An example effect that support RPC:
 
-```
+```ts
 interface ModuleA extends CanRemote {
   moduleA: {
     sayHi(a: Serializable, b: Serializable): T.Effect<YourEnv, Error, SerializableOutput>;
@@ -22,7 +22,7 @@ interface ModuleA extends CanRemote {
 
 An example effect that cannot support RPC:
 
-```
+```ts
 interface ModuleA {
   moduleA: {
     runStuff<A>(f: (a:A) => void): T.Effect<YourEnv, Error, SerializableOutput>;
@@ -32,7 +32,7 @@ interface ModuleA {
 
 Note: you can always extract the RPC part as a separate effect and have your full effect extending the base RPC one.
 
-```
+```ts
 interface ModuleARPC extends CanRemote {
   moduleA: {
     sayHi(a: Serializable, b: Serializable): T.Effect<YourEnv, Error, SerializableOutput>;
@@ -48,7 +48,7 @@ type ModuleA = ModuleARPC & ModuleANoRPC
 
 In order to implement a client suppose you have an effect on the server side:
 
-```
+```ts
 export interface ModuleA extends CanRemote {
   moduleA: {
     sayHiAndReturn(s: string): T.Effect<T.NoEnv, Error, string>;
@@ -77,7 +77,7 @@ export function sayHiAndReturn(s: string): Effect<ModuleA, Error, string> {
 
 You can implement a client in this way:
 
-```
+```ts
 export const clientModuleA = reinterpretRemotely(moduleA, "url");
 
 export const {

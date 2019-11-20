@@ -14,7 +14,8 @@ You can think of this type as a computation that requires an environment `R` to 
 An important point to note in the implementation is the `src/overload.ts` file where we extend and define the new abstract types required to specialize `fp-ts` behaviour to respect the variance of `R` & `E`.
 
 The key difference is expressed in:
-```
+
+```ts
 export interface Chain3E<F extends URIS3> extends Apply3<F> {
   readonly chain: <R, E, A, R2, E2, B>(
     fa: Kind3<F, R, E, A>,
@@ -66,7 +67,8 @@ The module exposes 2 instances of the typeclass `type EffectMonad<T extends URIS
 Pipeable functions are also exported for both instances (default `Effect`, `parAp`, `parApFirst`, `parApSecond` for parallel)
 
 In addition to default implementations additional exposed functions are:
-```
+
+```ts
 /* utils */
 export function error(message: string) {
   return new Error(message);
