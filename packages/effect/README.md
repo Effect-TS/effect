@@ -1,7 +1,7 @@
 # Introduction
 Matechs Effect is a typescript library inspired by scala's ZIO and Haskell's RIO architecture.
 
-Docs at [https://mikearnaldi.github.io/matechs-effect/](https://mikearnaldi.github.io/matechs-effect/)
+Docs at [https://mikearnaldi.github.io/matechs-effect/modules/_matechs_effect.html](https://mikearnaldi.github.io/matechs-effect/modules/_matechs_effect.html)
 
 It aims to provide a strong fundational block to build typescript code in a more testable and standardized way.
 

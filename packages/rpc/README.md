@@ -2,6 +2,8 @@
 
 The idea behind this package is to allow you to easily derive an RPC implementation for your effects.
 
+Docs at [https://mikearnaldi.github.io/matechs-effect/modules/_matechs_rpc.html](https://mikearnaldi.github.io/matechs-effect/modules/_matechs_rpc.html)
+
 In general we cannot allow any effect to be serialized, in particular an effect that supports RPC integration has to satisfy:
 
 ```
