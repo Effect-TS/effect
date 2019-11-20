@@ -2,13 +2,12 @@ import * as T from "@matechs/effect";
 import * as H from "@matechs/http";
 import * as A from "fp-ts/lib/Array";
 import * as EX from "@matechs/express/lib";
-import { Tracer } from "@matechs/tracing";
 import {
+  Tracer,
   ChildContext,
   HasTracerContext,
-  TracerFactory,
   withTracer
-} from "@matechs/tracing/lib";
+} from "@matechs/tracing";
 import { pipe } from "fp-ts/lib/pipeable";
 
 export type CanRemote = {
@@ -143,7 +142,7 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
   entry: K,
   runtime: Runtime<M[K]>,
   controller: string = `RPC Server - ${entry}`
-): T.Effect<Tracer & TracerFactory & EX.HasExpress & EX.Express, never, void> {
+): T.Effect<Tracer & EX.HasExpress & EX.Express, never, void> {
   return withTracer(
     T.accessM(
       ({

@@ -11,8 +11,7 @@ export const module = pipe(
   E.noEnv,
   E.mergeEnv(P.printer),
   E.mergeEnv(C.counter),
-  E.mergeEnv(T.tracer),
-  E.mergeEnv(T.tracerFactoryDummy)
+  E.mergeEnv(T.tracer())
 );
 
 export const program = withTracer(

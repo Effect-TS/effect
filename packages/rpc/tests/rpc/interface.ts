@@ -1,5 +1,5 @@
 import * as T from "@matechs/effect";
-import { Tracer } from "@matechs/tracing/lib";
+import { Tracer } from "@matechs/tracing";
 
 /*
   this is an alternative way to provide a fake module definition that

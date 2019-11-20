@@ -11,18 +11,6 @@ import { ERROR } from "opentracing/lib/ext/tags";
 import Span from "opentracing/lib/span";
 import { IO } from "fp-ts/lib/IO";
 
-export interface TracerFactory {
-  tracer: {
-    factory: M.Effect<M.NoEnv, never, OT>;
-  };
-}
-
-export const tracerFactoryDummy: TracerFactory = {
-  tracer: {
-    factory: M.liftIO(() => new OT())
-  }
-};
-
 export interface HasTracerContext {
   tracer: {
     context: {
@@ -44,7 +32,7 @@ export interface Tracer {
   tracer: {
     withTracer<R, E, A>(
       ma: M.Effect<HasTracerContext & R, E, A>
-    ): M.Effect<R & TracerFactory, E, A>;
+    ): M.Effect<R, E, A>;
     withControllerSpan(
       component: string,
       operation: string,
@@ -129,21 +117,21 @@ export function createControllerSpan(
   };
 }
 
-export const tracer: Tracer = {
+export const tracer: (factory?: M.Effect<M.NoEnv, never, OT>) => Tracer = (
+  factory = M.liftIO(() => new OT())
+) => ({
   tracer: {
     withTracer<R, E, A>(
       ma: M.Effect<HasTracerContext & R, E, A>
-    ): M.Effect<R & TracerFactory, E, A> {
-      return M.accessM(({ tracer: { factory } }: TracerFactory) =>
-        Do(M.effectMonad)
-          .bind("instance", factory)
-          .bindL("res", ({ instance }) =>
-            M.provide<HasTracerContext>({
-              tracer: { context: { tracerInstance: instance } }
-            })(ma)
-          )
-          .return(s => s.res)
-      );
+    ): M.Effect<R, E, A> {
+      return Do(M.effectMonad)
+        .bind("instance", factory)
+        .bindL("res", ({ instance }) =>
+          M.provide<HasTracerContext>({
+            tracer: { context: { tracerInstance: instance } }
+          })(ma)
+        )
+        .return(s => s.res);
     },
     withControllerSpan(
       component: string,
@@ -196,7 +184,7 @@ export const tracer: Tracer = {
         );
     }
   }
-};
+});
 
 export function withTracer<R, E, A>(ma: M.Effect<HasTracerContext & R, E, A>) {
   return M.accessM(({ tracer }: Tracer) => tracer.withTracer(ma));
@@ -223,15 +211,11 @@ export function withChildSpan(operation: string) {
 // provide opt-out utility for components of the ecosystem that integrate tracing
 // this can be used if you don't want to configure tracing
 export function noTracing<R, A>(
-  op: M.Effect<
-    Tracer & TracerFactory & ChildContext & HasTracerContext & R,
-    Error,
-    A
-  >
+  op: M.Effect<Tracer & ChildContext & HasTracerContext & R, Error, A>
 ): M.Effect<R, Error, A> {
-  return M.provide(
-    pipe(M.noEnv, M.mergeEnv(tracer), M.mergeEnv(tracerFactoryDummy))
-  )(withTracer(withControllerSpan("no-tracing", "dummy-controller")(op)));
+  return M.provide(pipe(M.noEnv, M.mergeEnv(tracer())))(
+    withTracer(withControllerSpan("no-tracing", "dummy-controller")(op))
+  );
 }
 
 export type ChildContext = HasSpanContext & HasTracerContext;

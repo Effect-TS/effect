@@ -1,7 +1,7 @@
 import * as T from "@matechs/effect";
 import { serverHelpers } from "../../src";
 
-import { ChildContext, Tracer, withChildSpan } from "@matechs/tracing/lib";
+import { Tracer, withChildSpan } from "@matechs/tracing";
 import { ModuleA, Printer } from "./interface";
 
 export function print(s: string) {

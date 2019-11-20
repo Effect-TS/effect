@@ -4,7 +4,7 @@ import * as T from "@matechs/effect";
 import * as EX from "@matechs/express";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as RPC from "../src";
-import { tracer, tracerFactoryDummy } from "@matechs/tracing/lib";
+import { tracer } from "@matechs/tracing";
 import { httpClient } from "@matechs/http/lib";
 import * as G from "@matechs/graceful";
 import { moduleADef, Printer } from "./rpc/interface";
@@ -34,8 +34,7 @@ describe("RPC", () => {
     const module = pipe(
       T.noEnv,
       T.mergeEnv(RS.moduleA),
-      T.mergeEnv(tracer),
-      T.mergeEnv(tracerFactoryDummy),
+      T.mergeEnv(tracer()),
       T.mergeEnv(mockPrinter),
       T.mergeEnv(EX.express),
       T.mergeEnv(G.graceful())

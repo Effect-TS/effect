@@ -3,19 +3,19 @@ import * as assert from "assert";
 import * as E from "@matechs/effect";
 import * as Ei from "fp-ts/lib/Either";
 
-import { program, module } from "./demo/Main";
+import { program } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
 import {
   noTracing,
   tracer,
   Tracer,
-  TracerFactory,
-  tracerFactoryDummy,
   withChildSpan,
   withControllerSpan,
   withTracer
 } from "../src";
+import { counter } from "./demo/Counter";
+import { Printer } from "./demo/Printer";
 
 class MockTracer extends OT {
   constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
@@ -54,24 +54,29 @@ describe("Example", () => {
     const messages: Array<string> = [];
     const spans: Array<{ name: string; options: SpanOptions }> = [];
 
-    const tracer = new MockTracer(spans);
+    const mockTracer = new MockTracer(spans);
 
-    const mockModule: typeof module = {
-      counter: module.counter,
-      tracer: {
-        ...module.tracer,
-        factory: E.liftIO(() => tracer)
-      },
-      printer: {
-        print(s) {
-          return E.liftIO(() => {
-            messages.push(s);
-          });
-        }
-      }
-    };
+    const mockModule = pipe(
+      E.noEnv,
+      E.mergeEnv(tracer(E.liftIO(() => mockTracer))),
+      E.mergeEnv(counter)
+    );
 
-    const result = await E.run(pipe(program, E.provide(mockModule)))();
+    const result = await E.run(
+      pipe(
+        program,
+        E.provide(mockModule),
+        E.provide<Printer>({
+          printer: {
+            print(s) {
+              return E.liftIO(() => {
+                messages.push(s);
+              });
+            }
+          }
+        })
+      )
+    )();
 
     assert.deepEqual(
       spans.filter(s => s.name.indexOf("demo-main") >= 0).length,
@@ -112,14 +117,9 @@ describe("Example", () => {
     const messages: Array<string> = [];
     const spans: Array<{ name: string; options: SpanOptions }> = [];
 
-    const tracer = new MockTracer2(spans);
+    const mockTracer = new MockTracer2(spans);
 
-    const mockModule: Tracer & TracerFactory = {
-      tracer: {
-        ...module.tracer,
-        factory: E.liftIO(() => tracer)
-      }
-    };
+    const mockModule: Tracer = tracer(E.liftIO(() => mockTracer));
 
     const program2 = withTracer(
       withControllerSpan("", "", {})(E.liftIO(() => {}))
@@ -150,7 +150,7 @@ describe("Example", () => {
   it("skip tracing if out of context", async () => {
     const program2 = withChildSpan("noop")(E.left(E.error("not implemented")));
 
-    const result = await E.run(E.provide(tracer)(program2))();
+    const result = await E.run(E.provide(tracer())(program2))();
 
     assert.deepEqual(result, Ei.left(E.error("not implemented")));
   });
