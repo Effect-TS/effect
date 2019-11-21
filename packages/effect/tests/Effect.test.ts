@@ -8,7 +8,6 @@ import { toError } from "fp-ts/lib/Either";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { identity } from "fp-ts/lib/function";
-import { ExitTag } from "waveguide/lib/exit";
 
 describe("Effect", () => {
   describe("Extra", () => {

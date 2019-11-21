@@ -1,0 +1,6 @@
+{
+  "rulesDirectory": "../../node_modules/dtslint/bin/rules/",
+  "rules": {
+    "expect": true
+  }
+}
