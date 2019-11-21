@@ -1,6 +1,6 @@
 {
   "name": "@matechs/tracing",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -31,12 +31,12 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.0.15",
+    "@matechs/effect": "^0.0.16",
     "deepmerge": "^4.2.2",
-    "waveguide": "^1.3.0",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6",
-    "opentracing": "^0.14.4"
+    "opentracing": "^0.14.4",
+    "waveguide": "^1.3.0"
   },
   "gitHead": "083adfe9a484709608bc9f784781725ffa5ef7c9"
 }

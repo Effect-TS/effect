@@ -1,6 +1,6 @@
 {
   "name": "@matechs/rpc",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -36,17 +36,17 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.0.15",
-    "@matechs/express": "^0.0.4",
-    "@matechs/http": "^0.0.10",
-    "@matechs/tracing": "^0.0.18",
+    "@matechs/effect": "^0.0.16",
+    "@matechs/express": "^0.0.5",
+    "@matechs/http": "^0.0.11",
+    "@matechs/tracing": "^0.0.19",
     "body-parser": "^1.19.0",
     "deepmerge": "^4.2.2",
     "express": "^4.17.1",
-    "waveguide": "^1.3.0",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "waveguide": "^1.3.0"
   },
   "gitHead": "7744c3ae4ebc46daed3bd7927a47d846ed36a4f8"
 }
