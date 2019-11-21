@@ -4,6 +4,9 @@
   small adaptations to extend Monad3E and support contravariance on R
  */
 
+/* tested in wave */
+/* istanbul ignore file */
+
 import { Either, fold, left, right } from "fp-ts/lib/Either";
 import { FunctionN, identity } from "fp-ts/lib/function";
 import { getOrElse, option } from "fp-ts/lib/Option";

@@ -63,6 +63,8 @@ export interface Deferred<R, E, A> {
   from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
 }
 
+/* tested in wave */
+/* istanbul ignore next */
 export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
   R,
   E2,
