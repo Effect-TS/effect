@@ -73,135 +73,44 @@
 					</a>
 					<p>Matechs Effect is a typescript library inspired by scala&#39;s ZIO and Haskell&#39;s RIO architecture.</p>
 					<p>Docs at <a href="https://mikearnaldi.github.io/matechs-effect/modules/_matechs_effect.html">https://mikearnaldi.github.io/matechs-effect/modules/_matechs_effect.html</a></p>
-					<p>It aims to provide a strong fundational block to build typescript code in a more testable and standardized way.</p>
+					<p>It aims to provide a strong foundational block to build typescript code in a more testable and standardized way.</p>
 					<p>This library is composed at its core by the <code>@matechs/effect</code> package that exposes 2 effects</p>
 					<ul>
-						<li><code>type Effect&lt;R, E, A&gt; = (r: R) =&gt; FutureInstance&lt;E, A&gt;</code></li>
+						<li><code>type Effect&lt;R, E, A&gt; = (r: R) =&gt; Wave&lt;E, A&gt;</code></li>
 					</ul>
-					<p>The underlying <code>FutureInstance</code> is provided by <code>Fluture</code>.</p>
+					<p>The underlying <code>Wave</code> is provided by <code>Waveguide</code>.</p>
 					<p>You can think of this type as a computation that requires an environment <code>R</code> to run.</p>
-					<p>An important point to note in the implementation is the <code>src/overload.ts</code> file where we extend and define the new abstract types required to specialize <code>fp-ts</code> behaviour to respect the variance of <code>R</code> &amp; <code>E</code>.</p>
-					<p>The key difference is expressed in:</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> Chain3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> Apply3&lt;F&gt; {
-  readonly chain: &lt;R, E, A, R2, E2, B&gt;(
-    fa: Kind3&lt;F, R, E, A&gt;,
-    f: <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> Kind3&lt;F, R2, E2, B&gt;
-  ) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
-}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> Monad3E&lt;M <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> Applicative3&lt;M&gt;, Chain3E&lt;M&gt; {}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> PipeableChain3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> PipeableApply3E&lt;F&gt; {
-  readonly chain: &lt;R, E, A, B&gt;(
-    f: <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">ma: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
-  readonly chainFirst: &lt;R, E, A, B&gt;(
-    f: <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">ma: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
-  readonly flatten: &lt;R, E, R2, E2, A&gt;(
-    mma: Kind3&lt;F, R, E, Kind3&lt;F, R2, E2, A&gt;&gt;
-  ) =&gt; Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
-}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> PipeableApply3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> PipeableFunctor3&lt;F&gt; {
-  readonly ap: &lt;R, E, A, R2, E2&gt;(
-    fa: Kind3&lt;F, R, E, A&gt;
-  ) =&gt; &lt;B&gt;<span class="hljs-function">(<span class="hljs-params">fab: Kind3&lt;F, R2, E2, (<span class="hljs-params">a: A</span>) =&gt; B&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
-  readonly apFirst: &lt;R, E, B&gt;(
-    fb: Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;A, R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">fa: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, A&gt;;
-  readonly apSecond: &lt;R, E, B&gt;(
-    fb: Kind3&lt;F, R, E, B&gt;
-  ) =&gt; &lt;A, R2, E2&gt;<span class="hljs-function">(<span class="hljs-params">fa: Kind3&lt;F, R2, E2, A&gt;</span>) =&gt;</span> Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
-}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> Apply3E&lt;F <span class="hljs-keyword">extends</span> URIS3&gt; <span class="hljs-keyword">extends</span> Functor3&lt;F&gt; {
-  readonly ap: &lt;R, E, A, B, R2, E2&gt;(
-    fab: Kind3&lt;F, R, E, <span class="hljs-function">(<span class="hljs-params">a: A</span>) =&gt;</span> B&gt;,
-    fa: Kind3&lt;F, R2, E2, A&gt;
-  ) =&gt; Kind3&lt;F, R &amp; R2, E | E2, B&gt;;
-}</code></pre>
-					<p>In addition to that the <code>fp-ts-contrib/lib/Do</code> module has similar overloads. This workaround is necessary because typescript&#39;s lack of variance annotation on generics.</p>
 					<p>The module exposes 2 instances of the typeclass <code>type EffectMonad&lt;T extends URIS3&gt; = Monad3E&lt;T&gt; &amp; MonadThrow3&lt;T&gt; &amp; Bifunctor3&lt;T&gt;</code>:</p>
 					<ul>
 						<li><code>effectMonad</code> for <code>Effect&lt;R, E, A&gt;</code></li>
 						<li><code>concurrentEffectMonad</code> for <code>Effect&lt;R, E, A&gt;</code> provides concurrent <code>ap</code></li>
 					</ul>
 					<p>Pipeable functions are also exported for both instances (default <code>Effect</code>, <code>parAp</code>, <code>parApFirst</code>, <code>parApSecond</code> for parallel)</p>
-					<p>In addition to default implementations additional exposed functions are:</p>
-					<pre><code class="language-ts"><span class="hljs-comment">/* utils */</span>
-<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">error</span>(<span class="hljs-params">message: <span class="hljs-built_in">string</span></span>) </span>{
-  <span class="hljs-keyword">return</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(message);
-}
-
-<span class="hljs-comment">/* lift functions */</span>
-
-<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fromFuture</span>&lt;<span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">f: F.FutureInstance&lt;E, A&gt;</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">NoEnv</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">right</span>&lt;<span class="hljs-title">A</span>&gt;(<span class="hljs-params">a: A</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">NoEnv</span>, <span class="hljs-title">NoErr</span>, <span class="hljs-title">A</span>&gt;
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">left</span>&lt;<span class="hljs-title">E</span>&gt;(<span class="hljs-params">e: E</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">NoEnv</span>, <span class="hljs-title">E</span>, <span class="hljs-title">never</span>&gt;
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">liftPromise</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">E</span>&gt;(<span class="hljs-params">f: () =&gt; <span class="hljs-built_in">Promise</span>&lt;A&gt;</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">NoEnv</span>, <span class="hljs-title">never</span>, <span class="hljs-title">A</span>&gt;
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">liftIO</span>&lt;<span class="hljs-title">A</span>&gt;(<span class="hljs-params">f: () =&gt; A</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">NoEnv</span>, <span class="hljs-title">never</span>, <span class="hljs-title">A</span>&gt;
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">tryCatch</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">E</span>&gt;(<span class="hljs-params">f: () =&gt; <span class="hljs-built_in">Promise</span>&lt;A&gt;, onLeft: (e: <span class="hljs-built_in">any</span>) =&gt; E</span>)
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">tryCatchIO</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">E</span>&gt;(<span class="hljs-params">f: () =&gt; A, onLeft: (e: <span class="hljs-built_in">any</span>) =&gt; E</span>)
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">chainLeft</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">E2</span>, <span class="hljs-title">A</span>, <span class="hljs-title">R2</span>&gt;(<span class="hljs-params">ma: Effect&lt;R, E, A&gt;,onLeft: (e: E) =&gt; Effect&lt;R2, E2, A&gt;</span>)
-
-/* <span class="hljs-title">conditionals</span> */
-
-// <span class="hljs-title">run</span> <span class="hljs-title">only</span> <span class="hljs-title">when</span> <span class="hljs-title">predicate</span> <span class="hljs-title">is</span> <span class="hljs-title">true</span>, <span class="hljs-title">return</span> <span class="hljs-title">in</span> <span class="hljs-title">Option</span>
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">when</span>(<span class="hljs-params">predicate: <span class="hljs-built_in">boolean</span></span>): &lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;R, E, A&gt;</span>) =&gt; <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">Op</span>.<span class="hljs-title">Option</span>&lt;<span class="hljs-title">A</span>&gt;&gt;
-
-// <span class="hljs-title">same</span> <span class="hljs-title">as</span> <span class="hljs-title">alt</span> <span class="hljs-title">but</span> <span class="hljs-title">types</span> <span class="hljs-title">are</span> <span class="hljs-title">different</span> <span class="hljs-title">so</span> <span class="hljs-title">we</span> <span class="hljs-title">return</span> <span class="hljs-title">in</span> <span class="hljs-title">Either</span>
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">or</span>(<span class="hljs-params">predicate: <span class="hljs-built_in">boolean</span></span>): &lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;R, E, A&gt;</span>) =&gt; &lt;<span class="hljs-title">R2</span>, <span class="hljs-title">E2</span>, <span class="hljs-title">B</span>&gt;(<span class="hljs-params">mb: Effect&lt;R2, E2, B&gt;</span>) =&gt; <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R</span> &amp; <span class="hljs-title">R2</span>, <span class="hljs-title">E</span> | <span class="hljs-title">E2</span>, <span class="hljs-title">Ei</span>.<span class="hljs-title">Either</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">B</span>&gt;&gt;
-
-// <span class="hljs-title">decide</span> <span class="hljs-title">what</span> <span class="hljs-title">to</span> <span class="hljs-title">run</span> <span class="hljs-title">depending</span> <span class="hljs-title">on</span> <span class="hljs-title">a</span> <span class="hljs-title">boolean</span>, <span class="hljs-title">both</span> <span class="hljs-title">side</span> <span class="hljs-title">returns</span> <span class="hljs-title">same</span> <span class="hljs-title">type</span>
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">alt</span>(<span class="hljs-params">predicate: <span class="hljs-built_in">boolean</span></span>): &lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;R, E, A&gt;</span>) =&gt; (<span class="hljs-params">mb: Effect&lt;R, E, A&gt;</span>) =&gt; <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;
-
-/* <span class="hljs-title">manipulate</span> <span class="hljs-title">environment</span> */
-
-<span class="hljs-title">export</span> <span class="hljs-title">const</span> <span class="hljs-title">noEnv</span> = </span>{}</span>; // <span class="hljs-title">unit</span>
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">mergeEnv</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">B</span>&gt;(<span class="hljs-params">a: A</span>): (<span class="hljs-params">b: B</span>) =&gt; <span class="hljs-title">A</span> &amp; <span class="hljs-title">B</span> // <span class="hljs-title">merge</span> 2 <span class="hljs-title">environments</span>
-
-<span class="hljs-title">export</span> <span class="hljs-title">const</span> <span class="hljs-title">provide</span> = &lt;<span class="hljs-title">R</span>&gt;(<span class="hljs-params">r: R</span>) =&gt; &lt;<span class="hljs-title">R2</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;R2 &amp; R, E, A&gt;</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R2</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt; // <span class="hljs-title">provide</span> <span class="hljs-title">environment</span> <span class="hljs-title">to</span> <span class="hljs-title">an</span> <span class="hljs-title">effect</span>
-
-
-/* <span class="hljs-title">use</span> <span class="hljs-title">environment</span> */
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">accessM</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">R2</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">f: (r: R) =&gt; Effect&lt;R2, E, A&gt;</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R</span> &amp; <span class="hljs-title">R2</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">access</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">f: (r: R) =&gt; A</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">NoErr</span>, <span class="hljs-title">A</span>&gt;
-
-
-/* <span class="hljs-title">parallel</span> */
-
-<span class="hljs-title">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sequenceP</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">n: <span class="hljs-built_in">number</span>, ops: <span class="hljs-built_in">Array</span>&lt;Effect&lt;R, E, A&gt;&gt;</span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">R</span>, <span class="hljs-title">E</span>, <span class="hljs-title">Array</span>&lt;<span class="hljs-title">A</span>&gt;&gt;
-
-
-/* <span class="hljs-title">execution</span> */
-
-/* <span class="hljs-title">run</span> <span class="hljs-title">an</span> <span class="hljs-title">effect</span> <span class="hljs-title">that</span> <span class="hljs-title">requires</span> <span class="hljs-title">no</span> <span class="hljs-title">environment</span>, <span class="hljs-title">return</span> <span class="hljs-title">TaskEither</span> */
-<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">run</span>&lt;<span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;NoEnv, E, A&gt;</span>): (<span class="hljs-params"></span>) =&gt; <span class="hljs-title">Promise</span>&lt;<span class="hljs-title">Ei</span>.<span class="hljs-title">Either</span>&lt;<span class="hljs-title">E</span>, <span class="hljs-title">A</span>&gt;&gt;
-
-/* <span class="hljs-title">run</span> <span class="hljs-title">an</span> <span class="hljs-title">effect</span> <span class="hljs-title">that</span> <span class="hljs-title">requires</span> <span class="hljs-title">no</span> <span class="hljs-title">environment</span>, <span class="hljs-title">return</span> <span class="hljs-title">Promise</span>(<span class="hljs-params">reject on error</span>) */
-<span class="hljs-title">promise</span>&lt;<span class="hljs-title">A</span>&gt;(<span class="hljs-params">ma: Effect&lt;NoEnv, <span class="hljs-built_in">any</span>, A&gt;</span>): <span class="hljs-title">Promise</span>&lt;<span class="hljs-title">A</span>&gt;
-
-/* <span class="hljs-title">run</span> <span class="hljs-title">an</span> <span class="hljs-title">effect</span> <span class="hljs-title">that</span> <span class="hljs-title">requires</span> <span class="hljs-title">no</span> <span class="hljs-title">environment</span>, <span class="hljs-title">return</span> <span class="hljs-title">underlying</span> <span class="hljs-title">Fluture</span> <span class="hljs-title">fork</span> */
-<span class="hljs-title">fork</span>&lt;<span class="hljs-title">A</span>, <span class="hljs-title">E</span>&gt;(<span class="hljs-params">res: (a: A) =&gt; <span class="hljs-built_in">void</span>, rej: (e: E) =&gt; <span class="hljs-built_in">void</span></span>): (<span class="hljs-params">ma: Effect&lt;NoEnv, E, A&gt;</span>) =&gt; <span class="hljs-title">Cancel</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></code></pre>
 					<p>Interesting integrations and usage examples can be found in <code>packages/orm</code>, <code>packages/http</code>, <code>packages/rpc</code>, <code>packages/tracing</code></p>
+					<a href="#details" id="details" style="color: inherit; text-decoration: none;">
+						<h2>Details</h2>
+					</a>
+					<p>For details about the additional types and overloads please refer to documentation in <code>packages/effect</code></p>
 					<a href="#notes" id="notes" style="color: inherit; text-decoration: none;">
 						<h2>Notes</h2>
 					</a>
 					<p>This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!</p>
+					<p>The primary difference with waveguide itself is in how we manage the <code>R</code> parameter and in the utilities that we provide around environment management. The focus on this library is making environmental effects easy while providing valuable integrations out of the box where <code>Waveguide</code> itself poses primary focus around the underlying <code>Wave&lt;E, A&gt;</code></p>
+					<a href="#ecosystem" id="ecosystem" style="color: inherit; text-decoration: none;">
+						<h2>Ecosystem</h2>
+					</a>
+					<ul>
+						<li><code>@matechs/tracing</code> : provides integration with opentracing-js</li>
+						<li><code>@matechs/http</code> : provides integration with axios</li>
+						<li><code>@matechs/orm</code> : provides integration with typeorm</li>
+						<li><code>@matechs/rpc</code> : no boilerplate rpc for your effects</li>
+						<li><code>@matechs/express</code> : provides integration with express</li>
+						<li><code>@matechs/graceful</code> : utility to handle graceful exit</li>
+					</ul>
 					<a href="#thanks" id="thanks" style="color: inherit; text-decoration: none;">
 						<h2>Thanks</h2>
 					</a>
-					<p>This library would have not been feasibly possible without the strong fundations of <a href="https://github.com/gcanti/fp-ts">fp-ts</a> and <a href="https://github.com/fluture-js/Fluture">Fluture</a> huge thanks to the Authors.</p>
+					<p>This library would have not been feasibly possible without the strong foundations of <a href="https://github.com/gcanti/fp-ts">fp-ts</a> and <a href="https://github.com/rzeigler/waveguide">Waveguide</a> &amp; huge thanks to the Authors.</p>
 					<p>Another huge thanks goes to both the scala community (ZIO in specific) and the haskell community (RIO &amp; Polysemy) from which inspiration is taken.</p>
 					<p>All of the above projects are advised!</p>
 				</div>
@@ -272,13 +181,10 @@
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#bracket" class="tsd-kind-icon">bracket</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#chainleft" class="tsd-kind-icon">chain<wbr>Left</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_effect.html#error" class="tsd-kind-icon">error</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#fork" class="tsd-kind-icon">fork</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#fromfuture" class="tsd-kind-icon">from<wbr>Future</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#fromnullablem" class="tsd-kind-icon">from<wbr>NullableM</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#fromtasklike" class="tsd-kind-icon">from<wbr>Task<wbr>Like</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#left" class="tsd-kind-icon">left</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#liftio" class="tsd-kind-icon">liftIO</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#liftpromise" class="tsd-kind-icon">lift<wbr>Promise</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#mergeenv" class="tsd-kind-icon">merge<wbr>Env</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_effect.html#or" class="tsd-kind-icon">or</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#promise" class="tsd-kind-icon">promise</a></li>
@@ -286,6 +192,7 @@
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#right" class="tsd-kind-icon">right</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#run" class="tsd-kind-icon">run</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#sequencep" class="tsd-kind-icon">sequenceP</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#synctotal" class="tsd-kind-icon">sync<wbr>Total</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#totasklike" class="tsd-kind-icon">to<wbr>Task<wbr>Like</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#trycatch" class="tsd-kind-icon">try<wbr>Catch</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect.html#trycatchio" class="tsd-kind-icon">try<wbr>CatchIO</a></li>
@@ -310,7 +217,7 @@
 					<div class="tsd-signature tsd-kind-icon">Effect&lt;R, E, A&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L20">packages/effect/src/index.ts:20</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L25">packages/effect/src/index.ts:25</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -330,7 +237,7 @@
 						<ul class="tsd-parameters">
 							<li class="tsd-parameter-siganture">
 								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-type-alias tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 								</ul>
 								<ul class="tsd-descriptions">
 									<li class="tsd-description">
@@ -340,7 +247,7 @@
 												<h5>r: <span class="tsd-signature-type">R</span></h5>
 											</li>
 										</ul>
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 									</li>
 								</ul>
 							</li>
@@ -353,7 +260,7 @@
 					<div class="tsd-signature tsd-kind-icon">Effect<wbr>Monad&lt;T&gt;<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_effect.monad3e.html" class="tsd-signature-type">Monad3E</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">MonadThrow3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Bifunctor3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L28">packages/effect/src/index.ts:28</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L33">packages/effect/src/index.ts:33</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -369,7 +276,7 @@
 					<div class="tsd-signature tsd-kind-icon">Enforce<wbr>Non<wbr>Empty<wbr>Record&lt;R&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">EnforceNonEmptyRecord&lt;R&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/overload.ts#L47">packages/effect/src/overload.ts:47</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/overload.ts#L47">packages/effect/src/overload.ts:47</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -385,7 +292,7 @@
 					<div class="tsd-signature tsd-kind-icon">No<wbr>Env<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">unknown</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L17">packages/effect/src/index.ts:17</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L22">packages/effect/src/index.ts:22</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -395,7 +302,7 @@
 					<div class="tsd-signature tsd-kind-icon">No<wbr>Err<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">never</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L18">packages/effect/src/index.ts:18</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L23">packages/effect/src/index.ts:23</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -405,7 +312,7 @@
 					<div class="tsd-signature tsd-kind-icon">URI<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">"matechs/Effect"</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L15">packages/effect/src/index.ts:15</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L20">packages/effect/src/index.ts:20</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -418,7 +325,7 @@
 					<div class="tsd-signature tsd-kind-icon">URI<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">"matechs/Effect"</span><span class="tsd-signature-symbol"> =&nbsp;&quot;matechs/Effect&quot;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L13">packages/effect/src/index.ts:13</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L18">packages/effect/src/index.ts:18</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -428,7 +335,7 @@
 					<div class="tsd-signature tsd-kind-icon">ap<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L53">packages/effect/src/index.ts:53</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L58">packages/effect/src/index.ts:58</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -501,7 +408,7 @@
 					<div class="tsd-signature tsd-kind-icon">ap<wbr>First<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L54">packages/effect/src/index.ts:54</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L59">packages/effect/src/index.ts:59</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -574,7 +481,7 @@
 					<div class="tsd-signature tsd-kind-icon">ap<wbr>Second<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L55">packages/effect/src/index.ts:55</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L60">packages/effect/src/index.ts:60</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -647,7 +554,7 @@
 					<div class="tsd-signature tsd-kind-icon">bimap<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L60">packages/effect/src/index.ts:60</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L65">packages/effect/src/index.ts:65</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -756,7 +663,7 @@
 					<div class="tsd-signature tsd-kind-icon">chain<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L56">packages/effect/src/index.ts:56</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L61">packages/effect/src/index.ts:61</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -847,7 +754,7 @@
 					<div class="tsd-signature tsd-kind-icon">chain<wbr>First<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L57">packages/effect/src/index.ts:57</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L62">packages/effect/src/index.ts:62</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -938,7 +845,7 @@
 					<div class="tsd-signature tsd-kind-icon">filter<wbr>OrElse<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L61">packages/effect/src/index.ts:61</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L66">packages/effect/src/index.ts:66</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1090,7 +997,7 @@
 					<div class="tsd-signature tsd-kind-icon">flatten<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L58">packages/effect/src/index.ts:58</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L63">packages/effect/src/index.ts:63</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1139,7 +1046,7 @@
 					<div class="tsd-signature tsd-kind-icon">from<wbr>Either<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L62">packages/effect/src/index.ts:62</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L67">packages/effect/src/index.ts:67</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1182,7 +1089,7 @@
 					<div class="tsd-signature tsd-kind-icon">from<wbr>Option<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L63">packages/effect/src/index.ts:63</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L68">packages/effect/src/index.ts:68</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1258,7 +1165,7 @@
 					<div class="tsd-signature tsd-kind-icon">from<wbr>Predicate<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L64">packages/effect/src/index.ts:64</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L69">packages/effect/src/index.ts:69</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1410,7 +1317,7 @@
 					<div class="tsd-signature tsd-kind-icon">map<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L59">packages/effect/src/index.ts:59</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L64">packages/effect/src/index.ts:64</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1495,7 +1402,7 @@
 					<div class="tsd-signature tsd-kind-icon">map<wbr>Left<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L65">packages/effect/src/index.ts:65</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L70">packages/effect/src/index.ts:70</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1580,7 +1487,7 @@
 					<div class="tsd-signature tsd-kind-icon">no<wbr>Env<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L162">packages/effect/src/index.ts:162</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L165">packages/effect/src/index.ts:165</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1595,7 +1502,7 @@
 					<div class="tsd-signature tsd-kind-icon">par<wbr>Ap<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L69">packages/effect/src/index.ts:69</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L74">packages/effect/src/index.ts:74</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1668,7 +1575,7 @@
 					<div class="tsd-signature tsd-kind-icon">par<wbr>ApFirst<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L70">packages/effect/src/index.ts:70</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L75">packages/effect/src/index.ts:75</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1741,7 +1648,7 @@
 					<div class="tsd-signature tsd-kind-icon">par<wbr>ApSecond<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L71">packages/effect/src/index.ts:71</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L76">packages/effect/src/index.ts:76</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -1821,7 +1728,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L176">packages/effect/src/index.ts:176</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L179">packages/effect/src/index.ts:179</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -1871,7 +1778,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L170">packages/effect/src/index.ts:170</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L173">packages/effect/src/index.ts:173</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -1927,7 +1834,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L150">packages/effect/src/index.ts:150</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L153">packages/effect/src/index.ts:153</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -1998,7 +1905,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L203">packages/effect/src/index.ts:203</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L212">packages/effect/src/index.ts:212</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2050,7 +1957,7 @@
 									<ul class="tsd-parameters">
 										<li class="tsd-parameter-siganture">
 											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span>, e<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Ei.Either</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
 											</ul>
 											<ul class="tsd-descriptions">
 												<li class="tsd-description">
@@ -2058,9 +1965,6 @@
 													<ul class="tsd-parameters">
 														<li>
 															<h5>a: <span class="tsd-signature-type">A</span></h5>
-														</li>
-														<li>
-															<h5>e: <span class="tsd-signature-type">Ei.Either</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h5>
 														</li>
 													</ul>
 													<h4 class="tsd-returns-title">Returns <a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -2084,7 +1988,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L119">packages/effect/src/index.ts:119</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L126">packages/effect/src/index.ts:126</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2146,7 +2050,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L75">packages/effect/src/index.ts:75</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L80">packages/effect/src/index.ts:80</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2160,105 +2064,16 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="fork" class="tsd-anchor"></a>
-					<h3>fork</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">fork&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>res<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, rej<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L217">packages/effect/src/index.ts:217</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>A</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>res: <span class="tsd-signature-type">function</span></h5>
-									<ul class="tsd-parameters">
-										<li class="tsd-parameter-siganture">
-											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
-											</ul>
-											<ul class="tsd-descriptions">
-												<li class="tsd-description">
-													<h4 class="tsd-parameters-title">Parameters</h4>
-													<ul class="tsd-parameters">
-														<li>
-															<h5>a: <span class="tsd-signature-type">A</span></h5>
-														</li>
-													</ul>
-													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-												</li>
-											</ul>
-										</li>
-									</ul>
-								</li>
-								<li>
-									<h5>rej: <span class="tsd-signature-type">function</span></h5>
-									<ul class="tsd-parameters">
-										<li class="tsd-parameter-siganture">
-											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>e<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
-											</ul>
-											<ul class="tsd-descriptions">
-												<li class="tsd-description">
-													<h4 class="tsd-parameters-title">Parameters</h4>
-													<ul class="tsd-parameters">
-														<li>
-															<h5>e: <span class="tsd-signature-type">E</span></h5>
-														</li>
-													</ul>
-													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-												</li>
-											</ul>
-										</li>
-									</ul>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
-							<ul class="tsd-parameters">
-								<li class="tsd-parameter-siganture">
-									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Cancel</span></li>
-									</ul>
-									<ul class="tsd-descriptions">
-										<li class="tsd-description">
-											<h4 class="tsd-parameters-title">Parameters</h4>
-											<ul class="tsd-parameters">
-												<li>
-													<h5>op: <a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
-												</li>
-											</ul>
-											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Cancel</span></h4>
-										</li>
-									</ul>
-								</li>
-							</ul>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 					<a name="fromfuture" class="tsd-anchor"></a>
 					<h3>from<wbr>Future</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">from<wbr>Future&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">from<wbr>Future&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L81">packages/effect/src/index.ts:81</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L86">packages/effect/src/index.ts:86</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2273,7 +2088,7 @@
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>f: <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+									<h5>f: <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -2290,7 +2105,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L246">packages/effect/src/index.ts:246</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L248">packages/effect/src/index.ts:248</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2325,7 +2140,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L236">packages/effect/src/index.ts:236</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L238">packages/effect/src/index.ts:238</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2360,7 +2175,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L91">packages/effect/src/index.ts:91</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L94">packages/effect/src/index.ts:94</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2380,91 +2195,6 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="liftio" class="tsd-anchor"></a>
-					<h3>liftIO</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">liftIO&lt;A&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L101">packages/effect/src/index.ts:101</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>A</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>f: <span class="tsd-signature-type">function</span></h5>
-									<ul class="tsd-parameters">
-										<li class="tsd-parameter-siganture">
-											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span></li>
-											</ul>
-											<ul class="tsd-descriptions">
-												<li class="tsd-description">
-													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">A</span></h4>
-												</li>
-											</ul>
-										</li>
-									</ul>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="liftpromise" class="tsd-anchor"></a>
-					<h3>lift<wbr>Promise</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">lift<wbr>Promise&lt;A, E&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L95">packages/effect/src/index.ts:95</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>A</h4>
-								</li>
-								<li>
-									<h4>E</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>f: <span class="tsd-signature-type">function</span></h5>
-									<ul class="tsd-parameters">
-										<li class="tsd-parameter-siganture">
-											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
-											</ul>
-											<ul class="tsd-descriptions">
-												<li class="tsd-description">
-													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
-												</li>
-											</ul>
-										</li>
-									</ul>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 					<a name="mergeenv" class="tsd-anchor"></a>
 					<h3>merge<wbr>Env</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
@@ -2474,7 +2204,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L158">packages/effect/src/index.ts:158</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L161">packages/effect/src/index.ts:161</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2527,7 +2257,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L139">packages/effect/src/index.ts:139</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L142">packages/effect/src/index.ts:142</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2610,7 +2340,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L197">packages/effect/src/index.ts:197</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L206">packages/effect/src/index.ts:206</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2639,7 +2369,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L164">packages/effect/src/index.ts:164</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L167">packages/effect/src/index.ts:167</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2668,7 +2398,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L87">packages/effect/src/index.ts:87</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L90">packages/effect/src/index.ts:90</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2697,7 +2427,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L191">packages/effect/src/index.ts:191</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L200">packages/effect/src/index.ts:200</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2719,11 +2449,11 @@
 							<ul class="tsd-parameters">
 								<li class="tsd-parameter-siganture">
 									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Ei.Either</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">EX.Exit</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
 									</ul>
 									<ul class="tsd-descriptions">
 										<li class="tsd-description">
-											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Ei.Either</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
+											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">EX.Exit</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
 										</li>
 									</ul>
 								</li>
@@ -2741,7 +2471,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L182">packages/effect/src/index.ts:182</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L185">packages/effect/src/index.ts:185</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2770,6 +2500,47 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+					<a name="synctotal" class="tsd-anchor"></a>
+					<h3>sync<wbr>Total</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<li class="tsd-signature tsd-kind-icon">sync<wbr>Total&lt;A&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L98">packages/effect/src/index.ts:98</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>f: <span class="tsd-signature-type">function</span></h5>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-siganture">
+											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">A</span></h4>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 					<a name="totasklike" class="tsd-anchor"></a>
 					<h3>to<wbr>Task<wbr>Like</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
@@ -2779,7 +2550,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L226">packages/effect/src/index.ts:226</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L228">packages/effect/src/index.ts:228</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -2808,22 +2579,22 @@
 					<a name="trycatch" class="tsd-anchor"></a>
 					<h3>try<wbr>Catch</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">try<wbr>Catch&lt;A, E&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, onLeft<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">try<wbr>Catch&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, onLeft<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L105">packages/effect/src/index.ts:105</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L119">packages/effect/src/index.ts:119</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>A</h4>
+									<h4>E</h4>
 								</li>
 								<li>
-									<h4>E</h4>
+									<h4>A</h4>
 								</li>
 							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2873,22 +2644,22 @@
 					<a name="trycatchio" class="tsd-anchor"></a>
 					<h3>try<wbr>CatchIO</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">try<wbr>CatchIO&lt;A, E&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, onLeft<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">try<wbr>CatchIO&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, onLeft<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L112">packages/effect/src/index.ts:112</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L102">packages/effect/src/index.ts:102</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>A</h4>
+									<h4>E</h4>
 								</li>
 								<li>
-									<h4>E</h4>
+									<h4>A</h4>
 								</li>
 							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2944,7 +2715,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L132">packages/effect/src/index.ts:132</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L135">packages/effect/src/index.ts:135</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -2996,7 +2767,7 @@
 					<div class="tsd-signature tsd-kind-icon">concurrent<wbr>Effect<wbr>Monad<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L47">packages/effect/src/index.ts:47</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L52">packages/effect/src/index.ts:52</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal">
@@ -3009,7 +2780,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L49">packages/effect/src/index.ts:49</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L54">packages/effect/src/index.ts:54</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3019,7 +2790,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3029,7 +2800,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3040,7 +2811,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3050,7 +2821,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3068,7 +2839,7 @@
 					<div class="tsd-signature tsd-kind-icon">effect<wbr>Monad<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L32">packages/effect/src/index.ts:32</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L37">packages/effect/src/index.ts:37</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
@@ -3077,7 +2848,7 @@
 						<div class="tsd-signature tsd-kind-icon">URI<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">"matechs/Effect"</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L33">packages/effect/src/index.ts:33</a></li>
+								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L38">packages/effect/src/index.ts:38</a></li>
 							</ul>
 						</aside>
 					</section>
@@ -3091,7 +2862,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L36">packages/effect/src/index.ts:36</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L41">packages/effect/src/index.ts:41</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3101,7 +2872,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3111,7 +2882,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3122,7 +2893,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3132,7 +2903,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3153,7 +2924,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L43">packages/effect/src/index.ts:43</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L48">packages/effect/src/index.ts:48</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3163,7 +2934,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3173,7 +2944,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3236,7 +3007,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L37">packages/effect/src/index.ts:37</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L42">packages/effect/src/index.ts:42</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -3301,7 +3072,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L35">packages/effect/src/index.ts:35</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L40">packages/effect/src/index.ts:40</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3311,7 +3082,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3321,7 +3092,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3363,7 +3134,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L44">packages/effect/src/index.ts:44</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L49">packages/effect/src/index.ts:49</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3373,7 +3144,7 @@
 										<ul class="tsd-parameters">
 											<li class="tsd-parameter-siganture">
 												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
 												</ul>
 												<ul class="tsd-descriptions">
 													<li class="tsd-description">
@@ -3383,7 +3154,7 @@
 																<h5>r: <span class="tsd-signature-type">R</span></h5>
 															</li>
 														</ul>
-														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">FutureInstance</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">W.Wave</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 													</li>
 												</ul>
 											</li>
@@ -3425,7 +3196,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L34">packages/effect/src/index.ts:34</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L39">packages/effect/src/index.ts:39</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3448,7 +3219,7 @@
 							<li class="tsd-description">
 								<aside class="tsd-sources">
 									<ul>
-										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/e5b76be/packages/effect/src/index.ts#L42">packages/effect/src/index.ts:42</a></li>
+										<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/90977fb/packages/effect/src/index.ts#L47">packages/effect/src/index.ts:47</a></li>
 									</ul>
 								</aside>
 								<h4 class="tsd-parameters-title">Parameters</h4>
@@ -3615,9 +3386,6 @@
 						<a href="_matechs_effect.html#error" class="tsd-kind-icon">error</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect.html#fork" class="tsd-kind-icon">fork</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_effect.html#fromfuture" class="tsd-kind-icon">from<wbr>Future</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
@@ -3628,12 +3396,6 @@
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_effect.html#left" class="tsd-kind-icon">left</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect.html#liftio" class="tsd-kind-icon">liftIO</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect.html#liftpromise" class="tsd-kind-icon">lift<wbr>Promise</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_effect.html#mergeenv" class="tsd-kind-icon">merge<wbr>Env</a>
@@ -3655,6 +3417,9 @@
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_effect.html#sequencep" class="tsd-kind-icon">sequenceP</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_effect.html#synctotal" class="tsd-kind-icon">sync<wbr>Total</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_effect.html#totasklike" class="tsd-kind-icon">to<wbr>Task<wbr>Like</a>
