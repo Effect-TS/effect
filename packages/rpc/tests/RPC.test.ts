@@ -1,17 +1,16 @@
 import * as assert from "assert";
-import * as E from "fp-ts/lib/Either";
 import * as T from "@matechs/effect";
 import * as EX from "@matechs/express";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as RPC from "../src";
-import { tracer } from "@matechs/tracing";
-import { httpClient } from "@matechs/http/lib";
 import * as G from "@matechs/graceful";
-import { moduleADef, Printer } from "./rpc/interface";
-
 import * as RC from "./rpc/client";
 import * as RS from "./rpc/server";
+import { pipe } from "fp-ts/lib/pipeable";
+import { tracer } from "@matechs/tracing";
+import { httpClient } from "@matechs/http/lib";
+import { moduleADef, Printer } from "./rpc/interface";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { ExitTag } from "waveguide/lib/exit";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
@@ -24,7 +23,7 @@ describe("RPC", () => {
     const mockPrinter: Printer = {
       printer: {
         print(s) {
-          return T.liftIO(() => {
+          return T.syncTotal(() => {
             messages.push(s);
           });
         }
@@ -76,13 +75,13 @@ describe("RPC", () => {
 
     await T.promise(T.provide(module)(G.trigger()));
 
-    assert.deepEqual(result, E.left(T.error("not implemented")));
-    assert.deepEqual(result2, E.right("test"));
+    assert.deepEqual(result, T.raise(T.error("not implemented")));
+    assert.deepEqual(result2, T.done("test"));
     assert.deepEqual(
-      E.isLeft(result3) && result3.left.message,
+      result3._tag === ExitTag.Raise && result3.error.message,
       "connect ECONNREFUSED 127.0.0.1:3002"
     );
-    assert.deepEqual(result4, E.right("test"));
+    assert.deepEqual(result4, T.done("test"));
     assert.deepEqual(messages, ["test", "test"]);
   });
 });

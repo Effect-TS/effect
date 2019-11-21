@@ -1,4 +1,4 @@
-import * as E from "@matechs/effect";
+import * as T from "@matechs/effect";
 import * as A from "fp-ts/lib/Array";
 import { IO } from "fp-ts/lib/IO";
 import { Do } from "fp-ts-contrib/lib/Do";
@@ -9,20 +9,20 @@ export interface CounterState {
   counter: {
     ref: number;
 
-    increment(): E.Effect<CounterState, E.NoErr, void>;
+    increment(): T.Effect<CounterState, T.NoErr, void>;
   };
 }
 
 export function currentCount() {
-  return E.accessM(({ counter }: CounterState) => E.right(counter.ref));
+  return T.accessM(({ counter }: CounterState) => T.right(counter.ref));
 }
 
 export const counterState: IO<CounterState> = () => ({
   counter: {
     ref: 0,
     increment() {
-      return E.accessM((s: CounterState) =>
-        E.liftIO(() => {
+      return T.accessM((s: CounterState) =>
+        T.syncTotal(() => {
           s.counter.ref += 1;
         })
       );
@@ -32,7 +32,7 @@ export const counterState: IO<CounterState> = () => ({
 
 export interface Counter {
   counter: {
-    count(): E.Effect<
+    count(): T.Effect<
       Printer & Tracer & CounterState & ChildContext,
       Error,
       void[]
@@ -43,8 +43,8 @@ export interface Counter {
 export const counter: Counter = {
   counter: {
     count() {
-      return A.array.traverse(E.effectMonad)(A.range(1, 10), n =>
-        Do(E.effectMonad)
+      return A.array.traverse(T.effectMonad)(A.range(1, 10), n =>
+        Do(T.effectMonad)
           .do(increment())
           .bind("count", withChildSpan("span-current-count")(currentCount()))
           .doL(({ count }) => print(`n: ${n} (${count})`))
@@ -54,14 +54,14 @@ export const counter: Counter = {
   }
 };
 
-export function increment(): E.Effect<CounterState, E.NoErr, void> {
-  return E.accessM(({ counter }: CounterState) => counter.increment());
+export function increment(): T.Effect<CounterState, T.NoErr, void> {
+  return T.accessM(({ counter }: CounterState) => counter.increment());
 }
 
-export function count(): E.Effect<
+export function count(): T.Effect<
   Counter & Printer & Tracer & CounterState & ChildContext,
   Error,
   void[]
 > {
-  return E.accessM(({ counter }: Counter) => counter.count());
+  return T.accessM(({ counter }: Counter) => counter.count());
 }

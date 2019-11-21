@@ -4,6 +4,7 @@ import { get, httpClient, post } from "../src";
 import * as assert from "assert";
 import * as E from "fp-ts/lib/Either";
 import express from "express";
+import { ExitTag } from "waveguide/lib/exit";
 
 const app = express();
 
@@ -31,7 +32,7 @@ describe("Http", () => {
       T.provide(httpClient(mockAxios))(post("url", {}))
     )();
 
-    assert.deepEqual(res, E.left({ response: 1 }));
+    assert.deepEqual(res, T.raise({ response: 1 }));
   });
 
   it("issue get", async () => {
@@ -43,7 +44,7 @@ describe("Http", () => {
 
     server.close();
 
-    assert.deepEqual(E.isRight(res) && res.right.data, "ok");
+    assert.deepEqual(res._tag === ExitTag.Done && res.value.data, "ok");
   });
 
   it("issue get (404)", async () => {
@@ -55,6 +56,9 @@ describe("Http", () => {
 
     server.close();
 
-    assert.deepEqual(E.isLeft(res) && res.left.response.status, 404);
+    assert.deepEqual(
+      res._tag === ExitTag.Raise && res.error.response.status,
+      404
+    );
   });
 });

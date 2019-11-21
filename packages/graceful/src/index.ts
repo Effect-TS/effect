@@ -18,7 +18,7 @@ export const graceful: () => Graceful = () => ({
       op: T.Effect<T.NoEnv, T.NoErr, void>
     ): T.Effect<Graceful, T.NoErr, void> {
       return T.accessM(({ graceful }: Graceful) =>
-        T.liftIO(() => {
+        T.syncTotal(() => {
           graceful.state.push(op);
         })
       );
