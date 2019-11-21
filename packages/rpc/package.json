@@ -43,7 +43,7 @@
     "body-parser": "^1.19.0",
     "deepmerge": "^4.2.2",
     "express": "^4.17.1",
-    "fluture": "^12.0.1",
+    "waveguide": "^1.3.0",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6",
     "reflect-metadata": "^0.1.13"

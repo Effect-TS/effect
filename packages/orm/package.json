@@ -38,7 +38,7 @@
     "@matechs/graceful": "^0.0.4",
     "@matechs/tracing": "^0.0.18",
     "deepmerge": "^4.2.2",
-    "fluture": "^12.0.1",
+    "waveguide": "^1.3.0",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6",
     "opentracing": "^0.14.4",

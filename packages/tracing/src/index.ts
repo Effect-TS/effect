@@ -1,4 +1,4 @@
-import * as M from "@matechs/effect";
+import * as T from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 import {
   Tracer as OT,
@@ -31,48 +31,48 @@ export interface HasSpanContext {
 export interface Tracer {
   tracer: {
     withTracer<R, E, A>(
-      ma: M.Effect<HasTracerContext & R, E, A>
-    ): M.Effect<R, E, A>;
+      ma: T.Effect<HasTracerContext & R, E, A>
+    ): T.Effect<R, E, A>;
     withControllerSpan(
       component: string,
       operation: string,
       headers: { [k: string]: string }
     ): <R, A>(
-      ma: M.Effect<HasSpanContext & R, Error, A>
-    ) => M.Effect<HasTracerContext & R, Error, A>;
+      ma: T.Effect<HasSpanContext & R, Error, A>
+    ) => T.Effect<HasTracerContext & R, Error, A>;
     withChildSpan(
       operation: string
-    ): <R, A>(ma: M.Effect<R, Error, A>) => M.Effect<R, Error, A>;
+    ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
   };
 }
 
 function runWithSpan<R, A>(
-  ma: M.Effect<HasSpanContext & R, Error, A>,
+  ma: T.Effect<HasSpanContext & R, Error, A>,
   span: Span,
   component: string
 ) {
   return pipe(
     ma,
     x =>
-      M.chainLeft(x, e =>
+      T.chainLeft(x, e =>
         pipe(
-          M.liftIO(() => {
+          T.syncTotal(() => {
             span.setTag(ERROR, e.message);
             span.finish();
           }),
-          M.chain(() => M.left(e))
+          T.chain(() => T.left(e))
         )
       ),
-    M.chain(r =>
-      Do(M.effectMonad)
+    T.chain(r =>
+      Do(T.effectMonad)
         .do(
-          M.liftIO(() => {
+          T.syncTotal(() => {
             span.finish();
           })
         )
         .return(() => r)
     ),
-    M.provide<HasSpanContext>({
+    T.provide<HasSpanContext>({
       span: {
         context: { spanInstance: span, component }
       }
@@ -117,17 +117,17 @@ export function createControllerSpan(
   };
 }
 
-export const tracer: (factory?: M.Effect<M.NoEnv, never, OT>) => Tracer = (
-  factory = M.liftIO(() => new OT())
+export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
+  factory = T.syncTotal(() => new OT())
 ) => ({
   tracer: {
     withTracer<R, E, A>(
-      ma: M.Effect<HasTracerContext & R, E, A>
-    ): M.Effect<R, E, A> {
-      return Do(M.effectMonad)
+      ma: T.Effect<HasTracerContext & R, E, A>
+    ): T.Effect<R, E, A> {
+      return Do(T.effectMonad)
         .bind("instance", factory)
         .bindL("res", ({ instance }) =>
-          M.provide<HasTracerContext>({
+          T.provide<HasTracerContext>({
             tracer: { context: { tracerInstance: instance } }
           })(ma)
         )
@@ -138,18 +138,18 @@ export const tracer: (factory?: M.Effect<M.NoEnv, never, OT>) => Tracer = (
       operation: string,
       headers: { [k: string]: string }
     ): <R, A>(
-      ma: M.Effect<HasSpanContext & R, Error, A>
-    ) => M.Effect<R & HasTracerContext, Error, A> {
+      ma: T.Effect<HasSpanContext & R, Error, A>
+    ) => T.Effect<R & HasTracerContext, Error, A> {
       return ma =>
-        M.accessM(
+        T.accessM(
           ({
             tracer: {
               context: { tracerInstance }
             }
           }: HasTracerContext) =>
-            Do(M.effectMonad)
+            Do(T.effectMonad)
               .bindL("span", () =>
-                M.liftIO(
+                T.syncTotal(
                   createControllerSpan(
                     tracerInstance,
                     component,
@@ -164,13 +164,13 @@ export const tracer: (factory?: M.Effect<M.NoEnv, never, OT>) => Tracer = (
     },
     withChildSpan(
       operation: string
-    ): <R, A>(ma: M.Effect<R, Error, A>) => M.Effect<R, Error, A> {
-      return <R, A>(ma: M.Effect<R, Error, A>) =>
-        M.accessM((r: R) =>
+    ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A> {
+      return <R, A>(ma: T.Effect<R, Error, A>) =>
+        T.accessM((r: R) =>
           hasChildContext(r)
-            ? Do(M.effectMonad)
+            ? Do(T.effectMonad)
                 .bindL("span", () =>
-                  M.liftIO(() =>
+                  T.syncTotal(() =>
                     r.tracer.context.tracerInstance.startSpan(operation, {
                       childOf: r.span.context.spanInstance
                     })
@@ -186,8 +186,8 @@ export const tracer: (factory?: M.Effect<M.NoEnv, never, OT>) => Tracer = (
   }
 });
 
-export function withTracer<R, E, A>(ma: M.Effect<HasTracerContext & R, E, A>) {
-  return M.accessM(({ tracer }: Tracer) => tracer.withTracer(ma));
+export function withTracer<R, E, A>(ma: T.Effect<HasTracerContext & R, E, A>) {
+  return T.accessM(({ tracer }: Tracer) => tracer.withTracer(ma));
 }
 
 export function withControllerSpan(
@@ -196,24 +196,24 @@ export function withControllerSpan(
   headers: { [k: string]: string } = {}
 ) {
   return <R, A>(
-    ma: M.Effect<HasSpanContext & R, Error, A>
-  ): M.Effect<HasTracerContext & Tracer & R, Error, A> =>
-    M.accessM(({ tracer }: Tracer) =>
+    ma: T.Effect<HasSpanContext & R, Error, A>
+  ): T.Effect<HasTracerContext & Tracer & R, Error, A> =>
+    T.accessM(({ tracer }: Tracer) =>
       tracer.withControllerSpan(component, operation, headers)(ma)
     );
 }
 
 export function withChildSpan(operation: string) {
-  return <R, A>(ma: M.Effect<R, Error, A>): M.Effect<Tracer & R, Error, A> =>
-    M.accessM(({ tracer }: Tracer) => tracer.withChildSpan(operation)(ma));
+  return <R, A>(ma: T.Effect<R, Error, A>): T.Effect<Tracer & R, Error, A> =>
+    T.accessM(({ tracer }: Tracer) => tracer.withChildSpan(operation)(ma));
 }
 
 // provide opt-out utility for components of the ecosystem that integrate tracing
 // this can be used if you don't want to configure tracing
 export function noTracing<R, A>(
-  op: M.Effect<Tracer & ChildContext & HasTracerContext & R, Error, A>
-): M.Effect<R, Error, A> {
-  return M.provide(pipe(M.noEnv, M.mergeEnv(tracer())))(
+  op: T.Effect<Tracer & ChildContext & HasTracerContext & R, Error, A>
+): T.Effect<R, Error, A> {
+  return T.provide(pipe(T.noEnv, T.mergeEnv(tracer())))(
     withTracer(withControllerSpan("no-tracing", "dummy-controller")(op))
   );
 }

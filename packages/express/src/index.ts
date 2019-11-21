@@ -2,10 +2,10 @@ import newExpress from "express";
 import * as T from "@matechs/effect";
 import * as EX from "express";
 import * as bodyParser from "body-parser";
-import { isLeft } from "fp-ts/lib/Either";
 import { Server } from "http";
 import * as G from "@matechs/graceful";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { ExitTag } from "waveguide/lib/exit";
 
 export interface HasExpress {
   express: {
@@ -38,13 +38,27 @@ export const express: Express = {
       f: (req: EX.Request) => T.Effect<R, E, RES>
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
-        T.liftIO(() => {
+        T.syncTotal(() => {
           r.express.app[method](path, bodyParser.json(), (req, res) => {
             T.run(T.provide(r)(f(req)))().then(o => {
-              if (isLeft(o)) {
-                res.status(500).send(o.left);
-              } else {
-                res.send(o.right);
+              switch (o._tag) {
+                case ExitTag.Done:
+                  res.send(o.value);
+                  return;
+                case ExitTag.Raise:
+                  res.status(500).send(o.error);
+                  return;
+                case ExitTag.Interrupt:
+                  res.status(500).send({
+                    status: "interrupted"
+                  });
+                  return;
+                case ExitTag.Abort:
+                  res.status(500).send({
+                    status: "aborted",
+                    with: o.abortedWith
+                  });
+                  return;
               }
             });
           });
@@ -61,13 +75,13 @@ export const express: Express = {
       return T.accessM(({ express: { app } }: HasExpress) =>
         Do(T.effectMonad)
           .bindL("s", () =>
-            T.liftIO(() => {
+            T.syncTotal(() => {
               return app.listen(port, hostname);
             })
           )
           .doL(({ s }) =>
             G.onExit(
-              T.liftIO(() => {
+              T.syncTotal(() => {
                 s.close();
               })
             )
