@@ -7,6 +7,8 @@
 import { raiseAbort, unit } from "waveguide/lib/waver";
 import * as T from "./";
 
+/* tested in wave */
+/* istanbul ignore next */
 export const natNumber = (msg: unknown) => (
   n: number
 ): T.Effect<T.NoEnv, T.NoErr, void> =>

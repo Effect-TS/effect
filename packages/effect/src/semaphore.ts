@@ -20,6 +20,8 @@ export interface Semaphore {
   readonly available: T.Effect<{}, never, number>;
 }
 
+/* tested in wave */
+/* istanbul ignore next */
 export function liftSemaphore(sem: S.Semaphore): Semaphore {
   const acquireN = flow(sem.acquireN, waver.encaseWave);
   const acquire = waver.encaseWave(sem.acquire);
