@@ -1,6 +1,6 @@
 {
   "name": "@matechs/graceful",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -21,7 +21,7 @@
     "@babel/plugin-proposal-decorators": "^7.7.0",
     "@babel/preset-env": "^7.7.1",
     "@babel/preset-typescript": "^7.7.2",
-    "@matechs/http": "^0.0.13",
+    "@matechs/http": "^0.0.14",
     "@types/jest": "^24.0.23",
     "@types/node": "^12.12.11",
     "babel-jest": "^24.9.0",
@@ -35,8 +35,8 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.0.18",
-    "@matechs/tracing": "^0.0.21",
+    "@matechs/effect": "^0.0.19",
+    "@matechs/tracing": "^0.0.22",
     "deepmerge": "^4.2.2",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6",
