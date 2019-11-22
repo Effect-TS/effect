@@ -1,4 +1,4 @@
-import "fp-ts-contrib/lib/Do"
+import "fp-ts-contrib/lib/Do";
 
 import { Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { Applicative3 } from "fp-ts/lib/Applicative";
@@ -15,7 +15,6 @@ import { Filterable3 } from "fp-ts/lib/Filterable";
 import { Compactable3 } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
-import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
 import {
   PipeableAlt3,
   PipeableBifunctor3,
@@ -34,6 +33,7 @@ import {
 } from "fp-ts/lib/pipeable";
 import { Apply3 } from "fp-ts/lib/Apply";
 import { NoEnv, NoErr } from "./index";
+import { Monad3 } from "fp-ts/lib/Monad";
 
 export interface Chain3E<F extends URIS3> extends Apply3<F> {
   readonly chain: <R, E, A, R2, E2, B>(
@@ -48,7 +48,9 @@ declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
 export interface Do3CE<M extends URIS3, S extends object, U, L> {
   do: <E, R>(ma: Kind3<M, R, E, unknown>) => Do3CE<M, S, U & R, L | E>;
-  doL: <E, R>(f: (s: S) => Kind3<M, R, E, unknown>) => Do3CE<M, S, U & R, L | E>;
+  doL: <E, R>(
+    f: (s: S) => Kind3<M, R, E, unknown>
+  ) => Do3CE<M, S, U & R, L | E>;
   bind: <N extends string, E, R, A>(
     name: Exclude<N, keyof S>,
     ma: Kind3<M, R, E, A>
@@ -82,7 +84,9 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
     M,
     S &
       {
-        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>] ? A : never;
+        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>]
+          ? A
+          : never;
       },
     U,
     L
@@ -98,7 +102,9 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
     M,
     S &
       {
-        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>] ? A : never;
+        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>]
+          ? A
+          : never;
       },
     U,
     L
@@ -108,7 +114,9 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
 }
 
 declare module "fp-ts-contrib/lib/Do" {
-  export function Do<M extends URIS3>(M: Monad3E<M>): Do3CE<M, {}, NoEnv, NoErr>;
+  export function Do<M extends URIS3>(
+    M: Monad3E<M>
+  ): Do3CE<M, {}, NoEnv, NoErr>;
 }
 
 export interface PipeableChain3E<F extends URIS3> extends PipeableApply3E<F> {
@@ -155,7 +163,9 @@ declare module "fp-ts/lib/pipeable" {
     ? PipeableFunctor3<F>
     : {}) &
     (I extends Contravariant3<F> ? PipeableContravariant3<F> : {}) &
-    (I extends FunctorWithIndex3<F, infer Ix> ? PipeableFunctorWithIndex3<F, Ix> : {}) &
+    (I extends FunctorWithIndex3<F, infer Ix>
+      ? PipeableFunctorWithIndex3<F, Ix>
+      : {}) &
     (I extends Bifunctor3<F> ? PipeableBifunctor3<F> : {}) &
     (I extends Extend3<F> ? PipeableExtend3<F> : {}) &
     (I extends FoldableWithIndex3<F, infer Ix>
@@ -173,5 +183,9 @@ declare module "fp-ts/lib/pipeable" {
       : {}) &
     (I extends Profunctor3<F> ? PipeableProfunctor3<F> : {}) &
     (I extends Semigroupoid3<F> ? PipeableSemigroupoid3<F> : {}) &
-    (I extends MonadThrow3<F> ? PipeableMonadThrow3<F> : {});
+    (I extends MonadThrow3E<F> ? PipeableMonadThrow3<F> : {});
+}
+
+export interface MonadThrow3E<M extends URIS3> extends Monad3E<M> {
+  readonly throwError: <R, E, A>(e: E) => Kind3<M, R, E, A>;
 }

@@ -12,22 +12,22 @@ import { identity } from "fp-ts/lib/function";
 describe("Effect", () => {
   describe("Extra", () => {
     it("fromFuture", async () => {
-      const a = await _.run(_.fromFuture(W.wave.of(1)))();
+      const a = await _.run(_.fromWave(W.wave.of(1)))();
 
       assert.deepEqual(a, _.done(1));
     });
 
     it("liftPromise", async () => {
-      const a = await _.run(_.tryCatch(() => Promise.reject(1), identity))();
+      const a = await _.run(_.tryPromise(identity)(() => Promise.reject(1)))();
 
       assert.deepEqual(a, _.raise(1));
     });
 
     it("tryCatchIO", async () => {
       const a = await _.run(
-        _.tryCatchIO(() => {
+        _.tryIO(toError)(() => {
           throw 100;
-        }, toError)
+        })
       )();
 
       assert.deepEqual(a, _.raise(_.error("100")));
@@ -36,9 +36,9 @@ describe("Effect", () => {
     it("chainLeft", async () => {
       const a = await _.run(
         pipe(
-          _.tryCatchIO(() => {
+          _.tryIO(toError)(() => {
             throw 100;
-          }, toError),
+          }),
           _.chainLeft(e => _.right(1))
         )
       )();
@@ -124,7 +124,7 @@ describe("Effect", () => {
     });
 
     it("sequenceP", async () => {
-      const res = await _.run(_.sequenceP(1, [_.right(1), _.right(2)]))();
+      const res = await _.run(_.sequenceP(1)([_.right(1), _.right(2)]))();
 
       assert.deepEqual(res, _.done([1, 2]));
     });
@@ -180,18 +180,12 @@ describe("Effect", () => {
 
   it("tryCatch", async () => {
     const e1 = await _.run(
-      _.tryCatch(
-        () => Promise.resolve(1),
-        () => "error"
-      )
+      _.tryPromise(() => "error")(() => Promise.resolve(1))
     )();
 
     assert.deepStrictEqual(e1, _.done(1));
     const e2 = await _.run(
-      _.tryCatch(
-        () => Promise.reject(undefined),
-        () => "error"
-      )
+      _.tryPromise(() => "error")(() => Promise.reject(undefined))
     )();
     assert.deepStrictEqual(e2, _.raise("error"));
   });
@@ -222,7 +216,7 @@ describe("Effect", () => {
     const useSuccess = () => _.right("use success");
     const useFailure = () => _.left("use failure");
     const releaseSuccess = () =>
-      _.syncTotal(() => {
+      _.fromIO(() => {
         log.push("release success");
       });
     const releaseFailure = () => _.left("release failure");
