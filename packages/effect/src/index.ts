@@ -91,7 +91,7 @@ export function right<A>(a: A): Effect<NoEnv, NoErr, A> {
   return effectMonad.of(a);
 }
 
-export function left<E>(e: E): Effect<NoEnv, E, never> {
+export function left<E, A = never>(e: E): Effect<NoEnv, E, A> {
   return _ => W.raiseError(e);
 }
 
@@ -123,11 +123,17 @@ export function tryCatch<E, A>(
   return _ => W.mapError(W.fromPromise(f), onLeft);
 }
 
-export function chainLeft<R, E, E2, A, R2>(
+export function chainLeft_<R, E, E2, A, R2>(
   ma: Effect<R, E, A>,
   onLeft: (e: E) => Effect<R2, E2, A>
 ): Effect<R & R2, E2, A> {
   return r => W.chainError(ma(r), e => onLeft(e)(r));
+}
+
+export function chainLeft<E, E2, A, R2>(
+  onLeft: (e: E) => Effect<R2, E2, A>
+): <R>(ma: Effect<R, E, A>) => Effect<R & R2, E2, A> {
+  return ma => r => W.chainError(ma(r), e => onLeft(e)(r));
 }
 
 /* conditionals */
@@ -139,7 +145,7 @@ export function when(
     predicate ? effectMonad.map(ma, Op.some) : effectMonad.of(Op.none);
 }
 
-export function or(
+export function or_(
   predicate: boolean
 ): <R, E, A>(
   ma: Effect<R, E, A>
@@ -150,10 +156,25 @@ export function or(
     predicate ? effectMonad.map(ma, Ei.left) : effectMonad.map(mb, Ei.right);
 }
 
-export function alt(
+export function or<R, E, A>(
+  ma: Effect<R, E, A>
+): <R2, E2, B>(
+  mb: Effect<R2, E2, B>
+) => (predicate: boolean) => Effect<R & R2, E | E2, Ei.Either<A, B>> {
+  return mb => predicate =>
+    predicate ? effectMonad.map(ma, Ei.left) : effectMonad.map(mb, Ei.right);
+}
+
+export function _alt(
   predicate: boolean
 ): <R, E, A>(ma: Effect<R, E, A>) => (mb: Effect<R, E, A>) => Effect<R, E, A> {
   return ma => mb => (predicate ? ma : mb);
+}
+
+export function alt<R, E, A>(
+  ma: Effect<R, E, A>
+): (mb: Effect<R, E, A>) => (predicate: boolean) => Effect<R, E, A> {
+  return mb => predicate => (predicate ? ma : mb);
 }
 
 /* manipulate environment */
@@ -231,7 +252,7 @@ export function toTaskLike<R, E, A>(
   return pipe(
     ma,
     map(a => Ei.right(a)),
-    x => chainLeft(x, e => right(Ei.left(e)))
+    chainLeft(e => right(Ei.left(e)))
   );
 }
 
