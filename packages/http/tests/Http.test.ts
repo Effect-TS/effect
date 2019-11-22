@@ -2,7 +2,6 @@ import * as T from "@matechs/effect";
 import AX, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { get, httpClient, post } from "../src";
 import * as assert from "assert";
-import * as E from "fp-ts/lib/Either";
 import express from "express";
 import { ExitTag } from "waveguide/lib/exit";
 

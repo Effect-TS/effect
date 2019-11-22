@@ -23,7 +23,7 @@ describe("RPC", () => {
     const mockPrinter: Printer = {
       printer: {
         print(s) {
-          return T.syncTotal(() => {
+          return T.fromIO(() => {
             messages.push(s);
           });
         }

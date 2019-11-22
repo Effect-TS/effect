@@ -13,8 +13,8 @@ describe("Express", () => {
       Do(T.effectMonad)
         .do(EX.route("post", "/", () => T.right({ res: 1 })))
         .do(EX.route("post", "/bad", () => T.left({ res: 1 })))
-        .do(EX.route("post", "/bad2", () => T.fromFuture(raiseAbort("abort"))))
-        .do(EX.route("post", "/bad3", () => T.fromFuture(raiseInterrupt)))
+        .do(EX.route("post", "/bad2", () => T.fromWave(raiseAbort("abort"))))
+        .do(EX.route("post", "/bad3", () => T.fromWave(raiseInterrupt)))
         .bind("s", EX.bind(3003, "127.0.0.1"))
         .return(s => s.s)
     );
