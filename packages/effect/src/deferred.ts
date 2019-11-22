@@ -71,7 +71,7 @@ export function makeDeferred<E, A, E2 = never>(): T.Effect<
 > {
   return T.fromIO(() => {
     const c: Completable<T.Effect<T.NoEnv, E, A>> = completable();
-    const wait = T.flatten(
+    const wait: T.Effect<T.NoEnv, E, A> = T.flatten(
       T.fromAsync<T.Effect<T.NoEnv, E, A>>(callback => c.listen(callback))
     );
 

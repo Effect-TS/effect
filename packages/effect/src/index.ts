@@ -8,7 +8,7 @@ import * as EX from "waveguide/lib/exit";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Monad3E, MonadThrow3E } from "./overload";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
-import { Kind3, URIS3 } from "fp-ts/lib/HKT";
+import { HKT, Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { IO } from "fp-ts/lib/IO";

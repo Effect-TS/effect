@@ -121,7 +121,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
               )
         )
       )
-    );
+    ) as any; // this is fine for typescript but typedoc doesn't work here
 
   const cancelWait = (
     n: number,
