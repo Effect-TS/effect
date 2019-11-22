@@ -39,7 +39,7 @@ describe("Effect", () => {
           _.tryCatchIO(() => {
             throw 100;
           }, toError),
-          x => _.chainLeft(x, e => _.right(1))
+          _.chainLeft(e => _.right(1))
         )
       )();
 
@@ -55,16 +55,16 @@ describe("Effect", () => {
     });
 
     it("or", async () => {
-      const a = await _.run(_.or(true)(_.right(1))(_.right(2)))();
-      const b = await _.run(_.or(false)(_.right(1))(_.right(2)))();
+      const a = await _.run(_.or(_.right(1))(_.right(2))(true))();
+      const b = await _.run(_.or(_.right(1))(_.right(2))(false))();
 
       assert.deepEqual(a, _.done(E.left(1)));
       assert.deepEqual(b, _.done(E.right(2)));
     });
 
     it("alt", async () => {
-      const a = await _.run(_.alt(true)(_.right(1))(_.right(2)))();
-      const b = await _.run(_.alt(false)(_.right(1))(_.right(2)))();
+      const a = await _.run(_.alt(_.right(1))(_.right(2))(true))();
+      const b = await _.run(_.alt(_.right(1))(_.right(2))(false))();
 
       assert.deepEqual(a, _.done(1));
       assert.deepEqual(b, _.done(2));

@@ -53,16 +53,15 @@ function runWithSpan<R, A>(
 ) {
   return pipe(
     ma,
-    x =>
-      T.chainLeft(x, e =>
-        pipe(
-          T.syncTotal(() => {
-            span.setTag(ERROR, e.message);
-            span.finish();
-          }),
-          T.chain(() => T.left(e))
-        )
-      ),
+    T.chainLeft(e =>
+      pipe(
+        T.syncTotal(() => {
+          span.setTag(ERROR, e.message);
+          span.finish();
+        }),
+        T.chain(() => T.left(e))
+      )
+    ),
     T.chain(r =>
       Do(T.effectMonad)
         .do(
