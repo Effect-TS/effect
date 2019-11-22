@@ -93,11 +93,11 @@ export const ormFactory: (
       return T.accessM(({ orm: { options } }: HasOrmConfig) =>
         T.bracket(
           pipe(() => factory(options), T.tryPromise(toError)),
+          db => pipe(db.close, T.tryPromise(toError)),
           db =>
             T.provide<HasOrmPool & HasEntityManager>({
               orm: { connection: db, manager: db.manager }
-            })(op),
-          db => pipe(db.close, T.tryPromise(toError))
+            })(op)
         )
       );
     },
