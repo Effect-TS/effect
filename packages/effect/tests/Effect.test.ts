@@ -17,6 +17,80 @@ describe("Effect", () => {
       assert.deepEqual(a, _.done(1));
     });
 
+    it("fromAsync", async () => {
+      const a = await _.run(
+        _.fromAsync(res => {
+          setImmediate(() => {
+            res(1);
+          });
+
+          return () => {};
+        })
+      )();
+
+      assert.deepEqual(a, _.done(1));
+    });
+
+    it("raised", async () => {
+      const a = await _.run(_.raised(_.raise(1)))();
+
+      assert.deepEqual(a, _.raise(1));
+    });
+
+    it("completed", async () => {
+      const a = await _.run(_.completed(_.done(1)))();
+
+      assert.deepEqual(a, _.done(1));
+    });
+
+    it("raiseAbort", async () => {
+      const a = await _.run(_.raiseAbort(1))();
+
+      assert.deepEqual(a, _.abort(1));
+    });
+
+    it("result", async () => {
+      const a = await _.run(_.result(_.right(1)))();
+
+      assert.deepEqual(a, _.done(_.done(1)));
+    });
+
+    it("uninterruptible", async () => {
+      const a = await _.run(_.uninterruptible(_.right(1)))();
+
+      assert.deepEqual(a, _.done(1));
+    });
+
+    it("interruptible", async () => {
+      const a = await _.run(_.interruptible(_.right(1)))();
+
+      assert.deepEqual(a, _.done(1));
+    });
+
+    it("onInterrupted", async () => {
+      let called = false;
+
+      const a = await _.run(
+        _.onInterrupted(
+          _.raiseInterrupt,
+          _.fromIO(() => {
+            called = true;
+          })
+        )
+      )();
+
+      assert.deepEqual(a, _.interrupt);
+      assert.deepEqual(called, true);
+    });
+
+    it("toTaskLike", async () => {
+      const a = await _.run(_.toTaskLike(_.right(1)))();
+      const b = await _.run(_.toTaskLike(_.left(1)))();
+
+      assert.deepEqual(a, _.done(E.right(1)));
+      assert.deepEqual(b, _.done(E.left(1)));
+    });
+
     it("liftPromise", async () => {
       const a = await _.run(_.tryPromise(identity)(() => Promise.reject(1)))();
 
@@ -281,6 +355,68 @@ describe("Effect", () => {
     it("should return the release error if release fails", async () => {
       const e = await _.run(
         _.bracket(acquireSuccess, releaseFailure, useSuccess)
+      )();
+      assert.deepStrictEqual(e, _.raise("release failure"));
+    });
+  });
+
+  describe("bracketExit", () => {
+    let log: Array<string> = [];
+
+    const acquireFailure = _.left("acquire failure");
+    const acquireSuccess = _.right({ res: "acquire success" });
+    const useSuccess = () => _.right("use success");
+    const useFailure = () => _.left("use failure");
+    const releaseSuccess = () =>
+      _.fromIO(() => {
+        log.push("release success");
+      });
+    const releaseFailure = () => _.left("release failure");
+
+    beforeEach(() => {
+      log = [];
+    });
+
+    it("should return the acquire error if acquire fails", async () => {
+      const e = await _.run(
+        _.bracketExit(acquireFailure, releaseSuccess, useSuccess)
+      )();
+
+      assert.deepStrictEqual(e, _.raise("acquire failure"));
+    });
+
+    it("body and release must not be called if acquire fails", async () => {
+      await _.run(_.bracketExit(acquireFailure, releaseSuccess, useSuccess))();
+      assert.deepStrictEqual(log, []);
+    });
+
+    it("should return the use error if use fails and release does not", async () => {
+      const e = await _.run(
+        _.bracketExit(acquireSuccess, releaseSuccess, useFailure)
+      )();
+      assert.deepStrictEqual(e, _.raise("use failure"));
+    });
+
+    it("should return the use error if both use and release fail", async () => {
+      const e = await _.run(
+        _.bracketExit(acquireSuccess, releaseFailure, useFailure)
+      )();
+      assert.deepStrictEqual(e, _.raise("use failure"));
+    });
+
+    it("release must be called if the body returns", async () => {
+      await _.run(_.bracketExit(acquireSuccess, releaseSuccess, useSuccess))();
+      assert.deepStrictEqual(log, ["release success"]);
+    });
+
+    it("release must be called if the body throws", async () => {
+      await _.run(_.bracketExit(acquireSuccess, releaseSuccess, useFailure))();
+      assert.deepStrictEqual(log, ["release success"]);
+    });
+
+    it("should return the release error if release fails", async () => {
+      const e = await _.run(
+        _.bracketExit(acquireSuccess, releaseFailure, useSuccess)
       )();
       assert.deepStrictEqual(e, _.raise("release failure"));
     });

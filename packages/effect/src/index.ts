@@ -8,7 +8,7 @@ import * as EX from "waveguide/lib/exit";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Monad3E, MonadThrow3E } from "./overload";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
-import { HKT, Kind3, URIS3 } from "fp-ts/lib/HKT";
+import { Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { IO } from "fp-ts/lib/IO";
@@ -81,6 +81,7 @@ interface MonadEffect<T extends URIS3>
   ): Kind3<T, R, E, A>;
   raiseAbort(u: unknown): Kind3<T, NoEnv, NoErr, never>;
   unit: Kind3<T, NoEnv, NoErr, void>;
+  raiseInterrupt: Kind3<T, NoEnv, NoErr, void>;
   uninterruptible<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, E, A>;
   interruptible<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, E, A>;
   bracketExit<R, E, A, B>(
@@ -224,7 +225,8 @@ export const effectMonad: MonadEffect<URI> = {
         a => release(a)(r),
         a => use(a)(r)
       );
-  }
+  },
+  raiseInterrupt: _ => W.raiseInterrupt
 };
 
 export const concurrentEffectMonad: MonadEffect<URI> = {
@@ -260,6 +262,7 @@ export function error(message: string) {
 }
 
 export const unit: Effect<NoEnv, NoErr, void> = effectMonad.unit;
+export const raiseInterrupt: Effect<NoEnv, NoErr, void> = effectMonad.raiseInterrupt;
 
 /* lift functions */
 
