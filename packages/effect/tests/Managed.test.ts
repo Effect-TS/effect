@@ -18,7 +18,7 @@ describe("Managed", () => {
     let released = false;
 
     const resource = M.bracket(T.right(1), () =>
-      T.syncTotal(() => {
+      T.fromIO(() => {
         released = true;
       })
     );
@@ -38,7 +38,7 @@ describe("Managed", () => {
   });
 
   it("should use resource suspend", async () => {
-    const resource = M.suspend(T.syncTotal(() => M.pure(1)));
+    const resource = M.suspend(T.fromIO(() => M.pure(1)));
 
     const result = await T.promise(M.use(resource, n => T.right(n + 1)));
 
@@ -123,7 +123,7 @@ describe("Managed", () => {
   it("should use resource chainTap", async () => {
     const ma = M.pure(1);
     const mm = M.encaseEffect(
-      T.syncTotal(() => {
+      T.fromIO(() => {
         return {};
       })
     );
@@ -137,7 +137,7 @@ describe("Managed", () => {
   it("should use resource chainTapWith", async () => {
     const ma = M.pure(1);
     const mm = M.encaseEffect(
-      T.syncTotal(() => {
+      T.fromIO(() => {
         return {};
       })
     );
@@ -155,7 +155,7 @@ describe("Managed", () => {
       .bindL("resource", () =>
         M.allocate(
           M.bracket(T.right(1), () =>
-            T.syncTotal(() => {
+            T.fromIO(() => {
               released = true;
             })
           )
