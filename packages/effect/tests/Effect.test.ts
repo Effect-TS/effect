@@ -243,44 +243,44 @@ describe("Effect", () => {
 
     it("should return the acquire error if acquire fails", async () => {
       const e = await _.run(
-        _.bracket(acquireFailure, useSuccess, releaseSuccess)
+        _.bracket(acquireFailure, releaseSuccess, useSuccess)
       )();
 
       assert.deepStrictEqual(e, _.raise("acquire failure"));
     });
 
     it("body and release must not be called if acquire fails", async () => {
-      await _.run(_.bracket(acquireFailure, useSuccess, releaseSuccess))();
+      await _.run(_.bracket(acquireFailure, releaseSuccess, useSuccess))();
       assert.deepStrictEqual(log, []);
     });
 
     it("should return the use error if use fails and release does not", async () => {
       const e = await _.run(
-        _.bracket(acquireSuccess, useFailure, releaseSuccess)
+        _.bracket(acquireSuccess, releaseSuccess, useFailure)
       )();
       assert.deepStrictEqual(e, _.raise("use failure"));
     });
 
-    it("should return the release error if both use and release fail", async () => {
+    it("should return the use error if both use and release fail", async () => {
       const e = await _.run(
-        _.bracket(acquireSuccess, useFailure, releaseFailure)
+        _.bracket(acquireSuccess, releaseFailure, useFailure)
       )();
-      assert.deepStrictEqual(e, _.raise("release failure"));
+      assert.deepStrictEqual(e, _.raise("use failure"));
     });
 
     it("release must be called if the body returns", async () => {
-      await _.run(_.bracket(acquireSuccess, useSuccess, releaseSuccess))();
+      await _.run(_.bracket(acquireSuccess, releaseSuccess, useSuccess))();
       assert.deepStrictEqual(log, ["release success"]);
     });
 
     it("release must be called if the body throws", async () => {
-      await _.run(_.bracket(acquireSuccess, useFailure, releaseSuccess))();
+      await _.run(_.bracket(acquireSuccess, releaseSuccess, useFailure))();
       assert.deepStrictEqual(log, ["release success"]);
     });
 
     it("should return the release error if release fails", async () => {
       const e = await _.run(
-        _.bracket(acquireSuccess, useSuccess, releaseFailure)
+        _.bracket(acquireSuccess, releaseFailure, useSuccess)
       )();
       assert.deepStrictEqual(e, _.raise("release failure"));
     });

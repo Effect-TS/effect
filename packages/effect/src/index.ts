@@ -428,12 +428,16 @@ export function bracketExit<R, E, A, B>(
   return effectMonad.bracketExit(acquire, release, use);
 }
 
-export function bracket<R, E, A, B>(
+export function bracket<R, R2, R3, E, E2, E3, A, B>(
   acquire: Effect<R, E, A>,
-  release: FunctionN<[A], Effect<R, E, unknown>>,
-  use: FunctionN<[A], Effect<R, E, B>>
-): Effect<R, E, B> {
-  return effectMonad.bracket(acquire, release, use);
+  release: FunctionN<[A], Effect<R2, E2, unknown>>,
+  use: FunctionN<[A], Effect<R3, E3, B>>
+): Effect<R & R2 & R3, E | E2 | E3, B> {
+  return effectMonad.bracket(
+    acquire,
+    release as FunctionN<[A], Effect<R & R2 & R3, E | E2 | E3, unknown>>,
+    use
+  );
 }
 
 /* Task-like converters, convert operations that can fail into non failing and vice versa */
