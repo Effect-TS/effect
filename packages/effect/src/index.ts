@@ -12,7 +12,6 @@ import { Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { IO } from "fp-ts/lib/IO";
-import { EffectMonad } from "../lib";
 
 export { done, abort, raise } from "waveguide/lib/exit";
 
@@ -133,7 +132,7 @@ export const effectMonad: MonadEffect<URI> = {
   }
 };
 
-export const concurrentEffectMonad: EffectMonad<URI> = {
+export const concurrentEffectMonad: MonadEffect<URI> = {
   ...effectMonad,
   ap: (fab, fa) => r => W.parWave.ap(fab(r), fa(r))
 };
