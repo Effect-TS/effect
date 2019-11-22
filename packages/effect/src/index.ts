@@ -12,6 +12,9 @@ import { Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { IO } from "fp-ts/lib/IO";
+import { FunctionN, Lazy } from "fp-ts/lib/function";
+import { Cause } from "waveguide/lib/exit";
+import { Exit } from "waveguide/lib/exit";
 
 export { done, abort, raise } from "waveguide/lib/exit";
 
@@ -38,7 +41,7 @@ interface MonadEffect<T extends URIS3> extends Monad3E<T>, MonadThrow3E<T>, Bifu
   ): Kind3<T, R & R2, E2, A>;
   fromWave<E, A>(w: W.Wave<E, A>): Kind3<T, NoEnv, E, A>;
   left<E, A = never>(e: E): Kind3<T, NoEnv, E, A>;
-  fromIO<A>(io: IO<A>): Kind3<T, NoEnv, never, A>;
+  fromIO<A>(io: IO<A>): Kind3<T, NoEnv, NoErr, A>;
   tryIO<E, A>(io: IO<A>, onLeft: (e: any) => E): Kind3<T, NoEnv, E, A>;
   tryPromise<E, A>(
     ioPromise: IO<Promise<A>>,
@@ -52,6 +55,12 @@ interface MonadEffect<T extends URIS3> extends Monad3E<T>, MonadThrow3E<T>, Bifu
   ): Kind3<T, R, E, Array<A>>;
   run<E, A>(ma: Kind3<T, NoEnv, E, A>): IO<Promise<EX.Exit<E, A>>>;
   promise<A>(ma: Kind3<T, NoEnv, any, A>): Promise<A>;
+  fromAsync<A>(op: FunctionN<[FunctionN<[A], void>], Lazy<void>>): Kind3<T, NoEnv, NoErr, A>
+  raised<E>(e: Cause<E>): Kind3<T, NoEnv, E, never>
+  completed<E, A>(exit: Exit<E, A>): Kind3<T, NoEnv, E, A>
+  result<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, NoErr, Exit<E, A>>
+  onInterrupted<R, E, A>(ioa: Kind3<T, R, E, A>, finalizer: Kind3<T, R, E, unknown>): Kind3<T, R, E, A>
+  raiseAbort(u: unknown): Kind3<T, NoEnv, NoErr, never>
 }
 
 export const effectMonad: MonadEffect<URI> = {
@@ -129,6 +138,29 @@ export const effectMonad: MonadEffect<URI> = {
   },
   promise<A>(ma: Kind3<URI, NoEnv, any, A>): Promise<A> {
     return W.runToPromise(ma(noEnv));
+  },
+  fromAsync<A>(
+    op: FunctionN<[FunctionN<[A], void>], Lazy<void>>
+  ): Kind3<URI, NoEnv, NoErr, A> {
+    return _ => W.asyncTotal(op);
+  },
+  raised<E>(e: Cause<E>): Kind3<URI, NoEnv, E, never> {
+    return _ => W.raised(e);
+  },
+  completed<E, A>(exit: Exit<E, A>): Kind3<URI, NoEnv, E, A> {
+    return _ => W.completed(exit);
+  },
+  result<R, E, A>(io: Kind3<URI, R, E, A>): Kind3<URI, R, NoErr, Exit<E, A>> {
+    return r => W.result(io(r));
+  },
+  onInterrupted<R, E, A>(
+    ioa: Kind3<URI, R, E, A>,
+    finalizer: Kind3<URI, R, E, unknown>
+  ): Kind3<URI, R, E, A> {
+    return r => W.onInterrupted(ioa(r), finalizer(r));
+  },
+  raiseAbort(u: unknown): Kind3<URI, NoEnv, NoErr, never> {
+    return _ => W.raiseAbort(u);
   }
 };
 
@@ -166,8 +198,38 @@ export function error(message: string) {
 
 /* lift functions */
 
+export function fromAsync<A>(
+  op: FunctionN<[FunctionN<[A], void>], Lazy<void>>
+): Effect<NoEnv, NoErr, A> {
+  return effectMonad.fromAsync(op);
+}
+
 export function fromWave<E, A>(w: W.Wave<E, A>): Effect<NoEnv, E, A> {
   return effectMonad.fromWave(w);
+}
+
+export function raised<E>(e: Cause<E>): Effect<NoEnv, E, never> {
+  return effectMonad.raised(e);
+}
+
+export function completed<E, A>(exit: Exit<E, A>): Effect<NoEnv, E, A> {
+  return effectMonad.completed(exit);
+}
+
+export function raiseAbort(u: unknown): Effect<NoEnv, NoErr, never> {
+  return effectMonad.raiseAbort(u);
+}
+
+export function result<R, E, A>(
+  io: Effect<R, E, A>
+): Effect<R, NoErr, Exit<E, A>> {
+  return effectMonad.result(io);
+}
+export function onInterrupted<R, E, A>(
+  ioa: Effect<R, E, A>,
+  finalizer: Effect<R, E, unknown>
+): Effect<R, E, A> {
+  return effectMonad.onInterrupted(ioa, finalizer);
 }
 
 export function right<A>(a: A): Effect<NoEnv, NoErr, A> {

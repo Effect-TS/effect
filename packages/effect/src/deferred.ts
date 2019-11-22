@@ -5,18 +5,17 @@
  */
 
 import { Exit, Cause } from "waveguide/lib/exit";
-import { Wave } from "waveguide/lib/wave";
 import * as io from "waveguide/lib/wave";
 import { Completable, completable } from "waveguide/lib/support/completable";
 import * as T from "./";
 
-export interface Deferred<R, E, A> {
+export interface Deferred<E, A> {
   /**
    * Wait for this deferred to complete.
    *
    * This effect will produce the value set by done, raise the error set by error or interrupt
    */
-  readonly wait: T.Effect<R, E, A>;
+  readonly wait: T.Effect<T.NoEnv, E, A>;
   /**
    * Interrupt any waitersa on this Deferred
    */
@@ -60,68 +59,71 @@ export interface Deferred<R, E, A> {
    * Set this deferred with the result of source
    * @param source
    */
-  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
+  from(source: T.Effect<T.NoEnv, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
 }
 
 /* tested in wave */
 /* istanbul ignore next */
-export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
-  R,
+export function makeDeferred<E, A, E2 = never>(): T.Effect<
+  T.NoEnv,
   E2,
-  Deferred<R, E, A>
+  Deferred<E, A>
 > {
-  return _ =>
-    io.sync(() => {
-      const c: Completable<Wave<E, A>> = completable();
-      const wait = _ =>
-        io.flatten(
-          io.asyncTotal<Wave<E, A>>(callback => c.listen(callback))
-        );
-      const interrupt = _ =>
-        io.sync(() => {
-          c.complete(io.raiseInterrupt);
-        });
-      const done = (a: A): T.Effect<T.NoEnv, T.NoErr, void> => _ =>
-        io.sync(() => {
-          c.complete(io.pure(a));
-        });
-      const error = (e: E): T.Effect<T.NoEnv, T.NoErr, void> => _ =>
-        io.sync(() => {
-          c.complete(io.raiseError(e));
-        });
-      const abort = (e: unknown): T.Effect<T.NoEnv, T.NoErr, void> => _ =>
-        io.sync(() => {
-          c.complete(io.raiseAbort(e));
-        });
-      const cause = (e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> => _ =>
-        io.sync(() => {
-          c.complete(io.raised(e));
-        });
-      const complete = (
-        exit: Exit<E, A>
-      ): T.Effect<T.NoEnv, T.NoErr, void> => _ =>
-        io.sync(() => {
-          c.complete(io.completed(exit));
-        });
-      const from = (
-        source: T.Effect<R, E, A>
-      ): T.Effect<T.NoEnv, T.NoErr, void> => {
-        const completed = r =>
-          io.chain<never, Exit<E, A>, void>(io.result(source(r)), x =>
-            complete(x)(r)
-          );
-        const interruptor = interrupt as T.Effect<T.NoEnv, T.NoErr, void>;
-        return r => io.onInterrupted(completed(r), interruptor(r));
-      };
-      return {
-        wait,
-        interrupt,
-        done,
-        error,
-        abort,
-        cause,
-        complete,
-        from
-      };
+  return T.fromIO(() => {
+    const c: Completable<T.Effect<T.NoEnv, E, A>> = completable();
+    const wait = T.flatten(
+      T.fromAsync<T.Effect<T.NoEnv, E, A>>(callback => c.listen(callback))
+    );
+
+    const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.fromIO(() => {
+      c.complete(T.fromWave(io.raiseInterrupt));
     });
+
+    const done = (a: A): T.Effect<T.NoEnv, T.NoErr, void> =>
+      T.fromIO(() => {
+        c.complete(T.right(a));
+      });
+
+    const error = (e: E): T.Effect<T.NoEnv, T.NoErr, void> =>
+      T.fromIO(() => {
+        c.complete(T.left(e));
+      });
+
+    const abort = (e: unknown): T.Effect<T.NoEnv, T.NoErr, void> =>
+      T.fromIO(() => {
+        c.complete(T.raiseAbort(e));
+      });
+
+    const cause = (e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> =>
+      T.fromIO(() => {
+        c.complete(T.raised(e));
+      });
+
+    const complete = (exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> =>
+      T.fromIO(() => {
+        c.complete(T.completed(exit));
+      });
+
+    const from = (
+      source: T.Effect<T.NoEnv, E, A>
+    ): T.Effect<T.NoEnv, T.NoErr, void> => {
+      const completed = T.effectMonad.chain(
+        T.effectMonad.result(source),
+        complete
+      );
+
+      return T.effectMonad.onInterrupted(completed, interrupt);
+    };
+
+    return {
+      wait,
+      interrupt,
+      done,
+      error,
+      abort,
+      cause,
+      complete,
+      from
+    };
+  });
 }
