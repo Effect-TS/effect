@@ -11,7 +11,7 @@ describe("Graceful", () => {
     await T.promise(
       T.provide(module)(
         G.onExit(
-          T.syncTotal(() => {
+          T.fromIO(() => {
             calls += 1;
           })
         )

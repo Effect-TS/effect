@@ -18,7 +18,7 @@ export const graceful: () => Graceful = () => ({
       op: T.Effect<T.NoEnv, T.NoErr, void>
     ): T.Effect<Graceful, T.NoErr, void> {
       return T.accessM(({ graceful }: Graceful) =>
-        T.syncTotal(() => {
+        T.fromIO(() => {
           graceful.state.push(op);
         })
       );
@@ -26,7 +26,8 @@ export const graceful: () => Graceful = () => ({
     trigger(): T.Effect<Graceful, T.NoErr, void> {
       return T.accessM(({ graceful }: Graceful) =>
         pipe(
-          T.sequenceP(graceful.state.length, graceful.state),
+          graceful.state,
+          T.sequenceP(graceful.state.length),
           T.map(() => {})
         )
       );
