@@ -38,7 +38,7 @@ export const express: Express = {
       f: (req: EX.Request) => T.Effect<R, E, RES>
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
-        T.syncTotal(() => {
+        T.fromIO(() => {
           r.express.app[method](path, bodyParser.json(), (req, res) => {
             T.run(T.provide(r)(f(req)))().then(o => {
               switch (o._tag) {
@@ -75,13 +75,13 @@ export const express: Express = {
       return T.accessM(({ express: { app } }: HasExpress) =>
         Do(T.effectMonad)
           .bindL("s", () =>
-            T.syncTotal(() => {
+            T.fromIO(() => {
               return app.listen(port, hostname);
             })
           )
           .doL(({ s }) =>
             G.onExit(
-              T.syncTotal(() => {
+              T.fromIO(() => {
                 s.close();
               })
             )

@@ -1,5 +1,6 @@
 import AX, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import * as T from "@matechs/effect";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export interface HttpClient {
   http: {
@@ -22,18 +23,18 @@ export const httpClient: (X?: typeof AX) => HttpClient = (X = AX) => ({
       data: any,
       config?: AxiosRequestConfig
     ): T.Effect<T.NoEnv, AxiosError<E>, AxiosResponse<A>> {
-      return T.tryCatch(
+      return pipe(
         () => X.post(url, data, config),
-        e => e as AxiosError<E>
+        T.tryPromise(e => e as AxiosError<E>)
       );
     },
     get<E, A>(
       url: string,
       config?: AxiosRequestConfig
     ): T.Effect<T.NoEnv, AxiosError<E>, AxiosResponse<A>> {
-      return T.tryCatch(
+      return pipe(
         () => X.get(url, config),
-        e => e as AxiosError<E>
+        T.tryPromise(e => e as AxiosError<E>)
       );
     }
   }

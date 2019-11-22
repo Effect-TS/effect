@@ -57,7 +57,7 @@ describe("Example", () => {
 
     const mockModule = pipe(
       T.noEnv,
-      T.mergeEnv(tracer(T.syncTotal(() => mockTracer))),
+      T.mergeEnv(tracer(T.fromIO(() => mockTracer))),
       T.mergeEnv(counter)
     );
 
@@ -68,7 +68,7 @@ describe("Example", () => {
         T.provide<Printer>({
           printer: {
             print(s) {
-              return T.syncTotal(() => {
+              return T.fromIO(() => {
                 messages.push(s);
               });
             }
@@ -118,10 +118,10 @@ describe("Example", () => {
 
     const mockTracer = new MockTracer2(spans);
 
-    const mockModule: Tracer = tracer(T.syncTotal(() => mockTracer));
+    const mockModule: Tracer = tracer(T.fromIO(() => mockTracer));
 
     const program2 = withTracer(
-      withControllerSpan("", "", {})(T.syncTotal(() => {}))
+      withControllerSpan("", "", {})(T.fromIO(() => {}))
     );
 
     const result = await T.run(pipe(program2, T.provide(mockModule)))();

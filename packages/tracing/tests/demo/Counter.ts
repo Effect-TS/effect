@@ -22,7 +22,7 @@ export const counterState: IO<CounterState> = () => ({
     ref: 0,
     increment() {
       return T.accessM((s: CounterState) =>
-        T.syncTotal(() => {
+        T.fromIO(() => {
           s.counter.ref += 1;
         })
       );

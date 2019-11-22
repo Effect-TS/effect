@@ -7,7 +7,7 @@ import {
   ObjectType,
   Repository
 } from "typeorm";
-import * as Ef from "@matechs/effect";
+import * as T from "@matechs/effect";
 import { toError } from "fp-ts/lib/Either";
 import { IO } from "fp-ts/lib/IO";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -43,22 +43,22 @@ export interface HasOrmPool {
 export interface Orm {
   orm: {
     bracketPool<R, E, A>(
-      op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
-    ): Ef.Effect<HasOrmConfig & R, Error | E, A>;
-    createPool(): Ef.Effect<HasOrmConfig & Graceful, Error, Connection>;
+      op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
+    ): T.Effect<HasOrmConfig & R, Error | E, A>;
+    createPool(): T.Effect<HasOrmConfig & Graceful, Error, Connection>;
     usePool(
       pool: Connection
     ): <R, E, A>(
-      op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
-    ) => Ef.Effect<R, Error | E, A>;
+      op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
+    ) => T.Effect<R, Error | E, A>;
     withRepository<Entity>(
       target: ObjectType<Entity> | EntitySchema<Entity> | string
     ): <A>(
       f: (r: Repository<Entity>) => IO<Promise<A>>
-    ) => Ef.Effect<HasEntityManager, Error, A>;
+    ) => T.Effect<HasEntityManager, Error, A>;
     withTransaction<R, E, A>(
-      op: Ef.Effect<HasEntityManager & R, E, A>
-    ): Ef.Effect<HasOrmPool & R, Error | E, A>;
+      op: T.Effect<HasEntityManager & R, E, A>
+    ): T.Effect<HasOrmPool & R, Error | E, A>;
   };
 }
 
@@ -67,14 +67,14 @@ export const ormFactory: (
 ) => Orm = factory => ({
   orm: {
     createPool() {
-      return Ef.accessM(({ orm: { options } }: HasOrmConfig) =>
-        Do(Ef.effectMonad)
-          .bindL("c", () => Ef.tryCatch(() => factory(options), toError))
+      return T.accessM(({ orm: { options } }: HasOrmConfig) =>
+        Do(T.effectMonad)
+          .bindL("c", () => pipe(() => factory(options), T.tryPromise(toError)))
           .doL(({ c }) =>
             onExit(
               pipe(
-                Ef.toTaskLike(Ef.tryCatch(() => c.close(), toError)),
-                Ef.map(() => {})
+                T.toTaskLike(pipe(c.close, T.tryPromise(toError))),
+                T.map(() => {})
               )
             )
           )
@@ -82,46 +82,44 @@ export const ormFactory: (
       );
     },
     usePool(pool: Connection) {
-      return <R, E, A>(
-        op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
-      ) =>
-        Ef.provide<HasOrmPool & HasEntityManager>({
+      return <R, E, A>(op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>) =>
+        T.provide<HasOrmPool & HasEntityManager>({
           orm: { connection: pool, manager: pool.manager }
         })(op);
     },
     bracketPool<R, E, A>(
-      op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
-    ): Ef.Effect<HasOrmConfig & R, Error | E, A> {
-      return Ef.accessM(({ orm: { options } }: HasOrmConfig) =>
-        Ef.bracket(
-          Ef.tryCatch(() => factory(options), toError),
+      op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
+    ): T.Effect<HasOrmConfig & R, Error | E, A> {
+      return T.accessM(({ orm: { options } }: HasOrmConfig) =>
+        T.bracket(
+          pipe(() => factory(options), T.tryPromise(toError)),
           db =>
-            Ef.provide<HasOrmPool & HasEntityManager>({
+            T.provide<HasOrmPool & HasEntityManager>({
               orm: { connection: db, manager: db.manager }
             })(op),
-          db => Ef.tryCatch(db.close, toError)
+          db => pipe(db.close, T.tryPromise(toError))
         )
       );
     },
     withRepository(target) {
       return f =>
-        Ef.accessM(({ orm }: HasEntityManager) =>
-          Ef.tryCatch(f(orm.manager.getRepository(target)), toError)
+        T.accessM(({ orm }: HasEntityManager) =>
+          pipe(f(orm.manager.getRepository(target)), T.tryPromise(toError))
         );
     },
     withTransaction<R, E, A>(
-      op: Ef.Effect<HasEntityManager & R, E, A>
-    ): Ef.Effect<HasOrmPool & R, Error | E, A> {
-      return Ef.accessM(({ orm: { connection } }: HasOrmPool) =>
-        Ef.accessM((r: R) =>
-          Ef.tryCatch(
+      op: T.Effect<HasEntityManager & R, E, A>
+    ): T.Effect<HasOrmPool & R, Error | E, A> {
+      return T.accessM(({ orm: { connection } }: HasOrmPool) =>
+        T.accessM((r: R) =>
+          pipe(
             () =>
               connection.transaction(tx =>
-                Ef.promise(
+                T.promise(
                   pipe(
                     op,
-                    Ef.provide(r),
-                    Ef.provide({
+                    T.provide(r),
+                    T.provide({
                       orm: {
                         manager: tx
                       }
@@ -129,7 +127,7 @@ export const ormFactory: (
                   )
                 )
               ),
-            toError
+            T.tryPromise(toError)
           )
         )
       );
@@ -140,37 +138,37 @@ export const ormFactory: (
 export const orm = ormFactory(createConnection);
 
 export function bracketPool<R, E, A>(
-  op: Ef.Effect<HasEntityManager & HasOrmPool & R, E, A>
-): Ef.Effect<Orm & HasOrmConfig & R, Error | E, A> {
-  return Ef.accessM(({ orm }: Orm) => orm.bracketPool(op));
+  op: T.Effect<HasEntityManager & HasOrmPool & R, E, A>
+): T.Effect<Orm & HasOrmConfig & R, Error | E, A> {
+  return T.accessM(({ orm }: Orm) => orm.bracketPool(op));
 }
 
 export function withRepository<Entity>(
   target: ObjectType<Entity> | EntitySchema<Entity> | string
 ): <A>(
   f: (r: Repository<Entity>) => IO<Promise<A>>
-) => Ef.Effect<Orm & HasEntityManager, Error, A> {
-  return f => Ef.accessM(({ orm }: Orm) => orm.withRepository(target)(f));
+) => T.Effect<Orm & HasEntityManager, Error, A> {
+  return f => T.accessM(({ orm }: Orm) => orm.withRepository(target)(f));
 }
 
 export function withTransaction<R, E, A>(
-  op: Ef.Effect<HasEntityManager & R, E, A>
-): Ef.Effect<Orm & HasOrmPool & R, Error | E, A> {
-  return Ef.accessM(({ orm }: Orm) => orm.withTransaction(op));
+  op: T.Effect<HasEntityManager & R, E, A>
+): T.Effect<Orm & HasOrmPool & R, Error | E, A> {
+  return T.accessM(({ orm }: Orm) => orm.withTransaction(op));
 }
 
-export function createPool(): Ef.Effect<
+export function createPool(): T.Effect<
   HasOrmConfig & Graceful & Orm,
   Error,
   Connection
 > {
-  return Ef.accessM(({ orm }: Orm) => orm.createPool());
+  return T.accessM(({ orm }: Orm) => orm.createPool());
 }
 
 export function usePool(
   pool: Connection
 ): <R, E, A>(
-  op: Ef.Effect<HasOrmPool & HasEntityManager & R, E, A>
-) => Ef.Effect<R & Orm, Error | E, A> {
-  return op => Ef.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
+  op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
+) => T.Effect<R & Orm, Error | E, A> {
+  return op => T.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
 }
