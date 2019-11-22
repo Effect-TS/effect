@@ -1,6 +1,6 @@
 {
   "name": "@matechs/orm",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -34,9 +34,9 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.0.20",
-    "@matechs/graceful": "^0.0.9",
-    "@matechs/tracing": "^0.0.23",
+    "@matechs/effect": "^0.0.21",
+    "@matechs/graceful": "^0.0.10",
+    "@matechs/tracing": "^0.0.24",
     "deepmerge": "^4.2.2",
     "fp-ts": "^2.1.2",
     "fp-ts-contrib": "^0.1.6",
