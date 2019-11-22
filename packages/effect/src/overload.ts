@@ -33,7 +33,6 @@ import {
 } from "fp-ts/lib/pipeable";
 import { Apply3 } from "fp-ts/lib/Apply";
 import { NoEnv, NoErr } from "./index";
-import { Monad3 } from "fp-ts/lib/Monad";
 
 export interface Chain3E<F extends URIS3> extends Apply3<F> {
   readonly chain: <R, E, A, R2, E2, B>(
