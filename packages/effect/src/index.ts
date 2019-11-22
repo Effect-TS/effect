@@ -30,6 +30,8 @@ export {
   Raise
 } from "waveguide/lib/exit";
 
+export { isDone, isAbort, isRaise, isInterrupt, fold, exit } from "./exit";
+
 export const URI = "matechs/Effect";
 
 export type URI = typeof URI;
@@ -262,7 +264,8 @@ export function error(message: string) {
 }
 
 export const unit: Effect<NoEnv, NoErr, void> = effectMonad.unit;
-export const raiseInterrupt: Effect<NoEnv, NoErr, void> = effectMonad.raiseInterrupt;
+export const raiseInterrupt: Effect<NoEnv, NoErr, void> =
+  effectMonad.raiseInterrupt;
 
 /* lift functions */
 
