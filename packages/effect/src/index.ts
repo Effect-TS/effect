@@ -229,7 +229,7 @@ export function or<R, E, A>(
     predicate ? effectMonad.map(ma, Ei.left) : effectMonad.map(mb, Ei.right);
 }
 
-export function _alt(
+export function alt_(
   predicate: boolean
 ): <R, E, A>(ma: Effect<R, E, A>) => (mb: Effect<R, E, A>) => Effect<R, E, A> {
   return ma => mb => (predicate ? ma : mb);

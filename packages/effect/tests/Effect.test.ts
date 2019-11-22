@@ -62,9 +62,25 @@ describe("Effect", () => {
       assert.deepEqual(b, _.done(E.right(2)));
     });
 
+    it("or_", async () => {
+      const a = await _.run(_.or_(true)(_.right(1))(_.right(2)))();
+      const b = await _.run(_.or_(false)(_.right(1))(_.right(2)))();
+
+      assert.deepEqual(a, _.done(E.left(1)));
+      assert.deepEqual(b, _.done(E.right(2)));
+    });
+
     it("alt", async () => {
       const a = await _.run(_.alt(_.right(1))(_.right(2))(true))();
       const b = await _.run(_.alt(_.right(1))(_.right(2))(false))();
+
+      assert.deepEqual(a, _.done(1));
+      assert.deepEqual(b, _.done(2));
+    });
+
+    it("alt_", async () => {
+      const a = await _.run(_.alt_(true)(_.right(1))(_.right(2)))();
+      const b = await _.run(_.alt_(false)(_.right(1))(_.right(2)))();
 
       assert.deepEqual(a, _.done(1));
       assert.deepEqual(b, _.done(2));
