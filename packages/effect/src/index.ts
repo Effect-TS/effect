@@ -16,7 +16,19 @@ import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Cause } from "waveguide/lib/exit";
 import { Exit } from "waveguide/lib/exit";
 
-export { done, abort, raise } from "waveguide/lib/exit";
+export {
+  done,
+  abort,
+  raise,
+  ExitTag,
+  Exit,
+  Cause,
+  Abort,
+  Done,
+  Interrupt,
+  interrupt,
+  Raise
+} from "waveguide/lib/exit";
 
 export const URI = "matechs/Effect";
 
@@ -33,8 +45,10 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-// prettier-ignore
-interface MonadEffect<T extends URIS3> extends Monad3E<T>, MonadThrow3E<T>, Bifunctor3<T> {
+interface MonadEffect<T extends URIS3>
+  extends Monad3E<T>,
+    MonadThrow3E<T>,
+    Bifunctor3<T> {
   chainLeft<R, E, E2, A, R2>(
     ma: Kind3<T, R, E, A>,
     onLeft: (e: E) => Kind3<T, R2, E2, A>
@@ -55,12 +69,30 @@ interface MonadEffect<T extends URIS3> extends Monad3E<T>, MonadThrow3E<T>, Bifu
   ): Kind3<T, R, E, Array<A>>;
   run<E, A>(ma: Kind3<T, NoEnv, E, A>): IO<Promise<EX.Exit<E, A>>>;
   promise<A>(ma: Kind3<T, NoEnv, any, A>): Promise<A>;
-  fromAsync<A>(op: FunctionN<[FunctionN<[A], void>], Lazy<void>>): Kind3<T, NoEnv, NoErr, A>
-  raised<E>(e: Cause<E>): Kind3<T, NoEnv, E, never>
-  completed<E, A>(exit: Exit<E, A>): Kind3<T, NoEnv, E, A>
-  result<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, NoErr, Exit<E, A>>
-  onInterrupted<R, E, A>(ioa: Kind3<T, R, E, A>, finalizer: Kind3<T, R, E, unknown>): Kind3<T, R, E, A>
-  raiseAbort(u: unknown): Kind3<T, NoEnv, NoErr, never>
+  fromAsync<A>(
+    op: FunctionN<[FunctionN<[A], void>], Lazy<void>>
+  ): Kind3<T, NoEnv, NoErr, A>;
+  raised<E>(e: Cause<E>): Kind3<T, NoEnv, E, never>;
+  completed<E, A>(exit: Exit<E, A>): Kind3<T, NoEnv, E, A>;
+  result<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, NoErr, Exit<E, A>>;
+  onInterrupted<R, E, A>(
+    ioa: Kind3<T, R, E, A>,
+    finalizer: Kind3<T, R, E, unknown>
+  ): Kind3<T, R, E, A>;
+  raiseAbort(u: unknown): Kind3<T, NoEnv, NoErr, never>;
+  unit: Kind3<T, NoEnv, NoErr, void>;
+  uninterruptible<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, E, A>;
+  interruptible<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, E, A>;
+  bracketExit<R, E, A, B>(
+    acquire: Kind3<T, R, E, A>,
+    release: FunctionN<[A, Exit<E, B>], Kind3<T, R, E, unknown>>,
+    use: FunctionN<[A], Kind3<T, R, E, B>>
+  ): Kind3<T, R, E, B>;
+  bracket<R, E, A, B>(
+    acquire: Kind3<T, R, E, A>,
+    release: FunctionN<[A], Kind3<T, R, E, unknown>>,
+    use: FunctionN<[A], Kind3<T, R, E, B>>
+  ): Kind3<T, R, E, B>;
 }
 
 export const effectMonad: MonadEffect<URI> = {
@@ -161,6 +193,37 @@ export const effectMonad: MonadEffect<URI> = {
   },
   raiseAbort(u: unknown): Kind3<URI, NoEnv, NoErr, never> {
     return _ => W.raiseAbort(u);
+  },
+  unit: _ => W.unit,
+  uninterruptible<R, E, A>(io: Kind3<URI, R, E, A>): Kind3<URI, R, E, A> {
+    return r => W.uninterruptible(io(r));
+  },
+  interruptible<R, E, A>(io: Kind3<URI, R, E, A>): Kind3<URI, R, E, A> {
+    return r => W.interruptible(io(r));
+  },
+  bracketExit<R, E, A, B>(
+    acquire: Kind3<URI, R, E, A>,
+    release: FunctionN<[A, Exit<E, B>], Kind3<URI, R, E, unknown>>,
+    use: FunctionN<[A], Kind3<URI, R, E, B>>
+  ): Kind3<URI, R, E, B> {
+    return r =>
+      W.bracketExit(
+        acquire(r),
+        (a, e) => release(a, e)(r),
+        a => use(a)(r)
+      );
+  },
+  bracket<R, E, A, B>(
+    acquire: Kind3<URI, R, E, A>,
+    release: FunctionN<[A], Kind3<URI, R, E, unknown>>,
+    use: FunctionN<[A], Kind3<URI, R, E, B>>
+  ): Kind3<URI, R, E, B> {
+    return r =>
+      W.bracket(
+        acquire(r),
+        a => release(a)(r),
+        a => use(a)(r)
+      );
   }
 };
 
@@ -195,6 +258,8 @@ export const {
 export function error(message: string) {
   return new Error(message);
 }
+
+export const unit: Effect<NoEnv, NoErr, void> = effectMonad.unit;
 
 /* lift functions */
 
@@ -242,6 +307,14 @@ export function left<E, A = never>(e: E): Effect<NoEnv, E, A> {
 
 export function fromIO<A>(io: IO<A>): Effect<NoEnv, never, A> {
   return effectMonad.fromIO(io);
+}
+
+export function uninterruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+  return effectMonad.uninterruptible(io);
+}
+
+export function interruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+  return effectMonad.interruptible(io);
 }
 
 export function tryIO<E, A = never>(
@@ -347,18 +420,20 @@ export function promise<A>(ma: Effect<NoEnv, any, A>): Promise<A> {
 
 /* bracket */
 
-export function bracket<R, E, A, B, E2>(
+export function bracketExit<R, E, A, B>(
   acquire: Effect<R, E, A>,
-  use: (a: A) => Effect<R, E2, B>,
-  release: (a: A) => Effect<R, E, void>
-): Effect<R, E | E2, B> {
-  return effectMonad.chain(acquire, a =>
-    effectMonad.chain(toTaskLike(use(a)), e =>
-      effectMonad.chain(release(a), () =>
-        Ei.isLeft(e) ? left(e.left) : right(e.right)
-      )
-    )
-  );
+  release: FunctionN<[A, Exit<E, B>], Effect<R, E, unknown>>,
+  use: FunctionN<[A], Effect<R, E, B>>
+): Effect<R, E, B> {
+  return effectMonad.bracketExit(acquire, release, use);
+}
+
+export function bracket<R, E, A, B>(
+  acquire: Effect<R, E, A>,
+  release: FunctionN<[A], Effect<R, E, unknown>>,
+  use: FunctionN<[A], Effect<R, E, B>>
+): Effect<R, E, B> {
+  return effectMonad.bracket(acquire, release, use);
 }
 
 /* Task-like converters, convert operations that can fail into non failing and vice versa */

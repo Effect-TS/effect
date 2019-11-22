@@ -4,18 +4,16 @@
   small adaptations to extend Monad3E and support contravariance on R
  */
 
-import { Exit, ExitTag } from "waveguide/lib/exit";
 import * as T from "./";
-import { unit } from "waveguide/lib/waver";
 
 export function ticketExit<A>(
   ticket: Ticket<A>,
-  exit: Exit<never, A>
+  exit: T.Exit<never, A>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
-  if (exit._tag === ExitTag.Interrupt) {
+  if (exit._tag === T.ExitTag.Interrupt) {
     return ticket.cleanup;
   }
-  return unit;
+  return T.unit;
 }
 
 export function ticketUse<A>(ticket: Ticket<A>): T.Effect<T.NoEnv, T.NoErr, A> {

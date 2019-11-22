@@ -4,7 +4,6 @@
   small adaptations to extend Monad3E and support contravariance on R
  */
 
-import { raiseAbort, unit } from "waveguide/lib/waver";
 import * as T from "./";
 
 /* tested in wave */
@@ -12,4 +11,4 @@ import * as T from "./";
 export const natNumber = (msg: unknown) => (
   n: number
 ): T.Effect<T.NoEnv, T.NoErr, void> =>
-  n < 0 || Math.round(n) !== n ? raiseAbort(msg) : unit;
+  n < 0 || Math.round(n) !== n ? T.raiseAbort(msg) : T.unit;
