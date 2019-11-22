@@ -96,6 +96,10 @@ interface MonadEffect<T extends URIS3>
     release: FunctionN<[A], Kind3<T, R, E, unknown>>,
     use: FunctionN<[A], Kind3<T, R, E, B>>
   ): Kind3<T, R, E, B>;
+  as<R, E, A, B>(io: Kind3<T, R, E, A>, b: B): Kind3<T, R, E, B>;
+  mapWith<A, B>(
+    f: FunctionN<[A], B>
+  ): <R, E>(io: Kind3<T, R, E, A>) => Kind3<T, R, E, B>;
 }
 
 export const effectMonad: MonadEffect<URI> = {
@@ -228,7 +232,13 @@ export const effectMonad: MonadEffect<URI> = {
         a => use(a)(r)
       );
   },
-  raiseInterrupt: _ => W.raiseInterrupt
+  raiseInterrupt: _ => W.raiseInterrupt,
+  as: (io, b) => r => W.as(io(r), b),
+  mapWith<A, B>(
+    f: FunctionN<[A], B>
+  ): <R, E>(io: Kind3<URI, R, E, A>) => Kind3<URI, R, E, B> {
+    return io => r => W.mapWith(f)(io(r));
+  }
 };
 
 export const concurrentEffectMonad: MonadEffect<URI> = {
@@ -264,8 +274,19 @@ export function error(message: string) {
 }
 
 export const unit: Effect<NoEnv, NoErr, void> = effectMonad.unit;
+
 export const raiseInterrupt: Effect<NoEnv, NoErr, void> =
   effectMonad.raiseInterrupt;
+
+export function as<R, E, A, B>(io: Effect<R, E, A>, b: B): Effect<R, E, B> {
+  return effectMonad.as(io, b);
+}
+
+export function mapWith<A, B>(
+  f: FunctionN<[A], B>
+): <R, E>(io: Effect<R, E, A>) => Effect<R, E, B> {
+  return effectMonad.mapWith(f);
+}
 
 /* lift functions */
 
