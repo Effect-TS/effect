@@ -9,7 +9,7 @@ describe("Exit", () => {
   const r3 = raise(3);
   const ipt = interrupt;
 
-  describe("predicates", () => {
+  describe("refinements", () => {
     it("isDone", () => {
       assert.equal(isDone(e1), true);
       assert.equal(isDone(a2), false);
