@@ -12,6 +12,7 @@ import { tuple2 } from "waveguide/lib/support/util";
 import { Monoid } from "fp-ts/lib/Monoid";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monad3E } from "./overload";
+import { Fiber } from "waveguide/lib/wave";
 
 export type Managed<R, E, A> = (r: R) => M.Managed<E, A>;
 
@@ -19,8 +20,8 @@ export function encaseManaged<E, A>(m: M.Managed<E, A>): Managed<{}, E, A> {
   return constant(m);
 }
 
-export function pure<A>(value: A): Managed<{}, never, A> {
-  return encaseManaged(M.pure(value));
+export function pure<E = never, A = unknown>(value: A): Managed<{}, E, A> {
+  return encaseManaged<E, A>(M.pure(value) as M.Managed<E, A>);
 }
 
 export function encaseEffect<R, E, A>(
@@ -157,6 +158,10 @@ export function provideTo<R, E, A, B>(
   effect: T.Effect<A, E, B>
 ): T.Effect<R, E, B> {
   return use(ma, a => _ => effect(a));
+}
+
+export function fiber<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, never, Fiber<E, A>> {
+  return r => M.fiber(rio(r))
 }
 
 export const URI = "matechs/Managed";

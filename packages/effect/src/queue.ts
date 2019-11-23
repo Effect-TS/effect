@@ -29,7 +29,7 @@ export interface ConcurrentQueue<A> {
   offer(a: A): T.Effect<T.NoEnv, T.NoErr, void>;
 }
 
-type State<A> = Either<Dequeue<Deferred<T.NoErr, A>>, Dequeue<A>>;
+type State<A> = Either<Dequeue<Deferred<T.NoEnv, T.NoErr, A>>, Dequeue<A>>;
 const initial = <A>(): State<A> => right(empty());
 
 const poption = pipeable(option);
@@ -53,7 +53,7 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 
 function makeConcurrentQueueImpl<A>(
   state: Ref<State<A>>,
-  factory: T.Effect<T.NoEnv, T.NoErr, Deferred<T.NoErr, A>>,
+  factory: T.Effect<T.NoEnv, T.NoErr, Deferred<T.NoEnv, T.NoErr, A>>,
   overflowStrategy: FunctionN<[Dequeue<A>, A], Dequeue<A>>,
   // This is effect that precedes offering
   // in the case of a boudned queue it is responsible for acquiring the semaphore
@@ -67,7 +67,7 @@ function makeConcurrentQueueImpl<A>(
   >
 ): ConcurrentQueue<A> {
   function cleanupLatch(
-    latch: Deferred<T.NoErr, A>
+    latch: Deferred<T.NoEnv, T.NoErr, A>
   ): T.Effect<T.NoEnv, T.NoErr, void> {
     return ior.asUnit(
       state.update(current =>
@@ -176,7 +176,7 @@ export function unboundedQueue<A>(): T.Effect<
   return ior.map(makeRef(initial<A>()), ref =>
     makeConcurrentQueueImpl(
       ref,
-      makeDeferred<T.NoErr, A>(),
+      makeDeferred<T.NoEnv, T.NoErr, A>(),
       unboundedOffer,
       ior.unit,
       identity
@@ -200,7 +200,7 @@ export function slidingQueue<A>(
     ior.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoErr, A>(),
+        makeDeferred<T.NoEnv, T.NoErr, A>(),
         slidingOffer(capacity),
         ior.unit,
         identity
@@ -221,7 +221,7 @@ export function droppingQueue<A>(
     ior.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoErr, A>(),
+        makeDeferred<T.NoEnv, T.NoErr, A>(),
         droppingOffer(capacity),
         ior.unit,
         identity
@@ -242,7 +242,7 @@ export function boundedQueue<A>(
     ior.zipWith(makeRef(initial<A>()), S.makeSemaphore(capacity), (ref, sem) =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoErr, A>(),
+        makeDeferred<T.NoEnv, T.NoErr, A>(),
         unboundedOffer,
         sem.acquire,
         inner =>
