@@ -185,6 +185,34 @@ describe("Effect", () => {
       assert.deepEqual(a, 1);
     });
 
+    it("foldExitWith", async () => {
+      const a = await _.promise(
+        pipe(
+          _.right(1),
+          _.foldExitWith(
+            () => null,
+            n => _.right(n + 1)
+          )
+        )
+      );
+
+      assert.deepEqual(a, 2);
+    });
+
+    it("foldExitWith - error", async () => {
+      const a = await _.promise(
+        pipe(
+          _.left(1),
+          _.foldExitWith(
+            () => _.right(1),
+            n => _.right(n + 1)
+          )
+        )
+      );
+
+      assert.deepEqual(a, 1);
+    });
+
     it("fromNullableM", async () => {
       const a = await _.run(_.fromNullableM(_.right(null)))();
       const b = await _.run(_.fromNullableM(_.right(1)))();

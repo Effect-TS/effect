@@ -1,7 +1,10 @@
 import * as S from "../src/stream/stream";
 import * as T from "../src";
 import * as assert from "assert";
+
 import { none, some } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
+import { eqNumber } from "fp-ts/lib/Eq";
 
 describe("Stream", () => {
   it("should use fromArray", async () => {
@@ -93,6 +96,87 @@ describe("Stream", () => {
       [0, 0],
       [1, 1]
     ]);
+  });
+
+  it("should use mapWith", async () => {
+    const s = pipe(
+      S.fromArray([0, 1, 2]),
+      S.mapWith(n => n + 1)
+    );
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [1, 2, 3]);
+  });
+
+  it("should use as", async () => {
+    const s = S.as(S.fromArray([0]), 1);
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [1]);
+  });
+
+  it("should use filter", async () => {
+    const s = S.filter(S.fromArray([0]), n => n > 0);
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use filter - 2", async () => {
+    const s = S.filter(S.fromArray([1]), n => n > 0);
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [1]);
+  });
+
+  it("should use distinctAdjacent", async () => {
+    const s = pipe(
+      S.fromArray([0, 0, 1, 2, 2, 3]),
+      S.distinctAdjacent(eqNumber)
+    );
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [0, 1, 2, 3]);
+  });
+
+  it("should use filterWith", async () => {
+    const s = pipe(
+      S.fromArray([0]),
+      S.filterWith(n => n > 0)
+    );
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use fold", async () => {
+    const s = S.fold(S.fromArray([1, 1, 1]), (n, e) => n + e, 0);
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [3]);
+  });
+
+  it("should use fold - 2", async () => {
+    const s = S.fold(S.fromArray([]), (n, e) => n + e, 0);
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [0]);
+  });
+
+  it("should use scan", async () => {
+    const s = S.scan(S.fromArray([1, 1, 1]), (n, e) => n + e, 0);
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [0, 1, 2, 3]);
   });
 
   it("should use concat", async () => {

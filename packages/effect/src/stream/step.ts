@@ -3,6 +3,9 @@
   credits to original author
  */
 
+/* tested in wave */
+/* istanbul ignore file */
+
 import { HKT } from "fp-ts/lib/HKT";
 import { Applicative } from "fp-ts/lib/Applicative";
 import { FunctionN } from "fp-ts/lib/function";

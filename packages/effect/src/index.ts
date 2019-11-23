@@ -257,6 +257,7 @@ export const effectMonad: MonadEffect<URI> = {
   delay<R, E, A>(inner: Kind3<URI, R, E, A>, ms: number): Kind3<URI, R, E, A> {
     return r => W.delay(inner(r), ms);
   },
+  /* istanbul ignore next */
   never: _ => W.never,
   foldExitWith<R, E1, E2, A1, A2>(
     failure: FunctionN<[Cause<E1>], Kind3<URI, R, E2, A2>>,
