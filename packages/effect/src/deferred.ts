@@ -9,13 +9,13 @@ import * as io from "waveguide/lib/wave";
 import { Completable, completable } from "waveguide/lib/support/completable";
 import * as T from "./";
 
-export interface Deferred<E, A> {
+export interface Deferred<R, E, A> {
   /**
    * Wait for this deferred to complete.
    *
    * This effect will produce the value set by done, raise the error set by error or interrupt
    */
-  readonly wait: T.Effect<T.NoEnv, E, A>;
+  readonly wait: T.Effect<R, E, A>;
   /**
    * Interrupt any waitersa on this Deferred
    */
@@ -59,71 +59,73 @@ export interface Deferred<E, A> {
    * Set this deferred with the result of source
    * @param source
    */
-  from(source: T.Effect<T.NoEnv, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
+  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
 }
 
 /* tested in wave */
 /* istanbul ignore next */
-export function makeDeferred<E, A, E2 = never>(): T.Effect<
-  T.NoEnv,
+export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
+  R,
   E2,
-  Deferred<E, A>
+  Deferred<R, E, A>
 > {
-  return T.fromIO(() => {
-    const c: Completable<T.Effect<T.NoEnv, E, A>> = completable();
-    const wait: T.Effect<T.NoEnv, E, A> = T.flatten(
-      T.fromAsync<T.Effect<T.NoEnv, E, A>>(callback => c.listen(callback))
-    );
-
-    const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.fromIO(() => {
-      c.complete(T.fromWave(io.raiseInterrupt));
-    });
-
-    const done = (a: A): T.Effect<T.NoEnv, T.NoErr, void> =>
-      T.fromIO(() => {
-        c.complete(T.right(a));
-      });
-
-    const error = (e: E): T.Effect<T.NoEnv, T.NoErr, void> =>
-      T.fromIO(() => {
-        c.complete(T.left(e));
-      });
-
-    const abort = (e: unknown): T.Effect<T.NoEnv, T.NoErr, void> =>
-      T.fromIO(() => {
-        c.complete(T.raiseAbort(e));
-      });
-
-    const cause = (e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> =>
-      T.fromIO(() => {
-        c.complete(T.raised(e));
-      });
-
-    const complete = (exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> =>
-      T.fromIO(() => {
-        c.complete(T.completed(exit));
-      });
-
-    const from = (
-      source: T.Effect<T.NoEnv, E, A>
-    ): T.Effect<T.NoEnv, T.NoErr, void> => {
-      const completed = T.effectMonad.chain(
-        T.effectMonad.result(source),
-        complete
+  return T.accessM((r: R) =>
+    T.fromIO(() => {
+      const c: Completable<T.Effect<R, E, A>> = completable();
+      const wait: T.Effect<R, E, A> = T.flatten(
+        T.fromAsync<T.Effect<R, E, A>>(callback => c.listen(callback))
       );
 
-      return T.effectMonad.onInterrupted(completed, interrupt);
-    };
+      const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.fromIO(() => {
+        c.complete(T.fromWave(io.raiseInterrupt));
+      });
 
-    return {
-      wait,
-      interrupt,
-      done,
-      error,
-      abort,
-      cause,
-      complete,
-      from
-    };
-  });
+      const done = (a: A): T.Effect<T.NoEnv, T.NoErr, void> =>
+        T.fromIO(() => {
+          c.complete(T.right(a));
+        });
+
+      const error = (e: E): T.Effect<T.NoEnv, T.NoErr, void> =>
+        T.fromIO(() => {
+          c.complete(T.left(e));
+        });
+
+      const abort = (e: unknown): T.Effect<T.NoEnv, T.NoErr, void> =>
+        T.fromIO(() => {
+          c.complete(T.raiseAbort(e));
+        });
+
+      const cause = (e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> =>
+        T.fromIO(() => {
+          c.complete(T.raised(e));
+        });
+
+      const complete = (exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> =>
+        T.fromIO(() => {
+          c.complete(T.completed(exit));
+        });
+
+      const from = (
+        source: T.Effect<R, E, A>
+      ): T.Effect<T.NoEnv, T.NoErr, void> => {
+        const completed = T.effectMonad.chain(
+          T.effectMonad.result(source),
+          complete
+        );
+
+        return T.effectMonad.onInterrupted(T.provide(r)(completed), interrupt);
+      };
+
+      return {
+        wait,
+        interrupt,
+        done,
+        error,
+        abort,
+        cause,
+        complete,
+        from
+      };
+    })
+  );
 }

@@ -1,12 +1,15 @@
 import * as S from "./stream";
-import * as W from "waveguide/lib/wave";
+import * as T from "../";
 
-const s = S.fromRange(0, 1, 10);
+type Config = { initial: number };
+
+const a = S.encaseEffect(T.access(({ initial }: Config) => initial));
+const s = S.chain(a, n => S.fromRange(n, 1, 10));
 const m = S.map(s, n => n + 1);
 const g = S.chain(m, n => S.fromRange(0, 1, n));
 const r = S.collectArray(g);
 
-W.runToPromise(r)
+T.promise(T.provide<Config>({initial: 1})(r))
   .then(r => {
     console.log(r);
   })

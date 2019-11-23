@@ -15,6 +15,7 @@ import { IO } from "fp-ts/lib/IO";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Cause } from "waveguide/lib/exit";
 import { Exit } from "waveguide/lib/exit";
+import { Wave } from "waveguide/lib/wave";
 
 export {
   done,
@@ -100,6 +101,28 @@ interface MonadEffect<T extends URIS3>
   mapWith<A, B>(
     f: FunctionN<[A], B>
   ): <R, E>(io: Kind3<T, R, E, A>) => Kind3<T, R, E, B>;
+  chainWith<R, E, Z, A>(
+    bind: FunctionN<[Z], Kind3<T, R, E, A>>
+  ): (io: Kind3<T, R, E, Z>) => Kind3<T, R, E, A>;
+  shiftAfter<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, E, A>;
+  delay<R, E, A>(inner: Kind3<T, R, E, A>, ms: number): Kind3<T, R, E, A>;
+  never: Kind3<T, NoEnv, NoErr, never>;
+  foldExitWith<R, E1, E2, A1, A2>(
+    failure: FunctionN<[Cause<E1>], Kind3<T, R, E2, A2>>,
+    success: FunctionN<[A1], Kind3<T, R, E2, A2>>
+  ): FunctionN<[Kind3<T, R, E1, A1>], Kind3<T, R, E2, A2>>;
+  chainTapWith<R, E, A>(
+    bind: FunctionN<[A], Kind3<T, R, E, unknown>>
+  ): (inner: Kind3<T, R, E, A>) => Kind3<T, R, E, A>;
+  raceFirst<R, E, A>(
+    io1: Kind3<URI, R, E, A>,
+    io2: Kind3<URI, R, E, A>
+  ): Kind3<URI, R, E, A>;
+  zipWith<R, E, A, B, C>(
+    first: Kind3<T, R, E, A>,
+    second: Kind3<T, R, E, B>,
+    f: FunctionN<[A, B], C>
+  ): Kind3<T, R, E, C>;
 }
 
 export const effectMonad: MonadEffect<URI> = {
@@ -238,6 +261,57 @@ export const effectMonad: MonadEffect<URI> = {
     f: FunctionN<[A], B>
   ): <R, E>(io: Kind3<URI, R, E, A>) => Kind3<URI, R, E, B> {
     return io => r => W.mapWith(f)(io(r));
+  },
+  chainWith<R, E, Z, A>(
+    bind: FunctionN<[Z], Kind3<URI, R, E, A>>
+  ): (io: Kind3<URI, R, E, Z>) => Kind3<URI, R, E, A> {
+    return io => r =>
+      pipe(
+        io(r),
+        W.chainWith(z => bind(z)(r))
+      );
+  },
+  shiftAfter<R, E, A>(io: Kind3<URI, R, E, A>): Kind3<URI, R, E, A> {
+    return r => W.shiftAfter(io(r));
+  },
+  delay<R, E, A>(inner: Kind3<URI, R, E, A>, ms: number): Kind3<URI, R, E, A> {
+    return r => W.delay(inner(r), ms);
+  },
+  never: _ => W.never,
+  foldExitWith<R, E1, E2, A1, A2>(
+    failure: FunctionN<[Cause<E1>], Kind3<URI, R, E2, A2>>,
+    success: FunctionN<[A1], Kind3<URI, R, E2, A2>>
+  ): FunctionN<[Kind3<URI, R, E1, A1>], Kind3<URI, R, E2, A2>> {
+    return ma => r =>
+      pipe(
+        ma(r),
+        W.foldExitWith(
+          c => failure(c)(r),
+          a => success(a)(r)
+        )
+      );
+  },
+  chainTapWith<R, E, A>(
+    bind: FunctionN<[A], Kind3<URI, R, E, unknown>>
+  ): (inner: Kind3<URI, R, E, A>) => Kind3<URI, R, E, A> {
+    return inner => r =>
+      pipe(
+        inner(r),
+        W.chainTapWith(a => bind(a)(r))
+      );
+  },
+  raceFirst<R, E, A>(
+    io1: Kind3<URI, R, E, A>,
+    io2: Kind3<URI, R, E, A>
+  ): Kind3<URI, R, E, A> {
+    return r => W.raceFirst(io1(r), io2(r));
+  },
+  zipWith<R, E, A, B, C>(
+    first: Kind3<URI, R, E, A>,
+    second: Kind3<URI, R, E, B>,
+    f: FunctionN<[A, B], C>
+  ): Kind3<URI, R, E, C> {
+    return r => W.zipWith(first(r), second(r), f);
   }
 };
 
@@ -275,6 +349,8 @@ export function error(message: string) {
 
 export const unit: Effect<NoEnv, NoErr, void> = effectMonad.unit;
 
+export const never: Effect<NoEnv, NoErr, never> = effectMonad.never;
+
 export const raiseInterrupt: Effect<NoEnv, NoErr, void> =
   effectMonad.raiseInterrupt;
 
@@ -286,6 +362,29 @@ export function mapWith<A, B>(
   f: FunctionN<[A], B>
 ): <R, E>(io: Effect<R, E, A>) => Effect<R, E, B> {
   return effectMonad.mapWith(f);
+}
+
+export function chainWith<R, E, Z, A>(
+  bind: FunctionN<[Z], Kind3<URI, R, E, A>>
+): (io: Effect<R, E, Z>) => Effect<R, E, A> {
+  return effectMonad.chainWith(bind);
+}
+
+export function shiftAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+  return effectMonad.shiftAfter(io);
+}
+
+export function foldExitWith<R, E1, E2, A1, A2>(
+  failure: FunctionN<[Cause<E1>], Kind3<URI, R, E2, A2>>,
+  success: FunctionN<[A1], Kind3<URI, R, E2, A2>>
+): FunctionN<[Effect<R, E1, A1>], Effect<R, E2, A2>> {
+  return effectMonad.foldExitWith(failure, success);
+}
+
+export function chainTapWith<R, E, A>(
+  bind: FunctionN<[A], Effect<R, E, unknown>>
+): (inner: Effect<R, E, A>) => Effect<R, E, A> {
+  return effectMonad.chainTapWith(bind);
 }
 
 /* lift functions */
@@ -360,6 +459,28 @@ export function chainLeft<E, E2, A, R2>(
   onLeft: (e: E) => Effect<R2, E2, A>
 ): <R>(ma: Effect<R, E, A>) => Effect<R & R2, E2, A> {
   return ma => effectMonad.chainLeft(ma, onLeft);
+}
+
+export function delay<R, E, A>(
+  inner: Effect<R, E, A>,
+  ms: number
+): Effect<R, E, A> {
+  return effectMonad.delay(inner, ms);
+}
+
+export function raceFirst<R, E, A>(
+  io1: Effect<R, E, A>,
+  io2: Effect<R, E, A>
+): Kind3<URI, R, E, A> {
+  return effectMonad.raceFirst(io1, io2);
+}
+
+export function zipWith<R, E, A, B, C>(
+  first: Effect<R, E, A>,
+  second: Effect<R, E, B>,
+  f: FunctionN<[A, B], C>
+): Effect<R, E, C> {
+  return effectMonad.zipWith(first, second, f);
 }
 
 /* conditionals */
