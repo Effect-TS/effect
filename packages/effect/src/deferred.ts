@@ -73,7 +73,7 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
     T.fromIO(() => {
       const c: Completable<T.Effect<R, E, A>> = completable();
       const wait: T.Effect<R, E, A> = T.flatten(
-        T.fromAsync<T.Effect<R, E, A>>(callback => c.listen(callback))
+        T.fromAsync<T.Effect<R, E, A>>(callback => c.listen(callback)) as any // TODO: this is fine, typedoc thinks differently
       );
 
       const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.fromIO(() => {
