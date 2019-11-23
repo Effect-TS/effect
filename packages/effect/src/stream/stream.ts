@@ -17,7 +17,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Eq } from "fp-ts/lib/Eq";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as wave from "waveguide/lib/wave";
-import { Fiber, Wave } from "waveguide/lib/wave";
+import { Fiber } from "waveguide/lib/wave";
 import * as managed from "../managed";
 import { Managed } from "../managed";
 import * as ref from "../ref";
@@ -37,10 +37,8 @@ import { Cause } from "waveguide/lib/exit";
 import * as deferred from "../deferred";
 import { Deferred } from "../deferred";
 import * as semaphore from "../semaphore";
-import { Semaphore } from "../semaphore";
-import { Monad3 } from "fp-ts/lib/Monad";
-
 import * as T from "../";
+import { Monad3E } from "../overload";
 
 export type Source<R, E, A> = T.Effect<R, E, Option<A>>;
 
@@ -891,11 +889,11 @@ export function takeWhile<R, E, A>(
  * @param stream
  * @param sink
  */
-export function into<R, E, A, S, B>(
+export function into<R, E, A, R2, E2, S, B>(
   stream: Stream<R, E, A>,
-  sink: Sink<R, E, S, A, B>
-): T.Effect<R, E, B> {
-  return managed.use(stream, fold =>
+  sink: Sink<R, E2, S, A, B>
+): T.Effect<R & R2, E | E2, B> {
+  return managed.use(widen<R2, E2>()(stream), fold =>
     pipe(
       sink.initial,
       T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
@@ -956,13 +954,7 @@ function sinkQueue<R, E, A>(
   return managed.chain(
     managed.zip(
       // 0 allows maximum backpressure throttling (i.e. a reader must be waiting already to produce the item)
-      managed.encaseEffect(
-        cq.boundedQueue<Option<A>>(0) as T.Effect<
-          R,
-          E,
-          ConcurrentQueue<Option<A>>
-        >
-      ),
+      managed.encaseEffect(cq.boundedQueue<Option<A>>(0)),
       managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
     ),
     ([q, latch]) => {
@@ -985,11 +977,11 @@ function sinkQueue<R, E, A>(
  * @param bs
  * @param f
  */
-export function zipWith<R, E, A, B, C>(
+export function zipWith<R, E, A, R2, E2, B, C>(
   as: Stream<R, E, A>,
-  bs: Stream<R, E, B>,
+  bs: Stream<R2, E2, B>,
   f: FunctionN<[A, B], C>
-): Stream<R, E, C> {
+): Stream<R & R2, E | E2, C> {
   const source = managed.zipWith(
     sinkQueue(as),
     sinkQueue(bs),
@@ -1036,10 +1028,10 @@ export function zipWith<R, E, A, B, C>(
  * @param as
  * @param bs
  */
-export function zip<R, E, A, B>(
+export function zip<R, E, A, R2, E2, B>(
   as: Stream<R, E, A>,
-  bs: Stream<R, E, B>
-): Stream<R, E, readonly [A, B]> {
+  bs: Stream<R2, E2, B>
+): Stream<R & R2, E | E2, readonly [A, B]> {
   return zipWith(as, bs, (a, b) => [a, b] as const);
 }
 
@@ -1104,13 +1096,7 @@ export function peel<R, E, A, S, B>(
     // We now have a shared pull instantiation that we can use as a sink to drive and return as a stream
     return pipe(
       encaseEffect(intoLeftover(pullStream, sink)),
-      mapWith(
-        ([b, left]) =>
-          [
-            b,
-            concat((fromArray(left) as any) as Stream<R, E, A>, pullStream)
-          ] as const
-      )
+      mapWith(([b, left]) => [b, concat(fromArray(left), pullStream)] as const)
     );
   });
 }
@@ -1174,13 +1160,7 @@ export function switchLatest<R, E, A>(
     managed.chain(
       managed.zip(
         // The queue and latch to push into
-        managed.encaseEffect(
-          cq.boundedQueue<Option<A>>(0) as T.Effect<
-            R,
-            E,
-            ConcurrentQueue<Option<A>>
-          >
-        ),
+        managed.encaseEffect(cq.boundedQueue<Option<A>>(0)),
         managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
       ),
       ([pushQueue, pushBreaker]) =>
@@ -1191,89 +1171,82 @@ export function switchLatest<R, E, A>(
           ),
           internalBreaker =>
             // somewhere to hold the currently running fiber so we can interrupt it on termination
-            managed.chain(
-              (singleFiberSlot() as any) as Managed<
-                R,
-                E,
-                Ref<Option<Fiber<never, void>>>
-              >,
-              fiberSlot => {
-                const interruptPushFiber = interruptFiberSlot(fiberSlot);
-                // Spawn a fiber that should push elements from stream into pushQueue as long as it is able
-                function spawnPushFiber(
-                  stream: Stream<R, E, A>
-                ): T.Effect<R, never, void> {
-                  const writer = pipe(
-                    // The writer process pushes things into the queue
-                    into(map(stream, some) as any, queueSink(pushQueue)) as any,
-                    // We need to trap any errors that occur and send those to internal latch to halt the process
-                    // Dont' worry about interrupts, because we perform cleanups for single fiber slot
-                    T.foldExitWith(
-                      internalBreaker.done,
-                      constant(T.right(undefined)) // we can do nothing because we will delegate to the proxy
+            managed.chain(singleFiberSlot(), fiberSlot => {
+              const interruptPushFiber = interruptFiberSlot(fiberSlot);
+              // Spawn a fiber that should push elements from stream into pushQueue as long as it is able
+              function spawnPushFiber(
+                stream: Stream<R, E, A>
+              ): T.Effect<R, never, void> {
+                const writer = pipe(
+                  // The writer process pushes things into the queue
+                  into(map(stream, some), queueSink(pushQueue)) as any,
+                  // We need to trap any errors that occur and send those to internal latch to halt the process
+                  // Dont' worry about interrupts, because we perform cleanups for single fiber slot
+                  T.foldExitWith(
+                    internalBreaker.done,
+                    constant(T.right(undefined)) // we can do nothing because we will delegate to the proxy
+                  )
+                );
+
+                return r =>
+                  wave.applyFirst(
+                    interruptPushFiber(r),
+                    wave.chain(wave.fork(writer(r)), f =>
+                      fiberSlot.set(some(f))(r)
                     )
                   );
-
-                  return r =>
-                    wave.applyFirst(
-                      interruptPushFiber(r),
-                      wave.chain(wave.fork(writer(r)), f =>
-                        fiberSlot.set(some(f))(r)
-                      )
-                    );
-                }
-
-                // pull streams and setup the push fibers appropriately
-                function advanceStreams(): T.Effect<R, never, void> {
-                  // We need a way of looking ahead to see errors in the output streams in order to cause termination
-                  // The push fiber will generate this when it encounters a failure
-                  const breakerError = T.effectMonad.chain(
-                    internalBreaker.wait,
-                    T.raised
-                  );
-
-                  return r =>
-                    wave.foldExit(
-                      wave.raceFirst(pull(r), breakerError(r)),
-                      // In the event of an error either from pull or from upstream we need to shut everything down
-                      // On managed unwind the active production fiber will be interrupted if there is one
-                      cause => pushBreaker.cause(cause)(r),
-                      nextOpt =>
-                        pipe(
-                          nextOpt,
-                          o.fold(
-                            // nothing left, so we should wait the push fiber's completion and then forward the termination
-                            () =>
-                              pipe(
-                                wave.race(
-                                  breakerError(r),
-                                  waitFiberSlot(fiberSlot)(r)
-                                ),
-                                wave.foldExitWith(
-                                  c => pushBreaker.cause(c)(r), // if we get a latchError forward it through to downstream
-                                  constant(pushQueue.offer(none)(r)) // otherwise we are done, so lets forward that
-                                )
-                              ),
-                            next =>
-                              wave.applySecondL(spawnPushFiber(next)(r), () =>
-                                advanceStreams()(r)
-                              )
-                          )
-                        )
-                    );
-                }
-                // We can configure this source now, but it will be invalid outside of running fibers
-                // Thus we can use managed.fiber
-                const downstreamSource = queueBreakerSource(
-                  pushQueue,
-                  pushBreaker
-                );
-                return managed.as(
-                  managed.fiber(advanceStreams()),
-                  downstreamSource
-                );
               }
-            )
+
+              // pull streams and setup the push fibers appropriately
+              function advanceStreams(): T.Effect<R, never, void> {
+                // We need a way of looking ahead to see errors in the output streams in order to cause termination
+                // The push fiber will generate this when it encounters a failure
+                const breakerError = T.effectMonad.chain(
+                  internalBreaker.wait,
+                  T.raised
+                );
+
+                return r =>
+                  wave.foldExit(
+                    wave.raceFirst(pull(r), breakerError(r)),
+                    // In the event of an error either from pull or from upstream we need to shut everything down
+                    // On managed unwind the active production fiber will be interrupted if there is one
+                    cause => pushBreaker.cause(cause)(r),
+                    nextOpt =>
+                      pipe(
+                        nextOpt,
+                        o.fold(
+                          // nothing left, so we should wait the push fiber's completion and then forward the termination
+                          () =>
+                            pipe(
+                              wave.race(
+                                breakerError(r),
+                                waitFiberSlot(fiberSlot)(r)
+                              ),
+                              wave.foldExitWith(
+                                c => pushBreaker.cause(c)(r), // if we get a latchError forward it through to downstream
+                                constant(pushQueue.offer(none)(r)) // otherwise we are done, so lets forward that
+                              )
+                            ),
+                          next =>
+                            wave.applySecondL(spawnPushFiber(next)(r), () =>
+                              advanceStreams()(r)
+                            )
+                        )
+                      )
+                  );
+              }
+              // We can configure this source now, but it will be invalid outside of running fibers
+              // Thus we can use managed.fiber
+              const downstreamSource = queueBreakerSource(
+                pushQueue,
+                pushBreaker
+              );
+              return managed.as(
+                managed.fiber(advanceStreams()),
+                downstreamSource
+              );
+            })
         )
     )
   );
@@ -1364,26 +1337,18 @@ export function merge<R, E, A>(
 ): Stream<R, E, A> {
   const source = managed.chain(streamQueueSource(stream), pull =>
     managed.chain(
-      managed.encaseEffect(
-        semaphore.makeSemaphore(maxActive) as T.Effect<R, E, Semaphore>
-      ),
+      managed.encaseEffect(semaphore.makeSemaphore(maxActive)),
       sem =>
         // create the queue that output will be forced into
         managed.chain(
-          managed.encaseEffect(
-            cq.boundedQueue<Option<A>>(0) as T.Effect<
-              R,
-              E,
-              ConcurrentQueue<Option<A>>
-            >
-          ),
+          managed.encaseEffect(cq.boundedQueue<Option<A>>(0)),
           pushQueue =>
             // create the mechanism t hrough which we can signal completion
             managed.chain(
               managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>()),
               pushBreaker =>
                 managed.chain(
-                  (makeWeave as any) as Managed<R, E, Weave>,
+                  makeWeave,
                   weave =>
                     managed.chain(
                       managed.encaseEffect(
@@ -1398,7 +1363,7 @@ export function merge<R, E, A>(
                           const writer = pipe(
                             // Process to sink elements into the queue
                             into(
-                              map(stream, some) as any,
+                              map(stream, some),
                               queueSink(pushQueue)
                             ) as any,
                             // TODO: I don't think we need to handle interrupts, it shouldn't be possible
@@ -1529,7 +1494,7 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const instances: Monad3<URI> = {
+export const instances: Monad3E<URI> = {
   URI,
   map,
   of: <R, E, A>(a: A): Stream<R, E, A> => (once(a) as any) as Stream<R, E, A>,
