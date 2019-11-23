@@ -64,6 +64,7 @@ function arrayFold<A>(
         f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
       ) => {
         function step(current: S): T.Effect<T.NoEnv, T.NoErr, S> {
+          /* istanbul ignore else */
           if (cont(current)) {
             return pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
@@ -201,7 +202,12 @@ export function once<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
     cont: Predicate<S>,
     f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
   ): T.Effect<T.NoEnv, T.NoErr, S> {
-    return cont(initial) ? f(initial, a) : T.right(initial);
+    /* istanbul ignore else */
+    if (cont(initial)) {
+      return f(initial, a);
+    } else {
+      return T.right(initial);
+    }
   }
   return managed.pure(fold);
 }
@@ -272,13 +278,15 @@ export function encaseEffect<R, E, A>(w: T.Effect<R, E, A>): Stream<R, E, A> {
     cont: Predicate<S>,
     step: FunctionN<[S, A], T.Effect<R, E, S>>
   ): T.Effect<R, E, S> {
+    /* istanbul ignore else */
     if (cont(initial)) {
       return pipe(
         w,
         T.chain(a => step(initial, a))
       );
+    } else {
+      return T.right(initial);
     }
-    return T.right(initial);
   }
   return managed.pure(fold) as Stream<R, E, A>;
 }
@@ -382,11 +390,14 @@ export function concatL<R, E, A, R2, E2>(
   ): T.Effect<R & R2, E | E2, S> {
     return pipe(
       managed.use(w1, fold1 => fold1(initial, cont, step)),
-      T.chain(intermediate =>
-        cont(intermediate)
-          ? managed.use(w2(), fold2 => fold2(intermediate, cont, step))
-          : T.right(intermediate)
-      )
+      T.chain(intermediate => {
+        /* istanbul ignore else */
+        if (cont(intermediate)) {
+          return managed.use(w2(), fold2 => fold2(intermediate, cont, step));
+        } else {
+          return T.right(intermediate);
+        }
+      })
     );
   }
   return managed.pure(fold);
@@ -1347,88 +1358,83 @@ export function merge<R, E, A>(
             managed.chain(
               managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>()),
               pushBreaker =>
-                managed.chain(
-                  makeWeave,
-                  weave =>
-                    managed.chain(
-                      managed.encaseEffect(
-                        deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
-                      ),
-                      internalBreaker => {
-                        // create a wave action that will proxy elements created by running the stream into the push queue
-                        // if any errors occur, we set the breaker
-                        function spawnPushFiber(
-                          stream: Stream<R, E, A>
-                        ): T.Effect<R, never, void> {
-                          const writer = pipe(
-                            // Process to sink elements into the queue
-                            into(
-                              map(stream, some),
-                              queueSink(pushQueue)
-                            ) as any,
-                            // TODO: I don't think we need to handle interrupts, it shouldn't be possible
-                            T.foldExitWith(
-                              internalBreaker.done,
-                              constant(T.right(undefined))
-                            )
-                          );
-                          return weave.attach(sem.withPermit(writer)); // we need a permit to start
-                        }
-
-                        // The action that will pull a single stream upstream and attempt to activate it to push downstream
-                        function advanceStreams(): T.Effect<R, never, void> {
-                          const breakerError = T.effectMonad.chain(
-                            internalBreaker.wait,
-                            T.raised
-                          );
-
-                          return r =>
-                            wave.foldExit(
-                              wave.raceFirst(
-                                pull(r), // we don't want to pull until there is capacity
-                                breakerError(r)
-                              ),
-                              c => pushBreaker.cause(c)(r), // if upstream errored, we should push the failure downstream immediately
-                              (
-                                nextOpt // otherwise we should
-                              ) =>
-                                pipe(
-                                  nextOpt,
-                                  o.fold(
-                                    // The end has occured
-                                    constant(
-                                      pipe(
-                                        // We will wait for an error or all active produces to finish
-                                        wave.race(
-                                          breakerError(r),
-                                          sem.acquireN(maxActive)(r)
-                                        ),
-                                        wave.foldExitWith(
-                                          c => pushBreaker.cause(c)(r),
-                                          constant(pushQueue.offer(none)(r))
-                                        )
-                                      )
-                                    ),
-                                    // Start the push fiber and then keep going
-                                    next =>
-                                      wave.applySecondL(
-                                        sem.withPermit(spawnPushFiber(next))(r),
-                                        constant(advanceStreams()(r))
-                                      )
-                                  )
-                                )
-                            );
-                        }
-                        const downstreamSource = queueBreakerSource(
-                          pushQueue,
-                          pushBreaker
+                managed.chain(makeWeave, weave =>
+                  managed.chain(
+                    managed.encaseEffect(
+                      deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
+                    ),
+                    internalBreaker => {
+                      // create a wave action that will proxy elements created by running the stream into the push queue
+                      // if any errors occur, we set the breaker
+                      function spawnPushFiber(
+                        stream: Stream<R, E, A>
+                      ): T.Effect<R, never, void> {
+                        const writer = pipe(
+                          // Process to sink elements into the queue
+                          into(map(stream, some), queueSink(pushQueue)) as any,
+                          // TODO: I don't think we need to handle interrupts, it shouldn't be possible
+                          T.foldExitWith(
+                            internalBreaker.done,
+                            constant(T.right(undefined))
+                          )
                         );
-                        return managed.as(
-                          managed.fiber(advanceStreams()),
-                          downstreamSource
-                        );
+                        return weave.attach(sem.withPermit(writer)); // we need a permit to start
                       }
-                    )
+
+                      // The action that will pull a single stream upstream and attempt to activate it to push downstream
+                      function advanceStreams(): T.Effect<R, never, void> {
+                        const breakerError = T.effectMonad.chain(
+                          internalBreaker.wait,
+                          T.raised
+                        );
+
+                        return r =>
+                          wave.foldExit(
+                            wave.raceFirst(
+                              pull(r), // we don't want to pull until there is capacity
+                              breakerError(r)
+                            ),
+                            c => pushBreaker.cause(c)(r), // if upstream errored, we should push the failure downstream immediately
+                            (
+                              nextOpt // otherwise we should
+                            ) =>
+                              pipe(
+                                nextOpt,
+                                o.fold(
+                                  // The end has occured
+                                  constant(
+                                    pipe(
+                                      // We will wait for an error or all active produces to finish
+                                      wave.race(
+                                        breakerError(r),
+                                        sem.acquireN(maxActive)(r)
+                                      ),
+                                      wave.foldExitWith(
+                                        c => pushBreaker.cause(c)(r),
+                                        constant(pushQueue.offer(none)(r))
+                                      )
+                                    )
+                                  ),
+                                  // Start the push fiber and then keep going
+                                  next =>
+                                    wave.applySecondL(
+                                      sem.withPermit(spawnPushFiber(next))(r),
+                                      constant(advanceStreams()(r))
+                                    )
+                                )
+                              )
+                          );
+                      }
+                      const downstreamSource = queueBreakerSource(
+                        pushQueue,
+                        pushBreaker
+                      );
+                      return managed.as(
+                        managed.fiber(advanceStreams()),
+                        downstreamSource
+                      );
+                    }
+                  )
                 )
             )
         )
