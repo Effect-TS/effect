@@ -73,18 +73,18 @@ export function mapWith<L, A>(
   return <R, E>(res: Managed<R, E, L>) => map(res, f);
 }
 
-export function zipWith<R, E, A, B, C>(
+export function zipWith<R, E, A, R2, E2, B, C>(
   ma: Managed<R, E, A>,
-  mb: Managed<R, E, B>,
+  mb: Managed<R2, E2, B>,
   f: FunctionN<[A, B], C>
-): Managed<R, E, C> {
+): Managed<R & R2, E | E2, C> {
   return chain(ma, a => map(mb, b => f(a, b)));
 }
 
-export function zip<R, E, A, B>(
+export function zip<R, E, A, R2, E2, B>(
   ma: Managed<R, E, A>,
-  mb: Managed<R, E, B>
-): Managed<R, E, readonly [A, B]> {
+  mb: Managed<R2, E2, B>
+): Managed<R & R2, E | E2, readonly [A, B]> {
   return zipWith(ma, mb, tuple2);
 }
 

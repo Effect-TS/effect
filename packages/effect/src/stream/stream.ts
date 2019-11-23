@@ -69,7 +69,7 @@ function arrayFold<A>(
           if (cont(current)) {
             return pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
-              T.chainWith(i => {
+              T.chain(i => {
                 return i < as.length
                   ? T.effectMonad.chain(f(current, as[i]), step)
                   : T.right(current);
@@ -128,7 +128,7 @@ export function fromSource<R, E, A>(
       return cont(initial)
         ? pipe(
             pull,
-            T.chainWith(out =>
+            T.chain(out =>
               pipe(
                 out,
                 o.fold(
@@ -242,7 +242,7 @@ export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
           r.update(n => n + 1),
           ms
         ),
-        T.mapWith(n => some(n))
+        T.map(n => some(n))
       )
     ),
     fromSource
@@ -277,7 +277,7 @@ export function encaseEffect<R, E, A>(w: T.Effect<R, E, A>): Stream<R, E, A> {
     if (cont(initial)) {
       return pipe(
         w,
-        T.chainWith(a => step(initial, a))
+        T.chain(a => step(initial, a))
       );
     }
     return T.right(initial);
@@ -384,7 +384,7 @@ export function concatL<R, E, A, R2, E2>(
   ): T.Effect<R & R2, E | E2, S> {
     return pipe(
       managed.use(w1, fold1 => fold1(initial, cont, step)),
-      T.chainWith(intermediate =>
+      T.chain(intermediate =>
         cont(intermediate)
           ? managed.use(w2(), fold2 => fold2(intermediate, cont, step))
           : T.right(intermediate)
@@ -475,7 +475,7 @@ export function filter<R, E, A>(
 }
 
 /**
- * Curried form of map
+ * Curried form of filter
  * @param f
  */
 export function filterWith<A>(
@@ -534,18 +534,18 @@ export function distinctAdjacent<A>(
  * @param f
  * @param seed
  */
-export function foldM<R, E, A, B>(
+export function foldM<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], T.Effect<R, E, B>>,
+  f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
   seed: B
-): Stream<R, E, B> {
+): Stream<R & R2, E | E2, B> {
   return managed.map(
-    stream,
+    widen<R2, E2>()(stream),
     base => <S>(
       initial: S,
       cont: Predicate<S>,
-      step: FunctionN<[S, B], T.Effect<R, E, S>>
-    ): T.Effect<R, E, S> =>
+      step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+    ): T.Effect<R & R2, E | E2, S> =>
       cont(initial)
         ? T.effectMonad.chain(
             base(seed, constant(true), (s, a) => f(s, a)),
@@ -566,7 +566,7 @@ export function fold<R, E, A, B>(
   f: FunctionN<[B, A], B>,
   seed: B
 ): Stream<R, E, B> {
-  return foldM(stream, (b, a) => T.right(f(b, a)) as T.Effect<R, E, B>, seed);
+  return foldM(stream, (b, a) => T.right(f(b, a)), seed);
 }
 
 function t2<A, B>(a: A, b: B): readonly [A, B] {
@@ -589,10 +589,7 @@ export function scanM<R, E, A, B>(
   return concat(
     (once(seed) as any) as Stream<R, E, B>,
     pipe(
-      managed.zip(
-        stream,
-        managed.encaseEffect(ref.makeRef(seed) as T.Effect<R, E, Ref<B>>)
-      ),
+      managed.zip(stream, managed.encaseEffect(ref.makeRef(seed))),
       managed.mapWith(([base, accum]) => {
         function fold<S>(
           initial: S,
@@ -604,14 +601,14 @@ export function scanM<R, E, A, B>(
             // Thus, we switch state from true to false on execution
             return pipe(
               accum.get,
-              T.chainWith(b =>
+              T.chain(b =>
                 base(
                   t2(b, true),
                   s => s[1],
                   (s, a) => T.effectMonad.map(f(s[0], a), r => t2(r, false))
                 )
               ),
-              T.chainWith(
+              T.chain(
                 // If this is still true, we didn't consume anything so advance
                 s =>
                   s[1]
@@ -749,13 +746,13 @@ export function transduce<R, E, A, S, B>(
                 pipe(
                   sinkStepState(nextSinkStep),
                   sink.extract,
-                  T.chainWith(b => step(foldState, b)),
-                  T.chainWith(nextFoldState => {
+                  T.chain(b => step(foldState, b)),
+                  T.chain(nextFoldState => {
                     const leftover = sinkStepLeftover(nextSinkStep);
                     // We will re-initialize the sink
                     return pipe(
                       sink.initial,
-                      T.chainWith(nextNextSinkState => {
+                      T.chain(nextNextSinkState => {
                         if (cont(nextFoldState) && leftover.length > 0) {
                           return feedSink(
                             nextFoldState,
@@ -784,14 +781,14 @@ export function transduce<R, E, A, S, B>(
 
       return pipe(
         derivedInitial,
-        T.chainWith(init =>
+        T.chain(init =>
           base(
             init,
             s => cont(s[0]),
             (s, a) => feedSink(s[0], s[1], [a])
           )
         ),
-        T.chainWith(([foldState, sinkState, extract]) =>
+        T.chain(([foldState, sinkState, extract]) =>
           extract && cont(foldState)
             ? T.effectMonad.chain(sink.extract(sinkState), b =>
                 step(foldState, b)
@@ -900,11 +897,9 @@ export function into<R, E, A, S, B>(
   return managed.use(stream, fold =>
     pipe(
       sink.initial,
-      T.chainWith(init =>
-        fold(init, isSinkCont, (s, a) => sink.step(s.state, a))
-      ),
-      T.mapWith(s => s.state),
-      T.chainWith(sink.extract)
+      T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
+      T.map(s => s.state),
+      T.chain(sink.extract)
     )
   );
 }
@@ -933,14 +928,14 @@ export function intoLeftover<R, E, A, S, B>(
   return managed.use(stream, fold =>
     pipe(
       sink.initial,
-      T.chainWith(init =>
+      T.chain(init =>
         fold(
           init,
           s => isSinkCont(s),
           (s, a) => sink.step(s.state, a)
         )
       ),
-      T.chainWith(end =>
+      T.chain(end =>
         T.effectMonad.map(
           sink.extract(end.state),
           b => [b, sinkStepLeftover(end)] as const

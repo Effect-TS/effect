@@ -98,12 +98,6 @@ interface MonadEffect<T extends URIS3>
     use: FunctionN<[A], Kind3<T, R, E, B>>
   ): Kind3<T, R, E, B>;
   as<R, E, A, B>(io: Kind3<T, R, E, A>, b: B): Kind3<T, R, E, B>;
-  mapWith<A, B>(
-    f: FunctionN<[A], B>
-  ): <R, E>(io: Kind3<T, R, E, A>) => Kind3<T, R, E, B>;
-  chainWith<R, E, Z, A>(
-    bind: FunctionN<[Z], Kind3<T, R, E, A>>
-  ): (io: Kind3<T, R, E, Z>) => Kind3<T, R, E, A>;
   shiftAfter<R, E, A>(io: Kind3<T, R, E, A>): Kind3<T, R, E, A>;
   delay<R, E, A>(inner: Kind3<T, R, E, A>, ms: number): Kind3<T, R, E, A>;
   never: Kind3<T, NoEnv, NoErr, never>;
@@ -257,20 +251,6 @@ export const effectMonad: MonadEffect<URI> = {
   },
   raiseInterrupt: _ => W.raiseInterrupt,
   as: (io, b) => r => W.as(io(r), b),
-  mapWith<A, B>(
-    f: FunctionN<[A], B>
-  ): <R, E>(io: Kind3<URI, R, E, A>) => Kind3<URI, R, E, B> {
-    return io => r => W.mapWith(f)(io(r));
-  },
-  chainWith<R, E, Z, A>(
-    bind: FunctionN<[Z], Kind3<URI, R, E, A>>
-  ): (io: Kind3<URI, R, E, Z>) => Kind3<URI, R, E, A> {
-    return io => r =>
-      pipe(
-        io(r),
-        W.chainWith(z => bind(z)(r))
-      );
-  },
   shiftAfter<R, E, A>(io: Kind3<URI, R, E, A>): Kind3<URI, R, E, A> {
     return r => W.shiftAfter(io(r));
   },
@@ -356,18 +336,6 @@ export const raiseInterrupt: Effect<NoEnv, NoErr, void> =
 
 export function as<R, E, A, B>(io: Effect<R, E, A>, b: B): Effect<R, E, B> {
   return effectMonad.as(io, b);
-}
-
-export function mapWith<A, B>(
-  f: FunctionN<[A], B>
-): <R, E>(io: Effect<R, E, A>) => Effect<R, E, B> {
-  return effectMonad.mapWith(f);
-}
-
-export function chainWith<R, E, Z, A>(
-  bind: FunctionN<[Z], Kind3<URI, R, E, A>>
-): (io: Effect<R, E, Z>) => Effect<R, E, A> {
-  return effectMonad.chainWith(bind);
 }
 
 export function shiftAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
