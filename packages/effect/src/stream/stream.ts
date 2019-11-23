@@ -594,45 +594,54 @@ function t2<A, B>(a: A, b: B): readonly [A, B] {
  * @param f
  * @param seed
  */
-export function scanM<R, E, A, B>(stream: Stream<R, E, A>, f: FunctionN<[B, A], T.Effect<R, E, B>>, seed: B): Stream<R, E, B> {
+export function scanM<R, E, A, B>(
+  stream: Stream<R, E, A>,
+  f: FunctionN<[B, A], T.Effect<R, E, B>>,
+  seed: B
+): Stream<R, E, B> {
   return concat(
     once(seed),
     pipe(
-      managed.zip(
-        stream,
-        managed.encaseEffect(ref.makeRef(seed))
-      ),
-      managed.mapWith(
-        ([base, accum]) => {
-          function fold<S>(initial: S, cont: Predicate<S>, step: FunctionN<[S, B], T.Effect<R, E, S>>): T.Effect<R, E, S> {
-            if (cont(initial)) {
-              // We need to figure out how to drive the base fold for a single step
-              // Thus, we switch state from true to false on execution
-              return pipe(
-                accum.get,
-                T.chain(
-                  (b) =>
-                    base(t2(b, true), (s) => s[1], (s, a) =>
-                      T.effectMonad.map(f(s[0], a), (r) => t2(r, false)))
-                ),
-                T.chain(
-                  // If this is still true, we didn't consume anything so advance
-                  (s) => s[1] ?
-                    T.right(initial) :
-                    r => wave.applySecond(
-                      accum.set(s[0])(r) as wave.Wave<E, S>,
-                      T.effectMonad.chain(step(initial, s[0]), (next) => fold(next, cont, step))(r)
-                    )
+      managed.zip(stream, managed.encaseEffect(ref.makeRef(seed))),
+      managed.mapWith(([base, accum]) => {
+        function fold<S>(
+          initial: S,
+          cont: Predicate<S>,
+          step: FunctionN<[S, B], T.Effect<R, E, S>>
+        ): T.Effect<R, E, S> {
+          /* istanbul ignore else */
+          if (cont(initial)) {
+            // We need to figure out how to drive the base fold for a single step
+            // Thus, we switch state from true to false on execution
+            return pipe(
+              accum.get,
+              T.chain(b =>
+                base(
+                  t2(b, true),
+                  s => s[1],
+                  (s, a) => T.effectMonad.map(f(s[0], a), r => t2(r, false))
                 )
+              ),
+              T.chain(
+                // If this is still true, we didn't consume anything so advance
+                s =>
+                  s[1]
+                    ? T.right(initial)
+                    : r =>
+                        wave.applySecond(
+                          accum.set(s[0])(r) as wave.Wave<E, S>,
+                          T.effectMonad.chain(step(initial, s[0]), next =>
+                            fold(next, cont, step)
+                          )(r)
+                        )
               )
-
-            } else {
-              return T.right(initial);
-            }
+            );
+          } else {
+            return T.right(initial);
           }
-          return fold;
         }
-      )
+        return fold;
+      })
     )
   );
 }
@@ -668,11 +677,13 @@ export function chain<R, E, A, R2, E2, B>(
       step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
     ): T.Effect<R & R2, E | E2, S> =>
       outerfold(initial, cont, (s, a) => {
+        /* istanbul ignore next */
         if (cont(s)) {
           const inner = widen<R, E>()(f(a));
           return managed.use(inner, innerfold => innerfold(s, cont, step));
+        } else {
+          return T.right(s);
         }
-        return T.right(s);
       })
   );
 }
@@ -722,22 +733,22 @@ type TDuceFused<FoldState, SinkState> = readonly [
  * @param stream
  * @param sink
  */
-export function transduce<R, E, A, S, B>(
+export function transduce<R, E, A, R2, E2, S, B>(
   stream: Stream<R, E, A>,
-  sink: Sink<R, E, S, A, B>
-): Stream<R, E, B> {
+  sink: Sink<R2, E2, S, A, B>
+): Stream<R & R2, E | E2, B> {
   return managed.map(
-    stream,
+    widen<R2, E2>()(stream),
     base => <S0>(
       initial: S0,
       cont: Predicate<S0>,
-      step: FunctionN<[S0, B], T.Effect<R, E, S0>>
-    ): T.Effect<R, E, S0> => {
+      step: FunctionN<[S0, B], T.Effect<R & R2, E | E2, S0>>
+    ): T.Effect<R & R2, E | E2, S0> => {
       function feedSink(
         foldState: S0,
         sinkState: S,
         chunk: A[]
-      ): T.Effect<R, E, TDuceFused<S0, S>> {
+      ): T.Effect<R & R2, E | E2, TDuceFused<S0, S>> {
         return T.effectMonad.chain(
           stepMany(sink, sinkState, chunk),
           nextSinkStep =>
