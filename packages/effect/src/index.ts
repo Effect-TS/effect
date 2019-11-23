@@ -108,15 +108,15 @@ interface MonadEffect<T extends URIS3>
   chainTapWith<R, E, A>(
     bind: FunctionN<[A], Kind3<T, R, E, unknown>>
   ): (inner: Kind3<T, R, E, A>) => Kind3<T, R, E, A>;
-  raceFirst<R, E, A>(
+  raceFirst<R, E, A, R2, E2>(
     io1: Kind3<URI, R, E, A>,
-    io2: Kind3<URI, R, E, A>
-  ): Kind3<URI, R, E, A>;
-  zipWith<R, E, A, B, C>(
+    io2: Kind3<URI, R2, E2, A>
+  ): Kind3<URI, R & R2, E | E2, A>;
+  zipWith<R, E, A, R2, E2, B, C>(
     first: Kind3<T, R, E, A>,
-    second: Kind3<T, R, E, B>,
+    second: Kind3<T, R2, E2, B>,
     f: FunctionN<[A, B], C>
-  ): Kind3<T, R, E, C>;
+  ): Kind3<T, R & R2, E | E2, C>;
 }
 
 export const effectMonad: MonadEffect<URI> = {
@@ -280,18 +280,18 @@ export const effectMonad: MonadEffect<URI> = {
         W.chainTapWith(a => bind(a)(r))
       );
   },
-  raceFirst<R, E, A>(
+  raceFirst<R, E, A, R2, E2>(
     io1: Kind3<URI, R, E, A>,
-    io2: Kind3<URI, R, E, A>
-  ): Kind3<URI, R, E, A> {
-    return r => W.raceFirst(io1(r), io2(r));
+    io2: Kind3<URI, R2, E2, A>
+  ): Kind3<URI, R & R2, E | E2, A> {
+    return r => W.raceFirst<E | E2, A>(io1(r), io2(r));
   },
-  zipWith<R, E, A, B, C>(
+  zipWith<R, E, A, R2, E2, B, C>(
     first: Kind3<URI, R, E, A>,
-    second: Kind3<URI, R, E, B>,
+    second: Kind3<URI, R2, E2, B>,
     f: FunctionN<[A, B], C>
-  ): Kind3<URI, R, E, C> {
-    return r => W.zipWith(first(r), second(r), f);
+  ): Kind3<URI, R & R2, E | E2, C> {
+    return r => W.zipWith<E | E2, A, B, C>(first(r), second(r), f);
   }
 };
 
@@ -436,18 +436,18 @@ export function delay<R, E, A>(
   return effectMonad.delay(inner, ms);
 }
 
-export function raceFirst<R, E, A>(
+export function raceFirst<R, E, A, R2, E2>(
   io1: Effect<R, E, A>,
-  io2: Effect<R, E, A>
-): Kind3<URI, R, E, A> {
+  io2: Effect<R2, E | E2, A>
+): Kind3<URI, R & R2, E | E2, A> {
   return effectMonad.raceFirst(io1, io2);
 }
 
-export function zipWith<R, E, A, B, C>(
+export function zipWith<R, E, A, R2, E2, B, C>(
   first: Effect<R, E, A>,
-  second: Effect<R, E, B>,
+  second: Effect<R2, E2, B>,
   f: FunctionN<[A, B], C>
-): Effect<R, E, C> {
+): Effect<R & R2, E | E2, C> {
   return effectMonad.zipWith(first, second, f);
 }
 
