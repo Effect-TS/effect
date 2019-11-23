@@ -5,6 +5,26 @@ import * as assert from "assert";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { eqNumber } from "fp-ts/lib/Eq";
+import { Sink, liftPureSink } from "../src/stream/sink";
+import { sinkCont, SinkStep, sinkDone } from "../src/stream/step";
+import { FunctionN, identity } from "fp-ts/lib/function";
+
+export function expectExitIn<E, A, B>(
+  ioa: T.Effect<T.NoEnv, E, A>,
+  f: FunctionN<[T.Exit<E, A>], B>,
+  expected: B
+): Promise<void> {
+  return T.run(ioa)().then(result => {
+    expect(assert.deepEqual(f(result), expected));
+  });
+}
+
+export function expectExit<E, A>(
+  ioa: T.Effect<T.NoEnv, E, A>,
+  expected: T.Exit<E, A>
+): Promise<void> {
+  return expectExitIn(ioa, identity, expected);
+}
 
 describe("Stream", () => {
   it("should use fromArray", async () => {
@@ -155,6 +175,28 @@ describe("Stream", () => {
     assert.deepEqual(res, []);
   });
 
+  it("should use dropWith", async () => {
+    const s = pipe(
+      S.fromArray([0]),
+      S.dropWith(1)
+    );
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use dropWith - 2", async () => {
+    const s = pipe(
+      S.fromArray([0, 1]),
+      S.dropWith(1)
+    );
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [1]);
+  });
+
   it("should use fold", async () => {
     const s = S.fold(S.fromArray([1, 1, 1]), (n, e) => n + e, 0);
 
@@ -177,6 +219,24 @@ describe("Stream", () => {
     const res = await T.promise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1, 2, 3]);
+  });
+
+  it("should use flatten", async () => {
+    const s = S.flatten(
+      S.fromArray([S.fromArray([0, 1, 2]), S.fromArray([0, 1, 2])])
+    );
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [0, 1, 2, 0, 1, 2]);
+  });
+
+  it("should use mapM", async () => {
+    const s = S.mapM(S.fromArray([0, 1, 2]), n => T.right(n + 1));
+
+    const res = await T.promise(S.collectArray(s));
+
+    assert.deepEqual(res, [1, 2, 3]);
   });
 
   it("should use concat", async () => {
@@ -266,5 +326,88 @@ describe("Stream", () => {
       , 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3
       , 4, 5, 6, 7, 8, 9]
     );
+  });
+
+  // from https://github.com/rzeigler/waveguide-streams/blob/master/test/stream.spec.ts
+  describe("transduce", () => {
+    // We describe transduction as the process of consuming some elements (1 or more) to produce an output element
+    // The transducer used for the test is a summer
+    // i.e. it consumes the number of elements to read, then that number of elements, and then outputs the sum
+    function transducer(): Sink<
+      T.NoEnv,
+      never,
+      readonly [number, number],
+      number,
+      number
+    > {
+      const initial = sinkCont([-1, 0] as const);
+
+      function step(
+        state: readonly [number, number],
+        next: number
+      ): SinkStep<never, readonly [number, number]> {
+        if (state[0] < 0) {
+          return sinkCont([next, 0] as const);
+        }
+        if (state[0] === 1) {
+          return sinkDone(
+            [0 as number, state[1] + next] as const,
+            [] as never[]
+          );
+        }
+        return sinkCont([state[0] - 1, state[1] + next] as const);
+      }
+
+      function extract(state: readonly [number, number]): number {
+        return state[1];
+      }
+
+      return liftPureSink({ initial, step, extract });
+    }
+
+    it("should perform transduction", () => {
+      const s1 = S.fromArray([2, 4, 6, 3, -10, -20, -30, 2]);
+      const s2 = S.transduce(s1, transducer());
+      return expectExit(S.collectArray(s2), T.done([10, -60, 0]));
+    });
+
+    it("should transduce empty streams", () => {
+      const s1 = S.fromArray([]);
+      const s2 = S.transduce(s1, transducer());
+      return expectExit(S.collectArray(s2), T.done([]));
+    });
+
+    function slidingBuffer(): Sink<T.NoEnv, never, number[], number, number[]> {
+      const initial = sinkCont([] as number[]);
+
+      function step(state: number[], next: number): SinkStep<number, number[]> {
+        const more = [...state, next];
+        if (more.length === 3) {
+          return sinkDone(more, more.slice(1));
+        } else {
+          return sinkCont(more);
+        }
+      }
+
+      function extract(state: number[]): number[] {
+        return state;
+      }
+
+      return liftPureSink({ initial, step, extract });
+    }
+
+    it("should handle remainders set correctly", () => {
+      const s1 = S.fromRange(0, 1, 5);
+      const s2 = S.transduce(s1, slidingBuffer());
+      return expectExit(
+        S.collectArray(s2),
+        T.done([
+          [0, 1, 2],
+          [1, 2, 3],
+          [2, 3, 4],
+          [3, 4] // final emission happens here but there is no way of filling the buffer beyond
+        ])
+      );
+    });
   });
 });
