@@ -1,6 +1,6 @@
 {
   "name": "@matechs/rpc",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -36,10 +36,10 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.0.21",
-    "@matechs/express": "^0.0.10",
-    "@matechs/http": "^0.0.16",
-    "@matechs/tracing": "^0.0.24",
+    "@matechs/effect": "^0.0.22",
+    "@matechs/express": "^0.0.11",
+    "@matechs/http": "^0.0.17",
+    "@matechs/tracing": "^0.0.25",
     "body-parser": "^1.19.0",
     "deepmerge": "^4.2.2",
     "express": "^4.17.1",
