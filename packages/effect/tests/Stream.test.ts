@@ -13,17 +13,16 @@ import { eqNumber } from "fp-ts/lib/Eq";
 import { Sink, liftPureSink, collectArraySink } from "../src/stream/sink";
 import { sinkCont, SinkStep, sinkDone } from "../src/stream/step";
 import { FunctionN, identity } from "fp-ts/lib/function";
-import { wave, after, delay, zip } from "waveguide/lib/wave";
+import { after, delay, zip } from "waveguide/lib/wave";
 import { expect } from "chai";
 
-export function expectExitIn<E, A, B>(
+export async function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
   f: FunctionN<[T.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
-  return T.run(ioa)().then(result => {
-    expect(assert.deepEqual(f(result), expected));
-  });
+  const result = await T.run(ioa)();
+  expect(assert.deepEqual(f(result), expected));
 }
 
 export function expectExit<E, A>(
