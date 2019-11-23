@@ -38,7 +38,7 @@ import * as deferred from "../deferred";
 import { Deferred } from "../deferred";
 import * as semaphore from "../semaphore";
 import { Semaphore } from "../semaphore";
-import { Monad2, Monad3 } from "fp-ts/lib/Monad";
+import { Monad3 } from "fp-ts/lib/Monad";
 
 import * as T from "../";
 
@@ -55,17 +55,17 @@ export type Stream<R, E, A> = Managed<R, E, Fold<R, E, A>>;
 // The contract of a Stream's fold is that state is preserved within the lifecycle of the managed
 // Therefore, we must track the offset in the array via a ref
 // This allows, for instance, this to work with transduce
-function arrayFold<R, E, A>(
+function arrayFold<A>(
   as: readonly A[]
-): Managed<R, T.NoErr, Fold<R, E, A>> {
+): Managed<T.NoEnv, T.NoErr, Fold<T.NoEnv, T.NoErr, A>> {
   return managed.encaseEffect(
     T.effectMonad.map(ref.makeRef(0), cell => {
       return <S>(
         initial: S,
         cont: Predicate<S>,
-        f: FunctionN<[S, A], T.Effect<R, E, S>>
+        f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
       ) => {
-        function step(current: S): T.Effect<R, E, S> {
+        function step(current: S): T.Effect<T.NoEnv, T.NoErr, S> {
           if (cont(current)) {
             return pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
@@ -337,25 +337,56 @@ export function zipWithIndex<R, E, A>(
   });
 }
 
+function widenFold<E2>(): <R, E, A>(f: Fold<R, E, A>) => Fold<R, E | E2, A> {
+  return f => f as any;
+}
+
+function widen<R2, E2>(): <R, E, A>(
+  stream: Stream<R, E, A>
+) => Stream<R & R2, E | E2, A> {
+  return <R, E, A>(stream: Stream<R, E, A>) => {
+    function fold<S>(
+      initial: S,
+      cont: Predicate<S>,
+      step: FunctionN<[S, A], T.Effect<R & R2, E | E2, S>>
+    ): T.Effect<R & R2, E | E2, S> {
+      return r2 =>
+        pipe(
+          r2,
+          managed.use(stream, f =>
+            widenFold<E2>()(f)(initial, cont, (s, a) => r =>
+              pipe(step(s, a)(pipe(r, T.mergeEnv(r2))))
+            )
+          )
+        );
+    }
+
+    return managed.pure(fold);
+  };
+}
+
 /**
  * Create a stream that emits all the elements of stream1 followed by all the elements of stream2
  * @param stream1
  * @param stream2
  */
-export function concatL<R, E, A>(
+export function concatL<R, E, A, R2, E2>(
   stream1: Stream<R, E, A>,
-  stream2: Lazy<Stream<R, E, A>>
-): Stream<R, E, A> {
+  stream2: Lazy<Stream<R2, E2, A>>
+): Stream<R & R2, E | E2, A> {
+  const w1 = widen<R2, E2>()(stream1);
+  const w2 = () => widen<R, E>()(stream2());
+
   function fold<S>(
     initial: S,
     cont: Predicate<S>,
-    step: FunctionN<[S, A], T.Effect<R, E, S>>
-  ): T.Effect<R, E, S> {
+    step: FunctionN<[S, A], T.Effect<R & R2, E | E2, S>>
+  ): T.Effect<R & R2, E | E2, S> {
     return pipe(
-      managed.use(stream1, fold1 => fold1(initial, cont, step)),
+      managed.use(w1, fold1 => fold1(initial, cont, step)),
       T.chainWith(intermediate =>
         cont(intermediate)
-          ? managed.use(stream2(), fold2 => fold2(intermediate, cont, step))
+          ? managed.use(w2(), fold2 => fold2(intermediate, cont, step))
           : T.right(intermediate)
       )
     );
@@ -368,10 +399,10 @@ export function concatL<R, E, A>(
  * @param stream1
  * @param stream2
  */
-export function concat<R, E, A>(
+export function concat<R, E, A, R2, E2>(
   stream1: Stream<R, E, A>,
-  stream2: Stream<R, E, A>
-): Stream<R, E, A> {
+  stream2: Stream<R2, E2, A>
+): Stream<R & R2, E | E2, A> {
   return concatL(stream1, constant(stream2));
 }
 
@@ -638,7 +669,9 @@ export function chain<R, R2, E, A, B>(
       outerfold(initial, cont, (s, a) => {
         if (cont(s)) {
           const inner = f(a);
-          return managed.use(inner, innerfold => innerfold(s, cont, step as any));
+          return managed.use(inner, innerfold =>
+            innerfold(s, cont, step as any)
+          );
         }
         return T.right(s) as any;
       })
