@@ -554,13 +554,17 @@ export function foldM<R, E, A, R2, E2, B>(
       initial: S,
       cont: Predicate<S>,
       step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
-    ): T.Effect<R & R2, E | E2, S> =>
-      cont(initial)
-        ? T.effectMonad.chain(
-            base(seed, constant(true), (s, a) => f(s, a)),
-            result => step(initial, result)
-          )
-        : T.right(initial)
+    ): T.Effect<R & R2, E | E2, S> => {
+      /* istanbul ignore else */
+      if (cont(initial)) {
+        return T.effectMonad.chain(
+          base(seed, constant(true), (s, a) => f(s, a)),
+          result => step(initial, result)
+        );
+      } else {
+        return T.right(initial);
+      }
+    }
   );
 }
 
@@ -590,57 +594,45 @@ function t2<A, B>(a: A, b: B): readonly [A, B] {
  * @param f
  * @param seed
  */
-export function scanM<R, E, A, B, R2, E2>(
-  stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
-  seed: B
-): Stream<R & R2, E | E2, B> {
+export function scanM<R, E, A, B>(stream: Stream<R, E, A>, f: FunctionN<[B, A], T.Effect<R, E, B>>, seed: B): Stream<R, E, B> {
   return concat(
     once(seed),
     pipe(
       managed.zip(
-        widen<R2, E2>()(stream),
+        stream,
         managed.encaseEffect(ref.makeRef(seed))
       ),
-      managed.mapWith(([base, accum]) => {
-        function fold<S>(
-          initial: S,
-          cont: Predicate<S>,
-          step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
-        ): T.Effect<R & R2, E | E2, S> {
-          if (cont(initial)) {
-            // We need to figure out how to drive the base fold for a single step
-            // Thus, we switch state from true to false on execution
-            return pipe(
-              accum.get,
-              T.chain(b =>
-                base(
-                  t2(b, true),
-                  s => s[1],
-                  (s, a) => T.effectMonad.map(f(s[0], a), r => t2(r, false))
+      managed.mapWith(
+        ([base, accum]) => {
+          function fold<S>(initial: S, cont: Predicate<S>, step: FunctionN<[S, B], T.Effect<R, E, S>>): T.Effect<R, E, S> {
+            if (cont(initial)) {
+              // We need to figure out how to drive the base fold for a single step
+              // Thus, we switch state from true to false on execution
+              return pipe(
+                accum.get,
+                T.chain(
+                  (b) =>
+                    base(t2(b, true), (s) => s[1], (s, a) =>
+                      T.effectMonad.map(f(s[0], a), (r) => t2(r, false)))
+                ),
+                T.chain(
+                  // If this is still true, we didn't consume anything so advance
+                  (s) => s[1] ?
+                    T.right(initial) :
+                    r => wave.applySecond(
+                      accum.set(s[0])(r) as wave.Wave<E, S>,
+                      T.effectMonad.chain(step(initial, s[0]), (next) => fold(next, cont, step))(r)
+                    )
                 )
-              ),
-              T.chain(
-                // If this is still true, we didn't consume anything so advance
-                s =>
-                  s[1]
-                    ? T.right(initial)
-                    : pipe(
-                        accum.set(s[0]),
-                        T.apSecond(
-                          T.effectMonad.chain(step(initial, s[0]), next =>
-                            fold(next, cont, step)
-                          )
-                        )
-                      )
               )
-            );
-          } else {
-            return T.right(initial);
+
+            } else {
+              return T.right(initial);
+            }
           }
+          return fold;
         }
-        return fold;
-      })
+      )
     )
   );
 }

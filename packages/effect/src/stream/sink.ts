@@ -3,6 +3,9 @@
   credits to original author
  */
 
+/* tested in wave */
+/* istanbul ignore file */
+
 import { Option, some, none } from "fp-ts/lib/Option";
 import {
   constant,
