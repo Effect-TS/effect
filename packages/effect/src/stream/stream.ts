@@ -581,21 +581,24 @@ function t2<A, B>(a: A, b: B): readonly [A, B] {
  * @param f
  * @param seed
  */
-export function scanM<R, E, A, B>(
+export function scanM<R, E, A, B, R2, E2>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], T.Effect<R, E, B>>,
+  f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
   seed: B
-): Stream<R, E, B> {
+): Stream<R & R2, E | E2, B> {
   return concat(
-    (once(seed) as any) as Stream<R, E, B>,
+    once(seed),
     pipe(
-      managed.zip(stream, managed.encaseEffect(ref.makeRef(seed))),
+      managed.zip(
+        widen<R2, E2>()(stream),
+        managed.encaseEffect(ref.makeRef(seed))
+      ),
       managed.mapWith(([base, accum]) => {
         function fold<S>(
           initial: S,
           cont: Predicate<S>,
-          step: FunctionN<[S, B], T.Effect<R, E, S>>
-        ): T.Effect<R, E, S> {
+          step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+        ): T.Effect<R & R2, E | E2, S> {
           if (cont(initial)) {
             // We need to figure out how to drive the base fold for a single step
             // Thus, we switch state from true to false on execution
@@ -614,7 +617,7 @@ export function scanM<R, E, A, B>(
                   s[1]
                     ? T.right(initial)
                     : pipe(
-                        (accum.set(s[0]) as any) as T.Effect<R, E, S>,
+                        accum.set(s[0]),
                         T.apSecond(
                           T.effectMonad.chain(step(initial, s[0]), next =>
                             fold(next, cont, step)
@@ -644,7 +647,7 @@ export function scan<R, E, A, B>(
   f: FunctionN<[B, A], B>,
   seed: B
 ): Stream<R, E, B> {
-  return scanM(stream, (b, a) => T.right(f(b, a)) as T.Effect<R, E, B>, seed);
+  return scanM(stream, (b, a) => T.right(f(b, a)), seed);
 }
 
 /**
@@ -652,36 +655,34 @@ export function scan<R, E, A, B>(
  * @param stream
  * @param f
  */
-export function chain<R, R2, E, A, B>(
+export function chain<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], Stream<R2, E, B>>
-): Stream<R & R2, E, B> {
+  f: FunctionN<[A], Stream<R2, E2, B>>
+): Stream<R & R2, E | E2, B> {
   return managed.map(
-    stream,
+    widen<R2, E2>()(stream),
     outerfold => <S>(
       initial: S,
       cont: Predicate<S>,
-      step: FunctionN<[S, B], T.Effect<R, E, S>>
-    ): T.Effect<R, E, S> =>
+      step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+    ): T.Effect<R & R2, E | E2, S> =>
       outerfold(initial, cont, (s, a) => {
         if (cont(s)) {
-          const inner = f(a);
-          return managed.use(inner, innerfold =>
-            innerfold(s, cont, step as any)
-          );
+          const inner = widen<R, E>()(f(a));
+          return managed.use(inner, innerfold => innerfold(s, cont, step));
         }
-        return T.right(s) as any;
+        return T.right(s);
       })
-  ) as any;
+  );
 }
 
 /**
  * Flatten a stream of streams
  * @param stream
  */
-export function flatten<R, E, A>(
-  stream: Stream<R, E, Stream<R, E, A>>
-): Stream<R, E, A> {
+export function flatten<R, E, R2, E2, A>(
+  stream: Stream<R, E, Stream<R2, E2, A>>
+): Stream<R & R2, E | E2, A> {
   return chain(stream, identity);
 }
 
@@ -690,10 +691,10 @@ export function flatten<R, E, A>(
  * @param stream
  * @param f
  */
-export function mapM<R, E, A, B>(
+export function mapM<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], T.Effect<R, E, B>>
-): Stream<R, E, B> {
+  f: FunctionN<[A], T.Effect<R2, E2, B>>
+): Stream<R & R2, E | E2, B> {
   return chain(stream, a => encaseEffect(f(a)));
 }
 
