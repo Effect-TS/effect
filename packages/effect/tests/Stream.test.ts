@@ -3,6 +3,30 @@ import * as T from "../src";
 import * as assert from "assert";
 
 describe("Stream", () => {
+  it("should zip two streams", async () => {
+    type EnvA = { a: number };
+    type EnvB = { b: number };
+
+    const streamA = S.repeat(S.encaseEffect(T.access(({ a }: EnvA) => a)));
+    const streamB = S.repeat(S.encaseEffect(T.access(({ b }: EnvB) => b)));
+
+    // $ExpectType Managed<EnvA & EnvB, never, Fold<EnvA & EnvB, never, readonly [number, number]>>
+    const zip = S.zip(streamA, streamB);
+
+    const res = await T.promise(
+      T.provide<EnvA & EnvB>({ a: 1, b: 1 })(
+        // $ExpectType Effect<EnvA & EnvB, never, (readonly [number, number])[]>
+        S.collectArray(S.take(zip, 3))
+      )
+    );
+
+    assert.deepEqual(res, [
+      [1, 1],
+      [1, 1],
+      [1, 1]
+    ]);
+  });
+
   it("should use stream with environment", async () => {
     type Config = { initial: number };
     type ConfigB = { second: number };
