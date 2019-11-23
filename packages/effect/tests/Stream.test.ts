@@ -1,13 +1,20 @@
 import * as S from "../src/stream/stream";
+import * as SK from "../src/stream/sink";
 import * as T from "../src";
+import * as M from "../src/managed";
 import * as assert from "assert";
+import * as ref from "../src/ref";
+import * as W from "waveguide/lib/wave";
+import * as array from "fp-ts/lib/Array";
 
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { eqNumber } from "fp-ts/lib/Eq";
-import { Sink, liftPureSink } from "../src/stream/sink";
+import { Sink, liftPureSink, collectArraySink } from "../src/stream/sink";
 import { sinkCont, SinkStep, sinkDone } from "../src/stream/step";
 import { FunctionN, identity } from "fp-ts/lib/function";
+import { wave, after, delay, zip } from "waveguide/lib/wave";
+import { expect } from "chai";
 
 export function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
@@ -176,25 +183,59 @@ describe("Stream", () => {
   });
 
   it("should use dropWith", async () => {
-    const s = pipe(
-      S.fromArray([0]),
-      S.dropWith(1)
-    );
+    const s = pipe(S.fromArray([0]), S.dropWith(1));
 
     const res = await T.promise(S.collectArray(s));
 
     assert.deepEqual(res, []);
   });
 
+  it("should use zipWith", async () => {
+    const sl = S.empty;
+    const sr = S.empty;
+    const z = S.zipWith(sl, sr, (l, r) => 0);
+
+    const res = await T.promise(S.collectArray(z));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use zipWith - 2", async () => {
+    const sl = S.fromArray([0, 1, 2]);
+    const sr = S.empty;
+    const z = S.zipWith(sl, sr, (l, r) => l + r);
+
+    const res = await T.promise(S.collectArray(z));
+
+    assert.deepEqual(res, []);
+  });
+
   it("should use dropWith - 2", async () => {
-    const s = pipe(
-      S.fromArray([0, 1]),
-      S.dropWith(1)
-    );
+    const s = pipe(S.fromArray([0, 1]), S.dropWith(1));
 
     const res = await T.promise(S.collectArray(s));
 
     assert.deepEqual(res, [1]);
+  });
+
+  it("should use intoManaged", async () => {
+    const sm = M.pure(collectArraySink<T.NoEnv, T.NoErr, number>());
+
+    const s = S.intoManaged(S.fromArray([0, 1, 2]), sm);
+
+    const res = await T.promise(s);
+
+    assert.deepEqual(res, [0, 1, 2]);
+  });
+
+  it("should use intoLeftover", async () => {
+    const sl = collectArraySink<T.NoEnv, T.NoErr, number>();
+
+    const s = S.intoLeftover(S.fromArray([0, 1, 2]), sl);
+
+    const res = await T.promise(s);
+
+    assert.deepEqual(res, [[0, 1, 2], []]);
   });
 
   it("should use fold", async () => {
@@ -329,6 +370,63 @@ describe("Stream", () => {
   });
 
   // from https://github.com/rzeigler/waveguide-streams/blob/master/test/stream.spec.ts
+  describe("peel", () => {
+    const multiplier = SK.map(SK.headSink<T.NoEnv, never, number>(), opt =>
+      opt._tag === "Some" ? opt.value : 1
+    );
+    it("should handle empty arrays", () => {
+      const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
+      const s2 = S.peel(s1, multiplier);
+      return expectExit(
+        S.collectArray(S.chain(s2, ([_h, r]) => r)),
+        T.done([])
+      );
+    });
+    it("should extract a head and return a subsequent element", () => {
+      const s1 = S.fromArray([2, 6, 9]);
+      const s2 = S.chain(S.peel(s1, multiplier), ([head, rest]) => {
+        return S.map(rest, v => v * head);
+      });
+      return expectExit(S.collectArray(s2), T.done([12, 18]));
+    });
+    it("should compose", () => {
+      const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
+      const s2 = S.filter(s1, x => x % 2 === 0); // emits 4 6 8
+      const s3 = S.chain(S.peel(s2, multiplier), ([head, rest]) => {
+        // head is 4
+        return S.map(rest, v => v * head); // emits 24 32
+      });
+      return expectExit(S.collectArray(s3), T.done([24, 32]));
+    });
+    it("should raise errors", () => {
+      const s1 = (S.fromArray([
+        S.raised("boom"),
+        S.once(1)
+      ]) as any) as S.Stream<
+        T.NoEnv,
+        string,
+        S.Stream<T.NoEnv, string, number>
+      >;
+      const s2 = S.flatten(s1);
+      const s3 = S.peel(s2, multiplier);
+      return expectExit(S.collectArray(s3), T.raise("boom"));
+    });
+    it("should raise errors in the remainder stream", () => {
+      const s1 = (S.fromArray([
+        S.once(2),
+        S.raised("boom"),
+        S.once(1)
+      ]) as any) as S.Stream<
+        T.NoEnv,
+        string,
+        S.Stream<T.NoEnv, string, number>
+      >;
+      const s2 = S.flatten(s1);
+      const s3 = S.chain(S.peel(s2, multiplier), ([_head, rest]) => rest);
+      return expectExit(S.collectArray(s3), T.raise("boom"));
+    });
+  });
+
   describe("transduce", () => {
     // We describe transduction as the process of consuming some elements (1 or more) to produce an output element
     // The transducer used for the test is a summer
@@ -408,6 +506,175 @@ describe("Stream", () => {
           [3, 4] // final emission happens here but there is no way of filling the buffer beyond
         ])
       );
+    });
+  });
+
+  describe("switchLatest", () => {
+    it("should produce the latest elements", () => {
+      // Two streams that emit 2 elements then hang forever
+      const s1 = S.take(S.periodically(50), 2);
+      const s2 = S.as(
+        s1,
+        S.concat(
+          S.take(S.periodically(10), 2),
+          (S.never as any) as S.Stream<T.NoEnv, never, number>
+        )
+      );
+      // A third stream that emits 3 elements
+      const after30 = T.as(_ => after(50), S.take(S.periodically(20), 4));
+      const s3 = S.switchLatest(S.concat(s2, S.encaseEffect(after30)));
+      return expectExit(S.collectArray(s3), T.done([0, 1, 0, 1, 0, 1, 2, 3]));
+    });
+    it("should fail with errors in outer stream", () => {
+      const io = T.effectMonad.chain(ref.makeRef(0), cell => {
+        const s1: T.Effect<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = T.delay(T.right(S.encaseEffect(cell.set(1))), 50) as any;
+        const s2: T.Effect<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = T.delay(T.left("boom"), 50) as any;
+        const s3: T.Effect<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = T.delay(T.right(S.encaseEffect(cell.set(2))), 50) as any;
+
+        const set: S.Stream<
+          T.NoEnv,
+          string,
+          T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>
+        > = S.fromArray([s1, s2, s3]) as any;
+
+        const stream: S.Stream<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = S.mapM(set, identity);
+
+        const drain = T.result(S.drain(S.switchLatest(stream)));
+        return r => zip(drain(r), delay(cell.get(r), 100));
+      });
+      return expectExit(
+        io,
+        T.done([T.raise("boom"), 1] as const) as T.Exit<
+          never,
+          readonly [T.Exit<string, void>, number]
+        >
+      );
+    });
+    it("should fail with errors in the inner streams", () => {
+      const io = T.effectMonad.chain(ref.makeRef(0), cell => {
+        const s1: T.Effect<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = T.delay(T.right(S.encaseEffect(cell.set(1))), 50) as any;
+        const s2: T.Effect<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = T.delay(T.right(S.encaseEffect(T.left("boom"))), 50) as any;
+        const s3: T.Effect<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = T.delay(T.right(S.encaseEffect(cell.set(2))), 50) as any;
+
+        const set: S.Stream<
+          T.NoEnv,
+          string,
+          T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>
+        > = S.fromArray([s1, s2, s3]) as any;
+
+        const stream: S.Stream<
+          T.NoEnv,
+          string,
+          S.Stream<T.NoEnv, string, number>
+        > = S.mapM(set, identity);
+
+        const drain = T.result(S.drain(S.switchLatest(stream)));
+        return r => zip(drain(r), T.delay(cell.get, 100)(r));
+      });
+
+      return expectExit(
+        io,
+        T.done([T.raise("boom"), 1] as const) as T.Exit<
+          never,
+          readonly [T.Exit<string, void>, number]
+        >
+      );
+    });
+    it("switching should occur", () => {
+      const s1 = S.take(S.periodically(50), 10);
+      const s2 = S.chainSwitchLatest(s1, i =>
+        S.as(S.take(S.periodically(10), 10), i)
+      );
+      const output = S.collectArray(s2);
+      return T.promise(output).then(values => {
+        const pairs = array.chunksOf(2)(values);
+        pairs.forEach(([f, s]) =>
+          expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s))
+        );
+      });
+    });
+  });
+  function repeater<E, A>(
+    w: T.Effect<T.NoEnv, E, A>,
+    n: number
+  ): T.Effect<T.NoEnv, E, A> {
+    if (n <= 1) {
+      return w;
+    } else {
+      return r => W.parApplySecond(w(r), repeater(w, n - 1)(r));
+    }
+  }
+  describe("merge", function() {
+    jest.setTimeout(20000);
+
+    const r = T.fromIO(() => Math.random());
+
+    function range(max: number): T.Effect<T.NoEnv, never, number> {
+      return T.effectMonad.map(r, n => Math.round(n * max));
+    }
+
+    function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
+      return T.effectMonad.chain(range(max), a => _ => W.after(a));
+    }
+
+    it("should merge output", () => {
+      const s1 = S.fromRange(0, 1, 10);
+      const s2 = S.chainMerge(
+        s1,
+        i => S.mapM(S.fromRange(0, 1, 20), () => T.as(randomWait(50), i)),
+        4
+      );
+      const output = S.collectArray(s2);
+      const check = T.effectMonad.chain(output, values =>
+        T.fromIO(() => {
+          const uniq = array
+            .uniq(eqNumber)(values)
+            .sort();
+          const stats = array.array.map(
+            uniq,
+            u =>
+              [
+                u,
+                array.array.filter(values, v => v === u).length,
+                values.indexOf(u),
+                values.lastIndexOf(u)
+              ] as const
+          );
+          stats.forEach(([_i, ct]) => {
+            expect(ct).to.equal(20);
+          });
+          return;
+        })
+      );
+      return T.promise(repeater(check, 10));
     });
   });
 });
