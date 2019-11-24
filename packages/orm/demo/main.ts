@@ -19,66 +19,75 @@ interface Config {
   };
 }
 
-const program: T.Effect<
-  SQL.HasOrmConfig & SQL.Orm & Graceful & Config,
-  Error,
-  string
-> = SQL.bracketPool(
-  Do(T.effectMonad)
-    .do(SQL.withRepository(DemoEntity)(r => () => r.insert({})))
-    .bindL("stream", () =>
+const program: T.Effect<SQL.Orm & Graceful & Config, Error, string> = Do(
+  T.effectMonad
+)
+  .bindL("pool", () =>
+    pipe(
+      SQL.createPool(),
+      T.provide<SQL.HasOrmConfig>({
+        orm: {
+          options: {
+            type: "postgres",
+            name: "demo_connection",
+            username: "db_user",
+            password: "db_pass",
+            database: "demo",
+            host: "127.0.0.1",
+            port: 5432,
+            synchronize: true,
+            entities: [DemoEntity],
+            extra: {
+              pool: {
+                min: 1,
+                max: 10
+              }
+            }
+          }
+        }
+      })
+    )
+  )
+  .doL(({ pool }) =>
+    pipe(
+      SQL.withRepository(DemoEntity)(r => () => r.insert({})),
+      SQL.usePool(pool)
+    )
+  )
+  .bindL("stream", ({ pool }) =>
+    pipe(
       SQL.queryStream<{ d_id: number }>(m =>
         m
           .createQueryBuilder(DemoEntity, "d")
           .select("d.id")
           .orderBy("d.id", "ASC")
           .stream()
+      ),
+      SQL.usePool(pool)
+    )
+  )
+  .bindL("ids", ({ stream }) =>
+    T.right(
+      S.foldM(
+        stream,
+        (s, r) =>
+          T.accessM(({ config: { prefix } }: Config) =>
+            T.fromIO(() => {
+              return `${s}(${prefix}${r.d_id})`;
+            })
+          ),
+        "ids: "
       )
     )
-    .bindL("ids", ({ stream }) =>
-      T.right(
-        S.foldM(
-          stream,
-          (s, r) =>
-            T.accessM(({ config: { prefix } }: Config) =>
-              T.fromIO(() => {
-                return `${s}(${prefix}${r.d_id})`;
-              })
-            ),
-          "ids: "
-        )
-      )
-    )
-    .bindL("result", ({ ids }) => S.collectArray(ids))
-    .return(s => s.result[0])
-);
+  )
+  .bindL("result", ({ ids }) => S.collectArray(ids))
+  .return(s => s.result[0]);
 
 const module = pipe(
   T.noEnv,
   T.mergeEnv({ config: { prefix: "id:" } } as Config),
   T.mergeEnv(graceful()),
-  T.mergeEnv(SQL.orm),
-  T.mergeEnv({
-    orm: {
-      options: {
-        type: "postgres",
-        name: "demo_connection",
-        username: "db_user",
-        password: "db_pass",
-        database: "demo",
-        host: "127.0.0.1",
-        port: 5432,
-        synchronize: true,
-        entities: [DemoEntity],
-        extra: {
-          pool: {
-            min: 1,
-            max: 10
-          }
-        }
-      }
-    }
-  } as SQL.HasOrmConfig)
+  T.mergeEnv(SQL.orm)
 );
 
 const main = pipe(program, T.provide(module));
