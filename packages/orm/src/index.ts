@@ -181,7 +181,8 @@ export function usePool(
 
 /* istanbul ignore next */
 export function queryStreamB<RES>(
-  batch: number
+  batch: number,
+  every: number = 0
 ): (
   f: (m: EntityManager) => Promise<ReadStream>
 ) => T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, Array<RES>>> {
@@ -191,7 +192,10 @@ export function queryStreamB<RES>(
         .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))
         .bindL("res", ({ stream }) =>
           T.right(
-            S.filter(S.fromObjectReadStreamB<RES>(stream, batch), isNonEmpty)
+            S.filter(
+              S.fromObjectReadStreamB<RES>(stream, batch, every),
+              isNonEmpty
+            )
           )
         )
         .return(({ res }) => res)

@@ -78,7 +78,7 @@ const program: T.Effect<
   )
   .bindL("stream", ({ pool }) =>
     pipe(
-      SQL.queryStreamB<{ d_id: number }>(10)(m =>
+      SQL.queryStreamB<{ d_id: number }>(10, 100)(m =>
         m
           .createQueryBuilder(DemoEntity, "d")
           .select("d.id")

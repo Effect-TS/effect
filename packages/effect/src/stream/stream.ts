@@ -1578,7 +1578,8 @@ export function fromObjectReadStream<A>(stream: ReadStream) {
 /* istanbul ignore next */
 function getSourceFromObjectReadStreamB<A>(
   stream: ReadStream,
-  batch: number
+  batch: number,
+  every: number
 ): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<Array<A>>>> {
   return managed.encaseEffect(
     T.fromIO(() => {
@@ -1623,13 +1624,13 @@ function getSourceFromObjectReadStreamB<A>(
 
           return () => {};
         }),
-        0
+        every
       );
     })
   );
 }
 
 /* istanbul ignore next */
-export function fromObjectReadStreamB<A>(stream: ReadStream, batch: number) {
-  return fromSource(getSourceFromObjectReadStreamB<A>(stream, batch));
+export function fromObjectReadStreamB<A>(stream: ReadStream, batch: number, every: number) {
+  return fromSource(getSourceFromObjectReadStreamB<A>(stream, batch, every));
 }
