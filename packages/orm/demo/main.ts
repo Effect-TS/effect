@@ -102,7 +102,7 @@ const program: T.Effect<
       )
     )
   )
-  .doL(({ ids }) => S.drain(S.mapM(S.drop(ids, 1), log)))
+  .doL(({ ids }) => pipe(ids, S.dropWith(1), S.mapMWith(log), S.drain))
   .return(() => {});
 
 const module = pipe(

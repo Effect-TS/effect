@@ -695,6 +695,12 @@ export function mapM<R, E, A, R2, E2, B>(
   return chain(stream, a => encaseEffect(f(a)));
 }
 
+export function mapMWith<A, R2, E2, B>(
+  f: FunctionN<[A], T.Effect<R2, E2, B>>
+): <R, E>(stream: Stream<R, E, A>) => Stream<R & R2, E | E2, B> {
+  return stream => chain(stream, a => encaseEffect(f(a)));
+}
+
 /**
  * A stream that emits no elements but never terminates.
  */
