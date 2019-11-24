@@ -345,13 +345,13 @@ export function getCauseValidationM<E>(
     ) =>
       W.foldExit(
         fab(r),
-        e =>
+        fabe =>
           W.foldExit(
             fa(r),
-            fe => W.raised(S.concat(e, fe)),
-            _fa => W.raised(e)
+            fae => W.raised(S.concat(fabe, fae)),
+            _ => W.raised(fabe)
           ),
-        f => W.map(fa(r), a => f(a))
+        f => W.map(fa(r), f)
       ),
     throwError: <R, A>(e: E): Effect<R, E, A> => _ => W.raiseError(e),
     alt: <R, A>(
