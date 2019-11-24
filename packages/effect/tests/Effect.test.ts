@@ -512,6 +512,10 @@ describe("Effect", () => {
     interface Env2 {
       value2: string;
     }
+    const env1: Env1 = { value: "a" };
+    const env2: Env2 = { value2: "b" };
+    const env = _.mergeEnv(env2)(env1);
+
     it("effectMonad", async () => {
       const M = _.effectMonad;
       const p = Do(M)
@@ -526,9 +530,6 @@ describe("Effect", () => {
     });
     it("effectMonad env", async () => {
       const M = _.effectMonad;
-      const env1: Env1 = { value: "a" };
-      const env2: Env2 = { value2: "b" };
-      const env = _.mergeEnv(env2)(env1);
       const p = Do(M)
         .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
         .sequenceS({
@@ -561,7 +562,7 @@ describe("Effect", () => {
           b: M.throwError("b")
         })
         .return(r => r);
-      const e = await _.run(p)();
+      const e = await _.run(_.provide(env1)(p))();
       assert.deepStrictEqual(e, _.raise("ab"));
     });
   });
