@@ -1,0 +1,18 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Node Inspector",
+			"type": "node",
+			"request": "launch",
+			"args": ["${workspaceRoot}/packages/orm/demo/main.ts"],
+			"runtimeArgs": ["-r", "ts-node/register"],
+			"cwd": "${workspaceRoot}",
+			"protocol": "inspector",
+			"internalConsoleOptions": "openOnSessionStart",
+			"env": {
+				"TS_NODE_IGNORE": "false"
+			}
+		}
+	]
+}

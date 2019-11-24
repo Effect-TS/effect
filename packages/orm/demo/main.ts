@@ -19,7 +19,7 @@ interface Config {
   };
 }
 
-const program: T.Effect<SQL.Orm & Graceful & Config, Error, string[]> = Do(
+const program: T.Effect<SQL.Orm & Graceful & Config, Error, void> = Do(
   T.effectMonad
 )
   .bindL("pool", () =>
@@ -80,8 +80,16 @@ const program: T.Effect<SQL.Orm & Graceful & Config, Error, string[]> = Do(
       )
     )
   )
-  .bindL("result", ({ ids }) => S.collectArray(ids))
-  .return(s => s.result);
+  .bindL("result", ({ ids }) =>
+    S.drain(
+      S.mapM(S.drop(ids, 1), line =>
+        T.fromIO(() => {
+          console.log(line);
+        })
+      )
+    )
+  )
+  .return(() => {});
 
 const module = pipe(
   T.noEnv,
@@ -95,9 +103,7 @@ const main = pipe(program, T.provide(module));
 T.run(main)()
   .then(
     E.fold(
-      v => {
-        console.log(v);
-      },
+      () => {},
       e => {
         console.error(e);
       },
