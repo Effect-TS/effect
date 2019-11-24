@@ -89,12 +89,13 @@
 					<h3>pipeable</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
 						<li class="tsd-signature tsd-kind-icon">pipeable&lt;F, I&gt;<span class="tsd-signature-symbol">(</span>I<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">I extends Chain3E&lt;F&gt; ? PipeableChain3E&lt;F&gt; : I extends Apply3E&lt;F&gt; ? PipeableApply3E&lt;F&gt; : I extends Functor3&lt;F&gt; ? PipeableFunctor3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Contravariant3&lt;F&gt; ? PipeableContravariant3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends FunctorWithIndex3&lt;F, infer Ix&gt; ? PipeableFunctorWithIndex3&lt;F, Ix&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Bifunctor3&lt;F&gt; ? PipeableBifunctor3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Extend3&lt;F&gt; ? PipeableExtend3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends FoldableWithIndex3&lt;F, infer Ix&gt; ? PipeableFoldableWithIndex3&lt;F, Ix&gt; : I extends Foldable3&lt;F&gt; ? PipeableFoldable3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Alt3&lt;F&gt; ? PipeableAlt3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends FilterableWithIndex3&lt;F, infer Ix&gt; ? PipeableFilterableWithIndex3&lt;F, Ix&gt; : I extends Filterable3&lt;F&gt; ? PipeableFilterable3&lt;...&gt; : I extends Compactable3&lt;...&gt; ? PipeableCompactable3&lt;...&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Profunctor3&lt;F&gt; ? PipeableProfunctor3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Semigroupoid3&lt;F&gt; ? PipeableSemigroupoid3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends MonadThrow3E&lt;F&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span></li>
+						<li class="tsd-signature tsd-kind-icon">pipeable&lt;F, I, E&gt;<span class="tsd-signature-symbol">(</span>I<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">I extends Chain3EC&lt;F, E&gt; ? PipeableChain3EC&lt;F, E&gt; : I extends Apply3EC&lt;F, E&gt; ? PipeableApply3EC&lt;F, E&gt; : I extends Functor3EC&lt;...&gt; ? PipeableFunctor3EC&lt;...&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Alt3EC&lt;F, E&gt; ? PipeableAlt3EC&lt;F, E&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends MonadThrow3EC&lt;F, E&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L183">packages/effect/src/overload.ts:183</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ccdddc4/packages/effect/src/overload.ts#L223">packages/effect/src/overload.ts:223</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -133,6 +134,37 @@
 								<span class="tsd-signature-type">I extends Semigroupoid3&lt;F&gt; ? PipeableSemigroupoid3&lt;F&gt; : {}</span>
 								<span class="tsd-signature-symbol"> &amp; </span>
 								<span class="tsd-signature-type">I extends MonadThrow3E&lt;F&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span>
+							</h4>
+						</li>
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ccdddc4/packages/effect/src/overload.ts#L256">packages/effect/src/overload.ts:256</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>F<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">URIS3</span></h4>
+								</li>
+								<li>
+									<h4>I</h4>
+								</li>
+								<li>
+									<h4>E</h4>
+								</li>
+							</ul>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>I: <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">I extends Chain3EC&lt;F, E&gt; ? PipeableChain3EC&lt;F, E&gt; : I extends Apply3EC&lt;F, E&gt; ? PipeableApply3EC&lt;F, E&gt; : I extends Functor3EC&lt;...&gt; ? PipeableFunctor3EC&lt;...&gt; : {}</span>
+								<span class="tsd-signature-symbol"> &amp; </span>
+								<span class="tsd-signature-type">I extends Alt3EC&lt;F, E&gt; ? PipeableAlt3EC&lt;F, E&gt; : {}</span>
+								<span class="tsd-signature-symbol"> &amp; </span>
+								<span class="tsd-signature-type">I extends MonadThrow3EC&lt;F, E&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span>
 							</h4>
 						</li>
 					</ul>
