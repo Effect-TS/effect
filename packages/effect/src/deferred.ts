@@ -113,7 +113,7 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
           complete
         );
 
-        return T.effectMonad.onInterrupted(T.provide(r)(completed), interrupt);
+        return T.effectMonad.onInterrupted(_ => completed(r), interrupt);
       };
 
       return {

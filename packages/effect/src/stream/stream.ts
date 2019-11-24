@@ -343,32 +343,10 @@ export function zipWithIndex<R, E, A>(
   });
 }
 
-function widenFold<E2>(): <R, E, A>(f: Fold<R, E, A>) => Fold<R, E | E2, A> {
-  return f => f as any;
-}
-
 function widen<R2, E2>(): <R, E, A>(
   stream: Stream<R, E, A>
 ) => Stream<R & R2, E | E2, A> {
-  return <R, E, A>(stream: Stream<R, E, A>) => {
-    function fold<S>(
-      initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, A], T.Effect<R & R2, E | E2, S>>
-    ): T.Effect<R & R2, E | E2, S> {
-      return r2 =>
-        pipe(
-          r2,
-          managed.use(stream, f =>
-            widenFold<E2>()(f)(initial, cont, (s, a) => r =>
-              pipe(step(s, a)(pipe(r, T.mergeEnv(r2))))
-            )
-          )
-        );
-    }
-
-    return managed.pure(fold);
-  };
+  return stream => stream as any
 }
 
 /**

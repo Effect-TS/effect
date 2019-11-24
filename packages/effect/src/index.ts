@@ -1,6 +1,7 @@
+import M from "deepmerge";
+
 import * as Ei from "fp-ts/lib/Either";
 import * as Op from "fp-ts/lib/Option";
-import * as M from "deepmerge";
 import * as W from "waveguide/lib/wave";
 import * as Ar from "fp-ts/lib/Array";
 import * as S from "waveguide/lib/semaphore";
@@ -69,6 +70,9 @@ interface MonadEffect<T extends URIS3>
   tryPromise<E, A>(
     ioPromise: IO<Promise<A>>,
     onLeft: (e: any) => E
+  ): Kind3<T, NoEnv, E, A>;
+  tryAsync<E, A>(
+    op: FunctionN<[FunctionN<[Ei.Either<E, A>], void>], Lazy<void>>
   ): Kind3<T, NoEnv, E, A>;
   provide<R, R2, E, A>(ma: Kind3<T, R2 & R, E, A>, r: R): Kind3<T, R2, E, A>;
   accessM<R, R2, E, A>(f: (r: R) => Kind3<T, R2, E, A>): Kind3<T, R & R2, E, A>;
@@ -171,6 +175,11 @@ export const effectMonad: MonadEffect<URI> = {
     onLeft: (e: any) => E
   ): Kind3<URI, NoEnv, E, A> {
     return _ => W.mapError(W.fromPromise(ioPromise), onLeft);
+  },
+  tryAsync<E, A>(
+    op: FunctionN<[FunctionN<[Ei.Either<E, A>], void>], Lazy<void>>
+  ): Kind3<URI, NoEnv, E, A> {
+    return _ => W.async(op);
   },
   provide<R, R2, E, A>(
     ma: Kind3<URI, R2 & R, E, A>,
@@ -336,6 +345,7 @@ export function getCauseValidationM<E>(
 ): Monad3EC<URI, E> & MonadThrow3EC<URI, E> & Alt3EC<URI, E> {
   return {
     URI,
+    // @ts-ignore
     _E: undefined as any,
     of: effectMonad.of,
     map: effectMonad.map,
@@ -465,7 +475,7 @@ export function left<E, A = never>(e: E): Effect<NoEnv, E, A> {
   return effectMonad.left(e);
 }
 
-export function fromIO<A>(io: IO<A>): Effect<NoEnv, never, A> {
+export function fromIO<E = never, A = unknown>(io: IO<A>): Effect<NoEnv, E, A> {
   return effectMonad.fromIO(io);
 }
 
@@ -487,6 +497,12 @@ export function tryPromise<E, A>(
   onLeft: (e: any) => E
 ): (ioPromise: IO<Promise<A>>) => Effect<NoEnv, E, A> {
   return ioPromise => effectMonad.tryPromise(ioPromise, onLeft);
+}
+
+export function tryAsync<E, A>(
+  op: FunctionN<[FunctionN<[Ei.Either<E, A>], void>], Lazy<void>>
+): Effect<NoEnv, E, A> {
+  return effectMonad.tryAsync(op);
 }
 
 export function chainLeft<E, E2, A, R2>(
