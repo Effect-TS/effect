@@ -1,3 +1,9 @@
+import * as T from "@matechs/effect/lib";
+import { Graceful, onExit } from "@matechs/graceful/lib";
+import { Do } from "fp-ts-contrib/lib/Do";
+import { toError } from "fp-ts/lib/Either";
+import { IO } from "fp-ts/lib/IO";
+import { pipe } from "fp-ts/lib/pipeable";
 import {
   Connection,
   ConnectionOptions,
@@ -7,12 +13,6 @@ import {
   ObjectType,
   Repository
 } from "typeorm";
-import * as T from "@matechs/effect";
-import { toError } from "fp-ts/lib/Either";
-import { IO } from "fp-ts/lib/IO";
-import { pipe } from "fp-ts/lib/pipeable";
-import { Graceful, onExit } from "@matechs/graceful/lib";
-import { Do } from "fp-ts-contrib/lib/Do";
 
 export interface HasOrmConfig {
   orm: {
@@ -73,7 +73,7 @@ export const ormFactory: (
           .doL(({ c }) =>
             onExit(
               pipe(
-                T.toTaskLike(pipe(c.close, T.tryPromise(toError))),
+                T.toTaskLike(pipe(() => c.close(), T.tryPromise(toError))),
                 T.map(() => {})
               )
             )
@@ -82,10 +82,13 @@ export const ormFactory: (
       );
     },
     usePool(pool: Connection) {
-      return <R, E, A>(op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>) =>
-        T.provide<HasOrmPool & HasEntityManager>({
-          orm: { connection: pool, manager: pool.manager }
-        })(op);
+      return <R, E, A>(
+        op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
+      ) => r =>
+        op({
+          ...r,
+          orm: { ...r["orm"], connection: pool, manager: pool.manager }
+        } as any);
     },
     bracketPool<R, E, A>(
       op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
@@ -93,11 +96,13 @@ export const ormFactory: (
       return T.accessM(({ orm: { options } }: HasOrmConfig) =>
         T.bracket(
           pipe(() => factory(options), T.tryPromise(toError)),
-          db => pipe(db.close, T.tryPromise(toError)),
-          db =>
-            T.provide<HasOrmPool & HasEntityManager>({
-              orm: { connection: db, manager: db.manager }
-            })(op)
+          db => pipe(() => db.close(), T.tryPromise(toError)),
+          db => (r: any) => {
+            return op({
+              ...r,
+              orm: { ...r["orm"], connection: db, manager: db.manager }
+            });
+          }
         )
       );
     },
@@ -115,16 +120,8 @@ export const ormFactory: (
           pipe(
             () =>
               connection.transaction(tx =>
-                T.promise(
-                  pipe(
-                    op,
-                    T.provide(r),
-                    T.provide({
-                      orm: {
-                        manager: tx
-                      }
-                    } as HasEntityManager)
-                  )
+                T.promise(_ =>
+                  op({ ...r, orm: { ...r["orm"], manager: tx } } as any)
                 )
               ),
             T.tryPromise(toError)
