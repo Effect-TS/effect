@@ -1264,11 +1264,11 @@ export function switchLatest<R, E, A>(
  * @param stream
  * @param f
  */
-export function chainSwitchLatest<R, E, A, B>(
+export function chainSwitchLatest<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], Stream<R, E, B>>
-): Stream<R, E, B> {
-  return switchLatest(map(stream, f));
+  f: FunctionN<[A], Stream<R2, E2, B>>
+): Stream<R & R2, E | E2, B> {
+  return switchLatest(map(widen<R2, E2>()(stream), a => widen<R, E>()(f(a))));
 }
 
 interface Weave {
@@ -1573,4 +1573,63 @@ function getSourceFromObjectReadStream<A>(
 /* istanbul ignore next */
 export function fromObjectReadStream<A>(stream: ReadStream) {
   return fromSource(getSourceFromObjectReadStream<A>(stream));
+}
+
+/* istanbul ignore next */
+function getSourceFromObjectReadStreamB<A>(
+  stream: ReadStream,
+  batch: number
+): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<Array<A>>>> {
+  return managed.encaseEffect(
+    T.fromIO(() => {
+      let open = true;
+      const leftover = [];
+      const errors: Array<Error> = [];
+
+      stream.on("end", () => {
+        open = false;
+      });
+
+      stream.on("error", e => {
+        errors.push(e);
+      });
+
+      stream.pipe(
+        new Writable({
+          objectMode: true,
+          write(chunk, _, callback) {
+            leftover.push(chunk);
+
+            callback();
+          }
+        })
+      );
+
+      return T.delay(
+        T.tryAsync(res => {
+          if (leftover.length > 0) {
+            res(Ei.right(O.some(leftover.splice(0, batch))));
+          } else {
+            if (errors.length > 0) {
+              res(Ei.left(errors[0]));
+            } else {
+              if (open) {
+                res(Ei.right(O.some([])));
+              } else {
+                res(Ei.right(O.none));
+              }
+            }
+          }
+
+          return () => {};
+        }),
+        0
+      );
+    })
+  );
+}
+
+/* istanbul ignore next */
+export function fromObjectReadStreamB<A>(stream: ReadStream, batch: number) {
+  return fromSource(getSourceFromObjectReadStreamB<A>(stream, batch));
 }

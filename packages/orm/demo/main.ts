@@ -6,6 +6,8 @@ import { PrimaryGeneratedColumn, Entity } from "typeorm";
 import { graceful, Graceful, trigger } from "@matechs/graceful";
 import * as S from "@matechs/effect/lib/stream/stream";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { isSome } from "fp-ts/lib/Option";
+import * as A from "fp-ts/lib/Array";
 
 @Entity()
 class DemoEntity {
@@ -78,7 +80,7 @@ const program: T.Effect<
   )
   .bindL("stream", ({ pool }) =>
     pipe(
-      SQL.queryStream<{ d_id: number }>(m =>
+      SQL.queryStreamB<{ d_id: number }>(10)(m =>
         m
           .createQueryBuilder(DemoEntity, "d")
           .select("d.id")
@@ -91,7 +93,7 @@ const program: T.Effect<
   .bindL("ids", ({ stream }) =>
     T.right(
       S.scanM(
-        stream,
+        S.chainSwitchLatest(stream, s => S.fromArray(s)),
         (s, r) =>
           T.accessM(({ config: { prefix } }: Config) =>
             T.fromIO(() => {
@@ -104,6 +106,11 @@ const program: T.Effect<
   )
   .doL(({ ids }) => pipe(ids, S.dropWith(1), S.mapMWith(log), S.drain))
   .return(() => {});
+
+function l<A>(a: A): A {
+  console.log(a);
+  return a;
+}
 
 const module = pipe(
   T.noEnv,

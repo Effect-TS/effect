@@ -21,6 +21,7 @@ import {
 import { ReadStream } from "fs";
 import { FunctionN } from "fp-ts/lib/function";
 import { Writable } from "stream";
+import { isNonEmpty } from "fp-ts/lib/Array";
 
 export interface HasOrmConfig {
   orm: {
@@ -178,6 +179,24 @@ export function usePool(
   return op => T.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
 }
 
+/* istanbul ignore next */
+export function queryStreamB<RES>(
+  batch: number
+): (
+  f: (m: EntityManager) => Promise<ReadStream>
+) => T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, Array<RES>>> {
+  return f =>
+    T.accessM(({ orm: { manager } }: HasEntityManager) =>
+      Do(T.effectMonad)
+        .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))
+        .bindL("res", ({ stream }) =>
+          T.right(
+            S.filter(S.fromObjectReadStreamB<RES>(stream, batch), isNonEmpty)
+          )
+        )
+        .return(({ res }) => res)
+    );
+}
 
 /* istanbul ignore next */
 export function queryStream<RES>(
