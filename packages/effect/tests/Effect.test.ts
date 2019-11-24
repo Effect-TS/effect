@@ -8,8 +8,7 @@ import { toError } from "fp-ts/lib/Either";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { identity } from "fp-ts/lib/function";
-import * as nonEmptyArray from "fp-ts/lib/NonEmptyArray";
-import { Semigroup, semigroupString } from "fp-ts/lib/Semigroup";
+import { semigroupString } from "fp-ts/lib/Semigroup";
 
 describe("Effect", () => {
   describe("Extra", () => {
