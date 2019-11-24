@@ -8,6 +8,8 @@ import { toError } from "fp-ts/lib/Either";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { identity } from "fp-ts/lib/function";
+import * as nonEmptyArray from "fp-ts/lib/NonEmptyArray";
+import { Semigroup, semigroupString } from "fp-ts/lib/Semigroup";
 
 describe("Effect", () => {
   describe("Extra", () => {
@@ -448,5 +450,58 @@ describe("Effect", () => {
       )();
       assert.deepStrictEqual(e, _.raise("release failure"));
     });
+  });
+
+  describe("getCauseValidationM", async () => {
+    const M = _.getCauseValidationM<string>(
+      _.getCauseSemigroup(semigroupString)
+    );
+    const f = (s: string) => _.right(s.length);
+    const exec = <E, A>(e: _.Effect<unknown, E, A>) =>
+      W.runToPromiseExit(e({}));
+    assert.deepStrictEqual(
+      await exec(M.chain(_.right("abc"), f)),
+      await exec(_.right(3))
+    );
+    assert.deepStrictEqual(
+      await exec(M.chain(_.left("a"), f)),
+      await exec(_.left("a"))
+    );
+    assert.deepStrictEqual(
+      await exec(M.chain(_.left("a"), () => _.left("b"))),
+      await exec(_.left("a"))
+    );
+    assert.deepStrictEqual(await exec(M.of(1)), await exec(_.right(1)));
+    const double = (n: number) => n * 2;
+    assert.deepStrictEqual(
+      await exec(M.ap(_.right(double), _.right(1))),
+      await exec(_.right(2))
+    );
+    assert.deepStrictEqual(
+      await exec(M.ap(_.right(double), _.left("foo"))),
+      await exec(_.left("foo"))
+    );
+    assert.deepStrictEqual(
+      await exec(
+        M.ap(_.left<string, (n: number) => number>("foo"), _.right(1))
+      ),
+      await exec(_.left("foo"))
+    );
+    assert.deepStrictEqual(
+      await exec(M.ap(_.left("foo"), _.left("bar"))),
+      await exec(_.left("foobar"))
+    );
+    assert.deepStrictEqual(
+      await exec(M.alt(_.left("a"), () => _.right(1))),
+      await exec(_.right(1))
+    );
+    assert.deepStrictEqual(
+      await exec(M.alt(_.right(1), () => _.left("a"))),
+      await exec(_.right(1))
+    );
+    assert.deepStrictEqual(
+      await exec(M.alt(_.left("a"), () => _.left("b"))),
+      await exec(_.left("ab"))
+    );
   });
 });

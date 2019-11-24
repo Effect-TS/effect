@@ -43,6 +43,36 @@ export interface Chain3E<F extends URIS3> extends Apply3<F> {
 
 export interface Monad3E<M extends URIS3> extends Applicative3<M>, Chain3E<M> {}
 
+export interface Monad3EC<M extends URIS3, E>
+  extends Applicative3EC<M, E>,
+    Chain3EC<M, E> {}
+
+export interface Applicative3EC<F extends URIS3, E> extends Apply3EC<F, E> {
+  readonly of: <R, A>(a: A) => Kind3<F, R, E, A>;
+}
+
+export interface Apply3EC<F extends URIS3, E> extends Functor3EC<F, E> {
+  readonly ap: <R, A, B>(
+    fab: Kind3<F, R, E, (a: A) => B>,
+    fa: Kind3<F, R, E, A>
+  ) => Kind3<F, R, E, B>;
+}
+
+export interface Chain3EC<F extends URIS3, E> extends Apply3EC<F, E> {
+  readonly chain: <R, A, R2, B>(
+    fa: Kind3<F, R, E, A>,
+    f: (a: A) => Kind3<F, R2, E, B>
+  ) => Kind3<F, R & R2, E, B>;
+}
+
+export interface Functor3EC<F extends URIS3, E> {
+  readonly URI: F;
+  readonly map: <R, A, B>(
+    fa: Kind3<F, R, E, A>,
+    f: (a: A) => B
+  ) => Kind3<F, R, E, B>;
+}
+
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
 export interface Do3CE<M extends URIS3, S extends object, U, L> {
@@ -187,4 +217,15 @@ declare module "fp-ts/lib/pipeable" {
 
 export interface MonadThrow3E<M extends URIS3> extends Monad3E<M> {
   readonly throwError: <R, E, A>(e: E) => Kind3<M, R, E, A>;
+}
+
+export interface MonadThrow3EC<M extends URIS3, E> extends Monad3EC<M, E> {
+  readonly throwError: <R, A>(e: E) => Kind3<M, R, E, A>;
+}
+
+export interface Alt3EC<F extends URIS3, E> extends Functor3EC<F, E> {
+  readonly alt: <R, A>(
+    fx: Kind3<F, R, E, A>,
+    fy: () => Kind3<F, R, E, A>
+  ) => Kind3<F, R, E, A>;
 }
