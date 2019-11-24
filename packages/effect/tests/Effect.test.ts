@@ -452,7 +452,7 @@ describe("Effect", () => {
     });
   });
 
-  describe("getCauseValidationM", async () => {
+  it("getCauseValidationM", async () => {
     const M = _.getCauseValidationM<string>(
       _.getCauseSemigroup(semigroupString)
     );
