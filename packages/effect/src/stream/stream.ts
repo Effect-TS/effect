@@ -346,7 +346,7 @@ export function zipWithIndex<R, E, A>(
 function widen<R2, E2>(): <R, E, A>(
   stream: Stream<R, E, A>
 ) => Stream<R & R2, E | E2, A> {
-  return stream => stream as any
+  return stream => stream as any;
 }
 
 /**
@@ -572,21 +572,24 @@ function t2<A, B>(a: A, b: B): readonly [A, B] {
  * @param f
  * @param seed
  */
-export function scanM<R, E, A, B>(
+export function scanM<R, E, A, B, R2, E2>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], T.Effect<R, E, B>>,
+  f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
   seed: B
-): Stream<R, E, B> {
+): Stream<R & R2, E | E2, B> {
   return concat(
     once(seed),
     pipe(
-      managed.zip(stream, managed.encaseEffect(ref.makeRef(seed))),
+      managed.zip(
+        widen<R2, E2>()(stream),
+        managed.encaseEffect(ref.makeRef(seed))
+      ),
       managed.mapWith(([base, accum]) => {
         function fold<S>(
           initial: S,
           cont: Predicate<S>,
-          step: FunctionN<[S, B], T.Effect<R, E, S>>
-        ): T.Effect<R, E, S> {
+          step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+        ): T.Effect<R & R2, E | E2, S> {
           /* istanbul ignore else */
           if (cont(initial)) {
             // We need to figure out how to drive the base fold for a single step

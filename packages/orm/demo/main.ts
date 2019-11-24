@@ -19,7 +19,7 @@ interface Config {
   };
 }
 
-const program: T.Effect<SQL.Orm & Graceful & Config, Error, string> = Do(
+const program: T.Effect<SQL.Orm & Graceful & Config, Error, string[]> = Do(
   T.effectMonad
 )
   .bindL("pool", () =>
@@ -68,7 +68,7 @@ const program: T.Effect<SQL.Orm & Graceful & Config, Error, string> = Do(
   )
   .bindL("ids", ({ stream }) =>
     T.right(
-      S.foldM(
+      S.scanM(
         stream,
         (s, r) =>
           T.accessM(({ config: { prefix } }: Config) =>
@@ -81,7 +81,7 @@ const program: T.Effect<SQL.Orm & Graceful & Config, Error, string> = Do(
     )
   )
   .bindL("result", ({ ids }) => S.collectArray(ids))
-  .return(s => s.result[0]);
+  .return(s => s.result);
 
 const module = pipe(
   T.noEnv,
