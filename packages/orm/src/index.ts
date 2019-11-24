@@ -240,9 +240,9 @@ function getSource(
   );
 }
 
-export function queryStream(
+export function queryStream<RES>(
   f: (m: EntityManager) => Promise<ReadStream>
-): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, any>> {
+): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, RES>> {
   return T.accessM(({ orm: { manager } }: HasEntityManager) =>
     Do(T.effectMonad)
       .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))

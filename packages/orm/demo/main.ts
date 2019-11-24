@@ -16,12 +16,12 @@ class DemoEntity {
 const program: T.Effect<
   SQL.HasOrmConfig & SQL.Orm & Graceful,
   Error,
-  any[]
+  { d_id: number }[]
 > = SQL.bracketPool(
   Do(T.effectMonad)
     .do(SQL.withRepository(DemoEntity)(r => () => r.insert({})))
     .bindL("stream", () =>
-      SQL.queryStream(m =>
+      SQL.queryStream<{ d_id: number }>(m =>
         m
           .createQueryBuilder(DemoEntity, "d")
           .select("d.id")
