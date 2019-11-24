@@ -506,17 +506,37 @@ describe("Effect", () => {
   });
 
   describe("Do", () => {
+    interface Env1 {
+      value: string;
+    }
+    interface Env2 {
+      value2: string;
+    }
     it("effectMonad", async () => {
       const M = _.effectMonad;
-      const e = await _.run(
-        Do(M)
-          .bindL("x", () => M.of("a"))
-          .sequenceS({
-            a: M.throwError("a"),
-            b: M.throwError("b")
-          })
-          .return(r => r)
-      )();
+      const p = Do(M)
+        .bindL("x", () => M.of("a"))
+        .sequenceS({
+          a: M.throwError("a"),
+          b: M.throwError("b")
+        })
+        .return(r => r);
+      const e = await _.run(p)();
+      assert.deepStrictEqual(e, _.raise("a"));
+    });
+    it("effectMonad env", async () => {
+      const M = _.effectMonad;
+      const env1: Env1 = { value: "a" };
+      const env2: Env2 = { value2: "b" };
+      const env = _.mergeEnv(env2)(env1);
+      const p = Do(M)
+        .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
+        .sequenceS({
+          a: _.accessM(({}: Env1) => M.throwError("a")),
+          b: M.throwError("b")
+        })
+        .return(r => r);
+      const e = await _.run(_.provide(env)(p))();
       assert.deepStrictEqual(e, _.raise("a"));
     });
     it("getCauseValidationM", async () => {
@@ -530,6 +550,18 @@ describe("Effect", () => {
           })
           .return(r => r)
       )();
+      assert.deepStrictEqual(e, _.raise("ab"));
+    });
+    it("getCauseValidationM env", async () => {
+      const M = _.getValidationM(semigroupString);
+      const p = Do(M)
+        .bindL("x", () => M.of("a"))
+        .sequenceS({
+          a: _.accessM(({}: Env1) => M.throwError("a")),
+          b: M.throwError("b")
+        })
+        .return(r => r);
+      const e = await _.run(p)();
       assert.deepStrictEqual(e, _.raise("ab"));
     });
   });

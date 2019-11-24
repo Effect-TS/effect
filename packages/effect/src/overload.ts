@@ -79,6 +79,38 @@ export interface Functor3EC<F extends URIS3, E> {
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
+type UnionToIntersection<U> = (U extends any
+? (k: U) => void
+: never) extends (k: infer I) => void
+  ? I
+  : never;
+
+export type IsUnknown<T, Y, N> = unknown extends T ? Y : N;
+// export type MergeEnv<A, B> = A &
+//   B; /* UnionToIntersection<
+//   IsUnknown<A, never, A> | IsUnknown<B, never, B>
+// >;*/
+
+export type ATypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
+  ? A
+  : never;
+
+export type RTypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
+  ? R
+  : never;
+
+export type EnvOf<
+  R extends Record<string, Kind3<any, any, any, any>>
+> = UnionToIntersection<
+  {
+    [K in keyof R]: unknown extends RTypeOf<R[K]> ? never : RTypeOf<R[K]>;
+  }[keyof R]
+>;
+
+export type AOf<R extends Record<string, Kind3<any, any, any, any>>> = {
+  [K in keyof R]: ATypeOf<R[K]>;
+};
+
 export interface Do3CE<M extends URIS3, S extends object, U, L> {
   do: <E, R>(ma: Kind3<M, R, E, unknown>) => Do3CE<M, S, U & R, L | E>;
   doL: <E, R>(
@@ -87,61 +119,17 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
   bind: <N extends string, E, R, A>(
     name: Exclude<N, keyof S>,
     ma: Kind3<M, R, E, A>
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in N]: A;
-      },
-    U & R,
-    L | E
-  >;
+  ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
   bindL: <N extends string, E, R, A>(
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind3<M, R, E, A>
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in N]: A;
-      },
-    U & R,
-    L | E
-  >;
-  sequenceS: <R extends Record<string, Kind3<M, U, L, any>>>(
-    r: EnforceNonEmptyRecord<R> &
-      {
-        [K in keyof S]?: never;
-      }
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>]
-          ? A
-          : never;
-      },
-    U,
-    L
-  >;
-  sequenceSL: <R extends Record<string, Kind3<M, U, L, any>>>(
-    f: (
-      s: S
-    ) => EnforceNonEmptyRecord<R> &
-      {
-        [K in keyof S]?: never;
-      }
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>]
-          ? A
-          : never;
-      },
-    U,
-    L
-  >;
+  ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
+  sequenceS: <R extends Record<string, Kind3<M, never, L, any>>>(
+    r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  sequenceSL: <R extends Record<string, Kind3<M, never, L, any>>>(
+    f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
   return: <A>(f: (s: S) => A) => Kind3<M, U, L, A>;
   done: () => Kind3<M, U, L, S>;
 }
@@ -152,57 +140,17 @@ export interface Do3CE_<M extends URIS3, S extends object, U, L> {
   bind: <N extends string, R, A>(
     name: Exclude<N, keyof S>,
     ma: Kind3<M, R, L, A>
-  ) => Do3CE_<
-    M,
-    S &
-      {
-        [K in N]: A;
-      },
-    U & R,
-    L
-  >;
+  ) => Do3CE_<M, S & { [K in N]: A }, U & R, L>;
   bindL: <N extends string, R, A>(
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind3<M, R, L, A>
-  ) => Do3CE_<
-    M,
-    S &
-      {
-        [K in N]: A;
-      },
-    U & R,
-    L
-  >;
-  sequenceS: <R extends Record<string, Kind3<M, U, L, any>>>(
-    r: EnforceNonEmptyRecord<R> &
-      {
-        [K in keyof S]?: never;
-      }
-  ) => Do3CE_<
-    M,
-    S &
-      {
-        [K in keyof R]: Kind3<M, any, any, L>;
-      },
-    U,
-    L
-  >;
-  sequenceSL: <R extends Record<string, Kind3<M, U, L, any>>>(
-    f: (
-      s: S
-    ) => EnforceNonEmptyRecord<R> &
-      {
-        [K in keyof S]?: never;
-      }
-  ) => Do3CE_<
-    M,
-    S &
-      {
-        [K in keyof R]: Kind3<M, any, any, L>;
-      },
-    U,
-    L
-  >;
+  ) => Do3CE_<M, S & { [K in N]: A }, U & R, L>;
+  sequenceS: <R extends Record<string, Kind3<M, never, L, any>>>(
+    r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE_<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  sequenceSL: <R extends Record<string, Kind3<M, never, L, any>>>(
+    f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE_<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
   return: <A>(f: (s: S) => A) => Kind3<M, U, L, A>;
   done: () => Kind3<M, U, L, S>;
 }
@@ -351,11 +299,11 @@ declare module "fp-ts/lib/pipeable" {
 }
 
 export interface MonadThrow3E<M extends URIS3> extends Monad3E<M> {
-  readonly throwError: <R, E, A>(e: E) => Kind3<M, R, E, A>;
+  readonly throwError: <E>(e: E) => Kind3<M, unknown, E, never>;
 }
 
 export interface MonadThrow3EC<M extends URIS3, E> extends Monad3EC<M, E> {
-  readonly throwError: <R, A>(e: E) => Kind3<M, R, E, A>;
+  readonly throwError: (e: E) => Kind3<M, unknown, E, never>;
 }
 
 export interface Alt3EC<F extends URIS3, E> extends Functor3EC<F, E> {
