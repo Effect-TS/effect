@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>&quot;fp-ts-contrib/lib/Do&quot; | @matechs/effect</title>
+	<title>Functor3EC | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,62 +56,135 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.html">@matechs/effect</a>
+					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 				</li>
 				<li>
-					<a href="_matechs_effect._fp_ts_contrib_lib_do_.html">&quot;fp-ts-contrib/lib/Do&quot;</a>
+					<a href="_matechs_effect.functor3ec.html">Functor3EC</a>
 				</li>
 			</ul>
-			<h1>Module &quot;fp-ts-contrib/lib/Do&quot;</h1>
+			<h1>Interface Functor3EC&lt;F, E&gt;</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-type-parameters">
+				<h3>Type parameters</h3>
+				<ul class="tsd-type-parameters">
+					<li>
+						<h4>F<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">URIS3</span></h4>
+					</li>
+					<li>
+						<h4>E</h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-hierarchy">
+				<h3>Hierarchy</h3>
+				<ul class="tsd-hierarchy">
+					<li>
+						<span class="target">Functor3EC</span>
+						<ul class="tsd-hierarchy">
+							<li>
+								<a href="_matechs_effect.apply3ec.html" class="tsd-signature-type">Apply3EC</a>
+							</li>
+							<li>
+								<a href="_matechs_effect.alt3ec.html" class="tsd-signature-type">Alt3EC</a>
+							</li>
+						</ul>
+					</li>
+				</ul>
+			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
-							<h3>Functions</h3>
+							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect._fp_ts_contrib_lib_do_.html#do" class="tsd-kind-icon">Do</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.functor3ec.html#uri" class="tsd-kind-icon">URI</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.functor3ec.html#map" class="tsd-kind-icon">map</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Functions</h2>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="do" class="tsd-anchor"></a>
-					<h3>Do</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">Do&lt;M&gt;<span class="tsd-signature-symbol">(</span>M<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_effect.monad3e.html" class="tsd-signature-type">Monad3E</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_effect.do3ce.html" class="tsd-signature-type">Do3CE</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><a href="_matechs_effect.html#noerr" class="tsd-signature-type">NoErr</a><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L146">packages/effect/src/overload.ts:146</a></li>
+				<h2>Properties</h2>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="uri" class="tsd-anchor"></a>
+					<h3>URI</h3>
+					<div class="tsd-signature tsd-kind-icon">URI<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">F</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L69">packages/effect/src/overload.ts:69</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="map" class="tsd-anchor"></a>
+					<h3>map</h3>
+					<div class="tsd-signature tsd-kind-icon">map<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L70">packages/effect/src/overload.ts:70</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-has-type-parameter tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon">&lt;R, A, B&gt;<span class="tsd-signature-symbol">(</span>fa<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span>, f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
 								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>M<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">URIS3</span></h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>M: <a href="../interfaces/_matechs_effect.monad3e.html" class="tsd-signature-type">Monad3E</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="../interfaces/_matechs_effect.do3ce.html" class="tsd-signature-type">Do3CE</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">__type</span><span class="tsd-signature-symbol">, </span><a href="_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><a href="_matechs_effect.html#noerr" class="tsd-signature-type">NoErr</a><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-type-parameters-title">Type parameters</h4>
+										<ul class="tsd-type-parameters">
+											<li>
+												<h4>R</h4>
+											</li>
+											<li>
+												<h4>A</h4>
+											</li>
+											<li>
+												<h4>B</h4>
+											</li>
+										</ul>
+										<h4 class="tsd-parameters-title">Parameters</h4>
+										<ul class="tsd-parameters">
+											<li>
+												<h5>fa: <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+											</li>
+											<li>
+												<h5>f: <span class="tsd-signature-type">function</span></h5>
+												<ul class="tsd-parameters">
+													<li class="tsd-parameter-siganture">
+														<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+															<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">B</span></li>
+														</ul>
+														<ul class="tsd-descriptions">
+															<li class="tsd-description">
+																<h4 class="tsd-parameters-title">Parameters</h4>
+																<ul class="tsd-parameters">
+																	<li>
+																		<h5>a: <span class="tsd-signature-type">A</span></h5>
+																	</li>
+																</ul>
+																<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">B</span></h4>
+															</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+										</ul>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h4>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
 				</section>
 			</section>
 		</div>
@@ -122,50 +195,62 @@
 						<a href="../globals.html"><em>Globals</em></a>
 					</li>
 					<li class="current tsd-kind-module">
-						<a href="_matechs_effect.html">@matechs/effect</a>
+						<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 						<ul>
-							<li class="current tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_contrib_lib_do_.html">&quot;fp-<wbr>ts-<wbr>contrib/lib/<wbr>Do&quot;</a>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_contrib_lib_do_.html">&quot;fp-<wbr>ts-<wbr>contrib/lib/<wbr>Do&quot;</a>
 							</li>
 							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_hkt_.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
 							</li>
 							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_hkt_-1.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-1.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
 							</li>
 							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_hkt_-2.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-2.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
 							</li>
 							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_pipeable_.html">&quot;fp-<wbr>ts/lib/pipeable&quot;</a>
+								<a href="../modules/_matechs_effect._fp_ts_lib_pipeable_.html">&quot;fp-<wbr>ts/lib/pipeable&quot;</a>
 							</li>
 						</ul>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_express.html">@matechs/express</a>
+						<a href="../modules/_matechs_express.html">@matechs/express</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_graceful.html">@matechs/graceful</a>
+						<a href="../modules/_matechs_graceful.html">@matechs/graceful</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_http.html">@matechs/http</a>
+						<a href="../modules/_matechs_http.html">@matechs/http</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_orm.html">@matechs/orm</a>
+						<a href="../modules/_matechs_orm.html">@matechs/orm</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_rpc.html">@matechs/rpc</a>
+						<a href="../modules/_matechs_rpc.html">@matechs/rpc</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_tracing.html">@matechs/tracing</a>
+						<a href="../modules/_matechs_tracing.html">@matechs/tracing</a>
 					</li>
 				</ul>
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect._fp_ts_contrib_lib_do_.html#do" class="tsd-kind-icon">Do</a>
+				</ul>
+				<ul class="current">
+					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_effect.functor3ec.html" class="tsd-kind-icon">Functor3EC</a>
+						<ul>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="_matechs_effect.functor3ec.html#uri" class="tsd-kind-icon">URI</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="_matechs_effect.functor3ec.html#map" class="tsd-kind-icon">map</a>
+							</li>
+						</ul>
 					</li>
+				</ul>
+				<ul class="after-current">
 				</ul>
 			</nav>
 		</div>

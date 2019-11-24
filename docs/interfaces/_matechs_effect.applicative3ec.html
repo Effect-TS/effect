@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>Apply3E | @matechs/effect</title>
+	<title>Applicative3EC | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -59,10 +59,10 @@
 					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.apply3e.html">Apply3E</a>
+					<a href="_matechs_effect.applicative3ec.html">Applicative3EC</a>
 				</li>
 			</ul>
-			<h1>Interface Apply3E&lt;F&gt;</h1>
+			<h1>Interface Applicative3EC&lt;F, E&gt;</h1>
 		</div>
 	</div>
 </header>
@@ -75,16 +75,24 @@
 					<li>
 						<h4>F<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">URIS3</span></h4>
 					</li>
+					<li>
+						<h4>E</h4>
+					</li>
 				</ul>
 			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="tsd-signature-type">Functor3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">&gt;</span>
+						<a href="_matechs_effect.apply3ec.html" class="tsd-signature-type">Apply3EC</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span>
 						<ul class="tsd-hierarchy">
 							<li>
-								<span class="target">Apply3E</span>
+								<span class="target">Applicative3EC</span>
+								<ul class="tsd-hierarchy">
+									<li>
+										<a href="_matechs_effect.monad3ec.html" class="tsd-signature-type">Monad3EC</a>
+									</li>
+								</ul>
 							</li>
 						</ul>
 					</li>
@@ -97,9 +105,10 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="_matechs_effect.apply3e.html#uri" class="tsd-kind-icon">URI</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.apply3e.html#ap" class="tsd-kind-icon">ap</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="_matechs_effect.apply3e.html#map" class="tsd-kind-icon">map</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="_matechs_effect.applicative3ec.html#uri" class="tsd-kind-icon">URI</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="_matechs_effect.applicative3ec.html#ap" class="tsd-kind-icon">ap</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="_matechs_effect.applicative3ec.html#map" class="tsd-kind-icon">map</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.applicative3ec.html#of" class="tsd-kind-icon">of</a></li>
 							</ul>
 						</section>
 					</div>
@@ -112,19 +121,20 @@
 					<h3>URI</h3>
 					<div class="tsd-signature tsd-kind-icon">URI<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">F</span></div>
 					<aside class="tsd-sources">
-						<p>Inherited from Functor3.URI</p>
+						<p>Inherited from <a href="_matechs_effect.functor3ec.html">Functor3EC</a>.<a href="_matechs_effect.functor3ec.html#uri">URI</a></p>
 						<ul>
-							<li>Defined in node_modules/fp-ts/lib/Functor.d.ts:46</li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L69">packages/effect/src/overload.ts:69</a></li>
 						</ul>
 					</aside>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
 					<a name="ap" class="tsd-anchor"></a>
 					<h3>ap</h3>
 					<div class="tsd-signature tsd-kind-icon">ap<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
+						<p>Inherited from <a href="_matechs_effect.apply3ec.html">Apply3EC</a>.<a href="_matechs_effect.apply3ec.html#ap">ap</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L176">packages/effect/src/overload.ts:176</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L55">packages/effect/src/overload.ts:55</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -132,7 +142,7 @@
 						<ul class="tsd-parameters">
 							<li class="tsd-parameter-siganture">
 								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-has-type-parameter tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon">&lt;R, E, A, B, R2, E2&gt;<span class="tsd-signature-symbol">(</span>fab<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">&gt;</span>, fa<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
+									<li class="tsd-signature tsd-kind-icon">&lt;R, A, B&gt;<span class="tsd-signature-symbol">(</span>fab<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">&gt;</span>, fa<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
 								</ul>
 								<ul class="tsd-descriptions">
 									<li class="tsd-description">
@@ -142,19 +152,10 @@
 												<h4>R</h4>
 											</li>
 											<li>
-												<h4>E</h4>
-											</li>
-											<li>
 												<h4>A</h4>
 											</li>
 											<li>
 												<h4>B</h4>
-											</li>
-											<li>
-												<h4>R2</h4>
-											</li>
-											<li>
-												<h4>E2</h4>
 											</li>
 										</ul>
 										<h4 class="tsd-parameters-title">Parameters</h4>
@@ -163,10 +164,10 @@
 												<h5>fab: <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">&gt;</span></h5>
 											</li>
 											<li>
-												<h5>fa: <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+												<h5>fa: <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
 											</li>
 										</ul>
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h4>
 									</li>
 								</ul>
 							</li>
@@ -178,9 +179,9 @@
 					<h3>map</h3>
 					<div class="tsd-signature tsd-kind-icon">map<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
-						<p>Inherited from Functor3.map</p>
+						<p>Inherited from <a href="_matechs_effect.functor3ec.html">Functor3EC</a>.<a href="_matechs_effect.functor3ec.html#map">map</a></p>
 						<ul>
-							<li>Defined in node_modules/fp-ts/lib/Functor.d.ts:47</li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L70">packages/effect/src/overload.ts:70</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -188,7 +189,7 @@
 						<ul class="tsd-parameters">
 							<li class="tsd-parameter-siganture">
 								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-has-type-parameter tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon">&lt;R, E, A, B&gt;<span class="tsd-signature-symbol">(</span>fa<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span>, f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
+									<li class="tsd-signature tsd-kind-icon">&lt;R, A, B&gt;<span class="tsd-signature-symbol">(</span>fa<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span>, f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
 								</ul>
 								<ul class="tsd-descriptions">
 									<li class="tsd-description">
@@ -196,9 +197,6 @@
 										<ul class="tsd-type-parameters">
 											<li>
 												<h4>R</h4>
-											</li>
-											<li>
-												<h4>E</h4>
 											</li>
 											<li>
 												<h4>A</h4>
@@ -235,6 +233,46 @@
 											</li>
 										</ul>
 										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h4>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="of" class="tsd-anchor"></a>
+					<h3>of</h3>
+					<div class="tsd-signature tsd-kind-icon">of<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/a45520b/packages/effect/src/overload.ts#L51">packages/effect/src/overload.ts:51</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-has-type-parameter tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon">&lt;R, A&gt;<span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+								</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-type-parameters-title">Type parameters</h4>
+										<ul class="tsd-type-parameters">
+											<li>
+												<h4>R</h4>
+											</li>
+											<li>
+												<h4>A</h4>
+											</li>
+										</ul>
+										<h4 class="tsd-parameters-title">Parameters</h4>
+										<ul class="tsd-parameters">
+											<li>
+												<h5>a: <span class="tsd-signature-type">A</span></h5>
+											</li>
+										</ul>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">F</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
 									</li>
 								</ul>
 							</li>
@@ -294,16 +332,19 @@
 				</ul>
 				<ul class="current">
 					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect.apply3e.html" class="tsd-kind-icon">Apply3E</a>
+						<a href="_matechs_effect.applicative3ec.html" class="tsd-kind-icon">Applicative3EC</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
-								<a href="_matechs_effect.apply3e.html#uri" class="tsd-kind-icon">URI</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.apply3e.html#ap" class="tsd-kind-icon">ap</a>
+								<a href="_matechs_effect.applicative3ec.html#uri" class="tsd-kind-icon">URI</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
-								<a href="_matechs_effect.apply3e.html#map" class="tsd-kind-icon">map</a>
+								<a href="_matechs_effect.applicative3ec.html#ap" class="tsd-kind-icon">ap</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+								<a href="_matechs_effect.applicative3ec.html#map" class="tsd-kind-icon">map</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="_matechs_effect.applicative3ec.html#of" class="tsd-kind-icon">of</a>
 							</li>
 						</ul>
 					</li>
