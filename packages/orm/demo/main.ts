@@ -6,8 +6,6 @@ import { PrimaryGeneratedColumn, Entity } from "typeorm";
 import { graceful, Graceful, trigger } from "@matechs/graceful";
 import * as S from "@matechs/effect/lib/stream/stream";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { isSome } from "fp-ts/lib/Option";
-import * as A from "fp-ts/lib/Array";
 
 @Entity()
 class DemoEntity {
