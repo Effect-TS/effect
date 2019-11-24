@@ -19,9 +19,31 @@ interface Config {
   };
 }
 
-const program: T.Effect<SQL.Orm & Graceful & Config, Error, void> = Do(
-  T.effectMonad
-)
+interface Console {
+  console: {
+    log(message: string): T.Effect<T.NoEnv, T.NoErr, void>;
+  };
+}
+
+const consoleLive: Console = {
+  console: {
+    log(message) {
+      return T.fromIO(() => {
+        console.log(message);
+      });
+    }
+  }
+};
+
+function log(message: string) {
+  return T.accessM(({ console }: Console) => console.log(message));
+}
+
+const program: T.Effect<
+  SQL.Orm & Graceful & Config & Console,
+  Error,
+  void
+> = Do(T.effectMonad)
   .bindL("pool", () =>
     pipe(
       SQL.createPool(),
@@ -80,22 +102,15 @@ const program: T.Effect<SQL.Orm & Graceful & Config, Error, void> = Do(
       )
     )
   )
-  .bindL("result", ({ ids }) =>
-    S.drain(
-      S.mapM(S.drop(ids, 1), line =>
-        T.fromIO(() => {
-          console.log(line);
-        })
-      )
-    )
-  )
+  .doL(({ ids }) => S.drain(S.mapM(S.drop(ids, 1), log)))
   .return(() => {});
 
 const module = pipe(
   T.noEnv,
   T.mergeEnv({ config: { prefix: "id:" } } as Config),
   T.mergeEnv(graceful()),
-  T.mergeEnv(SQL.orm)
+  T.mergeEnv(SQL.orm),
+  T.mergeEnv(consoleLive)
 );
 
 const main = pipe(program, T.provide(module));
