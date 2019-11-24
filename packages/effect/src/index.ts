@@ -6,16 +6,23 @@ import * as Ar from "fp-ts/lib/Array";
 import * as S from "waveguide/lib/semaphore";
 import * as EX from "waveguide/lib/exit";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
-import { Monad3E, MonadThrow3E } from "./overload";
+import {
+  Monad3E,
+  MonadThrow3E,
+  Monad3EC,
+  MonadThrow3EC,
+  Alt3EC
+} from "./overload";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import { Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { IO } from "fp-ts/lib/IO";
-import { FunctionN, Lazy } from "fp-ts/lib/function";
+import { FunctionN, Lazy, identity } from "fp-ts/lib/function";
 import { Cause } from "waveguide/lib/exit";
 import { Exit } from "waveguide/lib/exit";
-import { Wave } from "waveguide/lib/wave";
+import { Semigroup } from "fp-ts/lib/Semigroup";
+import { Alt3 } from "fp-ts/lib/Alt";
 
 export {
   done,
@@ -300,6 +307,64 @@ export const concurrentEffectMonad: MonadEffect<URI> = {
   ...effectMonad,
   ap: (fab, fa) => r => W.parWave.ap(fab(r), fa(r))
 };
+
+export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<EX.Cause<E>> {
+  return {
+    concat: (ca, cb): EX.Cause<E> => {
+      if (
+        ca._tag === EX.ExitTag.Interrupt ||
+        cb._tag === EX.ExitTag.Interrupt
+      ) {
+        return ca;
+      }
+      if (ca._tag === EX.ExitTag.Abort) {
+        return ca;
+      }
+      if (cb._tag === EX.ExitTag.Abort) {
+        return cb;
+      }
+      return EX.raise(S.concat(ca.error, cb.error));
+    }
+  };
+}
+
+export function getValidationM<E>(S: Semigroup<E>) {
+  return getCauseValidationM(getCauseSemigroup(S));
+}
+
+export function getCauseValidationM<E>(
+  S: Semigroup<Cause<E>>
+): Monad3EC<URI, E> & MonadThrow3EC<URI, E> & Alt3EC<URI, E> {
+  return {
+    URI,
+    of: effectMonad.of,
+    map: effectMonad.map,
+    chain: effectMonad.chain,
+    ap: <R, A, B>(fab: Effect<R, E, (a: A) => B>, fa: Effect<R, E, A>) => (
+      r: R
+    ) =>
+      W.foldExit(
+        fab(r),
+        e =>
+          W.foldExit(
+            fa(r),
+            fe => W.raised(S.concat(e, fe)),
+            _fa => W.raised(e)
+          ),
+        f => W.map(fa(r), a => f(a))
+      ),
+    throwError: <R, A>(e: E): Effect<R, E, A> => _ => W.raiseError(e),
+    alt: <R, A>(
+      fa: Effect<R, E, A>,
+      fb: () => Effect<R, E, A>
+    ): Effect<R, E, A> => r =>
+      W.foldExit(
+        fa(r),
+        e => W.foldExit(fb()(r), fbe => W.raised(S.concat(e, fbe)), W.pure),
+        W.pure
+      )
+  };
+}
 
 export const {
   ap,
