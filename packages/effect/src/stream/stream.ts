@@ -39,6 +39,10 @@ import { Deferred } from "../deferred";
 import * as semaphore from "../semaphore";
 import * as T from "../";
 import { Monad3E } from "../overload";
+import { ReadStream } from "fs";
+import * as Ei from "fp-ts/lib/Either";
+import * as O from "fp-ts/lib/Option";
+import { Writable } from "stream";
 
 export type Source<R, E, A> = T.Effect<R, E, Option<A>>;
 
@@ -1494,3 +1498,73 @@ export const instances: Monad3E<URI> = {
   ) => zipWith(sfab, sa, (f, a) => f(a)),
   chain
 } as const;
+
+/* extensions */
+
+/* istanbul ignore next */
+function getSourceFromObjectReadStream<A>(
+  stream: ReadStream
+): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<A>>> {
+  return managed.encaseEffect(
+    T.fromIO(() => {
+      let open = true;
+      let f: FunctionN<[Ei.Either<Error, O.Option<A>>], void>;
+      const leftover = [];
+      const errors: Array<Error> = [];
+
+      stream.on("end", () => {
+        if (f) {
+          f(Ei.right(O.none));
+        } else {
+          open = false;
+        }
+      });
+
+      stream.on("error", e => {
+        if (f) {
+          f(Ei.left(Ei.toError(e)));
+        } else {
+          errors.push(e);
+        }
+      });
+
+      stream.pipe(
+        new Writable({
+          objectMode: true,
+          write(chunk, _, callback) {
+            if (f) {
+              f(Ei.right(O.some(chunk)));
+            } else {
+              leftover.push(chunk);
+            }
+
+            callback();
+          }
+        })
+      );
+
+      return T.tryAsync(res => {
+        if (leftover.length > 0) {
+          res(Ei.right(leftover.splice(0, 1)[0]));
+        } else {
+          if (errors.length > 0) {
+            res(Ei.left(errors[0]));
+          } else {
+            if (open) {
+              f = res;
+            } else {
+              res(Ei.right(O.none));
+            }
+          }
+        }
+
+        return () => {};
+      });
+    })
+  );
+}
+
+/* istanbul ignore next */
+export function fromObjectReadStream<A>(stream: ReadStream) {
+  return fromSource(getSourceFromObjectReadStream<A>(stream));
+}

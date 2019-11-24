@@ -178,68 +178,6 @@ export function usePool(
   return op => T.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
 }
 
-/* istanbul ignore next */
-function getSource(
-  stream: ReadStream
-): M.Managed<unknown, Error, T.Effect<unknown, Error, O.Option<any>>> {
-  return M.encaseEffect(
-    T.fromIO(() => {
-      let open = true;
-      let f: FunctionN<[Ei.Either<Error, any>], void>;
-      const leftover = [];
-      const errors: Array<Error> = [];
-
-      stream.on("end", () => {
-        if (f) {
-          f(Ei.right(O.none));
-        } else {
-          open = false;
-        }
-      });
-
-      stream.on("error", e => {
-        if (f) {
-          f(Ei.left(Ei.toError(e)));
-        } else {
-          errors.push(e);
-        }
-      });
-
-      stream.pipe(
-        new Writable({
-          objectMode: true,
-          write(chunk, _, callback) {
-            if (f) {
-              f(Ei.right(O.some(chunk)));
-            } else {
-              leftover.push(chunk);
-            }
-
-            callback();
-          }
-        })
-      );
-
-      return T.tryAsync(res => {
-        if (leftover.length > 0) {
-          res(Ei.right(leftover.splice(0, 1)[0]));
-        } else {
-          if (errors.length > 0) {
-            res(Ei.left(errors[0]));
-          } else {
-            if (open) {
-              f = res;
-            } else {
-              res(Ei.right(O.none));
-            }
-          }
-        }
-
-        return () => {};
-      });
-    })
-  );
-}
 
 /* istanbul ignore next */
 export function queryStream<RES>(
@@ -249,7 +187,7 @@ export function queryStream<RES>(
     Do(T.effectMonad)
       .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))
       .bindL("res", ({ stream }) =>
-        T.right(S.fromSource(getSource(stream)))
+        T.right(S.fromObjectReadStream<RES>(stream))
       )
       .return(({ res }) => res)
   );
