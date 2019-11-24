@@ -4,7 +4,7 @@ import * as SQL from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { PrimaryGeneratedColumn, Entity } from "typeorm";
 import { graceful, Graceful } from "@matechs/graceful";
-import { collectArray } from "@matechs/effect/lib/stream/stream";
+import * as S from "@matechs/effect/lib/stream/stream";
 import { Do } from "fp-ts-contrib/lib/Do";
 
 @Entity()
@@ -16,7 +16,7 @@ class DemoEntity {
 const program: T.Effect<
   SQL.HasOrmConfig & SQL.Orm & Graceful,
   Error,
-  { d_id: number }[]
+  string
 > = SQL.bracketPool(
   Do(T.effectMonad)
     .do(SQL.withRepository(DemoEntity)(r => () => r.insert({})))
@@ -29,8 +29,11 @@ const program: T.Effect<
           .stream()
       )
     )
-    .bindL("result", ({ stream }) => collectArray(stream))
-    .return(s => s.result)
+    .bindL("ids", ({ stream }) =>
+      T.right(S.fold(stream, (s, r) => `${s}(${r.d_id})`, ""))
+    )
+    .bindL("result", ({ ids }) => S.collectArray(ids))
+    .return(s => s.result[0])
 );
 
 const main = pipe(
