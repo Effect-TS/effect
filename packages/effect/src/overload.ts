@@ -146,10 +146,74 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
   done: () => Kind3<M, U, L, S>;
 }
 
+export interface Do3CE_<M extends URIS3, S extends object, U, L> {
+  do: <R>(ma: Kind3<M, R, L, unknown>) => Do3CE_<M, S, U & R, L>;
+  doL: <R>(f: (s: S) => Kind3<M, R, L, unknown>) => Do3CE_<M, S, U & R, L>;
+  bind: <N extends string, R, A>(
+    name: Exclude<N, keyof S>,
+    ma: Kind3<M, R, L, A>
+  ) => Do3CE_<
+    M,
+    S &
+      {
+        [K in N]: A;
+      },
+    U & R,
+    L
+  >;
+  bindL: <N extends string, R, A>(
+    name: Exclude<N, keyof S>,
+    f: (s: S) => Kind3<M, R, L, A>
+  ) => Do3CE_<
+    M,
+    S &
+      {
+        [K in N]: A;
+      },
+    U & R,
+    L
+  >;
+  sequenceS: <R extends Record<string, Kind3<M, U, L, any>>>(
+    r: EnforceNonEmptyRecord<R> &
+      {
+        [K in keyof S]?: never;
+      }
+  ) => Do3CE_<
+    M,
+    S &
+      {
+        [K in keyof R]: Kind3<M, any, any, L>;
+      },
+    U,
+    L
+  >;
+  sequenceSL: <R extends Record<string, Kind3<M, U, L, any>>>(
+    f: (
+      s: S
+    ) => EnforceNonEmptyRecord<R> &
+      {
+        [K in keyof S]?: never;
+      }
+  ) => Do3CE_<
+    M,
+    S &
+      {
+        [K in keyof R]: Kind3<M, any, any, L>;
+      },
+    U,
+    L
+  >;
+  return: <A>(f: (s: S) => A) => Kind3<M, U, L, A>;
+  done: () => Kind3<M, U, L, S>;
+}
+
 declare module "fp-ts-contrib/lib/Do" {
   export function Do<M extends URIS3>(
     M: Monad3E<M>
   ): Do3CE<M, {}, NoEnv, NoErr>;
+  export function Do<M extends URIS3, E>(
+    M: Monad3EC<M, E>
+  ): Do3CE_<M, {}, NoEnv, E>;
 }
 
 export interface PipeableChain3E<F extends URIS3> extends PipeableApply3E<F> {

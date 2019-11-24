@@ -9,6 +9,7 @@ import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { identity } from "fp-ts/lib/function";
 import { semigroupString } from "fp-ts/lib/Semigroup";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("Effect", () => {
   describe("Extra", () => {
@@ -502,5 +503,34 @@ describe("Effect", () => {
       await _.run(M.alt(_.left("a"), () => _.left("b")))(),
       await _.run(_.left("ab"))()
     );
+  });
+
+  describe("Do", () => {
+    it("effectMonad", async () => {
+      const M = _.effectMonad;
+      const e = await _.run(
+        Do(M)
+          .bindL("x", () => M.of("a"))
+          .sequenceS({
+            a: M.throwError("a"),
+            b: M.throwError("b")
+          })
+          .return(r => r)
+      )();
+      assert.deepStrictEqual(e, _.raise("a"));
+    });
+    it("getCauseValidationM", async () => {
+      const M = _.getValidationM(semigroupString);
+      const e = await _.run(
+        Do(M)
+          .bindL("x", () => M.of("a"))
+          .sequenceS({
+            a: M.throwError("a"),
+            b: M.throwError("b")
+          })
+          .return(r => r)
+      )();
+      assert.deepStrictEqual(e, _.raise("ab"));
+    });
   });
 });
