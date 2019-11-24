@@ -1,0 +1,14 @@
+version: "3"
+
+services:
+  pg:
+    image: postgres:9.6
+    entrypoint: ["/docker-entrypoint.sh", "-c", "track_commit_timestamp=on"]
+    volumes:
+      - ./docker-postgresql-multiple-databases:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_MULTIPLE_DATABASES=demo
+      - POSTGRES_USER=db_user
+      - POSTGRES_PASSWORD=db_pass
+    ports:
+      - 5432:5432

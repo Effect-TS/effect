@@ -1,4 +1,9 @@
 import * as T from "@matechs/effect/lib";
+import * as S from "@matechs/effect/lib/stream/stream";
+import * as M from "@matechs/effect/lib/managed";
+import * as Ei from "fp-ts/lib/Either";
+import * as O from "fp-ts/lib/Option";
+
 import { Graceful, onExit } from "@matechs/graceful/lib";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { toError } from "fp-ts/lib/Either";
@@ -13,6 +18,9 @@ import {
   ObjectType,
   Repository
 } from "typeorm";
+import { ReadStream } from "fs";
+import { FunctionN } from "fp-ts/lib/function";
+import { Writable } from "stream";
 
 export interface HasOrmConfig {
   orm: {
@@ -168,4 +176,79 @@ export function usePool(
   op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
 ) => T.Effect<R & Orm, Error | E, A> {
   return op => T.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
+}
+
+function getSource(
+  stream: ReadStream
+): M.Managed<unknown, Error, T.Effect<unknown, Error, O.Option<any>>> {
+  return M.encaseEffect(
+    T.fromIO(() => {
+      let open = true;
+      let f: FunctionN<[Ei.Either<Error, any>], void>;
+      const leftover = [];
+      const errors: Array<Error> = [];
+
+      stream.on("end", () => {
+        if (f) {
+          f(Ei.right(O.none));
+        } else {
+          open = false;
+        }
+      });
+
+      stream.on("error", e => {
+        if (f) {
+          f(Ei.left(Ei.toError(e)));
+        } else {
+          errors.push(e);
+        }
+      });
+
+      stream.pipe(
+        new Writable({
+          objectMode: true,
+          write(chunk, _, callback) {
+            if (f) {
+              f(Ei.right(O.some(chunk)));
+            } else {
+              leftover.push(chunk);
+            }
+
+            callback();
+          }
+        })
+      );
+
+      return T.tryAsync(res => {
+        if (leftover.length > 0) {
+          res(Ei.right(leftover.splice(0, 1)[0]));
+        } else {
+          if (errors.length > 0) {
+            res(Ei.left(errors[0]));
+          } else {
+            if (open) {
+              f = res;
+            } else {
+              res(Ei.right(O.none));
+            }
+          }
+        }
+
+        return () => {};
+      });
+    })
+  );
+}
+
+export function queryStream(
+  f: (m: EntityManager) => Promise<ReadStream>
+): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, any>> {
+  return T.accessM(({ orm: { manager } }: HasEntityManager) =>
+    Do(T.effectMonad)
+      .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))
+      .bindL("res", ({ stream }) =>
+        T.right(S.fromSource(getSource(stream)))
+      )
+      .return(({ res }) => res)
+  );
 }
