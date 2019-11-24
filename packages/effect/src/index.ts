@@ -18,11 +18,10 @@ import { Kind3, URIS3 } from "fp-ts/lib/HKT";
 import { fromNullable, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { IO } from "fp-ts/lib/IO";
-import { FunctionN, Lazy, identity } from "fp-ts/lib/function";
+import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Cause } from "waveguide/lib/exit";
 import { Exit } from "waveguide/lib/exit";
 import { Semigroup } from "fp-ts/lib/Semigroup";
-import { Alt3 } from "fp-ts/lib/Alt";
 
 export {
   done,
@@ -337,6 +336,7 @@ export function getCauseValidationM<E>(
 ): Monad3EC<URI, E> & MonadThrow3EC<URI, E> & Alt3EC<URI, E> {
   return {
     URI,
+    _E: undefined as any,
     of: effectMonad.of,
     map: effectMonad.map,
     chain: effectMonad.chain,

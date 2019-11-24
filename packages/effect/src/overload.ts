@@ -67,6 +67,7 @@ export interface Chain3EC<F extends URIS3, E> extends Apply3EC<F, E> {
 
 export interface Functor3EC<F extends URIS3, E> {
   readonly URI: F;
+  readonly _E: E;
   readonly map: <R, A, B>(
     fa: Kind3<F, R, E, A>,
     f: (a: A) => B
