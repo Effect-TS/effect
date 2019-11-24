@@ -178,6 +178,7 @@ export function usePool(
   return op => T.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
 }
 
+/* istanbul ignore next */
 function getSource(
   stream: ReadStream
 ): M.Managed<unknown, Error, T.Effect<unknown, Error, O.Option<any>>> {
@@ -240,6 +241,7 @@ function getSource(
   );
 }
 
+/* istanbul ignore next */
 export function queryStream<RES>(
   f: (m: EntityManager) => Promise<ReadStream>
 ): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, RES>> {
