@@ -33,6 +33,9 @@ import {
 } from "fp-ts/lib/pipeable";
 import { Apply3 } from "fp-ts/lib/Apply";
 import { NoEnv, NoErr } from "./index";
+import { Either } from "fp-ts/lib/Either";
+import { Option } from "fp-ts/lib/Option";
+import { Refinement, Predicate } from "fp-ts/lib/function";
 
 export interface Chain3E<F extends URIS3> extends Apply3<F> {
   readonly chain: <R, E, A, R2, E2, B>(
@@ -76,6 +79,28 @@ export interface Functor3EC<F extends URIS3, E> {
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
+type UnionToIntersection<U> = (U extends any
+? (k: U) => void
+: never) extends (k: infer I) => void
+  ? I
+  : never;
+
+export type ATypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
+  ? A
+  : never;
+
+export type RTypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
+  ? R
+  : never;
+
+export type EnvOf<
+  R extends Record<string, Kind3<any, any, any, any>>
+> = UnionToIntersection<
+  {
+    [K in keyof R]: unknown extends RTypeOf<R[K]> ? never : RTypeOf<R[K]>;
+  }[keyof R]
+>;
+
 export interface Do3CE<M extends URIS3, S extends object, U, L> {
   do: <E, R>(ma: Kind3<M, R, E, unknown>) => Do3CE<M, S, U & R, L | E>;
   doL: <E, R>(
@@ -84,61 +109,38 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
   bind: <N extends string, E, R, A>(
     name: Exclude<N, keyof S>,
     ma: Kind3<M, R, E, A>
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in N]: A;
-      },
-    U & R,
-    L | E
-  >;
+  ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
   bindL: <N extends string, E, R, A>(
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind3<M, R, E, A>
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in N]: A;
-      },
-    U & R,
-    L | E
-  >;
-  sequenceS: <R extends Record<string, Kind3<M, U, L, any>>>(
-    r: EnforceNonEmptyRecord<R> &
-      {
-        [K in keyof S]?: never;
-      }
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>]
-          ? A
-          : never;
-      },
-    U,
-    L
-  >;
-  sequenceSL: <R extends Record<string, Kind3<M, U, L, any>>>(
-    f: (
-      s: S
-    ) => EnforceNonEmptyRecord<R> &
-      {
-        [K in keyof S]?: never;
-      }
-  ) => Do3CE<
-    M,
-    S &
-      {
-        [K in keyof R]: [R[K]] extends [Kind3<M, any, any, infer A>]
-          ? A
-          : never;
-      },
-    U,
-    L
-  >;
+  ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
+  sequenceS: <R extends Record<string, Kind3<M, never, L, any>>>(
+    r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  sequenceSL: <R extends Record<string, Kind3<M, never, L, any>>>(
+    f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  return: <A>(f: (s: S) => A) => Kind3<M, U, L, A>;
+  done: () => Kind3<M, U, L, S>;
+}
+
+export interface Do3CE_<M extends URIS3, S extends object, U, L> {
+  do: <R>(ma: Kind3<M, R, L, unknown>) => Do3CE_<M, S, U & R, L>;
+  doL: <R>(f: (s: S) => Kind3<M, R, L, unknown>) => Do3CE_<M, S, U & R, L>;
+  bind: <N extends string, R, A>(
+    name: Exclude<N, keyof S>,
+    ma: Kind3<M, R, L, A>
+  ) => Do3CE_<M, S & { [K in N]: A }, U & R, L>;
+  bindL: <N extends string, R, A>(
+    name: Exclude<N, keyof S>,
+    f: (s: S) => Kind3<M, R, L, A>
+  ) => Do3CE_<M, S & { [K in N]: A }, U & R, L>;
+  sequenceS: <R extends Record<string, Kind3<M, never, L, any>>>(
+    r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE_<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  sequenceSL: <R extends Record<string, Kind3<M, never, L, any>>>(
+    f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
+  ) => Do3CE_<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
   return: <A>(f: (s: S) => A) => Kind3<M, U, L, A>;
   done: () => Kind3<M, U, L, S>;
 }
@@ -147,6 +149,9 @@ declare module "fp-ts-contrib/lib/Do" {
   export function Do<M extends URIS3>(
     M: Monad3E<M>
   ): Do3CE<M, {}, NoEnv, NoErr>;
+  export function Do<M extends URIS3, E>(
+    M: Monad3EC<M, E>
+  ): Do3CE_<M, {}, NoEnv, E>;
 }
 
 export interface PipeableChain3E<F extends URIS3> extends PipeableApply3E<F> {
@@ -161,16 +166,50 @@ export interface PipeableChain3E<F extends URIS3> extends PipeableApply3E<F> {
   ) => Kind3<F, R & R2, E | E2, A>;
 }
 
+export interface PipeableChain3EC<F extends URIS3, E>
+  extends PipeableApply3EC<F, E> {
+  readonly chain: <R, A, B>(
+    f: (a: A) => Kind3<F, R, E, B>
+  ) => <R2>(ma: Kind3<F, R2, E, A>) => Kind3<F, R & R2, E, B>;
+  readonly chainFirst: <R, A, B>(
+    f: (a: A) => Kind3<F, R, E, B>
+  ) => <R2>(ma: Kind3<F, R2, E, A>) => Kind3<F, R & R2, E, A>;
+  readonly flatten: <R, R2, A>(
+    mma: Kind3<F, R, E, Kind3<F, R2, E, A>>
+  ) => Kind3<F, R & R2, E, A>;
+}
+
 export interface PipeableApply3E<F extends URIS3> extends PipeableFunctor3<F> {
-  readonly ap: <R, E, A, R2, E2>(
+  readonly ap: <R, E, A, E2>(
     fa: Kind3<F, R, E, A>
-  ) => <B>(fab: Kind3<F, R2, E2, (a: A) => B>) => Kind3<F, R & R2, E | E2, B>;
+  ) => <R2, B>(
+    fab: Kind3<F, R2, E2, (a: A) => B>
+  ) => Kind3<F, R & R2, E | E2, B>;
   readonly apFirst: <R, E, B>(
     fb: Kind3<F, R, E, B>
   ) => <A, R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, R & R2, E | E2, A>;
   readonly apSecond: <R, E, B>(
     fb: Kind3<F, R, E, B>
   ) => <A, R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, R & R2, E | E2, B>;
+}
+
+export interface PipeableApply3EC<F extends URIS3, E>
+  extends PipeableFunctor3EC<F, E> {
+  readonly ap: <R, A>(
+    fa: Kind3<F, R, E, A>
+  ) => <B, R2>(fab: Kind3<F, R2, E, (a: A) => B>) => Kind3<F, R & R2, E, B>;
+  readonly apFirst: <R, B>(
+    fb: Kind3<F, R, E, B>
+  ) => <A, R2>(fa: Kind3<F, R2, E, A>) => Kind3<F, R & R2, E, A>;
+  readonly apSecond: <R, B>(
+    fb: Kind3<F, R, E, B>
+  ) => <A, R2>(fa: Kind3<F, R2, E, A>) => Kind3<F, R & R2, E, B>;
+}
+
+export interface PipeableFunctor3EC<F extends URIS3, E> {
+  readonly map: <A, B>(
+    f: (a: A) => B
+  ) => <R>(fa: Kind3<F, R, E, A>) => Kind3<F, R, E, B>;
 }
 
 export interface Apply3E<F extends URIS3> extends Functor3<F> {
@@ -214,14 +253,47 @@ declare module "fp-ts/lib/pipeable" {
     (I extends Profunctor3<F> ? PipeableProfunctor3<F> : {}) &
     (I extends Semigroupoid3<F> ? PipeableSemigroupoid3<F> : {}) &
     (I extends MonadThrow3E<F> ? PipeableMonadThrow3<F> : {});
+  export function pipeable<F extends URIS3, I, E>(
+    I: {
+      URI: F;
+    } & I
+  ): (I extends Chain3EC<F, E>
+    ? PipeableChain3EC<F, E>
+    : I extends Apply3EC<F, E>
+    ? PipeableApply3EC<F, E>
+    : I extends Functor3EC<F, E>
+    ? PipeableFunctor3EC<F, E>
+    : {}) &
+    // (I extends Contravariant3<F> ? PipeableContravariant3<F> : {}) &
+    // (I extends FunctorWithIndex3<F, infer Ix>
+    //   ? PipeableFunctorWithIndex3<F, Ix>
+    //   : {}) &
+    // (I extends Bifunctor3<F> ? PipeableBifunctor3<F> : {}) &
+    // (I extends Extend3<F> ? PipeableExtend3<F> : {}) &
+    // (I extends FoldableWithIndex3<F, infer Ix>
+    //   ? PipeableFoldableWithIndex3<F, Ix>
+    //   : I extends Foldable3<F>
+    //   ? PipeableFoldable3<F>
+    //   : {}) &
+    (I extends Alt3EC<F, E> ? PipeableAlt3EC<F, E> : {}) &
+    // (I extends FilterableWithIndex3<F, infer Ix>
+    //   ? PipeableFilterableWithIndex3<F, Ix>
+    //   : I extends Filterable3<F>
+    //   ? PipeableFilterable3<F>
+    //   : I extends Compactable3<F>
+    //   ? PipeableCompactable3<F>
+    //   : {}) &
+    // (I extends Profunctor3<F> ? PipeableProfunctor3<F> : {}) &
+    // (I extends Semigroupoid3<F> ? PipeableSemigroupoid3<F> : {}) &
+    (I extends MonadThrow3EC<F, E> ? PipeableMonadThrow3<F> : {});
 }
 
 export interface MonadThrow3E<M extends URIS3> extends Monad3E<M> {
-  readonly throwError: <R, E, A>(e: E) => Kind3<M, R, E, A>;
+  readonly throwError: <E>(e: E) => Kind3<M, unknown, E, never>;
 }
 
 export interface MonadThrow3EC<M extends URIS3, E> extends Monad3EC<M, E> {
-  readonly throwError: <R, A>(e: E) => Kind3<M, R, E, A>;
+  readonly throwError: (e: E) => Kind3<M, unknown, E, never>;
 }
 
 export interface Alt3EC<F extends URIS3, E> extends Functor3EC<F, E> {
@@ -229,4 +301,33 @@ export interface Alt3EC<F extends URIS3, E> extends Functor3EC<F, E> {
     fx: Kind3<F, R, E, A>,
     fy: () => Kind3<F, R2, E, A>
   ) => Kind3<F, R & R2, E, A>;
+}
+
+export interface PipeableAlt3EC<F extends URIS3, E> {
+  readonly alt: <R, A>(
+    that: () => Kind3<F, R, E, A>
+  ) => <R2>(fa: Kind3<F, R2, E, A>) => Kind3<F, R & R2, E, A>;
+}
+
+export interface PipeableMonadThrow3EC<F extends URIS3, E> {
+  readonly fromOption: (
+    onNone: () => E
+  ) => <R, A>(ma: Option<A>) => Kind3<F, R, E, A>;
+  readonly fromEither: <R, A>(ma: Either<E, A>) => Kind3<F, R, E, A>;
+  readonly fromPredicate: {
+    <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <U>(
+      a: A
+    ) => Kind3<F, U, E, B>;
+    <A>(predicate: Predicate<A>, onFalse: (a: A) => E): <R>(
+      a: A
+    ) => Kind3<F, R, E, A>;
+  };
+  readonly filterOrElse: {
+    <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <R>(
+      ma: Kind3<F, R, E, A>
+    ) => Kind3<F, R, E, B>;
+    <A>(predicate: Predicate<A>, onFalse: (a: A) => E): <R>(
+      ma: Kind3<F, R, E, A>
+    ) => Kind3<F, R, E, A>;
+  };
 }

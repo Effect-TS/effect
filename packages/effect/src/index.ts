@@ -576,7 +576,7 @@ export function alt<R, E, A>(
 
 /* manipulate environment */
 
-export function mergeEnv<A, B>(a: A): (b: B) => A & B {
+export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
   return b => M.all([a, b], { clone: false });
 }
 
@@ -607,7 +607,6 @@ export function sequenceP<R, E, A>(
 }
 
 /* execution */
-
 export function run<E, A>(ma: Effect<NoEnv, E, A>): IO<Promise<EX.Exit<E, A>>> {
   return effectMonad.run(ma);
 }

@@ -9,6 +9,7 @@ import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { identity } from "fp-ts/lib/function";
 import { semigroupString } from "fp-ts/lib/Semigroup";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("Effect", () => {
   describe("Extra", () => {
@@ -502,5 +503,67 @@ describe("Effect", () => {
       await _.run(M.alt(_.left("a"), () => _.left("b")))(),
       await _.run(_.left("ab"))()
     );
+  });
+
+  describe("Do", () => {
+    interface Env1 {
+      value: string;
+    }
+    interface Env2 {
+      value2: string;
+    }
+    const env1: Env1 = { value: "a" };
+    const env2: Env2 = { value2: "b" };
+    const env = _.mergeEnv(env2)(env1);
+
+    it("effectMonad", async () => {
+      const M = _.effectMonad;
+      const p = Do(M)
+        .bindL("x", () => M.of("a"))
+        .sequenceS({
+          a: M.throwError("a"),
+          b: M.throwError("b")
+        })
+        .return(r => r);
+      const e = await _.run(p)();
+      assert.deepStrictEqual(e, _.raise("a"));
+    });
+    it("effectMonad env", async () => {
+      const M = _.effectMonad;
+      const p = Do(M)
+        .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
+        .sequenceS({
+          a: _.accessM(({}: Env1) => M.throwError("a")),
+          b: M.throwError("b")
+        })
+        .return(r => r);
+      const e = await _.run(_.provide(env)(p))();
+      assert.deepStrictEqual(e, _.raise("a"));
+    });
+    it("getCauseValidationM", async () => {
+      const M = _.getValidationM(semigroupString);
+      const e = await _.run(
+        Do(M)
+          .bindL("x", () => M.of("a"))
+          .sequenceS({
+            a: M.throwError("a"),
+            b: M.throwError("b")
+          })
+          .return(r => r)
+      )();
+      assert.deepStrictEqual(e, _.raise("ab"));
+    });
+    it("getCauseValidationM env", async () => {
+      const M = _.getValidationM(semigroupString);
+      const p = Do(M)
+        .bindL("x", () => M.of("a"))
+        .sequenceS({
+          a: _.accessM(({}: Env1) => M.throwError("a")),
+          b: M.throwError("b")
+        })
+        .return(r => r);
+      const e = await _.run(_.provide(env1)(p))();
+      assert.deepStrictEqual(e, _.raise("ab"));
+    });
   });
 });
