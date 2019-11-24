@@ -52,10 +52,10 @@ export interface Applicative3EC<F extends URIS3, E> extends Apply3EC<F, E> {
 }
 
 export interface Apply3EC<F extends URIS3, E> extends Functor3EC<F, E> {
-  readonly ap: <R, A, B>(
+  readonly ap: <R, R2, A, B>(
     fab: Kind3<F, R, E, (a: A) => B>,
-    fa: Kind3<F, R, E, A>
-  ) => Kind3<F, R, E, B>;
+    fa: Kind3<F, R2, E, A>
+  ) => Kind3<F, R & R2, E, B>;
 }
 
 export interface Chain3EC<F extends URIS3, E> extends Apply3EC<F, E> {
@@ -224,8 +224,8 @@ export interface MonadThrow3EC<M extends URIS3, E> extends Monad3EC<M, E> {
 }
 
 export interface Alt3EC<F extends URIS3, E> extends Functor3EC<F, E> {
-  readonly alt: <R, A>(
+  readonly alt: <R, R2, A>(
     fx: Kind3<F, R, E, A>,
-    fy: () => Kind3<F, R, E, A>
-  ) => Kind3<F, R, E, A>;
+    fy: () => Kind3<F, R2, E, A>
+  ) => Kind3<F, R & R2, E, A>;
 }
