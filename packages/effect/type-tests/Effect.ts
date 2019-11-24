@@ -1,6 +1,6 @@
 import * as T from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
-import { IsUnknown, ATypeOf, EnvOf } from "../src/overload";
+import { ATypeOf, EnvOf } from "../src/overload";
 import * as _ from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupString } from "fp-ts/lib/Semigroup";
@@ -44,25 +44,11 @@ interface Env3 {
   value3: string;
 }
 
-type Env12 = Env1 & Env2;
-
-type IsUnknownUnknown = IsUnknown<unknown, "o", "n">; // $ExpectType "o"
-type IsUnknownString = IsUnknown<string, "o", "n">; // $ExpectType "n"
-type IsUnknownNever = IsUnknown<never, "o", "n">; // $ExpectType "n"
-
 export type UnionToIntersection2<U> = (U extends any
 ? (k: U) => void
 : never) extends (k: infer I) => void
   ? I
   : never;
-
-type Compact<O> = { [k in keyof O]: O[k] };
-// declare type MergeEnv2<A, B> = A & B;
-
-export type IsUnknown2<T, Y, N> = unknown extends T ? Y : N;
-export type MergeEnv2<A, B> = UnionToIntersection2<
-  IsUnknown2<A, never, A> | IsUnknown2<B, never, B>
->;
 
 type UString = T.Effect<unknown, unknown, string>;
 type Env1String = T.Effect<Env1, unknown, string>;

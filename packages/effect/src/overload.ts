@@ -85,12 +85,6 @@ type UnionToIntersection<U> = (U extends any
   ? I
   : never;
 
-export type IsUnknown<T, Y, N> = unknown extends T ? Y : N;
-// export type MergeEnv<A, B> = A &
-//   B; /* UnionToIntersection<
-//   IsUnknown<A, never, A> | IsUnknown<B, never, B>
-// >;*/
-
 export type ATypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
   ? A
   : never;
@@ -106,10 +100,6 @@ export type EnvOf<
     [K in keyof R]: unknown extends RTypeOf<R[K]> ? never : RTypeOf<R[K]>;
   }[keyof R]
 >;
-
-export type AOf<R extends Record<string, Kind3<any, any, any, any>>> = {
-  [K in keyof R]: ATypeOf<R[K]>;
-};
 
 export interface Do3CE<M extends URIS3, S extends object, U, L> {
   do: <E, R>(ma: Kind3<M, R, E, unknown>) => Do3CE<M, S, U & R, L | E>;
