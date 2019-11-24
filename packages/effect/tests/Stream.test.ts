@@ -607,7 +607,8 @@ describe("Stream", () => {
         >
       );
     });
-    it("switching should occur", () => {
+    // TODO: issue https://github.com/rzeigler/waveguide-streams/issues/1
+    it.skip("switching should occur", () => {
       const s1 = S.take(S.periodically(50), 10);
       const s2 = S.chainSwitchLatest(s1, i =>
         S.as(S.take(S.periodically(10), 10), i)
