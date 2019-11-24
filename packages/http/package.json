@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -37,8 +37,8 @@
     "typescript": "^3.7.2"
   },
   "dependencies": {
-    "@matechs/effect": "^0.0.23",
-    "@matechs/tracing": "^0.0.26",
+    "@matechs/effect": "^0.0.24",
+    "@matechs/tracing": "^0.0.27",
     "axios": "^0.19.0",
     "deepmerge": "^4.2.2",
     "fp-ts": "^2.1.2",
