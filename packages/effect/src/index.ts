@@ -340,8 +340,8 @@ export function getCauseValidationM<E>(
     of: effectMonad.of,
     map: effectMonad.map,
     chain: effectMonad.chain,
-    ap: <R, A, B>(fab: Effect<R, E, (a: A) => B>, fa: Effect<R, E, A>) => (
-      r: R
+    ap: <R, R2, A, B>(fab: Effect<R, E, (a: A) => B>, fa: Effect<R2, E, A>) => (
+      r: R & R2
     ) =>
       W.foldExit(
         fab(r),
@@ -354,10 +354,10 @@ export function getCauseValidationM<E>(
         f => W.map(fa(r), f)
       ),
     throwError: <R, A>(e: E): Effect<R, E, A> => _ => W.raiseError(e),
-    alt: <R, A>(
+    alt: <R, R2, A>(
       fa: Effect<R, E, A>,
-      fb: () => Effect<R, E, A>
-    ): Effect<R, E, A> => r =>
+      fb: () => Effect<R2, E, A>
+    ): Effect<R & R2, E, A> => r =>
       W.foldExit(
         fa(r),
         e => W.foldExit(fb()(r), fbe => W.raised(S.concat(e, fbe)), W.pure),
