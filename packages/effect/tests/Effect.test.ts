@@ -10,6 +10,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { identity } from "fp-ts/lib/function";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { array } from "fp-ts/lib/Array";
 
 describe("Effect", () => {
   describe("Extra", () => {
@@ -564,6 +565,36 @@ describe("Effect", () => {
         .return(r => r);
       const e = await _.run(_.provide(env1)(p))();
       assert.deepStrictEqual(e, _.raise("ab"));
+    });
+
+    it("should traverse validation", async () => {
+      const V = _.getValidationM(semigroupString);
+
+      const checks = array.traverse(V)([0, 1, 2, 3, 4], x =>
+        x < 2 ? _.left(`(error: ${x})`) : _.right(x)
+      );
+
+      const res = await _.run(checks)();
+
+      assert.deepEqual(res, _.raise("(error: 0)(error: 1)"));
+    });
+
+    it("should traverse validation with env", async () => {
+      const env = {
+        prefix: "error"
+      };
+
+      const V = _.getValidationM(semigroupString);
+
+      const checks = array.traverse(V)([0, 1, 2, 3, 4], x =>
+        x < 2
+          ? _.accessM(({ prefix }: typeof env) => _.left(`(${prefix}: ${x})`))
+          : _.right(x)
+      );
+
+      const res = await _.run(_.provide(env)(checks))();
+
+      assert.deepEqual(res, _.raise("(error: 0)(error: 1)"));
     });
   });
 });

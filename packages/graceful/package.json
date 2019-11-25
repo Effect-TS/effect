@@ -38,7 +38,7 @@
     "@matechs/effect": "^0.0.24",
     "@matechs/tracing": "^0.0.27",
     "deepmerge": "^4.2.2",
-    "fp-ts": "^2.1.2",
+    "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
     "opentracing": "^0.14.4",
     "reflect-metadata": "^0.1.13",

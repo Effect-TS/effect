@@ -40,7 +40,7 @@
     "@matechs/graceful": "^0.0.13",
     "@matechs/tracing": "^0.0.27",
     "deepmerge": "^4.2.2",
-    "fp-ts": "^2.1.2",
+    "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
     "object-assign-deep": "^0.4.0",
     "opentracing": "^0.14.4",
