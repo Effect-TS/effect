@@ -27,8 +27,8 @@ jobs:
         yarn
         yarn init-vendor
         yarn build-vendor
-        lerna run build
-        lerna run test
+        lerna run build --scope @matechs/*
+        lerna run test --scope @matechs/*
       env:
         CI: true
     - uses: codecov/codecov-action@v1.0.3
