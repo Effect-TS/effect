@@ -24,8 +24,8 @@ jobs:
       run: |
         npm install -g lerna
         npm install -g yarn
-        yarn
         yarn init-vendor
+        yarn install
         yarn build-vendor
         lerna run build --scope @matechs/*
         lerna run test --scope @matechs/*
