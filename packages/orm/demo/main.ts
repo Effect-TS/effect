@@ -1,11 +1,14 @@
 import * as T from "@matechs/effect";
 import * as E from "@matechs/effect/lib/exit";
 import * as SQL from "../src";
+import * as A from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
 import { PrimaryGeneratedColumn, Entity } from "typeorm";
 import { graceful, Graceful, trigger } from "@matechs/graceful";
 import * as S from "@matechs/effect/lib/stream/stream";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { semigroupString } from "fp-ts/lib/Semigroup";
+import { monoidString } from "fp-ts/lib/Monoid";
 
 @Entity()
 class DemoEntity {
@@ -78,7 +81,10 @@ const program: T.Effect<
   )
   .bindL("stream", ({ pool }) =>
     pipe(
-      SQL.queryStreamB<{ d_id: number }>(10, 100)(m =>
+      SQL.queryStreamB<{ d_id: number }>(
+        5,
+        10
+      )(m =>
         m
           .createQueryBuilder(DemoEntity, "d")
           .select("d.id")
@@ -90,14 +96,20 @@ const program: T.Effect<
   )
   .bindL("ids", ({ stream }) =>
     T.right(
-      S.scanM(
-        S.chainSwitchLatest(stream, s => S.fromArray(s)),
-        (s, r) =>
-          T.accessM(({ config: { prefix } }: Config) =>
-            T.fromIO(() => {
-              return `${s}(${prefix}${r.d_id})`;
-            })
-          ),
+      S.scan(
+        S.chain(stream, a =>
+          pipe(
+            a,
+            S.fromArray,
+            S.mapMWith(r =>
+              T.access(
+                ({ config: { prefix } }: Config) => `(${prefix}${r.d_id})`
+              )
+            ),
+            s => S.fold(s, monoidString.concat, monoidString.empty)
+          )
+        ),
+        semigroupString.concat,
         "ids: "
       )
     )
