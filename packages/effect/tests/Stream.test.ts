@@ -33,6 +33,16 @@ export function expectExit<E, A>(
 }
 
 describe("Stream", () => {
+  it("stack safe", async () => {
+    const s = S.fromArray(array.range(0, 100000));
+
+    const res = await T.promise(
+      S.collectArray(S.foldM(s, (b, a) => T.right(b + a), 0))
+    );
+
+    assert.deepEqual(res, [5000050000]);
+  });
+
   it("should use fromArray", async () => {
     const s = S.fromArray([0, 1, 2]);
 
