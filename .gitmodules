@@ -1,3 +1,4 @@
 [submodule "vendor/fp-ts"]
 	path = vendor/fp-ts
+	branch = 1024
 	url = https://github.com/gcanti/fp-ts.git
