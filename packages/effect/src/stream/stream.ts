@@ -1551,7 +1551,7 @@ function getSourceFromObjectReadStream<A>(
 
       return T.tryAsync(res => {
         if (leftover.length > 0) {
-          res(Ei.right(leftover.splice(0, 1)[0]));
+          res(Ei.right(O.some(leftover.splice(0, 1)[0])));
         } else {
           if (errors.length > 0) {
             res(Ei.left(errors[0]));
