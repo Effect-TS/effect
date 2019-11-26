@@ -37,6 +37,7 @@ export enum EffectTag {
 
 export type NoEnv = unknown;
 export type NoErr = never;
+export type Env = { [k: string]: any };
 
 /**
  * A description of an effect to perform
@@ -408,7 +409,7 @@ export interface AccessEnvironment<R, E, A> {
   readonly $R: (_: R) => A;
 }
 
-export function accessEnvironment<R>(): Stack<R, NoErr, R> {
+export function accessEnvironment<R extends Env>(): Stack<R, NoErr, R> {
   return {
     _tag: EffectTag.AccessEnvironment,
     $R: identity,
@@ -416,13 +417,15 @@ export function accessEnvironment<R>(): Stack<R, NoErr, R> {
   };
 }
 
-export function accessM<R, R2, E, A>(
+export function accessM<R extends Env, R2, E, A>(
   f: FunctionN<[R], Stack<R2, E, A>>
 ): Stack<R & R2, E, A> {
   return chain(accessEnvironment<R>(), f);
 }
 
-export function access<R, A, E = NoErr>(f: FunctionN<[R], A>): Stack<R, E, A> {
+export function access<R extends Env, A, E = NoErr>(
+  f: FunctionN<[R], A>
+): Stack<R, E, A> {
   return chain(accessEnvironment<R>(), r => pure(f(r)));
 }
 
@@ -859,13 +862,13 @@ function combineFinalizerExit<E, A>(
 
 export function bracketExit<R, E, A, B, R2, E2, R3, E3>(
   acquire: Stack<R, E, A>,
-  release: FunctionN<[A, Exit<E | E2 | E3, B>], Stack<R2, E2, unknown>>,
+  release: FunctionN<[A, Exit<E | E3, B>], Stack<R2, E2, unknown>>,
   use: FunctionN<[A], Stack<R3, E3, B>>
 ): Stack<R & R2 & R3, E | E2 | E3, B> {
   return uninterruptibleMask(cutout =>
     chain(acquire, a =>
       chain(result(cutout(use(a))), exit =>
-        chain(result(release(a, exit)), finalize =>
+        chain(result(release(a, exit as Exit<E | E3, B>)), finalize =>
           completed(combineFinalizerExit(exit, finalize))
         )
       )
