@@ -38,9 +38,9 @@ export const express: Express = {
       f: (req: EX.Request) => T.Effect<R, E, RES>
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
-        T.fromIO(() => {
+        T.sync(() => {
           r.express.app[method](path, bodyParser.json(), (req, res) => {
-            T.run(T.provide(r)(f(req)))().then(o => {
+            T.runToPromiseExit(T.provideAll(r)(f(req))).then(o => {
               switch (o._tag) {
                 case ExitTag.Done:
                   res.send(o.value);
@@ -66,7 +66,10 @@ export const express: Express = {
       );
     },
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A> {
-      return T.provide<HasExpress>({ express: { app: newExpress() } })(op);
+      return T.provideR((r: R) => ({
+        ...r,
+        express: { ...r["express"], app: newExpress() }
+      }))(op);
     },
     bind(
       port: number,
@@ -75,13 +78,13 @@ export const express: Express = {
       return T.accessM(({ express: { app } }: HasExpress) =>
         Do(T.effectMonad)
           .bindL("s", () =>
-            T.fromIO(() => {
+            T.sync(() => {
               return app.listen(port, hostname);
             })
           )
           .doL(({ s }) =>
             G.onExit(
-              T.fromIO(() => {
+              T.sync(() => {
                 s.close();
               })
             )
