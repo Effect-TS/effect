@@ -432,9 +432,45 @@ export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
 
 export const noEnv = {};
 
+/**
+ * Provides partial environment, to be used only in top-level
+ * for deeper level is better to use provideR or provideAll
+ */
+
 export const provide = <R>(r: R) => <R2, E, A>(
   ma: Stack<R2 & R, E, A>
 ): Stack<R2, E, A> =>
+  accessM(
+    (r2: R2) =>
+      ({
+        ...ma,
+        env: M.all([r, r2], { clone: false })
+      } as any)
+  );
+
+/**
+ * Provides partial environment, to be used only in top-level
+ * for deeper level is better to use provideR or provideAll
+ */
+
+export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
+  ma: Stack<R, E, A>
+): Stack<R2, E, A> =>
+  accessM(
+    (r2: R2) =>
+      ({
+        ...ma,
+        env: f(r2)
+      } as any)
+  );
+
+/**
+ * Provides all environment to the child
+ */
+
+export const provideAll = <R>(r: R) => <E, A>(
+  ma: Stack<R, E, A>
+): Stack<NoEnv, E, A> =>
   ({
     ...ma,
     env: r
@@ -1119,8 +1155,8 @@ export function raceFold<R, R2, E1, E2, A, B, C>(
           chain<NoEnv, E2, Deferred<NoEnv, E2, C>, NoEnv, E2, C>(
             makeDeferred<NoEnv, E2, C>(),
             channel =>
-              chain(fork(provide(r)(first)), fiber1 =>
-                chain(fork(provide(r)(second)), fiber2 =>
+              chain(fork(provideAll(r)(first)), fiber1 =>
+                chain(fork(provideAll(r)(second)), fiber2 =>
                   chain(
                     fork(
                       chain(

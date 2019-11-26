@@ -10,7 +10,7 @@ type Config = {
 const program = Do(T.effectMonad)
   .bindL("a", () => T.accessM(({ env }: Config) => T.sync(() => `${env}: 0`)))
   .bindL("b", () =>
-    T.provide({ env: "yes" } as Config)(
+    T.provideR((): Config => ({ env: "yes" }))(
       T.accessM(({ env }: Config) => T.sync(() => `${env}: 1`))
     )
   )
