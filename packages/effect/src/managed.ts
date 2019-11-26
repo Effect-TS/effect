@@ -21,7 +21,9 @@ export enum ManagedTag {
  *
  * This is a friendly monadic wrapper around bracketExit.
  */
-export type Managed<R, E, A> =
+export type Managed<R, E, A> = (
+  _: R
+) =>
   | Pure<R, E, A>
   | Encase<R, E, A>
   | Bracket<R, E, A>
@@ -45,10 +47,10 @@ export interface Pure<R, E, A> {
 export function pure<R = T.NoEnv, E = T.NoErr, A = unknown>(
   value: A
 ): Managed<R, E, A> {
-  return {
+  return () => ({
     _tag: ManagedTag.Pure,
     $R: () => ({ value })
-  };
+  });
 }
 
 export interface Encase<R, E, A> {
@@ -66,13 +68,15 @@ export interface Encase<R, E, A> {
  * @param res
  * @param f
  */
-export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
-  return {
+export function encaseEffect<R, E, A>(
+  rio: T.Effect<R, E, A>
+): Managed<R, E, A> {
+  return () => ({
     _tag: ManagedTag.Encase,
     $R: r => ({
       acquire: T.provideAll(r)(rio)
     })
-  };
+  });
 }
 
 export interface Bracket<R, E, A> {
@@ -94,13 +98,13 @@ export function bracket<R, E, A, R2, E2>(
   acquire: T.Effect<R, E, A>,
   release: FunctionN<[A], T.Effect<R2, E2, unknown>>
 ): Managed<R & R2, E | E2, A> {
-  return {
+  return () => ({
     _tag: ManagedTag.Bracket,
     $R: r => ({
       acquire: T.provideAll(r)(acquire),
       release: a => T.provideAll(r)(release(a))
     })
-  };
+  });
 }
 
 export interface BracketExit<R, E, A> {
@@ -118,13 +122,13 @@ export function bracketExit<R, E, A, R2, E2>(
   acquire: T.Effect<R, E, A>,
   release: FunctionN<[A, Exit<E, unknown>], T.Effect<R2, E2, unknown>>
 ): Managed<R & R2, E | E2, A> {
-  return {
+  return () => ({
     _tag: ManagedTag.BracketExit,
     $R: r => ({
       acquire: T.provideAll(r)(acquire),
       release: (a, e) => T.provideAll(r)(release(a, e as any))
     })
-  };
+  });
 }
 
 export interface Suspended<R, E, A> {
@@ -144,14 +148,14 @@ export interface Suspended<R, E, A> {
 export function suspend<R, E, R2, E2, A>(
   suspended: T.Effect<R, E, Managed<R2, E2, A>>
 ): Managed<R & R2, E | E2, A> {
-  return {
+  return () => ({
     _tag: ManagedTag.Suspended,
     $R: r => ({
       suspended: T.provideAll(r)(
         suspended as T.Effect<R, E | E2, Managed<R2, E | E2, A>>
       )
     })
-  };
+  });
 }
 
 export interface Chain<R, E, L, A> {
@@ -175,23 +179,23 @@ export function chain<R, E, L, R2, E2, A>(
   left: Managed<R, E, L>,
   bind: FunctionN<[L], Managed<R2, E2, A>>
 ): Managed<R & R2, E | E2, A> {
-  return {
+  return () => ({
     _tag: ManagedTag.Chain,
     $R: r => ({
-      left: {
-        _tag: left._tag,
-        $R: _ => left.$R(r) as any
-      },
+      left: () => ({
+        _tag: left({} as any)._tag,
+        $R: _ => left({} as any).$R(r) as any
+      }),
       bind: l => {
-        const b = bind(l);
+        const b = bind(l)({} as any);
 
-        return {
+        return () => ({
           _tag: b._tag,
           $R: _ => b.$R(r) as any
-        };
+        });
       }
     })
-  };
+  });
 }
 
 /**
@@ -356,31 +360,33 @@ export function use<R, E, A, R2, E2, B>(
   res: Managed<R, E, A>,
   f: FunctionN<[A], T.Effect<R2, E2, B>>
 ): T.Effect<R & R2, E | E2, B> {
-  switch (res._tag) {
+  const c = res({} as any);
+
+  switch (c._tag) {
     case ManagedTag.Pure:
-      return T.accessM((r: R & R2) => f(res.$R(r).value));
+      return T.accessM((r: R & R2) => f(c.$R(r).value));
     case ManagedTag.Encase:
-      return T.accessM((r: R & R2) => T.chain(res.$R(r).acquire, f));
+      return T.accessM((r: R & R2) => T.chain(c.$R(r).acquire, f));
     case ManagedTag.Bracket:
       return T.accessM((r: R & R2) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
         return T.bracket(p.acquire, p.release, f);
       });
     case ManagedTag.BracketExit:
       return T.accessM((r: R & R2) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.bracketExit(p.acquire, (a, e) => p.release(a, e as any), f);
       });
     case ManagedTag.Suspended:
       return T.accessM((r: R & R2) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.chain(p.suspended, consume(f));
       });
     case ManagedTag.Chain:
       return T.accessM((r: R & R2) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return use(p.left, a => use(p.bind(a), f));
       });
@@ -403,29 +409,31 @@ export interface Leak<R, E, A> {
 export function allocate<R, E, A>(
   res: Managed<R, E, A>
 ): T.Effect<R, E, Leak<R, E, A>> {
-  switch (res._tag) {
+  const c = res({} as any);
+
+  switch (c._tag) {
     case ManagedTag.Pure:
       return T.accessM((r: R) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.pure({ a: p.value, release: T.unit });
       });
     case ManagedTag.Encase:
       return T.accessM((r: R) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.map(p.acquire, a => ({ a, release: T.unit }));
       });
     case ManagedTag.Bracket:
       return T.accessM((r: R) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.map(p.acquire, a => ({ a, release: p.release(a) }));
       });
     case ManagedTag.BracketExit:
       // best effort, because we cannot know what the exit status here
       return T.accessM((r: R) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.map(p.acquire, a => ({
           a,
@@ -434,13 +442,13 @@ export function allocate<R, E, A>(
       });
     case ManagedTag.Suspended:
       return T.accessM((r: R) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.chain(p.suspended, wm => allocate(wm));
       });
     case ManagedTag.Chain:
       return T.accessM((r: R) => {
-        const p = res.$R(r);
+        const p = c.$R(r);
 
         return T.bracketExit(
           allocate(p.left),

@@ -54,7 +54,9 @@ export type Env = { [k: string]: any };
 /**
  * A description of an effect to perform
  */
-export type Effect<R, E, A> =
+export type Effect<R, E, A> = (
+  _: R
+) =>
   | Pure<R, E, A>
   | Raised<R, E, A>
   | Completed<R, E, A>
@@ -82,10 +84,10 @@ export interface Pure<R, E, A> {
  * @param a the value
  */
 export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
-  return {
+  return () => ({
     _tag: EffectTag.Pure,
     $R: () => ({ value: a })
-  };
+  });
 }
 
 export interface Raised<R, E, A> {
@@ -105,7 +107,7 @@ export interface Raised<R, E, A> {
  * @param e
  */
 export function raised<E, A = never>(e: Cause<E>): Effect<NoEnv, E, A> {
-  return { _tag: EffectTag.Raised, $R: () => ({ error: e }) };
+  return () => ({ _tag: EffectTag.Raised, $R: () => ({ error: e }) });
 }
 
 /**
@@ -144,10 +146,10 @@ export interface Completed<R, E, A> {
  * @param exit
  */
 export function completed<E, A>(exit: Exit<E, A>): Effect<NoEnv, E, A> {
-  return {
+  return () => ({
     _tag: EffectTag.Completed,
     $R: () => ({ exit })
-  };
+  });
 }
 
 export interface Suspended<R, E, A> {
@@ -169,12 +171,12 @@ export interface Suspended<R, E, A> {
 export function suspended<R, E, A>(
   thunk: Lazy<Effect<R, E, A>>
 ): Effect<R, E, A> {
-  return {
+  return () => ({
     _tag: EffectTag.Suspended,
     $R: r => ({
       thunk: () => provideAll(r)(thunk())
     })
-  };
+  });
 }
 
 /**
@@ -235,10 +237,10 @@ export interface Async<R, E, A> {
 export function async<E, A>(
   op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>
 ): Effect<NoEnv, E, A> {
-  return {
+  return () => ({
     _tag: EffectTag.Async,
     $R: () => ({ op })
-  };
+  });
 }
 
 /**
@@ -273,13 +275,13 @@ export function interruptibleRegion<R, E, A>(
   inner: Effect<R, E, A>,
   flag: boolean
 ): Effect<R, E, A> {
-  return {
+  return () => ({
     _tag: EffectTag.InterruptibleRegion,
     $R: r => ({
       flag,
       inner: provideAll(r)(inner)
     })
-  };
+  });
 }
 
 export interface Chain<R, E, Z, A> {
@@ -302,13 +304,13 @@ export function chain<R, E, A, R2, E2, B>(
   inner: Effect<R, E, A>,
   bind: FunctionN<[A], Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return {
+  return () => ({
     _tag: EffectTag.Chain,
     $R: r => ({
       inner: provideAll(r)(inner),
       bind: a => provideAll(r)(bind(a))
     })
-  };
+  });
 }
 
 /**
@@ -382,14 +384,14 @@ export function foldExit<R, E1, R2, E2, A1, A2, R3, E3>(
   failure: FunctionN<[Cause<E1>], Effect<R2, E2, A2>>,
   success: FunctionN<[A1], Effect<R3, E3, A2>>
 ): Effect<R & R2 & R3, E2 | E3, A2> {
-  return {
+  return () => ({
     _tag: EffectTag.Collapse,
     $R: r => ({
       inner: provideAll(r)(inner),
       failure: c => provideAll(r)(failure(c)),
       success: a => provideAll(r)(success(a))
     })
-  };
+  });
 }
 
 /**
@@ -417,10 +419,10 @@ export interface AccessInterruptible<R, E, A> {
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = {
+export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = () => ({
   _tag: EffectTag.AccessInterruptible,
   $R: () => ({ f: identity })
-};
+});
 
 export interface AccessRuntime<R, E, A> {
   readonly _tag: EffectTag.AccessRuntime;
@@ -435,10 +437,10 @@ export interface AccessRuntime<R, E, A> {
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = {
+export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = () => ({
   _tag: EffectTag.AccessRuntime,
   $R: () => ({ f: identity })
-};
+});
 
 /**
  * Access the runtime then provide it to the provided function
@@ -457,10 +459,10 @@ export interface AccessEnvironment<R, E, A> {
 }
 
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
-  return {
+  return () => ({
     _tag: EffectTag.AccessEnvironment,
     $R: identity
-  };
+  });
 }
 
 export function accessM<R extends Env, R2, E, A>(
@@ -506,10 +508,10 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
 
 export const provideAll = <R>(r: R) => <E, A>(
   ma: Effect<R, E, A>
-): Effect<NoEnv, E, A> =>
+): Effect<NoEnv, E, A> => () =>
   ({
-    _tag: ma._tag,
-    $R: (_: NoEnv) => ma.$R(r)
+    _tag: ma({} as any)._tag,
+    $R: (_: NoEnv) => ma({} as any).$R(r)
   } as any);
 
 /**
