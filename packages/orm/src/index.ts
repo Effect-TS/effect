@@ -1,9 +1,6 @@
 import * as T from "@matechs/effect/lib";
-import * as S from "@matechs/effect/lib/stream/stream";
-import * as M from "@matechs/effect/lib/managed";
+import * as S from "@matechs/effect/lib/stream";
 import * as Ei from "fp-ts/lib/Either";
-import * as O from "fp-ts/lib/Option";
-
 import { Graceful, onExit } from "@matechs/graceful/lib";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { toError } from "fp-ts/lib/Either";
@@ -19,8 +16,6 @@ import {
   Repository
 } from "typeorm";
 import { ReadStream } from "fs";
-import { FunctionN } from "fp-ts/lib/function";
-import { Writable } from "stream";
 import { isNonEmpty } from "fp-ts/lib/Array";
 
 export interface HasOrmConfig {
@@ -78,12 +73,14 @@ export const ormFactory: (
     createPool() {
       return T.accessM(({ orm: { options } }: HasOrmConfig) =>
         Do(T.effectMonad)
-          .bindL("c", () => pipe(() => factory(options), T.tryPromise(toError)))
+          .bindL("c", () =>
+            pipe(() => factory(options), T.fromPromiseMap(toError))
+          )
           .doL(({ c }) =>
             onExit(
-              pipe(
-                T.toTaskLike(pipe(() => c.close(), T.tryPromise(toError))),
-                T.map(() => {})
+              T.chainError(
+                pipe(() => c.close(), T.fromPromiseMap(toError)),
+                _ => T.unit
               )
             )
           )
@@ -104,9 +101,9 @@ export const ormFactory: (
     ): T.Effect<HasOrmConfig & R, Error | E, A> {
       return T.accessM(({ orm: { options } }: HasOrmConfig) =>
         T.bracket(
-          pipe(() => factory(options), T.tryPromise(toError)),
-          db => pipe(() => db.close(), T.tryPromise(toError)),
-          db => (r: any) => {
+          pipe(() => factory(options), T.fromPromiseMap(toError)),
+          db => pipe(() => db.close(), T.fromPromiseMap(toError)),
+          db => (r: HasOrmConfig & R) => {
             return op({
               ...r,
               orm: { ...r["orm"], connection: db, manager: db.manager }
@@ -118,7 +115,7 @@ export const ormFactory: (
     withRepository(target) {
       return f =>
         T.accessM(({ orm }: HasEntityManager) =>
-          pipe(f(orm.manager.getRepository(target)), T.tryPromise(toError))
+          pipe(f(orm.manager.getRepository(target)), T.fromPromiseMap(toError))
         );
     },
     withTransaction<R, E, A>(
@@ -129,11 +126,11 @@ export const ormFactory: (
           pipe(
             () =>
               connection.transaction(tx =>
-                T.promise(_ =>
+                T.runToPromise(_ =>
                   op({ ...r, orm: { ...r["orm"], manager: tx } } as any)
                 )
               ),
-            T.tryPromise(toError)
+            T.fromPromiseMap(toError)
           )
         )
       );
@@ -189,9 +186,11 @@ export function queryStreamB<RES>(
   return f =>
     T.accessM(({ orm: { manager } }: HasEntityManager) =>
       Do(T.effectMonad)
-        .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))
+        .bindL("stream", () =>
+          pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
+        )
         .bindL("res", ({ stream }) =>
-          T.right(
+          T.pure(
             S.filter(
               S.fromObjectReadStreamB<RES>(stream, batch, every),
               isNonEmpty
@@ -208,10 +207,10 @@ export function queryStream<RES>(
 ): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, RES>> {
   return T.accessM(({ orm: { manager } }: HasEntityManager) =>
     Do(T.effectMonad)
-      .bindL("stream", () => pipe(() => f(manager), T.tryPromise(Ei.toError)))
-      .bindL("res", ({ stream }) =>
-        T.right(S.fromObjectReadStream<RES>(stream))
+      .bindL("stream", () =>
+        pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
       )
+      .bindL("res", ({ stream }) => T.pure(S.fromObjectReadStream<RES>(stream)))
       .return(({ res }) => res)
   );
 }

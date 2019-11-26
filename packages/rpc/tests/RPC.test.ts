@@ -10,7 +10,7 @@ import { tracer } from "@matechs/tracing";
 import { httpClient } from "@matechs/http/lib";
 import { moduleADef, Printer } from "./rpc/interface";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { ExitTag } from "waveguide/lib/exit";
+import { ExitTag, done, raise } from "waveguide/lib/exit";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {
@@ -23,7 +23,7 @@ describe("RPC", () => {
     const mockPrinter: Printer = {
       printer: {
         print(s) {
-          return T.fromIO(() => {
+          return T.sync(() => {
             messages.push(s);
           });
         }
@@ -46,7 +46,7 @@ describe("RPC", () => {
         .return(s => s.server)
     );
 
-    await T.promise(T.provide(module)(main));
+    await T.runToPromise(T.provide(module)(main));
 
     const clientModule = pipe(
       T.noEnv,
@@ -54,34 +54,38 @@ describe("RPC", () => {
       T.mergeEnv(httpClient())
     );
 
-    const result = await T.run(T.provide(clientModule)(RC.failing("test")))();
-    const result2 = await T.run(
+    const result = await T.runToPromiseExit(
+      T.provide(clientModule)(RC.failing("test"))
+    );
+    const result2 = await T.runToPromiseExit(
       T.provide(clientModule)(RC.notFailing("test"))
-    )();
+    );
 
     const clientModuleWrong = RPC.reinterpretRemotely(
       moduleADef,
       "http://127.0.0.1:3002"
     );
 
-    const result3 = await T.run(
+    const result3 = await T.runToPromiseExit(
       T.provide(
         pipe(T.noEnv, T.mergeEnv(clientModuleWrong), T.mergeEnv(httpClient()))
       )(RC.notFailing("test"))
-    )();
+    );
 
     // direct call in server
-    const result4 = await T.run(T.provide(module)(RS.notFailing("test")))();
+    const result4 = await T.runToPromiseExit(
+      T.provide(module)(RS.notFailing("test"))
+    );
 
-    await T.promise(T.provide(module)(G.trigger()));
+    await T.runToPromise(T.provide(module)(G.trigger()));
 
-    assert.deepEqual(result, T.raise(T.error("not implemented")));
-    assert.deepEqual(result2, T.done("test"));
+    assert.deepEqual(result, raise(new Error("not implemented")));
+    assert.deepEqual(result2, done("test"));
     assert.deepEqual(
       result3._tag === ExitTag.Raise && result3.error.message,
       "connect ECONNREFUSED 127.0.0.1:3002"
     );
-    assert.deepEqual(result4, T.done("test"));
+    assert.deepEqual(result4, done("test"));
     assert.deepEqual(messages, ["test", "test"]);
   });
 });

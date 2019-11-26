@@ -33,7 +33,7 @@ export function calculatePath(url: string, entry: string, k: string) {
 export type Payload = { data: any[] };
 
 export function remotely<A extends any[], R, E, B>(
-  fn: (...args: A) => T.Effect<R, E, B>,
+  _: (...args: A) => T.Effect<R, E, B>,
   url: string,
   entry: string,
   k: string
@@ -43,8 +43,8 @@ export function remotely<A extends any[], R, E, B>(
       H.post<{ message: string }, { result: B }>(calculatePath(url, entry, k), {
         data: args
       } as Payload),
-      T.map(r => r.data.result),
-      T.mapLeft(e => {
+      T.mapWith(r => r.data.result),
+      T.mapErrorWith(e => {
         try {
           return new Error(e.response.data.message);
         } catch (_) {
@@ -144,28 +144,26 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
   controller: string = `RPC Server - ${entry}`
 ): T.Effect<Tracer & EX.HasExpress & EX.Express, never, void> {
   return withTracer(
-    T.accessM(
-      ({
-        tracer: { withControllerSpan, context }
-      }: Tracer & HasTracerContext) =>
-        pipe(
-          A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
-            EX.route("post", `/${entry}/${k}`, req =>
-              pipe(
-                T.provide(runtime)(
-                  withControllerSpan(
-                    controller,
-                    `${entry}/${k}`,
-                    req.headers as any
-                  )(module[entry][k](...req.body["data"]))
-                ),
-                T.map(x => ({ result: x })),
-                T.mapLeft(x => ({ message: x.message }))
-              )
+    T.accessM(({ tracer: { withControllerSpan } }: Tracer & HasTracerContext) =>
+      pipe(
+        A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
+          EX.route("post", `/${entry}/${k}`, req =>
+            pipe(
+              // TODO: find better solution to avoid deepmerge
+              T.provide(runtime)(
+                withControllerSpan(
+                  controller,
+                  `${entry}/${k}`,
+                  req.headers as any
+                )(module[entry][k](...req.body["data"]))
+              ),
+              T.mapWith(x => ({ result: x })),
+              T.mapErrorWith(x => ({ message: x.message }))
             )
-          ),
-          T.map(() => {})
-        )
+          )
+        ),
+        T.mapWith(() => {})
+      )
     )
   );
 }

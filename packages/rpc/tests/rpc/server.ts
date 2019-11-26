@@ -11,13 +11,11 @@ export function print(s: string) {
 export const moduleA: ModuleA = {
   moduleA: {
     failing(s: string): T.Effect<T.NoEnv, Error, string> {
-      return T.left(T.error("not implemented"));
+      return T.raiseError(new Error("not implemented"));
     },
-    notFailing(
-      s: string
-    ): T.Effect<Printer & Tracer, Error, string> {
+    notFailing(s: string): T.Effect<Printer & Tracer, Error, string> {
       return withChildSpan("child")(
-        T.effectMonad.chain(print(s), _ => T.right(s))
+        T.effectMonad.chain(print(s), _ => T.pure(s))
       );
     }
   }

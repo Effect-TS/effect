@@ -3,7 +3,7 @@ import AX, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { get, httpClient, post } from "../src";
 import * as assert from "assert";
 import express from "express";
-import { ExitTag } from "waveguide/lib/exit";
+import { ExitTag, raise } from "waveguide/lib/exit";
 
 const app = express();
 
@@ -27,19 +27,19 @@ describe("Http", () => {
       }
     } as typeof AX;
 
-    const res = await T.run(
+    const res = await T.runToPromiseExit(
       T.provide(httpClient(mockAxios))(post("url", {}))
-    )();
+    );
 
-    assert.deepEqual(res, T.raise({ response: 1 }));
+    assert.deepEqual(res, raise({ response: 1 }));
   });
 
   it("issue get", async () => {
     const server = app.listen(3001);
 
-    const res = await T.run(
+    const res = await T.runToPromiseExit(
       T.provide(httpClient())(get("http://127.0.0.1:3001/test", {}))
-    )();
+    );
 
     server.close();
 
@@ -49,9 +49,9 @@ describe("Http", () => {
   it("issue get (404)", async () => {
     const server = app.listen(3001);
 
-    const res = await T.run(
+    const res = await T.runToPromiseExit(
       T.provide(httpClient())(get("http://127.0.0.1:3001/404", {}))
-    )();
+    );
 
     server.close();
 
