@@ -1,5 +1,5 @@
-import * as T from "../src";
-import * as R from "../src/ref";
+import * as T from "../../src/effect";
+import * as R from "../../src/effect/ref";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -16,7 +16,7 @@ describe("Ref", () => {
       .bindL("result", ({ ref }) => ref.get)
       .return(s => s.result);
 
-    const result = await T.promise(
+    const result = await T.runToPromise(
       T.provide<Config>({ initial: 0 })(program)
     );
 

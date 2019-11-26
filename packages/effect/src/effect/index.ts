@@ -9,17 +9,29 @@ import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
 import { Monoid } from "fp-ts/lib/Monoid";
 import * as option from "fp-ts/lib/Option";
 import { none, Option, some } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
+import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import * as ex from "waveguide/lib/exit";
 import { Cause, Exit } from "waveguide/lib/exit";
 import { Runtime } from "waveguide/lib/runtime";
 import { fst, snd, tuple2 } from "waveguide/lib/support/util";
-import { Monad3E } from "../overload";
+import {
+  Monad3E,
+  MonadThrow3E,
+  Monad3EC,
+  MonadThrow3EC,
+  Alt3EC
+} from "../overload";
 import { Deferred, makeDeferred } from "./deferred";
 import { Driver, makeDriver } from "./driver";
 import { makeRef, Ref } from "./ref";
 import M from "deepmerge";
+import * as Ei from "fp-ts/lib/Either";
+import * as Op from "fp-ts/lib/Option";
+import { Do } from "fp-ts-contrib/lib/Do";
+import * as S from "./semaphore";
+import * as Ar from "fp-ts/lib/Array";
+import { Bifunctor2, Bifunctor3 } from "fp-ts/lib/Bifunctor";
 
 export enum EffectTag {
   Pure,
@@ -171,6 +183,31 @@ export function sync<E = NoErr, A = unknown>(
   thunk: Lazy<A>
 ): Stack<NoEnv, E, A> {
   return suspended(() => pure(thunk()));
+}
+
+export function trySync<E = unknown, A = unknown>(
+  thunk: Lazy<A>
+): Stack<NoEnv, E, A> {
+  return suspended(() => {
+    try {
+      return pure(thunk());
+    } catch (e) {
+      return raiseError(e);
+    }
+  });
+}
+
+export function trySyncMap<E = unknown>(
+  onError: (e: unknown) => E
+): <A = unknown>(thunk: Lazy<A>) => Stack<NoEnv, E, A> {
+  return thunk =>
+    suspended(() => {
+      try {
+        return pure(thunk());
+      } catch (e) {
+        return raiseError(onError(e));
+      }
+    });
 }
 
 export interface Async<R, E, A> {
@@ -1385,6 +1422,21 @@ export function fromPromise<A>(
   );
 }
 
+export function fromPromiseMap<E>(
+  onError: (e: unknown) => E
+): <A>(thunk: Lazy<Promise<A>>) => Stack<NoEnv, E, A> {
+  return <A>(thunk: Lazy<Promise<A>>) =>
+    uninterruptible(
+      async<E, A>(callback => {
+        thunk()
+          .then(v => callback(right(v)))
+          .catch(e => callback(left(onError(e))));
+        // tslint:disable-next-line
+        return () => {};
+      })
+    );
+}
+
 /**
  * Run the given IO with the provided environment.
  * @param io
@@ -1448,13 +1500,16 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const effectMonad: Monad3E<URI> = {
+export const effectMonad: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
   URI,
   map,
   of: pure,
   ap: ap_,
-  chain
-} as const;
+  chain,
+  bimap,
+  mapLeft: mapError,
+  throwError: raiseError
+};
 
 export const concurrentEffectMonad: Applicative3<URI> = {
   URI,
@@ -1462,6 +1517,8 @@ export const concurrentEffectMonad: Applicative3<URI> = {
   of: pure,
   ap: parAp_
 } as const;
+
+export const pipeF = pipeable(effectMonad);
 
 export function getSemigroup<R, E, A>(
   s: Semigroup<A>
@@ -1477,5 +1534,125 @@ export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<Stack<R, E, A>> {
   return {
     ...getSemigroup(m),
     empty: pure(m.empty)
+  };
+}
+
+/* conditionals */
+
+export function when(
+  predicate: boolean
+): <R, E, A>(ma: Stack<R, E, A>) => Stack<R, E, Op.Option<A>> {
+  return ma =>
+    predicate ? effectMonad.map(ma, Op.some) : effectMonad.of(Op.none);
+}
+
+export function or_(
+  predicate: boolean
+): <R, E, A>(
+  ma: Stack<R, E, A>
+) => <R2, E2, B>(
+  mb: Stack<R2, E2, B>
+) => Stack<R & R2, E | E2, Ei.Either<A, B>> {
+  return ma => mb =>
+    predicate ? effectMonad.map(ma, Ei.left) : effectMonad.map(mb, Ei.right);
+}
+
+export function or<R, E, A>(
+  ma: Stack<R, E, A>
+): <R2, E2, B>(
+  mb: Stack<R2, E2, B>
+) => (predicate: boolean) => Stack<R & R2, E | E2, Ei.Either<A, B>> {
+  return mb => predicate =>
+    predicate ? effectMonad.map(ma, Ei.left) : effectMonad.map(mb, Ei.right);
+}
+
+export function alt_(
+  predicate: boolean
+): <R, E, A>(ma: Stack<R, E, A>) => (mb: Stack<R, E, A>) => Stack<R, E, A> {
+  return ma => mb => (predicate ? ma : mb);
+}
+
+export function alt<R, E, A>(
+  ma: Stack<R, E, A>
+): (mb: Stack<R, E, A>) => (predicate: boolean) => Stack<R, E, A> {
+  return mb => predicate => (predicate ? ma : mb);
+}
+
+export function fromNullableM<R, E, A>(
+  ma: Stack<R, E, A>
+): Stack<R, E, Option<A>> {
+  return effectMonad.map(ma, Op.fromNullable);
+}
+
+export function sequenceP(
+  n: number
+): <R, E, A>(ops: Array<Stack<R, E, A>>) => Stack<R, E, Array<A>> {
+  return ops =>
+    Do(effectMonad)
+      .bind("sem", S.makeSemaphore(n))
+      .bindL("r", ({ sem }) =>
+        Ar.array.traverse(concurrentEffectMonad)(ops, op => sem.withPermit(op))
+      )
+      .return(s => s.r);
+}
+
+export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
+  return {
+    concat: (ca, cb): Cause<E> => {
+      if (
+        ca._tag === ex.ExitTag.Interrupt ||
+        cb._tag === ex.ExitTag.Interrupt
+      ) {
+        return ca;
+      }
+      if (ca._tag === ex.ExitTag.Abort) {
+        return ca;
+      }
+      if (cb._tag === ex.ExitTag.Abort) {
+        return cb;
+      }
+      return ex.raise(S.concat(ca.error, cb.error));
+    }
+  };
+}
+
+export function getValidationM<E>(S: Semigroup<E>) {
+  return getCauseValidationM(getCauseSemigroup(S));
+}
+
+export function getCauseValidationM<E>(
+  S: Semigroup<Cause<E>>
+): Monad3EC<URI, E> & MonadThrow3EC<URI, E> & Alt3EC<URI, E> {
+  return {
+    URI,
+    // @ts-ignore
+    _E: undefined as any,
+    of: effectMonad.of,
+    map: effectMonad.map,
+    chain: effectMonad.chain,
+    ap: <R, R2, A, B>(
+      fab: Stack<R, E, (a: A) => B>,
+      fa: Stack<R2, E, A>
+    ): Stack<R & R2, E, B> =>
+      foldExit(
+        fab,
+        fabe =>
+          foldExit(
+            fa,
+            fae => raised(S.concat(fabe, fae)),
+            _ => raised(fabe)
+          ),
+        f => map(fa, f)
+      ),
+    throwError: <R, A>(e: E): Stack<R, E, A> => raiseError(e),
+    alt: <R, R2, A>(
+      fa: Stack<R, E, A>,
+      fb: () => Stack<R2, E, A>
+    ): Stack<R & R2, E, A> =>
+      foldExit(
+        fa,
+        e => foldExit(fb(), fbe => raised(S.concat(e, fbe)), pure),
+        pure
+      )
   };
 }

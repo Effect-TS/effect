@@ -43,15 +43,12 @@ export interface Semaphore {
    * @param n
    * @param io
    */
-  withPermitsN<E, A>(
-    n: number,
-    io: T.Stack<T.NoEnv, E, A>
-  ): T.Stack<T.NoEnv, E, A>;
+  withPermitsN<R, E, A>(n: number, io: T.Stack<R, E, A>): T.Stack<R, E, A>;
   /**
    * withPermitN(1, _)
    * @param n
    */
-  withPermit<E, A>(n: T.Stack<T.NoEnv, E, A>): T.Stack<T.NoEnv, E, A>;
+  withPermit<R, E, A>(n: T.Stack<R, E, A>): T.Stack<R, E, A>;
 }
 
 type Reservation = readonly [number, Deferred<unknown, never, void>];
@@ -180,10 +177,10 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       n === 0 ? T.unit : T.bracketExit(ticketN(n), ticketExit, ticketUse)
     );
 
-  const withPermitsN = <E, A>(
+  const withPermitsN = <R, E, A>(
     n: number,
-    inner: T.Stack<T.NoEnv, E, A>
-  ): T.Stack<T.NoEnv, E, A> => {
+    inner: T.Stack<R, E, A>
+  ): T.Stack<R, E, A> => {
     const acquire = T.interruptible(acquireN(n));
     const release = releaseN(n);
     return T.bracket(acquire, constant(release), () => inner);

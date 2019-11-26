@@ -1,6 +1,7 @@
-import { fold, exit, isDone, isAbort, isRaise, isInterrupt } from "../src/exit";
-import { done, abort, raise, interrupt } from "../src";
 import * as assert from "assert";
+
+import { fold, exit, isDone, isAbort, isRaise, isInterrupt } from "../src/exit";
+import { done, abort, raise, interrupt } from "waveguide/lib/exit";
 import { identity } from "fp-ts/lib/function";
 
 describe("Exit", () => {
