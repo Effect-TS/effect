@@ -1412,16 +1412,16 @@ declare module "fp-ts/lib/HKT" {
 export const effectMonad: Monad3E<URI> = {
   URI,
   map,
-  of: <E, A>(a: A): Stack<NoEnv, E, A> => pure(a),
-  ap: ap_ as any,
-  chain: chain as any
+  of: pure,
+  ap: ap_,
+  chain
 } as const;
 
 export const concurrentEffectMonad: Applicative3<URI> = {
   URI,
   map,
-  of: <R, E, A>(a: A): Stack<R, E, A> => pure(a),
-  ap: parAp_ as any
+  of: pure,
+  ap: parAp_
 } as const;
 
 export function getSemigroup<R, E, A>(
