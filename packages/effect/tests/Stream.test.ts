@@ -342,7 +342,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(
       T.provide<EnvA & EnvB>({ a: 1, b: 1 })(
-        // $ExpectType Stack<EnvA & EnvB, never, (readonly [number, number])[]>
+        // $ExpectType Effect<EnvA & EnvB, never, (readonly [number, number])[]>
         S.collectArray(S.take(zip, 3))
       )
     );
@@ -367,7 +367,7 @@ describe("Stream", () => {
     );
 
     const g = S.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
-    const r = S.collectArray(g); // $ExpectType Stack<Config & ConfigB, never, number[]>
+    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
       T.provide<Config & ConfigB>({ initial: 1, second: 1 })(r)
