@@ -54,7 +54,7 @@ export type Env = { [k: string]: any };
 /**
  * A description of an effect to perform
  */
-export type Effect<R, E, A> = { env: any } & (
+export type Effect<R, E, A> =
   | Pure<R, E, A>
   | Raised<R, E, A>
   | Completed<R, E, A>
@@ -65,14 +65,16 @@ export type Effect<R, E, A> = { env: any } & (
   | InterruptibleRegion<R, E, A>
   | AccessInterruptible<R, E, A>
   | AccessRuntime<R, E, A>
-  | AccessEnvironment<R, E, A>
-);
+  | AccessEnvironment<R, E, A>;
 
 export interface Pure<R, E, A> {
   readonly _tag: EffectTag.Pure;
-  readonly value: A;
 
-  readonly $R: (_: R) => void;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly value: A;
+  };
 }
 
 /**
@@ -82,18 +84,18 @@ export interface Pure<R, E, A> {
 export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
   return {
     _tag: EffectTag.Pure,
-    value: a,
-    $R: () => {},
-    env: {}
+    $R: () => ({ value: a })
   };
 }
 
 export interface Raised<R, E, A> {
   readonly _tag: EffectTag.Raised;
 
-  readonly $R: (_: R) => void;
-
-  readonly error: Cause<E>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly error: Cause<E>;
+  };
 }
 
 /**
@@ -103,7 +105,7 @@ export interface Raised<R, E, A> {
  * @param e
  */
 export function raised<E, A = never>(e: Cause<E>): Effect<NoEnv, E, A> {
-  return { _tag: EffectTag.Raised, $R: () => {}, error: e, env: {} };
+  return { _tag: EffectTag.Raised, $R: () => ({ error: e }) };
 }
 
 /**
@@ -130,9 +132,11 @@ export const raiseInterrupt: Effect<NoEnv, NoErr, never> = raised(ex.interrupt);
 export interface Completed<R, E, A> {
   readonly _tag: EffectTag.Completed;
 
-  readonly $R: (_: R) => void;
-
-  readonly exit: Exit<E, A>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly exit: Exit<E, A>;
+  };
 }
 
 /**
@@ -142,18 +146,18 @@ export interface Completed<R, E, A> {
 export function completed<E, A>(exit: Exit<E, A>): Effect<NoEnv, E, A> {
   return {
     _tag: EffectTag.Completed,
-    $R: () => {},
-    exit,
-    env: {}
+    $R: () => ({ exit })
   };
 }
 
 export interface Suspended<R, E, A> {
   readonly _tag: EffectTag.Suspended;
 
-  readonly $R: (_: R) => void;
-
-  readonly thunk: Lazy<Effect<R, E, A>>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly thunk: Lazy<Effect<NoEnv, E, A>>;
+  };
 }
 
 /**
@@ -162,14 +166,14 @@ export interface Suspended<R, E, A> {
  * When evaluated this IO will run the given thunk to produce the next IO to execute.
  * @param thunk
  */
-export function suspended<E, A>(
-  thunk: Lazy<Effect<NoEnv, E, A>>
-): Effect<NoEnv, E, A> {
+export function suspended<R, E, A>(
+  thunk: Lazy<Effect<R, E, A>>
+): Effect<R, E, A> {
   return {
     _tag: EffectTag.Suspended,
-    $R: () => {},
-    thunk,
-    env: {}
+    $R: r => ({
+      thunk: () => provideAll(r)(thunk())
+    })
   };
 }
 
@@ -213,9 +217,11 @@ export function trySyncMap<E = unknown>(
 export interface Async<R, E, A> {
   readonly _tag: EffectTag.Async;
 
-  readonly $R: (_: R) => void;
-
-  readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
+  };
 }
 
 /**
@@ -231,9 +237,7 @@ export function async<E, A>(
 ): Effect<NoEnv, E, A> {
   return {
     _tag: EffectTag.Async,
-    $R: () => {},
-    op,
-    env: {}
+    $R: () => ({ op })
   };
 }
 
@@ -252,10 +256,12 @@ export function asyncTotal<A>(
 export interface InterruptibleRegion<R, E, A> {
   readonly _tag: EffectTag.InterruptibleRegion;
 
-  readonly $R: (_: R) => void;
-
-  readonly inner: Effect<R, E, A>;
-  readonly flag: boolean;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly inner: Effect<NoEnv, E, A>;
+    readonly flag: boolean;
+  };
 }
 
 /**
@@ -269,20 +275,22 @@ export function interruptibleRegion<R, E, A>(
 ): Effect<R, E, A> {
   return {
     _tag: EffectTag.InterruptibleRegion,
-    $R: () => {},
-    inner,
-    flag,
-    env: {}
+    $R: r => ({
+      flag,
+      inner: provideAll(r)(inner)
+    })
   };
 }
 
 export interface Chain<R, E, Z, A> {
   readonly _tag: EffectTag.Chain;
 
-  readonly $R: (_: R) => void;
-
-  readonly inner: Effect<R, E, Z>;
-  readonly bind: FunctionN<[Z], Effect<R, E, A>>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly inner: Effect<NoEnv, E, Z>;
+    readonly bind: FunctionN<[Z], Effect<NoEnv, E, A>>;
+  };
 }
 
 /**
@@ -296,10 +304,10 @@ export function chain<R, E, A, R2, E2, B>(
 ): Effect<R & R2, E | E2, B> {
   return {
     _tag: EffectTag.Chain,
-    $R: () => {},
-    inner: inner,
-    bind: bind,
-    env: {}
+    $R: r => ({
+      inner: provideAll(r)(inner),
+      bind: a => provideAll(r)(bind(a))
+    })
   };
 }
 
@@ -351,11 +359,13 @@ export function chainWith<Z, R, E, A>(
 export interface Collapse<R, E1, E2, A1, A2> {
   readonly _tag: EffectTag.Collapse;
 
-  readonly $R: (_: R) => void;
-
-  readonly inner: Effect<R, E1, A1>;
-  readonly failure: FunctionN<[Cause<E1>], Effect<R, E2, A2>>;
-  readonly success: FunctionN<[A1], Effect<R, E2, A2>>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly inner: Effect<NoEnv, E1, A1>;
+    readonly failure: FunctionN<[Cause<E1>], Effect<NoEnv, E2, A2>>;
+    readonly success: FunctionN<[A1], Effect<NoEnv, E2, A2>>;
+  };
 }
 
 /**
@@ -374,11 +384,11 @@ export function foldExit<R, E1, R2, E2, A1, A2, R3, E3>(
 ): Effect<R & R2 & R3, E2 | E3, A2> {
   return {
     _tag: EffectTag.Collapse,
-    $R: () => {},
-    inner,
-    failure,
-    success,
-    env: {}
+    $R: r => ({
+      inner: provideAll(r)(inner),
+      failure: c => provideAll(r)(failure(c)),
+      success: a => provideAll(r)(success(a))
+    })
   };
 }
 
@@ -397,9 +407,11 @@ export function foldExitWith<E1, RF, E2, A1, E3, A2, RS>(
 export interface AccessInterruptible<R, E, A> {
   readonly _tag: EffectTag.AccessInterruptible;
 
-  readonly $R: (_: R) => void;
-
-  readonly f: FunctionN<[boolean], A>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly f: FunctionN<[boolean], A>;
+  };
 }
 
 /**
@@ -407,17 +419,17 @@ export interface AccessInterruptible<R, E, A> {
  */
 export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = {
   _tag: EffectTag.AccessInterruptible,
-  $R: () => {},
-  f: identity,
-  env: {}
+  $R: () => ({ f: identity })
 };
 
 export interface AccessRuntime<R, E, A> {
   readonly _tag: EffectTag.AccessRuntime;
 
-  readonly $R: (_: R) => void;
-
-  readonly f: FunctionN<[Runtime], A>;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly f: FunctionN<[Runtime], A>;
+  };
 }
 
 /**
@@ -425,9 +437,7 @@ export interface AccessRuntime<R, E, A> {
  */
 export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = {
   _tag: EffectTag.AccessRuntime,
-  $R: () => {},
-  f: identity,
-  env: {}
+  $R: () => ({ f: identity })
 };
 
 /**
@@ -449,8 +459,7 @@ export interface AccessEnvironment<R, E, A> {
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
   return {
     _tag: EffectTag.AccessEnvironment,
-    $R: identity,
-    env: {}
+    $R: identity
   };
 }
 
@@ -480,13 +489,7 @@ export const noEnv = {};
 export const provide = <R>(r: R) => <R2, E, A>(
   ma: Effect<R2 & R, E, A>
 ): Effect<R2, E, A> =>
-  accessM(
-    (r2: R2) =>
-      ({
-        ...ma,
-        env: M.all([r, r2], { clone: false })
-      } as any)
-  );
+  accessM((r2: R2) => provideAll(M.all([r, r2], { clone: false }) as any)(ma));
 
 /**
  * Provides partial environment, to be used only in top-level
@@ -495,14 +498,7 @@ export const provide = <R>(r: R) => <R2, E, A>(
 
 export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
   ma: Effect<R, E, A>
-): Effect<R2, E, A> =>
-  accessM(
-    (r2: R2) =>
-      ({
-        ...ma,
-        env: f(r2)
-      } as any)
-  );
+): Effect<R2, E, A> => accessM((r2: R2) => provideAll(f(r2))(ma));
 
 /**
  * Provides all environment to the child
@@ -512,8 +508,8 @@ export const provideAll = <R>(r: R) => <E, A>(
   ma: Effect<R, E, A>
 ): Effect<NoEnv, E, A> =>
   ({
-    ...ma,
-    env: r
+    _tag: ma._tag,
+    $R: (_: NoEnv) => ma.$R(r)
   } as any);
 
 /**

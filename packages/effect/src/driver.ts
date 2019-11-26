@@ -196,64 +196,62 @@ export function makeDriver<E, A>(
 
     while (current && (!isInterruptible() || !interrupted)) {
       try {
-        const env = current.env;
         switch (current._tag) {
           case T.EffectTag.Pure:
-            current = next(current.value);
+            const pure_ = current.$R(T.noEnv);
+            current = next(pure_.value);
             break;
           case T.EffectTag.Raised:
-            if (current.error._tag === ExitTag.Interrupt) {
+            const raised_ = current.$R(T.noEnv);
+            if (raised_.error._tag === ExitTag.Interrupt) {
               interrupted = true;
             }
-            current = handle(current.error);
+            current = handle(raised_.error);
             break;
           case T.EffectTag.Completed:
-            if (current.exit._tag === ExitTag.Done) {
-              current = next(current.exit.value);
+            const completed_ = current.$R(T.noEnv);
+            if (completed_.exit._tag === ExitTag.Done) {
+              current = next(completed_.exit.value);
             } else {
-              current = handle(current.exit);
+              current = handle(completed_.exit);
             }
             break;
           case T.EffectTag.Suspended:
-            current = current.thunk();
+            current = current.$R(T.noEnv).thunk();
             break;
           case T.EffectTag.Async:
-            contextSwitch(current.op);
+            contextSwitch(current.$R(T.noEnv).op);
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            frameStack.push(makeFrame(current.bind));
-            current = current.inner;
+            const chain_ = current.$R(T.noEnv);
+            frameStack.push(makeFrame(chain_.bind));
+            current = chain_.inner;
             break;
           case T.EffectTag.Collapse:
-            frameStack.push(makeFoldFrame(current.success, current.failure));
-            current = current.inner;
+            const collapse_ = current.$R(T.noEnv);
+            frameStack.push(
+              makeFoldFrame(collapse_.success, collapse_.failure)
+            );
+            current = collapse_.inner;
             break;
           case T.EffectTag.InterruptibleRegion:
-            interruptRegionStack.push(current.flag);
+            const intreg_ = current.$R(T.noEnv);
+            interruptRegionStack.push(intreg_.flag);
             frameStack.push(makeInterruptFrame(interruptRegionStack));
-            current = current.inner;
+            current = intreg_.inner;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.pure(current.f(runtime)) as UnkIO;
+            current = T.pure(current.$R(T.noEnv).f(runtime)) as UnkIO;
             break;
           case T.EffectTag.AccessEnvironment:
-            current = T.pure(current.$R(current.env)) as UnkIO;
+            current = T.pure(current.$R(T.noEnv)) as UnkIO;
             break;
           case T.EffectTag.AccessInterruptible:
-            current = T.pure(current.f(isInterruptible())) as UnkIO;
+            current = T.pure(current.$R(T.noEnv).f(isInterruptible())) as UnkIO;
             break;
           default:
             throw new Error(`Die: Unrecognized current type ${current}`);
-        }
-
-        if (typeof current !== "undefined") {
-          const newE = current && current.env ? current.env : {};
-
-          current.env = {
-            ...env,
-            ...newE
-          };
         }
       } catch (e) {
         current = T.raiseAbort(e) as UnkIO;
