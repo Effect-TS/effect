@@ -105,7 +105,7 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Stack<
       const from = (
         source: T.Stack<R, E, A>
       ): T.Stack<T.NoEnv, T.NoErr, void> => {
-        const completed = T.Stack.chain(
+        const completed = T.chain(
           T.result(T.provide(r)(source)),
           complete
         );

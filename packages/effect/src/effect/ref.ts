@@ -3,59 +3,59 @@
  */
 
 import { FunctionN } from "fp-ts/lib/function";
-import { Stack, sync, NoEnv } from "./";
+import * as T from "./";
 
 export interface Ref<A> {
   /**
    * Get the current value of the Ref
    */
-  readonly get: Stack<NoEnv, never, A>;
+  readonly get: T.Stack<T.NoEnv, never, A>;
   /**
    * Set the current value of the ref
    * @param a
    */
-  set(a: A): Stack<NoEnv, never, A>;
+  set(a: A): T.Stack<T.NoEnv, never, A>;
   /**
    * Update the current value of the ref with a function.
    * Produces the new value
    * @param f
    */
-  update(f: FunctionN<[A], A>): Stack<NoEnv, never, A>;
+  update(f: FunctionN<[A], A>): T.Stack<T.NoEnv, never, A>;
   /**
    * Update the current value of a ref with a function.
    *
    * This function may return a second value of type B that will be produced on complete
    * @param f
    */
-  modify<B>(f: FunctionN<[A], readonly [B, A]>): Stack<NoEnv, never, B>;
+  modify<B>(f: FunctionN<[A], readonly [B, A]>): T.Stack<T.NoEnv, never, B>;
 }
 
 /**
  * Creates an IO that will allocate a Ref.
  * Curried form of makeRef_ to allow for inference on the initial type
  */
-export const makeRef = <A>(initial: A): Stack<NoEnv, never, Ref<A>> =>
-  sync(() => {
+export const makeRef = <A>(initial: A): T.Stack<T.NoEnv, never, Ref<A>> =>
+  T.sync(() => {
     let value = initial;
 
-    const get = sync(() => value);
+    const get = T.sync(() => value);
 
-    const set = (a: A): Stack<NoEnv, never, A> =>
-      sync(() => {
+    const set = (a: A): T.Stack<T.NoEnv, never, A> =>
+      T.sync(() => {
         const prev = value;
         value = a;
         return prev;
       });
 
-    const update = (f: FunctionN<[A], A>): Stack<NoEnv, never, A> =>
-      sync(() => {
+    const update = (f: FunctionN<[A], A>): T.Stack<T.NoEnv, never, A> =>
+      T.sync(() => {
         return (value = f(value));
       });
 
     const modify = <B>(
       f: FunctionN<[A], readonly [B, A]>
-    ): Stack<NoEnv, never, B> =>
-      sync(() => {
+    ): T.Stack<T.NoEnv, never, B> =>
+      T.sync(() => {
         const [b, a] = f(value);
         value = a;
         return b;

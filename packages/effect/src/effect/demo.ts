@@ -7,7 +7,7 @@ type Config = {
   env: string;
 };
 
-const program = Do(T.Stack)
+const program = Do(T.effectMonad)
   .bindL("a", () => T.accessM(({ env }: Config) => T.sync(() => `${env}: 0`)))
   .bindL("b", () =>
     T.provide({ env: "yes" } as Config)(

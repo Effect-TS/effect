@@ -1111,45 +1111,47 @@ export function raceFold<R, R2, E1, E2, A, B, C>(
   onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E1, B>], Stack<NoEnv, E2, C>>,
   onSecondWon: FunctionN<[Exit<E1, B>, Fiber<E1, A>], Stack<NoEnv, E2, C>>
 ): Stack<R & R2, E2, C> {
-  return accessM((r: R & R2) => uninterruptibleMask<NoEnv, E2, C>(cutout =>
-    chain<NoEnv, E2, Ref<boolean>, NoEnv, E2, C>(
-      makeRef<boolean>(false),
-      latch =>
-        chain<NoEnv, E2, Deferred<NoEnv, E2, C>, NoEnv, E2, C>(
-          makeDeferred<NoEnv, E2, C>(),
-          channel =>
-            chain(fork(provide(r)(first)), fiber1 =>
-              chain(fork(provide(r)(second)), fiber2 =>
-                chain(
-                  fork(
-                    chain(
-                      fiber1.wait as Stack<NoEnv, NoErr, Exit<E1, A>>,
-                      completeLatched(latch, channel, onFirstWon, fiber2)
-                    )
-                  ),
-                  () =>
-                    chain(
-                      fork(
-                        chain(
-                          fiber2.wait as Stack<NoEnv, NoErr, Exit<E1, B>>,
-                          completeLatched(latch, channel, onSecondWon, fiber1)
-                        )
-                      ),
-                      () =>
-                        onInterrupted(
-                          cutout(channel.wait),
-                          applySecond(
-                            fiber1.interrupt,
-                            fiber2.interrupt
-                          ) as Stack<NoEnv, NoErr, void>
-                        )
-                    )
+  return accessM((r: R & R2) =>
+    uninterruptibleMask<NoEnv, E2, C>(cutout =>
+      chain<NoEnv, E2, Ref<boolean>, NoEnv, E2, C>(
+        makeRef<boolean>(false),
+        latch =>
+          chain<NoEnv, E2, Deferred<NoEnv, E2, C>, NoEnv, E2, C>(
+            makeDeferred<NoEnv, E2, C>(),
+            channel =>
+              chain(fork(provide(r)(first)), fiber1 =>
+                chain(fork(provide(r)(second)), fiber2 =>
+                  chain(
+                    fork(
+                      chain(
+                        fiber1.wait as Stack<NoEnv, NoErr, Exit<E1, A>>,
+                        completeLatched(latch, channel, onFirstWon, fiber2)
+                      )
+                    ),
+                    () =>
+                      chain(
+                        fork(
+                          chain(
+                            fiber2.wait as Stack<NoEnv, NoErr, Exit<E1, B>>,
+                            completeLatched(latch, channel, onSecondWon, fiber1)
+                          )
+                        ),
+                        () =>
+                          onInterrupted(
+                            cutout(channel.wait),
+                            applySecond(
+                              fiber1.interrupt,
+                              fiber2.interrupt
+                            ) as Stack<NoEnv, NoErr, void>
+                          )
+                      )
+                  )
                 )
               )
-            )
-        )
+          )
+      )
     )
-  ));
+  );
 }
 
 /**
@@ -1399,15 +1401,15 @@ export function runToPromiseExit<E, A>(
   return new Promise(result => run(io, result));
 }
 
-export const URI = "Stack";
+export const URI = "matechs/EffectSafe";
 export type URI = typeof URI;
 declare module "fp-ts/lib/HKT" {
   interface URItoKind3<R, E, A> {
-    Stack: Stack<R, E, A>;
+    [URI]: Stack<R, E, A>;
   }
 }
 
-export const instances: Monad3E<URI> = {
+export const effectMonad: Monad3E<URI> = {
   URI,
   map,
   of: <E, A>(a: A): Stack<NoEnv, E, A> => pure(a),
@@ -1415,16 +1417,12 @@ export const instances: Monad3E<URI> = {
   chain: chain as any
 } as const;
 
-export const Stack = instances;
-
-export const parInstances: Applicative3<URI> = {
+export const concurrentEffectMonad: Applicative3<URI> = {
   URI,
   map,
   of: <R, E, A>(a: A): Stack<R, E, A> => pure(a),
   ap: parAp_ as any
 } as const;
-
-export const parWave = parInstances;
 
 export function getSemigroup<R, E, A>(
   s: Semigroup<A>
