@@ -1,11 +1,7 @@
 /*
   based on: https://github.com/rzeigler/waveguide/blob/master/src/queue.ts
   credits to original author
-  small adaptations to extend Monad3E and support contravariance on R
  */
-
-/* tested in wave */
-/* istanbul ignore file */
 
 import { Either, fold, left, right } from "fp-ts/lib/Either";
 import { FunctionN, identity } from "fp-ts/lib/function";
@@ -13,23 +9,20 @@ import { getOrElse, option } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { pipeable } from "fp-ts/lib/pipeable";
 import { Deferred, makeDeferred } from "./deferred";
-import * as io from "waveguide/lib/wave";
-import * as ior from "waveguide/lib/waver";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
-import * as S from "./semaphore";
+import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "waveguide/lib/support/dequeue";
-import { makeTicket, ticketExit, ticketUse } from "waveguide/lib/ticket";
+import { makeTicket, ticketExit, ticketUse } from "./ticket";
 import { ExitTag } from "waveguide/lib/exit";
-
 import * as T from "./";
 
 export interface ConcurrentQueue<A> {
-  readonly take: T.Effect<T.NoEnv, T.NoErr, A>;
-  offer(a: A): T.Effect<T.NoEnv, T.NoErr, void>;
+  readonly take: T.Effect<T.NoEnv, never, A>;
+  offer(a: A): T.Effect<T.NoEnv, never, void>;
 }
 
-type State<A> = Either<Dequeue<Deferred<T.NoEnv, T.NoErr, A>>, Dequeue<A>>;
+type State<A> = Either<Dequeue<Deferred<T.NoEnv, never, A>>, Dequeue<A>>;
 const initial = <A>(): State<A> => right(empty());
 
 const poption = pipeable(option);
@@ -53,23 +46,20 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 
 function makeConcurrentQueueImpl<A>(
   state: Ref<State<A>>,
-  factory: T.Effect<T.NoEnv, T.NoErr, Deferred<T.NoEnv, T.NoErr, A>>,
+  factory: T.Effect<T.NoEnv, never, Deferred<T.NoEnv, never, A>>,
   overflowStrategy: FunctionN<[Dequeue<A>, A], Dequeue<A>>,
   // This is effect that precedes offering
   // in the case of a boudned queue it is responsible for acquiring the semaphore
-  offerGate: T.Effect<T.NoEnv, T.NoErr, void>,
+  offerGate: T.Effect<T.NoEnv, never, void>,
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: FunctionN<
-    [T.Effect<T.NoEnv, T.NoErr, A>],
-    T.Effect<T.NoEnv, T.NoErr, A>
-  >
+  takeGate: FunctionN<[T.Effect<T.NoEnv, never, A>], T.Effect<T.NoEnv, never, A>>
 ): ConcurrentQueue<A> {
   function cleanupLatch(
-    latch: Deferred<T.NoEnv, T.NoErr, A>
-  ): T.Effect<T.NoEnv, T.NoErr, void> {
-    return ior.asUnit(
+    latch: Deferred<T.NoEnv, never, A>
+  ): T.Effect<T.NoEnv, never, void> {
+    return T.asUnit(
       state.update(current =>
         pipe(
           current,
@@ -83,15 +73,15 @@ function makeConcurrentQueueImpl<A>(
   }
 
   const take = takeGate(
-    ior.bracketExit(
-      ior.chain(factory, latch =>
+    T.bracketExit(
+      T.chain(factory, latch =>
         state.modify(current =>
           pipe(
             current,
             fold(
               waiting =>
                 [
-                  makeTicket(latch.wait(T.noEnv), cleanupLatch(latch)(T.noEnv)),
+                  makeTicket(latch.wait, cleanupLatch(latch)),
                   left(waiting.offer(latch)) as State<A>
                 ] as const,
               ready =>
@@ -100,17 +90,14 @@ function makeConcurrentQueueImpl<A>(
                   poption.map(
                     ([next, q]) =>
                       [
-                        makeTicket(io.pure(next), io.unit),
+                        makeTicket(T.pure(next), T.unit),
                         right(q) as State<A>
                       ] as const
                   ),
                   getOrElse(
                     () =>
                       [
-                        makeTicket(
-                          latch.wait(T.noEnv),
-                          cleanupLatch(latch)(T.noEnv)
-                        ),
+                        makeTicket(latch.wait, cleanupLatch(latch)),
                         left(of(latch)) as State<A>
                       ] as const
                   )
@@ -119,16 +106,16 @@ function makeConcurrentQueueImpl<A>(
           )
         )
       ),
-      (a, b) => _ => ticketExit(a, b),
-      x => _ => ticketUse(x)
+      ticketExit,
+      ticketUse
     )
   );
 
-  const offer = (a: A): T.Effect<T.NoEnv, T.NoErr, void> =>
-    ior.applySecond(
+  const offer = (a: A): T.Effect<T.NoEnv, never, void> =>
+    T.applySecond(
       offerGate,
-      ior.uninterruptible(
-        ior.flatten(
+      T.uninterruptible(
+        T.flatten(
           state.modify(current =>
             pipe(
               current,
@@ -143,14 +130,14 @@ function makeConcurrentQueueImpl<A>(
                     getOrElse(
                       () =>
                         [
-                          ior.unit,
+                          T.unit,
                           right(overflowStrategy(empty(), a)) as State<A>
                         ] as const
                     )
                   ),
                 available =>
                   [
-                    ior.unit,
+                    T.unit,
                     right(overflowStrategy(available, a)) as State<A>
                   ] as const
               )
@@ -170,15 +157,15 @@ function makeConcurrentQueueImpl<A>(
  */
 export function unboundedQueue<A>(): T.Effect<
   T.NoEnv,
-  T.NoErr,
+  never,
   ConcurrentQueue<A>
 > {
-  return ior.map(makeRef(initial<A>()), ref =>
+  return T.map(makeRef(initial<A>()), ref =>
     makeConcurrentQueueImpl(
       ref,
-      makeDeferred<T.NoEnv, T.NoErr, A>(),
+      makeDeferred<T.NoEnv, never, A>(),
       unboundedOffer,
-      ior.unit,
+      T.unit,
       identity
     )
   );
@@ -194,15 +181,15 @@ const natCapacity = natNumber(
  */
 export function slidingQueue<A>(
   capacity: number
-): T.Effect<T.NoEnv, T.NoErr, ConcurrentQueue<A>> {
-  return ior.applySecond(
+): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+  return T.applySecond(
     natCapacity(capacity),
-    ior.map(makeRef(initial<A>()), ref =>
+    T.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoEnv, T.NoErr, A>(),
+        makeDeferred<T.NoEnv, never, A>(),
         slidingOffer(capacity),
-        ior.unit,
+        T.unit,
         identity
       )
     )
@@ -215,15 +202,15 @@ export function slidingQueue<A>(
  */
 export function droppingQueue<A>(
   capacity: number
-): T.Effect<T.NoEnv, T.NoErr, ConcurrentQueue<A>> {
-  return ior.applySecond(
+): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+  return T.applySecond(
     natCapacity(capacity),
-    ior.map(makeRef(initial<A>()), ref =>
+    T.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoEnv, T.NoErr, A>(),
+        makeDeferred<T.NoEnv, never, A>(),
         droppingOffer(capacity),
-        ior.unit,
+        T.unit,
         identity
       )
     )
@@ -236,21 +223,21 @@ export function droppingQueue<A>(
  */
 export function boundedQueue<A>(
   capacity: number
-): T.Effect<T.NoEnv, T.NoErr, ConcurrentQueue<A>> {
-  return ior.applySecond(
+): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+  return T.applySecond(
     natCapacity(capacity),
-    ior.zipWith(makeRef(initial<A>()), S.makeSemaphore(capacity), (ref, sem) =>
+    T.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoEnv, T.NoErr, A>(),
+        makeDeferred<T.NoEnv, never, A>(),
         unboundedOffer,
         sem.acquire,
         inner =>
           // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item
-          ior.bracketExit(
+          T.bracketExit(
             sem.release,
             (_, exit) =>
-              exit._tag === ExitTag.Interrupt ? sem.acquire : ior.unit,
+              exit._tag === ExitTag.Interrupt ? sem.acquire : T.unit,
             () => inner
           )
       )

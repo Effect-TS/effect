@@ -15,22 +15,7 @@ import { Filterable3 } from "fp-ts/lib/Filterable";
 import { Compactable3 } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
-import {
-  PipeableAlt3,
-  PipeableBifunctor3,
-  PipeableCompactable3,
-  PipeableContravariant3,
-  PipeableExtend3,
-  PipeableFilterable3,
-  PipeableFilterableWithIndex3,
-  PipeableFoldable3,
-  PipeableFoldableWithIndex3,
-  PipeableFunctor3,
-  PipeableFunctorWithIndex3,
-  PipeableMonadThrow3,
-  PipeableProfunctor3,
-  PipeableSemigroupoid3
-} from "fp-ts/lib/pipeable";
+import { PipeableFunctor3 } from "fp-ts/lib/pipeable";
 import { Apply3 } from "fp-ts/lib/Apply";
 import { NoEnv, NoErr } from "./index";
 import { Either } from "fp-ts/lib/Either";

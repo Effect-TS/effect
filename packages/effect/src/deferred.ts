@@ -1,11 +1,8 @@
 /*
   based on: https://github.com/rzeigler/waveguide/blob/master/src/deferred.ts
-  credits to original author
-  small adaptations to extend Monad3E and support contravariance on R
  */
 
 import { Exit, Cause } from "waveguide/lib/exit";
-import * as io from "waveguide/lib/wave";
 import { Completable, completable } from "waveguide/lib/support/completable";
 import * as T from "./";
 
@@ -13,7 +10,7 @@ export interface Deferred<R, E, A> {
   /**
    * Wait for this deferred to complete.
    *
-   * This effect will produce the value set by done, raise the error set by error or interrupt
+   * This Stack will produce the value set by done, raise the error set by error or interrupt
    */
   readonly wait: T.Effect<R, E, A>;
   /**
@@ -70,50 +67,50 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
   Deferred<R, E, A>
 > {
   return T.accessM((r: R) =>
-    T.fromIO(() => {
+    T.sync(() => {
       const c: Completable<T.Effect<R, E, A>> = completable();
       const wait: T.Effect<R, E, A> = T.flatten(
-        T.fromAsync<T.Effect<R, E, A>>(callback => c.listen(callback)) as any // TODO: this is fine, typedoc thinks differently
+        T.asyncTotal<T.Effect<R, E, A>>(callback => c.listen(callback)) as any // TODO: this is fine, typedoc thinks differently
       );
 
-      const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.fromIO(() => {
-        c.complete(T.fromWave(io.raiseInterrupt));
+      const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.sync(() => {
+        c.complete(T.raiseInterrupt);
       });
 
       const done = (a: A): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.fromIO(() => {
-          c.complete(T.right(a));
+        T.sync(() => {
+          c.complete(T.pure(a));
         });
 
       const error = (e: E): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.fromIO(() => {
-          c.complete(T.left(e));
+        T.sync(() => {
+          c.complete(T.raiseError(e));
         });
 
       const abort = (e: unknown): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.fromIO(() => {
+        T.sync(() => {
           c.complete(T.raiseAbort(e));
         });
 
       const cause = (e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.fromIO(() => {
+        T.sync(() => {
           c.complete(T.raised(e));
         });
 
       const complete = (exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.fromIO(() => {
+        T.sync(() => {
           c.complete(T.completed(exit));
         });
 
       const from = (
         source: T.Effect<R, E, A>
       ): T.Effect<T.NoEnv, T.NoErr, void> => {
-        const completed = T.effectMonad.chain(
-          T.effectMonad.result(source),
+        const completed = T.chain(
+          T.result(T.provide(r)(source)),
           complete
         );
 
-        return T.effectMonad.onInterrupted(_ => completed(r), interrupt);
+        return T.onInterrupted(completed, interrupt);
       };
 
       return {

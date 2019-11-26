@@ -1,9 +1,3 @@
-/*
-  based on: https://github.com/rzeigler/waveguide/blob/master/src/sanity.ts
-  credits to original author
-  small adaptations to extend Monad3E and support contravariance on R
- */
-
 import * as T from "./";
 
 /* tested in wave */

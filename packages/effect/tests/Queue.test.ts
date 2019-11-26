@@ -1,7 +1,7 @@
 import * as assert from "assert";
 
-import * as Q from "../../src/effect/queue";
-import * as T from "../../src/effect";
+import * as Q from "../src/queue";
+import * as T from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("QueueSafe", () => {

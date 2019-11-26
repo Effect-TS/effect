@@ -1,11 +1,10 @@
-import * as T from "../src";
+import * as _ from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { ATypeOf, EnvOf } from "../src/overload";
-import * as _ from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 
-T.right(1); // $ExpectType Effect<unknown, never, number>
+_.pure(1); // $ExpectType Effect<unknown, never, number>
 
 interface EnvA {
   envA: {
@@ -19,20 +18,20 @@ interface EnvB {
   };
 }
 
-const fa = T.accessM(({ envA }: EnvA) => T.right(envA.foo));
-const fb = T.accessM(({ envB }: EnvB) => T.right(envB.foo));
+const fa = _.accessM(({ envA }: EnvA) => _.pure(envA.foo));
+const fb = _.accessM(({ envB }: EnvB) => _.pure(envB.foo));
 
-const program = T.effectMonad.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
+const program = _.effectMonad.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
 
-const fae = T.accessM(({ envA }: EnvA) => T.left(envA.foo));
+const fae = _.accessM(({ envA }: EnvA) => _.raiseError(envA.foo));
 
-T.effectMonad.chain(fae, _ => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
+_.effectMonad.chain(fae, _ => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
 
-T.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
+_.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
 
-const module = pipe(T.noEnv, T.mergeEnv({} as EnvB), T.mergeEnv({} as EnvA)); // $ExpectType EnvA & EnvB
+const module = pipe(_.noEnv, _.mergeEnv({} as EnvB), _.mergeEnv({} as EnvA)); // $ExpectType EnvA & EnvB
 
-T.provide(module)(program); // $ExpectType Effect<unknown, never, string>
+_.provide(module)(program); // $ExpectType Effect<unknown, never, string>
 
 interface Env1 {
   value: string;
@@ -50,10 +49,10 @@ export type UnionToIntersection2<U> = (U extends any
   ? I
   : never;
 
-type UString = T.Effect<unknown, unknown, string>;
-type Env1String = T.Effect<Env1, unknown, string>;
-type Env2String = T.Effect<Env2, unknown, string>;
-type NeverString = T.Effect<never, unknown, string>;
+type UString = _.Effect<unknown, unknown, string>;
+type Env1String = _.Effect<Env1, unknown, string>;
+type Env2String = _.Effect<Env2, unknown, string>;
+type NeverString = _.Effect<never, unknown, string>;
 type R1 = EnvOf<{ a: Env1String; b: NeverString }>; // $ExpectType Env1
 type R2 = EnvOf<{ a: Env1String; b: UString }>; // $ExpectType Env1
 type R3 = EnvOf<{ a: NeverString; b: UString }>; // $ExpectType unknown

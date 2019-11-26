@@ -20,11 +20,11 @@ import {
   MutableStack,
   mutableStack
 } from "waveguide/lib/support/mutable-stack";
-import { NoEnv } from "..";
+import { NoEnv } from ".";
 import * as T from "./";
 
 // It turns out th is is used quite often
-type UnkIO = T.Stack<unknown, unknown, unknown>;
+type UnkIO = T.Effect<unknown, unknown, unknown>;
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
@@ -76,7 +76,7 @@ const makeInterruptFrame = (
 };
 
 export interface Driver<E, A> {
-  start(run: T.Stack<T.NoEnv, E, A>): void;
+  start(run: T.Effect<T.NoEnv, E, A>): void;
   interrupt(): void;
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
   exit(): Option<Exit<E, A>>;
@@ -265,7 +265,7 @@ export function makeDriver<E, A>(
     }
   }
 
-  function start(run: T.Stack<NoEnv, E, A>): void {
+  function start(run: T.Effect<NoEnv, E, A>): void {
     if (started) {
       throw new Error("Bug: Runtime may not be started multiple times");
     }

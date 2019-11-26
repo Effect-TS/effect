@@ -1,135 +1,390 @@
-/*
-  based on: https://github.com/rzeigler/waveguide/blob/master/src/managedr.ts
-  credits to original author
-  small adaptations to extend Monad3E and support contravariance on R
- */
+import { FunctionN, constant, identity } from "fp-ts/lib/function";
+import { Semigroup } from "fp-ts/lib/Semigroup";
+import { Monoid } from "fp-ts/lib/Monoid";
+import { ExitTag, Exit, done } from "waveguide/lib/exit";
 
 import * as T from "./";
-import * as M from "waveguide/lib/managed";
-
-import { constant, FunctionN } from "fp-ts/lib/function";
-import { tuple2 } from "waveguide/lib/support/util";
-import { Monoid } from "fp-ts/lib/Monoid";
-import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monad3E } from "./overload";
-import { Fiber } from "waveguide/lib/wave";
+import { NoEnv } from ".";
 
-export type Managed<R, E, A> = (r: R) => M.Managed<E, A>;
-
-export function encaseManaged<E, A>(m: M.Managed<E, A>): Managed<{}, E, A> {
-  return constant(m);
+export enum ManagedTag {
+  Pure,
+  Encase,
+  Bracket,
+  Suspended,
+  Chain,
+  BracketExit
 }
 
-export function pure<E = never, A = unknown>(value: A): Managed<{}, E, A> {
-  return encaseManaged<E, A>(M.pure(value) as M.Managed<E, A>);
+/**
+ * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
+ *
+ * This is a friendly monadic wrapper around bracketExit.
+ */
+export type Managed<R, E, A> =
+  | Pure<R, E, A>
+  | Encase<R, E, A>
+  | Bracket<R, E, A>
+  | Suspended<R, E, A>
+  | Chain<R, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | BracketExit<R, E, A>;
+
+export interface Pure<R, E, A> {
+  readonly _tag: ManagedTag.Pure;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly value: A;
+  };
 }
 
-export function encaseEffect<R, E, A>(
-  effect: T.Effect<R, E, A>
+/**
+ * Lift a pure value into a resource
+ * @param value
+ */
+export function pure<R = T.NoEnv, E = T.NoErr, A = unknown>(
+  value: A
 ): Managed<R, E, A> {
-  return r => M.encaseWave(effect(r));
+  return {
+    _tag: ManagedTag.Pure,
+    $R: () => ({ value })
+  };
 }
 
-export function bracket<R, E, A>(
+export interface Encase<R, E, A> {
+  readonly _tag: ManagedTag.Encase;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly acquire: T.Effect<NoEnv, E, A>;
+  };
+}
+
+/**
+ * Create a Resource by wrapping an IO producing a value that does not need to be disposed
+ *
+ * @param res
+ * @param f
+ */
+export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
+  return {
+    _tag: ManagedTag.Encase,
+    $R: r => ({
+      acquire: T.provideAll(r)(rio)
+    })
+  };
+}
+
+export interface Bracket<R, E, A> {
+  readonly _tag: ManagedTag.Bracket;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly acquire: T.Effect<NoEnv, E, A>;
+    readonly release: FunctionN<[A], T.Effect<NoEnv, E, unknown>>;
+  };
+}
+
+/**
+ * Create a resource from an acquisition and release function
+ * @param acquire
+ * @param release
+ */
+export function bracket<R, E, A, R2, E2>(
   acquire: T.Effect<R, E, A>,
-  release: FunctionN<[A], T.Effect<R, E, unknown>>
-): Managed<R, E, A> {
-  return r => M.bracket(acquire(r), a => release(a)(r));
+  release: FunctionN<[A], T.Effect<R2, E2, unknown>>
+): Managed<R & R2, E | E2, A> {
+  return {
+    _tag: ManagedTag.Bracket,
+    $R: r => ({
+      acquire: T.provideAll(r)(acquire),
+      release: a => T.provideAll(r)(release(a))
+    })
+  };
 }
 
-export function suspend<R, E, A>(
-  s: T.Effect<R, E, Managed<R, E, A>>
-): Managed<R, E, A> {
-  return r => M.suspend(T.effectMonad.map(s, m => m(r))(r));
+export interface BracketExit<R, E, A> {
+  readonly _tag: ManagedTag.BracketExit;
+
+  readonly $R: (
+    _: R
+  ) => {
+    readonly acquire: T.Effect<R, E, A>;
+    readonly release: FunctionN<[A, Exit<E, unknown>], T.Effect<R, E, unknown>>;
+  };
 }
 
-export function chain<R, R2, E, E2, L, A>(
+export function bracketExit<R, E, A, R2, E2>(
+  acquire: T.Effect<R, E, A>,
+  release: FunctionN<[A, Exit<E, unknown>], T.Effect<R2, E2, unknown>>
+): Managed<R & R2, E | E2, A> {
+  return {
+    _tag: ManagedTag.BracketExit,
+    $R: r => ({
+      acquire: T.provideAll(r)(acquire),
+      release: (a, e) => T.provideAll(r)(release(a, e as any))
+    })
+  };
+}
+
+export interface Suspended<R, E, A> {
+  readonly _tag: ManagedTag.Suspended;
+
+  readonly $R: (
+    _: R
+  ) => {
+    readonly suspended: T.Effect<R, E, Managed<R, E, A>>;
+  };
+}
+
+/**
+ * Lift an IO of a Resource into a resource
+ * @param suspended
+ */
+export function suspend<R, E, R2, E2, A>(
+  suspended: T.Effect<R, E, Managed<R2, E2, A>>
+): Managed<R & R2, E | E2, A> {
+  return {
+    _tag: ManagedTag.Suspended,
+    $R: r => ({
+      suspended: T.provideAll(r)(
+        suspended as T.Effect<R, E | E2, Managed<R2, E | E2, A>>
+      )
+    })
+  };
+}
+
+export interface Chain<R, E, L, A> {
+  readonly _tag: ManagedTag.Chain;
+  readonly $R: (
+    _: R
+  ) => {
+    readonly left: Managed<T.NoEnv, E, L>;
+    readonly bind: FunctionN<[L], Managed<T.NoEnv, E, A>>;
+  };
+}
+
+/**
+ * Compose dependent resourcess.
+ *
+ * The scope of left will enclose the scope of the resource produced by bind
+ * @param left
+ * @param bind
+ */
+export function chain<R, E, L, R2, E2, A>(
   left: Managed<R, E, L>,
   bind: FunctionN<[L], Managed<R2, E2, A>>
 ): Managed<R & R2, E | E2, A> {
-  return r =>
-    M.chain<E | E2, L, A>(
-      left(r) as M.Managed<E | E2, L>,
-      l => bind(l)(r) as M.Managed<E | E2, A>
-    );
+  return {
+    _tag: ManagedTag.Chain,
+    $R: r => ({
+      left: {
+        _tag: left._tag,
+        $R: _ => left.$R(r) as any
+      },
+      bind: l => {
+        const b = bind(l);
+
+        return {
+          _tag: b._tag,
+          $R: _ => b.$R(r) as any
+        };
+      }
+    })
+  };
 }
 
+/**
+ * Curried form of chain
+ * @param bind
+ */
 export function chainWith<R, E, L, A>(
   bind: FunctionN<[L], Managed<R, E, A>>
-): FunctionN<[Managed<R, E, L>], Managed<R, E, A>> {
+): <R2, E2>(ma: Managed<R2, E2, L>) => Managed<R & R2, E | E2, A> {
   return left => chain(left, bind);
 }
 
+/**
+ * Map a resource
+ * @param res
+ * @param f
+ */
 export function map<R, E, L, A>(
   res: Managed<R, E, L>,
   f: FunctionN<[L], A>
 ): Managed<R, E, A> {
-  return r => M.map(res(r), f);
+  return chain(res, r => pure(f(r)) as Managed<R, E, A>);
 }
 
+/**
+ * Curried form of mapWith
+ * @param f
+ */
 export function mapWith<L, A>(
   f: FunctionN<[L], A>
 ): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> {
   return <R, E>(res: Managed<R, E, L>) => map(res, f);
 }
 
+/**
+ * Zip two resources together with the given function.
+ *
+ * The scope of resa will enclose the scope of resb
+ * @param resa
+ * @param resb
+ * @param f
+ */
 export function zipWith<R, E, A, R2, E2, B, C>(
-  ma: Managed<R, E, A>,
-  mb: Managed<R2, E2, B>,
+  resa: Managed<R, E, A>,
+  resb: Managed<R2, E2, B>,
   f: FunctionN<[A, B], C>
 ): Managed<R & R2, E | E2, C> {
-  return chain(ma, a => map(mb, b => f(a, b)));
+  return chain(resa, a => map(resb, b => f(a, b)));
 }
 
+/**
+ * Zip two resources together as a tuple.
+ *
+ * The scope of resa will enclose the scope of resb
+ * @param resa
+ * @param resb
+ */
 export function zip<R, E, A, R2, E2, B>(
-  ma: Managed<R, E, A>,
-  mb: Managed<R2, E2, B>
+  resa: Managed<R, E, A>,
+  resb: Managed<R2, E2, B>
 ): Managed<R & R2, E | E2, readonly [A, B]> {
-  return zipWith(ma, mb, tuple2);
+  return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
-export function ap<R, E, A, B>(
-  ma: Managed<R, E, A>,
-  mfab: Managed<R, E, FunctionN<[A], B>>
-): Managed<R, E, B> {
-  return zipWith(ma, mfab, (a, f) => f(a));
+/**
+ * Apply the function produced by resfab to the value produced by resa to produce a new resource.
+ * @param resa
+ * @param resfab
+ */
+export function ap<R, E, A, R2, E2, B>(
+  resa: Managed<R, E, A>,
+  resfab: Managed<R2, E2, FunctionN<[A], B>>
+): Managed<R & R2, E | E2, B> {
+  return zipWith(resa, resfab, (a, f) => f(a));
 }
 
-export function ap_<R, E, A, B>(
-  mfab: Managed<R, E, FunctionN<[A], B>>,
-  ma: Managed<R, E, A>
-): Managed<R, E, B> {
-  return zipWith(mfab, ma, (f, a) => f(a));
+/**
+ * Flipped version of ap
+ * @param resfab
+ * @param resa
+ */
+export function ap_<R, E, A, B, R2, E2>(
+  resfab: Managed<R, E, FunctionN<[A], B>>,
+  resa: Managed<R2, E2, A>
+): Managed<R & R2, E | E2, B> {
+  return zipWith(resfab, resa, (f, a) => f(a));
 }
 
+/**
+ * Map a resource to a static value
+ *
+ * This creates a resource of the provided constant b where the produced A has the same lifetime internally
+ * @param fa
+ * @param b
+ */
 export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
   return map(fa, constant(b));
 }
 
+/**
+ * Curried form of as
+ * @param b
+ */
 export function to<B>(
   b: B
 ): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> {
   return fa => as(fa, b);
 }
 
-export function chainTap<R, E, A>(
+/**
+ * Construct a new 'hidden' resource using the produced A with a nested lifetime
+ * Useful for performing initialization and cleanup that clients don't need to see
+ * @param left
+ * @param bind
+ */
+export function chainTap<R, E, A, R2, E2>(
   left: Managed<R, E, A>,
-  bind: FunctionN<[A], Managed<R, E, unknown>>
-): Managed<R, E, A> {
+  bind: FunctionN<[A], Managed<R2, E2, unknown>>
+): Managed<R & R2, E | E2, A> {
   return chain(left, a => as(bind(a), a));
 }
 
+/**
+ * Curried form of chainTap
+ * @param bind
+ */
 export function chainTapWith<R, E, A>(
   bind: FunctionN<[A], Managed<R, E, unknown>>
 ): FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
   return inner => chainTap(inner, bind);
 }
 
-export function use<R, R2, E, E2, A, B>(
-  ma: Managed<R, E, A>,
+/**
+ * Curried data last form of use
+ * @param f
+ */
+export function consume<R, E, A, B>(
+  f: FunctionN<[A], T.Effect<R, E, B>>
+): <R2, E2>(ma: Managed<R2, E2, A>) => T.Effect<R & R2, E | E2, B> {
+  // eslint-disable-next-line @typescript-eslint/no-use-before-define
+  return r => use(r, f);
+}
+
+/**
+ * Create a Resource from the fiber of an IO.
+ * The acquisition of this resource corresponds to forking rio into a fiber.
+ * The destruction of the resource is interrupting said fiber.
+ * @param rio
+ */
+export function fiber<R, E, A>(
+  rio: T.Effect<R, E, A>
+): Managed<R, never, T.Fiber<E, A>> {
+  return bracket(T.fork(rio), fiber => fiber.interrupt);
+}
+
+/**
+ * Use a resource to produce a program that can be run.s
+ * @param res
+ * @param f
+ */
+export function use<R, E, A, R2, E2, B>(
+  res: Managed<R, E, A>,
   f: FunctionN<[A], T.Effect<R2, E2, B>>
 ): T.Effect<R & R2, E | E2, B> {
-  return r => M.use<E | E2, A, B>(ma(r) as M.Managed<E | E2, A>, a => f(a)(r));
+  switch (res._tag) {
+    case ManagedTag.Pure:
+      return T.accessM((r: R & R2) => f(res.$R(r).value));
+    case ManagedTag.Encase:
+      return T.accessM((r: R & R2) => T.chain(res.$R(r).acquire, f));
+    case ManagedTag.Bracket:
+      return T.accessM((r: R & R2) => {
+        const p = res.$R(r);
+        return T.bracket(p.acquire, p.release, f);
+      });
+    case ManagedTag.BracketExit:
+      return T.accessM((r: R & R2) => {
+        const p = res.$R(r);
+
+        return T.bracketExit(p.acquire, (a, e) => p.release(a, e as any), f);
+      });
+    case ManagedTag.Suspended:
+      return T.accessM((r: R & R2) => {
+        const p = res.$R(r);
+
+        return T.chain(p.suspended, consume(f));
+      });
+    case ManagedTag.Chain:
+      return T.accessM((r: R & R2) => {
+        const p = res.$R(r);
+
+        return use(p.left, a => use(p.bind(a), f));
+      });
+  }
 }
 
 export interface Leak<R, E, A> {
@@ -137,31 +392,83 @@ export interface Leak<R, E, A> {
   release: T.Effect<R, E, unknown>;
 }
 
+/**
+ * Create an IO action that will produce the resource for this managed along with its finalizer
+ * action seperately.
+ *
+ * If an error occurs during allocation then any allocated resources should be cleaned up, but once the
+ * Leak object is produced it is the callers responsibility to ensure release is invoked.
+ * @param res
+ */
 export function allocate<R, E, A>(
-  ma: Managed<R, E, A>
+  res: Managed<R, E, A>
 ): T.Effect<R, E, Leak<R, E, A>> {
-  return r =>
-    T.effectMonad.map(
-      _ => M.allocate(ma(r)),
-      (l): Leak<R, E, A> => ({ a: l.a, release: _ => l.release })
-    )(r);
+  switch (res._tag) {
+    case ManagedTag.Pure:
+      return T.accessM((r: R) => {
+        const p = res.$R(r);
+
+        return T.pure({ a: p.value, release: T.unit });
+      });
+    case ManagedTag.Encase:
+      return T.accessM((r: R) => {
+        const p = res.$R(r);
+
+        return T.map(p.acquire, a => ({ a, release: T.unit }));
+      });
+    case ManagedTag.Bracket:
+      return T.accessM((r: R) => {
+        const p = res.$R(r);
+
+        return T.map(p.acquire, a => ({ a, release: p.release(a) }));
+      });
+    case ManagedTag.BracketExit:
+      // best effort, because we cannot know what the exit status here
+      return T.accessM((r: R) => {
+        const p = res.$R(r);
+
+        return T.map(p.acquire, a => ({
+          a,
+          release: p.release(a, done(undefined))
+        }));
+      });
+    case ManagedTag.Suspended:
+      return T.accessM((r: R) => {
+        const p = res.$R(r);
+
+        return T.chain(p.suspended, wm => allocate(wm));
+      });
+    case ManagedTag.Chain:
+      return T.accessM((r: R) => {
+        const p = res.$R(r);
+
+        return T.bracketExit(
+          allocate(p.left),
+          (leak, exit) => (exit._tag === ExitTag.Done ? T.unit : leak.release),
+          leak =>
+            T.map(
+              allocate(p.bind(leak.a)),
+              // Combine the finalizer actions of the outer and inner resource
+              innerLeak => ({
+                a: innerLeak.a,
+                release: T.onComplete(innerLeak.release, leak.release)
+              })
+            )
+        );
+      });
+  }
 }
 
-export function consume<R, E, A, B>(
-  f: FunctionN<[A], T.Effect<R, E, B>>
-): FunctionN<[Managed<R, E, A>], T.Effect<R, E, B>> {
-  return r => use(r, f);
-}
-
-export function provideTo<R, E, A, B>(
-  ma: Managed<R, E, A>,
-  effect: T.Effect<A, E, B>
-): T.Effect<R, E, B> {
-  return use(ma, a => _ => effect(a));
-}
-
-export function fiber<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, never, Fiber<E, A>> {
-  return r => M.fiber(rio(r))
+/**
+ * Use a resource to provide the environment to a WaveR
+ * @param man
+ * @param ma
+ */
+export function provideTo<R, E, R2 extends T.Env, A, E2>(
+  man: Managed<R, E, R2>,
+  ma: T.Effect<R2, E2, A>
+): T.Effect<R, E | E2, A> {
+  return use(man, r => T.provideAll(r)(ma));
 }
 
 export const URI = "matechs/Managed";
@@ -173,10 +480,9 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const managed: Monad3E<URI> = {
+export const managedMonad: Monad3E<URI> = {
   URI,
-  of: <R, E, A>(a: A): Managed<R, E, A> =>
-    (pure(a) as unknown) as Managed<R, E, A>,
+  of: pure,
   map,
   ap: ap_,
   chain
@@ -197,6 +503,16 @@ export function getMonoid<R, E, A>(
 ): Monoid<Managed<R, E, A>> {
   return {
     ...getSemigroup(Monoid),
-    empty: (pure(Monoid.empty) as unknown) as Managed<R, E, A>
+    empty: pure(Monoid.empty) as Managed<R, E, A>
   };
+}
+
+export function provideAll<R>(
+  r: R
+): <E, A>(ma: Managed<R, E, A>) => Managed<T.NoEnv, E, A> {
+  return ma =>
+    ({
+      ...ma,
+      env: r
+    } as any);
 }

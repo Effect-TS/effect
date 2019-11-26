@@ -1,15 +1,35 @@
 import * as assert from "assert";
-import * as T from "../../src/effect";
-import * as M from "../../src/effect/managed";
+import * as T from "../src";
+import * as M from "../src/managed";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupSum } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
 
 describe("Managed", () => {
-  it("should use resource encaseStack", async () => {
-    const resource = M.encaseStack(T.pure(1));
+  it("should use resource encaseEffect", async () => {
+    const resource = M.encaseEffect(T.pure(1));
 
     const result = await T.runToPromise(M.use(resource, n => T.pure(n + 1)));
+
+    assert.deepEqual(result, 2);
+  });
+
+  it("should use resource encaseEffect with environment", async () => {
+    const config = {
+      test: 1
+    };
+
+    const resource = M.encaseEffect(
+      T.accessM(({ test }: typeof config) => T.pure(test))
+    );
+
+    const result = await T.runToPromise(
+      T.provideAll(config)(
+        M.use(resource, n =>
+          T.accessM(({ test }: typeof config) => T.pure(n + test))
+        )
+      )
+    );
 
     assert.deepEqual(result, 2);
   });
@@ -122,7 +142,7 @@ describe("Managed", () => {
 
   it("should use resource chainTap", async () => {
     const ma = M.pure(1);
-    const mm = M.encaseStack(
+    const mm = M.encaseEffect(
       T.sync(() => {
         return {};
       })
@@ -136,7 +156,7 @@ describe("Managed", () => {
 
   it("should use resource chainTapWith", async () => {
     const ma = M.pure(1);
-    const mm = M.encaseStack(
+    const mm = M.encaseEffect(
       T.sync(() => {
         return {};
       })

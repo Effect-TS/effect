@@ -1,33 +1,37 @@
-import * as S from "../src/stream/stream";
+import * as S from "../src/stream";
 import * as SK from "../src/stream/sink";
 import * as T from "../src";
 import * as M from "../src/managed";
 import * as assert from "assert";
 import * as ref from "../src/ref";
-import * as W from "waveguide/lib/wave";
 import * as array from "fp-ts/lib/Array";
 
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { eqNumber } from "fp-ts/lib/Eq";
-import { Sink, liftPureSink, collectArraySink } from "../src/stream/sink";
+import {
+  Sink,
+  liftPureSink,
+  collectArraySink
+} from "../src/stream/sink";
 import { sinkCont, SinkStep, sinkDone } from "../src/stream/step";
 import { FunctionN, identity } from "fp-ts/lib/function";
-import { after, delay, zip } from "waveguide/lib/wave";
 import { expect } from "chai";
+
+import * as ex from "waveguide/lib/exit";
 
 export async function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
-  f: FunctionN<[T.Exit<E, A>], B>,
+  f: FunctionN<[ex.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
-  const result = await T.run(ioa)();
+  const result = await T.runToPromiseExit(ioa);
   expect(assert.deepEqual(f(result), expected));
 }
 
 export function expectExit<E, A>(
   ioa: T.Effect<T.NoEnv, E, A>,
-  expected: T.Exit<E, A>
+  expected: ex.Exit<E, A>
 ): Promise<void> {
   return expectExitIn(ioa, identity, expected);
 }
@@ -36,8 +40,8 @@ describe("Stream", () => {
   it("stack safe", async () => {
     const s = S.fromArray(array.range(0, 100000));
 
-    const res = await T.promise(
-      S.collectArray(S.foldM(s, (b, a) => T.right(b + a), 0))
+    const res = await T.runToPromise(
+      S.collectArray(S.foldM(s, (b, a) => T.pure(b + a), 0))
     );
 
     assert.deepEqual(res, [5000050000]);
@@ -46,7 +50,7 @@ describe("Stream", () => {
   it("should use fromArray", async () => {
     const s = S.fromArray([0, 1, 2]);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1, 2]);
   });
@@ -54,7 +58,7 @@ describe("Stream", () => {
   it("should use fromRange", async () => {
     const s = S.fromRange(0);
 
-    const res = await T.promise(S.collectArray(S.take(s, 3)));
+    const res = await T.runToPromise(S.collectArray(S.take(s, 3)));
 
     assert.deepEqual(res, [0, 1, 2]);
   });
@@ -62,7 +66,7 @@ describe("Stream", () => {
   it("should use once", async () => {
     const s = S.once(0);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0]);
   });
@@ -70,7 +74,7 @@ describe("Stream", () => {
   it("should use repeatedly", async () => {
     const s = S.repeatedly(0);
 
-    const res = await T.promise(S.collectArray(S.take(s, 3)));
+    const res = await T.runToPromise(S.collectArray(S.take(s, 3)));
 
     assert.deepEqual(res, [0, 0, 0]);
   });
@@ -78,7 +82,9 @@ describe("Stream", () => {
   it("should use periodically", async () => {
     const s = S.periodically(10);
 
-    const res = await T.promise(S.collectArray(S.takeWhile(s, n => n < 10)));
+    const res = await T.runToPromise(
+      S.collectArray(S.takeWhile(s, n => n < 10))
+    );
 
     assert.deepEqual(res, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
@@ -86,7 +92,7 @@ describe("Stream", () => {
   it("should use empty", async () => {
     const s = S.empty;
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, []);
   });
@@ -94,23 +100,23 @@ describe("Stream", () => {
   it("should use raised", async () => {
     const s = S.raised("message");
 
-    const res = await T.run(S.collectArray(s))();
+    const res = await T.runToPromiseExit(S.collectArray(s));
 
-    assert.deepEqual(res, T.raise("message"));
+    assert.deepEqual(res, ex.raise("message"));
   });
 
   it("should use aborted", async () => {
     const s = S.aborted("message");
 
-    const res = await T.run(S.collectArray(s))();
+    const res = await T.runToPromiseExit(S.collectArray(s));
 
-    assert.deepEqual(res, T.abort("message"));
+    assert.deepEqual(res, ex.abort("message"));
   });
 
   it("should use fromOption - none", async () => {
     const s = S.fromOption(none);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, []);
   });
@@ -118,7 +124,7 @@ describe("Stream", () => {
   it("should use fromOption - some", async () => {
     const s = S.fromOption(some(1));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1]);
   });
@@ -126,7 +132,7 @@ describe("Stream", () => {
   it("should use zipWithIndex", async () => {
     const s = S.zipWithIndex(S.fromArray([0, 1]));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [
       [0, 0],
@@ -140,7 +146,7 @@ describe("Stream", () => {
       S.mapWith(n => n + 1)
     );
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1, 2, 3]);
   });
@@ -148,7 +154,7 @@ describe("Stream", () => {
   it("should use as", async () => {
     const s = S.as(S.fromArray([0]), 1);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1]);
   });
@@ -156,7 +162,7 @@ describe("Stream", () => {
   it("should use filter", async () => {
     const s = S.filter(S.fromArray([0]), n => n > 0);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, []);
   });
@@ -164,7 +170,7 @@ describe("Stream", () => {
   it("should use filter - 2", async () => {
     const s = S.filter(S.fromArray([1]), n => n > 0);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1]);
   });
@@ -175,7 +181,7 @@ describe("Stream", () => {
       S.distinctAdjacent(eqNumber)
     );
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1, 2, 3]);
   });
@@ -186,7 +192,7 @@ describe("Stream", () => {
       S.filterWith(n => n > 0)
     );
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, []);
   });
@@ -194,7 +200,7 @@ describe("Stream", () => {
   it("should use dropWith", async () => {
     const s = pipe(S.fromArray([0]), S.dropWith(1));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, []);
   });
@@ -204,7 +210,7 @@ describe("Stream", () => {
     const sr = S.empty;
     const z = S.zipWith(sl, sr, (l, r) => 0);
 
-    const res = await T.promise(S.collectArray(z));
+    const res = await T.runToPromise(S.collectArray(z));
 
     assert.deepEqual(res, []);
   });
@@ -214,7 +220,7 @@ describe("Stream", () => {
     const sr = S.empty;
     const z = S.zipWith(sl, sr, (l, r) => l + r);
 
-    const res = await T.promise(S.collectArray(z));
+    const res = await T.runToPromise(S.collectArray(z));
 
     assert.deepEqual(res, []);
   });
@@ -222,7 +228,7 @@ describe("Stream", () => {
   it("should use dropWith - 2", async () => {
     const s = pipe(S.fromArray([0, 1]), S.dropWith(1));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1]);
   });
@@ -232,7 +238,7 @@ describe("Stream", () => {
 
     const s = S.intoManaged(S.fromArray([0, 1, 2]), sm);
 
-    const res = await T.promise(s);
+    const res = await T.runToPromise(s);
 
     assert.deepEqual(res, [0, 1, 2]);
   });
@@ -242,7 +248,7 @@ describe("Stream", () => {
 
     const s = S.intoLeftover(S.fromArray([0, 1, 2]), sl);
 
-    const res = await T.promise(s);
+    const res = await T.runToPromise(s);
 
     assert.deepEqual(res, [[0, 1, 2], []]);
   });
@@ -250,7 +256,7 @@ describe("Stream", () => {
   it("should use fold", async () => {
     const s = S.fold(S.fromArray([1, 1, 1]), (n, e) => n + e, 0);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [3]);
   });
@@ -258,7 +264,7 @@ describe("Stream", () => {
   it("should use fold - 2", async () => {
     const s = S.fold(S.fromArray([]), (n, e) => n + e, 0);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0]);
   });
@@ -266,7 +272,7 @@ describe("Stream", () => {
   it("should use scan", async () => {
     const s = S.scan(S.fromArray([1, 1, 1]), (n, e) => n + e, 0);
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1, 2, 3]);
   });
@@ -276,15 +282,15 @@ describe("Stream", () => {
       S.fromArray([S.fromArray([0, 1, 2]), S.fromArray([0, 1, 2])])
     );
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1, 2, 0, 1, 2]);
   });
 
   it("should use mapM", async () => {
-    const s = S.mapM(S.fromArray([0, 1, 2]), n => T.right(n + 1));
+    const s = S.mapM(S.fromArray([0, 1, 2]), n => T.pure(n + 1));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1, 2, 3]);
   });
@@ -292,7 +298,7 @@ describe("Stream", () => {
   it("should use concat", async () => {
     const s = S.concat(S.fromArray([0]), S.fromOption(some(1)));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1]);
   });
@@ -319,7 +325,7 @@ describe("Stream", () => {
 
     const s = S.fromIteratorUnsafe(makeRangeIterator(1, 10, 2));
 
-    const res = await T.promise(S.collectArray(s));
+    const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [1, 3, 5, 7, 9]);
   });
@@ -334,9 +340,9 @@ describe("Stream", () => {
     // $ExpectType Managed<EnvA & EnvB, never, Fold<EnvA & EnvB, never, readonly [number, number]>>
     const zip = S.zip(streamA, streamB);
 
-    const res = await T.promise(
+    const res = await T.runToPromise(
       T.provide<EnvA & EnvB>({ a: 1, b: 1 })(
-        // $ExpectType Effect<EnvA & EnvB, never, (readonly [number, number])[]>
+        // $ExpectType Stack<EnvA & EnvB, never, (readonly [number, number])[]>
         S.collectArray(S.take(zip, 3))
       )
     );
@@ -361,9 +367,9 @@ describe("Stream", () => {
     );
 
     const g = S.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
-    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+    const r = S.collectArray(g); // $ExpectType Stack<Config & ConfigB, never, number[]>
 
-    const res = await T.promise(
+    const res = await T.runToPromise(
       T.provide<Config & ConfigB>({ initial: 1, second: 1 })(r)
     );
 
@@ -388,7 +394,7 @@ describe("Stream", () => {
       const s2 = S.peel(s1, multiplier);
       return expectExit(
         S.collectArray(S.chain(s2, ([_h, r]) => r)),
-        T.done([])
+        ex.done([])
       );
     });
     it("should extract a head and return a subsequent element", () => {
@@ -396,7 +402,7 @@ describe("Stream", () => {
       const s2 = S.chain(S.peel(s1, multiplier), ([head, rest]) => {
         return S.map(rest, v => v * head);
       });
-      return expectExit(S.collectArray(s2), T.done([12, 18]));
+      return expectExit(S.collectArray(s2), ex.done([12, 18]));
     });
     it("should compose", () => {
       const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
@@ -405,7 +411,7 @@ describe("Stream", () => {
         // head is 4
         return S.map(rest, v => v * head); // emits 24 32
       });
-      return expectExit(S.collectArray(s3), T.done([24, 32]));
+      return expectExit(S.collectArray(s3), ex.done([24, 32]));
     });
     it("should raise errors", () => {
       const s1 = (S.fromArray([
@@ -418,7 +424,7 @@ describe("Stream", () => {
       >;
       const s2 = S.flatten(s1);
       const s3 = S.peel(s2, multiplier);
-      return expectExit(S.collectArray(s3), T.raise("boom"));
+      return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
     it("should raise errors in the remainder stream", () => {
       const s1 = (S.fromArray([
@@ -432,7 +438,7 @@ describe("Stream", () => {
       >;
       const s2 = S.flatten(s1);
       const s3 = S.chain(S.peel(s2, multiplier), ([_head, rest]) => rest);
-      return expectExit(S.collectArray(s3), T.raise("boom"));
+      return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
   });
 
@@ -475,13 +481,13 @@ describe("Stream", () => {
     it("should perform transduction", () => {
       const s1 = S.fromArray([2, 4, 6, 3, -10, -20, -30, 2]);
       const s2 = S.transduce(s1, transducer());
-      return expectExit(S.collectArray(s2), T.done([10, -60, 0]));
+      return expectExit(S.collectArray(s2), ex.done([10, -60, 0]));
     });
 
     it("should transduce empty streams", () => {
       const s1 = S.fromArray([]);
       const s2 = S.transduce(s1, transducer());
-      return expectExit(S.collectArray(s2), T.done([]));
+      return expectExit(S.collectArray(s2), ex.done([]));
     });
 
     function slidingBuffer(): Sink<T.NoEnv, never, number[], number, number[]> {
@@ -508,7 +514,7 @@ describe("Stream", () => {
       const s2 = S.transduce(s1, slidingBuffer());
       return expectExit(
         S.collectArray(s2),
-        T.done([
+        ex.done([
           [0, 1, 2],
           [1, 2, 3],
           [2, 3, 4],
@@ -530,27 +536,28 @@ describe("Stream", () => {
         )
       );
       // A third stream that emits 3 elements
-      const after30 = T.as(_ => after(50), S.take(S.periodically(20), 4));
+      const after30 = T.as(T.after(50), S.take(S.periodically(20), 4));
+
       const s3 = S.switchLatest(S.concat(s2, S.encaseEffect(after30)));
-      return expectExit(S.collectArray(s3), T.done([0, 1, 0, 1, 0, 1, 2, 3]));
+      return expectExit(S.collectArray(s3), ex.done([0, 1, 0, 1, 0, 1, 2, 3]));
     });
     it("should fail with errors in outer stream", () => {
-      const io = T.effectMonad.chain(ref.makeRef(0), cell => {
+      const io = T.chain(ref.makeRef(0), cell => {
         const s1: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.right(S.encaseEffect(cell.set(1))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
         const s2: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.left("boom"), 50) as any;
+        > = T.delay(T.raiseError("boom"), 50) as any;
         const s3: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.right(S.encaseEffect(cell.set(2))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
           T.NoEnv,
@@ -565,13 +572,13 @@ describe("Stream", () => {
         > = S.mapM(set, identity);
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
-        return r => zip(drain(r), delay(cell.get(r), 100));
+        return T.zip(drain, T.delay(cell.get, 100));
       });
       return expectExit(
         io,
-        T.done([T.raise("boom"), 1] as const) as T.Exit<
+        ex.done([ex.raise("boom"), 1] as const) as ex.Exit<
           never,
-          readonly [T.Exit<string, void>, number]
+          readonly [ex.Exit<string, void>, number]
         >
       );
     });
@@ -581,17 +588,17 @@ describe("Stream", () => {
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.right(S.encaseEffect(cell.set(1))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
         const s2: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.right(S.encaseEffect(T.left("boom"))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(T.raiseError("boom"))), 50) as any;
         const s3: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.right(S.encaseEffect(cell.set(2))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
           T.NoEnv,
@@ -606,30 +613,27 @@ describe("Stream", () => {
         > = S.mapM(set, identity);
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
-        return r => zip(drain(r), T.delay(cell.get, 100)(r));
+        return T.zip(drain, T.delay(cell.get, 100));
       });
 
       return expectExit(
         io,
-        T.done([T.raise("boom"), 1] as const) as T.Exit<
+        ex.done([ex.raise("boom"), 1] as const) as ex.Exit<
           never,
-          readonly [T.Exit<string, void>, number]
+          readonly [ex.Exit<string, void>, number]
         >
       );
     });
     // TODO: issue https://github.com/rzeigler/waveguide-streams/issues/1
-    it.skip("switching should occur", () => {
+    it.skip("switching should occur", async () => {
       const s1 = S.take(S.periodically(50), 10);
       const s2 = S.chainSwitchLatest(s1, i =>
         S.as(S.take(S.periodically(10), 10), i)
       );
       const output = S.collectArray(s2);
-      return T.promise(output).then(values => {
+      const values = await T.runToPromise(output);
         const pairs = array.chunksOf(2)(values);
-        pairs.forEach(([f, s]) =>
-          expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s))
-        );
-      });
+        pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s)));
     });
   });
   function repeater<E, A>(
@@ -639,20 +643,20 @@ describe("Stream", () => {
     if (n <= 1) {
       return w;
     } else {
-      return r => W.parApplySecond(w(r), repeater(w, n - 1)(r));
+      return T.parApplySecond(w, repeater(w, n - 1));
     }
   }
   describe("merge", function() {
     jest.setTimeout(20000);
 
-    const r = T.fromIO(() => Math.random());
+    const r = T.sync(() => Math.random());
 
     function range(max: number): T.Effect<T.NoEnv, never, number> {
-      return T.effectMonad.map(r, n => Math.round(n * max));
+      return T.map(r, n => Math.round(n * max));
     }
 
     function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
-      return T.effectMonad.chain(range(max), a => _ => W.after(a));
+      return T.chain(range(max), a => T.after(a));
     }
 
     it("should merge output", () => {
@@ -663,8 +667,8 @@ describe("Stream", () => {
         4
       );
       const output = S.collectArray(s2);
-      const check = T.effectMonad.chain(output, values =>
-        T.fromIO(() => {
+      const check = T.chain(output, values =>
+        T.sync(() => {
           const uniq = array
             .uniq(eqNumber)(values)
             .sort();
@@ -684,7 +688,7 @@ describe("Stream", () => {
           return;
         })
       );
-      return T.promise(repeater(check, 10));
+      return T.runToPromise(repeater(check, 10));
     });
   });
 });
