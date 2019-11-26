@@ -71,11 +71,12 @@ function runWithSpan<R, A>(
         )
         .return(() => r)
     ),
-    T.provide<HasSpanContext>({
+    T.provideR((r: R) => ({
+      ...r,
       span: {
         context: { spanInstance: span, component }
       }
-    })
+    }))
   );
 }
 
@@ -126,9 +127,10 @@ export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
       return Do(T.effectMonad)
         .bind("instance", factory)
         .bindL("res", ({ instance }) =>
-          T.provide<HasTracerContext>({
-            tracer: { context: { tracerInstance: instance } }
-          })(ma)
+          T.provideR((r: R) => ({
+            ...r,
+            tracer: { ...r["tracer"], context: { tracerInstance: instance } }
+          }))(ma)
         )
         .return(s => s.res);
     },
@@ -212,7 +214,7 @@ export function withChildSpan(operation: string) {
 export function noTracing<R, A>(
   op: T.Effect<Tracer & ChildContext & HasTracerContext & R, Error, A>
 ): T.Effect<R, Error, A> {
-  return T.provide(pipe(T.noEnv, T.mergeEnv(tracer())))(
+  return T.provideR((r: R) => ({ ...r, ...tracer() }))(
     withTracer(withControllerSpan("no-tracing", "dummy-controller")(op))
   );
 }
