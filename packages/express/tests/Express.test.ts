@@ -5,7 +5,6 @@ import * as EX from "../src";
 import * as H from "@matechs/http/lib";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as G from "@matechs/graceful";
-import { raiseAbort, raiseInterrupt } from "waveguide/lib/wave";
 import { raise, done } from "waveguide/lib/exit";
 
 describe("Express", () => {
@@ -43,21 +42,21 @@ describe("Express", () => {
       )
     );
 
-    const res3 = await T.run(
+    const res3 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad2", {})),
         T.mapWith(s => s.data),
         T.mapErrorWith(s => s.response.data)
       )
-    )();
+    );
 
-    const res4 = await T.run(
+    const res4 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad3", {})),
         T.mapWith(s => s.data),
         T.mapErrorWith(s => s.response.data)
       )
-    )();
+    );
 
     await T.runToPromise(T.provide(module)(G.trigger()));
 
