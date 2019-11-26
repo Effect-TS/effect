@@ -15,6 +15,7 @@ import {
 } from "../src";
 import { counter } from "./demo/Counter";
 import { Printer } from "./demo/Printer";
+import { done, raise } from "waveguide/lib/exit";
 
 class MockTracer extends OT {
   constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
@@ -57,25 +58,25 @@ describe("Example", () => {
 
     const mockModule = pipe(
       T.noEnv,
-      T.mergeEnv(tracer(T.fromIO(() => mockTracer))),
+      T.mergeEnv(tracer(T.sync(() => mockTracer))),
       T.mergeEnv(counter)
     );
 
-    const result = await T.run(
+    const result = await T.runToPromiseExit(
       pipe(
         program,
         T.provide(mockModule),
         T.provide<Printer>({
           printer: {
             print(s) {
-              return T.fromIO(() => {
+              return T.sync(() => {
                 messages.push(s);
               });
             }
           }
         })
       )
-    )();
+    );
 
     assert.deepEqual(
       spans.filter(s => s.name.indexOf("demo-main") >= 0).length,
@@ -86,7 +87,7 @@ describe("Example", () => {
       20
     );
 
-    assert.deepEqual(result, T.done({ start: 0, end: 20 }));
+    assert.deepEqual(result, done({ start: 0, end: 20 }));
     assert.deepEqual(messages, [
       "n: 1 (1)",
       "n: 2 (2)",
@@ -118,13 +119,13 @@ describe("Example", () => {
 
     const mockTracer = new MockTracer2(spans);
 
-    const mockModule: Tracer = tracer(T.fromIO(() => mockTracer));
+    const mockModule: Tracer = tracer(T.sync(() => mockTracer));
 
     const program2 = withTracer(
-      withControllerSpan("", "", {})(T.fromIO(() => {}))
+      withControllerSpan("", "", {})(T.sync(() => {}))
     );
 
-    const result = await T.run(pipe(program2, T.provide(mockModule)))();
+    await T.runToPromise(pipe(program2, T.provide(mockModule)));
 
     assert.deepEqual(
       spans[0]["options"]["references"][0]["_referencedContext"].toSpanId(),
@@ -138,19 +139,21 @@ describe("Example", () => {
 
   it("should use dummy tracer by default", async () => {
     const program2 = noTracing(
-      withChildSpan("noop")(T.left(T.error("not implemented")))
+      withChildSpan("noop")(T.raiseError(new Error("not implemented")))
     );
 
-    const result = await T.run(program2)();
+    const result = await T.runToPromiseExit(program2);
 
-    assert.deepEqual(result, T.raise(T.error("not implemented")));
+    assert.deepEqual(result, raise(new Error("not implemented")));
   });
 
   it("skip tracing if out of context", async () => {
-    const program2 = withChildSpan("noop")(T.left(T.error("not implemented")));
+    const program2 = withChildSpan("noop")(
+      T.raiseError(new Error("not implemented"))
+    );
 
-    const result = await T.run(T.provide(tracer())(program2))();
+    const result = await T.runToPromiseExit(T.provide(tracer())(program2));
 
-    assert.deepEqual(result, T.raise(T.error("not implemented")));
+    assert.deepEqual(result, raise(new Error("not implemented")));
   });
 });

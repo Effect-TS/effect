@@ -14,7 +14,7 @@ export interface CounterState {
 }
 
 export function currentCount() {
-  return T.accessM(({ counter }: CounterState) => T.right(counter.ref));
+  return T.accessM(({ counter }: CounterState) => T.pure(counter.ref));
 }
 
 export const counterState: IO<CounterState> = () => ({
@@ -22,7 +22,7 @@ export const counterState: IO<CounterState> = () => ({
     ref: 0,
     increment() {
       return T.accessM((s: CounterState) =>
-        T.fromIO(() => {
+        T.sync(() => {
           s.counter.ref += 1;
         })
       );

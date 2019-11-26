@@ -1,5 +1,11 @@
-import { Exit, Done, ExitTag } from ".";
-import { Raise, Abort, Interrupt } from "waveguide/lib/exit";
+import {
+  Raise,
+  Abort,
+  Interrupt,
+  Exit,
+  Done,
+  ExitTag
+} from "waveguide/lib/exit";
 
 export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> =>
   e._tag === ExitTag.Done;

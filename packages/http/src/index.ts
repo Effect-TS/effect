@@ -25,7 +25,7 @@ export const httpClient: (X?: typeof AX) => HttpClient = (X = AX) => ({
     ): T.Effect<T.NoEnv, AxiosError<E>, AxiosResponse<A>> {
       return pipe(
         () => X.post(url, data, config),
-        T.tryPromise(e => e as AxiosError<E>)
+        T.fromPromiseMap(e => e as AxiosError<E>)
       );
     },
     get<E, A>(
@@ -34,7 +34,7 @@ export const httpClient: (X?: typeof AX) => HttpClient = (X = AX) => ({
     ): T.Effect<T.NoEnv, AxiosError<E>, AxiosResponse<A>> {
       return pipe(
         () => X.get(url, config),
-        T.tryPromise(e => e as AxiosError<E>)
+        T.fromPromiseMap(e => e as AxiosError<E>)
       );
     }
   }

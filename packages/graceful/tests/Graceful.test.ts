@@ -8,17 +8,17 @@ describe("Graceful", () => {
 
     let calls = 0;
 
-    await T.promise(
+    await T.runToPromise(
       T.provide(module)(
         G.onExit(
-          T.fromIO(() => {
+          T.sync(() => {
             calls += 1;
           })
         )
       )
     );
 
-    await T.promise(T.provide(module)(G.trigger()));
+    await T.runToPromise(T.provide(module)(G.trigger()));
 
     assert.deepEqual(calls, 1);
   });

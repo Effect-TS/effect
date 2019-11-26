@@ -5,7 +5,7 @@
 			"name": "Node Inspector",
 			"type": "node",
 			"request": "launch",
-			"args": ["${workspaceRoot}/packages/orm/demo/main.ts"],
+			"args": ["${workspaceRoot}/packages/effect/src/wave/demo.ts"],
 			"runtimeArgs": ["-r", "ts-node/register"],
 			"cwd": "${workspaceRoot}",
 			"protocol": "inspector",
