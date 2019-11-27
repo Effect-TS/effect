@@ -460,7 +460,7 @@ export const provideAll = <R>(r: R) => <E, A>(
 ): Effect<NoEnv, E, A> => () => ma(r);
 
 /**
- * Provides all environnement necessary to the child effect via an effect
+ * Provides all environment necessary to the child effect via an effect
  *
  * Note that this ***should*** be typically used at ***startup time***, not dynamically
  */
@@ -470,7 +470,7 @@ export const provideM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A>(
 ): Effect<R2, E | E2, A> => chain(f, r => provide(r)(ma));
 
 /**
- * Provides some of the environnement necessary to the child effect via an effect
+ * Provides some of the environment necessary to the child effect via an effect
  * Note that this should be typically used at startup time, not dynamically
  */
 
