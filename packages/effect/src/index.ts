@@ -471,6 +471,7 @@ export const provideM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A>(
 
 /**
  * Provides some of the environment necessary to the child effect via an effect
+ *
  * Note that this should be typically used at startup time, not dynamically
  */
 
