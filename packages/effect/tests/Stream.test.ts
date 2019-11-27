@@ -9,11 +9,7 @@ import * as array from "fp-ts/lib/Array";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { eqNumber } from "fp-ts/lib/Eq";
-import {
-  Sink,
-  liftPureSink,
-  collectArraySink
-} from "../src/stream/sink";
+import { Sink, liftPureSink, collectArraySink } from "../src/stream/sink";
 import { sinkCont, SinkStep, sinkDone } from "../src/stream/step";
 import { FunctionN, identity } from "fp-ts/lib/function";
 import { expect } from "chai";
@@ -61,6 +57,22 @@ describe("Stream", () => {
     const res = await T.runToPromise(S.collectArray(S.take(s, 3)));
 
     assert.deepEqual(res, [0, 1, 2]);
+  });
+
+  it("should use fromRefineWith", async () => {
+    const s = S.fromRange(0);
+
+    type Even = number;
+
+    function isEven(x: number): x is Even {
+      return x % 2 === 0;
+    }
+
+    const res = await T.runToPromise(
+      S.collectArray(S.take(pipe(s, S.filterRefineWith(isEven)), 3))
+    );
+
+    assert.deepEqual(res, [0, 2, 4]);
   });
 
   it("should use once", async () => {
@@ -632,8 +644,10 @@ describe("Stream", () => {
       );
       const output = S.collectArray(s2);
       const values = await T.runToPromise(output);
-        const pairs = array.chunksOf(2)(values);
-        pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s)));
+      const pairs = array.chunksOf(2)(values);
+      pairs.forEach(([f, s]) =>
+        expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s))
+      );
     });
   });
   function repeater<E, A>(
