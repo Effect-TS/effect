@@ -1491,7 +1491,7 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const instances: Monad3E<URI> = {
+export const streamMonad: Monad3E<URI> = {
   URI,
   map,
   of: <R, E, A>(a: A): Stream<R, E, A> => (once(a) as any) as Stream<R, E, A>,

@@ -6,6 +6,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Action, applyMiddleware, combineReducers, createStore } from "redux";
 import { combineEpics, createEpicMiddleware } from "redux-observable";
 import * as Ep from "../src";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 type User = { id: string; prefix: string };
 
@@ -51,21 +52,22 @@ describe("Epics", () => {
 
   it("should use redux-observable", async () => {
     const fetchUser: Ep.Epic<Config, MyAction, State> = _ => action$ =>
-      pipe(
-        action$,
-        S.filterRefineWith(isFetchUser),
-        S.mapMWith(a =>
-          T.access(
-            ({ config: { prefix } }: Config): MyAction => ({
-              type: "USER_FETCHED",
-              user: {
-                id: a.id,
-                prefix
-              }
-            })
+      Do(S.streamMonad)
+        .bind("action", S.filterRefineWith(isFetchUser)(action$))
+        .bindL("fetched", ({ action: { id } }) =>
+          S.encaseEffect(
+            T.access(
+              ({ config: { prefix } }: Config): MyAction => ({
+                type: "USER_FETCHED",
+                user: {
+                  id,
+                  prefix
+                }
+              })
+            )
           )
         )
-      );
+        .return(s => s.fetched);
 
     const module = pipe(
       T.noEnv,
