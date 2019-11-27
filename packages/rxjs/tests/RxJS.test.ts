@@ -38,22 +38,55 @@ describe("RxJS", () => {
     assert.deepEqual(r, raise(new Error("error")));
   });
 
-  it("should toObservable", async () => {
+  it("should runToObservable", async () => {
     const s = S.fromArray([0, 1, 2]);
     const o = O.toObservable(s);
 
-    const r = await T.runToPromise(o);
-
     const a = [];
 
-    const sub = r.subscribe(n => {
+    O.runToObservable(o).subscribe(n => {
       a.push(n);
     });
 
     await T.runToPromise(T.delay(T.unit, 10));
 
     assert.deepEqual(a, [0, 1, 2]);
-    assert.deepEqual(sub.closed, true);
+  });
+
+  it("should runToObservable - Error", async () => {
+    const s = S.raised("error");
+    const o = O.toObservable(s);
+
+    const a = [];
+    const errors = [];
+
+    O.runToObservable(o).subscribe(n => {
+      a.push(n);
+    }, e => {
+      errors.push(e)
+    });
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(errors, ["error"])
+  });
+
+  it("should runToObservable - Abort", async () => {
+    const s = S.aborted("error");
+    const o = O.toObservable(s);
+
+    const a = [];
+    const errors = [];
+
+    O.runToObservable(o).subscribe(n => {
+      a.push(n);
+    }, e => {
+      errors.push(e)
+    });
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(errors, ["error"])
   });
 
   it("should toObservable - Error", async () => {
@@ -105,7 +138,9 @@ describe("RxJS", () => {
   });
 
   it("unsubscribe should stop drain", async () => {
-    const s = S.chain(S.repeatedly(0), n => S.encaseEffect(T.delay(T.pure(n), 10)));
+    const s = S.chain(S.repeatedly(0), n =>
+      S.encaseEffect(T.delay(T.pure(n), 10))
+    );
     const o = O.toObservable(s);
 
     const r = await T.runToPromise(o);
@@ -124,7 +159,7 @@ describe("RxJS", () => {
 
     await T.runToPromise(T.delay(T.unit, 100));
 
-    sub.unsubscribe()
+    sub.unsubscribe();
 
     assert.deepEqual(errors, []);
     assert.deepEqual(sub.closed, true);

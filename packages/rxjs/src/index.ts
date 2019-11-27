@@ -88,14 +88,51 @@ function runFromQueue<E, A>(
   }
 }
 
+export function runToObservable<E, A>(
+  o: T.Effect<T.NoEnv, never, Rx.Observable<A>>
+): Rx.Observable<A> {
+  return new Rx.Observable(sub => {
+    T.run(
+      o,
+      E.fold(
+        ob => {
+          const running = ob.subscribe(
+            r => {
+              sub.next(r);
+            },
+            e => {
+              sub.error(e);
+            },
+            () => {
+              sub.complete();
+            }
+          );
+
+          sub.unsubscribe = () => running.unsubscribe();
+        },
+        e => {
+          /* istanbul ignore next */
+          sub.error(e);
+        },
+        u => {
+          /* istanbul ignore next */
+          sub.error(u);
+        },
+        () => {
+          /* istanbul ignore next */
+          sub.error(new Error("interrupted"));
+        }
+      )
+    );
+  });
+}
+
 export function toObservable<R, E, A>(
   s: S.Stream<R, E, A>
 ): T.Effect<R, T.NoErr, Rx.Observable<A>> {
   return T.access(
     (r: R) =>
       new Rx.Observable(sub => {
-        const unsubscribe = sub.unsubscribe;
-
         const drainer = T.provideAll(r)(
           S.drain(
             S.mapM(s, a =>
