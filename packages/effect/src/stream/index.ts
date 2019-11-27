@@ -12,7 +12,8 @@ import {
   FunctionN,
   identity,
   Lazy,
-  Predicate
+  Predicate,
+  Refinement
 } from "fp-ts/lib/function";
 import * as o from "fp-ts/lib/Option";
 import * as O from "fp-ts/lib/Option";
@@ -472,6 +473,16 @@ export function filterWith<A>(
   f: Predicate<A>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, A> {
   return stream => filter(stream, f);
+}
+
+export function filterRefineWith<A, B extends A>(
+  f: Refinement<A, B>
+): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, B> {
+  return stream =>
+    map(
+      filter(stream, x => f(x)),
+      x => x as B
+    );
 }
 
 /**
