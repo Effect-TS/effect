@@ -96,4 +96,6 @@ Your module gets reinterpreted in terms of http calls by `reinterpretRemotely` a
 
 You can then compose `sayHiAndReturn` in your program in exactly the same way for both client and server.
 
-Examples available in `test/rpc` and `demo/`
+# Notes
+The best place to look for concrete usage are tests & demo folders of each package
+
