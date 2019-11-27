@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>&quot;fp-ts/lib/pipeable&quot; | @matechs/effect</title>
+	<title>@matechs/epics | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,116 +56,173 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.html">@matechs/effect</a>
-				</li>
-				<li>
-					<a href="_matechs_effect._fp_ts_lib_pipeable_.html">&quot;fp-ts/lib/pipeable&quot;</a>
+					<a href="_matechs_epics.html">@matechs/epics</a>
 				</li>
 			</ul>
-			<h1>Module &quot;fp-ts/lib/pipeable&quot;</h1>
+			<h1>Module @matechs/epics</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<a href="#introduction" id="introduction" style="color: inherit; text-decoration: none;">
+						<h1>Introduction</h1>
+					</a>
+					<p>This package provides integration with <code>redux-observable</code>. Refer to documentation in <code>packages/effect</code> for more details.</p>
+					<p>Docs at <a href="https://mikearnaldi.github.io/matechs-effect/modules/_matechs_epics.html">https://mikearnaldi.github.io/matechs-effect/modules/_matechs_epics.html</a></p>
+					<a href="#notes" id="notes" style="color: inherit; text-decoration: none;">
+						<h1>Notes</h1>
+					</a>
+					<p>The best place to look for concrete usage are tests &amp; demo folders of each package</p>
+				</div>
+			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
+							<h3>Type aliases</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_epics.html#epic" class="tsd-kind-icon">Epic</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
 							<h3>Functions</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_effect._fp_ts_lib_pipeable_.html#pipeable" class="tsd-kind-icon">pipeable</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_epics.html#embed" class="tsd-kind-icon">embed</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_epics.html#tonever" class="tsd-kind-icon">to<wbr>Never</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Type aliases</h2>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
+					<a name="epic" class="tsd-anchor"></a>
+					<h3>Epic</h3>
+					<div class="tsd-signature tsd-kind-icon">Epic&lt;R, A, State&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b4fc42f/packages/epics/src/index.ts#L8">packages/epics/src/index.ts:8</a></li>
+						</ul>
+					</aside>
+					<h4 class="tsd-type-parameters-title">Type parameters</h4>
+					<ul class="tsd-type-parameters">
+						<li>
+							<h4>R</h4>
+						</li>
+						<li>
+							<h4>A<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Action</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+						<li>
+							<h4>State</h4>
+						</li>
+					</ul>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-type-alias tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>current<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">State</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
+								</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-parameters-title">Parameters</h4>
+										<ul class="tsd-parameters">
+											<li>
+												<h5>current: <span class="tsd-signature-type">State</span></h5>
+											</li>
+										</ul>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+										<ul class="tsd-parameters">
+											<li class="tsd-parameter-siganture">
+												<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+													<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>action$<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">S.Stream</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">S.Stream</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+												</ul>
+												<ul class="tsd-descriptions">
+													<li class="tsd-description">
+														<h4 class="tsd-parameters-title">Parameters</h4>
+														<ul class="tsd-parameters">
+															<li>
+																<h5>action$: <span class="tsd-signature-type">S.Stream</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+															</li>
+														</ul>
+														<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">S.Stream</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+													</li>
+												</ul>
+											</li>
+										</ul>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Functions</h2>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="pipeable" class="tsd-anchor"></a>
-					<h3>pipeable</h3>
+					<a name="embed" class="tsd-anchor"></a>
+					<h3>embed</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">pipeable&lt;F, I&gt;<span class="tsd-signature-symbol">(</span>I<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">I extends Chain3E&lt;F&gt; ? PipeableChain3E&lt;F&gt; : I extends Apply3E&lt;F&gt; ? PipeableApply3E&lt;F&gt; : I extends Functor3&lt;F&gt; ? PipeableFunctor3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Contravariant3&lt;F&gt; ? PipeableContravariant3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends FunctorWithIndex3&lt;F, infer Ix&gt; ? PipeableFunctorWithIndex3&lt;F, Ix&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Bifunctor3&lt;F&gt; ? PipeableBifunctor3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Extend3&lt;F&gt; ? PipeableExtend3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends FoldableWithIndex3&lt;F, infer Ix&gt; ? PipeableFoldableWithIndex3&lt;F, Ix&gt; : I extends Foldable3&lt;F&gt; ? PipeableFoldable3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Alt3&lt;F&gt; ? PipeableAlt3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends FilterableWithIndex3&lt;F, infer Ix&gt; ? PipeableFilterableWithIndex3&lt;F, Ix&gt; : I extends Filterable3&lt;F&gt; ? PipeableFilterable3&lt;...&gt; : I extends Compactable3&lt;...&gt; ? PipeableCompactable3&lt;...&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Profunctor3&lt;F&gt; ? PipeableProfunctor3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Semigroupoid3&lt;F&gt; ? PipeableSemigroupoid3&lt;F&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends MonadThrow3E&lt;F&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span></li>
-						<li class="tsd-signature tsd-kind-icon">pipeable&lt;F, I, E&gt;<span class="tsd-signature-symbol">(</span>I<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">I extends Chain3EC&lt;F, E&gt; ? PipeableChain3EC&lt;F, E&gt; : I extends Apply3EC&lt;F, E&gt; ? PipeableApply3EC&lt;F, E&gt; : I extends Functor3EC&lt;...&gt; ? PipeableFunctor3EC&lt;...&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends Alt3EC&lt;F, E&gt; ? PipeableAlt3EC&lt;F, E&gt; : {}</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I extends MonadThrow3EC&lt;F, E&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span></li>
+						<li class="tsd-signature tsd-kind-icon">embed&lt;R, A, State&gt;<span class="tsd-signature-symbol">(</span>r<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span>, epic<span class="tsd-signature-symbol">: </span><a href="_matechs_epics.html#epic" class="tsd-signature-type">Epic</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">State</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Epic</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">State</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b4fc42f/packages/effect/src/overload.ts#L208">packages/effect/src/overload.ts:208</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b4fc42f/packages/epics/src/index.ts#L17">packages/epics/src/index.ts:17</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>F<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">URIS3</span></h4>
+									<h4>R</h4>
 								</li>
 								<li>
-									<h4>I</h4>
+									<h4>A<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Action</span></h4>
+								</li>
+								<li>
+									<h4>State</h4>
 								</li>
 							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>I: <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span></h5>
+									<h5>r: <span class="tsd-signature-type">R</span></h5>
+								</li>
+								<li>
+									<h5>epic: <a href="_matechs_epics.html#epic" class="tsd-signature-type">Epic</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">State</span><span class="tsd-signature-symbol">&gt;</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">I extends Chain3E&lt;F&gt; ? PipeableChain3E&lt;F&gt; : I extends Apply3E&lt;F&gt; ? PipeableApply3E&lt;F&gt; : I extends Functor3&lt;F&gt; ? PipeableFunctor3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Contravariant3&lt;F&gt; ? PipeableContravariant3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends FunctorWithIndex3&lt;F, infer Ix&gt; ? PipeableFunctorWithIndex3&lt;F, Ix&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Bifunctor3&lt;F&gt; ? PipeableBifunctor3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Extend3&lt;F&gt; ? PipeableExtend3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends FoldableWithIndex3&lt;F, infer Ix&gt; ? PipeableFoldableWithIndex3&lt;F, Ix&gt; : I extends Foldable3&lt;F&gt; ? PipeableFoldable3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Alt3&lt;F&gt; ? PipeableAlt3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends FilterableWithIndex3&lt;F, infer Ix&gt; ? PipeableFilterableWithIndex3&lt;F, Ix&gt; : I extends Filterable3&lt;F&gt; ? PipeableFilterable3&lt;...&gt; : I extends Compactable3&lt;...&gt; ? PipeableCompactable3&lt;...&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Profunctor3&lt;F&gt; ? PipeableProfunctor3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Semigroupoid3&lt;F&gt; ? PipeableSemigroupoid3&lt;F&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends MonadThrow3E&lt;F&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span>
-							</h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Epic</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">State</span><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
+					<a name="tonever" class="tsd-anchor"></a>
+					<h3>to<wbr>Never</h3>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">to<wbr>Never<span class="tsd-signature-symbol">(</span>_<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">never</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b4fc42f/packages/effect/src/overload.ts#L241">packages/effect/src/overload.ts:241</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b4fc42f/packages/epics/src/index.ts#L12">packages/epics/src/index.ts:12</a></li>
 								</ul>
 							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>F<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">URIS3</span></h4>
-								</li>
-								<li>
-									<h4>I</h4>
-								</li>
-								<li>
-									<h4>E</h4>
-								</li>
-							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>I: <span class="tsd-signature-type">object</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">I</span></h5>
+									<h5>_: <span class="tsd-signature-type">any</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">I extends Chain3EC&lt;F, E&gt; ? PipeableChain3EC&lt;F, E&gt; : I extends Apply3EC&lt;F, E&gt; ? PipeableApply3EC&lt;F, E&gt; : I extends Functor3EC&lt;...&gt; ? PipeableFunctor3EC&lt;...&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends Alt3EC&lt;F, E&gt; ? PipeableAlt3EC&lt;F, E&gt; : {}</span>
-								<span class="tsd-signature-symbol"> &amp; </span>
-								<span class="tsd-signature-type">I extends MonadThrow3EC&lt;F, E&gt; ? PipeableMonadThrow3&lt;F&gt; : {}</span>
-							</h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">never</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -177,27 +234,10 @@
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
 					</li>
-					<li class="current tsd-kind-module">
-						<a href="_matechs_effect.html">@matechs/effect</a>
-						<ul>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_contrib_lib_do_.html">&quot;fp-<wbr>ts-<wbr>contrib/lib/<wbr>Do&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_hkt_.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_hkt_-1.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_hkt_-2.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class="current tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="_matechs_effect._fp_ts_lib_pipeable_.html">&quot;fp-<wbr>ts/lib/pipeable&quot;</a>
-							</li>
-						</ul>
-					</li>
 					<li class=" tsd-kind-module">
+						<a href="_matechs_effect.html">@matechs/effect</a>
+					</li>
+					<li class="current tsd-kind-module">
 						<a href="_matechs_epics.html">@matechs/epics</a>
 					</li>
 					<li class=" tsd-kind-module">
@@ -225,8 +265,14 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_epics.html#epic" class="tsd-kind-icon">Epic</a>
+					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect._fp_ts_lib_pipeable_.html#pipeable" class="tsd-kind-icon">pipeable</a>
+						<a href="_matechs_epics.html#embed" class="tsd-kind-icon">embed</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
+						<a href="_matechs_epics.html#tonever" class="tsd-kind-icon">to<wbr>Never</a>
 					</li>
 				</ul>
 			</nav>

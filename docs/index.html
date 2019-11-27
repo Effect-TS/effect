@@ -69,46 +69,10 @@
 				</a>
 				<p>Matechs Effect is a typescript library inspired by scala&#39;s ZIO and Haskell&#39;s RIO architecture.</p>
 				<p>Docs at <a href="https://mikearnaldi.github.io/matechs-effect/modules/_matechs_effect.html">https://mikearnaldi.github.io/matechs-effect/modules/_matechs_effect.html</a></p>
-				<p>It aims to provide a strong foundational block to build typescript code in a more testable and standardized way.</p>
-				<p>This library is composed at its core by the <code>@matechs/effect</code> package that exposes 2 effects</p>
-				<ul>
-					<li><code>type Effect&lt;R, E, A&gt; = (r: R) =&gt; Wave&lt;E, A&gt;</code></li>
-				</ul>
-				<p>The underlying <code>Wave</code> is provided by <code>Waveguide</code>.</p>
-				<p>You can think of this type as a computation that requires an environment <code>R</code> to run.</p>
-				<p>The module exposes 2 instances of the typeclass <code>type EffectMonad&lt;T extends URIS3&gt; = Monad3E&lt;T&gt; &amp; MonadThrow3&lt;T&gt; &amp; Bifunctor3&lt;T&gt;</code>:</p>
-				<ul>
-					<li><code>effectMonad</code> for <code>Effect&lt;R, E, A&gt;</code></li>
-					<li><code>concurrentEffectMonad</code> for <code>Effect&lt;R, E, A&gt;</code> provides concurrent <code>ap</code></li>
-				</ul>
-				<p>Pipeable functions are also exported for both instances (default <code>Effect</code>, <code>parAp</code>, <code>parApFirst</code>, <code>parApSecond</code> for parallel)</p>
-				<p>Interesting integrations and usage examples can be found in <code>packages/orm</code>, <code>packages/http</code>, <code>packages/rpc</code>, <code>packages/tracing</code></p>
-				<a href="#details" id="details" style="color: inherit; text-decoration: none;">
-					<h2>Details</h2>
-				</a>
-				<p>For details about the additional types and overloads please refer to documentation in <code>packages/effect</code></p>
 				<a href="#notes" id="notes" style="color: inherit; text-decoration: none;">
-					<h2>Notes</h2>
+					<h1>Notes</h1>
 				</a>
-				<p>This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!</p>
-				<p>The primary difference with waveguide itself is in how we manage the <code>R</code> parameter and in the utilities that we provide around environment management. The focus on this library is making environmental effects easy while providing valuable integrations out of the box where <code>Waveguide</code> itself poses primary focus around the underlying <code>Wave&lt;E, A&gt;</code></p>
-				<a href="#ecosystem" id="ecosystem" style="color: inherit; text-decoration: none;">
-					<h2>Ecosystem</h2>
-				</a>
-				<ul>
-					<li><code>@matechs/tracing</code> : provides integration with opentracing-js</li>
-					<li><code>@matechs/http</code> : provides integration with axios</li>
-					<li><code>@matechs/orm</code> : provides integration with typeorm</li>
-					<li><code>@matechs/rpc</code> : no boilerplate rpc for your effects</li>
-					<li><code>@matechs/express</code> : provides integration with express</li>
-					<li><code>@matechs/graceful</code> : utility to handle graceful exit</li>
-				</ul>
-				<a href="#thanks" id="thanks" style="color: inherit; text-decoration: none;">
-					<h2>Thanks</h2>
-				</a>
-				<p>This library would have not been feasibly possible without the strong foundations of <a href="https://github.com/gcanti/fp-ts">fp-ts</a> and <a href="https://github.com/rzeigler/waveguide">Waveguide</a> &amp; huge thanks to the Authors.</p>
-				<p>Another huge thanks goes to both the scala community (ZIO in specific) and the haskell community (RIO &amp; Polysemy) from which inspiration is taken.</p>
-				<p>All of the above projects are advised!</p>
+				<p>The best place to look for concrete usage are tests &amp; demo folders of each package</p>
 			</div>
 		</div>
 		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
@@ -119,6 +83,9 @@
 					</li>
 					<li class=" tsd-kind-module">
 						<a href="modules/_matechs_effect.html">@matechs/effect</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="modules/_matechs_epics.html">@matechs/epics</a>
 					</li>
 					<li class=" tsd-kind-module">
 						<a href="modules/_matechs_express.html">@matechs/express</a>
