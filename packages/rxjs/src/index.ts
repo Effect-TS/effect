@@ -1,7 +1,6 @@
 import * as T from "@matechs/effect";
 import * as S from "@matechs/effect/lib/stream";
 import * as M from "@matechs/effect/lib/managed";
-import * as Q from "@matechs/effect/lib/queue";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
 import { left, right, Either } from "fp-ts/lib/Either";
@@ -18,39 +17,37 @@ export function encaseObservable<E, A>(
   return S.fromSource(
     M.chain(
       M.bracket(
-        T.chain(Q.unboundedQueue<A>(), queue =>
-          T.sync(() => {
-            const ops: Ops<E, A>[] = [];
-            const hasCB: { cb?: () => void } = {};
+        T.sync(() => {
+          const ops: Ops<E, A>[] = [];
+          const hasCB: { cb?: () => void } = {};
 
-            function callCB() {
-              if (hasCB.cb) {
-                const cb = hasCB.cb;
-                hasCB.cb = undefined;
-                cb();
-              }
+          function callCB() {
+            if (hasCB.cb) {
+              const cb = hasCB.cb;
+              hasCB.cb = undefined;
+              cb();
             }
+          }
 
-            return {
-              s: observable.subscribe(
-                a => {
-                  ops.push({ _tag: "offer", a });
-                  callCB();
-                },
-                e => {
-                  ops.push({ _tag: "error", e: onError(e) });
-                  callCB();
-                },
-                () => {
-                  ops.push({ _tag: "complete" });
-                  callCB();
-                }
-              ),
-              ops,
-              hasCB
-            };
-          })
-        ),
+          return {
+            s: observable.subscribe(
+              a => {
+                ops.push({ _tag: "offer", a });
+                callCB();
+              },
+              e => {
+                ops.push({ _tag: "error", e: onError(e) });
+                callCB();
+              },
+              () => {
+                ops.push({ _tag: "complete" });
+                callCB();
+              }
+            ),
+            ops,
+            hasCB
+          };
+        }),
         ({ s }) => T.sync(() => s.unsubscribe())
       ),
       ({ ops, hasCB }) => {
