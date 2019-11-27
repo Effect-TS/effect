@@ -8,22 +8,23 @@ Docs at [https://mikearnaldi.github.io/matechs-effect/](https://mikearnaldi.gith
 
 It aims to provide a strong foundational block to build typescript code in a more testable and standardized way.
 
-This library is composed at its core by the `@matechs/effect` package that exposes 2 effects
+This library is composed at its core by the `@matechs/effect` package that exposes:
+- trifunctor `Effect<R, E, A>`, istances `effectMonad` & `concurrentEffectMonad`
+- trifunctor `Managed<R, E, A>`, istances `managedMonad`
+- trifunctor `Stream<R, E, A>`, instances `streamMonad`
 
-- `type Effect<R, E, A> = (r: R) => Wave<E, A>`
+You can think of this types as a computations that requires an environment `R` to run.
 
-The underlying `Wave` is provided by `Waveguide`.
-
-You can think of this type as a computation that requires an environment `R` to run.
-
-The module exposes 2 instances of the typeclass `type EffectMonad<T extends URIS3> = Monad3E<T> & MonadThrow3<T> & Bifunctor3<T>`:
-
-- `effectMonad` for `Effect<R, E, A>`
-- `concurrentEffectMonad` for `Effect<R, E, A>` provides concurrent `ap`
-
-Pipeable functions are also exported for both instances (default `Effect`, `parAp`, `parApFirst`, `parApSecond` for parallel)
-
-Interesting integrations and usage examples can be found in `packages/orm`, `packages/http`, `packages/rpc`, `packages/tracing`
+Interesting integrations and usage examples can be found in 
+- `packages/orm`
+- `packages/http`
+- `packages/rpc`
+- `packages/tracing`
+- `packages/express`
+- `packages/graceful`
+- `packages/rxjs`
+- `packages/effect`
+- `packages/epics`
 
 ## Details
 
@@ -33,20 +34,21 @@ For details about the additional types and overloads please refer to documentati
 
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
-The primary difference with waveguide itself is in how we manage the `R` parameter and in the utilities that we provide around environment management. The focus on this library is making environmental effects easy while providing valuable integrations out of the box where `Waveguide` itself poses primary focus around the underlying `Wave<E, A>`
-
 ## Ecosystem
 
-- `@matechs/tracing` : provides integration with opentracing-js
-- `@matechs/http` : provides integration with axios
 - `@matechs/orm` : provides integration with typeorm
+- `@matechs/http` : provides integration with axios
 - `@matechs/rpc` : no boilerplate rpc for your effects
-- `@matechs/express` : provides integration with express
+- `@matechs/tracing` : provides integration with opentracing-js
+- `@matechs/express`: provides integration with express
 - `@matechs/graceful` : utility to handle graceful exit
+- `@matechs/rxjs` : provides integration with rxjs
+- `@matechs/effect` : core provides `Effect, Managed, Stream, Ref, Queue, Semaphore`
+- `@matechs/epics` : provides integration with redux-observable
 
 ## Thanks
 
-This library would have not been feasibly possible without the strong foundations of [fp-ts](https://github.com/gcanti/fp-ts) and [Waveguide](https://github.com/rzeigler/waveguide) & huge thanks to the Authors.
+This library would have not been feasibly possible without the strong foundations of [fp-ts](https://github.com/gcanti/fp-ts) and [Waveguide](https://github.com/rzeigler/waveguide) from which we have forked the base bifunctor and execution runtime, huge thanks to the Authors.
 
 This library was initially based on Fluture, huge thanks to the Authors.
 
