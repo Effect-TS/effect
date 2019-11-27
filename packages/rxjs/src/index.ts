@@ -3,6 +3,7 @@ import * as E from "@matechs/effect/lib/exit";
 import * as M from "@matechs/effect/lib/managed";
 import * as S from "@matechs/effect/lib/stream";
 import { Either, left, right } from "fp-ts/lib/Either";
+import * as list from "@matechs/effect/lib/list";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
 
@@ -19,7 +20,7 @@ export function encaseObservable<E, A>(
     M.chain(
       M.bracket(
         T.sync(() => {
-          const ops: Ops<E, A>[] = [];
+          const ops: list.ListRoot<Ops<E, A>> = list.empty();
           const hasCB: { cb?: () => void } = {};
 
           function callCB() {
@@ -33,15 +34,15 @@ export function encaseObservable<E, A>(
           return {
             s: observable.subscribe(
               a => {
-                ops.push({ _tag: "offer", a });
+                list.push(ops, { _tag: "offer", a });
                 callCB();
               },
               e => {
-                ops.push({ _tag: "error", e: onError(e) });
+                list.push(ops, { _tag: "error", e: onError(e) });
                 callCB();
               },
               () => {
-                ops.push({ _tag: "complete" });
+                list.push(ops, { _tag: "complete" });
                 callCB();
               }
             ),
@@ -54,11 +55,15 @@ export function encaseObservable<E, A>(
       ({ ops, hasCB }) => {
         return M.pure(
           T.async(callback => {
-            if (ops.length > 0) {
-              return runFromQueue(ops, callback);
+            const headOpt = list.pop(ops);
+            if (O.isSome(headOpt)) {
+              return runFromQueue(headOpt.value, callback);
             } else {
               hasCB.cb = () => {
-                runFromQueue(ops, callback)();
+                const headOpt = list.pop(ops);
+                if (O.isSome(headOpt)) {
+                  runFromQueue(headOpt.value, callback)();
+                }
               };
             }
             return () => {};
@@ -70,11 +75,9 @@ export function encaseObservable<E, A>(
 }
 
 function runFromQueue<E, A>(
-  ops: Ops<E, A>[],
+  op: Ops<E, A>,
   callback: (r: Either<E, O.Option<A>>) => void
 ): () => void {
-  const op = ops.splice(0, 1)[0];
-
   switch (op._tag) {
     case "error":
       callback(left(op.e));
