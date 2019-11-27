@@ -4,7 +4,7 @@ import * as M from "@matechs/effect/lib/managed";
 import * as Q from "@matechs/effect/lib/queue";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
-import { left, right } from "fp-ts/lib/Either";
+import { left, right, Either } from "fp-ts/lib/Either";
 import { Lazy } from "fp-ts/lib/function";
 
 type Offer<A> = { _tag: "offer"; a: A };
@@ -49,37 +49,11 @@ export function encaseObservable<E, A>(
         return M.pure(
           T.async(callback => {
             if (ops.length > 0) {
-              const op = ops.splice(0, 1)[0];
-
-              switch (op._tag) {
-                case "error":
-                  callback(left(op.e));
-                  return () => {};
-                case "complete":
-                  callback(right(O.none));
-                  return () => {};
-                case "offer":
-                  callback(right(O.some(op.a)));
-                  return () => {};
-              }
+              return runFromQueue(ops, callback);
             } else {
               T.run(
                 waitFor(() => ops.length > 0),
-                () => {
-                  const op = ops.splice(0, 1)[0];
-
-                  switch (op._tag) {
-                    case "error":
-                      callback(left(op.e));
-                      return () => {};
-                    case "complete":
-                      callback(right(O.none));
-                      return () => {};
-                    case "offer":
-                      callback(right(O.some(op.a)));
-                      return () => {};
-                  }
-                }
+                () => runFromQueue(ops, callback)
               );
             }
             return () => {};
@@ -88,4 +62,23 @@ export function encaseObservable<E, A>(
       }
     )
   );
+}
+
+function runFromQueue<E, A>(
+  ops: Ops<E, A>[],
+  callback: (r: Either<E, O.Option<A>>) => void
+): () => void {
+  const op = ops.splice(0, 1)[0];
+
+  switch (op._tag) {
+    case "error":
+      callback(left(op.e));
+      return () => {};
+    case "complete":
+      callback(right(O.none));
+      return () => {};
+    case "offer":
+      callback(right(O.some(op.a)));
+      return () => {};
+  }
 }
