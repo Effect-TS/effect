@@ -19,7 +19,6 @@
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": false,
     "allowJs": false,
-    "target": "es5",
     "forceConsistentCasingInFileNames": true,
     "suppressImplicitAnyIndexErrors": true,
     "stripInternal": true,

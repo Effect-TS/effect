@@ -20,7 +20,7 @@ export function encaseObservable<E, A>(
     M.chain(
       M.bracket(
         T.sync(() => {
-          const ops: list.ListRoot<Ops<E, A>> = list.empty();
+          const ops: list.List<Ops<E, A>> = list.empty();
           const hasCB: { cb?: () => void } = {};
 
           function callCB() {
@@ -55,14 +55,14 @@ export function encaseObservable<E, A>(
       ({ ops, hasCB }) => {
         return M.pure(
           T.async(callback => {
-            const headOpt = list.pop(ops);
-            if (O.isSome(headOpt)) {
-              return runFromQueue(headOpt.value, callback);
+            const op = list.popUnsafe(ops);
+            if (op !== null) {
+              return runFromQueue(op, callback);
             } else {
               hasCB.cb = () => {
-                const headOpt = list.pop(ops);
-                if (O.isSome(headOpt)) {
-                  runFromQueue(headOpt.value, callback)();
+                const op = list.popUnsafe(ops);
+                if (op !== null) {
+                  runFromQueue(op, callback)();
                 }
               };
             }

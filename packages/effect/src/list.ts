@@ -1,55 +1,76 @@
 import * as _ from "./index";
-import { Option, none, some } from "fp-ts/lib/Option";
+import { Option, fromNullable } from "fp-ts/lib/Option";
 
-export interface ListRoot<A> {
-  first: List<A> | null;
-  last: List<A> | null;
+/**
+ * Implements a basic FIFO list
+ */
+
+interface NonEmptyList<A> {
+  first: Node<A>;
+  last: Node<A>;
+}
+export interface List<A> {
+  first: null | Node<A>;
+  last: null | Node<A>;
 }
 
-export interface List<A> {
+interface Node<A> {
   a: A;
-  prev: List<A>;
-  next: List<A>;
+  prev: Node<A>;
+  next: Node<A>;
+}
+
+function singleNode<A>(a: A): Node<A> {
+  const l: Node<A> = { a, prev: null, next: null } as any;
+  l.prev = l;
+  l.next = l;
+  return l;
 }
 
 /**
- * Add an Elem at the end of the List
- * Return the new List head
+ * Push an Elem at the end of the List
  */
-export const push = <A>(list: ListRoot<A>, a: A) => {
-  if (isEmpty(list)) {
-    const l: List<A> = { a, prev: null, next: null };
-    l.prev = l;
-    l.next = l;
+export function push<A>(list: List<A>, a: A) {
+  if (isNotEmpty(list)) {
+    const last = list.last;
+    const first = list.first;
+    const newLast: Node<A> = { a, next: first, prev: last };
+    last.next = newLast;
+    first.prev = newLast;
+    list.last = newLast;
+  } else {
+    const l = singleNode(a);
     list.first = l;
     list.last = l;
-  } else {
-    const lastElem = list.last;
-    const firstElem = list.first;
-    const newLastElem = { a, next: firstElem, prev: lastElem };
-    lastElem.next = newLastElem;
-    firstElem.prev = newLastElem;
-    list.last = newLastElem;
   }
-};
+}
 
-export const empty = <A>(): ListRoot<A> => ({ first: null, last: null });
+/**
+ * Creates an empty List
+ */
+export function empty<A>(): List<A> {
+  return { first: null, last: null };
+}
 
-export const makeList = <A>(a: A): ListRoot<A> => {
-  const l = empty<A>();
-  push(l, a);
-  return l;
-};
-
-export const singleton = <A>(list: ListRoot<A>): boolean =>
-  !isEmpty(list) && list.first === list.last;
-
-export const isEmpty = <A>(list: ListRoot<A>): boolean => list.first === null;
-
-export const pop = <A>(list: ListRoot<A>): Option<A> => {
-  if (list.first) {
-    const first = list.first;
-    if (singleton(list)) {
+/**
+ * Indicates if a List is a singleton
+ */
+function isSingleton<A>(list: List<A>): boolean {
+  return list.first === list.last && isNotEmpty(list);
+}
+/**
+ * Indicates if a List is not empty
+ */
+export function isNotEmpty<A>(list: List<A>): list is NonEmptyList<A> {
+  return list.first !== null;
+}
+/**
+ * Pops the last element of a List (A | null)
+ */
+export function popUnsafe<A>(list: List<A>): A | null {
+  const first = list.first;
+  if (first) {
+    if (isSingleton(list)) {
       list.first = null;
       list.last = null;
     } else {
@@ -57,8 +78,40 @@ export const pop = <A>(list: ListRoot<A>): Option<A> => {
       first.prev.next = first.next;
       list.first = first.next;
     }
-    return some(first.a);
+    return first.a;
   } else {
-    return none;
+    return null;
   }
-};
+}
+
+/**
+ * Pops the last element of a List Option<A>
+ */
+export function pop<A>(list: List<A>): Option<A> {
+  return fromNullable(popUnsafe(list));
+}
+/**
+ * Gets the first element of the List as Option<A> (does not change the List)
+ */
+
+export function headUnsafe<A>(list: List<A>): A | null {
+  return list.first !== null ? list.first.a : null;
+}
+/**
+ * Gets the first element of the List as Option<A> (does not change the List)
+ */
+export function head<A>(list: List<A>): Option<A> {
+  return fromNullable(headUnsafe(list));
+}
+/**
+ * Gets the last element of the List as A | null (does not change the List)
+ */
+export function lastUnsafe<A>(list: List<A>): A | null {
+  return list.last !== null ? list.last.a : null;
+}
+/**
+ * Gets the last element of the List as Option<A> (does not change the List)
+ */
+export function last<A>(list: List<A>): Option<A> {
+  return fromNullable(lastUnsafe(list));
+}
