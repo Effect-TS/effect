@@ -12,10 +12,6 @@ type StreamError<E> = { _tag: "error"; e: E };
 type Complete = { _tag: "complete" };
 type Ops<E, A> = Offer<A> | StreamError<E> | Complete;
 
-function waitFor(io: Lazy<boolean>): T.Effect<T.NoEnv, T.NoErr, void> {
-  return io() ? T.unit : T.suspended(() => T.delay(waitFor(io), 1));
-}
-
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
   onError: (e: any) => E
@@ -26,35 +22,48 @@ export function encaseObservable<E, A>(
         T.chain(Q.unboundedQueue<A>(), queue =>
           T.sync(() => {
             const ops: Ops<E, A>[] = [];
+            const hasCB: { cb?: () => void } = {};
 
             return {
               s: observable.subscribe(
                 a => {
                   ops.push({ _tag: "offer", a });
+
+                  if (hasCB.cb) {
+                    hasCB.cb();
+                  }
                 },
                 e => {
                   ops.push({ _tag: "error", e: onError(e) });
+
+                  if (hasCB.cb) {
+                    hasCB.cb();
+                  }
                 },
                 () => {
                   ops.push({ _tag: "complete" });
+
+                  if (hasCB.cb) {
+                    hasCB.cb();
+                  }
                 }
               ),
-              ops
+              ops,
+              hasCB
             };
           })
         ),
         ({ s }) => T.sync(() => s.unsubscribe())
       ),
-      ({ ops }) => {
+      ({ ops, hasCB }) => {
         return M.pure(
           T.async(callback => {
             if (ops.length > 0) {
               return runFromQueue(ops, callback);
             } else {
-              T.run(
-                waitFor(() => ops.length > 0),
-                () => runFromQueue(ops, callback)
-              );
+              hasCB.cb = () => {
+                runFromQueue(ops, callback)();
+              };
             }
             return () => {};
           })
