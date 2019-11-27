@@ -5,7 +5,6 @@ import * as Q from "@matechs/effect/lib/queue";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
 import { left, right, Either } from "fp-ts/lib/Either";
-import { Lazy } from "fp-ts/lib/function";
 
 type Offer<A> = { _tag: "offer"; a: A };
 type StreamError<E> = { _tag: "error"; e: E };
