@@ -1,4 +1,4 @@
-import { FunctionN, constant, identity } from "fp-ts/lib/function";
+import { FunctionN, constant } from "fp-ts/lib/function";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
 import { ExitTag, Exit, done } from "waveguide/lib/exit";

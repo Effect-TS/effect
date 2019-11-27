@@ -45,9 +45,9 @@ export function remotely<A extends any[], R, E, B>(
       } as Payload),
       T.mapWith(r => r.data.result),
       T.mapErrorWith(e => {
-        try {
+        if (e.response && e.response.data && e.response.data.message) {
           return new Error(e.response.data.message);
-        } catch (_) {
+        } else {
           return e as Error;
         }
       })
@@ -94,7 +94,7 @@ export function clientHelpers<M extends CanRemote>(
     patched[entry] = {};
 
     Object.keys(module[entry]).forEach(k => {
-      patched[entry][k] = (...args) =>
+      patched[entry][k] = (...args: any[]) =>
         T.accessM((r: Remote<M>) => r[entry][k](...args));
     });
   });
@@ -123,7 +123,7 @@ export function serverHelpers<M extends CanRemote>(
     patched[entry] = {};
 
     Object.keys(module[entry]).forEach(k => {
-      patched[entry][k] = (...args) =>
+      patched[entry][k] = (...args: any[]) =>
         T.accessM((r: M) => r[entry][k](...args));
     });
   });

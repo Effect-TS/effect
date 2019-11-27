@@ -2,9 +2,8 @@
   "compilerOptions": {
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "target": "es5",
     "declaration": true,
-    "skipLibCheck": false,
+    "skipLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "preserveSymlinks": true,
@@ -12,6 +11,20 @@
     "noEmit": false,
     "lib": ["es2018"],
     "sourceMap": true,
-    "strictFunctionTypes": true
+    "strictFunctionTypes": true,
+    "strict": true,
+    "noImplicitReturns": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "noEmitOnError": false,
+    "allowJs": false,
+    "target": "es5",
+    "forceConsistentCasingInFileNames": true,
+    "suppressImplicitAnyIndexErrors": true,
+    "stripInternal": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true
   }
 }

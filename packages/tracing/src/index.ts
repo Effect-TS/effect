@@ -129,7 +129,7 @@ export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
         .bindL("res", ({ instance }) =>
           T.provideR((r: R) => ({
             ...r,
-            tracer: { ...r["tracer"], context: { tracerInstance: instance } }
+            tracer: { ...(r as any)["tracer"], context: { tracerInstance: instance } }
           }))(ma)
         )
         .return(s => s.res);

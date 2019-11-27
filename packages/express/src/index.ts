@@ -79,7 +79,7 @@ export const express: Express = {
         Do(T.effectMonad)
           .bindL("s", () =>
             T.sync(() => {
-              return app.listen(port, hostname);
+              return app.listen(port, hostname || "0.0.0.0");
             })
           )
           .doL(({ s }) =>

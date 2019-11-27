@@ -1512,7 +1512,7 @@ function getSourceFromObjectReadStream<A>(
     T.sync(() => {
       let open = true;
       let f: FunctionN<[Ei.Either<Error, O.Option<A>>], void>;
-      const leftover = [];
+      const leftover: Array<any> = [];
       const errors: Array<Error> = [];
 
       stream.on("end", () => {
@@ -1581,7 +1581,7 @@ function getSourceFromObjectReadStreamB<A>(
   return managed.encaseEffect(
     T.sync(() => {
       let open = true;
-      const leftover = [];
+      const leftover: Array<any> = [];
       const errors: Array<Error> = [];
 
       stream.on("end", () => {
