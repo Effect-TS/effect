@@ -62,12 +62,13 @@ describe("Stream", () => {
   it("should use fromRefineWith", async () => {
     const s = S.fromRange(0);
 
-    type Even = number;
+    type Even = number & {_brand: "even"};
 
     function isEven(x: number): x is Even {
       return x % 2 === 0;
     }
 
+    // $ExpectType Even[]
     const res = await T.runToPromise(
       S.collectArray(S.take(pipe(s, S.filterRefineWith(isEven)), 3))
     );
