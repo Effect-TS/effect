@@ -1,12 +1,10 @@
 import * as T from "@matechs/effect";
-import * as S from "@matechs/effect/lib/stream";
+import * as E from "@matechs/effect/lib/exit";
 import * as M from "@matechs/effect/lib/managed";
+import * as S from "@matechs/effect/lib/stream";
+import { Either, left, right } from "fp-ts/lib/Either";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
-import { left, right, Either } from "fp-ts/lib/Either";
-import { Sink } from "@matechs/effect/lib/stream/sink";
-import { SinkStep, sinkCont } from "@matechs/effect/lib/stream/step";
-import * as E from "@matechs/effect/lib/exit";
 
 type Offer<A> = { _tag: "offer"; a: A };
 type StreamError<E> = { _tag: "error"; e: E };
