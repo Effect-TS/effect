@@ -24,28 +24,27 @@ export function encaseObservable<E, A>(
             const ops: Ops<E, A>[] = [];
             const hasCB: { cb?: () => void } = {};
 
+            function callCB() {
+              if (hasCB.cb) {
+                const cb = hasCB.cb;
+                hasCB.cb = undefined;
+                cb();
+              }
+            }
+
             return {
               s: observable.subscribe(
                 a => {
                   ops.push({ _tag: "offer", a });
-
-                  if (hasCB.cb) {
-                    hasCB.cb();
-                  }
+                  callCB();
                 },
                 e => {
                   ops.push({ _tag: "error", e: onError(e) });
-
-                  if (hasCB.cb) {
-                    hasCB.cb();
-                  }
+                  callCB();
                 },
                 () => {
                   ops.push({ _tag: "complete" });
-
-                  if (hasCB.cb) {
-                    hasCB.cb();
-                  }
+                  callCB();
                 }
               ),
               ops,
