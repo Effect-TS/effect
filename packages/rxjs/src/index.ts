@@ -108,7 +108,10 @@ export function runToObservable<E, A>(
             }
           );
 
-          sub.unsubscribe = () => running.unsubscribe();
+          sub.unsubscribe = () => {
+            running.unsubscribe();
+            sub.closed = true;
+          };
         },
         e => {
           /* istanbul ignore next */
