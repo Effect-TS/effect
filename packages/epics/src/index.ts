@@ -9,7 +9,8 @@ export type Epic<R, A extends Action<any>, State> = (
   current: State
 ) => (action$: S.Stream<T.NoEnv, never, A>) => S.Stream<R, never, A>;
 
-function toNever(e: any): never {
+function toNever(_: any): never {
+  /* istanbul ignore next */
   return undefined as never;
 }
 
