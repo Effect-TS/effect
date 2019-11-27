@@ -9,7 +9,7 @@ import * as assert from "assert";
 import { raise } from "waveguide/lib/exit";
 
 describe("RxJS", () => {
-  jest.setTimeout(5000)
+  jest.setTimeout(5000);
 
   it("should encaseObservable", async () => {
     const s = O.encaseObservable(Rx.interval(10), E.toError);
@@ -53,6 +53,80 @@ describe("RxJS", () => {
     await T.runToPromise(T.delay(T.unit, 10));
 
     assert.deepEqual(a, [0, 1, 2]);
-    assert.deepEqual(sub.closed, true)
+    assert.deepEqual(sub.closed, true);
+  });
+
+  it("should toObservable - Error", async () => {
+    const s = S.raised(new Error("error"));
+    const o = O.toObservable(s);
+
+    const r = await T.runToPromise(o);
+
+    const a = [];
+    const errors = [];
+
+    const sub = r.subscribe(
+      n => {
+        a.push(n);
+      },
+      e => {
+        errors.push(e);
+      }
+    );
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(errors, [new Error("error")]);
+    assert.deepEqual(sub.closed, true);
+  });
+
+  it("should toObservable - Abort", async () => {
+    const s = S.aborted("aborted");
+    const o = O.toObservable(s);
+
+    const r = await T.runToPromise(o);
+
+    const a = [];
+    const errors = [];
+
+    const sub = r.subscribe(
+      n => {
+        a.push(n);
+      },
+      e => {
+        errors.push(e);
+      }
+    );
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(errors, ["aborted"]);
+    assert.deepEqual(sub.closed, true);
+  });
+
+  it("unsubscribe should stop drain", async () => {
+    const s = S.chain(S.repeatedly(0), n => S.encaseEffect(T.delay(T.pure(n), 10)));
+    const o = O.toObservable(s);
+
+    const r = await T.runToPromise(o);
+
+    const a = [];
+    const errors = [];
+
+    const sub = r.subscribe(
+      n => {
+        a.push(n);
+      },
+      e => {
+        errors.push(e);
+      }
+    );
+
+    await T.runToPromise(T.delay(T.unit, 100));
+
+    sub.unsubscribe()
+
+    assert.deepEqual(errors, []);
+    assert.deepEqual(sub.closed, true);
   });
 });

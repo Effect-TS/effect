@@ -94,6 +94,8 @@ export function toObservable<R, E, A>(
   return T.access(
     (r: R) =>
       new Rx.Observable(sub => {
+        const unsubscribe = sub.unsubscribe;
+
         const drainer = T.provideAll(r)(
           S.drain(
             S.mapM(s, a =>
@@ -120,11 +122,10 @@ export function toObservable<R, E, A>(
             () => {}
           )
         );
-        const unsubscribe = sub.unsubscribe;
 
         sub.unsubscribe = () => {
+          sub.closed = true;
           interruptDrain();
-          unsubscribe();
         };
       })
   );
