@@ -188,6 +188,80 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done("ok"));
     });
 
+    it("provideM", async () => {
+      interface EnvName {
+        name: string;
+      }
+      interface EnvNameLength {
+        nameLength: number;
+      }
+
+      const program = T.accessM(({ nameLength }: EnvNameLength) =>
+        T.pure(nameLength + 1)
+      );
+
+      const provider = T.accessM(({ name }: EnvName) =>
+        T.pure({ nameLength: name.length } as EnvNameLength)
+      );
+
+      const env: EnvName = {
+        name: "bob"
+      };
+
+      const a = await T.runToPromiseExit(
+        pipe(program, T.provideM(provider), T.provide(env))
+      );
+
+      assert.deepEqual(a, ex.done(4));
+    });
+
+    it("provideSomeM", async () => {
+      interface EnvName {
+        name: string;
+      }
+      interface EnvSurname {
+        surName: string;
+      }
+      interface EnvNameLength {
+        nameLength: number;
+      }
+      interface EnvSurNameLength {
+        surnameLength: number;
+      }
+
+      const program = T.accessM(
+        ({ nameLength, surnameLength }: EnvNameLength & EnvSurNameLength) =>
+          T.pure(nameLength + surnameLength)
+      );
+
+      const nameLengthProvider = T.accessM(({ name }: EnvName) =>
+        T.pure({
+          nameLength: name.length
+        } as EnvNameLength)
+      );
+      const surnameLengthProvider = T.accessM(({ surName }: EnvSurname) =>
+        T.pure({
+          surnameLength: surName.length
+        } as EnvSurNameLength)
+      );
+
+      const env: EnvName & EnvSurname = {
+        name: "bob",
+        surName: "sponge"
+      };
+
+      const a = await T.runToPromiseExit(
+        pipe(
+          program,
+          T.provideSomeM(nameLengthProvider),
+          T.provideSomeM(surnameLengthProvider),
+          T.provide(env)
+        )
+      );
+
+      assert.deepEqual(a, ex.done(9));
+    });
+
     it("promise", async () => {
       const a = await T.runToPromise(T.pure(1));
 
