@@ -498,7 +498,7 @@ describe("Stream", () => {
     });
 
     it("should transduce empty streams", () => {
-      const s1 = S.fromArray([]);
+      const s1 = S.fromArray([] as Array<number>);
       const s2 = S.transduce(s1, transducer());
       return expectExit(S.collectArray(s2), ex.done([]));
     });

@@ -53,16 +53,24 @@ type UString = _.Effect<unknown, unknown, string>;
 type Env1String = _.Effect<Env1, unknown, string>;
 type Env2String = _.Effect<Env2, unknown, string>;
 type NeverString = _.Effect<never, unknown, string>;
+//@ts-ignore
 type R1 = EnvOf<{ a: Env1String; b: NeverString }>; // $ExpectType Env1
+//@ts-ignore
 type R2 = EnvOf<{ a: Env1String; b: UString }>; // $ExpectType Env1
+//@ts-ignore
 type R3 = EnvOf<{ a: NeverString; b: UString }>; // $ExpectType unknown
+//@ts-ignore
 type R4 = EnvOf<{ a: Env1String; b: Env2String }>; // $ExpectType Env1 & Env2
-
+//@ts-ignore
 type ATypeOfU = ATypeOf<UString>; // $ExpectType string
+//@ts-ignore
 type ATypeOfO = ATypeOf<Env1String>; // $ExpectType string
+//@ts-ignore
 type ATypeOfNever = ATypeOf<NeverString>; // $ExpectType string
 
 const M = _.effectMonad;
+
+//@ts-ignore
 const doAErr = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
@@ -71,6 +79,7 @@ const doAErr = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } 
   })
   .return(r => r);
 
+//@ts-ignore
 const doA = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: string; b: number; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
@@ -79,6 +88,7 @@ const doA = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & {
   })
   .return(r => r);
 
+//@ts-ignore
 const doB = Do(M) // $ExpectType Effect<unknown, unknown, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => M.of("a"))
   .sequenceS({
@@ -87,6 +97,7 @@ const doB = Do(M) // $ExpectType Effect<unknown, unknown, { x: string; } & { a: 
   })
   .return(r => r);
 
+//@ts-ignore
 const doC = Do(M) // $ExpectType Effect<Env2 & Env1 & Env3, unknown, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
@@ -97,6 +108,7 @@ const doC = Do(M) // $ExpectType Effect<Env2 & Env1 & Env3, unknown, { x: string
 
 const M2 = _.getValidationM(semigroupString);
 
+//@ts-ignore
 const doA2 = Do(M2) // $ExpectType Effect<Env2 & Env1, string, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
@@ -105,6 +117,7 @@ const doA2 = Do(M2) // $ExpectType Effect<Env2 & Env1, string, { x: string; } & 
   })
   .return(r => r);
 
+//@ts-ignore
 const doB2 = Do(M2) // $ExpectType Effect<unknown, string, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => M.of("a"))
   .sequenceS({
@@ -113,6 +126,7 @@ const doB2 = Do(M2) // $ExpectType Effect<unknown, string, { x: string; } & { a:
   })
   .return(r => r);
 
+//@ts-ignore
 const doC2 = Do(M2) // $ExpectType Effect<Env2 & Env1 & Env3, string, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({

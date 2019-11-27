@@ -144,10 +144,10 @@ describe("Managed", () => {
     const ma = M.pure(1);
     const mm = M.encaseEffect(
       T.sync(() => {
-        return {};
+        return {} as unknown;
       })
     );
-    const mb = M.chainTap(ma, a => mm);
+    const mb = M.chainTap(ma, _ => mm);
 
     const result = await T.runToPromise(M.use(mb, n => T.pure(n + 1)));
 
@@ -158,10 +158,10 @@ describe("Managed", () => {
     const ma = M.pure(1);
     const mm = M.encaseEffect(
       T.sync(() => {
-        return {};
+        return {} as unknown;
       })
     );
-    const mb = M.chainTapWith((a: number) => mm);
+    const mb = M.chainTapWith((_: number) => mm);
 
     const result = await T.runToPromise(M.use(mb(ma), n => T.pure(n + 1)));
 

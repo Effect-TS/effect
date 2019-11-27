@@ -273,7 +273,7 @@ describe("EffectSafe", () => {
         pipe(
           T.pure(1),
           T.foldExitWith(
-            () => null,
+            () => null as any,
             n => T.pure(n + 1)
           )
         )
