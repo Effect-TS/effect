@@ -9,6 +9,8 @@ import * as assert from "assert";
 import { raise } from "waveguide/lib/exit";
 
 describe("RxJS", () => {
+  jest.setTimeout(5000)
+
   it("should encaseObservable", async () => {
     const s = O.encaseObservable(Rx.interval(10), E.toError);
     const p = S.collectArray(S.take(s, 10));
@@ -34,5 +36,23 @@ describe("RxJS", () => {
     const r = await T.runToPromiseExit(p);
 
     assert.deepEqual(r, raise(new Error("error")));
+  });
+
+  it("should toObservable", async () => {
+    const s = S.fromArray([0, 1, 2]);
+    const o = O.toObservable(s);
+
+    const r = await T.runToPromise(o);
+
+    const a = [];
+
+    const sub = r.subscribe(n => {
+      a.push(n);
+    });
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(a, [0, 1, 2]);
+    assert.deepEqual(sub.closed, true)
   });
 });

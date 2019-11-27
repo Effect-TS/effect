@@ -4,6 +4,9 @@ import * as M from "@matechs/effect/lib/managed";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
 import { left, right, Either } from "fp-ts/lib/Either";
+import { Sink } from "@matechs/effect/lib/stream/sink";
+import { SinkStep, sinkCont } from "@matechs/effect/lib/stream/step";
+import * as E from "@matechs/effect/lib/exit";
 
 type Offer<A> = { _tag: "offer"; a: A };
 type StreamError<E> = { _tag: "error"; e: E };
@@ -85,4 +88,46 @@ function runFromQueue<E, A>(
       callback(right(O.some(op.a)));
       return () => {};
   }
+}
+
+export function toObservable<R, E, A>(
+  s: S.Stream<R, E, A>
+): T.Effect<R, T.NoErr, Rx.Observable<A>> {
+  return T.access(
+    (r: R) =>
+      new Rx.Observable(sub => {
+        const drainer = T.provideAll(r)(
+          S.drain(
+            S.mapM(s, a =>
+              T.sync(() => {
+                sub.next(a);
+              })
+            )
+          )
+        );
+        const interruptDrain = T.run(
+          drainer,
+          E.fold(
+            () => {
+              sub.complete();
+            },
+            e => {
+              sub.error(e);
+              sub.unsubscribe();
+            },
+            u => {
+              sub.error(u);
+              sub.unsubscribe();
+            },
+            () => {}
+          )
+        );
+        const unsubscribe = sub.unsubscribe;
+
+        sub.unsubscribe = () => {
+          interruptDrain();
+          unsubscribe();
+        };
+      })
+  );
 }
