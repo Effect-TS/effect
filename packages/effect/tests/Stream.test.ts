@@ -59,7 +59,7 @@ describe("Stream", () => {
     assert.deepEqual(res, [0, 1, 2]);
   });
 
-  it("should use fromRefineWith", async () => {
+  it("should use filterRefineWith", async () => {
     const s = S.fromRange(0);
 
     type Even = number & {_brand: "even"};
