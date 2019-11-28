@@ -2,15 +2,8 @@ import * as T from "@matechs/effect";
 import * as E from "@matechs/effect/lib/exit";
 import * as M from "@matechs/effect/lib/managed";
 import * as S from "@matechs/effect/lib/stream";
-import { Either, left, right } from "fp-ts/lib/Either";
-import * as list from "@matechs/effect/lib/list";
-import * as O from "fp-ts/lib/Option";
+import * as su from "@matechs/effect/lib/stream/support";
 import * as Rx from "rxjs";
-
-type Offer<A> = { _tag: "offer"; a: A };
-type StreamError<E> = { _tag: "error"; e: E };
-type Complete = { _tag: "complete" };
-type Ops<E, A> = Offer<A> | StreamError<E> | Complete;
 
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
@@ -20,24 +13,13 @@ export function encaseObservable<E, A>(
     M.chain(
       M.bracket(
         T.sync(() => {
-          const ops: list.List<Ops<E, A>> = list.empty();
-          const hasCB: { cb?: (o: Ops<E, A>) => void } = {};
-
-          function callCB(o: Ops<E, A>) {
-            if (hasCB.cb) {
-              const cb = hasCB.cb;
-              hasCB.cb = undefined;
-              cb(o);
-            } else {
-              list.push(ops, o);
-            }
-          }
+          const { next, ops, hasCB } = su.queueUtils<E, A>();
 
           return {
             s: observable.subscribe(
-              a => callCB({ _tag: "offer", a }),
-              e => callCB({ _tag: "error", e: onError(e) }),
-              () => callCB({ _tag: "complete" })
+              a => next({ _tag: "offer", a }),
+              e => next({ _tag: "error", e: onError(e) }),
+              () => next({ _tag: "complete" })
             ),
             ops,
             hasCB
@@ -45,48 +27,9 @@ export function encaseObservable<E, A>(
         }),
         ({ s }) => T.sync(() => s.unsubscribe())
       ),
-      ({ ops, hasCB }) => {
-        return M.pure(
-          T.async(callback => {
-            const op = list.popUnsafe(ops);
-            if (op !== null) {
-              return runFromQueue(op, callback);
-            } else {
-              hasCB.cb = o => {
-                if (list.isNotEmpty(ops)) {
-                  list.push(ops, o);
-                  const op = list.popUnsafe(ops);
-                  if (op !== null) {
-                    runFromQueue(op, callback)();
-                  }
-                } else {
-                  runFromQueue(o, callback)();
-                }
-              };
-            }
-            return () => {};
-          })
-        );
-      }
+      ({ ops, hasCB }) => su.emitter(ops, hasCB)
     )
   );
-}
-
-function runFromQueue<E, A>(
-  op: Ops<E, A>,
-  callback: (r: Either<E, O.Option<A>>) => void
-): () => void {
-  switch (op._tag) {
-    case "error":
-      callback(left(op.e));
-      return () => {};
-    case "complete":
-      callback(right(O.none));
-      return () => {};
-    case "offer":
-      callback(right(O.some(op.a)));
-      return () => {};
-  }
 }
 
 export function runToObservable<E, A>(
