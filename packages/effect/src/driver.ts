@@ -238,9 +238,6 @@ export function makeDriver<E, A>(
           case T.EffectTag.AccessRuntime:
             current = T.pure(cu.f(runtime)) as UnkIO;
             break;
-          case T.EffectTag.AccessEnvironment:
-            current = T.pure(cu.value) as UnkIO;
-            break;
           case T.EffectTag.AccessInterruptible:
             current = T.pure(cu.f(isInterruptible())) as UnkIO;
             break;

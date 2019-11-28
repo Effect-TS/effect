@@ -43,8 +43,7 @@ export enum EffectTag {
   Collapse,
   InterruptibleRegion,
   AccessInterruptible,
-  AccessRuntime,
-  AccessEnvironment
+  AccessRuntime
 }
 
 export type NoEnv = unknown;
@@ -66,8 +65,7 @@ export type Effect<R, E, A> = (
   | Collapse<any, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
   | InterruptibleRegion<E, A>
   | AccessInterruptible<E, A>
-  | AccessRuntime<E, A>
-  | AccessEnvironment<E, A>;
+  | AccessRuntime<E, A>;
 
 export interface Pure<E, A> {
   readonly _tag: EffectTag.Pure;
@@ -401,15 +399,9 @@ export function withRuntime<E, A>(
   return chain(accessRuntime as Effect<NoEnv, E, Runtime>, f);
 }
 
-export interface AccessEnvironment<E, A> {
-  readonly _tag: EffectTag.AccessEnvironment;
-
-  readonly value: A;
-}
-
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
   return r => ({
-    _tag: EffectTag.AccessEnvironment,
+    _tag: EffectTag.Pure,
     value: r
   });
 }
