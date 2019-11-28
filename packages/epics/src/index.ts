@@ -25,4 +25,3 @@ export function embed<R, A extends Action, State>(
       )
     );
 }
-

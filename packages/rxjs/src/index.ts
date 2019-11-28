@@ -3,6 +3,7 @@ import * as E from "@matechs/effect/lib/exit";
 import * as M from "@matechs/effect/lib/managed";
 import * as S from "@matechs/effect/lib/stream";
 import { Either, left, right } from "fp-ts/lib/Either";
+import * as list from "@matechs/effect/lib/list";
 import * as O from "fp-ts/lib/Option";
 import * as Rx from "rxjs";
 
@@ -19,31 +20,24 @@ export function encaseObservable<E, A>(
     M.chain(
       M.bracket(
         T.sync(() => {
-          const ops: Ops<E, A>[] = [];
-          const hasCB: { cb?: () => void } = {};
+          const ops: list.List<Ops<E, A>> = list.empty();
+          const hasCB: { cb?: (o: Ops<E, A>) => void } = {};
 
-          function callCB() {
+          function callCB(o: Ops<E, A>) {
             if (hasCB.cb) {
               const cb = hasCB.cb;
               hasCB.cb = undefined;
-              cb();
+              cb(o);
+            } else {
+              list.push(ops, o);
             }
           }
 
           return {
             s: observable.subscribe(
-              a => {
-                ops.push({ _tag: "offer", a });
-                callCB();
-              },
-              e => {
-                ops.push({ _tag: "error", e: onError(e) });
-                callCB();
-              },
-              () => {
-                ops.push({ _tag: "complete" });
-                callCB();
-              }
+              a => callCB({ _tag: "offer", a }),
+              e => callCB({ _tag: "error", e: onError(e) }),
+              () => callCB({ _tag: "complete" })
             ),
             ops,
             hasCB
@@ -54,11 +48,20 @@ export function encaseObservable<E, A>(
       ({ ops, hasCB }) => {
         return M.pure(
           T.async(callback => {
-            if (ops.length > 0) {
-              return runFromQueue(ops, callback);
+            const op = list.popUnsafe(ops);
+            if (op !== null) {
+              return runFromQueue(op, callback);
             } else {
-              hasCB.cb = () => {
-                runFromQueue(ops, callback)();
+              hasCB.cb = o => {
+                if (list.isNotEmpty(ops)) {
+                  list.push(ops, o);
+                  const op = list.popUnsafe(ops);
+                  if (op !== null) {
+                    runFromQueue(op, callback)();
+                  }
+                } else {
+                  runFromQueue(o, callback)();
+                }
               };
             }
             return () => {};
@@ -70,11 +73,9 @@ export function encaseObservable<E, A>(
 }
 
 function runFromQueue<E, A>(
-  ops: Ops<E, A>[],
+  op: Ops<E, A>,
   callback: (r: Either<E, O.Option<A>>) => void
 ): () => void {
-  const op = ops.splice(0, 1)[0];
-
   switch (op._tag) {
     case "error":
       callback(left(op.e));
