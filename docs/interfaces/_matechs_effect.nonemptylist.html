@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>SinkStepTag | @matechs/effect</title>
+	<title>NonEmptyList | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -59,49 +59,72 @@
 					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.sinksteptag.html">SinkStepTag</a>
+					<a href="_matechs_effect.nonemptylist.html">NonEmptyList</a>
 				</li>
 			</ul>
-			<h1>Enumeration SinkStepTag</h1>
+			<h1>Interface NonEmptyList&lt;A&gt;</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>Implements a basic FIFO list</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-type-parameters">
+				<h3>Type parameters</h3>
+				<ul class="tsd-type-parameters">
+					<li>
+						<h4>A</h4>
+					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel tsd-hierarchy">
+				<h3>Hierarchy</h3>
+				<ul class="tsd-hierarchy">
+					<li>
+						<span class="target">NonEmptyList</span>
+					</li>
+				</ul>
+			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
 						<section class="tsd-index-section ">
-							<h3>Enumeration members</h3>
+							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_matechs_effect.sinksteptag.html#cont" class="tsd-kind-icon">Cont</a></li>
-								<li class="tsd-kind-enum-member tsd-parent-kind-enum"><a href="_matechs_effect.sinksteptag.html#done" class="tsd-kind-icon">Done</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.nonemptylist.html#first" class="tsd-kind-icon">first</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.nonemptylist.html#last" class="tsd-kind-icon">last</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
-				<h2>Enumeration members</h2>
-				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="cont" class="tsd-anchor"></a>
-					<h3>Cont</h3>
-					<div class="tsd-signature tsd-kind-icon">Cont<span class="tsd-signature-symbol">:</span> </div>
+				<h2>Properties</h2>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="first" class="tsd-anchor"></a>
+					<h3>first</h3>
+					<div class="tsd-signature tsd-kind-icon">first<span class="tsd-signature-symbol">:</span> <a href="_matechs_effect.node.html" class="tsd-signature-type">Node</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/125133b/packages/effect/src/stream/step.ts#L14">packages/effect/src/stream/step.ts:14</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/125133b/packages/effect/src/list.ts#L9">packages/effect/src/list.ts:9</a></li>
 						</ul>
 					</aside>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-enum-member tsd-parent-kind-enum">
-					<a name="done" class="tsd-anchor"></a>
-					<h3>Done</h3>
-					<div class="tsd-signature tsd-kind-icon">Done<span class="tsd-signature-symbol">:</span> </div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+					<a name="last" class="tsd-anchor"></a>
+					<h3>last</h3>
+					<div class="tsd-signature tsd-kind-icon">last<span class="tsd-signature-symbol">:</span> <a href="_matechs_effect.node.html" class="tsd-signature-type">Node</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/125133b/packages/effect/src/stream/step.ts#L15">packages/effect/src/stream/step.ts:15</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/125133b/packages/effect/src/list.ts#L10">packages/effect/src/list.ts:10</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -163,14 +186,14 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-enum tsd-parent-kind-module">
-						<a href="_matechs_effect.sinksteptag.html" class="tsd-kind-icon">Sink<wbr>Step<wbr>Tag</a>
+					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_effect.nonemptylist.html" class="tsd-kind-icon">Non<wbr>Empty<wbr>List</a>
 						<ul>
-							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="_matechs_effect.sinksteptag.html#cont" class="tsd-kind-icon">Cont</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="_matechs_effect.nonemptylist.html#first" class="tsd-kind-icon">first</a>
 							</li>
-							<li class=" tsd-kind-enum-member tsd-parent-kind-enum">
-								<a href="_matechs_effect.sinksteptag.html#done" class="tsd-kind-icon">Done</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface">
+								<a href="_matechs_effect.nonemptylist.html#last" class="tsd-kind-icon">last</a>
 							</li>
 						</ul>
 					</li>
