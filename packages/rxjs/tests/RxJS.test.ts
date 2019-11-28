@@ -42,7 +42,7 @@ describe("RxJS", () => {
     const s = S.fromArray([0, 1, 2]);
     const o = O.toObservable(s);
 
-    const a = [];
+    const a: number[] = [];
 
     O.runToObservable(o).subscribe(n => {
       a.push(n);
@@ -58,17 +58,20 @@ describe("RxJS", () => {
     const o = O.toObservable(s);
 
     const a = [];
-    const errors = [];
+    const errors: unknown[] = [];
 
-    O.runToObservable(o).subscribe(n => {
-      a.push(n);
-    }, e => {
-      errors.push(e)
-    });
+    O.runToObservable(o).subscribe(
+      n => {
+        a.push(n);
+      },
+      e => {
+        errors.push(e);
+      }
+    );
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(errors, ["error"])
+    assert.deepEqual(errors, ["error"]);
   });
 
   it("should runToObservable - Abort", async () => {
@@ -76,17 +79,20 @@ describe("RxJS", () => {
     const o = O.toObservable(s);
 
     const a = [];
-    const errors = [];
+    const errors: unknown[] = [];
 
-    O.runToObservable(o).subscribe(n => {
-      a.push(n);
-    }, e => {
-      errors.push(e)
-    });
+    O.runToObservable(o).subscribe(
+      n => {
+        a.push(n);
+      },
+      e => {
+        errors.push(e);
+      }
+    );
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(errors, ["error"])
+    assert.deepEqual(errors, ["error"]);
   });
 
   it("should toObservable - Error", async () => {
@@ -96,7 +102,7 @@ describe("RxJS", () => {
     const r = await T.runToPromise(o);
 
     const a = [];
-    const errors = [];
+    const errors: unknown[] = [];
 
     const sub = r.subscribe(
       n => {
@@ -120,7 +126,7 @@ describe("RxJS", () => {
     const r = await T.runToPromise(o);
 
     const a = [];
-    const errors = [];
+    const errors: unknown[] = [];
 
     const sub = r.subscribe(
       n => {
@@ -146,7 +152,7 @@ describe("RxJS", () => {
     const r = await T.runToPromise(o);
 
     const a = [];
-    const errors = [];
+    const errors: unknown[] = [];
 
     const sub = r.subscribe(
       n => {
