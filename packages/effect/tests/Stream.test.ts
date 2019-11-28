@@ -65,13 +65,15 @@ describe("Stream", () => {
             eventCount = eventCount + 1;
             this.push({ n: eventCount });
           } else {
-            this.destroy(new Error("test"))
+            this.destroy(new Error("test"));
           }
         }
       })
     );
 
-    const res = await T.runToPromiseExit(S.collectArray(S.map(s, ({ n }) => n)));
+    const res = await T.runToPromiseExit(
+      S.collectArray(S.mapM(s, ({ n }) => T.delay(T.pure(n), 100)))
+    );
 
     assert.deepEqual(res, ex.raise(new Error("test")));
   });

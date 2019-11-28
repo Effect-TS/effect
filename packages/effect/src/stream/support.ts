@@ -20,6 +20,8 @@ export function queueUtils<E, A>() {
       hasCB.cb = undefined;
       cb(o);
     } else {
+      // TODO: figure out how to trigger if even possible
+      /* istanbul ignore next */
       list.push(ops, o);
     }
   }
@@ -34,6 +36,8 @@ export function runFromQueue<E, A>(
   switch (op._tag) {
     case "error":
       callback(E.left(op.e));
+      // this will never be called
+      /* istanbul ignore next */
       return () => {};
     case "complete":
       callback(E.right(O.none));
@@ -55,6 +59,8 @@ export function emitter<E, A>(
         return runFromQueue(op, callback);
       } else {
         hasCB.cb = o => {
+          // TODO: figure out how to trigger if even possible, triggered by line 22
+          /* istanbul ignore if */
           if (list.isNotEmpty(ops)) {
             list.push(ops, o);
             const op = list.popUnsafe(ops);
