@@ -21,30 +21,23 @@ export function encaseObservable<E, A>(
       M.bracket(
         T.sync(() => {
           const ops: list.List<Ops<E, A>> = list.empty();
-          const hasCB: { cb?: () => void } = {};
+          const hasCB: { cb?: (o: Ops<E, A>) => void } = {};
 
-          function callCB() {
+          function callCB(o: Ops<E, A>) {
             if (hasCB.cb) {
               const cb = hasCB.cb;
               hasCB.cb = undefined;
-              cb();
+              cb(o);
+            } else {
+              list.push(ops, o);
             }
           }
 
           return {
             s: observable.subscribe(
-              a => {
-                list.push(ops, { _tag: "offer", a });
-                callCB();
-              },
-              e => {
-                list.push(ops, { _tag: "error", e: onError(e) });
-                callCB();
-              },
-              () => {
-                list.push(ops, { _tag: "complete" });
-                callCB();
-              }
+              a => callCB({ _tag: "offer", a }),
+              e => callCB({ _tag: "error", e: onError(e) }),
+              () => callCB({ _tag: "complete" })
             ),
             ops,
             hasCB
@@ -59,10 +52,15 @@ export function encaseObservable<E, A>(
             if (op !== null) {
               return runFromQueue(op, callback);
             } else {
-              hasCB.cb = () => {
-                const op = list.popUnsafe(ops);
-                if (op !== null) {
-                  runFromQueue(op, callback)();
+              hasCB.cb = o => {
+                if (list.isNotEmpty(ops)) {
+                  list.push(ops, o);
+                  const op = list.popUnsafe(ops);
+                  if (op !== null) {
+                    runFromQueue(op, callback)();
+                  }
+                } else {
+                  runFromQueue(o, callback)();
                 }
               };
             }
