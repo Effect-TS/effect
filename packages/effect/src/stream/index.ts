@@ -20,7 +20,7 @@ import * as O from "fp-ts/lib/Option";
 import { none, Option, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { ReadStream } from "fs";
-import { Writable } from "stream";
+import { Writable, Readable } from "stream";
 import { Cause } from "waveguide/lib/exit";
 import * as T from "../";
 import { Fiber } from "../";
@@ -1507,7 +1507,7 @@ export const streamMonad: Monad3E<URI> = {
 
 /* istanbul ignore next */
 function getSourceFromObjectReadStream<A>(
-  stream: ReadStream
+  stream: Readable
 ): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<A>>> {
   return managed.chain(
     managed.encaseEffect(
@@ -1541,7 +1541,7 @@ function getSourceFromObjectReadStream<A>(
 }
 
 /* istanbul ignore next */
-export function fromObjectReadStream<A>(stream: ReadStream) {
+export function fromObjectReadStream<A>(stream: Readable) {
   return fromSource(getSourceFromObjectReadStream<A>(stream));
 }
 

@@ -1,20 +1,19 @@
-import * as S from "../src/stream";
-import * as SK from "../src/stream/sink";
-import * as T from "../src";
-import * as M from "../src/managed";
 import * as assert from "assert";
-import * as ref from "../src/ref";
+import { expect } from "chai";
 import * as array from "fp-ts/lib/Array";
-
+import { eqNumber } from "fp-ts/lib/Eq";
+import { FunctionN, identity } from "fp-ts/lib/function";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import { eqNumber } from "fp-ts/lib/Eq";
-import { Sink, liftPureSink, collectArraySink } from "../src/stream/sink";
-import { sinkCont, SinkStep, sinkDone } from "../src/stream/step";
-import { FunctionN, identity } from "fp-ts/lib/function";
-import { expect } from "chai";
-
+import { Readable } from "stream";
 import * as ex from "waveguide/lib/exit";
+import * as T from "../src";
+import * as M from "../src/managed";
+import * as ref from "../src/ref";
+import * as S from "../src/stream";
+import * as SK from "../src/stream/sink";
+import { collectArraySink, liftPureSink, Sink } from "../src/stream/sink";
+import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
 
 export async function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
@@ -33,6 +32,28 @@ export function expectExit<E, A>(
 }
 
 describe("Stream", () => {
+  it("fromObjectReadStream", async () => {
+    let eventCount = 0;
+
+    const s: S.Stream<T.NoEnv, Error, { n: number }> = S.fromObjectReadStream(
+      new Readable({
+        objectMode: true,
+        read() {
+          if (eventCount < 10) {
+            eventCount = eventCount + 1;
+            this.push({ n: eventCount });
+          } else {
+            this.push(null);
+          }
+        }
+      })
+    );
+
+    const res = await T.runToPromise(S.collectArray(S.map(s, ({ n }) => n)));
+
+    assert.deepEqual(res, array.range(1, 10));
+  });
+
   it("stack safe", async () => {
     const s = S.fromArray(array.range(0, 100000));
 
@@ -62,7 +83,7 @@ describe("Stream", () => {
   it("should use filterRefineWith", async () => {
     const s = S.fromRange(0);
 
-    type Even = number & {_brand: "even"};
+    type Even = number & { _brand: "even" };
 
     function isEven(x: number): x is Even {
       return x % 2 === 0;
