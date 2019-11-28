@@ -5,7 +5,7 @@ import { Option, fromNullable } from "fp-ts/lib/Option";
  * Implements a basic FIFO list
  */
 
-interface NonEmptyList<A> {
+export interface NonEmptyList<A> {
   first: Node<A>;
   last: Node<A>;
 }
