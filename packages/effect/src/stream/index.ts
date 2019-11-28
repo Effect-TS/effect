@@ -43,6 +43,7 @@ import {
   stepMany
 } from "./sink";
 import { isSinkCont, sinkStepLeftover, sinkStepState } from "./step";
+import * as su from "./support";
 
 export type Source<R, E, A> = T.Effect<R, E, Option<A>>;
 
@@ -1508,62 +1509,34 @@ export const streamMonad: Monad3E<URI> = {
 function getSourceFromObjectReadStream<A>(
   stream: ReadStream
 ): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<A>>> {
-  return managed.encaseEffect(
-    T.sync(() => {
-      let open = true;
-      let f: FunctionN<[Ei.Either<Error, O.Option<A>>], void>;
-      const leftover: Array<any> = [];
-      const errors: Array<Error> = [];
+  return managed.chain(
+    managed.encaseEffect(
+      T.sync(() => {
+        const { next, ops, hasCB } = su.queueUtils<Error, A>();
 
-      stream.on("end", () => {
-        if (f) {
-          f(Ei.right(O.none));
-        } else {
-          open = false;
-        }
-      });
+        stream.on("end", () => {
+          next({ _tag: "complete" });
+        });
 
-      stream.on("error", e => {
-        if (f) {
-          f(Ei.left(Ei.toError(e)));
-        } else {
-          errors.push(e);
-        }
-      });
+        stream.on("error", e => {
+          next({ _tag: "error", e: Ei.toError(e) });
+        });
 
-      stream.pipe(
-        new Writable({
-          objectMode: true,
-          write(chunk, _, callback) {
-            if (f) {
-              f(Ei.right(O.some(chunk)));
-            } else {
-              leftover.push(chunk);
+        stream.pipe(
+          new Writable({
+            objectMode: true,
+            write(chunk, _, callback) {
+              next({ _tag: "offer", a: chunk });
+
+              callback();
             }
+          })
+        );
 
-            callback();
-          }
-        })
-      );
-
-      return T.async(res => {
-        if (leftover.length > 0) {
-          res(Ei.right(O.some(leftover.splice(0, 1)[0])));
-        } else {
-          if (errors.length > 0) {
-            res(Ei.left(errors[0]));
-          } else {
-            if (open) {
-              f = res;
-            } else {
-              res(Ei.right(O.none));
-            }
-          }
-        }
-
-        return () => {};
-      });
-    })
+        return { ops, hasCB };
+      })
+    ),
+    ({ hasCB, ops }) => su.emitter(ops, hasCB)
   );
 }
 
@@ -1572,6 +1545,7 @@ export function fromObjectReadStream<A>(stream: ReadStream) {
   return fromSource(getSourceFromObjectReadStream<A>(stream));
 }
 
+// TODO: generalize this to batch over generic stream
 /* istanbul ignore next */
 function getSourceFromObjectReadStreamB<A>(
   stream: ReadStream,
