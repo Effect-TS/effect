@@ -54,6 +54,28 @@ describe("Stream", () => {
     assert.deepEqual(res, array.range(1, 10));
   });
 
+  it("fromObjectReadStream - Error", async () => {
+    let eventCount = 0;
+
+    const s: S.Stream<T.NoEnv, Error, { n: number }> = S.fromObjectReadStream(
+      new Readable({
+        objectMode: true,
+        read() {
+          if (eventCount < 10) {
+            eventCount = eventCount + 1;
+            this.push({ n: eventCount });
+          } else {
+            this.destroy(new Error("test"))
+          }
+        }
+      })
+    );
+
+    const res = await T.runToPromiseExit(S.collectArray(S.map(s, ({ n }) => n)));
+
+    assert.deepEqual(res, ex.raise(new Error("test")));
+  });
+
   it("stack safe", async () => {
     const s = S.fromArray(array.range(0, 100000));
 
