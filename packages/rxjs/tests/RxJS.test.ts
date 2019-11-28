@@ -29,6 +29,44 @@ describe("RxJS", () => {
     assert.deepEqual(r, A.range(0, 2));
   });
 
+  it("should encaseObservable - subject", async () => {
+    const subject = new Rx.Subject();
+    const s = O.encaseObservable(subject, E.toError);
+    const p = S.collectArray(s);
+
+    subject.next(0);
+    subject.next(1);
+
+    const results = T.runToPromise(p);
+
+    subject.next(2);
+    subject.next(3);
+    subject.complete();
+
+    const r = await results;
+
+    assert.deepEqual(r, A.range(2, 3));
+  });
+
+  it("should encaseObservable - replay subject", async () => {
+    const subject = new Rx.ReplaySubject(1);
+    const s = O.encaseObservable(subject, E.toError);
+    const p = S.collectArray(s);
+
+    subject.next(0);
+    subject.next(1);
+
+    const results = T.runToPromise(p);
+
+    subject.next(2);
+    subject.next(3);
+    subject.complete();
+
+    const r = await results;
+
+    assert.deepEqual(r, A.range(1, 3));
+  });
+
   it("should encaseObservable - error", async () => {
     const s = O.encaseObservable(Rx.throwError(new Error("error")), E.toError);
     const p = S.collectArray(S.take(s, 10));
