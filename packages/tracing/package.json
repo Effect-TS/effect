@@ -16,18 +16,18 @@
     "lib"
   ],
   "devDependencies": {
-    "@babel/core": "^7.7.2",
-    "@babel/preset-env": "^7.7.1",
-    "@babel/preset-typescript": "^7.7.2",
+    "@babel/core": "^7.7.4",
+    "@babel/preset-env": "^7.7.4",
+    "@babel/preset-typescript": "^7.7.4",
     "@types/jest": "^24.0.23",
-    "@types/node": "^12.12.11",
+    "@types/node": "^12.12.14",
     "babel-jest": "^24.9.0",
     "jest": "^24.9.0",
-    "lerna": "^3.18.4",
+    "lerna": "^3.19.0",
     "prettier": "^1.19.1",
     "rimraf": "^3.0.0",
-    "ts-jest": "^24.1.0",
-    "ts-node": "^8.5.0",
+    "ts-jest": "^24.2.0",
+    "ts-node": "^8.5.4",
     "typescript": "^3.7.2"
   },
   "peerDependencies": {

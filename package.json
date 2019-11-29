@@ -10,11 +10,11 @@
   ],
   "devDependencies": {
     "dtslint": "^2.0.2",
-    "lerna": "^3.18.4",
+    "lerna": "^3.19.0",
     "prettier": "^1.19.1",
     "tslint": "^5.20.1",
-    "typedoc": "0.15",
-    "typedoc-plugin-lerna-packages": "^0.2.1",
+    "typedoc": "0.15.3",
+    "typedoc-plugin-lerna-packages": "^0.2.2",
     "typescript": "^3.7.2"
   },
   "dependencies": {
