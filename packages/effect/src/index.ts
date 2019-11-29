@@ -1450,20 +1450,15 @@ declare module "fp-ts/lib/HKT" {
 }
 
 export const effect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
-         URI,
-         /**
-          * Map the value produced by an IO
-          * @param io
-          * @param f
-          */
-         map: map_,
-         of: pure,
-         ap: ap_,
-         chain: chain_,
-         bimap: bimap_,
-         mapLeft: mapError,
-         throwError: raiseError
-       };
+  URI,
+  map: map_,
+  of: pure,
+  ap: ap_,
+  chain: chain_,
+  bimap: bimap_,
+  mapLeft: mapError,
+  throwError: raiseError
+};
 
 export const parEffect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
   URI,
