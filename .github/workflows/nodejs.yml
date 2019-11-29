@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - epics
-      - list-for-rxjs
+      - effect
 
 jobs:
   build:
