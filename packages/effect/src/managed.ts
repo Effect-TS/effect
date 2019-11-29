@@ -148,7 +148,7 @@ export interface Chain<R, E, L, A> {
  * @param left
  * @param bind
  */
-export function chain<R, E, L, R2, E2, A>(
+function chain_<R, E, L, R2, E2, A>(
   left: Managed<R, E, L>,
   bind: FunctionN<[L], Managed<R2, E2, A>>
 ): Managed<R & R2, E | E2, A> {
@@ -163,10 +163,10 @@ export function chain<R, E, L, R2, E2, A>(
  * Curried form of chain
  * @param bind
  */
-export function chainWith<R, E, L, A>(
+export function chain<R, E, L, A>(
   bind: FunctionN<[L], Managed<R, E, A>>
 ): <R2, E2>(ma: Managed<R2, E2, L>) => Managed<R & R2, E | E2, A> {
-  return left => chain(left, bind);
+  return left => chain_(left, bind);
 }
 
 /**
@@ -174,21 +174,21 @@ export function chainWith<R, E, L, A>(
  * @param res
  * @param f
  */
-export function map<R, E, L, A>(
+function map_<R, E, L, A>(
   res: Managed<R, E, L>,
   f: FunctionN<[L], A>
 ): Managed<R, E, A> {
-  return chain(res, r => pure(f(r)) as Managed<R, E, A>);
+  return chain_(res, r => pure(f(r)) as Managed<R, E, A>);
 }
 
 /**
- * Curried form of mapWith
+ * Curried form of map
  * @param f
  */
-export function mapWith<L, A>(
+export function map<L, A>(
   f: FunctionN<[L], A>
 ): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> {
-  return <R, E>(res: Managed<R, E, L>) => map(res, f);
+  return <R, E>(res: Managed<R, E, L>) => map_(res, f);
 }
 
 /**
@@ -204,7 +204,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   resb: Managed<R2, E2, B>,
   f: FunctionN<[A, B], C>
 ): Managed<R & R2, E | E2, C> {
-  return chain(resa, a => map(resb, b => f(a, b)));
+  return chain_(resa, a => map_(resb, b => f(a, b)));
 }
 
 /**
@@ -238,7 +238,7 @@ export function ap<R, E, A, R2, E2, B>(
  * @param resfab
  * @param resa
  */
-export function ap_<R, E, A, B, R2, E2>(
+function ap_<R, E, A, B, R2, E2>(
   resfab: Managed<R, E, FunctionN<[A], B>>,
   resa: Managed<R2, E2, A>
 ): Managed<R & R2, E | E2, B> {
@@ -253,7 +253,7 @@ export function ap_<R, E, A, B, R2, E2>(
  * @param b
  */
 export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
-  return map(fa, constant(b));
+  return map_(fa, constant(b));
 }
 
 /**
@@ -276,7 +276,7 @@ export function chainTap<R, E, A, R2, E2>(
   left: Managed<R, E, A>,
   bind: FunctionN<[A], Managed<R2, E2, unknown>>
 ): Managed<R & R2, E | E2, A> {
-  return chain(left, a => as(bind(a), a));
+  return chain_(left, a => as(bind(a), a));
 }
 
 /**
@@ -413,12 +413,12 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const managedMonad: Monad3E<URI> = {
+export const managed: Monad3E<URI> = {
   URI,
   of: pure,
-  map,
+  map: map_,
   ap: ap_,
-  chain
+  chain: chain_
 } as const;
 
 export function getSemigroup<R, E, A>(
