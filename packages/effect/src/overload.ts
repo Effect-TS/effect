@@ -31,6 +31,13 @@ export interface Applicative3E<F extends URIS3> extends Apply3E<F> {
   readonly of: <R, E, A>(a: A) => Kind3<F, R, E, A>;
 }
 
+export interface Alt3E<F extends URIS3> extends Functor3<F> {
+  readonly alt: <R, R2, E, E2, A>(
+    fx: Kind3<F, R, E, A>,
+    fy: () => Kind3<F, R2, E2, A>
+  ) => Kind3<F, R & R2, E | E2, A>;
+}
+
 export interface Monad3E<M extends URIS3>
   extends Applicative3E<M>,
     Chain3E<M> {}

@@ -227,6 +227,6 @@ export function map<R, E, S, A, B, C>(
 ): Sink<R, E, S, A, C> {
   return {
     ...sink,
-    extract: flow(sink.extract, T.mapWith(f))
+    extract: flow(sink.extract, T.map(f))
   };
 }

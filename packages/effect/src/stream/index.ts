@@ -73,7 +73,7 @@ function arrayFold<A>(
           if (cont(current)) {
             return pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
-              T.chainWith(i => {
+              T.chain(i => {
                 return i < as.length
                   ? effect.chain(f(current, as[i]), step)
                   : T.pure(current);
@@ -132,7 +132,7 @@ export function fromSource<R, E, A>(
       return cont(initial)
         ? pipe(
             pull,
-            T.chainWith(out =>
+            T.chain(out =>
               pipe(
                 out,
                 o.fold(
@@ -251,7 +251,7 @@ export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
           r.update(n => n + 1),
           ms
         ),
-        T.mapWith(n => some(n))
+        T.map(n => some(n))
       )
     ),
     fromSource
@@ -287,7 +287,7 @@ export function encaseEffect<R, E, A>(w: T.Effect<R, E, A>): Stream<R, E, A> {
     if (cont(initial)) {
       return pipe(
         w,
-        T.chainWith(a => step(initial, a))
+        T.chain(a => step(initial, a))
       );
     } else {
       return T.pure(initial);
@@ -373,7 +373,7 @@ export function concatL<R, E, A, R2, E2>(
   ): T.Effect<R & R2, E | E2, S> {
     return pipe(
       managed.use(w1, fold1 => fold1(initial, cont, step)),
-      T.chainWith(intermediate => {
+      T.chain(intermediate => {
         /* istanbul ignore else */
         if (cont(intermediate)) {
           return managed.use(w2(), fold2 => fold2(intermediate, cont, step));
@@ -607,14 +607,14 @@ export function scanM<R, E, A, B, R2, E2>(
             // Thus, we switch state from true to false on execution
             return pipe(
               accum.get,
-              T.chainWith(b =>
+              T.chain(b =>
                 base(
                   t2(b, true),
                   s => s[1],
                   (s, a) => effect.map(f(s[0], a), r => t2(r, false))
                 )
               ),
-              T.chainWith(
+              T.chain(
                 // If this is still true, we didn't consume anything so advance
                 s =>
                   s[1]
@@ -754,13 +754,13 @@ export function transduce<R, E, A, R2, E2, S, B>(
               pipe(
                 sinkStepState(nextSinkStep),
                 sink.extract,
-                T.chainWith(b => step(foldState, b)),
-                T.chainWith(nextFoldState => {
+                T.chain(b => step(foldState, b)),
+                T.chain(nextFoldState => {
                   const leftover = sinkStepLeftover(nextSinkStep);
                   // We will re-initialize the sink
                   return pipe(
                     sink.initial,
-                    T.chainWith(nextNextSinkState => {
+                    T.chain(nextNextSinkState => {
                       if (cont(nextFoldState) && leftover.length > 0) {
                         return feedSink(
                           nextFoldState,
@@ -789,14 +789,14 @@ export function transduce<R, E, A, R2, E2, S, B>(
 
       return pipe(
         derivedInitial,
-        T.chainWith(init =>
+        T.chain(init =>
           base(
             init,
             s => cont(s[0]),
             (s, a) => feedSink(s[0], s[1], [a])
           )
         ),
-        T.chainWith(([foldState, sinkState, extract]) =>
+        T.chain(([foldState, sinkState, extract]) =>
           extract && cont(foldState)
             ? effect.chain(sink.extract(sinkState), b => step(foldState, b))
             : T.pure(foldState)
@@ -903,11 +903,9 @@ export function into<R, E, A, R2, E2, S, B>(
   return managed.use(widen<R2, E2>()(stream), fold =>
     pipe(
       sink.initial,
-      T.chainWith(init =>
-        fold(init, isSinkCont, (s, a) => sink.step(s.state, a))
-      ),
-      T.mapWith(s => s.state),
-      T.chainWith(sink.extract)
+      T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
+      T.map(s => s.state),
+      T.chain(sink.extract)
     )
   );
 }
@@ -936,14 +934,14 @@ export function intoLeftover<R, E, A, S, B>(
   return managed.use(stream, fold =>
     pipe(
       sink.initial,
-      T.chainWith(init =>
+      T.chain(init =>
         fold(
           init,
           s => isSinkCont(s),
           (s, a) => sink.step(s.state, a)
         )
       ),
-      T.chainWith(end =>
+      T.chain(end =>
         effect.map(
           sink.extract(end.state),
           b => [b, sinkStepLeftover(end)] as const
@@ -967,7 +965,7 @@ function sinkQueue<R extends T.Env, E, A>(
       managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
     ),
     ([q, latch]) => {
-      const write = T.foldExit(
+      const write = effect.foldExit(
         into(map(stream, some), queueSink(q)) as T.Effect<R, E, void>,
         latch.cause,
         constant(q.offer(none))
@@ -995,7 +993,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
     ([aq, alatch], [bq, blatch]) => {
       const atake = pipe(
         aq.take,
-        T.chainTapWith(opt =>
+        T.chainTap(opt =>
           pipe(
             opt,
             o.fold(
@@ -1009,7 +1007,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
       const agrab = T.raceFirst(atake, alatch.wait);
       const btake = pipe(
         bq.take,
-        T.chainTapWith(opt =>
+        T.chainTap(opt =>
           pipe(
             opt,
             o.fold(
@@ -1057,7 +1055,7 @@ function queueBreakerSource<R, E, A>(
 ): T.Effect<R, E, Option<A>> {
   const take = pipe(
     queue.take,
-    T.chainTapWith(opt =>
+    T.chainTap(opt =>
       pipe(
         opt,
         o.fold(
@@ -1189,7 +1187,7 @@ export function switchLatest<R, E, A>(
                   into(map(stream, some), queueSink(pushQueue)) as any,
                   // We need to trap any errors that occur and send those to internal latch to halt the process
                   // Dont' worry about interrupts, because we perform cleanups for single fiber slot
-                  T.foldExitWith(
+                  T.foldExit(
                     internalBreaker.done,
                     constant(T.pure(undefined)) // we can do nothing because we will delegate to the proxy
                   )
@@ -1210,7 +1208,7 @@ export function switchLatest<R, E, A>(
                   T.raised
                 );
 
-                return T.foldExit(
+                return effect.foldExit(
                   T.raceFirst(pull, breakerError),
                   // In the event of an error either from pull or from upstream we need to shut everything down
                   // On managed unwind the active production fiber will be interrupted if there is one
@@ -1223,7 +1221,7 @@ export function switchLatest<R, E, A>(
                         () =>
                           pipe(
                             T.race(breakerError, waitFiberSlot(fiberSlot)),
-                            T.foldExitWith(
+                            T.foldExit(
                               c => pushBreaker.cause(c), // if we get a latchError forward it through to downstream
                               constant(pushQueue.offer(none)) // otherwise we are done, so lets forward that
                             )
@@ -1358,7 +1356,7 @@ export function merge<R, E, A>(
                           // Process to sink elements into the queue
                           into(map(stream, some), queueSink(pushQueue)) as any,
                           // TODO: I don't think we need to handle interrupts, it shouldn't be possible
-                          T.foldExitWith(
+                          T.foldExit(
                             internalBreaker.done,
                             constant(T.pure(undefined))
                           )
@@ -1373,7 +1371,7 @@ export function merge<R, E, A>(
                           T.raised
                         );
 
-                        return T.foldExit(
+                        return effect.foldExit(
                           T.raceFirst(
                             pull, // we don't want to pull until there is capacity
                             breakerError
@@ -1393,7 +1391,7 @@ export function merge<R, E, A>(
                                       breakerError,
                                       sem.acquireN(maxActive)
                                     ),
-                                    T.foldExitWith(
+                                    T.foldExit(
                                       c => pushBreaker.cause(c),
                                       constant(pushQueue.offer(none))
                                     )

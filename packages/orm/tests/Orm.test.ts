@@ -120,7 +120,7 @@ describe("Orm", () => {
       E.mergeEnv(graceful())
     );
 
-    const program = Do(E.effectMonad)
+    const program = Do(E.effect)
       .bind("db1", E.provide(ormConfig({} as ConnectionOptions))(createPool()))
       .bind("db2", E.provide(ormConfig({} as ConnectionOptions))(createPool()))
       .bindL("res", ({ db1, db2 }) =>

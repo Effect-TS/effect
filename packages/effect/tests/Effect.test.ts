@@ -140,7 +140,7 @@ describe("EffectSafe", () => {
           T.trySyncMap(toError)(() => {
             throw 100;
           }),
-          T.chainErrorWith(_ => T.pure(1))
+          T.chainError(_ => T.pure(1))
         )
       );
 
@@ -286,11 +286,11 @@ describe("EffectSafe", () => {
       assert.deepEqual(a, 1);
     });
 
-    it("foldExitWith", async () => {
+    it("foldExit", async () => {
       const a = await T.runToPromise(
         pipe(
           T.pure(1),
-          T.foldExitWith(
+          T.foldExit(
             () => T.pure(null),
             (n: number) => T.pure(n + 1)
           )
@@ -300,11 +300,11 @@ describe("EffectSafe", () => {
       assert.deepEqual(a, 2);
     });
 
-    it("foldExitWith - error", async () => {
+    it("foldExit - error", async () => {
       const a = await T.runToPromise(
         pipe(
           T.raiseError(1),
-          T.foldExitWith(
+          T.foldExit(
             () => T.pure(1),
             n => T.pure(n + 1)
           )

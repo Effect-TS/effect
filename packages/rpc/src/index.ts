@@ -43,8 +43,8 @@ export function remotely<A extends any[], R, E, B>(
       H.post<{ message: string }, { result: B }>(calculatePath(url, entry, k), {
         data: args
       } as Payload),
-      T.mapWith(r => r.data.result),
-      T.mapErrorWith(e => {
+      T.map(r => r.data.result),
+      T.mapError(e => {
         if (e.response && e.response.data && e.response.data.message) {
           return new Error(e.response.data.message);
         } else {
@@ -157,12 +157,12 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
                   req.headers as any
                 )(module[entry][k](...req.body["data"]))
               ),
-              T.mapWith(x => ({ result: x })),
-              T.mapErrorWith(x => ({ message: x.message }))
+              T.map(x => ({ result: x })),
+              T.mapError(x => ({ message: x.message }))
             )
           )
         ),
-        T.mapWith(() => {})
+        T.map(() => {})
       )
     )
   );

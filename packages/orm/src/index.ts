@@ -17,6 +17,7 @@ import {
 } from "typeorm";
 import { ReadStream } from "fs";
 import { isNonEmpty } from "fp-ts/lib/Array";
+import { effect } from "@matechs/effect/lib";
 
 export interface HasOrmConfig {
   orm: {
@@ -78,7 +79,7 @@ export const ormFactory: (
           )
           .doL(({ c }) =>
             onExit(
-              T.chainError(
+              effect.chainError(
                 pipe(() => c.close(), T.fromPromiseMap(toError)),
                 _ => T.unit
               )

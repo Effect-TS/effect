@@ -30,14 +30,14 @@ describe("Express", () => {
     const res = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/", {})),
-        T.mapWith(s => s.data)
+        T.map(s => s.data)
       )
     );
 
     const res2 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad", {})),
-        T.mapWith(s => s.data),
+        T.map(s => s.data),
         T.mapErrorWith(s => s.response && s.response.data)
       )
     );
@@ -45,7 +45,7 @@ describe("Express", () => {
     const res3 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad2", {})),
-        T.mapWith(s => s.data),
+        T.map(s => s.data),
         T.mapErrorWith(s => s.response && s.response.data)
       )
     );
@@ -53,7 +53,7 @@ describe("Express", () => {
     const res4 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad3", {})),
-        T.mapWith(s => s.data),
+        T.map(s => s.data),
         T.mapErrorWith(s => s.response && s.response.data)
       )
     );

@@ -20,7 +20,7 @@ export const program = withTracer(
     "demo-main"
   )(
     E.provide(C.counterState())(
-      Do(E.effectMonad)
+      Do(E.effect)
         .bind("start", C.currentCount())
         .do(C.count())
         .do(C.count())

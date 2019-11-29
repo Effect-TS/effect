@@ -297,16 +297,6 @@ export function encaseOption<E, A>(
   );
 }
 
-/**
- * Curried function first form of chain
- * @param bind
- */
-export function chainWith<Z, R, E, A>(
-  bind: FunctionN<[Z], Effect<R, E, A>>
-): <R2, E2>(io: Effect<R2, E2, Z>) => Effect<R & R2, E | E2, A> {
-  return io => chain_(io, bind);
-}
-
 export interface Collapse<E1, E2, A1, A2> {
   readonly _tag: EffectTag.Collapse;
 
@@ -316,37 +306,15 @@ export interface Collapse<E1, E2, A1, A2> {
 }
 
 /**
- * Fold the result of an IO into a new IO.
- *
- * This can be thought of as a more powerful form of chain
- * where the computation continues with a new IO depending on the result of inner.
- * @param inner The IO to fold the exit of
- * @param failure
- * @param success
- */
-export function foldExit<R, E1, R2, E2, A1, A2, R3, E3>(
-  inner: Effect<R, E1, A1>,
-  failure: FunctionN<[Cause<E1>], Effect<R2, E2, A2>>,
-  success: FunctionN<[A1], Effect<R3, E3, A2>>
-): Effect<R & R2 & R3, E2 | E3, A2> {
-  return r => ({
-    _tag: EffectTag.Collapse,
-    inner: provideAll(r)(inner),
-    failure: c => provideAll(r)(failure(c)),
-    success: a => provideAll(r)(success(a))
-  });
-}
-
-/**
  * Curried form of foldExit
  * @param failure
  * @param success
  */
-export function foldExitWith<E1, RF, E2, A1, E3, A2, RS>(
+export function foldExit<E1, RF, E2, A1, E3, A2, RS>(
   failure: FunctionN<[Cause<E1>], Effect<RF, E2, A2>>,
   success: FunctionN<[A1], Effect<RS, E3, A2>>
 ): <R>(io: Effect<R, E1, A1>) => Effect<RF & RS & R, E2 | E3, A2> {
-  return io => foldExit(io, failure, success);
+  return io => foldExit_(io, failure, success);
 }
 
 export interface AccessInterruptible<E, A> {
@@ -481,8 +449,6 @@ export function lift<A, B>(
   return <R, E>(io: Effect<R, E, A>) => map_(io, f);
 }
 
-export const mapWith = lift;
-
 /**
  * Map the value produced by an IO to the constant b
  * @param io
@@ -500,25 +466,16 @@ export function to<B>(b: B): <R, E, A>(io: Effect<R, E, A>) => Effect<R, E, B> {
   return io => as(io, b);
 }
 
-/**
- * Sequence a Stack and then produce an effect based on the produced value for observation.
- *
- * Produces the result of the iniital Stack
- * @param inner
- * @param bind
- */
-export function chainTap<R, E, A, R2, E2>(
-  inner: Effect<R, E, A>,
-  bind: FunctionN<[A], Effect<R2, E2, unknown>>
-): Effect<R & R2, E | E2, A> {
-  return chain_(inner, a => as(bind(a), a));
-}
-
-export function chainTapWith<R, E, A>(
+export function chainTap<R, E, A>(
   bind: FunctionN<[A], Effect<R, E, unknown>>
 ): <R2, E2>(inner: Effect<R2, E2, A>) => Effect<R & R2, E | E2, A> {
-  return inner => chainTap(inner, bind);
+  return inner => chainTap_(inner, bind);
 }
+
+const chainTap_ = <R, E, A, R2, E2>(
+  inner: Effect<R, E, A>,
+  bind: FunctionN<[A], Effect<R2, E2, unknown>>
+): Effect<R & R2, E | E2, A> => chain_(inner, a => as(bind(a), a));
 
 /**
  * Map the value produced by an IO to void
@@ -534,66 +491,31 @@ export function asUnit<R, E, A>(io: Effect<R, E, A>): Effect<R, E, void> {
 export const unit: Effect<NoEnv, NoErr, void> = pure(undefined);
 
 /**
- * Produce an new IO that will use the error produced by inner to produce a recovery program
- * @param io
- * @param f
- */
-export function chainError<R, E1, R2, E2, A>(
-  io: Effect<R, E1, A>,
-  f: FunctionN<[E1], Effect<R2, E2, A>>
-): Effect<R & R2, E2, A> {
-  return foldExit(
-    io,
-    cause =>
-      cause._tag === ex.ExitTag.Raise ? f(cause.error) : completed(cause),
-    pure
-  );
-}
-
-/**
  * Curriend form of chainError
  * @param f
  */
-export function chainErrorWith<R, E1, E2, A>(
+export function chainError<R, E1, E2, A>(
   f: FunctionN<[E1], Effect<R, E2, A>>
 ): <R2>(rio: Effect<R2, E1, A>) => Effect<R & R2, E2, A> {
-  return io => chainError(io, f);
+  return io => chainError_(io, f);
 }
 
 /**
  * Map the error produced by an IO
- * @param io
  * @param f
  */
-export function mapError<R, E1, E2, A>(
-  io: Effect<R, E1, A>,
-  f: FunctionN<[E1], E2>
-): Effect<R, E2, A> {
-  return chainError(io, flow(f, raiseError));
-}
-
-/**
- * Curried form of mapError
- * @param f
- */
-export function mapErrorWith<E1, E2>(
+export function mapError<E1, E2>(
   f: FunctionN<[E1], E2>
 ): <R, A>(io: Effect<R, E1, A>) => Effect<R, E2, A> {
-  return <R, A>(io: Effect<R, E1, A>) => mapError(io, f);
+  return <R, A>(io: Effect<R, E1, A>) => mapLeft_(io, f);
 }
 
-/**
- * Map over either the error or value produced by an IO
- * @param io
- * @param leftMap
- * @param rightMap
- */
 function bimap_<R, E1, E2, A, B>(
   io: Effect<R, E1, A>,
   leftMap: FunctionN<[E1], E2>,
   rightMap: FunctionN<[A], B>
 ): Effect<R, E2, B> {
-  return foldExit(
+  return foldExit_(
     io,
     cause =>
       cause._tag === ex.ExitTag.Raise
@@ -601,18 +523,6 @@ function bimap_<R, E1, E2, A, B>(
         : completed(cause),
     flow(rightMap, pure)
   );
-}
-
-/**
- * Curried form of bimap
- * @param leftMap
- * @param rightMap
- */
-export function bimapWith<E1, E2, A, B>(
-  leftMap: FunctionN<[E1], E2>,
-  rightMap: FunctionN<[A], B>
-): <R>(io: Effect<R, E1, A>) => Effect<R, E2, B> {
-  return io => bimap_(io, leftMap, rightMap);
 }
 
 /**
@@ -708,7 +618,7 @@ function ap_<R, E, A, B, R2, E2>(
  * @param io
  */
 export function flip<R, E, A>(io: Effect<R, E, A>): Effect<R, A, E> {
-  return foldExit(
+  return foldExit_(
     io,
     error =>
       error._tag === ex.ExitTag.Raise ? pure(error.error) : completed(error),
@@ -733,7 +643,7 @@ export function forever<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
 export function result<R, E, A>(
   io: Effect<R, E, A>
 ): Effect<R, NoErr, Exit<E, A>> {
-  return foldExit(
+  return foldExit_(
     io,
     c => pure(c) as Effect<R, NoErr, Exit<E, A>>,
     d => pure(ex.done(d))
@@ -1331,7 +1241,7 @@ export function parAp_<R, R2, E, E2, A, B>(
  * @param io
  */
 export function orAbort<R, E, A>(io: Effect<R, E, A>): Effect<R, NoErr, A> {
-  return chainError(io, e => raiseAbort(e));
+  return chainError_(io, e => raiseAbort(e));
 }
 
 /**
@@ -1449,15 +1359,102 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const effect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
+function chainError_<R, E1, R2, E2, A>(
+  io: Effect<R, E1, A>,
+  f: FunctionN<[E1], Effect<R2, E2, A>>
+): Effect<R & R2, E2, A> {
+  return foldExit_(
+    io,
+    cause =>
+      cause._tag === ex.ExitTag.Raise ? f(cause.error) : completed(cause),
+    pure
+  );
+}
+
+export interface EffectMonad
+  extends Monad3E<URI>,
+    Bifunctor3<URI>,
+    MonadThrow3E<URI> {
+  /**
+   * Produce an new IO that will use the error produced by inner to produce a recovery program
+   * @param io
+   * @param f
+   */
+  chainError<R, E1, R2, E2, A>(
+    io: Effect<R, E1, A>,
+    f: FunctionN<[E1], Effect<R2, E2, A>>
+  ): Effect<R & R2, E2, A>;
+
+  /**
+   * Fold the result of an IO into a new IO.
+   *
+   * This can be thought of as a more powerful form of chain
+   * where the computation continues with a new IO depending on the result of inner.
+   * @param inner The IO to fold the exit of
+   * @param failure
+   * @param success
+   */
+  foldExit<R, E1, R2, E2, A1, A2, R3, E3>(
+    inner: Effect<R, E1, A1>,
+    failure: FunctionN<[Cause<E1>], Effect<R2, E2, A2>>,
+    success: FunctionN<[A1], Effect<R3, E3, A2>>
+  ): Effect<R & R2 & R3, E2 | E3, A2>;
+
+  /**
+   * Sequence a Stack and then produce an effect based on the produced value for observation.
+   *
+   * Produces the result of the iniital Stack
+   * @param inner
+   * @param bind
+   */
+  chainTap<R, E, A, R2, E2>(
+    inner: Effect<R, E, A>,
+    bind: FunctionN<[A], Effect<R2, E2, unknown>>
+  ): Effect<R & R2, E | E2, A>;
+
+  /**
+   * Map over either the error or value produced by an IO
+   * @param io
+   * @param leftMap
+   * @param rightMap
+   */
+  bimap<R, E1, E2, A, B>(
+    io: Effect<R, E1, A>,
+    leftMap: FunctionN<[E1], E2>,
+    rightMap: FunctionN<[A], B>
+  ): Effect<R, E2, B>;
+
+  /**
+   * Map the error produced by an IO
+   * @param io
+   * @param f
+   */
+  mapError: EffectMonad["mapLeft"];
+}
+
+const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) => r => ({
+  _tag: EffectTag.Collapse,
+  inner: provideAll(r)(inner),
+  failure: c => provideAll(r)(failure(c)),
+  success: a => provideAll(r)(success(a))
+});
+
+const mapLeft_: EffectMonad["mapLeft"] = (io, f) =>
+  chainError_(io, flow(f, raiseError));
+
+export const effect: EffectMonad = {
   URI,
   map: map_,
   of: pure,
   ap: ap_,
   chain: chain_,
   bimap: bimap_,
-  mapLeft: mapError,
-  throwError: raiseError
+  mapLeft: mapLeft_,
+  mapError: mapLeft_,
+  throwError: raiseError,
+  chainError: chainError_,
+  foldExit: foldExit_,
+  chainTap: chainTap_
 };
 
 export const parEffect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
@@ -1467,14 +1464,15 @@ export const parEffect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
   ap: parAp_,
   chain: chain_,
   bimap: bimap_,
-  mapLeft: mapError,
+  mapLeft: mapLeft_,
   throwError: raiseError
-} as const;
+};
 
 const {
   ap,
   apFirst,
   apSecond,
+  // toto
   bimap,
   chain,
   chainFirst,
@@ -1525,7 +1523,7 @@ export function getMonoid<R, E, A>(m: Monoid<A>): Monoid<Effect<R, E, A>> {
 export function when(
   predicate: boolean
 ): <R, E, A>(ma: Effect<R, E, A>) => Effect<R, E, Op.Option<A>> {
-  return ma => (predicate ? effect.map(ma, Op.some) : effect.of(Op.none));
+  return ma => (predicate ? map_(ma, Op.some) : pure(Op.none));
 }
 
 export function or_(
@@ -1535,8 +1533,7 @@ export function or_(
 ) => <R2, E2, B>(
   mb: Effect<R2, E2, B>
 ) => Effect<R & R2, E | E2, Ei.Either<A, B>> {
-  return ma => mb =>
-    predicate ? effect.map(ma, Ei.left) : effect.map(mb, Ei.right);
+  return ma => mb => (predicate ? map_(ma, Ei.left) : map_(mb, Ei.right));
 }
 
 export function or<R, E, A>(
@@ -1545,7 +1542,7 @@ export function or<R, E, A>(
   mb: Effect<R2, E2, B>
 ) => (predicate: boolean) => Effect<R & R2, E | E2, Ei.Either<A, B>> {
   return mb => predicate =>
-    predicate ? effect.map(ma, Ei.left) : effect.map(mb, Ei.right);
+    predicate ? map_(ma, Ei.left) : map_(mb, Ei.right);
 }
 
 export function alt_(
@@ -1563,7 +1560,7 @@ export function alt<R, E, A>(
 export function fromNullableM<R, E, A>(
   ma: Effect<R, E, A>
 ): Effect<R, E, Option<A>> {
-  return effect.map(ma, Op.fromNullable);
+  return map_(ma, Op.fromNullable);
 }
 
 export function sequenceP(
@@ -1609,17 +1606,17 @@ export function getCauseValidationM<E>(
     URI,
     // @ts-ignore
     _E: undefined as any,
-    of: effect.of,
-    map: effect.map,
-    chain: effect.chain,
+    of: pure,
+    map: map_,
+    chain: chain_,
     ap: <R, R2, A, B>(
       fab: Effect<R, E, (a: A) => B>,
       fa: Effect<R2, E, A>
     ): Effect<R & R2, E, B> =>
-      foldExit(
+      foldExit_(
         fab,
         fabe =>
-          foldExit(
+          foldExit_(
             fa,
             fae => raised(S.concat(fabe, fae)),
             _ => raised(fabe)
@@ -1631,9 +1628,9 @@ export function getCauseValidationM<E>(
       fa: Effect<R, E, A>,
       fb: () => Effect<R2, E, A>
     ): Effect<R & R2, E, A> =>
-      foldExit(
+      foldExit_(
         fa,
-        e => foldExit(fb(), fbe => raised(S.concat(e, fbe)), pure),
+        e => foldExit_(fb(), fbe => raised(S.concat(e, fbe)), pure),
         pure
       )
   };

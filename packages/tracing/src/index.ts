@@ -53,7 +53,7 @@ function runWithSpan<R, A>(
 ) {
   return pipe(
     ma,
-    T.chainErrorWith(e =>
+    T.chainError(e =>
       pipe(
         T.sync(() => {
           span.setTag(ERROR, e.message);
@@ -62,7 +62,7 @@ function runWithSpan<R, A>(
         T.chain(() => T.raiseError(e))
       )
     ),
-    T.chainWith(r =>
+    T.chain(r =>
       Do(T.effect)
         .do(
           T.sync(() => {
