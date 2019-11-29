@@ -27,9 +27,6 @@ export interface Chain3E<F extends URIS3> extends Apply3E<F> {
   ) => Kind3<F, R & R2, E | E2, B>;
 }
 
-/**
- * @since 2.0.0
- */
 export interface Applicative3E<F extends URIS3> extends Apply3E<F> {
   readonly of: <R, E, A>(a: A) => Kind3<F, R, E, A>;
 }
