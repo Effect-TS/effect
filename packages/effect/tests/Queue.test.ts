@@ -6,7 +6,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("QueueSafe", () => {
   it("should use unbounded queue", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bind("queue", Q.unboundedQueue<number>())
       .doL(({ queue }) => queue.offer(1))
       .doL(({ queue }) => queue.offer(1))
@@ -22,7 +22,7 @@ describe("QueueSafe", () => {
   });
 
   it("should use bounded queue", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bind("queue", Q.boundedQueue<number>(3))
       .doL(({ queue }) => queue.offer(1))
       .doL(({ queue }) => queue.offer(1))
@@ -38,7 +38,7 @@ describe("QueueSafe", () => {
   });
 
   it("should use dropping queue", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bind("queue", Q.droppingQueue<number>(3))
       .doL(({ queue }) => queue.offer(1))
       .doL(({ queue }) => queue.offer(1))
@@ -54,7 +54,7 @@ describe("QueueSafe", () => {
   });
 
   it("should use dropping queue - 2", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bind("queue", Q.droppingQueue<number>(2))
       .doL(({ queue }) => queue.offer(2))
       .doL(({ queue }) => queue.offer(1))
@@ -69,7 +69,7 @@ describe("QueueSafe", () => {
   });
 
   it("should use sliding queue", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bind("queue", Q.slidingQueue<number>(3))
       .doL(({ queue }) => queue.offer(1))
       .doL(({ queue }) => queue.offer(1))
@@ -85,7 +85,7 @@ describe("QueueSafe", () => {
   });
 
   it("should use sliding queue - 2", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bind("queue", Q.slidingQueue<number>(2))
       .doL(({ queue }) => queue.offer(1))
       .doL(({ queue }) => queue.offer(1))

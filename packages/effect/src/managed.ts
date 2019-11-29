@@ -129,7 +129,9 @@ export function suspend<R, E, R2, E2, A>(
   return r =>
     ({
       _tag: ManagedTag.Suspended,
-      suspended: T.map(T.provideAll(r)(suspended), m => (_: T.NoEnv) => m(r))
+      suspended: T.effect.map(T.provideAll(r)(suspended), m => (_: T.NoEnv) =>
+        m(r)
+      )
     } as any);
 }
 
@@ -325,13 +327,13 @@ export function use<R, E, A, R2, E2, B>(
       case ManagedTag.Pure:
         return f(c.value);
       case ManagedTag.Encase:
-        return T.chain(c.acquire, f);
+        return T.effect.chain(c.acquire, f);
       case ManagedTag.Bracket:
         return T.bracket(c.acquire, c.release, f);
       case ManagedTag.BracketExit:
         return T.bracketExit(c.acquire, (a, e) => c.release(a, e as any), f);
       case ManagedTag.Suspended:
-        return T.chain(c.suspended, consume(f));
+        return T.effect.chain(c.suspended, consume(f));
       case ManagedTag.Chain:
         return use(c.left, a => use(c.bind(a), f));
     }
@@ -359,25 +361,25 @@ export function allocate<R, E, A>(
 
     switch (c._tag) {
       case ManagedTag.Pure:
-        return T.pure({ a: c.value, release: T.unit });
+        return T.effect.of({ a: c.value, release: T.unit });
       case ManagedTag.Encase:
-        return T.map(c.acquire, a => ({ a, release: T.unit }));
+        return T.effect.map(c.acquire, a => ({ a, release: T.unit }));
       case ManagedTag.Bracket:
-        return T.map(c.acquire, a => ({ a, release: c.release(a) }));
+        return T.effect.map(c.acquire, a => ({ a, release: c.release(a) }));
       case ManagedTag.BracketExit:
         // best effort, because we cannot know what the exit status here
-        return T.map(c.acquire, a => ({
+        return T.effect.map(c.acquire, a => ({
           a,
           release: c.release(a, done(undefined))
         }));
       case ManagedTag.Suspended:
-        return T.chain(c.suspended, wm => allocate(wm));
+        return T.effect.chain(c.suspended, wm => allocate(wm));
       case ManagedTag.Chain:
         return T.bracketExit(
           allocate(c.left),
           (leak, exit) => (exit._tag === ExitTag.Done ? T.unit : leak.release),
           leak =>
-            T.map(
+            T.effect.map(
               allocate(c.bind(leak.a)),
               // Combine the finalizer actions of the outer and inner resource
               innerLeak => ({

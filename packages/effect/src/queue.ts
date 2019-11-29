@@ -54,7 +54,10 @@ function makeConcurrentQueueImpl<A>(
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: FunctionN<[T.Effect<T.NoEnv, never, A>], T.Effect<T.NoEnv, never, A>>
+  takeGate: FunctionN<
+    [T.Effect<T.NoEnv, never, A>],
+    T.Effect<T.NoEnv, never, A>
+  >
 ): ConcurrentQueue<A> {
   function cleanupLatch(
     latch: Deferred<T.NoEnv, never, A>
@@ -74,7 +77,7 @@ function makeConcurrentQueueImpl<A>(
 
   const take = takeGate(
     T.bracketExit(
-      T.chain(factory, latch =>
+      T.effect.chain(factory, latch =>
         state.modify(current =>
           pipe(
             current,
@@ -90,7 +93,7 @@ function makeConcurrentQueueImpl<A>(
                   poption.map(
                     ([next, q]) =>
                       [
-                        makeTicket(T.pure(next), T.unit),
+                        makeTicket(T.effect.of(next), T.unit),
                         right(q) as State<A>
                       ] as const
                   ),
@@ -160,7 +163,7 @@ export function unboundedQueue<A>(): T.Effect<
   never,
   ConcurrentQueue<A>
 > {
-  return T.map(makeRef(initial<A>()), ref =>
+  return T.effect.map(makeRef(initial<A>()), ref =>
     makeConcurrentQueueImpl(
       ref,
       makeDeferred<T.NoEnv, never, A>(),
@@ -184,7 +187,7 @@ export function slidingQueue<A>(
 ): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.map(makeRef(initial<A>()), ref =>
+    T.effect.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),
@@ -205,7 +208,7 @@ export function droppingQueue<A>(
 ): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.map(makeRef(initial<A>()), ref =>
+    T.effect.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),

@@ -105,7 +105,7 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
       const from = (
         source: T.Effect<R, E, A>
       ): T.Effect<T.NoEnv, T.NoErr, void> => {
-        const completed = T.chain(
+        const completed = T.effect.chain(
           T.result(T.provideAll(r)(source)),
           complete
         );

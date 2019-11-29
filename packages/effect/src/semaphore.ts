@@ -146,7 +146,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     );
 
   const ticketN = (n: number): T.Effect<T.NoEnv, never, Ticket<void>> =>
-    T.chain(makeDeferred<unknown, never, void>(), latch =>
+    T.effect.chain(makeDeferred<unknown, never, void>(), latch =>
       ref.modify(current =>
         pipe(
           current,
@@ -186,7 +186,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     return T.bracket(acquire, constant(release), () => inner);
   };
 
-  const available = T.map(
+  const available = T.effect.map(
     ref.get,
     e.fold(q => -1 * q.size(), identity)
   );
@@ -211,6 +211,6 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 export function makeSemaphore(n: number): T.Effect<T.NoEnv, never, Semaphore> {
   return T.applySecond(
     sanityCheck(n),
-    T.map(makeRef(right(n) as State), makeSemaphoreImpl)
+    T.effect.map(makeRef(right(n) as State), makeSemaphoreImpl)
   );
 }

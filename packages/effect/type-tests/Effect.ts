@@ -4,7 +4,7 @@ import { ATypeOf, EnvOf } from "../src/overload";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 
-_.pure(1); // $ExpectType Effect<unknown, never, number>
+_.effect.of(1); // $ExpectType Effect<unknown, never, number>
 
 interface EnvA {
   envA: {
@@ -18,14 +18,14 @@ interface EnvB {
   };
 }
 
-const fa = _.accessM(({ envA }: EnvA) => _.pure(envA.foo));
-const fb = _.accessM(({ envB }: EnvB) => _.pure(envB.foo));
+const fa = _.accessM(({ envA }: EnvA) => _.effect.of(envA.foo)); // $ExpectType Effect<EnvA, never, string>
+const fb = _.accessM(({ envB }: EnvB) => _.effect.of(envB.foo)); // $ExpectType Effect<EnvB, never, string>
 
-const program = _.effectMonad.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
+const program = _.effect.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
 
 const fae = _.accessM(({ envA }: EnvA) => _.raiseError(envA.foo));
 
-_.effectMonad.chain(fae, _ => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
+_.effect.chain(fae, _ => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
 
 _.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
 
@@ -68,7 +68,7 @@ type ATypeOfO = ATypeOf<Env1String>; // $ExpectType string
 //@ts-ignore
 type ATypeOfNever = ATypeOf<NeverString>; // $ExpectType string
 
-const M = _.effectMonad;
+const M = _.effect;
 
 //@ts-ignore
 const doAErr = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: never; b: never; }>

@@ -13,6 +13,7 @@ import { array, range } from "fp-ts/lib/Array";
 import * as ex from "waveguide/lib/exit";
 import * as _ from "../src";
 import { monoidSum } from "fp-ts/lib/Monoid";
+import { identity } from "fp-ts/lib/function";
 
 describe("EffectSafe", () => {
   describe("Extra", () => {
@@ -21,7 +22,7 @@ describe("EffectSafe", () => {
         increment: 2
       };
 
-      const program = array.traverse(T.effectMonad)(range(1, 50000), n =>
+      const program = array.traverse(T.parEffect)(range(1, 50000), n =>
         T.accessM(({ increment }: typeof config) => T.sync(() => n + increment))
       );
 
@@ -65,19 +66,19 @@ describe("EffectSafe", () => {
     });
 
     it("result", async () => {
-      const a = await T.runToPromiseExit(T.result(T.pure(1)));
+      const a = await T.runToPromiseExit(T.result(T.effect.of(1)));
 
       assert.deepEqual(a, ex.done(ex.done(1)));
     });
 
     it("uninterruptible", async () => {
-      const a = await T.runToPromiseExit(T.uninterruptible(T.pure(1)));
+      const a = await T.runToPromiseExit(T.uninterruptible(T.effect.of(1)));
 
       assert.deepEqual(a, ex.done(1));
     });
 
     it("interruptible", async () => {
-      const a = await T.runToPromiseExit(T.interruptible(T.pure(1)));
+      const a = await T.runToPromiseExit(T.interruptible(T.effect.of(1)));
 
       assert.deepEqual(a, ex.done(1));
     });
@@ -122,7 +123,7 @@ describe("EffectSafe", () => {
           T.trySyncMap(toError)(() => {
             throw 100;
           }),
-          T.chainErrorWith(_ => T.pure(1))
+          T.chainErrorWith(_ => T.effect.of(1))
         )
       );
 
@@ -130,40 +131,56 @@ describe("EffectSafe", () => {
     });
 
     it("when", async () => {
-      const a = await T.runToPromiseExit(T.when(true)(T.pure(1)));
-      const b = await T.runToPromiseExit(T.when(false)(T.pure(1)));
+      const a = await T.runToPromiseExit(T.when(true)(T.effect.of(1)));
+      const b = await T.runToPromiseExit(T.when(false)(T.effect.of(1)));
 
       assert.deepEqual(a, ex.done(some(1)));
       assert.deepEqual(b, ex.done(none));
     });
 
     it("or", async () => {
-      const a = await T.runToPromiseExit(T.or(T.pure(1))(T.pure(2))(true));
-      const b = await T.runToPromiseExit(T.or(T.pure(1))(T.pure(2))(false));
+      const a = await T.runToPromiseExit(
+        T.or(T.effect.of(1))(T.effect.of(2))(true)
+      );
+      const b = await T.runToPromiseExit(
+        T.or(T.effect.of(1))(T.effect.of(2))(false)
+      );
 
       assert.deepEqual(a, ex.done(E.left(1)));
       assert.deepEqual(b, ex.done(E.right(2)));
     });
 
     it("or_", async () => {
-      const a = await T.runToPromiseExit(T.or_(true)(T.pure(1))(T.pure(2)));
-      const b = await T.runToPromiseExit(T.or_(false)(T.pure(1))(T.pure(2)));
+      const a = await T.runToPromiseExit(
+        T.or_(true)(T.effect.of(1))(T.effect.of(2))
+      );
+      const b = await T.runToPromiseExit(
+        T.or_(false)(T.effect.of(1))(T.effect.of(2))
+      );
 
       assert.deepEqual(a, ex.done(E.left(1)));
       assert.deepEqual(b, ex.done(E.right(2)));
     });
 
     it("alt", async () => {
-      const a = await T.runToPromiseExit(T.alt(T.pure(1))(T.pure(2))(true));
-      const b = await T.runToPromiseExit(T.alt(T.pure(1))(T.pure(2))(false));
+      const a = await T.runToPromiseExit(
+        T.alt(T.effect.of(1))(T.effect.of(2))(true)
+      );
+      const b = await T.runToPromiseExit(
+        T.alt(T.effect.of(1))(T.effect.of(2))(false)
+      );
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
     });
 
     it("alt_", async () => {
-      const a = await T.runToPromiseExit(T.alt_(true)(T.pure(1))(T.pure(2)));
-      const b = await T.runToPromiseExit(T.alt_(false)(T.pure(1))(T.pure(2)));
+      const a = await T.runToPromiseExit(
+        T.alt_(true)(T.effect.of(1))(T.effect.of(2))
+      );
+      const b = await T.runToPromiseExit(
+        T.alt_(false)(T.effect.of(1))(T.effect.of(2))
+      );
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
@@ -177,7 +194,9 @@ describe("EffectSafe", () => {
       const module = pipe(T.noEnv, T.mergeEnv(env));
 
       const a = await T.runToPromiseExit(
-        T.provide(module)(T.accessM(({ value }: typeof env) => T.pure(value)))
+        T.provide(module)(
+          T.accessM(({ value }: typeof env) => T.effect.of(value))
+        )
       );
 
       const b = await T.runToPromiseExit(
@@ -197,11 +216,11 @@ describe("EffectSafe", () => {
       }
 
       const program = T.accessM(({ nameLength }: EnvNameLength) =>
-        T.pure(nameLength + 1)
+        T.effect.of(nameLength + 1)
       );
 
       const provider = T.accessM(({ name }: EnvName) =>
-        T.pure({ nameLength: name.length } as EnvNameLength)
+        T.effect.of({ nameLength: name.length } as EnvNameLength)
       );
 
       const env: EnvName = {
@@ -231,16 +250,16 @@ describe("EffectSafe", () => {
 
       const program = T.accessM(
         ({ nameLength, surnameLength }: EnvNameLength & EnvSurNameLength) =>
-          T.pure(nameLength + surnameLength)
+          T.effect.of(nameLength + surnameLength)
       );
 
       const nameLengthProvider = T.accessM(({ name }: EnvName) =>
-        T.pure({
+        T.effect.of({
           nameLength: name.length
         } as EnvNameLength)
       );
       const surnameLengthProvider = T.accessM(({ surName }: EnvSurname) =>
-        T.pure({
+        T.effect.of({
           surnameLength: surName.length
         } as EnvSurNameLength)
       );
@@ -263,7 +282,7 @@ describe("EffectSafe", () => {
     });
 
     it("promise", async () => {
-      const a = await T.runToPromise(T.pure(1));
+      const a = await T.runToPromise(T.effect.of(1));
 
       assert.deepEqual(a, 1);
     });
@@ -271,10 +290,10 @@ describe("EffectSafe", () => {
     it("foldExitWith", async () => {
       const a = await T.runToPromise(
         pipe(
-          T.pure(1),
+          T.effect.of(1),
           T.foldExitWith(
-            () => T.pure(null),
-            (n: number) => T.pure(n + 1)
+            () => T.effect.of(null),
+            (n: number) => T.effect.of(n + 1)
           )
         )
       );
@@ -287,8 +306,8 @@ describe("EffectSafe", () => {
         pipe(
           T.raiseError(1),
           T.foldExitWith(
-            () => T.pure(1),
-            n => T.pure(n + 1)
+            () => T.effect.of(1),
+            n => T.effect.of(n + 1)
           )
         )
       );
@@ -297,8 +316,8 @@ describe("EffectSafe", () => {
     });
 
     it("fromNullableM", async () => {
-      const a = await T.runToPromiseExit(T.fromNullableM(T.pure(null)));
-      const b = await T.runToPromiseExit(T.fromNullableM(T.pure(1)));
+      const a = await T.runToPromiseExit(T.fromNullableM(T.effect.of(null)));
+      const b = await T.runToPromiseExit(T.fromNullableM(T.effect.of(1)));
 
       assert.deepEqual(a, ex.done(none));
       assert.deepEqual(b, ex.done(some(1)));
@@ -308,15 +327,15 @@ describe("EffectSafe", () => {
   describe("Concurrent", () => {
     it("ap", async () => {
       const double = (n: number): number => n * 2;
-      const mab = T.pure(double);
-      const ma = T.pure(1);
-      const x = await T.runToPromiseExit(T.concurrentEffectMonad.ap(mab, ma));
+      const mab = T.effect.of(double);
+      const ma = T.effect.of(1);
+      const x = await T.runToPromiseExit(T.parEffect.ap(mab, ma));
       assert.deepStrictEqual(x, ex.done(2));
     });
 
     it("sequenceP", async () => {
       const res = await T.runToPromiseExit(
-        T.sequenceP(1)([T.pure(1), T.pure(2)])
+        T.sequenceP(1)([T.effect.of(1), T.effect.of(2)])
       );
 
       assert.deepEqual(res, ex.done([1, 2]));
@@ -326,28 +345,28 @@ describe("EffectSafe", () => {
   describe("Monad", () => {
     it("map", async () => {
       const double = (n: number): number => n * 2;
-      const x = await T.runToPromiseExit(T.effectMonad.map(T.pure(1), double));
+      const x = await T.runToPromiseExit(T.effect.map(T.effect.of(1), double));
       assert.deepStrictEqual(x, ex.done(2));
     });
 
     it("ap", async () => {
       const double = (n: number): number => n * 2;
-      const mab = T.pure(double);
-      const ma = T.pure(1);
-      const x = await T.runToPromiseExit(T.effectMonad.ap(mab, ma));
+      const mab = T.effect.of(double);
+      const ma = T.effect.of(1);
+      const x = await T.runToPromiseExit(T.effect.ap(mab, ma));
       assert.deepStrictEqual(x, ex.done(2));
     });
 
     it("chain", async () => {
       const e1 = await T.runToPromiseExit(
-        T.effectMonad.chain(T.pure("foo"), a =>
-          a.length > 2 ? T.pure(a.length) : T.raiseError("foo")
+        T.effect.chain(T.effect.of("foo"), a =>
+          a.length > 2 ? T.effect.of(a.length) : T.raiseError("foo")
         )
       );
       assert.deepStrictEqual(e1, ex.done(3));
       const e2 = await T.runToPromiseExit(
-        T.effectMonad.chain(T.pure("a"), a =>
-          a.length > 2 ? T.pure(a.length) : T.raiseError("foo")
+        T.effect.chain(T.effect.of("a"), a =>
+          a.length > 2 ? T.effect.of(a.length) : T.raiseError("foo")
         )
       );
       assert.deepStrictEqual(e2, ex.raise("foo"));
@@ -359,17 +378,17 @@ describe("EffectSafe", () => {
       const f = (s: string): number => s.length;
       const g = (n: number): boolean => n > 2;
 
-      const e1 = await T.runToPromiseExit(T.effectMonad.bimap(T.pure(1), f, g));
+      const e1 = await T.runToPromiseExit(T.effect.bimap(T.effect.of(1), f, g));
       assert.deepStrictEqual(e1, ex.done(false));
       const e2 = await T.runToPromiseExit(
-        T.effectMonad.bimap(T.raiseError("foo"), f, g)
+        T.effect.bimap(T.raiseError("foo"), f, g)
       );
       assert.deepStrictEqual(e2, ex.raise(3));
     });
 
     it("mapLeft", async () => {
       const e = await T.runToPromiseExit(
-        T.effectMonad.mapLeft(T.raiseError("1"), x => new Error(x))
+        T.effect.mapLeft(T.raiseError("1"), x => new Error(x))
       );
       assert.deepStrictEqual(e, ex.raise(new Error("1")));
     });
@@ -388,7 +407,7 @@ describe("EffectSafe", () => {
   });
 
   it("fromPredicate", async () => {
-    const gt2 = T.pipeF.fromPredicate(
+    const gt2 = T.fromPredicate(
       (n: number) => n >= 2,
       n => `Invalid number ${n}`
     );
@@ -400,7 +419,7 @@ describe("EffectSafe", () => {
     // refinements
     const isNumber = (u: string | number): u is number => typeof u === "number";
     const e3 = await T.runToPromiseExit(
-      T.pipeF.fromPredicate(isNumber, () => "not a number")(4)
+      T.fromPredicate(isNumber, () => "not a number")(4)
     );
     assert.deepStrictEqual(e3, ex.done(4));
   });
@@ -409,8 +428,8 @@ describe("EffectSafe", () => {
     let log: Array<string> = [];
 
     const acquireFailure = T.raiseError("acquire failure");
-    const acquireSuccess = T.pure({ res: "acquire success" });
-    const useSuccess = () => T.pure("use success");
+    const acquireSuccess = T.effect.of({ res: "acquire success" });
+    const useSuccess = () => T.effect.of("use success");
     const useFailure = () => T.raiseError("use failure");
     const releaseSuccess = () =>
       T.sync(() => {
@@ -477,8 +496,8 @@ describe("EffectSafe", () => {
     let log: Array<string> = [];
 
     const acquireFailure = T.raiseError("acquire failure");
-    const acquireSuccess = T.pure({ res: "acquire success" });
-    const useSuccess = () => T.pure("use success");
+    const acquireSuccess = T.effect.of({ res: "acquire success" });
+    const useSuccess = () => T.effect.of("use success");
     const useFailure = () => T.raiseError("use failure");
     const releaseSuccess = () =>
       T.sync(() => {
@@ -544,11 +563,11 @@ describe("EffectSafe", () => {
   it("getCauseValidationM", async () => {
     const M = T.getValidationM(semigroupString);
 
-    const f = (s: string) => T.pure(s.length);
+    const f = (s: string) => M.of(s.length);
 
     assert.deepStrictEqual(
-      await T.runToPromiseExit(M.chain(T.pure("abc"), f)),
-      await T.runToPromiseExit(T.pure(3))
+      await T.runToPromiseExit(M.chain(T.effect.of("abc"), f)),
+      await T.runToPromiseExit(T.effect.of(3))
     );
     assert.deepStrictEqual(
       await T.runToPromiseExit(M.chain(T.raiseError("a"), f)),
@@ -562,22 +581,22 @@ describe("EffectSafe", () => {
     );
     assert.deepStrictEqual(
       await T.runToPromiseExit(M.of(1)),
-      await T.runToPromiseExit(T.pure(1))
+      await T.runToPromiseExit(T.effect.of(1))
     );
 
     const double = (n: number) => n * 2;
 
     assert.deepStrictEqual(
-      await T.runToPromiseExit(M.ap(T.pure(double), T.pure(1))),
-      await T.runToPromiseExit(T.pure(2))
+      await T.runToPromiseExit(M.ap(T.effect.of(double), T.effect.of(1))),
+      await T.runToPromiseExit(T.effect.of(2))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(M.ap(T.pure(double), T.raiseError("foo"))),
+      await T.runToPromiseExit(M.ap(T.effect.of(double), T.raiseError("foo"))),
       await T.runToPromiseExit(T.raiseError("foo"))
     );
     assert.deepStrictEqual(
       await T.runToPromiseExit(
-        M.ap(T.raiseError<string, (n: number) => number>("foo"), T.pure(1))
+        M.ap(T.raiseError<string, (n: number) => number>("foo"), T.effect.of(1))
       ),
       await T.runToPromiseExit(T.raiseError("foo"))
     );
@@ -586,12 +605,12 @@ describe("EffectSafe", () => {
       await T.runToPromiseExit(T.raiseError("foobar"))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(M.alt(T.raiseError("a"), () => T.pure(1))),
-      await T.runToPromiseExit(T.pure(1))
+      await T.runToPromiseExit(M.alt(T.raiseError("a"), () => T.effect.of(1))),
+      await T.runToPromiseExit(T.effect.of(1))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(M.alt(T.pure(1), () => T.raiseError("a"))),
-      await T.runToPromiseExit(T.pure(1))
+      await T.runToPromiseExit(M.alt(T.effect.of(1), () => T.raiseError("a"))),
+      await T.runToPromiseExit(T.effect.of(1))
     );
     assert.deepStrictEqual(
       await T.runToPromiseExit(
@@ -613,19 +632,19 @@ describe("EffectSafe", () => {
     const env = T.mergeEnv(env2)(env1);
 
     it("effectMonad", async () => {
-      const M = T.effectMonad;
+      const M = T.parEffect;
       const p = Do(M)
         .bindL("x", () => M.of("a"))
         .sequenceS({
-          a: M.throwError("a"),
-          b: M.throwError("b")
+          a: T.effect.throwError("a"),
+          b: T.effect.throwError("b")
         })
-        .return(r => r);
+        .return(identity);
       const e = await T.runToPromiseExit(p);
       assert.deepStrictEqual(e, ex.raise("a"));
     });
     it("effectMonad env", async () => {
-      const M = T.effectMonad;
+      const M = T.effect;
       const p = Do(M)
         .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
         .sequenceS({
@@ -666,7 +685,7 @@ describe("EffectSafe", () => {
       const V = T.getValidationM(semigroupString);
 
       const checks = array.traverse(V)([0, 1, 2, 3, 4], x =>
-        x < 2 ? T.raiseError(`(error: ${x})`) : T.pure(x)
+        x < 2 ? T.raiseError(`(error: ${x})`) : T.effect.of(x)
       );
 
       const res = await T.runToPromiseExit(checks);
@@ -686,7 +705,7 @@ describe("EffectSafe", () => {
           ? T.accessM(({ prefix }: typeof env) =>
               T.raiseError(`(${prefix}: ${x})`)
             )
-          : T.pure(x)
+          : T.effect.of(x)
       );
 
       const res = await T.runToPromiseExit(T.provide(env)(checks));

@@ -1,7 +1,6 @@
 import "fp-ts-contrib/lib/Do";
 
 import { Kind3, URIS3 } from "fp-ts/lib/HKT";
-import { Applicative3 } from "fp-ts/lib/Applicative";
 import { Functor3 } from "fp-ts/lib/Functor";
 import { Contravariant3 } from "fp-ts/lib/Contravariant";
 import { FunctorWithIndex3 } from "fp-ts/lib/FunctorWithIndex";
@@ -16,20 +15,28 @@ import { Compactable3 } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
 import { PipeableFunctor3 } from "fp-ts/lib/pipeable";
-import { Apply3 } from "fp-ts/lib/Apply";
 import { NoEnv, NoErr } from "./index";
 import { Either } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Refinement, Predicate } from "fp-ts/lib/function";
 
-export interface Chain3E<F extends URIS3> extends Apply3<F> {
+export interface Chain3E<F extends URIS3> extends Apply3E<F> {
   readonly chain: <R, E, A, R2, E2, B>(
     fa: Kind3<F, R, E, A>,
     f: (a: A) => Kind3<F, R2, E2, B>
   ) => Kind3<F, R & R2, E | E2, B>;
 }
 
-export interface Monad3E<M extends URIS3> extends Applicative3<M>, Chain3E<M> {}
+/**
+ * @since 2.0.0
+ */
+export interface Applicative3E<F extends URIS3> extends Apply3E<F> {
+  readonly of: <R, E, A>(a: A) => Kind3<F, R, E, A>;
+}
+
+export interface Monad3E<M extends URIS3>
+  extends Applicative3E<M>,
+    Chain3E<M> {}
 
 export interface Monad3EC<M extends URIS3, E>
   extends Applicative3EC<M, E>,

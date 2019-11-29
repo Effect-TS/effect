@@ -67,7 +67,7 @@ const makeInterruptFrame = (
     _tag: "interrupt-frame",
     apply(u: unknown) {
       interruptStatus.pop();
-      return T.pure(u) as UnkIO;
+      return T.effect.of(u);
     },
     exitRegion() {
       interruptStatus.pop();
@@ -236,10 +236,10 @@ export function makeDriver<E, A>(
             current = cu.inner;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.pure(cu.f(runtime)) as UnkIO;
+            current = T.effect.of(cu.f(runtime)) as UnkIO;
             break;
           case T.EffectTag.AccessInterruptible:
-            current = T.pure(cu.f(isInterruptible())) as UnkIO;
+            current = T.effect.of(cu.f(isInterruptible())) as UnkIO;
             break;
           default:
             throw new Error(`Die: Unrecognized current type ${current}`);

@@ -55,7 +55,7 @@ export function stepMany<R, E, S, A, B>(
         sinkDone(current.state, current.leftover.concat(multi.slice(i)))
       );
     } else {
-      return T.effectMonad.chain(sink.step(current.state, multi[i]), next =>
+      return T.effect.chain(sink.step(current.state, multi[i]), next =>
         go(next, i + 1)
       );
     }
@@ -147,7 +147,7 @@ export function evalSink<R, E, A>(
   function step(_state: void, next: A): T.Effect<R, E, SinkStep<never, void>> {
     return pipe(
       f(next),
-      T.pipeF.apSecond(
+      T.apSecond(
         T.pure(sinkCont(_state)) as T.Effect<R, E, SinkStep<never, void>>
       )
     );
