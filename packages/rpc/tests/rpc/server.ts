@@ -3,6 +3,7 @@ import { serverHelpers } from "../../src";
 
 import { Tracer, withChildSpan } from "@matechs/tracing";
 import { ModuleA, Printer } from "./interface";
+import { effect } from "@matechs/effect";
 
 export function print(s: string) {
   return T.accessM(({ printer }: Printer) => printer.print(s));
@@ -14,9 +15,7 @@ export const moduleA: ModuleA = {
       return T.raiseError(new Error("not implemented"));
     },
     notFailing(s: string): T.Effect<Printer & Tracer, Error, string> {
-      return withChildSpan("child")(
-        T.effectMonad.chain(print(s), _ => T.pure(s))
-      );
+      return withChildSpan("child")(effect.chain(print(s), _ => T.pure(s)));
     }
   }
 };

@@ -16,6 +16,7 @@ import { Dequeue, empty, of } from "waveguide/lib/support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
 import { ExitTag } from "waveguide/lib/exit";
 import * as T from "./";
+import { effect } from "./";
 
 export interface ConcurrentQueue<A> {
   readonly take: T.Effect<T.NoEnv, never, A>;
@@ -54,7 +55,10 @@ function makeConcurrentQueueImpl<A>(
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: FunctionN<[T.Effect<T.NoEnv, never, A>], T.Effect<T.NoEnv, never, A>>
+  takeGate: FunctionN<
+    [T.Effect<T.NoEnv, never, A>],
+    T.Effect<T.NoEnv, never, A>
+  >
 ): ConcurrentQueue<A> {
   function cleanupLatch(
     latch: Deferred<T.NoEnv, never, A>
@@ -74,7 +78,7 @@ function makeConcurrentQueueImpl<A>(
 
   const take = takeGate(
     T.bracketExit(
-      T.chain(factory, latch =>
+      effect.chain(factory, latch =>
         state.modify(current =>
           pipe(
             current,
@@ -160,7 +164,7 @@ export function unboundedQueue<A>(): T.Effect<
   never,
   ConcurrentQueue<A>
 > {
-  return T.map(makeRef(initial<A>()), ref =>
+  return effect.map(makeRef(initial<A>()), ref =>
     makeConcurrentQueueImpl(
       ref,
       makeDeferred<T.NoEnv, never, A>(),
@@ -184,7 +188,7 @@ export function slidingQueue<A>(
 ): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.map(makeRef(initial<A>()), ref =>
+    effect.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),
@@ -205,7 +209,7 @@ export function droppingQueue<A>(
 ): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.map(makeRef(initial<A>()), ref =>
+    effect.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),

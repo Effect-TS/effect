@@ -28,7 +28,7 @@ export const graceful: () => Graceful = () => ({
         pipe(
           graceful.state,
           T.sequenceP(graceful.state.length),
-          T.pipeF.map(() => {})
+          T.map(() => {})
         )
       );
     }

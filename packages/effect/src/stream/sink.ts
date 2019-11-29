@@ -18,6 +18,7 @@ import { SinkStep, sinkDone, sinkCont, isSinkDone } from "./step";
 import { ConcurrentQueue } from "../queue";
 import * as T from "../";
 import { pipe } from "fp-ts/lib/pipeable";
+import { effect } from "../";
 
 export interface Sink<R, E, S, A, B> {
   readonly initial: T.Effect<R, E, SinkStep<A, S>>;
@@ -55,7 +56,7 @@ export function stepMany<R, E, S, A, B>(
         sinkDone(current.state, current.leftover.concat(multi.slice(i)))
       );
     } else {
-      return T.effectMonad.chain(sink.step(current.state, multi[i]), next =>
+      return effect.chain(sink.step(current.state, multi[i]), next =>
         go(next, i + 1)
       );
     }
@@ -147,7 +148,7 @@ export function evalSink<R, E, A>(
   function step(_state: void, next: A): T.Effect<R, E, SinkStep<never, void>> {
     return pipe(
       f(next),
-      T.pipeF.apSecond(
+      T.apSecond(
         T.pure(sinkCont(_state)) as T.Effect<R, E, SinkStep<never, void>>
       )
     );
@@ -226,6 +227,6 @@ export function map<R, E, S, A, B, C>(
 ): Sink<R, E, S, A, C> {
   return {
     ...sink,
-    extract: flow(sink.extract, T.mapWith(f))
+    extract: flow(sink.extract, T.map(f))
   };
 }

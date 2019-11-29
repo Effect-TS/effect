@@ -7,7 +7,7 @@ type Config = { initial: number };
 
 describe("Ref", () => {
   it("should use ref", async () => {
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeRef(initial))
       .bindL("next", ({ ref }) => ref.modify(n => [n + 1, n + 1] as const))

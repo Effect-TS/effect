@@ -14,6 +14,7 @@ import * as S from "../src/stream";
 import * as SK from "../src/stream/sink";
 import { collectArraySink, liftPureSink, Sink } from "../src/stream/sink";
 import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
+import { effect } from "../src";
 
 export async function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
@@ -600,7 +601,7 @@ describe("Stream", () => {
       return expectExit(S.collectArray(s3), ex.done([0, 1, 0, 1, 0, 1, 2, 3]));
     });
     it("should fail with errors in outer stream", () => {
-      const io = T.chain(ref.makeRef(0), cell => {
+      const io = effect.chain(ref.makeRef(0), cell => {
         const s1: T.Effect<
           T.NoEnv,
           string,
@@ -641,7 +642,7 @@ describe("Stream", () => {
       );
     });
     it("should fail with errors in the inner streams", () => {
-      const io = T.effectMonad.chain(ref.makeRef(0), cell => {
+      const io = effect.chain(ref.makeRef(0), cell => {
         const s1: T.Effect<
           T.NoEnv,
           string,
@@ -712,11 +713,11 @@ describe("Stream", () => {
     const r = T.sync(() => Math.random());
 
     function range(max: number): T.Effect<T.NoEnv, never, number> {
-      return T.map(r, n => Math.round(n * max));
+      return effect.map(r, n => Math.round(n * max));
     }
 
     function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
-      return T.chain(range(max), a => T.after(a));
+      return effect.chain(range(max), a => T.after(a));
     }
 
     it("should merge output", () => {
@@ -727,7 +728,7 @@ describe("Stream", () => {
         4
       );
       const output = S.collectArray(s2);
-      const check = T.chain(output, values =>
+      const check = effect.chain(output, values =>
         T.sync(() => {
           const uniq = array
             .uniq(eqNumber)(values)

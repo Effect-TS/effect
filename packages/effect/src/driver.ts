@@ -67,7 +67,7 @@ const makeInterruptFrame = (
     _tag: "interrupt-frame",
     apply(u: unknown) {
       interruptStatus.pop();
-      return T.pure(u) as UnkIO;
+      return T.pure(u);
     },
     exitRegion() {
       interruptStatus.pop();

@@ -10,7 +10,7 @@ import { raise, done } from "waveguide/lib/exit";
 describe("Express", () => {
   it("should use express", async () => {
     const program = EX.withApp(
-      Do(T.effectMonad)
+      Do(T.effect)
         .do(EX.route("post", "/", () => T.pure({ res: 1 })))
         .do(EX.route("post", "/bad", () => T.raiseError({ res: 1 })))
         .do(EX.route("post", "/bad2", () => T.raiseAbort("abort")))
@@ -30,31 +30,31 @@ describe("Express", () => {
     const res = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/", {})),
-        T.mapWith(s => s.data)
+        T.map(s => s.data)
       )
     );
 
     const res2 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad", {})),
-        T.mapWith(s => s.data),
-        T.mapErrorWith(s => s.response.data)
+        T.map(s => s.data),
+        T.mapError(s => s.response && s.response.data)
       )
     );
 
     const res3 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad2", {})),
-        T.mapWith(s => s.data),
-        T.mapErrorWith(s => s.response.data)
+        T.map(s => s.data),
+        T.mapError(s => s.response && s.response.data)
       )
     );
 
     const res4 = await T.runToPromiseExit(
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad3", {})),
-        T.mapWith(s => s.data),
-        T.mapErrorWith(s => s.response.data)
+        T.map(s => s.data),
+        T.mapError(s => s.response && s.response.data)
       )
     );
 

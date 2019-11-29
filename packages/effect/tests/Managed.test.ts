@@ -4,6 +4,7 @@ import * as M from "../src/managed";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupSum } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
+import { effect } from "../src";
 
 describe("Managed", () => {
   it("should use resource encaseEffect", async () => {
@@ -171,7 +172,7 @@ describe("Managed", () => {
   it("should use resource allocate", async () => {
     let released = false;
 
-    const program = Do(T.effectMonad)
+    const program = Do(T.effect)
       .bindL("resource", () =>
         M.allocate(
           M.bracket(T.pure(1), () =>
@@ -196,7 +197,7 @@ describe("Managed", () => {
     const mapped = M.consume((n: number) => T.pure(n + 1));
 
     const result = await T.runToPromise(
-      T.effectMonad.chain(mapped(resource), n => T.pure(n + 1))
+      effect.chain(mapped(resource), n => T.pure(n + 1))
     );
 
     assert.deepEqual(result, 3);

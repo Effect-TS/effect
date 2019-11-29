@@ -17,6 +17,7 @@ import {
 } from "typeorm";
 import { ReadStream } from "fs";
 import { isNonEmpty } from "fp-ts/lib/Array";
+import { effect } from "@matechs/effect/lib";
 
 export interface HasOrmConfig {
   orm: {
@@ -72,13 +73,13 @@ export const ormFactory: (
   orm: {
     createPool() {
       return T.accessM(({ orm: { options } }: HasOrmConfig) =>
-        Do(T.effectMonad)
+        Do(T.effect)
           .bindL("c", () =>
             pipe(() => factory(options), T.fromPromiseMap(toError))
           )
           .doL(({ c }) =>
             onExit(
-              T.chainError(
+              effect.chainError(
                 pipe(() => c.close(), T.fromPromiseMap(toError)),
                 _ => T.unit
               )
@@ -185,7 +186,7 @@ export function queryStreamB<RES>(
 ) => T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, Array<RES>>> {
   return f =>
     T.accessM(({ orm: { manager } }: HasEntityManager) =>
-      Do(T.effectMonad)
+      Do(T.effect)
         .bindL("stream", () =>
           pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
         )
@@ -206,7 +207,7 @@ export function queryStream<RES>(
   f: (m: EntityManager) => Promise<ReadStream>
 ): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, RES>> {
   return T.accessM(({ orm: { manager } }: HasEntityManager) =>
-    Do(T.effectMonad)
+    Do(T.effect)
       .bindL("stream", () =>
         pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
       )

@@ -16,9 +16,7 @@ describe("RPC", () => {
   it("perform call through rpc", async () => {
     // server
 
-    const argsMap = {};
-
-    const messages = [];
+    const messages: string[] = [];
 
     const mockPrinter: Printer = {
       printer: {
@@ -40,7 +38,7 @@ describe("RPC", () => {
     );
 
     const main = EX.withApp(
-      Do(T.effectMonad)
+      Do(T.effect)
         .do(RPC.bindToApp(RS.moduleA, "moduleA", module))
         .bind("server", EX.bind(3000, "127.0.0.1"))
         .return(s => s.server)

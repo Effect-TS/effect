@@ -13,6 +13,7 @@ import { Deferred, makeDeferred } from "./deferred";
 import { makeRef, Ref } from "./ref";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
 import * as T from "./";
+import { effect } from "./";
 
 export interface Semaphore {
   /**
@@ -146,7 +147,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     );
 
   const ticketN = (n: number): T.Effect<T.NoEnv, never, Ticket<void>> =>
-    T.chain(makeDeferred<unknown, never, void>(), latch =>
+    effect.chain(makeDeferred<unknown, never, void>(), latch =>
       ref.modify(current =>
         pipe(
           current,
@@ -186,7 +187,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     return T.bracket(acquire, constant(release), () => inner);
   };
 
-  const available = T.map(
+  const available = effect.map(
     ref.get,
     e.fold(q => -1 * q.size(), identity)
   );
@@ -211,6 +212,6 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 export function makeSemaphore(n: number): T.Effect<T.NoEnv, never, Semaphore> {
   return T.applySecond(
     sanityCheck(n),
-    T.map(makeRef(right(n) as State), makeSemaphoreImpl)
+    effect.map(makeRef(right(n) as State), makeSemaphoreImpl)
   );
 }

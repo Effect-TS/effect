@@ -43,8 +43,8 @@ export interface Counter {
 export const counter: Counter = {
   counter: {
     count() {
-      return A.array.traverse(T.effectMonad)(A.range(1, 10), n =>
-        Do(T.effectMonad)
+      return A.array.traverse(T.effect)(A.range(1, 10), n =>
+        Do(T.effect)
           .do(increment())
           .bind("count", withChildSpan("span-current-count")(currentCount()))
           .doL(({ count }) => print(`n: ${n} (${count})`))
