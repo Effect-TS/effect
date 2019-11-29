@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - epics
+      - managed
 
 jobs:
   build:

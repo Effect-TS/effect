@@ -4,13 +4,14 @@ import * as M from "@matechs/effect/lib/managed";
 import * as S from "@matechs/effect/lib/stream";
 import * as su from "@matechs/effect/lib/stream/support";
 import * as Rx from "rxjs";
+import { managed } from "@matechs/effect/lib/managed";
 
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
   onError: (e: any) => E
 ): S.Stream<T.NoEnv, E, A> {
   return S.fromSource(
-    M.chain(
+    managed.chain(
       M.bracket(
         T.sync(() => {
           const { next, ops, hasCB } = su.queueUtils<E, A>();
