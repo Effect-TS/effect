@@ -405,11 +405,47 @@ describe("EffectSafe", () => {
       );
     });
 
-    it("mapLeft", async () => {
-      const e = await T.runToPromiseExit(
-        effect.mapLeft(T.raiseError("1"), x => new Error(x))
+    it("pipe alt", async () => {
+      const a = effect.of("a");
+      const a2 = effect.of("a2");
+      const err = T.raiseError<string, string>("e");
+      const err2 = T.raiseError<string, string>("err2");
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            err,
+            T.alt(() => a)
+          )
+        ),
+        ex.done("a")
       );
-      assert.deepStrictEqual(e, ex.raise(new Error("1")));
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            err,
+            T.alt(() => err2)
+          )
+        ),
+        ex.raise("err2")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            a,
+            T.alt(() => a2)
+          )
+        ),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            a,
+            T.alt(() => err)
+          )
+        ),
+        ex.done("a")
+      );
     });
   });
 

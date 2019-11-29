@@ -1558,13 +1558,17 @@ export function or<R, E, A>(
 
 export function condWith(
   predicate: boolean
-): <R, E, A>(ma: Effect<R, E, A>) => <R2, E2, B>(mb: Effect<R2, E2, B>) => Effect<R & R2, E | E2, A | B> {
+): <R, E, A>(
+  ma: Effect<R, E, A>
+) => <R2, E2, B>(mb: Effect<R2, E2, B>) => Effect<R & R2, E | E2, A | B> {
   return ma => mb => (predicate ? ma : mb);
 }
 
 export function cond<R, E, A>(
   ma: Effect<R, E, A>
-): <R2, E2, B>(mb: Effect<R2, E2, B>) => (predicate: boolean) => Effect<R & R2, E | E2, A | B> {
+): <R2, E2, B>(
+  mb: Effect<R2, E2, B>
+) => (predicate: boolean) => Effect<R & R2, E | E2, A | B> {
   return mb => predicate => (predicate ? ma : mb);
 }
 
