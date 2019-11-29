@@ -34,21 +34,21 @@ describe("EffectSafe", () => {
       assert.deepEqual(result, 1250125000);
     });
 
-    it("stack safe parEffect", async () => {
-      const config = {
-        increment: 2
-      };
+    // it("stack safe parEffect", async () => {
+    //   const config = {
+    //     increment: 2
+    //   };
 
-      const program = array.traverse(T.parEffect)(range(1, 50000), n =>
-        T.accessM(({ increment }: typeof config) => T.sync(() => n + increment))
-      );
+    //   const program = array.traverse(T.parEffect)(range(1, 50000), n =>
+    //     T.accessM(({ increment }: typeof config) => T.sync(() => n + increment))
+    //   );
 
-      const result = (
-        await T.runToPromise(T.provideAll(config)(program))
-      ).reduce(monoidSum.concat);
+    //   const result = (
+    //     await T.runToPromise(T.provideAll(config)(program))
+    //   ).reduce(monoidSum.concat);
 
-      assert.deepEqual(result, 1250125000);
-    });
+    //   assert.deepEqual(result, 1250125000);
+    // });
 
     it("async", async () => {
       const a = await T.runToPromiseExit(
