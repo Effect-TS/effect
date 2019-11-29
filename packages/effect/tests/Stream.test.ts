@@ -15,6 +15,7 @@ import * as SK from "../src/stream/sink";
 import { collectArraySink, liftPureSink, Sink } from "../src/stream/sink";
 import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
 import { effect } from "../src";
+import { stream } from "../src/stream";
 
 export async function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
@@ -50,7 +51,9 @@ describe("Stream", () => {
       })
     );
 
-    const res = await T.runToPromise(S.collectArray(S.map(s, ({ n }) => n)));
+    const res = await T.runToPromise(
+      S.collectArray(stream.map(s, ({ n }) => n))
+    );
 
     assert.deepEqual(res, array.range(1, 10));
   });
@@ -202,7 +205,7 @@ describe("Stream", () => {
   it("should use mapWith", async () => {
     const s = pipe(
       S.fromArray([0, 1, 2]),
-      S.mapWith(n => n + 1)
+      S.map(n => n + 1)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -418,14 +421,14 @@ describe("Stream", () => {
     type ConfigB = { second: number };
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
-    const s = S.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
+    const s = stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
 
     // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
-    const m = S.chain(s, n =>
+    const m = stream.chain(s, n =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = S.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    const g = stream.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
@@ -452,23 +455,23 @@ describe("Stream", () => {
       const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
       const s2 = S.peel(s1, multiplier);
       return expectExit(
-        S.collectArray(S.chain(s2, ([_h, r]) => r)),
+        S.collectArray(stream.chain(s2, ([_h, r]) => r)),
         ex.done([])
       );
     });
     it("should extract a head and return a subsequent element", () => {
       const s1 = S.fromArray([2, 6, 9]);
-      const s2 = S.chain(S.peel(s1, multiplier), ([head, rest]) => {
-        return S.map(rest, v => v * head);
+      const s2 = stream.chain(S.peel(s1, multiplier), ([head, rest]) => {
+        return stream.map(rest, v => v * head);
       });
       return expectExit(S.collectArray(s2), ex.done([12, 18]));
     });
     it("should compose", () => {
       const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
       const s2 = S.filter(s1, x => x % 2 === 0); // emits 4 6 8
-      const s3 = S.chain(S.peel(s2, multiplier), ([head, rest]) => {
+      const s3 = stream.chain(S.peel(s2, multiplier), ([head, rest]) => {
         // head is 4
-        return S.map(rest, v => v * head); // emits 24 32
+        return stream.map(rest, v => v * head); // emits 24 32
       });
       return expectExit(S.collectArray(s3), ex.done([24, 32]));
     });
@@ -496,7 +499,7 @@ describe("Stream", () => {
         S.Stream<T.NoEnv, string, number>
       >;
       const s2 = S.flatten(s1);
-      const s3 = S.chain(S.peel(s2, multiplier), ([_head, rest]) => rest);
+      const s3 = stream.chain(S.peel(s2, multiplier), ([_head, rest]) => rest);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
   });

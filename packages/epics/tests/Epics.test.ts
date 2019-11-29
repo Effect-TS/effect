@@ -55,7 +55,7 @@ type Config = {
 };
 
 const fetchUser: Ep.Epic<Config, MyAction, State> = _ => action$ =>
-  Do(S.streamMonad)
+  Do(S.stream)
     .bind("action", S.filterRefineWith(isFetchUser)(action$))
     .bindL("fetched", ({ action: { id } }) =>
       S.encaseEffect(
