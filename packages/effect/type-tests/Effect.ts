@@ -25,6 +25,8 @@ const fc = _.accessM(({ envA }: EnvA) => _.effect.of(envA.foo)); // $ExpectType 
 const fd = _.accessM(({ envB }: EnvB) => _.effect.of(envB.foo)); // $ExpectType Effect<EnvB, unknown, string>
 
 const program = _.effect.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
+const program2 = _.effect.chain(fa, _ => fd); // $ExpectType Effect<EnvA & EnvB, unknown, string>
+const program3 = _.effect.chain(fc, _ => fb); // $ExpectType Effect<EnvA & EnvB, unknown, string>
 
 const fae = _.accessM(({ envA }: EnvA) => _.raiseError(envA.foo));
 
