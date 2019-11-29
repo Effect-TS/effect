@@ -5,6 +5,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupSum } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { effect } from "../src";
+import { managed } from "../src/managed";
 
 describe("Managed", () => {
   it("should use resource encaseEffect", async () => {
@@ -79,7 +80,7 @@ describe("Managed", () => {
 
   it("should use resource map", async () => {
     const resource = M.pure(1);
-    const mapped = M.managed.map(resource, n => n + 1);
+    const mapped = managed.map(resource, n => n + 1);
 
     const result = await T.runToPromise(M.use(mapped, n => T.pure(n + 1)));
 
@@ -120,7 +121,7 @@ describe("Managed", () => {
   it("should use resource ap_", async () => {
     const ma = M.pure(1);
     const mfab = M.pure((n: number) => n + 1);
-    const ap = M.managed.ap(mfab, ma);
+    const ap = managed.ap(mfab, ma);
 
     const result = await T.runToPromise(M.use(ap, n => T.pure(n + 1)));
 
@@ -213,7 +214,7 @@ describe("Managed", () => {
   });
 
   it("should use resource of", async () => {
-    const resourceA = M.managed.of(1);
+    const resourceA = managed.of(1);
 
     const result = await T.runToPromise(M.use(resourceA, n => T.pure(n + 1)));
 
@@ -223,8 +224,8 @@ describe("Managed", () => {
   it("should use resource getSemigroup", async () => {
     const S = M.getSemigroup(semigroupSum);
 
-    const resourceA = M.managed.of(1);
-    const resourceB = M.managed.of(1);
+    const resourceA = managed.of(1);
+    const resourceB = managed.of(1);
 
     const result = await T.runToPromise(
       M.use(S.concat(resourceB, resourceA), n => T.pure(n + 1))
@@ -236,8 +237,8 @@ describe("Managed", () => {
   it("should use resource getMonoid", async () => {
     const S = M.getMonoid(monoidSum);
 
-    const resourceA = M.managed.of(1);
-    const resourceB = M.managed.of(1);
+    const resourceA = managed.of(1);
+    const resourceB = managed.of(1);
 
     const result = await T.runToPromise(
       M.use(S.concat(resourceB, resourceA), n => T.pure(n + 1))
