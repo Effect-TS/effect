@@ -679,7 +679,7 @@ export function applySecondL<R, E, A, R2, E2, B>(
 }
 
 /**
- * Applicative ap
+ * Flipped argument form of ap
  * @param ioa
  * @param iof
  */
@@ -692,7 +692,7 @@ export function ap__<R, E, A, R2, E2, B>(
 }
 
 /**
- * Flipped argument form of ap
+ * Applicative ap
  * @param iof
  * @param ioa
  */
