@@ -80,6 +80,9 @@
 					</li>
 					<li>
 						<a href="_matechs_effect.monadthrow3e.html" class="tsd-signature-type">MonadThrow3E</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">&gt;</span>
+					</li>
+					<li>
+						<a href="_matechs_effect.alt3e.html" class="tsd-signature-type">Alt3E</a><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">&gt;</span>
 						<ul class="tsd-hierarchy">
 							<li>
 								<span class="target">EffectMonad</span>
@@ -96,6 +99,7 @@
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited"><a href="_matechs_effect.effectmonad.html#uri" class="tsd-kind-icon">URI</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-inherited"><a href="_matechs_effect.effectmonad.html#alt" class="tsd-kind-icon">alt</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited"><a href="_matechs_effect.effectmonad.html#ap" class="tsd-kind-icon">ap</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited"><a href="_matechs_effect.effectmonad.html#chain" class="tsd-kind-icon">chain</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited"><a href="_matechs_effect.effectmonad.html#map" class="tsd-kind-icon">map</a></li>
@@ -131,6 +135,71 @@
 						</ul>
 					</aside>
 				</section>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+					<a name="alt" class="tsd-anchor"></a>
+					<h3>alt</h3>
+					<div class="tsd-signature tsd-kind-icon">alt<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
+					<aside class="tsd-sources">
+						<p>Inherited from <a href="_matechs_effect.alt3e.html">Alt3E</a>.<a href="_matechs_effect.alt3e.html#alt">alt</a></p>
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/overload.ts#L35">packages/effect/src/overload.ts:35</a></li>
+						</ul>
+					</aside>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+							<li class="tsd-parameter-siganture">
+								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-has-type-parameter tsd-is-not-exported">
+									<li class="tsd-signature tsd-kind-icon">&lt;R, R2, E, E2, A&gt;<span class="tsd-signature-symbol">(</span>fx<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span>, fy<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+								</ul>
+								<ul class="tsd-descriptions">
+									<li class="tsd-description">
+										<h4 class="tsd-type-parameters-title">Type parameters</h4>
+										<ul class="tsd-type-parameters">
+											<li>
+												<h4>R</h4>
+											</li>
+											<li>
+												<h4>R2</h4>
+											</li>
+											<li>
+												<h4>E</h4>
+											</li>
+											<li>
+												<h4>E2</h4>
+											</li>
+											<li>
+												<h4>A</h4>
+											</li>
+										</ul>
+										<h4 class="tsd-parameters-title">Parameters</h4>
+										<ul class="tsd-parameters">
+											<li>
+												<h5>fx: <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+											</li>
+											<li>
+												<h5>fy: <span class="tsd-signature-type">function</span></h5>
+												<ul class="tsd-parameters">
+													<li class="tsd-parameter-siganture">
+														<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+															<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
+														</ul>
+														<ul class="tsd-descriptions">
+															<li class="tsd-description">
+																<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+															</li>
+														</ul>
+													</li>
+												</ul>
+											</li>
+										</ul>
+										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Kind3</span><span class="tsd-signature-symbol">&lt;</span><a href="_matechs_effect.effectmonad.html#uri" class="tsd-signature-type">URI</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E2</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h4>
+									</li>
+								</ul>
+							</li>
+						</ul>
+					</div>
+				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited">
 					<a name="ap" class="tsd-anchor"></a>
 					<h3>ap</h3>
@@ -139,7 +208,7 @@
 						<p>Inherited from <a href="_matechs_effect.apply3e.html">Apply3E</a>.<a href="_matechs_effect.apply3e.html#ap">ap</a></p>
 						<p>Overrides <a href="_matechs_effect.apply3e.html">Apply3E</a>.<a href="_matechs_effect.apply3e.html#ap">ap</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/overload.ts#L212">packages/effect/src/overload.ts:212</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/overload.ts#L212">packages/effect/src/overload.ts:212</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -196,7 +265,7 @@
 						<p>Inherited from <a href="_matechs_effect.chain3e.html">Chain3E</a>.<a href="_matechs_effect.chain3e.html#chain">chain</a></p>
 						<p>Overrides <a href="_matechs_effect.chain3e.html">Chain3E</a>.<a href="_matechs_effect.chain3e.html#chain">chain</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/overload.ts#L24">packages/effect/src/overload.ts:24</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/overload.ts#L24">packages/effect/src/overload.ts:24</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -338,7 +407,7 @@
 					<div class="tsd-signature tsd-kind-icon">map<wbr>Error<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/index.ts#L1432">packages/effect/src/index.ts:1432</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/index.ts#L1434">packages/effect/src/index.ts:1434</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-comment tsd-typography">
@@ -486,7 +555,7 @@
 						<p>Inherited from <a href="_matechs_effect.applicative3e.html">Applicative3E</a>.<a href="_matechs_effect.applicative3e.html#of">of</a></p>
 						<p>Overrides <a href="_matechs_effect.applicative3e.html">Applicative3E</a>.<a href="_matechs_effect.applicative3e.html#of">of</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/overload.ts#L31">packages/effect/src/overload.ts:31</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/overload.ts#L31">packages/effect/src/overload.ts:31</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -530,7 +599,7 @@
 					<aside class="tsd-sources">
 						<p>Inherited from <a href="_matechs_effect.monadthrow3e.html">MonadThrow3E</a>.<a href="_matechs_effect.monadthrow3e.html#throwerror">throwError</a></p>
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/overload.ts#L288">packages/effect/src/overload.ts:288</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/overload.ts#L288">packages/effect/src/overload.ts:288</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
@@ -575,7 +644,7 @@
 							<aside class="tsd-sources">
 								<p>Overrides Bifunctor3.bimap</p>
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/index.ts#L1421">packages/effect/src/index.ts:1421</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/index.ts#L1423">packages/effect/src/index.ts:1423</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -629,7 +698,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/index.ts#L1383">packages/effect/src/index.ts:1383</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/index.ts#L1385">packages/effect/src/index.ts:1385</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -680,7 +749,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/index.ts#L1410">packages/effect/src/index.ts:1410</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/index.ts#L1412">packages/effect/src/index.ts:1412</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -732,7 +801,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/16b329d/packages/effect/src/index.ts#L1397">packages/effect/src/index.ts:1397</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/b1679cc/packages/effect/src/index.ts#L1399">packages/effect/src/index.ts:1399</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -853,6 +922,9 @@
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited">
 								<a href="_matechs_effect.effectmonad.html#uri" class="tsd-kind-icon">URI</a>
+							</li>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-inherited">
+								<a href="_matechs_effect.effectmonad.html#alt" class="tsd-kind-icon">alt</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-overwrite tsd-is-inherited">
 								<a href="_matechs_effect.effectmonad.html#ap" class="tsd-kind-icon">ap</a>
