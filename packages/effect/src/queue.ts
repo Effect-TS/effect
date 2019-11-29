@@ -16,6 +16,7 @@ import { Dequeue, empty, of } from "waveguide/lib/support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
 import { ExitTag } from "waveguide/lib/exit";
 import * as T from "./";
+import { effect } from "./";
 
 export interface ConcurrentQueue<A> {
   readonly take: T.Effect<T.NoEnv, never, A>;
@@ -77,7 +78,7 @@ function makeConcurrentQueueImpl<A>(
 
   const take = takeGate(
     T.bracketExit(
-      T.effect.chain(factory, latch =>
+      effect.chain(factory, latch =>
         state.modify(current =>
           pipe(
             current,
@@ -163,7 +164,7 @@ export function unboundedQueue<A>(): T.Effect<
   never,
   ConcurrentQueue<A>
 > {
-  return T.effect.map(makeRef(initial<A>()), ref =>
+  return effect.map(makeRef(initial<A>()), ref =>
     makeConcurrentQueueImpl(
       ref,
       makeDeferred<T.NoEnv, never, A>(),
@@ -187,7 +188,7 @@ export function slidingQueue<A>(
 ): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.effect.map(makeRef(initial<A>()), ref =>
+    effect.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),
@@ -208,7 +209,7 @@ export function droppingQueue<A>(
 ): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.effect.map(makeRef(initial<A>()), ref =>
+    effect.map(makeRef(initial<A>()), ref =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),

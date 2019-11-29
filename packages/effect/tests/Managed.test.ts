@@ -4,14 +4,13 @@ import * as M from "../src/managed";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupSum } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
+import { effect } from "../src";
 
 describe("Managed", () => {
   it("should use resource encaseEffect", async () => {
     const resource = M.encaseEffect(T.pure(1));
 
-    const result = await T.runToPromise(
-      M.use(resource, n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(resource, n => T.pure(n + 1)));
 
     assert.deepEqual(result, 2);
   });
@@ -45,9 +44,7 @@ describe("Managed", () => {
       })
     );
 
-    const result = await T.runToPromise(
-      M.use(resource, n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(resource, n => T.pure(n + 1)));
 
     assert.deepEqual(result, 2);
     assert.deepEqual(released, true);
@@ -56,9 +53,7 @@ describe("Managed", () => {
   it("should use resource pure", async () => {
     const resource = M.pure(1);
 
-    const result = await T.runToPromise(
-      M.use(resource, n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(resource, n => T.pure(n + 1)));
 
     assert.deepEqual(result, 2);
   });
@@ -66,9 +61,7 @@ describe("Managed", () => {
   it("should use resource suspend", async () => {
     const resource = M.suspend(T.sync(() => M.pure(1)));
 
-    const result = await T.runToPromise(
-      M.use(resource, n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(resource, n => T.pure(n + 1)));
 
     assert.deepEqual(result, 2);
   });
@@ -109,9 +102,7 @@ describe("Managed", () => {
     const mb = M.pure(1);
     const zip = M.zip(ma, mb);
 
-    const result = await T.runToPromise(
-      M.use(zip, ([n, m]) => T.pure(n + m))
-    );
+    const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)));
 
     assert.deepEqual(result, 2);
   });
@@ -138,18 +129,14 @@ describe("Managed", () => {
 
   it("should use resource as", async () => {
     const ma = M.pure(1);
-    const result = await T.runToPromise(
-      M.use(M.as(ma, 2), n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(M.as(ma, 2), n => T.pure(n + 1)));
 
     assert.deepEqual(result, 3);
   });
 
   it("should use resource to", async () => {
     const ma = M.pure(1);
-    const result = await T.runToPromise(
-      M.use(M.to(2)(ma), n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(M.to(2)(ma), n => T.pure(n + 1)));
 
     assert.deepEqual(result, 3);
   });
@@ -210,7 +197,7 @@ describe("Managed", () => {
     const mapped = M.consume((n: number) => T.pure(n + 1));
 
     const result = await T.runToPromise(
-      T.effect.chain(mapped(resource), n => T.pure(n + 1))
+      effect.chain(mapped(resource), n => T.pure(n + 1))
     );
 
     assert.deepEqual(result, 3);
@@ -228,9 +215,7 @@ describe("Managed", () => {
   it("should use resource of", async () => {
     const resourceA = M.managedMonad.of(1);
 
-    const result = await T.runToPromise(
-      M.use(resourceA, n => T.pure(n + 1))
-    );
+    const result = await T.runToPromise(M.use(resourceA, n => T.pure(n + 1)));
 
     assert.deepEqual(result, 2);
   });

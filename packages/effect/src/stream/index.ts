@@ -23,7 +23,7 @@ import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
 import { Cause } from "waveguide/lib/exit";
 import * as T from "../";
-import { Fiber } from "../";
+import { Fiber, effect } from "../";
 import * as deferred from "../deferred";
 import { Deferred } from "../deferred";
 import * as managed from "../managed";
@@ -62,7 +62,7 @@ function arrayFold<A>(
   as: readonly A[]
 ): Managed<T.NoEnv, T.NoErr, Fold<T.NoEnv, T.NoErr, A>> {
   return managed.encaseEffect(
-    T.effect.map(ref.makeRef(0), cell => {
+    effect.map(ref.makeRef(0), cell => {
       return <S>(
         initial: S,
         cont: Predicate<S>,
@@ -75,7 +75,7 @@ function arrayFold<A>(
               cell.modify(i => [i, i + 1] as const), // increment the i
               T.chainWith(i => {
                 return i < as.length
-                  ? T.effect.chain(f(current, as[i]), step)
+                  ? effect.chain(f(current, as[i]), step)
                   : T.pure(current);
               })
             );
@@ -138,7 +138,7 @@ export function fromSource<R, E, A>(
                 o.fold(
                   () => T.pure(initial) as T.Effect<R, E, S>,
                   a =>
-                    T.effect.chain(step(initial, a), next =>
+                    effect.chain(step(initial, a), next =>
                       fold(next, cont, step)
                     )
                 )
@@ -232,7 +232,7 @@ export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
   ): T.Effect<T.NoEnv, T.NoErr, S> {
     function step(current: S): T.Effect<T.NoEnv, T.NoErr, S> {
       if (cont(current)) {
-        return T.shiftAfter(T.effect.chain(f(current, a), step));
+        return T.shiftAfter(effect.chain(f(current, a), step));
       }
       return T.shiftAfter(T.pure(current));
     }
@@ -339,9 +339,9 @@ export function zipWithIndex<R, E, A>(
       const folded = fold<readonly [S, number]>(
         [initial, 0 as number],
         s => cont(s[0]),
-        ([s, i], a) => T.effect.map(f(s, [a, i]), s => [s, i + 1])
+        ([s, i], a) => effect.map(f(s, [a, i]), s => [s, i + 1])
       );
-      return T.effect.map(folded, s => s[0]);
+      return effect.map(folded, s => s[0]);
     }
 
     return zipFold;
@@ -511,15 +511,15 @@ export function distinctAdjacent<A>(
             current[1],
             o.fold(
               // We haven't seen anything so just return
-              () => T.effect.map(step(current[0], next), s => [s, some(next)]),
+              () => effect.map(step(current[0], next), s => [s, some(next)]),
               seen =>
                 eq.equals(seen, next)
                   ? T.pure(current)
-                  : T.effect.map(step(current[0], next), s => [s, some(next)])
+                  : effect.map(step(current[0], next), s => [s, some(next)])
             )
           );
         }
-        return T.effect.map(base(init, c, stp), s => s[0]);
+        return effect.map(base(init, c, stp), s => s[0]);
       }
     );
 }
@@ -546,7 +546,7 @@ export function foldM<R, E, A, R2, E2, B>(
     ): T.Effect<R & R2, E | E2, S> => {
       /* istanbul ignore else */
       if (cont(initial)) {
-        return T.effect.chain(
+        return effect.chain(
           base(seed, constant(true), (s, a) => f(s, a)),
           result => step(initial, result)
         );
@@ -611,7 +611,7 @@ export function scanM<R, E, A, B, R2, E2>(
                 base(
                   t2(b, true),
                   s => s[1],
-                  (s, a) => T.effect.map(f(s[0], a), r => t2(r, false))
+                  (s, a) => effect.map(f(s[0], a), r => t2(r, false))
                 )
               ),
               T.chainWith(
@@ -621,7 +621,7 @@ export function scanM<R, E, A, B, R2, E2>(
                     ? T.pure(initial)
                     : T.applySecond(
                         accum.set(s[0]),
-                        T.effect.chain(step(initial, s[0]), next =>
+                        effect.chain(step(initial, s[0]), next =>
                           fold(next, cont, step)
                         )
                       )
@@ -746,7 +746,7 @@ export function transduce<R, E, A, R2, E2, S, B>(
         sinkState: S,
         chunk: A[]
       ): T.Effect<R & R2, E | E2, TDuceFused<S0, S>> {
-        return T.effect.chain(stepMany(sink, sinkState, chunk), nextSinkStep =>
+        return effect.chain(stepMany(sink, sinkState, chunk), nextSinkStep =>
           isSinkCont(nextSinkStep)
             ? // We need to let more data in to drive the sink
               T.pure([foldState, nextSinkStep.state, true] as const)
@@ -781,7 +781,7 @@ export function transduce<R, E, A, R2, E2, S, B>(
         );
       }
 
-      const derivedInitial = T.effect.map(
+      const derivedInitial = effect.map(
         sink.initial,
         initSink =>
           [initial, sinkStepState(initSink), false] as TDuceFused<S0, S>
@@ -798,7 +798,7 @@ export function transduce<R, E, A, R2, E2, S, B>(
         ),
         T.chainWith(([foldState, sinkState, extract]) =>
           extract && cont(foldState)
-            ? T.effect.chain(sink.extract(sinkState), b => step(foldState, b))
+            ? effect.chain(sink.extract(sinkState), b => step(foldState, b))
             : T.pure(foldState)
         )
       );
@@ -850,11 +850,11 @@ export function take<R, E, A>(
       cont: Predicate<S>,
       step: FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> =>
-      T.effect.map(
+      effect.map(
         fold(
           t2(initial, 0),
           t2s => t2s[1] < n && cont(t2s[0]),
-          (s, a) => T.effect.map(step(s[0], a), next => t2(next, s[1] + 1))
+          (s, a) => effect.map(step(s[0], a), next => t2(next, s[1] + 1))
         ),
         t2s => t2s[0]
       )
@@ -877,13 +877,13 @@ export function takeWhile<R, E, A>(
       cont: Predicate<S>,
       step: FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> =>
-      T.effect.map(
+      effect.map(
         fold(
           t2(initial, true),
           t2s => t2s[1] && cont(t2s[0]),
           (s, a) =>
             pred(a)
-              ? T.effect.map(step(s[0], a), next => t2(next, true))
+              ? effect.map(step(s[0], a), next => t2(next, true))
               : T.pure(t2(s[0], false))
         ),
         t2s => t2s[0]
@@ -944,7 +944,7 @@ export function intoLeftover<R, E, A, S, B>(
         )
       ),
       T.chainWith(end =>
-        T.effect.map(
+        effect.map(
           sink.extract(end.state),
           b => [b, sinkStepLeftover(end)] as const
         )
@@ -1118,7 +1118,7 @@ export function peelManaged<R, E, A, S, B>(
 function interruptFiberSlot(
   slot: Ref<Option<Fiber<never, void>>>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
-  return T.effect.chain(slot.get, optFiber =>
+  return effect.chain(slot.get, optFiber =>
     pipe(
       optFiber,
       o.fold(
@@ -1132,7 +1132,7 @@ function interruptFiberSlot(
 function waitFiberSlot(
   slot: Ref<Option<Fiber<never, void>>>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
-  return T.effect.chain(slot.get, optFiber =>
+  return effect.chain(slot.get, optFiber =>
     pipe(
       optFiber,
       o.fold(
@@ -1197,7 +1197,7 @@ export function switchLatest<R, E, A>(
 
                 return T.applyFirst(
                   interruptPushFiber,
-                  T.effect.chain(T.fork(writer), f => fiberSlot.set(some(f)))
+                  effect.chain(T.fork(writer), f => fiberSlot.set(some(f)))
                 );
               }
 
@@ -1205,7 +1205,7 @@ export function switchLatest<R, E, A>(
               function advanceStreams(): T.Effect<R, never, void> {
                 // We need a way of looking ahead to see errors in the output streams in order to cause termination
                 // The push fiber will generate this when it encounters a failure
-                const breakerError = T.effect.chain(
+                const breakerError = effect.chain(
                   internalBreaker.wait,
                   T.raised
                 );
@@ -1277,7 +1277,7 @@ type WeaveHandle = readonly [number, Fiber<never, void>];
 function interruptWeaveHandles(
   ref: Ref<WeaveHandle[]>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
-  return T.effect.chain(ref.get, fibers =>
+  return effect.chain(ref.get, fibers =>
     T.asUnit(
       array.array.traverse(T.effect)(fibers, fiber => fiber[1].interrupt)
     )
@@ -1368,7 +1368,7 @@ export function merge<R, E, A>(
 
                       // The action that will pull a single stream upstream and attempt to activate it to push downstream
                       function advanceStreams(): T.Effect<R, never, void> {
-                        const breakerError = T.effect.chain(
+                        const breakerError = effect.chain(
                           internalBreaker.wait,
                           T.raised
                         );

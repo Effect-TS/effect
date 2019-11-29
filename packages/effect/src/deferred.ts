@@ -5,6 +5,7 @@
 import { Exit, Cause } from "waveguide/lib/exit";
 import { Completable, completable } from "waveguide/lib/support/completable";
 import * as T from "./";
+import { effect } from "./";
 
 export interface Deferred<R, E, A> {
   /**
@@ -105,7 +106,7 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
       const from = (
         source: T.Effect<R, E, A>
       ): T.Effect<T.NoEnv, T.NoErr, void> => {
-        const completed = T.effect.chain(
+        const completed = effect.chain(
           T.result(T.provideAll(r)(source)),
           complete
         );
