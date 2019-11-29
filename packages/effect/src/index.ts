@@ -1135,14 +1135,14 @@ export function raceFold<R, R2, E1, E2, E3, A, B, C>(
   second: Effect<R2, E2, B>,
   onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E2, B>], Effect<NoEnv, E3, C>>,
   onSecondWon: FunctionN<[Exit<E2, B>, Fiber<E1, A>], Effect<NoEnv, E3, C>>
-) /*: Effect<R & R2, E3, C>*/ {
+) : Effect<R & R2, E3, C> {
   return accessM((r: R & R2) =>
-    uninterruptibleMask<NoEnv, E2, C>(cutout =>
-      chain_<NoEnv, E2, Ref<boolean>, NoEnv, E2, C>(
+    uninterruptibleMask<NoEnv, E3, C>(cutout =>
+      chain_<NoEnv, E3, Ref<boolean>, NoEnv, E3, C>(
         makeRef<boolean>(false),
         latch =>
-          chain_<NoEnv, E2, Deferred<NoEnv, E2, C>, NoEnv, E2, C>(
-            makeDeferred<NoEnv, E2, C>(),
+          chain_<NoEnv, E3, Deferred<NoEnv, E3, C>, NoEnv, E3, C>(
+            makeDeferred<NoEnv, E3, C>(),
             channel =>
               chain_(fork(provideAll(r)(first)), fiber1 =>
                 chain_(fork(provideAll(r)(second)), fiber2 =>
@@ -1152,7 +1152,7 @@ export function raceFold<R, R2, E1, E2, E3, A, B, C>(
                         fiber1.wait as Effect<NoEnv, NoErr, Exit<E1, A>>,
                         completeLatched(
                           latch,
-                          channel as any,
+                          channel,
                           onFirstWon,
                           fiber2
                         )
@@ -1165,7 +1165,7 @@ export function raceFold<R, R2, E1, E2, E3, A, B, C>(
                             fiber2.wait as Effect<NoEnv, NoErr, Exit<E2, B>>,
                             completeLatched(
                               latch,
-                              channel as any,
+                              channel,
                               onSecondWon,
                               fiber1
                             )
