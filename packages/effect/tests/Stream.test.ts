@@ -202,7 +202,7 @@ describe("Stream", () => {
     ]);
   });
 
-  it("should use mapWith", async () => {
+  it("should use map", async () => {
     const s = pipe(
       S.fromArray([0, 1, 2]),
       S.map(n => n + 1)
@@ -433,6 +433,55 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(
       T.provide<Config & ConfigB>({ initial: 1, second: 1 })(r)
+    );
+
+    assert.deepEqual(
+      res,
+      // prettier-ignore
+      [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2
+      , 3, 4, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3
+      , 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 7, 0
+      , 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3
+      , 4, 5, 6, 7, 8, 9]
+    );
+  });
+
+  it("should use stream with environment with pipe ", async () => {
+    type Config = {
+      initial: number;
+    };
+    type ConfigB = {
+      second: number;
+    };
+
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
+    const s = pipe(
+      // $ExpectType Managed<Config, never, Fold<Config, never, number>>
+      a,
+      S.chain(n => S.fromRange(n, 1, 10))
+    );
+
+    // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    const m = pipe(
+      s,
+      S.chain(n =>
+        S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
+      )
+    );
+
+    // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    const g = pipe(
+      // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+      m,
+      S.chain(n => S.fromRange(0, 1, n))
+    );
+    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+
+    const res = await T.runToPromise(
+      T.provide<Config & ConfigB>({
+        initial: 1,
+        second: 1
+      })(r)
     );
 
     assert.deepEqual(
