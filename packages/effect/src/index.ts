@@ -27,7 +27,8 @@ import {
   Monad3E,
   Monad3EC,
   MonadThrow3E,
-  MonadThrow3EC
+  MonadThrow3EC,
+  Alt3E
 } from "./overload";
 import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
@@ -1374,7 +1375,8 @@ function chainError_<R, E1, R2, E2, A>(
 export interface EffectMonad
   extends Monad3E<URI>,
     Bifunctor3<URI>,
-    MonadThrow3E<URI> {
+    MonadThrow3E<URI>,
+    Alt3E<URI> {
   /**
    * Produce an new IO that will use the error produced by inner to produce a recovery program
    * @param io
@@ -1442,6 +1444,14 @@ const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) => r => ({
 const mapLeft_: EffectMonad["mapLeft"] = (io, f) =>
   chainError_(io, flow(f, raiseError));
 
+const alt_: EffectMonad["alt"] = chainError_;
+
+export function alt<R2, E2, A>(
+  fy: () => Effect<R2, E2, A>
+): <R, E>(fx: Effect<R, E, A>) => Effect<R & R2, E | E2, A> {
+  return fx => alt_(fx, fy);
+}
+
 export const effect: EffectMonad = {
   URI,
   map: map_,
@@ -1454,7 +1464,8 @@ export const effect: EffectMonad = {
   throwError: raiseError,
   chainError: chainError_,
   foldExit: foldExit_,
-  chainTap: chainTap_
+  chainTap: chainTap_,
+  alt: alt_
 };
 
 export const parEffect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
@@ -1545,15 +1556,15 @@ export function or<R, E, A>(
     predicate ? map_(ma, Ei.left) : map_(mb, Ei.right);
 }
 
-export function alt_(
+export function condWith(
   predicate: boolean
-): <R, E, A>(ma: Effect<R, E, A>) => (mb: Effect<R, E, A>) => Effect<R, E, A> {
+): <R, E, A>(ma: Effect<R, E, A>) => <R2, E2, B>(mb: Effect<R2, E2, B>) => Effect<R & R2, E | E2, A | B> {
   return ma => mb => (predicate ? ma : mb);
 }
 
-export function alt<R, E, A>(
+export function cond<R, E, A>(
   ma: Effect<R, E, A>
-): (mb: Effect<R, E, A>) => (predicate: boolean) => Effect<R, E, A> {
+): <R2, E2, B>(mb: Effect<R2, E2, B>) => (predicate: boolean) => Effect<R & R2, E | E2, A | B> {
   return mb => predicate => (predicate ? ma : mb);
 }
 

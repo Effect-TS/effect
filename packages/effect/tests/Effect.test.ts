@@ -155,17 +155,21 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done(E.right(2)));
     });
 
-    it("alt", async () => {
-      const a = await T.runToPromiseExit(T.alt(T.pure(1))(T.pure(2))(true));
-      const b = await T.runToPromiseExit(T.alt(T.pure(1))(T.pure(2))(false));
+    it("cond", async () => {
+      const a = await T.runToPromiseExit(T.cond(T.pure(1))(T.pure(2))(true));
+      const b = await T.runToPromiseExit(T.cond(T.pure(1))(T.pure(2))(false));
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
     });
 
-    it("alt_", async () => {
-      const a = await T.runToPromiseExit(T.alt_(true)(T.pure(1))(T.pure(2)));
-      const b = await T.runToPromiseExit(T.alt_(false)(T.pure(1))(T.pure(2)));
+    it("condWith", async () => {
+      const a = await T.runToPromiseExit(
+        T.condWith(true)(T.pure(1))(T.pure(2))
+      );
+      const b = await T.runToPromiseExit(
+        T.condWith(false)(T.pure(1))(T.pure(2))
+      );
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
@@ -367,6 +371,38 @@ describe("EffectSafe", () => {
         effect.bimap(T.raiseError("foo"), f, g)
       );
       assert.deepStrictEqual(e2, ex.raise(3));
+    });
+
+    it("mapLeft", async () => {
+      const e = await T.runToPromiseExit(
+        effect.mapLeft(T.raiseError("1"), x => new Error(x))
+      );
+      assert.deepStrictEqual(e, ex.raise(new Error("1")));
+    });
+  });
+
+  describe("Alt3", () => {
+    it("alt", async () => {
+      const a = T.pure("a");
+      const a2 = T.pure("a2");
+      const err = T.raiseError("e");
+      const err2 = T.raiseError("err2");
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(err, () => a)),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(err, () => err2)),
+        ex.raise("err2")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(a, () => a2)),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(a, () => err)),
+        ex.done("a")
+      );
     });
 
     it("mapLeft", async () => {

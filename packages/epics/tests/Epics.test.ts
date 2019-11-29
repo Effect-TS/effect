@@ -60,7 +60,7 @@ const fetchUser: Ep.Epic<Config, MyAction, State> = _ => action$ =>
     .bindL("fetched", ({ action: { id } }) =>
       S.encaseEffect(
         T.accessM(({ config: { prefix } }: Config) =>
-          T.alt_(prefix === "prefix")(
+          T.condWith(prefix === "prefix")(
             T.sync(
               (): MyAction => ({
                 type: "USER_FETCHED",
