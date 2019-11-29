@@ -26,8 +26,8 @@ import * as T from "../";
 import { Fiber, effect } from "../";
 import * as deferred from "../deferred";
 import { Deferred } from "../deferred";
-import * as managed from "../managed";
-import { Managed } from "../managed";
+import * as M from "../managed";
+import { Managed, managed } from "../managed";
 import { Monad3E } from "../overload";
 import * as cq from "../queue";
 import { ConcurrentQueue } from "../queue";
@@ -61,7 +61,7 @@ export type Stream<R, E, A> = Managed<R, E, Fold<R, E, A>>;
 function arrayFold<A>(
   as: readonly A[]
 ): Managed<T.NoEnv, T.NoErr, Fold<T.NoEnv, T.NoErr, A>> {
-  return managed.encaseEffect(
+  return M.encaseEffect(
     effect.map(ref.makeRef(0), cell => {
       return <S>(
         initial: S,
@@ -123,7 +123,7 @@ function* rangeIterator(
 export function fromSource<R, E, A>(
   r: Managed<R, E, T.Effect<R, E, Option<A>>>
 ): Stream<R, E, A> {
-  return managed.managed.map(r, pull => {
+  return managed.map(r, pull => {
     function fold<S>(
       initial: S,
       cont: Predicate<S>,
@@ -166,11 +166,7 @@ export function fromArray<A>(as: readonly A[]): Stream<T.NoEnv, T.NoErr, A> {
 export function fromIterator<A>(
   iter: Lazy<Iterator<A>>
 ): Stream<T.NoEnv, T.NoErr, A> {
-  return pipe(
-    managed.encaseEffect(T.sync(iter)),
-    managed.map(iteratorSource),
-    fromSource
-  );
+  return pipe(M.encaseEffect(T.sync(iter)), M.map(iteratorSource), fromSource);
 }
 
 /**
@@ -214,7 +210,7 @@ export function once<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
       return T.pure(initial);
     }
   }
-  return managed.pure(fold);
+  return M.pure(fold);
 }
 
 /**
@@ -239,13 +235,13 @@ export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
     return step(initial);
   }
 
-  return managed.pure(fold);
+  return M.pure(fold);
 }
 
 export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
   return pipe(
-    managed.encaseEffect(ref.makeRef(-1)),
-    managed.map(r =>
+    M.encaseEffect(ref.makeRef(-1)),
+    M.map(r =>
       pipe(
         T.delay(
           r.update(n => n + 1),
@@ -265,7 +261,7 @@ export const empty: Stream<
   T.NoEnv,
   T.NoErr,
   never
-> = managed.pure(
+> = M.pure(
   <S>(
     initial: S,
     _cont: Predicate<S>,
@@ -293,7 +289,7 @@ export function encaseEffect<R, E, A>(w: T.Effect<R, E, A>): Stream<R, E, A> {
       return T.pure(initial);
     }
   }
-  return managed.pure(fold) as Stream<R, E, A>;
+  return M.pure(fold) as Stream<R, E, A>;
 }
 
 /**
@@ -330,7 +326,7 @@ export function fromOption<A>(opt: Option<A>): Stream<T.NoEnv, T.NoErr, A> {
 export function zipWithIndex<R, E, A>(
   stream: Stream<R, E, A>
 ): Stream<R, E, readonly [A, number]> {
-  return managed.managed.map(stream, fold => {
+  return managed.map(stream, fold => {
     function zipFold<S>(
       initial: S,
       cont: Predicate<S>,
@@ -372,18 +368,18 @@ export function concatL<R, E, A, R2, E2>(
     step: FunctionN<[S, A], T.Effect<R & R2, E | E2, S>>
   ): T.Effect<R & R2, E | E2, S> {
     return pipe(
-      managed.use(w1, fold1 => fold1(initial, cont, step)),
+      M.use(w1, fold1 => fold1(initial, cont, step)),
       T.chain(intermediate => {
         /* istanbul ignore else */
         if (cont(intermediate)) {
-          return managed.use(w2(), fold2 => fold2(intermediate, cont, step));
+          return M.use(w2(), fold2 => fold2(intermediate, cont, step));
         } else {
           return T.pure(intermediate);
         }
       })
     );
   }
-  return managed.pure(fold);
+  return M.pure(fold);
 }
 
 /**
@@ -417,7 +413,7 @@ export function map<R, E, A, B>(
   stream: Stream<R, E, A>,
   f: FunctionN<[A], B>
 ): Stream<R, E, B> {
-  return managed.managed.map(
+  return managed.map(
     stream,
     outer => <S>(
       initial: S,
@@ -455,7 +451,7 @@ export function filter<R, E, A>(
   stream: Stream<R, E, A>,
   f: Predicate<A>
 ): Stream<R, E, A> {
-  return managed.managed.map(
+  return managed.map(
     stream,
     outer => <S>(
       initial: S,
@@ -494,7 +490,7 @@ export function distinctAdjacent<A>(
   eq: Eq<A>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, A> {
   return <R, E>(stream: Stream<R, E, A>) =>
-    managed.managed.map(
+    managed.map(
       stream,
       base => <S>(
         initial: S,
@@ -537,7 +533,7 @@ export function foldM<R, E, A, R2, E2, B>(
   f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
   seed: B
 ): Stream<R & R2, E | E2, B> {
-  return managed.managed.map(
+  return managed.map(
     widen<R2, E2>()(stream),
     base => <S>(
       initial: S,
@@ -591,11 +587,8 @@ export function scanM<R, E, A, B, R2, E2>(
   return concat(
     once(seed),
     pipe(
-      managed.zip(
-        widen<R2, E2>()(stream),
-        managed.encaseEffect(ref.makeRef(seed))
-      ),
-      managed.map(([base, accum]) => {
+      M.zip(widen<R2, E2>()(stream), M.encaseEffect(ref.makeRef(seed))),
+      M.map(([base, accum]) => {
         function fold<S>(
           initial: S,
           cont: Predicate<S>,
@@ -660,7 +653,7 @@ export function chain<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
   f: FunctionN<[A], Stream<R2, E2, B>>
 ): Stream<R & R2, E | E2, B> {
-  return managed.managed.map(
+  return managed.map(
     widen<R2, E2>()(stream),
     outerfold => <S>(
       initial: S,
@@ -671,7 +664,7 @@ export function chain<R, E, A, R2, E2, B>(
         /* istanbul ignore next */
         if (cont(s)) {
           const inner = widen<R, E>()(f(a));
-          return managed.use(inner, innerfold => innerfold(s, cont, step));
+          return M.use(inner, innerfold => innerfold(s, cont, step));
         } else {
           return T.pure(s);
         }
@@ -734,7 +727,7 @@ export function transduce<R, E, A, R2, E2, S, B>(
   stream: Stream<R, E, A>,
   sink: Sink<R2, E2, S, A, B>
 ): Stream<R & R2, E | E2, B> {
-  return managed.managed.map(
+  return managed.map(
     widen<R2, E2>()(stream),
     base => <S0>(
       initial: S0,
@@ -843,7 +836,7 @@ export function take<R, E, A>(
   stream: Stream<R, E, A>,
   n: number
 ): Stream<R, E, A> {
-  return managed.managed.map(
+  return managed.map(
     stream,
     fold => <S>(
       initial: S,
@@ -870,7 +863,7 @@ export function takeWhile<R, E, A>(
   stream: Stream<R, E, A>,
   pred: Predicate<A>
 ): Stream<R, E, A> {
-  return managed.managed.map(
+  return managed.map(
     stream,
     fold => <S>(
       initial: S,
@@ -900,7 +893,7 @@ export function into<R, E, A, R2, E2, S, B>(
   stream: Stream<R, E, A>,
   sink: Sink<R, E2, S, A, B>
 ): T.Effect<R & R2, E | E2, B> {
-  return managed.use(widen<R2, E2>()(stream), fold =>
+  return M.use(widen<R2, E2>()(stream), fold =>
     pipe(
       sink.initial,
       T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
@@ -919,7 +912,7 @@ export function intoManaged<R, E, A, S, B>(
   stream: Stream<R, E, A>,
   managedSink: Managed<R, E, Sink<R, E, S, A, B>>
 ): T.Effect<R, E, B> {
-  return managed.use(managedSink, sink => into(stream, sink));
+  return M.use(managedSink, sink => into(stream, sink));
 }
 
 /**
@@ -931,7 +924,7 @@ export function intoLeftover<R, E, A, S, B>(
   stream: Stream<R, E, A>,
   sink: Sink<R, E, S, A, B>
 ): T.Effect<R, E, readonly [B, readonly A[]]> {
-  return managed.use(stream, fold =>
+  return M.use(stream, fold =>
     pipe(
       sink.initial,
       T.chain(init =>
@@ -958,11 +951,11 @@ function sinkQueue<R extends T.Env, E, A>(
   E,
   readonly [ConcurrentQueue<Option<A>>, Deferred<R, E, Option<A>>]
 > {
-  return managed.managed.chain(
-    managed.zip(
+  return managed.chain(
+    M.zip(
       // 0 allows maximum backpressure throttling (i.e. a reader must be waiting already to produce the item)
-      managed.encaseEffect(cq.boundedQueue<Option<A>>(0)),
-      managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
+      M.encaseEffect(cq.boundedQueue<Option<A>>(0)),
+      M.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
     ),
     ([q, latch]) => {
       const write = effect.foldExit(
@@ -971,7 +964,7 @@ function sinkQueue<R extends T.Env, E, A>(
         constant(q.offer(none))
       );
 
-      return managed.as(managed.fiber(write), [q, latch] as const);
+      return M.as(M.fiber(write), [q, latch] as const);
     }
   );
 }
@@ -987,7 +980,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   bs: Stream<R2, E2, B>,
   f: FunctionN<[A, B], C>
 ): Stream<R & R2, E | E2, C> {
-  const source = managed.zipWith(
+  const source = M.zipWith(
     sinkQueue(as),
     sinkQueue(bs),
     ([aq, alatch], [bq, blatch]) => {
@@ -1078,7 +1071,7 @@ function queueBreakerSource<R, E, A>(
 function streamQueueSource<R, E, A>(
   stream: Stream<R, E, A>
 ): Managed<R, E, T.Effect<R, E, Option<A>>> {
-  return managed.managed.map(sinkQueue(stream), ([q, breaker]) =>
+  return managed.map(sinkQueue(stream), ([q, breaker]) =>
     queueBreakerSource(q, breaker)
   );
 }
@@ -1094,9 +1087,9 @@ export function peel<R, E, A, S, B>(
   stream: Stream<R, E, A>,
   sink: Sink<R, E, S, A, B>
 ): Stream<R, E, readonly [B, Stream<R, E, A>]> {
-  return managed.managed.chain(streamQueueSource(stream), pull => {
+  return managed.chain(streamQueueSource(stream), pull => {
     const pullStream = fromSource<R, E, A>(
-      managed.pure(pull) as Managed<R, E, T.Effect<R, E, Option<A>>>
+      M.pure(pull) as Managed<R, E, T.Effect<R, E, Option<A>>>
     );
     // We now have a shared pull instantiation that we can use as a sink to drive and return as a stream
     return pipe(
@@ -1110,7 +1103,7 @@ export function peelManaged<R, E, A, S, B>(
   stream: Stream<R, E, A>,
   managedSink: Managed<R, E, Sink<R, E, S, A, B>>
 ): Stream<R, E, readonly [B, Stream<R, E, A>]> {
-  return managed.managed.chain(managedSink, sink => peel(stream, sink));
+  return managed.chain(managedSink, sink => peel(stream, sink));
 }
 
 function interruptFiberSlot(
@@ -1146,7 +1139,7 @@ function singleFiberSlot(): Managed<
   T.NoErr,
   Ref<Option<Fiber<never, void>>>
 > {
-  return managed.bracket(
+  return M.bracket(
     ref.makeRef<Option<Fiber<never, void>>>(none),
     interruptFiberSlot
   );
@@ -1159,24 +1152,22 @@ function singleFiberSlot(): Managed<
 export function switchLatest<R, E, A>(
   stream: Stream<R, E, Stream<R, E, A>>
 ): Stream<R, E, A> {
-  const source = managed.managed.chain(streamQueueSource(stream), (
+  const source = managed.chain(streamQueueSource(stream), (
     pull // read streams
   ) =>
-    managed.managed.chain(
-      managed.zip(
+    managed.chain(
+      M.zip(
         // The queue and latch to push into
-        managed.encaseEffect(cq.boundedQueue<Option<A>>(0)),
-        managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
+        M.encaseEffect(cq.boundedQueue<Option<A>>(0)),
+        M.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
       ),
       ([pushQueue, pushBreaker]) =>
         // The internal latch that can be used to signal failures and shut down the read process
-        managed.managed.chain(
-          managed.encaseEffect(
-            deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
-          ),
+        managed.chain(
+          M.encaseEffect(deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()),
           internalBreaker =>
             // somewhere to hold the currently running fiber so we can interrupt it on termination
-            managed.managed.chain(singleFiberSlot(), fiberSlot => {
+            managed.chain(singleFiberSlot(), fiberSlot => {
               const interruptPushFiber = interruptFiberSlot(fiberSlot);
               // Spawn a fiber that should push elements from stream into pushQueue as long as it is able
               function spawnPushFiber(
@@ -1240,10 +1231,7 @@ export function switchLatest<R, E, A>(
                 pushQueue,
                 pushBreaker
               );
-              return managed.as(
-                managed.fiber(advanceStreams()),
-                downstreamSource
-              );
+              return M.as(M.fiber(advanceStreams()), downstreamSource);
             })
         )
     )
@@ -1283,12 +1271,12 @@ function interruptWeaveHandles(
 }
 
 // Track many fibers for the purpose of clean interruption on failure
-const makeWeave: Managed<T.NoEnv, never, Weave> = managed.managed.chain(
-  managed.encaseEffect(ref.makeRef(0)),
+const makeWeave: Managed<T.NoEnv, never, Weave> = managed.chain(
+  M.encaseEffect(ref.makeRef(0)),
   cell =>
     // On cleanup we want to interrupt any running fibers
-    managed.managed.map(
-      managed.bracket(ref.makeRef<WeaveHandle[]>([]), interruptWeaveHandles),
+    managed.map(
+      M.bracket(ref.makeRef<WeaveHandle[]>([]), interruptWeaveHandles),
       store => {
         function attach(
           action: T.Effect<T.NoEnv, never, void>
@@ -1329,97 +1317,87 @@ export function merge<R, E, A>(
   stream: Stream<R, E, Stream<R, E, A>>,
   maxActive: number
 ): Stream<R, E, A> {
-  const source = managed.managed.chain(streamQueueSource(stream), pull =>
-    managed.managed.chain(
-      managed.encaseEffect(semaphore.makeSemaphore(maxActive)),
-      sem =>
-        // create the queue that output will be forced into
-        managed.managed.chain(
-          managed.encaseEffect(cq.boundedQueue<Option<A>>(0)),
-          pushQueue =>
-            // create the mechanism t hrough which we can signal completion
-            managed.managed.chain(
-              managed.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>()),
-              pushBreaker =>
-                managed.managed.chain(makeWeave, weave =>
-                  managed.managed.chain(
-                    managed.encaseEffect(
-                      deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
-                    ),
-                    internalBreaker => {
-                      // create a wave action that will proxy elements created by running the stream into the push queue
-                      // if any errors occur, we set the breaker
-                      function spawnPushFiber(
-                        stream: Stream<R, E, A>
-                      ): T.Effect<R, never, void> {
-                        const writer = pipe(
-                          // Process to sink elements into the queue
-                          into(map(stream, some), queueSink(pushQueue)) as any,
-                          // TODO: I don't think we need to handle interrupts, it shouldn't be possible
-                          T.foldExit(
-                            internalBreaker.done,
-                            constant(T.pure(undefined))
-                          )
-                        );
-                        return weave.attach(sem.withPermit(writer)); // we need a permit to start
-                      }
+  const source = managed.chain(streamQueueSource(stream), pull =>
+    managed.chain(M.encaseEffect(semaphore.makeSemaphore(maxActive)), sem =>
+      // create the queue that output will be forced into
+      managed.chain(M.encaseEffect(cq.boundedQueue<Option<A>>(0)), pushQueue =>
+        // create the mechanism t hrough which we can signal completion
+        managed.chain(
+          M.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>()),
+          pushBreaker =>
+            managed.chain(makeWeave, weave =>
+              managed.chain(
+                M.encaseEffect(
+                  deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
+                ),
+                internalBreaker => {
+                  // create a wave action that will proxy elements created by running the stream into the push queue
+                  // if any errors occur, we set the breaker
+                  function spawnPushFiber(
+                    stream: Stream<R, E, A>
+                  ): T.Effect<R, never, void> {
+                    const writer = pipe(
+                      // Process to sink elements into the queue
+                      into(map(stream, some), queueSink(pushQueue)) as any,
+                      // TODO: I don't think we need to handle interrupts, it shouldn't be possible
+                      T.foldExit(
+                        internalBreaker.done,
+                        constant(T.pure(undefined))
+                      )
+                    );
+                    return weave.attach(sem.withPermit(writer)); // we need a permit to start
+                  }
 
-                      // The action that will pull a single stream upstream and attempt to activate it to push downstream
-                      function advanceStreams(): T.Effect<R, never, void> {
-                        const breakerError = effect.chain(
-                          internalBreaker.wait,
-                          T.raised
-                        );
+                  // The action that will pull a single stream upstream and attempt to activate it to push downstream
+                  function advanceStreams(): T.Effect<R, never, void> {
+                    const breakerError = effect.chain(
+                      internalBreaker.wait,
+                      T.raised
+                    );
 
-                        return effect.foldExit(
-                          T.raceFirst(
-                            pull, // we don't want to pull until there is capacity
-                            breakerError
-                          ),
-                          c => pushBreaker.cause(c), // if upstream errored, we should push the failure downstream immediately
-                          (
-                            nextOpt // otherwise we should
-                          ) =>
-                            pipe(
-                              nextOpt,
-                              o.fold(
-                                // The end has occured
-                                constant(
-                                  pipe(
-                                    // We will wait for an error or all active produces to finish
-                                    T.race(
-                                      breakerError,
-                                      sem.acquireN(maxActive)
-                                    ),
-                                    T.foldExit(
-                                      c => pushBreaker.cause(c),
-                                      constant(pushQueue.offer(none))
-                                    )
-                                  )
-                                ),
-                                // Start the push fiber and then keep going
-                                next =>
-                                  T.applySecondL(
-                                    sem.withPermit(spawnPushFiber(next)),
-                                    constant(advanceStreams())
-                                  )
+                    return effect.foldExit(
+                      T.raceFirst(
+                        pull, // we don't want to pull until there is capacity
+                        breakerError
+                      ),
+                      c => pushBreaker.cause(c), // if upstream errored, we should push the failure downstream immediately
+                      (
+                        nextOpt // otherwise we should
+                      ) =>
+                        pipe(
+                          nextOpt,
+                          o.fold(
+                            // The end has occured
+                            constant(
+                              pipe(
+                                // We will wait for an error or all active produces to finish
+                                T.race(breakerError, sem.acquireN(maxActive)),
+                                T.foldExit(
+                                  c => pushBreaker.cause(c),
+                                  constant(pushQueue.offer(none))
+                                )
                               )
-                            )
-                        );
-                      }
-                      const downstreamSource = queueBreakerSource(
-                        pushQueue,
-                        pushBreaker
-                      );
-                      return managed.as(
-                        managed.fiber(advanceStreams()),
-                        downstreamSource
-                      );
-                    }
-                  )
-                )
+                            ),
+                            // Start the push fiber and then keep going
+                            next =>
+                              T.applySecondL(
+                                sem.withPermit(spawnPushFiber(next)),
+                                constant(advanceStreams())
+                              )
+                          )
+                        )
+                    );
+                  }
+                  const downstreamSource = queueBreakerSource(
+                    pushQueue,
+                    pushBreaker
+                  );
+                  return M.as(M.fiber(advanceStreams()), downstreamSource);
+                }
+              )
             )
         )
+      )
     )
   );
   return fromSource(source);
@@ -1499,8 +1477,8 @@ export const streamMonad: Monad3E<URI> = {
 function getSourceFromObjectReadStream<A>(
   stream: Readable
 ): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<A>>> {
-  return managed.managed.chain(
-    managed.encaseEffect(
+  return managed.chain(
+    M.encaseEffect(
       T.sync(() => {
         const { next, ops, hasCB } = su.queueUtils<Error, A>();
 
@@ -1542,7 +1520,7 @@ function getSourceFromObjectReadStreamB<A>(
   batch: number,
   every: number
 ): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<Array<A>>>> {
-  return managed.encaseEffect(
+  return M.encaseEffect(
     T.sync(() => {
       let open = true;
       const leftover: Array<any> = [];
