@@ -4,7 +4,8 @@ import { ATypeOf, EnvOf } from "../src/overload";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 
-_.effect.of(1); // $ExpectType Effect<unknown, never, number>
+_.pure(1); // $ExpectType Effect<unknown, never, number>
+_.effect.of(1); // $ExpectType Effect<unknown, unknown, number>
 
 interface EnvA {
   envA: {
@@ -18,8 +19,10 @@ interface EnvB {
   };
 }
 
-const fa = _.accessM(({ envA }: EnvA) => _.effect.of(envA.foo)); // $ExpectType Effect<EnvA, never, string>
-const fb = _.accessM(({ envB }: EnvB) => _.effect.of(envB.foo)); // $ExpectType Effect<EnvB, never, string>
+const fa = _.accessM(({ envA }: EnvA) => _.pure(envA.foo)); // $ExpectType Effect<EnvA, never, string>
+const fb = _.accessM(({ envB }: EnvB) => _.pure(envB.foo)); // $ExpectType Effect<EnvB, never, string>
+const fc = _.accessM(({ envA }: EnvA) => _.effect.of(envA.foo)); // $ExpectType Effect<EnvA, unknown, string>
+const fd = _.accessM(({ envB }: EnvB) => _.effect.of(envB.foo)); // $ExpectType Effect<EnvB, unknown, string>
 
 const program = _.effect.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
 
