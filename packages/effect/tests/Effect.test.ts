@@ -155,17 +155,21 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done(E.right(2)));
     });
 
-    it("alt", async () => {
-      const a = await T.runToPromiseExit(T.alt(T.pure(1))(T.pure(2))(true));
-      const b = await T.runToPromiseExit(T.alt(T.pure(1))(T.pure(2))(false));
+    it("cond", async () => {
+      const a = await T.runToPromiseExit(T.cond(T.pure(1))(T.pure(2))(true));
+      const b = await T.runToPromiseExit(T.cond(T.pure(1))(T.pure(2))(false));
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
     });
 
-    it("alt_", async () => {
-      const a = await T.runToPromiseExit(T.alt_(true)(T.pure(1))(T.pure(2)));
-      const b = await T.runToPromiseExit(T.alt_(false)(T.pure(1))(T.pure(2)));
+    it("condWith", async () => {
+      const a = await T.runToPromiseExit(
+        T.condWith(true)(T.pure(1))(T.pure(2))
+      );
+      const b = await T.runToPromiseExit(
+        T.condWith(false)(T.pure(1))(T.pure(2))
+      );
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
@@ -374,6 +378,74 @@ describe("EffectSafe", () => {
         effect.mapLeft(T.raiseError("1"), x => new Error(x))
       );
       assert.deepStrictEqual(e, ex.raise(new Error("1")));
+    });
+  });
+
+  describe("Alt3", () => {
+    it("alt", async () => {
+      const a = T.pure("a");
+      const a2 = T.pure("a2");
+      const err = T.raiseError("e");
+      const err2 = T.raiseError("err2");
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(err, () => a)),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(err, () => err2)),
+        ex.raise("err2")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(a, () => a2)),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(effect.alt(a, () => err)),
+        ex.done("a")
+      );
+    });
+
+    it("pipe alt", async () => {
+      const a = effect.of("a");
+      const a2 = effect.of("a2");
+      const err = T.raiseError<string, string>("e");
+      const err2 = T.raiseError<string, string>("err2");
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            err,
+            T.alt(() => a)
+          )
+        ),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            err,
+            T.alt(() => err2)
+          )
+        ),
+        ex.raise("err2")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            a,
+            T.alt(() => a2)
+          )
+        ),
+        ex.done("a")
+      );
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(
+          pipe(
+            a,
+            T.alt(() => err)
+          )
+        ),
+        ex.done("a")
+      );
     });
   });
 
