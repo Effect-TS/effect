@@ -1,6 +1,6 @@
 {
   "name": "@matechs/tracing",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -38,7 +38,7 @@
     "waveguide": "^1.3.0"
   },
   "dependencies": {
-    "@matechs/effect": "^0.2.0"
+    "@matechs/effect": "^0.2.1"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
