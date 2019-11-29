@@ -20,7 +20,7 @@ describe("Http", () => {
     const mockAxios: typeof AX = {
       post<T = any, R = AxiosResponse<T>>(
         url: string,
-        data?: any,
+        data?: unknown,
         config?: AxiosRequestConfig
       ): Promise<R> {
         return Promise.reject(({ response: 1 } as any) as AxiosError<number>);
