@@ -38,7 +38,7 @@ describe("Express", () => {
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad", {})),
         T.map(s => s.data),
-        T.mapErrorWith(s => s.response && s.response.data)
+        T.mapError(s => s.response && s.response.data)
       )
     );
 
@@ -46,7 +46,7 @@ describe("Express", () => {
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad2", {})),
         T.map(s => s.data),
-        T.mapErrorWith(s => s.response && s.response.data)
+        T.mapError(s => s.response && s.response.data)
       )
     );
 
@@ -54,7 +54,7 @@ describe("Express", () => {
       pipe(
         T.provide(H.httpClient())(H.post("http://127.0.0.1:3003/bad3", {})),
         T.map(s => s.data),
-        T.mapErrorWith(s => s.response && s.response.data)
+        T.mapError(s => s.response && s.response.data)
       )
     );
 
