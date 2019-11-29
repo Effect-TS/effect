@@ -93,7 +93,7 @@ function makeConcurrentQueueImpl<A>(
                   poption.map(
                     ([next, q]) =>
                       [
-                        makeTicket(T.effect.of(next), T.unit),
+                        makeTicket(T.pure(next), T.unit),
                         right(q) as State<A>
                       ] as const
                   ),

@@ -361,7 +361,7 @@ export function allocate<R, E, A>(
 
     switch (c._tag) {
       case ManagedTag.Pure:
-        return T.effect.of({ a: c.value, release: T.unit });
+        return T.pure({ a: c.value, release: T.unit });
       case ManagedTag.Encase:
         return T.effect.map(c.acquire, a => ({ a, release: T.unit }));
       case ManagedTag.Bracket:

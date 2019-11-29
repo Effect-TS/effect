@@ -72,7 +72,7 @@ describe("Stream", () => {
     );
 
     const res = await T.runToPromiseExit(
-      S.collectArray(S.mapM(s, ({ n }) => T.delay(T.effect.of(n), 100)))
+      S.collectArray(S.mapM(s, ({ n }) => T.delay(T.pure(n), 100)))
     );
 
     assert.deepEqual(res, ex.raise(new Error("test")));
@@ -82,7 +82,7 @@ describe("Stream", () => {
     const s = S.fromArray(array.range(0, 100000));
 
     const res = await T.runToPromise(
-      S.collectArray(S.foldM(s, (b, a) => T.effect.of(b + a), 0))
+      S.collectArray(S.foldM(s, (b, a) => T.pure(b + a), 0))
     );
 
     assert.deepEqual(res, [5000050000]);
@@ -346,7 +346,7 @@ describe("Stream", () => {
   });
 
   it("should use mapM", async () => {
-    const s = S.mapM(S.fromArray([0, 1, 2]), n => T.effect.of(n + 1));
+    const s = S.mapM(S.fromArray([0, 1, 2]), n => T.pure(n + 1));
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -605,7 +605,7 @@ describe("Stream", () => {
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.effect.of(S.encaseEffect(cell.set(1))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
         const s2: T.Effect<
           T.NoEnv,
           string,
@@ -615,7 +615,7 @@ describe("Stream", () => {
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.effect.of(S.encaseEffect(cell.set(2))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
           T.NoEnv,
@@ -646,20 +646,20 @@ describe("Stream", () => {
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.effect.of(S.encaseEffect(cell.set(1))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
         const s2: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
         > = T.delay(
-          T.effect.of(S.encaseEffect(T.raiseError("boom"))),
+          T.pure(S.encaseEffect(T.raiseError("boom"))),
           50
         ) as any;
         const s3: T.Effect<
           T.NoEnv,
           string,
           S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.effect.of(S.encaseEffect(cell.set(2))), 50) as any;
+        > = T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
           T.NoEnv,

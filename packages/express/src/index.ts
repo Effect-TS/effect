@@ -76,7 +76,7 @@ export const express: Express = {
       hostname?: string
     ): T.Effect<HasExpress & G.Graceful, T.NoErr, Server> {
       return T.accessM(({ express: { app } }: HasExpress) =>
-        Do(T.effectMonad)
+        Do(T.effect)
           .bindL("s", () =>
             T.sync(() => {
               return app.listen(port, hostname || "0.0.0.0");

@@ -4,7 +4,6 @@
 
 import M from "deepmerge";
 import { Do } from "fp-ts-contrib/lib/Do";
-// import { Applicative3 } from "fp-ts/lib/Applicative";
 import * as Ar from "fp-ts/lib/Array";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import * as Ei from "fp-ts/lib/Either";
@@ -28,15 +27,10 @@ import {
   Monad3E,
   Monad3EC,
   MonadThrow3E,
-  MonadThrow3EC,
-  Applicative3E
+  MonadThrow3EC
 } from "./overload";
 import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
-import { Applicative3 } from "fp-ts/lib/Applicative";
-import { Chain3 } from "fp-ts/lib/Chain";
-import { MonadThrow3 } from "fp-ts/lib/MonadThrow";
-import { Monad3 } from "fp-ts/lib/Monad";
 
 export enum EffectTag {
   Pure,
@@ -1476,7 +1470,7 @@ export const effect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
   throwError: raiseError
 };
 
-export const parEffect: Monad3<URI> & Bifunctor3<URI> & MonadThrow3<URI> = {
+export const parEffect: Monad3E<URI> & Bifunctor3<URI> & MonadThrow3E<URI> = {
   URI,
   map: map_,
   of: pure,

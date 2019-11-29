@@ -1,11 +1,10 @@
 import * as T from "@matechs/effect";
 import * as E from "@matechs/effect/lib/exit";
 import * as SQL from "../src";
-import * as A from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
 import { PrimaryGeneratedColumn, Entity } from "typeorm";
 import { graceful, Graceful, trigger } from "@matechs/graceful";
-import * as S from "@matechs/effect/lib/stream/stream";
+import * as S from "@matechs/effect/lib/stream";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 import { monoidString } from "fp-ts/lib/Monoid";
@@ -31,7 +30,7 @@ interface Console {
 const consoleLive: Console = {
   console: {
     log(message) {
-      return T.fromIO(() => {
+      return T.sync(() => {
         console.log(message);
       });
     }
@@ -46,7 +45,7 @@ const program: T.Effect<
   SQL.Orm & Graceful & Config & Console,
   Error,
   void
-> = Do(T.effectMonad)
+> = Do(T.effect)
   .bindL("pool", () =>
     pipe(
       SQL.createPool(),
@@ -95,7 +94,7 @@ const program: T.Effect<
     )
   )
   .bindL("ids", ({ stream }) =>
-    T.right(
+    T.pure(
       S.scan(
         S.chain(stream, a =>
           pipe(
@@ -132,7 +131,7 @@ const module = pipe(
 
 const main = pipe(program, T.provide(module));
 
-T.run(main)()
+T.runToPromiseExit(main)
   .then(
     E.fold(
       () => {},
@@ -147,4 +146,4 @@ T.run(main)()
       }
     )
   )
-  .then(() => T.promise(T.provide(module)(trigger())));
+  .then(() => T.runToPromise(T.provide(module)(trigger())));

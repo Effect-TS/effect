@@ -136,7 +136,7 @@ export function fromSource<R, E, A>(
               pipe(
                 out,
                 o.fold(
-                  () => T.effect.of(initial) as T.Effect<R, E, S>,
+                  () => T.pure(initial) as T.Effect<R, E, S>,
                   a =>
                     T.effect.chain(step(initial, a), next =>
                       fold(next, cont, step)
@@ -145,7 +145,7 @@ export function fromSource<R, E, A>(
               )
             )
           )
-        : T.effect.of(initial);
+        : T.pure(initial);
     }
     return fold;
   });
@@ -211,7 +211,7 @@ export function once<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
     if (cont(initial)) {
       return f(initial, a);
     } else {
-      return T.effect.of(initial);
+      return T.pure(initial);
     }
   }
   return managed.pure(fold);
@@ -234,7 +234,7 @@ export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
       if (cont(current)) {
         return T.shiftAfter(T.effect.chain(f(current, a), step));
       }
-      return T.shiftAfter(T.effect.of(current));
+      return T.shiftAfter(T.pure(current));
     }
     return step(initial);
   }
@@ -270,7 +270,7 @@ export const empty: Stream<
     initial: S,
     _cont: Predicate<S>,
     _f: FunctionN<[S, never], T.Effect<T.NoEnv, T.NoErr, S>>
-  ) => T.effect.of(initial)
+  ) => T.pure(initial)
 );
 
 /**
@@ -290,7 +290,7 @@ export function encaseEffect<R, E, A>(w: T.Effect<R, E, A>): Stream<R, E, A> {
         T.chainWith(a => step(initial, a))
       );
     } else {
-      return T.effect.of(initial);
+      return T.pure(initial);
     }
   }
   return managed.pure(fold) as Stream<R, E, A>;
@@ -462,7 +462,7 @@ export function filter<R, E, A>(
       cont: Predicate<S>,
       step: FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> =>
-      outer(initial, cont, (s, a) => (f(a) ? step(s, a) : T.effect.of(s)))
+      outer(initial, cont, (s, a) => (f(a) ? step(s, a) : T.pure(s)))
   );
 }
 
@@ -514,7 +514,7 @@ export function distinctAdjacent<A>(
               () => T.effect.map(step(current[0], next), s => [s, some(next)]),
               seen =>
                 eq.equals(seen, next)
-                  ? T.effect.of(current)
+                  ? T.pure(current)
                   : T.effect.map(step(current[0], next), s => [s, some(next)])
             )
           );
@@ -551,7 +551,7 @@ export function foldM<R, E, A, R2, E2, B>(
           result => step(initial, result)
         );
       } else {
-        return T.effect.of(initial);
+        return T.pure(initial);
       }
     }
   );
@@ -568,7 +568,7 @@ export function fold<R, E, A, B>(
   f: FunctionN<[B, A], B>,
   seed: B
 ): Stream<R, E, B> {
-  return foldM(stream, (b, a) => T.effect.of(f(b, a)), seed);
+  return foldM(stream, (b, a) => T.pure(f(b, a)), seed);
 }
 
 function t2<A, B>(a: A, b: B): readonly [A, B] {
@@ -628,7 +628,7 @@ export function scanM<R, E, A, B, R2, E2>(
               )
             );
           } else {
-            return T.effect.of(initial);
+            return T.pure(initial);
           }
         }
         return fold;
@@ -648,7 +648,7 @@ export function scan<R, E, A, B>(
   f: FunctionN<[B, A], B>,
   seed: B
 ): Stream<R, E, B> {
-  return scanM(stream, (b, a) => T.effect.of(f(b, a)), seed);
+  return scanM(stream, (b, a) => T.pure(f(b, a)), seed);
 }
 
 /**
@@ -673,7 +673,7 @@ export function chain<R, E, A, R2, E2, B>(
           const inner = widen<R, E>()(f(a));
           return managed.use(inner, innerfold => innerfold(s, cont, step));
         } else {
-          return T.effect.of(s);
+          return T.pure(s);
         }
       })
   );
@@ -749,7 +749,7 @@ export function transduce<R, E, A, R2, E2, S, B>(
         return T.effect.chain(stepMany(sink, sinkState, chunk), nextSinkStep =>
           isSinkCont(nextSinkStep)
             ? // We need to let more data in to drive the sink
-              T.effect.of([foldState, nextSinkStep.state, true] as const)
+              T.pure([foldState, nextSinkStep.state, true] as const)
             : // We have a completion, so extract the value and then use it to advance the fold state
               pipe(
                 sinkStepState(nextSinkStep),
@@ -884,7 +884,7 @@ export function takeWhile<R, E, A>(
           (s, a) =>
             pred(a)
               ? T.effect.map(step(s[0], a), next => t2(next, true))
-              : T.effect.of(t2(s[0], false))
+              : T.pure(t2(s[0], false))
         ),
         t2s => t2s[0]
       )
@@ -1122,7 +1122,7 @@ function interruptFiberSlot(
     pipe(
       optFiber,
       o.fold(
-        () => T.effect.of(undefined as void),
+        () => T.pure(undefined as void),
         f => f.interrupt
       )
     )
@@ -1136,7 +1136,7 @@ function waitFiberSlot(
     pipe(
       optFiber,
       o.fold(
-        () => T.effect.of(undefined as void),
+        () => T.pure(undefined as void),
         f => T.asUnit(f.wait)
       )
     )

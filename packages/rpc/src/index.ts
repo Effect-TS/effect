@@ -146,7 +146,7 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
   return withTracer(
     T.accessM(({ tracer: { withControllerSpan } }: Tracer & HasTracerContext) =>
       pipe(
-        A.array.traverse(T.effectMonad)(Object.keys(module[entry]), k =>
+        A.array.traverse(T.effect)(Object.keys(module[entry]), k =>
           EX.route("post", `/${entry}/${k}`, req =>
             pipe(
               // TODO: find better solution to avoid deepmerge
