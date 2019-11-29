@@ -7,6 +7,7 @@ import * as A from "fp-ts/lib/Array";
 
 import * as assert from "assert";
 import { raise } from "waveguide/lib/exit";
+import { stream } from "@matechs/effect/lib/stream";
 
 describe("RxJS", () => {
   jest.setTimeout(5000);
@@ -182,7 +183,7 @@ describe("RxJS", () => {
   });
 
   it("unsubscribe should stop drain", async () => {
-    const s = S.chain(S.repeatedly(0), n =>
+    const s = stream.chain(S.repeatedly(0), n =>
       S.encaseEffect(T.delay(T.pure(n), 10))
     );
     const o = O.toObservable(s);
