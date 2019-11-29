@@ -1101,17 +1101,17 @@ export function fork<R, E, A>(
   return makeFiber(io, name);
 }
 
-function completeLatched<E1, E2, E3, A, B, C>(
+function completeLatched<E1, E2, E3, A, B, C, R>(
   latch: Ref<boolean>,
-  channel: Deferred<NoEnv, E3, C>,
-  combine: FunctionN<[Exit<E1, A>, Fiber<E2, B>], Effect<NoEnv, E3, C>>,
+  channel: Deferred<R, E3, C>,
+  combine: FunctionN<[Exit<E1, A>, Fiber<E2, B>], Effect<R, E3, C>>,
   other: Fiber<E2, B>
-): FunctionN<[Exit<E1, A>], Effect<NoEnv, NoErr, void>> {
+): FunctionN<[Exit<E1, A>], Effect<R, NoErr, void>> {
   return exit => {
     const act: Effect<
       NoEnv,
       never,
-      Effect<NoEnv, NoErr, void>
+      Effect<R, NoErr, void>
     > = latch.modify(flag =>
       !flag
         ? ([channel.from(combine(exit, other)), true] as const)
@@ -1130,19 +1130,19 @@ function completeLatched<E1, E2, E3, A, B, C>(
  * @param onFirstWon
  * @param onSecondWon
  */
-export function raceFold<R, R2, E1, E2, E3, A, B, C>(
+export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
   first: Effect<R, E1, A>,
   second: Effect<R2, E2, B>,
-  onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E2, B>], Effect<NoEnv, E3, C>>,
-  onSecondWon: FunctionN<[Exit<E2, B>, Fiber<E1, A>], Effect<NoEnv, E3, C>>
-) : Effect<R & R2, E3, C> {
+  onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E2, B>], Effect<R3, E3, C>>,
+  onSecondWon: FunctionN<[Exit<E2, B>, Fiber<E1, A>], Effect<R4, E3, C>>
+): Effect<R & R2 & R3 & R4, E3, C> {
   return accessM((r: R & R2) =>
-    uninterruptibleMask<NoEnv, E3, C>(cutout =>
-      chain_<NoEnv, E3, Ref<boolean>, NoEnv, E3, C>(
+    uninterruptibleMask<R3 & R4, E3, C>(cutout =>
+      chain_<NoEnv, E3, Ref<boolean>, R3 & R4, E3, C>(
         makeRef<boolean>(false),
         latch =>
-          chain_<NoEnv, E3, Deferred<NoEnv, E3, C>, NoEnv, E3, C>(
-            makeDeferred<NoEnv, E3, C>(),
+          chain_<R3 & R4, E3, Deferred<R3 & R4, E3, C>, R3 & R4, E3, C>(
+            makeDeferred<R3 & R4, E3, C>(),
             channel =>
               chain_(fork(provideAll(r)(first)), fiber1 =>
                 chain_(fork(provideAll(r)(second)), fiber2 =>
@@ -1150,12 +1150,7 @@ export function raceFold<R, R2, E1, E2, E3, A, B, C>(
                     fork(
                       chain_(
                         fiber1.wait as Effect<NoEnv, NoErr, Exit<E1, A>>,
-                        completeLatched(
-                          latch,
-                          channel,
-                          onFirstWon,
-                          fiber2
-                        )
+                        completeLatched(latch, channel, onFirstWon, fiber2)
                       )
                     ),
                     () =>
@@ -1163,12 +1158,7 @@ export function raceFold<R, R2, E1, E2, E3, A, B, C>(
                         fork(
                           chain_(
                             fiber2.wait as Effect<NoEnv, NoErr, Exit<E2, B>>,
-                            completeLatched(
-                              latch,
-                              channel,
-                              onSecondWon,
-                              fiber1
-                            )
+                            completeLatched(latch, channel, onSecondWon, fiber1)
                           )
                         ),
                         () =>
