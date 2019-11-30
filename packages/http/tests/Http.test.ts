@@ -56,7 +56,9 @@ describe("Http", () => {
     server.close();
 
     assert.deepEqual(
-      res._tag === ExitTag.Raise && res.error.response.status,
+      res._tag === ExitTag.Raise &&
+        res.error.response &&
+        res.error.response.status,
       404
     );
   });
