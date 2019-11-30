@@ -6,7 +6,7 @@ export interface HttpClient {
   http: {
     post<E, A>(
       url: string,
-      data: any,
+      data: unknown,
       config?: AxiosRequestConfig
     ): T.Effect<T.NoEnv, AxiosError<E>, AxiosResponse<A>>;
     get<E, A>(
@@ -20,7 +20,7 @@ export const httpClient: (X?: typeof AX) => HttpClient = (X = AX) => ({
   http: {
     post<E, A>(
       url: string,
-      data: any,
+      data: unknown,
       config?: AxiosRequestConfig
     ): T.Effect<T.NoEnv, AxiosError<E>, AxiosResponse<A>> {
       return pipe(
@@ -42,7 +42,7 @@ export const httpClient: (X?: typeof AX) => HttpClient = (X = AX) => ({
 
 export function post<E, A>(
   url: string,
-  data: any,
+  data: unknown,
   config?: AxiosRequestConfig
 ): T.Effect<HttpClient, AxiosError<E>, AxiosResponse<A>> {
   return T.accessM(({ http }: HttpClient) => http.post(url, data, config));
