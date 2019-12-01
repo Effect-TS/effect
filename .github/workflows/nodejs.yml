@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - unknown
+      - steamsig
 
 jobs:
   build:

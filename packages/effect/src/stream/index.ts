@@ -53,7 +53,7 @@ export type Fold<R, E, A> = <S>(
   step: FunctionN<[S, A], T.Effect<R, E, S>>
 ) => T.Effect<R, E, S>;
 
-export type Stream<R, E, A> = Managed<R, E, Fold<R, E, A>>;
+export interface Stream<R, E, A> extends Managed<R, E, Fold<R, E, A>> {}
 
 // The contract of a Stream's fold is that state is preserved within the lifecycle of the managed
 // Therefore, we must track the offset in the array via a ref
