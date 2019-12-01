@@ -121,7 +121,7 @@ export function effectToObservable<A>(
 ): Rx.Observable<A> {
   return new Rx.Observable(sub => {
     let unsubs = false;
-    T.run(
+    const cancel = T.run(
       eff,
       E.fold(
         v => {
@@ -148,7 +148,10 @@ export function effectToObservable<A>(
       )
     );
     return () => {
-      unsubs = true;
+      if (!unsubs) {
+        unsubs = true;
+        cancel()
+      }
     };
   });
 }
