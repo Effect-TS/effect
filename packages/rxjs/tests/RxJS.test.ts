@@ -4,7 +4,7 @@ import * as O from "../src";
 import * as Rx from "rxjs";
 import * as E from "fp-ts/lib/Either";
 import * as A from "fp-ts/lib/Array";
-
+import { Do } from "fp-ts-contrib/lib/Do";
 import * as assert from "assert";
 import { raise } from "waveguide/lib/exit";
 import { stream } from "@matechs/effect/lib/stream";
@@ -208,5 +208,61 @@ describe("RxJS", () => {
 
     assert.deepEqual(errors, []);
     assert.deepEqual(sub.closed, true);
+  });
+});
+
+describe("effectToObservable", () => {
+  interface Counters<A> {
+    values: A[];
+    errors: unknown[];
+  }
+  const makeCounters = <A>(): Counters<A> => ({
+    errors: [],
+    values: []
+  });
+
+  const test = <A>(eff: T.Effect<unknown, never, A>) =>
+    Do(T.effect)
+      .bind("counters", T.pure(makeCounters<A>()))
+      .bind("obs", T.pure(O.effectToObservable(eff)))
+      .bindL("res", ({ obs, counters }) =>
+        T.asyncTotal(cb => {
+          obs.subscribe(
+            n => {
+              counters.values.push(n);
+            },
+            e => {
+              counters.errors.push(e);
+              // cb("ok");
+            },
+            () => {
+              cb("ok");
+            }
+          );
+          return () => {};
+        })
+      )
+      .return(r => r.counters);
+
+  it("effectToObservable returns value", async () => {
+    const counters = await T.runToPromise(test(T.pure("a")));
+    assert.deepEqual(counters.values, ["a"]);
+    assert.deepEqual(counters.errors, []);
+  });
+
+  it("effectToObservable returns error", async () => {
+    const counters = await T.runToPromise(
+      test(T.raiseError("err") as any) // forces accepting errors with any
+    );
+    assert.deepEqual(counters.values, []);
+    assert.deepEqual(counters.errors, ["err"]);
+  });
+
+  it("effectToObservable returns error", async () => {
+    const counters = await T.runToPromise(
+      test(T.raiseError("err") as any) // forces accepting errors with any
+    );
+    assert.deepEqual(counters.values, []);
+    assert.deepEqual(counters.errors, ["err"]);
   });
 });

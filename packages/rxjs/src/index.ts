@@ -115,3 +115,40 @@ export function toObservable<R, E, A>(
       })
   );
 }
+
+export function effectToObservable<A>(
+  eff: T.Effect<T.NoEnv, never, A>
+): Rx.Observable<A> {
+  return new Rx.Observable(sub => {
+    let unsubs = false;
+    T.run(
+      eff,
+      E.fold(
+        v => {
+          if (!unsubs) {
+            sub.next(v);
+            sub.complete();
+          }
+        },
+        err => {
+          if (!unsubs) {
+            sub.error(err);
+          }
+        },
+        v => {
+          if (!unsubs) {
+            sub.error(v);
+          }
+        },
+        () => {
+          if (!unsubs) {
+            sub.complete();
+          }
+        }
+      )
+    );
+    return () => {
+      unsubs = true;
+    };
+  });
+}
