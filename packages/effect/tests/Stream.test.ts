@@ -399,7 +399,7 @@ describe("Stream", () => {
     const streamA = S.repeat(S.encaseEffect(T.access(({ a }: EnvA) => a)));
     const streamB = S.repeat(S.encaseEffect(T.access(({ b }: EnvB) => b)));
 
-    // $ExpectType Managed<EnvA & EnvB, never, Fold<EnvA & EnvB, never, readonly [number, number]>>
+    // $ExpectType Stream<EnvA & EnvB, never, readonly [number, number]>
     const zip = S.zip(streamA, streamB);
 
     const res = await T.runToPromise(
@@ -417,22 +417,29 @@ describe("Stream", () => {
   });
 
   it("should use stream with environment", async () => {
-    type Config = { initial: number };
-    type ConfigB = { second: number };
+    type Config = {
+      initial: number;
+    };
+    type ConfigB = {
+      second: number;
+    };
 
-    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
-    const s = stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
+    const s = stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
 
-    // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    // $ExpectType Stream<Config & ConfigB, never, number>
     const m = stream.chain(s, n =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = stream.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    const g = stream.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
-      T.provide<Config & ConfigB>({ initial: 1, second: 1 })(r)
+      T.provide<Config & ConfigB>({
+        initial: 1,
+        second: 1
+      })(r)
     );
 
     assert.deepEqual(
@@ -454,14 +461,14 @@ describe("Stream", () => {
       second: number;
     };
 
-    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Managed<Config, never, Fold<Config, never, number>>
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
     const s = pipe(
-      // $ExpectType Managed<Config, never, Fold<Config, never, number>>
+      // $ExpectType Stream<Config, never, number>
       a,
       S.chain(n => S.fromRange(n, 1, 10))
     );
 
-    // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    // $ExpectType Stream<Config & ConfigB, never, number>
     const m = pipe(
       s,
       S.chain(n =>
@@ -469,9 +476,9 @@ describe("Stream", () => {
       )
     );
 
-    // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+    // $ExpectType Stream<Config & ConfigB, never, number>
     const g = pipe(
-      // $ExpectType Managed<Config & ConfigB, never, Fold<Config & ConfigB, never, number>>
+      // $ExpectType Stream<Config & ConfigB, never, number>
       m,
       S.chain(n => S.fromRange(0, 1, n))
     );
