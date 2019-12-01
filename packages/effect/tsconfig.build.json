@@ -4,5 +4,5 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "exclude": ["tests", "node_modules", "type-tests"]
+  "exclude": ["tests", "node_modules", "type-tests", "experiments"]
 }
