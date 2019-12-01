@@ -3,7 +3,7 @@ name: Node CI
 on:
   push:
     branches:
-      - auto-publish
+      - estream
 
 jobs:
   build:
