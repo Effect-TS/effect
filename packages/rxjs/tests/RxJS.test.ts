@@ -233,7 +233,7 @@ describe("effectToObservable", () => {
             },
             e => {
               counters.errors.push(e);
-              // cb("ok");
+              cb("ok");
             },
             () => {
               cb("ok");
