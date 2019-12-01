@@ -250,11 +250,4 @@ describe("effectToObservable", () => {
     assert.deepEqual(counters.errors, []);
   });
 
-  it("effectToObservable returns error", async () => {
-    const counters = await T.runToPromise(
-      test(T.raiseError("err") as any) // forces accepting errors with any
-    );
-    assert.deepEqual(counters.values, []);
-    assert.deepEqual(counters.errors, ["err"]);
-  });
 });
