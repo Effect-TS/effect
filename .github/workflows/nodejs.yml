@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - remove-dependency-on-wave
+      - tslintrules
 
 jobs:
   build:
