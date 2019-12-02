@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - master
-      - deepmerge
-      - index
+      - remove-dependency-on-wave
 
 jobs:
   build:
