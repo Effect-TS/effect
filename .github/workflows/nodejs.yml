@@ -4,9 +4,7 @@ on:
   push:
     branches:
       - master
-      - unknown
-      - effectToObservable
-      - effectify
+      - deepmerge
 
 jobs:
   build:
