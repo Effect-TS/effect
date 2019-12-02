@@ -211,7 +211,7 @@ describe("RxJS", () => {
   });
 });
 
-describe("effectToObservable", () => {
+describe("fromEffect", () => {
   interface Counters<A> {
     values: A[];
     errors: unknown[];
@@ -224,7 +224,7 @@ describe("effectToObservable", () => {
   const test = <A>(eff: T.Effect<unknown, never, A>) =>
     Do(T.effect)
       .bind("counters", T.pure(makeCounters<A>()))
-      .bind("obs", T.pure(O.effectToObservable(eff)))
+      .bind("obs", T.pure(O.fromEffect(eff)))
       .bindL("res", ({ obs, counters }) =>
         T.asyncTotal(cb => {
           obs.subscribe(
@@ -244,7 +244,7 @@ describe("effectToObservable", () => {
       )
       .return(r => r.counters);
 
-  it("effectToObservable returns value", async () => {
+  it("fromEffect returns value", async () => {
     const counters = await T.runToPromise(test(T.pure("a")));
     assert.deepEqual(counters.values, ["a"]);
     assert.deepEqual(counters.errors, []);
