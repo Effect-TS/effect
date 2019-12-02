@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>HasSpanContext | @matechs/effect</title>
+	<title>HasCb | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,24 +56,35 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="../modules/_matechs_tracing.html">@matechs/tracing</a>
+					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 				</li>
 				<li>
-					<a href="_matechs_tracing.hasspancontext.html">HasSpanContext</a>
+					<a href="_matechs_effect.hascb.html">HasCb</a>
 				</li>
 			</ul>
-			<h1>Interface HasSpanContext</h1>
+			<h1>Interface HasCb&lt;E, A&gt;</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-type-parameters">
+				<h3>Type parameters</h3>
+				<ul class="tsd-type-parameters">
+					<li>
+						<h4>E</h4>
+					</li>
+					<li>
+						<h4>A</h4>
+					</li>
+				</ul>
+			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">HasSpanContext</span>
+						<span class="target">HasCb</span>
 					</li>
 				</ul>
 			</section>
@@ -84,7 +95,7 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_tracing.hasspancontext.html#span" class="tsd-kind-icon">span</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.hascb.html#cb" class="tsd-kind-icon">cb</a></li>
 							</ul>
 						</section>
 					</div>
@@ -93,30 +104,14 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="span" class="tsd-anchor"></a>
-					<h3>span</h3>
-					<div class="tsd-signature tsd-kind-icon">span<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+					<a name="cb" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagOptional">Optional</span> cb</h3>
+					<div class="tsd-signature tsd-kind-icon">cb<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">function</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/tracing/src/index.ts#L23">packages/tracing/src/index.ts:23</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/stream/support.ts#L20">packages/effect/src/stream/support.ts:20</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-type-declaration">
-						<h4>Type declaration</h4>
-						<ul class="tsd-parameters">
-							<li class="tsd-parameter">
-								<h5>context<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span></h5>
-								<ul class="tsd-parameters">
-									<li class="tsd-parameter">
-										<h5>component<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></h5>
-									</li>
-									<li class="tsd-parameter">
-										<h5>span<wbr>Instance<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">OS</span></h5>
-									</li>
-								</ul>
-							</li>
-						</ul>
-					</div>
 				</section>
 			</section>
 		</div>
@@ -126,8 +121,28 @@
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
 					</li>
-					<li class=" tsd-kind-module">
+					<li class="current tsd-kind-module">
 						<a href="../modules/_matechs_effect.html">@matechs/effect</a>
+						<ul>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_contrib_lib_do_.html">&quot;fp-<wbr>ts-<wbr>contrib/lib/<wbr>Do&quot;</a>
+							</li>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+							</li>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-1.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+							</li>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-2.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+							</li>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-3.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
+							</li>
+							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
+								<a href="../modules/_matechs_effect._fp_ts_lib_pipeable_.html">&quot;fp-<wbr>ts/lib/pipeable&quot;</a>
+							</li>
+						</ul>
 					</li>
 					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_epics.html">@matechs/epics</a>
@@ -150,7 +165,7 @@
 					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_rxjs.html">@matechs/rxjs</a>
 					</li>
-					<li class="current tsd-kind-module">
+					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_tracing.html">@matechs/tracing</a>
 					</li>
 				</ul>
@@ -159,49 +174,16 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface tsd-parent-kind-module">
-						<a href="_matechs_tracing.hasspancontext.html" class="tsd-kind-icon">Has<wbr>Span<wbr>Context</a>
+					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_effect.hascb.html" class="tsd-kind-icon">Has<wbr>Cb</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_tracing.hasspancontext.html#span" class="tsd-kind-icon">span</a>
+								<a href="_matechs_effect.hascb.html#cb" class="tsd-kind-icon">cb</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
-					<li class=" tsd-kind-interface tsd-parent-kind-module">
-						<a href="_matechs_tracing.hastracercontext.html" class="tsd-kind-icon">Has<wbr>Tracer<wbr>Context</a>
-					</li>
-					<li class=" tsd-kind-interface tsd-parent-kind-module">
-						<a href="_matechs_tracing.tracer.html" class="tsd-kind-icon">Tracer</a>
-					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module">
-						<a href="../modules/_matechs_tracing.html#childcontext" class="tsd-kind-icon">Child<wbr>Context</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="../modules/_matechs_tracing.html#createcontrollerspan" class="tsd-kind-icon">create<wbr>Controller<wbr>Span</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="../modules/_matechs_tracing.html#haschildcontext" class="tsd-kind-icon">has<wbr>Child<wbr>Context</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="../modules/_matechs_tracing.html#notracing" class="tsd-kind-icon">no<wbr>Tracing</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
-						<a href="../modules/_matechs_tracing.html#runwithspan" class="tsd-kind-icon">run<wbr>With<wbr>Span</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="../modules/_matechs_tracing.html#tracer-1" class="tsd-kind-icon">tracer</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="../modules/_matechs_tracing.html#withchildspan" class="tsd-kind-icon">with<wbr>Child<wbr>Span</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="../modules/_matechs_tracing.html#withcontrollerspan" class="tsd-kind-icon">with<wbr>Controller<wbr>Span</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="../modules/_matechs_tracing.html#withtracer" class="tsd-kind-icon">with<wbr>Tracer</a>
-					</li>
 				</ul>
 			</nav>
 		</div>
