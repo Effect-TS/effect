@@ -5,7 +5,7 @@ import * as bodyParser from "body-parser";
 import { Server } from "http";
 import * as G from "@matechs/graceful";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { ExitTag } from "waveguide/lib/exit";
+import { ExitTag } from "@matechs/effect/lib/original/exit";
 
 export interface HasExpress {
   express: {
