@@ -29,6 +29,7 @@ jobs:
           lerna run test
         env:
           CI: "true"
-      - uses: codecov/codecov-action@v1.0.3
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
         with:
-          token: ${{secrets.CODECOV_TOKEN}}
+          github-token: ${{ secrets.COVERALLS_TOKEN }}
