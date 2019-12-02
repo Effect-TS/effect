@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -31,11 +31,11 @@
     "jest": "^24.9.0",
     "lerna": "^3.19.0",
     "prettier": "^1.19.1",
+    "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.0",
     "ts-jest": "^24.2.0",
     "ts-node": "^8.5.4",
-    "typescript": "^3.7.2",
-    "reflect-metadata": "^0.1.13"
+    "typescript": "^3.7.2"
   },
   "peerDependencies": {
     "axios": "^0.19.0",
@@ -43,8 +43,8 @@
     "fp-ts-contrib": "^0.1.6"
   },
   "dependencies": {
-    "@matechs/effect": "^0.2.3",
-    "@matechs/tracing": "^0.2.3"
+    "@matechs/effect": "^0.2.4",
+    "@matechs/tracing": "^0.2.4"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
