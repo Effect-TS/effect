@@ -1,6 +1,6 @@
 # Introduction
 
-[![Coverage Status](https://coveralls.io/repos/github/mikearnaldi/matechs-effect/badge.svg?branch=master)](https://coveralls.io/github/mikearnaldi/matechs-effect?branch=master)
+[![codecov.io](http://codecov.io/github/mikearnaldi/matechs-effect/coverage.svg?branch=master)](http://codecov.io/github/mikearnaldi/matechs-effect)
 
 Matechs Effect is a typescript library inspired by scala's ZIO and Haskell's RIO architecture.
 
