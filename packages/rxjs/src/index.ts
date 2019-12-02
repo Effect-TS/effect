@@ -115,3 +115,11 @@ export function toObservable<R, E, A>(
       })
   );
 }
+
+/**
+ * Evaluates a non failling Effect into an Observable
+ * Note that the effect would be run for *each* subscriber
+ */
+export function fromEffect<A>(
+  eff: T.Effect<T.NoEnv, never, A>
+): Rx.Observable<A> { return Rx.defer(() =>  Rx.from( T.runToPromise(eff))) }

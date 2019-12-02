@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - unknown
-      - steamsig
+      - effectToObservable
 
 jobs:
   build:
