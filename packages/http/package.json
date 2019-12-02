@@ -38,7 +38,6 @@
   },
   "peerDependencies": {
     "axios": "^0.19.0",
-    "deepmerge": "^4.2.2",
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
     "reflect-metadata": "^0.1.13",

@@ -2,7 +2,6 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/wave.ts
  */
 
-import M from "deepmerge";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as Ar from "fp-ts/lib/Array";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
@@ -32,6 +31,7 @@ import {
 } from "./overload";
 import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
+import { mergeDeep } from "./utils/merge";
 
 export enum EffectTag {
   Pure,
@@ -376,7 +376,7 @@ export function access<R extends Env, A, E = NoErr>(
 }
 
 export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
-  return b => M.all([a, b], { clone: false });
+  return b => mergeDeep(a, b);
 }
 
 export const noEnv = {};
@@ -388,8 +388,7 @@ export const noEnv = {};
 
 export const provide = <R>(r: R) => <R2, E, A>(
   ma: Effect<R2 & R, E, A>
-): Effect<R2, E, A> =>
-  accessM((r2: R2) => provideAll(M.all([r, r2], { clone: false }) as any)(ma));
+): Effect<R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(ma));
 
 /**
  * Provides partial environment, to be used only in top-level

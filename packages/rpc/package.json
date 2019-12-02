@@ -37,7 +37,6 @@
   },
   "peerDependencies": {
     "body-parser": "^1.19.0",
-    "deepmerge": "^4.2.2",
     "express": "^4.17.1",
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
