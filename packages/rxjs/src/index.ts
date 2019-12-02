@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as E from "@matechs/effect/lib/exit";
 import * as M from "@matechs/effect/lib/managed";
 import * as S from "@matechs/effect/lib/stream";
@@ -122,4 +122,6 @@ export function toObservable<R, E, A>(
  */
 export function fromEffect<A>(
   eff: T.Effect<T.NoEnv, never, A>
-): Rx.Observable<A> { return Rx.defer(() =>  Rx.from( T.runToPromise(eff))) }
+): Rx.Observable<A> {
+  return Rx.defer(() => Rx.from(T.runToPromise(eff)));
+}

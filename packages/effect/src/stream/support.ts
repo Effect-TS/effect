@@ -2,7 +2,7 @@ import * as list from "../list";
 import * as O from "fp-ts/lib/Option";
 import * as E from "fp-ts/lib/Either";
 import * as M from "../managed";
-import * as T from "../";
+import * as T from "../effect";
 
 export type Offer<A> = { _tag: "offer"; a: A };
 export type StreamError<E> = { _tag: "error"; e: E };

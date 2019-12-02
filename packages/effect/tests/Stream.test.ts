@@ -7,15 +7,10 @@ import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Readable } from "stream";
 import * as ex from "waveguide/lib/exit";
-import * as T from "../src";
-import * as M from "../src/managed";
-import * as ref from "../src/ref";
-import * as S from "../src/stream";
 import * as SK from "../src/stream/sink";
 import { collectArraySink, liftPureSink, Sink } from "../src/stream/sink";
 import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
-import { effect } from "../src";
-import { stream } from "../src/stream";
+import { effect as T, managed as M, ref, stream as S } from "../src";
 
 export async function expectExitIn<E, A, B>(
   ioa: T.Effect<T.NoEnv, E, A>,
@@ -52,7 +47,7 @@ describe("Stream", () => {
     );
 
     const res = await T.runToPromise(
-      S.collectArray(stream.map(s, ({ n }) => n))
+      S.collectArray(S.stream.map(s, ({ n }) => n))
     );
 
     assert.deepEqual(res, array.range(1, 10));
@@ -425,14 +420,14 @@ describe("Stream", () => {
     };
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
-    const s = stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
+    const s = S.stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
 
     // $ExpectType Stream<Config & ConfigB, never, number>
-    const m = stream.chain(s, n =>
+    const m = S.stream.chain(s, n =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = stream.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
+    const g = S.stream.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
@@ -511,23 +506,23 @@ describe("Stream", () => {
       const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
       const s2 = S.peel(s1, multiplier);
       return expectExit(
-        S.collectArray(stream.chain(s2, ([_h, r]) => r)),
+        S.collectArray(S.stream.chain(s2, ([_h, r]) => r)),
         ex.done([])
       );
     });
     it("should extract a head and return a subsequent element", () => {
       const s1 = S.fromArray([2, 6, 9]);
-      const s2 = stream.chain(S.peel(s1, multiplier), ([head, rest]) => {
-        return stream.map(rest, v => v * head);
+      const s2 = S.stream.chain(S.peel(s1, multiplier), ([head, rest]) => {
+        return S.stream.map(rest, v => v * head);
       });
       return expectExit(S.collectArray(s2), ex.done([12, 18]));
     });
     it("should compose", () => {
       const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
       const s2 = S.filter(s1, x => x % 2 === 0); // emits 4 6 8
-      const s3 = stream.chain(S.peel(s2, multiplier), ([head, rest]) => {
+      const s3 = S.stream.chain(S.peel(s2, multiplier), ([head, rest]) => {
         // head is 4
-        return stream.map(rest, v => v * head); // emits 24 32
+        return S.stream.map(rest, v => v * head); // emits 24 32
       });
       return expectExit(S.collectArray(s3), ex.done([24, 32]));
     });
@@ -555,7 +550,10 @@ describe("Stream", () => {
         S.Stream<T.NoEnv, string, number>
       >;
       const s2 = S.flatten(s1);
-      const s3 = stream.chain(S.peel(s2, multiplier), ([_head, rest]) => rest);
+      const s3 = S.stream.chain(
+        S.peel(s2, multiplier),
+        ([_head, rest]) => rest
+      );
       return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
   });
@@ -660,7 +658,7 @@ describe("Stream", () => {
       return expectExit(S.collectArray(s3), ex.done([0, 1, 0, 1, 0, 1, 2, 3]));
     });
     it("should fail with errors in outer stream", () => {
-      const io = effect.chain(ref.makeRef(0), cell => {
+      const io = T.effect.chain(ref.makeRef(0), cell => {
         const s1: T.Effect<
           T.NoEnv,
           string,
@@ -701,7 +699,7 @@ describe("Stream", () => {
       );
     });
     it("should fail with errors in the inner streams", () => {
-      const io = effect.chain(ref.makeRef(0), cell => {
+      const io = T.effect.chain(ref.makeRef(0), cell => {
         const s1: T.Effect<
           T.NoEnv,
           string,
@@ -772,11 +770,11 @@ describe("Stream", () => {
     const r = T.sync(() => Math.random());
 
     function range(max: number): T.Effect<T.NoEnv, never, number> {
-      return effect.map(r, n => Math.round(n * max));
+      return T.effect.map(r, n => Math.round(n * max));
     }
 
     function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
-      return effect.chain(range(max), a => T.after(a));
+      return T.effect.chain(range(max), a => T.after(a));
     }
 
     it("should merge output", () => {
@@ -787,7 +785,7 @@ describe("Stream", () => {
         4
       );
       const output = S.collectArray(s2);
-      const check = effect.chain(output, values =>
+      const check = T.effect.chain(output, values =>
         T.sync(() => {
           const uniq = array
             .uniq(eqNumber)(values)

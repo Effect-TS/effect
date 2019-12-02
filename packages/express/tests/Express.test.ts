@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as EX from "../src";
 import * as H from "@matechs/http/lib";

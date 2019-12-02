@@ -1,6 +1,6 @@
 import * as assert from "assert";
 
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 
 import { program } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";

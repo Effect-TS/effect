@@ -1,5 +1,5 @@
 import newExpress from "express";
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as EX from "express";
 import * as bodyParser from "body-parser";
 import { Server } from "http";

@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import AX, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { get, httpClient, post } from "../src";
 import * as assert from "assert";

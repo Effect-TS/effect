@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as G from "../src";
 import * as assert from "assert";
 

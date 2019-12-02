@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as E from "@matechs/effect/lib/exit";
 import * as SQL from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -96,7 +96,7 @@ const program: T.Effect<
   .bindL("ids", ({ stream }) =>
     T.pure(
       S.scan(
-        S.chain(stream, a =>
+        S.stream.chain(stream, a =>
           pipe(
             a,
             S.fromArray,

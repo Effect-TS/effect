@@ -1,4 +1,4 @@
-import * as _ from "./index";
+import * as _ from "./effect";
 import { Option, fromNullable } from "fp-ts/lib/Option";
 
 /**

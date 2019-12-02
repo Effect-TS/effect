@@ -20,8 +20,8 @@ import {
   MutableStack,
   mutableStack
 } from "waveguide/lib/support/mutable-stack";
-import { NoEnv } from ".";
-import * as T from "./";
+import { NoEnv } from "./effect";
+import * as T from "./effect";
 
 // It turns out th is is used quite often
 type UnkIO = T.Effect<unknown, unknown, unknown>;

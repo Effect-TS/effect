@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 import {
   Tracer as OT,

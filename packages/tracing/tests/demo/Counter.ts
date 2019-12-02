@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as A from "fp-ts/lib/Array";
 import { IO } from "fp-ts/lib/IO";
 import { Do } from "fp-ts-contrib/lib/Do";

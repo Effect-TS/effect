@@ -1,5 +1,5 @@
 import AX, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 
 export interface HttpClient {

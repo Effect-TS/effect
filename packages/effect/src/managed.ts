@@ -3,9 +3,9 @@ import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
 import { ExitTag, Exit, done } from "waveguide/lib/exit";
 
-import * as T from "./";
+import * as T from "./effect";
 import { Monad3E } from "./overload";
-import { NoEnv, effect } from ".";
+import { NoEnv, effect } from "./effect";
 
 export enum ManagedTag {
   Pure,

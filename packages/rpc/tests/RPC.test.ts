@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as EX from "@matechs/express";
 import * as RPC from "../src";
 import * as G from "@matechs/graceful";
