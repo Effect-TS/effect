@@ -201,8 +201,7 @@ export function makeDriver<E, A>(
             break;
           case T.EffectTag.ProvideEnv:
             env = cu.value;
-            frameStack.push(makeFrame(env => () => cu.effect(env)));
-            current = next(env);
+            current = cu.effect;
             break;
           case T.EffectTag.Pure:
             current = next(cu.value);

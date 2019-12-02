@@ -28,6 +28,7 @@ jobs:
           lerna run build
           yarn jest
           lerna run lint
+          lerna run bench
         env:
           CI: "true"
 
