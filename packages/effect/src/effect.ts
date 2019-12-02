@@ -2,7 +2,6 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/wave.ts
  */
 
-import { Do } from "fp-ts-contrib/lib/Do";
 import * as Ar from "fp-ts/lib/Array";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import * as Ei from "fp-ts/lib/Either";
@@ -1581,12 +1580,9 @@ export function sequenceP(
   n: number
 ): <R, E, A>(ops: Array<Effect<R, E, A>>) => Effect<R, E, Array<A>> {
   return ops =>
-    Do(effect)
-      .bind("sem", S.makeSemaphore(n))
-      .bindL("r", ({ sem }) =>
-        Ar.array.traverse(parEffect)(ops, op => sem.withPermit(op))
-      )
-      .return(s => s.r);
+    effect.chain(S.makeSemaphore(n), sem =>
+      Ar.array.traverse(parEffect)(ops, op => sem.withPermit(op))
+    );
 }
 
 export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
