@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - master
-      - remove-dependency-on-wave
-      - tslintrules
+      - optimizations
 
 jobs:
   build:
