@@ -28,7 +28,6 @@
     "redux-observable": "^1.2.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^6.5.3",
-    "typeorm": "^0.2.20",
-    "waveguide": "^1.3.0"
+    "typeorm": "^0.2.20"
   }
 }
