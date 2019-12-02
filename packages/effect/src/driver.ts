@@ -86,6 +86,7 @@ export function makeDriver<E, A>(
   const frameStack: MutableStack<FrameType> = mutableStack();
   const interruptRegionStack: MutableStack<boolean> = mutableStack();
   let cancelAsync: Lazy<void> | undefined;
+  let env: any = {};
 
   function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
     return result.listen(f);
@@ -186,14 +187,23 @@ export function makeDriver<E, A>(
     };
   }
 
+  // tslint:disable-next-line: cyclomatic-complexity
   function loop(go: UnkIO): void {
     let current: UnkIO | undefined = go;
 
     while (current && (!isInterruptible() || !interrupted)) {
       try {
-        const cu = current({});
+        const cu = current(env);
 
         switch (cu._tag) {
+          case T.EffectTag.AccessEnv:
+            current = next(env);
+            break;
+          case T.EffectTag.ProvideEnv:
+            env = cu.value;
+            frameStack.push(makeFrame(env => () => cu.effect(env)));
+            current = next(env);
+            break;
           case T.EffectTag.Pure:
             current = next(cu.value);
             break;

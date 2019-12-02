@@ -42,7 +42,9 @@ export enum EffectTag {
   Collapse,
   InterruptibleRegion,
   AccessInterruptible,
-  AccessRuntime
+  AccessRuntime,
+  AccessEnv,
+  ProvideEnv
 }
 
 export type NoEnv = unknown;
@@ -66,12 +68,24 @@ export type Effect<R, E, A> = (
   | Collapse<any, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
   | InterruptibleRegion<E, A>
   | AccessInterruptible<E, A>
-  | AccessRuntime<E, A>;
+  | AccessRuntime<E, A>
+  | AccessEnv<R>
+  | ProvideEnv<E, A>;
 
 export interface Pure<E, A> {
   readonly _tag: EffectTag.Pure;
 
   readonly value: A;
+}
+
+export interface ProvideEnv<E, A> {
+  readonly _tag: EffectTag.ProvideEnv;
+  readonly effect: Effect<any, E, A>;
+  readonly value: any;
+}
+
+export interface AccessEnv<R> {
+  readonly _tag: EffectTag.AccessEnv;
 }
 
 /**
@@ -155,7 +169,7 @@ export function suspended<R, E, A>(
 ): Effect<R, E, A> {
   return r => ({
     _tag: EffectTag.Suspended,
-    thunk: () => provideAll(r)(thunk())
+    thunk: thunk as any
   });
 }
 
@@ -249,7 +263,7 @@ export function interruptibleRegion<R, E, A>(
   return r => ({
     _tag: EffectTag.InterruptibleRegion,
     flag,
-    inner: provideAll(r)(inner)
+    inner: inner as any
   });
 }
 
@@ -268,10 +282,10 @@ function chain_<R, E, A, R2, E2, B>(
   inner: Effect<R, E, A>,
   bind: FunctionN<[A], Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return r => ({
+  return () => ({
     _tag: EffectTag.Chain,
-    inner: provideAll(r)(inner),
-    bind: a => provideAll(r)(bind(a))
+    inner: inner as any,
+    bind: bind as any
   });
 }
 
@@ -358,9 +372,8 @@ export function withRuntime<E, A>(
 }
 
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
-  return r => ({
-    _tag: EffectTag.Pure,
-    value: r
+  return () => ({
+    _tag: EffectTag.AccessEnv
   });
 }
 
@@ -406,7 +419,11 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
 
 export const provideAll = <R>(r: R) => <E, A>(
   ma: Effect<R, E, A>
-): Effect<NoEnv, E, A> => () => ma(r);
+): Effect<NoEnv, E, A> => () => ({
+  _tag: EffectTag.ProvideEnv,
+  effect: ma,
+  value: r
+});
 
 /**
  * Provides all environment necessary to the child effect via an effect
@@ -1442,9 +1459,9 @@ export interface EffectMonad
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) => r => ({
   _tag: EffectTag.Collapse,
-  inner: provideAll(r)(inner),
-  failure: c => provideAll(r)(failure(c)),
-  success: a => provideAll(r)(success(a))
+  inner: inner as any,
+  failure: failure as any,
+  success: success as any
 });
 
 const mapLeft_: EffectMonad["mapLeft"] = (io, f) =>
