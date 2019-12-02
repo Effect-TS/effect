@@ -114,7 +114,6 @@ describe("Example", () => {
   });
 
   it("should extract trace", async () => {
-    const messages: Array<string> = [];
     const spans: Array<{ name: string; options: SpanOptions }> = [];
 
     const mockTracer = new MockTracer2(spans);
