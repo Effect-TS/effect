@@ -26,7 +26,8 @@ jobs:
           npm install -g yarn
           lerna bootstrap
           lerna run build
-          lerna run test
+          yarn jest
+          lerna run lint
         env:
           CI: "true"
       - name: Coveralls

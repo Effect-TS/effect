@@ -5,7 +5,6 @@
   "private": false,
   "scripts": {
     "build": "rimraf lib && tsc --build tsconfig.build.json",
-    "test": "jest && yarn lint",
     "lint": "tslint --project ."
   },
   "publishConfig": {
