@@ -12,9 +12,9 @@ import { Deferred, makeDeferred } from "./deferred";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
-import { Dequeue, empty, of } from "waveguide/lib/support/dequeue";
+import { Dequeue, empty, of } from "./original/support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
-import { ExitTag } from "waveguide/lib/exit";
+import { ExitTag } from "./original/exit";
 import * as T from "./effect";
 import { effect } from "./effect";
 

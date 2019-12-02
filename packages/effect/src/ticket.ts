@@ -4,7 +4,7 @@
  */
 
 import * as T from "./effect";
-import { Exit, ExitTag } from "waveguide/lib/exit";
+import { Exit, ExitTag } from "./original/exit";
 
 export function ticketExit<A>(
   ticket: Ticket<A>,

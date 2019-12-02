@@ -1,7 +1,7 @@
 import { FunctionN, constant } from "fp-ts/lib/function";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
-import { ExitTag, Exit, done } from "waveguide/lib/exit";
+import { ExitTag, Exit, done } from "./original/exit";
 
 import * as T from "./effect";
 import { Monad3E } from "./overload";

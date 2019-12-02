@@ -6,7 +6,7 @@ import * as E from "fp-ts/lib/Either";
 import * as A from "fp-ts/lib/Array";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as assert from "assert";
-import { raise } from "waveguide/lib/exit";
+import { raise } from "@matechs/effect/lib/original/exit";
 import { stream } from "@matechs/effect/lib/stream";
 
 describe("RxJS", () => {

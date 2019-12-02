@@ -15,14 +15,14 @@ import {
 } from "../src";
 import { counter } from "./demo/Counter";
 import { Printer } from "./demo/Printer";
-import { done, raise } from "waveguide/lib/exit";
+import { done, raise } from "@matechs/effect/lib/original/exit";
 
 class MockTracer extends OT {
   constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
-    this.spans.push({ name, options });
+    this.spans.push({ name, options: options || {} });
 
     return super.startSpan(name, options);
   }
@@ -33,7 +33,7 @@ class MockTracer2 extends OT {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
-    this.spans.push({ name, options });
+    this.spans.push({ name, options: options || {} });
 
     return super.startSpan(name, options);
   }
@@ -128,10 +128,12 @@ describe("Example", () => {
     await T.runToPromise(pipe(program2, T.provide(mockModule)));
 
     assert.deepEqual(
+      // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toSpanId(),
       "demo-span-id"
     );
     assert.deepEqual(
+      // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toTraceId(),
       "demo-trace-id"
     );

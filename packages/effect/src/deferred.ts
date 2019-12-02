@@ -2,8 +2,8 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/deferred.ts
  */
 
-import { Exit, Cause } from "waveguide/lib/exit";
-import { Completable, completable } from "waveguide/lib/support/completable";
+import { Exit, Cause } from "./original/exit";
+import { Completable, completable } from "./original/support/completable";
 import * as T from "./effect";
 import { effect } from "./effect";
 

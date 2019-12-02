@@ -6,7 +6,7 @@ import { FunctionN, identity } from "fp-ts/lib/function";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Readable } from "stream";
-import * as ex from "waveguide/lib/exit";
+import * as ex from "../src/original/exit";
 import * as SK from "../src/stream/sink";
 import { collectArraySink, liftPureSink, Sink } from "../src/stream/sink";
 import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";

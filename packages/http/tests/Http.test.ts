@@ -3,7 +3,7 @@ import AX, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { get, httpClient, post } from "../src";
 import * as assert from "assert";
 import express from "express";
-import { ExitTag, raise } from "waveguide/lib/exit";
+import { ExitTag, raise } from "@matechs/effect/lib/original/exit";
 
 const app = express();
 
