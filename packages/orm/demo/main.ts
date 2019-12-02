@@ -114,12 +114,8 @@ const program: T.Effect<
     )
   )
   .doL(({ ids }) => pipe(ids, S.dropWith(1), S.mapMWith(log), S.drain))
+  // tslint:disable-next-line: no-empty
   .return(() => {});
-
-function l<A>(a: A): A {
-  console.log(a);
-  return a;
-}
 
 const module = pipe(
   T.noEnv,
@@ -134,6 +130,7 @@ const main = pipe(program, T.provide(module));
 T.runToPromiseExit(main)
   .then(
     E.fold(
+      // tslint:disable-next-line: no-empty
       () => {},
       e => {
         console.error(e);
