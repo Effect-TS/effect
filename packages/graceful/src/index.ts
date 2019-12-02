@@ -28,6 +28,7 @@ export const graceful: () => Graceful = () => ({
         pipe(
           graceful.state,
           T.sequenceP(graceful.state.length),
+          // tslint:disable-next-line: no-empty
           T.map(() => {})
         )
       );

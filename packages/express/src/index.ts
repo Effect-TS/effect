@@ -78,9 +78,7 @@ export const express: Express = {
       return T.accessM(({ express: { app } }: HasExpress) =>
         Do(T.effect)
           .bindL("s", () =>
-            T.sync(() => {
-              return app.listen(port, hostname || "0.0.0.0");
-            })
+            T.sync(() => app.listen(port, hostname || "0.0.0.0"))
           )
           .doL(({ s }) =>
             G.onExit(

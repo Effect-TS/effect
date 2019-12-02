@@ -14,7 +14,7 @@ import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
-import { effect as T } from "../src"
+import { effect as T } from "../src";
 
 describe("EffectSafe", () => {
   describe("Extra", () => {
@@ -41,6 +41,7 @@ describe("EffectSafe", () => {
             res(1);
           });
 
+          // tslint:disable-next-line: no-empty
           return () => {};
         })
       );
@@ -294,6 +295,7 @@ describe("EffectSafe", () => {
           T.raiseError(1),
           T.foldExit(
             () => T.pure(1),
+            // tslint:disable-next-line: restrict-plus-operands
             n => T.pure(n + 1)
           )
         )

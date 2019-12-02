@@ -62,8 +62,9 @@ function arrayFold<A>(
   as: readonly A[]
 ): Managed<T.NoEnv, T.NoErr, Fold<T.NoEnv, T.NoErr, A>> {
   return M.encaseEffect(
-    effect.map(ref.makeRef(0), cell => {
-      return <S>(
+    effect.map(
+      ref.makeRef(0),
+      cell => <S>(
         initial: S,
         cont: Predicate<S>,
         f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
@@ -73,19 +74,19 @@ function arrayFold<A>(
           if (cont(current)) {
             return pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
-              T.chain(i => {
-                return i < as.length
+              T.chain(i =>
+                i < as.length
                   ? effect.chain(f(current, as[i]), step)
-                  : T.pure(current);
-              })
+                  : T.pure(current)
+              )
             );
           } else {
             return T.pure(current);
           }
         }
         return step(initial);
-      };
-    })
+      }
+    )
   );
 }
 
@@ -247,7 +248,7 @@ export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
           r.update(n => n + 1),
           ms
         ),
-        T.map(n => some(n))
+        T.map(some)
       )
     ),
     fromSource
@@ -471,11 +472,7 @@ export function filterWith<A>(
 export function filterRefineWith<A, B extends A>(
   f: Refinement<A, B>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, B> {
-  return stream =>
-    map_(
-      filter(stream, x => f(x)),
-      x => x as B
-    );
+  return stream => map_(filter(stream, f), x => x as B);
 }
 
 /**
@@ -538,9 +535,8 @@ export function foldM<R, E, A, R2, E2, B>(
     ): T.Effect<R & R2, E | E2, S> => {
       /* istanbul ignore else */
       if (cont(initial)) {
-        return effect.chain(
-          base(seed, constant(true), (s, a) => f(s, a)),
-          result => step(initial, result)
+        return effect.chain(base(seed, constant(true), f), result =>
+          step(initial, result)
         );
       } else {
         return T.pure(initial);
@@ -946,13 +942,7 @@ export function intoLeftover<R, E, A, S, B>(
   return M.use(stream, fold =>
     pipe(
       sink.initial,
-      T.chain(init =>
-        fold(
-          init,
-          s => isSinkCont(s),
-          (s, a) => sink.step(s.state, a)
-        )
-      ),
+      T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
       T.chain(end =>
         effect.map(
           sink.extract(end.state),
@@ -1237,9 +1227,7 @@ export function switchLatest<R, E, A>(
                             )
                           ),
                         next =>
-                          T.applySecondL(spawnPushFiber(next), () =>
-                            advanceStreams()
-                          )
+                          T.applySecondL(spawnPushFiber(next), advanceStreams)
                       )
                     )
                 );
@@ -1580,6 +1568,7 @@ function getSourceFromObjectReadStreamB<A>(
             }
           }
 
+          // tslint:disable-next-line: no-empty
           return () => {};
         }),
         every

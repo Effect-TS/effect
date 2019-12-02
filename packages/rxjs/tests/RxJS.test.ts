@@ -239,6 +239,7 @@ describe("fromEffect", () => {
               cb("ok");
             }
           );
+          // tslint:disable-next-line: no-empty
           return () => {};
         })
       )

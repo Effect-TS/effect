@@ -18,7 +18,9 @@ import { Printer } from "./demo/Printer";
 import { done, raise } from "@matechs/effect/lib/original/exit";
 
 class MockTracer extends OT {
-  constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
+  constructor(
+    private readonly spans: Array<{ name: string; options: SpanOptions }>
+  ) {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
@@ -29,7 +31,9 @@ class MockTracer extends OT {
 }
 
 class MockTracer2 extends OT {
-  constructor(private spans: Array<{ name: string; options: SpanOptions }>) {
+  constructor(
+    private readonly spans: Array<{ name: string; options: SpanOptions }>
+  ) {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
@@ -37,6 +41,7 @@ class MockTracer2 extends OT {
 
     return super.startSpan(name, options);
   }
+  // tslint:disable-next-line: prefer-function-over-method
   extract(format: string, carrier: any): SpanContext | null {
     return {
       toSpanId(): string {
@@ -121,6 +126,7 @@ describe("Example", () => {
     const mockModule: Tracer = tracer(T.sync(() => mockTracer));
 
     const program2 = withTracer(
+      // tslint:disable-next-line: no-empty
       withControllerSpan("", "", {})(T.sync(() => {}))
     );
 

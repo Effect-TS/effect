@@ -8,7 +8,10 @@ import { combineEpics, createEpicMiddleware } from "redux-observable";
 import * as Ep from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 
-type User = { id: string; prefix: string };
+interface User {
+  id: string;
+  prefix: string;
+}
 
 interface UserFetched extends Action<any> {
   type: "USER_FETCHED";
@@ -27,7 +30,10 @@ interface FetchUser extends Action<any> {
 
 type MyAction = FetchUser | UserFetched | UserFetchFailed;
 
-type State = { user: Op.Option<User>; error: Op.Option<string> };
+interface State {
+  user: Op.Option<User>;
+  error: Op.Option<string>;
+}
 
 function reducer(
   state: State = { user: Op.none, error: Op.none },
@@ -48,11 +54,11 @@ function isFetchUser(x: MyAction): x is FetchUser {
   return x.type === "FETCH_USER";
 }
 
-type Config = {
+interface Config {
   config: {
     prefix: string;
   };
-};
+}
 
 const fetchUser: Ep.Epic<Config, MyAction, State> = _ => action$ =>
   Do(S.stream)

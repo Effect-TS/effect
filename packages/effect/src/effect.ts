@@ -47,7 +47,9 @@ export enum EffectTag {
 
 export type NoEnv = unknown;
 export type NoErr = never;
-export type Env = { [k: string]: any };
+export interface Env {
+  [k: string]: any;
+}
 
 /**
  * A description of an effect to perform
@@ -584,7 +586,7 @@ export function applySecondL<R, E, A, R2, E2, B>(
   first: Effect<R, E, A>,
   second: Lazy<Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return chain_(first, () => second());
+  return chain_(first, second);
 }
 
 /**
@@ -776,6 +778,7 @@ export function bracket<R, E, A, R2, E2, R3, E3, B>(
   release: FunctionN<[A], Effect<R2, E2, unknown>>,
   use: FunctionN<[A], Effect<R3, E3, B>>
 ): Effect<R & R2 & R3, E | E2 | E3, B> {
+  // tslint:disable-next-line: no-unnecessary-callback-wrapper
   return bracketExit(acquire, e => release(e), use);
 }
 
@@ -855,9 +858,9 @@ export function shiftAfter<E, A>(io: Effect<NoEnv, E, A>): Effect<NoEnv, E, A> {
  */
 export const shiftedAsync: Effect<NoEnv, NoErr, void> = uninterruptible(
   chain_(accessRuntime, runtime =>
-    asyncTotal<void>(callback => {
-      return runtime.dispatchLater(() => callback(undefined), 0);
-    })
+    asyncTotal<void>(callback =>
+      runtime.dispatchLater(() => callback(undefined), 0)
+    )
   )
 );
 
@@ -951,7 +954,7 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   });
   const wait = asyncTotal(driver.onExit);
   const interrupt = applySecond(sendInterrupt, asUnit(wait));
-  const join = chain_(wait, exit => completed(exit));
+  const join = chain_(wait, completed);
   const result = chain_(
     sync(() => driver.exit()),
     opt =>
@@ -1240,7 +1243,7 @@ export function parAp_<R, R2, E, E2, A, B>(
  * @param io
  */
 export function orAbort<R, E, A>(io: Effect<R, E, A>): Effect<R, NoErr, A> {
-  return chainError_(io, e => raiseAbort(e));
+  return chainError_(io, raiseAbort);
 }
 
 /**
@@ -1323,14 +1326,19 @@ export function run<E, A>(
 export function runToPromise<E, A>(io: Effect<NoEnv, E, A>): Promise<A> {
   return new Promise((resolve, reject) =>
     run(io, exit => {
-      if (exit._tag === ex.ExitTag.Done) {
-        resolve(exit.value);
-      } else if (exit._tag === ex.ExitTag.Abort) {
-        reject(exit.abortedWith);
-      } else if (exit._tag === ex.ExitTag.Raise) {
-        reject(exit.error);
-      } else if (exit._tag === ex.ExitTag.Interrupt) {
-        reject();
+      switch (exit._tag) {
+        case ex.ExitTag.Done:
+          resolve(exit.value);
+          return;
+        case ex.ExitTag.Abort:
+          reject(exit.abortedWith);
+          return;
+        case ex.ExitTag.Raise:
+          reject(exit.error);
+          return;
+        case ex.ExitTag.Interrupt:
+          reject();
+          return;
       }
     })
   );
@@ -1633,7 +1641,7 @@ export function getCauseValidationM<E>(
           ),
         f => map_(fa, f)
       ),
-    throwError: <R, A>(e: E): Effect<R, E, A> => raiseError(e),
+    throwError: raiseError as <R, A>(e: E) => Effect<R, E, A>,
     alt: <R, R2, A>(
       fa: Effect<R, E, A>,
       fb: () => Effect<R2, E, A>
@@ -1710,8 +1718,10 @@ export function effectify<L, R>(f: Function): () => Effect<NoEnv, L, R> {
     const args = Array.prototype.slice.call(arguments);
     return async<L, R>(cb => {
       const cbResolver = (e: L, r: R) =>
+        // tslint:disable-next-line: triple-equals
         e != null ? cb(left(e)) : cb(right(r));
       f.apply(null, args.concat(cbResolver));
+      // tslint:disable-next-line: no-empty
       return () => {};
     });
   };

@@ -101,11 +101,7 @@ export function catac<A, B>(
 }
 
 export function head<A>(list: List<A>): Option<A> {
-  return cata(
-    list,
-    a => some(a),
-    () => none
-  );
+  return cata(list, some, () => none);
 }
 
 export function tail<A>(list: List<A>): Option<List<A>> {

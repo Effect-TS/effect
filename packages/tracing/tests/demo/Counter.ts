@@ -48,6 +48,7 @@ export const counter: Counter = {
           .do(increment())
           .bind("count", withChildSpan("span-current-count")(currentCount()))
           .doL(({ count }) => print(`n: ${n} (${count})`))
+          // tslint:disable-next-line: no-empty
           .return(() => {})
       );
     }

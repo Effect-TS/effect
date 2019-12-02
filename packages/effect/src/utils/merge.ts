@@ -8,7 +8,9 @@ export function mergeDeep<A, B>(target: A, source: B): A & B {
   if (isObject(target) && isObject(source)) {
     for (const key in source) {
       if (isObject(source[key])) {
-        if (!c[key]) Object.assign(target, { [key]: {} });
+        if (!c[key]) {
+          Object.assign(target, { [key]: {} });
+        }
         mergeDeep(c[key], source[key]);
       } else {
         Object.assign(target, { [key]: source[key] });
