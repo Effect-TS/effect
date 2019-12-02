@@ -22,14 +22,14 @@ import { effect } from "../effect";
 
 export interface Sink<R, E, S, A, B> {
   readonly initial: T.Effect<R, E, SinkStep<A, S>>;
-  step(state: S, next: A): T.Effect<R, E, SinkStep<A, S>>;
-  extract(step: S): T.Effect<R, E, B>;
+  step: (state: S, next: A) => T.Effect<R, E, SinkStep<A, S>>;
+  extract: (step: S) => T.Effect<R, E, B>;
 }
 
 export interface SinkPure<S, A, B> {
   readonly initial: SinkStep<A, S>;
-  step(state: S, next: A): SinkStep<A, S>;
-  extract(state: S): B;
+  step: (state: S, next: A) => SinkStep<A, S>;
+  extract: (state: S) => B;
 }
 
 /**

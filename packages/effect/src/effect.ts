@@ -584,7 +584,7 @@ export function applySecondL<R, E, A, R2, E2, B>(
   first: Effect<R, E, A>,
   second: Lazy<Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return chain_(first, () => second());
+  return chain_(first, second);
 }
 
 /**
@@ -776,6 +776,7 @@ export function bracket<R, E, A, R2, E2, R3, E3, B>(
   release: FunctionN<[A], Effect<R2, E2, unknown>>,
   use: FunctionN<[A], Effect<R3, E3, B>>
 ): Effect<R & R2 & R3, E | E2 | E3, B> {
+  // tslint:disable-next-line: no-unnecessary-callback-wrapper
   return bracketExit(acquire, e => release(e), use);
 }
 
@@ -951,7 +952,7 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   });
   const wait = asyncTotal(driver.onExit);
   const interrupt = applySecond(sendInterrupt, asUnit(wait));
-  const join = chain_(wait, exit => completed(exit));
+  const join = chain_(wait, completed);
   const result = chain_(
     sync(() => driver.exit()),
     opt =>
@@ -1240,7 +1241,7 @@ export function parAp_<R, R2, E, E2, A, B>(
  * @param io
  */
 export function orAbort<R, E, A>(io: Effect<R, E, A>): Effect<R, NoErr, A> {
-  return chainError_(io, e => raiseAbort(e));
+  return chainError_(io, raiseAbort);
 }
 
 /**
@@ -1633,7 +1634,7 @@ export function getCauseValidationM<E>(
           ),
         f => map_(fa, f)
       ),
-    throwError: <R, A>(e: E): Effect<R, E, A> => raiseError(e),
+    throwError: raiseError as <R, A>(e: E) => Effect<R, E, A>,
     alt: <R, R2, A>(
       fa: Effect<R, E, A>,
       fb: () => Effect<R2, E, A>

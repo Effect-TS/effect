@@ -373,7 +373,7 @@ export function allocate<R, E, A>(
           release: c.release(a, done(undefined))
         }));
       case ManagedTag.Suspended:
-        return effect.chain(c.suspended, wm => allocate(wm));
+        return effect.chain(c.suspended, allocate);
       case ManagedTag.Chain:
         return T.bracketExit(
           allocate(c.left),

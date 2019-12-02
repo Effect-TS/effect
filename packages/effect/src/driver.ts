@@ -73,10 +73,10 @@ const makeInterruptFrame = (
 };
 
 export interface Driver<E, A> {
-  start(run: T.Effect<T.NoEnv, E, A>): void;
-  interrupt(): void;
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
-  exit(): Option<Exit<E, A>>;
+  start: (run: T.Effect<T.NoEnv, E, A>) => void;
+  interrupt: () => void;
+  onExit: (f: FunctionN<[Exit<E, A>], void>) => Lazy<void>;
+  exit: () => Option<Exit<E, A>>;
 }
 
 export function makeDriver<E, A>(

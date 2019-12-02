@@ -24,14 +24,14 @@ export interface Deferred<R, E, A> {
    * Any waiters will receive it
    * @param a
    */
-  done(a: A): T.Effect<T.NoEnv, T.NoErr, void>;
+  done: (a: A) => T.Effect<T.NoEnv, T.NoErr, void>;
   /**
    *
    * @param e Complete this deferred with an error
    *
    * Any waiters will produce an error
    */
-  error(e: E): T.Effect<T.NoEnv, T.NoErr, void>;
+  error: (e: E) => T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * Complete this Deferred with an abort
@@ -39,25 +39,25 @@ export interface Deferred<R, E, A> {
    * Any waiters will produce an error
    * @param e
    */
-  abort(e: unknown): T.Effect<T.NoEnv, T.NoErr, void>;
+  abort: (e: unknown) => T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * Complete this deferred with the given cuase
    * @param c
    */
-  cause(c: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void>;
+  cause: (c: Cause<E>) => T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * complete this Defered with the provide exit status
    * @param e
    */
-  complete(e: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
+  complete: (e: Exit<E, A>) => T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * Set this deferred with the result of source
    * @param source
    */
-  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
+  from: (source: T.Effect<R, E, A>) => T.Effect<T.NoEnv, T.NoErr, void>;
 }
 
 /* tested in wave */

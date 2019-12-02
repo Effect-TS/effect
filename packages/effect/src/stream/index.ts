@@ -247,7 +247,7 @@ export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
           r.update(n => n + 1),
           ms
         ),
-        T.map(n => some(n))
+        T.map(some)
       )
     ),
     fromSource
@@ -471,11 +471,7 @@ export function filterWith<A>(
 export function filterRefineWith<A, B extends A>(
   f: Refinement<A, B>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, B> {
-  return stream =>
-    map_(
-      filter(stream, x => f(x)),
-      x => x as B
-    );
+  return stream => map_(filter(stream, f), x => x as B);
 }
 
 /**
@@ -538,9 +534,8 @@ export function foldM<R, E, A, R2, E2, B>(
     ): T.Effect<R & R2, E | E2, S> => {
       /* istanbul ignore else */
       if (cont(initial)) {
-        return effect.chain(
-          base(seed, constant(true), (s, a) => f(s, a)),
-          result => step(initial, result)
+        return effect.chain(base(seed, constant(true), f), result =>
+          step(initial, result)
         );
       } else {
         return T.pure(initial);
@@ -946,13 +941,7 @@ export function intoLeftover<R, E, A, S, B>(
   return M.use(stream, fold =>
     pipe(
       sink.initial,
-      T.chain(init =>
-        fold(
-          init,
-          s => isSinkCont(s),
-          (s, a) => sink.step(s.state, a)
-        )
-      ),
+      T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
       T.chain(end =>
         effect.map(
           sink.extract(end.state),
@@ -1237,9 +1226,7 @@ export function switchLatest<R, E, A>(
                             )
                           ),
                         next =>
-                          T.applySecondL(spawnPushFiber(next), () =>
-                            advanceStreams()
-                          )
+                          T.applySecondL(spawnPushFiber(next), advanceStreams)
                       )
                     )
                 );
