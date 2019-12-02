@@ -1,5 +1,3 @@
-import * as T from "../src/effect";
-
 import * as E from "fp-ts/lib/Either";
 import * as assert from "assert";
 
@@ -11,10 +9,12 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { array, range } from "fp-ts/lib/Array";
 
 import * as ex from "waveguide/lib/exit";
-import * as _ from "../src/effect";
+
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
+
+import { effect as T } from "../src"
 
 describe("EffectSafe", () => {
   describe("Extra", () => {

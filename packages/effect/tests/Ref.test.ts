@@ -1,7 +1,6 @@
-import * as T from "../src/effect";
-import * as R from "../src/ref";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { effect as T, ref as R } from "../src";
 
 type Config = { initial: number };
 

@@ -1,8 +1,7 @@
 import * as assert from "assert";
 
-import * as Q from "../src/queue";
-import * as T from "../src/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { queue as Q, effect as T } from "../src";
 
 describe("QueueSafe", () => {
   it("should use unbounded queue", async () => {
