@@ -1,10 +1,10 @@
 import * as assert from "assert";
-import * as T from "../src";
+import * as T from "../src/effect";
 import * as M from "../src/managed";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupSum } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
-import { effect } from "../src";
+import { effect } from "../src/effect";
 import { managed } from "../src/managed";
 
 describe("Managed", () => {

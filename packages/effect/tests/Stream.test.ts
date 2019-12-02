@@ -7,14 +7,14 @@ import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Readable } from "stream";
 import * as ex from "waveguide/lib/exit";
-import * as T from "../src";
+import * as T from "../src/effect";
 import * as M from "../src/managed";
 import * as ref from "../src/ref";
 import * as S from "../src/stream";
 import * as SK from "../src/stream/sink";
 import { collectArraySink, liftPureSink, Sink } from "../src/stream/sink";
 import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
-import { effect } from "../src";
+import { effect } from "../src/effect";
 import { stream } from "../src/stream";
 
 export async function expectExitIn<E, A, B>(

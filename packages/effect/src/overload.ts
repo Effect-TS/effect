@@ -15,7 +15,7 @@ import { Compactable3 } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
 import { PipeableFunctor3 } from "fp-ts/lib/pipeable";
-import { NoEnv, NoErr } from "./index";
+import { NoEnv, NoErr } from "./effect";
 import { Either } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Refinement, Predicate } from "fp-ts/lib/function";

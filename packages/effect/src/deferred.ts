@@ -4,8 +4,8 @@
 
 import { Exit, Cause } from "waveguide/lib/exit";
 import { Completable, completable } from "waveguide/lib/support/completable";
-import * as T from "./";
-import { effect } from "./";
+import * as T from "./effect";
+import { effect } from "./effect";
 
 export interface Deferred<R, E, A> {
   /**

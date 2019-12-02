@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect/lib";
+import { effect as T } from "@matechs/effect";
 import * as S from "@matechs/effect/lib/stream";
 import * as Ei from "fp-ts/lib/Either";
 import { Graceful, onExit } from "@matechs/graceful/lib";
@@ -17,7 +17,6 @@ import {
 } from "typeorm";
 import { ReadStream } from "fs";
 import { isNonEmpty } from "fp-ts/lib/Array";
-import { effect } from "@matechs/effect/lib";
 
 export interface HasOrmConfig {
   orm: {
@@ -79,7 +78,7 @@ export const ormFactory: (
           )
           .doL(({ c }) =>
             onExit(
-              effect.chainError(
+              T.effect.chainError(
                 pipe(() => c.close(), T.fromPromiseMap(toError)),
                 _ => T.unit
               )

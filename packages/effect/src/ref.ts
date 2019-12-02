@@ -3,7 +3,7 @@
  */
 
 import { FunctionN } from "fp-ts/lib/function";
-import * as T from "./";
+import * as T from "./effect";
 
 export interface Ref<A> {
   /**

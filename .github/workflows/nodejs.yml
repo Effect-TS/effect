@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - deepmerge
+      - index
 
 jobs:
   build:

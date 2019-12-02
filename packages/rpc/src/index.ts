@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as H from "@matechs/http";
 import * as A from "fp-ts/lib/Array";
 import * as EX from "@matechs/express/lib";

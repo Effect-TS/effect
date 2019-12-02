@@ -1,4 +1,4 @@
-import * as _ from "../src";
+import * as _ from "../src/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 import { ATypeOf, EnvOf } from "../src/overload";
 import { Do } from "fp-ts-contrib/lib/Do";

@@ -1,4 +1,4 @@
-import * as E from "@matechs/effect";
+import { effect as E } from "@matechs/effect";
 import * as P from "./Printer";
 import * as C from "./Counter";
 import * as T from "../../src";

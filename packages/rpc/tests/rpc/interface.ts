@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import { Tracer } from "@matechs/tracing";
 
 /*

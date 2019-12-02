@@ -1,4 +1,4 @@
-import * as E from "@matechs/effect";
+import { effect as E } from "@matechs/effect";
 
 export interface Printer {
   printer: {

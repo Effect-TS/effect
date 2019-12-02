@@ -1,4 +1,4 @@
-import * as T from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import * as S from "@matechs/effect/lib/stream";
 import * as O from "../src";
 import * as Rx from "rxjs";
@@ -249,5 +249,4 @@ describe("fromEffect", () => {
     assert.deepEqual(counters.values, ["a"]);
     assert.deepEqual(counters.errors, []);
   });
-
 });

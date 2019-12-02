@@ -15,8 +15,8 @@ import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "waveguide/lib/support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
 import { ExitTag } from "waveguide/lib/exit";
-import * as T from "./";
-import { effect } from "./";
+import * as T from "./effect";
+import { effect } from "./effect";
 
 export interface ConcurrentQueue<A> {
   readonly take: T.Effect<T.NoEnv, never, A>;

@@ -16,9 +16,9 @@ import {
 } from "fp-ts/lib/function";
 import { SinkStep, sinkDone, sinkCont, isSinkDone } from "./step";
 import { ConcurrentQueue } from "../queue";
-import * as T from "../";
+import * as T from "../effect";
 import { pipe } from "fp-ts/lib/pipeable";
-import { effect } from "../";
+import { effect } from "../effect";
 
 export interface Sink<R, E, S, A, B> {
   readonly initial: T.Effect<R, E, SinkStep<A, S>>;

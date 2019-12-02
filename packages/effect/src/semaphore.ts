@@ -12,8 +12,8 @@ import { Dequeue, empty } from "waveguide/lib/support/dequeue";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeRef, Ref } from "./ref";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";
-import * as T from "./";
-import { effect } from "./";
+import * as T from "./effect";
+import { effect } from "./effect";
 
 export interface Semaphore {
   /**

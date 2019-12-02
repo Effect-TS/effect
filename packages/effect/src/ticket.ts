@@ -3,7 +3,7 @@
   credits to original author
  */
 
-import * as T from "./";
+import * as T from "./effect";
 import { Exit, ExitTag } from "waveguide/lib/exit";
 
 export function ticketExit<A>(

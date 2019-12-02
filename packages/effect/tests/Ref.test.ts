@@ -1,4 +1,4 @@
-import * as T from "../src";
+import * as T from "../src/effect";
 import * as R from "../src/ref";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
