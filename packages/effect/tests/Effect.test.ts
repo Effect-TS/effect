@@ -769,3 +769,29 @@ describe("EffectSafe", () => {
     });
   });
 });
+
+describe("effectify", () => {
+  it("returns correct value", async () => {
+    const fun = (
+      a: string,
+      cb: (err: string | null, v: string | null) => void
+    ) => {
+      cb(null, a);
+    };
+    const effFun = T.effectify(fun);
+    assert.deepStrictEqual(await T.runToPromise(effFun("x")), "x");
+  });
+  it("returns an error", async () => {
+    const fun = (
+      a: string,
+      cb: (err: string | null, v: string | null) => void
+    ) => {
+      cb("error", null);
+    };
+    const effFun = T.effectify(fun);
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(effFun("x")),
+      ex.raise("error")
+    );
+  });
+});

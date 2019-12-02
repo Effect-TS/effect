@@ -6,6 +6,7 @@ on:
       - master
       - unknown
       - effectToObservable
+      - effectify
 
 jobs:
   build:
