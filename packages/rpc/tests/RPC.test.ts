@@ -10,7 +10,7 @@ import { tracer } from "@matechs/tracing";
 import { httpClient } from "@matechs/http/lib";
 import { moduleADef, Printer } from "./rpc/interface";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { ExitTag, done, raise } from "waveguide/lib/exit";
+import { ExitTag, done, raise } from "@matechs/effect/lib/original/exit";
 
 describe("RPC", () => {
   it("perform call through rpc", async () => {

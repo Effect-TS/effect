@@ -8,7 +8,7 @@ import { semigroupString } from "fp-ts/lib/Semigroup";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { array, range } from "fp-ts/lib/Array";
 
-import * as ex from "waveguide/lib/exit";
+import * as ex from "../src/original/exit";
 
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";

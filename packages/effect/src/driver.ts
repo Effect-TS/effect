@@ -13,13 +13,10 @@ import {
   ExitTag,
   interrupt as interruptExit,
   raise
-} from "waveguide/lib/exit";
-import { defaultRuntime, Runtime } from "waveguide/lib/runtime";
-import { Completable, completable } from "waveguide/lib/support/completable";
-import {
-  MutableStack,
-  mutableStack
-} from "waveguide/lib/support/mutable-stack";
+} from "./original/exit";
+import { defaultRuntime, Runtime } from "./original/runtime";
+import { Completable, completable } from "./original/support/completable";
+import { MutableStack, mutableStack } from "./original/support/mutable-stack";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
 

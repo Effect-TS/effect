@@ -24,7 +24,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { graceful, trigger } from "@matechs/graceful/lib";
-import { raise } from "waveguide/lib/exit";
+import { raise } from "@matechs/effect/lib/original/exit";
 
 @Entity()
 export class DemoEntity {

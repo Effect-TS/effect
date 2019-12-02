@@ -14,10 +14,10 @@ import * as option from "fp-ts/lib/Option";
 import { none, Option, some } from "fp-ts/lib/Option";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Semigroup } from "fp-ts/lib/Semigroup";
-import * as ex from "waveguide/lib/exit";
-import { Cause, Exit } from "waveguide/lib/exit";
-import { Runtime } from "waveguide/lib/runtime";
-import { fst, snd, tuple2 } from "waveguide/lib/support/util";
+import * as ex from "./original/exit";
+import { Cause, Exit } from "./original/exit";
+import { Runtime } from "./original/runtime";
+import { fst, snd, tuple2 } from "./original/support/util";
 import { Deferred, makeDeferred } from "./deferred";
 import { Driver, makeDriver } from "./driver";
 import {

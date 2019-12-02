@@ -5,7 +5,7 @@ import * as EX from "../src";
 import * as H from "@matechs/http/lib";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as G from "@matechs/graceful";
-import { raise, done } from "waveguide/lib/exit";
+import { raise, done } from "@matechs/effect/lib/original/exit";
 
 describe("Express", () => {
   it("should use express", async () => {

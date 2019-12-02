@@ -8,7 +8,7 @@ import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, identity, not } from "fp-ts/lib/function";
 import * as o from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import { Dequeue, empty } from "waveguide/lib/support/dequeue";
+import { Dequeue, empty } from "./original/support/dequeue";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeRef, Ref } from "./ref";
 import { makeTicket, Ticket, ticketExit, ticketUse } from "./ticket";

@@ -5,7 +5,7 @@ import {
   Exit,
   Done,
   ExitTag
-} from "waveguide/lib/exit";
+} from "./original/exit";
 
 export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> =>
   e._tag === ExitTag.Done;

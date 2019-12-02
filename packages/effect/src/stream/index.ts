@@ -21,7 +21,7 @@ import { none, Option, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
-import { Cause } from "waveguide/lib/exit";
+import { Cause } from "../original/exit";
 import * as T from "../effect";
 import { Fiber, effect } from "../effect";
 import * as deferred from "../deferred";
