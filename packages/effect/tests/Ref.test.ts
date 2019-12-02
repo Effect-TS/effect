@@ -2,7 +2,9 @@ import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { effect as T, ref as R } from "../src";
 
-type Config = { initial: number };
+interface Config {
+  initial: number;
+}
 
 describe("Ref", () => {
   it("should use ref", async () => {

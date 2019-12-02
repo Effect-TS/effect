@@ -62,8 +62,9 @@ function arrayFold<A>(
   as: readonly A[]
 ): Managed<T.NoEnv, T.NoErr, Fold<T.NoEnv, T.NoErr, A>> {
   return M.encaseEffect(
-    effect.map(ref.makeRef(0), cell => {
-      return <S>(
+    effect.map(
+      ref.makeRef(0),
+      cell => <S>(
         initial: S,
         cont: Predicate<S>,
         f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
@@ -73,19 +74,19 @@ function arrayFold<A>(
           if (cont(current)) {
             return pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
-              T.chain(i => {
-                return i < as.length
+              T.chain(i =>
+                i < as.length
                   ? effect.chain(f(current, as[i]), step)
-                  : T.pure(current);
-              })
+                  : T.pure(current)
+              )
             );
           } else {
             return T.pure(current);
           }
         }
         return step(initial);
-      };
-    })
+      }
+    )
   );
 }
 
@@ -1567,6 +1568,7 @@ function getSourceFromObjectReadStreamB<A>(
             }
           }
 
+          // tslint:disable-next-line: no-empty
           return () => {};
         }),
         every

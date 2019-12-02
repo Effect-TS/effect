@@ -48,9 +48,7 @@ export const makeRef = <A>(initial: A): T.Effect<T.NoEnv, never, Ref<A>> =>
       });
 
     const update = (f: FunctionN<[A], A>): T.Effect<T.NoEnv, never, A> =>
-      T.sync(() => {
-        return (value = f(value));
-      });
+      T.sync(() => (value = f(value)));
 
     const modify = <B>(
       f: FunctionN<[A], readonly [B, A]>

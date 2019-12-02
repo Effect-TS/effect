@@ -4,11 +4,21 @@ import * as E from "fp-ts/lib/Either";
 import * as M from "../managed";
 import * as T from "../effect";
 
-export type Offer<A> = { _tag: "offer"; a: A };
-export type StreamError<E> = { _tag: "error"; e: E };
-export type Complete = { _tag: "complete" };
+export interface Offer<A> {
+  _tag: "offer";
+  a: A;
+}
+export interface StreamError<E> {
+  _tag: "error";
+  e: E;
+}
+export interface Complete {
+  _tag: "complete";
+}
 export type Ops<E, A> = Offer<A> | StreamError<E> | Complete;
-export type HasCb<E, A> = { cb?: (o: Ops<E, A>) => void };
+export interface HasCb<E, A> {
+  cb?: (o: Ops<E, A>) => void;
+}
 
 export function queueUtils<E, A>() {
   const ops: list.List<Ops<E, A>> = list.empty();
@@ -38,12 +48,15 @@ export function runFromQueue<E, A>(
       callback(E.left(op.e));
       // this will never be called
       /* istanbul ignore next */
+      // tslint:disable-next-line: no-empty
       return () => {};
     case "complete":
       callback(E.right(O.none));
+      // tslint:disable-next-line: no-empty
       return () => {};
     case "offer":
       callback(E.right(O.some(op.a)));
+      // tslint:disable-next-line: no-empty
       return () => {};
   }
 }
@@ -72,6 +85,7 @@ export function emitter<E, A>(
           }
         };
       }
+      // tslint:disable-next-line: no-empty
       return () => {};
     })
   );

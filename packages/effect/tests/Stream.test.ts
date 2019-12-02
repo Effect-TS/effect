@@ -275,6 +275,7 @@ describe("Stream", () => {
   it("should use zipWith - 2", async () => {
     const sl = S.fromArray([0, 1, 2]);
     const sr = S.empty;
+    // tslint:disable-next-line: restrict-plus-operands
     const z = S.zipWith(sl, sr, (l, r) => l + r);
 
     const res = await T.runToPromise(S.collectArray(z));
@@ -319,7 +320,7 @@ describe("Stream", () => {
   });
 
   it("should use fold - 2", async () => {
-    const s = S.fold(S.fromArray([]), (n, e) => n + e, 0);
+    const s = S.fold(S.fromArray([] as number[]), (n, e) => n + e, 0);
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -388,8 +389,12 @@ describe("Stream", () => {
   });
 
   it("should zip two streams", async () => {
-    type EnvA = { a: number };
-    type EnvB = { b: number };
+    interface EnvA {
+      a: number;
+    }
+    interface EnvB {
+      b: number;
+    }
 
     const streamA = S.repeat(S.encaseEffect(T.access(({ a }: EnvA) => a)));
     const streamB = S.repeat(S.encaseEffect(T.access(({ b }: EnvB) => b)));
@@ -412,12 +417,12 @@ describe("Stream", () => {
   });
 
   it("should use stream with environment", async () => {
-    type Config = {
+    interface Config {
       initial: number;
-    };
-    type ConfigB = {
+    }
+    interface ConfigB {
       second: number;
-    };
+    }
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
     const s = S.stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
@@ -449,12 +454,12 @@ describe("Stream", () => {
   });
 
   it("should use stream with environment with pipe ", async () => {
-    type Config = {
+    interface Config {
       initial: number;
-    };
-    type ConfigB = {
+    }
+    interface ConfigB {
       second: number;
-    };
+    }
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
     const s = pipe(
@@ -512,18 +517,20 @@ describe("Stream", () => {
     });
     it("should extract a head and return a subsequent element", () => {
       const s1 = S.fromArray([2, 6, 9]);
-      const s2 = S.stream.chain(S.peel(s1, multiplier), ([head, rest]) => {
-        return S.stream.map(rest, v => v * head);
-      });
+      const s2 = S.stream.chain(S.peel(s1, multiplier), ([head, rest]) =>
+        S.stream.map(rest, v => v * head)
+      );
       return expectExit(S.collectArray(s2), ex.done([12, 18]));
     });
     it("should compose", () => {
       const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
       const s2 = S.filter(s1, x => x % 2 === 0); // emits 4 6 8
-      const s3 = S.stream.chain(S.peel(s2, multiplier), ([head, rest]) => {
-        // head is 4
-        return S.stream.map(rest, v => v * head); // emits 24 32
-      });
+      const s3 = S.stream.chain(
+        S.peel(s2, multiplier),
+        ([head, rest]) =>
+          // head is 4
+          S.stream.map(rest, v => v * head) // emits 24 32
+      );
       return expectExit(S.collectArray(s3), ex.done([24, 32]));
     });
     it("should raise errors", () => {

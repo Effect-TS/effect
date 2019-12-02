@@ -59,18 +59,16 @@ interface InterruptFrame {
 
 const makeInterruptFrame = (
   interruptStatus: MutableStack<boolean>
-): InterruptFrame => {
-  return {
-    _tag: "interrupt-frame",
-    apply(u: unknown) {
-      interruptStatus.pop();
-      return T.pure(u);
-    },
-    exitRegion() {
-      interruptStatus.pop();
-    }
-  };
-};
+): InterruptFrame => ({
+  _tag: "interrupt-frame",
+  apply(u: unknown) {
+    interruptStatus.pop();
+    return T.pure(u);
+  },
+  exitRegion() {
+    interruptStatus.pop();
+  }
+});
 
 export interface Driver<E, A> {
   start: (run: T.Effect<T.NoEnv, E, A>) => void;
