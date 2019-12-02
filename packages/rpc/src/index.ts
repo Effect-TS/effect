@@ -10,9 +10,9 @@ import {
 } from "@matechs/tracing";
 import { pipe } from "fp-ts/lib/pipeable";
 
-export type CanRemote = {
+export interface CanRemote {
   [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
-};
+}
 
 export type PatchedF<M> = M extends (
   ...args: infer A
@@ -30,7 +30,9 @@ export function calculatePath(url: string, entry: string, k: string) {
   return `${url}/${entry}/${k}`;
 }
 
-export type Payload = { data: any[] };
+export interface Payload {
+  data: any[];
+}
 
 export function remotely<A extends any[], R, E, B>(
   _: (...args: A) => T.Effect<R, E, B>,
@@ -141,7 +143,7 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
   module: M,
   entry: K,
   runtime: Runtime<M[K]>,
-  controller: string = `RPC Server - ${entry}`
+  controller = `RPC Server - ${entry}`
 ): T.Effect<Tracer & EX.HasExpress & EX.Express, never, void> {
   return withTracer(
     T.accessM(({ tracer: { withControllerSpan } }: Tracer & HasTracerContext) =>
@@ -162,6 +164,7 @@ export function bindToApp<M extends CanRemote, K extends keyof M>(
             )
           )
         ),
+        // tslint:disable-next-line: no-empty
         T.map(() => {})
       )
     )

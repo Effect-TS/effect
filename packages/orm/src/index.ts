@@ -103,12 +103,11 @@ export const ormFactory: (
         T.bracket(
           pipe(() => factory(options), T.fromPromiseMap(toError)),
           db => pipe(() => db.close(), T.fromPromiseMap(toError)),
-          db => (r: HasOrmConfig & R) => {
-            return op({
+          db => (r: HasOrmConfig & R) =>
+            op({
               ...r,
               orm: { ...r["orm"], connection: db, manager: db.manager }
-            });
-          }
+            })
         )
       );
     },
@@ -179,7 +178,7 @@ export function usePool(
 /* istanbul ignore next */
 export function queryStreamB<RES>(
   batch: number,
-  every: number = 0
+  every = 0
 ): (
   f: (m: EntityManager) => Promise<ReadStream>
 ) => T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, Array<RES>>> {

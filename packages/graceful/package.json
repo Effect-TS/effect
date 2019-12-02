@@ -5,7 +5,8 @@
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "build": "rimraf lib && tsc --build tsconfig.build.json"
+    "build": "rimraf lib && tsc --build tsconfig.build.json",
+    "lint": "tslint --project ."
   },
   "publishConfig": {
     "access": "public"

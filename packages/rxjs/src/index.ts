@@ -104,6 +104,7 @@ export function toObservable<R, E, A>(
               sub.error(u);
               sub.unsubscribe();
             },
+            // tslint:disable-next-line: no-empty
             () => {}
           )
         );
