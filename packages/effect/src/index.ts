@@ -1650,3 +1650,74 @@ export function getCauseValidationM<E>(
       )
   };
 }
+
+/**
+ * This is directly ported from excellent `fp-ts` `taskify`
+ *
+ * Convert a node style callback function to one returning an `Effect`
+ *
+ * **Note**. If the function `f` admits multiple overloadings, `effectify` will pick last one. If you want a different
+ * behaviour, add an explicit type annotation
+ *
+ * ```ts
+ * // readFile admits multiple overloadings
+ *
+ * // const readFile: (a: string) => Effect<NoEnv,NodeJS.ErrnoException, Buffer>
+ * const readFile = effectify(fs.readFile)
+ *
+ * const readFile2: (filename: string, encoding: string) => Effect<NoEnv,NodeJS.ErrnoException, Buffer> = effectify(
+ *   fs.readFile
+ * )
+ * ```
+ *
+ * @example
+ * import { effectify } from '@matechs/effect'
+ * import * as fs from '
+ *
+ * // const stat: (a: string | Buffer) => Effect<NoEnv,NodeJS.ErrnoException, fs.Stats>
+ * const stat = effectify(fs.stat)
+ * assert.strictEqual(stat.length, 0)
+ *
+ */
+export function effectify<L, R>(
+  f: (cb: (e: L | null | undefined, r?: R) => void) => void
+): () => Effect<NoEnv, L, R>;
+export function effectify<A, L, R>(
+  f: (a: A, cb: (e: L | null | undefined, r?: R) => void) => void
+): (a: A) => Effect<NoEnv, L, R>;
+export function effectify<A, B, L, R>(
+  f: (a: A, b: B, cb: (e: L | null | undefined, r?: R) => void) => void
+): (a: A, b: B) => Effect<NoEnv, L, R>;
+export function effectify<A, B, C, L, R>(
+  f: (a: A, b: B, c: C, cb: (e: L | null | undefined, r?: R) => void) => void
+): (a: A, b: B, c: C) => Effect<NoEnv, L, R>;
+export function effectify<A, B, C, D, L, R>(
+  f: (
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+    cb: (e: L | null | undefined, r?: R) => void
+  ) => void
+): (a: A, b: B, c: C, d: D) => Effect<NoEnv, L, R>;
+export function effectify<A, B, C, D, E, L, R>(
+  f: (
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+    e: E,
+    cb: (e: L | null | undefined, r?: R) => void
+  ) => void
+): (a: A, b: B, c: C, d: D, e: E) => Effect<NoEnv, L, R>;
+export function effectify<L, R>(f: Function): () => Effect<NoEnv, L, R> {
+  return function() {
+    const args = Array.prototype.slice.call(arguments);
+    return async<L, R>(cb => {
+      const cbResolver = (e: L, r: R) =>
+        e != null ? cb(left(e)) : cb(right(r));
+      f.apply(null, args.concat(cbResolver));
+      return () => {};
+    });
+  };
+}
