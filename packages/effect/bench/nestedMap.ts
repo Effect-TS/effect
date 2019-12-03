@@ -31,7 +31,7 @@ export const nestedMapEffect = (): T.Effect<T.NoEnv, never, bigint> => {
   return io;
 };
 
-const benchmark = new Suite(`NestedMap ${MAX}`);
+const benchmark = new Suite(`NestedMap ${MAX}`, { minTime: 10000 });
 
 benchmark
   .add(

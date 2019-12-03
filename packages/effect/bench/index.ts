@@ -51,7 +51,7 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
 
 const n = BigInt(10);
 
-const benchmark = new Suite("Fibonacci");
+const benchmark = new Suite("Fibonacci", { minTime: 10000 });
 
 benchmark
   .add(

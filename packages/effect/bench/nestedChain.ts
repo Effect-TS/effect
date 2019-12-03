@@ -33,7 +33,7 @@ export const nestedChainEffect = (): T.Effect<T.NoEnv, never, bigint> => {
   return io;
 };
 
-const benchmark = new Suite(`NestedChain ${MAX}`);
+const benchmark = new Suite(`NestedChain ${MAX}`, { minTime: 10000 });
 
 benchmark
   .add(
