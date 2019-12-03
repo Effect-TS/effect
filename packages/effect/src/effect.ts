@@ -44,8 +44,7 @@ export enum EffectTag {
   AccessInterruptible,
   AccessRuntime,
   AccessEnv,
-  ProvideEnv,
-  Map
+  ProvideEnv
 }
 
 export type NoEnv = unknown;
@@ -359,7 +358,7 @@ function map_<R, E, A, B>(
   f: FunctionN<[A], B>
 ): Effect<R, E, B> {
   return new EffectIOImpl(
-    EffectTag.Map,
+    EffectTag.Chain,
     base,
     (x: any) => new EffectIOImpl(EffectTag.Pure, f(x))
   ) as any;

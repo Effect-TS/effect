@@ -93,7 +93,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   set(a: Exit<E, A>): void {
     this.completed = a;
     if (this.listeners !== undefined) {
-      this.listeners.forEach(f => f(a));
+      for (const f of this.listeners) {
+        f(a)
+      }
     }
   }
 
@@ -231,12 +233,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     while (current && (!this.isInterruptible() || !this.interrupted)) {
       try {
         switch (((current as any) as UnkEff)._tag) {
-          case T.EffectTag.Map:
-            this.frameStack.push(
-              makeFrame(((current as any) as UnkEff).f1 as any)
-            );
-            current = ((current as any) as UnkEff).f0 as any;
-            break;
           case T.EffectTag.AccessEnv:
             const env =
               this.envStack.length > 0
