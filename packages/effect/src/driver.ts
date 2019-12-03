@@ -14,7 +14,6 @@ import {
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
-import { MutableStack, mutableStack } from "./original/support/mutable-stack";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
 
@@ -40,14 +39,17 @@ interface FoldFrame {
   recover(cause: Cause<unknown>): UnkIO;
 }
 
-const makeFoldFrame = (
-  f: FunctionN<[unknown], UnkIO>,
-  r: FunctionN<[Cause<unknown>], UnkIO>
-): FoldFrame => ({
-  _tag: "fold-frame",
-  apply: f,
-  recover: r
-});
+class FoldFrame implements FoldFrame {
+  constructor(private readonly c: T.Collapse<any, any, any, any>) {}
+  readonly _tag = "fold-frame" as const;
+
+  apply(u: unknown): UnkIO {
+    return this.c.success(u);
+  }
+  recover(cause: Cause<unknown>): UnkIO {
+    return this.c.failure(cause);
+  }
+}
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
@@ -55,9 +57,7 @@ interface InterruptFrame {
   exitRegion(): void;
 }
 
-const makeInterruptFrame = (
-  interruptStatus: MutableStack<boolean>
-): InterruptFrame => ({
+const makeInterruptFrame = (interruptStatus: boolean[]): InterruptFrame => ({
   _tag: "interrupt-frame",
   apply(u: unknown) {
     interruptStatus.pop();
@@ -72,25 +72,22 @@ export interface Driver<E, A> {
   start(run: T.Effect<T.NoEnv, E, A>): void;
   interrupt(): void;
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
-  exit(): Exit<E, A> | null;
+  completed: Exit<E, A> | null;
 }
 
 export class DriverImpl<E, A> implements Driver<E, A> {
-  completed: Exit<E, A> | null;
+  completed: Exit<E, A> | null = null;
   listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
 
   started = false;
   interrupted = false;
-  // result: Completable<Exit<E, A>> = new CompletableImpl();
-  frameStack: MutableStack<FrameType> = mutableStack();
-  interruptRegionStack: MutableStack<boolean> | undefined;
+  frameStack: FrameType[] = [];
+  interruptRegionStack: boolean[] | undefined;
+  isInterruptible_ = true;
   cancelAsync: Lazy<void> | undefined;
-  envStack: Array<any> = [];
+  envStack: any[] = [];
 
-  constructor(readonly runtime: Runtime = defaultRuntime) {
-    this.completed = null;
-    // this.listeners = [];
-  }
+  constructor(readonly runtime: Runtime = defaultRuntime) {}
 
   set(a: Exit<E, A>): void {
     this.completed = a;
@@ -99,9 +96,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  // value(): Exit<E, A> | null {
-  //   return this.completed;
-  // }
   isComplete(): boolean {
     return this.completed !== null;
   }
@@ -140,25 +134,24 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   isInterruptible(): boolean {
-    const flag = this.interruptRegionStack && this.interruptRegionStack.peek();
-    if (flag === undefined) {
-      return true;
-    }
-    return flag;
+    return this.interruptRegionStack !== undefined &&
+      this.interruptRegionStack.length > 0
+      ? this.interruptRegionStack[this.interruptRegionStack.length - 1]
+      : true;
   }
 
-  canRecover(cause: Cause<unknown>): boolean {
-    // It is only possible to recovery from interrupts in an uninterruptible region
-    if (cause._tag === ExitTag.Interrupt) {
-      return !this.isInterruptible();
-    }
-    return true;
-  }
+  // canRecover(cause: Cause<unknown>): boolean {
+  //   // It is only possible to recovery from interrupts in an uninterruptible region
+  //   return cause._tag === ExitTag.Interrupt ? !this.isInterruptible() : true;
+  // }
 
   handle(e: Cause<unknown>): UnkIO | undefined {
     let frame = this.frameStack.pop();
     while (frame) {
-      if (frame._tag === "fold-frame" && this.canRecover(e)) {
+      if (
+        frame._tag === "fold-frame" &&
+        (e._tag !== ExitTag.Interrupt || !this.isInterruptible())
+      ) {
         return frame.recover(e);
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
@@ -237,13 +230,13 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     while (current && (!this.isInterruptible() || !this.interrupted)) {
       try {
         const cu = (current as any) as T.EffectIO<unknown, unknown, unknown>;
-        const env =
-          this.envStack.length > 0
-            ? this.envStack[this.envStack.length - 1]
-            : {};
 
         switch (cu._tag) {
           case T.EffectTag.AccessEnv:
+            const env =
+              this.envStack.length > 0
+                ? this.envStack[this.envStack.length - 1]
+                : {};
             current = this.next(env);
             break;
           case T.EffectTag.ProvideEnv:
@@ -283,14 +276,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = cu.inner;
             break;
           case T.EffectTag.Collapse:
-            this.frameStack.push(makeFoldFrame(cu.success, cu.failure));
+            this.frameStack.push(new FoldFrame(cu));
             current = cu.inner;
             break;
           case T.EffectTag.InterruptibleRegion:
-            if (!this.interruptRegionStack) {
-              this.interruptRegionStack = mutableStack();
+            if (this.interruptRegionStack === undefined) {
+              this.interruptRegionStack = [cu.flag];
+            } else {
+              this.interruptRegionStack.push(cu.flag);
             }
-            this.interruptRegionStack.push(cu.flag);
             this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
             current = cu.inner;
             break;

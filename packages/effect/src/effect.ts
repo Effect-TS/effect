@@ -965,6 +965,7 @@ export interface Fiber<E, A> {
   readonly isComplete: Effect<NoEnv, NoErr, boolean>;
 }
 
+const pureNone = pure(none);
 function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   const name = option.fromNullable(n);
   const sendInterrupt = sync(() => {
@@ -976,10 +977,10 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   const interrupt = applySecond(sendInterrupt, asUnit(wait));
   const join = chain_(wait, completed);
   const result = chain_(
-    sync(() => driver.exit()),
-    opt => (opt === null ? pure(none) : map_(completed(opt), some))
+    sync(() => driver.completed),
+    opt => (opt === null ? pureNone : map_(completed(opt), some))
   );
-  const isComplete = sync(() => driver.exit() !== null);
+  const isComplete = sync(() => driver.completed !== null);
   return {
     name,
     wait,
@@ -1273,7 +1274,7 @@ export function timeoutOption<R, E, A>(
   return timeoutFold(
     source,
     ms,
-    actionFiber => applySecond(actionFiber.interrupt, pure(none)),
+    actionFiber => applySecond(actionFiber.interrupt, pureNone),
     exit => map_(completed(exit), some)
   );
 }
