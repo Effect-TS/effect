@@ -241,11 +241,21 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             break;
           case T.EffectTag.ProvideEnv:
             this.envStack.push(cu.value);
-            current = T.effect.chain(cu.effect, r =>
-              T.sync(() => {
-                this.envStack.pop();
-                return r;
-              })
+            current = T.effect.chainError(
+              T.effect.chain(cu.effect, r =>
+                T.sync(() => {
+                  this.envStack.pop();
+                  return r;
+                })
+              ),
+              e =>
+                T.effect.chain(
+                  T.sync(() => {
+                    this.envStack.pop();
+                    return {};
+                  }),
+                  _ => T.raiseError(e)
+                )
             );
             break;
           case T.EffectTag.Pure:
