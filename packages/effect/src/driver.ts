@@ -193,7 +193,7 @@ export function makeDriver<E, A>(
 
     while (current && (!isInterruptible() || !interrupted)) {
       try {
-        const cu = current(env);
+        const cu = (current as any) as T.EffectIO<unknown, unknown, unknown>;
 
         switch (cu._tag) {
           case T.EffectTag.AccessEnv:
