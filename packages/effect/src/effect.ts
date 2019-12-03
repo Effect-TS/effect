@@ -58,11 +58,9 @@ export const noEnv = {};
 /**
  * A description of an effect to perform
  */
-export interface Effect<R, E, A> extends EffectOps {
+export interface Effect<R, E, A> {
   (_: R): void;
 }
-
-export interface EffectOps {}
 
 export class EffectIOImpl {
   constructor(
