@@ -38,5 +38,8 @@
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6"
   },
-  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "dependencies": {
+    "@qio/core": "^27.1.0"
+  }
 }

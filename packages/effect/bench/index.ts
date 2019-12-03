@@ -1,8 +1,6 @@
 import * as wave from "waveguide/lib/wave";
 import * as T from "../src/effect";
-// @ts-ignore
-import ben from "nodemark";
-
+import { QIO, defaultRuntime } from "@qio/core";
 import { Suite } from "benchmark";
 
 export const fibPromise = async (n: bigint): Promise<bigint> => {
@@ -30,6 +28,15 @@ export const fibWave = (n: bigint): wave.Wave<never, bigint> => {
   }
   return wave.chain(fibWave(n - BigInt(1)), a =>
     wave.map(fibWave(n - BigInt(2)), b => a + b)
+  );
+};
+
+export const fibQio = (n: bigint): QIO<bigint> => {
+  if (n < BigInt(2)) {
+    return QIO.resolve(BigInt(1));
+  }
+  return QIO.chain(fibQio(n - BigInt(1)), a =>
+    QIO.map(fibQio(n - BigInt(2)), b => a + b)
   );
 };
 
@@ -68,6 +75,15 @@ benchmark
     "wave",
     (cb: any) => {
       wave.run(fibWave(n), () => {
+        cb.resolve();
+      });
+    },
+    { defer: true }
+  )
+  .add(
+    "qio",
+    (cb: any) => {
+      defaultRuntime().unsafeExecute(fibQio(n), () => {
         cb.resolve();
       });
     },

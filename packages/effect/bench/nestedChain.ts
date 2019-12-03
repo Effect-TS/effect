@@ -1,14 +1,21 @@
 import * as wave from "waveguide/lib/wave";
 import * as T from "../src/effect";
-// @ts-ignore
-import ben from "nodemark";
-
+import { QIO, defaultRuntime } from "@qio/core";
 import { Suite } from "benchmark";
 
 const MAX = 1e4;
 
 const waveMapper = (_: bigint) => wave.pure(_ + BigInt(1));
 const effectMapper = (_: bigint) => T.pure(_ + BigInt(1));
+const qioMapper = (_: bigint) => QIO.resolve(_ + BigInt(1));
+
+export const nestedChainQio = (): QIO<bigint> => {
+  let io: QIO<bigint> = QIO.resolve(BigInt(0));
+  for (let i = 0; i < MAX; i++) {
+    io = QIO.chain(io, qioMapper);
+  }
+  return io;
+};
 
 export const nestedChainWave = (): wave.Wave<never, bigint> => {
   let io: wave.Wave<never, bigint> = wave.pure(BigInt(0));
@@ -42,6 +49,15 @@ benchmark
     "wave",
     (cb: any) => {
       wave.run(nestedChainWave(), () => {
+        cb.resolve();
+      });
+    },
+    { defer: true }
+  )
+  .add(
+    "wave",
+    (cb: any) => {
+      defaultRuntime().unsafeExecute(nestedChainQio(), () => {
         cb.resolve();
       });
     },

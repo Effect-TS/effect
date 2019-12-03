@@ -1786,6 +1786,22 @@
   dependencies:
     "@types/node" ">= 8"
 
+"@qio/core@^27.1.0":
+  version "27.1.0"
+  resolved "https://registry.yarnpkg.com/@qio/core/-/core-27.1.0.tgz#5982f0f4a6c8ba2ecf62a6c2df3734e7455cd188"
+  integrity sha512-AYILfGX0wPVj12iMk/ZsLhvTFkigYCIHun4naUt9N7/MPypMM6vqRHCI6fSL+LCnpX4Xl+b2xpORlkxPRrFZZg==
+  dependencies:
+    "@qio/prelude" "^27.0.4"
+    debug "^4.1.1"
+    in-node "^1.0.0"
+    standard-data-structures "^4.0.0"
+    ts-scheduler "^8.0.3"
+
+"@qio/prelude@^27.0.4":
+  version "27.0.4"
+  resolved "https://registry.yarnpkg.com/@qio/prelude/-/prelude-27.0.4.tgz#cd8d1439af0359b4484bb917e26d77011881051b"
+  integrity sha512-u9BYx0SQzMn8RTPUJdIju965LWH0GMI0Hj6DmHudp71qA1D9ohg+UkYivIrVxORtcth95v1ufAECJRQUXwpANA==
+
 "@types/axios@^0.14.0":
   version "0.14.0"
   resolved "https://registry.yarnpkg.com/@types/axios/-/axios-0.14.0.tgz#ec2300fbe7d7dddd7eb9d3abf87999964cafce46"
@@ -2705,6 +2721,11 @@ check-error@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/check-error/-/check-error-1.0.2.tgz#574d312edd88bb5dd8912e9286dd6c0aed4aac82"
   integrity sha1-V00xLt2Iu13YkS6Sht1sCu1KrII=
+
+checked-exceptions@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/checked-exceptions/-/checked-exceptions-1.2.0.tgz#fb4d7acda2f2267cfbae83e9d38c12836a1f4c3c"
+  integrity sha512-rWb63A0lQi47yL89nplFl7V6YPjNTBBqfQAKK3wS/wdgoG3cdKbZQodhKVmZkIcxgJ+DK+ak4ELmiW93Ml5s0Q==
 
 chownr@^1.1.1, chownr@^1.1.2:
   version "1.1.3"
@@ -4300,6 +4321,11 @@ imurmurhash@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/imurmurhash/-/imurmurhash-0.1.4.tgz#9218b9b2b928a238b13dc4fb6b6d576f231453ea"
   integrity sha1-khi5srkoojixPcT7a21XbyMUU+o=
+
+in-node@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/in-node/-/in-node-1.0.0.tgz#a112a9a85fb129c2ce6f6368dbadb1443ad83175"
+  integrity sha512-Z8CU6aoZ0C8G74EACRM4LnwCPtTelVR/mJXWfK+I7pllrCVPWxog4KhbWSgIJaCMYC73Z8OK0ZHEI+ajH2tRbw==
 
 indent-string@^2.1.0:
   version "2.1.0"
@@ -7421,6 +7447,11 @@ stack-utils@^1.0.1:
   resolved "https://registry.yarnpkg.com/stack-utils/-/stack-utils-1.0.2.tgz#33eba3897788558bebfc2db059dc158ec36cebb8"
   integrity sha512-MTX+MeG5U994cazkjd/9KNAapsHnibjMLnfXodlkXw76JEea0UiNzrqidzo1emMwk7w5Qhc9jd4Bn9TBb1MFwA==
 
+standard-data-structures@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/standard-data-structures/-/standard-data-structures-4.0.0.tgz#d1adb6aebe8fe8c24ad7851a26f1fc99ff775cf1"
+  integrity sha512-nDw01Etm8J7Abki9uBn/d7yiKBEDZmDle0a/efSXM7TI1j5E1Lhj2uLAmFyV8UgRKZOfmvLVpxUwL/vNFBelmw==
+
 static-extend@^0.1.1:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/static-extend/-/static-extend-0.1.2.tgz#60809c39cbff55337226fd5e0b520f341f1fb5c6"
@@ -7827,6 +7858,15 @@ ts-node@^8.5.4:
     make-error "^1.1.1"
     source-map-support "^0.5.6"
     yn "^3.0.0"
+
+ts-scheduler@^8.0.3:
+  version "8.0.3"
+  resolved "https://registry.yarnpkg.com/ts-scheduler/-/ts-scheduler-8.0.3.tgz#d7c9e4f1384b1f686f73e68d1c7d15226f007cb1"
+  integrity sha512-upnZBRy81NJ4eohxR1+peB2vHCsD1qzY7maJFxl3wJcz4rQ2oRbJ0nF+ofldgaOeEfwy6+wQUxIHZ88DXWn+kg==
+  dependencies:
+    checked-exceptions "^1.2.0"
+    in-node "^1.0.0"
+    standard-data-structures "^4.0.0"
 
 tslib@^1.8.0, tslib@^1.8.1, tslib@^1.9.0:
   version "1.10.0"
