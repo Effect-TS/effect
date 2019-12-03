@@ -7,6 +7,9 @@ import { Completable, CompletableImpl } from "./original/support/completable";
 import * as T from "./effect";
 import { effect } from "./effect";
 
+/* tested in wave */
+/* istanbul ignore file */
+
 export interface Deferred<R, E, A> {
   /**
    * Wait for this deferred to complete.
@@ -69,9 +72,7 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
     this.c = new CompletableImpl();
 
     this.wait = T.flatten(
-      T.asyncTotal<T.Effect<R, E, A>>(callback =>
-        this.c.listen(callback)
-      ) as any // TODO: this is fine, typedoc thinks differently
+      T.asyncTotal<T.Effect<R, E, A>>(callback => this.c.listen(callback))
     );
 
     this.interrupt = T.sync(() => {
@@ -103,10 +104,11 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
     });
   }
 
-  complete = (exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> =>
-    T.sync(() => {
+  complete(exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
+    return T.sync(() => {
       this.c.complete(T.completed(exit));
     });
+  }
 
   from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
     const completed = effect.chain(T.result(T.provideAll(this.r)(source)), e =>
@@ -116,8 +118,6 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
   }
 }
 
-/* tested in wave */
-/* istanbul ignore next */
 export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
   R,
   E2,
