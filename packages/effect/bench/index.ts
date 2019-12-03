@@ -4,6 +4,17 @@ import * as T from "../src/effect";
 import ben from "nodemark";
 import { Lazy } from "fp-ts/lib/function";
 
+export const fibPromise = async (n: bigint): Promise<bigint> => {
+  if (n < BigInt(2)) {
+    return await Promise.resolve(BigInt(1));
+  }
+
+  const a = await fibPromise(n - BigInt(1));
+  const b = await fibPromise(n - BigInt(2));
+
+  return a + b;
+};
+
 export const fibWave = (n: bigint): wave.Wave<never, bigint> => {
   if (n < BigInt(2)) {
     return wave.pure(BigInt(1));
@@ -37,5 +48,13 @@ ben((cb: Lazy<void>) => {
     });
   }).then((r: any) => {
     console.log("effect: ", r);
+
+    ben((cb: Lazy<void>) => {
+      fibPromise(n).then(() => {
+        cb();
+      });
+    }).then((r: any) => {
+      console.log("promise: ", r);
+    });
   });
 });
