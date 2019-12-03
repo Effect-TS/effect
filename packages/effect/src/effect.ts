@@ -19,7 +19,7 @@ import { Cause, Exit } from "./original/exit";
 import { Runtime } from "./original/runtime";
 import { fst, snd, tuple2 } from "./original/support/util";
 import { Deferred, makeDeferred } from "./deferred";
-import { Driver, makeDriver } from "./driver";
+import { Driver, DriverImpl } from "./driver";
 import {
   Alt3EC,
   Monad3E,
@@ -372,9 +372,9 @@ export function withRuntime<E, A>(
 }
 
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
-  return ({
+  return {
     _tag: EffectTag.AccessEnv
-  }) as any;
+  } as any;
 }
 
 export function accessM<R extends Env, R2, E, A>(
@@ -970,7 +970,9 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   const sendInterrupt = sync(() => {
     driver.interrupt();
   });
-  const wait = asyncTotal(driver.onExit);
+  const wait = asyncTotal((f: FunctionN<[ex.Exit<E, A>], void>) => 
+    driver.onExit(f)
+  );
   const interrupt = applySecond(sendInterrupt, asUnit(wait));
   const join = chain_(wait, completed);
   const result = chain_(
@@ -1007,7 +1009,7 @@ export function makeFiber<R, E, A>(
   return accessM((r: R) =>
     chain_(accessRuntime, runtime =>
       sync(() => {
-        const driver = makeDriver<E, A>(runtime);
+        const driver = new DriverImpl<E, A>(runtime);
         const fiber = createFiber(driver, name);
         driver.start(provideAll(r)(init));
         return fiber;
@@ -1326,12 +1328,12 @@ export function run<E, A>(
   io: Effect<NoEnv, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): Lazy<void> {
-  const driver = makeDriver<E, A>();
+  const driver = new DriverImpl<E, A>();
   if (callback) {
     driver.onExit(callback);
   }
   driver.start(io);
-  return driver.interrupt;
+  return () => driver.interrupt();
 }
 
 /**
