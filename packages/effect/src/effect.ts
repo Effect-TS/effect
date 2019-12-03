@@ -68,9 +68,9 @@ export interface EffectOps {}
 export class EffectIOImpl {
   constructor(
     readonly _tag: EffectTag,
-    readonly f0: unknown = noEnv,
-    readonly f1: unknown = noEnv,
-    readonly f2: unknown = noEnv
+    readonly f0: any = noEnv,
+    readonly f1: any = noEnv,
+    readonly f2: any = noEnv
   ) {}
 }
 
@@ -296,7 +296,7 @@ export function accessM<R extends Env, R2, E, A>(
 export function access<R extends Env, A, E = NoErr>(
   f: FunctionN<[R], A>
 ): Effect<R, E, A> {
-  return chain_(accessEnvironment<R>(), r => pure(f(r)));
+  return map_(accessEnvironment<R>(), f);
 }
 
 export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
@@ -358,7 +358,11 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return new EffectIOImpl(EffectTag.Map, base, f) as any;
+  return new EffectIOImpl(
+    EffectTag.Map,
+    base,
+    (x: any) => new EffectIOImpl(EffectTag.Pure, f(x))
+  ) as any;
 }
 
 /**

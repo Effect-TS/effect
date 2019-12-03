@@ -22,28 +22,22 @@ export interface MutableQueue<A> {
   size(): number;
 }
 
-export function mutableQueue<A>(): MutableQueue<A> {
-  const array: A[] = [];
-  function enqueue(a: A): void {
-    array.push(a);
+export class MutableQueueImpl<A> implements MutableQueue<A> {
+  array: A[] = [];
+  
+  enqueue(a: A): void {
+    this.array.push(a);
   }
-  function dequeue(): A | undefined {
-    return array.shift();
+  dequeue(): A | undefined {
+    return this.array.shift();
   }
-  function isEmpty(): boolean {
-    return array.length === 0;
+  isEmpty(): boolean {
+    return this.array.length === 0;
   }
-  function peek(): A | undefined {
-    return isEmpty() ? undefined : array[0];
+  peek(): A | undefined {
+    return this.isEmpty() ? undefined : this.array[0];
   }
-  function size(): number {
-    return array.length;
+  size(): number {
+    return this.array.length;
   }
-  return {
-    enqueue,
-    dequeue,
-    peek,
-    isEmpty,
-    size
-  };
 }

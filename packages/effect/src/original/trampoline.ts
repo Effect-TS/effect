@@ -15,7 +15,7 @@
 /* istanbul ignore file */
 
 import { Lazy } from "fp-ts/lib/function";
-import { MutableQueue, mutableQueue } from "./support/mutable-queue";
+import { MutableQueue, MutableQueueImpl } from "./support/mutable-queue";
 
 /**
  * A trampolined execution environment.
@@ -39,33 +39,26 @@ export interface Trampoline {
   dispatch(thunk: Lazy<void>): void;
 }
 
-/**
- * Create a new Trampoline
- */
-export function makeTrampoline(): Trampoline {
-  let running = false;
-  const queue: MutableQueue<Lazy<void>> = mutableQueue();
+export class TrampolineImpl implements Trampoline {
+  running = false;
+  queue: MutableQueue<Lazy<void>> = new MutableQueueImpl();
 
-  const isRunning = (): boolean => running;
+  isRunning = (): boolean => this.running;
 
-  const run = (): void => {
-    running = true;
-    let next = queue.dequeue();
+  run = (): void => {
+    this.running = true;
+    let next = this.queue.dequeue();
     while (next) {
       next();
-      next = queue.dequeue();
+      next = this.queue.dequeue();
     }
-    running = false;
+    this.running = false;
   };
 
-  const dispatch = (thunk: Lazy<void>): void => {
-    queue.enqueue(thunk);
-    if (!running) {
-      run();
+  dispatch = (thunk: Lazy<void>): void => {
+    this.queue.enqueue(thunk);
+    if (!this.running) {
+      this.run();
     }
-  };
-  return {
-    isRunning,
-    dispatch
   };
 }

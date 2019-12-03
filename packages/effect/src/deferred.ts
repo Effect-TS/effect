@@ -123,5 +123,5 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
   E2,
   Deferred<R, E, A>
 > {
-  return T.accessM((r: R) => T.sync(() => new DeferredImpl(r)));
+  return T.access((r: R) => new DeferredImpl(r));
 }

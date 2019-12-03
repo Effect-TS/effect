@@ -15,7 +15,7 @@
 /* istanbul ignore file */
 
 import { Lazy } from "fp-ts/lib/function";
-import { makeTrampoline } from "./trampoline";
+import { TrampolineImpl } from "./trampoline";
 
 /**
  * An interface for the IO system runtime.
@@ -42,24 +42,19 @@ export interface Runtime {
   dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void>;
 }
 
-function jsRuntime(): Runtime {
-  const trampoline = makeTrampoline();
+class RuntimeImpl implements Runtime {
+  trampoline = new TrampolineImpl();
 
-  const dispatch = (thunk: Lazy<void>): void => {
-    trampoline.dispatch(thunk);
+  dispatch = (thunk: Lazy<void>): void => {
+    this.trampoline.dispatch(thunk);
   };
 
-  const dispatchLater = (thunk: Lazy<void>, ms: number): Lazy<void> => {
-    const handle = setTimeout(() => dispatch(thunk), ms);
+  dispatchLater = (thunk: Lazy<void>, ms: number): Lazy<void> => {
+    const handle = setTimeout(() => this.dispatch(thunk), ms);
     return () => {
       clearTimeout(handle);
     };
   };
-
-  return {
-    dispatch,
-    dispatchLater
-  };
 }
 
-export const defaultRuntime: Runtime = jsRuntime();
+export const defaultRuntime: Runtime = new RuntimeImpl();
