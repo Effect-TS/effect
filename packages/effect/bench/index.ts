@@ -2,7 +2,8 @@ import * as wave from "waveguide/lib/wave";
 import * as T from "../src/effect";
 // @ts-ignore
 import ben from "nodemark";
-import { Lazy } from "fp-ts/lib/function";
+
+import { Suite } from "benchmark";
 
 export const fibPromise = async (n: bigint): Promise<bigint> => {
   if (n < BigInt(2)) {
@@ -43,33 +44,39 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
 
 const n = BigInt(10);
 
-ben((cb: Lazy<void>) => {
-  T.run(fibEffect(n), () => {
-    cb();
-  });
-}).then((r: any) => {
-  console.log("effect: ", r);
+const benchmark = new Suite("Fibonacci");
 
-  ben((cb: Lazy<void>) => {
-    wave.run(fibWave(n), () => {
-      cb();
-    });
-  }).then((r: any) => {
-    console.log("wave: ", r);
-
-    ben((cb: Lazy<void>) => {
-      fibPromise(n).then(() => {
-        cb();
-      });
-    }).then((r: any) => {
-      console.log("promise: ", r);
-    });
-
-    ben((cb: Lazy<void>) => {
+benchmark
+  .add(
+    "native",
+    (cb: any) => {
       fib(n);
-      cb();
-    }).then((r: any) => {
-      console.log("native: ", r);
-    });
-  });
-});
+      cb.resolve();
+    },
+    { defer: true }
+  )
+  .add(
+    "effect",
+    (cb: any) => {
+      T.run(fibEffect(n), () => {
+        cb.resolve();
+      });
+    },
+    { defer: true }
+  )
+  .add(
+    "wave",
+    (cb: any) => {
+      wave.run(fibWave(n), () => {
+        cb.resolve();
+      });
+    },
+    { defer: true }
+  )
+  .on("cycle", function(event: any) {
+    console.log(String(event.target));
+  })
+  .on("complete", function(this: any) {
+    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
+  })
+  .run({ async: true });

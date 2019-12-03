@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rimraf lib && tsc --build tsconfig.build.json",
     "lint": "tslint --project .",
-    "bench": "yarn ts-node bench/index.ts"
+    "bench": "yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts"
   },
   "publishConfig": {
     "access": "public"
@@ -20,13 +20,14 @@
     "@babel/core": "^7.7.4",
     "@babel/preset-env": "^7.7.4",
     "@babel/preset-typescript": "^7.7.4",
+    "@types/benchmark": "^1.0.31",
     "@types/chai": "^4.2.5",
     "@types/jest": "^24.0.23",
     "@types/node": "^12.12.14",
     "babel-jest": "^24.9.0",
+    "benchmark": "^2.1.4",
     "chai": "^4.2.0",
     "jest": "^24.9.0",
-    "nodemark": "^0.3.0",
     "rimraf": "^3.0.0",
     "ts-jest": "^24.2.0",
     "ts-node": "^8.5.4",
