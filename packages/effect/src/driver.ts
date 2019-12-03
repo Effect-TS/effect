@@ -15,7 +15,7 @@ import {
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
-import { Completable, completable } from "./original/support/completable";
+import { Completable, CompletableImpl } from "./original/support/completable";
 import { MutableStack, mutableStack } from "./original/support/mutable-stack";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
@@ -82,7 +82,7 @@ export function makeDriver<E, A>(
 ): Driver<E, A> {
   let started = false;
   let interrupted = false;
-  const result: Completable<Exit<E, A>> = completable();
+  const result: Completable<Exit<E, A>> = new CompletableImpl();
   const frameStack: MutableStack<FrameType> = mutableStack();
   const interruptRegionStack: MutableStack<boolean> = mutableStack();
   let cancelAsync: Lazy<void> | undefined;

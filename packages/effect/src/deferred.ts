@@ -3,7 +3,7 @@
  */
 
 import { Exit, Cause } from "./original/exit";
-import { Completable, completable } from "./original/support/completable";
+import { Completable, CompletableImpl } from "./original/support/completable";
 import * as T from "./effect";
 import { effect } from "./effect";
 
@@ -69,7 +69,7 @@ export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
 > {
   return T.accessM((r: R) =>
     T.sync(() => {
-      const c: Completable<T.Effect<R, E, A>> = completable();
+      const c: Completable<T.Effect<R, E, A>> = new CompletableImpl();
       const wait: T.Effect<R, E, A> = T.flatten(
         T.asyncTotal<T.Effect<R, E, A>>(callback => c.listen(callback)) as any // TODO: this is fine, typedoc thinks differently
       );

@@ -44,18 +44,18 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
 const n = BigInt(10);
 
 ben((cb: Lazy<void>) => {
-  wave.run(fibWave(n), () => {
+  T.run(fibEffect(n), () => {
     cb();
   });
 }).then((r: any) => {
-  console.log("wave: ", r);
+  console.log("effect: ", r);
 
   ben((cb: Lazy<void>) => {
-    T.run(fibEffect(n), () => {
+    wave.run(fibWave(n), () => {
       cb();
     });
   }).then((r: any) => {
-    console.log("effect: ", r);
+    console.log("wave: ", r);
 
     ben((cb: Lazy<void>) => {
       fibPromise(n).then(() => {

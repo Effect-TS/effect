@@ -26,42 +26,45 @@ export interface Completable<A> {
   listen(f: FunctionN<[A], void>): Lazy<void>;
 }
 
-export function completable<A>(): Completable<A> {
-  let completed: Option<A> = none;
-  let listeners: FunctionN<[A], void>[] = [];
-  const set = (a: A): void => {
-    completed = some(a);
-    listeners.forEach(f => f(a));
-  };
-  const value = (): Option<A> => completed;
-  const isComplete = (): boolean => o.isSome(completed);
-  const complete = (a: A): void => {
-    if (o.isSome(completed)) {
+export class CompletableImpl<A> implements Completable<A> {
+  completed: Option<A>;
+  listeners: FunctionN<[A], void>[];
+  constructor() {
+    this.completed = none;
+    this.listeners = [];
+  }
+
+  set(a: A): void {
+    this.completed = some(a);
+    this.listeners.forEach(f => f(a));
+  }
+
+  value(): Option<A> {
+    return this.completed;
+  }
+  isComplete(): boolean {
+    return o.isSome(this.completed);
+  }
+  complete(a: A): void {
+    if (o.isSome(this.completed)) {
       throw new Error("Die: Completable is already completed");
     }
-    set(a);
-  };
-  const tryComplete = (a: A): boolean => {
-    if (o.isSome(completed)) {
+    this.set(a);
+  }
+  tryComplete(a: A): boolean {
+    if (o.isSome(this.completed)) {
       return false;
     }
-    set(a);
+    this.set(a);
     return true;
-  };
-  const listen = (f: FunctionN<[A], void>): Lazy<void> => {
-    if (o.isSome(completed)) {
-      f(completed.value);
+  }
+  listen(f: FunctionN<[A], void>): Lazy<void> {
+    if (o.isSome(this.completed)) {
+      f(this.completed.value);
     }
-    listeners.push(f);
+    this.listeners.push(f);
     return () => {
-      listeners = listeners.filter(cb => cb !== f);
+      this.listeners = this.listeners.filter(cb => cb !== f);
     };
-  };
-  return {
-    value,
-    isComplete,
-    complete,
-    tryComplete,
-    listen
-  };
+  }
 }
