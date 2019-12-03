@@ -372,9 +372,9 @@ export function withRuntime<E, A>(
 }
 
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
-  return () => ({
+  return ({
     _tag: EffectTag.AccessEnv
-  });
+  }) as any;
 }
 
 export function accessM<R extends Env, R2, E, A>(
