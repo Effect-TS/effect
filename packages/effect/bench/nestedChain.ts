@@ -55,7 +55,7 @@ benchmark
     { defer: true }
   )
   .add(
-    "wave",
+    "qio",
     (cb: any) => {
       defaultRuntime().unsafeExecute(nestedChainQio(), () => {
         cb.resolve();
