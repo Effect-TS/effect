@@ -232,9 +232,10 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         switch (((current as any) as UnkEff)._tag) {
           case T.EffectTag.Map:
+            const f = (((current as any) as UnkEff).f1 as any)
             this.frameStack.push(
               makeFrame(a =>
-                T.pure((((current as any) as UnkEff).f1 as any)(a))
+                T.pure(f(a))
               )
             );
             current = ((current as any) as UnkEff).f0 as any;
