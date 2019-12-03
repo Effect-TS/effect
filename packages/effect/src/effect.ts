@@ -970,23 +970,16 @@ function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
   const sendInterrupt = sync(() => {
     driver.interrupt();
   });
-  const wait = asyncTotal((f: FunctionN<[ex.Exit<E, A>], void>) => 
+  const wait = asyncTotal((f: FunctionN<[ex.Exit<E, A>], void>) =>
     driver.onExit(f)
   );
   const interrupt = applySecond(sendInterrupt, asUnit(wait));
   const join = chain_(wait, completed);
   const result = chain_(
     sync(() => driver.exit()),
-    opt =>
-      pipe(
-        opt,
-        option.fold(
-          () => pure(none),
-          (exit: Exit<E, A>) => map_(completed(exit), some)
-        )
-      )
+    opt => (opt === null ? pure(none) : map_(completed(opt), some))
   );
-  const isComplete = sync(() => option.isSome(driver.exit()));
+  const isComplete = sync(() => driver.exit() !== null);
   return {
     name,
     wait,

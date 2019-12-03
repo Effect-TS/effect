@@ -4,7 +4,6 @@
 
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
-import { Option } from "fp-ts/lib/Option";
 import {
   Cause,
   Done,
@@ -15,7 +14,6 @@ import {
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
-import { Completable, CompletableImpl } from "./original/support/completable";
 import { MutableStack, mutableStack } from "./original/support/mutable-stack";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
@@ -74,26 +72,71 @@ export interface Driver<E, A> {
   start(run: T.Effect<T.NoEnv, E, A>): void;
   interrupt(): void;
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
-  exit(): Option<Exit<E, A>>;
+  exit(): Exit<E, A> | null;
 }
 
 export class DriverImpl<E, A> implements Driver<E, A> {
+  completed: Exit<E, A> | null;
+  listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
+
   started = false;
   interrupted = false;
-  result: Completable<Exit<E, A>> = new CompletableImpl();
+  // result: Completable<Exit<E, A>> = new CompletableImpl();
   frameStack: MutableStack<FrameType> = mutableStack();
   interruptRegionStack: MutableStack<boolean> | undefined;
   cancelAsync: Lazy<void> | undefined;
   envStack: Array<any> = [];
 
-  constructor(readonly runtime: Runtime = defaultRuntime) {}
-
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    return this.result.listen(f);
+  constructor(readonly runtime: Runtime = defaultRuntime) {
+    this.completed = null;
+    // this.listeners = [];
   }
 
-  exit(): Option<Exit<E, A>> {
-    return this.result.value();
+  set(a: Exit<E, A>): void {
+    this.completed = a;
+    if (this.listeners !== undefined) {
+      this.listeners.forEach(f => f(a));
+    }
+  }
+
+  // value(): Exit<E, A> | null {
+  //   return this.completed;
+  // }
+  isComplete(): boolean {
+    return this.completed !== null;
+  }
+  complete(a: Exit<E, A>): void {
+    if (this.completed !== null) {
+      throw new Error("Die: Completable is already completed");
+    }
+    this.set(a);
+  }
+  tryComplete(a: Exit<E, A>): boolean {
+    if (this.completed !== null) {
+      return false;
+    }
+    this.set(a);
+    return true;
+  }
+
+  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    if (this.completed !== null) {
+      f(this.completed);
+    }
+    if (this.listeners === undefined) {
+      this.listeners = [f];
+    } else {
+      this.listeners.push(f);
+    }
+    return () => {
+      if (this.listeners !== undefined) {
+        this.listeners = this.listeners.filter(cb => cb !== f);
+      }
+    };
+  }
+
+  exit(): Exit<E, A> | null {
+    return this.completed;
   }
 
   isInterruptible(): boolean {
@@ -125,7 +168,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       frame = this.frameStack.pop();
     }
     // At the end... so we have failed
-    this.result.complete(e as Cause<E>);
+    this.complete(e as Cause<E>);
     return;
   }
 
@@ -144,7 +187,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     if (frame) {
       return frame.apply(value);
     }
-    this.result.complete(done(value) as Done<A>);
+    this.complete(done(value) as Done<A>);
     return;
   }
 
@@ -279,7 +322,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   interrupt(): void {
-    if (this.interrupted || this.result.isComplete()) {
+    if (this.interrupted || this.isComplete()) {
       return;
     }
     this.interrupted = true;
