@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>FoldFrame | @matechs/effect</title>
+	<title>Effect | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -59,105 +59,71 @@
 					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.foldframe.html">FoldFrame</a>
+					<a href="_matechs_effect.effect.html">Effect</a>
 				</li>
 			</ul>
-			<h1>Interface FoldFrame</h1>
+			<h1>Interface Effect&lt;R, E, A&gt;</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-comment">
+				<div class="tsd-comment tsd-typography">
+					<div class="lead">
+						<p>A description of an effect to perform</p>
+					</div>
+				</div>
+			</section>
+			<section class="tsd-panel tsd-type-parameters">
+				<h3>Type parameters</h3>
+				<ul class="tsd-type-parameters">
+					<li>
+						<h4>R</h4>
+					</li>
+					<li>
+						<h4>E</h4>
+					</li>
+					<li>
+						<h4>A</h4>
+					</li>
+				</ul>
+			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">FoldFrame</span>
+						<span class="target">Effect</span>
 					</li>
 				</ul>
 			</section>
-			<section class="tsd-panel-group tsd-index-group">
-				<h2>Index</h2>
-				<section class="tsd-panel tsd-index-panel">
-					<div class="tsd-index-content">
-						<section class="tsd-index-section tsd-is-not-exported">
-							<h3>Properties</h3>
-							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#_tag" class="tsd-kind-icon">_tag</a></li>
+			<section class="tsd-panel">
+				<h3 class="tsd-before-signature">Callable</h3>
+				<ul class="tsd-signatures tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
+					<li class="tsd-signature tsd-kind-icon">__call<span class="tsd-signature-symbol">(</span>_<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+							<ul>
+								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/effect.ts#L61">packages/effect/src/effect.ts:61</a></li>
 							</ul>
-						</section>
-						<section class="tsd-index-section tsd-is-not-exported">
-							<h3>Methods</h3>
-							<ul class="tsd-index-list">
-								<li class="tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#apply" class="tsd-kind-icon">apply</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#recover" class="tsd-kind-icon">recover</a></li>
-							</ul>
-						</section>
-					</div>
-				</section>
-			</section>
-			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
-				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
-					<a name="_tag" class="tsd-anchor"></a>
-					<h3>_tag</h3>
-					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">"fold-frame"</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L40">packages/effect/src/driver.ts:40</a></li>
+						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>A description of an effect to perform</p>
+							</div>
+						</div>
+						<h4 class="tsd-parameters-title">Parameters</h4>
+						<ul class="tsd-parameters">
+							<li>
+								<h5>_: <span class="tsd-signature-type">R</span></h5>
+							</li>
 						</ul>
-					</aside>
-				</section>
-			</section>
-			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
-				<h2>Methods</h2>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported">
-					<a name="apply" class="tsd-anchor"></a>
-					<h3>apply</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">apply<span class="tsd-signature-symbol">(</span>u<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L41">packages/effect/src/driver.ts:41</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>u: <span class="tsd-signature-type">unknown</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported">
-					<a name="recover" class="tsd-anchor"></a>
-					<h3>recover</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">recover<span class="tsd-signature-symbol">(</span>cause<span class="tsd-signature-symbol">: </span><a href="../modules/_matechs_effect.html#cause" class="tsd-signature-type">Cause</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L42">packages/effect/src/driver.ts:42</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>cause: <a href="../modules/_matechs_effect.html#cause" class="tsd-signature-type">Cause</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></h4>
-						</li>
-					</ul>
-				</section>
+						<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+					</li>
+				</ul>
 			</section>
 		</div>
 		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
@@ -219,19 +185,8 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported">
-						<a href="_matechs_effect.foldframe.html" class="tsd-kind-icon">Fold<wbr>Frame</a>
-						<ul>
-							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
-								<a href="_matechs_effect.foldframe.html#_tag" class="tsd-kind-icon">_tag</a>
-							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported">
-								<a href="_matechs_effect.foldframe.html#apply" class="tsd-kind-icon">apply</a>
-							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-interface tsd-is-not-exported">
-								<a href="_matechs_effect.foldframe.html#recover" class="tsd-kind-icon">recover</a>
-							</li>
-						</ul>
+					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="_matechs_effect.effect.html" class="tsd-kind-icon">Effect</a>
 					</li>
 				</ul>
 				<ul class="after-current">

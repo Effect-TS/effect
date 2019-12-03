@@ -62,7 +62,7 @@
 					<a href="_matechs_effect.suspended.html">Suspended</a>
 				</li>
 			</ul>
-			<h1>Interface Suspended&lt;E, A&gt;</h1>
+			<h1>Interface Suspended&lt;R, E, A&gt;</h1>
 		</div>
 	</div>
 </header>
@@ -72,6 +72,9 @@
 			<section class="tsd-panel tsd-type-parameters">
 				<h3>Type parameters</h3>
 				<ul class="tsd-type-parameters">
+					<li>
+						<h4>R</h4>
+					</li>
 					<li>
 						<h4>E</h4>
 					</li>
@@ -96,7 +99,7 @@
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.suspended.html#_tag" class="tsd-kind-icon">_tag</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.suspended.html#thunk" class="tsd-kind-icon">thunk</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.suspended.html#suspended" class="tsd-kind-icon">suspended</a></li>
 							</ul>
 						</section>
 					</div>
@@ -107,20 +110,20 @@
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="_tag" class="tsd-anchor"></a>
 					<h3>_tag</h3>
-					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <a href="../enums/_matechs_effect.effecttag.html#suspended" class="tsd-signature-type">Suspended</a></div>
+					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <a href="../enums/_matechs_effect.managedtag.html#suspended" class="tsd-signature-type">Suspended</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L142">packages/effect/src/effect.ts:142</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/managed.ts#L117">packages/effect/src/managed.ts:117</a></li>
 						</ul>
 					</aside>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="thunk" class="tsd-anchor"></a>
-					<h3>thunk</h3>
-					<div class="tsd-signature tsd-kind-icon">thunk<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
+					<a name="suspended" class="tsd-anchor"></a>
+					<h3>suspended</h3>
+					<div class="tsd-signature tsd-kind-icon">suspended<span class="tsd-signature-symbol">:</span> <a href="_matechs_effect.effect.html" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><a href="../modules/_matechs_effect.html#managed" class="tsd-signature-type">Managed</a><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L144">packages/effect/src/effect.ts:144</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/managed.ts#L119">packages/effect/src/managed.ts:119</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -192,7 +195,7 @@
 								<a href="_matechs_effect.suspended.html#_tag" class="tsd-kind-icon">_tag</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.suspended.html#thunk" class="tsd-kind-icon">thunk</a>
+								<a href="_matechs_effect.suspended.html#suspended" class="tsd-kind-icon">suspended</a>
 							</li>
 						</ul>
 					</li>

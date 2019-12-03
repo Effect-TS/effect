@@ -88,6 +88,12 @@
 					</li>
 				</ul>
 			</section>
+			<section class="tsd-panel">
+				<h3>Implemented by</h3>
+				<ul class="tsd-hierarchy">
+					<li><a href="../classes/_matechs_effect.driverimpl.html" class="tsd-signature-type">DriverImpl</a></li>
+				</ul>
+			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
@@ -95,10 +101,15 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#exit" class="tsd-kind-icon">exit</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#interrupt" class="tsd-kind-icon">interrupt</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#onexit" class="tsd-kind-icon">on<wbr>Exit</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#start" class="tsd-kind-icon">start</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#completed" class="tsd-kind-icon">completed</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Methods</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#interrupt" class="tsd-kind-icon">interrupt</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#onexit" class="tsd-kind-icon">on<wbr>Exit</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-interface"><a href="_matechs_effect.driver.html#start" class="tsd-kind-icon">start</a></li>
 							</ul>
 						</section>
 					</div>
@@ -107,116 +118,80 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="exit" class="tsd-anchor"></a>
-					<h3>exit</h3>
-					<div class="tsd-signature tsd-kind-icon">exit<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
+					<a name="completed" class="tsd-anchor"></a>
+					<h3>completed</h3>
+					<div class="tsd-signature tsd-kind-icon">completed<span class="tsd-signature-symbol">:</span> <a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">null</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L77">packages/effect/src/driver.ts:77</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L76">packages/effect/src/driver.ts:76</a></li>
 						</ul>
 					</aside>
-					<div class="tsd-type-declaration">
-						<h4>Type declaration</h4>
-						<ul class="tsd-parameters">
-							<li class="tsd-parameter-siganture">
-								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Option</span><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-								</ul>
-								<ul class="tsd-descriptions">
-									<li class="tsd-description">
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Option</span><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-									</li>
-								</ul>
-							</li>
-						</ul>
-					</div>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Methods</h2>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
 					<a name="interrupt" class="tsd-anchor"></a>
 					<h3>interrupt</h3>
-					<div class="tsd-signature tsd-kind-icon">interrupt<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L75">packages/effect/src/driver.ts:75</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-type-declaration">
-						<h4>Type declaration</h4>
-						<ul class="tsd-parameters">
-							<li class="tsd-parameter-siganture">
-								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
+						<li class="tsd-signature tsd-kind-icon">interrupt<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L74">packages/effect/src/driver.ts:74</a></li>
 								</ul>
-								<ul class="tsd-descriptions">
-									<li class="tsd-description">
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-									</li>
-								</ul>
-							</li>
-						</ul>
-					</div>
+							</aside>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+						</li>
+					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
 					<a name="onexit" class="tsd-anchor"></a>
 					<h3>on<wbr>Exit</h3>
-					<div class="tsd-signature tsd-kind-icon">on<wbr>Exit<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L76">packages/effect/src/driver.ts:76</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-type-declaration">
-						<h4>Type declaration</h4>
-						<ul class="tsd-parameters">
-							<li class="tsd-parameter-siganture">
-								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
+						<li class="tsd-signature tsd-kind-icon">on<wbr>Exit<span class="tsd-signature-symbol">(</span>f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L75">packages/effect/src/driver.ts:75</a></li>
 								</ul>
-								<ul class="tsd-descriptions">
-									<li class="tsd-description">
-										<h4 class="tsd-parameters-title">Parameters</h4>
-										<ul class="tsd-parameters">
-											<li>
-												<h5>f: <span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h5>
-											</li>
-										</ul>
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
-									</li>
-								</ul>
-							</li>
-						</ul>
-					</div>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>f: <span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><a href="../modules/_matechs_effect.html#exit" class="tsd-signature-type">Exit</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
+						</li>
+					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-interface">
 					<a name="start" class="tsd-anchor"></a>
 					<h3>start</h3>
-					<div class="tsd-signature tsd-kind-icon">start<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">function</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/driver.ts#L74">packages/effect/src/driver.ts:74</a></li>
-						</ul>
-					</aside>
-					<div class="tsd-type-declaration">
-						<h4>Type declaration</h4>
-						<ul class="tsd-parameters">
-							<li class="tsd-parameter-siganture">
-								<ul class="tsd-signatures tsd-kind-type-literal tsd-parent-kind-property tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>run<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">T.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-interface">
+						<li class="tsd-signature tsd-kind-icon">start<span class="tsd-signature-symbol">(</span>run<span class="tsd-signature-symbol">: </span><a href="_matechs_effect.effect.html" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L73">packages/effect/src/driver.ts:73</a></li>
 								</ul>
-								<ul class="tsd-descriptions">
-									<li class="tsd-description">
-										<h4 class="tsd-parameters-title">Parameters</h4>
-										<ul class="tsd-parameters">
-											<li>
-												<h5>run: <span class="tsd-signature-type">T.Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
-											</li>
-										</ul>
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
-									</li>
-								</ul>
-							</li>
-						</ul>
-					</div>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>run: <a href="_matechs_effect.effect.html" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+						</li>
+					</ul>
 				</section>
 			</section>
 		</div>
@@ -283,15 +258,15 @@
 						<a href="_matechs_effect.driver.html" class="tsd-kind-icon">Driver</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.driver.html#exit" class="tsd-kind-icon">exit</a>
+								<a href="_matechs_effect.driver.html#completed" class="tsd-kind-icon">completed</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
+							<li class=" tsd-kind-method tsd-parent-kind-interface">
 								<a href="_matechs_effect.driver.html#interrupt" class="tsd-kind-icon">interrupt</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
+							<li class=" tsd-kind-method tsd-parent-kind-interface">
 								<a href="_matechs_effect.driver.html#onexit" class="tsd-kind-icon">on<wbr>Exit</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
+							<li class=" tsd-kind-method tsd-parent-kind-interface">
 								<a href="_matechs_effect.driver.html#start" class="tsd-kind-icon">start</a>
 							</li>
 						</ul>

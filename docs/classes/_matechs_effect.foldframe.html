@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>InterruptibleRegion | @matechs/effect</title>
+	<title>FoldFrame | @matechs/effect</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -59,81 +59,160 @@
 					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.interruptibleregion.html">InterruptibleRegion</a>
+					<a href="_matechs_effect.foldframe.html">FoldFrame</a>
 				</li>
 			</ul>
-			<h1>Interface InterruptibleRegion&lt;E, A&gt;</h1>
+			<h1>Class FoldFrame</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
-			<section class="tsd-panel tsd-type-parameters">
-				<h3>Type parameters</h3>
-				<ul class="tsd-type-parameters">
-					<li>
-						<h4>E</h4>
-					</li>
-					<li>
-						<h4>A</h4>
-					</li>
-				</ul>
-			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">InterruptibleRegion</span>
+						<span class="target">FoldFrame</span>
 					</li>
+				</ul>
+			</section>
+			<section class="tsd-panel">
+				<h3>Implements</h3>
+				<ul class="tsd-hierarchy">
+					<li><a href="_matechs_effect.foldframe.html" class="tsd-signature-type">FoldFrame</a></li>
+				</ul>
+			</section>
+			<section class="tsd-panel">
+				<h3>Implemented by</h3>
+				<ul class="tsd-hierarchy">
+					<li><a href="_matechs_effect.foldframe.html" class="tsd-signature-type">FoldFrame</a></li>
 				</ul>
 			</section>
 			<section class="tsd-panel-group tsd-index-group">
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
-						<section class="tsd-index-section ">
+						<section class="tsd-index-section tsd-is-not-exported">
+							<h3>Constructors</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-constructor tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#constructor" class="tsd-kind-icon">constructor</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section tsd-is-not-exported">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.interruptibleregion.html#_tag" class="tsd-kind-icon">_tag</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.interruptibleregion.html#flag" class="tsd-kind-icon">flag</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.interruptibleregion.html#inner" class="tsd-kind-icon">inner</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#_tag" class="tsd-kind-icon">_tag</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-class tsd-is-private tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#c" class="tsd-kind-icon">c</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section tsd-is-not-exported">
+							<h3>Methods</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#apply" class="tsd-kind-icon">apply</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.foldframe.html#recover" class="tsd-kind-icon">recover</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
-			<section class="tsd-panel-group tsd-member-group ">
+			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
+				<h2>Constructors</h2>
+				<section class="tsd-panel tsd-member tsd-kind-constructor tsd-parent-kind-class tsd-is-not-exported">
+					<a name="constructor" class="tsd-anchor"></a>
+					<h3>constructor</h3>
+					<ul class="tsd-signatures tsd-kind-constructor tsd-parent-kind-class tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">new <wbr>Fold<wbr>Frame<span class="tsd-signature-symbol">(</span>c<span class="tsd-signature-symbol">: </span><a href="_matechs_effect.effectioimpl.html" class="tsd-signature-type">EffectIOImpl</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_effect.foldframe.html" class="tsd-signature-type">FoldFrame</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L43">packages/effect/src/driver.ts:43</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>c: <a href="_matechs_effect.effectioimpl.html" class="tsd-signature-type">EffectIOImpl</a></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="_matechs_effect.foldframe.html" class="tsd-signature-type">FoldFrame</a></h4>
+						</li>
+					</ul>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
 				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-not-exported">
 					<a name="_tag" class="tsd-anchor"></a>
 					<h3>_tag</h3>
-					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <a href="../enums/_matechs_effect.effecttag.html#interruptibleregion" class="tsd-signature-type">InterruptibleRegion</a></div>
+					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">"fold-frame"</span><span class="tsd-signature-symbol"> =&nbsp;&quot;fold-frame&quot; as const</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L234">packages/effect/src/effect.ts:234</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L38">packages/effect/src/driver.ts:38</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L45">packages/effect/src/driver.ts:45</a></li>
 						</ul>
 					</aside>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="flag" class="tsd-anchor"></a>
-					<h3>flag</h3>
-					<div class="tsd-signature tsd-kind-icon">flag<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-private tsd-is-not-exported">
+					<a name="c" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagPrivate">Private</span> c</h3>
+					<div class="tsd-signature tsd-kind-icon">c<span class="tsd-signature-symbol">:</span> <a href="_matechs_effect.effectioimpl.html" class="tsd-signature-type">EffectIOImpl</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L237">packages/effect/src/effect.ts:237</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L44">packages/effect/src/driver.ts:44</a></li>
 						</ul>
 					</aside>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="inner" class="tsd-anchor"></a>
-					<h3>inner</h3>
-					<div class="tsd-signature tsd-kind-icon">inner<span class="tsd-signature-symbol">:</span> <a href="../modules/_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L236">packages/effect/src/effect.ts:236</a></li>
-						</ul>
-					</aside>
+			</section>
+			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
+				<h2>Methods</h2>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+					<a name="apply" class="tsd-anchor"></a>
+					<h3>apply</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">apply<span class="tsd-signature-symbol">(</span>u<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L39">packages/effect/src/driver.ts:39</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>u: <span class="tsd-signature-type">unknown</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></h4>
+						</li>
+					</ul>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+					<a name="recover" class="tsd-anchor"></a>
+					<h3>recover</h3>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">recover<span class="tsd-signature-symbol">(</span>cause<span class="tsd-signature-symbol">: </span><a href="../modules/_matechs_effect.html#cause" class="tsd-signature-type">Cause</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></li>
+					</ul>
+					<ul class="tsd-descriptions">
+						<li class="tsd-description">
+							<aside class="tsd-sources">
+								<ul>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/driver.ts#L40">packages/effect/src/driver.ts:40</a></li>
+								</ul>
+							</aside>
+							<h4 class="tsd-parameters-title">Parameters</h4>
+							<ul class="tsd-parameters">
+								<li>
+									<h5>cause: <a href="../modules/_matechs_effect.html#cause" class="tsd-signature-type">Cause</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">&gt;</span></h5>
+								</li>
+							</ul>
+							<h4 class="tsd-returns-title">Returns <a href="../modules/_matechs_effect.html#unkio" class="tsd-signature-type">UnkIO</a></h4>
+						</li>
+					</ul>
 				</section>
 			</section>
 		</div>
@@ -196,17 +275,23 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect.interruptibleregion.html" class="tsd-kind-icon">Interruptible<wbr>Region</a>
+					<li class="current tsd-kind-class tsd-parent-kind-module tsd-is-not-exported">
+						<a href="_matechs_effect.foldframe.html" class="tsd-kind-icon">Fold<wbr>Frame</a>
 						<ul>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.interruptibleregion.html#_tag" class="tsd-kind-icon">_tag</a>
+							<li class=" tsd-kind-constructor tsd-parent-kind-class tsd-is-not-exported">
+								<a href="_matechs_effect.foldframe.html#constructor" class="tsd-kind-icon">constructor</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.interruptibleregion.html#flag" class="tsd-kind-icon">flag</a>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-not-exported">
+								<a href="_matechs_effect.foldframe.html#_tag" class="tsd-kind-icon">_tag</a>
 							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.interruptibleregion.html#inner" class="tsd-kind-icon">inner</a>
+							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-private tsd-is-not-exported">
+								<a href="_matechs_effect.foldframe.html#c" class="tsd-kind-icon">c</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+								<a href="_matechs_effect.foldframe.html#apply" class="tsd-kind-icon">apply</a>
+							</li>
+							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+								<a href="_matechs_effect.foldframe.html#recover" class="tsd-kind-icon">recover</a>
 							</li>
 						</ul>
 					</li>

@@ -62,7 +62,7 @@
 					<a href="_matechs_effect.chain.html">Chain</a>
 				</li>
 			</ul>
-			<h1>Interface Chain&lt;E, Z, A&gt;</h1>
+			<h1>Interface Chain&lt;R, E, L, A&gt;</h1>
 		</div>
 	</div>
 </header>
@@ -73,10 +73,13 @@
 				<h3>Type parameters</h3>
 				<ul class="tsd-type-parameters">
 					<li>
+						<h4>R</h4>
+					</li>
+					<li>
 						<h4>E</h4>
 					</li>
 					<li>
-						<h4>Z</h4>
+						<h4>L</h4>
 					</li>
 					<li>
 						<h4>A</h4>
@@ -100,7 +103,7 @@
 							<ul class="tsd-index-list">
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain.html#_tag" class="tsd-kind-icon">_tag</a></li>
 								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain.html#bind" class="tsd-kind-icon">bind</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain.html#inner" class="tsd-kind-icon">inner</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain.html#left" class="tsd-kind-icon">left</a></li>
 							</ul>
 						</section>
 					</div>
@@ -111,30 +114,30 @@
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="_tag" class="tsd-anchor"></a>
 					<h3>_tag</h3>
-					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <a href="../enums/_matechs_effect.effecttag.html#chain" class="tsd-signature-type">Chain</a></div>
+					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <a href="../enums/_matechs_effect.managedtag.html#chain" class="tsd-signature-type">Chain</a></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L257">packages/effect/src/effect.ts:257</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/managed.ts#L139">packages/effect/src/managed.ts:139</a></li>
 						</ul>
 					</aside>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
 					<a name="bind" class="tsd-anchor"></a>
 					<h3>bind</h3>
-					<div class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">Z</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><a href="../modules/_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
+					<div class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">L</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><a href="../modules/_matechs_effect.html#managed" class="tsd-signature-type">Managed</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L259">packages/effect/src/effect.ts:259</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/managed.ts#L141">packages/effect/src/managed.ts:141</a></li>
 						</ul>
 					</aside>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="inner" class="tsd-anchor"></a>
-					<h3>inner</h3>
-					<div class="tsd-signature tsd-kind-icon">inner<span class="tsd-signature-symbol">:</span> <a href="../modules/_matechs_effect.html#effect" class="tsd-signature-type">Effect</a><span class="tsd-signature-symbol">&lt;</span><a href="../modules/_matechs_effect.html#noenv" class="tsd-signature-type">NoEnv</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Z</span><span class="tsd-signature-symbol">&gt;</span></div>
+					<a name="left" class="tsd-anchor"></a>
+					<h3>left</h3>
+					<div class="tsd-signature tsd-kind-icon">left<span class="tsd-signature-symbol">:</span> <a href="../modules/_matechs_effect.html#managed" class="tsd-signature-type">Managed</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">L</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/37cf7aa/packages/effect/src/effect.ts#L258">packages/effect/src/effect.ts:258</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/managed.ts#L140">packages/effect/src/managed.ts:140</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -209,7 +212,7 @@
 								<a href="_matechs_effect.chain.html#bind" class="tsd-kind-icon">bind</a>
 							</li>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.chain.html#inner" class="tsd-kind-icon">inner</a>
+								<a href="_matechs_effect.chain.html#left" class="tsd-kind-icon">left</a>
 							</li>
 						</ul>
 					</li>
