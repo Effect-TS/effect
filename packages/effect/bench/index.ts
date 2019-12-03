@@ -15,6 +15,14 @@ export const fibPromise = async (n: bigint): Promise<bigint> => {
   return a + b;
 };
 
+export const fib = (n: bigint): bigint => {
+  if (n < BigInt(2)) {
+    return BigInt(1);
+  }
+
+  return fib(n - BigInt(1)) + fib(n - BigInt(2));
+};
+
 export const fibWave = (n: bigint): wave.Wave<never, bigint> => {
   if (n < BigInt(2)) {
     return wave.pure(BigInt(1));
@@ -55,6 +63,13 @@ ben((cb: Lazy<void>) => {
       });
     }).then((r: any) => {
       console.log("promise: ", r);
+    });
+
+    ben((cb: Lazy<void>) => {
+      fib(n);
+      cb();
+    }).then((r: any) => {
+      console.log("native: ", r);
     });
   });
 });
