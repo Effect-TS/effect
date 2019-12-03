@@ -82,7 +82,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interrupted = false;
   result: Completable<Exit<E, A>> = new CompletableImpl();
   frameStack: MutableStack<FrameType> = mutableStack();
-  interruptRegionStack: MutableStack<boolean> = mutableStack();
+  interruptRegionStack: MutableStack<boolean> | undefined;
   cancelAsync: Lazy<void> | undefined;
   envStack: Array<any> = [];
 
@@ -97,7 +97,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   isInterruptible(): boolean {
-    const flag = this.interruptRegionStack.peek();
+    const flag = this.interruptRegionStack && this.interruptRegionStack.peek();
     if (flag === undefined) {
       return true;
     }
@@ -244,6 +244,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = cu.inner;
             break;
           case T.EffectTag.InterruptibleRegion:
+            if (!this.interruptRegionStack) {
+              this.interruptRegionStack = mutableStack();
+            }
             this.interruptRegionStack.push(cu.flag);
             this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
             current = cu.inner;
