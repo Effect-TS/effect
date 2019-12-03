@@ -969,7 +969,7 @@ function sinkQueue<R extends T.Env, E, A>(
     ([q, latch]) => {
       const write = effect.foldExit(
         into(map_(stream, some), queueSink(q)) as T.Effect<R, E, void>,
-        latch.cause,
+        c => latch.cause(c),
         constant(q.offer(none))
       );
 
@@ -1188,7 +1188,7 @@ export function switchLatest<R, E, A>(
                   // We need to trap any errors that occur and send those to internal latch to halt the process
                   // Dont' worry about interrupts, because we perform cleanups for single fiber slot
                   T.foldExit(
-                    internalBreaker.done,
+                    (e: Cause<E>) => internalBreaker.done(e),
                     constant(T.pure(undefined)) // we can do nothing because we will delegate to the proxy
                   )
                 );
@@ -1348,7 +1348,7 @@ export function merge<R, E, A>(
                       into(map_(stream, some), queueSink(pushQueue)) as any,
                       // TODO: I don't think we need to handle interrupts, it shouldn't be possible
                       T.foldExit(
-                        internalBreaker.done,
+                        (e: Cause<E>) => internalBreaker.done(e),
                         constant(T.pure(undefined))
                       )
                     );

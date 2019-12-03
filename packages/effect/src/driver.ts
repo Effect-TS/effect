@@ -4,7 +4,6 @@
 
 import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
-import { Option } from "fp-ts/lib/Option";
 import {
   Cause,
   Done,
@@ -15,13 +14,12 @@ import {
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
-import { Completable, completable } from "./original/support/completable";
-import { MutableStack, mutableStack } from "./original/support/mutable-stack";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
 
 // It turns out th is is used quite often
 type UnkIO = T.Effect<unknown, unknown, unknown>;
+type UnkEff = T.EffectIOImpl;
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
@@ -42,14 +40,17 @@ interface FoldFrame {
   recover(cause: Cause<unknown>): UnkIO;
 }
 
-const makeFoldFrame = (
-  f: FunctionN<[unknown], UnkIO>,
-  r: FunctionN<[Cause<unknown>], UnkIO>
-): FoldFrame => ({
-  _tag: "fold-frame",
-  apply: f,
-  recover: r
-});
+class FoldFrame implements FoldFrame {
+  constructor(private readonly c: T.EffectIOImpl) {}
+  readonly _tag = "fold-frame" as const;
+
+  apply(u: unknown): UnkIO {
+    return (this.c.f2 as any)(u);
+  }
+  recover(cause: Cause<unknown>): UnkIO {
+    return (this.c.f1 as any)(cause);
+  }
+}
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
@@ -57,9 +58,7 @@ interface InterruptFrame {
   exitRegion(): void;
 }
 
-const makeInterruptFrame = (
-  interruptStatus: MutableStack<boolean>
-): InterruptFrame => ({
+const makeInterruptFrame = (interruptStatus: boolean[]): InterruptFrame => ({
   _tag: "interrupt-frame",
   apply(u: unknown) {
     interruptStatus.pop();
@@ -71,105 +70,146 @@ const makeInterruptFrame = (
 });
 
 export interface Driver<E, A> {
-  start: (run: T.Effect<T.NoEnv, E, A>) => void;
-  interrupt: () => void;
-  onExit: (f: FunctionN<[Exit<E, A>], void>) => Lazy<void>;
-  exit: () => Option<Exit<E, A>>;
+  start(run: T.Effect<T.NoEnv, E, A>): void;
+  interrupt(): void;
+  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
+  completed: Exit<E, A> | null;
 }
 
-export function makeDriver<E, A>(
-  runtime: Runtime = defaultRuntime
-): Driver<E, A> {
-  let started = false;
-  let interrupted = false;
-  const result: Completable<Exit<E, A>> = completable();
-  const frameStack: MutableStack<FrameType> = mutableStack();
-  const interruptRegionStack: MutableStack<boolean> = mutableStack();
-  let cancelAsync: Lazy<void> | undefined;
+export class DriverImpl<E, A> implements Driver<E, A> {
+  completed: Exit<E, A> | null = null;
+  listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
 
-  function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    return result.listen(f);
-  }
+  started = false;
+  interrupted = false;
+  frameStack: FrameType[] = [];
+  interruptRegionStack: boolean[] | undefined;
+  isInterruptible_ = true;
+  cancelAsync: Lazy<void> | undefined;
+  envStack: any[] = [];
 
-  function exit(): Option<Exit<E, A>> {
-    return result.value();
-  }
+  constructor(readonly runtime: Runtime = defaultRuntime) {}
 
-  function isInterruptible(): boolean {
-    const flag = interruptRegionStack.peek();
-    if (flag === undefined) {
-      return true;
+  set(a: Exit<E, A>): void {
+    this.completed = a;
+    if (this.listeners !== undefined) {
+      for (const f of this.listeners) {
+        f(a)
+      }
     }
-    return flag;
   }
 
-  function canRecover(cause: Cause<unknown>): boolean {
-    // It is only possible to recovery from interrupts in an uninterruptible region
-    if (cause._tag === ExitTag.Interrupt) {
-      return !isInterruptible();
+  isComplete(): boolean {
+    return this.completed !== null;
+  }
+  complete(a: Exit<E, A>): void {
+    if (this.completed !== null) {
+      throw new Error("Die: Completable is already completed");
     }
+    this.set(a);
+  }
+  tryComplete(a: Exit<E, A>): boolean {
+    if (this.completed !== null) {
+      return false;
+    }
+    this.set(a);
     return true;
   }
 
-  function handle(e: Cause<unknown>): UnkIO | undefined {
-    let frame = frameStack.pop();
+  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    if (this.completed !== null) {
+      f(this.completed);
+    }
+    if (this.listeners === undefined) {
+      this.listeners = [f];
+    } else {
+      this.listeners.push(f);
+    }
+    return () => {
+      if (this.listeners !== undefined) {
+        this.listeners = this.listeners.filter(cb => cb !== f);
+      }
+    };
+  }
+
+  exit(): Exit<E, A> | null {
+    return this.completed;
+  }
+
+  isInterruptible(): boolean {
+    return this.interruptRegionStack !== undefined &&
+      this.interruptRegionStack.length > 0
+      ? this.interruptRegionStack[this.interruptRegionStack.length - 1]
+      : true;
+  }
+
+  // canRecover(cause: Cause<unknown>): boolean {
+  //   // It is only possible to recovery from interrupts in an uninterruptible region
+  //   return cause._tag === ExitTag.Interrupt ? !this.isInterruptible() : true;
+  // }
+
+  handle(e: Cause<unknown>): UnkIO | undefined {
+    let frame = this.frameStack.pop();
     while (frame) {
-      if (frame._tag === "fold-frame" && canRecover(e)) {
+      if (
+        frame._tag === "fold-frame" &&
+        (e._tag !== ExitTag.Interrupt || !this.isInterruptible())
+      ) {
         return frame.recover(e);
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
       if (frame._tag === "interrupt-frame") {
         frame.exitRegion();
       }
-      frame = frameStack.pop();
+      frame = this.frameStack.pop();
     }
     // At the end... so we have failed
-    result.complete(e as Cause<E>);
+    this.complete(e as Cause<E>);
     return;
   }
 
-  function resumeInterrupt(): void {
-    runtime.dispatch(() => {
-      const go = handle(interruptExit);
+  resumeInterrupt(): void {
+    this.runtime.dispatch(() => {
+      const go = this.handle(interruptExit);
       if (go) {
         // eslint-disable-next-line
-        loop(go);
+        this.loop(go);
       }
     });
   }
 
-  function next(value: unknown): UnkIO | undefined {
-    const frame = frameStack.pop();
+  next(value: unknown): UnkIO | undefined {
+    const frame = this.frameStack.pop();
     if (frame) {
       return frame.apply(value);
     }
-    result.complete(done(value) as Done<A>);
+    this.complete(done(value) as Done<A>);
     return;
   }
 
-  function resume(status: Either<unknown, unknown>): void {
-    cancelAsync = undefined;
-    runtime.dispatch(() => {
+  resume(status: Either<unknown, unknown>): void {
+    this.cancelAsync = undefined;
+    this.runtime.dispatch(() => {
       foldEither(
         (cause: unknown) => {
-          const go = handle(raise(cause));
+          const go = this.handle(raise(cause));
           if (go) {
             /* eslint-disable-next-line */
-            loop(go);
+            this.loop(go);
           }
         },
         (value: unknown) => {
-          const go = next(value);
+          const go = this.next(value);
           if (go) {
             /* eslint-disable-next-line */
-            loop(go);
+            this.loop(go);
           }
         }
       )(status);
     });
   }
 
-  function contextSwitch(
+  contextSwitch(
     op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>
   ): void {
     let complete = false;
@@ -178,63 +218,123 @@ export function makeDriver<E, A>(
         return;
       }
       complete = true;
-      resume(status);
+      this.resume(status);
     });
-    cancelAsync = () => {
+    this.cancelAsync = () => {
       complete = true;
       wrappedCancel();
     };
   }
 
-  function loop(go: UnkIO): void {
+  // tslint:disable-next-line: cyclomatic-complexity
+  loop(go: UnkIO): void {
     let current: UnkIO | undefined = go;
 
-    while (current && (!isInterruptible() || !interrupted)) {
+    while (current && (!this.isInterruptible() || !this.interrupted)) {
       try {
-        const cu = current({});
-
-        switch (cu._tag) {
+        switch (((current as any) as UnkEff)._tag) {
+          case T.EffectTag.AccessEnv:
+            const env =
+              this.envStack.length > 0
+                ? this.envStack[this.envStack.length - 1]
+                : {};
+            current = this.next(env);
+            break;
+          case T.EffectTag.ProvideEnv:
+            this.envStack.push(((current as any) as UnkEff).f1 as any);
+            current = T.effect.chainError(
+              T.effect.chain(((current as any) as UnkEff).f0 as UnkIO, r =>
+                T.sync(() => {
+                  this.envStack.pop();
+                  return r;
+                })
+              ),
+              e =>
+                T.effect.chain(
+                  T.sync(() => {
+                    this.envStack.pop();
+                    return {};
+                  }),
+                  _ => T.raiseError(e)
+                )
+            );
+            break;
           case T.EffectTag.Pure:
-            current = next(cu.value);
+            current = this.next(((current as any) as UnkEff).f0);
             break;
           case T.EffectTag.Raised:
-            if (cu.error._tag === ExitTag.Interrupt) {
-              interrupted = true;
+            if (
+              (((current as any) as UnkEff).f0 as Cause<unknown>)._tag ===
+              ExitTag.Interrupt
+            ) {
+              this.interrupted = true;
             }
-            current = handle(cu.error);
+            current = this.handle(
+              ((current as any) as UnkEff).f0 as Cause<unknown>
+            );
             break;
           case T.EffectTag.Completed:
-            if (cu.exit._tag === ExitTag.Done) {
-              current = next(cu.exit.value);
+            const ex = ((current as any) as UnkEff).f0 as Exit<
+              unknown,
+              unknown
+            >;
+            if (ex._tag === ExitTag.Done) {
+              current = this.next(ex.value);
             } else {
-              current = handle(cu.exit);
+              current = this.handle(ex);
             }
             break;
           case T.EffectTag.Suspended:
-            current = cu.thunk();
+            current = (((current as any) as UnkEff).f0 as Lazy<UnkIO>)();
             break;
           case T.EffectTag.Async:
-            contextSwitch(cu.op);
+            this.contextSwitch(
+              ((current as any) as UnkEff).f0 as FunctionN<
+                [FunctionN<[Either<unknown, unknown>], void>],
+                Lazy<void>
+              >
+            );
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            frameStack.push(makeFrame(cu.bind));
-            current = cu.inner;
+            this.frameStack.push(
+              makeFrame(
+                ((current as any) as UnkEff).f1 as FunctionN<
+                  [any],
+                  T.Effect<unknown, unknown, unknown>
+                >
+              )
+            );
+            current = ((current as any) as UnkEff).f0 as UnkIO;
             break;
           case T.EffectTag.Collapse:
-            frameStack.push(makeFoldFrame(cu.success, cu.failure));
-            current = cu.inner;
+            this.frameStack.push(new FoldFrame(current as any));
+            current = ((current as any) as UnkEff).f0 as UnkIO;
             break;
           case T.EffectTag.InterruptibleRegion:
-            interruptRegionStack.push(cu.flag);
-            frameStack.push(makeInterruptFrame(interruptRegionStack));
-            current = cu.inner;
+            if (this.interruptRegionStack === undefined) {
+              this.interruptRegionStack = [
+                ((current as any) as UnkEff).f0 as boolean
+              ];
+            } else {
+              this.interruptRegionStack.push(
+                ((current as any) as UnkEff).f0 as boolean
+              );
+            }
+            this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
+            current = ((current as any) as UnkEff).f1 as UnkIO;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.pure(cu.f(runtime)) as UnkIO;
+            current = T.pure(
+              (((current as any) as UnkEff).f0 as any)(this.runtime)
+            ) as UnkIO;
             break;
           case T.EffectTag.AccessInterruptible:
-            current = T.pure(cu.f(isInterruptible())) as UnkIO;
+            current = T.pure(
+              (((current as any) as UnkEff).f0 as FunctionN<[boolean], UnkIO>)(
+                this.isInterruptible()
+              )
+            );
             break;
           default:
             throw new Error(`Die: Unrecognized current type ${current}`);
@@ -244,34 +344,27 @@ export function makeDriver<E, A>(
       }
     }
     // If !current then the interrupt came to late and we completed everything
-    if (interrupted && current) {
-      resumeInterrupt();
+    if (this.interrupted && current) {
+      this.resumeInterrupt();
     }
   }
 
-  function start(run: T.Effect<NoEnv, E, A>): void {
-    if (started) {
+  start(run: T.Effect<NoEnv, E, A>): void {
+    if (this.started) {
       throw new Error("Bug: Runtime may not be started multiple times");
     }
-    started = true;
-    runtime.dispatch(() => loop(run as UnkIO));
+    this.started = true;
+    this.runtime.dispatch(() => this.loop(run as UnkIO));
   }
 
-  function interrupt(): void {
-    if (interrupted || result.isComplete()) {
+  interrupt(): void {
+    if (this.interrupted || this.isComplete()) {
       return;
     }
-    interrupted = true;
-    if (cancelAsync && isInterruptible()) {
-      cancelAsync();
-      resumeInterrupt();
+    this.interrupted = true;
+    if (this.cancelAsync && this.isInterruptible()) {
+      this.cancelAsync();
+      this.resumeInterrupt();
     }
   }
-
-  return {
-    start,
-    interrupt,
-    onExit,
-    exit
-  };
 }

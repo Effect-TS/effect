@@ -88,13 +88,14 @@ export const ormFactory: (
       );
     },
     usePool(pool: Connection) {
-      return <R, E, A>(
-        op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
-      ) => r =>
-        op({
-          ...r,
-          orm: { ...r["orm"], connection: pool, manager: pool.manager }
-        } as any);
+      return <R, E, A>(op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>) =>
+        T.provideR(
+          (r: R) =>
+            ({
+              ...r,
+              orm: { ...r["orm"], connection: pool, manager: pool.manager }
+            } as any)
+        )(op);
     },
     bracketPool<R, E, A>(
       op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
@@ -103,11 +104,11 @@ export const ormFactory: (
         T.bracket(
           pipe(() => factory(options), T.fromPromiseMap(toError)),
           db => pipe(() => db.close(), T.fromPromiseMap(toError)),
-          db => (r: HasOrmConfig & R) =>
-            op({
+          db =>
+            T.provideR((r: HasOrmConfig & R) => ({
               ...r,
               orm: { ...r["orm"], connection: db, manager: db.manager }
-            })
+            }))(op)
         )
       );
     },
@@ -125,8 +126,11 @@ export const ormFactory: (
           pipe(
             () =>
               connection.transaction(tx =>
-                T.runToPromise(_ =>
-                  op({ ...r, orm: { ...r["orm"], manager: tx } } as any)
+                T.runToPromise(
+                  T.provideAll({
+                    ...r,
+                    orm: { ...r["orm"], manager: tx }
+                  } as any)(op)
                 )
               ),
             T.fromPromiseMap(toError)

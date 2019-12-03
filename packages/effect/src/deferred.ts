@@ -3,9 +3,12 @@
  */
 
 import { Exit, Cause } from "./original/exit";
-import { Completable, completable } from "./original/support/completable";
+import { Completable, CompletableImpl } from "./original/support/completable";
 import * as T from "./effect";
 import { effect } from "./effect";
+
+/* tested in wave */
+/* istanbul ignore file */
 
 export interface Deferred<R, E, A> {
   /**
@@ -24,14 +27,14 @@ export interface Deferred<R, E, A> {
    * Any waiters will receive it
    * @param a
    */
-  done: (a: A) => T.Effect<T.NoEnv, T.NoErr, void>;
+  done(a: A): T.Effect<T.NoEnv, T.NoErr, void>;
   /**
    *
    * @param e Complete this deferred with an error
    *
    * Any waiters will produce an error
    */
-  error: (e: E) => T.Effect<T.NoEnv, T.NoErr, void>;
+  error(e: E): T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * Complete this Deferred with an abort
@@ -39,91 +42,86 @@ export interface Deferred<R, E, A> {
    * Any waiters will produce an error
    * @param e
    */
-  abort: (e: unknown) => T.Effect<T.NoEnv, T.NoErr, void>;
+  abort(e: unknown): T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * Complete this deferred with the given cuase
    * @param c
    */
-  cause: (c: Cause<E>) => T.Effect<T.NoEnv, T.NoErr, void>;
+  cause(c: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * complete this Defered with the provide exit status
    * @param e
    */
-  complete: (e: Exit<E, A>) => T.Effect<T.NoEnv, T.NoErr, void>;
+  complete(e: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
 
   /**
    * Set this deferred with the result of source
    * @param source
    */
-  from: (source: T.Effect<R, E, A>) => T.Effect<T.NoEnv, T.NoErr, void>;
+  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
 }
 
-/* tested in wave */
-/* istanbul ignore next */
+export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
+  wait: T.Effect<R, E, A>;
+  interrupt: T.Effect<T.NoEnv, T.NoErr, void>;
+  c: Completable<T.Effect<R, E, A>>;
+
+  constructor(readonly r: R) {
+    this.c = new CompletableImpl();
+
+    this.wait = T.flatten(
+      T.asyncTotal<T.Effect<R, E, A>>(callback => this.c.listen(callback))
+    );
+
+    this.interrupt = T.sync(() => {
+      this.c.complete(T.raiseInterrupt);
+    });
+  }
+
+  done(a: A): T.Effect<T.NoEnv, T.NoErr, void> {
+    return T.sync(() => {
+      this.c.complete(T.pure(a));
+    });
+  }
+
+  error(e: E): T.Effect<T.NoEnv, T.NoErr, void> {
+    return T.sync(() => {
+      this.c.complete(T.raiseError(e));
+    });
+  }
+
+  abort(e: unknown): T.Effect<T.NoEnv, T.NoErr, void> {
+    return T.sync(() => {
+      this.c.complete(T.raiseAbort(e));
+    });
+  }
+
+  cause(e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> {
+    return T.sync(() => {
+      this.c.complete(T.raised(e));
+    });
+  }
+
+  complete(exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
+    return T.sync(() => {
+      this.c.complete(T.completed(exit));
+    });
+  }
+
+  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
+    const completed = effect.chain(T.result(T.provideAll(this.r)(source)), e =>
+      this.complete(e)
+    );
+    return T.onInterrupted(completed, this.interrupt);
+  }
+}
+
 export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
   R,
   E2,
   Deferred<R, E, A>
 > {
-  return T.accessM((r: R) =>
-    T.sync(() => {
-      const c: Completable<T.Effect<R, E, A>> = completable();
-      const wait: T.Effect<R, E, A> = T.flatten(
-        T.asyncTotal<T.Effect<R, E, A>>(callback => c.listen(callback)) as any // TODO: this is fine, typedoc thinks differently
-      );
-
-      const interrupt: T.Effect<T.NoEnv, T.NoErr, void> = T.sync(() => {
-        c.complete(T.raiseInterrupt);
-      });
-
-      const done = (a: A): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.sync(() => {
-          c.complete(T.pure(a));
-        });
-
-      const error = (e: E): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.sync(() => {
-          c.complete(T.raiseError(e));
-        });
-
-      const abort = (e: unknown): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.sync(() => {
-          c.complete(T.raiseAbort(e));
-        });
-
-      const cause = (e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.sync(() => {
-          c.complete(T.raised(e));
-        });
-
-      const complete = (exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> =>
-        T.sync(() => {
-          c.complete(T.completed(exit));
-        });
-
-      const from = (
-        source: T.Effect<R, E, A>
-      ): T.Effect<T.NoEnv, T.NoErr, void> => {
-        const completed = effect.chain(
-          T.result(T.provideAll(r)(source)),
-          complete
-        );
-
-        return T.onInterrupted(completed, interrupt);
-      };
-
-      return {
-        wait,
-        interrupt,
-        done,
-        error,
-        abort,
-        cause,
-        complete,
-        from
-      };
-    })
-  );
+  return T.access((r: R) => new DeferredImpl(r));
 }

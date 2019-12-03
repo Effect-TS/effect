@@ -31,73 +31,68 @@ export interface Dequeue<A> {
   isEmpty(): boolean;
 }
 
+class DequeueImpl<A> implements Dequeue<A> {
+  constructor(readonly front: List<A>, readonly back: List<A>) {}
+
+  take(): Option<readonly [A, Dequeue<A>]> {
+    return l.cata(
+      this.front,
+      (h, t) => some([h, new DequeueImpl(t, this.back)] as const),
+      () =>
+        pipe(
+          this.back,
+          l.reverse,
+          l.catac(
+            (h, t) => some([h, new DequeueImpl(t, nil)] as const),
+            () => none
+          )
+        )
+    );
+  }
+
+  offer(a: A): Dequeue<A> {
+    return new DequeueImpl(this.front, cons(a, this.back));
+  }
+
+  pull(): Option<readonly [A, Dequeue<A>]> {
+    return l.cata(
+      this.back,
+      (h, t) => some([h, new DequeueImpl(this.front, t)] as const),
+      () =>
+        pipe(
+          this.front,
+          l.reverse,
+          l.catac(
+            (h, t) => some([h, new DequeueImpl(nil, t)] as const),
+            () => none
+          )
+        )
+    );
+  }
+
+  push(a: A): Dequeue<A> {
+    return new DequeueImpl(cons(a, this.front), this.back);
+  }
+
+  filter(p: Predicate<A>): Dequeue<A> {
+    return new DequeueImpl(l.filter(this.front, p), l.filter(this.back, p));
+  }
+
+  size(): number {
+    return l.size(this.front) + l.size(this.back);
+  }
+
+  isEmpty(): boolean {
+    return l.isEmpty(this.front) && l.isEmpty(this.back);
+  }
+
+  find(p: Predicate<A>): Option<A> {
+    return option.alt(l.find(this.front, p), () => l.find(this.back, p));
+  }
+}
+
 export function from<A>(front: List<A>, back: List<A>): Dequeue<A> {
-  function take(): Option<readonly [A, Dequeue<A>]> {
-    return l.cata(
-      front,
-      (h, t) => some([h, from(t, back)] as const),
-      () =>
-        pipe(
-          back,
-          l.reverse,
-          l.catac(
-            (h, t) => some([h, from(t, nil)] as const),
-            () => none
-          )
-        )
-    );
-  }
-
-  function offer(a: A): Dequeue<A> {
-    return from(front, cons(a, back));
-  }
-
-  function pull(): Option<readonly [A, Dequeue<A>]> {
-    return l.cata(
-      back,
-      (h, t) => some([h, from(front, t)] as const),
-      () =>
-        pipe(
-          front,
-          l.reverse,
-          l.catac(
-            (h, t) => some([h, from(nil, t)] as const),
-            () => none
-          )
-        )
-    );
-  }
-
-  function push(a: A): Dequeue<A> {
-    return from(cons(a, front), back);
-  }
-
-  function filter(p: Predicate<A>): Dequeue<A> {
-    return from(l.filter(front, p), l.filter(back, p));
-  }
-
-  function size(): number {
-    return l.size(front) + l.size(back);
-  }
-
-  function isEmpty(): boolean {
-    return l.isEmpty(front) && l.isEmpty(back);
-  }
-
-  function find(p: Predicate<A>): Option<A> {
-    return option.alt(l.find(front, p), () => l.find(back, p));
-  }
-
-  return {
-    offer,
-    take,
-    pull,
-    push,
-    filter,
-    find,
-    size,
-    isEmpty
-  };
+  return new DequeueImpl(front, back);
 }
 
 export function empty<A>(): Dequeue<A> {

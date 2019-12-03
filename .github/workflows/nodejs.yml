@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - master
-      - remove-dependency-on-wave
-      - tslintrules
+      - optimizations
 
 jobs:
   build:
@@ -13,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [8.x, 10.x, 12.x]
+        node-version: [10.x, 12.x]
 
     steps:
       - uses: actions/checkout@v1
@@ -29,6 +28,7 @@ jobs:
           lerna run build
           yarn jest
           lerna run lint
+          lerna run bench
         env:
           CI: "true"
 

@@ -19,7 +19,7 @@ import { Cause, Exit } from "./original/exit";
 import { Runtime } from "./original/runtime";
 import { fst, snd, tuple2 } from "./original/support/util";
 import { Deferred, makeDeferred } from "./deferred";
-import { Driver, makeDriver } from "./driver";
+import { Driver, DriverImpl } from "./driver";
 import {
   Alt3EC,
   Monad3E,
@@ -42,7 +42,9 @@ export enum EffectTag {
   Collapse,
   InterruptibleRegion,
   AccessInterruptible,
-  AccessRuntime
+  AccessRuntime,
+  AccessEnv,
+  ProvideEnv
 }
 
 export type NoEnv = unknown;
@@ -51,27 +53,24 @@ export interface Env {
   [k: string]: any;
 }
 
+export const noEnv = {};
+
 /**
  * A description of an effect to perform
  */
-export type Effect<R, E, A> = (
-  _: R
-) =>
-  | Pure<E, A>
-  | Raised<E, A>
-  | Completed<E, A>
-  | Suspended<E, A>
-  | Async<E, A>
-  | Chain<E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
-  | Collapse<any, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
-  | InterruptibleRegion<E, A>
-  | AccessInterruptible<E, A>
-  | AccessRuntime<E, A>;
+export interface Effect<R, E, A> extends EffectOps {
+  (_: R): void;
+}
 
-export interface Pure<E, A> {
-  readonly _tag: EffectTag.Pure;
+export interface EffectOps {}
 
-  readonly value: A;
+export class EffectIOImpl {
+  constructor(
+    readonly _tag: EffectTag,
+    readonly f0: any = noEnv,
+    readonly f1: any = noEnv,
+    readonly f2: any = noEnv
+  ) {}
 }
 
 /**
@@ -79,15 +78,7 @@ export interface Pure<E, A> {
  * @param a the value
  */
 export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
-  return () => ({
-    _tag: EffectTag.Pure,
-    value: a
-  });
-}
-
-export interface Raised<E, A> {
-  readonly _tag: EffectTag.Raised;
-  readonly error: Cause<E>;
+  return new EffectIOImpl(EffectTag.Pure, a) as any;
 }
 
 /**
@@ -97,7 +88,7 @@ export interface Raised<E, A> {
  * @param e
  */
 export function raised<E, A = never>(e: Cause<E>): Effect<NoEnv, E, A> {
-  return () => ({ _tag: EffectTag.Raised, error: e });
+  return new EffectIOImpl(EffectTag.Raised, e) as any;
 }
 
 /**
@@ -121,27 +112,12 @@ export function raiseAbort(u: unknown): Effect<NoEnv, NoErr, never> {
  */
 export const raiseInterrupt: Effect<NoEnv, NoErr, never> = raised(ex.interrupt);
 
-export interface Completed<E, A> {
-  readonly _tag: EffectTag.Completed;
-
-  readonly exit: Exit<E, A>;
-}
-
 /**
  * An IO that is completed with the given exit
  * @param exit
  */
 export function completed<E, A>(exit: Exit<E, A>): Effect<NoEnv, E, A> {
-  return () => ({
-    _tag: EffectTag.Completed,
-    exit
-  });
-}
-
-export interface Suspended<E, A> {
-  readonly _tag: EffectTag.Suspended;
-
-  readonly thunk: Lazy<Effect<NoEnv, E, A>>;
+  return new EffectIOImpl(EffectTag.Completed, exit) as any;
 }
 
 /**
@@ -153,10 +129,7 @@ export interface Suspended<E, A> {
 export function suspended<R, E, A>(
   thunk: Lazy<Effect<R, E, A>>
 ): Effect<R, E, A> {
-  return r => ({
-    _tag: EffectTag.Suspended,
-    thunk: () => provideAll(r)(thunk())
-  });
+  return new EffectIOImpl(EffectTag.Suspended, thunk) as any;
 }
 
 /**
@@ -196,11 +169,6 @@ export function trySyncMap<E = unknown>(
     });
 }
 
-export interface Async<E, A> {
-  readonly _tag: EffectTag.Async;
-  readonly op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>;
-}
-
 /**
  * Wrap an impure callback in an IO
  *
@@ -212,10 +180,7 @@ export interface Async<E, A> {
 export function async<E, A>(
   op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>
 ): Effect<NoEnv, E, A> {
-  return () => ({
-    _tag: EffectTag.Async,
-    op
-  });
+  return new EffectIOImpl(EffectTag.Async, op) as any;
 }
 
 /**
@@ -230,13 +195,6 @@ export function asyncTotal<A>(
   return async(callback => op(a => callback(right(a))));
 }
 
-export interface InterruptibleRegion<E, A> {
-  readonly _tag: EffectTag.InterruptibleRegion;
-
-  readonly inner: Effect<NoEnv, E, A>;
-  readonly flag: boolean;
-}
-
 /**
  * Demarcate a region of interruptible state
  * @param inner
@@ -246,17 +204,7 @@ export function interruptibleRegion<R, E, A>(
   inner: Effect<R, E, A>,
   flag: boolean
 ): Effect<R, E, A> {
-  return r => ({
-    _tag: EffectTag.InterruptibleRegion,
-    flag,
-    inner: provideAll(r)(inner)
-  });
-}
-
-export interface Chain<E, Z, A> {
-  readonly _tag: EffectTag.Chain;
-  readonly inner: Effect<NoEnv, E, Z>;
-  readonly bind: FunctionN<[Z], Effect<NoEnv, E, A>>;
+  return new EffectIOImpl(EffectTag.InterruptibleRegion, flag, inner) as any;
 }
 
 /**
@@ -268,11 +216,7 @@ function chain_<R, E, A, R2, E2, B>(
   inner: Effect<R, E, A>,
   bind: FunctionN<[A], Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return r => ({
-    _tag: EffectTag.Chain,
-    inner: provideAll(r)(inner),
-    bind: a => provideAll(r)(bind(a))
-  });
+  return new EffectIOImpl(EffectTag.Chain, inner, bind) as any;
 }
 
 /**
@@ -299,14 +243,6 @@ export function encaseOption<E, A>(
   );
 }
 
-export interface Collapse<E1, E2, A1, A2> {
-  readonly _tag: EffectTag.Collapse;
-
-  readonly inner: Effect<NoEnv, E1, A1>;
-  readonly failure: FunctionN<[Cause<E1>], Effect<NoEnv, E2, A2>>;
-  readonly success: FunctionN<[A1], Effect<NoEnv, E2, A2>>;
-}
-
 /**
  * Curried form of foldExit
  * @param failure
@@ -319,33 +255,22 @@ export function foldExit<E1, RF, E2, A1, E3, A2, RS>(
   return io => foldExit_(io, failure, success);
 }
 
-export interface AccessInterruptible<E, A> {
-  readonly _tag: EffectTag.AccessInterruptible;
-
-  readonly f: FunctionN<[boolean], A>;
-}
-
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = () => ({
-  _tag: EffectTag.AccessInterruptible,
-  f: identity
-});
-
-export interface AccessRuntime<E, A> {
-  readonly _tag: EffectTag.AccessRuntime;
-
-  readonly f: FunctionN<[Runtime], A>;
-}
+export const accessInterruptible: Effect<
+  NoEnv,
+  NoErr,
+  boolean
+> = new EffectIOImpl(EffectTag.AccessInterruptible, identity) as any;
 
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = () => ({
-  _tag: EffectTag.AccessRuntime,
-  f: identity
-});
+export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = new EffectIOImpl(
+  EffectTag.AccessRuntime,
+  identity
+) as any;
 
 /**
  * Access the runtime then provide it to the provided function
@@ -358,10 +283,7 @@ export function withRuntime<E, A>(
 }
 
 export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
-  return r => ({
-    _tag: EffectTag.Pure,
-    value: r
-  });
+  return new EffectIOImpl(EffectTag.AccessEnv) as any;
 }
 
 export function accessM<R extends Env, R2, E, A>(
@@ -373,14 +295,12 @@ export function accessM<R extends Env, R2, E, A>(
 export function access<R extends Env, A, E = NoErr>(
   f: FunctionN<[R], A>
 ): Effect<R, E, A> {
-  return chain_(accessEnvironment<R>(), r => pure(f(r)));
+  return map_(accessEnvironment<R>(), f);
 }
 
 export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
   return b => mergeDeep(a, b);
 }
-
-export const noEnv = {};
 
 /**
  * Provides partial environment, to be used only in top-level
@@ -406,7 +326,7 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
 
 export const provideAll = <R>(r: R) => <E, A>(
   ma: Effect<R, E, A>
-): Effect<NoEnv, E, A> => () => ma(r);
+): Effect<NoEnv, E, A> => new EffectIOImpl(EffectTag.ProvideEnv, ma, r) as any;
 
 /**
  * Provides all environment necessary to the child effect via an effect
@@ -437,7 +357,11 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return chain_(base, flow(f, pure));
+  return new EffectIOImpl(
+    EffectTag.Chain,
+    base,
+    (x: any) => new EffectIOImpl(EffectTag.Pure, f(x))
+  ) as any;
 }
 
 /**
@@ -947,35 +871,27 @@ export interface Fiber<E, A> {
   readonly isComplete: Effect<NoEnv, NoErr, boolean>;
 }
 
-function createFiber<E, A>(driver: Driver<E, A>, n?: string): Fiber<E, A> {
-  const name = option.fromNullable(n);
-  const sendInterrupt = sync(() => {
-    driver.interrupt();
+class FiberImpl<E, A> implements Fiber<E, A> {
+  name = option.fromNullable(this.n);
+
+  sendInterrupt = sync(() => {
+    this.driver.interrupt();
   });
-  const wait = asyncTotal(driver.onExit);
-  const interrupt = applySecond(sendInterrupt, asUnit(wait));
-  const join = chain_(wait, completed);
-  const result = chain_(
-    sync(() => driver.exit()),
-    opt =>
-      pipe(
-        opt,
-        option.fold(
-          () => pure(none),
-          (exit: Exit<E, A>) => map_(completed(exit), some)
-        )
-      )
+  wait = asyncTotal((f: FunctionN<[ex.Exit<E, A>], void>) =>
+    this.driver.onExit(f)
   );
-  const isComplete = sync(() => option.isSome(driver.exit()));
-  return {
-    name,
-    wait,
-    interrupt,
-    join,
-    result,
-    isComplete
-  };
+  interrupt = applySecond(this.sendInterrupt, asUnit(this.wait));
+  join = chain_(this.wait, completed);
+  result = chain_(
+    sync(() => this.driver.completed),
+    opt => (opt === null ? pureNone : map_(completed(opt), some))
+  );
+  isComplete = sync(() => this.driver.completed !== null);
+
+  constructor(readonly driver: Driver<E, A>, readonly n?: string) {}
 }
+
+const pureNone = pure(none);
 
 /**
  * Implementation of Stack/waver fork. Creates an IO that will fork a fiber in the background
@@ -989,8 +905,8 @@ export function makeFiber<R, E, A>(
   return accessM((r: R) =>
     chain_(accessRuntime, runtime =>
       sync(() => {
-        const driver = makeDriver<E, A>(runtime);
-        const fiber = createFiber(driver, name);
+        const driver = new DriverImpl<E, A>(runtime);
+        const fiber = new FiberImpl(driver, name);
         driver.start(provideAll(r)(init));
         return fiber;
       })
@@ -1260,7 +1176,7 @@ export function timeoutOption<R, E, A>(
   return timeoutFold(
     source,
     ms,
-    actionFiber => applySecond(actionFiber.interrupt, pure(none)),
+    actionFiber => applySecond(actionFiber.interrupt, pureNone),
     exit => map_(completed(exit), some)
   );
 }
@@ -1308,12 +1224,12 @@ export function run<E, A>(
   io: Effect<NoEnv, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): Lazy<void> {
-  const driver = makeDriver<E, A>();
+  const driver = new DriverImpl<E, A>();
   if (callback) {
     driver.onExit(callback);
   }
   driver.start(io);
-  return driver.interrupt;
+  return () => driver.interrupt();
 }
 
 /**
@@ -1440,12 +1356,8 @@ export interface EffectMonad
   mapError: EffectMonad["mapLeft"];
 }
 
-const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) => r => ({
-  _tag: EffectTag.Collapse,
-  inner: provideAll(r)(inner),
-  failure: c => provideAll(r)(failure(c)),
-  success: a => provideAll(r)(success(a))
-});
+const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
+  new EffectIOImpl(EffectTag.Collapse, inner, failure, success) as any;
 
 const mapLeft_: EffectMonad["mapLeft"] = (io, f) =>
   chainError_(io, flow(f, raiseError));
