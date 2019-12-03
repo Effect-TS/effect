@@ -45,10 +45,10 @@ class FoldFrame implements FoldFrame {
   readonly _tag = "fold-frame" as const;
 
   apply(u: unknown): UnkIO {
-    return (this.c.f1 as any)(u);
+    return (this.c.f2 as any)(u);
   }
   recover(cause: Cause<unknown>): UnkIO {
-    return (this.c.f2 as any)(cause);
+    return (this.c.f1 as any)(cause);
   }
 }
 
