@@ -34,7 +34,7 @@ describe("Env", () => {
         T.provideAll<Env>({ foo: "a" })(
           T.delay(
             T.access(({ foo }: Env) => foo),
-            100
+            1000
           )
         ),
         T.provideAll<Env>({ foo: "b" })(T.access(({ foo }: Env) => foo))

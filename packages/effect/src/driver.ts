@@ -2,7 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { Either, fold as foldEither } from "fp-ts/lib/Either";
+import { Either, fold as foldEither, right } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import {
@@ -86,7 +86,7 @@ export function makeDriver<E, A>(
   const frameStack: MutableStack<FrameType> = mutableStack();
   const interruptRegionStack: MutableStack<boolean> = mutableStack();
   let cancelAsync: Lazy<void> | undefined;
-  let env: any = {};
+  const envStack: Array<any> = [];
 
   function onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
     return result.listen(f);
@@ -194,14 +194,20 @@ export function makeDriver<E, A>(
     while (current && (!isInterruptible() || !interrupted)) {
       try {
         const cu = (current as any) as T.EffectIO<unknown, unknown, unknown>;
+        const env = envStack.length > 0 ? envStack[envStack.length - 1] : {};
 
         switch (cu._tag) {
           case T.EffectTag.AccessEnv:
             current = next(env);
             break;
           case T.EffectTag.ProvideEnv:
-            env = cu.value;
-            current = cu.effect;
+            envStack.push(cu.value);
+            current = T.effect.chain(cu.effect, r =>
+              T.sync(() => {
+                envStack.pop();
+                return r;
+              })
+            );
             break;
           case T.EffectTag.Pure:
             current = next(cu.value);
