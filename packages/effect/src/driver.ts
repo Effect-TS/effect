@@ -2,7 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { Either, fold as foldEither, right } from "fp-ts/lib/Either";
+import { Either, fold as foldEither } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
 import {
