@@ -843,14 +843,13 @@ export function onInterrupted<R, E, A, R2, E2>(
   finalizer: Effect<R2, E2, unknown>
 ): Effect<R & R2, E | E2, A> {
   return uninterruptibleMask(cutout =>
-    chain_(result(cutout(ioa)), exit => {
-      console.log(JSON.stringify(exit))
-      return exit._tag === ex.ExitTag.Interrupt
+    chain_(result(cutout(ioa)), exit =>
+      exit._tag === ex.ExitTag.Interrupt
         ? chain_(result(finalizer), finalize =>
             completed(combineFinalizerExit(exit, finalize))
           )
-        : completed(exit);
-    })
+        : completed(exit)
+    )
   );
 }
 

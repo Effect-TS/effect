@@ -315,11 +315,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             break;
           case T.EffectTag.InterruptibleRegion:
             this.interruptRegionStack.push(current.f0);
-            this.callStack.push(current.f1);
             this.callStack.push({
               _tag: T.EffectTag.Frame,
               f0: makeInterruptFrame(this.interruptRegionStack)
             });
+            this.callStack.push(current.f1);
             break;
           case T.EffectTag.AccessRuntime:
             data = current.f0(this.runtime);
