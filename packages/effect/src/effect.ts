@@ -19,7 +19,8 @@ import { Cause, Exit } from "./original/exit";
 import { Runtime } from "./original/runtime";
 import { fst, snd, tuple2 } from "./original/support/util";
 import { Deferred, makeDeferred } from "./deferred";
-import { Driver, DriverImpl } from "./driver";
+import { Driver, DriverImpl } from "./driverN";
+import { FrameType } from "./driverN";
 import {
   Alt3EC,
   Monad3E,
@@ -44,7 +45,11 @@ export enum EffectTag {
   AccessInterruptible,
   AccessRuntime,
   AccessEnv,
-  ProvideEnv
+  ProvideEnv,
+  TryM,
+  TryS,
+  Frame,
+  Map
 }
 
 export type NoEnv = unknown;
@@ -90,11 +95,30 @@ export type Instructions =
   | AccessInterruptible
   | AccessRuntime
   | AccessEnv
-  | ProvideEnv;
+  | ProvideEnv
+  | TryM
+  | TryS
+  | Frame
+  | Map;
+
+export interface Frame {
+  readonly _tag: EffectTag.Frame;
+  readonly f0: FrameType;
+}
 
 export interface Pure<A = unknown> {
   readonly _tag: EffectTag.Pure;
   readonly f0: A;
+}
+
+export interface TryM<A = unknown> {
+  readonly _tag: EffectTag.TryM;
+  readonly f0: <A>(a: A) => Instructions;
+}
+
+export interface TryS<A = unknown, B = unknown> {
+  readonly _tag: EffectTag.TryS;
+  readonly f0: (a: A) => B;
 }
 
 export interface Raised<E = unknown> {
@@ -121,6 +145,12 @@ export interface Chain<Z = unknown> {
   readonly _tag: EffectTag.Chain;
   readonly f0: Instructions;
   readonly f1: FunctionN<[Z], Instructions>;
+}
+
+export interface Map<A = unknown, B = unknown> {
+  readonly _tag: EffectTag.Map;
+  readonly f0: Instructions;
+  readonly f1: FunctionN<[A], B>;
 }
 
 export interface Collapse<E1 = unknown, A1 = unknown> {
@@ -440,11 +470,7 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return new EffectIO(
-    EffectTag.Chain,
-    base,
-    (x: any) => new EffectIO(EffectTag.Pure, f(x))
-  ).asEffect;
+  return new EffectIO(EffectTag.Map, base, f).asEffect;
 }
 
 /**
@@ -817,13 +843,14 @@ export function onInterrupted<R, E, A, R2, E2>(
   finalizer: Effect<R2, E2, unknown>
 ): Effect<R & R2, E | E2, A> {
   return uninterruptibleMask(cutout =>
-    chain_(result(cutout(ioa)), exit =>
-      exit._tag === ex.ExitTag.Interrupt
+    chain_(result(cutout(ioa)), exit => {
+      console.log(JSON.stringify(exit))
+      return exit._tag === ex.ExitTag.Interrupt
         ? chain_(result(finalizer), finalize =>
             completed(combineFinalizerExit(exit, finalize))
           )
-        : completed(exit)
-    )
+        : completed(exit);
+    })
   );
 }
 
