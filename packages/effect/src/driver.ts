@@ -17,44 +17,40 @@ import { defaultRuntime, Runtime } from "./original/runtime";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
 
-// It turns out th is is used quite often
-type UnkIO = T.Effect<unknown, unknown, unknown>;
-type UnkEff = T.EffectIOImpl;
-
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType;
 
 interface Frame {
   readonly _tag: "frame";
-  apply(u: unknown): UnkIO;
+  apply(u: unknown): T.Instructions;
 }
 
-const makeFrame = (f: FunctionN<[unknown], UnkIO>): Frame => ({
+const makeFrame = (f: FunctionN<[unknown], T.Instructions>): Frame => ({
   _tag: "frame",
   apply: f
 });
 
 interface FoldFrame {
   readonly _tag: "fold-frame";
-  apply(u: unknown): UnkIO;
-  recover(cause: Cause<unknown>): UnkIO;
+  apply(u: unknown): T.Instructions;
+  recover(cause: Cause<unknown>): T.Instructions;
 }
 
 class FoldFrame implements FoldFrame {
-  constructor(private readonly c: T.EffectIOImpl) {}
+  constructor(private readonly c: T.Collapse) {}
   readonly _tag = "fold-frame" as const;
 
-  apply(u: unknown): UnkIO {
-    return (this.c.f2 as any)(u);
+  apply(u: unknown): T.Instructions {
+    return this.c.f2(u);
   }
-  recover(cause: Cause<unknown>): UnkIO {
-    return (this.c.f1 as any)(cause);
+  recover(cause: Cause<unknown>): T.Instructions {
+    return this.c.f1(cause);
   }
 }
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
-  apply(u: unknown): UnkIO;
+  apply(u: unknown): T.Instructions;
   exitRegion(): void;
 }
 
@@ -62,7 +58,7 @@ const makeInterruptFrame = (interruptStatus: boolean[]): InterruptFrame => ({
   _tag: "interrupt-frame",
   apply(u: unknown) {
     interruptStatus.pop();
-    return T.pure(u);
+    return T.EffectIO.fromEffect(T.pure(u));
   },
   exitRegion() {
     interruptStatus.pop();
@@ -94,7 +90,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.completed = a;
     if (this.listeners !== undefined) {
       for (const f of this.listeners) {
-        f(a)
+        f(a);
       }
     }
   }
@@ -148,7 +144,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   //   return cause._tag === ExitTag.Interrupt ? !this.isInterruptible() : true;
   // }
 
-  handle(e: Cause<unknown>): UnkIO | undefined {
+  handle(e: Cause<unknown>): T.Instructions | undefined {
     let frame = this.frameStack.pop();
     while (frame) {
       if (
@@ -178,7 +174,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     });
   }
 
-  next(value: unknown): UnkIO | undefined {
+  next(value: unknown): T.Instructions | undefined {
     const frame = this.frameStack.pop();
     if (frame) {
       return frame.apply(value);
@@ -227,12 +223,12 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
-  loop(go: UnkIO): void {
-    let current: UnkIO | undefined = go;
+  loop(go: T.Instructions): void {
+    let current: T.Instructions | undefined = go;
 
     while (current && (!this.isInterruptible() || !this.interrupted)) {
       try {
-        switch (((current as any) as UnkEff)._tag) {
+        switch (current._tag) {
           case T.EffectTag.AccessEnv:
             const env =
               this.envStack.length > 0
@@ -241,106 +237,79 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = this.next(env);
             break;
           case T.EffectTag.ProvideEnv:
-            this.envStack.push(((current as any) as UnkEff).f1 as any);
-            current = T.effect.chainError(
-              T.effect.chain(((current as any) as UnkEff).f0 as UnkIO, r =>
-                T.sync(() => {
-                  this.envStack.pop();
-                  return r;
-                })
-              ),
-              e =>
-                T.effect.chain(
+            this.envStack.push(current.f1 as any);
+            current = T.EffectIO.fromEffect(
+              T.effect.chainError(
+                T.effect.chain(current.f0 as any, r =>
                   T.sync(() => {
                     this.envStack.pop();
-                    return {};
-                  }),
-                  _ => T.raiseError(e)
-                )
+                    return r;
+                  })
+                ),
+                e =>
+                  T.effect.chain(
+                    T.sync(() => {
+                      this.envStack.pop();
+                      return {};
+                    }),
+                    _ => T.raiseError(e)
+                  )
+              )
             );
             break;
           case T.EffectTag.Pure:
-            current = this.next(((current as any) as UnkEff).f0);
+            current = this.next(current.f0);
             break;
           case T.EffectTag.Raised:
-            if (
-              (((current as any) as UnkEff).f0 as Cause<unknown>)._tag ===
-              ExitTag.Interrupt
-            ) {
+            if (current.f0._tag === ExitTag.Interrupt) {
               this.interrupted = true;
             }
-            current = this.handle(
-              ((current as any) as UnkEff).f0 as Cause<unknown>
-            );
+            current = this.handle(current.f0);
             break;
           case T.EffectTag.Completed:
-            const ex = ((current as any) as UnkEff).f0 as Exit<
-              unknown,
-              unknown
-            >;
-            if (ex._tag === ExitTag.Done) {
-              current = this.next(ex.value);
+            if (current.f0._tag === ExitTag.Done) {
+              current = this.next(current.f0.value);
             } else {
-              current = this.handle(ex);
+              current = this.handle(current.f0);
             }
             break;
           case T.EffectTag.Suspended:
-            current = (((current as any) as UnkEff).f0 as Lazy<UnkIO>)();
+            current = current.f0();
             break;
           case T.EffectTag.Async:
-            this.contextSwitch(
-              ((current as any) as UnkEff).f0 as FunctionN<
-                [FunctionN<[Either<unknown, unknown>], void>],
-                Lazy<void>
-              >
-            );
+            this.contextSwitch(current.f0);
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            this.frameStack.push(
-              makeFrame(
-                ((current as any) as UnkEff).f1 as FunctionN<
-                  [any],
-                  T.Effect<unknown, unknown, unknown>
-                >
-              )
-            );
-            current = ((current as any) as UnkEff).f0 as UnkIO;
+            this.frameStack.push(makeFrame(current.f1));
+            current = current.f0;
             break;
           case T.EffectTag.Collapse:
-            this.frameStack.push(new FoldFrame(current as any));
-            current = ((current as any) as UnkEff).f0 as UnkIO;
+            this.frameStack.push(new FoldFrame(current));
+            current = current.f0;
             break;
           case T.EffectTag.InterruptibleRegion:
             if (this.interruptRegionStack === undefined) {
-              this.interruptRegionStack = [
-                ((current as any) as UnkEff).f0 as boolean
-              ];
+              this.interruptRegionStack = [current.f0];
             } else {
-              this.interruptRegionStack.push(
-                ((current as any) as UnkEff).f0 as boolean
-              );
+              this.interruptRegionStack.push(current.f0);
             }
             this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
-            current = ((current as any) as UnkEff).f1 as UnkIO;
+            current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.pure(
-              (((current as any) as UnkEff).f0 as any)(this.runtime)
-            ) as UnkIO;
+            current = T.EffectIO.fromEffect(T.pure(current.f0(this.runtime)));
             break;
           case T.EffectTag.AccessInterruptible:
-            current = T.pure(
-              (((current as any) as UnkEff).f0 as FunctionN<[boolean], UnkIO>)(
-                this.isInterruptible()
-              )
+            current = T.EffectIO.fromEffect(
+              T.pure(current.f0(this.isInterruptible()))
             );
             break;
           default:
             throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
-        current = T.raiseAbort(e) as UnkIO;
+        current = T.EffectIO.fromEffect(T.raiseAbort(e));
       }
     }
     // If !current then the interrupt came to late and we completed everything
@@ -354,7 +323,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       throw new Error("Bug: Runtime may not be started multiple times");
     }
     this.started = true;
-    this.runtime.dispatch(() => this.loop(run as UnkIO));
+    this.runtime.dispatch(() => this.loop(T.EffectIO.fromEffect(run)));
   }
 
   interrupt(): void {
