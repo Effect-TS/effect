@@ -18,17 +18,19 @@ import { NoEnv } from "./effect";
 import * as T from "./effect";
 
 export type RegionFrameType = InterruptFrame;
-export type FrameType = Frame | FoldFrame | RegionFrameType;
+export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
 
 interface Frame {
   readonly _tag: "frame";
   apply(u: unknown): T.Instructions;
 }
 
-const makeFrame = (f: FunctionN<[unknown], T.Instructions>): Frame => ({
-  _tag: "frame",
-  apply: f
-});
+class Frame implements Frame {
+  constructor(private readonly f: (u: unknown) => T.Instructions) {}
+  readonly _tag = "frame" as const;
+
+  apply = this.f;
+}
 
 interface FoldFrame {
   readonly _tag: "fold-frame";
@@ -40,12 +42,20 @@ class FoldFrame implements FoldFrame {
   constructor(private readonly c: T.Collapse) {}
   readonly _tag = "fold-frame" as const;
 
-  apply(u: unknown): T.Instructions {
-    return this.c.f2(u);
-  }
-  recover(cause: Cause<unknown>): T.Instructions {
-    return this.c.f1(cause);
-  }
+  apply = this.c.f2;
+  recover = this.c.f1;
+}
+
+interface MapFrame {
+  readonly _tag: "map-frame";
+  apply(u: unknown): unknown;
+}
+
+class MapFrame implements MapFrame {
+  constructor(private readonly c: T.Map) {}
+  readonly _tag = "map-frame" as const;
+
+  apply = this.c.f1;
 }
 
 interface InterruptFrame {
@@ -98,18 +108,13 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   isComplete(): boolean {
     return this.completed !== null;
   }
+
   complete(a: Exit<E, A>): void {
+    /* istanbul ignore if */
     if (this.completed !== null) {
       throw new Error("Die: Completable is already completed");
     }
     this.set(a);
-  }
-  tryComplete(a: Exit<E, A>): boolean {
-    if (this.completed !== null) {
-      return false;
-    }
-    this.set(a);
-    return true;
   }
 
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
@@ -121,6 +126,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     } else {
       this.listeners.push(f);
     }
+    // TODO: figure how to trigger if possible
+    /* istanbul ignore next */
     return () => {
       if (this.listeners !== undefined) {
         this.listeners = this.listeners.filter(cb => cb !== f);
@@ -176,8 +183,61 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   next(value: unknown): T.Instructions | undefined {
     const frame = this.frameStack.pop();
+
     if (frame) {
-      return frame.apply(value);
+      switch (frame._tag) {
+        case "map-frame": {
+          if (this.frameStack.length === 0) {
+            this.complete(done(frame.apply(value)) as Done<A>);
+            return;
+          }
+          return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
+        }
+        case "fold-frame": {
+          if (this.frameStack.length === 0) {
+            const effect = frame.apply(value);
+
+            switch (effect._tag) {
+              case T.EffectTag.Pure:
+                this.complete(done(effect.f0) as Done<A>);
+                return;
+              /* istanbul ignore next */
+              case T.EffectTag.Completed:
+                this.complete(effect.f0 as Exit<E, A>);
+                return;
+              /* istanbul ignore next */
+              case T.EffectTag.Raised:
+                this.complete(effect.f0 as Cause<E>);
+                return;
+              /* istanbul ignore next */
+              case T.EffectTag.Async:
+                this.contextSwitch(effect.f0);
+                return;
+              /* istanbul ignore next */
+              case T.EffectTag.Suspended:
+                return effect.f0();
+              /* istanbul ignore next */
+              case T.EffectTag.Map:
+                this.frameStack.push(new MapFrame(effect));
+                return effect.f0;
+              /* istanbul ignore next */
+              case T.EffectTag.Chain:
+                this.frameStack.push(new Frame(effect.f1));
+                return effect.f0;
+              /* istanbul ignore next */
+              case T.EffectTag.Collapse:
+                this.frameStack.push(new FoldFrame(effect));
+                return effect.f0;
+              default:
+                /* istanbul ignore next */
+                return effect;
+            }
+          }
+          return frame.apply(value);
+        }
+        default:
+          return frame.apply(value);
+      }
     }
     this.complete(done(value) as Done<A>);
     return;
@@ -220,6 +280,33 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       complete = true;
       wrappedCancel();
     };
+  }
+
+  short(go: T.Instructions): T.Instructions | undefined {
+    let current: T.Instructions | undefined = undefined;
+
+    switch (go._tag) {
+      case T.EffectTag.Pure:
+        current = this.next(go.f0);
+        break;
+      case T.EffectTag.Completed:
+        if (go.f0._tag === ExitTag.Done) {
+          current = this.next(go.f0.value);
+        } else {
+          current = this.handle(go.f0);
+        }
+        break;
+      case T.EffectTag.Raised:
+        if (go.f0._tag === ExitTag.Interrupt) {
+          this.interrupted = true;
+        }
+        current = this.handle(go.f0);
+        break;
+      default:
+        current = go;
+    }
+
+    return current;
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
@@ -274,19 +361,23 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             }
             break;
           case T.EffectTag.Suspended:
-            current = current.f0();
+            current = this.short(current.f0());
             break;
           case T.EffectTag.Async:
             this.contextSwitch(current.f0);
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            this.frameStack.push(makeFrame(current.f1));
-            current = current.f0;
+            this.frameStack.push(new Frame(current.f1));
+            current = this.short(current.f0);
+            break;
+          case T.EffectTag.Map:
+            this.frameStack.push(new MapFrame(current));
+            current = this.short(current.f0);
             break;
           case T.EffectTag.Collapse:
             this.frameStack.push(new FoldFrame(current));
-            current = current.f0;
+            current = this.short(current.f0);
             break;
           case T.EffectTag.InterruptibleRegion:
             if (this.interruptRegionStack === undefined) {
@@ -306,6 +397,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             );
             break;
           default:
+            /* istanbul ignore next */
             throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
@@ -320,6 +412,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   start(run: T.Effect<NoEnv, E, A>): void {
     if (this.started) {
+      /* istanbul ignore next */
       throw new Error("Bug: Runtime may not be started multiple times");
     }
     this.started = true;

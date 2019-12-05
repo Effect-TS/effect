@@ -44,7 +44,8 @@ export enum EffectTag {
   AccessInterruptible,
   AccessRuntime,
   AccessEnv,
-  ProvideEnv
+  ProvideEnv,
+  Map
 }
 
 export type NoEnv = unknown;
@@ -90,7 +91,8 @@ export type Instructions =
   | AccessInterruptible
   | AccessRuntime
   | AccessEnv
-  | ProvideEnv;
+  | ProvideEnv
+  | Map;
 
 export interface Pure<A = unknown> {
   readonly _tag: EffectTag.Pure;
@@ -121,6 +123,12 @@ export interface Chain<Z = unknown> {
   readonly _tag: EffectTag.Chain;
   readonly f0: Instructions;
   readonly f1: FunctionN<[Z], Instructions>;
+}
+
+export interface Map<A = unknown, B = unknown> {
+  readonly _tag: EffectTag.Map;
+  readonly f0: Instructions;
+  readonly f1: FunctionN<[A], B>;
 }
 
 export interface Collapse<E1 = unknown, A1 = unknown> {
@@ -440,11 +448,7 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return new EffectIO(
-    EffectTag.Chain,
-    base,
-    (x: any) => new EffectIO(EffectTag.Pure, f(x))
-  ).asEffect;
+  return new EffectIO(EffectTag.Map, base, f).asEffect;
 }
 
 /**
