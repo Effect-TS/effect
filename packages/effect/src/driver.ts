@@ -42,12 +42,8 @@ class FoldFrame implements FoldFrame {
   constructor(private readonly c: T.Collapse) {}
   readonly _tag = "fold-frame" as const;
 
-  apply(u: unknown): T.Instructions {
-    return this.c.f2(u);
-  }
-  recover(cause: Cause<unknown>): T.Instructions {
-    return this.c.f1(cause);
-  }
+  apply = this.c.f2;
+  recover = this.c.f1;
 }
 
 interface MapFrame {
@@ -59,9 +55,7 @@ class MapFrame implements MapFrame {
   constructor(private readonly c: T.Map) {}
   readonly _tag = "map-frame" as const;
 
-  apply(u: unknown): unknown {
-    return this.c.f1(u);
-  }
+  apply = this.c.f1;
 }
 
 interface InterruptFrame {
