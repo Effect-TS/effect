@@ -30,6 +30,17 @@ describe("EffectSafe", () => {
       );
     });
 
+    it("abort on throw", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.sync(() => {
+            throw new Error("error");
+          })
+        ),
+        ex.abort(new Error("error"))
+      );
+    });
+
     it("encaseOption", async () => {
       assert.deepEqual(
         await T.runToPromiseExit(T.encaseOption(O.some(1), () => "error")),
@@ -45,6 +56,42 @@ describe("EffectSafe", () => {
       assert.deepEqual(
         await T.runToPromiseExit(T.lift((n: number) => n + 1)(T.pure(1))),
         ex.done(2)
+      );
+    });
+
+    it("fork", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          Do(T.effect)
+            .bind("f", T.fork(T.delay(T.pure(10), 100)))
+            .bindL("r", ({ f }) => f.join)
+            .return(s => s.r)
+        ),
+        ex.done(10)
+      );
+    });
+
+    it("fork exit", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          Do(T.effect)
+            .bind("f", T.fork(T.delay(T.pure(10), 100)))
+            .bindL("r", ({ f }) => f.result)
+            .return(s => s.r)
+        ),
+        ex.done(O.none)
+      );
+    });
+
+    it("fork exit interrupt", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          Do(T.effect)
+            .bind("f", T.fork(T.delay(T.pure(10), 100)))
+            .bindL("r", ({ f }) => f.interrupt)
+            .return(s => s.r)
+        ),
+        ex.done({})
       );
     });
 

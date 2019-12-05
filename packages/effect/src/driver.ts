@@ -108,18 +108,13 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   isComplete(): boolean {
     return this.completed !== null;
   }
+
   complete(a: Exit<E, A>): void {
+    /* istanbul ignore if */
     if (this.completed !== null) {
       throw new Error("Die: Completable is already completed");
     }
     this.set(a);
-  }
-  tryComplete(a: Exit<E, A>): boolean {
-    if (this.completed !== null) {
-      return false;
-    }
-    this.set(a);
-    return true;
   }
 
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
@@ -131,6 +126,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     } else {
       this.listeners.push(f);
     }
+    // TODO: figure how to trigger if possible
+    /* istanbul ignore next */
     return () => {
       if (this.listeners !== undefined) {
         this.listeners = this.listeners.filter(cb => cb !== f);
@@ -277,6 +274,36 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     };
   }
 
+  short(go: T.Instructions): T.Instructions | undefined {
+    let current: T.Instructions | undefined = undefined;
+
+    switch (go._tag) {
+      case T.EffectTag.Pure:
+        current = this.next(go.f0);
+        break;
+      case T.EffectTag.Completed:
+        if (go.f0._tag === ExitTag.Done) {
+          current = this.next(go.f0.value);
+        } else {
+          current = this.handle(go.f0);
+        }
+        break;
+      case T.EffectTag.Raised:
+        if (go.f0._tag === ExitTag.Interrupt) {
+          this.interrupted = true;
+        }
+        current = this.handle(go.f0);
+        break;
+      case T.EffectTag.Suspended:
+        current = go.f0();
+        break;
+      default:
+        current = go;
+    }
+
+    return current;
+  }
+
   // tslint:disable-next-line: cyclomatic-complexity
   loop(go: T.Instructions): void {
     let current: T.Instructions | undefined = go;
@@ -337,83 +364,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             break;
           case T.EffectTag.Chain:
             this.frameStack.push(new Frame(current.f1));
-
-            switch (current.f0._tag) {
-              case T.EffectTag.Pure:
-                current = this.next(current.f0.f0);
-                break;
-              case T.EffectTag.Completed:
-                if (current.f0.f0._tag === ExitTag.Done) {
-                  current = this.next(current.f0.f0.value);
-                } else {
-                  current = this.handle(current.f0.f0);
-                }
-                break;
-              case T.EffectTag.Raised:
-                if (current.f0.f0._tag === ExitTag.Interrupt) {
-                  this.interrupted = true;
-                }
-                current = this.handle(current.f0.f0);
-                break;
-              case T.EffectTag.Suspended:
-                current = current.f0.f0();
-                break;
-              default:
-                current = current.f0;
-            }
+            current = this.short(current.f0);
             break;
           case T.EffectTag.Map:
             this.frameStack.push(new MapFrame(current));
-
-            switch (current.f0._tag) {
-              case T.EffectTag.Pure:
-                current = this.next(current.f0.f0);
-                break;
-              case T.EffectTag.Completed:
-                if (current.f0.f0._tag === ExitTag.Done) {
-                  current = this.next(current.f0.f0.value);
-                } else {
-                  current = this.handle(current.f0.f0);
-                }
-                break;
-              case T.EffectTag.Raised:
-                if (current.f0.f0._tag === ExitTag.Interrupt) {
-                  this.interrupted = true;
-                }
-                current = this.handle(current.f0.f0);
-                break;
-              case T.EffectTag.Suspended:
-                current = current.f0.f0();
-                break;
-              default:
-                current = current.f0;
-            }
+            current = this.short(current.f0);
             break;
           case T.EffectTag.Collapse:
             this.frameStack.push(new FoldFrame(current));
-            switch (current.f0._tag) {
-              case T.EffectTag.Pure:
-                current = this.next(current.f0.f0);
-                break;
-              case T.EffectTag.Completed:
-                if (current.f0.f0._tag === ExitTag.Done) {
-                  current = this.next(current.f0.f0.value);
-                } else {
-                  current = this.handle(current.f0.f0);
-                }
-                break;
-              case T.EffectTag.Raised:
-                if (current.f0.f0._tag === ExitTag.Interrupt) {
-                  this.interrupted = true;
-                }
-                current = this.handle(current.f0.f0);
-                break;
-              case T.EffectTag.Suspended:
-                current = current.f0.f0();
-                break;
-              default:
-                current = current.f0;
-            }
+            current = this.short(current.f0);
             break;
           case T.EffectTag.InterruptibleRegion:
             if (this.interruptRegionStack === undefined) {
@@ -433,6 +392,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             );
             break;
           default:
+            /* istanbul ignore next */
             throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
@@ -447,6 +407,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   start(run: T.Effect<NoEnv, E, A>): void {
     if (this.started) {
+      /* istanbul ignore next */
       throw new Error("Bug: Runtime may not be started multiple times");
     }
     this.started = true;
