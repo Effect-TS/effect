@@ -219,6 +219,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
                 return;
               case T.EffectTag.Suspended:
                 return effect.f0();
+              case T.EffectTag.Map:
+                this.frameStack.push(new MapFrame(effect));
+                return effect.f0;
               case T.EffectTag.Chain:
                 this.frameStack.push(makeFrame(effect.f1));
 
