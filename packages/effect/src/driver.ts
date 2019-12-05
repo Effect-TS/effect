@@ -224,13 +224,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
                 return effect.f0;
               case T.EffectTag.Chain:
                 this.frameStack.push(makeFrame(effect.f1));
-
-                switch (effect.f0._tag) {
-                  case T.EffectTag.Pure:
-                    return this.next(effect.f0.f0);
-                  default:
-                    return effect.f0;
-                }
+                return effect.f0;
               case T.EffectTag.Collapse:
                 this.frameStack.push(new FoldFrame(effect));
                 return effect.f0;
