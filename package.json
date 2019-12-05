@@ -15,7 +15,7 @@
     "tslint": "^5.20.1",
     "typedoc": "0.15.3",
     "typedoc-plugin-lerna-packages": "^0.2.2",
-    "typescript": "^3.7.2"
+    "typescript": "^3.7.3"
   },
   "dependencies": {
     "axios": "^0.19.0",
@@ -28,6 +28,6 @@
     "redux-observable": "^1.2.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^6.5.3",
-    "typeorm": "^0.2.20"
+    "typeorm": "^0.2.21"
   }
 }

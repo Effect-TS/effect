@@ -1679,21 +1679,21 @@
   dependencies:
     "@types/node" ">= 8"
 
-"@qio/core@^27.1.0":
-  version "27.1.0"
-  resolved "https://registry.yarnpkg.com/@qio/core/-/core-27.1.0.tgz#5982f0f4a6c8ba2ecf62a6c2df3734e7455cd188"
-  integrity sha512-AYILfGX0wPVj12iMk/ZsLhvTFkigYCIHun4naUt9N7/MPypMM6vqRHCI6fSL+LCnpX4Xl+b2xpORlkxPRrFZZg==
+"@qio/core@^28.0.2":
+  version "28.0.2"
+  resolved "https://registry.yarnpkg.com/@qio/core/-/core-28.0.2.tgz#dc94c41d44eabee1e275d72ce2ac5f82912fd094"
+  integrity sha512-i/cUORDsY33DBeRQeK2FYgTCJlv7ALaJEnQap9ELpxfjxXCKOE0sx1gDbxPtsV3evqPGin7baHNpIBfeLGTIpg==
   dependencies:
-    "@qio/prelude" "^27.0.4"
+    "@qio/prelude" "^28.0.0"
     debug "^4.1.1"
     in-node "^1.0.0"
     standard-data-structures "^4.0.0"
     ts-scheduler "^8.0.3"
 
-"@qio/prelude@^27.0.4":
-  version "27.0.4"
-  resolved "https://registry.yarnpkg.com/@qio/prelude/-/prelude-27.0.4.tgz#cd8d1439af0359b4484bb917e26d77011881051b"
-  integrity sha512-u9BYx0SQzMn8RTPUJdIju965LWH0GMI0Hj6DmHudp71qA1D9ohg+UkYivIrVxORtcth95v1ufAECJRQUXwpANA==
+"@qio/prelude@^28.0.0":
+  version "28.0.0"
+  resolved "https://registry.yarnpkg.com/@qio/prelude/-/prelude-28.0.0.tgz#c6166e897f290590bda219ffed011e13d923ed5a"
+  integrity sha512-3JekB3BYZ/g+2vQrauw0vu8FAXtQO8FxmpqLAkPmuJcNGIgXibdz8dGOZABRwrCyMqswGk5Dzxw0bKfgNIzZmg==
 
 "@types/axios@^0.14.0":
   version "0.14.0"
@@ -2045,10 +2045,10 @@ anymatch@^2.0.0:
     micromatch "^3.1.4"
     normalize-path "^2.1.1"
 
-app-root-path@^2.0.1:
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/app-root-path/-/app-root-path-2.2.1.tgz#d0df4a682ee408273583d43f6f79e9892624bc9a"
-  integrity sha512-91IFKeKk7FjfmezPKkwtaRvSpnUc4gDwPAjA1YZ9Gn0q0PPeW+vbeUsZuyDwjI7+QTHhcLen2v25fi/AmhvbJA==
+app-root-path@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/app-root-path/-/app-root-path-3.0.0.tgz#210b6f43873227e18a4b810a032283311555d5ad"
+  integrity sha512-qMcx+Gy2UZynHjOHOIXPNvpf+9cjvk3cWrBBK7zg4gH9+clobJRb9NGzcT7mQTcV/6Gm/1WelUtqxVXnNlrwcw==
 
 aproba@^1.0.3, aproba@^1.1.1:
   version "1.2.0"
@@ -7897,12 +7897,12 @@ typedoc@0.15.3:
     typedoc-default-themes "^0.6.1"
     typescript "3.7.x"
 
-typeorm@^0.2.20:
-  version "0.2.20"
-  resolved "https://registry.yarnpkg.com/typeorm/-/typeorm-0.2.20.tgz#efb60f2e55a7d08fc365f281ec2a71c87a9ebba5"
-  integrity sha512-VxB+9qH8D+PM19MIx18Zs3Fqv/ZINnnQvUGmBEiLYDrB9etdSdamgSTCIhWdFNndeJ6ldH4jbD0Z6HWsepMPlA==
+typeorm@^0.2.21:
+  version "0.2.21"
+  resolved "https://registry.yarnpkg.com/typeorm/-/typeorm-0.2.21.tgz#d8d63bec783c128913b140b52f65e9fd76e44510"
+  integrity sha512-4abj5aFjwt4Y+Gs3VmykcjURUZwIezwPWYVMNl2swRk8/iluGZZ9Lbwd4tdzJ7ZdsgKyHsT8zf8zPZPL5jH+EQ==
   dependencies:
-    app-root-path "^2.0.1"
+    app-root-path "^3.0.0"
     buffer "^5.1.0"
     chalk "^2.4.2"
     cli-highlight "^2.0.0"
@@ -7917,10 +7917,15 @@ typeorm@^0.2.20:
     yargonaut "^1.1.2"
     yargs "^13.2.1"
 
-typescript@3.7.x, typescript@^3.7.2:
+typescript@3.7.x:
   version "3.7.2"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.7.2.tgz#27e489b95fa5909445e9fef5ee48d81697ad18fb"
   integrity sha512-ml7V7JfiN2Xwvcer+XAf2csGO1bPBdRbFCkYBczNZggrBZ9c7G3riSUeJmqEU5uOtXNPMhE3n+R4FA/3YOAWOQ==
+
+typescript@^3.7.3:
+  version "3.7.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.7.3.tgz#b36840668a16458a7025b9eabfad11b66ab85c69"
+  integrity sha512-Mcr/Qk7hXqFBXMN7p7Lusj1ktCBydylfQM/FZCk5glCNQJrCUKPkMHdo9R0MTFWsC/4kPFvDS0fDPvukfCkFsw==
 
 typescript@next:
   version "3.8.0-dev.20191121"
