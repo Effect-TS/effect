@@ -214,6 +214,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
               case T.EffectTag.Raised:
                 this.complete(effect.f0 as Cause<E>);
                 return;
+              case T.EffectTag.Async:
+                this.contextSwitch(effect.f0);
+                return;
+              case T.EffectTag.Suspended:
+                return effect.f0();
               default:
                 return effect;
             }
