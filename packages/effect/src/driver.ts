@@ -218,7 +218,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
                 return effect;
             }
           }
-          return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
+          return frame.apply(value);
         }
         default:
           return frame.apply(value);
