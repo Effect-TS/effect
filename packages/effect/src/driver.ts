@@ -25,10 +25,12 @@ interface Frame {
   apply(u: unknown): T.Instructions;
 }
 
-const makeFrame = (f: FunctionN<[unknown], T.Instructions>): Frame => ({
-  _tag: "frame",
-  apply: f
-});
+class Frame implements Frame {
+  constructor(private readonly f: (u: unknown) => T.Instructions) {}
+  readonly _tag = "frame" as const;
+
+  apply = this.f;
+}
 
 interface FoldFrame {
   readonly _tag: "fold-frame";
@@ -223,7 +225,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
                 this.frameStack.push(new MapFrame(effect));
                 return effect.f0;
               case T.EffectTag.Chain:
-                this.frameStack.push(makeFrame(effect.f1));
+                this.frameStack.push(new Frame(effect.f1));
                 return effect.f0;
               case T.EffectTag.Collapse:
                 this.frameStack.push(new FoldFrame(effect));
@@ -340,7 +342,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            this.frameStack.push(makeFrame(current.f1));
+            this.frameStack.push(new Frame(current.f1));
 
             switch (current.f0._tag) {
               case T.EffectTag.Pure:
