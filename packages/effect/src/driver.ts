@@ -302,9 +302,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         }
         current = this.handle(go.f0);
         break;
-      case T.EffectTag.Suspended:
-        current = go.f0();
-        break;
       default:
         current = go;
     }
@@ -364,7 +361,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             }
             break;
           case T.EffectTag.Suspended:
-            current = current.f0();
+            current = this.short(current.f0());
             break;
           case T.EffectTag.Async:
             this.contextSwitch(current.f0);
