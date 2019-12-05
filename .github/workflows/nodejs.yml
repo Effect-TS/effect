@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - optimizations
+      - restructure-driver
 
 jobs:
   build:

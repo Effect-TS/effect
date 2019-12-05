@@ -228,7 +228,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         switch (current._tag) {
           case T.EffectTag.Frame:
-            this.callStack.push(current.f0.apply(data));
+            if (current.f0._tag === "fold-frame") {
+              if (this.badly) {
+                this.callStack.push(current.f0.recover(this.badly));
+              } else {
+                this.callStack.push(current.f0.apply(data));
+              }
+            } else {
+              this.callStack.push(current.f0.apply(data));
+            }
             break;
           case T.EffectTag.AccessEnv:
             data =
