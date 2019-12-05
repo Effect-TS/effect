@@ -201,23 +201,23 @@ export class DriverImpl<E, A> implements Driver<E, A> {
               case T.EffectTag.Pure:
                 this.complete(done(effect.f0) as Done<A>);
                 return;
+              /* istanbul ignore next */
               case T.EffectTag.Completed:
-                /* istanbul ignore next */
                 this.complete(effect.f0 as Exit<E, A>);
                 return;
+              /* istanbul ignore next */
               case T.EffectTag.Raised:
-                /* istanbul ignore next */
                 this.complete(effect.f0 as Cause<E>);
                 return;
+              /* istanbul ignore next */
               case T.EffectTag.Async:
-                /* istanbul ignore next */
                 this.contextSwitch(effect.f0);
                 return;
+              /* istanbul ignore next */
               case T.EffectTag.Suspended:
-                /* istanbul ignore next */
                 return effect.f0();
+              /* istanbul ignore next */
               case T.EffectTag.Map:
-                /* istanbul ignore next */
                 this.frameStack.push(new MapFrame(effect));
                 return effect.f0;
               /* istanbul ignore next */
