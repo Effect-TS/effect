@@ -202,26 +202,34 @@ export class DriverImpl<E, A> implements Driver<E, A> {
                 this.complete(done(effect.f0) as Done<A>);
                 return;
               case T.EffectTag.Completed:
+                /* istanbul ignore next */
                 this.complete(effect.f0 as Exit<E, A>);
                 return;
               case T.EffectTag.Raised:
+                /* istanbul ignore next */
                 this.complete(effect.f0 as Cause<E>);
                 return;
               case T.EffectTag.Async:
+                /* istanbul ignore next */
                 this.contextSwitch(effect.f0);
                 return;
               case T.EffectTag.Suspended:
+                /* istanbul ignore next */
                 return effect.f0();
               case T.EffectTag.Map:
+                /* istanbul ignore next */
                 this.frameStack.push(new MapFrame(effect));
                 return effect.f0;
+              /* istanbul ignore next */
               case T.EffectTag.Chain:
                 this.frameStack.push(new Frame(effect.f1));
                 return effect.f0;
+              /* istanbul ignore next */
               case T.EffectTag.Collapse:
                 this.frameStack.push(new FoldFrame(effect));
                 return effect.f0;
               default:
+                /* istanbul ignore next */
                 return effect;
             }
           }
