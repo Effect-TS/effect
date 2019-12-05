@@ -1,4 +1,5 @@
 import * as E from "fp-ts/lib/Either";
+import * as O from "fp-ts/lib/Option";
 import * as assert from "assert";
 
 import { toError } from "fp-ts/lib/Either";
@@ -18,12 +19,50 @@ import { effect as T } from "../src";
 
 describe("EffectSafe", () => {
   describe("Extra", () => {
+    it("encaseEither", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(T.encaseEither(E.right(1))),
+        ex.done(1)
+      );
+      assert.deepEqual(
+        await T.runToPromiseExit(T.encaseEither(E.left(1))),
+        ex.raise(1)
+      );
+    });
+
+    it("encaseOption", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(T.encaseOption(O.some(1), () => "error")),
+        ex.done(1)
+      );
+      assert.deepEqual(
+        await T.runToPromiseExit(T.encaseOption(O.none, () => "error")),
+        ex.raise("error")
+      );
+    });
+
+    it("lift", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(T.lift((n: number) => n + 1)(T.pure(1))),
+        ex.done(2)
+      );
+    });
+
+    it("provideR", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.provideR(() => ({ n: 10 }))(T.access(({ n }: { n: number }) => n))
+        ),
+        ex.done(10)
+      );
+    });
+
     it("stack safe effect", async () => {
       const config = {
         increment: 2
       };
 
-      const program = array.traverse(T.effect)(range(1, 50000), n =>
+      const program = array.traverse(T.effect)(range(1, 50000), (n: number) =>
         T.accessM(({ increment }: typeof config) => T.sync(() => n + increment))
       );
 
