@@ -18,7 +18,7 @@ import { NoEnv } from "./effect";
 import * as T from "./effect";
 
 export type RegionFrameType = InterruptFrame;
-export type FrameType = Frame | FoldFrame | RegionFrameType;
+export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
 
 interface Frame {
   readonly _tag: "frame";
@@ -45,6 +45,20 @@ class FoldFrame implements FoldFrame {
   }
   recover(cause: Cause<unknown>): T.Instructions {
     return this.c.f1(cause);
+  }
+}
+
+interface MapFrame {
+  readonly _tag: "map-frame";
+  apply(u: unknown): unknown;
+}
+
+class MapFrame implements MapFrame {
+  constructor(private readonly c: T.Map) {}
+  readonly _tag = "map-frame" as const;
+
+  apply(u: unknown): unknown {
+    return this.c.f1(u);
   }
 }
 
@@ -176,8 +190,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   next(value: unknown): T.Instructions | undefined {
     const frame = this.frameStack.pop();
+
     if (frame) {
-      return frame.apply(value);
+      switch (frame._tag) {
+        case "map-frame": {
+          return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
+        }
+        default:
+          return frame.apply(value);
+      }
     }
     this.complete(done(value) as Done<A>);
     return;
@@ -282,6 +303,10 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             break;
           case T.EffectTag.Chain:
             this.frameStack.push(makeFrame(current.f1));
+            current = current.f0;
+            break;
+          case T.EffectTag.Map:
+            this.frameStack.push(new MapFrame(current));
             current = current.f0;
             break;
           case T.EffectTag.Collapse:
