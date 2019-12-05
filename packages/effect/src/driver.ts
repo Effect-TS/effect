@@ -194,6 +194,10 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     if (frame) {
       switch (frame._tag) {
         case "map-frame": {
+          if (this.frameStack.length === 0) {
+            this.complete(done(frame.apply(value)) as Done<A>);
+            return
+          }
           return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
         }
         default:
