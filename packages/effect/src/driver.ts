@@ -196,7 +196,27 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         case "map-frame": {
           if (this.frameStack.length === 0) {
             this.complete(done(frame.apply(value)) as Done<A>);
-            return
+            return;
+          }
+          return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
+        }
+        case "fold-frame": {
+          if (this.frameStack.length === 0) {
+            const effect = frame.apply(value);
+
+            switch (effect._tag) {
+              case T.EffectTag.Pure:
+                this.complete(done(effect.f0) as Done<A>);
+                return;
+              case T.EffectTag.Completed:
+                this.complete(effect.f0 as Exit<E, A>);
+                return;
+              case T.EffectTag.Raised:
+                this.complete(effect.f0 as Cause<E>);
+                return;
+              default:
+                return effect;
+            }
           }
           return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
         }
