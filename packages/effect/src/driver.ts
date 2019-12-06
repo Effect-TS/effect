@@ -16,6 +16,7 @@ import {
 import { defaultRuntime, Runtime } from "./original/runtime";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
+import * as L from "./list";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -103,7 +104,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interruptRegionStack: boolean[] | undefined;
   isInterruptible_ = true;
   cancelAsync: Lazy<void> | undefined;
-  envStack: any[] = [];
+  envStack = L.empty<any>();
 
   constructor(readonly runtime: Runtime = defaultRuntime) {}
 
@@ -261,30 +262,29 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         switch (current._tag) {
           case T.EffectTag.AccessEnv:
-            const env =
-              this.envStack.length > 0
-                ? this.envStack[this.envStack.length - 1]
-                : {};
+            const env = L.isNotEmpty(this.envStack)
+              ? L.lastUnsafe(this.envStack)
+              : {};
             current = this.next(env);
             break;
           case T.EffectTag.ProvideEnv:
-            this.envStack.push(current.f1 as any);
+            L.push(this.envStack, current.f1 as any);
             current = T.EffectIO.fromEffect(
-              T.effect.chainError(
-                T.effect.chain(current.f0 as any, r =>
-                  T.sync(() => {
-                    this.envStack.pop();
-                    return r;
-                  })
-                ),
+              T.effect.foldExit(
+                current.f0 as any,
                 e =>
                   T.effect.chain(
                     T.sync(() => {
-                      this.envStack.pop();
+                      L.popLastUnsafe(this.envStack);
                       return {};
                     }),
-                    _ => T.raiseError(e)
-                  )
+                    _ => T.raised(e)
+                  ),
+                r =>
+                  T.sync(() => {
+                    L.popLastUnsafe(this.envStack);
+                    return r;
+                  })
               )
             );
             break;

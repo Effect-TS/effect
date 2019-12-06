@@ -9,6 +9,7 @@ export interface NonEmptyList<A> {
   first: Node<A>;
   last: Node<A>;
 }
+
 export interface List<A> {
   first: null | Node<A>;
   last: null | Node<A>;
@@ -58,14 +59,16 @@ export function empty<A>(): List<A> {
 function isSingleton<A>(list: List<A>): boolean {
   return list.first === list.last && isNotEmpty(list);
 }
+
 /**
  * Indicates if a List is not empty
  */
 export function isNotEmpty<A>(list: List<A>): list is NonEmptyList<A> {
   return list.first !== null;
 }
+
 /**
- * Pops the last element of a List (A | null)
+ * Pops the first element of a List (A | null)
  */
 export function popUnsafe<A>(list: List<A>): A | null {
   const first = list.first;
@@ -85,11 +88,32 @@ export function popUnsafe<A>(list: List<A>): A | null {
 }
 
 /**
- * Pops the last element of a List Option<A>
+ * Pops the first element of a List (A | null)
+ */
+export function popLastUnsafe<A>(list: List<A>): A | null {
+  const last = list.last;
+  if (last) {
+    if (isSingleton(list)) {
+      list.first = null;
+      list.last = null;
+    } else {
+      last.prev.next = last.next;
+      last.next.prev = last.prev;
+      list.last = last.prev;
+    }
+    return last.a;
+  } else {
+    return null;
+  }
+}
+
+/**
+ * Pops the first element of a List Option<A>
  */
 export function pop<A>(list: List<A>): Option<A> {
   return fromNullable(popUnsafe(list));
 }
+
 /**
  * Gets the first element of the List as Option<A> (does not change the List)
  */
