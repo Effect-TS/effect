@@ -208,48 +208,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
           }
           return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
         }
-        case "fold-frame": {
-          if (this.currentFrame === undefined) {
-            const effect = frame.apply(value);
-
-            switch (effect._tag) {
-              case T.EffectTag.Pure:
-                this.complete(done(effect.f0) as Done<A>);
-                return;
-              /* istanbul ignore next */
-              case T.EffectTag.Completed:
-                this.complete(effect.f0 as Exit<E, A>);
-                return;
-              /* istanbul ignore next */
-              case T.EffectTag.Raised:
-                this.complete(effect.f0 as Cause<E>);
-                return;
-              /* istanbul ignore next */
-              case T.EffectTag.Async:
-                this.contextSwitch(effect.f0);
-                return;
-              /* istanbul ignore next */
-              case T.EffectTag.Suspended:
-                return effect.f0();
-              /* istanbul ignore next */
-              case T.EffectTag.Map:
-                this.currentFrame = new MapFrame(effect, this.currentFrame);
-                return effect.f0;
-              /* istanbul ignore next */
-              case T.EffectTag.Chain:
-                this.currentFrame = new Frame(effect.f1, this.currentFrame);
-                return effect.f0;
-              /* istanbul ignore next */
-              case T.EffectTag.Collapse:
-                this.currentFrame = new FoldFrame(effect, this.currentFrame);
-                return effect.f0;
-              default:
-                /* istanbul ignore next */
-                return effect;
-            }
-          }
-          return frame.apply(value);
-        }
         default:
           return frame.apply(value);
       }
@@ -295,40 +253,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       complete = true;
       wrappedCancel();
     };
-  }
-
-  short(go: T.Instructions): T.Instructions | undefined {
-    let current: T.Instructions | undefined = undefined;
-
-    switch (go._tag) {
-      case T.EffectTag.Pure:
-        current = this.next(go.f0);
-        break;
-      case T.EffectTag.Completed:
-        if (go.f0._tag === ExitTag.Done) {
-          current = this.next(go.f0.value);
-        } else {
-          current = this.handle(go.f0);
-        }
-        break;
-      case T.EffectTag.Raised:
-        if (go.f0._tag === ExitTag.Interrupt) {
-          this.interrupted = true;
-        }
-        current = this.handle(go.f0);
-        break;
-      case T.EffectTag.Map:
-        if (go.f0._tag === T.EffectTag.Pure) {
-          current = this.next(go.f1(go.f0.f0));
-        } else {
-          current = go;
-        }
-        break;
-      default:
-        current = go;
-    }
-
-    return current;
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
@@ -383,35 +307,23 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             }
             break;
           case T.EffectTag.Suspended:
-            current = this.short(current.f0());
+            current = current.f0();
             break;
           case T.EffectTag.Async:
             this.contextSwitch(current.f0);
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            if (current.f0._tag === T.EffectTag.Pure) {
-              current = this.short(current.f1(current.f0.f0));
-            } else {
-              this.currentFrame = new Frame(current.f1, this.currentFrame);
-              current = this.short(current.f0);
-            }
+            this.currentFrame = new Frame(current.f1, this.currentFrame);
+            current = current.f0;
             break;
           case T.EffectTag.Map:
-            if (current.f0._tag === T.EffectTag.Pure) {
-              current = this.next(current.f1(current.f0.f0));
-            } else {
-              this.currentFrame = new MapFrame(current, this.currentFrame);
-              current = this.short(current.f0);
-            }
+            this.currentFrame = new MapFrame(current, this.currentFrame);
+            current = current.f0;
             break;
           case T.EffectTag.Collapse:
-            if (current.f0._tag === T.EffectTag.Pure) {
-              current = this.short(current.f2(current.f0.f0));
-            } else {
-              this.currentFrame = new FoldFrame(current, this.currentFrame);
-              current = this.short(current.f0);
-            }
+            this.currentFrame = new FoldFrame(current, this.currentFrame);
+            current = current.f0;
             break;
           case T.EffectTag.InterruptibleRegion:
             if (this.interruptRegionStack === undefined) {
