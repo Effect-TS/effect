@@ -186,7 +186,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         // eslint-disable-next-line
         this.loop(go);
       }
-    });
+    }, undefined);
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -229,7 +229,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
           }
         }
       )(status);
-    });
+    }, undefined);
   }
 
   contextSwitch(
@@ -363,7 +363,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       throw new Error("Bug: Runtime may not be started multiple times");
     }
     this.started = true;
-    this.runtime.dispatch(() => this.loop(T.EffectIO.fromEffect(run)));
+    this.runtime.dispatch(this.loop.bind(this), run as any);
   }
 
   interrupt(): void {

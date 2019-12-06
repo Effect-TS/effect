@@ -3,4 +3,3 @@ node_modules/
 .idea/
 coverage/
 .vscode
-src/perf.ts
