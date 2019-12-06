@@ -22,11 +22,15 @@ export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
 
 interface Frame {
   readonly _tag: "frame";
+  readonly prev: FrameType | undefined;
   apply(u: unknown): T.Instructions;
 }
 
 class Frame implements Frame {
-  constructor(private readonly f: (u: unknown) => T.Instructions) {}
+  constructor(
+    private readonly f: (u: unknown) => T.Instructions,
+    readonly prev: FrameType | undefined
+  ) {}
   readonly _tag = "frame" as const;
 
   apply = this.f;
@@ -34,12 +38,16 @@ class Frame implements Frame {
 
 interface FoldFrame {
   readonly _tag: "fold-frame";
+  readonly prev: FrameType | undefined;
   apply(u: unknown): T.Instructions;
   recover(cause: Cause<unknown>): T.Instructions;
 }
 
 class FoldFrame implements FoldFrame {
-  constructor(private readonly c: T.Collapse) {}
+  constructor(
+    private readonly c: T.Collapse,
+    readonly prev: FrameType | undefined
+  ) {}
   readonly _tag = "fold-frame" as const;
 
   apply = this.c.f2;
@@ -48,11 +56,15 @@ class FoldFrame implements FoldFrame {
 
 interface MapFrame {
   readonly _tag: "map-frame";
+  readonly prev: FrameType | undefined;
   apply(u: unknown): unknown;
 }
 
 class MapFrame implements MapFrame {
-  constructor(private readonly c: T.Map) {}
+  constructor(
+    private readonly c: T.Map,
+    readonly prev: FrameType | undefined
+  ) {}
   readonly _tag = "map-frame" as const;
 
   apply = this.c.f1;
@@ -60,11 +72,16 @@ class MapFrame implements MapFrame {
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
+  readonly prev: FrameType | undefined;
   apply(u: unknown): T.Instructions;
   exitRegion(): void;
 }
 
-const makeInterruptFrame = (interruptStatus: boolean[]): InterruptFrame => ({
+const makeInterruptFrame = (
+  interruptStatus: boolean[],
+  prev: FrameType | undefined
+): InterruptFrame => ({
+  prev,
   _tag: "interrupt-frame",
   apply(u: unknown) {
     interruptStatus.pop();
@@ -88,7 +105,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   started = false;
   interrupted = false;
-  frameStack: FrameType[] = [];
+  currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
   isInterruptible_ = true;
   cancelAsync: Lazy<void> | undefined;
@@ -146,13 +163,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       : true;
   }
 
-  // canRecover(cause: Cause<unknown>): boolean {
-  //   // It is only possible to recovery from interrupts in an uninterruptible region
-  //   return cause._tag === ExitTag.Interrupt ? !this.isInterruptible() : true;
-  // }
-
   handle(e: Cause<unknown>): T.Instructions | undefined {
-    let frame = this.frameStack.pop();
+    let frame = this.currentFrame;
+    this.currentFrame = this.currentFrame?.prev;
     while (frame) {
       if (
         frame._tag === "fold-frame" &&
@@ -164,7 +177,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       if (frame._tag === "interrupt-frame") {
         frame.exitRegion();
       }
-      frame = this.frameStack.pop();
+      frame = this.currentFrame;
+      this.currentFrame = this.currentFrame?.prev;
     }
     // At the end... so we have failed
     this.complete(e as Cause<E>);
@@ -182,19 +196,20 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   next(value: unknown): T.Instructions | undefined {
-    const frame = this.frameStack.pop();
+    const frame = this.currentFrame;
+    this.currentFrame = this.currentFrame?.prev;
 
     if (frame) {
       switch (frame._tag) {
         case "map-frame": {
-          if (this.frameStack.length === 0) {
+          if (this.currentFrame === undefined) {
             this.complete(done(frame.apply(value)) as Done<A>);
             return;
           }
           return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
         }
         case "fold-frame": {
-          if (this.frameStack.length === 0) {
+          if (this.currentFrame === undefined) {
             const effect = frame.apply(value);
 
             switch (effect._tag) {
@@ -218,15 +233,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
                 return effect.f0();
               /* istanbul ignore next */
               case T.EffectTag.Map:
-                this.frameStack.push(new MapFrame(effect));
+                this.currentFrame = new MapFrame(effect, this.currentFrame);
                 return effect.f0;
               /* istanbul ignore next */
               case T.EffectTag.Chain:
-                this.frameStack.push(new Frame(effect.f1));
+                this.currentFrame = new Frame(effect.f1, this.currentFrame);
                 return effect.f0;
               /* istanbul ignore next */
               case T.EffectTag.Collapse:
-                this.frameStack.push(new FoldFrame(effect));
+                this.currentFrame = new FoldFrame(effect, this.currentFrame);
                 return effect.f0;
               default:
                 /* istanbul ignore next */
@@ -368,15 +383,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            this.frameStack.push(new Frame(current.f1));
+            this.currentFrame = new Frame(current.f1, this.currentFrame);
             current = this.short(current.f0);
             break;
           case T.EffectTag.Map:
-            this.frameStack.push(new MapFrame(current));
+            this.currentFrame = new MapFrame(current, this.currentFrame);
             current = this.short(current.f0);
             break;
           case T.EffectTag.Collapse:
-            this.frameStack.push(new FoldFrame(current));
+            this.currentFrame = new FoldFrame(current, this.currentFrame);
             current = this.short(current.f0);
             break;
           case T.EffectTag.InterruptibleRegion:
@@ -385,7 +400,10 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             } else {
               this.interruptRegionStack.push(current.f0);
             }
-            this.frameStack.push(makeInterruptFrame(this.interruptRegionStack));
+            this.currentFrame = makeInterruptFrame(
+              this.interruptRegionStack,
+              this.currentFrame
+            );
             current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
