@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - instructions
+      - optim2
 
 jobs:
   build:
