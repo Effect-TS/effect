@@ -1,6 +1,6 @@
 {
   "name": "@matechs/express",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -21,7 +21,7 @@
     "@babel/plugin-proposal-decorators": "^7.7.4",
     "@babel/preset-env": "^7.7.4",
     "@babel/preset-typescript": "^7.7.4",
-    "@matechs/http": "^0.2.11",
+    "@matechs/http": "^0.2.12",
     "@types/jest": "^24.0.23",
     "@types/node": "^12.12.14",
     "babel-jest": "^24.9.0",
@@ -42,9 +42,9 @@
     "typeorm": "^0.2.20"
   },
   "dependencies": {
-    "@matechs/effect": "^0.2.11",
-    "@matechs/graceful": "^0.2.11",
-    "@matechs/tracing": "^0.2.11"
+    "@matechs/effect": "^0.2.12",
+    "@matechs/graceful": "^0.2.12",
+    "@matechs/tracing": "^0.2.12"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
