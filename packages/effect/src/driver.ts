@@ -13,9 +13,10 @@ import {
   interrupt as interruptExit,
   raise
 } from "./original/exit";
-import { defaultRuntime, Runtime } from "./original/runtime";
+import { defaultRuntime } from "./original/runtime";
 import { NoEnv } from "./effect";
 import * as T from "./effect";
+import { scheduler } from "ts-scheduler";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -93,7 +94,6 @@ const makeInterruptFrame = (
 });
 
 export interface Driver<E, A> {
-  start(run: T.Effect<T.NoEnv, E, A>): void;
   interrupt(): void;
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
   completed: Exit<E, A> | null;
@@ -103,7 +103,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Exit<E, A> | null = null;
   listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
 
-  started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
@@ -111,7 +110,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   cancelAsync: Lazy<void> | undefined;
   envStack: any[] = [];
 
-  constructor(readonly runtime: Runtime = defaultRuntime) {}
+  constructor(readonly run: T.Effect<NoEnv, E, A>) {
+    scheduler.asap(this.loop.bind(this), run as any);
+  }
 
   set(a: Exit<E, A>): void {
     this.completed = a;
@@ -186,7 +187,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   resumeInterrupt(): void {
-    this.runtime.dispatch(() => {
+    scheduler.asap(() => {
       const go = this.handle(interruptExit);
       if (go) {
         // eslint-disable-next-line
@@ -260,7 +261,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   resume(status: Either<unknown, unknown>): void {
     this.cancelAsync = undefined;
-    this.runtime.dispatch(() => {
+    scheduler.asap(() => {
       foldEither(
         (cause: unknown) => {
           const go = this.handle(raise(cause));
@@ -419,7 +420,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.EffectIO.fromEffect(T.pure(current.f0(this.runtime)));
+            current = T.EffectIO.fromEffect(T.pure(current.f0(defaultRuntime)));
             break;
           case T.EffectTag.AccessInterruptible:
             current = T.EffectIO.fromEffect(
@@ -438,15 +439,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     if (this.interrupted && current) {
       this.resumeInterrupt();
     }
-  }
-
-  start(run: T.Effect<NoEnv, E, A>): void {
-    if (this.started) {
-      /* istanbul ignore next */
-      throw new Error("Bug: Runtime may not be started multiple times");
-    }
-    this.started = true;
-    this.runtime.dispatch(() => this.loop(T.EffectIO.fromEffect(run)));
   }
 
   interrupt(): void {

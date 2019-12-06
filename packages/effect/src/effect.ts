@@ -992,14 +992,11 @@ export function makeFiber<R, E, A>(
   name?: string
 ): Effect<R, NoErr, Fiber<E, A>> {
   return accessM((r: R) =>
-    chain_(accessRuntime, runtime =>
-      sync(() => {
-        const driver = new DriverImpl<E, A>(runtime);
-        const fiber = new FiberImpl(driver, name);
-        driver.start(provideAll(r)(init));
-        return fiber;
-      })
-    )
+    sync(() => {
+      const driver = new DriverImpl<E, A>(provideAll(r)(init));
+      const fiber = new FiberImpl(driver, name);
+      return fiber;
+    })
   );
 }
 
@@ -1313,11 +1310,10 @@ export function run<E, A>(
   io: Effect<NoEnv, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): Lazy<void> {
-  const driver = new DriverImpl<E, A>();
+  const driver = new DriverImpl<E, A>(io);
   if (callback) {
     driver.onExit(callback);
   }
-  driver.start(io);
   return () => driver.interrupt();
 }
 

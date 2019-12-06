@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - master
-      - instructions
-      - optim2
+      - incriminate-runtime
 
 jobs:
   build:
