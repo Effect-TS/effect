@@ -15,6 +15,7 @@
 /* istanbul ignore file */
 
 import { Lazy } from "fp-ts/lib/function";
+import * as L from "../list";
 
 /**
  * An interface for the IO system runtime.
@@ -28,7 +29,7 @@ export interface Runtime {
    * The default runtime trampolines this dispatch to for stack safety.
    * @param thunk the action to execute
    */
-  dispatch(thunk: Lazy<void>): void;
+  dispatch<A>(thunk: (a: A) => void, a: A): void;
 
   /**
    * Dispatch a thunk after some amount of time has elapsed.
@@ -38,34 +39,37 @@ export interface Runtime {
    * @param thunk the action to execute
    * @param ms delay in milliseconds
    */
-  dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void>;
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): Lazy<void>;
 }
 
 class RuntimeImpl implements Runtime {
   running = false;
-  array: Array<Lazy<void>> = [];
+
+  array = L.empty<[(a: any) => void, any]>();
 
   isRunning = (): boolean => this.running;
 
   run(): void {
     this.running = true;
-    let next = this.array.shift();
+    let next = L.popUnsafe(this.array);
+
     while (next) {
-      next();
-      next = this.array.shift();
+      next[0](next[1]);
+      next = L.popUnsafe(this.array);
     }
     this.running = false;
   }
 
-  dispatch(thunk: Lazy<void>): void {
-    this.array.push(thunk);
+  dispatch<A>(thunk: (a: A) => void, a: A): void {
+    L.push(this.array, [thunk, a]);
+
     if (!this.running) {
       this.run();
     }
   }
 
-  dispatchLater(thunk: Lazy<void>, ms: number): Lazy<void> {
-    const handle = setTimeout(() => this.dispatch(thunk), ms);
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): Lazy<void> {
+    const handle = setTimeout(() => this.dispatch(thunk, a), ms);
     return () => {
       clearTimeout(handle);
     };

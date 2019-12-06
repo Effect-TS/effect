@@ -686,7 +686,7 @@ export function uninterruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
  */
 export function after(ms: number): Effect<NoEnv, NoErr, void> {
   return chain_(accessRuntime, runtime =>
-    asyncTotal(callback => runtime.dispatchLater(() => callback(undefined), ms))
+    asyncTotal(callback => runtime.dispatchLater(callback, undefined, ms))
   );
 }
 
@@ -841,7 +841,7 @@ export const shifted: Effect<NoEnv, NoErr, void> = uninterruptible(
     runtime: Runtime // why does this not trigger noImplicitAny
   ) =>
     asyncTotal<void>(callback => {
-      runtime.dispatch(() => callback(undefined));
+      runtime.dispatch(callback, undefined);
       // tslint:disable-next-line
       return () => {};
     })
@@ -871,9 +871,7 @@ export function shiftAfter<E, A>(io: Effect<NoEnv, E, A>): Effect<NoEnv, E, A> {
  */
 export const shiftedAsync: Effect<NoEnv, NoErr, void> = uninterruptible(
   chain_(accessRuntime, runtime =>
-    asyncTotal<void>(callback =>
-      runtime.dispatchLater(() => callback(undefined), 0)
-    )
+    asyncTotal<void>(callback => runtime.dispatchLater(callback, undefined, 0))
   )
 );
 

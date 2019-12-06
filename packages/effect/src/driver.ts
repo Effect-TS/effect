@@ -23,58 +23,52 @@ export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
 interface Frame {
   readonly _tag: "frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): T.Instructions;
+  readonly apply: (u: unknown) => T.Instructions;
 }
 
 class Frame implements Frame {
   constructor(
-    private readonly f: (u: unknown) => T.Instructions,
+    readonly apply: (u: unknown) => T.Instructions,
     readonly prev: FrameType | undefined
   ) {}
   readonly _tag = "frame" as const;
-
-  apply = this.f;
 }
 
 interface FoldFrame {
   readonly _tag: "fold-frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): T.Instructions;
-  recover(cause: Cause<unknown>): T.Instructions;
+  readonly apply: (u: unknown) => T.Instructions;
+  readonly recover: (cause: Cause<unknown>) => T.Instructions;
 }
 
 class FoldFrame implements FoldFrame {
   constructor(
-    private readonly c: T.Collapse,
+    readonly apply: (u: unknown) => T.Instructions,
+    readonly recover: (cause: Cause<unknown>) => T.Instructions,
     readonly prev: FrameType | undefined
   ) {}
   readonly _tag = "fold-frame" as const;
-
-  apply = this.c.f2;
-  recover = this.c.f1;
 }
 
 interface MapFrame {
   readonly _tag: "map-frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): unknown;
+  readonly apply: (u: unknown) => unknown;
 }
 
 class MapFrame implements MapFrame {
   constructor(
-    private readonly c: T.Map,
+    readonly apply: (u: unknown) => unknown,
     readonly prev: FrameType | undefined
   ) {}
   readonly _tag = "map-frame" as const;
-
-  apply = this.c.f1;
 }
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): T.Instructions;
-  exitRegion(): void;
+  readonly apply: (u: unknown) => T.Instructions;
+  readonly exitRegion: () => void;
 }
 
 const makeInterruptFrame = (
@@ -185,14 +179,16 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return;
   }
 
+  dispatchResumeInterrupt() {
+    const go = this.handle(interruptExit);
+    if (go) {
+      // eslint-disable-next-line
+      this.loop(go);
+    }
+  }
+
   resumeInterrupt(): void {
-    this.runtime.dispatch(() => {
-      const go = this.handle(interruptExit);
-      if (go) {
-        // eslint-disable-next-line
-        this.loop(go);
-      }
-    });
+    this.runtime.dispatch(this.dispatchResumeInterrupt.bind(this), undefined);
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -216,26 +212,28 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return;
   }
 
+  foldResume(status: Either<unknown, unknown>) {
+    foldEither(
+      (cause: unknown) => {
+        const go = this.handle(raise(cause));
+        if (go) {
+          /* eslint-disable-next-line */
+          this.loop(go);
+        }
+      },
+      (value: unknown) => {
+        const go = this.next(value);
+        if (go) {
+          /* eslint-disable-next-line */
+          this.loop(go);
+        }
+      }
+    )(status);
+  }
+
   resume(status: Either<unknown, unknown>): void {
     this.cancelAsync = undefined;
-    this.runtime.dispatch(() => {
-      foldEither(
-        (cause: unknown) => {
-          const go = this.handle(raise(cause));
-          if (go) {
-            /* eslint-disable-next-line */
-            this.loop(go);
-          }
-        },
-        (value: unknown) => {
-          const go = this.next(value);
-          if (go) {
-            /* eslint-disable-next-line */
-            this.loop(go);
-          }
-        }
-      )(status);
-    });
+    this.runtime.dispatch(this.foldResume.bind(this), status);
   }
 
   contextSwitch(
@@ -318,11 +316,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = current.f0;
             break;
           case T.EffectTag.Map:
-            this.currentFrame = new MapFrame(current, this.currentFrame);
+            this.currentFrame = new MapFrame(current.f1, this.currentFrame);
             current = current.f0;
             break;
           case T.EffectTag.Collapse:
-            this.currentFrame = new FoldFrame(current, this.currentFrame);
+            this.currentFrame = new FoldFrame(
+              current.f2,
+              current.f1,
+              this.currentFrame
+            );
             current = current.f0;
             break;
           case T.EffectTag.InterruptibleRegion:
@@ -365,7 +367,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       throw new Error("Bug: Runtime may not be started multiple times");
     }
     this.started = true;
-    this.runtime.dispatch(() => this.loop(T.EffectIO.fromEffect(run)));
+    this.runtime.dispatch(this.loop.bind(this), run as any);
   }
 
   interrupt(): void {
