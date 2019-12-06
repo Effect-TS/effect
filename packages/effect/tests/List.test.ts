@@ -36,4 +36,21 @@ describe("List", () => {
     assert.deepStrictEqual(_.isNotEmpty(l), false);
     assert.deepStrictEqual(_.pop(l), none);
   });
+  it("popLast", () => {
+    const l = _.empty<string>();
+    assert.deepStrictEqual(_.pop(l), none);
+    _.push(l, "a");
+    _.push(l, "b");
+    _.push(l, "c");
+    assert.deepStrictEqual(_.head(l), some("a"));
+    assert.deepStrictEqual(_.last(l), some("c"));
+    assert.deepStrictEqual(_.popLastUnsafe(l), "c");
+    assert.deepStrictEqual(_.isNotEmpty(l), true);
+    assert.deepStrictEqual(_.popLastUnsafe(l), "b");
+    assert.deepStrictEqual(_.head(l), some("a"));
+    assert.deepStrictEqual(_.last(l), some("a"));
+    assert.deepStrictEqual(_.popLastUnsafe(l), "a");
+    assert.deepStrictEqual(_.isNotEmpty(l), false);
+    assert.deepStrictEqual(_.pop(l), none);
+  });
 });
