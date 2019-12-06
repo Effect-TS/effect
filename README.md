@@ -46,6 +46,34 @@ This package is a work in progress syntax and functions might change, feedback a
 - `@matechs/effect` : core provides `Effect, Managed, Stream, Ref, Queue, Semaphore`
 - `@matechs/epics` : provides integration with redux-observable
 
+## Performance
+Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
+
+Currently the benchmarks show:
+```
+Fibonacci:
+$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/index.ts
+effect x 20,174 ops/sec ±1.06% (83 runs sampled)
+qio x 17,963 ops/sec ±2.95% (81 runs sampled)
+wave x 13,876 ops/sec ±1.37% (79 runs sampled)
+native x 27,125 ops/sec ±1.83% (81 runs sampled)
+Fastest is native
+
+Nested Map 100
+$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/nestedMap.ts
+effect x 8,431 ops/sec ±1.78% (78 runs sampled)
+wave x 3,211 ops/sec ±1.08% (81 runs sampled)
+qio x 7,095 ops/sec ±3.24% (69 runs sampled)
+Fastest is effect
+
+Nested Chain 1000
+$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/nestedChain.ts
+effect x 772 ops/sec ±2.81% (78 runs sampled)
+wave x 436 ops/sec ±1.23% (81 runs sampled)
+qio x 707 ops/sec ±1.48% (82 runs sampled)
+Fastest is effect
+```
+
 ## Thanks
 
 This library would have not been feasibly possible without the strong foundations of [fp-ts](https://github.com/gcanti/fp-ts) and [Waveguide](https://github.com/rzeigler/waveguide) from which we have forked the base bifunctor and execution runtime, huge thanks to the Authors.
