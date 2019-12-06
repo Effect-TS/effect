@@ -55,17 +55,18 @@ const benchmark = new Suite("Fibonacci", { minTime: 10000 });
 
 benchmark
   .add(
-    "native",
+    "effect",
     (cb: any) => {
-      fib(n);
-      cb.resolve();
+      T.run(fibEffect(n), () => {
+        cb.resolve();
+      });
     },
     { defer: true }
   )
   .add(
-    "effect",
+    "qio",
     (cb: any) => {
-      T.run(fibEffect(n), () => {
+      defaultRuntime().unsafeExecute(fibQio(n), () => {
         cb.resolve();
       });
     },
@@ -81,11 +82,10 @@ benchmark
     { defer: true }
   )
   .add(
-    "qio",
+    "native",
     (cb: any) => {
-      defaultRuntime().unsafeExecute(fibQio(n), () => {
-        cb.resolve();
-      });
+      fib(n);
+      cb.resolve();
     },
     { defer: true }
   )
