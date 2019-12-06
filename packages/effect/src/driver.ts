@@ -179,14 +179,16 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return;
   }
 
+  dispatchResumeInterrupt() {
+    const go = this.handle(interruptExit);
+    if (go) {
+      // eslint-disable-next-line
+      this.loop(go);
+    }
+  }
+
   resumeInterrupt(): void {
-    this.runtime.dispatch(() => {
-      const go = this.handle(interruptExit);
-      if (go) {
-        // eslint-disable-next-line
-        this.loop(go);
-      }
-    }, undefined);
+    this.runtime.dispatch(this.dispatchResumeInterrupt.bind(this), undefined);
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -210,26 +212,28 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return;
   }
 
+  foldResume(status: Either<unknown, unknown>) {
+    foldEither(
+      (cause: unknown) => {
+        const go = this.handle(raise(cause));
+        if (go) {
+          /* eslint-disable-next-line */
+          this.loop(go);
+        }
+      },
+      (value: unknown) => {
+        const go = this.next(value);
+        if (go) {
+          /* eslint-disable-next-line */
+          this.loop(go);
+        }
+      }
+    )(status);
+  }
+
   resume(status: Either<unknown, unknown>): void {
     this.cancelAsync = undefined;
-    this.runtime.dispatch(() => {
-      foldEither(
-        (cause: unknown) => {
-          const go = this.handle(raise(cause));
-          if (go) {
-            /* eslint-disable-next-line */
-            this.loop(go);
-          }
-        },
-        (value: unknown) => {
-          const go = this.next(value);
-          if (go) {
-            /* eslint-disable-next-line */
-            this.loop(go);
-          }
-        }
-      )(status);
-    }, undefined);
+    this.runtime.dispatch(this.foldResume.bind(this), status);
   }
 
   contextSwitch(
