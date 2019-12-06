@@ -383,16 +383,28 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = undefined;
             break;
           case T.EffectTag.Chain:
-            this.currentFrame = new Frame(current.f1, this.currentFrame);
-            current = this.short(current.f0);
+            if (current.f0._tag === T.EffectTag.Pure) {
+              current = this.short(current.f1(current.f0.f0));
+            } else {
+              this.currentFrame = new Frame(current.f1, this.currentFrame);
+              current = this.short(current.f0);
+            }
             break;
           case T.EffectTag.Map:
-            this.currentFrame = new MapFrame(current, this.currentFrame);
-            current = this.short(current.f0);
+            if (current.f0._tag === T.EffectTag.Pure) {
+              current = this.next(current.f1(current.f0.f0));
+            } else {
+              this.currentFrame = new MapFrame(current, this.currentFrame);
+              current = this.short(current.f0);
+            }
             break;
           case T.EffectTag.Collapse:
-            this.currentFrame = new FoldFrame(current, this.currentFrame);
-            current = this.short(current.f0);
+            if (current.f0._tag === T.EffectTag.Pure) {
+              current = this.short(current.f2(current.f0.f0));
+            } else {
+              this.currentFrame = new FoldFrame(current, this.currentFrame);
+              current = this.short(current.f0);
+            }
             break;
           case T.EffectTag.InterruptibleRegion:
             if (this.interruptRegionStack === undefined) {
