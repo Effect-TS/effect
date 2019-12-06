@@ -328,7 +328,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   loop(go: T.Instructions): void {
     let current: T.Instructions | undefined = go;
 
-    while (current && (!this.isInterruptible() || !this.interrupted)) {
+    while (current && (!this.interrupted || !this.isInterruptible())) {
       try {
         switch (current._tag) {
           case T.EffectTag.AccessEnv:
