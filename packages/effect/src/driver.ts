@@ -23,58 +23,52 @@ export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
 interface Frame {
   readonly _tag: "frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): T.Instructions;
+  readonly apply: (u: unknown) => T.Instructions;
 }
 
 class Frame implements Frame {
   constructor(
-    private readonly f: (u: unknown) => T.Instructions,
+    readonly apply: (u: unknown) => T.Instructions,
     readonly prev: FrameType | undefined
   ) {}
   readonly _tag = "frame" as const;
-
-  apply = this.f;
 }
 
 interface FoldFrame {
   readonly _tag: "fold-frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): T.Instructions;
-  recover(cause: Cause<unknown>): T.Instructions;
+  readonly apply: (u: unknown) => T.Instructions;
+  readonly recover: (cause: Cause<unknown>) => T.Instructions;
 }
 
 class FoldFrame implements FoldFrame {
   constructor(
-    private readonly c: T.Collapse,
+    readonly apply: (u: unknown) => T.Instructions,
+    readonly recover: (cause: Cause<unknown>) => T.Instructions,
     readonly prev: FrameType | undefined
   ) {}
   readonly _tag = "fold-frame" as const;
-
-  apply = this.c.f2;
-  recover = this.c.f1;
 }
 
 interface MapFrame {
   readonly _tag: "map-frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): unknown;
+  readonly apply: (u: unknown) => unknown;
 }
 
 class MapFrame implements MapFrame {
   constructor(
-    private readonly c: T.Map,
+    readonly apply: (u: unknown) => unknown,
     readonly prev: FrameType | undefined
   ) {}
   readonly _tag = "map-frame" as const;
-
-  apply = this.c.f1;
 }
 
 interface InterruptFrame {
   readonly _tag: "interrupt-frame";
   readonly prev: FrameType | undefined;
-  apply(u: unknown): T.Instructions;
-  exitRegion(): void;
+  readonly apply: (u: unknown) => T.Instructions;
+  readonly exitRegion: () => void;
 }
 
 const makeInterruptFrame = (
@@ -318,11 +312,15 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = current.f0;
             break;
           case T.EffectTag.Map:
-            this.currentFrame = new MapFrame(current, this.currentFrame);
+            this.currentFrame = new MapFrame(current.f1, this.currentFrame);
             current = current.f0;
             break;
           case T.EffectTag.Collapse:
-            this.currentFrame = new FoldFrame(current, this.currentFrame);
+            this.currentFrame = new FoldFrame(
+              current.f2,
+              current.f1,
+              this.currentFrame
+            );
             current = current.f0;
             break;
           case T.EffectTag.InterruptibleRegion:

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - optim3
+      - optim4
 
 jobs:
   build:

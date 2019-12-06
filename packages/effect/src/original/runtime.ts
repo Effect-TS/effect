@@ -15,6 +15,7 @@
 /* istanbul ignore file */
 
 import { Lazy } from "fp-ts/lib/function";
+import * as L from "../list";
 
 /**
  * An interface for the IO system runtime.
@@ -43,22 +44,25 @@ export interface Runtime {
 
 class RuntimeImpl implements Runtime {
   running = false;
-  array: Array<Lazy<void>> = [];
+
+  array = L.empty<Lazy<void>>();
 
   isRunning = (): boolean => this.running;
 
   run(): void {
     this.running = true;
-    let next = this.array.shift();
+    let next = L.popUnsafe(this.array);
+
     while (next) {
       next();
-      next = this.array.shift();
+      next = L.popUnsafe(this.array);
     }
     this.running = false;
   }
 
   dispatch(thunk: Lazy<void>): void {
-    this.array.push(thunk);
+    L.push(this.array, thunk);
+
     if (!this.running) {
       this.run();
     }
