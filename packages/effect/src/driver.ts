@@ -317,6 +317,13 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         }
         current = this.handle(go.f0);
         break;
+      case T.EffectTag.Map:
+        if (go.f0._tag === T.EffectTag.Pure) {
+          current = this.next(go.f1(go.f0.f0));
+        } else {
+          current = go;
+        }
+        break;
       default:
         current = go;
     }

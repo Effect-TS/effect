@@ -16,6 +16,7 @@ import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
 import { effect as T } from "../src";
+import { nestedMapEffect } from "../bench/nestedMap";
 
 describe("EffectSafe", () => {
   describe("Extra", () => {
@@ -27,6 +28,13 @@ describe("EffectSafe", () => {
       assert.deepEqual(
         await T.runToPromiseExit(T.encaseEither(E.left(1))),
         ex.raise(1)
+      );
+    });
+
+    it("nestedMap", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(nestedMapEffect()),
+        ex.done(BigInt(1000))
       );
     });
 
