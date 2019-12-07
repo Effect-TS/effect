@@ -59,4 +59,21 @@ describe("Libcurl", () => {
     assert.deepEqual(isRaise(result), true);
     assert.deepEqual(isRaise(result) && result.error, 404);
   });
+
+  it("get https", async () => {
+    const result = await T.runToPromiseExit(
+      pipe(
+        H.get("https://jsonplaceholder.typicode.com/todos/1"),
+        T.provide(libcurl)
+      )
+    );
+
+    assert.deepEqual(isDone(result), true);
+    assert.deepEqual(isDone(result) && result.value.body, {
+      userId: 1,
+      id: 1,
+      title: "delectus aut autem",
+      completed: false
+    });
+  });
 });
