@@ -28,21 +28,32 @@ export const libcurl: H.Http = {
 
         const jsonBody = body ? JSON.stringify(body) : "";
 
+        function customReq(method: string) {
+          if (jsonBody.length > 0) {
+            req.setOpt(C.Curl.option.POSTFIELDS, jsonBody);
+          }
+          req.setOpt(C.Curl.option.CUSTOMREQUEST, method);
+          req.setOpt(C.Curl.option.HTTPHEADER, [
+            "Content-Type: application/json",
+            ...pipe(
+              headers,
+              R.collect((k, v) => `${k}: ${v}`)
+            )
+          ]);
+        }
+
         switch (method) {
-          case H.Method.GET:
-            break;
           case H.Method.POST:
-            if (jsonBody.length > 0) {
-              req.setOpt("POSTFIELDS", jsonBody);
-            }
-            req.setOpt("CUSTOMREQUEST", "POST");
-            req.setOpt(C.Curl.option.HTTPHEADER, [
-              "Content-Type: application/json",
-              ...pipe(
-                headers,
-                R.collect((k, v) => `${k}: ${v}`)
-              )
-            ]);
+            customReq("POST");
+            break;
+          case H.Method.PUT:
+            customReq("PUT");
+            break;
+          case H.Method.PATCH:
+            customReq("PATCH");
+            break;
+          case H.Method.DELETE:
+            customReq("DELETE");
             break;
           default:
             break;

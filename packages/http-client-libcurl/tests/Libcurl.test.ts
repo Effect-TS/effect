@@ -8,16 +8,28 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise } from "@matechs/effect/lib/exit";
 
 describe("Libcurl", () => {
-  it("post", async () => {
+  it("post-patch-put-del", async () => {
     const app = express();
 
     app.post("/post", bodyParser.json(), (req, res) => {
       res.send(req.body);
     });
 
+    app.put("/put", bodyParser.json(), (req, res) => {
+      res.send(req.body);
+    });
+
+    app.patch("/patch", bodyParser.json(), (req, res) => {
+      res.send(req.body);
+    });
+
+    app.delete("/delete", bodyParser.json(), (req, res) => {
+      res.send(req.body);
+    });
+
     const s = app.listen(4001);
 
-    const result = await T.runToPromiseExit(
+    const post = await T.runToPromiseExit(
       pipe(
         H.post(
           "http://127.0.0.1:4001/post",
@@ -29,11 +41,56 @@ describe("Libcurl", () => {
         T.provide(libcurl)
       )
     );
+    const put = await T.runToPromiseExit(
+      pipe(
+        H.put(
+          "http://127.0.0.1:4001/put",
+          {},
+          {
+            foo: "bar"
+          }
+        ),
+        T.provide(libcurl)
+      )
+    );
+    const patch = await T.runToPromiseExit(
+      pipe(
+        H.patch(
+          "http://127.0.0.1:4001/patch",
+          {},
+          {
+            foo: "bar"
+          }
+        ),
+        T.provide(libcurl)
+      )
+    );
 
+    const del = await T.runToPromiseExit(
+      pipe(
+        H.del(
+          "http://127.0.0.1:4001/delete",
+          {},
+          {
+            foo: "bar"
+          }
+        ),
+        T.provide(libcurl)
+      )
+    );
     s.close();
 
-    assert.deepEqual(isDone(result), true);
-    assert.deepEqual(isDone(result) && result.value.body, { foo: "bar" });
+    assert.deepEqual(isDone(post), true);
+    assert.deepEqual(isDone(post) && post.value.body, { foo: "bar" });
+
+    assert.deepEqual(isDone(put), true);
+    assert.deepEqual(isDone(put) && put.value.body, { foo: "bar" });
+
+    assert.deepEqual(isDone(patch), true);
+    assert.deepEqual(isDone(patch) && patch.value.body, { foo: "bar" });
+
+    assert.deepEqual(isDone(del), true);
+    assert.deepEqual(isDone(del) && del.value.body, { foo: "bar" });
   });
 
   it("get 404", async () => {

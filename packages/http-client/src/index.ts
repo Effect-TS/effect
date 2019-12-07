@@ -114,6 +114,6 @@ export function del<I, E, O>(
   body?: I
 ): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
-    http.request(Method.PUT, url, headers, body)
+    http.request(Method.DELETE, url, headers, body)
   );
 }
