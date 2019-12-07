@@ -31,50 +31,34 @@ describe("Libcurl", () => {
 
     const post = await T.runToPromiseExit(
       pipe(
-        H.post(
-          "http://127.0.0.1:4001/post",
-          {},
-          {
-            foo: "bar"
-          }
-        ),
+        H.post("http://127.0.0.1:4001/post", {
+          foo: "bar"
+        }),
         T.provide(libcurl)
       )
     );
     const put = await T.runToPromiseExit(
       pipe(
-        H.put(
-          "http://127.0.0.1:4001/put",
-          {},
-          {
-            foo: "bar"
-          }
-        ),
+        H.put("http://127.0.0.1:4001/put", {
+          foo: "bar"
+        }),
         T.provide(libcurl)
       )
     );
     const patch = await T.runToPromiseExit(
       pipe(
-        H.patch(
-          "http://127.0.0.1:4001/patch",
-          {},
-          {
-            foo: "bar"
-          }
-        ),
+        H.patch("http://127.0.0.1:4001/patch", {
+          foo: "bar"
+        }),
         T.provide(libcurl)
       )
     );
 
     const del = await T.runToPromiseExit(
       pipe(
-        H.del(
-          "http://127.0.0.1:4001/delete",
-          {},
-          {
-            foo: "bar"
-          }
-        ),
+        H.del("http://127.0.0.1:4001/delete", {
+          foo: "bar"
+        }),
         T.provide(libcurl)
       )
     );
@@ -115,6 +99,33 @@ describe("Libcurl", () => {
 
     assert.deepEqual(isRaise(result), true);
     assert.deepEqual(isRaise(result) && result.error, 404);
+  });
+
+  it("headers", async () => {
+    const app = express();
+
+    app.get("/h", bodyParser.json(), (req, res) => {
+      res.send({
+        foo: req.header("foo")
+      });
+    });
+
+    const s = app.listen(4002);
+
+    const result = await T.runToPromiseExit(
+      pipe(
+        H.get<unknown, { foo: string }>("http://127.0.0.1:4002/h"),
+        H.withHeaders({
+          foo: "bar"
+        }),
+        T.provide(libcurl)
+      )
+    );
+
+    s.close();
+
+    assert.deepEqual(isDone(result), true);
+    assert.deepEqual(isDone(result) && result.value.body?.foo, "bar");
   });
 
   it("get https", async () => {

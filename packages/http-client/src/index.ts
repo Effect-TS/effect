@@ -49,6 +49,10 @@ export function foldHttpError<A, B, ErrorBody>(
   };
 }
 
+export interface HttpHeaders {
+  headers: Record<string, string>;
+}
+
 export interface Http {
   http: {
     request: <I, E, O>(
@@ -60,60 +64,65 @@ export interface Http {
   };
 }
 
-export function request<I, E, O>(
+function hasHeaders(r: any): r is HttpHeaders {
+  return "headers" in r;
+}
+
+export function request<R, I, E, O>(
   method: Method,
   url: string,
-  headers: Record<string, string> = {},
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & R, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
-    http.request(method, url, headers, body)
+    T.accessM((r: R) => {
+      if (hasHeaders(r)) {
+        return http.request(method, url, r.headers, body);
+      } else {
+        return http.request(method, url, {}, body);
+      }
+    })
   );
 }
 
 export function get<E, O>(
-  url: string,
-  headers: Record<string, string> = {}
+  url: string
 ): T.Effect<Http, HttpError<E>, Response<O>> {
-  return T.accessM(({ http }: Http) => http.request(Method.GET, url, headers));
+  return request(Method.GET, url);
 }
 
 export function post<I, E, O>(
   url: string,
-  headers: Record<string, string> = {},
   body?: I
 ): T.Effect<Http, HttpError<E>, Response<O>> {
-  return T.accessM(({ http }: Http) =>
-    http.request(Method.POST, url, headers, body)
-  );
+  return request(Method.POST, url, body);
 }
 
 export function patch<I, E, O>(
   url: string,
-  headers: Record<string, string> = {},
   body?: I
 ): T.Effect<Http, HttpError<E>, Response<O>> {
-  return T.accessM(({ http }: Http) =>
-    http.request(Method.PATCH, url, headers, body)
-  );
+  return request(Method.PATCH, url, body);
 }
 
 export function put<I, E, O>(
   url: string,
-  headers: Record<string, string> = {},
   body?: I
 ): T.Effect<Http, HttpError<E>, Response<O>> {
-  return T.accessM(({ http }: Http) =>
-    http.request(Method.PUT, url, headers, body)
-  );
+  return request(Method.PUT, url, body);
 }
 
 export function del<I, E, O>(
   url: string,
-  headers: Record<string, string> = {},
   body?: I
 ): T.Effect<Http, HttpError<E>, Response<O>> {
-  return T.accessM(({ http }: Http) =>
-    http.request(Method.DELETE, url, headers, body)
-  );
+  return request(Method.DELETE, url, body);
+}
+
+export function withHeaders<I, E, O>(
+  headers: Record<string, string>
+): (
+  eff: T.Effect<Http, HttpError<E>, Response<O>>
+) => T.Effect<Http, HttpError<E>, Response<O>> {
+  return eff =>
+    T.provideR<Http, HttpHeaders & Http>(r => ({ ...r, headers }))(eff);
 }

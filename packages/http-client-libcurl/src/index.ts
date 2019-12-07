@@ -18,6 +18,13 @@ export const libcurl: H.Http = {
     ): T.Effect<T.NoEnv, H.HttpError<E>, H.Response<O>> =>
       T.async(done => {
         const req = new C.Curl();
+        const reqHead = [
+          "Content-Type: application/json",
+          ...pipe(
+            headers,
+            R.collect((k, v) => `${k}: ${v}`)
+          )
+        ];
 
         req.setOpt("URL", url);
         req.setOpt("CAINFO", certfile);
@@ -26,6 +33,8 @@ export const libcurl: H.Http = {
         req.setOpt("SSL_VERIFYHOST", 2);
         req.setOpt("SSL_VERIFYPEER", 1);
 
+        req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
+
         const jsonBody = body ? JSON.stringify(body) : "";
 
         function customReq(method: string) {
@@ -33,13 +42,6 @@ export const libcurl: H.Http = {
             req.setOpt(C.Curl.option.POSTFIELDS, jsonBody);
           }
           req.setOpt(C.Curl.option.CUSTOMREQUEST, method);
-          req.setOpt(C.Curl.option.HTTPHEADER, [
-            "Content-Type: application/json",
-            ...pipe(
-              headers,
-              R.collect((k, v) => `${k}: ${v}`)
-            )
-          ]);
         }
 
         switch (method) {
