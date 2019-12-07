@@ -124,5 +124,8 @@ export function withHeaders<I, E, O>(
   eff: T.Effect<Http, HttpError<E>, Response<O>>
 ) => T.Effect<Http, HttpError<E>, Response<O>> {
   return eff =>
-    T.provideR<Http, HttpHeaders & Http>(r => ({ ...r, headers }))(eff);
+    T.provideR<Http, HttpHeaders & Http>(r => ({
+      ...r,
+      headers: { ...r["headers"], ...headers }
+    }))(eff);
 }
