@@ -65,54 +65,54 @@ export function request<I, E, O>(
   url: string,
   headers: Record<string, string> = {},
   body?: I
-): T.Effect<Http, HttpError<E>, O> {
+): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
     http.request(method, url, headers, body)
   );
 }
 
-export function Get<E, O>(
+export function get<E, O>(
   url: string,
   headers: Record<string, string> = {}
-): T.Effect<Http, HttpError<E>, O> {
+): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) => http.request(Method.GET, url, headers));
 }
 
-export function Post<I, E, O>(
+export function post<I, E, O>(
   url: string,
   headers: Record<string, string> = {},
   body?: I
-): T.Effect<Http, HttpError<E>, O> {
+): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
     http.request(Method.POST, url, headers, body)
   );
 }
 
-export function Patch<I, E, O>(
+export function patch<I, E, O>(
   url: string,
   headers: Record<string, string> = {},
   body?: I
-): T.Effect<Http, HttpError<E>, O> {
+): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
     http.request(Method.PATCH, url, headers, body)
   );
 }
 
-export function Put<I, E, O>(
+export function put<I, E, O>(
   url: string,
   headers: Record<string, string> = {},
   body?: I
-): T.Effect<Http, HttpError<E>, O> {
+): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
     http.request(Method.PUT, url, headers, body)
   );
 }
 
-export function Delete<I, E, O>(
+export function del<I, E, O>(
   url: string,
   headers: Record<string, string> = {},
   body?: I
-): T.Effect<Http, HttpError<E>, O> {
+): T.Effect<Http, HttpError<E>, Response<O>> {
   return T.accessM(({ http }: Http) =>
     http.request(Method.PUT, url, headers, body)
   );

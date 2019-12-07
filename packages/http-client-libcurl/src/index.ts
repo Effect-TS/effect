@@ -1,7 +1,5 @@
 import { effect as T } from "@matechs/effect";
 import * as H from "@matechs/http-client";
-import bodyParser from "body-parser";
-import express from "express";
 import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "fp-ts/lib/Record";
@@ -17,7 +15,7 @@ export const libcurl: H.Http = {
       url: string,
       headers: Record<string, string> = {},
       body: I
-    ) =>
+    ): T.Effect<T.NoEnv, H.HttpError<E>, H.Response<O>> =>
       T.async(done => {
         const req = new C.Curl();
 
@@ -101,27 +99,3 @@ export const libcurl: H.Http = {
       })
   }
 };
-
-const app = express();
-
-app.post("/post", bodyParser.json(), (req, res) => {
-  res.send(req.body);
-});
-
-const s = app.listen(4001);
-
-T.run(
-  libcurl.http.request(
-    H.Method.POST,
-    "http://127.0.0.1:4001/post",
-    {},
-    {
-      foo: "bar"
-    }
-  ),
-  r => {
-    console.log(r);
-
-    s.close();
-  }
-);
