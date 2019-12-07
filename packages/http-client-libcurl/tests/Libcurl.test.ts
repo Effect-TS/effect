@@ -42,17 +42,21 @@ describe("Libcurl", () => {
     const s = app.listen(4001);
 
     const result = await T.runToPromiseExit(
-      pipe(H.get("http://127.0.0.1:4001/"), T.provide(libcurl))
+      pipe(
+        H.get("http://127.0.0.1:4001/"),
+        T.mapError(
+          H.foldHttpError(
+            _ => 0,
+            ({ status }) => status
+          )
+        ),
+        T.provide(libcurl)
+      )
     );
 
     s.close();
 
     assert.deepEqual(isRaise(result), true);
-    assert.deepEqual(
-      isRaise(result) &&
-        result.error._tag === H.HttpErrorReason.Response &&
-        result.error.response.status,
-      404
-    );
+    assert.deepEqual(isRaise(result) && result.error, 404);
   });
 });
