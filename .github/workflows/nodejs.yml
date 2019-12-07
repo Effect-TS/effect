@@ -26,7 +26,7 @@ jobs:
           npm install -g yarn
           lerna bootstrap
           lerna run build
-          yarn jest
+          yarn jest --detectOpenHandles
           lerna run lint
           lerna run bench
         env:
