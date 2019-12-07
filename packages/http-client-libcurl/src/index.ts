@@ -64,7 +64,8 @@ export const libcurl: H.Http = {
               done(
                 E.right({
                   status: statusCode,
-                  body: bodyStr.length > 0 ? JSON.parse(bodyStr) : undefined,
+                  body:
+                    bodyStr.length > 0 ? parseOrUndefined(bodyStr) : undefined,
                   headers:
                     headers.length > 0
                       ? typeof headers[0] !== "number"
@@ -79,7 +80,10 @@ export const libcurl: H.Http = {
                   _tag: H.HttpErrorReason.Response,
                   response: {
                     status: statusCode,
-                    body: bodyStr.length > 0 ? JSON.parse(bodyStr) : undefined,
+                    body:
+                      bodyStr.length > 0
+                        ? parseOrUndefined(bodyStr)
+                        : undefined,
                     headers:
                       headers.length > 0
                         ? typeof headers[0] !== "number"
@@ -99,3 +103,11 @@ export const libcurl: H.Http = {
       })
   }
 };
+
+function parseOrUndefined<A>(str: string): A | undefined {
+  try {
+    return JSON.parse(str);
+  } catch (_) {
+    return undefined;
+  }
+}

@@ -1,12 +1,11 @@
 import { effect as T } from "@matechs/effect";
-import { done } from "@matechs/effect/lib/original/exit";
 import * as H from "@matechs/http-client";
 import assert from "assert";
 import bodyParser from "body-parser";
-import express, { response } from "express";
+import express from "express";
 import { libcurl } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
-import { isDone } from "@matechs/effect/lib/exit";
+import { isDone, isRaise } from "@matechs/effect/lib/exit";
 
 describe("Libcurl", () => {
   it("post", async () => {
@@ -35,5 +34,25 @@ describe("Libcurl", () => {
 
     assert.deepEqual(isDone(result), true);
     assert.deepEqual(isDone(result) && result.value.body, { foo: "bar" });
+  });
+
+  it("get 404", async () => {
+    const app = express();
+
+    const s = app.listen(4001);
+
+    const result = await T.runToPromiseExit(
+      pipe(H.get("http://127.0.0.1:4001/"), T.provide(libcurl))
+    );
+
+    s.close();
+
+    assert.deepEqual(isRaise(result), true);
+    assert.deepEqual(
+      isRaise(result) &&
+        result.error._tag === H.HttpErrorReason.Response &&
+        result.error.response.status,
+      404
+    );
   });
 });
