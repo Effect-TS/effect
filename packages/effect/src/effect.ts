@@ -70,9 +70,9 @@ export class EffectIO<R, E, A> {
 
   constructor(
     readonly _tag: EffectTag,
-    readonly f0: any = noEnv,
-    readonly f1: any = noEnv,
-    readonly f2: any = noEnv
+    readonly f0: any = undefined,
+    readonly f1: any = undefined,
+    readonly f2: any = undefined
   ) {}
 }
 
@@ -106,9 +106,9 @@ export interface Completed<E = unknown, A = unknown> {
   readonly f0: Exit<E, A>;
 }
 
-export interface Suspended<E = unknown, A = unknown> {
+export interface Suspended {
   readonly _tag: EffectTag.Suspended;
-  readonly f0: Lazy<EffectIO<NoEnv, E, A>>;
+  readonly f0: Lazy<Instructions>;
 }
 
 export interface Async<E = unknown, A = unknown> {

@@ -91,7 +91,7 @@ describe("EffectSafe", () => {
             .bindL("r", ({ f }) => f.interrupt)
             .return(s => s.r)
         ),
-        ex.done({})
+        ex.done(undefined)
       );
     });
 
