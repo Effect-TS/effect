@@ -144,4 +144,18 @@ describe("Libcurl", () => {
       completed: false
     });
   });
+
+  it("malformed", async () => {
+    const result = await T.runToPromiseExit(
+      pipe(H.get("ht-ps://wrong.com/todos/1"), T.provide(libcurl))
+    );
+
+    assert.deepEqual(isRaise(result), true);
+    assert.deepEqual(
+      isRaise(result) &&
+        result.error._tag === H.HttpErrorReason.Request &&
+        result.error.error,
+      new Error("Unsupported protocol")
+    );
+  });
 });
