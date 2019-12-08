@@ -6,6 +6,13 @@ import express from "express";
 import { libcurl } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
+import { Exit } from "@matechs/effect/lib/original/exit";
+
+function run<I, E, O>(
+  eff: T.Effect<H.Http, H.HttpError<E>, H.Response<O>>
+): Promise<Exit<H.HttpError<E>, H.Response<O>>> {
+  return T.runToPromiseExit(T.provideAll(libcurl)(eff));
+}
 
 describe("Libcurl", () => {
   it("post-patch-put-del", async () => {
@@ -29,42 +36,32 @@ describe("Libcurl", () => {
 
     const s = app.listen(4001);
 
-    const post = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:4001/post", {
-          foo: "bar"
-        }),
-        T.provide(libcurl)
-      )
-    );
-    const postNoBody = await T.runToPromiseExit(
-      pipe(H.post("http://127.0.0.1:4001/post"), T.provide(libcurl))
-    );
-    const put = await T.runToPromiseExit(
-      pipe(
-        H.put("http://127.0.0.1:4001/put", {
-          foo: "bar"
-        }),
-        T.provide(libcurl)
-      )
-    );
-    const patch = await T.runToPromiseExit(
-      pipe(
-        H.patch("http://127.0.0.1:4001/patch", {
-          foo: "bar"
-        }),
-        T.provide(libcurl)
-      )
+    const post = await run(
+      H.post("http://127.0.0.1:4001/post", {
+        foo: "bar"
+      })
     );
 
-    const del = await T.runToPromiseExit(
-      pipe(
-        H.del("http://127.0.0.1:4001/delete", {
-          foo: "bar"
-        }),
-        T.provide(libcurl)
-      )
+    const postNoBody = await run(H.post("http://127.0.0.1:4001/post"));
+
+    const put = await run(
+      H.put("http://127.0.0.1:4001/put", {
+        foo: "bar"
+      })
     );
+
+    const patch = await run(
+      H.patch("http://127.0.0.1:4001/patch", {
+        foo: "bar"
+      })
+    );
+
+    const del = await run(
+      H.del("http://127.0.0.1:4001/delete", {
+        foo: "bar"
+      })
+    );
+
     s.close();
 
     assert.deepEqual(isDone(post), true);
@@ -88,7 +85,7 @@ describe("Libcurl", () => {
 
     const s = app.listen(4001);
 
-    const result = await T.runToPromiseExit(
+    const result = await run(
       pipe(
         H.get("http://127.0.0.1:4001/"),
         T.mapError(
@@ -96,8 +93,7 @@ describe("Libcurl", () => {
             _ => 0,
             ({ status }) => status
           )
-        ),
-        T.provide(libcurl)
+        )
       )
     );
 
@@ -118,13 +114,12 @@ describe("Libcurl", () => {
 
     const s = app.listen(4002);
 
-    const result = await T.runToPromiseExit(
+    const result = await run(
       pipe(
         H.get<unknown, { foo: string }>("http://127.0.0.1:4002/h"),
         H.withHeaders({
           foo: "bar"
-        }),
-        T.provide(libcurl)
+        })
       )
     );
 
@@ -152,9 +147,7 @@ describe("Libcurl", () => {
   });
 
   it("malformed", async () => {
-    const result = await T.runToPromiseExit(
-      pipe(H.get("ht-ps://wrong.com/todos/1"), T.provide(libcurl))
-    );
+    const result = await run(H.get("ht-ps://wrong.com/todos/1"));
 
     assert.deepEqual(isRaise(result), true);
     assert.deepEqual(
