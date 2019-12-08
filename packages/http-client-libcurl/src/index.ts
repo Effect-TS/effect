@@ -73,33 +73,19 @@ export const libcurl: H.Http = {
           .on("end", (statusCode, body, headers) => {
             const bodyStr = body.toString();
 
+            const response = <A>(): H.Response<A> => ({
+              status: statusCode,
+              body: parseOrUndefined(bodyStr),
+              headers: getHeaders(headers)
+            });
+
             if (statusCode >= 200 && statusCode < 300) {
-              done(
-                E.right({
-                  status: statusCode,
-                  body: parseOrUndefined(bodyStr),
-                  headers:
-                    headers.length > 0
-                      ? typeof headers[0] !== "number"
-                        ? headers[0]
-                        : {}
-                      : {}
-                })
-              );
+              done(E.right(response()));
             } else {
               done(
                 E.left({
                   _tag: H.HttpErrorReason.Response,
-                  response: {
-                    status: statusCode,
-                    body: parseOrUndefined(bodyStr),
-                    headers:
-                      headers.length > 0
-                        ? typeof headers[0] !== "number"
-                          ? headers[0]
-                          : {}
-                        : {}
-                  }
+                  response: response()
                 })
               );
             }
@@ -113,6 +99,14 @@ export const libcurl: H.Http = {
       })
   }
 };
+
+function getHeaders(headers: Buffer | C.HeaderInfo[]) {
+  return headers.length > 0
+    ? typeof headers[0] !== "number"
+      ? headers[0]
+      : {}
+    : {};
+}
 
 function parseOrUndefined<A>(str: string): A | undefined {
   if (str.length > 0) {
