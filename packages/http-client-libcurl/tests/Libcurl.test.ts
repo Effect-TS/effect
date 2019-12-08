@@ -37,6 +37,9 @@ describe("Libcurl", () => {
         T.provide(libcurl)
       )
     );
+    const postNoBody = await T.runToPromiseExit(
+      pipe(H.post("http://127.0.0.1:4001/post"), T.provide(libcurl))
+    );
     const put = await T.runToPromiseExit(
       pipe(
         H.put("http://127.0.0.1:4001/put", {
@@ -66,6 +69,9 @@ describe("Libcurl", () => {
 
     assert.deepEqual(isDone(post), true);
     assert.deepEqual(isDone(post) && post.value.body, { foo: "bar" });
+
+    assert.deepEqual(isDone(postNoBody), true);
+    assert.deepEqual(isDone(postNoBody) && postNoBody.value.body, {});
 
     assert.deepEqual(isDone(put), true);
     assert.deepEqual(isDone(put) && put.value.body, { foo: "bar" });

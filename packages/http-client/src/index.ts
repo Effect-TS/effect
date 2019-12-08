@@ -61,7 +61,7 @@ export interface Http {
     request: <I, E, O>(
       method: Method,
       url: string,
-      headers?: Record<string, string>,
+      headers: Record<string, string>,
       body?: I
     ) => T.Effect<T.NoEnv, HttpError<E>, Response<O>>;
   };

@@ -13,7 +13,7 @@ export const libcurl: H.Http = {
     request: <I, E, O>(
       method: H.Method,
       url: string,
-      headers: Record<string, string> = {},
+      headers: Record<string, string>,
       body: I
     ): T.Effect<T.NoEnv, H.HttpError<E>, H.Response<O>> =>
       T.async(done => {
@@ -77,8 +77,7 @@ export const libcurl: H.Http = {
               done(
                 E.right({
                   status: statusCode,
-                  body:
-                    bodyStr.length > 0 ? parseOrUndefined(bodyStr) : undefined,
+                  body: parseOrUndefined(bodyStr),
                   headers:
                     headers.length > 0
                       ? typeof headers[0] !== "number"
@@ -93,10 +92,7 @@ export const libcurl: H.Http = {
                   _tag: H.HttpErrorReason.Response,
                   response: {
                     status: statusCode,
-                    body:
-                      bodyStr.length > 0
-                        ? parseOrUndefined(bodyStr)
-                        : undefined,
+                    body: parseOrUndefined(bodyStr),
                     headers:
                       headers.length > 0
                         ? typeof headers[0] !== "number"
@@ -119,9 +115,13 @@ export const libcurl: H.Http = {
 };
 
 function parseOrUndefined<A>(str: string): A | undefined {
-  try {
-    return JSON.parse(str);
-  } catch (_) {
+  if (str.length > 0) {
+    try {
+      return JSON.parse(str);
+    } catch (_) {
+      return undefined;
+    }
+  } else {
     return undefined;
   }
 }
