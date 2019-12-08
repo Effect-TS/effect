@@ -9,9 +9,11 @@ import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
 
 function run<I, E, O>(
-  eff: T.Effect<H.Http, H.HttpError<E>, H.Response<O>>
+  eff: T.Effect<H.Http & H.HttpDeserializer, H.HttpError<E>, H.Response<O>>
 ): Promise<Exit<H.HttpError<E>, H.Response<O>>> {
-  return T.runToPromiseExit(T.provideAll(libcurl())(eff));
+  return T.runToPromiseExit(
+    pipe(eff, T.provide(libcurl()), T.provide(H.jsonDeserializer))
+  );
 }
 
 describe("Libcurl", () => {
@@ -169,15 +171,11 @@ describe("Libcurl", () => {
   it("form", async () => {
     const app = express();
 
-    app.use(
-      "/data",
-      bodyParser.urlencoded({ extended: true }),
-      (req, res) => {
-        res.send({
-          foo: req.body["foo"]
-        });
-      }
-    );
+    app.use("/data", bodyParser.urlencoded({ extended: true }), (req, res) => {
+      res.send({
+        foo: req.body["foo"]
+      });
+    });
 
     const s = app.listen(4003);
 
@@ -256,7 +254,8 @@ describe("Libcurl", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provide(libcurl())
+        T.provide(libcurl()),
+        T.provide(H.jsonDeserializer)
       ),
       r => {
         res = r;

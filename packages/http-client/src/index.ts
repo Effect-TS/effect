@@ -35,6 +35,13 @@ export interface HttpRequestError {
   error: Error;
 }
 
+export interface HttpDeserializer {
+  httpDeserializer: {
+    response: <A>(a: string) => A | undefined;
+    errorResponse: <E>(error: string) => E | undefined;
+  };
+}
+
 export enum HttpErrorReason {
   Request,
   Response
@@ -70,7 +77,7 @@ export interface Http {
       headers: Record<string, string>,
       body?: I,
       requestType?: RequestType
-    ) => T.Effect<T.NoEnv, HttpError<E>, Response<O>>;
+    ) => T.Effect<HttpDeserializer, HttpError<E>, Response<O>>;
   };
 }
 
@@ -83,7 +90,7 @@ export function request<R, I, E, O>(
   url: string,
   body?: I,
   requestType?: RequestType
-): T.Effect<Http & R, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer & R, HttpError<E>, Response<O>> {
   return T.accessM((r: Http & R) => {
     if (hasHeaders(r)) {
       return r.http.request(method, url, r.headers, body, requestType);
@@ -95,73 +102,73 @@ export function request<R, I, E, O>(
 
 export function get<E, O>(
   url: string
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.GET, url);
 }
 
 export function post<I, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.POST, url, body);
 }
 
 export function postData<I extends ParsedUrlQueryInput, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.POST, url, body, RequestType.DATA);
 }
 
 export function patch<I, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.PATCH, url, body);
 }
 
 export function patchData<I extends ParsedUrlQueryInput, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.PATCH, url, body, RequestType.DATA);
 }
 
 export function put<I, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.PUT, url, body);
 }
 
 export function putData<I extends ParsedUrlQueryInput, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.PUT, url, body, RequestType.DATA);
 }
 
 export function del<I, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.DELETE, url, body);
 }
 
 export function delData<I extends ParsedUrlQueryInput, E, O>(
   url: string,
   body?: I
-): T.Effect<Http, HttpError<E>, Response<O>> {
+): T.Effect<Http & HttpDeserializer, HttpError<E>, Response<O>> {
   return request(Method.DELETE, url, body, RequestType.DATA);
 }
 
 export function withHeaders<I, E, O>(
   headers: Record<string, string>
-): (
-  eff: T.Effect<Http, HttpError<E>, Response<O>>
-) => T.Effect<Http, HttpError<E>, Response<O>> {
-  return eff =>
-    T.provideR<Http, HttpHeaders & Http>(r => ({
+): <R>(
+  eff: T.Effect<R, HttpError<E>, Response<O>>
+) => T.Effect<R, HttpError<E>, Response<O>> {
+  return <R>(eff: T.Effect<R, HttpError<E>, Response<O>>) =>
+    T.provideR<R, HttpHeaders & R>(r => ({
       ...r,
       headers: { ...r["headers"], ...headers }
     }))(eff);
@@ -169,12 +176,27 @@ export function withHeaders<I, E, O>(
 
 export function replaceHeaders<I, E, O>(
   headers: Record<string, string>
-): (
-  eff: T.Effect<Http, HttpError<E>, Response<O>>
-) => T.Effect<Http, HttpError<E>, Response<O>> {
-  return eff =>
-    T.provideR<Http, HttpHeaders & Http>(r => ({
+): <R>(
+  eff: T.Effect<R, HttpError<E>, Response<O>>
+) => T.Effect<R, HttpError<E>, Response<O>> {
+  return <R>(eff: T.Effect<R, HttpError<E>, Response<O>>) =>
+    T.provideR<R, HttpHeaders & R>(r => ({
       ...r,
       headers
     }))(eff);
 }
+
+function tryJson<A>(a: string): A | undefined {
+  try {
+    return JSON.parse(a);
+  } catch (_) {
+    return undefined;
+  }
+}
+
+export const jsonDeserializer: HttpDeserializer = {
+  httpDeserializer: {
+    errorResponse: tryJson,
+    response: tryJson
+  }
+};
