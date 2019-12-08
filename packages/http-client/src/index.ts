@@ -81,8 +81,8 @@ export interface Http {
   };
 }
 
-function hasHeaders(r: any): r is HttpHeaders {
-  return "headers" in r;
+function hasHeaders(r: unknown): r is HttpHeaders {
+  return typeof r === "object" && !!r && "headers" in r;
 }
 
 export function request<R, I, E, O>(
