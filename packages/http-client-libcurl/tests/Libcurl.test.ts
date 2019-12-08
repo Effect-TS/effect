@@ -129,6 +129,65 @@ describe("Libcurl", () => {
     assert.deepEqual(isDone(result) && result.value.body?.foo, "bar");
   });
 
+  it("form", async () => {
+    const app = express();
+
+    app.use(
+      "/data",
+      bodyParser.json(),
+      bodyParser.urlencoded({ extended: true }),
+      (req, res) => {
+        res.send({
+          foo: req.body["foo"]
+        });
+      }
+    );
+
+    const s = app.listen(4003);
+
+    const post: Exit<
+      H.HttpError<unknown>,
+      H.Response<{ foo: string }>
+    > = await run(
+      pipe(H.postData("http://127.0.0.1:4003/data", { foo: "bar" }))
+    );
+
+    const put: Exit<
+      H.HttpError<unknown>,
+      H.Response<{ foo: string }>
+    > = await run(
+      pipe(H.putData("http://127.0.0.1:4003/data", { foo: "bar" }))
+    );
+
+    const patch: Exit<
+      H.HttpError<unknown>,
+      H.Response<{ foo: string }>
+    > = await run(
+      pipe(H.patchData("http://127.0.0.1:4003/data", { foo: "bar" }))
+    );
+
+    const del: Exit<
+      H.HttpError<unknown>,
+      H.Response<{ foo: string }>
+    > = await run(
+      pipe(H.delData("http://127.0.0.1:4003/data", { foo: "bar" }))
+    );
+
+    s.close();
+
+    assert.deepEqual(isDone(post), true);
+    assert.deepEqual(isDone(post) && post.value.body?.foo, "bar");
+
+    assert.deepEqual(isDone(put), true);
+    assert.deepEqual(isDone(put) && put.value.body?.foo, "bar");
+
+    assert.deepEqual(isDone(patch), true);
+    assert.deepEqual(isDone(patch) && patch.value.body?.foo, "bar");
+
+    assert.deepEqual(isDone(del), true);
+    assert.deepEqual(isDone(del) && del.value.body?.foo, "bar");
+  });
+
   it("get https", async () => {
     const result = await T.runToPromiseExit(
       pipe(

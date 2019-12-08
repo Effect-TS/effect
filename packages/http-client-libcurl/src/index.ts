@@ -5,8 +5,20 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "fp-ts/lib/Record";
 import * as C from "node-libcurl";
 import path from "path";
+import querystring from "querystring";
 
 const certfile = path.join(__dirname, "../cacert-2019-11-27.pem");
+
+function isJson(requestType?: H.RequestType) {
+  switch (requestType) {
+    case H.RequestType.JSON:
+      return true;
+    case H.RequestType.DATA:
+      return false;
+    default:
+      return true;
+  }
+}
 
 export const libcurl: H.Http = {
   http: {
@@ -14,12 +26,13 @@ export const libcurl: H.Http = {
       method: H.Method,
       url: string,
       headers: Record<string, string>,
-      body: I
+      body: I,
+      requestType?: H.RequestType
     ): T.Effect<T.NoEnv, H.HttpError<E>, H.Response<O>> =>
       T.async(done => {
         const req = new C.Curl();
         const reqHead = [
-          "Content-Type: application/json",
+          ...(isJson(requestType) ? ["Content-Type: application/json"] : []),
           ...pipe(
             headers,
             R.collect((k, v) => `${k}: ${v}`)
@@ -37,16 +50,16 @@ export const libcurl: H.Http = {
 
         switch (method) {
           case H.Method.POST:
-            customReq("POST", req, body);
+            customReq("POST", req, body, requestType);
             break;
           case H.Method.PUT:
-            customReq("PUT", req, body);
+            customReq("PUT", req, body, requestType);
             break;
           case H.Method.PATCH:
-            customReq("PATCH", req, body);
+            customReq("PATCH", req, body, requestType);
             break;
           case H.Method.DELETE:
-            customReq("DELETE", req, body);
+            customReq("DELETE", req, body, requestType);
             break;
           default:
             break;
@@ -83,10 +96,21 @@ export const libcurl: H.Http = {
   }
 };
 
-function customReq<I>(method: string, req: C.Curl, body?: I) {
+function customReq<I>(
+  method: string,
+  req: C.Curl,
+  body?: I,
+  requestType?: H.RequestType
+) {
   if (body) {
-    req.setOpt(C.Curl.option.POSTFIELDS, JSON.stringify(body));
+    req.setOpt(
+      C.Curl.option.POSTFIELDS,
+      isJson(requestType)
+        ? JSON.stringify(body)
+        : querystring.stringify(body as any)
+    );
   }
+
   req.setOpt(C.Curl.option.CUSTOMREQUEST, method);
 }
 

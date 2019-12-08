@@ -18,7 +18,8 @@
   "peerDependencies": {
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
-    "node-libcurl": "^2.0.2"
+    "node-libcurl": "^2.0.2",
+    "querystring": "^0.2.0"
   },
   "dependencies": {
     "@matechs/effect": "^0.2.13",
