@@ -35,57 +35,40 @@ export const libcurl: H.Http = {
 
         req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
 
-        const jsonBody = body ? JSON.stringify(body) : "";
-
-        function customReq(method: string) {
-          if (jsonBody.length > 0) {
-            req.setOpt(C.Curl.option.POSTFIELDS, jsonBody);
-          }
-          req.setOpt(C.Curl.option.CUSTOMREQUEST, method);
-        }
-
         switch (method) {
           case H.Method.POST:
-            customReq("POST");
+            customReq("POST", req, body);
             break;
           case H.Method.PUT:
-            customReq("PUT");
+            customReq("PUT", req, body);
             break;
           case H.Method.PATCH:
-            customReq("PATCH");
+            customReq("PATCH", req, body);
             break;
           case H.Method.DELETE:
-            customReq("DELETE");
+            customReq("DELETE", req, body);
             break;
           default:
             break;
         }
 
         req
-          .on("error", e => {
+          .on("error", error => {
             done(
               E.left({
                 _tag: H.HttpErrorReason.Request,
-                error: e
+                error
               })
             );
           })
           .on("end", (statusCode, body, headers) => {
-            const bodyStr = body.toString();
-
-            const response = <A>(): H.Response<A> => ({
-              status: statusCode,
-              body: parseOrUndefined(bodyStr),
-              headers: getHeaders(headers)
-            });
-
             if (statusCode >= 200 && statusCode < 300) {
-              done(E.right(response()));
+              done(E.right(getResponse(statusCode, body.toString(), headers)));
             } else {
               done(
                 E.left({
                   _tag: H.HttpErrorReason.Response,
-                  response: response()
+                  response: getResponse(statusCode, body.toString(), headers)
                 })
               );
             }
@@ -100,7 +83,27 @@ export const libcurl: H.Http = {
   }
 };
 
+function customReq<I>(method: string, req: C.Curl, body?: I) {
+  if (body) {
+    req.setOpt(C.Curl.option.POSTFIELDS, JSON.stringify(body));
+  }
+  req.setOpt(C.Curl.option.CUSTOMREQUEST, method);
+}
+
+function getResponse<A>(
+  statusCode: number,
+  bodyStr: string,
+  headers: Buffer | C.HeaderInfo[]
+): H.Response<A> {
+  return {
+    status: statusCode,
+    body: parseOrUndefined(bodyStr),
+    headers: getHeaders(headers)
+  };
+}
+
 function getHeaders(headers: Buffer | C.HeaderInfo[]) {
+  /* istanbul ignore next */
   return headers.length > 0
     ? typeof headers[0] !== "number"
       ? headers[0]
