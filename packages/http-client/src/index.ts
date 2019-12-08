@@ -1,5 +1,8 @@
 import { effect as T } from "@matechs/effect";
 
+/* tested in the implementation packages */
+/* istanbul ignore file */
+
 export enum Method {
   GET,
   POST,
