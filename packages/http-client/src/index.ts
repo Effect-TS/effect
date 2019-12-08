@@ -1,5 +1,4 @@
 import { effect as T } from "@matechs/effect";
-import { ParsedUrlQueryInput } from "querystring";
 import { Predicate } from "fp-ts/lib/function";
 
 /* tested in the implementation packages */
@@ -23,6 +22,10 @@ export enum Method {
 export enum RequestType {
   JSON,
   DATA
+}
+
+export interface DataInput {
+  [k: string]: unknown;
 }
 
 export type Headers = Record<string, string>;
@@ -181,7 +184,7 @@ export function post<I, E, O>(
   return request(Method.POST, url, body);
 }
 
-export function postData<I extends ParsedUrlQueryInput, E, O>(
+export function postData<I extends DataInput, E, O>(
   url: string,
   body?: I
 ): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
@@ -195,7 +198,7 @@ export function patch<I, E, O>(
   return request(Method.PATCH, url, body);
 }
 
-export function patchData<I extends ParsedUrlQueryInput, E, O>(
+export function patchData<I extends DataInput, E, O>(
   url: string,
   body?: I
 ): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
@@ -209,7 +212,7 @@ export function put<I, E, O>(
   return request(Method.PUT, url, body);
 }
 
-export function putData<I extends ParsedUrlQueryInput, E, O>(
+export function putData<I extends DataInput, E, O>(
   url: string,
   body?: I
 ): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
@@ -223,7 +226,7 @@ export function del<I, E, O>(
   return request(Method.DELETE, url, body);
 }
 
-export function delData<I extends ParsedUrlQueryInput, E, O>(
+export function delData<I extends DataInput, E, O>(
   url: string,
   body?: I
 ): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
