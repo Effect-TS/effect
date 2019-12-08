@@ -76,15 +76,13 @@ export function request<R, I, E, O>(
   url: string,
   body?: I
 ): T.Effect<Http & R, HttpError<E>, Response<O>> {
-  return T.accessM(({ http }: Http) =>
-    T.accessM((r: R) => {
-      if (hasHeaders(r)) {
-        return http.request(method, url, r.headers, body);
-      } else {
-        return http.request(method, url, {}, body);
-      }
-    })
-  );
+  return T.accessM((r: Http & R) => {
+    if (hasHeaders(r)) {
+      return r.http.request(method, url, r.headers, body);
+    } else {
+      return r.http.request(method, url, {}, body);
+    }
+  });
 }
 
 export function get<E, O>(
