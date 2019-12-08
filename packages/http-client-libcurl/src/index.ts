@@ -111,8 +111,9 @@ export const libcurl: H.Http = {
 
         req.perform();
 
-        // tslint:disable-next-line: no-empty
-        return () => {};
+        return () => {
+          req.close();
+        };
       })
   }
 };
