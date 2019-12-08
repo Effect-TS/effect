@@ -13,7 +13,7 @@ import * as ex from "../src/original/exit";
 
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
-import { effect, parEffect } from "../src/effect";
+import { effect, parEffect, Env } from "../src/effect";
 
 import { effect as T } from "../src";
 
@@ -96,21 +96,35 @@ describe("EffectSafe", () => {
     });
 
     it("provideR", async () => {
+      const http_symbol: unique symbol = Symbol();
+
+      interface HttpEnv extends Env {
+        [http_symbol]: number;
+      }
+
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provideR(() => ({ n: 10 }))(T.access(({ n }: { n: number }) => n))
+          T.provideR(() => ({ [http_symbol]: 10 }))(
+            T.access(({ [http_symbol]: n }: HttpEnv) => n)
+          )
         ),
         ex.done(10)
       );
     });
 
     it("stack safe effect", async () => {
-      const config = {
-        increment: 2
+      const incrementEnv = Symbol();
+      interface ConfigEnv extends Env {
+        [incrementEnv]: number;
+      }
+      const config: ConfigEnv = {
+        [incrementEnv]: 2
       };
 
       const program = array.traverse(T.effect)(range(1, 50000), (n: number) =>
-        T.accessM(({ increment }: typeof config) => T.sync(() => n + increment))
+        T.accessM(({ [incrementEnv]: increment }: typeof config) =>
+          T.sync(() => n + increment)
+        )
       );
 
       const result = (
@@ -263,18 +277,22 @@ describe("EffectSafe", () => {
     });
 
     it("provide & access env", async () => {
-      const env = {
-        value: "ok"
+      const value = Symbol();
+      interface ValueEnv extends Env {
+        [value]: "ok";
+      }
+      const env: ValueEnv = {
+        [value]: "ok"
       };
 
       const module = pipe(T.noEnv, T.mergeEnv(env));
 
       const a = await T.runToPromiseExit(
-        T.provide(module)(T.accessM(({ value }: typeof env) => T.pure(value)))
+        T.provide(module)(T.accessM(({ [value]: v }: typeof env) => T.pure(v)))
       );
 
       const b = await T.runToPromiseExit(
-        T.provide(module)(T.access(({ value }: typeof env) => value))
+        T.provide(module)(T.access(({ [value]: v }: typeof env) => v))
       );
 
       assert.deepEqual(a, ex.done("ok"));
@@ -282,23 +300,28 @@ describe("EffectSafe", () => {
     });
 
     it("provideM", async () => {
+      const nameEnv = Symbol();
       interface EnvName {
-        name: string;
+        [nameEnv]: string;
       }
+      const nameLengthEnv = Symbol();
       interface EnvNameLength {
-        nameLength: number;
+        [nameLengthEnv]: number;
       }
 
-      const program = T.accessM(({ nameLength }: EnvNameLength) =>
-        T.pure(nameLength + 1)
+      const program = T.accessM(
+        ({ [nameLengthEnv]: nameLength }: EnvNameLength) =>
+          T.pure(nameLength + 1)
       );
 
-      const provider = T.accessM(({ name }: EnvName) =>
-        T.pure({ nameLength: name.length } as EnvNameLength)
+      const provider = T.accessM(({ [nameEnv]: name }: EnvName) =>
+        T.pure({
+          [nameLengthEnv]: name.length
+        } as EnvNameLength)
       );
 
-      const env: EnvName = {
-        name: "bob"
+      const env: EnvName & Env = {
+        [nameEnv]: "bob"
       };
 
       const a = await T.runToPromiseExit(
@@ -309,38 +332,46 @@ describe("EffectSafe", () => {
     });
 
     it("provideSomeM", async () => {
-      interface EnvName {
-        name: string;
+      const nameEnv = Symbol();
+      interface EnvName extends Env {
+        [nameEnv]: string;
       }
+      const surNameEnv = Symbol();
       interface EnvSurname {
-        surName: string;
+        [surNameEnv]: string;
       }
+      const nameLengthEnv = Symbol();
       interface EnvNameLength {
-        nameLength: number;
+        [nameLengthEnv]: number;
       }
+      const surnameLengthEnv = Symbol();
       interface EnvSurNameLength {
-        surnameLength: number;
+        [surnameLengthEnv]: number;
       }
 
       const program = T.accessM(
-        ({ nameLength, surnameLength }: EnvNameLength & EnvSurNameLength) =>
+        ({
+          [nameLengthEnv]: nameLength,
+          [surnameLengthEnv]: surnameLength
+        }: EnvNameLength & EnvSurNameLength) =>
           T.pure(nameLength + surnameLength)
       );
 
-      const nameLengthProvider = T.accessM(({ name }: EnvName) =>
+      const nameLengthProvider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          nameLength: name.length
+          [nameLengthEnv]: name.length
         } as EnvNameLength)
       );
-      const surnameLengthProvider = T.accessM(({ surName }: EnvSurname) =>
-        T.pure({
-          surnameLength: surName.length
-        } as EnvSurNameLength)
+      const surnameLengthProvider = T.accessM(
+        ({ [surNameEnv]: surName }: EnvSurname) =>
+          T.pure({
+            [surnameLengthEnv]: surName.length
+          } as EnvSurNameLength)
       );
 
       const env: EnvName & EnvSurname = {
-        name: "bob",
-        surName: "sponge"
+        [nameEnv]: "bob",
+        [surNameEnv]: "sponge"
       };
 
       const a = await T.runToPromiseExit(
@@ -764,14 +795,16 @@ describe("EffectSafe", () => {
   });
 
   describe("Do", () => {
-    interface Env1 {
-      value: string;
+    const valueEnv = Symbol();
+    interface Env1 extends Env {
+      [valueEnv]: string;
     }
-    interface Env2 {
-      value2: string;
+    const value2Env = Symbol();
+    interface Env2 extends Env {
+      [value2Env]: string;
     }
-    const env1: Env1 = { value: "a" };
-    const env2: Env2 = { value2: "b" };
+    const env1: Env1 = { [valueEnv]: "a" };
+    const env2: Env2 = { [value2Env]: "b" };
     const env = T.mergeEnv(env2)(env1);
 
     it("effectMonad", async () => {
@@ -837,8 +870,12 @@ describe("EffectSafe", () => {
     });
 
     it("should traverse validation with env", async () => {
-      const env = {
-        prefix: "error"
+      const prefixEnv = Symbol();
+      interface PrefixEnv extends Env {
+        [prefixEnv]: "error";
+      }
+      const env: PrefixEnv = {
+        [prefixEnv]: "error"
       };
 
       const V = T.getValidationM(semigroupString);
