@@ -9,10 +9,22 @@ import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
 
 function run<I, E, O>(
-  eff: T.Effect<H.Http & H.HttpDeserializer, H.HttpError<E>, H.Response<O>>
+  eff: T.Effect<H.RequestEnv, H.HttpError<E>, H.Response<O>>
 ): Promise<Exit<H.HttpError<E>, H.Response<O>>> {
   return T.runToPromiseExit(
-    pipe(eff, T.provide(libcurl()), T.provide(H.jsonDeserializer))
+    pipe(
+      eff,
+      T.provide(libcurl()),
+      T.provide(H.jsonDeserializer),
+      T.provide(
+        H.middlewareStack([
+          H.withPathHeaders(
+            { foo: "bar" },
+            path => path === "http://127.0.0.1:4005/middle"
+          )
+        ])
+      )
+    )
   );
 }
 
@@ -131,6 +143,27 @@ describe("Libcurl", () => {
     assert.deepEqual(isDone(result) && result.value.body?.foo, "bar");
   });
 
+  it("headers middleware", async () => {
+    const app = express();
+
+    app.get("/middle", bodyParser.json(), (req, res) => {
+      res.send({
+        foo: req.header("foo")
+      });
+    });
+
+    const s = app.listen(4005);
+
+    const result = await run(
+      pipe(H.get<unknown, { foo: string }>("http://127.0.0.1:4005/middle"))
+    );
+
+    s.close();
+
+    assert.deepEqual(isDone(result), true);
+    assert.deepEqual(isDone(result) && result.value.body?.foo, "bar");
+  });
+
   it("replace headers", async () => {
     const app = express();
 
@@ -143,13 +176,12 @@ describe("Libcurl", () => {
 
     const s = app.listen(4004);
 
-    const result: Exit<
-      H.HttpError<unknown>,
-      H.Response<{ foo: string; bar?: string }>
-    > = await run(
+    const result = await run(
       pipe(
         pipe(
-          H.get("http://127.0.0.1:4004/h"),
+          H.get<unknown, { foo: string; bar?: string }>(
+            "http://127.0.0.1:4004/h"
+          ),
           H.replaceHeaders({
             foo: "baz"
           })
@@ -255,7 +287,8 @@ describe("Libcurl", () => {
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
         T.provide(libcurl()),
-        T.provide(H.jsonDeserializer)
+        T.provide(H.jsonDeserializer),
+        T.provide(H.middlewareStack())
       ),
       r => {
         res = r;
