@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - env-list
+      - http-client
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [10.x, 12.x, 13.x]
+        node-version: [10.x, 12.x]
 
     steps:
       - uses: actions/checkout@v1
@@ -26,7 +26,7 @@ jobs:
           npm install -g yarn
           lerna bootstrap
           lerna run build
-          yarn jest
+          yarn jest --detectOpenHandles
           lerna run lint
           lerna run bench
         env:
