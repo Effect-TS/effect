@@ -97,8 +97,8 @@
 						<section class="tsd-index-section tsd-is-not-exported">
 							<h3>Methods</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.runtimeimpl.html#dispatch" class="tsd-kind-icon">dispatch</a></li>
-								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.runtimeimpl.html#dispatchlater" class="tsd-kind-icon">dispatch<wbr>Later</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_effect.runtimeimpl.html#dispatch" class="tsd-kind-icon">dispatch</a></li>
+								<li class="tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_effect.runtimeimpl.html#dispatchlater" class="tsd-kind-icon">dispatch<wbr>Later</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.runtimeimpl.html#isrunning" class="tsd-kind-icon">is<wbr>Running</a></li>
 								<li class="tsd-kind-method tsd-parent-kind-class tsd-is-not-exported"><a href="_matechs_effect.runtimeimpl.html#run" class="tsd-kind-icon">run</a></li>
 							</ul>
@@ -111,10 +111,10 @@
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-class tsd-is-not-exported">
 					<a name="array" class="tsd-anchor"></a>
 					<h3>array</h3>
-					<div class="tsd-signature tsd-kind-icon">array<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Array</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> =&nbsp;[]</span></div>
+					<div class="tsd-signature tsd-kind-icon">array<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_effect.list.html" class="tsd-signature-type">List</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> =&nbsp;L.empty&lt;[(a: any) &#x3D;&gt; void, any]&gt;()</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/original/runtime.ts#L46">packages/effect/src/original/runtime.ts:46</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ae04d4c/packages/effect/src/original/runtime.ts#L48">packages/effect/src/original/runtime.ts:48</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -124,55 +124,107 @@
 					<div class="tsd-signature tsd-kind-icon">running<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> =&nbsp;false</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/original/runtime.ts#L45">packages/effect/src/original/runtime.ts:45</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ae04d4c/packages/effect/src/original/runtime.ts#L46">packages/effect/src/original/runtime.ts:46</a></li>
 						</ul>
 					</aside>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
 				<h2>Methods</h2>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported">
 					<a name="dispatch" class="tsd-anchor"></a>
 					<h3>dispatch</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">dispatch<span class="tsd-signature-symbol">(</span>thunk<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">dispatch&lt;A&gt;<span class="tsd-signature-symbol">(</span>thunk<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
-								<p>Implementation of <a href="../interfaces/_matechs_effect.runtime.html">Runtime</a>.<a href="../interfaces/_matechs_effect.runtime.html#dispatch">dispatch</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/original/runtime.ts#L60">packages/effect/src/original/runtime.ts:60</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ae04d4c/packages/effect/src/original/runtime.ts#L63">packages/effect/src/original/runtime.ts:63</a></li>
 								</ul>
 							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>thunk: <span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h5>
+									<h5>thunk: <span class="tsd-signature-type">function</span></h5>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-siganture">
+											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<h4 class="tsd-parameters-title">Parameters</h4>
+													<ul class="tsd-parameters">
+														<li>
+															<h5>a: <span class="tsd-signature-type">A</span></h5>
+														</li>
+													</ul>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</li>
+								<li>
+									<h5>a: <span class="tsd-signature-type">A</span></h5>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
 						</li>
 					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+				<section class="tsd-panel tsd-member tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported">
 					<a name="dispatchlater" class="tsd-anchor"></a>
 					<h3>dispatch<wbr>Later</h3>
-					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">dispatch<wbr>Later<span class="tsd-signature-symbol">(</span>thunk<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span>, ms<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+					<ul class="tsd-signatures tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">dispatch<wbr>Later&lt;A&gt;<span class="tsd-signature-symbol">(</span>thunk<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span>, ms<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
-								<p>Implementation of <a href="../interfaces/_matechs_effect.runtime.html">Runtime</a>.<a href="../interfaces/_matechs_effect.runtime.html#dispatchlater">dispatchLater</a></p>
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/original/runtime.ts#L67">packages/effect/src/original/runtime.ts:67</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ae04d4c/packages/effect/src/original/runtime.ts#L71">packages/effect/src/original/runtime.ts:71</a></li>
 								</ul>
 							</aside>
+							<h4 class="tsd-type-parameters-title">Type parameters</h4>
+							<ul class="tsd-type-parameters">
+								<li>
+									<h4>A</h4>
+								</li>
+							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>thunk: <span class="tsd-signature-type">Lazy</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h5>
+									<h5>thunk: <span class="tsd-signature-type">function</span></h5>
+									<ul class="tsd-parameters">
+										<li class="tsd-parameter-siganture">
+											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>a<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+											</ul>
+											<ul class="tsd-descriptions">
+												<li class="tsd-description">
+													<h4 class="tsd-parameters-title">Parameters</h4>
+													<ul class="tsd-parameters">
+														<li>
+															<h5>a: <span class="tsd-signature-type">A</span></h5>
+														</li>
+													</ul>
+													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
+												</li>
+											</ul>
+										</li>
+									</ul>
+								</li>
+								<li>
+									<h5>a: <span class="tsd-signature-type">A</span></h5>
 								</li>
 								<li>
 									<h5>ms: <span class="tsd-signature-type">number</span></h5>
@@ -192,7 +244,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/original/runtime.ts#L48">packages/effect/src/original/runtime.ts:48</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ae04d4c/packages/effect/src/original/runtime.ts#L50">packages/effect/src/original/runtime.ts:50</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
@@ -209,7 +261,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/df7c1a4/packages/effect/src/original/runtime.ts#L50">packages/effect/src/original/runtime.ts:50</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/ae04d4c/packages/effect/src/original/runtime.ts#L52">packages/effect/src/original/runtime.ts:52</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -260,6 +312,12 @@
 						<a href="../modules/_matechs_http.html">@matechs/http</a>
 					</li>
 					<li class=" tsd-kind-module">
+						<a href="../modules/_matechs_http_client.html">@matechs/http-<wbr>client</a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="../modules/_matechs_http_client_libcurl.html">@matechs/http-<wbr>client-<wbr>libcurl</a>
+					</li>
+					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_orm.html">@matechs/orm</a>
 					</li>
 					<li class=" tsd-kind-module">
@@ -286,10 +344,10 @@
 							<li class=" tsd-kind-property tsd-parent-kind-class tsd-is-not-exported">
 								<a href="_matechs_effect.runtimeimpl.html#running" class="tsd-kind-icon">running</a>
 							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+							<li class=" tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported">
 								<a href="_matechs_effect.runtimeimpl.html#dispatch" class="tsd-kind-icon">dispatch</a>
 							</li>
-							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
+							<li class=" tsd-kind-method tsd-parent-kind-class tsd-has-type-parameter tsd-is-not-exported">
 								<a href="_matechs_effect.runtimeimpl.html#dispatchlater" class="tsd-kind-icon">dispatch<wbr>Later</a>
 							</li>
 							<li class=" tsd-kind-method tsd-parent-kind-class tsd-is-not-exported">
