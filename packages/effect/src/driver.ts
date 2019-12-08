@@ -102,7 +102,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  isInterruptible_ = true;
   cancelAsync: Lazy<void> | undefined;
   envStack = L.empty<any>();
 
