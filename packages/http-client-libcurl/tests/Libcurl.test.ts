@@ -5,7 +5,7 @@ import bodyParser from "body-parser";
 import express from "express";
 import { libcurl } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
-import { isDone, isRaise } from "@matechs/effect/lib/exit";
+import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 
 describe("Libcurl", () => {
   it("post-patch-put-del", async () => {
@@ -157,5 +157,23 @@ describe("Libcurl", () => {
         result.error.error,
       new Error("Unsupported protocol")
     );
+  });
+
+  it("cancel", async () => {
+    let res;
+
+    const cancel = T.run(
+      pipe(
+        H.get("https://jsonplaceholder.typicode.com/todos/1"),
+        T.provide(libcurl)
+      ),
+      r => {
+        res = r;
+      }
+    );
+
+    cancel();
+
+    assert.deepEqual(res && isInterrupt(res), true);
   });
 });
