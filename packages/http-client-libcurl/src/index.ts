@@ -7,8 +7,6 @@ import * as C from "node-libcurl";
 import path from "path";
 import querystring from "querystring";
 
-const certfile = path.join(__dirname, "../cacert-2019-11-27.pem");
-
 function isJson(requestType?: H.RequestType) {
   switch (requestType) {
     case H.RequestType.JSON:
@@ -20,7 +18,9 @@ function isJson(requestType?: H.RequestType) {
   }
 }
 
-export const libcurl: H.Http = {
+export const libcurl: (caPath?: string) => H.Http = (
+  caPath = path.join(__dirname, "../cacert-2019-11-27.pem")
+) => ({
   http: {
     request: <I, E, O>(
       method: H.Method,
@@ -40,7 +40,7 @@ export const libcurl: H.Http = {
         ];
 
         req.setOpt("URL", url);
-        req.setOpt("CAINFO", certfile);
+        req.setOpt("CAINFO", caPath);
         req.setOpt("FOLLOWLOCATION", 1);
         req.setOpt("VERBOSE", 0);
         req.setOpt("SSL_VERIFYHOST", 2);
@@ -94,7 +94,7 @@ export const libcurl: H.Http = {
         };
       })
   }
-};
+});
 
 function customReq<I>(
   method: string,

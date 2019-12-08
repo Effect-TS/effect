@@ -11,7 +11,7 @@ import { Exit } from "@matechs/effect/lib/original/exit";
 function run<I, E, O>(
   eff: T.Effect<H.Http, H.HttpError<E>, H.Response<O>>
 ): Promise<Exit<H.HttpError<E>, H.Response<O>>> {
-  return T.runToPromiseExit(T.provideAll(libcurl)(eff));
+  return T.runToPromiseExit(T.provideAll(libcurl())(eff));
 }
 
 describe("Libcurl", () => {
@@ -189,11 +189,8 @@ describe("Libcurl", () => {
   });
 
   it("get https", async () => {
-    const result = await T.runToPromiseExit(
-      pipe(
-        H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provide(libcurl)
-      )
+    const result = await run(
+      H.get("https://jsonplaceholder.typicode.com/todos/1")
     );
 
     assert.deepEqual(isDone(result), true);
@@ -223,7 +220,7 @@ describe("Libcurl", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provide(libcurl)
+        T.provide(libcurl())
       ),
       r => {
         res = r;
