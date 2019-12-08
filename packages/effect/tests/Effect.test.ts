@@ -113,6 +113,29 @@ describe("EffectSafe", () => {
       );
     });
 
+    it("provideR can be optional", async () => {
+      const http_symbol: unique symbol = Symbol();
+
+      interface HttpEnv extends Env {
+        [http_symbol]?: number;
+      }
+
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.provideR(() => ({ [http_symbol]: 10 }))(
+            T.access(({ [http_symbol]: n }: HttpEnv) => n)
+          )
+        ),
+        ex.done(10)
+      );
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.access(({ [http_symbol]: n }: HttpEnv) => n)
+        ),
+        ex.done(undefined)
+      );
+    });
+
     it("stack safe effect", async () => {
       const incrementEnv = Symbol();
       interface ConfigEnv extends Env {

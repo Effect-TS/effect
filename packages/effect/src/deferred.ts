@@ -111,8 +111,9 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
   }
 
   from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
-    const completed = effect.chain(T.result(T.provideAll(this.r)(source)), e =>
-      this.complete(e)
+    const completed = effect.chain(
+      T.result(T.provideAll(this.r as T.Env & R)(source)),
+      e => this.complete(e)
     );
     return T.onInterrupted(completed, this.interrupt);
   }
