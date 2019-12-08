@@ -141,19 +141,15 @@ export function requestInner<R, I, E, O>(
   body?: I,
   requestType?: RequestType
 ): T.Effect<RequestEnv & R, HttpError<E>, Response<O>> {
-  return T.accessM((r: Http & R) => {
-    if (hasHeaders(r)) {
-      return r[ENV_URIS.Http].request(
-        method,
-        url,
-        r[ENV_URIS.HttpHeaders],
-        body,
-        requestType
-      );
-    } else {
-      return r[ENV_URIS.Http].request(method, url, {}, body, requestType);
-    }
-  });
+  return T.accessM((r: Http & R) =>
+    r[ENV_URIS.Http].request(
+      method,
+      url,
+      hasHeaders(r) ? r[ENV_URIS.HttpHeaders] : {},
+      body,
+      requestType
+    )
+  );
 }
 
 export function request<R, I, E, O>(
