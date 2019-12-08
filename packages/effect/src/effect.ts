@@ -56,11 +56,7 @@ export interface Env extends Record<symbol, any> {
   [k: number]: never;
 }
 
-export const noEnv = {};
-
-const foo = (e: Env) => {};
-const cc = Symbol();
-foo({ [cc]: 4 });
+export const noEnv: Env = {};
 
 /**
  * A description of an effect to perform
