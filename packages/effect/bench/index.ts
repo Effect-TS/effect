@@ -82,6 +82,15 @@ benchmark
     { defer: true }
   )
   .add(
+    "promise",
+    (cb: any) => {
+      fibPromise(n).then(() => {
+        cb.resolve();
+      });
+    },
+    { defer: true }
+  )
+  .add(
     "native",
     (cb: any) => {
       fib(n);
