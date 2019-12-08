@@ -5,6 +5,13 @@ import { Predicate } from "fp-ts/lib/function";
 /* tested in the implementation packages */
 /* istanbul ignore file */
 
+export const ENV_URIS = {
+  MiddlewareStack: "@matechs/http/middlewareStack" as const,
+  Http: "@matechs/http/mainModule" as const,
+  HttpHeaders: "@matechs/http/headers" as const,
+  HttpDeserializer: "@matechs/http/deserializer" as const
+};
+
 export enum Method {
   GET,
   POST,
@@ -37,7 +44,7 @@ export interface HttpRequestError {
 }
 
 export interface HttpDeserializer {
-  httpDeserializer: {
+  [ENV_URIS.HttpDeserializer]: {
     response: <A>(a: string) => A | undefined;
     errorResponse: <E>(error: string) => E | undefined;
   };
@@ -67,11 +74,11 @@ export function foldHttpError<A, B, ErrorBody>(
 }
 
 export interface HttpHeaders {
-  headers: Record<string, string>;
+  [ENV_URIS.HttpHeaders]: Record<string, string>;
 }
 
 export interface Http {
-  http: {
+  [ENV_URIS.Http]: {
     request: <I, E, O>(
       method: Method,
       url: string,
@@ -83,7 +90,7 @@ export interface Http {
 }
 
 function hasHeaders(r: unknown): r is HttpHeaders {
-  return typeof r === "object" && !!r && "headers" in r;
+  return typeof r === "object" && !!r && ENV_URIS.HttpHeaders in r;
 }
 
 type RequestF = <R, I, E, O>(
@@ -96,15 +103,15 @@ type RequestF = <R, I, E, O>(
 export type RequestMiddleware = (request: RequestF) => RequestF;
 
 export interface MiddlewareStack {
-  httpMiddlewareStack: {
+  [ENV_URIS.MiddlewareStack]: {
     stack: RequestMiddleware[];
   };
 }
 
 export const middlewareStack: (
-  stack?: MiddlewareStack["httpMiddlewareStack"]["stack"]
+  stack?: MiddlewareStack[typeof ENV_URIS.MiddlewareStack]["stack"]
 ) => MiddlewareStack = (stack = []) => ({
-  httpMiddlewareStack: {
+  [ENV_URIS.MiddlewareStack]: {
     stack
   }
 });
@@ -112,7 +119,7 @@ export const middlewareStack: (
 export type RequestEnv = Http & HttpDeserializer & MiddlewareStack;
 
 function foldMiddlewareStack(
-  { httpMiddlewareStack: { stack } }: MiddlewareStack,
+  { [ENV_URIS.MiddlewareStack]: { stack } }: MiddlewareStack,
   request: RequestF
 ): RequestF {
   if (stack.length > 0) {
@@ -136,9 +143,15 @@ export function requestInner<R, I, E, O>(
 ): T.Effect<RequestEnv & R, HttpError<E>, Response<O>> {
   return T.accessM((r: Http & R) => {
     if (hasHeaders(r)) {
-      return r.http.request(method, url, r.headers, body, requestType);
+      return r[ENV_URIS.Http].request(
+        method,
+        url,
+        r[ENV_URIS.HttpHeaders],
+        body,
+        requestType
+      );
     } else {
-      return r.http.request(method, url, {}, body, requestType);
+      return r[ENV_URIS.Http].request(method, url, {}, body, requestType);
     }
   });
 }
@@ -231,11 +244,11 @@ export function withHeaders(
     replace
       ? T.provideR<R, HttpHeaders & R>(r => ({
           ...r,
-          headers
+          [ENV_URIS.HttpHeaders]: headers
         }))(eff)
       : T.provideR<R, HttpHeaders & R>(r => ({
           ...r,
-          headers: { ...r["headers"], ...headers }
+          [ENV_URIS.HttpHeaders]: { ...r[ENV_URIS.HttpHeaders], ...headers }
         }))(eff);
 }
 
@@ -257,7 +270,7 @@ function tryJson<A>(a: string): A | undefined {
 }
 
 export const jsonDeserializer: HttpDeserializer = {
-  httpDeserializer: {
+  [ENV_URIS.HttpDeserializer]: {
     errorResponse: tryJson,
     response: tryJson
   }

@@ -21,7 +21,7 @@ function isJson(requestType?: H.RequestType): boolean {
 export const libcurl: (caPath?: string) => H.Http = (
   caPath = path.join(__dirname, "../cacert-2019-11-27.pem")
 ) => ({
-  http: {
+  [H.ENV_URIS.Http]: {
     request: <I, E, O>(
       method: H.Method,
       url: string,
@@ -29,7 +29,7 @@ export const libcurl: (caPath?: string) => H.Http = (
       body: I,
       requestType?: H.RequestType
     ): T.Effect<H.HttpDeserializer, H.HttpError<E>, H.Response<O>> =>
-      T.accessM(({ httpDeserializer }: H.HttpDeserializer) =>
+      T.accessM((r: H.HttpDeserializer) =>
         T.async(done => {
           const req = new C.Curl();
           const reqHead = [
@@ -83,7 +83,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                       statusCode,
                       body.toString(),
                       headers,
-                      httpDeserializer
+                      r[H.ENV_URIS.HttpDeserializer]
                     )
                   )
                 );
@@ -95,7 +95,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                       statusCode,
                       body.toString(),
                       headers,
-                      httpDeserializer
+                      r[H.ENV_URIS.HttpDeserializer]
                     )
                   })
                 );
@@ -134,7 +134,7 @@ function getResponse<A>(
   statusCode: number,
   bodyStr: string,
   headers: Buffer | C.HeaderInfo[],
-  httpDeserializer: H.HttpDeserializer["httpDeserializer"]
+  httpDeserializer: H.HttpDeserializer[typeof H.ENV_URIS.HttpDeserializer]
 ): H.Response<A> {
   return {
     status: statusCode,
