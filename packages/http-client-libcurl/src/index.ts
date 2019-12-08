@@ -7,7 +7,7 @@ import * as C from "node-libcurl";
 import path from "path";
 import querystring from "querystring";
 
-function isJson(requestType?: H.RequestType) {
+function isJson(requestType?: H.RequestType): boolean {
   switch (requestType) {
     case H.RequestType.JSON:
       return true;
@@ -117,7 +117,7 @@ function customReq<I>(
   req: C.Curl,
   body?: I,
   requestType?: H.RequestType
-) {
+): void {
   if (body) {
     req.setOpt(
       C.Curl.option.POSTFIELDS,
@@ -148,7 +148,7 @@ function getResponse<A>(
   };
 }
 
-function getHeaders(headers: Buffer | C.HeaderInfo[]) {
+function getHeaders(headers: Buffer | C.HeaderInfo[]): C.HeaderInfo {
   /* istanbul ignore next */
   return headers.length > 0
     ? typeof headers[0] !== "number"
