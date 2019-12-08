@@ -13,7 +13,7 @@ import * as ex from "../src/original/exit";
 
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
-import { effect, parEffect, Env, mergeEnv } from "../src/effect";
+import { effect, parEffect, Env } from "../src/effect";
 
 import { effect as T } from "../src";
 import { mergeDeep } from "../src/utils/merge";
