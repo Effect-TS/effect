@@ -13,9 +13,10 @@ import * as ex from "../src/original/exit";
 
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
-import { effect, parEffect, Env } from "../src/effect";
+import { effect, parEffect, Env, mergeEnv } from "../src/effect";
 
 import { effect as T } from "../src";
+import { mergeDeep } from "../src/utils/merge";
 
 describe("EffectSafe", () => {
   describe("Extra", () => {
@@ -276,27 +277,43 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done(2));
     });
 
+    it("mergeDeep", () => {
+      const a = Symbol();
+      const b = Symbol();
+      const foo = {
+        [a]: 10,
+        [b]: 20
+      };
+      const bar = {
+        [a]: 11,
+        [b]: 21
+      };
+      assert.deepEqual(mergeDeep(foo, bar), { [a]: 11, [b]: 21 });
+    });
+
     it("provide & access env", async () => {
-      const value = Symbol();
+      const valueEnv = Symbol();
       interface ValueEnv extends Env {
-        [value]: "ok";
+        [valueEnv]: "ok";
       }
       const env: ValueEnv = {
-        [value]: "ok"
+        [valueEnv]: "ok"
       };
 
       const module = pipe(T.noEnv, T.mergeEnv(env));
 
       const a = await T.runToPromiseExit(
-        T.provide(module)(T.accessM(({ [value]: v }: typeof env) => T.pure(v)))
+        T.provide(module)(
+          T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value))
+        )
       );
 
       const b = await T.runToPromiseExit(
-        T.provide(module)(T.access(({ [value]: v }: typeof env) => v))
+        T.provide(module)(T.access(({ [valueEnv]: value }: ValueEnv) => value))
       );
 
-      assert.deepEqual(a, ex.done("ok"));
-      assert.deepEqual(b, ex.done("ok"));
+      assert.deepStrictEqual(a, ex.done("ok"));
+      assert.deepStrictEqual(b, ex.done("ok"));
     });
 
     it("provideM", async () => {
@@ -882,7 +899,7 @@ describe("EffectSafe", () => {
 
       const checks = array.traverse(V)([0, 1, 2, 3, 4], x =>
         x < 2
-          ? T.accessM(({ prefix }: typeof env) =>
+          ? T.accessM(({ [prefixEnv]: prefix }: PrefixEnv) =>
               T.raiseError(`(${prefix}: ${x})`)
             )
           : T.pure(x)

@@ -14,7 +14,6 @@ import {
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
-import { NoEnv } from "./effect";
 import * as T from "./effect";
 import * as L from "./list";
 
