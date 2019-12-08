@@ -20,7 +20,8 @@ function run<I, E, O>(
         H.middlewareStack([
           H.withPathHeaders(
             { foo: "bar" },
-            path => path === "http://127.0.0.1:4005/middle"
+            path => path === "http://127.0.0.1:4005/middle",
+            true
           )
         ])
       )
@@ -182,9 +183,12 @@ describe("Libcurl", () => {
           H.get<unknown, { foo: string; bar?: string }>(
             "http://127.0.0.1:4004/h"
           ),
-          H.replaceHeaders({
-            foo: "baz"
-          })
+          H.withHeaders(
+            {
+              foo: "baz"
+            },
+            true
+          )
         ),
         H.withHeaders({
           foo: "bar",
