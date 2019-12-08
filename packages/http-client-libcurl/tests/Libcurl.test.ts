@@ -129,6 +129,43 @@ describe("Libcurl", () => {
     assert.deepEqual(isDone(result) && result.value.body?.foo, "bar");
   });
 
+  it("replace headers", async () => {
+    const app = express();
+
+    app.get("/h", bodyParser.json(), (req, res) => {
+      res.send({
+        foo: req.header("foo"),
+        bar: req.header("bar")
+      });
+    });
+
+    const s = app.listen(4004);
+
+    const result: Exit<
+      H.HttpError<unknown>,
+      H.Response<{ foo: string; bar?: string }>
+    > = await run(
+      pipe(
+        pipe(
+          H.get("http://127.0.0.1:4004/h"),
+          H.replaceHeaders({
+            foo: "baz"
+          })
+        ),
+        H.withHeaders({
+          foo: "bar",
+          bar: "baz"
+        })
+      )
+    );
+
+    s.close();
+
+    assert.deepEqual(isDone(result), true);
+    assert.deepEqual(isDone(result) && result.value.body?.foo, "baz");
+    assert.deepEqual(isDone(result) && result.value.body?.bar, undefined);
+  });
+
   it("form", async () => {
     const app = express();
 
