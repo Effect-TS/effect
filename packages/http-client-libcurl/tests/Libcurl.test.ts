@@ -171,7 +171,6 @@ describe("Libcurl", () => {
 
     app.use(
       "/data",
-      bodyParser.json(),
       bodyParser.urlencoded({ extended: true }),
       (req, res) => {
         res.send({
