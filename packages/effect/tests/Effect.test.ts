@@ -13,7 +13,7 @@ import * as ex from "../src/original/exit";
 
 import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
-import { effect, parEffect, Env } from "../src/effect";
+import { effect, parEffect } from "../src/effect";
 
 import { effect as T } from "../src";
 import { mergeDeep } from "../src/utils/merge";
@@ -99,7 +99,7 @@ describe("EffectSafe", () => {
     it("provideR", async () => {
       const http_symbol: unique symbol = Symbol();
 
-      interface HttpEnv extends Env {
+      interface HttpEnv {
         [http_symbol]: number;
       }
 
@@ -116,7 +116,7 @@ describe("EffectSafe", () => {
     it("provideR can be optional", async () => {
       const http_symbol: unique symbol = Symbol();
 
-      interface HttpEnv extends Env {
+      interface HttpEnv {
         [http_symbol]?: number;
       }
 
@@ -138,7 +138,7 @@ describe("EffectSafe", () => {
 
     it("stack safe effect", async () => {
       const incrementEnv = Symbol();
-      interface ConfigEnv extends Env {
+      interface ConfigEnv {
         [incrementEnv]: number;
       }
       const config: ConfigEnv = {
@@ -316,7 +316,7 @@ describe("EffectSafe", () => {
 
     it("provide & access env", async () => {
       const valueEnv = Symbol();
-      interface ValueEnv extends Env {
+      interface ValueEnv {
         [valueEnv]: "ok";
       }
       const env: ValueEnv = {
@@ -360,7 +360,7 @@ describe("EffectSafe", () => {
         } as EnvNameLength)
       );
 
-      const env: EnvName & Env = {
+      const env: EnvName = {
         [nameEnv]: "bob"
       };
 
@@ -373,7 +373,7 @@ describe("EffectSafe", () => {
 
     it("provideSomeM", async () => {
       const nameEnv = Symbol();
-      interface EnvName extends Env {
+      interface EnvName {
         [nameEnv]: string;
       }
       const surNameEnv = Symbol();
@@ -836,11 +836,11 @@ describe("EffectSafe", () => {
 
   describe("Do", () => {
     const valueEnv = Symbol();
-    interface Env1 extends Env {
+    interface Env1 {
       [valueEnv]: string;
     }
     const value2Env = Symbol();
-    interface Env2 extends Env {
+    interface Env2 {
       [value2Env]: string;
     }
     const env1: Env1 = { [valueEnv]: "a" };
@@ -911,7 +911,7 @@ describe("EffectSafe", () => {
 
     it("should traverse validation with env", async () => {
       const prefixEnv = Symbol();
-      interface PrefixEnv extends Env {
+      interface PrefixEnv {
         [prefixEnv]: "error";
       }
       const env: PrefixEnv = {

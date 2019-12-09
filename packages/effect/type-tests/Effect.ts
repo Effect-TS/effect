@@ -10,13 +10,13 @@ _.effect.of(1); // $ExpectType Effect<unknown, unknown, number>
 const envA = Symbol();
 const envB = Symbol();
 
-interface EnvA extends _.Env {
+interface EnvA {
   [envA]: {
     foo: string;
   };
 }
 
-interface EnvB extends _.Env {
+interface EnvB {
   [envB]: {
     foo: string;
   };

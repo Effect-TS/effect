@@ -53,8 +53,6 @@ export type NoErr = never;
 
 export interface Env extends Record<symbol, any> {}
 
-interface OnlySymbols extends Record<string, never>, Record<number, never> {}
-
 export const noEnv: Env = {};
 
 /**
@@ -380,14 +378,12 @@ export function accessEnvironment<R>(): Effect<R, NoErr, R> {
 }
 
 export function accessM<R, R2, E, A>(
-  f: FunctionN<[R & OnlySymbols], Effect<R2, E, A>>
+  f: FunctionN<[R], Effect<R2, E, A>>
 ): Effect<R & R2, E, A> {
   return chain_(accessEnvironment<R>(), f);
 }
 
-export function access<R, A, E = NoErr>(
-  f: FunctionN<[R & OnlySymbols], A>
-): Effect<R, E, A> {
+export function access<R, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
   return map_(accessEnvironment<R>(), f);
 }
 
