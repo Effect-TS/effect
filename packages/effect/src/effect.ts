@@ -51,7 +51,7 @@ export enum EffectTag {
 export type NoEnv = unknown;
 export type NoErr = never;
 
-export interface Env extends Record<symbol, any> {}
+export interface Env {}
 
 export const noEnv: Env = {};
 
@@ -377,17 +377,19 @@ export function accessEnvironment<R>(): Effect<R, NoErr, R> {
   return new EffectIO(EffectTag.AccessEnv) as any;
 }
 
-export function accessM<R, R2, E, A>(
+export function accessM<R extends Env, R2 extends Env, E, A>(
   f: FunctionN<[R], Effect<R2, E, A>>
 ): Effect<R & R2, E, A> {
   return chain_(accessEnvironment<R>(), f);
 }
 
-export function access<R, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
+export function access<R extends Env, A, E = NoErr>(
+  f: FunctionN<[R], A>
+): Effect<R, E, A> {
   return map_(accessEnvironment<R>(), f);
 }
 
-export function mergeEnv<A>(a: A & Env): <B>(b: B & Env) => A & B & Env {
+export function mergeEnv<A extends Env>(a: A): <B extends Env>(b: B) => A & B {
   return b => mergeDeep(a, b);
 }
 
@@ -396,10 +398,9 @@ export function mergeEnv<A>(a: A & Env): <B>(b: B & Env) => A & B & Env {
  * for deeper level is better to use provideR or provideAll
  */
 
-export const provide = <R>(r: R & Env) => <R2, E, A>(
-  ma: Effect<R2 & R & Env, E, A>
-): Effect<R2 & Env, E, A> =>
-  accessM((r2: R2 & Env) => provideAll(mergeEnv(r2)(r))(ma));
+export const provide = <R extends Env>(r: R) => <R2, E, A>(
+  ma: Effect<R2 & R, E, A>
+): Effect<R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(ma));
 
 /**
  * Provides partial environment, via direct transformation
@@ -428,13 +429,10 @@ export const provideAll = <R extends Env>(r: R) => <E, A>(
  * Note that this ***should*** be typically used at ***startup time***, not dynamically
  */
 
-export const provideM = <R2, R, E2>(f: Effect<R2 & Env, E2, R & Env>) => <E, A>(
-  ma: Effect<R & Env, E, A>
-): Effect<R2 & Env, E | E2, A> =>
-  chain_<R2 & Env, E2, R & Env, /* R & */ Env, E, A>(f, (
-    r // FIXME: Enforce correct typing but something is wrong here
-  ) => provide(r)(ma));
-// ): Effect<R2 & Env, E | E2, A> => chain_(f, r => provide(r)(ma));
+export const provideM = <R2 extends Env, R extends Env, E2>(
+  f: Effect<R2, E2, R>
+) => <E, A>(ma: Effect<R, E, A>): Effect<R2, E | E2, A> =>
+  chain_<R2, E2, R, Env, E, A>(f, r => provide(r)(ma));
 
 /**
  * Provides some of the environment necessary to the child effect via an effect
@@ -442,13 +440,10 @@ export const provideM = <R2, R, E2>(f: Effect<R2 & Env, E2, R & Env>) => <E, A>(
  * Note that this should be typically used at startup time, not dynamically
  */
 
-export const provideSomeM = <R2, R, E2>(f: Effect<R2 & Env, E2, R & Env>) => <
-  E,
-  A,
-  R3
->(
-  ma: Effect<R & R3 & Env, E, A>
-): Effect<R2 & R3 & Env, E | E2, A> => chain_(f, r => provide(r)(ma));
+export const provideSomeM = <R2 extends Env, R extends Env, E2>(
+  f: Effect<R2, E2, R>
+) => <E, A, R3>(ma: Effect<R & R3, E, A>): Effect<R2 & R3, E | E2, A> =>
+  chain_(f, r => provide(r)(ma));
 
 /**
  * Map the value produced by an IO
@@ -1003,7 +998,7 @@ export function makeFiber<R, E, A>(
       sync(() => {
         const driver = new DriverImpl<E, A>(runtime);
         const fiber = new FiberImpl(driver, name);
-        driver.start(provideAll(r as Env & R)(init));
+        driver.start(provideAll(r)(init));
         return fiber;
       })
     )
@@ -1068,8 +1063,8 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
           chain_<R3 & R4, E3, Deferred<R3 & R4, E3, C>, R3 & R4, E3, C>(
             makeDeferred<R3 & R4, E3, C>(),
             channel =>
-              chain_(fork(provideAll(r as Env & typeof r)(first)), fiber1 =>
-                chain_(fork(provideAll(r as Env & typeof r)(second)), fiber2 =>
+              chain_(fork(provideAll(r)(first)), fiber1 =>
+                chain_(fork(provideAll(r)(second)), fiber2 =>
                   chain_(
                     fork(
                       chain_(

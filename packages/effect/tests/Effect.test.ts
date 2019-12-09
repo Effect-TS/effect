@@ -16,7 +16,6 @@ import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
 import { effect as T } from "../src";
-import { mergeDeep } from "../src/utils/merge";
 
 describe("EffectSafe", () => {
   describe("Extra", () => {

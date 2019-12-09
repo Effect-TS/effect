@@ -397,7 +397,7 @@ export function allocate<R, E, A>(
  * @param man
  * @param ma
  */
-export function provideTo<R, E, R2 extends T.Env, A, E2>(
+export function provideTo<R extends T.Env, E, R2 extends T.Env, A, E2>(
   man: Managed<R, E, R2>,
   ma: T.Effect<R2, E2, A>
 ): T.Effect<R, E | E2, A> {

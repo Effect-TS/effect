@@ -7,11 +7,11 @@ import { pipe } from "fp-ts/lib/pipeable";
 const foo: unique symbol = Symbol();
 const bar: unique symbol = Symbol();
 
-interface TestEnv extends T.Env {
+interface TestEnv {
   [foo]: string;
 }
 
-interface TestEnv2 extends T.Env {
+interface TestEnv2 {
   [bar]: string;
 }
 
