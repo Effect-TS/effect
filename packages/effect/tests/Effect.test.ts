@@ -146,7 +146,7 @@ describe("EffectSafe", () => {
       };
 
       const program = array.traverse(T.effect)(range(1, 50000), (n: number) =>
-        T.accessM(({ [incrementEnv]: increment }: typeof config) =>
+        T.accessM(({ [incrementEnv]: increment }: ConfigEnv) =>
           T.sync(() => n + increment)
         )
       );
