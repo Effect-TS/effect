@@ -305,13 +305,15 @@ describe("EffectSafe", () => {
       const b = Symbol();
       const foo = {
         [a]: 10,
-        [b]: 20
+        [b]: 20,
+        c: "a"
       };
       const bar = {
         [a]: 11,
-        [b]: 21
+        [b]: 21,
+        c: "b"
       };
-      assert.deepEqual(mergeDeep(foo, bar), { [a]: 11, [b]: 21 });
+      assert.deepEqual(mergeDeep(foo, bar), { [a]: 11, [b]: 21, c: "b" });
     });
 
     it("provide & access env", async () => {
