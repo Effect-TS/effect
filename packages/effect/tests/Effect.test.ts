@@ -300,22 +300,7 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done(2));
     });
 
-    it("mergeDeep", () => {
-      const a = Symbol();
-      const b = Symbol();
-      const foo = {
-        [a]: 10,
-        [b]: 20,
-        c: "a"
-      };
-      const bar = {
-        [a]: 11,
-        [b]: 21,
-        c: "b"
-      };
-      assert.deepEqual(mergeDeep(foo, bar), { [a]: 11, [b]: 21, c: "b" });
-    });
-
+    
     it("provide & access env", async () => {
       const valueEnv = Symbol();
       interface ValueEnv {
