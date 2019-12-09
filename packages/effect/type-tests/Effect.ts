@@ -7,22 +7,25 @@ import { semigroupString } from "fp-ts/lib/Semigroup";
 _.pure(1); // $ExpectType Effect<unknown, never, number>
 _.effect.of(1); // $ExpectType Effect<unknown, unknown, number>
 
+const envA = Symbol();
+const envB = Symbol();
+
 interface EnvA {
-  envA: {
+  [envA]: {
     foo: string;
   };
 }
 
 interface EnvB {
-  envB: {
+  [envB]: {
     foo: string;
   };
 }
 
-const fa = _.accessM(({ envA }: EnvA) => _.pure(envA.foo)); // $ExpectType Effect<EnvA, never, string>
-const fb = _.accessM(({ envB }: EnvB) => _.pure(envB.foo)); // $ExpectType Effect<EnvB, never, string>
-const fc = _.accessM(({ envA }: EnvA) => _.effect.of(envA.foo)); // $ExpectType Effect<EnvA, unknown, string>
-const fd = _.accessM(({ envB }: EnvB) => _.effect.of(envB.foo)); // $ExpectType Effect<EnvB, unknown, string>
+const fa = _.accessM(({ [envA]: { foo } }: EnvA) => _.pure(foo)); // $ExpectType Effect<EnvA, never, string>
+const fb = _.accessM(({ [envB]: { foo } }: EnvB) => _.pure(foo)); // $ExpectType Effect<EnvB, never, string>
+const fc = _.accessM(({ [envA]: { foo } }: EnvA) => _.effect.of(foo)); // $ExpectType Effect<EnvA, unknown, string>
+const fd = _.accessM(({ [envB]: { foo } }: EnvB) => _.effect.of(foo)); // $ExpectType Effect<EnvB, unknown, string>
 
 const program = _.effect.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
 const program2 = _.effect.chain(fa, _ => fd); // $ExpectType Effect<EnvA & EnvB, unknown, string>
@@ -30,7 +33,7 @@ program2;
 const program3 = _.effect.chain(fc, _ => fb); // $ExpectType Effect<EnvA & EnvB, unknown, string>
 program3;
 
-const fae = _.accessM(({ envA }: EnvA) => _.raiseError(envA.foo));
+const fae = _.accessM(({ [envA]: { foo } }: EnvA) => _.raiseError(foo));
 
 _.effect.chain(fae, _ => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
 

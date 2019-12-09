@@ -50,11 +50,10 @@ export enum EffectTag {
 
 export type NoEnv = unknown;
 export type NoErr = never;
-export interface Env {
-  [k: string]: any;
-}
 
-export const noEnv = {};
+export interface Env {}
+
+export const noEnv: Env = {};
 
 /**
  * A description of an effect to perform
@@ -374,11 +373,11 @@ export function withRuntime<E, A>(
   return chain_(accessRuntime as Effect<NoEnv, E, Runtime>, f);
 }
 
-export function accessEnvironment<R extends Env>(): Effect<R, NoErr, R> {
+export function accessEnvironment<R>(): Effect<R, NoErr, R> {
   return new EffectIO(EffectTag.AccessEnv) as any;
 }
 
-export function accessM<R extends Env, R2, E, A>(
+export function accessM<R extends Env, R2 extends Env, E, A>(
   f: FunctionN<[R], Effect<R2, E, A>>
 ): Effect<R & R2, E, A> {
   return chain_(accessEnvironment<R>(), f);
@@ -390,7 +389,7 @@ export function access<R extends Env, A, E = NoErr>(
   return map_(accessEnvironment<R>(), f);
 }
 
-export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
+export function mergeEnv<A extends Env>(a: A): <B extends Env>(b: B) => A & B {
   return b => mergeDeep(a, b);
 }
 
@@ -399,16 +398,19 @@ export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
  * for deeper level is better to use provideR or provideAll
  */
 
-export const provide = <R>(r: R) => <R2, E, A>(
+export const provide = <R extends Env>(r: R) => <R2, E, A>(
   ma: Effect<R2 & R, E, A>
 ): Effect<R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(ma));
 
 /**
- * Provides partial environment, to be used only in top-level
- * for deeper level is better to use provideR or provideAll
+ * Provides partial environment, via direct transformation
+ * safe to use in non top-level scenarios
  */
 
-export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
+export const provideR = <R2 extends Env, R extends Env>(f: (r2: R2) => R) => <
+  E,
+  A
+>(
   ma: Effect<R, E, A>
 ): Effect<R2, E, A> => accessM((r2: R2) => provideAll(f(r2))(ma));
 
@@ -416,7 +418,7 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
  * Provides all environment to the child
  */
 
-export const provideAll = <R>(r: R) => <E, A>(
+export const provideAll = <R extends Env>(r: R) => <E, A>(
   ma: Effect<R, E, A>
 ): Effect<NoEnv, E, A> =>
   new EffectIO(EffectTag.ProvideEnv as const, ma, r) as any;
@@ -427,9 +429,10 @@ export const provideAll = <R>(r: R) => <E, A>(
  * Note that this ***should*** be typically used at ***startup time***, not dynamically
  */
 
-export const provideM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A>(
-  ma: Effect<R, E, A>
-): Effect<R2, E | E2, A> => chain_(f, r => provide(r)(ma));
+export const provideM = <R2 extends Env, R extends Env, E2>(
+  f: Effect<R2, E2, R>
+) => <E, A>(ma: Effect<R, E, A>): Effect<R2, E | E2, A> =>
+  chain_<R2, E2, R, Env, E, A>(f, r => provide(r)(ma));
 
 /**
  * Provides some of the environment necessary to the child effect via an effect
@@ -437,9 +440,10 @@ export const provideM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A>(
  * Note that this should be typically used at startup time, not dynamically
  */
 
-export const provideSomeM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A, R3>(
-  ma: Effect<R & R3, E, A>
-): Effect<R2 & R3, E | E2, A> => chain_(f, r => provide(r)(ma));
+export const provideSomeM = <R2 extends Env, R extends Env, E2>(
+  f: Effect<R2, E2, R>
+) => <E, A, R3>(ma: Effect<R & R3, E, A>): Effect<R2 & R3, E | E2, A> =>
+  chain_(f, r => provide(r)(ma));
 
 /**
  * Map the value produced by an IO
@@ -1308,7 +1312,7 @@ export function fromPromiseMap<E>(
  * @param callback
  */
 export function run<E, A>(
-  io: Effect<NoEnv, E, A>,
+  io: Effect<Env, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): Lazy<void> {
   const driver = new DriverImpl<E, A>();
@@ -1356,7 +1360,7 @@ export function runToPromise<E, A>(io: Effect<NoEnv, E, A>): Promise<A> {
  * @param r
  */
 export function runToPromiseExit<E, A>(
-  io: Effect<NoEnv, E, A>
+  io: Effect<Env, E, A>
 ): Promise<Exit<E, A>> {
   return new Promise(result => run(io, result));
 }

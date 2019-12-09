@@ -3,13 +3,22 @@ import * as assert from "assert";
 
 describe("Merge", () => {
   it("should merge", async () => {
-    const a = { foo: { bar: "bar" } };
-    const b = { foo: { baz: "baz" }, key: { key: "value" } };
+    const sa = Symbol();
+    const sb = Symbol();
+    const a = { foo: { bar: "bar" }, [sa]: { foo: "x" }, [sb]: "a" };
+    const b = {
+      foo: { baz: "baz" },
+      key: { key: "value" },
+      [sa]: { bar: "y" },
+      [sb]: "b"
+    };
     const c = mergeDeep(a, b);
 
     assert.deepEqual(c, {
       foo: { bar: "bar", baz: "baz" },
-      key: { key: "value" }
+      key: { key: "value" },
+      [sa]: { bar: "y" },
+      [sb]: "b"
     });
   });
 });

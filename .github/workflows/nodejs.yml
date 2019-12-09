@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - http-client
+      - env-symbol
 
 jobs:
   build:

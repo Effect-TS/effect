@@ -14,7 +14,6 @@ import {
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
-import { NoEnv } from "./effect";
 import * as T from "./effect";
 import * as L from "./list";
 
@@ -360,7 +359,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  start(run: T.Effect<NoEnv, E, A>): void {
+  start(run: T.Effect<T.Env, E, A>): void {
     if (this.started) {
       /* istanbul ignore next */
       throw new Error("Bug: Runtime may not be started multiple times");
