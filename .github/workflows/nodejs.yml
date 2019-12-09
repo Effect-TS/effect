@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - use-env-for-http-env
+      - use-symbol-for-http-env
 
 jobs:
   build:
