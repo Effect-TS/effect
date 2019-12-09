@@ -405,8 +405,8 @@ export const provide = <R>(r: R & Env) => <R2, E, A>(
   accessM((r2: R2 & Env) => provideAll(mergeEnv(r2)(r))(ma));
 
 /**
- * Provides partial environment, to be used only in top-level
- * for deeper level is better to use provideR or provideAll
+ * Provides partial environment, via direct transformation
+ * safe to use in non top-level scenarios
  */
 
 export const provideR = <R2 extends Env, R extends Env>(f: (r2: R2) => R) => <
