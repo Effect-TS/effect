@@ -13,7 +13,8 @@
   },
   "main": "lib/index.js",
   "files": [
-    "lib"
+    "lib",
+    "cacert-2019-11-27.pem"
   ],
   "peerDependencies": {
     "fp-ts": "^2.2.0",
