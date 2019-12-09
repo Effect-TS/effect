@@ -21,7 +21,7 @@ function isJson(requestType?: H.RequestType): boolean {
 export const libcurl: (caPath?: string) => H.Http = (
   caPath = path.join(__dirname, "../cacert-2019-11-27.pem")
 ) => ({
-  [H.ENV_URIS.Http]: {
+  [H.httpEnv]: {
     request: <I, E, O>(
       method: H.Method,
       url: string,
@@ -83,7 +83,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                       statusCode,
                       body.toString(),
                       headers,
-                      r[H.ENV_URIS.HttpDeserializer]
+                      r[H.httpDeserializerEnv]
                     )
                   )
                 );
@@ -95,7 +95,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                       statusCode,
                       body.toString(),
                       headers,
-                      r[H.ENV_URIS.HttpDeserializer]
+                      r[H.httpDeserializerEnv]
                     )
                   })
                 );
@@ -134,7 +134,7 @@ function getResponse<A>(
   statusCode: number,
   bodyStr: string,
   headers: Buffer | C.HeaderInfo[],
-  httpDeserializer: H.HttpDeserializer[typeof H.ENV_URIS.HttpDeserializer]
+  httpDeserializer: H.HttpDeserializer[typeof H.httpDeserializerEnv]
 ): H.Response<A> {
   return {
     status: statusCode,
