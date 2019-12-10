@@ -59,6 +59,8 @@ export const noEnv: Env = {};
  * A description of an effect to perform
  */
 export interface Effect<R, E, A> {
+  _E: E;
+  _A: A;
   (_: R): void;
 }
 

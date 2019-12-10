@@ -144,3 +144,6 @@ const doC2 = Do(M2) // $ExpectType Effect<Env2 & Env1 & Env3, string, { x: strin
     b: _.accessM(({}: Env3) => M.throwError("b"))
   })
   .return(r => r);
+
+// $ExpectError
+_.effect.foldExit(_.raiseError(""), () => _.pure("1"), () => _.pure(1))
