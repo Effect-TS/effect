@@ -1,5 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import { Predicate } from "fp-ts/lib/function";
+import { Option } from "fp-ts/lib/Option";
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
@@ -29,7 +30,7 @@ export interface DataInput {
 export type Headers = Record<string, string>;
 
 export interface Response<Body> {
-  body?: Body;
+  body: Option<Body>;
   headers: Headers;
   status: number;
 }

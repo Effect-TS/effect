@@ -6,6 +6,7 @@ import * as R from "fp-ts/lib/Record";
 import * as C from "node-libcurl";
 import path from "path";
 import querystring from "querystring";
+import { fromNullable } from "fp-ts/lib/Option";
 
 function isJson(requestType?: H.RequestType): boolean {
   switch (requestType) {
@@ -141,12 +142,13 @@ function getResponse<A>(
 ): H.Response<A> {
   return {
     status: statusCode,
-    body:
+    body: fromNullable(
       bodyStr.length > 0
         ? statusCode >= 200 && statusCode < 300
           ? httpDeserializer.response(bodyStr)
           : httpDeserializer.errorResponse(bodyStr)
-        : undefined,
+        : undefined
+    ),
     headers: getHeaders(headers)
   };
 }
