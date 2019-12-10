@@ -6,7 +6,7 @@ import * as E from "fp-ts/lib/Either";
 import * as A from "fp-ts/lib/Array";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as assert from "assert";
-import { raise } from "@matechs/effect/lib/original/exit";
+import { raise, done } from "@matechs/effect/lib/original/exit";
 import { stream } from "@matechs/effect/lib/stream";
 
 describe("RxJS", () => {
@@ -249,5 +249,12 @@ describe("fromEffect", () => {
     const counters = await T.runToPromise(test(T.pure("a")));
     assert.deepEqual(counters.values, ["a"]);
     assert.deepEqual(counters.errors, []);
+  });
+  it("fromEffect returns instantaneously", () => {
+    let evidence = null;
+    T.run(test(T.pure("a")), res => {
+      evidence = res;
+    });
+    assert.deepStrictEqual(evidence, done({ errors: [], values: ["a"] }));
   });
 });
