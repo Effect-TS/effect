@@ -143,3 +143,28 @@ export function fromEffect<A>(
       )
   );
 }
+
+export function fromEffectEnv<R, A>(
+  eff: T.Effect<R, never, A>
+): T.Effect<R, never, Rx.Observable<A>> {
+  return T.access(env =>
+    Rx.defer(
+      () =>
+        new Rx.Observable<A>(subs =>
+          T.run(
+            T.provide(env)(eff),
+            E.fold<never, A, T.NoEnv>(
+              a => {
+                subs.next(a);
+                subs.complete();
+              },
+              /* istanbul ignore next */
+              e => subs.error(e),
+              ab => subs.error(ab),
+              () => subs.complete()
+            )
+          )
+        )
+    )
+  );
+}

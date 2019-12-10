@@ -211,6 +211,53 @@ describe("RxJS", () => {
   });
 });
 
+describe("fromEffectEnv", () => {
+  interface Counters<A> {
+    values: A[];
+    errors: unknown[];
+  }
+  const makeCounters = <A>(): Counters<A> => ({
+    errors: [],
+    values: []
+  });
+
+  const test = <A>(eff: T.Effect<unknown, never, A>) =>
+    Do(T.effect)
+      .bind("counters", T.pure(makeCounters<A>()))
+      .bind("obs", O.fromEffectEnv(eff))
+      .bindL("res", ({ obs, counters }) =>
+        T.asyncTotal(cb => {
+          obs.subscribe(
+            n => {
+              counters.values.push(n);
+            },
+            e => {
+              counters.errors.push(e);
+              cb("ok");
+            },
+            () => {
+              cb("ok");
+            }
+          );
+          // tslint:disable-next-line: no-empty
+          return () => {};
+        })
+      )
+      .return(r => r.counters);
+
+  it("returns value", async () => {
+    const counters = await T.runToPromise(test(T.pure("a")));
+    assert.deepEqual(counters.values, ["a"]);
+    assert.deepEqual(counters.errors, []);
+  });
+  it("returns instantaneously", () => {
+    let evidence = null;
+    T.run(test(T.pure("a")), res => {
+      evidence = res;
+    });
+    assert.deepStrictEqual(evidence, done({ errors: [], values: ["a"] }));
+  });
+});
 describe("fromEffect", () => {
   interface Counters<A> {
     values: A[];
@@ -245,12 +292,12 @@ describe("fromEffect", () => {
       )
       .return(r => r.counters);
 
-  it("fromEffect returns value", async () => {
+  it("returns value", async () => {
     const counters = await T.runToPromise(test(T.pure("a")));
     assert.deepEqual(counters.values, ["a"]);
     assert.deepEqual(counters.errors, []);
   });
-  it("fromEffect returns instantaneously", () => {
+  it("returns instantaneously", () => {
     let evidence = null;
     T.run(test(T.pure("a")), res => {
       evidence = res;
