@@ -235,10 +235,8 @@ export function delData<I extends DataInput, E, O>(
 export function withHeaders(
   headers: Record<string, string>,
   replace = false
-): <R, E, O>(
-  eff: T.Effect<R, HttpError<E>, Response<O>>
-) => T.Effect<R, HttpError<E>, Response<O>> {
-  return <R, E, O>(eff: T.Effect<R, HttpError<E>, Response<O>>) =>
+): <R, E, A>(eff: T.Effect<R, E, A>) => T.Effect<R, E, A> {
+  return <R, E, A>(eff: T.Effect<R, E, A>) =>
     replace
       ? T.provideR<R, HttpHeaders & R>(r => ({
           ...r,
