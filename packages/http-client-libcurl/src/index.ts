@@ -19,7 +19,10 @@ function isJson(requestType?: H.RequestType): boolean {
 }
 
 export const libcurl: (caPath?: string) => H.Http = (
-  caPath = path.join(__dirname, "../cacert-2019-11-27.pem")
+  caPath = path.join(
+    require.resolve("@matechs/http-client-libcurl").replace("index.js", ""),
+    "../cacert-2019-11-27.pem"
+  )
 ) => ({
   [H.httpEnv]: {
     request: <I, E, O>(
