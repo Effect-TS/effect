@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - use-symbol-for-http-env
+      - enforce-effect-ea
 
 jobs:
   build:
