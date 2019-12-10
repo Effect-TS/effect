@@ -1,6 +1,5 @@
 import { effect as T } from "@matechs/effect";
 import { Predicate } from "fp-ts/lib/function";
-import { pipe } from "fp-ts/lib/pipeable";
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
