@@ -124,5 +124,21 @@ export function toObservable<R, E, A>(
 export function fromEffect<A>(
   eff: T.Effect<T.NoEnv, never, A>
 ): Rx.Observable<A> {
-  return Rx.defer(() => Rx.from(T.runToPromise(eff)));
+  return Rx.defer(
+    () =>
+      new Rx.Observable<A>(subs =>
+        T.run(
+          eff,
+          E.fold<never, A, T.NoEnv>(
+            a => {
+              subs.next(a);
+              subs.complete();
+            },
+            e => subs.error(e),
+            ab => subs.error(ab),
+            () => subs.complete()
+          )
+        )
+      )
+  );
 }
