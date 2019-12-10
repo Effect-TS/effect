@@ -3,7 +3,7 @@ import * as H from "@matechs/http-client";
 import assert from "assert";
 import bodyParser from "body-parser";
 import express from "express";
-import { libcurl } from "../src";
+import { jsonClient } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
@@ -14,8 +14,7 @@ function run<I, E, O>(
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(libcurl()),
-      T.provide(H.jsonDeserializer),
+      T.provide(jsonClient),
       T.provide(
         H.middlewareStack([
           H.withPathHeaders(
@@ -290,9 +289,7 @@ describe("Libcurl", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provide(libcurl()),
-        T.provide(H.jsonDeserializer),
-        T.provide(H.middlewareStack())
+        T.provideAll(jsonClient)
       ),
       r => {
         res = r;

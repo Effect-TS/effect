@@ -1,5 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import { Predicate } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
@@ -104,13 +105,13 @@ export type RequestF = <R, I, E, O>(
 export type RequestMiddleware = (request: RequestF) => RequestF;
 
 export interface MiddlewareStack {
-  [middlewareStackEnv]: {
+  [middlewareStackEnv]?: {
     stack: RequestMiddleware[];
   };
 }
 
 export const middlewareStack: (
-  stack?: MiddlewareStack[typeof middlewareStackEnv]["stack"]
+  stack?: RequestMiddleware[]
 ) => MiddlewareStack = (stack = []) => ({
   [middlewareStackEnv]: {
     stack
@@ -120,13 +121,13 @@ export const middlewareStack: (
 export type RequestEnv = Http & HttpDeserializer & MiddlewareStack;
 
 function foldMiddlewareStack(
-  { [middlewareStackEnv]: { stack } }: MiddlewareStack,
+  { [middlewareStackEnv]: env }: MiddlewareStack,
   request: RequestF
 ): RequestF {
-  if (stack.length > 0) {
+  if (env && env.stack.length > 0) {
     let r = request;
 
-    for (const middleware of stack) {
+    for (const middleware of env.stack) {
       r = middleware(r);
     }
 

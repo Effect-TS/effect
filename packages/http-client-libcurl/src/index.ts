@@ -159,3 +159,9 @@ function getHeaders(headers: Buffer | C.HeaderInfo[]): C.HeaderInfo {
       : {}
     : {};
 }
+
+export const jsonClient = pipe(
+  T.noEnv,
+  T.mergeEnv(libcurl()),
+  T.mergeEnv(H.jsonDeserializer)
+);
