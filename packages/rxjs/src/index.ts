@@ -134,6 +134,7 @@ export function fromEffect<A>(
               subs.next(a);
               subs.complete();
             },
+            /* istanbul ignore next */
             e => subs.error(e),
             ab => subs.error(ab),
             () => subs.complete()
