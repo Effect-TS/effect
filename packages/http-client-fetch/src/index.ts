@@ -5,17 +5,6 @@ import { left, right } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import { fromNullable } from "fp-ts/lib/Option";
 
-function isJson(requestType?: H.RequestType): boolean {
-  switch (requestType) {
-    case H.RequestType.JSON:
-      return true;
-    case H.RequestType.DATA:
-      return false;
-    default:
-      return true;
-  }
-}
-
 function getMethod(method: H.Method) {
   switch (method) {
     case H.Method.GET:
@@ -31,27 +20,28 @@ function getMethod(method: H.Method) {
   }
 }
 
-export function contentType(requestType?: H.RequestType) {
-  if (
-    typeof requestType === "undefined" ||
-    requestType === H.RequestType.JSON
-  ) {
-    return "application/json";
-  }
-  return "application/x-www-form-urlencoded";
-}
-
 export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
   [H.httpEnv]: {
-    request: (method, url, headers, body, requestType) =>
+    request: (method, url, headers, requestType, body) =>
       T.accessM((d: H.HttpDeserializer) =>
         T.async(r => {
           fetchApi(url, {
-            headers: { ...headers, "Content-Type": contentType(requestType) },
+            headers: {
+              ...headers,
+              "Content-Type": H.foldRequestType(
+                requestType,
+                () => "application/json",
+                () => "application/x-www-form-urlencoded",
+                () => "multipart/form-data"
+              )
+            },
             body: body
-              ? isJson(requestType)
-                ? JSON.stringify(body)
-                : querystring.stringify(body as any)
+              ? H.foldRequestType(
+                  requestType,
+                  () => JSON.stringify(body),
+                  () => querystring.stringify(body as any),
+                  () => (body as any) as FormData
+                )
               : undefined,
             method: getMethod(method)
           })
@@ -106,3 +96,39 @@ export const jsonClient = (fetchApi: typeof fetch) =>
     T.mergeEnv(httpFetch(fetchApi)),
     T.mergeEnv(H.jsonDeserializer)
   );
+
+// TODO: setup express for multipart to test
+/* istanbul ignore next */
+export function postForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<H.RequestEnv, H.HttpError<E>, H.Response<O>> {
+  return H.request(H.Method.POST, url, "FORM", body);
+}
+
+// TODO: setup express for multipart to test
+/* istanbul ignore next */
+export function putForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<H.RequestEnv, H.HttpError<E>, H.Response<O>> {
+  return H.request(H.Method.PUT, url, "FORM", body);
+}
+
+// TODO: setup express for multipart to test
+/* istanbul ignore next */
+export function patchForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<H.RequestEnv, H.HttpError<E>, H.Response<O>> {
+  return H.request(H.Method.PATCH, url, "FORM", body);
+}
+
+// TODO: setup express for multipart to test
+/* istanbul ignore next */
+export function delForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<H.RequestEnv, H.HttpError<E>, H.Response<O>> {
+  return H.request(H.Method.DELETE, url, "FORM", body);
+}
