@@ -47,6 +47,52 @@ describe("Operators", () => {
     assert.deepEqual(errors, ["error"]);
   });
 
+  it("chainEffect effect abort", async () => {
+    const numbers: number[] = [];
+    const errors: any[] = [];
+
+    Rx.from([0, 1, 2, 3])
+      .pipe(filter(n => n % 2 === 0))
+      .pipe(O.chainEffect(() => T.raiseAbort("error")))
+      .pipe(
+        catchError(e => {
+          errors.push(e);
+          return Rx.from([]);
+        })
+      )
+      .subscribe();
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(numbers, []);
+    // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
+    // rxjs only catches first error
+    assert.deepEqual(errors, ["error"]);
+  });
+
+  it("chainEffect effect interrupt", async () => {
+    const numbers: number[] = [];
+    const errors: any[] = [];
+
+    Rx.from([0, 1, 2, 3])
+      .pipe(filter(n => n % 2 === 0))
+      .pipe(O.chainEffect(() => T.raiseInterrupt))
+      .pipe(
+        catchError(e => {
+          errors.push(e);
+          return Rx.from([]);
+        })
+      )
+      .subscribe();
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(numbers, []);
+    // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
+    // rxjs only catches first error
+    assert.deepEqual(errors, [new Error("interrupted")]);
+  });
+
   it("chainEffect observable error", async () => {
     const numbers: number[] = [];
     const errors: any[] = [];
