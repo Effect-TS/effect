@@ -42,6 +42,8 @@ describe("Operators", () => {
     await T.runToPromise(T.delay(T.unit, 10));
 
     assert.deepEqual(numbers, []);
+    // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
+    // rxjs only catches first error
     assert.deepEqual(errors, ["error"]);
   });
 
