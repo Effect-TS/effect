@@ -23,8 +23,10 @@ export function chainEffect<A, E, B>(
           a =>
             S.encaseEffect(
               // tslint:disable-next-line: no-unnecessary-callback-wrapper
-              T.effect.map(T.result(f(a)), b => right<unknown, Exit<E, B>>(b)) // run effect and wrap result in Exit
-            )
+              T.effect.map(T.result(T.uninterruptible(f(a))), b =>
+                right<unknown, Exit<E, B>>(b)
+              )
+            ) // run effect and wrap result in Exit
         )
       ),
       R.toObservable, // convert to observable
@@ -45,7 +47,7 @@ export function chainEffect<A, E, B>(
                       sub.error(x); // effect aborted, (i.e. via raiseAbort)
                     },
                     () => {
-                      sub.error(new Error("interrupted")); // effect interrupted using raiseInterrupt
+                      // if effect is interrupted we won't get here
                     }
                   )
                 )

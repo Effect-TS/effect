@@ -19,8 +19,6 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    await T.runToPromise(T.delay(T.unit, 10));
-
     assert.deepEqual(numbers, [0, 2]);
   });
 
@@ -38,8 +36,6 @@ describe("Operators", () => {
         })
       )
       .subscribe();
-
-    await T.runToPromise(T.delay(T.unit, 10));
 
     assert.deepEqual(numbers, []);
     // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
@@ -62,8 +58,6 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    await T.runToPromise(T.delay(T.unit, 10));
-
     assert.deepEqual(numbers, []);
     // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
     // rxjs only catches first error
@@ -85,12 +79,8 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    await T.runToPromise(T.delay(T.unit, 10));
-
     assert.deepEqual(numbers, []);
-    // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
-    // rxjs only catches first error
-    assert.deepEqual(errors, [new Error("interrupted")]);
+    assert.deepEqual(errors, []);
   });
 
   it("chainEffect observable error", async () => {
@@ -113,8 +103,6 @@ describe("Operators", () => {
         })
       )
       .subscribe();
-
-    await T.runToPromise(T.delay(T.unit, 10));
 
     assert.deepEqual(numbers, [0, 2]);
     assert.deepEqual(errors, ["error"]);
