@@ -96,11 +96,11 @@ describe("Fetch", () => {
   it("get 404", async () => {
     const app = express();
 
-    const s = app.listen(4011);
+    const s = app.listen(4016);
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4011/"),
+        H.get("http://127.0.0.1:4016/"),
         T.mapError(
           H.foldHttpError(
             _ => 0,
