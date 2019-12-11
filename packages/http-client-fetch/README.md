@@ -1,8 +1,8 @@
 # Introduction
 
-Provides integration with `https://github.com/JCMais/node-libcurl`
+Provides integration with `fetch`
 
-Docs at [https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_libcurl.html](https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_libcurl.html)
+Docs at [https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_fetch.html](https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_fetch.html)
 
 
 # Notes

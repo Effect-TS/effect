@@ -100,12 +100,9 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
   }
 });
 
-export const jsonClient = pipe(
-  T.noEnv,
-  T.mergeEnv(
-    httpFetch(
-      window && window.fetch ? window.fetch : require("isomorphic-fetch")
-    )
-  ),
-  T.mergeEnv(H.jsonDeserializer)
-);
+export const jsonClient = (fetchApi: typeof fetch) =>
+  pipe(
+    T.noEnv,
+    T.mergeEnv(httpFetch(fetchApi)),
+    T.mergeEnv(H.jsonDeserializer)
+  );

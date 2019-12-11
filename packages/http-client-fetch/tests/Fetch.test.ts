@@ -13,7 +13,7 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(jsonClient),
+      T.provide(jsonClient(fetch)),
       T.provide(
         H.middlewareStack([
           H.withPathHeaders(
@@ -290,7 +290,7 @@ describe("Fetch", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provideAll(jsonClient)
+        T.provideAll(jsonClient(fetch))
       ),
       r => {
         res = r;
