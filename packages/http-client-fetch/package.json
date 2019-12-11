@@ -1,0 +1,32 @@
+{
+  "name": "@matechs/http-client-fetch",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": false,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "scripts": {
+    "build": "rimraf lib && tsc --build tsconfig.build.json",
+    "lint": "tslint --project ."
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "peerDependencies": {
+    "fp-ts": "^2.2.0",
+    "fp-ts-contrib": "^0.1.6",
+    "querystring": "^0.2.0"
+  },
+  "dependencies": {
+    "@matechs/effect": "^0.2.16",
+    "@matechs/http-client": "^0.0.6"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "@types/isomorphic-fetch": "^0.0.35",
+    "isomorphic-fetch": "^2.2.1"
+  }
+}

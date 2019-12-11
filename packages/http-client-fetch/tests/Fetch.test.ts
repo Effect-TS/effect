@@ -18,7 +18,7 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
         H.middlewareStack([
           H.withPathHeaders(
             { foo: "bar" },
-            path => path === "http://127.0.0.1:4005/middle",
+            path => path === "http://127.0.0.1:4015/middle",
             true
           )
         ])
@@ -27,7 +27,7 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   );
 }
 
-describe("Libcurl", () => {
+describe("Fetch", () => {
   it("post-patch-put-del", async () => {
     const app = express();
 
@@ -47,30 +47,30 @@ describe("Libcurl", () => {
       res.send(req.body);
     });
 
-    const s = app.listen(4001);
+    const s = app.listen(4011);
 
     const post = await run(
-      H.post("http://127.0.0.1:4001/post", {
+      H.post("http://127.0.0.1:4011/post", {
         foo: "bar"
       })
     );
 
-    const postNoBody = await run(H.post("http://127.0.0.1:4001/post"));
+    const postNoBody = await run(H.post("http://127.0.0.1:4011/post"));
 
     const put = await run(
-      H.put("http://127.0.0.1:4001/put", {
+      H.put("http://127.0.0.1:4011/put", {
         foo: "bar"
       })
     );
 
     const patch = await run(
-      H.patch("http://127.0.0.1:4001/patch", {
+      H.patch("http://127.0.0.1:4011/patch", {
         foo: "bar"
       })
     );
 
     const del = await run(
-      H.del("http://127.0.0.1:4001/delete", {
+      H.del("http://127.0.0.1:4011/delete", {
         foo: "bar"
       })
     );
@@ -96,11 +96,11 @@ describe("Libcurl", () => {
   it("get 404", async () => {
     const app = express();
 
-    const s = app.listen(4001);
+    const s = app.listen(4011);
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4001/"),
+        H.get("http://127.0.0.1:4011/"),
         T.mapError(
           H.foldHttpError(
             _ => 0,
@@ -125,11 +125,11 @@ describe("Libcurl", () => {
       });
     });
 
-    const s = app.listen(4002);
+    const s = app.listen(4012);
 
     const result = await run(
       pipe(
-        H.get<unknown, { foo: string }>("http://127.0.0.1:4002/h"),
+        H.get<unknown, { foo: string }>("http://127.0.0.1:4012/h"),
         H.withHeaders({
           foo: "bar"
         })
@@ -151,10 +151,10 @@ describe("Libcurl", () => {
       });
     });
 
-    const s = app.listen(4005);
+    const s = app.listen(4015);
 
     const result = await run(
-      pipe(H.get<unknown, { foo: string }>("http://127.0.0.1:4005/middle"))
+      pipe(H.get<unknown, { foo: string }>("http://127.0.0.1:4015/middle"))
     );
 
     s.close();
@@ -173,13 +173,13 @@ describe("Libcurl", () => {
       });
     });
 
-    const s = app.listen(4004);
+    const s = app.listen(4014);
 
     const result = await run(
       pipe(
         pipe(
           H.get<unknown, { foo: string; bar?: string }>(
-            "http://127.0.0.1:4004/h"
+            "http://127.0.0.1:4014/h"
           ),
           H.withHeaders(
             {
@@ -210,34 +210,34 @@ describe("Libcurl", () => {
       });
     });
 
-    const s = app.listen(4003);
+    const s = app.listen(4013);
 
     const post: Exit<
       H.HttpError<unknown>,
       H.Response<{ foo: string }>
     > = await run(
-      pipe(H.postData("http://127.0.0.1:4003/data", { foo: "bar" }))
+      pipe(H.postData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     const put: Exit<
       H.HttpError<unknown>,
       H.Response<{ foo: string }>
     > = await run(
-      pipe(H.putData("http://127.0.0.1:4003/data", { foo: "bar" }))
+      pipe(H.putData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     const patch: Exit<
       H.HttpError<unknown>,
       H.Response<{ foo: string }>
     > = await run(
-      pipe(H.patchData("http://127.0.0.1:4003/data", { foo: "bar" }))
+      pipe(H.patchData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     const del: Exit<
       H.HttpError<unknown>,
       H.Response<{ foo: string }>
     > = await run(
-      pipe(H.delData("http://127.0.0.1:4003/data", { foo: "bar" }))
+      pipe(H.delData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     s.close();
@@ -280,7 +280,7 @@ describe("Libcurl", () => {
       isRaise(result) &&
         result.error._tag === H.HttpErrorReason.Request &&
         result.error.error,
-      new Error("Unsupported protocol")
+      new Error("only http(s) protocols are supported")
     );
   });
 
