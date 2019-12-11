@@ -3,18 +3,18 @@ import * as H from "@matechs/http-client";
 import assert from "assert";
 import bodyParser from "body-parser";
 import express from "express";
-import { jsonClient } from "../src";
+import * as F from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
 import { some } from "fp-ts/lib/Option";
-import fetch from "isomorphic-fetch"
+import fetch from "isomorphic-fetch";
 
 function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(jsonClient(fetch)),
+      T.provide(F.jsonClient(fetch)),
       T.provide(
         H.middlewareStack([
           H.withPathHeaders(
@@ -202,7 +202,7 @@ describe("Fetch", () => {
     assert.deepEqual(isDone(result) && result.value.body, some({ foo: "baz" }));
   });
 
-  it("form", async () => {
+  it("data", async () => {
     const app = express();
 
     app.use("/data", bodyParser.urlencoded({ extended: true }), (req, res) => {
@@ -291,7 +291,7 @@ describe("Fetch", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provideAll(jsonClient(fetch))
+        T.provideAll(F.jsonClient(fetch))
       ),
       r => {
         res = r;

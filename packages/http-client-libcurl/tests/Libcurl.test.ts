@@ -201,7 +201,7 @@ describe("Libcurl", () => {
     assert.deepEqual(isDone(result) && result.value.body, some({ foo: "baz" }));
   });
 
-  it("form", async () => {
+  it("data", async () => {
     const app = express();
 
     app.use("/data", bodyParser.urlencoded({ extended: true }), (req, res) => {

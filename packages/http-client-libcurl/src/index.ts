@@ -8,11 +8,9 @@ import path from "path";
 import querystring from "querystring";
 import { fromNullable } from "fp-ts/lib/Option";
 
-function isJson(requestType?: H.RequestType): boolean {
+function isJson(requestType: H.RequestType): boolean {
   switch (requestType) {
-    case H.RequestType.JSON:
-      return true;
-    case H.RequestType.DATA:
+    case "DATA":
       return false;
     default:
       return true;
@@ -30,97 +28,105 @@ export const libcurl: (caPath?: string) => H.Http = (
       method: H.Method,
       url: string,
       headers: Record<string, string>,
-      body: I,
-      requestType?: H.RequestType
+      requestType: H.RequestType,
+      body: I
     ): T.Effect<H.HttpDeserializer, H.HttpError<E>, H.Response<O>> =>
-      T.accessM((r: H.HttpDeserializer) =>
-        T.async(done => {
-          const req = new C.Curl();
-          const reqHead = [
-            ...(isJson(requestType) ? ["Content-Type: application/json"] : []),
-            ...pipe(
-              headers,
-              R.collect((k, v) => `${k}: ${v}`)
-            )
-          ];
+      requestType === "FORM"
+        ? /* istanbul ignore next */ T.raiseError({
+            // cannot be triggered from exposed functions
+            _tag: H.HttpErrorReason.Request,
+            error: new Error("multipart form not supported")
+          })
+        : T.accessM((r: H.HttpDeserializer) =>
+            T.async(done => {
+              const req = new C.Curl();
+              const reqHead = [
+                ...(isJson(requestType)
+                  ? ["Content-Type: application/json"]
+                  : []),
+                ...pipe(
+                  headers,
+                  R.collect((k, v) => `${k}: ${v}`)
+                )
+              ];
 
-          req.setOpt("URL", url);
-          req.setOpt("CAINFO", caPath);
-          req.setOpt("FOLLOWLOCATION", 1);
-          req.setOpt("VERBOSE", 0);
-          req.setOpt("SSL_VERIFYHOST", 2);
-          req.setOpt("SSL_VERIFYPEER", 1);
+              req.setOpt("URL", url);
+              req.setOpt("CAINFO", caPath);
+              req.setOpt("FOLLOWLOCATION", 1);
+              req.setOpt("VERBOSE", 0);
+              req.setOpt("SSL_VERIFYHOST", 2);
+              req.setOpt("SSL_VERIFYPEER", 1);
 
-          req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
+              req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
 
-          switch (method) {
-            case H.Method.POST:
-              customReq("POST", req, body, requestType);
-              break;
-            case H.Method.PUT:
-              customReq("PUT", req, body, requestType);
-              break;
-            case H.Method.PATCH:
-              customReq("PATCH", req, body, requestType);
-              break;
-            case H.Method.DELETE:
-              customReq("DELETE", req, body, requestType);
-              break;
-            default:
-              break;
-          }
-
-          req
-            .on("error", error => {
-              done(
-                E.left({
-                  _tag: H.HttpErrorReason.Request,
-                  error
-                })
-              );
-            })
-            .on("end", (statusCode, body, headers) => {
-              if (statusCode >= 200 && statusCode < 300) {
-                done(
-                  E.right(
-                    getResponse(
-                      statusCode,
-                      body.toString(),
-                      headers,
-                      r[H.httpDeserializerEnv]
-                    )
-                  )
-                );
-              } else {
-                done(
-                  E.left({
-                    _tag: H.HttpErrorReason.Response,
-                    response: getResponse(
-                      statusCode,
-                      body.toString(),
-                      headers,
-                      r[H.httpDeserializerEnv]
-                    )
-                  })
-                );
+              switch (method) {
+                case H.Method.POST:
+                  customReq("POST", req, requestType, body);
+                  break;
+                case H.Method.PUT:
+                  customReq("PUT", req, requestType, body);
+                  break;
+                case H.Method.PATCH:
+                  customReq("PATCH", req, requestType, body);
+                  break;
+                case H.Method.DELETE:
+                  customReq("DELETE", req, requestType, body);
+                  break;
+                default:
+                  break;
               }
-            });
 
-          req.perform();
+              req
+                .on("error", error => {
+                  done(
+                    E.left({
+                      _tag: H.HttpErrorReason.Request,
+                      error
+                    })
+                  );
+                })
+                .on("end", (statusCode, body, headers) => {
+                  if (statusCode >= 200 && statusCode < 300) {
+                    done(
+                      E.right(
+                        getResponse(
+                          statusCode,
+                          body.toString(),
+                          headers,
+                          r[H.httpDeserializerEnv]
+                        )
+                      )
+                    );
+                  } else {
+                    done(
+                      E.left({
+                        _tag: H.HttpErrorReason.Response,
+                        response: getResponse(
+                          statusCode,
+                          body.toString(),
+                          headers,
+                          r[H.httpDeserializerEnv]
+                        )
+                      })
+                    );
+                  }
+                });
 
-          return () => {
-            req.close();
-          };
-        })
-      )
+              req.perform();
+
+              return () => {
+                req.close();
+              };
+            })
+          )
   }
 });
 
 function customReq<I>(
   method: string,
   req: C.Curl,
-  body?: I,
-  requestType?: H.RequestType
+  requestType: H.RequestType,
+  body?: I
 ): void {
   if (body) {
     req.setOpt(
