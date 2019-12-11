@@ -23,9 +23,7 @@ export function chainEffect<A, E, B>(
           a =>
             S.encaseEffect(
               // tslint:disable-next-line: no-unnecessary-callback-wrapper
-              T.effect.map(T.result(T.uninterruptible(f(a))), b =>
-                right<unknown, Exit<E, B>>(b)
-              )
+              T.effect.map(T.result(f(a)), b => right<unknown, Exit<E, B>>(b))
             ) // run effect and wrap result in Exit
         )
       ),
