@@ -30,17 +30,15 @@ describe("Operators", () => {
       .pipe(filter(n => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseError("error")))
       .pipe(
-        catchError(e => {
+        catchError((e, o) => {
           errors.push(e);
-          return Rx.from([]);
+          return o;
         })
       )
       .subscribe();
 
     assert.deepEqual(numbers, []);
-    // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
-    // rxjs only catches first error
-    assert.deepEqual(errors, ["error"]);
+    assert.deepEqual(errors, ["error", "error"]);
   });
 
   it("chainEffect effect abort", async () => {
@@ -51,17 +49,15 @@ describe("Operators", () => {
       .pipe(filter(n => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseAbort("error")))
       .pipe(
-        catchError(e => {
+        catchError((e, o) => {
           errors.push(e);
-          return Rx.from([]);
+          return o;
         })
       )
       .subscribe();
 
     assert.deepEqual(numbers, []);
-    // note: https://rxjs-dev.firebaseapp.com/api/operators/catchError
-    // rxjs only catches first error
-    assert.deepEqual(errors, ["error"]);
+    assert.deepEqual(errors, ["error", "error"]);
   });
 
   it("chainEffect effect interrupt", async () => {
