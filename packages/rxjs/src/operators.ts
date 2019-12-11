@@ -6,24 +6,29 @@ import * as R from "./";
 import { fold, right, left } from "fp-ts/lib/Either";
 import { Exit } from "@matechs/effect/lib/original/exit";
 
+/**
+ * Chain an effect into an rxjs .pipe()
+ * Errors are propagated and non final
+ */
+
 export function chainEffect<A, E, B>(
   f: (a: A) => T.Effect<T.NoEnv, E, B>
 ): (o: Rx.Observable<A>) => Rx.Observable<B> {
   return o =>
     pipe(
-      R.encaseObservableEither<unknown, A>(o),
+      R.encaseObservableEither<unknown, A>(o), // wrap an eventual observable error in stream either
       S.chain(
         fold(
-          e => S.once(left<unknown, Exit<E, B>>(e)),
+          e => S.once(left<unknown, Exit<E, B>>(e)), // propagate error
           a =>
             S.encaseEffect(
               // tslint:disable-next-line: no-unnecessary-callback-wrapper
-              T.effect.map(T.result(f(a)), b => right<unknown, Exit<E, B>>(b))
+              T.effect.map(T.result(f(a)), b => right<unknown, Exit<E, B>>(b)) // run effect and wrap result in Exit
             )
         )
       ),
-      R.toObservable,
-      R.runToObservable
+      R.toObservable, // convert to observable
+      R.runToObservable // run effect as observable
     ).pipe(
       seb =>
         new Rx.Observable(sub => {
@@ -32,21 +37,20 @@ export function chainEffect<A, E, B>(
               pipe(
                 exit,
                 fold(
-                  e => sub.error(e),
+                  e => sub.error(e), // this represent an error in source that we propagate
                   EX.fold(
-                    b => sub.next(b),
-                    e => sub.error(e),
+                    b => sub.next(b), // all fine
+                    e => sub.error(e), // error in effect
                     x => {
-                      sub.error(x);
-                      sub.complete();
+                      sub.error(x); // effect aborted, (i.e. via raiseAbort)
                     },
                     () => {
-                      sub.error(new Error("interrupted"));
-                      sub.complete();
+                      sub.error(new Error("interrupted")); // effect interrupted using raiseInterrupt
                     }
                   )
                 )
               ),
+            /* istanbul ignore next */
             _ => {
               // never
             },
