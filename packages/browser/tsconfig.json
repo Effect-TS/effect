@@ -1,0 +1,12 @@
+{
+  "extends": "../../base.tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "rootDir": "./",
+    "outDir": "./lib",
+    "lib": ["DOM"],
+    "target": "ES5",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
+  }
+}
