@@ -37,9 +37,7 @@ class MockStorage implements Storage {
 const session = new MockStorage([]);
 const local = new MockStorage([]);
 
-function run<E, A>(
-  eff: T.Effect<B.SessionStorageEnv & B.LocalStorageEnv, E, A>
-) {
+function run<E, A>(eff: T.Effect<B.SessionStorageEnv & B.LocalStorageEnv, E, A>) {
   return T.runToPromise(T.provideAll(B.storageEnv(session, local))(eff));
 }
 
