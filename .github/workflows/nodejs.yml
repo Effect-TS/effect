@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - use-with-rx
+      - browser
 
 jobs:
   build:
