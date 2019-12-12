@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>@matechs/http-client-fetch | @matechs/effect</title>
+	<title>@matechs/http-client-fetch | @matechs/browser</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -22,7 +22,7 @@
 						<li class="state loading">Preparing search index...</li>
 						<li class="state failure">The search index is not available</li>
 					</ul>
-					<a href="../index.html" class="title">@matechs/effect</a>
+					<a href="../index.html" class="title">@matechs/browser</a>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -86,13 +86,8 @@
 						<section class="tsd-index-section ">
 							<h3>Functions</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_http_client_fetch.html#delform" class="tsd-kind-icon">del<wbr>Form</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_http_client_fetch.html#getmethod" class="tsd-kind-icon">get<wbr>Method</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_http_client_fetch.html#httpfetch" class="tsd-kind-icon">http<wbr>Fetch</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_http_client_fetch.html#jsonclient" class="tsd-kind-icon">json<wbr>Client</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_http_client_fetch.html#patchform" class="tsd-kind-icon">patch<wbr>Form</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_http_client_fetch.html#postform" class="tsd-kind-icon">post<wbr>Form</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_http_client_fetch.html#putform" class="tsd-kind-icon">put<wbr>Form</a></li>
 							</ul>
 						</section>
 					</div>
@@ -100,73 +95,6 @@
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Functions</h2>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="delform" class="tsd-anchor"></a>
-					<h3>del<wbr>Form</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">del<wbr>Form&lt;E, O&gt;<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FormData</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L129">packages/http-client-fetch/src/index.ts:129</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>O</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>body: <span class="tsd-signature-type">FormData</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
-					<a name="getmethod" class="tsd-anchor"></a>
-					<h3>get<wbr>Method</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">get<wbr>Method<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Method</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">"GET"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"POST"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"PUT"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"PATCH"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"DELETE"</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L8">packages/http-client-fetch/src/index.ts:8</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>method: <span class="tsd-signature-type">Method</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">"GET"</span>
-								<span class="tsd-signature-symbol"> | </span>
-								<span class="tsd-signature-type">"POST"</span>
-								<span class="tsd-signature-symbol"> | </span>
-								<span class="tsd-signature-type">"PUT"</span>
-								<span class="tsd-signature-symbol"> | </span>
-								<span class="tsd-signature-type">"PATCH"</span>
-								<span class="tsd-signature-symbol"> | </span>
-								<span class="tsd-signature-type">"DELETE"</span>
-							</h4>
-						</li>
-					</ul>
-				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
 					<a name="httpfetch" class="tsd-anchor"></a>
 					<h3><span class="tsd-flag ts-flagConst">Const</span> http<wbr>Fetch</h3>
@@ -177,7 +105,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L23">packages/http-client-fetch/src/index.ts:23</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-fetch/src/index.ts#L8">packages/http-client-fetch/src/index.ts:8</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -194,13 +122,13 @@
 										<li class="tsd-parameter">
 											<h5>request<span class="tsd-signature-symbol">: </span>function</h5>
 											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon">request<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Method</span>, url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span>, requestType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">"JSON"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"DATA"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"FORM"</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">I</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Env</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">HttpRequestError</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">HttpResponseError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+												<li class="tsd-signature tsd-kind-icon">request<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Method</span>, url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">object</span>, requestType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">"JSON"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"DATA"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"FORM"</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Env</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">HttpRequestError</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">HttpResponseError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
 											</ul>
 											<ul class="tsd-descriptions">
 												<li class="tsd-description">
 													<aside class="tsd-sources">
 														<ul>
-															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L25">packages/http-client-fetch/src/index.ts:25</a></li>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-fetch/src/index.ts#L10">packages/http-client-fetch/src/index.ts:10</a></li>
 														</ul>
 													</aside>
 													<h4 class="tsd-parameters-title">Parameters</h4>
@@ -220,7 +148,7 @@
 															<h5>requestType: <span class="tsd-signature-type">"JSON"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"DATA"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"FORM"</span></h5>
 														</li>
 														<li>
-															<h5>body: <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">I</span></h5>
+															<h5>body: <span class="tsd-signature-type">unknown</span></h5>
 														</li>
 													</ul>
 													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Env</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">HttpRequestError</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">HttpResponseError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -242,7 +170,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L93">packages/http-client-fetch/src/index.ts:93</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-fetch/src/index.ts#L78">packages/http-client-fetch/src/index.ts:78</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -260,111 +188,6 @@
 						</li>
 					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="patchform" class="tsd-anchor"></a>
-					<h3>patch<wbr>Form</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">patch<wbr>Form&lt;E, O&gt;<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FormData</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L120">packages/http-client-fetch/src/index.ts:120</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>O</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>body: <span class="tsd-signature-type">FormData</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="postform" class="tsd-anchor"></a>
-					<h3>post<wbr>Form</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">post<wbr>Form&lt;E, O&gt;<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FormData</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L102">packages/http-client-fetch/src/index.ts:102</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>O</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>body: <span class="tsd-signature-type">FormData</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="putform" class="tsd-anchor"></a>
-					<h3>put<wbr>Form</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">put<wbr>Form&lt;E, O&gt;<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">FormData</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-fetch/src/index.ts#L111">packages/http-client-fetch/src/index.ts:111</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>O</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>body: <span class="tsd-signature-type">FormData</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">H.RequestEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
 			</section>
 		</div>
 		<div class="col-4 col-menu menu-sticky-wrap menu-highlight">
@@ -372,6 +195,9 @@
 				<ul>
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_browser.html">@matechs/browser</a>
 					</li>
 					<li class=" tsd-kind-module">
 						<a href="_matechs_effect.html">@matechs/effect</a>
@@ -413,26 +239,11 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_http_client_fetch.html#delform" class="tsd-kind-icon">del<wbr>Form</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
-						<a href="_matechs_http_client_fetch.html#getmethod" class="tsd-kind-icon">get<wbr>Method</a>
-					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module">
 						<a href="_matechs_http_client_fetch.html#httpfetch" class="tsd-kind-icon">http<wbr>Fetch</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module">
 						<a href="_matechs_http_client_fetch.html#jsonclient" class="tsd-kind-icon">json<wbr>Client</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_http_client_fetch.html#patchform" class="tsd-kind-icon">patch<wbr>Form</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_http_client_fetch.html#postform" class="tsd-kind-icon">post<wbr>Form</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_http_client_fetch.html#putform" class="tsd-kind-icon">put<wbr>Form</a>
 					</li>
 				</ul>
 			</nav>

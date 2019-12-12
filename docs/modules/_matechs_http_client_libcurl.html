@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>@matechs/http-client-libcurl | @matechs/effect</title>
+	<title>@matechs/http-client-libcurl | @matechs/browser</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -22,7 +22,7 @@
 						<li class="state loading">Preparing search index...</li>
 						<li class="state failure">The search index is not available</li>
 					</ul>
-					<a href="../index.html" class="title">@matechs/effect</a>
+					<a href="../index.html" class="title">@matechs/browser</a>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -92,7 +92,7 @@
 						<section class="tsd-index-section ">
 							<h3>Functions</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_http_client_libcurl.html#customreq" class="tsd-kind-icon">custom<wbr>Req</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_http_client_libcurl.html#customreq" class="tsd-kind-icon">custom<wbr>Req</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_http_client_libcurl.html#getheaders" class="tsd-kind-icon">get<wbr>Headers</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_http_client_libcurl.html#getresponse" class="tsd-kind-icon">get<wbr>Response</a></li>
 								<li class="tsd-kind-function tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_http_client_libcurl.html#isjson" class="tsd-kind-icon">is<wbr>Json</a></li>
@@ -110,32 +110,26 @@
 					<div class="tsd-signature tsd-kind-icon">json<wbr>Client<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Http</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Env</span><span class="tsd-signature-symbol"> =&nbsp;pipe(T.noEnv,T.mergeEnv(libcurl()),T.mergeEnv(H.jsonDeserializer))</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L171">packages/http-client-libcurl/src/index.ts:171</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L158">packages/http-client-libcurl/src/index.ts:158</a></li>
 						</ul>
 					</aside>
 				</section>
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Functions</h2>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
 					<a name="customreq" class="tsd-anchor"></a>
 					<h3>custom<wbr>Req</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
-						<li class="tsd-signature tsd-kind-icon">custom<wbr>Req&lt;I&gt;<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, req<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Curl</span>, requestType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">H.RequestType</span>, body<span class="tsd-signature-symbol">?: </span><a href="" class="tsd-signature-type">I</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
+					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
+						<li class="tsd-signature tsd-kind-icon">custom<wbr>Req<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, req<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Curl</span>, requestType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">H.RequestType</span>, body<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">void</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L125">packages/http-client-libcurl/src/index.ts:125</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L112">packages/http-client-libcurl/src/index.ts:112</a></li>
 								</ul>
 							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>I</h4>
-								</li>
-							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
@@ -148,7 +142,7 @@
 									<h5>requestType: <span class="tsd-signature-type">H.RequestType</span></h5>
 								</li>
 								<li>
-									<h5><span class="tsd-flag ts-flagOptional">Optional</span> body: <a href="" class="tsd-signature-type">I</a></h5>
+									<h5><span class="tsd-flag ts-flagOptional">Optional</span> body: <span class="tsd-signature-type">unknown</span></h5>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4>
@@ -165,7 +159,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L162">packages/http-client-libcurl/src/index.ts:162</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L149">packages/http-client-libcurl/src/index.ts:149</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -188,7 +182,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L143">packages/http-client-libcurl/src/index.ts:143</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L130">packages/http-client-libcurl/src/index.ts:130</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -288,7 +282,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L11">packages/http-client-libcurl/src/index.ts:11</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L11">packages/http-client-libcurl/src/index.ts:11</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -311,7 +305,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L20">packages/http-client-libcurl/src/index.ts:20</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L20">packages/http-client-libcurl/src/index.ts:20</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -328,20 +322,17 @@
 										<li class="tsd-parameter">
 											<h5>request<span class="tsd-signature-symbol">: </span>function</h5>
 											<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon">request&lt;I, E, O&gt;<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Method</span>, url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span>, requestType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">H.RequestType</span>, body<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">I</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
+												<li class="tsd-signature tsd-kind-icon">request&lt;E, O&gt;<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Method</span>, url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, headers<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">&gt;</span>, requestType<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">H.RequestType</span>, body<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
 											</ul>
 											<ul class="tsd-descriptions">
 												<li class="tsd-description">
 													<aside class="tsd-sources">
 														<ul>
-															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/5b82373/packages/http-client-libcurl/src/index.ts#L27">packages/http-client-libcurl/src/index.ts:27</a></li>
+															<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http-client-libcurl/src/index.ts#L27">packages/http-client-libcurl/src/index.ts:27</a></li>
 														</ul>
 													</aside>
 													<h4 class="tsd-type-parameters-title">Type parameters</h4>
 													<ul class="tsd-type-parameters">
-														<li>
-															<h4>I</h4>
-														</li>
 														<li>
 															<h4>E</h4>
 														</li>
@@ -364,7 +355,7 @@
 															<h5>requestType: <span class="tsd-signature-type">H.RequestType</span></h5>
 														</li>
 														<li>
-															<h5>body: <span class="tsd-signature-type">I</span></h5>
+															<h5><span class="tsd-flag ts-flagOptional">Optional</span> body: <span class="tsd-signature-type">unknown</span></h5>
 														</li>
 													</ul>
 													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpDeserializer</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">H.HttpError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Response</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">O</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
@@ -383,6 +374,9 @@
 				<ul>
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
+					</li>
+					<li class=" tsd-kind-module">
+						<a href="_matechs_browser.html">@matechs/browser</a>
 					</li>
 					<li class=" tsd-kind-module">
 						<a href="_matechs_effect.html">@matechs/effect</a>
@@ -427,7 +421,7 @@
 					<li class=" tsd-kind-variable tsd-parent-kind-module">
 						<a href="_matechs_http_client_libcurl.html#jsonclient" class="tsd-kind-icon">json<wbr>Client</a>
 					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
 						<a href="_matechs_http_client_libcurl.html#customreq" class="tsd-kind-icon">custom<wbr>Req</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">

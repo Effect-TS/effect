@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>Chain | @matechs/browser</title>
+	<title>LocalStorageEnv | @matechs/browser</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,41 +56,24 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="../modules/_matechs_effect.html">@matechs/effect</a>
+					<a href="../modules/_matechs_browser.html">@matechs/browser</a>
 				</li>
 				<li>
-					<a href="_matechs_effect.chain-1.html">Chain</a>
+					<a href="_matechs_browser.localstorageenv.html">LocalStorageEnv</a>
 				</li>
 			</ul>
-			<h1>Interface Chain&lt;R, E, L, A&gt;</h1>
+			<h1>Interface LocalStorageEnv</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
-			<section class="tsd-panel tsd-type-parameters">
-				<h3>Type parameters</h3>
-				<ul class="tsd-type-parameters">
-					<li>
-						<h4>R</h4>
-					</li>
-					<li>
-						<h4>E</h4>
-					</li>
-					<li>
-						<h4>L</h4>
-					</li>
-					<li>
-						<h4>A</h4>
-					</li>
-				</ul>
-			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">Chain</span>
+						<span class="target">LocalStorageEnv</span>
 					</li>
 				</ul>
 			</section>
@@ -101,9 +84,7 @@
 						<section class="tsd-index-section ">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain-1.html#_tag" class="tsd-kind-icon">_tag</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain-1.html#bind" class="tsd-kind-icon">bind</a></li>
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_effect.chain-1.html#left" class="tsd-kind-icon">left</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_browser.localstorageenv.html#__computed" class="tsd-kind-icon">__computed</a></li>
 							</ul>
 						</section>
 					</div>
@@ -112,32 +93,12 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Properties</h2>
 				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="_tag" class="tsd-anchor"></a>
-					<h3>_tag</h3>
-					<div class="tsd-signature tsd-kind-icon">_tag<span class="tsd-signature-symbol">:</span> <a href="../enums/_matechs_effect.managedtag.html#chain" class="tsd-signature-type">Chain</a></div>
+					<a name="__computed" class="tsd-anchor"></a>
+					<h3>__computed</h3>
+					<div class="tsd-signature tsd-kind-icon">__computed<span class="tsd-signature-symbol">:</span> <a href="_matechs_browser.genericstorage.html" class="tsd-signature-type">GenericStorage</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/effect/src/managed.ts#L139">packages/effect/src/managed.ts:139</a></li>
-						</ul>
-					</aside>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="bind" class="tsd-anchor"></a>
-					<h3>bind</h3>
-					<div class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">FunctionN</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-symbol">[</span><span class="tsd-signature-type">L</span><span class="tsd-signature-symbol">]</span><span class="tsd-signature-symbol">, </span><a href="../modules/_matechs_effect.html#managed" class="tsd-signature-type">Managed</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/effect/src/managed.ts#L141">packages/effect/src/managed.ts:141</a></li>
-						</ul>
-					</aside>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="left" class="tsd-anchor"></a>
-					<h3>left</h3>
-					<div class="tsd-signature tsd-kind-icon">left<span class="tsd-signature-symbol">:</span> <a href="../modules/_matechs_effect.html#managed" class="tsd-signature-type">Managed</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">L</span><span class="tsd-signature-symbol">&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/effect/src/managed.ts#L140">packages/effect/src/managed.ts:140</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/browser/src/index.ts#L21">packages/browser/src/index.ts:21</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -149,31 +110,11 @@
 					<li class="globals  ">
 						<a href="../globals.html"><em>Globals</em></a>
 					</li>
-					<li class=" tsd-kind-module">
+					<li class="current tsd-kind-module">
 						<a href="../modules/_matechs_browser.html">@matechs/browser</a>
 					</li>
-					<li class="current tsd-kind-module">
+					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_effect.html">@matechs/effect</a>
-						<ul>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="../modules/_matechs_effect._fp_ts_contrib_lib_do_.html">&quot;fp-<wbr>ts-<wbr>contrib/lib/<wbr>Do&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-1.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-2.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="../modules/_matechs_effect._fp_ts_lib_hkt_-3.html">&quot;fp-<wbr>ts/lib/HKT&quot;</a>
-							</li>
-							<li class=" tsd-kind-module tsd-parent-kind-module tsd-is-not-exported">
-								<a href="../modules/_matechs_effect._fp_ts_lib_pipeable_.html">&quot;fp-<wbr>ts/lib/pipeable&quot;</a>
-							</li>
-						</ul>
 					</li>
 					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_epics.html">@matechs/epics</a>
@@ -212,24 +153,42 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_browser.genericstorage.html" class="tsd-kind-icon">Generic<wbr>Storage</a>
+					</li>
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_effect.chain-1.html" class="tsd-kind-icon">Chain</a>
+					<li class="current tsd-kind-interface tsd-parent-kind-module">
+						<a href="_matechs_browser.localstorageenv.html" class="tsd-kind-icon">Local<wbr>Storage<wbr>Env</a>
 						<ul>
 							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.chain-1.html#_tag" class="tsd-kind-icon">_tag</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.chain-1.html#bind" class="tsd-kind-icon">bind</a>
-							</li>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_effect.chain-1.html#left" class="tsd-kind-icon">left</a>
+								<a href="_matechs_browser.localstorageenv.html#__computed" class="tsd-kind-icon">__computed</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
+					<li class=" tsd-kind-interface tsd-parent-kind-module">
+						<a href="_matechs_browser.sessionstorageenv.html" class="tsd-kind-icon">Session<wbr>Storage<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="../modules/_matechs_browser.html#localstorageenv-1" class="tsd-kind-icon">local<wbr>Storage<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="../modules/_matechs_browser.html#sessionstorageenv-1" class="tsd-kind-icon">session<wbr>Storage<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../modules/_matechs_browser.html#getstorageimpl" class="tsd-kind-icon">get<wbr>Storage<wbr>Impl</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module">
+						<a href="../modules/_matechs_browser.html#storageenv" class="tsd-kind-icon">storage<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-object-literal tsd-parent-kind-module">
+						<a href="../modules/_matechs_browser.html#localstore" class="tsd-kind-icon">local<wbr>Store</a>
+					</li>
+					<li class=" tsd-kind-object-literal tsd-parent-kind-module">
+						<a href="../modules/_matechs_browser.html#sessionstore" class="tsd-kind-icon">session<wbr>Store</a>
+					</li>
 				</ul>
 			</nav>
 		</div>
