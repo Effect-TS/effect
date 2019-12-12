@@ -83,3 +83,6 @@ This library was initially based on Fluture, huge thanks to the Authors.
 Another huge thanks goes to both the scala community (ZIO in specific) and the haskell community (RIO & Polysemy) from which inspiration is taken.
 
 All of the above projects are advised!
+
+## Get in touch
+The best place to reach out would be either in https://fpchat-invite.herokuapp.com (FP Chat, @Michael Arnaldi) or for italians https://italiajs.herokuapp.com/ (Italia JS, @Michael Arnaldi or channel #fp)
