@@ -222,6 +222,34 @@ export function del<I, E, O>(
   return request(Method.DELETE, url, "JSON", body);
 }
 
+export function postForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
+  return request(Method.POST, url, "FORM", body);
+}
+
+export function putForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
+  return request(Method.PUT, url, "FORM", body);
+}
+
+export function patchForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
+  return request(Method.PATCH, url, "FORM", body);
+}
+
+export function delForm<E, O>(
+  url: string,
+  body: FormData
+): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
+  return request(Method.DELETE, url, "FORM", body);
+}
+
 export function delData<I extends DataInput, E, O>(
   url: string,
   body?: I
@@ -282,5 +310,20 @@ export function foldRequestType<A, B, C>(
       return onData();
     case "FORM":
       return onForm();
+  }
+}
+
+export function getMethodAsString(method: Method) {
+  switch (method) {
+    case Method.GET:
+      return "GET";
+    case Method.POST:
+      return "POST";
+    case Method.PUT:
+      return "PUT";
+    case Method.PATCH:
+      return "PATCH";
+    case Method.DELETE:
+      return "DELETE";
   }
 }

@@ -4,6 +4,7 @@
     "strict": false,
     "rootDir": "./",
     "outDir": "./lib",
+    "lib": ["DOM"],
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   }

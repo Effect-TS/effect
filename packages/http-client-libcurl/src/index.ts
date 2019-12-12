@@ -9,12 +9,12 @@ import querystring from "querystring";
 import { fromNullable } from "fp-ts/lib/Option";
 
 function isJson(requestType: H.RequestType): boolean {
-  switch (requestType) {
-    case "DATA":
-      return false;
-    default:
-      return true;
-  }
+  return H.foldRequestType(
+    requestType,
+    () => true,
+    () => false,
+    () => false
+  );
 }
 
 export const libcurl: (caPath?: string) => H.Http = (
@@ -59,21 +59,8 @@ export const libcurl: (caPath?: string) => H.Http = (
 
               req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
 
-              switch (method) {
-                case H.Method.POST:
-                  customReq("POST", req, requestType, body);
-                  break;
-                case H.Method.PUT:
-                  customReq("PUT", req, requestType, body);
-                  break;
-                case H.Method.PATCH:
-                  customReq("PATCH", req, requestType, body);
-                  break;
-                case H.Method.DELETE:
-                  customReq("DELETE", req, requestType, body);
-                  break;
-                default:
-                  break;
+              if (method !== H.Method.GET) {
+                customReq(H.getMethodAsString(method), req, requestType, body);
               }
 
               req
