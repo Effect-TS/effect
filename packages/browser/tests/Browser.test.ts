@@ -37,7 +37,9 @@ class MockStorage implements Storage {
 const session = new MockStorage([]);
 const local = new MockStorage([]);
 
-function run<E, A>(eff: T.Effect<B.StorageEnv, E, A>) {
+function run<E, A>(
+  eff: T.Effect<B.SessionStorageEnv & B.LocalStorageEnv, E, A>
+) {
   return T.runToPromise(T.provideAll(B.storageEnv(session, local))(eff));
 }
 
@@ -45,7 +47,7 @@ describe("Browser", () => {
   it("local storage", async () => {
     await run(B.localStore.setItem("foo", "bar"));
     const l = await run(B.localStore.length);
-    const f = await run(B.localStore.getItem("foo"))
+    const f = await run(B.localStore.getItem("foo"));
     const k = await run(B.localStore.key(0));
     await run(B.localStore.removeItem("foo"));
     const l2 = await run(B.localStore.length);
@@ -63,7 +65,7 @@ describe("Browser", () => {
   it("session storage", async () => {
     await run(B.localStore.setItem("foo", "bar"));
     const l = await run(B.localStore.length);
-    const f = await run(B.localStore.getItem("foo"))
+    const f = await run(B.localStore.getItem("foo"));
     const k = await run(B.localStore.key(0));
     await run(B.localStore.removeItem("foo"));
     const l2 = await run(B.localStore.length);

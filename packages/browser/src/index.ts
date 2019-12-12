@@ -13,9 +13,12 @@ interface GenericStorage<Env> {
   setItem(key: string, value: string): T.Effect<Env, Error, void>;
 }
 
-export interface StorageEnv {
-  [localStorageEnv]: GenericStorage<T.NoEnv>;
+export interface SessionStorageEnv {
   [sessionStorageEnv]: GenericStorage<T.NoEnv>;
+}
+
+export interface LocalStorageEnv {
+  [localStorageEnv]: GenericStorage<T.NoEnv>;
 }
 
 function getStorageImpl(storage: Storage): GenericStorage<T.NoEnv> {
@@ -29,32 +32,48 @@ function getStorageImpl(storage: Storage): GenericStorage<T.NoEnv> {
   };
 }
 
-export function storageEnv(session: Storage, local: Storage): StorageEnv {
+export function storageEnv(
+  session: Storage,
+  local: Storage
+): SessionStorageEnv & LocalStorageEnv {
   return {
     [sessionStorageEnv]: getStorageImpl(session),
     [localStorageEnv]: getStorageImpl(local)
   };
 }
 
-function getStorageFunctions(
-  sym: typeof sessionStorageEnv | typeof localStorageEnv
-): GenericStorage<StorageEnv> {
-  return {
-    length: T.accessM(({ [sym]: s }: StorageEnv) => s.length),
-    clear: T.accessM(({ [sym]: s }: StorageEnv) => s.clear),
-    getItem: key => T.accessM(({ [sym]: s }: StorageEnv) => s.getItem(key)),
-    key: index => T.accessM(({ [sym]: s }: StorageEnv) => s.key(index)),
-    removeItem: key =>
-      T.accessM(({ [sym]: s }: StorageEnv) => s.removeItem(key)),
-    setItem: (key, value) =>
-      T.accessM(({ [sym]: s }: StorageEnv) => s.setItem(key, value))
-  };
-}
+export const sessionStore: GenericStorage<SessionStorageEnv> = {
+  length: T.accessM(
+    ({ [sessionStorageEnv]: s }: SessionStorageEnv) => s.length
+  ),
+  clear: T.accessM(({ [sessionStorageEnv]: s }: SessionStorageEnv) => s.clear),
+  getItem: key =>
+    T.accessM(({ [sessionStorageEnv]: s }: SessionStorageEnv) =>
+      s.getItem(key)
+    ),
+  key: index =>
+    T.accessM(({ [sessionStorageEnv]: s }: SessionStorageEnv) => s.key(index)),
+  removeItem: key =>
+    T.accessM(({ [sessionStorageEnv]: s }: SessionStorageEnv) =>
+      s.removeItem(key)
+    ),
+  setItem: (key, value) =>
+    T.accessM(({ [sessionStorageEnv]: s }: SessionStorageEnv) =>
+      s.setItem(key, value)
+    )
+};
 
-export const sessionStore: GenericStorage<StorageEnv> = getStorageFunctions(
-  sessionStorageEnv
-);
-
-export const localStore: GenericStorage<StorageEnv> = getStorageFunctions(
-  localStorageEnv
-);
+export const localStore: GenericStorage<LocalStorageEnv> = {
+  length: T.accessM(({ [localStorageEnv]: s }: LocalStorageEnv) => s.length),
+  clear: T.accessM(({ [localStorageEnv]: s }: LocalStorageEnv) => s.clear),
+  getItem: key =>
+    T.accessM(({ [localStorageEnv]: s }: LocalStorageEnv) => s.getItem(key)),
+  key: index =>
+    T.accessM(({ [localStorageEnv]: s }: LocalStorageEnv) => s.key(index)),
+  removeItem: key =>
+    T.accessM(({ [localStorageEnv]: s }: LocalStorageEnv) => s.removeItem(key)),
+  setItem: (key, value) =>
+    T.accessM(({ [localStorageEnv]: s }: LocalStorageEnv) =>
+      s.setItem(key, value)
+    )
+};
