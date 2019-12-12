@@ -5,6 +5,7 @@ import * as S from "@matechs/effect/lib/stream";
 import * as su from "@matechs/effect/lib/stream/support";
 import * as Rx from "rxjs";
 import { managed } from "@matechs/effect/lib/managed";
+import { Either, right, left } from "fp-ts/lib/Either";
 
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
@@ -20,6 +21,32 @@ export function encaseObservable<E, A>(
             s: observable.subscribe(
               a => next({ _tag: "offer", a }),
               e => next({ _tag: "error", e: onError(e) }),
+              () => next({ _tag: "complete" })
+            ),
+            ops,
+            hasCB
+          };
+        }),
+        ({ s }) => T.sync(() => s.unsubscribe())
+      ),
+      ({ ops, hasCB }) => su.emitter(ops, hasCB)
+    )
+  );
+}
+
+export function encaseObservableEither<E, A>(
+  observable: Rx.Observable<A>
+): S.Stream<T.NoEnv, never, Either<E, A>> {
+  return S.fromSource(
+    managed.chain(
+      M.bracket(
+        T.sync(() => {
+          const { next, ops, hasCB } = su.queueUtils<never, Either<E, A>>();
+
+          return {
+            s: observable.subscribe(
+              a => next({ _tag: "offer", a: right(a) }),
+              e => next({ _tag: "offer", a: left(e) }),
               () => next({ _tag: "complete" })
             ),
             ops,
@@ -115,14 +142,4 @@ export function toObservable<R, E, A>(
         };
       })
   );
-}
-
-/**
- * Evaluates a non failling Effect into an Observable
- * Note that the effect would be run for *each* subscriber
- */
-export function fromEffect<A>(
-  eff: T.Effect<T.NoEnv, never, A>
-): Rx.Observable<A> {
-  return Rx.defer(() => Rx.from(T.runToPromise(eff)));
 }
