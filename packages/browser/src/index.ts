@@ -5,12 +5,12 @@ export const localStorageEnv: unique symbol = Symbol();
 export const sessionStorageEnv: unique symbol = Symbol();
 
 interface GenericStorage<Env> {
-  length: T.Effect<Env, T.NoErr, number>;
-  clear: T.Effect<Env, T.NoErr, void>;
-  getItem(key: string): T.Effect<Env, T.NoErr, O.Option<string>>;
-  key(index: number): T.Effect<Env, T.NoErr, O.Option<string>>;
-  removeItem(key: string): T.Effect<Env, T.NoErr, void>;
-  setItem(key: string, value: string): T.Effect<Env, T.NoErr, void>;
+  length: T.Effect<Env, Error, number>;
+  clear: T.Effect<Env, Error, void>;
+  getItem(key: string): T.Effect<Env, Error, O.Option<string>>;
+  key(index: number): T.Effect<Env, Error, O.Option<string>>;
+  removeItem(key: string): T.Effect<Env, Error, void>;
+  setItem(key: string, value: string): T.Effect<Env, Error, void>;
 }
 
 export interface StorageEnv {
@@ -20,12 +20,12 @@ export interface StorageEnv {
 
 function getStorageImpl(storage: Storage): GenericStorage<T.NoEnv> {
   return {
-    length: T.sync(() => storage.length),
-    clear: T.sync(() => storage.clear()),
-    getItem: key => T.sync(() => O.fromNullable(storage.getItem(key))),
-    key: index => T.sync(() => O.fromNullable(storage.key(index))),
-    removeItem: key => T.sync(() => storage.removeItem(key)),
-    setItem: (key, value) => T.sync(() => storage.setItem(key, value))
+    length: T.trySync(() => storage.length),
+    clear: T.trySync(() => storage.clear()),
+    getItem: key => T.trySync(() => O.fromNullable(storage.getItem(key))),
+    key: index => T.trySync(() => O.fromNullable(storage.key(index))),
+    removeItem: key => T.trySync(() => storage.removeItem(key)),
+    setItem: (key, value) => T.trySync(() => storage.setItem(key, value))
   };
 }
 
