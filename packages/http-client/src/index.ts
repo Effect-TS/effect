@@ -78,12 +78,12 @@ export interface HttpHeaders {
 
 export interface Http {
   [httpEnv]: {
-    request: <I, E, O>(
+    request: <E, O>(
       method: Method,
       url: string,
       headers: Record<string, string>,
       requestType: RequestType,
-      body?: I
+      body?: unknown
     ) => T.Effect<HttpDeserializer, HttpError<E>, Response<O>>;
   };
 }
@@ -92,11 +92,11 @@ function hasHeaders(r: T.Env): r is HttpHeaders {
   return typeof r[httpHeadersEnv] !== "undefined";
 }
 
-export type RequestF = <R, I, E, O>(
+export type RequestF = <R, E, O>(
   method: Method,
   url: string,
   requestType: RequestType,
-  body?: I
+  body?: unknown
 ) => T.Effect<RequestEnv & R, HttpError<E>, Response<O>>;
 
 export type RequestMiddleware = (request: RequestF) => RequestF;
@@ -151,14 +151,14 @@ export function requestInner<R, I, E, O>(
   );
 }
 
-export function request<R, I, E, O>(
+export function request<R, E, O>(
   method: Method,
   url: string,
   requestType: RequestType,
-  body?: I
+  body?: unknown
 ): T.Effect<RequestEnv & R, HttpError<E>, Response<O>> {
   return T.accessM((r: MiddlewareStack) =>
-    foldMiddlewareStack(r, requestInner)<R, I, E, O>(
+    foldMiddlewareStack(r, requestInner)<R, E, O>(
       method,
       url,
       requestType,

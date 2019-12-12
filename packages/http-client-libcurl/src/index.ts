@@ -5,7 +5,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "fp-ts/lib/Record";
 import * as C from "node-libcurl";
 import path from "path";
-import querystring from "querystring";
+import querystring, { ParsedUrlQueryInput } from "querystring";
 import { fromNullable } from "fp-ts/lib/Option";
 
 function isJson(requestType: H.RequestType): boolean {
@@ -24,12 +24,12 @@ export const libcurl: (caPath?: string) => H.Http = (
   )
 ) => ({
   [H.httpEnv]: {
-    request: <I, E, O>(
+    request: <E, O>(
       method: H.Method,
       url: string,
       headers: Record<string, string>,
       requestType: H.RequestType,
-      body: I
+      body?: unknown
     ): T.Effect<H.HttpDeserializer, H.HttpError<E>, H.Response<O>> =>
       requestType === "FORM"
         ? /* istanbul ignore next */ T.raiseError({
@@ -109,18 +109,18 @@ export const libcurl: (caPath?: string) => H.Http = (
   }
 });
 
-function customReq<I>(
+function customReq(
   method: string,
   req: C.Curl,
   requestType: H.RequestType,
-  body?: I
+  body?: unknown
 ): void {
   if (body) {
     req.setOpt(
       C.Curl.option.POSTFIELDS,
       isJson(requestType)
         ? JSON.stringify(body)
-        : querystring.stringify(body as any)
+        : querystring.stringify(body as ParsedUrlQueryInput)
     );
   }
 
