@@ -45,6 +45,7 @@ describe("Browser", () => {
   it("local storage", async () => {
     await run(B.localStore.setItem("foo", "bar"));
     const l = await run(B.localStore.length);
+    const f = await run(B.localStore.getItem("foo"))
     const k = await run(B.localStore.key(0));
     await run(B.localStore.removeItem("foo"));
     const l2 = await run(B.localStore.length);
@@ -54,6 +55,7 @@ describe("Browser", () => {
 
     assert.deepEqual(l, 1);
     assert.deepEqual(k, some("foo"));
+    assert.deepEqual(f, some("bar"));
     assert.deepEqual(l2, 0);
     assert.deepEqual(l3, 0);
   });
@@ -61,6 +63,7 @@ describe("Browser", () => {
   it("session storage", async () => {
     await run(B.localStore.setItem("foo", "bar"));
     const l = await run(B.localStore.length);
+    const f = await run(B.localStore.getItem("foo"))
     const k = await run(B.localStore.key(0));
     await run(B.localStore.removeItem("foo"));
     const l2 = await run(B.localStore.length);
@@ -72,5 +75,6 @@ describe("Browser", () => {
     assert.deepEqual(k, some("foo"));
     assert.deepEqual(l2, 0);
     assert.deepEqual(l3, 0);
+    assert.deepEqual(f, some("bar"));
   });
 });
