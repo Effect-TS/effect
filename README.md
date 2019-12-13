@@ -34,17 +34,33 @@ For details about the additional types and overloads please refer to documentati
 
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
+## Stability Grid
+|      Package                  | API Stage  | Used in Prod |
+|-------------------------------|------------|--------------|
+| @matechs/effect               |   stable   |      yes     |
+| @matechs/http-client          |   stable   |      yes     |
+| @matechs/http-client-fetch    |   stable   |      yes     |
+| @matechs/http-client-libcurl  |   stable   |      yes     |
+| @matechs/browser              |   stable   |      yes     |
+| @matechs/rxjs                 |   stable   |      yes     |
+| @matechs/epics                |   alpha    |      no      |
+| @matechs/express              |   alpha    |      no      |
+| @matechs/rpc                  |   alpha    |      no      |
+| @matechs/orm                  |   beta     |      yes     |
+| @matechs/express              |   alpha    |      no      |
+| @matechs/tracing              |   poc      |      no      |
+
 ## Ecosystem
 
 - `@matechs/orm` : provides integration with typeorm
-- `@matechs/http` : provides integration with axios
+- `@matechs/http-client` : functional http client, integrations available `libcurl & fetch`
 - `@matechs/rpc` : no boilerplate rpc for your effects
 - `@matechs/tracing` : provides integration with opentracing-js
 - `@matechs/express`: provides integration with express
-- `@matechs/graceful` : utility to handle graceful exit
 - `@matechs/rxjs` : provides integration with rxjs
 - `@matechs/effect` : core provides `Effect, Managed, Stream, Ref, Queue, Semaphore`
 - `@matechs/epics` : provides integration with redux-observable
+- `@matechs/cloud` : provides utilities to orchestrate tasks and cluster singletons 
 
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
