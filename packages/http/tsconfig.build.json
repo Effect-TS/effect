@@ -1,8 +1,0 @@
-{
-  "extends": "../../base.tsconfig.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "lib"
-  },
-  "exclude": ["tests", "node_modules", "jest-setup.ts"]
-}
