@@ -3,20 +3,22 @@ import { effect as T } from "@matechs/effect";
 import * as EX from "express";
 import * as bodyParser from "body-parser";
 import { Server } from "http";
-import * as G from "@matechs/graceful";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { ExitTag } from "@matechs/effect/lib/original/exit";
 
+export const expressAppEnv: unique symbol = Symbol();
+
 export interface HasExpress {
-  express: {
+  [expressAppEnv]: {
     app: EX.Express;
   };
 }
 
 export type Method = "post" | "get" | "put" | "patch" | "delete";
 
+export const expressEnv: unique symbol = Symbol();
+
 export interface Express {
-  express: {
+  [expressEnv]: {
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
     route<R, E, RES>(
       method: Method,
@@ -26,12 +28,12 @@ export interface Express {
     bind(
       port: number,
       hostname?: string
-    ): T.Effect<HasExpress & G.Graceful, T.NoErr, Server>;
+    ): T.Effect<HasExpress, T.NoErr, Server>;
   };
 }
 
 export const express: Express = {
-  express: {
+  [expressEnv]: {
     route<R, E, RES>(
       method: Method,
       path: string,
@@ -39,7 +41,7 @@ export const express: Express = {
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
-          r.express.app[method](path, bodyParser.json(), (req, res) => {
+          r[expressAppEnv].app[method](path, bodyParser.json(), (req, res) => {
             T.runToPromiseExit(T.provideAll(r)(f(req))).then(o => {
               switch (o._tag) {
                 case ExitTag.Done:
@@ -68,26 +70,15 @@ export const express: Express = {
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A> {
       return T.provideR((r: R) => ({
         ...r,
-        express: { ...r["express"], app: newExpress() }
+        [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
       }))(op);
     },
     bind(
       port: number,
       hostname?: string
-    ): T.Effect<HasExpress & G.Graceful, T.NoErr, Server> {
-      return T.accessM(({ express: { app } }: HasExpress) =>
-        Do(T.effect)
-          .bindL("s", () =>
-            T.sync(() => app.listen(port, hostname || "0.0.0.0"))
-          )
-          .doL(({ s }) =>
-            G.onExit(
-              T.sync(() => {
-                s.close();
-              })
-            )
-          )
-          .return(s => s.s)
+    ): T.Effect<HasExpress, T.NoErr, Server> {
+      return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
+        T.sync(() => app.listen(port, hostname || "0.0.0.0"))
       );
     }
   }
@@ -96,7 +87,7 @@ export const express: Express = {
 export function withApp<R, E, A>(
   op: T.Effect<R & HasExpress, E, A>
 ): T.Effect<Express & R, E, A> {
-  return T.accessM(({ express }: Express) => express.withApp(op));
+  return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op));
 }
 
 export function route<R, E, RES>(
@@ -104,12 +95,18 @@ export function route<R, E, RES>(
   path: string,
   f: (req: EX.Request) => T.Effect<R, E, RES>
 ): T.Effect<R & HasExpress & Express, T.NoErr, void> {
-  return T.accessM(({ express }: Express) => express.route(method, path, f));
+  return T.accessM(({ [expressEnv]: express }: Express) =>
+    express.route(method, path, f)
+  );
 }
 
 export function bind(
   port: number,
   hostname?: string
-): T.Effect<HasExpress & Express & G.Graceful, T.NoErr, Server> {
-  return T.accessM(({ express }: Express) => express.bind(port, hostname));
+): T.Effect<HasExpress & Express, T.NoErr, Server> {
+  return T.accessM(({ [expressEnv]: express }: Express) =>
+    express.bind(port, hostname)
+  );
 }
+
+export type ExpressEnv = HasExpress & Express

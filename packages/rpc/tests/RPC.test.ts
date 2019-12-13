@@ -1,89 +1,82 @@
-import * as assert from "assert";
 import { effect as T } from "@matechs/effect";
-import * as EX from "@matechs/express";
+import * as E from "@matechs/express";
 import * as RPC from "../src";
-import * as G from "@matechs/graceful";
-import * as RC from "./rpc/client";
-import * as RS from "./rpc/server";
-import { pipe } from "fp-ts/lib/pipeable";
-import { tracer } from "@matechs/tracing";
-import { httpClient } from "@matechs/http/lib";
-import { moduleADef, Printer } from "./rpc/interface";
+import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { ExitTag, done, raise } from "@matechs/effect/lib/original/exit";
+import { pipe } from "fp-ts/lib/pipeable";
+import * as L from "@matechs/http-client-libcurl";
+import { done } from "@matechs/effect/lib/original/exit";
+
+const counterEnv: unique symbol = Symbol();
+
+interface RPCService {
+  [counterEnv]: {
+    increment: (n: number) => T.Effect<T.NoEnv, T.NoErr, number>;
+  };
+}
+
+let counter = 0;
+
+const rpcService: RPCService = {
+  [counterEnv]: {
+    increment: n =>
+      T.sync(() => {
+        counter = counter + n;
+        return counter;
+      })
+  }
+};
+
+const { increment } = RPC.client(rpcService, counterEnv);
 
 describe("RPC", () => {
-  it("perform call through rpc", async () => {
-    // server
-
-    const messages: string[] = [];
-
-    const mockPrinter: Printer = {
-      printer: {
-        print(s) {
-          return T.sync(() => {
-            messages.push(s);
-          });
-        }
-      }
-    };
-
-    const module = pipe(
-      T.noEnv,
-      T.mergeEnv(RS.moduleA),
-      T.mergeEnv(tracer()),
-      T.mergeEnv(mockPrinter),
-      T.mergeEnv(EX.express),
-      T.mergeEnv(G.graceful())
-    );
-
-    const main = EX.withApp(
+  it("should call remote service", async () => {
+    const program = E.withApp(
       Do(T.effect)
-        .do(RPC.bindToApp(RS.moduleA, "moduleA", module))
-        .bind("server", EX.bind(3000, "127.0.0.1"))
-        .return(s => s.server)
+        .do(RPC.bind(rpcService, counterEnv, {}))
+        .bind("server", E.bind(9002))
+        .done()
     );
 
-    await T.runToPromise(T.provide(module)(main));
-
-    const clientModule = pipe(
-      T.noEnv,
-      T.mergeEnv(RC.clientModuleA),
-      T.mergeEnv(httpClient())
+    const result = await T.runToPromise(
+      T.provideAll(
+        pipe(
+          T.noEnv,
+          T.mergeEnv(E.express),
+          T.mergeEnv(rpcService),
+          T.mergeEnv(
+            RPC.serverConfig(
+              rpcService,
+              counterEnv
+            )({
+              scope: "/counter"
+            })
+          )
+        )
+      )(program)
     );
 
-    const result = await T.runToPromiseExit(
-      T.provide(clientModule)(RC.failing("test"))
-    );
-    const result2 = await T.runToPromiseExit(
-      T.provide(clientModule)(RC.notFailing("test"))
+    const clientProgram = increment(1);
+
+    const clientResult = await T.runToPromiseExit(
+      T.provideAll(
+        pipe(
+          T.noEnv,
+          T.mergeEnv(L.jsonClient),
+          T.mergeEnv(
+            RPC.clientConfig(
+              rpcService,
+              counterEnv
+            )({
+              baseUrl: "http://127.0.0.1:9002/counter"
+            })
+          )
+        )
+      )(clientProgram)
     );
 
-    const clientModuleWrong = RPC.reinterpretRemotely(
-      moduleADef,
-      "http://127.0.0.1:3002"
-    );
+    result.server.close();
 
-    const result3 = await T.runToPromiseExit(
-      T.provide(
-        pipe(T.noEnv, T.mergeEnv(clientModuleWrong), T.mergeEnv(httpClient()))
-      )(RC.notFailing("test"))
-    );
-
-    // direct call in server
-    const result4 = await T.runToPromiseExit(
-      T.provide(module)(RS.notFailing("test"))
-    );
-
-    await T.runToPromise(T.provide(module)(G.trigger()));
-
-    assert.deepEqual(result, raise(new Error("not implemented")));
-    assert.deepEqual(result2, done("test"));
-    assert.deepEqual(
-      result3._tag === ExitTag.Raise && result3.error.message,
-      "connect ECONNREFUSED 127.0.0.1:3002"
-    );
-    assert.deepEqual(result4, done("test"));
-    assert.deepEqual(messages, ["test", "test"]);
+    assert.deepEqual(clientResult, done(1));
   });
 });

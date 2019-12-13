@@ -25,6 +25,7 @@
     "@matechs/effect": "^0.2.16",
     "@matechs/express": "^0.2.16",
     "@matechs/http": "^0.2.16",
+    "@matechs/http-client": "^0.0.8",
     "@matechs/tracing": "^0.2.16"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"

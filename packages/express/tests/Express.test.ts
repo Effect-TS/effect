@@ -4,7 +4,6 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import * as EX from "../src";
 import * as H from "@matechs/http/lib";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as G from "@matechs/graceful";
 import { raise, done } from "@matechs/effect/lib/original/exit";
 
 describe("Express", () => {
@@ -21,11 +20,10 @@ describe("Express", () => {
 
     const module = pipe(
       T.noEnv,
-      T.mergeEnv(EX.express),
-      T.mergeEnv(G.graceful())
+      T.mergeEnv(EX.express)
     );
 
-    await T.runToPromise(T.provide(module)(program));
+    const server = await T.runToPromise(T.provide(module)(program));
 
     const res = await T.runToPromiseExit(
       pipe(
@@ -58,7 +56,7 @@ describe("Express", () => {
       )
     );
 
-    await T.runToPromise(T.provide(module)(G.trigger()));
+    server.close()
 
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res2, raise({ res: 1 }));
