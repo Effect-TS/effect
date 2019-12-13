@@ -107,10 +107,13 @@ interface RPCResponse {
 
 export function bind<M, K extends keyof M>(
   m: M,
-  k: K,
-  runtime: Runtime<M[K]>
-): T.Effect<E.ExpressEnv & ServerConfig<M, K> & M, T.NoErr, void> {
-  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv) => {
+  k: K
+): T.Effect<
+  E.ExpressEnv & Runtime<M[K]> & ServerConfig<M, K> & M,
+  T.NoErr,
+  void
+> {
+  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv & Runtime<M[K]>) => {
     const { scope } = r[serverConfigEnv][k];
     const { route } = r[E.expressEnv];
     const ops: T.Effect<E.HasExpress, never, void>[] = [];
@@ -125,7 +128,7 @@ export function bind<M, K extends keyof M>(
               const args: any[] = req.body.args;
 
               const cancel = T.run(
-                T.provideAll(runtime as any)(m[k][key](...args)),
+                T.provideAll(r as any)(m[k][key](...args)),
                 x => res(right({ value: x }))
               );
 

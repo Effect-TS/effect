@@ -7,24 +7,40 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as L from "@matechs/http-client-libcurl";
 import { done, raise } from "@matechs/effect/lib/original/exit";
 
+const configEnv: unique symbol = Symbol();
+
+interface AppConfig {
+  [configEnv]: {
+    gap: number;
+  };
+}
+
+const appConfig: AppConfig = {
+  [configEnv]: {
+    gap: 1
+  }
+};
+
 const counterEnv: unique symbol = Symbol();
 
-interface RPCService {
+interface Counter {
   [counterEnv]: {
-    increment: (n: number) => T.Effect<T.NoEnv, T.NoErr, number>;
+    increment: (n: number) => T.Effect<AppConfig, T.NoErr, number>;
     ni: () => T.Effect<T.NoEnv, string, void>;
   };
 }
 
 let counter = 0;
 
-const counterService: RPCService = {
+const counterService: Counter = {
   [counterEnv]: {
     increment: n =>
-      T.sync(() => {
-        counter = counter + n;
-        return counter;
-      }),
+      T.accessM(({ [configEnv]: c }: AppConfig) =>
+        T.sync(() => {
+          counter = counter + n + c.gap;
+          return counter;
+        })
+      ),
     ni: () => T.raiseError("not implemented")
   }
 };
@@ -35,7 +51,7 @@ describe("RPC", () => {
   it("should call remote service", async () => {
     const program = E.withApp(
       Do(T.effect)
-        .do(RPC.bind(counterService, counterEnv, {}))
+        .do(RPC.bind(counterService, counterEnv))
         .bind("server", E.bind(9002))
         .done()
     );
@@ -44,6 +60,7 @@ describe("RPC", () => {
       T.provideAll(
         pipe(
           T.noEnv,
+          T.mergeEnv(appConfig),
           T.mergeEnv(E.express),
           T.mergeEnv(counterService),
           T.mergeEnv(
@@ -79,7 +96,7 @@ describe("RPC", () => {
 
     result.server.close();
 
-    assert.deepEqual(incResult, done(1));
+    assert.deepEqual(incResult, done(2));
     assert.deepEqual(niResult, raise("not implemented"));
   });
 });
