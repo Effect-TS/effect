@@ -1,89 +1,102 @@
-import * as assert from "assert";
 import { effect as T } from "@matechs/effect";
-import * as EX from "@matechs/express";
+import * as E from "@matechs/express";
 import * as RPC from "../src";
-import * as G from "@matechs/graceful";
-import * as RC from "./rpc/client";
-import * as RS from "./rpc/server";
-import { pipe } from "fp-ts/lib/pipeable";
-import { tracer } from "@matechs/tracing";
-import { httpClient } from "@matechs/http/lib";
-import { moduleADef, Printer } from "./rpc/interface";
+import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { ExitTag, done, raise } from "@matechs/effect/lib/original/exit";
+import { pipe } from "fp-ts/lib/pipeable";
+import * as L from "@matechs/http-client-libcurl";
+import { done, raise } from "@matechs/effect/lib/original/exit";
+
+const configEnv: unique symbol = Symbol();
+
+interface AppConfig {
+  [configEnv]: {
+    gap: number;
+  };
+}
+
+const appConfig: AppConfig = {
+  [configEnv]: {
+    gap: 1
+  }
+};
+
+const counterEnv: unique symbol = Symbol();
+
+interface Counter {
+  [counterEnv]: {
+    increment: (n: number) => T.Effect<AppConfig, T.NoErr, number>;
+    ni: () => T.Effect<T.NoEnv, string, void>;
+  };
+}
+
+let counter = 0;
+
+const counterService: Counter = {
+  [counterEnv]: {
+    increment: n =>
+      T.accessM(({ [configEnv]: c }: AppConfig) =>
+        T.sync(() => {
+          counter = counter + n + c.gap;
+          return counter;
+        })
+      ),
+    ni: () => T.raiseError("not implemented")
+  }
+};
+
+const { increment, ni } = RPC.client(counterService, counterEnv);
 
 describe("RPC", () => {
-  it("perform call through rpc", async () => {
-    // server
-
-    const messages: string[] = [];
-
-    const mockPrinter: Printer = {
-      printer: {
-        print(s) {
-          return T.sync(() => {
-            messages.push(s);
-          });
-        }
-      }
-    };
-
-    const module = pipe(
-      T.noEnv,
-      T.mergeEnv(RS.moduleA),
-      T.mergeEnv(tracer()),
-      T.mergeEnv(mockPrinter),
-      T.mergeEnv(EX.express),
-      T.mergeEnv(G.graceful())
-    );
-
-    const main = EX.withApp(
+  it("should call remote service", async () => {
+    const program = E.withApp(
       Do(T.effect)
-        .do(RPC.bindToApp(RS.moduleA, "moduleA", module))
-        .bind("server", EX.bind(3000, "127.0.0.1"))
-        .return(s => s.server)
+        .do(RPC.bind(counterService, counterEnv))
+        .bind("server", E.bind(9002))
+        .done()
     );
 
-    await T.runToPromise(T.provide(module)(main));
+    const result = await T.runToPromise(
+      T.provideAll(
+        pipe(
+          T.noEnv,
+          T.mergeEnv(appConfig),
+          T.mergeEnv(E.express),
+          T.mergeEnv(counterService),
+          T.mergeEnv(
+            RPC.serverConfig(
+              counterService,
+              counterEnv
+            )({
+              scope: "/counter"
+            })
+          )
+        )
+      )(program)
+    );
 
-    const clientModule = pipe(
+    const clientEnv = pipe(
       T.noEnv,
-      T.mergeEnv(RC.clientModuleA),
-      T.mergeEnv(httpClient())
+      T.mergeEnv(L.jsonClient),
+      T.mergeEnv(
+        RPC.clientConfig(
+          counterService,
+          counterEnv
+        )({
+          baseUrl: "http://127.0.0.1:9002/counter"
+        })
+      )
     );
 
-    const result = await T.runToPromiseExit(
-      T.provide(clientModule)(RC.failing("test"))
-    );
-    const result2 = await T.runToPromiseExit(
-      T.provide(clientModule)(RC.notFailing("test"))
+    const incResult = await T.runToPromiseExit(
+      T.provideAll(clientEnv)(increment(1))
     );
 
-    const clientModuleWrong = RPC.reinterpretRemotely(
-      moduleADef,
-      "http://127.0.0.1:3002"
-    );
+    const niResult = await T.runToPromiseExit(T.provideAll(clientEnv)(ni()));
 
-    const result3 = await T.runToPromiseExit(
-      T.provide(
-        pipe(T.noEnv, T.mergeEnv(clientModuleWrong), T.mergeEnv(httpClient()))
-      )(RC.notFailing("test"))
-    );
+    result.server.close();
 
-    // direct call in server
-    const result4 = await T.runToPromiseExit(
-      T.provide(module)(RS.notFailing("test"))
-    );
-
-    await T.runToPromise(T.provide(module)(G.trigger()));
-
-    assert.deepEqual(result, raise(new Error("not implemented")));
-    assert.deepEqual(result2, done("test"));
-    assert.deepEqual(
-      result3._tag === ExitTag.Raise && result3.error.message,
-      "connect ECONNREFUSED 127.0.0.1:3002"
-    );
-    assert.deepEqual(result4, done("test"));
-    assert.deepEqual(messages, ["test", "test"]);
+    assert.deepEqual(incResult, done(2));
+    assert.deepEqual(niResult, raise("not implemented"));
   });
 });

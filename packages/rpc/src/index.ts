@@ -1,172 +1,146 @@
 import { effect as T } from "@matechs/effect";
-import * as H from "@matechs/http";
-import * as A from "fp-ts/lib/Array";
-import * as EX from "@matechs/express/lib";
-import {
-  Tracer,
-  ChildContext,
-  HasTracerContext,
-  withTracer
-} from "@matechs/tracing";
-import { pipe } from "fp-ts/lib/pipeable";
+import { FunctionN } from "fp-ts/lib/function";
+import * as H from "@matechs/http-client";
+import * as E from "@matechs/express";
+import { array } from "fp-ts/lib/Array";
+import { right } from "fp-ts/lib/Either";
+import { Exit } from "@matechs/effect/lib/original/exit";
+import { Do } from "fp-ts-contrib/lib/Do";
+import { isSome } from "fp-ts/lib/Option";
 
-export interface CanRemote {
-  [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, Error, any> };
+const clientConfigEnv: unique symbol = Symbol();
+
+interface ClientConfig<M, K extends keyof M> {
+  [clientConfigEnv]: {
+    [k in K]: {
+      baseUrl: string;
+    };
+  };
 }
 
-export type PatchedF<M> = M extends (
-  ...args: infer A
-) => T.Effect<any, Error, infer D>
-  ? (...args: A) => T.Effect<H.HttpClient, Error, D>
-  : never;
-
-export type Remote<M> = M extends {
-  [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, any, any> };
-}
-  ? { [k in keyof M]: { [h in keyof M[k]]: PatchedF<M[k][h]> } }
-  : never;
-
-export function calculatePath(url: string, entry: string, k: string) {
-  return `${url}/${entry}/${k}`;
-}
-
-export interface Payload {
-  data: any[];
-}
-
-export function remotely<A extends any[], R, E, B>(
-  _: (...args: A) => T.Effect<R, E, B>,
-  url: string,
-  entry: string,
-  k: string
-): (...args: A) => T.Effect<H.HttpClient & R, Error | E, B> {
-  return (...args: A) =>
-    pipe(
-      H.post<{ message: string }, { result: B }>(calculatePath(url, entry, k), {
-        data: args
-      } as Payload),
-      T.map(r => r.data.result),
-      T.mapError(e => {
-        if (e.response && e.response.data && e.response.data.message) {
-          return new Error(e.response.data.message);
-        } else {
-          return e as Error;
-        }
-      })
-    );
-}
-
-export function reinterpretRemotely<M extends CanRemote>(
-  module: M,
-  url: string
-): Remote<M> {
-  const patched = {};
-
-  Object.keys(module).forEach(entry => {
-    patched[entry] = {};
-
-    Object.keys(module[entry]).forEach(k => {
-      const fn = module[entry][k];
-
-      patched[entry][k] = remotely(fn, url, entry, k);
-    });
+export function clientConfig<M, K extends keyof M>(
+  _m: M,
+  k: K
+): (c: ClientConfig<M, K>[typeof clientConfigEnv][K]) => ClientConfig<M, K> {
+  return x => ({
+    [clientConfigEnv]: {
+      [k]: x
+    } as any
   });
-
-  return patched as any;
 }
 
-export type PatchedClientF<M, Z extends CanRemote> = M extends (
-  ...args: infer A
-) => T.Effect<any, Error, infer D>
-  ? (...args: A) => T.Effect<H.HttpClient & Remote<Z>, Error, D>
-  : never;
+const serverConfigEnv: unique symbol = Symbol();
 
-export type ClientHelpers<M> = M extends {
-  [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, any, any> };
+interface ServerConfig<M, K extends keyof M> {
+  [serverConfigEnv]: {
+    [k in K]: {
+      scope: string;
+    };
+  };
 }
-  ? { [k in keyof M]: { [h in keyof M[k]]: PatchedClientF<M[k][h], M> } }
-  : never;
 
-export function clientHelpers<M extends CanRemote>(
-  module: M
-): ClientHelpers<M> {
-  const patched = {};
-
-  Object.keys(module).forEach(entry => {
-    patched[entry] = {};
-
-    Object.keys(module[entry]).forEach(k => {
-      patched[entry][k] = (...args: any[]) =>
-        T.accessM((r: Remote<M>) => r[entry][k](...args));
-    });
+export function serverConfig<M, K extends keyof M>(
+  _m: M,
+  k: K
+): (c: ServerConfig<M, K>[typeof serverConfigEnv][K]) => ServerConfig<M, K> {
+  return x => ({
+    [serverConfigEnv]: {
+      [k]: x
+    } as any
   });
-
-  return patched as any;
 }
 
-export type PatchedServerF<M, Z extends CanRemote> = M extends (
-  ...args: infer A
-) => T.Effect<infer R, Error, infer D>
-  ? (...args: A) => T.Effect<Z & R, Error, D>
+type ClientEntry<M, X, Y extends keyof X> = M extends FunctionN<
+  infer A,
+  T.Effect<infer B, infer C, infer D>
+>
+  ? FunctionN<
+      A,
+      T.Effect<H.RequestEnv & ClientConfig<X, Y>, C | H.HttpError<unknown>, D>
+    >
   : never;
 
-export type ServerHelpers<M> = M extends {
-  [k: string]: { [h: string]: (...args: any[]) => T.Effect<any, any, any> };
-}
-  ? { [k in keyof M]: { [h in keyof M[k]]: PatchedServerF<M[k][h], M> } }
-  : never;
+type ClientModule<M, A, B extends keyof A> = {
+  [k in keyof M]: ClientEntry<M[k], A, B>;
+};
 
-export function serverHelpers<M extends CanRemote>(
-  module: M
-): ServerHelpers<M> {
-  const patched = {};
+type Client<M, K extends keyof M> = ClientModule<M[K], M, K>;
 
-  Object.keys(module).forEach(entry => {
-    patched[entry] = {};
+export function client<M, K extends keyof M>(m: M, k: K): Client<M, K> {
+  const x = m[k] as any;
+  const r = {} as any;
 
-    Object.keys(module[entry]).forEach(k => {
-      patched[entry][k] = (...args: any[]) =>
-        T.accessM((r: M) => r[entry][k](...args));
-    });
-  });
+  for (const z of Reflect.ownKeys(x)) {
+    if (typeof z === "string") {
+      r[z] = (...args: any[]) =>
+        Do(T.effect)
+          .bindL("req", () => T.pure<RPCRequest>({ args }))
+          .bindL("con", () => T.access((c: ClientConfig<M, K>) => c))
+          .bindL("res", ({ con, req }) =>
+            H.post(`${con[clientConfigEnv][k].baseUrl}/${z}`, req)
+          )
+          .bindL("ret", ({ res }) =>
+            isSome(res.body)
+              ? T.completed((res.body.value as RPCResponse).value)
+              : T.raiseError(new Error("empty response"))
+          )
+          .return(s => s.ret);
+    }
+  }
 
-  return patched as any;
+  return r;
 }
 
 export type Runtime<M> = M extends {
-  [h: string]: (...args: any[]) => T.Effect<infer Q & ChildContext, any, any>;
+  [h: string]: (...args: any[]) => T.Effect<infer Q, any, any>;
 }
   ? Q
   : never;
 
-export function bindToApp<M extends CanRemote, K extends keyof M>(
-  module: M,
-  entry: K,
-  runtime: Runtime<M[K]>,
-  controller = `RPC Server - ${entry}`
-): T.Effect<Tracer & EX.HasExpress & EX.Express, never, void> {
-  return withTracer(
-    T.accessM(({ tracer: { withControllerSpan } }: Tracer & HasTracerContext) =>
-      pipe(
-        A.array.traverse(T.effect)(Object.keys(module[entry]), k =>
-          EX.route("post", `/${entry}/${k}`, req =>
-            pipe(
-              // TODO: find better solution to avoid deepmerge
-              T.provide(runtime)(
-                withControllerSpan(
-                  controller,
-                  `${entry}/${k}`,
-                  req.headers as any
-                )(module[entry][k](...req.body["data"]))
-              ),
-              T.map(x => ({ result: x })),
-              T.mapError(x => ({ message: x.message }))
-            )
+interface RPCRequest {
+  args: unknown[];
+}
+
+interface RPCResponse {
+  value: Exit<unknown, unknown>;
+}
+
+export function bind<M, K extends keyof M>(
+  m: M,
+  k: K
+): T.Effect<
+  E.ExpressEnv & Runtime<M[K]> & ServerConfig<M, K> & M,
+  T.NoErr,
+  void
+> {
+  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv & Runtime<M[K]>) => {
+    const { scope } = r[serverConfigEnv][k];
+    const { route } = r[E.expressEnv];
+    const ops: T.Effect<E.HasExpress, never, void>[] = [];
+
+    for (const key of Reflect.ownKeys(m[k] as any)) {
+      if (typeof key === "string") {
+        const path = `${scope}/${key}`;
+
+        ops.push(
+          route("post", path, req =>
+            T.async<never, RPCResponse>(res => {
+              const args: any[] = req.body.args;
+
+              const cancel = T.run(
+                T.provideAll(r as any)(m[k][key](...args)),
+                x => res(right({ value: x }))
+              );
+
+              return () => {
+                cancel();
+              };
+            })
           )
-        ),
-        // tslint:disable-next-line: no-empty
-        T.map(() => {})
-      )
-    )
-  );
+        );
+      }
+    }
+
+    return T.asUnit(array.sequence(T.effect)(ops));
+  });
 }
