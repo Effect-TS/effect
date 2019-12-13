@@ -18,7 +18,7 @@ interface RPCService {
 
 let counter = 0;
 
-const rpcService: RPCService = {
+const counterService: RPCService = {
   [counterEnv]: {
     increment: n =>
       T.sync(() => {
@@ -29,13 +29,13 @@ const rpcService: RPCService = {
   }
 };
 
-const { increment, ni } = RPC.client(rpcService, counterEnv);
+const { increment, ni } = RPC.client(counterService, counterEnv);
 
 describe("RPC", () => {
   it("should call remote service", async () => {
     const program = E.withApp(
       Do(T.effect)
-        .do(RPC.bind(rpcService, counterEnv, {}))
+        .do(RPC.bind(counterService, counterEnv, {}))
         .bind("server", E.bind(9002))
         .done()
     );
@@ -45,10 +45,10 @@ describe("RPC", () => {
         pipe(
           T.noEnv,
           T.mergeEnv(E.express),
-          T.mergeEnv(rpcService),
+          T.mergeEnv(counterService),
           T.mergeEnv(
             RPC.serverConfig(
-              rpcService,
+              counterService,
               counterEnv
             )({
               scope: "/counter"
@@ -63,7 +63,7 @@ describe("RPC", () => {
       T.mergeEnv(L.jsonClient),
       T.mergeEnv(
         RPC.clientConfig(
-          rpcService,
+          counterService,
           counterEnv
         )({
           baseUrl: "http://127.0.0.1:9002/counter"
@@ -75,9 +75,7 @@ describe("RPC", () => {
       T.provideAll(clientEnv)(increment(1))
     );
 
-    const niResult = await T.runToPromiseExit(
-      T.provideAll(clientEnv)(ni())
-    );
+    const niResult = await T.runToPromiseExit(T.provideAll(clientEnv)(ni()));
 
     result.server.close();
 
