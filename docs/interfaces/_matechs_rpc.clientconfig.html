@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>HttpClient | @matechs/browser</title>
+	<title>ClientConfig | @matechs/browser</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="../assets/css/main.css">
@@ -56,24 +56,35 @@
 					<a href="../globals.html">Globals</a>
 				</li>
 				<li>
-					<a href="../modules/_matechs_http.html">@matechs/http</a>
+					<a href="../modules/_matechs_rpc.html">@matechs/rpc</a>
 				</li>
 				<li>
-					<a href="_matechs_http.httpclient.html">HttpClient</a>
+					<a href="_matechs_rpc.clientconfig.html">ClientConfig</a>
 				</li>
 			</ul>
-			<h1>Interface HttpClient</h1>
+			<h1>Interface ClientConfig&lt;M, K&gt;</h1>
 		</div>
 	</div>
 </header>
 <div class="container container-main">
 	<div class="row">
 		<div class="col-8 col-content">
+			<section class="tsd-panel tsd-type-parameters">
+				<h3>Type parameters</h3>
+				<ul class="tsd-type-parameters">
+					<li>
+						<h4>M</h4>
+					</li>
+					<li>
+						<h4>K<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof M</span></h4>
+					</li>
+				</ul>
+			</section>
 			<section class="tsd-panel tsd-hierarchy">
 				<h3>Hierarchy</h3>
 				<ul class="tsd-hierarchy">
 					<li>
-						<span class="target">HttpClient</span>
+						<span class="target">ClientConfig</span>
 					</li>
 				</ul>
 			</section>
@@ -81,98 +92,29 @@
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
-						<section class="tsd-index-section ">
+						<section class="tsd-index-section tsd-is-not-exported">
 							<h3>Properties</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-property tsd-parent-kind-interface"><a href="_matechs_http.httpclient.html#http" class="tsd-kind-icon">http</a></li>
+								<li class="tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported"><a href="_matechs_rpc.clientconfig.html#__computed" class="tsd-kind-icon">__computed</a></li>
 							</ul>
 						</section>
 					</div>
 				</section>
 			</section>
-			<section class="tsd-panel-group tsd-member-group ">
+			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
 				<h2>Properties</h2>
-				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface">
-					<a name="http" class="tsd-anchor"></a>
-					<h3>http</h3>
-					<div class="tsd-signature tsd-kind-icon">http<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
+					<a name="__computed" class="tsd-anchor"></a>
+					<h3>__computed</h3>
+					<div class="tsd-signature tsd-kind-icon">__computed<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http/src/index.ts#L6">packages/http/src/index.ts:6</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L14">packages/rpc/src/index.ts:14</a></li>
 						</ul>
 					</aside>
 					<div class="tsd-type-declaration">
 						<h4>Type declaration</h4>
 						<ul class="tsd-parameters">
-							<li class="tsd-parameter">
-								<h5>get<span class="tsd-signature-symbol">: </span>function</h5>
-								<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-type-literal tsd-has-type-parameter tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon">get&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, config<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">AxiosRequestConfig</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosResponse</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-								</ul>
-								<ul class="tsd-descriptions">
-									<li class="tsd-description">
-										<aside class="tsd-sources">
-											<ul>
-												<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http/src/index.ts#L12">packages/http/src/index.ts:12</a></li>
-											</ul>
-										</aside>
-										<h4 class="tsd-type-parameters-title">Type parameters</h4>
-										<ul class="tsd-type-parameters">
-											<li>
-												<h4>E</h4>
-											</li>
-											<li>
-												<h4>A</h4>
-											</li>
-										</ul>
-										<h4 class="tsd-parameters-title">Parameters</h4>
-										<ul class="tsd-parameters">
-											<li>
-												<h5>url: <span class="tsd-signature-type">string</span></h5>
-											</li>
-											<li>
-												<h5><span class="tsd-flag ts-flagOptional">Optional</span> config: <span class="tsd-signature-type">AxiosRequestConfig</span></h5>
-											</li>
-										</ul>
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosResponse</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-									</li>
-							</ul>        </li>
-							<li class="tsd-parameter">
-								<h5>post<span class="tsd-signature-symbol">: </span>function</h5>
-								<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-type-literal tsd-has-type-parameter tsd-is-not-exported">
-									<li class="tsd-signature tsd-kind-icon">post&lt;E, A&gt;<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, data<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">unknown</span>, config<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">AxiosRequestConfig</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosResponse</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></li>
-								</ul>
-								<ul class="tsd-descriptions">
-									<li class="tsd-description">
-										<aside class="tsd-sources">
-											<ul>
-												<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/http/src/index.ts#L7">packages/http/src/index.ts:7</a></li>
-											</ul>
-										</aside>
-										<h4 class="tsd-type-parameters-title">Type parameters</h4>
-										<ul class="tsd-type-parameters">
-											<li>
-												<h4>E</h4>
-											</li>
-											<li>
-												<h4>A</h4>
-											</li>
-										</ul>
-										<h4 class="tsd-parameters-title">Parameters</h4>
-										<ul class="tsd-parameters">
-											<li>
-												<h5>url: <span class="tsd-signature-type">string</span></h5>
-											</li>
-											<li>
-												<h5>data: <span class="tsd-signature-type">unknown</span></h5>
-											</li>
-											<li>
-												<h5><span class="tsd-flag ts-flagOptional">Optional</span> config: <span class="tsd-signature-type">AxiosRequestConfig</span></h5>
-											</li>
-										</ul>
-										<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">T.NoEnv</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosError</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">AxiosResponse</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span></h4>
-									</li>
-							</ul>        </li>
 						</ul>
 					</div>
 				</section>
@@ -199,9 +141,6 @@
 					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_graceful.html">@matechs/graceful</a>
 					</li>
-					<li class="current tsd-kind-module">
-						<a href="../modules/_matechs_http.html">@matechs/http</a>
-					</li>
 					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_http_client.html">@matechs/http-<wbr>client</a>
 					</li>
@@ -214,7 +153,7 @@
 					<li class=" tsd-kind-module">
 						<a href="../modules/_matechs_orm.html">@matechs/orm</a>
 					</li>
-					<li class=" tsd-kind-module">
+					<li class="current tsd-kind-module">
 						<a href="../modules/_matechs_rpc.html">@matechs/rpc</a>
 					</li>
 					<li class=" tsd-kind-module">
@@ -229,24 +168,54 @@
 				<ul class="before-current">
 				</ul>
 				<ul class="current">
-					<li class="current tsd-kind-interface tsd-parent-kind-module">
-						<a href="_matechs_http.httpclient.html" class="tsd-kind-icon">Http<wbr>Client</a>
+					<li class="current tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_rpc.clientconfig.html" class="tsd-kind-icon">Client<wbr>Config</a>
 						<ul>
-							<li class=" tsd-kind-property tsd-parent-kind-interface">
-								<a href="_matechs_http.httpclient.html#http" class="tsd-kind-icon">http</a>
+							<li class=" tsd-kind-property tsd-parent-kind-interface tsd-is-not-exported">
+								<a href="_matechs_rpc.clientconfig.html#__computed" class="tsd-kind-icon">__computed</a>
 							</li>
 						</ul>
 					</li>
 				</ul>
 				<ul class="after-current">
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="../modules/_matechs_http.html#get" class="tsd-kind-icon">get</a>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported">
+						<a href="_matechs_rpc.rpcrequest.html" class="tsd-kind-icon">RPCRequest</a>
 					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="../modules/_matechs_http.html#httpclient-1" class="tsd-kind-icon">http<wbr>Client</a>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported">
+						<a href="_matechs_rpc.rpcresponse.html" class="tsd-kind-icon">RPCResponse</a>
+					</li>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_rpc.serverconfig.html" class="tsd-kind-icon">Server<wbr>Config</a>
+					</li>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="../modules/_matechs_rpc.html#client" class="tsd-kind-icon">Client</a>
+					</li>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="../modules/_matechs_rpc.html#cliententry" class="tsd-kind-icon">Client<wbr>Entry</a>
+					</li>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="../modules/_matechs_rpc.html#clientmodule" class="tsd-kind-icon">Client<wbr>Module</a>
+					</li>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="../modules/_matechs_rpc.html#runtime" class="tsd-kind-icon">Runtime</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../modules/_matechs_rpc.html#clientconfigenv" class="tsd-kind-icon">client<wbr>Config<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../modules/_matechs_rpc.html#serverconfigenv" class="tsd-kind-icon">server<wbr>Config<wbr>Env</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="../modules/_matechs_http.html#post" class="tsd-kind-icon">post</a>
+						<a href="../modules/_matechs_rpc.html#bind" class="tsd-kind-icon">bind</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="../modules/_matechs_rpc.html#client-1" class="tsd-kind-icon">client</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="../modules/_matechs_rpc.html#clientconfig-1" class="tsd-kind-icon">client<wbr>Config</a>
+					</li>
+					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
+						<a href="../modules/_matechs_rpc.html#serverconfig-1" class="tsd-kind-icon">server<wbr>Config</a>
 					</li>
 				</ul>
 			</nav>

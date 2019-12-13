@@ -93,7 +93,15 @@
 						<section class="tsd-index-section ">
 							<h3>Type aliases</h3>
 							<ul class="tsd-index-list">
+								<li class="tsd-kind-type-alias tsd-parent-kind-module"><a href="_matechs_express.html#expressenv" class="tsd-kind-icon">Express<wbr>Env</a></li>
 								<li class="tsd-kind-type-alias tsd-parent-kind-module"><a href="_matechs_express.html#method" class="tsd-kind-icon">Method</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section ">
+							<h3>Variables</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="_matechs_express.html#expressappenv" class="tsd-kind-icon">express<wbr>App<wbr>Env</a></li>
+								<li class="tsd-kind-variable tsd-parent-kind-module"><a href="_matechs_express.html#expressenv-1" class="tsd-kind-icon">express<wbr>Env</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
@@ -116,12 +124,45 @@
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Type aliases</h2>
 				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module">
+					<a name="expressenv" class="tsd-anchor"></a>
+					<h3>Express<wbr>Env</h3>
+					<div class="tsd-signature tsd-kind-icon">Express<wbr>Env<span class="tsd-signature-symbol">:</span> <a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.express.html" class="tsd-signature-type">Express</a></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L112">packages/express/src/index.ts:112</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module">
 					<a name="method" class="tsd-anchor"></a>
 					<h3>Method</h3>
 					<div class="tsd-signature tsd-kind-icon">Method<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">"post"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"get"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"put"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"patch"</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">"delete"</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L16">packages/express/src/index.ts:16</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L16">packages/express/src/index.ts:16</a></li>
+						</ul>
+					</aside>
+				</section>
+			</section>
+			<section class="tsd-panel-group tsd-member-group ">
+				<h2>Variables</h2>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="expressappenv" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> express<wbr>App<wbr>Env</h3>
+					<div class="tsd-signature tsd-kind-icon">express<wbr>App<wbr>Env<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">keyof symbol</span><span class="tsd-signature-symbol"> =&nbsp;Symbol()</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L8">packages/express/src/index.ts:8</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module">
+					<a name="expressenv-1" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> express<wbr>Env</h3>
+					<div class="tsd-signature tsd-kind-icon">express<wbr>Env<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">keyof symbol</span><span class="tsd-signature-symbol"> =&nbsp;Symbol()</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L18">packages/express/src/index.ts:18</a></li>
 						</ul>
 					</aside>
 				</section>
@@ -132,13 +173,13 @@
 					<a name="bind" class="tsd-anchor"></a>
 					<h3>bind</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
-						<li class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">(</span>port<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, hostname<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.express.html" class="tsd-signature-type">Express</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Graceful</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">(</span>port<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, hostname<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.express.html" class="tsd-signature-type">Express</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L110">packages/express/src/index.ts:110</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L103">packages/express/src/index.ts:103</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -150,7 +191,7 @@
 									<h5><span class="tsd-flag ts-flagOptional">Optional</span> hostname: <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.express.html" class="tsd-signature-type">Express</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Graceful</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.express.html" class="tsd-signature-type">Express</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
 					</ul>
 				</section>
@@ -164,7 +205,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L102">packages/express/src/index.ts:102</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L93">packages/express/src/index.ts:93</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -223,7 +264,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L96">packages/express/src/index.ts:96</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L87">packages/express/src/index.ts:87</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -257,29 +298,29 @@
 					<div class="tsd-signature tsd-kind-icon">express<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L33">packages/express/src/index.ts:33</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L35">packages/express/src/index.ts:35</a></li>
 						</ul>
 					</aside>
 					<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-object-literal">
-						<a name="express-1.express-2" class="tsd-anchor"></a>
-						<h3>express</h3>
-						<div class="tsd-signature tsd-kind-icon">express<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
+						<a name="express-1.__computed" class="tsd-anchor"></a>
+						<h3>__computed</h3>
+						<div class="tsd-signature tsd-kind-icon">__computed<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 						<aside class="tsd-sources">
 							<ul>
-								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L34">packages/express/src/index.ts:34</a></li>
+								<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L36">packages/express/src/index.ts:36</a></li>
 							</ul>
 						</aside>
 						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal">
-							<a name="express-1.express-2.bind-1" class="tsd-anchor"></a>
+							<a name="express-1.__computed.bind-1" class="tsd-anchor"></a>
 							<h3>bind</h3>
 							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal">
-								<li class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">(</span>port<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, hostname<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Graceful</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></li>
+								<li class="tsd-signature tsd-kind-icon">bind<span class="tsd-signature-symbol">(</span>port<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">number</span>, hostname<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></li>
 							</ul>
 							<ul class="tsd-descriptions">
 								<li class="tsd-description">
 									<aside class="tsd-sources">
 										<ul>
-											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L74">packages/express/src/index.ts:74</a></li>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L76">packages/express/src/index.ts:76</a></li>
 										</ul>
 									</aside>
 									<h4 class="tsd-parameters-title">Parameters</h4>
@@ -291,12 +332,12 @@
 											<h5><span class="tsd-flag ts-flagOptional">Optional</span> hostname: <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">string</span></h5>
 										</li>
 									</ul>
-									<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Graceful</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></h4>
+									<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Server</span><span class="tsd-signature-symbol">&gt;</span></h4>
 								</li>
 							</ul>
 						</section>
 						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter">
-							<a name="express-1.express-2.route-1" class="tsd-anchor"></a>
+							<a name="express-1.__computed.route-1" class="tsd-anchor"></a>
 							<h3>route</h3>
 							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter">
 								<li class="tsd-signature tsd-kind-icon">route&lt;R, E, RES&gt;<span class="tsd-signature-symbol">(</span>method<span class="tsd-signature-symbol">: </span><a href="_matechs_express.html#method" class="tsd-signature-type">Method</a>, path<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, f<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
@@ -305,7 +346,7 @@
 								<li class="tsd-description">
 									<aside class="tsd-sources">
 										<ul>
-											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L35">packages/express/src/index.ts:35</a></li>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L37">packages/express/src/index.ts:37</a></li>
 										</ul>
 									</aside>
 									<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -355,7 +396,7 @@
 							</ul>
 						</section>
 						<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter">
-							<a name="express-1.express-2.withapp-1" class="tsd-anchor"></a>
+							<a name="express-1.__computed.withapp-1" class="tsd-anchor"></a>
 							<h3>with<wbr>App</h3>
 							<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-object-literal tsd-has-type-parameter">
 								<li class="tsd-signature tsd-kind-icon">with<wbr>App&lt;R, E, A&gt;<span class="tsd-signature-symbol">(</span>op<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-signature-type">HasExpress</a><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">&gt;</span></li>
@@ -364,7 +405,7 @@
 								<li class="tsd-description">
 									<aside class="tsd-sources">
 										<ul>
-											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/express/src/index.ts#L68">packages/express/src/index.ts:68</a></li>
+											<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/express/src/index.ts#L70">packages/express/src/index.ts:70</a></li>
 										</ul>
 									</aside>
 									<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -415,9 +456,6 @@
 						<a href="_matechs_graceful.html">@matechs/graceful</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_http.html">@matechs/http</a>
-					</li>
-					<li class=" tsd-kind-module">
 						<a href="_matechs_http_client.html">@matechs/http-<wbr>client</a>
 					</li>
 					<li class=" tsd-kind-module">
@@ -449,7 +487,16 @@
 						<a href="../interfaces/_matechs_express.hasexpress.html" class="tsd-kind-icon">Has<wbr>Express</a>
 					</li>
 					<li class=" tsd-kind-type-alias tsd-parent-kind-module">
+						<a href="_matechs_express.html#expressenv" class="tsd-kind-icon">Express<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module">
 						<a href="_matechs_express.html#method" class="tsd-kind-icon">Method</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="_matechs_express.html#expressappenv" class="tsd-kind-icon">express<wbr>App<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module">
+						<a href="_matechs_express.html#expressenv-1" class="tsd-kind-icon">express<wbr>Env</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module">
 						<a href="_matechs_express.html#bind" class="tsd-kind-icon">bind</a>

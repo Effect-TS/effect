@@ -73,72 +73,6 @@
 					</a>
 					<p>The idea behind this package is to allow you to easily derive an RPC implementation for your effects.</p>
 					<p>Docs at <a href="https://mikearnaldi.github.io/matechs-effect/modules/_matechs_rpc.html">https://mikearnaldi.github.io/matechs-effect/modules/_matechs_rpc.html</a></p>
-					<p>In general we cannot allow any effect to be serialized, in particular an effect that supports RPC integration has to satisfy:</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">type</span> CanRemote = {
-  [k: <span class="hljs-built_in">string</span>]: { [h: <span class="hljs-built_in">string</span>]: <span class="hljs-function">(<span class="hljs-params">...args: <span class="hljs-built_in">any</span>[]</span>) =&gt;</span> T.Effect&lt;<span class="hljs-built_in">any</span>, <span class="hljs-built_in">Error</span>, <span class="hljs-built_in">any</span>&gt; };
-};</code></pre>
-					<p>An example effect that support RPC:</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">interface</span> ModuleA <span class="hljs-keyword">extends</span> CanRemote {
-  moduleA: {
-    sayHi(a: Serializable, b: Serializable): T.Effect&lt;YourEnv, <span class="hljs-built_in">Error</span>, SerializableOutput&gt;;
-  };
-}</code></pre>
-					<p>An example effect that cannot support RPC:</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">interface</span> ModuleA {
-  moduleA: {
-    runStuff&lt;A&gt;<span class="hljs-function">(<span class="hljs-params">f: (<span class="hljs-params">a:A</span>) =&gt; <span class="hljs-built_in">void</span></span>): <span class="hljs-params">T</span>.<span class="hljs-params">Effect</span>&lt;<span class="hljs-params">YourEnv</span>, <span class="hljs-params">Error</span>, <span class="hljs-params">SerializableOutput</span>&gt;;
-  };
-}</span></code></pre>
-					<p>Note: you can always extract the RPC part as a separate effect and have your full effect extending the base RPC one.</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">interface</span> ModuleARPC <span class="hljs-keyword">extends</span> CanRemote {
-  moduleA: {
-    sayHi(a: Serializable, b: Serializable): T.Effect&lt;YourEnv, <span class="hljs-built_in">Error</span>, SerializableOutput&gt;;
-  };
-}
-<span class="hljs-keyword">interface</span> ModuleANoRPC {
-  moduleA: {
-    runStuff&lt;A&gt;<span class="hljs-function">(<span class="hljs-params">f: (<span class="hljs-params">a:A</span>) =&gt; <span class="hljs-built_in">void</span></span>): <span class="hljs-params">T</span>.<span class="hljs-params">Effect</span>&lt;<span class="hljs-params">YourEnv</span>, <span class="hljs-params">Error</span>, <span class="hljs-params">SerializableOutput</span>&gt;;
-  };
-}
-<span class="hljs-params">type</span> <span class="hljs-params">ModuleA</span> = <span class="hljs-params">ModuleARPC</span> &amp; <span class="hljs-params">ModuleANoRPC</span></span></code></pre>
-					<p>In order to implement a client suppose you have an effect on the server side:</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">interface</span> ModuleA <span class="hljs-keyword">extends</span> CanRemote {
-  moduleA: {
-    sayHiAndReturn(s: <span class="hljs-built_in">string</span>): T.Effect&lt;T.NoEnv, <span class="hljs-built_in">Error</span>, <span class="hljs-built_in">string</span>&gt;;
-  };
-}
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> moduleA: ModuleA = {
-  moduleA: {
-    sayHiAndReturn(s: <span class="hljs-built_in">string</span>): T.Effect&lt;T.NoEnv, <span class="hljs-built_in">Error</span>, <span class="hljs-built_in">string</span>&gt; {
-      <span class="hljs-keyword">return</span> T.left(T.error(<span class="hljs-string">"not implemented"</span>));
-    }
-  }
-};
-
-<span class="hljs-comment">// in general you need to write this manually for effects that don't support CanRemote,</span>
-<span class="hljs-comment">// in case of CanRemote you can use automatic derivation.</span>
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> {
-  moduleA: { sayHiAndReturn }
-} = serverHelpers(moduleA);
-
-<span class="hljs-comment">// this gets translated to:</span>
-<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sayHiAndReturn</span>(<span class="hljs-params">s: <span class="hljs-built_in">string</span></span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">ModuleA</span>, <span class="hljs-title">Error</span>, <span class="hljs-title">string</span>&gt; </span>{
-    <span class="hljs-keyword">return</span> accessM(<span class="hljs-function">(<span class="hljs-params">{moduleA}: ModuleA</span>) =&gt;</span> moduleA.sayHiAndReturn(s))
-}</code></pre>
-					<p>You can implement a client in this way:</p>
-					<pre><code class="language-ts"><span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> clientModuleA = reinterpretRemotely(moduleA, <span class="hljs-string">"url"</span>);
-
-<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> {
-  moduleA: { sayHiAndReturn }
-} = clientHelpers(moduleA);
-
-<span class="hljs-comment">// this gets translated to:</span>
-<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">sayHiAndReturn</span>(<span class="hljs-params">s: <span class="hljs-built_in">string</span></span>): <span class="hljs-title">Effect</span>&lt;<span class="hljs-title">Remote</span>&lt;<span class="hljs-title">ModuleA</span>&gt;, <span class="hljs-title">Error</span>, <span class="hljs-title">string</span>&gt; </span>{
-    <span class="hljs-keyword">return</span> accessM(<span class="hljs-function">(<span class="hljs-params">{moduleA}: Remote&lt;ModuleA&gt;</span>) =&gt;</span> moduleA.sayHiAndReturn(s))
-}</code></pre>
-					<p>Your module gets reinterpreted in terms of http calls by <code>reinterpretRemotely</code> and <code>clientHelpers/serverHelpers</code> fix up the dependencies accordingly to server/client context.</p>
-					<p>You can then compose <code>sayHiAndReturn</code> in your program in exactly the same way for both client and server.</p>
 					<a href="#notes" id="notes" style="color: inherit; text-decoration: none;">
 						<h1>Notes</h1>
 					</a>
@@ -149,34 +83,38 @@
 				<h2>Index</h2>
 				<section class="tsd-panel tsd-index-panel">
 					<div class="tsd-index-content">
-						<section class="tsd-index-section ">
+						<section class="tsd-index-section tsd-is-not-exported">
 							<h3>Interfaces</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-kind-icon">Can<wbr>Remote</a></li>
-								<li class="tsd-kind-interface tsd-parent-kind-module"><a href="../interfaces/_matechs_rpc.payload.html" class="tsd-kind-icon">Payload</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="../interfaces/_matechs_rpc.clientconfig.html" class="tsd-kind-icon">Client<wbr>Config</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported"><a href="../interfaces/_matechs_rpc.rpcrequest.html" class="tsd-kind-icon">RPCRequest</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported"><a href="../interfaces/_matechs_rpc.rpcresponse.html" class="tsd-kind-icon">RPCResponse</a></li>
+								<li class="tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="../interfaces/_matechs_rpc.serverconfig.html" class="tsd-kind-icon">Server<wbr>Config</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
 							<h3>Type aliases</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#clienthelpers" class="tsd-kind-icon">Client<wbr>Helpers</a></li>
-								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#patchedclientf" class="tsd-kind-icon">Patched<wbr>ClientF</a></li>
-								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#patchedf" class="tsd-kind-icon">PatchedF</a></li>
-								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#patchedserverf" class="tsd-kind-icon">Patched<wbr>ServerF</a></li>
-								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#remote" class="tsd-kind-icon">Remote</a></li>
+								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_rpc.html#client" class="tsd-kind-icon">Client</a></li>
+								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_rpc.html#cliententry" class="tsd-kind-icon">Client<wbr>Entry</a></li>
+								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported"><a href="_matechs_rpc.html#clientmodule" class="tsd-kind-icon">Client<wbr>Module</a></li>
 								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#runtime" class="tsd-kind-icon">Runtime</a></li>
-								<li class="tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#serverhelpers" class="tsd-kind-icon">Server<wbr>Helpers</a></li>
+							</ul>
+						</section>
+						<section class="tsd-index-section tsd-is-not-exported">
+							<h3>Variables</h3>
+							<ul class="tsd-index-list">
+								<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_rpc.html#clientconfigenv" class="tsd-kind-icon">client<wbr>Config<wbr>Env</a></li>
+								<li class="tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported"><a href="_matechs_rpc.html#serverconfigenv" class="tsd-kind-icon">server<wbr>Config<wbr>Env</a></li>
 							</ul>
 						</section>
 						<section class="tsd-index-section ">
 							<h3>Functions</h3>
 							<ul class="tsd-index-list">
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#bindtoapp" class="tsd-kind-icon">bind<wbr>ToApp</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module"><a href="_matechs_rpc.html#calculatepath" class="tsd-kind-icon">calculate<wbr>Path</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#clienthelpers-1" class="tsd-kind-icon">client<wbr>Helpers</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#reinterpretremotely" class="tsd-kind-icon">reinterpret<wbr>Remotely</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#remotely" class="tsd-kind-icon">remotely</a></li>
-								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#serverhelpers-1" class="tsd-kind-icon">server<wbr>Helpers</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#bind" class="tsd-kind-icon">bind</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#client-1" class="tsd-kind-icon">client</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#clientconfig-1" class="tsd-kind-icon">client<wbr>Config</a></li>
+								<li class="tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter"><a href="_matechs_rpc.html#serverconfig-1" class="tsd-kind-icon">server<wbr>Config</a></li>
 							</ul>
 						</section>
 					</div>
@@ -184,29 +122,32 @@
 			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Type aliases</h2>
-				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="clienthelpers" class="tsd-anchor"></a>
-					<h3>Client<wbr>Helpers</h3>
-					<div class="tsd-signature tsd-kind-icon">Client<wbr>Helpers&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ClientHelpers&lt;M&gt;</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+					<a name="client" class="tsd-anchor"></a>
+					<h3>Client</h3>
+					<div class="tsd-signature tsd-kind-icon">Client&lt;M, K&gt;<span class="tsd-signature-symbol">:</span> <a href="_matechs_rpc.html#clientmodule" class="tsd-signature-type">ClientModule</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L84">packages/rpc/src/index.ts:84</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L67">packages/rpc/src/index.ts:67</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
 					<ul class="tsd-type-parameters">
 						<li>
 							<h4>M</h4>
+						</li>
+						<li>
+							<h4>K<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof M</span></h4>
 						</li>
 					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="patchedclientf" class="tsd-anchor"></a>
-					<h3>Patched<wbr>ClientF</h3>
-					<div class="tsd-signature tsd-kind-icon">Patched<wbr>ClientF&lt;M, Z&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PatchedClientF&lt;M, Z&gt;</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+					<a name="cliententry" class="tsd-anchor"></a>
+					<h3>Client<wbr>Entry</h3>
+					<div class="tsd-signature tsd-kind-icon">Client<wbr>Entry&lt;M, X, Y&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ClientEntry&lt;M, X, Y&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L78">packages/rpc/src/index.ts:78</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L53">packages/rpc/src/index.ts:53</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -215,33 +156,20 @@
 							<h4>M</h4>
 						</li>
 						<li>
-							<h4>Z<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-signature-type">CanRemote</a></h4>
+							<h4>X</h4>
+						</li>
+						<li>
+							<h4>Y<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof X</span></h4>
 						</li>
 					</ul>
 				</section>
-				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="patchedf" class="tsd-anchor"></a>
-					<h3>PatchedF</h3>
-					<div class="tsd-signature tsd-kind-icon">PatchedF&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PatchedF&lt;M&gt;</span></div>
+				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+					<a name="clientmodule" class="tsd-anchor"></a>
+					<h3>Client<wbr>Module</h3>
+					<div class="tsd-signature tsd-kind-icon">Client<wbr>Module&lt;M, A, B&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L17">packages/rpc/src/index.ts:17</a></li>
-						</ul>
-					</aside>
-					<h4 class="tsd-type-parameters-title">Type parameters</h4>
-					<ul class="tsd-type-parameters">
-						<li>
-							<h4>M</h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="patchedserverf" class="tsd-anchor"></a>
-					<h3>Patched<wbr>ServerF</h3>
-					<div class="tsd-signature tsd-kind-icon">Patched<wbr>ServerF&lt;M, Z&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">PatchedServerF&lt;M, Z&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L107">packages/rpc/src/index.ts:107</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L63">packages/rpc/src/index.ts:63</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -250,25 +178,17 @@
 							<h4>M</h4>
 						</li>
 						<li>
-							<h4>Z<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-signature-type">CanRemote</a></h4>
+							<h4>A</h4>
 						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="remote" class="tsd-anchor"></a>
-					<h3>Remote</h3>
-					<div class="tsd-signature tsd-kind-icon">Remote&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Remote&lt;M&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L23">packages/rpc/src/index.ts:23</a></li>
-						</ul>
-					</aside>
-					<h4 class="tsd-type-parameters-title">Type parameters</h4>
-					<ul class="tsd-type-parameters">
 						<li>
-							<h4>M</h4>
+							<h4>B<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof A</span></h4>
 						</li>
 					</ul>
+					<div class="tsd-type-declaration">
+						<h4>Type declaration</h4>
+						<ul class="tsd-parameters">
+						</ul>
+					</div>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
 					<a name="runtime" class="tsd-anchor"></a>
@@ -276,23 +196,7 @@
 					<div class="tsd-signature tsd-kind-icon">Runtime&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Runtime&lt;M&gt;</span></div>
 					<aside class="tsd-sources">
 						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L136">packages/rpc/src/index.ts:136</a></li>
-						</ul>
-					</aside>
-					<h4 class="tsd-type-parameters-title">Type parameters</h4>
-					<ul class="tsd-type-parameters">
-						<li>
-							<h4>M</h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="serverhelpers" class="tsd-anchor"></a>
-					<h3>Server<wbr>Helpers</h3>
-					<div class="tsd-signature tsd-kind-icon">Server<wbr>Helpers&lt;M&gt;<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">ServerHelpers&lt;M&gt;</span></div>
-					<aside class="tsd-sources">
-						<ul>
-							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L113">packages/rpc/src/index.ts:113</a></li>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L94">packages/rpc/src/index.ts:94</a></li>
 						</ul>
 					</aside>
 					<h4 class="tsd-type-parameters-title">Type parameters</h4>
@@ -303,25 +207,48 @@
 					</ul>
 				</section>
 			</section>
+			<section class="tsd-panel-group tsd-member-group tsd-is-not-exported">
+				<h2>Variables</h2>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported">
+					<a name="clientconfigenv" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> client<wbr>Config<wbr>Env</h3>
+					<div class="tsd-signature tsd-kind-icon">client<wbr>Config<wbr>Env<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">keyof symbol</span><span class="tsd-signature-symbol"> =&nbsp;Symbol()</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L11">packages/rpc/src/index.ts:11</a></li>
+						</ul>
+					</aside>
+				</section>
+				<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported">
+					<a name="serverconfigenv" class="tsd-anchor"></a>
+					<h3><span class="tsd-flag ts-flagConst">Const</span> server<wbr>Config<wbr>Env</h3>
+					<div class="tsd-signature tsd-kind-icon">server<wbr>Config<wbr>Env<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">keyof symbol</span><span class="tsd-signature-symbol"> =&nbsp;Symbol()</span></div>
+					<aside class="tsd-sources">
+						<ul>
+							<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L32">packages/rpc/src/index.ts:32</a></li>
+						</ul>
+					</aside>
+				</section>
+			</section>
 			<section class="tsd-panel-group tsd-member-group ">
 				<h2>Functions</h2>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="bindtoapp" class="tsd-anchor"></a>
-					<h3>bind<wbr>ToApp</h3>
+					<a name="bind" class="tsd-anchor"></a>
+					<h3>bind</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">bind<wbr>ToApp&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>module<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, entry<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span>, runtime<span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#runtime" class="tsd-signature-type">Runtime</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">&gt;</span>, controller<span class="tsd-signature-symbol">?: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tracer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">HasExpress</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Express</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">bind&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>m<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, k<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E.ExpressEnv</span><span class="tsd-signature-symbol"> &amp; </span><a href="_matechs_rpc.html#runtime" class="tsd-signature-type">Runtime</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_rpc.serverconfig.html" class="tsd-signature-type">ServerConfig</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L142">packages/rpc/src/index.ts:142</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L108">packages/rpc/src/index.ts:108</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>M<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-signature-type">CanRemote</a></h4>
+									<h4>M</h4>
 								</li>
 								<li>
 									<h4>K<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof M</span></h4>
@@ -330,188 +257,97 @@
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>module: <span class="tsd-signature-type">M</span></h5>
+									<h5>m: <span class="tsd-signature-type">M</span></h5>
 								</li>
 								<li>
-									<h5>entry: <span class="tsd-signature-type">K</span></h5>
-								</li>
-								<li>
-									<h5>runtime: <a href="_matechs_rpc.html#runtime" class="tsd-signature-type">Runtime</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">&gt;</span></h5>
-								</li>
-								<li>
-									<h5><span class="tsd-flag ts-flagDefault value">Default value</span> controller: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> =&nbsp;&#x60;RPC Server - ${entry}&#x60;</span></h5>
+									<h5>k: <span class="tsd-signature-type">K</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tracer</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">HasExpress</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">Express</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">never</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module">
-					<a name="calculatepath" class="tsd-anchor"></a>
-					<h3>calculate<wbr>Path</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module">
-						<li class="tsd-signature tsd-kind-icon">calculate<wbr>Path<span class="tsd-signature-symbol">(</span>url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, entry<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, k<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L29">packages/rpc/src/index.ts:29</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>entry: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>k: <span class="tsd-signature-type">string</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">E.ExpressEnv</span><span class="tsd-signature-symbol"> &amp; </span><a href="_matechs_rpc.html#runtime" class="tsd-signature-type">Runtime</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M[K]</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> &amp; </span><a href="../interfaces/_matechs_rpc.serverconfig.html" class="tsd-signature-type">ServerConfig</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">T.NoErr</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="clienthelpers-1" class="tsd-anchor"></a>
-					<h3>client<wbr>Helpers</h3>
+					<a name="client-1" class="tsd-anchor"></a>
+					<h3>client</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">client<wbr>Helpers&lt;M&gt;<span class="tsd-signature-symbol">(</span>module<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#clienthelpers" class="tsd-signature-type">ClientHelpers</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">client&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>m<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, k<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#client" class="tsd-signature-type">Client</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L90">packages/rpc/src/index.ts:90</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L69">packages/rpc/src/index.ts:69</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>M<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-signature-type">CanRemote</a></h4>
+									<h4>M</h4>
+								</li>
+								<li>
+									<h4>K<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof M</span></h4>
 								</li>
 							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>module: <span class="tsd-signature-type">M</span></h5>
+									<h5>m: <span class="tsd-signature-type">M</span></h5>
+								</li>
+								<li>
+									<h5>k: <span class="tsd-signature-type">K</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="_matechs_rpc.html#clienthelpers" class="tsd-signature-type">ClientHelpers</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <a href="_matechs_rpc.html#client" class="tsd-signature-type">Client</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></h4>
 						</li>
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="reinterpretremotely" class="tsd-anchor"></a>
-					<h3>reinterpret<wbr>Remotely</h3>
+					<a name="clientconfig-1" class="tsd-anchor"></a>
+					<h3>client<wbr>Config</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">reinterpret<wbr>Remotely&lt;M&gt;<span class="tsd-signature-symbol">(</span>module<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#remote" class="tsd-signature-type">Remote</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">client<wbr>Config&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>_m<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, k<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L59">packages/rpc/src/index.ts:59</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L21">packages/rpc/src/index.ts:21</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>M<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-signature-type">CanRemote</a></h4>
+									<h4>M</h4>
+								</li>
+								<li>
+									<h4>K<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof M</span></h4>
 								</li>
 							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>module: <span class="tsd-signature-type">M</span></h5>
+									<h5>_m: <span class="tsd-signature-type">M</span></h5>
 								</li>
 								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="_matechs_rpc.html#remote" class="tsd-signature-type">Remote</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></h4>
-						</li>
-					</ul>
-				</section>
-				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="remotely" class="tsd-anchor"></a>
-					<h3>remotely</h3>
-					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">remotely&lt;A, R, E, B&gt;<span class="tsd-signature-symbol">(</span>_<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span>, url<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, entry<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span>, k<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
-					</ul>
-					<ul class="tsd-descriptions">
-						<li class="tsd-description">
-							<aside class="tsd-sources">
-								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L37">packages/rpc/src/index.ts:37</a></li>
-								</ul>
-							</aside>
-							<h4 class="tsd-type-parameters-title">Type parameters</h4>
-							<ul class="tsd-type-parameters">
-								<li>
-									<h4>A<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">any</span><span class="tsd-signature-symbol">[]</span></h4>
-								</li>
-								<li>
-									<h4>R</h4>
-								</li>
-								<li>
-									<h4>E</h4>
-								</li>
-								<li>
-									<h4>B</h4>
-								</li>
-							</ul>
-							<h4 class="tsd-parameters-title">Parameters</h4>
-							<ul class="tsd-parameters">
-								<li>
-									<h5>_: <span class="tsd-signature-type">function</span></h5>
-									<ul class="tsd-parameters">
-										<li class="tsd-parameter-siganture">
-											<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-												<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">...</span>args<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
-											</ul>
-											<ul class="tsd-descriptions">
-												<li class="tsd-description">
-													<h4 class="tsd-parameters-title">Parameters</h4>
-													<ul class="tsd-parameters">
-														<li>
-															<h5><span class="tsd-flag ts-flagRest">Rest</span> <span class="tsd-signature-symbol">...</span>args: <span class="tsd-signature-type">A</span></h5>
-														</li>
-													</ul>
-													<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h4>
-												</li>
-											</ul>
-										</li>
-									</ul>
-								</li>
-								<li>
-									<h5>url: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>entry: <span class="tsd-signature-type">string</span></h5>
-								</li>
-								<li>
-									<h5>k: <span class="tsd-signature-type">string</span></h5>
+									<h5>k: <span class="tsd-signature-type">K</span></h5>
 								</li>
 							</ul>
 							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
 							<ul class="tsd-parameters">
 								<li class="tsd-parameter-siganture">
 									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
-										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">...</span>args<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">A</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpClient</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></li>
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>c<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">{ [k in K]: { baseUrl: string; }; }[K]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.clientconfig.html" class="tsd-signature-type">ClientConfig</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></li>
 									</ul>
 									<ul class="tsd-descriptions">
 										<li class="tsd-description">
 											<h4 class="tsd-parameters-title">Parameters</h4>
 											<ul class="tsd-parameters">
 												<li>
-													<h5><span class="tsd-flag ts-flagRest">Rest</span> <span class="tsd-signature-symbol">...</span>args: <span class="tsd-signature-type">A</span></h5>
+													<h5>c: <span class="tsd-signature-type">{ [k in K]: { baseUrl: string; }; }[K]</span></h5>
 												</li>
 											</ul>
-											<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Effect</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">HttpClient</span><span class="tsd-signature-symbol"> &amp; </span><span class="tsd-signature-type">R</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">Error</span><span class="tsd-signature-symbol"> | </span><span class="tsd-signature-type">E</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">B</span><span class="tsd-signature-symbol">&gt;</span></h4>
+											<h4 class="tsd-returns-title">Returns <a href="../interfaces/_matechs_rpc.clientconfig.html" class="tsd-signature-type">ClientConfig</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></h4>
 										</li>
 									</ul>
 								</li>
@@ -520,31 +356,55 @@
 					</ul>
 				</section>
 				<section class="tsd-panel tsd-member tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-					<a name="serverhelpers-1" class="tsd-anchor"></a>
-					<h3>server<wbr>Helpers</h3>
+					<a name="serverconfig-1" class="tsd-anchor"></a>
+					<h3>server<wbr>Config</h3>
 					<ul class="tsd-signatures tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<li class="tsd-signature tsd-kind-icon">server<wbr>Helpers&lt;M&gt;<span class="tsd-signature-symbol">(</span>module<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="_matechs_rpc.html#serverhelpers" class="tsd-signature-type">ServerHelpers</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></li>
+						<li class="tsd-signature tsd-kind-icon">server<wbr>Config&lt;M, K&gt;<span class="tsd-signature-symbol">(</span>_m<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">M</span>, k<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">function</span></li>
 					</ul>
 					<ul class="tsd-descriptions">
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/307ae8b/packages/rpc/src/index.ts#L119">packages/rpc/src/index.ts:119</a></li>
+									<li>Defined in <a href="https://github.com/mikearnaldi/matechs-effect/blob/eef6361/packages/rpc/src/index.ts#L42">packages/rpc/src/index.ts:42</a></li>
 								</ul>
 							</aside>
 							<h4 class="tsd-type-parameters-title">Type parameters</h4>
 							<ul class="tsd-type-parameters">
 								<li>
-									<h4>M<span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-signature-type">CanRemote</a></h4>
+									<h4>M</h4>
+								</li>
+								<li>
+									<h4>K<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">keyof M</span></h4>
 								</li>
 							</ul>
 							<h4 class="tsd-parameters-title">Parameters</h4>
 							<ul class="tsd-parameters">
 								<li>
-									<h5>module: <span class="tsd-signature-type">M</span></h5>
+									<h5>_m: <span class="tsd-signature-type">M</span></h5>
+								</li>
+								<li>
+									<h5>k: <span class="tsd-signature-type">K</span></h5>
 								</li>
 							</ul>
-							<h4 class="tsd-returns-title">Returns <a href="_matechs_rpc.html#serverhelpers" class="tsd-signature-type">ServerHelpers</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">&gt;</span></h4>
+							<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">function</span></h4>
+							<ul class="tsd-parameters">
+								<li class="tsd-parameter-siganture">
+									<ul class="tsd-signatures tsd-kind-type-literal tsd-is-not-exported">
+										<li class="tsd-signature tsd-kind-icon"><span class="tsd-signature-symbol">(</span>c<span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">{ [k in K]: { scope: string; }; }[K]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="../interfaces/_matechs_rpc.serverconfig.html" class="tsd-signature-type">ServerConfig</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></li>
+									</ul>
+									<ul class="tsd-descriptions">
+										<li class="tsd-description">
+											<h4 class="tsd-parameters-title">Parameters</h4>
+											<ul class="tsd-parameters">
+												<li>
+													<h5>c: <span class="tsd-signature-type">{ [k in K]: { scope: string; }; }[K]</span></h5>
+												</li>
+											</ul>
+											<h4 class="tsd-returns-title">Returns <a href="../interfaces/_matechs_rpc.serverconfig.html" class="tsd-signature-type">ServerConfig</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">M</span><span class="tsd-signature-symbol">, </span><span class="tsd-signature-type">K</span><span class="tsd-signature-symbol">&gt;</span></h4>
+										</li>
+									</ul>
+								</li>
+							</ul>
 						</li>
 					</ul>
 				</section>
@@ -572,9 +432,6 @@
 						<a href="_matechs_graceful.html">@matechs/graceful</a>
 					</li>
 					<li class=" tsd-kind-module">
-						<a href="_matechs_http.html">@matechs/http</a>
-					</li>
-					<li class=" tsd-kind-module">
 						<a href="_matechs_http_client.html">@matechs/http-<wbr>client</a>
 					</li>
 					<li class=" tsd-kind-module">
@@ -599,50 +456,47 @@
 			</nav>
 			<nav class="tsd-navigation secondary menu-sticky">
 				<ul class="before-current">
-					<li class=" tsd-kind-interface tsd-parent-kind-module">
-						<a href="../interfaces/_matechs_rpc.canremote.html" class="tsd-kind-icon">Can<wbr>Remote</a>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="../interfaces/_matechs_rpc.clientconfig.html" class="tsd-kind-icon">Client<wbr>Config</a>
 					</li>
-					<li class=" tsd-kind-interface tsd-parent-kind-module">
-						<a href="../interfaces/_matechs_rpc.payload.html" class="tsd-kind-icon">Payload</a>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../interfaces/_matechs_rpc.rpcrequest.html" class="tsd-kind-icon">RPCRequest</a>
 					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#clienthelpers" class="tsd-kind-icon">Client<wbr>Helpers</a>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-is-not-exported">
+						<a href="../interfaces/_matechs_rpc.rpcresponse.html" class="tsd-kind-icon">RPCResponse</a>
 					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#patchedclientf" class="tsd-kind-icon">Patched<wbr>ClientF</a>
+					<li class=" tsd-kind-interface tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="../interfaces/_matechs_rpc.serverconfig.html" class="tsd-kind-icon">Server<wbr>Config</a>
 					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#patchedf" class="tsd-kind-icon">PatchedF</a>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_rpc.html#client" class="tsd-kind-icon">Client</a>
 					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#patchedserverf" class="tsd-kind-icon">Patched<wbr>ServerF</a>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_rpc.html#cliententry" class="tsd-kind-icon">Client<wbr>Entry</a>
 					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#remote" class="tsd-kind-icon">Remote</a>
+					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter tsd-is-not-exported">
+						<a href="_matechs_rpc.html#clientmodule" class="tsd-kind-icon">Client<wbr>Module</a>
 					</li>
 					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
 						<a href="_matechs_rpc.html#runtime" class="tsd-kind-icon">Runtime</a>
 					</li>
-					<li class=" tsd-kind-type-alias tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#serverhelpers" class="tsd-kind-icon">Server<wbr>Helpers</a>
+					<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported">
+						<a href="_matechs_rpc.html#clientconfigenv" class="tsd-kind-icon">client<wbr>Config<wbr>Env</a>
+					</li>
+					<li class=" tsd-kind-variable tsd-parent-kind-module tsd-is-not-exported">
+						<a href="_matechs_rpc.html#serverconfigenv" class="tsd-kind-icon">server<wbr>Config<wbr>Env</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#bindtoapp" class="tsd-kind-icon">bind<wbr>ToApp</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module">
-						<a href="_matechs_rpc.html#calculatepath" class="tsd-kind-icon">calculate<wbr>Path</a>
+						<a href="_matechs_rpc.html#bind" class="tsd-kind-icon">bind</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#clienthelpers-1" class="tsd-kind-icon">client<wbr>Helpers</a>
+						<a href="_matechs_rpc.html#client-1" class="tsd-kind-icon">client</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#reinterpretremotely" class="tsd-kind-icon">reinterpret<wbr>Remotely</a>
+						<a href="_matechs_rpc.html#clientconfig-1" class="tsd-kind-icon">client<wbr>Config</a>
 					</li>
 					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#remotely" class="tsd-kind-icon">remotely</a>
-					</li>
-					<li class=" tsd-kind-function tsd-parent-kind-module tsd-has-type-parameter">
-						<a href="_matechs_rpc.html#serverhelpers-1" class="tsd-kind-icon">server<wbr>Helpers</a>
+						<a href="_matechs_rpc.html#serverconfig-1" class="tsd-kind-icon">server<wbr>Config</a>
 					</li>
 				</ul>
 			</nav>
