@@ -14,23 +14,17 @@
 
 /* istanbul ignore file */
 
-export enum ExitTag {
-  Done,
-  Raise,
-  Abort,
-  Interrupt
-}
-
 export type Exit<E, A> = Done<A> | Cause<E>;
+export type ExitTag = Exit<unknown, unknown>["_tag"];
 
 export interface Done<A> {
-  readonly _tag: ExitTag.Done;
+  readonly _tag: "Done";
   readonly value: A;
 }
 
 export function done<A>(v: A): Done<A> {
   return {
-    _tag: ExitTag.Done,
+    _tag: "Done",
     value: v
   };
 }
@@ -38,33 +32,33 @@ export function done<A>(v: A): Done<A> {
 export type Cause<E> = Raise<E> | Abort | Interrupt;
 
 export interface Raise<E> {
-  readonly _tag: ExitTag.Raise;
+  readonly _tag: "Raise";
   readonly error: E;
 }
 
 export function raise<E>(e: E): Raise<E> {
   return {
-    _tag: ExitTag.Raise,
+    _tag: "Raise",
     error: e
   };
 }
 
 export interface Abort {
-  readonly _tag: ExitTag.Abort;
+  readonly _tag: "Abort";
   readonly abortedWith: unknown;
 }
 
 export function abort(a: unknown): Abort {
   return {
-    _tag: ExitTag.Abort,
+    _tag: "Abort",
     abortedWith: a
   };
 }
 
 export interface Interrupt {
-  readonly _tag: ExitTag.Interrupt;
+  readonly _tag: "Interrupt";
 }
 
 export const interrupt: Interrupt = {
-  _tag: ExitTag.Interrupt
+  _tag: "Interrupt"
 };

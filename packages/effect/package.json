@@ -20,6 +20,7 @@
     "@qio/core": "^28.0.2",
     "@types/benchmark": "^1.0.31",
     "benchmark": "^2.1.4",
+    "chai": "^4.2.0",
     "waveguide": "^1.3.0"
   },
   "peerDependencies": {

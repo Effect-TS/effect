@@ -129,7 +129,7 @@ describe("EffectSafe", () => {
       );
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.access(({ [http_symbol]: n }: HttpEnv) => n)
+          T.provide<HttpEnv>({})(T.access(({ [http_symbol]: n }: HttpEnv) => n))
         ),
         ex.done(undefined)
       );
@@ -299,7 +299,6 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done(2));
     });
 
-    
     it("provide & access env", async () => {
       const valueEnv = Symbol();
       interface ValueEnv {
