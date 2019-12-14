@@ -88,7 +88,7 @@ export interface Http {
   };
 }
 
-function hasHeaders(r: T.Env): r is HttpHeaders {
+function hasHeaders(r: object): r is HttpHeaders {
   return typeof r[httpHeadersEnv] !== "undefined";
 }
 
