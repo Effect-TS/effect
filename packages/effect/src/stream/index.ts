@@ -953,7 +953,7 @@ export function intoLeftover<R, E, A, S, B>(
   );
 }
 
-function sinkQueue<R extends T.Env, E, A>(
+function sinkQueue<R, E, A>(
   stream: Stream<R, E, A>
 ): Managed<
   R,

@@ -359,7 +359,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  start(run: T.Effect<T.Env, E, A>): void {
+  start(run: T.Effect<T.NoEnv, E, A>): void {
     if (this.started) {
       /* istanbul ignore next */
       throw new Error("Bug: Runtime may not be started multiple times");

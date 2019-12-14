@@ -1,8 +1,8 @@
-export function isObject(item: unknown) {
+export function isObject(item: unknown): item is object {
   return item && typeof item === "object" && !Array.isArray(item);
 }
 
-export function mergeDeep<A, B extends object>(target: A, source: B): A & B {
+export function mergeDeep<A, B>(target: A, source: B): A & B {
   const c = target as any;
 
   if (isObject(target) && isObject(source)) {
