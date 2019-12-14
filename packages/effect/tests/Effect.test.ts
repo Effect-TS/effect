@@ -129,7 +129,7 @@ describe("EffectSafe", () => {
       );
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provide<HttpEnv>({})(T.access(({ [http_symbol]: n }: HttpEnv) => n))
+          T.access(({ [http_symbol]: n }: HttpEnv) => n)
         ),
         ex.done(undefined)
       );

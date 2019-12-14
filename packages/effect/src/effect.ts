@@ -377,13 +377,23 @@ export function accessEnvironment<R>(): Effect<R, NoErr, R> {
   return new EffectIO(EffectTag.AccessEnv) as any;
 }
 
-export function accessM<R, R2, E, A>(
+export function accessM<R extends {}, R2, E, A>(
   f: FunctionN<[R], Effect<R2, E, A>>
 ): Effect<R & R2, E, A> {
   return chain_(accessEnvironment<R>(), f);
 }
 
-export function access<R, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
+export function accessMPlain<R, R2, E, A>(
+  f: FunctionN<[R], Effect<R2, E, A>>
+): Effect<R & R2, E, A> {
+  return chain_(accessEnvironment<R>(), f);
+}
+
+export function access<R extends {}, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
+  return map_(accessEnvironment<R>(), f);
+}
+
+export function accessPlain<R, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
   return map_(accessEnvironment<R>(), f);
 }
 
@@ -1301,7 +1311,7 @@ export function fromPromiseMap<E>(
  * @param callback
  */
 export function run<E, A>(
-  io: Effect<NoEnv, E, A>,
+  io: Effect<{}, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): Lazy<void> {
   const driver = new DriverImpl<E, A>();
@@ -1349,7 +1359,7 @@ export function runToPromise<E, A>(io: Effect<NoEnv, E, A>): Promise<A> {
  * @param r
  */
 export function runToPromiseExit<E, A>(
-  io: Effect<NoEnv, E, A>
+  io: Effect<{}, E, A>
 ): Promise<Exit<E, A>> {
   return new Promise(result => run(io, result));
 }
