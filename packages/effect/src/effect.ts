@@ -377,23 +377,13 @@ export function accessEnvironment<R>(): Effect<R, NoErr, R> {
   return new EffectIO(EffectTag.AccessEnv) as any;
 }
 
-export function accessM<R extends {}, R2, E, A>(
+export function accessM<R, R2, E, A>(
   f: FunctionN<[R], Effect<R2, E, A>>
 ): Effect<R & R2, E, A> {
   return chain_(accessEnvironment<R>(), f);
 }
 
-export function accessMPlain<R, R2, E, A>(
-  f: FunctionN<[R], Effect<R2, E, A>>
-): Effect<R & R2, E, A> {
-  return chain_(accessEnvironment<R>(), f);
-}
-
-export function access<R extends {}, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
-  return map_(accessEnvironment<R>(), f);
-}
-
-export function accessPlain<R, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
+export function access<R, A, E = NoErr>(f: FunctionN<[R], A>): Effect<R, E, A> {
   return map_(accessEnvironment<R>(), f);
 }
 
