@@ -66,7 +66,7 @@ type ClientModule<M, A, B extends keyof A> = {
 
 type Client<M, K extends keyof M> = ClientModule<M[K], M, K>;
 
-export function client<M, K extends keyof M>(m: M, k: K): Client<M, K> {
+export function client<M extends Remote<M>, K extends keyof M>(m: M, k: K): Client<M, K> {
   const x = m[k] as any;
   const r = {} as any;
 
@@ -105,7 +105,7 @@ interface RPCResponse {
   value: Exit<unknown, unknown>;
 }
 
-export function bind<M, K extends keyof M>(
+export function bind<M extends Remote<M>, K extends keyof M>(
   m: M,
   k: K
 ): T.Effect<
@@ -113,7 +113,7 @@ export function bind<M, K extends keyof M>(
   T.NoErr,
   void
 > {
-  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv & Runtime<M[K]>) => {
+  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv) => {
     const { scope } = r[serverConfigEnv][k];
     const { route } = r[E.expressEnv];
     const ops: T.Effect<E.HasExpress, never, void>[] = [];
@@ -144,3 +144,8 @@ export function bind<M, K extends keyof M>(
     return T.asUnit(array.sequence(T.effect)(ops));
   });
 }
+
+export type Remote<T> = Record<
+  keyof T,
+  { [k: string]: FunctionN<any, T.Effect<any, any, any>> }
+>;

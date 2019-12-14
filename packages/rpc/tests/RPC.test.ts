@@ -23,7 +23,7 @@ const appConfig: AppConfig = {
 
 const counterEnv: unique symbol = Symbol();
 
-interface Counter {
+interface Counter extends RPC.Remote<Counter> {
   [counterEnv]: {
     increment: (n: number) => T.Effect<AppConfig, T.NoErr, number>;
     ni: () => T.Effect<T.NoEnv, string, void>;
