@@ -3,7 +3,6 @@ import { effect as T } from "@matechs/effect";
 import * as EX from "express";
 import * as bodyParser from "body-parser";
 import { Server } from "http";
-import { ExitTag } from "@matechs/effect/lib/original/exit";
 
 export const expressAppEnv: unique symbol = Symbol();
 
@@ -44,18 +43,18 @@ export const express: Express = {
           r[expressAppEnv].app[method](path, bodyParser.json(), (req, res) => {
             T.runToPromiseExit(T.provideAll(r)(f(req))).then(o => {
               switch (o._tag) {
-                case ExitTag.Done:
+                case "Done":
                   res.send(o.value);
                   return;
-                case ExitTag.Raise:
+                case "Raise":
                   res.status(500).send(o.error);
                   return;
-                case ExitTag.Interrupt:
+                case "Interrupt":
                   res.status(500).send({
                     status: "interrupted"
                   });
                   return;
-                case ExitTag.Abort:
+                case "Abort":
                   res.status(500).send({
                     status: "aborted",
                     with: o.abortedWith
