@@ -108,4 +108,18 @@ export function bind(
   );
 }
 
-export type ExpressEnv = HasExpress & Express
+export function accessAppM<R, E, A>(
+  f: (app: EX.Express) => T.Effect<R, E, A>
+): T.Effect<HasExpress & Express & R, E, A> {
+  return T.accessM(({ [expressAppEnv]: express }: HasExpress) =>
+    f(express.app)
+  );
+}
+
+export function accessApp<A>(
+  f: (app: EX.Express) => A
+): T.Effect<HasExpress & Express, T.NoErr, A> {
+  return T.access(({ [expressAppEnv]: express }: HasExpress) => f(express.app));
+}
+
+export type ExpressEnv = HasExpress & Express;

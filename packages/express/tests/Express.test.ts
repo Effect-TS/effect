@@ -16,6 +16,22 @@ describe("Express", () => {
         .do(EX.route("post", "/bad", () => T.raiseError({ res: 1 })))
         .do(EX.route("post", "/bad2", () => T.raiseAbort("abort")))
         .do(EX.route("post", "/bad3", () => T.raiseInterrupt))
+        .do(
+          EX.accessApp(app => {
+            if (!app) {
+              throw new Error("Aborted app not found");
+            }
+          })
+        )
+        .do(
+          EX.accessAppM(app =>
+            T.trySync(() => {
+              if (!app) {
+                throw new Error("Aborted app not found");
+              }
+            })
+          )
+        )
         .bind("s", EX.bind(3003, "127.0.0.1"))
         .return(s => s.s)
     );
