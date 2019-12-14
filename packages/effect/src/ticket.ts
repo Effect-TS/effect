@@ -4,13 +4,13 @@
  */
 
 import * as T from "./effect";
-import { Exit, ExitTag } from "./original/exit";
+import { Exit } from "./original/exit";
 
 export function ticketExit<A>(
   ticket: Ticket<A>,
   exit: Exit<never, A>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
-  if (exit._tag === ExitTag.Interrupt) {
+  if (exit._tag === "Interrupt") {
     return ticket.cleanup;
   }
   return T.unit;

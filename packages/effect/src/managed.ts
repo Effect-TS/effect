@@ -1,7 +1,7 @@
 import { FunctionN, constant } from "fp-ts/lib/function";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import { Monoid } from "fp-ts/lib/Monoid";
-import { ExitTag, Exit, done } from "./original/exit";
+import { Exit, done } from "./original/exit";
 
 import * as T from "./effect";
 import { Monad3E } from "./overload";
@@ -377,7 +377,7 @@ export function allocate<R, E, A>(
       case ManagedTag.Chain:
         return T.bracketExit(
           allocate(c.left),
-          (leak, exit) => (exit._tag === ExitTag.Done ? T.unit : leak.release),
+          (leak, exit) => (exit._tag === "Done" ? T.unit : leak.release),
           leak =>
             effect.map(
               allocate(c.bind(leak.a)),

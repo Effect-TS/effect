@@ -30,6 +30,21 @@ describe("EffectSafe", () => {
       );
     });
 
+    it("trySync", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(T.trySync(() => 1)),
+        ex.done(1)
+      );
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.trySync(() => {
+            throw 10;
+          })
+        ),
+        ex.raise(10)
+      );
+    });
+
     it("abort on throw", async () => {
       assert.deepEqual(
         await T.runToPromiseExit(
@@ -299,7 +314,6 @@ describe("EffectSafe", () => {
       assert.deepEqual(b, ex.done(2));
     });
 
-    
     it("provide & access env", async () => {
       const valueEnv = Symbol();
       interface ValueEnv {

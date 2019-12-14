@@ -529,7 +529,7 @@ function bimap_<R, E1, E2, A, B>(
   return foldExit_(
     io,
     cause =>
-      cause._tag === ex.ExitTag.Raise
+      cause._tag === "Raise"
         ? raiseError(leftMap(cause.error))
         : completed(cause),
     flow(rightMap, pure)
@@ -631,8 +631,7 @@ function ap_<R, E, A, B, R2, E2>(
 export function flip<R, E, A>(io: Effect<R, E, A>): Effect<R, A, E> {
   return foldExit_(
     io,
-    error =>
-      error._tag === ex.ExitTag.Raise ? pure(error.error) : completed(error),
+    error => (error._tag === "Raise" ? pure(error.error) : completed(error)),
     raiseError
   );
 }
@@ -735,14 +734,11 @@ function combineFinalizerExit<E, A>(
   fiberExit: Exit<E, A>,
   releaseExit: Exit<E, unknown>
 ): Exit<E, A> {
-  if (
-    fiberExit._tag === ex.ExitTag.Done &&
-    releaseExit._tag === ex.ExitTag.Done
-  ) {
+  if (fiberExit._tag === "Done" && releaseExit._tag === "Done") {
     return fiberExit;
-  } else if (fiberExit._tag === ex.ExitTag.Done) {
+  } else if (fiberExit._tag === "Done") {
     return releaseExit as Cause<E>;
-  } else if (releaseExit._tag === ex.ExitTag.Done) {
+  } else if (releaseExit._tag === "Done") {
     return fiberExit;
   } else {
     // TODO: Figure out how to sanely report both of these, we swallow them currently
@@ -821,7 +817,7 @@ export function onInterrupted<R, E, A, R2, E2>(
 ): Effect<R & R2, E | E2, A> {
   return uninterruptibleMask(cutout =>
     chain_(result(cutout(ioa)), exit =>
-      exit._tag === ex.ExitTag.Interrupt
+      exit._tag === "Interrupt"
         ? chain_(result(finalizer), finalize =>
             completed(combineFinalizerExit(exit, finalize))
           )
@@ -1139,7 +1135,7 @@ function fallbackToLoser<R, E, A>(
   exit: Exit<E, A>,
   loser: Fiber<E, A>
 ): Effect<R, E, A> {
-  return exit._tag === ex.ExitTag.Done
+  return exit._tag === "Done"
     ? applySecond(loser.interrupt, completed(exit))
     : loser.join;
 }
@@ -1305,7 +1301,7 @@ export function fromPromiseMap<E>(
  * @param callback
  */
 export function run<E, A>(
-  io: Effect<NoEnv, E, A>,
+  io: Effect<{}, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): Lazy<void> {
   const driver = new DriverImpl<E, A>();
@@ -1327,16 +1323,16 @@ export function runToPromise<E, A>(io: Effect<NoEnv, E, A>): Promise<A> {
   return new Promise((resolve, reject) =>
     run(io, exit => {
       switch (exit._tag) {
-        case ex.ExitTag.Done:
+        case "Done":
           resolve(exit.value);
           return;
-        case ex.ExitTag.Abort:
+        case "Abort":
           reject(exit.abortedWith);
           return;
-        case ex.ExitTag.Raise:
+        case "Raise":
           reject(exit.error);
           return;
-        case ex.ExitTag.Interrupt:
+        case "Interrupt":
           reject();
           return;
       }
@@ -1353,7 +1349,7 @@ export function runToPromise<E, A>(io: Effect<NoEnv, E, A>): Promise<A> {
  * @param r
  */
 export function runToPromiseExit<E, A>(
-  io: Effect<NoEnv, E, A>
+  io: Effect<{}, E, A>
 ): Promise<Exit<E, A>> {
   return new Promise(result => run(io, result));
 }
@@ -1372,8 +1368,7 @@ function chainError_<R, E1, R2, E2, A>(
 ): Effect<R & R2, E2, A> {
   return foldExit_(
     io,
-    cause =>
-      cause._tag === ex.ExitTag.Raise ? f(cause.error) : completed(cause),
+    cause => (cause._tag === "Raise" ? f(cause.error) : completed(cause)),
     pure
   );
 }
@@ -1592,16 +1587,13 @@ export function sequenceP(
 export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
   return {
     concat: (ca, cb): Cause<E> => {
-      if (
-        ca._tag === ex.ExitTag.Interrupt ||
-        cb._tag === ex.ExitTag.Interrupt
-      ) {
+      if (ca._tag === "Interrupt" || cb._tag === "Interrupt") {
         return ca;
       }
-      if (ca._tag === ex.ExitTag.Abort) {
+      if (ca._tag === "Abort") {
         return ca;
       }
-      if (cb._tag === ex.ExitTag.Abort) {
+      if (cb._tag === "Abort") {
         return cb;
       }
       return ex.raise(S.concat(ca.error, cb.error));

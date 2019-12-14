@@ -9,7 +9,6 @@ import {
   Done,
   done,
   Exit,
-  ExitTag,
   interrupt as interruptExit,
   raise
 } from "./original/exit";
@@ -162,7 +161,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     while (frame) {
       if (
         frame._tag === "fold-frame" &&
-        (e._tag !== ExitTag.Interrupt || !this.isInterruptible())
+        (e._tag !== "Interrupt" || !this.isInterruptible())
       ) {
         return frame.recover(e);
       }
@@ -290,13 +289,13 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = this.next(current.f0);
             break;
           case T.EffectTag.Raised:
-            if (current.f0._tag === ExitTag.Interrupt) {
+            if (current.f0._tag === "Interrupt") {
               this.interrupted = true;
             }
             current = this.handle(current.f0);
             break;
           case T.EffectTag.Completed:
-            if (current.f0._tag === ExitTag.Done) {
+            if (current.f0._tag === "Done") {
               current = this.next(current.f0.value);
             } else {
               current = this.handle(current.f0);
@@ -359,7 +358,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  start(run: T.Effect<T.NoEnv, E, A>): void {
+  start(run: T.Effect<{}, E, A>): void {
     if (this.started) {
       /* istanbul ignore next */
       throw new Error("Bug: Runtime may not be started multiple times");

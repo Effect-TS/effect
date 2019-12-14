@@ -14,7 +14,6 @@ import { natNumber } from "./sanity";
 import { makeSemaphore } from "./semaphore";
 import { Dequeue, empty, of } from "./original/support/dequeue";
 import { makeTicket, ticketExit, ticketUse } from "./ticket";
-import { ExitTag } from "./original/exit";
 import * as T from "./effect";
 import { effect } from "./effect";
 
@@ -241,7 +240,7 @@ export function boundedQueue<A>(
           T.bracketExit(
             sem.release,
             (_, exit) =>
-              exit._tag === ExitTag.Interrupt ? sem.acquire : T.unit,
+              exit._tag === "Interrupt" ? sem.acquire : T.unit,
             () => inner
           )
       )
