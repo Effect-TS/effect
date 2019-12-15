@@ -6,6 +6,9 @@ import * as O from "fp-ts/lib/Option";
 import { FunctionN, Lazy, Predicate, Refinement } from "fp-ts/lib/function";
 import { Monad3E } from "../overload";
 
+// alpha version exposed for exeperimentation purposes
+/* istanbul ignore file */
+
 export type StreamEither<R, E, A> = S.Stream<R, never, Ei.Either<E, A>>;
 
 export function encaseEffect<R, E, A>(
