@@ -3,7 +3,7 @@ name: Node CI
 on:
   push:
     branches:
-      - auto-publish
+      - streameither-alpha
 
 jobs:
   build:
