@@ -1,7 +1,8 @@
 import { effect as T } from "@matechs/effect";
-import * as RPC from "@matechs/rpc";
+import * as RPC from "../src";
 import * as H from "@matechs/http-client";
 import { Option } from "fp-ts/lib/Option";
+import * as E from "@matechs/express";
 
 // environment entries
 export const placeholderJsonEnv: unique symbol = Symbol();
@@ -17,7 +18,13 @@ export interface Todo {
 // describe the service we want to expose
 export interface PlaceholderJson extends RPC.Remote<PlaceholderJson> {
   [placeholderJsonEnv]: {
-    getTodo: (n: number) => T.Effect<H.RequestEnv, string, Option<Todo>>;
+    getTodo: (
+      n: number
+    ) => T.Effect<
+      H.RequestEnv & E.ChildEnv,
+      string,
+      Option<Todo>
+    >;
   };
 }
 

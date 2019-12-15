@@ -1,5 +1,5 @@
 import { effect as T, exit as E } from "@matechs/effect";
-import * as RPC from "@matechs/rpc";
+import * as RPC from "../src";
 import * as H from "@matechs/http-client";
 import * as L from "@matechs/http-client-libcurl";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -21,18 +21,24 @@ const envLive = pipe(
     )({
       baseUrl: "http://127.0.0.1:8081/placeholderJson"
     })
+  ),
+  T.mergeEnv(
+    H.middlewareStack([
+      H.withPathHeaders({ token: "check" }, p =>
+        p.startsWith("http://127.0.0.1:8081")
+      )
+    ])
   )
 );
 
-// run express server
 T.run(
   T.provideAll(envLive)(program),
   E.fold(
     todos => {
       console.log(todos);
     },
-    e => console.error(e),
-    e => console.error(e),
+    e => console.error("error", e),
+    e => console.error("abort", e),
     () => console.error("interrupted")
   )
 );
