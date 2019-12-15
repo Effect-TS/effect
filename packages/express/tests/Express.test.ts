@@ -13,15 +13,19 @@ describe("Express", () => {
     const program = EX.withApp(
       Do(T.effect)
         .do(
-          EX.route("post", "/", () => T.pure(EX.routeResponse(200, { res: 1 })))
-        )
-        .do(
-          EX.route("post", "/bad", () =>
-            T.raiseError(EX.routeError(500, { res: 1 }))
+          EX.route(
+            "post",
+            "/",
+            EX.accessReqM(r =>
+              T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 }))
+            )
           )
         )
-        .do(EX.route("post", "/bad2", () => T.raiseAbort("abort")))
-        .do(EX.route("post", "/bad3", () => T.raiseInterrupt))
+        .do(
+          EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 })))
+        )
+        .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
+        .do(EX.route("post", "/bad3", T.raiseInterrupt))
         .do(
           EX.accessApp(app => {
             if (!app) {

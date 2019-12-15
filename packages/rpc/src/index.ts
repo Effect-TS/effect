@@ -118,27 +118,30 @@ export function bind<M extends Remote<M>, K extends keyof M>(
 > {
   return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv) => {
     const { scope } = r[serverConfigEnv][k];
-    const { route } = r[E.expressEnv];
-    const ops: T.Effect<E.HasExpress, never, void>[] = [];
+    const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
 
     for (const key of Reflect.ownKeys(m[k] as any)) {
       if (typeof key === "string") {
         const path = `${scope}/${key}`;
 
         ops.push(
-          route("post", path, req =>
-            T.async<never, E.RouteResponse<RPCResponse>>(res => {
-              const args: any[] = req.body.args;
+          E.route(
+            "post",
+            path,
+            E.accessReqM(req =>
+              T.async<never, E.RouteResponse<RPCResponse>>(res => {
+                const args: any[] = req.body.args;
 
-              const cancel = T.run(
-                T.provideAll(r as any)(m[k][key](...args)),
-                x => res(right(E.routeResponse(200, { value: x })))
-              );
+                const cancel = T.run(
+                  T.provideAll(r as any)(m[k][key](...args)),
+                  x => res(right(E.routeResponse(200, { value: x })))
+                );
 
-              return () => {
-                cancel();
-              };
-            })
+                return () => {
+                  cancel();
+                };
+              })
+            )
           )
         );
       }
