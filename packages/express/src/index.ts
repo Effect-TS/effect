@@ -163,6 +163,14 @@ export function accessReqM<R, E, A>(
   );
 }
 
+export function accessReq<A>(
+  f: (req: EX.Request) => A
+): T.Effect<RequestContext & Express, never, A> {
+  return T.access(({ [requestContextEnv]: { request } }: RequestContext) =>
+    f(request)
+  );
+}
+
 export function accessApp<A>(
   f: (app: EX.Express) => A
 ): T.Effect<HasExpress & Express, T.NoErr, A> {

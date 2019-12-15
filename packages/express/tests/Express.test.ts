@@ -22,6 +22,15 @@ describe("Express", () => {
           )
         )
         .do(
+          EX.route(
+            "post",
+            "/access",
+            EX.accessReq(r =>
+              EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 })
+            )
+          )
+        )
+        .do(
           EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 })))
         )
         .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
@@ -96,9 +105,17 @@ describe("Express", () => {
       )
     );
 
+    const res5 = await T.runToPromiseExit(
+      pipe(
+        T.provide(L.jsonClient)(H.post("http://127.0.0.1:3003/access", {})),
+        T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
+      )
+    );
+
     server.close();
 
     assert.deepEqual(res, done({ res: 1 }));
+    assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res2, raise(some({ res: 1 })));
     assert.deepEqual(res3, raise(some({ status: "aborted", with: "abort" })));
     assert.deepEqual(res4, raise(some({ status: "interrupted" })));
