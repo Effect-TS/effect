@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-fetch",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -12,15 +12,17 @@
     "access": "public"
   },
   "main": "lib/index.js",
-  "files": ["lib"],
+  "files": [
+    "lib"
+  ],
   "peerDependencies": {
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
     "querystring": "^0.2.0"
   },
   "dependencies": {
-    "@matechs/effect": "^0.3.0",
-    "@matechs/http-client": "^0.1.0"
+    "@matechs/effect": "^0.4.0",
+    "@matechs/http-client": "^0.2.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
