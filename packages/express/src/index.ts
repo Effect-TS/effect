@@ -170,3 +170,5 @@ export function accessApp<A>(
 }
 
 export type ExpressEnv = HasExpress & Express;
+
+export type ChildEnv = ExpressEnv & RequestContext;

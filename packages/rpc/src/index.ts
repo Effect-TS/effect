@@ -95,7 +95,9 @@ export function client<M extends Remote<M>, K extends keyof M>(
 }
 
 export type Runtime<M> = M extends {
-  [h: string]: (...args: any[]) => T.Effect<infer Q, any, any>;
+  [h: string]: (
+    ...args: any[]
+  ) => T.Effect<infer Q & E.RequestContext, any, any>;
 }
   ? Q
   : never;
@@ -133,7 +135,10 @@ export function bind<M extends Remote<M>, K extends keyof M>(
                 const args: any[] = req.body.args;
 
                 const cancel = T.run(
-                  T.provideAll(r as any)(m[k][key](...args)),
+                  T.provideAll({
+                    ...r,
+                    [E.requestContextEnv]: { request: req }
+                  } as any)(m[k][key](...args)),
                   x => res(right(E.routeResponse(200, { value: x })))
                 );
 

@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - master
-      - express-improve
-
+      - update-rpc
 jobs:
   build:
     runs-on: ubuntu-latest

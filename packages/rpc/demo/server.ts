@@ -1,5 +1,5 @@
 import { effect as T, exit as E } from "@matechs/effect";
-import * as RPC from "@matechs/rpc";
+import * as RPC from "../src";
 import * as H from "@matechs/http-client";
 import * as EX from "@matechs/express";
 import * as L from "@matechs/http-client-libcurl";
@@ -7,14 +7,31 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { placeholderJsonEnv, PlaceholderJson, Todo } from "./shared";
 
+export function authenticated<R, E, A>(
+  eff: T.Effect<R, E, A>
+): T.Effect<EX.ChildEnv & R, E | string, A> {
+  return T.effect.chain(
+    EX.accessReqM(req =>
+      T.condWith(req.headers["token"] === "check")(T.unit)(
+        T.raiseError("bad token")
+      )
+    ),
+    _ => eff
+  );
+}
+
 // implement the service
 export const placeholderJsonLive: PlaceholderJson = {
   [placeholderJsonEnv]: {
     getTodo: n =>
-      pipe(
-        H.get<unknown, Todo>(`https://jsonplaceholder.typicode.com/todos/${n}`),
-        T.chainError(() => T.raiseError("error fetching todo")),
-        T.map(({ body }) => body)
+      authenticated(
+        pipe(
+          H.get<unknown, Todo>(
+            `https://jsonplaceholder.typicode.com/todos/${n}`
+          ),
+          T.chainError(() => T.raiseError("error fetching todo")),
+          T.map(({ body }) => body)
+        )
       )
   }
 };
