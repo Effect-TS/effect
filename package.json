@@ -3,7 +3,6 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "doc": "yarn typedoc --module commonjs --out docs --ignoreCompilerErrors --exclude \"packages/**/*+(tests|type-tests|demo|bench)/**/*.ts\" packages && echo.> ./docs/.nojekyll",
     "publish-ci": "lerna publish from-package -y --no-verify-access"
   },
   "workspaces": [

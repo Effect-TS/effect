@@ -2,7 +2,7 @@
 
 Provides integration with `https://github.com/JCMais/node-libcurl`
 
-Docs at [https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_libcurl.html](https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_libcurl.html)
+Docs at [https://arnaldimichael.gitbook.io/matechs-effect/http/the-http-client-module](https://arnaldimichael.gitbook.io/matechs-effect/http/the-http-client-module)
 
 
 # Notes

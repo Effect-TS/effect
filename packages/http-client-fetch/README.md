@@ -2,7 +2,7 @@
 
 Provides integration with `fetch`
 
-Docs at [https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_fetch.html](https://mikearnaldi.github.io/matechs-effect/modules/_matechs_http_client_fetch.html)
+Docs at [https://arnaldimichael.gitbook.io/matechs-effect/http/the-http-client-module](https://arnaldimichael.gitbook.io/matechs-effect/http/the-http-client-module)
 
 
 # Notes
