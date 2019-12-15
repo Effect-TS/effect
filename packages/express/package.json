@@ -1,6 +1,6 @@
 {
   "name": "@matechs/express",
-  "version": "0.2.19",
+  "version": "0.3.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -12,9 +12,7 @@
     "access": "public"
   },
   "main": "lib/index.js",
-  "files": [
-    "lib"
-  ],
+  "files": ["lib"],
   "peerDependencies": {
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
@@ -22,7 +20,7 @@
     "fp-ts-contrib": "^0.1.6"
   },
   "dependencies": {
-    "@matechs/effect": "^0.2.17"
+    "@matechs/effect": "^0.3.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

@@ -1,6 +1,6 @@
 {
   "name": "@matechs/effect",
-  "version": "0.2.17",
+  "version": "0.3.0",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -13,9 +13,7 @@
   },
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "main": "lib/index.js",
-  "files": [
-    "lib"
-  ],
+  "files": ["lib"],
   "devDependencies": {
     "@qio/core": "^28.0.2",
     "@types/benchmark": "^1.0.31",
