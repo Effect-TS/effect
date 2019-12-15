@@ -3,7 +3,8 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "doc": "yarn typedoc --module commonjs --out docs --ignoreCompilerErrors --exclude \"packages/**/*+(tests|type-tests|demo|bench)/**/*.ts\" packages && echo.> ./docs/.nojekyll"
+    "doc": "yarn typedoc --module commonjs --out docs --ignoreCompilerErrors --exclude \"packages/**/*+(tests|type-tests|demo|bench)/**/*.ts\" packages && echo.> ./docs/.nojekyll",
+    "publish-ci": "lerna publish from-package -y --no-verify-access"
   },
   "workspaces": [
     "packages/*"
@@ -50,5 +51,8 @@
     "typeorm": "^0.2.21",
     "typescript": "^3.7.3",
     "waveguide": "^1.3.0"
+  },
+  "dependencies": {
+    "@changesets/cli": "^2.4.1"
   }
 }

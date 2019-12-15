@@ -3,8 +3,8 @@ name: Node CI
 on:
   push:
     branches:
-      - master
-      - update-rpc
+      - auto-publish
+
 jobs:
   build:
     runs-on: ubuntu-latest
