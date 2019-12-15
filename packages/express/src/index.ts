@@ -113,13 +113,28 @@ export function withApp<R, E, A>(
   return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op));
 }
 
+export const requestContextEnv: unique symbol = Symbol();
+
+export interface RequestContext {
+  [requestContextEnv]: {
+    request: EX.Request;
+  };
+}
+
 export function route<R, E, A>(
   method: Method,
   path: string,
-  f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
+  handler: T.Effect<R & RequestContext, RouteError<E>, RouteResponse<A>>
 ): T.Effect<R & HasExpress & Express, T.NoErr, void> {
   return T.accessM(({ [expressEnv]: express }: Express) =>
-    express.route(method, path, f)
+    express.route(method, path, x =>
+      T.provideR((r: R & HasExpress & Express) => ({
+        ...r,
+        [requestContextEnv]: {
+          request: x
+        }
+      }))(handler)
+    )
   );
 }
 
@@ -137,6 +152,14 @@ export function accessAppM<R, E, A>(
 ): T.Effect<HasExpress & Express & R, E, A> {
   return T.accessM(({ [expressAppEnv]: express }: HasExpress) =>
     f(express.app)
+  );
+}
+
+export function accessReqM<R, E, A>(
+  f: (req: EX.Request) => T.Effect<R, E, A>
+): T.Effect<RequestContext & Express & R, E, A> {
+  return T.accessM(({ [requestContextEnv]: { request } }: RequestContext) =>
+    f(request)
   );
 }
 

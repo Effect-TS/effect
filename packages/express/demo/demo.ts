@@ -6,10 +6,14 @@ import { pipe } from "fp-ts/lib/pipeable";
 const program = EX.withApp(
   Do(T.effect)
     .do(
-      EX.route("get", "/", () =>
-        T.sync(() => ({
-          message: "OK"
-        }))
+      EX.route(
+        "get",
+        "/",
+        T.pure(
+          EX.routeResponse(200, {
+            message: "OK"
+          })
+        )
       )
     )
     .bind("server", EX.bind(8081))
