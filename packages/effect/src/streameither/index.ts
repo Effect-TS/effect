@@ -25,6 +25,12 @@ export function chain_<R, E, A, R2, E2, B>(
   );
 }
 
+export function chain<A, R2, E2, B>(
+  f: FunctionN<[A], StreamEither<R2, E2, B>>
+): <R, E>(stream: StreamEither<R, E, A>) => StreamEither<R & R2, E | E2, B> {
+  return s => chain_(s, f);
+}
+
 export function chainError_<R, E, A, R2, E2>(
   str: StreamEither<R, E, A>,
   f: (a: E) => StreamEither<R2, E2, A>
@@ -159,11 +165,7 @@ export function periodically(
   return S.stream.map(S.periodically(ms), a => Ei.right(a));
 }
 
-export const empty: StreamEither<
-  T.NoEnv,
-  T.NoErr,
-  never
-> = S.empty as any;
+export const empty: StreamEither<T.NoEnv, T.NoErr, never> = S.empty as any;
 
 export function raised<E>(e: E): StreamEither<T.NoEnv, E, never> {
   return S.once(Ei.left(e));

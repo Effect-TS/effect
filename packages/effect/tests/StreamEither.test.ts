@@ -164,4 +164,174 @@ describe("StreamEither", () => {
 
     assert.deepEqual(res, [1]);
   });
+
+  it("should use filter", async () => {
+    const s = S.filter(S.fromArray([0]), n => n > 0);
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use filter - 2", async () => {
+    const s = S.filter(S.fromArray([1]), n => n > 0);
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, [1]);
+  });
+
+  it("should use filterWith", async () => {
+    const s = pipe(
+      S.fromArray([0]),
+      S.filterWith(n => n > 0)
+    );
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use zipWith", async () => {
+    const sl = S.empty;
+    const sr = S.empty;
+    const z = S.zipWith(sl, sr, (l, r) => 0);
+
+    const res = await T.runToPromise(S.collectArray(z));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use zipWith - 2", async () => {
+    const sl = S.fromArray([0, 1, 2]);
+    const sr = S.empty;
+    // tslint:disable-next-line: restrict-plus-operands
+    const z = S.zipWith(sl, sr, (l, r) => l + r);
+
+    const res = await T.runToPromise(S.collectArray(z));
+
+    assert.deepEqual(res, []);
+  });
+
+  it("should use concat", async () => {
+    const s = S.concat(S.fromArray([0]), S.fromOption(some(1)));
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, [0, 1]);
+  });
+
+  it("should use fromIteratorUnsafe", async () => {
+    function makeRangeIterator(start = 0, end = Infinity, step = 1) {
+      let nextIndex = start;
+      let iterationCount = 0;
+
+      const rangeIterator = {
+        next: function() {
+          let result: any;
+          if (nextIndex < end) {
+            result = { value: nextIndex, done: false };
+            nextIndex += step;
+            iterationCount++;
+            return result;
+          }
+          return { value: iterationCount, done: true };
+        }
+      };
+      return rangeIterator;
+    }
+
+    const s = S.fromIteratorUnsafe(makeRangeIterator(1, 10, 2));
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, [1, 3, 5, 7, 9]);
+  });
+
+  it("should use stream with environment", async () => {
+    interface Config {
+      initial: number;
+    }
+    interface ConfigB {
+      second: number;
+    }
+
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
+    const s = S.streamEither.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
+
+    // $ExpectType Stream<Config & ConfigB, never, number>
+    const m = S.streamEither.chain(s, n =>
+      S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
+    );
+
+    const g = S.streamEither.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
+    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+
+    const res = await T.runToPromise(
+      T.provide<Config & ConfigB>({
+        initial: 1,
+        second: 1
+      })(r)
+    );
+
+    assert.deepEqual(
+      res,
+      // prettier-ignore
+      [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2
+      , 3, 4, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3
+      , 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 7, 0
+      , 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3
+      , 4, 5, 6, 7, 8, 9]
+    );
+  });
+
+  it("should use stream with environment with pipe ", async () => {
+    interface Config {
+      initial: number;
+    }
+    interface ConfigB {
+      second: number;
+    }
+
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
+    const s = pipe(
+      // $ExpectType Stream<Config, never, number>
+      a,
+      S.chain(n => S.fromRange(n, 1, 10))
+    );
+
+    // $ExpectType Stream<Config & ConfigB, never, number>
+    const m = pipe(
+      s,
+      S.chain(n =>
+        S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
+      )
+    );
+
+    // $ExpectType Stream<Config & ConfigB, never, number>
+    const g = pipe(
+      // $ExpectType Stream<Config & ConfigB, never, number>
+      m,
+      S.chain(n => S.fromRange(0, 1, n))
+    );
+    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+
+    const res = await T.runToPromise(
+      T.provide<Config & ConfigB>({
+        initial: 1,
+        second: 1
+      })(r)
+    );
+
+    assert.deepEqual(
+      res,
+      // prettier-ignore
+      [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2
+      , 3, 4, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3
+      , 4, 5, 6, 0, 1, 2, 3, 4, 5, 6, 7, 0
+      , 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3
+      , 4, 5, 6, 7, 8, 9]
+    );
+  });
+
 });
