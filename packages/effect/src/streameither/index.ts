@@ -163,7 +163,7 @@ export const empty: StreamEither<
   T.NoEnv,
   T.NoErr,
   never
-> = S.stream.map(S.never, a => Ei.right(a));
+> = S.empty as any;
 
 export function raised<E>(e: E): StreamEither<T.NoEnv, E, never> {
   return S.once(Ei.left(e));
@@ -249,6 +249,13 @@ export function filterRefineWith<A, B extends A>(
   propagate = false
 ): <R, E>(stream: StreamEither<R, E, A>) => StreamEither<R, E, B> {
   return stream => filter(stream, f, propagate) as any;
+}
+
+export function takeWhile<R, E, A>(
+  stream: StreamEither<R, E, A>,
+  pred: Predicate<A>
+): StreamEither<R, E, A> {
+  return S.takeWhile(stream, x => Ei.isRight(x) && pred(x.right));
 }
 
 export const URI = "matechs/StreamEither";
