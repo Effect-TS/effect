@@ -12,8 +12,14 @@ describe("Express", () => {
   it("should use express", async () => {
     const program = EX.withApp(
       Do(T.effect)
-        .do(EX.route("post", "/", () => T.pure({ res: 1 })))
-        .do(EX.route("post", "/bad", () => T.raiseError({ res: 1 })))
+        .do(
+          EX.route("post", "/", () => T.pure(EX.routeResponse(200, { res: 1 })))
+        )
+        .do(
+          EX.route("post", "/bad", () =>
+            T.raiseError(EX.routeError(500, { res: 1 }))
+          )
+        )
         .do(EX.route("post", "/bad2", () => T.raiseAbort("abort")))
         .do(EX.route("post", "/bad3", () => T.raiseInterrupt))
         .do(

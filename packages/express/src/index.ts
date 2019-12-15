@@ -19,10 +19,10 @@ export const expressEnv: unique symbol = Symbol();
 export interface Express {
   [expressEnv]: {
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
-    route<R, E, RES>(
+    route<R, E, A>(
       method: Method,
       path: string,
-      f: (req: EX.Request) => T.Effect<R, E, RES>
+      f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
     ): T.Effect<R & HasExpress, T.NoErr, void>;
     bind(
       port: number,
@@ -31,12 +31,36 @@ export interface Express {
   };
 }
 
+export interface RouteError<E> {
+  status: number;
+  body: E;
+}
+
+export function routeError<E>(status: number, body: E): RouteError<E> {
+  return {
+    status,
+    body
+  };
+}
+
+export interface RouteResponse<A> {
+  status: number;
+  body: A;
+}
+
+export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
+  return {
+    status,
+    body
+  };
+}
+
 export const express: Express = {
   [expressEnv]: {
-    route<R, E, RES>(
+    route<R, E, A>(
       method: Method,
       path: string,
-      f: (req: EX.Request) => T.Effect<R, E, RES>
+      f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
@@ -44,10 +68,10 @@ export const express: Express = {
             T.runToPromiseExit(T.provideAll(r)(f(req))).then(o => {
               switch (o._tag) {
                 case "Done":
-                  res.send(o.value);
+                  res.status(o.value.status).send(o.value.body);
                   return;
                 case "Raise":
-                  res.status(500).send(o.error);
+                  res.status(o.error.status).send(o.error.body);
                   return;
                 case "Interrupt":
                   res.status(500).send({
@@ -89,10 +113,10 @@ export function withApp<R, E, A>(
   return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op));
 }
 
-export function route<R, E, RES>(
+export function route<R, E, A>(
   method: Method,
   path: string,
-  f: (req: EX.Request) => T.Effect<R, E, RES>
+  f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
 ): T.Effect<R & HasExpress & Express, T.NoErr, void> {
   return T.accessM(({ [expressEnv]: express }: Express) =>
     express.route(method, path, f)

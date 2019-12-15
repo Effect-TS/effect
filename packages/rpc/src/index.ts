@@ -66,7 +66,10 @@ type ClientModule<M, A, B extends keyof A> = {
 
 type Client<M, K extends keyof M> = ClientModule<M[K], M, K>;
 
-export function client<M extends Remote<M>, K extends keyof M>(m: M, k: K): Client<M, K> {
+export function client<M extends Remote<M>, K extends keyof M>(
+  m: M,
+  k: K
+): Client<M, K> {
   const x = m[k] as any;
   const r = {} as any;
 
@@ -124,12 +127,12 @@ export function bind<M extends Remote<M>, K extends keyof M>(
 
         ops.push(
           route("post", path, req =>
-            T.async<never, RPCResponse>(res => {
+            T.async<never, E.RouteResponse<RPCResponse>>(res => {
               const args: any[] = req.body.args;
 
               const cancel = T.run(
                 T.provideAll(r as any)(m[k][key](...args)),
-                x => res(right({ value: x }))
+                x => res(right(E.routeResponse(200, { value: x })))
               );
 
               return () => {
