@@ -6,5 +6,16 @@ import * as ref from "./ref";
 import * as semaphore from "./semaphore";
 import * as exit from "./exit";
 import * as streameither from "./streameither";
+import * as derived from "./derived";
 
-export { effect, stream, managed, queue, ref, semaphore, exit, streameither };
+export {
+  effect,
+  stream,
+  managed,
+  queue,
+  ref,
+  semaphore,
+  exit,
+  streameither,
+  derived
+};
