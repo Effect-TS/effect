@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - add-missing-typeclasses-in-streameither
 
 jobs:
   build:
