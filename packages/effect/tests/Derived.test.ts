@@ -1,5 +1,4 @@
-import { effect as T } from "../src";
-import { getDerived } from "../src/derived";
+import { effect as T, derived as D } from "../src";
 import * as assert from "assert";
 import { done } from "../src/original/exit";
 
@@ -19,7 +18,7 @@ const testModule: TestModule = {
   }
 };
 
-const { fn, nonFn } = getDerived(testModule, testModuleEnv);
+const { fn, nonFn } = D.getDerived(testModule, testModuleEnv);
 
 describe("Derived", () => {
   it("fn", async () => {
