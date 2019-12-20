@@ -8,7 +8,6 @@ import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import { Extend3 } from "fp-ts/lib/Extend";
 import { FoldableWithIndex3 } from "fp-ts/lib/FoldableWithIndex";
 import { Foldable3 } from "fp-ts/lib/Foldable";
-import { Alt3 } from "fp-ts/lib/Alt";
 import { FilterableWithIndex3 } from "fp-ts/lib/FilterableWithIndex";
 import { Filterable3 } from "fp-ts/lib/Filterable";
 import { Compactable3 } from "fp-ts/lib/Compactable";
@@ -35,7 +34,7 @@ export interface Alt3E<F extends URIS3> extends Functor3<F> {
   readonly alt: <R, R2, E, E2, A>(
     fx: Kind3<F, R, E, A>,
     fy: () => Kind3<F, R2, E2, A>
-  ) => Kind3<F, R & R2, E | E2, A>;
+  ) => Kind3<F, R & R2, E2, A>;
 }
 
 export interface Monad3E<M extends URIS3>
@@ -215,6 +214,12 @@ export interface Apply3E<F extends URIS3> extends Functor3<F> {
   ) => Kind3<F, R & R2, E | E2, B>;
 }
 
+export interface PipeableAlt3E<F extends URIS3> {
+  readonly alt: <R, E, A>(
+    that: () => Kind3<F, R, E, A>
+  ) => <R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, R & R2, E, A>;
+}
+
 declare module "fp-ts/lib/pipeable" {
   export function pipeable<F extends URIS3, I>(
     I: {
@@ -238,7 +243,7 @@ declare module "fp-ts/lib/pipeable" {
       : I extends Foldable3<F>
       ? PipeableFoldable3<F>
       : {}) &
-    (I extends Alt3<F> ? PipeableAlt3<F> : {}) &
+    (I extends Alt3E<F> ? PipeableAlt3E<F> : {}) &
     (I extends FilterableWithIndex3<F, infer Ix>
       ? PipeableFilterableWithIndex3<F, Ix>
       : I extends Filterable3<F>
