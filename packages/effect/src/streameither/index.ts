@@ -4,7 +4,9 @@ import * as S from "../stream";
 import * as Ei from "fp-ts/lib/Either";
 import * as O from "fp-ts/lib/Option";
 import { FunctionN, Lazy, Predicate, Refinement } from "fp-ts/lib/function";
-import { Monad3E } from "../overload";
+import { Monad3E, MonadThrow3E, Alt3E } from "../overload";
+import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
+import { pipeable } from "fp-ts/lib/pipeable";
 
 // alpha version exposed for exeperimentation purposes
 /* istanbul ignore file */
@@ -19,7 +21,7 @@ export function encaseEffect<R, E, A>(
   );
 }
 
-export function chain_<R, E, A, R2, E2, B>(
+function chain_<R, E, A, R2, E2, B>(
   str: StreamEither<R, E, A>,
   f: (a: A) => StreamEither<R2, E2, B>
 ): StreamEither<R & R2, E | E2, B> {
@@ -28,13 +30,7 @@ export function chain_<R, E, A, R2, E2, B>(
   );
 }
 
-export function chain<A, R2, E2, B>(
-  f: FunctionN<[A], StreamEither<R2, E2, B>>
-): <R, E>(stream: StreamEither<R, E, A>) => StreamEither<R & R2, E | E2, B> {
-  return s => chain_(s, f);
-}
-
-export function chainError_<R, E, A, R2, E2>(
+function chainError_<R, E, A, R2, E2>(
   str: StreamEither<R, E, A>,
   f: (a: E) => StreamEither<R2, E2, A>
 ): StreamEither<R & R2, E2, A> {
@@ -51,7 +47,11 @@ export function chainError<E, A, R2, E2>(
   return <R>(str: StreamEither<R, E, A>) => chainError_(str, f);
 }
 
-export function of_<R, E, A>(a: A): StreamEither<R, E, A> {
+export function of<R, E, A>(a: A): StreamEither<R, E, A> {
+  return S.stream.of(Ei.right(a));
+}
+
+export function pure<A>(a: A): StreamEither<T.NoEnv, T.NoErr, A> {
   return S.stream.of(Ei.right(a));
 }
 
@@ -71,7 +71,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   });
 }
 
-export function map_<R, E, A, B>(
+function map_<R, E, A, B>(
   ma: StreamEither<R, E, A>,
   f: (a: A) => B
 ): StreamEither<R, E, B> {
@@ -216,12 +216,6 @@ export function repeat<R, E, A>(
   return S.repeat(stream);
 }
 
-export function map<R, A, B>(
-  f: FunctionN<[A], B>
-): <E>(stream: StreamEither<R, E, A>) => StreamEither<R, E, B> {
-  return stream => map_(stream, f);
-}
-
 export function as<R, E, A, B>(
   stream: StreamEither<R, E, A>,
   b: B
@@ -271,7 +265,12 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const streamEither: Monad3E<URI> = {
+const mapLeft_ = <R, E, A, G>(fea: StreamEither<R, E, A>, f: (e: E) => G) =>
+  chainError_(fea, x => encaseEffect(T.raiseError(f(x))));
+
+export const streamEither: Monad3E<URI> &
+  MonadThrow3E<URI> &
+  Bifunctor3<URI> & Alt3E<URI> = {
   URI,
   map: map_,
   of: <R, E, A>(a: A): StreamEither<R, E, A> =>
@@ -280,5 +279,33 @@ export const streamEither: Monad3E<URI> = {
     sfab: StreamEither<R, E, FunctionN<[A], B>>,
     sa: StreamEither<R2, E2, A>
   ) => zipWith(sfab, sa, (f, a) => f(a)),
-  chain: chain_
+  chain: chain_,
+  throwError: <E>(e: E) => encaseEffect(T.raiseError(e)),
+  mapLeft: mapLeft_,
+  bimap: <R, E, A, G, B>(
+    fea: StreamEither<R, E, A>,
+    f: (e: E) => G,
+    g: (a: A) => B
+  ) => map_(mapLeft_(fea, f), g),
+  alt: <R, R2, E, E2, A>(
+    fx: StreamEither<R, E, A>,
+    fy: () => StreamEither<R2, E2, A>
+  ) => chainError_(fx, _ => fy())
 } as const;
+
+export const {
+  ap,
+  apFirst,
+  apSecond,
+  bimap,
+  chainFirst,
+  filterOrElse,
+  flatten,
+  fromEither,
+  fromPredicate,
+  mapLeft,
+  chain,
+  fromOption: fromOptionError,
+  map,
+  alt
+} = pipeable(streamEither);
