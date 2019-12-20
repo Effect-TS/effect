@@ -1,10 +1,5 @@
 {
   "extends": "./base.tsconfig.json",
-  "references": [
-    { "path": "packages/effect" },
-    { "path": "packages/tracing" },
-    { "path": "packages/orm" }
-  ],
   "files": [],
   "compilerOptions": {}
 }
