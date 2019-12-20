@@ -106,25 +106,6 @@ export interface Console {
      * The {@link console.warn()} function is an alias for {@link console.error()}.
      */
     warn(message?: any, ...optionalParams: any[]): T.Effect<T.NoEnv, T.NoErr, void>;
-
-    // --- Inspector mode only ---
-    /**
-     * This method does not display anything unless used in the inspector.
-     *  Starts a JavaScript CPU profile with an optional label.
-     */
-    profile(label?: string): T.Effect<T.NoEnv, T.NoErr, void>;
-
-    /**
-     * This method does not display anything unless used in the inspector.
-     *  Stops the current JavaScript CPU profiling session if one has been started and prints the report to the Profiles panel of the inspector.
-     */
-    profileEnd(label?: string): T.Effect<T.NoEnv, T.NoErr, void>;
-
-    /**
-     * This method does not display anything unless used in the inspector.
-     *  Adds an event with the label `label` to the Timeline panel of the inspector.
-     */
-    timeStamp(label?: string): T.Effect<T.NoEnv, T.NoErr, void>;
   };
 }
 
@@ -145,15 +126,12 @@ export const consoleLive: Console = {
     // tslint:disable-next-line: no-console
     info: (m, ...o) => T.sync(() => console.info(m, ...o)),
     log: (m, ...o) => T.sync(() => console.log(m, ...o)),
-    profile: l => T.sync(() => console.profile(l)),
-    profileEnd: l => T.sync(() => console.profileEnd(l)),
     table: (t, p) => T.sync(() => console.table(t, p)),
     // tslint:disable-next-line: no-console
     time: l => T.sync(() => console.time(l)),
     // tslint:disable-next-line: no-console
     timeEnd: l => T.sync(() => console.timeEnd(l)),
     timeLog: (l, ...d) => T.sync(() => console.timeLog(l, ...d)),
-    timeStamp: l => T.sync(() => console.timeStamp(l)),
     // tslint:disable-next-line: no-console
     trace: (m, ...o) => T.sync(() => console.trace(m, ...o)),
     warn: (m, ...o) => T.sync(() => console.warn(m, ...o))
@@ -162,11 +140,8 @@ export const consoleLive: Console = {
 
 export const {
   assert,
-  timeStamp,
   time,
   clear,
-  profileEnd,
-  profile,
   info,
   count,
   countReset,
