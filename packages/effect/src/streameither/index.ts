@@ -4,7 +4,7 @@ import * as S from "../stream";
 import * as Ei from "fp-ts/lib/Either";
 import * as O from "fp-ts/lib/Option";
 import { FunctionN, Lazy, Predicate, Refinement } from "fp-ts/lib/function";
-import { Monad3E, MonadThrow3E } from "../overload";
+import { Monad3E, MonadThrow3E, Alt3E } from "../overload";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import { pipeable } from "fp-ts/lib/pipeable";
 
@@ -270,7 +270,7 @@ const mapLeft_ = <R, E, A, G>(fea: StreamEither<R, E, A>, f: (e: E) => G) =>
 
 export const streamEither: Monad3E<URI> &
   MonadThrow3E<URI> &
-  Bifunctor3<URI> = {
+  Bifunctor3<URI> & Alt3E<URI> = {
   URI,
   map: map_,
   of: <R, E, A>(a: A): StreamEither<R, E, A> =>
@@ -286,7 +286,11 @@ export const streamEither: Monad3E<URI> &
     fea: StreamEither<R, E, A>,
     f: (e: E) => G,
     g: (a: A) => B
-  ) => map_(mapLeft_(fea, f), g)
+  ) => map_(mapLeft_(fea, f), g),
+  alt: <R, R2, E, E2, A>(
+    fx: StreamEither<R, E, A>,
+    fy: () => StreamEither<R2, E2, A>
+  ) => chainError_(fx, _ => fy())
 } as const;
 
 export const {
@@ -302,5 +306,6 @@ export const {
   mapLeft,
   chain,
   fromOption: fromOptionError,
-  map
+  map,
+  alt
 } = pipeable(streamEither);
