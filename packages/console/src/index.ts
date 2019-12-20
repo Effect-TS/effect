@@ -1,6 +1,5 @@
 import { effect as T } from "@matechs/effect";
 import { getDerived } from "@matechs/effect/lib/derived";
-import { AssertionError } from "assert";
 
 const consoleEnv: unique symbol = Symbol();
 
@@ -11,7 +10,7 @@ export interface Console {
      * If it is not, an `AssertionError` is thrown.
      * If provided, the error `message` is formatted using `util.format()` and used as the error message.
      */
-    assert(value: any, message?: string, ...optionalParams: any[]): T.Effect<T.NoEnv, AssertionError, void>;
+    assert(value: any, message?: string, ...optionalParams: any[]): T.Effect<T.NoEnv, T.NoErr, void>;
 
     /**
      * When `stdout` is a TTY, calling `console.clear()` will attempt to clear the TTY.
@@ -131,7 +130,7 @@ export interface Console {
 
 export const consoleLive: Console = {
   [consoleEnv]: {
-    assert: (v, m, ...o) => T.trySync(() => console.assert(v, m, ...o)),
+    assert: (v, m, ...o) => T.sync(() => console.assert(v, m, ...o)),
     clear: T.sync(() => console.clear()),
     count: l => T.sync(() => console.count(l)),
     countReset: l => T.sync(() => console.countReset(l)),
