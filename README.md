@@ -8,13 +8,6 @@ Docs at [https://arnaldimichael.gitbook.io/matechs-effect/](https://arnaldimicha
 
 It aims to provide a strong foundational block to build typescript code in a more testable and standardized way.
 
-This library is composed at its core by the `@matechs/effect` package that exposes:
-- trifunctor `Effect<R, E, A>`, istances `effectMonad` & `concurrentEffectMonad`
-- trifunctor `Managed<R, E, A>`, istances `managedMonad`
-- trifunctor `Stream<R, E, A>`, instances `streamMonad`
-
-You can think of this types as a computations that requires an environment `R` to run.
-
 Interesting integrations and usage examples can be found in 
 - `packages/orm`
 - `packages/http`
