@@ -17,34 +17,39 @@ import {
 import { ReadStream } from "fs";
 import { isNonEmpty } from "fp-ts/lib/Array";
 
+export const configEnv: unique symbol = Symbol();
+export const entityManagerEnv: unique symbol = Symbol();
+export const poolEnv: unique symbol = Symbol();
+export const ormEnv: unique symbol = Symbol();
+
 export interface HasOrmConfig {
-  orm: {
+  [configEnv]: {
     options: ConnectionOptions;
   };
 }
 
 export function ormConfig(options: ConnectionOptions): HasOrmConfig {
   return {
-    orm: {
+    [configEnv]: {
       options
     }
   };
 }
 
 export interface HasEntityManager {
-  orm: {
+  [entityManagerEnv]: {
     manager: EntityManager;
   };
 }
 
 export interface HasOrmPool {
-  orm: {
+  [poolEnv]: {
     connection: Connection;
   };
 }
 
 export interface Orm {
-  orm: {
+  [ormEnv]: {
     bracketPool<R, E, A>(
       op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
     ): T.Effect<HasOrmConfig & R, Error | E, A>;
@@ -68,47 +73,46 @@ export interface Orm {
 export const ormFactory: (
   factory: typeof createConnection
 ) => Orm = factory => ({
-  orm: {
+  [ormEnv]: {
     createPool() {
-      return T.accessM(({ orm: { options } }: HasOrmConfig) =>
+      return T.accessM(({ [configEnv]: { options } }: HasOrmConfig) =>
         pipe(() => factory(options), T.fromPromiseMap(toError))
       );
     },
     usePool(pool: Connection) {
       return <R, E, A>(op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>) =>
-        T.provideR(
-          (r: R) =>
-            ({
-              ...r,
-              orm: { ...r["orm"], connection: pool, manager: pool.manager }
-            } as any)
-        )(op);
+        T.provideR((r: R) => ({
+          ...r,
+          [poolEnv]: { connection: pool },
+          [entityManagerEnv]: { manager: pool.manager }
+        }))(op);
     },
     bracketPool<R, E, A>(
       op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
     ): T.Effect<HasOrmConfig & R, Error | E, A> {
-      return T.accessM(({ orm: { options } }: HasOrmConfig) =>
+      return T.accessM(({ [configEnv]: { options } }: HasOrmConfig) =>
         T.bracket(
           pipe(() => factory(options), T.fromPromiseMap(toError)),
           db => pipe(() => db.close(), T.fromPromiseMap(toError)),
           db =>
             T.provideR((r: HasOrmConfig & R) => ({
               ...r,
-              orm: { ...r["orm"], connection: db, manager: db.manager }
+              [poolEnv]: { connection: db },
+              [entityManagerEnv]: { manager: db.manager }
             }))(op)
         )
       );
     },
     withRepository(target) {
       return f =>
-        T.accessM(({ orm }: HasEntityManager) =>
+        T.accessM(({ [entityManagerEnv]: orm }: HasEntityManager) =>
           pipe(f(orm.manager.getRepository(target)), T.fromPromiseMap(toError))
         );
     },
     withTransaction<R, E, A>(
       op: T.Effect<HasEntityManager & R, E, A>
     ): T.Effect<HasOrmPool & R, Error | E, A> {
-      return T.accessM(({ orm: { connection } }: HasOrmPool) =>
+      return T.accessM(({ [poolEnv]: { connection } }: HasOrmPool) =>
         T.accessM((r: R) =>
           pipe(
             () =>
@@ -116,8 +120,8 @@ export const ormFactory: (
                 T.runToPromise(
                   T.provideAll({
                     ...r,
-                    orm: { ...r["orm"], manager: tx }
-                  } as any)(op)
+                    [entityManagerEnv]: { manager: tx }
+                  })(op)
                 )
               ),
             T.fromPromiseMap(toError)
@@ -133,7 +137,7 @@ export const orm = ormFactory(createConnection);
 export function bracketPool<R, E, A>(
   op: T.Effect<HasEntityManager & HasOrmPool & R, E, A>
 ): T.Effect<Orm & HasOrmConfig & R, Error | E, A> {
-  return T.accessM(({ orm }: Orm) => orm.bracketPool(op));
+  return T.accessM(({ [ormEnv]: orm }: Orm) => orm.bracketPool(op));
 }
 
 export function withRepository<Entity>(
@@ -141,21 +145,18 @@ export function withRepository<Entity>(
 ): <A>(
   f: (r: Repository<Entity>) => IO<Promise<A>>
 ) => T.Effect<Orm & HasEntityManager, Error, A> {
-  return f => T.accessM(({ orm }: Orm) => orm.withRepository(target)(f));
+  return f =>
+    T.accessM(({ [ormEnv]: orm }: Orm) => orm.withRepository(target)(f));
 }
 
 export function withTransaction<R, E, A>(
   op: T.Effect<HasEntityManager & R, E, A>
 ): T.Effect<Orm & HasOrmPool & R, Error | E, A> {
-  return T.accessM(({ orm }: Orm) => orm.withTransaction(op));
+  return T.accessM(({ [ormEnv]: orm }: Orm) => orm.withTransaction(op));
 }
 
-export function createPool(): T.Effect<
-  HasOrmConfig & Orm,
-  Error,
-  Connection
-> {
-  return T.accessM(({ orm }: Orm) => orm.createPool());
+export function createPool(): T.Effect<HasOrmConfig & Orm, Error, Connection> {
+  return T.accessM(({ [ormEnv]: orm }: Orm) => orm.createPool());
 }
 
 export function usePool(
@@ -163,7 +164,7 @@ export function usePool(
 ): <R, E, A>(
   op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
 ) => T.Effect<R & Orm, Error | E, A> {
-  return op => T.accessM(({ orm }: Orm) => orm.usePool(pool)(op));
+  return op => T.accessM(({ [ormEnv]: orm }: Orm) => orm.usePool(pool)(op));
 }
 
 /* istanbul ignore next */
@@ -174,7 +175,7 @@ export function queryStreamB<RES>(
   f: (m: EntityManager) => Promise<ReadStream>
 ) => T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, Array<RES>>> {
   return f =>
-    T.accessM(({ orm: { manager } }: HasEntityManager) =>
+    T.accessM(({ [entityManagerEnv]: { manager } }: HasEntityManager) =>
       Do(T.effect)
         .bindL("stream", () =>
           pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
@@ -195,7 +196,7 @@ export function queryStreamB<RES>(
 export function queryStream<RES>(
   f: (m: EntityManager) => Promise<ReadStream>
 ): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, RES>> {
-  return T.accessM(({ orm: { manager } }: HasEntityManager) =>
+  return T.accessM(({ [entityManagerEnv]: { manager } }: HasEntityManager) =>
     Do(T.effect)
       .bindL("stream", () =>
         pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
