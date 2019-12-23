@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - update-deps
+      - add-text-json-combinators
 
 jobs:
   build:
