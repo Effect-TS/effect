@@ -18,14 +18,11 @@
   "peerDependencies": {
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6",
-    "opentracing": "^0.14.4",
     "reflect-metadata": "^0.1.13",
     "typeorm": "^0.2.20"
   },
   "dependencies": {
-    "@matechs/effect": "^0.4.2",
-    "@matechs/graceful": "^0.4.2",
-    "@matechs/tracing": "^0.4.2"
+    "@matechs/effect": "^0.4.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

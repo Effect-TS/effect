@@ -1,7 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import * as S from "@matechs/effect/lib/stream";
 import * as Ei from "fp-ts/lib/Either";
-import { Graceful, onExit } from "@matechs/graceful/lib";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { toError } from "fp-ts/lib/Either";
 import { IO } from "fp-ts/lib/IO";
@@ -49,7 +48,7 @@ export interface Orm {
     bracketPool<R, E, A>(
       op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
     ): T.Effect<HasOrmConfig & R, Error | E, A>;
-    createPool(): T.Effect<HasOrmConfig & Graceful, Error, Connection>;
+    createPool(): T.Effect<HasOrmConfig, Error, Connection>;
     usePool(
       pool: Connection
     ): <R, E, A>(
@@ -72,19 +71,7 @@ export const ormFactory: (
   orm: {
     createPool() {
       return T.accessM(({ orm: { options } }: HasOrmConfig) =>
-        Do(T.effect)
-          .bindL("c", () =>
-            pipe(() => factory(options), T.fromPromiseMap(toError))
-          )
-          .doL(({ c }) =>
-            onExit(
-              T.effect.chainError(
-                pipe(() => c.close(), T.fromPromiseMap(toError)),
-                _ => T.unit
-              )
-            )
-          )
-          .return(s => s.c)
+        pipe(() => factory(options), T.fromPromiseMap(toError))
       );
     },
     usePool(pool: Connection) {
@@ -164,7 +151,7 @@ export function withTransaction<R, E, A>(
 }
 
 export function createPool(): T.Effect<
-  HasOrmConfig & Graceful & Orm,
+  HasOrmConfig & Orm,
   Error,
   Connection
 > {

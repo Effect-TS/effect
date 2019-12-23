@@ -23,7 +23,6 @@ import {
 import { pipe } from "fp-ts/lib/pipeable";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { graceful, trigger } from "@matechs/graceful/lib";
 import { raise } from "@matechs/effect/lib/original/exit";
 
 @Entity()
@@ -116,8 +115,7 @@ describe("Orm", () => {
 
     const module = pipe(
       E.noEnv,
-      E.mergeEnv(ormFactory(mockFactory)),
-      E.mergeEnv(graceful())
+      E.mergeEnv(ormFactory(mockFactory))
     );
 
     const program = Do(E.effect)
@@ -139,8 +137,6 @@ describe("Orm", () => {
       .return(s => s.res);
 
     const result = await E.runToPromiseExit(E.provide(module)(program));
-
-    await E.runToPromise(E.provide(module)(trigger()));
 
     assert.deepEqual(result, raise(new Error("not implemented")));
   });
