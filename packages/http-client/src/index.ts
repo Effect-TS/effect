@@ -115,7 +115,8 @@ export const middlewareStack: (
   }
 });
 
-export type RequestEnv = Http & HttpDeserializer & MiddlewareStack;
+export type HttpEnv = Http & MiddlewareStack;
+export type RequestEnv = HttpEnv & HttpDeserializer;
 
 function foldMiddlewareStack(
   { [middlewareStackEnv]: env }: MiddlewareStack,
@@ -296,6 +297,27 @@ export const jsonDeserializer: HttpDeserializer = {
     response: tryJson
   }
 };
+
+export const textDeserializer: HttpDeserializer = {
+  [httpDeserializerEnv]: {
+    errorResponse: <A>(i: string | undefined) => i as A | undefined,
+    response: <A>(i: string | undefined) => i as A | undefined
+  }
+};
+
+export function text<R, E, O>(
+  req: T.Effect<R & RequestEnv, HttpError<E>, Response<O>>
+): T.Effect<R & HttpEnv, HttpError<string>, Response<string>> {
+  return T.provideR((r: R & HttpEnv) => ({ ...r, ...textDeserializer }))(
+    req
+  ) as any;
+}
+
+export function json<R, E, O>(
+  req: T.Effect<R & RequestEnv, HttpError<E>, Response<O>>
+): T.Effect<R & HttpEnv, HttpError<E>, Response<O>> {
+  return T.provideR((r: R & HttpEnv) => ({ ...r, ...jsonDeserializer }))(req);
+}
 
 export function foldRequestType<A, B, C>(
   requestType: RequestType,

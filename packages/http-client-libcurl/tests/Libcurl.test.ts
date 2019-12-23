@@ -55,6 +55,14 @@ describe("Libcurl", () => {
       })
     );
 
+    const postText = await run(
+      H.text(
+        H.post("http://127.0.0.1:4001/post", {
+          foo: "bar"
+        })
+      )
+    );
+
     const postNoBody = await run(H.post("http://127.0.0.1:4001/post"));
 
     const put = await run(
@@ -79,6 +87,12 @@ describe("Libcurl", () => {
 
     assert.deepEqual(isDone(post), true);
     assert.deepEqual(isDone(post) && post.value.body, some({ foo: "bar" }));
+
+    assert.deepEqual(isDone(postText), true);
+    assert.deepEqual(
+      isDone(postText) && postText.value.body,
+      some(JSON.stringify({ foo: "bar" }))
+    );
 
     assert.deepEqual(isDone(postNoBody), true);
     assert.deepEqual(isDone(postNoBody) && postNoBody.value.body, some({}));
@@ -177,16 +191,14 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        pipe(
-          H.get<unknown, { foo: string; bar?: string }>(
-            "http://127.0.0.1:4004/h"
-          ),
-          H.withHeaders(
-            {
-              foo: "baz"
-            },
-            true
-          )
+        H.get<unknown, { foo: string; bar?: string }>(
+          "http://127.0.0.1:4004/h"
+        ),
+        H.withHeaders(
+          {
+            foo: "baz"
+          },
+          true
         ),
         H.withHeaders({
           foo: "bar",
