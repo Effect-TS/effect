@@ -1,7 +1,7 @@
 import { effect as T } from "@matechs/effect";
 import { getDerived } from "@matechs/effect/lib/derived";
 
-const consoleEnv: unique symbol = Symbol();
+export const consoleEnv: unique symbol = Symbol();
 
 export interface Console {
   [consoleEnv]: {
