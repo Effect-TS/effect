@@ -38,6 +38,43 @@ export function dbConfig<A extends symbol>(
   } as DbConfig<A>;
 }
 
+/* istnbul ignore next */
+export function mergeConfig<R>(a: R) {
+  return <B extends symbol>(b: DbConfig<B>): R & DbConfig<B> => ({
+    ...a,
+    [configEnv]: {
+      ...a[configEnv],
+      ...b[configEnv]
+    }
+  });
+}
+
+/* istnbul ignore next */
+export function dbConfigs<A extends symbol, B extends symbol>(
+  a: DbConfig<A>,
+  b: DbConfig<B>
+): DbConfig<A> & DbConfig<B>;
+
+/* istnbul ignore next */
+export function dbConfigs<A extends symbol, B extends symbol, C extends symbol>(
+  a: DbConfig<A>,
+  b: DbConfig<B>,
+  c: DbConfig<C>
+): DbConfig<A> & DbConfig<B> & DbConfig<C>;
+
+/* istnbul ignore next */
+export function dbConfigs<A extends symbol, B extends symbol, C extends symbol, D extends symbol>(
+  a: DbConfig<A>,
+  b: DbConfig<B>,
+  c: DbConfig<C>,
+  d: DbConfig<D>
+): DbConfig<A> & DbConfig<B> & DbConfig<C> & DbConfig<D>;
+
+/* istnbul ignore next */
+export function dbConfigs(...configs: DbConfig<any>[]) {
+  return configs.reduce((a, b) => mergeConfig(a)(b));
+}
+
 export interface Pool<A extends symbol> {
   [poolEnv]: {
     [k in A]: {
