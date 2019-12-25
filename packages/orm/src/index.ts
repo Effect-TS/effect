@@ -51,7 +51,7 @@ export class DbT<Db extends symbol> {
   constructor(private readonly dbEnv: Db) {}
 
   bracketPool<R, E, A>(
-    op: T.Effect<Pool<Db> & Manager<Db> & R, E, A>
+    op: T.Effect<ORM<Db> & R, E, A>
   ): T.Effect<DbConfig<Db> & DbFactory & R, Error | E, A> {
     return T.accessM(
       ({
@@ -92,7 +92,7 @@ export class DbT<Db extends symbol> {
     target: ObjectType<Entity> | EntitySchema<Entity> | string
   ): <A>(
     f: (r: Repository<Entity>) => Lazy<Promise<A>>
-  ) => T.Effect<Manager<Db> & Pool<Db>, Error, A> {
+  ) => T.Effect<ORM<Db>, Error, A> {
     return f =>
       T.accessM(
         ({
@@ -106,7 +106,7 @@ export class DbT<Db extends symbol> {
 
   withTransaction<R, E, A>(
     op: T.Effect<Manager<Db> & R, E, A>
-  ): T.Effect<Pool<Db> & R, Error | E, A> {
+  ): T.Effect<ORM<Db> & R, Error | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.accessM((r: R) =>
         pipe(
