@@ -1,9 +1,6 @@
 import { effect as T } from "@matechs/effect";
-import * as S from "@matechs/effect/lib/stream";
-import * as Ei from "fp-ts/lib/Either";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { toError } from "fp-ts/lib/Either";
-import { IO } from "fp-ts/lib/IO";
+import { Lazy } from "fp-ts/lib/function";
 import { pipe } from "fp-ts/lib/pipeable";
 import {
   Connection,
@@ -14,194 +11,128 @@ import {
   ObjectType,
   Repository
 } from "typeorm";
-import { ReadStream } from "fs";
-import { isNonEmpty } from "fp-ts/lib/Array";
 
 export const configEnv: unique symbol = Symbol();
-export const entityManagerEnv: unique symbol = Symbol();
 export const poolEnv: unique symbol = Symbol();
-export const ormEnv: unique symbol = Symbol();
+export const managerEnv: unique symbol = Symbol();
+export const factoryEnv: unique symbol = Symbol();
 
-export interface HasOrmConfig {
+export interface DbConfig<A extends symbol> {
   [configEnv]: {
-    options: ConnectionOptions;
+    [k in A]: {
+      readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>;
+    };
   };
 }
 
-export function ormConfig(options: ConnectionOptions): HasOrmConfig {
-  return {
-    [configEnv]: {
-      options
-    }
-  };
-}
-
-export interface HasEntityManager {
-  [entityManagerEnv]: {
-    manager: EntityManager;
-  };
-}
-
-export interface HasOrmPool {
+export interface Pool<A extends symbol> {
   [poolEnv]: {
-    connection: Connection;
+    [k in A]: {
+      pool: Connection;
+    };
   };
 }
 
-export interface Orm {
-  [ormEnv]: {
-    bracketPool<R, E, A>(
-      op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
-    ): T.Effect<HasOrmConfig & R, Error | E, A>;
-    createPool(): T.Effect<HasOrmConfig, Error, Connection>;
-    usePool(
-      pool: Connection
-    ): <R, E, A>(
-      op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
-    ) => T.Effect<R, Error | E, A>;
-    withRepository<Entity>(
-      target: ObjectType<Entity> | EntitySchema<Entity> | string
-    ): <A>(
-      f: (r: Repository<Entity>) => IO<Promise<A>>
-    ) => T.Effect<HasEntityManager, Error, A>;
-    withTransaction<R, E, A>(
-      op: T.Effect<HasEntityManager & R, E, A>
-    ): T.Effect<HasOrmPool & R, Error | E, A>;
+export interface Manager<A extends symbol> {
+  [managerEnv]: {
+    [k in A]: {
+      manager: EntityManager;
+    };
   };
 }
 
-export const ormFactory: (
-  factory: typeof createConnection
-) => Orm = factory => ({
-  [ormEnv]: {
-    createPool() {
-      return T.accessM(({ [configEnv]: { options } }: HasOrmConfig) =>
-        pipe(() => factory(options), T.fromPromiseMap(toError))
-      );
-    },
-    usePool(pool: Connection) {
-      return <R, E, A>(op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>) =>
-        T.provideR((r: R) => ({
-          ...r,
-          [poolEnv]: { connection: pool },
-          [entityManagerEnv]: { manager: pool.manager }
-        }))(op);
-    },
-    bracketPool<R, E, A>(
-      op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
-    ): T.Effect<HasOrmConfig & R, Error | E, A> {
-      return T.accessM(({ [configEnv]: { options } }: HasOrmConfig) =>
-        T.bracket(
-          pipe(() => factory(options), T.fromPromiseMap(toError)),
-          db => pipe(() => db.close(), T.fromPromiseMap(toError)),
-          db =>
-            T.provideR((r: HasOrmConfig & R) => ({
-              ...r,
-              [poolEnv]: { connection: db },
-              [entityManagerEnv]: { manager: db.manager }
-            }))(op)
-        )
-      );
-    },
-    withRepository(target) {
-      return f =>
-        T.accessM(({ [entityManagerEnv]: orm }: HasEntityManager) =>
-          pipe(f(orm.manager.getRepository(target)), T.fromPromiseMap(toError))
-        );
-    },
-    withTransaction<R, E, A>(
-      op: T.Effect<HasEntityManager & R, E, A>
-    ): T.Effect<HasOrmPool & R, Error | E, A> {
-      return T.accessM(({ [poolEnv]: { connection } }: HasOrmPool) =>
-        T.accessM((r: R) =>
-          pipe(
-            () =>
-              connection.transaction(tx =>
-                T.runToPromise(
-                  T.provideAll({
-                    ...r,
-                    [entityManagerEnv]: { manager: tx }
-                  })(op)
-                )
-              ),
-            T.fromPromiseMap(toError)
+export interface DbFactory {
+  [factoryEnv]: {
+    createConnection: typeof createConnection;
+  };
+}
+
+export class DbT<Db extends symbol> {
+  constructor(private readonly dbEnv: Db) {}
+
+  bracketPool<R, E, A>(
+    op: T.Effect<Pool<Db> & Manager<Db> & R, E, A>
+  ): T.Effect<DbConfig<Db> & DbFactory & R, Error | E, A> {
+    return T.accessM(
+      ({
+        [configEnv]: {
+          [this.dbEnv]: { readConfig }
+        },
+        [factoryEnv]: f
+      }: DbConfig<Db> & DbFactory) =>
+        T.effect.chain(readConfig, options =>
+          T.bracket(
+            pipe(() => f.createConnection(options), T.fromPromiseMap(toError)),
+            db => pipe(() => db.close(), T.fromPromiseMap(toError)),
+            db =>
+              pipe(
+                op,
+                T.provideR((r: DbConfig<Db> & R) => ({
+                  ...r,
+                  [poolEnv]: {
+                    ...r[poolEnv],
+                    [this.dbEnv]: {
+                      pool: db
+                    }
+                  },
+                  [managerEnv]: {
+                    ...r[managerEnv],
+                    [this.dbEnv]: {
+                      manager: db.manager
+                    }
+                  }
+                }))
+              )
           )
         )
-      );
-    }
-  }
-});
-
-export const orm = ormFactory(createConnection);
-
-export function bracketPool<R, E, A>(
-  op: T.Effect<HasEntityManager & HasOrmPool & R, E, A>
-): T.Effect<Orm & HasOrmConfig & R, Error | E, A> {
-  return T.accessM(({ [ormEnv]: orm }: Orm) => orm.bracketPool(op));
-}
-
-export function withRepository<Entity>(
-  target: ObjectType<Entity> | EntitySchema<Entity> | string
-): <A>(
-  f: (r: Repository<Entity>) => IO<Promise<A>>
-) => T.Effect<Orm & HasEntityManager, Error, A> {
-  return f =>
-    T.accessM(({ [ormEnv]: orm }: Orm) => orm.withRepository(target)(f));
-}
-
-export function withTransaction<R, E, A>(
-  op: T.Effect<HasEntityManager & R, E, A>
-): T.Effect<Orm & HasOrmPool & R, Error | E, A> {
-  return T.accessM(({ [ormEnv]: orm }: Orm) => orm.withTransaction(op));
-}
-
-export function createPool(): T.Effect<HasOrmConfig & Orm, Error, Connection> {
-  return T.accessM(({ [ormEnv]: orm }: Orm) => orm.createPool());
-}
-
-export function usePool(
-  pool: Connection
-): <R, E, A>(
-  op: T.Effect<HasOrmPool & HasEntityManager & R, E, A>
-) => T.Effect<R & Orm, Error | E, A> {
-  return op => T.accessM(({ [ormEnv]: orm }: Orm) => orm.usePool(pool)(op));
-}
-
-/* istanbul ignore next */
-export function queryStreamB<RES>(
-  batch: number,
-  every = 0
-): (
-  f: (m: EntityManager) => Promise<ReadStream>
-) => T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, Array<RES>>> {
-  return f =>
-    T.accessM(({ [entityManagerEnv]: { manager } }: HasEntityManager) =>
-      Do(T.effect)
-        .bindL("stream", () =>
-          pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
-        )
-        .bindL("res", ({ stream }) =>
-          T.pure(
-            S.filter(
-              S.fromObjectReadStreamB<RES>(stream, batch, every),
-              isNonEmpty
-            )
-          )
-        )
-        .return(({ res }) => res)
     );
+  }
+
+  withRepository<Entity>(
+    target: ObjectType<Entity> | EntitySchema<Entity> | string
+  ): <A>(
+    f: (r: Repository<Entity>) => Lazy<Promise<A>>
+  ) => T.Effect<Manager<Db> & Pool<Db>, Error, A> {
+    return f =>
+      T.accessM(
+        ({
+          [managerEnv]: {
+            [this.dbEnv]: { manager }
+          }
+        }: Manager<Db>) =>
+          pipe(f(manager.getRepository(target)), T.fromPromiseMap(toError))
+      );
+  }
+
+  withTransaction<R, E, A>(
+    op: T.Effect<Manager<Db> & R, E, A>
+  ): T.Effect<Pool<Db> & R, Error | E, A> {
+    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
+      T.accessM((r: R) =>
+        pipe(
+          () =>
+            pool.transaction(tx =>
+              T.runToPromise(
+                T.provideAll({
+                  ...r,
+                  [managerEnv]: {
+                    ...r[managerEnv],
+                    [this.dbEnv]: {
+                      manager: tx
+                    }
+                  }
+                })(op)
+              )
+            ),
+          T.fromPromiseMap(toError)
+        )
+      )
+    );
+  }
 }
 
-/* istanbul ignore next */
-export function queryStream<RES>(
-  f: (m: EntityManager) => Promise<ReadStream>
-): T.Effect<HasEntityManager, Error, S.Stream<T.NoEnv, Error, RES>> {
-  return T.accessM(({ [entityManagerEnv]: { manager } }: HasEntityManager) =>
-    Do(T.effect)
-      .bindL("stream", () =>
-        pipe(() => f(manager), T.fromPromiseMap(Ei.toError))
-      )
-      .bindL("res", ({ stream }) => T.pure(S.fromObjectReadStream<RES>(stream)))
-      .return(({ res }) => res)
-  );
+export type ORM<A extends symbol> = Pool<A> & Manager<A>;
+
+export function dbT<Db extends symbol>(dbEnv: Db): DbT<Db> {
+  return new DbT(dbEnv);
 }
