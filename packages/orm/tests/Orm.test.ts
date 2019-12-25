@@ -62,14 +62,8 @@ describe("Orm", () => {
     );
 
     const env: Env<typeof program> = {
-      [DB.factoryEnv]: {
-        createConnection: mockFactory
-      },
-      [DB.configEnv]: {
-        [testDbEnv]: {
-          readConfig: E.pure({} as any)
-        }
-      }
+      ...DB.mockFactory(mockFactory),
+      ...DB.dbConfig(testDbEnv, E.pure({} as any))
     };
 
     const result = await E.runToPromiseExit(E.provideAll(env)(program));

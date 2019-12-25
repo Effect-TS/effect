@@ -25,6 +25,19 @@ export interface DbConfig<A extends symbol> {
   };
 }
 
+export function dbConfig<A extends symbol>(
+  env: A,
+  readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>
+) {
+  return {
+    [configEnv]: {
+      [env]: {
+        readConfig
+      }
+    }
+  } as DbConfig<A>;
+}
+
 export interface Pool<A extends symbol> {
   [poolEnv]: {
     [k in A]: {
@@ -46,6 +59,18 @@ export interface DbFactory {
     createConnection: typeof createConnection;
   };
 }
+
+export const liveFactory: DbFactory = {
+  [factoryEnv]: {
+    createConnection: createConnection
+  }
+};
+
+export const mockFactory: (x: typeof createConnection) => DbFactory = x => ({
+  [factoryEnv]: {
+    createConnection: x
+  }
+});
 
 export class DbT<Db extends symbol> {
   constructor(private readonly dbEnv: Db) {}
