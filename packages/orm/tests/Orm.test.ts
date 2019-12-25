@@ -23,7 +23,7 @@ export class DemoEntity {
 
 const testDbEnv: unique symbol = Symbol();
 
-const testDb = DB.dbT(testDbEnv);
+const { withTransaction, withRepository, bracketPool } = DB.dbT(testDbEnv);
 
 describe("Orm", () => {
   it("should use db", async () => {
@@ -53,9 +53,9 @@ describe("Orm", () => {
         }
       } as Connection);
 
-    const program = testDb.bracketPool(
-      testDb.withTransaction(
-        testDb.withRepository(DemoEntity)(r => () =>
+    const program = bracketPool(
+      withTransaction(
+        withRepository(DemoEntity)(r => () =>
           r.findOne({ where: { id: "test" } })
         )
       )

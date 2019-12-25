@@ -63,7 +63,12 @@ export function dbConfigs<A extends symbol, B extends symbol, C extends symbol>(
 ): DbConfig<A> & DbConfig<B> & DbConfig<C>;
 
 /* istnbul ignore next */
-export function dbConfigs<A extends symbol, B extends symbol, C extends symbol, D extends symbol>(
+export function dbConfigs<
+  A extends symbol,
+  B extends symbol,
+  C extends symbol,
+  D extends symbol
+>(
   a: DbConfig<A>,
   b: DbConfig<B>,
   c: DbConfig<C>,
@@ -110,7 +115,11 @@ export const mockFactory: (x: typeof createConnection) => DbFactory = x => ({
 });
 
 export class DbT<Db extends symbol> {
-  constructor(private readonly dbEnv: Db) {}
+  constructor(private readonly dbEnv: Db) {
+    this.bracketPool = this.bracketPool.bind(this);
+    this.withRepository = this.withRepository.bind(this);
+    this.withTransaction = this.withTransaction.bind(this);
+  }
 
   bracketPool<R, E, A>(
     op: T.Effect<ORM<Db> & R, E, A>
