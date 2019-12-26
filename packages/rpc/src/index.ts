@@ -7,6 +7,7 @@ import { right } from "fp-ts/lib/Either";
 import { Exit } from "@matechs/effect/lib/original/exit";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { isSome } from "fp-ts/lib/Option";
+import { Interpreter } from "@matechs/effect/lib/interpreter";
 
 const clientConfigEnv: unique symbol = Symbol();
 
@@ -139,6 +140,53 @@ export function bind<M extends Remote<M>, K extends keyof M>(
                     ...r,
                     [E.requestContextEnv]: { request: req }
                   } as any)(m[k][key](...args)),
+                  x => res(right(E.routeResponse(200, { value: x })))
+                );
+
+                return () => {
+                  cancel();
+                };
+              })
+            )
+          )
+        );
+      }
+    }
+
+    return T.asUnit(array.sequence(T.effect)(ops));
+  });
+}
+
+export function bindI<M extends Remote<M>, K extends keyof M, R>(
+  m: M,
+  k: K,
+  i: Interpreter<M, E.ChildEnv & R>
+): T.Effect<
+  E.ExpressEnv & Runtime<M[K]> & ServerConfig<M, K> & R,
+  T.NoErr,
+  void
+> {
+  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv) => {
+    const { scope } = r[serverConfigEnv][k];
+    const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
+
+    for (const key of Reflect.ownKeys(m[k] as any)) {
+      if (typeof key === "string") {
+        const path = `${scope}/${key}`;
+
+        ops.push(
+          E.route(
+            "post",
+            path,
+            E.accessReqM(req =>
+              T.async<never, E.RouteResponse<RPCResponse>>(res => {
+                const args: any[] = req.body.args;
+
+                const cancel = T.run(
+                  T.provideAll({
+                    ...r,
+                    [E.requestContextEnv]: { request: req }
+                  } as any)(i(T.accessM((z: M) => z[k][key](...args)))),
                   x => res(right(E.routeResponse(200, { value: x })))
                 );
 

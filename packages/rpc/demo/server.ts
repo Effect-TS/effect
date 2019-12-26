@@ -5,7 +5,13 @@ import * as EX from "@matechs/express";
 import * as L from "@matechs/http-client-libcurl";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { placeholderJsonEnv, PlaceholderJson, Todo } from "./shared";
+import {
+  placeholderJsonEnv,
+  PlaceholderJson,
+  Todo,
+  placeholderJsonM
+} from "./shared";
+import { interpreter } from "@matechs/effect/lib/interpreter";
 
 export function authenticated<R, E, A>(
   eff: T.Effect<R, E, A>
@@ -21,25 +27,27 @@ export function authenticated<R, E, A>(
 }
 
 // implement the service
-export const placeholderJsonLive: PlaceholderJson = {
-  [placeholderJsonEnv]: {
-    getTodo: n =>
-      authenticated(
+export const placeholderJsonLive = interpreter(
+  (r: H.RequestEnv & EX.ChildEnv): PlaceholderJson => ({
+    [placeholderJsonEnv]: {
+      getTodo: n =>
         pipe(
           H.get<unknown, Todo>(
             `https://jsonplaceholder.typicode.com/todos/${n}`
           ),
           T.chainError(() => T.raiseError("error fetching todo")),
-          T.map(({ body }) => body)
+          T.map(({ body }) => body),
+          authenticated,
+          T.provideS(r)
         )
-      )
-  }
-};
+    }
+  })
+);
 
 // create a new express server
 const program = EX.withApp(
   Do(T.effect)
-    .do(RPC.bind(placeholderJsonLive, placeholderJsonEnv)) // wire module to express
+    .do(RPC.bindI(placeholderJsonM, placeholderJsonEnv, placeholderJsonLive)) // wire module to express
     .bind("server", EX.bind(8081)) // listen on port 8081
     .return(s => s.server) // return node server
 );
@@ -50,11 +58,10 @@ const envLive = pipe(
   T.mergeEnv(EX.express),
   T.mergeEnv(L.libcurl()),
   T.mergeEnv(H.jsonDeserializer),
-  T.mergeEnv(placeholderJsonLive),
   // configure RPC server for module <placeholderJsonLive, placeholderJsonEnv>
   T.mergeEnv(
     RPC.serverConfig(
-      placeholderJsonLive,
+      placeholderJsonM,
       placeholderJsonEnv
     )({
       scope: "/placeholderJson" // exposed at /placeholderJson
