@@ -1,4 +1,5 @@
 import { Effect, accessM, provideR } from "./effect";
+import { FunctionN } from "fp-ts/lib/function";
 
 /* istanbul ignore file */
 
@@ -17,11 +18,11 @@ export function interpreter<Environment, Module>(
     );
 }
 
-export function cn<T>(): T {
+export function cn<T extends Effect<any, any, any>>(): T {
   return {} as T;
 }
 
-export function fn<T>(): T {
+export function fn<T extends FunctionN<any[], Effect<any, any, any>>>(): T {
   // tslint:disable-next-line: no-empty
   return (() => {}) as any;
 }

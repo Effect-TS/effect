@@ -24,12 +24,12 @@ const appConfig: AppConfig = {
 
 const counterEnv: unique symbol = Symbol();
 
-const counterM = {
+const counterM = RPC.remote({
   [counterEnv]: {
     increment: fn<(n: number) => T.IO<T.NoErr, number>>(),
     ni: fn<() => T.IO<string, void>>()
   }
-};
+});
 
 type Counter = typeof counterM;
 

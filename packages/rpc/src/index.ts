@@ -208,3 +208,7 @@ export type Remote<T> = Record<
   keyof T,
   { [k: string]: FunctionN<any, T.Effect<any, any, any>> }
 >;
+
+export function remote<T extends Remote<T>>(m: T): T {
+  return m;
+}
