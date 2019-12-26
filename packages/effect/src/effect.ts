@@ -62,7 +62,13 @@ export interface Effect<R, E, A> {
   (_: R): void;
 }
 
-export class EffectIO<R, E, A> {
+export type IO<E, A> = Effect<NoEnv, E, A>;
+
+export type UIO<A> = Effect<NoEnv, NoErr, A>;
+
+export type RUIO<R, A> = Effect<R, NoErr, A>;
+
+export class EffectIO<_R, _E, _A> {
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
   }
@@ -408,6 +414,15 @@ export const provide = <R>(r: R) => <R2, E, A>(
 export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
   ma: Effect<R, E, A>
 ): Effect<R2, E, A> => accessM((r2: R2) => provideAll(f(r2))(ma));
+
+/**
+ * Provides partial environment, like provide() but via direct transformation
+ * safe to use in non top-level scenarios
+ */
+export function provideS<R>(r: R) {
+  return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
+    provideR((r2: R2) => ({ ...r2, ...r }))(eff);
+}
 
 /**
  * Provides all environment to the child

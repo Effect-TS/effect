@@ -7,6 +7,7 @@ import * as semaphore from "./semaphore";
 import * as exit from "./exit";
 import * as streameither from "./streameither";
 import * as derived from "./derived";
+import * as interpreter from "./interpreter";
 
 export {
   effect,
@@ -17,5 +18,6 @@ export {
   semaphore,
   exit,
   streameither,
-  derived
+  derived,
+  interpreter
 };

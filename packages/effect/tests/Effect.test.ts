@@ -127,6 +127,23 @@ describe("EffectSafe", () => {
       );
     });
 
+    it("provideS", async () => {
+      const http_symbol: unique symbol = Symbol();
+
+      interface HttpEnv {
+        [http_symbol]: number;
+      }
+
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.provideS({ [http_symbol]: 10 })(
+            T.access(({ [http_symbol]: n }: HttpEnv) => n)
+          )
+        ),
+        ex.done(10)
+      );
+    });
+
     it("provideR can be optional", async () => {
       const http_symbol: unique symbol = Symbol();
 
