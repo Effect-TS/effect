@@ -157,4 +157,4 @@ export const {
   timeLog,
   trace,
   warn
-} = D.derive<Console>({ spec: consoleLive });
+} = D.deriveC(consoleLive);

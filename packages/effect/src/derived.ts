@@ -31,6 +31,10 @@ export function derive<A extends Generic<A>>(as: Spec<A>): Derived<A, keyof A> {
   return derived;
 }
 
+export function deriveC<A extends Generic<A>>(a: A): Derived<A, keyof A> {
+  return derive({ spec: a });
+}
+
 export type Generic<M> = {
   [k in keyof M]: {
     [h in Exclude<keyof M[k], symbol>]:
