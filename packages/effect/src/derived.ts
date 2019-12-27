@@ -78,13 +78,47 @@ export type Interpreter<Module, Environment> = <R, E, A>(
   e: T.Effect<Module & R, E, A>
 ) => T.Effect<Environment & R, E, A>;
 
+type WidenR<F, R> = F extends T.Effect<infer A, infer B, infer C>
+  ? T.Effect<A, B, C>
+  : F extends FunctionN<infer ARG, T.Effect<infer A & R, infer B, infer C>>
+  ? FunctionN<ARG, T.Effect<A & R, B, C>>
+  : never;
+
+type With<M extends Generic<M>, R> = {
+  [k in keyof M]: {
+    [h in keyof M[k]]: WidenR<M[k][h], R>;
+  };
+};
+
+function providing<X extends Generic<X>, Environment>(
+  a: With<X, Environment>,
+  env: Environment
+): X {
+  const r = {} as any;
+
+  for (const sym of Reflect.ownKeys(a)) {
+    r[sym] = {};
+
+    for (const entry of Object.keys(a[sym])) {
+      if (typeof a[sym][entry] === "function") {
+        r[sym][entry] = (...args: any[]) =>
+          T.provideS(env)(a[sym][entry](...args));
+      } else if (typeof a[sym][entry] === "object") {
+        r[sym][entry] = T.provideS(env)(a[sym][entry]);
+      }
+    }
+  }
+
+  return r;
+}
+
 export function interpreter<S extends Spec<any>>(_: S) {
   return <Environment>(
-    f: (e: Environment) => TypeOf<S>
+    f: (e: Environment) => With<TypeOf<S>, Environment>
   ): Interpreter<TypeOf<S>, Environment> => <R, E, A>(
     eff: T.Effect<TypeOf<S> & R, E, A>
   ) =>
     T.accessM((e: Environment) =>
-      T.provideR((r: Environment & R) => ({ ...r, ...f(e) }))(eff)
+      T.provideR((r: Environment & R) => ({ ...r, ...providing(f(e), e) }))(eff)
     );
 }

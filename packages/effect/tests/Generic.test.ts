@@ -1,6 +1,5 @@
 import { effect as T, derived as D } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
-import { Env } from "../src/utils/types";
 import assert from "assert";
 import { done } from "../src/original/exit";
 
@@ -19,21 +18,28 @@ const { log, get } = D.derive(consoleM);
 
 const prefixEnv: unique symbol = Symbol();
 
-interface Prefix {
+const prefixM = D.generic({
   [prefixEnv]: {
-    prefix: string;
-  };
-}
+    accessPrefix: D.cn<T.UIO<string>>()
+  }
+});
+
+const { accessPrefix } = D.derive(prefixM);
 
 const messages: string[] = [];
 const messages2: string[] = [];
 
-const consoleI = D.interpreter(consoleM)((e: Prefix) => ({
+const consoleI = D.interpreter(consoleM)(() => ({
   [consoleEnv]: {
     log: s =>
-      T.sync(() => {
-        messages.push(`${e[prefixEnv].prefix}${s}`);
-      }),
+      pipe(
+        accessPrefix,
+        T.chain(prefix =>
+          T.sync(() => {
+            messages.push(`${prefix}${s}`);
+          })
+        )
+      ),
     get: T.pure(messages)
   }
 }));
@@ -55,28 +61,20 @@ const program: T.RUIO<Console, string[]> = pipe(
 
 describe("Generic", () => {
   it("use generic module", async () => {
-    const main = pipe(program, consoleI);
-
-    const env: Env<typeof main> = {
+    const prefixI = D.interpreter(prefixM)(() => ({
       [prefixEnv]: {
-        prefix: "prefix: "
+        accessPrefix: T.pure("prefix: ")
       }
-    };
+    }));
 
-    assert.deepEqual(
-      await T.runToPromiseExit(T.provideAll(env)(main)),
-      done(["prefix: message"])
-    );
+    const main = pipe(program, consoleI, prefixI);
+
+    assert.deepEqual(await T.runToPromiseExit(main), done(["prefix: message"]));
   });
 
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
 
-    const env: Env<typeof main> = {};
-
-    assert.deepEqual(
-      await T.runToPromiseExit(T.provideAll(env)(main)),
-      done(["message"])
-    );
+    assert.deepEqual(await T.runToPromiseExit(main), done(["message"]));
   });
 });
