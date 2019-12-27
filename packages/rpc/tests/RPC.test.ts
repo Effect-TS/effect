@@ -32,7 +32,7 @@ const counterM = F.define({
 
 let counter = 0;
 
-const counterService = F.implement(counterM)((r: AppConfig) => ({
+const counterService = F.implement(counterM)(() => ({
   [counterEnv]: {
     increment: n =>
       pipe(
@@ -41,8 +41,7 @@ const counterService = F.implement(counterM)((r: AppConfig) => ({
             counter = counter + n + c.gap;
             return counter;
           })
-        ),
-        T.provideS(r)
+        )
       ),
     ni: T.raiseError("not implemented")
   }
