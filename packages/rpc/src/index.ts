@@ -7,6 +7,7 @@ import { array } from "fp-ts/lib/Array";
 import { right } from "fp-ts/lib/Either";
 import { FunctionN } from "fp-ts/lib/function";
 import { isSome } from "fp-ts/lib/Option";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export const clientConfigEnv: unique symbol = Symbol();
 
@@ -30,13 +31,13 @@ export interface ServerConfig<M> {
 
 type ClientEntry<M, X> = M extends FunctionN<
   infer A,
-  T.Effect<infer B, infer C, infer D>
+  T.Effect<infer _B, infer C, infer D>
 >
   ? FunctionN<
       A,
       T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
     >
-  : M extends T.Effect<infer B, infer C, infer D>
+  : M extends T.Effect<infer _B, infer C, infer D>
   ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
   : never;
 
@@ -115,7 +116,7 @@ export function server<M extends F.ModuleShape<M>, R>(
   s: F.ModuleSpec<M>,
   i: F.Provider<E.ChildEnv & R, M>
 ): T.Effect<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
-  return T.accessM((r: ServerConfig<M> & E.ExpressEnv) => {
+  return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
     const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
 
     for (const k of Reflect.ownKeys(s.spec)) {
@@ -137,13 +138,14 @@ export function server<M extends F.ModuleShape<M>, R>(
                     T.provideAll({
                       ...r,
                       [E.requestContextEnv]: { request: req }
-                    } as any)(
-                      i(
+                    })(
+                      pipe(
                         T.accessM((z: M) =>
                           typeof z[k][key] === "function"
                             ? z[k][key](...args)
                             : z[k][key]
-                        )
+                        ),
+                        i
                       )
                     ),
                     x => res(right(E.routeResponse(200, { value: x })))
