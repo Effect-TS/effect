@@ -23,7 +23,7 @@ export function authenticated<R, E, A>(
 
 // implement the service
 export const placeholderJsonLive = F.implement(placeholderJsonM)(
-  (r: H.RequestEnv & EX.ChildEnv) => ({
+  (_: H.RequestEnv & EX.ChildEnv) => ({
     [placeholderJsonEnv]: {
       getTodo: n =>
         pipe(
@@ -32,8 +32,7 @@ export const placeholderJsonLive = F.implement(placeholderJsonM)(
           ),
           T.chainError(() => T.raiseError("error fetching todo")),
           T.map(({ body }) => body),
-          authenticated,
-          T.provideS(r)
+          authenticated
         )
     }
   })
