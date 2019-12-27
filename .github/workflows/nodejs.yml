@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - generic-to-the-limit
+      - better-inference
 
 jobs:
   build:
