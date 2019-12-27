@@ -26,10 +26,23 @@ const prefixM = D.generic({
 
 const { accessPrefix } = D.derive(prefixM);
 
+const configEnv: unique symbol = Symbol();
+
+const configM = D.generic({
+  [configEnv]: {
+    accessConfig: D.cn<T.UIO<string>>()
+  }
+});
+
+const { accessConfig } = D.derive(configM);
+
 const messages: string[] = [];
 const messages2: string[] = [];
 
-const consoleI = D.interpreter(consoleM)(() => ({
+type Prefix = D.TypeOf<typeof prefixM>;
+type Config = D.TypeOf<typeof configM>;
+
+const consoleI = D.interpreter(consoleM)((_: Prefix & Config) => ({
   [consoleEnv]: {
     log: s =>
       pipe(
@@ -40,7 +53,10 @@ const consoleI = D.interpreter(consoleM)(() => ({
           })
         )
       ),
-    get: T.pure(messages)
+    get: pipe(
+      accessConfig,
+      T.chain(_ => T.pure(messages))
+    )
   }
 }));
 
@@ -67,7 +83,13 @@ describe("Generic", () => {
       }
     }));
 
-    const main = pipe(program, consoleI, prefixI);
+    const configI = D.interpreter(configM)(() => ({
+      [configEnv]: {
+        accessConfig: T.pure("")
+      }
+    }));
+
+    const main = pipe(program, consoleI, prefixI, configI);
 
     assert.deepEqual(await T.runToPromiseExit(main), done(["prefix: message"]));
   });

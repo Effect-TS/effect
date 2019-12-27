@@ -79,8 +79,8 @@ export type Interpreter<Module, Environment> = <R, E, A>(
 ) => T.Effect<Environment & R, E, A>;
 
 type WidenR<F, R> = F extends T.Effect<infer A, infer B, infer C>
-  ? T.Effect<A, B, C>
-  : F extends FunctionN<infer ARG, T.Effect<infer A & R, infer B, infer C>>
+  ? T.Effect<A & R, B, C>
+  : F extends FunctionN<infer ARG, T.Effect<infer A, infer B, infer C>>
   ? FunctionN<ARG, T.Effect<A & R, B, C>>
   : never;
 
