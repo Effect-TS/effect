@@ -1,5 +1,4 @@
-import { effect as T } from "@matechs/effect";
-import { getDerived } from "@matechs/effect/lib/derived";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 
 export const consoleEnv: unique symbol = Symbol();
 
@@ -158,4 +157,4 @@ export const {
   timeLog,
   trace,
   warn
-} = getDerived(consoleLive, consoleEnv);
+} = F.accessReal(consoleLive)

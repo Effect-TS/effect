@@ -1,87 +1,79 @@
-import { effect as T } from "@matechs/effect";
-import { FunctionN } from "fp-ts/lib/function";
-import * as H from "@matechs/http-client";
+import { freeEnv as F, effect as T } from "@matechs/effect";
+import { Exit } from "@matechs/effect/lib/original/exit";
 import * as E from "@matechs/express";
+import * as H from "@matechs/http-client";
+import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { right } from "fp-ts/lib/Either";
-import { Exit } from "@matechs/effect/lib/original/exit";
-import { Do } from "fp-ts-contrib/lib/Do";
+import { FunctionN } from "fp-ts/lib/function";
 import { isSome } from "fp-ts/lib/Option";
-import { Interpreter } from "@matechs/effect/lib/interpreter";
+import { pipe } from "fp-ts/lib/pipeable";
 
-const clientConfigEnv: unique symbol = Symbol();
+export const clientConfigEnv: unique symbol = Symbol();
 
-interface ClientConfig<M, K extends keyof M> {
+export interface ClientConfig<M> {
   [clientConfigEnv]: {
-    [k in K]: {
+    [k in keyof M]: {
       baseUrl: string;
     };
   };
 }
 
-export function clientConfig<M, K extends keyof M>(
-  _m: M,
-  k: K
-): (c: ClientConfig<M, K>[typeof clientConfigEnv][K]) => ClientConfig<M, K> {
-  return x => ({
-    [clientConfigEnv]: {
-      [k]: x
-    } as any
-  });
-}
+export const serverConfigEnv: unique symbol = Symbol();
 
-const serverConfigEnv: unique symbol = Symbol();
-
-interface ServerConfig<M, K extends keyof M> {
+export interface ServerConfig<M> {
   [serverConfigEnv]: {
-    [k in K]: {
+    [k in keyof M]: {
       scope: string;
     };
   };
 }
 
-export function serverConfig<M, K extends keyof M>(
-  _m: M,
-  k: K
-): (c: ServerConfig<M, K>[typeof serverConfigEnv][K]) => ServerConfig<M, K> {
-  return x => ({
-    [serverConfigEnv]: {
-      [k]: x
-    } as any
-  });
-}
-
-type ClientEntry<M, X, Y extends keyof X> = M extends FunctionN<
+type ClientEntry<M, X> = M extends FunctionN<
   infer A,
-  T.Effect<infer B, infer C, infer D>
+  T.Effect<infer _B, infer C, infer D>
 >
   ? FunctionN<
       A,
-      T.Effect<H.RequestEnv & ClientConfig<X, Y>, C | H.HttpError<unknown>, D>
+      T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
     >
+  : M extends T.Effect<infer _B, infer C, infer D>
+  ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
   : never;
 
-type ClientModule<M, A, B extends keyof A> = {
-  [k in keyof M]: ClientEntry<M[k], A, B>;
+export type Client<M extends F.ModuleShape<M>> = {
+  [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>;
 };
 
-type Client<M, K extends keyof M> = ClientModule<M[K], M, K>;
-
-export function client<M extends Remote<M>, K extends keyof M>(
-  m: M,
-  k: K
-): Client<M, K> {
-  const x = m[k] as any;
+export function client<M extends F.ModuleShape<M>>(
+  s: F.ModuleSpec<M>
+): Client<M> {
   const r = {} as any;
 
-  for (const z of Reflect.ownKeys(x)) {
-    if (typeof z === "string") {
-      r[z] = (...args: any[]) =>
-        Do(T.effect)
-          .bindL("req", () => T.pure<RPCRequest>({ args }))
-          .bindL("con", () => T.access((c: ClientConfig<M, K>) => c))
+  for (const entry of Reflect.ownKeys(s.spec)) {
+    const x = s.spec[entry];
+
+    for (const z of Object.keys(x)) {
+      if (typeof x[z] === "function") {
+        r[z] = (...args: any[]) =>
+          Do(T.effect)
+            .bindL("req", () => T.pure<RPCRequest>({ args }))
+            .bindL("con", () => T.access((c: ClientConfig<M>) => c))
+            .bindL("res", ({ con, req }) =>
+              H.post(`${con[clientConfigEnv][entry].baseUrl}/${z}`, req)
+            )
+            .bindL("ret", ({ res }) =>
+              isSome(res.body)
+                ? T.completed((res.body.value as RPCResponse).value)
+                : T.raiseError(new Error("empty response"))
+            )
+            .return(s => s.ret);
+      } else if (typeof x[z] === "object") {
+        r[z] = Do(T.effect)
+          .bindL("req", () => T.pure<RPCRequest>({ args: [] }))
+          .bindL("con", () => T.access((c: ClientConfig<M>) => c))
           .bindL("res", ({ con, req }) =>
-            H.post(`${con[clientConfigEnv][k].baseUrl}/${z}`, req)
+            H.post(`${con[clientConfigEnv][entry].baseUrl}/${z}`, req)
           )
           .bindL("ret", ({ res }) =>
             isSome(res.body)
@@ -89,126 +81,87 @@ export function client<M extends Remote<M>, K extends keyof M>(
               : T.raiseError(new Error("empty response"))
           )
           .return(s => s.ret);
+      }
     }
   }
 
   return r;
 }
 
-export type Runtime<M> = M extends {
-  [h: string]: (
-    ...args: any[]
-  ) => T.Effect<infer Q & E.RequestContext, any, any>;
-}
+export type InferR<F> = F extends (
+  ...args: any[]
+) => T.Effect<infer Q & E.RequestContext, any, any>
+  ? Q
+  : F extends T.Effect<infer Q & E.RequestContext, any, any>
   ? Q
   : never;
 
-interface RPCRequest {
+export type Runtime<M> = M extends {
+  [k in keyof M]: {
+    [h: string]: infer X;
+  };
+}
+  ? InferR<X>
+  : never;
+
+export interface RPCRequest {
   args: unknown[];
 }
 
-interface RPCResponse {
+export interface RPCResponse {
   value: Exit<unknown, unknown>;
 }
 
-export function bind<M extends Remote<M>, K extends keyof M>(
-  m: M,
-  k: K
-): T.Effect<
-  E.ExpressEnv & Runtime<M[K]> & ServerConfig<M, K> & M,
-  T.NoErr,
-  void
-> {
-  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv) => {
-    const { scope } = r[serverConfigEnv][k];
+export function server<M extends F.ModuleShape<M>, R>(
+  s: F.ModuleSpec<M>,
+  i: F.Provider<E.ChildEnv & R, M>
+): T.Effect<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
+  return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
     const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
 
-    for (const key of Reflect.ownKeys(m[k] as any)) {
-      if (typeof key === "string") {
-        const path = `${scope}/${key}`;
+    for (const k of Reflect.ownKeys(s.spec)) {
+      const { scope } = r[serverConfigEnv][k];
 
-        ops.push(
-          E.route(
-            "post",
-            path,
-            E.accessReqM(req =>
-              T.async<never, E.RouteResponse<RPCResponse>>(res => {
-                const args: any[] = req.body.args;
+      for (const key of Reflect.ownKeys(s.spec[k])) {
+        if (typeof key === "string") {
+          const path = `${scope}/${key}`;
 
-                const cancel = T.run(
-                  T.provideAll({
-                    ...r,
-                    [E.requestContextEnv]: { request: req }
-                  } as any)(m[k][key](...args)),
-                  x => res(right(E.routeResponse(200, { value: x })))
-                );
+          ops.push(
+            E.route(
+              "post",
+              path,
+              E.accessReqM(req =>
+                T.async<never, E.RouteResponse<RPCResponse>>(res => {
+                  const args: any[] = req.body.args;
 
-                return () => {
-                  cancel();
-                };
-              })
+                  const cancel = T.run(
+                    T.provideAll({
+                      ...r,
+                      [E.requestContextEnv]: { request: req }
+                    })(
+                      pipe(
+                        T.accessM((z: M) =>
+                          typeof z[k][key] === "function"
+                            ? z[k][key](...args)
+                            : z[k][key]
+                        ),
+                        i
+                      )
+                    ),
+                    x => res(right(E.routeResponse(200, { value: x })))
+                  );
+
+                  return () => {
+                    cancel();
+                  };
+                })
+              )
             )
-          )
-        );
+          );
+        }
       }
     }
 
     return T.asUnit(array.sequence(T.effect)(ops));
   });
-}
-
-export function bindI<M extends Remote<M>, K extends keyof M, R>(
-  m: M,
-  k: K,
-  i: Interpreter<M, E.ChildEnv & R>
-): T.Effect<
-  E.ExpressEnv & Runtime<M[K]> & ServerConfig<M, K> & R,
-  T.NoErr,
-  void
-> {
-  return T.accessM((r: ServerConfig<M, K> & E.ExpressEnv) => {
-    const { scope } = r[serverConfigEnv][k];
-    const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
-
-    for (const key of Reflect.ownKeys(m[k] as any)) {
-      if (typeof key === "string") {
-        const path = `${scope}/${key}`;
-
-        ops.push(
-          E.route(
-            "post",
-            path,
-            E.accessReqM(req =>
-              T.async<never, E.RouteResponse<RPCResponse>>(res => {
-                const args: any[] = req.body.args;
-
-                const cancel = T.run(
-                  T.provideAll({
-                    ...r,
-                    [E.requestContextEnv]: { request: req }
-                  } as any)(i(T.accessM((z: M) => z[k][key](...args)))),
-                  x => res(right(E.routeResponse(200, { value: x })))
-                );
-
-                return () => {
-                  cancel();
-                };
-              })
-            )
-          )
-        );
-      }
-    }
-
-    return T.asUnit(array.sequence(T.effect)(ops));
-  });
-}
-
-export type Remote<T> = Record<
-  keyof T,
-  { [k: string]: FunctionN<any, T.Effect<any, any, any>> }
->;
-
-export function remote<T extends Remote<T>>(m: T): T {
-  return m;
 }

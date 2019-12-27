@@ -1,17 +1,12 @@
-import { effect as T, exit as E } from "@matechs/effect";
+import { effect as T, exit as E, freeEnv as F } from "@matechs/effect";
 import * as RPC from "../src";
 import * as H from "@matechs/http-client";
 import * as EX from "@matechs/express";
 import * as L from "@matechs/http-client-libcurl";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
-import {
-  placeholderJsonEnv,
-  PlaceholderJson,
-  Todo,
-  placeholderJsonM
-} from "./shared";
-import { interpreter } from "@matechs/effect/lib/interpreter";
+import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared";
+import { Env } from "@matechs/effect/lib/utils/types";
 
 export function authenticated<R, E, A>(
   eff: T.Effect<R, E, A>
@@ -27,8 +22,8 @@ export function authenticated<R, E, A>(
 }
 
 // implement the service
-export const placeholderJsonLive = interpreter(
-  (r: H.RequestEnv & EX.ChildEnv): PlaceholderJson => ({
+export const placeholderJsonLive = F.implement(placeholderJsonM)(
+  (r: H.RequestEnv & EX.ChildEnv) => ({
     [placeholderJsonEnv]: {
       getTodo: n =>
         pipe(
@@ -47,27 +42,22 @@ export const placeholderJsonLive = interpreter(
 // create a new express server
 const program = EX.withApp(
   Do(T.effect)
-    .do(RPC.bindI(placeholderJsonM, placeholderJsonEnv, placeholderJsonLive)) // wire module to express
+    .do(RPC.server(placeholderJsonM, placeholderJsonLive)) // wire module to express
     .bind("server", EX.bind(8081)) // listen on port 8081
     .return(s => s.server) // return node server
 );
 
 // construct live environment
-const envLive = pipe(
-  T.noEnv,
-  T.mergeEnv(EX.express),
-  T.mergeEnv(L.libcurl()),
-  T.mergeEnv(H.jsonDeserializer),
-  // configure RPC server for module <placeholderJsonLive, placeholderJsonEnv>
-  T.mergeEnv(
-    RPC.serverConfig(
-      placeholderJsonM,
-      placeholderJsonEnv
-    )({
+const envLive: Env<typeof program> = {
+  ...EX.express,
+  ...L.libcurl(),
+  ...H.jsonDeserializer,
+  [RPC.serverConfigEnv]: {
+    [placeholderJsonEnv]: {
       scope: "/placeholderJson" // exposed at /placeholderJson
-    })
-  )
-);
+    }
+  }
+};
 
 // run express server
 T.run(
