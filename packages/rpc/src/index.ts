@@ -40,13 +40,11 @@ type ClientEntry<M, X> = M extends FunctionN<
   ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
   : never;
 
-export type Client<M extends D.Generic<M>, K extends keyof M> = {
-  [k in keyof M[K]]: ClientEntry<M[K][k], M>;
+export type Client<M extends D.Generic<M>> = {
+  [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>;
 };
 
-export function client<M extends D.Generic<M>>(
-  s: D.Spec<M>
-): Client<M, keyof M> {
+export function client<M extends D.Generic<M>>(s: D.Spec<M>): Client<M> {
   const r = {} as any;
 
   for (const entry of Reflect.ownKeys(s.spec)) {
