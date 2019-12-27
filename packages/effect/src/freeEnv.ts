@@ -52,16 +52,7 @@ export type ModuleShape<M> = {
 };
 
 export interface ModuleSpec<M> {
-  spec: {
-    [k in keyof M]: {
-      [h in Exclude<keyof M[k], symbol>]:
-        | FunctionN<any, T.Effect<any, any, any>>
-        | T.Effect<any, any, any>;
-    } &
-      {
-        [h in Extract<keyof M[k], symbol>]: never;
-      };
-  };
+  spec: ModuleShape<M>;
 }
 
 export type TypeOf<Q> = Q extends ModuleSpec<infer M> ? M : never;
@@ -104,10 +95,32 @@ export type InferR<F> = F extends (
   ? Q
   : never;
 
-export type ImplementationEnv<M> = UnionToIntersection<
-  M extends {
-    [k in keyof M]: {
-      [h: string]: infer X;
+type EnvOf<F> = F extends FunctionN<
+  infer _ARG,
+  T.Effect<infer R, infer _E, infer _A>
+>
+  ? R
+  : F extends T.Effect<infer R, infer E, infer A>
+  ? R
+  : never;
+
+type OnlyNew<M extends ModuleShape<any>, I extends Implementation<M>> = {
+  [k in keyof I]: {
+    [h in keyof I[k]]: I[k][h] extends FunctionN<
+      infer ARG,
+      T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
+    >
+      ? FunctionN<ARG, T.Effect<R, E, A>>
+      : I[k][h] extends T.Effect<infer R, infer E, infer A>
+      ? T.Effect<R, E, A>
+      : never;
+  };
+};
+
+export type ImplementationEnv<I> = UnionToIntersection<
+  I extends {
+    [k in keyof I]: {
+      [h in keyof I[k]]: infer X;
     };
   }
     ? InferR<X>
@@ -120,22 +133,22 @@ export type UnionToIntersection<U> = (U extends any
   ? I
   : never;
 
-export type ProviderOf<M, I extends Implementation<M>> = Provider<
-  ImplementationEnv<I>,
-  M
->;
+export type ProviderOf<
+  M extends ModuleShape<any>,
+  I extends Implementation<M>
+> = Provider<ImplementationEnv<OnlyNew<M, I>>, M>;
 
 export function providing<
-  M,
+  M extends ModuleShape<M>,
   S extends ModuleSpec<M>,
   I extends Implementation<M>
->(_: S, a: I, env: ImplementationEnv<I>): TypeOf<S> {
+>(s: S, a: I, env: ImplementationEnv<OnlyNew<M, I>>): TypeOf<S> {
   const r = {} as any;
 
-  for (const sym of Reflect.ownKeys(a)) {
+  for (const sym of Reflect.ownKeys(s.spec)) {
     r[sym] = {};
 
-    for (const entry of Object.keys(a[sym])) {
+    for (const entry of Object.keys(s.spec[sym])) {
       if (typeof a[sym][entry] === "function") {
         r[sym][entry] = (...args: any[]) =>
           T.provideS(env)(a[sym][entry](...args));
@@ -152,7 +165,7 @@ export function implement<S extends ModuleSpec<any>>(s: S) {
   return <I extends Implementation<TypeOf<S>>>(
     i: I
   ): ProviderOf<TypeOf<S>, I> => eff =>
-    T.accessM((e: ImplementationEnv<I>) =>
+    T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       pipe(eff, T.provideS<TypeOf<S>>(providing(s, i, e)))
     );
 }

@@ -3,11 +3,27 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { freeEnv as F, effect as T } from "../src";
 import { done } from "../src/original/exit";
 
+const fnEnv: unique symbol = Symbol();
+
+interface FnEnv {
+  [fnEnv]: {
+    mapString: (s: string) => T.UIO<string>;
+  };
+}
+
+const fnLive: FnEnv = {
+  [fnEnv]: {
+    mapString: s => T.pure(`(${s})`)
+  }
+};
+
+const { mapString } = F.accessReal(fnLive);
+
 const consoleEnv: unique symbol = Symbol();
 
 const consoleM = F.define({
   [consoleEnv]: {
-    log: F.fn<(s: string) => T.UIO<void>>(),
+    log: F.fn<(s: string) => T.RUIO<FnEnv, void>>(),
     get: F.cn<T.UIO<string[]>>()
   }
 });
@@ -44,9 +60,10 @@ const consoleI = F.implement(consoleM)({
     log: s =>
       pipe(
         accessPrefix,
-        T.chain(prefix =>
+        T.chain(prefix => mapString(`${prefix}${s}`)),
+        T.chain(s =>
           T.sync(() => {
-            messages.push(`${prefix}${s}`);
+            messages.push(s);
           })
         )
       ),
@@ -67,7 +84,7 @@ const consoleI2 = F.implement(consoleM)({
   }
 });
 
-const program: T.RUIO<Console, string[]> = pipe(
+const program: T.RUIO<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain(_ => get)
 );
@@ -88,11 +105,23 @@ describe("Generic", () => {
 
     const main = pipe(program, consoleI, prefixI, configI);
 
-    assert.deepEqual(await T.runToPromiseExit(main), done(["prefix: message"]));
+    assert.deepEqual(
+      await T.runToPromiseExit(T.provideAll(fnLive)(main)),
+      done(["prefix: message"])
+    );
   });
 
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
+
+    assert.deepEqual(
+      await T.runToPromiseExit(T.provideAll(fnLive)(main)),
+      done(["message"])
+    );
+  });
+
+  it("use generic module (different interpreter, not need fnEnv)", async () => {
+    const main = pipe(get, consoleI2);
 
     assert.deepEqual(await T.runToPromiseExit(main), done(["message"]));
   });
