@@ -1,48 +1,48 @@
-import { effect as T, derived as D } from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
 import assert from "assert";
+import { pipe } from "fp-ts/lib/pipeable";
+import { freeEnv as F, effect as T } from "../src";
 import { done } from "../src/original/exit";
 
 const consoleEnv: unique symbol = Symbol();
 
-const consoleM = D.generic({
+const consoleM = F.define({
   [consoleEnv]: {
-    log: D.fn<(s: string) => T.UIO<void>>(),
-    get: D.cn<T.UIO<string[]>>()
+    log: F.fn<(s: string) => T.UIO<void>>(),
+    get: F.cn<T.UIO<string[]>>()
   }
 });
 
-type Console = D.TypeOf<typeof consoleM>;
+type Console = F.TypeOf<typeof consoleM>;
 
-const { log, get } = D.derive(consoleM);
+const { log, get } = F.access(consoleM);
 
 const prefixEnv: unique symbol = Symbol();
 
-const prefixM = D.generic({
+const prefixM = F.define({
   [prefixEnv]: {
-    accessPrefix: D.cn<T.UIO<string>>()
+    accessPrefix: F.cn<T.UIO<string>>()
   }
 });
 
-const { accessPrefix } = D.derive(prefixM);
+const { accessPrefix } = F.access(prefixM);
 
 const configEnv: unique symbol = Symbol();
 
-const configM = D.generic({
+const configM = F.define({
   [configEnv]: {
-    accessConfig: D.cn<T.UIO<string>>()
+    accessConfig: F.cn<T.UIO<string>>()
   }
 });
 
-const { accessConfig } = D.derive(configM);
+const { accessConfig } = F.access(configM);
 
 const messages: string[] = [];
 const messages2: string[] = [];
 
-type Prefix = D.TypeOf<typeof prefixM>;
-type Config = D.TypeOf<typeof configM>;
+type Prefix = F.TypeOf<typeof prefixM>;
+type Config = F.TypeOf<typeof configM>;
 
-const consoleI = D.interpreter(consoleM)((_: Prefix & Config) => ({
+const consoleI = F.implement(consoleM)((_: Prefix & Config) => ({
   [consoleEnv]: {
     log: s =>
       pipe(
@@ -60,7 +60,7 @@ const consoleI = D.interpreter(consoleM)((_: Prefix & Config) => ({
   }
 }));
 
-const consoleI2 = D.interpreter(consoleM)(() => ({
+const consoleI2 = F.implement(consoleM)(() => ({
   [consoleEnv]: {
     log: s =>
       T.sync(() => {
@@ -77,13 +77,13 @@ const program: T.RUIO<Console, string[]> = pipe(
 
 describe("Generic", () => {
   it("use generic module", async () => {
-    const prefixI = D.interpreter(prefixM)(() => ({
+    const prefixI = F.implement(prefixM)(() => ({
       [prefixEnv]: {
         accessPrefix: T.pure("prefix: ")
       }
     }));
 
-    const configI = D.interpreter(configM)(() => ({
+    const configI = F.implement(configM)(() => ({
       [configEnv]: {
         accessConfig: T.pure("")
       }

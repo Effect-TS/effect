@@ -1,4 +1,4 @@
-import { effect as T, derived as D } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import { Option } from "fp-ts/lib/Option";
 
 // environment entries
@@ -12,10 +12,10 @@ export interface Todo {
   completed: boolean;
 }
 
-export const placeholderJsonM = D.generic({
+export const placeholderJsonM = F.define({
   [placeholderJsonEnv]: {
-    getTodo: D.fn<(n: number) => T.IO<string, Option<Todo>>>()
+    getTodo: F.fn<(n: number) => T.IO<string, Option<Todo>>>()
   }
 });
 
-export type PlaceholderJson = D.TypeOf<typeof placeholderJsonM>;
+export type PlaceholderJson = F.TypeOf<typeof placeholderJsonM>;

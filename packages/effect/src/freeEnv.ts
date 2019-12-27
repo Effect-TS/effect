@@ -14,7 +14,9 @@ export type Derived<A, S extends keyof A> = A extends { [k in S]: infer B }
   ? { [h in keyof B]: Patched<A, B[h]> }
   : never;
 
-export function derive<A extends Generic<A>>(as: Spec<A>): Derived<A, keyof A> {
+export function access<A extends ModuleShape<A>>(
+  as: ModuleSpec<A>
+): Derived<A, keyof A> {
   const derived = {} as Derived<A, keyof A>;
   const a = as.spec;
 
@@ -31,11 +33,13 @@ export function derive<A extends Generic<A>>(as: Spec<A>): Derived<A, keyof A> {
   return derived;
 }
 
-export function deriveC<A extends Generic<A>>(a: A): Derived<A, keyof A> {
-  return derive({ spec: a });
+export function accessReal<A extends ModuleShape<A>>(
+  a: A
+): Derived<A, keyof A> {
+  return access({ spec: a });
 }
 
-export type Generic<M> = {
+export type ModuleShape<M> = {
   [k in keyof M]: {
     [h in Exclude<keyof M[k], symbol>]:
       | FunctionN<any, T.Effect<any, any, any>>
@@ -46,7 +50,7 @@ export type Generic<M> = {
     };
 };
 
-export interface Spec<M> {
+export interface ModuleSpec<M> {
   spec: {
     [k in keyof M]: {
       [h in Exclude<keyof M[k], symbol>]:
@@ -59,9 +63,9 @@ export interface Spec<M> {
   };
 }
 
-export type TypeOf<Q> = Q extends Spec<infer M> ? M : never;
+export type TypeOf<Q> = Q extends ModuleSpec<infer M> ? M : never;
 
-export function generic<T extends Generic<T>>(m: T): Spec<T> {
+export function define<T extends ModuleShape<T>>(m: T): ModuleSpec<T> {
   return { spec: m };
 }
 
@@ -74,7 +78,7 @@ export function fn<T extends FunctionN<any, T.Effect<any, any, any>>>(): T {
   return (() => {}) as any;
 }
 
-export type Interpreter<Module, Environment> = <R, E, A>(
+export type Provider<Environment, Module> = <R, E, A>(
   e: T.Effect<Module & R, E, A>
 ) => T.Effect<Environment & R, E, A>;
 
@@ -84,13 +88,13 @@ type WidenR<F, R> = F extends T.Effect<infer A, infer B, infer C>
   ? FunctionN<ARG, T.Effect<A & R, B, C>>
   : never;
 
-type With<M extends Generic<M>, R> = {
+type With<M extends ModuleShape<M>, R> = {
   [k in keyof M]: {
     [h in keyof M[k]]: WidenR<M[k][h], R>;
   };
 };
 
-function providing<X extends Generic<X>, Environment>(
+function providing<X extends ModuleShape<X>, Environment>(
   a: With<X, Environment>,
   env: Environment
 ): X {
@@ -112,10 +116,10 @@ function providing<X extends Generic<X>, Environment>(
   return r;
 }
 
-export function interpreter<S extends Spec<any>>(_: S) {
+export function implement<S extends ModuleSpec<any>>(_: S) {
   return <Environment>(
     f: (e: Environment) => With<TypeOf<S>, Environment>
-  ): Interpreter<TypeOf<S>, Environment> => <R, E, A>(
+  ): Provider<Environment, TypeOf<S>> => <R, E, A>(
     eff: T.Effect<TypeOf<S> & R, E, A>
   ) =>
     T.accessM((e: Environment) =>

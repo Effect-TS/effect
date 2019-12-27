@@ -1,4 +1,4 @@
-import { effect as T, exit as E, derived as D } from "@matechs/effect";
+import { effect as T, exit as E, freeEnv as F } from "@matechs/effect";
 import * as RPC from "../src";
 import * as H from "@matechs/http-client";
 import * as EX from "@matechs/express";
@@ -22,7 +22,7 @@ export function authenticated<R, E, A>(
 }
 
 // implement the service
-export const placeholderJsonLive = D.interpreter(placeholderJsonM)(
+export const placeholderJsonLive = F.implement(placeholderJsonM)(
   (r: H.RequestEnv & EX.ChildEnv) => ({
     [placeholderJsonEnv]: {
       getTodo: n =>

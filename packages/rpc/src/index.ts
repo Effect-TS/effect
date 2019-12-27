@@ -1,4 +1,4 @@
-import { derived as D, effect as T } from "@matechs/effect";
+import { freeEnv as F, effect as T } from "@matechs/effect";
 import { Exit } from "@matechs/effect/lib/original/exit";
 import * as E from "@matechs/express";
 import * as H from "@matechs/http-client";
@@ -40,11 +40,13 @@ type ClientEntry<M, X> = M extends FunctionN<
   ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
   : never;
 
-export type Client<M extends D.Generic<M>> = {
+export type Client<M extends F.ModuleShape<M>> = {
   [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>;
 };
 
-export function client<M extends D.Generic<M>>(s: D.Spec<M>): Client<M> {
+export function client<M extends F.ModuleShape<M>>(
+  s: F.ModuleSpec<M>
+): Client<M> {
   const r = {} as any;
 
   for (const entry of Reflect.ownKeys(s.spec)) {
@@ -109,9 +111,9 @@ export interface RPCResponse {
   value: Exit<unknown, unknown>;
 }
 
-export function server<M extends D.Generic<M>, R>(
-  s: D.Spec<M>,
-  i: D.Interpreter<M, E.ChildEnv & R>
+export function server<M extends F.ModuleShape<M>, R>(
+  s: F.ModuleSpec<M>,
+  i: F.Provider<E.ChildEnv & R, M>
 ): T.Effect<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
   return T.accessM((r: ServerConfig<M> & E.ExpressEnv) => {
     const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
