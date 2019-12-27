@@ -107,7 +107,7 @@ describe("Generic", () => {
 
     assert.deepEqual(
       await T.runToPromiseExit(T.provideAll(fnLive)(main)),
-      done(["prefix: message"])
+      done(["(prefix: message)"])
     );
   });
 
