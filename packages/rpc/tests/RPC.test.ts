@@ -1,4 +1,4 @@
-import { effect as T, derived as D } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as E from "@matechs/express";
 import * as RPC from "../src";
 import * as assert from "assert";
@@ -23,16 +23,16 @@ const appConfig: AppConfig = {
 
 const counterEnv: unique symbol = Symbol();
 
-const counterM = D.generic({
+const counterM = F.define({
   [counterEnv]: {
-    increment: D.fn<(n: number) => T.IO<T.NoErr, number>>(),
-    ni: D.cn<T.IO<string, void>>()
+    increment: F.fn<(n: number) => T.IO<T.NoErr, number>>(),
+    ni: F.cn<T.IO<string, void>>()
   }
 });
 
 let counter = 0;
 
-const counterService = D.interpreter(counterM)((r: AppConfig) => ({
+const counterService = F.implement(counterM)((r: AppConfig) => ({
   [counterEnv]: {
     increment: n =>
       pipe(
