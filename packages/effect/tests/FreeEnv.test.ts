@@ -3,11 +3,27 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { freeEnv as F, effect as T } from "../src";
 import { done } from "../src/original/exit";
 
+const fnEnv: unique symbol = Symbol();
+
+interface FnEnv {
+  [fnEnv]: {
+    mapString: (s: string) => T.UIO<string>;
+  };
+}
+
+const fnLive: FnEnv = {
+  [fnEnv]: {
+    mapString: s => T.pure(`(${s})`)
+  }
+};
+
+const { mapString } = F.accessReal(fnLive);
+
 const consoleEnv: unique symbol = Symbol();
 
 const consoleM = F.define({
   [consoleEnv]: {
-    log: F.fn<(s: string) => T.UIO<void>>(),
+    log: F.fn<(s: string) => T.RUIO<FnEnv, void>>(),
     get: F.cn<T.UIO<string[]>>()
   }
 });
@@ -39,17 +55,15 @@ const { accessConfig } = F.access(configM);
 const messages: string[] = [];
 const messages2: string[] = [];
 
-type Prefix = F.TypeOf<typeof prefixM>;
-type Config = F.TypeOf<typeof configM>;
-
-const consoleI = F.implement(consoleM)((_: Prefix & Config) => ({
+const consoleI = F.implement(consoleM)({
   [consoleEnv]: {
     log: s =>
       pipe(
         accessPrefix,
-        T.chain(prefix =>
+        T.chain(prefix => mapString(`${prefix}${s}`)),
+        T.chain(s =>
           T.sync(() => {
-            messages.push(`${prefix}${s}`);
+            messages.push(s);
           })
         )
       ),
@@ -58,9 +72,9 @@ const consoleI = F.implement(consoleM)((_: Prefix & Config) => ({
       T.chain(_ => T.pure(messages))
     )
   }
-}));
+});
 
-const consoleI2 = F.implement(consoleM)(() => ({
+const consoleI2 = F.implement(consoleM)({
   [consoleEnv]: {
     log: s =>
       T.sync(() => {
@@ -68,34 +82,46 @@ const consoleI2 = F.implement(consoleM)(() => ({
       }),
     get: T.pure(messages2)
   }
-}));
+});
 
-const program: T.RUIO<Console, string[]> = pipe(
+const program: T.RUIO<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain(_ => get)
 );
 
 describe("Generic", () => {
   it("use generic module", async () => {
-    const prefixI = F.implement(prefixM)(() => ({
+    const prefixI = F.implement(prefixM)({
       [prefixEnv]: {
         accessPrefix: T.pure("prefix: ")
       }
-    }));
+    });
 
-    const configI = F.implement(configM)(() => ({
+    const configI = F.implement(configM)({
       [configEnv]: {
         accessConfig: T.pure("")
       }
-    }));
+    });
 
     const main = pipe(program, consoleI, prefixI, configI);
 
-    assert.deepEqual(await T.runToPromiseExit(main), done(["prefix: message"]));
+    assert.deepEqual(
+      await T.runToPromiseExit(T.provideAll(fnLive)(main)),
+      done(["(prefix: message)"])
+    );
   });
 
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
+
+    assert.deepEqual(
+      await T.runToPromiseExit(T.provideAll(fnLive)(main)),
+      done(["message"])
+    );
+  });
+
+  it("use generic module (different interpreter, not need fnEnv)", async () => {
+    const main = pipe(get, consoleI2);
 
     assert.deepEqual(await T.runToPromiseExit(main), done(["message"]));
   });

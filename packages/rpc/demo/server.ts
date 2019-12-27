@@ -22,21 +22,17 @@ export function authenticated<R, E, A>(
 }
 
 // implement the service
-export const placeholderJsonLive = F.implement(placeholderJsonM)(
-  (_: H.RequestEnv & EX.ChildEnv) => ({
-    [placeholderJsonEnv]: {
-      getTodo: n =>
-        pipe(
-          H.get<unknown, Todo>(
-            `https://jsonplaceholder.typicode.com/todos/${n}`
-          ),
-          T.chainError(() => T.raiseError("error fetching todo")),
-          T.map(({ body }) => body),
-          authenticated
-        )
-    }
-  })
-);
+export const placeholderJsonLive = F.implement(placeholderJsonM)({
+  [placeholderJsonEnv]: {
+    getTodo: n =>
+      pipe(
+        H.get<unknown, Todo>(`https://jsonplaceholder.typicode.com/todos/${n}`),
+        T.chainError(() => T.raiseError("error fetching todo")),
+        T.map(({ body }) => body),
+        authenticated
+      )
+  }
+});
 
 // create a new express server
 const program = EX.withApp(

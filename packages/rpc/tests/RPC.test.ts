@@ -32,7 +32,7 @@ const counterM = F.define({
 
 let counter = 0;
 
-const counterService = F.implement(counterM)(() => ({
+const counterService = F.implement(counterM)({
   [counterEnv]: {
     increment: n =>
       pipe(
@@ -45,7 +45,7 @@ const counterService = F.implement(counterM)(() => ({
       ),
     ni: T.raiseError("not implemented")
   }
-}));
+});
 
 const { increment, ni } = RPC.client(counterM);
 

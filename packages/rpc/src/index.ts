@@ -8,6 +8,7 @@ import { right } from "fp-ts/lib/Either";
 import { FunctionN } from "fp-ts/lib/function";
 import { isSome } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
+import { UnionToIntersection } from "@matechs/effect/lib/freeEnv";
 
 export const clientConfigEnv: unique symbol = Symbol();
 
@@ -96,13 +97,15 @@ export type InferR<F> = F extends (
   ? Q
   : never;
 
-export type Runtime<M> = M extends {
-  [k in keyof M]: {
-    [h: string]: infer X;
-  };
-}
-  ? InferR<X>
-  : never;
+export type Runtime<M> = UnionToIntersection<
+  M extends {
+    [k in keyof M]: {
+      [h: string]: infer X;
+    };
+  }
+    ? InferR<X>
+    : never
+>;
 
 export interface RPCRequest {
   args: unknown[];
