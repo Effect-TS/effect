@@ -1,7 +1,5 @@
-import { effect as T } from "@matechs/effect";
+import { effect as T, derived as D } from "@matechs/effect";
 import { Option } from "fp-ts/lib/Option";
-import { fn } from "@matechs/effect/lib/interpreter";
-import { remote } from "../src";
 
 // environment entries
 export const placeholderJsonEnv: unique symbol = Symbol();
@@ -14,10 +12,10 @@ export interface Todo {
   completed: boolean;
 }
 
-export const placeholderJsonM = remote({
+export const placeholderJsonM = D.generic({
   [placeholderJsonEnv]: {
-    getTodo: fn<(n: number) => T.IO<string, Option<Todo>>>()
+    getTodo: D.fn<(n: number) => T.IO<string, Option<Todo>>>()
   }
 });
 
-export type PlaceholderJson = typeof placeholderJsonM;
+export type PlaceholderJson = D.TypeOf<typeof placeholderJsonM>;

@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - orm-reshape
+      - generic-to-the-limit
 
 jobs:
   build:

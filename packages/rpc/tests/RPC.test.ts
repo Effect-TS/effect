@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { effect as T, derived as D } from "@matechs/effect";
 import * as E from "@matechs/express";
 import * as RPC from "../src";
 import * as assert from "assert";
@@ -23,36 +23,39 @@ const appConfig: AppConfig = {
 
 const counterEnv: unique symbol = Symbol();
 
-interface Counter extends RPC.Remote<Counter> {
+const counterM = D.generic({
   [counterEnv]: {
-    increment: (n: number) => T.Effect<AppConfig, T.NoErr, number>;
-    ni: () => T.Effect<T.NoEnv, string, void>;
-  };
-}
+    increment: D.fn<(n: number) => T.IO<T.NoErr, number>>(),
+    ni: D.cn<T.IO<string, void>>()
+  }
+});
 
 let counter = 0;
 
-const counterService: Counter = {
+const counterService = D.interpreter(counterM)((r: AppConfig) => ({
   [counterEnv]: {
     increment: n =>
-      T.accessM(({ [configEnv]: c }: AppConfig) =>
-        T.sync(() => {
-          counter = counter + n + c.gap;
-          return counter;
-        })
+      pipe(
+        T.accessM(({ [configEnv]: c }: AppConfig) =>
+          T.sync(() => {
+            counter = counter + n + c.gap;
+            return counter;
+          })
+        ),
+        T.provideS(r)
       ),
-    ni: () => T.raiseError("not implemented")
+    ni: T.raiseError("not implemented")
   }
-};
+}));
 
-const { increment, ni } = RPC.client(counterService, counterEnv);
+const { increment, ni } = RPC.client(counterM);
 
 describe("RPC", () => {
   it("should call remote service", async () => {
     const program = E.withApp(
       Do(T.effect)
-        .do(RPC.bind(counterService, counterEnv))
-        .bind("server", E.bind(9002))
+        .do(RPC.server(counterM, counterService))
+        .bind("server", E.bind(9003))
         .done()
     );
 
@@ -62,15 +65,13 @@ describe("RPC", () => {
           T.noEnv,
           T.mergeEnv(appConfig),
           T.mergeEnv(E.express),
-          T.mergeEnv(counterService),
-          T.mergeEnv(
-            RPC.serverConfig(
-              counterService,
-              counterEnv
-            )({
-              scope: "/counter"
-            })
-          )
+          T.mergeEnv({
+            [RPC.serverConfigEnv]: {
+              [counterEnv]: {
+                scope: "/counter"
+              }
+            }
+          })
         )
       )(program)
     );
@@ -78,21 +79,20 @@ describe("RPC", () => {
     const clientEnv = pipe(
       T.noEnv,
       T.mergeEnv(L.jsonClient),
-      T.mergeEnv(
-        RPC.clientConfig(
-          counterService,
-          counterEnv
-        )({
-          baseUrl: "http://127.0.0.1:9002/counter"
-        })
-      )
+      T.mergeEnv({
+        [RPC.clientConfigEnv]: {
+          [counterEnv]: {
+            baseUrl: "http://127.0.0.1:9003/counter"
+          }
+        }
+      })
     );
 
     const incResult = await T.runToPromiseExit(
       T.provideAll(clientEnv)(increment(1))
     );
 
-    const niResult = await T.runToPromiseExit(T.provideAll(clientEnv)(ni()));
+    const niResult = await T.runToPromiseExit(T.provideAll(clientEnv)(ni));
 
     result.server.close();
 
