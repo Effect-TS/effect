@@ -111,7 +111,7 @@ type OnlyNew<M extends ModuleShape<any>, I extends Implementation<M>> = {
       T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
     >
       ? FunctionN<ARG, T.Effect<R, E, A>>
-      : I[k][h] extends T.Effect<infer R, infer E, infer A>
+      : I[k][h] extends T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
       ? T.Effect<R, E, A>
       : never;
   };
