@@ -39,10 +39,7 @@ const { accessConfig } = F.access(configM);
 const messages: string[] = [];
 const messages2: string[] = [];
 
-type Prefix = F.TypeOf<typeof prefixM>;
-type Config = F.TypeOf<typeof configM>;
-
-const consoleI = F.implement(consoleM)((_: Prefix & Config) => ({
+const consoleI = F.implement(consoleM)({
   [consoleEnv]: {
     log: s =>
       pipe(
@@ -58,9 +55,9 @@ const consoleI = F.implement(consoleM)((_: Prefix & Config) => ({
       T.chain(_ => T.pure(messages))
     )
   }
-}));
+});
 
-const consoleI2 = F.implement(consoleM)(() => ({
+const consoleI2 = F.implement(consoleM)({
   [consoleEnv]: {
     log: s =>
       T.sync(() => {
@@ -68,7 +65,7 @@ const consoleI2 = F.implement(consoleM)(() => ({
       }),
     get: T.pure(messages2)
   }
-}));
+});
 
 const program: T.RUIO<Console, string[]> = pipe(
   log("message"),
@@ -77,17 +74,17 @@ const program: T.RUIO<Console, string[]> = pipe(
 
 describe("Generic", () => {
   it("use generic module", async () => {
-    const prefixI = F.implement(prefixM)(() => ({
+    const prefixI = F.implement(prefixM)({
       [prefixEnv]: {
         accessPrefix: T.pure("prefix: ")
       }
-    }));
+    });
 
-    const configI = F.implement(configM)(() => ({
+    const configI = F.implement(configM)({
       [configEnv]: {
         accessConfig: T.pure("")
       }
-    }));
+    });
 
     const main = pipe(program, consoleI, prefixI, configI);
 

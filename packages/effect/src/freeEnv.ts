@@ -1,5 +1,6 @@
 import * as T from "./effect";
 import { FunctionN } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export type Patched<A, B> = B extends FunctionN<
   infer ARG,
@@ -82,22 +83,53 @@ export type Provider<Environment, Module> = <R, E, A>(
   e: T.Effect<Module & R, E, A>
 ) => T.Effect<Environment & R, E, A>;
 
-type WidenR<F, R> = F extends T.Effect<infer A, infer B, infer C>
-  ? T.Effect<A & R, B, C>
-  : F extends FunctionN<infer ARG, T.Effect<infer A, infer B, infer C>>
-  ? FunctionN<ARG, T.Effect<A & R, B, C>>
-  : never;
-
-type With<M extends ModuleShape<M>, R> = {
+export type Implementation<M> = {
   [k in keyof M]: {
-    [h in keyof M[k]]: WidenR<M[k][h], R>;
+    [h in keyof M[k]]: M[k][h] extends FunctionN<
+      infer ARG,
+      T.Effect<infer _R, infer E, infer A>
+    >
+      ? FunctionN<ARG, T.Effect<any, E, A>>
+      : M[k][h] extends T.Effect<infer _R, infer E, infer A>
+      ? T.Effect<any, E, A>
+      : never;
   };
 };
 
-function providing<X extends ModuleShape<X>, Environment>(
-  a: With<X, Environment>,
-  env: Environment
-): X {
+export type InferR<F> = F extends (
+  ...args: any[]
+) => T.Effect<infer Q, any, any>
+  ? Q
+  : F extends T.Effect<infer Q, any, any>
+  ? Q
+  : never;
+
+export type ImplementationEnv<M> = UnionToIntersection<
+  M extends {
+    [k in keyof M]: {
+      [h: string]: infer X;
+    };
+  }
+    ? InferR<X>
+    : never
+>;
+
+export type UnionToIntersection<U> = (U extends any
+? (k: U) => void
+: never) extends (k: infer I) => void
+  ? I
+  : never;
+
+export type ProviderOf<M, I extends Implementation<M>> = Provider<
+  ImplementationEnv<I>,
+  M
+>;
+
+export function providing<
+  M,
+  S extends ModuleSpec<M>,
+  I extends Implementation<M>
+>(_: S, a: I, env: ImplementationEnv<I>): TypeOf<S> {
   const r = {} as any;
 
   for (const sym of Reflect.ownKeys(a)) {
@@ -116,13 +148,11 @@ function providing<X extends ModuleShape<X>, Environment>(
   return r;
 }
 
-export function implement<S extends ModuleSpec<any>>(_: S) {
-  return <Environment>(
-    f: (e: Environment) => With<TypeOf<S>, Environment>
-  ): Provider<Environment, TypeOf<S>> => <R, E, A>(
-    eff: T.Effect<TypeOf<S> & R, E, A>
-  ) =>
-    T.accessM((e: Environment) =>
-      T.provideR((r: Environment & R) => ({ ...r, ...providing(f(e), e) }))(eff)
+export function implement<S extends ModuleSpec<any>>(s: S) {
+  return <I extends Implementation<TypeOf<S>>>(
+    i: I
+  ): ProviderOf<TypeOf<S>, I> => eff =>
+    T.accessM((e: ImplementationEnv<I>) =>
+      pipe(eff, T.provideS<TypeOf<S>>(providing(s, i, e)))
     );
 }
