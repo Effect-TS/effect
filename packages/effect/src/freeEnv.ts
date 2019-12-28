@@ -11,9 +11,11 @@ export type Patched<A, B> = B extends FunctionN<
   ? T.Effect<R & A, E, RET>
   : never;
 
-export type Derived<A> = A extends { [k in keyof A]: infer B }
-  ? { [h in keyof B]: Patched<A, B[h]> }
-  : never;
+export type Derived<A extends ModuleShape<A>> = {
+  [k in keyof A]: {
+    [h in keyof A[k]]: Patched<A, A[k][h]>
+  }
+}
 
 export function access<A extends ModuleShape<A>>(
   sp: ModuleSpec<A> | A
@@ -22,11 +24,13 @@ export function access<A extends ModuleShape<A>>(
   const a: ModuleShape<A> = sp[specURI] ?? sp
 
   for (const s of Reflect.ownKeys(a)) {
+    derived[s] = {}
+
     for (const k of Object.keys(a[s])) {
       if (typeof a[s][k] === "function") {
-        derived[k] = (...args: any[]) => T.accessM((r: A) => r[s][k](...args));
+        derived[s][k] = (...args: any[]) => T.accessM((r: A) => r[s][k](...args));
       } else {
-        derived[k] = T.accessM((r: A) => r[s][k]);
+        derived[s][k] = T.accessM((r: A) => r[s][k]);
       }
     }
   }

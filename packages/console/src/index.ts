@@ -138,23 +138,25 @@ export const consoleLive: Console = {
 };
 
 export const {
-  assert,
-  time,
-  clear,
-  info,
-  count,
-  countReset,
-  debug,
-  dir,
-  dirxml,
-  error,
-  group,
-  groupCollapsed,
-  groupEnd,
-  log,
-  table,
-  timeEnd,
-  timeLog,
-  trace,
-  warn
-} = F.access(consoleLive)
+  [consoleEnv]: {
+    assert,
+    time,
+    clear,
+    info,
+    count,
+    countReset,
+    debug,
+    dir,
+    dirxml,
+    error,
+    group,
+    groupCollapsed,
+    groupEnd,
+    log,
+    table,
+    timeEnd,
+    timeLog,
+    trace,
+    warn
+  }
+} = F.access(consoleLive);

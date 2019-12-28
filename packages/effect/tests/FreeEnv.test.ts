@@ -17,7 +17,9 @@ const fnLive: FnEnv = {
   }
 };
 
-const { mapString } = F.access(fnLive);
+const {
+  [fnEnv]: { mapString }
+} = F.access(fnLive);
 
 const consoleEnv: unique symbol = Symbol();
 
@@ -30,7 +32,9 @@ const consoleM = F.define({
 
 type Console = F.TypeOf<typeof consoleM>;
 
-const { log, get } = F.access(consoleM);
+const {
+  [consoleEnv]: { log, get }
+} = F.access(consoleM);
 
 const prefixEnv: unique symbol = Symbol();
 
@@ -40,7 +44,9 @@ const prefixM = F.define({
   }
 });
 
-const { accessPrefix } = F.access(prefixM);
+const {
+  [prefixEnv]: { accessPrefix }
+} = F.access(prefixM);
 
 const configEnv: unique symbol = Symbol();
 
@@ -50,7 +56,9 @@ const configM = F.define({
   }
 });
 
-const { accessConfig } = F.access(configM);
+const {
+  [configEnv]: { accessConfig }
+} = F.access(configM);
 
 const messages: string[] = [];
 const messages2: string[] = [];
