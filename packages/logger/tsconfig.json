@@ -1,0 +1,11 @@
+{
+  "extends": "../../base.tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "rootDir": "./",
+    "outDir": "./lib",
+    "lib": ["DOM"],
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
+  }
+}
