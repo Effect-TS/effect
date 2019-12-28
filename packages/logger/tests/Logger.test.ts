@@ -80,5 +80,23 @@ describe("Logger", () => {
     );
 
     assert.deepEqual(error.mock.calls.length, 2);
+
+    assert.deepEqual(
+      isDone(
+        await T.runToPromiseExit(
+          pipe(
+            L.logger.debug("ok"),
+            T.provideAll(
+              L.console.consoleLogger(
+                T.pure<L.console.Config>({ level: "info" })
+              )
+            )
+          )
+        )
+      ),
+      true
+    );
+
+    assert.deepEqual(debug.mock.calls.length, 3);
   });
 });

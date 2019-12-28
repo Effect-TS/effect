@@ -22,6 +22,16 @@ export type Logger = F.TypeOf<typeof loggerM>;
 
 export type Level = keyof Logger[typeof loggerEnv];
 
+export const severity: Record<Level, number> = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  verbose: 4,
+  debug: 5,
+  silly: 6
+};
+
 export const {
   [loggerEnv]: { silly, debug, verbose, http, info, warn, error }
 } = F.access(loggerM);
