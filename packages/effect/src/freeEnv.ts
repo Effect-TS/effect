@@ -171,8 +171,35 @@ export function implement<S extends ModuleSpec<any>>(s: S) {
     );
 }
 
-export function instance<S extends ModuleSpec<any>>(
-  _: S
-) {
+export function instance<S extends ModuleSpec<any>>(_: S) {
   return (m: TypeOf<S>) => m;
+}
+
+export type MergeSpec<S> = {
+  [k in keyof S]: ModuleSpec<any>;
+};
+
+export type ExtractShape<M> = M extends ModuleShape<infer A> ? A : never;
+
+export type Merged<S> = S extends {
+  [k in keyof S]: {
+    [specURI]: infer X;
+  };
+}
+  ? ModuleSpec<UnionToIntersection<ExtractShape<X>>>
+  : never;
+
+export function merge<S extends MergeSpec<S>>(s: S): Merged<S> {
+  const m = {
+    [specURI]: {}
+  } as Merged<S>;
+
+  for (const k of Reflect.ownKeys(s)) {
+    m[specURI] = {
+      ...m[specURI],
+      ...s[k][specURI]
+    };
+  }
+
+  return m;
 }
