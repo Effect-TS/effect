@@ -48,7 +48,7 @@ function log(
 }
 
 export const consoleLogger = (formatter: typeof format = format) =>
-  F.implement(L.loggerM)({
+  F.instance(L.loggerM)({
     [L.loggerEnv]: {
       debug: (message, meta) => log(formatter, "debug", message, meta),
       http: (message, meta) => log(formatter, "http", message, meta),
