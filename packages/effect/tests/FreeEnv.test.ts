@@ -105,16 +105,17 @@ describe("Generic", () => {
       }
     });
 
-    const configI = F.implement(configM)({
-      [configEnv]: {
-        accessConfig: T.pure("")
-      }
-    });
-
-    const main = pipe(program, consoleI, prefixI, configI);
+    const main = pipe(program, consoleI, prefixI);
 
     assert.deepEqual(
-      await T.runToPromiseExit(T.provideAll(fnLive)(main)),
+      await T.runToPromiseExit(T.provideAll({
+        ...fnLive,
+        ...F.instance(configM)({
+          [configEnv]: {
+            accessConfig: T.pure("")
+          }
+        })
+      })(main)),
       done(["(prefix: message)"])
     );
   });

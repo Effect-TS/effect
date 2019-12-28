@@ -13,22 +13,23 @@ export type Patched<A, B> = B extends FunctionN<
 
 export type Derived<A extends ModuleShape<A>> = {
   [k in keyof A]: {
-    [h in keyof A[k]]: Patched<A, A[k][h]>
-  }
-}
+    [h in keyof A[k]]: Patched<A, A[k][h]>;
+  };
+};
 
 export function access<A extends ModuleShape<A>>(
   sp: ModuleSpec<A> | A
 ): Derived<A> {
   const derived = {} as Derived<A>;
-  const a: ModuleShape<A> = sp[specURI] ?? sp
+  const a: ModuleShape<A> = sp[specURI] ?? sp;
 
   for (const s of Reflect.ownKeys(a)) {
-    derived[s] = {}
+    derived[s] = {};
 
     for (const k of Object.keys(a[s])) {
       if (typeof a[s][k] === "function") {
-        derived[s][k] = (...args: any[]) => T.accessM((r: A) => r[s][k](...args));
+        derived[s][k] = (...args: any[]) =>
+          T.accessM((r: A) => r[s][k](...args));
       } else {
         derived[s][k] = T.accessM((r: A) => r[s][k]);
       }
@@ -49,7 +50,7 @@ export type ModuleShape<M> = {
     };
 };
 
-export const specURI: unique symbol = Symbol()
+export const specURI: unique symbol = Symbol();
 
 export interface ModuleSpec<M> {
   [specURI]: ModuleShape<M>;
@@ -168,4 +169,10 @@ export function implement<S extends ModuleSpec<any>>(s: S) {
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       pipe(eff, T.provideS(providing(s, i, e)))
     );
+}
+
+export function instance<S extends ModuleSpec<any>>(
+  _: S
+) {
+  return (m: TypeOf<S>) => m;
 }
