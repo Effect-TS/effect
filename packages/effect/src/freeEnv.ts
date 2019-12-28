@@ -143,7 +143,7 @@ export function providing<
   S extends ModuleSpec<M>,
   I extends Implementation<M>
 >(s: S, a: I, env: ImplementationEnv<OnlyNew<M, I>>): TypeOf<S> {
-  const r = {} as any;
+  const r = {} as TypeOf<S>;
 
   for (const sym of Reflect.ownKeys(s[specURI])) {
     r[sym] = {};
@@ -166,6 +166,6 @@ export function implement<S extends ModuleSpec<any>>(s: S) {
     i: I
   ): ProviderOf<TypeOf<S>, I> => eff =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-      pipe(eff, T.provideS<TypeOf<S>>(providing(s, i, e)))
+      pipe(eff, T.provideS(providing(s, i, e)))
     );
 }
