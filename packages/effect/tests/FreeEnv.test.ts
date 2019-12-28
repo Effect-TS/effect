@@ -17,7 +17,7 @@ const fnLive: FnEnv = {
   }
 };
 
-const { mapString } = F.accessReal(fnLive);
+const { mapString } = F.access(fnLive);
 
 const consoleEnv: unique symbol = Symbol();
 

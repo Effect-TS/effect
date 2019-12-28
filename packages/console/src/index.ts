@@ -157,4 +157,4 @@ export const {
   timeLog,
   trace,
   warn
-} = F.accessReal(consoleLive)
+} = F.access(consoleLive)

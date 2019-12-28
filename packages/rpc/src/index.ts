@@ -8,7 +8,7 @@ import { right } from "fp-ts/lib/Either";
 import { FunctionN } from "fp-ts/lib/function";
 import { isSome } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import { UnionToIntersection } from "@matechs/effect/lib/freeEnv";
+import { UnionToIntersection, specURI } from "@matechs/effect/lib/freeEnv";
 
 export const clientConfigEnv: unique symbol = Symbol();
 
@@ -51,8 +51,8 @@ export function client<M extends F.ModuleShape<M>>(
 ): Client<M> {
   const r = {} as any;
 
-  for (const entry of Reflect.ownKeys(s.spec)) {
-    const x = s.spec[entry];
+  for (const entry of Reflect.ownKeys(s[specURI])) {
+    const x = s[specURI][entry];
 
     for (const z of Object.keys(x)) {
       if (typeof x[z] === "function") {
@@ -122,10 +122,10 @@ export function server<M extends F.ModuleShape<M>, R>(
   return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
     const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
 
-    for (const k of Reflect.ownKeys(s.spec)) {
+    for (const k of Reflect.ownKeys(s[specURI])) {
       const { scope } = r[serverConfigEnv][k];
 
-      for (const key of Reflect.ownKeys(s.spec[k])) {
+      for (const key of Reflect.ownKeys(s[specURI][k])) {
         if (typeof key === "string") {
           const path = `${scope}/${key}`;
 

@@ -11,15 +11,15 @@ export type Patched<A, B> = B extends FunctionN<
   ? T.Effect<R & A, E, RET>
   : never;
 
-export type Derived<A, S extends keyof A> = A extends { [k in S]: infer B }
+export type Derived<A> = A extends { [k in keyof A]: infer B }
   ? { [h in keyof B]: Patched<A, B[h]> }
   : never;
 
 export function access<A extends ModuleShape<A>>(
-  as: ModuleSpec<A>
-): Derived<A, keyof A> {
-  const derived = {} as Derived<A, keyof A>;
-  const a = as.spec;
+  sp: ModuleSpec<A> | A
+): Derived<A> {
+  const derived = {} as Derived<A>;
+  const a: ModuleShape<A> = sp[specURI] ?? sp
 
   for (const s of Reflect.ownKeys(a)) {
     for (const k of Object.keys(a[s])) {
@@ -34,12 +34,6 @@ export function access<A extends ModuleShape<A>>(
   return derived;
 }
 
-export function accessReal<A extends ModuleShape<A>>(
-  a: A
-): Derived<A, keyof A> {
-  return access({ spec: a });
-}
-
 export type ModuleShape<M> = {
   [k in keyof M]: {
     [h in Exclude<keyof M[k], symbol>]:
@@ -51,14 +45,16 @@ export type ModuleShape<M> = {
     };
 };
 
+export const specURI: unique symbol = Symbol()
+
 export interface ModuleSpec<M> {
-  spec: ModuleShape<M>;
+  [specURI]: ModuleShape<M>;
 }
 
 export type TypeOf<Q> = Q extends ModuleSpec<infer M> ? M : never;
 
 export function define<T extends ModuleShape<T>>(m: T): ModuleSpec<T> {
-  return { spec: m };
+  return { [specURI]: m };
 }
 
 export function cn<T extends T.Effect<any, any, any>>(): T {
@@ -145,10 +141,10 @@ export function providing<
 >(s: S, a: I, env: ImplementationEnv<OnlyNew<M, I>>): TypeOf<S> {
   const r = {} as any;
 
-  for (const sym of Reflect.ownKeys(s.spec)) {
+  for (const sym of Reflect.ownKeys(s[specURI])) {
     r[sym] = {};
 
-    for (const entry of Object.keys(s.spec[sym])) {
+    for (const entry of Object.keys(s[specURI][sym])) {
       if (typeof a[sym][entry] === "function") {
         r[sym][entry] = (...args: any[]) =>
           T.provideS(env)(a[sym][entry](...args));
