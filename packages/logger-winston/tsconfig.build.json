@@ -4,5 +4,6 @@
     "rootDir": "src",
     "outDir": "lib",
     "lib": ["DOM"]
-  }
+  },
+  "exclude": ["tests"]
 }

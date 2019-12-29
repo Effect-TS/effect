@@ -35,7 +35,7 @@ export function log(
   );
 }
 
-export const winstonLogger: L.Provider<WinstonFactory> = F.implement(L.loggerM)(
+export const winstonLogger = F.implement(L.loggerM)(
   {
     [L.loggerEnv]: {
       debug: (message, meta) => log("debug", message, meta),
