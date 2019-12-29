@@ -6,19 +6,31 @@ export interface Meta {
   [k: string]: any;
 }
 
-export const loggerM = F.define({
+export type LogFn = (message: string, meta?: Meta) => T.UIO<void>;
+
+export interface Logger extends F.ModuleShape<Logger> {
   [loggerEnv]: {
-    silly: F.fn<(message: string, meta?: Meta) => T.UIO<void>>(),
-    debug: F.fn<(message: string, meta?: Meta) => T.UIO<void>>(),
-    verbose: F.fn<(message: string, meta?: Meta) => T.UIO<void>>(),
-    http: F.fn<(message: string, meta?: Meta) => T.UIO<void>>(),
-    info: F.fn<(message: string, meta?: Meta) => T.UIO<void>>(),
-    warn: F.fn<(message: string, meta?: Meta) => T.UIO<void>>(),
-    error: F.fn<(message: string, meta?: Meta) => T.UIO<void>>()
+    silly: LogFn;
+    debug: LogFn;
+    verbose: LogFn;
+    http: LogFn;
+    info: LogFn;
+    warn: LogFn;
+    error: LogFn;
+  };
+}
+
+export const loggerM = F.define<Logger>({
+  [loggerEnv]: {
+    silly: F.fn(),
+    debug: F.fn(),
+    verbose: F.fn(),
+    http: F.fn(),
+    info: F.fn(),
+    warn: F.fn(),
+    error: F.fn()
   }
 });
-
-export type Logger = F.TypeOf<typeof loggerM>;
 
 export type Level = keyof Logger[typeof loggerEnv];
 
