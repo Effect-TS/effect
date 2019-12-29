@@ -6,7 +6,7 @@ export interface Meta {
   [k: string]: any;
 }
 
-export type LogFn = (message: string, meta?: Meta | undefined) => T.UIO<void>;
+export type LogFn = (message: string, meta?: Meta) => T.UIO<void>;
 
 export interface Logger extends F.ModuleShape<Logger> {
   [loggerEnv]: {

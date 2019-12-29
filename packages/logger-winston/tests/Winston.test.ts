@@ -22,32 +22,32 @@ const factory = F.implement(W.winstonFactoryM)({
   }
 });
 
-function testLevel(level: Level) {
-  return async () => {
-    stdMocks.use();
+async function testLevel(level: Level) {
+  stdMocks.use();
 
-    const res = await T.runToPromiseExit(
-      pipe(L.logger[level]("msg", { foo: "bar" }), W.winstonLogger, factory)
-    );
+  const res = await T.runToPromiseExit(
+    pipe(L.logger[level]("msg", { foo: "bar" }), W.winstonLogger, factory)
+  );
 
-    const messages = stdMocks.flush();
+  const messages = stdMocks.flush();
 
-    stdMocks.restore();
+  stdMocks.restore();
 
-    assert.deepEqual(isDone(res), true);
-    assert.deepEqual(
-      messages.stdout.map(s => s.trim()),
-      [JSON.stringify({ foo: "bar", level, message: "msg" })]
-    );
-  };
+  assert.deepEqual(isDone(res), true);
+  assert.deepEqual(
+    messages.stdout.map(s => s.trim()),
+    [JSON.stringify({ foo: "bar", level, message: "msg" })]
+  );
 }
 
 describe("Winston", () => {
-  it("info", testLevel("info"));
-  it("silly", testLevel("silly"));
-  it("debug", testLevel("debug"));
-  it("error", testLevel("error"));
-  it("http", testLevel("http"));
-  it("verbose", testLevel("verbose"));
-  it("warn", testLevel("warn"));
+  it("use winston", async () => {
+    await testLevel("info");
+    await testLevel("silly");
+    await testLevel("debug");
+    await testLevel("warn");
+    await testLevel("http");
+    await testLevel("verbose");
+    await testLevel("error");
+  });
 });
