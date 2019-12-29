@@ -18,9 +18,13 @@ export const loggerM = F.define({
   }
 });
 
-export type Logger = F.TypeOf<typeof loggerM>;
+export type LoggerSpec = typeof loggerM;
+
+export type Logger = F.TypeOf<LoggerSpec>;
 
 export type Level = keyof Logger[typeof loggerEnv];
+
+export type Provider<R> = F.Provider<R, Logger>;
 
 export const severity: Record<Level, number> = {
   error: 0,
