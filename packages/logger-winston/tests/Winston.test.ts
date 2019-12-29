@@ -1,43 +1,33 @@
-import * as W from "../src";
-import * as L from "@matechs/logger";
 import { effect as T, freeEnv as F } from "@matechs/effect";
-import * as assert from "assert";
-import { createLogger, transports } from "winston";
 import { isDone } from "@matechs/effect/lib/exit";
-import { pipe } from "fp-ts/lib/pipeable";
-import stdMocks from "std-mocks";
+import * as L from "@matechs/logger";
 import { Level } from "@matechs/logger/lib/logger";
+import * as assert from "assert";
+import { pipe } from "fp-ts/lib/pipeable";
+import { Logger } from "winston";
+import * as W from "../src";
+
+const messages: any[][] = [];
 
 const factory = F.implement(W.winstonFactoryM)({
   [W.winstonFactoryEnv]: {
-    logger: T.pure(
-      createLogger({
-        transports: [
-          new transports.Console({
-            level: "silly"
-          })
-        ]
-      })
-    )
+    logger: T.pure({
+      log: (...args: any[]) => {
+        messages.push(args);
+      }
+    } as Logger)
   }
 });
 
 async function testLevel(level: Level) {
-  stdMocks.use();
+  messages.splice(0, messages.length);
 
   const res = await T.runToPromiseExit(
     pipe(L.logger[level]("msg", { foo: "bar" }), W.winstonLogger, factory)
   );
 
-  const messages = stdMocks.flush();
-
-  stdMocks.restore();
-
   assert.deepEqual(isDone(res), true);
-  assert.deepEqual(
-    messages.stdout.map(s => s.trim()),
-    [JSON.stringify({ foo: "bar", level, message: "msg" })]
-  );
+  assert.deepEqual(messages, [[level, "msg", { foo: "bar" }]]);
 }
 
 describe("Winston", () => {
