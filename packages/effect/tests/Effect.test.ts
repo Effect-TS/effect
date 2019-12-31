@@ -26,13 +26,13 @@ describe("EffectSafe", () => {
         .chain(n => T.access((r: { k: number }) => n + r.k))
         .chain(n => T.access((r: { m: number }) => n + r.m))
         .tap(() => T.unit)
-        .tap(() => T.raiseError("mmm"))
-        .chainError(_ => T.pure(1))
+        .tap(n => T.raiseError(n))
+        .chainError(n => T.pure(n))
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
         .done();
 
-      assert.deepEqual(await T.runToPromiseExit(program), ex.done(1));
+      assert.deepEqual(await T.runToPromiseExit(program), ex.done(7));
     });
   });
   describe("Extra", () => {
