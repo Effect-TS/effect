@@ -5,33 +5,42 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { print, Printer } from "./Printer";
 import { ChildContext, Tracer, withChildSpan } from "../../src";
 
-export interface CounterState {
-  counter: {
-    ref: number;
+export const CounterState: unique symbol = Symbol();
 
+export interface CounterState {
+  [CounterState]: {
+    ref: number;
     increment(): T.Effect<CounterState, T.NoErr, void>;
   };
 }
 
 export function currentCount() {
-  return T.accessM(({ counter }: CounterState) => T.pure(counter.ref));
+  return T.accessM(({ [CounterState]: counter }: CounterState) =>
+    T.pure(counter.ref)
+  );
 }
 
-export const counterState: IO<CounterState> = () => ({
-  counter: {
-    ref: 0,
-    increment() {
-      return T.accessM((s: CounterState) =>
-        T.sync(() => {
-          s.counter.ref += 1;
-        })
-      );
-    }
-  }
-});
+export const counterState = T.provideSM(
+  T.sync(
+    (): CounterState => ({
+      [CounterState]: {
+        ref: 0,
+        increment() {
+          return T.accessM((s: CounterState) =>
+            T.sync(() => {
+              s[CounterState].ref += 1;
+            })
+          );
+        }
+      }
+    })
+  )
+);
+
+export const Counter: unique symbol = Symbol();
 
 export interface Counter {
-  counter: {
+  [Counter]: {
     count(): T.Effect<
       Printer & Tracer & CounterState & ChildContext,
       Error,
@@ -41,7 +50,7 @@ export interface Counter {
 }
 
 export const counter: Counter = {
-  counter: {
+  [Counter]: {
     count() {
       return A.array.traverse(T.effect)(A.range(1, 10), n =>
         Do(T.effect)
@@ -56,13 +65,15 @@ export const counter: Counter = {
 };
 
 export function increment(): T.Effect<CounterState, T.NoErr, void> {
-  return T.accessM(({ counter }: CounterState) => counter.increment());
+  return T.accessM(({ [CounterState]: counter }: CounterState) =>
+    counter.increment()
+  );
 }
 
 export function count(): T.Effect<
-  Counter & Printer & Tracer & CounterState & ChildContext,
+  Counter & Printer & CounterState,
   Error,
   void[]
 > {
-  return T.accessM(({ counter }: Counter) => counter.count());
+  return T.accessM(({ [Counter]: counter }: Counter) => counter.count());
 }

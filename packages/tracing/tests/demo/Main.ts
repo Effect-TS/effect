@@ -1,34 +1,33 @@
 import { effect as E } from "@matechs/effect";
+import { Env } from "@matechs/effect/lib/utils/types";
 import * as P from "./Printer";
 import * as C from "./Counter";
-import * as T from "../../src";
-
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
-import { withControllerSpan, withTracer } from "../../src";
-
-export const module = pipe(
-  E.noEnv,
-  E.mergeEnv(P.printer),
-  E.mergeEnv(C.counter),
-  E.mergeEnv(T.tracer())
-);
+import { withControllerSpan, withTracer, tracer } from "../../src";
 
 export const program = withTracer(
   withControllerSpan(
     "demo",
     "demo-main"
   )(
-    E.provide(C.counterState())(
+    pipe(
       Do(E.effect)
         .bind("start", C.currentCount())
         .do(C.count())
         .do(C.count())
         .bind("end", C.currentCount())
         .doL(({ start, end }) => P.print(`done - ${start} <-> ${end}`))
-        .done()
+        .done(),
+      C.counterState
     )
   )
 );
 
-export const main = E.run(pipe(program, E.provide(module)));
+export const env: Env<typeof program> = {
+  ...P.printer,
+  ...C.counter,
+  ...tracer()
+};
+
+export const main = E.run(pipe(program, E.provideAll(env)));

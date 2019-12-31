@@ -12,6 +12,12 @@ interface FnEnv {
   };
 }
 
+const fnEnvM = F.define<FnEnv>({
+  [fnEnv]: {
+    mapString: F.fn()
+  }
+});
+
 const fnLive: FnEnv = {
   [fnEnv]: {
     mapString: s => T.pure(`(${s})`)
@@ -20,7 +26,7 @@ const fnLive: FnEnv = {
 
 const {
   [fnEnv]: { mapString }
-} = F.access(fnLive);
+} = F.access(fnEnvM);
 
 const consoleEnv: unique symbol = Symbol();
 
