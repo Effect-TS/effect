@@ -59,7 +59,11 @@ export const noEnv: {} = {};
 export interface Effect<R, E, A> {
   _E: E;
   _A: A;
-  (_: R): void;
+  _R: (_: R) => void;
+
+  chain: <R2, E2, A2>(
+    f: (a: A) => Effect<R2, E2, A2>
+  ) => Effect<R & R2, E | E2, A2>;
 }
 
 export type IO<E, A> = Effect<NoEnv, E, A>;
@@ -68,7 +72,11 @@ export type UIO<A> = Effect<NoEnv, NoErr, A>;
 
 export type RUIO<R, A> = Effect<R, NoErr, A>;
 
-export class EffectIO<_R, _E, _A> {
+export class EffectIO<R, E, A> implements Effect<R, E, A> {
+  readonly _E: E = {} as any;
+  readonly _A: A = {} as any;
+  readonly _R: (_: R) => void = {} as any;
+
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
   }
@@ -79,6 +87,10 @@ export class EffectIO<_R, _E, _A> {
     readonly f1: any = undefined,
     readonly f2: any = undefined
   ) {}
+
+  chain: <R2, E2, A2>(
+    f: (a: A) => Effect<R2, E2, A2>
+  ) => Effect<R & R2, E | E2, A2> = f => chain_(this, f);
 }
 
 export type Instructions =
@@ -172,7 +184,7 @@ export interface AccessEnv<R = unknown> {
  * @param a the value
  */
 export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
-  return new EffectIO(EffectTag.Pure as const, a) as any;
+  return new EffectIO(EffectTag.Pure as const, a);
 }
 
 /**
@@ -182,7 +194,7 @@ export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
  * @param e
  */
 export function raised<E, A = never>(e: Cause<E>): Effect<NoEnv, E, A> {
-  return new EffectIO(EffectTag.Raised as const, e) as any;
+  return new EffectIO(EffectTag.Raised as const, e);
 }
 
 /**
@@ -211,7 +223,7 @@ export const raiseInterrupt: Effect<NoEnv, NoErr, never> = raised(ex.interrupt);
  * @param exit
  */
 export function completed<E, A>(exit: Exit<E, A>): Effect<NoEnv, E, A> {
-  return new EffectIO(EffectTag.Completed as const, exit) as any;
+  return new EffectIO(EffectTag.Completed as const, exit);
 }
 
 /**
@@ -223,7 +235,7 @@ export function completed<E, A>(exit: Exit<E, A>): Effect<NoEnv, E, A> {
 export function suspended<R, E, A>(
   thunk: Lazy<Effect<R, E, A>>
 ): Effect<R, E, A> {
-  return new EffectIO(EffectTag.Suspended as const, thunk) as any;
+  return new EffectIO(EffectTag.Suspended as const, thunk);
 }
 
 /**
@@ -274,7 +286,7 @@ export function trySyncMap<E = unknown>(
 export function async<E, A>(
   op: FunctionN<[FunctionN<[Either<E, A>], void>], Lazy<void>>
 ): Effect<NoEnv, E, A> {
-  return new EffectIO(EffectTag.Async as const, op) as any;
+  return new EffectIO(EffectTag.Async as const, op);
 }
 
 /**
@@ -298,11 +310,7 @@ export function interruptibleRegion<R, E, A>(
   inner: Effect<R, E, A>,
   flag: boolean
 ): Effect<R, E, A> {
-  return new EffectIO(
-    EffectTag.InterruptibleRegion as const,
-    flag,
-    inner
-  ) as any;
+  return new EffectIO(EffectTag.InterruptibleRegion as const, flag, inner);
 }
 
 /**
@@ -314,7 +322,7 @@ function chain_<R, E, A, R2, E2, B>(
   inner: Effect<R, E, A>,
   bind: FunctionN<[A], Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return new EffectIO(EffectTag.Chain as const, inner, bind) as any;
+  return new EffectIO(EffectTag.Chain as const, inner, bind);
 }
 
 /**
@@ -359,7 +367,7 @@ export function foldExit<E1, RF, E2, A1, E3, A2, RS>(
 export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = new EffectIO(
   EffectTag.AccessInterruptible as const,
   identity
-) as any;
+);
 
 /**
  * Get the runtime of the current fiber
@@ -367,7 +375,7 @@ export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = new EffectIO(
 export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = new EffectIO(
   EffectTag.AccessRuntime as const,
   identity
-) as any;
+);
 
 /**
  * Access the runtime then provide it to the provided function
@@ -380,7 +388,7 @@ export function withRuntime<E, A>(
 }
 
 export function accessEnvironment<R>(): Effect<R, NoErr, R> {
-  return new EffectIO(EffectTag.AccessEnv) as any;
+  return new EffectIO(EffectTag.AccessEnv);
 }
 
 export function accessM<R, R2, E, A>(
@@ -435,8 +443,7 @@ export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
 
 export const provideAll = <R>(r: R) => <E, A>(
   ma: Effect<R, E, A>
-): Effect<NoEnv, E, A> =>
-  new EffectIO(EffectTag.ProvideEnv as const, ma, r) as any;
+): Effect<NoEnv, E, A> => new EffectIO(EffectTag.ProvideEnv as const, ma, r);
 
 /**
  * Provides all environment necessary to the child effect via an effect
@@ -467,7 +474,7 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return new EffectIO(EffectTag.Map as const, base, f) as any;
+  return new EffectIO(EffectTag.Map as const, base, f);
 }
 
 /**
@@ -1456,7 +1463,7 @@ export interface EffectMonad
 }
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
-  new EffectIO(EffectTag.Collapse as const, inner, failure, success) as any;
+  new EffectIO(EffectTag.Collapse as const, inner, failure, success);
 
 const mapLeft_: EffectMonad["mapLeft"] = (io, f) =>
   chainError_(io, flow(f, raiseError));
