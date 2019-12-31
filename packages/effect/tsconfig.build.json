@@ -1,9 +1,9 @@
 {
   "extends": "../../base.tsconfig.json",
   "compilerOptions": {
-    "rootDir": "src",
     "outDir": "lib",
-    "target": "es5"
+    "lib": ["DOM"]
   },
-  "exclude": ["tests", "node_modules", "type-tests", "bench"]
+  "exclude": ["tests", "node_modules"],
+  "include": ["src/**/*"]
 }
