@@ -2,10 +2,9 @@ import { effect as E } from "@matechs/effect";
 import { Env } from "@matechs/effect/lib/utils/types";
 import * as P from "./Printer";
 import * as C from "./Counter";
-import * as T from "../../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
-import { withControllerSpan, withTracer } from "../../src";
+import { withControllerSpan, withTracer, tracer } from "../../src";
 
 export const program = withTracer(
   withControllerSpan(
@@ -28,7 +27,7 @@ export const program = withTracer(
 export const env: Env<typeof program> = {
   ...P.printer,
   ...C.counter,
-  ...T.tracer()
+  ...tracer()
 };
 
 export const main = E.run(pipe(program, E.provideAll(env)));
