@@ -4,7 +4,6 @@ import * as H from "@matechs/http-client";
 import * as EX from "@matechs/express";
 import * as L from "@matechs/http-client-libcurl";
 import { pipe } from "fp-ts/lib/pipeable";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared";
 import { Env } from "@matechs/effect/lib/utils/types";
 
@@ -35,11 +34,10 @@ export const placeholderJsonLive = F.implement(placeholderJsonM)({
 });
 
 // create a new express server
-const program = EX.withApp(
-  Do(T.effect)
-    .do(RPC.server(placeholderJsonM, placeholderJsonLive)) // wire module to express
-    .bind("server", EX.bind(8081)) // listen on port 8081
-    .return(s => s.server) // return node server
+const program = pipe(
+  RPC.server(placeholderJsonM, placeholderJsonLive),
+  T.chain(() => EX.bind(8081)),
+  EX.withApp
 );
 
 // construct live environment

@@ -12,10 +12,14 @@ export interface Todo {
   completed: boolean;
 }
 
-export const placeholderJsonM = F.define({
+export interface PlaceholderJson extends F.ModuleShape<PlaceholderJson> {
   [placeholderJsonEnv]: {
-    getTodo: F.fn<(n: number) => T.IO<string, Option<Todo>>>()
+    getTodo: (n: number) => T.IO<string, Option<Todo>>;
+  };
+}
+
+export const placeholderJsonM = F.define<PlaceholderJson>({
+  [placeholderJsonEnv]: {
+    getTodo: F.fn()
   }
 });
-
-export type PlaceholderJson = F.TypeOf<typeof placeholderJsonM>;
