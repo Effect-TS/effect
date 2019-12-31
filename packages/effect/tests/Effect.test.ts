@@ -15,9 +15,26 @@ import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
-import { effect as T } from "../src";
+import { effect as T, fluent as F } from "../src";
+import { Env } from "../src/utils/types";
 
 describe("EffectSafe", () => {
+  describe("Fluent", () => {
+    it("use fluent", async () => {
+      const program = F.fluent(T.pure(1))
+        .chain(n => T.access((r: { n: number }) => n + r.n))
+        .chain(n => T.access((r: { k: number }) => n + r.k))
+        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .tap(() => T.unit)
+        .tap(() => T.raiseError("mmm"))
+        .chainError(_ => T.pure(1))
+        .provideS({ k: 2 })
+        .provide({ n: 3, m: 1 })
+        .done();
+
+      assert.deepEqual(await T.runToPromiseExit(program), ex.done(1));
+    });
+  });
   describe("Extra", () => {
     it("encaseEither", async () => {
       assert.deepEqual(
