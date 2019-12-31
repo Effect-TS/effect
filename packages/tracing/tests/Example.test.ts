@@ -144,9 +144,10 @@ describe("Example", () => {
   });
 
   it("should use dummy tracer by default", async () => {
-    const program2 = withChildSpan("noop")(
-      T.raiseError(new Error("not implemented"))
-    );
+    const program2 = withControllerSpan(
+      "noop",
+      "noop"
+    )(withChildSpan("noop")(T.raiseError(new Error("not implemented"))));
 
     const result = await T.runToPromiseExit(program2);
 
