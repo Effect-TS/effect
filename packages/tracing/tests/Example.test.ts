@@ -6,7 +6,6 @@ import { program } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
 import {
-  noTracing,
   tracer,
   Tracer,
   withChildSpan,
@@ -145,8 +144,8 @@ describe("Example", () => {
   });
 
   it("should use dummy tracer by default", async () => {
-    const program2 = noTracing(
-      withChildSpan("noop")(T.raiseError(new Error("not implemented")))
+    const program2 = withChildSpan("noop")(
+      T.raiseError(new Error("not implemented"))
     );
 
     const result = await T.runToPromiseExit(program2);
