@@ -18,10 +18,10 @@ export type Derived<A extends ModuleShape<A>> = {
 };
 
 export function access<A extends ModuleShape<A>>(
-  sp: ModuleSpec<A> | A
+  sp: ModuleSpec<A>
 ): Derived<A> {
   const derived = {} as Derived<A>;
-  const a: ModuleShape<A> = sp[specURI] ?? sp;
+  const a: ModuleShape<A> = sp[specURI];
 
   for (const s of Reflect.ownKeys(a)) {
     derived[s] = {};

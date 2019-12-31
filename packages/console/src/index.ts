@@ -137,6 +137,30 @@ export const consoleLive: Console = {
   }
 };
 
+const consoleM = F.define<Console>({
+  [consoleEnv]: {
+    assert: F.fn(),
+    time: F.fn(),
+    clear: F.cn(),
+    info: F.fn(),
+    count: F.fn(),
+    countReset: F.fn(),
+    debug: F.fn(),
+    dir: F.fn(),
+    dirxml: F.fn(),
+    error: F.fn(),
+    group: F.fn(),
+    groupCollapsed: F.fn(),
+    groupEnd: F.cn(),
+    log: F.fn(),
+    table: F.fn(),
+    timeEnd: F.fn(),
+    timeLog: F.fn(),
+    trace: F.fn(),
+    warn: F.fn()
+  }
+});
+
 export const {
   [consoleEnv]: {
     assert,
@@ -159,4 +183,4 @@ export const {
     trace,
     warn
   }
-} = F.access(consoleLive);
+} = F.access(consoleM);
