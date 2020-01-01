@@ -16,6 +16,7 @@ import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
 import { effect as T, fluent as F, exit, freeEnv } from "../src";
+import { Ref, makeRef } from "../src/ref";
 
 describe("EffectSafe", () => {
   describe("Fluent", () => {
@@ -104,24 +105,26 @@ describe("EffectSafe", () => {
 
       const mod = freeEnv.define({
         [URI]: {
-          read: freeEnv.cn<T.UIO<number>>()
+          state: freeEnv.cn<T.UIO<Ref<number>>>()
         }
       });
 
       const {
-        [URI]: { read }
+        [URI]: { state }
       } = freeEnv.access(mod);
 
-      const provideModLive = freeEnv.implement(mod)({
-        [URI]: { read: T.pure(1) }
-      });
+      const provideModLive = freeEnv.implementWith(makeRef(1))(mod)(r => ({
+        [URI]: { state: T.pure(r) }
+      }));
 
-      const result = await F.fluent(read)
-        .chain(n => T.pure(n + 1))
+      const result = await F.fluent(state)
+        .chain(s => s.update(n => n + 1))
+        .chainAccess(() => state)
+        .chain(r => r.update(n => n + 1))
         .flow(provideModLive)
         .runToPromise();
 
-      assert.deepEqual(result, 2);
+      assert.deepEqual(result, 3);
     });
 
     it("fluent run", async () => {

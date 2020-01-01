@@ -71,9 +71,9 @@ export function fn<T extends FunctionN<any, T.Effect<any, any, any>>>(): T {
   return (() => {}) as any;
 }
 
-export type Provider<Environment, Module> = <R, E, A>(
+export type Provider<Environment, Module, E2 = never> = <R, E, A>(
   e: T.Effect<Module & R, E, A>
-) => T.Effect<Environment & R, E, A>;
+) => T.Effect<Environment & R, E | E2, A>;
 
 export type Implementation<M> = {
   [k in keyof M]: {
@@ -136,8 +136,10 @@ export type UnionToIntersection<U> = (U extends any
 
 export type ProviderOf<
   M extends ModuleShape<any>,
-  I extends Implementation<M>
-> = Provider<ImplementationEnv<OnlyNew<M, I>>, M>;
+  I extends Implementation<M>,
+  RW = unknown,
+  EW = never
+> = Provider<ImplementationEnv<OnlyNew<M, I>> & RW, M, EW>;
 
 export function providing<
   M extends ModuleShape<M>,
@@ -168,6 +170,19 @@ export function implement<S extends ModuleSpec<any>>(s: S) {
   ): ProviderOf<TypeOf<S>, I> => eff =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       pipe(eff, T.provideS(providing(s, i, e)))
+    );
+}
+
+export function implementWith<RW, EW, AW>(w: T.Effect<RW, EW, AW>) {
+  return <S extends ModuleSpec<any>>(s: S) => <
+    I extends Implementation<TypeOf<S>>
+  >(
+    i: (r: AW) => I
+  ): ProviderOf<TypeOf<S>, I, RW, EW> => eff =>
+    T.effect.chain(w, r =>
+      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+        pipe(eff, T.provideS(providing(s, i(r), e)))
+      )
     );
 }
 
