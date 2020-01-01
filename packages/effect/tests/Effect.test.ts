@@ -21,6 +21,8 @@ describe("EffectSafe", () => {
   describe("Fluent", () => {
     it("use fluent", async () => {
       const program = F.fluent(T.pure(1))
+        .as(2)
+        .asM(T.pure(3))
         .chain(n => T.access((r: { n: number }) => n + r.n))
         .chain(n => T.access((r: { k: number }) => n + r.k))
         .chain(n => T.access((r: { m: number }) => n + r.m))
@@ -33,7 +35,7 @@ describe("EffectSafe", () => {
         .result()
         .done();
 
-      assert.deepEqual(await T.runToPromise(program), ex.done(7));
+      assert.deepEqual(await T.runToPromise(program), ex.done(9));
     });
   });
   describe("Extra", () => {

@@ -46,6 +46,12 @@ export class Fluent<R, E, A> {
 
   result: () => Fluent<R, T.NoErr, Exit<E, A>> = () =>
     new Fluent(T.result(this.t));
+
+  as: <B>(b: B) => Fluent<R, E, B> = b =>
+    new Fluent(T.effect.map(this.t, () => b));
+
+  asM: <R2, E2, B>(b: T.Effect<R2, E2, B>) => Fluent<R & R2, E | E2, B> = b =>
+    new Fluent(T.effect.chain(this.t, () => b));
 }
 
 export function fluent<R, E, A>(eff: T.Effect<R, E, A>): Fluent<R, E, A> {
