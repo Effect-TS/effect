@@ -16,6 +16,13 @@ export class Fluent<R, E, A> {
     f: (s: A) => T.Effect<R2, E2, A2>
   ) => Fluent<R & R2, E | E2, A2> = f => new Fluent(T.effect.chain(this.t, f));
 
+  readonly chainW: <R3, E3, A3>(
+    w: T.Effect<R3, E3, A3>
+  ) => <R2, E2, A2>(
+    f: (wa: A3, s: A) => T.Effect<R2, E2, A2>
+  ) => Fluent<R & R2 & R3, E | E2 | E3, A2> = w => f =>
+    new Fluent(T.effect.chain(w, wa => T.effect.chain(this.t, s => f(wa, s))));
+
   readonly chainEnv: <R2, E2, A2>(
     f: (s: A, r: R) => T.Effect<R2, E2, A2>
   ) => Fluent<R & R2, E | E2, A2> = <R2, E2, A2>(

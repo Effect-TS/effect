@@ -117,10 +117,9 @@ describe("EffectSafe", () => {
         [URI]: { state: T.pure(r) }
       }));
 
-      const result = await F.fluent(state)
-        .chain(s => s.update(n => n + 1))
-        .asM(state)
-        .chain(r => r.update(n => n + 1))
+      const result = await F.fluent(T.unit)
+        .chainW(state)(s => s.update(n => n + 1))
+        .chainW(state)(s => s.update(n => n + 1))
         .flow(provideModLive)
         .runToPromise();
 
