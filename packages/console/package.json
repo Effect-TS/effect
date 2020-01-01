@@ -1,6 +1,6 @@
 {
   "name": "@matechs/console",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -20,7 +20,7 @@
     "fp-ts-contrib": "^0.1.6"
   },
   "dependencies": {
-    "@matechs/effect": "^0.4.10"
+    "@matechs/effect": "^0.4.11"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
