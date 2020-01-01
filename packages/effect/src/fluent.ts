@@ -1,5 +1,3 @@
-import { URIS3, Kind3 } from "fp-ts/lib/HKT";
-import { Monad3E } from "./overload";
 import * as T from "./effect";
 import { pipe } from "fp-ts/lib/pipeable";
 
@@ -26,7 +24,7 @@ export class FluentImpl<R, E, A> {
   done: () => T.Effect<R, E, A> = () => this.t;
 
   provideS<R2 extends object>(r: R2): FluentImpl<Rem<R, R2>, E, A> {
-    return new FluentImpl(pipe(this.t, T.provideS(r)) as any);
+    return new FluentImpl(T.provideS(r)(this.t) as any);
   }
 
   provide(r: R): FluentImpl<unknown, E, A> {
