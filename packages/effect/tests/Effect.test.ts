@@ -119,7 +119,7 @@ describe("EffectSafe", () => {
 
       const result = await F.fluent(state)
         .chain(s => s.update(n => n + 1))
-        .chainAccess(() => state)
+        .asM(state)
         .chain(r => r.update(n => n + 1))
         .flow(provideModLive)
         .runToPromise();
