@@ -29,7 +29,7 @@ describe("EffectSafe", () => {
         .chainError(n => T.pure(n))
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
-        .foldExit(_ => T.raiseAbort(10), T.pure)
+        .foldExit(_ => T.pure(10), T.pure)
         .done();
 
       assert.deepEqual(await T.runToPromiseExit(program), ex.done(7));
