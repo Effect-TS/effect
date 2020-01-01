@@ -1382,10 +1382,10 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-function chainError_<R, E1, R2, E2, A>(
+function chainError_<R, E1, R2, E2, A, A2>(
   io: Effect<R, E1, A>,
-  f: FunctionN<[E1], Effect<R2, E2, A>>
-): Effect<R & R2, E2, A> {
+  f: FunctionN<[E1], Effect<R2, E2, A2>>
+): Effect<R & R2, E2, A | A2> {
   return foldExit_(
     io,
     cause => (cause._tag === "Raise" ? f(cause.error) : completed(cause)),
@@ -1403,10 +1403,10 @@ export interface EffectMonad
    * @param io
    * @param f
    */
-  chainError<R, E1, R2, E2, A>(
+  chainError<R, E1, R2, E2, A, A2>(
     io: Effect<R, E1, A>,
-    f: FunctionN<[E1], Effect<R2, E2, A>>
-  ): Effect<R & R2, E2, A>;
+    f: FunctionN<[E1], Effect<R2, E2, A2>>
+  ): Effect<R & R2, E2, A | A2>;
 
   /**
    * Fold the result of an IO into a new IO.
@@ -1417,11 +1417,11 @@ export interface EffectMonad
    * @param failure
    * @param success
    */
-  foldExit<R, E1, R2, E2, A1, A2, R3, E3>(
+  foldExit<R, E1, R2, E2, A1, A2, A3, R3, E3>(
     inner: Effect<R, E1, A1>,
     failure: FunctionN<[Cause<E1>], Effect<R2, E2, A2>>,
-    success: FunctionN<[A1], Effect<R3, E3, A2>>
-  ): Effect<R & R2 & R3, E2 | E3, A2>;
+    success: FunctionN<[A1], Effect<R3, E3, A3>>
+  ): Effect<R & R2 & R3, E2 | E3, A2 | A3>;
 
   /**
    * Sequence a Stack and then produce an effect based on the produced value for observation.

@@ -15,9 +15,121 @@ import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
-import { effect as T } from "../src";
+import { effect as T, fluent as F, exit } from "../src";
 
 describe("EffectSafe", () => {
+  describe("Fluent", () => {
+    it("use fluent (toPromiseExit)", async () => {
+      const result = await F.fluent(T.pure(1))
+        .asUnit()
+        .as(2)
+        .asM(T.pure(3))
+        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
+        .chain(n => T.access((r: { k: number }) => n + r.k))
+        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .tap(() => T.unit)
+        .tap(n => T.raiseError(n))
+        .chainError(n => T.pure(n))
+        .chainEnv((n, r) => T.pure(n + r.n))
+        .provideS({ k: 2 })
+        .provide({ n: 3, m: 1 })
+        .foldExit(_ => T.pure(10), T.pure)
+        .result()
+        .map(identity)
+        .bimap(identity, identity)
+        .mapError(identity)
+        .runToPromiseExit();
+
+      assert.deepEqual(result, ex.done(ex.done(12)));
+    });
+
+    it("use fluent (toPromise)", async () => {
+      const result = await F.fluent(T.pure(1))
+        .asUnit()
+        .as(2)
+        .asM(T.pure(3))
+        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
+        .chain(n => T.access((r: { k: number }) => n + r.k))
+        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .tap(() => T.unit)
+        .tap(n => T.raiseError(n))
+        .chainError(n => T.pure(n))
+        .chainEnv((n, r) => T.pure(n + r.n))
+        .provideS({ k: 2 })
+        .provide({ n: 3, m: 1 })
+        .foldExit(_ => T.pure(10), T.pure)
+        .result()
+        .map(identity)
+        .bimap(identity, identity)
+        .mapError(identity)
+        .runToPromise();
+
+      assert.deepEqual(result, ex.done(12));
+    });
+
+    it("use fluent", async () => {
+      const result = F.fluent(T.pure(1))
+        .asUnit()
+        .as(2)
+        .asM(T.pure(3))
+        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
+        .chain(n => T.access((r: { k: number }) => n + r.k))
+        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .tap(() => T.unit)
+        .tap(n => T.raiseError(n))
+        .chainError(n => T.pure(n))
+        .chainEnv((n, r) => T.pure(n + r.n))
+        .provideS({ k: 2 })
+        .provide({ n: 3, m: 1 })
+        .foldExit(_ => T.pure(10), T.pure)
+        .result()
+        .map(identity)
+        .bimap(identity, identity)
+        .mapError(identity)
+        .done();
+
+      assert.deepEqual(await T.runToPromise(result), ex.done(12));
+    });
+
+    it("run env requirement inferred correctly", async () => {
+      const result = await F.fluent(T.access((n: number) => n))
+        .chain(n => T.pure(n + 1))
+        .runToPromise(1);
+
+      assert.deepEqual(result, 2);
+    });
+
+    it("fluent run", async () => {
+      let res: any = 0;
+
+      F.fluent(T.access((n: number) => n))
+        .chain(n => T.pure(n + 1))
+        .provide(1)
+        .fork()
+        .chain(x => x.join)
+        .run(
+          exit.fold(
+            n => {
+              res = n;
+            },
+            n => {
+              res = n;
+            },
+            n => {
+              res = n;
+            },
+            () => {
+              res = {};
+            }
+          )
+        );
+
+      await T.runToPromise(T.delay(T.unit, 10));
+
+      assert.deepEqual(res, 2);
+    });
+  });
+
   describe("Extra", () => {
     it("encaseEither", async () => {
       assert.deepEqual(
