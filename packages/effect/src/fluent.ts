@@ -58,7 +58,7 @@ export class Fluent<R, E, A> {
     );
 
   provide: (r: R) => Fluent<unknown, E, A> = r =>
-    new Fluent(pipe(this.t, T.provideS(r)));
+    new Fluent(pipe(this.t, T.provideAll(r)));
 
   foldExit: <R2, E2, A2, A3, R3, E3>(
     failure: FunctionN<[Cause<E>], T.Effect<R2, E2, A2>>,
@@ -87,7 +87,18 @@ export class Fluent<R, E, A> {
     new Fluent(T.effect.mapError(this.t, l));
 
   asUnit: () => Fluent<R, E, void> = () => new Fluent(T.asUnit(this.t));
+
+  runToPromiseExit: (r: OrVoid<R>) => Promise<Exit<E, A>> = r =>
+    T.runToPromiseExit((r ? T.provideAll(r as any)(this.t) : this.t) as any);
+
+  runToPromise: (r: OrVoid<R>) => Promise<A> = r =>
+    T.runToPromise((r ? T.provideAll(r as any)(this.t) : this.t) as any);
+
+  run: (cb: (ex: Exit<E, A>) => void, r: OrVoid<R>) => void = (cb, r) =>
+    T.run((r ? T.provideAll(r as any)(this.t) : this.t) as any, cb);
 }
+
+type OrVoid<R> = R extends {} & infer A ? A : void;
 
 export function fluent<R, E, A>(eff: T.Effect<R, E, A>): Fluent<R, E, A> {
   return new Fluent<R, E, A>(eff);
