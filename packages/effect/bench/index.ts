@@ -49,6 +49,17 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
   );
 };
 
+export const fibEffectFluent = (
+  n: bigint
+): T.EffectIO<T.NoEnv, never, bigint> => {
+  if (n < BigInt(2)) {
+    return T.fluent(T.pure(BigInt(1)));
+  }
+  return fibEffectFluent(n - BigInt(1)).chain(a =>
+    fibEffectFluent(n - BigInt(2)).map(b => a + b)
+  );
+};
+
 const n = BigInt(10);
 
 const benchmark = new Suite("Fibonacci", { minTime: 10000 });
@@ -58,6 +69,15 @@ benchmark
     "effect",
     (cb: any) => {
       T.run(fibEffect(n), () => {
+        cb.resolve();
+      });
+    },
+    { defer: true }
+  )
+  .add(
+    "effect-fluent",
+    (cb: any) => {
+      T.run(fibEffectFluent(n).done(), () => {
         cb.resolve();
       });
     },
