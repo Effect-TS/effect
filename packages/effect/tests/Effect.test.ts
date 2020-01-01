@@ -16,7 +16,7 @@ import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
 import { effect as T, fluent as F, exit, freeEnv } from "../src";
-import { Ref, makeRef } from "../src/ref";
+import { makeRef } from "../src/ref";
 
 describe("EffectSafe", () => {
   describe("Fluent", () => {
@@ -74,7 +74,7 @@ describe("EffectSafe", () => {
         .as(2)
         .asM(T.pure(3))
         .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
-        .chain(n => T.access((r: { k: number }) => n + r.k))
+        .chainW(T.access((r: { k: number }) => r.k))((n, k) => T.pure(n + k))
         .chain(n => T.access((r: { m: number }) => n + r.m))
         .tap(() => T.unit)
         .tap(n => T.raiseError(n))
@@ -105,21 +105,21 @@ describe("EffectSafe", () => {
 
       const mod = freeEnv.define({
         [URI]: {
-          state: freeEnv.cn<T.UIO<Ref<number>>>()
+          updateState: freeEnv.fn<(f: (n: number) => number) => T.UIO<number>>()
         }
       });
 
       const {
-        [URI]: { state }
+        [URI]: { updateState }
       } = freeEnv.access(mod);
 
       const provideModLive = freeEnv.implementWith(makeRef(1))(mod)(r => ({
-        [URI]: { state: T.pure(r) }
+        [URI]: { updateState: f => r.update(f) }
       }));
 
       const result = await F.fluent(T.unit)
-        .chainW(state)(s => s.update(n => n + 1))
-        .chainW(state)(s => s.update(n => n + 1))
+        .asM(updateState(n => n + 1))
+        .asM(updateState(n => n + 1))
         .flow(provideModLive)
         .runToPromise();
 
