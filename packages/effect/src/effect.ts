@@ -112,66 +112,64 @@ export class EffectIO<R, E, A> {
   chainEnv<R2, E2, A2>(
     f: (s: A, r: R) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A2> {
-    return this.chain(x =>
-      chain_(
-        accessEnvironment<R>(),
-        r => (f(x, r) as any) as Effect<R2, E2, A2>
-      )
+    return this.chain(
+      x =>
+        new EffectIO(
+          EffectTag.Chain as const,
+          new EffectIO(EffectTag.AccessEnv),
+          (r: any) => f(x, r) as any
+        )
     );
   }
 
   chainAccess<R3, R2, E2, A2>(
     f: (s: A, r: R3) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R3 & R2, E | E2, A2> {
-    return chain_((this as any) as Effect<R, E, A>, x =>
-      chain_(
-        accessEnvironment<R3>(),
-        r => (f(x, r) as any) as Effect<R2, E2, A2>
-      )
-    ) as any;
+    return this.chain(
+      x =>
+        new EffectIO(
+          EffectTag.Chain as const,
+          new EffectIO(EffectTag.AccessEnv),
+          (r: any) => f(x, r) as any
+        )
+    );
   }
 
   chainError<R2, E2, A2>(
     f: (r: E) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E2, A | A2> {
-    return chainError_(
-      (this as any) as Effect<R, E, A>,
-      x => (f(x) as any) as Effect<R2, E2, A2>
-    ) as any;
+    return this.foldExit(
+      cause => (cause._tag === "Raise" ? f(cause.error) : completed(cause)),
+      pure
+    );
   }
 
   tap<R2, E2, A2>(
     f: (s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A> {
-    return chainTap_(
-      (this as any) as Effect<R, E, A>,
-      x => (f(x) as any) as Effect<R2, E2, A2>
-    ) as any;
+    return this.chain(x => new EffectIO(EffectTag.Map as const, f(x), () => x));
   }
 
   provideS<R2 extends Partial<R>>(r: R2): EffectIO<Strip<R, R2>, E, A> {
-    return provideR((k: Strip<R, R2>) => ({ ...r, ...k } as any))(
-      (this as any) as Effect<R, E, A>
-    ) as any;
+    return provideR((k: any) => ({ ...r, ...k }))(this as any) as any;
   }
 
   provide(r: R): EffectIO<unknown, E, A> {
-    return pipe((this as any) as Effect<R, E, A>, provideAll(r)) as any;
+    return provideAll(r)(this as any) as any;
   }
 
   foldExit<R2, E2, A2, A3, R3, E3>(
     failure: FunctionN<[Cause<E>], Effect<R2, E2, A2> | EffectIO<R2, E2, A2>>,
     success: FunctionN<[A], Effect<R3, E3, A3> | EffectIO<R3, E3, A3>>
   ): EffectIO<R & R2 & R3, E2 | E3, A2 | A3> {
-    return foldExit_(
-      (this as any) as Effect<R, E, A>,
-      x => (failure(x) as any) as Effect<R2, E2, A2>,
-      x => (success(x) as any) as Effect<R3, E3, A3>
-    ) as any;
+    return new EffectIO(EffectTag.Collapse as const, this, failure, success);
   }
 
   result(): EffectIO<R, NoErr, Exit<E, A>> {
-    return result((this as any) as Effect<R, E, A>) as any;
+    return this.foldExit(
+      c => pure(c) as Effect<R, NoErr, Exit<E, A>>,
+      d => pure(ex.done(d))
+    );
   }
 
   as<B>(b: B): EffectIO<R, E, B> {
@@ -181,21 +179,24 @@ export class EffectIO<R, E, A> {
   asM<R2, E2, B>(
     b: Effect<R2, E2, B> | EffectIO<R2, E2, B>
   ): EffectIO<R & R2, E | E2, B> {
-    return chain_(
-      (this as any) as Effect<R, E, A>,
-      () => (b as any) as Effect<R2, E2, B>
-    ) as any;
+    return this.chain(() => b);
   }
 
   map<B>(f: (a: A) => B): EffectIO<R, E, B> {
-    return new EffectIO(EffectTag.Map as const, this, f)
+    return new EffectIO(EffectTag.Map as const, this, f);
   }
 
   bimap<E2, B>(
     leftMap: FunctionN<[E], E2>,
     rightMap: FunctionN<[A], B>
   ): EffectIO<R, E2, B> {
-    return bimap_((this as any) as Effect<R, E, A>, leftMap, rightMap) as any;
+    return this.foldExit(
+      cause =>
+        cause._tag === "Raise"
+          ? raiseError(leftMap(cause.error))
+          : completed(cause),
+      flow(rightMap, pure)
+    );
   }
 
   mapError<E2, B>(f: FunctionN<[E], E2>): EffectIO<R, E2, A> {
@@ -203,7 +204,7 @@ export class EffectIO<R, E, A> {
   }
 
   asUnit(): EffectIO<R, E, void> {
-    return asUnit((this as any) as Effect<R, E, A>) as any;
+    return this.as(undefined as any);
   }
 
   runToPromiseExit(r: OrVoid<R>): Promise<Exit<E, A>> {
