@@ -93,10 +93,7 @@ export class EffectIO<R, E, A> {
   chain<R2, E2, A2>(
     f: (s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A2> {
-    return chain_(
-      (this as any) as Effect<R, E, A>,
-      x => (f(x) as any) as Effect<R2, E2, A2>
-    ) as any;
+    return new EffectIO(EffectTag.Chain as const, this, f) as any;
   }
 
   chainW<R3, E3, A3>(
@@ -107,23 +104,20 @@ export class EffectIO<R, E, A> {
     return <R2, E2, A2>(
       f: (wa: A3, s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
     ): EffectIO<R & R2 & R3, E | E2 | E3, A2> =>
-      chain_((w as any) as Effect<R3, E3, A3>, wa =>
-        chain_(
-          (this as any) as Effect<R, E, A>,
-          s => (f(wa, s) as any) as Effect<R2, E2, A2>
-        )
-      ) as any;
+      new EffectIO(EffectTag.Chain as const, w, (wa: any) =>
+        this.chain(s => f(wa, s))
+      );
   }
 
   chainEnv<R2, E2, A2>(
     f: (s: A, r: R) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A2> {
-    return chain_((this as any) as Effect<R, E, A>, x =>
+    return this.chain(x =>
       chain_(
         accessEnvironment<R>(),
         r => (f(x, r) as any) as Effect<R2, E2, A2>
       )
-    ) as any;
+    );
   }
 
   chainAccess<R3, R2, E2, A2>(
@@ -181,7 +175,7 @@ export class EffectIO<R, E, A> {
   }
 
   as<B>(b: B): EffectIO<R, E, B> {
-    return map_((this as any) as Effect<R, E, A>, () => b) as any;
+    return new EffectIO(EffectTag.Map as const, this, () => b);
   }
 
   asM<R2, E2, B>(
@@ -194,7 +188,7 @@ export class EffectIO<R, E, A> {
   }
 
   map<B>(f: (a: A) => B): EffectIO<R, E, B> {
-    return map_((this as any) as Effect<R, E, A>, f) as any;
+    return new EffectIO(EffectTag.Map as const, this, f)
   }
 
   bimap<E2, B>(
