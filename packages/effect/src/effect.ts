@@ -199,7 +199,7 @@ export class EffectIO<R, E, A> {
     );
   }
 
-  mapError<E2, B>(f: FunctionN<[E], E2>): EffectIO<R, E2, A> {
+  mapError<E2>(f: FunctionN<[E], E2>): EffectIO<R, E2, A> {
     return this.bimap(f, identity);
   }
 
