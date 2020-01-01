@@ -99,6 +99,10 @@ export class Fluent<R, E, A> {
 
   fork: () => Fluent<R, never, T.Fiber<E, A>> = () =>
     new Fluent(T.fork(this.t));
+
+  flow: <R2, E2, A2>(
+    f: (e: T.Effect<R, E, A>) => T.Effect<R2, E2, A2>
+  ) => Fluent<R2, E2, A2> = f => new Fluent(f(this.t));
 }
 
 type OrVoid<R> = R extends {} & infer A ? A : void;

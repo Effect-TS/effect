@@ -15,7 +15,7 @@ import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
-import { effect as T, fluent as F, exit } from "../src";
+import { effect as T, fluent as F, exit, freeEnv } from "../src";
 
 describe("EffectSafe", () => {
   describe("Fluent", () => {
@@ -95,6 +95,31 @@ describe("EffectSafe", () => {
       const result = await F.fluent(T.access((n: number) => n))
         .chain(n => T.pure(n + 1))
         .runToPromise(1);
+
+      assert.deepEqual(result, 2);
+    });
+
+    it("fluent flow", async () => {
+      const URI: unique symbol = Symbol();
+
+      const mod = freeEnv.define({
+        [URI]: {
+          read: freeEnv.cn<T.UIO<number>>()
+        }
+      });
+
+      const {
+        [URI]: { read }
+      } = freeEnv.access(mod);
+
+      const provideModLive = freeEnv.implement(mod)({
+        [URI]: { read: T.pure(1) }
+      });
+
+      const result = await F.fluent(read)
+        .chain(n => T.pure(n + 1))
+        .flow(provideModLive)
+        .runToPromise();
 
       assert.deepEqual(result, 2);
     });
