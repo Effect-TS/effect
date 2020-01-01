@@ -16,7 +16,6 @@ import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
 import { effect as T, fluent as F } from "../src";
-import { Env } from "../src/utils/types";
 
 describe("EffectSafe", () => {
   describe("Fluent", () => {

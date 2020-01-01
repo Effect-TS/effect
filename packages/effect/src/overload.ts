@@ -14,7 +14,7 @@ import { Compactable3 } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
 import { PipeableFunctor3 } from "fp-ts/lib/pipeable";
-import { NoEnv, NoErr } from "./effect";
+import { NoEnv, NoErr, Effect } from "./effect";
 import { Either } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Refinement, Predicate } from "fp-ts/lib/function";
@@ -80,11 +80,11 @@ type UnionToIntersection<U> = (U extends any
   ? I
   : never;
 
-export type ATypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
+export type ATypeOf<X> = X extends Effect<infer R, infer E, infer A>
   ? A
   : never;
 
-export type RTypeOf<X> = X extends Kind3<infer M, infer R, infer E, infer A>
+export type RTypeOf<X> = X extends Effect<infer R, infer E, infer A>
   ? R
   : never;
 
