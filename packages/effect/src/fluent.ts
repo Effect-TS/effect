@@ -1,7 +1,7 @@
 import * as T from "./effect";
 import { pipe } from "fp-ts/lib/pipeable";
 import { FunctionN } from "fp-ts/lib/function";
-import { Cause } from "./original/exit";
+import { Cause, Exit } from "./original/exit";
 
 export type Strip<R, R2 extends Partial<R>> = {
   [k in Exclude<keyof R, keyof R2>]: R[k];
@@ -43,6 +43,9 @@ export class Fluent<R, E, A> {
     success: FunctionN<[A], T.Effect<R3, E3, A3>>
   ) => Fluent<R & R2 & R3, E2 | E3, A2 | A3> = (f, s) =>
     new Fluent(T.effect.foldExit(this.t, f, s));
+
+  result: () => Fluent<R, T.NoErr, Exit<E, A>> = () =>
+    new Fluent(T.result(this.t));
 }
 
 export function fluent<R, E, A>(eff: T.Effect<R, E, A>): Fluent<R, E, A> {

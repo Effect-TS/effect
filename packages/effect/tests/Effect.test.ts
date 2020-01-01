@@ -30,9 +30,10 @@ describe("EffectSafe", () => {
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
         .foldExit(_ => T.pure(10), T.pure)
+        .result()
         .done();
 
-      assert.deepEqual(await T.runToPromiseExit(program), ex.done(7));
+      assert.deepEqual(await T.runToPromise(program), ex.done(7));
     });
   });
   describe("Extra", () => {
