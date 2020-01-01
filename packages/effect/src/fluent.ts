@@ -8,7 +8,7 @@ export type Strip<R, R2 extends Partial<R>> = {
 };
 
 export class Fluent<R, E, A> {
-  constructor(readonly t: T.Effect<R, E, A>) {}
+  constructor(private readonly t: T.Effect<R, E, A>) {}
 
   done: () => T.Effect<R, E, A> = () => this.t;
 
