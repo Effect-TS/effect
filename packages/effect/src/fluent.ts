@@ -96,6 +96,9 @@ export class Fluent<R, E, A> {
 
   run: (cb: (ex: Exit<E, A>) => void, r: OrVoid<R>) => void = (cb, r) =>
     T.run((r ? T.provideAll(r as any)(this.t) : this.t) as any, cb);
+
+  fork: () => Fluent<R, never, T.Fiber<E, A>> = () =>
+    new Fluent(T.fork(this.t));
 }
 
 type OrVoid<R> = R extends {} & infer A ? A : void;

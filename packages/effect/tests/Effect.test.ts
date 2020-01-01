@@ -105,6 +105,8 @@ describe("EffectSafe", () => {
       F.fluent(T.access((n: number) => n))
         .chain(n => T.pure(n + 1))
         .provide(1)
+        .fork()
+        .chain(x => x.join)
         .run(
           exit.fold(
             n => {
