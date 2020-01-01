@@ -7,7 +7,6 @@ import * as semaphore from "./semaphore";
 import * as exit from "./exit";
 import * as streameither from "./streameither";
 import * as freeEnv from "./freeEnv";
-import * as fluent from "./fluent"
 
 export {
   effect,
@@ -18,6 +17,5 @@ export {
   semaphore,
   exit,
   streameither,
-  freeEnv,
-  fluent
+  freeEnv
 };

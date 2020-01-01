@@ -68,7 +68,13 @@ export type UIO<A> = Effect<NoEnv, NoErr, A>;
 
 export type RUIO<R, A> = Effect<R, NoErr, A>;
 
-export class EffectIO<_R, _E, _A> {
+export type Strip<R, R2 extends Partial<R>> = {
+  [k in Exclude<keyof R, keyof R2>]: R[k];
+};
+
+export type OrVoid<R> = R extends {} & infer A ? A : void;
+
+export class EffectIO<R, E, A> {
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
   }
@@ -79,6 +85,163 @@ export class EffectIO<_R, _E, _A> {
     readonly f1: any = undefined,
     readonly f2: any = undefined
   ) {}
+
+  done() {
+    return this as any;
+  }
+
+  // tslint:disable-next-line: prefer-function-over-method
+  private down<R2, E2, A2>(
+    e: Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): Effect<R2, E2, A2> {
+    return e as any;
+  }
+
+  // tslint:disable-next-line: prefer-function-over-method
+  private up<R2, E2, A2>(
+    e: Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): EffectIO<R2, E2, A2> {
+    return e as any;
+  }
+
+  private t(): Effect<R, E, A> {
+    return this as any;
+  }
+
+  chain<R2, E2, A2>(
+    f: (s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): EffectIO<R & R2, E | E2, A2> {
+    return this.up(chain_(this.t(), x => this.down(f(x))));
+  }
+
+  chainW<R3, E3, A3>(
+    w: Effect<R3, E3, A3> | EffectIO<R3, E3, A3>
+  ): <R2, E2, A2>(
+    f: (wa: A3, s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ) => EffectIO<R & R2 & R3, E | E2 | E3, A2> {
+    return <R2, E2, A2>(
+      f: (wa: A3, s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+    ): EffectIO<R & R2 & R3, E | E2 | E3, A2> =>
+      this.up(
+        chain_(this.down(w), wa => chain_(this.t(), s => this.down(f(wa, s))))
+      );
+  }
+
+  chainEnv<R2, E2, A2>(
+    f: (s: A, r: R) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): EffectIO<R & R2, E | E2, A2> {
+    return this.up(
+      chain_(this.t(), x =>
+        chain_(accessEnvironment<R>(), r => this.down(f(x, r)))
+      )
+    );
+  }
+
+  chainAccess<R3, R2, E2, A2>(
+    f: (s: A, r: R3) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): EffectIO<R & R3 & R2, E | E2, A2> {
+    return this.up(
+      chain_(this.t(), x =>
+        chain_(accessEnvironment<R3>(), r => this.down(f(x, r)))
+      )
+    );
+  }
+
+  chainError<R2, E2, A2>(
+    f: (r: E) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): EffectIO<R & R2, E2, A | A2> {
+    return this.up(chainError_(this.t(), x => this.down(f(x))));
+  }
+
+  tap<R2, E2, A2>(
+    f: (s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
+  ): EffectIO<R & R2, E | E2, A> {
+    return this.up(chainTap_(this.t(), x => this.down(f(x))));
+  }
+
+  provideS<R2 extends Partial<R>>(r: R2): EffectIO<Strip<R, R2>, E, A> {
+    return this.up(
+      provideR((k: Strip<R, R2>) => ({ ...r, ...k } as any))(this.t())
+    );
+  }
+
+  provide(r: R): EffectIO<unknown, E, A> {
+    return this.up(pipe(this.t(), provideAll(r)));
+  }
+
+  foldExit<R2, E2, A2, A3, R3, E3>(
+    failure: FunctionN<[Cause<E>], Effect<R2, E2, A2> | EffectIO<R2, E2, A2>>,
+    success: FunctionN<[A], Effect<R3, E3, A3> | EffectIO<R3, E3, A3>>
+  ): EffectIO<R & R2 & R3, E2 | E3, A2 | A3> {
+    return this.up(
+      foldExit_(
+        this.t(),
+        x => this.down(failure(x)),
+        x => this.down(success(x))
+      )
+    );
+  }
+
+  result(): EffectIO<R, NoErr, Exit<E, A>> {
+    return this.up(result(this.t()));
+  }
+
+  as<B>(b: B): EffectIO<R, E, B> {
+    return this.up(map_(this.t(), () => b));
+  }
+
+  asM<R2, E2, B>(
+    b: Effect<R2, E2, B> | EffectIO<R2, E2, B>
+  ): EffectIO<R & R2, E | E2, B> {
+    return this.up(chain_(this.t(), () => this.down(b)));
+  }
+
+  map<B>(f: (a: A) => B): EffectIO<R, E, B> {
+    return this.up(map_(this.t(), f));
+  }
+
+  bimap<E2, B>(
+    leftMap: FunctionN<[E], E2>,
+    rightMap: FunctionN<[A], B>
+  ): EffectIO<R, E2, B> {
+    return this.up(bimap_(this.t(), leftMap, rightMap));
+  }
+
+  mapError<E2, B>(f: FunctionN<[E], E2>): EffectIO<R, E2, A> {
+    return this.bimap(f, identity);
+  }
+
+  asUnit(): EffectIO<R, E, void> {
+    return this.up(asUnit(this.t()));
+  }
+
+  runToPromiseExit(r: OrVoid<R>): Promise<Exit<E, A>> {
+    return runToPromiseExit(
+      (r ? provideAll(r as any)(this.t()) : this.t()) as any
+    );
+  }
+
+  runToPromise(r: OrVoid<R>): Promise<A> {
+    return runToPromise((r ? provideAll(r as any)(this.t()) : this.t()) as any);
+  }
+
+  run(cb: (ex: Exit<E, A>) => void, r: OrVoid<R>): void {
+    return run((r ? provideAll(r as any)(this.t()) : this.t()) as any, cb)();
+  }
+
+  fork(): EffectIO<R, never, Fiber<E, A>> {
+    return this.up(fork(this.t()));
+  }
+
+  flow<R2, E2, A2>(
+    f: (e: Effect<R, E, A>) => Effect<R2, E2, A2>
+  ): EffectIO<R2, E2, A2> {
+    return this.up(f(this.t()));
+  }
+}
+
+export function fluent<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
+  return eff as any;
 }
 
 export type Instructions =
@@ -520,6 +683,8 @@ export function asUnit<R, E, A>(io: Effect<R, E, A>): Effect<R, E, void> {
  * An IO that succeeds immediately with void
  */
 export const unit: Effect<NoEnv, NoErr, void> = pure(undefined);
+
+export const fluentUnit = fluent(unit);
 
 /**
  * Curriend form of chainError

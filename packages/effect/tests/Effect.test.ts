@@ -15,13 +15,13 @@ import { monoidSum } from "fp-ts/lib/Monoid";
 import { identity } from "fp-ts/lib/function";
 import { effect, parEffect } from "../src/effect";
 
-import { effect as T, fluent as F, exit, freeEnv } from "../src";
+import { effect as T, exit, freeEnv } from "../src";
 import { makeRef } from "../src/ref";
 
 describe("EffectSafe", () => {
   describe("Fluent", () => {
     it("use fluent (toPromiseExit)", async () => {
-      const result = await F.fluent(T.pure(1))
+      const result = await T.fluent(T.pure(1))
         .asUnit()
         .as(2)
         .asM(T.pure(3))
@@ -45,7 +45,7 @@ describe("EffectSafe", () => {
     });
 
     it("use fluent (toPromise)", async () => {
-      const result = await F.fluent(T.pure(1))
+      const result = await T.fluent(T.pure(1))
         .asUnit()
         .as(2)
         .asM(T.pure(3))
@@ -69,7 +69,7 @@ describe("EffectSafe", () => {
     });
 
     it("use fluent", async () => {
-      const result = F.fluent(T.pure(1))
+      const result = T.fluent(T.pure(1))
         .asUnit()
         .as(2)
         .asM(T.pure(3))
@@ -93,7 +93,7 @@ describe("EffectSafe", () => {
     });
 
     it("run env requirement inferred correctly", async () => {
-      const result = await F.fluent(T.access((n: number) => n))
+      const result = await T.fluent(T.access((n: number) => n))
         .chain(n => T.pure(n + 1))
         .runToPromise(1);
 
@@ -117,7 +117,7 @@ describe("EffectSafe", () => {
         [URI]: { updateState: f => r.update(f) }
       }));
 
-      const result = await F.fluent(T.unit)
+      const result = await T.fluentUnit
         .asM(updateState(n => n + 1))
         .asM(updateState(n => n + 1))
         .flow(provideModLive)
@@ -129,7 +129,7 @@ describe("EffectSafe", () => {
     it("fluent run", async () => {
       let res: any = 0;
 
-      F.fluent(T.access((n: number) => n))
+      T.fluent(T.access((n: number) => n))
         .chain(n => T.pure(n + 1))
         .provide(1)
         .fork()
