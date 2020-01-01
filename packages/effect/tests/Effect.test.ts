@@ -21,21 +21,26 @@ describe("EffectSafe", () => {
   describe("Fluent", () => {
     it("use fluent", async () => {
       const program = F.fluent(T.pure(1))
+        .asUnit()
         .as(2)
         .asM(T.pure(3))
-        .chain(n => T.access((r: { n: number }) => n + r.n))
+        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
         .chain(n => T.access((r: { k: number }) => n + r.k))
         .chain(n => T.access((r: { m: number }) => n + r.m))
         .tap(() => T.unit)
         .tap(n => T.raiseError(n))
         .chainError(n => T.pure(n))
+        .chainEnv((n, r) => T.pure(n + r.n))
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
         .foldExit(_ => T.pure(10), T.pure)
         .result()
+        .map(identity)
+        .bimap(identity, identity)
+        .mapError(identity)
         .done();
 
-      assert.deepEqual(await T.runToPromise(program), ex.done(9));
+      assert.deepEqual(await T.runToPromise(program), ex.done(12));
     });
   });
   describe("Extra", () => {

@@ -16,6 +16,28 @@ export class Fluent<R, E, A> {
     f: (s: A) => T.Effect<R2, E2, A2>
   ) => Fluent<R & R2, E | E2, A2> = f => new Fluent(T.effect.chain(this.t, f));
 
+  chainEnv: <R2, E2, A2>(
+    f: (s: A, r: R) => T.Effect<R2, E2, A2>
+  ) => Fluent<R & R2, E | E2, A2> = <R2, E2, A2>(
+    f: (s: A, r: R) => T.Effect<R2, E2, A2>
+  ) =>
+    new Fluent(
+      T.effect.chain(this.t, x =>
+        T.effect.chain(T.accessEnvironment<R>(), r => f(x, r))
+      )
+    );
+
+  chainAccess: <R3, R2, E2, A2>(
+    f: (s: A, r: R3) => T.Effect<R2, E2, A2>
+  ) => Fluent<R & R3 & R2, E | E2, A2> = <R3, R2, E2, A2>(
+    f: (s: A, r: R3) => T.Effect<R2, E2, A2>
+  ) =>
+    new Fluent(
+      T.effect.chain(this.t, x =>
+        T.effect.chain(T.accessEnvironment<R3>(), r => f(x, r))
+      )
+    );
+
   chainError: <R2, E2, A2>(
     f: (r: E) => T.Effect<R2, E2, A2>
   ) => Fluent<R & R2, E2, A | A2> = f =>
@@ -52,6 +74,19 @@ export class Fluent<R, E, A> {
 
   asM: <R2, E2, B>(b: T.Effect<R2, E2, B>) => Fluent<R & R2, E | E2, B> = b =>
     new Fluent(T.effect.chain(this.t, () => b));
+
+  map: <B>(f: (a: A) => B) => Fluent<R, E, B> = f =>
+    new Fluent(T.effect.map(this.t, f));
+
+  bimap: <E2, B>(
+    leftMap: FunctionN<[E], E2>,
+    rightMap: FunctionN<[A], B>
+  ) => Fluent<R, E2, B> = (l, r) => new Fluent(T.effect.bimap(this.t, l, r));
+
+  mapError: <E2, B>(f: FunctionN<[E], E2>) => Fluent<R, E2, A> = l =>
+    new Fluent(T.effect.mapError(this.t, l));
+
+  asUnit: () => Fluent<R, E, void> = () => new Fluent(T.asUnit(this.t));
 }
 
 export function fluent<R, E, A>(eff: T.Effect<R, E, A>): Fluent<R, E, A> {
