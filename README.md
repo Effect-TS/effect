@@ -58,29 +58,30 @@ This package is a work in progress syntax and functions might change, feedback a
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
 
-Currently the benchmarks show:
+Running on a dedicated box with no load:
 ```
 Fibonacci:
-$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/index.ts
-effect x 20,174 ops/sec ±1.06% (83 runs sampled)
-qio x 17,963 ops/sec ±2.95% (81 runs sampled)
-wave x 13,876 ops/sec ±1.37% (79 runs sampled)
-native x 27,125 ops/sec ±1.83% (81 runs sampled)
+effect x 28,317 ops/sec ±0.79% (84 runs sampled)
+effect-fluent x 29,032 ops/sec ±0.70% (86 runs sampled)
+qio x 27,998 ops/sec ±0.96% (87 runs sampled)
+wave x 20,731 ops/sec ±0.64% (85 runs sampled)
+promise x 7,599 ops/sec ±0.35% (86 runs sampled)
+native x 39,571 ops/sec ±0.22% (90 runs sampled)
 Fastest is native
 
 Nested Map 100
-$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/nestedMap.ts
-effect x 8,431 ops/sec ±1.78% (78 runs sampled)
-wave x 3,211 ops/sec ±1.08% (81 runs sampled)
-qio x 7,095 ops/sec ±3.24% (69 runs sampled)
-Fastest is effect
+effect x 13,207 ops/sec ±0.37% (86 runs sampled)
+effect-fluent x 13,408 ops/sec ±0.35% (89 runs sampled)
+wave x 5,352 ops/sec ±0.45% (88 runs sampled)
+qio x 11,607 ops/sec ±0.85% (86 runs sampled)
+Fastest is effect-fluent
 
 Nested Chain 1000
-$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/nestedChain.ts
-effect x 772 ops/sec ±2.81% (78 runs sampled)
-wave x 436 ops/sec ±1.23% (81 runs sampled)
-qio x 707 ops/sec ±1.48% (82 runs sampled)
-Fastest is effect
+effect x 1,099 ops/sec ±0.51% (87 runs sampled)
+effect-fluent x 1,118 ops/sec ±0.25% (90 runs sampled)
+wave x 628 ops/sec ±0.44% (89 runs sampled)
+qio x 984 ops/sec ±0.45% (89 runs sampled)
+Fastest is effect-fluent
 ```
 
 ## Thanks
