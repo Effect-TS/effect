@@ -30,6 +30,8 @@ import {
 import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
 import { mergeDeep } from "./utils/merge";
+import { TaskEither } from "fp-ts/lib/TaskEither";
+import { Task } from "fp-ts/lib/Task";
 
 export enum EffectTag {
   Pure,
@@ -95,6 +97,26 @@ export class EffectIO<R, E, A> {
     f: (s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A2> {
     return new EffectIO(EffectTag.Chain as const, this, f) as any;
+  }
+
+  chainEither<E2, A2>(f: (s: A) => Either<E2, A2>): EffectIO<R, E | E2, A2> {
+    return this.chain((s: A) => encaseEither(f(s)));
+  }
+
+  chainTaskEither<E2, A2>(
+    f: (s: A) => TaskEither<E2, A2>
+  ): EffectIO<R, E | E2, A2> {
+    return this.chain((s: A) => encaseTaskEither(f(s)));
+  }
+
+  chainTask<A2>(f: (s: A) => Task<A2>): EffectIO<R, E, A2> {
+    return this.chain((s: A) => encaseTask(f(s)));
+  }
+
+  chainOption<E2>(
+    onEmpty: Lazy<E2>
+  ): <A2>(f: (s: A) => Option<A2>) => EffectIO<R, E | E2, A2> {
+    return f => this.chain((s: A) => encaseOption(f(s), onEmpty));
   }
 
   chainW<R3, E3, A3>(
@@ -502,19 +524,25 @@ export function chainOption<E>(
 ): <A, B>(
   bind: FunctionN<[A], Option<B>>
 ) => <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
-  return bind => inner =>
-    new EffectIO(EffectTag.Chain as const, inner, (a: any) =>
-      encaseOption(bind(a), onEmpty)
-    ) as any;
+  return bind => inner => chain_(inner, a => encaseOption(bind(a), onEmpty));
 }
 
 export function chainEither<A, E, B>(
   bind: FunctionN<[A], Either<E, B>>
 ): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
-  return inner =>
-    new EffectIO(EffectTag.Chain as const, inner, (a: any) =>
-      encaseEither(bind(a))
-    ) as any;
+  return inner => chain_(inner, a => encaseEither(bind(a)));
+}
+
+export function chainTask<A, B>(
+  bind: FunctionN<[A], Task<B>>
+): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E2, B> {
+  return inner => chain_(inner, a => encaseTask(bind(a)));
+}
+
+export function chainTaskEither<A, E, B>(
+  bind: FunctionN<[A], TaskEither<E, B>>
+): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+  return inner => chain_(inner, a => encaseTaskEither(bind(a)));
 }
 
 /**
@@ -1491,6 +1519,22 @@ export function fromPromise<A>(
       thunk()
         .then(v => callback(right(v)))
         .catch(e => callback(left(e)));
+      // tslint:disable-next-line
+      return () => {};
+    })
+  );
+}
+
+export function encaseTask<A>(task: Task<A>): Effect<NoEnv, NoErr, A> {
+  return orAbort(fromPromise(task));
+}
+
+export function encaseTaskEither<E, A>(
+  taskEither: TaskEither<E, A>
+): Effect<NoEnv, E, A> {
+  return uninterruptible(
+    async<E, A>(callback => {
+      taskEither().then(callback);
       // tslint:disable-next-line
       return () => {};
     })
