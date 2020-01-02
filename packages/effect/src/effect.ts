@@ -5,14 +5,13 @@
 import * as Ar from "fp-ts/lib/Array";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import * as Ei from "fp-ts/lib/Either";
-import * as either from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
 import { Monoid } from "fp-ts/lib/Monoid";
 import * as Op from "fp-ts/lib/Option";
 import * as option from "fp-ts/lib/Option";
 import { none, Option, some } from "fp-ts/lib/Option";
-import { pipe, pipeable } from "fp-ts/lib/pipeable";
+import { pipeable } from "fp-ts/lib/pipeable";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import * as ex from "./original/exit";
 import { Cause, Exit } from "./original/exit";
@@ -34,6 +33,8 @@ import { mergeDeep } from "./utils/merge";
 
 export enum EffectTag {
   Pure,
+  PureOption,
+  PureEither,
   Raised,
   Completed,
   Suspended,
@@ -249,6 +250,8 @@ export function fluent<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
 
 export type Instructions =
   | Pure
+  | PureOption
+  | PureEither
   | Raised
   | Completed
   | Suspended
@@ -265,6 +268,17 @@ export type Instructions =
 export interface Pure<A = unknown> {
   readonly _tag: EffectTag.Pure;
   readonly f0: A;
+}
+
+export interface PureOption<A = unknown, E = never> {
+  readonly _tag: EffectTag.PureOption;
+  readonly f0: Option<A>;
+  readonly f1: Lazy<E>;
+}
+
+export interface PureEither<A = unknown, E = never> {
+  readonly _tag: EffectTag.PureEither;
+  readonly f0: Either<E, A>;
 }
 
 export interface Raised<E = unknown> {
@@ -483,12 +497,32 @@ function chain_<R, E, A, R2, E2, B>(
   return new EffectIO(EffectTag.Chain as const, inner, bind) as any;
 }
 
+export function chainOption<E>(
+  onEmpty: Lazy<E>
+): <A, B>(
+  bind: FunctionN<[A], Option<B>>
+) => <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+  return bind => inner =>
+    new EffectIO(EffectTag.Chain as const, inner, (a: any) =>
+      encaseOption(bind(a), onEmpty)
+    ) as any;
+}
+
+export function chainEither<A, E, B>(
+  bind: FunctionN<[A], Either<E, B>>
+): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+  return inner =>
+    new EffectIO(EffectTag.Chain as const, inner, (a: any) =>
+      encaseEither(bind(a))
+    ) as any;
+}
+
 /**
  * Lift an Either into an IO
  * @param e
  */
 export function encaseEither<E, A>(e: Either<E, A>): Effect<NoEnv, E, A> {
-  return pipe(e, either.fold<E, A, Effect<NoEnv, E, A>>(raiseError, pure));
+  return new EffectIO(EffectTag.PureEither, e) as any;
 }
 
 /**
@@ -500,11 +534,7 @@ export function encaseOption<E, A>(
   o: Option<A>,
   onError: Lazy<E>
 ): Effect<NoEnv, E, A> {
-  return pipe(
-    o,
-    option.map<A, Effect<NoEnv, E, A>>(pure),
-    option.getOrElse<Effect<NoEnv, E, A>>(() => raiseError(onError()))
-  );
+  return new EffectIO(EffectTag.PureOption, o, onError) as any;
 }
 
 /**
