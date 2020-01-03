@@ -1,6 +1,6 @@
 {
   "name": "@matechs/uuid",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -22,7 +22,7 @@
     "uuid": "^3.3.3"
   },
   "dependencies": {
-    "@matechs/effect": "^0.4.16"
+    "@matechs/effect": "^0.4.17"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
