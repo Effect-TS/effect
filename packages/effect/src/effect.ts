@@ -89,7 +89,7 @@ export class EffectIO<R, E, A> {
     readonly f2: any = undefined
   ) {}
 
-  done() {
+  done(): Effect<R, E, A> {
     return this as any;
   }
 
