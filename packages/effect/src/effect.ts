@@ -5,14 +5,13 @@
 import * as Ar from "fp-ts/lib/Array";
 import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
 import * as Ei from "fp-ts/lib/Either";
-import * as either from "fp-ts/lib/Either";
 import { Either, left, right } from "fp-ts/lib/Either";
 import { constant, flow, FunctionN, identity, Lazy } from "fp-ts/lib/function";
 import { Monoid } from "fp-ts/lib/Monoid";
 import * as Op from "fp-ts/lib/Option";
 import * as option from "fp-ts/lib/Option";
 import { none, Option, some } from "fp-ts/lib/Option";
-import { pipe, pipeable } from "fp-ts/lib/pipeable";
+import { pipeable } from "fp-ts/lib/pipeable";
 import { Semigroup } from "fp-ts/lib/Semigroup";
 import * as ex from "./original/exit";
 import { Cause, Exit } from "./original/exit";
@@ -31,9 +30,13 @@ import {
 import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
 import { mergeDeep } from "./utils/merge";
+import { TaskEither } from "fp-ts/lib/TaskEither";
+import { Task } from "fp-ts/lib/Task";
 
 export enum EffectTag {
   Pure,
+  PureOption,
+  PureEither,
   Raised,
   Completed,
   Suspended,
@@ -94,6 +97,26 @@ export class EffectIO<R, E, A> {
     f: (s: A) => Effect<R2, E2, A2> | EffectIO<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A2> {
     return new EffectIO(EffectTag.Chain as const, this, f) as any;
+  }
+
+  chainEither<E2, A2>(f: (s: A) => Either<E2, A2>): EffectIO<R, E | E2, A2> {
+    return this.chain((s: A) => encaseEither(f(s)));
+  }
+
+  chainTaskEither<E2, A2>(
+    f: (s: A) => TaskEither<E2, A2>
+  ): EffectIO<R, E | E2, A2> {
+    return this.chain((s: A) => encaseTaskEither(f(s)));
+  }
+
+  chainTask<A2>(f: (s: A) => Task<A2>): EffectIO<R, E, A2> {
+    return this.chain((s: A) => encaseTask(f(s)));
+  }
+
+  chainOption<E2>(
+    onEmpty: Lazy<E2>
+  ): <A2>(f: (s: A) => Option<A2>) => EffectIO<R, E | E2, A2> {
+    return f => this.chain((s: A) => encaseOption(f(s), onEmpty));
   }
 
   chainW<R3, E3, A3>(
@@ -249,6 +272,8 @@ export function fluent<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
 
 export type Instructions =
   | Pure
+  | PureOption
+  | PureEither
   | Raised
   | Completed
   | Suspended
@@ -265,6 +290,17 @@ export type Instructions =
 export interface Pure<A = unknown> {
   readonly _tag: EffectTag.Pure;
   readonly f0: A;
+}
+
+export interface PureOption<A = unknown, E = never> {
+  readonly _tag: EffectTag.PureOption;
+  readonly f0: Option<A>;
+  readonly f1: Lazy<E>;
+}
+
+export interface PureEither<A = unknown, E = never> {
+  readonly _tag: EffectTag.PureEither;
+  readonly f0: Either<E, A>;
 }
 
 export interface Raised<E = unknown> {
@@ -483,12 +519,38 @@ function chain_<R, E, A, R2, E2, B>(
   return new EffectIO(EffectTag.Chain as const, inner, bind) as any;
 }
 
+export function chainOption<E>(
+  onEmpty: Lazy<E>
+): <A, B>(
+  bind: FunctionN<[A], Option<B>>
+) => <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+  return bind => inner => chain_(inner, a => encaseOption(bind(a), onEmpty));
+}
+
+export function chainEither<A, E, B>(
+  bind: FunctionN<[A], Either<E, B>>
+): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+  return inner => chain_(inner, a => encaseEither(bind(a)));
+}
+
+export function chainTask<A, B>(
+  bind: FunctionN<[A], Task<B>>
+): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E2, B> {
+  return inner => chain_(inner, a => encaseTask(bind(a)));
+}
+
+export function chainTaskEither<A, E, B>(
+  bind: FunctionN<[A], TaskEither<E, B>>
+): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+  return inner => chain_(inner, a => encaseTaskEither(bind(a)));
+}
+
 /**
  * Lift an Either into an IO
  * @param e
  */
 export function encaseEither<E, A>(e: Either<E, A>): Effect<NoEnv, E, A> {
-  return pipe(e, either.fold<E, A, Effect<NoEnv, E, A>>(raiseError, pure));
+  return new EffectIO(EffectTag.PureEither, e) as any;
 }
 
 /**
@@ -500,11 +562,7 @@ export function encaseOption<E, A>(
   o: Option<A>,
   onError: Lazy<E>
 ): Effect<NoEnv, E, A> {
-  return pipe(
-    o,
-    option.map<A, Effect<NoEnv, E, A>>(pure),
-    option.getOrElse<Effect<NoEnv, E, A>>(() => raiseError(onError()))
-  );
+  return new EffectIO(EffectTag.PureOption, o, onError) as any;
 }
 
 /**
@@ -1461,6 +1519,22 @@ export function fromPromise<A>(
       thunk()
         .then(v => callback(right(v)))
         .catch(e => callback(left(e)));
+      // tslint:disable-next-line
+      return () => {};
+    })
+  );
+}
+
+export function encaseTask<A>(task: Task<A>): Effect<NoEnv, NoErr, A> {
+  return orAbort(fromPromise(task));
+}
+
+export function encaseTaskEither<E, A>(
+  taskEither: TaskEither<E, A>
+): Effect<NoEnv, E, A> {
+  return uninterruptible(
+    async<E, A>(callback => {
+      taskEither().then(callback);
       // tslint:disable-next-line
       return () => {};
     })

@@ -19,6 +19,104 @@ import { effect as T, exit, freeEnv } from "../src";
 import { makeRef } from "../src/ref";
 
 describe("EffectSafe", () => {
+  describe("Kleisly", () => {
+    it("chainOption", async () => {
+      const pipeableErr = await pipe(
+        T.pure(1),
+        T.chainOption(() => 2)(_ => O.none),
+        T.runToPromiseExit
+      );
+
+      const pipeableSuc = await pipe(
+        T.pure(1),
+        T.chainOption(() => 2)(n => O.some(n + 1)),
+        T.runToPromiseExit
+      );
+
+      const fluentErr = await T.fluent(T.pure(1))
+        .chainOption(() => 2)(_ => O.none)
+        .runToPromiseExit();
+
+      const fluentSuc = await T.fluent(T.pure(1))
+        .chainOption(() => 2)(n => O.some(n + 1))
+        .runToPromiseExit();
+
+      assert.deepEqual(pipeableErr, ex.raise(2));
+      assert.deepEqual(pipeableSuc, ex.done(2));
+      assert.deepEqual(fluentErr, ex.raise(2));
+      assert.deepEqual(fluentSuc, ex.done(2));
+    });
+
+    it("chainEither", async () => {
+      const pipeableErr = await pipe(
+        T.pure(1),
+        T.chainEither(n => E.left(n + 1)),
+        T.runToPromiseExit
+      );
+
+      const pipeableSuc = await pipe(
+        T.pure(1),
+        T.chainEither(n => E.right(n + 1)),
+        T.runToPromiseExit
+      );
+
+      const fluentErr = await T.fluent(T.pure(1))
+        .chainEither(n => E.left(n + 1))
+        .runToPromiseExit();
+
+      const fluentSuc = await T.fluent(T.pure(1))
+        .chainEither(n => E.right(n + 1))
+        .runToPromiseExit();
+
+      assert.deepEqual(pipeableErr, ex.raise(2));
+      assert.deepEqual(pipeableSuc, ex.done(2));
+      assert.deepEqual(fluentErr, ex.raise(2));
+      assert.deepEqual(fluentSuc, ex.done(2));
+    });
+
+    it("chainTaskEither", async () => {
+      const pipeableErr = await pipe(
+        T.pure(1),
+        T.chainTaskEither(n => () => Promise.resolve(E.left(n + 1))),
+        T.runToPromiseExit
+      );
+
+      const pipeableSuc = await pipe(
+        T.pure(1),
+        T.chainTaskEither(n => () => Promise.resolve(E.right(n + 1))),
+        T.runToPromiseExit
+      );
+
+      const fluentErr = await T.fluent(T.pure(1))
+        .chainTaskEither(n => () => Promise.resolve(E.left(n + 1)))
+        .runToPromiseExit();
+
+      const fluentSuc = await T.fluent(T.pure(1))
+        .chainTaskEither(n => () => Promise.resolve(E.right(n + 1)))
+        .runToPromiseExit();
+
+      assert.deepEqual(pipeableErr, ex.raise(2));
+      assert.deepEqual(pipeableSuc, ex.done(2));
+      assert.deepEqual(fluentErr, ex.raise(2));
+      assert.deepEqual(fluentSuc, ex.done(2));
+    });
+
+    it("chainTask", async () => {
+      const pipeableSuc = await pipe(
+        T.pure(1),
+        T.chainTask(n => () => Promise.resolve(n + 1)),
+        T.runToPromiseExit
+      );
+
+      const fluentSuc = await T.fluent(T.pure(1))
+        .chainTask(n => () => Promise.resolve(n + 1))
+        .runToPromiseExit();
+
+      assert.deepEqual(pipeableSuc, ex.done(2));
+      assert.deepEqual(fluentSuc, ex.done(2));
+    });
+  });
+
   describe("Fluent", () => {
     it("use fluent (toPromiseExit)", async () => {
       const result = await T.fluent(T.pure(1))

@@ -110,11 +110,11 @@ describe("Libcurl", () => {
   it("get 404", async () => {
     const app = express();
 
-    const s = app.listen(4001);
+    const s = app.listen(4006);
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4001/"),
+        H.get("http://127.0.0.1:4006/"),
         T.mapError(
           H.foldHttpError(
             _ => 0,

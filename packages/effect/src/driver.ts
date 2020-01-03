@@ -2,7 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { Either, fold as foldEither } from "fp-ts/lib/Either";
+import { Either, fold as foldEither, isRight } from "fp-ts/lib/Either";
 import { FunctionN, Lazy } from "fp-ts/lib/function";
 import {
   Cause,
@@ -15,6 +15,7 @@ import {
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
 import * as L from "./list";
+import { isSome } from "fp-ts/lib/Option";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -288,6 +289,22 @@ export class DriverImpl<E, A> implements Driver<E, A> {
           case T.EffectTag.Pure:
             current = this.next(current.f0);
             break;
+          case T.EffectTag.PureOption: {
+            if (isSome(current.f0)) {
+              current = this.next(current.f0.value);
+            } else {
+              current = this.handle(raise(current.f1()));
+            }
+            break;
+          }
+          case T.EffectTag.PureEither: {
+            if (isRight(current.f0)) {
+              current = this.next(current.f0.right);
+            } else {
+              current = this.handle(raise(current.f0.left));
+            }
+            break;
+          }
           case T.EffectTag.Raised:
             if (current.f0._tag === "Interrupt") {
               this.interrupted = true;
