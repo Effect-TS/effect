@@ -246,13 +246,13 @@ export class EffectIO<R, E, A> {
     );
   }
 
-  run(cb: (ex: Exit<E, A>) => void, r: OrVoid<R>): void {
+  run(cb: (ex: Exit<E, A>) => void, r: OrVoid<R>): Lazy<void> {
     return run(
       (r
         ? provideAll(r as any)((this as any) as Effect<R, E, A>)
         : ((this as any) as Effect<R, E, A>)) as any,
       cb
-    )();
+    );
   }
 
   fork(): EffectIO<R, never, Fiber<E, A>> {
