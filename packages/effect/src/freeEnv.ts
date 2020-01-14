@@ -2,7 +2,7 @@ import * as T from "./effect";
 import { FunctionN } from "fp-ts/lib/function";
 import { pipe } from "fp-ts/lib/pipeable";
 
-export declare type Patched<A, B> = B extends FunctionN<
+export type Patched<A, B> = B extends FunctionN<
   infer ARG,
   T.Effect<infer R, infer E, infer RET>
 >
