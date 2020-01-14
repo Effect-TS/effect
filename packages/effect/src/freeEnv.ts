@@ -2,13 +2,17 @@ import * as T from "./effect";
 import { FunctionN } from "fp-ts/lib/function";
 import { pipe } from "fp-ts/lib/pipeable";
 
-export type Patched<A, B> = B extends FunctionN<
+export declare type Patched<A, B> = B extends FunctionN<
   infer ARG,
   T.Effect<infer R, infer E, infer RET>
 >
-  ? FunctionN<ARG, T.Effect<R & A, E, RET>>
+  ? FunctionN<ARG, T.Effect<R, E, RET>> extends B
+    ? FunctionN<ARG, T.Effect<R & A, E, RET>>
+    : "polymorphic signature not supported"
   : B extends T.Effect<infer R, infer E, infer RET>
-  ? T.Effect<R & A, E, RET>
+  ? T.Effect<R, E, RET> extends B
+    ? T.Effect<R & A, E, RET>
+    : never
   : never;
 
 export type Derived<A extends ModuleShape<A>> = {
