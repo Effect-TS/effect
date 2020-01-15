@@ -1,6 +1,5 @@
 import { effect as T } from "@matechs/effect";
 import { toError } from "fp-ts/lib/Either";
-import { Lazy } from "fp-ts/lib/function";
 import { pipe } from "fp-ts/lib/pipeable";
 import {
   Connection,
@@ -11,6 +10,7 @@ import {
   ObjectType,
   Repository
 } from "typeorm";
+import { Task } from "fp-ts/lib/Task";
 
 export const configEnv: unique symbol = Symbol();
 export const poolEnv: unique symbol = Symbol();
@@ -119,6 +119,8 @@ export class DbT<Db extends symbol> {
     this.bracketPool = this.bracketPool.bind(this);
     this.withRepository = this.withRepository.bind(this);
     this.withTransaction = this.withTransaction.bind(this);
+    this.withConnection = this.withConnection.bind(this);
+    this.withManager = this.withManager.bind(this);
   }
 
   bracketPool<R, E, A>(
@@ -161,9 +163,7 @@ export class DbT<Db extends symbol> {
 
   withRepository<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(
-    f: (r: Repository<Entity>) => Lazy<Promise<A>>
-  ) => T.Effect<ORM<Db>, Error, A> {
+  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.Effect<ORM<Db>, Error, A> {
     return f =>
       T.accessM(
         ({
@@ -173,6 +173,26 @@ export class DbT<Db extends symbol> {
         }: Manager<Db>) =>
           pipe(f(manager.getRepository(target)), T.fromPromiseMap(toError))
       );
+  }
+
+  withManager<A>(
+    f: (m: EntityManager) => Task<A>
+  ): T.Effect<ORM<Db>, Error, A> {
+    return T.accessM(
+      ({
+        [managerEnv]: {
+          [this.dbEnv]: { manager }
+        }
+      }: Manager<Db>) => pipe(f(manager), T.fromPromiseMap(toError))
+    );
+  }
+
+  withConnection<A>(
+    f: (m: Connection) => Task<A>
+  ): T.Effect<ORM<Db>, Error, A> {
+    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
+      pipe(f(pool), T.fromPromiseMap(toError))
+    );
   }
 
   withTransaction<R, E, A>(
