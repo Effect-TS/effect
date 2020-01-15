@@ -117,9 +117,12 @@ export const mockFactory: (x: typeof createConnection) => DbFactory = x => ({
 export class DbT<Db extends symbol> {
   constructor(private readonly dbEnv: Db) {
     this.bracketPool = this.bracketPool.bind(this);
+    this.withRepositoryTask = this.withRepositoryTask.bind(this);
     this.withRepository = this.withRepository.bind(this);
     this.withTransaction = this.withTransaction.bind(this);
+    this.withConnectionTask = this.withConnectionTask.bind(this);
     this.withConnection = this.withConnection.bind(this);
+    this.withManagerTask = this.withManagerTask.bind(this);
     this.withManager = this.withManager.bind(this);
   }
 
@@ -161,37 +164,61 @@ export class DbT<Db extends symbol> {
     );
   }
 
-  withRepository<Entity>(
+  withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
   ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.Effect<ORM<Db>, Error, A> {
+    return f =>
+      this.withRepository(target)(r => pipe(r, f, T.fromPromiseMap(toError)));
+  }
+
+  withRepository<Entity>(
+    target: ObjectType<Entity> | EntitySchema<Entity> | string
+  ): <R, E, A>(
+    f: (r: Repository<Entity>) => T.Effect<R, E, A>
+  ) => T.Effect<ORM<Db> & R, Error | E, A> {
     return f =>
       T.accessM(
         ({
           [managerEnv]: {
             [this.dbEnv]: { manager }
           }
-        }: Manager<Db>) =>
-          pipe(f(manager.getRepository(target)), T.fromPromiseMap(toError))
+        }: Manager<Db>) => f(manager.getRepository(target))
       );
   }
 
-  withManager<A>(
+  withManagerTask<A>(
     f: (m: EntityManager) => Task<A>
   ): T.Effect<ORM<Db>, Error, A> {
+    return this.withManager(manager =>
+      pipe(manager, f, T.fromPromiseMap(toError))
+    );
+  }
+
+  withManager<R, E, A>(
+    f: (m: EntityManager) => T.Effect<R, E, A>
+  ): T.Effect<ORM<Db> & R, Error | E, A> {
     return T.accessM(
       ({
         [managerEnv]: {
           [this.dbEnv]: { manager }
         }
-      }: Manager<Db>) => pipe(f(manager), T.fromPromiseMap(toError))
+      }: Manager<Db>) => f(manager)
     );
   }
 
-  withConnection<A>(
+  withConnectionTask<A>(
     f: (m: Connection) => Task<A>
   ): T.Effect<ORM<Db>, Error, A> {
+    return this.withConnection(pool =>
+      pipe(pool, f, T.fromPromiseMap(toError))
+    );
+  }
+
+  withConnection<R, E, A>(
+    f: (m: Connection) => T.Effect<R, E, A>
+  ): T.Effect<ORM<Db> & R, Error | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
-      pipe(f(pool), T.fromPromiseMap(toError))
+      f(pool)
     );
   }
 

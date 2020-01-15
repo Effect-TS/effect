@@ -25,10 +25,10 @@ const testDbEnv: unique symbol = Symbol();
 
 const {
   withTransaction,
-  withRepository,
+  withRepositoryTask,
   bracketPool,
-  withConnection,
-  withManager
+  withConnectionTask,
+  withManagerTask
 } = DB.dbT(testDbEnv);
 
 describe("Orm", () => {
@@ -61,7 +61,7 @@ describe("Orm", () => {
 
     const program = bracketPool(
       withTransaction(
-        withRepository(DemoEntity)(r => () =>
+        withRepositoryTask(DemoEntity)(r => () =>
           r.findOne({ where: { id: "test" } })
         )
       )
@@ -106,7 +106,7 @@ describe("Orm", () => {
 
     const program = bracketPool(
       withTransaction(
-        withManager(m => () =>
+        withManagerTask(m => () =>
           m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
         )
       )
@@ -143,7 +143,7 @@ describe("Orm", () => {
       } as Connection);
 
     const program = bracketPool(
-      withConnection(c => () =>
+      withConnectionTask(c => () =>
         c.getRepository(DemoEntity).findOne({ where: { id: "test" } })
       )
     );
