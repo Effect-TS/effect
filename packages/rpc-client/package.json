@@ -1,6 +1,6 @@
 {
-  "name": "@matechs/rpc",
-  "version": "0.4.18",
+  "name": "@matechs/rpc-client",
+  "version": "0.0.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -16,16 +16,12 @@
     "lib"
   ],
   "peerDependencies": {
-    "body-parser": "^1.19.0",
-    "express": "^4.17.1",
     "fp-ts": "^2.2.0",
     "fp-ts-contrib": "^0.1.6"
   },
   "dependencies": {
     "@matechs/effect": "^0.4.18",
-    "@matechs/express": "^0.4.18",
-    "@matechs/http-client": "^0.2.18",
-    "@matechs/rpc-client": "^0.0.0"
+    "@matechs/http-client": "^0.2.18"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

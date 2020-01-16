@@ -1,24 +1,10 @@
 import { freeEnv as F, effect as T } from "@matechs/effect";
-import { Exit } from "@matechs/effect/lib/original/exit";
 import * as E from "@matechs/express";
-import * as H from "@matechs/http-client";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { array } from "fp-ts/lib/Array";
 import { right } from "fp-ts/lib/Either";
-import { FunctionN } from "fp-ts/lib/function";
-import { isSome } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { UnionToIntersection, specURI } from "@matechs/effect/lib/freeEnv";
-
-export const clientConfigEnv: unique symbol = Symbol();
-
-export interface ClientConfig<M> {
-  [clientConfigEnv]: {
-    [k in keyof M]: {
-      baseUrl: string;
-    };
-  };
-}
+import { RPCResponse } from "@matechs/rpc-client";
 
 export const serverConfigEnv: unique symbol = Symbol();
 
@@ -28,65 +14,6 @@ export interface ServerConfig<M> {
       scope: string;
     };
   };
-}
-
-type ClientEntry<M, X> = M extends FunctionN<
-  infer A,
-  T.Effect<infer _B, infer C, infer D>
->
-  ? FunctionN<
-      A,
-      T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
-    >
-  : M extends T.Effect<infer _B, infer C, infer D>
-  ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
-  : never;
-
-export type Client<M extends F.ModuleShape<M>> = {
-  [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>;
-};
-
-export function client<M extends F.ModuleShape<M>>(
-  s: F.ModuleSpec<M>
-): Client<M> {
-  const r = {} as any;
-
-  for (const entry of Reflect.ownKeys(s[specURI])) {
-    const x = s[specURI][entry];
-
-    for (const z of Object.keys(x)) {
-      if (typeof x[z] === "function") {
-        r[z] = (...args: any[]) =>
-          Do(T.effect)
-            .bindL("req", () => T.pure<RPCRequest>({ args }))
-            .bindL("con", () => T.access((c: ClientConfig<M>) => c))
-            .bindL("res", ({ con, req }) =>
-              H.post(`${con[clientConfigEnv][entry].baseUrl}/${z}`, req)
-            )
-            .bindL("ret", ({ res }) =>
-              isSome(res.body)
-                ? T.completed((res.body.value as RPCResponse).value)
-                : T.raiseError(new Error("empty response"))
-            )
-            .return(s => s.ret);
-      } else if (typeof x[z] === "object") {
-        r[z] = Do(T.effect)
-          .bindL("req", () => T.pure<RPCRequest>({ args: [] }))
-          .bindL("con", () => T.access((c: ClientConfig<M>) => c))
-          .bindL("res", ({ con, req }) =>
-            H.post(`${con[clientConfigEnv][entry].baseUrl}/${z}`, req)
-          )
-          .bindL("ret", ({ res }) =>
-            isSome(res.body)
-              ? T.completed((res.body.value as RPCResponse).value)
-              : T.raiseError(new Error("empty response"))
-          )
-          .return(s => s.ret);
-      }
-    }
-  }
-
-  return r;
 }
 
 export type InferR<F> = F extends (
@@ -106,14 +33,6 @@ export type Runtime<M> = UnionToIntersection<
     ? InferR<X>
     : never
 >;
-
-export interface RPCRequest {
-  args: unknown[];
-}
-
-export interface RPCResponse {
-  value: Exit<unknown, unknown>;
-}
 
 export function server<M extends F.ModuleShape<M>, R>(
   s: F.ModuleSpec<M>,

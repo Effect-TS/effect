@@ -1,6 +1,6 @@
 import { effect as T, exit as E } from "@matechs/effect";
 import { Env } from "@matechs/effect/lib/utils/types";
-import * as RPC from "../src";
+import * as RPC from "@matechs/rpc-client";
 import * as H from "@matechs/http-client";
 import * as L from "@matechs/http-client-libcurl";
 import { placeholderJsonM, placeholderJsonEnv } from "./shared";
