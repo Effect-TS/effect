@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - add-chains
+      - "103"
 
 jobs:
   build:
