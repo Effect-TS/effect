@@ -1,6 +1,7 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as E from "@matechs/express";
 import * as RPC from "../src";
+import * as RPCCLI from "@matechs/rpc-client";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -47,7 +48,7 @@ const counterService = F.implement(counterM)({
   }
 });
 
-const { increment, ni } = RPC.client(counterM);
+const { increment, ni } = RPCCLI.client(counterM);
 
 describe("RPC", () => {
   it("should call remote service", async () => {
@@ -79,7 +80,7 @@ describe("RPC", () => {
       T.noEnv,
       T.mergeEnv(L.jsonClient),
       T.mergeEnv({
-        [RPC.clientConfigEnv]: {
+        [RPCCLI.clientConfigEnv]: {
           [counterEnv]: {
             baseUrl: "http://127.0.0.1:9003/counter"
           }
