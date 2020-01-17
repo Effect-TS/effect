@@ -6,7 +6,6 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Action, applyMiddleware, combineReducers, createStore } from "redux";
 import { combineEpics, createEpicMiddleware } from "redux-observable";
 import * as Ep from "../src";
-import { Do } from "fp-ts-contrib/lib/Do";
 
 interface User {
   id: string;
@@ -60,45 +59,40 @@ interface Config {
   };
 }
 
-const fetchUser: Ep.Epic<Config, MyAction, State> = _ => action$ =>
-  Do(S.stream)
-    .bind("action", S.filterRefineWith(isFetchUser)(action$))
-    .bindL("fetched", ({ action: { id } }) =>
+const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
+  pipe(
+    action$,
+    S.filterRefineWith(isFetchUser),
+    S.chain(({ id }) =>
       S.encaseEffect(
         T.accessM(({ config: { prefix } }: Config) =>
           T.condWith(prefix === "prefix")(
-            T.sync(
-              (): MyAction => ({
-                type: "USER_FETCHED",
-                user: {
-                  id,
-                  prefix
-                }
-              })
-            )
+            T.pure<MyAction>({
+              type: "USER_FETCHED",
+              user: {
+                id,
+                prefix
+              }
+            })
           )(
-            T.sync(
-              (): MyAction => ({
-                type: "USER_FETCH_FAILED",
-                error: "wrong prefix"
-              })
-            )
+            T.pure<MyAction>({
+              type: "USER_FETCH_FAILED",
+              error: "wrong prefix"
+            })
           )
         )
       )
     )
-    .return(s => s.fetched);
+  )
+);
 
 describe("Epics", () => {
   jest.setTimeout(5000);
 
   it("should use redux-observable", async () => {
-    const module = pipe(
-      T.noEnv,
-      T.mergeEnv({ config: { prefix: "prefix" } } as Config)
+    const rootEpic = combineEpics(
+      Ep.embed(fetchUser)({ config: { prefix: "prefix" } })
     );
-
-    const rootEpic = combineEpics(Ep.embed(module, fetchUser));
 
     const epicMiddleware = createEpicMiddleware<
       MyAction,
@@ -132,12 +126,9 @@ describe("Epics", () => {
   });
 
   it("should use redux-observable (fail case)", async () => {
-    const module = pipe(
-      T.noEnv,
-      T.mergeEnv({ config: { prefix: "prefix-wrong" } } as Config)
+    const rootEpic = combineEpics(
+      Ep.embed(fetchUser)({ config: { prefix: "prefix-wrong" } })
     );
-
-    const rootEpic = combineEpics(Ep.embed(module, fetchUser));
 
     const epicMiddleware = createEpicMiddleware<
       MyAction,
