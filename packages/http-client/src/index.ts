@@ -32,14 +32,39 @@ export interface Response<Body> {
   status: number;
 }
 
+export const HttpErrorReason = {
+  Request: "HttpErrorRequest",
+  Response: "HttpErrorResponse"
+} as const;
+
+export type HttpErrorReason = typeof HttpErrorReason;
+
 export interface HttpResponseError<ErrorBody> {
-  _tag: HttpErrorReason.Response;
+  _tag: HttpErrorReason["Response"];
   response: Response<ErrorBody>;
 }
 
+export function isHttpResponseError(
+  u: unknown
+): u is HttpResponseError<unknown> {
+  return (
+    typeof u === "object" && u !== null && u["_tag"] === "HttpResponseError"
+  );
+}
+
 export interface HttpRequestError {
-  _tag: HttpErrorReason.Request;
+  _tag: HttpErrorReason["Request"];
   error: Error;
+}
+
+export function isHttpRequestError(u: unknown): u is HttpRequestError {
+  return (
+    typeof u === "object" && u !== null && u["_tag"] === "HttpRequestError"
+  );
+}
+
+export function isHttpError(u: unknown): u is HttpError<unknown> {
+  return isHttpRequestError(u) || isHttpResponseError(u);
 }
 
 export interface HttpDeserializer {
@@ -47,11 +72,6 @@ export interface HttpDeserializer {
     response: <A>(a: string) => A | undefined;
     errorResponse: <E>(error: string) => E | undefined;
   };
-}
-
-export enum HttpErrorReason {
-  Request,
-  Response
 }
 
 export type HttpError<ErrorBody> =
@@ -64,9 +84,9 @@ export function foldHttpError<A, B, ErrorBody>(
 ): (err: HttpError<ErrorBody>) => A | B {
   return err => {
     switch (err._tag) {
-      case HttpErrorReason.Request:
+      case "HttpErrorRequest":
         return onError(err.error);
-      case HttpErrorReason.Response:
+      case "HttpErrorResponse":
         return onResponseError(err.response);
     }
   };
