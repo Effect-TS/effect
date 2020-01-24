@@ -3,6 +3,7 @@ import { effect as T } from "@matechs/effect";
 import * as EX from "express";
 import * as bodyParser from "body-parser";
 import { Server } from "http";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export const expressAppEnv: unique symbol = Symbol();
 
@@ -111,6 +112,29 @@ export function withApp<R, E, A>(
   op: T.Effect<R & HasExpress, E, A>
 ): T.Effect<Express & R, E, A> {
   return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op));
+}
+
+export function bracketWithApp(
+  port: number,
+  hostname?: string
+): <R, E>(
+  f: (s: Server) => T.Effect<R & HasExpress, E, any>
+) => T.Effect<Express & R, E, never> {
+  return f =>
+    withApp(
+      T.bracket(
+        bind(port, hostname),
+        server =>
+          T.sync(() => {
+            server.close();
+          }),
+        x =>
+          pipe(
+            f(x),
+            T.chain(_ => T.never)
+          )
+      )
+    );
 }
 
 export const requestContextEnv: unique symbol = Symbol();

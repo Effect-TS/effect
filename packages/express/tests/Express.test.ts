@@ -10,54 +10,53 @@ import { some } from "fp-ts/lib/Option";
 
 describe("Express", () => {
   it("should use express", async () => {
-    const program = EX.withApp(
-      Do(T.effect)
-        .do(
-          EX.route(
-            "post",
-            "/",
-            EX.accessReqM(r =>
-              T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 }))
-            )
+    const program = Do(T.effect)
+      .do(
+        EX.route(
+          "post",
+          "/",
+          EX.accessReqM(r =>
+            T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 }))
           )
         )
-        .do(
-          EX.route(
-            "post",
-            "/access",
-            EX.accessReq(r =>
-              EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 })
-            )
+      )
+      .do(
+        EX.route(
+          "post",
+          "/access",
+          EX.accessReq(r =>
+            EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 })
           )
         )
-        .do(
-          EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 })))
-        )
-        .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
-        .do(EX.route("post", "/bad3", T.raiseInterrupt))
-        .do(
-          EX.accessApp(app => {
+      )
+      .do(
+        EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 })))
+      )
+      .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
+      .do(EX.route("post", "/bad3", T.raiseInterrupt))
+      .do(
+        EX.accessApp(app => {
+          if (!app) {
+            throw new Error("Aborted app not found");
+          }
+        })
+      )
+      .do(
+        EX.accessAppM(app =>
+          T.trySync(() => {
             if (!app) {
               throw new Error("Aborted app not found");
             }
           })
         )
-        .do(
-          EX.accessAppM(app =>
-            T.trySync(() => {
-              if (!app) {
-                throw new Error("Aborted app not found");
-              }
-            })
-          )
-        )
-        .bind("s", EX.bind(3003, "127.0.0.1"))
-        .return(s => s.s)
-    );
+      )
+      .return(() => {
+        //
+      });
 
-    const module = pipe(T.noEnv, T.mergeEnv(EX.express));
+    const main = EX.bracketWithApp(3003, "127.0.0.1")(_ => program);
 
-    const server = await T.runToPromise(T.provide(module)(program));
+    const close = T.run(T.provideAll(EX.express)(main));
 
     const res = await T.runToPromiseExit(
       pipe(
@@ -112,7 +111,7 @@ describe("Express", () => {
       )
     );
 
-    server.close();
+    close();
 
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res5, done({ res: 1 }));
