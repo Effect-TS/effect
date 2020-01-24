@@ -13,6 +13,14 @@ export interface HasExpress {
   };
 }
 
+export const serverEnv: unique symbol = Symbol();
+
+export interface HasServer {
+  [serverEnv]: {
+    server: Server;
+  };
+}
+
 export type Method = "post" | "get" | "put" | "patch" | "delete";
 
 export const expressEnv: unique symbol = Symbol();
@@ -118,9 +126,9 @@ export function bracketWithApp(
   port: number,
   hostname?: string
 ): <R, E>(
-  f: (s: Server) => T.Effect<R & HasExpress, E, any>
+  op: T.Effect<R & HasExpress & HasServer, E, any>
 ) => T.Effect<Express & R, E, never> {
-  return f =>
+  return op =>
     withApp(
       T.bracket(
         bind(port, hostname),
@@ -128,9 +136,14 @@ export function bracketWithApp(
           T.sync(() => {
             server.close();
           }),
-        x =>
+        server =>
           pipe(
-            f(x),
+            op,
+            T.provideS<HasServer>({
+              [serverEnv]: {
+                server
+              }
+            }),
             T.chain(_ => T.never)
           )
       )

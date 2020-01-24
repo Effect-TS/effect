@@ -54,7 +54,7 @@ describe("Express", () => {
         //
       });
 
-    const main = EX.bracketWithApp(3003, "127.0.0.1")(_ => program);
+    const main = EX.bracketWithApp(3003, "127.0.0.1")(program);
 
     const close = T.run(T.provideAll(EX.express)(main));
 
