@@ -84,6 +84,10 @@ export type ATypeOf<X> = X extends Effect<infer R, infer E, infer A>
   ? A
   : never;
 
+export type ETypeOf<X> = X extends Effect<infer R, infer E, infer A>
+  ? E
+  : never;
+
 export type RTypeOf<X> = X extends Effect<infer R, infer E, infer A>
   ? R
   : never;
@@ -109,12 +113,22 @@ export interface Do3CE<M extends URIS3, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind3<M, R, E, A>
   ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
-  sequenceS: <R extends Record<string, Kind3<M, never, L, any>>>(
+  sequenceS: <R extends Record<string, Kind3<M, never, any, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do3CE<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
-  sequenceSL: <R extends Record<string, Kind3<M, never, L, any>>>(
+  ) => Do3CE<
+    M,
+    S & { [K in keyof R]: ATypeOf<R[K]> },
+    U & EnvOf<R>,
+    L | ETypeOf<R[keyof R]>
+  >;
+  sequenceSL: <R extends Record<string, Kind3<M, never, any, any>>>(
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do3CE<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  ) => Do3CE<
+    M,
+    S & { [K in keyof R]: ATypeOf<R[K]> },
+    U & EnvOf<R>,
+    L | ETypeOf<R[keyof R]>
+  >;
   return: <A>(f: (s: S) => A) => Kind3<M, U, L, A>;
   done: () => Kind3<M, U, L, S>;
 }

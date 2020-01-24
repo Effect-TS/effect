@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - add-chains
-      - "103"
+      - "doSequenceSInfer"
 
 jobs:
   build:
