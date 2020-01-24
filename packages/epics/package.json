@@ -24,8 +24,7 @@
   },
   "dependencies": {
     "@matechs/effect": "^0.4.18",
-    "@matechs/rxjs": "^0.4.18",
-    "@matechs/tracing": "^0.4.18"
+    "@matechs/rxjs": "^0.4.18"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
