@@ -74,7 +74,12 @@ describe("Orm", () => {
 
     const result = await E.runToPromiseExit(E.provideAll(env)(program));
 
-    assert.deepEqual(result, raise(new Error("not implemented")));
+    assert.deepEqual(
+      result,
+      raise(
+        new DB.TaskError(new Error("not implemented"), "withRepositoryTask")
+      )
+    );
   });
 
   it("should use withManager", async () => {
@@ -119,7 +124,10 @@ describe("Orm", () => {
 
     const result = await E.runToPromiseExit(E.provideAll(env)(program));
 
-    assert.deepEqual(result, raise(new Error("not implemented")));
+    assert.deepEqual(
+      result,
+      raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
+    );
   });
 
   it("should use withConnection", async () => {
@@ -155,6 +163,11 @@ describe("Orm", () => {
 
     const result = await E.runToPromiseExit(E.provideAll(env)(program));
 
-    assert.deepEqual(result, raise(new Error("not implemented")));
+    assert.deepEqual(
+      result,
+      raise(
+        new DB.TaskError(new Error("not implemented"), "withConnectionTask")
+      )
+    );
   });
 });

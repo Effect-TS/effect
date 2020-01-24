@@ -128,7 +128,7 @@ export class DbT<Db extends symbol> {
 
   bracketPool<R, E, A>(
     op: T.Effect<ORM<Db> & R, E, A>
-  ): T.Effect<DbConfig<Db> & DbFactory & R, Error | E, A> {
+  ): T.Effect<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
     return T.accessM(
       ({
         [configEnv]: {
@@ -138,8 +138,17 @@ export class DbT<Db extends symbol> {
       }: DbConfig<Db> & DbFactory) =>
         T.effect.chain(readConfig, options =>
           T.bracket(
-            pipe(() => f.createConnection(options), T.fromPromiseMap(toError)),
-            db => pipe(() => db.close(), T.fromPromiseMap(toError)),
+            pipe(
+              () => f.createConnection(options),
+              T.fromPromiseMap(toError),
+              T.mapError(x => new TaskError(x, "bracketPoolOpen"))
+            ),
+            db =>
+              pipe(
+                () => db.close(),
+                T.fromPromiseMap(toError),
+                T.mapError(x => new TaskError(x, "bracketPoolClose"))
+              ),
             db =>
               pipe(
                 op,
@@ -166,16 +175,25 @@ export class DbT<Db extends symbol> {
 
   withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.Effect<ORM<Db>, Error, A> {
+  ): <A>(
+    f: (r: Repository<Entity>) => Task<A>
+  ) => T.Effect<ORM<Db>, TaskError, A> {
     return f =>
-      this.withRepository(target)(r => pipe(r, f, T.fromPromiseMap(toError)));
+      this.withRepository(target)(r =>
+        pipe(
+          r,
+          f,
+          T.fromPromiseMap(toError),
+          T.mapError(x => new TaskError(x, "withRepositoryTask"))
+        )
+      );
   }
 
   withRepository<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
   ): <R, E, A>(
     f: (r: Repository<Entity>) => T.Effect<R, E, A>
-  ) => T.Effect<ORM<Db> & R, Error | E, A> {
+  ) => T.Effect<ORM<Db> & R, E, A> {
     return f =>
       T.accessM(
         ({
@@ -188,15 +206,20 @@ export class DbT<Db extends symbol> {
 
   withManagerTask<A>(
     f: (m: EntityManager) => Task<A>
-  ): T.Effect<ORM<Db>, Error, A> {
+  ): T.Effect<ORM<Db>, TaskError, A> {
     return this.withManager(manager =>
-      pipe(manager, f, T.fromPromiseMap(toError))
+      pipe(
+        manager,
+        f,
+        T.fromPromiseMap(toError),
+        T.mapError(x => new TaskError(x, "withManagerTask"))
+      )
     );
   }
 
   withManager<R, E, A>(
     f: (m: EntityManager) => T.Effect<R, E, A>
-  ): T.Effect<ORM<Db> & R, Error | E, A> {
+  ): T.Effect<ORM<Db> & R, E, A> {
     return T.accessM(
       ({
         [managerEnv]: {
@@ -208,15 +231,20 @@ export class DbT<Db extends symbol> {
 
   withConnectionTask<A>(
     f: (m: Connection) => Task<A>
-  ): T.Effect<ORM<Db>, Error, A> {
+  ): T.Effect<ORM<Db>, TaskError, A> {
     return this.withConnection(pool =>
-      pipe(pool, f, T.fromPromiseMap(toError))
+      pipe(
+        pool,
+        f,
+        T.fromPromiseMap(toError),
+        T.mapError(x => new TaskError(x, "withConnectionTask"))
+      )
     );
   }
 
   withConnection<R, E, A>(
     f: (m: Connection) => T.Effect<R, E, A>
-  ): T.Effect<ORM<Db> & R, Error | E, A> {
+  ): T.Effect<ORM<Db> & R, E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       f(pool)
     );
@@ -224,7 +252,7 @@ export class DbT<Db extends symbol> {
 
   withTransaction<R, E, A>(
     op: T.Effect<Manager<Db> & R, E, A>
-  ): T.Effect<ORM<Db> & R, Error | E, A> {
+  ): T.Effect<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.accessM((r: R) =>
         pipe(
@@ -239,10 +267,19 @@ export class DbT<Db extends symbol> {
                       manager: tx
                     }
                   }
-                })(op)
+                })(
+                  pipe(
+                    op,
+                    T.mapError(x => ({ _tag: "inner" as const, error: x }))
+                  )
+                )
               )
             ),
-          T.fromPromiseMap(toError)
+          T.fromPromiseMap(x =>
+            typeof x === "object" && x !== null && x["_tag"] === "inner"
+              ? ((x["error"] as any) as E)
+              : new TaskError(toError(x), "withTransaction")
+          )
         )
       )
     );
@@ -253,4 +290,29 @@ export type ORM<A extends symbol> = Pool<A> & Manager<A>;
 
 export function dbT<Db extends symbol>(dbEnv: Db): DbT<Db> {
   return new DbT(dbEnv);
+}
+
+export class TaskError implements Error {
+  public _tag = "TaskError" as const;
+
+  public message: string;
+
+  public name = this._tag;
+
+  constructor(
+    public error: Error,
+    public meta:
+      | "withTransaction"
+      | "withConnectionTask"
+      | "withRepositoryTask"
+      | "withManagerTask"
+      | "bracketPoolOpen"
+      | "bracketPoolClose"
+  ) {
+    this.message = error.message;
+  }
+}
+
+export function isTaskError(u: unknown): u is TaskError {
+  return u instanceof TaskError;
 }
