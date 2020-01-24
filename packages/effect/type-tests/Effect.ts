@@ -90,6 +90,24 @@ const doAErr = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } 
   .return(r => r);
 
 //@ts-ignore
+const doSequenceSErrorUnion = Do(M) // $ExpectType Effect<Env2 & Env1, string | number, { x: string; } & { a: never; b: never; }>
+  .sequenceS({
+    a: _.accessM(({}: Env2) => M.throwError("a")),
+    c: _.accessM(({}: Env1) => M.throwError(1)),
+    b: M.throwError("b")
+  })
+  .return(r => r);
+
+//@ts-ignore
+const doSequenceSLErrorUnion = Do(M) // $ExpectType Effect<Env2 & Env1, string | number, { x: string; } & { a: never; b: never; }>
+  .sequenceSL(() => ({
+    a: _.accessM(({}: Env2) => M.throwError("a")),
+    c: _.accessM(({}: Env1) => M.throwError(1)),
+    b: M.throwError("b")
+  }))
+  .return(r => r);
+
+//@ts-ignore
 const doA = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: string; b: number; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
