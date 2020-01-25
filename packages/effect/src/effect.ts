@@ -645,12 +645,12 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
  */
 export function provideS<R>(r: R) {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
-    provideR((r2: R2) => ({ ...r2, ...r }))(eff);
+    provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
 }
 
 export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
-    chain_(rm, r => provideR((r2: R2) => ({ ...r2, ...r }))(eff));
+    chain_(rm, r => provideR((r2: R2) => ({ ...r, ...r2 }))(eff));
 }
 
 /**

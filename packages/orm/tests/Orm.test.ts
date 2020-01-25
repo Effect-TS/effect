@@ -1,4 +1,4 @@
-import { effect as E } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import { raise } from "@matechs/effect/lib/original/exit";
 import { Env } from "@matechs/effect/lib/utils/types";
 import * as assert from "assert";
@@ -14,6 +14,7 @@ import {
   Repository
 } from "typeorm";
 import * as DB from "../src";
+import { pipe } from "fp-ts/lib/pipeable";
 
 @Entity()
 export class DemoEntity {
@@ -69,10 +70,10 @@ describe("Orm", () => {
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, E.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await E.runToPromiseExit(E.provideAll(env)(program));
+    const result = await T.runToPromiseExit(T.provideAll(env)(program));
 
     assert.deepEqual(
       result,
@@ -119,10 +120,10 @@ describe("Orm", () => {
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, E.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await E.runToPromiseExit(E.provideAll(env)(program));
+    const result = await T.runToPromiseExit(T.provideAll(env)(program));
 
     assert.deepEqual(
       result,
@@ -158,10 +159,10 @@ describe("Orm", () => {
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, E.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await E.runToPromiseExit(E.provideAll(env)(program));
+    const result = await T.runToPromiseExit(T.provideAll(env)(program));
 
     assert.deepEqual(
       result,
@@ -169,5 +170,55 @@ describe("Orm", () => {
         new DB.TaskError(new Error("not implemented"), "withConnectionTask")
       )
     );
+  });
+
+  it("should use transaction in higer order", async () => {
+    const uri = Symbol();
+
+    const spec = F.define({
+      [uri]: {
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
+    });
+
+    const {
+      [uri]: { demo }
+    } = F.access(spec);
+
+    const provider = F.implement(spec)({
+      [uri]: {
+        demo: () => withManagerTask(r => () => r.query(""))
+      }
+    });
+
+    const program = pipe(withTransaction(demo()), provider, bracketPool);
+
+    const mockFactory: typeof createConnection = () =>
+      Promise.resolve({
+        close(): Promise<void> {
+          return Promise.resolve();
+        },
+        transaction<T>(
+          runInTransaction: (entityManager: EntityManager) => Promise<T>
+        ): Promise<T> {
+          return runInTransaction({
+            query(
+              _query: string,
+              _parameters?: any[] | undefined
+            ): Promise<any> {
+              return Promise.resolve("ok");
+            }
+          } as EntityManager);
+        }
+      } as Connection);
+
+    const env: Env<typeof program> = {
+      ...DB.mockFactory(mockFactory),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+    };
+
+    const res = await T.runToPromise(T.provideAll(env)(program));
+
+    assert.deepEqual(res, "ok");
   });
 });
