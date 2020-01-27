@@ -2,7 +2,7 @@ import { effect as T } from "@matechs/effect";
 import { isDone } from "@matechs/effect/lib/exit";
 import { Cause } from "@matechs/effect/lib/original/exit";
 import { logger } from "@matechs/logger";
-import { DbT, ORM, TaskError } from "@matechs/orm";
+import { DbT, ORM, TaskError, DbTx } from "@matechs/orm";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as A from "fp-ts/lib/Array";
 import * as NA from "fp-ts/lib/NonEmptyArray";
@@ -185,14 +185,14 @@ export class AggregateRoot<
     eventFn: (
       of: Of<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>
     ) => Extract<A, Record<Tag, ElemType<Keys>>>
-  ): T.Effect<ORM<Db>, TaskError, EventLog> {
-    return persistEvent(this.aggregate.db)(this.aggregate.S)(
-      eventFn(this.aggregate.S.of as any) as any,
-      {
-        aggregate: this.aggregate.aggregate,
-        root: this.root
-      }
-    );
+  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, EventLog> {
+    return persistEvent(
+      this.aggregate.db,
+      this.aggregate.dbS
+    )(this.aggregate.S)(eventFn(this.aggregate.S.of as any) as any, {
+      aggregate: this.aggregate.aggregate,
+      root: this.root
+    });
   }
 }
 

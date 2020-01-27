@@ -114,6 +114,16 @@ export const mockFactory: (x: typeof createConnection) => DbFactory = x => ({
   }
 });
 
+export const dbTxURI: unique symbol = Symbol();
+
+export interface DbTx<A extends symbol> {
+  [dbTxURI]: {
+    [k in A]: {
+      tx: {};
+    };
+  };
+}
+
 export class DbT<Db extends symbol> {
   constructor(private readonly dbEnv: Db) {
     this.bracketPool = this.bracketPool.bind(this);
@@ -251,7 +261,7 @@ export class DbT<Db extends symbol> {
   }
 
   withTransaction<R, E, A>(
-    op: T.Effect<Manager<Db> & R, E, A>
+    op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
   ): T.Effect<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.accessM((r: R) =>
@@ -265,6 +275,12 @@ export class DbT<Db extends symbol> {
                     ...r[managerEnv],
                     [this.dbEnv]: {
                       manager: tx
+                    }
+                  },
+                  [dbTxURI]: {
+                    ...r[dbTxURI],
+                    [this.dbEnv]: {
+                      tx: {}
                     }
                   }
                 })(

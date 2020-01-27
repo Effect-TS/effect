@@ -1,5 +1,5 @@
 import { effect as T } from "@matechs/effect";
-import { DbT, ORM, TaskError } from "@matechs/orm";
+import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as t from "io-ts";
@@ -21,7 +21,7 @@ export interface AggregateRoot {
 export const aggregateRootId = ({ aggregate, root }: AggregateRoot) =>
   `${aggregate}-${root}`;
 
-export function persistEvent<Db extends symbol>(db: DbT<Db>) {
+export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
   return <
     E,
     A,
@@ -33,11 +33,11 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>) {
   ) => <B extends Record<Tag, string> & A>(
     event: B,
     aggregateRoot: AggregateRoot
-  ): T.Effect<ORM<Db>, TaskError, EventLog> =>
+  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, EventLog> =>
     Do(T.effect)
       .bindL("date", () => T.sync(() => new Date()))
       .bindL("id", () => T.sync(() => uuid.v4()))
-      .do(sequenceLock(db)(aggregateRoot))
+      .do(sequenceLock(db, dbS)(aggregateRoot))
       .bind("seq", currentSequence(db)(aggregateRoot))
       .bindL("saved", ({ id, date, seq }) =>
         db.withRepositoryTask(EventLog)(r => () =>
@@ -59,16 +59,28 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>) {
       .return(s => s.saved);
 }
 
-export const sequenceLock = <Db extends symbol>(db: DbT<Db>) => (
+export const sequenceLock = <Db extends symbol>(db: DbT<Db>, dbS: Db) => (
   aggregateRoot: AggregateRoot
-) =>
-  db.withManagerTask(m => () =>
-    m.query(
-      `SELECT pg_advisory_xact_lock(hashtext('${aggregateRootId(
-        aggregateRoot
-      )}'));`
+) => {
+  const id = aggregateRootId(aggregateRoot);
+
+  return pipe(
+    T.access(({ [dbTxURI]: { [dbS]: ctx } }: DbTx<Db>) => ctx),
+    T.chain(ctx =>
+      ctx[id]
+        ? T.unit
+        : db.withManagerTask(m => () =>
+            m.query(`SELECT pg_advisory_xact_lock(hashtext('${id}'));`)
+          )
+    ),
+    T.chain(_ => T.access(({ [dbTxURI]: { [dbS]: ctx } }: DbTx<Db>) => ctx)),
+    T.chain(ctx =>
+      T.sync(() => {
+        ctx[id] = true;
+      })
     )
   );
+};
 
 export const saveSequence = <Db extends symbol>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
