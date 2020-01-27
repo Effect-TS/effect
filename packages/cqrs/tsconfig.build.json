@@ -7,6 +7,6 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false
   },
-  "exclude": ["tests", "node_modules"],
+  "exclude": ["tests", "node_modules", "demo"],
   "include": ["src/**/*"]
 }
