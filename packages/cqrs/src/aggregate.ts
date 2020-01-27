@@ -2,8 +2,7 @@ import { effect as T } from "@matechs/effect";
 import { isDone } from "@matechs/effect/lib/exit";
 import { Cause } from "@matechs/effect/lib/original/exit";
 import { logger } from "@matechs/logger";
-import { DbT, ORM, TaskError, DbTx } from "@matechs/orm";
-import { Do } from "fp-ts-contrib/lib/Do";
+import { DbT, DbTx, ORM, TaskError } from "@matechs/orm";
 import * as A from "fp-ts/lib/Array";
 import * as NA from "fp-ts/lib/NonEmptyArray";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
@@ -45,22 +44,27 @@ export class Aggregate<
     return new AggregateRoot(this, root, this.eventTypes);
   }
 
-  logCause = <EC>(cause: Cause<EC | TaskError>) =>
+  private readonly logCause = <EC>(cause: Cause<EC | TaskError>) =>
     pipe(
       readID,
       T.chain(id => logger.error(`[readSide ${id}]: ${JSON.stringify(cause)}`))
     );
 
-  readAll<R, ER, R2, ER2 = never>(
+  private readSide<Keys2 extends NonEmptyArray<A[Tag]>, R, ER, R2, ER2 = never>(
+    fetchEvents: T.Effect<
+      ORM<Db> & ReadSideConfig,
+      TaskError,
+      { id: string; event: A }[]
+    >,
     op: (
-      matcher: ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>
+      matcher: ADT<Extract<A, Record<Tag, ElemType<Keys2>>>, Tag>
     ) => (
-      event: Extract<A, Record<Tag, ElemType<Keys>>>
+      event: Extract<A, Record<Tag, ElemType<Keys2>>>
     ) => T.Effect<R, ER, void>,
+    eventTypes: Keys2,
     onError: (
-      cause: Cause<TaskError | ER>
-    ) => T.Effect<R2 & logger.Logger & ReadSideConfig, ER2, void> = c =>
-      this.logCause(c)
+      cause: Cause<ER | TaskError>
+    ) => T.Effect<R2 & logger.Logger & ReadSideConfig, ER2, void>
   ) {
     return pipe(
       createIndex(this.db),
@@ -68,18 +72,16 @@ export class Aggregate<
         always(
           pipe(
             this.db.withTransaction(
-              Do(T.effect)
-                .bindL("events", () =>
-                  fetchAggregateSlice(this.db)(this.S)(this.aggregate)
-                )
-                .bindL("processed", ({ events }) =>
+              pipe(
+                fetchEvents,
+                T.chainTap(events =>
                   A.array.traverse(T.effect)(events, event =>
-                    this.S.isAnyOf(this.eventTypes)(event.event)
-                      ? op(this.S.select(this.eventTypes))(event.event)
+                    this.S.isAnyOf(eventTypes)(event.event)
+                      ? op(this.S.select(eventTypes))(event.event)
                       : T.unit
                   )
-                )
-                .doL(({ events }) =>
+                ),
+                T.chainTap(events =>
                   A.isNonEmpty(events)
                     ? pipe(
                         events,
@@ -88,7 +90,7 @@ export class Aggregate<
                       )
                     : T.unit
                 )
-                .done()
+              )
             ),
             T.result,
             T.chainTap(exit =>
@@ -116,46 +118,31 @@ export class Aggregate<
       ) => T.Effect<R2 & logger.Logger & ReadSideConfig, ER2, void> = c =>
         this.logCause(c)
     ) =>
-      pipe(
-        createIndex(this.db),
-        T.chain(_ =>
-          always(
-            pipe(
-              this.db.withTransaction(
-                Do(T.effect)
-                  .bindL("events", () =>
-                    fetchSlice(this.db)(this.S)(eventTypes)(this.aggregate)
-                  )
-                  .bindL("processed", ({ events }) =>
-                    A.array.traverse(T.effect)(events, event =>
-                      this.S.isAnyOf(eventTypes)(event.event)
-                        ? op(this.S.select(eventTypes))(event.event)
-                        : T.unit
-                    )
-                  )
-                  .doL(({ events }) =>
-                    A.isNonEmpty(events)
-                      ? pipe(
-                          events,
-                          NA.map(x => x.id),
-                          saveOffsets(this.db)
-                        )
-                      : T.unit
-                  )
-                  .done()
-              ),
-              T.result,
-              T.chainTap(exit =>
-                pipe(
-                  isDone(exit) ? T.unit : onError(exit),
-                  T.chain(_ => readDelay),
-                  T.chain(delay => T.delay(T.unit, delay))
-                )
-              )
-            )
-          )
-        )
+      this.readSide(
+        fetchSlice(this.db)(this.S)(eventTypes)(this.aggregate),
+        op,
+        eventTypes,
+        onError
       );
+  }
+
+  readAll<R, ER, R2, ER2 = never>(
+    op: (
+      matcher: ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>
+    ) => (
+      event: Extract<A, Record<Tag, ElemType<Keys>>>
+    ) => T.Effect<R, ER, void>,
+    onError: (
+      cause: Cause<TaskError | ER>
+    ) => T.Effect<R2 & logger.Logger & ReadSideConfig, ER2, void> = c =>
+      this.logCause(c)
+  ) {
+    return this.readSide(
+      fetchAggregateSlice(this.db)(this.S)(this.aggregate),
+      op,
+      this.eventTypes,
+      onError
+    );
   }
 }
 
