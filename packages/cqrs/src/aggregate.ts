@@ -12,9 +12,6 @@ import * as t from "io-ts";
 import { ADT } from "morphic-ts/lib/adt";
 import { Of } from "morphic-ts/lib/adt/ctors";
 import { ElemType } from "morphic-ts/lib/adt/utils";
-import { SelectInterpURIs } from "morphic-ts/lib/usage/InterpreterResult";
-import { MorphADT } from "morphic-ts/lib/usage/materializer";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
 import { always } from "./always";
 import { readDelay, readID, ReadSideConfig } from "./config";
 import { createIndex } from "./createIndex";
@@ -29,15 +26,13 @@ export class Aggregate<
   E,
   A,
   Tag extends keyof A & string,
-  ProgURI extends ProgramURI,
-  InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>,
   Keys extends NonEmptyArray<A[Tag]>,
   Db extends symbol
 > {
   constructor(
     public aggregate: string,
     public eventTypes: Keys,
-    public S: MorphADT<E, A, Tag, ProgURI, InterpURI>,
+    public S: ADT<A, Tag> & { type: t.Type<A, E> },
     public dbS: Db,
     public db: DbT<Db>
   ) {
@@ -46,8 +41,8 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this);
   }
 
-  root(root: string): AggregateRoot<E, A, Tag, ProgURI, InterpURI, Keys, Db> {
-    return new AggregateRoot(this, root);
+  root(root: string): AggregateRoot<E, A, Tag, Keys, Db> {
+    return new AggregateRoot(this, root, this.eventTypes);
   }
 
   logCause = <EC>(cause: Cause<EC | TaskError>) =>
@@ -168,15 +163,24 @@ export class AggregateRoot<
   E,
   A,
   Tag extends keyof A & string,
-  ProgURI extends ProgramURI,
-  InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>,
   Keys extends NonEmptyArray<A[Tag]>,
   Db extends symbol
 > {
+  private readonly narrowedS: ADT<
+    Extract<A, Record<Tag, ElemType<Keys>>>,
+    Tag
+  > & {
+    type: t.Encoder<A, E>;
+  };
   constructor(
-    public aggregate: Aggregate<E, A, Tag, ProgURI, InterpURI, Keys, Db>,
-    public root: string
+    public aggregate: Aggregate<E, A, Tag, Keys, Db>,
+    public root: string,
+    private readonly keys: Keys
   ) {
+    this.narrowedS = {
+      ...this.aggregate.S.select(this.keys),
+      type: this.aggregate.S.type.asEncoder()
+    };
     this.persistEvent = this.persistEvent.bind(this);
   }
 
@@ -187,28 +191,26 @@ export class AggregateRoot<
       | Extract<A, Record<Tag, ElemType<Keys>>>
       | Extract<A, Record<Tag, ElemType<Keys>>>[]
   ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, void> {
-    const r = eventFn(this.aggregate.S.of as any);
+    const r = eventFn(this.narrowedS.of);
 
-    return persistEvent(
-      this.aggregate.db,
-      this.aggregate.dbS
-    )(this.aggregate.S)(Array.isArray(r) ? r : [r], {
-      aggregate: this.aggregate.aggregate,
-      root: this.root
-    });
+    return persistEvent(this.aggregate.db, this.aggregate.dbS)(this.narrowedS)(
+      Array.isArray(r) ? r : [r],
+      {
+        aggregate: this.aggregate.aggregate,
+        root: this.root
+      }
+    );
   }
 }
 
 export const aggregate = <Db extends symbol>(db: DbT<Db>, dbS: Db) => <
   E,
   A,
-  Tag extends keyof A & string,
-  ProgURI extends ProgramURI,
-  InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>
+  Tag extends keyof A & string
 >(
-  S: MorphADT<E, A, Tag, ProgURI, InterpURI>
+  S: ADT<A, Tag> & { type: t.Type<A, E> }
 ) => <Keys extends NonEmptyArray<A[Tag]>>(
   aggregate: string,
   eventTypes: Keys
-): Aggregate<E, A, Tag, ProgURI, InterpURI, Keys, Db> =>
+): Aggregate<E, A, Tag, Keys, Db> =>
   new Aggregate(aggregate, eventTypes, S, dbS, db);

@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - add-chains
-      - "doSequenceSInfer"
+      - "reworkmorph"
 
 jobs:
   build:
