@@ -25,9 +25,7 @@
     "monocle-ts": "^2.0.1",
     "morphic-ts": "^0.7.0-RC10",
     "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.2.20"
-  },
-  "dependencies": {
+    "typeorm": "^0.2.20",
     "@matechs/effect": "^0.4.20",
     "@matechs/logger": "^0.0.12",
     "@matechs/orm": "^0.4.28"
