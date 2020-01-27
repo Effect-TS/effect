@@ -20,7 +20,10 @@ export class EventLog {
   @Column("bigint")
   sequence: string;
 
-  @Column("text")
+  @Column({
+    type: "text",
+    name: "sequence_id"
+  })
   sequenceId: string;
 
   @Column("text")
@@ -29,7 +32,10 @@ export class EventLog {
   @Column("text")
   root: string;
 
-  @Column("timestamp")
+  @Column({
+    type: "timestamp",
+    name: "created_at"
+  })
   @Type(() => Date)
   createdAt: Date;
 

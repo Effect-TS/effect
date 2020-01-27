@@ -85,13 +85,8 @@ export const sequenceLock = <Db extends symbol>(db: DbT<Db>, dbS: Db) => (
 export const saveSequence = <Db extends symbol>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
 ) => (next: BigInt) =>
-  db.withManagerTask(m => () => {
-    console.log(
-      `INSERT INTO event_log_idx (id, current) VALUES('${aggregateRootId(
-        aggregateRoot
-      )}', '${next.toString()}')`
-    );
-    return next === BigInt(0)
+  db.withManagerTask(m => () =>
+    next === BigInt(0)
       ? m.query(
           `INSERT INTO event_log_idx (id, current) VALUES('${aggregateRootId(
             aggregateRoot
@@ -101,8 +96,8 @@ export const saveSequence = <Db extends symbol>(db: DbT<Db>) => (
           `UPDATE event_log_idx SET current = '${next.toString()}' WHERE id = '${aggregateRootId(
             aggregateRoot
           )}'`
-        );
-  });
+        )
+  );
 
 export const currentSequence = <Db extends symbol>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
