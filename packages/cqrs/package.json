@@ -1,0 +1,43 @@
+{
+  "name": "@matechs/cqrs",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": false,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "scripts": {
+    "build": "rimraf lib && tsc --build tsconfig.build.json",
+    "lint": "tslint --project ."
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "peerDependencies": {
+    "class-transformer": "^0.2.3",
+    "fast-equals": "^2.0.0",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
+    "io-ts": "^2.0.6",
+    "io-ts-types": "^0.5.5",
+    "monocle-ts": "^2.0.1",
+    "morphic-ts": "^0.7.0-RC10",
+    "reflect-metadata": "^0.1.13",
+    "typeorm": "^0.2.20"
+  },
+  "dependencies": {
+    "@matechs/effect": "^0.4.20",
+    "@matechs/logger": "^0.0.12",
+    "@matechs/orm": "^0.4.28"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "class-transformer": "^0.2.3",
+    "fast-check": "^1.21.0",
+    "io-ts": "^2.0.6",
+    "morphic-ts": "^0.7.0-RC10",
+    "uuid": "^3.4.0"
+  }
+}
