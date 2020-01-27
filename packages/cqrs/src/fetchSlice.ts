@@ -4,10 +4,8 @@ import { sequenceS } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as t from "io-ts";
-import { SelectInterpURIs } from "morphic-ts/lib/usage/InterpreterResult";
-import { MorphADT } from "morphic-ts/lib/usage/materializer";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
 import { readID, readLimit } from "./config";
+import { ADT } from "morphic-ts/lib/adt";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -15,11 +13,9 @@ import { readID, readLimit } from "./config";
 export const fetchSlice = <Db extends symbol>(db: DbT<Db>) => <
   E,
   A,
-  Tag extends keyof A & string,
-  ProgURI extends ProgramURI,
-  InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>
+  Tag extends keyof A & string
 >(
-  S: MorphADT<E, A, Tag, ProgURI, InterpURI>
+  S: ADT<A, Tag> & { type: t.Type<A, E> }
 ) => (events: A[Tag][]) => (aggregate: string) =>
   pipe(
     readID,
@@ -58,11 +54,9 @@ export const fetchSlice = <Db extends symbol>(db: DbT<Db>) => <
 export const fetchAggregateSlice = <Db extends symbol>(db: DbT<Db>) => <
   E,
   A,
-  Tag extends keyof A & string,
-  ProgURI extends ProgramURI,
-  InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>
+  Tag extends keyof A & string
 >(
-  S: MorphADT<E, A, Tag, ProgURI, InterpURI>
+  S: ADT<A, Tag> & { type: t.Type<A, E> }
 ) => (aggregate: string) =>
   pipe(
     readID,

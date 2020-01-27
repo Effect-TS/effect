@@ -3,13 +3,10 @@ import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as t from "io-ts";
-import {} from "morphic-ts/lib/batteries/interpreters-BAST";
-import { SelectInterpURIs } from "morphic-ts/lib/usage/InterpreterResult";
-import { MorphADT } from "morphic-ts/lib/usage/materializer";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
 import uuid from "uuid";
 import { EventLog } from "./eventLog";
 import { array } from "fp-ts/lib/Array";
+import { ADT } from "morphic-ts/lib/adt";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -23,14 +20,8 @@ export const aggregateRootId = ({ aggregate, root }: AggregateRoot) =>
   `${aggregate}-${root}`;
 
 export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
-  return <
-    E,
-    A,
-    Tag extends keyof A & string,
-    ProgURI extends ProgramURI,
-    InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>
-  >(
-    S: MorphADT<E, A, Tag, ProgURI, InterpURI>
+  return <E, A extends { [t in Tag]: A[Tag] }, Tag extends keyof A & string>(
+    S: ADT<A, Tag> & { type: t.Encoder<A, E> }
   ) => (
     events: A[],
     aggregateRoot: AggregateRoot
@@ -46,7 +37,7 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
             r.save({
               id: id,
               createdAt: date,
-              kind: event[S.tag] as any,
+              kind: event[S.tag],
               meta: {},
               offsets: {},
               event: S.type.encode(event),
