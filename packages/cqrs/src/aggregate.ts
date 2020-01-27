@@ -15,7 +15,6 @@ import { ElemType } from "morphic-ts/lib/adt/utils";
 import { SelectInterpURIs } from "morphic-ts/lib/usage/InterpreterResult";
 import { MorphADT } from "morphic-ts/lib/usage/materializer";
 import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { EventLog } from ".";
 import { always } from "./always";
 import { readDelay, readID, ReadSideConfig } from "./config";
 import { createIndex } from "./createIndex";
@@ -184,12 +183,16 @@ export class AggregateRoot<
   persistEvent(
     eventFn: (
       of: Of<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>
-    ) => Extract<A, Record<Tag, ElemType<Keys>>>
-  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, EventLog> {
+    ) =>
+      | Extract<A, Record<Tag, ElemType<Keys>>>
+      | Extract<A, Record<Tag, ElemType<Keys>>>[]
+  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, void> {
+    const r = eventFn(this.aggregate.S.of as any);
+
     return persistEvent(
       this.aggregate.db,
       this.aggregate.dbS
-    )(this.aggregate.S)(eventFn(this.aggregate.S.of as any) as any, {
+    )(this.aggregate.S)(Array.isArray(r) ? r : [r], {
       aggregate: this.aggregate.aggregate,
       root: this.root
     });

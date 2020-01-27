@@ -9,6 +9,7 @@ import { MorphADT } from "morphic-ts/lib/usage/materializer";
 import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
 import uuid from "uuid";
 import { EventLog } from "./eventLog";
+import { array } from "fp-ts/lib/Array";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -30,33 +31,39 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
     InterpURI extends SelectInterpURIs<E, A, { type: t.Type<A, E> }>
   >(
     S: MorphADT<E, A, Tag, ProgURI, InterpURI>
-  ) => <B extends Record<Tag, string> & A>(
-    event: B,
+  ) => (
+    events: A[],
     aggregateRoot: AggregateRoot
-  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, EventLog> =>
+  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, void> =>
     Do(T.effect)
       .bindL("date", () => T.sync(() => new Date()))
       .bindL("id", () => T.sync(() => uuid.v4()))
       .do(sequenceLock(db, dbS)(aggregateRoot))
       .bind("seq", currentSequence(db)(aggregateRoot))
       .bindL("saved", ({ id, date, seq }) =>
-        db.withRepositoryTask(EventLog)(r => () =>
-          r.save({
-            id: id,
-            createdAt: date,
-            kind: event[S.tag],
-            meta: {},
-            offsets: {},
-            event: S.type.encode(event),
-            sequenceId: aggregateRootId(aggregateRoot),
-            sequence: (seq + BigInt(1)).toString(),
-            aggregate: aggregateRoot.aggregate,
-            root: aggregateRoot.root
-          })
+        array.traverseWithIndex(T.effect)(events, (idx, event) =>
+          db.withRepositoryTask(EventLog)(r => () =>
+            r.save({
+              id: id,
+              createdAt: date,
+              kind: event[S.tag] as any,
+              meta: {},
+              offsets: {},
+              event: S.type.encode(event),
+              sequenceId: aggregateRootId(aggregateRoot),
+              sequence: (seq + BigInt(1 + idx)).toString(),
+              aggregate: aggregateRoot.aggregate,
+              root: aggregateRoot.root
+            })
+          )
         )
       )
-      .doL(({ seq }) => saveSequence(db)(aggregateRoot)(seq + BigInt(1)))
-      .return(s => s.saved);
+      .doL(({ seq }) =>
+        saveSequence(db)(aggregateRoot)(seq + BigInt(events.length))
+      )
+      .return(() => {
+        //
+      });
 }
 
 export const sequenceLock = <Db extends symbol>(db: DbT<Db>, dbS: Db) => (
