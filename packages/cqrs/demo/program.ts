@@ -32,8 +32,8 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll({
   delay: 3000, // how long to wait after each poll
   id: "read-todo-added", // unique id for this read
   limit: 100 // how many events to fetch in each pool
-})(adt =>
-  adt.match({
+})(({ match }) =>
+  match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
   })
@@ -50,8 +50,8 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly([
   delay: 3000, // how long to wait after each poll
   id: "read-todo-removed", // unique id for this read
   limit: 100 // how many events to fetch in each pool
-})(adt =>
-  adt.match({
+})(({ match }) =>
+  match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
 );
@@ -64,8 +64,8 @@ const readAllDomainTodoAdded = domain.readAll({
   delay: 3000, // how long to wait after each poll
   id: "read-todo-added-all-domain", // unique id for this read
   limit: 100 // how many events to fetch in each pool
-})(adt =>
-  adt.match({
+})(({ match }) =>
+  match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
   })
@@ -81,8 +81,8 @@ const readAllDomainOnlyTodoRemoved = todosAggregate.readOnly(["TodoRemoved"])({
   delay: 3000, // how long to wait after each poll
   id: "read-todo-removed-all-domain", // unique id for this read
   limit: 100 // how many events to fetch in each pool
-})(adt =>
-  adt.match({
+})(({ match }) =>
+  match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
 );
