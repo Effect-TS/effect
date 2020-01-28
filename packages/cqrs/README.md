@@ -80,7 +80,9 @@ export const dbConfigLive: DbConfig<typeof dbURI> = {
 ```
 
 ### Usage in your transactions
+
 When you persist an even a lock is taken against the aggregate root to guarantee that each event gets constantly increasing sequence number
+
 ```ts
 const program = withTransaction(
   pipe(
@@ -97,6 +99,7 @@ const program = withTransaction(
 ```
 
 ### Define your read projectors
+
 ```ts
 import { logger, console } from "@matechs/logger";
 import {
@@ -178,6 +181,7 @@ const readAllDomainOnlyTodoRemoved = domain.readOnly(
 ```
 
 ### Wire up in your main flow
+
 Note that you may run any component in its own entry, compose as you see fit for scalability.
 
 ```ts
@@ -189,9 +193,11 @@ export const main: T.Effect<
   void
 > = bracketPool(
   Do(T.effect)
-    .do(domain.init()) // creates tables for event log and index
+    .do(domain.init()) // creates tables for event_log and event_log_idx
     .do(program) // runs the program
     .bindL("readInAggregateTodosOnlyTodoAdded", () =>
+      // NB: when runs each read creates (if not exists) a specialized index for query
+      //     and offset tracking
       // fork fiber for readInAggregateTodosOnlyTodoAdded
       T.fork(readInAggregateTodosOnlyTodoAdded)
     )
@@ -238,8 +244,10 @@ T.run(liveMain, exit => {
 ```
 
 ### Example
+
 Check the [demo](https://github.com/mikearnaldi/matechs-effect/tree/master/packages/cqrs/demo) folder.
 
 ### Future Development
+
 Evaluate if to include a utility to do event sourcing by specifying the event handlers at the aggregate level to be executed in the same transaction that persist the event.
 Note that this patter is already "supported" by folding the output of persistEvent with the aggregate exposed adt.
