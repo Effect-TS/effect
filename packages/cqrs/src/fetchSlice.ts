@@ -31,7 +31,7 @@ export class SliceFetcher<
     const nS = S.select(eventTypes);
 
     this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
-      nS.keys[a[S.tag]] ? true : false;
+      typeof nS.keys[a[S.tag]] !== "undefined" ? true : false;
   }
 
   fetchSlice(aggregate: string) {
@@ -100,7 +100,7 @@ export class AggregateFetcher<
     const nS = S.select(eventTypes);
 
     this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
-      nS.keys[a[S.tag]] ? true : false;
+      typeof nS.keys[a[S.tag]] !== "undefined" ? true : false;
   }
 
   fetchSlice(aggregate: string) {
@@ -165,7 +165,7 @@ export class DomainFetcher<
     const nS = S.select(eventTypes);
 
     this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
-      nS.keys[a[S.tag]] ? true : false;
+      typeof nS.keys[a[S.tag]] !== "undefined" ? true : false;
   }
 
   fetchSlice() {
@@ -247,7 +247,7 @@ export class DomainFetcherAll<
           sequenceS(T.effect)({
             id: T.pure(id),
             event: T.orAbort(
-              this.S.keys[kind]
+              typeof this.S.keys[kind] !== "undefined"
                 ? T.fromEither(this.S.type.decode(event))
                 : T.raiseError<Error | t.Errors, A>(new Error("unknown event"))
             )
