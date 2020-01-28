@@ -37,7 +37,7 @@ const readAll = pipe(
   ),
   M.withConfig({
     readDelay: T.pure(3000), // how long to wait after each poll
-    readID: T.pure("read-todo-removed"), // unique id for this read
+    readID: T.pure("read-todo-added"), // unique id for this read
     readLimit: T.pure(100) // how many events to fetch in each pool
   })
 );
