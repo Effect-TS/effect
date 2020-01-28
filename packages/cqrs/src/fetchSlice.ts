@@ -8,9 +8,27 @@ import { accessConfig } from "./config";
 import { TypeADT } from "./domain";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { ElemType } from "morphic-ts/lib/adt/utils";
+import { ADT } from "morphic-ts/lib/adt";
 
 // experimental alpha
 /* istanbul ignore file */
+
+export function narrow<
+  E,
+  A,
+  Tag extends keyof A & string,
+  Keys extends NonEmptyArray<A[Tag]>
+>(
+  S: TypeADT<E, A, Tag>,
+  keys: Keys
+): ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag> & {
+  type: t.Decoder<unknown, Extract<A, Record<Tag, ElemType<Keys>>>>;
+} {
+  return {
+    ...S.select(keys),
+    type: S.type.asDecoder() as any // db query ensures types are in bound
+  };
+}
 
 export const fetchSlice = <Db extends symbol>(db: DbT<Db>) => <
   E,
@@ -18,7 +36,7 @@ export const fetchSlice = <Db extends symbol>(db: DbT<Db>) => <
   Tag extends keyof A & string
 >(
   S: TypeADT<E, A, Tag>
-) => <Keys extends NonEmptyArray<A[Tag]>>(events: Keys) => (
+) => <Keys extends NonEmptyArray<A[Tag]>>(eventTypes: Keys) => (
   aggregate: string
 ) =>
   pipe(
@@ -27,7 +45,7 @@ export const fetchSlice = <Db extends symbol>(db: DbT<Db>) => <
       pipe(
         pipe(
           T.pure(
-            `SELECT id, event FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${events
+            `SELECT id, event FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${eventTypes
               .map(e => `'${e}'`)
               .join(
                 ","
@@ -45,13 +63,7 @@ export const fetchSlice = <Db extends symbol>(db: DbT<Db>) => <
         sequenceS(T.effect)({
           id: T.pure(id),
           event: T.orAbort(
-            T.fromEither(
-              ((S.type as any) as t.Type<
-                Extract<A, Record<Tag, ElemType<Keys>>>,
-                E,
-                unknown
-              >).decode(event)
-            )
+            T.fromEither(narrow(S, eventTypes).type.decode(event))
           )
         })
       )
@@ -64,7 +76,9 @@ export const fetchAggregateSlice = <Db extends symbol>(db: DbT<Db>) => <
   Tag extends keyof A & string
 >(
   S: TypeADT<E, A, Tag>
-) => <Keys extends NonEmptyArray<A[Tag]>>(_: Keys) => (aggregate: string) =>
+) => <Keys extends NonEmptyArray<A[Tag]>>(eventTypes: Keys) => (
+  aggregate: string
+) =>
   pipe(
     accessConfig,
     T.chain(({ id, limit }) =>
@@ -83,13 +97,7 @@ export const fetchAggregateSlice = <Db extends symbol>(db: DbT<Db>) => <
         sequenceS(T.effect)({
           id: T.pure(id),
           event: T.orAbort(
-            T.fromEither(
-              ((S.type as any) as t.Type<
-                Extract<A, Record<Tag, ElemType<Keys>>>,
-                E,
-                unknown
-              >).decode(event)
-            )
+            T.fromEither(narrow(S, eventTypes).type.decode(event))
           )
         })
       )
@@ -132,13 +140,13 @@ export const fetchDomainSliceOnly = <Db extends symbol>(db: DbT<Db>) => <
   Tag extends keyof A & string
 >(
   S: TypeADT<E, A, Tag>
-) => <Keys extends NonEmptyArray<A[Tag]>>(events: Keys) =>
+) => <Keys extends NonEmptyArray<A[Tag]>>(eventTypes: Keys) =>
   pipe(
     accessConfig,
     T.chain(({ id, limit }) =>
       pipe(
         T.pure(
-          `SELECT id, event FROM event_log WHERE kind IN(${events
+          `SELECT id, event FROM event_log WHERE kind IN(${eventTypes
             .map(e => `'${e}'`)
             .join(
               ","
@@ -155,13 +163,7 @@ export const fetchDomainSliceOnly = <Db extends symbol>(db: DbT<Db>) => <
         sequenceS(T.effect)({
           id: T.pure(id),
           event: T.orAbort(
-            T.fromEither(
-              ((S.type as any) as t.Type<
-                Extract<A, Record<Tag, ElemType<Keys>>>,
-                E,
-                unknown
-              >).decode(event)
-            )
+            T.fromEither(narrow(S, eventTypes).type.decode(event))
           )
         })
       )
