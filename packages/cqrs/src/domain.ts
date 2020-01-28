@@ -30,6 +30,8 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
     this.init = this.init.bind(this);
     this.readAll = this.readAll.bind(this);
     this.readOnly = this.readOnly.bind(this);
+
+    this.read = new Read(S, db)
   }
 
   aggregate<Keys extends NonEmptyArray<A[Tag]>>(
