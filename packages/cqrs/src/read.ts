@@ -19,6 +19,8 @@ import {
 import { createIndex } from "./createIndex";
 import { saveOffsets } from "./saveOffsets";
 import { TypeADT } from "./domain";
+import { Indexer } from "./fetchSlice";
+import { createTimeIndex } from "./createTimeIndex";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -37,7 +39,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       )
     );
 
-  readSide(config: ReadSideConfig) {
+  readSide(config: ReadSideConfig & { indexer: Indexer }) {
     return <Keys2 extends NonEmptyArray<A[Tag]>>(
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
@@ -60,7 +62,9 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       > = this.logCause
     ) =>
       pipe(
-        createIndex(this.db),
+        config.indexer === "sequence"
+          ? createIndex(this.db)
+          : createTimeIndex(this.db),
         T.chain(_ =>
           always(
             pipe(
@@ -98,7 +102,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       );
   }
 
-  readSideAll(config: ReadSideConfig) {
+  readSideAll(config: ReadSideConfig & { indexer: Indexer }) {
     return (
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
@@ -116,7 +120,9 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       > = this.logCause
     ) =>
       pipe(
-        createIndex(this.db),
+        config.indexer === "sequence"
+          ? createIndex(this.db)
+          : createTimeIndex(this.db),
         T.chain(_ =>
           always(
             pipe(

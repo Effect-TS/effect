@@ -6,7 +6,7 @@ import { ADT } from "morphic-ts/lib/adt";
 import { Of } from "morphic-ts/lib/adt/ctors";
 import { ElemType } from "morphic-ts/lib/adt/utils";
 import { ReadSideConfig } from "./config";
-import { SliceFetcher, AggregateFetcher } from "./fetchSlice";
+import { SliceFetcher, AggregateFetcher, Indexer } from "./fetchSlice";
 import { persistEvent } from "./persistEvent";
 import { Read } from "./read";
 
@@ -40,21 +40,33 @@ export class Aggregate<
     return new AggregateRoot(this, root, this.eventTypes);
   }
 
-  readOnly(config: ReadSideConfig) {
+  readOnly(config: ReadSideConfig, indexer: Indexer = "sequence") {
     return <Keys2 extends NonEmptyArray<A[Tag]>>(eventTypes: Keys2) =>
-      this.read.readSide(config)(
-        new SliceFetcher(this.S, eventTypes, this.db).fetchSlice(
-          this.aggregate
-        ),
+      this.read.readSide({
+        ...config,
+        indexer: indexer || "sequence"
+      })(
+        new SliceFetcher(
+          this.S,
+          eventTypes,
+          this.db,
+          indexer || "sequence"
+        ).fetchSlice(this.aggregate),
         eventTypes
       );
   }
 
-  readAll(config: ReadSideConfig) {
-    return this.read.readSide(config)(
-      new AggregateFetcher(this.S, this.eventTypes, this.db).fetchSlice(
-        this.aggregate
-      ),
+  readAll(config: ReadSideConfig, indexer: Indexer = "sequence") {
+    return this.read.readSide({
+      ...config,
+      indexer
+    })(
+      new AggregateFetcher(
+        this.S,
+        this.eventTypes,
+        this.db,
+        indexer
+      ).fetchSlice(this.aggregate),
       this.eventTypes
     );
   }

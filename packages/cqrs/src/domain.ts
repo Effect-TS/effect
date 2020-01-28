@@ -9,7 +9,7 @@ import { effect as T } from "@matechs/effect";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { Read } from "./read";
 import { ReadSideConfig } from "./config";
-import { DomainFetcher, DomainFetcherAll } from "./fetchSlice";
+import { DomainFetcher, DomainFetcherAll, Indexer } from "./fetchSlice";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -31,7 +31,7 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
     this.readAll = this.readAll.bind(this);
     this.readOnly = this.readOnly.bind(this);
 
-    this.read = new Read(S, db)
+    this.read = new Read(S, db);
   }
 
   aggregate<Keys extends NonEmptyArray<A[Tag]>>(
@@ -49,16 +49,20 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
     );
   }
 
-  readAll(config: ReadSideConfig) {
-    return this.read.readSideAll(config)(
-      new DomainFetcherAll(this.S, this.db).fetchSlice()
-    );
+  readAll(config: ReadSideConfig, indexer: Indexer = "sequence") {
+    return this.read.readSideAll({
+      ...config,
+      indexer
+    })(new DomainFetcherAll(this.S, this.db, indexer).fetchSlice());
   }
 
-  readOnly(config: ReadSideConfig) {
+  readOnly(config: ReadSideConfig, indexer: Indexer = "sequence") {
     return <Keys extends NonEmptyArray<A[Tag]>>(eventTypes: Keys) =>
-      this.read.readSide(config)(
-        new DomainFetcher(this.S, eventTypes, this.db).fetchSlice(),
+      this.read.readSide({
+        ...config,
+        indexer
+      })(
+        new DomainFetcher(this.S, eventTypes, this.db, indexer).fetchSlice(),
         eventTypes
       );
   }
