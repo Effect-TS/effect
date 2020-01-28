@@ -28,17 +28,14 @@ const program = withTransaction(
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
-const readAll = pipe(
-  todosAggregate.readAll(adt =>
-    adt.match({
-      TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-      default: () => T.unit
-    })
-  ),
-  M.withConfig({
-    readDelay: T.pure(3000), // how long to wait after each poll
-    readID: T.pure("read-todo-added"), // unique id for this read
-    readLimit: T.pure(100) // how many events to fetch in each pool
+const readAll = todosAggregate.readAll({
+  delay: 3000, // how long to wait after each poll
+  id: "read-todo-added", // unique id for this read
+  limit: 100 // how many events to fetch in each pool
+})(adt =>
+  adt.match({
+    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+    default: () => T.unit
   })
 );
 
@@ -47,16 +44,13 @@ const readAll = pipe(
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
 // note that because of filering the event sequence will have holes
-const readOnly = pipe(
-  todosAggregate.readOnly(["TodoRemoved"])(adt =>
-    adt.match({
-      TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
-    })
-  ),
-  M.withConfig({
-    readDelay: T.pure(3000), // how long to wait after each poll
-    readID: T.pure("read-todo-removed"), // unique id for this read
-    readLimit: T.pure(100) // how many events to fetch in each pool
+const readOnly = todosAggregate.readOnly(["TodoRemoved"])({
+  delay: 3000, // how long to wait after each poll
+  id: "read-todo-removed", // unique id for this read
+  limit: 100 // how many events to fetch in each pool
+})(adt =>
+  adt.match({
+    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
 );
 
@@ -68,7 +62,7 @@ export const main: T.Effect<
   void
 > = bracketPool(
   Do(T.effect)
-    .do(M.init) // creates tables for event log and index
+    .do(M.init()) // creates tables for event log and index
     .do(program) // runs the program
     .bind("readAll", T.fork(readAll)) // fork fiber for readAll
     .bind("readOnly", T.fork(readOnly)) //fork fiber for readOnly

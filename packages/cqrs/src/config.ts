@@ -5,29 +5,30 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 
 export const readSideURI: unique symbol = Symbol();
 
-export interface ReadSideConfig extends F.ModuleShape<ReadSideConfig> {
+export interface ReadSideConfig {
+  id: string;
+  limit: number;
+  delay: number;
+}
+
+export interface ReadSideConfigService
+  extends F.ModuleShape<ReadSideConfigService> {
   [readSideURI]: {
-    readID: T.UIO<string>;
-    readLimit: T.UIO<number>;
-    readDelay: T.UIO<number>;
+    accessConfig: T.UIO<ReadSideConfig>;
   };
 }
 
-export type ReadSideConfigInput = ReadSideConfig[typeof readSideURI];
-
-export const readSideConfig = F.define<ReadSideConfig>({
+export const readSideConfigSpec = F.define<ReadSideConfigService>({
   [readSideURI]: {
-    readID: F.cn(),
-    readLimit: F.cn(),
-    readDelay: F.cn()
+    accessConfig: F.cn()
   }
 });
 
-export const {
-  [readSideURI]: { readID, readLimit, readDelay }
-} = F.access(readSideConfig);
+export const { accessConfig } = F.access(readSideConfigSpec)[readSideURI];
 
-export const withConfig = (i: ReadSideConfigInput) =>
-  F.implement(readSideConfig)({
-    [readSideURI]: i
+export const withConfig = (i: ReadSideConfig) =>
+  F.implement(readSideConfigSpec)({
+    [readSideURI]: {
+      accessConfig: T.pure(i)
+    }
   });
