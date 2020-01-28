@@ -132,7 +132,7 @@ const defaultConfig = (id: string): ReadSideConfig => ({
 // events of different root may appear out of order (especially in replay)
 const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
   defaultConfig("read-todo-added")
-)(({ match }) =>
+)(match =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
@@ -146,7 +146,7 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 // note that because of filering the event sequence will have holes
 const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
   defaultConfig("read-todo-removed")
-)(["TodoRemoved"])(({ match }) =>
+)(["TodoRemoved"])(match =>
   match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
@@ -158,7 +158,7 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
 // events of different root may appear out of order (especially in replay)
 const readAllDomainTodoAdded = domain.readAll(
   defaultConfig("read-todo-added-all-domain")
-)(({ match }) =>
+)(match =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
@@ -173,7 +173,7 @@ const readAllDomainTodoAdded = domain.readAll(
 // NB: don't rely on order cross aggregate!!!
 const readAllDomainOnlyTodoRemoved = domain.readOnly(
   defaultConfig("read-todo-removed-all-domain")
-)(["TodoRemoved"])(({ match }) =>
+)(["TodoRemoved"])(match =>
   match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
