@@ -3,9 +3,7 @@ name: Node CI
 on:
   push:
     branches:
-      - master
-      - add-chains
-      - "reworkmorph"
+      - improve-cqrs
 
 jobs:
   build:

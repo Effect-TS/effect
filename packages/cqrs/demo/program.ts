@@ -5,7 +5,7 @@ import {
   todosAggregate,
   dbURI,
   bracketPool,
-  M,
+  domain,
   dbConfigLive
 } from "./db";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -15,6 +15,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { TaskError, DbConfig, liveFactory } from "@matechs/orm";
 import { InitError } from "../src/createIndex";
 import { DbFactory } from "@matechs/orm";
+import { ReadSideConfig } from "../src/config";
 
 // simple program just append 2 new events to the log in the aggregate root todos-a
 const program = withTransaction(
@@ -24,21 +25,22 @@ const program = withTransaction(
   )
 );
 
+const defaultConfig = (id: string): ReadSideConfig => ({
+  delay: 3000, // how long to wait after each poll
+  id, // unique id for this read
+  limit: 100 // how many events to fetch in each pool
+});
+
 // ideal for dispatch to locations like event-store that support idempotent writes
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
-const readAll = pipe(
-  todosAggregate.readAll(adt =>
-    adt.match({
-      TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-      default: () => T.unit
-    })
-  ),
-  M.withConfig({
-    readDelay: T.pure(3000), // how long to wait after each poll
-    readID: T.pure("read-todo-added"), // unique id for this read
-    readLimit: T.pure(100) // how many events to fetch in each pool
+const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
+  defaultConfig("read-todo-added")
+)(({ match }) =>
+  match({
+    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+    default: () => T.unit
   })
 );
 
@@ -47,16 +49,38 @@ const readAll = pipe(
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
 // note that because of filering the event sequence will have holes
-const readOnly = pipe(
-  todosAggregate.readOnly(["TodoRemoved"])(adt =>
-    adt.match({
-      TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
-    })
-  ),
-  M.withConfig({
-    readDelay: T.pure(3000), // how long to wait after each poll
-    readID: T.pure("read-todo-removed"), // unique id for this read
-    readLimit: T.pure(100) // how many events to fetch in each pool
+const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
+  defaultConfig("read-todo-removed")
+)(["TodoRemoved"])(({ match }) =>
+  match({
+    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
+  })
+);
+
+// ideal for operations that care about all the events in the db
+// process all events, events are guaranteed to be delivered in strong order
+// within the same partition (namely aggregate root)
+// events of different root may appear out of order (especially in replay)
+const readAllDomainTodoAdded = domain.readAll(
+  defaultConfig("read-todo-added-all-domain")
+)(({ match }) =>
+  match({
+    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+    default: () => T.unit
+  })
+);
+
+// ideal to process actions that need to happen on certain events across different aggregates
+// process only filtered events, events are guaranteed to be delivered in strong order
+// within the same partition (namely aggregate root)
+// events of different root may appear out of order (especially in replay)
+// note that because of filering the event sequence will have holes
+// NB: don't rely on order cross aggregate!!!
+const readAllDomainOnlyTodoRemoved = domain.readOnly(
+  defaultConfig("read-todo-removed-all-domain")
+)(["TodoRemoved"])(({ match }) =>
+  match({
+    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
 );
 
@@ -68,11 +92,33 @@ export const main: T.Effect<
   void
 > = bracketPool(
   Do(T.effect)
-    .do(M.init) // creates tables for event log and index
+    .do(domain.init()) // creates tables for event log and index
     .do(program) // runs the program
-    .bind("readAll", T.fork(readAll)) // fork fiber for readAll
-    .bind("readOnly", T.fork(readOnly)) //fork fiber for readOnly
-    .doL(s => array.sequence(T.parEffect)([s.readAll.join, s.readOnly.join])) // joins the two
+    .bindL("readInAggregateTodosOnlyTodoAdded", () =>
+      // fork fiber for readInAggregateTodosOnlyTodoAdded
+      T.fork(readInAggregateTodosOnlyTodoAdded)
+    )
+    .bindL("readInAggregateTodosOnlyTodoRemoved", () =>
+      //fork fiber for readInAggregateTodosOnlyTodoRemoved
+      T.fork(readInAggregateTodosOnlyTodoRemoved)
+    )
+    .bindL("readAllDomainTodoAdded", () =>
+      //fork fiber for readAllDomainTodoAdded
+      T.fork(readAllDomainTodoAdded)
+    )
+    .bindL("readAllDomainOnlyTodoRemoved", () =>
+      //fork fiber for readAllDomainOnlyTodoRemoved
+      T.fork(readAllDomainOnlyTodoRemoved)
+    )
+    .doL(s =>
+      // joins the long running fibers
+      array.sequence(T.parEffect)([
+        s.readInAggregateTodosOnlyTodoAdded.join,
+        s.readInAggregateTodosOnlyTodoRemoved.join,
+        s.readAllDomainTodoAdded.join,
+        s.readAllDomainOnlyTodoRemoved.join
+      ])
+    )
     .return(() => {
       //
     })
