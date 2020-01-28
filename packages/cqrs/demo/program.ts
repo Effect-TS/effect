@@ -3,7 +3,6 @@ import {
   withTransaction,
   todoRoot,
   todosAggregate,
-  dbURI,
   bracketPool,
   domain,
   dbConfigLive
@@ -12,9 +11,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { effect as T } from "@matechs/effect";
 import { array } from "fp-ts/lib/Array";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { TaskError, DbConfig, liveFactory } from "@matechs/orm";
-import { InitError } from "../src/createIndex";
-import { DbFactory } from "@matechs/orm";
+import { liveFactory } from "@matechs/orm";
 import { ReadSideConfig } from "../src/config";
 
 // simple program just append 3 new events to the log in the aggregate root todos-a
@@ -43,10 +40,13 @@ const defaultConfig = (id: string): ReadSideConfig => ({
 // events of different root may appear out of order (especially in replay)
 const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
   defaultConfig("read-todo-added")
-)(({ match }) =>
+)(match =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-    default: () => T.unit
+    default: e =>
+      T.accessM((env: { app: { message: string } }) =>
+        logger.info(`${env.app.message}: ${JSON.stringify(e)}`)
+      )
   })
 );
 
@@ -57,7 +57,7 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 // note that because of filering the event sequence will have holes
 const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
   defaultConfig("read-todo-removed")
-)(["TodoRemoved"])(({ match }) =>
+)(["TodoRemoved"])(match =>
   match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
@@ -69,7 +69,7 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
 // events of different root may appear out of order (especially in replay)
 const readAllDomainTodoAdded = domain.readAll(
   defaultConfig("read-todo-added-all-domain")
-)(({ match }) =>
+)(match =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
@@ -84,7 +84,7 @@ const readAllDomainTodoAdded = domain.readAll(
 // NB: don't rely on order cross aggregate!!!
 const readAllDomainOnlyTodoRemoved = domain.readOnly(
   defaultConfig("read-todo-removed-all-domain")
-)(["TodoRemoved"])(({ match }) =>
+)(["TodoRemoved"])(match =>
   match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
@@ -92,11 +92,7 @@ const readAllDomainOnlyTodoRemoved = domain.readOnly(
 
 // provide env like you would normally do with ORM
 // keep in mind to include EventLog in your entities
-export const main: T.Effect<
-  DbConfig<typeof dbURI> & DbFactory & logger.Logger,
-  TaskError | InitError,
-  void
-> = bracketPool(
+export const main = bracketPool(
   Do(T.effect)
     .do(domain.init()) // creates tables for event log and index
     .do(program) // runs the program
@@ -135,6 +131,9 @@ export const liveMain = pipe(
   T.provideAll({
     ...dbConfigLive,
     ...liveFactory,
-    ...console.consoleLogger()
+    ...console.consoleLogger(),
+    app: {
+      message: "default event"
+    }
   })
 );

@@ -7,7 +7,6 @@ import * as A from "fp-ts/lib/Array";
 import * as NA from "fp-ts/lib/NonEmptyArray";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { pipe } from "fp-ts/lib/pipeable";
-import { ADT } from "morphic-ts/lib/adt";
 import { ElemType } from "morphic-ts/lib/adt/utils";
 import { always } from "./always";
 import {
@@ -21,6 +20,7 @@ import { saveOffsets } from "./saveOffsets";
 import { TypeADT } from "./domain";
 import { Indexer } from "./fetchSlice";
 import { createTimeIndex } from "./createTimeIndex";
+import { MatcherT } from "./matchers";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -49,7 +49,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       eventTypes: Keys2
     ) => <R, ER, R2, ER2 = never>(
       op: (
-        matcher: ADT<Extract<A, Record<Tag, ElemType<Keys2>>>, Tag>
+        matcher: MatcherT<Extract<A, Record<Tag, ElemType<Keys2>>>, Tag>
       ) => (
         event: Extract<A, Record<Tag, ElemType<Keys2>>>
       ) => T.Effect<R, ER, void>,
@@ -73,7 +73,9 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
                   fetchEvents,
                   T.chainTap(events =>
                     A.array.traverse(T.effect)(events, event =>
-                      op(this.S.select(eventTypes))(event.event)
+                      op(this.S.select(eventTypes).matchWiden as any)(
+                        event.event
+                      )
                     )
                   ),
                   T.chainTap(events =>
@@ -110,7 +112,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
         { id: string; event: A }[]
       >
     ) => <R, ER, R2, ER2 = never>(
-      op: (matcher: ADT<A, Tag>) => (event: A) => T.Effect<R, ER, void>,
+      op: (matcher: MatcherT<A, Tag>) => (event: A) => T.Effect<R, ER, void>,
       onError: (
         cause: Cause<ER | TaskError>
       ) => T.Effect<
@@ -131,7 +133,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
                   fetchEvents,
                   T.chainTap(events =>
                     A.array.traverse(T.effect)(events, event =>
-                      op(this.S)(event.event)
+                      op(this.S.matchWiden as any)(event.event)
                     )
                   ),
                   T.chainTap(events =>
