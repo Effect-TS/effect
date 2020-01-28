@@ -7,6 +7,7 @@ import { accessConfig } from "./config";
 import { TypeADT } from "./domain";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { ElemType } from "morphic-ts/lib/adt/utils";
+import * as t from "io-ts";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -18,7 +19,7 @@ export class SliceFetcher<
   Keys extends NonEmptyArray<A[Tag]>,
   Db extends symbol
 > {
-  private readonly isNarrowed: (
+  private readonly inDomain: (
     a: A
   ) => a is Extract<A, Record<Tag, ElemType<Keys>>>;
 
@@ -29,7 +30,7 @@ export class SliceFetcher<
   ) {
     const nS = S.select(eventTypes);
 
-    this.isNarrowed = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
+    this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
       nS.keys[a[S.tag]] ? true : false;
   }
 
@@ -40,7 +41,7 @@ export class SliceFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, event FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
+              `SELECT id, kind, event FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
                 .join(
                   ","
@@ -52,16 +53,22 @@ export class SliceFetcher<
           )
         )
       ),
-      T.map((x: Array<{ id: string; event: unknown }>) => x.map(e => e)),
+      T.map((x: Array<{ id: string; kind: string; event: unknown }>) =>
+        x.map(e => e)
+      ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event }) =>
+        array.traverse(T.effect)(events, ({ id, event, kind }) =>
           sequenceS(T.effect)({
             id: T.pure(id),
             event: T.orAbort(
               pipe(
-                T.fromEither(this.S.type.decode(event)),
+                this.S.keys[kind]
+                  ? T.fromEither(this.S.type.decode(event))
+                  : T.raiseError<Error | t.Errors, A>(
+                      new Error("unknown event")
+                    ),
                 T.chain(a =>
-                  this.isNarrowed(a)
+                  this.inDomain(a)
                     ? T.pure(a)
                     : T.raiseError(new Error("decoded event is out of bounds"))
                 )
@@ -81,7 +88,7 @@ export class AggregateFetcher<
   Keys extends NonEmptyArray<A[Tag]>,
   Db extends symbol
 > {
-  private readonly isNarrowed: (
+  private readonly inDomain: (
     a: A
   ) => a is Extract<A, Record<Tag, ElemType<Keys>>>;
 
@@ -92,7 +99,7 @@ export class AggregateFetcher<
   ) {
     const nS = S.select(eventTypes);
 
-    this.isNarrowed = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
+    this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
       nS.keys[a[S.tag]] ? true : false;
   }
 
@@ -103,7 +110,7 @@ export class AggregateFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, event FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY sequence ASC LIMIT ${limit};`
+              `SELECT id, kind, event FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY sequence ASC LIMIT ${limit};`
             ),
             T.chain(query =>
               this.db.withManagerTask(manager => () => manager.query(query))
@@ -111,16 +118,22 @@ export class AggregateFetcher<
           )
         )
       ),
-      T.map((x: Array<{ id: string; event: unknown }>) => x.map(e => e)),
+      T.map((x: Array<{ id: string; kind: string; event: unknown }>) =>
+        x.map(e => e)
+      ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event }) =>
+        array.traverse(T.effect)(events, ({ id, event, kind }) =>
           sequenceS(T.effect)({
             id: T.pure(id),
             event: T.orAbort(
               pipe(
-                T.fromEither(this.S.type.decode(event)),
+                this.S.keys[kind]
+                  ? T.fromEither(this.S.type.decode(event))
+                  : T.raiseError<Error | t.Errors, A>(
+                      new Error("unknown event")
+                    ),
                 T.chain(a =>
-                  this.isNarrowed(a)
+                  this.inDomain(a)
                     ? T.pure(a)
                     : T.raiseError(new Error("decoded event is out of bounds"))
                 )
@@ -140,7 +153,7 @@ export class DomainFetcher<
   Keys extends NonEmptyArray<A[Tag]>,
   Db extends symbol
 > {
-  private readonly isNarrowed: (
+  private readonly inDomain: (
     a: A
   ) => a is Extract<A, Record<Tag, ElemType<Keys>>>;
 
@@ -151,7 +164,7 @@ export class DomainFetcher<
   ) {
     const nS = S.select(eventTypes);
 
-    this.isNarrowed = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
+    this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
       nS.keys[a[S.tag]] ? true : false;
   }
 
@@ -162,7 +175,7 @@ export class DomainFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, event FROM event_log WHERE kind IN(${this.eventTypes
+              `SELECT id, kind, event FROM event_log WHERE kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
                 .join(
                   ","
@@ -174,16 +187,22 @@ export class DomainFetcher<
           )
         )
       ),
-      T.map((x: Array<{ id: string; event: unknown }>) => x.map(e => e)),
+      T.map((x: Array<{ id: string; kind: string; event: unknown }>) =>
+        x.map(e => e)
+      ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event }) =>
+        array.traverse(T.effect)(events, ({ id, event, kind }) =>
           sequenceS(T.effect)({
             id: T.pure(id),
             event: T.orAbort(
               pipe(
-                T.fromEither(this.S.type.decode(event)),
+                this.S.keys[kind]
+                  ? T.fromEither(this.S.type.decode(event))
+                  : T.raiseError<Error | t.Errors, A>(
+                      new Error("unknown event")
+                    ),
                 T.chain(a =>
-                  this.isNarrowed(a)
+                  this.inDomain(a)
                     ? T.pure(a)
                     : T.raiseError(new Error("decoded event is out of bounds"))
                 )
@@ -198,7 +217,7 @@ export class DomainFetcher<
 
 export class DomainFetcherAll<
   E,
-  A,
+  A extends { [t in Tag]: A[Tag] },
   Tag extends keyof A & string,
   Db extends symbol
 > {
@@ -213,19 +232,25 @@ export class DomainFetcherAll<
       T.chain(({ id, limit }) =>
         pipe(
           T.pure(
-            `SELECT id, event FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY sequence ASC LIMIT ${limit};`
+            `SELECT id, kind, event FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY sequence ASC LIMIT ${limit};`
           ),
           T.chain(query =>
             this.db.withManagerTask(manager => () => manager.query(query))
           )
         )
       ),
-      T.map((x: Array<{ id: string; event: unknown }>) => x.map(e => e)),
+      T.map((x: Array<{ id: string; event: unknown; kind: string }>) =>
+        x.map(e => e)
+      ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event }) =>
+        array.traverse(T.effect)(events, ({ id, event, kind }) =>
           sequenceS(T.effect)({
             id: T.pure(id),
-            event: T.orAbort(T.fromEither(this.S.type.decode(event)))
+            event: T.orAbort(
+              this.S.keys[kind]
+                ? T.fromEither(this.S.type.decode(event))
+                : T.raiseError<Error | t.Errors, A>(new Error("unknown event"))
+            )
           })
         )
       )
