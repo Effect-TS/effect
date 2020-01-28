@@ -5,7 +5,7 @@ import {
   todosAggregate,
   dbURI,
   bracketPool,
-  M,
+  domain,
   dbConfigLive
 } from "./db";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -28,7 +28,7 @@ const program = withTransaction(
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
-const readAll = todosAggregate.readAll({
+const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll({
   delay: 3000, // how long to wait after each poll
   id: "read-todo-added", // unique id for this read
   limit: 100 // how many events to fetch in each pool
@@ -44,9 +44,42 @@ const readAll = todosAggregate.readAll({
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
 // note that because of filering the event sequence will have holes
-const readOnly = todosAggregate.readOnly(["TodoRemoved"])({
+const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly([
+  "TodoRemoved"
+])({
   delay: 3000, // how long to wait after each poll
   id: "read-todo-removed", // unique id for this read
+  limit: 100 // how many events to fetch in each pool
+})(adt =>
+  adt.match({
+    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
+  })
+);
+
+// ideal for operations that care about all the events in the db
+// process all events, events are guaranteed to be delivered in strong order
+// within the same partition (namely aggregate root)
+// events of different root may appear out of order (especially in replay)
+const readAllDomainTodoAdded = domain.readAll({
+  delay: 3000, // how long to wait after each poll
+  id: "read-todo-added-all-domain", // unique id for this read
+  limit: 100 // how many events to fetch in each pool
+})(adt =>
+  adt.match({
+    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+    default: () => T.unit
+  })
+);
+
+// ideal to process actions that need to happen on certain events across different aggregates
+// process only filtered events, events are guaranteed to be delivered in strong order
+// within the same partition (namely aggregate root)
+// events of different root may appear out of order (especially in replay)
+// note that because of filering the event sequence will have holes
+// NB: don't rely on order cross aggregate!!!
+const readAllDomainOnlyTodoRemoved = todosAggregate.readOnly(["TodoRemoved"])({
+  delay: 3000, // how long to wait after each poll
+  id: "read-todo-removed-all-domain", // unique id for this read
   limit: 100 // how many events to fetch in each pool
 })(adt =>
   adt.match({
@@ -62,11 +95,33 @@ export const main: T.Effect<
   void
 > = bracketPool(
   Do(T.effect)
-    .do(M.init()) // creates tables for event log and index
+    .do(domain.init()) // creates tables for event log and index
     .do(program) // runs the program
-    .bind("readAll", T.fork(readAll)) // fork fiber for readAll
-    .bind("readOnly", T.fork(readOnly)) //fork fiber for readOnly
-    .doL(s => array.sequence(T.parEffect)([s.readAll.join, s.readOnly.join])) // joins the two
+    .bindL("readInAggregateTodosOnlyTodoAdded", () =>
+      // fork fiber for readInAggregateTodosOnlyTodoAdded
+      T.fork(readInAggregateTodosOnlyTodoAdded)
+    )
+    .bindL("readInAggregateTodosOnlyTodoRemoved", () =>
+      //fork fiber for readInAggregateTodosOnlyTodoRemoved
+      T.fork(readInAggregateTodosOnlyTodoRemoved)
+    )
+    .bindL("readAllDomainTodoAdded", () =>
+      //fork fiber for readAllDomainTodoAdded
+      T.fork(readAllDomainTodoAdded)
+    )
+    .bindL("readAllDomainOnlyTodoRemoved", () =>
+      //fork fiber for readAllDomainOnlyTodoRemoved
+      T.fork(readAllDomainOnlyTodoRemoved)
+    )
+    .doL(s =>
+      // joins the long running fibers
+      array.sequence(T.parEffect)([
+        s.readInAggregateTodosOnlyTodoAdded.join,
+        s.readInAggregateTodosOnlyTodoRemoved.join,
+        s.readAllDomainTodoAdded.join,
+        s.readAllDomainOnlyTodoRemoved.join
+      ])
+    )
     .return(() => {
       //
     })

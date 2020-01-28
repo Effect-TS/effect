@@ -12,10 +12,10 @@ export const dbURI: unique symbol = Symbol();
 export const { bracketPool, withTransaction } = dbT(dbURI);
 
 // get CQRS utils for db and event domain
-export const M = CQ.cqrs(DomainEvent, dbURI);
+export const domain = CQ.cqrs(DomainEvent, dbURI);
 
 // define the todo aggregate by identifiying specific domain events
-export const todosAggregate = M.aggregate("todos", [
+export const todosAggregate = domain.aggregate("todos", [
   "TodoAdded",
   "TodoRemoved"
 ]);
