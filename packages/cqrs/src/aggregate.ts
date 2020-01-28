@@ -40,8 +40,8 @@ export class Aggregate<
     return new AggregateRoot(this, root, this.eventTypes);
   }
 
-  readOnly<Keys2 extends NonEmptyArray<A[Tag]>>(eventTypes: Keys2) {
-    return (config: ReadSideConfig) =>
+  readOnly(config: ReadSideConfig) {
+    return <Keys2 extends NonEmptyArray<A[Tag]>>(eventTypes: Keys2) =>
       this.read.readSide(config)(
         new SliceFetcher(this.S, eventTypes, this.db).fetchSlice(
           this.aggregate

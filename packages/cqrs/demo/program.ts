@@ -15,6 +15,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { TaskError, DbConfig, liveFactory } from "@matechs/orm";
 import { InitError } from "../src/createIndex";
 import { DbFactory } from "@matechs/orm";
+import { ReadSideConfig } from "../src/config";
 
 // simple program just append 2 new events to the log in the aggregate root todos-a
 const program = withTransaction(
@@ -24,15 +25,19 @@ const program = withTransaction(
   )
 );
 
+const defaultConfig = (id: string): ReadSideConfig => ({
+  delay: 3000, // how long to wait after each poll
+  id, // unique id for this read
+  limit: 100 // how many events to fetch in each pool
+});
+
 // ideal for dispatch to locations like event-store that support idempotent writes
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
-const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll({
-  delay: 3000, // how long to wait after each poll
-  id: "read-todo-added", // unique id for this read
-  limit: 100 // how many events to fetch in each pool
-})(({ match }) =>
+const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
+  defaultConfig("read-todo-added")
+)(({ match }) =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
@@ -44,13 +49,9 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll({
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
 // note that because of filering the event sequence will have holes
-const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly([
-  "TodoRemoved"
-])({
-  delay: 3000, // how long to wait after each poll
-  id: "read-todo-removed", // unique id for this read
-  limit: 100 // how many events to fetch in each pool
-})(({ match }) =>
+const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
+  defaultConfig("read-todo-removed")
+)(["TodoRemoved"])(({ match }) =>
   match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
@@ -60,11 +61,9 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly([
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
-const readAllDomainTodoAdded = domain.readAll({
-  delay: 3000, // how long to wait after each poll
-  id: "read-todo-added-all-domain", // unique id for this read
-  limit: 100 // how many events to fetch in each pool
-})(({ match }) =>
+const readAllDomainTodoAdded = domain.readAll(
+  defaultConfig("read-todo-added-all-domain")
+)(({ match }) =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
@@ -77,11 +76,9 @@ const readAllDomainTodoAdded = domain.readAll({
 // events of different root may appear out of order (especially in replay)
 // note that because of filering the event sequence will have holes
 // NB: don't rely on order cross aggregate!!!
-const readAllDomainOnlyTodoRemoved = todosAggregate.readOnly(["TodoRemoved"])({
-  delay: 3000, // how long to wait after each poll
-  id: "read-todo-removed-all-domain", // unique id for this read
-  limit: 100 // how many events to fetch in each pool
-})(({ match }) =>
+const readAllDomainOnlyTodoRemoved = domain.readOnly(
+  defaultConfig("read-todo-removed-all-domain")
+)(["TodoRemoved"])(({ match }) =>
   match({
     TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
   })
