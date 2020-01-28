@@ -11,6 +11,9 @@ import { Read } from "./read";
 import { ReadSideConfig } from "./config";
 import { fetchDomainSlice, fetchDomainSliceOnly } from "./fetchSlice";
 
+// experimental alpha
+/* istanbul ignore file */
+
 export type TypeADT<E, A, Tag extends keyof A & string> = ADT<A, Tag> & {
   type: t.Type<A, E>;
 };
