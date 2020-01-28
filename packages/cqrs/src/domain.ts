@@ -9,7 +9,7 @@ import { effect as T } from "@matechs/effect";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { Read } from "./read";
 import { ReadSideConfig } from "./config";
-import { fetchDomainSlice, fetchDomainSliceOnly } from "./fetchSlice";
+import { DomainFetcher, DomainFetcherAll } from "./fetchSlice";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -48,13 +48,15 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
   }
 
   readAll(config: ReadSideConfig) {
-    return this.read.readSideAll(config)(fetchDomainSlice(this.db)(this.S));
+    return this.read.readSideAll(config)(
+      new DomainFetcherAll(this.S, this.db).fetchSlice()
+    );
   }
 
   readOnly(config: ReadSideConfig) {
     return <Keys extends NonEmptyArray<A[Tag]>>(eventTypes: Keys) =>
       this.read.readSide(config)(
-        fetchDomainSliceOnly(this.db)(this.S)(eventTypes),
+        new DomainFetcher(this.S, eventTypes, this.db).fetchSlice(),
         eventTypes
       );
   }
