@@ -17,11 +17,17 @@ import { InitError } from "../src/createIndex";
 import { DbFactory } from "@matechs/orm";
 import { ReadSideConfig } from "../src/config";
 
-// simple program just append 2 new events to the log in the aggregate root todos-a
+// simple program just append 3 new events to the log in the aggregate root todos-a
 const program = withTransaction(
   pipe(
-    todoRoot("a").persistEvent(of => of.TodoAdded({ id: 1, todo: "todo" })),
-    T.chain(_ => todoRoot("a").persistEvent(of => of.TodoRemoved({ id: 1 })))
+    // compose normally with rest of your logic
+    todoRoot("a").persistEvent(of => [
+      of.TodoAdded({ id: 1, todo: "todo" }),
+      of.TodoAdded({ id: 2, todo: "todo-2" })
+    ]),
+    T.chain(([_event0, _event1]) =>
+      todoRoot("a").persistEvent(of => of.TodoRemoved({ id: 1 }))
+    )
   )
 );
 

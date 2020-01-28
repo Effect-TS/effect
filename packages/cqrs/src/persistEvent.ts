@@ -25,7 +25,7 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
   ) => (
     events: A[],
     aggregateRoot: AggregateRoot
-  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, void> =>
+  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
     Do(T.effect)
       .bindL("date", () => T.sync(() => new Date()))
       .bindL("id", () => T.sync(() => uuid.v4()))
@@ -52,9 +52,7 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
       .doL(({ seq }) =>
         saveSequence(db)(aggregateRoot)(seq + BigInt(events.length))
       )
-      .return(() => {
-        //
-      });
+      .return(() => events);
 }
 
 export const sequenceLock = <Db extends symbol>(db: DbT<Db>, dbS: Db) => (

@@ -36,6 +36,10 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this);
   }
 
+  adt: ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag> = this.S.select(
+    this.eventTypes
+  );
+
   root(root: string): AggregateRoot<E, A, Tag, Keys, Db> {
     return new AggregateRoot(this, root, this.eventTypes);
   }
@@ -103,7 +107,11 @@ export class AggregateRoot<
     ) =>
       | Extract<A, Record<Tag, ElemType<Keys>>>
       | Extract<A, Record<Tag, ElemType<Keys>>>[]
-  ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, void> {
+  ): T.Effect<
+    ORM<Db> & DbTx<Db>,
+    TaskError,
+    Extract<A, Record<Tag, ElemType<Keys>>>[]
+  > {
     const r = eventFn(this.narrowedS.of);
 
     return persistEvent(this.aggregate.db, this.aggregate.dbS)(this.narrowedS)(

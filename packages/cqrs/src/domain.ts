@@ -34,6 +34,8 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
     this.read = new Read(S, db);
   }
 
+  adt: ADT<A, Tag> = this.S;
+
   aggregate<Keys extends NonEmptyArray<A[Tag]>>(
     aggregate: string,
     eventTypes: Keys
