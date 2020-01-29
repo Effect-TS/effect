@@ -10,9 +10,14 @@ import { SliceFetcher, AggregateFetcher, Indexer } from "./fetchSlice";
 import { persistEvent } from "./persistEvent";
 import { Read } from "./read";
 import { TypeADT } from "./domain";
+import { pipe } from "fp-ts/lib/pipeable";
+import { array } from "fp-ts/lib/Array";
+import { MatcherT } from "./matchers";
 
 // experimental alpha
 /* istanbul ignore file */
+
+export type Handler<A, R, E, B> = (a: A) => T.Effect<R, E, B>;
 
 export class Aggregate<
   E,
@@ -37,12 +42,21 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this);
   }
 
-  adt: ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag> = this.S.select(
-    this.eventTypes
-  );
+  private readonly narrowADT = this.S.select(this.eventTypes);
 
-  root(root: string): AggregateRoot<E, A, Tag, Keys, Db> {
-    return new AggregateRoot(this, root, this.eventTypes);
+  adt: ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag> & {
+    matchEffect: MatcherT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>;
+  } = {
+    ...this.narrowADT,
+    matchEffect: this.narrowADT.matchWiden as any
+  };
+
+  root<
+    H extends Array<
+      Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>
+    > = never[]
+  >(root: string, handlers?: H): AggregateRoot<E, A, Tag, Keys, Db, H> {
+    return new AggregateRoot(this, root, this.eventTypes, handlers);
   }
 
   readOnly(config: ReadSideConfig, indexer: Indexer = "sequence") {
@@ -77,12 +91,26 @@ export class Aggregate<
   }
 }
 
+type InferR<
+  A,
+  Tag extends keyof A & string,
+  Keys extends NonEmptyArray<A[Tag]>,
+  H extends Array<
+    Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>
+  >
+> = ReturnType<H[number]> extends T.Effect<infer R, infer E, infer B>
+  ? R
+  : unknown;
+
 export class AggregateRoot<
   E,
   A,
   Tag extends keyof A & string,
   Keys extends NonEmptyArray<A[Tag]>,
-  Db extends symbol
+  Db extends symbol,
+  H extends Array<
+    Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>
+  >
 > {
   private readonly narrowedS: ADT<
     Extract<A, Record<Tag, ElemType<Keys>>>,
@@ -93,7 +121,8 @@ export class AggregateRoot<
   constructor(
     public aggregate: Aggregate<E, A, Tag, Keys, Db>,
     public root: string,
-    private readonly keys: Keys
+    private readonly keys: Keys,
+    private readonly handlers?: H
   ) {
     this.narrowedS = {
       ...this.aggregate.S.select(this.keys),
@@ -109,18 +138,31 @@ export class AggregateRoot<
       | Extract<A, Record<Tag, ElemType<Keys>>>
       | Extract<A, Record<Tag, ElemType<Keys>>>[]
   ): T.Effect<
-    ORM<Db> & DbTx<Db>,
+    ORM<Db> & DbTx<Db> & InferR<A, Tag, Keys, H>,
     TaskError,
     Extract<A, Record<Tag, ElemType<Keys>>>[]
   > {
     const r = eventFn(this.narrowedS.of);
 
-    return persistEvent(this.aggregate.db, this.aggregate.dbS)(this.narrowedS)(
-      Array.isArray(r) ? r : [r],
-      {
-        aggregate: this.aggregate.aggregate,
-        root: this.root
-      }
+    return pipe(
+      persistEvent(this.aggregate.db, this.aggregate.dbS)(this.narrowedS)(
+        Array.isArray(r) ? r : [r],
+        {
+          aggregate: this.aggregate.aggregate,
+          root: this.root
+        }
+      ),
+      T.chainTap(events =>
+        array.traverse(T.effect)(events, event =>
+          this.handlers
+            ? T.asUnit(
+                array.traverse(T.effect)(this.handlers, handler =>
+                  handler(event)
+                )
+              )
+            : T.unit
+        )
+      )
     );
   }
 }

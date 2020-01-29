@@ -13,6 +13,7 @@ import { array } from "fp-ts/lib/Array";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { liveFactory } from "@matechs/orm";
 import { ReadSideConfig } from "../src/config";
+import { provideApp } from "./app";
 
 // simple program just append 3 new events to the log in the aggregate root todos-a
 const program = withTransaction(
@@ -43,10 +44,7 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 )(match =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-    default: e =>
-      T.accessM((env: { app: { message: string } }) =>
-        logger.info(`${env.app.message}: ${JSON.stringify(e)}`)
-      )
+    default: e => T.unit
   })
 );
 
@@ -128,12 +126,10 @@ export const main = bracketPool(
 
 export const liveMain = pipe(
   main,
+  provideApp,
   T.provideAll({
     ...dbConfigLive,
     ...liveFactory,
-    ...console.consoleLogger(),
-    app: {
-      message: "default event"
-    }
+    ...console.consoleLogger()
   })
 );
