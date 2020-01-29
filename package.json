@@ -40,7 +40,7 @@
     "jest": "^24.9.0",
     "lerna": "^3.19.0",
     "monocle-ts": "^2.0.1",
-    "morphic-ts": "^0.7.0-RC10",
+    "morphic-ts": "^0.8.0-rc.0",
     "newtype-ts": "^0.3.3",
     "node-libcurl": "^2.0.3",
     "opentracing": "^0.14.4",

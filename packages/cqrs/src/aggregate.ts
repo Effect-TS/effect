@@ -9,6 +9,7 @@ import { ReadSideConfig } from "./config";
 import { SliceFetcher, AggregateFetcher, Indexer } from "./fetchSlice";
 import { persistEvent } from "./persistEvent";
 import { Read } from "./read";
+import { TypeADT } from "./domain";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -25,7 +26,7 @@ export class Aggregate<
   constructor(
     public aggregate: string,
     public eventTypes: Keys,
-    public S: ADT<A, Tag> & { type: t.Type<A, E> },
+    public S: TypeADT<E, A, Tag>,
     public dbS: Db,
     public db: DbT<Db>
   ) {
