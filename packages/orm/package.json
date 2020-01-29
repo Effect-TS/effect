@@ -1,6 +1,6 @@
 {
   "name": "@matechs/orm",
-  "version": "0.4.29",
+  "version": "0.4.30",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -22,7 +22,7 @@
     "typeorm": "^0.2.20"
   },
   "dependencies": {
-    "@matechs/effect": "^0.4.20"
+    "@matechs/effect": "^0.4.21"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
