@@ -184,6 +184,31 @@ declare module "fp-ts/lib/Apply" {
         : never;
     }
   >;
+
+  export function sequenceT<F extends URIS3>(
+    F: Apply3E<F>
+  ): <T extends Array<Kind3<F, any, any, any>>>(
+    ...t: T & {
+      0: Kind3<F, any, any, any>;
+    }
+  ) => Kind3<
+    F,
+    UnionToIntersection<
+      {
+        [K in keyof T]: [T[K]] extends [Kind3<F, infer R, any, any>]
+          ? unknown extends R
+            ? never
+            : R
+          : never;
+      }[number]
+    >,
+    {
+      [K in keyof T]: [T[K]] extends [Kind3<F, any, infer E, any>] ? E : never;
+    }[number],
+    {
+      [K in keyof T]: [T[K]] extends [Kind3<F, any, any, infer A>] ? A : never;
+    }
+  >;
 }
 
 export interface PipeableChain3E<F extends URIS3> extends PipeableApply3E<F> {
