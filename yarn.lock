@@ -5788,10 +5788,10 @@ monocle-ts@^2.0.1:
   resolved "https://registry.yarnpkg.com/monocle-ts/-/monocle-ts-2.0.1.tgz#743b7a021144e2501e8162c66a2525b9f226d6b1"
   integrity sha512-e1ulohxv2LXuaU1hyziPWmNQRcEL2kRawU60+SVzHjb7i3AKs65KWKLHcXreONJah6I0kibeAnQaCTJ29txWXA==
 
-morphic-ts@^0.7.0-RC10:
-  version "0.7.0-RC10"
-  resolved "https://registry.yarnpkg.com/morphic-ts/-/morphic-ts-0.7.0-RC10.tgz#1f16560dd946f048b848043b476ecee5b7fc7074"
-  integrity sha512-EqluNVauE4JLxDZpBUc+WKhLPE5KQo0YjpmxcpTYokEG06GXQ3ZmIQvHRmR3YCfYL6B9DR0iNU50oISturzpDQ==
+morphic-ts@^0.8.0-rc.0:
+  version "0.8.0-rc.0"
+  resolved "https://registry.yarnpkg.com/morphic-ts/-/morphic-ts-0.8.0-rc.0.tgz#25863256a4a84cf557e9bcfe3447d31de4a2d91c"
+  integrity sha512-X1YVSA9Q/mLwG6wbhoWCowZkL1ZuBIEUbuHQ1akbPpSRFHWhaMctfsdlGBrN/oca7pyuZcFjjH/4TBB+o/JGCg==
   dependencies:
     tslib "^1.10.0"
 
