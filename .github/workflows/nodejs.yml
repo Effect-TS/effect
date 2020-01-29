@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - es
+      - issue-112
 
 jobs:
   build:
