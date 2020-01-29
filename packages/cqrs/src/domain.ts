@@ -10,6 +10,7 @@ import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { Read } from "./read";
 import { ReadSideConfig } from "./config";
 import { DomainFetcher, DomainFetcherAll, Indexer } from "./fetchSlice";
+import { MatcherT } from "./matchers";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -34,7 +35,10 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
     this.read = new Read(S, db);
   }
 
-  adt: ADT<A, Tag> = this.S;
+  adt: ADT<A, Tag> & { matchEffect: MatcherT<A, Tag> } = {
+    ...this.S,
+    matchEffect: this.S.matchWiden as any
+  };
 
   aggregate<Keys extends NonEmptyArray<A[Tag]>>(
     aggregate: string,

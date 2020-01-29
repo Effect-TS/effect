@@ -4,6 +4,7 @@ import { DomainEvent } from "./events";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { ConnectionOptions } from "typeorm";
 import { effect as T } from "@matechs/effect";
+import { printTodo } from "./app";
 
 // configure ORM db
 export const dbURI: unique symbol = Symbol();
@@ -20,8 +21,14 @@ export const todosAggregate = domain.aggregate("todos", [
   "TodoRemoved"
 ]);
 
+export const onTodoAdded = todosAggregate.adt.matchEffect({
+  TodoAdded: ({ todo }) => printTodo(todo),
+  default: () => T.unit
+});
+
 // construct a utility to instanciate the aggregate root with a specific id
-export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`);
+export const todoRoot = (id: string) =>
+  todosAggregate.root(`todo-${id}`, [onTodoAdded]);
 
 export const dbConfigLive: DbConfig<typeof dbURI> = {
   [configEnv]: {

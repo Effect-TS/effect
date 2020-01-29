@@ -3,7 +3,8 @@ name: Node CI
 on:
   push:
     branches:
-      - widening
+      - master
+      - es
 
 jobs:
   build:
