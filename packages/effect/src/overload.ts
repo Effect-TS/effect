@@ -163,6 +163,29 @@ declare module "fp-ts-contrib/lib/Do" {
   ): Do3CE_<M, {}, NoEnv, E>;
 }
 
+declare module "fp-ts/lib/Apply" {
+  type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
+
+  export function sequenceS<F extends URIS3>(
+    F: Apply3E<F>
+  ): <NER extends Record<string, Kind3<F, any, any, any>>>(
+    r: EnforceNonEmptyRecord<NER> & Record<string, Kind3<F, any, any, any>>
+  ) => Kind3<
+    F,
+    EnvOf<NER>,
+    {
+      [K in keyof NER]: [NER[K]] extends [Kind3<F, any, infer E, any>]
+        ? E
+        : never;
+    }[keyof NER],
+    {
+      [K in keyof NER]: [NER[K]] extends [Kind3<F, any, any, infer A>]
+        ? A
+        : never;
+    }
+  >;
+}
+
 export interface PipeableChain3E<F extends URIS3> extends PipeableApply3E<F> {
   readonly chain: <R, E, A, B>(
     f: (a: A) => Kind3<F, R, E, B>
