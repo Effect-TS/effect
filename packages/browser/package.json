@@ -21,6 +21,7 @@
     "fp-ts-contrib": "^0.1.9"
   },
   "devDependencies": {
+    "@matechs/effect": "^0.4.26",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9"
   },

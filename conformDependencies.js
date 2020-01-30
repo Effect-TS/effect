@@ -21,7 +21,12 @@ dir.forEach(mod => {
       peerDeps[dep] = devDeps[dep];
     } else if (rootDeps[dep]) {
       peerDeps[dep] = rootDeps[dep];
-      devDeps[dep] = rootDeps[dep];
+    }
+  });
+
+  Object.keys(peerDeps).forEach(dep => {
+    if (!devDeps[dep]) {
+      devDeps[dep] = peerDeps[dep];
     }
   });
 
