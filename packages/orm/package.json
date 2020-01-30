@@ -16,13 +16,18 @@
     "lib"
   ],
   "peerDependencies": {
-    "fp-ts": "^2.2.0",
-    "fp-ts-contrib": "^0.1.6",
+    "@matechs/effect": "^0.4.22",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
     "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.2.20"
+    "typeorm": "^0.2.21"
   },
-  "dependencies": {
-    "@matechs/effect": "^0.4.22"
-  },
-  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "@matechs/effect": "^0.4.22",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
+    "reflect-metadata": "^0.1.13",
+    "typeorm": "^0.2.21"
+  }
 }

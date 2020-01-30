@@ -16,16 +16,24 @@
     "lib"
   ],
   "peerDependencies": {
-    "body-parser": "^1.19.0",
-    "express": "^4.17.1",
-    "fp-ts": "^2.2.0",
-    "fp-ts-contrib": "^0.1.6"
-  },
-  "dependencies": {
     "@matechs/effect": "^0.4.22",
     "@matechs/express": "^0.4.23",
     "@matechs/http-client": "^0.2.23",
-    "@matechs/rpc-client": "^0.0.6"
+    "@matechs/rpc-client": "^0.0.6",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9"
   },
-  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "@matechs/effect": "^0.4.22",
+    "@matechs/express": "^0.4.23",
+    "@matechs/http-client": "^0.2.23",
+    "@matechs/rpc-client": "^0.0.6",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9"
+  }
 }

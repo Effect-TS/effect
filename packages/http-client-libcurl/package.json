@@ -17,14 +17,20 @@
     "cacert-2019-11-27.pem"
   ],
   "peerDependencies": {
-    "fp-ts": "^2.2.0",
-    "fp-ts-contrib": "^0.1.6",
-    "node-libcurl": "^2.0.2",
+    "@matechs/effect": "^0.4.22",
+    "@matechs/http-client": "^0.2.23",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
+    "node-libcurl": "^2.0.3",
     "querystring": "^0.2.0"
   },
-  "dependencies": {
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
     "@matechs/effect": "^0.4.22",
-    "@matechs/http-client": "^0.2.23"
-  },
-  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+    "@matechs/http-client": "^0.2.23",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
+    "node-libcurl": "^2.0.3",
+    "querystring": "^0.2.0"
+  }
 }
