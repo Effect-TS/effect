@@ -2,9 +2,6 @@
   "name": "matechs",
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
-  "scripts": {
-    "pretag": "node conformDependencies.js"
-  },
   "workspaces": [
     "packages/*"
   ],

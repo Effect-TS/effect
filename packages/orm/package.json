@@ -16,7 +16,7 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^0.4.24",
+    "@matechs/effect": "^0.4.25",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
     "reflect-metadata": "^0.1.13",

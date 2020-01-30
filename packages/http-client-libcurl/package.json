@@ -17,8 +17,8 @@
     "cacert-2019-11-27.pem"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^0.4.24",
-    "@matechs/http-client": "^0.2.25",
+    "@matechs/effect": "^0.4.25",
+    "@matechs/http-client": "^0.2.26",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
     "node-libcurl": "^2.0.3",
