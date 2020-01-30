@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-libcurl",
-  "version": "0.2.27",
+  "version": "0.2.28",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -17,8 +17,8 @@
     "cacert-2019-11-27.pem"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^0.4.26",
-    "@matechs/http-client": "^0.2.27",
+    "@matechs/effect": "^0.4.27",
+    "@matechs/http-client": "^0.2.28",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
     "node-libcurl": "^2.0.3",
@@ -26,8 +26,8 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/effect": "^0.4.26",
-    "@matechs/http-client": "^0.2.27",
+    "@matechs/effect": "^0.4.27",
+    "@matechs/http-client": "^0.2.28",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
     "node-libcurl": "^2.0.3",
