@@ -16,10 +16,10 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^0.4.22",
-    "@matechs/express": "^0.4.23",
-    "@matechs/http-client": "^0.2.23",
-    "@matechs/rpc-client": "^0.0.6",
+    "@matechs/effect": "^0.4.23",
+    "@matechs/express": "^0.4.24",
+    "@matechs/http-client": "^0.2.24",
+    "@matechs/rpc-client": "^0.0.7",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "fp-ts": "^2.4.2",
