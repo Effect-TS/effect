@@ -3,7 +3,7 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "prepublish": "node conformDependencies.js"
+    "pretag": "node conformDependencies.js"
   },
   "workspaces": [
     "packages/*"
