@@ -16,9 +16,9 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^0.4.27",
-    "@matechs/logger": "^0.0.19",
-    "@matechs/orm": "^0.4.36",
+    "@matechs/effect": "^1.0.0",
+    "@matechs/logger": "^1.0.0",
+    "@matechs/orm": "^1.0.0",
     "class-transformer": "^0.2.3",
     "fast-equals": "^2.0.0",
     "fp-ts": "^2.4.2",
