@@ -25,6 +25,12 @@ import { MatcherT } from "./matchers";
 // experimental alpha
 /* istanbul ignore file */
 
+export interface EventMeta {
+  sequence: BigInt;
+  aggregate: string;
+  root: string;
+}
+
 export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
   constructor(
     private readonly S: TypeADT<E, A, Tag>,
@@ -44,14 +50,18 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
         TaskError,
-        { id: string; event: Extract<A, Record<Tag, ElemType<Keys2>>> }[]
+        ({
+          id: string;
+          event: Extract<A, Record<Tag, ElemType<Keys2>>>;
+        } & EventMeta)[]
       >,
       eventTypes: Keys2
     ) => <R, ER, R2, ER2 = never>(
       op: (
         matcher: MatcherT<Extract<A, Record<Tag, ElemType<Keys2>>>, Tag>
       ) => (
-        event: Extract<A, Record<Tag, ElemType<Keys2>>>
+        event: Extract<A, Record<Tag, ElemType<Keys2>>>,
+        meta: EventMeta
       ) => T.Effect<R, ER, void>,
       onError: (
         cause: Cause<ER | TaskError>
@@ -74,7 +84,12 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
                   T.chainTap(events =>
                     A.array.traverse(T.effect)(events, event =>
                       op(this.S.select(eventTypes).matchWiden as any)(
-                        event.event
+                        event.event,
+                        {
+                          aggregate: event.aggregate,
+                          root: event.root,
+                          sequence: event.sequence
+                        }
                       )
                     )
                   ),
@@ -109,10 +124,12 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
         TaskError,
-        { id: string; event: A }[]
+        ({ id: string; event: A } & EventMeta)[]
       >
     ) => <R, ER, R2, ER2 = never>(
-      op: (matcher: MatcherT<A, Tag>) => (event: A) => T.Effect<R, ER, void>,
+      op: (
+        matcher: MatcherT<A, Tag>
+      ) => (event: A, meta: EventMeta) => T.Effect<R, ER, void>,
       onError: (
         cause: Cause<ER | TaskError>
       ) => T.Effect<
@@ -133,7 +150,11 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
                   fetchEvents,
                   T.chainTap(events =>
                     A.array.traverse(T.effect)(events, event =>
-                      op(this.S.matchWiden as any)(event.event)
+                      op(this.S.matchWiden as any)(event.event, {
+                        aggregate: event.aggregate,
+                        root: event.root,
+                        sequence: event.sequence
+                      })
                     )
                   ),
                   T.chainTap(events =>

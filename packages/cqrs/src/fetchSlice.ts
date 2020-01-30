@@ -44,7 +44,7 @@ export class SliceFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
+              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
                 .join(",")}) AND offsets->>'${id}' IS NULL ORDER BY ${
                 this.indexer === "sequence" ? "sequence" : "created_at"
@@ -56,28 +56,44 @@ export class SliceFetcher<
           )
         )
       ),
-      T.map((x: Array<{ id: string; kind: string; event: unknown }>) =>
-        x.map(e => e)
+      T.map(
+        (
+          x: Array<{
+            id: string;
+            kind: string;
+            event: unknown;
+            aggregate: string;
+            root: string;
+            sequence: string;
+          }>
+        ) => x.map(e => e)
       ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event, kind }) =>
-          sequenceS(T.effect)({
-            id: T.pure(id),
-            event: T.orAbort(
-              pipe(
-                this.S.keys[kind]
-                  ? T.fromEither(this.S.type.decode(event))
-                  : T.raiseError<Error | t.Errors, A>(
-                      new Error("unknown event")
-                    ),
-                T.chain(a =>
-                  this.inDomain(a)
-                    ? T.pure(a)
-                    : T.raiseError(new Error("decoded event is out of bounds"))
+        array.traverse(T.effect)(
+          events,
+          ({ id, event, kind, aggregate, root, sequence }) =>
+            sequenceS(T.effect)({
+              id: T.pure(id),
+              aggregate: T.pure(aggregate),
+              root: T.pure(root),
+              sequence: T.pure(BigInt(sequence)),
+              event: T.orAbort(
+                pipe(
+                  this.S.keys[kind]
+                    ? T.fromEither(this.S.type.decode(event))
+                    : T.raiseError<Error | t.Errors, A>(
+                        new Error("unknown event")
+                      ),
+                  T.chain(a =>
+                    this.inDomain(a)
+                      ? T.pure(a)
+                      : T.raiseError(
+                          new Error("decoded event is out of bounds")
+                        )
+                  )
                 )
               )
-            )
-          })
+            })
         )
       )
     );
@@ -114,7 +130,7 @@ export class AggregateFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY ${
+              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY ${
                 this.indexer === "sequence" ? "sequence" : "created_at"
               } ASC LIMIT ${limit};`
             ),
@@ -124,28 +140,44 @@ export class AggregateFetcher<
           )
         )
       ),
-      T.map((x: Array<{ id: string; kind: string; event: unknown }>) =>
-        x.map(e => e)
+      T.map(
+        (
+          x: Array<{
+            id: string;
+            kind: string;
+            event: unknown;
+            aggregate: string;
+            root: string;
+            sequence: string;
+          }>
+        ) => x.map(e => e)
       ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event, kind }) =>
-          sequenceS(T.effect)({
-            id: T.pure(id),
-            event: T.orAbort(
-              pipe(
-                this.S.keys[kind]
-                  ? T.fromEither(this.S.type.decode(event))
-                  : T.raiseError<Error | t.Errors, A>(
-                      new Error("unknown event")
-                    ),
-                T.chain(a =>
-                  this.inDomain(a)
-                    ? T.pure(a)
-                    : T.raiseError(new Error("decoded event is out of bounds"))
+        array.traverse(T.effect)(
+          events,
+          ({ id, event, kind, sequence, root, aggregate }) =>
+            sequenceS(T.effect)({
+              id: T.pure(id),
+              aggregate: T.pure(aggregate),
+              root: T.pure(root),
+              sequence: T.pure(BigInt(sequence)),
+              event: T.orAbort(
+                pipe(
+                  this.S.keys[kind]
+                    ? T.fromEither(this.S.type.decode(event))
+                    : T.raiseError<Error | t.Errors, A>(
+                        new Error("unknown event")
+                      ),
+                  T.chain(a =>
+                    this.inDomain(a)
+                      ? T.pure(a)
+                      : T.raiseError(
+                          new Error("decoded event is out of bounds")
+                        )
+                  )
                 )
               )
-            )
-          })
+            })
         )
       )
     );
@@ -182,7 +214,7 @@ export class DomainFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event FROM event_log WHERE kind IN(${this.eventTypes
+              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
                 .join(",")}) AND offsets->>'${id}' IS NULL ORDER BY ${
                 this.indexer === "sequence" ? "sequence" : "created_at"
@@ -194,28 +226,44 @@ export class DomainFetcher<
           )
         )
       ),
-      T.map((x: Array<{ id: string; kind: string; event: unknown }>) =>
-        x.map(e => e)
+      T.map(
+        (
+          x: Array<{
+            id: string;
+            kind: string;
+            event: unknown;
+            aggregate: string;
+            root: string;
+            sequence: string;
+          }>
+        ) => x.map(e => e)
       ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event, kind }) =>
-          sequenceS(T.effect)({
-            id: T.pure(id),
-            event: T.orAbort(
-              pipe(
-                this.S.keys[kind]
-                  ? T.fromEither(this.S.type.decode(event))
-                  : T.raiseError<Error | t.Errors, A>(
-                      new Error("unknown event")
-                    ),
-                T.chain(a =>
-                  this.inDomain(a)
-                    ? T.pure(a)
-                    : T.raiseError(new Error("decoded event is out of bounds"))
+        array.traverse(T.effect)(
+          events,
+          ({ id, event, kind, aggregate, root, sequence }) =>
+            sequenceS(T.effect)({
+              id: T.pure(id),
+              aggregate: T.pure(aggregate),
+              root: T.pure(root),
+              sequence: T.pure(BigInt(sequence)),
+              event: T.orAbort(
+                pipe(
+                  this.S.keys[kind]
+                    ? T.fromEither(this.S.type.decode(event))
+                    : T.raiseError<Error | t.Errors, A>(
+                        new Error("unknown event")
+                      ),
+                  T.chain(a =>
+                    this.inDomain(a)
+                      ? T.pure(a)
+                      : T.raiseError(
+                          new Error("decoded event is out of bounds")
+                        )
+                  )
                 )
               )
-            )
-          })
+            })
         )
       )
     );
@@ -240,7 +288,7 @@ export class DomainFetcherAll<
       T.chain(({ id, limit }) =>
         pipe(
           T.pure(
-            `SELECT id, kind, event FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY ${
+            `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY ${
               this.indexer === "sequence" ? "sequence" : "created_at"
             } ASC LIMIT ${limit};`
           ),
@@ -249,15 +297,29 @@ export class DomainFetcherAll<
           )
         )
       ),
-      T.map((x: Array<{ id: string; event: unknown; kind: string }>) =>
-        x.map(e => e)
+      T.map(
+        (
+          x: Array<{
+            id: string;
+            event: unknown;
+            kind: string;
+            aggregate: string;
+            root: string;
+            sequence: string;
+          }>
+        ) => x.map(e => e)
       ),
       T.chain(events =>
-        array.traverse(T.effect)(events, ({ id, event, kind }) =>
-          sequenceS(T.effect)({
-            id: T.pure(id),
-            event: T.orAbort(T.fromEither(this.S.type.decode(event)))
-          })
+        array.traverse(T.effect)(
+          events,
+          ({ id, event, sequence, root, aggregate }) =>
+            sequenceS(T.effect)({
+              id: T.pure(id),
+              aggregate: T.pure(aggregate),
+              root: T.pure(root),
+              sequence: T.pure(BigInt(sequence)),
+              event: T.orAbort(T.fromEither(this.S.type.decode(event)))
+            })
         )
       )
     );

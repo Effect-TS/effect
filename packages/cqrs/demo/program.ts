@@ -44,7 +44,7 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 )(match =>
   match({
     TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-    default: e => T.unit
+    default: () => T.unit
   })
 );
 
