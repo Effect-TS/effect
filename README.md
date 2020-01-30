@@ -6,18 +6,8 @@ Matechs Effect is a typescript library inspired by scala's ZIO and Haskell's RIO
 
 Docs at [https://arnaldimichael.gitbook.io/matechs-effect/](https://arnaldimichael.gitbook.io/matechs-effect/)
 
-It aims to provide a strong foundational block to build typescript code in a more testable and standardized way.
-
-Interesting integrations and usage examples can be found in 
-- `packages/orm`
-- `packages/http`
-- `packages/rpc`
-- `packages/tracing`
-- `packages/express`
-- `packages/graceful`
-- `packages/rxjs`
-- `packages/effect`
-- `packages/epics`
+## Note on Docs
+Docs are meant to be only for introduction to the architecture but are still outdated, for proper usage refer to the test & demo packages in each package
 
 ## Details
 
@@ -28,7 +18,7 @@ For details about the additional types and overloads please refer to documentati
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
 ## Stability Grid
-|      Package                  | API Stage  | Used in Prod |                                                                   |
+|      Package                  | API Stage  | Used in Prod |                            Description                            |
 |-------------------------------|------------|--------------|-------------------------------------------------------------------|
 | @matechs/effect               |   stable   |      yes     | Core package provides all the primitives for effect management.   |
 | @matechs/http-client          |   stable   |      yes     | Http client specification and shared utilities for http requests. |
