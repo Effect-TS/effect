@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { effect as T, exit as EX } from "@matechs/effect";
 import { toError } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import {
@@ -130,6 +130,7 @@ export class DbT<Db extends symbol> {
     this.withRepositoryTask = this.withRepositoryTask.bind(this);
     this.withRepository = this.withRepository.bind(this);
     this.withTransaction = this.withTransaction.bind(this);
+    this.withORMTransaction = this.withORMTransaction.bind(this);
     this.withConnectionTask = this.withConnectionTask.bind(this);
     this.withConnection = this.withConnection.bind(this);
     this.withManagerTask = this.withManagerTask.bind(this);
@@ -257,6 +258,60 @@ export class DbT<Db extends symbol> {
   ): T.Effect<ORM<Db> & R, E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       f(pool)
+    );
+  }
+
+  withORMTransaction<R, E, A>(
+    op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
+  ): T.Effect<ORM<Db> & R, TaskError | E, A> {
+    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
+      T.bracketExit(
+        pipe(
+          pool.createQueryRunner(),
+          runner =>
+            pipe(
+              T.fromPromiseMap(toError)(() => runner.query("BEGIN")),
+              T.map(_ => runner)
+            ),
+          T.mapError(x => new TaskError(x, "withTransaction"))
+        ),
+        (runner, exit) =>
+          EX.isDone(exit)
+            ? pipe(
+                T.fromPromiseMap(toError)(() => runner.query("COMMIT")),
+                T.chainError(err =>
+                  pipe(
+                    T.fromPromiseMap(toError)(() => runner.query("ROLLBACK")),
+                    T.chain(_ => T.raiseError(err))
+                  )
+                ),
+                T.mapError(x => new TaskError(x, "withTransaction"))
+              )
+            : pipe(
+                T.fromPromiseMap(toError)(() => runner.query("ROLLBACK")),
+                T.mapError(x => new TaskError(x, "withTransaction")),
+                T.chain(_ => T.raised(exit))
+              ),
+        runner =>
+          pipe(
+            op,
+            T.provideR((r: R) => ({
+              ...r,
+              [managerEnv]: {
+                ...r[managerEnv],
+                [this.dbEnv]: {
+                  manager: runner.manager
+                }
+              },
+              [dbTxURI]: {
+                ...r[dbTxURI],
+                [this.dbEnv]: {
+                  tx: {}
+                }
+              }
+            }))
+          )
+      )
     );
   }
 

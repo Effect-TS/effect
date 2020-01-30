@@ -29,7 +29,8 @@ const {
   withRepositoryTask,
   bracketPool,
   withConnectionTask,
-  withManagerTask
+  withManagerTask,
+  withORMTransaction
 } = DB.dbT(testDbEnv);
 
 describe("Orm", () => {
@@ -220,5 +221,120 @@ describe("Orm", () => {
     const res = await T.runToPromise(T.provideAll(env)(program));
 
     assert.deepEqual(res, "ok");
+  });
+
+  it("should use ORM transaction in higer order", async () => {
+    const uri = Symbol();
+
+    const spec = F.define({
+      [uri]: {
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
+    });
+
+    const {
+      [uri]: { demo }
+    } = F.access(spec);
+
+    const provider = F.implement(spec)({
+      [uri]: {
+        demo: () => withManagerTask(r => () => r.query(""))
+      }
+    });
+
+    const program = pipe(withORMTransaction(demo()), provider, bracketPool);
+
+    const mockFactory: typeof createConnection = () =>
+      Promise.resolve({
+        close(): Promise<void> {
+          return Promise.resolve();
+        },
+        createQueryRunner() {
+          return {
+            manager: {
+              query(_query) {
+                return Promise.resolve("ok");
+              }
+            } as EntityManager,
+            query(query) {
+              if (["BEGIN", "COMMIT"].indexOf(query) !== -1) {
+                return Promise.resolve();
+              } else {
+                return Promise.reject();
+              }
+            }
+          };
+        }
+      } as Connection);
+
+    const env: Env<typeof program> = {
+      ...DB.mockFactory(mockFactory),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+    };
+
+    const res = await T.runToPromise(T.provideAll(env)(program));
+
+    assert.deepEqual(res, "ok");
+  });
+
+  it("should rollback ORM transaction in failure", async () => {
+    const uri = Symbol();
+
+    const spec = F.define({
+      [uri]: {
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
+    });
+
+    const {
+      [uri]: { demo }
+    } = F.access(spec);
+
+    const provider = F.implement(spec)({
+      [uri]: {
+        demo: () => withManagerTask(r => () => r.query(""))
+      }
+    });
+
+    const program = pipe(withORMTransaction(demo()), provider, bracketPool);
+
+    const queries: string[] = [];
+
+    const mockFactory: typeof createConnection = () =>
+      Promise.resolve({
+        close(): Promise<void> {
+          return Promise.resolve();
+        },
+        createQueryRunner() {
+          return {
+            manager: {
+              query(_query) {
+                return Promise.reject(new Error("ok"));
+              }
+            } as EntityManager,
+            query(query) {
+              queries.push(query);
+              if (["BEGIN", "ROLLBACK"].indexOf(query) !== -1) {
+                return Promise.resolve();
+              } else {
+                return Promise.reject();
+              }
+            }
+          };
+        }
+      } as Connection);
+
+    const env: Env<typeof program> = {
+      ...DB.mockFactory(mockFactory),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+    };
+
+    const res = await T.runToPromiseExit(T.provideAll(env)(program));
+
+    assert.deepEqual(
+      res,
+      raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
+    );
+    assert.deepEqual(queries, ["BEGIN", "ROLLBACK"]);
   });
 });
