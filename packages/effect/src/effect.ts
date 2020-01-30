@@ -630,6 +630,17 @@ export const provide = <R>(r: R) => <R2, E, A>(
   ma: Effect<R2 & R, E, A>
 ): Effect<R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(ma));
 
+export const provideStruct = <R>(r: R) => <
+  T,
+  R2 = T extends Effect<infer R3, infer __, infer ___>
+    ? Omit<R3, keyof R>
+    : never,
+  E = T extends Effect<R2 & R, infer EE, infer ____> ? EE : never,
+  A = T extends Effect<R2 & R, E, infer AE> ? AE : never
+>(
+  eff: T extends Effect<R2 & R, E, A> ? T : never
+): Effect<R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(eff));
+
 /**
  * Provides partial environment, via direct transformation
  * safe to use in non top-level scenarios
@@ -648,8 +659,48 @@ export function provideS<R>(r: R) {
     provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
 }
 
+/**
+ * Provides structural partial environment, like provideStruct() but via direct transformation
+ * safe to use in non top-level scenarios
+ */
+export function provideStructS<R>(r: R) {
+  return <
+    T,
+    R2 = T extends Effect<infer R3, infer __, infer ___>
+      ? Omit<R3, keyof R>
+      : never,
+    E = T extends Effect<R2 & R, infer EE, infer ____> ? EE : never,
+    A = T extends Effect<R2 & R, E, infer AE> ? AE : never
+  >(
+    eff: T extends Effect<R2 & R, E, A> ? T : never
+  ): Effect<R2, E, A> => provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
+}
+
+/**
+ * Provides partial environment, like provideSomeM() but via direct transformation
+ * safe to use in non top-level scenarios
+ */
 export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
+    chain_(rm, r => provideR((r2: R2) => ({ ...r, ...r2 }))(eff));
+}
+
+/**
+ * Provides partial environment, like provideStructSomeM() but via direct transformation
+ * safe to use in non top-level scenarios
+ */
+
+export function provideStructSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
+  return <
+    T,
+    R2 = T extends Effect<infer R3, infer __, infer ___>
+      ? Omit<R3, keyof R>
+      : never,
+    E = T extends Effect<R2 & R, infer EE, infer ____> ? EE : never,
+    A = T extends Effect<R2 & R, E, infer AE> ? AE : never
+  >(
+    eff: T extends Effect<R2 & R, E, A> ? T : never
+  ): Effect<R2 & R3, E | E2, A> =>
     chain_(rm, r => provideR((r2: R2) => ({ ...r, ...r2 }))(eff));
 }
 
@@ -677,10 +728,25 @@ export const provideM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A>(
  *
  * Note that this should be typically used at startup time, not dynamically
  */
-
 export const provideSomeM = <R2, R, E2>(f: Effect<R2, E2, R>) => <E, A, R3>(
   ma: Effect<R & R3, E, A>
 ): Effect<R2 & R3, E | E2, A> => chain_(f, r => provide(r)(ma));
+
+/**
+ * Provides some structural environment necessary to the child effect via an effect
+ *
+ * Note that this should be typically used at startup time, not dynamically
+ */
+export const provideStructSomeM = <R2, R, E2>(f: Effect<R2, E2, R>) => <
+  T,
+  R3 = T extends Effect<infer R4, infer __, infer ___>
+    ? Omit<R4, keyof R>
+    : never,
+  E = T extends Effect<R3 & R, infer EE, infer ____> ? EE : never,
+  A = T extends Effect<R3 & R, E, infer AE> ? AE : never
+>(
+  ma: T extends Effect<R3 & R, E, A> ? T : never
+): Effect<R3 & R2, E | E2, A> => chain_(f, r => provide(r)(ma));
 
 /**
  * Map the value produced by an IO
