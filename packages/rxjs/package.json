@@ -1,6 +1,6 @@
 {
   "name": "@matechs/rxjs",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -23,7 +23,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/effect": "^1.0.1",
+    "@matechs/effect": "^1.1.0",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
     "rxjs": "^6.5.3"
