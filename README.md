@@ -28,32 +28,26 @@ For details about the additional types and overloads please refer to documentati
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
 ## Stability Grid
-|      Package                  | API Stage  | Used in Prod |
-|-------------------------------|------------|--------------|
-| @matechs/effect               |   stable   |      yes     |
-| @matechs/http-client          |   stable   |      yes     |
-| @matechs/http-client-fetch    |   stable   |      yes     |
-| @matechs/http-client-libcurl  |   stable   |      yes     |
-| @matechs/browser              |   stable   |      yes     |
-| @matechs/rxjs                 |   stable   |      yes     |
-| @matechs/epics                |   alpha    |      no      |
-| @matechs/express              |   alpha    |      no      |
-| @matechs/rpc                  |   alpha    |      no      |
-| @matechs/orm                  |   beta     |      yes     |
-| @matechs/express              |   alpha    |      no      |
-| @matechs/tracing              |   poc      |      no      |
-
-## Ecosystem
-
-- `@matechs/orm` : provides integration with typeorm
-- `@matechs/http-client` : functional http client, integrations available `libcurl & fetch`
-- `@matechs/rpc` : no boilerplate rpc for your effects
-- `@matechs/tracing` : provides integration with opentracing-js
-- `@matechs/express`: provides integration with express
-- `@matechs/rxjs` : provides integration with rxjs
-- `@matechs/effect` : core provides `Effect, Managed, Stream, Ref, Queue, Semaphore`
-- `@matechs/epics` : provides integration with redux-observable
-- `@matechs/cloud` : provides utilities to orchestrate tasks and cluster singletons 
+|      Package                  | API Stage  | Used in Prod |                                                                   |
+|-------------------------------|------------|--------------|-------------------------------------------------------------------|
+| @matechs/effect               |   stable   |      yes     | Core package provides all the primitives for effect management.   |
+| @matechs/http-client          |   stable   |      yes     | Http client specification and shared utilities for http requests. |
+| @matechs/http-client-fetch    |   stable   |      yes     | Http client implementation using a generic fetch instance.        |
+| @matechs/http-client-libcurl  |   stable   |      yes     | Http client implementation using libcurl, supports http2 on node. |
+| @matechs/browser              |   stable   |      yes     | Deals with reading and writing to browser local & sesstion store. |
+| @matechs/console              |   stable   |      yes     | Effectified version of node & browser console.                    |
+| @matechs/rxjs                 |   stable   |      yes     | Integrates RxJS with streams, effect and rx pipe operators.       |
+| @matechs/epics                |   beta     |      no      | Integrate redux-observable epics in terms of effectful streams.   |
+| @matechs/rpc                  |   beta     |      yes     | Wire serializable free modules to express for remote consumption. |
+| @matechs/rpc-client           |   beta     |      yes     | Implement server RPC defined free modules in terms of http client.|
+| @matechs/orm                  |   stable   |      yes     | Integrates with TypeORM allowing multi database manage smmothly.  |
+| @matechs/cqrs                 |   beta     |      no      | Embeds feature complete CQRS+ES utility to ORM for PostgreSQL.    |
+| @matechs/express              |   beta     |      yes     | Integrates with express and provide utilities to define routes.   |
+| @matechs/tracing              |   beta     |      yes     | Integrates with opentracing-js featuring auto tracing of free mod.|
+| @matechs/graceful             |   beta     |      yes     | Utility to register callbacks to improve graceful exit scenarios. |
+| @matechs/logger               |   stable   |      yes     | Define a generic logger interface and provide a console interpret.|
+| @matechs/logger-winston       |   stable   |      yes     | Integrates logger with a winston based interpreter.               |
+| @matechs/uuid                 |   beta     |      yes     | Generates v4 uuids with different encodings, classic & short.     |
 
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
