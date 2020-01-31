@@ -906,7 +906,7 @@ export function takeWhile<R, E, A>(
  */
 export function into<R, E, A, R2, E2, S, B>(
   stream: Stream<R, E, A>,
-  sink: Sink<R, E2, S, A, B>
+  sink: Sink<R2, E2, S, A, B>
 ): T.Effect<R & R2, E | E2, B> {
   return M.use(widen<R2, E2>()(stream), fold =>
     pipe(
