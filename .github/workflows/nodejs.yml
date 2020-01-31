@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - issue-114
+      - overload-issue
 
 jobs:
   build:
