@@ -28,7 +28,7 @@ jobs:
           lerna bootstrap
           lerna run build
           yarn jest --detectOpenHandles
-          lerna run lint
+          lerna run lint --parallel
           lerna run bench
         env:
           CI: "true"
