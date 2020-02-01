@@ -17,7 +17,6 @@ jobs:
           node-version: 12.x
       - name: npm install, build, and test
         run: |
-          echo ${NPM_TOKEN}
           npm install -g lerna
           npm install -g yarn
           lerna bootstrap
