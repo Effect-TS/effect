@@ -26,6 +26,7 @@ jobs:
           lerna publish from-package --yes
         env:
           CI: "true"
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - uses: codecov/codecov-action@v1.0.3
         with:
