@@ -1,0 +1,38 @@
+name: Node CI
+
+on:
+  push:
+    branches:
+      - issue/**
+      - features/**
+      - generic/**
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [10.x, 12.x]
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: npm install, build, and test
+        run: |
+          npm install -g lerna
+          npm install -g yarn
+          lerna bootstrap
+          lerna run build
+          yarn jest --detectOpenHandles
+          lerna run lint
+          lerna run bench
+        env:
+          CI: "true"
+
+      - uses: codecov/codecov-action@v1.0.3
+        with:
+          token: ${{secrets.CODECOV_TOKEN}}
