@@ -22,7 +22,6 @@ jobs:
           lerna bootstrap
           lerna run build
           yarn jest --detectOpenHandles
-          npm set //registry.npmjs.org/:_authToken ${NPM_TOKEN}
           lerna publish from-package --yes
         env:
           CI: "true"
