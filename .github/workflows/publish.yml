@@ -22,7 +22,7 @@ jobs:
           lerna bootstrap
           lerna run build
           yarn jest --detectOpenHandles
-          lerna publish from-package
+          lerna publish from-package --yes
         env:
           CI: "true"
 
