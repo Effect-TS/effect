@@ -1,7 +1,74 @@
-import * as H from "@matechs/http-client";
-import { effect as T } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
+import client from "node-eventstore-client";
+import Long from "long";
 import { EventMetaHidden, metaURI } from "@matechs/cqrs";
+import { effect as T, managed as M } from "@matechs/effect";
+import { right, left } from "fp-ts/lib/Either";
+import { pipe } from "fp-ts/lib/pipeable";
+
+export const eventStoreURI: unique symbol = Symbol();
+
+export interface EventStoreConfig {
+  [eventStoreURI]: {
+    settings: client.ConnectionSettings;
+    endPointOrGossipSeed: string | client.TcpEndPoint | client.GossipSeed[];
+    connectionName?: string | undefined;
+  };
+}
+
+export const accessConfig = T.access((r: EventStoreConfig) => r[eventStoreURI]);
+
+export const eventStoreTcpConnection = M.bracket(
+  pipe(
+    accessConfig,
+    T.chain(({ endPointOrGossipSeed, settings, connectionName }) =>
+      T.async<EventStoreError, client.EventStoreNodeConnection>(r => {
+        const conn = client.createConnection(
+          settings,
+          endPointOrGossipSeed,
+          connectionName
+        );
+
+        conn
+          .connect()
+          .then(() => {
+            r(right(conn));
+          })
+          .catch(e => {
+            r(left({ type: "EventStoreError", message: e.message }));
+          });
+
+        return () => {
+          conn.close();
+        };
+      })
+    )
+  ),
+  c =>
+    T.sync(() => {
+      c.close();
+    })
+);
+
+export const sendEventToEventStore = (event: EventStoreEvent) => (
+  connection: client.EventStoreNodeConnection
+) =>
+  T.fromPromiseMap(
+    (e): EventStoreError => ({
+      type: "EventStoreError",
+      message: (e as Error).message
+    })
+  )(() =>
+    connection.appendToStream(
+      event.streamId,
+      Long.fromString(event.expectedStreamVersion.toString(10), false, 10),
+      client.createJsonEventData(
+        event.eventId,
+        event.data,
+        event.eventMetadata,
+        event.eventType
+      )
+    )
+  );
 
 export interface EventStoreEvent {
   streamId: string;
@@ -12,57 +79,10 @@ export interface EventStoreEvent {
   data: {};
 }
 
-export const eventStoreConfigURI: unique symbol = Symbol();
-
-export interface EventStoreConfig {
-  [eventStoreConfigURI]: {
-    baseUrl: string;
-  };
-}
-
-export const accessConfig = T.access(
-  (c: EventStoreConfig) => c[eventStoreConfigURI]
-);
-
 export interface EventStoreError {
   type: "EventStoreError";
   message: string;
 }
-
-export const postEvent = (event: EventStoreEvent) =>
-  pipe(
-    accessConfig,
-    T.chain(({ baseUrl }) =>
-      pipe(
-        H.post(`${baseUrl}/streams/${event.streamId}`, [
-          {
-            eventId: event.eventId,
-            eventType: event.eventType,
-            metadata: event.eventMetadata,
-            data: event.data
-          }
-        ]),
-        H.withHeaders({
-          "Content-Type": "application/vnd.eventstore.events+json",
-          "ES-ExpectedVersion": event.expectedStreamVersion.toString(10)
-        }),
-        T.provideR((r: EventStoreConfig & H.HttpEnv) => ({
-          ...r,
-          ...H.jsonDeserializer
-        }))
-      )
-    ),
-    T.mapError(
-      (x): EventStoreError => ({
-        type: "EventStoreError",
-        message:
-          x._tag === "HttpErrorRequest"
-            ? "unknown request error"
-            : `http status ${x.response.status}`
-      })
-    ),
-    T.asUnit
-  );
 
 export const adaptEvent = <T>(event: T & EventMetaHidden): EventStoreEvent => {
   const esE = {} as EventStoreEvent;
@@ -88,5 +108,6 @@ export const adaptEvent = <T>(event: T & EventMetaHidden): EventStoreEvent => {
   return esE;
 };
 
-export const sendEvent = <T>(event: T & EventMetaHidden) =>
-  postEvent(adaptEvent(event));
+export const sendEvent = (connection: client.EventStoreNodeConnection) => <T>(
+  event: T & EventMetaHidden
+) => T.asUnit(sendEventToEventStore(adaptEvent(event))(connection));
