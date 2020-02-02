@@ -25,22 +25,22 @@ export const createTable = <Db extends symbol>(db: DbT<Db>) =>
     ),
     db.withManagerTask(manager => () =>
       manager.query(
-        "CREATE INDEX IF NOT EXISTS event_log_idx_aggregate ON event_log USING HASH (aggregate);"
+        "CREATE INDEX IF NOT EXISTS event_log_idx_aggregate ON event_log USING BTREE (aggregate);"
       )
     ),
     db.withManagerTask(manager => () =>
       manager.query(
-        "CREATE INDEX IF NOT EXISTS event_log_idx_root ON event_log USING HASH (root);"
+        "CREATE INDEX IF NOT EXISTS event_log_idx_root ON event_log USING BTREE (root);"
       )
     ),
     db.withManagerTask(manager => () =>
       manager.query(
-        "CREATE INDEX IF NOT EXISTS event_log_idx_sequence_id ON event_log USING HASH (sequence_id);"
+        "CREATE INDEX IF NOT EXISTS event_log_idx_sequence_id ON event_log USING BTREE (sequence_id);"
       )
     ),
     db.withManagerTask(manager => () =>
       manager.query(
-        "CREATE INDEX IF NOT EXISTS event_log_idx_kind ON event_log USING HASH (kind);"
+        "CREATE INDEX IF NOT EXISTS event_log_idx_kind ON event_log USING BTREE (kind);"
       )
     ),
     db.withManagerTask(manager => () =>
