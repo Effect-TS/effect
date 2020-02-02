@@ -12,8 +12,6 @@ import * as t from "io-ts";
 // experimental alpha
 /* istanbul ignore file */
 
-export type Indexer = "time" | "sequence";
-
 export class SliceFetcher<
   E,
   A extends { [t in Tag]: A[Tag] },
@@ -28,8 +26,7 @@ export class SliceFetcher<
   constructor(
     private readonly S: TypeADT<E, A, Tag>,
     private readonly eventTypes: Keys,
-    private readonly db: DbT<Db>,
-    private readonly indexer: Indexer
+    private readonly db: DbT<Db>
   ) {
     const nS = S.select(eventTypes);
 
@@ -46,9 +43,9 @@ export class SliceFetcher<
             T.pure(
               `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
-                .join(",")}) AND offsets->>'${id}' IS NULL ORDER BY ${
-                this.indexer === "sequence" ? "sequence" : "created_at"
-              } ASC LIMIT ${limit};`
+                .join(
+                  ","
+                )}) AND offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
             ),
             T.chain(query =>
               this.db.withManagerTask(manager => () => manager.query(query))
@@ -114,8 +111,7 @@ export class AggregateFetcher<
   constructor(
     private readonly S: TypeADT<E, A, Tag>,
     eventTypes: Keys,
-    private readonly db: DbT<Db>,
-    private readonly indexer: Indexer
+    private readonly db: DbT<Db>
   ) {
     const nS = S.select(eventTypes);
 
@@ -130,9 +126,7 @@ export class AggregateFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY ${
-                this.indexer === "sequence" ? "sequence" : "created_at"
-              } ASC LIMIT ${limit};`
+              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
             ),
             T.chain(query =>
               this.db.withManagerTask(manager => () => manager.query(query))
@@ -198,8 +192,7 @@ export class DomainFetcher<
   constructor(
     private readonly S: TypeADT<E, A, Tag>,
     private readonly eventTypes: Keys,
-    private readonly db: DbT<Db>,
-    private readonly indexer: Indexer
+    private readonly db: DbT<Db>
   ) {
     const nS = S.select(eventTypes);
 
@@ -216,9 +209,9 @@ export class DomainFetcher<
             T.pure(
               `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
-                .join(",")}) AND offsets->>'${id}' IS NULL ORDER BY ${
-                this.indexer === "sequence" ? "sequence" : "created_at"
-              } ASC LIMIT ${limit};`
+                .join(
+                  ","
+                )}) AND offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
             ),
             T.chain(query =>
               this.db.withManagerTask(manager => () => manager.query(query))
@@ -278,8 +271,7 @@ export class DomainFetcherAll<
 > {
   constructor(
     private readonly S: TypeADT<E, A, Tag>,
-    private readonly db: DbT<Db>,
-    private readonly indexer: Indexer
+    private readonly db: DbT<Db>
   ) {}
 
   fetchSlice() {
@@ -288,9 +280,7 @@ export class DomainFetcherAll<
       T.chain(({ id, limit }) =>
         pipe(
           T.pure(
-            `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY ${
-              this.indexer === "sequence" ? "sequence" : "created_at"
-            } ASC LIMIT ${limit};`
+            `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
           ),
           T.chain(query =>
             this.db.withManagerTask(manager => () => manager.query(query))

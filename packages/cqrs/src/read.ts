@@ -18,8 +18,6 @@ import {
 import { createIndex } from "./createIndex";
 import { saveOffsets } from "./saveOffsets";
 import { TypeADT } from "./domain";
-import { Indexer } from "./fetchSlice";
-import { createTimeIndex } from "./createTimeIndex";
 import { MatcherT } from "./matchers";
 
 // experimental alpha
@@ -30,6 +28,8 @@ export interface EventMeta {
   aggregate: string;
   root: string;
 }
+
+export type ReadType = "domain" | "aggregate";
 
 export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
   constructor(
@@ -45,7 +45,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       )
     );
 
-  readSide(config: ReadSideConfig & { indexer: Indexer }) {
+  readSide(config: ReadSideConfig, aggregate?: string) {
     return <Keys2 extends NonEmptyArray<A[Tag]>>(
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
@@ -72,9 +72,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       > = this.logCause
     ) =>
       pipe(
-        config.indexer === "sequence"
-          ? createIndex(this.db)
-          : createTimeIndex(this.db),
+        createIndex(this.db, aggregate),
         T.chain(_ =>
           always(
             pipe(
@@ -119,7 +117,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       );
   }
 
-  readSideAll(config: ReadSideConfig & { indexer: Indexer }) {
+  readSideAll(config: ReadSideConfig, aggregate?: string) {
     return (
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
@@ -139,9 +137,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       > = this.logCause
     ) =>
       pipe(
-        config.indexer === "sequence"
-          ? createIndex(this.db)
-          : createTimeIndex(this.db),
+        createIndex(this.db, aggregate),
         T.chain(_ =>
           always(
             pipe(

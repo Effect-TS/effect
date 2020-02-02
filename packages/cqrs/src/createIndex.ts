@@ -10,13 +10,18 @@ import { accessConfig } from "./config";
 export interface InitError
   extends Newtype<{ readonly CreateIndexError: unique symbol }, TaskError> {}
 
-export const createIndex = <Db extends symbol>(db: DbT<Db>) =>
+export const createIndex = <Db extends symbol>(
+  db: DbT<Db>,
+  aggregate?: string
+) =>
   pipe(
     accessConfig,
     T.chain(({ id }) =>
       db.withManagerTask(manager => () =>
         manager.query(
-          `CREATE INDEX IF NOT EXISTS read_idx_${id} ON event_log (aggregate, kind, (offsets->>'${id}'), sequence);`
+          aggregate
+            ? `CREATE INDEX IF NOT EXISTS read_idx_${id} ON event_log (aggregate, kind, (offsets->>'${id}'), created_at, sequence) WHERE aggregate = '${aggregate}';`
+            : `CREATE INDEX IF NOT EXISTS read_idx_${id} ON event_log (aggregate, kind, (offsets->>'${id}'), created_at, sequence);`
         )
       )
     ),

@@ -38,7 +38,7 @@ const defaultConfig = (id: string): ReadSideConfig => ({
 // ideal for dispatch to locations like event-store that support idempotent writes
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
-// events of different root may appear out of order (especially in replay)
+// events of different root may appear out of order
 const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
   defaultConfig("read-todo-added")
 )(match =>
@@ -51,7 +51,7 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 // ideal to process actions that need to happen on certain events
 // process only filtered events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
-// events of different root may appear out of order (especially in replay)
+// events of different root may appear out of order
 // note that because of filering the event sequence will have holes
 const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
   defaultConfig("read-todo-removed")
