@@ -1,7 +1,8 @@
 import { effect as T } from "@matechs/effect";
+import * as H from "@matechs/http-client";
 import { Aggregate, ReadSideConfig } from "@matechs/cqrs";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
-import { sendEvent } from "./client";
+import { sendEvent, EventStoreConfig } from "./client";
 
 const aggregateRead = <
   E,
@@ -19,3 +20,11 @@ export const EventStore = {
     read: aggregateRead
   }
 };
+
+export {
+  EventStoreError,
+  EventStoreConfig,
+  eventStoreConfigURI
+} from "./client";
+
+export type EventStoreEnv = EventStoreConfig & H.Http & H.MiddlewareStack;
