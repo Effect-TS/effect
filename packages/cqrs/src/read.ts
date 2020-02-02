@@ -15,7 +15,6 @@ import {
   ReadSideConfig,
   withConfig
 } from "./config";
-import { createIndex } from "./createIndex";
 import { saveOffsets } from "./saveOffsets";
 import { TypeADT } from "./domain";
 import { MatcherT } from "./matchers";
@@ -72,43 +71,40 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       > = this.logCause
     ) =>
       pipe(
-        createIndex(this.db, aggregate),
-        T.chain(_ =>
-          always(
-            pipe(
-              this.db.withTransaction(
-                pipe(
-                  fetchEvents,
-                  T.chainTap(events =>
-                    A.array.traverse(T.effect)(events, event =>
-                      op(this.S.select(eventTypes).matchWiden as any)(
-                        event.event,
-                        {
-                          aggregate: event.aggregate,
-                          root: event.root,
-                          sequence: event.sequence
-                        }
-                      )
+        always(
+          pipe(
+            this.db.withTransaction(
+              pipe(
+                fetchEvents,
+                T.chainTap(events =>
+                  A.array.traverse(T.effect)(events, event =>
+                    op(this.S.select(eventTypes).matchWiden as any)(
+                      event.event,
+                      {
+                        aggregate: event.aggregate,
+                        root: event.root,
+                        sequence: event.sequence
+                      }
                     )
-                  ),
-                  T.chainTap(events =>
-                    A.isNonEmpty(events)
-                      ? pipe(
-                          events,
-                          NA.map(x => x.id),
-                          saveOffsets(this.db)
-                        )
-                      : T.unit
                   )
+                ),
+                T.chainTap(events =>
+                  A.isNonEmpty(events)
+                    ? pipe(
+                        events,
+                        NA.map(x => x.id),
+                        saveOffsets(this.db)
+                      )
+                    : T.unit
                 )
-              ),
-              T.result,
-              T.chainTap(exit =>
-                pipe(
-                  isDone(exit) ? T.unit : onError(exit),
-                  T.chain(_ => accessConfig),
-                  T.chain(({ delay }) => T.delay(T.unit, delay))
-                )
+              )
+            ),
+            T.result,
+            T.chainTap(exit =>
+              pipe(
+                isDone(exit) ? T.unit : onError(exit),
+                T.chain(_ => accessConfig),
+                T.chain(({ delay }) => T.delay(T.unit, delay))
               )
             )
           )
@@ -137,40 +133,37 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       > = this.logCause
     ) =>
       pipe(
-        createIndex(this.db, aggregate),
-        T.chain(_ =>
-          always(
-            pipe(
-              this.db.withTransaction(
-                pipe(
-                  fetchEvents,
-                  T.chainTap(events =>
-                    A.array.traverse(T.effect)(events, event =>
-                      op(this.S.matchWiden as any)(event.event, {
-                        aggregate: event.aggregate,
-                        root: event.root,
-                        sequence: event.sequence
-                      })
-                    )
-                  ),
-                  T.chainTap(events =>
-                    A.isNonEmpty(events)
-                      ? pipe(
-                          events,
-                          NA.map(x => x.id),
-                          saveOffsets(this.db)
-                        )
-                      : T.unit
+        always(
+          pipe(
+            this.db.withTransaction(
+              pipe(
+                fetchEvents,
+                T.chainTap(events =>
+                  A.array.traverse(T.effect)(events, event =>
+                    op(this.S.matchWiden as any)(event.event, {
+                      aggregate: event.aggregate,
+                      root: event.root,
+                      sequence: event.sequence
+                    })
                   )
+                ),
+                T.chainTap(events =>
+                  A.isNonEmpty(events)
+                    ? pipe(
+                        events,
+                        NA.map(x => x.id),
+                        saveOffsets(this.db)
+                      )
+                    : T.unit
                 )
-              ),
-              T.result,
-              T.chainTap(exit =>
-                pipe(
-                  isDone(exit) ? T.unit : onError(exit),
-                  T.chain(_ => accessConfig),
-                  T.chain(({ delay }) => T.delay(T.unit, delay))
-                )
+              )
+            ),
+            T.result,
+            T.chainTap(exit =>
+              pipe(
+                isDone(exit) ? T.unit : onError(exit),
+                T.chain(_ => accessConfig),
+                T.chain(({ delay }) => T.delay(T.unit, delay))
               )
             )
           )

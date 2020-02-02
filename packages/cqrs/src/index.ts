@@ -12,5 +12,5 @@ export function cqrs<E, A, Tag extends keyof A & string, Db extends symbol>(
   return new Domain(S, dbURI);
 }
 
-export { InitError as CreateIndexError } from "./createIndex";
 export { EventLog } from "./eventLog";
+export { ReadSideConfig } from "./config";

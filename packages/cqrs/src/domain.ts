@@ -2,9 +2,7 @@ import * as t from "io-ts";
 import { ADT } from "morphic-ts/lib/adt";
 import { dbT } from "@matechs/orm";
 import { Aggregate } from "./aggregate";
-import { pipe } from "fp-ts/lib/pipeable";
 import { createTable } from "./createTable";
-import { createTableSeq } from "./createTableSeq";
 import { effect as T } from "@matechs/effect";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { Read } from "./read";
@@ -48,11 +46,7 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
   }
 
   init() {
-    return pipe(
-      createTable(this.db),
-      T.chain(_ => createTableSeq(this.db)),
-      T.asUnit
-    );
+    return T.asUnit(createTable(this.db));
   }
 
   readAll(config: ReadSideConfig) {
