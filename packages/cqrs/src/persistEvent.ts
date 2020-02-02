@@ -84,12 +84,12 @@ export const saveSequence = <Db extends symbol>(db: DbT<Db>) => (
   db.withManagerTask(m => () =>
     next === BigInt(0)
       ? m.query(
-          `INSERT INTO event_log_idx (id, current) VALUES('${aggregateRootId(
+          `INSERT INTO event_log_seq (id, current) VALUES('${aggregateRootId(
             aggregateRoot
           )}', '${next.toString()}')`
         )
       : m.query(
-          `UPDATE event_log_idx SET current = '${next.toString()}' WHERE id = '${aggregateRootId(
+          `UPDATE event_log_seq SET current = '${next.toString()}' WHERE id = '${aggregateRootId(
             aggregateRoot
           )}'`
         )
@@ -101,7 +101,7 @@ export const currentSequence = <Db extends symbol>(db: DbT<Db>) => (
   pipe(
     db.withManagerTask(m => () =>
       m.query(
-        `SELECT current FROM event_log_idx WHERE id = '${aggregateRootId(
+        `SELECT current FROM event_log_seq WHERE id = '${aggregateRootId(
           aggregateRoot
         )}'`
       )
