@@ -9,7 +9,7 @@ import {
 } from "./db";
 import { pipe } from "fp-ts/lib/pipeable";
 import { effect as T } from "@matechs/effect";
-import { array } from "fp-ts/lib/Array";
+import * as A from "fp-ts/lib/Array";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { liveFactory } from "@matechs/orm";
 import { ReadSideConfig } from "../src/config";
@@ -42,10 +42,12 @@ const defaultConfig = (id: string): ReadSideConfig => ({
 const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
   defaultConfig("read-todo-added")
 )(match =>
-  match({
-    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-    default: () => T.unit
-  })
+  T.traverseAS(
+    match({
+      TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+      default: () => T.unit
+    })
+  )
 );
 
 // ideal to process actions that need to happen on certain events
@@ -56,9 +58,11 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
   defaultConfig("read-todo-removed")
 )(["TodoRemoved"])(match =>
-  match({
-    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
-  })
+  T.traverseAS(
+    match({
+      TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
+    })
+  )
 );
 
 // ideal for operations that care about all the events in the db
@@ -68,10 +72,12 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
 const readAllDomainTodoAdded = domain.readAll(
   defaultConfig("read-todo-added-all-domain")
 )(match =>
-  match({
-    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
-    default: () => T.unit
-  })
+  T.traverseAS(
+    match({
+      TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+      default: () => T.unit
+    })
+  )
 );
 
 // ideal to process actions that need to happen on certain events across different aggregates
@@ -83,9 +89,11 @@ const readAllDomainTodoAdded = domain.readAll(
 const readAllDomainOnlyTodoRemoved = domain.readOnly(
   defaultConfig("read-todo-removed-all-domain")
 )(["TodoRemoved"])(match =>
-  match({
-    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
-  })
+  T.traverseAS(
+    match({
+      TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
+    })
+  )
 );
 
 // provide env like you would normally do with ORM
@@ -112,7 +120,7 @@ export const main = bracketPool(
     )
     .doL(s =>
       // joins the long running fibers
-      array.sequence(T.parEffect)([
+      A.array.sequence(T.parEffect)([
         s.readInAggregateTodosOnlyTodoAdded.join,
         s.readInAggregateTodosOnlyTodoRemoved.join,
         s.readAllDomainTodoAdded.join,

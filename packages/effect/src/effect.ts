@@ -1912,6 +1912,14 @@ export function sequenceP(
     );
 }
 
+export const traverseAS = <A, R, E, B>(f: (a: A) => Effect<R, E, B>) => (
+  arr: Array<A>
+): Effect<R, E, Array<B>> => Ar.array.traverse(effect)(arr, f);
+
+export const traverseAP = <A, R, E, B>(f: (a: A) => Effect<R, E, B>) => (
+  arr: Array<A>
+): Effect<R, E, Array<B>> => Ar.array.traverse(effect)(arr, f);
+
 export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
   return {
     concat: (ca, cb): Cause<E> => {

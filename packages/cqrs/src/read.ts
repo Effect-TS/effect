@@ -28,6 +28,12 @@ export interface EventMeta {
   root: string;
 }
 
+export const metaURI: unique symbol = Symbol();
+
+export interface EventMetaHidden {
+  [metaURI]: EventMeta;
+}
+
 export type ReadType = "domain" | "aggregate";
 
 export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
@@ -44,7 +50,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       )
     );
 
-  readSide(config: ReadSideConfig, aggregate?: string) {
+  readSide(config: ReadSideConfig) {
     return <Keys2 extends NonEmptyArray<A[Tag]>>(
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
@@ -59,9 +65,10 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       op: (
         matcher: MatcherT<Extract<A, Record<Tag, ElemType<Keys2>>>, Tag>
       ) => (
-        event: Extract<A, Record<Tag, ElemType<Keys2>>>,
-        meta: EventMeta
-      ) => T.Effect<R, ER, void>,
+        events: Array<
+          Extract<A, Record<Tag, ElemType<Keys2>>> & EventMetaHidden
+        >
+      ) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
       ) => T.Effect<
@@ -77,15 +84,15 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
               pipe(
                 fetchEvents,
                 T.chainTap(events =>
-                  A.array.traverse(T.effect)(events, event =>
-                    op(this.S.select(eventTypes).matchWiden as any)(
-                      event.event,
-                      {
+                  op(this.S.select(eventTypes).matchWiden as any)(
+                    events.map(event => ({
+                      ...event.event,
+                      [metaURI]: {
                         aggregate: event.aggregate,
                         root: event.root,
                         sequence: event.sequence
                       }
-                    )
+                    }))
                   )
                 ),
                 T.chainTap(events =>
@@ -113,7 +120,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       );
   }
 
-  readSideAll(config: ReadSideConfig, aggregate?: string) {
+  readSideAll(config: ReadSideConfig) {
     return (
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
@@ -123,7 +130,7 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
     ) => <R, ER, R2, ER2 = never>(
       op: (
         matcher: MatcherT<A, Tag>
-      ) => (event: A, meta: EventMeta) => T.Effect<R, ER, void>,
+      ) => (event: (A & EventMetaHidden)[]) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
       ) => T.Effect<
@@ -139,12 +146,15 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
               pipe(
                 fetchEvents,
                 T.chainTap(events =>
-                  A.array.traverse(T.effect)(events, event =>
-                    op(this.S.matchWiden as any)(event.event, {
-                      aggregate: event.aggregate,
-                      root: event.root,
-                      sequence: event.sequence
-                    })
+                  op(this.S.matchWiden as any)(
+                    events.map(event => ({
+                      ...event.event,
+                      [metaURI]: {
+                        aggregate: event.aggregate,
+                        root: event.root,
+                        sequence: event.sequence
+                      }
+                    }))
                   )
                 ),
                 T.chainTap(events =>
