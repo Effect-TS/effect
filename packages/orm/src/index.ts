@@ -138,17 +138,21 @@ export class DbT<Db extends symbol> {
     this.withNewRegion = this.withNewRegion.bind(this);
   }
 
-  withNewRegion<R, E, A>(op: T.Effect<ORM<Db> & R, E, A>) {
+  withNewRegion<R extends ORM<Db>, E, A>(
+    op: T.Effect<R, E, A>
+  ): T.Effect<R, E, A> {
     return this.withConnection(connection =>
-      T.provideR((r: R & Pool<Db>) => ({
-        ...r,
-        [managerEnv]: {
-          ...r[managerEnv],
-          [this.dbEnv]: {
-            manager: connection.manager
+      T.provideR(
+        (r: R): R => ({
+          ...r,
+          [managerEnv]: {
+            ...r[managerEnv],
+            [this.dbEnv]: {
+              manager: connection.manager
+            }
           }
-        }
-      }))(op)
+        })
+      )(op)
     );
   }
 
