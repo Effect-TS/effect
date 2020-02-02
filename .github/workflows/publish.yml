@@ -22,6 +22,7 @@ jobs:
           lerna bootstrap
           lerna run build
           yarn jest --detectOpenHandles
+          mv .ci.npmrc .npmrc
           lerna publish from-package --yes
         env:
           CI: "true"

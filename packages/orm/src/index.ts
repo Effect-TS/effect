@@ -135,6 +135,21 @@ export class DbT<Db extends symbol> {
     this.withConnection = this.withConnection.bind(this);
     this.withManagerTask = this.withManagerTask.bind(this);
     this.withManager = this.withManager.bind(this);
+    this.withNewRegion = this.withNewRegion.bind(this);
+  }
+
+  withNewRegion<R, E, A>(op: T.Effect<ORM<Db> & R, E, A>) {
+    return this.withConnection(connection =>
+      T.provideR((r: R & Pool<Db>) => ({
+        ...r,
+        [managerEnv]: {
+          ...r[managerEnv],
+          [this.dbEnv]: {
+            manager: connection.manager
+          }
+        }
+      }))(op)
+    );
   }
 
   bracketPool<R, E, A>(

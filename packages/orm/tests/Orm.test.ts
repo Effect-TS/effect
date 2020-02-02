@@ -30,7 +30,8 @@ const {
   bracketPool,
   withConnectionTask,
   withManagerTask,
-  withORMTransaction
+  withORMTransaction,
+  withNewRegion
 } = DB.dbT(testDbEnv);
 
 describe("Orm", () => {
@@ -336,5 +337,63 @@ describe("Orm", () => {
       raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
     );
     assert.deepEqual(queries, ["BEGIN", "ROLLBACK"]);
+  });
+
+  it("should jump in new region", async () => {
+    const uri = Symbol();
+
+    const spec = F.define({
+      [uri]: {
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
+    });
+
+    const {
+      [uri]: { demo }
+    } = F.access(spec);
+
+    const provider = F.implement(spec)({
+      [uri]: {
+        demo: () =>
+          pipe(
+            withManagerTask(r => () => r.query("")),
+            withNewRegion
+          )
+      }
+    });
+
+    const program = pipe(withORMTransaction(demo()), provider, bracketPool);
+
+    const mockFactory: typeof createConnection = () =>
+      Promise.resolve({
+        close(): Promise<void> {
+          return Promise.resolve();
+        },
+        createQueryRunner() {
+          return {
+            query(query) {
+              if (["BEGIN", "COMMIT"].indexOf(query) !== -1) {
+                return Promise.resolve();
+              } else {
+                return Promise.reject();
+              }
+            }
+          };
+        },
+        manager: {
+          query(_query) {
+            return Promise.resolve("ok");
+          }
+        } as EntityManager
+      } as Connection);
+
+    const env: Env<typeof program> = {
+      ...DB.mockFactory(mockFactory),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+    };
+
+    const res = await T.runToPromise(T.provideAll(env)(program));
+
+    assert.deepEqual(res, "ok");
   });
 });
