@@ -12,13 +12,13 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
         T.async(r => {
           fetchApi(url, {
             headers: {
-              ...headers,
               "Content-Type": H.foldRequestType(
                 requestType,
                 () => "application/json",
                 () => "application/x-www-form-urlencoded",
                 () => "multipart/form-data"
-              )
+              ),
+              ...headers
             },
             body: body
               ? H.foldRequestType(

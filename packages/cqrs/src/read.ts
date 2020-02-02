@@ -26,6 +26,9 @@ export interface EventMeta {
   sequence: BigInt;
   aggregate: string;
   root: string;
+  kind: string;
+  id: string;
+  createdAt: string;
 }
 
 export const metaURI: unique symbol = Symbol();
@@ -88,9 +91,12 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
                     events.map(event => ({
                       ...event.event,
                       [metaURI]: {
+                        id: event.id,
                         aggregate: event.aggregate,
                         root: event.root,
-                        sequence: event.sequence
+                        sequence: event.sequence,
+                        kind: event.kind,
+                        createdAt: event.createdAt
                       }
                     }))
                   )
@@ -150,9 +156,12 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
                     events.map(event => ({
                       ...event.event,
                       [metaURI]: {
+                        id: event.id,
                         aggregate: event.aggregate,
                         root: event.root,
-                        sequence: event.sequence
+                        sequence: event.sequence,
+                        kind: event.kind,
+                        createdAt: event.createdAt
                       }
                     }))
                   )

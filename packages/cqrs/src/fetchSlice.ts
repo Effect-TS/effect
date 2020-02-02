@@ -41,7 +41,7 @@ export class SliceFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
+              `SELECT id, kind, event, sequence, aggregate, root, created_at FROM event_log WHERE aggregate = '${aggregate}' AND kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
                 .join(
                   ","
@@ -62,18 +62,21 @@ export class SliceFetcher<
             aggregate: string;
             root: string;
             sequence: string;
+            created_at: string
           }>
         ) => x.map(e => e)
       ),
       T.chain(events =>
         array.traverse(T.effect)(
           events,
-          ({ id, event, kind, aggregate, root, sequence }) =>
+          ({ id, event, kind, aggregate, root, sequence, created_at }) =>
             sequenceS(T.effect)({
               id: T.pure(id),
               aggregate: T.pure(aggregate),
               root: T.pure(root),
               sequence: T.pure(BigInt(sequence)),
+              kind: T.pure(kind),
+              createdAt: T.pure(created_at),
               event: T.orAbort(
                 pipe(
                   this.S.keys[kind]
@@ -126,7 +129,7 @@ export class AggregateFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
+              `SELECT id, kind, event, sequence, aggregate, root, created_at FROM event_log WHERE aggregate = '${aggregate}' AND offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
             ),
             T.chain(query =>
               this.db.withManagerTask(manager => () => manager.query(query))
@@ -143,18 +146,21 @@ export class AggregateFetcher<
             aggregate: string;
             root: string;
             sequence: string;
+            created_at: string;
           }>
         ) => x.map(e => e)
       ),
       T.chain(events =>
         array.traverse(T.effect)(
           events,
-          ({ id, event, kind, sequence, root, aggregate }) =>
+          ({ id, event, kind, sequence, root, aggregate, created_at }) =>
             sequenceS(T.effect)({
               id: T.pure(id),
               aggregate: T.pure(aggregate),
               root: T.pure(root),
               sequence: T.pure(BigInt(sequence)),
+              kind: T.pure(kind),
+              createdAt: T.pure(created_at),
               event: T.orAbort(
                 pipe(
                   this.S.keys[kind]
@@ -207,7 +213,7 @@ export class DomainFetcher<
         pipe(
           pipe(
             T.pure(
-              `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE kind IN(${this.eventTypes
+              `SELECT id, kind, event, sequence, aggregate, root, created_at FROM event_log WHERE kind IN(${this.eventTypes
                 .map(e => `'${e}'`)
                 .join(
                   ","
@@ -228,18 +234,21 @@ export class DomainFetcher<
             aggregate: string;
             root: string;
             sequence: string;
+            created_at: string;
           }>
         ) => x.map(e => e)
       ),
       T.chain(events =>
         array.traverse(T.effect)(
           events,
-          ({ id, event, kind, aggregate, root, sequence }) =>
+          ({ id, event, kind, aggregate, root, sequence, created_at }) =>
             sequenceS(T.effect)({
               id: T.pure(id),
               aggregate: T.pure(aggregate),
               root: T.pure(root),
               sequence: T.pure(BigInt(sequence)),
+              kind: T.pure(kind),
+              createdAt: T.pure(created_at),
               event: T.orAbort(
                 pipe(
                   this.S.keys[kind]
@@ -280,7 +289,7 @@ export class DomainFetcherAll<
       T.chain(({ id, limit }) =>
         pipe(
           T.pure(
-            `SELECT id, kind, event, sequence, aggregate, root FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
+            `SELECT id, kind, event, sequence, aggregate, root, created_at FROM event_log WHERE offsets->>'${id}' IS NULL ORDER BY created_at ASC, sequence ASC LIMIT ${limit};`
           ),
           T.chain(query =>
             this.db.withManagerTask(manager => () => manager.query(query))
@@ -296,17 +305,20 @@ export class DomainFetcherAll<
             aggregate: string;
             root: string;
             sequence: string;
+            created_at: string;
           }>
         ) => x.map(e => e)
       ),
       T.chain(events =>
         array.traverse(T.effect)(
           events,
-          ({ id, event, sequence, root, aggregate }) =>
+          ({ id, event, sequence, root, aggregate, kind, created_at }) =>
             sequenceS(T.effect)({
               id: T.pure(id),
               aggregate: T.pure(aggregate),
               root: T.pure(root),
+              kind: T.pure(kind),
+              createdAt: T.pure(created_at),
               sequence: T.pure(BigInt(sequence)),
               event: T.orAbort(T.fromEither(this.S.type.decode(event)))
             })

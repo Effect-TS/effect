@@ -42,7 +42,9 @@ export const libcurl: (caPath?: string) => H.Http = (
               const req = new C.Curl();
               const reqHead = [
                 ...(isJson(requestType)
-                  ? ["Content-Type: application/json"]
+                  ? headers["Content-Type"]
+                    ? []
+                    : ["Content-Type: application/json"]
                   : []),
                 ...pipe(
                   headers,

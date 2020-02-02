@@ -14,3 +14,5 @@ export function cqrs<E, A, Tag extends keyof A & string, Db extends symbol>(
 
 export { EventLog } from "./eventLog";
 export { ReadSideConfig } from "./config";
+export { EventMetaHidden, metaURI } from "./read"
+export { Aggregate } from "./aggregate"
