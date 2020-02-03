@@ -1,3 +1,5 @@
+import {} from "morphic-ts/lib/batteries/summoner-no-union"
+
 import Long from "long";
 import { effect as T, managed as M } from "@matechs/effect";
 import {
