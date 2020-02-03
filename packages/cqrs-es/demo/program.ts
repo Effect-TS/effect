@@ -5,7 +5,8 @@ import {
   todosAggregate,
   bracketPool,
   domain,
-  dbConfigLive
+  dbConfigLive,
+  todosES
 } from "./db";
 import { pipe } from "fp-ts/lib/pipeable";
 import { effect as T } from "@matechs/effect";
@@ -13,13 +14,11 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { liveFactory } from "@matechs/orm";
 import * as CQ from "@matechs/cqrs";
 import { provideApp } from "./app";
-import { eventStore, eventStoreURI, EventStoreConfig } from "../src";
+import * as ES from "../src";
 import { sequenceT } from "fp-ts/lib/Apply";
 
-// simple program just append 3 new events to the log in the aggregate root todos-a
 const program = withTransaction(
   pipe(
-    // compose normally with rest of your logic
     todoRoot("a").persistEvent(of => [
       of.TodoAdded({ id: 1, todo: "todo" }),
       of.TodoAdded({ id: 2, todo: "todo-2" })
@@ -31,26 +30,50 @@ const program = withTransaction(
 );
 
 const defaultConfig = (id: string): CQ.ReadSideConfig => ({
-  delay: 3000, // how long to wait after each poll
-  id, // unique id for this read
-  limit: 100 // how many events to fetch in each pool
+  delay: 3000,
+  id,
+  limit: 100
 });
 
-const todosES = eventStore(todosAggregate);
+// streams all events from eventstore in the $ce-todos stream
+// keep track of latest offset transactionally in postgres
+// table ES.TableOffsets (created automatically through sync)
+const processTodos = todosES.read("read_todos_from_es")(
+  todosAggregate.adt.matchEffect({
+    TodoAdded: () => T.unit,
+    TodoRemoved: () => T.unit
+  })
+);
 
-// provide env like you would normally do with ORM
-// keep in mind to include EventLog in your entities
+// note the above is equivalent to the following
+export const processTodosGeneric = ES.readEvents("read_todos_from_es")(
+  "$ce-todos"
+)(
+  // this will be used to decode raw events
+  T.liftEither(x => todosAggregate.adt.type.decode(x))
+)(
+  todosAggregate.adt.matchEffect({
+    TodoAdded: () => T.unit,
+    TodoRemoved: () => T.unit
+  })
+)(
+  // you can implement you own
+  ES.ormOffsetStore(todosAggregate.db)
+)(
+  // provides environment and bracket over process step
+  // this will wrap process + set offset on a single event
+  processEff => todosAggregate.db.withORMTransaction(processEff)
+);
+
 export const main = bracketPool(
   Do(T.effect)
-    .do(domain.init()) // creates tables for event log and index
-    .do(program) // runs the program
+    .do(domain.init())
+    .do(program)
     .bindL("dispatcher", () =>
       T.fork(todosES.dispatcher(defaultConfig("todos_es")))
     )
-    .doL(s =>
-      // joins the long running fibers
-      sequenceT(T.parEffect)(s.dispatcher.join)
-    )
+    .bindL("processTodos", () => T.fork(processTodos))
+    .doL(s => sequenceT(T.parEffect)(s.dispatcher.join, s.processTodos.join))
     .return(() => {
       //
     })
@@ -59,8 +82,8 @@ export const main = bracketPool(
 export const liveMain = pipe(
   main,
   provideApp,
-  T.provideS<EventStoreConfig>({
-    [eventStoreURI]: {
+  T.provideS<ES.EventStoreConfig>({
+    [ES.eventStoreURI]: {
       settings: {},
       endPointOrGossipSeed: "discover://eventstore.discovery.url"
     }

@@ -6088,6 +6088,13 @@ morphic-ts@^0.8.0-rc.0:
   dependencies:
     tslib "^1.10.0"
 
+morphic-ts@^0.8.0-rc.2:
+  version "0.8.0-rc.2"
+  resolved "https://registry.yarnpkg.com/morphic-ts/-/morphic-ts-0.8.0-rc.2.tgz#f1c668ed443e57eea1d4e52a9071136786ce8654"
+  integrity sha512-0fVfV1C9OoqLeftWJ6ACH/0Z0Vkyka3CSIu8VJsfpgZGTb/RVcRm0WQoQqs8VykASdsSSN0A5iuILKMSr9eSBw==
+  dependencies:
+    tslib "^1.10.0"
+
 move-concurrently@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/move-concurrently/-/move-concurrently-1.0.1.tgz#be2c005fda32e0b29af1f05d7c4b33214c701f92"

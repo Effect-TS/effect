@@ -1,5 +1,3 @@
-import * as t from "io-ts";
-import { ADT } from "morphic-ts/lib/adt";
 import { dbT } from "@matechs/orm";
 import { Aggregate } from "./aggregate";
 import { createTable } from "./createTable";
@@ -8,20 +6,27 @@ import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { Read } from "./read";
 import { ReadSideConfig } from "./config";
 import { DomainFetcher, DomainFetcherAll } from "./fetchSlice";
-import { MatcherT } from "./matchers";
+import { MorphADT } from "morphic-ts/lib/usage/tagged-union";
+import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
+import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
+import { matcher } from "./matcher";
 
 // experimental alpha
 /* istanbul ignore file */
 
-export type TypeADT<E, A, Tag extends keyof A & string> = ADT<A, Tag> & {
-  type: t.Type<A, E>;
-};
-
-export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
-  private readonly read: Read<E, A, Tag, Db>;
+export class Domain<
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Db extends symbol
+> {
+  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db>;
 
   constructor(
-    private readonly S: TypeADT<E, A, Tag>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     private readonly dbURI: Db,
     private readonly db = dbT(dbURI)
   ) {
@@ -33,12 +38,12 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
     this.read = new Read(S, db);
   }
 
-  adt: ADT<A, Tag> & { matchEffect: MatcherT<A, Tag> } = {
+  adt = {
     ...this.S,
-    matchEffect: this.S.matchWiden as any
+    matchEffect: matcher(this.S)
   };
 
-  aggregate<Keys extends NonEmptyArray<A[Tag]>>(
+  aggregate<Keys extends NonEmptyArray<keyof Types>>(
     aggregate: string,
     eventTypes: Keys
   ) {
@@ -56,7 +61,7 @@ export class Domain<E, A, Tag extends keyof A & string, Db extends symbol> {
   }
 
   readOnly(config: ReadSideConfig) {
-    return <Keys extends NonEmptyArray<A[Tag]>>(eventTypes: Keys) =>
+    return <Keys extends NonEmptyArray<keyof Types>>(eventTypes: Keys) =>
       this.read.readSide(config)(
         new DomainFetcher(this.S, eventTypes, this.db).fetchSlice(),
         eventTypes

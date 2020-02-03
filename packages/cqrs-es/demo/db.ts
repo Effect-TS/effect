@@ -5,6 +5,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { ConnectionOptions } from "typeorm";
 import { effect as T } from "@matechs/effect";
 import { printTodo } from "./app";
+import * as ES from "../src";
 
 // configure ORM db
 export const dbURI: unique symbol = Symbol();
@@ -20,6 +21,8 @@ export const todosAggregate = domain.aggregate("todos", [
   "TodoAdded",
   "TodoRemoved"
 ]);
+
+export const todosES = ES.aggregate(todosAggregate);
 
 export const onTodoAdded = todosAggregate.adt.matchEffect({
   TodoAdded: ({ todo }) => printTodo(todo),
@@ -44,13 +47,10 @@ export const dbConfigLive: DbConfig<typeof dbURI> = {
         .bind("synchronize", T.pure(true))
         .bindL("entities", () =>
           T.pure(
-            // need to add CQ.EventLog to your entities
-            // it has sync off and is created statically
-            // via CQ.init
-            [CQ.EventLog]
+            // need to add CQ.EventLog & ES.TabaleOffset to your entities
+            [CQ.EventLog, ES.TableOffset]
           )
         )
-        //.bind("namingStrategy", T.pure(new SnakeNamingStrategy()))
         .return(s => s as ConnectionOptions)
     }
   }

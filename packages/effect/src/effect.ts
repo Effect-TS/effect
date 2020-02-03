@@ -660,6 +660,17 @@ export function provideS<R>(r: R) {
 }
 
 /**
+ * Provides partial environment, like provide() but via direct transformation
+ * safe to use in non top-level scenarios.
+ *
+ * Higher order. Interpret "M" in terms of "R" through "A".
+ */
+export const provideSW = <M>() => <R, E, A>(res: Effect<R, E, A>) => (
+  f: (a: A) => M
+) => <R2, E2, A2>(eff: Effect<R2 & M, E2, A2>): Effect<R2 & R, E | E2, A2> =>
+  chain_(res, a => provideS<M>(f(a))(eff));
+
+/**
  * Provides structural partial environment, like provideStruct() but via direct transformation
  * safe to use in non top-level scenarios
  */
@@ -768,6 +779,12 @@ export function lift<A, B>(
   f: FunctionN<[A], B>
 ): <R, E>(io: Effect<R, E, A>) => Effect<R, E, B> {
   return <R, E>(io: Effect<R, E, A>) => map_(io, f);
+}
+
+export function liftEither<A, E, B>(
+  f: FunctionN<[A], Either<E, B>>
+): FunctionN<[A], IO<E, B>> {
+  return a => fromEither(f(a));
 }
 
 /**

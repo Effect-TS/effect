@@ -4,34 +4,42 @@ import { sequenceS } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
 import { accessConfig } from "./config";
-import { TypeADT } from "./domain";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { ElemType } from "morphic-ts/lib/adt/utils";
 import * as t from "io-ts";
+import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
+import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
+import { AOfTypes, MorphADT } from "morphic-ts/lib/usage/tagged-union";
 
 // experimental alpha
 /* istanbul ignore file */
 
 export class SliceFetcher<
-  E,
-  A extends { [t in Tag]: A[Tag] },
-  Tag extends keyof A & string,
-  Keys extends NonEmptyArray<A[Tag]>,
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Keys extends NonEmptyArray<keyof Types>,
   Db extends symbol
 > {
   private readonly inDomain: (
-    a: A
-  ) => a is Extract<A, Record<Tag, ElemType<Keys>>>;
+    a: AOfTypes<Types>
+  ) => a is AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>;
 
   constructor(
-    private readonly S: TypeADT<E, A, Tag>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
     const nS = S.select(eventTypes);
 
-    this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
-      typeof nS.keys[a[S.tag]] !== "undefined" ? true : false;
+    this.inDomain = (
+      a
+    ): a is AOfTypes<
+      { [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }
+    > => (typeof nS.keys[a[S.tag]] !== "undefined" ? true : false);
   }
 
   fetchSlice(aggregate: string) {
@@ -62,7 +70,7 @@ export class SliceFetcher<
             aggregate: string;
             root: string;
             sequence: string;
-            created_at: string
+            created_at: string;
           }>
         ) => x.map(e => e)
       ),
@@ -81,7 +89,7 @@ export class SliceFetcher<
                 pipe(
                   this.S.keys[kind]
                     ? T.fromEither(this.S.type.decode(event))
-                    : T.raiseError<Error | t.Errors, A>(
+                    : T.raiseError<Error | t.Errors, AOfTypes<Types>>(
                         new Error("unknown event")
                       ),
                   T.chain(a =>
@@ -101,25 +109,31 @@ export class SliceFetcher<
 }
 
 export class AggregateFetcher<
-  E,
-  A extends { [t in Tag]: A[Tag] },
-  Tag extends keyof A & string,
-  Keys extends NonEmptyArray<A[Tag]>,
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Keys extends NonEmptyArray<keyof Types>,
   Db extends symbol
 > {
   private readonly inDomain: (
-    a: A
-  ) => a is Extract<A, Record<Tag, ElemType<Keys>>>;
+    a: AOfTypes<Types>
+  ) => a is AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>;
 
   constructor(
-    private readonly S: TypeADT<E, A, Tag>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
     const nS = S.select(eventTypes);
 
-    this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
-      typeof nS.keys[a[S.tag]] !== "undefined" ? true : false;
+    this.inDomain = (
+      a
+    ): a is AOfTypes<
+      { [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }
+    > => (typeof nS.keys[a[S.tag]] !== "undefined" ? true : false);
   }
 
   fetchSlice(aggregate: string) {
@@ -165,7 +179,7 @@ export class AggregateFetcher<
                 pipe(
                   this.S.keys[kind]
                     ? T.fromEither(this.S.type.decode(event))
-                    : T.raiseError<Error | t.Errors, A>(
+                    : T.raiseError<Error | t.Errors, AOfTypes<Types>>(
                         new Error("unknown event")
                       ),
                   T.chain(a =>
@@ -185,25 +199,31 @@ export class AggregateFetcher<
 }
 
 export class DomainFetcher<
-  E,
-  A extends { [t in Tag]: A[Tag] },
-  Tag extends keyof A & string,
-  Keys extends NonEmptyArray<A[Tag]>,
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Keys extends NonEmptyArray<keyof Types>,
   Db extends symbol
 > {
   private readonly inDomain: (
-    a: A
-  ) => a is Extract<A, Record<Tag, ElemType<Keys>>>;
+    a: AOfTypes<Types>
+  ) => a is AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>;
 
   constructor(
-    private readonly S: TypeADT<E, A, Tag>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
     const nS = S.select(eventTypes);
 
-    this.inDomain = (a): a is Extract<A, Record<Tag, ElemType<Keys>>> =>
-      typeof nS.keys[a[S.tag]] !== "undefined" ? true : false;
+    this.inDomain = (
+      a
+    ): a is AOfTypes<
+      { [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }
+    > => (typeof nS.keys[a[S.tag]] !== "undefined" ? true : false);
   }
 
   fetchSlice() {
@@ -253,7 +273,7 @@ export class DomainFetcher<
                 pipe(
                   this.S.keys[kind]
                     ? T.fromEither(this.S.type.decode(event))
-                    : T.raiseError<Error | t.Errors, A>(
+                    : T.raiseError<Error | t.Errors, AOfTypes<Types>>(
                         new Error("unknown event")
                       ),
                   T.chain(a =>
@@ -273,13 +293,16 @@ export class DomainFetcher<
 }
 
 export class DomainFetcherAll<
-  E,
-  A extends { [t in Tag]: A[Tag] },
-  Tag extends keyof A & string,
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
   Db extends symbol
 > {
   constructor(
-    private readonly S: TypeADT<E, A, Tag>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     private readonly db: DbT<Db>
   ) {}
 

@@ -16,8 +16,10 @@ import {
   withConfig
 } from "./config";
 import { saveOffsets } from "./saveOffsets";
-import { TypeADT } from "./domain";
 import { MatcherT } from "./matchers";
+import { MorphADT, AOfTypes } from "morphic-ts/lib/usage/tagged-union";
+import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
+import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -39,9 +41,17 @@ export interface EventMetaHidden {
 
 export type ReadType = "domain" | "aggregate";
 
-export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
+export class Read<
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Db extends symbol
+> {
   constructor(
-    private readonly S: TypeADT<E, A, Tag>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     private readonly db: DbT<Db>
   ) {}
 
@@ -54,22 +64,28 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
     );
 
   readSide(config: ReadSideConfig) {
-    return <Keys2 extends NonEmptyArray<A[Tag]>>(
+    return <Keys2 extends NonEmptyArray<keyof Types>>(
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
         TaskError,
         ({
           id: string;
-          event: Extract<A, Record<Tag, ElemType<Keys2>>>;
+          event: AOfTypes<
+            { [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }
+          >;
         } & EventMeta)[]
       >,
       eventTypes: Keys2
     ) => <R, ER, R2, ER2 = never>(
       op: (
-        matcher: MatcherT<Extract<A, Record<Tag, ElemType<Keys2>>>, Tag>
+        matcher: MatcherT<
+          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>,
+          Tag
+        >
       ) => (
         events: Array<
-          Extract<A, Record<Tag, ElemType<Keys2>>> & EventMetaHidden
+          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }> &
+            EventMetaHidden
         >
       ) => T.Effect<R, ER, void[]>,
       onError: (
@@ -131,12 +147,14 @@ export class Read<E, A, Tag extends keyof A & string, Db extends symbol> {
       fetchEvents: T.Effect<
         ORM<Db> & ReadSideConfigService,
         TaskError,
-        ({ id: string; event: A } & EventMeta)[]
+        ({ id: string; event: AOfTypes<Types> } & EventMeta)[]
       >
     ) => <R, ER, R2, ER2 = never>(
       op: (
-        matcher: MatcherT<A, Tag>
-      ) => (event: (A & EventMetaHidden)[]) => T.Effect<R, ER, void[]>,
+        matcher: MatcherT<AOfTypes<Types>, Tag>
+      ) => (
+        event: (AOfTypes<Types> & EventMetaHidden)[]
+      ) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
       ) => T.Effect<

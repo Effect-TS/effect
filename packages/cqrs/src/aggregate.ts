@@ -1,18 +1,18 @@
 import { effect as T } from "@matechs/effect";
 import { DbT, DbTx, ORM, TaskError } from "@matechs/orm";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
-import * as t from "io-ts";
-import { ADT } from "morphic-ts/lib/adt";
 import { Of } from "morphic-ts/lib/adt/ctors";
 import { ElemType } from "morphic-ts/lib/adt/utils";
 import { ReadSideConfig } from "./config";
 import { SliceFetcher, AggregateFetcher } from "./fetchSlice";
 import { persistEvent } from "./persistEvent";
 import { Read } from "./read";
-import { TypeADT } from "./domain";
-import { pipe } from "fp-ts/lib/pipeable";
 import { array } from "fp-ts/lib/Array";
-import { MatcherT } from "./matchers";
+import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
+import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
+import { MorphADT, AOfTypes } from "morphic-ts/lib/usage/tagged-union";
+import { matcher } from "./matcher";
+import { pipe } from "fp-ts/lib/pipeable";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -20,18 +20,21 @@ import { MatcherT } from "./matchers";
 export type Handler<A, R, E, B> = (a: A) => T.Effect<R, E, B>;
 
 export class Aggregate<
-  E,
-  A,
-  Tag extends keyof A & string,
-  Keys extends NonEmptyArray<A[Tag]>,
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Keys extends NonEmptyArray<keyof Types>,
   Db extends symbol
 > {
-  private readonly read: Read<E, A, Tag, Db>;
+  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db>;
 
   constructor(
     public aggregate: string,
     public eventTypes: Keys,
-    public S: TypeADT<E, A, Tag>,
+    public S: MorphADT<Types, Tag, ProgURI, InterpURI>,
     public dbS: Db,
     public db: DbT<Db>
   ) {
@@ -42,25 +45,31 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this);
   }
 
-  private readonly narrowADT = this.S.select(this.eventTypes);
+  private readonly narrowADT = this.S.selectMorph(this.eventTypes);
 
-  adt: ADT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag> & {
-    matchEffect: MatcherT<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>;
-  } = {
+  adt = {
     ...this.narrowADT,
-    matchEffect: this.narrowADT.matchWiden as any
+    matchEffect: matcher(this.narrowADT)
   };
 
   root<
     H extends Array<
-      Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>
+      Handler<
+        AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
+        any,
+        any,
+        any
+      >
     > = never[]
-  >(root: string, handlers?: H): AggregateRoot<E, A, Tag, Keys, Db, H> {
+  >(
+    root: string,
+    handlers?: H
+  ): AggregateRoot<Types, Tag, ProgURI, InterpURI, Keys, Db, H> {
     return new AggregateRoot(this, root, this.eventTypes, handlers);
   }
 
   readOnly(config: ReadSideConfig) {
-    return <Keys2 extends NonEmptyArray<A[Tag]>>(eventTypes: Keys2) =>
+    return <Keys2 extends NonEmptyArray<keyof Types>>(eventTypes: Keys2) =>
       this.read.readSide(config)(
         new SliceFetcher(this.S, eventTypes, this.db).fetchSlice(
           this.aggregate
@@ -91,44 +100,54 @@ type InferR<
   : unknown;
 
 export class AggregateRoot<
-  E,
-  A,
-  Tag extends keyof A & string,
-  Keys extends NonEmptyArray<A[Tag]>,
+  Types extends {
+    [k in keyof Types]: [any, any];
+  },
+  Tag extends string,
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  Keys extends NonEmptyArray<keyof Types>,
   Db extends symbol,
   H extends Array<
-    Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>
+    Handler<
+      AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
+      any,
+      any,
+      any
+    >
   >
 > {
-  private readonly narrowedS: ADT<
-    Extract<A, Record<Tag, ElemType<Keys>>>,
-    Tag
-  > & {
-    type: t.Encoder<A, E>;
-  };
+  private readonly narrowedS = this.aggregate.S.selectMorph(this.keys);
+
   constructor(
-    public aggregate: Aggregate<E, A, Tag, Keys, Db>,
+    public aggregate: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>,
     public root: string,
     private readonly keys: Keys,
     private readonly handlers?: H
   ) {
-    this.narrowedS = {
-      ...this.aggregate.S.select(this.keys),
-      type: this.aggregate.S.type.asEncoder()
-    };
     this.persistEvent = this.persistEvent.bind(this);
   }
 
   persistEvent(
     eventFn: (
-      of: Of<Extract<A, Record<Tag, ElemType<Keys>>>, Tag>
+      of: Of<
+        AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
+        Tag
+      >
     ) =>
-      | Extract<A, Record<Tag, ElemType<Keys>>>
-      | Extract<A, Record<Tag, ElemType<Keys>>>[]
+      | AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>
+      | AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>[]
   ): T.Effect<
-    ORM<Db> & DbTx<Db> & InferR<A, Tag, Keys, H>,
+    ORM<Db> &
+      DbTx<Db> &
+      InferR<
+        AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
+        Tag,
+        Keys,
+        H
+      >,
     TaskError,
-    Extract<A, Record<Tag, ElemType<Keys>>>[]
+    AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>[]
   > {
     const r = eventFn(this.narrowedS.of);
 
