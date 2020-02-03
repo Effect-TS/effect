@@ -25,7 +25,7 @@ import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
 /* istanbul ignore file */
 
 export interface EventMeta {
-  sequence: BigInt;
+  sequence: bigint;
   aggregate: string;
   root: string;
   kind: string;

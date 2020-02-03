@@ -1,4 +1,6 @@
-import {} from "morphic-ts/lib/batteries/summoner-no-union"
+import {} from "morphic-ts/lib/batteries/summoner-no-union";
+import {} from "morphic-ts/lib/batteries/program";
+import {} from "morphic-ts/lib/batteries/program-orderable";
 
 import Long from "long";
 import { effect as T, managed as M } from "@matechs/effect";
@@ -9,8 +11,8 @@ import {
 } from "./client";
 import { pipe } from "fp-ts/lib/pipeable";
 import { left } from "fp-ts/lib/Either";
-import { flow } from "fp-ts/lib/function";
 import { sequenceT } from "fp-ts/lib/Apply";
+import { ResolvedEvent } from "node-eventstore-client";
 
 export interface DecodeError<E> {
   type: "decode";
@@ -48,9 +50,22 @@ export interface OffsetStore<R, E, R2, E2> {
   get: (readId: string, streamId: string) => T.Effect<R2, E2, bigint>;
 }
 
+export const esMetaURI: unique symbol = Symbol();
+
+export interface ESMeta {
+  [esMetaURI]: {
+    raw: ResolvedEvent;
+  };
+}
+
 export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
   decode: (u: unknown) => T.Effect<R, E, A>
-) => <R2, E2>(process: (a: A) => T.Effect<R2, E2, void>) => <OR, OE, OR2, OE2>(
+) => <R2, E2>(process: (a: A & ESMeta) => T.Effect<R2, E2, void>) => <
+  OR,
+  OE,
+  OR2,
+  OE2
+>(
   store: OffsetStore<OR, OE, OR2, OE2>
 ) => <RF, EF>(
   provider: <AF>(
@@ -81,8 +96,9 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
                         error: e
                       })
                     ),
-                    T.chain(
-                      flow(
+                    T.chain(x =>
+                      pipe(
+                        { ...x, [esMetaURI]: { raw: event } },
                         process,
                         T.mapError(
                           (e): SubError<E, E2, OE> => ({
