@@ -1,3 +1,4 @@
+import {} from "morphic-ts/lib/batteries/summoner-no-union"
 import { effect as T } from "@matechs/effect";
 import { DbT, DbTx, ORM, TaskError } from "@matechs/orm";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";

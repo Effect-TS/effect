@@ -1,3 +1,4 @@
+import {} from "morphic-ts/lib/batteries/summoner-no-union"
 import { effect as T } from "@matechs/effect";
 import { DbT } from "@matechs/orm";
 import { sequenceS } from "fp-ts/lib/Apply";
