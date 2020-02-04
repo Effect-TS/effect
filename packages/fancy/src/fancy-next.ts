@@ -6,7 +6,7 @@ import { Dispatcher, Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
 import { Errors } from "io-ts";
-import { Either, isRight } from "fp-ts/lib/Either";
+import { Either, isRight, isLeft } from "fp-ts/lib/Either";
 
 // alpha
 /* istanbul ignore file */
@@ -84,6 +84,11 @@ export function page<S>(
                 state: initial()
               }
             };
+
+        if (isLeft(decoded)) {
+          console.error("Decoding of state failed");
+          console.error(decoded.left);
+        }
 
         this.stop = T.run(
           pipe(S.drain(this.main), T.provideAll(state as any)),

@@ -67,6 +67,7 @@ export class Fancy<R> {
                       res(some(undefined));
                     } else {
                       console.error("SHOULD NEVER HAPPEN");
+                      console.error(ex);
                     }
                   });
                 } else {
@@ -76,6 +77,7 @@ export class Fancy<R> {
                         res(some(undefined));
                       } else {
                         console.error("SHOULD NEVER HAPPEN");
+                        console.error(ex);
                       }
                     });
                   });
