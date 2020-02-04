@@ -38,3 +38,5 @@ export const updateSM = <S, R, E>(f: (s: S) => T.Effect<R, E, S>) =>
       )
     )
   );
+
+export { StateP } from "./fancy";

@@ -115,7 +115,7 @@ const home = Do(T.effect)
     Fetch: fetchButton
   })
   .return(
-    ({ Button, Fetch }): React.FC<{ state: AppState }> => ({ state }) => (
+    ({ Button, Fetch }): React.FC<R.StateP<AppState>> => ({ state }) => (
       <>
         <DateComponent date={pipe(state, dateL.get)} />
         <Button />

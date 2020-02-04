@@ -34,8 +34,12 @@ export const stateOf = <S>(s: S): State<S> => ({
   }
 });
 
+export interface StateP<S> {
+  state: S;
+}
+
 export class Fancy<S, R extends State<S>> {
-  readonly ui: T.Effect<R, never, React.FC<{ state: S }>>;
+  readonly ui: T.Effect<R, never, React.FC<StateP<S>>>;
   readonly actions: S.Stream<unknown, never, void>;
   readonly actionList = L.empty<void>();
   private resCallback: Option<(_: Option<void>) => void> = none;
@@ -43,7 +47,7 @@ export class Fancy<S, R extends State<S>> {
   private readonly cancellers = {} as Record<string, Lazy<void>>;
 
   constructor(
-    renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC<{ state: S }>>
+    renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC<StateP<S>>>
   ) {
     const dispatch = <R>(r: R) => (eff: T.Effect<R, never, void>) => {
       const n = this.opsC;
