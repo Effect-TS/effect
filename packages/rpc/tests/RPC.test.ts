@@ -78,7 +78,7 @@ describe("RPC", () => {
 
     const clientEnv = pipe(
       T.noEnv,
-      T.mergeEnv(L.jsonClient),
+      T.mergeEnv(L.client),
       T.mergeEnv({
         [RPCCLI.clientConfigEnv]: {
           [counterEnv]: {

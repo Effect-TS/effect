@@ -1,5 +1,9 @@
 {
   "extends": "../../tsconfig.json",
+  "baseUrl": ".",
+  "paths": {
+    "@matechs/orm": ["node_modules/@matechs/orm"]
+  },
   "compilerOptions": {
     "lib": ["DOM"],
     "target": "ES5",

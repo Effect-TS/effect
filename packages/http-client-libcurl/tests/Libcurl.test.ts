@@ -3,7 +3,7 @@ import * as H from "@matechs/http-client";
 import assert from "assert";
 import bodyParser from "body-parser";
 import express from "express";
-import { jsonClient } from "../src";
+import { client } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
@@ -13,7 +13,7 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(jsonClient),
+      T.provide(client),
       T.provide(
         H.middlewareStack([
           H.withPathHeaders(
@@ -56,11 +56,9 @@ describe("Libcurl", () => {
     );
 
     const postText = await run(
-      H.text(
-        H.post("http://127.0.0.1:4001/post", {
-          foo: "bar"
-        })
-      )
+      H.postReturnText("http://127.0.0.1:4001/post", {
+        foo: "bar"
+      })
     );
 
     const postNoBody = await run(H.post("http://127.0.0.1:4001/post"));
@@ -143,7 +141,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get<unknown, { foo: string }>("http://127.0.0.1:4002/h"),
+        H.get<{ foo: string }>("http://127.0.0.1:4002/h"),
         H.withHeaders({
           foo: "bar"
         })
@@ -168,7 +166,7 @@ describe("Libcurl", () => {
     const s = app.listen(4005);
 
     const result = await run(
-      pipe(H.get<unknown, { foo: string }>("http://127.0.0.1:4005/middle"))
+      pipe(H.get<{ foo: string }>("http://127.0.0.1:4005/middle"))
     );
 
     s.close();
@@ -191,9 +189,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get<unknown, { foo: string; bar?: string }>(
-          "http://127.0.0.1:4004/h"
-        ),
+        H.get<{ foo: string; bar?: string }>("http://127.0.0.1:4004/h"),
         H.withHeaders(
           {
             foo: "baz"
@@ -302,7 +298,7 @@ describe("Libcurl", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provideAll(jsonClient)
+        T.provideAll(client)
       ),
       r => {
         res = r;

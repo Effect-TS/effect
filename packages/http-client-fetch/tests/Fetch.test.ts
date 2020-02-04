@@ -14,7 +14,7 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(F.jsonClient(fetch)),
+      T.provide(F.client(fetch)),
       T.provide(
         H.middlewareStack([
           H.withPathHeaders(
@@ -130,7 +130,7 @@ describe("Fetch", () => {
 
     const result = await run(
       pipe(
-        H.get<unknown, { foo: string }>("http://127.0.0.1:4012/h"),
+        H.get<{ foo: string }>("http://127.0.0.1:4012/h"),
         H.withHeaders({
           foo: "bar"
         })
@@ -155,7 +155,7 @@ describe("Fetch", () => {
     const s = app.listen(4015);
 
     const result = await run(
-      pipe(H.get<unknown, { foo: string }>("http://127.0.0.1:4015/middle"))
+      pipe(H.get<{ foo: string }>("http://127.0.0.1:4015/middle"))
     );
 
     s.close();
@@ -179,9 +179,7 @@ describe("Fetch", () => {
     const result = await run(
       pipe(
         pipe(
-          H.get<unknown, { foo: string; bar?: string }>(
-            "http://127.0.0.1:4014/h"
-          ),
+          H.get<{ foo: string; bar?: string }>("http://127.0.0.1:4014/h"),
           H.withHeaders(
             {
               foo: "baz"
@@ -291,7 +289,7 @@ describe("Fetch", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provideAll(F.jsonClient(fetch))
+        T.provideAll(F.client(fetch))
       ),
       r => {
         res = r;

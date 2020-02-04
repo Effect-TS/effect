@@ -19,6 +19,7 @@ export enum Method {
 }
 
 export type RequestType = "JSON" | "DATA" | "FORM";
+export type ResponseType = "JSON" | "TEXT" | "BINARY";
 
 export interface DataInput {
   [k: string]: unknown;
@@ -67,13 +68,6 @@ export function isHttpError(u: unknown): u is HttpError<unknown> {
   return isHttpRequestError(u) || isHttpResponseError(u);
 }
 
-export interface HttpDeserializer {
-  [httpDeserializerEnv]: {
-    response: <A>(a: string) => A | undefined;
-    errorResponse: <E>(error: string) => E | undefined;
-  };
-}
-
 export type HttpError<ErrorBody> =
   | HttpRequestError
   | HttpResponseError<ErrorBody>;
@@ -98,13 +92,38 @@ export interface HttpHeaders {
 
 export interface Http {
   [httpEnv]: {
-    request: <E, O>(
+    request<O>(
       method: Method,
       url: string,
       headers: Record<string, string>,
       requestType: RequestType,
-      body?: unknown
-    ) => T.Effect<HttpDeserializer, HttpError<E>, Response<O>>;
+      responseType: "BINARY",
+      body: unknown
+    ): T.Effect<T.NoEnv, HttpError<string>, Response<Buffer>>;
+    request<O>(
+      method: Method,
+      url: string,
+      headers: Record<string, string>,
+      requestType: RequestType,
+      responseType: "TEXT",
+      body: unknown
+    ): T.Effect<T.NoEnv, HttpError<string>, Response<string>>;
+    request<O>(
+      method: Method,
+      url: string,
+      headers: Record<string, string>,
+      requestType: RequestType,
+      responseType: "JSON",
+      body: unknown
+    ): T.Effect<T.NoEnv, HttpError<string>, Response<unknown>>;
+    request<O>(
+      method: Method,
+      url: string,
+      headers: Record<string, string>,
+      requestType: RequestType,
+      responseType: ResponseType,
+      body: unknown
+    ): T.Effect<T.NoEnv, HttpError<string>, Response<O>>;
   };
 }
 
@@ -112,12 +131,13 @@ function hasHeaders(r: object): r is HttpHeaders {
   return typeof r[httpHeadersEnv] !== "undefined";
 }
 
-export type RequestF = <R, E, O>(
+export type RequestF = <R, O>(
   method: Method,
   url: string,
   requestType: RequestType,
-  body?: unknown
-) => T.Effect<RequestEnv & R, HttpError<E>, Response<O>>;
+  responseType: ResponseType,
+  body: unknown
+) => T.Effect<RequestEnv & R, HttpError<string>, Response<O>>;
 
 export type RequestMiddleware = (request: RequestF) => RequestF;
 
@@ -136,7 +156,7 @@ export const middlewareStack: (
 });
 
 export type HttpEnv = Http & MiddlewareStack;
-export type RequestEnv = HttpEnv & HttpDeserializer;
+export type RequestEnv = HttpEnv;
 
 function foldMiddlewareStack(
   { [middlewareStackEnv]: env }: MiddlewareStack,
@@ -155,127 +175,138 @@ function foldMiddlewareStack(
   return request;
 }
 
-export function requestInner<R, I, E, O>(
+export function requestInner<R, I, O>(
   method: Method,
   url: string,
   requestType: RequestType,
+  responseType: ResponseType,
   body?: I
-): T.Effect<RequestEnv & R, HttpError<E>, Response<O>> {
+): T.Effect<RequestEnv & R, HttpError<string>, Response<O>> {
   return T.accessM((r: Http & R) =>
     r[httpEnv].request(
       method,
       url,
       hasHeaders(r) ? r[httpHeadersEnv] : {},
       requestType,
+      responseType,
       body
     )
   );
 }
 
-export function request<R, E, O>(
+export function request<R, O>(
   method: Method,
   url: string,
   requestType: RequestType,
+  responseType: ResponseType,
   body?: unknown
-): T.Effect<RequestEnv & R, HttpError<E>, Response<O>> {
+): T.Effect<RequestEnv & R, HttpError<string>, Response<O>> {
   return T.accessM((r: MiddlewareStack) =>
-    foldMiddlewareStack(r, requestInner)<R, E, O>(
+    foldMiddlewareStack(r, requestInner)<R, O>(
       method,
       url,
       requestType,
+      responseType,
       body
     )
   );
 }
 
-export function get<E, O>(
+export function get<O>(
   url: string
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.GET, url, "JSON");
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.GET, url, "JSON", "JSON");
 }
 
-export function post<I, E, O>(
+export function post<I, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.POST, url, "JSON", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.POST, url, "JSON", "JSON", body);
 }
 
-export function postData<I extends DataInput, E, O>(
+export function postReturnText<I, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.POST, url, "DATA", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.POST, url, "JSON", "TEXT", body);
 }
 
-export function patch<I, E, O>(
+export function postData<I, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.PATCH, url, "JSON", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.POST, url, "DATA", "JSON", body);
 }
 
-export function patchData<I extends DataInput, E, O>(
+export function patch<I, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.PATCH, url, "DATA", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.PATCH, url, "JSON", "JSON", body);
+}
+
+export function patchData<I extends DataInput, O>(
+  url: string,
+  body?: I
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.PATCH, url, "DATA", "JSON", body);
 }
 
 export function put<I, E, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.PUT, url, "JSON", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.PUT, url, "JSON", "JSON", body);
 }
 
-export function putData<I extends DataInput, E, O>(
+export function putData<I extends DataInput, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.PUT, url, "DATA", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.PUT, url, "DATA", "JSON", body);
 }
 
 export function del<I, E, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.DELETE, url, "JSON", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.DELETE, url, "JSON", "JSON", body);
 }
 
 export function postForm<E, O>(
   url: string,
   body: FormData
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.POST, url, "FORM", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.POST, url, "FORM", "JSON", body);
 }
 
 export function putForm<E, O>(
   url: string,
   body: FormData
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.PUT, url, "FORM", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.PUT, url, "FORM", "JSON", body);
 }
 
 export function patchForm<E, O>(
   url: string,
   body: FormData
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.PATCH, url, "FORM", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.PATCH, url, "FORM", "JSON", body);
 }
 
 export function delForm<E, O>(
   url: string,
   body: FormData
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.DELETE, url, "FORM", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.DELETE, url, "FORM", "JSON", body);
 }
 
-export function delData<I extends DataInput, E, O>(
+export function delData<I extends DataInput, O>(
   url: string,
   body?: I
-): T.Effect<RequestEnv, HttpError<E>, Response<O>> {
-  return request(Method.DELETE, url, "DATA", body);
+): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
+  return request(Method.DELETE, url, "DATA", "JSON", body);
 }
 
 export function withHeaders(
@@ -299,47 +330,13 @@ export function withPathHeaders(
   path: Predicate<string>,
   replace = false
 ): RequestMiddleware {
-  return req => (m, u, b, r) =>
-    path(u) ? withHeaders(headers, replace)(req(m, u, b, r)) : req(m, u, b, r);
+  return req => (m, u, reqT, respT, b) =>
+    path(u)
+      ? withHeaders(headers, replace)(req(m, u, reqT, respT, b))
+      : req(m, u, reqT, respT, b);
 }
 
-function tryJson<A>(a: string): A | undefined {
-  try {
-    return JSON.parse(a);
-  } catch (_) {
-    return undefined;
-  }
-}
-
-export const jsonDeserializer: HttpDeserializer = {
-  [httpDeserializerEnv]: {
-    errorResponse: tryJson,
-    response: tryJson
-  }
-};
-
-export const textDeserializer: HttpDeserializer = {
-  [httpDeserializerEnv]: {
-    errorResponse: <A>(i: string | undefined) => i as A | undefined,
-    response: <A>(i: string | undefined) => i as A | undefined
-  }
-};
-
-export function text<R, E, O>(
-  req: T.Effect<R & RequestEnv, HttpError<E>, Response<O>>
-): T.Effect<R & HttpEnv, HttpError<string>, Response<string>> {
-  return T.provideR((r: R & HttpEnv) => ({ ...r, ...textDeserializer }))(
-    req
-  ) as any;
-}
-
-export function json<R, E, O>(
-  req: T.Effect<R & RequestEnv, HttpError<E>, Response<O>>
-): T.Effect<R & HttpEnv, HttpError<E>, Response<O>> {
-  return T.provideR((r: R & HttpEnv) => ({ ...r, ...jsonDeserializer }))(req);
-}
-
-export function foldRequestType<A, B, C>(
+export function foldRequestType<A, B, C, D>(
   requestType: RequestType,
   onJson: () => A,
   onData: () => B,
@@ -352,6 +349,22 @@ export function foldRequestType<A, B, C>(
       return onData();
     case "FORM":
       return onForm();
+  }
+}
+
+export function foldResponseType<A, B, C>(
+  responseType: ResponseType,
+  onJson: () => A,
+  onText: () => B,
+  onBinary: () => C
+): A | B | C {
+  switch (responseType) {
+    case "JSON":
+      return onJson();
+    case "TEXT":
+      return onText();
+    case "BINARY":
+      return onBinary();
   }
 }
 
