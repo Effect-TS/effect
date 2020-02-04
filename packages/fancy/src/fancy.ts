@@ -34,15 +34,17 @@ export const stateOf = <S>(s: S): State<S> => ({
   }
 });
 
-export class Fancy<R> {
-  readonly ui: S.Stream<R, never, React.FC>;
+export class Fancy<S, R extends State<S>> {
+  readonly ui: T.Effect<R, never, React.FC<{ state: S }>>;
   readonly actions: S.Stream<unknown, never, void>;
   readonly actionList = L.empty<void>();
   private resCallback: Option<(_: Option<void>) => void> = none;
   private opsC = 0;
   private readonly cancellers = {} as Record<string, Lazy<void>>;
 
-  constructor(renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC>) {
+  constructor(
+    renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC<{ state: S }>>
+  ) {
     const dispatch = <R>(r: R) => (eff: T.Effect<R, never, void>) => {
       const n = this.opsC;
 
@@ -92,32 +94,13 @@ export class Fancy<R> {
       )
     );
 
-    this.ui = S.concat(
-      S.encaseEffect(
-        pipe(
-          renderEffect,
-          T.provideS<Dispatcher<R>>({
-            [dispatcherURI]: {
-              dispatch
-            }
-          })
-        )
-      ),
-      pipe(
-        this.actions,
-        S.chain(_ =>
-          S.encaseEffect(
-            pipe(
-              renderEffect,
-              T.provideS<Dispatcher<R>>({
-                [dispatcherURI]: {
-                  dispatch
-                }
-              })
-            )
-          )
-        )
-      )
+    this.ui = pipe(
+      renderEffect,
+      T.provideS<Dispatcher<R>>({
+        [dispatcherURI]: {
+          dispatch
+        }
+      })
     );
   }
 }

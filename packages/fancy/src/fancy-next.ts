@@ -17,7 +17,11 @@ export function page<S>(
   dec: (_: unknown) => Either<Errors, S>
 ) {
   return <K>(
-    view: T.Effect<State<S> & Dispatcher<State<S> & K>, never, React.FC>
+    view: T.Effect<
+      State<S> & Dispatcher<State<S> & K>,
+      never,
+      React.FC<{ state: S }>
+    >
   ) =>
     class extends React.Component<{
       markup: string;
@@ -26,17 +30,6 @@ export function page<S>(
       public readonly REF = React.createRef<HTMLDivElement>();
 
       public stop: Lazy<void> | undefined = undefined;
-
-      public readonly main = pipe(
-        new Fancy(view).ui,
-        S.chain(Cmp =>
-          S.encaseEffect(
-            T.sync(() => {
-              DOM.hydrate(React.createElement(Cmp), this.REF.current);
-            })
-          )
-        )
-      );
 
       static async getInitialProps() {
         const state: State<S> = {
@@ -47,13 +40,12 @@ export function page<S>(
 
         const rendered = await T.runToPromise(
           pipe(
-            S.collectArray(
-              S.take(
-                pipe(
-                  new Fancy(view).ui,
-                  S.map(Cmp => DOMS.renderToString(React.createElement(Cmp)))
-                ),
-                1
+            new Fancy(view).ui,
+            T.map(Cmp =>
+              DOMS.renderToString(
+                React.createElement(Cmp, {
+                  state: state[stateURI].state
+                })
               )
             ),
             T.provideAll(state as any)
@@ -63,7 +55,7 @@ export function page<S>(
         const stateS = state[stateURI].state;
 
         return {
-          markup: rendered[0],
+          markup: rendered,
           stateToKeep: JSON.stringify(enc(stateS))
         };
       }
@@ -89,10 +81,49 @@ export function page<S>(
           console.error(decoded.left);
         }
 
+        const f = new Fancy(view);
         this.stop = T.run(
-          pipe(S.drain(this.main), T.provideAll(state as any)),
+          pipe(
+            f.ui,
+            T.chain(Cmp =>
+              T.sync(() => {
+                const CmpS: React.FC<{ state: S }> = p => {
+                  const [s, setS] = React.useState(p.state);
+
+                  React.useEffect(
+                    () =>
+                      T.run(
+                        S.drain(
+                          S.stream.map(f.actions, _ => {
+                            setS(state[stateURI].state);
+                          })
+                        ),
+                        ex => {
+                          if (!EX.isInterrupt(ex)) {
+                            console.error(ex);
+                          }
+                        }
+                      ),
+                    []
+                  );
+
+                  return React.createElement(Cmp, {
+                    state: s
+                  });
+                };
+
+                DOM.hydrate(
+                  React.createElement(CmpS, {
+                    state: state[stateURI].state
+                  }),
+                  this.REF.current
+                );
+              })
+            ),
+            T.provideAll(state as any)
+          ),
           ex => {
-            if (!EX.isInterrupt(ex)) {
+            if (!EX.isInterrupt(ex) && !EX.isDone(ex)) {
               console.error(ex);
             }
           }

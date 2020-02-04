@@ -121,22 +121,25 @@ const dateC = Do(T.effect)
   })
   .return(({ date }): React.FC => () => <div>{date.toISOString()}</div>);
 
+const Inp = React.memo(() => <input type={"text"} />);
+
 const home = Do(T.effect)
   .sequenceS({
     Date: dateC,
     Button: buttonC,
-    Fetch: fetchC,
-    todos: R.accessS(AppState.lenseFromProp("todo").get),
-    error: R.accessS(AppState.lenseFromProp("error").get)
+    Fetch: fetchC
   })
   .return(
-    ({ Date, Button, Fetch, todos, error }): React.FC => () => (
+    ({ Date, Button, Fetch }): React.FC<{ state: AppState }> => p => (
       <>
         <Date />
         <Button />
         <Fetch />
-        {isSome(todos) && <div>{JSON.stringify(todos.value)}</div>}
-        {isSome(error) && <div>{error.value}</div>}
+        {isSome(p.state.todo) && (
+          <div>{JSON.stringify(p.state.todo.value)}</div>
+        )}
+        {isSome(p.state.error) && <div>{p.state.error.value}</div>}
+        <Inp />
       </>
     )
   );
