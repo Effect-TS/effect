@@ -50,14 +50,12 @@ const { updateDate } = F.access(dateOpsSpec)[dateOpsURI];
 
 const APP = R.app<DateOps>()(initialState, AppState.type);
 
-const Home = Do(T.effect)
+const buttonC = Do(T.effect)
   .sequenceS({
-    dispatcher: APP.dispatcher,
-    date: accessDate
+    dispatcher: APP.dispatcher
   })
-  .return(({ date, dispatcher }) => (
-    <>
-      <div>{date.toISOString()}</div>
+  .return(
+    ({ dispatcher }): React.FC => () => (
       <button
         onClick={() => {
           dispatcher(updateDate);
@@ -65,8 +63,28 @@ const Home = Do(T.effect)
       >
         Click!
       </button>
-    </>
-  ));
+    )
+  );
+
+const dateC = Do(T.effect)
+  .sequenceS({
+    date: accessDate
+  })
+  .return(({ date }): React.FC => () => <div>{date.toISOString()}</div>);
+
+const home = Do(T.effect)
+  .sequenceS({
+    Date: dateC,
+    Button: buttonC
+  })
+  .return(
+    ({ Date, Button }): React.FC => () => (
+      <>
+        <Date />
+        <Button />
+      </>
+    )
+  );
 
 // tslint:disable-next-line: no-default-export
-export default APP.page(pipe(Home, dateOps));
+export default APP.page(pipe(home, dateOps));

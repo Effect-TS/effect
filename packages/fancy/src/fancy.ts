@@ -31,12 +31,12 @@ export const stateOf = <S>(s: S): State<S> => ({
 });
 
 export class Fancy<R> {
-  readonly ui: S.Stream<R, never, JSX.Element>;
+  readonly ui: S.Stream<R, never, React.FC>;
   readonly actions: S.Stream<R, never, void>;
   readonly actionList = L.empty<T.Effect<R, never, void>>();
   private resCallback: Option<(_: T.Effect<R, never, void>) => void> = none;
 
-  constructor(renderEffect: T.Effect<R & Dispatcher<R>, never, JSX.Element>) {
+  constructor(renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC>) {
     const dispatch = <R>(r: R) => (eff: T.Effect<R, never, void>) => {
       if (isSome(this.resCallback)) {
         const res = this.resCallback.value;

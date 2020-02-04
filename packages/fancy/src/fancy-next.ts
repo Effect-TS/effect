@@ -14,7 +14,7 @@ export function page<S>(
   dec: (_: unknown) => Either<Errors, S>
 ) {
   return <K>(
-    view: T.Effect<State<S> & Dispatcher<State<S> & K>, never, JSX.Element>
+    view: T.Effect<State<S> & Dispatcher<State<S> & K>, never, React.FC>
   ) =>
     class extends React.Component<{
       markup: string;
@@ -26,7 +26,6 @@ export function page<S>(
 
       public readonly main = pipe(
         new Fancy(view).ui,
-        S.chain(Jsx => S.once(() => Jsx)),
         S.chain(Cmp =>
           S.encaseEffect(
             T.sync(() => {
@@ -50,7 +49,6 @@ export function page<S>(
               S.take(
                 pipe(
                   new Fancy(view).ui,
-                  S.map((jsx): React.FC => () => jsx),
                   S.map(Cmp => DOMS.renderToString(React.createElement(Cmp)))
                 ),
                 1
