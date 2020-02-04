@@ -18,7 +18,7 @@ export const app = <R>() => <S>(initial: () => S, type: Type<S, unknown>) => {
   return {
     page: page(initial, type.encode, x => type.decode(x), context),
     dispatcher: dispatcherOf<R & State<S>>(),
-    component: <P extends {}>(f: WithDisp<R, S, P>) =>
+    view: <P extends {}>(f: WithDisp<R, S, P>) =>
       pipe(dispatcherOf<R & State<S>>(), T.chain(f)),
     useState: () => React.useContext(context)
   };

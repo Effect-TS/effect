@@ -63,11 +63,11 @@ const { updateDate } = F.access(dateOpsSpec)[dateOpsURI];
 
 const APP = R.app<DateOps>()(initialState, AppState.type);
 
-const UpdateDate = APP.component(dispatcher =>
+const UpdateDate = APP.view(dispatch =>
   T.pure(() => (
     <button
       onClick={() => {
-        dispatcher(updateDate);
+        dispatch(updateDate);
       }}
     >
       Update Date!
@@ -88,11 +88,11 @@ const fetchJSON = pipe(
   )
 );
 
-const Fetch = APP.component(dispatcher =>
+const Fetch = APP.view(dispatch =>
   T.pure(() => (
     <button
       onClick={() => {
-        dispatcher(fetchJSON);
+        dispatch(fetchJSON);
       }}
     >
       Fetch!
@@ -121,7 +121,7 @@ function useInterval(callback: Lazy<void>, delay: number) {
   }, [delay]);
 }
 
-const ShowDate = APP.component(_ =>
+const ShowDate = APP.view(() =>
   T.pure(() => {
     const [s, setS] = React.useState(0);
     const { date } = APP.useState();
@@ -136,7 +136,7 @@ const ShowDate = APP.component(_ =>
 
 const MemoInput = React.memo(() => <input type={"text"} />);
 
-const home = APP.component(_ =>
+const Home = APP.view(() =>
   pipe(
     sequenceS(T.effect)({
       UpdateDate,
@@ -171,4 +171,4 @@ const home = APP.component(_ =>
 );
 
 // tslint:disable-next-line: no-default-export
-export default APP.page(pipe(home, dateOps));
+export default APP.page(pipe(Home, dateOps));
