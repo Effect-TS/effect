@@ -32,8 +32,7 @@ export function page<S>(
         S.chain(Cmp =>
           S.encaseEffect(
             T.sync(() => {
-              //console.log(DOMS.renderToString(React.createElement(Cmp)))
-              DOM.render(React.createElement(Cmp), this.REF.current);
+              DOM.hydrate(React.createElement(Cmp), this.REF.current);
             })
           )
         )
