@@ -6,7 +6,8 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { summon } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType } from "morphic-ts/lib/usage/utils";
 import { isDone } from "@matechs/effect/lib/exit";
-import { none, some } from "fp-ts/lib/Option";
+import { none, some, isSome } from "fp-ts/lib/Option";
+import { flow } from "fp-ts/lib/function";
 
 // alpha
 /* istanbul ignore file */
@@ -15,7 +16,8 @@ const AppState = summon(F =>
   F.interface(
     {
       date: F.date(),
-      todo: F.nullable(F.unknown())
+      todo: F.nullable(F.unknown()),
+      error: F.nullable(F.string())
     },
     "AppState"
   )
@@ -28,7 +30,8 @@ const accessDate = R.accessSM((s: AppState) => T.pure(s.date));
 const initialState = (): AppState =>
   AppState.build({
     date: new Date(),
-    todo: none
+    todo: none,
+    error: none
   });
 
 const dateOpsURI = Symbol();
@@ -84,14 +87,15 @@ const fetchJSON = pipe(
   ),
   T.chain(res =>
     isDone(res)
-      ? T.asUnit(
-          R.updateS(
-            AppState.lenseFromProp("todo").modify(() => some(res.value))
+      ? R.updateS(
+          flow(
+            AppState.lenseFromProp("todo").set(some(res.value)),
+            AppState.lenseFromProp("error").set(none)
           )
         )
-      : T.sync(() => {
-          console.error(res);
-        })
+      : R.updateS(
+          AppState.lenseFromProp("error").set(some("error while fetching"))
+        )
   )
 );
 
@@ -122,15 +126,17 @@ const home = Do(T.effect)
     Date: dateC,
     Button: buttonC,
     Fetch: fetchC,
-    todos: R.accessS(AppState.lenseFromProp("todo").get)
+    todos: R.accessS(AppState.lenseFromProp("todo").get),
+    error: R.accessS(AppState.lenseFromProp("error").get)
   })
   .return(
-    ({ Date, Button, Fetch, todos }): React.FC => () => (
+    ({ Date, Button, Fetch, todos, error }): React.FC => () => (
       <>
         <Date />
         <Button />
         <Fetch />
-        <div>{JSON.stringify(todos)}</div>
+        {isSome(todos) && <div>{JSON.stringify(todos.value)}</div>}
+        {isSome(error) && <div>{error.value}</div>}
       </>
     )
   );

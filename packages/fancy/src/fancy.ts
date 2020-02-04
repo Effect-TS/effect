@@ -16,7 +16,7 @@ export const dispatcherURI = Symbol();
 
 export interface Dispatcher<R> {
   [dispatcherURI]: {
-    dispatch: (env: R) => (_: T.Effect<R, never, void>) => void;
+    dispatch: (env: R) => (_: T.Effect<R, never, any>) => void;
   };
 }
 
