@@ -6,7 +6,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { summon } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType } from "morphic-ts/lib/usage/utils";
 import { isDone } from "@matechs/effect/lib/exit";
-import { none, some, isSome } from "fp-ts/lib/Option";
+import * as O from "fp-ts/lib/Option";
 import { flow } from "fp-ts/lib/function";
 
 // alpha
@@ -16,7 +16,7 @@ const AppState = summon(F =>
   F.interface(
     {
       date: F.date(),
-      todo: F.nullable(F.unknown()),
+      orgs: F.nullable(F.array(F.unknown())),
       error: F.nullable(F.string())
     },
     "AppState"
@@ -25,13 +25,11 @@ const AppState = summon(F =>
 
 type AppState = AType<typeof AppState>;
 
-const accessDate = R.accessSM((s: AppState) => T.pure(s.date));
-
 const initialState = (): AppState =>
   AppState.build({
     date: new Date(),
-    todo: none,
-    error: none
+    orgs: O.none,
+    error: O.none
   });
 
 const dateOpsURI = Symbol();
@@ -48,11 +46,13 @@ const dateOpsSpec = F.define<DateOps>({
   }
 });
 
+const dateL = AppState.lenseFromProp("date");
+const errorL = AppState.lenseFromProp("error");
+const orgsL = AppState.lenseFromProp("orgs");
+
 const dateOps = F.implement(dateOpsSpec)({
   [dateOpsURI]: {
-    updateDate: T.asUnit(
-      R.updateS(AppState.lenseFromPath(["date"]).modify(() => new Date()))
-    )
+    updateDate: T.asUnit(R.updateS(dateL.modify(() => new Date())))
   }
 });
 
@@ -60,7 +60,7 @@ const { updateDate } = F.access(dateOpsSpec)[dateOpsURI];
 
 const APP = R.app<DateOps>()(initialState, AppState.type);
 
-const buttonC = Do(T.effect)
+const updateDateButton = Do(T.effect)
   .sequenceS({
     dispatcher: APP.dispatcher
   })
@@ -71,35 +71,25 @@ const buttonC = Do(T.effect)
           dispatcher(updateDate);
         }}
       >
-        Click!
+        Update Date!
       </button>
     )
   );
 
 const fetchJSON = pipe(
   T.result(
-    T.delay(
-      T.fromPromise(() =>
-        fetch("http://echo.jsontest.com/key/value/one/two").then(r => r.json())
-      ),
-      3000
+    T.fromPromise(() =>
+      fetch("https://api.github.com/users/hadley/orgs").then(r => r.json())
     )
   ),
   T.chain(res =>
     isDone(res)
-      ? R.updateS(
-          flow(
-            AppState.lenseFromProp("todo").set(some(res.value)),
-            AppState.lenseFromProp("error").set(none)
-          )
-        )
-      : R.updateS(
-          AppState.lenseFromProp("error").set(some("error while fetching"))
-        )
+      ? R.updateS(flow(orgsL.set(O.some(res.value)), errorL.set(O.none)))
+      : R.updateS(errorL.set(O.some("error while fetching")))
   )
 );
 
-const fetchC = Do(T.effect)
+const fetchButton = Do(T.effect)
   .sequenceS({
     dispatcher: APP.dispatcher
   })
@@ -115,26 +105,34 @@ const fetchC = Do(T.effect)
     )
   );
 
-const DateC = (_: { date: Date }) => <div>{_.date.toISOString()}</div>;
+const DateComponent = (_: { date: Date }) => <div>{_.date.toISOString()}</div>;
 
-const Inp = React.memo(() => <input type={"text"} />);
+const MemoInput = React.memo(() => <input type={"text"} />);
 
 const home = Do(T.effect)
   .sequenceS({
-    Button: buttonC,
-    Fetch: fetchC
+    Button: updateDateButton,
+    Fetch: fetchButton
   })
   .return(
-    ({ Button, Fetch }): React.FC<{ state: AppState }> => p => (
+    ({ Button, Fetch }): React.FC<{ state: AppState }> => ({ state }) => (
       <>
-        <DateC date={p.state.date} />
+        <DateComponent date={pipe(state, dateL.get)} />
         <Button />
         <Fetch />
-        {isSome(p.state.todo) && (
-          <div>{JSON.stringify(p.state.todo.value)}</div>
+        {pipe(
+          state,
+          orgsL.get,
+          O.map(orgs => <div>Orgs loaded: {orgs.length}</div>),
+          O.toNullable
         )}
-        {isSome(p.state.error) && <div>{p.state.error.value}</div>}
-        <Inp />
+        {pipe(
+          state,
+          errorL.get,
+          O.map(error => <div>{error}</div>),
+          O.toNullable
+        )}
+        <MemoInput />
       </>
     )
   );
