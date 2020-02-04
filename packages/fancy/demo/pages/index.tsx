@@ -6,7 +6,7 @@ import { summon, AsOpaque } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType, EType } from "morphic-ts/lib/usage/utils";
 import { isDone } from "@matechs/effect/lib/exit";
 import * as O from "fp-ts/lib/Option";
-import { flow } from "fp-ts/lib/function";
+import { flow, Lazy } from "fp-ts/lib/function";
 import { sequenceS } from "fp-ts/lib/Apply";
 
 // alpha
@@ -100,11 +100,37 @@ const Fetch = APP.component(dispatcher =>
   ))
 );
 
+// example of hook interop
+function useInterval(callback: Lazy<void>, delay: number) {
+  const savedCallback = React.useRef<Lazy<void>>();
+
+  // Remember the latest callback.
+  React.useEffect(() => {
+    savedCallback.current = callback;
+  }, [callback]);
+
+  // Set up the interval.
+  React.useEffect(() => {
+    function tick() {
+      savedCallback.current!!();
+    }
+    if (delay !== null) {
+      const id = setInterval(tick, delay);
+      return () => clearInterval(id);
+    }
+  }, [delay]);
+}
+
 const ShowDate = APP.component(_ =>
   T.pure(() => {
+    const [s, setS] = React.useState(0);
     const { date } = APP.useState();
 
-    return <div>{date.toISOString()}</div>;
+    useInterval(() => {
+      setS(s + 1);
+    }, 500);
+
+    return <div>{`${date.toISOString()} - ${s}`}</div>;
   })
 );
 
