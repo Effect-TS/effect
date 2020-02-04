@@ -7,6 +7,7 @@ import {
 import * as L from "@matechs/effect/lib/list";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Option, some, isSome, none } from "fp-ts/lib/Option";
+import { Lazy } from "fp-ts/lib/function";
 
 // alpha
 /* istanbul ignore file */
@@ -35,60 +36,58 @@ export const stateOf = <S>(s: S): State<S> => ({
 
 export class Fancy<R> {
   readonly ui: S.Stream<R, never, React.FC>;
-  readonly actions: S.Stream<R, never, void>;
-  readonly actionList = L.empty<T.Effect<R, never, void>>();
-  private resCallback: Option<(_: T.Effect<R, never, void>) => void> = none;
+  readonly actions: S.Stream<unknown, never, void>;
+  readonly actionList = L.empty<void>();
+  private resCallback: Option<(_: Option<void>) => void> = none;
+  private opsC = 0;
+  private readonly cancellers = {} as Record<string, Lazy<void>>;
 
   constructor(renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC>) {
     const dispatch = <R>(r: R) => (eff: T.Effect<R, never, void>) => {
-      if (isSome(this.resCallback)) {
-        const res = this.resCallback.value;
+      const n = this.opsC;
 
-        this.resCallback = none;
+      this.opsC = this.opsC + 1;
 
-        res(T.provideAll(r)(eff));
-      } else {
-        L.push(this.actionList, T.provideAll(r)(eff));
-      }
+      this.cancellers[`op-${n}`] = T.run(T.provideAll(r)(eff), ex => {
+        delete this.cancellers[`op-${n}`];
+
+        if (EX.isDone(ex)) {
+          if (isSome(this.resCallback)) {
+            const res = this.resCallback.value;
+
+            this.resCallback = none;
+
+            res(some(ex.value));
+          } else {
+            L.push(this.actionList, ex.value);
+          }
+        } else {
+          if (!EX.isInterrupt(ex)) {
+            console.error("dispatched effects are not supposed to fail");
+            console.error(ex);
+          }
+        }
+      });
     };
 
     this.actions = S.fromSource(
       M.encaseEffect(
-        T.access((rM: R) =>
-          pipe(
-            T.accessEnvironment<R>(),
-            T.chain(r =>
-              T.asyncTotal(res => {
-                if (L.isNotEmpty(this.actionList)) {
-                  const eff = L.popUnsafe(this.actionList)!!;
+        T.pure(
+          T.asyncTotal(res => {
+            if (L.isNotEmpty(this.actionList)) {
+              const ret = L.popUnsafe(this.actionList)!!;
 
-                  T.run(pipe(eff, T.provideAll({ ...rM, ...r })), ex => {
-                    if (EX.isDone(ex)) {
-                      res(some(undefined));
-                    } else {
-                      console.error("SHOULD NEVER HAPPEN");
-                      console.error(ex);
-                    }
-                  });
-                } else {
-                  this.resCallback = some((eff: T.Effect<R, never, void>) => {
-                    T.run(pipe(eff, T.provideAll({ ...r, ...rM })), ex => {
-                      if (EX.isDone(ex)) {
-                        res(some(undefined));
-                      } else {
-                        console.error("SHOULD NEVER HAPPEN");
-                        console.error(ex);
-                      }
-                    });
-                  });
-                }
+              res(some(ret));
+            } else {
+              this.resCallback = some(res);
+            }
 
-                return () => {
-                  //
-                };
-              })
-            )
-          )
+            return () => {
+              Object.keys(this.cancellers).forEach(op => {
+                this.cancellers[op]();
+              });
+            };
+          })
         )
       )
     );

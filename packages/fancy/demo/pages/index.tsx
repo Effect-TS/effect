@@ -5,6 +5,8 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import { summon } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType } from "morphic-ts/lib/usage/utils";
+import { isDone } from "@matechs/effect/lib/exit";
+import { none, some } from "fp-ts/lib/Option";
 
 // alpha
 /* istanbul ignore file */
@@ -12,7 +14,8 @@ import { AType } from "morphic-ts/lib/usage/utils";
 const AppState = summon(F =>
   F.interface(
     {
-      date: F.date()
+      date: F.date(),
+      todo: F.nullable(F.unknown())
     },
     "AppState"
   )
@@ -24,7 +27,8 @@ const accessDate = R.accessSM((s: AppState) => T.pure(s.date));
 
 const initialState = (): AppState =>
   AppState.build({
-    date: new Date()
+    date: new Date(),
+    todo: none
   });
 
 const dateOpsURI = Symbol();
@@ -69,6 +73,44 @@ const buttonC = Do(T.effect)
     )
   );
 
+const fetchJSON = pipe(
+  T.result(
+    T.delay(
+      T.fromPromise(() =>
+        fetch("http://echo.jsontest.com/key/value/one/two").then(r => r.json())
+      ),
+      3000
+    )
+  ),
+  T.chain(res =>
+    isDone(res)
+      ? T.asUnit(
+          R.updateS(
+            AppState.lenseFromProp("todo").modify(() => some(res.value))
+          )
+        )
+      : T.sync(() => {
+          console.error(res);
+        })
+  )
+);
+
+const fetchC = Do(T.effect)
+  .sequenceS({
+    dispatcher: APP.dispatcher
+  })
+  .return(
+    ({ dispatcher }): React.FC => () => (
+      <button
+        onClick={() => {
+          dispatcher(fetchJSON);
+        }}
+      >
+        Fetch!
+      </button>
+    )
+  );
+
 const dateC = Do(T.effect)
   .sequenceS({
     date: accessDate
@@ -78,13 +120,17 @@ const dateC = Do(T.effect)
 const home = Do(T.effect)
   .sequenceS({
     Date: dateC,
-    Button: buttonC
+    Button: buttonC,
+    Fetch: fetchC,
+    todos: R.accessS(AppState.lenseFromProp("todo").get)
   })
   .return(
-    ({ Date, Button }): React.FC => () => (
+    ({ Date, Button, Fetch, todos }): React.FC => () => (
       <>
         <Date />
         <Button />
+        <Fetch />
+        <div>{JSON.stringify(todos)}</div>
       </>
     )
   );
