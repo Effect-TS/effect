@@ -3,16 +3,17 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as R from "../../lib";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
-import { summon } from "morphic-ts/lib/batteries/summoner-no-union";
-import { AType } from "morphic-ts/lib/usage/utils";
+import { summon, AsOpaque } from "morphic-ts/lib/batteries/summoner-no-union";
+import { AType, EType } from "morphic-ts/lib/usage/utils";
 import { isDone } from "@matechs/effect/lib/exit";
 import * as O from "fp-ts/lib/Option";
 import { flow } from "fp-ts/lib/function";
+import { sequenceS } from "fp-ts/lib/Apply";
 
 // alpha
 /* istanbul ignore file */
 
-const AppState = summon(F =>
+const AppState_ = summon(F =>
   F.interface(
     {
       date: F.date(),
@@ -23,7 +24,10 @@ const AppState = summon(F =>
   )
 );
 
-type AppState = AType<typeof AppState>;
+interface AppState extends AType<typeof AppState_> {}
+interface AppStateR extends EType<typeof AppState_> {}
+
+const AppState = AsOpaque<AppStateR, AppState>(AppState_);
 
 const initialState = (): AppState =>
   AppState.build({
@@ -60,21 +64,17 @@ const { updateDate } = F.access(dateOpsSpec)[dateOpsURI];
 
 const APP = R.app<DateOps>()(initialState, AppState.type);
 
-const updateDateButton = Do(T.effect)
-  .sequenceS({
-    dispatcher: APP.dispatcher
-  })
-  .return(
-    ({ dispatcher }): React.FC => () => (
-      <button
-        onClick={() => {
-          dispatcher(updateDate);
-        }}
-      >
-        Update Date!
-      </button>
-    )
-  );
+const UpdateDate = APP.component(dispatcher =>
+  T.pure(() => (
+    <button
+      onClick={() => {
+        dispatcher(updateDate);
+      }}
+    >
+      Update Date!
+    </button>
+  ))
+);
 
 const fetchJSON = pipe(
   T.result(
@@ -89,53 +89,57 @@ const fetchJSON = pipe(
   )
 );
 
-const fetchButton = Do(T.effect)
-  .sequenceS({
-    dispatcher: APP.dispatcher
-  })
-  .return(
-    ({ dispatcher }): React.FC => () => (
-      <button
-        onClick={() => {
-          dispatcher(fetchJSON);
-        }}
-      >
-        Fetch!
-      </button>
-    )
-  );
+const Fetch = APP.component(dispatcher =>
+  T.pure(() => (
+    <button
+      onClick={() => {
+        dispatcher(fetchJSON);
+      }}
+    >
+      Fetch!
+    </button>
+  ))
+);
 
-const DateComponent = (_: { date: Date }) => <div>{_.date.toISOString()}</div>;
+const ShowDate = APP.component(_ =>
+  T.pure(({ date }: { date: Date }) => <div>{date.toISOString()}</div>)
+);
 
 const MemoInput = React.memo(() => <input type={"text"} />);
 
-const home = Do(T.effect)
-  .sequenceS({
-    Button: updateDateButton,
-    Fetch: fetchButton
-  })
-  .return(
-    ({ Button, Fetch }): React.FC<R.StateP<AppState>> => ({ state }) => (
-      <>
-        <DateComponent date={pipe(state, dateL.get)} />
-        <Button />
-        <Fetch />
-        {pipe(
-          state,
-          orgsL.get,
-          O.map(orgs => <div>Orgs loaded: {orgs.length}</div>),
-          O.toNullable
-        )}
-        {pipe(
-          state,
-          errorL.get,
-          O.map(error => <div>{error}</div>),
-          O.toNullable
-        )}
-        <MemoInput />
-      </>
+const home = APP.component(_ =>
+  pipe(
+    sequenceS(T.effect)({
+      UpdateDate,
+      Fetch,
+      ShowDate
+    }),
+    T.map(
+      ({ UpdateDate, ShowDate, Fetch }): React.FC<R.StateP<AppState>> => ({
+        state
+      }) => (
+        <>
+          <ShowDate date={pipe(state, dateL.get)} />
+          <UpdateDate />
+          <Fetch />
+          {pipe(
+            state,
+            orgsL.get,
+            O.map(orgs => <div>Orgs loaded: {orgs.length}</div>),
+            O.toNullable
+          )}
+          {pipe(
+            state,
+            errorL.get,
+            O.map(error => <div>{error}</div>),
+            O.toNullable
+          )}
+          <MemoInput />
+        </>
+      )
     )
-  );
+  )
+);
 
 // tslint:disable-next-line: no-default-export
 export default APP.page(pipe(home, dateOps));

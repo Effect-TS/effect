@@ -1,15 +1,21 @@
 import { effect as T } from "@matechs/effect";
 import { page } from "./fancy-next";
-import { dispatcherOf, State, stateURI } from "./fancy";
+import { dispatcherOf, State, stateURI, Dispatcher } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
 
 // alpha
 /* istanbul ignore file */
 
+type WithDisp<R, S, P extends {}> = (
+  dispatcher: (_: T.Effect<R & State<S>, never, any>) => void
+) => T.Effect<R & State<S> & Dispatcher<R & State<S>>, never, React.FC<P>>;
+
 export const app = <R>() => <S>(initial: () => S, type: Type<S, unknown>) => ({
   page: page(initial, type.encode, x => type.decode(x)),
-  dispatcher: dispatcherOf<R & State<S>>()
+  dispatcher: dispatcherOf<R & State<S>>(),
+  component: <P extends {}>(f: WithDisp<R, S, P>) =>
+    pipe(dispatcherOf<R & State<S>>(), T.chain(f))
 });
 
 export const accessSM = <S, R, E, A>(f: (s: S) => T.Effect<R, E, A>) =>
