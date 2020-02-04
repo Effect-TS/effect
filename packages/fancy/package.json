@@ -1,0 +1,47 @@
+{
+  "name": "@matechs/fancy",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": false,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "scripts": {
+    "build": "rimraf lib && tsc --build tsconfig.build.json",
+    "lint": "tslint --project .",
+    "build-demo": "next build demo",
+    "dev-demo": "next dev demo",
+    "start-demo": "next start demo"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "peerDependencies": {
+    "@matechs/effect": "^1.0.0",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
+    "next": "^9.2.1",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0"
+  },
+  "devDependencies": {
+    "@matechs/effect": "^1.0.1",
+    "@types/react": "^16.9.19",
+    "@types/react-dom": "^16.9.5",
+    "fast-check": "^1.22.1",
+    "fast-equals": "^2.0.0",
+    "fp-ts": "^2.4.2",
+    "fp-ts-contrib": "^0.1.9",
+    "io-ts": "^2.0.6",
+    "io-ts-types": "^0.5.5",
+    "monocle-ts": "^2.1.0",
+    "morphic-ts": "^0.8.0-rc.2",
+    "newtype-ts": "^0.3.3",
+    "next": "^9.2.1",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+}

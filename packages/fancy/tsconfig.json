@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["DOM"],
+    "target": "ES5",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "jsx": "react"
+  },
+  "include": ["src/**/*", "tests/**/*", "type-tests/**/*", "demo/**/*"]
+}
