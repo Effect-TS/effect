@@ -4,6 +4,9 @@ import { dispatcherOf, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
 
+// alpha
+/* istanbul ignore file */
+
 export const app = <R>() => <S>(initial: () => S, type: Type<S, unknown>) => ({
   page: page(initial, type.encode, x => type.decode(x)),
   dispatcher: dispatcherOf<R & State<S>>()

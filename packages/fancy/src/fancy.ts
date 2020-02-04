@@ -8,6 +8,9 @@ import * as L from "@matechs/effect/lib/list";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Option, some, isSome, none } from "fp-ts/lib/Option";
 
+// alpha
+/* istanbul ignore file */
+
 export const dispatcherURI = Symbol();
 
 export interface Dispatcher<R> {

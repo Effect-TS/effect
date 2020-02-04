@@ -6,6 +6,9 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { summon } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType } from "morphic-ts/lib/usage/utils";
 
+// alpha
+/* istanbul ignore file */
+
 const AppState = summon(F =>
   F.interface(
     {

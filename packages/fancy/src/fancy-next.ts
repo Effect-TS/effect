@@ -8,6 +8,9 @@ import { Lazy } from "fp-ts/lib/function";
 import { Errors } from "io-ts";
 import { Either, isRight } from "fp-ts/lib/Either";
 
+// alpha
+/* istanbul ignore file */
+
 export function page<S>(
   initial: () => S,
   enc: (_: S) => unknown,
