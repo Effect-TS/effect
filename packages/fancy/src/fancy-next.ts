@@ -14,7 +14,8 @@ import { Either, isRight, isLeft } from "fp-ts/lib/Either";
 export function page<S>(
   initial: () => S,
   enc: (_: S) => unknown,
-  dec: (_: unknown) => Either<Errors, S>
+  dec: (_: unknown) => Either<Errors, S>,
+  context: React.Context<S>
 ) {
   return <K>(
     view: T.Effect<
@@ -42,12 +43,14 @@ export function page<S>(
           pipe(
             new Fancy(view).ui,
             T.map(Cmp =>
-              DOMS.renderToString(
-                React.createElement(Cmp, {
+              React.createElement(context.Provider, {
+                value: state[stateURI].state,
+                children: React.createElement(Cmp, {
                   state: state[stateURI].state
                 })
-              )
+              })
             ),
+            T.map(Cmp => DOMS.renderToString(Cmp)),
             T.provideAll(state as any)
           )
         );
@@ -107,8 +110,11 @@ export function page<S>(
                     []
                   );
 
-                  return React.createElement(Cmp, {
-                    state: s
+                  return React.createElement(context.Provider, {
+                    value: s,
+                    children: React.createElement(Cmp, {
+                      state: s
+                    })
                   });
                 };
 

@@ -1,7 +1,6 @@
 import * as React from "react";
 import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as R from "../../lib";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import { summon, AsOpaque } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType, EType } from "morphic-ts/lib/usage/utils";
@@ -102,7 +101,11 @@ const Fetch = APP.component(dispatcher =>
 );
 
 const ShowDate = APP.component(_ =>
-  T.pure(({ date }: { date: Date }) => <div>{date.toISOString()}</div>)
+  T.pure(() => {
+    const { date } = APP.useState();
+
+    return <div>{date.toISOString()}</div>;
+  })
 );
 
 const MemoInput = React.memo(() => <input type={"text"} />);
@@ -119,7 +122,7 @@ const home = APP.component(_ =>
         state
       }) => (
         <>
-          <ShowDate date={pipe(state, dateL.get)} />
+          <ShowDate />
           <UpdateDate />
           <Fetch />
           {pipe(
