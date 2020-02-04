@@ -7,6 +7,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
 import { Errors } from "io-ts";
 import { Either, isRight, isLeft } from "fp-ts/lib/Either";
+import { deepEqual } from "fast-equals";
 
 // alpha
 /* istanbul ignore file */
@@ -98,7 +99,9 @@ export function page<S>(
                       T.run(
                         S.drain(
                           S.stream.map(f.actions, _ => {
-                            setS(state[stateURI].state);
+                            if (!deepEqual(s, state[stateURI].state)) {
+                              setS(state[stateURI].state);
+                            }
                           })
                         ),
                         ex => {
