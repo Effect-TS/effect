@@ -1,6 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import { Entity, PrimaryColumn, Column } from "typeorm";
-import { DbT, ORM, TaskError } from "@matechs/orm";
+import { DbT } from "@matechs/orm";
 import { offsetStore, OffsetStore } from "./read";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
@@ -23,9 +23,7 @@ export class TableOffset {
   offset: string;
 }
 
-export const ormOffsetStore = <Db extends symbol>(
-  DB: DbT<Db>
-): OffsetStore<ORM<Db>, TaskError, ORM<Db>, TaskError> =>
+export const ormOffsetStore = <Db extends symbol>(DB: DbT<Db>) =>
   offsetStore({
     get: (readId, streamId) =>
       pipe(

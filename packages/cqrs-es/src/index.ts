@@ -15,18 +15,6 @@ import { ormOffsetStore } from "./offset";
 import { pipe } from "fp-ts/lib/pipeable";
 import { adaptMeta } from "./meta";
 import { isSome } from "fp-ts/lib/Option";
-import * as logger from "@matechs/logger/lib/logger";
-export { logger };
-import * as orm from "@matechs/orm";
-export { orm };
-import * as ESBAST from "morphic-ts/lib/batteries/interpreters-ESBAST";
-export { ESBAST };
-import * as program from "morphic-ts/lib/batteries/program";
-export { program };
-import * as programnounion from "morphic-ts/lib/batteries/program-no-union";
-export { programnounion };
-import * as programorderable from "morphic-ts/lib/batteries/program-orderable";
-export { programorderable };
 
 const aggregateRead = <
   Types extends {
