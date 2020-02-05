@@ -1,3 +1,6 @@
+// alpha
+/* istanbul ignore file */
+
 export const actionsURI: unique symbol = Symbol();
 
 export interface Actions {
