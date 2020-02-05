@@ -16,6 +16,6 @@ export const matcher = <
   InterpURI extends InterpreterURI
 >(
   adt: MorphADT<Types, Tag, ProgURI, InterpURI>
-): MatcherT<AOfMorhpADT<typeof adt>, Tag> => (match: any) => (a: any): any => (
-  cont: any
-) => (match[a[adt.tag]] || match["default"])(a, cont);
+): MatcherT<AOfMorhpADT<typeof adt>, Tag> => (match: any) => (cont: any) => (
+  a: any
+): any => (match[a[adt.tag]] || match["default"])(a, cont);
