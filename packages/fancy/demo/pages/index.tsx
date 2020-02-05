@@ -39,7 +39,7 @@ const dateOpsURI = Symbol();
 
 interface DateOps extends F.ModuleShape<DateOps> {
   [dateOpsURI]: {
-    updateDate: T.UIO<void>;
+    updateDate: T.UIO<AppState>;
   };
 }
 
@@ -55,7 +55,7 @@ const orgsL = AppState.lenseFromProp("orgs");
 
 const dateOps = F.implement(dateOpsSpec)({
   [dateOpsURI]: {
-    updateDate: T.asUnit(R.updateS(dateL.modify(() => new Date())))
+    updateDate: R.updateS(dateL.modify(() => new Date()))
   }
 });
 

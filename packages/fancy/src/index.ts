@@ -35,7 +35,7 @@ export const updateS = <S>(f: (s: S) => S) =>
     T.sync(() => {
       s[stateURI].state = Object.assign({}, f(s[stateURI].state));
 
-      return s[stateURI];
+      return s[stateURI].state;
     })
   );
 
