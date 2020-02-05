@@ -7,7 +7,7 @@ import { client } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
-import { some } from "fp-ts/lib/Option";
+import { some, map, Option } from "fp-ts/lib/Option";
 
 function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
@@ -261,6 +261,84 @@ describe("Libcurl", () => {
 
     assert.deepEqual(isDone(del), true);
     assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
+  });
+
+  it.skip("binary", async () => {
+    // TODO: make it work
+    const app = express();
+
+    app.use("/binary", bodyParser.raw(), (req, res) => {
+      const body = req.body as Buffer;
+      res.send(body);
+    });
+
+    const s = app.listen(4017);
+
+    const post: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+      pipe(
+        H.postBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    const put: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+      pipe(
+        H.putBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    const patch: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+      pipe(
+        H.patchBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    const del: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+      pipe(
+        H.delBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    s.close();
+
+    const binaryString = (b: Option<Buffer>): Option<string> =>
+      pipe(
+        b,
+        map(b => b.toString("utf-8"))
+      );
+
+    assert.deepEqual(post, true);
+    assert.deepEqual(isDone(post), true);
+    assert.deepEqual(
+      isDone(post) && binaryString(post.value.body),
+      some(`{ foo: \"bar\" }`)
+    );
+
+    assert.deepEqual(isDone(put), true);
+    assert.deepEqual(
+      isDone(put) && binaryString(put.value.body),
+      some(`{ foo: \"bar\" }`)
+    );
+
+    assert.deepEqual(isDone(patch), true);
+    assert.deepEqual(
+      isDone(patch) && binaryString(patch.value.body),
+      some(`{ foo: \"bar\" }`)
+    );
+
+    assert.deepEqual(isDone(del), true);
+    assert.deepEqual(isDone(del) && binaryString(del.value.body), some(`{}`)); // TODO: Verify spec; del binary body does not touch the server
   });
 
   it("get https", async () => {

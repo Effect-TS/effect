@@ -6,7 +6,6 @@ on:
       - issue/**
       - features/**
       - generic/**
-      - "117"
 
 jobs:
   build:

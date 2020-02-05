@@ -10,15 +10,20 @@ function getContentType(requestType: H.RequestType): string {
     requestType,
     () => "application/json",
     () => "application/x-www-form-urlencoded",
-    () => "multipart/form-data"
+    () => "multipart/form-data",
+    () => "application/octet-stream"
   );
 }
-function getBody(body: unknown, requestType: H.RequestType) {
+function getBody(
+  body: unknown,
+  requestType: H.RequestType
+): string | ArrayBuffer | SharedArrayBuffer | FormData {
   return H.foldRequestType(
     requestType,
     () => JSON.stringify(body),
     () => querystring.stringify(body as any),
-    () => (body as any) as FormData
+    () => (body as any) as FormData,
+    () => body as Buffer
   );
 }
 
@@ -74,16 +79,29 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
                       })
                     );
                   }),
-                () =>
-                  resp.arrayBuffer().then(arrayBuffer => {
-                    r(
-                      right({
-                        headers: h,
-                        status: resp.status,
-                        body: fromNullable(Buffer.from(arrayBuffer))
-                      })
-                    );
-                  })
+                () => {
+                  if (resp["arrayBuffer"]) {
+                    resp.arrayBuffer().then(arrayBuffer => {
+                      r(
+                        right({
+                          headers: h,
+                          status: resp.status,
+                          body: fromNullable(Buffer.from(arrayBuffer))
+                        })
+                      );
+                    });
+                  } else {
+                    (resp as any).buffer().then((buffer: Buffer) => {
+                      r(
+                        right({
+                          headers: h,
+                          status: resp.status,
+                          body: fromNullable(Buffer.from(buffer))
+                        })
+                      );
+                    });
+                  }
+                }
               );
             } else {
               resp.text().then(text => {

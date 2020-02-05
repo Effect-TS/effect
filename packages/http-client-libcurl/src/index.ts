@@ -8,15 +8,6 @@ import path from "path";
 import querystring, { ParsedUrlQueryInput } from "querystring";
 import { fromNullable } from "fp-ts/lib/Option";
 
-function isJson(requestType: H.RequestType): boolean {
-  return H.foldRequestType(
-    requestType,
-    () => true,
-    () => false,
-    () => false
-  );
-}
-
 export const libcurl: (caPath?: string) => H.Http = (
   caPath = path.join(
     require.resolve("@matechs/http-client-libcurl").replace("index.js", ""),
@@ -41,11 +32,13 @@ export const libcurl: (caPath?: string) => H.Http = (
         : T.async(done => {
             const req = new C.Curl();
             const reqHead = [
-              ...(isJson(requestType)
-                ? headers["Content-Type"]
-                  ? []
-                  : ["Content-Type: application/json"]
-                : []),
+              ...H.foldRequestType(
+                requestType,
+                () => ["Content-Type: application/json"],
+                () => ["Content-Type: application/x-www-form-urlencoded"],
+                () => ["Content-Type: multipart/form-data"],
+                () => ["Content-Type: application/octet-stream"]
+              ),
               ...pipe(
                 headers,
                 R.collect((k, v) => `${k}: ${v}`)
@@ -151,9 +144,13 @@ function customReq(
   if (body) {
     req.setOpt(
       C.Curl.option.POSTFIELDS,
-      isJson(requestType)
-        ? JSON.stringify(body)
-        : querystring.stringify(body as ParsedUrlQueryInput)
+      H.foldRequestType(
+        requestType,
+        () => JSON.stringify(body),
+        () => querystring.stringify(body as ParsedUrlQueryInput),
+        () => querystring.stringify(body as ParsedUrlQueryInput),
+        () => (body as Buffer).toString("utf-8")
+      )
     );
   }
 

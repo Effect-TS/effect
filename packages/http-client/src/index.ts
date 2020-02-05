@@ -18,7 +18,7 @@ export enum Method {
   PATCH
 }
 
-export type RequestType = "JSON" | "DATA" | "FORM";
+export type RequestType = "JSON" | "DATA" | "FORM" | "BINARY";
 export type ResponseType = "JSON" | "TEXT" | "BINARY";
 
 export interface DataInput {
@@ -239,6 +239,13 @@ export function postData<I, O>(
   return request(Method.POST, url, "DATA", "JSON", body);
 }
 
+export function postBinaryGetBinary(
+  url: string,
+  body?: Buffer
+): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
+  return request(Method.POST, url, "BINARY", "BINARY", body);
+}
+
 export function patch<I, O>(
   url: string,
   body?: I
@@ -251,6 +258,13 @@ export function patchData<I extends DataInput, O>(
   body?: I
 ): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
   return request(Method.PATCH, url, "DATA", "JSON", body);
+}
+
+export function patchBinaryGetBinary<O>(
+  url: string,
+  body?: Buffer
+): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
+  return request(Method.PATCH, url, "BINARY", "BINARY", body);
 }
 
 export function put<I, E, O>(
@@ -295,6 +309,13 @@ export function patchForm<E, O>(
   return request(Method.PATCH, url, "FORM", "JSON", body);
 }
 
+export function putBinaryGetBinary(
+  url: string,
+  body: Buffer
+): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
+  return request(Method.PUT, url, "BINARY", "BINARY", body);
+}
+
 export function delForm<E, O>(
   url: string,
   body: FormData
@@ -307,6 +328,13 @@ export function delData<I extends DataInput, O>(
   body?: I
 ): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
   return request(Method.DELETE, url, "DATA", "JSON", body);
+}
+
+export function delBinaryGetBinary(
+  url: string,
+  body?: Buffer
+): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
+  return request(Method.DELETE, url, "BINARY", "BINARY", body);
 }
 
 export function withHeaders(
@@ -340,8 +368,9 @@ export function foldRequestType<A, B, C, D>(
   requestType: RequestType,
   onJson: () => A,
   onData: () => B,
-  onForm: () => C
-): A | B | C {
+  onForm: () => C,
+  onBinary: () => D
+): A | B | C | D {
   switch (requestType) {
     case "JSON":
       return onJson();
@@ -349,6 +378,8 @@ export function foldRequestType<A, B, C, D>(
       return onData();
     case "FORM":
       return onForm();
+    case "BINARY":
+      return onBinary();
   }
 }
 
