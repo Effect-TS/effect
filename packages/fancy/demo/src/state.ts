@@ -8,7 +8,7 @@ const AppState_ = summon(F =>
   F.interface(
     {
       date: F.date(),
-      orgs: F.nullable(F.array(F.unknown())),
+      orgs: F.nullable(F.string()),
       error: F.nullable(F.string())
     },
     "AppState"

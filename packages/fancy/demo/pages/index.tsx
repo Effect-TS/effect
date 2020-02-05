@@ -8,4 +8,4 @@ import { Home } from "../view/Home";
 /* istanbul ignore file */
 
 // tslint:disable-next-line: no-default-export
-export default App.page(pipe(Home, DT.provideDateOps, ORGS.provideOrgsOps));
+export default App.page(pipe(Home, ORGS.provideOrgsOps, DT.provideDateOps));

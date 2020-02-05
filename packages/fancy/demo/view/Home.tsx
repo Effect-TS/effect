@@ -35,7 +35,7 @@ export const Home = App.view(() =>
           {pipe(
             state,
             S.orgsL.get,
-            O.map(orgs => <div>Orgs loaded: {orgs.length}</div>),
+            O.map(orgs => <div>{orgs}</div>),
             O.toNullable
           )}
           {pipe(

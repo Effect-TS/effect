@@ -5,6 +5,7 @@ import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "../../lib";
 import * as S from "./state";
+import { accessDate } from "./date";
 
 // alpha
 /* istanbul ignore file */
@@ -35,8 +36,20 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
       fetchOrgs,
       T.chain(res =>
         isDone(res)
-          ? R.updateS(
-              flow(S.orgsL.set(O.some(res.value)), S.errorL.set(O.none))
+          ? pipe(
+              accessDate,
+              T.chain(date =>
+                R.updateS(
+                  flow(
+                    S.orgsL.set(
+                      O.some(
+                        `found ${res.value.length} (${date.toISOString()})`
+                      )
+                    ),
+                    S.errorL.set(O.none)
+                  )
+                )
+              )
             )
           : R.updateS(S.errorL.set(O.some("error while fetching")))
       )
