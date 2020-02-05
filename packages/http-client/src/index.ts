@@ -36,31 +36,31 @@ export type RequestBodyTypes = MakeIndexed<
   Method,
   {
     JSON: {
-      GET: undefined;
+      GET: unknown;
       POST: unknown;
       PUT: unknown;
-      DELETE: undefined;
+      DELETE: unknown;
       PATCH: unknown;
     };
     DATA: {
       GET: ParsedUrlQueryInput;
       POST: ParsedUrlQueryInput;
       PUT: ParsedUrlQueryInput;
-      DELETE: undefined;
+      DELETE: ParsedUrlQueryInput;
       PATCH: ParsedUrlQueryInput;
     };
     FORM: {
       GET: FormData;
       POST: FormData;
       PUT: FormData;
-      DELETE: undefined;
+      DELETE: FormData;
       PATCH: FormData;
     };
     BINARY: {
       GET: Buffer;
       POST: Buffer;
       PUT: Buffer;
-      DELETE: undefined;
+      DELETE: Buffer;
       PATCH: Buffer;
     };
   }
@@ -267,11 +267,23 @@ export function requestInner<
 }
 
 export function request<R, Req extends RequestType, Resp extends ResponseType>(
-  method: "DELETE",
+  method: "GET",
   requestType: Req,
   responseType: Resp
 ): (
   url: string
+) => T.Effect<
+  RequestEnv & R,
+  HttpError<string>,
+  Response<ResponseTypes[Resp]["GET"]>
+>;
+export function request<R, Req extends RequestType, Resp extends ResponseType>(
+  method: "DELETE",
+  requestType: Req,
+  responseType: Resp
+): (
+  url: string,
+  body?: RequestBodyTypes[Req]["DELETE"]
 ) => T.Effect<
   RequestEnv & R,
   HttpError<string>,
@@ -302,7 +314,7 @@ export function request<
 >(
   method: M,
   requestType: Req,
-  responseType: Resp  
+  responseType: Resp
 ): (
   url: string,
   body: RequestBodyTypes[Req][M]

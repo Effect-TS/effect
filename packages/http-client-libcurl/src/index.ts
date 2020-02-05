@@ -23,12 +23,18 @@ export const libcurl: (caPath?: string) => H.Http = (
       headers: Record<string, string>,
       body?: unknown
     ): T.Effect<T.NoEnv, H.HttpError<string>, H.Response<any>> =>
-      requestType === "FORM"
-        ? /* istanbul ignore next */ T.raiseError({
-            // cannot be triggered from exposed functions
-            _tag: H.HttpErrorReason.Request,
-            error: new Error("multipart form not supported")
-          })
+      requestType === "FORM" || requestType === "BINARY"
+        ? /* istanbul ignore next */ requestType === "FORM"
+          ? T.raiseError({
+              // cannot be triggered from exposed functions
+              _tag: H.HttpErrorReason.Request,
+              error: new Error("multipart form not supported")
+            })
+          : T.raiseError({
+              // cannot be triggered from exposed functions
+              _tag: H.HttpErrorReason.Request,
+              error: new Error("binary not supported")
+            })
         : T.async(done => {
             const req = new C.Curl();
             const reqHead = [
@@ -54,7 +60,7 @@ export const libcurl: (caPath?: string) => H.Http = (
 
             req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
 
-            if (method !== 'GET') {
+            if (method !== "GET") {
               customReq(H.getMethodAsString(method), req, requestType, body);
             }
 

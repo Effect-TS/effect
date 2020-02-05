@@ -76,7 +76,7 @@ describe("Libcurl", () => {
     );
 
     const del = await run(
-      H.del("http://127.0.0.1:4001/delete")
+      H.del("http://127.0.0.1:4001/delete", { foo: "bar" })
     );
 
     s.close();
@@ -100,7 +100,7 @@ describe("Libcurl", () => {
     assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
 
     assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && del.value.body, some({ }));
+    assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
   });
 
   it("get 404", async () => {
@@ -110,7 +110,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4006/", undefined),
+        H.get("http://127.0.0.1:4006/"),
         T.mapError(
           H.foldHttpError(
             _ => 0,
@@ -139,7 +139,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4002/h", undefined),
+        H.get("http://127.0.0.1:4002/h"),
         H.withHeaders({
           foo: "bar"
         })
@@ -163,9 +163,7 @@ describe("Libcurl", () => {
 
     const s = app.listen(4005);
 
-    const result = await run(
-      pipe(H.get("http://127.0.0.1:4005/middle", undefined))
-    );
+    const result = await run(pipe(H.get("http://127.0.0.1:4005/middle")));
 
     s.close();
 
@@ -187,7 +185,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4004/h", undefined),
+        H.get("http://127.0.0.1:4004/h"),
         H.withHeaders(
           {
             foo: "baz"
@@ -231,7 +229,7 @@ describe("Libcurl", () => {
     );
 
     const del = await run(
-      pipe(H.delData("http://127.0.0.1:4003/data"))
+      pipe(H.delData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
     s.close();
@@ -246,7 +244,7 @@ describe("Libcurl", () => {
     assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
 
     assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && del.value.body, some({}));
+    assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
   });
 
   it.skip("binary", async () => {
@@ -288,11 +286,7 @@ describe("Libcurl", () => {
     );
 
     const del = await run(
-      pipe(
-        H.delBinaryGetBinary(
-          "http://127.0.0.1:4017/binary"
-        )
-      )
+      pipe(H.delBinaryGetBinary("http://127.0.0.1:4017/binary"))
     );
 
     s.close();
@@ -328,7 +322,7 @@ describe("Libcurl", () => {
 
   it("get https", async () => {
     const result = await run(
-      H.get("https://jsonplaceholder.typicode.com/todos/1",undefined)
+      H.get("https://jsonplaceholder.typicode.com/todos/1")
     );
 
     assert.deepEqual(isDone(result), true);
@@ -344,7 +338,7 @@ describe("Libcurl", () => {
   });
 
   it("malformed", async () => {
-    const result = await run(H.get("ht-ps://wrong.com/todos/1", undefined));
+    const result = await run(H.get("ht-ps://wrong.com/todos/1"));
 
     assert.deepEqual(isRaise(result), true);
     assert.deepEqual(
@@ -360,7 +354,7 @@ describe("Libcurl", () => {
 
     const cancel = T.run(
       pipe(
-        H.get("https://jsonplaceholder.typicode.com/todos/1", undefined),
+        H.get("https://jsonplaceholder.typicode.com/todos/1"),
         T.provideAll(client)
       ),
       r => {
