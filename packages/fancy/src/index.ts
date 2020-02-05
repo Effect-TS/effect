@@ -58,6 +58,7 @@ export const accessS = <S, A>(f: (s: S) => A) =>
 export const updateS = <S>(f: (s: S) => S) =>
   T.accessM((s: State<S>) =>
     T.sync(() => {
+      s[stateURI].version = s[stateURI].version + 1;
       s[stateURI].state = Object.assign({}, f(s[stateURI].state));
 
       return s[stateURI].state;
@@ -70,6 +71,7 @@ export const updateSM = <S, R, E>(f: (s: S) => T.Effect<R, E, S>) =>
       f(s[stateURI].state),
       T.chainTap(nS =>
         T.sync(() => {
+          s[stateURI].version = s[stateURI].version + 1;
           s[stateURI].state = Object.assign({}, nS);
         })
       )

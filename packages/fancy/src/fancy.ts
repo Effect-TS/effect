@@ -28,12 +28,14 @@ export const stateURI = Symbol();
 
 export interface State<S> {
   [stateURI]: {
+    version: number
     state: S;
   };
 }
 
 export const stateOf = <S>(s: S): State<S> => ({
   [stateURI]: {
+    version: 0,
     state: s
   }
 });

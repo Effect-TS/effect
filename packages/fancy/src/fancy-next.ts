@@ -7,7 +7,6 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
 import { Errors, Type } from "io-ts";
 import { Either, isRight, isLeft } from "fp-ts/lib/Either";
-import { deepEqual } from "fast-equals";
 
 // alpha
 /* istanbul ignore file */
@@ -18,7 +17,9 @@ export function page<S, R, Action>(
   dec: (_: unknown) => Either<Errors, S>,
   actionType: Type<Action, unknown>,
   context: React.Context<S>,
-  handler: (run: <A>(e: T.Effect<R, never, A>) => void) => (action: Action) => void
+  handler: (
+    run: <A>(e: T.Effect<R, never, A>) => void
+  ) => (action: Action) => void
 ) {
   return <K>(
     view: T.Effect<
@@ -38,7 +39,8 @@ export function page<S, R, Action>(
       static async getInitialProps() {
         const state: State<S> = {
           [stateURI]: {
-            state: initial()
+            state: initial(),
+            version: 0
           }
         };
 
@@ -73,12 +75,14 @@ export function page<S, R, Action>(
         const state: State<S> = isRight(decoded)
           ? {
               [stateURI]: {
-                state: decoded.right
+                state: decoded.right,
+                version: 0
               }
             }
           : {
               [stateURI]: {
-                state: initial()
+                state: initial(),
+                version: 0
               }
             };
 
@@ -93,16 +97,22 @@ export function page<S, R, Action>(
             f.ui,
             T.chain(Cmp =>
               T.sync(() => {
-                const CmpS: React.FC<{ state: S }> = p => {
-                  const [s, setS] = React.useState(p.state);
+                const CmpS: React.FC<{ state: S; version: number }> = p => {
+                  const [sv, setS] = React.useState({
+                    s: p.state,
+                    v: p.version
+                  });
 
                   React.useEffect(
                     () =>
                       T.run(
                         S.drain(
                           S.stream.map(f.final, _ => {
-                            if (!deepEqual(s, state[stateURI].state)) {
-                              setS(state[stateURI].state);
+                            if (state[stateURI].version > sv.v) {
+                              setS({
+                                s: state[stateURI].state,
+                                v: state[stateURI].version
+                              });
                             }
                           })
                         ),
@@ -116,16 +126,17 @@ export function page<S, R, Action>(
                   );
 
                   return React.createElement(context.Provider, {
-                    value: s,
+                    value: sv.s,
                     children: React.createElement(Cmp, {
-                      state: s
+                      state: sv.s
                     })
                   });
                 };
 
                 DOM.hydrate(
                   React.createElement(CmpS, {
-                    state: state[stateURI].state
+                    state: state[stateURI].state,
+                    version: state[stateURI].version
                   }),
                   this.REF.current
                 );
