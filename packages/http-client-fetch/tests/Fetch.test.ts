@@ -71,7 +71,7 @@ describe("Fetch", () => {
     );
 
     const del = await run(
-      H.del("http://127.0.0.1:4011/delete", undefined)
+      H.del("http://127.0.0.1:4011/delete")
     );
 
     s.close();
@@ -234,7 +234,7 @@ describe("Fetch", () => {
       H.HttpError<unknown>,
       H.Response<unknown>
     > = await run(
-      pipe(H.delData("http://127.0.0.1:4013/data", undefined))
+      pipe(H.delData("http://127.0.0.1:4013/data"))
     );
 
     s.close();
@@ -292,8 +292,7 @@ describe("Fetch", () => {
     const del: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
       pipe(
         H.delBinaryGetBinary(
-          "http://127.0.0.1:4017/binary",
-          undefined
+          "http://127.0.0.1:4017/binary"
         )
       )
     );
