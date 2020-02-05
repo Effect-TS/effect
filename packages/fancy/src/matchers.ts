@@ -1,4 +1,5 @@
 import { effect as T } from "@matechs/effect";
+import { Cont } from ".";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -12,23 +13,31 @@ type ValueByKeyByTag<
   };
 };
 
-type Cases<Record, R> = { [key in keyof Record]: (v: Record[key]) => R };
+type Cases<Action, Record, R> = {
+  [key in keyof Record]: (v: Record[key], cont: Cont<Action>) => R;
+};
 
-interface Default<A, R> {
-  default: (a: A) => R;
+interface Default<Action, A, R> {
+  default: (a: A, cont: Cont<Action>) => R;
 }
 
 export interface MatcherT<A, Tag extends keyof A>
-  extends MatcherTIntern<A, ValueByKeyByTag<A>[Tag]> {}
+  extends MatcherTIntern<A, A, ValueByKeyByTag<A>[Tag]> {}
 
-interface MatcherTIntern<A, Record> {
-  <M extends Cases<Record, any>>(match: M): (
+interface MatcherTIntern<Action, A, Record> {
+  <M extends Cases<Action, Record, any>>(match: M): (
+    cont: Cont<A>
+  ) => (
     a: A
   ) => ReturnType<M[keyof M]> extends T.Effect<infer R, infer E, infer B>
     ? T.Effect<R, E, B>
     : never;
 
-  <M extends Partial<Cases<Record, any>> & Default<A, any>>(match: M): (
+  <M extends Partial<Cases<Action, Record, any>> & Default<Action, A, any>>(
+    match: M
+  ): (
+    cont: Cont<A>
+  ) => (
     a: A
   ) => ReturnType<NonNullable<M[keyof M]>> extends T.Effect<
     infer R,
