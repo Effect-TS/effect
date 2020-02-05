@@ -1,7 +1,7 @@
 import { effect as T } from "@matechs/effect";
 import { Entity, PrimaryColumn, Column } from "typeorm";
 import { DbT } from "@matechs/orm";
-import { offsetStore, OffsetStore } from "./read";
+import { offsetStore } from "./read";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
 
