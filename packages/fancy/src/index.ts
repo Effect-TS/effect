@@ -9,7 +9,10 @@ import { Type } from "io-ts";
 /* istanbul ignore file */
 
 type WithDisp<R, S, P extends {}> = (
-  dispatcher: (_: T.Effect<R & State<S>, never, any>) => void
+  dispatcher: <A>(
+    _: T.Effect<R & State<S>, never, A>,
+    cb?: (a: A) => void
+  ) => void
 ) => T.Effect<R & State<S> & Dispatcher<R & State<S>>, never, React.FC<P>>;
 
 export const app = <R>() => <S>(initial: () => S, type: Type<S, unknown>) => {

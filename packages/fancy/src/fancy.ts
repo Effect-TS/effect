@@ -16,7 +16,9 @@ export const dispatcherURI = Symbol();
 
 export interface Dispatcher<R> {
   [dispatcherURI]: {
-    dispatch: (env: R) => (_: T.Effect<R, never, any>) => void;
+    dispatch: (
+      env: R
+    ) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => void;
   };
 }
 
@@ -40,16 +42,21 @@ export interface StateP<S> {
 
 export class Fancy<S, R extends State<S>> {
   readonly ui: T.Effect<R, never, React.FC<StateP<S>>>;
-  readonly actions: S.Stream<unknown, never, void>;
-  readonly actionList = L.empty<void>();
-  private resCallback: Option<(_: Option<void>) => void> = none;
+  readonly actions: S.Stream<unknown, never, any>;
+  readonly actionList = L.empty<any>();
+  private resCallback: Option<(_: Option<any>) => void> = none;
   private opsC = 0;
   private readonly cancellers = {} as Record<string, Lazy<void>>;
 
   constructor(
     renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC<StateP<S>>>
   ) {
-    const dispatch = <R>(r: R) => (eff: T.Effect<R, never, void>) => {
+    const dispatch = <R>(r: R) => <A>(
+      eff: T.Effect<R, never, A>,
+      cb: (a: A) => void = () => {
+        //
+      }
+    ) => {
       const n = this.opsC;
 
       this.opsC = this.opsC + 1;
@@ -58,6 +65,8 @@ export class Fancy<S, R extends State<S>> {
         delete this.cancellers[`op-${n}`];
 
         if (EX.isDone(ex)) {
+          cb(ex.value);
+
           if (isSome(this.resCallback)) {
             const res = this.resCallback.value;
 
