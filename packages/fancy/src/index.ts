@@ -1,6 +1,6 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import { page } from "./fancy-next";
+import { page as nextPage } from "./fancy-next";
 import { runner, State, stateURI, Runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
@@ -23,13 +23,13 @@ export const app = <R>() => <S, Action>(
   type: Type<S, unknown>,
   actionType: Type<Action, unknown>,
   handler: (
-    _: Cont<Action>
+    dispatch: Cont<Action>
   ) => (action: Action) => T.Effect<R & State<S>, never, any> = () => () =>
     T.unit
 ) => {
   const context = React.createContext<S>({} as any);
 
-  const cont: Cont<Action> = (a: Action, ...rest: Action[]) =>
+  const dispatch: Cont<Action> = (a: Action, ...rest: Action[]) =>
     pipe(
       T.pure<Actions>({
         [actionsURI]: {
@@ -49,44 +49,29 @@ export const app = <R>() => <S, Action>(
       T.map(_ => [a, ...rest])
     );
 
+  const useState = () => React.useContext(context);
+
+  const view = <P extends {}>(f: WithRunner<R, S, P>) =>
+    pipe(runner<R & State<S>>(), T.chain(f));
+
+  const run = runner<R & State<S>>();
+
+  const page = nextPage(
+    initial,
+    type.encode,
+    x => type.decode(x),
+    actionType,
+    context,
+    (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
+      run(handler(dispatch)(action))
+  );
+
   return {
-    page: page(
-      initial,
-      type.encode,
-      x => type.decode(x),
-      actionType,
-      context,
-      (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
-        run(handler(cont)(action))
-    ),
-    run: runner<R & State<S>>(),
-    view: <P extends {}>(f: WithRunner<R, S, P>) =>
-      pipe(runner<R & State<S>>(), T.chain(f)),
-    useState: () => React.useContext(context),
-    dispatch: (run: <A>(e: T.Effect<R, never, A>) => void) => (
-      a: Action,
-      ...rest: Action[]
-    ) =>
-      run(
-        pipe(
-          T.pure<Actions>({
-            [actionsURI]: {
-              actions: [a, ...rest].map(actionType.encode)
-            }
-          }),
-          T.chainTap(newActions =>
-            T.access(r => {
-              if (hasActions(r)) {
-                r[actionsURI].actions = [
-                  ...r[actionsURI].actions,
-                  ...newActions[actionsURI].actions
-                ];
-              }
-            })
-          ),
-          T.map(_ => [a, ...rest])
-        )
-      )
+    page,
+    run,
+    view,
+    useState,
+    dispatch
   };
 };
 

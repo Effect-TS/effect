@@ -10,7 +10,7 @@ export const UpdateDate = App.view(run =>
   T.pure(() => (
     <button
       onClick={() => {
-        App.dispatch(run)(AppActions.of.UpdateDate({}));
+        run(App.dispatch(AppActions.of.UpdateDate({})));
       }}
     >
       Update Date!

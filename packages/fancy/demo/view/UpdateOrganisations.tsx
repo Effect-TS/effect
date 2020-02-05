@@ -9,7 +9,7 @@ export const UpdateOrganisations = App.view(run =>
   T.pure(() => (
     <button
       onClick={() => {
-        App.dispatch(run)(AppActions.of.UpdateOrganisations({}));
+        run(App.dispatch(AppActions.of.UpdateOrganisations({})));
       }}
     >
       Fetch!

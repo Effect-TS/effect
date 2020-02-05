@@ -23,10 +23,10 @@ export const App = R.app<DT.DateOps & ORGS.OrgsOps>()(
   AppActions.type,
   R.matcher(AppActions)({
     UpdateDate: () => DT.updateDate,
-    UpdateOrganisations: (_, cont) =>
+    UpdateOrganisations: (_, dispatch) =>
       pipe(
         ORGS.updateOrgs,
-        T.chainTap(_ => cont(AppActions.of.UpdateDate({})))
+        T.chainTap(_ => dispatch(AppActions.of.UpdateDate({})))
       )
   })
 );
