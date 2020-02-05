@@ -30,27 +30,21 @@ export const orgsOpsSpec = F.define<OrgsOps>({
   }
 });
 
+const updateOrgs_ = (res: any[]) => (date: Date) =>
+  R.updateS(
+    flow(
+      S.orgsL.set(O.some(`found ${res.length} (${date.toISOString()})`)),
+      S.errorL.set(O.none)
+    )
+  );
+
 export const provideOrgsOps = F.implement(orgsOpsSpec)({
   [orgsOpsURI]: {
     updateOrgs: pipe(
       fetchOrgs,
       T.chain(res =>
         isDone(res)
-          ? pipe(
-              accessDate,
-              T.chain(date =>
-                R.updateS(
-                  flow(
-                    S.orgsL.set(
-                      O.some(
-                        `found ${res.value.length} (${date.toISOString()})`
-                      )
-                    ),
-                    S.errorL.set(O.none)
-                  )
-                )
-              )
-            )
+          ? pipe(accessDate, T.chain(updateOrgs_(res.value)))
           : R.updateS(S.errorL.set(O.some("error while fetching")))
       )
     )
