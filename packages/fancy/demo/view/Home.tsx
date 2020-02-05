@@ -4,7 +4,7 @@ import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { App } from "../src/app";
 import * as S from "../src/state";
-import { Fetch } from "./Fetch";
+import { UpdateOrganisations } from "./UpdateOrganisations";
 import { MemoInput } from "./MemoInput";
 import { ShowDate } from "./ShowDate";
 import { UpdateDate } from "./UpdateDate";
@@ -17,7 +17,7 @@ export const Home = App.view(() =>
   pipe(
     sequenceS(T.effect)({
       UpdateDate,
-      Fetch,
+      UpdateOrganisations,
       ShowDate,
       MemoInput
     }),
@@ -25,13 +25,13 @@ export const Home = App.view(() =>
       ({
         UpdateDate,
         ShowDate,
-        Fetch,
+        UpdateOrganisations,
         MemoInput
       }): React.FC<R.StateP<S.AppState>> => ({ state }) => (
         <>
           <ShowDate />
           <UpdateDate />
-          <Fetch />
+          <UpdateOrganisations />
           {pipe(
             state,
             S.orgsL.get,

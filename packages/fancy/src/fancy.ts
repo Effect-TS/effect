@@ -12,6 +12,7 @@ import { actionsURI, Actions } from "./actions";
 import { Type } from "io-ts";
 import * as AR from "fp-ts/lib/Array";
 import { either, isLeft } from "fp-ts/lib/Either";
+import { hasActions } from ".";
 
 // alpha
 /* istanbul ignore file */
@@ -28,7 +29,7 @@ export const stateURI = Symbol();
 
 export interface State<S> {
   [stateURI]: {
-    version: number
+    version: number;
     state: S;
   };
 }
@@ -125,13 +126,13 @@ export class Fancy<S, R extends State<S>, RH, Action> {
       S.chain(a =>
         S.encaseEffect(
           T.sync(() => {
-            if (a && a !== null && actionsURI in a) {
-              const ac = a as Actions;
-
+            if (hasActions(this.rh) && this.rh[actionsURI].actions.length > 0) {
               const decoded = AR.array.traverse(either)(
-                ac[actionsURI].actions,
+                this.rh[actionsURI].actions,
                 x => this.actionType.decode(x)
               );
+
+              this.rh[actionsURI].actions = [];
 
               if (isLeft(decoded)) {
                 console.error("cannot decode action");
@@ -148,9 +149,12 @@ export class Fancy<S, R extends State<S>, RH, Action> {
 
     this.ui = pipe(
       renderEffect,
-      T.provideS<Runner<R>>({
+      T.provideS<Runner<R> & Actions>({
         [dispatcherURI]: {
           run: dispatch
+        },
+        [actionsURI]: {
+          actions: []
         }
       })
     );

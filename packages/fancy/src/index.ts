@@ -17,11 +17,7 @@ export const app = <R>() => <S, Action>(
   initial: () => S,
   type: Type<S, unknown>,
   actionType: Type<Action, unknown>,
-  handler: (
-    run: <A>(e: T.Effect<R, never, A>) => void
-  ) => (action: Action) => void = () => () => {
-    //
-  }
+  handler: (action: Action) => T.Effect<R & State<S>, never, any> = () => T.unit
 ) => {
   const context = React.createContext<S>({} as any);
 
@@ -32,19 +28,36 @@ export const app = <R>() => <S, Action>(
       x => type.decode(x),
       actionType,
       context,
-      handler
+      (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
+        run(handler(action))
     ),
     run: runner<R & State<S>>(),
     view: <P extends {}>(f: WithRunner<R, S, P>) =>
       pipe(runner<R & State<S>>(), T.chain(f)),
     useState: () => React.useContext(context),
-    dispatch: (run: <A>(e: T.Effect<R, never, A>) => void) => (a: Action) =>
+    dispatch: (run: <A>(e: T.Effect<R, never, A>) => void) => (
+      a: Action,
+      ...rest: Action[]
+    ) =>
       run(
-        T.pure<Actions>({
-          [actionsURI]: {
-            actions: [actionType.encode(a)]
-          }
-        })
+        pipe(
+          T.pure<Actions>({
+            [actionsURI]: {
+              actions: [a, ...rest].map(actionType.encode)
+            }
+          }),
+          T.chainTap(newActions =>
+            T.access(r => {
+              if (hasActions(r)) {
+                r[actionsURI].actions = [
+                  ...r[actionsURI].actions,
+                  ...newActions[actionsURI].actions
+                ];
+              }
+            })
+          ),
+          T.map(_ => [a, ...rest])
+        )
       )
   };
 };
@@ -78,4 +91,31 @@ export const updateSM = <S, R, E>(f: (s: S) => T.Effect<R, E, S>) =>
     )
   );
 
+export const hasActions = (u: unknown): u is Actions =>
+  typeof u === "object" && u !== null && actionsURI in u;
+
+export const cont = <Action>(actionType: Type<Action, unknown>) => (
+  a: Action,
+  ...rest: Action[]
+) =>
+  pipe(
+    T.pure<Actions>({
+      [actionsURI]: {
+        actions: [a, ...rest].map(actionType.encode)
+      }
+    }),
+    T.chainTap(newActions =>
+      T.access(r => {
+        if (hasActions(r)) {
+          r[actionsURI].actions = [
+            ...r[actionsURI].actions,
+            ...newActions[actionsURI].actions
+          ];
+        }
+      })
+    ),
+    T.map(_ => [a, ...rest])
+  );
+
 export { StateP } from "./fancy";
+export { matcher } from "./matcher";

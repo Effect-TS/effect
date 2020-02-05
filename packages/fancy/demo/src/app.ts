@@ -3,6 +3,9 @@ import * as R from "../../lib";
 import { DateOps, updateDate } from "./date";
 import { AppState } from "./state";
 import { AppActions } from "./actions";
+import { updateOrgs } from "./orgs";
+import { pipe } from "fp-ts/lib/pipeable";
+import { effect as T } from "@matechs/effect";
 
 // alpha
 /* istanbul ignore file */
@@ -18,10 +21,12 @@ export const App = R.app<DateOps>()(
   initialState,
   AppState.type,
   AppActions.type,
-  run =>
-    AppActions.match({
-      UpdateDate: () => {
-        run(updateDate);
-      }
-    })
+  R.matcher(AppActions)({
+    UpdateDate: () => updateDate,
+    UpdateOrganisations: () =>
+      pipe(
+        updateOrgs,
+        T.chain(_ => R.cont(AppActions.type)(AppActions.of.UpdateDate({})))
+      )
+  })
 );

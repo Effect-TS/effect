@@ -9,4 +9,13 @@ export const UpdateDate = summon(F =>
   )
 );
 
-export const AppActions = tagged("type")({ UpdateDate });
+export const UpdateOrganisations = summon(F =>
+  F.interface(
+    {
+      type: F.stringLiteral("UpdateOrganisations")
+    },
+    "UpdateOrganisations"
+  )
+);
+
+export const AppActions = tagged("type")({ UpdateDate, UpdateOrganisations });
