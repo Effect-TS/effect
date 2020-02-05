@@ -1,5 +1,8 @@
 import { summon, tagged } from "morphic-ts/lib/batteries/summoner-no-union";
 
+// alpha
+/* istanbul ignore file */
+
 export const UpdateDate = summon(F =>
   F.interface(
     {
