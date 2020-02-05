@@ -1,9 +1,9 @@
 import * as O from "fp-ts/lib/Option";
 import * as R from "../../lib";
-import { DateOps, updateDate } from "./date";
+import * as DT from "./date";
 import { AppState } from "./state";
 import { AppActions } from "./actions";
-import { updateOrgs } from "./orgs";
+import * as ORGS from "./orgs";
 import { pipe } from "fp-ts/lib/pipeable";
 import { effect as T } from "@matechs/effect";
 
@@ -17,15 +17,15 @@ const initialState = (): AppState =>
     error: O.none
   });
 
-export const App = R.app<DateOps>()(
+export const App = R.app<DT.DateOps & ORGS.OrgsOps>()(
   initialState,
   AppState.type,
   AppActions.type,
   R.matcher(AppActions)({
-    UpdateDate: () => updateDate,
+    UpdateDate: () => DT.updateDate,
     UpdateOrganisations: (_, cont) =>
       pipe(
-        updateOrgs,
+        ORGS.updateOrgs,
         T.chainTap(_ => cont(AppActions.of.UpdateDate({})))
       )
   })
