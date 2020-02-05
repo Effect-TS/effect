@@ -56,7 +56,7 @@ describe("Fetch", () => {
       })
     );
 
-    const postNoBody = await run(H.post("http://127.0.0.1:4011/post"));
+    const postNoBody = await run(H.post("http://127.0.0.1:4011/post", {}));
 
     const put = await run(
       H.put("http://127.0.0.1:4011/put", {
@@ -71,9 +71,7 @@ describe("Fetch", () => {
     );
 
     const del = await run(
-      H.del("http://127.0.0.1:4011/delete", {
-        foo: "bar"
-      })
+      H.del("http://127.0.0.1:4011/delete", undefined)
     );
 
     s.close();
@@ -91,7 +89,7 @@ describe("Fetch", () => {
     assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
 
     assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
+    assert.deepEqual(isDone(del) && del.value.body, some({ }));
   });
 
   it("get 404", async () => {
@@ -101,7 +99,7 @@ describe("Fetch", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4016/"),
+        H.get("http://127.0.0.1:4016/", undefined),
         T.mapError(
           H.foldHttpError(
             _ => 0,
@@ -130,7 +128,7 @@ describe("Fetch", () => {
 
     const result = await run(
       pipe(
-        H.get<{ foo: string }>("http://127.0.0.1:4012/h"),
+        H.get("http://127.0.0.1:4012/h", undefined),
         H.withHeaders({
           foo: "bar"
         })
@@ -155,7 +153,7 @@ describe("Fetch", () => {
     const s = app.listen(4015);
 
     const result = await run(
-      pipe(H.get<{ foo: string }>("http://127.0.0.1:4015/middle"))
+      pipe(H.get("http://127.0.0.1:4015/middle", undefined))
     );
 
     s.close();
@@ -179,7 +177,7 @@ describe("Fetch", () => {
     const result = await run(
       pipe(
         pipe(
-          H.get<{ foo: string; bar?: string }>("http://127.0.0.1:4014/h"),
+          H.get("http://127.0.0.1:4014/h", undefined),
           H.withHeaders(
             {
               foo: "baz"
@@ -213,30 +211,30 @@ describe("Fetch", () => {
 
     const post: Exit<
       H.HttpError<unknown>,
-      H.Response<{ foo: string }>
+      H.Response<unknown>
     > = await run(
       pipe(H.postData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     const put: Exit<
       H.HttpError<unknown>,
-      H.Response<{ foo: string }>
+      H.Response<unknown>
     > = await run(
       pipe(H.putData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     const patch: Exit<
       H.HttpError<unknown>,
-      H.Response<{ foo: string }>
+      H.Response<unknown>
     > = await run(
       pipe(H.patchData("http://127.0.0.1:4013/data", { foo: "bar" }))
     );
 
     const del: Exit<
       H.HttpError<unknown>,
-      H.Response<{ foo: string }>
+      H.Response<unknown>
     > = await run(
-      pipe(H.delData("http://127.0.0.1:4013/data", { foo: "bar" }))
+      pipe(H.delData("http://127.0.0.1:4013/data", undefined))
     );
 
     s.close();
@@ -251,7 +249,7 @@ describe("Fetch", () => {
     assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
 
     assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
+    assert.deepEqual(isDone(del) && del.value.body, some({ }));
   });
 
   it("binary", async () => {
@@ -295,7 +293,7 @@ describe("Fetch", () => {
       pipe(
         H.delBinaryGetBinary(
           "http://127.0.0.1:4017/binary",
-          Buffer.from(`{ foo: "bar" }`)
+          undefined
         )
       )
     );
@@ -327,12 +325,12 @@ describe("Fetch", () => {
     );
 
     assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && binaryString(del.value.body), some(`{}`)); // TODO: Verify spec; del binary body does not touch the server
+    assert.deepEqual(isDone(del) && binaryString(del.value.body), some(``));
   });
 
   it("get https", async () => {
     const result = await run(
-      H.get("https://jsonplaceholder.typicode.com/todos/1")
+      H.get("https://jsonplaceholder.typicode.com/todos/1", undefined)
     );
 
     assert.deepEqual(isDone(result), true);
@@ -348,7 +346,7 @@ describe("Fetch", () => {
   });
 
   it("malformed", async () => {
-    const result = await run(H.get("ht-ps://wrong.com/todos/1"));
+    const result = await run(H.get("ht-ps://wrong.com/todos/1", undefined));
 
     assert.deepEqual(isRaise(result), true);
     assert.deepEqual(
@@ -364,7 +362,7 @@ describe("Fetch", () => {
 
     const cancel = T.run(
       pipe(
-        H.get("https://jsonplaceholder.typicode.com/todos/1"),
+        H.get("https://jsonplaceholder.typicode.com/todos/1", undefined),
         T.provideAll(F.client(fetch))
       ),
       r => {

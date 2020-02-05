@@ -1,6 +1,7 @@
 import { effect as T } from "@matechs/effect";
 import { Predicate } from "fp-ts/lib/function";
 import { Option } from "fp-ts/lib/Option";
+import { ParsedUrlQueryInput } from "querystring";
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
@@ -10,16 +11,33 @@ export const httpEnv: unique symbol = Symbol();
 export const httpHeadersEnv: unique symbol = Symbol();
 export const httpDeserializerEnv: unique symbol = Symbol();
 
-export enum Method {
-  GET,
-  POST,
-  PUT,
-  DELETE,
-  PATCH
+export const Method = {
+  GET: null,
+  POST: null,
+  PUT: null,
+  DELETE: null,
+  PATCH: null,
 }
+export type Method = keyof typeof Method
 
-export type RequestType = "JSON" | "DATA" | "FORM" | "BINARY";
+type Indexed<A extends string, B extends string> = { [a in A]: { [b in B]: any } }
+type MakeIndexed<A extends string, B extends string, T extends Indexed<A, B>> = T
+
+export type RequestType = "JSON" | "DATA" | "FORM" | "BINARY"
+
+export type RequestBodyTypes = MakeIndexed<RequestType, Method, {
+  JSON: { GET: undefined, POST: unknown, PUT: unknown, DELETE: undefined, PATCH: unknown },
+  DATA: { GET: ParsedUrlQueryInput, POST: ParsedUrlQueryInput, PUT: ParsedUrlQueryInput, DELETE: undefined, PATCH: ParsedUrlQueryInput },
+  FORM: { GET: FormData, POST: FormData, PUT: FormData, DELETE: undefined, PATCH: FormData },
+  BINARY: { GET: Buffer, POST: Buffer, PUT: Buffer, DELETE: undefined, PATCH: Buffer }
+}>
+
 export type ResponseType = "JSON" | "TEXT" | "BINARY";
+export type ResponseTypes = MakeIndexed<ResponseType, Method, {
+  JSON: { GET: unknown, POST: unknown, PUT: unknown, DELETE: unknown, PATCH: unknown },
+  TEXT:  { GET: string, POST: string, PUT: string, DELETE: string, PATCH: string },
+  BINARY:  { GET: Buffer, POST: Buffer, PUT: Buffer, DELETE: Buffer, PATCH: Buffer }
+}>
 
 export interface DataInput {
   [k: string]: unknown;
@@ -92,38 +110,14 @@ export interface HttpHeaders {
 
 export interface Http {
   [httpEnv]: {
-    request<O>(
-      method: Method,
+    request<M extends Method, Req extends RequestType, Resp extends ResponseType>(
+      method: M,
       url: string,
+      requestType: Req,
+      responseType: Resp,
       headers: Record<string, string>,
-      requestType: RequestType,
-      responseType: "BINARY",
-      body: unknown
-    ): T.Effect<T.NoEnv, HttpError<string>, Response<Buffer>>;
-    request<O>(
-      method: Method,
-      url: string,
-      headers: Record<string, string>,
-      requestType: RequestType,
-      responseType: "TEXT",
-      body: unknown
-    ): T.Effect<T.NoEnv, HttpError<string>, Response<string>>;
-    request<O>(
-      method: Method,
-      url: string,
-      headers: Record<string, string>,
-      requestType: RequestType,
-      responseType: "JSON",
-      body: unknown
-    ): T.Effect<T.NoEnv, HttpError<string>, Response<unknown>>;
-    request<O>(
-      method: Method,
-      url: string,
-      headers: Record<string, string>,
-      requestType: RequestType,
-      responseType: ResponseType,
-      body: unknown
-    ): T.Effect<T.NoEnv, HttpError<string>, Response<O>>;
+      body: RequestBodyTypes[Req][M]
+    ): T.Effect<T.NoEnv, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
   };
 }
 
@@ -131,13 +125,14 @@ function hasHeaders(r: object): r is HttpHeaders {
   return typeof r[httpHeadersEnv] !== "undefined";
 }
 
-export type RequestF = <R, O>(
-  method: Method,
+export type RequestF = <R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
+  method: M,
   url: string,
-  requestType: RequestType,
-  responseType: ResponseType,
-  body: unknown
-) => T.Effect<RequestEnv & R, HttpError<string>, Response<O>>;
+  requestType: Req,
+  responseType: Resp,
+  body?: RequestBodyTypes[Req][M]
+) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> 
+
 
 export type RequestMiddleware = (request: RequestF) => RequestF;
 
@@ -175,34 +170,33 @@ function foldMiddlewareStack(
   return request;
 }
 
-export function requestInner<R, I, O>(
-  method: Method,
+export function requestInner<R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
+  method: M,
   url: string,
-  requestType: RequestType,
-  responseType: ResponseType,
-  body?: I
-): T.Effect<RequestEnv & R, HttpError<string>, Response<O>> {
+  requestType: Req,
+  responseType: Resp,
+  body: RequestBodyTypes[Req][M]
+): T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
   return T.accessM((r: Http & R) =>
-    r[httpEnv].request(
+    r[httpEnv].request<M, Req, Resp>(
       method,
       url,
+      requestType,
+      responseType,
       hasHeaders(r) ? r[httpHeadersEnv] : {},
-      requestType,
-      responseType,
       body
     )
   );
 }
 
-export function request<R, O>(
-  method: Method,
-  url: string,
-  requestType: RequestType,
-  responseType: ResponseType,
-  body?: unknown
-): T.Effect<RequestEnv & R, HttpError<string>, Response<O>> {
-  return T.accessM((r: MiddlewareStack) =>
-    foldMiddlewareStack(r, requestInner)<R, O>(
+export function request<R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
+  method: M,
+  requestType: Req,
+  responseType: Resp) : (url: string,
+  body:  RequestBodyTypes[Req][M] 
+) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
+  return (url, body) => T.accessM((r: MiddlewareStack) =>
+    foldMiddlewareStack(r, requestInner)<R, M, Req, Resp>(
       method,
       url,
       requestType,
@@ -212,130 +206,42 @@ export function request<R, O>(
   );
 }
 
-export function get<O>(
-  url: string
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.GET, url, "JSON", "JSON");
-}
+export const get = request('GET', "JSON", "JSON")
 
-export function post<I, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.POST, url, "JSON", "JSON", body);
-}
+export const post = request('POST', "JSON", "JSON")
 
-export function postReturnText<I, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.POST, url, "JSON", "TEXT", body);
-}
+export const postReturnText = request('POST', "JSON", "TEXT")
 
-export function postData<I, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.POST, url, "DATA", "JSON", body);
-}
+export const postData = request('POST', "DATA", "JSON")
 
-export function postBinaryGetBinary(
-  url: string,
-  body?: Buffer
-): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
-  return request(Method.POST, url, "BINARY", "BINARY", body);
-}
+export const postBinaryGetBinary = request('POST', "BINARY", "BINARY")
 
-export function patch<I, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.PATCH, url, "JSON", "JSON", body);
-}
+export const patch = request('PATCH',  "JSON", "JSON");
 
-export function patchData<I extends DataInput, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.PATCH, url, "DATA", "JSON", body);
-}
+export const patchData = request('PATCH', "DATA", "JSON")
 
-export function patchBinaryGetBinary<O>(
-  url: string,
-  body?: Buffer
-): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
-  return request(Method.PATCH, url, "BINARY", "BINARY", body);
-}
+export const patchBinaryGetBinary = request('PATCH', "BINARY", "BINARY");
 
-export function put<I, E, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.PUT, url, "JSON", "JSON", body);
-}
+export const put = request('PUT', "JSON", "JSON")
 
-export function putData<I extends DataInput, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.PUT, url, "DATA", "JSON", body);
-}
+export const putData = request('PUT', "DATA", "JSON")
 
-export function del<I, E, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.DELETE, url, "JSON", "JSON", body);
-}
+export const postForm = request('POST', "FORM", "JSON");
 
-export function postForm<E, O>(
-  url: string,
-  body: FormData
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.POST, url, "FORM", "JSON", body);
-}
+export const putForm = request('PUT', "FORM", "JSON");
 
-export function putForm<E, O>(
-  url: string,
-  body: FormData
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.PUT, url, "FORM", "JSON", body);
-}
+export const patchForm = request('PATCH', "FORM", "JSON");
 
-export function patchForm<E, O>(
-  url: string,
-  body: FormData
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.PATCH, url, "FORM", "JSON", body);
-}
+export const putBinaryGetBinary = request('PUT', "BINARY", "BINARY");
 
-export function putBinaryGetBinary(
-  url: string,
-  body: Buffer
-): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
-  return request(Method.PUT, url, "BINARY", "BINARY", body);
-}
+export const del = request('DELETE', "JSON", "JSON");
 
-export function delForm<E, O>(
-  url: string,
-  body: FormData
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.DELETE, url, "FORM", "JSON", body);
-}
+export const delForm = request('DELETE', "FORM", "JSON")
 
-export function delData<I extends DataInput, O>(
-  url: string,
-  body?: I
-): T.Effect<RequestEnv, HttpError<string>, Response<O>> {
-  return request(Method.DELETE, url, "DATA", "JSON", body);
-}
+export const delData = request("DELETE", "DATA", "JSON")
 
-export function delBinaryGetBinary(
-  url: string,
-  body?: Buffer
-): T.Effect<RequestEnv, HttpError<string>, Response<Buffer>> {
-  return request(Method.DELETE, url, "BINARY", "BINARY", body);
-}
+export const delBinaryGetBinary = request('DELETE', "BINARY", "BINARY");
+
 
 export function withHeaders(
   headers: Record<string, string>,
@@ -401,15 +307,15 @@ export function foldResponseType<A, B, C>(
 
 export function getMethodAsString(method: Method) {
   switch (method) {
-    case Method.GET:
+    case 'GET':
       return "GET";
-    case Method.POST:
+    case 'POST':
       return "POST";
-    case Method.PUT:
+    case 'PUT':
       return "PUT";
-    case Method.PATCH:
+    case 'PATCH':
       return "PATCH";
-    case Method.DELETE:
+    case 'DELETE':
       return "DELETE";
   }
 }

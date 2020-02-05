@@ -32,9 +32,9 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
     request(
       method: H.Method,
       url: string,
-      headers: Record<string, string>,
       requestType: H.RequestType,
       responseType: H.ResponseType,
+      headers: Record<string, string>,
       body: unknown
     ): T.Effect<T.NoEnv, H.HttpError<string>, H.Response<any>> {
       const input: RequestInit = {

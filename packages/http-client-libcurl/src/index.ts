@@ -18,9 +18,9 @@ export const libcurl: (caPath?: string) => H.Http = (
     request: (
       method: H.Method,
       url: string,
-      headers: Record<string, string>,
       requestType: H.RequestType,
       responseType: H.ResponseType,
+      headers: Record<string, string>,
       body?: unknown
     ): T.Effect<T.NoEnv, H.HttpError<string>, H.Response<any>> =>
       requestType === "FORM"
@@ -54,7 +54,7 @@ export const libcurl: (caPath?: string) => H.Http = (
 
             req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
 
-            if (method !== H.Method.GET) {
+            if (method !== 'GET') {
               customReq(H.getMethodAsString(method), req, requestType, body);
             }
 
