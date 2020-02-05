@@ -21,12 +21,13 @@ export const App = R.app<DateOps>()(
   initialState,
   AppState.type,
   AppActions.type,
-  R.matcher(AppActions)({
-    UpdateDate: () => updateDate,
-    UpdateOrganisations: () =>
-      pipe(
-        updateOrgs,
-        T.chain(_ => R.cont(AppActions.type)(AppActions.of.UpdateDate({})))
-      )
-  })
+  cont =>
+    R.matcher(AppActions)({
+      UpdateDate: () => updateDate,
+      UpdateOrganisations: () =>
+        pipe(
+          updateOrgs,
+          T.chainTap(_ => cont(AppActions.of.UpdateDate({})))
+        )
+    })
 );

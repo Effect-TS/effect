@@ -8,11 +8,10 @@ import * as L from "@matechs/effect/lib/list";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Option, some, isSome, none } from "fp-ts/lib/Option";
 import { Lazy } from "fp-ts/lib/function";
-import { actionsURI, Actions } from "./actions";
+import { actionsURI, Actions, hasActions } from "./actions";
 import { Type } from "io-ts";
 import * as AR from "fp-ts/lib/Array";
 import { either, isLeft } from "fp-ts/lib/Either";
-import { hasActions } from ".";
 
 // alpha
 /* istanbul ignore file */

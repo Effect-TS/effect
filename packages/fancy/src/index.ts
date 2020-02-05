@@ -4,7 +4,7 @@ import { page } from "./fancy-next";
 import { runner, State, stateURI, Runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
-import { Actions, actionsURI } from "./actions";
+import { Actions, actionsURI, hasActions } from "./actions";
 
 // alpha
 /* istanbul ignore file */
@@ -13,13 +13,41 @@ type WithRunner<R, S, P extends {}> = (
   run: <A>(_: T.Effect<R & State<S>, never, A>, cb?: (a: A) => void) => void
 ) => T.Effect<R & State<S> & Runner<R & State<S>>, never, React.FC<P>>;
 
+export type Cont<Action> = (
+  a: Action,
+  ...rest: Action[]
+) => T.Effect<unknown, never, Action[]>;
+
 export const app = <R>() => <S, Action>(
   initial: () => S,
   type: Type<S, unknown>,
   actionType: Type<Action, unknown>,
-  handler: (action: Action) => T.Effect<R & State<S>, never, any> = () => T.unit
+  handler: (
+    _: Cont<Action>
+  ) => (action: Action) => T.Effect<R & State<S>, never, any> = () => () =>
+    T.unit
 ) => {
   const context = React.createContext<S>({} as any);
+
+  const cont: Cont<Action> = (a: Action, ...rest: Action[]) =>
+    pipe(
+      T.pure<Actions>({
+        [actionsURI]: {
+          actions: [a, ...rest].map(actionType.encode)
+        }
+      }),
+      T.chainTap(newActions =>
+        T.access(r => {
+          if (hasActions(r)) {
+            r[actionsURI].actions = [
+              ...r[actionsURI].actions,
+              ...newActions[actionsURI].actions
+            ];
+          }
+        })
+      ),
+      T.map(_ => [a, ...rest])
+    );
 
   return {
     page: page(
@@ -29,7 +57,7 @@ export const app = <R>() => <S, Action>(
       actionType,
       context,
       (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
-        run(handler(action))
+        run(handler(cont)(action))
     ),
     run: runner<R & State<S>>(),
     view: <P extends {}>(f: WithRunner<R, S, P>) =>
@@ -89,32 +117,6 @@ export const updateSM = <S, R, E>(f: (s: S) => T.Effect<R, E, S>) =>
         })
       )
     )
-  );
-
-export const hasActions = (u: unknown): u is Actions =>
-  typeof u === "object" && u !== null && actionsURI in u;
-
-export const cont = <Action>(actionType: Type<Action, unknown>) => (
-  a: Action,
-  ...rest: Action[]
-) =>
-  pipe(
-    T.pure<Actions>({
-      [actionsURI]: {
-        actions: [a, ...rest].map(actionType.encode)
-      }
-    }),
-    T.chainTap(newActions =>
-      T.access(r => {
-        if (hasActions(r)) {
-          r[actionsURI].actions = [
-            ...r[actionsURI].actions,
-            ...newActions[actionsURI].actions
-          ];
-        }
-      })
-    ),
-    T.map(_ => [a, ...rest])
   );
 
 export { StateP } from "./fancy";
