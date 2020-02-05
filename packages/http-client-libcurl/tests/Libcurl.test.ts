@@ -218,31 +218,19 @@ describe("Libcurl", () => {
 
     const s = app.listen(4003);
 
-    const post: Exit<
-      H.HttpError<unknown>,
-      H.Response<unknown>
-    > = await run(
+    const post = await run(
       pipe(H.postData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
-    const put: Exit<
-      H.HttpError<unknown>,
-      H.Response<unknown>
-    > = await run(
+    const put = await run(
       pipe(H.putData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
-    const patch: Exit<
-      H.HttpError<unknown>,
-      H.Response<unknown>
-    > = await run(
+    const patch = await run(
       pipe(H.patchData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
-    const del: Exit<
-      H.HttpError<unknown>,
-      H.Response<unknown>
-    > = await run(
+    const del = await run(
       pipe(H.delData("http://127.0.0.1:4003/data"))
     );
 
@@ -272,7 +260,7 @@ describe("Libcurl", () => {
 
     const s = app.listen(4017);
 
-    const post: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+    const post = await run(
       pipe(
         H.postBinaryGetBinary(
           "http://127.0.0.1:4017/binary",
@@ -281,7 +269,7 @@ describe("Libcurl", () => {
       )
     );
 
-    const put: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+    const put = await run(
       pipe(
         H.putBinaryGetBinary(
           "http://127.0.0.1:4017/binary",
@@ -290,7 +278,7 @@ describe("Libcurl", () => {
       )
     );
 
-    const patch: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+    const patch = await run(
       pipe(
         H.patchBinaryGetBinary(
           "http://127.0.0.1:4017/binary",
@@ -299,7 +287,7 @@ describe("Libcurl", () => {
       )
     );
 
-    const del: Exit<H.HttpError<unknown>, H.Response<Buffer>> = await run(
+    const del = await run(
       pipe(
         H.delBinaryGetBinary(
           "http://127.0.0.1:4017/binary"
