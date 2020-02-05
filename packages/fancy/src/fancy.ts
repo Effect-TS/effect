@@ -8,17 +8,19 @@ import * as L from "@matechs/effect/lib/list";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Option, some, isSome, none } from "fp-ts/lib/Option";
 import { Lazy } from "fp-ts/lib/function";
+import { actionsURI, Actions } from "./actions";
+import { Type } from "io-ts";
+import * as AR from "fp-ts/lib/Array";
+import { either, isLeft } from "fp-ts/lib/Either";
 
 // alpha
 /* istanbul ignore file */
 
 export const dispatcherURI = Symbol();
 
-export interface Dispatcher<R> {
+export interface Runner<R> {
   [dispatcherURI]: {
-    dispatch: (
-      env: R
-    ) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => void;
+    run: (env: R) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => void;
   };
 }
 
@@ -40,16 +42,23 @@ export interface StateP<S> {
   state: S;
 }
 
-export class Fancy<S, R extends State<S>> {
+export class Fancy<S, R extends State<S>, RH, Action> {
   readonly ui: T.Effect<R, never, React.FC<StateP<S>>>;
   readonly actions: S.Stream<unknown, never, any>;
+  readonly final: S.Stream<unknown, never, any>;
   readonly actionList = L.empty<any>();
   private resCallback: Option<(_: Option<any>) => void> = none;
   private opsC = 0;
   private readonly cancellers = {} as Record<string, Lazy<void>>;
 
+  private rh: RH = undefined as any;
+
   constructor(
-    renderEffect: T.Effect<R & Dispatcher<R>, never, React.FC<StateP<S>>>
+    renderEffect: T.Effect<R & Runner<R>, never, React.FC<StateP<S>>>,
+    private readonly actionType: Type<Action, unknown>,
+    handler: (
+      run: <A>(e: T.Effect<RH, never, A>) => void
+    ) => (action: Action) => void
   ) {
     const dispatch = <R>(r: R) => <A>(
       eff: T.Effect<R, never, A>,
@@ -57,6 +66,8 @@ export class Fancy<S, R extends State<S>> {
         //
       }
     ) => {
+      this.rh = r as any;
+
       const n = this.opsC;
 
       this.opsC = this.opsC + 1;
@@ -107,16 +118,42 @@ export class Fancy<S, R extends State<S>> {
       )
     );
 
+    this.final = pipe(
+      this.actions,
+      S.chain(a =>
+        S.encaseEffect(
+          T.sync(() => {
+            if (a && a !== null && actionsURI in a) {
+              const ac = a as Actions;
+
+              const decoded = AR.array.traverse(either)(
+                ac[actionsURI].actions,
+                x => this.actionType.decode(x)
+              );
+
+              if (isLeft(decoded)) {
+                console.error("cannot decode action");
+                console.error(decoded.left);
+              } else {
+                pipe(decoded.right, AR.map(handler(dispatch(this.rh))));
+              }
+            }
+            return a;
+          })
+        )
+      )
+    );
+
     this.ui = pipe(
       renderEffect,
-      T.provideS<Dispatcher<R>>({
+      T.provideS<Runner<R>>({
         [dispatcherURI]: {
-          dispatch
+          run: dispatch
         }
       })
     );
   }
 }
 
-export const dispatcherOf = <R>() =>
-  T.access((s: Dispatcher<R> & R) => s[dispatcherURI].dispatch(s));
+export const runner = <R>() =>
+  T.access((s: Runner<R> & R) => s[dispatcherURI].run(s));

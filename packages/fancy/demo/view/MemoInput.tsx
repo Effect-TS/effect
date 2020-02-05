@@ -5,6 +5,6 @@ import { App } from "../src/app";
 // alpha
 /* istanbul ignore file */
 
-export const MemoInput = App.view(_ =>
+export const MemoInput = App.view(() =>
   T.pure(React.memo(() => <input type={"text"} />))
 );

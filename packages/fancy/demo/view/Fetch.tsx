@@ -5,11 +5,11 @@ import * as ORGS from "../src/orgs"
 // alpha
 /* istanbul ignore file */
 
-export const Fetch = App.view(dispatch =>
+export const Fetch = App.view(run =>
   T.pure(() => (
     <button
       onClick={() => {
-        dispatch(ORGS.updateOrgs);
+        run(ORGS.updateOrgs);
       }}
     >
       Fetch!

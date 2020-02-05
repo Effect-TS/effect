@@ -1,29 +1,51 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
 import { page } from "./fancy-next";
-import { dispatcherOf, State, stateURI, Dispatcher } from "./fancy";
+import { runner, State, stateURI, Runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
+import { Actions, actionsURI } from "./actions";
 
 // alpha
 /* istanbul ignore file */
 
-type WithDisp<R, S, P extends {}> = (
-  dispatcher: <A>(
-    _: T.Effect<R & State<S>, never, A>,
-    cb?: (a: A) => void
-  ) => void
-) => T.Effect<R & State<S> & Dispatcher<R & State<S>>, never, React.FC<P>>;
+type WithRunner<R, S, P extends {}> = (
+  run: <A>(_: T.Effect<R & State<S>, never, A>, cb?: (a: A) => void) => void
+) => T.Effect<R & State<S> & Runner<R & State<S>>, never, React.FC<P>>;
 
-export const app = <R>() => <S>(initial: () => S, type: Type<S, unknown>) => {
+export const app = <R>() => <S, Action>(
+  initial: () => S,
+  type: Type<S, unknown>,
+  actionType: Type<Action, unknown>,
+  handler: (
+    run: <A>(e: T.Effect<R, never, A>) => void
+  ) => (action: Action) => void = () => () => {
+    //
+  }
+) => {
   const context = React.createContext<S>({} as any);
 
   return {
-    page: page(initial, type.encode, x => type.decode(x), context),
-    dispatcher: dispatcherOf<R & State<S>>(),
-    view: <P extends {}>(f: WithDisp<R, S, P>) =>
-      pipe(dispatcherOf<R & State<S>>(), T.chain(f)),
-    useState: () => React.useContext(context)
+    page: page(
+      initial,
+      type.encode,
+      x => type.decode(x),
+      actionType,
+      context,
+      handler
+    ),
+    run: runner<R & State<S>>(),
+    view: <P extends {}>(f: WithRunner<R, S, P>) =>
+      pipe(runner<R & State<S>>(), T.chain(f)),
+    useState: () => React.useContext(context),
+    dispatch: (run: <A>(e: T.Effect<R, never, A>) => void) => (a: Action) =>
+      run(
+        T.pure<Actions>({
+          [actionsURI]: {
+            actions: [actionType.encode(a)]
+          }
+        })
+      )
   };
 };
 

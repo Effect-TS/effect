@@ -2,25 +2,27 @@ import * as React from "react";
 import * as DOM from "react-dom";
 import * as DOMS from "react-dom/server";
 import { effect as T, stream as S, exit as EX } from "@matechs/effect";
-import { Dispatcher, Fancy, State, stateURI } from "./fancy";
+import { Runner, Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
-import { Errors } from "io-ts";
+import { Errors, Type } from "io-ts";
 import { Either, isRight, isLeft } from "fp-ts/lib/Either";
 import { deepEqual } from "fast-equals";
 
 // alpha
 /* istanbul ignore file */
 
-export function page<S>(
+export function page<S, R, Action>(
   initial: () => S,
   enc: (_: S) => unknown,
   dec: (_: unknown) => Either<Errors, S>,
-  context: React.Context<S>
+  actionType: Type<Action, unknown>,
+  context: React.Context<S>,
+  handler: (run: <A>(e: T.Effect<R, never, A>) => void) => (action: Action) => void
 ) {
   return <K>(
     view: T.Effect<
-      State<S> & Dispatcher<State<S> & K>,
+      State<S> & Runner<State<S> & K>,
       never,
       React.FC<{ state: S }>
     >
@@ -42,7 +44,7 @@ export function page<S>(
 
         const rendered = await T.runToPromise(
           pipe(
-            new Fancy(view).ui,
+            new Fancy(view, actionType, handler).ui,
             T.map(Cmp =>
               React.createElement(context.Provider, {
                 value: state[stateURI].state,
@@ -85,7 +87,7 @@ export function page<S>(
           console.error(decoded.left);
         }
 
-        const f = new Fancy(view);
+        const f = new Fancy(view, actionType, handler);
         this.stop = T.run(
           pipe(
             f.ui,
@@ -98,7 +100,7 @@ export function page<S>(
                     () =>
                       T.run(
                         S.drain(
-                          S.stream.map(f.actions, _ => {
+                          S.stream.map(f.final, _ => {
                             if (!deepEqual(s, state[stateURI].state)) {
                               setS(state[stateURI].state);
                             }
