@@ -13,6 +13,10 @@ type WithRunner<R, S, P extends {}> = (
   run: <A>(_: T.Effect<R & State<S>, never, A>, cb?: (a: A) => void) => void
 ) => T.Effect<R & State<S> & Runner<R & State<S>>, never, React.FC<P>>;
 
+type WithRunnerPure<R, S, P extends {}> = (
+  run: <A>(_: T.Effect<R & State<S>, never, A>, cb?: (a: A) => void) => void
+) => React.FC<P>;
+
 export type Cont<Action> = (
   a: Action,
   ...rest: Action[]
@@ -51,8 +55,11 @@ export const app = <R>() => <S, Action>(
 
   const useState = () => React.useContext(context);
 
-  const view = <P extends {}>(f: WithRunner<R, S, P>) =>
+  const ui = <P extends {}>(f: WithRunner<R, S, P>) =>
     pipe(runner<R & State<S>>(), T.chain(f));
+
+  const pureUI = <P extends {}>(f: WithRunnerPure<R, S, P>) =>
+    pipe(runner<R & State<S>>(), T.map(f));
 
   const run = runner<R & State<S>>();
 
@@ -68,7 +75,9 @@ export const app = <R>() => <S, Action>(
       run(handler(dispatch)(action))
   );
 
-  const withState = <P>(cmp: React.FC<{ state: S } & P>): React.FC<P> => p => {
+  type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
+
+  const withState: Transformer<{ state: S }> = cmp => p => {
     const state = useState();
 
     return React.createElement(cmp, {
@@ -80,7 +89,8 @@ export const app = <R>() => <S, Action>(
   return {
     page,
     run,
-    view,
+    ui,
+    pureUI,
     useState,
     dispatch,
     withState
