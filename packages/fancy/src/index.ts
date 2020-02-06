@@ -56,7 +56,9 @@ export const app = <R>() => <S, Action>(
 
   const run = runner<R & State<S>>();
 
-  const page = nextPage(
+  const page: <K>(
+    view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC<{}>>
+  ) => typeof React.Component = nextPage(
     initial,
     type.encode,
     x => type.decode(x),
@@ -66,12 +68,22 @@ export const app = <R>() => <S, Action>(
       run(handler(dispatch)(action))
   );
 
+  const withState = <P>(cmp: React.FC<{ state: S } & P>): React.FC<P> => p => {
+    const state = useState();
+
+    return React.createElement(cmp, {
+      state,
+      ...p
+    });
+  };
+
   return {
     page,
     run,
     view,
     useState,
-    dispatch
+    dispatch,
+    withState
   };
 };
 

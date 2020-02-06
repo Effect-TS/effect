@@ -8,7 +8,6 @@ import { UpdateOrganisations } from "./UpdateOrganisations";
 import { MemoInput } from "./MemoInput";
 import { ShowDate } from "./ShowDate";
 import { UpdateDate } from "./UpdateDate";
-import * as R from "../../lib";
 import Link from "next/link";
 
 // alpha
@@ -22,13 +21,8 @@ export const Home = App.view(() =>
       ShowDate,
       MemoInput
     }),
-    T.map(
-      ({
-        UpdateDate,
-        ShowDate,
-        UpdateOrganisations,
-        MemoInput
-      }): React.FC<R.StateP<S.AppState>> => ({ state }) => (
+    T.map(({ UpdateDate, ShowDate, UpdateOrganisations, MemoInput }) =>
+      App.withState(({ state }) => (
         <>
           <ShowDate />
           <UpdateDate />
@@ -50,7 +44,7 @@ export const Home = App.view(() =>
             <a>foo</a>
           </Link>
         </>
-      )
+      ))
     )
   )
 );

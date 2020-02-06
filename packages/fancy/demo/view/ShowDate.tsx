@@ -7,12 +7,13 @@ import { App } from "../src/app";
 /* istanbul ignore file */
 
 export const ShowDate = App.view(() =>
-  T.pure(() => {
-    const [s, setS] = React.useState(0);
-    const { date } = App.useState();
-    useInterval(() => {
-      setS(s + 1);
-    }, 500);
-    return <div>{`${date.toISOString()} - ${s}`}</div>;
-  })
+  T.pure(
+    App.withState(({ state: { date } }) => {
+      const [s, setS] = React.useState(0);
+      useInterval(() => {
+        setS(s + 1);
+      }, 500);
+      return <div>{`${date.toISOString()} - ${s}`}</div>;
+    })
+  )
 );

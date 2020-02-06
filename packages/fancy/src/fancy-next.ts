@@ -22,11 +22,7 @@ export function page<S, R, Action>(
   ) => (action: Action) => void
 ) {
   return <K>(
-    view: T.Effect<
-      State<S> & Runner<State<S> & K>,
-      never,
-      React.FC<{ state: S }>
-    >
+    view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC>
   ) =>
     class extends React.Component<{
       markup: string;
@@ -50,9 +46,7 @@ export function page<S, R, Action>(
             T.map(Cmp =>
               React.createElement(context.Provider, {
                 value: state[stateURI].state,
-                children: React.createElement(Cmp, {
-                  state: state[stateURI].state
-                })
+                children: React.createElement(Cmp)
               })
             ),
             T.map(Cmp => DOMS.renderToString(Cmp)),
@@ -127,9 +121,7 @@ export function page<S, R, Action>(
 
                   return React.createElement(context.Provider, {
                     value: sv.s,
-                    children: React.createElement(Cmp, {
-                      state: sv.s
-                    })
+                    children: React.createElement(Cmp)
                   });
                 };
 

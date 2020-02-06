@@ -2,12 +2,11 @@ import { effect as T } from "@matechs/effect";
 import { sequenceS } from "fp-ts/lib/Apply";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
+import Link from "next/link";
 import { App } from "../src/app";
 import * as S from "../src/state";
 import { ShowDate } from "./ShowDate";
 import { UpdateDate } from "./UpdateDate";
-import * as R from "../../lib";
-import Link from "next/link";
 
 // alpha
 /* istanbul ignore file */
@@ -18,10 +17,8 @@ export const Foo = App.view(() =>
       UpdateDate,
       ShowDate
     }),
-    T.map(
-      ({ UpdateDate, ShowDate }): React.FC<R.StateP<S.AppState>> => ({
-        state
-      }) => (
+    T.map(({ UpdateDate, ShowDate }) =>
+      App.withState(({ state }) => (
         <>
           <ShowDate />
           <UpdateDate />
@@ -35,7 +32,7 @@ export const Foo = App.view(() =>
             <a>home</a>
           </Link>
         </>
-      )
+      ))
     )
   )
 );
