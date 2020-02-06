@@ -60,14 +60,14 @@ describe("Express", () => {
 
     const res = await T.runToPromiseExit(
       pipe(
-        T.provide(L.jsonClient)(H.post("http://127.0.0.1:3003/", {})),
+        T.provide(L.client)(H.post("http://127.0.0.1:3003/", {})),
         T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
       )
     );
 
     const res2 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.jsonClient)(H.post("http://127.0.0.1:3003/bad", {})),
+        T.provide(L.client)(H.post("http://127.0.0.1:3003/bad", {})),
         T.mapError(
           s =>
             s._tag === H.HttpErrorReason.Response &&
@@ -80,7 +80,7 @@ describe("Express", () => {
 
     const res3 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.jsonClient)(H.post("http://127.0.0.1:3003/bad2", {})),
+        T.provide(L.client)(H.post("http://127.0.0.1:3003/bad2", {})),
         T.mapError(
           s =>
             s._tag === H.HttpErrorReason.Response &&
@@ -93,7 +93,7 @@ describe("Express", () => {
 
     const res4 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.jsonClient)(H.post("http://127.0.0.1:3003/bad3", {})),
+        T.provide(L.client)(H.post("http://127.0.0.1:3003/bad3", {})),
         T.mapError(
           s =>
             s._tag === H.HttpErrorReason.Response &&
@@ -106,7 +106,7 @@ describe("Express", () => {
 
     const res5 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.jsonClient)(H.post("http://127.0.0.1:3003/access", {})),
+        T.provide(L.client)(H.post("http://127.0.0.1:3003/access", {})),
         T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
       )
     );
@@ -115,8 +115,11 @@ describe("Express", () => {
 
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res5, done({ res: 1 }));
-    assert.deepEqual(res2, raise(some({ res: 1 })));
-    assert.deepEqual(res3, raise(some({ status: "aborted", with: "abort" })));
-    assert.deepEqual(res4, raise(some({ status: "interrupted" })));
+    assert.deepEqual(res2, raise(some(`{\"res\":1}`))); // TODO: verify we want that decoded as string
+    assert.deepEqual(
+      res3,
+      raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`))
+    );
+    assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
   });
 });

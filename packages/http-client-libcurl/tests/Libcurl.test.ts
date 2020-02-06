@@ -3,17 +3,17 @@ import * as H from "@matechs/http-client";
 import assert from "assert";
 import bodyParser from "body-parser";
 import express from "express";
-import { jsonClient } from "../src";
+import { client } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
-import { some } from "fp-ts/lib/Option";
+import { some, map, Option } from "fp-ts/lib/Option";
 
 function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(jsonClient),
+      T.provide(client),
       T.provide(
         H.middlewareStack([
           H.withPathHeaders(
@@ -56,14 +56,12 @@ describe("Libcurl", () => {
     );
 
     const postText = await run(
-      H.text(
-        H.post("http://127.0.0.1:4001/post", {
-          foo: "bar"
-        })
-      )
+      H.postReturnText("http://127.0.0.1:4001/post", {
+        foo: "bar"
+      })
     );
 
-    const postNoBody = await run(H.post("http://127.0.0.1:4001/post"));
+    const postNoBody = await run(H.post("http://127.0.0.1:4001/post", {}));
 
     const put = await run(
       H.put("http://127.0.0.1:4001/put", {
@@ -78,9 +76,7 @@ describe("Libcurl", () => {
     );
 
     const del = await run(
-      H.del("http://127.0.0.1:4001/delete", {
-        foo: "bar"
-      })
+      H.del("http://127.0.0.1:4001/delete", { foo: "bar" })
     );
 
     s.close();
@@ -143,7 +139,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get<unknown, { foo: string }>("http://127.0.0.1:4002/h"),
+        H.get("http://127.0.0.1:4002/h"),
         H.withHeaders({
           foo: "bar"
         })
@@ -167,9 +163,7 @@ describe("Libcurl", () => {
 
     const s = app.listen(4005);
 
-    const result = await run(
-      pipe(H.get<unknown, { foo: string }>("http://127.0.0.1:4005/middle"))
-    );
+    const result = await run(pipe(H.get("http://127.0.0.1:4005/middle")));
 
     s.close();
 
@@ -191,9 +185,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get<unknown, { foo: string; bar?: string }>(
-          "http://127.0.0.1:4004/h"
-        ),
+        H.get("http://127.0.0.1:4004/h"),
         H.withHeaders(
           {
             foo: "baz"
@@ -224,31 +216,19 @@ describe("Libcurl", () => {
 
     const s = app.listen(4003);
 
-    const post: Exit<
-      H.HttpError<unknown>,
-      H.Response<{ foo: string }>
-    > = await run(
+    const post = await run(
       pipe(H.postData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
-    const put: Exit<
-      H.HttpError<unknown>,
-      H.Response<{ foo: string }>
-    > = await run(
+    const put = await run(
       pipe(H.putData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
-    const patch: Exit<
-      H.HttpError<unknown>,
-      H.Response<{ foo: string }>
-    > = await run(
+    const patch = await run(
       pipe(H.patchData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
-    const del: Exit<
-      H.HttpError<unknown>,
-      H.Response<{ foo: string }>
-    > = await run(
+    const del = await run(
       pipe(H.delData("http://127.0.0.1:4003/data", { foo: "bar" }))
     );
 
@@ -265,6 +245,79 @@ describe("Libcurl", () => {
 
     assert.deepEqual(isDone(del), true);
     assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
+  });
+
+  it.skip("binary", async () => {
+    // TODO: make it work
+    const app = express();
+
+    app.use("/binary", bodyParser.raw(), (req, res) => {
+      const body = req.body as Buffer;
+      res.send(body);
+    });
+
+    const s = app.listen(4017);
+
+    const post = await run(
+      pipe(
+        H.postBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    const put = await run(
+      pipe(
+        H.putBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    const patch = await run(
+      pipe(
+        H.patchBinaryGetBinary(
+          "http://127.0.0.1:4017/binary",
+          Buffer.from(`{ foo: "bar" }`)
+        )
+      )
+    );
+
+    const del = await run(
+      pipe(H.delBinaryGetBinary("http://127.0.0.1:4017/binary"))
+    );
+
+    s.close();
+
+    const binaryString = (b: Option<Buffer>): Option<string> =>
+      pipe(
+        b,
+        map(b => b.toString("utf-8"))
+      );
+
+    assert.deepEqual(post, true);
+    assert.deepEqual(isDone(post), true);
+    assert.deepEqual(
+      isDone(post) && binaryString(post.value.body),
+      some(`{ foo: \"bar\" }`)
+    );
+
+    assert.deepEqual(isDone(put), true);
+    assert.deepEqual(
+      isDone(put) && binaryString(put.value.body),
+      some(`{ foo: \"bar\" }`)
+    );
+
+    assert.deepEqual(isDone(patch), true);
+    assert.deepEqual(
+      isDone(patch) && binaryString(patch.value.body),
+      some(`{ foo: \"bar\" }`)
+    );
+
+    assert.deepEqual(isDone(del), true);
+    assert.deepEqual(isDone(del) && binaryString(del.value.body), some(``)); // TODO: Verify spec; del binary body does not touch the server
   });
 
   it("get https", async () => {
@@ -302,7 +355,7 @@ describe("Libcurl", () => {
     const cancel = T.run(
       pipe(
         H.get("https://jsonplaceholder.typicode.com/todos/1"),
-        T.provideAll(jsonClient)
+        T.provideAll(client)
       ),
       r => {
         res = r;
