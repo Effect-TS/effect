@@ -7,6 +7,8 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
 import { Errors, Type } from "io-ts";
 import { Either, isRight, isLeft } from "fp-ts/lib/Either";
+import { NextPageContext } from "next";
+import { nextContextURI } from "./next-ctx";
 
 // alpha
 /* istanbul ignore file */
@@ -32,7 +34,7 @@ export function page<S, R, Action>(
 
       public stop: Lazy<void> | undefined = undefined;
 
-      static async getInitialProps() {
+      static async getInitialProps(ctx: NextPageContext) {
         const state: State<S> = {
           [stateURI]: {
             state: initial(),
@@ -50,7 +52,7 @@ export function page<S, R, Action>(
               })
             ),
             T.map(Cmp => DOMS.renderToString(Cmp)),
-            T.provideAll(state as any)
+            T.provideAll({ ...state, [nextContextURI]: { ctx } } as any)
           )
         );
 

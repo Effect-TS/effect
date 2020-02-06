@@ -5,6 +5,8 @@ import { runner, State, stateURI, Runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
 import { Actions, actionsURI, hasActions } from "./actions";
+import { NextContext, nextContextURI } from "./next-ctx";
+import { some, none } from "fp-ts/lib/Option";
 
 // alpha
 /* istanbul ignore file */
@@ -126,5 +128,16 @@ export const updateSM = <S, R, E>(f: (s: S) => T.Effect<R, E, S>) =>
     )
   );
 
+export function hasNextContext(u: unknown): u is NextContext {
+  return typeof u === "object" && u !== null && nextContextURI in u;
+}
+
+export const accessNextContext = T.access((r: unknown) =>
+  hasNextContext(r) ? some(r[nextContextURI].ctx) : none
+);
+
+export const isBrowser = T.sync(() => typeof window !== "undefined");
+
 export { StateP } from "./fancy";
 export { matcher } from "./matcher";
+export { NextContext } from "./next-ctx";
