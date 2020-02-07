@@ -12,7 +12,7 @@ import { UpdateOrganisations } from "./UpdateOrganisations";
 // alpha
 /* istanbul ignore file */
 
-export const Home = App.ui(() =>
+export const Home = App.ui.of(
   pipe(
     sequenceS(T.effect)({
       UpdateDate,

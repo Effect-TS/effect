@@ -10,7 +10,7 @@ import { effect as T } from "@matechs/effect";
 // alpha
 /* istanbul ignore file */
 
-export const App = R.app<DT.DateOps & ORGS.OrgsOps>()(
+export const App = R.app(
   AppState.type,
   AppActions.type,
   R.matcher(AppActions)({

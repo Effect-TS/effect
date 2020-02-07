@@ -1,6 +1,6 @@
 import * as React from "react";
 import { effect as T, stream as S, exit as EX } from "@matechs/effect";
-import { Runner, Fancy, State, stateURI } from "./fancy";
+import { Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
 import { Errors, Type } from "io-ts";
@@ -17,19 +17,17 @@ export const renderCount = {
   count: 0
 };
 
-export function page<S, R, Action>(
+export function page<S, RApp, Action>(
   initial: T.UIO<S>,
   enc: (_: S) => unknown,
   dec: (_: unknown) => Either<Errors, S>,
   actionType: Type<Action, unknown>,
   context: React.Context<S>,
   handler: (
-    run: <A>(e: T.Effect<R, never, A>) => void
+    run: <A>(e: T.Effect<RApp, never, A>) => void
   ) => (action: Action) => void
 ) {
-  return <K>(
-    view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC>
-  ) =>
+  return <RPage>(view: T.Effect<RPage, never, React.FC>) =>
     class extends React.Component<
       {
         stateToKeep?: string;

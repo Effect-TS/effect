@@ -10,7 +10,7 @@ import { UpdateDate } from "./UpdateDate";
 // alpha
 /* istanbul ignore file */
 
-export const Foo = App.ui(() =>
+export const Foo = App.ui.of(
   pipe(
     sequenceS(T.effect)({
       UpdateDate,

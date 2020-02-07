@@ -1,7 +1,7 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
 import { page as nextPage } from "./fancy-next";
-import { runner, State, stateURI, Runner } from "./fancy";
+import { State, stateURI, runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Type } from "io-ts";
 import { Actions, actionsURI, hasActions } from "./actions";
@@ -11,27 +11,44 @@ import { some, none } from "fp-ts/lib/Option";
 // alpha
 /* istanbul ignore file */
 
-type WithRunner<R, S, P extends {}> = (
-  run: <A>(_: T.Effect<R & State<S>, never, A>, cb?: (a: A) => void) => void
-) => T.Effect<R & State<S> & Runner<R & State<S>>, never, React.FC<P>>;
-
-type WithRunnerPure<R, S, P extends {}> = (
-  run: <A>(_: T.Effect<R & State<S>, never, A>, cb?: (a: A) => void) => void
-) => React.FC<P>;
-
 export type Cont<Action> = (
   a: Action,
   ...rest: Action[]
 ) => T.Effect<unknown, never, Action[]>;
 
-export const app = <R>() => <S, Action>(
+export interface App<R, S, A> {
+  page: (
+    view: T.Effect<State<S>, never, React.FC<{}>>
+  ) => (initial: T.UIO<S>) => typeof React.Component;
+  useState: () => S;
+  dispatch: Cont<A>;
+  withState: Transformer<{
+    state: S;
+  }>;
+  ui: {
+    of: <RUI, P>(
+      uiE: T.Effect<RUI, never, React.FC<P>>
+    ) => T.Effect<RUI & R, never, React.FC<P>>;
+    withRun: <RUNR>() => <RUI, P>(
+      f: (
+        _: <A>(
+          _: T.Effect<RUNR & R, never, A>,
+          cb?: ((a: A) => void) | undefined
+        ) => void
+      ) => T.Effect<RUI, never, React.FC<P>>
+    ) => T.Effect<RUI & RUNR & R, never, React.FC<P>>;
+  };
+}
+
+export type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
+
+export const app = <RApp, S, Action>(
   type: Type<S, unknown>,
   actionType: Type<Action, unknown>,
   handler: (
     dispatch: Cont<Action>
-  ) => (action: Action) => T.Effect<R & State<S>, never, any> = () => () =>
-    T.unit
-) => {
+  ) => (action: Action) => T.Effect<RApp, never, any> = () => () => T.unit
+): App<RApp, S, Action> => {
   const context = React.createContext<S>({} as any);
 
   const dispatch: Cont<Action> = (a: Action, ...rest: Action[]) =>
@@ -56,28 +73,22 @@ export const app = <R>() => <S, Action>(
 
   const useState = () => React.useContext(context);
 
-  const ui = <P extends {}>(f: WithRunner<R, S, P>) =>
-    pipe(runner<R & State<S>>(), T.chain(f));
+  const ui = <RUI, P>(
+    uiE: T.Effect<RUI, never, React.FC<P>>
+  ): T.Effect<RUI & RApp, never, React.FC<P>> => uiE;
 
-  const pureUI = <P extends {}>(f: WithRunnerPure<R, S, P>) =>
-    pipe(runner<R & State<S>>(), T.map(f));
-
-  const run = runner<R & State<S>>();
-
-  const page: <K>(
-    view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC<{}>>
-  ) => (initial: T.UIO<S>) => typeof React.Component = view => initial =>
+  const page = <RPage>(view: T.Effect<RPage, never, React.FC<{}>>) => (
+    initial: T.UIO<S>
+  ): typeof React.Component =>
     nextPage(
       initial,
       type.encode,
       x => type.decode(x),
       actionType,
       context,
-      (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
+      (run: <A>(e: T.Effect<RPage & RApp, never, A>) => void) => action =>
         run(handler(dispatch)(action))
     )(view);
-
-  type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
 
   const withState: Transformer<{ state: S }> = cmp => p => {
     const state = useState();
@@ -88,14 +99,24 @@ export const app = <R>() => <S, Action>(
     });
   };
 
+  const withRun = <RUNR>() => <RUI, P>(
+    f: (
+      _: <A>(
+        _: T.Effect<RUNR & RApp, never, A>,
+        cb?: ((a: A) => void) | undefined
+      ) => void
+    ) => T.Effect<RUI, never, React.FC<P>>
+  ) => pipe(runner<RUNR & RApp>(), T.chain(f));
+
   return {
     page,
-    run,
-    ui,
-    pureUI,
     useState,
     dispatch,
-    withState
+    withState,
+    ui: {
+      of: ui,
+      withRun
+    }
   };
 };
 

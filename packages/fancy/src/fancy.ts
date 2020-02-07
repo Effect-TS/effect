@@ -44,7 +44,7 @@ export interface StateP<S> {
   state: S;
 }
 
-export class Fancy<S, R extends State<S>, RH, Action> {
+export class Fancy<S, R, RH, Action> {
   readonly ui: T.Effect<R, never, React.FC<StateP<S>>>;
   readonly actions: S.Stream<unknown, never, any>;
   readonly final: S.Stream<unknown, never, any>;
@@ -56,7 +56,7 @@ export class Fancy<S, R extends State<S>, RH, Action> {
   private rh: RH = undefined as any;
 
   constructor(
-    renderEffect: T.Effect<R & Runner<R>, never, React.FC<StateP<S>>>,
+    renderEffect: T.Effect<R, never, React.FC<StateP<S>>>,
     private readonly actionType: Type<Action, unknown>,
     handler: (
       run: <A>(e: T.Effect<RH, never, A>) => void
@@ -160,5 +160,13 @@ export class Fancy<S, R extends State<S>, RH, Action> {
   }
 }
 
+function hasRunner<R>(u: unknown): u is Runner<R> {
+  return typeof u === "object" && u !== null && dispatcherURI in u;
+}
+
 export const runner = <R>() =>
-  T.access((s: Runner<R> & R) => s[dispatcherURI].run(s));
+  T.access((s: R) =>
+    hasRunner<R>(s)
+      ? s[dispatcherURI].run(s)
+      : T.raiseAbort(new Error("runner out of context"))
+  );
