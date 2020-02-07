@@ -1,17 +1,20 @@
-import {} from "morphic-ts/lib/batteries/summoner-no-union"
+import {} from "@morphic-ts/batteries/lib/summoner-no-union";
 import { effect as T } from "@matechs/effect";
 import { DbT, DbTx, ORM, TaskError } from "@matechs/orm";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
-import { Of } from "morphic-ts/lib/adt/ctors";
-import { ElemType } from "morphic-ts/lib/adt/utils";
+import { Of } from "@morphic-ts/adt/lib/ctors";
+import { ElemType } from "@morphic-ts/adt/lib/utils";
 import { ReadSideConfig } from "./config";
 import { SliceFetcher, AggregateFetcher } from "./fetchSlice";
 import { persistEvent } from "./persistEvent";
 import { Read } from "./read";
 import { array } from "fp-ts/lib/Array";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
-import { MorphADT, AOfTypes } from "morphic-ts/lib/usage/tagged-union";
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
+import {
+  MorphADT,
+  AOfTypes
+} from "@morphic-ts/batteries/lib/usage/tagged-union";
 import { matcher } from "./matcher";
 import { pipe } from "fp-ts/lib/pipeable";
 

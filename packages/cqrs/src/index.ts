@@ -1,7 +1,7 @@
 import { Domain } from "./domain";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
-import { MorphADT } from "morphic-ts/lib/usage/tagged-union";
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
+import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
 
 // experimental alpha
 /* istanbul ignore file */

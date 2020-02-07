@@ -2,8 +2,8 @@ import {
   summon,
   tagged,
   AsOpaque
-} from "morphic-ts/lib/batteries/summoner-no-union";
-import { EType, AType } from "morphic-ts/lib/usage/utils";
+} from "@morphic-ts/batteries/lib/summoner-no-union";
+import { EType, AType } from "@morphic-ts/batteries/lib/usage/utils";
 
 const TodoAdded_ = summon(F =>
   F.interface(

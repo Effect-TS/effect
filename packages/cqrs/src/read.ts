@@ -7,7 +7,7 @@ import * as A from "fp-ts/lib/Array";
 import * as NA from "fp-ts/lib/NonEmptyArray";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { pipe } from "fp-ts/lib/pipeable";
-import { ElemType } from "morphic-ts/lib/adt/utils";
+import { ElemType } from "@morphic-ts/adt/lib/utils";
 import { always } from "./always";
 import {
   accessConfig,
@@ -17,9 +17,12 @@ import {
 } from "./config";
 import { saveOffsets } from "./saveOffsets";
 import { MatcherT } from "./matchers";
-import { MorphADT, AOfTypes } from "morphic-ts/lib/usage/tagged-union";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
+import {
+  MorphADT,
+  AOfTypes
+} from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
 
 // experimental alpha
 /* istanbul ignore file */
