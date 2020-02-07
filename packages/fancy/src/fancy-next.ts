@@ -1,5 +1,4 @@
 import * as React from "react";
-import * as DOM from "react-dom";
 import { effect as T, stream as S, exit as EX } from "@matechs/effect";
 import { Runner, Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -8,6 +7,7 @@ import { Errors, Type } from "io-ts";
 import { Either, isRight, right, left } from "fp-ts/lib/Either";
 import { NextPageContext } from "next";
 import { nextContextURI } from "./next-ctx";
+import { Option, none, some, isNone } from "fp-ts/lib/Option";
 
 // alpha
 /* istanbul ignore file */
@@ -30,11 +30,27 @@ export function page<S, R, Action>(
   return <K>(
     view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC>
   ) =>
-    class extends React.Component<{
-      stateToKeep?: string;
-      initInBrowser?: boolean;
-      renderId?: string;
-    }> {
+    class extends React.Component<
+      {
+        stateToKeep?: string;
+        initInBrowser?: boolean;
+        renderId?: string;
+      },
+      {
+        cmp: Option<
+          React.FunctionComponentElement<{
+            state: S;
+            version: number;
+          }>
+        >;
+      }
+    > {
+      constructor(p: any) {
+        super(p);
+
+        this.state = { cmp: none };
+      }
+
       public readonly REF = React.createRef<HTMLDivElement>();
 
       public stop: Lazy<void> | undefined = undefined;
@@ -252,13 +268,14 @@ export function page<S, R, Action>(
                         });
                       };
 
-                      DOM.hydrate(
-                        React.createElement(CmpS, {
-                          state: state[stateURI].state,
-                          version: state[stateURI].version
-                        }),
-                        this.REF.current
-                      );
+                      this.setState({
+                        cmp: some(
+                          React.createElement(CmpS, {
+                            state: state[stateURI].state,
+                            version: state[stateURI].version
+                          })
+                        )
+                      });
                     })
                   ),
                   T.provideAll(state as any)
@@ -302,16 +319,22 @@ export function page<S, R, Action>(
               children: component
             });
           } else {
-            // we are in the browser but we have an initial markup from the server
-            // in this case rendering will be initialized on component did mount
-            const markup = document.getElementById("fancy-next-root")
-              ?.innerHTML;
+            if (isNone(this.state.cmp)) {
+              const markup = document.getElementById("fancy-next-root")
+                ?.innerHTML;
 
-            return React.createElement("div", {
-              ref: this.REF,
-              dangerouslySetInnerHTML: { __html: markup },
-              id: "fancy-next-root"
-            });
+              return React.createElement("div", {
+                ref: this.REF,
+                dangerouslySetInnerHTML: { __html: markup },
+                id: "fancy-next-root"
+              });
+            } else {
+              return React.createElement("div", {
+                ref: this.REF,
+                id: "fancy-next-root",
+                children: this.state.cmp.value
+              });
+            }
           }
         }
       }
