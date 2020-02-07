@@ -35,56 +35,73 @@ export function page<S, R, Action>(
       public stop: Lazy<void> | undefined = undefined;
 
       static async getInitialProps(ctx: NextPageContext) {
-        const state: State<S> = {
-          [stateURI]: {
-            state: initial(),
-            version: 0
-          }
-        };
+        if (ctx.req) {
+          const state: State<S> = {
+            [stateURI]: {
+              state: initial(),
+              version: 0
+            }
+          };
 
-        const rendered = await T.runToPromise(
-          pipe(
-            new Fancy(view, actionType, handler).ui,
-            T.map(Cmp =>
-              React.createElement(context.Provider, {
-                value: state[stateURI].state,
-                children: React.createElement(Cmp)
-              })
-            ),
-            T.map(Cmp => DOMS.renderToString(Cmp)),
-            T.provideAll({ ...state, [nextContextURI]: { ctx } } as any)
-          )
-        );
+          const rendered = await T.runToPromise(
+            pipe(
+              new Fancy(view, actionType, handler).ui,
+              T.map(Cmp =>
+                React.createElement(context.Provider, {
+                  value: state[stateURI].state,
+                  children: React.createElement(Cmp)
+                })
+              ),
+              T.map(Cmp => DOMS.renderToString(Cmp)),
+              T.provideAll({ ...state, [nextContextURI]: { ctx } } as any)
+            )
+          );
 
-        const stateS = state[stateURI].state;
+          const stateS = state[stateURI].state;
 
-        return {
-          markup: rendered,
-          stateToKeep: JSON.stringify(enc(stateS))
-        };
+          return {
+            markup: rendered,
+            stateToKeep: JSON.stringify(enc(stateS))
+          };
+        } else {
+          return {
+            browser: true
+          };
+        }
       }
 
       componentDidMount() {
-        const restored = JSON.parse(this.props.stateToKeep);
-        const decoded = dec(restored);
+        let state: State<S>;
 
-        const state: State<S> = isRight(decoded)
-          ? {
-              [stateURI]: {
-                state: decoded.right,
-                version: 0
+        if (this.props.stateToKeep) {
+          const restored = JSON.parse(this.props.stateToKeep);
+          const decoded = dec(restored);
+
+          state = isRight(decoded)
+            ? {
+                [stateURI]: {
+                  state: decoded.right,
+                  version: 0
+                }
               }
+            : {
+                [stateURI]: {
+                  state: initial(),
+                  version: 0
+                }
+              };
+
+          if (isLeft(decoded)) {
+            console.error("Decoding of state failed");
+            console.error(decoded.left);
+          }
+        } else {
+          state = {
+            [stateURI]: {
+              state: initial(),
+              version: 0
             }
-          : {
-              [stateURI]: {
-                state: initial(),
-                version: 0
-              }
-            };
-
-        if (isLeft(decoded)) {
-          console.error("Decoding of state failed");
-          console.error(decoded.left);
+          };
         }
 
         const f = new Fancy(view, actionType, handler);
@@ -127,13 +144,23 @@ export function page<S, R, Action>(
                   });
                 };
 
-                DOM.hydrate(
-                  React.createElement(CmpS, {
-                    state: state[stateURI].state,
-                    version: state[stateURI].version
-                  }),
-                  this.REF.current
-                );
+                if (this.props.markup) {
+                  DOM.hydrate(
+                    React.createElement(CmpS, {
+                      state: state[stateURI].state,
+                      version: state[stateURI].version
+                    }),
+                    this.REF.current
+                  );
+                } else {
+                  DOM.render(
+                    React.createElement(CmpS, {
+                      state: state[stateURI].state,
+                      version: state[stateURI].version
+                    }),
+                    this.REF.current
+                  );
+                }
               })
             ),
             T.provideAll(state as any)
@@ -153,12 +180,18 @@ export function page<S, R, Action>(
       }
 
       render() {
-        const { markup } = this.props;
+        if (this.props.markup) {
+          const { markup } = this.props;
 
-        return React.createElement("div", {
-          ref: this.REF,
-          dangerouslySetInnerHTML: { __html: markup }
-        });
+          return React.createElement("div", {
+            ref: this.REF,
+            dangerouslySetInnerHTML: { __html: markup }
+          });
+        } else {
+          return React.createElement("div", {
+            ref: this.REF
+          });
+        }
       }
     };
 }
