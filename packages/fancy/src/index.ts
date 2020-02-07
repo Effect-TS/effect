@@ -66,7 +66,7 @@ export const app = <R>() => <S, Action>(
 
   const page: <K>(
     view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC<{}>>
-  ) => (initial: () => S) => typeof React.Component = view => initial =>
+  ) => (initial: T.UIO<S>) => typeof React.Component = view => initial =>
     nextPage(
       initial,
       type.encode,

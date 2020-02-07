@@ -6,7 +6,7 @@ import { Runner, Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
 import { Errors, Type } from "io-ts";
-import { Either, isRight, isLeft } from "fp-ts/lib/Either";
+import { Either, isRight, right, left } from "fp-ts/lib/Either";
 import { NextPageContext } from "next";
 import { nextContextURI } from "./next-ctx";
 
@@ -19,7 +19,7 @@ export const renderCount = {
 };
 
 export function page<S, R, Action>(
-  initial: () => S,
+  initial: T.UIO<S>,
   enc: (_: S) => unknown,
   dec: (_: unknown) => Either<Errors, S>,
   actionType: Type<Action, unknown>,
@@ -42,9 +42,11 @@ export function page<S, R, Action>(
       public stop: Lazy<void> | undefined = undefined;
 
       static async getInitialProps(ctx: NextPageContext) {
+        const initialS = await T.runToPromise(initial);
+
         const state: State<S> = {
           [stateURI]: {
-            state: initial(),
+            state: initialS,
             version: 0
           }
         };
@@ -139,96 +141,137 @@ export function page<S, R, Action>(
         // only if we have not initialized already in getInitialProps
         // result of first page render after SSR
         if (!this.props.initInBrowser) {
-          let state: State<S>;
-
           if (!this.props.markup) {
             throw new Error(
               "we are on the client without a server markup to begin hydration"
             );
           }
+          const getS = T.async<Error, State<S>>(resolve => {
+            let c: Lazy<void> | undefined = undefined;
 
-          if (this.props.stateToKeep) {
-            const restored = JSON.parse(this.props.stateToKeep);
-            const decoded = dec(restored);
+            if (this.props.stateToKeep) {
+              const restored = JSON.parse(this.props.stateToKeep);
+              const decoded = dec(restored);
 
-            state = isRight(decoded)
-              ? {
-                  [stateURI]: {
-                    state: decoded.right,
-                    version: 0
+              if (isRight(decoded)) {
+                resolve(
+                  right({
+                    [stateURI]: {
+                      state: decoded.right,
+                      version: 0
+                    }
+                  })
+                );
+              } else {
+                console.error("Decoding of state failed");
+                console.error(decoded.left);
+
+                c = T.run(initial, ex => {
+                  if (EX.isDone(ex)) {
+                    resolve(
+                      right({
+                        [stateURI]: {
+                          state: ex.value,
+                          version: 0
+                        }
+                      })
+                    );
+                  } else {
+                    resolve(
+                      left(
+                        new Error("initial state should not be allowd to fail")
+                      )
+                    );
                   }
+                });
+              }
+            } else {
+              c = T.run(initial, ex => {
+                if (EX.isDone(ex)) {
+                  resolve(
+                    right({
+                      [stateURI]: {
+                        state: ex.value,
+                        version: 0
+                      }
+                    })
+                  );
+                } else {
+                  resolve(
+                    left(
+                      new Error("initial state should not be allowd to fail")
+                    )
+                  );
                 }
-              : {
-                  [stateURI]: {
-                    state: initial(),
-                    version: 0
-                  }
-                };
-
-            if (isLeft(decoded)) {
-              console.error("Decoding of state failed");
-              console.error(decoded.left);
+              });
             }
-          } else {
-            state = {
-              [stateURI]: {
-                state: initial(),
-                version: 0
+
+            return () => {
+              if (c) {
+                c();
               }
             };
-          }
+          });
 
           // as on getInitialProps but for client only
           const f = new Fancy(view, actionType, handler);
           this.stop = T.run(
             pipe(
-              f.ui,
-              T.chain(Cmp =>
-                T.sync(() => {
-                  const CmpS: React.FC<{ state: S; version: number }> = p => {
-                    const [sv, setS] = React.useState({
-                      s: p.state,
-                      v: p.version
-                    });
+              getS,
+              T.chain(state =>
+                pipe(
+                  f.ui,
+                  T.chain(Cmp =>
+                    T.sync(() => {
+                      const CmpS: React.FC<{
+                        state: S;
+                        version: number;
+                      }> = p => {
+                        const [sv, setS] = React.useState({
+                          s: p.state,
+                          v: p.version
+                        });
 
-                    React.useEffect(
-                      () =>
-                        T.run(
-                          S.drain(
-                            S.stream.map(f.final, _ => {
-                              if (state[stateURI].version > sv.v) {
-                                setS({
-                                  s: state[stateURI].state,
-                                  v: state[stateURI].version
-                                });
+                        React.useEffect(
+                          () =>
+                            T.run(
+                              S.drain(
+                                S.stream.map(f.final, _ => {
+                                  if (state[stateURI].version > sv.v) {
+                                    setS({
+                                      s: state[stateURI].state,
+                                      v: state[stateURI].version
+                                    });
+                                  }
+                                })
+                              ),
+                              ex => {
+                                if (!EX.isInterrupt(ex)) {
+                                  console.error(ex);
+                                }
                               }
-                            })
-                          ),
-                          ex => {
-                            if (!EX.isInterrupt(ex)) {
-                              console.error(ex);
-                            }
-                          }
-                        ),
-                      []
-                    );
+                            ),
+                          []
+                        );
 
-                    return React.createElement(context.Provider, {
-                      value: sv.s,
-                      children: React.createElement(Cmp)
-                    });
-                  };
+                        return React.createElement(context.Provider, {
+                          value: sv.s,
+                          children: React.createElement(Cmp)
+                        });
+                      };
 
-                  DOM.hydrate(
-                    React.createElement(CmpS, {
-                      state: state[stateURI].state,
-                      version: state[stateURI].version
-                    }),
-                    this.REF.current
-                  );
-                })
-              ),
-              T.provideAll(state as any)
+                      DOM.hydrate(
+                        React.createElement(CmpS, {
+                          state: state[stateURI].state,
+                          version: state[stateURI].version
+                        }),
+                        this.REF.current
+                      );
+                    })
+                  ),
+                  T.provideAll(state as any)
+                )
+              )
             ),
             ex => {
               if (!EX.isInterrupt(ex) && !EX.isDone(ex)) {
