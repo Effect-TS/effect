@@ -26,9 +26,7 @@ export interface App<R, S, A> {
     state: S;
   }>;
   ui: {
-    of: <RUI, P>(
-      uiE: T.Effect<RUI, never, React.FC<P>>
-    ) => T.Effect<RUI & R, never, React.FC<P>>;
+    of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI & R, P>;
     withRun: <RUNR>() => <RUI, P>(
       f: (
         _: <A>(
@@ -36,11 +34,14 @@ export interface App<R, S, A> {
           cb?: ((a: A) => void) | undefined
         ) => void
       ) => T.Effect<RUI, never, React.FC<P>>
-    ) => T.Effect<RUI & RUNR & R, never, React.FC<P>>;
+    ) => View<RUI & RUNR & R, P>;
   };
 }
 
 export type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
+
+export interface View<R = unknown, P = unknown>
+  extends T.Effect<R, never, React.FC<P>> {}
 
 export const app = <RApp, S, Action>(
   type: Type<S, unknown>,
