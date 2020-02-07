@@ -25,7 +25,6 @@ export type Cont<Action> = (
 ) => T.Effect<unknown, never, Action[]>;
 
 export const app = <R>() => <S, Action>(
-  initial: () => S,
   type: Type<S, unknown>,
   actionType: Type<Action, unknown>,
   handler: (
@@ -67,15 +66,16 @@ export const app = <R>() => <S, Action>(
 
   const page: <K>(
     view: T.Effect<State<S> & Runner<State<S> & K>, never, React.FC<{}>>
-  ) => typeof React.Component = nextPage(
-    initial,
-    type.encode,
-    x => type.decode(x),
-    actionType,
-    context,
-    (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
-      run(handler(dispatch)(action))
-  );
+  ) => (initial: () => S) => typeof React.Component = view => initial =>
+    nextPage(
+      initial,
+      type.encode,
+      x => type.decode(x),
+      actionType,
+      context,
+      (run: <A>(e: T.Effect<R & State<S>, never, A>) => void) => action =>
+        run(handler(dispatch)(action))
+    )(view);
 
   type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
 
