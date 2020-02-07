@@ -185,11 +185,13 @@ export function page<S, R, Action>(
 
           return React.createElement("div", {
             ref: this.REF,
-            dangerouslySetInnerHTML: { __html: markup }
+            dangerouslySetInnerHTML: { __html: markup },
+            id: "fancy-next-root"
           });
         } else {
           return React.createElement("div", {
-            ref: this.REF
+            ref: this.REF,
+            id: "fancy-next-root"
           });
         }
       }
