@@ -1,6 +1,6 @@
-import {} from "morphic-ts/lib/batteries/summoner-no-union";
-import {} from "morphic-ts/lib/batteries/program";
-import {} from "morphic-ts/lib/batteries/program-orderable";
+import {} from "@morphic-ts/batteries/lib/summoner-no-union";
+import {} from "@morphic-ts/batteries/lib/program";
+import {} from "@morphic-ts/batteries/lib/program-orderable";
 
 import Long from "long";
 import { effect as T, managed as M } from "@matechs/effect";

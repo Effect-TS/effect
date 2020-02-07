@@ -26,7 +26,7 @@
     "io-ts": "^2.0.6",
     "io-ts-types": "^0.5.5",
     "monocle-ts": "^2.0.1",
-    "morphic-ts": "^0.8.0-rc.2",
+    "@morphic-ts/batteries": "^0.3.4",
     "reflect-metadata": "^0.1.13",
     "typeorm": "^0.2.21"
   },
@@ -43,7 +43,7 @@
     "io-ts": "^2.0.6",
     "io-ts-types": "^0.5.5",
     "monocle-ts": "^2.0.1",
-    "morphic-ts": "^0.8.0-rc.2",
+    "@morphic-ts/batteries": "^0.3.4",
     "newtype-ts": "^0.3.3",
     "reflect-metadata": "^0.1.13",
     "typeorm": "^0.2.21",

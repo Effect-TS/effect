@@ -6,9 +6,9 @@ import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { Read } from "./read";
 import { ReadSideConfig } from "./config";
 import { DomainFetcher, DomainFetcherAll } from "./fetchSlice";
-import { MorphADT } from "morphic-ts/lib/usage/tagged-union";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
+import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
 import { matcher } from "./matcher";
 
 // experimental alpha

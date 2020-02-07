@@ -17,9 +17,9 @@
   ],
   "peerDependencies": {
     "@matechs/effect": "^1.2.1",
-    "@matechs/express": "^1.2.1",
-    "@matechs/http-client": "^1.2.1",
-    "@matechs/rpc-client": "^1.2.1",
+    "@matechs/express": "^2.0.0-alpha.1",
+    "@matechs/http-client": "^2.0.0-alpha.1",
+    "@matechs/rpc-client": "^2.0.0-alpha.2",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "fp-ts": "^2.4.2",

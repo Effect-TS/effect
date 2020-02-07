@@ -1,4 +1,4 @@
-import {} from "morphic-ts/lib/batteries/summoner-no-union"
+import {} from "@morphic-ts/batteries/lib/summoner-no-union";
 import { effect as T } from "@matechs/effect";
 import { DbT } from "@matechs/orm";
 import { sequenceS } from "fp-ts/lib/Apply";
@@ -6,11 +6,14 @@ import { array } from "fp-ts/lib/Array";
 import { pipe } from "fp-ts/lib/pipeable";
 import { accessConfig } from "./config";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
-import { ElemType } from "morphic-ts/lib/adt/utils";
+import { ElemType } from "@morphic-ts/adt/lib/utils";
 import * as t from "io-ts";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
-import { AOfTypes, MorphADT } from "morphic-ts/lib/usage/tagged-union";
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
+import {
+  AOfTypes,
+  MorphADT
+} from "@morphic-ts/batteries/lib/usage/tagged-union";
 
 // experimental alpha
 /* istanbul ignore file */

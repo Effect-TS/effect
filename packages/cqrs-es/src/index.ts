@@ -1,16 +1,16 @@
-import {} from "morphic-ts/lib/batteries/summoner-no-union";
-import {} from "morphic-ts/lib/batteries/program";
-import {} from "morphic-ts/lib/batteries/program-orderable";
+import {} from "@morphic-ts/batteries/lib/summoner-no-union";
+import {} from "@morphic-ts/batteries/lib/program";
+import {} from "@morphic-ts/batteries/lib/program-orderable";
 
 import { effect as T, managed as M } from "@matechs/effect";
 import { Aggregate, ReadSideConfig, EventMetaHidden } from "@matechs/cqrs";
 import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { sendEvent, eventStoreTcpConnection } from "./client";
 import { readEvents } from "./read";
-import { ProgramURI } from "morphic-ts/lib/usage/ProgramType";
-import { InterpreterURI } from "morphic-ts/lib/usage/InterpreterResult";
-import { AOfTypes } from "morphic-ts/lib/usage/tagged-union";
-import { ElemType } from "morphic-ts/lib/adt/utils";
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
+import { AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { ElemType } from "@morphic-ts/adt/lib/utils";
 import { ormOffsetStore } from "./offset";
 import { pipe } from "fp-ts/lib/pipeable";
 import { adaptMeta } from "./meta";

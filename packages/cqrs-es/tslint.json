@@ -1,5 +1,5 @@
 {
-  "rulesDirectory": "../../node_modules/dtslint/bin/rules/",
+  "rulesDirectory": "../../node_modules/dtslint/bin/rules",
   "rules": {
     "deprecation": true,
     "curly": true,

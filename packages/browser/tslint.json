@@ -1,5 +1,5 @@
 {
-  "rulesDirectory": "../../node_modules/dtslint/bin/rules/",
+  "rulesDirectory": "../../node_modules/dtslint/bin/rules",
   "rules": {
     "deprecation": true,
     "curly": true,
@@ -24,20 +24,9 @@
     "semicolon": [false, "always"],
     "triple-equals": [true],
     "variable-name": false,
-    "whitespace": [
-      false,
-      "check-branch",
-      "check-decl",
-      "check-operator",
-      "check-separator"
-    ],
+    "whitespace": [false, "check-branch", "check-decl", "check-operator", "check-separator"],
     "no-inferred-empty-object-type": true,
-    "strict-boolean-expressions": [
-      false,
-      "allow-undefined-union",
-      "allow-null-union",
-      "ignore-rhs"
-    ],
+    "strict-boolean-expressions": [false, "allow-undefined-union", "allow-null-union", "ignore-rhs"],
     "strict-type-predicates": [false],
     "prefer-const": [true],
     "prefer-readonly": [true],

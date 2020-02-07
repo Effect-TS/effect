@@ -6,7 +6,7 @@ import * as t from "io-ts";
 import uuid from "uuid";
 import { EventLog } from "./eventLog";
 import { array } from "fp-ts/lib/Array";
-import { ADT } from "morphic-ts/lib/adt";
+import { ADT } from "@morphic-ts/adt/lib";
 
 // experimental alpha
 /* istanbul ignore file */
