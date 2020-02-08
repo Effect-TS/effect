@@ -92,7 +92,7 @@ export function page<E, S>(
             )
           );
 
-          window["cmp"] = component; // save the component to a global place for render to pick
+          window["cmp"] = React.createElement(component); // save the component to a global place for render to pick
 
           return {
             initInBrowser: true
