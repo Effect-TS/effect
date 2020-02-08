@@ -132,8 +132,7 @@ export function page<E, S>(
                 resolve(
                   right({
                     [stateURI]: {
-                      state: decoded.right,
-                      version: 0
+                      state: decoded.right
                     }
                   })
                 );
