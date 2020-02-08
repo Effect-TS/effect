@@ -2,10 +2,11 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import { isDone } from "@matechs/effect/lib/exit";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import { accessDate, updateDate } from "./date";
-import { App } from "./app";
+import { updateDate } from "./date";
 import { summon, AsOpaque } from "morphic-ts/lib/batteries/summoner-no-union";
 import { AType, EType } from "morphic-ts/lib/usage/utils";
+import { App as GenApp } from "../../lib";
+import { App } from "./app";
 
 // alpha
 /* istanbul ignore file */
@@ -30,31 +31,6 @@ export const orgsOpsSpec = F.define<OrgsOps>({
   }
 });
 
-const updateOrgs_ = (res: any[]) =>
-  App.accessS(["orgs"])(({ orgs }) => {
-    orgs.found = O.some(`found ${res.length}`);
-    return orgs.found;
-  });
-
-export const provideOrgsOps = F.implement(orgsOpsSpec)({
-  [orgsOpsURI]: {
-    updateOrgs: pipe(
-      fetchOrgs,
-      T.chain(res =>
-        isDone(res)
-          ? pipe(
-              updateOrgs_(res.value),
-              T.chainTap(_ => updateDate)
-            )
-          : App.accessS(["orgs"])(({ orgs }) => {
-              orgs.error = O.some("error while fetching");
-              return O.none;
-            })
-      )
-    )
-  }
-});
-
 export const { updateOrgs } = F.access(orgsOpsSpec)[orgsOpsURI];
 
 export const OrgsState_ = summon(F =>
@@ -70,3 +46,34 @@ export const OrgsState_ = summon(F =>
 export interface OrgsState extends AType<typeof OrgsState_> {}
 export interface OrgsStateR extends EType<typeof OrgsState_> {}
 export const OrgsState = AsOpaque<OrgsStateR, OrgsState>(OrgsState_);
+
+export function getOrgsOps<R extends Record<keyof R, any>>(
+  app: GenApp<{ orgs: OrgsState } & R>
+) {
+  const updateOrgs_ = (res: any[]) =>
+    app.accessS(["orgs"])(({ orgs }) => {
+      orgs.found = O.some(`found ${res.length}`);
+      return orgs.found;
+    });
+
+  return F.implement(orgsOpsSpec)({
+    [orgsOpsURI]: {
+      updateOrgs: pipe(
+        fetchOrgs,
+        T.chain(res =>
+          isDone(res)
+            ? pipe(
+                updateOrgs_(res.value),
+                T.chainTap(_ => updateDate)
+              )
+            : app.accessS(["orgs"])(({ orgs }) => {
+                orgs.error = O.some("error while fetching");
+                return O.none;
+              })
+        )
+      )
+    }
+  });
+}
+
+export const provideOrgsOps = getOrgsOps(App);

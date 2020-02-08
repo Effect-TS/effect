@@ -15,6 +15,8 @@ import * as R from "fp-ts/lib/Record";
 /* istanbul ignore file */
 
 export interface App<S> {
+  _S: S
+
   page: (
     view: T.Effect<State<S>, never, React.FC<{}>>
   ) => typeof React.Component;
@@ -162,6 +164,7 @@ export const app = <
   ) => T.accessM((s: State<Pick<S, K[number]>>) => f(s[stateURI].state));
 
   return {
+    _S: {} as S,
     page,
     withState,
     accessS,
