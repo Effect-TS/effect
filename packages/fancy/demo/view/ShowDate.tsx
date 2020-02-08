@@ -8,18 +8,12 @@ import { effect as T } from "@matechs/effect";
 
 export const ShowDate = App.ui.of(
   T.pure(
-    App.withState(
-      ({
-        state: {
-          date: { current }
-        }
-      }) => {
-        const [s, setS] = React.useState(0);
-        useInterval(() => {
-          setS(s + 1);
-        }, 500);
-        return <div>{`${current.toISOString()} - ${s}`}</div>;
-      }
-    )
+    App.withState(["date"])(({ date: { current } }) => {
+      const [s, setS] = React.useState(0);
+      useInterval(() => {
+        setS(s + 1);
+      }, 500);
+      return <div>{`${current.toISOString()} - ${s}`}</div>;
+    })
   )
 );

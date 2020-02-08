@@ -28,12 +28,11 @@ export const orgsOpsSpec = F.define<OrgsOps>({
   }
 });
 
-const updateOrgs_ = (res: any[]) => (date: Date) =>
-  App.accessS(s => {
-    s.orgs.found = O.some(`found ${res.length} (${date.toISOString()})`);
-    s.date.current = new Date();
-
-    return s.orgs.found;
+const updateOrgs_ = (res: any[]) => (current: Date) =>
+  App.accessS(["orgs", "date"])(({ orgs, date }) => {
+    orgs.found = O.some(`found ${res.length} (${current.toISOString()})`);
+    date.current = current;
+    return orgs.found;
   });
 
 export const provideOrgsOps = F.implement(orgsOpsSpec)({
@@ -43,8 +42,8 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
       T.chain(res =>
         isDone(res)
           ? pipe(accessDate, T.chain(updateOrgs_(res.value)))
-          : App.accessS(s => {
-              s.orgs.error = O.some("error while fetching");
+          : App.accessS(["orgs"])(({ orgs }) => {
+              orgs.error = O.some("error while fetching");
               return O.none;
             })
       )

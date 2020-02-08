@@ -22,11 +22,11 @@ export const dateOpsSpec = F.define<DateOps>({
 
 export const provideDateOps = F.implement(dateOpsSpec)({
   [dateOpsURI]: {
-    updateDate: App.accessS(s => {
-      s.date.current = new Date();
-      return s.date.current;
+    updateDate: App.accessS(["date"])(({ date }) => {
+      date.current = new Date();
+      return date.current;
     }),
-    accessDate: App.accessS(s => s.date.current)
+    accessDate: App.accessS(["date"])(({ date }) => date.current)
   }
 });
 

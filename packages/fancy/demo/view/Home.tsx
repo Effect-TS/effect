@@ -22,7 +22,7 @@ export const Home = App.ui.of(
       MemoInput
     }),
     T.map(({ UpdateDate, ShowDate, UpdateOrganisations, MemoInput }) =>
-      App.withState(({ state: { orgs: { found, error } } }) => (
+      App.withState(["orgs"])(({ orgs: { found, error } }) => (
         <>
           <ShowDate />
           <UpdateDate />

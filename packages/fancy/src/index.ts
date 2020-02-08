@@ -19,10 +19,14 @@ export interface App<S> {
     view: T.Effect<State<S>, never, React.FC<{}>>
   ) => typeof React.Component;
   useState: () => S;
-  withState: Transformer<{
-    state: S;
-  }>;
-  accessS: <A>(f: (s: S) => A) => T.Effect<State<S>, never, A>;
+  withState: <K extends (keyof S)[]>(
+    keys: K
+  ) => Transformer<Pick<S, K[number]>>;
+  accessS: <K extends (keyof S)[]>(
+    _: K
+  ) => <A>(
+    f: (s: Pick<S, K[number]>) => A
+  ) => T.Effect<State<Pick<S, K[number]>>, never, A>;
   ui: {
     of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI, P>;
     withRun: <RUNR>() => <RUI, P>(
@@ -104,11 +108,19 @@ export const app = <
     view: T.Effect<RPage, never, React.FC<{}>>
   ): typeof React.Component => nextPage(initial, enc, dec, context)(view);
 
-  const withState: Transformer<{ state: S }> = cmp => p => {
+  const withState = <K extends Array<keyof S>>(
+    keys: K
+  ): Transformer<Pick<S, K[number]>> => cmp => p => {
     const state = useState();
 
+    const ns = {} as Pick<S, K[number]>;
+
+    for (const k of keys) {
+      ns[k] = state[k];
+    }
+
     return React.createElement(MR.observer(cmp), {
-      state,
+      ...ns,
       ...p
     });
   };
@@ -122,8 +134,9 @@ export const app = <
     ) => T.Effect<RUI, never, React.FC<P>>
   ) => pipe(runner<RUNR>(), T.chain(f));
 
-  const accessS = <A>(f: (s: S) => A) =>
-    T.access((s: State<S>) => f(s[stateURI].state));
+  const accessS = <K extends Array<keyof S>>(_: K) => <A>(
+    f: (s: Pick<S, K[number]>) => A
+  ) => T.access((s: State<Pick<S, K[number]>>) => f(s[stateURI].state));
 
   return {
     page,
