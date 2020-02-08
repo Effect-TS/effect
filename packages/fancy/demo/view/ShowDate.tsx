@@ -7,8 +7,8 @@ import { effect as T } from "@matechs/effect";
 /* istanbul ignore file */
 
 export const ShowDate = App.ui.of(
-  T.pure(
-    App.withState(["date"])(({ date: { current } }) => {
+  App.withState(["date"])()(
+    T.pure(({ date: { current } }) => {
       const [s, setS] = React.useState(0);
       useInterval(() => {
         setS(s + 1);

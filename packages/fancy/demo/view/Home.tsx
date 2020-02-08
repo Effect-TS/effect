@@ -8,7 +8,6 @@ import { MemoInput } from "./MemoInput";
 import { ShowDate } from "./ShowDate";
 import { UpdateDate } from "./UpdateDate";
 import { UpdateOrganisations } from "./UpdateOrganisations";
-import M from "mobx-react";
 
 // alpha
 /* istanbul ignore file */
@@ -21,28 +20,30 @@ export const Home = App.ui.of(
       ShowDate,
       MemoInput
     }),
-    T.map(({ UpdateDate, ShowDate, UpdateOrganisations, MemoInput }) =>
-      App.withState(["orgs"])(({ orgs: { found, error } }) => (
-        <>
-          <ShowDate />
-          <UpdateDate />
-          <UpdateOrganisations />
-          {pipe(
-            found,
-            O.map(orgs => <div>{orgs}</div>),
-            O.toNullable
-          )}
-          {pipe(
-            error,
-            O.map(error => <div>{error}</div>),
-            O.toNullable
-          )}
-          <MemoInput />
-          <Link href={"/foo"}>
-            <a>foo</a>
-          </Link>
-        </>
-      ))
+    T.chain(({ UpdateDate, ShowDate, UpdateOrganisations, MemoInput }) =>
+      App.withState(["orgs"])()(
+        T.pure(({ orgs: { found, error } }) => (
+          <>
+            <ShowDate />
+            <UpdateDate />
+            <UpdateOrganisations />
+            {pipe(
+              found,
+              O.map(orgs => <div>{orgs}</div>),
+              O.toNullable
+            )}
+            {pipe(
+              error,
+              O.map(error => <div>{error}</div>),
+              O.toNullable
+            )}
+            <MemoInput />
+            <Link href={"/foo"}>
+              <a>foo</a>
+            </Link>
+          </>
+        ))
+      )
     )
   )
 );

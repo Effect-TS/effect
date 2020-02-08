@@ -18,10 +18,11 @@ export interface App<S> {
   page: (
     view: T.Effect<State<S>, never, React.FC<{}>>
   ) => typeof React.Component;
-  useState: () => S;
-  withState: <K extends (keyof S)[]>(
+  withState: <K extends Array<keyof S>>(
     keys: K
-  ) => Transformer<Pick<S, K[number]>>;
+  ) => <P = {}>() => <R = unknown>(
+    cmpV: View<R, Pick<S, K[number]> & P>
+  ) => View<R & State<Pick<S, K[number]>>, P>;
   accessS: <K extends (keyof S)[]>(
     _: K
   ) => <A>(
@@ -40,7 +41,9 @@ export interface App<S> {
   };
 }
 
-export type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
+export type Transformer<K> = <R, P extends {}>(
+  cmp: View<R, P & K>
+) => View<React.FC<P>>;
 
 export interface View<R = unknown, P = unknown>
   extends T.Effect<R, never, React.FC<P>> {}
@@ -108,22 +111,33 @@ export const app = <
     view: T.Effect<RPage, never, React.FC<{}>>
   ): typeof React.Component => nextPage(initial, enc, dec, context)(view);
 
-  const withState = <K extends Array<keyof S>>(
-    keys: K
-  ): Transformer<Pick<S, K[number]>> => cmp => p => {
-    const state = useState();
+  const withState = <K extends Array<keyof S>>(keys: K) => <P = {}>() => <
+    R = unknown
+  >(
+    cmpV: View<R, Pick<S, K[number]> & P>
+  ) =>
+    pipe(
+      cmpV,
+      T.map(
+        (cmp): React.FC<P> => {
+          const state = useState();
 
-    const ns = {} as Pick<S, K[number]>;
+          const ns = {} as Pick<S, K[number]>;
 
-    for (const k of keys) {
-      ns[k] = state[k];
-    }
+          for (const k of keys) {
+            ns[k] = state[k];
+          }
 
-    return React.createElement(MR.observer(cmp), {
-      ...ns,
-      ...p
-    });
-  };
+          const a = MR.observer(cmp);
+
+          return (p: P) =>
+            React.createElement(a, {
+              ...ns,
+              ...p
+            });
+        }
+      )
+    );
 
   const withRun = <RUNR>() => <RUI, P>(
     f: (
@@ -140,7 +154,6 @@ export const app = <
 
   return {
     page,
-    useState,
     withState,
     accessS,
     ui: {
