@@ -47,11 +47,10 @@ export interface OrgsState extends AType<typeof OrgsState_> {}
 export interface OrgsStateR extends EType<typeof OrgsState_> {}
 export const OrgsState = AsOpaque<OrgsStateR, OrgsState>(OrgsState_);
 
-export function getOrgsOps<
-  K extends string & keyof S,
-  R extends Record<keyof R, any>,
-  S extends Record<K, OrgsState> & R
->(APP: GenApp<S>, OrgsStateURI: K) {
+export function getOrgsOps<K extends string, R extends { [k in K]: OrgsState }>(
+  APP: GenApp<R>,
+  OrgsStateURI: K
+) {
   const updateOrgs_ = (res: any[]) =>
     APP.accessS([OrgsStateURI])(({ [OrgsStateURI]: orgs }) => {
       orgs.found = O.some(`found ${res.length}`);

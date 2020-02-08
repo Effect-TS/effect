@@ -15,7 +15,7 @@ import * as R from "fp-ts/lib/Record";
 /* istanbul ignore file */
 
 export interface App<S> {
-  _S: S
+  _S: S;
 
   page: (
     view: T.Effect<State<S>, never, React.FC<{}>>
@@ -23,18 +23,18 @@ export interface App<S> {
   withState: <K extends Array<keyof S>>(
     keys: K
   ) => <P = {}>() => <R = unknown>(
-    cmpV: View<R, Pick<S, K[number]> & P>
-  ) => View<R & State<Pick<S, K[number]>>, P>;
+    cmpV: View<R, { [k in K[number]]: S[k] } & P>
+  ) => View<R & State<{ [k in K[number]]: S[k] }>, P>;
   accessS: <K extends (keyof S)[]>(
     _: K
   ) => <A>(
-    f: (s: Pick<S, K[number]>) => A
-  ) => T.Effect<State<Pick<S, K[number]>>, never, A>;
+    f: (s: { [k in K[number]]: S[k] }) => A
+  ) => T.Effect<State<{ [k in K[number]]: S[k] }>, never, A>;
   accessSM: <K extends (keyof S)[]>(
     _: K
   ) => <R, A>(
-    f: (s: Pick<S, K[number]>) => View<R, A>
-  ) => T.Effect<State<Pick<S, K[number]>> & R, never, React.FC<A>>;
+    f: (s: { [k in K[number]]: S[k] }) => View<R, A>
+  ) => T.Effect<State<{ [k in K[number]]: S[k] }> & R, never, React.FC<A>>;
   ui: {
     of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI, P>;
     withRun: <RUNR>() => <RUI, P>(
@@ -121,7 +121,7 @@ export const app = <
   const withState = <K extends Array<keyof S>>(keys: K) => <P = {}>() => <
     R = unknown
   >(
-    cmpV: View<R, Pick<S, K[number]> & P>
+    cmpV: View<R, { [k in K[number]]: S[k] } & P>
   ) =>
     pipe(
       cmpV,
@@ -129,7 +129,7 @@ export const app = <
         (cmp): React.FC<P> => {
           const state = useState();
 
-          const ns = {} as Pick<S, K[number]>;
+          const ns = {} as { [k in K[number]]: S[k] };
 
           for (const k of keys) {
             ns[k] = state[k];
@@ -156,12 +156,13 @@ export const app = <
   ) => pipe(runner<RUNR>(), T.chain(f));
 
   const accessS = <K extends Array<keyof S>>(_: K) => <A>(
-    f: (s: Pick<S, K[number]>) => A
-  ) => T.access((s: State<Pick<S, K[number]>>) => f(s[stateURI].state));
+    f: (s: { [k in K[number]]: S[k] }) => A
+  ) => T.access((s: State<{ [k in K[number]]: S[k] }>) => f(s[stateURI].state));
 
   const accessSM = <K extends Array<keyof S>>(_: K) => <R, A>(
-    f: (s: Pick<S, K[number]>) => View<R, A>
-  ) => T.accessM((s: State<Pick<S, K[number]>>) => f(s[stateURI].state));
+    f: (s: { [k in K[number]]: S[k] }) => View<R, A>
+  ) =>
+    T.accessM((s: State<{ [k in K[number]]: S[k] }>) => f(s[stateURI].state));
 
   return {
     _S: {} as S,
