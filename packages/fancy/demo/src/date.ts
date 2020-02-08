@@ -43,6 +43,10 @@ export const DateState_ = summon(F =>
   )
 );
 
+export const initialState = T.sync(() =>
+  DateState.build({ current: new Date() })
+);
+
 export interface DateState extends AType<typeof DateState_> {}
 export interface DateStateR extends EType<typeof DateState_> {}
 export const DateState = AsOpaque<DateStateR, DateState>(DateState_);

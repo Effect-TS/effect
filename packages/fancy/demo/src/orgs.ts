@@ -11,12 +11,6 @@ import { App } from "./app";
 // alpha
 /* istanbul ignore file */
 
-const fetchOrgs = T.result(
-  T.fromPromise(() =>
-    fetch("https://api.github.com/users/hadley/orgs").then(r => r.json())
-  )
-);
-
 export const orgsOpsURI = Symbol();
 
 export interface OrgsOps extends F.ModuleShape<OrgsOps> {
@@ -47,6 +41,10 @@ export interface OrgsState extends AType<typeof OrgsState_> {}
 export interface OrgsStateR extends EType<typeof OrgsState_> {}
 export const OrgsState = AsOpaque<OrgsStateR, OrgsState>(OrgsState_);
 
+export const initialState = T.pure(
+  OrgsState.build({ error: O.none, found: O.none })
+);
+
 export function getOrgsOps<K extends string, R extends { [k in K]: OrgsState }>(
   APP: GenApp<R>,
   OrgsStateURI: K
@@ -56,6 +54,12 @@ export function getOrgsOps<K extends string, R extends { [k in K]: OrgsState }>(
       orgs.found = O.some(`found ${res.length}`);
       return orgs.found;
     });
+
+  const fetchOrgs = T.result(
+    T.fromPromise(() =>
+      fetch("https://api.github.com/users/hadley/orgs").then(r => r.json())
+    )
+  );
 
   return F.implement(orgsOpsSpec)({
     [orgsOpsURI]: {
