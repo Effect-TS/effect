@@ -2,7 +2,7 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import { isDone } from "@matechs/effect/lib/exit";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import { accessDate } from "./date";
+import { accessDate, updateDate } from "./date";
 import { App } from "./app";
 
 // alpha
@@ -28,10 +28,9 @@ export const orgsOpsSpec = F.define<OrgsOps>({
   }
 });
 
-const updateOrgs_ = (res: any[]) => (current: Date) =>
-  App.accessS(["orgs", "date"])(({ orgs, date }) => {
-    orgs.found = O.some(`found ${res.length} (${current.toISOString()})`);
-    date.current = current;
+const updateOrgs_ = (res: any[]) =>
+  App.accessS(["orgs"])(({ orgs }) => {
+    orgs.found = O.some(`found ${res.length}`);
     return orgs.found;
   });
 
@@ -41,7 +40,10 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
       fetchOrgs,
       T.chain(res =>
         isDone(res)
-          ? pipe(accessDate, T.chain(updateOrgs_(res.value)))
+          ? pipe(
+              updateOrgs_(res.value),
+              T.chainTap(_ => updateDate)
+            )
           : App.accessS(["orgs"])(({ orgs }) => {
               orgs.error = O.some("error while fetching");
               return O.none;
