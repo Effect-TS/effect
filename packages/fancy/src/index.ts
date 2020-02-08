@@ -28,6 +28,11 @@ export interface App<S> {
   ) => <A>(
     f: (s: Pick<S, K[number]>) => A
   ) => T.Effect<State<Pick<S, K[number]>>, never, A>;
+  accessSM: <K extends (keyof S)[]>(
+    _: K
+  ) => <R, A>(
+    f: (s: Pick<S, K[number]>) => View<R, A>
+  ) => T.Effect<State<Pick<S, K[number]>> & R, never, React.FC<A>>;
   ui: {
     of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI, P>;
     withRun: <RUNR>() => <RUI, P>(
@@ -152,10 +157,15 @@ export const app = <
     f: (s: Pick<S, K[number]>) => A
   ) => T.access((s: State<Pick<S, K[number]>>) => f(s[stateURI].state));
 
+  const accessSM = <K extends Array<keyof S>>(_: K) => <R, A>(
+    f: (s: Pick<S, K[number]>) => View<R, A>
+  ) => T.accessM((s: State<Pick<S, K[number]>>) => f(s[stateURI].state));
+
   return {
     page,
     withState,
     accessS,
+    accessSM,
     ui: {
       of: ui,
       withRun
