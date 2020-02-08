@@ -7,7 +7,7 @@ import { DateState } from "./state";
 /* istanbul ignore file */
 
 export const provideDateOps = <
-  URI extends string,
+  URI extends string & keyof S,
   S extends { [k in URI]: DateState }
 >(
   App: App<S>,
