@@ -4,6 +4,8 @@ import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { accessDate, updateDate } from "./date";
 import { App } from "./app";
+import { summon, AsOpaque } from "morphic-ts/lib/batteries/summoner-no-union";
+import { AType, EType } from "morphic-ts/lib/usage/utils";
 
 // alpha
 /* istanbul ignore file */
@@ -54,3 +56,17 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
 });
 
 export const { updateOrgs } = F.access(orgsOpsSpec)[orgsOpsURI];
+
+export const OrgsState_ = summon(F =>
+  F.interface(
+    {
+      found: F.nullable(F.string()),
+      error: F.nullable(F.string())
+    },
+    "OrgsState"
+  )
+);
+
+export interface OrgsState extends AType<typeof OrgsState_> {}
+export interface OrgsStateR extends EType<typeof OrgsState_> {}
+export const OrgsState = AsOpaque<OrgsStateR, OrgsState>(OrgsState_);
