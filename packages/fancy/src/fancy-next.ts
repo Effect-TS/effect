@@ -19,8 +19,7 @@ export const renderCount = {
 export function page<E, S>(
   initial: T.UIO<S>,
   enc: (_: S) => unknown,
-  dec: (_: unknown) => Either<E, S>,
-  context: React.Context<S>
+  dec: (_: unknown) => Either<E, S>
 ) {
   return <RPage>(view: T.Effect<RPage, never, React.FC>) =>
     class extends React.Component<
@@ -65,12 +64,6 @@ export function page<E, S>(
           const rendered = await T.runToPromise(
             pipe(
               f.ui,
-              T.map(Cmp =>
-                React.createElement(context.Provider, {
-                  value: state[stateURI].state,
-                  children: React.createElement(Cmp)
-                })
-              ),
               T.provideAll({ ...state, [nextContextURI]: { ctx } } as any)
             )
           );
@@ -90,26 +83,19 @@ export function page<E, S>(
             pipe(
               f.ui,
               T.map(
-                (Cmp): React.FC<{ state: S }> => p => {
+                (Cmp): React.FC => () => {
                   React.useEffect(() => () => {
                     f.stop();
                   });
 
-                  return React.createElement(context.Provider, {
-                    value: p.state,
-                    children: React.createElement(Cmp)
-                  });
+                  return React.createElement(Cmp);
                 }
               ),
               T.provideAll({ ...state, [nextContextURI]: { ctx } } as any)
             )
           );
 
-          const provided = React.createElement(component, {
-            state: state[stateURI].state
-          });
-
-          window["cmp"] = provided; // save the component to a global place for render to pick
+          window["cmp"] = component; // save the component to a global place for render to pick
 
           return {
             initInBrowser: true
@@ -203,10 +189,7 @@ export function page<E, S>(
                           f.stop();
                         });
 
-                        return React.createElement(context.Provider, {
-                          value: p.state,
-                          children: React.createElement(Cmp)
-                        });
+                        return React.createElement(Cmp);
                       };
 
                       this.setState({

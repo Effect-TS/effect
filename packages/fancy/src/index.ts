@@ -66,8 +66,6 @@ export const app = <
 >(
   stateDef: StateDef
 ) => (initialState: IS): App<S> => {
-  const context = React.createContext<S>({} as any);
-
   const ui = <RUI, P>(
     uiE: T.Effect<RUI, never, React.FC<P>>
   ): T.Effect<RUI, never, React.FC<P>> => uiE;
@@ -108,7 +106,7 @@ export const app = <
 
   const page = <RPage>(
     view: T.Effect<RPage, never, React.FC<{}>>
-  ): typeof React.Component => nextPage(initial, enc, dec, context)(view);
+  ): typeof React.Component => nextPage(initial, enc, dec)(view);
 
   const withState = <K extends Array<keyof S>>(keys: K) => <P = {}>() => <
     R = unknown
