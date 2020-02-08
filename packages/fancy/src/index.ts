@@ -55,20 +55,14 @@ export type Transformer<K> = <R, P extends {}>(
 export interface View<R = unknown, P = unknown>
   extends T.Effect<R, never, React.FC<P>> {}
 
-export type SOf<StateDef extends Record<keyof StateDef, Type<any, unknown>>> = {
-  [k in keyof StateDef]: StateDef[k]["_A"] & M.IObservableObject;
-};
-
-export type InitialState<
-  StateDef extends Record<keyof StateDef, Type<any, unknown>>
-> = {
-  [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
-};
-
 export const app = <
-  StateDef extends Record<keyof StateDef, Type<any, unknown>>,
-  IS extends InitialState<StateDef>,
-  S = SOf<StateDef>
+  StateDef extends { [k in keyof StateDef]: Type<any, unknown> },
+  IS extends {
+    [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
+  },
+  S = {
+    [k in keyof StateDef]: StateDef[k]["_A"] & M.IObservableObject;
+  }
 >(
   stateDef: StateDef
 ) => (initialState: IS): App<S> => {
