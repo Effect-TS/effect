@@ -47,11 +47,13 @@ export interface OrgsState extends AType<typeof OrgsState_> {}
 export interface OrgsStateR extends EType<typeof OrgsState_> {}
 export const OrgsState = AsOpaque<OrgsStateR, OrgsState>(OrgsState_);
 
-export function getOrgsOps<R extends Record<keyof R, any>>(
-  app: GenApp<{ orgs: OrgsState } & R>
-) {
+export function getOrgsOps<
+  K extends string & keyof S,
+  R extends Record<keyof R, any>,
+  S extends Record<K, OrgsState> & R
+>(APP: GenApp<S>, OrgsStateURI: K) {
   const updateOrgs_ = (res: any[]) =>
-    app.accessS(["orgs"])(({ orgs }) => {
+    APP.accessS([OrgsStateURI])(({ [OrgsStateURI]: orgs }) => {
       orgs.found = O.some(`found ${res.length}`);
       return orgs.found;
     });
@@ -66,7 +68,7 @@ export function getOrgsOps<R extends Record<keyof R, any>>(
                 updateOrgs_(res.value),
                 T.chainTap(_ => updateDate)
               )
-            : app.accessS(["orgs"])(({ orgs }) => {
+            : APP.accessS([OrgsStateURI])(({ [OrgsStateURI]: orgs }) => {
                 orgs.error = O.some("error while fetching");
                 return O.none;
               })
@@ -76,4 +78,4 @@ export function getOrgsOps<R extends Record<keyof R, any>>(
   });
 }
 
-export const provideOrgsOps = getOrgsOps(App);
+export const provideOrgsOps = getOrgsOps(App, "orgs");
