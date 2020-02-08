@@ -36,6 +36,8 @@
     "fp-ts-contrib": "^0.1.9",
     "io-ts": "^2.0.6",
     "io-ts-types": "^0.5.5",
+    "mobx": "^5.15.4",
+    "mobx-react": "^6.1.7",
     "monocle-ts": "^2.1.0",
     "morphic-ts": "^0.8.0-rc.2",
     "newtype-ts": "^0.3.3",

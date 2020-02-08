@@ -1,16 +1,16 @@
 import { effect as T } from "@matechs/effect";
 import * as React from "react";
 import { App } from "../src/app";
-import { AppActions } from "../src/actions";
+import { updateDate, DateOps } from "../src/date";
 
 // alpha
 /* istanbul ignore file */
 
-export const UpdateDate = App.ui.withRun()(run =>
+export const UpdateDate = App.ui.withRun<DateOps>()(run =>
   T.pure(() => (
     <button
       onClick={() => {
-        run(App.dispatch(AppActions.of.UpdateDate({})));
+        run(updateDate);
       }}
     >
       Update Date!

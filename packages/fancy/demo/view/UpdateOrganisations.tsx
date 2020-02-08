@@ -1,15 +1,15 @@
 import { App } from "../src/app";
-import { AppActions } from "../src/actions";
 import { effect as T } from "@matechs/effect";
+import { updateOrgs, OrgsOps } from "../src/orgs";
 
 // alpha
 /* istanbul ignore file */
 
-export const UpdateOrganisations = App.ui.withRun()(run =>
+export const UpdateOrganisations = App.ui.withRun<OrgsOps>()(run =>
   T.pure(() => (
     <button
       onClick={() => {
-        run(App.dispatch(AppActions.of.UpdateOrganisations({})));
+        run(updateOrgs);
       }}
     >
       Fetch!

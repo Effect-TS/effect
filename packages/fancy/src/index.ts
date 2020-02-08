@@ -3,38 +3,36 @@ import { effect as T } from "@matechs/effect";
 import { page as nextPage } from "./fancy-next";
 import { State, stateURI, runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
-import { Type } from "io-ts";
-import { Actions, actionsURI, hasActions } from "./actions";
 import { NextContext, nextContextURI } from "./next-ctx";
 import { some, none } from "fp-ts/lib/Option";
+import * as Ei from "fp-ts/lib/Either";
+import * as MR from "mobx-react";
+import * as M from "mobx";
+import { Type, Errors } from "io-ts";
+import * as R from "fp-ts/lib/Record";
 
 // alpha
 /* istanbul ignore file */
 
-export type Cont<Action> = (
-  a: Action,
-  ...rest: Action[]
-) => T.Effect<unknown, never, Action[]>;
-
-export interface App<R, S, A> {
+export interface App<S> {
   page: (
     view: T.Effect<State<S>, never, React.FC<{}>>
-  ) => (initial: T.UIO<S>) => typeof React.Component;
+  ) => typeof React.Component;
   useState: () => S;
-  dispatch: Cont<A>;
   withState: Transformer<{
     state: S;
   }>;
+  accessS: <A>(f: (s: S) => A) => T.Effect<State<S>, never, A>;
   ui: {
-    of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI & R, P>;
+    of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI, P>;
     withRun: <RUNR>() => <RUI, P>(
       f: (
         _: <A>(
-          _: T.Effect<RUNR & R, never, A>,
+          _: T.Effect<RUNR, never, A>,
           cb?: ((a: A) => void) | undefined
         ) => void
       ) => T.Effect<RUI, never, React.FC<P>>
-    ) => View<RUI & RUNR & R, P>;
+    ) => View<RUI & RUNR, P>;
   };
 }
 
@@ -43,58 +41,73 @@ export type Transformer<K> = <P>(cmp: React.FC<K & P>) => React.FC<P>;
 export interface View<R = unknown, P = unknown>
   extends T.Effect<R, never, React.FC<P>> {}
 
-export const app = <RApp, S, Action>(
-  type: Type<S, unknown>,
-  actionType: Type<Action, unknown>,
-  handler: (
-    dispatch: Cont<Action>
-  ) => (action: Action) => T.Effect<RApp, never, any> = () => () => T.unit
-): App<RApp, S, Action> => {
-  const context = React.createContext<S>({} as any);
+export type SOf<StateDef extends Record<keyof StateDef, Type<any, unknown>>> = {
+  [k in keyof StateDef]: StateDef[k]["_A"] & M.IObservableObject;
+};
 
-  const dispatch: Cont<Action> = (a: Action, ...rest: Action[]) =>
-    pipe(
-      T.pure<Actions>({
-        [actionsURI]: {
-          actions: [a, ...rest].map(actionType.encode)
-        }
-      }),
-      T.chainTap(newActions =>
-        T.access(r => {
-          if (hasActions(r)) {
-            r[actionsURI].actions = [
-              ...r[actionsURI].actions,
-              ...newActions[actionsURI].actions
-            ];
-          }
-        })
-      ),
-      T.map(_ => [a, ...rest])
-    );
+export type InitialState<
+  StateDef extends Record<keyof StateDef, Type<any, unknown>>
+> = {
+  [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
+};
+
+export const app = <
+  StateDef extends Record<keyof StateDef, Type<any, unknown>>,
+  IS extends InitialState<StateDef>,
+  S = SOf<StateDef>
+>(
+  stateDef: StateDef
+) => (initialState: IS): App<S> => {
+  const context = React.createContext<S>({} as any);
 
   const useState = () => React.useContext(context);
 
   const ui = <RUI, P>(
     uiE: T.Effect<RUI, never, React.FC<P>>
-  ): T.Effect<RUI & RApp, never, React.FC<P>> => uiE;
+  ): T.Effect<RUI, never, React.FC<P>> => uiE;
 
-  const page = <RPage>(view: T.Effect<RPage, never, React.FC<{}>>) => (
-    initial: T.UIO<S>
-  ): typeof React.Component =>
-    nextPage(
-      initial,
-      type.encode,
-      x => type.decode(x),
-      actionType,
-      context,
-      (run: <A>(e: T.Effect<RPage & RApp, never, A>) => void) => action =>
-        run(handler(dispatch)(action))
-    )(view);
+  const initial = pipe(
+    stateDef as Record<string, any>,
+    R.traverseWithIndex(T.effect)((k: string) =>
+      pipe(
+        initialState[k as keyof IS],
+        T.map(x => M.observable(x))
+      )
+    ),
+    T.map(r => (r as any) as S)
+  );
+
+  const enc = (s: S) =>
+    pipe(
+      s as Record<string, any>,
+      R.mapWithIndex((k, x) => stateDef[k as keyof StateDef].encode(M.toJS(x)))
+    );
+
+  const dec = (u: unknown): Ei.Either<Errors | Error, S> =>
+    pipe(
+      u as Record<string, unknown>,
+      R.traverseWithIndex(Ei.either)((k, u) =>
+        stateDef[k]
+          ? pipe(
+              (stateDef[k as keyof StateDef].decode(u) as any) as Ei.Either<
+                Errors | Error,
+                any
+              >,
+              Ei.map(M.observable)
+            )
+          : Ei.left(new Error("invalid state"))
+      ),
+      Ei.map(x => (x as any) as S)
+    );
+
+  const page = <RPage>(
+    view: T.Effect<RPage, never, React.FC<{}>>
+  ): typeof React.Component => nextPage(initial, enc, dec, context)(view);
 
   const withState: Transformer<{ state: S }> = cmp => p => {
     const state = useState();
 
-    return React.createElement(cmp, {
+    return React.createElement(MR.observer(cmp), {
       state,
       ...p
     });
@@ -103,17 +116,20 @@ export const app = <RApp, S, Action>(
   const withRun = <RUNR>() => <RUI, P>(
     f: (
       _: <A>(
-        _: T.Effect<RUNR & RApp, never, A>,
+        _: T.Effect<RUNR, never, A>,
         cb?: ((a: A) => void) | undefined
       ) => void
     ) => T.Effect<RUI, never, React.FC<P>>
-  ) => pipe(runner<RUNR & RApp>(), T.chain(f));
+  ) => pipe(runner<RUNR>(), T.chain(f));
+
+  const accessS = <A>(f: (s: S) => A) =>
+    T.access((s: State<S>) => f(s[stateURI].state));
 
   return {
     page,
     useState,
-    dispatch,
     withState,
+    accessS,
     ui: {
       of: ui,
       withRun
@@ -127,29 +143,6 @@ export const accessSM = <S, R, E, A>(f: (s: S) => T.Effect<R, E, A>) =>
 export const accessS = <S, A>(f: (s: S) => A) =>
   T.access((s: State<S>) => f(s[stateURI].state));
 
-export const updateS = <S>(f: (s: S) => S) =>
-  T.accessM((s: State<S>) =>
-    T.sync(() => {
-      s[stateURI].version = s[stateURI].version + 1;
-      s[stateURI].state = Object.assign({}, f(s[stateURI].state));
-
-      return s[stateURI].state;
-    })
-  );
-
-export const updateSM = <S, R, E>(f: (s: S) => T.Effect<R, E, S>) =>
-  T.accessM((s: State<S>) =>
-    pipe(
-      f(s[stateURI].state),
-      T.chainTap(nS =>
-        T.sync(() => {
-          s[stateURI].version = s[stateURI].version + 1;
-          s[stateURI].state = Object.assign({}, nS);
-        })
-      )
-    )
-  );
-
 export function hasNextContext(u: unknown): u is NextContext {
   return typeof u === "object" && u !== null && nextContextURI in u;
 }
@@ -161,5 +154,4 @@ export const accessNextContext = T.access((r: unknown) =>
 export const isBrowser = T.sync(() => typeof window !== "undefined");
 
 export { StateP } from "./fancy";
-export { matcher } from "./matcher";
 export { NextContext } from "./next-ctx";

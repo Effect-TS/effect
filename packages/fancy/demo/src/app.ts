@@ -1,24 +1,34 @@
-import * as O from "fp-ts/lib/Option";
 import * as R from "../../lib";
-import * as DT from "./date";
-import { AppState } from "./state";
-import { AppActions } from "./actions";
-import * as ORGS from "./orgs";
-import { pipe } from "fp-ts/lib/pipeable";
 import { effect as T } from "@matechs/effect";
+import { summon } from "morphic-ts/lib/batteries/summoner-no-union";
+import { none } from "fp-ts/lib/Option";
 
 // alpha
 /* istanbul ignore file */
 
-export const App = R.app(
-  AppState.type,
-  AppActions.type,
-  R.matcher(AppActions)({
-    UpdateDate: () => DT.updateDate,
-    UpdateOrganisations: (_, dispatch) =>
-      pipe(
-        ORGS.updateOrgs,
-        T.chainTap(_ => dispatch(AppActions.of.UpdateDate({})))
-      )
-  })
+export const DateState = summon(F =>
+  F.interface(
+    {
+      current: F.date()
+    },
+    "DateState"
+  )
 );
+
+export const OrgsState = summon(F =>
+  F.interface(
+    {
+      found: F.nullable(F.string()),
+      error: F.nullable(F.string())
+    },
+    "OrgsState"
+  )
+);
+
+export const App = R.app({
+  date: DateState.type,
+  orgs: OrgsState.type
+})({
+  date: T.sync(() => DateState.build({ current: new Date() })),
+  orgs: T.pure(OrgsState.build({ error: none, found: none }))
+});

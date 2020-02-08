@@ -1,9 +1,8 @@
 import * as React from "react";
-import { effect as T, stream as S, exit as EX } from "@matechs/effect";
+import { effect as T, exit as EX } from "@matechs/effect";
 import { Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
-import { Errors, Type } from "io-ts";
 import { Either, isRight, right, left } from "fp-ts/lib/Either";
 import { NextPageContext } from "next";
 import { nextContextURI } from "./next-ctx";
@@ -17,15 +16,11 @@ export const renderCount = {
   count: 0
 };
 
-export function page<S, RApp, Action>(
+export function page<E, S>(
   initial: T.UIO<S>,
   enc: (_: S) => unknown,
-  dec: (_: unknown) => Either<Errors, S>,
-  actionType: Type<Action, unknown>,
-  context: React.Context<S>,
-  handler: (
-    run: <A>(e: T.Effect<RApp, never, A>) => void
-  ) => (action: Action) => void
+  dec: (_: unknown) => Either<E, S>,
+  context: React.Context<S>
 ) {
   return <RPage>(view: T.Effect<RPage, never, React.FC>) =>
     class extends React.Component<
@@ -38,7 +33,6 @@ export function page<S, RApp, Action>(
         cmp: Option<
           React.FunctionComponentElement<{
             state: S;
-            version: number;
           }>
         >;
       }
@@ -58,12 +52,11 @@ export function page<S, RApp, Action>(
 
         const state: State<S> = {
           [stateURI]: {
-            state: initialS,
-            version: 0
+            state: initialS
           }
         };
 
-        const f = new Fancy(view, actionType, handler);
+        const f = new Fancy(view);
 
         if (ctx.req) {
           // initialize for the server
@@ -97,36 +90,13 @@ export function page<S, RApp, Action>(
             pipe(
               f.ui,
               T.map(
-                (Cmp): React.FC<{ state: S; version: number }> => p => {
-                  const [sv, setS] = React.useState({
-                    s: p.state,
-                    v: p.version
+                (Cmp): React.FC<{ state: S }> => p => {
+                  React.useEffect(() => () => {
+                    f.stop();
                   });
 
-                  React.useEffect(
-                    () =>
-                      T.run(
-                        S.drain(
-                          S.stream.map(f.final, _ => {
-                            if (state[stateURI].version > sv.v) {
-                              setS({
-                                s: state[stateURI].state,
-                                v: state[stateURI].version
-                              });
-                            }
-                          })
-                        ),
-                        ex => {
-                          if (!EX.isInterrupt(ex)) {
-                            console.error(ex);
-                          }
-                        }
-                      ),
-                    []
-                  );
-
                   return React.createElement(context.Provider, {
-                    value: sv.s,
+                    value: p.state,
                     children: React.createElement(Cmp)
                   });
                 }
@@ -136,8 +106,7 @@ export function page<S, RApp, Action>(
           );
 
           const provided = React.createElement(component, {
-            state: state[stateURI].state,
-            version: state[stateURI].version
+            state: state[stateURI].state
           });
 
           window["cmp"] = provided; // save the component to a global place for render to pick
@@ -177,8 +146,7 @@ export function page<S, RApp, Action>(
                     resolve(
                       right({
                         [stateURI]: {
-                          state: ex.value,
-                          version: 0
+                          state: ex.value
                         }
                       })
                     );
@@ -197,8 +165,7 @@ export function page<S, RApp, Action>(
                   resolve(
                     right({
                       [stateURI]: {
-                        state: ex.value,
-                        version: 0
+                        state: ex.value
                       }
                     })
                   );
@@ -220,7 +187,8 @@ export function page<S, RApp, Action>(
           });
 
           // as on getInitialProps but for client only
-          const f = new Fancy(view, actionType, handler);
+          const f = new Fancy(view);
+
           this.stop = T.run(
             pipe(
               getS,
@@ -231,37 +199,13 @@ export function page<S, RApp, Action>(
                     T.sync(() => {
                       const CmpS: React.FC<{
                         state: S;
-                        version: number;
                       }> = p => {
-                        const [sv, setS] = React.useState({
-                          s: p.state,
-                          v: p.version
+                        React.useEffect(() => () => {
+                          f.stop();
                         });
 
-                        React.useEffect(
-                          () =>
-                            T.run(
-                              S.drain(
-                                S.stream.map(f.final, _ => {
-                                  if (state[stateURI].version > sv.v) {
-                                    setS({
-                                      s: state[stateURI].state,
-                                      v: state[stateURI].version
-                                    });
-                                  }
-                                })
-                              ),
-                              ex => {
-                                if (!EX.isInterrupt(ex)) {
-                                  console.error(ex);
-                                }
-                              }
-                            ),
-                          []
-                        );
-
                         return React.createElement(context.Provider, {
-                          value: sv.s,
+                          value: p.state,
                           children: React.createElement(Cmp)
                         });
                       };
@@ -269,8 +213,7 @@ export function page<S, RApp, Action>(
                       this.setState({
                         cmp: some(
                           React.createElement(CmpS, {
-                            state: state[stateURI].state,
-                            version: state[stateURI].version
+                            state: state[stateURI].state
                           })
                         )
                       });
@@ -318,8 +261,10 @@ export function page<S, RApp, Action>(
             });
           } else {
             if (isNone(this.state.cmp)) {
-              const markup = document.getElementById("fancy-next-root")
-                ?.innerHTML;
+              const markup =
+                typeof document !== "undefined"
+                  ? document.getElementById("fancy-next-root")?.innerHTML
+                  : null;
 
               return React.createElement("div", {
                 ref: this.REF,

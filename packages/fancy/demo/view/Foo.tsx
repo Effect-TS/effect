@@ -16,21 +16,14 @@ export const Foo = App.ui.of(
       UpdateDate,
       ShowDate
     }),
-    T.map(({ UpdateDate, ShowDate }) =>
-      App.withState(({ state: { orgs } }) => (
-        <>
-          <ShowDate />
-          <UpdateDate />
-          {pipe(
-            orgs,
-            O.map(orgs => <div>{orgs}</div>),
-            O.toNullable
-          )}
-          <Link href={"/"}>
-            <a>home</a>
-          </Link>
-        </>
-      ))
-    )
+    T.map(({ UpdateDate, ShowDate }) => () => (
+      <>
+        <ShowDate />
+        <UpdateDate />
+        <Link href={"/"}>
+          <a>home</a>
+        </Link>
+      </>
+    ))
   )
 );
