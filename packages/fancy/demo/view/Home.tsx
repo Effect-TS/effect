@@ -5,9 +5,8 @@ import { pipe } from "fp-ts/lib/pipeable";
 import Link from "next/link";
 import { App } from "../src/app";
 import { MemoInput } from "./MemoInput";
-import { ShowDate } from "./ShowDate";
-import { UpdateDate } from "./UpdateDate";
-import { UpdateOrganisations } from "./UpdateOrganisations";
+import { UpdateDate, ShowDate } from "../modules/date/views";
+import { UpdateOrganisations } from "../modules/orgs/views";
 
 // alpha
 /* istanbul ignore file */
@@ -15,9 +14,9 @@ import { UpdateOrganisations } from "./UpdateOrganisations";
 export const Home = App.ui.of(
   pipe(
     sequenceS(T.effect)({
-      UpdateDate,
-      UpdateOrganisations,
-      ShowDate,
+      UpdateDate: UpdateDate(App),
+      UpdateOrganisations: UpdateOrganisations(App),
+      ShowDate: ShowDate(App, "date"),
       MemoInput
     }),
     T.chain(({ UpdateDate, ShowDate, UpdateOrganisations, MemoInput }) =>

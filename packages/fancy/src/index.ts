@@ -68,8 +68,6 @@ export const app = <
 ) => (initialState: IS): App<S> => {
   const context = React.createContext<S>({} as any);
 
-  const useState = () => React.useContext(context);
-
   const ui = <RUI, P>(
     uiE: T.Effect<RUI, never, React.FC<P>>
   ): T.Effect<RUI, never, React.FC<P>> => uiE;
@@ -119,14 +117,12 @@ export const app = <
   ) =>
     pipe(
       cmpV,
-      T.map(
-        (cmp): React.FC<P> => {
-          const state = useState();
-
+      T.chain(cmp =>
+        T.access((r: State<any>) => {
           const ns = {} as { [k in K[number]]: S[k] };
 
           for (const k of keys) {
-            ns[k] = state[k];
+            ns[k] = r[stateURI].state[k];
           }
 
           const a = MR.observer(cmp);
@@ -136,7 +132,7 @@ export const app = <
               ...ns,
               ...p
             });
-        }
+        })
       )
     );
 

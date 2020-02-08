@@ -1,6 +1,6 @@
 import * as R from "../../lib";
-import * as DT from "./date";
-import * as ORGS from "./orgs";
+import * as DT from "../modules/date/state";
+import * as ORGS from "../modules/orgs/state";
 
 // alpha
 /* istanbul ignore file */
