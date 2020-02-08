@@ -16,7 +16,7 @@ export const Foo = App.ui.of(
     }),
     T.map(({ UpdateDate, ShowDate }) => () => (
       <>
-        <ShowDate />
+        <ShowDate foo={"foo"} />
         <UpdateDate />
         <Link href={"/"}>
           <a>home</a>

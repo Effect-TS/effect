@@ -14,13 +14,30 @@ import * as R from "fp-ts/lib/Record";
 // alpha
 /* istanbul ignore file */
 
+export interface Run<R> {
+  <RUI, P>(
+    _: <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => void
+  ): T.Effect<RUI, never, React.FC<P>>;
+}
+
+export type SOf<
+  R,
+  URI extends string & keyof S,
+  S extends { [k in URI]: R }
+> = State<{ [k in URI]: S[k] }>;
+
 export interface App<S> {
   _S: S;
 
   page: (
     view: T.Effect<State<S>, never, React.FC<{}>>
   ) => typeof React.Component;
-  withState: <K extends Array<keyof S>>(
+  withState: <K extends (keyof S)[]>(
+    keys: K
+  ) => <R = unknown>(
+    cmpV: View<R, { [k in K[number]]: S[k] }>
+  ) => View<R & State<{ [k in K[number]]: S[k] }>>;
+  withStateP: <K extends (keyof S)[]>(
     keys: K
   ) => <P = {}>() => <R = unknown>(
     cmpV: View<R, { [k in K[number]]: S[k] } & P>
@@ -37,14 +54,7 @@ export interface App<S> {
   ) => T.Effect<State<{ [k in K[number]]: S[k] }> & R, never, React.FC<A>>;
   ui: {
     of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI, P>;
-    withRun: <RUNR>() => <RUI, P>(
-      f: (
-        _: <A>(
-          _: T.Effect<RUNR, never, A>,
-          cb?: ((a: A) => void) | undefined
-        ) => void
-      ) => T.Effect<RUI, never, React.FC<P>>
-    ) => View<RUI & RUNR, P>;
+    withRun: <RUNR>(f: Run<RUNR>) => T.Effect<RUNR, never, React.FC<unknown>>;
   };
 }
 
@@ -108,11 +118,11 @@ export const app = <
     view: T.Effect<RPage, never, React.FC<{}>>
   ): typeof React.Component => nextPage(initial, enc, dec)(view);
 
-  const withState = <K extends Array<keyof S>>(keys: K) => <P = {}>() => <
+  const withStateP = <K extends (keyof S)[]>(keys: K) => <P = {}>() => <
     R = unknown
   >(
     cmpV: View<R, { [k in K[number]]: S[k] } & P>
-  ) =>
+  ): View<R & State<{ [k in K[number]]: S[k] }>, P> =>
     pipe(
       cmpV,
       T.chain(cmp =>
@@ -134,14 +144,7 @@ export const app = <
       )
     );
 
-  const withRun = <RUNR>() => <RUI, P>(
-    f: (
-      _: <A>(
-        _: T.Effect<RUNR, never, A>,
-        cb?: ((a: A) => void) | undefined
-      ) => void
-    ) => T.Effect<RUI, never, React.FC<P>>
-  ) => pipe(runner<RUNR>(), T.chain(f));
+  const withRun = <RUNR>(f: Run<RUNR>) => pipe(runner<RUNR>(), T.chain(f));
 
   const accessS = <K extends Array<keyof S>>(_: K) => <A>(
     f: (s: { [k in K[number]]: S[k] }) => A
@@ -155,7 +158,8 @@ export const app = <
   return {
     _S: {} as S,
     page,
-    withState,
+    withStateP,
+    withState: keys => withStateP(keys)(),
     accessS,
     accessSM,
     ui: {

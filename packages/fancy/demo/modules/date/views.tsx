@@ -1,6 +1,6 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import { App } from "../../../lib";
+import { App, View, SOf } from "../../../lib";
 import { DateOps, updateDate } from "./spec";
 import { useInterval } from "../../hooks/useInterval";
 import { DateState } from "./state";
@@ -9,7 +9,7 @@ import { DateState } from "./state";
 /* istanbul ignore file */
 
 export function UpdateDate<S>(App: App<S>) {
-  return App.ui.withRun<DateOps>()(run =>
+  return App.ui.withRun<DateOps>(run =>
     T.pure(() => (
       <button
         onClick={() => {
@@ -22,7 +22,7 @@ export function UpdateDate<S>(App: App<S>) {
   );
 }
 
-const ShowDateComponent: React.FC<{ current: Date }> = React.memo(
+const ShowDateComponent: React.FC<{ current: Date; foo: string }> = React.memo(
   ({ current }) => {
     const [s, setS] = React.useState(0);
     useInterval(() => {
@@ -37,8 +37,10 @@ export function ShowDate<
   S extends { [k in URI]: DateState }
 >(App: App<S>, dateURI: URI) {
   return App.ui.of(
-    App.withState([dateURI])()(
-      T.pure(({ [dateURI]: date }) => <ShowDateComponent {...date} />)
+    App.withStateP([dateURI])<{ foo: string }>()(
+      T.pure(({ [dateURI]: date, foo }) => (
+        <ShowDateComponent {...date} foo={foo} />
+      ))
     )
   );
 }

@@ -6,7 +6,7 @@ import { OrgsOps, updateOrgs } from "./spec";
 /* istanbul ignore file */
 
 export function UpdateOrganisations<S>(App: App<S>) {
-  return App.ui.withRun<OrgsOps>()(run =>
+  return App.ui.withRun<OrgsOps>(run =>
     T.pure(() => (
       <button
         onClick={() => {

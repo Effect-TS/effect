@@ -20,10 +20,10 @@ export const Home = App.ui.of(
       MemoInput
     }),
     T.chain(({ UpdateDate, ShowDate, UpdateOrganisations, MemoInput }) =>
-      App.withState(["orgs"])()(
+      App.withState(["orgs"])(
         T.pure(({ orgs: { found, error } }) => (
           <>
-            <ShowDate />
+            <ShowDate foo={"foo"} />
             <UpdateDate />
             <UpdateOrganisations />
             {pipe(
