@@ -29,11 +29,7 @@ export function page<E, S>(
         renderId?: string;
       },
       {
-        cmp: Option<
-          React.FunctionComponentElement<{
-            state: S;
-          }>
-        >;
+        cmp: Option<React.FunctionComponentElement<{}>>;
       }
     > {
       constructor(p: any) {
@@ -64,6 +60,7 @@ export function page<E, S>(
           const rendered = await T.runToPromise(
             pipe(
               f.ui,
+              T.map(Cmp => React.createElement(Cmp)),
               T.provideAll({ ...state, [nextContextURI]: { ctx } } as any)
             )
           );
@@ -182,9 +179,7 @@ export function page<E, S>(
                   f.ui,
                   T.chain(Cmp =>
                     T.sync(() => {
-                      const CmpS: React.FC<{
-                        state: S;
-                      }> = p => {
+                      const CmpS: React.FC = () => {
                         React.useEffect(() => () => {
                           f.stop();
                         });
@@ -193,11 +188,7 @@ export function page<E, S>(
                       };
 
                       this.setState({
-                        cmp: some(
-                          React.createElement(CmpS, {
-                            state: state[stateURI].state
-                          })
-                        )
+                        cmp: some(React.createElement(CmpS))
                       });
                     })
                   ),
