@@ -1,22 +1,21 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { App } from "../../../lib";
+import { updateDate, accessDate } from "./def";
+import { UpdateDate, ShowDate } from "./views";
+import { DateState } from "./state";
+import { provideDateOps } from "./date";
 
-// alpha
-/* istanbul ignore file */
-
-export const dateOpsURI = Symbol();
-
-export interface DateOps extends F.ModuleShape<DateOps> {
-  [dateOpsURI]: {
-    updateDate: T.UIO<Date>;
-    accessDate: T.UIO<Date>;
+export function dateModule<
+  URI extends string & keyof S,
+  S extends { [k in URI]: DateState }
+>(App: App<S>, URI: URI) {
+  return {
+    updateDate,
+    accessDate,
+    UpdateDate: UpdateDate(App),
+    ShowDate: ShowDate(App, URI),
+    DateState,
+    provide: provideDateOps(App, URI)
   };
 }
 
-export const dateOpsSpec = F.define<DateOps>({
-  [dateOpsURI]: {
-    updateDate: F.cn(),
-    accessDate: F.cn()
-  }
-});
-
-export const { updateDate, accessDate } = F.access(dateOpsSpec)[dateOpsURI];
+export { DateState, initialState } from "./state";

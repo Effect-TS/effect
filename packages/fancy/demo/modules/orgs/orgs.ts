@@ -3,9 +3,9 @@ import { isDone } from "@matechs/effect/lib/exit";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { App as GenApp } from "../../../lib";
-import { orgsOpsSpec, orgsOpsURI } from ".";
+import { orgsOpsSpec, orgsOpsURI } from "./def";
 import { OrgsState } from "./state";
-import { updateDate } from "../date";
+import { updateDate } from "../date/def";
 
 // alpha
 /* istanbul ignore file */

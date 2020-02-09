@@ -1,21 +1,19 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { Option } from "fp-ts/lib/Option";
+import { App } from "../../../lib";
+import { updateOrgs } from "./def";
+import { provideOrgsOps } from "./orgs";
+import { OrgsState } from "./state";
+import { UpdateOrganisations, ShowOrgs } from "./views";
 
-// alpha
-/* istanbul ignore file */
-
-export const orgsOpsURI = Symbol();
-
-export interface OrgsOps extends F.ModuleShape<OrgsOps> {
-  [orgsOpsURI]: {
-    updateOrgs: T.UIO<Option<string>>;
+export function orgsModule<
+  URI extends string & keyof S,
+  S extends { [k in URI]: OrgsState }
+>(App: App<S>, URI: URI) {
+  return {
+    updateOrgs,
+    UpdateOrganisations: UpdateOrganisations(App),
+    ShowOrgs: ShowOrgs(App, URI),
+    provide: provideOrgsOps(App, URI)
   };
 }
 
-export const orgsOpsSpec = F.define<OrgsOps>({
-  [orgsOpsURI]: {
-    updateOrgs: F.cn()
-  }
-});
-
-export const { updateOrgs } = F.access(orgsOpsSpec)[orgsOpsURI];
+export { OrgsState, initialState } from "./state";

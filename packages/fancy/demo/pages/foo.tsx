@@ -1,5 +1,5 @@
 import { pipe } from "fp-ts/lib/pipeable";
-import { App } from "../src/app";
+import { App, DATE } from "../src/app";
 import * as DT from "../modules/date/date";
 import { Foo } from "../view/Foo";
 
@@ -7,4 +7,4 @@ import { Foo } from "../view/Foo";
 /* istanbul ignore file */
 
 // tslint:disable-next-line: no-default-export
-export default App.page(pipe(Foo, DT.provideDateOps(App, "date")));
+export default App.page(pipe(Foo, DATE.provide));
