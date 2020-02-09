@@ -29,9 +29,7 @@ export type SOf<
 export interface App<S> {
   _S: S;
 
-  page: (
-    view: T.Effect<State<S>, never, React.FC<{}>>
-  ) => typeof React.Component;
+  page: (view: View<State<S>, {}>) => typeof React.Component;
   withState: <K extends (keyof S)[]>(
     keys: K
   ) => <R = unknown>(
@@ -50,11 +48,11 @@ export interface App<S> {
   accessSM: <K extends (keyof S)[]>(
     _: K
   ) => <R, A>(
-    f: (s: { [k in K[number]]: S[k] }) => View<R, A>
-  ) => T.Effect<State<{ [k in K[number]]: S[k] }> & R, never, React.FC<A>>;
+    f: (s: { [k in K[number]]: S[k] }) => T.Effect<R, never, A>
+  ) => T.Effect<State<{ [k in K[number]]: S[k] }> & R, never, A>;
   ui: {
-    of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>) => View<RUI, P>;
-    withRun: <RUNR>(f: Run<RUNR>) => T.Effect<RUNR, never, React.FC<unknown>>;
+    of: <RUI, P>(uiE: View<RUI, P>) => View<RUI, P>;
+    withRun: <RUNR>(f: Run<RUNR>) => View<RUNR, unknown>;
   };
 }
 
@@ -151,7 +149,7 @@ export const app = <
   ) => T.access((s: State<{ [k in K[number]]: S[k] }>) => f(s[stateURI].state));
 
   const accessSM = <K extends Array<keyof S>>(_: K) => <R, A>(
-    f: (s: { [k in K[number]]: S[k] }) => View<R, A>
+    f: (s: { [k in K[number]]: S[k] }) => T.Effect<R, never, A>
   ) =>
     T.accessM((s: State<{ [k in K[number]]: S[k] }>) => f(s[stateURI].state));
 
