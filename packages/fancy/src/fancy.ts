@@ -36,7 +36,7 @@ export interface StateP<S> {
 export class Fancy<S, R> {
   readonly ui: T.Effect<R, never, React.FC<StateP<S>>>;
   private opsC = 0;
-  private readonly cancellers = {} as Record<string, Lazy<void>>;
+  private readonly cancellers: Map<number, Lazy<void>> = new Map();
 
   constructor(renderEffect: T.Effect<R, never, React.FC<StateP<S>>>) {
     const dispatch = <R>(r: R) => <A>(
@@ -49,23 +49,26 @@ export class Fancy<S, R> {
 
       this.opsC = this.opsC + 1;
 
-      const opId = `op-${n}`;
+      this.cancellers.set(
+        n,
+        T.run(T.provideAll(r)(eff), ex => {
+          this.cancellers.delete(n);
 
-      this.cancellers[opId] = T.run(T.provideAll(r)(eff), ex => {
-        delete this.cancellers[opId];
-
-        if (EX.isDone(ex)) {
-          cb(ex.value);
-        } else {
-          if (!EX.isInterrupt(ex)) {
-            console.error("dispatched effects are not supposed to fail");
-            console.error(ex);
+          if (EX.isDone(ex)) {
+            cb(ex.value);
+          } else {
+            if (!EX.isInterrupt(ex)) {
+              console.error("dispatched effects are not supposed to fail");
+              console.error(ex);
+            }
           }
-        }
-      });
+        })
+      );
 
       return () => {
-        const d = this.cancellers[opId] as Lazy<void> | undefined;
+        const d = this.cancellers.get(n);
+
+        this.cancellers.delete(n);
 
         if (d) {
           d();
