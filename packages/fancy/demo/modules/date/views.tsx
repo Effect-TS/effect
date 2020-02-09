@@ -4,6 +4,7 @@ import { App } from "../../../lib";
 import { DateOps, updateDate } from "./def";
 import { useInterval } from "../../hooks/useInterval";
 import { DateState } from "./state";
+import * as M from "mobx";
 
 // alpha
 /* istanbul ignore file */
@@ -41,6 +42,26 @@ export function ShowDate<
       T.pure(({ [dateURI]: date, foo }) => (
         <ShowDateComponent {...date} foo={foo} />
       ))
+    )
+  );
+}
+
+export function LogDate<
+  URI extends string & keyof S,
+  S extends { [k in URI]: DateState }
+>(App: App<S>, dateURI: URI) {
+  return App.ui.of(
+    App.withState([dateURI])(
+      T.pure(({ [dateURI]: date }) => {
+        React.useEffect(
+          () =>
+            M.autorun(() => {
+              console.log(date.current);
+            }),
+          []
+        );
+        return <></>;
+      })
     )
   );
 }

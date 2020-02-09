@@ -5,18 +5,17 @@ import { State, stateURI, runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { NextContext, nextContextURI } from "./next-ctx";
 import { some, none } from "fp-ts/lib/Option";
-import * as Ei from "fp-ts/lib/Either";
 import * as MR from "mobx-react";
 import * as M from "mobx";
-import { Type, Errors } from "io-ts";
-import * as R from "fp-ts/lib/Record";
+import { Type } from "io-ts";
+import { Lazy } from "fp-ts/lib/function";
 
 // alpha
 /* istanbul ignore file */
 
 export interface Run<R> {
   <RUI, P>(
-    _: <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => void
+    _: <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>
   ): T.Effect<RUI, never, React.FC<P>>;
 }
 
@@ -78,43 +77,9 @@ export const app = <
     uiE: T.Effect<RUI, never, React.FC<P>>
   ): T.Effect<RUI, never, React.FC<P>> => uiE;
 
-  const initial = pipe(
-    stateDef as Record<string, any>,
-    R.traverseWithIndex(T.effect)((k: string) =>
-      pipe(
-        initialState[k as keyof IS],
-        T.map(x => M.observable(x))
-      )
-    ),
-    T.map(r => (r as any) as S)
-  );
-
-  const enc = (s: S) =>
-    pipe(
-      s as Record<string, any>,
-      R.mapWithIndex((k, x) => stateDef[k as keyof StateDef].encode(M.toJS(x)))
-    );
-
-  const dec = (u: unknown): Ei.Either<Errors | Error, S> =>
-    pipe(
-      u as Record<string, unknown>,
-      R.traverseWithIndex(Ei.either)((k, u) =>
-        stateDef[k]
-          ? pipe(
-              (stateDef[k as keyof StateDef].decode(u) as any) as Ei.Either<
-                Errors | Error,
-                any
-              >,
-              Ei.map(M.observable)
-            )
-          : Ei.left(new Error("invalid state"))
-      ),
-      Ei.map(x => (x as any) as S)
-    );
-
   const page = <RPage>(
     view: T.Effect<RPage, never, React.FC<{}>>
-  ): typeof React.Component => nextPage(initial, enc, dec)(view);
+  ): typeof React.Component => nextPage(stateDef, initialState)(view);
 
   const withStateP = <K extends (keyof S)[]>(keys: K) => <P = {}>() => <
     R = unknown

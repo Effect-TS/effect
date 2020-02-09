@@ -15,7 +15,8 @@ export const Home = App.ui.of(
       UpdateOrganisations: ORGS.UpdateOrganisations,
       ShowDate: DATE.ShowDate,
       ShowOrgs: ORGS.ShowOrgs,
-      MemoInput
+      MemoInput,
+      LogDate: DATE.LogDate
     }),
     T.map(v => () => (
       <>
@@ -27,6 +28,7 @@ export const Home = App.ui.of(
         <Link href={"/foo"}>
           <a>foo</a>
         </Link>
+        <v.LogDate />
       </>
     ))
   )

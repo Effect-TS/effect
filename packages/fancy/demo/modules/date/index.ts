@@ -1,6 +1,6 @@
 import { App } from "../../../lib";
 import { updateDate, accessDate } from "./def";
-import { UpdateDate, ShowDate } from "./views";
+import { UpdateDate, ShowDate, LogDate } from "./views";
 import { DateState } from "./state";
 import { provideDateOps } from "./date";
 
@@ -14,6 +14,7 @@ export function dateModule<
     UpdateDate: UpdateDate(App),
     ShowDate: ShowDate(App, URI),
     DateState,
+    LogDate: LogDate(App, URI),
     provide: provideDateOps(App, URI)
   };
 }

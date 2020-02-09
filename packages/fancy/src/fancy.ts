@@ -9,7 +9,9 @@ export const dispatcherURI = Symbol();
 
 export interface Runner<R> {
   [dispatcherURI]: {
-    run: (env: R) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => void;
+    run: (
+      env: R
+    ) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => Lazy<void>;
   };
 }
 
@@ -47,8 +49,10 @@ export class Fancy<S, R> {
 
       this.opsC = this.opsC + 1;
 
-      this.cancellers[`op-${n}`] = T.run(T.provideAll(r)(eff), ex => {
-        delete this.cancellers[`op-${n}`];
+      const opId = `op-${n}`;
+
+      this.cancellers[opId] = T.run(T.provideAll(r)(eff), ex => {
+        delete this.cancellers[opId];
 
         if (EX.isDone(ex)) {
           cb(ex.value);
@@ -59,6 +63,14 @@ export class Fancy<S, R> {
           }
         }
       });
+
+      return () => {
+        const d = this.cancellers[opId] as Lazy<void> | undefined;
+
+        if (d) {
+          d();
+        }
+      };
     };
 
     this.ui = pipe(
@@ -88,9 +100,13 @@ function hasRunner<R>(u: unknown): u is Runner<R> {
   return typeof u === "object" && u !== null && dispatcherURI in u;
 }
 
-export const runner = <R>() =>
+export const runner = <R>(): T.Effect<
+  R,
+  never,
+  <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>
+> =>
   T.access((s: R) =>
     hasRunner<R>(s)
       ? s[dispatcherURI].run(s)
-      : T.raiseAbort(new Error("runner out of context"))
+      : (T.raiseAbort(new Error("runner out of context")) as any)
   );

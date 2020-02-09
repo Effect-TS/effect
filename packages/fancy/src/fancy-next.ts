@@ -3,10 +3,13 @@ import { effect as T, exit as EX } from "@matechs/effect";
 import { Fancy, State, stateURI } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Lazy } from "fp-ts/lib/function";
-import { Either, isRight, right, left } from "fp-ts/lib/Either";
+import * as Ei from "fp-ts/lib/Either";
 import { NextPageContext } from "next";
 import { nextContextURI } from "./next-ctx";
 import { Option, none, some, isNone } from "fp-ts/lib/Option";
+import { Type, Errors } from "io-ts";
+import * as M from "mobx";
+import * as R from "fp-ts/lib/Record";
 
 // alpha
 /* istanbul ignore file */
@@ -16,11 +19,49 @@ export const renderCount = {
   count: 0
 };
 
-export function page<E, S>(
-  initial: T.UIO<S>,
-  enc: (_: S) => unknown,
-  dec: (_: unknown) => Either<E, S>
-) {
+export function page<
+  StateDef extends { [k in keyof StateDef]: Type<any, unknown> },
+  IS extends {
+    [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
+  },
+  S = {
+    [k in keyof StateDef]: StateDef[k]["_A"] & M.IObservableObject;
+  }
+>(stateDef: StateDef, initialState: IS) {
+  const initial = pipe(
+    stateDef as Record<string, any>,
+    R.traverseWithIndex(T.effect)((k: string) =>
+      pipe(
+        initialState[k as keyof IS],
+        T.map(x => M.observable(x))
+      )
+    ),
+    T.map(r => (r as any) as S)
+  );
+
+  const enc = (s: S) =>
+    pipe(
+      s as Record<string, any>,
+      R.mapWithIndex((k, x) => stateDef[k as keyof StateDef].encode(M.toJS(x)))
+    );
+
+  const dec = (u: unknown): Ei.Either<Errors | Error, S> =>
+    pipe(
+      u as Record<string, unknown>,
+      R.traverseWithIndex(Ei.either)((k, u) =>
+        stateDef[k]
+          ? pipe(
+              (stateDef[k as keyof StateDef].decode(u) as any) as Ei.Either<
+                Errors | Error,
+                any
+              >,
+              Ei.map(M.observable)
+            )
+          : Ei.left(new Error("invalid state"))
+      ),
+      Ei.map(x => (x as any) as S)
+    );
+
   return <RPage>(view: T.Effect<RPage, never, React.FC>) =>
     class extends React.Component<
       {
@@ -41,6 +82,7 @@ export function page<E, S>(
       public readonly REF = React.createRef<HTMLDivElement>();
 
       public stop: Lazy<void> | undefined = undefined;
+      public autoruns: Array<Lazy<void>> = [];
 
       static async getInitialProps(ctx: NextPageContext) {
         const initialS = await T.runToPromise(initial);
@@ -75,7 +117,6 @@ export function page<E, S>(
             stateToKeep: JSON.stringify(enc(stateS)) // cache the state for client init
           };
         } else {
-          // init on browser, we wrap stream drainer for effects to run
           const component = await T.runToPromise(
             pipe(
               f.ui,
@@ -111,9 +152,9 @@ export function page<E, S>(
               const restored = JSON.parse(this.props.stateToKeep);
               const decoded = dec(restored);
 
-              if (isRight(decoded)) {
+              if (Ei.isRight(decoded)) {
                 resolve(
-                  right({
+                  Ei.right({
                     [stateURI]: {
                       state: decoded.right
                     }
@@ -126,7 +167,7 @@ export function page<E, S>(
                 c = T.run(initial, ex => {
                   if (EX.isDone(ex)) {
                     resolve(
-                      right({
+                      Ei.right({
                         [stateURI]: {
                           state: ex.value
                         }
@@ -134,7 +175,7 @@ export function page<E, S>(
                     );
                   } else {
                     resolve(
-                      left(
+                      Ei.left(
                         new Error("initial state should not be allowd to fail")
                       )
                     );
@@ -145,7 +186,7 @@ export function page<E, S>(
               c = T.run(initial, ex => {
                 if (EX.isDone(ex)) {
                   resolve(
-                    right({
+                    Ei.right({
                       [stateURI]: {
                         state: ex.value
                       }
@@ -153,7 +194,7 @@ export function page<E, S>(
                   );
                 } else {
                   resolve(
-                    left(
+                    Ei.left(
                       new Error("initial state should not be allowd to fail")
                     )
                   );
