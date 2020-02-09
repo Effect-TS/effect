@@ -1,3 +1,4 @@
+import * as React from "react";
 import { effect as T } from "@matechs/effect";
 import { App } from "../../../lib";
 import { OrgsOps, updateOrgs } from "./def";
@@ -9,16 +10,23 @@ import * as O from "fp-ts/lib/Option";
 /* istanbul ignore file */
 
 export function UpdateOrganisations<S>(App: App<S>) {
-  return App.ui.withRun<OrgsOps>(run =>
-    T.pure(() => (
-      <button
-        onClick={() => {
-          run(updateOrgs);
-        }}
-      >
-        Fetch!
-      </button>
-    ))
+  return App.ui.withRun<OrgsOps>((run, dispose) =>
+    T.pure(() => {
+      React.useEffect(
+        () => dispose, // when the component unmount dispose all launched effects
+        []
+      );
+
+      return (
+        <button
+          onClick={() => {
+            run(updateOrgs);
+          }}
+        >
+          Fetch!
+        </button>
+      );
+    })
   );
 }
 

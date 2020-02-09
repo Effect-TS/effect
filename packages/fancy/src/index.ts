@@ -15,7 +15,11 @@ import { Lazy } from "fp-ts/lib/function";
 
 export interface Run<R> {
   <RUI, P>(
-    _: <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>
+    _: <A>(
+      _: T.Effect<R, never, A>,
+      cb?: ((a: A) => void) | undefined
+    ) => Lazy<void>,
+    dispose: Lazy<void>
   ): T.Effect<RUI, never, React.FC<P>>;
 }
 
@@ -107,7 +111,11 @@ export const app = <
       )
     );
 
-  const withRun = <RUNR>(f: Run<RUNR>) => pipe(runner<RUNR>(), T.chain(f));
+  const withRun = <RUNR>(f: Run<RUNR>) =>
+    pipe(
+      runner<RUNR>(),
+      T.chain(([a, b]) => f(a, b))
+    );
 
   const accessS = <K extends Array<keyof S>>(_: K) => <A>(
     f: (s: { [k in K[number]]: S[k] }) => A

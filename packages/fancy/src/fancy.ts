@@ -103,10 +103,47 @@ function hasRunner<R>(u: unknown): u is Runner<R> {
 export const runner = <R>(): T.Effect<
   R,
   never,
-  <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>
+  [
+    <A>(
+      _: T.Effect<R, never, A>,
+      cb?: ((a: A) => void) | undefined
+    ) => Lazy<void>,
+    Lazy<void>
+  ]
 > =>
-  T.access((s: R) =>
-    hasRunner<R>(s)
-      ? s[dispatcherURI].run(s)
-      : (T.raiseAbort(new Error("runner out of context")) as any)
-  );
+  T.access((s: R) => {
+    const session: Map<number, Lazy<void>> = new Map();
+    let counter = 0;
+
+    return hasRunner<R>(s)
+      ? [
+          <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => {
+            const id = counter;
+            counter = counter + 1;
+            const cancel = s[dispatcherURI].run(s)(_, e => {
+              session.delete(id);
+              if (cb) {
+                cb(e);
+              }
+            });
+            session.set(id, cancel);
+            return () => {
+              const c = session.get(id);
+
+              if (c) {
+                session.delete(id);
+
+                c();
+              }
+            };
+          },
+          () => {
+            session.forEach((c, id) => {
+              c();
+
+              session.delete(id);
+            });
+          }
+        ]
+      : (T.raiseAbort(new Error("runner out of context")) as any);
+  });

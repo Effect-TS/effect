@@ -24,10 +24,10 @@ export const Home = App.ui.of(
         <v.UpdateDate />
         <v.UpdateOrganisations />
         <v.ShowOrgs />
-        <v.MemoInput />
         <Link href={"/foo"}>
           <a>foo</a>
         </Link>
+        <v.MemoInput />
         <v.LogDate />
       </>
     ))
