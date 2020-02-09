@@ -1,0 +1,10 @@
+{
+  "extends": "../../base.tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib",
+    "lib": ["DOM"],
+    "jsx": "react"
+  },
+  "exclude": ["tests", "node_modules"],
+  "include": ["src/**/*"]
+}
