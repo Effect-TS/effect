@@ -1,6 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import { App } from "../../../lib";
-import { OrgsOps, updateOrgs } from "./spec";
+import { OrgsOps, updateOrgs } from ".";
 
 // alpha
 /* istanbul ignore file */
