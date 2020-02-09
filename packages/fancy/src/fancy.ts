@@ -92,9 +92,9 @@ export class Fancy<S, R> {
   }
 
   stop() {
-    Object.keys(this.cancellers).forEach(k => {
-      this.cancellers[k]();
-      delete this.cancellers[k];
+    this.cancellers.forEach((c, k) => {
+      this.cancellers.delete(k);
+      c();
     });
   }
 }
