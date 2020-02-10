@@ -1,16 +1,16 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import { App } from "../../../lib";
+import { generic } from "../../../lib";
 import { OrgsOps, updateOrgs } from "./def";
-import { OrgsState } from "./state";
+import { orgsS, orgsSURI } from "./state";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
 
 // alpha
 /* istanbul ignore file */
 
-export function UpdateOrganisations<S>(App: App<S>) {
-  return App.ui.withRun<OrgsOps>((run, dispose) =>
+export const UpdateOrganisations = generic([orgsS])(App =>
+  App.ui.withRun<OrgsOps>((run, dispose) =>
     T.pure(() => {
       React.useEffect(
         () => dispose, // when the component unmount dispose all launched effects
@@ -27,15 +27,12 @@ export function UpdateOrganisations<S>(App: App<S>) {
         </button>
       );
     })
-  );
-}
+  )
+);
 
-export function ShowOrgs<
-  URI extends string & keyof S,
-  S extends { [k in URI]: OrgsState }
->(App: App<S>, URI: URI) {
-  return App.withState([URI])(
-    T.pure(({ [URI]: { error, found } }) => (
+export const ShowOrgs = generic([orgsS])(App =>
+  App.withState([orgsSURI])(
+    T.pure(({ [orgsSURI]: { error, found } }) => (
       <>
         {pipe(
           found,
@@ -49,5 +46,5 @@ export function ShowOrgs<
         )}
       </>
     ))
-  );
-}
+  )
+);

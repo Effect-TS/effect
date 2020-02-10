@@ -2,20 +2,17 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import { isDone } from "@matechs/effect/lib/exit";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import { App as GenApp } from "../../../lib";
+import { generic } from "../../../lib";
 import { orgsOpsSpec, orgsOpsURI } from "./def";
-import { OrgsState } from "./state";
+import { orgsS, orgsSURI } from "./state";
 import { updateDate } from "../date/def";
 
 // alpha
 /* istanbul ignore file */
 
-export function provideOrgsOps<
-  K extends string & keyof S,
-  S extends { [k in K]: OrgsState }
->(APP: GenApp<S>, OrgsStateURI: K) {
+export const provideOrgsOps = generic([orgsS])(App => {
   const updateOrgs_ = (res: any[]) =>
-    APP.accessS([OrgsStateURI])(({ [OrgsStateURI]: orgs }) => {
+    App.accessS([orgsSURI])(({ [orgsSURI]: orgs }) => {
       orgs.found = O.some(`found ${res.length}`);
       return orgs.found;
     });
@@ -36,7 +33,7 @@ export function provideOrgsOps<
                 updateOrgs_(res.value),
                 T.chainTap(_ => updateDate)
               )
-            : APP.accessS([OrgsStateURI])(({ [OrgsStateURI]: orgs }) => {
+            : App.accessS([orgsSURI])(({ [orgsSURI]: orgs }) => {
                 orgs.error = O.some("error while fetching");
                 return O.none;
               })
@@ -44,4 +41,4 @@ export function provideOrgsOps<
       )
     }
   });
-}
+});

@@ -7,13 +7,10 @@ import { orgsModule } from "../modules/orgs";
 // alpha
 /* istanbul ignore file */
 
-export const App = R.app({
-  date: DT.DateState.type,
-  orgs: O.OrgsState.type
-})({
-  date: DT.initialState,
-  orgs: O.initialState
+export const App = R.app(R.merge([DT.dateS, O.orgsS]))({
+  [DT.dateSURI]: DT.initialState,
+  [O.orgsSURI]: O.initialState
 });
 
-export const DATE = dateModule(App, "date");
-export const ORGS = orgsModule(App, "orgs");
+export const DATE = dateModule(App);
+export const ORGS = orgsModule(App);

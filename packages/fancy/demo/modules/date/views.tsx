@@ -1,16 +1,16 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import { App } from "../../../lib";
+import { App, generic } from "../../../lib";
 import { DateOps, updateDate } from "./def";
 import { useInterval } from "../../hooks/useInterval";
-import { DateState } from "./state";
+import { dateS, dateSURI } from "./state";
 import * as M from "mobx";
 
 // alpha
 /* istanbul ignore file */
 
-export function UpdateDate<S>(App: App<S>) {
-  return App.ui.withRun<DateOps>(run =>
+export const UpdateDate = generic([dateS])(App =>
+  App.ui.withRun<DateOps>(run =>
     T.pure(() => (
       <button
         onClick={() => {
@@ -20,8 +20,8 @@ export function UpdateDate<S>(App: App<S>) {
         Update Date!
       </button>
     ))
-  );
-}
+  )
+);
 
 const ShowDateComponent: React.FC<{ current: Date; foo: string }> = React.memo(
   ({ current }) => {
@@ -33,26 +33,20 @@ const ShowDateComponent: React.FC<{ current: Date; foo: string }> = React.memo(
   }
 );
 
-export function ShowDate<
-  URI extends string & keyof S,
-  S extends { [k in URI]: DateState }
->(App: App<S>, dateURI: URI) {
-  return App.ui.of(
-    App.withStateP([dateURI])<{ foo: string }>()(
-      T.pure(({ [dateURI]: date, foo }) => (
+export const ShowDate = generic([dateS])(App =>
+  App.ui.of(
+    App.withStateP([dateSURI])<{ foo: string }>()(
+      T.pure(({ [dateSURI]: date, foo }) => (
         <ShowDateComponent {...date} foo={foo} />
       ))
     )
-  );
-}
+  )
+);
 
-export function LogDate<
-  URI extends string & keyof S,
-  S extends { [k in URI]: DateState }
->(App: App<S>, dateURI: URI) {
-  return App.ui.of(
-    App.withState([dateURI])(
-      T.pure(({ [dateURI]: date }) => {
+export const LogDate = generic([dateS])(App =>
+  App.ui.of(
+    App.withState([dateSURI])(
+      T.pure(({ [dateSURI]: date }) => {
         React.useEffect(
           () =>
             M.autorun(() => {
@@ -63,5 +57,5 @@ export function LogDate<
         return <></>;
       })
     )
-  );
-}
+  )
+);

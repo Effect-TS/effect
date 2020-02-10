@@ -1,5 +1,5 @@
 import * as React from "react";
-import { effect as T } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import { page as nextPage } from "./fancy-next";
 import { State, stateURI, runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -66,8 +66,37 @@ export type Transformer<K> = <R, P extends {}>(
 export interface View<R = unknown, P = unknown>
   extends T.Effect<R, never, React.FC<P>> {}
 
+export type StateAtom<T> = { [k in keyof T]: Type<any, unknown> };
+
+export const atom = <S extends StateAtom<S>>(state: S): S => state;
+
+export const merge = <Defs extends StateAtom<any>[]>(
+  defs: Defs
+): F.UnionToIntersection<Defs[number]> => {
+  let s = {};
+
+  for (const def of defs) {
+    s = {
+      ...s,
+      ...def
+    };
+  }
+
+  return s as F.UnionToIntersection<Defs[number]>;
+};
+
+export const generic = <Defs extends StateAtom<any>[]>(_: Defs) => <
+  X,
+  S extends {
+    [k in keyof T]: T[k] extends Type<infer A, any, any> ? A : never;
+  },
+  T = F.UnionToIntersection<Defs[number]>
+>(
+  f: (app: App<S>) => X
+): (<K extends S>(app: App<K>) => X) => f as any;
+
 export const app = <
-  StateDef extends { [k in keyof StateDef]: Type<any, unknown> },
+  StateDef extends StateAtom<StateDef>,
   IS extends {
     [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
   },
