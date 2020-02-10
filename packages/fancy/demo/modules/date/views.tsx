@@ -1,6 +1,6 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import { App, generic } from "../../../lib";
+import { generic } from "../../../lib";
 import { DateOps, updateDate } from "./def";
 import { useInterval } from "../../hooks/useInterval";
 import { dateS, dateSURI } from "./state";
