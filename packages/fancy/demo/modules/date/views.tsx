@@ -1,26 +1,24 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import { generic } from "../../../lib";
+import * as R from "../../../lib";
 import { DateOps, updateDate } from "./def";
 import { useInterval } from "../../hooks/useInterval";
-import { dateS, dateSURI } from "./state";
 import * as M from "mobx";
+import { DateStateEnv, dateStateURI } from "./state";
 
 // alpha
 /* istanbul ignore file */
 
-export const UpdateDate = generic([dateS])(App =>
-  App.ui.withRun<DateOps>(run =>
-    T.pure(() => (
-      <button
-        onClick={() => {
-          run(updateDate);
-        }}
-      >
-        Update Date!
-      </button>
-    ))
-  )
+export const UpdateDate = R.UI.withRun<DateOps>(run =>
+  T.pure(() => (
+    <button
+      onClick={() => {
+        run(updateDate);
+      }}
+    >
+      Update Date!
+    </button>
+  ))
 );
 
 const ShowDateComponent: React.FC<{ current: Date; foo: string }> = React.memo(
@@ -33,29 +31,19 @@ const ShowDateComponent: React.FC<{ current: Date; foo: string }> = React.memo(
   }
 );
 
-export const ShowDate = generic([dateS])(App =>
-  App.ui.of(
-    App.withStateP([dateSURI])<{ foo: string }>()(
-      T.pure(({ [dateSURI]: date, foo }) => (
-        <ShowDateComponent {...date} foo={foo} />
-      ))
-    )
-  )
+export const ShowDate = R.UI.withState<DateStateEnv>()<{ foo: string }>(
+  ({ [dateStateURI]: date, foo }) => <ShowDateComponent {...date} foo={foo} />
 );
 
-export const LogDate = generic([dateS])(App =>
-  App.ui.of(
-    App.withState([dateSURI])(
-      T.pure(({ [dateSURI]: date }) => {
-        React.useEffect(
-          () =>
-            M.autorun(() => {
-              console.log(date.current);
-            }),
-          []
-        );
-        return <></>;
-      })
-    )
-  )
+export const LogDate = R.UI.withState<DateStateEnv>()(
+  ({ [dateStateURI]: date }) => {
+    React.useEffect(
+      () =>
+        M.autorun(() => {
+          console.log(date.current);
+        }),
+      []
+    );
+    return <></>;
+  }
 );

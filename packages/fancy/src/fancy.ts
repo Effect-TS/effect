@@ -17,7 +17,7 @@ export interface Runner<R> {
 
 export const stateURI = Symbol();
 
-export interface State<S> {
+export interface State<S extends { [k: string]: any }> {
   [stateURI]: {
     state: S;
   };

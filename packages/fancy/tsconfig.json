@@ -7,5 +7,5 @@
     "experimentalDecorators": true,
     "jsx": "react"
   },
-  "include": ["src/**/*", "tests/**/*", "type-tests/**/*", "demo/**/*"]
+  "include": ["src/**/*", "tests/**/*", "type-tests/**/*", "demo/**/*", "src"]
 }

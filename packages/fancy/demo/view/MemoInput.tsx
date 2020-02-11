@@ -1,10 +1,10 @@
 import * as React from "react";
-import { App } from "../src/app";
 import { effect as T } from "@matechs/effect";
+import { UI } from "../../lib";
 
 // alpha
 /* istanbul ignore file */
 
-export const MemoInput = App.ui.of(
+export const MemoInput = UI.of(
   T.pure(React.memo(() => <input type={"text"} />))
 );

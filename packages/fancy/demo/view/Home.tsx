@@ -2,15 +2,15 @@ import { effect as T } from "@matechs/effect";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { pipe } from "fp-ts/lib/pipeable";
 import Link from "next/link";
-import { App } from "../src/app";
 import { MemoInput } from "./MemoInput";
 import { DT } from "../modules/date";
 import { ORG } from "../modules/orgs";
+import { UI } from "../../lib";
 
 // alpha
 /* istanbul ignore file */
 
-export const Home = App.ui.of(
+export const Home = UI.of(
   pipe(
     sequenceS(T.effect)({
       UpdateOrganisations: ORG.UpdateOrganisations,
