@@ -2,7 +2,7 @@ import { effect as T } from "@matechs/effect";
 import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-no-union";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { none } from "fp-ts/lib/Option";
-import * as R from "../../../lib";
+import { State } from "../../../lib/fancy";
 
 // alpha
 /* istanbul ignore file */
@@ -26,7 +26,9 @@ export const initialState = T.pure(
   OrgsState.build({ error: none, found: none })
 );
 
-export const orgsSURI = "@example/orgs";
-export const orgsS = R.atom({
-  [orgsSURI]: OrgsState.type
-});
+export const orgsStateURI = "@example/orgs";
+
+export interface OrgsStateEnv
+  extends State<{
+    [orgsStateURI]: OrgsState;
+  }> {}

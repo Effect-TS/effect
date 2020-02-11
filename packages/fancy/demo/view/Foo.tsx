@@ -2,13 +2,13 @@ import { effect as T } from "@matechs/effect";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { pipe } from "fp-ts/lib/pipeable";
 import Link from "next/link";
-import { App } from "../src/app";
 import { DT } from "../modules/date";
+import { UI } from "../../lib";
 
 // alpha
 /* istanbul ignore file */
 
-export const Foo = App.ui.of(
+export const Foo = UI.of(
   pipe(
     sequenceS(T.effect)({
       UpdateDate: DT.UpdateDate,

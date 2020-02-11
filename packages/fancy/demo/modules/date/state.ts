@@ -1,7 +1,7 @@
 import { effect as T } from "@matechs/effect";
 import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-no-union";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
-import * as R from "../../../lib";
+import { State } from "../../../lib/fancy";
 
 // alpha
 /* istanbul ignore file */
@@ -23,7 +23,9 @@ export const initialState = T.sync(() =>
   DateState.build({ current: new Date() })
 );
 
-export const dateSURI = "@example/date";
-export const dateS = R.atom({
-  [dateSURI]: DateState.type
-});
+export const dateStateURI = "@example/date";
+
+export interface DateStateEnv
+  extends State<{
+    [dateStateURI]: DateState;
+  }> {}

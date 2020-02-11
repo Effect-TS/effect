@@ -1,6 +1,6 @@
 import { provideDateOps } from "./date";
 import { accessDate, updateDate } from "./def";
-import { DateState } from "./state";
+import { DateState, initialState } from "./state";
 import { LogDate, ShowDate, UpdateDate } from "./views";
 
 export const DT = {
@@ -10,7 +10,6 @@ export const DT = {
   ShowDate,
   DateState,
   LogDate,
-  provide: provideDateOps
+  provide: provideDateOps,
+  initial: initialState
 };
-
-export { DateState, initialState } from "./state";

@@ -1,21 +1,19 @@
-import { freeEnv as F } from "@matechs/effect";
-import { generic } from "../../../lib";
+import { freeEnv as F, effect as T } from "@matechs/effect";
+import * as R from "../../../lib";
 import { dateOpsSpec, dateOpsURI } from "./def";
-import { dateS, dateSURI } from "./state";
+import { DateStateEnv, dateStateURI } from "./state";
 
 // alpha
 /* istanbul ignore file */
 
-export const provideDateOps = generic([dateS])(App =>
-  F.implement(dateOpsSpec)({
-    [dateOpsURI]: {
-      updateDate: App.accessS([dateSURI])(({ [dateSURI]: date }) => {
-        date.current = new Date();
-        return date.current;
-      }),
-      accessDate: App.accessS([dateSURI])(
-        ({ [dateSURI]: date }) => date.current
-      )
-    }
-  })
-);
+export const provideDateOps = F.implement(dateOpsSpec)({
+  [dateOpsURI]: {
+    updateDate: R.accessS<DateStateEnv>()(({ [dateStateURI]: date }) => {
+      date.current = new Date();
+      return date.current;
+    }),
+    accessDate: R.accessS<DateStateEnv>()(
+      ({ [dateStateURI]: date }) => date.current
+    )
+  }
+});
