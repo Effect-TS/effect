@@ -2,7 +2,7 @@ import { effect as T } from "@matechs/effect";
 import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-no-union";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { none } from "fp-ts/lib/Option";
-import { State } from "../../../lib/fancy";
+import { State } from "../../../lib";
 
 // alpha
 /* istanbul ignore file */

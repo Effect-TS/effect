@@ -83,3 +83,5 @@ export const page = <
 >(
   _V: View<K>
 ) => (_I: IS) => (_M: M) => nextPage(_V, _I, _M);
+
+export { State } from "./fancy";
