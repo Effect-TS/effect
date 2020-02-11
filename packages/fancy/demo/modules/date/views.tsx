@@ -9,7 +9,7 @@ import { DateStateEnv, dateStateURI } from "./state";
 // alpha
 /* istanbul ignore file */
 
-export const UpdateDate = R.UI.withRun<DateOps>(run =>
+export const UpdateDate = R.UI.withRun<DateOps>()(run =>
   T.pure(() => (
     <button
       onClick={() => {

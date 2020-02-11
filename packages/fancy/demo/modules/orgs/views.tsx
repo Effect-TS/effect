@@ -9,7 +9,7 @@ import { OrgsStateEnv, orgsStateURI } from "./state";
 // alpha
 /* istanbul ignore file */
 
-export const UpdateOrganisations = R.UI.withRun<OrgsOps>((run, dispose) =>
+export const UpdateOrganisations = R.UI.withRun<OrgsOps>()((run, dispose) =>
   T.pure(() => {
     React.useEffect(
       () => dispose, // when the component unmount dispose all launched effects

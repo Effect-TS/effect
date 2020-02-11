@@ -24,7 +24,15 @@ export interface Run<R> {
 
 export interface UI {
   of: <RUI, P = {}>(uiE: View<RUI, P>) => View<RUI, P>;
-  withRun: <RUNR>(f: Run<RUNR>) => View<RUNR, unknown>;
+  withRun: <RUNR>() => <RUI, P>(
+    f: (
+      _: <A>(
+        _: T.Effect<RUNR, never, A>,
+        cb?: ((a: A) => void) | undefined
+      ) => Lazy<void>,
+      dispose: Lazy<void>
+    ) => T.Effect<RUI, never, React.FC<P>>
+  ) => View<RUNR & RUI, P>;
   withState: <S extends State<any>>() => <P>(
     C: React.FC<(S extends State<infer A> ? A : never) & P>
   ) => View<S, P>;
@@ -37,7 +45,15 @@ export const UI: UI = {
   of: <RUI, P>(
     uiE: T.Effect<RUI, never, React.FC<P>>
   ): T.Effect<RUI, never, React.FC<P>> => uiE,
-  withRun: <RUNR>(f: Run<RUNR>) =>
+  withRun: <RUNR>() => <RUI, P>(
+    f: (
+      _: <A>(
+        _: T.Effect<RUNR, never, A>,
+        cb?: ((a: A) => void) | undefined
+      ) => Lazy<void>,
+      dispose: Lazy<void>
+    ) => T.Effect<RUI, never, React.FC<P>>
+  ): View<RUNR & RUI, P> =>
     pipe(
       runner<RUNR>(),
       T.chain(([a, b]) => f(a, b))

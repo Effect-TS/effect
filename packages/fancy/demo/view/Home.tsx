@@ -6,6 +6,7 @@ import { MemoInput } from "./MemoInput";
 import { DT } from "../modules/date";
 import { ORG } from "../modules/orgs";
 import { UI } from "../../lib";
+import { DisplayFlash } from "../modules/flash/view";
 
 // alpha
 /* istanbul ignore file */
@@ -18,7 +19,8 @@ export const Home = UI.of(
       MemoInput,
       UpdateDate: DT.UpdateDate,
       ShowDate: DT.ShowDate,
-      LogDate: DT.LogDate
+      LogDate: DT.LogDate,
+      Flash: DisplayFlash
     }),
     T.map(v => () => (
       <>
@@ -31,6 +33,7 @@ export const Home = UI.of(
         </Link>
         <v.MemoInput />
         <v.LogDate />
+        <v.Flash>{({ message }) => <div>{message}</div>}</v.Flash>
       </>
     ))
   )

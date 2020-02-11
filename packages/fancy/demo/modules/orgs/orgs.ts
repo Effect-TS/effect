@@ -6,6 +6,7 @@ import * as R from "../../../lib";
 import { orgsOpsSpec, orgsOpsURI } from "./def";
 import { updateDate } from "../date/def";
 import { OrgsStateEnv, orgsStateURI } from "./state";
+import { flashMessage } from "../flash/flash";
 
 // alpha
 /* istanbul ignore file */
@@ -30,7 +31,8 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
         isDone(res)
           ? pipe(
               updateOrgs_(res.value),
-              T.chainTap(_ => updateDate)
+              T.chainTap(_ => updateDate),
+              T.chainTap(_ => flashMessage("fetched!"))
             )
           : R.accessS<OrgsStateEnv>()(({ [orgsStateURI]: orgs }) => {
               orgs.error = O.some("error while fetching");
