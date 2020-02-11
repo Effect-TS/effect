@@ -8,7 +8,7 @@ import { effect as T } from "@matechs/effect";
 
 export const DisplayFlash = UI.withRun()((run, dispose) =>
   UI.withState<FlashStateEnv>()<{
-    children: React.FC<{ message: string }>;
+    children: (_: { message: string }) => React.ReactElement;
   }>(({ [flashStateURI]: { messages }, children }) => {
     const [message, setMessage] = React.useState<O.Option<string>>(O.none);
 
