@@ -2,7 +2,8 @@ import { effect as T } from "@matechs/effect";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { pipe } from "fp-ts/lib/pipeable";
 import Link from "next/link";
-import { App, DATE } from "../src/app";
+import { App } from "../src/app";
+import { DT } from "../modules/date";
 
 // alpha
 /* istanbul ignore file */
@@ -10,8 +11,8 @@ import { App, DATE } from "../src/app";
 export const Foo = App.ui.of(
   pipe(
     sequenceS(T.effect)({
-      UpdateDate: DATE.UpdateDate,
-      ShowDate: DATE.ShowDate
+      UpdateDate: DT.UpdateDate,
+      ShowDate: DT.ShowDate
     }),
     T.map(v => () => (
       <>

@@ -29,10 +29,12 @@ export type SOf<
   S extends { [k in URI]: R }
 > = State<{ [k in URI]: S[k] }>;
 
-export interface App<S> {
-  _S: S;
-
+export interface App<S> extends Builder<S> {
   page: (view: View<State<S>, {}>) => typeof React.Component;
+}
+
+export interface Builder<S> {
+  _S: S;
   withState: <K extends (keyof S)[]>(
     keys: K
   ) => <R = unknown>(
@@ -85,34 +87,10 @@ export const merge = <Defs extends StateAtom<any>[]>(
   return s as F.UnionToIntersection<Defs[number]>;
 };
 
-export const generic = <Defs extends StateAtom<any>[]>(_: Defs) => <
-  X,
-  S extends {
-    [k in keyof T]: T[k] extends Type<infer A, any, any> ? A : never;
-  },
-  T = F.UnionToIntersection<Defs[number]>
->(
-  f: (app: App<S>) => X
-): (<K extends S>(app: App<K>) => X) => f as any;
-
-export const app = <
-  StateDef extends StateAtom<StateDef>,
-  IS extends {
-    [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
-  },
-  S = {
-    [k in keyof StateDef]: StateDef[k]["_A"] & M.IObservableObject;
-  }
->(
-  stateDef: StateDef
-) => (initialState: IS): App<S> => {
+export const builder = <S>(): Builder<S> => {
   const ui = <RUI, P>(
     uiE: T.Effect<RUI, never, React.FC<P>>
   ): T.Effect<RUI, never, React.FC<P>> => uiE;
-
-  const page = <RPage>(
-    view: T.Effect<RPage, never, React.FC<{}>>
-  ): typeof React.Component => nextPage(stateDef, initialState)(view);
 
   const withStateP = <K extends (keyof S)[]>(keys: K) => <P = {}>() => <
     R = unknown
@@ -157,15 +135,45 @@ export const app = <
 
   return {
     _S: {} as S,
-    page,
     withStateP,
     withState: keys => withStateP(keys)(),
     accessS,
     accessSM,
     ui: {
-      of: ui,
+      of: ui as any,
       withRun
     }
+  };
+};
+
+export const generic = <Defs extends StateAtom<any>[]>(_: Defs) => <
+  X,
+  S extends {
+    [k in keyof T]: T[k] extends Type<infer A, any, any> ? A : never;
+  },
+  T = F.UnionToIntersection<Defs[number]>
+>(
+  f: (_: Builder<S>) => X
+): X => f(builder());
+
+export const app = <
+  StateDef extends StateAtom<StateDef>,
+  IS extends {
+    [k in keyof StateDef]: T.UIO<StateDef[k]["_A"]>;
+  },
+  S = {
+    [k in keyof StateDef]: StateDef[k]["_A"] & M.IObservableObject;
+  }
+>(
+  stateDef: StateDef
+) => (initialState: IS): App<S> => {
+  const page = <RPage>(
+    view: T.Effect<RPage, never, React.FC<{}>>
+  ): typeof React.Component => nextPage(stateDef, initialState)(view);
+
+  return {
+    page,
+    ...builder<S>()
   };
 };
 
