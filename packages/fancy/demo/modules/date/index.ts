@@ -1,17 +1,16 @@
-import { generic } from "../../../lib";
-import { updateDate, accessDate } from "./def";
-import { UpdateDate, ShowDate, LogDate } from "./views";
-import { DateState, dateS } from "./state";
 import { provideDateOps } from "./date";
+import { accessDate, updateDate } from "./def";
+import { DateState } from "./state";
+import { LogDate, ShowDate, UpdateDate } from "./views";
 
-export const dateModule = generic([dateS])(App => ({
+export const DT = {
   updateDate,
   accessDate,
-  UpdateDate: UpdateDate(App),
-  ShowDate: ShowDate(App),
+  UpdateDate,
+  ShowDate,
   DateState,
-  LogDate: LogDate(App),
-  provide: provideDateOps(App)
-}));
+  LogDate,
+  provide: provideDateOps
+};
 
 export { DateState, initialState } from "./state";

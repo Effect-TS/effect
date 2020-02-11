@@ -2,8 +2,10 @@ import { effect as T } from "@matechs/effect";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { pipe } from "fp-ts/lib/pipeable";
 import Link from "next/link";
-import { App, DATE, ORGS } from "../src/app";
+import { App } from "../src/app";
 import { MemoInput } from "./MemoInput";
+import { DT } from "../modules/date";
+import { ORG } from "../modules/orgs";
 
 // alpha
 /* istanbul ignore file */
@@ -11,12 +13,12 @@ import { MemoInput } from "./MemoInput";
 export const Home = App.ui.of(
   pipe(
     sequenceS(T.effect)({
-      UpdateDate: DATE.UpdateDate,
-      UpdateOrganisations: ORGS.UpdateOrganisations,
-      ShowDate: DATE.ShowDate,
-      ShowOrgs: ORGS.ShowOrgs,
+      UpdateOrganisations: ORG.UpdateOrganisations,
+      ShowOrgs: ORG.ShowOrgs,
       MemoInput,
-      LogDate: DATE.LogDate
+      UpdateDate: DT.UpdateDate,
+      ShowDate: DT.ShowDate,
+      LogDate: DT.LogDate
     }),
     T.map(v => () => (
       <>

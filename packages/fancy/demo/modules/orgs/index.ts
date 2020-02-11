@@ -1,14 +1,12 @@
-import { generic } from "../../../lib";
 import { updateOrgs } from "./def";
 import { provideOrgsOps } from "./orgs";
-import { orgsS } from "./state";
-import { UpdateOrganisations, ShowOrgs } from "./views";
+import { ShowOrgs, UpdateOrganisations } from "./views";
 
-export const orgsModule = generic([orgsS])(App => ({
+export const ORG = {
   updateOrgs,
-  UpdateOrganisations: UpdateOrganisations(App),
-  ShowOrgs: ShowOrgs(App),
-  provide: provideOrgsOps(App)
-}));
+  UpdateOrganisations,
+  ShowOrgs,
+  provide: provideOrgsOps
+};
 
-export { OrgsState, initialState } from "./state";
+export { initialState, OrgsState } from "./state";
