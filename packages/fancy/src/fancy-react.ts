@@ -120,7 +120,7 @@ export function reactComponent<
           stop();
         }
       };
-    }, []);
+    }, Object.values(props));
 
     return isSome(state)
       ? state.value
