@@ -1,6 +1,7 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
 import { page as nextPage } from "./fancy-next";
+import { reactComponent } from "./fancy-react";
 import { State, stateURI, runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { NextContext, nextContextURI } from "./next-ctx";
@@ -99,5 +100,15 @@ export const page = <
 >(
   _V: View<K>
 ) => (_I: IS) => (_M: M) => nextPage(_V, _I, _M);
+
+export const component = <
+  K extends State<any> | unknown,
+  I = K extends State<infer A> ? A : {},
+  IS = {
+    [k in keyof I]: T.UIO<I[k]>;
+  }
+>(
+  _V: View<K>
+) => (_I: IS) => reactComponent(_V, _I);
 
 export { State } from "./fancy";

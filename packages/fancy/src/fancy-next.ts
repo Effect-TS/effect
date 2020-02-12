@@ -84,7 +84,6 @@ export function page<
     public readonly REF = React.createRef<HTMLDivElement>();
 
     public stop: Lazy<void> | undefined = undefined;
-    public autoruns: Array<Lazy<void>> = [];
 
     static async getInitialProps(ctx: NextPageContext) {
       const initialS = await T.runToPromise(initial);
