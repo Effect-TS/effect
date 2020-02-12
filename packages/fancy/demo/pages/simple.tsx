@@ -13,13 +13,13 @@ import { effect as T } from "@matechs/effect";
 */
 const HomeView = R.UI.of(
   pipe(
-    R.accessP((_: { foo: string }) => _.foo),
-    T.chain(foo =>
+    R.accessP((_: { bar: string }) => _.bar),
+    T.chain(bar =>
       pipe(
         Home,
         T.map(C => () => (
           <>
-            <div>{foo}</div>
+            <div>{bar}</div>
             <C />
           </>
         ))
@@ -39,7 +39,7 @@ const HomeComponent = R.component(pipe(HomeView, ORG.provide, DT.provide))({
 
 // tslint:disable-next-line: no-default-export
 export default () => (
-  <HomeComponent foo={"ok"}>
+  <HomeComponent foo={"foo"} bar={"bar"}>
     <div>FALLBACK</div>
   </HomeComponent>
 );
