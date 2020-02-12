@@ -100,9 +100,10 @@ export const page = <
   },
   M = {
     [k in keyof I]: Type<I[k], unknown>;
-  }
+  },
+  P = unknown
 >(
-  _V: View<K>
+  _V: View<K & ComponentProps<P>, P>
 ) => (_I: IS) => (_M: M) => nextPage(_V, _I, _M);
 
 export const component = <

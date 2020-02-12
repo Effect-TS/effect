@@ -5,7 +5,7 @@ import Link from "next/link";
 import { MemoInput } from "./MemoInput";
 import { DT } from "../modules/date";
 import { ORG } from "../modules/orgs";
-import { UI } from "../../lib";
+import { UI, accessP } from "../../lib";
 import { DisplayFlash } from "../modules/flash/view";
 
 // alpha
@@ -20,11 +20,12 @@ export const Home = UI.of(
       UpdateDate: DT.UpdateDate,
       ShowDate: DT.ShowDate,
       LogDate: DT.LogDate,
-      Flash: DisplayFlash
+      Flash: DisplayFlash,
+      Foo: accessP((_: { foo: string }) => _.foo)
     }),
     T.map(v => () => (
       <>
-        <v.ShowDate foo={"foo"} />
+        <v.ShowDate foo={v.Foo} />
         <v.UpdateDate />
         <v.UpdateOrganisations />
         <v.ShowOrgs />

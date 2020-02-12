@@ -23,4 +23,6 @@ export default R.page(pipe(Home, ORG.provide, DT.provide))({
   [dateStateURI]: DT.DateState.type,
   [orgsStateURI]: ORG.OrgsState.type,
   [flashStateURI]: FlashState.type
+})({
+  foo: "ok"
 });

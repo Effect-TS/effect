@@ -8,10 +8,10 @@ import { Home } from "../view/Home";
 import { flashInitialState, flashStateURI } from "../modules/flash/state";
 import { effect as T } from "@matechs/effect";
 
-// This is a plain component, it will render an empty fragment or the
-// provided fallback child and replace the it with the rendered
-// component once async rendering has finished ("suspence like")
-const HomeComponent = R.component(
+/* inferred as 
+: R.View<OrgsOps & OrgsStateEnv & DateOps & FlashStateEnv & DateStateEnv & R.ComponentProps<{foo: string;}>, {}>
+*/
+const HomeView = R.UI.of(
   pipe(
     R.accessP((_: { foo: string }) => _.foo),
     T.chain(foo =>
@@ -24,11 +24,14 @@ const HomeComponent = R.component(
           </>
         ))
       )
-    ),
-    ORG.provide,
-    DT.provide
+    )
   )
-)({
+);
+
+// This is a plain component, it will render an empty fragment or the
+// provided fallback child and replace the it with the rendered
+// component once async rendering has finished ("suspence like")
+const HomeComponent = R.component(pipe(HomeView, ORG.provide, DT.provide))({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState

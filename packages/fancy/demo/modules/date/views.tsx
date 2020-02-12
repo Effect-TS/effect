@@ -22,12 +22,12 @@ export const UpdateDate = R.UI.withRun<DateOps>()(run =>
 );
 
 const ShowDateComponent: React.FC<{ current: Date; foo: string }> = React.memo(
-  ({ current }) => {
+  ({ current, foo }) => {
     const [s, setS] = React.useState(0);
     useInterval(() => {
       setS(s + 1);
     }, 500);
-    return <div>{`${current.toISOString()} - ${s}`}</div>;
+    return <div>{`${current.toISOString()} - ${s} - ${foo}`}</div>;
   }
 );
 
