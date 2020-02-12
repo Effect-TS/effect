@@ -29,16 +29,12 @@ export const stateOf = <S>(s: S): State<S> => ({
   }
 });
 
-export interface StateP<S> {
-  state: S;
-}
-
-export class Fancy<S, R> {
-  readonly ui: T.Effect<R, never, React.FC<StateP<S>>>;
+export class Fancy<S, R, P> {
+  readonly ui: T.Effect<R, never, React.FC<P>>;
   private opsC = 0;
   private readonly cancellers: Map<number, Lazy<void>> = new Map();
 
-  constructor(renderEffect: T.Effect<R, never, React.FC<StateP<S>>>) {
+  constructor(renderEffect: T.Effect<R, never, React.FC<P>>) {
     const dispatch = <R>(r: R) => <A>(
       eff: T.Effect<R, never, A>,
       cb: (a: A) => void = () => {

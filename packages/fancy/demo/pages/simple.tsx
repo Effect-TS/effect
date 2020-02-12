@@ -12,7 +12,17 @@ import { effect as T } from "@matechs/effect";
 // provided fallback child and replace the it with the rendered
 // component once async rendering has finished ("suspence like")
 const HomeComponent = R.component(
-  pipe(T.delay(Home, 3000), ORG.provide, DT.provide)
+  pipe(
+    T.delay(Home, 3000),
+    T.map(HC => (_: { foo: string }) => (
+      <>
+        <div>{_.foo}</div>
+        <HC />
+      </>
+    )),
+    ORG.provide,
+    DT.provide
+  )
 )({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
@@ -21,7 +31,7 @@ const HomeComponent = R.component(
 
 // tslint:disable-next-line: no-default-export
 export default () => (
-  <HomeComponent>
+  <HomeComponent foo={"ok"}>
     <div>FALLBACK</div>
   </HomeComponent>
 );

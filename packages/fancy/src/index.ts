@@ -106,9 +106,10 @@ export const component = <
   I = K extends State<infer A> ? A : {},
   IS = {
     [k in keyof I]: T.UIO<I[k]>;
-  }
+  },
+  P = unknown
 >(
-  _V: View<K>
+  _V: View<K, P>
 ) => (_I: IS) => reactComponent(_V, _I);
 
 export { State } from "./fancy";

@@ -17,8 +17,9 @@ export function reactComponent<
   I = K extends State<infer A> ? A : {},
   IS = {
     [k in keyof I]: T.UIO<I[k]>;
-  }
->(_V: View<K>, _I: IS): React.FC<{ children?: React.ReactElement }> {
+  },
+  P = unknown
+>(_V: View<K, P>, _I: IS): React.FC<{ children?: React.ReactElement } & P> {
   const initial = pipe(
     _I as Record<string, any>,
     R.traverseWithIndex(T.effect)((k: string) =>
@@ -30,7 +31,7 @@ export function reactComponent<
     T.map(r => (r as any) as any)
   );
 
-  return ({ children }) => {
+  return props => {
     const [state, setState] = React.useState<
       Option<React.FunctionComponentElement<{}>>
     >(none);
@@ -79,7 +80,9 @@ export function reactComponent<
                       f.stop();
                     });
 
-                    return React.createElement(Cmp);
+                    return React.createElement(Cmp, {
+                      ...props
+                    });
                   };
 
                   setState(some(React.createElement(CmpS)));
@@ -105,6 +108,6 @@ export function reactComponent<
 
     return isSome(state)
       ? state.value
-      : children || React.createElement(React.Fragment);
+      : props.children || React.createElement(React.Fragment);
   };
 }
