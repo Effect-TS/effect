@@ -1,7 +1,11 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
 import { page as nextPage } from "./fancy-next";
-import { reactComponent } from "./fancy-react";
+import {
+  reactComponent,
+  ComponentProps,
+  componentPropsURI
+} from "./fancy-react";
 import { State, stateURI, runner } from "./fancy";
 import { pipe } from "fp-ts/lib/pipeable";
 import { NextContext, nextContextURI } from "./next-ctx";
@@ -109,7 +113,14 @@ export const component = <
   },
   P = unknown
 >(
-  _V: View<K, P>
+  _V: View<K & ComponentProps<P>, P>
 ) => (_I: IS) => reactComponent(_V, _I);
 
+export const accessP = <P, A>(f: (_: P) => A) =>
+  T.access((_: ComponentProps<P>) => f(_[componentPropsURI].props));
+
+export const accessPM = <P, R, E, A>(f: (_: P) => T.Effect<R, E, A>) =>
+  T.accessM((_: ComponentProps<P>) => f(_[componentPropsURI].props));
+
 export { State } from "./fancy";
+export { ComponentProps } from "./fancy-react";

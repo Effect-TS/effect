@@ -13,13 +13,18 @@ import { effect as T } from "@matechs/effect";
 // component once async rendering has finished ("suspence like")
 const HomeComponent = R.component(
   pipe(
-    T.delay(Home, 3000),
-    T.map(HC => (_: { foo: string }) => (
-      <>
-        <div>{_.foo}</div>
-        <HC />
-      </>
-    )),
+    R.accessP((_: { foo: string }) => _.foo),
+    T.chain(foo =>
+      pipe(
+        Home,
+        T.map(C => () => (
+          <>
+            <div>{foo}</div>
+            <C />
+          </>
+        ))
+      )
+    ),
     ORG.provide,
     DT.provide
   )

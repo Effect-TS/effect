@@ -12,6 +12,14 @@ import { Fancy, State, stateURI } from "./fancy";
 // alpha
 /* istanbul ignore file */
 
+export const componentPropsURI = Symbol();
+
+export interface ComponentProps<P> {
+  [componentPropsURI]: {
+    props: P;
+  };
+}
+
 export function reactComponent<
   K extends State<any> | unknown,
   I = K extends State<infer A> ? A : {},
@@ -19,7 +27,10 @@ export function reactComponent<
     [k in keyof I]: T.UIO<I[k]>;
   },
   P = unknown
->(_V: View<K, P>, _I: IS): React.FC<{ children?: React.ReactElement } & P> {
+>(
+  _V: View<K & ComponentProps<P>, P>,
+  _I: IS
+): React.FC<{ children?: React.ReactElement } & P> {
   const initial = pipe(
     _I as Record<string, any>,
     R.traverseWithIndex(T.effect)((k: string) =>
@@ -88,7 +99,12 @@ export function reactComponent<
                   setState(some(React.createElement(CmpS)));
                 })
               ),
-              T.provideAll(state as any)
+              T.provideAll({
+                ...state,
+                [componentPropsURI]: {
+                  props
+                }
+              } as any)
             )
           )
         ),
