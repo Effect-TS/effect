@@ -12,6 +12,10 @@ interface User {
   prefix: string;
 }
 
+interface Dummy extends Action<any> {
+  type: "DUMMY";
+}
+
 interface UserFetched extends Action<any> {
   type: "USER_FETCHED";
   user: User;
@@ -27,7 +31,7 @@ interface FetchUser extends Action<any> {
   id: string;
 }
 
-type MyAction = FetchUser | UserFetched | UserFetchFailed;
+type MyAction = FetchUser | UserFetched | UserFetchFailed | Dummy;
 
 interface State {
   user: Op.Option<User>;
@@ -59,6 +63,12 @@ interface Config {
   };
 }
 
+interface Config2 {
+  config2: {
+    prefix: string;
+  };
+}
+
 const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
   pipe(
     action$,
@@ -86,12 +96,38 @@ const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
   )
 );
 
+const fetchUser2 = Ep.epic<State, MyAction>()(_ => action$ =>
+  pipe(
+    action$,
+    S.filterRefineWith(isFetchUser),
+    S.chain(({ id }) =>
+      S.encaseEffect(
+        T.accessM(({ config2: { prefix } }: Config2) =>
+          T.condWith(prefix === "prefix2")(
+            T.pure<MyAction>({
+              type: "DUMMY"
+            })
+          )(
+            T.pure<MyAction>({
+              type: "USER_FETCH_FAILED",
+              error: "wrong prefix"
+            })
+          )
+        )
+      )
+    )
+  )
+);
+
 describe("Epics", () => {
   jest.setTimeout(5000);
 
   it("should use redux-observable", async () => {
     const rootEpic = combineEpics(
-      Ep.embed(fetchUser)({ config: { prefix: "prefix" } })
+      Ep.embed(
+        fetchUser,
+        fetchUser2
+      )({ config: { prefix: "prefix" }, config2: { prefix: "prefix2" } })
     );
 
     const epicMiddleware = createEpicMiddleware<
@@ -100,6 +136,7 @@ describe("Epics", () => {
       State,
       State
     >();
+
     const store = createStore(
       combineReducers({
         reducer
@@ -121,6 +158,7 @@ describe("Epics", () => {
 
     assert.deepEqual(updates, [
       { user: Op.none, error: Op.none },
+      { user: Op.some({ id: "test", prefix: "prefix" }), error: Op.none },
       { user: Op.some({ id: "test", prefix: "prefix" }), error: Op.none }
     ]);
   });
