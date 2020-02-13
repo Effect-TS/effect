@@ -5,7 +5,6 @@ import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
 import * as Rxo from "redux-observable";
 import { pipe } from "fp-ts/lib/pipeable";
-import { Effect } from "packages/effect/src/effect";
 import { Subject } from "rxjs";
 
 export type Epic<R, State, A extends Action<any>, O extends A> = {
@@ -33,7 +32,7 @@ type Act<K extends AnyEpic> = K["_A"];
 type AOut<K extends AnyEpic> = K["_O"];
 
 export interface StateAccess<S> {
-  value: Effect<T.NoEnv, never, S>;
+  value: T.Effect<T.NoEnv, never, S>;
   source: Subject<S>;
 }
 
