@@ -74,8 +74,8 @@ interface Createp {
   path: string;
 }
 
-interface CurrentId {
-  _tag: "CurrentId";
+interface NodeId {
+  _tag: "NodeId";
   id: string;
 }
 
@@ -90,7 +90,7 @@ interface Children {
   paths: string[];
 }
 
-type Out = Mkdirp | Createp | CurrentId | Children | Deleted;
+type Out = Mkdirp | Createp | NodeId | Children | Deleted;
 
 const out = <A extends Out>(a: A): A => a;
 
@@ -218,11 +218,11 @@ export class Client {
   }
 
   // tslint:disable-next-line: prefer-function-over-method
-  currentId(createP: Createp) {
+  currentId(path: string) {
     return T.sync(
-      (): CurrentId => {
-        const p = createP.path.split("/");
-        return out({ id: p[p.length - 1], _tag: "CurrentId" });
+      (): NodeId => {
+        const p = path.split("/");
+        return out({ id: p[p.length - 1], _tag: "NodeId" });
       }
     );
   }
@@ -291,7 +291,7 @@ export class Client {
             );
           }
         } else {
-          res(right(out({ paths, _tag: "Children", root })));
+          res(right(out({ paths: paths.sort(), _tag: "Children", root })));
         }
       });
 
