@@ -22,6 +22,19 @@ describe("Sync", () => {
     assert.deepEqual(res, right(done(11)));
   });
 
+  it("should chain access exec sync", () => {
+    const program = pipe(
+      T.access((_: { n: number }) => _.n),
+      T.chain(n => T.sync(() => n + 1))
+    );
+
+    const provide = T.provideSW<{ n: number }>()(T.pure(10))(n => ({ n }));
+
+    const res = T.runSync(pipe(program, provide));
+
+    assert.deepEqual(res, right(done(11)));
+  });
+
   it("should fail exec sync", () => {
     const program = pipe(
       T.sync(() => 10),
