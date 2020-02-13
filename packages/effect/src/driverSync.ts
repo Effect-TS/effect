@@ -2,14 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import {
-  Either,
-  fold as foldEither,
-  isRight,
-  left,
-  right
-} from "fp-ts/lib/Either";
-import { FunctionN } from "fp-ts/lib/function";
+import { option as O, either as E, function as F } from "fp-ts";
 import {
   Cause,
   Done,
@@ -21,7 +14,6 @@ import {
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
 import * as L from "./list";
-import { isSome } from "fp-ts/lib/Option";
 
 // the same as Driver but backs runSync
 /* istanbul ignore file */
@@ -96,12 +88,12 @@ const makeInterruptFrame = (
 });
 
 export interface DriverSync<E, A> {
-  start(run: T.Effect<T.NoEnv, E, A>): Either<Error, Exit<E, A>>;
+  start(run: T.Effect<T.NoEnv, E, A>): E.Either<Error, Exit<E, A>>;
 }
 
 export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   completed: Exit<E, A> | null = null;
-  listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
+  listeners: F.FunctionN<[Exit<E, A>], void>[] | undefined;
   started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
@@ -193,8 +185,8 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     return;
   }
 
-  foldResume(status: Either<unknown, unknown>) {
-    foldEither(
+  foldResume(status: E.Either<unknown, unknown>) {
+    E.fold(
       (cause: unknown) => {
         const go = this.handle(raise(cause));
         if (go) {
@@ -212,7 +204,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     )(status);
   }
 
-  resume(status: Either<unknown, unknown>): void {
+  resume(status: E.Either<unknown, unknown>): void {
     this.foldResume(status);
   }
 
@@ -254,7 +246,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             current = this.next(current.f0);
             break;
           case T.EffectTag.PureOption: {
-            if (isSome(current.f0)) {
+            if (O.isSome(current.f0)) {
               current = this.next(current.f0.value);
             } else {
               current = this.handle(raise(current.f1()));
@@ -262,7 +254,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             break;
           }
           case T.EffectTag.PureEither: {
-            if (isRight(current.f0)) {
+            if (E.isRight(current.f0)) {
               current = this.next(current.f0.right);
             } else {
               current = this.handle(raise(current.f0.left));
@@ -338,16 +330,16 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     }
   }
 
-  start(run: T.Effect<{}, E, A>): Either<Error, Exit<E, A>> {
+  start(run: T.Effect<{}, E, A>): E.Either<Error, Exit<E, A>> {
     this.loop(run as any);
 
     if (this.completed !== null) {
-      return right(this.completed);
+      return E.right(this.completed);
     }
 
     this.interrupt();
 
-    return left(new Error("async operations running"));
+    return E.left(new Error("async operations running"));
   }
 
   interrupt(): void {

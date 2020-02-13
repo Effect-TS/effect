@@ -1,5 +1,5 @@
 import * as _ from "./effect";
-import { Option, fromNullable } from "fp-ts/lib/Option";
+import { option as O } from "fp-ts";
 
 /**
  * Implements a basic FIFO list
@@ -110,8 +110,8 @@ export function popLastUnsafe<A>(list: List<A>): A | null {
 /**
  * Pops the first element of a List Option<A>
  */
-export function pop<A>(list: List<A>): Option<A> {
-  return fromNullable(popUnsafe(list));
+export function pop<A>(list: List<A>): O.Option<A> {
+  return O.fromNullable(popUnsafe(list));
 }
 
 /**
@@ -124,8 +124,8 @@ export function headUnsafe<A>(list: List<A>): A | null {
 /**
  * Gets the first element of the List as Option<A> (does not change the List)
  */
-export function head<A>(list: List<A>): Option<A> {
-  return fromNullable(headUnsafe(list));
+export function head<A>(list: List<A>): O.Option<A> {
+  return O.fromNullable(headUnsafe(list));
 }
 /**
  * Gets the last element of the List as A | null (does not change the List)
@@ -136,6 +136,6 @@ export function lastUnsafe<A>(list: List<A>): A | null {
 /**
  * Gets the last element of the List as Option<A> (does not change the List)
  */
-export function last<A>(list: List<A>): Option<A> {
-  return fromNullable(lastUnsafe(list));
+export function last<A>(list: List<A>): O.Option<A> {
+  return O.fromNullable(lastUnsafe(list));
 }

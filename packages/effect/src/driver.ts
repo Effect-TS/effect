@@ -2,8 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { Either, fold as foldEither, isRight } from "fp-ts/lib/Either";
-import { FunctionN, Lazy } from "fp-ts/lib/function";
+import { either as E, function as F, option as O } from "fp-ts";
 import {
   Cause,
   Done,
@@ -15,7 +14,6 @@ import {
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
 import * as L from "./list";
-import { isSome } from "fp-ts/lib/Option";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -89,19 +87,19 @@ const makeInterruptFrame = (
 export interface Driver<E, A> {
   start(run: T.Effect<T.NoEnv, E, A>): void;
   interrupt(): void;
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>;
+  onExit(f: F.FunctionN<[Exit<E, A>], void>): F.Lazy<void>;
   completed: Exit<E, A> | null;
 }
 
 export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Exit<E, A> | null = null;
-  listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
+  listeners: F.FunctionN<[Exit<E, A>], void>[] | undefined;
 
   started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  cancelAsync: Lazy<void> | undefined;
+  cancelAsync: F.Lazy<void> | undefined;
   envStack = L.empty<any>();
 
   constructor(readonly runtime: Runtime = defaultRuntime) {}
@@ -127,7 +125,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.set(a);
   }
 
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+  onExit(f: F.FunctionN<[Exit<E, A>], void>): F.Lazy<void> {
     if (this.completed !== null) {
       f(this.completed);
     }
@@ -211,8 +209,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return;
   }
 
-  foldResume(status: Either<unknown, unknown>) {
-    foldEither(
+  foldResume(status: E.Either<unknown, unknown>) {
+    E.fold(
       (cause: unknown) => {
         const go = this.handle(raise(cause));
         if (go) {
@@ -230,13 +228,16 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     )(status);
   }
 
-  resume(status: Either<unknown, unknown>): void {
+  resume(status: E.Either<unknown, unknown>): void {
     this.cancelAsync = undefined;
     this.runtime.dispatch(this.foldResume.bind(this), status);
   }
 
   contextSwitch(
-    op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>
+    op: F.FunctionN<
+      [F.FunctionN<[E.Either<unknown, unknown>], void>],
+      F.Lazy<void>
+    >
   ): void {
     let complete = false;
     const wrappedCancel = op(status => {
@@ -290,7 +291,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = this.next(current.f0);
             break;
           case T.EffectTag.PureOption: {
-            if (isSome(current.f0)) {
+            if (O.isSome(current.f0)) {
               current = this.next(current.f0.value);
             } else {
               current = this.handle(raise(current.f1()));
@@ -298,7 +299,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             break;
           }
           case T.EffectTag.PureEither: {
-            if (isRight(current.f0)) {
+            if (E.isRight(current.f0)) {
               current = this.next(current.f0.right);
             } else {
               current = this.handle(raise(current.f0.left));

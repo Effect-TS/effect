@@ -1,8 +1,5 @@
-import { FunctionN, constant } from "fp-ts/lib/function";
-import { Semigroup } from "fp-ts/lib/Semigroup";
-import { Monoid } from "fp-ts/lib/Monoid";
+import { function as F, semigroup as Sem, monoid as Mon } from "fp-ts";
 import { Exit, done } from "./original/exit";
-
 import * as T from "./effect";
 import { Monad3E } from "./overload";
 import { NoEnv, effect } from "./effect";
@@ -72,7 +69,7 @@ export function encaseEffect<R, E, A>(
 export interface Bracket<E, A> {
   readonly _tag: ManagedTag.Bracket;
   readonly acquire: T.Effect<NoEnv, E, A>;
-  readonly release: FunctionN<[A], T.Effect<NoEnv, E, unknown>>;
+  readonly release: F.FunctionN<[A], T.Effect<NoEnv, E, unknown>>;
 }
 
 /**
@@ -82,7 +79,7 @@ export interface Bracket<E, A> {
  */
 export function bracket<R, E, A, R2, E2>(
   acquire: T.Effect<R, E, A>,
-  release: FunctionN<[A], T.Effect<R2, E2, unknown>>
+  release: F.FunctionN<[A], T.Effect<R2, E2, unknown>>
 ): Managed<R & R2, E | E2, A> {
   return r => ({
     _tag: ManagedTag.Bracket,
@@ -95,7 +92,7 @@ export interface BracketExit<E, A> {
   readonly _tag: ManagedTag.BracketExit;
 
   readonly acquire: T.Effect<T.NoEnv, E, A>;
-  readonly release: FunctionN<
+  readonly release: F.FunctionN<
     [A, Exit<E, unknown>],
     T.Effect<T.NoEnv, E, unknown>
   >;
@@ -103,7 +100,7 @@ export interface BracketExit<E, A> {
 
 export function bracketExit<R, E, A, R2, E2>(
   acquire: T.Effect<R, E, A>,
-  release: FunctionN<[A, Exit<E, unknown>], T.Effect<R2, E2, unknown>>
+  release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<R2, E2, unknown>>
 ): Managed<R & R2, E | E2, A> {
   return r => ({
     _tag: ManagedTag.BracketExit,
@@ -138,7 +135,7 @@ export function suspend<R, E, R2, E2, A>(
 export interface Chain<R, E, L, A> {
   readonly _tag: ManagedTag.Chain;
   readonly left: Managed<T.NoEnv, E, L>;
-  readonly bind: FunctionN<[L], Managed<T.NoEnv, E, A>>;
+  readonly bind: F.FunctionN<[L], Managed<T.NoEnv, E, A>>;
 }
 
 /**
@@ -150,7 +147,7 @@ export interface Chain<R, E, L, A> {
  */
 function chain_<R, E, L, R2, E2, A>(
   left: Managed<R, E, L>,
-  bind: FunctionN<[L], Managed<R2, E2, A>>
+  bind: F.FunctionN<[L], Managed<R2, E2, A>>
 ): Managed<R & R2, E | E2, A> {
   return r => ({
     _tag: ManagedTag.Chain,
@@ -164,7 +161,7 @@ function chain_<R, E, L, R2, E2, A>(
  * @param bind
  */
 export function chain<R, E, L, A>(
-  bind: FunctionN<[L], Managed<R, E, A>>
+  bind: F.FunctionN<[L], Managed<R, E, A>>
 ): <R2, E2>(ma: Managed<R2, E2, L>) => Managed<R & R2, E | E2, A> {
   return left => chain_(left, bind);
 }
@@ -176,7 +173,7 @@ export function chain<R, E, L, A>(
  */
 function map_<R, E, L, A>(
   res: Managed<R, E, L>,
-  f: FunctionN<[L], A>
+  f: F.FunctionN<[L], A>
 ): Managed<R, E, A> {
   return chain_(res, r => pure(f(r)) as Managed<R, E, A>);
 }
@@ -186,7 +183,7 @@ function map_<R, E, L, A>(
  * @param f
  */
 export function map<L, A>(
-  f: FunctionN<[L], A>
+  f: F.FunctionN<[L], A>
 ): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> {
   return <R, E>(res: Managed<R, E, L>) => map_(res, f);
 }
@@ -202,7 +199,7 @@ export function map<L, A>(
 export function zipWith<R, E, A, R2, E2, B, C>(
   resa: Managed<R, E, A>,
   resb: Managed<R2, E2, B>,
-  f: FunctionN<[A, B], C>
+  f: F.FunctionN<[A, B], C>
 ): Managed<R & R2, E | E2, C> {
   return chain_(resa, a => map_(resb, b => f(a, b)));
 }
@@ -228,7 +225,7 @@ export function zip<R, E, A, R2, E2, B>(
  */
 export function ap<R, E, A, R2, E2, B>(
   resa: Managed<R, E, A>,
-  resfab: Managed<R2, E2, FunctionN<[A], B>>
+  resfab: Managed<R2, E2, F.FunctionN<[A], B>>
 ): Managed<R & R2, E | E2, B> {
   return zipWith(resa, resfab, (a, f) => f(a));
 }
@@ -239,7 +236,7 @@ export function ap<R, E, A, R2, E2, B>(
  * @param resa
  */
 function ap_<R, E, A, B, R2, E2>(
-  resfab: Managed<R, E, FunctionN<[A], B>>,
+  resfab: Managed<R, E, F.FunctionN<[A], B>>,
   resa: Managed<R2, E2, A>
 ): Managed<R & R2, E | E2, B> {
   return zipWith(resfab, resa, (f, a) => f(a));
@@ -253,7 +250,7 @@ function ap_<R, E, A, B, R2, E2>(
  * @param b
  */
 export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
-  return map_(fa, constant(b));
+  return map_(fa, F.constant(b));
 }
 
 /**
@@ -274,7 +271,7 @@ export function to<B>(
  */
 export function chainTap<R, E, A, R2, E2>(
   left: Managed<R, E, A>,
-  bind: FunctionN<[A], Managed<R2, E2, unknown>>
+  bind: F.FunctionN<[A], Managed<R2, E2, unknown>>
 ): Managed<R & R2, E | E2, A> {
   return chain_(left, a => as(bind(a), a));
 }
@@ -284,8 +281,8 @@ export function chainTap<R, E, A, R2, E2>(
  * @param bind
  */
 export function chainTapWith<R, E, A>(
-  bind: FunctionN<[A], Managed<R, E, unknown>>
-): FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
+  bind: F.FunctionN<[A], Managed<R, E, unknown>>
+): F.FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
   return inner => chainTap(inner, bind);
 }
 
@@ -294,7 +291,7 @@ export function chainTapWith<R, E, A>(
  * @param f
  */
 export function consume<R, E, A, B>(
-  f: FunctionN<[A], T.Effect<R, E, B>>
+  f: F.FunctionN<[A], T.Effect<R, E, B>>
 ): <R2, E2>(ma: Managed<R2, E2, A>) => T.Effect<R & R2, E | E2, B> {
   // eslint-disable-next-line @typescript-eslint/no-use-before-define
   return r => use(r, f);
@@ -319,7 +316,7 @@ export function fiber<R, E, A>(
  */
 export function use<R, E, A, R2, E2, B>(
   res: Managed<R, E, A>,
-  f: FunctionN<[A], T.Effect<R2, E2, B>>
+  f: F.FunctionN<[A], T.Effect<R2, E2, B>>
 ): T.Effect<R & R2, E | E2, B> {
   return T.accessM((r: R & R2) => {
     const c = res(r);
@@ -422,8 +419,8 @@ export const managed: Monad3E<URI> = {
 } as const;
 
 export function getSemigroup<R, E, A>(
-  Semigroup: Semigroup<A>
-): Semigroup<Managed<R, E, A>> {
+  Semigroup: Sem.Semigroup<A>
+): Sem.Semigroup<Managed<R, E, A>> {
   return {
     concat(x: Managed<R, E, A>, y: Managed<R, E, A>): Managed<R, E, A> {
       return zipWith(x, y, Semigroup.concat);
@@ -432,8 +429,8 @@ export function getSemigroup<R, E, A>(
 }
 
 export function getMonoid<R, E, A>(
-  Monoid: Monoid<A>
-): Monoid<Managed<R, E, A>> {
+  Monoid: Mon.Monoid<A>
+): Mon.Monoid<Managed<R, E, A>> {
   return {
     ...getSemigroup(Monoid),
     empty: pure(Monoid.empty) as Managed<R, E, A>

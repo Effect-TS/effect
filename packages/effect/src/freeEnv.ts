@@ -1,13 +1,12 @@
 import * as T from "./effect";
-import { FunctionN } from "fp-ts/lib/function";
-import { pipe } from "fp-ts/lib/pipeable";
+import { function as F, pipeable as P } from "fp-ts";
 
-export type Patched<A, B> = B extends FunctionN<
+export type Patched<A, B> = B extends F.FunctionN<
   infer ARG,
   T.Effect<infer R, infer E, infer RET>
 >
-  ? FunctionN<ARG, T.Effect<R, E, RET>> extends B
-    ? FunctionN<ARG, T.Effect<R & A, E, RET>>
+  ? F.FunctionN<ARG, T.Effect<R, E, RET>> extends B
+    ? F.FunctionN<ARG, T.Effect<R & A, E, RET>>
     : "polymorphic signature not supported"
   : B extends T.Effect<infer R, infer E, infer RET>
   ? T.Effect<R, E, RET> extends B
@@ -46,7 +45,7 @@ export function access<A extends ModuleShape<A>>(
 export type ModuleShape<M> = {
   [k in keyof M]: {
     [h in Exclude<keyof M[k], symbol>]:
-      | FunctionN<any, T.Effect<any, any, any>>
+      | F.FunctionN<any, T.Effect<any, any, any>>
       | T.Effect<any, any, any>;
   } &
     {
@@ -70,7 +69,7 @@ export function cn<T extends T.Effect<any, any, any>>(): T {
   return {} as T;
 }
 
-export function fn<T extends FunctionN<any, T.Effect<any, any, any>>>(): T {
+export function fn<T extends F.FunctionN<any, T.Effect<any, any, any>>>(): T {
   // tslint:disable-next-line: no-empty
   return (() => {}) as any;
 }
@@ -81,11 +80,11 @@ export type Provider<Environment, Module, E2 = never> = <R, E, A>(
 
 export type Implementation<M> = {
   [k in keyof M]: {
-    [h in keyof M[k]]: M[k][h] extends FunctionN<
+    [h in keyof M[k]]: M[k][h] extends F.FunctionN<
       infer ARG,
       T.Effect<infer _R, infer E, infer A>
     >
-      ? FunctionN<ARG, T.Effect<any, E, A>>
+      ? F.FunctionN<ARG, T.Effect<any, E, A>>
       : M[k][h] extends T.Effect<infer _R, infer E, infer A>
       ? T.Effect<any, E, A>
       : never;
@@ -100,7 +99,7 @@ export type InferR<F> = F extends (
   ? Q
   : never;
 
-type EnvOf<F> = F extends FunctionN<
+type EnvOf<F> = F extends F.FunctionN<
   infer _ARG,
   T.Effect<infer R, infer _E, infer _A>
 >
@@ -111,11 +110,11 @@ type EnvOf<F> = F extends FunctionN<
 
 type OnlyNew<M extends ModuleShape<any>, I extends Implementation<M>> = {
   [k in keyof I]: {
-    [h in keyof I[k]]: I[k][h] extends FunctionN<
+    [h in keyof I[k]]: I[k][h] extends F.FunctionN<
       infer ARG,
       T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
     >
-      ? FunctionN<ARG, T.Effect<R, E, A>>
+      ? F.FunctionN<ARG, T.Effect<R, E, A>>
       : I[k][h] extends T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
       ? T.Effect<R, E, A>
       : never;
@@ -173,7 +172,7 @@ export function implement<S extends ModuleSpec<any>>(s: S) {
     i: I
   ): ProviderOf<TypeOf<S>, I> => eff =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-      pipe(eff, T.provideS(providing(s, i, e)))
+      P.pipe(eff, T.provideS(providing(s, i, e)))
     );
 }
 
@@ -185,7 +184,7 @@ export function implementWith<RW, EW, AW>(w: T.Effect<RW, EW, AW>) {
   ): ProviderOf<TypeOf<S>, I, RW, EW> => eff =>
     T.effect.chain(w, r =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        pipe(eff, T.provideS(providing(s, i(r), e)))
+        P.pipe(eff, T.provideS(providing(s, i(r), e)))
       )
     );
 }

@@ -3,11 +3,7 @@
   credits to original author
  */
 
-import * as e from "fp-ts/lib/Either";
-import { Either, left, right } from "fp-ts/lib/Either";
-import { constant, identity, not } from "fp-ts/lib/function";
-import * as o from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
+import { either as E, function as F, option as O, pipeable as P } from "fp-ts";
 import { Dequeue, empty } from "./original/support/dequeue";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeRef, Ref } from "./ref";
@@ -53,7 +49,7 @@ export interface Semaphore {
 }
 
 type Reservation = readonly [number, Deferred<unknown, never, void>];
-type State = Either<Dequeue<Reservation>, number>;
+type State = E.Either<Dequeue<Reservation>, number>;
 
 const isReservationFor = (latch: Deferred<unknown, never, void>) => (
   rsv: readonly [number, Deferred<unknown, never, void>]
@@ -82,14 +78,14 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
           ? T.unit
           : T.flatten(
               ref.modify(current =>
-                pipe(
+                P.pipe(
                   current,
-                  e.fold(
+                  E.fold(
                     waiting =>
-                      pipe(
+                      P.pipe(
                         waiting.take(),
-                        o.fold(
-                          () => [T.unit, right(n) as State] as const,
+                        O.fold(
+                          () => [T.unit, E.right(n) as State] as const,
                           ([[needed, latch], q]) =>
                             n >= needed
                               ? ([
@@ -97,17 +93,17 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                                     latch.done(undefined),
                                     n > needed ? releaseN(n - needed) : T.unit
                                   ),
-                                  left(q) as State
+                                  E.left(q) as State
                                 ] as const)
                               : ([
                                   T.unit,
-                                  left(
+                                  E.left(
                                     q.push([needed - n, latch] as const)
                                   ) as State
                                 ] as const)
                         )
                       ),
-                    ready => [T.unit, right(ready + n) as State] as const
+                    ready => [T.unit, E.right(ready + n) as State] as const
                   )
                 )
               )
@@ -122,24 +118,24 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     T.uninterruptible(
       T.flatten(
         ref.modify(current =>
-          pipe(
+          P.pipe(
             current,
-            e.fold(
+            E.fold(
               waiting =>
-                pipe(
+                P.pipe(
                   waiting.find(isReservationFor(latch)),
-                  o.fold(
-                    () => [releaseN(n), left(waiting) as State] as const,
+                  O.fold(
+                    () => [releaseN(n), E.left(waiting) as State] as const,
                     ([pending]) =>
                       [
                         releaseN(n - pending),
-                        left(
-                          waiting.filter(not(isReservationFor(latch)))
+                        E.left(
+                          waiting.filter(F.not(isReservationFor(latch)))
                         ) as State
                       ] as const
                   )
                 ),
-              ready => [T.unit, right(ready + n) as State] as const
+              ready => [T.unit, E.right(ready + n) as State] as const
             )
           )
         )
@@ -149,23 +145,23 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   const ticketN = (n: number): T.Effect<T.NoEnv, never, Ticket<void>> =>
     effect.chain(makeDeferred<unknown, never, void>(), latch =>
       ref.modify(current =>
-        pipe(
+        P.pipe(
           current,
-          e.fold(
+          E.fold(
             waiting =>
               [
                 makeTicket(latch.wait, cancelWait(n, latch)),
-                left(waiting.offer([n, latch] as const)) as State
+                E.left(waiting.offer([n, latch] as const)) as State
               ] as const,
             ready =>
               ready >= n
                 ? ([
                     makeTicket(T.unit, releaseN(n)),
-                    right(ready - n) as State
+                    E.right(ready - n) as State
                   ] as const)
                 : ([
                     makeTicket(latch.wait, cancelWait(n, latch)),
-                    left(empty().offer([n - ready, latch] as const)) as State
+                    E.left(empty().offer([n - ready, latch] as const)) as State
                   ] as const)
           )
         )
@@ -184,12 +180,12 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   ): T.Effect<R, E, A> => {
     const acquire = T.interruptible(acquireN(n));
     const release = releaseN(n);
-    return T.bracket(acquire, constant(release), () => inner);
+    return T.bracket(acquire, F.constant(release), () => inner);
   };
 
   const available = effect.map(
     ref.get,
-    e.fold(q => -1 * q.size(), identity)
+    E.fold(q => -1 * q.size(), F.identity)
   );
 
   return {
@@ -212,6 +208,6 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 export function makeSemaphore(n: number): T.Effect<T.NoEnv, never, Semaphore> {
   return T.applySecond(
     sanityCheck(n),
-    effect.map(makeRef(right(n) as State), makeSemaphoreImpl)
+    effect.map(makeRef(E.right(n) as State), makeSemaphoreImpl)
   );
 }

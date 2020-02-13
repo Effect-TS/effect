@@ -3,11 +3,7 @@
   credits to original author
  */
 
-import { Either, fold, left, right } from "fp-ts/lib/Either";
-import { FunctionN, identity } from "fp-ts/lib/function";
-import { getOrElse, option } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
-import { pipeable } from "fp-ts/lib/pipeable";
+import { either as E, function as F, option as O, pipeable as P } from "fp-ts";
 import { Deferred, makeDeferred } from "./deferred";
 import { makeRef, Ref } from "./ref";
 import { natNumber } from "./sanity";
@@ -22,10 +18,10 @@ export interface ConcurrentQueue<A> {
   offer(a: A): T.Effect<T.NoEnv, never, void>;
 }
 
-type State<A> = Either<Dequeue<Deferred<T.NoEnv, never, A>>, Dequeue<A>>;
-const initial = <A>(): State<A> => right(empty());
+type State<A> = E.Either<Dequeue<Deferred<T.NoEnv, never, A>>, Dequeue<A>>;
+const initial = <A>(): State<A> => E.right(empty());
 
-const poption = pipeable(option);
+const poption = P.pipeable(O.option);
 
 const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.offer(a);
@@ -34,10 +30,10 @@ const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 // Possibly predicates that allow testing if the queue is at least of some size
 const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n
-    ? pipe(
+    ? P.pipe(
         queue.take(),
         poption.map(t => t[1]),
-        getOrElse(() => queue)
+        O.getOrElse(() => queue)
       ).offer(a)
     : queue.offer(a);
 
@@ -47,14 +43,14 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 function makeConcurrentQueueImpl<A>(
   state: Ref<State<A>>,
   factory: T.Effect<T.NoEnv, never, Deferred<T.NoEnv, never, A>>,
-  overflowStrategy: FunctionN<[Dequeue<A>, A], Dequeue<A>>,
+  overflowStrategy: F.FunctionN<[Dequeue<A>, A], Dequeue<A>>,
   // This is effect that precedes offering
   // in the case of a boudned queue it is responsible for acquiring the semaphore
   offerGate: T.Effect<T.NoEnv, never, void>,
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: FunctionN<
+  takeGate: F.FunctionN<
     [T.Effect<T.NoEnv, never, A>],
     T.Effect<T.NoEnv, never, A>
   >
@@ -64,11 +60,11 @@ function makeConcurrentQueueImpl<A>(
   ): T.Effect<T.NoEnv, never, void> {
     return T.asUnit(
       state.update(current =>
-        pipe(
+        P.pipe(
           current,
-          fold(
-            waiting => left(waiting.filter(item => item !== latch)),
-            available => right(available) as State<A>
+          E.fold(
+            waiting => E.left(waiting.filter(item => item !== latch)),
+            available => E.right(available) as State<A>
           )
         )
       )
@@ -79,29 +75,29 @@ function makeConcurrentQueueImpl<A>(
     T.bracketExit(
       effect.chain(factory, latch =>
         state.modify(current =>
-          pipe(
+          P.pipe(
             current,
-            fold(
+            E.fold(
               waiting =>
                 [
                   makeTicket(latch.wait, cleanupLatch(latch)),
-                  left(waiting.offer(latch)) as State<A>
+                  E.left(waiting.offer(latch)) as State<A>
                 ] as const,
               ready =>
-                pipe(
+                P.pipe(
                   ready.take(),
                   poption.map(
                     ([next, q]) =>
                       [
                         makeTicket(T.pure(next), T.unit),
-                        right(q) as State<A>
+                        E.right(q) as State<A>
                       ] as const
                   ),
-                  getOrElse(
+                  O.getOrElse(
                     () =>
                       [
                         makeTicket(latch.wait, cleanupLatch(latch)),
-                        left(of(latch)) as State<A>
+                        E.left(of(latch)) as State<A>
                       ] as const
                   )
                 )
@@ -120,28 +116,28 @@ function makeConcurrentQueueImpl<A>(
       T.uninterruptible(
         T.flatten(
           state.modify(current =>
-            pipe(
+            P.pipe(
               current,
-              fold(
+              E.fold(
                 waiting =>
-                  pipe(
+                  P.pipe(
                     waiting.take(),
                     poption.map(
                       ([next, q]) =>
-                        [next.done(a), left(q) as State<A>] as const
+                        [next.done(a), E.left(q) as State<A>] as const
                     ),
-                    getOrElse(
+                    O.getOrElse(
                       () =>
                         [
                           T.unit,
-                          right(overflowStrategy(empty(), a)) as State<A>
+                          E.right(overflowStrategy(empty(), a)) as State<A>
                         ] as const
                     )
                   ),
                 available =>
                   [
                     T.unit,
-                    right(overflowStrategy(available, a)) as State<A>
+                    E.right(overflowStrategy(available, a)) as State<A>
                   ] as const
               )
             )
@@ -169,7 +165,7 @@ export function unboundedQueue<A>(): T.Effect<
       makeDeferred<T.NoEnv, never, A>(),
       unboundedOffer,
       T.unit,
-      identity
+      F.identity
     )
   );
 }
@@ -193,7 +189,7 @@ export function slidingQueue<A>(
         makeDeferred<T.NoEnv, never, A>(),
         slidingOffer(capacity),
         T.unit,
-        identity
+        F.identity
       )
     )
   );
@@ -214,7 +210,7 @@ export function droppingQueue<A>(
         makeDeferred<T.NoEnv, never, A>(),
         droppingOffer(capacity),
         T.unit,
-        identity
+        F.identity
       )
     )
   );
@@ -239,8 +235,7 @@ export function boundedQueue<A>(
           // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item
           T.bracketExit(
             sem.release,
-            (_, exit) =>
-              exit._tag === "Interrupt" ? sem.acquire : T.unit,
+            (_, exit) => (exit._tag === "Interrupt" ? sem.acquire : T.unit),
             () => inner
           )
       )

@@ -2,7 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/ref.ts
  */
 
-import { FunctionN } from "fp-ts/lib/function";
+import { function as F } from "fp-ts";
 import * as T from "./effect";
 
 export interface Ref<A> {
@@ -20,14 +20,14 @@ export interface Ref<A> {
    * Produces the new value
    * @param f
    */
-  update(f: FunctionN<[A], A>): T.Effect<T.NoEnv, never, A>;
+  update(f: F.FunctionN<[A], A>): T.Effect<T.NoEnv, never, A>;
   /**
    * Update the current value of a ref with a function.
    *
    * This function may return a second value of type B that will be produced on complete
    * @param f
    */
-  modify<B>(f: FunctionN<[A], readonly [B, A]>): T.Effect<T.NoEnv, never, B>;
+  modify<B>(f: F.FunctionN<[A], readonly [B, A]>): T.Effect<T.NoEnv, never, B>;
 }
 
 /**
@@ -47,11 +47,11 @@ export const makeRef = <A>(initial: A): T.Effect<T.NoEnv, never, Ref<A>> =>
         return prev;
       });
 
-    const update = (f: FunctionN<[A], A>): T.Effect<T.NoEnv, never, A> =>
+    const update = (f: F.FunctionN<[A], A>): T.Effect<T.NoEnv, never, A> =>
       T.sync(() => (value = f(value)));
 
     const modify = <B>(
-      f: FunctionN<[A], readonly [B, A]>
+      f: F.FunctionN<[A], readonly [B, A]>
     ): T.Effect<T.NoEnv, never, B> =>
       T.sync(() => {
         const [b, a] = f(value);

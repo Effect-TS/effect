@@ -1,5 +1,4 @@
-import "fp-ts-contrib/lib/Do";
-
+import {} from "fp-ts-contrib/lib/Do";
 import { Kind3 } from "fp-ts/lib/HKT";
 import { Functor3 } from "fp-ts/lib/Functor";
 import { Contravariant3 } from "fp-ts/lib/Contravariant";

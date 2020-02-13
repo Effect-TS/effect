@@ -1,12 +1,14 @@
 import * as T from "../effect";
 import * as M from "../managed";
 import * as S from "../stream";
-import * as Ei from "fp-ts/lib/Either";
-import * as O from "fp-ts/lib/Option";
-import { FunctionN, Lazy, Predicate, Refinement } from "fp-ts/lib/function";
+import {
+  option as O,
+  either as Ei,
+  function as F,
+  bifunctor as B,
+  pipeable as P
+} from "fp-ts";
 import { Monad3E, MonadThrow3E, Alt3E } from "../overload";
-import { Bifunctor3 } from "fp-ts/lib/Bifunctor";
-import { pipeable } from "fp-ts/lib/pipeable";
 
 // alpha version exposed for exeperimentation purposes
 /* istanbul ignore file */
@@ -58,7 +60,7 @@ export function pure<A>(a: A): StreamEither<T.NoEnv, T.NoErr, A> {
 export function zipWith<R, E, A, R2, E2, B, C>(
   as: StreamEither<R, E, A>,
   bs: StreamEither<R2, E2, B>,
-  f: FunctionN<[A, B], C>
+  f: F.FunctionN<[A, B], C>
 ): StreamEither<R & R2, E | E2, C> {
   return S.zipWith(as, bs, (ea, eb) => {
     if (Ei.isLeft(ea)) {
@@ -135,7 +137,7 @@ export function fromArray<A>(
 }
 
 export function fromIterator<A>(
-  iter: Lazy<Iterator<A>>
+  iter: F.Lazy<Iterator<A>>
 ): StreamEither<T.NoEnv, T.NoErr, A> {
   return S.stream.map(S.fromIterator(iter), a => Ei.right(a));
 }
@@ -198,7 +200,7 @@ export function zipWithIndex<R, E, A>(
 
 export function concatL<R, E, A, R2, E2>(
   stream1: StreamEither<R, E, A>,
-  stream2: Lazy<StreamEither<R2, E2, A>>
+  stream2: F.Lazy<StreamEither<R2, E2, A>>
 ): StreamEither<R & R2, E | E2, A> {
   return S.concatL(stream1, stream2 as any) as any;
 }
@@ -225,26 +227,26 @@ export function as<R, E, A, B>(
 
 export function filter<R, E, A>(
   stream: StreamEither<R, E, A>,
-  f: Predicate<A>,
+  f: F.Predicate<A>,
   propagate = true
 ): StreamEither<R, E, A> {
   return S.filter(stream, getEitherP(f, propagate));
 }
 
 export const getEitherP = <E, A>(
-  p: Predicate<A>,
+  p: F.Predicate<A>,
   propagate = true
-): Predicate<Ei.Either<E, A>> => Ei.fold(() => propagate, p);
+): F.Predicate<Ei.Either<E, A>> => Ei.fold(() => propagate, p);
 
 export function filterWith<A>(
-  f: Predicate<A>,
+  f: F.Predicate<A>,
   propagate = false
 ): <R, E>(stream: StreamEither<R, E, A>) => StreamEither<R, E, A> {
   return stream => filter(stream, f, propagate);
 }
 
 export function filterRefineWith<A, B extends A>(
-  f: Refinement<A, B>,
+  f: F.Refinement<A, B>,
   propagate = false
 ): <R, E>(stream: StreamEither<R, E, A>) => StreamEither<R, E, B> {
   return stream => filter(stream, f, propagate) as any;
@@ -252,7 +254,7 @@ export function filterRefineWith<A, B extends A>(
 
 export function takeWhile<R, E, A>(
   stream: StreamEither<R, E, A>,
-  pred: Predicate<A>
+  pred: F.Predicate<A>
 ): StreamEither<R, E, A> {
   return S.takeWhile(stream, x => Ei.isRight(x) && pred(x.right));
 }
@@ -270,13 +272,14 @@ const mapLeft_ = <R, E, A, G>(fea: StreamEither<R, E, A>, f: (e: E) => G) =>
 
 export const streamEither: Monad3E<URI> &
   MonadThrow3E<URI> &
-  Bifunctor3<URI> & Alt3E<URI> = {
+  B.Bifunctor3<URI> &
+  Alt3E<URI> = {
   URI,
   map: map_,
   of: <R, E, A>(a: A): StreamEither<R, E, A> =>
     (S.once(Ei.right(a)) as any) as StreamEither<R, E, A>,
   ap: <R, R2, E, E2, A, B>(
-    sfab: StreamEither<R, E, FunctionN<[A], B>>,
+    sfab: StreamEither<R, E, F.FunctionN<[A], B>>,
     sa: StreamEither<R2, E2, A>
   ) => zipWith(sfab, sa, (f, a) => f(a)),
   chain: chain_,
@@ -308,4 +311,4 @@ export const {
   fromOption: fromOptionError,
   map,
   alt
-} = pipeable(streamEither);
+} = P.pipeable(streamEither);
