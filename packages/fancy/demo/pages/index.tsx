@@ -9,6 +9,7 @@ import { flashInitialState, flashStateURI } from "../modules/flash/state";
 import { effect as T, freeEnv as F } from "@matechs/effect";
 import { DateOps } from "../modules/date/def";
 import { OrgsOps } from "../modules/orgs/def";
+import Link from "next/link";
 
 // alpha
 /* istanbul ignore file */
@@ -17,7 +18,20 @@ const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
   pipe(eff, ORG.provide, DT.provide);
 
 // tslint:disable-next-line: no-default-export
-export default R.page(pipe(Home, provider))({
+export default R.page(
+  pipe(
+    Home,
+    T.map(C => () => (
+      <div>
+        <C />
+        <Link href={"/ssg"}>
+          <a>ssg</a>
+        </Link>
+      </div>
+    )),
+    provider
+  )
+)({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
