@@ -654,6 +654,8 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
 /**
  * Provides partial environment, like provide() but via direct transformation
  * safe to use in non top-level scenarios
+ * Inference only works if R is bound to a non intersection type.
+ * If you need to provide an intersection, (several Envs), then you may better do several unary injections OR explicitly specify the R type parameter.
  */
 export function provideS<R>(r: R) {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
@@ -1662,7 +1664,7 @@ export function run<E, A>(
  * Run the given IO syncroniously
  * returns left if any async operation
  * is found
- * @param io 
+ * @param io
  */
 export function runSync<E, A>(
   io: Effect<{}, E, A>
