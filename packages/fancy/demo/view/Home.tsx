@@ -11,6 +11,9 @@ import { DisplayFlash } from "../modules/flash/view";
 // alpha
 /* istanbul ignore file */
 
+// note, rendering supports only sync effect
+// you can chain, compose, do everything except
+// any async op (same as for runSync)
 export const Home = UI.of(
   pipe(
     sequenceS(T.effect)({
@@ -21,7 +24,7 @@ export const Home = UI.of(
       ShowDate: DT.ShowDate,
       LogDate: DT.LogDate,
       Flash: DisplayFlash,
-      Foo: accessP((_: { foo: string }) => _.foo)
+      Foo: accessP((_: { foo: string }) => _.foo) // requires initial props
     }),
     T.map(v => () => (
       <>

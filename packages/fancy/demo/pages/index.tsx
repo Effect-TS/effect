@@ -5,11 +5,8 @@ import { dateStateURI } from "../modules/date/state";
 import { ORG } from "../modules/orgs";
 import { orgsStateURI } from "../modules/orgs/state";
 import { Home } from "../view/Home";
-import {
-  flashInitialState,
-  flashStateURI,
-  FlashState
-} from "../modules/flash/state";
+import { flashInitialState, flashStateURI } from "../modules/flash/state";
+import { effect as T } from "@matechs/effect";
 
 // alpha
 /* istanbul ignore file */
@@ -19,10 +16,8 @@ export default R.page(pipe(Home, ORG.provide, DT.provide))({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
-})({
-  [dateStateURI]: DT.DateState.type,
-  [orgsStateURI]: ORG.OrgsState.type,
-  [flashStateURI]: FlashState.type
-})({
-  foo: "ok"
-});
+})(
+  T.pure({
+    foo: "ok"
+  })
+);

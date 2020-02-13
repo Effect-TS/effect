@@ -10,6 +10,4 @@ import { dateStateURI } from "../modules/date/state";
 // tslint:disable-next-line: no-default-export
 export default R.page(pipe(Foo, DT.provide))({
   [dateStateURI]: DT.initial
-})({
-  [dateStateURI]: DT.DateState.type
-})({});
+})();
