@@ -69,7 +69,7 @@ interface Config2 {
   };
 }
 
-const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
+const fetchUser = Ep.epic<State, MyAction>()((_, action$) =>
   pipe(
     action$,
     S.filterRefineWith(isFetchUser),
@@ -96,7 +96,7 @@ const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
   )
 );
 
-const fetchUser2 = Ep.epic<State, MyAction>()(_ => action$ =>
+const fetchUser2 = Ep.epic<State, MyAction>()((_, action$) =>
   pipe(
     action$,
     S.filterRefineWith(isFetchUser),
@@ -196,6 +196,111 @@ describe("Epics", () => {
     assert.deepEqual(updates, [
       { user: Op.none, error: Op.none },
       { user: Op.none, error: Op.some("wrong prefix") }
+    ]);
+  });
+
+  it("should access state", async () => {
+    interface ReducerState {
+      counter: number;
+    }
+
+    interface State {
+      reducer: ReducerState;
+    }
+
+    interface Add {
+      type: "add";
+      add: number;
+    }
+
+    interface Added {
+      type: "added";
+    }
+
+    type MyAction = Add | Added;
+
+    const isAdd = (a: MyAction): a is Add => a.type === "add";
+
+    const reducer = (
+      state: ReducerState = { counter: 0 },
+      action: MyAction
+    ): ReducerState =>
+      action.type === "add"
+        ? {
+            counter: state.counter + action.add
+          }
+        : state;
+
+    const updates: { from: string; state: ReducerState }[] = [];
+
+    const incReducer = Ep.epic<State, MyAction>()((state$, action$) =>
+      pipe(
+        action$,
+        S.filterRefineWith(isAdd),
+        S.chain(() => S.encaseEffect(state$.value)),
+        S.map(state => {
+          updates.push({ from: "a", state: state.reducer });
+          return { type: "added" as const };
+        }),
+        S.chain(x =>
+          pipe(
+            state$.stream,
+            stream => S.take(stream, 2),
+            S.map(s => {
+              updates.push({ from: "b", state: s.reducer });
+              return x;
+            })
+          )
+        )
+      )
+    );
+
+    const rootEpic = combineEpics(Ep.embed(incReducer)({}));
+
+    const epicMiddleware = createEpicMiddleware<
+      MyAction,
+      MyAction,
+      State,
+      State
+    >();
+
+    const store = createStore(
+      combineReducers({
+        reducer
+      }),
+      applyMiddleware(epicMiddleware)
+    );
+
+    epicMiddleware.run(rootEpic);
+
+    const makeAdd = (n: number): Add => ({
+      type: "add",
+      add: n
+    });
+    store.dispatch(makeAdd(1));
+    store.dispatch(makeAdd(3));
+    store.dispatch(makeAdd(5));
+    store.dispatch(makeAdd(8));
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    const makeState = (from: string, counter: number) => ({
+      from,
+      state: { counter }
+    });
+
+    assert.deepEqual(updates, [
+      makeState("a", 1),
+      makeState("b", 1),
+      makeState("b", 4),
+      makeState("a", 4),
+      makeState("b", 4),
+      makeState("b", 9),
+      makeState("a", 9),
+      makeState("b", 9),
+      makeState("b", 17),
+      makeState("a", 17),
+      makeState("b", 17)
     ]);
   });
 });
