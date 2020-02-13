@@ -9,7 +9,8 @@ import {
   eq as EQ,
   function as F,
   option as O,
-  pipeable as P
+  pipeable as P,
+  apply as AP
 } from "fp-ts";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
@@ -36,8 +37,6 @@ import {
 } from "./sink";
 import { isSinkCont, sinkStepLeftover, sinkStepState } from "./step";
 import * as su from "./support";
-import { pipe } from "fp-ts/lib/pipeable";
-import { sequenceS } from "fp-ts/lib/Apply";
 
 export type Source<R, E, A> = T.Effect<R, E, O.Option<A>>;
 
@@ -1284,8 +1283,8 @@ const makeWeave: Managed<T.NoEnv, never, Weave> = managed.chain(
         function attach(
           action: T.Effect<T.NoEnv, never, void>
         ): T.Effect<T.NoEnv, never, void> {
-          return pipe(
-            sequenceS(T.effect)({
+          return P.pipe(
+            AP.sequenceS(T.effect)({
               next: cell.update(n => n + 1),
               fiber: T.fork(action)
             }),

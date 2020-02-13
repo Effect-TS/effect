@@ -16,6 +16,7 @@
   "main": "lib/index.js",
   "module": "es6/index.js",
   "typings": "lib/index.d.ts",
+  "sideEffects": false,
   "files": [
     "lib",
     "es6"

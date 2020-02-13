@@ -6,9 +6,7 @@
 /* tested in wave */
 /* istanbul ignore file */
 
-import { HKT } from "fp-ts/lib/HKT";
-import { Applicative } from "fp-ts/lib/Applicative";
-import { FunctionN } from "fp-ts/lib/function";
+import { hkt as H, applicative as APP, function as F } from "fp-ts";
 
 export enum SinkStepTag {
   Cont,
@@ -63,7 +61,7 @@ export function sinkStepState<A0, S>(s: SinkStep<A0, S>): S {
 
 export function map<A0, S, S1>(
   step: SinkStep<A0, S>,
-  f: FunctionN<[S], S1>
+  f: F.FunctionN<[S], S1>
 ): SinkStep<A0, S1> {
   return {
     ...step,
@@ -72,20 +70,20 @@ export function map<A0, S, S1>(
 }
 
 export function mapWith<S, S1>(
-  f: FunctionN<[S], S1>
+  f: F.FunctionN<[S], S1>
 ): <A>(step: SinkStep<A, S>) => SinkStep<A, S1> {
   return <A>(step: SinkStep<A, S>) => map(step, f);
 }
 
 export function traverse<F>(
-  F: Applicative<F>
+  F: APP.Applicative<F>
 ): <A0, S, S1>(
   step: SinkStep<A0, S>,
-  f: FunctionN<[S], HKT<F, S1>>
-) => HKT<F, SinkStep<A0, S1>> {
+  f: F.FunctionN<[S], H.HKT<F, S1>>
+) => H.HKT<F, SinkStep<A0, S1>> {
   return <A0, S, S1>(
     step: SinkStep<A0, S>,
-    f: FunctionN<[S], HKT<F, S1>>
-  ): HKT<F, SinkStep<A0, S1>> =>
+    f: F.FunctionN<[S], H.HKT<F, S1>>
+  ): H.HKT<F, SinkStep<A0, S1>> =>
     F.map(f(step.state), s1 => ({ ...step, state: s1 }));
 }
