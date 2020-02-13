@@ -69,7 +69,7 @@ interface Config2 {
   };
 }
 
-const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
+const fetchUser = Ep.epic<State, MyAction>()((_, action$) =>
   pipe(
     action$,
     S.filterRefineWith(isFetchUser),
@@ -96,7 +96,7 @@ const fetchUser = Ep.epic<State, MyAction>()(_ => action$ =>
   )
 );
 
-const fetchUser2 = Ep.epic<State, MyAction>()(_ => action$ =>
+const fetchUser2 = Ep.epic<State, MyAction>()((_, action$) =>
   pipe(
     action$,
     S.filterRefineWith(isFetchUser),
