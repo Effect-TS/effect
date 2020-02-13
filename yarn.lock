@@ -2397,6 +2397,13 @@
   resolved "https://registry.yarnpkg.com/@types/minimatch/-/minimatch-3.0.3.tgz#3dca0e3f33b200fc7d1139c0cd96c1268cadfd9d"
   integrity sha512-tHq6qdbT9U1IRSGf14CL0pUlULksvY9OZ+5eEgl1N7t+OA3tGvNpxJCzuKQlsNgCVwbAs670L1vcVQi8j9HjnA==
 
+"@types/node-zookeeper-client@^0.2.7":
+  version "0.2.7"
+  resolved "https://registry.yarnpkg.com/@types/node-zookeeper-client/-/node-zookeeper-client-0.2.7.tgz#006cc0ebe336a1b67253585dc72019b39fb6a2fe"
+  integrity sha512-ycCBzpNABcEQ+ewCWBvz9eAFalygnBhAjy0B7e8RJdALR6ChGaaIKozUsl2QKxPu/1lXUYxfjRel24JQ8pVelg==
+  dependencies:
+    "@types/node" "*"
+
 "@types/node@*", "@types/node@>= 8", "@types/node@>=5.10":
   version "13.7.0"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-13.7.0.tgz#b417deda18cf8400f278733499ad5547ed1abec4"
@@ -3041,6 +3048,11 @@ async@^2.6.1:
   integrity sha512-zflvls11DCy+dQWzTW2dzuilv8Z5X/pjfmZOWba6TNIVDm+2UDaJmXSOXlasHKfNBs8oo3M0aT50fDEWfKZjXg==
   dependencies:
     lodash "^4.17.14"
+
+async@~0.2.7:
+  version "0.2.10"
+  resolved "https://registry.yarnpkg.com/async/-/async-0.2.10.tgz#b6bbe0b0674b9d719708ca38de8c237cb526c3d1"
+  integrity sha1-trvgsGdLnXGXCMo43owjfLUmw9E=
 
 asynckit@^0.4.0:
   version "0.4.0"
@@ -8178,6 +8190,14 @@ node-releases@^1.1.44, node-releases@^1.1.47:
   dependencies:
     semver "^6.3.0"
 
+node-zookeeper-client@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/node-zookeeper-client/-/node-zookeeper-client-1.1.0.tgz#256c5b79d00108eff349d68d1efe7a5e78933e89"
+  integrity sha512-Vp9kP8noRV6LcNcHg4/1wjDfxLDbRfnaXoBIbw87ZkG1fPi4H/mIs9ko5dNrniAq7wK6ugBEUGZ1Wzy0VkMnFw==
+  dependencies:
+    async "~0.2.7"
+    underscore "~1.4.4"
+
 "nopt@2 || 3":
   version "3.0.6"
   resolved "https://registry.yarnpkg.com/nopt/-/nopt-3.0.6.tgz#c6465dbf08abcd4db359317f79ac68a646b28ff9"
@@ -11330,6 +11350,11 @@ umask@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/umask/-/umask-1.1.0.tgz#f29cebf01df517912bb58ff9c4e50fde8e33320d"
   integrity sha1-8pzr8B31F5ErtY/5xOUP3o4zMg0=
+
+underscore@~1.4.4:
+  version "1.4.4"
+  resolved "https://registry.yarnpkg.com/underscore/-/underscore-1.4.4.tgz#61a6a32010622afa07963bf325203cf12239d604"
+  integrity sha1-YaajIBBiKvoHljvzJSA88SI51gQ=
 
 unfetch@4.1.0:
   version "4.1.0"

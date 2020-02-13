@@ -970,7 +970,7 @@ export function flip<R, E, A>(io: Effect<R, E, A>): Effect<R, A, E> {
  * Execute the provided IO forever (or until it errors)
  * @param io
  */
-export function forever<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function forever<R, E, A>(io: Effect<R, E, A>): Effect<R, E, never> {
   return chain_(io, () => forever(io));
 }
 
