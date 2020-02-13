@@ -27,7 +27,7 @@ export const election = (electionPath: string) => <R, E, A>(
               masterId =>
                 id.id === masterId.id
                   ? T.asUnit<R, E | ZooError, A>(run) // I'm master
-                  : T.asUnit(c.waitDelete(`${electionPath}/${masterId.id}`)) // I'm slave waiting for mater to drop
+                  : T.asUnit(c.waitDelete(`${electionPath}/${masterId.id}`)) // I'm slave waiting for master to drop
             )
           )
         )
