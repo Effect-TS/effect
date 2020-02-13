@@ -9,7 +9,7 @@ import {
   left,
   right
 } from "fp-ts/lib/Either";
-import { FunctionN, Lazy } from "fp-ts/lib/function";
+import { FunctionN } from "fp-ts/lib/function";
 import {
   Cause,
   Done,
@@ -102,12 +102,10 @@ export interface DriverSync<E, A> {
 export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   completed: Exit<E, A> | null = null;
   listeners: FunctionN<[Exit<E, A>], void>[] | undefined;
-
   started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  cancelAsync: Lazy<void> | undefined;
   envStack = L.empty<any>();
 
   constructor(readonly runtime: Runtime = defaultRuntime) {}
@@ -131,28 +129,6 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       throw new Error("Die: Completable is already completed");
     }
     this.set(a);
-  }
-
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    if (this.completed !== null) {
-      f(this.completed);
-    }
-    if (this.listeners === undefined) {
-      this.listeners = [f];
-    } else {
-      this.listeners.push(f);
-    }
-    // TODO: figure how to trigger if possible
-    /* istanbul ignore next */
-    return () => {
-      if (this.listeners !== undefined) {
-        this.listeners = this.listeners.filter(cb => cb !== f);
-      }
-    };
-  }
-
-  exit(): Exit<E, A> | null {
-    return this.completed;
   }
 
   isInterruptible(): boolean {
@@ -193,7 +169,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   }
 
   resumeInterrupt(): void {
-    this.runtime.dispatch(this.dispatchResumeInterrupt.bind(this), undefined);
+    this.dispatchResumeInterrupt();
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -237,25 +213,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   }
 
   resume(status: Either<unknown, unknown>): void {
-    this.cancelAsync = undefined;
-    this.runtime.dispatch(this.foldResume.bind(this), status);
-  }
-
-  contextSwitch(
-    op: FunctionN<[FunctionN<[Either<unknown, unknown>], void>], Lazy<void>>
-  ): void {
-    let complete = false;
-    const wrappedCancel = op(status => {
-      if (complete) {
-        return;
-      }
-      complete = true;
-      this.resume(status);
-    });
-    this.cancelAsync = () => {
-      complete = true;
-      wrappedCancel();
-    };
+    this.foldResume(status);
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
@@ -328,7 +286,6 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             current = current.f0();
             break;
           case T.EffectTag.Async:
-            this.contextSwitch(current.f0);
             current = undefined;
             break;
           case T.EffectTag.Chain:
@@ -398,9 +355,5 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       return;
     }
     this.interrupted = true;
-    if (this.cancelAsync && this.isInterruptible()) {
-      this.cancelAsync();
-      this.resumeInterrupt();
-    }
   }
 }
