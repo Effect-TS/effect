@@ -5,7 +5,6 @@ import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
 import * as Rxo from "redux-observable";
 import { pipe } from "fp-ts/lib/pipeable";
-import { Subject } from "rxjs";
 
 export type Epic<R, State, A extends Action<any>, O extends A> = {
   _A: A;
@@ -33,7 +32,7 @@ type AOut<K extends AnyEpic> = K["_O"];
 
 export interface StateAccess<S> {
   value: T.Effect<T.NoEnv, never, S>;
-  source: Subject<S>;
+  source: S.Stream<T.NoEnv, never, S>;
 }
 
 export function embed<EPS extends AnyEpic[]>(
@@ -65,7 +64,7 @@ export function embed<EPS extends AnyEpic[]>(
                   epic(
                     {
                       value: T.sync(() => state$.value),
-                      source: state$.source
+                      source: R.encaseObservable(state$.source, toNever)
                     },
                     R.encaseObservable(action$, toNever)
                   )
