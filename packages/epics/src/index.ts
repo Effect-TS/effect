@@ -6,7 +6,7 @@ import { Action } from "redux";
 import * as Rxo from "redux-observable";
 import { pipe } from "fp-ts/lib/pipeable";
 
-export type Epic<R, State, A extends Action<any>, O extends A> = {
+export interface Epic<R, State, A extends Action<any>, O extends A> {
   _A: A;
   _O: O;
   _R: R;
@@ -16,7 +16,7 @@ export type Epic<R, State, A extends Action<any>, O extends A> = {
     never,
     O
   >;
-};
+}
 
 function toNever(_: any): never {
   /* istanbul ignore next */
@@ -57,8 +57,8 @@ export function embed<EPS extends AnyEpic[]>(
           epic => (
             action$: Rxo.ActionsObservable<Action>,
             state$: Rxo.StateObservable<State>
-          ) => {
-            return R.runToObservable(
+          ) =>
+            R.runToObservable(
               T.provideAll(r)(
                 R.toObservable(
                   epic(
@@ -70,8 +70,7 @@ export function embed<EPS extends AnyEpic[]>(
                   )
                 )
               )
-            );
-          }
+            )
         )
       )
     );
