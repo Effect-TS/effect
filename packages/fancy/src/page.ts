@@ -11,6 +11,9 @@ import { componentPropsURI } from "./componentProps";
 import { NextPageContext } from "next";
 import { NextContext, nextContextURI } from "./next-ctx";
 
+// alpha
+/* istanbul ignore file */
+
 export const page = <K, P>(_V: View<State<K> & ComponentProps<P>, P>) => (
   _I: {
     [k in keyof K]: T.UIO<K[k]>;
