@@ -32,6 +32,7 @@ import * as S from "./semaphore";
 import { mergeDeep } from "./utils/merge";
 import { TaskEither } from "fp-ts/lib/TaskEither";
 import { Task } from "fp-ts/lib/Task";
+import { DriverSyncImpl } from "./driverSync";
 
 export enum EffectTag {
   Pure,
@@ -1655,6 +1656,18 @@ export function run<E, A>(
   }
   driver.start(io);
   return () => driver.interrupt();
+}
+
+/**
+ * Run the given IO syncroniously
+ * returns left if any async operation
+ * is found
+ * @param io 
+ */
+export function runSync<E, A>(
+  io: Effect<{}, E, A>
+): Ei.Either<Error, ex.Exit<E, A>> {
+  return new DriverSyncImpl<E, A>().start(io);
 }
 
 /**
