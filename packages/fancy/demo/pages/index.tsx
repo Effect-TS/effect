@@ -19,5 +19,9 @@ export default R.page(pipe(Home, ORG.provide, DT.provide))({
 })(
   T.pure({
     foo: "ok"
-  })
+  }),
+  // if static then initial props effect must be sync, page will be rendered
+  // as static html, if ssr the props effect can be any async or sync
+  // in case of ssr mode NextContext will be embedded (via getInitialProps)
+  "static"
 );

@@ -19,11 +19,8 @@ export const page = <K, P>(_V: View<State<K> & ComponentProps<P>, P>) => (
     [k in keyof K]: T.UIO<K[k]>;
   }
 ) => (
-  _P: unknown extends P
-    ? void
-    : {} extends P
-    ? void
-    : T.Effect<NextContext, never, P>
+  _P: unknown extends P ? void : {} extends P ? void : T.UIO<P>,
+  _KIND: unknown extends P ? void : {} extends P ? void : "static" | "ssr"
 ): React.FC<P> => {
   const initial = pipe(
     _I as Record<string, any>,
@@ -82,7 +79,7 @@ export const page = <K, P>(_V: View<State<K> & ComponentProps<P>, P>) => (
     }
   };
 
-  if (_P) {
+  if (_P && _KIND && typeof _KIND === "string" && _KIND === "ssr") {
     Cmp.getInitialProps = (ctx: NextPageContext) =>
       T.runToPromise(
         T.provideS<NextContext>({
@@ -91,7 +88,27 @@ export const page = <K, P>(_V: View<State<K> & ComponentProps<P>, P>) => (
           }
         })(_P as T.Effect<NextContext, never, P>)
       );
-  }
 
-  return Cmp;
+    return Cmp;
+  } else {
+    if (_P && _KIND && typeof _KIND === "string" && _KIND === "static") {
+      const props = T.runSync(_P as T.Effect<unknown, never, P>);
+
+      if (Ei.isRight(props) && isDone(props.right)) {
+        const p = props.right.value;
+
+        return () =>
+          React.createElement(Cmp, {
+            ...p
+          });
+      } else {
+        return () =>
+          React.createElement("div", {
+            children: "Rendering can only be sync and should not fail"
+          });
+      }
+    } else {
+      return Cmp;
+    }
+  }
 };

@@ -6,6 +6,7 @@ import { NextContext, nextContextURI } from "./next-ctx";
 import * as MR from "mobx-react";
 import { Lazy } from "fp-ts/lib/function";
 import { ComponentProps, componentPropsURI } from "./componentProps";
+import { some, none } from "fp-ts/lib/Option";
 
 // alpha
 /* istanbul ignore file */
@@ -75,8 +76,17 @@ export const accessSM = <S extends State<any>>() => <R, E, A>(
   f: (_: S extends State<infer A> ? A : never) => T.Effect<R, E, A>
 ): T.Effect<S & R, E, A> => T.accessM((s: S) => f(s[stateURI].state));
 
-export const accessNextContext = T.access(
-  (r: NextContext) => r[nextContextURI].ctx
+export function hasNextContext(u: unknown): u is NextContext {
+  return (
+    u !== undefined &&
+    typeof u === "object" &&
+    u !== null &&
+    nextContextURI in u
+  );
+}
+
+export const accessNextContext = T.access((r: unknown) =>
+  hasNextContext(r) ? some(r[nextContextURI].ctx) : none
 );
 
 export const isBrowser = T.sync(() => typeof window !== "undefined");
