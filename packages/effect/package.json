@@ -4,26 +4,32 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "build": "rimraf lib && tsc --build tsconfig.build.json",
+    "build": "rimraf lib && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
     "lint": "tslint --project .",
-    "bench": "yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts"
+    "bench": "yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts",
+    "import-path-rewrite": "import-path-rewrite"
   },
   "publishConfig": {
     "access": "public"
   },
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "main": "lib/index.js",
+  "module": "es6/index.js",
+  "typings": "lib/index.d.ts",
   "files": [
-    "lib"
+    "lib",
+    "es6"
   ],
   "devDependencies": {
     "@qio/core": "^29.0.0",
     "@types/benchmark": "^1.0.31",
+    "@types/node": "^12.12.21",
     "benchmark": "^2.1.4",
     "chai": "^4.2.0",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
-    "waveguide": "^1.3.0"
+    "waveguide": "^1.3.0",
+    "import-path-rewrite": "github:mikearnaldi/import-path-rewrite"
   },
   "peerDependencies": {
     "fp-ts": "^2.4.2",

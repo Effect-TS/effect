@@ -14,19 +14,17 @@
 
 /* istanbul ignore file */
 
-import { Predicate } from "fp-ts/lib/function";
-import { none, Option, option, some } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
+import { function as F, option as O, pipeable as P } from "fp-ts";
 import * as l from "./list";
 import { cons, List, nil } from "./list";
 
 export interface Dequeue<A> {
-  take(): Option<readonly [A, Dequeue<A>]>;
+  take(): O.Option<readonly [A, Dequeue<A>]>;
   offer(a: A): Dequeue<A>;
-  pull(): Option<readonly [A, Dequeue<A>]>;
+  pull(): O.Option<readonly [A, Dequeue<A>]>;
   push(a: A): Dequeue<A>;
-  filter(f: Predicate<A>): Dequeue<A>;
-  find(p: Predicate<A>): Option<A>;
+  filter(f: F.Predicate<A>): Dequeue<A>;
+  find(p: F.Predicate<A>): O.Option<A>;
   size(): number;
   isEmpty(): boolean;
 }
@@ -34,17 +32,17 @@ export interface Dequeue<A> {
 class DequeueImpl<A> implements Dequeue<A> {
   constructor(readonly front: List<A>, readonly back: List<A>) {}
 
-  take(): Option<readonly [A, Dequeue<A>]> {
+  take(): O.Option<readonly [A, Dequeue<A>]> {
     return l.cata(
       this.front,
-      (h, t) => some([h, new DequeueImpl(t, this.back)] as const),
+      (h, t) => O.some([h, new DequeueImpl(t, this.back)] as const),
       () =>
-        pipe(
+        P.pipe(
           this.back,
           l.reverse,
           l.catac(
-            (h, t) => some([h, new DequeueImpl(t, nil)] as const),
-            () => none
+            (h, t) => O.some([h, new DequeueImpl(t, nil)] as const),
+            () => O.none
           )
         )
     );
@@ -54,17 +52,17 @@ class DequeueImpl<A> implements Dequeue<A> {
     return new DequeueImpl(this.front, cons(a, this.back));
   }
 
-  pull(): Option<readonly [A, Dequeue<A>]> {
+  pull(): O.Option<readonly [A, Dequeue<A>]> {
     return l.cata(
       this.back,
-      (h, t) => some([h, new DequeueImpl(this.front, t)] as const),
+      (h, t) => O.some([h, new DequeueImpl(this.front, t)] as const),
       () =>
-        pipe(
+        P.pipe(
           this.front,
           l.reverse,
           l.catac(
-            (h, t) => some([h, new DequeueImpl(nil, t)] as const),
-            () => none
+            (h, t) => O.some([h, new DequeueImpl(nil, t)] as const),
+            () => O.none
           )
         )
     );
@@ -74,7 +72,7 @@ class DequeueImpl<A> implements Dequeue<A> {
     return new DequeueImpl(cons(a, this.front), this.back);
   }
 
-  filter(p: Predicate<A>): Dequeue<A> {
+  filter(p: F.Predicate<A>): Dequeue<A> {
     return new DequeueImpl(l.filter(this.front, p), l.filter(this.back, p));
   }
 
@@ -86,8 +84,8 @@ class DequeueImpl<A> implements Dequeue<A> {
     return l.isEmpty(this.front) && l.isEmpty(this.back);
   }
 
-  find(p: Predicate<A>): Option<A> {
-    return option.alt(l.find(this.front, p), () => l.find(this.back, p));
+  find(p: F.Predicate<A>): O.Option<A> {
+    return O.option.alt(l.find(this.front, p), () => l.find(this.back, p));
   }
 }
 

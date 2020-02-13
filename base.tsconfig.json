@@ -19,6 +19,7 @@
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": false,
     "allowJs": false,
+    "checkJs": false,
     "forceConsistentCasingInFileNames": true,
     "suppressImplicitAnyIndexErrors": true,
     "stripInternal": true,
@@ -26,8 +27,5 @@
     "noImplicitThis": true,
     "strictNullChecks": true
   },
-  "exclude": [
-    "node_modules",
-    "lib"
-  ]
+  "exclude": ["node_modules", "lib"]
 }

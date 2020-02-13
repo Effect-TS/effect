@@ -14,7 +14,7 @@
 
 /* istanbul ignore file */
 
-import { Lazy } from "fp-ts/lib/function";
+import { function as F } from "fp-ts";
 import * as L from "../list";
 
 /**
@@ -39,7 +39,7 @@ export interface Runtime {
    * @param thunk the action to execute
    * @param ms delay in milliseconds
    */
-  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): Lazy<void>;
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): F.Lazy<void>;
 }
 
 class RuntimeImpl implements Runtime {
@@ -68,7 +68,7 @@ class RuntimeImpl implements Runtime {
     }
   }
 
-  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): Lazy<void> {
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): F.Lazy<void> {
     const handle = setTimeout(() => this.dispatch(thunk, a), ms);
     return () => {
       clearTimeout(handle);

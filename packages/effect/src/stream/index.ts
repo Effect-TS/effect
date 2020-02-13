@@ -3,22 +3,14 @@
   credits to original author
  */
 
-import { Do } from "fp-ts-contrib/lib/Do";
-import * as array from "fp-ts/lib/Array";
-import * as Ei from "fp-ts/lib/Either";
-import { Eq } from "fp-ts/lib/Eq";
 import {
-  constant,
-  FunctionN,
-  identity,
-  Lazy,
-  Predicate,
-  Refinement
-} from "fp-ts/lib/function";
-import * as o from "fp-ts/lib/Option";
-import * as O from "fp-ts/lib/Option";
-import { none, Option, some } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
+  array as A,
+  either as Ei,
+  eq as EQ,
+  function as F,
+  option as O,
+  pipeable as P
+} from "fp-ts";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
 import { Cause } from "../original/exit";
@@ -44,13 +36,15 @@ import {
 } from "./sink";
 import { isSinkCont, sinkStepLeftover, sinkStepState } from "./step";
 import * as su from "./support";
+import { pipe } from "fp-ts/lib/pipeable";
+import { sequenceS } from "fp-ts/lib/Apply";
 
-export type Source<R, E, A> = T.Effect<R, E, Option<A>>;
+export type Source<R, E, A> = T.Effect<R, E, O.Option<A>>;
 
 export type Fold<R, E, A> = <S>(
   initial: S,
-  cont: Predicate<S>,
-  step: FunctionN<[S, A], T.Effect<R, E, S>>
+  cont: F.Predicate<S>,
+  step: F.FunctionN<[S, A], T.Effect<R, E, S>>
 ) => T.Effect<R, E, S>;
 
 export interface Stream<R, E, A> extends Managed<R, E, Fold<R, E, A>> {}
@@ -66,13 +60,13 @@ function arrayFold<A>(
       ref.makeRef(0),
       cell => <S>(
         initial: S,
-        cont: Predicate<S>,
-        f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
+        cont: F.Predicate<S>,
+        f: F.FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
       ) => {
         function step(current: S): T.Effect<T.NoEnv, T.NoErr, S> {
           /* istanbul ignore else */
           if (cont(current)) {
-            return pipe(
+            return P.pipe(
               cell.modify(i => [i, i + 1] as const), // increment the i
               T.chain(i =>
                 i < as.length
@@ -94,9 +88,9 @@ function iteratorSource<A>(iter: Iterator<A>): Source<T.NoEnv, T.NoErr, A> {
   return T.sync(() => {
     const n = iter.next();
     if (n.done) {
-      return none;
+      return O.none;
     }
-    return some(n.value);
+    return O.some(n.value);
   });
 }
 
@@ -122,21 +116,21 @@ function* rangeIterator(
  * @param r
  */
 export function fromSource<R, E, A>(
-  r: Managed<R, E, T.Effect<R, E, Option<A>>>
+  r: Managed<R, E, T.Effect<R, E, O.Option<A>>>
 ): Stream<R, E, A> {
   return managed.map(r, pull => {
     function fold<S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, A], T.Effect<R, E, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> {
       return cont(initial)
-        ? pipe(
+        ? P.pipe(
             pull,
             T.chain(out =>
-              pipe(
+              P.pipe(
                 out,
-                o.fold(
+                O.fold(
                   () => T.pure(initial) as T.Effect<R, E, S>,
                   a =>
                     effect.chain(step(initial, a), next =>
@@ -165,9 +159,13 @@ export function fromArray<A>(as: readonly A[]): Stream<T.NoEnv, T.NoErr, A> {
  * @param iter
  */
 export function fromIterator<A>(
-  iter: Lazy<Iterator<A>>
+  iter: F.Lazy<Iterator<A>>
 ): Stream<T.NoEnv, T.NoErr, A> {
-  return pipe(M.encaseEffect(T.sync(iter)), M.map(iteratorSource), fromSource);
+  return P.pipe(
+    M.encaseEffect(T.sync(iter)),
+    M.map(iteratorSource),
+    fromSource
+  );
 }
 
 /**
@@ -201,8 +199,8 @@ export function fromIteratorUnsafe<A>(
 export function once<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
   function fold<S>(
     initial: S,
-    cont: Predicate<S>,
-    f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
+    cont: F.Predicate<S>,
+    f: F.FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
   ): T.Effect<T.NoEnv, T.NoErr, S> {
     /* istanbul ignore else */
     if (cont(initial)) {
@@ -224,8 +222,8 @@ export function once<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
 export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
   function fold<S>(
     initial: S,
-    cont: Predicate<S>,
-    f: FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
+    cont: F.Predicate<S>,
+    f: F.FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
   ): T.Effect<T.NoEnv, T.NoErr, S> {
     function step(current: S): T.Effect<T.NoEnv, T.NoErr, S> {
       if (cont(current)) {
@@ -240,15 +238,15 @@ export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
 }
 
 export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
-  return pipe(
+  return P.pipe(
     M.encaseEffect(ref.makeRef(-1)),
     M.map(r =>
-      pipe(
+      P.pipe(
         T.delay(
           r.update(n => n + 1),
           ms
         ),
-        T.map(some)
+        T.map(O.some)
       )
     ),
     fromSource
@@ -265,8 +263,8 @@ export const empty: Stream<
 > = M.pure(
   <S>(
     initial: S,
-    _cont: Predicate<S>,
-    _f: FunctionN<[S, never], T.Effect<T.NoEnv, T.NoErr, S>>
+    _cont: F.Predicate<S>,
+    _f: F.FunctionN<[S, never], T.Effect<T.NoEnv, T.NoErr, S>>
   ) => T.pure(initial)
 );
 
@@ -277,12 +275,12 @@ export const empty: Stream<
 export function encaseEffect<R, E, A>(w: T.Effect<R, E, A>): Stream<R, E, A> {
   function fold<S>(
     initial: S,
-    cont: Predicate<S>,
-    step: FunctionN<[S, A], T.Effect<R, E, S>>
+    cont: F.Predicate<S>,
+    step: F.FunctionN<[S, A], T.Effect<R, E, S>>
   ): T.Effect<R, E, S> {
     /* istanbul ignore else */
     if (cont(initial)) {
-      return pipe(
+      return P.pipe(
         w,
         T.chain(a => step(initial, a))
       );
@@ -313,10 +311,10 @@ export function aborted(e: unknown): Stream<T.NoEnv, T.NoErr, never> {
  * Create a stream that immediately emits either 0 or 1 elements
  * @param opt
  */
-export function fromOption<A>(opt: Option<A>): Stream<T.NoEnv, T.NoErr, A> {
-  return pipe(
+export function fromOption<A>(opt: O.Option<A>): Stream<T.NoEnv, T.NoErr, A> {
+  return P.pipe(
     opt,
-    o.fold(constant((empty as any) as Stream<T.NoEnv, T.NoErr, A>), once)
+    O.fold(F.constant((empty as any) as Stream<T.NoEnv, T.NoErr, A>), once)
   );
 }
 
@@ -330,8 +328,8 @@ export function zipWithIndex<R, E, A>(
   return managed.map(stream, fold => {
     function zipFold<S>(
       initial: S,
-      cont: Predicate<S>,
-      f: FunctionN<[S, readonly [A, number]], T.Effect<R, E, S>>
+      cont: F.Predicate<S>,
+      f: F.FunctionN<[S, readonly [A, number]], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> {
       const folded = fold<readonly [S, number]>(
         [initial, 0 as number],
@@ -358,17 +356,17 @@ function widen<R2, E2>(): <R, E, A>(
  */
 export function concatL<R, E, A, R2, E2>(
   stream1: Stream<R, E, A>,
-  stream2: Lazy<Stream<R2, E2, A>>
+  stream2: F.Lazy<Stream<R2, E2, A>>
 ): Stream<R & R2, E | E2, A> {
   const w1 = widen<R2, E2>()(stream1);
   const w2 = () => widen<R, E>()(stream2());
 
   function fold<S>(
     initial: S,
-    cont: Predicate<S>,
-    step: FunctionN<[S, A], T.Effect<R & R2, E | E2, S>>
+    cont: F.Predicate<S>,
+    step: F.FunctionN<[S, A], T.Effect<R & R2, E | E2, S>>
   ): T.Effect<R & R2, E | E2, S> {
-    return pipe(
+    return P.pipe(
       M.use(w1, fold1 => fold1(initial, cont, step)),
       T.chain(intermediate => {
         /* istanbul ignore else */
@@ -392,7 +390,7 @@ export function concat<R, E, A, R2, E2>(
   stream1: Stream<R, E, A>,
   stream2: Stream<R2, E2, A>
 ): Stream<R & R2, E | E2, A> {
-  return concatL(stream1, constant(stream2));
+  return concatL(stream1, F.constant(stream2));
 }
 
 /**
@@ -407,14 +405,14 @@ export function repeat<R, E, A>(stream: Stream<R, E, A>): Stream<R, E, A> {
 
 function map_<R, E, A, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], B>
+  f: F.FunctionN<[A], B>
 ): Stream<R, E, B> {
   return managed.map(
     stream,
     outer => <S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, B], T.Effect<R, E, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, B], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> => outer(initial, cont, (s, a) => step(s, f(a)))
   );
 }
@@ -425,7 +423,7 @@ function map_<R, E, A, B>(
  * @param f
  */
 export function map<R, A, B>(
-  f: FunctionN<[A], B>
+  f: F.FunctionN<[A], B>
 ): <E>(stream: Stream<R, E, A>) => Stream<R, E, B> {
   return stream => map_(stream, f);
 }
@@ -436,7 +434,7 @@ export function map<R, A, B>(
  * @param b
  */
 export function as<R, E, A, B>(stream: Stream<R, E, A>, b: B): Stream<R, E, B> {
-  return map_(stream, constant(b));
+  return map_(stream, F.constant(b));
 }
 
 /**
@@ -446,14 +444,14 @@ export function as<R, E, A, B>(stream: Stream<R, E, A>, b: B): Stream<R, E, B> {
  */
 export function filter<R, E, A>(
   stream: Stream<R, E, A>,
-  f: Predicate<A>
+  f: F.Predicate<A>
 ): Stream<R, E, A> {
   return managed.map(
     stream,
     outer => <S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, A], T.Effect<R, E, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> =>
       outer(initial, cont, (s, a) => (f(a) ? step(s, a) : T.pure(s)))
   );
@@ -464,13 +462,13 @@ export function filter<R, E, A>(
  * @param f
  */
 export function filterWith<A>(
-  f: Predicate<A>
+  f: F.Predicate<A>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, A> {
   return stream => filter(stream, f);
 }
 
 export function filterRefineWith<A, B extends A>(
-  f: Refinement<A, B>
+  f: F.Refinement<A, B>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, B> {
   return stream => map_(filter(stream, f), x => x as B);
 }
@@ -480,31 +478,31 @@ export function filterRefineWith<A, B extends A>(
  * @param eq
  */
 export function distinctAdjacent<A>(
-  eq: Eq<A>
+  eq: EQ.Eq<A>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R, E, A> {
   return <R, E>(stream: Stream<R, E, A>) =>
     managed.map(
       stream,
       base => <S>(
         initial: S,
-        cont: Predicate<S>,
-        step: FunctionN<[S, A], T.Effect<R, E, S>>
+        cont: F.Predicate<S>,
+        step: F.FunctionN<[S, A], T.Effect<R, E, S>>
       ): T.Effect<R, E, S> => {
-        const init: [S, Option<A>] = [initial, none];
-        const c: Predicate<[S, Option<A>]> = ([s]) => cont(s);
+        const init: [S, O.Option<A>] = [initial, O.none];
+        const c: F.Predicate<[S, O.Option<A>]> = ([s]) => cont(s);
         function stp(
-          current: [S, Option<A>],
+          current: [S, O.Option<A>],
           next: A
-        ): T.Effect<R, E, [S, Option<A>]> {
-          return pipe(
+        ): T.Effect<R, E, [S, O.Option<A>]> {
+          return P.pipe(
             current[1],
-            o.fold(
+            O.fold(
               // We haven't seen anything so just return
-              () => effect.map(step(current[0], next), s => [s, some(next)]),
+              () => effect.map(step(current[0], next), s => [s, O.some(next)]),
               seen =>
                 eq.equals(seen, next)
                   ? T.pure(current)
-                  : effect.map(step(current[0], next), s => [s, some(next)])
+                  : effect.map(step(current[0], next), s => [s, O.some(next)])
             )
           );
         }
@@ -523,19 +521,19 @@ export function distinctAdjacent<A>(
  */
 export function foldM<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
+  f: F.FunctionN<[B, A], T.Effect<R2, E2, B>>,
   seed: B
 ): Stream<R & R2, E | E2, B> {
   return managed.map(
     widen<R2, E2>()(stream),
     base => <S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
     ): T.Effect<R & R2, E | E2, S> => {
       /* istanbul ignore else */
       if (cont(initial)) {
-        return effect.chain(base(seed, constant(true), f), result =>
+        return effect.chain(base(seed, F.constant(true), f), result =>
           step(initial, result)
         );
       } else {
@@ -553,7 +551,7 @@ export function foldM<R, E, A, R2, E2, B>(
  */
 export function fold<R, E, A, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], B>,
+  f: F.FunctionN<[B, A], B>,
   seed: B
 ): Stream<R, E, B> {
   return foldM(stream, (b, a) => T.pure(f(b, a)), seed);
@@ -573,24 +571,24 @@ function t2<A, B>(a: A, b: B): readonly [A, B] {
  */
 export function scanM<R, E, A, B, R2, E2>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], T.Effect<R2, E2, B>>,
+  f: F.FunctionN<[B, A], T.Effect<R2, E2, B>>,
   seed: B
 ): Stream<R & R2, E | E2, B> {
   return concat(
     once(seed),
-    pipe(
+    P.pipe(
       M.zip(widen<R2, E2>()(stream), M.encaseEffect(ref.makeRef(seed))),
       M.map(([base, accum]) => {
         function fold<S>(
           initial: S,
-          cont: Predicate<S>,
-          step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+          cont: F.Predicate<S>,
+          step: F.FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
         ): T.Effect<R & R2, E | E2, S> {
           /* istanbul ignore else */
           if (cont(initial)) {
             // We need to figure out how to drive the base fold for a single step
             // Thus, we switch state from true to false on execution
-            return pipe(
+            return P.pipe(
               accum.get,
               T.chain(b =>
                 base(
@@ -630,7 +628,7 @@ export function scanM<R, E, A, B, R2, E2>(
  */
 export function scan<R, E, A, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[B, A], B>,
+  f: F.FunctionN<[B, A], B>,
   seed: B
 ): Stream<R, E, B> {
   return scanM(stream, (b, a) => T.pure(f(b, a)), seed);
@@ -638,14 +636,14 @@ export function scan<R, E, A, B>(
 
 function chain_<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], Stream<R2, E2, B>>
+  f: F.FunctionN<[A], Stream<R2, E2, B>>
 ): Stream<R & R2, E | E2, B> {
   return managed.map(
     widen<R2, E2>()(stream),
     outerfold => <S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
     ): T.Effect<R & R2, E | E2, S> =>
       outerfold(initial, cont, (s, a) => {
         /* istanbul ignore next */
@@ -665,15 +663,15 @@ function chain_<R, E, A, R2, E2, B>(
  * @param f
  */
 export function chain<A, R2, E2, B>(
-  f: FunctionN<[A], Stream<R2, E2, B>>
+  f: F.FunctionN<[A], Stream<R2, E2, B>>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R & R2, E | E2, B> {
   return <R, E>(stream: Stream<R, E, A>) =>
     managed.map(
       widen<R2, E2>()(stream),
       outerfold => <S>(
         initial: S,
-        cont: Predicate<S>,
-        step: FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
+        cont: F.Predicate<S>,
+        step: F.FunctionN<[S, B], T.Effect<R & R2, E | E2, S>>
       ): T.Effect<R & R2, E | E2, S> =>
         outerfold(initial, cont, (s, a) => {
           /* istanbul ignore next */
@@ -694,7 +692,7 @@ export function chain<A, R2, E2, B>(
 export function flatten<R, E, R2, E2, A>(
   stream: Stream<R, E, Stream<R2, E2, A>>
 ): Stream<R & R2, E | E2, A> {
-  return chain_(stream, identity);
+  return chain_(stream, F.identity);
 }
 
 /**
@@ -704,13 +702,13 @@ export function flatten<R, E, R2, E2, A>(
  */
 export function mapM<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], T.Effect<R2, E2, B>>
+  f: F.FunctionN<[A], T.Effect<R2, E2, B>>
 ): Stream<R & R2, E | E2, B> {
   return chain_(stream, a => encaseEffect(f(a)));
 }
 
 export function mapMWith<A, R2, E2, B>(
-  f: FunctionN<[A], T.Effect<R2, E2, B>>
+  f: F.FunctionN<[A], T.Effect<R2, E2, B>>
 ): <R, E>(stream: Stream<R, E, A>) => Stream<R & R2, E | E2, B> {
   return stream => chain_(stream, a => encaseEffect(f(a)));
 }
@@ -720,7 +718,7 @@ export function mapMWith<A, R2, E2, B>(
  */
 export const never: Stream<T.NoEnv, T.NoErr, never> = mapM(
   once(undefined),
-  constant(T.never)
+  F.constant(T.never)
 );
 
 type TDuceFused<FoldState, SinkState> = readonly [
@@ -746,8 +744,8 @@ export function transduce<R, E, A, R2, E2, S, B>(
     widen<R2, E2>()(stream),
     base => <S0>(
       initial: S0,
-      cont: Predicate<S0>,
-      step: FunctionN<[S0, B], T.Effect<R & R2, E | E2, S0>>
+      cont: F.Predicate<S0>,
+      step: F.FunctionN<[S0, B], T.Effect<R & R2, E | E2, S0>>
     ): T.Effect<R & R2, E | E2, S0> => {
       function feedSink(
         foldState: S0,
@@ -759,14 +757,14 @@ export function transduce<R, E, A, R2, E2, S, B>(
             ? // We need to let more data in to drive the sink
               T.pure([foldState, nextSinkStep.state, true] as const)
             : // We have a completion, so extract the value and then use it to advance the fold state
-              pipe(
+              P.pipe(
                 sinkStepState(nextSinkStep),
                 sink.extract,
                 T.chain(b => step(foldState, b)),
                 T.chain(nextFoldState => {
                   const leftover = sinkStepLeftover(nextSinkStep);
                   // We will re-initialize the sink
-                  return pipe(
+                  return P.pipe(
                     sink.initial,
                     T.chain(nextNextSinkState => {
                       if (cont(nextFoldState) && leftover.length > 0) {
@@ -795,7 +793,7 @@ export function transduce<R, E, A, R2, E2, S, B>(
           [initial, sinkStepState(initSink), false] as TDuceFused<S0, S>
       );
 
-      return pipe(
+      return P.pipe(
         derivedInitial,
         T.chain(init =>
           base(
@@ -825,7 +823,7 @@ export function drop<R, E, A>(
   stream: Stream<R, E, A>,
   n: number
 ): Stream<R, E, A> {
-  return pipe(
+  return P.pipe(
     zipWithIndex(stream),
     filterWith(([_, i]) => i >= n),
     map(([a]) => a)
@@ -855,8 +853,8 @@ export function take<R, E, A>(
     stream,
     fold => <S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, A], T.Effect<R, E, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> =>
       effect.map(
         fold(
@@ -876,14 +874,14 @@ export function take<R, E, A>(
  */
 export function takeWhile<R, E, A>(
   stream: Stream<R, E, A>,
-  pred: Predicate<A>
+  pred: F.Predicate<A>
 ): Stream<R, E, A> {
   return managed.map(
     stream,
     fold => <S>(
       initial: S,
-      cont: Predicate<S>,
-      step: FunctionN<[S, A], T.Effect<R, E, S>>
+      cont: F.Predicate<S>,
+      step: F.FunctionN<[S, A], T.Effect<R, E, S>>
     ): T.Effect<R, E, S> =>
       effect.map(
         fold(
@@ -909,7 +907,7 @@ export function into<R, E, A, R2, E2, S, B>(
   sink: Sink<R2, E2, S, A, B>
 ): T.Effect<R & R2, E | E2, B> {
   return M.use(widen<R2, E2>()(stream), fold =>
-    pipe(
+    P.pipe(
       sink.initial,
       T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
       T.map(s => s.state),
@@ -940,7 +938,7 @@ export function intoLeftover<R, E, A, S, B>(
   sink: Sink<R, E, S, A, B>
 ): T.Effect<R, E, readonly [B, readonly A[]]> {
   return M.use(stream, fold =>
-    pipe(
+    P.pipe(
       sink.initial,
       T.chain(init => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
       T.chain(end =>
@@ -958,19 +956,19 @@ function sinkQueue<R, E, A>(
 ): Managed<
   R,
   E,
-  readonly [ConcurrentQueue<Option<A>>, Deferred<R, E, Option<A>>]
+  readonly [ConcurrentQueue<O.Option<A>>, Deferred<R, E, O.Option<A>>]
 > {
   return managed.chain(
     M.zip(
       // 0 allows maximum backpressure throttling (i.e. a reader must be waiting already to produce the item)
-      M.encaseEffect(cq.boundedQueue<Option<A>>(0)),
-      M.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
+      M.encaseEffect(cq.boundedQueue<O.Option<A>>(0)),
+      M.encaseEffect(deferred.makeDeferred<R, E, O.Option<A>, E>())
     ),
     ([q, latch]) => {
       const write = effect.foldExit(
-        into(map_(stream, some), queueSink(q)) as T.Effect<R, E, void>,
+        into(map_(stream, O.some), queueSink(q)) as T.Effect<R, E, void>,
         c => latch.cause(c),
-        constant(q.offer(none))
+        F.constant(q.offer(O.none))
       );
 
       return M.as(M.fiber(write), [q, latch] as const);
@@ -987,34 +985,34 @@ function sinkQueue<R, E, A>(
 export function zipWith<R, E, A, R2, E2, B, C>(
   as: Stream<R, E, A>,
   bs: Stream<R2, E2, B>,
-  f: FunctionN<[A, B], C>
+  f: F.FunctionN<[A, B], C>
 ): Stream<R & R2, E | E2, C> {
   const source = M.zipWith(
     sinkQueue(as),
     sinkQueue(bs),
     ([aq, alatch], [bq, blatch]) => {
-      const atake = pipe(
+      const atake = P.pipe(
         aq.take,
         T.chainTap(opt =>
-          pipe(
+          P.pipe(
             opt,
-            o.fold(
+            O.fold(
               // Confirm we have seen the last element
-              () => alatch.done(none),
+              () => alatch.done(O.none),
               () => T.unit // just keep going
             )
           )
         )
       );
       const agrab = T.raceFirst(atake, alatch.wait);
-      const btake = pipe(
+      const btake = P.pipe(
         bq.take,
         T.chainTap(opt =>
-          pipe(
+          P.pipe(
             opt,
-            o.fold(
+            O.fold(
               // Confirm we have seen the last element
-              () => blatch.done(none),
+              () => blatch.done(O.none),
               () => T.unit // just keep going
             )
           )
@@ -1023,7 +1021,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
       const bgrab = T.raceFirst(btake, blatch.wait);
 
       return T.zipWith(agrab, bgrab, (aOpt, bOpt) =>
-        o.option.chain(aOpt, a => o.option.map(bOpt, b => f(a, b)))
+        O.option.chain(aOpt, a => O.option.map(bOpt, b => f(a, b)))
       );
     }
   );
@@ -1052,19 +1050,19 @@ export function zip<R, E, A, R2, E2, B>(
  * @param breaker
  */
 function queueBreakerSource<R, E, A>(
-  queue: ConcurrentQueue<Option<A>>,
-  breaker: Deferred<R, E, Option<A>>
-): T.Effect<R, E, Option<A>> {
-  const take = pipe(
+  queue: ConcurrentQueue<O.Option<A>>,
+  breaker: Deferred<R, E, O.Option<A>>
+): T.Effect<R, E, O.Option<A>> {
+  const take = P.pipe(
     queue.take,
     T.chainTap(opt =>
-      pipe(
+      P.pipe(
         opt,
-        o.fold(
+        O.fold(
           // Confirm we have seen the last element by closing the breaker so subsequent reads see it
-          constant(breaker.done(none)),
+          F.constant(breaker.done(O.none)),
           // do nothing to the breaker if we got an element
-          constant(T.unit)
+          F.constant(T.unit)
         )
       )
     )
@@ -1079,7 +1077,7 @@ function queueBreakerSource<R, E, A>(
  */
 function streamQueueSource<R, E, A>(
   stream: Stream<R, E, A>
-): Managed<R, E, T.Effect<R, E, Option<A>>> {
+): Managed<R, E, T.Effect<R, E, O.Option<A>>> {
   return managed.map(sinkQueue(stream), ([q, breaker]) =>
     queueBreakerSource(q, breaker)
   );
@@ -1098,10 +1096,10 @@ export function peel<R, E, A, S, B>(
 ): Stream<R, E, readonly [B, Stream<R, E, A>]> {
   return managed.chain(streamQueueSource(stream), pull => {
     const pullStream = fromSource<R, E, A>(
-      M.pure(pull) as Managed<R, E, T.Effect<R, E, Option<A>>>
+      M.pure(pull) as Managed<R, E, T.Effect<R, E, O.Option<A>>>
     );
     // We now have a shared pull instantiation that we can use as a sink to drive and return as a stream
-    return pipe(
+    return P.pipe(
       encaseEffect(intoLeftover(pullStream, sink)),
       map(([b, left]) => [b, concat(fromArray(left), pullStream)] as const)
     );
@@ -1116,12 +1114,12 @@ export function peelManaged<R, E, A, S, B>(
 }
 
 function interruptFiberSlot(
-  slot: Ref<Option<Fiber<never, void>>>
+  slot: Ref<O.Option<Fiber<never, void>>>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
   return effect.chain(slot.get, optFiber =>
-    pipe(
+    P.pipe(
       optFiber,
-      o.fold(
+      O.fold(
         () => T.pure(undefined as void),
         f => f.interrupt
       )
@@ -1130,12 +1128,12 @@ function interruptFiberSlot(
 }
 
 function waitFiberSlot(
-  slot: Ref<Option<Fiber<never, void>>>
+  slot: Ref<O.Option<Fiber<never, void>>>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
   return effect.chain(slot.get, optFiber =>
-    pipe(
+    P.pipe(
       optFiber,
-      o.fold(
+      O.fold(
         () => T.pure(undefined as void),
         f => T.asUnit(f.wait)
       )
@@ -1146,10 +1144,10 @@ function waitFiberSlot(
 function singleFiberSlot(): Managed<
   T.NoEnv,
   T.NoErr,
-  Ref<Option<Fiber<never, void>>>
+  Ref<O.Option<Fiber<never, void>>>
 > {
   return M.bracket(
-    ref.makeRef<Option<Fiber<never, void>>>(none),
+    ref.makeRef<O.Option<Fiber<never, void>>>(O.none),
     interruptFiberSlot
   );
 }
@@ -1167,8 +1165,8 @@ export function switchLatest<R, E, A>(
     managed.chain(
       M.zip(
         // The queue and latch to push into
-        M.encaseEffect(cq.boundedQueue<Option<A>>(0)),
-        M.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>())
+        M.encaseEffect(cq.boundedQueue<O.Option<A>>(0)),
+        M.encaseEffect(deferred.makeDeferred<R, E, O.Option<A>, E>())
       ),
       ([pushQueue, pushBreaker]) =>
         // The internal latch that can be used to signal failures and shut down the read process
@@ -1182,20 +1180,20 @@ export function switchLatest<R, E, A>(
               function spawnPushFiber(
                 stream: Stream<R, E, A>
               ): T.Effect<R, never, void> {
-                const writer = pipe(
+                const writer = P.pipe(
                   // The writer process pushes things into the queue
-                  into(map_(stream, some), queueSink(pushQueue)) as any,
+                  into(map_(stream, O.some), queueSink(pushQueue)) as any,
                   // We need to trap any errors that occur and send those to internal latch to halt the process
                   // Dont' worry about interrupts, because we perform cleanups for single fiber slot
                   T.foldExit(
                     (e: Cause<E>) => internalBreaker.done(e),
-                    constant(T.pure(undefined)) // we can do nothing because we will delegate to the proxy
+                    F.constant(T.pure(undefined)) // we can do nothing because we will delegate to the proxy
                   )
                 );
 
                 return T.applyFirst(
                   interruptPushFiber,
-                  effect.chain(T.fork(writer), f => fiberSlot.set(some(f)))
+                  effect.chain(T.fork(writer), f => fiberSlot.set(O.some(f)))
                 );
               }
 
@@ -1214,16 +1212,16 @@ export function switchLatest<R, E, A>(
                   // On managed unwind the active production fiber will be interrupted if there is one
                   cause => pushBreaker.cause(cause),
                   nextOpt =>
-                    pipe(
+                    P.pipe(
                       nextOpt,
-                      o.fold(
+                      O.fold(
                         // nothing left, so we should wait the push fiber's completion and then forward the termination
                         () =>
-                          pipe(
+                          P.pipe(
                             T.race(breakerError, waitFiberSlot(fiberSlot)),
                             T.foldExit(
                               c => pushBreaker.cause(c), // if we get a latchError forward it through to downstream
-                              constant(pushQueue.offer(none)) // otherwise we are done, so lets forward that
+                              F.constant(pushQueue.offer(O.none)) // otherwise we are done, so lets forward that
                             )
                           ),
                         next =>
@@ -1254,7 +1252,7 @@ export function switchLatest<R, E, A>(
  */
 export function chainSwitchLatest<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], Stream<R2, E2, B>>
+  f: F.FunctionN<[A], Stream<R2, E2, B>>
 ): Stream<R & R2, E | E2, B> {
   return switchLatest(map_(widen<R2, E2>()(stream), a => widen<R, E>()(f(a))));
 }
@@ -1271,9 +1269,7 @@ function interruptWeaveHandles(
   ref: Ref<WeaveHandle[]>
 ): T.Effect<T.NoEnv, T.NoErr, void> {
   return effect.chain(ref.get, fibers =>
-    T.asUnit(
-      array.array.traverse(T.effect)(fibers, fiber => fiber[1].interrupt)
-    )
+    T.asUnit(A.array.traverse(T.effect)(fibers, fiber => fiber[1].interrupt))
   );
 }
 
@@ -1288,23 +1284,23 @@ const makeWeave: Managed<T.NoEnv, never, Weave> = managed.chain(
         function attach(
           action: T.Effect<T.NoEnv, never, void>
         ): T.Effect<T.NoEnv, never, void> {
-          return (
-            Do(T.effect)
-              .bindL("next", () => cell.update(n => n + 1))
-              .bind("fiber", T.fork(action))
-              .doL(({ next, fiber }) =>
-                store.update(handles => [...handles, [next, fiber] as const])
-              )
-              // Spawn a fiber that will cleanup the handle reference on complete
-              .doL(({ next, fiber }) =>
-                T.fork(
-                  T.applySecond(
-                    fiber.wait,
-                    store.update(array.filter(h => h[0] !== next))
-                  )
+          return pipe(
+            sequenceS(T.effect)({
+              next: cell.update(n => n + 1),
+              fiber: T.fork(action)
+            }),
+            T.chainTap(({ next, fiber }) =>
+              store.update(handles => [...handles, [next, fiber] as const])
+            ),
+            T.chainTap(({ next, fiber }) =>
+              T.fork(
+                T.applySecond(
+                  fiber.wait,
+                  store.update(A.filter(h => h[0] !== next))
                 )
               )
-              .return(constant(undefined as void))
+            ),
+            T.asUnit
           );
         }
         return { attach };
@@ -1327,83 +1323,85 @@ export function merge<R, E, A>(
   const source = managed.chain(streamQueueSource(stream), pull =>
     managed.chain(M.encaseEffect(semaphore.makeSemaphore(maxActive)), sem =>
       // create the queue that output will be forced into
-      managed.chain(M.encaseEffect(cq.boundedQueue<Option<A>>(0)), pushQueue =>
-        // create the mechanism t hrough which we can signal completion
-        managed.chain(
-          M.encaseEffect(deferred.makeDeferred<R, E, Option<A>, E>()),
-          pushBreaker =>
-            managed.chain(makeWeave, weave =>
-              managed.chain(
-                M.encaseEffect(
-                  deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
-                ),
-                internalBreaker => {
-                  // create a wave action that will proxy elements created by running the stream into the push queue
-                  // if any errors occur, we set the breaker
-                  function spawnPushFiber(
-                    stream: Stream<R, E, A>
-                  ): T.Effect<R, never, void> {
-                    const writer = pipe(
-                      // Process to sink elements into the queue
-                      into(map_(stream, some), queueSink(pushQueue)) as any,
-                      // TODO: I don't think we need to handle interrupts, it shouldn't be possible
-                      T.foldExit(
-                        (e: Cause<E>) => internalBreaker.done(e),
-                        constant(T.pure(undefined))
-                      )
-                    );
-                    return weave.attach(sem.withPermit(writer)); // we need a permit to start
-                  }
-
-                  // The action that will pull a single stream upstream and attempt to activate it to push downstream
-                  function advanceStreams(): T.Effect<R, never, void> {
-                    const breakerError = effect.chain(
-                      internalBreaker.wait,
-                      T.raised
-                    );
-
-                    return effect.foldExit(
-                      T.raceFirst(
-                        pull, // we don't want to pull until there is capacity
-                        breakerError
-                      ),
-                      c => pushBreaker.cause(c), // if upstream errored, we should push the failure downstream immediately
-                      (
-                        nextOpt // otherwise we should
-                      ) =>
-                        pipe(
-                          nextOpt,
-                          o.fold(
-                            // The end has occured
-                            constant(
-                              pipe(
-                                // We will wait for an error or all active produces to finish
-                                T.race(breakerError, sem.acquireN(maxActive)),
-                                T.foldExit(
-                                  c => pushBreaker.cause(c),
-                                  constant(pushQueue.offer(none))
-                                )
-                              )
-                            ),
-                            // Start the push fiber and then keep going
-                            next =>
-                              T.applySecondL(
-                                sem.withPermit(spawnPushFiber(next)),
-                                constant(advanceStreams())
-                              )
-                          )
+      managed.chain(
+        M.encaseEffect(cq.boundedQueue<O.Option<A>>(0)),
+        pushQueue =>
+          // create the mechanism t hrough which we can signal completion
+          managed.chain(
+            M.encaseEffect(deferred.makeDeferred<R, E, O.Option<A>, E>()),
+            pushBreaker =>
+              managed.chain(makeWeave, weave =>
+                managed.chain(
+                  M.encaseEffect(
+                    deferred.makeDeferred<T.NoEnv, never, Cause<E>, E>()
+                  ),
+                  internalBreaker => {
+                    // create a wave action that will proxy elements created by running the stream into the push queue
+                    // if any errors occur, we set the breaker
+                    function spawnPushFiber(
+                      stream: Stream<R, E, A>
+                    ): T.Effect<R, never, void> {
+                      const writer = P.pipe(
+                        // Process to sink elements into the queue
+                        into(map_(stream, O.some), queueSink(pushQueue)) as any,
+                        // TODO: I don't think we need to handle interrupts, it shouldn't be possible
+                        T.foldExit(
+                          (e: Cause<E>) => internalBreaker.done(e),
+                          F.constant(T.pure(undefined))
                         )
+                      );
+                      return weave.attach(sem.withPermit(writer)); // we need a permit to start
+                    }
+
+                    // The action that will pull a single stream upstream and attempt to activate it to push downstream
+                    function advanceStreams(): T.Effect<R, never, void> {
+                      const breakerError = effect.chain(
+                        internalBreaker.wait,
+                        T.raised
+                      );
+
+                      return effect.foldExit(
+                        T.raceFirst(
+                          pull, // we don't want to pull until there is capacity
+                          breakerError
+                        ),
+                        c => pushBreaker.cause(c), // if upstream errored, we should push the failure downstream immediately
+                        (
+                          nextOpt // otherwise we should
+                        ) =>
+                          P.pipe(
+                            nextOpt,
+                            O.fold(
+                              // The end has occured
+                              F.constant(
+                                P.pipe(
+                                  // We will wait for an error or all active produces to finish
+                                  T.race(breakerError, sem.acquireN(maxActive)),
+                                  T.foldExit(
+                                    c => pushBreaker.cause(c),
+                                    F.constant(pushQueue.offer(O.none))
+                                  )
+                                )
+                              ),
+                              // Start the push fiber and then keep going
+                              next =>
+                                T.applySecondL(
+                                  sem.withPermit(spawnPushFiber(next)),
+                                  F.constant(advanceStreams())
+                                )
+                            )
+                          )
+                      );
+                    }
+                    const downstreamSource = queueBreakerSource(
+                      pushQueue,
+                      pushBreaker
                     );
+                    return M.as(M.fiber(advanceStreams()), downstreamSource);
                   }
-                  const downstreamSource = queueBreakerSource(
-                    pushQueue,
-                    pushBreaker
-                  );
-                  return M.as(M.fiber(advanceStreams()), downstreamSource);
-                }
+                )
               )
-            )
-        )
+          )
       )
     )
   );
@@ -1412,7 +1410,7 @@ export function merge<R, E, A>(
 
 export function chainMerge<R, E, A, B>(
   stream: Stream<R, E, A>,
-  f: FunctionN<[A], Stream<R, E, B>>,
+  f: F.FunctionN<[A], Stream<R, E, B>>,
   maxActive: number
 ): Stream<R, E, B> {
   return merge(map_(stream, f), maxActive);
@@ -1434,7 +1432,7 @@ export function mergeAll<R, E, A>(
  */
 export function dropWhile<R, E, A>(
   stream: Stream<R, E, A>,
-  pred: Predicate<A>
+  pred: F.Predicate<A>
 ): Stream<R, E, A> {
   return chain_(peel(stream, drainWhileSink(pred)), ([head, rest]) =>
     concat((fromOption(head) as any) as Stream<R, E, A>, rest)
@@ -1472,7 +1470,7 @@ export const stream: Monad3E<URI> = {
   map: map_,
   of: <R, E, A>(a: A): Stream<R, E, A> => (once(a) as any) as Stream<R, E, A>,
   ap: <R, R2, E, E2, A, B>(
-    sfab: Stream<R, E, FunctionN<[A], B>>,
+    sfab: Stream<R, E, F.FunctionN<[A], B>>,
     sa: Stream<R2, E2, A>
   ) => zipWith(sfab, sa, (f, a) => f(a)),
   chain: chain_

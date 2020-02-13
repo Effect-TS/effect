@@ -6,18 +6,10 @@
 /* tested in wave */
 /* istanbul ignore file */
 
-import { Option, some, none } from "fp-ts/lib/Option";
-import {
-  constant,
-  FunctionN,
-  flow,
-  Predicate,
-  identity
-} from "fp-ts/lib/function";
+import { option as O, function as F, pipeable as P } from "fp-ts";
 import { SinkStep, sinkDone, sinkCont, isSinkDone } from "./step";
 import { ConcurrentQueue } from "../queue";
 import * as T from "../effect";
-import { pipe } from "fp-ts/lib/pipeable";
 import { effect } from "../effect";
 
 export interface Sink<R, E, S, A, B> {
@@ -70,7 +62,7 @@ export function liftPureSink<S, A, B>(
   return {
     initial: T.pure(sink.initial),
     step: (state: S, next: A) => T.pure(sink.step(state, next)),
-    extract: flow(sink.extract, T.pure)
+    extract: F.flow(sink.extract, T.pure)
   };
 }
 
@@ -86,7 +78,7 @@ export function collectArraySink<R, E, A>(): Sink<R, E, A[], A, A[]> {
 
 export function drainSink<R, E, A>(): Sink<R, E, void, A, void> {
   const initial = T.pure(sinkCont(undefined));
-  const extract = constant(T.unit);
+  const extract = F.constant(T.unit);
   function step(_state: void, _next: A): T.Effect<R, E, SinkStep<never, void>> {
     return T.pure(sinkCont(undefined));
   }
@@ -99,7 +91,7 @@ export function drainSink<R, E, A>(): Sink<R, E, void, A, void> {
  */
 export function constSink<R, E, A, B>(b: B): Sink<R, E, void, A, B> {
   const initial = T.pure(sinkDone(undefined as void, []));
-  const extract = constant(T.pure(b));
+  const extract = F.constant(T.pure(b));
   function step(_state: void, _next: A): T.Effect<R, E, SinkStep<any, void>> {
     return T.pure(sinkDone(undefined as void, []));
   }
@@ -109,14 +101,14 @@ export function constSink<R, E, A, B>(b: B): Sink<R, E, void, A, B> {
 /**
  * A sink that produces the head element of a stream (if any elements are emitted)
  */
-export function headSink<R, E, A>(): Sink<R, E, Option<A>, A, Option<A>> {
-  const initial = T.pure(sinkCont(none));
+export function headSink<R, E, A>(): Sink<R, E, O.Option<A>, A, O.Option<A>> {
+  const initial = T.pure(sinkCont(O.none));
 
   function step(
-    _state: Option<A>,
+    _state: O.Option<A>,
     next: A
-  ): T.Effect<R, E, SinkStep<any, Option<A>>> {
-    return T.pure(sinkDone(some(next), []));
+  ): T.Effect<R, E, SinkStep<any, O.Option<A>>> {
+    return T.pure(sinkDone(O.some(next), []));
   }
   return { initial, extract: T.pure, step };
 }
@@ -124,14 +116,14 @@ export function headSink<R, E, A>(): Sink<R, E, Option<A>, A, Option<A>> {
 /**
  * A sink that produces the last element of a stream (if any elements are emitted)
  */
-export function lastSink<R, E, A>(): Sink<R, E, Option<A>, A, Option<A>> {
-  const initial = T.pure(sinkCont(none));
+export function lastSink<R, E, A>(): Sink<R, E, O.Option<A>, A, O.Option<A>> {
+  const initial = T.pure(sinkCont(O.none));
 
   function step(
-    _state: Option<A>,
+    _state: O.Option<A>,
     next: A
-  ): T.Effect<R, E, SinkStep<never, Option<A>>> {
-    return T.pure(sinkCont(some(next)));
+  ): T.Effect<R, E, SinkStep<never, O.Option<A>>> {
+    return T.pure(sinkCont(O.some(next)));
   }
   return { initial, extract: T.pure, step };
 }
@@ -141,12 +133,12 @@ export function lastSink<R, E, A>(): Sink<R, E, Option<A>, A, Option<A>> {
  * @param f
  */
 export function evalSink<R, E, A>(
-  f: FunctionN<[A], T.Effect<R, E, unknown>>
+  f: F.FunctionN<[A], T.Effect<R, E, unknown>>
 ): Sink<R, E, void, A, void> {
   const initial = T.pure(sinkCont(undefined as void));
 
   function step(_state: void, next: A): T.Effect<R, E, SinkStep<never, void>> {
-    return pipe(
+    return P.pipe(
       f(next),
       T.apSecond(
         T.pure(sinkCont(_state)) as T.Effect<R, E, SinkStep<never, void>>
@@ -154,7 +146,7 @@ export function evalSink<R, E, A>(
     );
   }
 
-  const extract = constant(T.unit);
+  const extract = F.constant(T.unit);
 
   return { initial, extract, step };
 }
@@ -166,15 +158,15 @@ export function evalSink<R, E, A>(
  * @param f
  */
 export function drainWhileSink<R, E, A>(
-  f: Predicate<A>
-): Sink<R, E, Option<A>, A, Option<A>> {
-  const initial = sinkCont(none as Option<A>);
+  f: F.Predicate<A>
+): Sink<R, E, O.Option<A>, A, O.Option<A>> {
+  const initial = sinkCont(O.none as O.Option<A>);
 
-  function step(_state: Option<A>, a: A): SinkStep<any, Option<A>> {
-    return f(a) ? sinkCont(none) : sinkDone(some(a), []);
+  function step(_state: O.Option<A>, a: A): SinkStep<any, O.Option<A>> {
+    return f(a) ? sinkCont(O.none) : sinkDone(O.some(a), []);
   }
 
-  const extract = identity;
+  const extract = F.identity;
 
   return liftPureSink({ initial, extract, step });
 }
@@ -193,7 +185,7 @@ export function queueSink<R, E, A>(
     return T.as(queue.offer(a), sinkCont(undefined));
   }
 
-  const extract = constant(T.unit);
+  const extract = F.constant(T.unit);
   return { initial, extract, step };
 }
 
@@ -204,15 +196,15 @@ export function queueSink<R, E, A>(
  * @param queue
  */
 export function queueOptionSink<R, E, A>(
-  queue: ConcurrentQueue<Option<A>>
+  queue: ConcurrentQueue<O.Option<A>>
 ): Sink<R, E, void, A, void> {
   const initial = T.pure(sinkCont(undefined));
 
   function step(_state: void, a: A): T.Effect<R, E, SinkStep<A, void>> {
-    return T.as(queue.offer(some(a)), sinkCont(undefined));
+    return T.as(queue.offer(O.some(a)), sinkCont(undefined));
   }
 
-  const extract = constant(queue.offer(none));
+  const extract = F.constant(queue.offer(O.none));
   return { initial, extract, step };
 }
 
@@ -223,10 +215,10 @@ export function queueOptionSink<R, E, A>(
  */
 export function map<R, E, S, A, B, C>(
   sink: Sink<R, E, S, A, B>,
-  f: FunctionN<[B], C>
+  f: F.FunctionN<[B], C>
 ): Sink<R, E, S, A, C> {
   return {
     ...sink,
-    extract: flow(sink.extract, T.map(f))
+    extract: F.flow(sink.extract, T.map(f))
   };
 }

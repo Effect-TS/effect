@@ -14,52 +14,51 @@
 
 /* istanbul ignore file */
 
-import { FunctionN, Lazy } from "fp-ts/lib/function";
-import { none, Option, some } from "fp-ts/lib/Option";
-import * as o from "fp-ts/lib/Option";
+import { function as F } from "fp-ts";
+import { option as O } from "fp-ts";
 
 export interface Completable<A> {
-  value(): Option<A>;
+  value(): O.Option<A>;
   isComplete(): boolean;
   complete(a: A): void;
   tryComplete(a: A): boolean;
-  listen(f: FunctionN<[A], void>): Lazy<void>;
+  listen(f: F.FunctionN<[A], void>): F.Lazy<void>;
 }
 
 export class CompletableImpl<A> implements Completable<A> {
-  completed: Option<A>;
-  listeners: FunctionN<[A], void>[];
+  completed: O.Option<A>;
+  listeners: F.FunctionN<[A], void>[];
   constructor() {
-    this.completed = none;
+    this.completed = O.none;
     this.listeners = [];
   }
 
   set(a: A): void {
-    this.completed = some(a);
+    this.completed = O.some(a);
     this.listeners.forEach(f => f(a));
   }
 
-  value(): Option<A> {
+  value(): O.Option<A> {
     return this.completed;
   }
   isComplete(): boolean {
-    return o.isSome(this.completed);
+    return O.isSome(this.completed);
   }
   complete(a: A): void {
-    if (o.isSome(this.completed)) {
+    if (O.isSome(this.completed)) {
       throw new Error("Die: Completable is already completed");
     }
     this.set(a);
   }
   tryComplete(a: A): boolean {
-    if (o.isSome(this.completed)) {
+    if (O.isSome(this.completed)) {
       return false;
     }
     this.set(a);
     return true;
   }
-  listen(f: FunctionN<[A], void>): Lazy<void> {
-    if (o.isSome(this.completed)) {
+  listen(f: F.FunctionN<[A], void>): F.Lazy<void> {
+    if (O.isSome(this.completed)) {
       f(this.completed.value);
     }
     this.listeners.push(f);

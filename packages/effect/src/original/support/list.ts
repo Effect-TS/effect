@@ -14,10 +14,7 @@
 
 /* istanbul ignore file */
 
-import { flip, FunctionN, Lazy, not, Predicate } from "fp-ts/lib/function";
-import { Monad1 } from "fp-ts/lib/Monad";
-import { none, Option, some } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
+import { function as F, monad as M, option as O, pipeable as P } from "fp-ts";
 
 export type List<A> = Cons<A> | Nil;
 
@@ -53,7 +50,7 @@ export function of<A>(a: A): List<A> {
   return cons(a, nil);
 }
 
-export function foldl<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
+export function foldl<A, B>(list: List<A>, b: B, f: F.FunctionN<[B, A], B>): B {
   let iter = list;
   let seed = b;
   while (isCons(iter)) {
@@ -65,8 +62,8 @@ export function foldl<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
 
 export function foldlc<A, B>(
   b: B,
-  f: FunctionN<[B, A], B>
-): FunctionN<[List<A>], B> {
+  f: F.FunctionN<[B, A], B>
+): F.FunctionN<[List<A>], B> {
   return list => foldl(list, b, f);
 }
 
@@ -74,8 +71,8 @@ export function reverse<A>(list: List<A>): List<A> {
   return foldl(list, nil as List<A>, (t, h) => cons(h, t));
 }
 
-export function foldr<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B {
-  return pipe(list, reverse, foldlc(b, flip(f)));
+export function foldr<A, B>(list: List<A>, b: B, f: F.FunctionN<[A, B], B>): B {
+  return P.pipe(list, reverse, foldlc(b, F.flip(f)));
 }
 
 export function snoc<A>(append: A, list: List<A>): List<A> {
@@ -84,8 +81,8 @@ export function snoc<A>(append: A, list: List<A>): List<A> {
 
 export function cata<A, B>(
   list: List<A>,
-  ifCons: FunctionN<[A, List<A>], B>,
-  ifNil: Lazy<B>
+  ifCons: F.FunctionN<[A, List<A>], B>,
+  ifNil: F.Lazy<B>
 ): B {
   if (isCons(list)) {
     return ifCons(list.head, list.tail);
@@ -94,63 +91,65 @@ export function cata<A, B>(
 }
 
 export function catac<A, B>(
-  ifCons: FunctionN<[A, List<A>], B>,
-  ifNil: Lazy<B>
-): FunctionN<[List<A>], B> {
+  ifCons: F.FunctionN<[A, List<A>], B>,
+  ifNil: F.Lazy<B>
+): F.FunctionN<[List<A>], B> {
   return list => cata(list, ifCons, ifNil);
 }
 
-export function head<A>(list: List<A>): Option<A> {
-  return cata(list, some, () => none);
+export function head<A>(list: List<A>): O.Option<A> {
+  return cata(list, O.some, () => O.none);
 }
 
-export function tail<A>(list: List<A>): Option<List<A>> {
+export function tail<A>(list: List<A>): O.Option<List<A>> {
   return cata(
     list,
-    (_, rest) => some(rest),
-    () => none
+    (_, rest) => O.some(rest),
+    () => O.none
   );
 }
 
-export function last<A>(list: List<A>): Option<A> {
+export function last<A>(list: List<A>): O.Option<A> {
   if (isNil(list)) {
-    return none;
+    return O.none;
   }
   let iter = list;
   while (isCons(iter.tail)) {
     iter = iter.tail;
   }
-  return some(iter.head);
+  return O.some(iter.head);
 }
 
 export const isEmpty = isNil;
 
-export const nonEmpty = not(isNil);
+export const nonEmpty = F.not(isNil);
 
-export function find<A>(list: List<A>, f: Predicate<A>): Option<A> {
+export function find<A>(list: List<A>, f: F.Predicate<A>): O.Option<A> {
   let iter = list;
   while (isCons(iter)) {
     if (f(iter.head)) {
-      return some(iter.head);
+      return O.some(iter.head);
     }
     iter = iter.tail;
   }
-  return none;
+  return O.none;
 }
 
-export function findc<A>(f: Predicate<A>): FunctionN<[List<A>], Option<A>> {
+export function findc<A>(
+  f: F.Predicate<A>
+): F.FunctionN<[List<A>], O.Option<A>> {
   return list => find(list, f);
 }
 
 export function foldrc<A, B>(
   b: B,
-  f: FunctionN<[A, B], B>
-): FunctionN<[List<A>], B> {
+  f: F.FunctionN<[A, B], B>
+): F.FunctionN<[List<A>], B> {
   return list => foldr(list, b, f);
 }
 
-export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> {
-  return pipe(
+export function map<A, B>(list: List<A>, f: F.FunctionN<[A], B>): List<B> {
+  return P.pipe(
     list,
     foldlc(nil as List<B>, (t, a) => cons(f(a), t)),
     reverse
@@ -158,16 +157,16 @@ export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> {
 }
 
 export function lift<A, B>(
-  f: FunctionN<[A], B>
-): FunctionN<[List<A>], List<B>> {
+  f: F.FunctionN<[A], B>
+): F.FunctionN<[List<A>], List<B>> {
   return list => map(list, f);
 }
 
-export function filter<A>(list: List<A>, f: Predicate<A>): List<A> {
+export function filter<A>(list: List<A>, f: F.Predicate<A>): List<A> {
   return foldr(list, nil as List<A>, (a, t) => (f(a) ? cons(a, t) : t));
 }
 
-export function filterc<A>(f: Predicate<A>): FunctionN<[List<A>], List<A>> {
+export function filterc<A>(f: F.Predicate<A>): F.FunctionN<[List<A>], List<A>> {
   return list => filter(list, f);
 }
 
@@ -193,12 +192,15 @@ export function size(list: List<unknown>): number {
 
 export function chain<A, B>(
   list: List<A>,
-  f: FunctionN<[A], List<B>>
+  f: F.FunctionN<[A], List<B>>
 ): List<B> {
-  return pipe(list, lift(f), foldlc(nil as List<B>, concat));
+  return P.pipe(list, lift(f), foldlc(nil as List<B>, concat));
 }
 
-export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> {
+export function ap<A, B>(
+  list: List<A>,
+  fns: List<F.FunctionN<[A], B>>
+): List<B> {
   return chain(list, a => map(fns, f => f(a)));
 }
 
@@ -229,10 +231,10 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const instances: Monad1<URI> = {
+export const instances: M.Monad1<URI> = {
   URI,
   map,
   of,
-  ap: flip(ap),
+  ap: F.flip(ap),
   chain
 };
