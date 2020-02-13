@@ -20,14 +20,21 @@ import { makeRef } from "../src/ref";
 
 describe("EffectSafe", () => {
   describe("Forever", async () => {
-    let count = 0
-    const cancel = T.run(T.forever(T.delay(T.sync(() => {
-      count = count + 1
-    }), 100)))
-    await T.runToPromise(T.delay(T.unit, 110))
-    cancel()
-    assert.deepEqual(count > 0, true)
-  })
+    let count = 0;
+    const cancel = T.run(
+      T.forever(
+        T.delay(
+          T.sync(() => {
+            count = count + 1;
+          }),
+          100
+        )
+      )
+    );
+    await T.runToPromise(T.delay(T.unit, 110));
+    cancel();
+    assert.deepEqual(count > 0, true);
+  });
   describe("Kleisly", () => {
     it("chainOption", async () => {
       const pipeableErr = await pipe(
