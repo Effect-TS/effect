@@ -5,13 +5,19 @@ import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
 import * as Rxo from "redux-observable";
 import { pipe } from "fp-ts/lib/pipeable";
+import { Effect } from "packages/effect/src/effect";
+import { Subject } from "rxjs";
 
 export type Epic<R, State, A extends Action<any>, O extends A> = {
   _A: A;
   _O: O;
   _R: R;
   _S: State;
-  (current: State, action$: S.Stream<T.NoEnv, never, A>): S.Stream<R, never, O>;
+  (current: StateAccess<State>, action$: S.Stream<T.NoEnv, never, A>): S.Stream<
+    R,
+    never,
+    O
+  >;
 };
 
 function toNever(_: any): never {
@@ -26,6 +32,11 @@ type Sta<K extends AnyEpic> = K["_S"];
 type Act<K extends AnyEpic> = K["_A"];
 type AOut<K extends AnyEpic> = K["_O"];
 
+export interface StateAccess<S> {
+  value: Effect<T.NoEnv, never, S>;
+  source: Subject<S>;
+}
+
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
@@ -33,6 +44,9 @@ export function embed<EPS extends AnyEpic[]>(
     Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
   >
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
+  type Action = Act<EPS[number]>;
+  type State = Sta<EPS[number]>;
+  type ActionOut = AOut<EPS[number]>;
   return (
     r: F.UnionToIntersection<
       Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
@@ -40,22 +54,35 @@ export function embed<EPS extends AnyEpic[]>(
   ) =>
     Rxo.combineEpics(
       ...pipe(
-        epics,
-        A.map(epic => (action$: any, state$: any) =>
-          R.runToObservable(
-            T.provideAll(r)(
-              R.toObservable(
-                epic(state$.value, R.encaseObservable(action$, toNever) as any)
+        epics as Epic<typeof r, State, Action, ActionOut>[],
+        A.map(
+          epic => (
+            action$: Rxo.ActionsObservable<Action>,
+            state$: Rxo.StateObservable<State>
+          ) =>
+            R.runToObservable(
+              T.provideAll(r)(
+                R.toObservable(
+                  epic(
+                    {
+                      value: T.sync(() => state$.value),
+                      source: state$.source
+                    },
+                    R.encaseObservable(action$, toNever)
+                  )
+                )
               )
             )
-          )
         )
       )
-    ) as any;
+    );
 }
 
 export function epic<S, A extends Action>(): <R, O extends A>(
-  e: (current: S, action$: S.Stream<T.NoEnv, never, A>) => S.Stream<R, never, O>
+  e: (
+    current: StateAccess<S>,
+    action$: S.Stream<T.NoEnv, never, A>
+  ) => S.Stream<R, never, O>
 ) => Epic<R, S, A, O> {
   return e => e as any;
 }

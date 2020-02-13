@@ -198,4 +198,95 @@ describe("Epics", () => {
       { user: Op.none, error: Op.some("wrong prefix") }
     ]);
   });
+
+  it("should access state", async () => {
+    interface ReducerState {
+      counter: number;
+    }
+
+    interface State {
+      reducer: ReducerState;
+    }
+
+    interface Add {
+      type: "add";
+      add: number;
+    }
+
+    interface Added {
+      type: "added";
+    }
+
+    type MyAction = Add | Added;
+
+    const isAdd = (a: MyAction): a is Add => a.type === "add";
+
+    const reducer = (
+      state: ReducerState = { counter: 0 },
+      action: MyAction
+    ): ReducerState =>
+      action.type === "add"
+        ? {
+            counter: state.counter + action.add
+          }
+        : state;
+
+    const updates: ReducerState[] = [];
+
+    const incReducer = Ep.epic<State, MyAction>()((state$, action$) =>
+      pipe(
+        action$,
+        S.filterRefineWith(isAdd),
+        S.chain(() => S.encaseEffect(state$.value)),
+        S.map(state => {
+          updates.push(state.reducer);
+          return { type: "added" };
+        })
+      )
+    );
+
+    const rootEpic = combineEpics(Ep.embed(incReducer)({}));
+
+    const epicMiddleware = createEpicMiddleware<
+      MyAction,
+      MyAction,
+      State,
+      State
+    >();
+
+    const store = createStore(
+      combineReducers({
+        reducer
+      }),
+      applyMiddleware(epicMiddleware)
+    );
+
+    epicMiddleware.run(rootEpic);
+
+    const makeAdd = (n: number): Add => ({
+      type: "add",
+      add: n
+    });
+    store.dispatch(makeAdd(1));
+    store.dispatch(makeAdd(3));
+    store.dispatch(makeAdd(5));
+    store.dispatch(makeAdd(8));
+
+    await T.runToPromise(T.delay(T.unit, 10));
+
+    assert.deepEqual(updates, [
+      {
+        counter: 1
+      },
+      {
+        counter: 4
+      },
+      {
+        counter: 9
+      },
+      {
+        counter: 17
+      }
+    ]);
+  });
 });
