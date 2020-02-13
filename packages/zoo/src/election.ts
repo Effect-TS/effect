@@ -38,6 +38,7 @@ export const election = (electionPath: string) => <R, E, A>(
           s.code === State.DISCONNECTED.code ||
           s.code === State.EXPIRED.code
         ) {
+          disp();
           retD(right(undefined));
         }
       });
