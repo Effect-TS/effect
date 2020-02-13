@@ -15,17 +15,19 @@ export const election = (electionPath: string) => <R, E, A>(
     // run election
     const proc = pipe(
       c.mkdirp(electionPath),
-      T.chain(_ => c.create(electionPath, "EPHEMERAL_SEQUENTIAL")),
+      T.chain(_ => c.create(`${electionPath}/p_`, "EPHEMERAL_SEQUENTIAL")),
       T.chain(({ path }) => c.currentId(path)),
       T.chain(id =>
-        T.forever( // master-slave loop
+        T.forever(
+          // master-slave loop
           pipe(
             c.getChildren(electionPath), // get members
-            T.chain(children => c.currentId(children[0])), // check if I am master
-            T.chain(masterId =>
-              id.id === masterId.id
-                ? T.asUnit<R, E | ZooError, A>(run) // I'm master
-                : T.asUnit(c.waitDelete(masterId.id)) // I'm slave waiting for mater to drop
+            T.chain(children => c.currentId(children.paths[0])), // check if I am master
+            T.chain(
+              masterId =>
+                id.id === masterId.id
+                  ? T.asUnit<R, E | ZooError, A>(run) // I'm master
+                  : T.asUnit(c.waitDelete(`${electionPath}/${masterId.id}`)) // I'm slave waiting for mater to drop
             )
           )
         )
