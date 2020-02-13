@@ -5,6 +5,9 @@ import { State } from "node-zookeeper-client";
 import { right } from "fp-ts/lib/Either";
 import { sequenceT } from "fp-ts/lib/Apply";
 
+// work in progress
+/* istanbul ignore file */
+
 export const election = (electionPath: string) => <R, E, A>(
   run: T.Effect<R, E, A>
 ) =>
