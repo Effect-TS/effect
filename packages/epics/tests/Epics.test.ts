@@ -100,7 +100,7 @@ const fetchUser2 = Ep.epic<State, MyAction>()(_ => action$ =>
   pipe(
     action$,
     S.filterRefineWith(isFetchUser),
-    S.chain(({ id }) =>
+    S.chain(() =>
       S.encaseEffect(
         T.accessM(({ config2: { prefix } }: Config2) =>
           T.condWith(prefix === "prefix2")(

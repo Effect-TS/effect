@@ -22,9 +22,15 @@ type Act<K> = K extends Epic<any, any, infer A> ? A : never;
 export function embed<EPS extends Epic<any, any, any>[]>(
   ...epics: EPS
 ): (
-  r: F.UnionToIntersection<Env<EPS[number]>>
+  r: F.UnionToIntersection<
+    Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any>>>
+  >
 ) => Rxo.Epic<Act<EPS[number]>, Act<EPS[number]>, Sta<EPS[number]>> {
-  return (r: F.UnionToIntersection<Env<EPS[number]>>) =>
+  return (
+    r: F.UnionToIntersection<
+      Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any>>>
+    >
+  ) =>
     Rxo.combineEpics(
       ...pipe(
         epics,
