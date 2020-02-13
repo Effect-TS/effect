@@ -32,7 +32,7 @@ type AOut<K extends AnyEpic> = K["_O"];
 
 export interface StateAccess<S> {
   value: T.Effect<T.NoEnv, never, S>;
-  source: S.Stream<T.NoEnv, never, S>;
+  stream: S.Stream<T.NoEnv, never, S>;
 }
 
 export function embed<EPS extends AnyEpic[]>(
@@ -57,20 +57,21 @@ export function embed<EPS extends AnyEpic[]>(
           epic => (
             action$: Rxo.ActionsObservable<Action>,
             state$: Rxo.StateObservable<State>
-          ) =>
-            R.runToObservable(
+          ) => {
+            return R.runToObservable(
               T.provideAll(r)(
                 R.toObservable(
                   epic(
                     {
                       value: T.sync(() => state$.value),
-                      source: R.encaseObservable(state$.source, toNever)
+                      stream: R.encaseObservable(state$, toNever)
                     },
                     R.encaseObservable(action$, toNever)
                   )
                 )
               )
-            )
+            );
+          }
         )
       )
     );

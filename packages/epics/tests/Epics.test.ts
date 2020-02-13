@@ -231,7 +231,7 @@ describe("Epics", () => {
           }
         : state;
 
-    const updates: ReducerState[] = [];
+    const updates: { from: string; state: ReducerState }[] = [];
 
     const incReducer = Ep.epic<State, MyAction>()((state$, action$) =>
       pipe(
@@ -239,9 +239,19 @@ describe("Epics", () => {
         S.filterRefineWith(isAdd),
         S.chain(() => S.encaseEffect(state$.value)),
         S.map(state => {
-          updates.push(state.reducer);
-          return { type: "added" };
-        })
+          updates.push({ from: "a", state: state.reducer });
+          return { type: "added" as const };
+        }),
+        S.chain(x =>
+          pipe(
+            state$.stream,
+            stream => S.take(stream, 2),
+            S.map(s => {
+              updates.push({ from: "b", state: s.reducer });
+              return x;
+            })
+          )
+        )
       )
     );
 
@@ -274,19 +284,23 @@ describe("Epics", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
+    const makeState = (from: string, counter: number) => ({
+      from,
+      state: { counter }
+    });
+
     assert.deepEqual(updates, [
-      {
-        counter: 1
-      },
-      {
-        counter: 4
-      },
-      {
-        counter: 9
-      },
-      {
-        counter: 17
-      }
+      makeState("a", 1),
+      makeState("b", 1),
+      makeState("b", 4),
+      makeState("a", 4),
+      makeState("b", 4),
+      makeState("b", 9),
+      makeState("a", 9),
+      makeState("b", 9),
+      makeState("b", 17),
+      makeState("a", 17),
+      makeState("b", 17)
     ]);
   });
 });
