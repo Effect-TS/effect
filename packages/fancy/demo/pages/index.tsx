@@ -6,13 +6,18 @@ import { ORG } from "../modules/orgs";
 import { orgsStateURI } from "../modules/orgs/state";
 import { Home } from "../view/Home";
 import { flashInitialState, flashStateURI } from "../modules/flash/state";
-import { effect as T } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
+import { DateOps } from "../modules/date/def";
+import { OrgsOps } from "../modules/orgs/def";
 
 // alpha
 /* istanbul ignore file */
 
+const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
+  pipe(eff, ORG.provide, DT.provide);
+
 // tslint:disable-next-line: no-default-export
-export default R.page(pipe(Home, ORG.provide, DT.provide))({
+export default R.page(pipe(Home, provider))({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
