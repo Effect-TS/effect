@@ -16,17 +16,19 @@ import { OrgsOps } from "../modules/orgs/def";
 const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
   pipe(eff, ORG.provide, DT.provide);
 
-// tslint:disable-next-line: no-default-export
-export default R.page(pipe(Home, provider))({
+const SSG = R.pageSSG(pipe(Home, provider))({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
 })(
   T.pure({
     foo: "ok"
-  }),
-  // if static then initial props effect must be sync, page will be rendered
-  // as static html, if ssr the props effect can be any async or sync
-  // in case of ssr mode NextContext will be embedded (via getInitialProps)
-  "ssr"
+  })
 );
+
+export function unstable_getStaticProps() {
+  return SSG.getStaticProps();
+}
+
+// tslint:disable-next-line: no-default-export
+export default SSG.page;

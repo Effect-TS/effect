@@ -100,3 +100,4 @@ export const accessPM = <P, R, E, A>(f: (_: P) => T.Effect<R, E, A>) =>
 export { State } from "./fancy";
 export { ComponentProps } from "./componentProps";
 export { page } from "./page";
+export { pageSSG } from "./pageSSG";
