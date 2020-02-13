@@ -21,6 +21,7 @@ const SSG = R.pageSSG(pipe(Home, provider))({
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
 })(
+  // in ssg initial props can be generated via async too 
   T.pure({
     foo: "ok"
   })
