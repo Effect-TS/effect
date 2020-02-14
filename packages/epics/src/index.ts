@@ -43,7 +43,7 @@ export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
   r: (
-    state$: Rxo.StateObservable<Sta<EPS[number]>>
+    state$: StateAccess<Sta<EPS[number]>>
   ) => EpicsEnvType<typeof epics[number]>
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
   type EPSType = EPS[number];
@@ -59,20 +59,20 @@ export function embed<EPS extends AnyEpic[]>(
           epic => (
             action$: Rxo.ActionsObservable<Action>,
             state$: Rxo.StateObservable<State>
-          ) =>
-            R.runToObservable(
-              T.provideAll(r(state$))(
+          ) => {
+            const stateAccess: StateAccess<State> = {
+              value: T.sync(() => state$.value),
+              stream: R.encaseObservable(state$, toNever)
+            };
+
+            return R.runToObservable(
+              T.provideAll(r(stateAccess))(
                 R.toObservable(
-                  epic(
-                    {
-                      value: T.sync(() => state$.value),
-                      stream: R.encaseObservable(state$, toNever)
-                    },
-                    R.encaseObservable(action$, toNever)
-                  )
+                  epic(stateAccess, R.encaseObservable(action$, toNever))
                 )
               )
-            )
+            );
+          }
         )
       )
     );
