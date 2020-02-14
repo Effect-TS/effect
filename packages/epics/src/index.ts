@@ -23,7 +23,7 @@ function toNever(_: any): never {
   return undefined as never;
 }
 
-type AnyEpic = Epic<any, any, any, any>;
+type AnyEpic = Epic<any, any, any, any> | Epic<any, any, any, never>;
 
 type Env<K extends AnyEpic> = K["_R"];
 type Sta<K extends AnyEpic> = K["_S"];
