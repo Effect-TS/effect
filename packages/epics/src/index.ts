@@ -35,42 +35,44 @@ export interface StateAccess<S> {
   stream: S.Stream<T.NoEnv, never, S>;
 }
 
+type EpicsEnvType<EPS extends AnyEpic> = F.UnionToIntersection<
+  Env<Exclude<EPS, Epic<T.NoEnv, any, any, any>>>
+>;
+
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
-  r: F.UnionToIntersection<
-    Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
-  >
+  r: (
+    state$: StateAccess<Sta<EPS[number]>>
+  ) => EpicsEnvType<typeof epics[number]>
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
-  type Action = Act<EPS[number]>;
-  type State = Sta<EPS[number]>;
-  type ActionOut = AOut<EPS[number]>;
-  return (
-    r: F.UnionToIntersection<
-      Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
-    >
-  ) =>
+  type EPSType = EPS[number];
+  type Action = Act<EPSType>;
+  type State = Sta<EPSType>;
+  type ActionOut = AOut<EPSType>;
+  type REnv = EpicsEnvType<EPSType>;
+  return r =>
     Rxo.combineEpics(
       ...pipe(
-        epics as Epic<typeof r, State, Action, ActionOut>[],
+        epics as Epic<REnv, State, Action, ActionOut>[],
         A.map(
           epic => (
             action$: Rxo.ActionsObservable<Action>,
             state$: Rxo.StateObservable<State>
-          ) =>
-            R.runToObservable(
-              T.provideAll(r)(
+          ) => {
+            const stateAccess: StateAccess<State> = {
+              value: T.sync(() => state$.value),
+              stream: R.encaseObservable(state$, toNever)
+            };
+
+            return R.runToObservable(
+              T.provideAll(r(stateAccess))(
                 R.toObservable(
-                  epic(
-                    {
-                      value: T.sync(() => state$.value),
-                      stream: R.encaseObservable(state$, toNever)
-                    },
-                    R.encaseObservable(action$, toNever)
-                  )
+                  epic(stateAccess, R.encaseObservable(action$, toNever))
                 )
               )
-            )
+            );
+          }
         )
       )
     );
