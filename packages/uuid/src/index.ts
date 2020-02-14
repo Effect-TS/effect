@@ -20,14 +20,16 @@ export const isoUUIDBase58 = iso<UUIDBase58>();
 
 export const uuidURI: unique symbol = Symbol();
 
+export interface UUIDOps {
+  gen: T.UIO<UUID>;
+  toBase90: (uuid: UUID) => T.UIO<UUIDBase90>;
+  fromBase90: (uuid: UUIDBase90) => T.UIO<UUID>;
+  toBase58: (uuid: UUID) => T.UIO<UUIDBase58>;
+  fromBase58: (uuid: UUIDBase58) => T.UIO<UUID>;
+}
+
 export interface UUIDEnv extends F.ModuleShape<UUIDEnv> {
-  [uuidURI]: {
-    gen: T.UIO<UUID>;
-    toBase90: (uuid: UUID) => T.UIO<UUIDBase90>;
-    fromBase90: (uuid: UUIDBase90) => T.UIO<UUID>;
-    toBase58: (uuid: UUID) => T.UIO<UUIDBase58>;
-    fromBase58: (uuid: UUIDBase58) => T.UIO<UUID>;
-  };
+  [uuidURI]: UUIDOps;
 }
 
 export const uuidM = F.define<UUIDEnv>({

@@ -164,21 +164,19 @@ export interface HttpHeaders {
   [httpHeadersEnv]: Record<string, string>;
 }
 
+export interface HttpOps {
+  request<M extends Method, Req extends RequestType, Resp extends ResponseType>(
+    method: M,
+    url: string,
+    requestType: Req,
+    responseType: Resp,
+    headers: Record<string, string>,
+    body: RequestBodyTypes[Req][M]
+  ): T.Effect<T.NoEnv, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+}
+
 export interface Http {
-  [httpEnv]: {
-    request<
-      M extends Method,
-      Req extends RequestType,
-      Resp extends ResponseType
-    >(
-      method: M,
-      url: string,
-      requestType: Req,
-      responseType: Resp,
-      headers: Record<string, string>,
-      body: RequestBodyTypes[Req][M]
-    ): T.Effect<T.NoEnv, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
-  };
+  [httpEnv]: HttpOps;
 }
 
 function hasHeaders(r: object): r is HttpHeaders {

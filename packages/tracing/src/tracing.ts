@@ -29,18 +29,20 @@ export interface SpanContext {
 
 export const Tracer: unique symbol = Symbol();
 
+export interface TracerOps {
+  withTracer<R, E, A>(ma: T.Effect<R, E, A>): T.Effect<R, E, A>;
+  withControllerSpan(
+    component: string,
+    operation: string,
+    headers: { [k: string]: string }
+  ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
+  withChildSpan(
+    operation: string
+  ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
+}
+
 export interface Tracer {
-  [Tracer]: {
-    withTracer<R, E, A>(ma: T.Effect<R, E, A>): T.Effect<R, E, A>;
-    withControllerSpan(
-      component: string,
-      operation: string,
-      headers: { [k: string]: string }
-    ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
-    withChildSpan(
-      operation: string
-    ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
-  };
+  [Tracer]: TracerOps;
 }
 
 function runWithSpan<R, A>(

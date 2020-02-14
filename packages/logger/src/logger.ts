@@ -8,16 +8,18 @@ export interface Meta {
 
 export type LogFn = (message: string, meta?: Meta) => T.UIO<void>;
 
+export interface LoggerOps {
+  silly: LogFn;
+  debug: LogFn;
+  verbose: LogFn;
+  http: LogFn;
+  info: LogFn;
+  warn: LogFn;
+  error: LogFn;
+}
+
 export interface Logger extends F.ModuleShape<Logger> {
-  [loggerEnv]: {
-    silly: LogFn;
-    debug: LogFn;
-    verbose: LogFn;
-    http: LogFn;
-    info: LogFn;
-    warn: LogFn;
-    error: LogFn;
-  };
+  [loggerEnv]: LoggerOps;
 }
 
 export const loggerM = F.define<Logger>({

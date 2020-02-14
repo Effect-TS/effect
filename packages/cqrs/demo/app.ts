@@ -3,10 +3,12 @@ import { logger } from "@matechs/logger";
 
 export const appURI = Symbol();
 
+export interface AppOps {
+  printTodo: (todo: string) => T.UIO<void>;
+}
+
 export interface App {
-  [appURI]: {
-    printTodo: (todo: string) => T.UIO<void>;
-  };
+  [appURI]: AppOps;
 }
 
 export const appSpec = F.define<App>({
