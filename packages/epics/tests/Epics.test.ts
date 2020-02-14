@@ -129,7 +129,7 @@ describe("Epics", () => {
         fetchUser,
         fetchUser2
       )(
-        constant({
+        T.pure({
           config: { prefix: "prefix" },
           config2: { prefix: "prefix2" }
         })
@@ -171,7 +171,7 @@ describe("Epics", () => {
 
   it("should use redux-observable (fail case)", async () => {
     const rootEpic = combineEpics(
-      Ep.embed(fetchUser)(constant({ config: { prefix: "prefix-wrong" } }))
+      Ep.embed(fetchUser)(T.pure({ config: { prefix: "prefix-wrong" } }))
     );
 
     const epicMiddleware = createEpicMiddleware<
@@ -261,7 +261,7 @@ describe("Epics", () => {
       )
     );
 
-    const rootEpic = combineEpics(Ep.embed(incReducer)(constant({})));
+    const rootEpic = combineEpics(Ep.embed(incReducer)(T.pure({})));
 
     const epicMiddleware = createEpicMiddleware<
       MyAction,

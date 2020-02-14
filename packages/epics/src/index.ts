@@ -42,9 +42,11 @@ type EpicsEnvType<EPS extends AnyEpic> = F.UnionToIntersection<
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
-  r: (
-    state$: StateAccess<Sta<EPS[number]>>
-  ) => EpicsEnvType<typeof epics[number]>
+  r: T.Effect<
+    StateAccess<Sta<EPS[number]>>,
+    never,
+    EpicsEnvType<typeof epics[number]>
+  >
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
   type EPSType = EPS[number];
   type Action = Act<EPSType>;
@@ -66,7 +68,7 @@ export function embed<EPS extends AnyEpic[]>(
             };
 
             return R.runToObservable(
-              T.provideAll(r(stateAccess))(
+              T.provideM(T.provide(stateAccess)(r))(
                 R.toObservable(
                   epic(stateAccess, R.encaseObservable(action$, toNever))
                 )
