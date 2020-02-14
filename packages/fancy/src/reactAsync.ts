@@ -12,16 +12,15 @@ import { componentPropsURI } from "./componentProps";
 // alpha
 /* istanbul ignore file */
 
-export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
+export const reactAsync = <K, P, Q>(
+  _V: View<State<K> & ComponentProps<P>, Q>
+) => (
   _I: {
     [k in keyof K]: T.UIO<K[k]>;
   }
 ) => (
-  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.UIO<P & Q>
-): {
-  page: React.FC<P & Q>;
-  getStaticProps: () => Promise<{ props: P & Q }>;
-} => {
+  _P: unknown extends P ? void : {} extends P ? void : T.UIO<P>
+): React.FC<Q & { children?: React.ReactElement }> => {
   const initial = pipe(
     _I as Record<string, any>,
     R.traverseWithIndex(T.effect)((k: string) =>
@@ -42,12 +41,14 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
           f.ui,
           T.chain(Cmp =>
             T.sync(
-              (): React.FC => () => {
+              (): React.FC<Q> => (q: Q) => {
                 React.useEffect(() => () => {
                   f.stop();
                 });
 
-                return React.createElement(Cmp);
+                return React.createElement(Cmp, {
+                  ...q
+                });
               }
             )
           ),
@@ -79,16 +80,39 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
     }
   };
 
-  return {
-    page: Cmp,
-    getStaticProps: () =>
-      _P
-        ? T.runToPromise(
-            pipe(
-              _P as T.Effect<unknown, never, P>,
-              T.map(x => ({ props: x }))
-            )
-          )
-        : Promise.resolve({ props: {} } as any)
+  return q => {
+    const [props, setProps] = React.useState<P | null>(null);
+    const [error, setError] = React.useState<string | null>(null);
+
+    React.useEffect(() => {
+      if (_P) {
+        T.run(_P as T.Effect<unknown, never, P>, ex => {
+          if (isDone(ex)) {
+            setProps(ex.value);
+          } else {
+            setError("initial props are not supposed to fail");
+          }
+        });
+      }
+    }, []);
+
+    if (_P) {
+      if (props !== null) {
+        return React.createElement(Cmp, {
+          ...props,
+          ...q
+        });
+      } else {
+        if (error !== null) {
+          return React.createElement("div", { children: error });
+        } else {
+          return q.children || React.createElement(React.Fragment);
+        }
+      }
+    } else {
+      return React.createElement(Cmp, {
+        ...q
+      } as any);
+    }
   };
 };

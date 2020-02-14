@@ -23,9 +23,22 @@ export default R.page(
     Home,
     T.map(C => () => (
       <div>
-        <C />
+        <C bar={"ok-bar"} />
+        <br />
+        <Link href={"/foo"}>
+          <a>foo</a>
+        </Link>
+        <br />
         <Link href={"/ssg"}>
           <a>ssg</a>
+        </Link>
+        <br />
+        <Link href={"/react"}>
+          <a>react</a>
+        </Link>
+        <br />
+        <Link href={"/react-async"}>
+          <a>react-async</a>
         </Link>
       </div>
     )),
@@ -37,7 +50,7 @@ export default R.page(
   [flashStateURI]: flashInitialState
 })(
   T.pure({
-    foo: "ok"
+    foo: "ok-foo"
   }),
   // if static then initial props effect must be sync, page will be rendered
   // as static html, if ssr the props effect can be any async or sync

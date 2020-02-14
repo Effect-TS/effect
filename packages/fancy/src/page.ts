@@ -14,14 +14,14 @@ import { NextContext, nextContextURI } from "./next-ctx";
 // alpha
 /* istanbul ignore file */
 
-export const page = <K, P>(_V: View<State<K> & ComponentProps<P>, P>) => (
+export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
     [k in keyof K]: T.UIO<K[k]>;
   }
 ) => (
-  _P: unknown extends P ? void : {} extends P ? void : T.UIO<P>,
-  _KIND: unknown extends P ? void : {} extends P ? void : "static" | "ssr"
-): React.FC<P> => {
+  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.UIO<P & Q>,
+  _KIND: unknown extends P & Q ? void : {} extends P & Q ? void : "static" | "ssr"
+): React.FC<P & Q> => {
   const initial = pipe(
     _I as Record<string, any>,
     R.traverseWithIndex(T.effect)((k: string) =>

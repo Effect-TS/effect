@@ -101,3 +101,5 @@ export { State } from "./fancy";
 export { ComponentProps } from "./componentProps";
 export { page } from "./page";
 export { pageSSG } from "./pageSSG";
+export { react } from "./react";
+export { reactAsync } from "./reactAsync";

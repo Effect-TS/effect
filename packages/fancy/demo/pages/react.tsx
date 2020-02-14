@@ -16,21 +16,16 @@ import { OrgsOps } from "../modules/orgs/def";
 const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
   pipe(eff, ORG.provide, DT.provide);
 
-const SSG = R.pageSSG(pipe(Home, provider))({
+const PlainComponent = R.react(pipe(Home, provider))({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
 })(
-  // in ssg initial props can be generated via async too 
+  // in ssg initial props can be generated via async too
   T.pure({
-    foo: "ok-foo",
-    bar: "ok-bar"
+    foo: "ok"
   })
 );
 
-export function unstable_getStaticProps() {
-  return SSG.getStaticProps();
-}
-
 // tslint:disable-next-line: no-default-export
-export default SSG.page;
+export default () => <PlainComponent bar={"ok"}/>;

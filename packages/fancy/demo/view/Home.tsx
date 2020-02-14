@@ -26,18 +26,20 @@ export const Home = UI.of(
       Flash: DisplayFlash,
       Foo: accessP((_: { foo: string }) => _.foo) // requires initial props
     }),
-    T.map(v => () => (
+    T.map(v => (_: { bar: string }) => (
       <>
+        <v.MemoInput />
+        <br />
         <v.ShowDate foo={v.Foo} />
         <v.UpdateDate />
         <v.UpdateOrganisations />
         <v.ShowOrgs />
-        <Link href={"/foo"}>
-          <a>foo</a>
-        </Link>
-        <v.MemoInput />
         <v.LogDate />
         <v.Flash>{({ message }) => <div>{message}</div>}</v.Flash>
+        <br />
+        <Link href={"/"}>
+          <a>home</a>
+        </Link>
       </>
     ))
   )
