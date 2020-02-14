@@ -304,3 +304,9 @@ describe("Epics", () => {
     ]);
   });
 });
+
+describe("embed", () => {
+  it("should accept Epic not emitting in the result stream (never)", () => {
+    Ep.embed(Ep.epic()(() => S.never)); // Should compile
+  });
+});
