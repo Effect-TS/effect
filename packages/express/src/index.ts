@@ -25,19 +25,18 @@ export type Method = "post" | "get" | "put" | "patch" | "delete";
 
 export const expressEnv: unique symbol = Symbol();
 
+export interface ExpressOps {
+  withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
+  route<R, E, A>(
+    method: Method,
+    path: string,
+    f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
+  ): T.Effect<R & HasExpress, T.NoErr, void>;
+  bind(port: number, hostname?: string): T.Effect<HasExpress, T.NoErr, Server>;
+}
+
 export interface Express {
-  [expressEnv]: {
-    withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
-    route<R, E, A>(
-      method: Method,
-      path: string,
-      f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
-    ): T.Effect<R & HasExpress, T.NoErr, void>;
-    bind(
-      port: number,
-      hostname?: string
-    ): T.Effect<HasExpress, T.NoErr, Server>;
-  };
+  [expressEnv]: ExpressOps;
 }
 
 export interface RouteError<E> {
