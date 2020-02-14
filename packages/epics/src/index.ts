@@ -38,28 +38,29 @@ export interface StateAccess<S> {
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
-  r: F.UnionToIntersection<
+  r: (
+    state$: Rxo.StateObservable<Sta<EPS[number]>>
+  ) => F.UnionToIntersection<
     Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
   >
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
   type Action = Act<EPS[number]>;
   type State = Sta<EPS[number]>;
   type ActionOut = AOut<EPS[number]>;
-  return (
-    r: F.UnionToIntersection<
-      Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
-    >
-  ) =>
+  type REnv = F.UnionToIntersection<
+    Env<Exclude<typeof epics[number], Epic<T.NoEnv, any, any, any>>>
+  >;
+  return r =>
     Rxo.combineEpics(
       ...pipe(
-        epics as Epic<typeof r, State, Action, ActionOut>[],
+        epics as Epic<REnv, State, Action, ActionOut>[],
         A.map(
           epic => (
             action$: Rxo.ActionsObservable<Action>,
             state$: Rxo.StateObservable<State>
           ) =>
             R.runToObservable(
-              T.provideAll(r)(
+              T.provideAll(r(state$))(
                 R.toObservable(
                   epic(
                     {
