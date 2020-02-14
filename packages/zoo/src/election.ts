@@ -1,5 +1,10 @@
 import { managed as M, effect as T } from "@matechs/effect";
-import { managedClient, ZooError } from "./client";
+import {
+  managedClient,
+  ZooError,
+  error,
+  ConnectionDroppedError
+} from "./client";
 import { pipe } from "fp-ts/lib/pipeable";
 import { State } from "node-zookeeper-client";
 import { right } from "fp-ts/lib/Either";
@@ -62,7 +67,15 @@ export const election = (electionPath: string) => <R, E, A>(
           T.fork(
             pipe(
               waitDisconnected,
-              T.chain(_ => f.interrupt)
+              T.chain(_ => f.interrupt),
+              T.chain(_ =>
+                T.raiseError(
+                  error<ConnectionDroppedError>({
+                    _tag: "ConnectionDroppedError",
+                    message: "connection dropped"
+                  })
+                )
+              )
             )
           ),
           T.pure(f)

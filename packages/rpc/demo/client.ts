@@ -12,7 +12,6 @@ const program = A.array.traverse(T.parEffect)(A.range(1, 10), getTodo);
 
 const envLive: Env<typeof program> = {
   ...L.libcurl(),
-  ...H.jsonDeserializer,
   ...H.middlewareStack([
     H.withPathHeaders({ token: "check" }, p =>
       p.startsWith("http://127.0.0.1:8081")

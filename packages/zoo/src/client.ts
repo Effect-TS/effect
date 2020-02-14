@@ -34,7 +34,8 @@ export interface ZooError {
     | "MkdirpError"
     | "CreateError"
     | "GetChildrenError"
-    | "WaitDeleteError";
+    | "WaitDeleteError"
+    | "ConnectionDroppedError";
 }
 
 export interface ConnectError extends ZooError {
@@ -62,7 +63,12 @@ export interface WaitDeleteError extends ZooError {
   message: string;
 }
 
-const error = <E extends ZooError>(e: E): E => e;
+export interface ConnectionDroppedError extends ZooError {
+  _tag: "ConnectionDroppedError";
+  message: string;
+}
+
+export const error = <E extends ZooError>(e: E): E => e;
 
 interface Mkdirp {
   _tag: "Mkdirp";
@@ -166,6 +172,7 @@ export class Client {
           );
         }
         if (s.code === ZC.State.SYNC_CONNECTED.code) {
+          l();
           res(right(this));
         }
       });

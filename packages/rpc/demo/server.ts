@@ -6,6 +6,7 @@ import * as L from "@matechs/http-client-libcurl";
 import { pipe } from "fp-ts/lib/pipeable";
 import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared";
 import { Env } from "@matechs/effect/lib/utils/types";
+import { Some } from "fp-ts/lib/Option";
 
 export function authenticated<R, E, A>(
   eff: T.Effect<R, E, A>
@@ -25,9 +26,9 @@ export const placeholderJsonLive = F.implement(placeholderJsonM)({
   [placeholderJsonEnv]: {
     getTodo: n =>
       pipe(
-        H.get<unknown, Todo>(`https://jsonplaceholder.typicode.com/todos/${n}`),
+        H.get(`https://jsonplaceholder.typicode.com/todos/${n}`),
         T.chainError(() => T.raiseError("error fetching todo")),
-        T.map(({ body }) => body),
+        T.map(({ body }) => body as Some<Todo>),
         authenticated
       )
   }
@@ -44,7 +45,6 @@ const program = pipe(
 const envLive: Env<typeof program> = {
   ...EX.express,
   ...L.libcurl(),
-  ...H.jsonDeserializer,
   [RPC.serverConfigEnv]: {
     [placeholderJsonEnv]: {
       scope: "/placeholderJson" // exposed at /placeholderJson

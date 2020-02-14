@@ -15,7 +15,7 @@ const program = T.forever(
 );
 
 const main = pipe(
-  election("/election/aaa")(program),
+  election("/election/bbbb")(program),
   T.provideS<ClientConfig>({
     [clientConfigURI]: {
       connectionString: "127.0.0.1:2181"
