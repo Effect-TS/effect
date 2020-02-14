@@ -261,7 +261,7 @@ describe("Epics", () => {
       )
     );
 
-    const rootEpic = combineEpics(Ep.embed(incReducer)(_ => {}));
+    const rootEpic = combineEpics(Ep.embed(incReducer)(constant({})));
 
     const epicMiddleware = createEpicMiddleware<
       MyAction,
