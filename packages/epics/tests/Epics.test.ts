@@ -6,7 +6,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Action, applyMiddleware, combineReducers, createStore } from "redux";
 import { combineEpics, createEpicMiddleware } from "redux-observable";
 import * as Ep from "../src";
-import { constant } from "fp-ts/lib/function";
+import { identity } from "fp-ts/lib/function";
 
 interface User {
   id: string;
@@ -129,10 +129,10 @@ describe("Epics", () => {
         fetchUser,
         fetchUser2
       )(
-        T.pure({
+        T.provideR(_ => ({
           config: { prefix: "prefix" },
           config2: { prefix: "prefix2" }
-        })
+        }))
       )
     );
 
@@ -171,7 +171,9 @@ describe("Epics", () => {
 
   it("should use redux-observable (fail case)", async () => {
     const rootEpic = combineEpics(
-      Ep.embed(fetchUser)(T.pure({ config: { prefix: "prefix-wrong" } }))
+      Ep.embed(fetchUser)(
+        T.provideR(_ => ({ config: { prefix: "prefix-wrong" } }))
+      )
     );
 
     const epicMiddleware = createEpicMiddleware<
@@ -261,7 +263,7 @@ describe("Epics", () => {
       )
     );
 
-    const rootEpic = combineEpics(Ep.embed(incReducer)(T.pure({})));
+    const rootEpic = combineEpics(Ep.embed(incReducer)(identity));
 
     const epicMiddleware = createEpicMiddleware<
       MyAction,

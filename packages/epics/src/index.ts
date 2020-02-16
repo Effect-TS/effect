@@ -5,6 +5,7 @@ import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
 import * as Rxo from "redux-observable";
 import { pipe } from "fp-ts/lib/pipeable";
+import { flow } from "fp-ts/lib/function";
 
 export interface Epic<R, State, A extends Action<any>, O extends A> {
   _A: A;
@@ -42,18 +43,16 @@ type EpicsEnvType<EPS extends AnyEpic> = F.UnionToIntersection<
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
-  r: T.Effect<
-    StateAccess<Sta<EPS[number]>>,
-    never,
-    EpicsEnvType<typeof epics[number]>
-  >
+  provider: <A>(
+    input: T.Effect<EpicsEnvType<typeof epics[number]>, never, A>
+  ) => T.Effect<StateAccess<Sta<EPS[number]>>, never, A>
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
   type EPSType = EPS[number];
   type Action = Act<EPSType>;
   type State = Sta<EPSType>;
   type ActionOut = AOut<EPSType>;
   type REnv = EpicsEnvType<EPSType>;
-  return r =>
+  return provider =>
     Rxo.combineEpics(
       ...pipe(
         epics as Epic<REnv, State, Action, ActionOut>[],
@@ -66,9 +65,11 @@ export function embed<EPS extends AnyEpic[]>(
               value: T.sync(() => state$.value),
               stream: R.encaseObservable(state$, toNever)
             };
-
             return R.runToObservable(
-              T.provideSM(T.provideS(stateAccess)(r))(
+              flow(
+                provider,
+                T.provide(stateAccess)
+              )(
                 R.toObservable(
                   epic(stateAccess, R.encaseObservable(action$, toNever))
                 )
