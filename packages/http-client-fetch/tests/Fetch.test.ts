@@ -19,7 +19,7 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
         H.middlewareStack([
           H.withPathHeaders(
             { foo: "bar" },
-            path => path === "http://127.0.0.1:4015/middle",
+            path => path === "http://127.0.0.1:5015/middle",
             true
           )
         ])
@@ -48,30 +48,30 @@ describe("Fetch", () => {
       res.send(req.body);
     });
 
-    const s = app.listen(4011);
+    const s = app.listen(5011);
 
     const post = await run(
-      H.post("http://127.0.0.1:4011/post", {
+      H.post("http://127.0.0.1:5011/post", {
         foo: "bar"
       })
     );
 
-    const postNoBody = await run(H.post("http://127.0.0.1:4011/post", {}));
+    const postNoBody = await run(H.post("http://127.0.0.1:5011/post", {}));
 
     const put = await run(
-      H.put("http://127.0.0.1:4011/put", {
+      H.put("http://127.0.0.1:5011/put", {
         foo: "bar"
       })
     );
 
     const patch = await run(
-      H.patch("http://127.0.0.1:4011/patch", {
+      H.patch("http://127.0.0.1:5011/patch", {
         foo: "bar"
       })
     );
 
     const del = await run(
-      H.del("http://127.0.0.1:4011/delete", { foo: "bar" })
+      H.del("http://127.0.0.1:5011/delete", { foo: "bar" })
     );
 
     s.close();
@@ -95,11 +95,11 @@ describe("Fetch", () => {
   it("get 404", async () => {
     const app = express();
 
-    const s = app.listen(4016);
+    const s = app.listen(5016);
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4016/"),
+        H.get("http://127.0.0.1:5016/"),
         T.mapError(
           H.foldHttpError(
             _ => 0,
@@ -124,11 +124,11 @@ describe("Fetch", () => {
       });
     });
 
-    const s = app.listen(4012);
+    const s = app.listen(5012);
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4012/h"),
+        H.get("http://127.0.0.1:5012/h"),
         H.withHeaders({
           foo: "bar"
         })
@@ -150,9 +150,9 @@ describe("Fetch", () => {
       });
     });
 
-    const s = app.listen(4015);
+    const s = app.listen(5015);
 
-    const result = await run(pipe(H.get("http://127.0.0.1:4015/middle")));
+    const result = await run(pipe(H.get("http://127.0.0.1:5015/middle")));
 
     s.close();
 
@@ -170,12 +170,12 @@ describe("Fetch", () => {
       });
     });
 
-    const s = app.listen(4014);
+    const s = app.listen(5014);
 
     const result = await run(
       pipe(
         pipe(
-          H.get("http://127.0.0.1:4014/h"),
+          H.get("http://127.0.0.1:5014/h"),
           H.withHeaders(
             {
               foo: "baz"
@@ -205,22 +205,22 @@ describe("Fetch", () => {
       });
     });
 
-    const s = app.listen(4013);
+    const s = app.listen(5013);
 
     const post = await run(
-      pipe(H.postData("http://127.0.0.1:4013/data", { foo: "bar" }))
+      pipe(H.postData("http://127.0.0.1:5013/data", { foo: "bar" }))
     );
 
     const put = await run(
-      pipe(H.putData("http://127.0.0.1:4013/data", { foo: "bar" }))
+      pipe(H.putData("http://127.0.0.1:5013/data", { foo: "bar" }))
     );
 
     const patch = await run(
-      pipe(H.patchData("http://127.0.0.1:4013/data", { foo: "bar" }))
+      pipe(H.patchData("http://127.0.0.1:5013/data", { foo: "bar" }))
     );
 
     const del = await run(
-      pipe(H.delData("http://127.0.0.1:4013/data", { foo: "bar" }))
+      pipe(H.delData("http://127.0.0.1:5013/data", { foo: "bar" }))
     );
 
     s.close();
@@ -246,12 +246,12 @@ describe("Fetch", () => {
       res.send(body);
     });
 
-    const s = app.listen(4017);
+    const s = app.listen(5017);
 
     const post = await run(
       pipe(
         H.postBinaryGetBinary(
-          "http://127.0.0.1:4017/binary",
+          "http://127.0.0.1:5017/binary",
           Buffer.from(`{ foo: "bar" }`)
         )
       )
@@ -260,7 +260,7 @@ describe("Fetch", () => {
     const put = await run(
       pipe(
         H.putBinaryGetBinary(
-          "http://127.0.0.1:4017/binary",
+          "http://127.0.0.1:5017/binary",
           Buffer.from(`{ foo: "bar" }`)
         )
       )
@@ -269,14 +269,14 @@ describe("Fetch", () => {
     const patch = await run(
       pipe(
         H.patchBinaryGetBinary(
-          "http://127.0.0.1:4017/binary",
+          "http://127.0.0.1:5017/binary",
           Buffer.from(`{ foo: "bar" }`)
         )
       )
     );
 
     const del = await run(
-      pipe(H.delBinaryGetBinary("http://127.0.0.1:4017/binary"))
+      pipe(H.delBinaryGetBinary("http://127.0.0.1:5017/binary"))
     );
 
     s.close();

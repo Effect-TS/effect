@@ -21,14 +21,14 @@ export enum ManagedTag {
 export type Managed<R, E, A> = (
   _: R
 ) =>
-  | Pure<E, A>
+  | Pure<A>
   | Encase<E, A>
   | Bracket<E, A>
-  | Suspended<R, E, A>
-  | Chain<R, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | Suspended<E, A>
+  | Chain<E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
   | BracketExit<E, A>;
 
-export interface Pure<E, A> {
+export interface Pure<A> {
   readonly _tag: ManagedTag.Pure;
   readonly value: A;
 }
@@ -110,7 +110,7 @@ export function bracketExit<R, E, A, R2, E2>(
   });
 }
 
-export interface Suspended<R, E, A> {
+export interface Suspended<E, A> {
   readonly _tag: ManagedTag.Suspended;
 
   readonly suspended: T.Effect<NoEnv, E, Managed<NoEnv, E, A>>;
@@ -132,7 +132,7 @@ export function suspend<R, E, R2, E2, A>(
     } as any);
 }
 
-export interface Chain<R, E, L, A> {
+export interface Chain<E, L, A> {
   readonly _tag: ManagedTag.Chain;
   readonly left: Managed<T.NoEnv, E, L>;
   readonly bind: F.FunctionN<[L], Managed<T.NoEnv, E, A>>;

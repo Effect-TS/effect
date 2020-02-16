@@ -47,6 +47,8 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
       };
 
       return T.async(r => {
+        let interrupted = false;
+
         fetchApi(url, input)
           .then(resp => {
             const h: Record<string, string> = {};
@@ -60,70 +62,85 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
                 responseType,
                 () => {
                   resp.json().then((json: unknown) => {
-                    r(
-                      right({
-                        headers: h,
-                        status: resp.status,
-                        body: fromNullable(json)
-                      })
-                    );
+                    if (!interrupted) {
+                      r(
+                        right({
+                          headers: h,
+                          status: resp.status,
+                          body: fromNullable(json)
+                        })
+                      );
+                    }
                   });
                 },
                 () =>
                   resp.text().then(text => {
-                    r(
-                      right({
-                        headers: h,
-                        status: resp.status,
-                        body: fromNullable(text)
-                      })
-                    );
+                    if (!interrupted) {
+                      r(
+                        right({
+                          headers: h,
+                          status: resp.status,
+                          body: fromNullable(text)
+                        })
+                      );
+                    }
                   }),
                 () => {
                   if (resp["arrayBuffer"]) {
                     resp.arrayBuffer().then(arrayBuffer => {
-                      r(
-                        right({
-                          headers: h,
-                          status: resp.status,
-                          body: fromNullable(Buffer.from(arrayBuffer))
-                        })
-                      );
+                      if (!interrupted) {
+                        r(
+                          right({
+                            headers: h,
+                            status: resp.status,
+                            body: fromNullable(Buffer.from(arrayBuffer))
+                          })
+                        );
+                      }
                     });
                   } else {
                     (resp as any).buffer().then((buffer: Buffer) => {
-                      r(
-                        right({
-                          headers: h,
-                          status: resp.status,
-                          body: fromNullable(Buffer.from(buffer))
-                        })
-                      );
+                      if (!interrupted) {
+                        r(
+                          right({
+                            headers: h,
+                            status: resp.status,
+                            body: fromNullable(Buffer.from(buffer))
+                          })
+                        );
+                      }
                     });
                   }
                 }
               );
             } else {
               resp.text().then(text => {
-                r(
-                  left({
-                    _tag: H.HttpErrorReason.Response,
-                    response: {
-                      headers: h,
-                      status: resp.status,
-                      body: fromNullable(text)
-                    }
-                  })
-                );
+                if (!interrupted) {
+                  r(
+                    left({
+                      _tag: H.HttpErrorReason.Response,
+                      response: {
+                        headers: h,
+                        status: resp.status,
+                        body: fromNullable(text)
+                      }
+                    })
+                  );
+                }
               });
             }
           })
           .catch(err => {
-            r(left({ _tag: H.HttpErrorReason.Request, error: err }));
+            if (!interrupted) {
+              r(left({ _tag: H.HttpErrorReason.Request, error: err }));
+            }
           });
 
         // tslint:disable-next-line: no-empty
-        return () => {};
+        return cb => {
+          interrupted = true
+          cb(T.interruptSuccess());
+        };
       });
     }
   }

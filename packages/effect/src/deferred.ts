@@ -16,7 +16,7 @@ export interface Deferred<R, E, A> {
    *
    * This Stack will produce the value set by done, raise the error set by error or interrupt
    */
-  readonly wait: T.Effect<R, E, A>;
+  readonly wait: T.Effect<T.NoEnv, E, A>;
   /**
    * Interrupt any waitersa on this Deferred
    */
@@ -64,15 +64,15 @@ export interface Deferred<R, E, A> {
 }
 
 export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
-  wait: T.Effect<R, E, A>;
+  wait: T.Effect<T.NoEnv, E, A>;
   interrupt: T.Effect<T.NoEnv, T.NoErr, void>;
-  c: Completable<T.Effect<R, E, A>>;
+  c: Completable<T.Effect<T.NoEnv, E, A>>;
 
   constructor(readonly r: R) {
     this.c = new CompletableImpl();
 
     this.wait = T.flatten(
-      T.asyncTotal<T.Effect<R, E, A>>(callback => this.c.listen(callback))
+      T.asyncTotal<T.Effect<T.NoEnv, E, A>>(callback => this.c.listen(callback))
     );
 
     this.interrupt = T.sync(() => {

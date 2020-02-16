@@ -2,7 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { either as E, function as F, option as O } from "fp-ts";
+import { either as E, function as F, option as O, array as A } from "fp-ts";
 import {
   Cause,
   Done,
@@ -14,6 +14,7 @@ import {
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
 import * as L from "./list";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -86,8 +87,8 @@ const makeInterruptFrame = (
 
 export interface Driver<E, A> {
   start(run: T.Effect<T.NoEnv, E, A>): void;
-  interrupt(): void;
-  onExit(f: F.FunctionN<[Exit<E, A>], void>): F.Lazy<void>;
+  interrupt(cb: (is: T.InterruptionState) => void): void;
+  onExit(f: F.FunctionN<[Exit<E, A>], void>): T.Interruptor;
   completed: Exit<E, A> | null;
 }
 
@@ -99,17 +100,47 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  cancelAsync: F.Lazy<void> | undefined;
+  cancelAsync: T.Interruptor | undefined;
   envStack = L.empty<any>();
+  interruptionStates: T.InterruptionState[] = [];
+  interruptionListeners: ((is: T.InterruptionState) => void)[] = [];
 
-  constructor(readonly runtime: Runtime = defaultRuntime) {}
+  constructor(readonly runtime: Runtime = defaultRuntime) {
+    this.set = this.set.bind(this);
+    this.start = this.start.bind(this);
+    this.callInterruptListeners = this.callInterruptListeners.bind(this);
+    this.resumeInterrupt = this.resumeInterrupt.bind(this);
+    this.resume = this.resume.bind(this);
+    this.onExit = this.onExit.bind(this);
+    this.next = this.next.bind(this);
+    this.loop = this.loop.bind(this);
+    this.isInterruptible = this.isInterruptible.bind(this);
+    this.isComplete = this.isComplete.bind(this);
+    this.interrupt = this.interrupt.bind(this);
+    this.handle = this.handle.bind(this);
+    this.foldResume = this.foldResume.bind(this);
+    this.exit = this.exit.bind(this);
+    this.dispatchResumeInterrupt = this.dispatchResumeInterrupt.bind(this);
+    this.contextSwitch = this.contextSwitch.bind(this);
+    this.complete = this.complete.bind(this);
+  }
 
   set(a: Exit<E, A>): void {
+    if (a._tag === "Interrupt") {
+      const state = pipe(
+        this.interruptionStates,
+        A.foldMap(T.monoidIS)(F.identity)
+      );
+      a.state.errors = T.monoidIS.concat(a.state, state).errors;
+    }
     this.completed = a;
     if (this.listeners !== undefined) {
       for (const f of this.listeners) {
         f(a);
       }
+    }
+    if (a._tag === "Interrupt") {
+      this.callInterruptListeners();
     }
   }
 
@@ -125,7 +156,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.set(a);
   }
 
-  onExit(f: F.FunctionN<[Exit<E, A>], void>): F.Lazy<void> {
+  onExit(f: F.FunctionN<[Exit<E, A>], void>): T.Interruptor {
     if (this.completed !== null) {
       f(this.completed);
     }
@@ -136,10 +167,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
     // TODO: figure how to trigger if possible
     /* istanbul ignore next */
-    return () => {
+    return cb => {
       if (this.listeners !== undefined) {
         this.listeners = this.listeners.filter(cb => cb !== f);
       }
+      cb(T.interruptSuccess());
     };
   }
 
@@ -236,7 +268,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   contextSwitch(
     op: F.FunctionN<
       [F.FunctionN<[E.Either<unknown, unknown>], void>],
-      F.Lazy<void>
+      T.Interruptor
     >
   ): void {
     let complete = false;
@@ -247,9 +279,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       complete = true;
       this.resume(status);
     });
-    this.cancelAsync = () => {
+    this.cancelAsync = cb => {
       complete = true;
-      wrappedCancel();
+      wrappedCancel(cb);
     };
   }
 
@@ -370,10 +402,28 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         current = T.EffectIO.fromEffect(T.raiseAbort(e));
       }
     }
-    // If !current then the interrupt came to late and we completed everything
-    if (this.interrupted && current) {
-      this.resumeInterrupt();
+    if (this.interrupted) {
+      if (current) {
+        this.resumeInterrupt();
+      } else {
+        // If !current then the interrupt came to late and we completed everything
+        this.interruptionStates.push(
+          T.interruptError(
+            new Error("interrupt came to late and we completed everything")
+          )
+        );
+        this.callInterruptListeners();
+      }
     }
+  }
+
+  callInterruptListeners() {
+    const state = pipe(
+      this.interruptionStates,
+      A.foldMap(T.monoidIS)(F.identity)
+    );
+
+    this.interruptionListeners.forEach(f => f(state));
   }
 
   start(run: T.Effect<{}, E, A>): void {
@@ -385,14 +435,27 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.runtime.dispatch(this.loop.bind(this), run as any);
   }
 
-  interrupt(): void {
-    if (this.interrupted || this.isComplete()) {
+  interrupt(cb: (is: T.InterruptionState) => void): void {
+    if (this.interrupted) {
+      cb(T.interruptError(new Error("already interrupted")));
       return;
     }
+    if (this.isComplete()) {
+      cb(T.interruptSuccess());
+      return;
+    }
+    this.interruptionListeners.push(cb);
     this.interrupted = true;
-    if (this.cancelAsync && this.isInterruptible()) {
-      this.cancelAsync();
-      this.resumeInterrupt();
+    if (this.isInterruptible()) {
+      if (this.cancelAsync) {
+        this.cancelAsync(is => {
+          this.interruptionStates.push(is);
+          this.resumeInterrupt();
+        });
+      } else {
+        cb(T.interruptSuccess());
+      }
+      return;
     }
   }
 }

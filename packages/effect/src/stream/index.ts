@@ -1024,7 +1024,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
       );
     }
   );
-  return fromSource(source);
+  return fromSource(source as any);
 }
 
 /**
@@ -1120,7 +1120,7 @@ function interruptFiberSlot(
       optFiber,
       O.fold(
         () => T.pure(undefined as void),
-        f => f.interrupt
+        f => T.asUnit(f.interrupt)
       )
     )
   );
@@ -1566,7 +1566,9 @@ function getSourceFromObjectReadStreamB<A>(
           }
 
           // tslint:disable-next-line: no-empty
-          return () => {};
+          return cb => {
+            cb(T.interruptSuccess());
+          };
         }),
         every
       );

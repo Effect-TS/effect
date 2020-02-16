@@ -321,19 +321,16 @@ describe("Libcurl", () => {
   });
 
   it("get https", async () => {
-    const result = await run(
-      H.get("https://jsonplaceholder.typicode.com/todos/1")
-    );
+    const result = await run(H.get("https://api.github.com/users/mikearnaldi"));
 
     assert.deepEqual(isDone(result), true);
     assert.deepEqual(
-      isDone(result) && result.value.body,
-      some({
-        userId: 1,
-        id: 1,
-        title: "delectus aut autem",
-        completed: false
-      })
+      isDone(result) &&
+        pipe(
+          result.value.body,
+          map(x => (x as any)["login"])
+        ),
+      some("mikearnaldi")
     );
   });
 

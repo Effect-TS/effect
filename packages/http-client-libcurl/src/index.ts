@@ -35,7 +35,15 @@ export const libcurl: (caPath?: string) => H.Http = (
               _tag: H.HttpErrorReason.Request,
               error: new Error("binary not supported")
             })
-        : T.async(done => {
+        : T.async(rdone => {
+            let interrupted = false
+
+            const done: typeof rdone = x => {
+              if (!interrupted) {
+                rdone(x)
+              }
+            }
+
             const req = new C.Curl();
             const reqHead = [
               ...H.foldRequestType(
@@ -134,8 +142,10 @@ export const libcurl: (caPath?: string) => H.Http = (
 
             req.perform();
 
-            return () => {
+            return (cb) => {
+              interrupted = true
               req.close();
+              cb(T.interruptSuccess())
             };
           })
   }

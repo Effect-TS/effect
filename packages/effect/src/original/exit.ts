@@ -1,3 +1,5 @@
+import { InterruptionState } from "../effect";
+
 // Copyright 2019 Ryan Zeigler
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,8 +59,10 @@ export function abort(a: unknown): Abort {
 
 export interface Interrupt {
   readonly _tag: "Interrupt";
+  readonly state: InterruptionState;
 }
 
 export const interrupt: Interrupt = {
-  _tag: "Interrupt"
+  _tag: "Interrupt",
+  state: { errors: [] }
 };

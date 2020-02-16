@@ -247,7 +247,7 @@ export class EffectIO<R, E, A> {
     );
   }
 
-  run(cb: (ex: ex.Exit<E, A>) => void, r: OrVoid<R>): F.Lazy<void> {
+  run(cb: (ex: ex.Exit<E, A>) => void, r: OrVoid<R>): Interruptor {
     return run(
       (r
         ? provideAll(r as any)((this as any) as Effect<R, E, A>)
@@ -319,12 +319,39 @@ export interface Suspended {
   readonly f0: F.Lazy<Instructions>;
 }
 
+export interface InterruptionState {
+  errors: Array<Error>;
+}
+
+export const monoidIS: Mon.Monoid<InterruptionState> = {
+  concat: (x, y) => ({
+    errors: [...x.errors, ...y.errors]
+  }),
+  empty: {
+    errors: []
+  }
+};
+
+export const interruptError = (e: Error): InterruptionState => ({
+  errors: [e]
+});
+
+export const interruptSuccess = (): InterruptionState => ({
+  errors: []
+});
+
+export const foldInterruptionState = <A>(onS: () => A) => <B>(
+  onE: (errors: Error[]) => B
+) => (is: InterruptionState) =>
+  is.errors.length === 0 ? onS() : onE(is.errors);
+
+export interface Interruptor {
+  (cb: (is: InterruptionState) => void): void;
+}
+
 export interface Async<E = unknown, A = unknown> {
   readonly _tag: EffectTag.Async;
-  readonly f0: F.FunctionN<
-    [F.FunctionN<[Ei.Either<E, A>], void>],
-    F.Lazy<void>
-  >;
+  readonly f0: F.FunctionN<[F.FunctionN<[Ei.Either<E, A>], void>], Interruptor>;
 }
 
 export interface Chain<Z = unknown> {
@@ -478,7 +505,7 @@ export function trySyncMap<E = unknown>(
  * @param op
  */
 export function async<E, A>(
-  op: F.FunctionN<[F.FunctionN<[Ei.Either<E, A>], void>], F.Lazy<void>>
+  op: F.FunctionN<[F.FunctionN<[Ei.Either<E, A>], void>], Interruptor>
 ): Effect<NoEnv, E, A> {
   return new EffectIO(EffectTag.Async as const, op) as any;
 }
@@ -490,9 +517,16 @@ export function async<E, A>(
  * @param op
  */
 export function asyncTotal<A>(
-  op: F.FunctionN<[F.FunctionN<[A], void>], F.Lazy<void>>
+  op: F.FunctionN<[F.FunctionN<[A], void>], Interruptor>
 ): Effect<NoEnv, NoErr, A> {
-  return async(callback => op(a => callback(Ei.right(a))));
+  return async(callback => {
+    const c = op(a => callback(Ei.right(a)));
+    return cb => {
+      c(is => {
+        cb(is);
+      });
+    };
+  });
 }
 
 /**
@@ -1171,9 +1205,11 @@ export const shifted: Effect<NoEnv, NoErr, void> = uninterruptible(
     runtime: Runtime // why does this not trigger noImplicitAny
   ) =>
     asyncTotal<void>(callback => {
-      runtime.dispatch(callback, undefined);
+      const c = runtime.dispatchLater(callback, undefined, 0);
       // tslint:disable-next-line
-      return () => {};
+      return cb => {
+        c(cb);
+      };
     })
   )
 );
@@ -1231,8 +1267,9 @@ export function shiftAsyncAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
 export const never: Effect<NoEnv, NoErr, never> = asyncTotal(() => {
   // tslint:disable-next-line:no-empty
   const handle = setInterval(() => {}, 60000);
-  return () => {
+  return (cb) => {
     clearInterval(handle);
+    cb(interruptSuccess())
   };
 });
 
@@ -1268,7 +1305,7 @@ export interface Fiber<E, A> {
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */
-  readonly interrupt: Effect<NoEnv, NoErr, void>;
+  readonly interrupt: Effect<NoEnv, NoErr, InterruptionState>;
   /**
    * Await the result of this fiber
    */
@@ -1291,13 +1328,18 @@ export interface Fiber<E, A> {
 class FiberImpl<E, A> implements Fiber<E, A> {
   name = Op.fromNullable(this.n);
 
-  sendInterrupt = sync(() => {
-    this.driver.interrupt();
+  sendInterrupt = asyncTotal<InterruptionState>(r => {
+    this.driver.interrupt(is => {
+      r(is);
+    });
+    return () => {
+      //
+    };
   });
   wait = asyncTotal((f: F.FunctionN<[ex.Exit<E, A>], void>) =>
     this.driver.onExit(f)
   );
-  interrupt = applySecond(this.sendInterrupt, asUnit(this.wait));
+  interrupt = applyFirst(this.sendInterrupt, asUnit(this.wait));
   join = chain_(this.wait, completed);
   result = chain_(
     sync(() => this.driver.completed),
@@ -1394,7 +1436,7 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
                   chain_(
                     fork(
                       chain_(
-                        fiber1.wait as Effect<NoEnv, NoErr, ex.Exit<E1, A>>,
+                        fiber1.wait,
                         completeLatched(latch, channel, onFirstWon, fiber2)
                       )
                     ),
@@ -1402,17 +1444,45 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
                       chain_(
                         fork(
                           chain_(
-                            fiber2.wait as Effect<NoEnv, NoErr, ex.Exit<E2, B>>,
+                            fiber2.wait,
                             completeLatched(latch, channel, onSecondWon, fiber1)
                           )
                         ),
                         () =>
-                          onInterrupted(
-                            cutout(channel.wait),
-                            applySecond(
-                              fiber1.interrupt,
-                              fiber2.interrupt
-                            ) as Effect<NoEnv, NoErr, void>
+                          cutout(
+                            chain_(
+                              accessM((r2: R3 & R4) =>
+                                asyncTotal<ex.Exit<E3, C>>(res => {
+                                  const can = run(
+                                    provideS(r2)(channel.wait),
+                                    res
+                                  );
+                                  return cb => {
+                                    let finalIS = monoidIS.empty;
+                                    can(isChannel => {
+                                      run(fiber1.interrupt, x => {
+                                        if (x._tag === "Done") {
+                                          finalIS = monoidIS.concat(finalIS, {
+                                            errors: x.value.errors
+                                          });
+                                        }
+                                        run(fiber2.interrupt, x => {
+                                          if (x._tag === "Done") {
+                                            finalIS = monoidIS.concat(finalIS, {
+                                              errors: x.value.errors
+                                            });
+                                          }
+                                          cb(
+                                            monoidIS.concat(isChannel, finalIS)
+                                          );
+                                        });
+                                      });
+                                    });
+                                  };
+                                })
+                              ),
+                              completed
+                            )
                           )
                       )
                   )
@@ -1442,7 +1512,7 @@ export function timeoutFold<R, E1, E2, A, B>(
     after(ms),
     (exit, delayFiber) =>
       applySecond(
-        delayFiber.interrupt as Effect<NoEnv, NoErr, void>,
+        delayFiber.interrupt as Effect<NoEnv, NoErr, InterruptionState>, // TODO: double check in case of is failed
         onCompleted(exit)
       ),
     (_, fiber) => onTimeout(fiber)
@@ -1607,11 +1677,23 @@ export function fromPromise<A>(
 ): Effect<NoEnv, unknown, A> {
   return uninterruptible(
     async<unknown, A>(callback => {
+      let interrupted = false;
       thunk()
-        .then(v => callback(Ei.right(v)))
-        .catch(e => callback(Ei.left(e)));
+        .then(v => {
+          if (!interrupted) {
+            callback(Ei.right(v));
+          }
+        })
+        .catch(e => {
+          if (!interrupted) {
+            callback(Ei.left(e));
+          }
+        });
       // tslint:disable-next-line
-      return () => {};
+      return cb => {
+        interrupted = true;
+        cb(interruptSuccess());
+      };
     })
   );
 }
@@ -1625,9 +1707,17 @@ export function encaseTaskEither<E, A>(
 ): Effect<NoEnv, E, A> {
   return uninterruptible(
     async<E, A>(callback => {
-      taskEither().then(callback);
+      let interrupted = false;
+      taskEither().then(x => {
+        if (!interrupted) {
+          callback(x);
+        }
+      });
       // tslint:disable-next-line
-      return () => {};
+      return cb => {
+        interrupted = false;
+        cb(interruptSuccess());
+      };
     })
   );
 }
@@ -1636,15 +1726,25 @@ export function fromPromiseMap<E>(
   onError: (e: unknown) => E
 ): <A>(thunk: F.Lazy<Promise<A>>) => Effect<NoEnv, E, A> {
   return <A>(thunk: F.Lazy<Promise<A>>) =>
-    uninterruptible(
-      async<E, A>(callback => {
-        thunk()
-          .then(v => callback(Ei.right(v)))
-          .catch(e => callback(Ei.left(onError(e))));
-        // tslint:disable-next-line
-        return () => {};
-      })
-    );
+    async<E, A>(callback => {
+      let interrupted = false;
+      thunk()
+        .then(v => {
+          if (!interrupted) {
+            callback(Ei.right(v));
+          }
+        })
+        .catch(e => {
+          if (!interrupted) {
+            callback(Ei.left(onError(e)));
+          }
+        });
+      // tslint:disable-next-line
+      return cb => {
+        interrupted = true;
+        cb(interruptSuccess());
+      };
+    });
 }
 
 /**
@@ -1656,13 +1756,19 @@ export function fromPromiseMap<E>(
 export function run<E, A>(
   io: Effect<{}, E, A>,
   callback?: F.FunctionN<[ex.Exit<E, A>], void>
-): F.Lazy<void> {
+) {
   const driver = new DriverImpl<E, A>();
   if (callback) {
     driver.onExit(callback);
   }
   driver.start(io);
-  return () => driver.interrupt();
+  return (cb?: (is: InterruptionState) => void) =>
+    driver.interrupt(
+      cb ||
+        (() => {
+          //
+        })
+    );
 }
 
 /**
