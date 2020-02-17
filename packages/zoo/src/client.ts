@@ -151,6 +151,7 @@ export class Client {
 
   connect() {
     return T.async<ConnectError, Client>(res => {
+      let interrupted = false;
       this.client.connect();
 
       const l = this.listen(s => {
@@ -162,24 +163,30 @@ export class Client {
           ].indexOf(s.code) !== -1
         ) {
           l();
-          res(
-            left(
-              error({
-                _tag: "ConnectError",
-                message: ZC.State.name
-              })
-            )
-          );
+          if (!interrupted) {
+            res(
+              left(
+                error({
+                  _tag: "ConnectError",
+                  message: ZC.State.name
+                })
+              )
+            );
+          }
         }
         if (s.code === ZC.State.SYNC_CONNECTED.code) {
           l();
-          res(right(this));
+          if (!interrupted) {
+            res(right(this));
+          }
         }
       });
 
-      return () => {
+      return cb => {
         l();
         this.dispose();
+        interrupted = true;
+        cb(T.interruptSuccess());
       };
     });
   }
@@ -192,34 +199,42 @@ export class Client {
 
   mkdirp(path: string) {
     return T.async<MkdirpError, Mkdirp>(res => {
+      let interrupted = false;
       this.client.mkdirp(path, (err, p) => {
         if (err) {
           if ("code" in err) {
-            res(
-              left(
-                error({
-                  _tag: "MkdirpError",
-                  message: err.toString()
-                })
-              )
-            );
+            if (!interrupted) {
+              res(
+                left(
+                  error({
+                    _tag: "MkdirpError",
+                    message: err.toString()
+                  })
+                )
+              );
+            }
           } else {
-            res(
-              left(
-                error({
-                  _tag: "MkdirpError",
-                  message: err.message
-                })
-              )
-            );
+            if (!interrupted) {
+              res(
+                left(
+                  error({
+                    _tag: "MkdirpError",
+                    message: err.message
+                  })
+                )
+              );
+            }
           }
         } else {
-          res(right(out({ path: p, _tag: "Mkdirp" })));
+          if (!interrupted) {
+            res(right(out({ path: p, _tag: "Mkdirp" })));
+          }
         }
       });
 
-      return () => {
-        //
+      return cb => {
+        interrupted = true;
+        cb(T.interruptSuccess());
       };
     });
   }
@@ -236,29 +251,36 @@ export class Client {
 
   create(path: string, mode: keyof typeof CreateMode, data?: Buffer) {
     return T.async<CreateError, Createp>(res => {
+      let interrupted = false;
       const cb = (err: Error | ZC.Exception, p: string) => {
         if (err) {
           if ("code" in err) {
-            res(
-              left(
-                error({
-                  _tag: "CreateError",
-                  message: err.toString()
-                })
-              )
-            );
+            if (!interrupted) {
+              res(
+                left(
+                  error({
+                    _tag: "CreateError",
+                    message: err.toString()
+                  })
+                )
+              );
+            }
           } else {
-            res(
-              left(
-                error({
-                  _tag: "CreateError",
-                  message: err.message
-                })
-              )
-            );
+            if (!interrupted) {
+              res(
+                left(
+                  error({
+                    _tag: "CreateError",
+                    message: err.message
+                  })
+                )
+              );
+            }
           }
         } else {
-          res(right(out({ path: p, _tag: "Createp" })));
+          if (!interrupted) {
+            res(right(out({ path: p, _tag: "Createp" })));
+          }
         }
       };
 
@@ -268,75 +290,90 @@ export class Client {
         this.client.create(path, CreateMode[mode], cb);
       }
 
-      return () => {
-        //
+      return cb => {
+        interrupted = true;
+        cb(T.interruptSuccess());
       };
     });
   }
 
   getChildren(root: string) {
     return T.async<GetChildrenError, Children>(res => {
+      let interrupted = false;
       this.client.getChildren(root, (err, paths) => {
         if (err) {
           if ("code" in err) {
-            res(
-              left(
-                error({
-                  _tag: "GetChildrenError",
-                  message: err.toString()
-                })
-              )
-            );
-          } else {
-            res(
-              left(
-                error({
-                  _tag: "GetChildrenError",
-                  message: err.message
-                })
-              )
-            );
-          }
-        } else {
-          res(right(out({ paths: paths.sort(), _tag: "Children", root })));
-        }
-      });
-
-      return () => {
-        //
-      };
-    });
-  }
-
-  waitDelete(path: string) {
-    return T.async<WaitDeleteError, Deleted>(res => {
-      this.client.exists(
-        path,
-        event => {
-          if (event.type === ZC.Event.NODE_DELETED) {
-            res(right(out({ _tag: "Deleted", path })));
-          }
-        },
-        err => {
-          if (err) {
-            if ("code" in err) {
-              res(left(error({ _tag: "WaitDeleteError", message: "" })));
-            } else {
+            if (!interrupted) {
               res(
                 left(
                   error({
-                    _tag: "WaitDeleteError",
+                    _tag: "GetChildrenError",
+                    message: err.toString()
+                  })
+                )
+              );
+            }
+          } else {
+            if (!interrupted) {
+              res(
+                left(
+                  error({
+                    _tag: "GetChildrenError",
                     message: err.message
                   })
                 )
               );
             }
           }
+        } else {
+          if (!interrupted) {
+            res(right(out({ paths: paths.sort(), _tag: "Children", root })));
+          }
+        }
+      });
+
+      return cb => {
+        interrupted = true;
+        cb(T.interruptSuccess());
+      };
+    });
+  }
+
+  waitDelete(path: string) {
+    return T.async<WaitDeleteError, Deleted>(res => {
+      let interrupted = false;
+      this.client.exists(
+        path,
+        event => {
+          if (event.type === ZC.Event.NODE_DELETED) {
+            if (!interrupted) {
+              res(right(out({ _tag: "Deleted", path })));
+            }
+          }
+        },
+        err => {
+          if (err) {
+            if (!interrupted) {
+              if ("code" in err) {
+                res(left(error({ _tag: "WaitDeleteError", message: "" })));
+              } else {
+                res(
+                  left(
+                    error({
+                      _tag: "WaitDeleteError",
+                      message: err.message
+                    })
+                  )
+                );
+              }
+            }
+          }
         }
       );
 
-      return () => {
-        //
+      return cb => {
+        interrupted = true;
+        cb(T.interruptSuccess());
       };
     });
   }
