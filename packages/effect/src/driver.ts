@@ -441,7 +441,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       return;
     }
     if (this.isComplete()) {
-      cb(T.interruptSuccess());
+      cb(T.interruptError(new Error("already completed")));
       return;
     }
     this.interruptionListeners.push(cb);
