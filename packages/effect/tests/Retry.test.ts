@@ -5,10 +5,9 @@ import { function as F } from "fp-ts";
 
 describe("Retry", () => {
   it("should retry", async () => {
-    const program = R.retrying(
+    const program: T.IO<string, number> = R.retrying(
       limitRetries(2),
-      ({ iterNumber }) =>
-        iterNumber > 1 ? T.pure(0) : T.raiseError(undefined),
+      ({ iterNumber }) => (iterNumber > 1 ? T.pure(0) : T.raiseError("error")),
       F.flow(E.isRaise, T.pure)
     );
 
