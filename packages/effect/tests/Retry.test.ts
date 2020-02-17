@@ -16,9 +16,9 @@ describe("Retry", () => {
   });
 
   it("should retry & fail", async () => {
-    const program: T.IO<string, number> = R.retrying(
+    const program: T.IO<string, never> = R.retrying(
       limitRetries(2),
-      ({ iterNumber }) => (iterNumber > 3 ? T.pure(0) : T.raiseError("error")),
+      F.constant(T.raiseError("error")),
       F.flow(E.isRaise, T.pure)
     );
 
