@@ -59,6 +59,7 @@
     "redux": "^4.0.4",
     "redux-observable": "^1.2.0",
     "reflect-metadata": "^0.1.13",
+    "retry-ts": "^0.1.2",
     "rimraf": "^3.0.0",
     "rxjs": "^6.5.3",
     "short-uuid": "^3.1.1",

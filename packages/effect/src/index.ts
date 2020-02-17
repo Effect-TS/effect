@@ -10,6 +10,7 @@ import * as streameither from "./streameither";
 import * as freeEnv from "./freeEnv";
 import * as list from "./list";
 import * as utils from "./utils/types";
+import * as retry from "./retry"
 
 export {
   effect,
@@ -23,5 +24,6 @@ export {
   freeEnv,
   list,
   utils,
-  sink
+  sink,
+  retry
 };
