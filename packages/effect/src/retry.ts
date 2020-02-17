@@ -22,33 +22,36 @@ export function applyAndDelay(
   );
 }
 
-export function retrying<R, E, A>(
+export function retrying<R, E, A, R2>(
   policy: RetryPolicy,
   action: (status: RetryStatus) => T.Effect<R, E, A>,
-  check: (ex: Exit<E, A>) => boolean
-): T.Effect<R, E, A> {
-  const go = (status: RetryStatus): T.Effect<R, E, A> =>
+  check: (ex: Exit<E, A>) => T.Effect<R2, never, boolean>
+): T.Effect<R & R2, E, A> {
+  const go = (status: RetryStatus): T.Effect<R & R2, E, A> =>
     P.pipe(
       status,
       F.flow(action, T.result),
-      T.chain(a => {
-        if (check(a)) {
-          return P.pipe(
-            applyAndDelay(policy, status),
-            T.chain(status =>
-              P.pipe(
-                status.previousDelay,
-                O.fold(
-                  () => T.completed(a),
-                  () => go(status)
+      T.chain(a =>
+        P.pipe(
+          check(a),
+          T.chain(shouldRetry =>
+            shouldRetry
+              ? P.pipe(
+                  applyAndDelay(policy, status),
+                  T.chain(status =>
+                    P.pipe(
+                      status.previousDelay,
+                      O.fold(
+                        () => T.completed(a),
+                        () => go(status)
+                      )
+                    )
+                  )
                 )
-              )
-            )
-          );
-        } else {
-          return T.completed(a);
-        }
-      })
+              : T.completed(a)
+          )
+        )
+      )
     );
 
   return go(defaultRetryStatus);
