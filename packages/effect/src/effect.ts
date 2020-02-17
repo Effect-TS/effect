@@ -1267,9 +1267,9 @@ export function shiftAsyncAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
 export const never: Effect<NoEnv, NoErr, never> = asyncTotal(() => {
   // tslint:disable-next-line:no-empty
   const handle = setInterval(() => {}, 60000);
-  return (cb) => {
+  return cb => {
     clearInterval(handle);
-    cb(interruptSuccess())
+    cb(interruptSuccess());
   };
 });
 
@@ -1459,24 +1459,40 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
                                   );
                                   return cb => {
                                     let finalIS = monoidIS.empty;
+                                    let cn = 0;
+
+                                    function tick() {
+                                      cn = cn + 1;
+
+                                      if (cn === 3) {
+                                        cb(finalIS);
+                                      }
+                                    }
+
                                     can(isChannel => {
-                                      run(fiber1.interrupt, x => {
-                                        if (x._tag === "Done") {
-                                          finalIS = monoidIS.concat(finalIS, {
-                                            errors: x.value.errors
-                                          });
-                                        }
-                                        run(fiber2.interrupt, x => {
-                                          if (x._tag === "Done") {
-                                            finalIS = monoidIS.concat(finalIS, {
-                                              errors: x.value.errors
-                                            });
-                                          }
-                                          cb(
-                                            monoidIS.concat(isChannel, finalIS)
-                                          );
-                                        });
-                                      });
+                                      finalIS = monoidIS.concat(
+                                        finalIS,
+                                        isChannel
+                                      );
+                                      tick();
+                                    });
+                                    run(fiber1.interrupt, x => {
+                                      if (x._tag === "Done") {
+                                        finalIS = monoidIS.concat(
+                                          finalIS,
+                                          x.value
+                                        );
+                                      }
+                                      tick();
+                                    });
+                                    run(fiber2.interrupt, x => {
+                                      if (x._tag === "Done") {
+                                        finalIS = monoidIS.concat(
+                                          finalIS,
+                                          x.value
+                                        );
+                                      }
+                                      tick();
                                     });
                                   };
                                 })
