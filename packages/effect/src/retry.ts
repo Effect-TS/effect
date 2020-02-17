@@ -22,12 +22,12 @@ export function applyAndDelay(
   );
 }
 
-export function retrying<R, E, A, R2>(
+export function retrying<R, E, A, R2, E2>(
   policy: RetryPolicy,
   action: (status: RetryStatus) => T.Effect<R, E, A>,
-  check: (ex: Exit<E, A>) => T.Effect<R2, never, boolean>
-): T.Effect<R & R2, E, A> {
-  const go = (status: RetryStatus): T.Effect<R & R2, E, A> =>
+  check: (ex: Exit<E, A>) => T.Effect<R2, E2, boolean>
+): T.Effect<R & R2, E | E2, A> {
+  const go = (status: RetryStatus): T.Effect<R & R2, E | E2, A> =>
     P.pipe(
       status,
       F.flow(action, T.result),
