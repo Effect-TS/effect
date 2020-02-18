@@ -19,7 +19,7 @@ import { effect as T, exit, freeEnv } from "../src";
 import { makeRef } from "../src/ref";
 
 describe("EffectSafe", () => {
-  describe("Forever", async () => {
+  it("Forever", async () => {
     let count = 0;
     const cancel = T.run(
       T.forever(
@@ -359,7 +359,7 @@ describe("EffectSafe", () => {
             .bindL("r", ({ f }) => f.interrupt)
             .return(s => s.r)
         ),
-        ex.done(undefined)
+        ex.done(ex.interrupt)
       );
     });
 

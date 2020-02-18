@@ -1,10 +1,5 @@
-import { effect as T } from "@matechs/effect";
-import * as E from "@matechs/effect/lib/exit";
-import * as M from "@matechs/effect/lib/managed";
-import * as S from "@matechs/effect/lib/stream";
-import * as su from "@matechs/effect/lib/stream/support";
+import { effect as T, managed as M, exit as E, stream as S } from "@matechs/effect";
 import * as Rx from "rxjs";
-import { managed } from "@matechs/effect/lib/managed";
 import { Either, right, left } from "fp-ts/lib/Either";
 
 export function encaseObservable<E, A>(
@@ -12,10 +7,10 @@ export function encaseObservable<E, A>(
   onError: (e: any) => E
 ): S.Stream<T.NoEnv, E, A> {
   return S.fromSource(
-    managed.chain(
+    M.managed.chain(
       M.bracket(
         T.sync(() => {
-          const { next, ops, hasCB } = su.queueUtils<E, A>();
+          const { next, ops, hasCB } = S.su.queueUtils<E, A>();
 
           return {
             s: observable.subscribe(
@@ -29,7 +24,7 @@ export function encaseObservable<E, A>(
         }),
         ({ s }) => T.sync(() => s.unsubscribe())
       ),
-      ({ ops, hasCB }) => su.emitter(ops, hasCB)
+      ({ ops, hasCB }) => S.su.emitter(ops, hasCB)
     )
   );
 }
@@ -38,10 +33,10 @@ export function encaseObservableEither<E, A>(
   observable: Rx.Observable<A>
 ): S.Stream<T.NoEnv, never, Either<E, A>> {
   return S.fromSource(
-    managed.chain(
+    M.managed.chain(
       M.bracket(
         T.sync(() => {
-          const { next, ops, hasCB } = su.queueUtils<never, Either<E, A>>();
+          const { next, ops, hasCB } = S.su.queueUtils<never, Either<E, A>>();
 
           return {
             s: observable.subscribe(
@@ -55,7 +50,7 @@ export function encaseObservableEither<E, A>(
         }),
         ({ s }) => T.sync(() => s.unsubscribe())
       ),
-      ({ ops, hasCB }) => su.emitter(ops, hasCB)
+      ({ ops, hasCB }) => S.su.emitter(ops, hasCB)
     )
   );
 }

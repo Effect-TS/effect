@@ -52,8 +52,9 @@ export const election = (electionPath: string) => <R, E, A>(
         }
       });
 
-      return () => {
+      return cb => {
         disp();
+        cb();
       };
     });
 

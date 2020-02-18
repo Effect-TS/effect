@@ -8,7 +8,7 @@ import {
   Done,
   done,
   Exit,
-  interrupt as interruptExit,
+  interruptWithError,
   raise
 } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
@@ -99,7 +99,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  cancelAsync: F.Lazy<void> | undefined;
+  cancelAsync: T.AsyncCancelContFn | undefined;
   envStack = L.empty<any>();
 
   constructor(readonly runtime: Runtime = defaultRuntime) {}
@@ -176,16 +176,16 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return;
   }
 
-  dispatchResumeInterrupt() {
-    const go = this.handle(interruptExit);
+  dispatchResumeInterrupt(err?: Error) {
+    const go = this.handle(interruptWithError(err));
     if (go) {
       // eslint-disable-next-line
       this.loop(go);
     }
   }
 
-  resumeInterrupt(): void {
-    this.runtime.dispatch(this.dispatchResumeInterrupt.bind(this), undefined);
+  resumeInterrupt(err?: Error): void {
+    this.runtime.dispatch(this.dispatchResumeInterrupt.bind(this), err);
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -233,12 +233,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.runtime.dispatch(this.foldResume.bind(this), status);
   }
 
-  contextSwitch(
-    op: F.FunctionN<
-      [F.FunctionN<[E.Either<unknown, unknown>], void>],
-      F.Lazy<void>
-    >
-  ): void {
+  contextSwitch(op: T.AsyncFn<unknown, unknown>): void {
     let complete = false;
     const wrappedCancel = op(status => {
       if (complete) {
@@ -247,9 +242,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       complete = true;
       this.resume(status);
     });
-    this.cancelAsync = () => {
+    this.cancelAsync = cb => {
       complete = true;
-      wrappedCancel();
+      wrappedCancel((err) => {
+        cb(err);
+      });
     };
   }
 
@@ -391,8 +388,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
     this.interrupted = true;
     if (this.cancelAsync && this.isInterruptible()) {
-      this.cancelAsync();
-      this.resumeInterrupt();
+      this.cancelAsync((err) => {
+        this.resumeInterrupt(err);
+      });
     }
   }
 }

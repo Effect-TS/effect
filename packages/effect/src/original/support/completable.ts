@@ -16,13 +16,14 @@
 
 import { function as F } from "fp-ts";
 import { option as O } from "fp-ts";
+import { AsyncCancelContFn } from "../../effect";
 
 export interface Completable<A> {
   value(): O.Option<A>;
   isComplete(): boolean;
   complete(a: A): void;
   tryComplete(a: A): boolean;
-  listen(f: F.FunctionN<[A], void>): F.Lazy<void>;
+  listen(f: F.FunctionN<[A], void>): AsyncCancelContFn;
 }
 
 export class CompletableImpl<A> implements Completable<A> {
@@ -57,13 +58,14 @@ export class CompletableImpl<A> implements Completable<A> {
     this.set(a);
     return true;
   }
-  listen(f: F.FunctionN<[A], void>): F.Lazy<void> {
+  listen(f: F.FunctionN<[A], void>): AsyncCancelContFn {
     if (O.isSome(this.completed)) {
       f(this.completed.value);
     }
     this.listeners.push(f);
-    return () => {
+    return cb => {
       this.listeners = this.listeners.filter(cb => cb !== f);
+      cb();
     };
   }
 }

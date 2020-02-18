@@ -177,9 +177,10 @@ export class Client {
         }
       });
 
-      return () => {
+      return cb => {
         l();
         this.dispose();
+        cb();
       };
     });
   }
@@ -218,8 +219,8 @@ export class Client {
         }
       });
 
-      return () => {
-        //
+      return cb => {
+        cb();
       };
     });
   }
@@ -268,8 +269,8 @@ export class Client {
         this.client.create(path, CreateMode[mode], cb);
       }
 
-      return () => {
-        //
+      return cb => {
+        cb();
       };
     });
   }
@@ -302,8 +303,8 @@ export class Client {
         }
       });
 
-      return () => {
-        //
+      return cb => {
+        cb();
       };
     });
   }
@@ -335,8 +336,8 @@ export class Client {
         }
       );
 
-      return () => {
-        //
+      return cb => {
+        cb();
       };
     });
   }
