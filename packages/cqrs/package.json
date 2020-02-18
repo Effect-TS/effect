@@ -17,8 +17,8 @@
   ],
   "peerDependencies": {
     "@matechs/effect": "^2.0.0",
-    "@matechs/logger": "^1.2.11",
-    "@matechs/orm": "^1.4.9",
+    "@matechs/logger": "^2.0.0",
+    "@matechs/orm": "^2.0.0",
     "@morphic-ts/batteries": "^0.3.4",
     "class-transformer": "^0.2.3",
     "fast-equals": "^2.0.0",

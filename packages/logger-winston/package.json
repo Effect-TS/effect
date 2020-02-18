@@ -17,7 +17,7 @@
   ],
   "peerDependencies": {
     "@matechs/effect": "^2.0.0",
-    "@matechs/logger": "^1.2.11",
+    "@matechs/logger": "^2.0.0",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
     "winston": "^3.2.1"
