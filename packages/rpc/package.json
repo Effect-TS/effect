@@ -16,10 +16,10 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^1.2.1",
-    "@matechs/express": "^2.0.0-alpha.1",
-    "@matechs/http-client": "^2.0.0-alpha.1",
-    "@matechs/rpc-client": "^2.0.0-alpha.2",
+    "@matechs/effect": "^2.0.0",
+    "@matechs/express": "^2.0.6",
+    "@matechs/http-client": "^2.0.6",
+    "@matechs/rpc-client": "^2.0.6",
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "fp-ts": "^2.4.2",
@@ -27,7 +27,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/effect": "^1.4.4",
+    "@matechs/effect": "^2.0.0",
     "@matechs/express": "^2.0.6",
     "@matechs/http-client": "^2.0.6",
     "@matechs/rpc-client": "^2.0.6",
