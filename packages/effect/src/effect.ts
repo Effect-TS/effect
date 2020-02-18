@@ -1841,7 +1841,7 @@ const alt_: EffectMonad["alt"] = chainError_;
 
 export function alt<R2, E2, A>(
   fy: () => Effect<R2, E2, A>
-): <R, E>(fx: Effect<R, E, A>) => Effect<R & R2, E | E2, A> {
+): <R, E>(fx: Effect<R, E, A>) => Effect<R & R2, E2, A> {
   return fx => alt_(fx, fy);
 }
 
