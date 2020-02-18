@@ -1,6 +1,6 @@
 {
   "name": "@matechs/zoo",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -22,7 +22,7 @@
     "fp-ts-contrib": "^0.1.9"
   },
   "devDependencies": {
-    "@matechs/effect": "^2.0.1",
+    "@matechs/effect": "^2.0.2",
     "@types/node-zookeeper-client": "^0.2.7",
     "fp-ts": "^2.4.2",
     "fp-ts-contrib": "^0.1.9",
