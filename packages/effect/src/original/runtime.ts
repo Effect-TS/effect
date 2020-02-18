@@ -14,8 +14,8 @@
 
 /* istanbul ignore file */
 
-import { function as F } from "fp-ts";
 import * as L from "../list";
+import { AsyncCancelContFn } from "../effect";
 
 /**
  * An interface for the IO system runtime.
@@ -39,7 +39,7 @@ export interface Runtime {
    * @param thunk the action to execute
    * @param ms delay in milliseconds
    */
-  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): F.Lazy<void>;
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn;
 }
 
 class RuntimeImpl implements Runtime {
@@ -68,10 +68,11 @@ class RuntimeImpl implements Runtime {
     }
   }
 
-  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): F.Lazy<void> {
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn {
     const handle = setTimeout(() => this.dispatch(thunk, a), ms);
-    return () => {
+    return cb => {
       clearTimeout(handle);
+      cb();
     };
   }
 }

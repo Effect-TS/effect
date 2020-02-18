@@ -30,6 +30,7 @@ import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
 import { mergeDeep } from "./utils/merge";
 import { DriverSyncImpl } from "./driverSync";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export enum EffectTag {
   Pure,
@@ -319,12 +320,13 @@ export interface Suspended {
   readonly f0: F.Lazy<Instructions>;
 }
 
+export type AsyncContFn<E, A> = F.FunctionN<[Ei.Either<E, A>], void>;
+export type AsyncCancelContFn = F.FunctionN<[(error?: Error) => void], void>;
+export type AsyncFn<E, A> = F.FunctionN<[AsyncContFn<E, A>], AsyncCancelContFn>;
+
 export interface Async<E = unknown, A = unknown> {
   readonly _tag: EffectTag.Async;
-  readonly f0: F.FunctionN<
-    [F.FunctionN<[Ei.Either<E, A>], void>],
-    F.Lazy<void>
-  >;
+  readonly f0: AsyncFn<E, A>;
 }
 
 export interface Chain<Z = unknown> {
@@ -477,9 +479,7 @@ export function trySyncMap<E = unknown>(
  * in uninterruptible
  * @param op
  */
-export function async<E, A>(
-  op: F.FunctionN<[F.FunctionN<[Ei.Either<E, A>], void>], F.Lazy<void>>
-): Effect<NoEnv, E, A> {
+export function async<E, A>(op: AsyncFn<E, A>): Effect<NoEnv, E, A> {
   return new EffectIO(EffectTag.Async as const, op) as any;
 }
 
@@ -490,7 +490,7 @@ export function async<E, A>(
  * @param op
  */
 export function asyncTotal<A>(
-  op: F.FunctionN<[F.FunctionN<[A], void>], F.Lazy<void>>
+  op: F.FunctionN<[F.FunctionN<[A], void>], AsyncCancelContFn>
 ): Effect<NoEnv, NoErr, A> {
   return async(callback => op(a => callback(Ei.right(a))));
 }
@@ -1163,6 +1163,39 @@ export function onInterrupted<R, E, A, R2, E2>(
   );
 }
 
+export function combineInterruptExit<R, E, A, R2, E2>(
+  ioa: Effect<R, E, A>,
+  finalizer: UIO<ex.Interrupt[]>
+): Effect<R & R2, E | E2, A> {
+  return uninterruptibleMask(cutout =>
+    chain_(result(cutout(ioa)), exit =>
+      exit._tag === "Interrupt"
+        ? chain_(result(finalizer), finalize => {
+            /* istanbul ignore else */
+            if (finalize._tag === "Done") {
+              const errors = pipe(
+                [exit.error, ...finalize.value.map(x => x.error)],
+                Ar.filter((x): x is Error => x !== undefined)
+              );
+
+              return errors.length > 0
+                ? completed(
+                    ex.interruptWithErrorAndOthers(
+                      errors[0],
+                      Ar.dropLeft(1)(errors)
+                    )
+                  )
+                : completed(exit);
+            } else {
+              console.warn("BUG: interrupt finalizer should not fail");
+              return completed(exit);
+            }
+          })
+        : completed(exit)
+    )
+  );
+}
+
 /**
  * Introduce a gap in executing to allow other fibers to execute (if any are pending)
  */
@@ -1170,11 +1203,7 @@ export const shifted: Effect<NoEnv, NoErr, void> = uninterruptible(
   chain_(accessRuntime, (
     runtime: Runtime // why does this not trigger noImplicitAny
   ) =>
-    asyncTotal<void>(callback => {
-      runtime.dispatch(callback, undefined);
-      // tslint:disable-next-line
-      return () => {};
-    })
+    asyncTotal<void>(callback => runtime.dispatchLater(callback, undefined, 0))
   )
 );
 
@@ -1229,10 +1258,13 @@ export function shiftAsyncAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
  * This IO will however prevent a javascript runtime such as node from exiting by scheduling an interval for 60s
  */
 export const never: Effect<NoEnv, NoErr, never> = asyncTotal(() => {
-  // tslint:disable-next-line:no-empty
-  const handle = setInterval(() => {}, 60000);
-  return () => {
+  const handle = setInterval(() => {
+    //
+  }, 60000);
+  /* istanbul ignore next */
+  return cb => {
     clearInterval(handle);
+    cb();
   };
 });
 
@@ -1268,7 +1300,7 @@ export interface Fiber<E, A> {
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */
-  readonly interrupt: Effect<NoEnv, NoErr, void>;
+  readonly interrupt: Effect<NoEnv, NoErr, ex.Interrupt>;
   /**
    * Await the result of this fiber
    */
@@ -1297,7 +1329,10 @@ class FiberImpl<E, A> implements Fiber<E, A> {
   wait = asyncTotal((f: F.FunctionN<[ex.Exit<E, A>], void>) =>
     this.driver.onExit(f)
   );
-  interrupt = applySecond(this.sendInterrupt, asUnit(this.wait));
+  interrupt = applySecond(
+    this.sendInterrupt,
+    this.wait as Effect<unknown, never, ex.Interrupt>
+  );
   join = chain_(this.wait, completed);
   result = chain_(
     sync(() => this.driver.completed),
@@ -1407,12 +1442,9 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
                           )
                         ),
                         () =>
-                          onInterrupted(
+                          combineInterruptExit(
                             cutout(channel.wait),
-                            applySecond(
-                              fiber1.interrupt,
-                              fiber2.interrupt
-                            ) as Effect<NoEnv, NoErr, void>
+                            chain_(fiber1.interrupt, i1 => map_(fiber2.interrupt, i2 => [i1, i2]))
                           )
                       )
                   )
@@ -1440,11 +1472,8 @@ export function timeoutFold<R, E1, E2, A, B>(
   return raceFold(
     source,
     after(ms),
-    (exit, delayFiber) =>
-      applySecond(
-        delayFiber.interrupt as Effect<NoEnv, NoErr, void>,
-        onCompleted(exit)
-      ),
+    /* istanbul ignore next */
+    (exit, delayFiber) => applySecond(delayFiber.interrupt, onCompleted(exit)),
     (_, fiber) => onTimeout(fiber)
   );
 }
@@ -1610,8 +1639,10 @@ export function fromPromise<A>(
       thunk()
         .then(v => callback(Ei.right(v)))
         .catch(e => callback(Ei.left(e)));
-      // tslint:disable-next-line
-      return () => {};
+      /* istanbul ignore next */
+      return cb => {
+        cb();
+      };
     })
   );
 }
@@ -1623,28 +1654,28 @@ export function encaseTask<A>(task: TA.Task<A>): Effect<NoEnv, NoErr, A> {
 export function encaseTaskEither<E, A>(
   taskEither: TE.TaskEither<E, A>
 ): Effect<NoEnv, E, A> {
-  return uninterruptible(
-    async<E, A>(callback => {
-      taskEither().then(callback);
-      // tslint:disable-next-line
-      return () => {};
-    })
-  );
+  return async<E, A>(callback => {
+    taskEither().then(callback);
+    /* istanbul ignore next */
+    return cb => {
+      cb();
+    };
+  });
 }
 
 export function fromPromiseMap<E>(
   onError: (e: unknown) => E
 ): <A>(thunk: F.Lazy<Promise<A>>) => Effect<NoEnv, E, A> {
   return <A>(thunk: F.Lazy<Promise<A>>) =>
-    uninterruptible(
-      async<E, A>(callback => {
-        thunk()
-          .then(v => callback(Ei.right(v)))
-          .catch(e => callback(Ei.left(onError(e))));
-        // tslint:disable-next-line
-        return () => {};
-      })
-    );
+    async<E, A>(callback => {
+      thunk()
+        .then(v => callback(Ei.right(v)))
+        .catch(e => callback(Ei.left(onError(e))));
+      /* istanbul ignore next */
+      return cb => {
+        cb();
+      };
+    });
 }
 
 /**
@@ -2088,8 +2119,10 @@ export function effectify<L, R>(f: Function): () => Effect<NoEnv, L, R> {
         // tslint:disable-next-line: triple-equals
         e != null ? cb(Ei.left(e)) : cb(Ei.right(r));
       f.apply(null, args.concat(cbResolver));
-      // tslint:disable-next-line: no-empty
-      return () => {};
+      /* istanbul ignore next */
+      return cb => {
+        cb();
+      };
     });
   };
 }

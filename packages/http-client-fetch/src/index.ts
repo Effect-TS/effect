@@ -123,7 +123,9 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
           });
 
         // tslint:disable-next-line: no-empty
-        return () => {};
+        return cb => {
+          cb();
+        };
       });
     }
   }

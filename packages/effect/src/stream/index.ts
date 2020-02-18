@@ -14,7 +14,7 @@ import {
 } from "fp-ts";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
-import { Cause } from "../original/exit";
+import { Cause, Interrupt } from "../original/exit";
 import * as T from "../effect";
 import { Fiber, effect } from "../effect";
 import * as deferred from "../deferred";
@@ -1114,13 +1114,13 @@ export function peelManaged<R, E, A, S, B>(
 
 function interruptFiberSlot(
   slot: Ref<O.Option<Fiber<never, void>>>
-): T.Effect<T.NoEnv, T.NoErr, void> {
+): T.Effect<T.NoEnv, T.NoErr, O.Option<Interrupt>> {
   return effect.chain(slot.get, optFiber =>
     P.pipe(
       optFiber,
       O.fold(
-        () => T.pure(undefined as void),
-        f => f.interrupt
+        () => T.pure(O.none),
+        f => T.effect.map(f.interrupt, O.some)
       )
     )
   );
@@ -1178,7 +1178,7 @@ export function switchLatest<R, E, A>(
               // Spawn a fiber that should push elements from stream into pushQueue as long as it is able
               function spawnPushFiber(
                 stream: Stream<R, E, A>
-              ): T.Effect<R, never, void> {
+              ): T.Effect<R, never, O.Option<Interrupt>> {
                 const writer = P.pipe(
                   // The writer process pushes things into the queue
                   into(map_(stream, O.some), queueSink(pushQueue)) as any,
@@ -1566,7 +1566,9 @@ function getSourceFromObjectReadStreamB<A>(
           }
 
           // tslint:disable-next-line: no-empty
-          return () => {};
+          return cb => {
+            cb();
+          };
         }),
         every
       );
@@ -1582,3 +1584,5 @@ export function fromObjectReadStreamB<A>(
 ) {
   return fromSource(getSourceFromObjectReadStreamB<A>(stream, batch, every));
 }
+
+export { su };

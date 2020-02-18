@@ -68,7 +68,7 @@ export function emitter<E, A>(
     T.async<E, O.Option<A>>(callback => {
       const op = list.popUnsafe(ops);
       if (op !== null) {
-        return runFromQueue(op, callback);
+        runFromQueue(op, callback);
       } else {
         hasCB.cb = o => {
           // TODO: figure out how to trigger if even possible, triggered by line 22
@@ -84,8 +84,10 @@ export function emitter<E, A>(
           }
         };
       }
-      // tslint:disable-next-line: no-empty
-      return () => {};
+      /* istanbul ignore next */
+      return cb => {
+        cb();
+      };
     })
   );
 }

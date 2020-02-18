@@ -57,8 +57,35 @@ export function abort(a: unknown): Abort {
 
 export interface Interrupt {
   readonly _tag: "Interrupt";
+  readonly error?: Error;
+  readonly others?: Error[];
 }
 
 export const interrupt: Interrupt = {
   _tag: "Interrupt"
 };
+
+export const interruptWithError = (err?: Error): Interrupt =>
+  err
+    ? {
+        _tag: "Interrupt",
+        error: err
+      }
+    : {
+        _tag: "Interrupt"
+      };
+
+export const interruptWithErrorAndOthers = (
+  err: Error,
+  others?: Error[]
+): Interrupt =>
+  others
+    ? {
+        _tag: "Interrupt",
+        error: err,
+        others
+      }
+    : {
+        _tag: "Interrupt",
+        error: err
+      };

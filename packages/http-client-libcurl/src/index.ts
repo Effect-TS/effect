@@ -134,8 +134,9 @@ export const libcurl: (caPath?: string) => H.Http = (
 
             req.perform();
 
-            return () => {
+            return cb => {
               req.close();
+              cb();
             };
           })
   }
