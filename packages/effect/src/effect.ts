@@ -4,6 +4,7 @@
 import {
   array as Ar,
   bifunctor as Bif,
+  functor as Fun,
   either as Ei,
   function as F,
   monoid as Mon,
@@ -1444,7 +1445,9 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
                         () =>
                           combineInterruptExit(
                             cutout(channel.wait),
-                            chain_(fiber1.interrupt, i1 => map_(fiber2.interrupt, i2 => [i1, i2]))
+                            chain_(fiber1.interrupt, i1 =>
+                              map_(fiber2.interrupt, i2 => [i1, i2])
+                            )
                           )
                       )
                   )
@@ -1773,7 +1776,8 @@ export interface EffectMonad
   extends Monad3E<URI>,
     Bif.Bifunctor3<URI>,
     MonadThrow3E<URI>,
-    Alt3E<URI> {
+    Alt3E<URI>,
+    Fun.Functor3<URI> {
   /**
    * Produce an new IO that will use the error produced by inner to produce a recovery program
    * @param io
