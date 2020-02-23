@@ -15,7 +15,7 @@ function fold_<E, A, R>(
   onDone: (v: A) => R,
   onRaise: (v: E) => R,
   onAbort: (v: unknown) => R,
-  onInterrupt: () => R
+  onInterrupt: (i: Interrupt) => R
 ) {
   switch (e._tag) {
     case "Done":
@@ -25,7 +25,7 @@ function fold_<E, A, R>(
     case "Abort":
       return onAbort(e.abortedWith);
     case "Interrupt":
-      return onInterrupt();
+      return onInterrupt(e);
   }
 }
 
