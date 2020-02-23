@@ -17,6 +17,12 @@ For details about the additional types and overloads please refer to documentati
 
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
+## License
+The library is released with an MIT license and the codebase is fully open-source please read: 
+[LICENSE.md](https://github.com/mikearnaldi/matechs-effect/blob/master/LICENSE.md)
+
+As with any good library there is a commercial project that support the development and maintainance, if you want to know more find us at [https://www.matechs.com/](https://www.matechs.com/) we are a digital accelerator looking for smart founders!
+
 ## Stability Grid
 |      Package                  | API Stage  | Used in Prod |                            Description                            |
 |-------------------------------|------------|--------------|-------------------------------------------------------------------|
