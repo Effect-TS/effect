@@ -22,20 +22,20 @@
     "es6"
   ],
   "devDependencies": {
-    "@qio/core": "^29.0.0",
+    "@qio/core": "^31.0.0",
     "@types/benchmark": "^1.0.31",
-    "@types/node": "^12.12.21",
+    "@types/node": "^13.7.4",
     "benchmark": "^2.1.4",
     "chai": "^4.2.0",
-    "fp-ts": "^2.4.2",
-    "fp-ts-contrib": "^0.1.9",
+    "fp-ts": "^2.5.1",
+    "fp-ts-contrib": "^0.1.13",
     "import-path-rewrite": "github:mikearnaldi/import-path-rewrite",
     "retry-ts": "^0.1.2",
     "waveguide": "^1.3.0"
   },
   "peerDependencies": {
-    "fp-ts": "^2.4.2",
-    "fp-ts-contrib": "^0.1.9",
+    "fp-ts": "^2.5.1",
+    "fp-ts-contrib": "^0.1.13",
     "retry-ts": "^0.1.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"

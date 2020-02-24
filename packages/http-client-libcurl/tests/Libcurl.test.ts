@@ -1,7 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import * as H from "@matechs/http-client";
 import assert from "assert";
-import bodyParser from "body-parser";
 import express from "express";
 import { client } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -31,19 +30,19 @@ describe("Libcurl", () => {
   it("post-patch-put-del", async () => {
     const app = express();
 
-    app.post("/post", bodyParser.json(), (req, res) => {
+    app.post("/post", express.json(), (req, res) => {
       res.send(req.body);
     });
 
-    app.put("/put", bodyParser.json(), (req, res) => {
+    app.put("/put", express.json(), (req, res) => {
       res.send(req.body);
     });
 
-    app.patch("/patch", bodyParser.json(), (req, res) => {
+    app.patch("/patch", express.json(), (req, res) => {
       res.send(req.body);
     });
 
-    app.delete("/delete", bodyParser.json(), (req, res) => {
+    app.delete("/delete", express.json(), (req, res) => {
       res.send(req.body);
     });
 
@@ -129,7 +128,7 @@ describe("Libcurl", () => {
   it("headers", async () => {
     const app = express();
 
-    app.get("/h", bodyParser.json(), (req, res) => {
+    app.get("/h", express.json(), (req, res) => {
       res.send({
         foo: req.header("foo")
       });
@@ -155,7 +154,7 @@ describe("Libcurl", () => {
   it("headers middleware", async () => {
     const app = express();
 
-    app.get("/middle", bodyParser.json(), (req, res) => {
+    app.get("/middle", express.json(), (req, res) => {
       res.send({
         foo: req.header("foo")
       });
@@ -174,7 +173,7 @@ describe("Libcurl", () => {
   it("replace headers", async () => {
     const app = express();
 
-    app.get("/h", bodyParser.json(), (req, res) => {
+    app.get("/h", express.json(), (req, res) => {
       res.send({
         foo: req.header("foo"),
         bar: req.header("bar")
@@ -208,7 +207,7 @@ describe("Libcurl", () => {
   it("data", async () => {
     const app = express();
 
-    app.use("/data", bodyParser.urlencoded({ extended: true }), (req, res) => {
+    app.use("/data", express.urlencoded({ extended: true }), (req, res) => {
       res.send({
         foo: req.body["foo"]
       });
@@ -251,7 +250,7 @@ describe("Libcurl", () => {
     // TODO: make it work
     const app = express();
 
-    app.use("/binary", bodyParser.raw(), (req, res) => {
+    app.use("/binary", express.raw(), (req, res) => {
       const body = req.body as Buffer;
       res.send(body);
     });
