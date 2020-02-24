@@ -1,7 +1,6 @@
 import newExpress from "express";
 import { effect as T } from "@matechs/effect";
 import * as EX from "express";
-import * as bodyParser from "body-parser";
 import { Server } from "http";
 import { pipe } from "fp-ts/lib/pipeable";
 
@@ -72,7 +71,7 @@ export const express: Express = {
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
-          r[expressAppEnv].app[method](path, bodyParser.json(), (req, res) => {
+          r[expressAppEnv].app[method](path, newExpress.json(), (req, res) => {
             T.runToPromiseExit(T.provideAll(r)(f(req))).then(o => {
               switch (o._tag) {
                 case "Done":

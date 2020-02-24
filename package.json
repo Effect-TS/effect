@@ -28,7 +28,6 @@
     "babel-jest": "^25.1.0",
     "babel-plugin-transform-typescript-metadata": "^0.2.2",
     "benchmark": "^2.1.4",
-    "body-parser": "^1.19.0",
     "chai": "^4.2.0",
     "class-transformer": "^0.2.3",
     "dtslint": "^3.0.0",
