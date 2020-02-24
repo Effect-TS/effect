@@ -1,4 +1,8 @@
 # Introduction
+![weekly-downloads](https://badgen.net/npm/v/@matechs/express)
+![weekly-downloads](https://badgen.net/npm/dw/@matechs/express)
+![weekly-downloads](https://badgen.net/npm/dm/@matechs/express)
+![weekly-downloads](https://badgen.net/npm/dy/@matechs/express)
 
 This package provides integration with `express`. Refer to documentation in `packages/effect` for more details.
 

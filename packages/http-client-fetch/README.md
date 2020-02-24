@@ -1,4 +1,8 @@
 # Introduction
+![weekly-downloads](https://badgen.net/npm/v/@matechs/http-client-fetch)
+![weekly-downloads](https://badgen.net/npm/dw/@matechs/http-client-fetch)
+![weekly-downloads](https://badgen.net/npm/dm/@matechs/http-client-fetch)
+![weekly-downloads](https://badgen.net/npm/dy/@matechs/http-client-fetch)
 
 Provides integration with `fetch`
 

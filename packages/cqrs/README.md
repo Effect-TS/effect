@@ -1,4 +1,8 @@
 ## CQRS
+![weekly-downloads](https://badgen.net/npm/v/@matechs/cqrs)
+![weekly-downloads](https://badgen.net/npm/dw/@matechs/cqrs)
+![weekly-downloads](https://badgen.net/npm/dm/@matechs/cqrs)
+![weekly-downloads](https://badgen.net/npm/dy/@matechs/cqrs)
 
 Provides a utility framework on top of `@matechs/orm` to do CQRS with DDD.
 

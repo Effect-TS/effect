@@ -1,4 +1,8 @@
 # Introduction
+![weekly-downloads](https://badgen.net/npm/v/@matechs/http-client-libcurl)
+![weekly-downloads](https://badgen.net/npm/dw/@matechs/http-client-libcurl)
+![weekly-downloads](https://badgen.net/npm/dm/@matechs/http-client-libcurl)
+![weekly-downloads](https://badgen.net/npm/dy/@matechs/http-client-libcurl)
 
 Provides integration with `https://github.com/JCMais/node-libcurl`
 
