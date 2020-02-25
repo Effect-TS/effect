@@ -381,7 +381,7 @@ export function allocate<R, E, A>(
               // Combine the finalizer actions of the outer and inner resource
               innerLeak => ({
                 a: innerLeak.a,
-                release: T.onComplete(innerLeak.release, leak.release)
+                release: T.effect.onComplete(innerLeak.release, leak.release)
               })
             )
         );

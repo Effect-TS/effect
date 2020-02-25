@@ -1131,7 +1131,7 @@ export function bracket<R, E, A, R2, E2, R3, E3, B>(
  * @param ioa
  * @param finalizer
  */
-export function onComplete<R, E, A, R2, E2>(
+function onComplete_<R, E, A, R2, E2>(
   ioa: Effect<R, E, A>,
   finalizer: Effect<R2, E2, unknown>
 ): Effect<R & R2, E | E2, A> {
@@ -1144,12 +1144,16 @@ export function onComplete<R, E, A, R2, E2>(
   );
 }
 
+export function onComplete<R2, E2>(finalizer: Effect<R2, E2, unknown>) {
+  return <R, E, A>(ioa: Effect<R, E, A>) => onComplete_(ioa, finalizer);
+}
+
 /**
  * Guarantee that once ioa begins executing if it is interrupted finalizer will execute
  * @param ioa
  * @param finalizer
  */
-export function onInterrupted<R, E, A, R2, E2>(
+function onInterrupted_<R, E, A, R2, E2>(
   ioa: Effect<R, E, A>,
   finalizer: Effect<R2, E2, unknown>
 ): Effect<R & R2, E | E2, A> {
@@ -1162,6 +1166,10 @@ export function onInterrupted<R, E, A, R2, E2>(
         : completed(exit)
     )
   );
+}
+
+export function onInterrupted<R2, E2>(finalizer: Effect<R2, E2, unknown>) {
+  return <R, E, A>(ioa: Effect<R, E, A>) => onInterrupted_(ioa, finalizer);
 }
 
 export function combineInterruptExit<R, E, A, R2, E2>(
@@ -1833,6 +1841,16 @@ export interface EffectMonad
    * @param f
    */
   mapError: EffectMonad["mapLeft"];
+
+  onInterrupted<R, E, A, R2, E2>(
+    ioa: Effect<R, E, A>,
+    finalizer: Effect<R2, E2, unknown>
+  ): Effect<R & R2, E | E2, A>;
+
+  onComplete<R, E, A, R2, E2>(
+    ioa: Effect<R, E, A>,
+    finalizer: Effect<R2, E2, unknown>
+  ): Effect<R & R2, E | E2, A>;
 }
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
@@ -1862,7 +1880,9 @@ export const effect: EffectMonad = {
   chainError: chainError_,
   foldExit: foldExit_,
   chainTap: chainTap_,
-  alt: alt_
+  alt: alt_,
+  onInterrupted: onInterrupted_,
+  onComplete: onComplete_
 };
 
 export const parEffect: Monad3E<URI> &

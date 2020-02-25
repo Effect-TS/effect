@@ -73,8 +73,8 @@ export class Fancy<S, R, P> {
     };
 
     this.ui = pipe(
+      renderEffect,
       T.onInterrupted(
-        renderEffect,
         T.sync(() => {
           this.stop();
         })

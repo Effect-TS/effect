@@ -105,7 +105,7 @@ export function toObservable<R, E, A>(
       new Rx.Observable(sub => {
         const drainer = T.provideAll(r)(
           S.drain(
-            S.mapM(s, a =>
+            S.stream.mapM(s, a =>
               T.sync(() => {
                 sub.next(a);
               })
