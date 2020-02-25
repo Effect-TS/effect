@@ -87,7 +87,7 @@ describe("Stream", () => {
       s,
       S.foldM(0, (b, a) => T.pure(b + a)),
       S.collectArray,
-      T.runToPromiseExit
+      T.runToPromise
     );
 
     assert.deepEqual(res, [5000050000]);
