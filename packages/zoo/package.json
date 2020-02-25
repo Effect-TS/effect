@@ -16,7 +16,7 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^2.0.5",
+    "@matechs/effect": "^3.0.0",
     "@types/node-zookeeper-client": "^0.2.7",
     "fp-ts": "^2.5.1",
     "fp-ts-contrib": "^0.1.13"

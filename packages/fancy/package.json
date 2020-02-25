@@ -19,7 +19,7 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^2.0.5",
+    "@matechs/effect": "^3.0.0",
     "@morphic-ts/batteries": "^0.4.3",
     "fast-check": "^1.22.2",
     "fast-equals": "^2.0.0",
