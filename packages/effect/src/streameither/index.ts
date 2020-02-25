@@ -62,7 +62,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   bs: StreamEither<R2, E2, B>,
   f: F.FunctionN<[A, B], C>
 ): StreamEither<R & R2, E | E2, C> {
-  return S.zipWith(as, bs, (ea, eb) => {
+  return S.stream.zipWith(as, bs, (ea, eb) => {
     if (Ei.isLeft(ea)) {
       return Ei.left(ea.left);
     } else if (Ei.isLeft(eb)) {
@@ -96,7 +96,7 @@ export function take<R, E, A>(
   stream: StreamEither<R, E, A>,
   n: number
 ): StreamEither<R, E, A> {
-  return S.take(stream, n);
+  return S.stream.take(stream, n);
 }
 
 export function toStream<R, E, A>(
@@ -202,7 +202,7 @@ export function concatL<R, E, A, R2, E2>(
   stream1: StreamEither<R, E, A>,
   stream2: F.Lazy<StreamEither<R2, E2, A>>
 ): StreamEither<R & R2, E | E2, A> {
-  return S.concatL(stream1, stream2 as any) as any;
+  return S.stream.concatL(stream1, stream2 as any) as any;
 }
 
 export function concat<R, E, A, R2, E2>(
@@ -230,7 +230,7 @@ export function filter<R, E, A>(
   f: F.Predicate<A>,
   propagate = true
 ): StreamEither<R, E, A> {
-  return S.filter(stream, getEitherP(f, propagate));
+  return S.stream.filter(stream, getEitherP(f, propagate));
 }
 
 export const getEitherP = <E, A>(
@@ -256,7 +256,7 @@ export function takeWhile<R, E, A>(
   stream: StreamEither<R, E, A>,
   pred: F.Predicate<A>
 ): StreamEither<R, E, A> {
-  return S.takeWhile(stream, x => Ei.isRight(x) && pred(x.right));
+  return S.stream.takeWhile(stream, x => Ei.isRight(x) && pred(x.right));
 }
 
 export const URI = "matechs/StreamEither";

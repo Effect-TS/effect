@@ -1,19 +1,17 @@
-import { effect as T } from "@matechs/effect";
-import * as S from "@matechs/effect/lib/stream";
+import { effect as T, stream as S } from "@matechs/effect";
 import * as O from "../src";
 import * as Rx from "rxjs";
 import * as E from "fp-ts/lib/Either";
 import * as A from "fp-ts/lib/Array";
 import * as assert from "assert";
 import { raise } from "@matechs/effect/lib/original/exit";
-import { stream } from "@matechs/effect/lib/stream";
 
 describe("RxJS", () => {
   jest.setTimeout(5000);
 
   it("should encaseObservable", async () => {
     const s = O.encaseObservable(Rx.interval(10), E.toError);
-    const p = S.collectArray(S.take(s, 10));
+    const p = S.collectArray(S.stream.take(s, 10));
 
     const r = await T.runToPromise(p);
 
@@ -69,7 +67,7 @@ describe("RxJS", () => {
 
   it("should encaseObservable - error", async () => {
     const s = O.encaseObservable(Rx.throwError(new Error("error")), E.toError);
-    const p = S.collectArray(S.take(s, 10));
+    const p = S.collectArray(S.stream.take(s, 10));
 
     const r = await T.runToPromiseExit(p);
 
@@ -182,7 +180,7 @@ describe("RxJS", () => {
   });
 
   it("unsubscribe should stop drain", async () => {
-    const s = stream.chain(S.repeatedly(0), n =>
+    const s = S.stream.chain(S.repeatedly(0), n =>
       S.encaseEffect(T.delay(T.pure(n), 10))
     );
     const o = O.toObservable(s);
