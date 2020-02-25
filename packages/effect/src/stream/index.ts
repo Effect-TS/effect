@@ -1149,7 +1149,7 @@ function streamQueueSource<R, E, A>(
  * @param stream
  * @param sink
  */
-export function peel_<R, E, A, S, B, R2, E2>(
+function peel_<R, E, A, S, B, R2, E2>(
   stream: Stream<R, E, A>,
   sink: Sink<R2, E2, S, A, B>
 ): Stream<R & R2, E | E2, readonly [B, Stream<R & R2, E | E2, A>]> {
@@ -1323,13 +1323,14 @@ export function switchLatest<R, E, A>(
  * @param stream
  * @param f
  */
-export function chainSwitchLatest_<R, E, A, R2, E2, B>(
+function chainSwitchLatest_<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
   f: F.FunctionN<[A], Stream<R2, E2, B>>
 ): Stream<R & R2, E | E2, B> {
   return switchLatest(map_(widen<R2, E2>()(stream), a => widen<R, E>()(f(a))));
 }
 
+/* istanbul ignore next */
 export function chainSwitchLatest<A, R2, E2, B>(
   f: F.FunctionN<[A], Stream<R2, E2, B>>
 ) {

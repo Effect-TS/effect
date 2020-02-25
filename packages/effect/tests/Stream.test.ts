@@ -109,7 +109,7 @@ describe("Stream", () => {
     assert.deepEqual(res, [0, 1, 2]);
   });
 
-  it("should use filterRefineWith", async () => {
+  it("should use filterRefine", async () => {
     const s = S.fromRange(0);
 
     type Even = number & { _brand: "even" };
@@ -314,6 +314,16 @@ describe("Stream", () => {
     assert.deepEqual(res, [0, 1, 2]);
   });
 
+  it("should use into", async () => {
+    const sm = collectArraySink<T.NoEnv, T.NoErr, number>();
+
+    const s = pipe(S.fromArray([0, 1, 2]), S.into(sm));
+
+    const res = await T.runToPromise(s);
+
+    assert.deepEqual(res, [0, 1, 2]);
+  });
+
   it("should use intoLeftover", async () => {
     const sl = collectArraySink<T.NoEnv, T.NoErr, number>();
 
@@ -357,6 +367,17 @@ describe("Stream", () => {
     assert.deepEqual(res, [0, 1, 2, 3]);
   });
 
+  it("should use scanM", async () => {
+    const s = pipe(
+      S.fromArray([1, 1, 1]),
+      S.scanM(0, (n, e) => T.pure(n + e))
+    );
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, [0, 1, 2, 3]);
+  });
+
   it("should use flatten", async () => {
     const s = S.flatten(
       S.fromArray([S.fromArray([0, 1, 2]), S.fromArray([0, 1, 2])])
@@ -380,6 +401,17 @@ describe("Stream", () => {
 
   it("should use concat", async () => {
     const s = pipe(S.fromArray([0]), S.concat(S.fromOption(some(1))));
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, [0, 1]);
+  });
+
+  it("should use concatL", async () => {
+    const s = pipe(
+      S.fromArray([0]),
+      S.concatL(() => S.fromOption(some(1)))
+    );
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -528,7 +560,7 @@ describe("Stream", () => {
     );
     it("should handle empty arrays", () => {
       const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
-      const s2 = S.peel_(s1, multiplier);
+      const s2 = pipe(s1, S.peel(multiplier));
       return expectExit(
         S.collectArray(S.stream.chain(s2, ([_h, r]) => r)),
         ex.done([])
@@ -536,8 +568,10 @@ describe("Stream", () => {
     });
     it("should extract a head and return a subsequent element", () => {
       const s1 = S.fromArray([2, 6, 9]);
-      const s2 = S.stream.chain(S.peel_(s1, multiplier), ([head, rest]) =>
-        S.stream.map(rest, v => v * head)
+      const s2 = pipe(
+        s1,
+        S.peel(multiplier),
+        S.chain(([head, rest]) => S.stream.map(rest, v => v * head))
       );
       return expectExit(S.collectArray(s2), ex.done([12, 18]));
     });
@@ -545,7 +579,7 @@ describe("Stream", () => {
       const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
       const s2 = S.stream.filter(s1, x => x % 2 === 0); // emits 4 6 8
       const s3 = S.stream.chain(
-        S.peel_(s2, multiplier),
+        S.stream.peel(s2, multiplier),
         ([head, rest]) =>
           // head is 4
           S.stream.map(rest, v => v * head) // emits 24 32
@@ -562,7 +596,7 @@ describe("Stream", () => {
         S.Stream<T.NoEnv, string, number>
       >;
       const s2 = S.flatten(s1);
-      const s3 = S.peel_(s2, multiplier);
+      const s3 = S.stream.peel(s2, multiplier);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
     it("should raise errors in the remainder stream", () => {
@@ -577,7 +611,7 @@ describe("Stream", () => {
       >;
       const s2 = S.flatten(s1);
       const s3 = S.stream.chain(
-        S.peel_(s2, multiplier),
+        S.stream.peel(s2, multiplier),
         ([_head, rest]) => rest
       );
       return expectExit(S.collectArray(s3), ex.raise("boom"));
@@ -769,8 +803,11 @@ describe("Stream", () => {
     // TODO: issue https://github.com/rzeigler/waveguide-streams/issues/1
     it.skip("switching should occur", async () => {
       const s1 = S.stream.take(S.periodically(50), 10);
-      const s2 = S.chainSwitchLatest_(s1, i =>
-        S.stream.as(S.stream.take(S.periodically(10), 10), i)
+      const s2 = pipe(
+        s1,
+        S.chainSwitchLatest(i =>
+          S.stream.as(S.stream.take(S.periodically(10), 10), i)
+        )
       );
       const output = S.collectArray(s2);
       const values = await T.runToPromise(output);
