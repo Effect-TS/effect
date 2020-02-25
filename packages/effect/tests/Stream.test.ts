@@ -121,8 +121,8 @@ describe("Stream", () => {
     // $ExpectType Even[]
     const res = await pipe(
       s,
-      S.take(3),
       S.filterRefine(isEven),
+      S.take(3),
       S.collectArray,
       T.runToPromise
     );
