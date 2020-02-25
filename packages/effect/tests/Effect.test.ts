@@ -561,6 +561,24 @@ describe("EffectSafe", () => {
       assert.deepEqual(called, true);
     });
 
+    it("onComplete", async () => {
+      let called = false;
+
+      const a = await pipe(
+        T.pure(1),
+        T.onComplete(
+          T.sync(() => {
+            called = true;
+          })
+        ),
+        T.runToPromiseExit
+      );
+
+      assert.deepEqual(a, ex.done(1));
+      assert.deepEqual(called, true);
+    });
+
+
     it("fromPromise", async () => {
       const a = await T.runToPromiseExit(
         T.fromPromise(() => Promise.reject(1))
