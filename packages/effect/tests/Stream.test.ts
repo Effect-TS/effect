@@ -269,6 +269,17 @@ describe("Stream", () => {
     assert.deepEqual(res, []);
   });
 
+  it("should use dropWhile", async () => {
+    const s = pipe(
+      S.fromArray([0]),
+      S.dropWhile(n => n === 0)
+    );
+
+    const res = await T.runToPromise(S.collectArray(s));
+
+    assert.deepEqual(res, []);
+  });
+
   it("should use zipWith", async () => {
     const sl = S.empty;
     const sr = S.empty;
@@ -386,6 +397,18 @@ describe("Stream", () => {
     const res = await T.runToPromise(S.collectArray(s));
 
     assert.deepEqual(res, [0, 1, 2, 0, 1, 2]);
+  });
+
+  it("should use ap", async () => {
+    const res = await pipe(
+      S.stream.ap(
+        S.once((n: number) => n + 1),
+        S.once(1)
+      ),
+      S.collectArray,
+      T.runToPromiseExit
+    );
+    assert.deepEqual(res, ex.done([2]));
   });
 
   it("should use mapM", async () => {
@@ -561,6 +584,14 @@ describe("Stream", () => {
     it("should handle empty arrays", () => {
       const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
       const s2 = pipe(s1, S.peel(multiplier));
+      return expectExit(
+        S.collectArray(S.stream.chain(s2, ([_h, r]) => r)),
+        ex.done([])
+      );
+    });
+    it("should handle empty arrays (managed)", () => {
+      const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
+      const s2 = pipe(s1, S.peelManaged(M.pure(multiplier)));
       return expectExit(
         S.collectArray(S.stream.chain(s2, ([_h, r]) => r)),
         ex.done([])
@@ -839,6 +870,15 @@ describe("Stream", () => {
     function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
       return T.effect.chain(range(max), a => T.after(a));
     }
+
+    it("should merge", async () => {
+      const res = await pipe(
+        S.merge(1)(S.once(S.once(1))),
+        S.collectArray,
+        T.runToPromiseExit
+      );
+      assert.deepEqual(res, ex.done([1]));
+    });
 
     it("should merge output", () => {
       const s1 = S.fromRange(0, 1, 10);

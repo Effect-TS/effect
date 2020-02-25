@@ -1323,6 +1323,8 @@ export function switchLatest<R, E, A>(
  * @param stream
  * @param f
  */
+
+/* istanbul ignore next */
 function chainSwitchLatest_<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
   f: F.FunctionN<[A], Stream<R2, E2, B>>
