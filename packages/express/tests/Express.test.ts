@@ -113,6 +113,8 @@ describe("Express", () => {
 
     close();
 
+    await T.runToPromise(T.delay(T.unit, 200));
+
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res2, raise(some(`{\"res\":1}`))); // TODO: verify we want that decoded as string
