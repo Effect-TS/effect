@@ -33,7 +33,7 @@ const books = Apollo.resolver({
 });
 
 const hi = Apollo.resolver({
-  ["Query/hi"]: () => T.access((_: { bar: string }) => "ok")
+  ["Query/hi"]: () => T.accessM((_: { bar: string }) => T.pure(_.bar))
 });
 
 const resolvers = Apollo.resolver({
