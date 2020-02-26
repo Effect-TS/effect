@@ -1,0 +1,34 @@
+{
+  "name": "@matechs/apollo",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": false,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "scripts": {
+    "build": "rimraf lib && tsc --build tsconfig.build.json",
+    "lint": "tslint --project ."
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "peerDependencies": {
+    "@matechs/effect": "^3.0.0",
+    "@matechs/express": "^3.0.6",
+    "fp-ts": "^2.5.1",
+    "fp-ts-contrib": "^0.1.13"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "@matechs/effect": "^3.0.0",
+    "@matechs/express": "^3.0.6",
+    "apollo-server": "^2.10.1",
+    "apollo-server-express": "^2.10.1",
+    "fp-ts": "^2.5.1",
+    "fp-ts-contrib": "^0.1.13",
+    "graphql": "^14.6.0"
+  }
+}

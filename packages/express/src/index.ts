@@ -131,8 +131,16 @@ export function bracketWithApp(
       T.bracket(
         bind(port, hostname),
         server =>
-          T.sync(() => {
-            server.close();
+          T.asyncTotal(r => {
+            const c = setTimeout(() => {
+              server.close(e => {
+                r(undefined);
+              });
+            }, 100);
+            return cb => {
+              clearTimeout(c);
+              cb();
+            };
           }),
         server =>
           pipe(
