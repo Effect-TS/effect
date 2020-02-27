@@ -3,6 +3,8 @@ import { effect as T } from "@matechs/effect";
 import * as EX from "express";
 import { Server } from "http";
 import { pipe } from "fp-ts/lib/pipeable";
+import { sequenceS } from "fp-ts/lib/Apply";
+import { array } from "fp-ts/lib/Array";
 
 export const expressAppEnv: unique symbol = Symbol();
 
@@ -17,6 +19,7 @@ export const serverEnv: unique symbol = Symbol();
 export interface HasServer {
   [serverEnv]: {
     server: Server;
+    onClose: Array<T.UIO<void>>;
   };
 }
 
@@ -129,12 +132,21 @@ export function bracketWithApp(
   return op =>
     withApp(
       T.bracket(
-        bind(port, hostname),
-        server =>
+        sequenceS(T.effect)({
+          server: bind(port, hostname),
+          onClose: T.pure<T.UIO<void>[]>([])
+        }),
+        ({ server, onClose }) =>
           T.asyncTotal(r => {
             const c = setTimeout(() => {
-              server.close(e => {
-                r(undefined);
+              T.run(array.sequence(T.effect)(onClose), () => {
+                server.close(e => {
+                  if (e) {
+                    console.error("express interruption failed");
+                    console.error(e);
+                  }
+                  r(undefined);
+                });
               });
             }, 100);
             return cb => {
@@ -142,12 +154,13 @@ export function bracketWithApp(
               cb();
             };
           }),
-        server =>
+        ({ server, onClose }) =>
           pipe(
             op,
             T.provideS<HasServer>({
               [serverEnv]: {
-                server
+                server,
+                onClose
               }
             }),
             T.chain(_ => T.never)

@@ -17,6 +17,16 @@ const typeDefs = gql`
     books(n: Int!): [Book]
     hi: String
   }
+  type DemoMessage {
+    message: String
+  }
+  type Subscription {
+    demo: DemoMessage
+  }
+  schema {
+    query: Query
+    subscription: Subscription
+  }
 `;
 
 const books = Apollo.resolver({
@@ -36,9 +46,25 @@ const hi = Apollo.resolver({
   ["Query/hi"]: () => T.accessM((_: { bar: string }) => T.pure(_.bar))
 });
 
+async function* gen(n: number) {
+  let i = 0;
+  while (i < n) {
+    yield {
+      demo: { message: `${i++}` }
+    };
+  }
+}
+
+const demo = Apollo.resolver({
+  ["Subscription/demo"]: {
+    subscribe: () => T.accessM((_: { subN: number }) => T.pure(gen(_.subN)))
+  }
+});
+
 const resolvers = Apollo.resolver({
   ...hi,
-  ...books
+  ...books,
+  ...demo
 });
 
 const main = pipe(Apollo.bindToSchema(resolvers, typeDefs), EX.bracketWithApp(8080));
@@ -51,6 +77,9 @@ const cancel = pipe(
   T.provideS({
     bar: "bar"
   }),
+  T.provideS({
+    subN: 10
+  }),
   T.provideS(EX.express),
   x =>
     T.run(x, ex => {
@@ -59,9 +88,5 @@ const cancel = pipe(
 );
 
 process.on("SIGINT", () => {
-  cancel();
-});
-
-process.on("SIGTERM", () => {
   cancel();
 });

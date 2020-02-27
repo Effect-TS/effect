@@ -29,6 +29,7 @@
     "apollo-server-express": "^2.10.1",
     "fp-ts": "^2.5.1",
     "fp-ts-contrib": "^0.1.13",
-    "graphql": "^14.6.0"
+    "graphql": "^14.6.0",
+    "subscriptions-transport-ws": "^0.9.16"
   }
 }
