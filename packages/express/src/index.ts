@@ -141,6 +141,7 @@ export function bracketWithApp(
             const c = setTimeout(() => {
               T.run(array.sequence(T.effect)(onClose), () => {
                 server.close(e => {
+                  /* istanbul ignore if */
                   if (e) {
                     console.error("express interruption failed");
                     console.error(e);
