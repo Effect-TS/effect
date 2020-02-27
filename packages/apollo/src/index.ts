@@ -43,8 +43,12 @@ export type ResolverEnv<R> = R extends Resolver<any>
             ? never
             : B
           : R[k] extends ResolverSubF<any, infer B, any, any, infer B2, any, any>
-          ? unknown extends B & B2
-            ? never
+          ? unknown extends B
+            ? unknown extends B2
+              ? never
+              : B2
+            : unknown extends B2
+            ? B
             : B & B2
           : never;
       }[keyof R]
