@@ -16,13 +16,22 @@ export interface ResolverInput<S> {
 
 type ResolverF<A, B, C, D> = (_: ResolverInput<A>) => T.Effect<B, C, D>;
 
-interface ResolverSubF<A, B, C, D> {
+interface ResolverSubF<A, B, C, D, E, F, G> {
   subscribe: (_: ResolverInput<A>) => T.Effect<B, C, AsyncIterable<D>>;
+  resolve?: (_: D) => T.Effect<E, F, G>;
 }
 
 export type Resolver<K> = {
-  [k in keyof K]: ResolverF<unknown, any, any, any> | ResolverSubF<unknown, any, any, any>;
+  [k in keyof K]: ResolverF<unknown, any, any, any> | ResolverSubF<unknown, any, any, any, any, any, any>;
 };
+
+export const subscription = <A, B, C, D, E, F, G>(
+  subscribe: (_: ResolverInput<A>) => T.Effect<B, C, AsyncIterable<D>>,
+  resolve?: (_: D) => T.Effect<E, F, G>
+): ResolverSubF<A, B, C, D, E, F, G> => ({
+  subscribe,
+  resolve
+});
 
 export const resolver = <K extends Resolver<K>>(res: K) => res;
 
@@ -33,10 +42,10 @@ export type ResolverEnv<R> = R extends Resolver<any>
           ? unknown extends B
             ? never
             : B
-          : R[k] extends ResolverSubF<any, infer B, any, any>
-          ? unknown extends B
+          : R[k] extends ResolverSubF<any, infer B, any, any, infer B2, any, any>
+          ? unknown extends B & B2
             ? never
-            : B
+            : B & B2
           : never;
       }[keyof R]
     >
@@ -75,6 +84,10 @@ export const bindToSchema = <R extends Resolver<R>>(res: R, node: DocumentNode) 
                   T.runToPromise
                 )
             };
+
+            if (res[k].resolve) {
+              ref[p].resolve = (x: any) => pipe(res[k].resolve(x), T.provideAll(_), T.runToPromise);
+            }
           }
         } else {
           if (!ref[p]) {

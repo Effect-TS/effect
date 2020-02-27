@@ -56,9 +56,10 @@ async function* gen(n: number) {
 }
 
 const demo = Apollo.resolver({
-  ["Subscription/demo"]: {
-    subscribe: () => T.accessM((_: { subN: number }) => T.pure(gen(_.subN)))
-  }
+  ["Subscription/demo"]: Apollo.subscription(
+    _ => T.accessM(({ subN }: { subN: number }) => T.pure(gen(subN))),
+    x => T.accessM(({ prefix }: { prefix: string }) => T.pure({ message: `${prefix}: ${x.demo.message}` }))
+  )
 });
 
 const resolvers = Apollo.resolver({
@@ -79,6 +80,9 @@ const cancel = pipe(
   }),
   T.provideS({
     subN: 10
+  }),
+  T.provideS({
+    prefix: "ok"
   }),
   T.provideS(EX.express),
   x =>
