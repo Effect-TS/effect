@@ -6,6 +6,7 @@ on:
       - issue/**
       - features/**
       - generic/**
+      - /^greenkeeper.*$/
 
 jobs:
   build:
