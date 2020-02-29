@@ -23,7 +23,7 @@
     "@types/node": "^13.7.4",
     "@types/node-zookeeper-client": "^0.2.7",
     "@types/std-mocks": "^1.0.0",
-    "@types/uuid": "^3.4.6",
+    "@types/uuid": "^7.0.0",
     "apollo-server": "^2.10.1",
     "apollo-server-express": "^2.10.1",
     "axios": "^0.19.0",
