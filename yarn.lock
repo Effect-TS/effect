@@ -2638,10 +2638,10 @@
   resolved "https://registry.yarnpkg.com/@types/std-mocks/-/std-mocks-1.0.0.tgz#1d4015e9b16ef4b4acc94860e7fb00b6b4db8530"
   integrity sha512-0PDd05AK/u41wFxr0ytOYhQz15uAhkmwe8fOp33UN506zGARdLVx/Yc/WSeGs+8zKjMMTp1vlB+OXGwD7HmImg==
 
-"@types/uuid@^3.4.6":
-  version "3.4.7"
-  resolved "https://registry.yarnpkg.com/@types/uuid/-/uuid-3.4.7.tgz#51d42247473bc00e38cc8dfaf70d936842a36c03"
-  integrity sha512-C2j2FWgQkF1ru12SjZJyMaTPxs/f6n90+5G5qNakBxKXjTBc/YTSelHh4Pz1HUDwxFXD9WvpQhOGCDC+/Y4mIQ==
+"@types/uuid@^7.0.0":
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/@types/uuid/-/uuid-7.0.0.tgz#9f6993ccc8210efa90bda7e1afabbb06a9f860cd"
+  integrity sha512-RiX1I0lK9WFLFqy2xOxke396f0wKIzk5sAll0tL4J4XDYJXURI7JOs96XQb3nP+2gEpQ/LutBb66jgiT5oQshQ==
 
 "@types/ws@^6.0.0":
   version "6.0.4"
