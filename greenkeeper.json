@@ -1,0 +1,31 @@
+{
+  "groups": {
+    "default": {
+      "packages": [
+        "package.json",
+        "packages/apollo/package.json",
+        "packages/browser/package.json",
+        "packages/console/package.json",
+        "packages/cqrs-es/package.json",
+        "packages/cqrs/package.json",
+        "packages/effect/package.json",
+        "packages/epics/package.json",
+        "packages/express/package.json",
+        "packages/fancy/package.json",
+        "packages/graceful/package.json",
+        "packages/http-client-fetch/package.json",
+        "packages/http-client-libcurl/package.json",
+        "packages/http-client/package.json",
+        "packages/logger-winston/package.json",
+        "packages/logger/package.json",
+        "packages/orm/package.json",
+        "packages/rpc-client/package.json",
+        "packages/rpc/package.json",
+        "packages/rxjs/package.json",
+        "packages/tracing/package.json",
+        "packages/uuid/package.json",
+        "packages/zoo/package.json"
+      ]
+    }
+  }
+}
