@@ -38,6 +38,7 @@ As with any good library there is a commercial project that support the developm
 | @matechs/rpc-client           |   beta     |      yes     | Implement server RPC defined free modules in terms of http client.|![weekly-downloads](https://badgen.net/npm/dw/@matechs/rpc-client)          |
 | @matechs/orm                  |   stable   |      yes     | Integrates with TypeORM allowing multi database manage smmothly.  |![weekly-downloads](https://badgen.net/npm/dw/@matechs/orm)                 |
 | @matechs/cqrs                 |   beta     |      no      | Embeds feature complete CQRS+ES utility to ORM for PostgreSQL.    |![weekly-downloads](https://badgen.net/npm/dw/@matechs/cqrs)                |
+| @matechs/cqrs-es              |   beta     |      no      | Integrates cqrs aggregates with EventStore.                       |![weekly-downloads](https://badgen.net/npm/dw/@matechs/cqrs-es)             |
 | @matechs/express              |   beta     |      yes     | Integrates with express and provide utilities to define routes.   |![weekly-downloads](https://badgen.net/npm/dw/@matechs/express)             |
 | @matechs/tracing              |   beta     |      yes     | Integrates with opentracing-js featuring auto tracing of free mod.|![weekly-downloads](https://badgen.net/npm/dw/@matechs/tracing)             |
 | @matechs/graceful             |   beta     |      yes     | Utility to register callbacks to improve graceful exit scenarios. |![weekly-downloads](https://badgen.net/npm/dw/@matechs/graceful)            |
