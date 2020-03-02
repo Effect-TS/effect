@@ -3,10 +3,9 @@ import * as E from "@matechs/express";
 import { array } from "fp-ts/lib/Array";
 import { right } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
-import { UnionToIntersection, specURI } from "@matechs/effect/lib/freeEnv";
 import { RPCResponse } from "@matechs/rpc-client";
 
-export const serverConfigEnv: unique symbol = Symbol();
+export const serverConfigEnv = "@matechs/rpc/serverConfigURI"
 
 export interface ServerConfig<M> {
   [serverConfigEnv]: {
@@ -24,7 +23,7 @@ export type InferR<F> = F extends (
   ? Q
   : never;
 
-export type Runtime<M> = UnionToIntersection<
+export type Runtime<M> = F.UnionToIntersection<
   M extends {
     [k in keyof M]: {
       [h: string]: infer X;
@@ -41,10 +40,10 @@ export function server<M extends F.ModuleShape<M>, R>(
   return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
     const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];
 
-    for (const k of Reflect.ownKeys(s[specURI])) {
+    for (const k of Reflect.ownKeys(s[F.specURI])) {
       const { scope } = r[serverConfigEnv][k];
 
-      for (const key of Reflect.ownKeys(s[specURI][k])) {
+      for (const key of Reflect.ownKeys(s[F.specURI][k])) {
         if (typeof key === "string") {
           const path = `${scope}/${key}`;
 

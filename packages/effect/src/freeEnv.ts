@@ -53,7 +53,7 @@ export type ModuleShape<M> = {
     };
 };
 
-export const specURI: unique symbol = Symbol();
+export const specURI = "@matechs/effect/freeEnv/specURI";
 
 export interface ModuleSpec<M> {
   [specURI]: ModuleShape<M>;

@@ -1,15 +1,13 @@
-import { freeEnv as F, effect as T } from "@matechs/effect";
-import { Exit } from "@matechs/effect/lib/original/exit";
+import { freeEnv as F, effect as T, exit as EX } from "@matechs/effect";
 import * as H from "@matechs/http-client";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { FunctionN } from "fp-ts/lib/function";
 import { isSome } from "fp-ts/lib/Option";
-import { specURI } from "@matechs/effect/lib/freeEnv";
 
 // tested in @matechs/rpc
 /* istanbul ignore file */
 
-export const clientConfigEnv: unique symbol = Symbol();
+export const clientConfigEnv = "@matechs/rpc-client/clientConfigURI";
 
 export interface ClientConfig<M> {
   [clientConfigEnv]: {
@@ -40,8 +38,8 @@ export function client<M extends F.ModuleShape<M>>(
 ): Client<M> {
   const r = {} as any;
 
-  for (const entry of Reflect.ownKeys(s[specURI])) {
-    const x = s[specURI][entry];
+  for (const entry of Reflect.ownKeys(s[F.specURI])) {
+    const x = s[F.specURI][entry];
 
     for (const z of Object.keys(x)) {
       if (typeof x[z] === "function") {
@@ -83,5 +81,5 @@ export interface RPCRequest {
 }
 
 export interface RPCResponse {
-  value: Exit<unknown, unknown>;
+  value: EX.Exit<unknown, unknown>;
 }

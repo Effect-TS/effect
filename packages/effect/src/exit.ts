@@ -1,4 +1,5 @@
-import { Raise, Abort, Interrupt, Exit, Done} from "./original/exit";
+import { Raise, Abort, Interrupt, Exit, Done } from "./original/exit";
+export { Raise, Abort, Interrupt, Exit, Done };
 
 export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> => e._tag === "Done";
 
