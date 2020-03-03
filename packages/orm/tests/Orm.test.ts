@@ -254,16 +254,16 @@ describe("Orm", () => {
           return {
             manager: {
               query(_query) {
-                return Promise.resolve("ok");
+                if (_query === "") {
+                  return Promise.resolve("ok");
+                }
+                if (["BEGIN", "COMMIT"].indexOf(_query) !== -1) {
+                  return Promise.resolve();
+                } else {
+                  return Promise.reject();
+                }
               }
-            } as EntityManager,
-            query(query) {
-              if (["BEGIN", "COMMIT"].indexOf(query) !== -1) {
-                return Promise.resolve();
-              } else {
-                return Promise.reject();
-              }
-            }
+            } as EntityManager
           };
         }
       } as Connection);
@@ -310,17 +310,17 @@ describe("Orm", () => {
           return {
             manager: {
               query(_query) {
-                return Promise.reject(new Error("ok"));
+                queries.push(_query);
+                if (_query === "") {
+                  return Promise.reject(new Error("ok"));
+                }
+                if (["BEGIN", "ROLLBACK"].indexOf(_query) !== -1) {
+                  return Promise.resolve();
+                } else {
+                  return Promise.reject();
+                }
               }
-            } as EntityManager,
-            query(query) {
-              queries.push(query);
-              if (["BEGIN", "ROLLBACK"].indexOf(query) !== -1) {
-                return Promise.resolve();
-              } else {
-                return Promise.reject();
-              }
-            }
+            } as EntityManager
           };
         }
       } as Connection);
@@ -336,7 +336,7 @@ describe("Orm", () => {
       res,
       raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
     );
-    assert.deepEqual(queries, ["BEGIN", "ROLLBACK"]);
+    assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
   });
 
   it("should jump in new region", async () => {
@@ -371,11 +371,13 @@ describe("Orm", () => {
         },
         createQueryRunner() {
           return {
-            query(query) {
-              if (["BEGIN", "COMMIT"].indexOf(query) !== -1) {
-                return Promise.resolve();
-              } else {
-                return Promise.reject();
+            manager: {
+              query(query) {
+                if (["BEGIN", "COMMIT"].indexOf(query) !== -1) {
+                  return Promise.resolve();
+                } else {
+                  return Promise.reject();
+                }
               }
             }
           };

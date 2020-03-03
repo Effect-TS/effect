@@ -289,7 +289,7 @@ export class DbT<Db extends symbol> {
           pool.createQueryRunner(),
           runner =>
             pipe(
-              T.fromPromiseMap(toError)(() => runner.query("BEGIN")),
+              T.fromPromiseMap(toError)(() => runner.manager.query("BEGIN")),
               T.map(_ => runner)
             ),
           T.mapError(x => new TaskError(x, "withTransaction"))
@@ -297,17 +297,17 @@ export class DbT<Db extends symbol> {
         (runner, exit) =>
           EX.isDone(exit)
             ? pipe(
-                T.fromPromiseMap(toError)(() => runner.query("COMMIT")),
+                T.fromPromiseMap(toError)(() => runner.manager.query("COMMIT")),
                 T.chainError(err =>
                   pipe(
-                    T.fromPromiseMap(toError)(() => runner.query("ROLLBACK")),
+                    T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
                     T.chain(_ => T.raiseError(err))
                   )
                 ),
                 T.mapError(x => new TaskError(x, "withTransaction"))
               )
             : pipe(
-                T.fromPromiseMap(toError)(() => runner.query("ROLLBACK")),
+                T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
                 T.mapError(x => new TaskError(x, "withTransaction")),
                 T.chain(_ => T.raised(exit))
               ),
