@@ -20,7 +20,7 @@
     "@matechs/effect": "^3.0.0",
     "@matechs/logger": "^2.0.5",
     "@matechs/orm": "^2.0.5",
-    "@morphic-ts/batteries": "^0.4.3",
+    "@morphic-ts/batteries": "^0.6.0",
     "class-transformer": "^0.2.3",
     "fast-equals": "^2.0.0",
     "fp-ts": "^2.5.1",
