@@ -36,7 +36,7 @@
     "@matechs/effect": "^4.0.0-alpha.0",
     "@matechs/logger": "^2.1.0-alpha.0",
     "@matechs/orm": "^2.1.0-alpha.1",
-    "@morphic-ts/batteries": "^0.4.3",
+    "@morphic-ts/batteries": "^0.6.0",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.22.2",
     "fast-equals": "^2.0.0",
