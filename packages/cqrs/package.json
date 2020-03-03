@@ -28,7 +28,8 @@
     "io-ts-types": "^0.5.6",
     "monocle-ts": "^2.0.1",
     "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.2.21"
+    "typeorm": "^0.2.21",
+    "uuid": "^7.0.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
