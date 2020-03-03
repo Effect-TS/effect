@@ -1,4 +1,4 @@
-import { PrimaryGeneratedColumn, Column, Entity } from "typeorm";
+import { Column, Entity, PrimaryColumn } from "typeorm";
 import { Type } from "class-transformer";
 
 // experimental alpha
@@ -8,7 +8,7 @@ import { Type } from "class-transformer";
   synchronize: false
 })
 export class EventLog {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryColumn("uuid")
   id: string;
 
   @Column("jsonb")

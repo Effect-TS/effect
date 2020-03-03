@@ -3,7 +3,7 @@ import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as t from "io-ts";
-import uuid from "uuid";
+import { v4 } from "uuid";
 import { EventLog } from "./eventLog";
 import { array } from "fp-ts/lib/Array";
 import { ADT } from "@morphic-ts/adt/lib";
@@ -28,7 +28,7 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
   ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
     Do(T.effect)
       .bindL("date", () => T.sync(() => new Date()))
-      .bindL("id", () => T.sync(() => uuid.v4()))
+      .bindL("id", () => T.sync(() => v4()))
       .do(sequenceLock(db, dbS)(aggregateRoot))
       .bind("seq", currentSequence(db)(aggregateRoot))
       .bindL("saved", ({ id, date, seq }) =>
