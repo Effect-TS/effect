@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@matechs/effect": "^4.0.0-alpha.0",
-    "@morphic-ts/batteries": "^0.4.3",
+    "@morphic-ts/batteries": "^0.6.0",
     "@types/react": "^16.9.22",
     "@types/react-dom": "^16.9.5",
     "fast-check": "^1.22.2",
