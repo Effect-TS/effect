@@ -28,7 +28,7 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
   ): T.Effect<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
     Do(T.effect)
       .bindL("date", () => T.sync(() => new Date()))
-      .bindL("id", () => T.sync(() => v4()))
+      .bindL("id", () => T.sync(v4))
       .do(sequenceLock(db, dbS)(aggregateRoot))
       .bind("seq", currentSequence(db)(aggregateRoot))
       .bindL("saved", ({ id, date, seq }) =>
