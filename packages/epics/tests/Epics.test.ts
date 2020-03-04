@@ -1,5 +1,4 @@
-import { effect as T } from "@matechs/effect";
-import * as S from "@matechs/effect/lib/stream";
+import { effect as T, stream as S } from "@matechs/effect";
 import * as assert from "assert";
 import * as Op from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";

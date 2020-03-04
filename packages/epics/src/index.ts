@@ -1,5 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import * as S from "@matechs/effect/lib/stream";
+import { effect as T, freeEnv as F, stream as S } from "@matechs/effect";
 import * as R from "@matechs/rxjs";
 import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
