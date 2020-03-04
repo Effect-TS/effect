@@ -90,7 +90,7 @@ export function embed<EPS extends AnyEpic[]>(
 
 export function epic<S, A extends Action>(): <R, O extends A>(
   e: (
-    current: StateAccess<S>,
+    current: StateAccess<S>[typeof stateAccessURI],
     action$: S.Stream<T.NoEnv, never, A>
   ) => S.Stream<R, never, O>
 ) => Epic<R, S, A, O> {

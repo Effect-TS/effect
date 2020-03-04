@@ -244,14 +244,14 @@ describe("Epics", () => {
       pipe(
         action$,
         S.filterRefine(isAdd),
-        S.chain(() => S.encaseEffect(state$[Ep.stateAccessURI].value)),
+        S.chain(() => S.encaseEffect(state$.value)),
         S.map(state => {
           updates.push({ from: "a", state: state.reducer });
           return { type: "added" as const };
         }),
         S.chain(x =>
           pipe(
-            state$[Ep.stateAccessURI].stream,
+            state$.stream,
             S.take(2),
             S.map(s => {
               updates.push({ from: "b", state: s.reducer });
