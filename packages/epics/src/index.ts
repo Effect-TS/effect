@@ -1,5 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import * as S from "@matechs/effect/lib/stream";
+import { effect as T, freeEnv as F, stream as S } from "@matechs/effect";
 import * as R from "@matechs/rxjs";
 import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
@@ -7,16 +6,24 @@ import * as Rxo from "redux-observable";
 import { pipe } from "fp-ts/lib/pipeable";
 import { flow } from "fp-ts/lib/function";
 
+export const stateAccessURI = "@matechs/epics/stateAccess";
+
+export interface StateAccess<S> {
+  [stateAccessURI]: {
+    value: T.Effect<T.NoEnv, never, S>;
+    stream: S.Stream<T.NoEnv, never, S>;
+  };
+}
+
 export interface Epic<R, State, A extends Action<any>, O extends A> {
   _A: A;
   _O: O;
   _R: R;
   _S: State;
-  (current: StateAccess<State>, action$: S.Stream<T.NoEnv, never, A>): S.Stream<
-    R,
-    never,
-    O
-  >;
+  (
+    current: StateAccess<State>[typeof stateAccessURI],
+    action$: S.Stream<T.NoEnv, never, A>
+  ): S.Stream<R, never, O>;
 }
 
 function toNever(_: any): never {
@@ -30,11 +37,6 @@ type Env<K extends AnyEpic> = K["_R"];
 type Sta<K extends AnyEpic> = K["_S"];
 type Act<K extends AnyEpic> = K["_A"];
 type AOut<K extends AnyEpic> = K["_O"];
-
-export interface StateAccess<S> {
-  value: T.Effect<T.NoEnv, never, S>;
-  stream: S.Stream<T.NoEnv, never, S>;
-}
 
 type EpicsEnvType<EPS extends AnyEpic> = F.UnionToIntersection<
   Env<Exclude<EPS, Epic<T.NoEnv, any, any, any>>>
@@ -62,8 +64,10 @@ export function embed<EPS extends AnyEpic[]>(
             state$: Rxo.StateObservable<State>
           ) => {
             const stateAccess: StateAccess<State> = {
-              value: T.sync(() => state$.value),
-              stream: R.encaseObservable(state$, toNever)
+              [stateAccessURI]: {
+                value: T.sync(() => state$.value),
+                stream: R.encaseObservable(state$, toNever)
+              }
             };
             return R.runToObservable(
               flow(
@@ -71,7 +75,10 @@ export function embed<EPS extends AnyEpic[]>(
                 T.provideS(stateAccess)
               )(
                 R.toObservable(
-                  epic(stateAccess, R.encaseObservable(action$, toNever))
+                  epic(
+                    stateAccess[stateAccessURI],
+                    R.encaseObservable(action$, toNever)
+                  )
                 )
               )
             );
@@ -88,4 +95,26 @@ export function epic<S, A extends Action>(): <R, O extends A>(
   ) => S.Stream<R, never, O>
 ) => Epic<R, S, A, O> {
   return e => e as any;
+}
+
+type StateOf<K> = K extends StateAccess<infer A> ? A : never;
+
+export type CombinedEnv<EPS extends AnyEpic[]> = F.UnionToIntersection<
+  {
+    [k in keyof EPS]: EPS[k] extends AnyEpic
+      ? Exclude<EPS[k]["_R"], StateAccess<any>> &
+          (Extract<EPS[k]["_R"], StateAccess<any>> extends infer R &
+            StateAccess<StateOf<EPS[k]["_R"]>>
+            ? R
+            : never)
+      : never;
+  }[number]
+>;
+
+// experimental, strips StateAccess and lift
+/* istanbul ignore next */
+export function liftEmbed<EPS extends AnyEpic[]>(...epics: EPS) {
+  return T.access((_: CombinedEnv<EPS>) =>
+    embed(...epics)(T.provideR(_ as any))
+  );
 }
