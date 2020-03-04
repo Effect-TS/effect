@@ -115,6 +115,6 @@ export type CombinedEnv<EPS extends AnyEpic[]> = F.UnionToIntersection<
 /* istanbul ignore next */
 export function liftEmbed<EPS extends AnyEpic[]>(...epics: EPS) {
   return T.access((_: CombinedEnv<EPS>) =>
-    embed(...epics)(T.provideR(_ as any))
+    embed(...epics)(T.provideS(_ as any))
   );
 }
