@@ -16,17 +16,21 @@ const Apollo = apollo(
     subscriptions: {
       path: "/subscriptions",
       onConnect: (_, ws) =>
-        T.pure({
+        T.access((_: { subOnConnect: string }) => ({
           ws,
           message: "ok"
+        })),
+      onDisconnect: () =>
+        T.access((_: { subOnDisconnect: string }) => {
+          //
         })
     }
   },
   ({ req, connection }) =>
-    T.pure({
+    T.access((_: { contextFnEnv: string }) => ({
       req: connection ? O.none : O.some(req),
       sub: connection ? O.some(connection.context) : O.none
-    })
+    }))
 );
 
 const typeDefs = gql`
@@ -136,6 +140,15 @@ const cancel = pipe(
   }),
   T.provideS({
     prefix: "ok"
+  }),
+  T.provideS({
+    subOnDisconnect: "ok"
+  }),
+  T.provideS({
+    subOnConnect: "ok"
+  }),
+  T.provideS({
+    contextFnEnv: "ok"
   }),
   T.provideS(EX.express),
   x =>

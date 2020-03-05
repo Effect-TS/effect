@@ -66,39 +66,44 @@ export type ApolloConf = Omit<ApolloServerExpressConfig, "context" | "schema" | 
   subscriptions?: Partial<{
     path: string;
     keepAlive?: number;
-    onConnect?: (connectionParams: unknown, websocket: WebSocket, context: ConnectionContext) => T.UIO<any>;
-    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.UIO<any>;
+    onConnect?: (
+      connectionParams: unknown,
+      websocket: WebSocket,
+      context: ConnectionContext
+    ) => T.Effect<any, never, any>;
+    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<any, never, any>;
   }>;
 };
 
-export function apollo<U extends string, Ctx, C extends ApolloConf>(
+export type ApolloEnv<C extends ApolloConf> = C extends {
+  subscriptions: {
+    onConnect?: (
+      connectionParams: unknown,
+      websocket: WebSocket,
+      context: ConnectionContext
+    ) => T.Effect<infer R, never, any>;
+    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<infer R2, never, any>;
+  };
+}
+  ? (R extends never ? unknown : R) & (R2 extends never ? unknown : R2)
+  : unknown;
+
+export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
   uri: U,
   configP: C,
   contextF: (
     _: Omit<ExpressContext, "connection"> & {
       connection?: C["subscriptions"] extends {
-        onConnect: (..._: any[]) => T.UIO<any>;
+        onConnect: (..._: any[]) => T.Effect<any, never, any>;
       }
         ? Omit<ExpressContext["connection"], "context"> & {
             context: UT.Ret<ReturnType<C["subscriptions"]["onConnect"]>>;
           }
         : ExpressContext["connection"];
     }
-  ) => T.UIO<Ctx>
+  ) => T.Effect<RE, never, Ctx>
 ) {
   const config = configP as Omit<ApolloServerExpressConfig, "context" | "schema">;
-
-  if (configP.subscriptions && configP.subscriptions.onConnect) {
-    const onC = configP.subscriptions.onConnect;
-    const onD = configP.subscriptions.onDisconnect;
-
-    config.subscriptions = {
-      onConnect: (a, b, c) => T.runToPromise(onC(a, b, c)),
-      keepAlive: configP.subscriptions.keepAlive,
-      onDisconnect: onD ? (a, b) => T.runToPromise(onD(a, b)) : undefined,
-      path: configP.subscriptions.path
-    };
-  }
 
   const accessContext = T.access((_: ContextEnv<U, Ctx>) => _[contextURI][uri]);
 
@@ -113,7 +118,7 @@ export function apollo<U extends string, Ctx, C extends ApolloConf>(
   const resolver = <K extends Resolver<K, U, Ctx>>(res: K) => res;
 
   const bindToSchema = <R extends Resolver<R, U, Ctx>>(res: R, node: DocumentNode) =>
-    T.accessM((_: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer) => {
+    T.accessM((_: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE) => {
       const toBind = {};
 
       for (const k of Object.keys(res)) {
@@ -182,9 +187,21 @@ export function apollo<U extends string, Ctx, C extends ApolloConf>(
       return T.trySync(() => {
         const schema = makeExecutableSchema({ typeDefs: node, resolvers: toBind });
 
+        if (configP.subscriptions && configP.subscriptions.onConnect) {
+          const onC = configP.subscriptions.onConnect;
+          const onD = configP.subscriptions.onDisconnect;
+
+          config.subscriptions = {
+            onConnect: (a, b, c) => T.runToPromise(T.provideAll(_)(onC(a, b, c))),
+            keepAlive: configP.subscriptions.keepAlive,
+            onDisconnect: onD ? (a, b) => T.runToPromise(T.provideAll(_)(onD(a, b))) : undefined,
+            path: configP.subscriptions.path
+          };
+        }
+
         const server = new ApolloServer({
           schema,
-          context: _ => T.runToPromise(contextF(_ as any)),
+          context: ci => T.runToPromise(T.provideAll(_)(contextF(ci as any))),
           ...config
         });
 
