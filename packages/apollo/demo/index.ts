@@ -3,10 +3,31 @@ import * as EX from "@matechs/express";
 import { gql } from "apollo-server";
 import { array as A } from "fp-ts";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as Apollo from "../src";
+import { apollo } from "../src";
+import * as O from "fp-ts/lib/Option";
 
-// Experimental
+// EXPERIMENTAL
 /* istanbul ignore file */
+
+const apolloURI = "myapp/unique-uri";
+const Apollo = apollo(
+  apolloURI,
+  {
+    subscriptions: {
+      path: "/subscriptions",
+      onConnect: (_, ws) =>
+        T.pure({
+          ws,
+          message: "ok"
+        })
+    }
+  },
+  ({ req, connection }) =>
+    T.pure({
+      req: connection ? O.none : O.some(req),
+      sub: connection ? O.some(connection.context) : O.none
+    })
+);
 
 const typeDefs = gql`
   type Book {
@@ -43,22 +64,54 @@ const books = Apollo.resolver({
 });
 
 const hi = Apollo.resolver({
-  ["Query/hi"]: () => T.accessM((_: { bar: string }) => T.pure(_.bar))
+  ["Query/hi"]: () =>
+    T.accessM((_: { bar: string }) =>
+      pipe(
+        Apollo.accessContext,
+        T.chain(({ req }) => (O.isSome(req) ? T.pure(`${_.bar} - with req`) : T.pure(_.bar)))
+      )
+    )
 });
 
-async function* gen(n: number) {
+async function* gen(n: number, message: O.Option<string>) {
   let i = 0;
   while (i < n) {
     yield {
-      demo: { message: `${i++}` }
+      demo: { message: `${i++} - ${O.isSome(message) ? message.value : "no-sub"}` }
     };
   }
 }
 
 const demo = Apollo.resolver({
   ["Subscription/demo"]: Apollo.subscription(
-    _ => T.accessM(({ subN }: { subN: number }) => T.pure(gen(subN))),
-    x => T.accessM(({ prefix }: { prefix: string }) => T.pure({ message: `${prefix}: ${x.demo.message}` }))
+    _ =>
+      T.accessM(({ subN }: { subN: number }) =>
+        pipe(
+          Apollo.accessContext,
+          T.chain(({ sub }) =>
+            T.pure(
+              gen(
+                subN,
+                pipe(
+                  sub,
+                  O.map(({ message }) => message)
+                )
+              )
+            )
+          )
+        )
+      ),
+    x =>
+      T.accessM(({ prefix }: { prefix: string }) =>
+        pipe(
+          Apollo.accessContext,
+          T.chain(({ sub }) =>
+            O.isSome(sub)
+              ? T.pure({ message: `${prefix}: ${x.demo.message} (resolve: ${sub.value.message})` })
+              : T.pure({ message: `${prefix}: ${x.demo.message}` })
+          )
+        )
+      )
   )
 });
 
