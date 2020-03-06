@@ -56,21 +56,33 @@ export const makeConcurrentRef = <A>(
         f: F.FunctionN<[A], T.Effect<R, never, A>>
       ): T.Effect<R, never, A> =>
         semaphore.withPermit(
-          T.effect.map(f(value), v => {
-            value = v;
-            return v;
-          })
+          T.effect.map(
+            T.effect.chain(
+              T.sync(() => value),
+              f
+            ),
+            v => {
+              value = v;
+              return v;
+            }
+          )
         );
 
       const modify = <R, B>(
         f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>
       ): T.Effect<R, never, B> =>
         semaphore.withPermit(
-          T.effect.map(f(value), v => {
-            const [b, a] = v;
-            value = a;
-            return b;
-          })
+          T.effect.map(
+            T.effect.chain(
+              T.sync(() => value),
+              f
+            ),
+            v => {
+              const [b, a] = v;
+              value = a;
+              return b;
+            }
+          )
         );
 
       return {
