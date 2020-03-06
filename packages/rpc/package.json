@@ -16,7 +16,7 @@
     "lib"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^3.0.0",
+    "@matechs/effect": "^4.0.0",
     "@matechs/express": "^3.0.5",
     "@matechs/http-client": "^3.0.5",
     "@matechs/rpc-client": "^4.0.0",
