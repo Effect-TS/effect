@@ -47,6 +47,7 @@ As with any good library there is a commercial project that support the developm
 | @matechs/uuid                 |   beta     |      yes     | Generates v4 uuids with different encodings, classic & short.     |![weekly-downloads](https://badgen.net/npm/dw/@matechs/uuid)                |
 | @matechs/zoo                  |   beta     |      yes     | Integrates zookeeper for leader elections.                        |![weekly-downloads](https://badgen.net/npm/dw/@matechs/zoo)                 |
 | @matechs/fancy                |   beta     |      no      | Full blown integration with Next.js / React & Mobx.               |![weekly-downloads](https://badgen.net/npm/dw/@matechs/fancy)               |
+| @matechs/apollo               |   beta     |      no      | Integrates with apollo-server with full env support in resolvers  |![weekly-downloads](https://badgen.net/npm/dw/@matechs/apollo)              |
 
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
