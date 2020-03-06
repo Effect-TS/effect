@@ -36,7 +36,7 @@ As with any good library there is a commercial project that support the developm
 | @matechs/epics                |   beta     |      no      | Integrate redux-observable epics in terms of effectful streams.   |![weekly-downloads](https://badgen.net/npm/dw/@matechs/epics)               |
 | @matechs/rpc                  |   beta     |      yes     | Wire serializable free modules to express for remote consumption. |![weekly-downloads](https://badgen.net/npm/dw/@matechs/rpc)                 |
 | @matechs/rpc-client           |   beta     |      yes     | Implement server RPC defined free modules in terms of http client.|![weekly-downloads](https://badgen.net/npm/dw/@matechs/rpc-client)          |
-| @matechs/orm                  |   stable   |      yes     | Integrates with TypeORM allowing multi database manage smmothly.  |![weekly-downloads](https://badgen.net/npm/dw/@matechs/orm)                 |
+| @matechs/orm                  |   stable   |      yes     | Integrates with TypeORM allowing multi database manage smoothly.  |![weekly-downloads](https://badgen.net/npm/dw/@matechs/orm)                 |
 | @matechs/cqrs                 |   beta     |      no      | Embeds feature complete CQRS+ES utility to ORM for PostgreSQL.    |![weekly-downloads](https://badgen.net/npm/dw/@matechs/cqrs)                |
 | @matechs/cqrs-es              |   beta     |      no      | Integrates cqrs aggregates with EventStore.                       |![weekly-downloads](https://badgen.net/npm/dw/@matechs/cqrs-es)             |
 | @matechs/express              |   beta     |      yes     | Integrates with express and provide utilities to define routes.   |![weekly-downloads](https://badgen.net/npm/dw/@matechs/express)             |
