@@ -1,7 +1,6 @@
 import { function as F } from "fp-ts";
 import * as T from "./effect";
 import { makeSemaphore } from "./semaphore";
-import { pipe } from "fp-ts/lib/pipeable";
 
 export interface ConcurrentRef<A> {
   /**
@@ -36,60 +35,57 @@ export interface ConcurrentRef<A> {
 export const makeConcurrentRef = <A>(
   initial: A
 ): T.Effect<T.NoEnv, never, ConcurrentRef<A>> =>
-  pipe(
-    makeSemaphore(1),
-    T.map(semaphore => {
-      let value = initial;
+  T.effect.map(makeSemaphore(1), semaphore => {
+    let value = initial;
 
-      const get = T.sync(() => value);
+    const get = T.sync(() => value);
 
-      const set = <R>(a: T.Effect<R, never, A>): T.Effect<R, never, A> =>
-        semaphore.withPermit(
-          T.effect.map(a, a => {
-            const prev = value;
+    const set = <R>(a: T.Effect<R, never, A>): T.Effect<R, never, A> =>
+      semaphore.withPermit(
+        T.effect.map(a, a => {
+          const prev = value;
+          value = a;
+          return prev;
+        })
+      );
+
+    const update = <R>(
+      f: F.FunctionN<[A], T.Effect<R, never, A>>
+    ): T.Effect<R, never, A> =>
+      semaphore.withPermit(
+        T.effect.map(
+          T.effect.chain(
+            T.sync(() => value),
+            f
+          ),
+          v => {
+            value = v;
+            return v;
+          }
+        )
+      );
+
+    const modify = <R, B>(
+      f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>
+    ): T.Effect<R, never, B> =>
+      semaphore.withPermit(
+        T.effect.map(
+          T.effect.chain(
+            T.sync(() => value),
+            f
+          ),
+          v => {
+            const [b, a] = v;
             value = a;
-            return prev;
-          })
-        );
+            return b;
+          }
+        )
+      );
 
-      const update = <R>(
-        f: F.FunctionN<[A], T.Effect<R, never, A>>
-      ): T.Effect<R, never, A> =>
-        semaphore.withPermit(
-          T.effect.map(
-            T.effect.chain(
-              T.sync(() => value),
-              f
-            ),
-            v => {
-              value = v;
-              return v;
-            }
-          )
-        );
-
-      const modify = <R, B>(
-        f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>
-      ): T.Effect<R, never, B> =>
-        semaphore.withPermit(
-          T.effect.map(
-            T.effect.chain(
-              T.sync(() => value),
-              f
-            ),
-            v => {
-              const [b, a] = v;
-              value = a;
-              return b;
-            }
-          )
-        );
-
-      return {
-        get,
-        set,
-        update,
-        modify
-      };
-    })
-  );
+    return {
+      get,
+      set,
+      update,
+      modify
+    };
+  });
