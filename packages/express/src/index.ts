@@ -6,7 +6,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
 
-export const expressAppEnv: unique symbol = Symbol();
+export const expressAppEnv = "@matechs/express/expressAppURI";
 
 export interface HasExpress {
   [expressAppEnv]: {
@@ -14,7 +14,7 @@ export interface HasExpress {
   };
 }
 
-export const serverEnv: unique symbol = Symbol();
+export const serverEnv = "@matechs/express/serverURI";
 
 export interface HasServer {
   [serverEnv]: {
@@ -25,7 +25,7 @@ export interface HasServer {
 
 export type Method = "post" | "get" | "put" | "patch" | "delete";
 
-export const expressEnv: unique symbol = Symbol();
+export const expressEnv = "@matechs/express/expressURI";
 
 export interface ExpressOps {
   withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
@@ -170,7 +170,7 @@ export function bracketWithApp(
     );
 }
 
-export const requestContextEnv: unique symbol = Symbol();
+export const requestContextEnv = "@matechs/express/requestContextURI";
 
 export interface RequestContext {
   [requestContextEnv]: {

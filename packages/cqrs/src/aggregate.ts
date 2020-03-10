@@ -31,7 +31,7 @@ export class Aggregate<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol
+  Db extends symbol | string
 > {
   private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db>;
 
@@ -111,7 +111,7 @@ export class AggregateRoot<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol,
+  Db extends symbol | string,
   H extends Array<
     Handler<
       AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,

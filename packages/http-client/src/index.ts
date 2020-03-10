@@ -6,10 +6,10 @@ import { ParsedUrlQueryInput } from "querystring";
 /* tested in the implementation packages */
 /* istanbul ignore file */
 
-export const middlewareStackEnv: unique symbol = Symbol();
-export const httpEnv: unique symbol = Symbol();
-export const httpHeadersEnv: unique symbol = Symbol();
-export const httpDeserializerEnv: unique symbol = Symbol();
+export const middlewareStackEnv = "@matechs/http-client/middlewareStackURI";
+export const httpEnv = "@matechs/http-client/httpURI";
+export const httpHeadersEnv = "@matechs/http-client/httpHeadersURI";
+export const httpDeserializerEnv = "@matechs/http-client/httpDeserializerURI";
 
 export const Method = {
   GET: null,

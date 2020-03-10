@@ -7,7 +7,7 @@ import { accessConfig } from "./config";
 // experimental alpha
 /* istanbul ignore file */
 
-export function saveOffsets<Db extends symbol>(db: DbT<Db>) {
+export function saveOffsets<Db extends symbol | string>(db: DbT<Db>) {
   return (events: NonEmptyArray<string>) =>
     pipe(
       accessConfig,

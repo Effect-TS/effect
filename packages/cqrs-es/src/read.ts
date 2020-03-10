@@ -50,7 +50,7 @@ export interface OffsetStore<R, E, R2, E2> {
   get: (readId: string, streamId: string) => T.Effect<R2, E2, bigint>;
 }
 
-export const esMetaURI: unique symbol = Symbol();
+export const esMetaURI = "@matechs/cqrs-es/esMetaURI";
 
 export interface ESMeta {
   [esMetaURI]: {

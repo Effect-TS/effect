@@ -21,7 +21,7 @@ export class Domain<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol
+  Db extends symbol | string
 > {
   private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db>;
 

@@ -13,7 +13,7 @@ export function cqrs<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol
+  Db extends symbol | string
 >(S: MorphADT<Types, Tag, ProgURI, InterpURI>, dbURI: Db) {
   return new Domain(S, dbURI);
 }

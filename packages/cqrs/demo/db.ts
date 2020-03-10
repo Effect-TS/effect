@@ -7,7 +7,7 @@ import { effect as T } from "@matechs/effect";
 import { printTodo } from "./app";
 
 // configure ORM db
-export const dbURI: unique symbol = Symbol();
+export const dbURI = "@matechs/cqrs/demo/dbURI";
 
 // get ORM utils for db
 export const { bracketPool, withTransaction } = dbT(dbURI);

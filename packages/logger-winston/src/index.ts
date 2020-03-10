@@ -3,7 +3,7 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as W from "winston";
 import { Do } from "fp-ts-contrib/lib/Do";
 
-export const winstonFactoryEnv: unique symbol = Symbol();
+export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI"
 
 export interface WinstonFactory {
   [winstonFactoryEnv]: {

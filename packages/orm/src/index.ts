@@ -12,12 +12,12 @@ import {
 } from "typeorm";
 import { Task } from "fp-ts/lib/Task";
 
-export const configEnv: unique symbol = Symbol();
-export const poolEnv: unique symbol = Symbol();
-export const managerEnv: unique symbol = Symbol();
-export const factoryEnv: unique symbol = Symbol();
+export const configEnv = "@matechs/orm/configURI"
+export const poolEnv = "@matechs/orm/poolURI"
+export const managerEnv = "@matechs/orm/managerURI";
+export const factoryEnv = "@matechs/orm/factoryURI";
 
-export interface DbConfig<A extends symbol> {
+export interface DbConfig<A extends symbol | string> {
   [configEnv]: {
     [k in A]: {
       readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>;
@@ -25,7 +25,7 @@ export interface DbConfig<A extends symbol> {
   };
 }
 
-export function dbConfig<A extends symbol>(
+export function dbConfig<A extends symbol | string>(
   env: A,
   readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>
 ) {
@@ -40,7 +40,7 @@ export function dbConfig<A extends symbol>(
 
 /* istanbul ignore next */
 export function mergeConfig<R>(a: R) {
-  return <B extends symbol>(b: DbConfig<B>): R & DbConfig<B> => ({
+  return <B extends symbol | string>(b: DbConfig<B>): R & DbConfig<B> => ({
     ...a,
     [configEnv]: {
       ...a[configEnv],
@@ -50,13 +50,13 @@ export function mergeConfig<R>(a: R) {
 }
 
 /* istanbul ignore next */
-export function dbConfigs<A extends symbol, B extends symbol>(
+export function dbConfigs<A extends symbol | string, B extends symbol | string>(
   a: DbConfig<A>,
   b: DbConfig<B>
 ): DbConfig<A> & DbConfig<B>;
 
 /* istanbul ignore next */
-export function dbConfigs<A extends symbol, B extends symbol, C extends symbol>(
+export function dbConfigs<A extends symbol | string, B extends symbol | string, C extends symbol | string>(
   a: DbConfig<A>,
   b: DbConfig<B>,
   c: DbConfig<C>
@@ -64,10 +64,10 @@ export function dbConfigs<A extends symbol, B extends symbol, C extends symbol>(
 
 /* istanbul ignore next */
 export function dbConfigs<
-  A extends symbol,
-  B extends symbol,
-  C extends symbol,
-  D extends symbol
+  A extends symbol | string,
+  B extends symbol | string,
+  C extends symbol | string,
+  D extends symbol | string
 >(
   a: DbConfig<A>,
   b: DbConfig<B>,
@@ -80,7 +80,7 @@ export function dbConfigs(...configs: DbConfig<any>[]) {
   return configs.reduce((a, b) => mergeConfig(a)(b));
 }
 
-export interface Pool<A extends symbol> {
+export interface Pool<A extends symbol | string> {
   [poolEnv]: {
     [k in A]: {
       pool: Connection;
@@ -88,7 +88,7 @@ export interface Pool<A extends symbol> {
   };
 }
 
-export interface Manager<A extends symbol> {
+export interface Manager<A extends symbol | string> {
   [managerEnv]: {
     [k in A]: {
       manager: EntityManager;
@@ -114,9 +114,9 @@ export const mockFactory: (x: typeof createConnection) => DbFactory = x => ({
   }
 });
 
-export const dbTxURI: unique symbol = Symbol();
+export const dbTxURI = "@matechs/orm/dbTxURI"
 
-export interface DbTx<A extends symbol> {
+export interface DbTx<A extends symbol | string> {
   [dbTxURI]: {
     [k in A]: {
       tx: {};
@@ -124,7 +124,7 @@ export interface DbTx<A extends symbol> {
   };
 }
 
-export class DbT<Db extends symbol> {
+export class DbT<Db extends symbol | string> {
   constructor(private readonly dbEnv: Db) {
     this.bracketPool = this.bracketPool.bind(this);
     this.withRepositoryTask = this.withRepositoryTask.bind(this);
@@ -376,9 +376,9 @@ export class DbT<Db extends symbol> {
   }
 }
 
-export type ORM<A extends symbol> = Pool<A> & Manager<A>;
+export type ORM<A extends symbol | string> = Pool<A> & Manager<A>;
 
-export function dbT<Db extends symbol>(dbEnv: Db): DbT<Db> {
+export function dbT<Db extends symbol | string>(dbEnv: Db): DbT<Db> {
   return new DbT(dbEnv);
 }
 

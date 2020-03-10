@@ -26,7 +26,7 @@ export class SliceFetcher<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol
+  Db extends symbol | string
 > {
   private readonly inDomain: (
     a: AOfTypes<Types>
@@ -120,7 +120,7 @@ export class AggregateFetcher<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol
+  Db extends symbol | string
 > {
   private readonly inDomain: (
     a: AOfTypes<Types>
@@ -210,7 +210,7 @@ export class DomainFetcher<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol
+  Db extends symbol | string
 > {
   private readonly inDomain: (
     a: AOfTypes<Types>
@@ -303,7 +303,7 @@ export class DomainFetcherAll<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol
+  Db extends symbol | string
 > {
   constructor(
     private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,

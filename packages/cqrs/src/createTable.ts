@@ -5,7 +5,7 @@ import { sequenceT } from "fp-ts/lib/Apply";
 // experimental alpha
 /* istanbul ignore file */
 
-export const createTable = <Db extends symbol>(db: DbT<Db>) =>
+export const createTable = <Db extends symbol | string>(db: DbT<Db>) =>
   sequenceT(T.effect)(
     db.withManagerTask(manager => () =>
       manager.query(
