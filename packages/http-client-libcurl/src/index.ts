@@ -60,9 +60,7 @@ export const libcurl: (caPath?: string) => H.Http = (
 
             req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
 
-            if (method !== "GET") {
-              customReq(H.getMethodAsString(method), req, requestType, body);
-            }
+            customReq(H.getMethodAsString(method), req, requestType, body);
 
             req
               .on("error", error => {
@@ -83,7 +81,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                         E.either.map(
                           E.tryCatch(
                             () => JSON.parse(body.toString()),
-                            e => ({
+                            () => ({
                               // TODO: verify what to do exactly, this is not an error from the API => we should enlarge our error type
                               _tag: H.HttpErrorReason.Response,
                               response: getResponse(

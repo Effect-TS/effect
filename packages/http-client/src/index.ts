@@ -269,7 +269,8 @@ export function request<R, Req extends RequestType, Resp extends ResponseType>(
   requestType: Req,
   responseType: Resp
 ): (
-  url: string
+  url: string,
+  body?: RequestBodyTypes[Req]["GET"]
 ) => T.Effect<
   RequestEnv & R,
   HttpError<string>,
