@@ -19,7 +19,7 @@ export interface AggregateRoot {
 export const aggregateRootId = ({ aggregate, root }: AggregateRoot) =>
   `${aggregate}-${root}`;
 
-export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
+export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
   return <E, A extends { [t in Tag]: A[Tag] }, Tag extends keyof A & string>(
     S: ADT<A, Tag> & { type: t.Encoder<A, E> }
   ) => (
@@ -55,7 +55,7 @@ export function persistEvent<Db extends symbol>(db: DbT<Db>, dbS: Db) {
       .return(() => events);
 }
 
-export const sequenceLock = <Db extends symbol>(db: DbT<Db>, dbS: Db) => (
+export const sequenceLock = <Db extends symbol | string>(db: DbT<Db>, dbS: Db) => (
   aggregateRoot: AggregateRoot
 ) => {
   const id = aggregateRootId(aggregateRoot);
@@ -78,7 +78,7 @@ export const sequenceLock = <Db extends symbol>(db: DbT<Db>, dbS: Db) => (
   );
 };
 
-export const saveSequence = <Db extends symbol>(db: DbT<Db>) => (
+export const saveSequence = <Db extends symbol | string>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
 ) => (next: BigInt) =>
   db.withManagerTask(m => () =>
@@ -95,7 +95,7 @@ export const saveSequence = <Db extends symbol>(db: DbT<Db>) => (
         )
   );
 
-export const currentSequence = <Db extends symbol>(db: DbT<Db>) => (
+export const currentSequence = <Db extends symbol | string>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
 ) =>
   pipe(

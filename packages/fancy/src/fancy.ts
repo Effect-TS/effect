@@ -5,7 +5,7 @@ import { Lazy } from "fp-ts/lib/function";
 // alpha
 /* istanbul ignore file */
 
-export const dispatcherURI = Symbol();
+export const dispatcherURI = "@matechs/fancy/dispatcherURI";
 
 export interface Runner<R> {
   [dispatcherURI]: {
@@ -15,7 +15,7 @@ export interface Runner<R> {
   };
 }
 
-export const stateURI = Symbol();
+export const stateURI = "@matechs/fancy/stateURI";
 
 export interface State<S extends { [k: string]: any }> {
   [stateURI]: {

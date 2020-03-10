@@ -3,7 +3,7 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 // experimental alpha
 /* istanbul ignore file */
 
-export const readSideURI: unique symbol = Symbol();
+export const readSideURI = "@matechs/cqrs/readSideURI";
 
 export interface ReadSideConfig {
   id: string;

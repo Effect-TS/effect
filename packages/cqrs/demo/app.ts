@@ -1,7 +1,7 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 import { logger } from "@matechs/logger";
 
-export const appURI = Symbol();
+export const appURI = "@matechs/cqrs/demo/appURI";
 
 export interface AppOps {
   printTodo: (todo: string) => T.UIO<void>;

@@ -24,7 +24,7 @@ const aggregateRead = <
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol
+  Db extends symbol | string
 >(
   agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>
 ) => (config: ReadSideConfig) =>
@@ -40,7 +40,7 @@ export const aggregate = <
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NonEmptyArray<keyof Types>,
-  Db extends symbol
+  Db extends symbol | string
 >(
   agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>
 ) => ({

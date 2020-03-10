@@ -9,7 +9,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 // work in progress
 /* istanbul ignore file */
 
-export const clientConfigURI = Symbol();
+export const clientConfigURI = "@matechs/zoo/clientConfigURI"
 
 export interface ClientConfig {
   [clientConfigURI]: {

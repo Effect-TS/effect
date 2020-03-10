@@ -23,7 +23,7 @@ export class TableOffset {
   offset: string;
 }
 
-export const ormOffsetStore = <Db extends symbol>(DB: DbT<Db>) =>
+export const ormOffsetStore = <Db extends symbol | string>(DB: DbT<Db>) =>
   offsetStore({
     get: (readId, streamId) =>
       pipe(

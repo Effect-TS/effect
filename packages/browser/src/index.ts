@@ -1,8 +1,8 @@
 import { effect as T } from "@matechs/effect";
 import * as O from "fp-ts/lib/Option";
 
-export const localStorageEnv: unique symbol = Symbol();
-export const sessionStorageEnv: unique symbol = Symbol();
+export const localStorageEnv = "@matechs/browser/localStorageURI";
+export const sessionStorageEnv = "@matechs/browser/sessionStorageURI";
 
 interface GenericStorage<Env> {
   length: T.Effect<Env, Error, number>;

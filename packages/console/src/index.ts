@@ -1,6 +1,6 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 
-export const consoleEnv: unique symbol = Symbol();
+export const consoleEnv = "@matechs/console/consoleURI";
 
 export interface ConsoleOps {
   /**

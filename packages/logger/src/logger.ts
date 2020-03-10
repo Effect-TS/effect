@@ -1,6 +1,6 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 
-export const loggerEnv: unique symbol = Symbol();
+export const loggerEnv = "@matechs/logger/loggerURI";
 
 export interface Meta {
   [k: string]: any;

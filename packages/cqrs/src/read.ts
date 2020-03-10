@@ -36,7 +36,7 @@ export interface EventMeta {
   createdAt: string;
 }
 
-export const metaURI: unique symbol = Symbol();
+export const metaURI = "@matechs/cqrs/metaURI";
 
 export interface EventMetaHidden {
   [metaURI]: EventMeta;
@@ -51,7 +51,7 @@ export class Read<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol
+  Db extends symbol | string
 > {
   constructor(
     private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,

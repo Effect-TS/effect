@@ -5,7 +5,7 @@ import { effect as T, managed as M } from "@matechs/effect";
 import { right, left } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 
-export const eventStoreURI: unique symbol = Symbol();
+export const eventStoreURI = "@matechs/cqrs-es/eventStoreURI";
 
 export interface EventStoreConfig {
   [eventStoreURI]: {

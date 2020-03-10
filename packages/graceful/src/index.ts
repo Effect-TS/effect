@@ -1,8 +1,10 @@
 import { effect as T } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 
+export const gracefulURI = "@matechs/graceful/gracefulURI";
+
 export interface Graceful {
-  graceful: {
+  [gracefulURI]: {
     state: Array<T.Effect<T.NoEnv, T.NoErr, void>>;
     onExit(
       op: T.Effect<T.NoEnv, T.NoErr, void>
@@ -12,19 +14,19 @@ export interface Graceful {
 }
 
 export const graceful: () => Graceful = () => ({
-  graceful: {
+  [gracefulURI]: {
     state: [],
     onExit(
       op: T.Effect<T.NoEnv, T.NoErr, void>
     ): T.Effect<Graceful, T.NoErr, void> {
-      return T.accessM(({ graceful }: Graceful) =>
+      return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
         T.sync(() => {
           graceful.state.push(op);
         })
       );
     },
     trigger(): T.Effect<Graceful, T.NoErr, void> {
-      return T.accessM(({ graceful }: Graceful) =>
+      return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
         pipe(
           graceful.state,
           T.sequenceP(graceful.state.length),
@@ -39,9 +41,13 @@ export const graceful: () => Graceful = () => ({
 export function onExit(
   op: T.Effect<T.NoEnv, T.NoErr, void>
 ): T.Effect<Graceful, T.NoErr, void> {
-  return T.accessM(({ graceful }: Graceful) => graceful.onExit(op));
+  return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
+    graceful.onExit(op)
+  );
 }
 
 export function trigger(): T.Effect<Graceful, T.NoErr, void> {
-  return T.accessM(({ graceful }: Graceful) => graceful.trigger());
+  return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
+    graceful.trigger()
+  );
 }

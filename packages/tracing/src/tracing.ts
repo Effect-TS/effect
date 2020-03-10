@@ -10,7 +10,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { ERROR } from "opentracing/lib/ext/tags";
 import Span from "opentracing/lib/span";
 
-export const TracerContext: unique symbol = Symbol();
+export const TracerContext = "@matechs/tracing/tracerContextURI";
 
 export interface TracerContext {
   [TracerContext]: {
@@ -18,7 +18,7 @@ export interface TracerContext {
   };
 }
 
-export const SpanContext: unique symbol = Symbol();
+export const SpanContext = "@matechs/tracing/spanContextURI";
 
 export interface SpanContext {
   [SpanContext]: {
@@ -27,7 +27,7 @@ export interface SpanContext {
   };
 }
 
-export const Tracer: unique symbol = Symbol();
+export const Tracer = "@matechs/tracing/tracerURI";
 
 export interface TracerOps {
   withTracer<R, E, A>(ma: T.Effect<R, E, A>): T.Effect<R, E, A>;

@@ -6,19 +6,25 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 
 export interface UUID
-  extends Newtype<{ readonly UUID: unique symbol }, string> {}
+  extends Newtype<{ readonly UUID: "@matechs/uuid/uuidNT" }, string> {}
 
 export interface UUIDBase90
-  extends Newtype<{ readonly UUIDBase90: unique symbol }, string> {}
+  extends Newtype<
+    { readonly UUIDBase90: "@matechs/uuid/uuidBase90NT" },
+    string
+  > {}
 
 export interface UUIDBase58
-  extends Newtype<{ readonly UUIDBase58: unique symbol }, string> {}
+  extends Newtype<
+    { readonly UUIDBase58: "@matechs/uuid/uuidBase58" },
+    string
+  > {}
 
 export const isoUUID = iso<UUID>();
 export const isoUUIDBase90 = iso<UUIDBase90>();
 export const isoUUIDBase58 = iso<UUIDBase58>();
 
-export const uuidURI: unique symbol = Symbol();
+export const uuidURI = "@matechs/uuid/uuidURI";
 
 export interface UUIDOps {
   gen: T.UIO<UUID>;
