@@ -2,7 +2,10 @@
   "extends": "../../base.tsconfig.json",
   "compilerOptions": {
     "outDir": "lib",
-    "lib": ["DOM"]
+    "lib": ["DOM"],
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false
   },
   "exclude": ["tests", "node_modules"],
   "include": ["src/**/*"]

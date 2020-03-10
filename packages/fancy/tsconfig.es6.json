@@ -1,0 +1,12 @@
+{
+  "extends": "../../base.tsconfig.json",
+  "compilerOptions": {
+    "outDir": "es6",
+    "lib": ["DOM"],
+    "target": "ES6",
+    "sourceMap": false,
+    "jsx": "react"
+  },
+  "exclude": ["tests", "node_modules"],
+  "include": ["src/**/*"]
+}
