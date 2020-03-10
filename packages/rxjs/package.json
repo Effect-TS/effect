@@ -21,7 +21,7 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^4.0.0",
+    "@matechs/effect": "^5.0.0",
     "fp-ts": "^2.5.1",
     "fp-ts-contrib": "^0.1.13",
     "rxjs": "^6.5.3"
