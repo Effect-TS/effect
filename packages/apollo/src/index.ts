@@ -2,9 +2,8 @@ import { effect as T, freeEnv as F, utils as UT } from "@matechs/effect";
 import * as EX from "@matechs/express";
 import exp from "express";
 import { option as O } from "fp-ts";
-import { ApolloServer, makeExecutableSchema } from "apollo-server-express";
+import { ApolloServer, makeExecutableSchema, ITypeDefinitions } from "apollo-server-express";
 import { pipe } from "fp-ts/lib/pipeable";
-import { DocumentNode } from "graphql";
 import { ExpressContext, ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer";
 import { ConnectionContext } from "subscriptions-transport-ws";
 import WebSocket from "ws";
@@ -117,7 +116,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
 
   const resolver = <K extends Resolver<K, U, Ctx>>(res: K) => res;
 
-  const bindToSchema = <R extends Resolver<R, U, Ctx>>(res: R, node: DocumentNode) =>
+  const bindToSchema = <R extends Resolver<R, U, Ctx>>(res: R, typeDefs: ITypeDefinitions) =>
     T.accessM((_: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE) => {
       const toBind = {};
 
@@ -185,7 +184,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
       }
 
       return T.trySync(() => {
-        const schema = makeExecutableSchema({ typeDefs: node, resolvers: toBind });
+        const schema = makeExecutableSchema({ typeDefs, resolvers: toBind });
 
         if (configP.subscriptions && configP.subscriptions.onConnect) {
           const onC = configP.subscriptions.onConnect;
