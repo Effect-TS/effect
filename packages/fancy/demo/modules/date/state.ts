@@ -1,5 +1,5 @@
 import { effect as T } from "@matechs/effect";
-import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-no-union";
+import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { State } from "../../../lib";
 

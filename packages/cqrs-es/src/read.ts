@@ -1,4 +1,4 @@
-import {} from "@morphic-ts/batteries/lib/summoner-no-union";
+import {} from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import {} from "@morphic-ts/batteries/lib/program";
 import {} from "@morphic-ts/batteries/lib/program-orderable";
 

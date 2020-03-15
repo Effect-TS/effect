@@ -15,7 +15,7 @@ This library depends on [morphic-ts](https://github.com/sledorze/morphic-ts) for
 ### Definition of the domain of events
 
 ```ts
-import { summon, tagged } from "@morphic-ts/batteries/lib/summoner-no-union";
+import { summon, tagged } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 
 export const TodoAdded = summon(F =>
   F.interface(
