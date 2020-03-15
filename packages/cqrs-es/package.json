@@ -1,6 +1,6 @@
 {
   "name": "@matechs/cqrs-es",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -38,7 +38,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/cqrs": "^3.0.2",
+    "@matechs/cqrs": "^3.0.3",
     "@matechs/effect": "^5.0.1",
     "@matechs/logger": "^3.0.1",
     "@matechs/orm": "^3.0.1",
