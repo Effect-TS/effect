@@ -2,7 +2,7 @@ import {
   summon,
   tagged,
   AsOpaque
-} from "@morphic-ts/batteries/lib/summoner-no-union";
+} from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { EType, AType } from "@morphic-ts/batteries/lib/usage/utils";
 
 const TodoAdded_ = summon(F =>
