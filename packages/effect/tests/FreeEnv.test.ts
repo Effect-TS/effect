@@ -6,17 +6,15 @@ import { sequenceS } from "fp-ts/lib/Apply";
 
 const fnEnv: unique symbol = Symbol();
 
-interface FnEnv {
+const fnEnvM_ = F.define({
   [fnEnv]: {
-    mapString: (s: string) => T.UIO<string>;
-  };
-}
-
-const fnEnvM = F.define<FnEnv>({
-  [fnEnv]: {
-    mapString: F.fn()
+    mapString: F.fn<(s: string) => T.UIO<string>>()
   }
 });
+
+interface FnEnv extends F.TypeOf<typeof fnEnvM_> {}
+
+const fnEnvM = F.opaque<FnEnv>()(fnEnvM_);
 
 const fnLive: FnEnv = {
   [fnEnv]: {
