@@ -59,8 +59,6 @@ export interface ModuleSpec<M> {
   [specURI]: ModuleShape<M>;
 }
 
-export type TypeOf<Q> = Q extends ModuleSpec<infer M> ? M : never;
-
 export function define<T extends ModuleShape<T>>(m: T): ModuleSpec<T> {
   return { [specURI]: m };
 }
@@ -198,6 +196,7 @@ export type MergeSpec<S> = {
 };
 
 export type ExtractShape<M> = M extends ModuleShape<infer A> ? A : never;
+export type TypeOf<M> = M extends ModuleSpec<infer A> ? A : never;
 
 export type Merged<S> = S extends {
   [k in keyof S]: {
@@ -221,3 +220,10 @@ export function merge<S extends MergeSpec<S>>(s: S): Merged<S> {
 
   return m;
 }
+
+export const opaque = <A extends ModuleShape<A>>() => <
+  B extends A,
+  S extends ModuleSpec<B>
+>(
+  _: S
+): ModuleSpec<A> => _;
