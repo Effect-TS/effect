@@ -21,10 +21,10 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.0",
-    "@matechs/rxjs": "^3.0.0",
-    "fp-ts": "^2.5.1",
-    "fp-ts-contrib": "^0.1.13",
+    "@matechs/effect": "^5.0.1",
+    "@matechs/rxjs": "^3.0.1",
+    "fp-ts": "^2.5.3",
+    "fp-ts-contrib": "^0.1.14",
     "redux": "^4.0.4",
     "redux-observable": "^1.2.0",
     "rxjs": "^6.5.3"
@@ -33,8 +33,8 @@
   "devDependencies": {
     "@matechs/effect": "^5.0.1",
     "@matechs/rxjs": "^3.0.1",
-    "fp-ts": "^2.5.1",
-    "fp-ts-contrib": "^0.1.13",
+    "fp-ts": "^2.5.3",
+    "fp-ts-contrib": "^0.1.14",
     "redux": "^4.0.4",
     "redux-observable": "^1.2.0",
     "rxjs": "^6.5.3"
