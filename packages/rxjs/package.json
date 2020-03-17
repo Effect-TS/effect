@@ -21,16 +21,16 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.0",
-    "fp-ts": "^2.5.1",
-    "fp-ts-contrib": "^0.1.13",
+    "@matechs/effect": "^5.0.1",
+    "fp-ts": "^2.5.3",
+    "fp-ts-contrib": "^0.1.14",
     "rxjs": "^6.5.3"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
     "@matechs/effect": "^5.0.1",
-    "fp-ts": "^2.5.1",
-    "fp-ts-contrib": "^0.1.13",
+    "fp-ts": "^2.5.3",
+    "fp-ts-contrib": "^0.1.14",
     "rxjs": "^6.5.3"
   }
 }
