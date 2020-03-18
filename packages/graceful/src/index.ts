@@ -1,53 +1,35 @@
-import { effect as T } from "@matechs/effect";
+import { effect as T, freeEnv as F, ref as R } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
+import { array } from "fp-ts/lib/Array";
 
 export const gracefulURI = "@matechs/graceful/gracefulURI";
 
-export interface Graceful {
+const gracefulF_ = F.define({
   [gracefulURI]: {
-    state: Array<T.Effect<T.NoEnv, T.NoErr, void>>;
-    onExit(
-      op: T.Effect<T.NoEnv, T.NoErr, void>
-    ): T.Effect<Graceful, T.NoErr, void>;
-    trigger(): T.Effect<Graceful, T.NoErr, void>;
-  };
-}
-
-export const graceful: () => Graceful = () => ({
-  [gracefulURI]: {
-    state: [],
-    onExit(
-      op: T.Effect<T.NoEnv, T.NoErr, void>
-    ): T.Effect<Graceful, T.NoErr, void> {
-      return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
-        T.sync(() => {
-          graceful.state.push(op);
-        })
-      );
-    },
-    trigger(): T.Effect<Graceful, T.NoErr, void> {
-      return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
-        pipe(
-          graceful.state,
-          T.sequenceP(graceful.state.length),
-          // tslint:disable-next-line: no-empty
-          T.map(() => {})
-        )
-      );
-    }
+    onExit: F.fn<(op: T.UIO<void>) => T.UIO<void>>(),
+    trigger: F.cn<T.UIO<void>>()
   }
 });
 
-export function onExit(
-  op: T.Effect<T.NoEnv, T.NoErr, void>
-): T.Effect<Graceful, T.NoErr, void> {
-  return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
-    graceful.onExit(op)
-  );
-}
+export interface Graceful extends F.TypeOf<typeof gracefulF_> {}
 
-export function trigger(): T.Effect<Graceful, T.NoErr, void> {
-  return T.accessM(({ [gracefulURI]: graceful }: Graceful) =>
-    graceful.trigger()
-  );
-}
+export const gracefulF = F.opaque<Graceful>()(gracefulF_);
+
+export const { onExit, trigger } = F.access(gracefulF)[gracefulURI];
+
+export const provideGraceful = F.implementWith(R.makeRef<T.UIO<void>[]>([]))(
+  gracefulF_
+)(_ => ({
+  [gracefulURI]: {
+    onExit: op =>
+      pipe(
+        _.update(_ => [..._, op]),
+        T.chain(() => T.unit)
+      ),
+    trigger: pipe(
+      _.get,
+      T.chain(array.sequence(T.effect)),
+      T.chain(() => T.unit)
+    )
+  }
+}));

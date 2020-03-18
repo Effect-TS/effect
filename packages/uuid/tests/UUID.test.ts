@@ -4,7 +4,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as assert from "assert";
 
 function run<E, A>(eff: T.Effect<U.UUIDEnv, E, A>): Promise<A> {
-  return pipe(eff, T.provideAll(U.uuidEnv), T.runToPromise);
+  return pipe(eff, U.provideUUID, T.runToPromise);
 }
 
 describe("UUID", () => {
