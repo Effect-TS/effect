@@ -1,91 +1,28 @@
-import { effect as T, freeEnv as F, utils as UT } from "@matechs/effect";
+import { effect as T, utils as UT } from "@matechs/effect";
 import * as EX from "@matechs/express";
-import exp from "express";
 import { option as O } from "fp-ts";
-import { ApolloServer, makeExecutableSchema, ITypeDefinitions } from "apollo-server-express";
+import { ApolloServer, makeExecutableSchema, ITypeDefinitions, IEnumResolver } from "apollo-server-express";
 import { pipe } from "fp-ts/lib/pipeable";
 import { ExpressContext, ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer";
-import { ConnectionContext } from "subscriptions-transport-ws";
-import WebSocket from "ws";
+import {
+  ApolloConf,
+  ApolloEnv,
+  Context,
+  ContextEnv,
+  ResolverSubF,
+  contextURI,
+  ResolverInput,
+  Resolver,
+  ResolverEnv
+} from "./apollo";
+import { GraphQLScalarType } from "graphql";
 
 // EXPERIMENTAL
 /* istanbul ignore file */
 
-interface ResolverInput<S> {
-  source: O.Option<S>;
-  args: Record<string, unknown>;
+export interface AdditionalResolvers {
+  [k: string]: GraphQLScalarType | IEnumResolver;
 }
-
-interface Context {
-  req: O.Option<exp.Request>;
-}
-
-const contextURI = "@matechs/apollo/context";
-
-interface ContextEnv<U extends string, Ctx> {
-  [contextURI]: {
-    [k in U]: Ctx;
-  };
-}
-
-type ResolverF<U extends string, Ctx, A, B, C, D> = (_: ResolverInput<A>) => T.Effect<B & ContextEnv<U, Ctx>, C, D>;
-
-interface ResolverSubF<U extends string, Ctx, A, B, C, D, E, F, G> {
-  subscribe: (_: ResolverInput<A>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>;
-  resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>;
-}
-
-type Resolver<K, U extends string, Ctx> = {
-  [k in keyof K]:
-    | ResolverF<U, Ctx, unknown, any, any, any>
-    | ResolverSubF<U, Ctx, unknown, any, any, any, any, any, any>;
-};
-
-type ResolverEnv<R, U extends string, Ctx> = R extends Resolver<any, U, Ctx>
-  ? F.UnionToIntersection<
-      {
-        [k in keyof R]: R[k] extends ResolverF<U, Ctx, any, infer B, any, any>
-          ? unknown extends B
-            ? never
-            : B
-          : R[k] extends ResolverSubF<U, Ctx, any, infer B, any, any, infer B2, any, any>
-          ? unknown extends B
-            ? unknown extends B2
-              ? never
-              : B2
-            : unknown extends B2
-            ? B
-            : B & B2
-          : never;
-      }[keyof R]
-    >
-  : never;
-
-export type ApolloConf = Omit<ApolloServerExpressConfig, "context" | "schema" | "subscriptions"> & {
-  subscriptions?: Partial<{
-    path: string;
-    keepAlive?: number;
-    onConnect?: (
-      connectionParams: unknown,
-      websocket: WebSocket,
-      context: ConnectionContext
-    ) => T.Effect<any, never, any>;
-    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<any, never, any>;
-  }>;
-};
-
-export type ApolloEnv<C extends ApolloConf> = C extends {
-  subscriptions: {
-    onConnect?: (
-      connectionParams: unknown,
-      websocket: WebSocket,
-      context: ConnectionContext
-    ) => T.Effect<infer R, never, any>;
-    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<infer R2, never, any>;
-  };
-}
-  ? (R extends never ? unknown : R) & (R2 extends never ? unknown : R2)
-  : unknown;
 
 export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
   uri: U,
@@ -116,7 +53,11 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
 
   const resolver = <K extends Resolver<K, U, Ctx>>(res: K) => res;
 
-  const bindToSchema = <R extends Resolver<R, U, Ctx>>(res: R, typeDefs: ITypeDefinitions) =>
+  const bindToSchema = <R extends Resolver<R, U, Ctx>>(
+    res: R,
+    typeDefs: ITypeDefinitions,
+    additionalResolvers: AdditionalResolvers = {}
+  ) =>
     T.accessM((_: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE) => {
       const toBind = {};
 
@@ -184,7 +125,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
       }
 
       return T.trySync(() => {
-        const schema = makeExecutableSchema({ typeDefs, resolvers: toBind });
+        const schema = makeExecutableSchema({ typeDefs, resolvers: { ...toBind, ...additionalResolvers } });
 
         if (configP.subscriptions && configP.subscriptions.onConnect) {
           const onC = configP.subscriptions.onConnect;
