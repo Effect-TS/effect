@@ -2,12 +2,12 @@ import { effect as T } from "@matechs/effect";
 import * as C from "../src";
 import assert from "assert";
 import { done, Exit } from "@matechs/effect/lib/original/exit";
+import { pipe } from "fp-ts/lib/pipeable";
 
 function test<E, A>(eff: T.Effect<C.Console, E, A>): Promise<Exit<E, A>> {
-  return T.runToPromiseExit(T.provideAll(C.consoleLive)(eff));
+  return T.runToPromiseExit(pipe(eff, C.provideConsole));
 }
 
-// tslint:disable: no-empty
 describe("Console", () => {
   const assertMock = jest.spyOn(console, "assert");
   const clearMock = jest.spyOn(console, "clear");
