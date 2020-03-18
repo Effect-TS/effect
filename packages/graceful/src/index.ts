@@ -1,5 +1,4 @@
 import { effect as T, freeEnv as F, ref as R } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
 import { array } from "fp-ts/lib/Array";
 
 export const gracefulURI = "@matechs/graceful/gracefulURI";
@@ -17,19 +16,13 @@ export const gracefulF = F.opaque<Graceful>()(gracefulF_);
 
 export const { onExit, trigger } = F.access(gracefulF)[gracefulURI];
 
+const insert = (_: T.UIO<void>) => (a: T.UIO<void>[]) => [...a, _];
+
 export const provideGraceful = F.implementWith(R.makeRef<T.UIO<void>[]>([]))(
-  gracefulF_
+  gracefulF
 )(_ => ({
   [gracefulURI]: {
-    onExit: op =>
-      pipe(
-        _.update(_ => [..._, op]),
-        T.chain(() => T.unit)
-      ),
-    trigger: pipe(
-      _.get,
-      T.chain(array.sequence(T.effect)),
-      T.chain(() => T.unit)
-    )
+    onExit: op => T.asUnit(_.update(insert(op))),
+    trigger: T.asUnit(T.effect.chain(_.get, array.sequence(T.parEffect)))
   }
 }));
