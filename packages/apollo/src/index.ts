@@ -14,7 +14,9 @@ import {
   contextURI,
   ResolverInput,
   Resolver,
-  ResolverEnv
+  ResolverEnv,
+  resolverF,
+  ResolverF
 } from "./apollo";
 import { GraphQLScalarType } from "graphql";
 
@@ -26,20 +28,21 @@ export interface AdditionalResolvers {
 }
 
 export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
-  bindToSchema: <R extends Resolver<R, U, Ctx>>(
+  bindToSchema: <R extends Resolver<any, R, U, Ctx>>(
     res: R,
     typeDefs: ITypeDefinitions,
     additionalResolvers?: AdditionalResolvers
   ) => T.Effect<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, never, void>;
 
-  subscription: <A, B, C, D, E, F, G>(
-    subscribe: (_: ResolverInput<A>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
-    resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
-  ) => ResolverSubF<U, Ctx, A, B, C, D, E, F, G>;
-
-  resolver: <K extends Resolver<K, U, Ctx>>(res: K) => K;
+  binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K;
 
   accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
+
+  resolver: <ARGS>() => <R extends ResolverF<ARGS, U, Ctx, unknown, any, any, any>>(_: R) => R;
+  subscription: <ARGS>() => <A, B, C, D, E, F, G>(
+    subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
+    resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
+  ) => ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G>;
 }
 
 export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
@@ -61,17 +64,17 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
 
   const accessContext = T.access((_: ContextEnv<U, Ctx>) => _[contextURI][uri]);
 
-  const subscription = <A, B, C, D, E, F, G>(
-    subscribe: (_: ResolverInput<A>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
+  const subscription = <ARGS, A, B, C, D, E, F, G>(
+    subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
     resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
-  ): ResolverSubF<U, Ctx, A, B, C, D, E, F, G> => ({
+  ): ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G> => ({
     subscribe,
     resolve
   });
 
-  const resolver = <K extends Resolver<K, U, Ctx>>(res: K) => res;
+  const resolver = <K extends Resolver<any, K, U, Ctx>>(res: K) => res;
 
-  const bindToSchema = <R extends Resolver<R, U, Ctx>>(
+  const bindToSchema = <R extends Resolver<any, R, U, Ctx>>(
     res: R,
     typeDefs: ITypeDefinitions,
     additionalResolvers: AdditionalResolvers = {}
@@ -191,8 +194,9 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
 
   return {
     bindToSchema,
-    resolver,
-    subscription,
-    accessContext
+    binder: resolver,
+    accessContext,
+    resolver: resolverF,
+    subscription: () => subscription
   };
 }

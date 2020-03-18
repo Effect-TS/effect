@@ -46,7 +46,7 @@ const typeDefs = gql`
     message: String
   }
   type Subscription {
-    demo: DemoMessage
+    demo(n: Int!): DemoMessage
   }
   schema {
     query: Query
@@ -54,20 +54,21 @@ const typeDefs = gql`
   }
 `;
 
-const books = Apollo.resolver({
-  ["Query/books"]: ({ args }) =>
+const books = Apollo.binder({
+  ["Query/books"]: Apollo.resolver<{ n: number }>()(({ args }) =>
     pipe(
       T.access((_: { foo: string }) => _.foo),
       T.map(foo =>
         pipe(
-          A.range(0, args["n"] as number),
+          A.range(0, args.n),
           A.map(i => ({ title: `book: ${i}`, author: foo }))
         )
       )
     )
+  )
 });
 
-const hi = Apollo.resolver({
+const hi = Apollo.binder({
   ["Query/hi"]: () =>
     T.accessM((_: { bar: string }) =>
       pipe(
@@ -86,8 +87,8 @@ async function* gen(n: number, message: O.Option<string>) {
   }
 }
 
-export const demo = Apollo.resolver({
-  ["Subscription/demo"]: Apollo.subscription(
+export const demo = Apollo.binder({
+  ["Subscription/demo"]: Apollo.subscription<{ n: number }>()(
     _ =>
       T.accessM(({ subN }: { subN: number }) =>
         pipe(
@@ -95,7 +96,7 @@ export const demo = Apollo.resolver({
           T.chain(({ sub }) =>
             T.pure(
               gen(
-                subN,
+                subN + _.args.n,
                 pipe(
                   sub,
                   O.map(({ message }) => message)
@@ -119,7 +120,7 @@ export const demo = Apollo.resolver({
   )
 });
 
-const resolvers = Apollo.resolver({
+const resolvers = Apollo.binder({
   ...hi,
   ...books,
   ...demo
