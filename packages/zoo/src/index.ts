@@ -1,2 +1,7 @@
 export { election } from "./election";
-export { ClientConfig, clientConfigURI } from "./client";
+export {
+  ClientConfig,
+  clientConfigURI,
+  provideClientFactory,
+  provideClientConfig
+} from "./client";

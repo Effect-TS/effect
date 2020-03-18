@@ -1,4 +1,4 @@
-import { effect as T, managed as M } from "@matechs/effect";
+import { effect as T, managed as M, freeEnv as F } from "@matechs/effect";
 import * as ZC from "node-zookeeper-client";
 import { CreateMode } from "node-zookeeper-client";
 import { Option, none, some } from "fp-ts/lib/Option";
@@ -9,7 +9,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 // work in progress
 /* istanbul ignore file */
 
-export const clientConfigURI = "@matechs/zoo/clientConfigURI"
+export const clientConfigURI = "@matechs/zoo/clientConfigURI";
 
 export interface ClientConfig {
   [clientConfigURI]: {
@@ -17,16 +17,6 @@ export interface ClientConfig {
     options?: Partial<ZC.Option>;
   };
 }
-
-export const createClient: T.Effect<ClientConfig, never, Client> = T.access(
-  (_: ClientConfig) =>
-    new Client(
-      ZC.createClient(
-        _[clientConfigURI].connectionString,
-        _[clientConfigURI].options
-      )
-    )
-);
 
 export interface ZooError {
   _tag:
@@ -37,6 +27,11 @@ export interface ZooError {
     | "WaitDeleteError"
     | "ConnectionDroppedError";
 }
+
+export const provideClientConfig = (_: ClientConfig[typeof clientConfigURI]) =>
+  T.provideS<ClientConfig>({
+    [clientConfigURI]: _
+  });
 
 export interface ConnectError extends ZooError {
   _tag: "ConnectError";
@@ -100,7 +95,23 @@ type Out = Mkdirp | Createp | NodeId | Children | Deleted;
 
 const out = <A extends Out>(a: A): A => a;
 
-export class Client {
+export interface Client {
+  connect(): T.Effect<unknown, ConnectError, Client>;
+  listen(f: FunctionN<[ZC.State], void>): Lazy<void>;
+  state(): T.Effect<unknown, never, Option<ZC.State>>;
+  mkdirp(path: string): T.Effect<unknown, MkdirpError, Mkdirp>;
+  dispose(): T.Effect<unknown, never, void>;
+  currentId(path: string): T.Effect<unknown, never, NodeId>;
+  create(
+    path: string,
+    mode: keyof typeof CreateMode,
+    data?: Buffer | undefined
+  ): T.Effect<unknown, CreateError, Createp>;
+  getChildren(root: string): T.Effect<unknown, GetChildrenError, Children>;
+  waitDelete(path: string): T.Effect<unknown, WaitDeleteError, Deleted>;
+}
+
+export class ClientImpl implements Client {
   private _state: Option<ZC.State> = none;
   private readonly listeners: Map<
     number,
@@ -342,6 +353,34 @@ export class Client {
     });
   }
 }
+
+export const ClientFactoryURI = "@matechs/zoo/clientFactoryURI";
+
+const ClientFactory_ = F.define({
+  [ClientFactoryURI]: {
+    createClient: F.cn<T.UIO<Client>>()
+  }
+});
+
+export interface ClientFactory extends F.TypeOf<typeof ClientFactory_> {}
+
+export const ClientFactory = F.opaque<ClientFactory>()(ClientFactory_);
+
+export const provideClientFactory = F.implement(ClientFactory)({
+  [ClientFactoryURI]: {
+    createClient: T.access(
+      (_: ClientConfig) =>
+        new ClientImpl(
+          ZC.createClient(
+            _[clientConfigURI].connectionString,
+            _[clientConfigURI].options
+          )
+        )
+    )
+  }
+});
+
+const { createClient } = F.access(ClientFactory)[ClientFactoryURI];
 
 export const managedClient = M.bracket(
   pipe(

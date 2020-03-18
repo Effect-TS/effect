@@ -1,5 +1,5 @@
 import { effect as T } from "@matechs/effect";
-import { clientConfigURI, election, ClientConfig } from "../src";
+import { election, provideClientFactory, provideClientConfig } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 
 // work in progress
@@ -16,10 +16,9 @@ const program = T.forever(
 
 const main = pipe(
   election("/election/bbbb")(program),
-  T.provideS<ClientConfig>({
-    [clientConfigURI]: {
-      connectionString: "127.0.0.1:2181"
-    }
+  provideClientFactory,
+  provideClientConfig({
+    connectionString: "127.0.0.1:2181"
   })
 );
 
@@ -28,8 +27,8 @@ const can = T.run(main, ex => {
 });
 
 process.on("SIGTERM", () => {
-    can()
-})
+  can();
+});
 process.on("SIGINT", () => {
-    can()
-})
+  can();
+});
