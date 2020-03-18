@@ -86,7 +86,7 @@ async function* gen(n: number, message: O.Option<string>) {
   }
 }
 
-const demo = Apollo.resolver({
+export const demo = Apollo.resolver({
   ["Subscription/demo"]: Apollo.subscription(
     _ =>
       T.accessM(({ subN }: { subN: number }) =>
