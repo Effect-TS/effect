@@ -174,7 +174,7 @@ export class EffectIO<R, E, A> {
   }
 
   provideS<R2 extends Partial<R>>(r: R2): EffectIO<Strip<R, R2>, E, A> {
-    return provideR((k: any) => ({ ...r, ...k }))(this as any) as any;
+    return provideR((k: any) => ({ ...k, ...r }))(this as any) as any;
   }
 
   provide(r: R): EffectIO<unknown, E, A> {
@@ -665,7 +665,7 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
  */
 export function provideS<R>(r: R) {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
-    provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
+    provideR((r2: R2) => ({ ...r2, ...r }))(eff);
 }
 
 /**
@@ -693,7 +693,7 @@ export function provideStructS<R>(r: R) {
     A = T extends Effect<R2 & R, E, infer AE> ? AE : never
   >(
     eff: T extends Effect<R2 & R, E, A> ? T : never
-  ): Effect<R2, E, A> => provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
+  ): Effect<R2, E, A> => provideR((r2: R2) => ({ ...r2, ...r }))(eff);
 }
 
 /**
@@ -702,7 +702,7 @@ export function provideStructS<R>(r: R) {
  */
 export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
-    chain_(rm, r => provideR((r2: R2) => ({ ...r, ...r2 }))(eff));
+    chain_(rm, r => provideR((r2: R2) => ({ ...r2, ...r }))(eff));
 }
 
 /**
@@ -721,7 +721,7 @@ export function provideStructSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
   >(
     eff: T extends Effect<R2 & R, E, A> ? T : never
   ): Effect<R2 & R3, E | E2, A> =>
-    chain_(rm, r => provideR((r2: R2) => ({ ...r, ...r2 }))(eff));
+    chain_(rm, r => provideR((r2: R2) => ({ ...r2, ...r }))(eff));
 }
 
 /**
@@ -2150,3 +2150,11 @@ export function effectify<L, R>(f: Function): () => Effect<NoEnv, L, R> {
     });
   };
 }
+
+export const patch = <R>() => <E, R2>(f: (_: R) => Effect<R2, E, R>) => <
+  R3,
+  E3,
+  A
+>(
+  eff: Effect<R3 & R, E3, A>
+) => chain_(accessEnvironment<R>(), r => chain_(f(r), rn => provideS(rn)(eff)));

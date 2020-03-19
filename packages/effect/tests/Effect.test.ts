@@ -578,7 +578,6 @@ describe("EffectSafe", () => {
       assert.deepEqual(called, true);
     });
 
-
     it("fromPromise", async () => {
       const a = await T.runToPromiseExit(
         T.fromPromise(() => Promise.reject(1))
@@ -1378,5 +1377,38 @@ describe("effectify", () => {
       await T.runToPromiseExit(effFun("x")),
       ex.raise("error")
     );
+  });
+});
+
+describe("patch", () => {
+  it("should patch env", async () => {
+    interface RA {
+      foo: string;
+    }
+    interface RB {
+      bar: string;
+    }
+
+    const provideA = T.provideS<RA>({
+      foo: "foo"
+    });
+    const provideB = T.provideS<RB>({
+      bar: "bar"
+    });
+    const program = T.accessEnvironment<RA & RB>();
+    const patchA = T.patch<RA>()(_ =>
+      T.pure({
+        foo: `${_.foo}-ok`
+      })
+    );
+    const res = await pipe(
+      program,
+      patchA,
+      provideA,
+      provideB,
+      T.runToPromiseExit
+    );
+
+    assert.deepEqual(res, ex.done({ foo: "foo-ok", bar: "bar" }));
   });
 });
