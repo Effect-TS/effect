@@ -142,6 +142,11 @@ export type ProviderOf<
   EW = never
 > = Provider<ImplementationEnv<OnlyNew<M, I>> & RW, M, EW>;
 
+export function provideSO<R>(r: R) {
+  return <R2, E, A>(eff: T.Effect<R2 & R, E, A>): T.Effect<R2, E, A> =>
+    T.provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
+}
+
 export function providing<
   M extends ModuleShape<M>,
   S extends ModuleSpec<M>,
@@ -155,9 +160,9 @@ export function providing<
     for (const entry of Object.keys(s[specURI][sym])) {
       if (typeof a[sym][entry] === "function") {
         r[sym][entry] = (...args: any[]) =>
-          T.provideS(env)(a[sym][entry](...args));
+          provideSO(env)(a[sym][entry](...args));
       } else if (typeof a[sym][entry] === "object") {
-        r[sym][entry] = T.provideS(env)(a[sym][entry]);
+        r[sym][entry] = provideSO(env)(a[sym][entry]);
       }
     }
   }

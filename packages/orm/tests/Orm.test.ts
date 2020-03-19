@@ -174,7 +174,7 @@ describe("Orm", () => {
     );
   });
 
-  it("should use transaction in higer order", async () => {
+  it("should use transaction in higher order", async () => {
     const uri = Symbol();
 
     const spec = F.define({
