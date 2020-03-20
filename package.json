@@ -11,7 +11,7 @@
     "@babel/plugin-proposal-decorators": "^7.8.3",
     "@babel/plugin-proposal-nullish-coalescing-operator": "^7.8.3",
     "@babel/plugin-proposal-optional-chaining": "7.9.0",
-    "@babel/preset-env": "^7.8.7",
+    "@babel/preset-env": "^7.9.0",
     "@babel/preset-typescript": "^7.7.7",
     "@morphic-ts/batteries": "^0.9.1",
     "@qio/core": "^31.0.0",
