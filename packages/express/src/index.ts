@@ -5,6 +5,7 @@ import { Server } from "http";
 import { pipe } from "fp-ts/lib/pipeable";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
+import { left, right } from "fp-ts/lib/Either";
 
 export const expressAppEnv = "@matechs/express/expressAppURI";
 
@@ -111,7 +112,23 @@ export const express: Express = {
       hostname?: string
     ): T.Effect<HasExpress, T.NoErr, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
-        T.sync(() => app.listen(port, hostname || "0.0.0.0"))
+        T.orAbort(
+          T.async<unknown, Server>(res => {
+            const s = app.listen(port, hostname || "0.0.0.0", err => {
+              if (err) {
+                res(left(err));
+              } else {
+                res(right(s));
+              }
+            });
+
+            return cb => {
+              s.close(e => {
+                cb(e);
+              });
+            };
+          })
+        )
       );
     }
   }
