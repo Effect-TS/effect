@@ -1,7 +1,7 @@
 import { effect as T, utils as UT } from "@matechs/effect";
 import * as EX from "@matechs/express";
 import { option as O } from "fp-ts";
-import { ApolloServer, makeExecutableSchema, ITypeDefinitions, IEnumResolver } from "apollo-server-express";
+import { ApolloServer, makeExecutableSchema, ITypeDefinitions, IResolvers } from "apollo-server-express";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as express from "express";
 import { ExpressContext, ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer";
@@ -18,20 +18,15 @@ import {
   resolverF,
   ResolverF
 } from "./apollo";
-import { GraphQLScalarType } from "graphql";
 
 // EXPERIMENTAL
 /* istanbul ignore file */
-
-export interface AdditionalResolvers {
-  [k: string]: GraphQLScalarType | IEnumResolver;
-}
 
 export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
   bindToSchema: <R extends Resolver<any, R, U, Ctx>>(
     res: R,
     typeDefs: ITypeDefinitions,
-    additionalResolvers?: AdditionalResolvers
+    additionalResolvers?: IResolvers
   ) => T.Effect<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, never, void>;
 
   binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K;
@@ -77,7 +72,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
   const bindToSchema = <R extends Resolver<any, R, U, Ctx>>(
     res: R,
     typeDefs: ITypeDefinitions,
-    additionalResolvers: AdditionalResolvers = {}
+    additionalResolvers: IResolvers = {}
   ) =>
     T.accessM((_: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE) => {
       const toBind = {};
