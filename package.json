@@ -54,7 +54,7 @@
     "node-libcurl": "^2.0.3",
     "node-zookeeper-client": "^1.1.0",
     "opentracing": "^0.14.4",
-    "prettier": "^1.19.1",
+    "prettier": "^2.0.0",
     "querystring": "^0.2.0",
     "react": "^16.13.0",
     "react-dom": "^16.13.0",
