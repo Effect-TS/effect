@@ -25,7 +25,7 @@
   ],
   "peerDependencies": {
     "@matechs/effect": "^5.0.1",
-    "@morphic-ts/batteries": "^0.9.1",
+    "@morphic-ts/batteries": "^0.11.0",
     "fast-check": "^1.23.0",
     "fast-equals": "^2.0.0",
     "fp-ts": "^2.5.3",
