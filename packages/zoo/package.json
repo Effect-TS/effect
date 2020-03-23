@@ -21,7 +21,7 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.1",
+    "@matechs/effect": "^5.0.4",
     "@types/node-zookeeper-client": "^0.2.7",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14"

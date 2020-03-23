@@ -21,7 +21,7 @@
     "es6"
   ],
   "peerDependencies": {
-    "@morphic-ts/batteries": "^0.9.1",
+    "@morphic-ts/batteries": "^0.11.2-alpha.0",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.23.0",
     "fast-equals": "^2.0.0",
@@ -35,7 +35,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@morphic-ts/batteries": "^0.9.1",
+    "@morphic-ts/batteries": "^0.11.2-alpha.0",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.23.0",
     "fast-equals": "^2.0.0",

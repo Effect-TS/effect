@@ -21,10 +21,10 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.1",
-    "@matechs/express": "^4.0.1",
-    "@matechs/http-client": "^4.0.1",
-    "@matechs/rpc-client": "^5.0.1",
+    "@matechs/effect": "^5.0.4",
+    "@matechs/express": "^4.0.5",
+    "@matechs/http-client": "^4.0.4",
+    "@matechs/rpc-client": "^5.0.4",
     "express": "^4.17.1",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14"
