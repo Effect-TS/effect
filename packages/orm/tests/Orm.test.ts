@@ -11,7 +11,7 @@ import {
   FindOneOptions,
   ObjectID,
   PrimaryColumn,
-  Repository
+  Repository,
 } from "typeorm";
 import * as DB from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -31,7 +31,8 @@ const {
   withConnectionTask,
   withManagerTask,
   withORMTransaction,
-  withNewRegion
+  withNewRegion,
+  requireTx,
 } = DB.dbT(testDbEnv);
 
 describe("Orm", () => {
@@ -55,24 +56,24 @@ describe("Orm", () => {
                   _2?: FindOneOptions<Entity>
                 ): Promise<Entity | undefined> {
                   return Promise.reject("not implemented");
-                }
+                },
               } as Repository<Entity>;
-            }
+            },
           } as EntityManager);
-        }
+        },
       } as Connection);
 
-    const program = bracketPool(
-      withTransaction(
-        withRepositoryTask(DemoEntity)(r => () =>
-          r.findOne({ where: { id: "test" } })
-        )
+    const main = requireTx(
+      withRepositoryTask(DemoEntity)((r) => () =>
+        r.findOne({ where: { id: "test" } })
       )
     );
 
+    const program = bracketPool(withTransaction(main));
+
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(program));
@@ -105,16 +106,16 @@ describe("Orm", () => {
                   _2?: FindOneOptions<Entity>
                 ): Promise<Entity | undefined> {
                   return Promise.reject("not implemented");
-                }
+                },
               } as Repository<Entity>;
-            }
+            },
           } as EntityManager);
-        }
+        },
       } as Connection);
 
     const program = bracketPool(
       withTransaction(
-        withManagerTask(m => () =>
+        withManagerTask((m) => () =>
           m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
         )
       )
@@ -122,7 +123,7 @@ describe("Orm", () => {
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(program));
@@ -148,20 +149,20 @@ describe("Orm", () => {
               _2?: FindOneOptions<Entity>
             ): Promise<Entity | undefined> {
               return Promise.reject("not implemented");
-            }
+            },
           } as Repository<Entity>;
-        }
+        },
       } as Connection);
 
     const program = bracketPool(
-      withConnectionTask(c => () =>
+      withConnectionTask((c) => () =>
         c.getRepository(DemoEntity).findOne({ where: { id: "test" } })
       )
     );
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(program));
@@ -179,18 +180,18 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
-      }
+        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
+      },
     });
 
     const {
-      [uri]: { demo }
+      [uri]: { demo },
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
-        demo: () => withManagerTask(r => () => r.query(""))
-      }
+        demo: () => withManagerTask((r) => () => r.query("")),
+      },
     });
 
     const program = pipe(withTransaction(demo()), provider, bracketPool);
@@ -209,14 +210,14 @@ describe("Orm", () => {
               _parameters?: any[] | undefined
             ): Promise<any> {
               return Promise.resolve("ok");
-            }
+            },
           } as EntityManager);
-        }
+        },
       } as Connection);
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const res = await T.runToPromise(T.provideAll(env)(program));
@@ -229,18 +230,18 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
-      }
+        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
+      },
     });
 
     const {
-      [uri]: { demo }
+      [uri]: { demo },
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
-        demo: () => withManagerTask(r => () => r.query(""))
-      }
+        demo: () => withManagerTask((r) => () => r.query("")),
+      },
     });
 
     const program = pipe(withORMTransaction(demo()), provider, bracketPool);
@@ -262,15 +263,15 @@ describe("Orm", () => {
                 } else {
                   return Promise.reject();
                 }
-              }
-            } as EntityManager
+              },
+            } as EntityManager,
           };
-        }
+        },
       } as Connection);
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const res = await T.runToPromise(T.provideAll(env)(program));
@@ -283,18 +284,18 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
-      }
+        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
+      },
     });
 
     const {
-      [uri]: { demo }
+      [uri]: { demo },
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
-        demo: () => withManagerTask(r => () => r.query(""))
-      }
+        demo: () => withManagerTask((r) => () => r.query("")),
+      },
     });
 
     const program = pipe(withORMTransaction(demo()), provider, bracketPool);
@@ -319,15 +320,15 @@ describe("Orm", () => {
                 } else {
                   return Promise.reject();
                 }
-              }
-            } as EntityManager
+              },
+            } as EntityManager,
           };
-        }
+        },
       } as Connection);
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const res = await T.runToPromiseExit(T.provideAll(env)(program));
@@ -344,22 +345,22 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
-      }
+        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
+      },
     });
 
     const {
-      [uri]: { demo }
+      [uri]: { demo },
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
         demo: () =>
           pipe(
-            withManagerTask(r => () => r.query("")),
+            withManagerTask((r) => () => r.query("")),
             withNewRegion
-          )
-      }
+          ),
+      },
     });
 
     const program = pipe(withORMTransaction(demo()), provider, bracketPool);
@@ -378,20 +379,20 @@ describe("Orm", () => {
                 } else {
                   return Promise.reject();
                 }
-              }
-            }
+              },
+            },
           };
         },
         manager: {
           query(_query) {
             return Promise.resolve("ok");
-          }
-        } as EntityManager
+          },
+        } as EntityManager,
       } as Connection);
 
     const env: Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
+      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
 
     const res = await T.runToPromise(T.provideAll(env)(program));

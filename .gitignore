@@ -5,3 +5,5 @@ coverage/
 .vscode
 yarn-error.log
 .npmrc
+.ionide/
+.metals/

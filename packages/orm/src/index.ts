@@ -8,12 +8,12 @@ import {
   EntityManager,
   EntitySchema,
   ObjectType,
-  Repository
+  Repository,
 } from "typeorm";
 import { Task } from "fp-ts/lib/Task";
 
-export const configEnv = "@matechs/orm/configURI"
-export const poolEnv = "@matechs/orm/poolURI"
+export const configEnv = "@matechs/orm/configURI";
+export const poolEnv = "@matechs/orm/poolURI";
 export const managerEnv = "@matechs/orm/managerURI";
 export const factoryEnv = "@matechs/orm/factoryURI";
 
@@ -32,9 +32,9 @@ export function dbConfig<A extends symbol | string>(
   return {
     [configEnv]: {
       [env]: {
-        readConfig
-      }
-    }
+        readConfig,
+      },
+    },
   } as DbConfig<A>;
 }
 
@@ -44,8 +44,8 @@ export function mergeConfig<R>(a: R) {
     ...a,
     [configEnv]: {
       ...a[configEnv],
-      ...b[configEnv]
-    }
+      ...b[configEnv],
+    },
   });
 }
 
@@ -56,7 +56,11 @@ export function dbConfigs<A extends symbol | string, B extends symbol | string>(
 ): DbConfig<A> & DbConfig<B>;
 
 /* istanbul ignore next */
-export function dbConfigs<A extends symbol | string, B extends symbol | string, C extends symbol | string>(
+export function dbConfigs<
+  A extends symbol | string,
+  B extends symbol | string,
+  C extends symbol | string
+>(
   a: DbConfig<A>,
   b: DbConfig<B>,
   c: DbConfig<C>
@@ -104,17 +108,17 @@ export interface DbFactory {
 
 export const liveFactory: DbFactory = {
   [factoryEnv]: {
-    createConnection: createConnection
-  }
+    createConnection: createConnection,
+  },
 };
 
-export const mockFactory: (x: typeof createConnection) => DbFactory = x => ({
+export const mockFactory: (x: typeof createConnection) => DbFactory = (x) => ({
   [factoryEnv]: {
-    createConnection: x
-  }
+    createConnection: x,
+  },
 });
 
-export const dbTxURI = "@matechs/orm/dbTxURI"
+export const dbTxURI = "@matechs/orm/dbTxURI";
 
 export interface DbTx<A extends symbol | string> {
   [dbTxURI]: {
@@ -138,19 +142,22 @@ export class DbT<Db extends symbol | string> {
     this.withNewRegion = this.withNewRegion.bind(this);
   }
 
+  requireTx = <R, E, A>(op: T.Effect<R, E, A>): T.Effect<R & DbTx<Db>, E, A> =>
+    op;
+
   withNewRegion<R extends ORM<Db>, E, A>(
     op: T.Effect<R, E, A>
   ): T.Effect<R, E, A> {
-    return this.withConnection(connection =>
+    return this.withConnection((connection) =>
       T.provideR(
         (r: R): R => ({
           ...r,
           [managerEnv]: {
             ...r[managerEnv],
             [this.dbEnv]: {
-              manager: connection.manager
-            }
-          }
+              manager: connection.manager,
+            },
+          },
         })
       )(op)
     );
@@ -162,24 +169,24 @@ export class DbT<Db extends symbol | string> {
     return T.accessM(
       ({
         [configEnv]: {
-          [this.dbEnv]: { readConfig }
+          [this.dbEnv]: { readConfig },
         },
-        [factoryEnv]: f
+        [factoryEnv]: f,
       }: DbConfig<Db> & DbFactory) =>
-        T.effect.chain(readConfig, options =>
+        T.effect.chain(readConfig, (options) =>
           T.bracket(
             pipe(
               () => f.createConnection(options),
               T.fromPromiseMap(toError),
-              T.mapError(x => new TaskError(x, "bracketPoolOpen"))
+              T.mapError((x) => new TaskError(x, "bracketPoolOpen"))
             ),
-            db =>
+            (db) =>
               pipe(
                 () => db.close(),
                 T.fromPromiseMap(toError),
-                T.mapError(x => new TaskError(x, "bracketPoolClose"))
+                T.mapError((x) => new TaskError(x, "bracketPoolClose"))
               ),
-            db =>
+            (db) =>
               pipe(
                 op,
                 T.provideR((r: DbConfig<Db> & R) => ({
@@ -187,15 +194,15 @@ export class DbT<Db extends symbol | string> {
                   [poolEnv]: {
                     ...r[poolEnv],
                     [this.dbEnv]: {
-                      pool: db
-                    }
+                      pool: db,
+                    },
                   },
                   [managerEnv]: {
                     ...r[managerEnv],
                     [this.dbEnv]: {
-                      manager: db.manager
-                    }
-                  }
+                      manager: db.manager,
+                    },
+                  },
                 }))
               )
           )
@@ -208,13 +215,13 @@ export class DbT<Db extends symbol | string> {
   ): <A>(
     f: (r: Repository<Entity>) => Task<A>
   ) => T.Effect<ORM<Db>, TaskError, A> {
-    return f =>
-      this.withRepository(target)(r =>
+    return (f) =>
+      this.withRepository(target)((r) =>
         pipe(
           r,
           f,
           T.fromPromiseMap(toError),
-          T.mapError(x => new TaskError(x, "withRepositoryTask"))
+          T.mapError((x) => new TaskError(x, "withRepositoryTask"))
         )
       );
   }
@@ -224,12 +231,12 @@ export class DbT<Db extends symbol | string> {
   ): <R, E, A>(
     f: (r: Repository<Entity>) => T.Effect<R, E, A>
   ) => T.Effect<ORM<Db> & R, E, A> {
-    return f =>
+    return (f) =>
       T.accessM(
         ({
           [managerEnv]: {
-            [this.dbEnv]: { manager }
-          }
+            [this.dbEnv]: { manager },
+          },
         }: Manager<Db>) => f(manager.getRepository(target))
       );
   }
@@ -237,12 +244,12 @@ export class DbT<Db extends symbol | string> {
   withManagerTask<A>(
     f: (m: EntityManager) => Task<A>
   ): T.Effect<ORM<Db>, TaskError, A> {
-    return this.withManager(manager =>
+    return this.withManager((manager) =>
       pipe(
         manager,
         f,
         T.fromPromiseMap(toError),
-        T.mapError(x => new TaskError(x, "withManagerTask"))
+        T.mapError((x) => new TaskError(x, "withManagerTask"))
       )
     );
   }
@@ -253,8 +260,8 @@ export class DbT<Db extends symbol | string> {
     return T.accessM(
       ({
         [managerEnv]: {
-          [this.dbEnv]: { manager }
-        }
+          [this.dbEnv]: { manager },
+        },
       }: Manager<Db>) => f(manager)
     );
   }
@@ -262,12 +269,12 @@ export class DbT<Db extends symbol | string> {
   withConnectionTask<A>(
     f: (m: Connection) => Task<A>
   ): T.Effect<ORM<Db>, TaskError, A> {
-    return this.withConnection(pool =>
+    return this.withConnection((pool) =>
       pipe(
         pool,
         f,
         T.fromPromiseMap(toError),
-        T.mapError(x => new TaskError(x, "withConnectionTask"))
+        T.mapError((x) => new TaskError(x, "withConnectionTask"))
       )
     );
   }
@@ -287,31 +294,35 @@ export class DbT<Db extends symbol | string> {
       T.bracketExit(
         pipe(
           pool.createQueryRunner(),
-          runner =>
+          (runner) =>
             pipe(
               T.fromPromiseMap(toError)(() => runner.manager.query("BEGIN")),
-              T.map(_ => runner)
+              T.map((_) => runner)
             ),
-          T.mapError(x => new TaskError(x, "withTransaction"))
+          T.mapError((x) => new TaskError(x, "withTransaction"))
         ),
         (runner, exit) =>
           EX.isDone(exit)
             ? pipe(
                 T.fromPromiseMap(toError)(() => runner.manager.query("COMMIT")),
-                T.chainError(err =>
+                T.chainError((err) =>
                   pipe(
-                    T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
-                    T.chain(_ => T.raiseError(err))
+                    T.fromPromiseMap(toError)(() =>
+                      runner.manager.query("ROLLBACK")
+                    ),
+                    T.chain((_) => T.raiseError(err))
                   )
                 ),
-                T.mapError(x => new TaskError(x, "withTransaction"))
+                T.mapError((x) => new TaskError(x, "withTransaction"))
               )
             : pipe(
-                T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
-                T.mapError(x => new TaskError(x, "withTransaction")),
-                T.chain(_ => T.raised(exit))
+                T.fromPromiseMap(toError)(() =>
+                  runner.manager.query("ROLLBACK")
+                ),
+                T.mapError((x) => new TaskError(x, "withTransaction")),
+                T.chain((_) => T.raised(exit))
               ),
-        runner =>
+        (runner) =>
           pipe(
             op,
             T.provideR((r: R) => ({
@@ -319,15 +330,15 @@ export class DbT<Db extends symbol | string> {
               [managerEnv]: {
                 ...r[managerEnv],
                 [this.dbEnv]: {
-                  manager: runner.manager
-                }
+                  manager: runner.manager,
+                },
               },
               [dbTxURI]: {
                 ...r[dbTxURI],
                 [this.dbEnv]: {
-                  tx: {}
-                }
-              }
+                  tx: {},
+                },
+              },
             }))
           )
       )
@@ -341,31 +352,31 @@ export class DbT<Db extends symbol | string> {
       T.accessM((r: R) =>
         pipe(
           () =>
-            pool.transaction(tx =>
+            pool.transaction((tx) =>
               T.runToPromise(
                 T.provideAll({
                   ...r,
                   [managerEnv]: {
                     ...r[managerEnv],
                     [this.dbEnv]: {
-                      manager: tx
-                    }
+                      manager: tx,
+                    },
                   },
                   [dbTxURI]: {
                     ...r[dbTxURI],
                     [this.dbEnv]: {
-                      tx: {}
-                    }
-                  }
+                      tx: {},
+                    },
+                  },
                 })(
                   pipe(
                     op,
-                    T.mapError(x => ({ _tag: "inner" as const, error: x }))
+                    T.mapError((x) => ({ _tag: "inner" as const, error: x }))
                   )
                 )
               )
             ),
-          T.fromPromiseMap(x =>
+          T.fromPromiseMap((x) =>
             typeof x === "object" && x !== null && x["_tag"] === "inner"
               ? ((x["error"] as any) as E)
               : new TaskError(toError(x), "withTransaction")
