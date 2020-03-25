@@ -31,13 +31,12 @@ describe("Api", () => {
     const env: Env<typeof main> = {
       [ORM.DatabaseURI]: {
         [testDbEnv]: {
-          repository: (_) => ({
-            ...ORM.testables.dummyRepo(_),
+          repository: ORM.testables.dummyRepo(() => ({
             save: (o) =>
               deepEqual(o, { id: "ok" })
                 ? T.pure(o as any)
                 : T.raiseAbort("error"),
-          }),
+          })),
         },
       },
     };
@@ -57,13 +56,12 @@ describe("Api", () => {
     const env: Env<typeof main> = {
       [ORM.DatabaseURI]: {
         [testDbEnv]: {
-          repository: (_) => ({
-            ...ORM.testables.dummyRepo(_),
+          repository: ORM.testables.dummyRepo((_) => ({
             findOne: (o) =>
               deepEqual(o, { where: { id: "ok" } })
                 ? T.pure(some({ id: "ok" } as any))
                 : T.raiseAbort("error"),
-          }),
+          })),
         },
       },
     };
