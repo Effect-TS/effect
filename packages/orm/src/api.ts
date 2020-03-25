@@ -11,17 +11,19 @@ export const DatabaseURI = "@matechs/orm/DatabaseURI";
 export interface Database<DbURI extends symbol | string> {
   [DatabaseURI]: {
     [k in DbURI]: {
-      repository<O>(
-        _: Target<O>
-      ): {
-        save<T extends DeepPartial<O>>(
-          entity: T,
-          options?: SaveOptions
-        ): T.IO<OR.TaskError, O>;
-        findOne(options?: FindOneOptions<O>): T.IO<OR.TaskError, OP.Option<O>>;
-      };
+      repository<O>(_: Target<O>): Repository<O>;
     };
   };
+}
+
+export interface Repository<O> {
+  save<T extends DeepPartial<O>>(
+    entity: T,
+    options?: SaveOptions | undefined
+  ): T.IO<OR.TaskError, O>;
+  findOne(
+    options?: FindOneOptions<O> | undefined
+  ): T.IO<OR.TaskError, OP.Option<O>>;
 }
 
 const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(
@@ -80,19 +82,12 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
 };
 
 export const testables = {
-  dummyRepo: <O>(
+  dummyRepo: <O>(r: (_: ObjectType<O>) => Partial<Repository<O>>) => (
     _: ObjectType<O>
-  ): {
-    save<T extends DeepPartial<O>>(
-      entity: T,
-      options?: SaveOptions | undefined
-    ): T.IO<OR.TaskError, O>;
-    findOne(
-      options?: FindOneOptions<O> | undefined
-    ): T.IO<OR.TaskError, OP.Option<O>>;
-  } =>
+  ) =>
     ({
       save: () => T.unit,
       findOne: () => T.unit,
+      ...r(_),
     } as any),
 };
