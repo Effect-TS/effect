@@ -43,7 +43,7 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const repository = repository_(DbURI);
   const orm = OR.dbT(DbURI);
 
-  const provide = <R, E, A>(
+  const provideApi = <R, E, A>(
     eff: T.Effect<R & Database<DbURI>, E, A>
   ): T.Effect<R & OR.ORM<DbURI>, E, A> => {
     const provideDb = T.provideSW<Database<DbURI>>()(
@@ -74,20 +74,44 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     return pipe(eff, provideDb);
   };
 
+  const {
+    bracketPool,
+    requireTx,
+    withConnection,
+    withConnectionTask,
+    withManager,
+    withManagerTask,
+    withNewRegion,
+    withORMTransaction,
+    withRepository,
+    withRepositoryTask,
+    withTransaction,
+  } = orm;
+
   return {
     repository,
-    provide,
-    orm,
+    provideApi,
+    bracketPool,
+    requireTx,
+    withConnection,
+    withConnectionTask,
+    withManager,
+    withManagerTask,
+    withNewRegion,
+    withORMTransaction,
+    withRepository,
+    withRepositoryTask,
+    withTransaction,
   };
 };
 
-export const testables = {
-  dummyRepo: <O>(r: (_: ObjectType<O>) => Partial<Repository<O>>) => (
-    _: ObjectType<O>
-  ) =>
+export const mockDatabase = <O>(M: {
+  repository?: (_: ObjectType<O>) => Partial<Repository<O>>;
+}) => ({
+  repository: (_: ObjectType<O>) =>
     ({
       save: () => T.unit,
       findOne: () => T.unit,
-      ...r(_),
+      ...M.repository?.(_),
     } as any),
-};
+});
