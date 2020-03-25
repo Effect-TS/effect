@@ -12,6 +12,7 @@ import {
 } from "typeorm";
 import * as ORM from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
+import { some } from "fp-ts/lib/Option";
 
 @Entity()
 export class DemoEntity {
@@ -30,7 +31,8 @@ describe("Api", () => {
     const env: Env<typeof main> = {
       [ORM.DatabaseURI]: {
         [testDbEnv]: {
-          repository: () => ({
+          repository: (_) => ({
+            ...ORM.testables.dummyRepo(_),
             save: (o) =>
               deepEqual(o, { id: "ok" })
                 ? T.pure(o as any)
@@ -43,6 +45,32 @@ describe("Api", () => {
     const result = await T.runToPromiseExit(T.provideAll(env)(main));
 
     assert.deepEqual(result, done({ id: "ok" }));
+  });
+
+  it("should use mock repository findOne", async () => {
+    const main = DB.repository(DemoEntity).findOne({
+      where: {
+        id: "ok",
+      },
+    });
+
+    const env: Env<typeof main> = {
+      [ORM.DatabaseURI]: {
+        [testDbEnv]: {
+          repository: (_) => ({
+            ...ORM.testables.dummyRepo(_),
+            findOne: (o) =>
+              deepEqual(o, { where: { id: "ok" } })
+                ? T.pure(some({ id: "ok" } as any))
+                : T.raiseAbort("error"),
+          }),
+        },
+      },
+    };
+
+    const result = await T.runToPromiseExit(T.provideAll(env)(main));
+
+    assert.deepEqual(result, done(some({ id: "ok" })));
   });
 
   it("should use concrete repository", async () => {
@@ -75,6 +103,42 @@ describe("Api", () => {
     const result = await T.runToPromiseExit(main);
 
     assert.deepEqual(result, done({ id: "ok" }));
+  });
+
+  it("should use concrete repository findOne", async () => {
+    const program = DB.repository(DemoEntity).findOne({
+      where: {
+        id: "ok",
+      },
+    });
+    const main = pipe(
+      program,
+      DB.provide,
+      DB.orm.bracketPool,
+      T.provideS(
+        ORM.mockFactory(() =>
+          Promise.resolve({
+            manager: {
+              getRepository<Entity>(
+                _: string | Function | (new () => Entity)
+              ): Repository<Entity> {
+                return {
+                  findOne: (o: any) =>
+                    deepEqual(o, { where: { id: "ok" } })
+                      ? Promise.resolve({ id: "ok" } as any)
+                      : Promise.reject("error"),
+                } as Repository<Entity>;
+              },
+            } as EntityManager,
+            close: () => Promise.resolve(),
+          } as Connection)
+        )
+      ),
+      T.provideS(ORM.dbConfig(testDbEnv, T.pure({} as any)))
+    );
+    const result = await T.runToPromiseExit(main);
+
+    assert.deepEqual(result, done(some({ id: "ok" })));
   });
 
   it("should use concrete repository in tx", async () => {
