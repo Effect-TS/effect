@@ -1,7 +1,8 @@
 import * as OR from "./orm";
 import { effect as T } from "@matechs/effect";
-import { ObjectType, DeepPartial, SaveOptions } from "typeorm";
+import { ObjectType, DeepPartial, SaveOptions, FindOneOptions } from "typeorm";
 import { pipe } from "fp-ts/lib/pipeable";
+import * as OP from "fp-ts/lib/Option";
 
 export type Target<O> = ObjectType<O>;
 
@@ -17,6 +18,7 @@ export interface Database<DbURI extends symbol | string> {
           entity: T,
           options?: SaveOptions
         ): T.IO<OR.TaskError, O>;
+        findOne(options?: FindOneOptions<O>): T.IO<OR.TaskError, OP.Option<O>>;
       };
     };
   };
@@ -28,6 +30,10 @@ const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(
   save: <T extends DeepPartial<O>>(entity: T, options?: SaveOptions) =>
     T.accessM((_: Database<DbURI>) =>
       _[DatabaseURI][DbURI].repository(Target).save(entity, options)
+    ),
+  findOne: (options: FindOneOptions<O>) =>
+    T.accessM((_: Database<DbURI>) =>
+      _[DatabaseURI][DbURI].repository(Target).findOne(options)
     ),
 });
 
@@ -52,6 +58,12 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
                 ),
                 T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
               ),
+            findOne: (options) =>
+              pipe(
+                orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
+                T.map(OP.fromNullable),
+                T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
+              ),
           }),
         } as Database<DbURI>[typeof DatabaseURI][DbURI],
       } as Database<DbURI>[typeof DatabaseURI],
@@ -65,4 +77,22 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     provide,
     orm,
   };
+};
+
+export const testables = {
+  dummyRepo: <O>(
+    _: ObjectType<O>
+  ): {
+    save<T extends DeepPartial<O>>(
+      entity: T,
+      options?: SaveOptions | undefined
+    ): T.IO<OR.TaskError, O>;
+    findOne(
+      options?: FindOneOptions<O> | undefined
+    ): T.IO<OR.TaskError, OP.Option<O>>;
+  } =>
+    ({
+      save: () => T.unit,
+      findOne: () => T.unit,
+    } as any),
 };
