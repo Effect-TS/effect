@@ -77,7 +77,7 @@
     "no-duplicate-imports": false,
     "interface-name": false,
     "no-unnecessary-qualifier": true,
-    "no-unbound-method": [true, "ignore-static"],
+    "no-unbound-method": [false, "ignore-static"],
     "number-literal-format": true,
     "prefer-while": true,
     "import-blacklist": [true, "aws-sdk", "funfix"],
