@@ -20,9 +20,9 @@ export class DemoEntity {
   id: string;
 }
 
-const testDbEnv: unique symbol = Symbol();
+const DbURI: unique symbol = Symbol();
 
-const DB = ORM.database(testDbEnv);
+const DB = ORM.database(DbURI);
 
 describe("Api", () => {
   it("should use mock repository", async () => {
@@ -30,14 +30,14 @@ describe("Api", () => {
 
     const env: Env<typeof main> = {
       [ORM.DatabaseURI]: {
-        [testDbEnv]: {
-          repository: ORM.testables.dummyRepo(() => ({
+        [DbURI]: ORM.mockDatabase({
+          repository: () => ({
             save: (o) =>
               deepEqual(o, { id: "ok" })
                 ? T.pure(o as any)
                 : T.raiseAbort("error"),
-          })),
-        },
+          }),
+        }),
       },
     };
 
@@ -55,14 +55,14 @@ describe("Api", () => {
 
     const env: Env<typeof main> = {
       [ORM.DatabaseURI]: {
-        [testDbEnv]: {
-          repository: ORM.testables.dummyRepo((_) => ({
+        [DbURI]: ORM.mockDatabase({
+          repository: () => ({
             findOne: (o) =>
               deepEqual(o, { where: { id: "ok" } })
                 ? T.pure(some({ id: "ok" } as any))
                 : T.raiseAbort("error"),
-          })),
-        },
+          }),
+        }),
       },
     };
 
@@ -75,8 +75,8 @@ describe("Api", () => {
     const program = DB.repository(DemoEntity).save({ id: "ok" });
     const main = pipe(
       program,
-      DB.provide,
-      DB.orm.bracketPool,
+      DB.provideApi,
+      DB.bracketPool,
       T.provideS(
         ORM.mockFactory(() =>
           Promise.resolve({
@@ -96,7 +96,7 @@ describe("Api", () => {
           } as Connection)
         )
       ),
-      T.provideS(ORM.dbConfig(testDbEnv, T.pure({} as any)))
+      T.provideS(ORM.dbConfig(DbURI, T.pure({} as any)))
     );
     const result = await T.runToPromiseExit(main);
 
@@ -111,8 +111,8 @@ describe("Api", () => {
     });
     const main = pipe(
       program,
-      DB.provide,
-      DB.orm.bracketPool,
+      DB.provideApi,
+      DB.bracketPool,
       T.provideS(
         ORM.mockFactory(() =>
           Promise.resolve({
@@ -132,7 +132,7 @@ describe("Api", () => {
           } as Connection)
         )
       ),
-      T.provideS(ORM.dbConfig(testDbEnv, T.pure({} as any)))
+      T.provideS(ORM.dbConfig(DbURI, T.pure({} as any)))
     );
     const result = await T.runToPromiseExit(main);
 
@@ -143,9 +143,9 @@ describe("Api", () => {
     const program = DB.repository(DemoEntity).save({ id: "ok" });
     const main = pipe(
       program,
-      DB.orm.withTransaction,
-      DB.provide,
-      DB.orm.bracketPool,
+      DB.withTransaction,
+      DB.provideApi,
+      DB.bracketPool,
       T.provideS(
         ORM.mockFactory(() =>
           Promise.resolve({
@@ -166,7 +166,7 @@ describe("Api", () => {
           } as Connection)
         )
       ),
-      T.provideS(ORM.dbConfig(testDbEnv, T.pure({} as any)))
+      T.provideS(ORM.dbConfig(DbURI, T.pure({} as any)))
     );
     const result = await T.runToPromiseExit(main);
 
