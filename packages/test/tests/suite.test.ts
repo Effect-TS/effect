@@ -85,10 +85,9 @@ const demo2Suite = suite("demo2")(
   )
 );
 
-run(
-  demoSuite,
-  demo2Suite
-)(
+const comboSuite = suite("combo")(demoSuite, demo2Suite, testM("simple")(T.sync(() => assert.deepEqual(1, 1))));
+
+run(comboSuite)(
   flow(
     T.provideS<Sum>({
       sum: {
