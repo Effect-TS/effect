@@ -16,7 +16,7 @@ export interface Suite<R> {
   specs: Spec<R>[];
 }
 
-export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Test<R> => ({
+export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Spec<R> => ({
   _R: undefined as any,
   _tag: "test",
   name,
@@ -29,7 +29,7 @@ export type ROf<S extends Spec<any>> = unknown extends S["_R"] ? never : S["_R"]
 
 export const suite = (name: string) => <Specs extends Spec<any>[]>(
   ...specs: Specs
-): Suite<F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>> => ({
+): Spec<F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>> => ({
   _R: undefined as any,
   _tag: "suite",
   name,
@@ -38,14 +38,24 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
 
 export { assert };
 
-export const run = <Suites extends Suite<any>[]>(...suites: Suites) => (
-  provider: <E, A>(_: T.Effect<F.UnionToIntersection<ROf<Suites[number]>>, E, A>) => T.Effect<unknown, E, A>
+export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
+  provider: <E, A>(_: T.Effect<F.UnionToIntersection<ROf<Specs[number]>>, E, A>) => T.Effect<unknown, E, A>
 ) =>
   T.runToPromise(
     pipe(
       T.sync(() => {
-        suites.map((s) => {
-          desc(s, provider);
+        specs.map((s) => {
+          switch (s._tag) {
+            case "suite": {
+              desc(s, provider);
+              break;
+            }
+            case "test": {
+              describe("root", () => {
+                it(s.name, async () => pipe(s.eff, provider, T.runToPromise));
+              });
+            }
+          }
         });
       })
     )
