@@ -3,18 +3,21 @@ import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 
 export interface Test<R> {
+  _R: R;
   _tag: "test";
   name: string;
   eff: T.Effect<R, any, void>;
 }
 
 export interface Suite<R> {
+  _R: R;
   _tag: "suite";
   name: string;
   specs: Spec<R>[];
 }
 
 export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Test<R> => ({
+  _R: undefined as any,
   _tag: "test",
   name,
   eff
@@ -22,21 +25,12 @@ export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Test<R
 
 export type Spec<R> = Test<R> | Suite<R>;
 
-export type ROf<S extends Spec<any>[]> = F.UnionToIntersection<
-  {
-    [k in number & keyof S]: S[k] extends Test<infer R>
-      ? unknown extends R
-        ? never
-        : R
-      : S[k] extends Suite<infer R>
-      ? unknown extends R
-        ? never
-        : R
-      : never;
-  }[number]
->;
+export type ROf<S extends Spec<any>> = unknown extends S["_R"] ? never : S["_R"];
 
-export const suite = (name: string) => <Specs extends Spec<any>[]>(...specs: Specs): Suite<ROf<Specs>> => ({
+export const suite = (name: string) => <Specs extends Spec<any>[]>(
+  ...specs: Specs
+): Suite<F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>> => ({
+  _R: undefined as any,
   _tag: "suite",
   name,
   specs
@@ -45,7 +39,7 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(...specs: Spe
 export { assert };
 
 export const run = <Suites extends Suite<any>[]>(...suites: Suites) => (
-  provider: <E, A>(_: T.Effect<ROf<Suites>, E, A>) => T.Effect<unknown, E, A>
+  provider: <E, A>(_: T.Effect<F.UnionToIntersection<ROf<Suites[number]>>, E, A>) => T.Effect<unknown, E, A>
 ) =>
   T.runToPromise(
     pipe(
@@ -59,7 +53,7 @@ export const run = <Suites extends Suite<any>[]>(...suites: Suites) => (
 
 function desc<Suites extends Suite<any>[]>(
   s: Suite<any>,
-  provider: <E, A>(_: T.Effect<ROf<Suites>, E, A>) => T.Effect<unknown, E, A>
+  provider: <E, A>(_: T.Effect<F.UnionToIntersection<ROf<Suites[number]>>, E, A>) => T.Effect<unknown, E, A>
 ) {
   describe(s.name, () => {
     s.specs.map((spec) => {
