@@ -4,6 +4,7 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: "coverage",
   collectCoverageFrom: [ "packages/**/src/**/*.ts"],
-  setupFiles: ["./jest-setup.ts"]
+  setupFiles: ["./jest-setup.ts"],
+  verbose: true
 };
 
