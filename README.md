@@ -17,6 +17,10 @@ For details about the additional types and overloads please refer to documentati
 
 This package is a work in progress syntax and functions might change, feedback are welcome and contributions even more!
 
+## Videos
+26-03-2020 Introduction call, basic explaination of the effect library and showcase of examples:
+[https://vimeo.com/401143293](https://vimeo.com/401143293)
+
 ## License
 The library is released with an MIT license and the codebase is fully open-source please read: 
 [LICENSE.md](https://github.com/mikearnaldi/matechs-effect/blob/master/LICENSE.md)
