@@ -39,7 +39,9 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
 export { assert };
 
 export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
-  provider: <E, A>(_: T.Effect<F.UnionToIntersection<ROf<Specs[number]>>, E, A>) => T.Effect<unknown, E, A>
+  provider: <E, A>(
+    _: T.Effect<F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>, E, A>
+  ) => T.Effect<unknown, E, A>
 ) =>
   T.runToPromise(
     pipe(
@@ -63,7 +65,9 @@ export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
 
 function desc<Suites extends Suite<any>[]>(
   s: Suite<any>,
-  provider: <E, A>(_: T.Effect<F.UnionToIntersection<ROf<Suites[number]>>, E, A>) => T.Effect<unknown, E, A>
+  provider: <E, A>(
+    _: T.Effect<F.UnionToIntersection<ROf<Exclude<Suites[number], Suites[number]>>>, E, A>
+  ) => T.Effect<unknown, E, A>
 ) {
   describe(s.name, () => {
     s.specs.map((spec) => {
