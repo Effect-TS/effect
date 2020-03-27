@@ -28,7 +28,9 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
 
 export { assert };
 
-export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
+export const customRun = (_: { describe: typeof describe; it: typeof it }) => <Specs extends Spec<any>[]>(
+  ...specs: Specs
+) => (
   provider: unknown extends F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>
     ? void
     : <E, A>(
@@ -38,37 +40,40 @@ export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
   specs.map((s) => {
     switch (s._tag) {
       case "suite": {
-        desc(s, (provider || identity) as any);
+        desc(_, s, (provider || identity) as any);
         break;
       }
       case "test": {
-        describe(`Root: ${s.name}`, () => {
-          runTest(s, (provider || identity) as any);
+        _.describe(`Root: ${s.name}`, () => {
+          runTest(_, s, (provider || identity) as any);
         });
       }
     }
   });
 };
 
+export const run = customRun({ describe, it });
+
 function desc<Suites extends Suite<any>[]>(
+  _: { describe: typeof describe; it: typeof it },
   s: Suite<any>,
   provider: <E, A>(
     _: T.Effect<F.UnionToIntersection<ROf<Exclude<Suites[number], Suites[number]>>>, E, A>
   ) => T.Effect<unknown, E, A>
 ) {
-  describe(s.name, () => {
+  _.describe(s.name, () => {
     s.specs.map((spec) => {
       switch (spec._tag) {
         case "suite": {
-          describe(spec.name, () => {
+          _.describe(spec.name, () => {
             spec.specs.forEach((child) => {
               switch (child._tag) {
                 case "suite": {
-                  desc(child, provider);
+                  desc(_, child, provider);
                   break;
                 }
                 case "test": {
-                  runTest(child, provider);
+                  runTest(_, child, provider);
                   break;
                 }
               }
@@ -77,7 +82,7 @@ function desc<Suites extends Suite<any>[]>(
           break;
         }
         case "test": {
-          runTest(spec, provider);
+          runTest(_, spec, provider);
           break;
         }
       }
@@ -85,16 +90,24 @@ function desc<Suites extends Suite<any>[]>(
   });
 }
 
-function runTest<R>(spec: Test<R>, provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>) {
+function runTest<R>(
+  _: { describe: typeof describe; it: typeof it },
+  spec: Test<R>,
+  provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>
+) {
   pipe(
     getSkip(spec),
     O.filter((x): x is true => x === true),
     O.fold(
       () => {
-        it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
+        _.it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
       },
       () => {
-        it.skip(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
+        _.it.skip(
+          spec.name,
+          async () => pipe(spec.eff, provider, T.runToPromise),
+          pipe(spec, getTimeout, O.toUndefined)
+        );
       }
     )
   );
