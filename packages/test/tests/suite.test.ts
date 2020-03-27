@@ -2,6 +2,8 @@ import { assert, run, testM, suite } from "../src";
 import { effect as T } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { flow } from "fp-ts/lib/function";
+import { withTimeout } from "../src/impl";
+import { pipe } from "fp-ts/lib/pipeable";
 
 interface Sum {
   sum: {
@@ -87,7 +89,7 @@ const demo2Suite = suite("demo2")(
 
 const comboSuite = suite("combo")(demoSuite, demo2Suite, testM("simple")(T.sync(() => assert.deepEqual(1, 1))));
 
-run(comboSuite)(
+run(pipe(comboSuite, withTimeout(300)))(
   flow(
     T.provideS<Sum>({
       sum: {
