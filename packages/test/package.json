@@ -24,13 +24,15 @@
     "@matechs/effect": "^5.0.4",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14",
-    "jest": "^25.1.0"
+    "jest": "^25.1.0",
+    "fast-check": "^1.23.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
     "@types/jest": "^25.1.4",
     "@matechs/effect": "^5.0.5",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14"
+    "fp-ts-contrib": "^0.1.14",
+    "fast-check": "^1.23.0"
   }
 }
