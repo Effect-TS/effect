@@ -7,6 +7,9 @@ export interface Test<R> {
   _tag: "test";
   name: string;
   eff: T.Effect<R, any, void>;
+  config: {
+    timeout?: number;
+  };
 }
 
 export interface Suite<R> {
@@ -20,7 +23,8 @@ export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Spec<R
   _R: undefined as any,
   _tag: "test",
   name,
-  eff
+  eff,
+  config: {}
 });
 
 export type Spec<R> = Test<R> | Suite<R>;
@@ -54,7 +58,7 @@ export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
             }
             case "test": {
               describe("root", () => {
-                it(s.name, async () => pipe(s.eff, provider, T.runToPromise));
+                it(s.name, async () => pipe(s.eff, provider, T.runToPromise), s.config.timeout);
               });
             }
           }
@@ -81,7 +85,7 @@ function desc<Suites extends Suite<any>[]>(
                   break;
                 }
                 case "test": {
-                  it(child.name, async () => pipe(child.eff, provider, T.runToPromise));
+                  it(child.name, async () => pipe(child.eff, provider, T.runToPromise), child.config.timeout);
                   break;
                 }
               }
@@ -90,10 +94,28 @@ function desc<Suites extends Suite<any>[]>(
           break;
         }
         case "test": {
-          it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise));
+          it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), spec.config.timeout);
           break;
         }
       }
     });
   });
 }
+
+export const patch = <R>(f: (_: Test<R>) => Test<R>) => (s: Spec<R>): Spec<R> => {
+  switch (s._tag) {
+    case "test":
+      return f(s);
+    case "suite":
+      return {
+        ...s,
+        specs: s.specs.map(patch(f))
+      };
+  }
+};
+
+export const withTimeout = (n: number) => <R>(Spec: Spec<R>): Spec<R> =>
+  pipe(
+    Spec,
+    patch((_) => ({ ..._, config: { ..._.config, timeout: n } }))
+  );
