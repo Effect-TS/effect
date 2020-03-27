@@ -2,8 +2,9 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
-import { Spec, Suite } from "./def";
+import { Spec, Suite, Test } from "./def";
 import { getTimeout } from "./aspects/timeout";
+import { getSkip } from "./aspects/skip";
 
 export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Spec<R> => ({
   _R: undefined as any,
@@ -42,7 +43,7 @@ export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
             }
             case "test": {
               describe("root", () => {
-                it(s.name, async () => pipe(s.eff, provider, T.runToPromise), pipe(s, getTimeout, O.toUndefined));
+                runTest(s, provider);
               });
             }
           }
@@ -69,11 +70,7 @@ function desc<Suites extends Suite<any>[]>(
                   break;
                 }
                 case "test": {
-                  it(
-                    child.name,
-                    async () => pipe(child.eff, provider, T.runToPromise),
-                    pipe(child, getTimeout, O.toUndefined)
-                  );
+                  runTest(child, provider);
                   break;
                 }
               }
@@ -82,10 +79,25 @@ function desc<Suites extends Suite<any>[]>(
           break;
         }
         case "test": {
-          it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
+          runTest(spec, provider);
           break;
         }
       }
     });
   });
+}
+
+function runTest<R>(spec: Test<R>, provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>) {
+  pipe(
+    getSkip(spec),
+    O.filter((x): x is true => x === true),
+    O.fold(
+      () => {
+        it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
+      },
+      () => {
+        it.skip(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
+      }
+    )
+  );
 }

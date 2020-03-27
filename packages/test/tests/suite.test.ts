@@ -127,6 +127,11 @@ const genSuite = M.suite("generative")(
   )
 );
 
+const skipSuite = pipe(
+  M.suite("skip suite")(M.testM("dummy")(T.sync(() => M.assert.deepEqual(1, 1)))),
+  M.withSkip(true)
+);
+
 const provideSum = T.provideS<Sum>({
   sum: {
     a: 1,
@@ -162,5 +167,6 @@ const provideDiv = T.provideS<Div>({
 M.run(
   pipe(comboSuite, M.withTimeout(300)),
   pipe(flackySuite, M.withRetryPolicy(limitRetries(10))),
-  genSuite
+  genSuite,
+  skipSuite
 )(flow(provideMul, provideSub, provideSum, provideDiv, M.provideGenerator));
