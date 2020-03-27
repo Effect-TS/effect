@@ -28,9 +28,7 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
 
 export { assert };
 
-export const customRun = (_: { describe: typeof describe; it: typeof it }) => <Specs extends Spec<any>[]>(
-  ...specs: Specs
-) => (
+export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
   provider: unknown extends F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>
     ? void
     : <E, A>(
@@ -55,7 +53,7 @@ export const customRun = (_: { describe: typeof describe; it: typeof it }) => <S
 export const run = customRun({ describe, it });
 
 function desc<Suites extends Suite<any>[]>(
-  _: { describe: typeof describe; it: typeof it },
+  _: Runner,
   s: Suite<any>,
   provider: <E, A>(
     _: T.Effect<F.UnionToIntersection<ROf<Exclude<Suites[number], Suites[number]>>>, E, A>
@@ -90,11 +88,21 @@ function desc<Suites extends Suite<any>[]>(
   });
 }
 
-function runTest<R>(
-  _: { describe: typeof describe; it: typeof it },
-  spec: Test<R>,
-  provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>
-) {
+export interface Describe {
+  (name: string, op: () => void): void;
+}
+
+export interface It {
+  <A>(name: string, op: () => Promise<A>, timeout?: number): void;
+  skip: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
+}
+
+export interface Runner {
+  describe: Describe;
+  it: It;
+}
+
+function runTest<R>(_: Runner, spec: Test<R>, provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>) {
   pipe(
     getSkip(spec),
     O.filter((x): x is true => x === true),
