@@ -2,8 +2,9 @@ import { assert, run, testM, suite } from "../src";
 import { effect as T } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { flow } from "fp-ts/lib/function";
-import { withTimeout } from "../src/impl";
+import { withTimeout, withRetryPolicy } from "../src/impl";
 import { pipe } from "fp-ts/lib/pipeable";
+import { limitRetries } from "retry-ts";
 
 interface Sum {
   sum: {
@@ -93,7 +94,28 @@ const comboSuite = suite("combo")(
   testM("simple")(T.sync(() => assert.deepEqual(1, 1)))
 );
 
-run(pipe(comboSuite, withTimeout(300)))(
+const flackySuite = suite("flacky")(
+  testM("random")(
+    pipe(
+      T.sync(() => Math.random()),
+      T.map((n) => assert.deepEqual(n < 0.3, true))
+    )
+  ),
+  pipe(
+    testM("random2")(
+      pipe(
+        T.sync(() => Math.random()),
+        T.map((n) => assert.deepEqual(n < 0.1, true))
+      )
+    ),
+    withRetryPolicy(limitRetries(20))
+  )
+);
+
+run(
+  pipe(comboSuite, withTimeout(300)),
+  pipe(flackySuite, withRetryPolicy(limitRetries(10)))
+)(
   flow(
     T.provideS<Sum>({
       sum: {
