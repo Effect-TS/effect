@@ -118,13 +118,15 @@ export const patch = <R>(f: (_: Test<R>) => Test<R>) => (s: Spec<R>): Spec<R> =>
   }
 };
 
-export const withTimeout = (n: number) => <R>(Spec: Spec<R>): Spec<R> =>
+export type Aspect = <R>(Spec: Spec<R>) => Spec<R>;
+
+export const withTimeout = (n: number): Aspect => (Spec) =>
   pipe(
     Spec,
     patch((_) => ({ ..._, config: { ..._.config, timeout: _.config.timeout || n } }))
   );
 
-export const withRetryPolicy = (retryPolicy: RetryPolicy) => <R>(Spec: Spec<R>): Spec<R> =>
+export const withRetryPolicy = (retryPolicy: RetryPolicy): Aspect => (Spec) =>
   pipe(
     Spec,
     patch((_) => ({
