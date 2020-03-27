@@ -1,12 +1,11 @@
-import { assert, run, testM, suite, arb, provideGenerator } from "../src";
-import { effect as T, stream as S } from "@matechs/effect";
+import { assert, run, testM, suite, arb, provideGenerator, propertyM, property } from "../src";
+import { effect as T } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { flow } from "fp-ts/lib/function";
 import { withTimeout, withRetryPolicy } from "../src/impl";
 import { pipe } from "fp-ts/lib/pipeable";
 import { limitRetries } from "retry-ts";
 import * as fc from "fast-check";
-import { sequenceS } from "fp-ts/lib/Apply";
 
 interface Sum {
   sum: {
@@ -115,16 +114,17 @@ const flackySuite = suite("flacky")(
 );
 
 const genSuite = suite("generative")(
-  testM("generate integers")(
-    pipe(
-      sequenceS(S.stream)({
-        a: arb(fc.nat()),
-        b: arb(fc.nat())
-      }),
-      S.map((x) => assert.deepEqual(x.a > 0 && x.b > 0, true)),
-      S.take(1000),
-      S.drain
-    )
+  testM("generate naturals")(
+    propertyM(1000)({
+      a: arb(fc.nat()),
+      b: arb(fc.nat())
+    })(({ a, b }) => T.access((_: Sum) => assert.deepEqual(a > 0 && b > 0 && _.sum.a > 0, true)))
+  ),
+  testM("generate strings")(
+    property(1000)({
+      a: arb(fc.hexaString(2, 100)),
+      b: arb(fc.hexaString(4, 100))
+    })(({ a, b }) => assert.deepEqual(a.length >= 2 && b.length >= 4, true))
   )
 );
 
