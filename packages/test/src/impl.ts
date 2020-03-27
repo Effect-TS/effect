@@ -5,6 +5,7 @@ import * as O from "fp-ts/lib/Option";
 import { Spec, Suite, Test } from "./def";
 import { getTimeout } from "./aspects/timeout";
 import { getSkip } from "./aspects/skip";
+import { identity } from "fp-ts/lib/function";
 
 export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Spec<R> => ({
   _R: undefined as any,
@@ -28,29 +29,26 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
 export { assert };
 
 export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
-  provider: <E, A>(
-    _: T.Effect<F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>, E, A>
-  ) => T.Effect<unknown, E, A>
-) =>
-  T.runToPromise(
-    pipe(
-      T.sync(() => {
-        specs.map((s) => {
-          switch (s._tag) {
-            case "suite": {
-              desc(s, provider);
-              break;
-            }
-            case "test": {
-              describe(`Root: ${s.name}`, () => {
-                runTest(s, provider);
-              });
-            }
-          }
+  provider: unknown extends F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>
+    ? void
+    : <E, A>(
+        _: T.Effect<F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>, E, A>
+      ) => T.Effect<unknown, E, A>
+) => {
+  specs.map((s) => {
+    switch (s._tag) {
+      case "suite": {
+        desc(s, (provider || identity) as any);
+        break;
+      }
+      case "test": {
+        describe(`Root: ${s.name}`, () => {
+          runTest(s, (provider || identity) as any);
         });
-      })
-    )
-  );
+      }
+    }
+  });
+};
 
 function desc<Suites extends Suite<any>[]>(
   s: Suite<any>,

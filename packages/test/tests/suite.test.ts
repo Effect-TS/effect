@@ -187,10 +187,10 @@ const provideDiv = T.provideS<Div>({
 });
 
 M.run(
-  pipe(comboSuite, M.withTimeout(300)),
+  pipe(comboSuite, M.withProvider(provideMul), M.withTimeout(300)),
   pipe(flackySuite, M.withRetryPolicy(limitRetries(10))),
   genSuite,
   skipSuite,
   skip2Suite,
   envSuite
-)(flow(provideMul, provideSub, provideSum, provideDiv, M.provideGenerator));
+)(flow(provideSub, provideSum, provideDiv, M.provideGenerator));

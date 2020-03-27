@@ -17,10 +17,13 @@ export interface Suite<R> {
 
 export type Spec<R> = Test<R> | Suite<R>;
 
-export type AspectR<R2> = <R>(Spec: Spec<R>) => Spec<R & R2>;
-export type Aspect = AspectR<unknown>;
+export interface AspectR<R2> {
+  <R>(Spec: Spec<R & R2>): Spec<R>;
+}
 
-export const patch = <R>(f: (_: Test<R>) => Test<R>) => (s: Spec<R>): Spec<R> => {
+export interface Aspect extends AspectR<unknown> {}
+
+export const patch = <R, R2>(f: (_: Test<R>) => Test<R2>) => (s: Spec<R>): Spec<R2> => {
   switch (s._tag) {
     case "test":
       return f(s);
@@ -28,6 +31,6 @@ export const patch = <R>(f: (_: Test<R>) => Test<R>) => (s: Spec<R>): Spec<R> =>
       return {
         ...s,
         specs: s.specs.map(patch(f))
-      };
+      } as any;
   }
 };
