@@ -1,6 +1,7 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { effect as T, freeEnv as F, retry as R } from "@matechs/effect";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
+import { RetryPolicy } from "retry-ts";
 
 export interface Test<R> {
   _R: R;
@@ -9,6 +10,7 @@ export interface Test<R> {
   eff: T.Effect<R, any, void>;
   config: {
     timeout?: number;
+    withRetry: boolean;
   };
 }
 
@@ -24,7 +26,9 @@ export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Spec<R
   _tag: "test",
   name,
   eff,
-  config: {}
+  config: {
+    withRetry: false
+  }
 });
 
 export type Spec<R> = Test<R> | Suite<R>;
@@ -118,4 +122,23 @@ export const withTimeout = (n: number) => <R>(Spec: Spec<R>): Spec<R> =>
   pipe(
     Spec,
     patch((_) => ({ ..._, config: { ..._.config, timeout: _.config.timeout || n } }))
+  );
+
+export const withRetryPolicy = (retryPolicy: RetryPolicy) => <R>(Spec: Spec<R>): Spec<R> =>
+  pipe(
+    Spec,
+    patch((_) => ({
+      ..._,
+      config: {
+        ..._.config,
+        withRetry: true
+      },
+      eff: _.config.withRetry
+        ? _.eff
+        : R.retrying(
+            T.pure(retryPolicy),
+            () => _.eff,
+            (x) => T.pure(x._tag !== "Done")
+          )
+    }))
   );
