@@ -42,7 +42,7 @@ export const run = <Specs extends Spec<any>[]>(...specs: Specs) => (
               break;
             }
             case "test": {
-              describe("root", () => {
+              describe(`Root: ${s.name}`, () => {
                 runTest(s, provider);
               });
             }

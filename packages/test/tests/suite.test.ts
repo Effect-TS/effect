@@ -1,10 +1,11 @@
-import * as M from "../src";
 import { effect as T } from "@matechs/effect";
+import * as fc from "fast-check";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { flow } from "fp-ts/lib/function";
+import { isSome } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { limitRetries } from "retry-ts";
-import * as fc from "fast-check";
+import * as M from "../src";
 
 interface Sum {
   sum: {
@@ -140,6 +141,19 @@ const skip2Suite = pipe(
   M.withSkip(true)
 );
 
+process.env["EXAMPLE_ENV"] = "demo";
+
+const envSuite = M.suite("env suite")(
+  pipe(
+    M.testM("skip because env not defined")(T.sync(() => M.assert.deepEqual(1, 1))),
+    M.withEnvFilter("jioejiofjioewjsalcs")(isSome)
+  ),
+  pipe(
+    M.testM("not skip because env is demo")(T.sync(() => M.assert.deepEqual(1, 1))),
+    M.withEnvFilter("EXAMPLE_ENV")((x) => isSome(x) && x.value === "demo")
+  )
+);
+
 const provideSum = T.provideS<Sum>({
   sum: {
     a: 1,
@@ -177,5 +191,6 @@ M.run(
   pipe(flackySuite, M.withRetryPolicy(limitRetries(10))),
   genSuite,
   skipSuite,
-  skip2Suite
+  skip2Suite,
+  envSuite
 )(flow(provideMul, provideSub, provideSum, provideDiv, M.provideGenerator));
