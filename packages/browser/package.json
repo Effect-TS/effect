@@ -1,6 +1,6 @@
 {
   "name": "@matechs/browser",
-  "version": "3.0.5",
+  "version": "3.0.6",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -26,7 +26,7 @@
     "fp-ts-contrib": "^0.1.14"
   },
   "devDependencies": {
-    "@matechs/effect": "^5.0.5",
+    "@matechs/effect": "^5.0.6",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14"
   },
