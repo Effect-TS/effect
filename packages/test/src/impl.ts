@@ -117,5 +117,5 @@ export const patch = <R>(f: (_: Test<R>) => Test<R>) => (s: Spec<R>): Spec<R> =>
 export const withTimeout = (n: number) => <R>(Spec: Spec<R>): Spec<R> =>
   pipe(
     Spec,
-    patch((_) => ({ ..._, config: { ..._.config, timeout: n } }))
+    patch((_) => ({ ..._, config: { ..._.config, timeout: _.config.timeout || n } }))
   );

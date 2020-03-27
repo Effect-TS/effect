@@ -69,7 +69,7 @@ const demo2Suite = suite("demo2")(
       .bindL("c", ({ env: { sub: { a, b } } }) =>
         T.delay(
           T.sync(() => a - b),
-          100
+          500
         )
       )
       .return((s) => assert.deepEqual(s.c, s.env.sub.e))
@@ -80,14 +80,18 @@ const demo2Suite = suite("demo2")(
       .bindL("c", ({ env: { div: { a, b } } }) =>
         T.delay(
           T.sync(() => a / b),
-          100
+          500
         )
       )
       .return((s) => assert.deepEqual(s.c, s.env.div.e))
   )
 );
 
-const comboSuite = suite("combo")(demoSuite, demo2Suite, testM("simple")(T.sync(() => assert.deepEqual(1, 1))));
+const comboSuite = suite("combo")(
+  demoSuite,
+  withTimeout(600)(demo2Suite),
+  testM("simple")(T.sync(() => assert.deepEqual(1, 1)))
+);
 
 run(pipe(comboSuite, withTimeout(300)))(
   flow(
