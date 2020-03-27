@@ -13,7 +13,7 @@ import { Compactable3 } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
 import { PipeableFunctor3 } from "fp-ts/lib/pipeable";
-import { NoEnv, NoErr, Effect } from "./effect";
+import { NoEnv, NoErr } from "./effect";
 import { Either } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Refinement, Predicate } from "fp-ts/lib/function";
@@ -75,21 +75,28 @@ export interface Functor3EC<F extends MatechsURIS, E> {
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
-type UnionToIntersection<U> = (U extends any
-? (k: U) => void
-: never) extends (k: infer I) => void
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I
+) => void
   ? I
   : never;
 
-export type ATypeOf<X> = X extends Effect<infer R, infer E, infer A>
+interface GenEffect<R, E, A> {
+  _TAG: "Effect" | "Managed" | "Stream";
+  _E: E;
+  _A: A;
+  (_: R): void;
+}
+
+export type ATypeOf<X> = X extends GenEffect<infer R, infer E, infer A>
   ? A
   : never;
 
-export type ETypeOf<X> = X extends Effect<infer R, infer E, infer A>
+export type ETypeOf<X> = X extends GenEffect<infer R, infer E, infer A>
   ? E
   : never;
 
-export type RTypeOf<X> = X extends Effect<infer R, infer E, infer A>
+export type RTypeOf<X> = X extends GenEffect<infer R, infer E, infer A>
   ? R
   : never;
 

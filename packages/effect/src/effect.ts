@@ -60,6 +60,7 @@ export const noEnv: {} = {};
  * A description of an effect to perform
  */
 export interface Effect<R, E, A> {
+  _TAG: "Effect"
   _E: E;
   _A: A;
   (_: R): void;
