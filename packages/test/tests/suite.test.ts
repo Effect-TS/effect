@@ -186,7 +186,10 @@ const provideDiv = T.provideS<Div>({
   }
 });
 
-M.run(
+M.customRun({
+  describe,
+  it
+})(
   pipe(comboSuite, M.withProvider(provideMul), M.withTimeout(300)),
   pipe(flackySuite, M.withRetryPolicy(limitRetries(10))),
   genSuite,

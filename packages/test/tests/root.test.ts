@@ -1,4 +1,7 @@
-import { assert, run, testM } from "../src";
+import { assert, testM, customRun } from "../src";
 import { effect as T } from "@matechs/effect";
 
-run(testM("simple root")(T.sync(() => assert.deepEqual(2, 2))))();
+customRun({
+  describe,
+  it
+})(testM("simple root")(T.sync(() => assert.deepEqual(2, 2))))();

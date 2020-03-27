@@ -1,6 +1,6 @@
 {
-  "name": "@matechs/test",
-  "version": "0.0.4",
+  "name": "@matechs/test-jest",
+  "version": "0.0.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -24,7 +24,8 @@
     "@matechs/effect": "^5.0.4",
     "fast-check": "^1.23.0",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14"
+    "fp-ts-contrib": "^0.1.14",
+    "jest": "^25.1.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
@@ -33,5 +34,8 @@
     "fast-check": "^1.23.0",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14"
+  },
+  "dependencies": {
+    "@matechs/test": "^0.0.4"
   }
 }

@@ -50,8 +50,6 @@ export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Sp
   });
 };
 
-export const run = customRun({ describe, it });
-
 function desc<Suites extends Suite<any>[]>(
   _: Runner,
   s: Suite<any>,
