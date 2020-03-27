@@ -40,7 +40,8 @@ interface Sub {
 }
 
 const demoSuite = M.suite("demo")(
-  M.testM("sum")(
+  M.testM(
+    "sum",
     Do(T.effect)
       .bind("env", T.accessEnvironment<Sum>())
       .bindL("c", ({ env: { sum: { a, b } } }) =>
@@ -51,7 +52,8 @@ const demoSuite = M.suite("demo")(
       )
       .return((s) => M.assert.deepEqual(s.c, s.env.sum.e))
   ),
-  M.testM("mul")(
+  M.testM(
+    "mul",
     Do(T.effect)
       .bind("env", T.accessEnvironment<Mul>())
       .bindL("c", ({ env: { mul: { a, b } } }) =>
@@ -65,7 +67,8 @@ const demoSuite = M.suite("demo")(
 );
 
 const demo2Suite = M.suite("demo2")(
-  M.testM("sub")(
+  M.testM(
+    "sub",
     Do(T.effect)
       .bind("env", T.accessEnvironment<Sub>())
       .bindL("c", ({ env: { sub: { a, b } } }) =>
@@ -76,7 +79,8 @@ const demo2Suite = M.suite("demo2")(
       )
       .return((s) => M.assert.deepEqual(s.c, s.env.sub.e))
   ),
-  M.testM("div")(
+  M.testM(
+    "div",
     Do(T.effect)
       .bind("env", T.accessEnvironment<Div>())
       .bindL("c", ({ env: { div: { a, b } } }) =>
@@ -92,18 +96,23 @@ const demo2Suite = M.suite("demo2")(
 const comboSuite = M.suite("combo")(
   demoSuite,
   M.withTimeout(600)(demo2Suite),
-  M.testM("simple")(T.sync(() => M.assert.deepEqual(1, 1)))
+  M.testM(
+    "simple",
+    T.sync(() => M.assert.deepEqual(1, 1))
+  )
 );
 
 const flackySuite = M.suite("flacky")(
-  M.testM("random")(
+  M.testM(
+    "random",
     pipe(
       T.sync(() => Math.random()),
       T.map((n) => M.assert.deepEqual(n < 0.3, true))
     )
   ),
   pipe(
-    M.testM("random2")(
+    M.testM(
+      "random2",
       pipe(
         T.sync(() => Math.random()),
         T.map((n) => M.assert.deepEqual(n < 0.1, true))
@@ -114,13 +123,15 @@ const flackySuite = M.suite("flacky")(
 );
 
 const genSuite = M.suite("generative")(
-  M.testM("generate naturals")(
+  M.testM(
+    "generate naturals",
     M.propertyM(1000)({
       a: M.arb(fc.nat()),
       b: M.arb(fc.nat())
     })(({ a, b }) => T.access((_: Sum) => M.assert.deepEqual(a > 0 && b > 0 && _.sum.a > 0, true)))
   ),
-  M.testM("generate strings")(
+  M.testM(
+    "generate strings",
     M.property(1000)({
       a: M.arb(fc.hexaString(2, 100)),
       b: M.arb(fc.hexaString(4, 100))
@@ -129,14 +140,28 @@ const genSuite = M.suite("generative")(
 );
 
 const skipSuite = pipe(
-  M.suite("skip suite")(M.testM("dummy")(T.sync(() => M.assert.deepEqual(1, 1)))),
+  M.suite("skip suite")(
+    M.testM(
+      "dummy",
+      T.sync(() => M.assert.deepEqual(1, 1))
+    )
+  ),
   M.withSkip(true)
 );
 
 const skip2Suite = pipe(
   M.suite("skip 2 suite")(
-    M.testM("dummy2")(T.sync(() => M.assert.deepEqual(1, 1))),
-    pipe(M.testM("dummy3")(T.sync(() => M.assert.deepEqual(1, 1))), M.withSkip(false))
+    M.testM(
+      "dummy2",
+      T.sync(() => M.assert.deepEqual(1, 1))
+    ),
+    pipe(
+      M.testM(
+        "dummy3",
+        T.sync(() => M.assert.deepEqual(1, 1))
+      ),
+      M.withSkip(false)
+    )
   ),
   M.withSkip(true)
 );
@@ -145,14 +170,22 @@ process.env["EXAMPLE_ENV"] = "demo";
 
 const envSuite = M.suite("env suite")(
   pipe(
-    M.testM("skip because env not defined")(T.sync(() => M.assert.deepEqual(1, 1))),
+    M.testM(
+      "skip because env not defined",
+      T.sync(() => M.assert.deepEqual(1, 1))
+    ),
     M.withEnvFilter("jioejiofjioewjsalcs")(isSome)
   ),
   pipe(
-    M.testM("not skip because env is demo")(T.sync(() => M.assert.deepEqual(1, 1))),
+    M.testM(
+      "not skip because env is demo",
+      T.sync(() => M.assert.deepEqual(1, 1))
+    ),
     M.withEnvFilter("EXAMPLE_ENV")((x) => isSome(x) && x.value === "demo")
   )
 );
+
+const pendingSuite = M.suite("pending suite")(M.testM("should ignore not implemented"));
 
 const provideSum = T.provideS<Sum>({
   sum: {
@@ -188,12 +221,16 @@ const provideDiv = T.provideS<Div>({
 
 M.customRun({
   describe,
-  it
+  it: {
+    run: it,
+    skip: it.skip
+  }
 })(
   pipe(comboSuite, M.withProvider(provideMul), M.withTimeout(300)),
   pipe(flackySuite, M.withRetryPolicy(limitRetries(10))),
   genSuite,
   skipSuite,
   skip2Suite,
-  envSuite
+  envSuite,
+  pendingSuite
 )(flow(provideSub, provideSum, provideDiv, M.provideGenerator));

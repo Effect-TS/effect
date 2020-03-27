@@ -4,15 +4,17 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
 import { Spec, Suite, Test } from "./def";
 import { getTimeout } from "./aspects/timeout";
-import { getSkip } from "./aspects/skip";
+import { getSkip, SkipURI } from "./aspects/skip";
 import { identity } from "fp-ts/lib/function";
 
-export const testM = (name: string) => <R, E>(eff: T.Effect<R, E, void>): Spec<R> => ({
+export const testM = <R, E>(name: string, eff?: T.Effect<R, E, void>): Spec<R> => ({
   _R: undefined as any,
   _tag: "test",
   name,
-  eff,
-  config: {}
+  eff: eff || T.sync(() => {}),
+  config: {
+    [SkipURI]: eff ? undefined : true
+  }
 });
 
 export type ROf<S extends Spec<any>> = unknown extends S["_R"] ? never : S["_R"];
@@ -91,7 +93,7 @@ export interface Describe {
 }
 
 export interface It {
-  <A>(name: string, op: () => Promise<A>, timeout?: number): void;
+  run: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
   skip: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
 }
 
@@ -106,7 +108,11 @@ function runTest<R>(_: Runner, spec: Test<R>, provider: <E, A>(_: T.Effect<R, E,
     O.filter((x): x is true => x === true),
     O.fold(
       () => {
-        _.it(spec.name, async () => pipe(spec.eff, provider, T.runToPromise), pipe(spec, getTimeout, O.toUndefined));
+        _.it.run(
+          spec.name,
+          async () => pipe(spec.eff, provider, T.runToPromise),
+          pipe(spec, getTimeout, O.toUndefined)
+        );
       },
       () => {
         _.it.skip(

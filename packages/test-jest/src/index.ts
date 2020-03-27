@@ -14,7 +14,13 @@ import {
   withTimeout
 } from "@matechs/test";
 
-export const run = customRun({ describe, it });
+export const run = customRun({
+  describe,
+  it: {
+    run: it,
+    skip: it.skip
+  }
+});
 
 export {
   arb,
