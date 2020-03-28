@@ -30,8 +30,8 @@ const fetchSuite = J.suite("Fetch")(
 
 J.run(fetchSuite)(
   flow(
-    T.provide(F.client(fetch)),
-    T.provide(
+    T.provideS(F.client(fetch)),
+    T.provideS(
       H.middlewareStack([
         H.withPathHeaders(
           { foo: "bar" },
