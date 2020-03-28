@@ -1,146 +1,39 @@
 import { effect as T } from "@matechs/effect";
-import * as C from "../src";
-import assert from "assert";
-import { done, Exit } from "@matechs/effect/lib/original/exit";
+import * as M from "@matechs/test-jest";
 import { pipe } from "fp-ts/lib/pipeable";
+import * as C from "../src";
 
-function test<E, A>(eff: T.Effect<C.Console, E, A>): Promise<Exit<E, A>> {
-  return T.runToPromiseExit(pipe(eff, C.provideConsole));
-}
+const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) =>
+  M.withHook(
+    T.sync(() => ({
+      mock: jest.spyOn(console, method).mockImplementation(() => {}),
+    })),
+    ({ mock }) =>
+      T.sync(() => {
+        M.assert.deepEqual(mock.mock.calls.length, 1);
+      })
+  );
 
-describe("Console", () => {
-  const assertMock = jest.spyOn(console, "assert");
-  const clearMock = jest.spyOn(console, "clear");
-  const countMock = jest.spyOn(console, "count");
-  const countResetMock = jest.spyOn(console, "countReset");
-  const debugMock = jest.spyOn(console, "debug");
-  const dirMock = jest.spyOn(console, "dir");
-  const dirXmlMock = jest.spyOn(console, "dirxml");
-  const errorMock = jest.spyOn(console, "error");
-  const groupMock = jest.spyOn(console, "group");
-  const groupCollapsedMock = jest.spyOn(console, "groupCollapsed");
-  const groupEndMock = jest.spyOn(console, "groupEnd");
-  const infoMock = jest.spyOn(console, "info");
-  const logMock = jest.spyOn(console, "log");
-  const tableMock = jest.spyOn(console, "table");
-  const timeMock = jest.spyOn(console, "time");
-  const timeEndMock = jest.spyOn(console, "timeEnd");
-  const timeLogMock = jest.spyOn(console, "timeLog");
-  const traceMock = jest.spyOn(console, "trace");
-  const warnMock = jest.spyOn(console, "warn");
+const consoleSpec = M.suite("Console")(
+  pipe(M.testM("assert", C.assert(1)), withConsoleTest("assert")),
+  pipe(M.testM("clear", C.clear), withConsoleTest("clear")),
+  pipe(M.testM("count", C.count()), withConsoleTest("count")),
+  pipe(M.testM("countReset", C.countReset()), withConsoleTest("countReset")),
+  pipe(M.testM("debug", C.debug()), withConsoleTest("debug")),
+  pipe(M.testM("dir", C.dir({})), withConsoleTest("dir")),
+  pipe(M.testM("dirxml", C.dirxml({})), withConsoleTest("dirxml")),
+  pipe(M.testM("error", C.error()), withConsoleTest("error")),
+  pipe(M.testM("group", C.group()), withConsoleTest("group")),
+  pipe(M.testM("groupCollapsed", C.groupCollapsed()), withConsoleTest("groupCollapsed")),
+  pipe(M.testM("groupEnd", C.groupEnd), withConsoleTest("groupEnd")),
+  pipe(M.testM("info", C.info()), withConsoleTest("info")),
+  pipe(M.testM("log", C.log()), withConsoleTest("log")),
+  pipe(M.testM("table", C.table({})), withConsoleTest("table")),
+  pipe(M.testM("time", C.time()), withConsoleTest("time")),
+  pipe(M.testM("timeEnd", C.timeEnd()), withConsoleTest("timeEnd")),
+  pipe(M.testM("timeLog", C.timeLog()), withConsoleTest("timeLog")),
+  pipe(M.testM("trace", C.trace()), withConsoleTest("trace")),
+  pipe(M.testM("warn", C.warn()), withConsoleTest("warn"))
+);
 
-  assertMock.mockImplementation(() => {});
-  clearMock.mockImplementation(() => {});
-  countMock.mockImplementation(() => {});
-  countResetMock.mockImplementation(() => {});
-  debugMock.mockImplementation(() => {});
-  dirMock.mockImplementation(() => {});
-  dirXmlMock.mockImplementation(() => {});
-  errorMock.mockImplementation(() => {});
-  groupMock.mockImplementation(() => {});
-  groupCollapsedMock.mockImplementation(() => {});
-  groupEndMock.mockImplementation(() => {});
-  infoMock.mockImplementation(() => {});
-  logMock.mockImplementation(() => {});
-  tableMock.mockImplementation(() => {});
-  timeMock.mockImplementation(() => {});
-  timeEndMock.mockImplementation(() => {});
-  timeLogMock.mockImplementation(() => {});
-  traceMock.mockImplementation(() => {});
-  warnMock.mockImplementation(() => {});
-
-  it("assert", async () => {
-    assert.deepEqual(await test(C.assert(1)), done(undefined));
-    assert.deepEqual(assertMock.mock.calls.length, 1);
-  });
-
-  it("clear", async () => {
-    assert.deepEqual(await test(C.clear), done(undefined));
-    assert.deepEqual(clearMock.mock.calls.length, 1);
-  });
-
-  it("count", async () => {
-    assert.deepEqual(await test(C.count()), done(undefined));
-    assert.deepEqual(countMock.mock.calls.length, 1);
-  });
-
-  it("countReset", async () => {
-    assert.deepEqual(await test(C.countReset()), done(undefined));
-    assert.deepEqual(countResetMock.mock.calls.length, 1);
-  });
-
-  it("debug", async () => {
-    assert.deepEqual(await test(C.debug()), done(undefined));
-    assert.deepEqual(debugMock.mock.calls.length, 1);
-  });
-
-  it("dir", async () => {
-    assert.deepEqual(await test(C.dir({})), done(undefined));
-    assert.deepEqual(dirMock.mock.calls.length, 1);
-  });
-
-  it("dirxml", async () => {
-    assert.deepEqual(await test(C.dirxml({})), done(undefined));
-    assert.deepEqual(dirXmlMock.mock.calls.length, 1);
-  });
-
-  it("error", async () => {
-    assert.deepEqual(await test(C.error()), done(undefined));
-    assert.deepEqual(errorMock.mock.calls.length, 1);
-  });
-
-  it("group", async () => {
-    assert.deepEqual(await test(C.group()), done(undefined));
-    assert.deepEqual(groupMock.mock.calls.length, 1);
-  });
-
-  it("groupCollapsed", async () => {
-    assert.deepEqual(await test(C.groupCollapsed()), done(undefined));
-    assert.deepEqual(groupCollapsedMock.mock.calls.length, 1);
-  });
-
-  it("groupEnd", async () => {
-    assert.deepEqual(await test(C.groupEnd), done(undefined));
-    assert.deepEqual(groupEndMock.mock.calls.length, 1);
-  });
-
-  it("info", async () => {
-    assert.deepEqual(await test(C.info()), done(undefined));
-    assert.deepEqual(infoMock.mock.calls.length, 1);
-  });
-
-  it("log", async () => {
-    assert.deepEqual(await test(C.log()), done(undefined));
-    assert.deepEqual(logMock.mock.calls.length, 1);
-  });
-
-  it("table", async () => {
-    assert.deepEqual(await test(C.table({})), done(undefined));
-    assert.deepEqual(tableMock.mock.calls.length, 1);
-  });
-
-  it("time", async () => {
-    assert.deepEqual(await test(C.time()), done(undefined));
-    assert.deepEqual(timeMock.mock.calls.length, 1);
-  });
-
-  it("timeEnd", async () => {
-    assert.deepEqual(await test(C.timeEnd()), done(undefined));
-    assert.deepEqual(timeEndMock.mock.calls.length, 1);
-  });
-
-  it("timeLog", async () => {
-    assert.deepEqual(await test(C.timeLog()), done(undefined));
-    assert.deepEqual(timeLogMock.mock.calls.length, 1);
-  });
-
-  it("trace", async () => {
-    assert.deepEqual(await test(C.trace()), done(undefined));
-    assert.deepEqual(traceMock.mock.calls.length, 1);
-  });
-
-  it("warn", async () => {
-    assert.deepEqual(await test(C.warn()), done(undefined));
-    assert.deepEqual(warnMock.mock.calls.length, 1);
-  });
-});
+M.run(consoleSpec)(C.provideConsole);
