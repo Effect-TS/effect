@@ -3,6 +3,8 @@ import * as H from "@matechs/http-client";
 import * as J from "@matechs/test-jest";
 import { Do } from "fp-ts-contrib/lib/Do";
 
+/* istanbul ignore file */
+
 export const malformedSpec = J.testM(
   "malformed",
   Do(T.effect)

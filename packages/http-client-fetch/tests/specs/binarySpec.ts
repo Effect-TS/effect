@@ -7,6 +7,8 @@ import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { expressM } from "../resources/expressM";
 
+/* istanbul ignore file */
+
 export const binarySpec = J.testM(
   "binary",
   M.use(expressM(4017), ({ app }) =>

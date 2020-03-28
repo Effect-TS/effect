@@ -6,6 +6,8 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import * as O from "fp-ts/lib/Option";
 import { expressM } from "../resources/expressM";
 
+/* istanbul ignore file */
+
 export const dataSpec = J.testM(
   "data",
   M.use(expressM(4013), ({ app }) =>

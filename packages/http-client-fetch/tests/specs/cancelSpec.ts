@@ -3,6 +3,8 @@ import * as H from "@matechs/http-client";
 import * as J from "@matechs/test-jest";
 import { pipe } from "fp-ts/lib/pipeable";
 
+/* istanbul ignore file */
+
 export const cancelSpec = J.testM(
   "cancel",
   pipe(

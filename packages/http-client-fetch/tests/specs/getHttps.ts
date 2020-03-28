@@ -4,6 +4,8 @@ import * as J from "@matechs/test-jest";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as O from "fp-ts/lib/Option";
 
+/* istanbul ignore file */
+
 export const getHttpsSpec = J.testM(
   "get https",
   Do(T.effect)

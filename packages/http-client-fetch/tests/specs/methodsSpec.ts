@@ -7,6 +7,8 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { some } from "fp-ts/lib/Option";
 import { expressM } from "../resources/expressM";
 
+/* istanbul ignore file */
+
 export const methodsSpec = J.testM(
   "post-patch-put-del",
   M.use(expressM(4011), ({ app }) =>

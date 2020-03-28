@@ -5,6 +5,8 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import { expressM } from "../resources/expressM";
 
+/* istanbul ignore file */
+
 export const get404Spec = J.testM(
   "get 404",
   M.use(expressM(4016), () =>

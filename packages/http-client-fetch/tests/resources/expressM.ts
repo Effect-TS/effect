@@ -3,6 +3,8 @@ import express from "express";
 import { left, right } from "fp-ts/lib/Either";
 import { Server } from "http";
 
+/* istanbul ignore file */
+
 export const expressM = (port: number) =>
   M.bracket(
     T.async<Error, { app: express.Express; server: Server }>((r) => {
