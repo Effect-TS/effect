@@ -3624,6 +3624,11 @@ babel-preset-jest@^25.1.0:
     "@babel/plugin-syntax-object-rest-spread" "^7.0.0"
     babel-plugin-jest-hoist "^25.1.0"
 
+babylonjs@^4.1.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/babylonjs/-/babylonjs-4.1.0.tgz#a2d1d6765795e9d44f002831554d63d6275394bd"
+  integrity sha512-MnaH1BQIL+PYgqGaAvGVdP8yd7nM1j6sbQi/K/6+RlkHPxIETW2NbjqxiW7Sywgy7r3PwqWT/gxG4Bz95Z6/yA==
+
 backo2@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/backo2/-/backo2-1.0.2.tgz#31ab1ac8b129363463e35b3ebb69f4dfcfba7947"
