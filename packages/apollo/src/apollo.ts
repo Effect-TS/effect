@@ -40,14 +40,6 @@ export type Resolver<ARGS, K, U extends string, Ctx> = {
     | ResolverSubF<ARGS, U, Ctx, unknown, any, any, any, any, any, any>;
 };
 
-export const resolverF = <ARGS>() => <
-  R extends
-    | ResolverF<ARGS, any, any, unknown, any, any, any>
-    | ResolverSubF<ARGS, any, any, unknown, any, any, any, any, any, any>
->(
-  _: R
-) => _;
-
 export type ResolverEnv<R, U extends string, Ctx> = R extends Resolver<any, any, U, Ctx>
   ? F.UnionToIntersection<
       {

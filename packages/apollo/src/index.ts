@@ -15,8 +15,7 @@ import {
   ResolverInput,
   Resolver,
   ResolverEnv,
-  resolverF,
-  ResolverF
+  ResolverF,
 } from "./apollo";
 
 // EXPERIMENTAL
@@ -33,7 +32,7 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
 
   accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
 
-  resolver: <ARGS>() => <R extends ResolverF<ARGS, U, Ctx, unknown, any, any, any>>(_: R) => R;
+  resolver: <ARGS>() => <R extends ResolverF<ARGS, U, Ctx, any, any, any, any>>(_: R) => R;
   subscription: <ARGS>() => <A, B, C, D, E, F, G>(
     subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
     resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
@@ -64,7 +63,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
     resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
   ): ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G> => ({
     subscribe,
-    resolve
+    resolve,
   });
 
   const resolver = <K extends Resolver<any, K, U, Ctx>>(res: K) => res;
@@ -89,13 +88,13 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                 pipe(
                   res[k]({
                     source: O.fromNullable(source),
-                    args: args || {}
+                    args: args || {},
                   }),
                   T.provideAll({
                     ...(_ as any),
                     [contextURI]: {
-                      [uri]: ctx
-                    }
+                      [uri]: ctx,
+                    },
                   }),
                   T.runToPromise
                 );
@@ -105,16 +104,16 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                   pipe(
                     res[k].subscribe({
                       source: O.fromNullable(source),
-                      args: args || {}
+                      args: args || {},
                     }),
                     T.provideAll({
                       ...(_ as any),
                       [contextURI]: {
-                        [uri]: ctx
-                      }
+                        [uri]: ctx,
+                      },
                     }),
                     T.runToPromise
-                  )
+                  ),
               };
 
               if (res[k].resolve) {
@@ -124,8 +123,8 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                     T.provideAll({
                       ...(_ as any),
                       [contextURI]: {
-                        [uri]: ctx
-                      }
+                        [uri]: ctx,
+                      },
                     }),
                     T.runToPromise
                   );
@@ -152,14 +151,14 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
               onConnect: (a, b, c) => T.runToPromise(T.provideAll(_)(onC(a, b, c))),
               keepAlive: configP.subscriptions.keepAlive,
               onDisconnect: onD ? (a, b) => T.runToPromise(T.provideAll(_)(onD(a, b))) : undefined,
-              path: configP.subscriptions.path
+              path: configP.subscriptions.path,
             };
           }
 
           const server = new ApolloServer({
             schema,
-            context: ci => T.runToPromise(T.provideAll(_)(contextF(ci as any))),
-            ...config
+            context: (ci) => T.runToPromise(T.provideAll(_)(contextF(ci as any))),
+            ...config,
           });
 
           server.applyMiddleware({ app: _[EX.expressAppEnv].app });
@@ -169,7 +168,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
           }
 
           _[EX.serverEnv].onClose.push(
-            T.asyncTotal(r => {
+            T.asyncTotal((r) => {
               server
                 .stop()
                 .then(() => {
@@ -191,7 +190,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
     bindToSchema,
     binder: resolver,
     accessContext,
-    resolver: resolverF,
-    subscription: () => subscription
+    resolver: () => (_) => _,
+    subscription: () => subscription,
   };
 }
