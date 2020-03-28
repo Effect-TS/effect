@@ -1739,6 +1739,23 @@ export function runSync<E, A>(
   return new DriverSyncImpl<E, A>().start(io);
 }
 
+/* istanbul skip next */
+export function runUnsafeSync<E, A>(io: Effect<{}, E, A>): A {
+  const result = runSync(io);
+
+  if (result._tag === "Left") {
+    throw result.left;
+  }
+  if (result.right._tag !== "Done") {
+    throw result.right._tag === "Raise"
+      ? result.right.error
+      : result.right._tag === "Abort"
+      ? result.right.abortedWith
+      : result.right;
+  }
+  return result.right.value;
+}
+
 /**
  * Run an IO and return a Promise of its result
  *
