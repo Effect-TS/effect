@@ -11,7 +11,10 @@ import {
   withProvider,
   withRetryPolicy,
   withSkip,
-  withTimeout
+  withTimeout,
+  withFinalize,
+  withHook,
+  withInit
 } from "@matechs/test";
 
 export const run = customRun({
@@ -35,5 +38,8 @@ export {
   withProvider,
   withRetryPolicy,
   withSkip,
-  withTimeout
+  withTimeout,
+  withFinalize,
+  withHook,
+  withInit
 };
