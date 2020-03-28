@@ -31,6 +31,7 @@
   "devDependencies": {
     "@matechs/effect": "^5.0.7",
     "@matechs/http-client": "^4.0.7",
+    "@matechs/test-jest": "^0.0.2",
     "@types/isomorphic-fetch": "^0.0.35",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14",
