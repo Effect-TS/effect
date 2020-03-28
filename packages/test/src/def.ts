@@ -20,6 +20,9 @@ export type Spec<R> = Test<R> | Suite<R>;
 export interface AspectR<R2> {
   <R>(Spec: Spec<R & R2>): Spec<R>;
 }
+export interface AspectR12<R1, R2> {
+  <R>(Spec: Spec<R & R1>): Spec<R & R2>;
+}
 
 export interface Aspect extends AspectR<unknown> {}
 

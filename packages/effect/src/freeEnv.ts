@@ -72,9 +72,11 @@ export function fn<T extends F.FunctionN<any, T.Effect<any, any, any>>>(): T {
   return (() => {}) as any;
 }
 
-export type Provider<Environment, Module, E2 = never> = <R, E, A>(
-  e: T.Effect<Module & R, E, A>
-) => T.Effect<Environment & R, E | E2, A>;
+export type Provider<Environment, Module, E2 = never> = T.Provider<
+  Environment,
+  Module,
+  E2
+>;
 
 export type Implementation<M> = {
   [k in keyof M]: {
@@ -129,9 +131,9 @@ export type ImplementationEnv<I> = UnionToIntersection<
     : never
 >;
 
-export type UnionToIntersection<U> = (U extends any
-? (k: U) => void
-: never) extends (k: infer I) => void
+export type UnionToIntersection<U> = (
+  U extends any ? (k: U) => void : never
+) extends (k: infer I) => void
   ? I
   : never;
 
@@ -141,11 +143,6 @@ export type ProviderOf<
   RW = unknown,
   EW = never
 > = Provider<ImplementationEnv<OnlyNew<M, I>> & RW, M, EW>;
-
-export function provideSO<R>(r: R) {
-  return <R2, E, A>(eff: T.Effect<R2 & R, E, A>): T.Effect<R2, E, A> =>
-    T.provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
-}
 
 export function providing<
   M extends ModuleShape<M>,
@@ -160,9 +157,9 @@ export function providing<
     for (const entry of Object.keys(s[specURI][sym])) {
       if (typeof a[sym][entry] === "function") {
         r[sym][entry] = (...args: any[]) =>
-          provideSO(env)(a[sym][entry](...args));
+          T.provideSO(env)(a[sym][entry](...args));
       } else if (typeof a[sym][entry] === "object") {
-        r[sym][entry] = provideSO(env)(a[sym][entry]);
+        r[sym][entry] = T.provideSO(env)(a[sym][entry]);
       }
     }
   }
@@ -173,7 +170,7 @@ export function providing<
 export function implement<S extends ModuleSpec<any>>(s: S) {
   return <I extends Implementation<TypeOf<S>>>(
     i: I
-  ): ProviderOf<TypeOf<S>, I> => eff =>
+  ): ProviderOf<TypeOf<S>, I> => (eff) =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       P.pipe(eff, T.provideS(providing(s, i, e)))
     );
@@ -184,8 +181,8 @@ export function implementWith<RW, EW, AW>(w: T.Effect<RW, EW, AW>) {
     I extends Implementation<TypeOf<S>>
   >(
     i: (r: AW) => I
-  ): ProviderOf<TypeOf<S>, I, RW, EW> => eff =>
-    T.effect.chain(w, r =>
+  ): ProviderOf<TypeOf<S>, I, RW, EW> => (eff) =>
+    T.effect.chain(w, (r) =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
         P.pipe(eff, T.provideS(providing(s, i(r), e)))
       )
@@ -213,13 +210,13 @@ export type Merged<S> = S extends {
 
 export function merge<S extends MergeSpec<S>>(s: S): Merged<S> {
   const m = {
-    [specURI]: {}
+    [specURI]: {},
   } as Merged<S>;
 
   for (const k of Reflect.ownKeys(s)) {
     m[specURI] = {
       ...m[specURI],
-      ...s[k][specURI]
+      ...s[k][specURI],
     };
   }
 
