@@ -740,8 +740,12 @@ export function provideStructSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
  * Provides all environment to the child
  */
 
-export const provideAll = <R>(r: R): Provider<unknown, R, never> => (ma) =>
-  new EffectIO(EffectTag.ProvideEnv as const, ma, r) as any;
+export const provideAll = <R>(r: R) => <E, A>(ma: Effect<R, E, A>) =>
+  (new EffectIO(EffectTag.ProvideEnv as const, ma, r) as any) as Effect<
+    unknown,
+    E,
+    A
+  >;
 
 /**
  * Provides all environment necessary to the child effect via an effect
