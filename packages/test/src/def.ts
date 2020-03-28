@@ -24,6 +24,10 @@ export interface AspectR12<R1, R2> {
   <R>(Spec: Spec<R & R1>): Spec<R & R2>;
 }
 
+export interface AspectE<R2> {
+  <R>(Spec: Spec<R>): Spec<R & R2>;
+}
+
 export interface Aspect extends AspectR<unknown> {}
 
 export const patch = <R, R2>(f: (_: Test<R>) => Test<R2>) => (s: Spec<R>): Spec<R2> => {
@@ -37,3 +41,17 @@ export const patch = <R, R2>(f: (_: Test<R>) => Test<R2>) => (s: Spec<R>): Spec<
       } as any;
   }
 };
+
+export interface Describe {
+  (name: string, op: () => void): void;
+}
+
+export interface It {
+  run: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
+  skip: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
+}
+
+export interface Runner {
+  describe: Describe;
+  it: It;
+}
