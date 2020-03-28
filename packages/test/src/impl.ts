@@ -2,7 +2,7 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
-import { Spec, Suite, Test } from "./def";
+import { Spec, Suite, Test, Runner } from "./def";
 import { getTimeout } from "./aspects/timeout";
 import { getSkip, SkipURI } from "./aspects/skip";
 import { identity } from "fp-ts/lib/function";
@@ -86,20 +86,6 @@ function desc<Suites extends Suite<any>[]>(
       }
     });
   });
-}
-
-export interface Describe {
-  (name: string, op: () => void): void;
-}
-
-export interface It {
-  run: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
-  skip: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
-}
-
-export interface Runner {
-  describe: Describe;
-  it: It;
 }
 
 function runTest<R>(_: Runner, spec: Test<R>, provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>) {
