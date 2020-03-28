@@ -1746,7 +1746,7 @@ export function runSync<E, A>(
  * @param io
  * @param r
  */
-export function runToPromise<E, A>(io: Effect<NoEnv, E, A>): Promise<A> {
+export function runToPromise<E, A>(io: Effect<{}, E, A>): Promise<A> {
   return new Promise((resolve, reject) =>
     run(io, (exit) => {
       switch (exit._tag) {
