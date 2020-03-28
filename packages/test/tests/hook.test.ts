@@ -1,4 +1,4 @@
-import { assert, testM, customRun, withHook, withInit } from "../src";
+import { assert, testM, customRun, withHook, withInit, withProvider, withFinalize } from "../src";
 import { effect as T } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 
@@ -55,12 +55,38 @@ customRun({
           _.test.value = "patched";
         })
       )
+    ),
+    withProvider(
+      T.provideS<TestValue>({
+        test: {
+          value: "initial"
+        }
+      })
+    )
+  ),
+  pipe(
+    testM(
+      "run finalizer",
+      T.accessM((_: TestValue) =>
+        T.sync(() => {
+          assert.deepEqual(_.test.value, "initial");
+          _.test.value = "patched";
+        })
+      )
+    ),
+    withFinalize(
+      T.accessM((_: TestValue) =>
+        T.sync(() => {
+          assert.deepEqual(_.test.value, "patched");
+        })
+      )
+    ),
+    withProvider(
+      T.provideS<TestValue>({
+        test: {
+          value: "initial"
+        }
+      })
     )
   )
-)(
-  T.provideS<TestValue>({
-    test: {
-      value: "initial"
-    }
-  })
-);
+)();
