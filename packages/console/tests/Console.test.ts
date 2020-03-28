@@ -10,7 +10,11 @@ const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) 
     })),
     ({ mock }) =>
       T.sync(() => {
-        M.assert.deepEqual(mock.mock.calls.length, 1);
+        const l = mock.mock.calls.length;
+
+        mock.mockReset();
+
+        M.assert.deepEqual(l, 1);
       })
   );
 
