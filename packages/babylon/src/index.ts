@@ -19,14 +19,16 @@ const scene = <URI extends string | symbol>(URI: URI) => ({
   camera: <CameraURI extends string | symbol>(CameraURI: CameraURI) => ({
     provide: provideCamera(URI)(CameraURI),
     access: accessCamera(CameraURI),
-    attachControl: attachControl(CameraURI)
+    attachControl: attachControl(CameraURI),
+    URI: CameraURI
   }),
   light: {
     create: createLight(URI)
   },
   mesh: {
     create: createMesh(URI)
-  }
+  },
+  URI
 });
 
 const canvas = <URI extends string | symbol>(URI: URI) => ({
