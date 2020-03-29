@@ -39,22 +39,22 @@ describe("EffectSafe", () => {
     it("chainOption", async () => {
       const pipeableErr = await pipe(
         T.pure(1),
-        T.chainOption(() => 2)(_ => O.none),
+        T.chainOption(() => 2)((_) => O.none),
         T.runToPromiseExit
       );
 
       const pipeableSuc = await pipe(
         T.pure(1),
-        T.chainOption(() => 2)(n => O.some(n + 1)),
+        T.chainOption(() => 2)((n) => O.some(n + 1)),
         T.runToPromiseExit
       );
 
       const fluentErr = await T.fluent(T.pure(1))
-        .chainOption(() => 2)(_ => O.none)
+        .chainOption(() => 2)((_) => O.none)
         .runToPromiseExit();
 
       const fluentSuc = await T.fluent(T.pure(1))
-        .chainOption(() => 2)(n => O.some(n + 1))
+        .chainOption(() => 2)((n) => O.some(n + 1))
         .runToPromiseExit();
 
       assert.deepEqual(pipeableErr, ex.raise(2));
@@ -66,22 +66,23 @@ describe("EffectSafe", () => {
     it("chainEither", async () => {
       const pipeableErr = await pipe(
         T.pure(1),
-        T.chainEither(n => E.left(n + 1)),
+        T.chainEither((n) => E.left(n + 1)),
         T.runToPromiseExit
       );
 
       const pipeableSuc = await pipe(
         T.pure(1),
-        T.chainEither(n => E.right(n + 1)),
+        T.chainEither((n) => E.right(n + 1)),
         T.runToPromiseExit
       );
 
-      const fluentErr = await T.fluent(T.pure(1))
-        .chainEither(n => E.left(n + 1))
+      const fluentErr = await T.pure(1)
+        .fluent()
+        .chainEither((n) => E.left(n + 1))
         .runToPromiseExit();
 
       const fluentSuc = await T.fluent(T.pure(1))
-        .chainEither(n => E.right(n + 1))
+        .chainEither((n) => E.right(n + 1))
         .runToPromiseExit();
 
       assert.deepEqual(pipeableErr, ex.raise(2));
@@ -93,22 +94,22 @@ describe("EffectSafe", () => {
     it("chainTaskEither", async () => {
       const pipeableErr = await pipe(
         T.pure(1),
-        T.chainTaskEither(n => () => Promise.resolve(E.left(n + 1))),
+        T.chainTaskEither((n) => () => Promise.resolve(E.left(n + 1))),
         T.runToPromiseExit
       );
 
       const pipeableSuc = await pipe(
         T.pure(1),
-        T.chainTaskEither(n => () => Promise.resolve(E.right(n + 1))),
+        T.chainTaskEither((n) => () => Promise.resolve(E.right(n + 1))),
         T.runToPromiseExit
       );
 
       const fluentErr = await T.fluent(T.pure(1))
-        .chainTaskEither(n => () => Promise.resolve(E.left(n + 1)))
+        .chainTaskEither((n) => () => Promise.resolve(E.left(n + 1)))
         .runToPromiseExit();
 
       const fluentSuc = await T.fluent(T.pure(1))
-        .chainTaskEither(n => () => Promise.resolve(E.right(n + 1)))
+        .chainTaskEither((n) => () => Promise.resolve(E.right(n + 1)))
         .runToPromiseExit();
 
       assert.deepEqual(pipeableErr, ex.raise(2));
@@ -120,12 +121,12 @@ describe("EffectSafe", () => {
     it("chainTask", async () => {
       const pipeableSuc = await pipe(
         T.pure(1),
-        T.chainTask(n => () => Promise.resolve(n + 1)),
+        T.chainTask((n) => () => Promise.resolve(n + 1)),
         T.runToPromiseExit
       );
 
       const fluentSuc = await T.fluent(T.pure(1))
-        .chainTask(n => () => Promise.resolve(n + 1))
+        .chainTask((n) => () => Promise.resolve(n + 1))
         .runToPromiseExit();
 
       assert.deepEqual(pipeableSuc, ex.done(2));
@@ -140,15 +141,15 @@ describe("EffectSafe", () => {
         .as(2)
         .asM(T.pure(3))
         .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
-        .chain(n => T.access((r: { k: number }) => n + r.k))
-        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .chain((n) => T.access((r: { k: number }) => n + r.k))
+        .chain((n) => T.access((r: { m: number }) => n + r.m))
         .tap(() => T.unit)
-        .tap(n => T.raiseError(n))
-        .chainError(n => T.pure(n))
+        .tap((n) => T.raiseError(n))
+        .chainError((n) => T.pure(n))
         .chainEnv((n, r) => T.pure(n + r.n))
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
-        .foldExit(_ => T.pure(10), T.pure)
+        .foldExit((_) => T.pure(10), T.pure)
         .result()
         .map(identity)
         .bimap(identity, identity)
@@ -164,15 +165,15 @@ describe("EffectSafe", () => {
         .as(2)
         .asM(T.pure(3))
         .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
-        .chain(n => T.access((r: { k: number }) => n + r.k))
-        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .chain((n) => T.access((r: { k: number }) => n + r.k))
+        .chain((n) => T.access((r: { m: number }) => n + r.m))
         .tap(() => T.unit)
-        .tap(n => T.raiseError(n))
-        .chainError(n => T.pure(n))
+        .tap((n) => T.raiseError(n))
+        .chainError((n) => T.pure(n))
         .chainEnv((n, r) => T.pure(n + r.n))
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
-        .foldExit(_ => T.pure(10), T.pure)
+        .foldExit((_) => T.pure(10), T.pure)
         .result()
         .map(identity)
         .bimap(identity, identity)
@@ -189,14 +190,14 @@ describe("EffectSafe", () => {
         .asM(T.pure(3))
         .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
         .chainW(T.access((r: { k: number }) => r.k))((n, k) => T.pure(n + k))
-        .chain(n => T.access((r: { m: number }) => n + r.m))
+        .chain((n) => T.access((r: { m: number }) => n + r.m))
         .tap(() => T.unit)
-        .tap(n => T.raiseError(n))
-        .chainError(n => T.pure(n))
+        .tap((n) => T.raiseError(n))
+        .chainError((n) => T.pure(n))
         .chainEnv((n, r) => T.pure(n + r.n))
         .provideS({ k: 2 })
         .provide({ n: 3, m: 1 })
-        .foldExit(_ => T.pure(10), T.pure)
+        .foldExit((_) => T.pure(10), T.pure)
         .result()
         .map(identity)
         .bimap(identity, identity)
@@ -208,7 +209,7 @@ describe("EffectSafe", () => {
 
     it("run env requirement inferred correctly", async () => {
       const result = await T.fluent(T.access((n: number) => n))
-        .chain(n => T.pure(n + 1))
+        .chain((n) => T.pure(n + 1))
         .runToPromise(1);
 
       assert.deepEqual(result, 2);
@@ -219,21 +220,23 @@ describe("EffectSafe", () => {
 
       const mod = freeEnv.define({
         [URI]: {
-          updateState: freeEnv.fn<(f: (n: number) => number) => T.UIO<number>>()
-        }
+          updateState: freeEnv.fn<
+            (f: (n: number) => number) => T.UIO<number>
+          >(),
+        },
       });
 
       const {
-        [URI]: { updateState }
+        [URI]: { updateState },
       } = freeEnv.access(mod);
 
-      const provideModLive = freeEnv.implementWith(makeRef(1))(mod)(r => ({
-        [URI]: { updateState: f => r.update(f) }
+      const provideModLive = freeEnv.implementWith(makeRef(1))(mod)((r) => ({
+        [URI]: { updateState: (f) => r.update(f) },
       }));
 
       const result = await T.fluentUnit
-        .asM(updateState(n => n + 1))
-        .asM(updateState(n => n + 1))
+        .asM(updateState((n) => n + 1))
+        .asM(updateState((n) => n + 1))
         .flow(provideModLive)
         .runToPromise();
 
@@ -244,19 +247,19 @@ describe("EffectSafe", () => {
       let res: any = 0;
 
       T.fluent(T.access((n: number) => n))
-        .chain(n => T.pure(n + 1))
+        .chain((n) => T.pure(n + 1))
         .provide(1)
         .fork()
-        .chain(x => x.join)
+        .chain((x) => x.join)
         .run(
           exit.fold(
-            n => {
+            (n) => {
               res = n;
             },
-            n => {
+            (n) => {
               res = n;
             },
-            n => {
+            (n) => {
               res = n;
             },
             () => {
@@ -333,7 +336,7 @@ describe("EffectSafe", () => {
           Do(T.effect)
             .bind("f", T.fork(T.delay(T.pure(10), 100)))
             .bindL("r", ({ f }) => f.join)
-            .return(s => s.r)
+            .return((s) => s.r)
         ),
         ex.done(10)
       );
@@ -345,7 +348,7 @@ describe("EffectSafe", () => {
           Do(T.effect)
             .bind("f", T.fork(T.delay(T.pure(10), 100)))
             .bindL("r", ({ f }) => f.result)
-            .return(s => s.r)
+            .return((s) => s.r)
         ),
         ex.done(O.none)
       );
@@ -357,7 +360,7 @@ describe("EffectSafe", () => {
           Do(T.effect)
             .bind("f", T.fork(T.delay(T.pure(10), 100)))
             .bindL("r", ({ f }) => f.interrupt)
-            .return(s => s.r)
+            .return((s) => s.r)
         ),
         ex.done(ex.interrupt)
       );
@@ -477,7 +480,7 @@ describe("EffectSafe", () => {
         [incrementEnv]: number;
       }
       const config: ConfigEnv = {
-        [incrementEnv]: 2
+        [incrementEnv]: 2,
       };
 
       const program = array.traverse(T.effect)(range(1, 50000), (n: number) =>
@@ -495,7 +498,7 @@ describe("EffectSafe", () => {
 
     it("async", async () => {
       const a = await T.runToPromiseExit(
-        T.asyncTotal(res => {
+        T.asyncTotal((res) => {
           setImmediate(() => {
             res(1);
           });
@@ -602,7 +605,7 @@ describe("EffectSafe", () => {
           T.trySyncMap(toError)(() => {
             throw 100;
           }),
-          T.chainError(_ => T.pure(1))
+          T.chainError((_) => T.pure(1))
         )
       );
 
@@ -659,7 +662,7 @@ describe("EffectSafe", () => {
         [valueEnv]: "ok";
       }
       const env: ValueEnv = {
-        [valueEnv]: "ok"
+        [valueEnv]: "ok",
       };
 
       const module = pipe(T.noEnv, T.mergeEnv(env));
@@ -684,7 +687,7 @@ describe("EffectSafe", () => {
         [valueEnv]: "ok";
       }
       const env: ValueEnv = {
-        [valueEnv]: "ok"
+        [valueEnv]: "ok",
       };
 
       const module = pipe(T.noEnv, T.mergeEnv(env));
@@ -720,12 +723,12 @@ describe("EffectSafe", () => {
 
       const provider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          [nameLengthEnv]: name.length
+          [nameLengthEnv]: name.length,
         } as EnvNameLength)
       );
 
       const env: EnvName = {
-        [nameEnv]: "bob"
+        [nameEnv]: "bob",
       };
 
       const a = await T.runToPromiseExit(
@@ -756,26 +759,26 @@ describe("EffectSafe", () => {
       const program = T.accessM(
         ({
           [nameLengthEnv]: nameLength,
-          [surnameLengthEnv]: surnameLength
+          [surnameLengthEnv]: surnameLength,
         }: EnvNameLength & EnvSurNameLength) =>
           T.pure(nameLength + surnameLength)
       );
 
       const nameLengthProvider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          [nameLengthEnv]: name.length
+          [nameLengthEnv]: name.length,
         } as EnvNameLength)
       );
       const surnameLengthProvider = T.accessM(
         ({ [surNameEnv]: surName }: EnvSurname) =>
           T.pure({
-            [surnameLengthEnv]: surName.length
+            [surnameLengthEnv]: surName.length,
           } as EnvSurNameLength)
       );
 
       const env: EnvName & EnvSurname = {
         [nameEnv]: "bob",
-        [surNameEnv]: "sponge"
+        [surNameEnv]: "sponge",
       };
 
       const a = await T.runToPromiseExit(
@@ -811,26 +814,26 @@ describe("EffectSafe", () => {
       const program = T.accessM(
         ({
           [nameLengthEnv]: nameLength,
-          [surnameLengthEnv]: surnameLength
+          [surnameLengthEnv]: surnameLength,
         }: EnvNameLength & EnvSurNameLength) =>
           T.pure(nameLength + surnameLength)
       );
 
       const nameLengthProvider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          [nameLengthEnv]: name.length
+          [nameLengthEnv]: name.length,
         } as EnvNameLength)
       );
       const surnameLengthProvider = T.accessM(
         ({ [surNameEnv]: surName }: EnvSurname) =>
           T.pure({
-            [surnameLengthEnv]: surName.length
+            [surnameLengthEnv]: surName.length,
           } as EnvSurNameLength)
       );
 
       const env: EnvName & EnvSurname = {
         [nameEnv]: "bob",
-        [surNameEnv]: "sponge"
+        [surNameEnv]: "sponge",
       };
 
       const a = await T.runToPromiseExit(
@@ -872,7 +875,7 @@ describe("EffectSafe", () => {
           T.foldExit(
             () => T.pure(1),
             // tslint:disable-next-line: restrict-plus-operands
-            n => T.pure(n + 1)
+            (n) => T.pure(n + 1)
           )
         )
       );
@@ -924,13 +927,13 @@ describe("EffectSafe", () => {
 
     it("chain", async () => {
       const e1 = await T.runToPromiseExit(
-        effect.chain(T.pure("foo"), a =>
+        effect.chain(T.pure("foo"), (a) =>
           a.length > 2 ? T.pure(a.length) : T.raiseError("foo")
         )
       );
       assert.deepStrictEqual(e1, ex.done(3));
       const e2 = await T.runToPromiseExit(
-        effect.chain(T.pure("a"), a =>
+        effect.chain(T.pure("a"), (a) =>
           a.length > 2 ? T.pure(a.length) : T.raiseError("foo")
         )
       );
@@ -953,7 +956,7 @@ describe("EffectSafe", () => {
 
     it("mapLeft", async () => {
       const e = await T.runToPromiseExit(
-        effect.mapLeft(T.raiseError("1"), x => new Error(x))
+        effect.mapLeft(T.raiseError("1"), (x) => new Error(x))
       );
       assert.deepStrictEqual(e, ex.raise(new Error("1")));
     });
@@ -1042,7 +1045,7 @@ describe("EffectSafe", () => {
   it("fromPredicate", async () => {
     const gt2 = T.fromPredicate(
       (n: number) => n >= 2,
-      n => `Invalid number ${n}`
+      (n) => `Invalid number ${n}`
     );
     const e1 = await T.runToPromiseExit(gt2(3));
     assert.deepStrictEqual(e1, ex.done(3));
@@ -1272,7 +1275,7 @@ describe("EffectSafe", () => {
         .bindL("x", () => M.of("a"))
         .sequenceS({
           a: effect.throwError("a"),
-          b: effect.throwError("b")
+          b: effect.throwError("b"),
         })
         .return(identity);
       const e = await T.runToPromiseExit(p);
@@ -1284,9 +1287,9 @@ describe("EffectSafe", () => {
         .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
         .sequenceS({
           a: T.accessM(({}: Env1) => M.throwError("a")),
-          b: M.throwError("b")
+          b: M.throwError("b"),
         })
-        .return(r => r);
+        .return((r) => r);
       const e = await T.runToPromiseExit(T.provide(env)(p));
       assert.deepStrictEqual(e, ex.raise("a"));
     });
@@ -1297,9 +1300,9 @@ describe("EffectSafe", () => {
           .bindL("x", () => M.of("a"))
           .sequenceS({
             a: M.throwError("a"),
-            b: M.throwError("b")
+            b: M.throwError("b"),
           })
-          .return(r => r)
+          .return((r) => r)
       );
       assert.deepStrictEqual(e, ex.raise("ab"));
     });
@@ -1309,9 +1312,9 @@ describe("EffectSafe", () => {
         .bindL("x", () => M.of("a"))
         .sequenceS({
           a: T.accessM(({}: Env1) => M.throwError("a")),
-          b: M.throwError("b")
+          b: M.throwError("b"),
         })
-        .return(r => r);
+        .return((r) => r);
       const e = await T.runToPromiseExit(T.provide(env1)(p));
       assert.deepStrictEqual(e, ex.raise("ab"));
     });
@@ -1319,7 +1322,7 @@ describe("EffectSafe", () => {
     it("should traverse validation", async () => {
       const V = T.getValidationM(semigroupString);
 
-      const checks = array.traverse(V)([0, 1, 2, 3, 4], x =>
+      const checks = array.traverse(V)([0, 1, 2, 3, 4], (x) =>
         x < 2 ? T.raiseError(`(error: ${x})`) : T.pure(x)
       );
 
@@ -1334,12 +1337,12 @@ describe("EffectSafe", () => {
         [prefixEnv]: "error";
       }
       const env: PrefixEnv = {
-        [prefixEnv]: "error"
+        [prefixEnv]: "error",
       };
 
       const V = T.getValidationM(semigroupString);
 
-      const checks = array.traverse(V)([0, 1, 2, 3, 4], x =>
+      const checks = array.traverse(V)([0, 1, 2, 3, 4], (x) =>
         x < 2
           ? T.accessM(({ [prefixEnv]: prefix }: PrefixEnv) =>
               T.raiseError(`(${prefix}: ${x})`)
@@ -1390,15 +1393,15 @@ describe("patch", () => {
     }
 
     const provideA = T.provideS<RA>({
-      foo: "foo"
+      foo: "foo",
     });
     const provideB = T.provideS<RB>({
-      bar: "bar"
+      bar: "bar",
     });
     const program = T.accessEnvironment<RA & RB>();
-    const patchA = T.patch<RA>()(_ =>
+    const patchA = T.patch<RA>()((_) =>
       T.pure({
-        foo: `${_.foo}-ok`
+        foo: `${_.foo}-ok`,
       })
     );
     const res = await pipe(
