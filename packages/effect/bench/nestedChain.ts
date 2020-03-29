@@ -34,7 +34,7 @@ export const nestedChainEffect = (): T.Effect<T.NoEnv, never, bigint> => {
 };
 
 export const nestedChainEffectFluent = (): T.Effect<T.NoEnv, never, bigint> => {
-  let io = T.fluent(T.pure(BigInt(0)));
+  let io = T.pure(BigInt(0)).fluent();
   for (let i = 0; i < MAX; i++) {
     io = io.chain(effectMapper);
   }
