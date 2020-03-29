@@ -1,6 +1,6 @@
 {
   "name": "@matechs/fancy",
-  "version": "3.0.13",
+  "version": "3.0.14",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -42,7 +42,7 @@
     "react-dom": "^16.13.0"
   },
   "devDependencies": {
-    "@matechs/effect": "^5.0.11",
+    "@matechs/effect": "^5.0.12",
     "@morphic-ts/batteries": "^0.11.2-alpha.0",
     "@types/react": "^16.9.23",
     "@types/react-dom": "^16.9.5",
