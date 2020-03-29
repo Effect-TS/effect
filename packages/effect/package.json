@@ -22,7 +22,7 @@
     "es6"
   ],
   "devDependencies": {
-    "@qio/core": "^31.0.0",
+    "@qio/core": "^31.1.0",
     "@types/benchmark": "^1.0.31",
     "@types/node": "^13.9.1",
     "benchmark": "^2.1.4",
