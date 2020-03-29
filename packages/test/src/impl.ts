@@ -7,7 +7,7 @@ import { getTimeout } from "./aspects/timeout";
 import { getSkip, SkipURI } from "./aspects/skip";
 import { identity } from "fp-ts/lib/function";
 
-export const testM = <R, E>(name: string, eff?: T.Effect<R, E, void>): Spec<R> => ({
+export const testM = <R, E, A>(name: string, eff?: T.Effect<R, E, A>): Spec<R> => ({
   _R: undefined as any,
   _tag: "test",
   name,
@@ -17,7 +17,7 @@ export const testM = <R, E>(name: string, eff?: T.Effect<R, E, void>): Spec<R> =
   }
 });
 
-export type ROf<S extends Spec<any>> = unknown extends S["_R"] ? never : S["_R"];
+export type ROf<S extends Spec<any>> = S extends Spec<infer R> ? (unknown extends R ? never : R) : never;
 
 export const suite = (name: string) => <Specs extends Spec<any>[]>(
   ...specs: Specs

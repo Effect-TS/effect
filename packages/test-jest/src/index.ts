@@ -43,3 +43,5 @@ export {
   withHook,
   withInit
 };
+
+export { mockedTestM } from "./aspects/withJestMocks";

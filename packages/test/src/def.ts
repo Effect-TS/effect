@@ -1,15 +1,15 @@
 import { effect as T } from "@matechs/effect";
 
 export interface Test<R> {
-  _R: R;
+  _R: (_: R) => void;
   _tag: "test";
   name: string;
-  eff: T.Effect<R, any, void>;
+  eff: T.Effect<R, any, any>;
   config: Record<string, unknown>;
 }
 
 export interface Suite<R> {
-  _R: R;
+  _R: (_: R) => void;
   _tag: "suite";
   name: string;
   specs: Spec<R>[];

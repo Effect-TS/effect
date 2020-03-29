@@ -1,5 +1,5 @@
 import { pipe } from "fp-ts/lib/pipeable";
-import { patch, AspectE } from "../def";
+import { patch, AspectE, AspectR12 } from "../def";
 import { effect as T } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -39,6 +39,24 @@ export const withHook = <R, R2, A>(
       eff: Do(T.effect)
         .bind("i", init)
         .bind("e", T.result(_.eff))
+        .doL((s) => finalize(s.i))
+        .bindL("r", (s) => T.completed(s.e))
+        .return((s) => s.r)
+    }))
+  );
+
+export const withHookP = <R, R2, A>(
+  init: T.Effect<R, any, A>,
+  finalize: (_: A) => T.Effect<R2, any, void>
+): AspectR12<A, R & R2> => (Spec) =>
+  pipe(
+    Spec,
+    patch((_) => ({
+      ..._,
+      _R: undefined as any,
+      eff: Do(T.effect)
+        .bind("i", init)
+        .bindL("e", (s) => T.result(T.provideS(s.i)(_.eff)))
         .doL((s) => finalize(s.i))
         .bindL("r", (s) => T.completed(s.e))
         .return((s) => s.r)
