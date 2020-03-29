@@ -2359,21 +2359,21 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha1-p3c2C1s5oaLlEG+OhY8v0tBgxXA=
 
-"@qio/core@^31.0.0":
-  version "31.0.0"
-  resolved "https://registry.yarnpkg.com/@qio/core/-/core-31.0.0.tgz#c74bd04a0138882f1f9fb5b90a6cbdd95e384ba0"
-  integrity sha512-xeak4JZ2FIyYvDJho8PQaJR4OYWGVqx6/7kqzhv6k2XldxZ4/Lton8ke5g6qhDVRI/a3K3U6+NEZE2IVQ3Z4sw==
+"@qio/core@^31.1.0":
+  version "31.1.0"
+  resolved "https://registry.yarnpkg.com/@qio/core/-/core-31.1.0.tgz#97d1002b40caa053d6dd2c08e85ceb6b79e7ee75"
+  integrity sha512-UAwdjR6+0ewPQ/p4gx6IP58ToJnfClgPY1DujIzUVAt3eZN6FLacESwsl0d74tfmiiOSCdMYT/zVcQRheAwOJQ==
   dependencies:
-    "@qio/prelude" "^31.0.0"
+    "@qio/prelude" "^31.1.0"
     debug "^4.1.1"
     in-node "^1.0.0"
     standard-data-structures "^4.0.0"
     ts-scheduler "^8.0.4"
 
-"@qio/prelude@^31.0.0":
-  version "31.0.0"
-  resolved "https://registry.yarnpkg.com/@qio/prelude/-/prelude-31.0.0.tgz#2d992c7dd2f6d0860c617fbcf087af2704f03d8c"
-  integrity sha512-4Php2i/VDOrF5XMEzvUpojLsBiBdKs9Xgza+bI3kqUPYxnZndhn81k0y5nKXgpwcHx68esvrqDpW4igxaM2rTg==
+"@qio/prelude@^31.1.0":
+  version "31.1.0"
+  resolved "https://registry.yarnpkg.com/@qio/prelude/-/prelude-31.1.0.tgz#dd393686955a2e6c6567990de41cf3110271ced5"
+  integrity sha512-cvZrCCW1R7DEQtXO1vNPqfNboIVqIxQ5nVS10gY+bhXamw+fwjyGHZJVs20DpWG034ZvAZG4YolUN6qD1ywwRw==
 
 "@sinonjs/commons@^1.7.0":
   version "1.7.1"

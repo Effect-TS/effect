@@ -524,7 +524,9 @@ function chain_<R, E, A, R2, E2, B>(
   inner: Effect<R, E, A>,
   bind: F.FunctionN<[A], Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return new EffectIO(EffectTag.Chain as const, inner, bind) as any;
+  return ((inner as any) as Instructions)._tag === EffectTag.Pure
+    ? bind((inner as any).f0)
+    : (new EffectIO(EffectTag.Chain as const, inner, bind) as any);
 }
 
 export function chainOption<E>(
@@ -793,7 +795,9 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: F.FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return new EffectIO(EffectTag.Map as const, base, f) as any;
+  return ((base as any) as Instructions)._tag === EffectTag.Pure
+    ? new EffectIO(EffectTag.Pure as const, f(((base as any) as Pure<any>).f0))
+    : (new EffectIO(EffectTag.Map as const, base, f) as any);
 }
 
 /**

@@ -1,12 +1,9 @@
-name: Node CI
+name: Node CI Bench
 
 on:
   push:
     branches:
-      - issue/**
       - features/**
-      - generic/**
-      - greenkeeper/**
 
 jobs:
   build:
@@ -24,8 +21,7 @@ jobs:
           npm install -g yarn
           lerna bootstrap
           lerna run build
-          yarn jest --detectOpenHandles
-          lerna run lint --parallel
+          lerna run bench
         env:
           CI: "true"
 
