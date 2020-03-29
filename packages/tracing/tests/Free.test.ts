@@ -1,10 +1,8 @@
 import { Span, SpanOptions, Tracer as OT } from "opentracing";
-
 import { effect as T, freeEnv as F } from "@matechs/effect";
 import { withTracer, withControllerSpan } from "../src";
 import * as TR from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
-import { provideAll } from "@matechs/effect/lib/effect";
 
 import * as assert from "assert";
 
@@ -12,14 +10,14 @@ const URI: unique symbol = Symbol();
 
 const m = F.define({
   [URI]: {
-    shouldTrace: F.cn<T.UIO<void>>()
-  }
+    shouldTrace: F.cn<T.UIO<void>>(),
+  },
 });
 
 const i = F.implement(m)({
   [URI]: {
-    shouldTrace: T.unit
-  }
+    shouldTrace: T.unit,
+  },
 });
 
 class MockTracer extends OT {
@@ -36,7 +34,7 @@ class MockTracer extends OT {
 }
 
 const {
-  [URI]: { shouldTrace }
+  [URI]: { shouldTrace },
 } = TR.free.access(m);
 
 const program = pipe(
@@ -46,12 +44,15 @@ const program = pipe(
 
 describe("Trace Free", () => {
   it("trace access", async () => {
-    const spans = [];
+    const spans: any[] = [];
     const mockT = new MockTracer(spans);
     const tracer = TR.tracer(T.pure(mockT));
 
-    await T.runToPromiseExit(pipe(program, provideAll(tracer)));
+    await T.runToPromiseExit(pipe(program, T.provideS(tracer)));
 
-    assert.deepEqual(spans.map(s => s.name), ["main", "shouldTrace"]);
+    assert.deepEqual(
+      spans.map((s) => s.name),
+      ["main", "shouldTrace"]
+    );
   });
 });

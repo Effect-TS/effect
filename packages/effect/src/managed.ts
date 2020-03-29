@@ -32,7 +32,7 @@ export interface Managed<R, E, A> {
   _TAG: "Managed";
   _E: E;
   _A: A;
-  (_: R): void;
+  _R: (_: R) => void;
 }
 
 export const toM = <R, E, A>(_: ManagedT<R, E, A>): Managed<R, E, A> =>
@@ -140,7 +140,7 @@ export function suspend<R, E, R2, E2, A>(
       ({
         _tag: ManagedTag.Suspended,
         suspended: effect.map(T.provideAll(r)(suspended), (m) => (_: T.NoEnv) =>
-          m(r)
+          (fromM(m))(r)
         ),
       } as any)
   );

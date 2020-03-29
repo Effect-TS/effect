@@ -1,9 +1,8 @@
 import { effect as T } from "@matechs/effect";
 import * as A from "fp-ts/lib/Array";
-import { IO } from "fp-ts/lib/IO";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { print, Printer } from "./Printer";
-import { ChildContext, Tracer, withChildSpan } from "../../src";
+import { withChildSpan } from "../../src";
 
 export const CounterState: unique symbol = Symbol();
 
@@ -31,8 +30,8 @@ export const counterState = T.provideSM(
               s[CounterState].ref += 1;
             })
           );
-        }
-      }
+        },
+      },
     })
   )
 );
@@ -41,18 +40,14 @@ export const Counter: unique symbol = Symbol();
 
 export interface Counter {
   [Counter]: {
-    count(): T.Effect<
-      Printer & Tracer & CounterState & ChildContext,
-      Error,
-      void[]
-    >;
+    count(): T.Effect<Printer & CounterState, Error, void[]>;
   };
 }
 
 export const counter: Counter = {
   [Counter]: {
     count() {
-      return A.array.traverse(T.effect)(A.range(1, 10), n =>
+      return A.array.traverse(T.effect)(A.range(1, 10), (n) =>
         Do(T.effect)
           .do(increment())
           .bind("count", withChildSpan("span-current-count")(currentCount()))
@@ -60,8 +55,8 @@ export const counter: Counter = {
           // tslint:disable-next-line: no-empty
           .return(() => {})
       );
-    }
-  }
+    },
+  },
 };
 
 export function increment(): T.Effect<CounterState, T.NoErr, void> {

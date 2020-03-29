@@ -7,7 +7,8 @@
   "scripts": {
     "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
     "lint": "tslint --project .",
-    "import-path-rewrite": "import-path-rewrite"
+    "import-path-rewrite": "import-path-rewrite",
+    "tc": "tsc --noEmit"
   },
   "publishConfig": {
     "access": "public"

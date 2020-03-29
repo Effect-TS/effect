@@ -22,6 +22,7 @@ jobs:
           npm install -g yarn
           lerna bootstrap
           lerna run build
+          lerna run tc --parallel
           yarn jest --detectOpenHandles
           cp .ci.npmrc .npmrc
           lerna publish from-package --yes

@@ -52,7 +52,7 @@ export interface Stream<R, E, A> {
   _TAG: "Stream";
   _E: E;
   _A: A;
-  (_: R): void;
+  _R: (_: R) => void;
 }
 
 export const toS = <R, E, A>(_: StreamT<R, E, A>): Stream<R, E, A> => _ as any;
