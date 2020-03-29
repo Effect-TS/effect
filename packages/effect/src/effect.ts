@@ -60,9 +60,9 @@ export const noEnv: {} = {};
  * A description of an effect to perform
  */
 export interface Effect<R, E, A> {
-  _TAG: "Effect";
-  _E: E;
-  _A: A;
+  _TAG: () => "Effect";
+  _E: () => E;
+  _A: () => A;
   _R: (_: R) => void;
 
   fluent: <K extends R>() => EffectIO<K, E, A>;
@@ -80,7 +80,7 @@ export type Strip<R, R2 extends Partial<R>> = {
 
 export type OrVoid<R> = R extends {} & infer A ? A : void;
 
-export class EffectIO<R, E, A> {
+export class EffectIO<R, E, A> implements Effect<R, E, A> {
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
   }
@@ -96,8 +96,24 @@ export class EffectIO<R, E, A> {
     return this as any;
   }
 
-  fluent(): EffectIO<R, E, A> {
+  fluent<K extends R>(): EffectIO<K, E, A> {
     return this as any;
+  }
+
+  _TAG(): "Effect" {
+    return undefined as any;
+  }
+
+  _A(): A {
+    return undefined as any;
+  }
+
+  _E(): E {
+    return undefined as any;
+  }
+
+  _R(_: R): void {
+    return undefined as any;
   }
 
   chain<R2, E2, A2>(
