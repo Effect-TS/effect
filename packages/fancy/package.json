@@ -10,7 +10,8 @@
     "import-path-rewrite": "import-path-rewrite",
     "build-demo": "next build demo",
     "dev-demo": "next dev demo",
-    "start-demo": "next start demo"
+    "start-demo": "next start demo",
+    "tc": "tsc --noEmit"
   },
   "publishConfig": {
     "access": "public"

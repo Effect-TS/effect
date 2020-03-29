@@ -1,6 +1,4 @@
-import { effect as T } from "@matechs/effect";
-import { done } from "@matechs/effect/lib/original/exit";
-import { Env } from "@matechs/effect/lib/utils/types";
+import { effect as T, exit as EX, utils as U } from "@matechs/effect";
 import * as assert from "assert";
 import { deepEqual } from "fast-equals";
 import {
@@ -28,7 +26,7 @@ describe("Api", () => {
   it("should use mock repository", async () => {
     const main = DB.repository(DemoEntity).save({ id: "ok" });
 
-    const env: Env<typeof main> = {
+    const env: U.Env<typeof main> = {
       [ORM.DatabaseURI]: {
         [DbURI]: ORM.mockDatabase({
           repository: () => ({
@@ -43,7 +41,7 @@ describe("Api", () => {
 
     const result = await T.runToPromiseExit(T.provideAll(env)(main));
 
-    assert.deepEqual(result, done({ id: "ok" }));
+    assert.deepEqual(result, EX.done({ id: "ok" }));
   });
 
   it("should use mock repository findOne", async () => {
@@ -53,7 +51,7 @@ describe("Api", () => {
       },
     });
 
-    const env: Env<typeof main> = {
+    const env: U.Env<typeof main> = {
       [ORM.DatabaseURI]: {
         [DbURI]: ORM.mockDatabase({
           repository: () => ({
@@ -68,7 +66,7 @@ describe("Api", () => {
 
     const result = await T.runToPromiseExit(T.provideAll(env)(main));
 
-    assert.deepEqual(result, done(some({ id: "ok" })));
+    assert.deepEqual(result, EX.done(some({ id: "ok" })));
   });
 
   it("should use concrete repository", async () => {
@@ -100,7 +98,7 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, done({ id: "ok" }));
+    assert.deepEqual(result, EX.done({ id: "ok" }));
   });
 
   it("should use concrete repository findOne", async () => {
@@ -136,7 +134,7 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, done(some({ id: "ok" })));
+    assert.deepEqual(result, EX.done(some({ id: "ok" })));
   });
 
   it("should use concrete repository in tx", async () => {
@@ -170,6 +168,6 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, done({ id: "ok" }));
+    assert.deepEqual(result, EX.done({ id: "ok" }));
   });
 });

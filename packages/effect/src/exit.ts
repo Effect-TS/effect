@@ -1,5 +1,34 @@
-import { Raise, Abort, Interrupt, Exit, Done } from "./original/exit";
-export { Raise, Abort, Interrupt, Exit, Done };
+import {
+  Raise,
+  Abort,
+  Interrupt,
+  Exit,
+  Done,
+  done,
+  abort,
+  interrupt,
+  interruptWithError,
+  interruptWithErrorAndOthers,
+  Cause,
+  ExitTag,
+  raise,
+} from "./original/exit";
+
+export {
+  Raise,
+  Abort,
+  Interrupt,
+  Exit,
+  Done,
+  done,
+  abort,
+  interrupt,
+  interruptWithError,
+  interruptWithErrorAndOthers,
+  Cause,
+  ExitTag,
+  raise,
+};
 
 export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> => e._tag === "Done";
 
@@ -31,7 +60,7 @@ function fold_<E, A, R>(
 }
 
 export const exit = {
-  fold: fold_
+  fold: fold_,
 };
 
 export function fold<E, A, R>(
@@ -40,5 +69,5 @@ export function fold<E, A, R>(
   onAbort: (v: unknown) => R,
   onInterrupt: () => R
 ): (e: Exit<E, A>) => R {
-  return e => fold_(e, onDone, onRaise, onAbort, onInterrupt);
+  return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt);
 }

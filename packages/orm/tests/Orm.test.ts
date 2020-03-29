@@ -1,6 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { raise } from "@matechs/effect/lib/original/exit";
-import { Env } from "@matechs/effect/lib/utils/types";
+import { effect as T, freeEnv as F, utils as U, exit as EX } from "@matechs/effect";
 import * as assert from "assert";
 import {
   Connection,
@@ -71,7 +69,7 @@ describe("Orm", () => {
 
     const program = bracketPool(withTransaction(main));
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
@@ -80,7 +78,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       result,
-      raise(
+      EX.raise(
         new DB.TaskError(new Error("not implemented"), "withRepositoryTask")
       )
     );
@@ -121,7 +119,7 @@ describe("Orm", () => {
       )
     );
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
@@ -130,7 +128,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       result,
-      raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
+      EX.raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
     );
   });
 
@@ -160,7 +158,7 @@ describe("Orm", () => {
       )
     );
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
@@ -169,7 +167,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       result,
-      raise(
+      EX.raise(
         new DB.TaskError(new Error("not implemented"), "withConnectionTask")
       )
     );
@@ -215,7 +213,7 @@ describe("Orm", () => {
         },
       } as Connection);
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
@@ -269,7 +267,7 @@ describe("Orm", () => {
         },
       } as Connection);
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
@@ -326,7 +324,7 @@ describe("Orm", () => {
         },
       } as Connection);
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };
@@ -335,7 +333,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       res,
-      raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
+      EX.raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
     );
     assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
   });
@@ -390,7 +388,7 @@ describe("Orm", () => {
         } as EntityManager,
       } as Connection);
 
-    const env: Env<typeof program> = {
+    const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any)),
     };

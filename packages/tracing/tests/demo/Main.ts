@@ -1,5 +1,4 @@
-import { effect as E } from "@matechs/effect";
-import { Env } from "@matechs/effect/lib/utils/types";
+import { effect as E, utils as U } from "@matechs/effect";
 import * as P from "./Printer";
 import * as C from "./Counter";
 import { Do } from "fp-ts-contrib/lib/Do";
@@ -24,10 +23,10 @@ export const program = withTracer(
   )
 );
 
-export const env: Env<typeof program> = {
+export const env: U.Env<typeof program> = {
   ...P.printer,
   ...C.counter,
-  ...tracer()
+  ...tracer(),
 };
 
 export const main = E.run(pipe(program, E.provideAll(env)));

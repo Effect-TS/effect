@@ -27,15 +27,15 @@ const fb = _.accessM(({ [envB]: { foo } }: EnvB) => _.pure(foo)); // $ExpectType
 const fc = _.accessM(({ [envA]: { foo } }: EnvA) => _.effect.of(foo)); // $ExpectType Effect<EnvA, unknown, string>
 const fd = _.accessM(({ [envB]: { foo } }: EnvB) => _.effect.of(foo)); // $ExpectType Effect<EnvB, unknown, string>
 
-const program = _.effect.chain(fa, _ => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
-const program2 = _.effect.chain(fa, _ => fd); // $ExpectType Effect<EnvA & EnvB, unknown, string>
+const program = _.effect.chain(fa, (_) => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
+const program2 = _.effect.chain(fa, (_) => fd); // $ExpectType Effect<EnvA & EnvB, unknown, string>
 program2;
-const program3 = _.effect.chain(fc, _ => fb); // $ExpectType Effect<EnvA & EnvB, unknown, string>
+const program3 = _.effect.chain(fc, (_) => fb); // $ExpectType Effect<EnvA & EnvB, unknown, string>
 program3;
 
 const fae = _.accessM(({ [envA]: { foo } }: EnvA) => _.raiseError(foo));
 
-_.effect.chain(fae, _ => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
+_.effect.chain(fae, (_) => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
 
 _.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
 
@@ -53,9 +53,9 @@ interface Env3 {
   value3: string;
 }
 
-export type UnionToIntersection2<U> = (U extends any
-? (k: U) => void
-: never) extends (k: infer I) => void
+export type UnionToIntersection2<U> = (
+  U extends any ? (k: U) => void : never
+) extends (k: infer I) => void
   ? I
   : never;
 
@@ -85,54 +85,54 @@ const doAErr = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } 
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
     a: _.accessM(({}: Env1) => M.throwError("a")),
-    b: M.throwError("b")
+    b: M.throwError("b"),
   })
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doSequenceSErrorUnion = Do(M) // $ExpectType Effect<Env2 & Env1, string | number, { x: string; } & { a: never; b: never; }>
   .sequenceS({
     a: _.accessM(({}: Env2) => M.throwError("a")),
     c: _.accessM(({}: Env1) => M.throwError(1)),
-    b: M.throwError("b")
+    b: M.throwError("b"),
   })
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doSequenceSLErrorUnion = Do(M) // $ExpectType Effect<Env2 & Env1, string | number, { x: string; } & { a: never; b: never; }>
   .sequenceSL(() => ({
     a: _.accessM(({}: Env2) => M.throwError("a")),
     c: _.accessM(({}: Env1) => M.throwError(1)),
-    b: M.throwError("b")
+    b: M.throwError("b"),
   }))
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doA = Do(M) // $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: string; b: number; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
     a: _.accessM(({}: Env1) => M.of("a")),
-    b: M.of(2)
+    b: M.of(2),
   })
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doB = Do(M) // $ExpectType Effect<unknown, unknown, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => M.of("a"))
   .sequenceS({
     a: M.throwError("a"),
-    b: M.throwError("b")
+    b: M.throwError("b"),
   })
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doC = Do(M) // $ExpectType Effect<Env2 & Env1 & Env3, unknown, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
     a: _.accessM(({}: Env1) => M.throwError("a")),
-    b: _.accessM(({}: Env3) => M.throwError("b"))
+    b: _.accessM(({}: Env3) => M.throwError("b")),
   })
-  .return(r => r);
+  .return((r) => r);
 
 const M2 = _.getValidationM(semigroupString);
 
@@ -141,29 +141,29 @@ const doA2 = Do(M2) // $ExpectType Effect<Env2 & Env1, string, { x: string; } & 
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
     a: _.accessM(({}: Env1) => M.throwError("a")),
-    b: M.throwError("b")
+    b: M.throwError("b"),
   })
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doB2 = Do(M2) // $ExpectType Effect<unknown, string, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => M.of("a"))
   .sequenceS({
     a: M.throwError("a"),
-    b: M.throwError("b")
+    b: M.throwError("b"),
   })
-  .return(r => r);
+  .return((r) => r);
 
 //@ts-ignore
 const doC2 = Do(M2) // $ExpectType Effect<Env2 & Env1 & Env3, string, { x: string; } & { a: never; b: never; }>
   .bindL("x", () => _.accessM(({}: Env2) => M.of("a")))
   .sequenceS({
     a: _.accessM(({}: Env1) => M.throwError("a")),
-    b: _.accessM(({}: Env3) => M.throwError("b"))
+    b: _.accessM(({}: Env3) => M.throwError("b")),
   })
-  .return(r => r);
+  .return((r) => r);
 
-// $ExpectError
+// $ExpectType Effect<unknown, never, string | number>
 _.effect.foldExit(
   _.raiseError(""),
   () => _.pure("1"),
