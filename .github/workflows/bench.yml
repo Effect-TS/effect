@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - features/**
+      - preview/**
+      - master
 
 jobs:
   build:
