@@ -1,6 +1,6 @@
 {
   "name": "@matechs/logger-winston",
-  "version": "3.0.10",
+  "version": "3.0.11",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -30,8 +30,8 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/effect": "^5.0.10",
-    "@matechs/logger": "^3.0.10",
+    "@matechs/effect": "^5.0.11",
+    "@matechs/logger": "^3.0.11",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14",
     "winston": "^3.2.1"
