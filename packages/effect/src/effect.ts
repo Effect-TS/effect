@@ -86,8 +86,6 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
   _A: A = undefined as any;
   _R: (_: R) => void = undefined as any;
 
-  fluent = () => this as any
-
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
   }
@@ -98,6 +96,10 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
     readonly f1: any = undefined,
     readonly f2: any = undefined
   ) {}
+
+  fluent() {
+    return this as any
+  }
 
   done(): Effect<R, E, A> {
     return this;
