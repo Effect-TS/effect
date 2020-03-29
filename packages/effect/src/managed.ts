@@ -29,9 +29,9 @@ export type ManagedT<R, E, A> = (
   | BracketExit<E, A>;
 
 export interface Managed<R, E, A> {
-  _TAG: "Managed";
-  _E: E;
-  _A: A;
+  _TAG: () => "Managed";
+  _E: () => E;
+  _A: () => A;
   _R: (_: R) => void;
 }
 

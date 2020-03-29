@@ -16,9 +16,9 @@ import { Monad3E, MonadThrow3E, Alt3E } from "../overload";
 export type StreamEitherT<R, E, A> = S.Stream<R, never, Ei.Either<E, A>>;
 
 export interface StreamEither<R, E, A> {
-  _TAG: "StreamEither";
-  _E: E;
-  _A: A;
+  _TAG: () => "StreamEither";
+  _E: () => E;
+  _A: () => A;
   _R: (_: R) => void;
 }
 

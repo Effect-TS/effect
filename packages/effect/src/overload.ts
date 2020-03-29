@@ -82,9 +82,9 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   : never;
 
 interface GenEffect<R, E, A> {
-  _TAG: "Effect" | "Managed" | "Stream" | "StreamEither";
-  _E: E;
-  _A: A;
+  _TAG: () => "Effect" | "Managed" | "Stream" | "StreamEither";
+  _E: () => E;
+  _A: () => A;
   _R: (_: R) => void;
 }
 

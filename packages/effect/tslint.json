@@ -45,7 +45,7 @@
     "interface-over-type-literal": [true],
     "no-angle-bracket-type-assertion": [true],
     "no-unnecessary-callback-wrapper": [true],
-    "prefer-function-over-method": [true],
+    "prefer-function-over-method": [false],
     "prefer-template": [true],
     "prefer-switch": [
       true,

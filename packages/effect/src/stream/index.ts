@@ -49,9 +49,9 @@ export type Fold<R, E, A> = <S>(
 export interface StreamT<R, E, A> extends Managed<R, E, Fold<R, E, A>> {}
 
 export interface Stream<R, E, A> {
-  _TAG: "Stream";
-  _E: E;
-  _A: A;
+  _TAG: () => "Stream";
+  _E: () => E;
+  _A: () => A;
   _R: (_: R) => void;
 }
 
