@@ -323,29 +323,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             this.contextSwitch(current.f0);
             current = undefined;
             break;
-          case T.EffectTag.Chain: {
-            if (current.f0._tag === T.EffectTag.Pure) {
-              current = current.f1(current.f0);
-              break;
-            } else {
-              this.currentFrame = new Frame(current.f1, this.currentFrame);
-              current = current.f0;
-              break;
-            }
-          }
-          case T.EffectTag.Map: {
-            if (current.f0._tag === T.EffectTag.Pure) {
-              current = new T.EffectIO(
-                T.EffectTag.Pure,
-                current.f1(current.f0)
-              );
-              break;
-            } else {
-              this.currentFrame = new MapFrame(current.f1, this.currentFrame);
-              current = current.f0;
-              break;
-            }
-          }
+          case T.EffectTag.Chain:
+            this.currentFrame = new Frame(current.f1, this.currentFrame);
+            current = current.f0;
+            break;
+          case T.EffectTag.Map:
+            this.currentFrame = new MapFrame(current.f1, this.currentFrame);
+            current = current.f0;
+            break;
           case T.EffectTag.Collapse:
             this.currentFrame = new FoldFrame(
               current.f2,
