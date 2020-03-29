@@ -60,6 +60,8 @@ export const noEnv: {} = {};
  * A description of an effect to perform
  */
 export interface Effect<R, E, A> {
+  _tag: EffectTag;
+
   _TAG: () => "Effect";
   _E: () => E;
   _A: () => A;
@@ -100,18 +102,22 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
     return this as any;
   }
 
+  /* istanbul ignore next */
   _TAG(): "Effect" {
     return undefined as any;
   }
 
+  /* istanbul ignore next */
   _A(): A {
     return undefined as any;
   }
 
+  /* istanbul ignore next */
   _E(): E {
     return undefined as any;
   }
 
+  /* istanbul ignore next */
   _R(_: R): void {
     return undefined as any;
   }
@@ -119,7 +125,9 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
   chain<R2, E2, A2>(
     f: (s: A) => Effect<R2, E2, A2>
   ): EffectIO<R & R2, E | E2, A2> {
-    return new EffectIO(EffectTag.Chain as const, this, f) as any;
+    return this._tag === EffectTag.Pure
+      ? (f(this.f0) as any)
+      : new EffectIO(EffectTag.Chain as const, this, f);
   }
 
   chainEither<E2, A2>(f: (s: A) => Ei.Either<E2, A2>): EffectIO<R, E | E2, A2> {
@@ -229,7 +237,9 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
   }
 
   map<B>(f: (a: A) => B): EffectIO<R, E, B> {
-    return new EffectIO(EffectTag.Map as const, this, f);
+    return this._tag === EffectTag.Pure
+      ? new EffectIO(EffectTag.Pure, f(this.f0))
+      : new EffectIO(EffectTag.Map as const, this, f);
   }
 
   bimap<E2, B>(
@@ -537,7 +547,7 @@ function chain_<R, E, A, R2, E2, B>(
   inner: Effect<R, E, A>,
   bind: F.FunctionN<[A], Effect<R2, E2, B>>
 ): Effect<R & R2, E | E2, B> {
-  return ((inner as any) as Instructions)._tag === EffectTag.Pure
+  return inner._tag === EffectTag.Pure
     ? bind((inner as any).f0)
     : new EffectIO(EffectTag.Chain as const, inner, bind);
 }
@@ -804,7 +814,7 @@ function map_<R, E, A, B>(
   base: Effect<R, E, A>,
   f: F.FunctionN<[A], B>
 ): Effect<R, E, B> {
-  return ((base as any) as Instructions)._tag === EffectTag.Pure
+  return base._tag === EffectTag.Pure
     ? new EffectIO(EffectTag.Pure as const, f(((base as any) as Pure<any>).f0))
     : new EffectIO(EffectTag.Map as const, base, f);
 }
