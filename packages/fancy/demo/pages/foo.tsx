@@ -1,4 +1,3 @@
-import React from "react"
 import { pipe } from "fp-ts/lib/pipeable";
 import { Foo } from "../view/Foo";
 import { DT } from "../modules/date";

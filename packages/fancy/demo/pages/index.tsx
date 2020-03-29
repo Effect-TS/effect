@@ -7,7 +7,7 @@ import { ORG } from "../modules/orgs";
 import { orgsStateURI } from "../modules/orgs/state";
 import { Home } from "../view/Home";
 import { flashInitialState, flashStateURI } from "../modules/flash/state";
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { effect as T } from "@matechs/effect";
 import { DateOps } from "../modules/date/def";
 import { OrgsOps } from "../modules/orgs/def";
 import Link from "next/link";
