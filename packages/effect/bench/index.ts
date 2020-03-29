@@ -53,7 +53,7 @@ export const fibEffectFluent = (
   n: bigint
 ): T.EffectIO<T.NoEnv, never, bigint> => {
   if (n < BigInt(2)) {
-    return T.fluent(T.pure(BigInt(1)));
+    return T.pure(BigInt(1)).fluent();
   }
   return fibEffectFluent(n - BigInt(1)).chain(a =>
     fibEffectFluent(n - BigInt(2)).map(b => a + b)

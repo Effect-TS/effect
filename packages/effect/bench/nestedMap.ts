@@ -32,7 +32,7 @@ export const nestedMapEffect = (): T.Effect<T.NoEnv, never, bigint> => {
 };
 
 export const nestedMapEffectFluent = (): T.Effect<unknown, never, bigint> => {
-  let io: T.EffectIO<T.NoEnv, never, bigint> = T.fluent(T.pure(BigInt(0)));
+  let io: T.EffectIO<T.NoEnv, never, bigint> = T.pure(BigInt(0)).fluent();
   for (let i = 0; i < MAX; i++) {
     io = io.map(inc);
   }

@@ -64,6 +64,8 @@ export interface Effect<R, E, A> {
   _E: E;
   _A: A;
   _R: (_: R) => void;
+
+  fluent: <K extends R>() => EffectIO<K, E, A>
 }
 
 export type IO<E, A> = Effect<NoEnv, E, A>;
@@ -83,6 +85,8 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
   _E: E = undefined as any;
   _A: A = undefined as any;
   _R: (_: R) => void = undefined as any;
+
+  fluent = () => this as any
 
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
@@ -278,7 +282,7 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
 }
 
 export function fluent<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
-  return eff as any;
+  return eff.fluent()
 }
 
 export type Instructions =
