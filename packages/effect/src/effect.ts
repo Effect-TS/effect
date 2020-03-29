@@ -81,10 +81,10 @@ export type Strip<R, R2 extends Partial<R>> = {
 export type OrVoid<R> = R extends {} & infer A ? A : void;
 
 export class EffectIO<R, E, A> implements Effect<R, E, A> {
-  _TAG: "Effect" = "Effect";
-  _E: E = undefined as any;
-  _A: A = undefined as any;
-  _R: (_: R) => void = undefined as any;
+  readonly _TAG: "Effect" = "Effect";
+  readonly _E: E = undefined as any;
+  readonly _A: A = undefined as any;
+  readonly _R: (_: R) => void = undefined as any;
 
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
     return eff as any;
