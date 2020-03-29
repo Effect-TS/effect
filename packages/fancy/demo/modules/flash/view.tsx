@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react"
 import { UI } from "../../../lib";
 import { FlashStateEnv, flashStateURI } from "./state";
 import * as M from "mobx";

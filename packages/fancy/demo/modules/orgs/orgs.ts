@@ -1,5 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { isDone } from "@matechs/effect/lib/exit";
+import { effect as T, freeEnv as F, exit as EX } from "@matechs/effect";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "../../../lib";
@@ -28,7 +27,7 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
     updateOrgs: pipe(
       fetchOrgs,
       T.chain(res =>
-        isDone(res)
+        EX.isDone(res)
           ? pipe(
               updateOrgs_(res.value),
               T.chainTap(_ => updateDate),

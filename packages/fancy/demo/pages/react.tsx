@@ -1,3 +1,4 @@
+import React from "react"
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "../../lib";
 import { DT } from "../modules/date";

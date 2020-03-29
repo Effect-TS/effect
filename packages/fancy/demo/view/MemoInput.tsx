@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react"
 import { effect as T } from "@matechs/effect";
 import { UI } from "../../lib";
 
