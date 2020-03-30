@@ -20,4 +20,22 @@ describe("Eff", () => {
 
     assert.deepEqual(result, EX.done(2));
   });
+
+  it("should compose sync using fluent", () => {
+    const program = T.retype(
+      T.accessEnvironment<{ n: number }>()
+        .fluent()
+        .chain((_) => T.sync(() => _.n + 1))
+    );
+
+    const result = pipe(
+      program,
+      T.provideAll({
+        n: 1,
+      }),
+      T.runSync
+    );
+
+    assert.deepEqual(result, EX.done(2));
+  });
 });
