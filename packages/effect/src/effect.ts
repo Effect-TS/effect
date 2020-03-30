@@ -98,6 +98,10 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
     return this as any;
   }
 
+  effect(): Effect<R, E, A> {
+    return this as any;
+  }
+
   fluent<K extends R>(): EffectIO<K, E, A> {
     return this as any;
   }
