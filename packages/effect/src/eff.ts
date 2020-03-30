@@ -31,6 +31,7 @@ export interface Eff<S, R, E, A> {
   _R: (_: R) => void;
 
   fluent: <K extends R>() => EffIO<S, K, E, A>;
+  effect: <K extends R>() => T.Effect<K, E, A>;
 }
 
 export interface AsyncEff<R, E, A> extends Eff<ASYNC, R, E, A> {}
@@ -1067,5 +1068,5 @@ export interface EffIO<S, R, E, A> extends Eff<S, R, E, A> {
     f: (e: Eff<S, R, E, A>) => Eff<S2, R2, E2, A2>
   ): EffIO<S | S2, R2, E2, A2>;
 
-  done(): Eff<S, R, E, A>
+  done(): Eff<S, R, E, A>;
 }
