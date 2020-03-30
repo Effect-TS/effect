@@ -126,6 +126,24 @@ describe("Eff", () => {
     assert.deepEqual(EX.isAbort(result), true);
   });
 
+  it("should encase sync effect - map error if async", () => {
+    const program = Eff.encaseSyncMap(
+      T.async<never, number>((r) => {
+        setTimeout(() => {
+          r(right(1));
+        }, 100);
+        return (cb) => {
+          cb();
+        };
+      }),
+      () => "error"
+    );
+
+    const result = Eff.runSync(program);
+
+    assert.deepEqual(result, EX.raise("error"));
+  });
+
   it("should encase async effect", async () => {
     const program = Eff.encaseEffect(
       T.async<never, number>((r) => {

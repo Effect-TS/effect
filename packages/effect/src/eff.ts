@@ -893,12 +893,12 @@ export function run<S, E, A>(
 }
 
 export function runSync<E, A>(io: Eff<SYNC, {}, E, A>): ex.Exit<E, A> {
-  const res = new DriverSyncImpl<E, A>().start(io as any)
+  const res = new DriverSyncImpl<E, A>().start(io as any);
 
   if (res._tag === "Left") {
-    throw res.left
+    throw res.left;
   } else {
-    return res.right
+    return res.right;
   }
 }
 
@@ -1004,6 +1004,19 @@ export const encaseSync = <R, E, A>(_: T.Effect<R, E, A>): SyncEff<R, E, A> =>
     chainEither(identity),
     orAbort,
     chain(completed)
+  );
+
+export const encaseSyncMap = <R, E, A, E2>(
+  _: T.Effect<R, E, A>,
+  onAsync: (_: Error) => E2
+): SyncEff<R, E | E2, A> =>
+  pipe(
+    access((r: R) => T.runSync(T.provideAll(r)(_))),
+    chain((x) =>
+      x._tag === "Left"
+        ? raiseError<E | E2, A>(onAsync(x.left))
+        : completed(x.right)
+    )
   );
 
 export const encaseEffect = <R, E, A>(
