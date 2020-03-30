@@ -893,10 +893,12 @@ export function run<S, E, A>(
 }
 
 export function runSync<E, A>(io: Eff<SYNC, {}, E, A>): ex.Exit<E, A> {
-  try {
-    return new DriverSyncImpl<E, A>().start(io as any)["right"];
-  } catch {
-    throw new Error("HOW DID YOU END UP HERE?");
+  const res = new DriverSyncImpl<E, A>().start(io as any)
+
+  if (res._tag === "Left") {
+    throw res.left
+  } else {
+    return res.right
   }
 }
 
