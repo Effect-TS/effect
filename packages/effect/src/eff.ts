@@ -64,7 +64,7 @@ export function zip<S1, S2, R, E, A, R2, E2, B>(
   return zipWith(first, second, tuple2);
 }
 
-export function pure<A>(a: A): Eff<SYNC, T.NoEnv, T.NoErr, A> {
+export function pure<A>(a: A): SyncEff<T.NoEnv, T.NoErr, A> {
   return new T.EffectIO(T.EffectTag.Pure, a) as any;
 }
 
@@ -140,23 +140,23 @@ function chain_<S1, S2, R, E, A, R2, E2, B>(
     : (new T.EffectIO(T.EffectTag.Chain, inner, bind) as any);
 }
 
-export function raised<E, A = never>(e: ex.Cause<E>): Eff<SYNC, T.NoEnv, E, A> {
+export function raised<E, A = never>(e: ex.Cause<E>): SyncEff<T.NoEnv, E, A> {
   return new T.EffectIO(T.EffectTag.Raised, e) as any;
 }
 
-export function raiseError<E, A = never>(e: E): Eff<SYNC, T.NoEnv, E, A> {
+export function raiseError<E, A = never>(e: E): SyncEff<T.NoEnv, E, A> {
   return raised(ex.raise(e));
 }
 
-export function raiseAbort(u: unknown): Eff<SYNC, T.NoEnv, T.NoErr, never> {
+export function raiseAbort(u: unknown): SyncEff<T.NoEnv, T.NoErr, never> {
   return raised(ex.abort(u));
 }
 
-export const raiseInterrupt: Eff<SYNC, T.NoEnv, T.NoErr, never> = raised(
+export const raiseInterrupt: SyncEff<T.NoEnv, T.NoErr, never> = raised(
   ex.interrupt
 );
 
-export function completed<E, A>(exit: ex.Exit<E, A>): Eff<SYNC, T.NoEnv, E, A> {
+export function completed<E, A>(exit: ex.Exit<E, A>): SyncEff<T.NoEnv, E, A> {
   return new T.EffectIO(T.EffectTag.Completed, exit) as any;
 }
 
@@ -168,13 +168,13 @@ export function suspended<S, R, E, A>(
 
 export function sync<E = T.NoErr, A = unknown>(
   thunk: F.Lazy<A>
-): Eff<SYNC, T.NoEnv, E, A> {
+): SyncEff<T.NoEnv, E, A> {
   return suspended(() => pure(thunk()));
 }
 
 export function trySync<E = unknown, A = unknown>(
   thunk: F.Lazy<A>
-): Eff<SYNC, T.NoEnv, E, A> {
+): SyncEff<T.NoEnv, E, A> {
   return suspended(() => {
     try {
       return pure(thunk());
@@ -186,7 +186,7 @@ export function trySync<E = unknown, A = unknown>(
 
 export function trySyncMap<E = unknown>(
   onError: (e: unknown) => E
-): <A = unknown>(thunk: F.Lazy<A>) => Eff<SYNC, T.NoEnv, E, A> {
+): <A = unknown>(thunk: F.Lazy<A>) => SyncEff<T.NoEnv, E, A> {
   return (thunk) =>
     suspended(() => {
       try {
@@ -203,7 +203,7 @@ export function async<E, A>(op: T.AsyncFn<E, A>): Eff<ASYNC, T.NoEnv, E, A> {
 
 export function asyncTotal<A>(
   op: F.FunctionN<[F.FunctionN<[A], void>], T.AsyncCancelContFn>
-): Eff<ASYNC, T.NoEnv, T.NoErr, A> {
+): AsyncEff<T.NoEnv, T.NoErr, A> {
   return async((callback) => op((a) => callback(Ei.right(a))));
 }
 
@@ -216,7 +216,7 @@ export function interruptibleRegion<S, R, E, A>(
 export function encaseOption<E, A>(
   o: Op.Option<A>,
   onError: F.Lazy<E>
-): Eff<SYNC, T.NoEnv, E, A> {
+): SyncEff<T.NoEnv, E, A> {
   return new T.EffectIO(T.EffectTag.PureOption, o, onError) as any;
 }
 
@@ -229,9 +229,7 @@ export function chainOption<E>(
     chain_(inner, (a) => encaseOption(bind(a), onEmpty));
 }
 
-export function encaseEither<E, A>(
-  e: Ei.Either<E, A>
-): Eff<SYNC, T.NoEnv, E, A> {
+export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncEff<T.NoEnv, E, A> {
   return new T.EffectIO(T.EffectTag.PureEither, e) as any;
 }
 
@@ -295,7 +293,7 @@ export function interruptible<S, R, E, A>(
   return interruptibleRegion(io, true);
 }
 
-export function after(ms: number): Eff<ASYNC, T.NoEnv, T.NoErr, void> {
+export function after(ms: number): AsyncEff<T.NoEnv, T.NoErr, void> {
   return chain_(accessRuntime, (runtime) =>
     asyncTotal((callback) => runtime.dispatchLater(callback, undefined, ms))
   );
@@ -303,7 +301,7 @@ export function after(ms: number): Eff<ASYNC, T.NoEnv, T.NoErr, void> {
 
 export function fromPromise<A>(
   thunk: F.Lazy<Promise<A>>
-): Eff<ASYNC, T.NoEnv, unknown, A> {
+): AsyncEff<T.NoEnv, unknown, A> {
   return uninterruptible(
     async<unknown, A>((callback) => {
       thunk()
@@ -317,9 +315,7 @@ export function fromPromise<A>(
   );
 }
 
-export function encaseTask<A>(
-  task: TA.Task<A>
-): Eff<ASYNC, T.NoEnv, T.NoErr, A> {
+export function encaseTask<A>(task: TA.Task<A>): AsyncEff<T.NoEnv, T.NoErr, A> {
   return orAbort(fromPromise(task));
 }
 
@@ -331,7 +327,7 @@ export function chainTask<A, B>(
 
 export function encaseTaskEither<E, A>(
   taskEither: TE.TaskEither<E, A>
-): Eff<ASYNC, T.NoEnv, E, A> {
+): AsyncEff<T.NoEnv, E, A> {
   return async<E, A>((callback) => {
     taskEither().then(callback);
     /* istanbul ignore next */
@@ -343,7 +339,7 @@ export function encaseTaskEither<E, A>(
 
 export function chainTaskEither<A, E, B>(
   bind: F.FunctionN<[A], TE.TaskEither<E, B>>
-): <S, R, E2>(eff: Eff<S, R, E2, A>) => Eff<ASYNC, R, E | E2, B> {
+): <S, R, E2>(eff: Eff<S, R, E2, A>) => AsyncEff<R, E | E2, B> {
   return (inner) => chain_(inner, (a) => encaseTaskEither(bind(a)));
 }
 
@@ -367,7 +363,7 @@ export function withRuntime<S, E, A>(
   return chain_(accessRuntime, f) as any;
 }
 
-export function accessEnvironment<R>(): Eff<SYNC, R, T.NoErr, R> {
+export function accessEnvironment<R>(): SyncEff<R, T.NoErr, R> {
   return new T.EffectIO(T.EffectTag.AccessEnv) as any;
 }
 
@@ -379,7 +375,7 @@ export function accessM<S, R, R2, E, A>(
 
 export function access<R, A, E = T.NoErr>(
   f: F.FunctionN<[R], A>
-): Eff<SYNC, R, E, A> {
+): SyncEff<R, E, A> {
   return map_(accessEnvironment<R>(), f);
 }
 
@@ -528,7 +524,7 @@ export function asUnit<S, R, E, A>(io: Eff<S, R, E, A>): Eff<S, R, E, void> {
   return as(io, undefined);
 }
 
-export const unit: Eff<SYNC, T.NoEnv, T.NoErr, void> = pure(undefined);
+export const unit: SyncEff<T.NoEnv, T.NoErr, void> = pure(undefined);
 
 export function to<B>(
   b: B
@@ -677,7 +673,7 @@ export function combineInterruptExit<S1, S2, R, E, A, R2, E2>(
   );
 }
 
-export const shifted: Eff<ASYNC, T.NoEnv, T.NoErr, void> = uninterruptible(
+export const shifted: AsyncEff<T.NoEnv, T.NoErr, void> = uninterruptible(
   chain_(accessRuntime, (runtime) =>
     asyncTotal<void>((callback) =>
       runtime.dispatchLater(callback, undefined, 0)
@@ -687,17 +683,15 @@ export const shifted: Eff<ASYNC, T.NoEnv, T.NoErr, void> = uninterruptible(
 
 export function shiftBefore<S, R, E, A>(
   io: Eff<S, R, E, A>
-): Eff<ASYNC, R, E, A> {
+): AsyncEff<R, E, A> {
   return applySecond(shifted, io);
 }
 
-export function shiftAfter<S, R, E, A>(
-  io: Eff<S, R, E, A>
-): Eff<ASYNC, R, E, A> {
+export function shiftAfter<S, R, E, A>(io: Eff<S, R, E, A>): AsyncEff<R, E, A> {
   return applyFirst(io, shifted);
 }
 
-export const never: Eff<ASYNC, T.NoEnv, T.NoErr, never> = asyncTotal(() => {
+export const never: AsyncEff<T.NoEnv, T.NoErr, never> = asyncTotal(() => {
   const handle = setInterval(() => {
     //
   }, 60000);
@@ -711,29 +705,29 @@ export const never: Eff<ASYNC, T.NoEnv, T.NoErr, never> = asyncTotal(() => {
 export function delay<S, R, E, A>(
   inner: Eff<S, R, E, A>,
   ms: number
-): Eff<ASYNC, R, E, A> {
+): AsyncEff<R, E, A> {
   return applySecond(after(ms), inner);
 }
 
 export function liftDelay(
   ms: number
-): <S, R, E, A>(io: Eff<S, R, E, A>) => Eff<ASYNC, R, E, A> {
+): <S, R, E, A>(io: Eff<S, R, E, A>) => AsyncEff<R, E, A> {
   return (io) => delay(io, ms);
 }
 
 export interface Fiber<S, E, A> {
   readonly name: Op.Option<string>;
   readonly interrupt: Eff<S, T.NoEnv, T.NoErr, ex.Interrupt>;
-  readonly wait: Eff<ASYNC, T.NoEnv, T.NoErr, ex.Exit<E, A>>;
-  readonly join: Eff<ASYNC, T.NoEnv, E, A>;
-  readonly result: Eff<ASYNC, T.NoEnv, E, Op.Option<A>>;
+  readonly wait: AsyncEff<T.NoEnv, T.NoErr, ex.Exit<E, A>>;
+  readonly join: AsyncEff<T.NoEnv, E, A>;
+  readonly result: AsyncEff<T.NoEnv, E, Op.Option<A>>;
   readonly isComplete: Eff<S, T.NoEnv, T.NoErr, boolean>;
 }
 
 export function makeFiber<S, R, E, A>(
   init: Eff<S, R, E, A>,
   name?: string
-): Eff<SYNC, R, T.NoErr, Fiber<S, E, A>> {
+): SyncEff<R, T.NoErr, Fiber<S, E, A>> {
   return accessM((r: R) =>
     chain_(accessRuntime, (runtime) =>
       sync(() => {
@@ -749,7 +743,7 @@ export function makeFiber<S, R, E, A>(
 export function fork<S, R, E, A>(
   io: Eff<S, R, E, A>,
   name?: string
-): Eff<SYNC, R, T.NoErr, Fiber<S, E, A>> {
+): SyncEff<R, T.NoErr, Fiber<S, E, A>> {
   return makeFiber(io, name);
 }
 
@@ -778,7 +772,7 @@ export function timeoutFold<S1, S2, S3, R, E1, E2, A, B>(
   ms: number,
   onTimeout: F.FunctionN<[Fiber<S1, E1, A>], Eff<S2, T.NoEnv, E2, B>>,
   onCompleted: F.FunctionN<[ex.Exit<E1, A>], Eff<S3, T.NoEnv, E2, B>>
-): Eff<ASYNC, R, E2, B> {
+): AsyncEff<R, E2, B> {
   return raceFold(
     source,
     after(ms),
@@ -805,7 +799,7 @@ export function raceFirst<S1, S2, R, R2, E, A>(
 function fallbackToLoser<S, R, E, A>(
   exit: ex.Exit<E, A>,
   loser: Fiber<S, E, A>
-): Eff<ASYNC, R, E, A> {
+): AsyncEff<R, E, A> {
   return exit._tag === "Done"
     ? applySecond(loser.interrupt, completed(exit))
     : loser.join;
@@ -814,7 +808,7 @@ function fallbackToLoser<S, R, E, A>(
 export function race<S1, S2, R, R2, E, A>(
   io1: Eff<S1, R, E, A>,
   io2: Eff<S2, R2, E, A>
-): Eff<ASYNC, R & R2, E, A> {
+): AsyncEff<R & R2, E, A> {
   return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
 }
 
@@ -822,7 +816,7 @@ export function parZipWith<S1, S2, R, R2, E, E2, A, B, C>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): Eff<ASYNC, R & R2, E | E2, C> {
+): AsyncEff<R & R2, E | E2, C> {
   return raceFold(
     ioa,
     iob,
@@ -834,35 +828,35 @@ export function parZipWith<S1, S2, R, R2, E, E2, A, B, C>(
 export function parZip<S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E, B>
-): Eff<ASYNC, R & R2, E, readonly [A, B]> {
+): AsyncEff<R & R2, E, readonly [A, B]> {
   return parZipWith(ioa, iob, tuple2);
 }
 
 export function parApplyFirst<S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E, B>
-): Eff<ASYNC, R & R2, E, A> {
+): AsyncEff<R & R2, E, A> {
   return parZipWith(ioa, iob, fst);
 }
 
 export function parApplySecond<S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E, B>
-): Eff<ASYNC, R & R2, E, B> {
+): AsyncEff<R & R2, E, B> {
   return parZipWith(ioa, iob, snd);
 }
 
 export function parAp<S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iof: Eff<S2, R2, E, F.FunctionN<[A], B>>
-): Eff<ASYNC, R & R2, E, B> {
+): AsyncEff<R & R2, E, B> {
   return parZipWith(ioa, iof, (a, f) => f(a));
 }
 
 export function parAp_<S1, S2, R, R2, E, E2, A, B>(
   iof: Eff<S1, R, E, F.FunctionN<[A], B>>,
   ioa: Eff<S2, R2, E2, A>
-): Eff<ASYNC, R & R2, E | E2, B> {
+): AsyncEff<R & R2, E | E2, B> {
   return parZipWith(iof, ioa, (f, a) => f(a));
 }
 
@@ -871,7 +865,7 @@ const pureNone = pure(Op.none);
 export function timeoutOption<S, R, E, A>(
   source: Eff<S, R, E, A>,
   ms: number
-): Eff<ASYNC, R, E, Op.Option<A>> {
+): AsyncEff<R, E, Op.Option<A>> {
   return timeoutFold(
     source,
     ms,
@@ -892,7 +886,7 @@ export function run<S, E, A>(
   return () => driver.interrupt();
 }
 
-export function runSync<E, A>(io: Eff<SYNC, {}, E, A>): ex.Exit<E, A> {
+export function runSync<E, A>(io: SyncEff<{}, E, A>): ex.Exit<E, A> {
   const res = new DriverSyncImpl<E, A>().start(io as any);
 
   if (res._tag === "Left") {
@@ -902,7 +896,7 @@ export function runSync<E, A>(io: Eff<SYNC, {}, E, A>): ex.Exit<E, A> {
   }
 }
 
-export function runUnsafeSync<E, A>(io: Eff<SYNC, {}, E, A>): A {
+export function runUnsafeSync<E, A>(io: SyncEff<{}, E, A>): A {
   const result = runSync(io);
 
   if (result._tag !== "Done") {
@@ -990,7 +984,7 @@ export const {
 
 export function liftEither<A, E, B>(
   f: F.FunctionN<[A], Ei.Either<E, B>>
-): F.FunctionN<[A], Eff<SYNC, T.NoEnv, E, B>> {
+): F.FunctionN<[A], SyncEff<T.NoEnv, E, B>> {
   return (a) => fromEither(f(a));
 }
 
