@@ -1066,4 +1066,6 @@ export interface EffIO<S, R, E, A> extends Eff<S, R, E, A> {
   flow<S2, R2, E2, A2>(
     f: (e: Eff<S, R, E, A>) => Eff<S2, R2, E2, A2>
   ): EffIO<S | S2, R2, E2, A2>;
+
+  done(): Eff<S, R, E, A>
 }
