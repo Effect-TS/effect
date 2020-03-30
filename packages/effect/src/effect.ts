@@ -1213,7 +1213,7 @@ export function onInterrupted<R2, E2>(finalizer: Effect<R2, E2, unknown>) {
 
 export function combineInterruptExit<R, E, A, R2, E2>(
   ioa: Effect<R, E, A>,
-  finalizer: UIO<ex.Interrupt[]>
+  finalizer: Effect<R2, E2, ex.Interrupt[]>
 ): Effect<R & R2, E | E2, A> {
   return uninterruptibleMask((cutout) =>
     chain_(result(cutout(ioa)), (exit) =>
@@ -1248,9 +1248,7 @@ export function combineInterruptExit<R, E, A, R2, E2>(
  * Introduce a gap in executing to allow other fibers to execute (if any are pending)
  */
 export const shifted: Effect<NoEnv, NoErr, void> = uninterruptible(
-  chain_(accessRuntime, (
-    runtime: Runtime // why does this not trigger noImplicitAny
-  ) =>
+  chain_(accessRuntime, (runtime) =>
     asyncTotal<void>((callback) =>
       runtime.dispatchLater(callback, undefined, 0)
     )
@@ -1258,17 +1256,15 @@ export const shifted: Effect<NoEnv, NoErr, void> = uninterruptible(
 );
 
 /**
- * Introduce a synchronous gap before io that will allow other fibers to execute (if any are pending)
+ * Introduce asynchronous gap before io that will allow other fibers to execute (if any are pending)
  * @param io
  */
-export function shiftBefore<E, A>(
-  io: Effect<NoEnv, E, A>
-): Effect<NoEnv, E, A> {
-  return applySecond(shifted as Effect<NoEnv, E, void>, io);
+export function shiftBefore<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+  return applySecond(shifted, io);
 }
 
 /**
- * Introduce a synchronous gap after an io that will allow other fibers to execute (if any are pending)
+ * Introduce asynchronous gap after an io that will allow other fibers to execute (if any are pending)
  * @param io
  */
 export function shiftAfter<E, A>(io: Effect<NoEnv, E, A>): Effect<NoEnv, E, A> {
@@ -1372,7 +1368,7 @@ export interface Fiber<E, A> {
   readonly isComplete: Effect<NoEnv, NoErr, boolean>;
 }
 
-class FiberImpl<E, A> implements Fiber<E, A> {
+export class FiberImpl<E, A> implements Fiber<E, A> {
   name = Op.fromNullable(this.n);
 
   sendInterrupt = sync(() => {
