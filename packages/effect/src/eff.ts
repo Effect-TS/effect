@@ -17,6 +17,7 @@ import { Functor4 } from "fp-ts/lib/Functor";
 import { tuple2, fst, snd } from "./original/support/util";
 import { DriverImpl } from "./driver";
 import { DriverSyncImpl } from "./driverSync";
+import { identity } from "fp-ts/lib/function";
 
 // WIP
 /* istanbul ignore file */
@@ -994,6 +995,18 @@ export function liftEither<A, E, B>(
 export const retype = <S, R, E, A>(
   _: Eff<S, R, E, A>
 ): unknown extends S ? AsyncEff<R, E, A> : SyncEff<R, E, A> => _ as any;
+
+export const encaseSync = <R, E, A>(_: T.Effect<R, E, A>): SyncEff<R, E, A> =>
+  pipe(
+    access((r: R) => T.runSync(T.provideAll(r)(_))),
+    chainEither(identity),
+    orAbort,
+    chain(completed)
+  );
+
+export const encaseEffect = <R, E, A>(
+  _: T.Effect<R, E, A>
+): AsyncEff<R, E, A> => _ as any;
 
 export interface EffIO<S, R, E, A> extends Eff<S, R, E, A> {
   fluent<K extends R>(): EffIO<S, K, E, A>;
