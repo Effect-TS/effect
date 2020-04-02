@@ -197,6 +197,7 @@ export type MergeSpec<S> = {
   [k in keyof S]: ModuleSpec<any>;
 };
 
+export type ExtractShape<M> = M extends ModuleShape<infer A> ? A : never;
 export type TypeOf<M> = M extends ModuleSpec<infer A> ? A : never;
 
 export type Merged<S> = S extends {
@@ -204,7 +205,7 @@ export type Merged<S> = S extends {
     [specURI]: infer X;
   };
 }
-  ? ModuleSpec<UnionToIntersection<TypeOf<X>>>
+  ? ModuleSpec<UnionToIntersection<ExtractShape<X>>>
   : never;
 
 export function merge<S extends MergeSpec<S>>(s: S): Merged<S> {
