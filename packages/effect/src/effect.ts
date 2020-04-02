@@ -80,7 +80,7 @@ export type Strip<R, R2 extends Partial<R>> = {
   [k in Exclude<keyof R, keyof R2>]: R[k];
 };
 
-export type OrVoid<R> = R extends {} & infer A ? A : void;
+export type OrVoid<R> = R extends {} & infer A ? (unknown extends A ? void : A) : void;
 
 export class EffectIO<R, E, A> implements Effect<R, E, A> {
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
