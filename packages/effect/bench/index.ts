@@ -26,8 +26,8 @@ export const fibWave = (n: bigint): wave.Wave<never, bigint> => {
   if (n < BigInt(2)) {
     return wave.pure(BigInt(1));
   }
-  return wave.chain(fibWave(n - BigInt(1)), a =>
-    wave.map(fibWave(n - BigInt(2)), b => a + b)
+  return wave.chain(fibWave(n - BigInt(1)), (a) =>
+    wave.map(fibWave(n - BigInt(2)), (b) => a + b)
   );
 };
 
@@ -35,8 +35,8 @@ export const fibQio = (n: bigint): QIO<bigint> => {
   if (n < BigInt(2)) {
     return QIO.resolve(BigInt(1));
   }
-  return QIO.chain(fibQio(n - BigInt(1)), a =>
-    QIO.map(fibQio(n - BigInt(2)), b => a + b)
+  return QIO.chain(fibQio(n - BigInt(1)), (a) =>
+    QIO.map(fibQio(n - BigInt(2)), (b) => a + b)
   );
 };
 
@@ -44,8 +44,8 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
   if (n < BigInt(2)) {
     return T.pure(BigInt(1));
   }
-  return T.effect.chain(fibEffect(n - BigInt(1)), a =>
-    T.effect.map(fibEffect(n - BigInt(2)), b => a + b)
+  return T.effect.chain(fibEffect(n - BigInt(1)), (a) =>
+    T.effect.map(fibEffect(n - BigInt(2)), (b) => a + b)
   );
 };
 
@@ -55,8 +55,8 @@ export const fibEffectFluent = (
   if (n < BigInt(2)) {
     return T.pure(BigInt(1)).fluent();
   }
-  return fibEffectFluent(n - BigInt(1)).chain(a =>
-    fibEffectFluent(n - BigInt(2)).map(b => a + b)
+  return fibEffectFluent(n - BigInt(1)).chain((a) =>
+    fibEffectFluent(n - BigInt(2)).map((b) => a + b)
   );
 };
 
@@ -77,7 +77,7 @@ benchmark
   .add(
     "effect-fluent",
     (cb: any) => {
-      T.run(fibEffectFluent(n).done(), () => {
+      fibEffectFluent(n).run(() => {
         cb.resolve();
       });
     },
@@ -118,10 +118,10 @@ benchmark
     },
     { defer: true }
   )
-  .on("cycle", function(event: any) {
+  .on("cycle", function (event: any) {
     console.log(String(event.target));
   })
-  .on("complete", function(this: any) {
+  .on("complete", function (this: any) {
     console.log(`Fastest is ${this.filter("fastest").map("name")}`);
   })
   .run({ async: true });

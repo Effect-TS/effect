@@ -31,12 +31,12 @@ export const nestedMapEffect = (): T.Effect<T.NoEnv, never, bigint> => {
   return io;
 };
 
-export const nestedMapEffectFluent = (): T.Effect<unknown, never, bigint> => {
+export const nestedMapEffectFluent = (): T.EffectIO<unknown, never, bigint> => {
   let io: T.EffectIO<T.NoEnv, never, bigint> = T.pure(BigInt(0)).fluent();
   for (let i = 0; i < MAX; i++) {
     io = io.map(inc);
   }
-  return io.done();
+  return io;
 };
 
 const benchmark = new Suite(`NestedMap ${MAX}`, { minTime: 10000 });
@@ -54,7 +54,7 @@ benchmark
   .add(
     "effect-fluent",
     (cb: any) => {
-      T.run(nestedMapEffectFluent(), () => {
+      nestedMapEffectFluent().run(() => {
         cb.resolve();
       });
     },
