@@ -94,10 +94,6 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
     readonly f2: any = undefined
   ) {}
 
-  done(): Effect<R, E, A> {
-    return this as any;
-  }
-
   effect(): Effect<R, E, A> {
     return this as any;
   }

@@ -184,7 +184,8 @@ describe("EffectSafe", () => {
     });
 
     it("use fluent", async () => {
-      const result = T.fluent(T.pure(1))
+      const result = T.pure(1)
+        .fluent()
         .asUnit()
         .as(2)
         .asM(T.pure(3))
@@ -202,7 +203,7 @@ describe("EffectSafe", () => {
         .map(identity)
         .bimap(identity, identity)
         .mapError(identity)
-        .done();
+        .effect();
 
       assert.deepEqual(await T.runToPromise(result), ex.done(12));
     });
