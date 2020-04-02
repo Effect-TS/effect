@@ -94,7 +94,12 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
     readonly f2: any = undefined
   ) {}
 
-  effect(): Effect<R, E, A> {
+  done(): Effect<R, E, A> {
+    return this as any;
+  }
+
+  // @ts-ignore
+  private effect(): Effect<R, E, A> {
     return this as any;
   }
 

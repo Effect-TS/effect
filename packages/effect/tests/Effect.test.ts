@@ -203,7 +203,7 @@ describe("EffectSafe", () => {
         .map(identity)
         .bimap(identity, identity)
         .mapError(identity)
-        .effect();
+        .done();
 
       assert.deepEqual(await T.runToPromise(result), ex.done(12));
     });
