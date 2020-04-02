@@ -2080,6 +2080,18 @@
     npmlog "^4.1.2"
     write-file-atomic "^2.3.0"
 
+"@matechs/test-jest@^0.0.10":
+  version "0.0.10"
+  resolved "https://registry.yarnpkg.com/@matechs/test-jest/-/test-jest-0.0.10.tgz#ec1ac191ee553ea8359fdff688809b570264733a"
+  integrity sha512-iF6V6ZeEaAXnBDj1UAmrm35uT5FneJ4RUpEvpuf0rNlVa3IxJkRl806vtcutvR3ilBb2BCJ6ReEA9ImARc4lSw==
+  dependencies:
+    "@matechs/test" "^0.0.14"
+
+"@matechs/test@^0.0.14":
+  version "0.0.14"
+  resolved "https://registry.yarnpkg.com/@matechs/test/-/test-0.0.14.tgz#248923aebf22fe80b41a9a2de990598a3413dd8c"
+  integrity sha512-aHiYN1B5AtgthkhZKySyfc7rnx0kmnDwc+tzQFTExSDyHlisEzYi7hFchZQom6DXLp+ERsg8L/bSrxrCRAK+iA==
+
 "@morphic-ts/adt@^0.7.0-alpha.0":
   version "0.7.0-alpha.0"
   resolved "https://registry.yarnpkg.com/@morphic-ts/adt/-/adt-0.7.0-alpha.0.tgz#935f9ae7ab6fbaf43a57d553619aed25819af1b2"
@@ -6316,12 +6328,17 @@ graphql-upload@^8.0.2:
     http-errors "^1.7.3"
     object-path "^0.11.4"
 
-graphql@^14.5.3, graphql@^14.6.0:
+graphql@^14.5.3:
   version "14.6.0"
   resolved "https://registry.yarnpkg.com/graphql/-/graphql-14.6.0.tgz#57822297111e874ea12f5cd4419616930cd83e49"
   integrity sha512-VKzfvHEKybTKjQVpTFrA5yUq2S9ihcZvfJAtsDBBCuV6wauPu1xl/f9ehgVf0FcEJJs4vz6ysb/ZMkGigQZseg==
   dependencies:
     iterall "^1.2.2"
+
+graphql@^15.0.0:
+  version "15.0.0"
+  resolved "https://registry.yarnpkg.com/graphql/-/graphql-15.0.0.tgz#042a5eb5e2506a2e2111ce41eb446a8e570b8be9"
+  integrity sha512-ZyVO1xIF9F+4cxfkdhOJINM+51B06Friuv4M66W7HzUOeFd+vNzUn4vtswYINPi6sysjf1M2Ri/rwZALqgwbaQ==
 
 growly@^1.3.0:
   version "1.3.0"
