@@ -32,11 +32,11 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
 
   accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
 
-  resolver: <ARGS>() => <R extends ResolverF<ARGS, U, Ctx, any, any, any, any>>(_: R) => R;
-  subscription: <ARGS>() => <A, B, C, D, E, F, G>(
-    subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
+  resolver: <ARGS, S = any>() => <R extends ResolverF<ARGS, U, Ctx, S, any, any, any>>(_: R) => R;
+  subscription: <ARGS, S = any>() => <B, C, D, E, F, G>(
+    subscribe: (_: ResolverInput<S, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
     resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
-  ) => ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G>;
+  ) => ResolverSubF<ARGS, U, Ctx, S, B, C, D, E, F, G>;
 }
 
 export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(

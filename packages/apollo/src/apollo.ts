@@ -36,8 +36,8 @@ export interface ResolverSubF<ARGS, U extends string, Ctx, A, B, C, D, E, F, G> 
 
 export type Resolver<ARGS, K, U extends string, Ctx> = {
   [k in keyof K]:
-    | ResolverF<ARGS, U, Ctx, unknown, any, any, any>
-    | ResolverSubF<ARGS, U, Ctx, unknown, any, any, any, any, any, any>;
+    | ResolverF<ARGS, U, Ctx, any, any, any, any>
+    | ResolverSubF<ARGS, U, Ctx, any, any, any, any, any, any, any>;
 };
 
 export type ResolverEnv<R, U extends string, Ctx> = R extends Resolver<any, any, U, Ctx>
