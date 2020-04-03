@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-fetch",
-  "version": "4.0.16",
+  "version": "4.0.17",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -32,7 +32,7 @@
   "devDependencies": {
     "@matechs/effect": "^5.0.16",
     "@matechs/http-client": "^4.0.16",
-    "@matechs/test-jest": "^0.0.11",
+    "@matechs/test-jest": "^0.0.12",
     "@types/isomorphic-fetch": "^0.0.35",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.14",
