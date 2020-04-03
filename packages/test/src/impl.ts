@@ -33,9 +33,7 @@ export { assert };
 export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>;
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
-  provider: unknown extends SpecsEnv<Specs>
-    ? void
-    : <E, A>(_: T.Effect<SpecsEnv<Specs>, E, A>) => T.Effect<unknown, E, A>
+  provider: unknown extends SpecsEnv<Specs> ? void : T.Provider<unknown, SpecsEnv<Specs>, any>
 ) => {
   specs.map((s) => {
     switch (s._tag) {
@@ -55,7 +53,7 @@ export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Sp
 function desc<Suites extends Suite<any>[]>(
   _: Runner,
   s: Suite<any>,
-  provider: <E, A>(_: T.Effect<SpecsEnv<Suites>, E, A>) => T.Effect<unknown, E, A>
+  provider: T.Provider<unknown, SpecsEnv<Suites>, any>
 ) {
   _.describe(s.name, () => {
     s.specs.map((spec) => {
@@ -86,7 +84,7 @@ function desc<Suites extends Suite<any>[]>(
   });
 }
 
-function runTest<R>(_: Runner, spec: Test<R>, provider: <E, A>(_: T.Effect<R, E, A>) => T.Effect<unknown, E, A>) {
+function runTest<R>(_: Runner, spec: Test<R>, provider: T.Provider<unknown, R, any>) {
   pipe(
     getSkip(spec),
     O.filter((x): x is true => x === true),
