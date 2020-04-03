@@ -4,18 +4,14 @@ import {
   option as Op,
   task as TA,
   taskEither as TE,
-  array as Ar,
 } from "fp-ts";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import * as T from "./effect";
 import * as ex from "./original/exit";
 import { Runtime } from "./original/runtime";
 import { Monad4E, MonadThrow4E, Alt4E } from "./overloadEff";
-import { mergeDeep } from "./utils/merge";
 import { Bifunctor4 } from "fp-ts/lib/Bifunctor";
 import { Functor4 } from "fp-ts/lib/Functor";
-import { tuple2, fst, snd } from "./original/support/util";
-import { DriverImpl } from "./driver";
 import { DriverSyncImpl } from "./driverSync";
 import { identity } from "fp-ts/lib/function";
 
@@ -49,299 +45,174 @@ declare module "fp-ts/lib/HKT" {
 export type ASYNC = unknown;
 export type SYNC = never;
 
-export function zipWith<S1, S2, R, E, A, R2, E2, B, C>(
+export const zipWith: <S1, S2, R, E, A, R2, E2, B, C>(
   first: Eff<S1, R, E, A>,
   second: Eff<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): Eff<S1 | S2, R & R2, E | E2, C> {
-  return chain_(first, (a) => map_(second, (b) => f(a, b)));
-}
+) => Eff<S1 | S2, R & R2, E | E2, C> = T.zipWith as any;
 
-export function zip<S1, S2, R, E, A, R2, E2, B>(
+export const zip: <S1, S2, R, E, A, R2, E2, B>(
   first: Eff<S1, R, E, A>,
   second: Eff<S2, R2, E2, B>
-): Eff<S1 | S2, R & R2, E | E2, readonly [A, B]> {
-  return zipWith(first, second, tuple2);
-}
+) => Eff<S1 | S2, R & R2, E | E2, readonly [A, B]> = T.zip as any;
 
-export function pure<A>(a: A): SyncEff<T.NoEnv, T.NoErr, A> {
-  return new T.EffectIO(T.EffectTag.Pure, a) as any;
-}
+export const pure: <A>(a: A) => SyncEff<T.NoEnv, T.NoErr, A> = T.pure as any;
 
-export function of_<S, R, E, A>(a: A): Eff<S, R, E, A> {
-  return new T.EffectIO(T.EffectTag.Pure, a) as any;
-}
+export const of: <S, R, E, A>(a: A) => Eff<S, R, E, A> = T.pure as any;
 
-export function applyFirst<S1, S2, R, E, A, R2, E2, B>(
+export const applyFirst: <S1, S2, R, E, A, R2, E2, B>(
   first: Eff<S1, R, E, A>,
   second: Eff<S2, R2, E2, B>
-): Eff<S1 | S2, R & R2, E | E2, A> {
-  return zipWith(first, second, fst);
-}
+) => Eff<S1 | S2, R & R2, E | E2, A> = T.applyFirst as any;
 
-export function applySecond<S1, S2, R, E, A, R2, E2, B>(
+export const applySecond: <S1, S2, R, E, A, R2, E2, B>(
   first: Eff<S1, R, E, A>,
   second: Eff<S2, R2, E2, B>
-): Eff<S1 | S2, R & R2, E | E2, B> {
-  return zipWith(first, second, snd);
-}
+) => Eff<S1 | S2, R & R2, E | E2, B> = T.applySecond as any;
 
-export function applySecondL<S1, S2, R, E, A, R2, E2, B>(
+export const applySecondL: <S1, S2, R, E, A, R2, E2, B>(
   first: Eff<S1, R, E, A>,
   second: F.Lazy<Eff<S2, R2, E2, B>>
-): Eff<S1 | S2, R & R2, E | E2, B> {
-  return chain_(first, second);
-}
+) => Eff<S1 | S2, R & R2, E | E2, B> = T.applySecondL as any;
 
-export function ap__<S1, S2, R, E, A, R2, E2, B>(
+export const ap__: <S1, S2, R, E, A, R2, E2, B>(
   ioa: Eff<S1, R, E, A>,
   iof: Eff<S2, R2, E2, F.FunctionN<[A], B>>
-): Eff<S1 | S2, R & R2, E | E2, B> {
-  return zipWith(ioa, iof, (a, f) => f(a));
-}
+) => Eff<S1 | S2, R & R2, E | E2, B> = T.ap__ as any;
 
-export function flip<S, R, E, A>(io: Eff<S, R, E, A>): Eff<S, R, A, E> {
-  return foldExit_(
-    io,
-    (error) => (error._tag === "Raise" ? pure(error.error) : completed(error)),
-    raiseError
-  );
-}
+export const flip: <S, R, E, A>(
+  io: Eff<S, R, E, A>
+) => Eff<S, R, A, E> = T.flip as any;
 
-export function forever<S, R, E, A>(io: Eff<S, R, E, A>): Eff<S, R, E, never> {
-  return chain_(io, () => forever(io));
-}
+export const forever: <S, R, E, A>(
+  io: Eff<S, R, E, A>
+) => Eff<S, R, E, never> = T.forever as any;
 
-function map_<S1, R, E, A, B>(
-  base: Eff<S1, R, E, A>,
-  f: F.FunctionN<[A], B>
-): Eff<S1, R, E, B> {
-  return base._tag === T.EffectTag.Pure
-    ? (new T.EffectIO(
-        T.EffectTag.Pure,
-        f(((base as any) as T.Pure<any>).f0)
-      ) as any)
-    : (new T.EffectIO(T.EffectTag.Map, base, f) as any);
-}
+export const raised: <E, A = never>(
+  e: ex.Cause<E>
+) => SyncEff<T.NoEnv, E, A> = T.raised as any;
 
-function ap_<S1, S2, R, E, A, B, R2, E2>(
-  iof: Eff<S1, R, E, F.FunctionN<[A], B>>,
-  ioa: Eff<S2, R2, E2, A>
-): Eff<S1 | S2, R & R2, E | E2, B> {
-  return zipWith(iof, ioa, (f, a) => f(a));
-}
+export const raiseError: <E, A = never>(
+  e: E
+) => SyncEff<T.NoEnv, E, A> = T.raiseError as any;
 
-function chain_<S1, S2, R, E, A, R2, E2, B>(
-  inner: Eff<S1, R, E, A>,
-  bind: F.FunctionN<[A], Eff<S2, R2, E2, B>>
-): Eff<S1 | S2, R & R2, E | E2, B> {
-  return inner._tag === T.EffectTag.Pure
-    ? (bind((inner as any).f0) as any)
-    : (new T.EffectIO(T.EffectTag.Chain, inner, bind) as any);
-}
+export const raiseAbort: (
+  u: unknown
+) => SyncEff<T.NoEnv, T.NoErr, never> = T.raiseAbort as any;
 
-export function raised<E, A = never>(e: ex.Cause<E>): SyncEff<T.NoEnv, E, A> {
-  return new T.EffectIO(T.EffectTag.Raised, e) as any;
-}
+export const raiseInterrupt: SyncEff<
+  T.NoEnv,
+  T.NoErr,
+  never
+> = T.raiseInterrupt as any;
 
-export function raiseError<E, A = never>(e: E): SyncEff<T.NoEnv, E, A> {
-  return raised(ex.raise(e));
-}
+export const completed: <E, A>(
+  exit: ex.Exit<E, A>
+) => SyncEff<T.NoEnv, E, A> = T.completed as any;
 
-export function raiseAbort(u: unknown): SyncEff<T.NoEnv, T.NoErr, never> {
-  return raised(ex.abort(u));
-}
-
-export const raiseInterrupt: SyncEff<T.NoEnv, T.NoErr, never> = raised(
-  ex.interrupt
-);
-
-export function completed<E, A>(exit: ex.Exit<E, A>): SyncEff<T.NoEnv, E, A> {
-  return new T.EffectIO(T.EffectTag.Completed, exit) as any;
-}
-
-export function suspended<S, R, E, A>(
+export const suspended: <S, R, E, A>(
   thunk: F.Lazy<Eff<S, R, E, A>>
-): Eff<S, R, E, A> {
-  return new T.EffectIO(T.EffectTag.Suspended, thunk) as any;
-}
+) => Eff<S, R, E, A> = T.suspended as any;
 
-export function sync<E = T.NoErr, A = unknown>(
+export const sync: <E = T.NoErr, A = unknown>(
   thunk: F.Lazy<A>
-): SyncEff<T.NoEnv, E, A> {
-  return suspended(() => pure(thunk()));
-}
+) => SyncEff<T.NoEnv, E, A> = T.sync as any;
 
-export function trySync<E = unknown, A = unknown>(
+export const trySync: <E = unknown, A = unknown>(
   thunk: F.Lazy<A>
-): SyncEff<T.NoEnv, E, A> {
-  return suspended(() => {
-    try {
-      return pure(thunk());
-    } catch (e) {
-      return raiseError(e);
-    }
-  });
-}
+) => SyncEff<T.NoEnv, E, A> = T.trySync as any;
 
-export function trySyncMap<E = unknown>(
+export const trySyncMap: <E = unknown>(
   onError: (e: unknown) => E
-): <A = unknown>(thunk: F.Lazy<A>) => SyncEff<T.NoEnv, E, A> {
-  return (thunk) =>
-    suspended(() => {
-      try {
-        return pure(thunk());
-      } catch (e) {
-        return raiseError(onError(e));
-      }
-    });
-}
+) => <A = unknown>(
+  thunk: F.Lazy<A>
+) => SyncEff<T.NoEnv, E, A> = T.trySyncMap as any;
 
-export function async<E, A>(op: T.AsyncFn<E, A>): Eff<ASYNC, T.NoEnv, E, A> {
-  return new T.EffectIO(T.EffectTag.Async, op) as any;
-}
+export const async: <E, A>(
+  op: T.AsyncFn<E, A>
+) => Eff<ASYNC, T.NoEnv, E, A> = T.async as any;
 
-export function asyncTotal<A>(
+export const asyncTotal: <A>(
   op: F.FunctionN<[F.FunctionN<[A], void>], T.AsyncCancelContFn>
-): AsyncEff<T.NoEnv, T.NoErr, A> {
-  return async((callback) => op((a) => callback(Ei.right(a))));
-}
+) => AsyncEff<T.NoEnv, T.NoErr, A> = T.asyncTotal as any;
 
-export function interruptibleRegion<S, R, E, A>(
+export const interruptibleRegion: <S, R, E, A>(
   inner: Eff<S, R, E, A>,
   flag: boolean
-): Eff<S, R, E, A> {
-  return new T.EffectIO(T.EffectTag.InterruptibleRegion, flag, inner) as any;
-}
-export function encaseOption<E, A>(
+) => Eff<S, R, E, A> = T.interruptibleRegion as any;
+
+export const encaseOption: <E, A>(
   o: Op.Option<A>,
   onError: F.Lazy<E>
-): SyncEff<T.NoEnv, E, A> {
-  return new T.EffectIO(T.EffectTag.PureOption, o, onError) as any;
-}
+) => SyncEff<T.NoEnv, E, A> = T.encaseOption as any;
 
-export function chainOption<E>(
+export const chainOption: <E>(
   onEmpty: F.Lazy<E>
-): <A, B>(
+) => <A, B>(
   bind: F.FunctionN<[A], Op.Option<B>>
-) => <S, R, E2>(eff: Eff<S, R, E2, A>) => Eff<S, R, E | E2, B> {
-  return (bind) => (inner) =>
-    chain_(inner, (a) => encaseOption(bind(a), onEmpty));
-}
+) => <S, R, E2>(
+  eff: Eff<S, R, E2, A>
+) => Eff<S, R, E | E2, B> = T.chainOption as any;
 
-export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncEff<T.NoEnv, E, A> {
-  return new T.EffectIO(T.EffectTag.PureEither, e) as any;
-}
+export const encaseEither: <E, A>(
+  e: Ei.Either<E, A>
+) => SyncEff<T.NoEnv, E, A> = T.encaseEither as any;
 
-export function chainEither<A, E, B>(
+export const chainEither: <A, E, B>(
   bind: F.FunctionN<[A], Ei.Either<E, B>>
-): <S, R, E2>(eff: Eff<S, R, E2, A>) => Eff<S, R, E | E2, B> {
-  return (inner) => chain_(inner, (a) => encaseEither(bind(a)));
-}
+) => <S, R, E2>(
+  eff: Eff<S, R, E2, A>
+) => Eff<S, R, E | E2, B> = T.chainEither as any;
 
-function foldExit_<S1, S2, S3, R, E1, R2, E2, A1, A2, A3, R3, E3>(
-  inner: Eff<S1, R, E1, A1>,
-  failure: F.FunctionN<[ex.Cause<E1>], Eff<S2, R2, E2, A2>>,
-  success: F.FunctionN<[A1], Eff<S3, R3, E3, A3>>
-): Eff<S1 | S2 | S3, R & R2 & R3, E2 | E3, A2 | A3> {
-  return new T.EffectIO(T.EffectTag.Collapse, inner, failure, success) as any;
-}
-
-function chainError_<S1, S2, R, E1, R2, E2, A, A2>(
-  io: Eff<S1, R, E1, A>,
-  f: F.FunctionN<[E1], Eff<S2, R2, E2, A2>>
-): Eff<S1 | S2, R & R2, E2, A | A2> {
-  return foldExit_(
-    io,
-    (cause) =>
-      cause._tag === "Raise" ? f(cause.error) : (completed(cause) as any),
-    pure
-  ) as any;
-}
-
-export function chainError<S1, R, E1, E2, A>(
+export const chainError: <S1, R, E1, E2, A>(
   f: F.FunctionN<[E1], Eff<S1, R, E2, A>>
-): <S2, R2>(rio: Eff<S2, R2, E1, A>) => Eff<S1 | S2, R & R2, E2, A> {
-  return (io) => chainError_(io, f);
-}
+) => <S2, R2>(
+  rio: Eff<S2, R2, E1, A>
+) => Eff<S1 | S2, R & R2, E2, A> = T.chainError as any;
 
-/**
- * Map the error produced by an IO
- * @param f
- */
-export function mapError<E1, E2>(
+export const mapError: <E1, E2>(
   f: F.FunctionN<[E1], E2>
-): <S, R, A>(io: Eff<S, R, E1, A>) => Eff<S, R, E2, A> {
-  return <S, R, A>(io: Eff<S, R, E1, A>) => mapLeft_(io, f);
-}
+) => <S, R, A>(io: Eff<S, R, E1, A>) => Eff<S, R, E2, A> = T.mapError as any;
 
-export function orAbort<S, R, E, A>(
+export const orAbort: <S, R, E, A>(
   io: Eff<S, R, E, A>
-): Eff<S, R, T.NoErr, A> {
-  return chainError_(io, raiseAbort);
-}
+) => Eff<S, R, T.NoErr, A> = T.orAbort as any;
 
-export function uninterruptible<S, R, E, A>(
+export const uninterruptible: <S, R, E, A>(
   io: Eff<S, R, E, A>
-): Eff<S, R, E, A> {
-  return interruptibleRegion(io, false);
-}
+) => Eff<S, R, E, A> = T.uninterruptible as any;
 
-export function interruptible<S, R, E, A>(
+export const interruptible: <S, R, E, A>(
   io: Eff<S, R, E, A>
-): Eff<S, R, E, A> {
-  return interruptibleRegion(io, true);
-}
+) => Eff<S, R, E, A> = T.interruptible as any;
 
-export function after(ms: number): AsyncEff<T.NoEnv, T.NoErr, void> {
-  return chain_(accessRuntime, (runtime) =>
-    asyncTotal((callback) => runtime.dispatchLater(callback, undefined, ms))
-  );
-}
+export const after: (
+  ms: number
+) => AsyncEff<T.NoEnv, T.NoErr, void> = T.after as any;
 
-export function fromPromise<A>(
+export const fromPromise: <A>(
   thunk: F.Lazy<Promise<A>>
-): AsyncEff<T.NoEnv, unknown, A> {
-  return uninterruptible(
-    async<unknown, A>((callback) => {
-      thunk()
-        .then((v) => callback(Ei.right(v)))
-        .catch((e) => callback(Ei.left(e)));
-      /* istanbul ignore next */
-      return (cb) => {
-        cb();
-      };
-    })
-  );
-}
+) => AsyncEff<T.NoEnv, unknown, A> = T.fromPromise as any;
 
-export function encaseTask<A>(task: TA.Task<A>): AsyncEff<T.NoEnv, T.NoErr, A> {
-  return orAbort(fromPromise(task));
-}
+export const encaseTask: <A>(
+  task: TA.Task<A>
+) => AsyncEff<T.NoEnv, T.NoErr, A> = T.encaseTask as any;
 
-export function chainTask<A, B>(
+export const chainTask: <A, B>(
   bind: F.FunctionN<[A], TA.Task<B>>
-): <S, R, E2>(eff: Eff<S, R, E2, A>) => Eff<S | ASYNC, R, E2, B> {
-  return (inner) => chain_(inner, (a) => encaseTask(bind(a)));
-}
+) => <S, R, E2>(
+  eff: Eff<S, R, E2, A>
+) => Eff<S | ASYNC, R, E2, B> = T.chainTask as any;
 
-export function encaseTaskEither<E, A>(
+export const encaseTaskEither: <E, A>(
   taskEither: TE.TaskEither<E, A>
-): AsyncEff<T.NoEnv, E, A> {
-  return async<E, A>((callback) => {
-    taskEither().then(callback);
-    /* istanbul ignore next */
-    return (cb) => {
-      cb();
-    };
-  });
-}
+) => AsyncEff<T.NoEnv, E, A> = T.encaseTaskEither as any;
 
-export function chainTaskEither<A, E, B>(
+export const chainTaskEither: <A, E, B>(
   bind: F.FunctionN<[A], TE.TaskEither<E, B>>
-): <S, R, E2>(eff: Eff<S, R, E2, A>) => AsyncEff<R, E | E2, B> {
-  return (inner) => chain_(inner, (a) => encaseTaskEither(bind(a)));
-}
+) => <S, R, E2>(
+  eff: Eff<S, R, E2, A>
+) => AsyncEff<R, E | E2, B> = T.chainTaskEither as any;
 
 export const accessInterruptible: Eff<
   SYNC,
@@ -357,47 +228,41 @@ export const accessRuntime: Eff<
   Runtime
 > = new T.EffectIO(T.EffectTag.AccessRuntime, F.identity) as any;
 
-export function withRuntime<S, E, A>(
+export const withRuntime: <S, E, A>(
   f: F.FunctionN<[Runtime], Eff<S, T.NoEnv, E, A>>
-): Eff<S, T.NoEnv, E, A> {
-  return chain_(accessRuntime, f) as any;
-}
+) => Eff<S, T.NoEnv, E, A> = T.withRuntime as any;
 
-export function accessEnvironment<R>(): SyncEff<R, T.NoErr, R> {
-  return new T.EffectIO(T.EffectTag.AccessEnv) as any;
-}
+export const accessEnvironment: <R>() => SyncEff<
+  R,
+  T.NoErr,
+  R
+> = T.accessEnvironment as any;
 
-export function accessM<S, R, R2, E, A>(
+export const accessM: <S, R, R2, E, A>(
   f: F.FunctionN<[R], Eff<S, R2, E, A>>
-): Eff<S, R & R2, E, A> {
-  return chain_(accessEnvironment<R>(), f) as any;
-}
+) => Eff<S, R & R2, E, A> = T.accessM as any;
 
-export function access<R, A, E = T.NoErr>(
+export const access: <R, A, E = T.NoErr>(
   f: F.FunctionN<[R], A>
-): SyncEff<R, E, A> {
-  return map_(accessEnvironment<R>(), f);
-}
+) => SyncEff<R, E, A> = T.access as any;
 
-export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
-  return (b) => mergeDeep(a, b);
-}
+export const mergeEnv: <A>(a: A) => <B>(b: B) => A & B = T.mergeEnv;
 
-export const provideAll = <R>(r: R) => <S, E, A>(ma: Eff<S, R, E, A>) =>
-  (new T.EffectIO(T.EffectTag.ProvideEnv, ma, r) as any) as Eff<
-    S,
-    unknown,
-    E,
-    A
-  >;
-
-export const provide = <R>(r: R) => <S, R2, E, A>(
-  ma: Eff<S, R2 & R, E, A>
-): Eff<S, R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(ma));
-
-export const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
+export const provideAll: <R>(
+  r: R
+) => <S, E, A>(
   ma: Eff<S, R, E, A>
-): Eff<S, R2, E, A> => accessM((r2: R2) => provideAll(f(r2))(ma));
+) => Eff<S, unknown, E, A> = T.provideAll as any;
+
+export const provide: <R>(
+  r: R
+) => <S, R2, E, A>(
+  ma: Eff<S, R2 & R, E, A>
+) => Eff<S, R2, E, A> = T.provide as any;
+
+export const provideR: <R2, R>(
+  f: (r2: R2) => R
+) => <S, E, A>(ma: Eff<S, R, E, A>) => Eff<S, R2, E, A> = T.provideR as any;
 
 export interface Provider<Environment, Module, S2, E2> {
   <S1, R, E, A>(e: Eff<S1, Module & R, E, A>): Eff<
@@ -408,47 +273,33 @@ export interface Provider<Environment, Module, S2, E2> {
   >;
 }
 
-export function provideS<R>(r: R): Provider<unknown, R, SYNC, never> {
-  return <S1, R2, E, A>(eff: Eff<S1, R2 & R, E, A>): Eff<S1, R2, E, A> =>
-    provideR((r2: R2) => ({ ...r2, ...r }))(eff);
-}
+export const provideS: <R>(
+  r: R
+) => Provider<unknown, R, SYNC, never> = T.provideS as any;
 
-export function provideSO<R>(r: R): Provider<unknown, R, SYNC, never> {
-  return <S1, R2, E, A>(eff: Eff<S1, R2 & R, E, A>): Eff<S1, R2, E, A> =>
-    provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
-}
+export const provideSO: <R>(
+  r: R
+) => Provider<unknown, R, SYNC, never> = T.provideSO as any;
 
-export const provideSW = <M>() => <S1, R, E, A>(res: Eff<S1, R, E, A>) => (
-  f: (a: A) => M
-): Provider<R, M, S1, E> => <S2, R2, E2, A2>(
-  eff: Eff<S2, R2 & M, E2, A2>
-): Eff<S1 | S2, R2 & R, E | E2, A2> =>
-  chain_(res, (a) => provideS<M>(f(a))(eff));
+export const provideSW: <M>() => <S1, R, E, A>(
+  res: Eff<S1, R, E, A>
+) => (f: (a: A) => M) => Provider<R, M, S1, E> = T.provideSW as any;
 
-export function provideSM<S1, R, R3, E2>(
+export const provideSM: <S1, R, R3, E2>(
   rm: Eff<S1, R3, E2, R>
-): Provider<R3, R, S1, E2> {
-  return <S2, R2, E, A>(
-    eff: Eff<S2, R2 & R, E, A>
-  ): Eff<S1 | S2, R2 & R3, E | E2, A> =>
-    chain_(rm, (r) => provideR((r2: R2) => ({ ...r2, ...r }))(eff));
-}
+) => Provider<R3, R, S1, E2> = T.provideSM as any;
 
-export const provideM = <S1, R2, R, E2>(
+export const provideM: <S1, R2, R, E2>(
   f: Eff<S1, R2, E2, R>
-): Provider<R2, R, S1, E2> => (ma) => chain_(f, (r) => provide(r)(ma));
+) => Provider<R2, R, S1, E2> = T.provideM as any;
 
-export const provideSomeM = <S1, R2, R, E2>(
+export const provideSomeM: <S1, R2, R, E2>(
   f: Eff<S1, R2, E2, R>
-): Provider<R2, R, S1, E2> => <S2, E, A, R3>(
-  ma: Eff<S2, R & R3, E, A>
-): Eff<S1 | S2, R2 & R3, E | E2, A> => chain_(f, (r) => provide(r)(ma));
+) => Provider<R2, R, S1, E2> = T.provideSomeM as any;
 
-export function lift<A, B>(
+export const lift: <A, B>(
   f: F.FunctionN<[A], B>
-): <S, R, E>(io: Eff<S, R, E, A>) => Eff<S, R, E, B> {
-  return (io) => map_(io, f);
-}
+) => <S, R, E>(io: Eff<S, R, E, A>) => Eff<S, R, E, B> = T.lift as any;
 
 export interface EffMonad
   extends Monad4E<URI>,
@@ -485,235 +336,91 @@ export interface EffMonad
   ): Eff<S1 | S2, R & R2, E | E2, A>;
 }
 
-function bimap_<S, R, E1, E2, A, B>(
-  io: Eff<S, R, E1, A>,
-  leftMap: F.FunctionN<[E1], E2>,
-  rightMap: F.FunctionN<[A], B>
-): Eff<S, R, E2, B> {
-  return foldExit_(
-    io,
-    (cause) =>
-      cause._tag === "Raise"
-        ? raiseError(leftMap(cause.error))
-        : completed(cause),
-    F.flow(rightMap, pure)
-  );
-}
-
-const mapLeft_: EffMonad["mapLeft"] = (io, f) =>
-  chainError_(io, F.flow(f, raiseError));
-
-const alt_: EffMonad["alt"] = chainError_;
-
-const chainTap_ = <S1, S2, R, E, A, R2, E2>(
-  inner: Eff<S1, R, E, A>,
-  bind: F.FunctionN<[A], Eff<S2, R2, E2, unknown>>
-): Eff<S1 | S2, R & R2, E | E2, A> => chain_(inner, (a) => as(bind(a), a));
-
-export function chainTap<S1, R, E, A>(
+export const chainTap: <S1, R, E, A>(
   bind: F.FunctionN<[A], Eff<S1, R, E, unknown>>
-): <S2, R2, E2>(inner: Eff<S2, R2, E2, A>) => Eff<S1 | S2, R & R2, E | E2, A> {
-  return (inner) => chainTap_(inner, bind);
-}
+) => <S2, R2, E2>(
+  inner: Eff<S2, R2, E2, A>
+) => Eff<S1 | S2, R & R2, E | E2, A> = T.chainTap as any;
 
-export function as<S, R, E, A, B>(io: Eff<S, R, E, A>, b: B): Eff<S, R, E, B> {
-  return map_(io, F.constant(b));
-}
-
-export function asUnit<S, R, E, A>(io: Eff<S, R, E, A>): Eff<S, R, E, void> {
-  return as(io, undefined);
-}
-
-export const unit: SyncEff<T.NoEnv, T.NoErr, void> = pure(undefined);
-
-export function to<B>(
+export const as: <S, R, E, A, B>(
+  io: Eff<S, R, E, A>,
   b: B
-): <S, R, E, A>(io: Eff<S, R, E, A>) => Eff<S, R, E, B> {
-  return (io) => as(io, b);
-}
+) => Eff<S, R, E, B> = T.as as any;
+
+export const asUnit: <S, R, E, A>(
+  io: Eff<S, R, E, A>
+) => Eff<S, R, E, void> = T.asUnit as any;
+
+export const unit: SyncEff<T.NoEnv, T.NoErr, void> = T.unit as any;
+
+export const to: <B>(
+  b: B
+) => <S, R, E, A>(io: Eff<S, R, E, A>) => Eff<S, R, E, B> = T.to as any;
 
 export type InterruptMaskCutout<S, R, E, A> = F.FunctionN<
   [Eff<S, R, E, A>],
   Eff<S, R, E, A>
 >;
 
-function makeInterruptMaskCutout<S, R, E, A>(
-  state: boolean
-): InterruptMaskCutout<S, R, E, A> {
-  return (inner: Eff<S, R, E, A>) => interruptibleRegion(inner, state);
-}
-
-export function uninterruptibleMask<S, R, E, A>(
+export const uninterruptibleMask: <S, R, E, A>(
   f: F.FunctionN<[InterruptMaskCutout<S, R, E, A>], Eff<S, R, E, A>>
-): Eff<S, R, E, A> {
-  return chain_(accessInterruptible, (flag) => {
-    const cutout = makeInterruptMaskCutout<S, R, E, A>(flag);
-    return uninterruptible(f(cutout));
-  });
-}
+) => Eff<S, R, E, A> = T.uninterruptibleMask as any;
 
-export function result<S, R, E, A>(
+export const result: <S, R, E, A>(
   io: Eff<S, R, E, A>
-): Eff<S, R, T.NoErr, ex.Exit<E, A>> {
-  return foldExit_(
-    io,
-    (c) => pure(c) as Eff<S, R, T.NoErr, ex.Exit<E, A>>,
-    (d) => pure(ex.done(d))
-  );
-}
+) => Eff<S, R, T.NoErr, ex.Exit<E, A>> = T.result as any;
 
-function combineFinalizerExit<E, A>(
-  fiberExit: ex.Exit<E, A>,
-  releaseExit: ex.Exit<E, unknown>
-): ex.Exit<E, A> {
-  if (fiberExit._tag === "Done" && releaseExit._tag === "Done") {
-    return fiberExit;
-  } else if (fiberExit._tag === "Done") {
-    return releaseExit as ex.Cause<E>;
-  } else if (releaseExit._tag === "Done") {
-    return fiberExit;
-  } else {
-    // TODO: Figure out how to sanely report both of these, we swallow them currently
-    // This would affect chainError (i.e. assume multiples are actually an abort condition that happens to be typed)
-    return fiberExit;
-  }
-}
-
-export function bracketExit<S1, S2, S3, R, E, A, B, R2, E2, R3, E3>(
+export const bracketExit: <S1, S2, S3, R, E, A, B, R2, E2, R3, E3>(
   acquire: Eff<S1, R, E, A>,
   release: F.FunctionN<[A, ex.Exit<E | E3, B>], Eff<S2, R2, E2, unknown>>,
   use: F.FunctionN<[A], Eff<S3, R3, E3, B>>
-): Eff<S1 | S2 | S3, R & R2 & R3, E | E2 | E3, B> {
-  return uninterruptibleMask((cutout) =>
-    chain_(acquire, (a) =>
-      chain_(result(cutout(use(a))), (exit) =>
-        chain_(result(release(a, exit as ex.Exit<E | E3, B>)), (finalize) =>
-          completed(combineFinalizerExit(exit, finalize))
-        )
-      )
-    )
-  );
-}
+) => Eff<S1 | S2 | S3, R & R2 & R3, E | E2 | E3, B> = T.bracketExit as any;
 
-export function bracket<S1, S2, S3, R, E, A, R2, E2, R3, E3, B>(
+export const bracket: <S1, S2, S3, R, E, A, R2, E2, R3, E3, B>(
   acquire: Eff<S1, R, E, A>,
   release: F.FunctionN<[A], Eff<S2, R2, E2, unknown>>,
   use: F.FunctionN<[A], Eff<S3, R3, E3, B>>
-): Eff<S1 | S2 | S3, R & R2 & R3, E | E2 | E3, B> {
-  // tslint:disable-next-line: no-unnecessary-callback-wrapper
-  return bracketExit(acquire, (e) => release(e), use);
-}
+) => Eff<S1 | S2 | S3, R & R2 & R3, E | E2 | E3, B> = T.bracket as any;
 
-function onInterrupted_<S1, S2, R, E, A, R2, E2>(
-  ioa: Eff<S1, R, E, A>,
+export const onComplete: <S2, R2, E2>(
   finalizer: Eff<S2, R2, E2, unknown>
-): Eff<S1 | S2, R & R2, E | E2, A> {
-  return uninterruptibleMask((cutout) =>
-    chain_(result(cutout(ioa)), (exit) =>
-      exit._tag === "Interrupt"
-        ? chain_(result(finalizer), (finalize) =>
-            completed(combineFinalizerExit(exit, finalize))
-          )
-        : completed(exit)
-    )
-  );
-}
+) => <S1, R, E, A>(
+  ioa: Eff<S1, R, E, A>
+) => Eff<S1 | S2, R & R2, E | E2, A> = T.onComplete as any;
 
-function onComplete_<S1, S2, R, E, A, R2, E2>(
-  ioa: Eff<S1, R, E, A>,
+export const onInterrupted: <S2, R2, E2>(
   finalizer: Eff<S2, R2, E2, unknown>
-): Eff<S1 | S2, R & R2, E | E2, A> {
-  return uninterruptibleMask((cutout) =>
-    chain_(result(cutout(ioa)), (exit) =>
-      chain_(result(finalizer), (finalize) =>
-        completed(combineFinalizerExit(exit, finalize))
-      )
-    )
-  );
-}
+) => <S1, R, E, A>(
+  ioa: Eff<S1, R, E, A>
+) => Eff<S2 | S1, R & R2, E2 | E, A> = T.onInterrupted as any;
 
-export function onComplete<S2, R2, E2>(finalizer: Eff<S2, R2, E2, unknown>) {
-  return <S1, R, E, A>(ioa: Eff<S1, R, E, A>) => onComplete_(ioa, finalizer);
-}
-
-export function onInterrupted<S2, R2, E2>(finalizer: Eff<S2, R2, E2, unknown>) {
-  return <S1, R, E, A>(ioa: Eff<S1, R, E, A>) => onInterrupted_(ioa, finalizer);
-}
-
-export function combineInterruptExit<S1, S2, R, E, A, R2, E2>(
+export const combineInterruptExit: <S1, S2, R, E, A, R2, E2>(
   ioa: Eff<S1, R, E, A>,
   finalizer: Eff<S2, R2, E2, ex.Interrupt[]>
-): Eff<S1 | S2, R & R2, E | E2, A> {
-  return uninterruptibleMask((cutout) =>
-    chain_(result(cutout(ioa)), (exit) =>
-      exit._tag === "Interrupt"
-        ? chain_(result(finalizer), (finalize) => {
-            /* istanbul ignore else */
-            if (finalize._tag === "Done") {
-              const errors = pipe(
-                [exit.error, ...finalize.value.map((x) => x.error)],
-                Ar.filter((x): x is Error => x !== undefined)
-              );
+) => Eff<S1 | S2, R & R2, E | E2, A> = T.combineInterruptExit as any;
 
-              return errors.length > 0
-                ? completed(
-                    ex.interruptWithErrorAndOthers(
-                      errors[0],
-                      Ar.dropLeft(1)(errors)
-                    )
-                  )
-                : completed(exit);
-            } else {
-              console.warn("BUG: interrupt finalizer should not fail");
-              return completed(exit);
-            }
-          })
-        : completed(exit)
-    )
-  );
-}
+export const shifted: AsyncEff<T.NoEnv, T.NoErr, void> = T.shifted as any;
 
-export const shifted: AsyncEff<T.NoEnv, T.NoErr, void> = uninterruptible(
-  chain_(accessRuntime, (runtime) =>
-    asyncTotal<void>((callback) =>
-      runtime.dispatchLater(callback, undefined, 0)
-    )
-  )
-);
-
-export function shiftBefore<S, R, E, A>(
+export const shiftBefore: <S, R, E, A>(
   io: Eff<S, R, E, A>
-): AsyncEff<R, E, A> {
-  return applySecond(shifted, io);
-}
+) => AsyncEff<R, E, A> = T.shiftBefore as any;
 
-export function shiftAfter<S, R, E, A>(io: Eff<S, R, E, A>): AsyncEff<R, E, A> {
-  return applyFirst(io, shifted);
-}
+export const shiftAfter: <S, R, E, A>(
+  io: Eff<S, R, E, A>
+) => AsyncEff<R, E, A> = T.shiftAfter as any;
 
-export const never: AsyncEff<T.NoEnv, T.NoErr, never> = asyncTotal(() => {
-  const handle = setInterval(() => {
-    //
-  }, 60000);
-  /* istanbul ignore next */
-  return (cb) => {
-    clearInterval(handle);
-    cb();
-  };
-});
+export const never: AsyncEff<T.NoEnv, T.NoErr, never> = T.never as any;
 
-export function delay<S, R, E, A>(
+export const delay: <S, R, E, A>(
   inner: Eff<S, R, E, A>,
   ms: number
-): AsyncEff<R, E, A> {
-  return applySecond(after(ms), inner);
-}
+) => AsyncEff<R, E, A> = T.delay as any;
 
-export function liftDelay(
+export const liftDelay: (
   ms: number
-): <S, R, E, A>(io: Eff<S, R, E, A>) => AsyncEff<R, E, A> {
-  return (io) => delay(io, ms);
-}
+) => <S, R, E, A>(
+  io: Eff<S, R, E, A>
+) => AsyncEff<R, E, A> = T.liftDelay as any;
 
 export interface Fiber<S, E, A> {
   readonly name: Op.Option<string>;
@@ -724,30 +431,17 @@ export interface Fiber<S, E, A> {
   readonly isComplete: Eff<S, T.NoEnv, T.NoErr, boolean>;
 }
 
-export function makeFiber<S, R, E, A>(
+export const makeFiber: <S, R, E, A>(
   init: Eff<S, R, E, A>,
   name?: string
-): SyncEff<R, T.NoErr, Fiber<S, E, A>> {
-  return accessM((r: R) =>
-    chain_(accessRuntime, (runtime) =>
-      sync(() => {
-        const driver = new DriverImpl<E, A>(runtime);
-        const fiber = new T.FiberImpl<E, A>(driver, name);
-        driver.start(provideAll(r)(init) as any);
-        return fiber as any;
-      })
-    )
-  );
-}
+) => SyncEff<R, T.NoErr, Fiber<S, E, A>> = T.makeFiber as any;
 
-export function fork<S, R, E, A>(
+export const fork: <S, R, E, A>(
   io: Eff<S, R, E, A>,
   name?: string
-): SyncEff<R, T.NoErr, Fiber<S, E, A>> {
-  return makeFiber(io, name);
-}
+) => SyncEff<R, T.NoErr, Fiber<S, E, A>> = T.fork as any;
 
-export function raceFold<S1, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C>(
+export const raceFold: <S1, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C>(
   first: Eff<S1, R, E1, A>,
   second: Eff<S2, R2, E2, B>,
   onFirstWon: F.FunctionN<
@@ -758,133 +452,65 @@ export function raceFold<S1, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C>(
     [ex.Exit<E2, B>, Fiber<S1, E1, A>],
     Eff<S4, R4, E3, C>
   >
-): Eff<S1 | S2 | S3 | S4, R & R2 & R3 & R4, E3, C> {
-  return T.raceFold(
-    first as any,
-    second as any,
-    onFirstWon as any,
-    onSecondWon as any
-  ) as any;
-}
+) => Eff<S1 | S2 | S3 | S4, R & R2 & R3 & R4, E3, C> = T.raceFold as any;
 
-export function timeoutFold<S1, S2, S3, R, E1, E2, A, B>(
+export const timeoutFold: <S1, S2, S3, R, E1, E2, A, B>(
   source: Eff<S1, R, E1, A>,
   ms: number,
   onTimeout: F.FunctionN<[Fiber<S1, E1, A>], Eff<S2, T.NoEnv, E2, B>>,
   onCompleted: F.FunctionN<[ex.Exit<E1, A>], Eff<S3, T.NoEnv, E2, B>>
-): AsyncEff<R, E2, B> {
-  return raceFold(
-    source,
-    after(ms),
-    /* istanbul ignore next */
-    (exit, delayFiber) => applySecond(delayFiber.interrupt, onCompleted(exit)),
-    (_, fiber) => onTimeout(fiber)
-  );
-}
+) => AsyncEff<R, E2, B> = T.timeoutFold as any;
 
-function interruptLoser<S, R, E, A>(
-  exit: ex.Exit<E, A>,
-  loser: Fiber<S, E, A>
-): Eff<S, R, E, A> {
-  return applySecond(loser.interrupt, completed(exit));
-}
-
-export function raceFirst<S1, S2, R, R2, E, A>(
+export const raceFirst: <S1, S2, R, R2, E, A>(
   io1: Eff<S1, R, E, A>,
   io2: Eff<S2, R2, E, A>
-): Eff<S1 | S2, R & R2, E, A> {
-  return raceFold(io1, io2, interruptLoser, interruptLoser);
-}
+) => Eff<S1 | S2, R & R2, E, A> = T.raceFirst as any;
 
-function fallbackToLoser<S, R, E, A>(
-  exit: ex.Exit<E, A>,
-  loser: Fiber<S, E, A>
-): AsyncEff<R, E, A> {
-  return exit._tag === "Done"
-    ? applySecond(loser.interrupt, completed(exit))
-    : loser.join;
-}
-
-export function race<S1, S2, R, R2, E, A>(
+export const race: <S1, S2, R, R2, E, A>(
   io1: Eff<S1, R, E, A>,
   io2: Eff<S2, R2, E, A>
-): AsyncEff<R & R2, E, A> {
-  return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
-}
+) => AsyncEff<R & R2, E, A> = T.race as any;
 
-export function parZipWith<S1, S2, R, R2, E, E2, A, B, C>(
+export const parZipWith: <S1, S2, R, R2, E, E2, A, B, C>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): AsyncEff<R & R2, E | E2, C> {
-  return raceFold(
-    ioa,
-    iob,
-    (aExit, bFiber) => zipWith(completed(aExit), bFiber.join, f),
-    (bExit, aFiber) => zipWith(aFiber.join, completed(bExit), f)
-  );
-}
+) => AsyncEff<R & R2, E | E2, C> = T.parZipWith as any;
 
-export function parZip<S1, S2, R, R2, E, A, B>(
+export const parZip: <S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E, B>
-): AsyncEff<R & R2, E, readonly [A, B]> {
-  return parZipWith(ioa, iob, tuple2);
-}
+) => AsyncEff<R & R2, E, readonly [A, B]> = T.parZip as any;
 
-export function parApplyFirst<S1, S2, R, R2, E, A, B>(
+export const parApplyFirst: <S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E, B>
-): AsyncEff<R & R2, E, A> {
-  return parZipWith(ioa, iob, fst);
-}
+) => AsyncEff<R & R2, E, A> = T.parApplyFirst as any;
 
-export function parApplySecond<S1, S2, R, R2, E, A, B>(
+export const parApplySecond: <S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iob: Eff<S2, R2, E, B>
-): AsyncEff<R & R2, E, B> {
-  return parZipWith(ioa, iob, snd);
-}
+) => AsyncEff<R & R2, E, B> = T.parApplySecond as any;
 
-export function parAp<S1, S2, R, R2, E, A, B>(
+export const parAp: <S1, S2, R, R2, E, A, B>(
   ioa: Eff<S1, R, E, A>,
   iof: Eff<S2, R2, E, F.FunctionN<[A], B>>
-): AsyncEff<R & R2, E, B> {
-  return parZipWith(ioa, iof, (a, f) => f(a));
-}
+) => AsyncEff<R & R2, E, B> = T.parAp as any;
 
-export function parAp_<S1, S2, R, R2, E, E2, A, B>(
+export const parAp_: <S1, S2, R, R2, E, E2, A, B>(
   iof: Eff<S1, R, E, F.FunctionN<[A], B>>,
   ioa: Eff<S2, R2, E2, A>
-): AsyncEff<R & R2, E | E2, B> {
-  return parZipWith(iof, ioa, (f, a) => f(a));
-}
+) => AsyncEff<R & R2, E | E2, B> = T.parAp_ as any;
 
-const pureNone = pure(Op.none);
-
-export function timeoutOption<S, R, E, A>(
+export const timeoutOption: <S, R, E, A>(
   source: Eff<S, R, E, A>,
   ms: number
-): AsyncEff<R, E, Op.Option<A>> {
-  return timeoutFold(
-    source,
-    ms,
-    (actionFiber) => applySecond(actionFiber.interrupt, pureNone),
-    (exit) => map_(completed(exit), Op.some)
-  );
-}
+) => AsyncEff<R, E, Op.Option<A>> = T.timeoutOption as any;
 
-export function run<S, E, A>(
+export const run: <S, E, A>(
   io: Eff<S, {}, E, A>,
   callback?: F.FunctionN<[ex.Exit<E, A>], void>
-): F.Lazy<void> {
-  const driver = new DriverImpl<E, A>();
-  if (callback) {
-    driver.onExit(callback);
-  }
-  driver.start(io as any);
-  return () => driver.interrupt();
-}
+) => F.Lazy<void> = T.run as any;
 
 export function runSync<E, A>(io: SyncEff<{}, E, A>): ex.Exit<E, A> {
   const res = new DriverSyncImpl<E, A>().start(io as any);
@@ -909,60 +535,22 @@ export function runUnsafeSync<E, A>(io: SyncEff<{}, E, A>): A {
   return result.value;
 }
 
-export function runToPromise<S, E, A>(io: Eff<S, {}, E, A>): Promise<A> {
-  return new Promise((resolve, reject) =>
-    run(io, (exit) => {
-      switch (exit._tag) {
-        case "Done":
-          resolve(exit.value);
-          return;
-        case "Abort":
-          reject(exit.abortedWith);
-          return;
-        case "Raise":
-          reject(exit.error);
-          return;
-        case "Interrupt":
-          reject();
-          return;
-      }
-    })
-  );
-}
-
-export function runToPromiseExit<S, E, A>(
+export const runToPromise: <S, E, A>(
   io: Eff<S, {}, E, A>
-): Promise<ex.Exit<E, A>> {
-  return new Promise((result) => run(io, result));
-}
+) => Promise<A> = T.runToPromise as any;
+
+export const runToPromiseExit: <S, E, A>(
+  io: Eff<S, {}, E, A>
+) => Promise<ex.Exit<E, A>> = T.runToPromiseExit as any;
 
 export const eff: EffMonad = {
+  ...(T.effect as any),
   URI,
-  ap: ap_,
-  chain: chain_,
-  map: map_,
-  of: of_,
-  bimap: bimap_,
-  mapLeft: mapLeft_,
-  mapError: mapLeft_,
-  throwError: raiseError,
-  chainError: chainError_,
-  foldExit: foldExit_,
-  chainTap: chainTap_,
-  alt: alt_,
-  onInterrupted: onInterrupted_,
-  onComplete: onComplete_,
 };
 
 export const parEff: Monad4E<URI> & Bifunctor4<URI> & MonadThrow4E<URI> = {
+  ...(T.parEffect as any),
   URI,
-  map: map_,
-  of: pure,
-  ap: parAp_,
-  chain: chain_,
-  bimap: bimap_,
-  mapLeft: mapLeft_,
-  throwError: raiseError,
 };
 
 export const {
@@ -982,17 +570,17 @@ export const {
   mapLeft,
 } = pipeable(eff);
 
-export function liftEither<A, E, B>(
+export const liftEither: <A, E, B>(
   f: F.FunctionN<[A], Ei.Either<E, B>>
-): F.FunctionN<[A], SyncEff<T.NoEnv, E, B>> {
-  return (a) => fromEither(f(a));
-}
+) => F.FunctionN<[A], SyncEff<T.NoEnv, E, B>> = T.liftEither as any;
 
 export const retype = <S, R, E, A>(
   _: Eff<S, R, E, A>
 ): unknown extends S ? AsyncEff<R, E, A> : SyncEff<R, E, A> => _ as any;
 
-export const encaseSync = <R, E, A>(_: T.Effect<R, E, A>): SyncEff<R, E, A> =>
+export const encaseSyncOrAbort = <R, E, A>(
+  _: T.Effect<R, E, A>
+): SyncEff<R, E, A> =>
   pipe(
     access((r: R) => T.runSync(T.provideAll(r)(_))),
     chainEither(identity),
@@ -1091,4 +679,10 @@ export interface EffIO<S, R, E, A> extends Eff<S, R, E, A> {
   ): EffIO<S | S2, R2, E2, A2>;
 
   done(): Eff<S, R, E, A>;
+
+  runToPromiseExit(r: T.OrVoid<R>): Promise<ex.Exit<E, A>>;
+
+  runToPromise(r: T.OrVoid<R>): Promise<A>;
+
+  run(cb: (ex: ex.Exit<E, A>) => void, r: T.OrVoid<R>): F.Lazy<void>;
 }

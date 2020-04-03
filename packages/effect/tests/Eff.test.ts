@@ -108,14 +108,14 @@ describe("Eff", () => {
   });
 
   it("should encase sync effect", () => {
-    const program = Eff.encaseSync(T.sync(() => 1));
+    const program = Eff.encaseSyncOrAbort(T.sync(() => 1));
     const result = Eff.runSync(program);
 
     assert.deepEqual(result, EX.done(1));
   });
 
   it("should encase sync effect - abort if async", () => {
-    const program = Eff.encaseSync(
+    const program = Eff.encaseSyncOrAbort(
       T.async(() => (cb) => {
         cb();
       })
@@ -160,5 +160,21 @@ describe("Eff", () => {
     const result = await Eff.runToPromiseExit(program);
 
     assert.deepEqual(result, EX.done(1));
+  });
+
+  describe("compat", () => {
+    it("use zipWith", () => {
+      const result = pipe(
+        Eff.zipWith(Eff.pure(1), Eff.pure(2), (x, y) => x + y),
+        Eff.runSync
+      );
+
+      assert.deepEqual(result, EX.done(3));
+    });
+    it("use zip", () => {
+      const result = pipe(Eff.zip(Eff.pure(1), Eff.pure(2)), Eff.runSync);
+
+      assert.deepEqual(result, EX.done([1, 2]));
+    });
   });
 });
