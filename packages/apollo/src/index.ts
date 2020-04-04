@@ -22,16 +22,18 @@ import {
 /* istanbul ignore file */
 
 export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
+  _RE: RE,
+  _U: U,
+  _CTX: Ctx,
+  _C: C
+
   bindToSchema: <R extends Resolver<any, R, U, Ctx>>(
     res: R,
     typeDefs: ITypeDefinitions,
     additionalResolvers?: IResolvers
   ) => T.Effect<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, never, void>;
-
   binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K;
-
   accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
-
   resolver: <ARGS, S = any>() => <R extends ResolverF<ARGS, U, Ctx, S, any, any, any>>(_: R) => R;
   subscription: <ARGS, S = any>() => <B, C, D, E, F, G>(
     subscribe: (_: ResolverInput<S, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
@@ -192,5 +194,11 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
     accessContext,
     resolver: () => (_) => _,
     subscription: () => subscription,
+    _C: undefined as any,
+    _CTX: undefined as any,
+    _RE: undefined as any,
+    _U: undefined as any
   };
 }
+
+export { Resolver }
