@@ -22,17 +22,17 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.4",
-    "fast-check": "^1.23.0",
+    "@matechs/effect": "^5.0.16",
+    "fast-check": "^1.24.1",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14"
+    "fp-ts-contrib": "^0.1.15"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
     "@matechs/effect": "^5.0.16",
-    "@types/jest": "^25.1.4",
-    "fast-check": "^1.23.0",
+    "@types/jest": "^25.2.1",
+    "fast-check": "^1.24.1",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14"
+    "fp-ts-contrib": "^0.1.15"
   }
 }

@@ -25,17 +25,17 @@
   "devDependencies": {
     "@qio/core": "^31.1.0",
     "@types/benchmark": "^1.0.31",
-    "@types/node": "^13.9.1",
+    "@types/node": "^13.11.0",
     "benchmark": "^2.1.4",
     "chai": "^4.2.0",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14",
+    "fp-ts-contrib": "^0.1.15",
     "retry-ts": "^0.1.2",
     "waveguide": "^1.4.0"
   },
   "peerDependencies": {
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14",
+    "fp-ts-contrib": "^0.1.15",
     "retry-ts": "^0.1.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"

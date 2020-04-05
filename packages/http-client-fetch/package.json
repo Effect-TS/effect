@@ -22,10 +22,10 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.4",
-    "@matechs/http-client": "^4.0.4",
+    "@matechs/effect": "^5.0.16",
+    "@matechs/http-client": "^4.0.16",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14",
+    "fp-ts-contrib": "^0.1.15",
     "querystring": "^0.2.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
@@ -35,7 +35,7 @@
     "@matechs/test-jest": "^0.0.12",
     "@types/isomorphic-fetch": "^0.0.35",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14",
+    "fp-ts-contrib": "^0.1.15",
     "isomorphic-fetch": "^2.2.1",
     "querystring": "^0.2.0"
   }

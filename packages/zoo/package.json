@@ -22,16 +22,16 @@
     "es6"
   ],
   "peerDependencies": {
-    "@matechs/effect": "^5.0.4",
+    "@matechs/effect": "^5.0.16",
     "@types/node-zookeeper-client": "^0.2.7",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14"
+    "fp-ts-contrib": "^0.1.15"
   },
   "devDependencies": {
     "@matechs/effect": "^5.0.16",
     "@types/node-zookeeper-client": "^0.2.7",
     "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.14",
+    "fp-ts-contrib": "^0.1.15",
     "node-zookeeper-client": "^1.1.0"
   }
 }
