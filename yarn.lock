@@ -2080,18 +2080,6 @@
     npmlog "^4.1.2"
     write-file-atomic "^2.3.0"
 
-"@matechs/test-jest@^0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@matechs/test-jest/-/test-jest-0.0.12.tgz#ffb324bc5355d2f746b4f38b668716a7d17c59c7"
-  integrity sha512-OkJe2f/1pa8F5RoLn1iL+1OQ5SlWuM0iR56098oTrmsBO5iQhtj1sgPqFANPzmwQ2PnTCaUaEZPVMRtQKbIeZA==
-  dependencies:
-    "@matechs/test" "^0.0.16"
-
-"@matechs/test@^0.0.16":
-  version "0.0.16"
-  resolved "https://registry.yarnpkg.com/@matechs/test/-/test-0.0.16.tgz#1bd1e9bed8c1509370bcda01783751a5a398b42d"
-  integrity sha512-ewc4+lEl7OEu6P+Fu9GIxRhrDNKHso4qv3VkUpJtgYYmatm1MT5ocaUBxqlzEZXJM6ca5JSR/LU0VlTHI2digw==
-
 "@morphic-ts/adt@^0.7.0":
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/@morphic-ts/adt/-/adt-0.7.0.tgz#83b3157188a9fe4e2232adc6be18a964676acc5e"
