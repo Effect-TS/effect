@@ -1290,6 +1290,8 @@ describe("EffectSafe", () => {
           a: T.accessM(({}: Env1) => M.throwError("a")),
           b: M.throwError("b"),
         })
+        .let("y", 1)
+        .letL("z", () => 1)
         .return((r) => r);
       const e = await T.runToPromiseExit(T.provide(env)(p));
       assert.deepStrictEqual(e, ex.raise("a"));

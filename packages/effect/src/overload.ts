@@ -121,6 +121,14 @@ export interface Do3CE<M extends MatechsURIS, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind3<M, R, E, A>
   ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
+  let: <N extends string, E, R, A>(
+    name: Exclude<N, keyof S>,
+    a: A
+  ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
+  letL: <N extends string, E, R, A>(
+    name: Exclude<N, keyof S>,
+    f: (s: S) => A
+  ) => Do3CE<M, S & { [K in N]: A }, U & R, L | E>;
   sequenceS: <R extends Record<string, Kind3<M, never, any, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do3CE<
@@ -152,6 +160,14 @@ export interface Do3CE_<M extends MatechsURIS, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind3<M, R, L, A>
   ) => Do3CE_<M, S & { [K in N]: A }, U & R, L>;
+  let: <N extends string, E, R, A>(
+    name: Exclude<N, keyof S>,
+    a: A
+  ) => Do3CE_<M, S & { [K in N]: A }, U & R, L | E>;
+  letL: <N extends string, E, R, A>(
+    name: Exclude<N, keyof S>,
+    f: (s: S) => A
+  ) => Do3CE_<M, S & { [K in N]: A }, U & R, L | E>;
   sequenceS: <R extends Record<string, Kind3<M, never, L, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do3CE_<M, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
