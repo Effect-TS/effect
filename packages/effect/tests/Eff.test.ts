@@ -1,16 +1,16 @@
 import { eff as Eff, effect as T, exit as EX } from "../src";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
-import { sequenceS } from "fp-ts/lib/Apply";
+import { sequenceS, sequenceT } from "fp-ts/lib/Apply";
 import { right } from "fp-ts/lib/Either";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("Eff", () => {
   it("should compose sync", () => {
     // T.SyncEff<{ n: number; }, never, number>
     const program = pipe(
       Eff.access((_: { n: number }) => _.n),
-      Eff.chain((n) => Eff.sync(() => n + 1)),
-      Eff.retype
+      Eff.chain((n) => Eff.sync(() => n + 1))
     );
 
     const result = pipe(
@@ -24,13 +24,49 @@ describe("Eff", () => {
     assert.deepEqual(result, EX.done(2));
   });
 
+  it("should compose sync - do", () => {
+    // T.SyncEff<{ n: number; }, never, number>
+    const program = Do(Eff.eff)
+      .bindL("n", () => Eff.access((_: { n: number }) => _.n))
+      .bindL("res", ({ n }) => Eff.sync(() => n + 1))
+      .return((x) => x.res);
+
+    const result = pipe(
+      program,
+      Eff.provideAll({
+        n: 1,
+      }),
+      Eff.runSync
+    );
+
+    assert.deepEqual(result, EX.done(2));
+  });
+
+  it("should compose async - do", async () => {
+    // T.AyncEff<{ n: number; }, never, number>
+    const program = Do(Eff.eff)
+      .bindL("n", () => Eff.access((_: { n: number }) => _.n))
+      .bindL("res", ({ n }) => Eff.sync(() => n + 1))
+      .do(Eff.delay(Eff.unit, 1))
+      .return((x) => x.res);
+
+    const result = await pipe(
+      program,
+      Eff.provideAll({
+        n: 1,
+      }),
+      Eff.runToPromiseExit
+    );
+
+    assert.deepEqual(result, EX.done(2));
+  });
+
   it("should compose sync using fluent", () => {
     // T.SyncEff<{ n: number; }, never, number>
-    const program = Eff.retype(
-      Eff.accessEnvironment<{ n: number }>()
-        .fluent()
-        .chain((_) => Eff.sync(() => _.n + 1))
-    );
+    const program = Eff.accessEnvironment<{ n: number }>()
+      .fluent()
+      .chain((_) => Eff.sync(() => _.n + 1))
+      .done();
 
     const result = pipe(
       program,
@@ -45,12 +81,11 @@ describe("Eff", () => {
 
   it("should compose async using fluent", async () => {
     // T.AsyncEff<{ n: number; }, never, number>
-    const program = Eff.retype(
-      Eff.accessEnvironment<{ n: number }>()
-        .fluent()
-        .chain((_) => Eff.sync(() => _.n + 1))
-        .flow(Eff.shiftBefore)
-    );
+    const program = Eff.accessEnvironment<{ n: number }>()
+      .fluent()
+      .chain((_) => Eff.sync(() => _.n + 1))
+      .flow(Eff.shiftBefore)
+      .done();
 
     const result = await pipe(
       program,
@@ -64,15 +99,13 @@ describe("Eff", () => {
   });
 
   it("should compose async using sequence", async () => {
-    const program = Eff.retype(
-      sequenceS(Eff.eff)({
-        a: Eff.accessEnvironment<{ n: number }>()
-          .fluent()
-          .map((_) => _.n)
-          .done(),
-        b: Eff.delay(Eff.pure(1), 0),
-      })
-    );
+    const program = sequenceS(Eff.eff)({
+      a: Eff.accessEnvironment<{ n: number }>()
+        .fluent()
+        .map((_) => _.n)
+        .done(),
+      b: Eff.delay(Eff.pure(1), 0),
+    });
 
     const result = await pipe(
       program,
@@ -85,16 +118,34 @@ describe("Eff", () => {
     assert.deepEqual(result, EX.done({ a: 1, b: 1 }));
   });
 
-  it("should interop with effect", async () => {
-    const program = Eff.retype(
-      sequenceS(Eff.eff)({
-        a: Eff.accessEnvironment<{ n: number }>()
-          .fluent()
-          .map((_) => _.n)
-          .done(),
-        b: Eff.delay(Eff.pure(1), 0),
-      })
+  it("should compose async using sequenceT", async () => {
+    const program = sequenceT(Eff.eff)(
+      Eff.accessEnvironment<{ n: number }>()
+        .fluent()
+        .map((_) => _.n)
+        .done(),
+      Eff.delay(Eff.pure(1), 0)
     );
+
+    const result = await pipe(
+      program,
+      Eff.provideAll({
+        n: 1,
+      }),
+      Eff.runToPromiseExit
+    );
+
+    assert.deepEqual(result, EX.done([1, 1]));
+  });
+
+  it("should interop with effect", async () => {
+    const program = sequenceS(Eff.eff)({
+      a: Eff.accessEnvironment<{ n: number }>()
+        .fluent()
+        .map((_) => _.n)
+        .done(),
+      b: Eff.delay(Eff.pure(1), 0),
+    });
 
     const result = await pipe(
       program.effect(),
