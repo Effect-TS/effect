@@ -227,7 +227,7 @@ M.customRun({
   }
 })(
   pipe(comboSuite, M.withProvider(provideMul), M.withTimeout(300)),
-  pipe(flackySuite, M.withRetryPolicy(limitRetries(10))),
+  pipe(flackySuite, M.withRetryPolicy(limitRetries(100))),
   genSuite,
   skipSuite,
   skip2Suite,
