@@ -86,6 +86,27 @@ const alg: R.Algebra<URI, unknown, never, string> = (_) => {
   }
 };
 
+const coalg: R.Coalgebra<URI, unknown, never, number> = (n) => {
+  switch (n) {
+    case 0:
+      return T.pure({
+        _tag: "ConstF",
+        d: 2
+      });
+    case 1:
+      return T.pure({
+        _tag: "ConstF",
+        d: 3
+      });
+    default:
+      return T.pure({
+        _tag: "TimesF",
+        l: n - 2,
+        r: n - 1
+      });
+  }
+};
+
 const mapper: R.TMap<URI, unknown, never> = (ta, f) => {
   switch (ta._tag) {
     case "ConstF":
@@ -125,6 +146,15 @@ describe("Recursion", () => {
   it("cata", async () => {
     const result = await pipe(R.cata(mapper)(alg)(ex), T.runToPromiseExit);
     assert.deepStrictEqual(result, EX.done("x^3 + 3 * x + 4"));
+  });
+
+  it("ana", async () => {
+    const result = await pipe(
+      R.ana(mapper)(coalg)(3),
+      T.chain(R.cata(mapper)(alg)),
+      T.runToPromiseExit
+    );
+    assert.deepStrictEqual(result, EX.done("3 * 2 * 3"));
   });
 
   it("cata - stack safe", async () => {
