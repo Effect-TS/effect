@@ -75,7 +75,17 @@ export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, 
           T.pure(f)
         )
       ),
-      T.chain((_) => sequenceT(T.parEffect)(_[0].join, _[1].join)),
+      T.chain((_) =>
+        sequenceT(T.parEffect)(
+          T.async(() => (cb) => {
+            T.run(sequenceT(T.effect)(_[0].interrupt, _[1].interrupt), () => {
+              cb();
+            });
+          }),
+          _[0].join,
+          _[1].join
+        )
+      ),
       T.map((_) => _[1])
     );
   });
