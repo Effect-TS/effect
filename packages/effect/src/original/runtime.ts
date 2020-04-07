@@ -14,8 +14,8 @@
 
 /* istanbul ignore file */
 
-import * as L from "../list";
 import { AsyncCancelContFn } from "../effect";
+import { LinkedList } from "../listc";
 
 /**
  * An interface for the IO system runtime.
@@ -45,23 +45,23 @@ export interface Runtime {
 class RuntimeImpl implements Runtime {
   running = false;
 
-  array = L.empty<[(a: any) => void, any]>();
+  array = new LinkedList<[(a: any) => void, any]>();
 
   isRunning = (): boolean => this.running;
 
   run(): void {
     this.running = true;
-    let next = L.popUnsafe(this.array);
+    let next = this.array.deleteHead()?.value;
 
     while (next) {
       next[0](next[1]);
-      next = L.popUnsafe(this.array);
+      next = this.array.deleteHead()?.value;
     }
     this.running = false;
   }
 
   dispatch<A>(thunk: (a: A) => void, a: A): void {
-    L.push(this.array, [thunk, a]);
+    this.array.append([thunk, a]);
 
     if (!this.running) {
       this.run();
