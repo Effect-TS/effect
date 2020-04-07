@@ -58,31 +58,33 @@ As with any good library there is a commercial project that support the developm
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
 
-Running on ci:
+Running on a dedicated VM free of load:
 ```
-$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/index.ts
-effect x 25,179 ops/sec ±1.52% (82 runs sampled)
-effect-fluent x 15,655 ops/sec ±1.43% (80 runs sampled)
-qio x 23,223 ops/sec ±2.31% (80 runs sampled)
-wave x 12,233 ops/sec ±6.35% (77 runs sampled)
-lerna success - @matechs/effect
-promise x 4,236 ops/sec ±1.91% (77 runs sampled)
-native x 26,099 ops/sec ±5.12% (79 runs sampled)
+ma@instance-1:~/matechs-effect/packages/effect$ yarn bench
+yarn run v1.22.4
+$ yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts
+$ /home/ma/matechs-effect/node_modules/.bin/ts-node bench/index.ts
+effect x 36,044 ops/sec ±0.55% (90 runs sampled)
+effect-fluent x 35,726 ops/sec ±0.21% (91 runs sampled)
+qio x 34,867 ops/sec ±1.33% (88 runs sampled)
+wave x 20,479 ops/sec ±0.46% (85 runs sampled)
+promise x 7,519 ops/sec ±0.48% (88 runs sampled)
+native x 39,450 ops/sec ±0.28% (89 runs sampled)
 Fastest is native
-
-$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/nestedMap.ts
-effect x 12,189 ops/sec ±1.49% (80 runs sampled)
-effect-fluent x 5,373 ops/sec ±1.87% (79 runs sampled)
-wave x 2,771 ops/sec ±1.80% (77 runs sampled)
-qio x 10,443 ops/sec ±2.33% (77 runs sampled)
-Fastest is effect
-
-$ /home/runner/work/matechs-effect/matechs-effect/node_modules/.bin/ts-node bench/nestedChain.ts
-effect x 1,171 ops/sec ±1.87% (77 runs sampled)
-effect-fluent x 715 ops/sec ±8.69% (74 runs sampled)
-wave x 352 ops/sec ±9.17% (76 runs sampled)
-qio x 1,186 ops/sec ±1.47% (79 runs sampled)
-Fastest is qio,effect
+$ /home/ma/matechs-effect/node_modules/.bin/ts-node bench/nestedMap.ts
+effect x 18,364 ops/sec ±0.74% (84 runs sampled)
+effect-fluent x 18,586 ops/sec ±0.32% (84 runs sampled)
+wave x 5,181 ops/sec ±0.41% (85 runs sampled)
+qio x 17,870 ops/sec ±0.87% (87 runs sampled)
+Fastest is effect-fluent,effect
+$ /home/ma/matechs-effect/node_modules/.bin/ts-node bench/nestedChain.ts
+effect x 1,851 ops/sec ±0.26% (89 runs sampled)
+effect-fluent x 1,856 ops/sec ±0.20% (90 runs sampled)
+wave x 629 ops/sec ±0.37% (88 runs sampled)
+qio x 1,813 ops/sec ±0.61% (86 runs sampled)
+Fastest is effect-fluent,effect
+Done in 94.45s.
+ma@instance-1:~/matechs-effect/packages/effect$ 
 ```
 
 ## Thanks
