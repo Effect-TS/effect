@@ -6,7 +6,7 @@ import { either as E, function as F, option as O } from "fp-ts";
 import { Cause, Done, done, Exit, interruptWithError, raise } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
-import { LinkedList } from "./listc";
+import { DoublyLinkedList } from "./listc";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -90,7 +90,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
   cancelAsync: T.AsyncCancelContFn | undefined;
-  envStack = new LinkedList<any>();
+  envStack = new DoublyLinkedList<any>();
 
   constructor(readonly runtime: Runtime = defaultRuntime) {}
 
