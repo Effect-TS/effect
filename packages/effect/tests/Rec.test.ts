@@ -142,10 +142,15 @@ for (let n = 0; n < 50000; n += 1) {
   exStack = mul(exStack, num(0));
 }
 
-describe("Recursion", () => {
+describe("Recursion Schemes", () => {
   it("cata", async () => {
     const result = await pipe(R.cata(mapper)(alg)(ex), T.runToPromiseExit);
     assert.deepStrictEqual(result, EX.done("x^3 + 3 * x + 4"));
+  });
+
+  it("cata - stack safe", async () => {
+    const result = await pipe(R.cata(mapper)(alg)(exStack), T.runToPromiseExit);
+    assert.deepStrictEqual(EX.isDone(result) && result.value, "0^50001");
   });
 
   it("ana", async () => {
@@ -157,8 +162,8 @@ describe("Recursion", () => {
     assert.deepStrictEqual(result, EX.done("3 * 2 * 3"));
   });
 
-  it("cata - stack safe", async () => {
-    const result = await pipe(R.cata(mapper)(alg)(exStack), T.runToPromiseExit);
-    assert.deepStrictEqual(EX.isDone(result) && result.value, "0^50001");
+  it("hylo", async () => {
+    const result = await pipe(R.hylo(mapper)(alg, coalg)(3), T.runToPromiseExit);
+    assert.deepStrictEqual(result, EX.done("3 * 2 * 3"));
   });
 });
