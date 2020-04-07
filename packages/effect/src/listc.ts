@@ -5,9 +5,15 @@ export class LinkedListNode<T> {
 }
 
 export class LinkedList<T> {
-  constructor(private head: LinkedListNode<T> | null = null, private tail: LinkedListNode<T> | null = null) {
+  constructor(
+    public head: LinkedListNode<T> | null = null,
+    public tail: LinkedListNode<T> | null = null
+  ) {
     this.head = null;
     this.tail = null;
+  }
+  empty() {
+    return this.head === null;
   }
   prepend(value: T) {
     const newNode = new LinkedListNode<T>(value, this.head);

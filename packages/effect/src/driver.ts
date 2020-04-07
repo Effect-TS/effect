@@ -6,7 +6,7 @@ import { either as E, function as F, option as O } from "fp-ts";
 import { Cause, Done, done, Exit, interruptWithError, raise } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
-import * as L from "./list";
+import { LinkedList } from "./listc";
 
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
@@ -90,7 +90,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
   cancelAsync: T.AsyncCancelContFn | undefined;
-  envStack = L.empty<any>();
+  envStack = new LinkedList<any>();
 
   constructor(readonly runtime: Runtime = defaultRuntime) {}
 
@@ -244,25 +244,25 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         switch (current._tag) {
           case T.EffectTag.AccessEnv:
-            const env = L.isNotEmpty(this.envStack) ? L.lastUnsafe(this.envStack) : {};
+            const env = !this.envStack.empty() ? this.envStack.tail!.value : {};
             current = this.next(env);
             break;
           case T.EffectTag.ProvideEnv:
-            L.push(this.envStack, current.f1 as any);
+            this.envStack.append(current.f1 as any);
             current = T.EffectIO.fromEffect(
               T.effect.foldExit(
                 current.f0 as any,
                 (e) =>
                   T.effect.chain(
                     T.sync(() => {
-                      L.popLastUnsafe(this.envStack);
+                      this.envStack.deleteTail();
                       return {};
                     }),
                     (_) => T.raised(e)
                   ),
                 (r) =>
                   T.sync(() => {
-                    L.popLastUnsafe(this.envStack);
+                    this.envStack.deleteTail();
                     return r;
                   })
               )
