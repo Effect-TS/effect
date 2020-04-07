@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client",
-  "version": "4.0.19",
+  "version": "4.0.20",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -28,7 +28,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/effect": "^5.0.19",
+    "@matechs/effect": "^5.0.20",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.15"
   }
