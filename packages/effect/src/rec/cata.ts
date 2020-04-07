@@ -1,13 +1,10 @@
 import { Kind, URIS } from "fp-ts/lib/HKT";
 import * as EF from "../effect";
 import { Fix } from "./Fix";
+import { TMap } from "./TMap";
 
 export interface Algebra<F extends URIS, R, E, A> {
   (_: Kind<F, A>): EF.Effect<R, E, A>;
-}
-
-export interface TMap<T extends URIS, R, E> {
-  <A, B>(ta: Kind<T, A>, f: (a: A) => EF.Effect<R, E, B>): EF.Effect<R, E, Kind<T, B>>;
 }
 
 export function cata<R, E, F extends URIS>(

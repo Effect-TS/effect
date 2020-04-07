@@ -3,5 +3,7 @@
  */
 
 export { fix, Fix } from "./Fix";
-export { cata, Algebra, TMap } from "./cata";
+export { cata, Algebra } from "./cata";
 export { ana, Coalgebra } from "./ana";
+export { TMap } from "./TMap";
+export { hylo } from "./hylo";
