@@ -1,5 +1,6 @@
 import * as wave from "waveguide/lib/wave";
 import * as T from "../src/effect";
+import * as EFF from "../src/eff";
 import { QIO, defaultRuntime } from "@qio/core";
 import { Suite } from "benchmark";
 
@@ -26,18 +27,14 @@ export const fibWave = (n: bigint): wave.Wave<never, bigint> => {
   if (n < BigInt(2)) {
     return wave.pure(BigInt(1));
   }
-  return wave.chain(fibWave(n - BigInt(1)), (a) =>
-    wave.map(fibWave(n - BigInt(2)), (b) => a + b)
-  );
+  return wave.chain(fibWave(n - BigInt(1)), (a) => wave.map(fibWave(n - BigInt(2)), (b) => a + b));
 };
 
 export const fibQio = (n: bigint): QIO<bigint> => {
   if (n < BigInt(2)) {
     return QIO.resolve(BigInt(1));
   }
-  return QIO.chain(fibQio(n - BigInt(1)), (a) =>
-    QIO.map(fibQio(n - BigInt(2)), (b) => a + b)
-  );
+  return QIO.chain(fibQio(n - BigInt(1)), (a) => QIO.map(fibQio(n - BigInt(2)), (b) => a + b));
 };
 
 export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
@@ -49,9 +46,16 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
   );
 };
 
-export const fibEffectFluent = (
-  n: bigint
-): T.EffectIO<T.NoEnv, never, bigint> => {
+export const fibEffectS = (n: bigint): EFF.SyncEff<T.NoEnv, never, bigint> => {
+  if (n < BigInt(2)) {
+    return EFF.pure(BigInt(1));
+  }
+  return EFF.eff.chain(fibEffectS(n - BigInt(1)), (a) =>
+    EFF.eff.map(fibEffectS(n - BigInt(2)), (b) => a + b)
+  );
+};
+
+export const fibEffectFluent = (n: bigint): T.EffectIO<T.NoEnv, never, bigint> => {
   if (n < BigInt(2)) {
     return T.pure(BigInt(1)).fluent();
   }
@@ -71,6 +75,14 @@ benchmark
       T.run(fibEffect(n), () => {
         cb.resolve();
       });
+    },
+    { defer: true }
+  )
+  .add(
+    "effect-sync",
+    (cb: any) => {
+      EFF.runSync(fibEffectS(n));
+      cb.resolve();
     },
     { defer: true }
   )

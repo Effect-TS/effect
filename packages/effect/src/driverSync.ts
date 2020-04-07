@@ -2,11 +2,11 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { option as O, either as E, function as F } from "fp-ts";
+import { option as O, either as E } from "fp-ts";
 import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./original/exit";
-import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
-import * as L from "./list";
+import { DoublyLinkedList } from "./listc";
+import { defaultRuntime } from "./original/runtime";
 
 // the same as Driver but backs runSync
 /* istanbul ignore file */
@@ -83,22 +83,13 @@ export interface DriverSync<E, A> {
 
 export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   completed: Exit<E, A> | null = null;
-  listeners: F.FunctionN<[Exit<E, A>], void>[] | undefined;
-  started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  envStack = L.empty<any>();
-
-  constructor(readonly runtime: Runtime = defaultRuntime) {}
+  envStack = new DoublyLinkedList<any>();
 
   set(a: Exit<E, A>): void {
     this.completed = a;
-    if (this.listeners !== undefined) {
-      for (const f of this.listeners) {
-        f(a);
-      }
-    }
   }
 
   isComplete(): boolean {
@@ -202,25 +193,25 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       try {
         switch (current._tag) {
           case T.EffectTag.AccessEnv:
-            const env = L.isNotEmpty(this.envStack) ? L.lastUnsafe(this.envStack) : {};
+            const env = !this.envStack.empty() ? this.envStack.tail!.value : {};
             current = this.next(env);
             break;
           case T.EffectTag.ProvideEnv:
-            L.push(this.envStack, current.f1 as any);
+            this.envStack.append(current.f1 as any);
             current = T.EffectIO.fromEffect(
               T.effect.foldExit(
                 current.f0 as any,
                 (e) =>
                   T.effect.chain(
                     T.sync(() => {
-                      L.popLastUnsafe(this.envStack);
+                      this.envStack.deleteTail();
                       return {};
                     }),
                     (_) => T.raised(e)
                   ),
                 (r) =>
                   T.sync(() => {
-                    L.popLastUnsafe(this.envStack);
+                    this.envStack.deleteTail();
                     return r;
                   })
               )
@@ -286,7 +277,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.EffectIO.fromEffect(T.pure(current.f0(this.runtime)));
+            current = T.EffectIO.fromEffect(T.pure(current.f0(defaultRuntime)));
             break;
           case T.EffectTag.AccessInterruptible:
             current = T.EffectIO.fromEffect(T.pure(current.f0(this.isInterruptible())));
@@ -312,15 +303,6 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       return E.right(this.completed);
     }
 
-    this.interrupt();
-
     return E.left(new Error("async operations running"));
-  }
-
-  interrupt(): void {
-    if (this.interrupted || this.isComplete()) {
-      return;
-    }
-    this.interrupted = true;
   }
 }
