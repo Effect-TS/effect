@@ -19,11 +19,10 @@ jobs:
           node-version: 12.x
       - name: npm install, build, and test
         run: |
-          npm install -g lerna
           npm install -g yarn
-          lerna bootstrap
-          lerna run build
-          lerna run bench
+          yarn
+          cd packages/effect
+          yarn bench
         env:
           CI: "true"
 
