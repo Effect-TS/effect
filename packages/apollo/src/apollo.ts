@@ -80,7 +80,10 @@ export type ApolloEnv<C extends ApolloConf> = C extends {
       websocket: WebSocket,
       context: ConnectionContext
     ) => T.Effect<infer R, never, any>;
-    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<infer R2, never, any>;
+    onDisconnect?: (
+      websocket: WebSocket,
+      context: ConnectionContext
+    ) => T.Effect<infer R2, never, any>;
   };
 }
   ? (R extends never ? unknown : R) & (R2 extends never ? unknown : R2)

@@ -75,10 +75,7 @@ export const interruptWithError = (err?: Error): Interrupt =>
         _tag: "Interrupt"
       };
 
-export const interruptWithErrorAndOthers = (
-  err: Error,
-  others?: Error[]
-): Interrupt =>
+export const interruptWithErrorAndOthers = (err: Error, others?: Error[]): Interrupt =>
   others
     ? {
         _tag: "Interrupt",

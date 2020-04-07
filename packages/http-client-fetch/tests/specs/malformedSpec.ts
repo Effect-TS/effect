@@ -12,9 +12,7 @@ export const malformedSpec = J.testM(
     .return(({ get }) => {
       J.assert.deepEqual(E.isRaise(get), true);
       J.assert.deepEqual(
-        E.isRaise(get) &&
-          get.error._tag === H.HttpErrorReason.Request &&
-          get.error.error,
+        E.isRaise(get) && get.error._tag === H.HttpErrorReason.Request && get.error.error,
         new Error("only http(s) protocols are supported")
       );
     })

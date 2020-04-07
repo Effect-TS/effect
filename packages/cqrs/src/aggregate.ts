@@ -11,10 +11,7 @@ import { Read } from "./read";
 import { array } from "fp-ts/lib/Array";
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
-import {
-  MorphADT,
-  AOfTypes
-} from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { MorphADT, AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union";
 import { matcher } from "./matcher";
 import { pipe } from "fp-ts/lib/pipeable";
 
@@ -58,35 +55,23 @@ export class Aggregate<
 
   root<
     H extends Array<
-      Handler<
-        AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
-        any,
-        any,
-        any
-      >
+      Handler<AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>, any, any, any>
     > = never[]
-  >(
-    root: string,
-    handlers?: H
-  ): AggregateRoot<Types, Tag, ProgURI, InterpURI, Keys, Db, H> {
+  >(root: string, handlers?: H): AggregateRoot<Types, Tag, ProgURI, InterpURI, Keys, Db, H> {
     return new AggregateRoot(this, root, this.eventTypes, handlers);
   }
 
   readOnly(config: ReadSideConfig) {
     return <Keys2 extends NonEmptyArray<keyof Types>>(eventTypes: Keys2) =>
       this.read.readSide(config)(
-        new SliceFetcher(this.S, eventTypes, this.db).fetchSlice(
-          this.aggregate
-        ),
+        new SliceFetcher(this.S, eventTypes, this.db).fetchSlice(this.aggregate),
         eventTypes
       );
   }
 
   readAll(config: ReadSideConfig) {
     return this.read.readSide(config)(
-      new AggregateFetcher(this.S, this.eventTypes, this.db).fetchSlice(
-        this.aggregate
-      ),
+      new AggregateFetcher(this.S, this.eventTypes, this.db).fetchSlice(this.aggregate),
       this.eventTypes
     );
   }
@@ -96,12 +81,8 @@ type InferR<
   A,
   Tag extends keyof A & string,
   Keys extends NonEmptyArray<A[Tag]>,
-  H extends Array<
-    Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>
-  >
-> = ReturnType<H[number]> extends T.Effect<infer R, infer E, infer B>
-  ? R
-  : unknown;
+  H extends Array<Handler<Extract<A, Record<Tag, ElemType<Keys>>>, any, any, any>>
+> = ReturnType<H[number]> extends T.Effect<infer R, infer E, infer B> ? R : unknown;
 
 export class AggregateRoot<
   Types extends {
@@ -113,12 +94,7 @@ export class AggregateRoot<
   Keys extends NonEmptyArray<keyof Types>,
   Db extends symbol | string,
   H extends Array<
-    Handler<
-      AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
-      any,
-      any,
-      any
-    >
+    Handler<AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>, any, any, any>
   >
 > {
   private readonly narrowedS = this.aggregate.S.selectMorph(this.keys);
@@ -134,22 +110,14 @@ export class AggregateRoot<
 
   persistEvent(
     eventFn: (
-      of: Of<
-        AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
-        Tag
-      >
+      of: Of<AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>, Tag>
     ) =>
       | AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>
       | AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>[]
   ): T.Effect<
     ORM<Db> &
       DbTx<Db> &
-      InferR<
-        AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>,
-        Tag,
-        Keys,
-        H
-      >,
+      InferR<AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>, Tag, Keys, H>,
     TaskError,
     AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>[]
   > {
@@ -163,14 +131,10 @@ export class AggregateRoot<
           root: this.root
         }
       ),
-      T.chainTap(events =>
-        array.traverse(T.effect)(events, event =>
+      T.chainTap((events) =>
+        array.traverse(T.effect)(events, (event) =>
           this.handlers
-            ? T.asUnit(
-                array.traverse(T.effect)(this.handlers, handler =>
-                  handler(event)
-                )
-              )
+            ? T.asUnit(array.traverse(T.effect)(this.handlers, (handler) => handler(event)))
             : T.unit
         )
       )

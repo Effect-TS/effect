@@ -1,9 +1,7 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as TR from "./tracing";
 
-export function access<A extends F.ModuleShape<A>>(
-  sp: F.ModuleSpec<A>
-): F.Derived<A> {
+export function access<A extends F.ModuleShape<A>>(sp: F.ModuleSpec<A>): F.Derived<A> {
   const derived = {} as F.Derived<A>;
   const a: F.ModuleShape<A> = sp[F.specURI];
 

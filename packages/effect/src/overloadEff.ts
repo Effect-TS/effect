@@ -47,13 +47,9 @@ export interface Alt4E<F extends EffURI> extends Functor4<F> {
   ) => RT<S1 | S2, R & R2, E2, A>;
 }
 
-export interface Monad4E<M extends EffURI>
-  extends Applicative4E<M>,
-    Chain4E<M> {}
+export interface Monad4E<M extends EffURI> extends Applicative4E<M>, Chain4E<M> {}
 
-export interface Monad4EC<M extends EffURI, E>
-  extends Applicative4EC<M, E>,
-    Chain4EC<M, E> {}
+export interface Monad4EC<M extends EffURI, E> extends Applicative4EC<M, E>, Chain4EC<M, E> {}
 
 export interface Applicative4EC<F extends EffURI, E> extends Apply4EC<F, E> {
   readonly of: <S, R, A>(a: A) => RT<S, R, E, A>;
@@ -76,17 +72,12 @@ export interface Chain4EC<F extends EffURI, E> extends Apply4EC<F, E> {
 export interface Functor4EC<F extends EffURI, E> {
   readonly URI: F;
   readonly _E: E;
-  readonly map: <S, R, A, B>(
-    fa: Kind4<F, S, R, E, A>,
-    f: (a: A) => B
-  ) => RT<S, R, E, B>;
+  readonly map: <S, R, A, B>(fa: Kind4<F, S, R, E, A>, f: (a: A) => B) => RT<S, R, E, B>;
 }
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
-  k: infer I
-) => void
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
   ? I
   : never;
 
@@ -98,25 +89,15 @@ interface GenEffect<S, R, E, A> {
   _R: (_: R) => void;
 }
 
-export type STypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A>
-  ? S
-  : never;
+export type STypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? S : never;
 
-export type ATypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A>
-  ? A
-  : never;
+export type ATypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? A : never;
 
-export type ETypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A>
-  ? E
-  : never;
+export type ETypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? E : never;
 
-export type RTypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A>
-  ? R
-  : never;
+export type RTypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? R : never;
 
-export type EnvOf<
-  R extends Record<string, GenEffect<any, any, any, any>>
-> = UnionToIntersection<
+export type EnvOf<R extends Record<string, GenEffect<any, any, any, any>>> = UnionToIntersection<
   {
     [K in keyof R]: unknown extends RTypeOf<R[K]> ? never : RTypeOf<R[K]>;
   }[keyof R]
@@ -127,12 +108,8 @@ export type SOf<R extends Record<string, GenEffect<any, any, any, any>>> = {
 }[keyof R];
 
 export interface Do4CE<M extends EffURI, Q, S extends object, U, L> {
-  do: <Q1, E, R>(
-    ma: Kind4<M, Q1, R, E, unknown>
-  ) => Do4CE<M, Q | Q1, S, U & R, L | E>;
-  doL: <Q1, E, R>(
-    f: (s: S) => Kind4<M, Q1, R, E, unknown>
-  ) => Do4CE<M, Q | Q1, S, U & R, L | E>;
+  do: <Q1, E, R>(ma: Kind4<M, Q1, R, E, unknown>) => Do4CE<M, Q | Q1, S, U & R, L | E>;
+  doL: <Q1, E, R>(f: (s: S) => Kind4<M, Q1, R, E, unknown>) => Do4CE<M, Q | Q1, S, U & R, L | E>;
   bind: <N extends string, Q1, E, R, A>(
     name: Exclude<N, keyof S>,
     ma: Kind4<M, Q1, R, E, A>
@@ -172,12 +149,8 @@ export interface Do4CE<M extends EffURI, Q, S extends object, U, L> {
 }
 
 export interface Do4CE_<M extends EffURI, Q, S extends object, U, L> {
-  do: <Q1, R>(
-    ma: Kind4<M, Q1, R, L, unknown>
-  ) => Do4CE_<M, Q | Q1, S, U & R, L>;
-  doL: <Q1, R>(
-    f: (s: S) => Kind4<M, Q1, R, L, unknown>
-  ) => Do4CE_<M, Q | Q1, S, U & R, L>;
+  do: <Q1, R>(ma: Kind4<M, Q1, R, L, unknown>) => Do4CE_<M, Q | Q1, S, U & R, L>;
+  doL: <Q1, R>(f: (s: S) => Kind4<M, Q1, R, L, unknown>) => Do4CE_<M, Q | Q1, S, U & R, L>;
   bind: <N extends string, Q1, R, A>(
     name: Exclude<N, keyof S>,
     ma: Kind4<M, Q1, R, L, A>
@@ -196,53 +169,32 @@ export interface Do4CE_<M extends EffURI, Q, S extends object, U, L> {
   ) => Do4CE<M, Q, S & { [K in N]: A }, U & R, L | E>;
   sequenceS: <R extends Record<string, GenEffect<any, any, L, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do4CE_<
-    M,
-    SOf<R>,
-    S & { [K in keyof R]: ATypeOf<R[K]> },
-    U & EnvOf<R>,
-    L
-  >;
+  ) => Do4CE_<M, SOf<R>, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
   sequenceSL: <R extends Record<string, GenEffect<any, any, L, any>>>(
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do4CE_<
-    M,
-    SOf<R>,
-    S & { [K in keyof R]: ATypeOf<R[K]> },
-    U & EnvOf<R>,
-    L
-  >;
+  ) => Do4CE_<M, SOf<R>, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
   return: <A>(f: (s: S) => A) => RT<Q, U, L, A>;
   done: () => RT<Q, U, L, S>;
 }
 
 declare module "fp-ts-contrib/lib/Do" {
-  export function Do<M extends EffURI>(
-    M: Monad4E<M>
-  ): Do4CE<M, never, {}, NoEnv, NoErr>;
-  export function Do<M extends EffURI, E>(
-    M: Monad4EC<M, E>
-  ): Do4CE_<M, never, {}, NoEnv, E>;
+  export function Do<M extends EffURI>(M: Monad4E<M>): Do4CE<M, never, {}, NoEnv, NoErr>;
+  export function Do<M extends EffURI, E>(M: Monad4EC<M, E>): Do4CE_<M, never, {}, NoEnv, E>;
 }
 
 declare module "fp-ts/lib/Apply" {
   export function sequenceS<F extends EffURI>(
     F: Apply4E<F>
   ): <NER extends Record<string, GenEffect<any, any, any, any>>>(
-    r: EnforceNonEmptyRecord<NER> &
-      Record<string, GenEffect<any, any, any, any>>
+    r: EnforceNonEmptyRecord<NER> & Record<string, GenEffect<any, any, any, any>>
   ) => RT<
     SOf<NER>,
     EnvOf<NER>,
     {
-      [K in keyof NER]: [NER[K]] extends [GenEffect<any, any, infer E, any>]
-        ? E
-        : never;
+      [K in keyof NER]: [NER[K]] extends [GenEffect<any, any, infer E, any>] ? E : never;
     }[keyof NER],
     {
-      [K in keyof NER]: [NER[K]] extends [GenEffect<any, any, any, infer A>]
-        ? A
-        : never;
+      [K in keyof NER]: [NER[K]] extends [GenEffect<any, any, any, infer A>] ? A : never;
     }
   >;
 
@@ -254,9 +206,7 @@ declare module "fp-ts/lib/Apply" {
     }
   ) => RT<
     {
-      [K in keyof T]: [T[K]] extends [GenEffect<infer S, any, any, any>]
-        ? S
-        : never;
+      [K in keyof T]: [T[K]] extends [GenEffect<infer S, any, any, any>] ? S : never;
     }[number],
     UnionToIntersection<
       {
@@ -268,14 +218,10 @@ declare module "fp-ts/lib/Apply" {
       }[number]
     >,
     {
-      [K in keyof T]: [T[K]] extends [GenEffect<any, any, infer E, any>]
-        ? E
-        : never;
+      [K in keyof T]: [T[K]] extends [GenEffect<any, any, infer E, any>] ? E : never;
     }[number],
     {
-      [K in keyof T]: [T[K]] extends [GenEffect<any, any, any, infer A>]
-        ? A
-        : never;
+      [K in keyof T]: [T[K]] extends [GenEffect<any, any, any, infer A>] ? A : never;
     }
   >;
 }
@@ -283,21 +229,16 @@ declare module "fp-ts/lib/Apply" {
 export interface PipeableChain4E<F extends EffURI> extends PipeableApply4E<F> {
   readonly chain: <S1, R, E, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
-  ) => <S2, R2, E2>(
-    ma: Kind4<F, S2, R2, E2, A>
-  ) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => <S2, R2, E2>(ma: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, B>;
   readonly chainFirst: <S1, R, E, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
-  ) => <S2, R2, E2>(
-    ma: Kind4<F, S2, R2, E2, A>
-  ) => RT<S1 | S2, R & R2, E | E2, A>;
+  ) => <S2, R2, E2>(ma: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, A>;
   readonly flatten: <S1, S2, R, E, R2, E2, A>(
     mma: Kind4<F, S1, R, E, Kind4<F, S2, R2, E2, A>>
   ) => RT<S1 | S2, R & R2, E | E2, A>;
 }
 
-export interface PipeableChain4EC<F extends EffURI, E>
-  extends PipeableApply4EC<F, E> {
+export interface PipeableChain4EC<F extends EffURI, E> extends PipeableApply4EC<F, E> {
   readonly chain: <S1, R, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
   ) => <S2, R2>(ma: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, B>;
@@ -312,28 +253,19 @@ export interface PipeableChain4EC<F extends EffURI, E>
 export interface PipeableApply4E<F extends EffURI> extends PipeableFunctor4<F> {
   readonly ap: <S1, R, E, A, E2>(
     fa: Kind4<F, S1, R, E, A>
-  ) => <S2, R2, B>(
-    fab: Kind4<F, S2, R2, E2, (a: A) => B>
-  ) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => <S2, R2, B>(fab: Kind4<F, S2, R2, E2, (a: A) => B>) => RT<S1 | S2, R & R2, E | E2, B>;
   readonly apFirst: <S1, R, E, B>(
     fb: Kind4<F, S1, R, E, B>
-  ) => <A, S2, R2, E2>(
-    fa: Kind4<F, S2, R2, E2, A>
-  ) => RT<S1 | S2, R & R2, E | E2, A>;
+  ) => <A, S2, R2, E2>(fa: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, A>;
   readonly apSecond: <S1, R, E, B>(
     fb: Kind4<F, S1, R, E, B>
-  ) => <A, S2, R2, E2>(
-    fa: Kind4<F, S2, R2, E2, A>
-  ) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => <A, S2, R2, E2>(fa: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, B>;
 }
 
-export interface PipeableApply4EC<F extends EffURI, E>
-  extends PipeableFunctor4EC<F, E> {
+export interface PipeableApply4EC<F extends EffURI, E> extends PipeableFunctor4EC<F, E> {
   readonly ap: <S1, R, A>(
     fa: Kind4<F, S1, R, E, A>
-  ) => <S2, B, R2>(
-    fab: Kind4<F, S2, R2, E, (a: A) => B>
-  ) => RT<S1 | S2, R & R2, E, B>;
+  ) => <S2, B, R2>(fab: Kind4<F, S2, R2, E, (a: A) => B>) => RT<S1 | S2, R & R2, E, B>;
   readonly apFirst: <S1, R, B>(
     fb: Kind4<F, S1, R, E, B>
   ) => <A, S2, R2>(fa: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, A>;
@@ -343,17 +275,13 @@ export interface PipeableApply4EC<F extends EffURI, E>
 }
 
 export interface PipeableFunctor4EC<F extends EffURI, E> {
-  readonly map: <A, B>(
-    f: (a: A) => B
-  ) => <S, R>(fa: Kind4<F, S, R, E, A>) => RT<S, R, E, B>;
+  readonly map: <A, B>(f: (a: A) => B) => <S, R>(fa: Kind4<F, S, R, E, A>) => RT<S, R, E, B>;
 }
 
 export interface PipeableAlt4E<F extends EffURI> {
   readonly alt: <S1, R, E, A>(
     that: () => Kind4<F, S1, R, E, A>
-  ) => <S2, R2, E2>(
-    fa: Kind4<F, S1 | S2, R2, E2, A>
-  ) => RT<S1 | S2, R & R2, E, A>;
+  ) => <S2, R2, E2>(fa: Kind4<F, S1 | S2, R2, E2, A>) => RT<S1 | S2, R & R2, E, A>;
 }
 
 declare module "fp-ts/lib/pipeable" {
@@ -369,9 +297,7 @@ declare module "fp-ts/lib/pipeable" {
     ? PipeableFunctor4<F>
     : {}) &
     (I extends Contravariant4<F> ? PipeableContravariant4<F> : {}) &
-    (I extends FunctorWithIndex4<F, infer Ix>
-      ? PipeableFunctorWithIndex4<F, Ix>
-      : {}) &
+    (I extends FunctorWithIndex4<F, infer Ix> ? PipeableFunctorWithIndex4<F, Ix> : {}) &
     (I extends Bifunctor4<F> ? PipeableBifunctor4<F> : {}) &
     (I extends Extend4<F> ? PipeableExtend4<F> : {}) &
     (I extends FoldableWithIndex4<F, infer Ix>
@@ -427,23 +353,16 @@ export interface PipeableAlt4EC<F extends EffURI, E> {
 }
 
 export interface PipeableMonadThrow4EC<F extends EffURI, E> {
-  readonly fromOption: (
-    onNone: () => E
-  ) => <A>(ma: Option<A>) => RT<never, NoEnv, E, A>;
+  readonly fromOption: (onNone: () => E) => <A>(ma: Option<A>) => RT<never, NoEnv, E, A>;
   readonly fromEither: <A>(ma: Either<E, A>) => RT<never, NoEnv, E, A>;
   readonly fromPredicate: {
     <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): (
       a: A
     ) => RT<never, NoEnv, E, B>;
-    <A>(predicate: Predicate<A>, onFalse: (a: A) => E): (
-      a: A
-    ) => RT<never, NoEnv, E, A>;
+    <A>(predicate: Predicate<A>, onFalse: (a: A) => E): (a: A) => RT<never, NoEnv, E, A>;
   };
   readonly filterOrElse: {
-    <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <
-      S,
-      R
-    >(
+    <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <S, R>(
       ma: Kind4<F, S, R, E, A>
     ) => RT<S, R, E, B>;
     <A>(predicate: Predicate<A>, onFalse: (a: A) => E): <S, R>(

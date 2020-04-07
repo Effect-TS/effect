@@ -3,7 +3,7 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as W from "winston";
 import { Do } from "fp-ts-contrib/lib/Do";
 
-export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI"
+export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI";
 
 export interface WinstonFactory {
   [winstonFactoryEnv]: {
@@ -29,7 +29,7 @@ export function log(
   return (
     Do(T.effect)
       .bind("logger", logger)
-      .doL(s =>
+      .doL((s) =>
         T.sync(() => {
           s.logger.log(level, message, meta);
         })
@@ -39,11 +39,9 @@ export function log(
   );
 }
 
-export const winstonLogger: F.Provider<
-  WinstonFactory,
-  L.logger.Logger,
-  never
-> = F.implement(L.logger.loggerM)({
+export const winstonLogger: F.Provider<WinstonFactory, L.logger.Logger, never> = F.implement(
+  L.logger.loggerM
+)({
   [L.logger.loggerEnv]: {
     debug: (message, meta) => log("debug", message, meta),
     http: (message, meta) => log("http", message, meta),

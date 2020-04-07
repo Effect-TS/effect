@@ -27,20 +27,20 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
     R.traverseWithIndex(T.effect)((k: string) =>
       pipe(
         _I[k],
-        T.map(x => M.observable(x as any))
+        T.map((x) => M.observable(x as any))
       )
     ),
-    T.map(r => (r as any) as any)
+    T.map((r) => (r as any) as any)
   );
 
   const Cmp = (props: P) => {
     const C = pipe(
       initial,
-      T.chain(init => {
+      T.chain((init) => {
         const f = new Fancy(_V);
         return pipe(
           f.ui,
-          T.chain(Cmp =>
+          T.chain((Cmp) =>
             T.sync(
               (): React.FC => () => {
                 React.useEffect(() => () => {
@@ -86,7 +86,7 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
         ? T.runToPromise(
             pipe(
               _P as T.Effect<unknown, never, P>,
-              T.map(x => ({ props: x }))
+              T.map((x) => ({ props: x }))
             )
           )
         : Promise.resolve({ props: {} } as any)

@@ -28,8 +28,8 @@ const aggregateRead = <
 >(
   agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>
 ) => (config: ReadSideConfig) =>
-  M.use(eventStoreTcpConnection, connection =>
-    agg.readAll(config)(_ => T.traverseAS(sendEvent(connection)))
+  M.use(eventStoreTcpConnection, (connection) =>
+    agg.readAll(config)((_) => T.traverseAS(sendEvent(connection)))
   );
 
 export const aggregate = <
@@ -47,19 +47,16 @@ export const aggregate = <
   dispatcher: aggregateRead(agg),
   read: (readId: string) => <R2, E2>(
     process: (
-      a: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }> &
-        EventMetaHidden
+      a: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }> & EventMetaHidden
     ) => T.Effect<R2, E2, void>
   ) =>
-    readEvents(readId)(`$ce-${agg.aggregate}`)(
-      T.liftEither(x => agg.adt.type.decode(x))
-    )(a =>
-      pipe(adaptMeta(a), meta =>
+    readEvents(readId)(`$ce-${agg.aggregate}`)(T.liftEither((x) => agg.adt.type.decode(x)))((a) =>
+      pipe(adaptMeta(a), (meta) =>
         isSome(meta)
           ? process({ ...a, ...meta.value })
           : T.raiseAbort(new Error("cannot decode metadata"))
       )
-    )(ormOffsetStore(agg.db))(x => agg.db.withORMTransaction(x))
+    )(ormOffsetStore(agg.db))((x) => agg.db.withORMTransaction(x))
 });
 
 export { EventStoreError, EventStoreConfig, eventStoreURI } from "./client";

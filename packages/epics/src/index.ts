@@ -11,11 +11,7 @@ export interface Epic<R, State, A extends Action<any>, O extends A> {
   _O: O;
   _R: R;
   _S: State;
-  (current: StateAccess<State>, action$: S.Stream<T.NoEnv, never, A>): S.Stream<
-    R,
-    never,
-    O
-  >;
+  (current: StateAccess<State>, action$: S.Stream<T.NoEnv, never, A>): S.Stream<R, never, O>;
 }
 
 function toNever(_: any): never {
@@ -51,12 +47,12 @@ export function embed<EPS extends AnyEpic[]>(
   type State = Sta<EPSType>;
   type ActionOut = AOut<EPSType>;
   type REnv = EpicsEnvType<EPSType>;
-  return provider =>
+  return (provider) =>
     Rxo.combineEpics(
       ...pipe(
         epics as Epic<REnv, State, Action, ActionOut>[],
         A.map(
-          epic => (
+          (epic) => (
             action$: Rxo.ActionsObservable<Action>,
             state$: Rxo.StateObservable<State>
           ) => {
@@ -68,11 +64,7 @@ export function embed<EPS extends AnyEpic[]>(
               flow(
                 provider,
                 T.provideS(stateAccess)
-              )(
-                R.toObservable(
-                  epic(stateAccess, R.encaseObservable(action$, toNever))
-                )
-              )
+              )(R.toObservable(epic(stateAccess, R.encaseObservable(action$, toNever))))
             );
           }
         )
@@ -81,10 +73,7 @@ export function embed<EPS extends AnyEpic[]>(
 }
 
 export function epic<S, A extends Action>(): <R, O extends A>(
-  e: (
-    current: StateAccess<S>,
-    action$: S.Stream<T.NoEnv, never, A>
-  ) => S.Stream<R, never, O>
+  e: (current: StateAccess<S>, action$: S.Stream<T.NoEnv, never, A>) => S.Stream<R, never, O>
 ) => Epic<R, S, A, O> {
-  return e => e as any;
+  return (e) => e as any;
 }

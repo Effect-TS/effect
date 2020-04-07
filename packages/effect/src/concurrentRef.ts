@@ -24,41 +24,35 @@ export interface ConcurrentRef<A> {
    * This function may return a second value of type B that will be produced on complete
    * @param f
    */
-  modify<R, B>(
-    f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>
-  ): T.Effect<R, never, B>;
+  modify<R, B>(f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>): T.Effect<R, never, B>;
 }
 
 /**
  * Creates an IO that will allocate a ConcurrentRef.
  */
-export const makeConcurrentRef = <A>(
-  initial: A
-): T.Effect<T.NoEnv, never, ConcurrentRef<A>> =>
-  T.effect.map(makeSemaphore(1), semaphore => {
+export const makeConcurrentRef = <A>(initial: A): T.Effect<T.NoEnv, never, ConcurrentRef<A>> =>
+  T.effect.map(makeSemaphore(1), (semaphore) => {
     let value = initial;
 
     const get = T.sync(() => value);
 
     const set = <R>(a: T.Effect<R, never, A>): T.Effect<R, never, A> =>
       semaphore.withPermit(
-        T.effect.map(a, a => {
+        T.effect.map(a, (a) => {
           const prev = value;
           value = a;
           return prev;
         })
       );
 
-    const update = <R>(
-      f: F.FunctionN<[A], T.Effect<R, never, A>>
-    ): T.Effect<R, never, A> =>
+    const update = <R>(f: F.FunctionN<[A], T.Effect<R, never, A>>): T.Effect<R, never, A> =>
       semaphore.withPermit(
         T.effect.map(
           T.effect.chain(
             T.sync(() => value),
             f
           ),
-          v => {
+          (v) => {
             value = v;
             return v;
           }
@@ -74,7 +68,7 @@ export const makeConcurrentRef = <A>(
             T.sync(() => value),
             f
           ),
-          v => {
+          (v) => {
             const [b, a] = v;
             value = a;
             return b;

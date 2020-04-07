@@ -46,9 +46,7 @@ describe("Stream", () => {
       })
     );
 
-    const res = await T.runToPromise(
-      S.collectArray(S.stream.map(s, ({ n }) => n))
-    );
+    const res = await T.runToPromise(S.collectArray(S.stream.map(s, ({ n }) => n)));
 
     assert.deepEqual(res, array.range(1, 10));
   });
@@ -119,13 +117,7 @@ describe("Stream", () => {
     }
 
     // $ExpectType Even[]
-    const res = await pipe(
-      s,
-      S.filterRefine(isEven),
-      S.take(3),
-      S.collectArray,
-      T.runToPromise
-    );
+    const res = await pipe(s, S.filterRefine(isEven), S.take(3), S.collectArray, T.runToPromise);
 
     assert.deepEqual(res, [0, 2, 4]);
   });
@@ -150,7 +142,7 @@ describe("Stream", () => {
 
     const res = await pipe(
       s,
-      S.takeWhile(n => n < 10),
+      S.takeWhile((n) => n < 10),
       S.collectArray,
       T.runToPromise
     );
@@ -212,7 +204,7 @@ describe("Stream", () => {
   it("should use map", async () => {
     const s = pipe(
       S.fromArray([0, 1, 2]),
-      S.map(n => n + 1)
+      S.map((n) => n + 1)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -231,7 +223,7 @@ describe("Stream", () => {
   it("should use filter", async () => {
     const s = pipe(
       S.fromArray([0]),
-      S.filter(n => n > 0)
+      S.filter((n) => n > 0)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -242,7 +234,7 @@ describe("Stream", () => {
   it("should use filter - 2", async () => {
     const s = pipe(
       S.fromArray([1]),
-      S.filter(n => n > 0)
+      S.filter((n) => n > 0)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -251,10 +243,7 @@ describe("Stream", () => {
   });
 
   it("should use distinctAdjacent", async () => {
-    const s = pipe(
-      S.fromArray([0, 0, 1, 2, 2, 3]),
-      S.distinctAdjacent(eqNumber)
-    );
+    const s = pipe(S.fromArray([0, 0, 1, 2, 2, 3]), S.distinctAdjacent(eqNumber));
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -272,7 +261,7 @@ describe("Stream", () => {
   it("should use dropWhile", async () => {
     const s = pipe(
       S.fromArray([0]),
-      S.dropWhile(n => n === 0)
+      S.dropWhile((n) => n === 0)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -390,9 +379,7 @@ describe("Stream", () => {
   });
 
   it("should use flatten", async () => {
-    const s = S.flatten(
-      S.fromArray([S.fromArray([0, 1, 2]), S.fromArray([0, 1, 2])])
-    );
+    const s = S.flatten(S.fromArray([S.fromArray([0, 1, 2]), S.fromArray([0, 1, 2])]));
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -414,7 +401,7 @@ describe("Stream", () => {
   it("should use mapM", async () => {
     const s = pipe(
       S.fromArray([0, 1, 2]),
-      S.mapM(n => T.pure(n + 1))
+      S.mapM((n) => T.pure(n + 1))
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -447,7 +434,7 @@ describe("Stream", () => {
       let iterationCount = 0;
 
       const rangeIterator = {
-        next: function() {
+        next: function () {
           let result: any;
           if (nextIndex < end) {
             result = { value: nextIndex, done: false };
@@ -499,14 +486,14 @@ describe("Stream", () => {
     }
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
-    const s = S.stream.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
+    const s = S.stream.chain(a, (n) => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
 
     // $ExpectType Stream<Config & ConfigB, never, number>
-    const m = S.stream.chain(s, n =>
+    const m = S.stream.chain(s, (n) =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = S.stream.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
+    const g = S.stream.chain(m, (n) => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
@@ -539,22 +526,20 @@ describe("Stream", () => {
     const s = pipe(
       // $ExpectType Stream<Config, never, number>
       a,
-      S.chain(n => S.fromRange(n, 1, 10))
+      S.chain((n) => S.fromRange(n, 1, 10))
     );
 
     // $ExpectType Stream<Config & ConfigB, never, number>
     const m = pipe(
       s,
-      S.chain(n =>
-        S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
-      )
+      S.chain((n) => S.encaseEffect(T.access(({ second }: ConfigB) => n + second)))
     );
 
     // $ExpectType Stream<Config & ConfigB, never, number>
     const g = pipe(
       // $ExpectType Stream<Config & ConfigB, never, number>
       m,
-      S.chain(n => S.fromRange(0, 1, n))
+      S.chain((n) => S.fromRange(0, 1, n))
     );
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
@@ -578,73 +563,53 @@ describe("Stream", () => {
 
   // from https://github.com/rzeigler/waveguide-streams/blob/master/test/stream.spec.ts
   describe("peel", () => {
-    const multiplier = SK.map(SK.headSink<T.NoEnv, never, number>(), opt =>
+    const multiplier = SK.map(SK.headSink<T.NoEnv, never, number>(), (opt) =>
       opt._tag === "Some" ? opt.value : 1
     );
     it("should handle empty arrays", () => {
       const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
       const s2 = pipe(s1, S.peel(multiplier));
-      return expectExit(
-        S.collectArray(S.stream.chain(s2, ([_h, r]) => r)),
-        ex.done([])
-      );
+      return expectExit(S.collectArray(S.stream.chain(s2, ([_h, r]) => r)), ex.done([]));
     });
     it("should handle empty arrays (managed)", () => {
       const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
       const s2 = pipe(s1, S.peelManaged(M.pure(multiplier)));
-      return expectExit(
-        S.collectArray(S.stream.chain(s2, ([_h, r]) => r)),
-        ex.done([])
-      );
+      return expectExit(S.collectArray(S.stream.chain(s2, ([_h, r]) => r)), ex.done([]));
     });
     it("should extract a head and return a subsequent element", () => {
       const s1 = S.fromArray([2, 6, 9]);
       const s2 = pipe(
         s1,
         S.peel(multiplier),
-        S.chain(([head, rest]) => S.stream.map(rest, v => v * head))
+        S.chain(([head, rest]) => S.stream.map(rest, (v) => v * head))
       );
       return expectExit(S.collectArray(s2), ex.done([12, 18]));
     });
     it("should compose", () => {
       const s1 = S.fromRange(3, 1, 9); // emits 3, 4, 5, 6, 7, 8
-      const s2 = S.stream.filter(s1, x => x % 2 === 0); // emits 4 6 8
+      const s2 = S.stream.filter(s1, (x) => x % 2 === 0); // emits 4 6 8
       const s3 = S.stream.chain(
         S.stream.peel(s2, multiplier),
         ([head, rest]) =>
           // head is 4
-          S.stream.map(rest, v => v * head) // emits 24 32
+          S.stream.map(rest, (v) => v * head) // emits 24 32
       );
       return expectExit(S.collectArray(s3), ex.done([24, 32]));
     });
     it("should raise errors", () => {
-      const s1 = (S.fromArray([
-        S.raised("boom"),
-        S.once(1)
-      ]) as any) as S.Stream<
-        T.NoEnv,
-        string,
-        S.Stream<T.NoEnv, string, number>
-      >;
+      const s1 =
+        (S.fromArray([S.raised("boom"), S.once(1)]) as any) as
+        S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>;
       const s2 = S.flatten(s1);
       const s3 = S.stream.peel(s2, multiplier);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
     it("should raise errors in the remainder stream", () => {
-      const s1 = (S.fromArray([
-        S.once(2),
-        S.raised("boom"),
-        S.once(1)
-      ]) as any) as S.Stream<
-        T.NoEnv,
-        string,
-        S.Stream<T.NoEnv, string, number>
-      >;
+      const s1 =
+        (S.fromArray([S.once(2), S.raised("boom"), S.once(1)]) as any) as
+        S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>;
       const s2 = S.flatten(s1);
-      const s3 = S.stream.chain(
-        S.stream.peel(s2, multiplier),
-        ([_head, rest]) => rest
-      );
+      const s3 = S.stream.chain(S.stream.peel(s2, multiplier), ([_head, rest]) => rest);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
   });
@@ -653,13 +618,7 @@ describe("Stream", () => {
     // We describe transduction as the process of consuming some elements (1 or more) to produce an output element
     // The transducer used for the test is a summer
     // i.e. it consumes the number of elements to read, then that number of elements, and then outputs the sum
-    function transducer(): Sink<
-      T.NoEnv,
-      never,
-      readonly [number, number],
-      number,
-      number
-    > {
+    function transducer(): Sink<T.NoEnv, never, readonly [number, number], number, number> {
       const initial = sinkCont([-1, 0] as const);
 
       function step(
@@ -670,10 +629,7 @@ describe("Stream", () => {
           return sinkCont([next, 0] as const);
         }
         if (state[0] === 1) {
-          return sinkDone(
-            [0 as number, state[1] + next] as const,
-            [] as never[]
-          );
+          return sinkDone([0 as number, state[1] + next] as const, [] as never[]);
         }
         return sinkCont([state[0] - 1, state[1] + next] as const);
       }
@@ -749,22 +705,13 @@ describe("Stream", () => {
       return expectExit(S.collectArray(s3), ex.done([0, 1, 0, 1, 0, 1, 2, 3]));
     });
     it("should fail with errors in outer stream", () => {
-      const io = T.effect.chain(ref.makeRef(0), cell => {
-        const s1: T.Effect<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
-        const s2: T.Effect<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.raiseError("boom"), 50) as any;
-        const s3: T.Effect<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
+      const io = T.effect.chain(ref.makeRef(0), (cell) => {
+        const s1: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+          T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
+        const s2: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+          T.delay(T.raiseError("boom"), 50) as any;
+        const s3: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+          T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
           T.NoEnv,
@@ -772,40 +719,28 @@ describe("Stream", () => {
           T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>
         > = S.fromArray([s1, s2, s3]) as any;
 
-        const stream: S.Stream<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = S.stream.mapM(set, identity);
+        const stream: S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> = S.stream.mapM(
+          set,
+          identity
+        );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
         return T.zip(drain, T.delay(cell.get, 100));
       });
       return expectExit(
         io,
-        ex.done([ex.raise("boom"), 1] as const) as ex.Exit<
-          never,
-          readonly [ex.Exit<string, void>, number]
-        >
+        ex.done([ex.raise("boom"), 1] as const) as
+          ex.Exit<never, readonly [ex.Exit<string, void>, number]>
       );
     });
     it("should fail with errors in the inner streams", () => {
-      const io = T.effect.chain(ref.makeRef(0), cell => {
-        const s1: T.Effect<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
-        const s2: T.Effect<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.pure(S.encaseEffect(T.raiseError("boom"))), 50) as any;
-        const s3: T.Effect<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
+      const io = T.effect.chain(ref.makeRef(0), (cell) => {
+        const s1: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+          T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
+        const s2: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+          T.delay(T.pure(S.encaseEffect(T.raiseError("boom"))), 50) as any;
+        const s3: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+          T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
           T.NoEnv,
@@ -813,11 +748,10 @@ describe("Stream", () => {
           T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>
         > = S.fromArray([s1, s2, s3]) as any;
 
-        const stream: S.Stream<
-          T.NoEnv,
-          string,
-          S.Stream<T.NoEnv, string, number>
-        > = S.stream.mapM(set, identity);
+        const stream: S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> = S.stream.mapM(
+          set,
+          identity
+        );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
         return T.zip(drain, T.delay(cell.get, 100));
@@ -825,10 +759,8 @@ describe("Stream", () => {
 
       return expectExit(
         io,
-        ex.done([ex.raise("boom"), 1] as const) as ex.Exit<
-          never,
-          readonly [ex.Exit<string, void>, number]
-        >
+        ex.done([ex.raise("boom"), 1] as const) as
+          ex.Exit<never, readonly [ex.Exit<string, void>, number]>
       );
     });
     // TODO: issue https://github.com/rzeigler/waveguide-streams/issues/1
@@ -836,47 +768,36 @@ describe("Stream", () => {
       const s1 = S.stream.take(S.periodically(50), 10);
       const s2 = pipe(
         s1,
-        S.chainSwitchLatest(i =>
-          S.stream.as(S.stream.take(S.periodically(10), 10), i)
-        )
+        S.chainSwitchLatest((i) => S.stream.as(S.stream.take(S.periodically(10), 10), i))
       );
       const output = S.collectArray(s2);
       const values = await T.runToPromise(output);
       const pairs = array.chunksOf(2)(values);
-      pairs.forEach(([f, s]) =>
-        expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s))
-      );
+      pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s)));
     });
   });
-  function repeater<E, A>(
-    w: T.Effect<T.NoEnv, E, A>,
-    n: number
-  ): T.Effect<T.NoEnv, E, A> {
+  function repeater<E, A>(w: T.Effect<T.NoEnv, E, A>, n: number): T.Effect<T.NoEnv, E, A> {
     if (n <= 1) {
       return w;
     } else {
       return T.parApplySecond(w, repeater(w, n - 1));
     }
   }
-  describe("merge", function() {
+  describe("merge", function () {
     jest.setTimeout(20000);
 
     const r = T.sync(() => Math.random());
 
     function range(max: number): T.Effect<T.NoEnv, never, number> {
-      return T.effect.map(r, n => Math.round(n * max));
+      return T.effect.map(r, (n) => Math.round(n * max));
     }
 
     function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
-      return T.effect.chain(range(max), a => T.after(a));
+      return T.effect.chain(range(max), (a) => T.after(a));
     }
 
     it("should merge", async () => {
-      const res = await pipe(
-        S.merge(1)(S.once(S.once(1))),
-        S.collectArray,
-        T.runToPromiseExit
-      );
+      const res = await pipe(S.merge(1)(S.once(S.once(1))), S.collectArray, T.runToPromiseExit);
       assert.deepEqual(res, ex.done([1]));
     });
 
@@ -884,22 +805,18 @@ describe("Stream", () => {
       const s1 = S.fromRange(0, 1, 10);
       const s2 = pipe(
         s1,
-        S.chainMerge(4, i =>
-          S.stream.mapM(S.fromRange(0, 1, 20), () => T.as(randomWait(50), i))
-        )
+        S.chainMerge(4, (i) => S.stream.mapM(S.fromRange(0, 1, 20), () => T.as(randomWait(50), i)))
       );
       const output = S.collectArray(s2);
-      const check = T.effect.chain(output, values =>
+      const check = T.effect.chain(output, (values) =>
         T.sync(() => {
-          const uniq = array
-            .uniq(eqNumber)(values)
-            .sort();
+          const uniq = array.uniq(eqNumber)(values).sort();
           const stats = array.array.map(
             uniq,
-            u =>
+            (u) =>
               [
                 u,
-                array.array.filter(values, v => v === u).length,
+                array.array.filter(values, (v) => v === u).length,
                 values.indexOf(u),
                 values.lastIndexOf(u)
               ] as const

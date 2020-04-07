@@ -26,7 +26,7 @@ export const program = withTracer(
 export const env: U.Env<typeof program> = {
   ...P.printer,
   ...C.counter,
-  ...tracer(),
+  ...tracer()
 };
 
 export const main = E.run(pipe(program, E.provideAll(env)));

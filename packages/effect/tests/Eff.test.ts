@@ -16,7 +16,7 @@ describe("Eff", () => {
     const result = pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runSync
     );
@@ -34,7 +34,7 @@ describe("Eff", () => {
     const result = pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runSync
     );
@@ -53,7 +53,7 @@ describe("Eff", () => {
     const result = await pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runToPromiseExit
     );
@@ -71,7 +71,7 @@ describe("Eff", () => {
     const result = pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runSync
     );
@@ -90,7 +90,7 @@ describe("Eff", () => {
     const result = await pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runToPromiseExit
     );
@@ -104,13 +104,13 @@ describe("Eff", () => {
         .fluent()
         .map((_) => _.n)
         .done(),
-      b: Eff.delay(Eff.pure(1), 0),
+      b: Eff.delay(Eff.pure(1), 0)
     });
 
     const result = await pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runToPromiseExit
     );
@@ -130,7 +130,7 @@ describe("Eff", () => {
     const result = await pipe(
       program,
       Eff.provideAll({
-        n: 1,
+        n: 1
       }),
       Eff.runToPromiseExit
     );
@@ -144,13 +144,13 @@ describe("Eff", () => {
         .fluent()
         .map((_) => _.n)
         .done(),
-      b: Eff.delay(Eff.pure(1), 0),
+      b: Eff.delay(Eff.pure(1), 0)
     });
 
     const result = await pipe(
       program.effect(),
       T.provideAll({
-        n: 1,
+        n: 1
       }),
       T.runToPromiseExit
     );

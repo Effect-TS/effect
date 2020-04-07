@@ -12,9 +12,7 @@ import { componentPropsURI } from "./componentProps";
 // alpha
 /* istanbul ignore file */
 
-export const reactAsync = <K, P, Q>(
-  _V: View<State<K> & ComponentProps<P>, Q>
-) => (
+export const reactAsync = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
     [k in keyof K]: T.UIO<K[k]>;
   }
@@ -26,20 +24,20 @@ export const reactAsync = <K, P, Q>(
     R.traverseWithIndex(T.effect)((k: string) =>
       pipe(
         _I[k],
-        T.map(x => M.observable(x as any))
+        T.map((x) => M.observable(x as any))
       )
     ),
-    T.map(r => (r as any) as any)
+    T.map((r) => (r as any) as any)
   );
 
   const Cmp = (props: P) => {
     const C = pipe(
       initial,
-      T.chain(init => {
+      T.chain((init) => {
         const f = new Fancy(_V);
         return pipe(
           f.ui,
-          T.chain(Cmp =>
+          T.chain((Cmp) =>
             T.sync(
               (): React.FC<Q> => (q: Q) => {
                 React.useEffect(() => () => {
@@ -80,13 +78,13 @@ export const reactAsync = <K, P, Q>(
     }
   };
 
-  return q => {
+  return (q) => {
     const [props, setProps] = React.useState<P | null>(null);
     const [error, setError] = React.useState<string | null>(null);
 
     React.useEffect(() => {
       if (_P) {
-        T.run(_P as T.Effect<unknown, never, P>, ex => {
+        T.run(_P as T.Effect<unknown, never, P>, (ex) => {
           if (isDone(ex)) {
             setProps(ex.value);
           } else {

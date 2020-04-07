@@ -9,9 +9,7 @@ import * as O from "fp-ts/lib/Option";
 export const getHttpsSpec = J.testM(
   "get https",
   Do(T.effect)
-    .bindL("get", () =>
-      T.result(H.get("https://jsonplaceholder.typicode.com/todos/1"))
-    )
+    .bindL("get", () => T.result(H.get("https://jsonplaceholder.typicode.com/todos/1")))
     .return(({ get }) => {
       J.assert.deepEqual(E.isDone(get), true);
       J.assert.deepEqual(
@@ -20,7 +18,7 @@ export const getHttpsSpec = J.testM(
           userId: 1,
           id: 1,
           title: "delectus aut autem",
-          completed: false,
+          completed: false
         })
       );
     })

@@ -1,13 +1,7 @@
 import { effect as T, exit as EX, utils as U } from "@matechs/effect";
 import * as assert from "assert";
 import { deepEqual } from "fast-equals";
-import {
-  Entity,
-  PrimaryColumn,
-  Connection,
-  EntityManager,
-  Repository,
-} from "typeorm";
+import { Entity, PrimaryColumn, Connection, EntityManager, Repository } from "typeorm";
 import * as ORM from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { some } from "fp-ts/lib/Option";
@@ -30,13 +24,10 @@ describe("Api", () => {
       [ORM.DatabaseURI]: {
         [DbURI]: ORM.mockDatabase({
           repository: () => ({
-            save: (o) =>
-              deepEqual(o, { id: "ok" })
-                ? T.pure(o as any)
-                : T.raiseAbort("error"),
-          }),
-        }),
-      },
+            save: (o) => (deepEqual(o, { id: "ok" }) ? T.pure(o as any) : T.raiseAbort("error"))
+          })
+        })
+      }
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(main));
@@ -47,8 +38,8 @@ describe("Api", () => {
   it("should use mock repository findOne", async () => {
     const main = DB.repository(DemoEntity).findOne({
       where: {
-        id: "ok",
-      },
+        id: "ok"
+      }
     });
 
     const env: U.Env<typeof main> = {
@@ -58,10 +49,10 @@ describe("Api", () => {
             findOne: (o) =>
               deepEqual(o, { where: { id: "ok" } })
                 ? T.pure(some({ id: "ok" } as any))
-                : T.raiseAbort("error"),
-          }),
-        }),
-      },
+                : T.raiseAbort("error")
+          })
+        })
+      }
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(main));
@@ -78,19 +69,20 @@ describe("Api", () => {
       T.provideS(
         ORM.mockFactory(() =>
           Promise.resolve({
-            manager: {
-              getRepository<Entity>(
-                _: string | Function | (new () => Entity)
-              ): Repository<Entity> {
-                return {
-                  save: (o: any) =>
-                    deepEqual(o, { id: "ok" })
-                      ? Promise.resolve(o)
-                      : Promise.reject("error"),
-                } as Repository<Entity>;
-              },
-            } as EntityManager,
-            close: () => Promise.resolve(),
+            manager:
+              {
+                getRepository<Entity>(
+                  _: string | Function | (new () => Entity)
+                ): Repository<Entity> {
+                  return (
+                    {
+                      save: (o: any) =>
+                        deepEqual(o, { id: "ok" }) ? Promise.resolve(o) : Promise.reject("error")
+                    } as Repository<Entity>
+                  );
+                }
+              } as EntityManager,
+            close: () => Promise.resolve()
           } as Connection)
         )
       ),
@@ -104,8 +96,8 @@ describe("Api", () => {
   it("should use concrete repository findOne", async () => {
     const program = DB.repository(DemoEntity).findOne({
       where: {
-        id: "ok",
-      },
+        id: "ok"
+      }
     });
     const main = pipe(
       program,
@@ -114,19 +106,22 @@ describe("Api", () => {
       T.provideS(
         ORM.mockFactory(() =>
           Promise.resolve({
-            manager: {
-              getRepository<Entity>(
-                _: string | Function | (new () => Entity)
-              ): Repository<Entity> {
-                return {
-                  findOne: (o: any) =>
-                    deepEqual(o, { where: { id: "ok" } })
-                      ? Promise.resolve({ id: "ok" } as any)
-                      : Promise.reject("error"),
-                } as Repository<Entity>;
-              },
-            } as EntityManager,
-            close: () => Promise.resolve(),
+            manager:
+              {
+                getRepository<Entity>(
+                  _: string | Function | (new () => Entity)
+                ): Repository<Entity> {
+                  return (
+                    {
+                      findOne: (o: any) =>
+                        deepEqual(o, { where: { id: "ok" } })
+                          ? Promise.resolve({ id: "ok" } as any)
+                          : Promise.reject("error")
+                    } as Repository<Entity>
+                  );
+                }
+              } as EntityManager,
+            close: () => Promise.resolve()
           } as Connection)
         )
       ),
@@ -152,15 +147,15 @@ describe("Api", () => {
                 getRepository<Entity>(
                   _: string | Function | (new () => Entity)
                 ): Repository<Entity> {
-                  return {
-                    save: (o: any) =>
-                      deepEqual(o, { id: "ok" })
-                        ? Promise.resolve(o)
-                        : Promise.reject("error"),
-                  } as Repository<Entity>;
-                },
+                  return (
+                    {
+                      save: (o: any) =>
+                        deepEqual(o, { id: "ok" }) ? Promise.resolve(o) : Promise.reject("error")
+                    } as Repository<Entity>
+                  );
+                }
               } as EntityManager),
-            close: () => Promise.resolve(),
+            close: () => Promise.resolve()
           } as Connection)
         )
       ),

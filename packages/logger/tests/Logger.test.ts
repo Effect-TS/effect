@@ -11,7 +11,7 @@ const loggerSpec = M.suite("Logger")(
     info: jest.spyOn(console, "info").mockImplementation(empty),
     warn: jest.spyOn(console, "warn").mockImplementation(empty),
     debug: jest.spyOn(console, "debug").mockImplementation(empty),
-    error: jest.spyOn(console, "error").mockImplementation(empty),
+    error: jest.spyOn(console, "error").mockImplementation(empty)
   }))(({ useMockM }) =>
     Do(T.effect)
       .do(L.logger.info("ok"))
@@ -37,7 +37,7 @@ const loggerSpec = M.suite("Logger")(
       .provideS(L.console.consoleLogger())
   ),
   M.mockedTestM("use logger with level")(() => ({
-    debug: jest.spyOn(console, "debug").mockImplementation(empty),
+    debug: jest.spyOn(console, "debug").mockImplementation(empty)
   }))(({ useMockM }) =>
     Do(T.effect)
       .do(L.logger.debug("ok"))

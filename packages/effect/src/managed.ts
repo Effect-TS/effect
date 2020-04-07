@@ -10,7 +10,7 @@ export enum ManagedTag {
   Bracket,
   Suspended,
   Chain,
-  BracketExit,
+  BracketExit
 }
 
 /**
@@ -35,10 +35,8 @@ export interface Managed<R, E, A> {
   _R: (_: R) => void;
 }
 
-export const toM = <R, E, A>(_: ManagedT<R, E, A>): Managed<R, E, A> =>
-  _ as any;
-export const fromM = <R, E, A>(_: Managed<R, E, A>): ManagedT<R, E, A> =>
-  _ as any;
+export const toM = <R, E, A>(_: ManagedT<R, E, A>): Managed<R, E, A> => _ as any;
+export const fromM = <R, E, A>(_: Managed<R, E, A>): ManagedT<R, E, A> => _ as any;
 
 export interface Pure<E, A> {
   readonly _tag: ManagedTag.Pure;
@@ -49,12 +47,10 @@ export interface Pure<E, A> {
  * Lift a pure value into a resource
  * @param value
  */
-export function pure<R = T.NoEnv, E = T.NoErr, A = unknown>(
-  value: A
-): Managed<R, E, A> {
+export function pure<R = T.NoEnv, E = T.NoErr, A = unknown>(value: A): Managed<R, E, A> {
   return toM(() => ({
     _tag: ManagedTag.Pure,
-    value,
+    value
   }));
 }
 
@@ -69,12 +65,10 @@ export interface Encase<E, A> {
  * @param res
  * @param f
  */
-export function encaseEffect<R, E, A>(
-  rio: T.Effect<R, E, A>
-): Managed<R, E, A> {
+export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
   return toM((r) => ({
     _tag: ManagedTag.Encase,
-    acquire: T.provideAll(r)(rio),
+    acquire: T.provideAll(r)(rio)
   }));
 }
 
@@ -96,7 +90,7 @@ export function bracket<R, E, A, R2, E2>(
   return toM((r) => ({
     _tag: ManagedTag.Bracket,
     acquire: T.provideAll(r)(acquire as T.Effect<R, E | E2, A>),
-    release: (a) => T.provideAll(r)(release(a)),
+    release: (a) => T.provideAll(r)(release(a))
   }));
 }
 
@@ -104,10 +98,7 @@ export interface BracketExit<E, A> {
   readonly _tag: ManagedTag.BracketExit;
 
   readonly acquire: T.Effect<T.NoEnv, E, A>;
-  readonly release: F.FunctionN<
-    [A, Exit<E, unknown>],
-    T.Effect<T.NoEnv, E, unknown>
-  >;
+  readonly release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<T.NoEnv, E, unknown>>;
 }
 
 export function bracketExit<R, E, A, R2, E2>(
@@ -118,7 +109,7 @@ export function bracketExit<R, E, A, R2, E2>(
     _tag: ManagedTag.BracketExit,
 
     acquire: T.provideAll(r)(acquire),
-    release: (a, e) => T.provideAll(r)(release(a, e as any)),
+    release: (a, e) => T.provideAll(r)(release(a, e as any))
   }));
 }
 
@@ -139,9 +130,7 @@ export function suspend<R, E, R2, E2, A>(
     (r) =>
       ({
         _tag: ManagedTag.Suspended,
-        suspended: effect.map(T.provideAll(r)(suspended), (m) => (_: T.NoEnv) =>
-          (fromM(m))(r)
-        ),
+        suspended: effect.map(T.provideAll(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
       } as any)
   );
 }
@@ -166,7 +155,7 @@ function chain_<R, E, L, R2, E2, A>(
   return toM((r) => ({
     _tag: ManagedTag.Chain,
     left: provideAll(r)(left) as any,
-    bind: (l) => provideAll(r)(bind(l)) as any,
+    bind: (l) => provideAll(r)(bind(l)) as any
   }));
 }
 
@@ -185,10 +174,7 @@ export function chain<R, E, L, A>(
  * @param res
  * @param f
  */
-function map_<R, E, L, A>(
-  res: Managed<R, E, L>,
-  f: F.FunctionN<[L], A>
-): Managed<R, E, A> {
+function map_<R, E, L, A>(res: Managed<R, E, L>, f: F.FunctionN<[L], A>): Managed<R, E, A> {
   return chain_(res, (r) => pure(f(r)) as Managed<R, E, A>);
 }
 
@@ -271,9 +257,7 @@ export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
  * Curried form of as
  * @param b
  */
-export function to<B>(
-  b: B
-): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> {
+export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> {
   return (fa) => as(fa, b);
 }
 
@@ -317,9 +301,7 @@ export function consume<R, E, A, B>(
  * The destruction of the resource is interrupting said fiber.
  * @param rio
  */
-export function fiber<R, E, A>(
-  rio: T.Effect<R, E, A>
-): Managed<R, never, T.Fiber<E, A>> {
+export function fiber<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, never, T.Fiber<E, A>> {
   return bracket(T.fork(rio), (fiber) => fiber.interrupt);
 }
 
@@ -364,9 +346,7 @@ export interface Leak<R, E, A> {
  * Leak object is produced it is the callers responsibility to ensure release is invoked.
  * @param res
  */
-export function allocate<R, E, A>(
-  res: Managed<R, E, A>
-): T.Effect<R, E, Leak<R, E, A>> {
+export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R, E, A>> {
   return T.accessM((r: R) => {
     const c = fromM(res)(r);
 
@@ -381,7 +361,7 @@ export function allocate<R, E, A>(
         // best effort, because we cannot know what the exit status here
         return effect.map(c.acquire, (a) => ({
           a,
-          release: c.release(a, done(undefined)),
+          release: c.release(a, done(undefined))
         }));
       case ManagedTag.Suspended:
         return effect.chain(c.suspended, allocate);
@@ -395,7 +375,7 @@ export function allocate<R, E, A>(
               // Combine the finalizer actions of the outer and inner resource
               (innerLeak) => ({
                 a: innerLeak.a,
-                release: T.effect.onComplete(innerLeak.release, leak.release),
+                release: T.effect.onComplete(innerLeak.release, leak.release)
               })
             )
         );
@@ -424,13 +404,14 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const managed: Monad3E<URI> = {
-  URI,
-  of: pure,
-  map: map_,
-  ap: ap_,
-  chain: chain_,
-} as const;
+export const managed: Monad3E<URI> =
+  {
+    URI,
+    of: pure,
+    map: map_,
+    ap: ap_,
+    chain: chain_
+  } as const;
 
 export function getSemigroup<R, E, A>(
   Semigroup: Sem.Semigroup<A>
@@ -438,16 +419,14 @@ export function getSemigroup<R, E, A>(
   return {
     concat(x: Managed<R, E, A>, y: Managed<R, E, A>): Managed<R, E, A> {
       return zipWith(x, y, Semigroup.concat);
-    },
+    }
   };
 }
 
-export function getMonoid<R, E, A>(
-  Monoid: Mon.Monoid<A>
-): Mon.Monoid<Managed<R, E, A>> {
+export function getMonoid<R, E, A>(Monoid: Mon.Monoid<A>): Mon.Monoid<Managed<R, E, A>> {
   return {
     ...getSemigroup(Monoid),
-    empty: pure(Monoid.empty) as Managed<R, E, A>,
+    empty: pure(Monoid.empty) as Managed<R, E, A>
   };
 }
 

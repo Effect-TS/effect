@@ -14,9 +14,7 @@ export interface CounterState {
 }
 
 export function currentCount() {
-  return T.accessM(({ [CounterState]: counter }: CounterState) =>
-    T.pure(counter.ref)
-  );
+  return T.accessM(({ [CounterState]: counter }: CounterState) => T.pure(counter.ref));
 }
 
 export const counterState = T.provideSM(
@@ -30,8 +28,8 @@ export const counterState = T.provideSM(
               s[CounterState].ref += 1;
             })
           );
-        },
-      },
+        }
+      }
     })
   )
 );
@@ -55,20 +53,14 @@ export const counter: Counter = {
           // tslint:disable-next-line: no-empty
           .return(() => {})
       );
-    },
-  },
+    }
+  }
 };
 
 export function increment(): T.Effect<CounterState, T.NoErr, void> {
-  return T.accessM(({ [CounterState]: counter }: CounterState) =>
-    counter.increment()
-  );
+  return T.accessM(({ [CounterState]: counter }: CounterState) => counter.increment());
 }
 
-export function count(): T.Effect<
-  Counter & Printer & CounterState,
-  Error,
-  void[]
-> {
+export function count(): T.Effect<Counter & Printer & CounterState, Error, void[]> {
   return T.accessM(({ [Counter]: counter }: Counter) => counter.count());
 }

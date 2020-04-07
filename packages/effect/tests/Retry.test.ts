@@ -25,4 +25,3 @@ describe("Retry", () => {
     assert.deepEqual(await T.runToPromiseExit(program), raise("error"));
   });
 });
-

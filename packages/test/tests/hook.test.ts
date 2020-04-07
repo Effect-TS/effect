@@ -1,4 +1,13 @@
-import { assert, testM, customRun, withHook, withHookP, withInit, withProvider, withFinalize } from "../src";
+import {
+  assert,
+  testM,
+  customRun,
+  withHook,
+  withHookP,
+  withInit,
+  withProvider,
+  withFinalize
+} from "../src";
 import { effect as T } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 

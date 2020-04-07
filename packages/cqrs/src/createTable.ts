@@ -7,7 +7,7 @@ import { sequenceT } from "fp-ts/lib/Apply";
 
 export const createTable = <Db extends symbol | string>(db: DbT<Db>) =>
   sequenceT(T.effect)(
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE TABLE IF NOT EXISTS public.event_log (" +
           "id uuid PRIMARY KEY," +
@@ -23,47 +23,45 @@ export const createTable = <Db extends symbol | string>(db: DbT<Db>) =>
           ");"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_aggregate ON event_log USING BTREE (aggregate);"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_root ON event_log USING BTREE (root);"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_sequence_id ON event_log USING BTREE (sequence_id);"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_kind ON event_log USING BTREE (kind);"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_created_at ON event_log USING BTREE (created_at);"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_sequence ON event_log USING BTREE (sequence);"
       )
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE INDEX IF NOT EXISTS event_log_idx_offsets ON event_log USING GIN (offsets);"
       )
     ),
-    db.withManagerTask(manager => () =>
-      manager.query(
-        "CREATE INDEX IF NOT EXISTS event_log_idx_meta ON event_log USING GIN (meta);"
-      )
+    db.withManagerTask((manager) => () =>
+      manager.query("CREATE INDEX IF NOT EXISTS event_log_idx_meta ON event_log USING GIN (meta);")
     ),
-    db.withManagerTask(manager => () =>
+    db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE TABLE IF NOT EXISTS public.event_log_seq (" +
           "id TEXT PRIMARY KEY," +

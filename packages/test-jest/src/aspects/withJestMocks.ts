@@ -5,7 +5,9 @@ import { pipe } from "fp-ts/lib/pipeable";
 
 export const JestMocksURI = "@matechs/test-jest/JestMocksURI";
 
-export type MockT<Mocks> = { [k in (string | number | symbol) & keyof Mocks]: jest.SpyInstance<any, any> };
+export type MockT<Mocks> = {
+  [k in (string | number | symbol) & keyof Mocks]: jest.SpyInstance<any, any>;
+};
 
 export interface JestMocks<Mocks extends MockT<Mocks>> {
   [JestMocksURI]: {
@@ -13,12 +15,19 @@ export interface JestMocks<Mocks extends MockT<Mocks>> {
   };
 }
 
-export const useMockM = <Mocks extends MockT<Mocks>>() => <R, E, A>(op: (_: Mocks) => T.Effect<R, E, A>) =>
-  T.accessM((_: JestMocks<Mocks>) => _[JestMocksURI].useMockM(op));
+export const useMockM = <Mocks extends MockT<Mocks>>() => <R, E, A>(
+  op: (_: Mocks) => T.Effect<R, E, A>
+) => T.accessM((_: JestMocks<Mocks>) => _[JestMocksURI].useMockM(op));
 
-export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(acquire: Lazy<Mocks>) => <R, E, A>(
+export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(acquire: Lazy<Mocks>) => <
+  R,
+  E,
+  A
+>(
   eff: (_: {
-    useMockM: <R, E, A>(op: (_: Mocks) => T.Effect<R, E, A>) => T.Effect<R & JestMocks<Mocks>, E, A>;
+    useMockM: <R, E, A>(
+      op: (_: Mocks) => T.Effect<R, E, A>
+    ) => T.Effect<R & JestMocks<Mocks>, E, A>;
   }) => T.Effect<R & JestMocks<Mocks>, E, A>
 ) =>
   pipe(

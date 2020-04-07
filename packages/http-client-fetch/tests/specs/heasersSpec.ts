@@ -17,7 +17,7 @@ export const headersSpec = J.testM(
         T.sync(() => {
           app.get("/h", express.json(), (req, res) => {
             res.send({
-              foo: req.header("foo"),
+              foo: req.header("foo")
             });
           });
         })
@@ -27,17 +27,14 @@ export const headersSpec = J.testM(
           pipe(
             H.get("http://127.0.0.1:4012/h"),
             H.withHeaders({
-              foo: "bar",
+              foo: "bar"
             })
           )
         )
       )
       .return(({ get }) => {
         J.assert.deepEqual(E.isDone(get), true);
-        J.assert.deepEqual(
-          E.isDone(get) && get.value.body,
-          O.some({ foo: "bar" })
-        );
+        J.assert.deepEqual(E.isDone(get) && get.value.body, O.some({ foo: "bar" }));
       })
   )
 );

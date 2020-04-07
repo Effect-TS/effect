@@ -221,18 +221,16 @@ describe("EffectSafe", () => {
 
       const mod = freeEnv.define({
         [URI]: {
-          updateState: freeEnv.fn<
-            (f: (n: number) => number) => T.UIO<number>
-          >(),
-        },
+          updateState: freeEnv.fn<(f: (n: number) => number) => T.UIO<number>>()
+        }
       });
 
       const {
-        [URI]: { updateState },
+        [URI]: { updateState }
       } = freeEnv.access(mod);
 
       const provideModLive = freeEnv.implementWith(makeRef(1))(mod)((r) => ({
-        [URI]: { updateState: (f) => r.update(f) },
+        [URI]: { updateState: (f) => r.update(f) }
       }));
 
       const result = await T.fluentUnit
@@ -277,21 +275,12 @@ describe("EffectSafe", () => {
 
   describe("Extra", () => {
     it("encaseEither", async () => {
-      assert.deepEqual(
-        await T.runToPromiseExit(T.encaseEither(E.right(1))),
-        ex.done(1)
-      );
-      assert.deepEqual(
-        await T.runToPromiseExit(T.encaseEither(E.left(1))),
-        ex.raise(1)
-      );
+      assert.deepEqual(await T.runToPromiseExit(T.encaseEither(E.right(1))), ex.done(1));
+      assert.deepEqual(await T.runToPromiseExit(T.encaseEither(E.left(1))), ex.raise(1));
     });
 
     it("trySync", async () => {
-      assert.deepEqual(
-        await T.runToPromiseExit(T.trySync(() => 1)),
-        ex.done(1)
-      );
+      assert.deepEqual(await T.runToPromiseExit(T.trySync(() => 1)), ex.done(1));
       assert.deepEqual(
         await T.runToPromiseExit(
           T.trySync(() => {
@@ -376,9 +365,7 @@ describe("EffectSafe", () => {
 
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provideR(() => ({ [http_symbol]: 10 }))(
-            T.access(({ [http_symbol]: n }: HttpEnv) => n)
-          )
+          T.provideR(() => ({ [http_symbol]: 10 }))(T.access(({ [http_symbol]: n }: HttpEnv) => n))
         ),
         ex.done(10)
       );
@@ -393,9 +380,7 @@ describe("EffectSafe", () => {
 
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provideS({ [http_symbol]: 10 })(
-            T.access(({ [http_symbol]: n }: HttpEnv) => n)
-          )
+          T.provideS({ [http_symbol]: 10 })(T.access(({ [http_symbol]: n }: HttpEnv) => n))
         ),
         ex.done(10)
       );
@@ -410,9 +395,7 @@ describe("EffectSafe", () => {
 
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provideStructS({ [http_symbol]: 10 })(
-            T.access(({ [http_symbol]: n }: HttpEnv) => n)
-          )
+          T.provideStructS({ [http_symbol]: 10 })(T.access(({ [http_symbol]: n }: HttpEnv) => n))
         ),
         ex.done(10)
       );
@@ -427,9 +410,7 @@ describe("EffectSafe", () => {
 
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provideSM(T.pure({ [http_symbol]: 10 }))(
-            T.access(({ [http_symbol]: n }: HttpEnv) => n)
-          )
+          T.provideSM(T.pure({ [http_symbol]: 10 }))(T.access(({ [http_symbol]: n }: HttpEnv) => n))
         ),
         ex.done(10)
       );
@@ -461,16 +442,12 @@ describe("EffectSafe", () => {
 
       assert.deepEqual(
         await T.runToPromiseExit(
-          T.provideR(() => ({ [http_symbol]: 10 }))(
-            T.access(({ [http_symbol]: n }: HttpEnv) => n)
-          )
+          T.provideR(() => ({ [http_symbol]: 10 }))(T.access(({ [http_symbol]: n }: HttpEnv) => n))
         ),
         ex.done(10)
       );
       assert.deepEqual(
-        await T.runToPromiseExit(
-          T.access(({ [http_symbol]: n }: HttpEnv) => n)
-        ),
+        await T.runToPromiseExit(T.access(({ [http_symbol]: n }: HttpEnv) => n)),
         ex.done(undefined)
       );
     });
@@ -481,18 +458,14 @@ describe("EffectSafe", () => {
         [incrementEnv]: number;
       }
       const config: ConfigEnv = {
-        [incrementEnv]: 2,
+        [incrementEnv]: 2
       };
 
       const program = array.traverse(T.effect)(range(1, 50000), (n: number) =>
-        T.accessM(({ [incrementEnv]: increment }: ConfigEnv) =>
-          T.sync(() => n + increment)
-        )
+        T.accessM(({ [incrementEnv]: increment }: ConfigEnv) => T.sync(() => n + increment))
       );
 
-      const result = (
-        await T.runToPromise(T.provideAll(config)(program))
-      ).reduce(monoidSum.concat);
+      const result = (await T.runToPromise(T.provideAll(config)(program))).reduce(monoidSum.concat);
 
       assert.deepEqual(result, 1250125000);
     });
@@ -583,9 +556,7 @@ describe("EffectSafe", () => {
     });
 
     it("fromPromise", async () => {
-      const a = await T.runToPromiseExit(
-        T.fromPromise(() => Promise.reject(1))
-      );
+      const a = await T.runToPromiseExit(T.fromPromise(() => Promise.reject(1)));
 
       assert.deepEqual(a, ex.raise(1));
     });
@@ -646,12 +617,8 @@ describe("EffectSafe", () => {
     });
 
     it("condWith", async () => {
-      const a = await T.runToPromiseExit(
-        T.condWith(true)(T.pure(1))(T.pure(2))
-      );
-      const b = await T.runToPromiseExit(
-        T.condWith(false)(T.pure(1))(T.pure(2))
-      );
+      const a = await T.runToPromiseExit(T.condWith(true)(T.pure(1))(T.pure(2)));
+      const b = await T.runToPromiseExit(T.condWith(false)(T.pure(1))(T.pure(2)));
 
       assert.deepEqual(a, ex.done(1));
       assert.deepEqual(b, ex.done(2));
@@ -663,15 +630,13 @@ describe("EffectSafe", () => {
         [valueEnv]: "ok";
       }
       const env: ValueEnv = {
-        [valueEnv]: "ok",
+        [valueEnv]: "ok"
       };
 
       const module = pipe(T.noEnv, T.mergeEnv(env));
 
       const a = await T.runToPromiseExit(
-        T.provide(module)(
-          T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value))
-        )
+        T.provide(module)(T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value)))
       );
 
       const b = await T.runToPromiseExit(
@@ -688,15 +653,13 @@ describe("EffectSafe", () => {
         [valueEnv]: "ok";
       }
       const env: ValueEnv = {
-        [valueEnv]: "ok",
+        [valueEnv]: "ok"
       };
 
       const module = pipe(T.noEnv, T.mergeEnv(env));
 
       const a = await T.runToPromiseExit(
-        T.provideStruct(module)(
-          T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value))
-        )
+        T.provideStruct(module)(T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value)))
       );
 
       const b = await T.runToPromiseExit(
@@ -717,24 +680,21 @@ describe("EffectSafe", () => {
         [nameLengthEnv]: number;
       }
 
-      const program = T.accessM(
-        ({ [nameLengthEnv]: nameLength }: EnvNameLength) =>
-          T.pure(nameLength + 1)
+      const program = T.accessM(({ [nameLengthEnv]: nameLength }: EnvNameLength) =>
+        T.pure(nameLength + 1)
       );
 
       const provider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          [nameLengthEnv]: name.length,
+          [nameLengthEnv]: name.length
         } as EnvNameLength)
       );
 
       const env: EnvName = {
-        [nameEnv]: "bob",
+        [nameEnv]: "bob"
       };
 
-      const a = await T.runToPromiseExit(
-        pipe(program, T.provideM(provider), T.provide(env))
-      );
+      const a = await T.runToPromiseExit(pipe(program, T.provideM(provider), T.provide(env)));
 
       assert.deepEqual(a, ex.done(4));
     });
@@ -760,26 +720,24 @@ describe("EffectSafe", () => {
       const program = T.accessM(
         ({
           [nameLengthEnv]: nameLength,
-          [surnameLengthEnv]: surnameLength,
-        }: EnvNameLength & EnvSurNameLength) =>
-          T.pure(nameLength + surnameLength)
+          [surnameLengthEnv]: surnameLength
+        }: EnvNameLength & EnvSurNameLength) => T.pure(nameLength + surnameLength)
       );
 
       const nameLengthProvider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          [nameLengthEnv]: name.length,
+          [nameLengthEnv]: name.length
         } as EnvNameLength)
       );
-      const surnameLengthProvider = T.accessM(
-        ({ [surNameEnv]: surName }: EnvSurname) =>
-          T.pure({
-            [surnameLengthEnv]: surName.length,
-          } as EnvSurNameLength)
+      const surnameLengthProvider = T.accessM(({ [surNameEnv]: surName }: EnvSurname) =>
+        T.pure({
+          [surnameLengthEnv]: surName.length
+        } as EnvSurNameLength)
       );
 
       const env: EnvName & EnvSurname = {
         [nameEnv]: "bob",
-        [surNameEnv]: "sponge",
+        [surNameEnv]: "sponge"
       };
 
       const a = await T.runToPromiseExit(
@@ -815,26 +773,24 @@ describe("EffectSafe", () => {
       const program = T.accessM(
         ({
           [nameLengthEnv]: nameLength,
-          [surnameLengthEnv]: surnameLength,
-        }: EnvNameLength & EnvSurNameLength) =>
-          T.pure(nameLength + surnameLength)
+          [surnameLengthEnv]: surnameLength
+        }: EnvNameLength & EnvSurNameLength) => T.pure(nameLength + surnameLength)
       );
 
       const nameLengthProvider = T.accessM(({ [nameEnv]: name }: EnvName) =>
         T.pure({
-          [nameLengthEnv]: name.length,
+          [nameLengthEnv]: name.length
         } as EnvNameLength)
       );
-      const surnameLengthProvider = T.accessM(
-        ({ [surNameEnv]: surName }: EnvSurname) =>
-          T.pure({
-            [surnameLengthEnv]: surName.length,
-          } as EnvSurNameLength)
+      const surnameLengthProvider = T.accessM(({ [surNameEnv]: surName }: EnvSurname) =>
+        T.pure({
+          [surnameLengthEnv]: surName.length
+        } as EnvSurNameLength)
       );
 
       const env: EnvName & EnvSurname = {
         [nameEnv]: "bob",
-        [surNameEnv]: "sponge",
+        [surNameEnv]: "sponge"
       };
 
       const a = await T.runToPromiseExit(
@@ -903,9 +859,7 @@ describe("EffectSafe", () => {
     });
 
     it("sequenceP", async () => {
-      const res = await T.runToPromiseExit(
-        T.sequenceP(1)([T.pure(1), T.pure(2)])
-      );
+      const res = await T.runToPromiseExit(T.sequenceP(1)([T.pure(1), T.pure(2)]));
 
       assert.deepEqual(res, ex.done([1, 2]));
     });
@@ -928,15 +882,11 @@ describe("EffectSafe", () => {
 
     it("chain", async () => {
       const e1 = await T.runToPromiseExit(
-        effect.chain(T.pure("foo"), (a) =>
-          a.length > 2 ? T.pure(a.length) : T.raiseError("foo")
-        )
+        effect.chain(T.pure("foo"), (a) => (a.length > 2 ? T.pure(a.length) : T.raiseError("foo")))
       );
       assert.deepStrictEqual(e1, ex.done(3));
       const e2 = await T.runToPromiseExit(
-        effect.chain(T.pure("a"), (a) =>
-          a.length > 2 ? T.pure(a.length) : T.raiseError("foo")
-        )
+        effect.chain(T.pure("a"), (a) => (a.length > 2 ? T.pure(a.length) : T.raiseError("foo")))
       );
       assert.deepStrictEqual(e2, ex.raise("foo"));
     });
@@ -949,16 +899,12 @@ describe("EffectSafe", () => {
 
       const e1 = await T.runToPromiseExit(effect.bimap(T.pure(1), f, g));
       assert.deepStrictEqual(e1, ex.done(false));
-      const e2 = await T.runToPromiseExit(
-        effect.bimap(T.raiseError("foo"), f, g)
-      );
+      const e2 = await T.runToPromiseExit(effect.bimap(T.raiseError("foo"), f, g));
       assert.deepStrictEqual(e2, ex.raise(3));
     });
 
     it("mapLeft", async () => {
-      const e = await T.runToPromiseExit(
-        effect.mapLeft(T.raiseError("1"), (x) => new Error(x))
-      );
+      const e = await T.runToPromiseExit(effect.mapLeft(T.raiseError("1"), (x) => new Error(x)));
       assert.deepStrictEqual(e, ex.raise(new Error("1")));
     });
   });
@@ -969,22 +915,13 @@ describe("EffectSafe", () => {
       const a2 = T.pure("a2");
       const err = T.raiseError("e");
       const err2 = T.raiseError("err2");
-      assert.deepStrictEqual(
-        await T.runToPromiseExit(effect.alt(err, () => a)),
-        ex.done("a")
-      );
+      assert.deepStrictEqual(await T.runToPromiseExit(effect.alt(err, () => a)), ex.done("a"));
       assert.deepStrictEqual(
         await T.runToPromiseExit(effect.alt(err, () => err2)),
         ex.raise("err2")
       );
-      assert.deepStrictEqual(
-        await T.runToPromiseExit(effect.alt(a, () => a2)),
-        ex.done("a")
-      );
-      assert.deepStrictEqual(
-        await T.runToPromiseExit(effect.alt(a, () => err)),
-        ex.done("a")
-      );
+      assert.deepStrictEqual(await T.runToPromiseExit(effect.alt(a, () => a2)), ex.done("a"));
+      assert.deepStrictEqual(await T.runToPromiseExit(effect.alt(a, () => err)), ex.done("a"));
     });
 
     it("pipe alt", async () => {
@@ -1032,9 +969,7 @@ describe("EffectSafe", () => {
   });
 
   it("fromPromiseMap", async () => {
-    const e1 = await T.runToPromiseExit(
-      T.fromPromiseMap(() => "error")(() => Promise.resolve(1))
-    );
+    const e1 = await T.runToPromiseExit(T.fromPromiseMap(() => "error")(() => Promise.resolve(1)));
 
     assert.deepStrictEqual(e1, ex.done(1));
     const e2 = await T.runToPromiseExit(
@@ -1055,9 +990,7 @@ describe("EffectSafe", () => {
 
     // refinements
     const isNumber = (u: string | number): u is number => typeof u === "number";
-    const e3 = await T.runToPromiseExit(
-      T.fromPredicate(isNumber, () => "not a number")(4)
-    );
+    const e3 = await T.runToPromiseExit(T.fromPredicate(isNumber, () => "not a number")(4));
     assert.deepStrictEqual(e3, ex.done(4));
   });
 
@@ -1079,52 +1012,38 @@ describe("EffectSafe", () => {
     });
 
     it("should return the acquire error if acquire fails", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracket(acquireFailure, releaseSuccess, useSuccess)
-      );
+      const e = await T.runToPromiseExit(T.bracket(acquireFailure, releaseSuccess, useSuccess));
 
       assert.deepStrictEqual(e, ex.raise("acquire failure"));
     });
 
     it("body and release must not be called if acquire fails", async () => {
-      await T.runToPromiseExit(
-        T.bracket(acquireFailure, releaseSuccess, useSuccess)
-      );
+      await T.runToPromiseExit(T.bracket(acquireFailure, releaseSuccess, useSuccess));
       assert.deepStrictEqual(log, []);
     });
 
     it("should return the use error if use fails and release does not", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracket(acquireSuccess, releaseSuccess, useFailure)
-      );
+      const e = await T.runToPromiseExit(T.bracket(acquireSuccess, releaseSuccess, useFailure));
       assert.deepStrictEqual(e, ex.raise("use failure"));
     });
 
     it("should return the use error if both use and release fail", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracket(acquireSuccess, releaseFailure, useFailure)
-      );
+      const e = await T.runToPromiseExit(T.bracket(acquireSuccess, releaseFailure, useFailure));
       assert.deepStrictEqual(e, ex.raise("use failure"));
     });
 
     it("release must be called if the body returns", async () => {
-      await T.runToPromiseExit(
-        T.bracket(acquireSuccess, releaseSuccess, useSuccess)
-      );
+      await T.runToPromiseExit(T.bracket(acquireSuccess, releaseSuccess, useSuccess));
       assert.deepStrictEqual(log, ["release success"]);
     });
 
     it("release must be called if the body throws", async () => {
-      await T.runToPromiseExit(
-        T.bracket(acquireSuccess, releaseSuccess, useFailure)
-      );
+      await T.runToPromiseExit(T.bracket(acquireSuccess, releaseSuccess, useFailure));
       assert.deepStrictEqual(log, ["release success"]);
     });
 
     it("should return the release error if release fails", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracket(acquireSuccess, releaseFailure, useSuccess)
-      );
+      const e = await T.runToPromiseExit(T.bracket(acquireSuccess, releaseFailure, useSuccess));
       assert.deepStrictEqual(e, ex.raise("release failure"));
     });
   });
@@ -1147,52 +1066,38 @@ describe("EffectSafe", () => {
     });
 
     it("should return the acquire error if acquire fails", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracketExit(acquireFailure, releaseSuccess, useSuccess)
-      );
+      const e = await T.runToPromiseExit(T.bracketExit(acquireFailure, releaseSuccess, useSuccess));
 
       assert.deepStrictEqual(e, ex.raise("acquire failure"));
     });
 
     it("body and release must not be called if acquire fails", async () => {
-      await T.runToPromiseExit(
-        T.bracketExit(acquireFailure, releaseSuccess, useSuccess)
-      );
+      await T.runToPromiseExit(T.bracketExit(acquireFailure, releaseSuccess, useSuccess));
       assert.deepStrictEqual(log, []);
     });
 
     it("should return the use error if use fails and release does not", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracketExit(acquireSuccess, releaseSuccess, useFailure)
-      );
+      const e = await T.runToPromiseExit(T.bracketExit(acquireSuccess, releaseSuccess, useFailure));
       assert.deepStrictEqual(e, ex.raise("use failure"));
     });
 
     it("should return the use error if both use and release fail", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracketExit(acquireSuccess, releaseFailure, useFailure)
-      );
+      const e = await T.runToPromiseExit(T.bracketExit(acquireSuccess, releaseFailure, useFailure));
       assert.deepStrictEqual(e, ex.raise("use failure"));
     });
 
     it("release must be called if the body returns", async () => {
-      await T.runToPromiseExit(
-        T.bracketExit(acquireSuccess, releaseSuccess, useSuccess)
-      );
+      await T.runToPromiseExit(T.bracketExit(acquireSuccess, releaseSuccess, useSuccess));
       assert.deepStrictEqual(log, ["release success"]);
     });
 
     it("release must be called if the body throws", async () => {
-      await T.runToPromiseExit(
-        T.bracketExit(acquireSuccess, releaseSuccess, useFailure)
-      );
+      await T.runToPromiseExit(T.bracketExit(acquireSuccess, releaseSuccess, useFailure));
       assert.deepStrictEqual(log, ["release success"]);
     });
 
     it("should return the release error if release fails", async () => {
-      const e = await T.runToPromiseExit(
-        T.bracketExit(acquireSuccess, releaseFailure, useSuccess)
-      );
+      const e = await T.runToPromiseExit(T.bracketExit(acquireSuccess, releaseFailure, useSuccess));
       assert.deepStrictEqual(e, ex.raise("release failure"));
     });
   });
@@ -1211,15 +1116,10 @@ describe("EffectSafe", () => {
       await T.runToPromiseExit(T.raiseError("a"))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(
-        M.chain(T.raiseError("a"), () => T.raiseError("b"))
-      ),
+      await T.runToPromiseExit(M.chain(T.raiseError("a"), () => T.raiseError("b"))),
       await T.runToPromiseExit(T.raiseError("a"))
     );
-    assert.deepStrictEqual(
-      await T.runToPromiseExit(M.of(1)),
-      await T.runToPromiseExit(T.pure(1))
-    );
+    assert.deepStrictEqual(await T.runToPromiseExit(M.of(1)), await T.runToPromiseExit(T.pure(1)));
 
     const double = (n: number) => n * 2;
 
@@ -1232,9 +1132,7 @@ describe("EffectSafe", () => {
       await T.runToPromiseExit(T.raiseError("foo"))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(
-        M.ap(T.raiseError<string, (n: number) => number>("foo"), T.pure(1))
-      ),
+      await T.runToPromiseExit(M.ap(T.raiseError<string, (n: number) => number>("foo"), T.pure(1))),
       await T.runToPromiseExit(T.raiseError("foo"))
     );
     assert.deepStrictEqual(
@@ -1250,9 +1148,7 @@ describe("EffectSafe", () => {
       await T.runToPromiseExit(T.pure(1))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(
-        M.alt(T.raiseError("a"), () => T.raiseError("b"))
-      ),
+      await T.runToPromiseExit(M.alt(T.raiseError("a"), () => T.raiseError("b"))),
       await T.runToPromiseExit(T.raiseError("ab"))
     );
   });
@@ -1276,7 +1172,7 @@ describe("EffectSafe", () => {
         .bindL("x", () => M.of("a"))
         .sequenceS({
           a: effect.throwError("a"),
-          b: effect.throwError("b"),
+          b: effect.throwError("b")
         })
         .return(identity);
       const e = await T.runToPromiseExit(p);
@@ -1288,7 +1184,7 @@ describe("EffectSafe", () => {
         .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
         .sequenceS({
           a: T.accessM(({}: Env1) => M.throwError("a")),
-          b: M.throwError("b"),
+          b: M.throwError("b")
         })
         .let("y", 1)
         .letL("z", () => 1)
@@ -1303,7 +1199,7 @@ describe("EffectSafe", () => {
           .bindL("x", () => M.of("a"))
           .sequenceS({
             a: M.throwError("a"),
-            b: M.throwError("b"),
+            b: M.throwError("b")
           })
           .return((r) => r)
       );
@@ -1315,7 +1211,7 @@ describe("EffectSafe", () => {
         .bindL("x", () => M.of("a"))
         .sequenceS({
           a: T.accessM(({}: Env1) => M.throwError("a")),
-          b: M.throwError("b"),
+          b: M.throwError("b")
         })
         .return((r) => r);
       const e = await T.runToPromiseExit(T.provide(env1)(p));
@@ -1340,16 +1236,14 @@ describe("EffectSafe", () => {
         [prefixEnv]: "error";
       }
       const env: PrefixEnv = {
-        [prefixEnv]: "error",
+        [prefixEnv]: "error"
       };
 
       const V = T.getValidationM(semigroupString);
 
       const checks = array.traverse(V)([0, 1, 2, 3, 4], (x) =>
         x < 2
-          ? T.accessM(({ [prefixEnv]: prefix }: PrefixEnv) =>
-              T.raiseError(`(${prefix}: ${x})`)
-            )
+          ? T.accessM(({ [prefixEnv]: prefix }: PrefixEnv) => T.raiseError(`(${prefix}: ${x})`))
           : T.pure(x)
       );
 
@@ -1362,27 +1256,18 @@ describe("EffectSafe", () => {
 
 describe("effectify", () => {
   it("returns correct value", async () => {
-    const fun = (
-      a: string,
-      cb: (err: string | null, v: string | null) => void
-    ) => {
+    const fun = (a: string, cb: (err: string | null, v: string | null) => void) => {
       cb(null, a);
     };
     const effFun = T.effectify(fun);
     assert.deepStrictEqual(await T.runToPromise(effFun("x")), "x");
   });
   it("returns an error", async () => {
-    const fun = (
-      a: string,
-      cb: (err: string | null, v: string | null) => void
-    ) => {
+    const fun = (a: string, cb: (err: string | null, v: string | null) => void) => {
       cb("error", null);
     };
     const effFun = T.effectify(fun);
-    assert.deepStrictEqual(
-      await T.runToPromiseExit(effFun("x")),
-      ex.raise("error")
-    );
+    assert.deepStrictEqual(await T.runToPromiseExit(effFun("x")), ex.raise("error"));
   });
 });
 
@@ -1396,24 +1281,18 @@ describe("patch", () => {
     }
 
     const provideA = T.provideS<RA>({
-      foo: "foo",
+      foo: "foo"
     });
     const provideB = T.provideS<RB>({
-      bar: "bar",
+      bar: "bar"
     });
     const program = T.accessEnvironment<RA & RB>();
     const patchA = T.patch<RA>()((_) =>
       T.pure({
-        foo: `${_.foo}-ok`,
+        foo: `${_.foo}-ok`
       })
     );
-    const res = await pipe(
-      program,
-      patchA,
-      provideA,
-      provideB,
-      T.runToPromiseExit
-    );
+    const res = await pipe(program, patchA, provideA, provideB, T.runToPromiseExit);
 
     assert.deepEqual(res, ex.done({ foo: "foo-ok", bar: "bar" }));
   });

@@ -9,18 +9,10 @@ import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { pipe } from "fp-ts/lib/pipeable";
 import { ElemType } from "@morphic-ts/adt/lib/utils";
 import { always } from "./always";
-import {
-  accessConfig,
-  ReadSideConfigService,
-  ReadSideConfig,
-  withConfig
-} from "./config";
+import { accessConfig, ReadSideConfigService, ReadSideConfig, withConfig } from "./config";
 import { saveOffsets } from "./saveOffsets";
 import { MatcherT } from "./matchers";
-import {
-  MorphADT,
-  AOfTypes
-} from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { MorphADT, AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union";
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
 
@@ -61,9 +53,7 @@ export class Read<
   private readonly logCause = <EC>(cause: Cause<EC | TaskError>) =>
     pipe(
       accessConfig,
-      T.chain(({ id }) =>
-        logger.error(`[readSide ${id}]: ${JSON.stringify(cause)}`)
-      )
+      T.chain(({ id }) => logger.error(`[readSide ${id}]: ${JSON.stringify(cause)}`))
     );
 
   readSide(config: ReadSideConfig) {
@@ -73,31 +63,21 @@ export class Read<
         TaskError,
         ({
           id: string;
-          event: AOfTypes<
-            { [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }
-          >;
+          event: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>;
         } & EventMeta)[]
       >,
       eventTypes: Keys2
     ) => <R, ER, R2, ER2 = never>(
       op: (
-        matcher: MatcherT<
-          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>,
-          Tag
-        >
+        matcher: MatcherT<AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>, Tag>
       ) => (
         events: Array<
-          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }> &
-            EventMetaHidden
+          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }> & EventMetaHidden
         >
       ) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
-      ) => T.Effect<
-        R2 & logger.Logger & ReadSideConfigService,
-        ER2,
-        void
-      > = this.logCause
+      ) => T.Effect<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
     ) =>
       pipe(
         always(
@@ -105,9 +85,9 @@ export class Read<
             this.db.withTransaction(
               pipe(
                 fetchEvents,
-                T.chainTap(events =>
+                T.chainTap((events) =>
                   op(this.S.select(eventTypes).matchWiden as any)(
-                    events.map(event => ({
+                    events.map((event) => ({
                       ...event.event,
                       [metaURI]: {
                         id: event.id,
@@ -120,11 +100,11 @@ export class Read<
                     }))
                   )
                 ),
-                T.chainTap(events =>
+                T.chainTap((events) =>
                   A.isNonEmpty(events)
                     ? pipe(
                         events,
-                        NA.map(x => x.id),
+                        NA.map((x) => x.id),
                         saveOffsets(this.db)
                       )
                     : T.unit
@@ -132,10 +112,10 @@ export class Read<
               )
             ),
             T.result,
-            T.chainTap(exit =>
+            T.chainTap((exit) =>
               pipe(
                 isDone(exit) ? T.unit : onError(exit),
-                T.chain(_ => accessConfig),
+                T.chain((_) => accessConfig),
                 T.chain(({ delay }) => T.delay(T.unit, delay))
               )
             )
@@ -155,16 +135,10 @@ export class Read<
     ) => <R, ER, R2, ER2 = never>(
       op: (
         matcher: MatcherT<AOfTypes<Types>, Tag>
-      ) => (
-        event: (AOfTypes<Types> & EventMetaHidden)[]
-      ) => T.Effect<R, ER, void[]>,
+      ) => (event: (AOfTypes<Types> & EventMetaHidden)[]) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
-      ) => T.Effect<
-        R2 & logger.Logger & ReadSideConfigService,
-        ER2,
-        void
-      > = this.logCause
+      ) => T.Effect<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
     ) =>
       pipe(
         always(
@@ -172,9 +146,9 @@ export class Read<
             this.db.withTransaction(
               pipe(
                 fetchEvents,
-                T.chainTap(events =>
+                T.chainTap((events) =>
                   op(this.S.matchWiden as any)(
-                    events.map(event => ({
+                    events.map((event) => ({
                       ...event.event,
                       [metaURI]: {
                         id: event.id,
@@ -187,11 +161,11 @@ export class Read<
                     }))
                   )
                 ),
-                T.chainTap(events =>
+                T.chainTap((events) =>
                   A.isNonEmpty(events)
                     ? pipe(
                         events,
-                        NA.map(x => x.id),
+                        NA.map((x) => x.id),
                         saveOffsets(this.db)
                       )
                     : T.unit
@@ -199,10 +173,10 @@ export class Read<
               )
             ),
             T.result,
-            T.chainTap(exit =>
+            T.chainTap((exit) =>
               pipe(
                 isDone(exit) ? T.unit : onError(exit),
-                T.chain(_ => accessConfig),
+                T.chain((_) => accessConfig),
                 T.chain(({ delay }) => T.delay(T.unit, delay))
               )
             )

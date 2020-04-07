@@ -5,7 +5,7 @@ import { right } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import { RPCResponse } from "@matechs/rpc-client";
 
-export const serverConfigEnv = "@matechs/rpc/serverConfigURI"
+export const serverConfigEnv = "@matechs/rpc/serverConfigURI";
 
 export interface ServerConfig<M> {
   [serverConfigEnv]: {
@@ -15,9 +15,7 @@ export interface ServerConfig<M> {
   };
 }
 
-export type InferR<F> = F extends (
-  ...args: any[]
-) => T.Effect<infer Q & E.RequestContext, any, any>
+export type InferR<F> = F extends (...args: any[]) => T.Effect<infer Q & E.RequestContext, any, any>
   ? Q
   : F extends T.Effect<infer Q & E.RequestContext, any, any>
   ? Q
@@ -51,8 +49,8 @@ export function server<M extends F.ModuleShape<M>, R>(
             E.route(
               "post",
               path,
-              E.accessReqM(req =>
-                T.async<never, E.RouteResponse<RPCResponse>>(res => {
+              E.accessReqM((req) =>
+                T.async<never, E.RouteResponse<RPCResponse>>((res) => {
                   const args: any[] = req.body.args;
 
                   const cancel = T.run(
@@ -62,14 +60,12 @@ export function server<M extends F.ModuleShape<M>, R>(
                     })(
                       pipe(
                         T.accessM((z: M) =>
-                          typeof z[k][key] === "function"
-                            ? z[k][key](...args)
-                            : z[k][key]
+                          typeof z[k][key] === "function" ? z[k][key](...args) : z[k][key]
                         ),
                         i
                       )
                     ),
-                    x => res(right(E.routeResponse(200, { value: x })))
+                    (x) => res(right(E.routeResponse(200, { value: x })))
                   );
 
                   return () => {

@@ -34,8 +34,8 @@ export const provideConsole = F.implement(Console)({
   [consoleURI]: {
     assert: (v, m, ...o) => T.sync(() => console.assert(v, m, ...o)),
     clear: T.sync(() => console.clear()),
-    count: l => T.sync(() => console.count(l)),
-    countReset: l => T.sync(() => console.countReset(l)),
+    count: (l) => T.sync(() => console.count(l)),
+    countReset: (l) => T.sync(() => console.countReset(l)),
     debug: (m, ...o) => T.sync(() => console.debug(m, ...o)),
     dir: (ob, op) => T.sync(() => console.dir(ob, op)),
     dirxml: (...d) => T.sync(() => console.dirxml(...d)),
@@ -46,8 +46,8 @@ export const provideConsole = F.implement(Console)({
     info: (m, ...o) => T.sync(() => console.info(m, ...o)),
     log: (m, ...o) => T.sync(() => console.log(m, ...o)),
     table: (t, p) => T.sync(() => console.table(t, p)),
-    time: l => T.sync(() => console.time(l)),
-    timeEnd: l => T.sync(() => console.timeEnd(l)),
+    time: (l) => T.sync(() => console.time(l)),
+    timeEnd: (l) => T.sync(() => console.timeEnd(l)),
     timeLog: (l, ...d) => T.sync(() => console.timeLog(l, ...d)),
     trace: (m, ...o) => T.sync(() => console.trace(m, ...o)),
     warn: (m, ...o) => T.sync(() => console.warn(m, ...o))

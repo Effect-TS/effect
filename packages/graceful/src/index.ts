@@ -20,9 +20,7 @@ export const { onExit, trigger } = F.access(gracefulF)[gracefulURI];
 
 const insert = <K>(_: K) => (a: K[]) => [...a, _];
 
-export const provideGraceful = F.implementWith(R.makeRef<T.UIO<void>[]>([]))(
-  gracefulF
-)(_ => ({
+export const provideGraceful = F.implementWith(R.makeRef<T.UIO<void>[]>([]))(gracefulF)((_) => ({
   [gracefulURI]: {
     onExit: flow(insert, _.update, T.asUnit),
     trigger: pipe(_.get, T.chain(array.sequence(T.parEffect)), T.asUnit)

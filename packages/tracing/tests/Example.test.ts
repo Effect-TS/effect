@@ -5,21 +5,13 @@ import { effect as T } from "@matechs/effect";
 import { program } from "./demo/Main";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
-import {
-  tracer,
-  Tracer,
-  withChildSpan,
-  withControllerSpan,
-  withTracer
-} from "../src";
+import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from "../src";
 import { counter } from "./demo/Counter";
 import { Printer } from "./demo/Printer";
 import { done, raise } from "@matechs/effect/lib/original/exit";
 
 class MockTracer extends OT {
-  constructor(
-    private readonly spans: Array<{ name: string; options: SpanOptions }>
-  ) {
+  constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
@@ -30,9 +22,7 @@ class MockTracer extends OT {
 }
 
 class MockTracer2 extends OT {
-  constructor(
-    private readonly spans: Array<{ name: string; options: SpanOptions }>
-  ) {
+  constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
@@ -82,14 +72,8 @@ describe("Example", () => {
       )
     );
 
-    assert.deepEqual(
-      spans.filter(s => s.name.indexOf("demo-main") >= 0).length,
-      1
-    );
-    assert.deepEqual(
-      spans.filter(s => s.name.indexOf("span-") >= 0).length,
-      20
-    );
+    assert.deepEqual(spans.filter((s) => s.name.indexOf("demo-main") >= 0).length, 1);
+    assert.deepEqual(spans.filter((s) => s.name.indexOf("span-") >= 0).length, 20);
 
     assert.deepEqual(result, done({ start: 0, end: 20 }));
     assert.deepEqual(messages, [
@@ -155,9 +139,7 @@ describe("Example", () => {
   });
 
   it("skip tracing if out of context", async () => {
-    const program2 = withChildSpan("noop")(
-      T.raiseError(new Error("not implemented"))
-    );
+    const program2 = withChildSpan("noop")(T.raiseError(new Error("not implemented")));
 
     const result = await T.runToPromiseExit(T.provide(tracer())(program2));
 

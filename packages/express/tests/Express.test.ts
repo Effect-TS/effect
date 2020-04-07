@@ -15,23 +15,17 @@ describe("Express", () => {
         EX.route(
           "post",
           "/",
-          EX.accessReqM((r) =>
-            T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 }))
-          )
+          EX.accessReqM((r) => T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 })))
         )
       )
       .do(
         EX.route(
           "post",
           "/access",
-          EX.accessReq((r) =>
-            EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 })
-          )
+          EX.accessReq((r) => EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
         )
       )
-      .do(
-        EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 })))
-      )
+      .do(EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 }))))
       .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
       .do(EX.route("post", "/bad3", T.raiseInterrupt))
       .do(
@@ -69,12 +63,7 @@ describe("Express", () => {
     const res2 = await T.runToPromiseExit(
       pipe(
         H.post("http://127.0.0.1:3003/bad", {}),
-        T.mapError(
-          (s) =>
-            s._tag === H.HttpErrorReason.Response &&
-            s.response &&
-            s.response.body
-        ),
+        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
       )
@@ -83,12 +72,7 @@ describe("Express", () => {
     const res3 = await T.runToPromiseExit(
       pipe(
         H.post("http://127.0.0.1:3003/bad2", {}),
-        T.mapError(
-          (s) =>
-            s._tag === H.HttpErrorReason.Response &&
-            s.response &&
-            s.response.body
-        ),
+        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
       )
@@ -97,12 +81,7 @@ describe("Express", () => {
     const res4 = await T.runToPromiseExit(
       pipe(
         H.post("http://127.0.0.1:3003/bad3", {}),
-        T.mapError(
-          (s) =>
-            s._tag === H.HttpErrorReason.Response &&
-            s.response &&
-            s.response.body
-        ),
+        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
       )
@@ -123,10 +102,7 @@ describe("Express", () => {
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res2, raise(some(`{\"res\":1}`))); // TODO: verify we want that decoded as string
-    assert.deepEqual(
-      res3,
-      raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`))
-    );
+    assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
     assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
   });
 });

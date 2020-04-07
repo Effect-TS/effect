@@ -1,7 +1,12 @@
 import { effect as T, utils as UT } from "@matechs/effect";
 import * as EX from "@matechs/express";
 import { option as O } from "fp-ts";
-import { ApolloServer, makeExecutableSchema, ITypeDefinitions, IResolvers } from "apollo-server-express";
+import {
+  ApolloServer,
+  makeExecutableSchema,
+  ITypeDefinitions,
+  IResolvers
+} from "apollo-server-express";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as express from "express";
 import { ExpressContext, ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer";
@@ -15,23 +20,27 @@ import {
   ResolverInput,
   Resolver,
   ResolverEnv,
-  ResolverF,
+  ResolverF
 } from "./apollo";
 
 // EXPERIMENTAL
 /* istanbul ignore file */
 
 export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
-  _RE: RE,
-  _U: U,
-  _CTX: Ctx,
-  _C: C
+  _RE: RE;
+  _U: U;
+  _CTX: Ctx;
+  _C: C;
 
   bindToSchema: <R extends Resolver<any, R, U, Ctx>>(
     res: R,
     typeDefs: ITypeDefinitions,
     additionalResolvers?: IResolvers
-  ) => T.Effect<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, never, void>;
+  ) => T.Effect<
+    ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE,
+    never,
+    void
+  >;
   binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K;
   accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
   resolver: <ARGS, S = any>() => <R extends ResolverF<ARGS, U, Ctx, S, any, any, any>>(_: R) => R;
@@ -65,7 +74,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
     resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
   ): ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G> => ({
     subscribe,
-    resolve,
+    resolve
   });
 
   const resolver = <K extends Resolver<any, K, U, Ctx>>(res: K) => res;
@@ -90,13 +99,13 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                 pipe(
                   res[k]({
                     source: O.fromNullable(source),
-                    args: args || {},
+                    args: args || {}
                   }),
                   T.provideAll({
                     ...(_ as any),
                     [contextURI]: {
-                      [uri]: ctx,
-                    },
+                      [uri]: ctx
+                    }
                   }),
                   T.runToPromise
                 );
@@ -106,16 +115,16 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                   pipe(
                     res[k].subscribe({
                       source: O.fromNullable(source),
-                      args: args || {},
+                      args: args || {}
                     }),
                     T.provideAll({
                       ...(_ as any),
                       [contextURI]: {
-                        [uri]: ctx,
-                      },
+                        [uri]: ctx
+                      }
                     }),
                     T.runToPromise
-                  ),
+                  )
               };
 
               if (res[k].resolve) {
@@ -125,8 +134,8 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                     T.provideAll({
                       ...(_ as any),
                       [contextURI]: {
-                        [uri]: ctx,
-                      },
+                        [uri]: ctx
+                      }
                     }),
                     T.runToPromise
                   );
@@ -143,7 +152,10 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
 
       return T.orAbort(
         T.trySync(() => {
-          const schema = makeExecutableSchema({ typeDefs, resolvers: { ...toBind, ...additionalResolvers } });
+          const schema = makeExecutableSchema({
+            typeDefs,
+            resolvers: { ...toBind, ...additionalResolvers }
+          });
 
           if (configP.subscriptions && configP.subscriptions.onConnect) {
             const onC = configP.subscriptions.onConnect;
@@ -153,14 +165,14 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
               onConnect: (a, b, c) => T.runToPromise(T.provideAll(_)(onC(a, b, c))),
               keepAlive: configP.subscriptions.keepAlive,
               onDisconnect: onD ? (a, b) => T.runToPromise(T.provideAll(_)(onD(a, b))) : undefined,
-              path: configP.subscriptions.path,
+              path: configP.subscriptions.path
             };
           }
 
           const server = new ApolloServer({
             schema,
             context: (ci) => T.runToPromise(T.provideAll(_)(contextF(ci as any))),
-            ...config,
+            ...config
           });
 
           server.applyMiddleware({ app: _[EX.expressAppEnv].app });
@@ -201,4 +213,4 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
   };
 }
 
-export { Resolver }
+export { Resolver };

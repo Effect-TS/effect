@@ -29,13 +29,21 @@ export interface Arb<R, A> extends S.Stream<R, never, A> {}
 
 export const arb = <T0>(a: Arbitrary<T0>): Arb<RandomGen, T0> =>
   S.fromSource(
-    M.encaseEffect(T.access((_: RandomGen) => T.sync(() => some(a.generate(_[RandomGenURI].randomGenerator).value))))
+    M.encaseEffect(
+      T.access((_: RandomGen) =>
+        T.sync(() => some(a.generate(_[RandomGenURI].randomGenerator).value))
+      )
+    )
   );
 
-export const propertyM = (iterations: number) => <NER extends Record<string, S.Stream<any, any, any>>>(
+export const propertyM = (iterations: number) => <
+  NER extends Record<string, S.Stream<any, any, any>>
+>(
   r: EnforceNonEmptyRecord<NER> & Record<string, S.Stream<any, any, any>>
 ) => <R>(
-  f: (_: { [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, infer A>] ? A : never }) => T.Effect<R, any, void>
+  f: (
+    _: { [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, infer A>] ? A : never }
+  ) => T.Effect<R, any, void>
 ) =>
   pipe(
     sequenceS(S.stream)<NER>(r),
@@ -46,7 +54,9 @@ export const propertyM = (iterations: number) => <NER extends Record<string, S.S
 
 export const property = (iterations: number) => <NER extends Record<string, Arb<any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Arb<any, any>>
-) => (f: (_: { [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, infer A>] ? A : never }) => void) =>
+) => (
+  f: (_: { [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, infer A>] ? A : never }) => void
+) =>
   pipe(
     sequenceS(S.stream)<NER>(r),
     S.chain((x) => S.encaseEffect(T.sync(() => f(x)))),

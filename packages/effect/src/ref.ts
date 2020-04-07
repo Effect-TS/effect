@@ -50,9 +50,7 @@ export const makeRef = <A>(initial: A): T.Effect<T.NoEnv, never, Ref<A>> =>
     const update = (f: F.FunctionN<[A], A>): T.Effect<T.NoEnv, never, A> =>
       T.sync(() => (value = f(value)));
 
-    const modify = <B>(
-      f: F.FunctionN<[A], readonly [B, A]>
-    ): T.Effect<T.NoEnv, never, B> =>
+    const modify = <B>(f: F.FunctionN<[A], readonly [B, A]>): T.Effect<T.NoEnv, never, B> =>
       T.sync(() => {
         const [b, a] = f(value);
         value = a;

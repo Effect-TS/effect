@@ -4,11 +4,7 @@ import {} from "@morphic-ts/batteries/lib/program-orderable";
 
 import Long from "long";
 import { effect as T, managed as M } from "@matechs/effect";
-import {
-  eventStoreTcpConnection,
-  accessConfig,
-  EventStoreError
-} from "./client";
+import { eventStoreTcpConnection, accessConfig, EventStoreError } from "./client";
 import { pipe } from "fp-ts/lib/pipeable";
 import { left } from "fp-ts/lib/Either";
 import { sequenceT } from "fp-ts/lib/Apply";
@@ -34,19 +30,12 @@ export interface ProviderError<E> {
   error: E;
 }
 
-export type SubError<E, E2, E3> =
-  | DecodeError<E>
-  | ProcessError<E2>
-  | OffsetError<E3>;
+export type SubError<E, E2, E3> = DecodeError<E> | ProcessError<E2> | OffsetError<E3>;
 
 export type ReadError<E, E2, E3, E4> = SubError<E, E2, E3> | ProviderError<E4>;
 
 export interface OffsetStore<R, E, R2, E2> {
-  set: (
-    readId: string,
-    streamId: string,
-    offset: bigint
-  ) => T.Effect<R, E, void>;
+  set: (readId: string, streamId: string, offset: bigint) => T.Effect<R, E, void>;
   get: (readId: string, streamId: string) => T.Effect<R2, E2, bigint>;
 }
 
@@ -60,27 +49,18 @@ export interface ESMeta {
 
 export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
   decode: (u: unknown) => T.Effect<R, E, A>
-) => <R2, E2>(process: (a: A & ESMeta) => T.Effect<R2, E2, void>) => <
-  OR,
-  OE,
-  OR2,
-  OE2
->(
+) => <R2, E2>(process: (a: A & ESMeta) => T.Effect<R2, E2, void>) => <OR, OE, OR2, OE2>(
   store: OffsetStore<OR, OE, OR2, OE2>
 ) => <RF, EF>(
   provider: <AF>(
     _e: T.Effect<R2 & OR & R, OE | SubError<E, E2, OE>, AF>
   ) => T.Effect<RF & R, SubError<E, E2, OE> | EF, AF>
 ) =>
-  M.use(eventStoreTcpConnection, connection =>
+  M.use(eventStoreTcpConnection, (connection) =>
     pipe(
-      sequenceT(T.effect)(
-        accessConfig,
-        store.get(readId, streamId),
-        T.accessEnvironment<R & RF>()
-      ),
+      sequenceT(T.effect)(accessConfig, store.get(readId, streamId), T.accessEnvironment<R & RF>()),
       T.chain(([config, from, r]) =>
-        T.async<EventStoreError | ReadError<E, E2, OE, EF>, never>(done => {
+        T.async<EventStoreError | ReadError<E, E2, OE, EF>, never>((done) => {
           const subscription = connection.subscribeToStreamFrom(
             streamId,
             Long.fromString(BigInt(from).toString(10), false, 10),
@@ -96,7 +76,7 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
                         error: e
                       })
                     ),
-                    T.chain(x =>
+                    T.chain((x) =>
                       pipe(
                         { ...x, [esMetaURI]: { raw: event } },
                         process,
@@ -108,7 +88,7 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
                         )
                       )
                     ),
-                    T.chainTap(_ =>
+                    T.chainTap((_) =>
                       pipe(
                         store.set(
                           readId,
@@ -138,11 +118,7 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
             () => {
               // live
             },
-            (
-              _,
-              _reason,
-              error: Error | ReadError<E, E2, OE, EF> | undefined
-            ) => {
+            (_, _reason, error: Error | ReadError<E, E2, OE, EF> | undefined) => {
               if (error) {
                 done(
                   "type" in error

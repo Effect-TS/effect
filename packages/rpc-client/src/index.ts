@@ -17,14 +17,8 @@ export interface ClientConfig<M> {
   };
 }
 
-type ClientEntry<M, X> = M extends FunctionN<
-  infer A,
-  T.Effect<infer _B, infer C, infer D>
->
-  ? FunctionN<
-      A,
-      T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
-    >
+type ClientEntry<M, X> = M extends FunctionN<infer A, T.Effect<infer _B, infer C, infer D>>
+  ? FunctionN<A, T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>>
   : M extends T.Effect<infer _B, infer C, infer D>
   ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
   : never;
@@ -33,9 +27,7 @@ export type Client<M extends F.ModuleShape<M>> = {
   [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>;
 };
 
-export function client<M extends F.ModuleShape<M>>(
-  s: F.ModuleSpec<M>
-): Client<M> {
+export function client<M extends F.ModuleShape<M>>(s: F.ModuleSpec<M>): Client<M> {
   const r = {} as any;
 
   for (const entry of Reflect.ownKeys(s[F.specURI])) {
@@ -55,7 +47,7 @@ export function client<M extends F.ModuleShape<M>>(
                 ? T.completed((res.body.value as RPCResponse).value)
                 : T.raiseError(new Error("empty response"))
             )
-            .return(s => s.ret);
+            .return((s) => s.ret);
       } else if (typeof x[z] === "object") {
         r[z] = Do(T.effect)
           .bindL("req", () => T.pure<RPCRequest>({ args: [] }))
@@ -68,7 +60,7 @@ export function client<M extends F.ModuleShape<M>>(
               ? T.completed((res.body.value as RPCResponse).value)
               : T.raiseError(new Error("empty response"))
           )
-          .return(s => s.ret);
+          .return((s) => s.ret);
       }
     }
   }

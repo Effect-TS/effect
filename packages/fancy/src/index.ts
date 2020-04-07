@@ -13,10 +13,7 @@ import { some, none } from "fp-ts/lib/Option";
 
 export interface Run<R> {
   <RUI, P>(
-    _: <A>(
-      _: T.Effect<R, never, A>,
-      cb?: ((a: A) => void) | undefined
-    ) => Lazy<void>,
+    _: <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>,
     dispose: Lazy<void>
   ): T.Effect<RUI, never, React.FC<P>>;
 }
@@ -25,10 +22,7 @@ export interface UI {
   of: <RUI, P = {}>(uiE: View<RUI, P>) => View<RUI, P>;
   withRun: <RUNR>() => <RUI, P>(
     f: (
-      _: <A>(
-        _: T.Effect<RUNR, never, A>,
-        cb?: ((a: A) => void) | undefined
-      ) => Lazy<void>,
+      _: <A>(_: T.Effect<RUNR, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>,
       dispose: Lazy<void>
     ) => T.Effect<RUI, never, React.FC<P>>
   ) => View<RUNR & RUI, P>;
@@ -37,19 +31,13 @@ export interface UI {
   ) => View<S, P>;
 }
 
-export interface View<R = unknown, P = unknown>
-  extends T.Effect<R, never, React.FC<P>> {}
+export interface View<R = unknown, P = unknown> extends T.Effect<R, never, React.FC<P>> {}
 
 export const UI: UI = {
-  of: <RUI, P>(
-    uiE: T.Effect<RUI, never, React.FC<P>>
-  ): T.Effect<RUI, never, React.FC<P>> => uiE,
+  of: <RUI, P>(uiE: T.Effect<RUI, never, React.FC<P>>): T.Effect<RUI, never, React.FC<P>> => uiE,
   withRun: <RUNR>() => <RUI, P>(
     f: (
-      _: <A>(
-        _: T.Effect<RUNR, never, A>,
-        cb?: ((a: A) => void) | undefined
-      ) => Lazy<void>,
+      _: <A>(_: T.Effect<RUNR, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>,
       dispose: Lazy<void>
     ) => T.Effect<RUI, never, React.FC<P>>
   ): View<RUNR & RUI, P> =>
@@ -77,12 +65,7 @@ export const accessSM = <S extends State<any>>() => <R, E, A>(
 ): T.Effect<S & R, E, A> => T.accessM((s: S) => f(s[stateURI].state));
 
 export function hasNextContext(u: unknown): u is NextContext {
-  return (
-    u !== undefined &&
-    typeof u === "object" &&
-    u !== null &&
-    nextContextURI in u
-  );
+  return u !== undefined && typeof u === "object" && u !== null && nextContextURI in u;
 }
 
 export const accessNextContext = T.access((r: unknown) =>

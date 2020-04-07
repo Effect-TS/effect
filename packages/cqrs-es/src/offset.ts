@@ -27,16 +27,14 @@ export const ormOffsetStore = <Db extends symbol | string>(DB: DbT<Db>) =>
   offsetStore({
     get: (readId, streamId) =>
       pipe(
-        DB.withRepositoryTask(TableOffset)(r => () =>
-          r.findOne({ id: `${readId}-${streamId}` })
-        ),
+        DB.withRepositoryTask(TableOffset)((r) => () => r.findOne({ id: `${readId}-${streamId}` })),
         T.map(O.fromNullable),
-        T.map(O.map(x => BigInt(x.offset))),
+        T.map(O.map((x) => BigInt(x.offset))),
         T.map(O.getOrElse(() => BigInt(0)))
       ),
     set: (readId, streamId, offset) =>
       T.asUnit(
-        DB.withRepositoryTask(TableOffset)(r => () =>
+        DB.withRepositoryTask(TableOffset)((r) => () =>
           r.save({
             id: `${readId}-${streamId}`,
             offset: offset.toString(10)

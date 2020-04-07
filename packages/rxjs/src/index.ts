@@ -14,8 +14,8 @@ export function encaseObservable<E, A>(
 
           return {
             s: observable.subscribe(
-              a => next({ _tag: "offer", a }),
-              e => next({ _tag: "error", e: onError(e) }),
+              (a) => next({ _tag: "offer", a }),
+              (e) => next({ _tag: "error", e: onError(e) }),
               () => next({ _tag: "complete" })
             ),
             ops,
@@ -40,8 +40,8 @@ export function encaseObservableEither<E, A>(
 
           return {
             s: observable.subscribe(
-              a => next({ _tag: "offer", a: right(a) }),
-              e => next({ _tag: "offer", a: left(e) }),
+              (a) => next({ _tag: "offer", a: right(a) }),
+              (e) => next({ _tag: "offer", a: left(e) }),
               () => next({ _tag: "complete" })
             ),
             ops,
@@ -58,16 +58,16 @@ export function encaseObservableEither<E, A>(
 export function runToObservable<E, A>(
   o: T.Effect<T.NoEnv, never, Rx.Observable<A>>
 ): Rx.Observable<A> {
-  return new Rx.Observable(sub => {
+  return new Rx.Observable((sub) => {
     T.run(
       o,
       E.fold(
-        ob => {
+        (ob) => {
           const running = ob.subscribe(
-            r => {
+            (r) => {
               sub.next(r);
             },
-            e => {
+            (e) => {
               sub.error(e);
             },
             () => {
@@ -80,11 +80,11 @@ export function runToObservable<E, A>(
             sub.closed = true;
           };
         },
-        e => {
+        (e) => {
           /* istanbul ignore next */
           sub.error(e);
         },
-        u => {
+        (u) => {
           /* istanbul ignore next */
           sub.error(u);
         },
@@ -102,10 +102,10 @@ export function toObservable<R, E, A>(
 ): T.Effect<R, T.NoErr, Rx.Observable<A>> {
   return T.access(
     (r: R) =>
-      new Rx.Observable(sub => {
+      new Rx.Observable((sub) => {
         const drainer = T.provideAll(r)(
           S.drain(
-            S.stream.mapM(s, a =>
+            S.stream.mapM(s, (a) =>
               T.sync(() => {
                 sub.next(a);
               })
@@ -118,11 +118,11 @@ export function toObservable<R, E, A>(
             () => {
               sub.complete();
             },
-            e => {
+            (e) => {
               sub.error(e);
               sub.unsubscribe();
             },
-            u => {
+            (u) => {
               sub.error(u);
               sub.unsubscribe();
             },

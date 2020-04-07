@@ -23,31 +23,20 @@ export const binarySpec = J.testM(
       )
       .bindL("post", () =>
         T.result(
-          H.postBinaryGetBinary(
-            "http://127.0.0.1:4017/binary",
-            Buffer.from(`{ foo: "bar" }`)
-          )
+          H.postBinaryGetBinary("http://127.0.0.1:4017/binary", Buffer.from(`{ foo: "bar" }`))
         )
       )
       .bindL("put", () =>
         T.result(
-          H.putBinaryGetBinary(
-            "http://127.0.0.1:4017/binary",
-            Buffer.from(`{ foo: "bar" }`)
-          )
+          H.putBinaryGetBinary("http://127.0.0.1:4017/binary", Buffer.from(`{ foo: "bar" }`))
         )
       )
       .bindL("patch", () =>
         T.result(
-          H.patchBinaryGetBinary(
-            "http://127.0.0.1:4017/binary",
-            Buffer.from(`{ foo: "bar" }`)
-          )
+          H.patchBinaryGetBinary("http://127.0.0.1:4017/binary", Buffer.from(`{ foo: "bar" }`))
         )
       )
-      .bindL("del", () =>
-        T.result(H.delBinaryGetBinary("http://127.0.0.1:4017/binary"))
-      )
+      .bindL("del", () => T.result(H.delBinaryGetBinary("http://127.0.0.1:4017/binary")))
       .return(({ put, post, patch, del }) => {
         const binaryString = (b: O.Option<Buffer>): O.Option<string> =>
           pipe(
@@ -74,10 +63,7 @@ export const binarySpec = J.testM(
         );
 
         J.assert.deepEqual(E.isDone(del), true);
-        J.assert.deepEqual(
-          E.isDone(del) && binaryString(del.value.body),
-          O.some(``)
-        );
+        J.assert.deepEqual(E.isDone(del) && binaryString(del.value.body), O.some(``));
       })
   )
 );

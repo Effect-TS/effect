@@ -8,7 +8,7 @@ import {
   EntityManager,
   EntitySchema,
   ObjectType,
-  Repository,
+  Repository
 } from "typeorm";
 import { Task } from "fp-ts/lib/Task";
 
@@ -29,13 +29,15 @@ export function dbConfig<A extends symbol | string>(
   env: A,
   readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>
 ) {
-  return {
-    [configEnv]: {
-      [env]: {
-        readConfig,
-      },
-    },
-  } as DbConfig<A>;
+  return (
+    {
+      [configEnv]: {
+        [env]: {
+          readConfig
+        }
+      }
+    } as DbConfig<A>
+  );
 }
 
 /* istanbul ignore next */
@@ -44,8 +46,8 @@ export function mergeConfig<R>(a: R) {
     ...a,
     [configEnv]: {
       ...a[configEnv],
-      ...b[configEnv],
-    },
+      ...b[configEnv]
+    }
   });
 }
 
@@ -60,11 +62,7 @@ export function dbConfigs<
   A extends symbol | string,
   B extends symbol | string,
   C extends symbol | string
->(
-  a: DbConfig<A>,
-  b: DbConfig<B>,
-  c: DbConfig<C>
-): DbConfig<A> & DbConfig<B> & DbConfig<C>;
+>(a: DbConfig<A>, b: DbConfig<B>, c: DbConfig<C>): DbConfig<A> & DbConfig<B> & DbConfig<C>;
 
 /* istanbul ignore next */
 export function dbConfigs<
@@ -108,14 +106,14 @@ export interface DbFactory {
 
 export const liveFactory: DbFactory = {
   [factoryEnv]: {
-    createConnection: createConnection,
-  },
+    createConnection: createConnection
+  }
 };
 
 export const mockFactory: (x: typeof createConnection) => DbFactory = (x) => ({
   [factoryEnv]: {
-    createConnection: x,
-  },
+    createConnection: x
+  }
 });
 
 export const dbTxURI = "@matechs/orm/dbTxURI";
@@ -142,12 +140,9 @@ export class DbT<Db extends symbol | string> {
     this.withNewRegion = this.withNewRegion.bind(this);
   }
 
-  requireTx = <R, E, A>(op: T.Effect<R, E, A>): T.Effect<R & DbTx<Db>, E, A> =>
-    op;
+  requireTx = <R, E, A>(op: T.Effect<R, E, A>): T.Effect<R & DbTx<Db>, E, A> => op;
 
-  withNewRegion<R extends ORM<Db>, E, A>(
-    op: T.Effect<R, E, A>
-  ): T.Effect<R, E, A> {
+  withNewRegion<R extends ORM<Db>, E, A>(op: T.Effect<R, E, A>): T.Effect<R, E, A> {
     return this.withConnection((connection) =>
       T.provideR(
         (r: R): R => ({
@@ -155,9 +150,9 @@ export class DbT<Db extends symbol | string> {
           [managerEnv]: {
             ...r[managerEnv],
             [this.dbEnv]: {
-              manager: connection.manager,
-            },
-          },
+              manager: connection.manager
+            }
+          }
         })
       )(op)
     );
@@ -169,9 +164,9 @@ export class DbT<Db extends symbol | string> {
     return T.accessM(
       ({
         [configEnv]: {
-          [this.dbEnv]: { readConfig },
+          [this.dbEnv]: { readConfig }
         },
-        [factoryEnv]: f,
+        [factoryEnv]: f
       }: DbConfig<Db> & DbFactory) =>
         T.effect.chain(readConfig, (options) =>
           T.bracket(
@@ -194,15 +189,15 @@ export class DbT<Db extends symbol | string> {
                   [poolEnv]: {
                     ...r[poolEnv],
                     [this.dbEnv]: {
-                      pool: db,
-                    },
+                      pool: db
+                    }
                   },
                   [managerEnv]: {
                     ...r[managerEnv],
                     [this.dbEnv]: {
-                      manager: db.manager,
-                    },
-                  },
+                      manager: db.manager
+                    }
+                  }
                 }))
               )
           )
@@ -212,9 +207,7 @@ export class DbT<Db extends symbol | string> {
 
   withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(
-    f: (r: Repository<Entity>) => Task<A>
-  ) => T.Effect<ORM<Db>, TaskError, A> {
+  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.Effect<ORM<Db>, TaskError, A> {
     return (f) =>
       this.withRepository(target)((r) =>
         pipe(
@@ -228,22 +221,14 @@ export class DbT<Db extends symbol | string> {
 
   withRepository<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <R, E, A>(
-    f: (r: Repository<Entity>) => T.Effect<R, E, A>
-  ) => T.Effect<ORM<Db> & R, E, A> {
+  ): <R, E, A>(f: (r: Repository<Entity>) => T.Effect<R, E, A>) => T.Effect<ORM<Db> & R, E, A> {
     return (f) =>
-      T.accessM(
-        ({
-          [managerEnv]: {
-            [this.dbEnv]: { manager },
-          },
-        }: Manager<Db>) => f(manager.getRepository(target))
+      T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) =>
+        f(manager.getRepository(target))
       );
   }
 
-  withManagerTask<A>(
-    f: (m: EntityManager) => Task<A>
-  ): T.Effect<ORM<Db>, TaskError, A> {
+  withManagerTask<A>(f: (m: EntityManager) => Task<A>): T.Effect<ORM<Db>, TaskError, A> {
     return this.withManager((manager) =>
       pipe(
         manager,
@@ -254,21 +239,11 @@ export class DbT<Db extends symbol | string> {
     );
   }
 
-  withManager<R, E, A>(
-    f: (m: EntityManager) => T.Effect<R, E, A>
-  ): T.Effect<ORM<Db> & R, E, A> {
-    return T.accessM(
-      ({
-        [managerEnv]: {
-          [this.dbEnv]: { manager },
-        },
-      }: Manager<Db>) => f(manager)
-    );
+  withManager<R, E, A>(f: (m: EntityManager) => T.Effect<R, E, A>): T.Effect<ORM<Db> & R, E, A> {
+    return T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) => f(manager));
   }
 
-  withConnectionTask<A>(
-    f: (m: Connection) => Task<A>
-  ): T.Effect<ORM<Db>, TaskError, A> {
+  withConnectionTask<A>(f: (m: Connection) => Task<A>): T.Effect<ORM<Db>, TaskError, A> {
     return this.withConnection((pool) =>
       pipe(
         pool,
@@ -279,12 +254,8 @@ export class DbT<Db extends symbol | string> {
     );
   }
 
-  withConnection<R, E, A>(
-    f: (m: Connection) => T.Effect<R, E, A>
-  ): T.Effect<ORM<Db> & R, E, A> {
-    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
-      f(pool)
-    );
+  withConnection<R, E, A>(f: (m: Connection) => T.Effect<R, E, A>): T.Effect<ORM<Db> & R, E, A> {
+    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) => f(pool));
   }
 
   withORMTransaction<R, E, A>(
@@ -307,18 +278,14 @@ export class DbT<Db extends symbol | string> {
                 T.fromPromiseMap(toError)(() => runner.manager.query("COMMIT")),
                 T.chainError((err) =>
                   pipe(
-                    T.fromPromiseMap(toError)(() =>
-                      runner.manager.query("ROLLBACK")
-                    ),
+                    T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
                     T.chain((_) => T.raiseError(err))
                   )
                 ),
                 T.mapError((x) => new TaskError(x, "withTransaction"))
               )
             : pipe(
-                T.fromPromiseMap(toError)(() =>
-                  runner.manager.query("ROLLBACK")
-                ),
+                T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
                 T.mapError((x) => new TaskError(x, "withTransaction")),
                 T.chain((_) => T.raised(exit))
               ),
@@ -330,15 +297,15 @@ export class DbT<Db extends symbol | string> {
               [managerEnv]: {
                 ...r[managerEnv],
                 [this.dbEnv]: {
-                  manager: runner.manager,
-                },
+                  manager: runner.manager
+                }
               },
               [dbTxURI]: {
                 ...r[dbTxURI],
                 [this.dbEnv]: {
-                  tx: {},
-                },
-              },
+                  tx: {}
+                }
+              }
             }))
           )
       )
@@ -359,15 +326,15 @@ export class DbT<Db extends symbol | string> {
                   [managerEnv]: {
                     ...r[managerEnv],
                     [this.dbEnv]: {
-                      manager: tx,
-                    },
+                      manager: tx
+                    }
                   },
                   [dbTxURI]: {
                     ...r[dbTxURI],
                     [this.dbEnv]: {
-                      tx: {},
-                    },
-                  },
+                      tx: {}
+                    }
+                  }
                 })(
                   pipe(
                     op,

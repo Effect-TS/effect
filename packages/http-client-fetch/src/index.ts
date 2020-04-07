@@ -27,7 +27,7 @@ function getBody(
   );
 }
 
-export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
+export const httpFetch: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
   [H.httpEnv]: {
     request(
       method: H.Method,
@@ -46,9 +46,9 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
         method: H.getMethodAsString(method)
       };
 
-      return T.async(r => {
+      return T.async((r) => {
         fetchApi(url, input)
-          .then(resp => {
+          .then((resp) => {
             const h: Record<string, string> = {};
 
             resp.headers.forEach((val, key) => {
@@ -70,7 +70,7 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
                   });
                 },
                 () =>
-                  resp.text().then(text => {
+                  resp.text().then((text) => {
                     r(
                       right({
                         headers: h,
@@ -81,7 +81,7 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
                   }),
                 () => {
                   if (resp["arrayBuffer"]) {
-                    resp.arrayBuffer().then(arrayBuffer => {
+                    resp.arrayBuffer().then((arrayBuffer) => {
                       r(
                         right({
                           headers: h,
@@ -104,7 +104,7 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
                 }
               );
             } else {
-              resp.text().then(text => {
+              resp.text().then((text) => {
                 r(
                   left({
                     _tag: H.HttpErrorReason.Response,
@@ -118,12 +118,12 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
               });
             }
           })
-          .catch(err => {
+          .catch((err) => {
             r(left({ _tag: H.HttpErrorReason.Request, error: err }));
           });
 
         // tslint:disable-next-line: no-empty
-        return cb => {
+        return (cb) => {
           cb();
         };
       });
@@ -131,5 +131,4 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = fetchApi => ({
   }
 });
 
-export const client = (fetchApi: typeof fetch) =>
-  pipe(T.noEnv, T.mergeEnv(httpFetch(fetchApi)));
+export const client = (fetchApi: typeof fetch) => pipe(T.noEnv, T.mergeEnv(httpFetch(fetchApi)));

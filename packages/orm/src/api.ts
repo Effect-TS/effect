@@ -21,22 +21,16 @@ export interface Repository<O> {
     entity: T,
     options?: SaveOptions | undefined
   ): T.IO<OR.TaskError, O>;
-  findOne(
-    options?: FindOneOptions<O> | undefined
-  ): T.IO<OR.TaskError, OP.Option<O>>;
+  findOne(options?: FindOneOptions<O> | undefined): T.IO<OR.TaskError, OP.Option<O>>;
 }
 
-const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(
-  Target: Target<O>
-) => ({
+const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(Target: Target<O>) => ({
   save: <T extends DeepPartial<O>>(entity: T, options?: SaveOptions) =>
     T.accessM((_: Database<DbURI>) =>
       _[DatabaseURI][DbURI].repository(Target).save(entity, options)
     ),
   findOne: (options: FindOneOptions<O>) =>
-    T.accessM((_: Database<DbURI>) =>
-      _[DatabaseURI][DbURI].repository(Target).findOne(options)
-    ),
+    T.accessM((_: Database<DbURI>) => _[DatabaseURI][DbURI].repository(Target).findOne(options))
 });
 
 export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
@@ -46,29 +40,27 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const provideApi = <R, E, A>(
     eff: T.Effect<R & Database<DbURI>, E, A>
   ): T.Effect<R & OR.ORM<DbURI>, E, A> => {
-    const provideDb = T.provideSW<Database<DbURI>>()(
-      T.accessEnvironment<OR.ORM<DbURI>>()
-    )((r) => ({
-      [DatabaseURI]: {
-        ...r[DatabaseURI],
-        [DbURI]: {
-          repository: (Target) => ({
-            save: (entity, options) =>
-              pipe(
-                orm.withRepositoryTask(Target)((_) => () =>
-                  _.save(entity, options)
-                ),
-                T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
-              ),
-            findOne: (options) =>
-              pipe(
-                orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
-                T.map(OP.fromNullable),
-                T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
-              ),
-          }),
-        } as Database<DbURI>[typeof DatabaseURI][DbURI],
-      } as Database<DbURI>[typeof DatabaseURI],
+    const provideDb = T.provideSW<Database<DbURI>>()(T.accessEnvironment<OR.ORM<DbURI>>())((r) => ({
+      [DatabaseURI]:
+        {
+          ...r[DatabaseURI],
+          [DbURI]:
+            {
+              repository: (Target) => ({
+                save: (entity, options) =>
+                  pipe(
+                    orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
+                    T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
+                  ),
+                findOne: (options) =>
+                  pipe(
+                    orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
+                    T.map(OP.fromNullable),
+                    T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
+                  )
+              })
+            } as Database<DbURI>[typeof DatabaseURI][DbURI]
+        } as Database<DbURI>[typeof DatabaseURI]
     }));
 
     return pipe(eff, provideDb);
@@ -85,7 +77,7 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     withORMTransaction,
     withRepository,
     withRepositoryTask,
-    withTransaction,
+    withTransaction
   } = orm;
 
   return {
@@ -101,7 +93,7 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     withORMTransaction,
     withRepository,
     withRepositoryTask,
-    withTransaction,
+    withTransaction
   };
 };
 
@@ -112,6 +104,6 @@ export const mockDatabase = <O>(M: {
     ({
       save: () => T.unit,
       findOne: () => T.unit,
-      ...M.repository?.(_),
-    } as any),
+      ...M.repository?.(_)
+    } as any)
 });

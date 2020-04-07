@@ -23,8 +23,7 @@ const initial = <A>(): State<A> => E.right(empty());
 
 const poption = P.pipeable(O.option);
 
-const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
-  queue.offer(a);
+const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> => queue.offer(a);
 
 // TODO: Need a better way of checking for this
 // Possibly predicates that allow testing if the queue is at least of some size
@@ -32,7 +31,7 @@ const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
   queue.size() >= n
     ? P.pipe(
         queue.take(),
-        poption.map(t => t[1]),
+        poption.map((t) => t[1]),
         O.getOrElse(() => queue)
       ).offer(a)
     : queue.offer(a);
@@ -50,21 +49,16 @@ function makeConcurrentQueueImpl<A>(
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: F.FunctionN<
-    [T.Effect<T.NoEnv, never, A>],
-    T.Effect<T.NoEnv, never, A>
-  >
+  takeGate: F.FunctionN<[T.Effect<T.NoEnv, never, A>], T.Effect<T.NoEnv, never, A>>
 ): ConcurrentQueue<A> {
-  function cleanupLatch(
-    latch: Deferred<T.NoEnv, never, A>
-  ): T.Effect<T.NoEnv, never, void> {
+  function cleanupLatch(latch: Deferred<T.NoEnv, never, A>): T.Effect<T.NoEnv, never, void> {
     return T.asUnit(
-      state.update(current =>
+      state.update((current) =>
         P.pipe(
           current,
           E.fold(
-            waiting => E.left(waiting.filter(item => item !== latch)),
-            available => E.right(available) as State<A>
+            (waiting) => E.left(waiting.filter((item) => item !== latch)),
+            (available) => E.right(available) as State<A>
           )
         )
       )
@@ -73,25 +67,22 @@ function makeConcurrentQueueImpl<A>(
 
   const take = takeGate(
     T.bracketExit(
-      effect.chain(factory, latch =>
-        state.modify(current =>
+      effect.chain(factory, (latch) =>
+        state.modify((current) =>
           P.pipe(
             current,
             E.fold(
-              waiting =>
+              (waiting) =>
                 [
                   makeTicket(latch.wait, cleanupLatch(latch)),
                   E.left(waiting.offer(latch)) as State<A>
                 ] as const,
-              ready =>
+              (ready) =>
                 P.pipe(
                   ready.take(),
                   poption.map(
                     ([next, q]) =>
-                      [
-                        makeTicket(T.pure(next), T.unit),
-                        E.right(q) as State<A>
-                      ] as const
+                      [makeTicket(T.pure(next), T.unit), E.right(q) as State<A>] as const
                   ),
                   O.getOrElse(
                     () =>
@@ -115,30 +106,20 @@ function makeConcurrentQueueImpl<A>(
       offerGate,
       T.uninterruptible(
         T.flatten(
-          state.modify(current =>
+          state.modify((current) =>
             P.pipe(
               current,
               E.fold(
-                waiting =>
+                (waiting) =>
                   P.pipe(
                     waiting.take(),
-                    poption.map(
-                      ([next, q]) =>
-                        [next.done(a), E.left(q) as State<A>] as const
-                    ),
+                    poption.map(([next, q]) => [next.done(a), E.left(q) as State<A>] as const),
                     O.getOrElse(
-                      () =>
-                        [
-                          T.unit,
-                          E.right(overflowStrategy(empty(), a)) as State<A>
-                        ] as const
+                      () => [T.unit, E.right(overflowStrategy(empty(), a)) as State<A>] as const
                     )
                   ),
-                available =>
-                  [
-                    T.unit,
-                    E.right(overflowStrategy(available, a)) as State<A>
-                  ] as const
+                (available) =>
+                  [T.unit, E.right(overflowStrategy(available, a)) as State<A>] as const
               )
             )
           )
@@ -154,12 +135,8 @@ function makeConcurrentQueueImpl<A>(
 /**
  * Create an unbounded concurrent queue
  */
-export function unboundedQueue<A>(): T.Effect<
-  T.NoEnv,
-  never,
-  ConcurrentQueue<A>
-> {
-  return effect.map(makeRef(initial<A>()), ref =>
+export function unboundedQueue<A>(): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+  return effect.map(makeRef(initial<A>()), (ref) =>
     makeConcurrentQueueImpl(
       ref,
       makeDeferred<T.NoEnv, never, A>(),
@@ -170,20 +147,16 @@ export function unboundedQueue<A>(): T.Effect<
   );
 }
 
-const natCapacity = natNumber(
-  new Error("Die: capacity must be a natural number")
-);
+const natCapacity = natNumber(new Error("Die: capacity must be a natural number"));
 
 /**
  * Create a bounded queue with the given capacity that drops older offers
  * @param capacity
  */
-export function slidingQueue<A>(
-  capacity: number
-): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function slidingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    effect.map(makeRef(initial<A>()), ref =>
+    effect.map(makeRef(initial<A>()), (ref) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),
@@ -199,12 +172,10 @@ export function slidingQueue<A>(
  * Create a dropping queue with the given capacity that drops offers on full
  * @param capacity
  */
-export function droppingQueue<A>(
-  capacity: number
-): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function droppingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    effect.map(makeRef(initial<A>()), ref =>
+    effect.map(makeRef(initial<A>()), (ref) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),
@@ -220,9 +191,7 @@ export function droppingQueue<A>(
  * Create a bounded queue that blocks offers on capacity
  * @param capacity
  */
-export function boundedQueue<A>(
-  capacity: number
-): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function boundedQueue<A>(capacity: number): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     T.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
@@ -231,7 +200,7 @@ export function boundedQueue<A>(
         makeDeferred<T.NoEnv, never, A>(),
         unboundedOffer,
         sem.acquire,
-        inner =>
+        (inner) =>
           // Before take, we must release the semaphore. If we are interrupted we should re-acquire the item
           T.bracketExit(
             sem.release,

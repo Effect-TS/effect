@@ -15,7 +15,7 @@ describe("Sync", () => {
   it("should chain exec sync", () => {
     const program = pipe(
       T.sync(() => 10),
-      T.chain(n => T.sync(() => n + 1))
+      T.chain((n) => T.sync(() => n + 1))
     );
     const res = T.runSync(program);
 
@@ -25,10 +25,10 @@ describe("Sync", () => {
   it("should chain access exec sync", () => {
     const program = pipe(
       T.access((_: { n: number }) => _.n),
-      T.chain(n => T.sync(() => n + 1))
+      T.chain((n) => T.sync(() => n + 1))
     );
 
-    const provide = T.provideSW<{ n: number }>()(T.pure(10))(n => ({ n }));
+    const provide = T.provideSW<{ n: number }>()(T.pure(10))((n) => ({ n }));
 
     const res = T.runSync(pipe(program, provide));
 
@@ -38,8 +38,8 @@ describe("Sync", () => {
   it("should fail exec sync", () => {
     const program = pipe(
       T.sync(() => 10),
-      T.chain(n => T.sync(() => n + 1)),
-      x => T.delay(x, 100)
+      T.chain((n) => T.sync(() => n + 1)),
+      (x) => T.delay(x, 100)
     );
     const res = T.runSync(program);
 

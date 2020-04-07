@@ -16,7 +16,7 @@ export const headersMiddlewareSpec = J.testM(
         T.sync(() => {
           app.get("/middle", express.json(), (req, res) => {
             res.send({
-              foo: req.header("foo"),
+              foo: req.header("foo")
             });
           });
         })
@@ -24,10 +24,7 @@ export const headersMiddlewareSpec = J.testM(
       .bindL("get", () => T.result(H.get("http://127.0.0.1:4015/middle")))
       .return(({ get }) => {
         J.assert.deepEqual(E.isDone(get), true);
-        J.assert.deepEqual(
-          E.isDone(get) && get.value.body,
-          O.some({ foo: "bar" })
-        );
+        J.assert.deepEqual(E.isDone(get) && get.value.body, O.some({ foo: "bar" }));
       })
   )
 );

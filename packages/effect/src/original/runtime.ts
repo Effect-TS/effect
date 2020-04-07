@@ -70,7 +70,7 @@ class RuntimeImpl implements Runtime {
 
   dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn {
     const handle = setTimeout(() => this.dispatch(thunk, a), ms);
-    return cb => {
+    return (cb) => {
       clearTimeout(handle);
       cb();
     };

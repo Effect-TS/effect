@@ -1,11 +1,6 @@
 import { effect as T } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
-import {
-  Tracer as OT,
-  Span as OS,
-  FORMAT_HTTP_HEADERS,
-  Tags
-} from "opentracing";
+import { Tracer as OT, Span as OS, FORMAT_HTTP_HEADERS, Tags } from "opentracing";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { ERROR } from "opentracing/lib/ext/tags";
 import Span from "opentracing/lib/span";
@@ -36,23 +31,17 @@ export interface TracerOps {
     operation: string,
     headers: { [k: string]: string }
   ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
-  withChildSpan(
-    operation: string
-  ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
+  withChildSpan(operation: string): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A>;
 }
 
 export interface Tracer {
   [Tracer]: TracerOps;
 }
 
-function runWithSpan<R, A>(
-  ma: T.Effect<SpanContext & R, Error, A>,
-  span: Span,
-  component: string
-) {
+function runWithSpan<R, A>(ma: T.Effect<SpanContext & R, Error, A>, span: Span, component: string) {
   return pipe(
     ma,
-    T.chainError(e =>
+    T.chainError((e) =>
       pipe(
         T.sync(() => {
           span.setTag(ERROR, e.message);
@@ -61,7 +50,7 @@ function runWithSpan<R, A>(
         T.chain(() => T.raiseError(e))
       )
     ),
-    T.chain(r =>
+    T.chain((r) =>
       Do(T.effect)
         .do(
           T.sync(() => {
@@ -122,10 +111,7 @@ export function hasTracerContext(u: unknown): u is TracerContext {
 
 export function hasTracer(u: unknown): u is Tracer {
   return (
-    typeof u === "object" &&
-    u !== null &&
-    typeof u[Tracer] !== "undefined" &&
-    u[Tracer] !== null
+    typeof u === "object" && u !== null && typeof u[Tracer] !== "undefined" && u[Tracer] !== null
   );
 }
 
@@ -143,7 +129,7 @@ export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
             }
           })(ma)
         )
-        .return(s => s.res);
+        .return((s) => s.res);
     },
     withControllerSpan(
       component: string,
@@ -155,21 +141,14 @@ export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
           hasTracerContext(r)
             ? Do(T.effect)
                 .bindL("span", () =>
-                  createControllerSpan(
-                    r[TracerContext].instance,
-                    component,
-                    operation,
-                    headers
-                  )
+                  createControllerSpan(r[TracerContext].instance, component, operation, headers)
                 )
                 .bindL("res", ({ span }) => runWithSpan(ma, span, component))
-                .return(s => s.res)
+                .return((s) => s.res)
             : ma
         );
     },
-    withChildSpan(
-      operation: string
-    ): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A> {
+    withChildSpan(operation: string): <R, A>(ma: T.Effect<R, Error, A>) => T.Effect<R, Error, A> {
       return <R, A>(ma: T.Effect<R, Error, A>) =>
         T.accessM((r: R) =>
           hasChildContext(r)
@@ -181,10 +160,8 @@ export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
                     })
                   )
                 )
-                .bindL("res", ({ span }) =>
-                  runWithSpan(ma, span, r[SpanContext].component)
-                )
-                .return(s => s.res)
+                .bindL("res", ({ span }) => runWithSpan(ma, span, r[SpanContext].component))
+                .return((s) => s.res)
             : ma
         );
     }
@@ -202,17 +179,13 @@ export function withControllerSpan(
 ) {
   return <R, A>(ma: T.Effect<R, Error, A>): T.Effect<R, Error, A> =>
     T.accessM((r: R) =>
-      hasTracer(r)
-        ? r[Tracer].withControllerSpan(component, operation, headers)(ma)
-        : ma
+      hasTracer(r) ? r[Tracer].withControllerSpan(component, operation, headers)(ma) : ma
     );
 }
 
 export function withChildSpan(operation: string) {
   return <R, A>(ma: T.Effect<R, Error, A>): T.Effect<R, Error, A> =>
-    T.accessM((r: R) =>
-      hasTracer(r) ? r[Tracer].withChildSpan(operation)(ma) : ma
-    );
+    T.accessM((r: R) => (hasTracer(r) ? r[Tracer].withChildSpan(operation)(ma) : ma));
 }
 
 export type ChildContext = SpanContext & TracerContext;

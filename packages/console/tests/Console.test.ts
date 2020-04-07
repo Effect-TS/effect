@@ -6,7 +6,7 @@ import * as C from "../src";
 const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) =>
   M.withHook(
     T.sync(() => ({
-      mock: jest.spyOn(console, method).mockImplementation(() => {}),
+      mock: jest.spyOn(console, method).mockImplementation(() => {})
     })),
     ({ mock }) =>
       T.sync(() => {

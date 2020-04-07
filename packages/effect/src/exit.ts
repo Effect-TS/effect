@@ -11,7 +11,7 @@ import {
   interruptWithErrorAndOthers,
   Cause,
   ExitTag,
-  raise,
+  raise
 } from "./original/exit";
 
 export {
@@ -27,18 +27,16 @@ export {
   interruptWithErrorAndOthers,
   Cause,
   ExitTag,
-  raise,
+  raise
 };
 
 export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> => e._tag === "Done";
 
-export const isRaise = <E, A>(e: Exit<E, A>): e is Raise<E> =>
-  e._tag === "Raise";
+export const isRaise = <E, A>(e: Exit<E, A>): e is Raise<E> => e._tag === "Raise";
 
 export const isAbort = <E, A>(e: Exit<E, A>): e is Abort => e._tag === "Abort";
 
-export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt =>
-  e._tag === "Interrupt";
+export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt => e._tag === "Interrupt";
 
 function fold_<E, A, R>(
   e: Exit<E, A>,
@@ -60,7 +58,7 @@ function fold_<E, A, R>(
 }
 
 export const exit = {
-  fold: fold_,
+  fold: fold_
 };
 
 export function fold<E, A, R>(

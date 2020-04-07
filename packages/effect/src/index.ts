@@ -29,5 +29,5 @@ export {
   utils,
   sink,
   retry,
-  eff,
+  eff
 };

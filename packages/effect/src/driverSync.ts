@@ -3,14 +3,7 @@
  */
 
 import { option as O, either as E, function as F } from "fp-ts";
-import {
-  Cause,
-  Done,
-  done,
-  Exit,
-  interrupt as interruptExit,
-  raise
-} from "./original/exit";
+import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./original/exit";
 import { defaultRuntime, Runtime } from "./original/runtime";
 import * as T from "./effect";
 import * as L from "./list";
@@ -58,10 +51,7 @@ interface MapFrame {
 }
 
 class MapFrame implements MapFrame {
-  constructor(
-    readonly apply: (u: unknown) => unknown,
-    readonly prev: FrameType | undefined
-  ) {}
+  constructor(readonly apply: (u: unknown) => unknown, readonly prev: FrameType | undefined) {}
   readonly _tag = "map-frame" as const;
 }
 
@@ -124,8 +114,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   }
 
   isInterruptible(): boolean {
-    return this.interruptRegionStack !== undefined &&
-      this.interruptRegionStack.length > 0
+    return this.interruptRegionStack !== undefined && this.interruptRegionStack.length > 0
       ? this.interruptRegionStack[this.interruptRegionStack.length - 1]
       : true;
   }
@@ -134,10 +123,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     let frame = this.currentFrame;
     this.currentFrame = this.currentFrame?.prev;
     while (frame) {
-      if (
-        frame._tag === "fold-frame" &&
-        (e._tag !== "Interrupt" || !this.isInterruptible())
-      ) {
+      if (frame._tag === "fold-frame" && (e._tag !== "Interrupt" || !this.isInterruptible())) {
         return frame.recover(e);
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
@@ -216,9 +202,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       try {
         switch (current._tag) {
           case T.EffectTag.AccessEnv:
-            const env = L.isNotEmpty(this.envStack)
-              ? L.lastUnsafe(this.envStack)
-              : {};
+            const env = L.isNotEmpty(this.envStack) ? L.lastUnsafe(this.envStack) : {};
             current = this.next(env);
             break;
           case T.EffectTag.ProvideEnv:
@@ -226,15 +210,15 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             current = T.EffectIO.fromEffect(
               T.effect.foldExit(
                 current.f0 as any,
-                e =>
+                (e) =>
                   T.effect.chain(
                     T.sync(() => {
                       L.popLastUnsafe(this.envStack);
                       return {};
                     }),
-                    _ => T.raised(e)
+                    (_) => T.raised(e)
                   ),
-                r =>
+                (r) =>
                   T.sync(() => {
                     L.popLastUnsafe(this.envStack);
                     return r;
@@ -289,11 +273,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             current = current.f0;
             break;
           case T.EffectTag.Collapse:
-            this.currentFrame = new FoldFrame(
-              current.f2,
-              current.f1,
-              this.currentFrame
-            );
+            this.currentFrame = new FoldFrame(current.f2, current.f1, this.currentFrame);
             current = current.f0;
             break;
           case T.EffectTag.InterruptibleRegion:
@@ -302,19 +282,14 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             } else {
               this.interruptRegionStack.push(current.f0);
             }
-            this.currentFrame = makeInterruptFrame(
-              this.interruptRegionStack,
-              this.currentFrame
-            );
+            this.currentFrame = makeInterruptFrame(this.interruptRegionStack, this.currentFrame);
             current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
             current = T.EffectIO.fromEffect(T.pure(current.f0(this.runtime)));
             break;
           case T.EffectTag.AccessInterruptible:
-            current = T.EffectIO.fromEffect(
-              T.pure(current.f0(this.isInterruptible()))
-            );
+            current = T.EffectIO.fromEffect(T.pure(current.f0(this.isInterruptible())));
             break;
           default:
             /* istanbul ignore next */

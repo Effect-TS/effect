@@ -17,9 +17,8 @@ interface TestEnv2 {
 
 describe("Env", () => {
   it("merge env", async () => {
-    const program = T.accessM(
-      ({ [foo]: fooS, [bar]: barS }: TestEnv & TestEnv2) =>
-        T.sync(() => `${fooS}-${barS}`)
+    const program = T.accessM(({ [foo]: fooS, [bar]: barS }: TestEnv & TestEnv2) =>
+      T.sync(() => `${fooS}-${barS}`)
     );
 
     const module = pipe(
@@ -44,11 +43,9 @@ describe("Env", () => {
           )
         )
         .bindL("b", () =>
-          T.provideAll<TestEnv>({ [foo]: "b" })(
-            T.access(({ [foo]: s }: TestEnv) => s)
-          )
+          T.provideAll<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
         )
-        .return(s => `${s.a} - ${s.b}`)
+        .return((s) => `${s.a} - ${s.b}`)
     );
 
     assert.deepEqual(res, "a - b");
@@ -63,9 +60,7 @@ describe("Env", () => {
             1000
           )
         ),
-        T.provideAll<TestEnv>({ [foo]: "b" })(
-          T.access(({ [foo]: s }: TestEnv) => s)
-        )
+        T.provideAll<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
       ])
     );
 

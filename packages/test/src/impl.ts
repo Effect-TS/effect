@@ -17,7 +17,11 @@ export const testM = <R, E, A>(name: string, eff?: T.Effect<R, E, A>): Spec<R> =
   }
 });
 
-export type ROf<S extends Spec<any>> = S extends Spec<infer R> ? (unknown extends R ? never : R) : never;
+export type ROf<S extends Spec<any>> = S extends Spec<infer R>
+  ? unknown extends R
+    ? never
+    : R
+  : never;
 
 export const suite = (name: string) => <Specs extends Spec<any>[]>(
   ...specs: Specs
@@ -30,7 +34,9 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
 
 export { assert };
 
-export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>;
+export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
+  ROf<Exclude<Specs[number], Spec<unknown>>>
+>;
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
   provider: unknown extends SpecsEnv<Specs> ? void : T.Provider<unknown, SpecsEnv<Specs>, any>

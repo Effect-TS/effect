@@ -14,7 +14,7 @@ describe("Graceful", () => {
             calls += 1;
           })
         ),
-        T.chainTap(_ => G.trigger),
+        T.chainTap((_) => G.trigger),
         G.provideGraceful
       )
     );

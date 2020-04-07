@@ -1,23 +1,15 @@
 import * as T from "./effect";
 import { option as O, pipeable as P, function as F } from "fp-ts";
-import {
-  applyPolicy,
-  defaultRetryStatus,
-  RetryPolicy,
-  RetryStatus
-} from "retry-ts";
+import { applyPolicy, defaultRetryStatus, RetryPolicy, RetryStatus } from "retry-ts";
 import { Exit } from "./original/exit";
 
-export function applyAndDelay(
-  policy: RetryPolicy,
-  status: RetryStatus
-): T.UIO<RetryStatus> {
+export function applyAndDelay(policy: RetryPolicy, status: RetryStatus): T.UIO<RetryStatus> {
   const newStatus = applyPolicy(policy, status);
   return P.pipe(
     newStatus.previousDelay,
     O.fold(
       () => T.pure(newStatus),
-      millis => T.delay(T.pure(newStatus), millis)
+      (millis) => T.delay(T.pure(newStatus), millis)
     )
   );
 }
@@ -31,15 +23,15 @@ export function retrying<RP, EP, R, E, A, R2, E2>(
     P.pipe(
       status,
       F.flow(action, T.result),
-      T.chain(a =>
+      T.chain((a) =>
         P.pipe(
           check(a),
-          T.chain(shouldRetry =>
+          T.chain((shouldRetry) =>
             shouldRetry
               ? P.pipe(
                   policy,
-                  T.chain(p => applyAndDelay(p, status)),
-                  T.chain(status =>
+                  T.chain((p) => applyAndDelay(p, status)),
+                  T.chain((status) =>
                     P.pipe(
                       status.previousDelay,
                       O.fold(

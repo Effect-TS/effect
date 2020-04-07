@@ -43,10 +43,7 @@ export class Domain<
     matchEffect: matcher(this.S)
   };
 
-  aggregate<Keys extends NonEmptyArray<keyof Types>>(
-    aggregate: string,
-    eventTypes: Keys
-  ) {
+  aggregate<Keys extends NonEmptyArray<keyof Types>>(aggregate: string, eventTypes: Keys) {
     return new Aggregate(aggregate, eventTypes, this.S, this.dbURI, this.db);
   }
 
@@ -55,9 +52,7 @@ export class Domain<
   }
 
   readAll(config: ReadSideConfig) {
-    return this.read.readSideAll(config)(
-      new DomainFetcherAll(this.S, this.db).fetchSlice()
-    );
+    return this.read.readSideAll(config)(new DomainFetcherAll(this.S, this.db).fetchSlice());
   }
 
   readOnly(config: ReadSideConfig) {

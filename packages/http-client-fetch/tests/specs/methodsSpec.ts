@@ -35,51 +35,38 @@ export const methodsSpec = J.testM(
       .bindL("post", () =>
         T.result(
           H.post("http://127.0.0.1:4011/post", {
-            foo: "bar",
+            foo: "bar"
           })
         )
       )
-      .bindL("postNoBody", () =>
-        T.result(H.post("http://127.0.0.1:4011/post", {}))
-      )
+      .bindL("postNoBody", () => T.result(H.post("http://127.0.0.1:4011/post", {})))
       .bindL("put", () =>
         T.result(
           H.put("http://127.0.0.1:4011/put", {
-            foo: "bar",
+            foo: "bar"
           })
         )
       )
       .bindL("patch", () =>
         T.result(
           H.patch("http://127.0.0.1:4011/patch", {
-            foo: "bar",
+            foo: "bar"
           })
         )
       )
-      .bindL("del", () =>
-        T.result(H.del("http://127.0.0.1:4011/delete", { foo: "bar" }))
-      )
+      .bindL("del", () => T.result(H.del("http://127.0.0.1:4011/delete", { foo: "bar" })))
       .return(({ del, patch, post, postNoBody, put }) => {
         J.assert.deepEqual(isDone(post), true);
-        J.assert.deepEqual(
-          isDone(post) && post.value.body,
-          some({ foo: "bar" })
-        );
+        J.assert.deepEqual(isDone(post) && post.value.body, some({ foo: "bar" }));
 
         J.assert.deepEqual(isDone(postNoBody), true);
-        J.assert.deepEqual(
-          isDone(postNoBody) && postNoBody.value.body,
-          some({})
-        );
+        J.assert.deepEqual(isDone(postNoBody) && postNoBody.value.body, some({}));
 
         J.assert.deepEqual(isDone(put), true);
         J.assert.deepEqual(isDone(put) && put.value.body, some({ foo: "bar" }));
 
         J.assert.deepEqual(isDone(patch), true);
-        J.assert.deepEqual(
-          isDone(patch) && patch.value.body,
-          some({ foo: "bar" })
-        );
+        J.assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
 
         J.assert.deepEqual(isDone(del), true);
         J.assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));

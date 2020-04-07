@@ -35,7 +35,7 @@ export const libcurl: (caPath?: string) => H.Http = (
               _tag: H.HttpErrorReason.Request,
               error: new Error("binary not supported")
             })
-        : T.async(done => {
+        : T.async((done) => {
             const req = new C.Curl();
             const reqHead = [
               ...H.foldRequestType(
@@ -63,7 +63,7 @@ export const libcurl: (caPath?: string) => H.Http = (
             customReq(H.getMethodAsString(method), req, requestType, body);
 
             req
-              .on("error", error => {
+              .on("error", (error) => {
                 done(
                   E.left({
                     _tag: H.HttpErrorReason.Request,
@@ -84,23 +84,15 @@ export const libcurl: (caPath?: string) => H.Http = (
                             () => ({
                               // TODO: verify what to do exactly, this is not an error from the API => we should enlarge our error type
                               _tag: H.HttpErrorReason.Response,
-                              response: getResponse(
-                                statusCode,
-                                "not a Json",
-                                headers
-                              )
+                              response: getResponse(statusCode, "not a Json", headers)
                             })
                           ),
-                          json => getResponse(statusCode, json, headers)
+                          (json) => getResponse(statusCode, json, headers)
                         )
                       ),
                     () =>
                       // TEXT
-                      done(
-                        E.right(
-                          getResponse(statusCode, body.toString(), headers)
-                        )
-                      ),
+                      done(E.right(getResponse(statusCode, body.toString(), headers))),
                     () =>
                       Buffer.isBuffer(body)
                         ? done(E.right(getResponse(statusCode, body, headers)))
@@ -108,11 +100,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                           done(
                             E.left({
                               _tag: H.HttpErrorReason.Response,
-                              response: getResponse(
-                                statusCode,
-                                "not a buffer",
-                                headers
-                              )
+                              response: getResponse(statusCode, "not a buffer", headers)
                             })
                           )
                   );
@@ -120,11 +108,7 @@ export const libcurl: (caPath?: string) => H.Http = (
                   done(
                     E.left({
                       _tag: H.HttpErrorReason.Response,
-                      response: getResponse(
-                        statusCode,
-                        body.toString(),
-                        headers
-                      )
+                      response: getResponse(statusCode, body.toString(), headers)
                     })
                   );
                 }
@@ -132,7 +116,7 @@ export const libcurl: (caPath?: string) => H.Http = (
 
             req.perform();
 
-            return cb => {
+            return (cb) => {
               req.close();
               cb();
             };
@@ -140,12 +124,7 @@ export const libcurl: (caPath?: string) => H.Http = (
   }
 });
 
-function customReq(
-  method: string,
-  req: C.Curl,
-  requestType: H.RequestType,
-  body?: unknown
-): void {
+function customReq(method: string, req: C.Curl, requestType: H.RequestType, body?: unknown): void {
   if (body) {
     req.setOpt(
       C.Curl.option.POSTFIELDS,
@@ -176,11 +155,7 @@ function getResponse<A>(
 
 function getHeaders(headers: Buffer | C.HeaderInfo[]): C.HeaderInfo {
   /* istanbul ignore next */
-  return headers.length > 0
-    ? typeof headers[0] !== "number"
-      ? headers[0]
-      : {}
-    : {};
+  return headers.length > 0 ? (typeof headers[0] !== "number" ? headers[0] : {}) : {};
 }
 
 export const client = pipe(T.noEnv, T.mergeEnv(libcurl()));

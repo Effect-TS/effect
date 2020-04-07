@@ -35,7 +35,7 @@ let counter = 0;
 
 const counterService = F.implement(counterM)({
   [counterEnv]: {
-    increment: n =>
+    increment: (n) =>
       pipe(
         T.accessM(({ [configEnv]: c }: AppConfig) =>
           T.sync(() => {
@@ -53,10 +53,7 @@ const { increment, ni } = RPCCLI.client(counterM);
 describe("RPC", () => {
   it("should call remote service", async () => {
     const program = E.withApp(
-      Do(T.effect)
-        .do(RPC.server(counterM, counterService))
-        .bind("server", E.bind(9003))
-        .done()
+      Do(T.effect).do(RPC.server(counterM, counterService)).bind("server", E.bind(9003)).done()
     );
 
     const result = await T.runToPromise(
@@ -88,9 +85,7 @@ describe("RPC", () => {
       })
     );
 
-    const incResult = await T.runToPromiseExit(
-      T.provideAll(clientEnv)(increment(1))
-    );
+    const incResult = await T.runToPromiseExit(T.provideAll(clientEnv)(increment(1)));
 
     const niResult = await T.runToPromiseExit(T.provideAll(clientEnv)(ni));
 

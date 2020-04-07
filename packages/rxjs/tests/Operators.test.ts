@@ -9,9 +9,9 @@ describe("Operators", () => {
     const numbers: number[] = [];
 
     Rx.from([0, 1, 2, 3])
-      .pipe(filter(n => n % 2 === 0))
+      .pipe(filter((n) => n % 2 === 0))
       .pipe(
-        O.chainEffect(n =>
+        O.chainEffect((n) =>
           T.sync(() => {
             numbers.push(n);
           })
@@ -27,7 +27,7 @@ describe("Operators", () => {
     const errors: any[] = [];
 
     Rx.from([0, 1, 2, 3])
-      .pipe(filter(n => n % 2 === 0))
+      .pipe(filter((n) => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseError("error")))
       .pipe(
         catchError((e, o) => {
@@ -46,7 +46,7 @@ describe("Operators", () => {
     const errors: any[] = [];
 
     Rx.from([0, 1, 2, 3])
-      .pipe(filter(n => n % 2 === 0))
+      .pipe(filter((n) => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseAbort("error")))
       .pipe(
         catchError((e, o) => {
@@ -65,10 +65,10 @@ describe("Operators", () => {
     const errors: any[] = [];
 
     Rx.from([0, 1, 2, 3])
-      .pipe(filter(n => n % 2 === 0))
+      .pipe(filter((n) => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseInterrupt))
       .pipe(
-        catchError(e => {
+        catchError((e) => {
           errors.push(e);
           return Rx.from([]);
         })
@@ -84,16 +84,16 @@ describe("Operators", () => {
     const errors: any[] = [];
 
     Rx.concat(Rx.from([0, 1, 2, 3]), Rx.throwError("error"))
-      .pipe(filter(n => n % 2 === 0))
+      .pipe(filter((n) => n % 2 === 0))
       .pipe(
-        O.chainEffect(n =>
+        O.chainEffect((n) =>
           T.sync(() => {
             numbers.push(n);
           })
         )
       )
       .pipe(
-        catchError(e => {
+        catchError((e) => {
           errors.push(e);
           return Rx.EMPTY;
         })

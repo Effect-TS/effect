@@ -41,10 +41,7 @@ describe("Exit", () => {
       assert.deepEqual(fold(identity, identity, identity, () => "ipt")(e1), 1);
       assert.deepEqual(fold(identity, identity, identity, () => "ipt")(a2), 2);
       assert.deepEqual(fold(identity, identity, identity, () => "ipt")(r3), 3);
-      assert.deepEqual(
-        fold(identity, identity, identity, () => "ipt")(ipt),
-        "ipt"
-      );
+      assert.deepEqual(fold(identity, identity, identity, () => "ipt")(ipt), "ipt");
     });
     it("fold", () => {
       const e1 = done(1);

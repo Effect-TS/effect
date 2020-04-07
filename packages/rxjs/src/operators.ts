@@ -14,34 +14,34 @@ import { Exit } from "@matechs/effect/lib/original/exit";
 export function chainEffect<A, E, B>(
   f: (a: A) => T.Effect<T.NoEnv, E, B>
 ): (o: Rx.Observable<A>) => Rx.Observable<B> {
-  return o =>
+  return (o) =>
     pipe(
       R.encaseObservableEither<unknown, A>(o), // wrap an eventual observable error in stream either
       S.chain(
         fold(
-          e => S.once(left<unknown, Exit<E, B>>(e)), // propagate error
-          a =>
+          (e) => S.once(left<unknown, Exit<E, B>>(e)), // propagate error
+          (a) =>
             S.encaseEffect(
               // tslint:disable-next-line: no-unnecessary-callback-wrapper
-              T.effect.map(T.result(f(a)), b => right<unknown, Exit<E, B>>(b))
+              T.effect.map(T.result(f(a)), (b) => right<unknown, Exit<E, B>>(b))
             ) // run effect and wrap result in Exit
         )
       ),
       R.toObservable, // convert to observable
       R.runToObservable // run effect as observable
     ).pipe(
-      seb =>
-        new Rx.Observable(sub => {
+      (seb) =>
+        new Rx.Observable((sub) => {
           seb.subscribe(
-            exit =>
+            (exit) =>
               pipe(
                 exit,
                 fold(
-                  e => sub.error(e), // this represent an error in source that we propagate
+                  (e) => sub.error(e), // this represent an error in source that we propagate
                   EX.fold(
-                    b => sub.next(b), // all fine
-                    e => sub.error(e), // error in effect
-                    x => {
+                    (b) => sub.next(b), // all fine
+                    (e) => sub.error(e), // error in effect
+                    (x) => {
                       sub.error(x); // effect aborted, (i.e. via raiseAbort)
                     },
                     () => {
@@ -51,7 +51,7 @@ export function chainEffect<A, E, B>(
                 )
               ),
             /* istanbul ignore next */
-            _ => {
+            (_) => {
               // never
             },
             () => sub.complete()

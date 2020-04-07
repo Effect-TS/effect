@@ -12,9 +12,9 @@ export function saveOffsets<Db extends symbol | string>(db: DbT<Db>) {
     pipe(
       accessConfig,
       T.chain(({ id }) =>
-        db.withManagerTask(manager => () => {
+        db.withManagerTask((manager) => () => {
           const query = `UPDATE event_log SET offsets = jsonb_set(offsets, '{${id}}', 'true') WHERE id IN (${events
-            .map(e => `'${e}'`)
+            .map((e) => `'${e}'`)
             .join(",")})`;
           return manager.query(query);
         })

@@ -72,7 +72,7 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
     this.c = new CompletableImpl();
 
     this.wait = T.flatten(
-      T.asyncTotal<T.Effect<R, E, A>>(callback => this.c.listen(callback))
+      T.asyncTotal<T.Effect<R, E, A>>((callback) => this.c.listen(callback))
     );
 
     this.interrupt = T.sync(() => {
@@ -111,17 +111,11 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
   }
 
   from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
-    const completed = effect.chain(T.result(T.provideAll(this.r)(source)), e =>
-      this.complete(e)
-    );
+    const completed = effect.chain(T.result(T.provideAll(this.r)(source)), (e) => this.complete(e));
     return T.effect.onInterrupted(completed, this.interrupt);
   }
 }
 
-export function makeDeferred<R, E, A, E2 = never>(): T.Effect<
-  R,
-  E2,
-  Deferred<R, E, A>
-> {
+export function makeDeferred<R, E, A, E2 = never>(): T.Effect<R, E2, Deferred<R, E, A>> {
   return T.access((r: R) => new DeferredImpl(r));
 }

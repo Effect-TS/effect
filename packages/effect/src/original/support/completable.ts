@@ -36,7 +36,7 @@ export class CompletableImpl<A> implements Completable<A> {
 
   set(a: A): void {
     this.completed = O.some(a);
-    this.listeners.forEach(f => f(a));
+    this.listeners.forEach((f) => f(a));
   }
 
   value(): O.Option<A> {
@@ -63,8 +63,8 @@ export class CompletableImpl<A> implements Completable<A> {
       f(this.completed.value);
     }
     this.listeners.push(f);
-    return cb => {
-      this.listeners = this.listeners.filter(cb => cb !== f);
+    return (cb) => {
+      this.listeners = this.listeners.filter((cb) => cb !== f);
       cb();
     };
   }

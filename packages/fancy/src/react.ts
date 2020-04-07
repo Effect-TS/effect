@@ -16,28 +16,26 @@ export const react = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
     [k in keyof K]: T.UIO<K[k]>;
   }
-) => (
-  _P: unknown extends P ? void : {} extends P ? void : T.UIO<P>
-): React.FC<Q> => {
+) => (_P: unknown extends P ? void : {} extends P ? void : T.UIO<P>): React.FC<Q> => {
   const initial = pipe(
     _I as Record<string, any>,
     R.traverseWithIndex(T.effect)((k: string) =>
       pipe(
         _I[k],
-        T.map(x => M.observable(x as any))
+        T.map((x) => M.observable(x as any))
       )
     ),
-    T.map(r => (r as any) as any)
+    T.map((r) => (r as any) as any)
   );
 
   const Cmp = (props: P) => {
     const C = pipe(
       initial,
-      T.chain(init => {
+      T.chain((init) => {
         const f = new Fancy(_V);
         return pipe(
           f.ui,
-          T.chain(Cmp =>
+          T.chain((Cmp) =>
             T.sync(
               (): React.FC<Q> => (q: Q) => {
                 React.useEffect(() => () => {
@@ -84,7 +82,7 @@ export const react = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
     if (Ei.isRight(props) && isDone(props.right)) {
       const p = props.right.value;
 
-      return q =>
+      return (q) =>
         React.createElement(Cmp, {
           ...p,
           ...q

@@ -17,7 +17,7 @@ export const expressM = (port: number) =>
           r(
             right({
               app,
-              server,
+              server
             })
           );
         }

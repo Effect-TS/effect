@@ -9,9 +9,7 @@ export const dispatcherURI = "@matechs/fancy/dispatcherURI";
 
 export interface Runner<R> {
   [dispatcherURI]: {
-    run: (
-      env: R
-    ) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => Lazy<void>;
+    run: (env: R) => <A>(_: T.Effect<R, never, A>, cb?: (a: A) => void) => Lazy<void>;
   };
 }
 
@@ -47,7 +45,7 @@ export class Fancy<S, R, P> {
 
       this.cancellers.set(
         n,
-        T.run(T.provideAll(r)(eff), ex => {
+        T.run(T.provideAll(r)(eff), (ex) => {
           this.cancellers.delete(n);
 
           if (EX.isDone(ex)) {
@@ -102,13 +100,7 @@ function hasRunner<R>(u: unknown): u is Runner<R> {
 export const runner = <R>(): T.Effect<
   R,
   never,
-  [
-    <A>(
-      _: T.Effect<R, never, A>,
-      cb?: ((a: A) => void) | undefined
-    ) => Lazy<void>,
-    Lazy<void>
-  ]
+  [<A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>, Lazy<void>]
 > =>
   T.access((s: R) => {
     const session: Map<number, Lazy<void>> = new Map();
@@ -119,7 +111,7 @@ export const runner = <R>(): T.Effect<
           <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => {
             const id = counter;
             counter = counter + 1;
-            const cancel = s[dispatcherURI].run(s)(_, e => {
+            const cancel = s[dispatcherURI].run(s)(_, (e) => {
               session.delete(id);
               if (cb) {
                 cb(e);

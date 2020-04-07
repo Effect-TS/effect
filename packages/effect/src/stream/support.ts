@@ -65,12 +65,12 @@ export function emitter<E, A>(
   hasCB: HasCb<E, A>
 ): M.Managed<unknown, never, T.Effect<unknown, E, O.Option<A>>> {
   return M.pure(
-    T.async<E, O.Option<A>>(callback => {
+    T.async<E, O.Option<A>>((callback) => {
       const op = list.popUnsafe(ops);
       if (op !== null) {
         runFromQueue(op, callback);
       } else {
-        hasCB.cb = o => {
+        hasCB.cb = (o) => {
           // TODO: figure out how to trigger if even possible, triggered by line 22
           /* istanbul ignore if */
           if (list.isNotEmpty(ops)) {
@@ -85,7 +85,7 @@ export function emitter<E, A>(
         };
       }
       /* istanbul ignore next */
-      return cb => {
+      return (cb) => {
         cb();
       };
     })

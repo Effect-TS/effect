@@ -38,10 +38,7 @@ interface State {
   error: Op.Option<string>;
 }
 
-function reducer(
-  state: State = { user: Op.none, error: Op.none },
-  action: MyAction
-): State {
+function reducer(state: State = { user: Op.none, error: Op.none }, action: MyAction): State {
   switch (action.type) {
     case "USER_FETCHED": {
       return { ...state, user: Op.some(action.user), error: Op.none };
@@ -128,19 +125,14 @@ describe("Epics", () => {
         fetchUser,
         fetchUser2
       )(
-        T.provideR(_ => ({
+        T.provideR((_) => ({
           config: { prefix: "prefix" },
           config2: { prefix: "prefix2" }
         }))
       )
     );
 
-    const epicMiddleware = createEpicMiddleware<
-      MyAction,
-      MyAction,
-      State,
-      State
-    >();
+    const epicMiddleware = createEpicMiddleware<MyAction, MyAction, State, State>();
 
     const store = createStore(
       combineReducers({
@@ -170,17 +162,10 @@ describe("Epics", () => {
 
   it("should use redux-observable (fail case)", async () => {
     const rootEpic = combineEpics(
-      Ep.embed(fetchUser)(
-        T.provideR(_ => ({ config: { prefix: "prefix-wrong" } }))
-      )
+      Ep.embed(fetchUser)(T.provideR((_) => ({ config: { prefix: "prefix-wrong" } })))
     );
 
-    const epicMiddleware = createEpicMiddleware<
-      MyAction,
-      MyAction,
-      State,
-      State
-    >();
+    const epicMiddleware = createEpicMiddleware<MyAction, MyAction, State, State>();
     const store = createStore(
       combineReducers({
         reducer
@@ -228,10 +213,7 @@ describe("Epics", () => {
 
     const isAdd = (a: MyAction): a is Add => a.type === "add";
 
-    const reducer = (
-      state: ReducerState = { counter: 0 },
-      action: MyAction
-    ): ReducerState =>
+    const reducer = (state: ReducerState = { counter: 0 }, action: MyAction): ReducerState =>
       action.type === "add"
         ? {
             counter: state.counter + action.add
@@ -245,15 +227,15 @@ describe("Epics", () => {
         action$,
         S.filterRefine(isAdd),
         S.chain(() => S.encaseEffect(state$.value)),
-        S.map(state => {
+        S.map((state) => {
           updates.push({ from: "a", state: state.reducer });
           return { type: "added" as const };
         }),
-        S.chain(x =>
+        S.chain((x) =>
           pipe(
             state$.stream,
             S.take(2),
-            S.map(s => {
+            S.map((s) => {
               updates.push({ from: "b", state: s.reducer });
               return x;
             })
@@ -264,12 +246,7 @@ describe("Epics", () => {
 
     const rootEpic = combineEpics(Ep.embed(incReducer)(identity));
 
-    const epicMiddleware = createEpicMiddleware<
-      MyAction,
-      MyAction,
-      State,
-      State
-    >();
+    const epicMiddleware = createEpicMiddleware<MyAction, MyAction, State, State>();
 
     const store = createStore(
       combineReducers({

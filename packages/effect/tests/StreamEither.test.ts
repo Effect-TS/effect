@@ -26,7 +26,7 @@ describe("StreamEither", () => {
   it("use chainError", async () => {
     const stream = pipe(
       S.encaseEffect(T.raiseError<string, number>("error")),
-      S.chainError(_ => S.encaseEffect(T.pure(100)))
+      S.chainError((_) => S.encaseEffect(T.pure(100)))
     );
 
     const program = S.collectArray(stream);
@@ -88,9 +88,7 @@ describe("StreamEither", () => {
   it("should use periodically", async () => {
     const s = S.periodically(10);
 
-    const res = await T.runToPromise(
-      S.collectArray(S.takeWhile(s, n => n < 10))
-    );
+    const res = await T.runToPromise(S.collectArray(S.takeWhile(s, (n) => n < 10)));
 
     assert.deepEqual(res, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
@@ -149,7 +147,7 @@ describe("StreamEither", () => {
   it("should use map", async () => {
     const s = pipe(
       S.fromArray([0, 1, 2]),
-      S.map(n => n + 1)
+      S.map((n) => n + 1)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -166,7 +164,7 @@ describe("StreamEither", () => {
   });
 
   it("should use filter", async () => {
-    const s = S.filter(S.fromArray([0]), n => n > 0);
+    const s = S.filter(S.fromArray([0]), (n) => n > 0);
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -174,7 +172,7 @@ describe("StreamEither", () => {
   });
 
   it("should use filter - 2", async () => {
-    const s = S.filter(S.fromArray([1]), n => n > 0);
+    const s = S.filter(S.fromArray([1]), (n) => n > 0);
 
     const res = await T.runToPromise(S.collectArray(s));
 
@@ -184,7 +182,7 @@ describe("StreamEither", () => {
   it("should use filterWith", async () => {
     const s = pipe(
       S.fromArray([0]),
-      S.filterWith(n => n > 0)
+      S.filterWith((n) => n > 0)
     );
 
     const res = await T.runToPromise(S.collectArray(s));
@@ -227,7 +225,7 @@ describe("StreamEither", () => {
       let iterationCount = 0;
 
       const rangeIterator = {
-        next: function() {
+        next: function () {
           let result: any;
           if (nextIndex < end) {
             result = { value: nextIndex, done: false };
@@ -257,14 +255,14 @@ describe("StreamEither", () => {
     }
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
-    const s = S.streamEither.chain(a, n => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
+    const s = S.streamEither.chain(a, (n) => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
 
     // $ExpectType Stream<Config & ConfigB, never, number>
-    const m = S.streamEither.chain(s, n =>
+    const m = S.streamEither.chain(s, (n) =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = S.streamEither.chain(m, n => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
+    const g = S.streamEither.chain(m, (n) => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
@@ -297,22 +295,20 @@ describe("StreamEither", () => {
     const s = pipe(
       // $ExpectType Stream<Config, never, number>
       a,
-      S.chain(n => S.fromRange(n, 1, 10))
+      S.chain((n) => S.fromRange(n, 1, 10))
     );
 
     // $ExpectType Stream<Config & ConfigB, never, number>
     const m = pipe(
       s,
-      S.chain(n =>
-        S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
-      )
+      S.chain((n) => S.encaseEffect(T.access(({ second }: ConfigB) => n + second)))
     );
 
     // $ExpectType Stream<Config & ConfigB, never, number>
     const g = pipe(
       // $ExpectType Stream<Config & ConfigB, never, number>
       m,
-      S.chain(n => S.fromRange(0, 1, n))
+      S.chain((n) => S.fromRange(0, 1, n))
     );
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
@@ -333,5 +329,4 @@ describe("StreamEither", () => {
       , 4, 5, 6, 7, 8, 9]
     );
   });
-
 });

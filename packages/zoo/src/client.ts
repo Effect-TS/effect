@@ -113,14 +113,11 @@ export interface Client {
 
 export class ClientImpl implements Client {
   private _state: Option<ZC.State> = none;
-  private readonly listeners: Map<
-    number,
-    FunctionN<[ZC.State], void>
-  > = new Map();
+  private readonly listeners: Map<number, FunctionN<[ZC.State], void>> = new Map();
   private opc = 0;
 
   constructor(readonly client: ZC.Client) {
-    client.on("state", state => {
+    client.on("state", (state) => {
       this.dispatch(state);
     });
 
@@ -143,7 +140,7 @@ export class ClientImpl implements Client {
   private dispatch(state: ZC.State) {
     this._state = some(state);
 
-    this.listeners.forEach(l => {
+    this.listeners.forEach((l) => {
       l(state);
     });
   }
@@ -161,10 +158,10 @@ export class ClientImpl implements Client {
   }
 
   connect() {
-    return T.async<ConnectError, Client>(res => {
+    return T.async<ConnectError, Client>((res) => {
       this.client.connect();
 
-      const l = this.listen(s => {
+      const l = this.listen((s) => {
         if (
           [
             ZC.State.AUTH_FAILED.code,
@@ -188,7 +185,7 @@ export class ClientImpl implements Client {
         }
       });
 
-      return cb => {
+      return (cb) => {
         l();
         this.dispose();
         cb();
@@ -203,7 +200,7 @@ export class ClientImpl implements Client {
   }
 
   mkdirp(path: string) {
-    return T.async<MkdirpError, Mkdirp>(res => {
+    return T.async<MkdirpError, Mkdirp>((res) => {
       this.client.mkdirp(path, (err, p) => {
         if (err) {
           if ("code" in err) {
@@ -230,7 +227,7 @@ export class ClientImpl implements Client {
         }
       });
 
-      return cb => {
+      return (cb) => {
         cb();
       };
     });
@@ -247,7 +244,7 @@ export class ClientImpl implements Client {
   }
 
   create(path: string, mode: keyof typeof CreateMode, data?: Buffer) {
-    return T.async<CreateError, Createp>(res => {
+    return T.async<CreateError, Createp>((res) => {
       const cb = (err: Error | ZC.Exception, p: string) => {
         if (err) {
           if ("code" in err) {
@@ -280,14 +277,14 @@ export class ClientImpl implements Client {
         this.client.create(path, CreateMode[mode], cb);
       }
 
-      return cb => {
+      return (cb) => {
         cb();
       };
     });
   }
 
   getChildren(root: string) {
-    return T.async<GetChildrenError, Children>(res => {
+    return T.async<GetChildrenError, Children>((res) => {
       this.client.getChildren(root, (err, paths) => {
         if (err) {
           if ("code" in err) {
@@ -314,22 +311,22 @@ export class ClientImpl implements Client {
         }
       });
 
-      return cb => {
+      return (cb) => {
         cb();
       };
     });
   }
 
   waitDelete(path: string) {
-    return T.async<WaitDeleteError, Deleted>(res => {
+    return T.async<WaitDeleteError, Deleted>((res) => {
       this.client.exists(
         path,
-        event => {
+        (event) => {
           if (event.type === ZC.Event.NODE_DELETED) {
             res(right(out({ _tag: "Deleted", path })));
           }
         },
-        err => {
+        (err) => {
           if (err) {
             if ("code" in err) {
               res(left(error({ _tag: "WaitDeleteError", message: "" })));
@@ -347,7 +344,7 @@ export class ClientImpl implements Client {
         }
       );
 
-      return cb => {
+      return (cb) => {
         cb();
       };
     });
@@ -371,10 +368,7 @@ export const provideClientFactory = F.implement(ClientFactory)({
     createClient: T.access(
       (_: ClientConfig) =>
         new ClientImpl(
-          ZC.createClient(
-            _[clientConfigURI].connectionString,
-            _[clientConfigURI].options
-          )
+          ZC.createClient(_[clientConfigURI].connectionString, _[clientConfigURI].options)
         )
     )
   }
@@ -385,7 +379,7 @@ const { createClient } = F.access(ClientFactory)[ClientFactoryURI];
 export const managedClient = M.bracket(
   pipe(
     createClient,
-    T.chain(c => c.connect())
+    T.chain((c) => c.connect())
   ),
-  client => client.dispose()
+  (client) => client.dispose()
 );

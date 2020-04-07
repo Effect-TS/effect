@@ -80,7 +80,7 @@ describe("RxJS", () => {
 
     const a: number[] = [];
 
-    O.runToObservable(o).subscribe(n => {
+    O.runToObservable(o).subscribe((n) => {
       a.push(n);
     });
 
@@ -97,10 +97,10 @@ describe("RxJS", () => {
     const errors: unknown[] = [];
 
     O.runToObservable(o).subscribe(
-      n => {
+      (n) => {
         a.push(n);
       },
-      e => {
+      (e) => {
         errors.push(e);
       }
     );
@@ -118,10 +118,10 @@ describe("RxJS", () => {
     const errors: unknown[] = [];
 
     O.runToObservable(o).subscribe(
-      n => {
+      (n) => {
         a.push(n);
       },
-      e => {
+      (e) => {
         errors.push(e);
       }
     );
@@ -141,10 +141,10 @@ describe("RxJS", () => {
     const errors: unknown[] = [];
 
     const sub = r.subscribe(
-      n => {
+      (n) => {
         a.push(n);
       },
-      e => {
+      (e) => {
         errors.push(e);
       }
     );
@@ -165,10 +165,10 @@ describe("RxJS", () => {
     const errors: unknown[] = [];
 
     const sub = r.subscribe(
-      n => {
+      (n) => {
         a.push(n);
       },
-      e => {
+      (e) => {
         errors.push(e);
       }
     );
@@ -180,9 +180,7 @@ describe("RxJS", () => {
   });
 
   it("unsubscribe should stop drain", async () => {
-    const s = S.stream.chain(S.repeatedly(0), n =>
-      S.encaseEffect(T.delay(T.pure(n), 10))
-    );
+    const s = S.stream.chain(S.repeatedly(0), (n) => S.encaseEffect(T.delay(T.pure(n), 10)));
     const o = O.toObservable(s);
 
     const r = await T.runToPromise(o);
@@ -191,10 +189,10 @@ describe("RxJS", () => {
     const errors: unknown[] = [];
 
     const sub = r.subscribe(
-      n => {
+      (n) => {
         a.push(n);
       },
-      e => {
+      (e) => {
         errors.push(e);
       }
     );

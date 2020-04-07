@@ -6,18 +6,13 @@ function format(level: L.Level, message: string, meta?: L.Meta) {
   return `${level}: ${message}${meta ? `(${JSON.stringify({ meta })})` : ""}`;
 }
 
-function log(
-  config: T.UIO<Config>,
-  level: L.Level,
-  message: string,
-  meta?: L.Meta
-): T.UIO<void> {
+function log(config: T.UIO<Config>, level: L.Level, message: string, meta?: L.Meta): T.UIO<void> {
   return (
     Do(T.effect)
       .bind("config", config)
-      .bindL("formatter", s => T.pure(s.config.formatter ?? format))
-      .bindL("level", s => T.pure(s.config.level ?? "silly"))
-      .bindL("msg", s => T.pure(s.formatter(level, message, meta)))
+      .bindL("formatter", (s) => T.pure(s.config.formatter ?? format))
+      .bindL("level", (s) => T.pure(s.config.level ?? "silly"))
+      .bindL("msg", (s) => T.pure(s.formatter(level, message, meta)))
       .doL(({ msg, level: configLevel }) =>
         T.when(L.severity[configLevel] >= L.severity[level])(
           T.sync(() => {

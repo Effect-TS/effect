@@ -18,7 +18,7 @@ export const replaceHeadersSpec = J.testM(
           app.get("/h", express.json(), (req, res) => {
             res.send({
               foo: req.header("foo"),
-              bar: req.header("bar"),
+              bar: req.header("bar")
             });
           });
         })
@@ -30,24 +30,21 @@ export const replaceHeadersSpec = J.testM(
               H.get("http://127.0.0.1:4014/h"),
               H.withHeaders(
                 {
-                  foo: "baz",
+                  foo: "baz"
                 },
                 true
               )
             ),
             H.withHeaders({
               foo: "bar",
-              bar: "baz",
+              bar: "baz"
             })
           )
         )
       )
       .return(({ get }) => {
         J.assert.deepEqual(E.isDone(get), true);
-        J.assert.deepEqual(
-          E.isDone(get) && get.value.body,
-          O.some({ foo: "baz" })
-        );
+        J.assert.deepEqual(E.isDone(get) && get.value.body, O.some({ foo: "baz" }));
       })
   )
 );

@@ -21,19 +21,15 @@ export const eventStoreTcpConnection = M.bracket(
   pipe(
     accessConfig,
     T.chain(({ endPointOrGossipSeed, settings, connectionName }) =>
-      T.async<EventStoreError, client.EventStoreNodeConnection>(r => {
-        const conn = client.createConnection(
-          settings,
-          endPointOrGossipSeed,
-          connectionName
-        );
+      T.async<EventStoreError, client.EventStoreNodeConnection>((r) => {
+        const conn = client.createConnection(settings, endPointOrGossipSeed, connectionName);
 
         conn
           .connect()
           .then(() => {
             r(right(conn));
           })
-          .catch(e => {
+          .catch((e) => {
             r(left({ type: "EventStoreError", message: e.message }));
           });
 
@@ -43,7 +39,7 @@ export const eventStoreTcpConnection = M.bracket(
       })
     )
   ),
-  c =>
+  (c) =>
     T.sync(() => {
       c.close();
     })
@@ -61,12 +57,7 @@ export const sendEventToEventStore = (event: EventStoreEvent) => (
     connection.appendToStream(
       event.streamId,
       Long.fromString(event.expectedStreamVersion.toString(10), false, 10),
-      client.createJsonEventData(
-        event.eventId,
-        event.data,
-        event.eventMetadata,
-        event.eventType
-      )
+      client.createJsonEventData(event.eventId, event.data, event.eventMetadata, event.eventType)
     )
   );
 
@@ -108,12 +99,13 @@ export const adaptEvent = <T>(event: T & EventMetaHidden): EventStoreEvent => {
 
   esE.expectedStreamVersion = BigInt(event[metaURI].sequence) - BigInt(1);
 
-  esE.eventMetadata = {
-    createdAt: event[metaURI].createdAt,
-    aggregate: event[metaURI].aggregate,
-    root: event[metaURI].root,
-    sequence: BigInt(event[metaURI].sequence).toString(10)
-  } as EventStoreAggregateEventMetadata;
+  esE.eventMetadata =
+    {
+      createdAt: event[metaURI].createdAt,
+      aggregate: event[metaURI].aggregate,
+      root: event[metaURI].root,
+      sequence: BigInt(event[metaURI].sequence).toString(10)
+    } as EventStoreAggregateEventMetadata;
 
   return esE;
 };

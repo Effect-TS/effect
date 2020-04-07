@@ -73,14 +73,12 @@ describe("semaphore", () => {
     return expectExit(eff, done([false, true, 1]));
   });
   it("should allow acquire to be interruptible", () => {
-    const eff1 = T.effect.chain(makeRef(false), gate =>
-      T.effect.chain(makeSemaphore(1), sem =>
-        T.effect.chain(
-          T.fork(T.applySecond(sem.acquireN(2), gate.set(true))),
-          child =>
-            T.effect.chain(T.applySecond(child.interrupt, child.wait), _exit =>
-              T.zip(sem.available, gate.get)
-            )
+    const eff1 = T.effect.chain(makeRef(false), (gate) =>
+      T.effect.chain(makeSemaphore(1), (sem) =>
+        T.effect.chain(T.fork(T.applySecond(sem.acquireN(2), gate.set(true))), (child) =>
+          T.effect.chain(T.applySecond(child.interrupt, child.wait), (_exit) =>
+            T.zip(sem.available, gate.get)
+          )
         )
       )
     );
@@ -119,32 +117,23 @@ describe("semaphore", () => {
       .return(({ before, after }) => ({ before, after }));
     return expectExit(eff, done({ before: -1, after: 1 }));
   });
-  describe("properties", function() {
+  describe("properties", function () {
     jest.setTimeout(20000);
     it("never deadlocks", () =>
       fc.assert(
         fc.asyncProperty(
-          fc.array(
-            fc.tuple(fc.nat(100), fc.nat(10), fc.nat(10), fc.boolean()),
-            100
-          ),
-          acquires => {
-            const eff = T.effect.chain(makeSemaphore(100), sem =>
+          fc.array(fc.tuple(fc.nat(100), fc.nat(10), fc.nat(10), fc.boolean()), 100),
+          (acquires) => {
+            const eff = T.effect.chain(makeSemaphore(100), (sem) =>
               pipe(
                 array.traverse(T.effect)(acquires, ([n, pre, post, int]) =>
                   sem.withPermitsN(
                     n,
-                    pipe(
-                      int ? T.raiseInterrupt : T.after(post),
-                      T.liftDelay(pre),
-                      T.fork
-                    )
+                    pipe(int ? T.raiseInterrupt : T.after(post), T.liftDelay(pre), T.fork)
                   )
                 ),
-                T.chain(fibers =>
-                  array.traverse(T.effect)(fibers, f => f.wait)
-                ),
-                result => T.applySecond(result, sem.available)
+                T.chain((fibers) => array.traverse(T.effect)(fibers, (f) => f.wait)),
+                (result) => T.applySecond(result, sem.available)
               )
             );
             return expectExit(eff, done(100));

@@ -10,20 +10,18 @@ const URI: unique symbol = Symbol();
 
 const m = F.define({
   [URI]: {
-    shouldTrace: F.cn<T.UIO<void>>(),
-  },
+    shouldTrace: F.cn<T.UIO<void>>()
+  }
 });
 
 const i = F.implement(m)({
   [URI]: {
-    shouldTrace: T.unit,
-  },
+    shouldTrace: T.unit
+  }
 });
 
 class MockTracer extends OT {
-  constructor(
-    private readonly spans: Array<{ name: string; options: SpanOptions }>
-  ) {
+  constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
     super();
   }
   startSpan(name: string, options?: SpanOptions): Span {
@@ -34,13 +32,10 @@ class MockTracer extends OT {
 }
 
 const {
-  [URI]: { shouldTrace },
+  [URI]: { shouldTrace }
 } = TR.free.access(m);
 
-const program = pipe(
-  withTracer(withControllerSpan("my program", "main")(shouldTrace)),
-  i
-);
+const program = pipe(withTracer(withControllerSpan("my program", "main")(shouldTrace)), i);
 
 describe("Trace Free", () => {
   it("trace access", async () => {

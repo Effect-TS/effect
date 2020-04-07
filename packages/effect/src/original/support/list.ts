@@ -60,11 +60,8 @@ export function foldl<A, B>(list: List<A>, b: B, f: F.FunctionN<[B, A], B>): B {
   return seed;
 }
 
-export function foldlc<A, B>(
-  b: B,
-  f: F.FunctionN<[B, A], B>
-): F.FunctionN<[List<A>], B> {
-  return list => foldl(list, b, f);
+export function foldlc<A, B>(b: B, f: F.FunctionN<[B, A], B>): F.FunctionN<[List<A>], B> {
+  return (list) => foldl(list, b, f);
 }
 
 export function reverse<A>(list: List<A>): List<A> {
@@ -94,7 +91,7 @@ export function catac<A, B>(
   ifCons: F.FunctionN<[A, List<A>], B>,
   ifNil: F.Lazy<B>
 ): F.FunctionN<[List<A>], B> {
-  return list => cata(list, ifCons, ifNil);
+  return (list) => cata(list, ifCons, ifNil);
 }
 
 export function head<A>(list: List<A>): O.Option<A> {
@@ -135,17 +132,12 @@ export function find<A>(list: List<A>, f: F.Predicate<A>): O.Option<A> {
   return O.none;
 }
 
-export function findc<A>(
-  f: F.Predicate<A>
-): F.FunctionN<[List<A>], O.Option<A>> {
-  return list => find(list, f);
+export function findc<A>(f: F.Predicate<A>): F.FunctionN<[List<A>], O.Option<A>> {
+  return (list) => find(list, f);
 }
 
-export function foldrc<A, B>(
-  b: B,
-  f: F.FunctionN<[A, B], B>
-): F.FunctionN<[List<A>], B> {
-  return list => foldr(list, b, f);
+export function foldrc<A, B>(b: B, f: F.FunctionN<[A, B], B>): F.FunctionN<[List<A>], B> {
+  return (list) => foldr(list, b, f);
 }
 
 export function map<A, B>(list: List<A>, f: F.FunctionN<[A], B>): List<B> {
@@ -156,10 +148,8 @@ export function map<A, B>(list: List<A>, f: F.FunctionN<[A], B>): List<B> {
   );
 }
 
-export function lift<A, B>(
-  f: F.FunctionN<[A], B>
-): F.FunctionN<[List<A>], List<B>> {
-  return list => map(list, f);
+export function lift<A, B>(f: F.FunctionN<[A], B>): F.FunctionN<[List<A>], List<B>> {
+  return (list) => map(list, f);
 }
 
 export function filter<A>(list: List<A>, f: F.Predicate<A>): List<A> {
@@ -167,7 +157,7 @@ export function filter<A>(list: List<A>, f: F.Predicate<A>): List<A> {
 }
 
 export function filterc<A>(f: F.Predicate<A>): F.FunctionN<[List<A>], List<A>> {
-  return list => filter(list, f);
+  return (list) => filter(list, f);
 }
 
 export function concat<A>(front: List<A>, back: List<A>): List<A> {
@@ -190,18 +180,12 @@ export function size(list: List<unknown>): number {
   return ct;
 }
 
-export function chain<A, B>(
-  list: List<A>,
-  f: F.FunctionN<[A], List<B>>
-): List<B> {
+export function chain<A, B>(list: List<A>, f: F.FunctionN<[A], List<B>>): List<B> {
   return P.pipe(list, lift(f), foldlc(nil as List<B>, concat));
 }
 
-export function ap<A, B>(
-  list: List<A>,
-  fns: List<F.FunctionN<[A], B>>
-): List<B> {
-  return chain(list, a => map(fns, f => f(a)));
+export function ap<A, B>(list: List<A>, fns: List<F.FunctionN<[A], B>>): List<B> {
+  return chain(list, (a) => map(fns, (f) => f(a)));
 }
 
 export function flatten<A>(list: List<List<A>>): List<A> {

@@ -57,14 +57,10 @@ const isReservationFor = (latch: Deferred<unknown, never, void>) => (
 
 function sanityCheck(n: number): T.Effect<T.NoEnv, never, void> {
   if (n < 0) {
-    return T.raiseAbort(
-      new Error("Die: semaphore permits must be non negative")
-    );
+    return T.raiseAbort(new Error("Die: semaphore permits must be non negative"));
   }
   if (Math.round(n) !== n) {
-    return T.raiseAbort(
-      new Error("Die: semaphore permits may not be fractional")
-    );
+    return T.raiseAbort(new Error("Die: semaphore permits may not be fractional"));
   }
   return T.unit;
 }
@@ -77,11 +73,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
         n === 0
           ? T.unit
           : T.flatten(
-              ref.modify(current =>
+              ref.modify((current) =>
                 P.pipe(
                   current,
                   E.fold(
-                    waiting =>
+                    (waiting) =>
                       P.pipe(
                         waiting.take(),
                         O.fold(
@@ -95,15 +91,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                                   ),
                                   E.left(q) as State
                                 ] as const)
-                              : ([
-                                  T.unit,
-                                  E.left(
-                                    q.push([needed - n, latch] as const)
-                                  ) as State
-                                ] as const)
+                              : ([T.unit, E.left(q.push([needed - n, latch] as const)) as State] as
+                                const)
                         )
                       ),
-                    ready => [T.unit, E.right(ready + n) as State] as const
+                    (ready) => [T.unit, E.right(ready + n) as State] as const
                   )
                 )
               )
@@ -117,11 +109,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   ): T.Effect<T.NoEnv, never, void> =>
     T.uninterruptible(
       T.flatten(
-        ref.modify(current =>
+        ref.modify((current) =>
           P.pipe(
             current,
             E.fold(
-              waiting =>
+              (waiting) =>
                 P.pipe(
                   waiting.find(isReservationFor(latch)),
                   O.fold(
@@ -129,13 +121,11 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                     ([pending]) =>
                       [
                         releaseN(n - pending),
-                        E.left(
-                          waiting.filter(F.not(isReservationFor(latch)))
-                        ) as State
+                        E.left(waiting.filter(F.not(isReservationFor(latch)))) as State
                       ] as const
                   )
                 ),
-              ready => [T.unit, E.right(ready + n) as State] as const
+              (ready) => [T.unit, E.right(ready + n) as State] as const
             )
           )
         )
@@ -143,22 +133,19 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     );
 
   const ticketN = (n: number): T.Effect<T.NoEnv, never, Ticket<void>> =>
-    effect.chain(makeDeferred<unknown, never, void>(), latch =>
-      ref.modify(current =>
+    effect.chain(makeDeferred<unknown, never, void>(), (latch) =>
+      ref.modify((current) =>
         P.pipe(
           current,
           E.fold(
-            waiting =>
+            (waiting) =>
               [
                 makeTicket(latch.wait, cancelWait(n, latch)),
                 E.left(waiting.offer([n, latch] as const)) as State
               ] as const,
-            ready =>
+            (ready) =>
               ready >= n
-                ? ([
-                    makeTicket(T.unit, releaseN(n)),
-                    E.right(ready - n) as State
-                  ] as const)
+                ? ([makeTicket(T.unit, releaseN(n)), E.right(ready - n) as State] as const)
                 : ([
                     makeTicket(latch.wait, cancelWait(n, latch)),
                     E.left(empty().offer([n - ready, latch] as const)) as State
@@ -174,10 +161,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       n === 0 ? T.unit : T.bracketExit(ticketN(n), ticketExit, ticketUse)
     );
 
-  const withPermitsN = <R, E, A>(
-    n: number,
-    inner: T.Effect<R, E, A>
-  ): T.Effect<R, E, A> => {
+  const withPermitsN = <R, E, A>(n: number, inner: T.Effect<R, E, A>): T.Effect<R, E, A> => {
     const acquire = T.interruptible(acquireN(n));
     const release = releaseN(n);
     return T.bracket(acquire, F.constant(release), () => inner);
@@ -185,7 +169,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 
   const available = effect.map(
     ref.get,
-    E.fold(q => -1 * q.size(), F.identity)
+    E.fold((q) => -1 * q.size(), F.identity)
   );
 
   return {
@@ -194,7 +178,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     releaseN,
     release: releaseN(1),
     withPermitsN,
-    withPermit: inner => withPermitsN(1, inner),
+    withPermit: (inner) => withPermitsN(1, inner),
     available
   };
 }
@@ -206,8 +190,5 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  * This must be non-negative
  */
 export function makeSemaphore(n: number): T.Effect<T.NoEnv, never, Semaphore> {
-  return T.applySecond(
-    sanityCheck(n),
-    effect.map(makeRef(E.right(n) as State), makeSemaphoreImpl)
-  );
+  return T.applySecond(sanityCheck(n), effect.map(makeRef(E.right(n) as State), makeSemaphoreImpl));
 }

@@ -9,7 +9,7 @@ import {
   FindOneOptions,
   ObjectID,
   PrimaryColumn,
-  Repository,
+  Repository
 } from "typeorm";
 import * as DB from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -30,7 +30,7 @@ const {
   withManagerTask,
   withORMTransaction,
   withNewRegion,
-  requireTx,
+  requireTx
 } = DB.dbT(testDbEnv);
 
 describe("Orm", () => {
@@ -41,46 +41,42 @@ describe("Orm", () => {
         close(): Promise<void> {
           return Promise.resolve();
         },
-        transaction<T>(
-          runInTransaction: (entityManager: EntityManager) => Promise<T>
-        ): Promise<T> {
+        transaction<T>(runInTransaction: (entityManager: EntityManager) => Promise<T>): Promise<T> {
           return runInTransaction({
             getRepository<Entity>(
               _: { new (): Entity } | Function | EntitySchema<Entity> | string
             ): Repository<Entity> {
-              return {
-                findOne(
-                  _?: string | number | Date | ObjectID,
-                  _2?: FindOneOptions<Entity>
-                ): Promise<Entity | undefined> {
-                  return Promise.reject("not implemented");
-                },
-              } as Repository<Entity>;
-            },
+              return (
+                {
+                  findOne(
+                    _?: string | number | Date | ObjectID,
+                    _2?: FindOneOptions<Entity>
+                  ): Promise<Entity | undefined> {
+                    return Promise.reject("not implemented");
+                  }
+                } as Repository<Entity>
+              );
+            }
           } as EntityManager);
-        },
+        }
       } as Connection);
 
     const main = requireTx(
-      withRepositoryTask(DemoEntity)((r) => () =>
-        r.findOne({ where: { id: "test" } })
-      )
+      withRepositoryTask(DemoEntity)((r) => () => r.findOne({ where: { id: "test" } }))
     );
 
     const program = bracketPool(withTransaction(main));
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(program));
 
     assert.deepEqual(
       result,
-      EX.raise(
-        new DB.TaskError(new Error("not implemented"), "withRepositoryTask")
-      )
+      EX.raise(new DB.TaskError(new Error("not implemented"), "withRepositoryTask"))
     );
   });
 
@@ -91,37 +87,35 @@ describe("Orm", () => {
         close(): Promise<void> {
           return Promise.resolve();
         },
-        transaction<T>(
-          runInTransaction: (entityManager: EntityManager) => Promise<T>
-        ): Promise<T> {
+        transaction<T>(runInTransaction: (entityManager: EntityManager) => Promise<T>): Promise<T> {
           return runInTransaction({
             getRepository<Entity>(
               _: { new (): Entity } | Function | EntitySchema<Entity> | string
             ): Repository<Entity> {
-              return {
-                findOne(
-                  _?: string | number | Date | ObjectID,
-                  _2?: FindOneOptions<Entity>
-                ): Promise<Entity | undefined> {
-                  return Promise.reject("not implemented");
-                },
-              } as Repository<Entity>;
-            },
+              return (
+                {
+                  findOne(
+                    _?: string | number | Date | ObjectID,
+                    _2?: FindOneOptions<Entity>
+                  ): Promise<Entity | undefined> {
+                    return Promise.reject("not implemented");
+                  }
+                } as Repository<Entity>
+              );
+            }
           } as EntityManager);
-        },
+        }
       } as Connection);
 
     const program = bracketPool(
       withTransaction(
-        withManagerTask((m) => () =>
-          m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
-        )
+        withManagerTask((m) => () => m.getRepository(DemoEntity).findOne({ where: { id: "test" } }))
       )
     );
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(program));
@@ -141,15 +135,17 @@ describe("Orm", () => {
         getRepository<Entity>(
           _: { new (): Entity } | Function | EntitySchema<Entity> | string
         ): Repository<Entity> {
-          return {
-            findOne(
-              _?: string | number | Date | ObjectID,
-              _2?: FindOneOptions<Entity>
-            ): Promise<Entity | undefined> {
-              return Promise.reject("not implemented");
-            },
-          } as Repository<Entity>;
-        },
+          return (
+            {
+              findOne(
+                _?: string | number | Date | ObjectID,
+                _2?: FindOneOptions<Entity>
+              ): Promise<Entity | undefined> {
+                return Promise.reject("not implemented");
+              }
+            } as Repository<Entity>
+          );
+        }
       } as Connection);
 
     const program = bracketPool(
@@ -160,16 +156,14 @@ describe("Orm", () => {
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const result = await T.runToPromiseExit(T.provideAll(env)(program));
 
     assert.deepEqual(
       result,
-      EX.raise(
-        new DB.TaskError(new Error("not implemented"), "withConnectionTask")
-      )
+      EX.raise(new DB.TaskError(new Error("not implemented"), "withConnectionTask"))
     );
   });
 
@@ -178,18 +172,18 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
-      },
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
     });
 
     const {
-      [uri]: { demo },
+      [uri]: { demo }
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
-        demo: () => withManagerTask((r) => () => r.query("")),
-      },
+        demo: () => withManagerTask((r) => () => r.query(""))
+      }
     });
 
     const program = pipe(withTransaction(demo()), provider, bracketPool);
@@ -199,23 +193,18 @@ describe("Orm", () => {
         close(): Promise<void> {
           return Promise.resolve();
         },
-        transaction<T>(
-          runInTransaction: (entityManager: EntityManager) => Promise<T>
-        ): Promise<T> {
+        transaction<T>(runInTransaction: (entityManager: EntityManager) => Promise<T>): Promise<T> {
           return runInTransaction({
-            query(
-              _query: string,
-              _parameters?: any[] | undefined
-            ): Promise<any> {
+            query(_query: string, _parameters?: any[] | undefined): Promise<any> {
               return Promise.resolve("ok");
-            },
+            }
           } as EntityManager);
-        },
+        }
       } as Connection);
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const res = await T.runToPromise(T.provideAll(env)(program));
@@ -228,18 +217,18 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
-      },
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
     });
 
     const {
-      [uri]: { demo },
+      [uri]: { demo }
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
-        demo: () => withManagerTask((r) => () => r.query("")),
-      },
+        demo: () => withManagerTask((r) => () => r.query(""))
+      }
     });
 
     const program = pipe(withORMTransaction(demo()), provider, bracketPool);
@@ -251,25 +240,26 @@ describe("Orm", () => {
         },
         createQueryRunner() {
           return {
-            manager: {
-              query(_query) {
-                if (_query === "") {
-                  return Promise.resolve("ok");
+            manager:
+              {
+                query(_query) {
+                  if (_query === "") {
+                    return Promise.resolve("ok");
+                  }
+                  if (["BEGIN", "COMMIT"].indexOf(_query) !== -1) {
+                    return Promise.resolve();
+                  } else {
+                    return Promise.reject();
+                  }
                 }
-                if (["BEGIN", "COMMIT"].indexOf(_query) !== -1) {
-                  return Promise.resolve();
-                } else {
-                  return Promise.reject();
-                }
-              },
-            } as EntityManager,
+              } as EntityManager
           };
-        },
+        }
       } as Connection);
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const res = await T.runToPromise(T.provideAll(env)(program));
@@ -282,18 +272,18 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
-      },
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
     });
 
     const {
-      [uri]: { demo },
+      [uri]: { demo }
     } = F.access(spec);
 
     const provider = F.implement(spec)({
       [uri]: {
-        demo: () => withManagerTask((r) => () => r.query("")),
-      },
+        demo: () => withManagerTask((r) => () => r.query(""))
+      }
     });
 
     const program = pipe(withORMTransaction(demo()), provider, bracketPool);
@@ -307,34 +297,32 @@ describe("Orm", () => {
         },
         createQueryRunner() {
           return {
-            manager: {
-              query(_query) {
-                queries.push(_query);
-                if (_query === "") {
-                  return Promise.reject(new Error("ok"));
+            manager:
+              {
+                query(_query) {
+                  queries.push(_query);
+                  if (_query === "") {
+                    return Promise.reject(new Error("ok"));
+                  }
+                  if (["BEGIN", "ROLLBACK"].indexOf(_query) !== -1) {
+                    return Promise.resolve();
+                  } else {
+                    return Promise.reject();
+                  }
                 }
-                if (["BEGIN", "ROLLBACK"].indexOf(_query) !== -1) {
-                  return Promise.resolve();
-                } else {
-                  return Promise.reject();
-                }
-              },
-            } as EntityManager,
+              } as EntityManager
           };
-        },
+        }
       } as Connection);
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const res = await T.runToPromiseExit(T.provideAll(env)(program));
 
-    assert.deepEqual(
-      res,
-      EX.raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
-    );
+    assert.deepEqual(res, EX.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
     assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
   });
 
@@ -343,12 +331,12 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>(),
-      },
+        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+      }
     });
 
     const {
-      [uri]: { demo },
+      [uri]: { demo }
     } = F.access(spec);
 
     const provider = F.implement(spec)({
@@ -357,8 +345,8 @@ describe("Orm", () => {
           pipe(
             withManagerTask((r) => () => r.query("")),
             withNewRegion
-          ),
-      },
+          )
+      }
     });
 
     const program = pipe(withORMTransaction(demo()), provider, bracketPool);
@@ -377,20 +365,21 @@ describe("Orm", () => {
                 } else {
                   return Promise.reject();
                 }
-              },
-            },
+              }
+            }
           };
         },
-        manager: {
-          query(_query) {
-            return Promise.resolve("ok");
-          },
-        } as EntityManager,
+        manager:
+          {
+            query(_query) {
+              return Promise.resolve("ok");
+            }
+          } as EntityManager
       } as Connection);
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any)),
+      ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
     const res = await T.runToPromise(T.provideAll(env)(program));

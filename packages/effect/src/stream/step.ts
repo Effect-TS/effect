@@ -24,10 +24,7 @@ export interface SinkStepCont<S> {
   readonly state: S;
 }
 
-export function sinkDone<A, S>(
-  s: S,
-  leftover: readonly A[]
-): SinkStepDone<A, S> {
+export function sinkDone<A, S>(s: S, leftover: readonly A[]): SinkStepDone<A, S> {
   return { _tag: SinkStepTag.Done, state: s, leftover };
 }
 
@@ -35,9 +32,7 @@ export function isSinkCont<A0, S>(s: SinkStep<A0, S>): s is SinkStepCont<S> {
   return s._tag === SinkStepTag.Cont;
 }
 
-export function isSinkDone<S, A0>(
-  s: SinkStep<S, A0>
-): s is SinkStepDone<S, A0> {
+export function isSinkDone<S, A0>(s: SinkStep<S, A0>): s is SinkStepDone<S, A0> {
   return s._tag === SinkStepTag.Done;
 }
 
@@ -59,10 +54,7 @@ export function sinkStepState<A0, S>(s: SinkStep<A0, S>): S {
   return s.state;
 }
 
-export function map<A0, S, S1>(
-  step: SinkStep<A0, S>,
-  f: F.FunctionN<[S], S1>
-): SinkStep<A0, S1> {
+export function map<A0, S, S1>(step: SinkStep<A0, S>, f: F.FunctionN<[S], S1>): SinkStep<A0, S1> {
   return {
     ...step,
     state: f(step.state)
@@ -84,6 +76,5 @@ export function traverse<F>(
   return <A0, S, S1>(
     step: SinkStep<A0, S>,
     f: F.FunctionN<[S], H.HKT<F, S1>>
-  ): H.HKT<F, SinkStep<A0, S1>> =>
-    F.map(f(step.state), s1 => ({ ...step, state: s1 }));
+  ): H.HKT<F, SinkStep<A0, S1>> => F.map(f(step.state), (s1) => ({ ...step, state: s1 }));
 }

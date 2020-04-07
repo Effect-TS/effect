@@ -33,11 +33,7 @@ J.run(fetchSuite)(
     T.provideS(F.client(fetch)),
     T.provideS(
       H.middlewareStack([
-        H.withPathHeaders(
-          { foo: "bar" },
-          (path) => path === "http://127.0.0.1:4015/middle",
-          true
-        ),
+        H.withPathHeaders({ foo: "bar" }, (path) => path === "http://127.0.0.1:4015/middle", true)
       ])
     )
   )

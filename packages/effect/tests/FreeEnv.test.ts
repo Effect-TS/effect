@@ -18,7 +18,7 @@ const fnEnvM = F.opaque<FnEnv>()(fnEnvM_);
 
 const fnLive: FnEnv = {
   [fnEnv]: {
-    mapString: s => T.pure(`(${s})`)
+    mapString: (s) => T.pure(`(${s})`)
   }
 };
 
@@ -70,11 +70,11 @@ const messages2: string[] = [];
 
 const consoleI = F.implement(consoleM)({
   [consoleEnv]: {
-    log: s =>
+    log: (s) =>
       pipe(
         accessPrefix,
-        T.chain(prefix => mapString(`${prefix}${s}`)),
-        T.chain(s =>
+        T.chain((prefix) => mapString(`${prefix}${s}`)),
+        T.chain((s) =>
           T.sync(() => {
             messages.push(s);
           })
@@ -82,14 +82,14 @@ const consoleI = F.implement(consoleM)({
       ),
     get: pipe(
       accessConfig,
-      T.chain(_ => T.pure(messages))
+      T.chain((_) => T.pure(messages))
     )
   }
 });
 
 const consoleI2 = F.implement(consoleM)({
   [consoleEnv]: {
-    log: s =>
+    log: (s) =>
       T.sync(() => {
         messages2.push(`${s}`);
       }),
@@ -99,7 +99,7 @@ const consoleI2 = F.implement(consoleM)({
 
 const program: T.RUIO<Console & FnEnv, string[]> = pipe(
   log("message"),
-  T.chain(_ => get)
+  T.chain((_) => get)
 );
 
 describe("Generic", () => {
@@ -130,10 +130,7 @@ describe("Generic", () => {
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
 
-    assert.deepEqual(
-      await T.runToPromiseExit(T.provideAll(fnLive)(main)),
-      done(["message"])
-    );
+    assert.deepEqual(await T.runToPromiseExit(T.provideAll(fnLive)(main)), done(["message"]));
   });
 
   it("use generic module (different interpreter, not need fnEnv)", async () => {
