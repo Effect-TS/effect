@@ -1307,14 +1307,12 @@ export function makeFiber<R, E, A>(
   name?: string
 ): Effect<R, NoErr, Fiber<E, A>> {
   return accessM((r: R) =>
-    chain_(accessRuntime, (runtime) =>
-      sync(() => {
-        const driver = new DriverImpl<E, A>(runtime);
-        const fiber = new FiberImpl(driver, name);
-        driver.start(provideAll(r)(init));
-        return fiber;
-      })
-    )
+    sync(() => {
+      const driver = new DriverImpl<E, A>();
+      const fiber = new FiberImpl(driver, name);
+      driver.start(provideAll(r)(init));
+      return fiber;
+    })
   );
 }
 
