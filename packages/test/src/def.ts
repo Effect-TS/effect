@@ -51,6 +51,7 @@ export interface Describe {
 export interface It {
   run: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
   skip: <A>(name: string, op: () => Promise<A>, timeout?: number) => void;
+  todo: (name: string) => void;
 }
 
 export interface Runner {

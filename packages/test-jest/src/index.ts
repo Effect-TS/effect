@@ -21,7 +21,8 @@ export const run = customRun({
   describe,
   it: {
     run: it,
-    skip: it.skip
+    skip: it.skip,
+    todo: it.todo
   }
 });
 

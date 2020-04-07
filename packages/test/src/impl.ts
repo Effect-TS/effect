@@ -4,7 +4,8 @@ import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
 import { Spec, Suite, Test, Runner } from "./def";
 import { getTimeout } from "./aspects/timeout";
-import { getSkip, SkipURI } from "./aspects/skip";
+import { getSkip } from "./aspects/skip";
+import { getTodo, TodoURI } from "./aspects/todo";
 import { identity } from "fp-ts/lib/function";
 
 export const testM = <R, E, A>(name: string, eff?: T.Effect<R, E, A>): Spec<R> => ({
@@ -13,7 +14,7 @@ export const testM = <R, E, A>(name: string, eff?: T.Effect<R, E, A>): Spec<R> =
   name,
   eff: eff || T.sync(() => {}),
   config: {
-    [SkipURI]: eff ? undefined : true
+    [TodoURI]: eff ? undefined : true
   }
 });
 
@@ -96,10 +97,18 @@ function runTest<R>(_: Runner, spec: Test<R>, provider: T.Provider<unknown, R, a
     O.filter((x): x is true => x === true),
     O.fold(
       () => {
-        _.it.run(
-          spec.name,
-          async () => pipe(spec.eff, provider, T.runToPromise),
-          pipe(spec, getTimeout, O.toUndefined)
+        pipe(
+          getTodo(spec),
+          O.filter((x): x is true => x === true),
+          O.fold(
+            () =>
+              _.it.run(
+                spec.name,
+                async () => pipe(spec.eff, provider, T.runToPromise),
+                pipe(spec, getTimeout, O.toUndefined)
+              ),
+            () => _.it.todo(spec.name)
+          )
         );
       },
       () => {

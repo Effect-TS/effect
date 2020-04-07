@@ -223,7 +223,8 @@ M.customRun({
   describe,
   it: {
     run: it,
-    skip: it.skip
+    skip: it.skip,
+    todo: it.todo
   }
 })(
   pipe(comboSuite, M.withProvider(provideMul), M.withTimeout(300)),
