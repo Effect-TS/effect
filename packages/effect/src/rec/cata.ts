@@ -1,7 +1,3 @@
-/**
- * Recursion schemes are simple, composable combinators, that automate the process of traversing and recursing through nested data structures.
- * @since 0.1.16
- */
 import { Kind, URIS } from "fp-ts/lib/HKT";
 import * as EF from "../effect";
 import { Fix } from "./Fix";
