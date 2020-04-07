@@ -2226,3 +2226,5 @@ export const patch = <R>() => <E, R2>(f: (_: R) => Effect<R2, E, R>) => <
 export interface Provider<Environment, Module, E2 = never> {
   <R, E, A>(e: Effect<Module & R, E, A>): Effect<Environment & R, E | E2, A>;
 }
+
+export { Erase } from "./erase"

@@ -15,7 +15,7 @@ describe("Express", () => {
         EX.route(
           "post",
           "/",
-          EX.accessReqM(r =>
+          EX.accessReqM((r) =>
             T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 }))
           )
         )
@@ -24,7 +24,7 @@ describe("Express", () => {
         EX.route(
           "post",
           "/access",
-          EX.accessReq(r =>
+          EX.accessReq((r) =>
             EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 })
           )
         )
@@ -35,14 +35,14 @@ describe("Express", () => {
       .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
       .do(EX.route("post", "/bad3", T.raiseInterrupt))
       .do(
-        EX.accessApp(app => {
+        EX.accessApp((app) => {
           if (!app) {
             throw new Error("Aborted app not found");
           }
         })
       )
       .do(
-        EX.accessAppM(app =>
+        EX.accessAppM((app) =>
           T.trySync(() => {
             if (!app) {
               throw new Error("Aborted app not found");
@@ -60,54 +60,59 @@ describe("Express", () => {
 
     const res = await T.runToPromiseExit(
       pipe(
-        T.provide(L.client)(H.post("http://127.0.0.1:3003/", {})),
-        T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
+        H.post("http://127.0.0.1:3003/", {}),
+        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+        T.provideS(L.client)
       )
     );
 
     const res2 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.client)(H.post("http://127.0.0.1:3003/bad", {})),
+        H.post("http://127.0.0.1:3003/bad", {}),
         T.mapError(
-          s =>
+          (s) =>
             s._tag === H.HttpErrorReason.Response &&
             s.response &&
             s.response.body
         ),
-        T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
+        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+        T.provideS(L.client)
       )
     );
 
     const res3 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.client)(H.post("http://127.0.0.1:3003/bad2", {})),
+        H.post("http://127.0.0.1:3003/bad2", {}),
         T.mapError(
-          s =>
+          (s) =>
             s._tag === H.HttpErrorReason.Response &&
             s.response &&
             s.response.body
         ),
-        T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
+        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+        T.provideS(L.client)
       )
     );
 
     const res4 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.client)(H.post("http://127.0.0.1:3003/bad3", {})),
+        H.post("http://127.0.0.1:3003/bad3", {}),
         T.mapError(
-          s =>
+          (s) =>
             s._tag === H.HttpErrorReason.Response &&
             s.response &&
             s.response.body
         ),
-        T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
+        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+        T.provideS(L.client)
       )
     );
 
     const res5 = await T.runToPromiseExit(
       pipe(
-        T.provide(L.client)(H.post("http://127.0.0.1:3003/access", {})),
-        T.chain(s => T.fromOption(() => new Error("empty body"))(s.body))
+        H.post("http://127.0.0.1:3003/access", {}),
+        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+        T.provideS(L.client)
       )
     );
 

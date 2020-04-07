@@ -50,7 +50,7 @@ export interface RouteError<E> {
 export function routeError<E>(status: number, body: E): RouteError<E> {
   return {
     status,
-    body
+    body,
   };
 }
 
@@ -62,7 +62,7 @@ export interface RouteResponse<A> {
 export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
   return {
     status,
-    body
+    body,
   };
 }
 
@@ -76,7 +76,7 @@ export const express: Express = {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
           r[expressAppEnv].app[method](path, newExpress.json(), (req, res) => {
-            T.runToPromiseExit(T.provideAll(r)(f(req))).then(o => {
+            T.runToPromiseExit(T.provideAll(r)(f(req))).then((o) => {
               switch (o._tag) {
                 case "Done":
                   res.status(o.value.status).send(o.value.body);
@@ -86,13 +86,13 @@ export const express: Express = {
                   return;
                 case "Interrupt":
                   res.status(500).send({
-                    status: "interrupted"
+                    status: "interrupted",
                   });
                   return;
                 case "Abort":
                   res.status(500).send({
                     status: "aborted",
-                    with: o.abortedWith
+                    with: o.abortedWith,
                   });
                   return;
               }
@@ -104,7 +104,7 @@ export const express: Express = {
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A> {
       return T.provideR((r: R) => ({
         ...r,
-        [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
+        [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() },
       }))(op);
     },
     bind(
@@ -113,8 +113,8 @@ export const express: Express = {
     ): T.Effect<HasExpress, T.NoErr, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
         T.orAbort(
-          T.async<unknown, Server>(res => {
-            const s = app.listen(port, hostname || "0.0.0.0", err => {
+          T.async<unknown, Server>((res) => {
+            const s = app.listen(port, hostname || "0.0.0.0", (err) => {
               if (err) {
                 res(left(err));
               } else {
@@ -122,16 +122,16 @@ export const express: Express = {
               }
             });
 
-            return cb => {
-              s.close(e => {
+            return (cb) => {
+              s.close((e) => {
                 cb(e);
               });
             };
           })
         )
       );
-    }
-  }
+    },
+  },
 };
 
 export function withApp<R, E, A>(
@@ -146,18 +146,18 @@ export function bracketWithApp(
 ): <R, E>(
   op: T.Effect<R & HasExpress & HasServer, E, any>
 ) => T.Effect<Express & R, E, never> {
-  return op =>
+  return (op) =>
     withApp(
       T.bracket(
         sequenceS(T.effect)({
           server: bind(port, hostname),
-          onClose: T.pure<T.UIO<void>[]>([])
+          onClose: T.pure<T.UIO<void>[]>([]),
         }),
         ({ server, onClose }) =>
-          T.asyncTotal(r => {
+          T.asyncTotal((r) => {
             const c = setTimeout(() => {
               T.run(array.sequence(T.effect)(onClose), () => {
-                server.close(e => {
+                server.close((e) => {
                   /* istanbul ignore if */
                   if (e) {
                     console.error("express interruption failed");
@@ -167,7 +167,7 @@ export function bracketWithApp(
                 });
               });
             }, 100);
-            return cb => {
+            return (cb) => {
               clearTimeout(c);
               cb();
             };
@@ -178,10 +178,10 @@ export function bracketWithApp(
             T.provideS<HasServer>({
               [serverEnv]: {
                 server,
-                onClose
-              }
+                onClose,
+              },
             }),
-            T.chain(_ => T.never)
+            T.chain((_) => T.never)
           )
       )
     );
@@ -198,15 +198,15 @@ export interface RequestContext {
 export function route<R, E, A>(
   method: Method,
   path: string,
-  handler: T.Effect<R & RequestContext, RouteError<E>, RouteResponse<A>>
-): T.Effect<R & HasExpress & Express, T.NoErr, void> {
+  handler: T.Effect<R, RouteError<E>, RouteResponse<A>>
+): T.Effect<T.Erase<R, RequestContext> & HasExpress & Express, T.NoErr, void> {
   return T.accessM(({ [expressEnv]: express }: Express) =>
-    express.route(method, path, x =>
+    express.route(method, path, (x) =>
       T.provideR((r: R & HasExpress & Express) => ({
         ...r,
         [requestContextEnv]: {
-          request: x
-        }
+          request: x,
+        },
       }))(handler)
     )
   );
@@ -223,7 +223,7 @@ export function bind(
 
 export function accessAppM<R, E, A>(
   f: (app: EX.Express) => T.Effect<R, E, A>
-): T.Effect<HasExpress & Express & R, E, A> {
+): T.Effect<HasExpress & R, E, A> {
   return T.accessM(({ [expressAppEnv]: express }: HasExpress) =>
     f(express.app)
   );
@@ -231,7 +231,7 @@ export function accessAppM<R, E, A>(
 
 export function accessReqM<R, E, A>(
   f: (req: EX.Request) => T.Effect<R, E, A>
-): T.Effect<RequestContext & Express & R, E, A> {
+): T.Effect<RequestContext & R, E, A> {
   return T.accessM(({ [requestContextEnv]: { request } }: RequestContext) =>
     f(request)
   );
@@ -239,7 +239,7 @@ export function accessReqM<R, E, A>(
 
 export function accessReq<A>(
   f: (req: EX.Request) => A
-): T.Effect<RequestContext & Express, never, A> {
+): T.Effect<RequestContext, never, A> {
   return T.access(({ [requestContextEnv]: { request } }: RequestContext) =>
     f(request)
   );
@@ -247,7 +247,7 @@ export function accessReq<A>(
 
 export function accessApp<A>(
   f: (app: EX.Express) => A
-): T.Effect<HasExpress & Express, T.NoErr, A> {
+): T.Effect<HasExpress, T.NoErr, A> {
   return T.access(({ [expressAppEnv]: express }: HasExpress) => f(express.app));
 }
 

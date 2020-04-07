@@ -646,3 +646,5 @@ export interface EffIO<S, R, E, A> extends Eff<S, R, E, A> {
 
   run(cb: (ex: ex.Exit<E, A>) => void, r: T.OrVoid<R>): F.Lazy<void>;
 }
+
+export { Erase } from "./erase";
