@@ -79,7 +79,7 @@ customRun({
       "run initializer",
       T.accessM((_: TestValue) =>
         T.sync(() => {
-          assert.deepEqual(_.test.value, "patched");
+          assert.deepEqual(_.test.value, T.pure("patched"));
         })
       )
     ),
