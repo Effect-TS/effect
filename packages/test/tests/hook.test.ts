@@ -6,16 +6,23 @@ import {
   withHookP,
   withInit,
   withProvider,
-  withFinalize
+  withFinalize,
+  implementMock
 } from "../src";
-import { effect as T } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import { pipe } from "fp-ts/lib/pipeable";
 
-interface TestValue {
+const TestValue_ = F.define({
   test: {
-    value: string;
-  };
-}
+    value: F.cn<T.UIO<string>>()
+  }
+});
+
+interface TestValue extends F.TypeOf<typeof TestValue_> {}
+
+const TestValue = F.opaque<TestValue>()(TestValue_);
+
+const TV = F.access(TestValue)["test"];
 
 customRun({
   describe,
@@ -53,12 +60,17 @@ customRun({
   pipe(
     testM(
       "provide with hook",
-      T.access((_: TestValue) => {
-        assert.deepEqual(_.test.value, "ok-ok");
-      })
+      pipe(
+        TV.value,
+        T.chain((v) =>
+          T.sync(() => {
+            assert.deepEqual(v, "ok-ok");
+          })
+        )
+      )
     ),
     withHookP(
-      T.sync((): TestValue => ({ test: { value: "ok-ok" } })),
+      T.sync((): TestValue => ({ test: { value: T.pure("ok-ok") } })),
       () => T.unit
     )
   ),
@@ -74,14 +86,14 @@ customRun({
     withInit(
       T.accessM((_: TestValue) =>
         T.sync(() => {
-          _.test.value = "patched";
+          _.test.value = T.pure("patched");
         })
       )
     ),
     withProvider(
-      T.provideS<TestValue>({
+      implementMock(TestValue)({
         test: {
-          value: "initial"
+          value: T.pure("initial")
         }
       })
     )
@@ -89,24 +101,32 @@ customRun({
   pipe(
     testM(
       "run finalizer",
-      T.accessM((_: TestValue) =>
-        T.sync(() => {
-          assert.deepEqual(_.test.value, "initial");
-          _.test.value = "patched";
-        })
+      pipe(
+        TV.value,
+        T.chain((v) =>
+          T.accessM((_: TestValue) =>
+            T.sync(() => {
+              assert.deepEqual(v, "initial");
+              _.test.value = T.pure("patched");
+            })
+          )
+        )
       )
     ),
     withFinalize(
-      T.accessM((_: TestValue) =>
-        T.sync(() => {
-          assert.deepEqual(_.test.value, "patched");
-        })
+      pipe(
+        TV.value,
+        T.chain((v) =>
+          T.sync(() => {
+            assert.deepEqual(v, "patched");
+          })
+        )
       )
     ),
     withProvider(
-      T.provideS<TestValue>({
+      implementMock(TestValue)({
         test: {
-          value: "initial"
+          value: T.pure("initial")
         }
       })
     )

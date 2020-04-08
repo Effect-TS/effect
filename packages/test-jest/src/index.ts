@@ -14,7 +14,10 @@ import {
   withTimeout,
   withFinalize,
   withHook,
-  withInit
+  withInit,
+  implementMock,
+  withHookP,
+  withTodo
 } from "@matechs/test";
 
 export const run = customRun({
@@ -42,7 +45,10 @@ export {
   withTimeout,
   withFinalize,
   withHook,
-  withInit
+  withInit,
+  implementMock,
+  withHookP,
+  withTodo
 };
 
 export { mockedTestM } from "./aspects/withJestMocks";
