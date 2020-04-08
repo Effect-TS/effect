@@ -1,7 +1,6 @@
 import * as assert from "assert";
-import * as R from "../src/rec";
 import { sequenceS } from "fp-ts/lib/Apply";
-import { effect as T, exit as EX } from "../src";
+import { effect as T, exit as EX, rec as R } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 
 interface ConstF {
