@@ -825,7 +825,7 @@ export const fluentUnit = fluent(unit);
  */
 export function chainError<R, E1, E2, A>(
   f: F.FunctionN<[E1], Effect<R, E2, A>>
-): <R2>(rio: Effect<R2, E1, A>) => Effect<R & R2, E2, A> {
+): <A2, R2>(rio: Effect<R2, E1, A2>) => Effect<R & R2, E2, A | A2> {
   return (io) => chainError_(io, f);
 }
 
