@@ -13,6 +13,7 @@ import * as freeEnv from "./freeEnv";
 import * as list from "./list";
 import * as utils from "./utils/types";
 import * as retry from "./retry";
+import * as rec from "./rec";
 
 export {
   effect,
@@ -29,5 +30,6 @@ export {
   utils,
   sink,
   retry,
-  eff
+  eff,
+  rec
 };
