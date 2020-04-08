@@ -1,4 +1,5 @@
 import * as T from "./effect";
+import * as EFF from "./eff";
 import { function as F, pipeable as P } from "fp-ts";
 
 export type Patched<A, B> = B extends F.FunctionN<infer ARG, T.Effect<infer R, infer E, infer RET>>
@@ -11,6 +12,19 @@ export type Patched<A, B> = B extends F.FunctionN<infer ARG, T.Effect<infer R, i
     : never
   : never;
 
+export type PatchedT<A, B, SA extends "s" | "a"> = B extends F.FunctionN<
+  infer ARG,
+  T.Effect<infer R, infer E, infer RET>
+>
+  ? F.FunctionN<ARG, T.Effect<R, E, RET>> extends B
+    ? F.FunctionN<ARG, EFF.RT<SA extends "s" ? EFF.SYNC : EFF.ASYNC, R & A, E, RET>>
+    : "polymorphic signature not supported"
+  : B extends T.Effect<infer R, infer E, infer RET>
+  ? T.Effect<R, E, RET> extends B
+    ? EFF.RT<SA extends "s" ? EFF.SYNC : EFF.ASYNC, R & A, E, RET>
+    : never
+  : never;
+
 export type Derived<A extends ModuleShape<A>> = {
   [k in keyof A]: {
     [h in keyof A[k]]: Patched<A, A[k][h]>;
@@ -19,6 +33,40 @@ export type Derived<A extends ModuleShape<A>> = {
 
 export function access<A extends ModuleShape<A>>(sp: ModuleSpec<A>): Derived<A> {
   const derived = {} as Derived<A>;
+  const a: ModuleShape<A> = sp[specURI];
+
+  for (const s of Reflect.ownKeys(a)) {
+    derived[s] = {};
+
+    for (const k of Object.keys(a[s])) {
+      if (typeof a[s][k] === "function") {
+        derived[s][k] = (...args: any[]) => T.accessM((r: A) => r[s][k](...args));
+      } else {
+        derived[s][k] = T.accessM((r: A) => r[s][k]);
+      }
+    }
+  }
+
+  return derived;
+}
+
+export type SyncAsync<A extends ModuleShape<A>> = {
+  [k in keyof A]: {
+    [h in keyof A[k]]: "s" | "a";
+  };
+};
+
+export type DerivedT<A extends ModuleShape<A>, SA extends SyncAsync<A>> = {
+  [k in keyof A & keyof SA]: {
+    [h in keyof A[k] & keyof SA[k]]: PatchedT<A, A[k][h], SA[k][h]>;
+  };
+};
+
+export function accessEff<A extends ModuleShape<A>, SA extends SyncAsync<A>>(
+  sp: ModuleSpec<A>,
+  _: SA
+): DerivedT<A, SA> {
+  const derived = {} as DerivedT<A, SA>;
   const a: ModuleShape<A> = sp[specURI];
 
   for (const s of Reflect.ownKeys(a)) {
@@ -204,3 +252,12 @@ export function merge<S extends MergeSpec<S>>(s: S): Merged<S> {
 export const opaque = <A extends ModuleShape<A>>() => <B extends A, S extends ModuleSpec<B>>(
   _: S
 ): ModuleSpec<A> => _;
+
+export const providerEff = <A, B, C, SA extends "s" | "a">(
+  p: Provider<A, B, C>,
+  _: SA
+): EFF.Provider<A, B, SA extends "s" ? EFF.SYNC : EFF.ASYNC, C> => p as any;
+
+export function providerT<A, B, C>(p: EFF.Provider<A, B, never, C> | EFF.Provider<A, B, unknown, C>): Provider<A, B, C> {
+  return p as any
+};

@@ -197,7 +197,7 @@ export const provideR: <R2, R>(
 ) => <S, E, A>(ma: Eff<S, R, E, A>) => Eff<S, R2, E, A> = T.provideR as any;
 
 export interface Provider<Environment, Module, S2, E2> {
-  <S1, R, E, A>(e: Eff<S1, Module & R, E, A>): Eff<S1 | S2, Environment & R, E | E2, A>;
+  <S1, R, E, A>(e: Eff<S1, Module & R, E, A>): RT<S1 | S2, Environment & R, E | E2, A>;
 }
 
 export const provideS: <R>(r: R) => Provider<unknown, R, SYNC, never> = T.provideS as any;

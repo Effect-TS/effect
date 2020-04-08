@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { effect as T, eff as EFF, freeEnv as F } from "@matechs/effect";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";
@@ -13,6 +13,16 @@ export const testM = <R, E, A>(name: string, eff?: T.Effect<R, E, A>): Spec<R> =
   _tag: "test",
   name,
   eff: eff || T.sync(() => {}),
+  config: {
+    [TodoURI]: eff ? undefined : true
+  }
+});
+
+export const testEff = <S, R, E, A>(name: string, eff?: EFF.Eff<S, R, E, A>): Spec<R> => ({
+  _R: undefined as any,
+  _tag: "test",
+  name,
+  eff: eff?.effect() || T.sync(() => {}),
   config: {
     [TodoURI]: eff ? undefined : true
   }

@@ -1,7 +1,7 @@
 import { effect as T } from "@matechs/effect";
 import * as M from "@matechs/test-jest";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as C from "../src";
+import { console as C } from "../src";
 
 const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) =>
   M.withHook(

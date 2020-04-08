@@ -1,4 +1,4 @@
-export { assert, customRun, suite, testM } from "./impl";
+export { assert, customRun, suite, testM, testEff } from "./impl";
 export { arb, provideGenerator, propertyM, property } from "./fc";
 export { withRetryPolicy } from "./aspects/retry";
 export { withTimeout } from "./aspects/timeout";

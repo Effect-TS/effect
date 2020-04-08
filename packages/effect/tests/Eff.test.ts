@@ -1,11 +1,46 @@
-import { eff as Eff, effect as T, exit as EX } from "../src";
+import { eff as Eff, effect as T, freeEnv as F, exit as EX } from "../src";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import { sequenceS, sequenceT } from "fp-ts/lib/Apply";
 import { right } from "fp-ts/lib/Either";
 import { Do } from "fp-ts-contrib/lib/Do";
 
+const Service_ = F.define({
+  demo: {
+    getValue: F.cn<T.UIO<number>>()
+  }
+});
+
+interface Service extends F.TypeOf<typeof Service_> {}
+
+const Service = F.opaque<Service>()(Service_);
+
+const {
+  demo: { getValue }
+} = F.accessEff(Service, { demo: { getValue: "s" } });
+
+const provideService_ = F.implement(Service)({
+  demo: {
+    getValue: T.pure(1)
+  }
+});
+
+const provideService = F.providerEff(provideService_, "s");
+const provideServiceA = F.providerEff(provideService_, "a");
+
 describe("Eff", () => {
+  it("should access service sync", () => {
+    const result = pipe(getValue, provideService, Eff.runSync);
+    assert.deepEqual(result, EX.done(1));
+  });
+  it("should access service async", async () => {
+    const result = await pipe(getValue, provideServiceA, Eff.runToPromiseExit);
+    assert.deepEqual(result, EX.done(1));
+  });
+  it("should access service back to effect", async () => {
+    const result = await pipe(getValue.effect(), F.providerT(provideServiceA), T.runToPromiseExit);
+    assert.deepEqual(result, EX.done(1));
+  });
   it("should compose sync", () => {
     // T.SyncEff<{ n: number; }, never, number>
     const program = pipe(

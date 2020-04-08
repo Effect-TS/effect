@@ -1,5 +1,5 @@
-import { assert, testM, customRun } from "../src";
-import { effect as T } from "@matechs/effect";
+import { assert, testM, customRun, testEff } from "../src";
+import { effect as T, eff as EFF } from "@matechs/effect";
 
 customRun({
   describe,
@@ -12,5 +12,9 @@ customRun({
   testM(
     "simple root",
     T.sync(() => assert.deepEqual(2, 2))
+  ),
+  testEff(
+    "simple root eff",
+    EFF.sync(() => assert.deepEqual(2, 2))
   )
 )();
