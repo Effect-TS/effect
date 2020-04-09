@@ -6,15 +6,24 @@ import { pipe } from "fp-ts/lib/pipeable";
 const program = KOA.withApp(
   Do(T.effect)
     .do(
-      KOA.route(
-        "get",
-        "/",
-        T.pure(
-          KOA.routeResponse(200, {
-            message: "OK"
-          })
-        )
-      )
+      KOA.router(R => {
+        R.route(
+          "get",
+          "/",
+          T.pure(
+            KOA.routeResponse(200, {
+              message: "OK"
+            })
+          ))
+        R.route(
+          "get",
+          "/test2",
+          T.pure(
+            KOA.routeResponse(200, {
+              message: "OK"
+            })
+          ))
+      })
     )
     .bind("server", KOA.bind(8081))
     .return(s => s.server)
