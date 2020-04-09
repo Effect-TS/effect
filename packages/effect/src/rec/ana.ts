@@ -15,7 +15,7 @@ export function ana<R, E, F extends URIS>(
 ): <A>(coalg: Coalgebra<F, R, E, A>) => (_: A) => EF.Effect<R, E, Fix<F>> {
   return (coalg) => (a) =>
     EF.effect.map(
-      EF.effect.chain(coalg(a), (x) => F(x, ana(F)(coalg))),
+      EF.effect.chain(coalg(a), (x) => EF.suspended(() => F(x, y => ana(F)(coalg)(y)))),
       (unfix) => ({ unfix })
     );
 }

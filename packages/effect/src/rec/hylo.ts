@@ -15,7 +15,7 @@ export function hylo<R, E, F extends URIS>(
 ): <A, B>(alg: Algebra<F, R, E, B>, coalg: Coalgebra<F, R, E, A>) => (a: A) => EF.Effect<R, E, B> {
   return (alg, coalg) => (a) =>
     EF.effect.chain(
-      EF.effect.chain(coalg(a), (x) => F(x, hylo(F)(alg, coalg))),
+      EF.effect.chain(coalg(a), (x) => EF.suspended(() => F(x, (y) => hylo(F)(alg, coalg)(y)))),
       alg
     );
 }
