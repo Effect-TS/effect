@@ -1,0 +1,38 @@
+{
+  "name": "@matechs/koa",
+  "version": "4.0.24",
+  "license": "MIT",
+  "private": false,
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "scripts": {
+    "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
+    "lint": "tslint --project .",
+    "import-path-rewrite": "import-path-rewrite",
+    "tc": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "module": "es6/index.js",
+  "typings": "lib/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "lib",
+    "es6"
+  ],
+  "peerDependencies": {
+    "@matechs/effect": "^5.0.16",
+    "koa": "^2.11.0",
+    "koa": "^2.11.0",
+    "fp-ts": "^2.5.3",
+    "fp-ts-contrib": "^0.1.15"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "@matechs/effect": "^5.0.23",
+    "koa": "^4.17.1",
+    "fp-ts": "^2.5.3",
+    "fp-ts-contrib": "^0.1.15"
+  }
+}
