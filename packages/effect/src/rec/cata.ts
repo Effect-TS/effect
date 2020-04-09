@@ -13,5 +13,9 @@ export function cata<R, E, F extends URIS>(
 export function cata<R, E, F extends URIS>(
   F: TMap<F, R, E>
 ): <A>(alg: Algebra<F, R, E, A>) => (_: Fix<F>) => EF.Effect<R, E, A> {
-  return (alg) => (_) => EF.effect.chain(EF.flatten(EF.sync(() => F(_.unfix, cata(F)(alg)))), alg);
+  return (alg) => (_) =>
+    EF.effect.chain(
+      EF.suspended(() => F(_.unfix, cata(F)(alg))),
+      alg
+    );
 }
