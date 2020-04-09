@@ -48,13 +48,13 @@ describe("Koa", () => {
         //
       });
 
-    const main = KOA.bracketWithApp(3003, "127.0.0.1")(program);
+    const main = KOA.bracketWithApp(3004, "127.0.0.1")(program);
 
     const close = T.run(T.provideAll(KOA.koa)(main));
 
     const res = await T.runToPromiseExit(
       pipe(
-        H.post("http://127.0.0.1:3003/", {}),
+        H.post("http://127.0.0.1:3004/", {}),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
       )
@@ -62,7 +62,7 @@ describe("Koa", () => {
 
     const res2 = await T.runToPromiseExit(
       pipe(
-        H.post("http://127.0.0.1:3003/bad", {}),
+        H.post("http://127.0.0.1:3004/bad", {}),
         T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
@@ -71,7 +71,7 @@ describe("Koa", () => {
 
     const res3 = await T.runToPromiseExit(
       pipe(
-        H.post("http://127.0.0.1:3003/bad2", {}),
+        H.post("http://127.0.0.1:3004/bad2", {}),
         T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
@@ -80,7 +80,7 @@ describe("Koa", () => {
 
     const res4 = await T.runToPromiseExit(
       pipe(
-        H.post("http://127.0.0.1:3003/bad3", {}),
+        H.post("http://127.0.0.1:3004/bad3", {}),
         T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
@@ -89,7 +89,7 @@ describe("Koa", () => {
 
     const res5 = await T.runToPromiseExit(
       pipe(
-        H.post("http://127.0.0.1:3003/access", {}),
+        H.post("http://127.0.0.1:3004/access", {}),
         T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
         T.provideS(L.client)
       )
