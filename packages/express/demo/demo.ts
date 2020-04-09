@@ -1,5 +1,5 @@
 import { effect as T, exit as E } from "@matechs/effect";
-import * as EX from "@matechs/express";
+import * as EX from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 

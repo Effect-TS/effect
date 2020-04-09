@@ -1,5 +1,5 @@
 import { effect as T, exit as E } from "@matechs/effect";
-import * as KOA from "@matechs/koa";
+import * as KOA from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 
