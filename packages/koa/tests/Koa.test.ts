@@ -8,6 +8,7 @@ import * as L from "@matechs/http-client-fetch";
 import { pipe } from "fp-ts/lib/pipeable";
 import { raise, done } from "@matechs/effect/lib/original/exit";
 import { some } from "fp-ts/lib/Option";
+import * as O from "fp-ts/lib/Option";
 import { sequenceT } from "fp-ts/lib/Apply";
 
 describe("Koa", () => {
@@ -73,7 +74,17 @@ describe("Koa", () => {
 
     const main = T.effect.chainTap(program, (_) => T.never);
     const fiber = await T.runToPromise(
-      pipe(main, M.provideS(KOA.managedKoa(3004, "127.0.0.1")), T.fork, KOA.provideKoa())
+      pipe(
+        main,
+        M.provideS(KOA.managedKoa(3004, "127.0.0.1")),
+        T.fork,
+        KOA.provideKoa((app) =>
+          app.use((ctx, next) => {
+            ctx.set("X-Request-Id", "my-id");
+            return next();
+          })
+        )
+      )
     );
 
     await T.runToPromise(T.delay(T.unit, 200));
@@ -137,12 +148,23 @@ describe("Koa", () => {
       )
     );
 
+    const res8 = await T.runToPromiseExit(
+      pipe(
+        H.post("http://127.0.0.1:3004/", {}),
+        T.chain((s) =>
+          T.fromOption(() => new Error("empty body"))(O.fromNullable(s.headers["x-request-id"]))
+        ),
+        T.provideS(L.client(fetch))
+      )
+    );
+
     await T.runToPromise(fiber.interrupt);
 
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res6, done({ res: 1 }));
     assert.deepEqual(res7, done({ res: 1 }));
+    assert.deepEqual(res8, done("my-id"));
     assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
     assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
     assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
