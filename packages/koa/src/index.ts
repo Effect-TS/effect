@@ -44,8 +44,8 @@ export interface KoaOps {
   withRouter<R, E, A>(op: T.Effect<R & HasKoa & HasRouter, E, A>): T.Effect<R & HasKoa, E, A>;
   withSubRouter<R, E, A>(
     path: string,
-    op: T.Effect<R & HasKoa & HasRouter, E, A>
-  ): T.Effect<R & HasKoa & HasRouter, E, A>;
+    op: T.Effect<R & HasRouter, E, A>
+  ): T.Effect<R & HasRouter, E, A>;
   route<R, E, A>(
     method: Method,
     path: string,
@@ -148,9 +148,9 @@ export const provideKoa = T.provideS<Koa>({
     },
     withSubRouter<R, E, A>(
       path: string,
-      op: T.Effect<R & HasKoa & HasRouter, E, A>
-    ): T.Effect<R & HasKoa & HasRouter, E, A> {
-      return T.provideR((r: R & HasRouter & HasKoa) => ({
+      op: T.Effect<R & HasRouter, E, A>
+    ): T.Effect<R & HasRouter, E, A> {
+      return T.provideR((r: R & HasRouter) => ({
         ...r,
         [koaRouterEnv]: {
           ...r[koaRouterEnv],
@@ -161,7 +161,7 @@ export const provideKoa = T.provideS<Koa>({
         Do(T.effect)
           .bind("result", op)
           .do(
-            T.accessM(({ [koaRouterEnv]: { parent, router } }: HasRouter & HasKoa) =>
+            T.accessM(({ [koaRouterEnv]: { parent, router } }: HasRouter) =>
               T.sync(() => {
                 parent!.use(path, router.allowedMethods());
                 parent!.use(path, router.routes());
@@ -207,8 +207,8 @@ export function withRouter<R, E, A>(
 
 export function withSubRouter<R, E, A>(
   path: string,
-  op: T.Effect<R & HasKoa & HasRouter, E, A>
-): T.Effect<Koa & HasKoa & HasRouter & R, E, A> {
+  op: T.Effect<R & HasRouter, E, A>
+): T.Effect<Koa & HasRouter & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withSubRouter(path, op));
 }
 
