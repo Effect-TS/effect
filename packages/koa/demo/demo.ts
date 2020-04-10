@@ -53,7 +53,7 @@ const program = pipe(
 );
 
 T.run(
-  pipe(program, RM.provideRandomMessage, KOA.provideKoa),
+  pipe(program, RM.provideRandomMessage, KOA.provideKoa()),
   E.fold(
     (server) => {
       process.on("SIGINT", () => {

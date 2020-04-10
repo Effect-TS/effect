@@ -73,7 +73,7 @@ describe("Koa", () => {
 
     const main = T.effect.chainTap(program, (_) => T.never);
     const fiber = await T.runToPromise(
-      pipe(main, M.provideS(KOA.managedKoa(3004, "127.0.0.1")), T.fork, KOA.provideKoa)
+      pipe(main, M.provideS(KOA.managedKoa(3004, "127.0.0.1")), T.fork, KOA.provideKoa())
     );
 
     await T.runToPromise(T.delay(T.unit, 200));

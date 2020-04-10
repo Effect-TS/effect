@@ -8,6 +8,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { Endomorphism, identity } from "fp-ts/lib/function";
 
 export const koaAppEnv = "@matechs/koa/koaAppURI";
 export interface HasKoa {
@@ -79,7 +80,7 @@ export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
   };
 }
 
-export const provideKoa = T.provideS<Koa>({
+export const provideKoa = (middle: Endomorphism<KoaApp> = identity) => T.provideS<Koa>({
   [koaEnv]: {
     route<R, E, A>(
       method: Method,
@@ -122,7 +123,7 @@ export const provideKoa = T.provideS<Koa>({
     withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A> {
       return T.provideR((r: R) => ({
         ...r,
-        [koaAppEnv]: { ...r[koaAppEnv], app: new KoaApp() }
+        [koaAppEnv]: { ...r[koaAppEnv], app: middle(new KoaApp()) }
       }))(op);
     },
     withRouter<R, E, A>(op: T.Effect<R & HasRouter, E, A>): T.Effect<R & HasKoa, E, A> {

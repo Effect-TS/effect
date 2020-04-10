@@ -6400,7 +6400,7 @@ import-local@^3.0.2:
 
 "import-path-rewrite@github:mikearnaldi/import-path-rewrite":
   version "0.0.1"
-  resolved "https://codeload.github.com/mikearnaldi/import-path-rewrite/tar.gz/0a6df85c0a3fb1e7feaf7facc04eabb02af1a56d"
+  resolved "https://codeload.github.com/mikearnaldi/import-path-rewrite/tar.gz/8df431685e6b8f2b42998771653a6468813c8485"
   dependencies:
     chalk "^3.0.0"
     glob "^7.1.6"
