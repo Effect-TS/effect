@@ -25,13 +25,11 @@ export const { hitMe } = F.access(RandomMessage)[RandomMessageURI];
  * Implementation
  */
 
-export const env = {
+export const provideRandomMessage = F.implement(RandomMessage)({
   [RandomMessageURI]: {
     // tslint:disable-next-line: no-bitwise
     hitMe: () => T.sync(() => messages[~~(Math.random() * messages.length)])
   }
-};
-
-export const provideRandomMessage = F.implement(RandomMessage)(env);
+});
 
 const messages = ["Hi", "Bye", "Good day", "Good evening"];
