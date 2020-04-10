@@ -158,4 +158,4 @@ function getHeaders(headers: Buffer | C.HeaderInfo[]): C.HeaderInfo {
   return headers.length > 0 ? (typeof headers[0] !== "number" ? headers[0] : {}) : {};
 }
 
-export const client = pipe(T.noEnv, T.mergeEnv(libcurl()));
+export const client = libcurl();

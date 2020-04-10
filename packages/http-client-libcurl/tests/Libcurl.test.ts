@@ -7,13 +7,14 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
 import { some, map, Option } from "fp-ts/lib/Option";
+import { Do } from "fp-ts-contrib/lib/Do";
 
 function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(client),
-      T.provide(
+      T.provideS(client),
+      T.provideS(
         H.middlewareStack([
           H.withPathHeaders({ foo: "bar" }, (path) => path === "http://127.0.0.1:4005/middle", true)
         ])
@@ -22,7 +23,28 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   );
 }
 
+function timer<R, E, A>(_: T.Effect<R, E, A>) {
+  return Do(T.effect)
+    .bind(
+      "s",
+      T.sync(() => new Date())
+    )
+    .bind("r", _)
+    .bind(
+      "e",
+      T.sync(() => new Date())
+    )
+    .doL(({ s, e }) =>
+      T.sync(() => {
+        assert.strictEqual(e.getTime() - s.getTime() < 120, true);
+      })
+    )
+    .return(({ r }) => r);
+}
+
 describe("Libcurl", () => {
+  jest.setTimeout(10000);
+
   it("post-patch-put-del", async () => {
     const app = express();
 
@@ -45,34 +67,46 @@ describe("Libcurl", () => {
     const s = app.listen(4001);
 
     const post = await run(
-      H.post("http://127.0.0.1:4001/post", {
-        foo: "bar"
-      })
+      timer(
+        H.post("http://127.0.0.1:4001/post", {
+          foo: "bar"
+        })
+      )
     );
 
     const postText = await run(
-      H.postReturnText("http://127.0.0.1:4001/post", {
-        foo: "bar"
-      })
+      timer(
+        H.postReturnText("http://127.0.0.1:4001/post", {
+          foo: "bar"
+        })
+      )
     );
 
-    const postNoBody = await run(H.post("http://127.0.0.1:4001/post", {}));
+    const postNoBody = await run(timer(H.post("http://127.0.0.1:4001/post", {})));
 
     const put = await run(
-      H.put("http://127.0.0.1:4001/put", {
-        foo: "bar"
-      })
+      timer(
+        H.put("http://127.0.0.1:4001/put", {
+          foo: "bar"
+        })
+      )
     );
 
     const patch = await run(
-      H.patch("http://127.0.0.1:4001/patch", {
-        foo: "bar"
-      })
+      timer(
+        H.patch("http://127.0.0.1:4001/patch", {
+          foo: "bar"
+        })
+      )
     );
 
-    const del = await run(H.del("http://127.0.0.1:4001/delete", { foo: "bar" }));
+    const del = await run(timer(H.del("http://127.0.0.1:4001/delete", { foo: "bar" })));
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     assert.deepEqual(isDone(post), true);
     assert.deepEqual(isDone(post) && post.value.body, some({ foo: "bar" }));
@@ -100,7 +134,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4006/"),
+        timer(H.get("http://127.0.0.1:4006/")),
         T.mapError(
           H.foldHttpError(
             (_) => 0,
@@ -110,7 +144,11 @@ describe("Libcurl", () => {
       )
     );
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     assert.deepEqual(isRaise(result), true);
     assert.deepEqual(isRaise(result) && result.error, 404);
@@ -129,14 +167,18 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4002/h"),
+        timer(H.get("http://127.0.0.1:4002/h")),
         H.withHeaders({
           foo: "bar"
         })
       )
     );
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     assert.deepEqual(isDone(result), true);
     assert.deepEqual(isDone(result) && result.value.body, some({ foo: "bar" }));
@@ -153,9 +195,13 @@ describe("Libcurl", () => {
 
     const s = app.listen(4005);
 
-    const result = await run(pipe(H.get("http://127.0.0.1:4005/middle")));
+    const result = await run(timer(H.get("http://127.0.0.1:4005/middle")));
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     assert.deepEqual(isDone(result), true);
     assert.deepEqual(isDone(result) && result.value.body, some({ foo: "bar" }));
@@ -175,7 +221,7 @@ describe("Libcurl", () => {
 
     const result = await run(
       pipe(
-        H.get("http://127.0.0.1:4004/h"),
+        timer(H.get("http://127.0.0.1:4004/h")),
         H.withHeaders(
           {
             foo: "baz"
@@ -189,7 +235,11 @@ describe("Libcurl", () => {
       )
     );
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     assert.deepEqual(isDone(result), true);
     assert.deepEqual(isDone(result) && result.value.body, some({ foo: "baz" }));
@@ -206,15 +256,19 @@ describe("Libcurl", () => {
 
     const s = app.listen(4003);
 
-    const post = await run(pipe(H.postData("http://127.0.0.1:4003/data", { foo: "bar" })));
+    const post = await run(timer(H.postData("http://127.0.0.1:4003/data", { foo: "bar" })));
 
-    const put = await run(pipe(H.putData("http://127.0.0.1:4003/data", { foo: "bar" })));
+    const put = await run(timer(H.putData("http://127.0.0.1:4003/data", { foo: "bar" })));
 
-    const patch = await run(pipe(H.patchData("http://127.0.0.1:4003/data", { foo: "bar" })));
+    const patch = await run(timer(H.patchData("http://127.0.0.1:4003/data", { foo: "bar" })));
 
-    const del = await run(pipe(H.delData("http://127.0.0.1:4003/data", { foo: "bar" })));
+    const del = await run(timer(H.delData("http://127.0.0.1:4003/data", { foo: "bar" })));
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     assert.deepEqual(isDone(post), true);
     assert.deepEqual(isDone(post) && post.value.body, some({ foo: "bar" }));
@@ -254,7 +308,11 @@ describe("Libcurl", () => {
 
     const del = await run(pipe(H.delBinaryGetBinary("http://127.0.0.1:4017/binary")));
 
-    s.close();
+    await new Promise((res) =>
+      s.close(() => {
+        res();
+      })
+    );
 
     const binaryString = (b: Option<Buffer>): Option<string> =>
       pipe(
