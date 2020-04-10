@@ -3,6 +3,7 @@ import * as KOA from "../src";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
 import { sequenceT } from "fp-ts/lib/Apply";
+import * as RM from "./randomMessage";
 
 const program = KOA.withApp(
   Do(T.effect)
@@ -20,12 +21,10 @@ const program = KOA.withApp(
           ),
           KOA.route(
             "get",
-            "/test2",
-            T.pure(
-              KOA.routeResponse(200, {
-                message: "OK"
-              })
-            )
+            "/random-message",
+            Do(T.effect)
+              .bind("message", RM.hitMe())
+              .return(({ message }) => KOA.routeResponse(200, { message }))
           )
         )
       )
@@ -34,7 +33,7 @@ const program = KOA.withApp(
     .return((s) => s.server)
 );
 
-const envLive = pipe(T.noEnv, T.mergeEnv(KOA.koa));
+const envLive = pipe(T.noEnv, T.mergeEnv(KOA.koa), T.mergeEnv(RM.env));
 
 T.run(
   T.provideAll(envLive)(program),
