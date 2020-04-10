@@ -18,6 +18,13 @@ export interface HasKoa {
   };
 }
 
+export const koaRouterEnv = "@matechs/koa/routerURI";
+export interface HasRouter {
+  [koaRouterEnv]: {
+    router: KoaRouter;
+  };
+}
+
 export const serverEnv = "@matechs/koa/serverURI";
 
 export interface HasServer {
@@ -33,15 +40,12 @@ export const koaEnv = "@matechs/koa/koaURI";
 
 export interface KoaOps {
   withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A>;
-  router<R, E, A>(
-    f: (dsl: {
-      route(
-        method: Method,
-        path: string,
-        action: T.Effect<R, RouteError<E>, RouteResponse<A>>
-      ): T.Effect<R, E, void>;
-    }) => T.Effect<R, E, void>
-  ): T.Effect<R & HasKoa, T.NoErr, void>;
+  withRouter<R, E, A>(op: T.Effect<R & HasKoa & HasRouter, E, A>): T.Effect<R, E, A>;
+  route<R, E, A>(
+    method: Method,
+    path: string,
+    f: (ctx: KOA.ParameterizedContext) => T.Effect<R, RouteError<E>, RouteResponse<A>>
+  ): T.Effect<R & HasKoa & HasRouter, T.NoErr, void>;
   bind(port: number, hostname?: string): T.Effect<HasKoa, T.NoErr, Server>;
 }
 
@@ -73,89 +77,71 @@ export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
   };
 }
 
-interface RouterDSL<R, E, A> {
-  route(
-    method: Method,
-    path: string,
-    action: T.Effect<R, RouteError<E>, RouteResponse<A>>
-  ): T.Effect<R, E, void>;
-}
-
 export const koa: Koa = {
   [koaEnv]: {
-    router<R, E, A>(
-      f: (dsl: RouterDSL<R, E, A>) => T.Effect<R, T.NoErr, void>
-    ): T.Effect<R & HasKoa, T.NoErr, void> {
-      return Do(T.effect)
-        .bindL("router", () => T.pure(new KoaRouter()))
-        .bindL("dsl", ({ router }) => {
-          const dsl = {
-            // TODO: add subrouter support
-            route(
-              method: Method,
-              path: string,
-              handler: T.Effect<R, RouteError<E>, RouteResponse<A>>
-            ) {
-              return T.accessM((r: R) =>
-                T.sync(() => {
-                  const f = (ctx: KOA.ParameterizedContext) =>
-                    T.accessM<R, R, RouteError<E>, RouteResponse<A>>(() =>
-                      T.provideR((r: R) => ({
-                        ...r,
-                        [contextEnv]: {
-                          ctx
-                        }
-                      }))(handler)
-                    );
-                  router[method](path, koaBodyParser(), (ctx) =>
-                    T.runToPromiseExit(T.provideAll(r)(f(ctx))).then((o) => {
-                      switch (o._tag) {
-                        case "Done":
-                          ctx.status = o.value.status;
-                          ctx.body = o.value.body;
-                          return;
-                        case "Raise":
-                          ctx.status = o.error.status;
-                          ctx.body = o.error.body;
-                          return;
-                        case "Interrupt":
-                          ctx.status = 500;
-                          ctx.body = {
-                            status: "interrupted"
-                          };
-                          return;
-                        case "Abort":
-                          ctx.status = 500;
-                          ctx.body = {
-                            status: "aborted",
-                            with: o.abortedWith
-                          };
-                          return;
-                      }
-                    })
-                  );
-                })
-              );
-            }
-          };
-          return T.pure(dsl);
+    route<R, E, A>(
+      method: Method,
+      path: string,
+      f: (ctx: KOA.ParameterizedContext) => T.Effect<R, RouteError<E>, RouteResponse<A>>
+    ): T.Effect<R & HasKoa & HasRouter, T.NoErr, void> {
+      return T.accessM((r: R & HasKoa & HasRouter) =>
+        T.sync(() => {
+          const router = r[koaRouterEnv].router;
+          router[method](path, koaBodyParser(), (ctx) => {
+            T.runToPromiseExit(T.provideAll(r)(f(ctx))).then((o) => {
+              switch (o._tag) {
+                case "Done":
+                  ctx.status = o.value.status;
+                  ctx.body = o.value.body;
+                  return;
+                case "Raise":
+                  ctx.status = o.error.status;
+                  ctx.body = o.error.body;
+                  return;
+                case "Interrupt":
+                  ctx.status = 500;
+                  ctx.body = {
+                    status: "interrupted"
+                  };
+                  return;
+                case "Abort":
+                  ctx.status = 500;
+                  ctx.body = {
+                    status: "aborted",
+                    with: o.abortedWith
+                  };
+                  return;
+              }
+            });
+          });
         })
-        .doL(({ dsl }) => f(dsl))
-        .doL(({ router }) =>
-          T.accessM((r: R & HasKoa) =>
-            T.sync(() => {
-              r[koaAppEnv].app.use(router.allowedMethods());
-              r[koaAppEnv].app.use(router.routes());
-            })
-          )
-        )
-        .return(() => void 0 as void);
+      );
     },
     withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A> {
       return T.provideR((r: R) => ({
         ...r,
         [koaAppEnv]: { ...r[koaAppEnv], app: new KoaApp() }
       }))(op);
+    },
+    withRouter<R, E, A>(op: T.Effect<R & HasKoa & HasRouter, E, A>): T.Effect<R, E, A> {
+      return T.accessM(({ [koaAppEnv]: { app } }: HasKoa) =>
+        T.provideR((r: R & HasKoa & HasRouter) => ({
+          ...r,
+          [koaRouterEnv]: { ...r[koaRouterEnv], router: new KoaRouter() }
+        }))(
+          Do(T.effect)
+            .do(op)
+            .do(
+              T.accessM(({ [koaRouterEnv]: { router } }: HasRouter) =>
+                T.sync(() => {
+                  app.use(router.allowedMethods());
+                  app.use(router.routes());
+                })
+              )
+            )
+            .return(() => void 0)
+        )
+      );
     },
     bind(port: number, hostname?: string): T.Effect<HasKoa, T.NoErr, Server> {
       return T.accessM(({ [koaAppEnv]: { app } }: HasKoa) =>
@@ -183,6 +169,12 @@ export const koa: Koa = {
 
 export function withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<Koa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withApp(op));
+}
+
+export function withRouter<R, E, A>(
+  op: T.Effect<R & HasKoa & HasRouter, E, A>
+): T.Effect<Koa & R, E, A> {
+  return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withRouter(op));
 }
 
 export function bracketWithApp(
@@ -238,10 +230,21 @@ export interface Context {
   };
 }
 
-export function router<R, E, A>(
-  f: (dsl: RouterDSL<R, E, A>) => T.Effect<R, E, void>
-): T.Effect<T.Erase<R, Context> & HasKoa & Koa, T.NoErr, void> {
-  return T.accessM(({ [koaEnv]: koa }: Koa) => koa.router<R, E, A>(f));
+export function route<R, E, A>(
+  method: Method,
+  path: string,
+  handler: T.Effect<R, RouteError<E>, RouteResponse<A>>
+): T.Effect<T.Erase<R, Context> & HasKoa & Koa & HasRouter, T.NoErr, void> {
+  return T.accessM(({ [koaEnv]: koa }: Koa) =>
+    koa.route(method, path, (x) =>
+      T.provideR((r: R & HasKoa & Koa) => ({
+        ...r,
+        [contextEnv]: {
+          ctx: x
+        }
+      }))(handler)
+    )
+  );
 }
 
 export function bind(port: number, hostname?: string): T.Effect<HasKoa & Koa, T.NoErr, Server> {
