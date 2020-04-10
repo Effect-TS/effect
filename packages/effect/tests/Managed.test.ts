@@ -184,11 +184,11 @@ describe("Managed", () => {
     assert.deepEqual(result, 3);
   });
 
-  it("should use resource provideTo", async () => {
+  it("should use resource provideS", async () => {
     const resourceA = M.pure({ n: 1 });
     const program = T.access(({ n }: { n: number }) => n + 1);
 
-    const result = await T.runToPromise(M.provideTo(resourceA, program));
+    const result = await T.runToPromise(M.provideS(resourceA)(program));
 
     assert.deepEqual(result, 2);
   });

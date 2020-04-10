@@ -1,6 +1,6 @@
-import "isomorphic-fetch"
+import "isomorphic-fetch";
 import * as assert from "assert";
-import { effect as T } from "@matechs/effect";
+import { effect as T, managed as M } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as EX from "../src";
 import * as H from "@matechs/http-client";
@@ -11,7 +11,7 @@ import { some } from "fp-ts/lib/Option";
 
 describe("Express", () => {
   it("should use express", async () => {
-    const program = Do(T.effect)
+    const routes = Do(T.effect)
       .do(
         EX.route(
           "post",
@@ -45,65 +45,62 @@ describe("Express", () => {
           })
         )
       )
-      .return(() => {
-        //
-      });
+      .done();
 
-    const main = EX.bracketWithApp(3003, "127.0.0.1")(program);
-
-    const fiber = await T.runToPromise(T.provideAll(EX.express)(T.fork(main)));
-
-    await T.runToPromise(T.delay(T.unit, 200));
-
-    const res = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3003/", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+    const program = Do(T.effect)
+      .bindL("res1", () =>
+        pipe(
+          H.post("http://127.0.0.1:3003/", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.result
+        )
       )
-    );
-
-    const res2 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3003/bad", {}),
-        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res2", () =>
+        pipe(
+          H.post("http://127.0.0.1:3003/bad", {}),
+          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.result
+        )
       )
-    );
-
-    const res3 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3003/bad2", {}),
-        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res3", () =>
+        pipe(
+          H.post("http://127.0.0.1:3003/bad2", {}),
+          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.result
+        )
       )
-    );
-
-    const res4 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3003/bad3", {}),
-        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res4", () =>
+        pipe(
+          H.post("http://127.0.0.1:3003/bad3", {}),
+          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.result
+        )
       )
-    );
-
-    const res5 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3003/access", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res5", () =>
+        pipe(
+          H.post("http://127.0.0.1:3003/access", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.result
+        )
       )
-    );
+      .done();
 
-    await T.runToPromise(fiber.interrupt);
-
-    assert.deepEqual(res, done({ res: 1 }));
-    assert.deepEqual(res5, done({ res: 1 }));
-    assert.deepEqual(res2, raise(some(`{\"res\":1}`))); // TODO: verify we want that decoded as string
-    assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-    assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
+    await pipe(
+      routes,
+      T.chain((_) => program),
+      M.provideS(EX.managedExpress(3003, "127.0.0.1")),
+      T.provideS(L.client(fetch)),
+      T.provideS(EX.express),
+      T.runToPromise
+    ).then(({ res1, res2, res3, res4, res5 }) => {
+      assert.deepEqual(res1, done({ res: 1 }));
+      assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
+      assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+      assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
+      assert.deepEqual(res5, done({ res: 1 }));
+    });
   });
 });

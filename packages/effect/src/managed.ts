@@ -384,15 +384,20 @@ export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R,
 }
 
 /**
- * Use a resource to provide the environment to a WaveR
+ * Use a resource to provide part of the environment to an effect
  * @param man
  * @param ma
  */
-export function provideTo<R, E, R2, A, E2>(
-  man: Managed<R, E, R2>,
-  ma: T.Effect<R2, E2, A>
-): T.Effect<R, E | E2, A> {
-  return use(man, (r) => T.provideAll(r)(ma));
+export function provideS<R3, E2, R2>(man: Managed<R3, E2, R2>): T.Provider<R3, R2, E2> {
+  return <R, E, A>(ma: T.Effect<R & R2, E, A>) =>
+    T.accessM((_: R) =>
+      use(man, (r) =>
+        T.provideAll({
+          ...r,
+          ..._
+        })(ma)
+      )
+    );
 }
 
 export const URI = "matechs/Managed";
