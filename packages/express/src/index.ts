@@ -1,11 +1,11 @@
-import newExpress from "express";
-import { effect as T } from "@matechs/effect";
-import * as EX from "express";
-import { Server } from "http";
-import { pipe } from "fp-ts/lib/pipeable";
-import { sequenceS } from "fp-ts/lib/Apply";
+import { effect as T, managed as M } from "@matechs/effect";
+import newExpress, * as EX from "express";
+import { sequenceT } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
+import { Server } from "http";
+import { NextHandleFunction } from "connect";
 
 export const expressAppEnv = "@matechs/express/expressAppURI";
 
@@ -33,7 +33,8 @@ export interface ExpressOps {
   route<R, E, A>(
     method: Method,
     path: string,
-    f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
+    f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
+    ...rest: NextHandleFunction[]
   ): T.Effect<R & HasExpress, T.NoErr, void>;
   bind(port: number, hostname?: string): T.Effect<HasExpress, T.NoErr, Server>;
 }
@@ -71,11 +72,12 @@ export const express: Express = {
     route<R, E, A>(
       method: Method,
       path: string,
-      f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>
+      f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
+      ...rest: NextHandleFunction[]
     ): T.Effect<R & HasExpress, T.NoErr, void> {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
-          r[expressAppEnv].app[method](path, newExpress.json(), (req, res) => {
+          r[expressAppEnv].app[method](path, ...rest, (req, res) => {
             T.runToPromiseExit(T.provideAll(r)(f(req))).then((o) => {
               switch (o._tag) {
                 case "Done":
@@ -135,51 +137,6 @@ export function withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<E
   return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op));
 }
 
-export function bracketWithApp(
-  port: number,
-  hostname?: string
-): <R, E>(op: T.Effect<R & HasExpress & HasServer, E, any>) => T.Effect<Express & R, E, never> {
-  return (op) =>
-    withApp(
-      T.bracket(
-        sequenceS(T.effect)({
-          server: bind(port, hostname),
-          onClose: T.pure<T.UIO<void>[]>([])
-        }),
-        ({ server, onClose }) =>
-          T.asyncTotal((r) => {
-            const c = setTimeout(() => {
-              T.run(array.sequence(T.effect)(onClose), () => {
-                server.close((e) => {
-                  /* istanbul ignore if */
-                  if (e) {
-                    console.error("express interruption failed");
-                    console.error(e);
-                  }
-                  r(undefined);
-                });
-              });
-            }, 100);
-            return (cb) => {
-              clearTimeout(c);
-              cb();
-            };
-          }),
-        ({ server, onClose }) =>
-          pipe(
-            op,
-            T.provideS<HasServer>({
-              [serverEnv]: {
-                server,
-                onClose
-              }
-            }),
-            T.chain((_) => T.never)
-          )
-      )
-    );
-}
-
 export const requestContextEnv = "@matechs/express/requestContextURI";
 
 export interface RequestContext {
@@ -191,16 +148,21 @@ export interface RequestContext {
 export function route<R, E, A>(
   method: Method,
   path: string,
-  handler: T.Effect<R, RouteError<E>, RouteResponse<A>>
+  handler: T.Effect<R, RouteError<E>, RouteResponse<A>>,
+  middle: NextHandleFunction[] = [EX.json()]
 ): T.Effect<T.Erase<R, RequestContext> & HasExpress & Express, T.NoErr, void> {
   return T.accessM(({ [expressEnv]: express }: Express) =>
-    express.route(method, path, (x) =>
-      T.provideR((r: R & HasExpress & Express) => ({
-        ...r,
-        [requestContextEnv]: {
-          request: x
-        }
-      }))(handler)
+    express.route(
+      method,
+      path,
+      (x) =>
+        T.provideR((r: R & HasExpress & Express) => ({
+          ...r,
+          [requestContextEnv]: {
+            request: x
+          }
+        }))(handler),
+      ...middle
     )
   );
 }
@@ -235,3 +197,38 @@ export function accessApp<A>(f: (app: EX.Express) => A): T.Effect<HasExpress, T.
 export type ExpressEnv = HasExpress & Express;
 
 export type ChildEnv = ExpressEnv & RequestContext;
+
+export const managedExpress = (port: number, hostname?: string) =>
+  M.bracket(
+    withApp(
+      T.effect.map(
+        sequenceT(T.effect)(bind(port, hostname), accessApp(identity)),
+        ([server, app]): HasServer & HasExpress => ({
+          [serverEnv]: {
+            server,
+            onClose: []
+          },
+          [expressAppEnv]: {
+            app
+          }
+        })
+      )
+    ),
+    (_) =>
+      T.uninterruptible(
+        T.effect.chain(T.result(array.sequence(T.effect)(_[serverEnv].onClose)), () =>
+          T.async<Error, void>((res) => {
+            _[serverEnv].server.close((err) => {
+              if (err) {
+                res(left(err));
+              } else {
+                res(right(undefined));
+              }
+            });
+            return () => {
+              //
+            };
+          })
+        )
+      )
+  );

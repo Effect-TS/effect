@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { effect as T, managed as M } from "@matechs/effect";
 import * as EX from "@matechs/express";
 import { gql } from "apollo-server";
 import { array as A } from "fp-ts";
@@ -18,18 +18,18 @@ const Apollo = apollo(
       onConnect: (_, ws) =>
         T.access((_: { subOnConnect: string }) => ({
           ws,
-          message: "ok",
+          message: "ok"
         })),
       onDisconnect: () =>
         T.access((_: { subOnDisconnect: string }) => {
           //
-        }),
-    },
+        })
+    }
   },
   ({ req, connection }) =>
     T.access((_: { contextFnEnv: string }) => ({
       req: connection ? O.none : O.some(req),
-      sub: connection ? O.some(connection.context) : O.none,
+      sub: connection ? O.some(connection.context) : O.none
     }))
 );
 
@@ -65,7 +65,7 @@ const books = Apollo.binder({
         )
       )
     )
-  ),
+  )
 });
 
 const hi = Apollo.binder({
@@ -75,14 +75,14 @@ const hi = Apollo.binder({
         Apollo.accessContext,
         T.chain(({ req }) => (O.isSome(req) ? T.pure(`${_.bar} - with req`) : T.pure(_.bar)))
       )
-    ),
+    )
 });
 
 async function* gen(n: number, message: O.Option<string>) {
   let i = 0;
   while (i < n) {
     yield {
-      demo: { message: `${i++} - ${O.isSome(message) ? message.value : "no-sub"}` },
+      demo: { message: `${i++} - ${O.isSome(message) ? message.value : "no-sub"}` }
     };
   }
 }
@@ -117,39 +117,39 @@ export const demo = Apollo.binder({
           )
         )
       )
-  ),
+  )
 });
 
 const resolvers = Apollo.binder({
   ...hi,
   ...books,
-  ...demo,
+  ...demo
 });
 
-const main = pipe(Apollo.bindToSchema(resolvers, typeDefs), EX.bracketWithApp(8080));
+const main = pipe(Apollo.bindToSchema(resolvers, typeDefs), M.provideS(EX.managedExpress(8080)));
 
 const cancel = pipe(
   main,
   T.provideS({
-    foo: "foo",
+    foo: "foo"
   }),
   T.provideS({
-    bar: "bar",
+    bar: "bar"
   }),
   T.provideS({
-    subN: 10,
+    subN: 10
   }),
   T.provideS({
-    prefix: "ok",
+    prefix: "ok"
   }),
   T.provideS({
-    subOnDisconnect: "ok",
+    subOnDisconnect: "ok"
   }),
   T.provideS({
-    subOnConnect: "ok",
+    subOnConnect: "ok"
   }),
   T.provideS({
-    contextFnEnv: "ok",
+    contextFnEnv: "ok"
   }),
   T.provideS(EX.express),
   (x) =>
