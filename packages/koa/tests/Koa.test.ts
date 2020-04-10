@@ -1,6 +1,6 @@
 import "isomorphic-fetch";
 import * as assert from "assert";
-import { effect as T } from "@matechs/effect";
+import { effect as T, managed as M } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 import * as KOA from "../src";
 import * as H from "@matechs/http-client";
@@ -71,8 +71,10 @@ describe("Koa", () => {
         //
       });
 
-    const main = KOA.bracketWithApp(3004, "127.0.0.1")(program);
-    const fiber = await T.runToPromise(KOA.provideKoa(T.fork(main)));
+    const main = T.effect.chainTap(program, (_) => T.never);
+    const fiber = await T.runToPromise(
+      pipe(main, M.provideS(KOA.managedKoa(3004, "127.0.0.1")), T.fork, KOA.provideKoa)
+    );
 
     await T.runToPromise(T.delay(T.unit, 200));
 

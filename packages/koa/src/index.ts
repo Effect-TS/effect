@@ -1,5 +1,5 @@
 import KoaApp from "koa";
-import { effect as T } from "@matechs/effect";
+import { effect as T, managed as M } from "@matechs/effect";
 import * as KOA from "koa";
 import koaBodyParser from "koa-bodyparser";
 import KoaRouter from "koa-router";
@@ -252,42 +252,27 @@ export function bind(
     );
 }
 
-export function bracketWithApp(
-  port: number,
-  hostname?: string
-): <R, E>(op: T.Effect<R & HasRouter & HasKoa & HasServer, E, any>) => T.Effect<Koa & R, E, never> {
-  return (op) =>
-    withApp(
-      T.bracket(
-        bind(port, hostname)(T.accessEnvironment<HasServer & HasKoa & HasRouter>()),
-        (_) =>
-          T.asyncTotal((r) => {
-            const c = setTimeout(() => {
-              T.run(array.sequence(T.effect)(_[serverEnv].onClose), () => {
-                _[serverEnv].server.close((e) => {
-                  /* istanbul ignore if */
-                  if (e) {
-                    console.error("koa interruption failed");
-                    console.error(e);
-                  }
-                  r(undefined);
-                });
-              });
-            }, 100);
-            return (cb) => {
-              clearTimeout(c);
-              cb();
+export const managedKoa = (port: number, hostname?: string) =>
+  M.bracket(
+    withApp(bind(port, hostname)(T.accessEnvironment<HasRouter & HasServer & HasKoa>())),
+    (_) =>
+      T.uninterruptible(
+        T.effect.chain(T.result(array.sequence(T.effect)(_[serverEnv].onClose)), () =>
+          T.async<Error, void>((res) => {
+            _[serverEnv].server.close((err) => {
+              if (err) {
+                res(left(err));
+              } else {
+                res(right(undefined));
+              }
+            });
+            return () => {
+              //
             };
-          }),
-        (_) =>
-          pipe(
-            op,
-            T.provideS(_),
-            T.chain((_) => T.never)
-          )
+          })
+        )
       )
-    );
-}
+  );
 
 export function accessServerM<R, E, A>(
   f: (app: Server) => T.Effect<R, E, A>
