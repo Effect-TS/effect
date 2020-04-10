@@ -1,6 +1,6 @@
 {
   "name": "@matechs/express",
-  "version": "4.0.25",
+  "version": "4.0.26",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -29,7 +29,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/effect": "^5.0.24",
+    "@matechs/effect": "^5.0.25",
     "express": "^4.17.1",
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.15"
