@@ -82,7 +82,7 @@ export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
   };
 }
 
-export const koa: Koa = {
+export const provideKoa = T.provideS<Koa>({
   [koaEnv]: {
     route<R, E, A>(
       method: Method,
@@ -193,7 +193,7 @@ export const koa: Koa = {
       );
     }
   }
-};
+});
 
 export function withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<Koa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withApp(op));
