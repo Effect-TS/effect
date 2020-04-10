@@ -14,45 +14,43 @@ describe("Koa", () => {
   it("should use koa", async () => {
     const program = Do(T.effect)
       .do(
-        KOA.withRouter(
+        KOA.route(
+          "post",
+          "/",
+          KOA.accessReqM((r) => T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500, { res: 1 })))
+        )
+      )
+      .do(
+        KOA.route(
+          "post",
+          "/access",
+          KOA.accessReq((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
+        )
+      )
+      .do(
+        pipe(
           sequenceT(T.effect)(
             KOA.route(
               "post",
               "/",
               KOA.accessReqM((r) =>
-                T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500, { res: 1 }))
+                T.pure(KOA.routeResponse(r.path === "/sub" ? 200 : 500, { res: 1 }))
               )
             ),
             KOA.route(
               "post",
               "/access",
-              KOA.accessReq((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
-            ),
-            KOA.withSubRouter(
-              "/sub",
-              sequenceT(T.effect)(
-                KOA.route(
-                  "post",
-                  "/",
-                  KOA.accessReqM((r) =>
-                    T.pure(KOA.routeResponse(r.path === "/sub" ? 200 : 500, { res: 1 }))
-                  )
-                ),
-                KOA.route(
-                  "post",
-                  "/access",
-                  KOA.accessReq((r) =>
-                    KOA.routeResponse(r.path === "/sub/access" ? 200 : 500, { res: 1 })
-                  )
-                )
+              KOA.accessReq((r) =>
+                KOA.routeResponse(r.path === "/sub/access" ? 200 : 500, { res: 1 })
               )
-            ),
-            KOA.route("post", "/bad", T.raiseError(KOA.routeError(500, { res: 1 }))),
-            KOA.route("post", "/bad2", T.raiseAbort("abort")),
-            KOA.route("post", "/bad3", T.raiseInterrupt)
-          )
+            )
+          ),
+          KOA.withSubRouter("/sub")
         )
       )
+      .do(KOA.route("post", "/bad", T.raiseError(KOA.routeError(500, { res: 1 }))))
+      .do(KOA.route("post", "/bad2", T.raiseAbort("abort")))
+      .do(KOA.route("post", "/bad3", T.raiseInterrupt))
       .do(
         KOA.accessApp((app) => {
           if (!app) {
@@ -143,7 +141,7 @@ describe("Koa", () => {
     assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res6, done({ res: 1 }));
     assert.deepEqual(res7, done({ res: 1 }));
-    assert.deepEqual(res2, raise(some(`{\"res\":1}`))); // TODO: verify we want that decoded as string
+    assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
     assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
     assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
   });

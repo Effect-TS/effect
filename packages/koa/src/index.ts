@@ -5,13 +5,11 @@ import koaBodyParser from "koa-bodyparser";
 import KoaRouter from "koa-router";
 import { Server } from "http";
 import { pipe } from "fp-ts/lib/pipeable";
-import { sequenceS } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
 import { Do } from "fp-ts-contrib/lib/Do";
 
 export const koaAppEnv = "@matechs/koa/koaAppURI";
-
 export interface HasKoa {
   [koaAppEnv]: {
     app: KoaApp;
@@ -27,7 +25,6 @@ export interface HasRouter {
 }
 
 export const serverEnv = "@matechs/koa/serverURI";
-
 export interface HasServer {
   [serverEnv]: {
     server: Server;
@@ -131,7 +128,7 @@ export const provideKoa = T.provideS<Koa>({
     withRouter<R, E, A>(op: T.Effect<R & HasRouter, E, A>): T.Effect<R & HasKoa, E, A> {
       return T.provideR((r: R & HasKoa) => ({
         ...r,
-        [koaRouterEnv]: { ...r[koaRouterEnv], router: new KoaRouter() }
+        [koaRouterEnv]: { ...r[koaRouterEnv], router: new KoaRouter<any, {}>() }
       }))(
         Do(T.effect)
           .bind("result", op)
@@ -155,7 +152,7 @@ export const provideKoa = T.provideS<Koa>({
         [koaRouterEnv]: {
           ...r[koaRouterEnv],
           parent: r[koaRouterEnv].router,
-          router: new KoaRouter()
+          router: new KoaRouter<any, {}>()
         }
       }))(
         Do(T.effect)
@@ -199,62 +196,14 @@ export function withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<Koa &
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withApp(op));
 }
 
-export function withRouter<R, E, A>(
-  op: T.Effect<R & HasRouter, E, A>
-): T.Effect<Koa & HasKoa & R, E, A> {
+function withRouter<R, E, A>(op: T.Effect<R & HasRouter, E, A>): T.Effect<Koa & HasKoa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withRouter(op));
 }
 
-export function withSubRouter<R, E, A>(
-  path: string,
-  op: T.Effect<R & HasRouter, E, A>
-): T.Effect<Koa & HasRouter & R, E, A> {
-  return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withSubRouter(path, op));
-}
-
-export function bracketWithApp(
-  port: number,
-  hostname?: string
-): <R, E>(op: T.Effect<R & HasKoa & HasServer, E, any>) => T.Effect<Koa & R, E, never> {
-  return (op) =>
-    withApp(
-      T.bracket(
-        sequenceS(T.effect)({
-          server: bind(port, hostname),
-          onClose: T.pure<T.UIO<void>[]>([])
-        }),
-        ({ server, onClose }) =>
-          T.asyncTotal((r) => {
-            const c = setTimeout(() => {
-              T.run(array.sequence(T.effect)(onClose), () => {
-                server.close((e) => {
-                  /* istanbul ignore if */
-                  if (e) {
-                    console.error("koa interruption failed");
-                    console.error(e);
-                  }
-                  r(undefined);
-                });
-              });
-            }, 100);
-            return (cb) => {
-              clearTimeout(c);
-              cb();
-            };
-          }),
-        ({ server, onClose }) =>
-          pipe(
-            op,
-            T.provideS<HasServer>({
-              [serverEnv]: {
-                server,
-                onClose
-              }
-            }),
-            T.chain((_) => T.never)
-          )
-      )
-    );
+export function withSubRouter(
+  path: string
+): <R, E, A>(op: T.Effect<R, E, A>) => T.Effect<Koa & HasRouter & R, E, A> {
+  return (op) => T.accessM(({ [koaEnv]: koa }: Koa) => koa.withSubRouter(path, op));
 }
 
 export const contextEnv = "@matechs/koa/ContextURI";
@@ -282,8 +231,72 @@ export function route<R, E, A>(
   );
 }
 
-export function bind(port: number, hostname?: string): T.Effect<HasKoa & Koa, T.NoErr, Server> {
-  return T.accessM(({ [koaEnv]: koa }: Koa) => koa.bind(port, hostname));
+export function bind(
+  port: number,
+  hostname?: string
+): <R, E, A>(_: T.Effect<R & HasRouter & HasServer, E, A>) => T.Effect<HasKoa & Koa & R, E, A> {
+  return (op) =>
+    T.effect.chain(
+      T.accessM(({ [koaEnv]: koa }: Koa) => koa.bind(port, hostname)),
+      (server) =>
+        pipe(
+          op,
+          T.provideS<HasServer>({
+            [serverEnv]: {
+              onClose: [],
+              server
+            }
+          }),
+          withRouter
+        )
+    );
+}
+
+export function bracketWithApp(
+  port: number,
+  hostname?: string
+): <R, E>(op: T.Effect<R & HasRouter & HasKoa & HasServer, E, any>) => T.Effect<Koa & R, E, never> {
+  return (op) =>
+    withApp(
+      T.bracket(
+        bind(port, hostname)(T.accessEnvironment<HasServer & HasKoa & HasRouter>()),
+        (_) =>
+          T.asyncTotal((r) => {
+            const c = setTimeout(() => {
+              T.run(array.sequence(T.effect)(_[serverEnv].onClose), () => {
+                _[serverEnv].server.close((e) => {
+                  /* istanbul ignore if */
+                  if (e) {
+                    console.error("koa interruption failed");
+                    console.error(e);
+                  }
+                  r(undefined);
+                });
+              });
+            }, 100);
+            return (cb) => {
+              clearTimeout(c);
+              cb();
+            };
+          }),
+        (_) =>
+          pipe(
+            op,
+            T.provideS(_),
+            T.chain((_) => T.never)
+          )
+      )
+    );
+}
+
+export function accessServerM<R, E, A>(
+  f: (app: Server) => T.Effect<R, E, A>
+): T.Effect<HasServer & R, E, A> {
+  return T.accessM(({ [serverEnv]: koa }: HasServer) => f(koa.server));
+}
+
+export function accessServer<A>(f: (app: Server) => A): T.Effect<HasServer, never, A> {
+  return T.access(({ [serverEnv]: koa }: HasServer) => f(koa.server));
 }
 
 export function accessAppM<R, E, A>(
