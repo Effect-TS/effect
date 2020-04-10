@@ -44,7 +44,13 @@ const routeD = KOA.route(
 const mainR = sequenceT(T.effect)(routeA, routeB);
 const subR = pipe(sequenceT(T.effect)(routeC, routeD), KOA.withSubRouter("/sub"));
 
-const program = pipe(sequenceT(T.effect)(mainR, subR), M.provideS(KOA.managedKoa(8081)), T.fork);
+const program = pipe(
+  sequenceT(T.effect)(mainR, subR),
+  // keep process waiting
+  T.chainTap(() => T.never),
+  M.provideS(KOA.managedKoa(8081)),
+  T.fork
+);
 
 T.run(
   pipe(program, RM.provideRandomMessage, KOA.provideKoa),
