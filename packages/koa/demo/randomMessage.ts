@@ -1,7 +1,7 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 
 /**
- * Definition of a calculator module
+ * Definition of a random message module
  */
 
 export const RandomMessageURI = "@uris-free/RandomMessage";
