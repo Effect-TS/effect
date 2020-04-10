@@ -53,7 +53,11 @@ const program = pipe(
 );
 
 T.run(
-  pipe(program, RM.provideRandomMessage, KOA.provideKoa()),
+  pipe(
+    program,
+    RM.provideRandomMessage,
+    KOA.provideKoa((app) => app.use((ctx, next) => { ctx.set("X-Request-Id", "my-id"); return next() }))
+  ),
   E.fold(
     (server) => {
       process.on("SIGINT", () => {
