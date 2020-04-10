@@ -7,13 +7,12 @@ import * as C from "node-libcurl";
 import path from "path";
 import querystring, { ParsedUrlQueryInput } from "querystring";
 import { fromNullable } from "fp-ts/lib/Option";
+import { Endomorphism, identity } from "fp-ts/lib/function";
 
-export const libcurl: (caPath?: string) => H.Http = (
-  caPath = path.join(
-    require.resolve("@matechs/http-client-libcurl").replace("index.js", ""),
-    "../cacert-2019-11-27.pem"
-  )
-) => ({
+export const libcurl: (_?: {
+  caPath?: string;
+  requestTransformer?: Endomorphism<C.Curl>;
+}) => H.Http = (_ = {}) => ({
   [H.httpEnv]: {
     request: (
       method: H.Method,
@@ -36,6 +35,14 @@ export const libcurl: (caPath?: string) => H.Http = (
               error: new Error("binary not supported")
             })
         : T.async((done) => {
+            const {
+              caPath = path.join(
+                require.resolve("@matechs/http-client-libcurl").replace("index.js", ""),
+                "../cacert-2019-11-27.pem"
+              ),
+              requestTransformer = identity
+            } = _;
+
             const req = new C.Curl();
             const reqHead = [
               ...H.foldRequestType(
@@ -50,6 +57,8 @@ export const libcurl: (caPath?: string) => H.Http = (
                 R.collect((k, v) => `${k}: ${v}`)
               )
             ];
+
+            requestTransformer(req);
 
             req.setOpt("URL", url);
             req.setOpt("CAINFO", caPath);
@@ -157,5 +166,3 @@ function getHeaders(headers: Buffer | C.HeaderInfo[]): C.HeaderInfo {
   /* istanbul ignore next */
   return headers.length > 0 ? (typeof headers[0] !== "number" ? headers[0] : {}) : {};
 }
-
-export const client = libcurl();

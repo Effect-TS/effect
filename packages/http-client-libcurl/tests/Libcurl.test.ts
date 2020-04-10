@@ -2,7 +2,7 @@ import { effect as T } from "@matechs/effect";
 import * as H from "@matechs/http-client";
 import assert from "assert";
 import express from "express";
-import { client } from "../src";
+import { libcurl } from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
 import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
 import { Exit } from "@matechs/effect/lib/original/exit";
@@ -13,7 +13,14 @@ function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provideS(client),
+      T.provideS(
+        libcurl({
+          requestTransformer: (_) => {
+            _.setOpt("FORBID_REUSE", 1);
+            return _;
+          }
+        })
+      ),
       T.provideS(
         H.middlewareStack([
           H.withPathHeaders({ foo: "bar" }, (path) => path === "http://127.0.0.1:4005/middle", true)
@@ -36,7 +43,7 @@ function timer<R, E, A>(_: T.Effect<R, E, A>) {
     )
     .doL(({ s, e }) =>
       T.sync(() => {
-        assert.strictEqual(e.getTime() - s.getTime() < 120, true);
+        assert.strictEqual(e.getTime() - s.getTime() < 250, true);
       })
     )
     .return(({ r }) => r);
@@ -363,7 +370,7 @@ describe("Libcurl", () => {
     let res;
 
     const cancel = T.run(
-      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provideAll(client)),
+      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provideAll(libcurl())),
       (r) => {
         res = r;
       }

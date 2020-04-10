@@ -1,12 +1,12 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import "isomorphic-fetch";
+import { effect as T, freeEnv as F, exit as EX } from "@matechs/effect";
 import * as E from "@matechs/express";
 import * as RPC from "../src";
 import * as RPCCLI from "@matechs/rpc-client";
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as L from "@matechs/http-client-libcurl";
-import { done, raise } from "@matechs/effect/lib/original/exit";
+import * as L from "@matechs/http-client-fetch";
 
 const configEnv: unique symbol = Symbol();
 
@@ -73,25 +73,37 @@ describe("RPC", () => {
       )(program)
     );
 
-    const clientEnv = pipe(
-      T.noEnv,
-      T.mergeEnv(L.client),
-      T.mergeEnv({
-        [RPCCLI.clientConfigEnv]: {
-          [counterEnv]: {
-            baseUrl: "http://127.0.0.1:9003/counter"
+    const incResult = await T.runToPromiseExit(
+      pipe(
+        increment(1),
+        T.provideS(L.client(fetch)),
+        T.provideAll({
+          [RPCCLI.clientConfigEnv]: {
+            [counterEnv]: {
+              baseUrl: "http://127.0.0.1:9003/counter"
+            }
           }
-        }
-      })
+        })
+      )
     );
 
-    const incResult = await T.runToPromiseExit(T.provideAll(clientEnv)(increment(1)));
-
-    const niResult = await T.runToPromiseExit(T.provideAll(clientEnv)(ni));
+    const niResult = await T.runToPromiseExit(
+      pipe(
+        ni,
+        T.provideS(L.client(fetch)),
+        T.provideAll({
+          [RPCCLI.clientConfigEnv]: {
+            [counterEnv]: {
+              baseUrl: "http://127.0.0.1:9003/counter"
+            }
+          }
+        })
+      )
+    );
 
     result.server.close();
 
-    assert.deepEqual(incResult, done(2));
-    assert.deepEqual(niResult, raise("not implemented"));
+    assert.deepEqual(incResult, EX.done(2));
+    assert.deepEqual(niResult, EX.raise("not implemented"));
   });
 });
