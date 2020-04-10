@@ -54,10 +54,10 @@ const program = KOA.withApp(
     .return((s) => s.server)
 );
 
-const envLive = pipe(T.noEnv, T.mergeEnv(KOA.koa), T.mergeEnv(RM.env));
+const envLive = pipe(T.noEnv, T.mergeEnv(KOA.koa));
 
 T.run(
-  T.provideAll(envLive)(program),
+  T.provideAll(envLive)(pipe(program, RM.provideRandomMessage)),
   E.fold(
     (server) => {
       process.on("SIGINT", () => {
