@@ -25,6 +25,27 @@ const program = KOA.withApp(
             Do(T.effect)
               .bind("message", RM.hitMe())
               .return(({ message }) => KOA.routeResponse(200, { message }))
+          ),
+          KOA.withSubRouter(
+            "/sub",
+            sequenceT(T.effect)(
+              KOA.route(
+                "get",
+                "/",
+                T.pure(
+                  KOA.routeResponse(200, {
+                    message: "sub-OK"
+                  })
+                )
+              ),
+              KOA.route(
+                "get",
+                "/random-message",
+                Do(T.effect)
+                  .bind("message", RM.hitMe())
+                  .return(({ message }) => KOA.routeResponse(200, { message: `sub-${message}` }))
+              )
+            )
           )
         )
       )

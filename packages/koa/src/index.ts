@@ -22,6 +22,7 @@ export const koaRouterEnv = "@matechs/koa/routerURI";
 export interface HasRouter {
   [koaRouterEnv]: {
     router: KoaRouter;
+    parent?: KoaRouter;
   };
 }
 
@@ -41,6 +42,10 @@ export const koaEnv = "@matechs/koa/koaURI";
 export interface KoaOps {
   withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A>;
   withRouter<R, E, A>(op: T.Effect<R & HasKoa & HasRouter, E, A>): T.Effect<R & HasKoa, E, A>;
+  withSubRouter<R, E, A>(
+    path: string,
+    op: T.Effect<R & HasKoa & HasRouter, E, A>
+  ): T.Effect<R & HasKoa & HasRouter, E, A>;
   route<R, E, A>(
     method: Method,
     path: string,
@@ -141,6 +146,31 @@ export const koa: Koa = {
           .return((r) => r.result)
       );
     },
+    withSubRouter<R, E, A>(
+      path: string,
+      op: T.Effect<R & HasKoa & HasRouter, E, A>
+    ): T.Effect<R & HasKoa & HasRouter, E, A> {
+      return T.provideR((r: R & HasRouter & HasKoa) => ({
+        ...r,
+        [koaRouterEnv]: {
+          ...r[koaRouterEnv],
+          parent: r[koaRouterEnv].router,
+          router: new KoaRouter()
+        }
+      }))(
+        Do(T.effect)
+          .bind("result", op)
+          .do(
+            T.accessM(({ [koaRouterEnv]: { parent, router } }: HasRouter & HasKoa) =>
+              T.sync(() => {
+                parent!.use(path, router.allowedMethods());
+                parent!.use(path, router.routes());
+              })
+            )
+          )
+          .return((r) => r.result)
+      );
+    },
     bind(port: number, hostname?: string): T.Effect<HasKoa, T.NoErr, Server> {
       return T.accessM(({ [koaAppEnv]: { app } }: HasKoa) =>
         T.orAbort(
@@ -173,6 +203,13 @@ export function withRouter<R, E, A>(
   op: T.Effect<R & HasKoa & HasRouter, E, A>
 ): T.Effect<Koa & HasKoa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withRouter(op));
+}
+
+export function withSubRouter<R, E, A>(
+  path: string,
+  op: T.Effect<R & HasKoa & HasRouter, E, A>
+): T.Effect<Koa & HasKoa & HasRouter & R, E, A> {
+  return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withSubRouter(path, op));
 }
 
 export function bracketWithApp(
