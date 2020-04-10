@@ -45,7 +45,14 @@ const mainR = sequenceT(T.effect)(routeA, routeB);
 const subR = pipe(sequenceT(T.effect)(routeC, routeD), KOA.withSubRouter("/sub"));
 
 const program = pipe(
-  sequenceT(T.effect)(mainR, subR),
+  sequenceT(T.effect)(
+    mainR,
+    subR,
+    KOA.middleware((ctx, next) => {
+      ctx.set("X-Request-Id", "my-id");
+      return next();
+    })
+  ),
   // keep process waiting
   T.chainTap(() => T.never),
   M.provideS(KOA.managedKoa(8081)),
@@ -53,11 +60,7 @@ const program = pipe(
 );
 
 T.run(
-  pipe(
-    program,
-    RM.provideRandomMessage,
-    KOA.provideKoa((app) => app.use((ctx, next) => { ctx.set("X-Request-Id", "my-id"); return next() }))
-  ),
+  pipe(program, RM.provideRandomMessage, KOA.provideKoa),
   E.fold(
     (server) => {
       process.on("SIGINT", () => {

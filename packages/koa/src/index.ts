@@ -3,12 +3,12 @@ import { effect as T, managed as M } from "@matechs/effect";
 import * as KOA from "koa";
 import koaBodyParser from "koa-bodyparser";
 import KoaRouter from "koa-router";
+import KC from "koa-compose";
 import { Server } from "http";
 import { pipe } from "fp-ts/lib/pipeable";
 import { array } from "fp-ts/lib/Array";
 import { left, right } from "fp-ts/lib/Either";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { Endomorphism, identity } from "fp-ts/lib/function";
 
 export const koaAppEnv = "@matechs/koa/koaAppURI";
 export interface HasKoa {
@@ -33,13 +33,21 @@ export interface HasServer {
   };
 }
 
+export const middleURI = "@matechs/koa/middleURI";
+
+export interface HasMiddle {
+  [middleURI]: {
+    middlewares: Array<KOA.Middleware<KOA.ParameterizedContext<any, any>>>;
+  };
+}
+
 export type Method = "post" | "get" | "put" | "patch" | "delete";
 
 export const koaEnv = "@matechs/koa/koaURI";
 
 export interface KoaOps {
   withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A>;
-  withRouter<R, E, A>(op: T.Effect<R & HasRouter, E, A>): T.Effect<R & HasKoa, E, A>;
+  withRouter<R, E, A>(op: T.Effect<R & HasMiddle & HasRouter, E, A>): T.Effect<R & HasKoa, E, A>;
   withSubRouter<R, E, A>(
     path: string,
     op: T.Effect<R & HasRouter, E, A>
@@ -80,7 +88,7 @@ export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
   };
 }
 
-export const provideKoa = (middle: Endomorphism<KoaApp> = identity) => T.provideS<Koa>({
+export const provideKoa = T.provideS<Koa>({
   [koaEnv]: {
     route<R, E, A>(
       method: Method,
@@ -123,22 +131,31 @@ export const provideKoa = (middle: Endomorphism<KoaApp> = identity) => T.provide
     withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A> {
       return T.provideR((r: R) => ({
         ...r,
-        [koaAppEnv]: { ...r[koaAppEnv], app: middle(new KoaApp()) }
+        [koaAppEnv]: { ...r[koaAppEnv], app: new KoaApp() }
       }))(op);
     },
-    withRouter<R, E, A>(op: T.Effect<R & HasRouter, E, A>): T.Effect<R & HasKoa, E, A> {
-      return T.provideR((r: R & HasKoa) => ({
+    withRouter<R, E, A>(op: T.Effect<R & HasMiddle & HasRouter, E, A>): T.Effect<R & HasKoa, E, A> {
+      return T.provideR((r: R & HasKoa): R & HasMiddle & HasKoa & HasRouter => ({
         ...r,
-        [koaRouterEnv]: { ...r[koaRouterEnv], router: new KoaRouter<any, {}>() }
+        [koaRouterEnv]: { ...r[koaRouterEnv], router: new KoaRouter<any, {}>() },
+        [middleURI]: {
+          middlewares: []
+        }
       }))(
         Do(T.effect)
           .bind("result", op)
           .do(
-            T.accessM(({ [koaRouterEnv]: { router }, [koaAppEnv]: { app } }: HasRouter & HasKoa) =>
-              T.sync(() => {
-                app.use(router.allowedMethods());
-                app.use(router.routes());
-              })
+            T.accessM(
+              ({
+                [koaRouterEnv]: { router },
+                [koaAppEnv]: { app },
+                [middleURI]: { middlewares }
+              }: HasRouter & HasKoa & HasMiddle) =>
+                T.sync(() => {
+                  app.use(KC(middlewares));
+                  app.use(router.allowedMethods());
+                  app.use(router.routes());
+                })
             )
           )
           .return((r) => r.result)
@@ -197,7 +214,9 @@ export function withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<Koa &
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withApp(op));
 }
 
-function withRouter<R, E, A>(op: T.Effect<R & HasRouter, E, A>): T.Effect<Koa & HasKoa & R, E, A> {
+function withRouter<R, E, A>(
+  op: T.Effect<R & HasMiddle & HasRouter, E, A>
+): T.Effect<Koa & HasKoa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withRouter(op));
 }
 
@@ -235,7 +254,9 @@ export function route<R, E, A>(
 export function bind(
   port: number,
   hostname?: string
-): <R, E, A>(_: T.Effect<R & HasRouter & HasServer, E, A>) => T.Effect<HasKoa & Koa & R, E, A> {
+): <R, E, A>(
+  _: T.Effect<R & HasRouter & HasMiddle & HasServer, E, A>
+) => T.Effect<HasKoa & Koa & R, E, A> {
   return (op) =>
     T.effect.chain(
       T.accessM(({ [koaEnv]: koa }: Koa) => koa.bind(port, hostname)),
@@ -255,7 +276,9 @@ export function bind(
 
 export const managedKoa = (port: number, hostname?: string) =>
   M.bracket(
-    withApp(bind(port, hostname)(T.accessEnvironment<HasRouter & HasServer & HasKoa>())),
+    withApp(
+      bind(port, hostname)(T.accessEnvironment<HasRouter & HasServer & HasKoa & HasMiddle>())
+    ),
     (_) =>
       T.uninterruptible(
         T.effect.chain(T.result(array.sequence(T.effect)(_[serverEnv].onClose)), () =>
@@ -303,6 +326,14 @@ export function accessReq<A>(f: (ctx: KOA.ParameterizedContext) => A): T.Effect<
 
 export function accessApp<A>(f: (app: KOA) => A): T.Effect<HasKoa, T.NoErr, A> {
   return T.access(({ [koaAppEnv]: koa }: HasKoa) => f(koa.app));
+}
+
+export function middleware(
+  middle: KOA.Middleware<KOA.ParameterizedContext<any, any>>
+): T.Effect<HasMiddle, never, void> {
+  return T.access((_: HasMiddle) => {
+    _[middleURI].middlewares.push(middle);
+  });
 }
 
 export type KoaEnv = HasKoa & Koa;

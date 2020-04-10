@@ -68,23 +68,25 @@ describe("Koa", () => {
           })
         )
       )
+      .do(
+        KOA.middleware((ctx, next) => {
+          ctx.set("X-Request-Id", "my-id");
+          return next();
+        })
+      )
+      .do(
+        KOA.middleware((ctx, next) => {
+          ctx.set("X-Request-Id-2", "my-id-2");
+          return next();
+        })
+      )
       .return(() => {
         //
       });
 
     const main = T.effect.chainTap(program, (_) => T.never);
     const fiber = await T.runToPromise(
-      pipe(
-        main,
-        M.provideS(KOA.managedKoa(3004, "127.0.0.1")),
-        T.fork,
-        KOA.provideKoa((app) =>
-          app.use((ctx, next) => {
-            ctx.set("X-Request-Id", "my-id");
-            return next();
-          })
-        )
-      )
+      pipe(main, M.provideS(KOA.managedKoa(3004, "127.0.0.1")), T.fork, KOA.provideKoa)
     );
 
     await T.runToPromise(T.delay(T.unit, 200));
@@ -152,7 +154,12 @@ describe("Koa", () => {
       pipe(
         H.post("http://127.0.0.1:3004/", {}),
         T.chain((s) =>
-          T.fromOption(() => new Error("empty body"))(O.fromNullable(s.headers["x-request-id"]))
+          T.fromOption(() => new Error("empty body"))(
+            sequenceT(O.option)(
+              O.fromNullable(s.headers["x-request-id"]),
+              O.fromNullable(s.headers["x-request-id-2"])
+            )
+          )
         ),
         T.provideS(L.client(fetch))
       )
@@ -164,7 +171,7 @@ describe("Koa", () => {
     assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res6, done({ res: 1 }));
     assert.deepEqual(res7, done({ res: 1 }));
-    assert.deepEqual(res8, done("my-id"));
+    assert.deepEqual(res8, done(["my-id", "my-id-2"]));
     assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
     assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
     assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
