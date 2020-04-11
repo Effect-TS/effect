@@ -7,7 +7,7 @@ import { Monad3E, MonadThrow3E, Alt3E } from "../overload";
 // alpha version exposed for exeperimentation purposes
 /* istanbul ignore file */
 
-export type StreamEitherT<R, E, A> = S.Stream<R, never, Ei.Either<E, A>>;
+type StreamEitherT<R, E, A> = S.Stream<R, never, Ei.Either<E, A>>;
 
 export interface StreamEither<R, E, A> {
   _TAG: () => "StreamEither";
@@ -16,13 +16,33 @@ export interface StreamEither<R, E, A> {
   _R: (_: R) => void;
 }
 
-export const toS = <R, E, A>(_: StreamEitherT<R, E, A>): StreamEither<R, E, A> => _ as any;
-export const fromS = <R, E, A>(_: StreamEither<R, E, A>): StreamEitherT<R, E, A> => _ as any;
+const toS = <R, E, A>(_: StreamEitherT<R, E, A>): StreamEither<R, E, A> => _ as any;
+const fromS = <R, E, A>(_: StreamEither<R, E, A>): StreamEitherT<R, E, A> => _ as any;
 
 export function encaseEffect<R, E, A>(eff: T.Effect<R, E, A>): StreamEither<R, E, A> {
   return toS(
     S.encaseEffect(T.effect.chainError(T.effect.map(eff, Ei.right), (e) => T.pure(Ei.left(e))))
   );
+}
+
+export function encaseStream<R, E, A>(
+  _: S.Stream<R, never, Ei.Either<E, A>>
+): StreamEither<R, E, A> {
+  return toS(_);
+}
+
+export function toStream<R, E, A>(_: StreamEither<R, E, A>): S.Stream<R, never, Ei.Either<E, A>> {
+  return fromS(_);
+}
+
+export function toStreamError<R, E, A>(_: StreamEither<R, E, A>): S.Stream<R, E, A> {
+  return S.stream.chain(fromS(_), (e) => {
+    if (Ei.isLeft(e)) {
+      return S.encaseEffect<R, E, A>(T.raiseError(e.left));
+    } else {
+      return S.stream.of<R, E, A>(e.right);
+    }
+  });
 }
 
 function chain_<R, E, A, R2, E2, B>(
@@ -94,25 +114,15 @@ function map_<R, E, A, B>(ma: StreamEither<R, E, A>, f: (a: A) => B): StreamEith
 }
 
 export function collectArray<R, E, A>(stream: StreamEither<R, E, A>): T.Effect<R, E, A[]> {
-  return S.collectArray(toStream(stream));
+  return S.collectArray(toStreamError(stream));
 }
 
 export function take<R, E, A>(stream: StreamEither<R, E, A>, n: number): StreamEither<R, E, A> {
   return toS(S.stream.take(fromS(stream), n));
 }
 
-export function toStream<R, E, A>(stream: StreamEither<R, E, A>): S.Stream<R, E, A> {
-  return S.stream.chain(fromS(stream), (e) => {
-    if (Ei.isLeft(e)) {
-      return S.encaseEffect<R, E, A>(T.raiseError(e.left));
-    } else {
-      return S.stream.of<R, E, A>(e.right);
-    }
-  });
-}
-
 export function drain<R, E, A>(stream: StreamEither<R, E, A>): T.Effect<R, E, void> {
-  return S.drain(toStream(stream));
+  return S.drain(toStreamError(stream));
 }
 
 export function fromSource<R, E, A>(

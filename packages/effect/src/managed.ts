@@ -21,7 +21,7 @@ export enum ManagedTag {
 export type ManagedT<R, E, A> = (
   _: R
 ) =>
-  | Pure<E, A>
+  | Pure<A>
   | Encase<E, A>
   | Bracket<E, A>
   | Suspended<R, E, A>
@@ -35,10 +35,10 @@ export interface Managed<R, E, A> {
   _R: (_: R) => void;
 }
 
-export const toM = <R, E, A>(_: ManagedT<R, E, A>): Managed<R, E, A> => _ as any;
-export const fromM = <R, E, A>(_: Managed<R, E, A>): ManagedT<R, E, A> => _ as any;
+const toM = <R, E, A>(_: ManagedT<R, E, A>): Managed<R, E, A> => _ as any;
+const fromM = <R, E, A>(_: Managed<R, E, A>): ManagedT<R, E, A> => _ as any;
 
-export interface Pure<E, A> {
+export interface Pure<A> {
   readonly _tag: ManagedTag.Pure;
   readonly value: A;
 }

@@ -1,6 +1,12 @@
-import { effect as T, managed as M, exit as E, stream as S } from "@matechs/effect";
+import {
+  effect as T,
+  managed as M,
+  exit as E,
+  stream as S,
+  streameither as SE
+} from "@matechs/effect";
 import * as Rx from "rxjs";
-import { Either, right, left } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
 
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
@@ -29,19 +35,20 @@ export function encaseObservable<E, A>(
   );
 }
 
-export function encaseObservableEither<E, A>(
-  observable: Rx.Observable<A>
-): S.Stream<T.NoEnv, never, Either<E, A>> {
-  return S.fromSource(
+export function encaseObservableEither<A, E = unknown>(
+  observable: Rx.Observable<A>,
+  mapError: (_: any) => E = identity
+): SE.StreamEither<T.NoEnv, E, A> {
+  return SE.fromSource(
     M.managed.chain(
       M.bracket(
         T.sync(() => {
-          const { next, ops, hasCB } = S.su.queueUtils<never, Either<E, A>>();
+          const { next, ops, hasCB } = S.su.queueUtils<E, A>();
 
           return {
             s: observable.subscribe(
-              (a) => next({ _tag: "offer", a: right(a) }),
-              (e) => next({ _tag: "offer", a: left(e) }),
+              (a) => next({ _tag: "offer", a: a }),
+              (e) => next({ _tag: "error", e: mapError(e) }),
               () => next({ _tag: "complete" })
             ),
             ops,
