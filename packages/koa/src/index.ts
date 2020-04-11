@@ -98,7 +98,7 @@ export const provideKoa = T.provideS<Koa>({
       return T.accessM((r: R & HasRouter) =>
         T.sync(() => {
           const router = r[koaRouterEnv].router;
-          router[method](path, koaBodyParser(), (ctx) => {
+          router[method](path, koaBodyParser(), (ctx) =>
             T.runToPromiseExit(T.provideAll(r)(f(ctx))).then((o) => {
               switch (o._tag) {
                 case "Done":
@@ -123,8 +123,8 @@ export const provideKoa = T.provideS<Koa>({
                   };
                   return;
               }
-            });
-          });
+            })
+          );
         })
       );
     },
