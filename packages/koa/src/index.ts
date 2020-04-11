@@ -98,7 +98,7 @@ export const provideKoa = T.provideS<Koa>({
       return T.accessM((r: R & HasRouter) =>
         T.sync(() => {
           const router = r[koaRouterEnv].router;
-          router[method](path, koaBodyParser(), (ctx) => {
+          router[method](path, koaBodyParser(), (ctx) =>
             T.runToPromiseExit(T.provideAll(r)(f(ctx))).then((o) => {
               switch (o._tag) {
                 case "Done":
@@ -123,8 +123,8 @@ export const provideKoa = T.provideS<Koa>({
                   };
                   return;
               }
-            });
-          });
+            })
+          );
         })
       );
     },
@@ -333,6 +333,25 @@ export function middleware(
 ): T.Effect<HasMiddle, never, void> {
   return T.access((_: HasMiddle) => {
     _[middleURI].middlewares.push(middle);
+  });
+}
+
+export function middlewareM<R, E, A>(
+  middle: (cont: T.UIO<void>) => T.Effect<R, E, A>
+): T.Effect<HasMiddle & T.Erase<R, Context>, never, void> {
+  return T.access((_: HasMiddle & R) => {
+    _[middleURI].middlewares.push((ctx, next) =>
+      pipe(
+        middle(T.orAbort(T.suspended(() => T.fromPromise(next)))),
+        T.provideS(_),
+        T.provideS<Context>({
+          [contextEnv]: {
+            ctx
+          }
+        }),
+        T.runToPromise
+      )
+    );
   });
 }
 
