@@ -3,13 +3,6 @@
 import { IO, Sync, Either } from "../src";
 import * as assert from "assert";
 
-const FooURI = "uris/foo";
-interface Foo {
-  [FooURI]: {
-    getNumber: () => Sync<number>;
-  };
-}
-
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
@@ -69,12 +62,6 @@ const e = IO.pipe(
 
 const f = IO.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
-const provideFoo = IO.provideS<Foo>({
-  [FooURI]: {
-    getNumber: () => IO.pure(1)
-  }
-});
-
 const provideBar = IO.provideSO<Bar>({
   [BarURI]: {
     getString: () => IO.pure("bar")
@@ -89,13 +76,13 @@ const provideBaz = IO.provideSW<Baz>()(a2)((s) => ({
 
 describe("Prelude", () => {
   it("should run effect composition", async () => {
-    await IO.pipe(f, provideBaz, provideFoo, provideBar, IO.run).then((exit) => {
+    await IO.pipe(f, provideBaz, provideBar, IO.run).then((exit) => {
       assert.deepStrictEqual(IO.Exit.isRaise(exit) && exit.error, new AError("mmm"));
     });
   });
 
   it("should run effect composition - sync", () => {
-    const exit = IO.pipe(a3, provideBaz, provideFoo, provideBar, IO.runSync);
+    const exit = IO.pipe(a3, provideBaz, provideBar, IO.runSync);
 
     assert.deepStrictEqual(IO.Exit.isDone(exit) && exit.value, "value: bar");
   });
