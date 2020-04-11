@@ -13,7 +13,7 @@ import { sequenceT } from "fp-ts/lib/Apply";
 
 describe("Koa", () => {
   it("should use koa", async () => {
-    const program = Do(T.effect)
+    const config = Do(T.effect)
       .do(
         KOA.route(
           "post",
@@ -54,6 +54,18 @@ describe("Koa", () => {
       .do(KOA.route("post", "/bad2", T.raiseAbort("abort")))
       .do(KOA.route("post", "/bad3", T.raiseInterrupt))
       .do(
+        KOA.middleware((ctx, next) => {
+          ctx.set("X-Request-Id", "my-id");
+          return next();
+        })
+      )
+      .do(
+        KOA.middleware((ctx, next) => {
+          ctx.set("X-Request-Id-2", "my-id-2");
+          return next();
+        })
+      )
+      .do(
         KOA.accessApp((app) => {
           if (!app) {
             throw new Error("Aborted app not found");
@@ -69,121 +81,115 @@ describe("Koa", () => {
           })
         )
       )
-      .do(
-        KOA.middleware((ctx, next) => {
-          ctx.set("X-Request-Id", "my-id");
-          return next();
-        })
+      .done();
+
+    const program = Do(T.effect)
+      .bindL("res", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-      .do(
-        KOA.middleware((ctx, next) => {
-          ctx.set("X-Request-Id-2", "my-id-2");
-          return next();
-        })
+      .bindL("res2", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/bad", {}),
+          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-      .return(() => {
-        //
-      });
-
-    const main = T.effect.chainTap(program, (_) => T.never);
-    const fiber = await T.runToPromise(
-      pipe(main, M.provideS(KOA.managedKoa(3004, "127.0.0.1")), T.fork, KOA.provideKoa)
-    );
-
-    await T.runToPromise(T.delay(T.unit, 200));
-
-    const res = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res3", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/bad2", {}),
+          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-    );
-
-    const res2 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/bad", {}),
-        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res4", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/bad3", {}),
+          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-    );
-
-    const res3 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/bad2", {}),
-        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res5", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/access", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-    );
-
-    const res4 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/bad3", {}),
-        T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res6", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/sub", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-    );
-
-    const res5 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/access", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
+      .bindL("res7", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/sub/access", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
-    );
-
-    const res6 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/sub", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
-      )
-    );
-
-    const res7 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/sub/access", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
-      )
-    );
-
-    const res8 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/", {}),
-        T.chain((s) =>
-          T.fromOption(() => new Error("empty body"))(
-            sequenceT(O.option)(
-              O.fromNullable(s.headers["x-request-id"]),
-              O.fromNullable(s.headers["x-request-id-2"])
+      .bindL("res8", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/", {}),
+          T.chain((s) =>
+            T.fromOption(() => new Error("empty body"))(
+              sequenceT(O.option)(
+                O.fromNullable(s.headers["x-request-id"]),
+                O.fromNullable(s.headers["x-request-id-2"])
+              )
             )
-          )
-        ),
-        T.provideS(L.client(fetch))
+          ),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
       )
+      .bindL("res9", () =>
+        pipe(
+          H.post("http://127.0.0.1:3004/delay", {}),
+          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.provideS(L.client(fetch)),
+          T.result
+        )
+      )
+      .done();
+
+    const fiber = await pipe(
+      T.effect.chainTap(config, (_) => T.never),
+      M.provideS(KOA.managedKoa(3004, "127.0.0.1")),
+      T.fork,
+      KOA.provideKoa,
+      T.runToPromise
     );
 
-    const res9 = await T.runToPromiseExit(
-      pipe(
-        H.post("http://127.0.0.1:3004/delay", {}),
-        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-        T.provideS(L.client(fetch))
-      )
+    await pipe(program, T.runToPromise).then(
+      ({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
+        assert.deepEqual(res, done({ res: 1 }));
+        assert.deepEqual(res5, done({ res: 1 }));
+        assert.deepEqual(res6, done({ res: 1 }));
+        assert.deepEqual(res7, done({ res: 1 }));
+        assert.deepEqual(res9, done({ res: 1 }));
+        assert.deepEqual(res8, done(["my-id", "my-id-2"]));
+        assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
+        assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+        assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
+      }
     );
 
     await T.runToPromise(fiber.interrupt);
-
-    assert.deepEqual(res, done({ res: 1 }));
-    assert.deepEqual(res5, done({ res: 1 }));
-    assert.deepEqual(res6, done({ res: 1 }));
-    assert.deepEqual(res7, done({ res: 1 }));
-    assert.deepEqual(res9, done({ res: 1 }));
-    assert.deepEqual(res8, done(["my-id", "my-id-2"]));
-    assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
-    assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-    assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
   });
 });
