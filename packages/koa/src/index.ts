@@ -336,6 +336,25 @@ export function middleware(
   });
 }
 
+export function middlewareM<R, E, A>(
+  middle: (cont: T.UIO<void>) => T.Effect<R, E, A>
+): T.Effect<HasMiddle & T.Erase<R, Context>, never, void> {
+  return T.access((_: HasMiddle & R) => {
+    _[middleURI].middlewares.push((ctx, next) =>
+      pipe(
+        middle(T.orAbort(T.suspended(() => T.fromPromise(next)))),
+        T.provideS(_),
+        T.provideS<Context>({
+          [contextEnv]: {
+            ctx
+          }
+        }),
+        T.runToPromise
+      )
+    );
+  });
+}
+
 export type KoaEnv = HasKoa & Koa;
 
 export type ChildEnv = KoaEnv & Context;

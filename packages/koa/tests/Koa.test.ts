@@ -60,10 +60,12 @@ describe("Koa", () => {
         })
       )
       .do(
-        KOA.middleware((ctx, next) => {
-          ctx.set("X-Request-Id-2", "my-id-2");
-          return next();
-        })
+        KOA.middlewareM((cont) =>
+          Do(T.effect)
+            .do(KOA.accessReq((ctx) => ctx.set("X-Request-Id-2", "my-id-2")))
+            .do(cont)
+            .done()
+        )
       )
       .do(
         KOA.accessApp((app) => {
