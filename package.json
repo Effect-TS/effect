@@ -9,7 +9,8 @@
     "build": "lerna run build",
     "fix-format": "prettier --write \"./packages/**/{src,tests}/**/*.ts\"",
     "lint": "lerna run lint",
-    "tc": "lerna run tc"
+    "tc": "lerna run tc",
+    "dtslint": "lerna run dtslint"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0",
@@ -38,7 +39,7 @@
     "benchmark": "^2.1.4",
     "chai": "^4.2.0",
     "class-transformer": "^0.2.3",
-    "dtslint": "^3.4.1",
+    "dtslint": "github:gcanti/dtslint",
     "express": "^4.17.1",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",

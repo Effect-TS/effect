@@ -3,8 +3,8 @@ module.exports = {
   clearMocks: true,
   collectCoverage: true,
   coverageDirectory: "coverage",
-  collectCoverageFrom: [ "packages/**/src/**/*.ts"],
+  collectCoverageFrom: ["packages/**/src/**/*.ts"],
   setupFiles: ["./jest-setup.ts"],
+  modulePathIgnorePatterns: ["dtslint"],
   verbose: true
 };
-

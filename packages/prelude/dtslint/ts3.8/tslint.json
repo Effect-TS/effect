@@ -1,0 +1,22 @@
+{
+  "extends": "dtslint/dtslint.json",
+  "rules": {
+    "semicolon": false,
+    "array-type": false,
+    "no-unnecessary-generics": false,
+    "member-access": false,
+    "no-empty-interface": false,
+    "no-arg": false,
+    "no-object-literal-type-assertion": false,
+    "no-unnecessary-class": false,
+    "radix": false,
+    "no-angle-bracket-type-assertion": false,
+    "object-literal-shorthand": false,
+    "prefer-object-spread": false,
+    "whitespace": false,
+    "use-default-type-parameter": false,
+    "no-relative-import-in-test": false,
+    "no-null-undefined-union": false,
+    "invalid-void": false
+  }
+}
