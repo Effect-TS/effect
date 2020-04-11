@@ -49,6 +49,7 @@ describe("Koa", () => {
           KOA.withSubRouter("/sub")
         )
       )
+      .do(KOA.route("post", "/delay", T.delay(T.pure(KOA.routeResponse(200, { res: 1 })), 0)))
       .do(KOA.route("post", "/bad", T.raiseError(KOA.routeError(500, { res: 1 }))))
       .do(KOA.route("post", "/bad2", T.raiseAbort("abort")))
       .do(KOA.route("post", "/bad3", T.raiseInterrupt))
@@ -165,12 +166,21 @@ describe("Koa", () => {
       )
     );
 
+    const res9 = await T.runToPromiseExit(
+      pipe(
+        H.post("http://127.0.0.1:3004/delay", {}),
+        T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+        T.provideS(L.client(fetch))
+      )
+    );
+
     await T.runToPromise(fiber.interrupt);
 
     assert.deepEqual(res, done({ res: 1 }));
     assert.deepEqual(res5, done({ res: 1 }));
     assert.deepEqual(res6, done({ res: 1 }));
     assert.deepEqual(res7, done({ res: 1 }));
+    assert.deepEqual(res9, done({ res: 1 }));
     assert.deepEqual(res8, done(["my-id", "my-id-2"]));
     assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
     assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
