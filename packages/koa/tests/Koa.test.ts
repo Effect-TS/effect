@@ -88,7 +88,6 @@ describe("Koa", () => {
         pipe(
           H.post("http://127.0.0.1:3004/", {}),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -97,7 +96,6 @@ describe("Koa", () => {
           H.post("http://127.0.0.1:3004/bad", {}),
           T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -106,7 +104,6 @@ describe("Koa", () => {
           H.post("http://127.0.0.1:3004/bad2", {}),
           T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -115,7 +112,6 @@ describe("Koa", () => {
           H.post("http://127.0.0.1:3004/bad3", {}),
           T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -123,7 +119,6 @@ describe("Koa", () => {
         pipe(
           H.post("http://127.0.0.1:3004/access", {}),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -131,7 +126,6 @@ describe("Koa", () => {
         pipe(
           H.post("http://127.0.0.1:3004/sub", {}),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -139,7 +133,6 @@ describe("Koa", () => {
         pipe(
           H.post("http://127.0.0.1:3004/sub/access", {}),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -154,7 +147,6 @@ describe("Koa", () => {
               )
             )
           ),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
@@ -162,34 +154,27 @@ describe("Koa", () => {
         pipe(
           H.post("http://127.0.0.1:3004/delay", {}),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
-          T.provideS(L.client(fetch)),
           T.result
         )
       )
       .done();
 
-    const fiber = await pipe(
-      T.effect.chainTap(config, (_) => T.never),
+    await pipe(
+      T.effect.chain(config, (_) => program),
       M.provideS(KOA.managedKoa(3004, "127.0.0.1")),
-      T.fork,
       KOA.provideKoa,
+      T.provideS(L.client(fetch)),
       T.runToPromise
-    );
-
-    await pipe(program, T.runToPromise).then(
-      ({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
-        assert.deepEqual(res, done({ res: 1 }));
-        assert.deepEqual(res5, done({ res: 1 }));
-        assert.deepEqual(res6, done({ res: 1 }));
-        assert.deepEqual(res7, done({ res: 1 }));
-        assert.deepEqual(res9, done({ res: 1 }));
-        assert.deepEqual(res8, done(["my-id", "my-id-2"]));
-        assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
-        assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-        assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
-      }
-    );
-
-    await T.runToPromise(fiber.interrupt);
+    ).then(({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
+      assert.deepEqual(res, done({ res: 1 }));
+      assert.deepEqual(res5, done({ res: 1 }));
+      assert.deepEqual(res6, done({ res: 1 }));
+      assert.deepEqual(res7, done({ res: 1 }));
+      assert.deepEqual(res9, done({ res: 1 }));
+      assert.deepEqual(res8, done(["my-id", "my-id-2"]));
+      assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
+      assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+      assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
+    });
   });
 });
