@@ -118,14 +118,14 @@ export interface Do4CE<M extends EffURI, Q, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind4<M, Q1, R, E, A>
   ) => Do4CE<M, Q | Q1, S & { [K in N]: A }, U & R, L | E>;
-  let: <N extends string, E, R, A>(
+  let: <N extends string, E, A>(
     name: Exclude<N, keyof S>,
     a: A
-  ) => Do4CE<M, Q, S & { [K in N]: A }, U & R, L | E>;
-  letL: <N extends string, E, R, A>(
+  ) => Do4CE<M, Q, S & { [K in N]: A }, U, L | E>;
+  letL: <N extends string, E, A>(
     name: Exclude<N, keyof S>,
     f: (s: S) => A
-  ) => Do4CE<M, Q, S & { [K in N]: A }, U & R, L | E>;
+  ) => Do4CE<M, Q, S & { [K in N]: A }, U, L | E>;
   sequenceS: <R extends Record<string, GenEffect<any, any, any, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE<
@@ -159,14 +159,14 @@ export interface Do4CE_<M extends EffURI, Q, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => Kind4<M, Q1, R, L, A>
   ) => Do4CE_<M, Q | Q1, S & { [K in N]: A }, U & R, L>;
-  let: <N extends string, E, R, A>(
+  let: <N extends string, E, A>(
     name: Exclude<N, keyof S>,
     a: A
-  ) => Do4CE<M, Q, S & { [K in N]: A }, U & R, L | E>;
-  letL: <N extends string, E, R, A>(
+  ) => Do4CE<M, Q, S & { [K in N]: A }, U, L | E>;
+  letL: <N extends string, E, A>(
     name: Exclude<N, keyof S>,
     f: (s: S) => A
-  ) => Do4CE<M, Q, S & { [K in N]: A }, U & R, L | E>;
+  ) => Do4CE<M, Q, S & { [K in N]: A }, U, L | E>;
   sequenceS: <R extends Record<string, GenEffect<any, any, L, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE_<M, SOf<R>, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
