@@ -5,6 +5,7 @@ import { eqNumber } from "fp-ts/lib/Eq";
 import { FunctionN, identity } from "fp-ts/lib/function";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
+import { Do } from "fp-ts-contrib/lib/Do";
 import { Readable } from "stream";
 import * as ex from "../src/original/exit";
 import * as SK from "../src/stream/sink";
@@ -828,6 +829,23 @@ describe("Stream", () => {
         })
       );
       return T.runToPromise(repeater(check, 10));
+    });
+  });
+
+  describe("takeUntil", function () {
+    it("should take until", () => {
+      const sleep = (ms: number) => pipe(T.delay(T.pure(true), ms));
+
+      const program = Do(T.effect)
+        .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(1000)), S.collectArray))
+        .doL(({ list }) =>
+          T.sync(() => {
+            expect(list).to.equal(20);
+          })
+        )
+        .done();
+
+      return pipe(program, T.runToPromise);
     });
   });
 });

@@ -444,6 +444,10 @@ function filter_<R, E, A>(stream: Stream<R, E, A>, f: F.Predicate<A>): Stream<R,
   );
 }
 
+export function filter<A, B extends A>(
+  f: F.Refinement<A, B>
+): <R, E>(s: Stream<R, E, A>) => Stream<R, E, B>;
+export function filter<A>(f: F.Predicate<A>): <R, E>(s: Stream<R, E, A>) => Stream<R, E, A>;
 export function filter<A>(f: F.Predicate<A>) {
   return <R, E>(s: Stream<R, E, A>) => filter_(s, f);
 }
@@ -890,6 +894,34 @@ function takeWhile_<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Str
 
 export function takeWhile<A>(pred: F.Predicate<A>) {
   return <R, E>(s: Stream<R, E, A>) => takeWhile_(s, pred);
+}
+
+/**
+ * Take elements from a stream until a given effect resolves.
+ *
+ * @param until The effect that will terminate the stream
+ * @param stream The stream
+ */
+function takeUntil_<R, E, A>(stream: Stream<R, E, A>, until: T.Effect<R, E, any>) {
+  type Wrapped = { type: "until" } | { type: "stream"; value: A };
+
+  const wrappedUntil = as<Wrapped>({ type: "until" })(encaseEffect(until));
+
+  const wrappedStream = P.pipe(
+    stream,
+    map((value): Wrapped => ({ type: "stream", value }))
+  );
+
+  return P.pipe(
+    mergeAll([wrappedUntil, wrappedStream]),
+    takeWhile((wrapped) => wrapped.type === "stream"),
+    filter((wrapped): wrapped is Extract<Wrapped, { type: "stream" }> => wrapped.type === "stream"),
+    map((wrapped) => wrapped.value)
+  );
+}
+
+export function takeUntil<R, E>(until: T.Effect<R, E, any>) {
+  return <A>(s: Stream<R, E, A>) => takeUntil_(s, until);
 }
 
 /**
@@ -1487,6 +1519,7 @@ export interface StreamF {
   dropWhile<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<R, E, A>;
   take<R, E, A>(stream: Stream<R, E, A>, n: number): Stream<R, E, A>;
   takeWhile<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<R, E, A>;
+  takeUntil<R, E, A>(stream: Stream<R, E, A>, until: T.Effect<R, E,A>): Stream<R, E, A>;
   into<R, E, A, R2, E2, S, B>(
     stream: Stream<R, E, A>,
     sink: Sink<R2, E2, S, A, B>
@@ -1561,6 +1594,7 @@ export const stream: Monad3E<URI> & StreamF = {
   scanM: scanM_,
   take: take_,
   takeWhile: takeWhile_,
+  takeUntil: takeUntil_,
   transduce: transduce_,
   zip: zip_,
   zipWith: zipWith_
