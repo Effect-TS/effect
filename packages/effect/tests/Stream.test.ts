@@ -2,9 +2,10 @@ import * as assert from "assert";
 import { expect } from "chai";
 import * as array from "fp-ts/lib/Array";
 import { eqNumber } from "fp-ts/lib/Eq";
-import { FunctionN, identity } from "fp-ts/lib/function";
+import { FunctionN, identity, constant } from "fp-ts/lib/function";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
+import { Do } from "fp-ts-contrib/lib/Do";
 import { Readable } from "stream";
 import * as ex from "../src/original/exit";
 import * as SK from "../src/stream/sink";
@@ -828,6 +829,90 @@ describe("Stream", () => {
         })
       );
       return T.runToPromise(repeater(check, 10));
+    });
+  });
+
+  describe("takeUntil", function () {
+    it("should take until", () => {
+      const sleep = (ms: number) => pipe(T.delay(T.pure(true), ms));
+
+      const program1 = Do(T.effect)
+        .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(200)), S.collectArray))
+        .doL(({ list }) =>
+          T.sync(() => {
+            expect(list, "The output of program1 should be [0, 1, 2]").to.deep.equal([0, 1, 2]);
+          })
+        )
+        .done();
+
+      const program2 = Do(T.effect)
+        .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(225)), S.collectArray))
+        .doL(({ list }) =>
+          T.sync(() => {
+            expect(list, "The output of program2 should be [0, 1, 2, 3]").to.deep.equal([
+              0,
+              1,
+              2,
+              3
+            ]);
+          })
+        )
+        .done();
+
+      const program3 = Do(T.effect)
+        .bind("index", ref.makeRef(-1))
+        .doL(({ index }) =>
+          pipe(
+            S.periodically(50),
+            S.chain((n) => S.encaseEffect(index.update(constant(n)))),
+            S.takeUntil(sleep(225)),
+            S.drain
+          )
+        )
+        .doL(({ index }) =>
+          T.delay(
+            pipe(
+              index.get,
+              T.chain((result) =>
+                T.sync(() => {
+                  expect(
+                    result,
+                    "The 'periodically' stream will have terminated and the last reference update is 3"
+                  ).to.equal(3);
+                })
+              )
+            ),
+            100
+          )
+        )
+        .done();
+
+      const mockEnvUri = Symbol();
+
+      interface MockEnv {
+        [mockEnvUri]: {
+          foo: "bar";
+        };
+      }
+
+      const program4 = pipe(
+        T.accessM((_: MockEnv) => T.delay(T.pure(_[mockEnvUri].foo), 50)),
+        S.encaseEffect,
+        S.repeat,
+        S.takeUntil(T.delay(T.pure(1), 100)),
+        S.collectArray,
+        T.chain((array) => T.sync(() => expect(array.length).to.eq(1)))
+      );
+
+      return pipe(
+        Do(T.effect).do(program1).do(program2).do(program3).do(program4).done(),
+        T.provideS({
+          [mockEnvUri]: {
+            foo: "bar"
+          }
+        } as MockEnv),
+        T.runToPromise
+      );
     });
   });
 });
