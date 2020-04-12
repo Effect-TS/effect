@@ -54,11 +54,10 @@ const d = IO.pipe(
   IO.chain((_) => a3)
 );
 
-const e = IO.pipe(
-  c,
-  IO.chain((_) => d),
-  IO.chain((_) => b)
-);
+const e = IO.fluent(c)
+  .pipe((_) => d)
+  .pipe(IO.chain((_) => b))
+  .done();
 
 const f = IO.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
@@ -76,9 +75,14 @@ const provideBaz = IO.provideSW<Baz>()(a2)((s) => ({
 
 describe("Prelude", () => {
   it("should run effect composition", async () => {
-    await IO.pipe(f, provideBaz, provideBar, IO.run).then((exit) => {
-      assert.deepStrictEqual(IO.Exit.isRaise(exit) && exit.error, new AError("mmm"));
-    });
+    await IO.fluent(f)
+      .pipe(provideBaz)
+      .pipe(provideBar)
+      .pipe(IO.run)
+      .done()
+      .then((exit) => {
+        assert.deepStrictEqual(IO.Exit.isRaise(exit) && exit.error, new AError("mmm"));
+      });
   });
 
   it("should run effect composition - sync", () => {

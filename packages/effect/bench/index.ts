@@ -26,18 +26,14 @@ export const fibWave = (n: bigint): wave.Wave<never, bigint> => {
   if (n < BigInt(2)) {
     return wave.pure(BigInt(1));
   }
-  return wave.chain(fibWave(n - BigInt(1)), (a) =>
-    wave.map(fibWave(n - BigInt(2)), (b) => a + b)
-  );
+  return wave.chain(fibWave(n - BigInt(1)), (a) => wave.map(fibWave(n - BigInt(2)), (b) => a + b));
 };
 
 export const fibQio = (n: bigint): QIO<bigint> => {
   if (n < BigInt(2)) {
     return QIO.resolve(BigInt(1));
   }
-  return QIO.chain(fibQio(n - BigInt(1)), (a) =>
-    QIO.map(fibQio(n - BigInt(2)), (b) => a + b)
-  );
+  return QIO.chain(fibQio(n - BigInt(1)), (a) => QIO.map(fibQio(n - BigInt(2)), (b) => a + b));
 };
 
 export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
@@ -46,17 +42,6 @@ export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
   }
   return T.effect.chain(fibEffect(n - BigInt(1)), (a) =>
     T.effect.map(fibEffect(n - BigInt(2)), (b) => a + b)
-  );
-};
-
-export const fibEffectFluent = (
-  n: bigint
-): T.EffectIO<T.NoEnv, never, bigint> => {
-  if (n < BigInt(2)) {
-    return T.pure(BigInt(1)).fluent();
-  }
-  return fibEffectFluent(n - BigInt(1)).chain((a) =>
-    fibEffectFluent(n - BigInt(2)).map((b) => a + b)
   );
 };
 
@@ -69,15 +54,6 @@ benchmark
     "effect",
     (cb: any) => {
       T.run(fibEffect(n), () => {
-        cb.resolve();
-      });
-    },
-    { defer: true }
-  )
-  .add(
-    "effect-fluent",
-    (cb: any) => {
-      fibEffectFluent(n).run(() => {
         cb.resolve();
       });
     },

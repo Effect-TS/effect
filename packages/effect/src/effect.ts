@@ -59,8 +59,6 @@ export interface Effect<R, E, A> {
   _E: () => E;
   _A: () => A;
   _R: (_: R) => void;
-
-  fluent: <K extends R>() => EffectIO<K, E, A>;
 }
 
 export type IO<E, A> = Effect<NoEnv, E, A>;
@@ -87,19 +85,6 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
     readonly f2: any = undefined
   ) {}
 
-  done(): Effect<R, E, A> {
-    return this as any;
-  }
-
-  // @ts-ignore
-  private effect(): Effect<R, E, A> {
-    return this as any;
-  }
-
-  fluent<K extends R>(): EffectIO<K, E, A> {
-    return this as any;
-  }
-
   /* istanbul ignore next */
   _TAG(): "Effect" {
     return undefined as any;
@@ -119,164 +104,6 @@ export class EffectIO<R, E, A> implements Effect<R, E, A> {
   _R(_: R): void {
     return undefined as any;
   }
-
-  chain<R2, E2, A2>(f: (s: A) => Effect<R2, E2, A2>): EffectIO<R & R2, E | E2, A2> {
-    return this._tag === EffectTag.Pure
-      ? (f(this.f0) as any)
-      : new EffectIO(EffectTag.Chain as const, this, f);
-  }
-
-  chainEither<E2, A2>(f: (s: A) => Ei.Either<E2, A2>): EffectIO<R, E | E2, A2> {
-    return this.chain((s: A) => encaseEither(f(s)));
-  }
-
-  chainTaskEither<E2, A2>(f: (s: A) => TE.TaskEither<E2, A2>): EffectIO<R, E | E2, A2> {
-    return this.chain((s: A) => encaseTaskEither(f(s)));
-  }
-
-  chainTask<A2>(f: (s: A) => TA.Task<A2>): EffectIO<R, E, A2> {
-    return this.chain((s: A) => encaseTask(f(s)));
-  }
-
-  chainOption<E2>(
-    onEmpty: F.Lazy<E2>
-  ): <A2>(f: (s: A) => Op.Option<A2>) => EffectIO<R, E | E2, A2> {
-    return (f) => this.chain((s: A) => encaseOption(f(s), onEmpty));
-  }
-
-  chainW<R3, E3, A3>(
-    w: Effect<R3, E3, A3>
-  ): <R2, E2, A2>(
-    f: (wa: A3, s: A) => Effect<R2, E2, A2>
-  ) => EffectIO<R & R2 & R3, E | E2 | E3, A2> {
-    return <R2, E2, A2>(
-      f: (wa: A3, s: A) => Effect<R2, E2, A2>
-    ): EffectIO<R & R2 & R3, E | E2 | E3, A2> =>
-      new EffectIO(EffectTag.Chain as const, w, (wa: any) => this.chain((s) => f(wa, s)));
-  }
-
-  chainEnv<R2, E2, A2>(f: (s: A, r: R) => Effect<R2, E2, A2>): EffectIO<R & R2, E | E2, A2> {
-    return this.chain(
-      (x) =>
-        new EffectIO(
-          EffectTag.Chain as const,
-          new EffectIO(EffectTag.AccessEnv),
-          (r: any) => f(x, r) as any
-        )
-    );
-  }
-
-  chainAccess<R3, R2, E2, A2>(
-    f: (s: A, r: R3) => Effect<R2, E2, A2>
-  ): EffectIO<R & R3 & R2, E | E2, A2> {
-    return this.chain(
-      (x) =>
-        new EffectIO(
-          EffectTag.Chain as const,
-          new EffectIO(EffectTag.AccessEnv),
-          (r: any) => f(x, r) as any
-        )
-    );
-  }
-
-  chainError<R2, E2, A2>(f: (r: E) => Effect<R2, E2, A2>): EffectIO<R & R2, E2, A | A2> {
-    return this.foldExit(
-      (cause) => (cause._tag === "Raise" ? f(cause.error) : completed(cause)),
-      pure
-    );
-  }
-
-  tap<R2, E2, A2>(f: (s: A) => Effect<R2, E2, A2>): EffectIO<R & R2, E | E2, A> {
-    return this.chain((x) => new EffectIO(EffectTag.Map as const, f(x), () => x));
-  }
-
-  provideS<R2 extends Partial<R>>(r: R2): EffectIO<Strip<R, R2>, E, A> {
-    return provideR((k: any) => ({ ...k, ...r }))(this as any) as any;
-  }
-
-  provide(r: R): EffectIO<unknown, E, A> {
-    return provideAll(r)(this as any) as any;
-  }
-
-  foldExit<R2, E2, A2, A3, R3, E3>(
-    failure: F.FunctionN<[ex.Cause<E>], Effect<R2, E2, A2>>,
-    success: F.FunctionN<[A], Effect<R3, E3, A3>>
-  ): EffectIO<R & R2 & R3, E2 | E3, A2 | A3> {
-    return new EffectIO(EffectTag.Collapse as const, this, failure, success);
-  }
-
-  result(): EffectIO<R, NoErr, ex.Exit<E, A>> {
-    return this.foldExit(
-      (c) => pure(c) as Effect<R, NoErr, ex.Exit<E, A>>,
-      (d) => pure(ex.done(d))
-    );
-  }
-
-  as<B>(b: B): EffectIO<R, E, B> {
-    return new EffectIO(EffectTag.Map as const, this, () => b);
-  }
-
-  asM<R2, E2, B>(b: Effect<R2, E2, B>): EffectIO<R & R2, E | E2, B> {
-    return this.chain(() => b);
-  }
-
-  map<B>(f: (a: A) => B): EffectIO<R, E, B> {
-    return this._tag === EffectTag.Pure
-      ? new EffectIO(EffectTag.Pure, f(this.f0))
-      : new EffectIO(EffectTag.Map as const, this, f);
-  }
-
-  bimap<E2, B>(leftMap: F.FunctionN<[E], E2>, rightMap: F.FunctionN<[A], B>): EffectIO<R, E2, B> {
-    return this.foldExit(
-      (cause) => (cause._tag === "Raise" ? raiseError(leftMap(cause.error)) : completed(cause)),
-      F.flow(rightMap, pure)
-    );
-  }
-
-  mapError<E2>(f: F.FunctionN<[E], E2>): EffectIO<R, E2, A> {
-    return this.bimap(f, F.identity);
-  }
-
-  asUnit(): EffectIO<R, E, void> {
-    return this.as(undefined as any);
-  }
-
-  runToPromiseExit(r: OrVoid<R>): Promise<ex.Exit<E, A>> {
-    return runToPromiseExit(
-      (r
-        ? provideAll(r as any)((this as any) as Effect<R, E, A>)
-        : ((this as any) as Effect<R, E, A>)) as any
-    );
-  }
-
-  runToPromise(r: OrVoid<R>): Promise<A> {
-    return runToPromise(
-      (r
-        ? provideAll(r as any)((this as any) as Effect<R, E, A>)
-        : ((this as any) as Effect<R, E, A>)) as any
-    );
-  }
-
-  run(cb: (ex: ex.Exit<E, A>) => void, r: OrVoid<R>): F.Lazy<void> {
-    return run(
-      (r
-        ? provideAll(r as any)((this as any) as Effect<R, E, A>)
-        : ((this as any) as Effect<R, E, A>)) as any,
-      cb
-    );
-  }
-
-  fork(): EffectIO<R, never, Fiber<E, A>> {
-    return fork((this as any) as Effect<R, E, A>) as any;
-  }
-
-  flow<R2, E2, A2>(f: (e: Effect<R, E, A>) => Effect<R2, E2, A2>): EffectIO<R2, E2, A2> {
-    return f((this as any) as Effect<R, E, A>) as any;
-  }
-}
-
-export function fluent<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
-  return eff as any;
 }
 
 export type Instructions =
@@ -816,8 +643,6 @@ export function asUnit<R, E, A>(io: Effect<R, E, A>): Effect<R, E, void> {
  * An IO that succeeds immediately with void
  */
 export const unit: Effect<NoEnv, NoErr, void> = pure(undefined);
-
-export const fluentUnit = fluent(unit);
 
 /**
  * Curriend form of chainError

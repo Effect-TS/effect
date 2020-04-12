@@ -20,9 +20,6 @@ export interface Eff<S, R, E, A> {
   _A: () => A;
   _S: () => S;
   _R: (_: R) => void;
-
-  fluent: <K extends R>() => EffIO<S, K, E, A>;
-  effect: <K extends R>() => T.Effect<K, E, A>;
 }
 
 export interface AsyncEff<R, E, A> extends Eff<ASYNC, R, E, A> {}
@@ -480,72 +477,5 @@ export const encaseSyncMap = <R, E, A, E2>(
   );
 
 export const encaseEffect = <R, E, A>(_: T.Effect<R, E, A>): AsyncEff<R, E, A> => _ as any;
-
-export interface EffIO<S, R, E, A> extends Eff<S, R, E, A> {
-  fluent<K extends R>(): EffIO<S, K, E, A>;
-
-  chain<S1, R2, E2, A2>(f: (s: A) => Eff<S1, R2, E2, A2>): EffIO<S | S1, R & R2, E | E2, A2>;
-
-  chainEither<E2, A2>(f: (s: A) => Ei.Either<E2, A2>): EffIO<S, R, E | E2, A2>;
-
-  chainTaskEither<E2, A2>(f: (s: A) => TE.TaskEither<E2, A2>): EffIO<ASYNC, R, E | E2, A2>;
-
-  chainTask<A2>(f: (s: A) => TA.Task<A2>): EffIO<ASYNC, R, E, A2>;
-
-  chainOption<E2>(onEmpty: F.Lazy<E2>): <A2>(f: (s: A) => Op.Option<A2>) => EffIO<S, R, E | E2, A2>;
-
-  chainW<S1, R3, E3, A3>(
-    w: Eff<S1, R3, E3, A3>
-  ): <S2, R2, E2, A2>(
-    f: (wa: A3, s: A) => Eff<S2, R2, E2, A2>
-  ) => EffIO<S | S1 | S2, R & R2 & R3, E | E2 | E3, A2>;
-
-  chainEnv<S1, R2, E2, A2>(
-    f: (s: A, r: R) => Eff<S1, R2, E2, A2>
-  ): EffIO<S | S1, R & R2, E | E2, A2>;
-
-  chainAccess<S1, R3, R2, E2, A2>(
-    f: (s: A, r: R3) => Eff<S1, R2, E2, A2>
-  ): EffIO<S | S1, R & R3 & R2, E | E2, A2>;
-
-  chainError<S1, R2, E2, A2>(f: (r: E) => EffIO<S1, R2, E2, A2>): EffIO<S | S1, R & R2, E2, A | A2>;
-
-  tap<S1, R2, E2, A2>(f: (s: A) => Eff<S1, R2, E2, A2>): EffIO<S | S1, R & R2, E | E2, A>;
-
-  provideS<R2 extends Partial<R>>(r: R2): EffIO<S, T.Strip<R, R2>, E, A>;
-
-  provide(r: R): EffIO<S, unknown, E, A>;
-
-  foldExit<S1, S2, R2, E2, A2, A3, R3, E3>(
-    failure: F.FunctionN<[ex.Cause<E>], Eff<S1, R2, E2, A2>>,
-    success: F.FunctionN<[A], Eff<S2, R3, E3, A3>>
-  ): EffIO<S | S1 | S2, R & R2 & R3, E2 | E3, A2 | A3>;
-
-  result(): EffIO<S, R, T.NoErr, ex.Exit<E, A>>;
-
-  as<B>(b: B): EffIO<S, R, E, B>;
-
-  asM<S1, R2, E2, B>(b: Eff<S1, R2, E2, B>): EffIO<S | S1, R & R2, E | E2, B>;
-
-  map<B>(f: (a: A) => B): EffIO<S, R, E, B>;
-
-  bimap<E2, B>(leftMap: F.FunctionN<[E], E2>, rightMap: F.FunctionN<[A], B>): EffIO<S, R, E2, B>;
-
-  mapError<E2>(f: F.FunctionN<[E], E2>): EffIO<S, R, E2, A>;
-
-  asUnit(): EffIO<S, R, E, void>;
-
-  fork(): EffIO<SYNC, R, never, Fiber<S, E, A>>;
-
-  flow<S2, R2, E2, A2>(f: (e: Eff<S, R, E, A>) => Eff<S2, R2, E2, A2>): EffIO<S | S2, R2, E2, A2>;
-
-  done(): RT<S, R, E, A>;
-
-  runToPromiseExit(r: T.OrVoid<R>): Promise<ex.Exit<E, A>>;
-
-  runToPromise(r: T.OrVoid<R>): Promise<A>;
-
-  run(cb: (ex: ex.Exit<E, A>) => void, r: T.OrVoid<R>): F.Lazy<void>;
-}
 
 export { Erase } from "./erase";

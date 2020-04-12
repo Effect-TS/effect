@@ -33,14 +33,6 @@ export const nestedChainEffect = (): T.Effect<T.NoEnv, never, bigint> => {
   return io;
 };
 
-export const nestedChainEffectFluent = (): T.EffectIO<T.NoEnv, never, bigint> => {
-  let io = T.pure(BigInt(0)).fluent();
-  for (let i = 0; i < MAX; i++) {
-    io = io.chain(effectMapper);
-  }
-  return io;
-};
-
 const benchmark = new Suite(`NestedChain ${MAX}`, { minTime: 10000 });
 
 benchmark
@@ -48,15 +40,6 @@ benchmark
     "effect",
     (cb: any) => {
       T.run(nestedChainEffect(), () => {
-        cb.resolve();
-      });
-    },
-    { defer: true }
-  )
-  .add(
-    "effect-fluent",
-    (cb: any) => {
-      nestedChainEffectFluent().run(() => {
         cb.resolve();
       });
     },

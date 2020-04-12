@@ -108,6 +108,20 @@ export const runToCallback: <S, E, A>(
  */
 export const pipe = P.pipe;
 
+export class Pipe<A> {
+  constructor(private readonly a: A) {}
+
+  pipe<B>(f: (_: A) => B): Pipe<B> {
+    return new Pipe(f(this.a));
+  }
+
+  done(): A {
+    return this.a;
+  }
+}
+
+export const fluent = <A>(a: A) => new Pipe(a);
+
 /**
  * Do:
  * - do (do an effect)

@@ -1,22 +1,17 @@
-import * as E from "fp-ts/lib/Either";
-import * as O from "fp-ts/lib/Option";
 import * as assert from "assert";
-
+import { Do } from "fp-ts-contrib/lib/Do";
+import { array, range } from "fp-ts/lib/Array";
+import * as E from "fp-ts/lib/Either";
 import { toError } from "fp-ts/lib/Either";
+import { identity } from "fp-ts/lib/function";
+import { monoidSum } from "fp-ts/lib/Monoid";
+import * as O from "fp-ts/lib/Option";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { semigroupString } from "fp-ts/lib/Semigroup";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { array, range } from "fp-ts/lib/Array";
-
-import * as ex from "../src/original/exit";
-
-import { monoidSum } from "fp-ts/lib/Monoid";
-import { identity } from "fp-ts/lib/function";
+import { effect as T } from "../src";
 import { effect, parEffect } from "../src/effect";
-
-import { effect as T, exit, freeEnv } from "../src";
-import { makeRef } from "../src/ref";
+import * as ex from "../src/original/exit";
 
 describe("EffectSafe", () => {
   it("Forever", async () => {
@@ -49,18 +44,8 @@ describe("EffectSafe", () => {
         T.runToPromiseExit
       );
 
-      const fluentErr = await T.fluent(T.pure(1))
-        .chainOption(() => 2)((_) => O.none)
-        .runToPromiseExit();
-
-      const fluentSuc = await T.fluent(T.pure(1))
-        .chainOption(() => 2)((n) => O.some(n + 1))
-        .runToPromiseExit();
-
       assert.deepEqual(pipeableErr, ex.raise(2));
       assert.deepEqual(pipeableSuc, ex.done(2));
-      assert.deepEqual(fluentErr, ex.raise(2));
-      assert.deepEqual(fluentSuc, ex.done(2));
     });
 
     it("chainEither", async () => {
@@ -76,19 +61,8 @@ describe("EffectSafe", () => {
         T.runToPromiseExit
       );
 
-      const fluentErr = await T.pure(1)
-        .fluent()
-        .chainEither((n) => E.left(n + 1))
-        .runToPromiseExit();
-
-      const fluentSuc = await T.fluent(T.pure(1))
-        .chainEither((n) => E.right(n + 1))
-        .runToPromiseExit();
-
       assert.deepEqual(pipeableErr, ex.raise(2));
       assert.deepEqual(pipeableSuc, ex.done(2));
-      assert.deepEqual(fluentErr, ex.raise(2));
-      assert.deepEqual(fluentSuc, ex.done(2));
     });
 
     it("chainTaskEither", async () => {
@@ -104,18 +78,8 @@ describe("EffectSafe", () => {
         T.runToPromiseExit
       );
 
-      const fluentErr = await T.fluent(T.pure(1))
-        .chainTaskEither((n) => () => Promise.resolve(E.left(n + 1)))
-        .runToPromiseExit();
-
-      const fluentSuc = await T.fluent(T.pure(1))
-        .chainTaskEither((n) => () => Promise.resolve(E.right(n + 1)))
-        .runToPromiseExit();
-
       assert.deepEqual(pipeableErr, ex.raise(2));
       assert.deepEqual(pipeableSuc, ex.done(2));
-      assert.deepEqual(fluentErr, ex.raise(2));
-      assert.deepEqual(fluentSuc, ex.done(2));
     });
 
     it("chainTask", async () => {
@@ -125,151 +89,7 @@ describe("EffectSafe", () => {
         T.runToPromiseExit
       );
 
-      const fluentSuc = await T.fluent(T.pure(1))
-        .chainTask((n) => () => Promise.resolve(n + 1))
-        .runToPromiseExit();
-
       assert.deepEqual(pipeableSuc, ex.done(2));
-      assert.deepEqual(fluentSuc, ex.done(2));
-    });
-  });
-
-  describe("Fluent", () => {
-    it("use fluent (toPromiseExit)", async () => {
-      const result = await T.fluent(T.pure(1))
-        .asUnit()
-        .as(2)
-        .asM(T.pure(3))
-        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
-        .chain((n) => T.access((r: { k: number }) => n + r.k))
-        .chain((n) => T.access((r: { m: number }) => n + r.m))
-        .tap(() => T.unit)
-        .tap((n) => T.raiseError(n))
-        .chainError((n) => T.pure(n))
-        .chainEnv((n, r) => T.pure(n + r.n))
-        .provideS({ k: 2 })
-        .provide({ n: 3, m: 1 })
-        .foldExit((_) => T.pure(10), T.pure)
-        .result()
-        .map(identity)
-        .bimap(identity, identity)
-        .mapError(identity)
-        .runToPromiseExit();
-
-      assert.deepEqual(result, ex.done(ex.done(12)));
-    });
-
-    it("use fluent (toPromise)", async () => {
-      const result = await T.fluent(T.pure(1))
-        .asUnit()
-        .as(2)
-        .asM(T.pure(3))
-        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
-        .chain((n) => T.access((r: { k: number }) => n + r.k))
-        .chain((n) => T.access((r: { m: number }) => n + r.m))
-        .tap(() => T.unit)
-        .tap((n) => T.raiseError(n))
-        .chainError((n) => T.pure(n))
-        .chainEnv((n, r) => T.pure(n + r.n))
-        .provideS({ k: 2 })
-        .provide({ n: 3, m: 1 })
-        .foldExit((_) => T.pure(10), T.pure)
-        .result()
-        .map(identity)
-        .bimap(identity, identity)
-        .mapError(identity)
-        .runToPromise();
-
-      assert.deepEqual(result, ex.done(12));
-    });
-
-    it("use fluent", async () => {
-      const result = T.pure(1)
-        .fluent()
-        .asUnit()
-        .as(2)
-        .asM(T.pure(3))
-        .chainAccess((n, r: { n: number }) => T.pure(n + r.n))
-        .chainW(T.access((r: { k: number }) => r.k))((n, k) => T.pure(n + k))
-        .chain((n) => T.access((r: { m: number }) => n + r.m))
-        .tap(() => T.unit)
-        .tap((n) => T.raiseError(n))
-        .chainError((n) => T.pure(n))
-        .chainEnv((n, r) => T.pure(n + r.n))
-        .provideS({ k: 2 })
-        .provide({ n: 3, m: 1 })
-        .foldExit((_) => T.pure(10), T.pure)
-        .result()
-        .map(identity)
-        .bimap(identity, identity)
-        .mapError(identity)
-        .done();
-
-      assert.deepEqual(await T.runToPromise(result), ex.done(12));
-    });
-
-    it("run env requirement inferred correctly", async () => {
-      const result = await T.fluent(T.access((n: number) => n))
-        .chain((n) => T.pure(n + 1))
-        .runToPromise(1);
-
-      assert.deepEqual(result, 2);
-    });
-
-    it("fluent flow", async () => {
-      const URI: unique symbol = Symbol();
-
-      const mod = freeEnv.define({
-        [URI]: {
-          updateState: freeEnv.fn<(f: (n: number) => number) => T.UIO<number>>()
-        }
-      });
-
-      const {
-        [URI]: { updateState }
-      } = freeEnv.access(mod);
-
-      const provideModLive = freeEnv.implementWith(makeRef(1))(mod)((r) => ({
-        [URI]: { updateState: (f) => r.update(f) }
-      }));
-
-      const result = await T.fluentUnit
-        .asM(updateState((n) => n + 1))
-        .asM(updateState((n) => n + 1))
-        .flow(provideModLive)
-        .runToPromise();
-
-      assert.deepEqual(result, 3);
-    });
-
-    it("fluent run", async () => {
-      let res: any = 0;
-
-      T.fluent(T.access((n: number) => n))
-        .chain((n) => T.pure(n + 1))
-        .provide(1)
-        .fork()
-        .chain((x) => x.join)
-        .run(
-          exit.fold(
-            (n) => {
-              res = n;
-            },
-            (n) => {
-              res = n;
-            },
-            (n) => {
-              res = n;
-            },
-            () => {
-              res = {};
-            }
-          )
-        );
-
-      await T.runToPromise(T.delay(T.unit, 10));
-
-      assert.deepEqual(res, 2);
     });
   });
 

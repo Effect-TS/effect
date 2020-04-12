@@ -61,7 +61,11 @@ export type RTS<K extends AnySIO> = unknown extends R<K>
     : SyncE<E<K>, A<K>>
   : SyncRE<R<K>, E<K>, A<K>>;
 
-export type RT<K extends AnyIO> = K extends AnyAIO ? RTA<K> : K extends AnySIO ? RTS<K> : K;
+export type RT<K extends AnyIO> = unknown extends ReturnType<K["_S"]>
+  ? RTA<K>
+  : K extends AnySIO
+  ? RTS<K>
+  : K;
 
 export interface Do4CE<M extends EFF.URI, Q, S extends object, U, L> {
   do: <Q1, E, R>(ma: Kind4<M, Q1, R, E, unknown>) => Do4CE<M, Q | Q1, S, U & R, L | E>;
