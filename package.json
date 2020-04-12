@@ -6,7 +6,10 @@
     "packages/*"
   ],
   "scripts": {
-    "fix-format": "prettier --write \"./packages/**/{src,tests}/**/*.ts\""
+    "build": "lerna run build",
+    "fix-format": "prettier --write \"./packages/**/{src,tests}/**/*.ts\"",
+    "lint": "lerna run lint",
+    "tc": "lerna run tc"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0",

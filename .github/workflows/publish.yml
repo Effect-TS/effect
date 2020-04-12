@@ -18,14 +18,14 @@ jobs:
           node-version: 12.x
       - name: npm install, build, and test
         run: |
-          npm install -g lerna
           npm install -g yarn
-          lerna bootstrap
-          lerna run build
-          lerna run tc --parallel
+          yarn
+          yarn lerna bootstrap
+          yarn build
+          yarn tc --parallel
           yarn jest --detectOpenHandles
           cp .ci.npmrc .npmrc
-          lerna publish from-package --yes
+          yarn lerna publish from-package --yes
         env:
           CI: "true"
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
