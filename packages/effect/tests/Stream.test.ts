@@ -869,7 +869,6 @@ describe("Stream", () => {
             S.drain
           )
         )
-        // .bindL("result", ({ index }) => index.get)
         .doL(({ index }) =>
           T.delay(
             pipe(
@@ -888,7 +887,32 @@ describe("Stream", () => {
         )
         .done();
 
-      return pipe(T.zip(program1, program2), T.chain(constant(program3)), T.runToPromise);
+      const mockEnvUri = Symbol();
+
+      interface MockEnv {
+        [mockEnvUri]: {
+          foo: "bar";
+        };
+      }
+
+      const program4 = pipe(
+        T.accessM((_: MockEnv) => T.delay(T.pure(_[mockEnvUri].foo), 50)),
+        S.encaseEffect,
+        S.repeat,
+        S.takeUntil(T.delay(T.pure(1), 100)),
+        S.collectArray,
+        T.chain((array) => T.sync(() => expect(array.length).to.eq(1)))
+      );
+
+      return pipe(
+        Do(T.effect).do(program1).do(program2).do(program3).do(program4).done(),
+        T.provideS({
+          [mockEnvUri]: {
+            foo: "bar"
+          }
+        } as MockEnv),
+        T.runToPromise
+      );
     });
   });
 });

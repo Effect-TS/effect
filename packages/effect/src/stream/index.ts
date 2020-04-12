@@ -902,12 +902,13 @@ export function takeWhile<A>(pred: F.Predicate<A>) {
  * @param until The effect that will terminate the stream
  * @param stream The stream
  */
-function takeUntil_<R, E, A>(stream: Stream<R, E, A>, until: T.Effect<R, E, any>) {
+function takeUntil_<R1, E1, R2, E2, A>(stream: Stream<R1, E1, A>, until: T.Effect<R2, E2, any>) {
   type Wrapped = { type: "until" } | { type: "stream"; value: A };
+  type WrappedStream = Extract<Wrapped, { type: "stream" }>
 
-  const wrappedUntil = as<Wrapped>({ type: "until" })(encaseEffect(until));
+  const wrappedUntil: Stream<R1 & R2, E1 | E2, Wrapped> = as<Wrapped>({ type: "until" })(encaseEffect(until));
 
-  const wrappedStream = P.pipe(
+  const wrappedStream: Stream<R1 & R2, E1 | E2, Wrapped> = P.pipe(
     stream,
     map((value): Wrapped => ({ type: "stream", value }))
   );
@@ -915,13 +916,13 @@ function takeUntil_<R, E, A>(stream: Stream<R, E, A>, until: T.Effect<R, E, any>
   return P.pipe(
     mergeAll([wrappedUntil, wrappedStream]),
     takeWhile((wrapped) => wrapped.type === "stream"),
-    filter((wrapped): wrapped is Extract<Wrapped, { type: "stream" }> => wrapped.type === "stream"),
+    filter((wrapped): wrapped is WrappedStream => wrapped.type === "stream"),
     map((wrapped) => wrapped.value)
   );
 }
 
-export function takeUntil<R, E>(until: T.Effect<R, E, any>) {
-  return <A>(s: Stream<R, E, A>) => takeUntil_(s, until);
+export function takeUntil<R2, E2>(until: T.Effect<R2, E2, any>) {
+  return <R1, E1, A>(s: Stream<R1 & R2, E1 | E2, A>) => takeUntil_(s, until);
 }
 
 /**
