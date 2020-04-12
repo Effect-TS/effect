@@ -2,9 +2,9 @@ import { eff as EFF } from "@matechs/effect";
 import { Kind4 } from "fp-ts/lib/HKT";
 import {
   A,
-  AnyAIO,
-  AnyIO,
-  AnySIO,
+  AnyAsync,
+  Any,
+  AnySync,
   Async,
   AsyncE,
   AsyncRE,
@@ -12,7 +12,9 @@ import {
   R,
   Sync,
   SyncE,
-  SyncRE
+  SyncRE,
+  AsyncR,
+  SyncR
 } from "./definitions";
 
 export declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
@@ -49,21 +51,25 @@ export type SOf<R extends Record<string, GenEffect<any, any, any, any>>> = {
   [K in keyof R]: STypeOf<R[K]>;
 }[keyof R];
 
-export type RTA<K extends AnyAIO> = unknown extends R<K>
+export type RTA<K extends AnyAsync> = unknown extends R<K>
   ? E<K> extends never
     ? Async<A<K>>
     : AsyncE<E<K>, A<K>>
+  : E<K> extends never
+  ? AsyncR<R<K>, A<K>>
   : AsyncRE<R<K>, E<K>, A<K>>;
 
-export type RTS<K extends AnySIO> = unknown extends R<K>
+export type RTS<K extends AnySync> = unknown extends R<K>
   ? E<K> extends never
     ? Sync<A<K>>
     : SyncE<E<K>, A<K>>
+  : E<K> extends never
+  ? SyncR<R<K>, A<K>>
   : SyncRE<R<K>, E<K>, A<K>>;
 
-export type RT<K extends AnyIO> = unknown extends ReturnType<K["_S"]>
+export type RT<K extends Any> = unknown extends ReturnType<K["_S"]>
   ? RTA<K>
-  : K extends AnySIO
+  : K extends AnySync
   ? RTS<K>
   : K;
 

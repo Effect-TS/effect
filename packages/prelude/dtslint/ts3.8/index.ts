@@ -36,10 +36,10 @@ class BError extends Error {
 // $ExpectType Sync<number>
 const a1 = IO.pure(1);
 
-// $ExpectType SyncRE<Bar, never, string>
+// $ExpectType SyncR<Bar, string>
 const a2 = IO.accessM((_: Bar) => _[BarURI].getString());
 
-// $ExpectType SyncRE<Baz, never, string>
+// $ExpectType SyncR<Baz, string>
 const a3 = IO.accessM((_: Baz) => _[BazURI].getString());
 
 // $ExpectType SyncE<AError, never>
@@ -62,7 +62,7 @@ const c = IO.pipe(
   IO.chain((_) => a4)
 );
 
-// $ExpectType SyncRE<Baz & Bar, never, string>
+// $ExpectType SyncR<Baz & Bar, string>
 const d = IO.pipe(
   a2,
   IO.chain((_) => a3)

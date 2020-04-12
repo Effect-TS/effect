@@ -1,8 +1,8 @@
 import { eff as EFF } from "@matechs/effect";
-import { AnyIO } from "./definitions";
+import { Any } from "./definitions";
 import { RT } from "./manipulations";
 
-export type Providing<K extends AnyIO, R1, RP = unknown, SP = never, EP = never> = K extends AnyIO<
+export type Providing<K extends Any, R1, RP = unknown, SP = never, EP = never> = K extends Any<
   infer R & R1,
   infer E,
   infer A
@@ -13,5 +13,5 @@ export type Providing<K extends AnyIO, R1, RP = unknown, SP = never, EP = never>
   : never;
 
 export interface Provider<Req, Mod, SP, EP> {
-  <K extends AnyIO>(e: K): Providing<K, Mod, Req, SP, EP>;
+  <K extends Any>(e: K): Providing<K, Mod, Req, SP, EP>;
 }
