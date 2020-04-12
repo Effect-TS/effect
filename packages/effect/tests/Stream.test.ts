@@ -832,7 +832,7 @@ describe("Stream", () => {
     });
   });
 
-  describe.only("takeUntil", function () {
+  describe("takeUntil", function () {
     it("should take until", () => {
       const sleep = (ms: number) => pipe(T.delay(T.pure(true), ms));
 
@@ -865,7 +865,7 @@ describe("Stream", () => {
           pipe(
             S.periodically(50),
             S.chain((n) => S.encaseEffect(index.update(constant(n)))),
-            S.takeUntil(sleep(210)),
+            S.takeUntil(sleep(225)),
             S.drain
           )
         )
