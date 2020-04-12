@@ -1,12 +1,6 @@
 name: Node CI
 
 on:
-  push:
-    branches:
-      - issue/**
-      - features/**
-      - generic/**
-      - greenkeeper/**
   pull_request:
     branches:
       - master
