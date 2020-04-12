@@ -2,7 +2,7 @@ import * as assert from "assert";
 import { expect } from "chai";
 import * as array from "fp-ts/lib/Array";
 import { eqNumber } from "fp-ts/lib/Eq";
-import { FunctionN, identity } from "fp-ts/lib/function";
+import { FunctionN, identity, constant } from "fp-ts/lib/function";
 import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Do } from "fp-ts-contrib/lib/Do";
@@ -832,20 +832,63 @@ describe("Stream", () => {
     });
   });
 
-  describe("takeUntil", function () {
+  describe.only("takeUntil", function () {
     it("should take until", () => {
       const sleep = (ms: number) => pipe(T.delay(T.pure(true), ms));
 
-      const program = Do(T.effect)
-        .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(1000)), S.collectArray))
+      const program1 = Do(T.effect)
+        .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(200)), S.collectArray))
         .doL(({ list }) =>
           T.sync(() => {
-            expect(list).to.equal(20);
+            expect(list, "The output of program1 should be [0, 1, 2]").to.deep.equal([0, 1, 2]);
           })
         )
         .done();
 
-      return pipe(program, T.runToPromise);
+      const program2 = Do(T.effect)
+        .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(225)), S.collectArray))
+        .doL(({ list }) =>
+          T.sync(() => {
+            expect(list, "The output of program2 should be [0, 1, 2, 3]").to.deep.equal([
+              0,
+              1,
+              2,
+              3
+            ]);
+          })
+        )
+        .done();
+
+      const program3 = Do(T.effect)
+        .bind("index", ref.makeRef(-1))
+        .doL(({ index }) =>
+          pipe(
+            S.periodically(50),
+            S.chain((n) => S.encaseEffect(index.update(constant(n)))),
+            S.takeUntil(sleep(210)),
+            S.drain
+          )
+        )
+        // .bindL("result", ({ index }) => index.get)
+        .doL(({ index }) =>
+          T.delay(
+            pipe(
+              index.get,
+              T.chain((result) =>
+                T.sync(() => {
+                  expect(
+                    result,
+                    "The 'periodically' stream will have terminated and the last reference update is 3"
+                  ).to.equal(3);
+                })
+              )
+            ),
+            100
+          )
+        )
+        .done();
+
+      return pipe(T.zip(program1, program2), T.chain(constant(program3)), T.runToPromise);
     });
   });
 });
