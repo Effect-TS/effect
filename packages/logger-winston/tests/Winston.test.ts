@@ -1,7 +1,6 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { eff as T, freeEnv as F } from "@matechs/effect";
 import { isDone } from "@matechs/effect/lib/exit";
 import * as L from "@matechs/logger";
-import { Level } from "@matechs/logger/lib/logger";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Logger } from "winston";
@@ -9,7 +8,7 @@ import * as W from "../src";
 
 const messages: any[][] = [];
 
-const factory = F.implement(W.winstonFactoryM)({
+const factory = F.implementEff(W.winstonFactoryM)({
   [W.winstonFactoryEnv]: {
     logger: T.pure({
       log: (...args: any[]) => {
@@ -19,11 +18,11 @@ const factory = F.implement(W.winstonFactoryM)({
   }
 });
 
-async function testLevel(level: Level) {
+async function testLevel(level: L.logger.Level) {
   messages.splice(0, messages.length);
 
   const res = await T.runToPromiseExit(
-    pipe(L.logger[level]("msg", { foo: "bar" }), W.winstonLogger, factory)
+    pipe(L.logger[level]("msg", { foo: "bar" }), W.provideWinstonLoggerEff, factory)
   );
 
   assert.deepEqual(isDone(res), true);

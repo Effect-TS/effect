@@ -88,9 +88,10 @@ export const liveMain = pipe(
       endPointOrGossipSeed: "discover://eventstore.discovery.url"
     }
   }),
+  console.provideConsoleLogger,
+  console.provideConsoleLoggerConfig(),
   T.provideAll({
     ...dbConfigLive,
-    ...liveFactory,
-    ...console.consoleLogger()
+    ...liveFactory
   })
 );

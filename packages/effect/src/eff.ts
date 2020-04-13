@@ -480,4 +480,8 @@ export const encaseSyncMap = <R, E, A, E2>(
 
 export const encaseEffect = <R, E, A>(_: T.Effect<R, E, A>): Eff<unknown, R, E, A> => _ as any;
 
+export const when: (
+  predicate: boolean
+) => <S, R, E, A>(ma: Eff<S, R, E, A>) => Eff<S, R, E, Op.Option<A>> = T.when as any;
+
 export { Erase } from "./erase";

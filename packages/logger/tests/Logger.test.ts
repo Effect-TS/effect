@@ -36,7 +36,8 @@ const loggerSpec = M.suite("Logger")(
         )
         .done()
     ),
-    M.withProvider(T.provideS(L.console.consoleLogger()))
+    M.withProvider(L.console.provideConsoleLogger),
+    M.withProvider(L.console.provideConsoleLoggerConfig())
   ),
   pipe(
     M.mockedTestM("use logger with level")(() => ({
@@ -53,7 +54,8 @@ const loggerSpec = M.suite("Logger")(
         )
         .done()
     ),
-    M.withProvider(T.provideS(L.console.consoleLogger(T.pure({ level: "warn" }))))
+    M.withProvider(L.console.provideConsoleLogger),
+    M.withProvider(L.console.provideConsoleLoggerConfig({ level: "warn" }))
   )
 );
 

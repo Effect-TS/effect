@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { eff as T, freeEnv as F } from "@matechs/effect";
 import * as L from "./logger";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -6,10 +6,10 @@ function format(level: L.Level, message: string, meta?: L.Meta) {
   return `${level}: ${message}${meta ? `(${JSON.stringify({ meta })})` : ""}`;
 }
 
-function log(config: T.UIO<Config>, level: L.Level, message: string, meta?: L.Meta): T.UIO<void> {
+function log(config: Config, level: L.Level, message: string, meta?: L.Meta): T.Sync<void> {
   return (
-    Do(T.effect)
-      .bind("config", config)
+    Do(T.eff)
+      .let("config", config)
       .bindL("formatter", (s) => T.pure(s.config.formatter ?? format))
       .bindL("level", (s) => T.pure(s.config.level ?? "silly"))
       .bindL("msg", (s) => T.pure(s.formatter(level, message, meta)))
@@ -59,15 +59,31 @@ export interface Config {
   level?: L.Level;
 }
 
-export const consoleLogger = (config: T.UIO<Config> = T.pure({})) =>
-  F.instance(L.loggerM)({
-    [L.loggerEnv]: {
-      debug: (message, meta) => log(config, "debug", message, meta),
-      http: (message, meta) => log(config, "http", message, meta),
-      silly: (message, meta) => log(config, "silly", message, meta),
-      error: (message, meta) => log(config, "error", message, meta),
-      info: (message, meta) => log(config, "info", message, meta),
-      verbose: (message, meta) => log(config, "verbose", message, meta),
-      warn: (message, meta) => log(config, "warn", message, meta)
-    }
+export const ConsoleLoggerConfigURI = "@matechs/logger/console/ConsoleLoggerConfigURI";
+export interface ConsoleLoggerConfig {
+  [ConsoleLoggerConfigURI]: Config;
+}
+
+export const provideConsoleLoggerConfigEff = (config: Config = {}) =>
+  T.provideS<ConsoleLoggerConfig>({
+    [ConsoleLoggerConfigURI]: config
   });
+
+export const provideConsoleLoggerConfig = (config: Config = {}) =>
+  T.providerToEffect(provideConsoleLoggerConfigEff(config));
+
+export const provideConsoleLoggerEff = F.implementWithEff(
+  T.access((_: ConsoleLoggerConfig) => _[ConsoleLoggerConfigURI])
+)(L.Logger)((config) => ({
+  [L.LoggerURI]: {
+    debug: (message, meta) => log(config, "debug", message, meta),
+    http: (message, meta) => log(config, "http", message, meta),
+    silly: (message, meta) => log(config, "silly", message, meta),
+    error: (message, meta) => log(config, "error", message, meta),
+    info: (message, meta) => log(config, "info", message, meta),
+    verbose: (message, meta) => log(config, "verbose", message, meta),
+    warn: (message, meta) => log(config, "warn", message, meta)
+  }
+}));
+
+export const provideConsoleLogger = T.providerToEffect(provideConsoleLoggerEff);
