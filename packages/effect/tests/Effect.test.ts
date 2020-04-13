@@ -206,21 +206,6 @@ describe("EffectSafe", () => {
       );
     });
 
-    it("provideStructS", async () => {
-      const http_symbol: unique symbol = Symbol();
-
-      interface HttpEnv {
-        [http_symbol]: number;
-      }
-
-      assert.deepEqual(
-        await T.runToPromiseExit(
-          T.provideStructS({ [http_symbol]: 10 })(T.access(({ [http_symbol]: n }: HttpEnv) => n))
-        ),
-        ex.done(10)
-      );
-    });
-
     it("provideSM", async () => {
       const http_symbol: unique symbol = Symbol();
 
@@ -231,23 +216,6 @@ describe("EffectSafe", () => {
       assert.deepEqual(
         await T.runToPromiseExit(
           T.provideSM(T.pure({ [http_symbol]: 10 }))(T.access(({ [http_symbol]: n }: HttpEnv) => n))
-        ),
-        ex.done(10)
-      );
-    });
-
-    it("provideStructSM", async () => {
-      const http_symbol: unique symbol = Symbol();
-
-      interface HttpEnv {
-        [http_symbol]: number;
-      }
-
-      assert.deepEqual(
-        await T.runToPromiseExit(
-          T.provideStructSM(T.pure({ [http_symbol]: 10 }))(
-            T.access(({ [http_symbol]: n }: HttpEnv) => n)
-          )
         ),
         ex.done(10)
       );
@@ -453,73 +421,19 @@ describe("EffectSafe", () => {
         [valueEnv]: "ok"
       };
 
-      const module = pipe(T.noEnv, T.mergeEnv(env));
-
       const a = await T.runToPromiseExit(
-        T.provide(module)(T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value)))
+        T.provideS(env)(T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value)))
       );
 
       const b = await T.runToPromiseExit(
-        T.provide(module)(T.access(({ [valueEnv]: value }: ValueEnv) => value))
+        T.provideS(env)(T.access(({ [valueEnv]: value }: ValueEnv) => value))
       );
 
       assert.deepStrictEqual(a, ex.done("ok"));
       assert.deepStrictEqual(b, ex.done("ok"));
     });
 
-    it("provideStruct & access env", async () => {
-      const valueEnv = Symbol();
-      interface ValueEnv {
-        [valueEnv]: "ok";
-      }
-      const env: ValueEnv = {
-        [valueEnv]: "ok"
-      };
-
-      const module = pipe(T.noEnv, T.mergeEnv(env));
-
-      const a = await T.runToPromiseExit(
-        T.provideStruct(module)(T.accessM(({ [valueEnv]: value }: ValueEnv) => T.pure(value)))
-      );
-
-      const b = await T.runToPromiseExit(
-        T.provide(module)(T.access(({ [valueEnv]: value }: ValueEnv) => value))
-      );
-
-      assert.deepStrictEqual(a, ex.done("ok"));
-      assert.deepStrictEqual(b, ex.done("ok"));
-    });
-
-    it("provideM", async () => {
-      const nameEnv = Symbol();
-      interface EnvName {
-        [nameEnv]: string;
-      }
-      const nameLengthEnv = Symbol();
-      interface EnvNameLength {
-        [nameLengthEnv]: number;
-      }
-
-      const program = T.accessM(({ [nameLengthEnv]: nameLength }: EnvNameLength) =>
-        T.pure(nameLength + 1)
-      );
-
-      const provider = T.accessM(({ [nameEnv]: name }: EnvName) =>
-        T.pure({
-          [nameLengthEnv]: name.length
-        } as EnvNameLength)
-      );
-
-      const env: EnvName = {
-        [nameEnv]: "bob"
-      };
-
-      const a = await T.runToPromiseExit(pipe(program, T.provideM(provider), T.provide(env)));
-
-      assert.deepEqual(a, ex.done(4));
-    });
-
-    it("provideSomeM", async () => {
+    it("provideSM", async () => {
       const nameEnv = Symbol();
       interface EnvName {
         [nameEnv]: string;
@@ -563,62 +477,9 @@ describe("EffectSafe", () => {
       const a = await T.runToPromiseExit(
         pipe(
           program,
-          T.provideSomeM(nameLengthProvider),
-          T.provideSomeM(surnameLengthProvider),
-          T.provide(env)
-        )
-      );
-
-      assert.deepEqual(a, ex.done(9));
-    });
-
-    it("provideStructSomeM", async () => {
-      const nameEnv = Symbol();
-      interface EnvName {
-        [nameEnv]: string;
-      }
-      const surNameEnv = Symbol();
-      interface EnvSurname {
-        [surNameEnv]: string;
-      }
-      const nameLengthEnv = Symbol();
-      interface EnvNameLength {
-        [nameLengthEnv]: number;
-      }
-      const surnameLengthEnv = Symbol();
-      interface EnvSurNameLength {
-        [surnameLengthEnv]: number;
-      }
-
-      const program = T.accessM(
-        ({
-          [nameLengthEnv]: nameLength,
-          [surnameLengthEnv]: surnameLength
-        }: EnvNameLength & EnvSurNameLength) => T.pure(nameLength + surnameLength)
-      );
-
-      const nameLengthProvider = T.accessM(({ [nameEnv]: name }: EnvName) =>
-        T.pure({
-          [nameLengthEnv]: name.length
-        } as EnvNameLength)
-      );
-      const surnameLengthProvider = T.accessM(({ [surNameEnv]: surName }: EnvSurname) =>
-        T.pure({
-          [surnameLengthEnv]: surName.length
-        } as EnvSurNameLength)
-      );
-
-      const env: EnvName & EnvSurname = {
-        [nameEnv]: "bob",
-        [surNameEnv]: "sponge"
-      };
-
-      const a = await T.runToPromiseExit(
-        pipe(
-          program,
-          T.provideStructSomeM(nameLengthProvider),
-          T.provideStructSomeM(surnameLengthProvider),
-          T.provide(env)
+          T.provideSM(nameLengthProvider),
+          T.provideSM(surnameLengthProvider),
+          T.provideS(env)
         )
       );
 
@@ -984,7 +845,6 @@ describe("EffectSafe", () => {
     }
     const env1: Env1 = { [valueEnv]: "a" };
     const env2: Env2 = { [value2Env]: "b" };
-    const env = T.mergeEnv(env2)(env1);
 
     it("effectMonad", async () => {
       const M = parEffect;
@@ -1009,7 +869,9 @@ describe("EffectSafe", () => {
         .let("y", 1)
         .letL("z", () => 1)
         .return((r) => r);
-      const e = await T.runToPromiseExit(T.provide(env)(p));
+      const e = await T.runToPromiseExit(
+        T.provideS<Env1 & Env2>({ ...env1, ...env2 })(p)
+      );
       assert.deepStrictEqual(e, ex.raise("a"));
     });
     it("getCauseValidationM", async () => {
@@ -1034,7 +896,7 @@ describe("EffectSafe", () => {
           b: M.throwError("b")
         })
         .return((r) => r);
-      const e = await T.runToPromiseExit(T.provide(env1)(p));
+      const e = await T.runToPromiseExit(T.provideS(env1)(p));
       assert.deepStrictEqual(e, ex.raise("ab"));
     });
 
@@ -1067,7 +929,7 @@ describe("EffectSafe", () => {
           : T.pure(x)
       );
 
-      const res = await T.runToPromiseExit(T.provide(env)(checks));
+      const res = await T.runToPromiseExit(T.provideS(env)(checks));
 
       assert.deepEqual(res, ex.raise("(error: 0)(error: 1)"));
     });

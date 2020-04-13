@@ -39,7 +39,7 @@ export function log(
   );
 }
 
-export const winstonLogger: F.Provider<WinstonFactory, L.logger.Logger, never> = F.implement(
+export const winstonLogger: T.Provider<WinstonFactory, L.logger.Logger, never> = F.implement(
   L.logger.loggerM
 )({
   [L.logger.loggerEnv]: {

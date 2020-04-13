@@ -57,20 +57,18 @@ describe("RPC", () => {
     );
 
     const result = await T.runToPromise(
-      T.provideAll(
-        pipe(
-          T.noEnv,
-          T.mergeEnv(appConfig),
-          T.mergeEnv(E.express),
-          T.mergeEnv({
-            [RPC.serverConfigEnv]: {
-              [counterEnv]: {
-                scope: "/counter"
-              }
+      pipe(
+        program,
+        T.provideS(appConfig),
+        T.provideS(E.express),
+        T.provideS({
+          [RPC.serverConfigEnv]: {
+            [counterEnv]: {
+              scope: "/counter"
             }
-          })
-        )
-      )(program)
+          }
+        })
+      )
     );
 
     const incResult = await T.runToPromiseExit(

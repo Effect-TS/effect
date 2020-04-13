@@ -1,23 +1,23 @@
-import { IO, Sync, Either } from "../../src";
+import { IO, pipe, Either, Do } from "../../src";
 
 const FooURI = "uris/foo";
 interface Foo {
   [FooURI]: {
-    getNumber: () => Sync<number>;
+    getNumber: () => IO.Sync<number>;
   };
 }
 
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => Sync<string>;
+    getString: () => IO.Sync<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => Sync<string>;
+    getString: () => IO.Sync<string>;
   };
 }
 
@@ -33,19 +33,19 @@ class BError extends Error {
   }
 }
 
-// $ExpectType Sync<number>
+// $ExpectType Eff<never, unknown, never, number>
 const a1 = IO.pure(1);
 
-// $ExpectType SyncR<Bar, string>
+// $ExpectType Eff<never, Bar, never, string>
 const a2 = IO.accessM((_: Bar) => _[BarURI].getString());
 
-// $ExpectType SyncR<Baz, string>
+// $ExpectType Eff<never, Baz, never, string>
 const a3 = IO.accessM((_: Baz) => _[BazURI].getString());
 
-// $ExpectType SyncE<AError, never>
+// $ExpectType Eff<never, unknown, AError, never>
 const a4 = IO.raiseError(new AError("mmm"));
 
-// $ExpectType AsyncE<BError, number>
+// $ExpectType Eff<unknown, unknown, BError, number>
 const b = IO.async<BError, number>((resolve) => {
   const timer = setTimeout(() => {
     resolve(Either.right(1));
@@ -56,27 +56,27 @@ const b = IO.async<BError, number>((resolve) => {
   };
 });
 
-// $ExpectType SyncE<AError, never>
-const c = IO.pipe(
+// $ExpectType Eff<never, unknown, AError, never>
+const c = pipe(
   a1,
   IO.chain((_) => a4)
 );
 
-// $ExpectType SyncR<Baz & Bar, string>
-const d = IO.pipe(
+// $ExpectType Eff<never, Baz & Bar, never, string>
+const d = pipe(
   a2,
   IO.chain((_) => a3)
 );
 
-// $ExpectType AsyncRE<Baz & Bar, AError | BError, number>
-const e = IO.pipe(
+// $ExpectType Eff<unknown, Baz & Bar, AError | BError, number>
+const e = pipe(
   c,
   IO.chain((_) => d),
   IO.chain((_) => b)
 );
 
-// $ExpectType AsyncRE<Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
-const f = IO.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+// $ExpectType Eff<unknown, Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+const f = Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 // $ExpectType Provider<unknown, Foo, never, never>
 const provideFoo = IO.provideS<Foo>({
@@ -99,12 +99,12 @@ const provideBaz = IO.provideSW<Baz>()(IO.accessM((_: Foo) => _[FooURI].getNumbe
   }
 }));
 
-// $ExpectType AsyncRE<Bar & Foo, AError | BError, { c: never; } & { d: string; } & { e: number; }>
-const fb = IO.pipe(f, provideBaz);
+// $ExpectType Eff<unknown, Foo & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+const fb = pipe(f, provideBaz);
 
-// $ExpectType AsyncRE<Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
-const ff = IO.pipe(fb, provideFoo);
+// $ExpectType Eff<unknown, Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+const ff = pipe(fb, provideFoo);
 
-IO.pipe(ff, provideBar); // $ExpectType AsyncE<AError | BError, { c: never; } & { d: string; } & { e: number; }>
+pipe(ff, provideBar); // $ExpectType Eff<unknown, unknown, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 
-IO.pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Sync<string>
+pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Eff<never, unknown, never, string>

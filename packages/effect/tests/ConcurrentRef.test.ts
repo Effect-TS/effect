@@ -18,7 +18,7 @@ describe("ConcurrentRef", () => {
       .return((s) => s.result);
 
     const result = await T.runToPromise(
-      T.provide<Config>({ initial: 0 })(program)
+      T.provideS<Config>({ initial: 0 })(program)
     );
 
     assert.deepEqual(result, 3);
@@ -35,7 +35,7 @@ describe("ConcurrentRef", () => {
       .return(({ first, second }) => ({ first, second }));
 
     const result = await T.runToPromise(
-      T.provide<Config>({ initial: 0 })(program)
+      T.provideS<Config>({ initial: 0 })(program)
     );
 
     assert.notDeepEqual(result.first, result.second);

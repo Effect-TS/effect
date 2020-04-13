@@ -1,4 +1,4 @@
-import { Service, Async, SyncE, AsyncRE, IO } from "../../src";
+import { Service, IO } from "../../src";
 
 interface Foo {
   foo: {
@@ -11,9 +11,9 @@ const MyServiceURI = Symbol();
 // $ExpectType ModuleSpec<{ [MyServiceURI]: { a: Async<number>; b: (_: number) => SyncE<Error, number>; c: (_: number) => AsyncRE<Foo, never, string>; }; }>
 const MyService_ = Service.define({
   [MyServiceURI]: {
-    a: Service.cn<Async<number>>(),
-    b: Service.fn<(_: number) => SyncE<Error, number>>(),
-    c: Service.fn<(_: number) => AsyncRE<Foo, never, string>>()
+    a: Service.cn<IO.Async<number>>(),
+    b: Service.fn<(_: number) => IO.SyncE<Error, number>>(),
+    c: Service.fn<(_: number) => IO.AsyncRE<Foo, never, string>>()
   }
 });
 
@@ -23,16 +23,16 @@ export interface MyService extends Service.TypeOf<typeof MyService_> {}
 export const MyService = Service.opaque<MyService>()(MyService_);
 
 export const {
-  // $ExpectType AsyncR<MyService, number>
+  // $ExpectType Eff<unknown, MyService, never, number>
   a,
-  // $ExpectType FunctionN<[number], SyncRE<MyService, Error, number>>
+  // $ExpectType FunctionN<[number], Eff<never, MyService, Error, number>>
   b,
-  // $ExpectType FunctionN<[number], AsyncR<Foo & MyService, string>>
+  // $ExpectType FunctionN<[number], Eff<unknown, Foo & MyService, never, string>>
   c
 } = Service.access(MyService)[MyServiceURI];
 
 // $ExpectType Provider<Foo, MyService, unknown, Error>
-Service.implementWith(
+Service.implementWithEff(
   IO.async<Error, number>(() => () => {})
 )(MyService)(() => ({
   [MyServiceURI]: {
@@ -42,7 +42,7 @@ Service.implementWith(
   }
 }));
 
-// $ExpectType Provider<Foo, MyService, never, never>
+// $ExpectType Provider<Foo, MyService, never>
 Service.implementWith(IO.access((_: Foo) => 1))(MyService)(() => ({
   [MyServiceURI]: {
     a: IO.pure(1),
@@ -52,7 +52,7 @@ Service.implementWith(IO.access((_: Foo) => 1))(MyService)(() => ({
 }));
 
 // $ExpectType Provider<Foo, MyService, never, string>
-Service.implementWith(IO.accessM((_: Foo) => IO.raiseError("ooo")))(MyService)(() => ({
+Service.implementWithEff(IO.accessM((_: Foo) => IO.raiseError("ooo")))(MyService)(() => ({
   [MyServiceURI]: {
     a: IO.pure(1),
     b: (n) => IO.accessM((_: Foo) => IO.pure(n)),
@@ -60,7 +60,7 @@ Service.implementWith(IO.accessM((_: Foo) => IO.raiseError("ooo")))(MyService)((
   }
 }));
 
-// $ExpectType Provider<unknown, MyService, never, never>
+// $ExpectType Provider<unknown, MyService, never>
 Service.implement(MyService)({
   [MyServiceURI]: {
     a: IO.pure(1),

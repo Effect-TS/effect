@@ -21,13 +21,9 @@ describe("Env", () => {
       T.sync(() => `${fooS}-${barS}`)
     );
 
-    const module = pipe(
-      T.noEnv,
-      T.mergeEnv<TestEnv>({ [foo]: "foo" }),
-      T.mergeEnv<TestEnv2>({ [bar]: "bar" })
+    const result = await T.runToPromise(
+      pipe(program, T.provideAll({ [foo]: "foo", [bar]: "bar" }))
     );
-
-    const result = await T.runToPromise(pipe(program, T.provideAll(module)));
 
     assert.deepEqual(result, "foo-bar");
   });

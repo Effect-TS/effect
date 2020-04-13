@@ -498,7 +498,7 @@ describe("Stream", () => {
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
-      T.provide<Config & ConfigB>({
+      T.provideS<Config & ConfigB>({
         initial: 1,
         second: 1
       })(r)
@@ -545,7 +545,7 @@ describe("Stream", () => {
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
-      T.provide<Config & ConfigB>({
+      T.provideS<Config & ConfigB>({
         initial: 1,
         second: 1
       })(r)

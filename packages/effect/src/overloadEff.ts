@@ -17,7 +17,7 @@ import { PipeableFunctor4 } from "fp-ts/lib/pipeable";
 import { Profunctor4 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid4 } from "fp-ts/lib/Semigroupoid";
 import { NoEnv, NoErr } from "./effect";
-import { URI as EffURI, RT } from "./eff";
+import { URI as EffURI, Eff } from "./eff";
 
 // WIP
 /* istanbul ignore file */
@@ -26,14 +26,14 @@ export interface Apply4E<F extends EffURI> extends Functor4<F> {
   readonly ap: <S1, S2, R, E, A, B, R2, E2>(
     fab: Kind4<F, S1, R, E, (a: A) => B>,
     fa: Kind4<F, S2, R2, E2, A>
-  ) => RT<unknown, R & R2, E | E2, B>;
+  ) => Eff<S1 | S2, R & R2, E | E2, B>;
 }
 
 export interface Chain4E<F extends EffURI> extends Apply4E<F> {
   readonly chain: <S1, S2, R, E, A, R2, E2, B>(
     fa: Kind4<F, S1, R, E, A>,
     f: (a: A) => Kind4<F, S2, R2, E2, B>
-  ) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => Eff<S1 | S2, R & R2, E | E2, B>;
 }
 
 export interface Applicative4E<F extends EffURI> extends Apply4E<F> {
@@ -44,7 +44,7 @@ export interface Alt4E<F extends EffURI> extends Functor4<F> {
   readonly alt: <S1, S2, R, R2, E, E2, A>(
     fx: Kind4<F, S1, R, E, A>,
     fy: () => Kind4<F, S2, R2, E2, A>
-  ) => RT<S1 | S2, R & R2, E2, A>;
+  ) => Eff<S1 | S2, R & R2, E2, A>;
 }
 
 export interface Monad4E<M extends EffURI> extends Applicative4E<M>, Chain4E<M> {}
@@ -52,27 +52,27 @@ export interface Monad4E<M extends EffURI> extends Applicative4E<M>, Chain4E<M> 
 export interface Monad4EC<M extends EffURI, E> extends Applicative4EC<M, E>, Chain4EC<M, E> {}
 
 export interface Applicative4EC<F extends EffURI, E> extends Apply4EC<F, E> {
-  readonly of: <S, R, A>(a: A) => RT<S, R, E, A>;
+  readonly of: <S, R, A>(a: A) => Eff<S, R, E, A>;
 }
 
 export interface Apply4EC<F extends EffURI, E> extends Functor4EC<F, E> {
   readonly ap: <S1, S2, R, R2, A, B>(
     fab: Kind4<F, S1, R, E, (a: A) => B>,
     fa: Kind4<F, S2, R2, E, A>
-  ) => RT<S1 | S2, R & R2, E, B>;
+  ) => Eff<S1 | S2, R & R2, E, B>;
 }
 
 export interface Chain4EC<F extends EffURI, E> extends Apply4EC<F, E> {
   readonly chain: <S1, S2, R, A, R2, B>(
     fa: Kind4<F, S1, R, E, A>,
     f: (a: A) => Kind4<F, S2, R2, E, B>
-  ) => RT<S1 | S2, R & R2, E, B>;
+  ) => Eff<S1 | S2, R & R2, E, B>;
 }
 
 export interface Functor4EC<F extends EffURI, E> {
   readonly URI: F;
   readonly _E: E;
-  readonly map: <S, R, A, B>(fa: Kind4<F, S, R, E, A>, f: (a: A) => B) => RT<S, R, E, B>;
+  readonly map: <S, R, A, B>(fa: Kind4<F, S, R, E, A>, f: (a: A) => B) => Eff<S, R, E, B>;
 }
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
@@ -82,20 +82,20 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   : never;
 
 interface GenEffect<S, R, E, A> {
-  _TAG: () => "Eff";
+  _TAG: () => "Effect";
   _E: () => E;
   _A: () => A;
   _S: () => S;
   _R: (_: R) => void;
 }
 
-export type STypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? S : never;
+export type STypeOf<X> = X extends GenEffect<infer _S, infer _R, infer _E, infer _A> ? _S : never;
 
-export type ATypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? A : never;
+export type ATypeOf<X> = X extends GenEffect<infer _S, infer _R, infer _E, infer _A> ? _A : never;
 
-export type ETypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? E : never;
+export type ETypeOf<X> = X extends GenEffect<infer _S, infer _R, infer _E, infer _A> ? _E : never;
 
-export type RTypeOf<X> = X extends GenEffect<infer S, infer R, infer E, infer A> ? R : never;
+export type RTypeOf<X> = X extends GenEffect<infer _S, infer _R, infer _E, infer _A> ? _R : never;
 
 export type EnvOf<R extends Record<string, GenEffect<any, any, any, any>>> = UnionToIntersection<
   {
@@ -122,7 +122,11 @@ export interface Do4CE<M extends EffURI, Q, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     a: A
   ) => Do4CE<M, Q, S & { [K in N]: A }, U, L>;
+<<<<<<< HEAD
   letL: <N extends string, A>(
+=======
+  letL: <N extends string, E, R, A>(
+>>>>>>> 4797f837... Unify Eff & Effect APIs, remove retyping
     name: Exclude<N, keyof S>,
     f: (s: S) => A
   ) => Do4CE<M, Q, S & { [K in N]: A }, U, L>;
@@ -144,8 +148,8 @@ export interface Do4CE<M extends EffURI, Q, S extends object, U, L> {
     U & EnvOf<R>,
     L | ETypeOf<R[keyof R]>
   >;
-  return: <A>(f: (s: S) => A) => RT<Q, U, L, A>;
-  done: () => RT<Q, U, L, S>;
+  return: <A>(f: (s: S) => A) => Eff<Q, U, L, A>;
+  done: () => Eff<Q, U, L, S>;
 }
 
 export interface Do4CE_<M extends EffURI, Q, S extends object, U, L> {
@@ -173,8 +177,8 @@ export interface Do4CE_<M extends EffURI, Q, S extends object, U, L> {
   sequenceSL: <R extends Record<string, GenEffect<any, any, L, any>>>(
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE_<M, SOf<R>, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
-  return: <A>(f: (s: S) => A) => RT<Q, U, L, A>;
-  done: () => RT<Q, U, L, S>;
+  return: <A>(f: (s: S) => A) => Eff<Q, U, L, A>;
+  done: () => Eff<Q, U, L, S>;
 }
 
 declare module "fp-ts-contrib/lib/Do" {
@@ -187,7 +191,7 @@ declare module "fp-ts/lib/Apply" {
     F: Apply4E<F>
   ): <NER extends Record<string, GenEffect<any, any, any, any>>>(
     r: EnforceNonEmptyRecord<NER> & Record<string, GenEffect<any, any, any, any>>
-  ) => RT<
+  ) => Eff<
     SOf<NER>,
     EnvOf<NER>,
     {
@@ -204,7 +208,7 @@ declare module "fp-ts/lib/Apply" {
     ...t: T & {
       0: GenEffect<any, any, any, any>;
     }
-  ) => RT<
+  ) => Eff<
     {
       [K in keyof T]: [T[K]] extends [GenEffect<infer S, any, any, any>] ? S : never;
     }[number],
@@ -229,59 +233,59 @@ declare module "fp-ts/lib/Apply" {
 export interface PipeableChain4E<F extends EffURI> extends PipeableApply4E<F> {
   readonly chain: <S1, R, E, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
-  ) => <S2, R2, E2>(ma: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => <S2, R2, E2>(ma: Kind4<F, S2, R2, E2, A>) => Eff<S1 | S2, R & R2, E | E2, B>;
   readonly chainFirst: <S1, R, E, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
-  ) => <S2, R2, E2>(ma: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, A>;
+  ) => <S2, R2, E2>(ma: Kind4<F, S2, R2, E2, A>) => Eff<S1 | S2, R & R2, E | E2, A>;
   readonly flatten: <S1, S2, R, E, R2, E2, A>(
     mma: Kind4<F, S1, R, E, Kind4<F, S2, R2, E2, A>>
-  ) => RT<S1 | S2, R & R2, E | E2, A>;
+  ) => Eff<S1 | S2, R & R2, E | E2, A>;
 }
 
 export interface PipeableChain4EC<F extends EffURI, E> extends PipeableApply4EC<F, E> {
   readonly chain: <S1, R, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
-  ) => <S2, R2>(ma: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, B>;
+  ) => <S2, R2>(ma: Kind4<F, S2, R2, E, A>) => Eff<S1 | S2, R & R2, E, B>;
   readonly chainFirst: <S1, R, A, B>(
     f: (a: A) => Kind4<F, S1, R, E, B>
-  ) => <S2, R2>(ma: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, A>;
+  ) => <S2, R2>(ma: Kind4<F, S2, R2, E, A>) => Eff<S1 | S2, R & R2, E, A>;
   readonly flatten: <S1, S2, R, R2, A>(
     mma: Kind4<F, S1, R, E, Kind4<F, S2, R2, E, A>>
-  ) => RT<S1 | S2, R & R2, E, A>;
+  ) => Eff<S1 | S2, R & R2, E, A>;
 }
 
 export interface PipeableApply4E<F extends EffURI> extends PipeableFunctor4<F> {
   readonly ap: <S1, R, E, A, E2>(
     fa: Kind4<F, S1, R, E, A>
-  ) => <S2, R2, B>(fab: Kind4<F, S2, R2, E2, (a: A) => B>) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => <S2, R2, B>(fab: Kind4<F, S2, R2, E2, (a: A) => B>) => Eff<S1 | S2, R & R2, E | E2, B>;
   readonly apFirst: <S1, R, E, B>(
     fb: Kind4<F, S1, R, E, B>
-  ) => <A, S2, R2, E2>(fa: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, A>;
+  ) => <A, S2, R2, E2>(fa: Kind4<F, S2, R2, E2, A>) => Eff<S1 | S2, R & R2, E | E2, A>;
   readonly apSecond: <S1, R, E, B>(
     fb: Kind4<F, S1, R, E, B>
-  ) => <A, S2, R2, E2>(fa: Kind4<F, S2, R2, E2, A>) => RT<S1 | S2, R & R2, E | E2, B>;
+  ) => <A, S2, R2, E2>(fa: Kind4<F, S2, R2, E2, A>) => Eff<S1 | S2, R & R2, E | E2, B>;
 }
 
 export interface PipeableApply4EC<F extends EffURI, E> extends PipeableFunctor4EC<F, E> {
   readonly ap: <S1, R, A>(
     fa: Kind4<F, S1, R, E, A>
-  ) => <S2, B, R2>(fab: Kind4<F, S2, R2, E, (a: A) => B>) => RT<S1 | S2, R & R2, E, B>;
+  ) => <S2, B, R2>(fab: Kind4<F, S2, R2, E, (a: A) => B>) => Eff<S1 | S2, R & R2, E, B>;
   readonly apFirst: <S1, R, B>(
     fb: Kind4<F, S1, R, E, B>
-  ) => <A, S2, R2>(fa: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, A>;
+  ) => <A, S2, R2>(fa: Kind4<F, S2, R2, E, A>) => Eff<S1 | S2, R & R2, E, A>;
   readonly apSecond: <S1, R, B>(
     fb: Kind4<F, S1, R, E, B>
-  ) => <A, S2, R2>(fa: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, B>;
+  ) => <A, S2, R2>(fa: Kind4<F, S2, R2, E, A>) => Eff<S1 | S2, R & R2, E, B>;
 }
 
 export interface PipeableFunctor4EC<F extends EffURI, E> {
-  readonly map: <A, B>(f: (a: A) => B) => <S, R>(fa: Kind4<F, S, R, E, A>) => RT<S, R, E, B>;
+  readonly map: <A, B>(f: (a: A) => B) => <S, R>(fa: Kind4<F, S, R, E, A>) => Eff<S, R, E, B>;
 }
 
 export interface PipeableAlt4E<F extends EffURI> {
   readonly alt: <S1, R, E, A>(
     that: () => Kind4<F, S1, R, E, A>
-  ) => <S2, R2, E2>(fa: Kind4<F, S1 | S2, R2, E2, A>) => RT<S1 | S2, R & R2, E, A>;
+  ) => <S2, R2, E2>(fa: Kind4<F, S1 | S2, R2, E2, A>) => Eff<S1 | S2, R & R2, E, A>;
 }
 
 declare module "fp-ts/lib/pipeable" {
@@ -332,41 +336,41 @@ declare module "fp-ts/lib/pipeable" {
 }
 
 export interface MonadThrow4E<M extends EffURI> extends Monad4E<M> {
-  readonly throwError: <E>(e: E) => RT<never, unknown, E, never>;
+  readonly throwError: <E>(e: E) => Eff<never, unknown, E, never>;
 }
 
 export interface MonadThrow4EC<M extends EffURI, E> extends Monad4EC<M, E> {
-  readonly throwError: (e: E) => RT<never, unknown, E, never>;
+  readonly throwError: (e: E) => Eff<never, unknown, E, never>;
 }
 
 export interface Alt4EC<F extends EffURI, E> extends Functor4EC<F, E> {
   readonly alt: <S1, S2, R, R2, A>(
     fx: Kind4<F, S1, R, E, A>,
     fy: () => Kind4<F, S2, R2, E, A>
-  ) => RT<S1 | S2, R & R2, E, A>;
+  ) => Eff<S1 | S2, R & R2, E, A>;
 }
 
 export interface PipeableAlt4EC<F extends EffURI, E> {
   readonly alt: <S1, R, A>(
     that: () => Kind4<F, S1, R, E, A>
-  ) => <S2, R2>(fa: Kind4<F, S2, R2, E, A>) => RT<S1 | S2, R & R2, E, A>;
+  ) => <S2, R2>(fa: Kind4<F, S2, R2, E, A>) => Eff<S1 | S2, R & R2, E, A>;
 }
 
 export interface PipeableMonadThrow4EC<F extends EffURI, E> {
-  readonly fromOption: (onNone: () => E) => <A>(ma: Option<A>) => RT<never, NoEnv, E, A>;
-  readonly fromEither: <A>(ma: Either<E, A>) => RT<never, NoEnv, E, A>;
+  readonly fromOption: (onNone: () => E) => <A>(ma: Option<A>) => Eff<never, NoEnv, E, A>;
+  readonly fromEither: <A>(ma: Either<E, A>) => Eff<never, NoEnv, E, A>;
   readonly fromPredicate: {
     <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): (
       a: A
-    ) => RT<never, NoEnv, E, B>;
-    <A>(predicate: Predicate<A>, onFalse: (a: A) => E): (a: A) => RT<never, NoEnv, E, A>;
+    ) => Eff<never, NoEnv, E, B>;
+    <A>(predicate: Predicate<A>, onFalse: (a: A) => E): (a: A) => Eff<never, NoEnv, E, A>;
   };
   readonly filterOrElse: {
     <A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <S, R>(
       ma: Kind4<F, S, R, E, A>
-    ) => RT<S, R, E, B>;
+    ) => Eff<S, R, E, B>;
     <A>(predicate: Predicate<A>, onFalse: (a: A) => E): <S, R>(
       ma: Kind4<F, S, R, E, A>
-    ) => RT<S, R, E, A>;
+    ) => Eff<S, R, E, A>;
   };
 }

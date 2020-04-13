@@ -1,19 +1,19 @@
 /* istanbul ignore file */
 
-import { IO, Sync, Either } from "../src";
+import { IO, pipe, Either, fluent, Do, Exit } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => Sync<string>;
+    getString: () => IO.Sync<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => Sync<string>;
+    getString: () => IO.Sync<string>;
   };
 }
 
@@ -44,22 +44,22 @@ const b = IO.async<BError, number>((resolve) => {
   };
 });
 
-const c = IO.pipe(
+const c = pipe(
   a1,
   IO.chain((_) => a4)
 );
 
-const d = IO.pipe(
+const d = pipe(
   a2,
   IO.chain((_) => a3)
 );
 
-const e = IO.fluent(c)
+const e = fluent(c)
   .pipe((_) => d)
   .pipe(IO.chain((_) => b))
   .done();
 
-const f = IO.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+const f = Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 const provideBar = IO.provideSO<Bar>({
   [BarURI]: {
@@ -75,19 +75,19 @@ const provideBaz = IO.provideSW<Baz>()(a2)((s) => ({
 
 describe("Prelude", () => {
   it("should run effect composition", async () => {
-    await IO.fluent(f)
+    await fluent(f)
       .pipe(provideBaz)
       .pipe(provideBar)
-      .pipe(IO.run)
+      .pipe(IO.runToPromiseExit)
       .done()
       .then((exit) => {
-        assert.deepStrictEqual(IO.Exit.isRaise(exit) && exit.error, new AError("mmm"));
+        assert.deepStrictEqual(Exit.isRaise(exit) && exit.error, new AError("mmm"));
       });
   });
 
   it("should run effect composition - sync", () => {
-    const exit = IO.pipe(a3, provideBaz, provideBar, IO.runSync);
+    const exit = pipe(a3, provideBaz, provideBar, IO.runSync);
 
-    assert.deepStrictEqual(IO.Exit.isDone(exit) && exit.value, "value: bar");
+    assert.deepStrictEqual(Exit.isDone(exit) && exit.value, "value: bar");
   });
 });

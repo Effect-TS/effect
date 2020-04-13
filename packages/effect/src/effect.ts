@@ -22,7 +22,6 @@ import { Driver, DriverImpl } from "./driver";
 import { Alt3EC, Monad3E, Monad3EC, MonadThrow3E, MonadThrow3EC, Alt3E } from "./overload";
 import { makeRef, Ref } from "./ref";
 import * as S from "./semaphore";
-import { mergeDeep } from "./utils/merge";
 import { DriverSyncImpl } from "./driverSync";
 import { pipe } from "fp-ts/lib/pipeable";
 
@@ -62,16 +61,8 @@ export interface Effect<R, E, A> {
 }
 
 export type IO<E, A> = Effect<NoEnv, E, A>;
-
 export type UIO<A> = Effect<NoEnv, NoErr, A>;
-
 export type RUIO<R, A> = Effect<R, NoErr, A>;
-
-export type Strip<R, R2 extends Partial<R>> = {
-  [k in Exclude<keyof R, keyof R2>]: R[k];
-};
-
-export type OrVoid<R> = R extends {} & infer A ? (unknown extends A ? void : A) : void;
 
 export class EffectIO<R, E, A> implements Effect<R, E, A> {
   static fromEffect<R, E, A>(eff: Effect<R, E, A>): EffectIO<R, E, A> {
@@ -442,30 +433,8 @@ export function access<R, A, E = NoErr>(f: F.FunctionN<[R], A>): Effect<R, E, A>
   return map_(accessEnvironment<R>(), f);
 }
 
-export function mergeEnv<A>(a: A): <B>(b: B) => A & B {
-  return (b) => mergeDeep(a, b);
-}
-
 /**
- * Provides partial environment, to be used only in top-level
- * for deeper level is better to use provideR or provideAll
- */
-
-export const provide = <R>(r: R) => <R2, E, A>(ma: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
-  accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(ma));
-
-export const provideStruct = <R>(r: R) => <
-  T,
-  R2 = T extends Effect<infer R3, infer __, infer ___> ? Omit<R3, keyof R> : never,
-  E = T extends Effect<R2 & R, infer EE, infer ____> ? EE : never,
-  A = T extends Effect<R2 & R, E, infer AE> ? AE : never
->(
-  eff: T extends Effect<R2 & R, E, A> ? T : never
-): Effect<R2, E, A> => accessM((r2: R2) => provideAll(mergeEnv(r2)(r))(eff));
-
-/**
- * Provides partial environment, via direct transformation
- * safe to use in non top-level scenarios
+ * Provides partial environment
  */
 
 export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
@@ -473,8 +442,7 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
 ): Effect<R2, E, A> => accessM((r2: R2) => provideAll(f(r2))(ma));
 
 /**
- * Provides partial environment, like provide() but via direct transformation
- * safe to use in non top-level scenarios
+ * Provides partial environment
  * Inference only works if R is bound to a non intersection type.
  * If you need to provide an intersection, (several Envs), then you may better do several unary injections OR explicitly specify the R type parameter.
  */
@@ -483,15 +451,18 @@ export function provideS<R>(r: R): Provider<unknown, R, never> {
     provideR((r2: R2) => ({ ...r2, ...r }))(eff);
 }
 
+/**
+ * Like provideS but inverted
+ * Inference only works if R is bound to a non intersection type.
+ * If you need to provide an intersection, (several Envs), then you may better do several unary injections OR explicitly specify the R type parameter.
+ */
 export function provideSO<R>(r: R): Provider<unknown, R, never> {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
     provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
 }
 
 /**
- * Provides partial environment, like provide() but via direct transformation
- * safe to use in non top-level scenarios.
- *
+ * Provides partial environment
  * Higher order. Interpret "M" in terms of "R" through "A".
  */
 export const provideSW = <M>() => <R, E, A>(res: Effect<R, E, A>) => (
@@ -500,23 +471,7 @@ export const provideSW = <M>() => <R, E, A>(res: Effect<R, E, A>) => (
   chain_(res, (a) => provideS<M>(f(a))(eff));
 
 /**
- * Provides structural partial environment, like provideStruct() but via direct transformation
- * safe to use in non top-level scenarios
- */
-export function provideStructS<R>(r: R) {
-  return <
-    T,
-    R2 = T extends Effect<infer R3, infer __, infer ___> ? Omit<R3, keyof R> : never,
-    E = T extends Effect<R2 & R, infer EE, infer ____> ? EE : never,
-    A = T extends Effect<R2 & R, E, infer AE> ? AE : never
-  >(
-    eff: T extends Effect<R2 & R, E, A> ? T : never
-  ): Effect<R2, E, A> => provideR((r2: R2) => ({ ...r2, ...r }))(eff);
-}
-
-/**
- * Provides partial environment, like provideSomeM() but via direct transformation
- * safe to use in non top-level scenarios
+ * Provides partial environment monadically
  */
 export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>): Provider<R3, R, E2> {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
@@ -524,59 +479,10 @@ export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>): Provider<R3, R, E2>
 }
 
 /**
- * Provides partial environment, like provideStructSomeM() but via direct transformation
- * safe to use in non top-level scenarios
- */
-
-export function provideStructSM<R, R3, E2>(rm: Effect<R3, E2, R>) {
-  return <
-    T,
-    R2 = T extends Effect<infer R3, infer __, infer ___> ? Omit<R3, keyof R> : never,
-    E = T extends Effect<R2 & R, infer EE, infer ____> ? EE : never,
-    A = T extends Effect<R2 & R, E, infer AE> ? AE : never
-  >(
-    eff: T extends Effect<R2 & R, E, A> ? T : never
-  ): Effect<R2 & R3, E | E2, A> => chain_(rm, (r) => provideR((r2: R2) => ({ ...r2, ...r }))(eff));
-}
-
-/**
  * Provides all environment to the child
  */
-
 export const provideAll = <R>(r: R) => <E, A>(ma: Effect<R, E, A>) =>
   new EffectIO(EffectTag.ProvideEnv as const, ma, r) as Effect<unknown, E, A>;
-
-/**
- * Provides all environment necessary to the child effect via an effect
- *
- * Note that this ***should*** be typically used at ***startup time***, not dynamically
- */
-
-export const provideM = <R2, R, E2>(f: Effect<R2, E2, R>): Provider<R2, R, E2> => (ma) =>
-  chain_(f, (r) => provide(r)(ma));
-
-/**
- * Provides some of the environment necessary to the child effect via an effect
- *
- * Note that this should be typically used at startup time, not dynamically
- */
-export const provideSomeM = <R2, R, E2>(f: Effect<R2, E2, R>): Provider<R2, R, E2> => <E, A, R3>(
-  ma: Effect<R & R3, E, A>
-): Effect<R2 & R3, E | E2, A> => chain_(f, (r) => provide(r)(ma));
-
-/**
- * Provides some structural environment necessary to the child effect via an effect
- *
- * Note that this should be typically used at startup time, not dynamically
- */
-export const provideStructSomeM = <R2, R, E2>(f: Effect<R2, E2, R>) => <
-  T,
-  R3 = T extends Effect<infer R4, infer __, infer ___> ? Omit<R4, keyof R> : never,
-  E = T extends Effect<R3 & R, infer EE, infer ____> ? EE : never,
-  A = T extends Effect<R3 & R, E, infer AE> ? AE : never
->(
-  ma: T extends Effect<R3 & R, E, A> ? T : never
-): Effect<R3 & R2, E | E2, A> => chain_(f, (r) => provide(r)(ma));
 
 /**
  * Map the value produced by an IO
@@ -1784,7 +1690,6 @@ export function getCauseValidationM<E>(
 ): Monad3EC<URI, E> & MonadThrow3EC<URI, E> & Alt3EC<URI, E> {
   return {
     URI,
-    // @ts-ignore
     _E: undefined as any,
     of: pure,
     map: map_,

@@ -33,7 +33,7 @@ export type Runtime<M> = F.UnionToIntersection<
 
 export function server<M extends F.ModuleShape<M>, R>(
   s: F.ModuleSpec<M>,
-  i: F.Provider<E.ChildEnv & R, M>
+  i: T.Provider<E.ChildEnv & R, M>
 ): T.Effect<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
   return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
     const ops: T.Effect<E.HasExpress & E.Express, never, void>[] = [];

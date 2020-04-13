@@ -8,7 +8,8 @@
     "lint": "tslint --project .",
     "bench": "yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts",
     "import-path-rewrite": "import-path-rewrite",
-    "tc": "tsc --noEmit"
+    "tc": "tsc --noEmit",
+    "dtslint": "dtslint dtslint"
   },
   "publishConfig": {
     "access": "public"

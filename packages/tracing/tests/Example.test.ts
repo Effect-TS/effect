@@ -50,17 +50,11 @@ describe("Example", () => {
 
     const mockTracer = new MockTracer(spans);
 
-    const mockModule = pipe(
-      T.noEnv,
-      T.mergeEnv(tracer(T.sync(() => mockTracer))),
-      T.mergeEnv(counter)
-    );
-
     const result = await T.runToPromiseExit(
       pipe(
         program,
-        T.provide(mockModule),
-        T.provide<Printer>({
+        T.provideS(tracer(T.sync(() => mockTracer))),
+        T.provideS<Printer>({
           printer: {
             print(s) {
               return T.sync(() => {
@@ -68,7 +62,8 @@ describe("Example", () => {
               });
             }
           }
-        })
+        }),
+        T.provideS(counter)
       )
     );
 
@@ -113,7 +108,7 @@ describe("Example", () => {
       withControllerSpan("", "", {})(T.sync(() => {}))
     );
 
-    await T.runToPromise(pipe(program2, T.provide(mockModule)));
+    await T.runToPromise(pipe(program2, T.provideS(mockModule)));
 
     assert.deepEqual(
       // @ts-ignore
@@ -141,7 +136,7 @@ describe("Example", () => {
   it("skip tracing if out of context", async () => {
     const program2 = withChildSpan("noop")(T.raiseError(new Error("not implemented")));
 
-    const result = await T.runToPromiseExit(T.provide(tracer())(program2));
+    const result = await T.runToPromiseExit(T.provideS(tracer())(program2));
 
     assert.deepEqual(result, raise(new Error("not implemented")));
   });

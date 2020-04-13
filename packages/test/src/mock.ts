@@ -34,7 +34,7 @@ export function implementMock<S extends F.ModuleSpec<any>>(
   s: S
 ): <I extends Implementation<F.TypeOf<S>>>(
   i: I
-) => F.Provider<
+) => T.Provider<
   F.UnionToIntersection<
     OnlyNew<F.TypeOf<S>, I> extends {
       [k in keyof OnlyNew<F.TypeOf<S>, I>]: {

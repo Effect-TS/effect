@@ -6,7 +6,6 @@ import { Do } from "fp-ts-contrib/lib/Do";
 
 describe("Eff", () => {
   it("should compose sync", () => {
-    // T.SyncEff<{ n: number; }, never, number>
     const program = pipe(
       Eff.access((_: { n: number }) => _.n),
       Eff.chain((n) => Eff.sync(() => n + 1))
@@ -23,8 +22,43 @@ describe("Eff", () => {
     assert.deepEqual(result, EX.done(2));
   });
 
+  it("should use in place of effect", async () => {
+    const program = pipe(
+      Eff.access((_: { n: number }) => _.n),
+      Eff.chain((n) => Eff.sync(() => n + 1))
+    );
+
+    const result = await pipe(
+      program,
+      Eff.provideAll({
+        n: 1
+      }),
+      T.runToPromiseExit
+    );
+
+    assert.deepEqual(result, EX.done(2));
+  });
+
+  it("should use in place of effect - 2", async () => {
+    const program = pipe(
+      T.access((_: { n: number }) => _.n),
+      T.chain((n) => T.sync(() => n + 1))
+    );
+
+    const result = await pipe(
+      program,
+      Eff.providerToEffect(
+        Eff.provideS({
+          n: 1
+        })
+      ),
+      T.runToPromiseExit
+    );
+
+    assert.deepEqual(result, EX.done(2));
+  });
+
   it("should compose sync - do", () => {
-    // T.SyncEff<{ n: number; }, never, number>
     const program = Do(Eff.eff)
       .bindL("n", () => Eff.access((_: { n: number }) => _.n))
       .bindL("res", ({ n }) => Eff.sync(() => n + 1))
@@ -42,7 +76,6 @@ describe("Eff", () => {
   });
 
   it("should compose async - do", async () => {
-    // T.AyncEff<{ n: number; }, never, number>
     const program = Do(Eff.eff)
       .bindL("n", () => Eff.access((_: { n: number }) => _.n))
       .bindL("res", ({ n }) => Eff.sync(() => n + 1))
