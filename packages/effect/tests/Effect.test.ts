@@ -3,7 +3,6 @@ import { Do } from "fp-ts-contrib/lib/Do";
 import { array, range } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
 import { toError } from "fp-ts/lib/Either";
-import { identity } from "fp-ts/lib/function";
 import { monoidSum } from "fp-ts/lib/Monoid";
 import * as O from "fp-ts/lib/Option";
 import { none, some } from "fp-ts/lib/Option";
@@ -14,6 +13,16 @@ import { effect, parEffect } from "../src/effect";
 import * as ex from "../src/original/exit";
 
 describe("EffectSafe", () => {
+  it("Par", async () => {
+    const program = array.sequence(parEffect)([T.pure(0), T.pure(1)]);
+
+    expect(await T.runToPromiseExit(program)).toStrictEqual(ex.done([0, 1]));
+  });
+  it("Sync", () => {
+    const program = array.sequence(T.effect)([T.pure(0), T.pure(1)]);
+
+    expect(T.runSync(program)).toStrictEqual(ex.done([0, 1]));
+  });
   it("Forever", async () => {
     let count = 0;
     const cancel = T.run(
@@ -253,7 +262,7 @@ describe("EffectSafe", () => {
         T.accessM(({ [incrementEnv]: increment }: ConfigEnv) => T.sync(() => n + increment))
       );
 
-      const result = (await T.runToPromise(T.provideAll(config)(program))).reduce(monoidSum.concat);
+      const result = (await T.runToPromise(T.provideS(config)(program))).reduce(monoidSum.concat);
 
       assert.deepEqual(result, 1250125000);
     });
@@ -846,18 +855,6 @@ describe("EffectSafe", () => {
     const env1: Env1 = { [valueEnv]: "a" };
     const env2: Env2 = { [value2Env]: "b" };
 
-    it("effectMonad", async () => {
-      const M = parEffect;
-      const p = Do(M)
-        .bindL("x", () => M.of("a"))
-        .sequenceS({
-          a: effect.throwError("a"),
-          b: effect.throwError("b")
-        })
-        .return(identity);
-      const e = await T.runToPromiseExit(p);
-      assert.deepStrictEqual(e, ex.raise("a"));
-    });
     it("effectMonad env", async () => {
       const M = T.effect;
       const p = Do(M)

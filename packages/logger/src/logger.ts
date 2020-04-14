@@ -1,4 +1,4 @@
-import { eff as EFF, freeEnv as F } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 
 export const LoggerURI = "@matechs/logger/loggerURI";
 
@@ -6,7 +6,7 @@ export interface Meta {
   [k: string]: any;
 }
 
-export type LogFn = (message: string, meta?: Meta) => EFF.Sync<void>;
+export type LogFn = (message: string, meta?: Meta) => T.Sync<void>;
 
 const loggerM_ = F.define({
   [LoggerURI]: {

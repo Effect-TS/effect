@@ -8,7 +8,7 @@ export const orgsOpsURI = Symbol();
 
 export interface OrgsOps extends F.ModuleShape<OrgsOps> {
   [orgsOpsURI]: {
-    updateOrgs: T.UIO<Option<string>>;
+    updateOrgs: T.Async<Option<string>>;
   };
 }
 

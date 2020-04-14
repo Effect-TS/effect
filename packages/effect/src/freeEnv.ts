@@ -1,23 +1,11 @@
 import * as T from "./effect";
-import * as TE from "./eff";
 import { function as F, pipeable as P } from "fp-ts";
 import { FunctionN } from "fp-ts/lib/function";
 
-export type Patched<A, B> = B extends F.FunctionN<
-  infer ARG,
-  TE.Eff<infer S, infer R, infer E, infer RET>
->
-  ? F.FunctionN<ARG, TE.Eff<S, R, E, RET>> extends B
-    ? F.FunctionN<ARG, TE.Eff<S, R & A, E, RET>>
-    : "polymorphic signature not supported"
-  : B extends F.FunctionN<infer ARG, T.Effect<infer R, infer E, infer RET>>
+export type Patched<A, B> = B extends F.FunctionN<infer ARG, T.Effect<infer R, infer E, infer RET>>
   ? F.FunctionN<ARG, T.Effect<R, E, RET>> extends B
     ? F.FunctionN<ARG, T.Effect<R & A, E, RET>>
     : "polymorphic signature not supported"
-  : B extends TE.Eff<infer S, infer R, infer E, infer RET>
-  ? TE.Eff<S, R, E, RET> extends B
-    ? TE.Eff<S, R & A, E, RET>
-    : never
   : B extends T.Effect<infer R, infer E, infer RET>
   ? T.Effect<R, E, RET> extends B
     ? T.Effect<R & A, E, RET>
@@ -53,9 +41,7 @@ export type ModuleShape<M> = {
   [k in keyof M]: {
     [h in Exclude<keyof M[k], symbol>]:
       | F.FunctionN<any, T.Effect<any, any, any>>
-      | F.FunctionN<any, TE.Eff<any, any, any, any>>
-      | T.Effect<any, any, any>
-      | TE.Eff<any, any, any, any>;
+      | T.Effect<any, any, any>;
   } &
     {
       [h in Extract<keyof M[k], symbol>]: never;
@@ -72,28 +58,19 @@ export function define<T extends ModuleShape<T>>(m: T): ModuleSpec<T> {
   return { [specURI]: m };
 }
 
-export function cn<T extends TE.Eff<any, any, any, any> | T.Effect<any, any, any>>(): T {
+export function cn<T extends T.Effect<any, any, any>>(): T {
   return {} as T;
 }
 
-export function fn<
-  T extends F.FunctionN<any, TE.Eff<any, any, any, any> | T.Effect<any, any, any>>
->(): T {
+export function fn<T extends F.FunctionN<any, T.Effect<any, any, any>>>(): T {
   // tslint:disable-next-line: no-empty
   return (() => {}) as any;
 }
 
 export type Implementation<M> = {
   [k in keyof M]: {
-    [h in keyof M[k]]: M[k][h] extends F.FunctionN<
-      infer ARG,
-      TE.Eff<never, infer _R, infer E, infer A>
-    >
-      ? F.FunctionN<ARG, TE.Eff<never, any, E, A>>
-      : M[k][h] extends F.FunctionN<infer ARG, T.Effect<infer _R, infer E, infer A>>
+    [h in keyof M[k]]: M[k][h] extends F.FunctionN<infer ARG, T.Effect<infer _R, infer E, infer A>>
       ? F.FunctionN<ARG, T.Effect<any, E, A>>
-      : M[k][h] extends TE.Eff<never, infer _R, infer E, infer A>
-      ? TE.Eff<never, any, E, A>
       : M[k][h] extends T.Effect<infer _R, infer E, infer A>
       ? T.Effect<any, E, A>
       : never;
@@ -171,34 +148,12 @@ export function providing<
   return r;
 }
 
-export function implementEff<S extends ModuleSpec<any>>(s: S) {
-  return <I extends Implementation<TypeOf<S>>>(
-    i: I
-  ): TE.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never, never> => (eff) =>
-    TE.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-      P.pipe(eff, TE.provideS(providing(s, i, e)))
-    );
-}
-
 export function implement<S extends ModuleSpec<any>>(s: S) {
   return <I extends Implementation<TypeOf<S>>>(
     i: I
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       P.pipe(eff, T.provideS(providing(s, i, e)))
-    );
-}
-
-export function implementWithEff<SW = unknown, RW = unknown, EW = never, AW = unknown>(
-  w: TE.Eff<SW, RW, EW, AW>
-) {
-  return <S extends ModuleSpec<any>>(s: S) => <I extends Implementation<TypeOf<S>>>(
-    i: (r: AW) => I
-  ): TE.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, SW, EW> => (eff) =>
-    TE.eff.chain(w as TE.Eff<SW, RW, EW, AW>, (r) =>
-      TE.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        P.pipe(eff, TE.provideS(providing(s, i(r), e)))
-      )
     );
 }
 

@@ -22,7 +22,7 @@ describe("Env", () => {
     );
 
     const result = await T.runToPromise(
-      pipe(program, T.provideAll({ [foo]: "foo", [bar]: "bar" }))
+      pipe(program, T.provideS<TestEnv & TestEnv2>({ [foo]: "foo", [bar]: "bar" }))
     );
 
     assert.deepEqual(result, "foo-bar");
@@ -31,7 +31,7 @@ describe("Env", () => {
     const res = await T.runToPromise(
       Do(T.effect)
         .bindL("a", () =>
-          T.provideAll<TestEnv>({ [foo]: "a" })(
+          T.provideS({ [foo]: "a" })(
             T.delay(
               T.access(({ [foo]: s }: TestEnv) => s),
               100
@@ -39,7 +39,7 @@ describe("Env", () => {
           )
         )
         .bindL("b", () =>
-          T.provideAll<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
+          T.provideS<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
         )
         .return((s) => `${s.a} - ${s.b}`)
     );
@@ -50,13 +50,13 @@ describe("Env", () => {
   it("env should work - par", async () => {
     const res = await T.runToPromise(
       array.sequence(T.parEffect)([
-        T.provideAll<TestEnv>({ [foo]: "a" })(
+        T.provideS({ [foo]: "a" })(
           T.delay(
             T.access(({ [foo]: s }: TestEnv) => s),
             1000
           )
         ),
-        T.provideAll<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
+        T.provideS<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
       ])
     );
 

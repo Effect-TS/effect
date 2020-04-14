@@ -108,7 +108,7 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
                       (x): ReadError<E, E2, OE, EF> =>
                         "type" in x ? x : { type: "provider", error: x }
                     ),
-                    T.provideAll(r)
+                    T.provideS(r)
                   )
                 );
               } else {

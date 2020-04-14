@@ -1,5 +1,5 @@
 import { freeEnv as F } from "@matechs/effect";
-import * as R from "../../../lib";
+import * as R from "../../../src";
 import { dateOpsSpec, dateOpsURI } from "./def";
 import { DateStateEnv, dateStateURI } from "./state";
 

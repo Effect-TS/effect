@@ -1,5 +1,4 @@
 import { effect as T } from "@matechs/effect";
-import * as Ei from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "fp-ts/lib/Record";
 import * as M from "mobx";
@@ -14,10 +13,10 @@ import { componentPropsURI } from "./componentProps";
 
 export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.UIO<K[k]>;
+    [k in keyof K]: T.Sync<K[k]>;
   }
 ) => (
-  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.UIO<P & Q>
+  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.Async<P & Q>
 ): {
   page: React.FC<P & Q>;
   getStaticProps: () => Promise<{ props: P & Q }>;
@@ -51,7 +50,7 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
               }
             )
           ),
-          T.provideAll({
+          T.provideS({
             [stateURI]: {
               state: init
             },
@@ -64,14 +63,8 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
       T.runSync
     );
 
-    if (Ei.isLeft(C)) {
-      return React.createElement("div", {
-        children: "Rendering can only be sync and should not fail"
-      });
-    }
-
-    if (isDone(C.right)) {
-      return React.createElement(C.right.value);
+    if (isDone(C)) {
+      return React.createElement(C.value);
     } else {
       return React.createElement("div", {
         children: "Rendering can only be sync and should not fail"

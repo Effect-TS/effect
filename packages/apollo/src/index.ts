@@ -37,7 +37,10 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
     typeDefs: ITypeDefinitions,
     additionalResolvers?: IResolvers
   ) => T.Effect<
-    ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE,
+    T.Erase<
+      ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE,
+      T.AsyncContext
+    >,
     never,
     void
   >;
@@ -101,7 +104,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                     source: O.fromNullable(source),
                     args: args || {}
                   }),
-                  T.provideAll({
+                  T.provideS({
                     ...(_ as any),
                     [contextURI]: {
                       [uri]: ctx
@@ -117,7 +120,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                       source: O.fromNullable(source),
                       args: args || {}
                     }),
-                    T.provideAll({
+                    T.provideS({
                       ...(_ as any),
                       [contextURI]: {
                         [uri]: ctx
@@ -131,7 +134,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                 ref[p].resolve = (x: any, _: any, ctx: Context) =>
                   pipe(
                     res[k].resolve(x),
-                    T.provideAll({
+                    T.provideS({
                       ...(_ as any),
                       [contextURI]: {
                         [uri]: ctx
@@ -162,16 +165,16 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
             const onD = configP.subscriptions.onDisconnect;
 
             config.subscriptions = {
-              onConnect: (a, b, c) => T.runToPromise(T.provideAll(_)(onC(a, b, c))),
+              onConnect: (a, b, c) => T.runToPromise(T.provideS(_)(onC(a, b, c))),
               keepAlive: configP.subscriptions.keepAlive,
-              onDisconnect: onD ? (a, b) => T.runToPromise(T.provideAll(_)(onD(a, b))) : undefined,
+              onDisconnect: onD ? (a, b) => T.runToPromise(T.provideS(_)(onD(a, b))) : undefined,
               path: configP.subscriptions.path
             };
           }
 
           const server = new ApolloServer({
             schema,
-            context: (ci) => T.runToPromise(T.provideAll(_)(contextF(ci as any))),
+            context: (ci) => T.runToPromise(T.provideS(_)(contextF(ci as any))),
             ...config
           });
 

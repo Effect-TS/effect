@@ -1,5 +1,5 @@
 import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "../../lib";
+import * as R from "../../src";
 import { DT } from "../modules/date";
 import { dateStateURI } from "../modules/date/state";
 import { ORG } from "../modules/orgs";
@@ -21,11 +21,13 @@ const SSG = R.pageSSG(pipe(Home, provider))({
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
 })(
-  // in ssg initial props can be generated via async too 
-  T.pure({
-    foo: "ok-foo",
-    bar: "ok-bar"
-  })
+  // in ssg initial props can be generated via async too
+  T.shiftAfter(
+    T.pure({
+      foo: "ok-foo",
+      bar: "ok-bar"
+    })
+  )
 );
 
 export function unstable_getStaticProps() {

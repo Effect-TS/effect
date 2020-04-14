@@ -1,6 +1,6 @@
 import * as React from "react";
 import { effect as T } from "@matechs/effect";
-import * as R from "../../../lib";
+import * as R from "../../../src";
 import { OrgsOps, updateOrgs } from "./def";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as O from "fp-ts/lib/Option";

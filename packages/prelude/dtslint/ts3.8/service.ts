@@ -23,16 +23,16 @@ export interface MyService extends Service.TypeOf<typeof MyService_> {}
 export const MyService = Service.opaque<MyService>()(MyService_);
 
 export const {
-  // $ExpectType Eff<unknown, MyService, never, number>
+  // $ExpectType Effect<AsyncContext & MyService, never, number>
   a,
-  // $ExpectType FunctionN<[number], Eff<never, MyService, Error, number>>
+  // $ExpectType FunctionN<[number], Effect<MyService, Error, number>>
   b,
-  // $ExpectType FunctionN<[number], Eff<unknown, Foo & MyService, never, string>>
+  // $ExpectType FunctionN<[number], Effect<AsyncContext & Foo & MyService, never, string>>
   c
 } = Service.access(MyService)[MyServiceURI];
 
-// $ExpectType Provider<Foo, MyService, unknown, Error>
-Service.implementWithEff(
+// $ExpectType Provider<Foo & AsyncContext, MyService, Error>
+Service.implementWith(
   IO.async<Error, number>(() => () => {})
 )(MyService)(() => ({
   [MyServiceURI]: {
@@ -51,8 +51,8 @@ Service.implementWith(IO.access((_: Foo) => 1))(MyService)(() => ({
   }
 }));
 
-// $ExpectType Provider<Foo, MyService, never, string>
-Service.implementWithEff(IO.accessM((_: Foo) => IO.raiseError("ooo")))(MyService)(() => ({
+// $ExpectType Provider<Foo, MyService, string>
+Service.implementWith(IO.accessM((_: Foo) => IO.raiseError("ooo")))(MyService)(() => ({
   [MyServiceURI]: {
     a: IO.pure(1),
     b: (n) => IO.accessM((_: Foo) => IO.pure(n)),

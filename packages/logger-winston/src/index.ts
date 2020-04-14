@@ -1,5 +1,5 @@
 import * as L from "@matechs/logger";
-import { eff as T, freeEnv as F } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as W from "winston";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -26,7 +26,7 @@ export function log(
   message: string,
   meta?: L.logger.Meta
 ): T.SyncR<WinstonFactory, void> {
-  return Do(T.eff)
+  return Do(T.effect)
     .bind("logger", logger)
     .doL((s) =>
       T.sync(() => {
@@ -38,7 +38,7 @@ export function log(
     });
 }
 
-export const provideWinstonLoggerEff = F.implementEff(L.logger.Logger)({
+export const provideWinstonLogger = F.implement(L.logger.Logger)({
   [L.logger.LoggerURI]: {
     debug: (message, meta) => log("debug", message, meta),
     http: (message, meta) => log("http", message, meta),
@@ -51,16 +51,9 @@ export const provideWinstonLoggerEff = F.implementEff(L.logger.Logger)({
 });
 
 /* istanbul ignore next */
-export const provideWinstonLogger = T.providerToEffect(provideWinstonLoggerEff);
-
-/* istanbul ignore next */
-export const provideLoggerFactoryEff = (loggerOpts: W.LoggerOptions) =>
-  F.implementEff(winstonFactoryM)({
+export const provideLoggerFactory = (loggerOpts: W.LoggerOptions) =>
+  F.implement(winstonFactoryM)({
     [winstonFactoryEnv]: {
       logger: T.sync(() => W.createLogger(loggerOpts))
     }
   });
-
-/* istanbul ignore next */
-export const provideLoggerFactory = (loggerOpts: W.LoggerOptions) =>
-  T.providerToEffect(provideLoggerFactoryEff(loggerOpts));

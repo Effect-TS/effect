@@ -33,19 +33,19 @@ class BError extends Error {
   }
 }
 
-// $ExpectType Eff<never, unknown, never, number>
+// $ExpectType Effect<unknown, never, number>
 const a1 = IO.pure(1);
 
-// $ExpectType Eff<never, Bar, never, string>
+// $ExpectType Effect<Bar, never, string>
 const a2 = IO.accessM((_: Bar) => _[BarURI].getString());
 
-// $ExpectType Eff<never, Baz, never, string>
+// $ExpectType Effect<Baz, never, string>
 const a3 = IO.accessM((_: Baz) => _[BazURI].getString());
 
-// $ExpectType Eff<never, unknown, AError, never>
+// $ExpectType Effect<unknown, AError, never>
 const a4 = IO.raiseError(new AError("mmm"));
 
-// $ExpectType Eff<unknown, unknown, BError, number>
+// $ExpectType Effect<AsyncContext, BError, number>
 const b = IO.async<BError, number>((resolve) => {
   const timer = setTimeout(() => {
     resolve(Either.right(1));
@@ -56,55 +56,55 @@ const b = IO.async<BError, number>((resolve) => {
   };
 });
 
-// $ExpectType Eff<never, unknown, AError, never>
+// $ExpectType Effect<unknown, AError, never>
 const c = pipe(
   a1,
   IO.chain((_) => a4)
 );
 
-// $ExpectType Eff<never, Baz & Bar, never, string>
+// $ExpectType Effect<Baz & Bar, never, string>
 const d = pipe(
   a2,
   IO.chain((_) => a3)
 );
 
-// $ExpectType Eff<unknown, Baz & Bar, AError | BError, number>
+// $ExpectType Effect<AsyncContext & Baz & Bar, AError | BError, number>
 const e = pipe(
   c,
   IO.chain((_) => d),
   IO.chain((_) => b)
 );
 
-// $ExpectType Eff<unknown, Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+// $ExpectType Effect<AsyncContext & Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 const f = Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
-// $ExpectType Provider<unknown, Foo, never, never>
+// $ExpectType Provider<unknown, Foo, never>
 const provideFoo = IO.provideS<Foo>({
   [FooURI]: {
     getNumber: () => IO.pure(1)
   }
 });
 
-// $ExpectType Provider<unknown, Bar, never, never>
+// $ExpectType Provider<unknown, Bar, never>
 const provideBar = IO.provideSO<Bar>({
   [BarURI]: {
     getString: () => IO.pure("bar")
   }
 });
 
-// $ExpectType Provider<Foo, Baz, never, never>
+// $ExpectType Provider<Foo, Baz, never>
 const provideBaz = IO.provideSW<Baz>()(IO.accessM((_: Foo) => _[FooURI].getNumber()))((n) => ({
   [BazURI]: {
     getString: () => IO.pure(`value: ${n}`)
   }
 }));
 
-// $ExpectType Eff<unknown, Foo & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+// $ExpectType Effect<Foo & AsyncContext & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 const fb = pipe(f, provideBaz);
 
-// $ExpectType Eff<unknown, Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+// $ExpectType Effect<AsyncContext & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 const ff = pipe(fb, provideFoo);
 
-pipe(ff, provideBar); // $ExpectType Eff<unknown, unknown, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+pipe(ff, provideBar); // $ExpectType Effect<AsyncContext, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 
-pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Eff<never, unknown, never, string>
+pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Effect<unknown, never, string>

@@ -2,7 +2,7 @@ import * as T from "../effect";
 import * as M from "../managed";
 import * as S from "../stream";
 import { option as O, either as Ei, function as F, bifunctor as B, pipeable as P } from "fp-ts";
-import { Monad3E, MonadThrow3E, Alt3E } from "../overload";
+import { Monad3EP, MonadThrow3EP } from "../overload";
 
 // alpha version exposed for exeperimentation purposes
 /* istanbul ignore file */
@@ -15,6 +15,8 @@ export interface StreamEither<R, E, A> {
   _A: () => A;
   _R: (_: R) => void;
 }
+
+export interface StreamEitherAsync<R, E, A> extends StreamEither<T.AsyncContext & R, E, A> {}
 
 const toS = <R, E, A>(_: StreamEitherT<R, E, A>): StreamEither<R, E, A> => _ as any;
 const fromS = <R, E, A>(_: StreamEither<R, E, A>): StreamEitherT<R, E, A> => _ as any;
@@ -87,7 +89,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   as: StreamEither<R, E, A>,
   bs: StreamEither<R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): StreamEither<R & R2, E | E2, C> {
+): StreamEither<T.AsyncContext & R & R2, E | E2, C> {
   return toS(
     S.stream.zipWith(fromS(as), fromS(bs), (ea, eb) => {
       if (Ei.isLeft(ea)) {
@@ -164,11 +166,11 @@ export function once<A>(a: A): StreamEither<T.NoEnv, T.NoErr, A> {
   return toS(S.stream.map(S.once(a), (a) => Ei.right(a)));
 }
 
-export function repeatedly<A>(a: A): StreamEither<T.NoEnv, T.NoErr, A> {
+export function repeatedly<A>(a: A): StreamEither<T.AsyncContext, T.NoErr, A> {
   return toS(S.stream.map(S.repeatedly(a), (a) => Ei.right(a)));
 }
 
-export function periodically(ms: number): StreamEither<T.NoEnv, T.NoErr, number> {
+export function periodically(ms: number): StreamEither<T.AsyncContext, T.NoErr, number> {
   return toS(S.stream.map(S.periodically(ms), (a) => Ei.right(a)));
 }
 
@@ -267,9 +269,10 @@ declare module "fp-ts/lib/HKT" {
 const mapLeft_ = <R, E, A, G>(fea: StreamEither<R, E, A>, f: (e: E) => G) =>
   chainError_(fea, (x) => encaseEffect(T.raiseError(f(x))));
 
-export const streamEither: Monad3E<URI> & MonadThrow3E<URI> & B.Bifunctor3<URI> & Alt3E<URI> =
+export const streamEither: Monad3EP<URI> & MonadThrow3EP<URI> & B.Bifunctor3<URI> =
   {
     URI,
+    CTX: "async",
     map: map_,
     of: <R, E, A>(a: A): StreamEither<R, E, A> =>
       (S.once(Ei.right(a)) as any) as StreamEither<R, E, A>,
@@ -281,9 +284,7 @@ export const streamEither: Monad3E<URI> & MonadThrow3E<URI> & B.Bifunctor3<URI> 
     throwError: <E>(e: E) => encaseEffect(T.raiseError(e)),
     mapLeft: mapLeft_,
     bimap: <R, E, A, G, B>(fea: StreamEither<R, E, A>, f: (e: E) => G, g: (a: A) => B) =>
-      map_(mapLeft_(fea, f), g),
-    alt: <R, R2, E, E2, A>(fx: StreamEither<R, E, A>, fy: () => StreamEither<R2, E2, A>) =>
-      chainError_(fx, (_) => fy())
+      map_(mapLeft_(fea, f), g)
   } as const;
 
 export const {
@@ -292,13 +293,8 @@ export const {
   apSecond,
   bimap,
   chainFirst,
-  filterOrElse,
   flatten,
-  fromEither,
-  fromPredicate,
   mapLeft,
   chain,
-  fromOption: fromOptionError,
-  map,
-  alt
+  map
 } = P.pipeable(streamEither);

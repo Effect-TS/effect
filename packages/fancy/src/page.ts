@@ -1,5 +1,4 @@
 import { effect as T } from "@matechs/effect";
-import * as Ei from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "fp-ts/lib/Record";
 import * as M from "mobx";
@@ -16,11 +15,17 @@ import { NextContext, nextContextURI } from "./next-ctx";
 
 export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.UIO<K[k]>;
+    [k in keyof K]: T.Sync<K[k]>;
   }
-) => (
-  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.UIO<P & Q>,
-  _KIND: unknown extends P & Q ? void : {} extends P & Q ? void : "static" | "ssr"
+) => <KI extends "static" | "ssr">(
+  _KIND: unknown extends P & Q ? void : {} extends P & Q ? void : KI,
+  _P: unknown extends P & Q
+    ? void
+    : {} extends P & Q
+    ? void
+    : KI extends "static"
+    ? T.Sync<P & Q>
+    : T.Async<P & Q>
 ): React.FC<P & Q> => {
   const initial = pipe(
     _I as Record<string, any>,
@@ -51,7 +56,7 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
               }
             )
           ),
-          T.provideAll({
+          T.provideS({
             [stateURI]: {
               state: init
             },
@@ -64,14 +69,8 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
       T.runSync
     );
 
-    if (Ei.isLeft(C)) {
-      return React.createElement("div", {
-        children: "Rendering can only be sync and should not fail"
-      });
-    }
-
-    if (isDone(C.right)) {
-      return React.createElement(C.right.value);
+    if (isDone(C)) {
+      return React.createElement(C.value);
     } else {
       return React.createElement("div", {
         children: "Rendering can only be sync and should not fail"
@@ -94,8 +93,8 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
     if (_P && _KIND && typeof _KIND === "string" && _KIND === "static") {
       const props = T.runSync(_P as T.Effect<unknown, never, P>);
 
-      if (Ei.isRight(props) && isDone(props.right)) {
-        const p = props.right.value;
+      if (isDone(props)) {
+        const p = props.value;
 
         return () =>
           React.createElement(Cmp, {

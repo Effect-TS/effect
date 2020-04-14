@@ -9,7 +9,7 @@ import { Exit } from "@matechs/effect/lib/original/exit";
 import { some, map, Option } from "fp-ts/lib/Option";
 import { Do } from "fp-ts-contrib/lib/Do";
 
-function run<E, A>(eff: T.Effect<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
+function run<E, A>(eff: T.AsyncRE<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
@@ -370,7 +370,7 @@ describe("Libcurl", () => {
     let res;
 
     const cancel = T.run(
-      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provideAll(libcurl())),
+      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provideS(libcurl())),
       (r) => {
         res = r;
       }

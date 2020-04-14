@@ -26,8 +26,8 @@ const counterEnv: unique symbol = Symbol();
 
 const counterM = F.define({
   [counterEnv]: {
-    increment: F.fn<(n: number) => T.IO<T.NoErr, number>>(),
-    ni: F.cn<T.IO<string, void>>()
+    increment: F.fn<(n: number) => T.Async<number>>(),
+    ni: F.cn<T.AsyncE<string, void>>()
   }
 });
 
@@ -75,7 +75,7 @@ describe("RPC", () => {
       pipe(
         increment(1),
         T.provideS(L.client(fetch)),
-        T.provideAll({
+        T.provideS({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
               baseUrl: "http://127.0.0.1:9003/counter"
@@ -89,7 +89,7 @@ describe("RPC", () => {
       pipe(
         ni,
         T.provideS(L.client(fetch)),
-        T.provideAll({
+        T.provideS({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
               baseUrl: "http://127.0.0.1:9003/counter"

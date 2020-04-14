@@ -1,16 +1,16 @@
-import * as EFF from "../../src/effect";
+import * as T from "../../src/effect";
 import { sequenceS, sequenceT } from "fp-ts/lib/Apply";
 
-const seqSeffect = sequenceS(EFF.effect);
-const seqTeffect = sequenceT(EFF.effect);
+const seqS = sequenceS(T.effect);
+const seqT = sequenceT(T.effect);
 
-const firstEffect = () => EFF.accessM(({ a }: { a: number }) => EFF.pure(a));
-const secondEffect = () => EFF.accessM(({ b }: { b: number }) => EFF.pure(b));
-const thirdEffect = () => EFF.raiseError("error");
-const fourthEffect = () => EFF.raiseError(1);
+const firstEffect = () => T.accessM(({ a }: { a: number }) => T.pure(a));
+const secondEffect = () => T.accessM(({ b }: { b: number }) => T.pure(b));
+const thirdEffect = () => T.raiseError("error");
+const fourthEffect = () => T.raiseError(1);
 
 // $ExpectType Effect<{ a: number; } & { b: number; }, string | number, { first: number; second: number; third: never; fourth: never; }>
-seqSeffect({
+seqS({
   first: firstEffect(),
   second: secondEffect(),
   third: thirdEffect(),
@@ -18,4 +18,4 @@ seqSeffect({
 });
 
 // $ExpectType Effect<{ a: number; } & { b: number; }, string | number, [number, number, never, never]>
-seqTeffect(firstEffect(), secondEffect(), thirdEffect(), fourthEffect());
+seqT(firstEffect(), secondEffect(), thirdEffect(), fourthEffect());

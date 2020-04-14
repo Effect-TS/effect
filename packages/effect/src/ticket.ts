@@ -6,29 +6,29 @@
 import * as T from "./effect";
 import { Exit } from "./original/exit";
 
-export function ticketExit<A>(
-  ticket: Ticket<A>,
+export function ticketExit<R, A>(
+  ticket: Ticket<R, A>,
   exit: Exit<never, A>
-): T.Effect<T.NoEnv, T.NoErr, void> {
+): T.Effect<R, T.NoErr, void> {
   if (exit._tag === "Interrupt") {
     return ticket.cleanup;
   }
   return T.unit;
 }
 
-export function ticketUse<A>(ticket: Ticket<A>): T.Effect<T.NoEnv, T.NoErr, A> {
+export function ticketUse<R, A>(ticket: Ticket<R, A>): T.Effect<R, T.NoErr, A> {
   return ticket.acquire;
 }
 
-export interface Ticket<A> {
-  readonly acquire: T.Effect<T.NoEnv, T.NoErr, A>;
-  readonly cleanup: T.Effect<T.NoEnv, T.NoErr, void>;
+export interface Ticket<R, A> {
+  readonly acquire: T.Effect<R, T.NoErr, A>;
+  readonly cleanup: T.Effect<R, T.NoErr, void>;
 }
 
-export function makeTicket<A>(
-  acquire: T.Effect<T.NoEnv, T.NoErr, A>,
-  cleanup: T.Effect<T.NoEnv, T.NoErr, void>
-): Ticket<A> {
+export function makeTicket<R, A>(
+  acquire: T.Effect<R, T.NoErr, A>,
+  cleanup: T.Effect<R, T.NoErr, void>
+): Ticket<R, A> {
   return {
     acquire,
     cleanup

@@ -1,5 +1,5 @@
 import React from "react"
-import { UI } from "../../../lib";
+import { UI } from "../../../src";
 import { FlashStateEnv, flashStateURI } from "./state";
 import * as M from "mobx";
 import * as O from "fp-ts/lib/Option";

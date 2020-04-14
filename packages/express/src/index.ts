@@ -20,7 +20,7 @@ export const serverEnv = "@matechs/express/serverURI";
 export interface HasServer {
   [serverEnv]: {
     server: Server;
-    onClose: Array<T.UIO<void>>;
+    onClose: Array<T.Async<void>>;
   };
 }
 
@@ -36,7 +36,7 @@ export interface ExpressOps {
     f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
     ...rest: NextHandleFunction[]
   ): T.Effect<R & HasExpress, T.NoErr, void>;
-  bind(port: number, hostname?: string): T.Effect<HasExpress, T.NoErr, Server>;
+  bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server>;
 }
 
 export interface Express {
@@ -78,7 +78,7 @@ export const express: Express = {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
           r[expressAppEnv].app[method](path, ...rest, (req, res) => {
-            T.runToPromiseExit(T.provideAll(r)(f(req))).then((o) => {
+            T.runToPromiseExit(T.provideS(r)(f(req))).then((o) => {
               switch (o._tag) {
                 case "Done":
                   res.status(o.value.status).send(o.value.body);
@@ -109,25 +109,23 @@ export const express: Express = {
         [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
       }))(op);
     },
-    bind(port: number, hostname?: string): T.Effect<HasExpress, T.NoErr, Server> {
+    bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
-        T.orAbort(
-          T.async<unknown, Server>((res) => {
-            const s = app.listen(port, hostname || "0.0.0.0", (err) => {
-              if (err) {
-                res(left(err));
-              } else {
-                res(right(s));
-              }
-            });
+        T.async<Error, Server>((res) => {
+          const s = app.listen(port, hostname || "0.0.0.0", (err) => {
+            if (err) {
+              res(left(err));
+            } else {
+              res(right(s));
+            }
+          });
 
-            return (cb) => {
-              s.close((e) => {
-                cb(e);
-              });
-            };
-          })
-        )
+          return (cb) => {
+            s.close((e) => {
+              cb(e);
+            });
+          };
+        })
       );
     }
   }
@@ -170,7 +168,7 @@ export function route<R, E, A>(
 export function bind(
   port: number,
   hostname?: string
-): T.Effect<HasExpress & Express, T.NoErr, Server> {
+): T.AsyncRE<HasExpress & Express, Error, Server> {
   return T.accessM(({ [expressEnv]: express }: Express) => express.bind(port, hostname));
 }
 

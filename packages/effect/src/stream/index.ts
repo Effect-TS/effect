@@ -21,7 +21,7 @@ import * as deferred from "../deferred";
 import { Deferred } from "../deferred";
 import * as M from "../managed";
 import { Managed, managed } from "../managed";
-import { Monad3E } from "../overload";
+import { Monad3EP } from "../overload";
 import * as cq from "../queue";
 import { ConcurrentQueue } from "../queue";
 import * as ref from "../ref";
@@ -47,6 +47,8 @@ export interface Stream<R, E, A> {
   _A: () => A;
   _R: (_: R) => void;
 }
+
+export interface StreamAsync<R, E, A> extends Stream<T.AsyncContext & R, E, A> {}
 
 const toS = <R, E, A>(_: StreamT<R, E, A>): Stream<R, E, A> => _ as any;
 const fromS = <R, E, A>(_: Stream<R, E, A>): StreamT<R, E, A> => _ as any;
@@ -204,13 +206,13 @@ export function once<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
  * thread until the stream runs to completion (or forever) using this
  * @param a
  */
-export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
+export function repeatedly<A>(a: A): Stream<T.AsyncContext, T.NoErr, A> {
   function fold<S>(
     initial: S,
     cont: F.Predicate<S>,
-    f: F.FunctionN<[S, A], T.Effect<T.NoEnv, T.NoErr, S>>
-  ): T.Effect<T.NoEnv, T.NoErr, S> {
-    function step(current: S): T.Effect<T.NoEnv, T.NoErr, S> {
+    f: F.FunctionN<[S, A], T.Effect<T.AsyncContext, T.NoErr, S>>
+  ): T.Effect<T.AsyncContext, T.NoErr, S> {
+    function step(current: S): T.Effect<T.AsyncContext, T.NoErr, S> {
       if (cont(current)) {
         return T.shiftAfter(effect.chain(f(current, a), step));
       }
@@ -222,7 +224,7 @@ export function repeatedly<A>(a: A): Stream<T.NoEnv, T.NoErr, A> {
   return toS(M.pure(fold));
 }
 
-export function periodically(ms: number): Stream<T.NoEnv, T.NoErr, number> {
+export function periodically(ms: number): Stream<T.AsyncContext, T.NoErr, number> {
   return P.pipe(
     M.encaseEffect(ref.makeRef(-1)),
     M.map((r) =>
@@ -724,7 +726,10 @@ export function mapM<A, R2, E2, B>(f: F.FunctionN<[A], T.Effect<R2, E2, B>>) {
 /**
  * A stream that emits no elements but never terminates.
  */
-export const never: Stream<T.NoEnv, T.NoErr, never> = mapM_(once(undefined), F.constant(T.never));
+export const never: Stream<T.AsyncContext, T.NoErr, never> = mapM_(
+  once(undefined),
+  F.constant(T.never)
+);
 
 type TDuceFused<FoldState, SinkState> = readonly [FoldState, SinkState, boolean];
 
@@ -990,7 +995,11 @@ export function intoLeftover<A, S, B, R2, E2>(sink: Sink<R2, E2, S, A, B>) {
 
 function sinkQueue<R, E, A>(
   stream: Stream<R, E, A>
-): Managed<R, E, readonly [ConcurrentQueue<O.Option<A>>, Deferred<R, E, O.Option<A>>]> {
+): Managed<
+  T.AsyncContext & R,
+  E,
+  readonly [ConcurrentQueue<O.Option<A>>, Deferred<R, E, O.Option<A>>]
+> {
   return managed.chain(
     M.zip(
       // 0 allows maximum backpressure throttling (i.e. a reader must be waiting already to produce the item)
@@ -1019,7 +1028,7 @@ function zipWith_<R, E, A, R2, E2, B, C>(
   as: Stream<R, E, A>,
   bs: Stream<R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): Stream<R & R2, E | E2, C> {
+): Stream<T.AsyncContext & R & R2, E | E2, C> {
   const source = M.zipWith(sinkQueue(as), sinkQueue(bs), ([aq, alatch], [bq, blatch]) => {
     const atake = P.pipe(
       aq.take,
@@ -1069,7 +1078,7 @@ export function zipWith<A, R2, E2, B, C>(bs: Stream<R2, E2, B>, f: F.FunctionN<[
 function zip_<R, E, A, R2, E2, B>(
   as: Stream<R, E, A>,
   bs: Stream<R2, E2, B>
-): Stream<R & R2, E | E2, readonly [A, B]> {
+): Stream<T.AsyncContext & R & R2, E | E2, readonly [A, B]> {
   return zipWith_(as, bs, (a, b) => [a, b] as const);
 }
 
@@ -1089,7 +1098,7 @@ export function zip<R2, E2, B>(bs: Stream<R2, E2, B>) {
 function queueBreakerSource<R, E, A>(
   queue: ConcurrentQueue<O.Option<A>>,
   breaker: Deferred<R, E, O.Option<A>>
-): T.Effect<R, E, O.Option<A>> {
+): T.Effect<T.AsyncContext & R, E, O.Option<A>> {
   const take = P.pipe(
     queue.take,
     T.chainTap((opt) =>
@@ -1114,7 +1123,7 @@ function queueBreakerSource<R, E, A>(
  */
 function streamQueueSource<R, E, A>(
   stream: Stream<R, E, A>
-): Managed<R, E, T.Effect<R, E, O.Option<A>>> {
+): Managed<T.AsyncContext & R, E, T.Effect<T.AsyncContext & R, E, O.Option<A>>> {
   return managed.map(sinkQueue(stream), ([q, breaker]) => queueBreakerSource(q, breaker));
 }
 
@@ -1128,20 +1137,22 @@ function streamQueueSource<R, E, A>(
 function peel_<R, E, A, S, B, R2, E2>(
   stream: Stream<R, E, A>,
   sink: Sink<R2, E2, S, A, B>
-): Stream<R & R2, E | E2, readonly [B, Stream<R & R2, E | E2, A>]> {
-  return (
+): Stream<
+  T.AsyncContext & R & R2,
+  E | E2,
+  readonly [B, Stream<T.AsyncContext & R & R2, E | E2, A>]
+> {
+  return toS(
     managed.chain(streamQueueSource(stream), (pull) => {
-      const pullStream = fromSource<R & R2, E | E2, A>(
-        (M.pure(pull) as any) as Managed<R & R2, E | E2, T.Effect<R & R2, E | E2, O.Option<A>>>
-      );
+      const pullStream = fromSource(M.pure(pull));
       // We now have a shared pull instantiation that we can use as a sink to drive and return as a stream
-      return (
+      return fromS(
         P.pipe(
           encaseEffect(intoLeftover_(pullStream, sink)),
           map(([b, left]) => [b, concat_(fromArray(left), pullStream)] as const)
-        ) as any
+        )
       );
-    }) as any
+    })
   );
 }
 
@@ -1152,7 +1163,11 @@ export function peel<A, S, B, R2, E2>(sink: Sink<R2, E2, S, A, B>) {
 function peelManaged_<R, E, A, S, B, R2, E2>(
   stream: Stream<R, E, A>,
   managedSink: Managed<R2, E2, Sink<R2, E2, S, A, B>>
-): Stream<R & R2, E | E2, readonly [B, Stream<R & R2, E | E2, A>]> {
+): Stream<
+  T.AsyncContext & R & R2,
+  E | E2,
+  readonly [B, Stream<T.AsyncContext & R & R2, E | E2, A>]
+> {
   return toS(managed.chain(managedSink, (sink) => fromS(peel_(stream, sink))));
 }
 
@@ -1174,7 +1189,9 @@ function interruptFiberSlot(
   );
 }
 
-function waitFiberSlot(slot: Ref<O.Option<Fiber<never, void>>>): T.Effect<T.NoEnv, T.NoErr, void> {
+function waitFiberSlot(
+  slot: Ref<O.Option<Fiber<never, void>>>
+): T.Effect<T.AsyncContext, T.NoErr, void> {
   return effect.chain(slot.get, (optFiber) =>
     P.pipe(
       optFiber,
@@ -1194,7 +1211,9 @@ function singleFiberSlot(): Managed<T.NoEnv, T.NoErr, Ref<O.Option<Fiber<never, 
  * Create a stream that switches to emitting elements of the most recent input stream.
  * @param stream
  */
-export function switchLatest<R, E, A>(stream: Stream<R, E, Stream<R, E, A>>): Stream<R, E, A> {
+export function switchLatest<R, E, A>(
+  stream: Stream<R, E, Stream<R, E, A>>
+): Stream<T.AsyncContext & R, E, A> {
   const source = managed.chain(streamQueueSource(stream), (
     pull // read streams
   ) =>
@@ -1234,7 +1253,7 @@ export function switchLatest<R, E, A>(stream: Stream<R, E, Stream<R, E, A>>): St
               }
 
               // pull streams and setup the push fibers appropriately
-              function advanceStreams(): T.Effect<R, never, void> {
+              function advanceStreams(): T.Effect<T.AsyncContext & R, never, void> {
                 // We need a way of looking ahead to see errors in the output streams in order to cause termination
                 // The push fiber will generate this when it encounters a failure
                 const breakerError = effect.chain(internalBreaker.wait, T.raised);
@@ -1284,7 +1303,7 @@ export function switchLatest<R, E, A>(stream: Stream<R, E, Stream<R, E, A>>): St
 function chainSwitchLatest_<R, E, A, R2, E2, B>(
   stream: Stream<R, E, A>,
   f: F.FunctionN<[A], Stream<R2, E2, B>>
-): Stream<R & R2, E | E2, B> {
+): Stream<T.AsyncContext & R & R2, E | E2, B> {
   return switchLatest(map_(widen<R2, E2>()(stream), (a) => widen<R, E>()(f(a))));
 }
 
@@ -1294,7 +1313,7 @@ export function chainSwitchLatest<A, R2, E2, B>(f: F.FunctionN<[A], Stream<R2, E
 }
 
 interface Weave {
-  attach(action: T.Effect<T.NoEnv, never, void>): T.Effect<T.NoEnv, never, void>;
+  attach<R>(action: T.Effect<R, never, void>): T.Effect<T.AsyncContext & R, never, void>;
 }
 
 type WeaveHandle = readonly [number, Fiber<never, void>];
@@ -1311,7 +1330,9 @@ const makeWeave: Managed<T.NoEnv, never, Weave> = managed.chain(
   (cell) =>
     // On cleanup we want to interrupt any running fibers
     managed.map(M.bracket(ref.makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
-      function attach(action: T.Effect<T.NoEnv, never, void>): T.Effect<T.NoEnv, never, void> {
+      function attach(
+        action: T.Effect<T.NoEnv, never, void>
+      ): T.Effect<T.AsyncContext, never, void> {
         return P.pipe(
           AP.sequenceS(T.effect)({
             next: cell.update((n) => n + 1),
@@ -1341,7 +1362,7 @@ const makeWeave: Managed<T.NoEnv, never, Weave> = managed.chain(
 function merge_<R, E, A, R2, E2>(
   stream: Stream<R, E, Stream<R2, E2, A>>,
   maxActive: number
-): Stream<R & R2, E | E2, A> {
+): Stream<T.AsyncContext & R & R2, E | E2, A> {
   const source = managed.chain(streamQueueSource(stream), (pull) =>
     managed.chain(M.encaseEffect(semaphore.makeSemaphore(maxActive)), (sem) =>
       // create the queue that output will be forced into
@@ -1356,7 +1377,9 @@ function merge_<R, E, A, R2, E2>(
                 (internalBreaker) => {
                   // create a wave action that will proxy elements created by running the stream into the push queue
                   // if any errors occur, we set the breaker
-                  function spawnPushFiber(stream: Stream<R2, E2, A>): T.Effect<R2, never, void> {
+                  function spawnPushFiber(
+                    stream: Stream<R2, E2, A>
+                  ): T.Effect<T.AsyncContext & R2, never, void> {
                     const writer = P.pipe(
                       // Process to sink elements into the queue
                       into_(map_(stream, O.some), queueSink(pushQueue)) as any,
@@ -1370,7 +1393,7 @@ function merge_<R, E, A, R2, E2>(
                   }
 
                   // The action that will pull a single stream upstream and attempt to activate it to push downstream
-                  function advanceStreams(): T.Effect<R & R2, never, void> {
+                  function advanceStreams(): T.Effect<T.AsyncContext & R & R2, never, void> {
                     const breakerError = effect.chain(internalBreaker.wait, T.raised);
 
                     return effect.foldExit(
@@ -1426,7 +1449,7 @@ function chainMerge_<R, E, A, B, R2, E2>(
   stream: Stream<R, E, A>,
   f: F.FunctionN<[A], Stream<R2, E2, B>>,
   maxActive: number
-): Stream<R & R2, E | E2, B> {
+): Stream<T.AsyncContext & R & R2, E | E2, B> {
   return merge_(map_(stream, f), maxActive);
 }
 
@@ -1437,7 +1460,9 @@ export function chainMerge<A, B, R2, E2>(
   return <R, E>(s: Stream<R, E, A>) => chainMerge_(s, f, maxActive);
 }
 
-export function mergeAll<R, E, A>(streams: Array<Stream<R, E, A>>): Stream<R, E, A> {
+export function mergeAll<R, E, A>(
+  streams: Array<Stream<R, E, A>>
+): Stream<T.AsyncContext & R, E, A> {
   return merge_((fromArray(streams) as any) as Stream<R, E, Stream<R, E, A>>, streams.length);
 }
 
@@ -1446,7 +1471,10 @@ export function mergeAll<R, E, A>(streams: Array<Stream<R, E, A>>): Stream<R, E,
  * @param stream
  * @param pred
  */
-function dropWhile_<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<R, E, A> {
+function dropWhile_<R, E, A>(
+  stream: Stream<R, E, A>,
+  pred: F.Predicate<A>
+): Stream<T.AsyncContext & R, E, A> {
   return chain_(peel_(stream, drainWhileSink(pred)), ([head, rest]) =>
     concat_((fromOption(head) as any) as Stream<R, E, A>, rest)
   );
@@ -1517,7 +1545,10 @@ export interface StreamF {
     sink: Sink<R2, E2, S, A, B>
   ): Stream<R & R2, E | E2, B>;
   drop<R, E, A>(stream: Stream<R, E, A>, n: number): Stream<R, E, A>;
-  dropWhile<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<R, E, A>;
+  dropWhile<R, E, A>(
+    stream: Stream<R, E, A>,
+    pred: F.Predicate<A>
+  ): Stream<T.AsyncContext & R, E, A>;
   take<R, E, A>(stream: Stream<R, E, A>, n: number): Stream<R, E, A>;
   takeWhile<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<R, E, A>;
   takeUntil<R, E, A>(stream: Stream<R, E, A>, until: T.Effect<R, E,A>): Stream<R, E, A>;
@@ -1537,36 +1568,41 @@ export interface StreamF {
     as: Stream<R, E, A>,
     bs: Stream<R2, E2, B>,
     f: F.FunctionN<[A, B], C>
-  ): Stream<R & R2, E | E2, C>;
+  ): Stream<T.AsyncContext & R & R2, E | E2, C>;
   zip<R, E, A, R2, E2, B>(
     as: Stream<R, E, A>,
     bs: Stream<R2, E2, B>
-  ): Stream<R & R2, E | E2, readonly [A, B]>;
+  ): Stream<T.AsyncContext & R & R2, E | E2, readonly [A, B]>;
   peel<R, E, A, S, B, R2, E2>(
     stream: Stream<R, E, A>,
     sink: Sink<R2, E2, S, A, B>
-  ): Stream<R & R2, E | E2, readonly [B, Stream<R & R2, E | E2, A>]>;
+  ): Stream<
+    T.AsyncContext & R & R2,
+    E | E2,
+    readonly [B, Stream<T.AsyncContext & R & R2, E | E2, A>]
+  >;
   peelManaged<R, E, A, S, B>(
     stream: Stream<R, E, A>,
     managedSink: Managed<R, E, Sink<R, E, S, A, B>>
-  ): Stream<R, E, readonly [B, Stream<R, E, A>]>;
+  ): Stream<T.AsyncContext & R, E, readonly [B, Stream<T.AsyncContext & R, E, A>]>;
   chainSwitchLatest<R, E, A, R2, E2, B>(
     stream: Stream<R, E, A>,
     f: F.FunctionN<[A], Stream<R2, E2, B>>
-  ): Stream<R & R2, E | E2, B>;
+  ): Stream<T.AsyncContext & R & R2, E | E2, B>;
   merge<R, E, A, R2, E2>(
     stream: Stream<R, E, Stream<R2, E2, A>>,
     maxActive: number
-  ): Stream<R & R2, E | E2, A>;
+  ): Stream<T.AsyncContext & R & R2, E | E2, A>;
   chainMerge<R, E, A, B, R2, E2>(
     stream: Stream<R, E, A>,
     f: F.FunctionN<[A], Stream<R2, E2, B>>,
     maxActive: number
-  ): Stream<R & R2, E | E2, B>;
+  ): Stream<T.AsyncContext & R & R2, E | E2, B>;
 }
 
-export const stream: Monad3E<URI> & StreamF = {
+export const stream: Monad3EP<URI> & StreamF = {
   URI,
+  CTX: "async",
   map: map_,
   of: <R, E, A>(a: A): Stream<R, E, A> => (once(a) as any) as Stream<R, E, A>,
   ap: <R, R2, E, E2, A, B>(sfab: Stream<R, E, F.FunctionN<[A], B>>, sa: Stream<R2, E2, A>) =>
@@ -1606,7 +1642,7 @@ export const stream: Monad3E<URI> & StreamF = {
 /* istanbul ignore next */
 function getSourceFromObjectReadStream<A>(
   stream: Readable
-): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<A>>> {
+): Managed<T.NoEnv, Error, T.Effect<T.AsyncContext, Error, O.Option<A>>> {
   return managed.chain(
     M.encaseEffect(
       T.sync(() => {
@@ -1649,7 +1685,7 @@ function getSourceFromObjectReadStreamB<A>(
   stream: ReadStream,
   batch: number,
   every: number
-): Managed<T.NoEnv, Error, T.Effect<T.NoEnv, Error, O.Option<Array<A>>>> {
+): Managed<T.NoEnv, Error, T.Effect<T.AsyncContext, Error, O.Option<Array<A>>>> {
   return M.encaseEffect(
     T.sync(() => {
       let open = true;

@@ -21,11 +21,11 @@ export const uuidURI = "@matechs/uuid/uuidURI";
 
 const uuidM_ = F.define({
   [uuidURI]: {
-    gen: F.cn<T.UIO<UUID>>(),
-    toBase90: F.fn<(uuid: UUID) => T.UIO<UUIDBase90>>(),
-    fromBase90: F.fn<(uuid: UUIDBase90) => T.UIO<UUID>>(),
-    toBase58: F.fn<(uuid: UUID) => T.UIO<UUIDBase58>>(),
-    fromBase58: F.fn<(uuid: UUIDBase58) => T.UIO<UUID>>()
+    gen: F.cn<T.Sync<UUID>>(),
+    toBase90: F.fn<(uuid: UUID) => T.Sync<UUIDBase90>>(),
+    fromBase90: F.fn<(uuid: UUIDBase90) => T.Sync<UUID>>(),
+    toBase58: F.fn<(uuid: UUID) => T.Sync<UUIDBase58>>(),
+    fromBase58: F.fn<(uuid: UUIDBase58) => T.Sync<UUID>>()
   }
 });
 
@@ -33,7 +33,7 @@ export interface UUIDEnv extends F.TypeOf<typeof uuidM_> {}
 
 export const uuidM = F.opaque<UUIDEnv>()(uuidM_);
 
-export const uuidEnv = F.instance(uuidM)({
+export const provideUUID = F.implement(uuidM)({
   [uuidURI]: {
     gen: T.sync(() => isoUUID.wrap(v4())),
     toBase90: (uuid) =>
@@ -64,8 +64,6 @@ export const uuidEnv = F.instance(uuidM)({
       )
   }
 });
-
-export const provideUUID = T.provideS(uuidEnv);
 
 export const {
   [uuidURI]: { fromBase58, fromBase90, gen, toBase58, toBase90 }

@@ -13,7 +13,7 @@ export interface ReadSideConfig {
 
 export interface ReadSideConfigService extends F.ModuleShape<ReadSideConfigService> {
   [readSideURI]: {
-    accessConfig: T.UIO<ReadSideConfig>;
+    accessConfig: T.Async<ReadSideConfig>;
   };
 }
 

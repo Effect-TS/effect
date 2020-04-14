@@ -68,7 +68,7 @@ export interface Encase<E, A> {
 export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
   return toM((r) => ({
     _tag: ManagedTag.Encase,
-    acquire: T.provideAll(r)(rio)
+    acquire: T.provideS(r)(rio)
   }));
 }
 
@@ -89,8 +89,8 @@ export function bracket<R, E, A, R2, E2>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Bracket,
-    acquire: T.provideAll(r)(acquire as T.Effect<R, E | E2, A>),
-    release: (a) => T.provideAll(r)(release(a))
+    acquire: T.provideS(r)(acquire as T.Effect<R, E | E2, A>),
+    release: (a) => T.provideS(r)(release(a))
   }));
 }
 
@@ -107,9 +107,8 @@ export function bracketExit<R, E, A, R2, E2>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.BracketExit,
-
-    acquire: T.provideAll(r)(acquire),
-    release: (a, e) => T.provideAll(r)(release(a, e as any))
+    acquire: T.provideS(r)(acquire),
+    release: (a, e) => T.provideS(r)(release(a, e as any))
   }));
 }
 
@@ -130,7 +129,7 @@ export function suspend<R, E, R2, E2, A>(
     (r) =>
       ({
         _tag: ManagedTag.Suspended,
-        suspended: effect.map(T.provideAll(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
+        suspended: effect.map(T.provideS(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
       } as any)
   );
 }
@@ -154,8 +153,8 @@ function chain_<R, E, L, R2, E2, A>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Chain,
-    left: provideAll(r)(left) as any,
-    bind: (l) => provideAll(r)(bind(l)) as any
+    left: provideAll(r)(left as Managed<R, E | E2, L>),
+    bind: (l) => provideAll(r)(bind(l))
   }));
 }
 
@@ -392,7 +391,7 @@ export function provideS<R3, E2, R2>(man: Managed<R3, E2, R2>): T.Provider<R3, R
   return <R, E, A>(ma: T.Effect<R & R2, E, A>) =>
     T.accessM((_: R) =>
       use(man, (r) =>
-        T.provideAll({
+        T.provideS({
           ...r,
           ..._
         })(ma)
@@ -435,7 +434,7 @@ export function getMonoid<R, E, A>(Monoid: Mon.Monoid<A>): Mon.Monoid<Managed<R,
   };
 }
 
-export function provideAll<R>(r: R) {
+function provideAll<R>(r: R) {
   return <E, A>(ma: Managed<R, E, A>): Managed<T.NoEnv, E, A> =>
     toM<unknown, E, A>(() => fromM(ma)(r));
 }

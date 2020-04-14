@@ -161,7 +161,7 @@ export interface HttpOps {
     responseType: Resp,
     headers: Record<string, string>,
     body: RequestBodyTypes[Req][M]
-  ): T.Effect<T.NoEnv, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+  ): T.AsyncE<HttpError<string>, Response<ResponseTypes[Resp][M]>>;
 }
 
 export interface Http {
@@ -178,7 +178,7 @@ export type RequestF = <R, M extends Method, Req extends RequestType, Resp exten
   requestType: Req,
   responseType: Resp,
   body?: RequestBodyTypes[Req][M]
-) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
 
 export type RequestMiddleware = (request: RequestF) => RequestF;
 
@@ -225,7 +225,7 @@ export function requestInner<
   requestType: Req,
   responseType: Resp,
   body: RequestBodyTypes[Req][M]
-): T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
+): T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
   return T.accessM((r: Http & R) =>
     r[httpEnv].request<M, Req, Resp>(
       method,
@@ -245,7 +245,7 @@ export function request<R, Req extends RequestType, Resp extends ResponseType>(
 ): (
   url: string,
   body?: RequestBodyTypes[Req]["GET"]
-) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["GET"]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["GET"]>>;
 export function request<R, Req extends RequestType, Resp extends ResponseType>(
   method: "DELETE",
   requestType: Req,
@@ -253,7 +253,7 @@ export function request<R, Req extends RequestType, Resp extends ResponseType>(
 ): (
   url: string,
   body?: RequestBodyTypes[Req]["DELETE"]
-) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["DELETE"]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["DELETE"]>>;
 export function request<R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
   method: M,
   requestType: Req,
@@ -261,7 +261,7 @@ export function request<R, M extends Method, Req extends RequestType, Resp exten
 ): (
   url: string,
   body: RequestBodyTypes[Req][M]
-) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
 export function request<R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
   method: M,
   requestType: Req,
@@ -269,7 +269,7 @@ export function request<R, M extends Method, Req extends RequestType, Resp exten
 ): (
   url: string,
   body: RequestBodyTypes[Req][M]
-) => T.Effect<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
   return (url, body) =>
     T.accessM((r: MiddlewareStack) =>
       foldMiddlewareStack(r, requestInner)<R, M, Req, Resp>(

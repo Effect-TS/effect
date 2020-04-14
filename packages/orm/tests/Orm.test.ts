@@ -72,7 +72,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(program));
+    const result = await T.runToPromiseExit(T.provideS(env)(program));
 
     assert.deepEqual(
       result,
@@ -118,7 +118,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(program));
+    const result = await T.runToPromiseExit(T.provideS(env)(program));
 
     assert.deepEqual(
       result,
@@ -159,7 +159,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(program));
+    const result = await T.runToPromiseExit(T.provideS(env)(program));
 
     assert.deepEqual(
       result,
@@ -172,7 +172,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -207,7 +207,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromise(T.provideAll(env)(program));
+    const res = await T.runToPromise(T.provideS(env)(program));
 
     assert.deepEqual(res, "ok");
   });
@@ -217,7 +217,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -262,7 +262,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromise(T.provideAll(env)(program));
+    const res = await T.runToPromise(T.provideS(env)(program));
 
     assert.deepEqual(res, "ok");
   });
@@ -272,7 +272,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -320,7 +320,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromiseExit(T.provideAll(env)(program));
+    const res = await T.runToPromiseExit(T.provideS(env)(program));
 
     assert.deepEqual(res, EX.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
     assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
@@ -331,7 +331,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.IO<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -382,7 +382,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromise(T.provideAll(env)(program));
+    const res = await T.runToPromise(T.provideS(env)(program));
 
     assert.deepEqual(res, "ok");
   });

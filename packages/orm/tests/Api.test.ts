@@ -30,7 +30,7 @@ describe("Api", () => {
       }
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(main));
+    const result = await T.runToPromiseExit(T.provideS(env)(main));
 
     assert.deepEqual(result, EX.done({ id: "ok" }));
   });
@@ -55,7 +55,7 @@ describe("Api", () => {
       }
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(main));
+    const result = await T.runToPromiseExit(T.provideS(env)(main));
 
     assert.deepEqual(result, EX.done(some({ id: "ok" })));
   });

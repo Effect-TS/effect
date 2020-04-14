@@ -90,8 +90,6 @@ export const liveMain = pipe(
   }),
   console.provideConsoleLogger,
   console.provideConsoleLoggerConfig(),
-  T.provideAll({
-    ...dbConfigLive,
-    ...liveFactory
-  })
+  T.provideS(dbConfigLive),
+  T.provideS(liveFactory)
 );

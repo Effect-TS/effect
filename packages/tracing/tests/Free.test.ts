@@ -10,7 +10,7 @@ const URI: unique symbol = Symbol();
 
 const m = F.define({
   [URI]: {
-    shouldTrace: F.cn<T.UIO<void>>()
+    shouldTrace: F.cn<T.Async<void>>()
   }
 });
 

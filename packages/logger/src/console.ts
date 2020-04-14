@@ -1,4 +1,4 @@
-import { eff as T, freeEnv as F } from "@matechs/effect";
+import { effect as T, freeEnv as F } from "@matechs/effect";
 import * as L from "./logger";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -8,7 +8,7 @@ function format(level: L.Level, message: string, meta?: L.Meta) {
 
 function log(config: Config, level: L.Level, message: string, meta?: L.Meta): T.Sync<void> {
   return (
-    Do(T.eff)
+    Do(T.effect)
       .let("config", config)
       .bindL("formatter", (s) => T.pure(s.config.formatter ?? format))
       .bindL("level", (s) => T.pure(s.config.level ?? "silly"))
@@ -64,15 +64,12 @@ export interface ConsoleLoggerConfig {
   [ConsoleLoggerConfigURI]: Config;
 }
 
-export const provideConsoleLoggerConfigEff = (config: Config = {}) =>
+export const provideConsoleLoggerConfig = (config: Config = {}) =>
   T.provideS<ConsoleLoggerConfig>({
     [ConsoleLoggerConfigURI]: config
   });
 
-export const provideConsoleLoggerConfig = (config: Config = {}) =>
-  T.providerToEffect(provideConsoleLoggerConfigEff(config));
-
-export const provideConsoleLoggerEff = F.implementWithEff(
+export const provideConsoleLogger = F.implementWith(
   T.access((_: ConsoleLoggerConfig) => _[ConsoleLoggerConfigURI])
 )(L.Logger)((config) => ({
   [L.LoggerURI]: {
@@ -85,5 +82,3 @@ export const provideConsoleLoggerEff = F.implementWithEff(
     warn: (message, meta) => log(config, "warn", message, meta)
   }
 }));
-
-export const provideConsoleLogger = T.providerToEffect(provideConsoleLoggerEff);

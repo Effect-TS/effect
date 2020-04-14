@@ -1,4 +1,4 @@
-import * as R from "../../../lib";
+import * as R from "../../../src";
 import { FlashStateEnv, flashStateURI } from "./state";
 
 export const flashMessage = (message: string) =>

@@ -8,7 +8,7 @@ export const RandomMessageURI = "@uris-free/RandomMessage";
 
 const RandomMessage_ = F.define({
   [RandomMessageURI]: {
-    hitMe: F.fn<() => T.UIO<string>>()
+    hitMe: F.fn<() => T.Async<string>>()
   }
 });
 

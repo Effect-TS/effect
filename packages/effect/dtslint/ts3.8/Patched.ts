@@ -1,12 +1,9 @@
 import * as F from "../../src/freeEnv";
 import * as T from "../../src/effect";
-import * as TE from "../../src/eff";
 
 export interface Test {
-  c: T.Effect<T.NoEnv, string, number>;
-  fm: (n: number) => T.Effect<T.NoEnv, never, void>;
-  fg: (n: number) => TE.Eff<never, T.NoEnv, never, void>;
-  c2: TE.Eff<never, T.NoEnv, never, void>;
+  c: T.SyncE<string, number>;
+  fm: (n: number) => T.Sync<void>;
 }
 
 export const testEnv = Symbol();
@@ -18,9 +15,7 @@ export interface WithTest {
 export const testM = F.define<WithTest>({
   [testEnv]: {
     fm: F.fn(),
-    c: F.cn(),
-    fg: F.fn(),
-    c2: F.cn()
+    c: F.cn()
   }
 });
 
@@ -29,90 +24,69 @@ export const {
     // $ExpectType FunctionN<[number], Effect<WithTest, never, void>>
     fm,
     // $ExpectType Effect<WithTest, string, number>
-    c,
-    // $ExpectType FunctionN<[number], Eff<never, WithTest, never, void>>
-    fg,
-    // $ExpectType Eff<never, WithTest, never, void>
-    c2
+    c
   }
 } = F.access(testM);
 
-// $ExpectType Provider<unknown, WithTest, never, never>
-export const P1 = F.implementEff(testM)({
+// $ExpectType Provider<unknown, WithTest, never>
+export const P1 = F.implement(testM)({
   [testEnv]: {
     c: T.pure(1),
-    c2: TE.pure(1),
-    fg: () => TE.unit,
     fm: () => T.unit
   }
 });
 
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; }, WithTest, never>
+// $ExpectType Provider<{ baz: string; } & { fuz: string; }, WithTest, never>
 export const P2 = F.implement(testM)({
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
-    c2: TE.access((_: { bar: string }) => 1),
-    fg: () => TE.accessM((_: { foo: string }) => TE.unit),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 });
 
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; }, WithTest, never>
+// $ExpectType Provider<{ baz: string; } & { fuz: string; }, WithTest, never>
 export const P3 = F.implementWith(T.pure(1))(testM)(() => ({
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
-    c2: TE.access((_: { bar: string }) => 1),
-    fg: () => TE.accessM((_: { foo: string }) => TE.unit),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; }, WithTest, never, never>
-export const P4 = F.implementWithEff(TE.pure(1))(testM)(() => ({
+// $ExpectType Provider<{ baz: string; } & { fuz: string; }, WithTest, never>
+export const P4 = F.implementWith(T.pure(1))(testM)(() => ({
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
-    c2: TE.access((_: { bar: string }) => 1),
-    fg: () => TE.accessM((_: { foo: string }) => TE.unit),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; } & { goo: string; }, WithTest, never, never>
-export const P5 = F.implementWithEff(TE.access((_: { goo: string }) => 1))(testM)(() => ({
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; }, WithTest, never>
+export const P5 = F.implementWith(T.access((_: { goo: string }) => 1))(testM)(() => ({
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
-    c2: TE.access((_: { bar: string }) => 1),
-    fg: () => TE.accessM((_: { foo: string }) => TE.unit),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; } & { goo: string; }, WithTest, unknown, never>
-export const P6 = F.implementWithEff(TE.accessM((_: { goo: string }) => TE.shiftAfter(TE.pure(1))))(
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncContext, WithTest, never>
+export const P6 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.pure(1))))(
   testM
 )(() => ({
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
-    c2: TE.access((_: { bar: string }) => 1),
-    fg: () => TE.accessM((_: { foo: string }) => TE.unit),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; } & { goo: string; }, WithTest, unknown, number>
-export const P7 = F.implementWithEff(
-  TE.accessM((_: { goo: string }) => TE.shiftAfter(TE.raiseError(1)))
-)(testM)(() => ({
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncContext, WithTest, number>
+export const P7 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.raiseError(1))))(
+  testM
+)(() => ({
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
-    c2: TE.access((_: { bar: string }) => 1),
-    fg: () => TE.accessM((_: { foo: string }) => TE.unit),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 }));
-
-// $ExpectType Provider<{ baz: string; } & { bar: string; } & { foo: string; } & { fuz: string; } & { goo: string; }, WithTest, number>
-export const P8 = TE.providerToEffect(P7);
 
 export interface Test2 {
   fp: <A>(a: A) => T.Effect<T.NoEnv, string, A>;

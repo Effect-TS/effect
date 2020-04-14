@@ -1,4 +1,4 @@
-import React from "react"
+import React from "react";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "../../src";
 import { DT } from "../modules/date";
@@ -22,7 +22,7 @@ const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
 export default R.page(
   pipe(
     Home,
-    T.map(C => () => (
+    T.map((C) => () => (
       <div>
         <C bar={"ok-bar"} />
         <br />
@@ -49,12 +49,12 @@ export default R.page(
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
-})(  
+})(
   // if static then initial props effect must be sync, page will be rendered
   // as static html, if ssr the props effect can be any async or sync
   // in case of ssr mode NextContext will be embedded (via getInitialProps)
-  "ssr",
-  T.shiftAfter(T.pure({
+  "static",
+  T.pure({
     foo: "ok-foo"
-  }))
+  })
 );

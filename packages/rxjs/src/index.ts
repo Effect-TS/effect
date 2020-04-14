@@ -11,7 +11,7 @@ import { identity } from "fp-ts/lib/function";
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
   onError: (e: any) => E
-): S.Stream<T.NoEnv, E, A> {
+): S.StreamAsync<unknown, E, A> {
   return S.fromSource(
     M.managed.chain(
       M.bracket(
@@ -38,7 +38,7 @@ export function encaseObservable<E, A>(
 export function encaseObservableEither<A, E = unknown>(
   observable: Rx.Observable<A>,
   mapError: (_: any) => E = identity
-): SE.StreamEither<T.NoEnv, E, A> {
+): SE.StreamEitherAsync<unknown, E, A> {
   return SE.fromSource(
     M.managed.chain(
       M.bracket(
@@ -62,8 +62,8 @@ export function encaseObservableEither<A, E = unknown>(
   );
 }
 
-export function runToObservable<E, A>(
-  o: T.Effect<T.NoEnv, never, Rx.Observable<A>>
+export function runToObservable<A>(
+  o: T.Async<Rx.Observable<A>>
 ): Rx.Observable<A> {
   return new Rx.Observable((sub) => {
     T.run(
@@ -106,11 +106,11 @@ export function runToObservable<E, A>(
 
 export function toObservable<R, E, A>(
   s: S.Stream<R, E, A>
-): T.Effect<R, T.NoErr, Rx.Observable<A>> {
+): T.IO<R, Rx.Observable<A>> {
   return T.access(
     (r: R) =>
       new Rx.Observable((sub) => {
-        const drainer = T.provideAll(r)(
+        const drainer = T.provideS(r)(
           S.drain(
             S.stream.mapM(s, (a) =>
               T.sync(() => {

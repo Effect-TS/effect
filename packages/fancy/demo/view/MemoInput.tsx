@@ -1,6 +1,6 @@
 import React from "react"
 import { effect as T } from "@matechs/effect";
-import { UI } from "../../lib";
+import { UI } from "../../src";
 
 // alpha
 /* istanbul ignore file */
