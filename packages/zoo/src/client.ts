@@ -96,19 +96,19 @@ type Out = Mkdirp | Createp | NodeId | Children | Deleted;
 const out = <A extends Out>(a: A): A => a;
 
 export interface Client {
-  connect(): T.AsyncE<ConnectError, Client>;
+  connect(): T.TaskErr<ConnectError, Client>;
   listen(f: FunctionN<[ZC.State], void>): Lazy<void>;
-  state(): T.AsyncE<never, Option<ZC.State>>;
-  mkdirp(path: string): T.AsyncE<MkdirpError, Mkdirp>;
-  dispose(): T.AsyncE<never, void>;
-  currentId(path: string): T.AsyncE<never, NodeId>;
+  state(): T.TaskErr<never, Option<ZC.State>>;
+  mkdirp(path: string): T.TaskErr<MkdirpError, Mkdirp>;
+  dispose(): T.TaskErr<never, void>;
+  currentId(path: string): T.TaskErr<never, NodeId>;
   create(
     path: string,
     mode: keyof typeof CreateMode,
     data?: Buffer | undefined
-  ): T.AsyncE<CreateError, Createp>;
-  getChildren(root: string): T.AsyncE<GetChildrenError, Children>;
-  waitDelete(path: string): T.AsyncE<WaitDeleteError, Deleted>;
+  ): T.TaskErr<CreateError, Createp>;
+  getChildren(root: string): T.TaskErr<GetChildrenError, Children>;
+  waitDelete(path: string): T.TaskErr<WaitDeleteError, Deleted>;
 }
 
 export class ClientImpl implements Client {
@@ -355,7 +355,7 @@ export const ClientFactoryURI = "@matechs/zoo/clientFactoryURI";
 
 const ClientFactory_ = F.define({
   [ClientFactoryURI]: {
-    createClient: F.cn<T.Async<Client>>()
+    createClient: F.cn<T.Task<Client>>()
   }
 });
 

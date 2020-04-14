@@ -1,6 +1,6 @@
-import { Effect, AsyncContext } from "../effect";
+import { Effect, AsyncRT } from "../effect";
 
-export type Env<T, Q = AsyncContext> = T extends Effect<infer _R & Q, infer _E, infer _A> ? _R : never;
+export type Env<T, Q = AsyncRT> = T extends Effect<infer _R & Q, infer _E, infer _A> ? _R : never;
 export type Err<T> = T extends Effect<infer _R, infer _E, infer _A> ? _E : never;
 export type Ret<T> = T extends Effect<infer _R, infer _E, infer _A> ? _A : never;
 

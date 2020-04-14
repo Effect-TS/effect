@@ -20,7 +20,7 @@ export const serverEnv = "@matechs/express/serverURI";
 export interface HasServer {
   [serverEnv]: {
     server: Server;
-    onClose: Array<T.Async<void>>;
+    onClose: Array<T.Task<void>>;
   };
 }
 
@@ -36,7 +36,7 @@ export interface ExpressOps {
     f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
     ...rest: NextHandleFunction[]
   ): T.Effect<R & HasExpress, T.NoErr, void>;
-  bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server>;
+  bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server>;
 }
 
 export interface Express {
@@ -109,7 +109,7 @@ export const express: Express = {
         [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
       }))(op);
     },
-    bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server> {
+    bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
         T.async<Error, Server>((res) => {
           const s = app.listen(port, hostname || "0.0.0.0", (err) => {
@@ -168,7 +168,7 @@ export function route<R, E, A>(
 export function bind(
   port: number,
   hostname?: string
-): T.AsyncRE<HasExpress & Express, Error, Server> {
+): T.TaskEnvErr<HasExpress & Express, Error, Server> {
   return T.accessM(({ [expressEnv]: express }: Express) => express.bind(port, hostname));
 }
 

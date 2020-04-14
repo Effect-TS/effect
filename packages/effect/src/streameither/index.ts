@@ -16,7 +16,7 @@ export interface StreamEither<R, E, A> {
   _R: (_: R) => void;
 }
 
-export interface StreamEitherAsync<R, E, A> extends StreamEither<T.AsyncContext & R, E, A> {}
+export interface StreamEitherAsync<R, E, A> extends StreamEither<T.AsyncRT & R, E, A> {}
 
 const toS = <R, E, A>(_: StreamEitherT<R, E, A>): StreamEither<R, E, A> => _ as any;
 const fromS = <R, E, A>(_: StreamEither<R, E, A>): StreamEitherT<R, E, A> => _ as any;
@@ -89,7 +89,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   as: StreamEither<R, E, A>,
   bs: StreamEither<R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): StreamEither<T.AsyncContext & R & R2, E | E2, C> {
+): StreamEither<T.AsyncRT & R & R2, E | E2, C> {
   return toS(
     S.stream.zipWith(fromS(as), fromS(bs), (ea, eb) => {
       if (Ei.isLeft(ea)) {
@@ -166,11 +166,11 @@ export function once<A>(a: A): StreamEither<T.NoEnv, T.NoErr, A> {
   return toS(S.stream.map(S.once(a), (a) => Ei.right(a)));
 }
 
-export function repeatedly<A>(a: A): StreamEither<T.AsyncContext, T.NoErr, A> {
+export function repeatedly<A>(a: A): StreamEither<T.AsyncRT, T.NoErr, A> {
   return toS(S.stream.map(S.repeatedly(a), (a) => Ei.right(a)));
 }
 
-export function periodically(ms: number): StreamEither<T.AsyncContext, T.NoErr, number> {
+export function periodically(ms: number): StreamEither<T.AsyncRT, T.NoErr, number> {
   return toS(S.stream.map(S.periodically(ms), (a) => Ei.right(a)));
 }
 

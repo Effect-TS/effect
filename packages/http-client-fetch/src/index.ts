@@ -35,7 +35,7 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
       responseType: H.ResponseType,
       headers: Record<string, string>,
       body: unknown
-    ): T.AsyncE<H.HttpError<string>, H.Response<any>> {
+    ): T.TaskErr<H.HttpError<string>, H.Response<any>> {
       const input: RequestInit = {
         headers: {
           "Content-Type": getContentType(requestType),

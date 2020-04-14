@@ -7,7 +7,7 @@ export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI";
 
 export interface WinstonFactory {
   [winstonFactoryEnv]: {
-    logger: T.Sync<W.Logger>;
+    logger: T.Io<W.Logger>;
   };
 }
 
@@ -25,7 +25,7 @@ export function log(
   level: L.logger.Level,
   message: string,
   meta?: L.logger.Meta
-): T.SyncR<WinstonFactory, void> {
+): T.IoEnv<WinstonFactory, void> {
   return Do(T.effect)
     .bind("logger", logger)
     .doL((s) =>

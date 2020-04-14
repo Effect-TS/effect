@@ -13,10 +13,10 @@ import { componentPropsURI } from "./componentProps";
 
 export const reactAsync = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.Sync<K[k]>;
+    [k in keyof K]: T.Io<K[k]>;
   }
 ) => (
-  _P: unknown extends P ? void : {} extends P ? void : T.Async<P>
+  _P: unknown extends P ? void : {} extends P ? void : T.Task<P>
 ): React.FC<Q & { children?: React.ReactElement }> => {
   const initial = pipe(
     _I as Record<string, any>,

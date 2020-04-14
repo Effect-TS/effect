@@ -26,8 +26,8 @@ const counterEnv: unique symbol = Symbol();
 
 const counterM = F.define({
   [counterEnv]: {
-    increment: F.fn<(n: number) => T.Async<number>>(),
-    ni: F.cn<T.AsyncE<string, void>>()
+    increment: F.fn<(n: number) => T.Task<number>>(),
+    ni: F.cn<T.TaskErr<string, void>>()
   }
 });
 

@@ -4,7 +4,7 @@ import { logger } from "@matechs/logger";
 export const appURI = "@matechs/cqrs/demo/appURI";
 
 export interface AppOps {
-  printTodo: (todo: string) => T.Sync<void>;
+  printTodo: (todo: string) => T.Io<void>;
 }
 
 export interface App {

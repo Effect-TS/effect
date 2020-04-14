@@ -36,7 +36,7 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
     res: R,
     typeDefs: ITypeDefinitions,
     additionalResolvers?: IResolvers
-  ) => T.SyncR<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, void>;
+  ) => T.IoEnv<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, void>;
   binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K;
   accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
   resolver: <ARGS, S = any>() => <R extends ResolverF<ARGS, U, Ctx, S, any, any, any>>(_: R) => R;

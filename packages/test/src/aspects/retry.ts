@@ -16,7 +16,7 @@ declare module "../config" {
 export const getRetry = getConfigValue(RetryURI);
 export const setRetry = setConfigValue(RetryURI)(true);
 
-export const withRetryPolicy = (retryPolicy: RetryPolicy): AspectE<T.AsyncContext> => (Spec) =>
+export const withRetryPolicy = (retryPolicy: RetryPolicy): AspectE<T.AsyncRT> => (Spec) =>
   pipe(
     Spec,
     patch((_) =>

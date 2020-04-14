@@ -1,9 +1,9 @@
-import { effect as IO, freeEnv as Service, exit as Exit } from "@matechs/effect";
+import { effect as T, freeEnv as Service, exit as Exit } from "@matechs/effect";
 import * as Either from "fp-ts/lib/Either";
 export { pipe } from "fp-ts/lib/pipeable";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 
-export { IO };
+export { T };
 export { Exit };
 export { Either };
 export { Service };
@@ -23,4 +23,4 @@ export class Fluent<A> {
 
 export const fluent = <A>(_: A) => new Fluent(_);
 
-export const Do = DoG(IO.effect);
+export const Do = DoG(T.effect);

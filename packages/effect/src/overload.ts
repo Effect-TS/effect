@@ -13,7 +13,7 @@ import { Compactable3, Separated } from "fp-ts/lib/Compactable";
 import { Profunctor3 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid3 } from "fp-ts/lib/Semigroupoid";
 import { PipeableFunctor3 } from "fp-ts/lib/pipeable";
-import { NoEnv, NoErr, AsyncContext } from "./effect";
+import { NoEnv, NoErr, AsyncRT } from "./effect";
 import { Either } from "fp-ts/lib/Either";
 import { Option } from "fp-ts/lib/Option";
 import { Refinement, Predicate } from "fp-ts/lib/function";
@@ -158,7 +158,7 @@ export interface Do3CE_<M extends MatechsURIS, S extends object, U, L> {
 
 declare module "fp-ts-contrib/lib/Do" {
   export function Do<M extends MatechsURIS>(M: Monad3E<M>): Do3CE<M, {}, NoEnv, NoErr>;
-  export function Do<M extends MatechsURIS>(M: Monad3EP<M>): Do3CE<M, AsyncContext, NoEnv, NoErr>;
+  export function Do<M extends MatechsURIS>(M: Monad3EP<M>): Do3CE<M, AsyncRT, NoEnv, NoErr>;
   export function Do<M extends MatechsURIS, E>(M: Monad3EC<M, E>): Do3CE_<M, {}, NoEnv, E>;
 }
 
@@ -186,7 +186,7 @@ declare module "fp-ts/lib/Apply" {
     r: EnforceNonEmptyRecord<NER> & Record<string, Kind3<F, any, any, any>>
   ) => Kind3<
     F,
-    AsyncContext & EnvOf<NER>,
+    AsyncRT & EnvOf<NER>,
     {
       [K in keyof NER]: [NER[K]] extends [Kind3<F, any, infer E, any>] ? E : never;
     }[keyof NER],
@@ -228,7 +228,7 @@ declare module "fp-ts/lib/Apply" {
     }
   ) => Kind3<
     F,
-    AsyncContext &
+    AsyncRT &
       UnionToIntersection<
         {
           [K in keyof T]: [T[K]] extends [Kind3<F, infer R, any, any>]
@@ -296,13 +296,13 @@ export interface PipeableApply3E<F extends MatechsURIS> extends PipeableFunctor3
 export interface PipeableApply3EP<F extends MatechsURIS> extends PipeableFunctor3<F> {
   readonly ap: <R, E, A, E2>(
     fa: Kind3<F, R, E, A>
-  ) => <R2, B>(fab: Kind3<F, R2, E2, (a: A) => B>) => Kind3<F, AsyncContext & R & R2, E | E2, B>;
+  ) => <R2, B>(fab: Kind3<F, R2, E2, (a: A) => B>) => Kind3<F, AsyncRT & R & R2, E | E2, B>;
   readonly apFirst: <R, E, B>(
     fb: Kind3<F, R, E, B>
-  ) => <A, R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, AsyncContext & R & R2, E | E2, A>;
+  ) => <A, R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, AsyncRT & R & R2, E | E2, A>;
   readonly apSecond: <R, E, B>(
     fb: Kind3<F, R, E, B>
-  ) => <A, R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, AsyncContext & R & R2, E | E2, B>;
+  ) => <A, R2, E2>(fa: Kind3<F, R2, E2, A>) => Kind3<F, AsyncRT & R & R2, E | E2, B>;
 }
 
 export interface PipeableApply3EC<F extends MatechsURIS, E> extends PipeableFunctor3EC<F, E> {
@@ -337,25 +337,25 @@ declare module "fp-ts/lib/TraversableWithIndex" {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B>(
       ta: HKT<T, A>,
       f: (i: I, a: A) => Kind3<F, R, E, B>
-    ) => Kind3<F, AsyncContext & R, E, HKT<T, B>>;
+    ) => Kind3<F, AsyncRT & R, E, HKT<T, B>>;
   }
   export interface TraverseWithIndex1<T extends URIS, I> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B>(
       ta: Kind<T, A>,
       f: (i: I, a: A) => Kind3<F, R, E, B>
-    ) => Kind3<F, AsyncContext & R, E, Kind<T, B>>;
+    ) => Kind3<F, AsyncRT & R, E, Kind<T, B>>;
   }
   export interface TraverseWithIndex2<T extends URIS2, I> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <TE, A, R, FE, B>(
       ta: Kind2<T, TE, A>,
       f: (i: I, a: A) => Kind3<F, R, FE, B>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<T, TE, B>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<T, TE, B>>;
   }
   export interface TraverseWithIndex2C<T extends URIS2, I, E> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, FE, B>(
       ta: Kind2<T, E, A>,
       f: (i: I, a: A) => Kind3<F, R, FE, B>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<T, E, B>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<T, E, B>>;
   }
 }
 
@@ -364,61 +364,61 @@ declare module "fp-ts/lib/Witherable" {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B>(
       ta: HKT<W, A>,
       f: (a: A) => Kind3<F, R, E, Option<B>>
-    ) => Kind3<F, AsyncContext & R, E, HKT<W, B>>;
+    ) => Kind3<F, AsyncRT & R, E, HKT<W, B>>;
   }
   export interface Wither1<W extends URIS> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B>(
       ta: Kind<W, A>,
       f: (a: A) => Kind3<F, R, E, Option<B>>
-    ) => Kind3<F, AsyncContext & R, E, Kind<W, B>>;
+    ) => Kind3<F, AsyncRT & R, E, Kind<W, B>>;
   }
   export interface Wither2<W extends URIS2> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <WE, A, R, FE, B>(
       ta: Kind2<W, WE, A>,
       f: (a: A) => Kind3<F, R, FE, Option<B>>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<W, WE, B>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<W, WE, B>>;
   }
   export interface Wither2C<W extends URIS2, E> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, FE, B>(
       ta: Kind2<W, E, A>,
       f: (a: A) => Kind3<F, R, FE, Option<B>>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<W, E, B>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<W, E, B>>;
   }
   export interface Wither3<W extends URIS3> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <WR, WE, A, FR, FE, B>(
       ta: Kind3<W, WR, WE, A>,
       f: (a: A) => Kind3<F, FR, FE, Option<B>>
-    ) => Kind3<F, AsyncContext & FR, FE, Kind3<W, WR, WE, B>>;
+    ) => Kind3<F, AsyncRT & FR, FE, Kind3<W, WR, WE, B>>;
   }
   export interface Wilt<W> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B, C>(
       wa: HKT<W, A>,
       f: (a: A) => Kind3<F, R, E, Either<B, C>>
-    ) => Kind3<F, AsyncContext & R, E, Separated<HKT<W, B>, HKT<W, C>>>;
+    ) => Kind3<F, AsyncRT & R, E, Separated<HKT<W, B>, HKT<W, C>>>;
   }
   export interface Wilt1<W extends URIS> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B, C>(
       wa: Kind<W, A>,
       f: (a: A) => Kind3<F, R, E, Either<B, C>>
-    ) => Kind3<F, AsyncContext & R, E, Separated<Kind<W, B>, Kind<W, C>>>;
+    ) => Kind3<F, AsyncRT & R, E, Separated<Kind<W, B>, Kind<W, C>>>;
   }
   export interface Wilt2<W extends URIS2> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <WE, A, R, FE, B, C>(
       wa: Kind2<W, WE, A>,
       f: (a: A) => Kind3<F, R, FE, Either<B, C>>
-    ) => Kind3<F, AsyncContext & R, FE, Separated<Kind2<W, WE, B>, Kind2<W, WE, C>>>;
+    ) => Kind3<F, AsyncRT & R, FE, Separated<Kind2<W, WE, B>, Kind2<W, WE, C>>>;
   }
   export interface Wilt2C<W extends URIS2, E> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, FE, B, C>(
       wa: Kind2<W, E, A>,
       f: (a: A) => Kind3<F, R, FE, Either<B, C>>
-    ) => Kind3<F, AsyncContext & R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>;
+    ) => Kind3<F, AsyncRT & R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>;
   }
   export interface Wilt3<W extends URIS3> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <WR, WE, A, FR, FE, B, C>(
       wa: Kind3<W, WR, WE, A>,
       f: (a: A) => Kind3<F, FR, FE, Either<B, C>>
-    ) => Kind3<F, AsyncContext & FR, FE, Separated<Kind3<W, WR, WE, B>, Kind3<W, WR, WE, C>>>;
+    ) => Kind3<F, AsyncRT & FR, FE, Separated<Kind3<W, WR, WE, B>, Kind3<W, WR, WE, C>>>;
   }
 }
 
@@ -427,67 +427,67 @@ declare module "fp-ts/lib/Traversable" {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B>(
       ta: HKT<T, A>,
       f: (a: A) => Kind3<F, R, E, B>
-    ) => Kind3<F, AsyncContext & R, E, HKT<T, B>>;
+    ) => Kind3<F, AsyncRT & R, E, HKT<T, B>>;
   }
   export interface Traverse1<T extends URIS> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, E, B>(
       ta: Kind<T, A>,
       f: (a: A) => Kind3<F, R, E, B>
-    ) => Kind3<F, AsyncContext & R, E, Kind<T, B>>;
+    ) => Kind3<F, AsyncRT & R, E, Kind<T, B>>;
   }
   export interface Traverse2<T extends URIS2> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <TE, A, R, FE, B>(
       ta: Kind2<T, TE, A>,
       f: (a: A) => Kind3<F, R, FE, B>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<T, TE, B>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<T, TE, B>>;
   }
   export interface Traverse2C<T extends URIS2, E> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <A, R, FE, B>(
       ta: Kind2<T, E, A>,
       f: (a: A) => Kind3<F, R, FE, B>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<T, E, B>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<T, E, B>>;
   }
   export interface Traverse3<T extends URIS3> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <TR, TE, A, FR, FE, B>(
       ta: Kind3<T, TR, TE, A>,
       f: (a: A) => Kind3<F, FR, FE, B>
-    ) => Kind3<F, AsyncContext & FR, FE, Kind3<T, TR, TE, B>>;
+    ) => Kind3<F, AsyncRT & FR, FE, Kind3<T, TR, TE, B>>;
   }
   export interface Sequence<T> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <R, E, A>(
       ta: HKT<T, Kind3<F, R, E, A>>
-    ) => Kind3<F, AsyncContext & R, E, HKT<T, A>>;
+    ) => Kind3<F, AsyncRT & R, E, HKT<T, A>>;
   }
   export interface Sequence1<T extends URIS> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <R, E, A>(
       ta: Kind<T, Kind3<F, R, E, A>>
-    ) => Kind3<F, AsyncContext & R, E, Kind<T, A>>;
+    ) => Kind3<F, AsyncRT & R, E, Kind<T, A>>;
   }
   export interface Sequence2<T extends URIS2> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <TE, R, FE, A>(
       ta: Kind2<T, TE, Kind3<F, R, FE, A>>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<T, TE, A>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<T, TE, A>>;
   }
   export interface Sequence2C<T extends URIS2, E> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <R, FE, A>(
       ta: Kind2<T, E, Kind3<F, R, FE, A>>
-    ) => Kind3<F, AsyncContext & R, FE, Kind2<T, E, A>>;
+    ) => Kind3<F, AsyncRT & R, FE, Kind2<T, E, A>>;
   }
   export interface Sequence3<T extends URIS3> {
     <F extends MatechsURIS>(F: Applicative3EP<F>): <TR, TE, FR, FE, A>(
       ta: Kind3<T, TR, TE, Kind3<F, FR, FE, A>>
-    ) => Kind3<F, AsyncContext & FR, FE, Kind3<T, TR, TE, A>>;
+    ) => Kind3<F, AsyncRT & FR, FE, Kind3<T, TR, TE, A>>;
   }
   export interface TraverseComposition11<F extends URIS, G extends URIS> {
     <H extends MatechsURIS>(H: Applicative3EP<H>): <R, E, A, B>(
       fga: Kind<F, Kind<G, A>>,
       f: (a: A) => Kind3<H, R, E, B>
-    ) => Kind3<H, AsyncContext & R, E, Kind<F, Kind<G, B>>>;
+    ) => Kind3<H, AsyncRT & R, E, Kind<F, Kind<G, B>>>;
   }
   export interface SequenceComposition11<F extends URIS, G extends URIS> {
     <H extends MatechsURIS>(H: Applicative3EP<H>): <R, E, A>(
       fga: Kind<F, Kind<G, Kind3<H, R, E, A>>>
-    ) => Kind3<H, AsyncContext & R, E, Kind<F, Kind<G, A>>>;
+    ) => Kind3<H, AsyncRT & R, E, Kind<F, Kind<G, A>>>;
   }
 }
 
@@ -497,7 +497,7 @@ export interface Apply3EP<F extends MatechsURIS> extends Functor3<F> {
   readonly ap: <R, E, A, B, R2, E2>(
     fab: Kind3<F, R, E, (a: A) => B>,
     fa: Kind3<F, R2, E2, A>
-  ) => Kind3<F, AsyncContext & R & R2, E | E2, B>;
+  ) => Kind3<F, AsyncRT & R & R2, E | E2, B>;
 }
 
 export interface PipeableAlt3E<F extends MatechsURIS> {

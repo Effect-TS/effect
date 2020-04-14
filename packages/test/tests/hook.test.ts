@@ -14,7 +14,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 
 const TestValue_ = F.define({
   test: {
-    value: F.cn<T.Sync<string>>()
+    value: F.cn<T.Io<string>>()
   }
 });
 

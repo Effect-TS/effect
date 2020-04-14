@@ -58,7 +58,7 @@ export class Read<
 
   readSide(config: ReadSideConfig) {
     return <Keys2 extends NonEmptyArray<keyof Types>>(
-      fetchEvents: T.AsyncRE<
+      fetchEvents: T.TaskEnvErr<
         ORM<Db> & ReadSideConfigService,
         TaskError,
         ({
@@ -77,7 +77,7 @@ export class Read<
       ) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
-      ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
+      ) => T.TaskEnvErr<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
     ) =>
       pipe(
         always(
@@ -127,7 +127,7 @@ export class Read<
 
   readSideAll(config: ReadSideConfig) {
     return (
-      fetchEvents: T.AsyncRE<
+      fetchEvents: T.TaskEnvErr<
         ORM<Db> & ReadSideConfigService,
         TaskError,
         ({ id: string; event: AOfTypes<Types> } & EventMeta)[]
@@ -138,7 +138,7 @@ export class Read<
       ) => (event: (AOfTypes<Types> & EventMetaHidden)[]) => T.Effect<R, ER, void[]>,
       onError: (
         cause: Cause<ER | TaskError>
-      ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
+      ) => T.TaskEnvErr<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
     ) =>
       pipe(
         always(

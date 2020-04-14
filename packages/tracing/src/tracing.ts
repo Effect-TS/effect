@@ -70,7 +70,7 @@ export function createControllerSpan(
   component: string,
   operation: string,
   headers: any
-): T.Sync<Span> {
+): T.Io<Span> {
   return T.sync(() => {
     let traceSpan: Span;
     const parentSpanContext = tracer.extract(FORMAT_HTTP_HEADERS, headers);

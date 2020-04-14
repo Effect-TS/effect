@@ -21,7 +21,7 @@ export const aggregateRootId = ({ aggregate, root }: AggregateRoot) => `${aggreg
 export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
   return <E, A extends { [t in Tag]: A[Tag] }, Tag extends keyof A & string>(
     S: ADT<A, Tag> & { type: t.Encoder<A, E> }
-  ) => (events: A[], aggregateRoot: AggregateRoot): T.AsyncRE<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
+  ) => (events: A[], aggregateRoot: AggregateRoot): T.TaskEnvErr<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
     Do(T.effect)
       .bindL("date", () => T.sync(() => new Date()))
       .bindL("id", () => T.sync(v4))

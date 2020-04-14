@@ -7,8 +7,8 @@ export const gracefulURI = "@matechs/graceful/gracefulURI";
 
 const gracefulF_ = F.define({
   [gracefulURI]: {
-    onExit: F.fn<(op: T.Async<void>) => T.Async<void>>(),
-    trigger: F.cn<T.Async<void>>()
+    onExit: F.fn<(op: T.Task<void>) => T.Task<void>>(),
+    trigger: F.cn<T.Task<void>>()
   }
 });
 
@@ -20,7 +20,7 @@ export const { onExit, trigger } = F.access(gracefulF)[gracefulURI];
 
 const insert = <K>(_: K) => (a: K[]) => [...a, _];
 
-export const provideGraceful = F.implementWith(R.makeRef<T.Async<void>[]>([]))(gracefulF)((_) => ({
+export const provideGraceful = F.implementWith(R.makeRef<T.Task<void>[]>([]))(gracefulF)((_) => ({
   [gracefulURI]: {
     onExit: flow(insert, _.update, T.asUnit),
     trigger: pipe(_.get, T.chain(array.sequence(T.parEffect)), T.asUnit)

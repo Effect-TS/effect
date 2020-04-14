@@ -6,7 +6,7 @@ function format(level: L.Level, message: string, meta?: L.Meta) {
   return `${level}: ${message}${meta ? `(${JSON.stringify({ meta })})` : ""}`;
 }
 
-function log(config: Config, level: L.Level, message: string, meta?: L.Meta): T.Sync<void> {
+function log(config: Config, level: L.Level, message: string, meta?: L.Meta): T.Io<void> {
   return (
     Do(T.effect)
       .let("config", config)

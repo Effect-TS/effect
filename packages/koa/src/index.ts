@@ -29,7 +29,7 @@ export const serverEnv = "@matechs/koa/serverURI";
 export interface HasServer {
   [serverEnv]: {
     server: Server;
-    onClose: Array<T.Async<void>>;
+    onClose: Array<T.Task<void>>;
   };
 }
 
@@ -57,7 +57,7 @@ export interface KoaOps {
     path: string,
     f: (ctx: KOA.ParameterizedContext) => T.Effect<R, RouteError<E>, RouteResponse<A>>
   ): T.Effect<R & HasRouter, T.NoErr, void>;
-  bind(port: number, hostname?: string): T.AsyncR<HasKoa, Server>;
+  bind(port: number, hostname?: string): T.TaskEnv<HasKoa, Server>;
 }
 
 export interface Koa {
@@ -186,7 +186,7 @@ export const provideKoa = T.provideS<Koa>({
           .return((r) => r.result)
       );
     },
-    bind(port: number, hostname?: string): T.AsyncR<HasKoa, Server> {
+    bind(port: number, hostname?: string): T.TaskEnv<HasKoa, Server> {
       return T.accessM(({ [koaAppEnv]: { app } }: HasKoa) =>
         T.orAbort(
           T.async<Error, Server>((res) => {
@@ -256,7 +256,7 @@ export function bind(
   hostname?: string
 ): <R, E, A>(
   _: T.Effect<R & HasRouter & HasMiddle & HasServer, E, A>
-) => T.AsyncRE<HasKoa & Koa & R, E, A> {
+) => T.TaskEnvErr<HasKoa & Koa & R, E, A> {
   return (op) =>
     T.effect.chain(
       T.accessM(({ [koaEnv]: koa }: Koa) => koa.bind(port, hostname)),
@@ -337,7 +337,7 @@ export function middleware(
 }
 
 export function middlewareM<R, E, A>(
-  middle: (cont: T.Async<void>) => T.Effect<R, E, A>
+  middle: (cont: T.Task<void>) => T.Effect<R, E, A>
 ): T.Effect<HasMiddle & T.Erase<R, Context>, never, void> {
   return T.access((_: HasMiddle & R) => {
     _[middleURI].middlewares.push((ctx, next) =>

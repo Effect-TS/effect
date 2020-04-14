@@ -5,7 +5,7 @@ export const appURI = Symbol();
 
 export interface App {
   [appURI]: {
-    printTodo: (todo: string) => T.Sync<void>;
+    printTodo: (todo: string) => T.Io<void>;
   };
 }
 

@@ -36,7 +36,7 @@ export interface StateAccess<S> {
 
 type EpicsEnvType<EPS extends AnyEpic> = T.Erase<
   F.UnionToIntersection<Env<Exclude<EPS, Epic<T.NoEnv, any, any, any>>>>,
-  T.AsyncContext
+  T.AsyncRT
 >;
 
 export function embed<EPS extends AnyEpic[]>(

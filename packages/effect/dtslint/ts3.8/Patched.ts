@@ -2,8 +2,8 @@ import * as F from "../../src/freeEnv";
 import * as T from "../../src/effect";
 
 export interface Test {
-  c: T.SyncE<string, number>;
-  fm: (n: number) => T.Sync<void>;
+  c: T.IoErr<string, number>;
+  fm: (n: number) => T.Io<void>;
 }
 
 export const testEnv = Symbol();
@@ -68,7 +68,7 @@ export const P5 = F.implementWith(T.access((_: { goo: string }) => 1))(testM)(()
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncContext, WithTest, never>
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncRT, WithTest, never>
 export const P6 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.pure(1))))(
   testM
 )(() => ({
@@ -78,7 +78,7 @@ export const P6 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncContext, WithTest, number>
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncRT, WithTest, number>
 export const P7 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.raiseError(1))))(
   testM
 )(() => ({

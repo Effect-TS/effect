@@ -34,9 +34,9 @@ export type Runtime<M> = F.UnionToIntersection<
 export function server<M extends F.ModuleShape<M>, R>(
   s: F.ModuleSpec<M>,
   i: T.Provider<E.ChildEnv & R, M>
-): T.AsyncRE<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
+): T.TaskEnvErr<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
   return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
-    const ops: T.AsyncRE<E.HasExpress & E.Express, never, void>[] = [];
+    const ops: T.TaskEnvErr<E.HasExpress & E.Express, never, void>[] = [];
 
     for (const k of Reflect.ownKeys(s[F.specURI])) {
       const { scope } = r[serverConfigEnv][k];

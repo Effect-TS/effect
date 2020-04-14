@@ -1,19 +1,19 @@
 /* istanbul ignore file */
 
-import { IO, pipe, Either, fluent, Do, Exit } from "../src";
+import { T, pipe, Either, fluent, Do, Exit } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => IO.Sync<string>;
+    getString: () => T.Io<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => IO.Sync<string>;
+    getString: () => T.Io<string>;
   };
 }
 
@@ -29,12 +29,12 @@ class BError extends Error {
   }
 }
 
-const a1 = IO.pure(1);
-const a2 = IO.accessM((_: Bar) => _[BarURI].getString());
-const a3 = IO.accessM((_: Baz) => _[BazURI].getString());
-const a4 = IO.raiseError(new AError("mmm"));
+const a1 = T.pure(1);
+const a2 = T.accessM((_: Bar) => _[BarURI].getString());
+const a3 = T.accessM((_: Baz) => _[BazURI].getString());
+const a4 = T.raiseError(new AError("mmm"));
 
-const b = IO.async<BError, number>((resolve) => {
+const b = T.async<BError, number>((resolve) => {
   const timer = setTimeout(() => {
     resolve(Either.right(1));
   }, 100);
@@ -46,30 +46,30 @@ const b = IO.async<BError, number>((resolve) => {
 
 const c = pipe(
   a1,
-  IO.chain((_) => a4)
+  T.chain((_) => a4)
 );
 
 const d = pipe(
   a2,
-  IO.chain((_) => a3)
+  T.chain((_) => a3)
 );
 
 const e = fluent(c)
   .pipe((_) => d)
-  .pipe(IO.chain((_) => b))
+  .pipe(T.chain((_) => b))
   .done();
 
 const f = Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
-const provideBar = IO.provideSO<Bar>({
+const provideBar = T.provideSO<Bar>({
   [BarURI]: {
-    getString: () => IO.pure("bar")
+    getString: () => T.pure("bar")
   }
 });
 
-const provideBaz = IO.provideSW<Baz>()(a2)((s) => ({
+const provideBaz = T.provideSW<Baz>()(a2)((s) => ({
   [BazURI]: {
-    getString: () => IO.pure(`value: ${s}`)
+    getString: () => T.pure(`value: ${s}`)
   }
 }));
 
@@ -78,7 +78,7 @@ describe("Prelude", () => {
     await fluent(f)
       .pipe(provideBaz)
       .pipe(provideBar)
-      .pipe(IO.runToPromiseExit)
+      .pipe(T.runToPromiseExit)
       .done()
       .then((exit) => {
         assert.deepStrictEqual(Exit.isRaise(exit) && exit.error, new AError("mmm"));
@@ -86,7 +86,7 @@ describe("Prelude", () => {
   });
 
   it("should run effect composition - sync", () => {
-    const exit = pipe(a3, provideBaz, provideBar, IO.runSync);
+    const exit = pipe(a3, provideBaz, provideBar, T.runSync);
 
     assert.deepStrictEqual(Exit.isDone(exit) && exit.value, "value: bar");
   });

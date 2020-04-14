@@ -13,10 +13,10 @@ import { componentPropsURI } from "./componentProps";
 
 export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.Sync<K[k]>;
+    [k in keyof K]: T.Io<K[k]>;
   }
 ) => (
-  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.Async<P & Q>
+  _P: unknown extends P & Q ? void : {} extends P & Q ? void : T.Task<P & Q>
 ): {
   page: React.FC<P & Q>;
   getStaticProps: () => Promise<{ props: P & Q }>;

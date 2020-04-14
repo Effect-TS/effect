@@ -172,7 +172,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
+        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
       }
     });
 
@@ -217,7 +217,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
+        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
       }
     });
 
@@ -272,7 +272,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
+        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
       }
     });
 
@@ -331,7 +331,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
+        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
       }
     });
 

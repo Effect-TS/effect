@@ -15,7 +15,7 @@ import { NextContext, nextContextURI } from "./next-ctx";
 
 export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.Sync<K[k]>;
+    [k in keyof K]: T.Io<K[k]>;
   }
 ) => <KI extends "static" | "ssr">(
   _KIND: unknown extends P & Q ? void : {} extends P & Q ? void : KI,
@@ -24,8 +24,8 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
     : {} extends P & Q
     ? void
     : KI extends "static"
-    ? T.Sync<P & Q>
-    : T.Async<P & Q>
+    ? T.Io<P & Q>
+    : T.Task<P & Q>
 ): React.FC<P & Q> => {
   const initial = pipe(
     _I as Record<string, any>,

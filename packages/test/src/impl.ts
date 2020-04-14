@@ -40,9 +40,9 @@ export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
 >;
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
-  provider: unknown extends T.Erase<SpecsEnv<Specs>, T.AsyncContext>
+  provider: unknown extends T.Erase<SpecsEnv<Specs>, T.AsyncRT>
     ? void
-    : T.Provider<unknown, T.Erase<SpecsEnv<Specs>, T.AsyncContext>, any>
+    : T.Provider<unknown, T.Erase<SpecsEnv<Specs>, T.AsyncRT>, any>
 ) => {
   specs.map((s) => {
     switch (s._tag) {

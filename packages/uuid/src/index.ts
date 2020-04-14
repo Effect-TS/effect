@@ -21,11 +21,11 @@ export const uuidURI = "@matechs/uuid/uuidURI";
 
 const uuidM_ = F.define({
   [uuidURI]: {
-    gen: F.cn<T.Sync<UUID>>(),
-    toBase90: F.fn<(uuid: UUID) => T.Sync<UUIDBase90>>(),
-    fromBase90: F.fn<(uuid: UUIDBase90) => T.Sync<UUID>>(),
-    toBase58: F.fn<(uuid: UUID) => T.Sync<UUIDBase58>>(),
-    fromBase58: F.fn<(uuid: UUIDBase58) => T.Sync<UUID>>()
+    gen: F.cn<T.Io<UUID>>(),
+    toBase90: F.fn<(uuid: UUID) => T.Io<UUIDBase90>>(),
+    fromBase90: F.fn<(uuid: UUIDBase90) => T.Io<UUID>>(),
+    toBase58: F.fn<(uuid: UUID) => T.Io<UUIDBase58>>(),
+    fromBase58: F.fn<(uuid: UUIDBase58) => T.Io<UUID>>()
   }
 });
 

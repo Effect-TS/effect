@@ -20,8 +20,8 @@ export interface Repository<O> {
   save<T extends DeepPartial<O>>(
     entity: T,
     options?: SaveOptions | undefined
-  ): T.AsyncE<OR.TaskError, O>;
-  findOne(options?: FindOneOptions<O> | undefined): T.AsyncE<OR.TaskError, OP.Option<O>>;
+  ): T.TaskErr<OR.TaskError, O>;
+  findOne(options?: FindOneOptions<O> | undefined): T.TaskErr<OR.TaskError, OP.Option<O>>;
 }
 
 const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(Target: Target<O>) => ({

@@ -63,7 +63,7 @@ export function encaseObservableEither<A, E = unknown>(
 }
 
 export function runToObservable<A>(
-  o: T.Async<Rx.Observable<A>>
+  o: T.Task<Rx.Observable<A>>
 ): Rx.Observable<A> {
   return new Rx.Observable((sub) => {
     T.run(
@@ -106,7 +106,7 @@ export function runToObservable<A>(
 
 export function toObservable<R, E, A>(
   s: S.Stream<R, E, A>
-): T.IO<R, Rx.Observable<A>> {
+): T.EffectEnv<R, Rx.Observable<A>> {
   return T.access(
     (r: R) =>
       new Rx.Observable((sub) => {

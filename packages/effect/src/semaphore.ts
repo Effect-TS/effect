@@ -15,37 +15,37 @@ export interface Semaphore {
   /**
    * Acquire a permit, blocking if not all are vailable
    */
-  readonly acquire: T.Effect<T.AsyncContext, never, void>;
+  readonly acquire: T.Effect<T.AsyncRT, never, void>;
   /**
    * Release a permit
    */
-  readonly release: T.Effect<T.AsyncContext, never, void>;
+  readonly release: T.Effect<T.AsyncRT, never, void>;
   /**
    * Get the number of available permits
    */
-  readonly available: T.Effect<T.AsyncContext, never, number>;
+  readonly available: T.Effect<T.AsyncRT, never, number>;
 
   /**
    * Acquire multiple permits blocking if not all are available
    * @param n
    */
-  acquireN(n: number): T.Effect<T.AsyncContext, never, void>;
+  acquireN(n: number): T.Effect<T.AsyncRT, never, void>;
   /**
    * Release mutliple permits
    * @param n
    */
-  releaseN(n: number): T.Effect<T.AsyncContext, never, void>;
+  releaseN(n: number): T.Effect<T.AsyncRT, never, void>;
   /**
    * Bracket the given io with acquireN/releaseN calls
    * @param n
    * @param io
    */
-  withPermitsN<R, E, A>(n: number, io: T.Effect<R, E, A>): T.Effect<T.AsyncContext & R, E, A>;
+  withPermitsN<R, E, A>(n: number, io: T.Effect<R, E, A>): T.Effect<T.AsyncRT & R, E, A>;
   /**
    * withPermitN(1, _)
    * @param n
    */
-  withPermit<R, E, A>(n: T.Effect<R, E, A>): T.Effect<T.AsyncContext & R, E, A>;
+  withPermit<R, E, A>(n: T.Effect<R, E, A>): T.Effect<T.AsyncRT & R, E, A>;
 }
 
 type Reservation = readonly [number, Deferred<unknown, never, void>];
@@ -132,7 +132,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       )
     );
 
-  const ticketN = (n: number): T.Effect<T.NoEnv, never, Ticket<T.AsyncContext, void>> =>
+  const ticketN = (n: number): T.Effect<T.NoEnv, never, Ticket<T.AsyncRT, void>> =>
     effect.chain(makeDeferred<unknown, never, void>(), (latch) =>
       ref.modify((current) =>
         P.pipe(
@@ -155,7 +155,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       )
     );
 
-  const acquireN = (n: number): T.Effect<T.AsyncContext, never, void> =>
+  const acquireN = (n: number): T.Effect<T.AsyncRT, never, void> =>
     T.applySecond(
       sanityCheck(n),
       n === 0 ? T.unit : T.bracketExit(ticketN(n), ticketExit, ticketUse)
@@ -164,7 +164,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   const withPermitsN = <R, E, A>(
     n: number,
     inner: T.Effect<R, E, A>
-  ): T.Effect<T.AsyncContext & R, E, A> => {
+  ): T.Effect<T.AsyncRT & R, E, A> => {
     const acquire = T.interruptible(acquireN(n));
     const release = releaseN(n);
     return T.bracket(acquire, F.constant(release), () => inner);

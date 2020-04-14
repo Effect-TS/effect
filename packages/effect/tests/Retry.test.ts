@@ -6,7 +6,7 @@ import { raise } from "../src/original/exit";
 
 describe("Retry", () => {
   it("should retry", async () => {
-    const program: T.AsyncE<string, number> = R.retrying(
+    const program: T.TaskErr<string, number> = R.retrying(
       T.pure(limitRetries(2)),
       ({ iterNumber }) => (iterNumber > 1 ? T.pure(0) : T.raiseError("error")),
       F.flow(E.isRaise, T.pure)
@@ -16,7 +16,7 @@ describe("Retry", () => {
   });
 
   it("should retry & fail", async () => {
-    const program: T.AsyncE<string, never> = R.retrying(
+    const program: T.TaskErr<string, never> = R.retrying(
       T.pure(limitRetries(2)),
       F.constant(T.raiseError("error")),
       F.flow(E.isRaise, T.pure)

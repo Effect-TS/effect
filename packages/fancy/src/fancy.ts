@@ -9,7 +9,7 @@ export const dispatcherURI = "@matechs/fancy/dispatcherURI";
 
 export interface Runner<R> {
   [dispatcherURI]: {
-    run: (env: R) => <A>(_: T.AsyncR<R, A>, cb?: (a: A) => void) => Lazy<void>;
+    run: (env: R) => <A>(_: T.TaskEnv<R, A>, cb?: (a: A) => void) => Lazy<void>;
   };
 }
 
@@ -28,13 +28,13 @@ export const stateOf = <S>(s: S): State<S> => ({
 });
 
 export class Fancy<R, P> {
-  readonly ui: T.SyncR<R, React.FC<P>>;
+  readonly ui: T.IoEnv<R, React.FC<P>>;
   private opsC = 0;
   private readonly cancellers: Map<number, Lazy<void>> = new Map();
 
-  constructor(renderEffect: T.SyncR<R, React.FC<P>>) {
+  constructor(renderEffect: T.IoEnv<R, React.FC<P>>) {
     const dispatch = <R>(r: R) => <A>(
-      eff: T.AsyncR<R, A>,
+      eff: T.TaskEnv<R, A>,
       cb: (a: A) => void = () => {
         //
       }
@@ -100,7 +100,7 @@ function hasRunner<R>(u: unknown): u is Runner<R> {
 export const runner = <R>(): T.Effect<
   R,
   never,
-  [<A>(_: T.AsyncR<R, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>, Lazy<void>]
+  [<A>(_: T.TaskEnv<R, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>, Lazy<void>]
 > =>
   T.access((s: R) => {
     const session: Map<number, Lazy<void>> = new Map();

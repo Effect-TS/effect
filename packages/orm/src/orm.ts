@@ -160,7 +160,7 @@ export class DbT<Db extends symbol | string> {
 
   bracketPool<R, E, A>(
     op: T.Effect<ORM<Db> & R, E, A>
-  ): T.AsyncRE<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
+  ): T.TaskEnvErr<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
     return T.accessM(
       ({
         [configEnv]: {
@@ -207,7 +207,7 @@ export class DbT<Db extends symbol | string> {
 
   withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.AsyncRE<ORM<Db>, TaskError, A> {
+  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.TaskEnvErr<ORM<Db>, TaskError, A> {
     return (f) =>
       this.withRepository(target)((r) =>
         pipe(
@@ -228,7 +228,7 @@ export class DbT<Db extends symbol | string> {
       );
   }
 
-  withManagerTask<A>(f: (m: EntityManager) => Task<A>): T.AsyncRE<ORM<Db>, TaskError, A> {
+  withManagerTask<A>(f: (m: EntityManager) => Task<A>): T.TaskEnvErr<ORM<Db>, TaskError, A> {
     return this.withManager((manager) =>
       pipe(
         manager,
@@ -243,7 +243,7 @@ export class DbT<Db extends symbol | string> {
     return T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) => f(manager));
   }
 
-  withConnectionTask<A>(f: (m: Connection) => Task<A>): T.AsyncRE<ORM<Db>, TaskError, A> {
+  withConnectionTask<A>(f: (m: Connection) => Task<A>): T.TaskEnvErr<ORM<Db>, TaskError, A> {
     return this.withConnection((pool) =>
       pipe(
         pool,
@@ -260,7 +260,7 @@ export class DbT<Db extends symbol | string> {
 
   withORMTransaction<R, E, A>(
     op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
-  ): T.AsyncRE<ORM<Db> & R, TaskError | E, A> {
+  ): T.TaskEnvErr<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.bracketExit(
         pipe(
@@ -314,7 +314,7 @@ export class DbT<Db extends symbol | string> {
 
   withTransaction<R, E, A>(
     op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
-  ): T.AsyncRE<ORM<Db> & R, TaskError | E, A> {
+  ): T.TaskEnvErr<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.accessM((r: R) =>
         pipe(

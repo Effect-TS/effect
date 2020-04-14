@@ -13,9 +13,9 @@ import { componentPropsURI } from "./componentProps";
 
 export const react = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.Sync<K[k]>;
+    [k in keyof K]: T.Io<K[k]>;
   }
-) => (_P: unknown extends P ? void : {} extends P ? void : T.Sync<P>): React.FC<Q> => {
+) => (_P: unknown extends P ? void : {} extends P ? void : T.Io<P>): React.FC<Q> => {
   const initial = pipe(
     _I as Record<string, any>,
     R.traverseWithIndex(T.effect)((k: string) =>

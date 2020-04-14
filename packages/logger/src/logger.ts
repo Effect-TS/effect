@@ -6,7 +6,7 @@ export interface Meta {
   [k: string]: any;
 }
 
-export type LogFn = (message: string, meta?: Meta) => T.Sync<void>;
+export type LogFn = (message: string, meta?: Meta) => T.Io<void>;
 
 const loggerM_ = F.define({
   [LoggerURI]: {
