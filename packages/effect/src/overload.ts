@@ -259,7 +259,7 @@ export interface PipeableChain3E<F extends MatechsURIS> extends PipeableApply3E<
   ) => Kind3<F, R & R2, E | E2, A>;
 }
 
-export interface PipeableChain3EP<F extends MatechsURIS> extends PipeableApply3E<F> {
+export interface PipeableChain3EP<F extends MatechsURIS> extends PipeableApply3EP<F> {
   readonly chain: <R, E, A, B>(
     f: (a: A) => Kind3<F, R, E, B>
   ) => <R2, E2>(ma: Kind3<F, R2, E2, A>) => Kind3<F, R & R2, E | E2, B>;
