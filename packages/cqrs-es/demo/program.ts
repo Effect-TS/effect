@@ -19,13 +19,11 @@ import { sequenceT } from "fp-ts/lib/Apply";
 
 const program = withTransaction(
   pipe(
-    todoRoot("a").persistEvent(of => [
+    todoRoot("a").persistEvent((of) => [
       of.TodoAdded({ id: 1, todo: "todo" }),
       of.TodoAdded({ id: 2, todo: "todo-2" })
     ]),
-    T.chain(([_event0, _event1]) =>
-      todoRoot("a").persistEvent(of => of.TodoRemoved({ id: 1 }))
-    )
+    T.chain(([_event0, _event1]) => todoRoot("a").persistEvent((of) => of.TodoRemoved({ id: 1 })))
   )
 );
 
@@ -46,11 +44,9 @@ const processTodos = todosES.read("read_todos_from_es")(
 );
 
 // note the above is equivalent to the following
-export const processTodosGeneric = ES.readEvents("read_todos_from_es")(
-  "$ce-todos"
-)(
+export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todos")(
   // this will be used to decode raw events
-  T.liftEither(x => todosAggregate.adt.type.decode(x))
+  T.liftEither((x) => todosAggregate.adt.type.decode(x))
 )(
   todosAggregate.adt.matchEffect({
     TodoAdded: () => T.unit,
@@ -62,18 +58,22 @@ export const processTodosGeneric = ES.readEvents("read_todos_from_es")(
 )(
   // provides environment and bracket over process step
   // this will wrap process + set offset on a single event
-  processEff => todosAggregate.db.withORMTransaction(processEff)
+  (processEff) => todosAggregate.db.withORMTransaction(processEff)
 );
 
 export const main = bracketPool(
   Do(T.effect)
     .do(domain.init())
-    .do(program)
-    .bindL("dispatcher", () =>
-      T.fork(todosES.dispatcher(defaultConfig("todos_es")))
+    .do(
+      sequenceT(T.parEffect)(
+        // main program
+        program,
+        // diapatcher
+        todosES.dispatcher(defaultConfig("todos_es")),
+        // processor
+        processTodos
+      )
     )
-    .bindL("processTodos", () => T.fork(processTodos))
-    .doL(s => sequenceT(T.parEffect)(s.dispatcher.join, s.processTodos.join))
     .return(() => {
       //
     })

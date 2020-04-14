@@ -2,11 +2,11 @@ import { logger, console } from "@matechs/logger";
 import { withTransaction, todoRoot, todosAggregate, bracketPool, domain, dbConfigLive } from "./db";
 import { pipe } from "fp-ts/lib/pipeable";
 import { effect as T } from "@matechs/effect";
-import * as A from "fp-ts/lib/Array";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { liveFactory } from "@matechs/orm";
 import { ReadSideConfig } from "../src/config";
 import { provideApp } from "./app";
+import { sequenceT } from "fp-ts/lib/Apply";
 
 // simple program just append 3 new events to the log in the aggregate root todos-a
 const program = withTransaction(
@@ -90,31 +90,15 @@ const readAllDomainOnlyTodoRemoved = domain.readOnly(
 export const main = bracketPool(
   Do(T.effect)
     .do(domain.init()) // creates tables for event log and index
-    .do(program) // runs the program
-    .bindL("readInAggregateTodosOnlyTodoAdded", () =>
-      // fork fiber for readInAggregateTodosOnlyTodoAdded
-      T.fork(readInAggregateTodosOnlyTodoAdded)
-    )
-    .bindL("readInAggregateTodosOnlyTodoRemoved", () =>
-      //fork fiber for readInAggregateTodosOnlyTodoRemoved
-      T.fork(readInAggregateTodosOnlyTodoRemoved)
-    )
-    .bindL("readAllDomainTodoAdded", () =>
-      //fork fiber for readAllDomainTodoAdded
-      T.fork(readAllDomainTodoAdded)
-    )
-    .bindL("readAllDomainOnlyTodoRemoved", () =>
-      //fork fiber for readAllDomainOnlyTodoRemoved
-      T.fork(readAllDomainOnlyTodoRemoved)
-    )
-    .doL((s) =>
-      // joins the long running fibers
-      A.array.sequence(T.parEffect)([
-        s.readInAggregateTodosOnlyTodoAdded.join,
-        s.readInAggregateTodosOnlyTodoRemoved.join,
-        s.readAllDomainTodoAdded.join,
-        s.readAllDomainOnlyTodoRemoved.join
-      ])
+    .do(
+      // run all programs
+      sequenceT(T.parEffect)(
+        program,
+        readInAggregateTodosOnlyTodoAdded,
+        readInAggregateTodosOnlyTodoRemoved,
+        readAllDomainTodoAdded,
+        readAllDomainOnlyTodoRemoved
+      )
     )
     .return(() => {
       //

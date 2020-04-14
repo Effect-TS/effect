@@ -2,6 +2,7 @@ import { effect as T } from "../src";
 import * as assert from "assert";
 import { interruptWithError, interruptWithErrorAndOthers } from "../src/original/exit";
 import { sequenceT } from "fp-ts/lib/Apply";
+import { array } from "fp-ts/lib/Array";
 
 describe("Interrupt", () => {
   it("should interrupt with error", async () => {
@@ -52,5 +53,28 @@ describe("Interrupt", () => {
       exit,
       interruptWithErrorAndOthers(new Error("test error"), [new Error("test error 2")])
     );
+  });
+
+  it("parallel interrupt", async () => {
+    let counter = 0;
+
+    const program = T.asyncTotal((x) => {
+      const timer = setTimeout(() => {
+        x(undefined);
+      }, 3000);
+      return (cb) => {
+        counter++;
+        clearTimeout(timer);
+        cb();
+      };
+    });
+
+    const par = array.sequence(T.parEffect)([program, program, program]);
+
+    const fiber = await T.runToPromise(T.fork(par));
+
+    await T.runToPromise(fiber.interrupt);
+
+    expect(counter).toBe(3);
   });
 });
