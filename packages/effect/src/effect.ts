@@ -34,6 +34,8 @@ import * as S from "./semaphore";
 import { DriverSyncImpl } from "./driverSync";
 import { pipe } from "fp-ts/lib/pipeable";
 import { Erase } from "./erase";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 
 export enum EffectTag {
   Pure,
@@ -1585,6 +1587,10 @@ export const effect: EffectMonad = {
   onComplete: onComplete_
 };
 
+export const Do = DoG(effect)
+export const sequenceS = SS(effect)
+export const sequenceT = ST(effect)
+
 export const parEffect: Monad3EP<URI> & MonadThrow3EP<URI> = {
   URI,
   CTX: "async",
@@ -1594,6 +1600,10 @@ export const parEffect: Monad3EP<URI> & MonadThrow3EP<URI> = {
   chain: chain_,
   throwError: raiseError
 };
+
+export const parDo = DoG(parEffect)
+export const parSequenceS = SS(parEffect)
+export const parSequenceT = ST(parEffect)
 
 const {
   ap,

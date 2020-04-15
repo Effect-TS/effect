@@ -75,3 +75,14 @@ export const D = Either.sequenceS({
   c: Either.right<symbol, string>("ok"),
   d: Either.right(Symbol())
 });
+
+// $ExpectType Either<"a" | "b" | "c" | "d" | "e" | "g" | "h", { c: never; } & { d: never; } & { e: never; f: never; } & { g: never; h: never; } & { i: number; } & { j: number; }>
+export const E = Either.Do.do(Either.left("a" as const))
+  .doL(() => Either.left("b" as const))
+  .bindL("c", () => Either.left("c" as const))
+  .bind("d", Either.left("d" as const))
+  .sequenceS({ e: Either.left("e" as const), f: Either.left("e" as const) })
+  .sequenceSL(() => ({ g: Either.left("g" as const), h: Either.left("h" as const) }))
+  .let("i", 1)
+  .letL("j", () => 1)
+  .done();

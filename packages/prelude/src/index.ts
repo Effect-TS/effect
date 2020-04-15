@@ -5,7 +5,6 @@ import {
   stream as S,
   streameither as SE
 } from "@matechs/effect";
-import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import * as F from "fp-ts/lib/function";
 import * as Either from "./either";
 import * as Exit from "./exit";
@@ -31,5 +30,3 @@ export class Fluent<A> {
 }
 
 export const fluent = <A>(_: A) => new Fluent(_);
-
-export const Do = DoG(T.effect);

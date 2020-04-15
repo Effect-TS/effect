@@ -59,7 +59,7 @@ const e = fluent(c)
   .pipe(T.chain((_) => b))
   .done();
 
-const f = Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 const provideBar = T.provideSO<Bar>({
   [BarURI]: {

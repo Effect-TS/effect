@@ -1,7 +1,7 @@
 import { effect as T, stream as S, streameither as SE, managed as M } from "@matechs/effect";
 import { Alt2 } from "fp-ts/lib/Alt";
 import { Applicative, Applicative2M } from "fp-ts/lib/Applicative";
-import { Apply2M, sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
+import { Apply2M, sequenceS as SS, sequenceT as ST, EnforceNonEmptyRecord } from "fp-ts/lib/Apply";
 import { Bifunctor2 } from "fp-ts/lib/Bifunctor";
 import { Chain2M } from "fp-ts/lib/Chain";
 import { ChainRec2M, tailRec } from "fp-ts/lib/ChainRec";
@@ -35,7 +35,7 @@ import {
 import { Extend2 } from "fp-ts/lib/Extend";
 import { Foldable2 } from "fp-ts/lib/Foldable";
 import { Functor2 } from "fp-ts/lib/Functor";
-import { HKT, Kind2 } from "fp-ts/lib/HKT";
+import { HKT, Kind2, URIS2 } from "fp-ts/lib/HKT";
 import { Monad2M } from "fp-ts/lib/Monad";
 import { MonadThrow2M } from "fp-ts/lib/MonadThrow";
 import { Traversable2 } from "fp-ts/lib/Traversable";
@@ -48,6 +48,7 @@ import { Filterable2 } from "fp-ts/lib/Filterable";
 import { Compactable2 } from "fp-ts/lib/Compactable";
 import { Profunctor2 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid2 } from "fp-ts/lib/Semigroupoid";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
 
 // from fp-ts just retyped
 /* istanbul ignore file */
@@ -258,6 +259,95 @@ declare module "fp-ts/lib/pipeable" {
     (I extends MonadThrow2M<F> ? PipeableMonadThrow2<F> : {});
 }
 
+declare module "fp-ts-contrib/lib/Do" {
+  export function Do<M extends URIM>(M: Monad2M<M>): Do2MC<M, {}, never>;
+
+  export interface Do2MC<M extends URIM, S extends object, E> {
+    do: <E2>(ma: Kind2<M, E2, any>) => Do2MC<M, S, E | E2>;
+    doL: <E2>(f: (s: S) => Kind2<M, E2, any>) => Do2MC<M, S, E | E2>;
+    bind: <N extends string, A, E2>(
+      name: Exclude<N, keyof S>,
+      ma: Kind2<M, E2, A>
+    ) => Do2MC<
+      M,
+      S &
+        {
+          [K in N]: A;
+        },
+      E | E2
+    >;
+    bindL: <N extends string, A, E2>(
+      name: Exclude<N, keyof S>,
+      f: (s: S) => Kind2<M, E2, A>
+    ) => Do2MC<
+      M,
+      S &
+        {
+          [K in N]: A;
+        },
+      E | E2
+    >;
+    let: <N extends string, A>(
+      name: Exclude<N, keyof S>,
+      a: A
+    ) => Do2MC<
+      M,
+      S &
+        {
+          [K in N]: A;
+        },
+      E
+    >;
+    letL: <N extends string, A>(
+      name: Exclude<N, keyof S>,
+      f: (s: S) => A
+    ) => Do2MC<
+      M,
+      S &
+        {
+          [K in N]: A;
+        },
+      E
+    >;
+    sequenceS: <I extends Record<string, Kind2<M, any, any>>>(
+      r: EnforceNonEmptyRecord<I> &
+        {
+          [K in keyof S]?: never;
+        }
+    ) => Do2MC<
+      M,
+      S &
+        {
+          [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never;
+        },
+      | E
+      | {
+          [K in keyof I]: [I[K]] extends [Kind2<M, infer E2, any>] ? E2 : never;
+        }[keyof I]
+    >;
+    sequenceSL: <I extends Record<string, Kind2<M, any, any>>>(
+      f: (
+        s: S
+      ) => EnforceNonEmptyRecord<I> &
+        {
+          [K in keyof S]?: never;
+        }
+    ) => Do2MC<
+      M,
+      S &
+        {
+          [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never;
+        },
+      | E
+      | {
+          [K in keyof I]: [I[K]] extends [Kind2<M, infer E2, any>] ? E2 : never;
+        }[keyof I]
+    >;
+    return: <A>(f: (s: S) => A) => Kind2<M, E, A>;
+    done: () => Kind2<M, E, S>;
+  }
+}
+
 export const either: Monad2M<URIM> &
   Foldable2<URIM> &
   Traversable2<URIM> &
@@ -297,6 +387,7 @@ export const either: Monad2M<URIM> &
   throwError: left
 };
 
+export const Do = DoG(either);
 export const sequenceT = ST(either);
 export const sequenceS = SS(either);
 

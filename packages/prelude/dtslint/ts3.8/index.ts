@@ -76,7 +76,7 @@ const e = pipe(
 );
 
 // $ExpectType Effect<AsyncRT & Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
-const f = Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 // $ExpectType Provider<unknown, Foo, never>
 const provideFoo = T.provideS<Foo>({
