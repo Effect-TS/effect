@@ -1,4 +1,4 @@
-import { Do, Either, pipe, T } from "../../src";
+import { Either, pipe, T } from "../../src";
 
 const FooURI = "uris/foo";
 interface Foo {

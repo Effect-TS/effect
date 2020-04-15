@@ -35,7 +35,7 @@ import {
 import { Extend2 } from "fp-ts/lib/Extend";
 import { Foldable2 } from "fp-ts/lib/Foldable";
 import { Functor2 } from "fp-ts/lib/Functor";
-import { HKT, Kind2, URIS2 } from "fp-ts/lib/HKT";
+import { HKT, Kind2 } from "fp-ts/lib/HKT";
 import { Monad2M } from "fp-ts/lib/Monad";
 import { MonadThrow2M } from "fp-ts/lib/MonadThrow";
 import { Traversable2 } from "fp-ts/lib/Traversable";

@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { T, pipe, Either, fluent, Do, Exit } from "../src";
+import { T, pipe, Either, fluent, Exit } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
