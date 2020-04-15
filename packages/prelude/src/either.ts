@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { effect as T, stream as S, streameither as SE, managed as M } from "@matechs/effect";
 import { Alt2 } from "fp-ts/lib/Alt";
 import { Applicative, Applicative2M } from "fp-ts/lib/Applicative";
 import { Apply2M, sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
@@ -88,6 +88,18 @@ export const left: {
   <E, A>(_: E): Either<E, A>;
 } = ELeft as any;
 
+export function fold<E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => SE.StreamEither<R1, E1, B>,
+  onRight: (a: A) => SE.StreamEither<R2, E2, C>
+): (ma: Either<E, A>) => SE.StreamEither<R1 & R2, E1 | E2, B | C>;
+export function fold<E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => S.Stream<R1, E1, B>,
+  onRight: (a: A) => S.Stream<R2, E2, C>
+): (ma: Either<E, A>) => S.Stream<R1 & R2, E1 | E2, B | C>;
+export function fold<E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => M.Managed<R1, E1, B>,
+  onRight: (a: A) => M.Managed<R2, E2, C>
+): (ma: Either<E, A>) => M.Managed<R1 & R2, E1 | E2, B | C>;
 export function fold<E, A, B, C, R1, E1, R2, E2>(
   onLeft: (e: E) => T.Effect<R1, E1, B>,
   onRight: (a: A) => T.Effect<R2, E2, C>

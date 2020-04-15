@@ -1,4 +1,4 @@
-import { Either, pipe, T, F } from "../../src";
+import { Either, pipe, T, F, S, SE, M } from "../../src";
 
 // $ExpectType Effect<{ bar: string; } & { foo: string; }, number, string>
 export const X = pipe(
@@ -6,6 +6,33 @@ export const X = pipe(
   Either.fold(
     (n) => T.accessM((_: { bar: string }) => T.raiseError(n)),
     (s) => T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`))
+  )
+);
+
+// $ExpectType Stream<{ bar: string; } & { foo: string; }, number, string>
+export const S_ = pipe(
+  Either.left(1),
+  Either.fold(
+    (n) => S.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
+    (s) => S.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
+  )
+);
+
+// $ExpectType StreamEither<{ bar: string; } & { foo: string; }, number, string>
+export const SE_ = pipe(
+  Either.left(1),
+  Either.fold(
+    (n) => SE.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
+    (s) => SE.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
+  )
+);
+
+// $ExpectType Managed<{ bar: string; } & { foo: string; }, number, string>
+export const M_ = pipe(
+  Either.left(1),
+  Either.fold(
+    (n) => M.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
+    (s) => M.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
   )
 );
 
