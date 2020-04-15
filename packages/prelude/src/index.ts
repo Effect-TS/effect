@@ -7,10 +7,12 @@ import {
 } from "@matechs/effect";
 import * as Function from "fp-ts/lib/function";
 import * as Either from "./either";
+import * as Option from "./option";
 import * as Exit from "./exit";
 
 export { pipe } from "fp-ts/lib/pipeable";
-export { Effect, Stream, StreamEither, Managed };
+
+export { Effect, Stream, StreamEither, Managed, Option };
 export { Exit };
 export { Either };
 export { Service };

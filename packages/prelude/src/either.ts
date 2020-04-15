@@ -411,3 +411,10 @@ export const {
   fromPredicate,
   filterOrElse
 } = pipeable(either);
+
+export const sequence = either.sequence(T.effect);
+
+export const traverse: <A, R, FE, B>(
+  f: (a: A) => T.Effect<R, FE, B>
+) => <TE>(ta: Either<TE, A>) => T.Effect<R, FE, Either<TE, B>> = (f) => (ta) =>
+  either.traverse(T.effect)(ta, f);
