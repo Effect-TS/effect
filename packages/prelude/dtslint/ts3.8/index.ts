@@ -79,25 +79,35 @@ const e = pipe(
 const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 // $ExpectType Provider<unknown, Foo, never>
-const provideFoo = T.provideS<Foo>({
+const provideFoo = T.provide<Foo>({
   [FooURI]: {
     getNumber: () => T.pure(1)
   }
 });
 
 // $ExpectType Provider<unknown, Bar, never>
-const provideBar = T.provideSO<Bar>({
-  [BarURI]: {
-    getString: () => T.pure("bar")
-  }
-});
+const provideBar = T.provide<Bar>(
+  {
+    [BarURI]: {
+      getString: () => T.pure("bar")
+    }
+  },
+  true
+);
 
 // $ExpectType Provider<Foo, Baz, never>
-const provideBaz = T.provideSW<Baz>()(T.accessM((_: Foo) => _[FooURI].getNumber()))((n) => ({
-  [BazURI]: {
-    getString: () => T.pure(`value: ${n}`)
-  }
-}));
+const provideBaz = T.provideM(
+  pipe(
+    T.accessM((_: Foo) => _[FooURI].getNumber()),
+    T.map(
+      (n): Baz => ({
+        [BazURI]: {
+          getString: () => T.pure(`value: ${n}`)
+        }
+      })
+    )
+  )
+);
 
 // $ExpectType Effect<Foo & AsyncRT & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 const fb = pipe(f, provideBaz);

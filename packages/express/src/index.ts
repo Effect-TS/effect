@@ -6,6 +6,7 @@ import { left, right } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
 import { Server } from "http";
 import { NextHandleFunction } from "connect";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export const expressAppEnv = "@matechs/express/expressAppURI";
 
@@ -78,7 +79,7 @@ export const express: Express = {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
           r[expressAppEnv].app[method](path, ...rest, (req, res) => {
-            T.runToPromiseExit(T.provideS(r)(f(req))).then((o) => {
+            T.runToPromiseExit(T.provide(r)(f(req))).then((o) => {
               switch (o._tag) {
                 case "Done":
                   res.status(o.value.status).send(o.value.body);
@@ -104,10 +105,15 @@ export const express: Express = {
       );
     },
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A> {
-      return T.provideR((r: R) => ({
-        ...r,
-        [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
-      }))(op);
+      return T.accessM((r: R) =>
+        pipe(
+          op,
+          T.provide<R & HasExpress>({
+            ...r,
+            [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
+          })
+        )
+      );
     },
     bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
@@ -154,12 +160,14 @@ export function route<R, E, A>(
       method,
       path,
       (x) =>
-        T.provideR((r: R & HasExpress & Express) => ({
-          ...r,
-          [requestContextEnv]: {
-            request: x
-          }
-        }))(handler),
+        T.accessM((r: R & HasExpress & Express) =>
+          T.provide({
+            ...r,
+            [requestContextEnv]: {
+              request: x
+            }
+          })(handler)
+        ),
       ...middle
     )
   );

@@ -53,8 +53,8 @@ describe("Example", () => {
     const result = await T.runToPromiseExit(
       pipe(
         program,
-        T.provideS(tracer(T.sync(() => mockTracer))),
-        T.provideS<Printer>({
+        T.provide(tracer(T.sync(() => mockTracer))),
+        T.provide<Printer>({
           printer: {
             print(s) {
               return T.sync(() => {
@@ -63,7 +63,7 @@ describe("Example", () => {
             }
           }
         }),
-        T.provideS(counter)
+        T.provide(counter)
       )
     );
 
@@ -108,7 +108,7 @@ describe("Example", () => {
       withControllerSpan("", "", {})(T.sync(() => {}))
     );
 
-    await T.runToPromise(pipe(program2, T.provideS(mockModule)));
+    await T.runToPromise(pipe(program2, T.provide(mockModule)));
 
     assert.deepEqual(
       // @ts-ignore
@@ -136,7 +136,7 @@ describe("Example", () => {
   it("skip tracing if out of context", async () => {
     const program2 = withChildSpan("noop")(T.raiseError(new Error("not implemented")));
 
-    const result = await T.runToPromiseExit(T.provideS(tracer())(program2));
+    const result = await T.runToPromiseExit(T.provide(tracer())(program2));
 
     assert.deepEqual(result, raise(new Error("not implemented")));
   });

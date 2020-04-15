@@ -18,7 +18,7 @@ describe("Ref", () => {
       .return((s) => s.result);
 
     const result = await T.runToPromise(
-      T.provideS<Config>({ initial: 0 })(program)
+      T.provide<Config>({ initial: 0 })(program)
     );
 
     assert.deepEqual(result, 3);

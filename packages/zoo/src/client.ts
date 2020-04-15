@@ -29,7 +29,7 @@ export interface ZooError {
 }
 
 export const provideClientConfig = (_: ClientConfig[typeof clientConfigURI]) =>
-  T.provideS<ClientConfig>({
+  T.provide<ClientConfig>({
     [clientConfigURI]: _
   });
 

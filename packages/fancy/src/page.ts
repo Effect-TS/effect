@@ -56,7 +56,7 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
               }
             )
           ),
-          T.provideS({
+          T.provide({
             [stateURI]: {
               state: init
             },
@@ -81,7 +81,7 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   if (_P && _KIND && typeof _KIND === "string" && _KIND === "ssr") {
     Cmp.getInitialProps = (ctx: NextPageContext) =>
       T.runToPromise(
-        T.provideS<NextContext>({
+        T.provide<NextContext>({
           [nextContextURI]: {
             ctx
           }

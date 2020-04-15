@@ -61,17 +61,27 @@ const e = fluent(c)
 
 const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
-const provideBar = T.provideSO<Bar>({
-  [BarURI]: {
-    getString: () => T.pure("bar")
-  }
-});
+const provideBar = T.provide<Bar>(
+  {
+    [BarURI]: {
+      getString: () => T.pure("bar")
+    }
+  },
+  true
+);
 
-const provideBaz = T.provideSW<Baz>()(a2)((s) => ({
-  [BazURI]: {
-    getString: () => T.pure(`value: ${s}`)
-  }
-}));
+const provideBaz = T.provideM(
+  pipe(
+    a2,
+    T.map(
+      (s): Baz => ({
+        [BazURI]: {
+          getString: () => T.pure(`value: ${s}`)
+        }
+      })
+    )
+  )
+);
 
 describe("Prelude", () => {
   it("should run effect composition", async () => {
@@ -98,7 +108,7 @@ describe("Prelude", () => {
         (n) => T.raiseError(n),
         (s) => T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`))
       ),
-      T.provideS({
+      T.provide({
         foo: "ok"
       }),
       T.runSync

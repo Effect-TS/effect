@@ -13,7 +13,7 @@ function run<E, A>(eff: T.TaskEnvErr<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provideS(
+      T.provide(
         libcurl({
           requestTransformer: (_) => {
             _.setOpt("FORBID_REUSE", 1);
@@ -21,7 +21,7 @@ function run<E, A>(eff: T.TaskEnvErr<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
           }
         })
       ),
-      T.provideS(
+      T.provide(
         H.middlewareStack([
           H.withPathHeaders({ foo: "bar" }, (path) => path === "http://127.0.0.1:4005/middle", true)
         ])
@@ -370,7 +370,7 @@ describe("Libcurl", () => {
     let res;
 
     const cancel = T.run(
-      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provideS(libcurl())),
+      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provide(libcurl())),
       (r) => {
         res = r;
       }

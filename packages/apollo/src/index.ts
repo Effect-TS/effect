@@ -97,7 +97,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                     source: O.fromNullable(source),
                     args: args || {}
                   }),
-                  T.provideS({
+                  T.provide({
                     ...(_ as any),
                     [contextURI]: {
                       [uri]: ctx
@@ -113,7 +113,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                       source: O.fromNullable(source),
                       args: args || {}
                     }),
-                    T.provideS({
+                    T.provide({
                       ...(_ as any),
                       [contextURI]: {
                         [uri]: ctx
@@ -127,7 +127,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                 ref[p].resolve = (x: any, _: any, ctx: Context) =>
                   pipe(
                     res[k].resolve(x),
-                    T.provideS({
+                    T.provide({
                       ...(_ as any),
                       [contextURI]: {
                         [uri]: ctx
@@ -158,16 +158,16 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
             const onD = configP.subscriptions.onDisconnect;
 
             config.subscriptions = {
-              onConnect: (a, b, c) => T.runToPromise(T.provideS(_)(onC(a, b, c))),
+              onConnect: (a, b, c) => T.runToPromise(T.provide(_)(onC(a, b, c))),
               keepAlive: configP.subscriptions.keepAlive,
-              onDisconnect: onD ? (a, b) => T.runToPromise(T.provideS(_)(onD(a, b))) : undefined,
+              onDisconnect: onD ? (a, b) => T.runToPromise(T.provide(_)(onD(a, b))) : undefined,
               path: configP.subscriptions.path
             };
           }
 
           const server = new ApolloServer({
             schema,
-            context: (ci) => T.runToPromise(T.provideS(_)(contextF(ci as any))),
+            context: (ci) => T.runToPromise(T.provide(_)(contextF(ci as any))),
             ...config
           });
 

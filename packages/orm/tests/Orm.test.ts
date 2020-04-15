@@ -72,7 +72,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await T.runToPromiseExit(T.provideS(env)(program));
+    const result = await T.runToPromiseExit(T.provide(env)(program));
 
     assert.deepEqual(
       result,
@@ -118,7 +118,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await T.runToPromiseExit(T.provideS(env)(program));
+    const result = await T.runToPromiseExit(T.provide(env)(program));
 
     assert.deepEqual(
       result,
@@ -159,7 +159,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const result = await T.runToPromiseExit(T.provideS(env)(program));
+    const result = await T.runToPromiseExit(T.provide(env)(program));
 
     assert.deepEqual(
       result,
@@ -207,7 +207,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromise(T.provideS(env)(program));
+    const res = await T.runToPromise(T.provide(env)(program));
 
     assert.deepEqual(res, "ok");
   });
@@ -262,7 +262,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromise(T.provideS(env)(program));
+    const res = await T.runToPromise(T.provide(env)(program));
 
     assert.deepEqual(res, "ok");
   });
@@ -320,7 +320,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromiseExit(T.provideS(env)(program));
+    const res = await T.runToPromiseExit(T.provide(env)(program));
 
     assert.deepEqual(res, EX.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
     assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
@@ -382,7 +382,7 @@ describe("Orm", () => {
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
     };
 
-    const res = await T.runToPromise(T.provideS(env)(program));
+    const res = await T.runToPromise(T.provide(env)(program));
 
     assert.deepEqual(res, "ok");
   });

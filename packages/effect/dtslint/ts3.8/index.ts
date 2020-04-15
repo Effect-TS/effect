@@ -36,7 +36,7 @@ const fae = T.accessM(({ [envA]: { foo } }: EnvA) => T.raiseError(foo));
 
 T.effect.chain(fae, (_) => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
 
-T.provideS<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
+T.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
 
 interface Env1 {
   value: string;

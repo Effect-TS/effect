@@ -459,56 +459,27 @@ export function access<R, A, E = NoErr>(f: F.FunctionN<[R], A>): Effect<R, E, A>
 }
 
 /**
- * Provides partial environment
+ * Provides partial environment via the spread operator, providing several environment is possible via:
+ * pipe(eff, provide(env1), provide(env2)) or pipe(eff, provide<Env1 & Env2>({...env1, ...env2}))
+ *
+ * the second parameter is used to invert the priority of newly provided environment
+ * and should be used when you want subsequent providers to take precedence (i.e. having currently provided env as default)
  */
-
-export const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(
-  ma: Effect<R, E, A>
-): Effect<R2, E, A> => accessM((r2: R2) => provideAll(f(r2))(ma) as any);
-
-/**
- * Provides partial environment
- * Inference only works if R is bound to a non intersection type.
- * If you need to provide an intersection, (several Envs), then you may better do several unary injections OR explicitly specify the R type parameter.
- */
-export function provideS<R>(r: R): Provider<unknown, R, never> {
+export function provide<R>(r: R, inverted = false): Provider<unknown, R, never> {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
-    provideR((r2: R2) => ({ ...r2, ...r }))(eff);
+    provideR((r2: R2) => (inverted ? { ...r, ...r2 } : { ...r2, ...r }))(eff);
 }
 
 /**
- * Like provideS but inverted
- * Inference only works if R is bound to a non intersection type.
- * If you need to provide an intersection, (several Envs), then you may better do several unary injections OR explicitly specify the R type parameter.
+ * Like provide where environment is resolved monadically
  */
-export function provideSO<R>(r: R): Provider<unknown, R, never> {
-  return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
-    provideR((r2: R2) => ({ ...r, ...r2 }))(eff);
-}
-
-/**
- * Provides partial environment
- * Higher order. Interpret "M" in terms of "R" through "A".
- */
-export const provideSW = <M>() => <R, E, A>(res: Effect<R, E, A>) => (
-  f: (a: A) => M
-): Provider<R, M, E> => <R2, E2, A2>(eff: Effect<R2 & M, E2, A2>): Effect<R2 & R, E | E2, A2> =>
-  chain_(res, (a) => provideS<M>(f(a))(eff));
-
-/**
- * Provides partial environment monadically
- */
-export function provideSM<R, R3, E2>(rm: Effect<R3, E2, R>): Provider<R3, R, E2> {
+export function provideM<R, R3, E2>(rm: Effect<R3, E2, R>, inverted = false): Provider<R3, R, E2> {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
-    chain_(rm, (r) => provideR((r2: R2) => ({ ...r2, ...r }))(eff));
+    chain_(rm, (r) => provideR((r2: R2) => (inverted ? { ...r, ...r2 } : { ...r2, ...r }))(eff));
 }
 
-/**
- * Provides all environment to the child
- */
-const provideAll: {
-  <R>(r: R): <E, A>(ma: Effect<R, E, A>) => Effect<unknown, E, A>;
-} = (r) => (ma) => new Implementation(EffectTag.ProvideEnv as const, ma, r);
+const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(ma: Effect<R, E, A>): Effect<R2, E, A> =>
+  accessM((r2: R2) => new Implementation(EffectTag.ProvideEnv as const, ma, f(r2)));
 
 /**
  * Map the value produced by an IO
@@ -1073,7 +1044,7 @@ export function makeFiber<R, E, A>(
       sync(() => {
         const driver = new DriverImpl<E, A>(runtime);
         const fiber = new FiberImpl(driver, name);
-        driver.start(provideS(r)(init));
+        driver.start(provide(r)(init));
         return fiber;
       })
     )
@@ -1127,8 +1098,8 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
         chain_<AsyncRT & R3 & R4, E3, Deferred<AsyncRT & R3 & R4, E3, C>, AsyncRT & R3 & R4, E3, C>(
           makeDeferred<AsyncRT & R3 & R4, E3, C>(),
           (channel) =>
-            chain_(fork(provideS(r)(first)), (fiber1) =>
-              chain_(fork(provideS(r)(second)), (fiber2) =>
+            chain_(fork(provide(r)(first)), (fiber1) =>
+              chain_(fork(provide(r)(second)), (fiber2) =>
                 chain_(
                   fork(
                     chain_(
@@ -1587,9 +1558,9 @@ export const effect: EffectMonad = {
   onComplete: onComplete_
 };
 
-export const Do = DoG(effect)
-export const sequenceS = SS(effect)
-export const sequenceT = ST(effect)
+export const Do = DoG(effect);
+export const sequenceS = SS(effect);
+export const sequenceT = ST(effect);
 
 export const parEffect: Monad3EP<URI> & MonadThrow3EP<URI> = {
   URI,
@@ -1601,9 +1572,9 @@ export const parEffect: Monad3EP<URI> & MonadThrow3EP<URI> = {
   throwError: raiseError
 };
 
-export const parDo = DoG(parEffect)
-export const parSequenceS = SS(parEffect)
-export const parSequenceT = ST(parEffect)
+export const parDo = DoG(parEffect);
+export const parSequenceS = SS(parEffect);
+export const parSequenceT = ST(parEffect);
 
 const {
   ap,
@@ -1820,10 +1791,6 @@ export function effectify<L, R>(f: Function): () => Effect<AsyncRT, L, R> {
     });
   };
 }
-
-export const patch = <R>() => <E, R2>(f: (_: R) => Effect<R2, E, R>) => <R3, E3, A>(
-  eff: Effect<R3 & R, E3, A>
-) => chain_(accessEnvironment<R>(), (r) => chain_(f(r), (rn) => provideS(rn)(eff)));
 
 export interface Provider<Environment, Module, E2 = never> {
   <R, E, A>(e: Effect<Module & R, E, A>): Effect<Environment & R, E | E2, A>;

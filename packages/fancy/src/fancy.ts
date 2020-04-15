@@ -45,7 +45,7 @@ export class Fancy<R, P> {
 
       this.cancellers.set(
         n,
-        T.run(T.provideS(r)(eff), (ex) => {
+        T.run(T.provide(r)(eff), (ex) => {
           this.cancellers.delete(n);
 
           if (EX.isDone(ex)) {
@@ -77,7 +77,7 @@ export class Fancy<R, P> {
           this.stop();
         })
       ),
-      T.provideS<Runner<R>>({
+      T.provide<Runner<R>>({
         [dispatcherURI]: {
           run: dispatch
         }

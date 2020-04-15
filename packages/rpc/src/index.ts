@@ -54,7 +54,7 @@ export function server<M extends F.ModuleShape<M>, R>(
                   const args: any[] = req.body.args;
 
                   const cancel = T.run(
-                    T.provideS<E.HasExpress & E.Express & E.RequestContext & R>({
+                    T.provide<E.HasExpress & E.Express & E.RequestContext & R>({
                       ...r,
                       [E.requestContextEnv]: { request: req }
                     })(

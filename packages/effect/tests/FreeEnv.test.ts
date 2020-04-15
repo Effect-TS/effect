@@ -114,7 +114,7 @@ describe("Generic", () => {
 
     assert.deepEqual(
       await T.runToPromiseExit(
-        T.provideS<U.Env<typeof main>>({
+        T.provide<U.Env<typeof main>>({
           ...fnLive,
           ...F.instance(configM)({
             [configEnv]: {
@@ -130,7 +130,7 @@ describe("Generic", () => {
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
 
-    assert.deepEqual(await T.runToPromiseExit(T.provideS(fnLive)(main)), done(["message"]));
+    assert.deepEqual(await T.runToPromiseExit(T.provide(fnLive)(main)), done(["message"]));
   });
 
   it("use generic module (different interpreter, not need fnEnv)", async () => {

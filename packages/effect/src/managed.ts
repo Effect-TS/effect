@@ -68,7 +68,7 @@ export interface Encase<E, A> {
 export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
   return toM((r) => ({
     _tag: ManagedTag.Encase,
-    acquire: T.provideS(r)(rio)
+    acquire: T.provide(r)(rio)
   }));
 }
 
@@ -89,8 +89,8 @@ export function bracket<R, E, A, R2, E2>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Bracket,
-    acquire: T.provideS(r)(acquire as T.Effect<R, E | E2, A>),
-    release: (a) => T.provideS(r)(release(a))
+    acquire: T.provide(r)(acquire as T.Effect<R, E | E2, A>),
+    release: (a) => T.provide(r)(release(a))
   }));
 }
 
@@ -107,8 +107,8 @@ export function bracketExit<R, E, A, R2, E2>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.BracketExit,
-    acquire: T.provideS(r)(acquire),
-    release: (a, e) => T.provideS(r)(release(a, e as any))
+    acquire: T.provide(r)(acquire),
+    release: (a, e) => T.provide(r)(release(a, e as any))
   }));
 }
 
@@ -129,7 +129,7 @@ export function suspend<R, E, R2, E2, A>(
     (r) =>
       ({
         _tag: ManagedTag.Suspended,
-        suspended: effect.map(T.provideS(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
+        suspended: effect.map(T.provide(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
       } as any)
   );
 }
@@ -387,16 +387,8 @@ export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R,
  * @param man
  * @param ma
  */
-export function provideS<R3, E2, R2>(man: Managed<R3, E2, R2>): T.Provider<R3, R2, E2> {
-  return <R, E, A>(ma: T.Effect<R & R2, E, A>) =>
-    T.accessM((_: R) =>
-      use(man, (r) =>
-        T.provideS({
-          ...r,
-          ..._
-        })(ma)
-      )
-    );
+export function provide<R3, E2, R2>(man: Managed<R3, E2, R2>, inverted = false): T.Provider<R3, R2, E2> {
+  return <R, E, A>(ma: T.Effect<R & R2, E, A>) => use(man, (r) => T.provide(r, inverted)(ma));
 }
 
 export const URI = "matechs/Managed";

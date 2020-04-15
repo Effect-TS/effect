@@ -110,7 +110,7 @@ export function toObservable<R, E, A>(
   return T.access(
     (r: R) =>
       new Rx.Observable((sub) => {
-        const drainer = T.provideS(r)(
+        const drainer = T.provide(r)(
           S.drain(
             S.stream.mapM(s, (a) =>
               T.sync(() => {

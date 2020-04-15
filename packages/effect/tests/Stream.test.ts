@@ -469,7 +469,7 @@ describe("Stream", () => {
 
     const zip = pipe(streamA, S.zip(streamB), S.take(3), S.collectArray);
 
-    const res = await T.runToPromise(T.provideS<EnvA & EnvB>({ a: 1, b: 1 })(zip));
+    const res = await T.runToPromise(T.provide<EnvA & EnvB>({ a: 1, b: 1 })(zip));
 
     assert.deepEqual(res, [
       [1, 1],
@@ -498,7 +498,7 @@ describe("Stream", () => {
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
-      T.provideS<Config & ConfigB>({
+      T.provide<Config & ConfigB>({
         initial: 1,
         second: 1
       })(r)
@@ -545,7 +545,7 @@ describe("Stream", () => {
     const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
 
     const res = await T.runToPromise(
-      T.provideS<Config & ConfigB>({
+      T.provide<Config & ConfigB>({
         initial: 1,
         second: 1
       })(r)

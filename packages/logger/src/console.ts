@@ -65,7 +65,7 @@ export interface ConsoleLoggerConfig {
 }
 
 export const provideConsoleLoggerConfig = (config: Config = {}) =>
-  T.provideS<ConsoleLoggerConfig>({
+  T.provide<ConsoleLoggerConfig>({
     [ConsoleLoggerConfigURI]: config
   });
 

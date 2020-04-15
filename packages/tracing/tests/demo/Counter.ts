@@ -17,7 +17,7 @@ export function currentCount() {
   return T.accessM(({ [CounterState]: counter }: CounterState) => T.pure(counter.ref));
 }
 
-export const counterState = T.provideSM(
+export const counterState = T.provideM(
   T.sync(
     (): CounterState => ({
       [CounterState]: {

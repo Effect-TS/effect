@@ -51,4 +51,4 @@ const browserSpec = M.suite("browser")(
 const session = new MockStorage([]);
 const local = new MockStorage([]);
 
-M.run(browserSpec)(T.provideS(B.storageEnv(session, local)));
+M.run(browserSpec)(T.provide(B.storageEnv(session, local)));

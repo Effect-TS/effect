@@ -50,7 +50,7 @@ export const pageSSG = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
               }
             )
           ),
-          T.provideS({
+          T.provide({
             [stateURI]: {
               state: init
             },

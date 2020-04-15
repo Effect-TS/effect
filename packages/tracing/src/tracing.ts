@@ -59,7 +59,7 @@ function runWithSpan<R, A>(ma: T.Effect<SpanContext & R, Error, A>, span: Span, 
         )
         .return(() => r)
     ),
-    T.provideS<SpanContext>({
+    T.provide<SpanContext>({
       [SpanContext]: { spanInstance: span, component }
     })
   );
@@ -123,7 +123,7 @@ export const tracer: (factory?: T.Effect<T.NoEnv, never, OT>) => Tracer = (
       return Do(T.effect)
         .bind("instance", factory)
         .bindL("res", ({ instance }) =>
-          T.provideS<TracerContext>({
+          T.provide<TracerContext>({
             [TracerContext]: {
               instance
             }

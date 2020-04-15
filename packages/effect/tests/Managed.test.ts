@@ -22,7 +22,7 @@ describe("Managed", () => {
     const resource = M.encaseEffect(T.accessM(({ test }: typeof config) => T.pure(test)));
 
     const result = await T.runToPromise(
-      T.provideS(config)(
+      T.provide(config)(
         M.use(resource, (n) => T.accessM(({ test }: typeof config) => T.pure(n + test)))
       )
     );
@@ -184,11 +184,11 @@ describe("Managed", () => {
     assert.deepEqual(result, 3);
   });
 
-  it("should use resource provideS", () => {
+  it("should use resource provide", () => {
     const resourceA = M.pure({ n: 1 });
     const program = T.access(({ n }: { n: number }) => n + 1);
 
-    const result = T.runUnsafeSync(M.provideS(resourceA)(program));
+    const result = T.runUnsafeSync(M.provide(resourceA)(program));
 
     assert.deepEqual(result, 2);
   });

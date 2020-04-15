@@ -20,7 +20,7 @@ const program = EX.withApp(
 );
 
 T.run(
-  T.provideS(EX.express)(program),
+  T.provide(EX.express)(program),
   E.fold(
     (server) => {
       process.on("SIGINT", () => {

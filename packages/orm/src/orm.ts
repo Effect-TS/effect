@@ -144,8 +144,8 @@ export class DbT<Db extends symbol | string> {
 
   withNewRegion<R extends ORM<Db>, E, A>(op: T.Effect<R, E, A>): T.Effect<R, E, A> {
     return this.withConnection((connection) =>
-      T.provideR(
-        (r: R): R => ({
+      T.accessM((r: R) =>
+        T.provide({
           ...r,
           [managerEnv]: {
             ...r[managerEnv],
@@ -153,8 +153,8 @@ export class DbT<Db extends symbol | string> {
               manager: connection.manager
             }
           }
-        })
-      )(op)
+        })(op)
+      )
     );
   }
 
@@ -184,21 +184,23 @@ export class DbT<Db extends symbol | string> {
             (db) =>
               pipe(
                 op,
-                T.provideR((r: DbConfig<Db> & R) => ({
-                  ...r,
-                  [poolEnv]: {
-                    ...r[poolEnv],
-                    [this.dbEnv]: {
-                      pool: db
+                T.provideM(
+                  T.access((r: DbConfig<Db> & R): ORM<Db> & R => ({
+                    ...r,
+                    [poolEnv]: {
+                      ...r[poolEnv],
+                      [this.dbEnv]: {
+                        pool: db
+                      }
+                    },
+                    [managerEnv]: {
+                      ...r[managerEnv],
+                      [this.dbEnv]: {
+                        manager: db.manager
+                      }
                     }
-                  },
-                  [managerEnv]: {
-                    ...r[managerEnv],
-                    [this.dbEnv]: {
-                      manager: db.manager
-                    }
-                  }
-                }))
+                  }))
+                )
               )
           )
         )
@@ -292,21 +294,23 @@ export class DbT<Db extends symbol | string> {
         (runner) =>
           pipe(
             op,
-            T.provideR((r: R) => ({
-              ...r,
-              [managerEnv]: {
-                ...r[managerEnv],
-                [this.dbEnv]: {
-                  manager: runner.manager
+            T.provideM(
+              T.access((r: R): Manager<Db> & DbTx<Db> & R => ({
+                ...r,
+                [managerEnv]: {
+                  ...r[managerEnv],
+                  [this.dbEnv]: {
+                    manager: runner.manager
+                  }
+                },
+                [dbTxURI]: {
+                  ...r[dbTxURI],
+                  [this.dbEnv]: {
+                    tx: {}
+                  }
                 }
-              },
-              [dbTxURI]: {
-                ...r[dbTxURI],
-                [this.dbEnv]: {
-                  tx: {}
-                }
-              }
-            }))
+              }))
+            )
           )
       )
     );
@@ -321,7 +325,7 @@ export class DbT<Db extends symbol | string> {
           () =>
             pool.transaction((tx) =>
               T.runToPromise(
-                T.provideS<R & Manager<Db> & DbTx<Db>>({
+                T.provide<R & Manager<Db> & DbTx<Db>>({
                   ...r,
                   [managerEnv]: {
                     ...r[managerEnv],

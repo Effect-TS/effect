@@ -324,14 +324,10 @@ export function withHeaders(
 ): <R, E, A>(eff: T.Effect<R, E, A>) => T.Effect<R, E, A> {
   return <R, E, A>(eff: T.Effect<R, E, A>) =>
     replace
-      ? T.provideR<R, HttpHeaders & R>((r) => ({
-          ...r,
-          [httpHeadersEnv]: headers
-        }))(eff)
-      : T.provideR<R, HttpHeaders & R>((r) => ({
-          ...r,
-          [httpHeadersEnv]: { ...r[httpHeadersEnv], ...headers }
-        }))(eff);
+      ? T.accessM((r: R) => T.provide({ ...r, [httpHeadersEnv]: headers })(eff))
+      : T.accessM((r: R) =>
+          T.provide({ ...r, [httpHeadersEnv]: { ...r[httpHeadersEnv], ...headers } })(eff)
+        );
 }
 
 export function withPathHeaders(

@@ -25,7 +25,7 @@ const envLive: Env<typeof program> = {
 };
 
 T.run(
-  T.provideS(envLive)(program),
+  T.provide(envLive)(program),
   E.fold(
     todos => {
       console.log(todos);

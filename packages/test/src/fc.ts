@@ -13,7 +13,7 @@ export interface RandomGen {
   };
 }
 
-export const provideGenerator = T.provideSM(
+export const provideGenerator = T.provideM(
   pipe(
     T.sync(() => new fc.Random(prand.mersenne(Math.random()))),
     T.map(

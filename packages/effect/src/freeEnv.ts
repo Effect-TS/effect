@@ -138,9 +138,9 @@ export function providing<
 
     for (const entry of Object.keys((s as any)[specURI][sym])) {
       if (typeof (a as any)[sym][entry] === "function") {
-        r[sym][entry] = (...args: any[]) => T.provideSO(env)((a as any)[sym][entry](...args));
+        r[sym][entry] = (...args: any[]) => T.provide(env, true)((a as any)[sym][entry](...args));
       } else if (typeof (a as any)[sym][entry] === "object") {
-        r[sym][entry] = T.provideSO(env)((a as any)[sym][entry]);
+        r[sym][entry] = T.provide(env, true)((a as any)[sym][entry]);
       }
     }
   }
@@ -148,22 +148,22 @@ export function providing<
   return r;
 }
 
-export function implement<S extends ModuleSpec<any>>(s: S) {
+export function implement<S extends ModuleSpec<any>>(s: S, inverted = false) {
   return <I extends Implementation<TypeOf<S>>>(
     i: I
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-      P.pipe(eff, T.provideS(providing(s, i, e)))
+      P.pipe(eff, T.provide(providing(s, i, e), inverted))
     );
 }
 
 export function implementWith<RW = unknown, EW = never, AW = unknown>(w: T.Effect<RW, EW, AW>) {
-  return <S extends ModuleSpec<any>>(s: S) => <I extends Implementation<TypeOf<S>>>(
+  return <S extends ModuleSpec<any>>(s: S, inverted = false) => <I extends Implementation<TypeOf<S>>>(
     i: (r: AW) => I
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW> => (eff) =>
     T.effect.chain(w, (r) =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        P.pipe(eff, T.provideS(providing(s, i(r), e)))
+        P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )
     );
 }

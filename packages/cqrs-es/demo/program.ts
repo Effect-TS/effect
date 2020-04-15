@@ -82,7 +82,7 @@ export const main = bracketPool(
 export const liveMain = pipe(
   main,
   provideApp,
-  T.provideS<ES.EventStoreConfig>({
+  T.provide<ES.EventStoreConfig>({
     [ES.eventStoreURI]: {
       settings: {},
       endPointOrGossipSeed: "discover://eventstore.discovery.url"
@@ -90,6 +90,6 @@ export const liveMain = pipe(
   }),
   console.provideConsoleLogger,
   console.provideConsoleLoggerConfig(),
-  T.provideS(dbConfigLive),
-  T.provideS(liveFactory)
+  T.provide(dbConfigLive),
+  T.provide(liveFactory)
 );

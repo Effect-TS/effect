@@ -59,9 +59,9 @@ describe("RPC", () => {
     const result = await T.runToPromise(
       pipe(
         program,
-        T.provideS(appConfig),
-        T.provideS(E.express),
-        T.provideS({
+        T.provide(appConfig),
+        T.provide(E.express),
+        T.provide({
           [RPC.serverConfigEnv]: {
             [counterEnv]: {
               scope: "/counter"
@@ -74,8 +74,8 @@ describe("RPC", () => {
     const incResult = await T.runToPromiseExit(
       pipe(
         increment(1),
-        T.provideS(L.client(fetch)),
-        T.provideS({
+        T.provide(L.client(fetch)),
+        T.provide({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
               baseUrl: "http://127.0.0.1:9003/counter"
@@ -88,8 +88,8 @@ describe("RPC", () => {
     const niResult = await T.runToPromiseExit(
       pipe(
         ni,
-        T.provideS(L.client(fetch)),
-        T.provideS({
+        T.provide(L.client(fetch)),
+        T.provide({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
               baseUrl: "http://127.0.0.1:9003/counter"

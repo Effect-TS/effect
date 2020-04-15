@@ -40,28 +40,32 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const provideApi = <R, E, A>(
     eff: T.Effect<R & Database<DbURI>, E, A>
   ): T.Effect<R & OR.ORM<DbURI>, E, A> => {
-    const provideDb = T.provideSW<Database<DbURI>>()(T.accessEnvironment<OR.ORM<DbURI>>())((r) => ({
-      [DatabaseURI]:
-        {
-          ...r[DatabaseURI],
-          [DbURI]:
+    const provideDb = T.provideM(
+      T.access(
+        (r: OR.ORM<DbURI>): Database<DbURI> => ({
+          [DatabaseURI]:
             {
-              repository: (Target) => ({
-                save: (entity, options) =>
-                  pipe(
-                    orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
-                    T.provideSO(r)
-                  ),
-                findOne: (options) =>
-                  pipe(
-                    orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
-                    T.map(OP.fromNullable),
-                    T.provideSO(r)
-                  )
-              })
-            } as Database<DbURI>[typeof DatabaseURI][DbURI]
-        } as Database<DbURI>[typeof DatabaseURI]
-    }));
+              ...r[DatabaseURI],
+              [DbURI]:
+                {
+                  repository: (Target) => ({
+                    save: (entity, options) =>
+                      pipe(
+                        orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
+                        T.provide(r, true)
+                      ),
+                    findOne: (options) =>
+                      pipe(
+                        orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
+                        T.map(OP.fromNullable),
+                        T.provide(r, true)
+                      )
+                  })
+                } as Database<DbURI>[typeof DatabaseURI][DbURI]
+            } as Database<DbURI>[typeof DatabaseURI]
+        })
+      )
+    );
 
     return pipe(eff, provideDb);
   };

@@ -66,7 +66,7 @@ export function embed<EPS extends AnyEpic[]>(
               pipe(
                 R.toObservable(epic(stateAccess, R.encaseObservable(action$, toNever))),
                 provider,
-                T.provideS(stateAccess)
+                T.provide(stateAccess)
               )
             );
           }

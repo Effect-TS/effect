@@ -55,7 +55,7 @@ const program = pipe(
   ),
   // keep process waiting
   T.chainTap(() => T.never),
-  M.provideS(KOA.managedKoa(8081)),
+  M.provide(KOA.managedKoa(8081)),
   T.fork
 );
 

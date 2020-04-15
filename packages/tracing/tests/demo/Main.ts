@@ -29,4 +29,4 @@ export const env: U.Env<typeof program> = {
   ...tracer()
 };
 
-export const main = E.run(pipe(program, E.provideS(env)));
+export const main = E.run(pipe(program, E.provide(env)));
