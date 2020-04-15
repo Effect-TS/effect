@@ -387,7 +387,10 @@ export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R,
  * @param man
  * @param ma
  */
-export function provide<R3, E2, R2>(man: Managed<R3, E2, R2>, inverted = false): T.Provider<R3, R2, E2> {
+export function provide<R3, E2, R2>(
+  man: Managed<R3, E2, R2>,
+  inverted: "regular" | "inverted" = "regular"
+): T.Provider<R3, R2, E2> {
   return <R, E, A>(ma: T.Effect<R & R2, E, A>) => use(man, (r) => T.provide(r, inverted)(ma));
 }
 

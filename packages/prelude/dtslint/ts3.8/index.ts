@@ -92,7 +92,7 @@ const provideBar = T.provide<Bar>(
       getString: () => T.pure("bar")
     }
   },
-  true
+  "inverted"
 );
 
 // $ExpectType Provider<Foo, Baz, never>

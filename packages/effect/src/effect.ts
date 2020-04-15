@@ -465,17 +465,25 @@ export function access<R, A, E = NoErr>(f: F.FunctionN<[R], A>): Effect<R, E, A>
  * the second parameter is used to invert the priority of newly provided environment
  * and should be used when you want subsequent providers to take precedence (i.e. having currently provided env as default)
  */
-export function provide<R>(r: R, inverted = false): Provider<unknown, R, never> {
+export function provide<R>(
+  r: R,
+  inverted: "regular" | "inverted" = "regular"
+): Provider<unknown, R, never> {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
-    provideR((r2: R2) => (inverted ? { ...r, ...r2 } : { ...r2, ...r }))(eff);
+    provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff);
 }
 
 /**
  * Like provide where environment is resolved monadically
  */
-export function provideM<R, R3, E2>(rm: Effect<R3, E2, R>, inverted = false): Provider<R3, R, E2> {
+export function provideM<R, R3, E2>(
+  rm: Effect<R3, E2, R>,
+  inverted: "regular" | "inverted" = "regular"
+): Provider<R3, R, E2> {
   return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
-    chain_(rm, (r) => provideR((r2: R2) => (inverted ? { ...r, ...r2 } : { ...r2, ...r }))(eff));
+    chain_(rm, (r) =>
+      provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)
+    );
 }
 
 const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(ma: Effect<R, E, A>): Effect<R2, E, A> =>
