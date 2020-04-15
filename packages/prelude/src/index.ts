@@ -1,20 +1,20 @@
 import {
-  effect as T,
+  effect as Effect,
   freeEnv as Service,
-  managed as M,
-  stream as S,
-  streameither as SE
+  managed as Managed,
+  stream as Stream,
+  streameither as StreamEither
 } from "@matechs/effect";
-import * as F from "fp-ts/lib/function";
+import * as Function from "fp-ts/lib/function";
 import * as Either from "./either";
 import * as Exit from "./exit";
 
 export { pipe } from "fp-ts/lib/pipeable";
-export { T, S, SE, M };
+export { Effect, Stream, StreamEither, Managed };
 export { Exit };
 export { Either };
 export { Service };
-export { F };
+export { Function };
 
 export class Fluent<A> {
   constructor(private readonly _: A) {

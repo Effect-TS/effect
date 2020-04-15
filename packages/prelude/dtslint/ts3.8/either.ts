@@ -1,4 +1,12 @@
-import { Either, pipe, T, F, S, SE, M } from "../../src";
+import {
+  Either,
+  pipe,
+  Effect as T,
+  Function as F,
+  Stream as S,
+  StreamEither as SE,
+  Managed as M
+} from "../../src";
 
 // $ExpectType Effect<{ bar: string; } & { foo: string; }, number, string>
 export const X = pipe(
