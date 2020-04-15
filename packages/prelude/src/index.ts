@@ -1,7 +1,9 @@
-import { effect as T, freeEnv as Service, exit as Exit } from "@matechs/effect";
-import * as Either from "fp-ts/lib/Either";
-export { pipe } from "fp-ts/lib/pipeable";
+import { effect as T, freeEnv as Service } from "@matechs/effect";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import * as Either from "./either";
+import * as Exit from "./exit";
+export * as F from "fp-ts/lib/function";
+export { pipe } from "fp-ts/lib/pipeable";
 
 export { T };
 export { Exit };

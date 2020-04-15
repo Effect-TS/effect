@@ -1,0 +1,50 @@
+import { Either, pipe, T, F } from "../../src";
+
+// $ExpectType Effect<{ bar: string; } & { foo: string; }, number, string>
+export const X = pipe(
+  Either.left(1),
+  Either.fold(
+    (n) => T.accessM((_: { bar: string }) => T.raiseError(n)),
+    (s) => T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`))
+  )
+);
+
+// $ExpectType number
+export const Y = pipe(
+  Either.left(1),
+  Either.fold((n) => n, F.identity)
+);
+
+// $ExpectType Either<never, number>
+export const Z = pipe(
+  Either.left(1),
+  Either.orElse((n) => Either.right(n))
+);
+
+// $ExpectType Either<string, never>
+export const A = pipe(
+  Either.left(1),
+  Either.orElse((_) => Either.left("n"))
+);
+
+// $ExpectType string
+export const B = pipe(
+  Either.left(""),
+  Either.getOrElse((_) => "n")
+);
+
+// $ExpectType Either<string | number, string | symbol>
+export const C = Either.sequenceT(
+  Either.left(1),
+  Either.left(""),
+  Either.right("ok"),
+  Either.right(Symbol())
+);
+
+// $ExpectType Either<string | number | symbol, { a: never; b: never; c: string; d: symbol; }>
+export const D = Either.sequenceS({
+  a: Either.left(1),
+  b: Either.left(""),
+  c: Either.right<symbol, string>("ok"),
+  d: Either.right(Symbol())
+});

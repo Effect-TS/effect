@@ -90,4 +90,20 @@ describe("Prelude", () => {
 
     assert.deepStrictEqual(Exit.isDone(exit) && exit.value, "value: bar");
   });
+
+  it("should use either fold", () => {
+    const useFold = pipe(
+      Either.left<number, string>(1),
+      Either.fold(
+        (n) => T.raiseError(n),
+        (s) => T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`))
+      ),
+      T.provideS({
+        foo: "ok"
+      }),
+      T.runSync
+    );
+
+    expect(useFold).toStrictEqual(Exit.raise(1));
+  });
 });
