@@ -36,10 +36,18 @@ export const P1 = F.implement(testM)({
   }
 });
 
-// $ExpectType Provider<{ baz: string; } & { fuz: string; }, WithTest, never>
+// $ExpectType ["cannot provide async implementation to", "fm"]
 export const P2 = F.implement(testM)({
   [testEnv]: {
-    c: T.access((_: { baz: string }) => 1),
+    c: T.shiftAfter(T.access((_: { baz: string }) => 1)),
+    fm: () => T.shiftAfter(T.accessM((_: { fuz: string }) => T.unit))
+  }
+});
+
+// $ExpectType ["cannot provide async implementation to", "c"]
+export const P2_ = F.implement(testM)({
+  [testEnv]: {
+    c: T.shiftAfter(T.access((_: { baz: string }) => 1)),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
   }
 });
@@ -75,6 +83,16 @@ export const P6 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter
   [testEnv]: {
     c: T.access((_: { baz: string }) => 1),
     fm: () => T.accessM((_: { fuz: string }) => T.unit)
+  }
+}));
+
+// $ExpectType ["cannot provide async implementation to", "fm"]
+export const P6_ = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.pure(1))))(
+  testM
+)(() => ({
+  [testEnv]: {
+    c: T.access((_: { baz: string }) => 1),
+    fm: () => T.shiftAfter(T.accessM((_: { fuz: string }) => T.unit))
   }
 }));
 
