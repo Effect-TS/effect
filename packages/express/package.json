@@ -1,6 +1,6 @@
 {
   "name": "@matechs/express",
-  "version": "4.0.30",
+  "version": "5.0.0-alpha.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -29,6 +29,6 @@
     "express": "^4.17.1"
   },
   "dependencies": {
-    "@matechs/effect": "^5.0.16"
+    "@matechs/effect": "^6.0.0-alpha.0"
   }
 }

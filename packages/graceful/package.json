@@ -1,6 +1,6 @@
 {
   "name": "@matechs/graceful",
-  "version": "3.0.30",
+  "version": "4.0.0-alpha.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -23,6 +23,6 @@
   ],
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/effect": "^5.0.16"
+    "@matechs/effect": "^6.0.0-alpha.0"
   }
 }
