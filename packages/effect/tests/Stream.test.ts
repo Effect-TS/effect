@@ -726,7 +726,7 @@ describe("Stream", () => {
         );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
-        return T.zip(drain, T.delay(cell.get, 100));
+        return T.zip_(drain, T.delay(cell.get, 100));
       });
       return expectExit(
         io,
@@ -755,7 +755,7 @@ describe("Stream", () => {
         );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
-        return T.zip(drain, T.delay(cell.get, 100));
+        return T.zip_(drain, T.delay(cell.get, 100));
       });
 
       return expectExit(

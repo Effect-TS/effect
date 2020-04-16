@@ -68,7 +68,7 @@ describe("semaphore", () => {
       .bindL("before", ({ gate }) => gate.get)
       .doL(({ sem }) => sem.release)
       .do(T.shifted) // let the forked fiber advance
-      .bindL("after", ({ gate, sem }) => T.zip(gate.get, sem.available))
+      .bindL("after", ({ gate, sem }) => T.zip_(gate.get, sem.available))
       .return(({ before, after }) => [before, ...after]);
     return expectExit(eff, done([false, true, 1]));
   });
@@ -77,7 +77,7 @@ describe("semaphore", () => {
       T.effect.chain(makeSemaphore(1), (sem) =>
         T.effect.chain(T.fork(T.applySecond(sem.acquireN(2), gate.set(true))), (child) =>
           T.effect.chain(T.applySecond(child.interrupt, child.wait), (_exit) =>
-            T.zip(sem.available, gate.get)
+            T.zip_(sem.available, gate.get)
           )
         )
       )

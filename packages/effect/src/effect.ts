@@ -606,11 +606,17 @@ export function zipWith<R, E, A, R2, E2, B, C>(
  * @param first
  * @param second
  */
-export function zip<R, E, A, R2, E2, B>(
+export function zip_<R, E, A, R2, E2, B>(
   first: Effect<R, E, A>,
   second: Effect<R2, E2, B>
 ): Effect<R & R2, E | E2, readonly [A, B]> {
   return zipWith(first, second, tuple2);
+}
+
+export function zip<R2, E2, B>(
+  second: Effect<R2, E2, B>
+): <R, E, A>(first: Effect<R, E, A>) => Effect<R & R2, E | E2, readonly [A, B]> {
+  return (first) => zip_(first, second);
 }
 
 /**

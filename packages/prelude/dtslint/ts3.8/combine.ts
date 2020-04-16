@@ -29,8 +29,8 @@ declare const providerE: T.Provider<unknown, E>;
 // $ExpectType Provider<B & E, A & C & D, "errD">
 flowP(providerA).flow(providerC).flow(providerD).done();
 
-// $ExpectType Provider<E, A & C & D & B, "errB" | "errD">
+// $ExpectType Provider<E, A & C & D & B, "errD" | "errB">
 flowP(providerA).flow(providerC).flow(providerD).flow(providerB).done();
 
-// $ExpectType Provider<unknown, A & C & D & B & E, "errB" | "errD">
+// $ExpectType Provider<unknown, A & C & D & B & E, "errD" | "errB">
 flowP(providerA).flow(providerC).flow(providerD).flow(providerB).flow(providerE).done();
