@@ -30,6 +30,8 @@ import * as semaphore from "../semaphore";
 import { collectArraySink, drainSink, drainWhileSink, queueSink, Sink, stepMany } from "./sink";
 import { isSinkCont, sinkStepLeftover, sinkStepState } from "./step";
 import * as su from "./support";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 
 export type Source<R, E, A> = T.Effect<R, E, O.Option<A>>;
 
@@ -1744,3 +1746,7 @@ export function fromObjectReadStreamB<A>(stream: ReadStream, batch: number, ever
 }
 
 export { su };
+
+export const Do = DoG(stream);
+export const sequenceS = SS(stream);
+export const sequenceT = ST(stream);

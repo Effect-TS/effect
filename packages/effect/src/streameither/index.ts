@@ -3,6 +3,8 @@ import * as M from "../managed";
 import * as S from "../stream";
 import { option as O, either as Ei, function as F, bifunctor as B, pipeable as P } from "fp-ts";
 import { Monad3EP, MonadThrow3EP } from "../overload";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 
 // alpha version exposed for exeperimentation purposes
 /* istanbul ignore file */
@@ -298,3 +300,7 @@ export const {
   chain,
   map
 } = P.pipeable(streamEither);
+
+export const Do = DoG(streamEither);
+export const sequenceS = SS(streamEither);
+export const sequenceT = ST(streamEither);

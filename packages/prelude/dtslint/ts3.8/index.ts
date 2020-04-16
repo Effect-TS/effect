@@ -1,4 +1,4 @@
-import { Either, pipe, Effect as T } from "../../src";
+import { Either, pipe, Effect as T, flowF, flowP } from "../../src";
 
 const FooURI = "uris/foo";
 interface Foo {
@@ -118,3 +118,13 @@ const ff = pipe(fb, provideFoo);
 pipe(ff, provideBar); // $ExpectType Effect<AsyncRT, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 
 pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Effect<unknown, never, string>
+
+// $ExpectType Provider<unknown, Baz & Bar & Foo, never>
+const combinedP = flowP(provideBaz).flow(provideBar).flow(provideFoo).done();
+
+pipe(a3, combinedP); // $ExpectType Effect<unknown, never, string>
+
+// $ExpectType (_: number) => number
+export const h = flowF((_: number) => `s: ${_}`)
+  .flow((s) => s.length)
+  .done();

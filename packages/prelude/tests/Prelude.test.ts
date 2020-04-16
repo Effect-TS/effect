@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { Effect as T, pipe, Either as E, fluent, Exit as Ex } from "../src";
+import { Effect as T, pipe, Either as E, pipeF, Exit as Ex, flowP } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
@@ -54,7 +54,7 @@ const d = pipe(
   T.chain((_) => a3)
 );
 
-const e = fluent(c)
+const e = pipeF(c)
   .pipe((_) => d)
   .pipe(T.chain((_) => b))
   .done();
@@ -85,9 +85,21 @@ const provideBaz = T.provideM(
 
 describe("Prelude", () => {
   it("should run effect composition", async () => {
-    await fluent(f)
+    await pipeF(f)
       .pipe(provideBaz)
       .pipe(provideBar)
+      .pipe(T.runToPromiseExit)
+      .done()
+      .then((exit) => {
+        assert.deepStrictEqual(Ex.isRaise(exit) && exit.error, new AError("mmm"));
+      });
+  });
+
+  it("should run effect composition - flowP", async () => {
+    const provideEnv = flowP(provideBaz).flow(provideBar).done();
+
+    await pipeF(f)
+      .pipe(provideEnv)
       .pipe(T.runToPromiseExit)
       .done()
       .then((exit) => {

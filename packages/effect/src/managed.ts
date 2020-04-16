@@ -3,6 +3,8 @@ import { Exit, done } from "./original/exit";
 import * as T from "./effect";
 import { Monad3E } from "./overload";
 import { NoEnv, effect } from "./effect";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 
 export enum ManagedTag {
   Pure,
@@ -433,3 +435,7 @@ function provideAll<R>(r: R) {
   return <E, A>(ma: Managed<R, E, A>): Managed<T.NoEnv, E, A> =>
     toM<unknown, E, A>(() => fromM(ma)(r));
 }
+
+export const Do = DoG(managed);
+export const sequenceS = SS(managed);
+export const sequenceT = ST(managed);
