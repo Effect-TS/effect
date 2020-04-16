@@ -54,6 +54,7 @@ As with any good library there is a commercial project that support the developm
 | @matechs/apollo               |   beta     |      no      | Integrates with apollo-server with full env support in resolvers  |![weekly-downloads](https://badgen.net/npm/dw/@matechs/apollo)              |
 | @matechs/test                 |   beta     |      no      | Port of ZIO Test, integrates fast-check & customizable runner.    |![weekly-downloads](https://badgen.net/npm/dw/@matechs/test)                |
 | @matechs/test-jest            |   beta     |      no      | Integrates jest as runner for `@matechs/test`.                    |![weekly-downloads](https://badgen.net/npm/dw/@matechs/test-jest)           |
+| @matechs/prelude              |   beta     |      no      | One stop shop, base effect and nice fp-ts interops.               |![weekly-downloads](https://badgen.net/npm/dw/@matechs/prelude)             |
 
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
@@ -98,4 +99,4 @@ Another huge thanks goes to both the scala community (ZIO in specific) and the h
 All of the above projects are advised!
 
 ## Get in touch
-The best place to reach out would be either in https://fpchat-invite.herokuapp.com (FP Chat, @Michael Arnaldi) or for italians https://italiajs.herokuapp.com/ (Italia JS, @Michael Arnaldi or channel #fp)
+The best place to reach out would be either in https://fpchat-invite.herokuapp.com (FP Chat, channel #matechs) or for italians https://italiajs.herokuapp.com/ (Italia JS, @Michael Arnaldi or channel #fp)
