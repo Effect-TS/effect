@@ -728,10 +728,7 @@ export function mapM<A, R2, E2, B>(f: F.FunctionN<[A], T.Effect<R2, E2, B>>) {
 /**
  * A stream that emits no elements but never terminates.
  */
-export const never: Stream<T.AsyncRT, T.NoErr, never> = mapM_(
-  once(undefined),
-  F.constant(T.never)
-);
+export const never: Stream<T.AsyncRT, T.NoErr, never> = mapM_(once(undefined), F.constant(T.never));
 
 type TDuceFused<FoldState, SinkState> = readonly [FoldState, SinkState, boolean];
 
@@ -911,9 +908,11 @@ export function takeWhile<A>(pred: F.Predicate<A>) {
  */
 function takeUntil_<R1, E1, R2, E2, A>(stream: Stream<R1, E1, A>, until: T.Effect<R2, E2, any>) {
   type Wrapped = { type: "until" } | { type: "stream"; value: A };
-  type WrappedStream = Extract<Wrapped, { type: "stream" }>
+  type WrappedStream = Extract<Wrapped, { type: "stream" }>;
 
-  const wrappedUntil: Stream<R1 & R2, E1 | E2, Wrapped> = as<Wrapped>({ type: "until" })(encaseEffect(until));
+  const wrappedUntil: Stream<R1 & R2, E1 | E2, Wrapped> = as<Wrapped>({ type: "until" })(
+    encaseEffect(until)
+  );
 
   const wrappedStream: Stream<R1 & R2, E1 | E2, Wrapped> = P.pipe(
     stream,
@@ -928,7 +927,9 @@ function takeUntil_<R1, E1, R2, E2, A>(stream: Stream<R1, E1, A>, until: T.Effec
   );
 }
 
-export function takeUntil<R2, E2>(until: T.Effect<R2, E2, any>) {
+export function takeUntil<R2, E2>(
+  until: T.Effect<R2, E2, any>
+): <R1, E1, A>(s: Stream<R1 & R2, E1 | E2, A>) => Stream<T.AsyncRT & R1 & R2, E1 | E2, A> {
   return <R1, E1, A>(s: Stream<R1 & R2, E1 | E2, A>) => takeUntil_(s, until);
 }
 
@@ -997,11 +998,7 @@ export function intoLeftover<A, S, B, R2, E2>(sink: Sink<R2, E2, S, A, B>) {
 
 function sinkQueue<R, E, A>(
   stream: Stream<R, E, A>
-): Managed<
-  T.AsyncRT & R,
-  E,
-  readonly [ConcurrentQueue<O.Option<A>>, Deferred<R, E, O.Option<A>>]
-> {
+): Managed<T.AsyncRT & R, E, readonly [ConcurrentQueue<O.Option<A>>, Deferred<R, E, O.Option<A>>]> {
   return managed.chain(
     M.zip(
       // 0 allows maximum backpressure throttling (i.e. a reader must be waiting already to produce the item)
@@ -1139,11 +1136,7 @@ function streamQueueSource<R, E, A>(
 function peel_<R, E, A, S, B, R2, E2>(
   stream: Stream<R, E, A>,
   sink: Sink<R2, E2, S, A, B>
-): Stream<
-  T.AsyncRT & R & R2,
-  E | E2,
-  readonly [B, Stream<T.AsyncRT & R & R2, E | E2, A>]
-> {
+): Stream<T.AsyncRT & R & R2, E | E2, readonly [B, Stream<T.AsyncRT & R & R2, E | E2, A>]> {
   return toS(
     managed.chain(streamQueueSource(stream), (pull) => {
       const pullStream = fromSource(M.pure(pull));
@@ -1165,11 +1158,7 @@ export function peel<A, S, B, R2, E2>(sink: Sink<R2, E2, S, A, B>) {
 function peelManaged_<R, E, A, S, B, R2, E2>(
   stream: Stream<R, E, A>,
   managedSink: Managed<R2, E2, Sink<R2, E2, S, A, B>>
-): Stream<
-  T.AsyncRT & R & R2,
-  E | E2,
-  readonly [B, Stream<T.AsyncRT & R & R2, E | E2, A>]
-> {
+): Stream<T.AsyncRT & R & R2, E | E2, readonly [B, Stream<T.AsyncRT & R & R2, E | E2, A>]> {
   return toS(managed.chain(managedSink, (sink) => fromS(peel_(stream, sink))));
 }
 
@@ -1332,9 +1321,7 @@ const makeWeave: Managed<T.NoEnv, never, Weave> = managed.chain(
   (cell) =>
     // On cleanup we want to interrupt any running fibers
     managed.map(M.bracket(ref.makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
-      function attach(
-        action: T.Effect<T.NoEnv, never, void>
-      ): T.Effect<T.AsyncRT, never, void> {
+      function attach(action: T.Effect<T.NoEnv, never, void>): T.Effect<T.AsyncRT, never, void> {
         return P.pipe(
           AP.sequenceS(T.effect)({
             next: cell.update((n) => n + 1),
@@ -1462,9 +1449,7 @@ export function chainMerge<A, B, R2, E2>(
   return <R, E>(s: Stream<R, E, A>) => chainMerge_(s, f, maxActive);
 }
 
-export function mergeAll<R, E, A>(
-  streams: Array<Stream<R, E, A>>
-): Stream<T.AsyncRT & R, E, A> {
+export function mergeAll<R, E, A>(streams: Array<Stream<R, E, A>>): Stream<T.AsyncRT & R, E, A> {
   return merge_((fromArray(streams) as any) as Stream<R, E, Stream<R, E, A>>, streams.length);
 }
 
@@ -1547,13 +1532,13 @@ export interface StreamF {
     sink: Sink<R2, E2, S, A, B>
   ): Stream<R & R2, E | E2, B>;
   drop<R, E, A>(stream: Stream<R, E, A>, n: number): Stream<R, E, A>;
-  dropWhile<R, E, A>(
-    stream: Stream<R, E, A>,
-    pred: F.Predicate<A>
-  ): Stream<T.AsyncRT & R, E, A>;
+  dropWhile<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<T.AsyncRT & R, E, A>;
   take<R, E, A>(stream: Stream<R, E, A>, n: number): Stream<R, E, A>;
   takeWhile<R, E, A>(stream: Stream<R, E, A>, pred: F.Predicate<A>): Stream<R, E, A>;
-  takeUntil<R, E, A>(stream: Stream<R, E, A>, until: T.Effect<R, E,A>): Stream<R, E, A>;
+  takeUntil<R, E, A>(
+    stream: Stream<R, E, A>,
+    until: T.Effect<R, E, A>
+  ): Stream<T.AsyncRT & R, E, A>;
   into<R, E, A, R2, E2, S, B>(
     stream: Stream<R, E, A>,
     sink: Sink<R2, E2, S, A, B>
@@ -1578,11 +1563,7 @@ export interface StreamF {
   peel<R, E, A, S, B, R2, E2>(
     stream: Stream<R, E, A>,
     sink: Sink<R2, E2, S, A, B>
-  ): Stream<
-    T.AsyncRT & R & R2,
-    E | E2,
-    readonly [B, Stream<T.AsyncRT & R & R2, E | E2, A>]
-  >;
+  ): Stream<T.AsyncRT & R & R2, E | E2, readonly [B, Stream<T.AsyncRT & R & R2, E | E2, A>]>;
   peelManaged<R, E, A, S, B>(
     stream: Stream<R, E, A>,
     managedSink: Managed<R, E, Sink<R, E, S, A, B>>
