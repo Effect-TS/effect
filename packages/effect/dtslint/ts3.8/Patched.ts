@@ -2,8 +2,8 @@ import * as F from "../../src/freeEnv";
 import * as T from "../../src/effect";
 
 export interface Test {
-  c: T.IoErr<string, number>;
-  fm: (n: number) => T.Io<void>;
+  c: T.EIO<string, number>;
+  fm: (n: number) => T.UIO<void>;
 }
 
 export const testEnv = Symbol();
@@ -36,7 +36,7 @@ export const P1 = F.implement(testM)({
   }
 });
 
-// $ExpectType ["cannot provide async implementation to", "fm"]
+// $ExpectType Provider<{ baz: string; } & { fuz: string; }, WithTest, never>
 export const P2 = F.implement(testM)({
   [testEnv]: {
     c: T.shiftAfter(T.access((_: { baz: string }) => 1)),
@@ -44,7 +44,7 @@ export const P2 = F.implement(testM)({
   }
 });
 
-// $ExpectType ["cannot provide async implementation to", "c"]
+// $ExpectType Provider<{ baz: string; } & { fuz: string; }, WithTest, never>
 export const P2_ = F.implement(testM)({
   [testEnv]: {
     c: T.shiftAfter(T.access((_: { baz: string }) => 1)),
@@ -76,7 +76,7 @@ export const P5 = F.implementWith(T.access((_: { goo: string }) => 1))(testM)(()
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncRT, WithTest, never>
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; }, WithTest, never>
 export const P6 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.pure(1))))(
   testM
 )(() => ({
@@ -86,7 +86,7 @@ export const P6 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter
   }
 }));
 
-// $ExpectType ["cannot provide async implementation to", "fm"]
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; }, WithTest, never>
 export const P6_ = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.pure(1))))(
   testM
 )(() => ({
@@ -96,7 +96,7 @@ export const P6_ = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfte
   }
 }));
 
-// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; } & AsyncRT, WithTest, number>
+// $ExpectType Provider<{ baz: string; } & { fuz: string; } & { goo: string; }, WithTest, number>
 export const P7 = F.implementWith(T.accessM((_: { goo: string }) => T.shiftAfter(T.raiseError(1))))(
   testM
 )(() => ({

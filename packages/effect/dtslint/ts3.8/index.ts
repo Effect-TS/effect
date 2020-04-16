@@ -158,7 +158,7 @@ T.effect.foldExit(
   () => T.pure(1)
 );
 
-// $ExpectType Effect<AsyncRT, never, string | number>
+// $ExpectType Effect<unknown, never, string | number>
 T.shiftAfter(
   T.effect.foldExit(
     T.raiseError(""),

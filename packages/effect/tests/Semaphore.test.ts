@@ -26,7 +26,7 @@ import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";
 
 export async function expectExitIn<E, A, B>(
-  ioa: T.Effect<T.AsyncRT, E, A>,
+  ioa: T.Effect<unknown, E, A>,
   f: FunctionN<[ex.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
@@ -35,7 +35,7 @@ export async function expectExitIn<E, A, B>(
 }
 
 export function expectExit<E, A>(
-  ioa: T.Effect<T.AsyncRT, E, A>,
+  ioa: T.Effect<unknown, E, A>,
   expected: ex.Exit<E, A>
 ): Promise<void> {
   return expectExitIn(ioa, identity, expected);

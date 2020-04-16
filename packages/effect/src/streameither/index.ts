@@ -10,7 +10,7 @@ import {
   array as A,
   tree as TR
 } from "fp-ts";
-import { Monad3EP, MonadThrow3EP } from "../overload";
+import { Monad3E, MonadThrow3E } from "../overload";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Separated } from "fp-ts/lib/Compactable";
@@ -27,7 +27,7 @@ export interface StreamEither<R, E, A> {
   _R: (_: R) => void;
 }
 
-export interface StreamEitherAsync<R, E, A> extends StreamEither<T.AsyncRT & R, E, A> {}
+export interface StreamEitherAsync<R, E, A> extends StreamEither<R, E, A> {}
 
 const toS = <R, E, A>(_: StreamEitherT<R, E, A>): StreamEither<R, E, A> => _ as any;
 const fromS = <R, E, A>(_: StreamEither<R, E, A>): StreamEitherT<R, E, A> => _ as any;
@@ -100,7 +100,7 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   as: StreamEither<R, E, A>,
   bs: StreamEither<R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): StreamEither<T.AsyncRT & R & R2, E | E2, C> {
+): StreamEither<R & R2, E | E2, C> {
   return toS(
     S.stream.zipWith(fromS(as), fromS(bs), (ea, eb) => {
       if (Ei.isLeft(ea)) {
@@ -177,11 +177,11 @@ export function once<A>(a: A): StreamEither<T.NoEnv, T.NoErr, A> {
   return toS(S.stream.map(S.once(a), (a) => Ei.right(a)));
 }
 
-export function repeatedly<A>(a: A): StreamEither<T.AsyncRT, T.NoErr, A> {
+export function repeatedly<A>(a: A): StreamEither<unknown, T.NoErr, A> {
   return toS(S.stream.map(S.repeatedly(a), (a) => Ei.right(a)));
 }
 
-export function periodically(ms: number): StreamEither<T.AsyncRT, T.NoErr, number> {
+export function periodically(ms: number): StreamEither<unknown, T.NoErr, number> {
   return toS(S.stream.map(S.periodically(ms), (a) => Ei.right(a)));
 }
 
@@ -280,10 +280,9 @@ declare module "fp-ts/lib/HKT" {
 const mapLeft_ = <R, E, A, G>(fea: StreamEither<R, E, A>, f: (e: E) => G) =>
   chainError_(fea, (x) => encaseEffect(T.raiseError(f(x))));
 
-export const streamEither: Monad3EP<URI> & MonadThrow3EP<URI> & B.Bifunctor3<URI> =
+export const streamEither: Monad3E<URI> & MonadThrow3E<URI> & B.Bifunctor3<URI> =
   {
     URI,
-    CTX: "async",
     map: map_,
     of: <R, E, A>(a: A): StreamEither<R, E, A> =>
       (S.once(Ei.right(a)) as any) as StreamEither<R, E, A>,
@@ -318,54 +317,51 @@ export const sequenceOption = O.option.sequence(streamEither);
 
 export const traverseOption: <A, R, E, B>(
   f: (a: A) => StreamEither<R, E, B>
-) => (ta: O.Option<A>) => StreamEither<T.AsyncRT & R, E, O.Option<B>> = (f) => (ta) =>
+) => (ta: O.Option<A>) => StreamEither<R, E, O.Option<B>> = (f) => (ta) =>
   O.option.traverse(streamEither)(ta, f);
 
 export const wiltOption: <A, R, E, B, C>(
   f: (a: A) => StreamEither<R, E, Ei.Either<B, C>>
-) => (wa: O.Option<A>) => StreamEither<T.AsyncRT & R, E, Separated<O.Option<B>, O.Option<C>>> = (
-  f
-) => (wa) => O.option.wilt(streamEither)(wa, f);
+) => (wa: O.Option<A>) => StreamEither<R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (wa) =>
+  O.option.wilt(streamEither)(wa, f);
 
 export const witherOption: <A, R, E, B>(
   f: (a: A) => StreamEither<R, E, O.Option<B>>
-) => (ta: O.Option<A>) => StreamEither<T.AsyncRT & R, E, O.Option<B>> = (f) => (ta) =>
+) => (ta: O.Option<A>) => StreamEither<R, E, O.Option<B>> = (f) => (ta) =>
   O.option.wither(streamEither)(ta, f);
 
 export const sequenceEither = Ei.either.sequence(streamEither);
 
 export const traverseEither: <A, R, FE, B>(
   f: (a: A) => StreamEither<R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => StreamEither<T.AsyncRT & R, FE, Ei.Either<TE, B>> = (f) => (
-  ta
-) => Ei.either.traverse(streamEither)(ta, f);
+) => <TE>(ta: Ei.Either<TE, A>) => StreamEither<R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(streamEither)(ta, f);
 
 export const sequenceTree = TR.tree.sequence(streamEither);
 
 export const traverseTree: <A, R, E, B>(
   f: (a: A) => StreamEither<R, E, B>
-) => (ta: TR.Tree<A>) => StreamEither<T.AsyncRT & R, E, TR.Tree<B>> = (f) => (ta) =>
+) => (ta: TR.Tree<A>) => StreamEither<R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(streamEither)(ta, f);
 
 export const sequenceArray = A.array.sequence(streamEither);
 
 export const traverseArray: <A, R, E, B>(
   f: (a: A) => StreamEither<R, E, B>
-) => (ta: Array<A>) => StreamEither<T.AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+) => (ta: Array<A>) => StreamEither<R, E, Array<B>> = (f) => (ta) =>
   A.array.traverse(streamEither)(ta, f);
 
 export const traverseArrayWithIndex: <A, R, E, B>(
   f: (i: number, a: A) => StreamEither<R, E, B>
-) => (ta: Array<A>) => StreamEither<T.AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+) => (ta: Array<A>) => StreamEither<R, E, Array<B>> = (f) => (ta) =>
   A.array.traverseWithIndex(streamEither)(ta, f);
 
 export const wiltArray: <A, R, E, B, C>(
   f: (a: A) => StreamEither<R, E, Ei.Either<B, C>>
-) => (wa: Array<A>) => StreamEither<T.AsyncRT & R, E, Separated<Array<B>, Array<C>>> = (f) => (
-  wa
-) => A.array.wilt(streamEither)(wa, f);
+) => (wa: Array<A>) => StreamEither<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  A.array.wilt(streamEither)(wa, f);
 
 export const witherArray: <A, R, E, B>(
   f: (a: A) => StreamEither<R, E, O.Option<B>>
-) => (ta: Array<A>) => StreamEither<T.AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+) => (ta: Array<A>) => StreamEither<R, E, Array<B>> = (f) => (ta) =>
   A.array.wither(streamEither)(ta, f);

@@ -161,10 +161,10 @@ export function drainWhileSink<R, E, A>(
  */
 export function queueSink<R, E, A>(
   queue: ConcurrentQueue<A>
-): Sink<T.AsyncRT & R, E, void, A, void> {
+): Sink<R, E, void, A, void> {
   const initial = T.pure(sinkCont(undefined));
 
-  function step(_state: void, a: A): T.Effect<T.AsyncRT & R, E, SinkStep<A, void>> {
+  function step(_state: void, a: A): T.Effect<R, E, SinkStep<A, void>> {
     return T.as(queue.offer(a), sinkCont(undefined));
   }
 
@@ -180,10 +180,10 @@ export function queueSink<R, E, A>(
  */
 export function queueOptionSink<R, E, A>(
   queue: ConcurrentQueue<O.Option<A>>
-): Sink<T.AsyncRT & R, E, void, A, void> {
+): Sink<R, E, void, A, void> {
   const initial = T.pure(sinkCont(undefined));
 
-  function step(_state: void, a: A): T.Effect<T.AsyncRT & R, E, SinkStep<A, void>> {
+  function step(_state: void, a: A): T.Effect<R, E, SinkStep<A, void>> {
     return T.as(queue.offer(O.some(a)), sinkCont(undefined));
   }
 

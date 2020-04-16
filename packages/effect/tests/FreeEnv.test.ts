@@ -8,7 +8,7 @@ const fnEnv: unique symbol = Symbol();
 
 const fnEnvM_ = F.define({
   [fnEnv]: {
-    mapString: F.fn<(s: string) => T.Io<string>>()
+    mapString: F.fn<(s: string) => T.UIO<string>>()
   }
 });
 
@@ -30,8 +30,8 @@ const consoleEnv: unique symbol = Symbol();
 
 const consoleM = F.define({
   [consoleEnv]: {
-    log: F.fn<(s: string) => T.IoEnv<FnEnv, void>>(),
-    get: F.cn<T.Io<string[]>>()
+    log: F.fn<(s: string) => T.RIO<FnEnv, void>>(),
+    get: F.cn<T.UIO<string[]>>()
   }
 });
 
@@ -45,7 +45,7 @@ const prefixEnv: unique symbol = Symbol();
 
 const prefixM = F.define({
   [prefixEnv]: {
-    accessPrefix: F.cn<T.Io<string>>()
+    accessPrefix: F.cn<T.UIO<string>>()
   }
 });
 
@@ -57,7 +57,7 @@ const configEnv: unique symbol = Symbol();
 
 const configM = F.define({
   [configEnv]: {
-    accessConfig: F.cn<T.Io<string>>()
+    accessConfig: F.cn<T.UIO<string>>()
   }
 });
 
@@ -97,7 +97,7 @@ const consoleI2 = F.implement(consoleM)({
   }
 });
 
-const program: T.IoEnv<Console & FnEnv, string[]> = pipe(
+const program: T.RIO<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain((_) => get)
 );
@@ -145,13 +145,13 @@ describe("Generic", () => {
 
     const modA = F.define({
       [envA]: {
-        foo: F.cn<T.Io<string>>()
+        foo: F.cn<T.UIO<string>>()
       }
     });
 
     const modB = F.define({
       [envB]: {
-        bar: F.cn<T.Io<string>>()
+        bar: F.cn<T.UIO<string>>()
       }
     });
 

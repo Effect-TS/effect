@@ -6,18 +6,18 @@ export interface ConcurrentRef<A> {
   /**
    * Get the current value of the ConcurrentRef
    */
-  readonly get: T.Effect<T.AsyncRT, never, A>;
+  readonly get: T.Effect<unknown, never, A>;
   /**
    * Set the current value of the ConcurrentRef
    * @param a
    */
-  set<R>(a: T.Effect<R, never, A>): T.Effect<T.AsyncRT & R, never, A>;
+  set<R>(a: T.Effect<R, never, A>): T.Effect<R, never, A>;
   /**
    * Update the current value of the ConcurrentRef with an effect.
    * Produces the new value
    * @param f
    */
-  update<R>(f: F.FunctionN<[A], T.Effect<R, never, A>>): T.Effect<T.AsyncRT & R, never, A>;
+  update<R>(f: F.FunctionN<[A], T.Effect<R, never, A>>): T.Effect<R, never, A>;
   /**
    * Update the current value of a ConcurrentRef with an effect.
    *
@@ -26,7 +26,7 @@ export interface ConcurrentRef<A> {
    */
   modify<R, B>(
     f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>
-  ): T.Effect<T.AsyncRT & R, never, B>;
+  ): T.Effect<R, never, B>;
 }
 
 /**
@@ -38,7 +38,7 @@ export const makeConcurrentRef = <A>(initial: A): T.Effect<T.NoEnv, never, Concu
 
     const get = T.sync(() => value);
 
-    const set = <R>(a: T.Effect<R, never, A>): T.Effect<T.AsyncRT & R, never, A> =>
+    const set = <R>(a: T.Effect<R, never, A>): T.Effect<R, never, A> =>
       semaphore.withPermit(
         T.effect.map(a, (a) => {
           const prev = value;
@@ -49,7 +49,7 @@ export const makeConcurrentRef = <A>(initial: A): T.Effect<T.NoEnv, never, Concu
 
     const update = <R>(
       f: F.FunctionN<[A], T.Effect<R, never, A>>
-    ): T.Effect<T.AsyncRT & R, never, A> =>
+    ): T.Effect<R, never, A> =>
       semaphore.withPermit(
         T.effect.map(
           T.effect.chain(
@@ -65,7 +65,7 @@ export const makeConcurrentRef = <A>(initial: A): T.Effect<T.NoEnv, never, Concu
 
     const modify = <R, B>(
       f: F.FunctionN<[A], T.Effect<R, never, readonly [B, A]>>
-    ): T.Effect<T.AsyncRT & R, never, B> =>
+    ): T.Effect<R, never, B> =>
       semaphore.withPermit(
         T.effect.map(
           T.effect.chain(

@@ -102,20 +102,9 @@ type OnlyNew<M extends ModuleShape<M>, I extends Implementation<M>> = {
       infer ARG,
       T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
     >
-      ? F.FunctionN<
-          ARG,
-          R extends T.AsyncRT
-            ? EnvOf<M[k][h]> extends T.AsyncRT
-              ? T.Effect<R, E, A>
-              : T.Effect<R & AsyncError<h>, E, A>
-            : T.Effect<R, E, A>
-        >
+      ? F.FunctionN<ARG, T.Effect<R, E, A>>
       : I[k][h] extends T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
-      ? R extends T.AsyncRT
-        ? EnvOf<M[k][h]> extends T.AsyncRT
-          ? T.Effect<R, E, A>
-          : T.Effect<R & AsyncError<h>, E, A>
-        : T.Effect<R, E, A>
+      ? T.Effect<R, E, A>
       : never;
   };
 };
