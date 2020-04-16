@@ -20,8 +20,8 @@ export interface Repository<O> {
   save<T extends DeepPartial<O>>(
     entity: T,
     options?: SaveOptions | undefined
-  ): T.IO<OR.TaskError, O>;
-  findOne(options?: FindOneOptions<O> | undefined): T.IO<OR.TaskError, OP.Option<O>>;
+  ): T.TaskErr<OR.TaskError, O>;
+  findOne(options?: FindOneOptions<O> | undefined): T.TaskErr<OR.TaskError, OP.Option<O>>;
 }
 
 const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(Target: Target<O>) => ({
@@ -40,28 +40,32 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const provideApi = <R, E, A>(
     eff: T.Effect<R & Database<DbURI>, E, A>
   ): T.Effect<R & OR.ORM<DbURI>, E, A> => {
-    const provideDb = T.provideSW<Database<DbURI>>()(T.accessEnvironment<OR.ORM<DbURI>>())((r) => ({
-      [DatabaseURI]:
-        {
-          ...r[DatabaseURI],
-          [DbURI]:
+    const provideDb = T.provideM(
+      T.access(
+        (r: OR.ORM<DbURI>): Database<DbURI> => ({
+          [DatabaseURI]:
             {
-              repository: (Target) => ({
-                save: (entity, options) =>
-                  pipe(
-                    orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
-                    T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
-                  ),
-                findOne: (options) =>
-                  pipe(
-                    orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
-                    T.map(OP.fromNullable),
-                    T.provideR((_: any) => ({ ...r, ..._ })) // inverted for local overwrite
-                  )
-              })
-            } as Database<DbURI>[typeof DatabaseURI][DbURI]
-        } as Database<DbURI>[typeof DatabaseURI]
-    }));
+              ...r[DatabaseURI],
+              [DbURI]:
+                {
+                  repository: (Target) => ({
+                    save: (entity, options) =>
+                      pipe(
+                        orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
+                        T.provide(r, "inverted")
+                      ),
+                    findOne: (options) =>
+                      pipe(
+                        orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
+                        T.map(OP.fromNullable),
+                        T.provide(r, "inverted")
+                      )
+                  })
+                } as Database<DbURI>[typeof DatabaseURI][DbURI]
+            } as Database<DbURI>[typeof DatabaseURI]
+        })
+      )
+    );
 
     return pipe(eff, provideDb);
   };

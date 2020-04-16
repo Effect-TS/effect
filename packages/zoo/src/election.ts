@@ -24,7 +24,7 @@ export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, 
             T.chain(
               (masterId) =>
                 id.id === masterId.id
-                  ? T.asUnit<R, E | ZooError, A>(run) // I'm master
+                  ? T.asUnit<R & T.AsyncRT, E | ZooError, A>(run) // I'm master
                   : T.asUnit(c.waitDelete(`${electionPath}/${masterId.id}`)) // I'm slave waiting for master to drop
             )
           )

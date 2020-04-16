@@ -14,7 +14,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 
 const TestValue_ = F.define({
   test: {
-    value: F.cn<T.UIO<string>>()
+    value: F.cn<T.Io<string>>()
   }
 });
 
@@ -35,8 +35,12 @@ customRun({
   pipe(
     testM(
       "mock concrete console using hook",
-      T.sync(() => {
+      T.asyncTotal((r) => {
         console.info("mocked");
+        r(undefined);
+        return () => {
+          //
+        };
       })
     ),
     withHook(

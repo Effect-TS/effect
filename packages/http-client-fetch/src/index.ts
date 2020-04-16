@@ -2,7 +2,6 @@ import { effect as T } from "@matechs/effect";
 import * as H from "@matechs/http-client";
 import querystring from "querystring";
 import { left, right } from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/pipeable";
 import { fromNullable } from "fp-ts/lib/Option";
 
 function getContentType(requestType: H.RequestType): string {
@@ -27,7 +26,7 @@ function getBody(
   );
 }
 
-export const httpFetch: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
+export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
   [H.httpEnv]: {
     request(
       method: H.Method,
@@ -36,7 +35,7 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
       responseType: H.ResponseType,
       headers: Record<string, string>,
       body: unknown
-    ): T.Effect<T.NoEnv, H.HttpError<string>, H.Response<any>> {
+    ): T.TaskErr<H.HttpError<string>, H.Response<any>> {
       const input: RequestInit = {
         headers: {
           "Content-Type": getContentType(requestType),
@@ -130,5 +129,3 @@ export const httpFetch: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
     }
   }
 });
-
-export const client = (fetchApi: typeof fetch) => pipe(T.noEnv, T.mergeEnv(httpFetch(fetchApi)));

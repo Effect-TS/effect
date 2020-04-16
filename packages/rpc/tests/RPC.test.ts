@@ -26,8 +26,8 @@ const counterEnv: unique symbol = Symbol();
 
 const counterM = F.define({
   [counterEnv]: {
-    increment: F.fn<(n: number) => T.IO<T.NoErr, number>>(),
-    ni: F.cn<T.IO<string, void>>()
+    increment: F.fn<(n: number) => T.Task<number>>(),
+    ni: F.cn<T.TaskErr<string, void>>()
   }
 });
 
@@ -57,27 +57,25 @@ describe("RPC", () => {
     );
 
     const result = await T.runToPromise(
-      T.provideAll(
-        pipe(
-          T.noEnv,
-          T.mergeEnv(appConfig),
-          T.mergeEnv(E.express),
-          T.mergeEnv({
-            [RPC.serverConfigEnv]: {
-              [counterEnv]: {
-                scope: "/counter"
-              }
+      pipe(
+        program,
+        T.provide(appConfig),
+        T.provide(E.express),
+        T.provide({
+          [RPC.serverConfigEnv]: {
+            [counterEnv]: {
+              scope: "/counter"
             }
-          })
-        )
-      )(program)
+          }
+        })
+      )
     );
 
     const incResult = await T.runToPromiseExit(
       pipe(
         increment(1),
-        T.provideS(L.client(fetch)),
-        T.provideAll({
+        T.provide(L.client(fetch)),
+        T.provide({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
               baseUrl: "http://127.0.0.1:9003/counter"
@@ -90,8 +88,8 @@ describe("RPC", () => {
     const niResult = await T.runToPromiseExit(
       pipe(
         ni,
-        T.provideS(L.client(fetch)),
-        T.provideAll({
+        T.provide(L.client(fetch)),
+        T.provide({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
               baseUrl: "http://127.0.0.1:9003/counter"

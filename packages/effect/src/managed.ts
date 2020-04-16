@@ -2,7 +2,14 @@ import { function as F, semigroup as Sem, monoid as Mon } from "fp-ts";
 import { Exit, done } from "./original/exit";
 import * as T from "./effect";
 import { Monad3E } from "./overload";
-import { NoEnv, effect } from "./effect";
+import { NoEnv } from "./effect";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
+import * as Ar from "fp-ts/lib/Array";
+import * as Op from "fp-ts/lib/Option";
+import * as Ei from "fp-ts/lib/Either";
+import * as TR from "fp-ts/lib/Tree";
+import { Separated } from "fp-ts/lib/Compactable";
 
 export enum ManagedTag {
   Pure,
@@ -68,7 +75,7 @@ export interface Encase<E, A> {
 export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
   return toM((r) => ({
     _tag: ManagedTag.Encase,
-    acquire: T.provideAll(r)(rio)
+    acquire: T.provide(r)(rio)
   }));
 }
 
@@ -89,8 +96,8 @@ export function bracket<R, E, A, R2, E2>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Bracket,
-    acquire: T.provideAll(r)(acquire as T.Effect<R, E | E2, A>),
-    release: (a) => T.provideAll(r)(release(a))
+    acquire: T.provide(r)(acquire as T.Effect<R, E | E2, A>),
+    release: (a) => T.provide(r)(release(a))
   }));
 }
 
@@ -107,9 +114,8 @@ export function bracketExit<R, E, A, R2, E2>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.BracketExit,
-
-    acquire: T.provideAll(r)(acquire),
-    release: (a, e) => T.provideAll(r)(release(a, e as any))
+    acquire: T.provide(r)(acquire),
+    release: (a, e) => T.provide(r)(release(a, e as any))
   }));
 }
 
@@ -130,7 +136,7 @@ export function suspend<R, E, R2, E2, A>(
     (r) =>
       ({
         _tag: ManagedTag.Suspended,
-        suspended: effect.map(T.provideAll(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
+        suspended: T.effect.map(T.provide(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
       } as any)
   );
 }
@@ -154,8 +160,8 @@ function chain_<R, E, L, R2, E2, A>(
 ): Managed<R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Chain,
-    left: provideAll(r)(left) as any,
-    bind: (l) => provideAll(r)(bind(l)) as any
+    left: provideAll(r)(left as Managed<R, E | E2, L>),
+    bind: (l) => provideAll(r)(bind(l))
   }));
 }
 
@@ -320,13 +326,13 @@ export function use<R, E, A, R2, E2, B>(
       case ManagedTag.Pure:
         return f(c.value);
       case ManagedTag.Encase:
-        return effect.chain(c.acquire, f);
+        return T.effect.chain(c.acquire, f);
       case ManagedTag.Bracket:
         return T.bracket(c.acquire, c.release, f);
       case ManagedTag.BracketExit:
         return T.bracketExit(c.acquire, (a, e) => c.release(a, e as any), f);
       case ManagedTag.Suspended:
-        return effect.chain(c.suspended, consume(f));
+        return T.effect.chain(c.suspended, consume(f));
       case ManagedTag.Chain:
         return use(c.left, (a) => use(c.bind(a), f));
     }
@@ -354,23 +360,23 @@ export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R,
       case ManagedTag.Pure:
         return T.pure({ a: c.value, release: T.unit });
       case ManagedTag.Encase:
-        return effect.map(c.acquire, (a) => ({ a, release: T.unit }));
+        return T.effect.map(c.acquire, (a) => ({ a, release: T.unit }));
       case ManagedTag.Bracket:
-        return effect.map(c.acquire, (a) => ({ a, release: c.release(a) }));
+        return T.effect.map(c.acquire, (a) => ({ a, release: c.release(a) }));
       case ManagedTag.BracketExit:
         // best effort, because we cannot know what the exit status here
-        return effect.map(c.acquire, (a) => ({
+        return T.effect.map(c.acquire, (a) => ({
           a,
           release: c.release(a, done(undefined))
         }));
       case ManagedTag.Suspended:
-        return effect.chain(c.suspended, allocate);
+        return T.effect.chain(c.suspended, allocate);
       case ManagedTag.Chain:
         return T.bracketExit(
           allocate(c.left),
           (leak, exit) => (exit._tag === "Done" ? T.unit : leak.release),
           (leak) =>
-            effect.map(
+            T.effect.map(
               allocate(c.bind(leak.a)),
               // Combine the finalizer actions of the outer and inner resource
               (innerLeak) => ({
@@ -388,16 +394,11 @@ export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R,
  * @param man
  * @param ma
  */
-export function provideS<R3, E2, R2>(man: Managed<R3, E2, R2>): T.Provider<R3, R2, E2> {
-  return <R, E, A>(ma: T.Effect<R & R2, E, A>) =>
-    T.accessM((_: R) =>
-      use(man, (r) =>
-        T.provideAll({
-          ...r,
-          ..._
-        })(ma)
-      )
-    );
+export function provide<R3, E2, R2>(
+  man: Managed<R3, E2, R2>,
+  inverted: "regular" | "inverted" = "regular"
+): T.Provider<R3, R2, E2> {
+  return <R, E, A>(ma: T.Effect<R & R2, E, A>) => use(man, (r) => T.provide(r, inverted)(ma));
 }
 
 export const URI = "matechs/Managed";
@@ -435,7 +436,62 @@ export function getMonoid<R, E, A>(Monoid: Mon.Monoid<A>): Mon.Monoid<Managed<R,
   };
 }
 
-export function provideAll<R>(r: R) {
+function provideAll<R>(r: R) {
   return <E, A>(ma: Managed<R, E, A>): Managed<T.NoEnv, E, A> =>
     toM<unknown, E, A>(() => fromM(ma)(r));
 }
+
+export const Do = DoG(managed);
+export const sequenceS = SS(managed);
+export const sequenceT = ST(managed);
+
+export const sequenceOption = Op.option.sequence(managed);
+
+export const traverseOption: <A, R, E, B>(
+  f: (a: A) => Managed<R, E, B>
+) => (ta: Op.Option<A>) => Managed<R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.traverse(managed)(ta, f);
+
+export const wiltOption: <A, R, E, B, C>(
+  f: (a: A) => Managed<R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Managed<R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (wa) =>
+  Op.option.wilt(managed)(wa, f);
+
+export const witherOption: <A, R, E, B>(
+  f: (a: A) => Managed<R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Managed<R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.wither(managed)(ta, f);
+
+export const sequenceEither = Ei.either.sequence(managed);
+
+export const traverseEither: <A, R, FE, B>(
+  f: (a: A) => Managed<R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Managed<R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(managed)(ta, f);
+
+export const sequenceTree = TR.tree.sequence(managed);
+
+export const traverseTree: <A, R, E, B>(
+  f: (a: A) => Managed<R, E, B>
+) => (ta: TR.Tree<A>) => Managed<R, E, TR.Tree<B>> = (f) => (ta) =>
+  TR.tree.traverse(managed)(ta, f);
+
+export const sequenceArray = Ar.array.sequence(managed);
+
+export const traverseArray: <A, R, E, B>(
+  f: (a: A) => Managed<R, E, B>
+) => (ta: Array<A>) => Managed<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(managed)(ta, f);
+
+export const traverseArrayWithIndex: <A, R, E, B>(
+  f: (i: number, a: A) => Managed<R, E, B>
+) => (ta: Array<A>) => Managed<R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverseWithIndex(managed)(ta, f);
+
+export const wiltArray: <A, R, E, B, C>(
+  f: (a: A) => Managed<R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Managed<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  Ar.array.wilt(managed)(wa, f);
+
+export const witherArray: <A, R, E, B>(
+  f: (a: A) => Managed<R, E, Op.Option<B>>
+) => (ta: Array<A>) => Managed<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(managed)(ta, f);

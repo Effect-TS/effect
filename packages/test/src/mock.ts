@@ -7,9 +7,9 @@ export type EnvOf<F> = F extends FunctionN<infer _ARG, T.Effect<infer R, infer _
   ? R
   : never;
 
-export type OnlyNew<M extends F.ModuleShape<any>, I extends Implementation<M>> = {
-  [k in keyof I]: {
-    [h in keyof I[k]]: I[k][h] extends FunctionN<
+export type OnlyNew<M extends F.ModuleShape<M>, I extends Implementation<M>> = {
+  [k in keyof I & keyof M]: {
+    [h in keyof I[k] & keyof M[k]]: I[k][h] extends FunctionN<
       infer ARG,
       T.Effect<infer R & EnvOf<M[k][h]>, infer E, infer A>
     >
@@ -19,6 +19,24 @@ export type OnlyNew<M extends F.ModuleShape<any>, I extends Implementation<M>> =
       : never;
   };
 };
+
+export type ImplementationEnv<I> = F.UnionToIntersection<
+  {
+    [k in keyof I]: {
+      [h in keyof I[k]]: I[k][h] extends FunctionN<any, infer K>
+        ? K extends T.Effect<infer R, any, any>
+          ? unknown extends R
+            ? never
+            : R
+          : never
+        : I[k][h] extends T.Effect<infer R, any, any>
+        ? unknown extends R
+          ? never
+          : R
+        : never;
+    }[keyof I[k]];
+  }[keyof I]
+>;
 
 export type Implementation<M> = {
   [k in keyof M]: {
@@ -34,18 +52,6 @@ export function implementMock<S extends F.ModuleSpec<any>>(
   s: S
 ): <I extends Implementation<F.TypeOf<S>>>(
   i: I
-) => F.Provider<
-  F.UnionToIntersection<
-    OnlyNew<F.TypeOf<S>, I> extends {
-      [k in keyof OnlyNew<F.TypeOf<S>, I>]: {
-        [h in keyof OnlyNew<F.TypeOf<S>, I>[k]]: infer X;
-      };
-    }
-      ? F.InferR<X>
-      : never
-  >,
-  F.TypeOf<S>,
-  never
-> {
+) => T.Provider<ImplementationEnv<OnlyNew<F.TypeOf<S>, I>>, F.TypeOf<S>, never> {
   return (i) => F.implement(s)(i as any) as any;
 }

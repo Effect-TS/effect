@@ -56,7 +56,7 @@ export const withHookP = <R, R2, A>(
       _R: undefined as any,
       eff: Do(T.effect)
         .bind("i", init)
-        .bindL("e", (s) => T.result(T.provideS(s.i)(_.eff)))
+        .bindL("e", (s) => T.result(T.provide(s.i)(_.eff)))
         .doL((s) => finalize(s.i))
         .bindL("r", (s) => T.completed(s.e))
         .return((s) => s.r)

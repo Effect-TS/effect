@@ -70,7 +70,7 @@ const makeInterruptFrame = (
   _tag: "interrupt-frame",
   apply(u: unknown) {
     interruptStatus.pop();
-    return T.EffectIO.fromEffect(T.pure(u));
+    return T.Implementation.fromEffect(T.pure(u));
   },
   exitRegion() {
     interruptStatus.pop();
@@ -161,7 +161,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             this.complete(done(frame.apply(value)) as Done<A>);
             return;
           }
-          return new T.EffectIO(T.EffectTag.Pure, frame.apply(value));
+          return new T.Implementation(T.EffectTag.Pure, frame.apply(value));
         }
         default:
           return frame.apply(value);
@@ -207,7 +207,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             break;
           case T.EffectTag.ProvideEnv:
             L.push(this.envStack, current.f1 as any);
-            current = T.EffectIO.fromEffect(
+            current = T.Implementation.fromEffect(
               T.effect.foldExit(
                 current.f0 as any,
                 (e) =>
@@ -286,17 +286,17 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
             current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.EffectIO.fromEffect(T.pure(current.f0(this.runtime)));
+            current = T.Implementation.fromEffect(T.pure(current.f0(this.runtime)));
             break;
           case T.EffectTag.AccessInterruptible:
-            current = T.EffectIO.fromEffect(T.pure(current.f0(this.isInterruptible())));
+            current = T.Implementation.fromEffect(T.pure(current.f0(this.isInterruptible())));
             break;
           default:
             /* istanbul ignore next */
             throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
-        current = T.EffectIO.fromEffect(T.raiseAbort(e));
+        current = T.Implementation.fromEffect(T.raiseAbort(e));
       }
     }
     // If !current then the interrupt came to late and we completed everything

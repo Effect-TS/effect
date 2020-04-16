@@ -91,9 +91,9 @@ describe("Express", () => {
     await pipe(
       routes,
       T.chain((_) => program),
-      M.provideS(EX.managedExpress(3003, "127.0.0.1")),
-      T.provideS(L.client(fetch)),
-      T.provideS(EX.express),
+      M.provide(EX.managedExpress(3003, "127.0.0.1")),
+      T.provide(L.client(fetch)),
+      T.provide(EX.express),
       T.runToPromise
     ).then(({ res1, res2, res3, res4, res5 }) => {
       assert.deepEqual(res1, done({ res: 1 }));

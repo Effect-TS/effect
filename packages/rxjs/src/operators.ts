@@ -11,7 +11,7 @@ import { fold } from "fp-ts/lib/Either";
  */
 
 export function chainEffect<A, E, B>(
-  f: (a: A) => T.Effect<T.NoEnv, E, B>
+  f: (a: A) => T.TaskErr<E, B>
 ): (o: Rx.Observable<A>) => Rx.Observable<B> {
   return (o) =>
     pipe(

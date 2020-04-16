@@ -6,6 +6,7 @@ import { left, right } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
 import { Server } from "http";
 import { NextHandleFunction } from "connect";
+import { pipe } from "fp-ts/lib/pipeable";
 
 export const expressAppEnv = "@matechs/express/expressAppURI";
 
@@ -20,7 +21,7 @@ export const serverEnv = "@matechs/express/serverURI";
 export interface HasServer {
   [serverEnv]: {
     server: Server;
-    onClose: Array<T.UIO<void>>;
+    onClose: Array<T.Task<void>>;
   };
 }
 
@@ -36,7 +37,7 @@ export interface ExpressOps {
     f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
     ...rest: NextHandleFunction[]
   ): T.Effect<R & HasExpress, T.NoErr, void>;
-  bind(port: number, hostname?: string): T.Effect<HasExpress, T.NoErr, Server>;
+  bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server>;
 }
 
 export interface Express {
@@ -78,7 +79,7 @@ export const express: Express = {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
           r[expressAppEnv].app[method](path, ...rest, (req, res) => {
-            T.runToPromiseExit(T.provideAll(r)(f(req))).then((o) => {
+            T.runToPromiseExit(T.provide(r)(f(req))).then((o) => {
               switch (o._tag) {
                 case "Done":
                   res.status(o.value.status).send(o.value.body);
@@ -104,30 +105,33 @@ export const express: Express = {
       );
     },
     withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A> {
-      return T.provideR((r: R) => ({
-        ...r,
-        [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
-      }))(op);
-    },
-    bind(port: number, hostname?: string): T.Effect<HasExpress, T.NoErr, Server> {
-      return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
-        T.orAbort(
-          T.async<unknown, Server>((res) => {
-            const s = app.listen(port, hostname || "0.0.0.0", (err) => {
-              if (err) {
-                res(left(err));
-              } else {
-                res(right(s));
-              }
-            });
-
-            return (cb) => {
-              s.close((e) => {
-                cb(e);
-              });
-            };
+      return T.accessM((r: R) =>
+        pipe(
+          op,
+          T.provide<R & HasExpress>({
+            ...r,
+            [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
           })
         )
+      );
+    },
+    bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server> {
+      return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
+        T.async<Error, Server>((res) => {
+          const s = app.listen(port, hostname || "0.0.0.0", (err) => {
+            if (err) {
+              res(left(err));
+            } else {
+              res(right(s));
+            }
+          });
+
+          return (cb) => {
+            s.close((e) => {
+              cb(e);
+            });
+          };
+        })
       );
     }
   }
@@ -156,12 +160,14 @@ export function route<R, E, A>(
       method,
       path,
       (x) =>
-        T.provideR((r: R & HasExpress & Express) => ({
-          ...r,
-          [requestContextEnv]: {
-            request: x
-          }
-        }))(handler),
+        T.accessM((r: R & HasExpress & Express) =>
+          T.provide({
+            ...r,
+            [requestContextEnv]: {
+              request: x
+            }
+          })(handler)
+        ),
       ...middle
     )
   );
@@ -170,7 +176,7 @@ export function route<R, E, A>(
 export function bind(
   port: number,
   hostname?: string
-): T.Effect<HasExpress & Express, T.NoErr, Server> {
+): T.TaskEnvErr<HasExpress & Express, Error, Server> {
   return T.accessM(({ [expressEnv]: express }: Express) => express.bind(port, hostname));
 }
 

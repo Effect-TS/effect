@@ -1,5 +1,4 @@
 import * as effect from "./effect";
-import * as eff from "./eff";
 import * as stream from "./stream/index";
 import * as sink from "./stream/sink";
 import * as managed from "./managed";
@@ -30,6 +29,5 @@ export {
   utils,
   sink,
   retry,
-  eff,
   rec
 };

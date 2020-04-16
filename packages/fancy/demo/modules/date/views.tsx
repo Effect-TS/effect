@@ -1,6 +1,6 @@
 import React from "react";
 import { effect as T } from "@matechs/effect";
-import * as R from "../../../lib";
+import * as R from "../../../src";
 import { DateOps, updateDate } from "./def";
 import { useInterval } from "../../hooks/useInterval";
 import * as M from "mobx";

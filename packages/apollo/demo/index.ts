@@ -126,32 +126,32 @@ const resolvers = Apollo.binder({
   ...demo
 });
 
-const main = pipe(Apollo.bindToSchema(resolvers, typeDefs), M.provideS(EX.managedExpress(8080)));
+const main = pipe(Apollo.bindToSchema(resolvers, typeDefs), M.provide(EX.managedExpress(8080)));
 
 const cancel = pipe(
   main,
-  T.provideS({
+  T.provide({
     foo: "foo"
   }),
-  T.provideS({
+  T.provide({
     bar: "bar"
   }),
-  T.provideS({
+  T.provide({
     subN: 10
   }),
-  T.provideS({
+  T.provide({
     prefix: "ok"
   }),
-  T.provideS({
+  T.provide({
     subOnDisconnect: "ok"
   }),
-  T.provideS({
+  T.provide({
     subOnConnect: "ok"
   }),
-  T.provideS({
+  T.provide({
     contextFnEnv: "ok"
   }),
-  T.provideS(EX.express),
+  T.provide(EX.express),
   (x) =>
     T.run(x, (ex) => {
       console.log(ex);

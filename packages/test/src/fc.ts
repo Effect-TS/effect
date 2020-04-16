@@ -13,17 +13,18 @@ export interface RandomGen {
   };
 }
 
-export const provideGenerator = T.provideSW<RandomGen>()(
-  T.sync(() => {
-    const mersenne = prand.mersenne(Math.random());
-
-    return new fc.Random(mersenne);
-  })
-)((rnd) => ({
-  [RandomGenURI]: {
-    randomGenerator: rnd
-  }
-}));
+export const provideGenerator = T.provideM(
+  pipe(
+    T.sync(() => new fc.Random(prand.mersenne(Math.random()))),
+    T.map(
+      (rnd): RandomGen => ({
+        [RandomGenURI]: {
+          randomGenerator: rnd
+        }
+      })
+    )
+  )
+);
 
 export interface Arb<R, A> extends S.Stream<R, never, A> {}
 

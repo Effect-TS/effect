@@ -1,15 +1,15 @@
 import { effect as T, freeEnv as F } from "@matechs/effect";
 
-export const loggerEnv = "@matechs/logger/loggerURI";
+export const LoggerURI = "@matechs/logger/loggerURI";
 
 export interface Meta {
   [k: string]: any;
 }
 
-export type LogFn = (message: string, meta?: Meta) => T.UIO<void>;
+export type LogFn = (message: string, meta?: Meta) => T.Io<void>;
 
 const loggerM_ = F.define({
-  [loggerEnv]: {
+  [LoggerURI]: {
     silly: F.fn<LogFn>(),
     debug: F.fn<LogFn>(),
     verbose: F.fn<LogFn>(),
@@ -22,9 +22,9 @@ const loggerM_ = F.define({
 
 export interface Logger extends F.TypeOf<typeof loggerM_> {}
 
-export const loggerM = F.opaque<Logger>()(loggerM_);
+export const Logger = F.opaque<Logger>()(loggerM_);
 
-export type Level = keyof Logger[typeof loggerEnv];
+export type Level = keyof Logger[typeof LoggerURI];
 
 export const severity: Record<Level, number> = {
   error: 0,
@@ -37,5 +37,5 @@ export const severity: Record<Level, number> = {
 };
 
 export const {
-  [loggerEnv]: { silly, debug, verbose, http, info, warn, error }
-} = F.access(loggerM);
+  [LoggerURI]: { silly, debug, verbose, http, info, warn, error }
+} = F.access(Logger);

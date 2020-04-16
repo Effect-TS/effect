@@ -16,7 +16,7 @@ export interface Deferred<R, E, A> {
    *
    * This Stack will produce the value set by done, raise the error set by error or interrupt
    */
-  readonly wait: T.Effect<R, E, A>;
+  readonly wait: T.Effect<T.AsyncRT & R, E, A>;
   /**
    * Interrupt any waitersa on this Deferred
    */
@@ -64,7 +64,7 @@ export interface Deferred<R, E, A> {
 }
 
 export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
-  wait: T.Effect<R, E, A>;
+  wait: T.Effect<T.AsyncRT & R, E, A>;
   interrupt: T.Effect<T.NoEnv, T.NoErr, void>;
   c: Completable<T.Effect<R, E, A>>;
 
@@ -111,7 +111,9 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
   }
 
   from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
-    const completed = effect.chain(T.result(T.provideAll(this.r)(source)), (e) => this.complete(e));
+    const completed = effect.chain(T.result(T.provide(this.r as R)(source)), (e) =>
+      this.complete(e)
+    );
     return T.effect.onInterrupted(completed, this.interrupt);
   }
 }

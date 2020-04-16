@@ -144,8 +144,8 @@ export class DbT<Db extends symbol | string> {
 
   withNewRegion<R extends ORM<Db>, E, A>(op: T.Effect<R, E, A>): T.Effect<R, E, A> {
     return this.withConnection((connection) =>
-      T.provideR(
-        (r: R): R => ({
+      T.accessM((r: R) =>
+        T.provide({
           ...r,
           [managerEnv]: {
             ...r[managerEnv],
@@ -153,14 +153,14 @@ export class DbT<Db extends symbol | string> {
               manager: connection.manager
             }
           }
-        })
-      )(op)
+        })(op)
+      )
     );
   }
 
   bracketPool<R, E, A>(
     op: T.Effect<ORM<Db> & R, E, A>
-  ): T.Effect<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
+  ): T.TaskEnvErr<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
     return T.accessM(
       ({
         [configEnv]: {
@@ -184,21 +184,23 @@ export class DbT<Db extends symbol | string> {
             (db) =>
               pipe(
                 op,
-                T.provideR((r: DbConfig<Db> & R) => ({
-                  ...r,
-                  [poolEnv]: {
-                    ...r[poolEnv],
-                    [this.dbEnv]: {
-                      pool: db
+                T.provideM(
+                  T.access((r: DbConfig<Db> & R): ORM<Db> & R => ({
+                    ...r,
+                    [poolEnv]: {
+                      ...r[poolEnv],
+                      [this.dbEnv]: {
+                        pool: db
+                      }
+                    },
+                    [managerEnv]: {
+                      ...r[managerEnv],
+                      [this.dbEnv]: {
+                        manager: db.manager
+                      }
                     }
-                  },
-                  [managerEnv]: {
-                    ...r[managerEnv],
-                    [this.dbEnv]: {
-                      manager: db.manager
-                    }
-                  }
-                }))
+                  }))
+                )
               )
           )
         )
@@ -207,7 +209,7 @@ export class DbT<Db extends symbol | string> {
 
   withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.Effect<ORM<Db>, TaskError, A> {
+  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.TaskEnvErr<ORM<Db>, TaskError, A> {
     return (f) =>
       this.withRepository(target)((r) =>
         pipe(
@@ -228,7 +230,7 @@ export class DbT<Db extends symbol | string> {
       );
   }
 
-  withManagerTask<A>(f: (m: EntityManager) => Task<A>): T.Effect<ORM<Db>, TaskError, A> {
+  withManagerTask<A>(f: (m: EntityManager) => Task<A>): T.TaskEnvErr<ORM<Db>, TaskError, A> {
     return this.withManager((manager) =>
       pipe(
         manager,
@@ -243,7 +245,7 @@ export class DbT<Db extends symbol | string> {
     return T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) => f(manager));
   }
 
-  withConnectionTask<A>(f: (m: Connection) => Task<A>): T.Effect<ORM<Db>, TaskError, A> {
+  withConnectionTask<A>(f: (m: Connection) => Task<A>): T.TaskEnvErr<ORM<Db>, TaskError, A> {
     return this.withConnection((pool) =>
       pipe(
         pool,
@@ -260,7 +262,7 @@ export class DbT<Db extends symbol | string> {
 
   withORMTransaction<R, E, A>(
     op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
-  ): T.Effect<ORM<Db> & R, TaskError | E, A> {
+  ): T.TaskEnvErr<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.bracketExit(
         pipe(
@@ -292,21 +294,23 @@ export class DbT<Db extends symbol | string> {
         (runner) =>
           pipe(
             op,
-            T.provideR((r: R) => ({
-              ...r,
-              [managerEnv]: {
-                ...r[managerEnv],
-                [this.dbEnv]: {
-                  manager: runner.manager
+            T.provideM(
+              T.access((r: R): Manager<Db> & DbTx<Db> & R => ({
+                ...r,
+                [managerEnv]: {
+                  ...r[managerEnv],
+                  [this.dbEnv]: {
+                    manager: runner.manager
+                  }
+                },
+                [dbTxURI]: {
+                  ...r[dbTxURI],
+                  [this.dbEnv]: {
+                    tx: {}
+                  }
                 }
-              },
-              [dbTxURI]: {
-                ...r[dbTxURI],
-                [this.dbEnv]: {
-                  tx: {}
-                }
-              }
-            }))
+              }))
+            )
           )
       )
     );
@@ -314,14 +318,14 @@ export class DbT<Db extends symbol | string> {
 
   withTransaction<R, E, A>(
     op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
-  ): T.Effect<ORM<Db> & R, TaskError | E, A> {
+  ): T.TaskEnvErr<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.accessM((r: R) =>
         pipe(
           () =>
             pool.transaction((tx) =>
               T.runToPromise(
-                T.provideAll({
+                T.provide<R & Manager<Db> & DbTx<Db>>({
                   ...r,
                   [managerEnv]: {
                     ...r[managerEnv],

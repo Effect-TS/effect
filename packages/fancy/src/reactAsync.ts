@@ -1,5 +1,4 @@
 import { effect as T } from "@matechs/effect";
-import * as Ei from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "fp-ts/lib/Record";
 import * as M from "mobx";
@@ -14,10 +13,10 @@ import { componentPropsURI } from "./componentProps";
 
 export const reactAsync = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.UIO<K[k]>;
+    [k in keyof K]: T.Io<K[k]>;
   }
 ) => (
-  _P: unknown extends P ? void : {} extends P ? void : T.UIO<P>
+  _P: unknown extends P ? void : {} extends P ? void : T.Task<P>
 ): React.FC<Q & { children?: React.ReactElement }> => {
   const initial = pipe(
     _I as Record<string, any>,
@@ -50,7 +49,7 @@ export const reactAsync = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) =
               }
             )
           ),
-          T.provideAll({
+          T.provide({
             [stateURI]: {
               state: init
             },
@@ -63,14 +62,8 @@ export const reactAsync = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) =
       T.runSync
     );
 
-    if (Ei.isLeft(C)) {
-      return React.createElement("div", {
-        children: "Rendering can only be sync and should not fail"
-      });
-    }
-
-    if (isDone(C.right)) {
-      return React.createElement(C.right.value);
+    if (isDone(C)) {
+      return React.createElement(C.value);
     } else {
       return React.createElement("div", {
         children: "Rendering can only be sync and should not fail"

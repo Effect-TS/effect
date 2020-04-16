@@ -50,16 +50,10 @@ describe("Example", () => {
 
     const mockTracer = new MockTracer(spans);
 
-    const mockModule = pipe(
-      T.noEnv,
-      T.mergeEnv(tracer(T.sync(() => mockTracer))),
-      T.mergeEnv(counter)
-    );
-
     const result = await T.runToPromiseExit(
       pipe(
         program,
-        T.provide(mockModule),
+        T.provide(tracer(T.sync(() => mockTracer))),
         T.provide<Printer>({
           printer: {
             print(s) {
@@ -68,7 +62,8 @@ describe("Example", () => {
               });
             }
           }
-        })
+        }),
+        T.provide(counter)
       )
     );
 

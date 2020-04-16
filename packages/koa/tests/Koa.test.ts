@@ -163,9 +163,9 @@ describe("Koa", () => {
 
     await pipe(
       T.effect.chain(config, (_) => program),
-      M.provideS(KOA.managedKoa(3004, "127.0.0.1")),
+      M.provide(KOA.managedKoa(3004, "127.0.0.1")),
       KOA.provideKoa,
-      T.provideS(L.client(fetch)),
+      T.provide(L.client(fetch)),
       T.runToPromise
     ).then(({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
       assert.deepEqual(res, done({ res: 1 }));

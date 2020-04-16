@@ -1,7 +1,7 @@
 import { effect as T, freeEnv as F, exit as EX } from "@matechs/effect";
 import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "../../../lib";
+import * as R from "../../../src";
 import { orgsOpsSpec, orgsOpsURI } from "./def";
 import { updateDate } from "../date/def";
 import { OrgsStateEnv, orgsStateURI } from "./state";

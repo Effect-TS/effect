@@ -8,7 +8,8 @@
     "lint": "tslint --project .",
     "bench": "yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts",
     "import-path-rewrite": "import-path-rewrite",
-    "tc": "tsc --noEmit"
+    "tc": "tsc --noEmit",
+    "dtslint": "dtslint dtslint"
   },
   "publishConfig": {
     "access": "public"
@@ -33,7 +34,7 @@
     "retry-ts": "^0.1.2",
     "waveguide": "^1.4.0"
   },
-  "peerDependencies": {
+  "dependencies": {
     "fp-ts": "^2.5.3",
     "fp-ts-contrib": "^0.1.15",
     "retry-ts": "^0.1.2"

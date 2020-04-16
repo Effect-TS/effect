@@ -1,6 +1,6 @@
 import assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
-import { freeEnv as F, effect as T } from "../src";
+import { freeEnv as F, effect as T, utils as U } from "../src";
 import { done } from "../src/original/exit";
 import { sequenceS } from "fp-ts/lib/Apply";
 
@@ -8,7 +8,7 @@ const fnEnv: unique symbol = Symbol();
 
 const fnEnvM_ = F.define({
   [fnEnv]: {
-    mapString: F.fn<(s: string) => T.UIO<string>>()
+    mapString: F.fn<(s: string) => T.Io<string>>()
   }
 });
 
@@ -30,8 +30,8 @@ const consoleEnv: unique symbol = Symbol();
 
 const consoleM = F.define({
   [consoleEnv]: {
-    log: F.fn<(s: string) => T.RUIO<FnEnv, void>>(),
-    get: F.cn<T.UIO<string[]>>()
+    log: F.fn<(s: string) => T.IoEnv<FnEnv, void>>(),
+    get: F.cn<T.Io<string[]>>()
   }
 });
 
@@ -45,7 +45,7 @@ const prefixEnv: unique symbol = Symbol();
 
 const prefixM = F.define({
   [prefixEnv]: {
-    accessPrefix: F.cn<T.UIO<string>>()
+    accessPrefix: F.cn<T.Io<string>>()
   }
 });
 
@@ -57,7 +57,7 @@ const configEnv: unique symbol = Symbol();
 
 const configM = F.define({
   [configEnv]: {
-    accessConfig: F.cn<T.UIO<string>>()
+    accessConfig: F.cn<T.Io<string>>()
   }
 });
 
@@ -97,7 +97,7 @@ const consoleI2 = F.implement(consoleM)({
   }
 });
 
-const program: T.RUIO<Console & FnEnv, string[]> = pipe(
+const program: T.IoEnv<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain((_) => get)
 );
@@ -114,7 +114,7 @@ describe("Generic", () => {
 
     assert.deepEqual(
       await T.runToPromiseExit(
-        T.provideAll({
+        T.provide<U.Env<typeof main>>({
           ...fnLive,
           ...F.instance(configM)({
             [configEnv]: {
@@ -130,7 +130,7 @@ describe("Generic", () => {
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
 
-    assert.deepEqual(await T.runToPromiseExit(T.provideAll(fnLive)(main)), done(["message"]));
+    assert.deepEqual(await T.runToPromiseExit(T.provide(fnLive)(main)), done(["message"]));
   });
 
   it("use generic module (different interpreter, not need fnEnv)", async () => {
@@ -145,13 +145,13 @@ describe("Generic", () => {
 
     const modA = F.define({
       [envA]: {
-        foo: F.cn<T.UIO<string>>()
+        foo: F.cn<T.Io<string>>()
       }
     });
 
     const modB = F.define({
       [envB]: {
-        bar: F.cn<T.UIO<string>>()
+        bar: F.cn<T.Io<string>>()
       }
     });
 

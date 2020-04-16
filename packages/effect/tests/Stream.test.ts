@@ -14,7 +14,7 @@ import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
 import { effect as T, managed as M, ref, stream as S } from "../src";
 
 export async function expectExitIn<E, A, B>(
-  ioa: T.Effect<T.NoEnv, E, A>,
+  ioa: T.Effect<T.AsyncRT, E, A>,
   f: FunctionN<[ex.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
@@ -23,7 +23,7 @@ export async function expectExitIn<E, A, B>(
 }
 
 export function expectExit<E, A>(
-  ioa: T.Effect<T.NoEnv, E, A>,
+  ioa: T.Effect<T.AsyncRT, E, A>,
   expected: ex.Exit<E, A>
 ): Promise<void> {
   return expectExitIn(ioa, identity, expected);
@@ -33,7 +33,7 @@ describe("Stream", () => {
   it("fromObjectReadStream", async () => {
     let eventCount = 0;
 
-    const s: S.Stream<T.NoEnv, Error, { n: number }> = S.fromObjectReadStream(
+    const s: S.Stream<T.AsyncRT, Error, { n: number }> = S.fromObjectReadStream(
       new Readable({
         objectMode: true,
         read() {
@@ -55,7 +55,7 @@ describe("Stream", () => {
   it("fromObjectReadStream - Error", async () => {
     let eventCount = 0;
 
-    const s: S.Stream<T.NoEnv, Error, { n: number }> = S.fromObjectReadStream(
+    const s: S.Stream<T.AsyncRT, Error, { n: number }> = S.fromObjectReadStream(
       new Readable({
         objectMode: true,
         read() {
@@ -469,7 +469,7 @@ describe("Stream", () => {
 
     const zip = pipe(streamA, S.zip(streamB), S.take(3), S.collectArray);
 
-    const res = await T.runToPromise(T.provideAll({ a: 1, b: 1 })(zip));
+    const res = await T.runToPromise(T.provide<EnvA & EnvB>({ a: 1, b: 1 })(zip));
 
     assert.deepEqual(res, [
       [1, 1],
@@ -726,7 +726,7 @@ describe("Stream", () => {
         );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
-        return T.zip(drain, T.delay(cell.get, 100));
+        return T.effect.zip(drain, T.delay(cell.get, 100));
       });
       return expectExit(
         io,
@@ -755,7 +755,7 @@ describe("Stream", () => {
         );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
-        return T.zip(drain, T.delay(cell.get, 100));
+        return T.effect.zip(drain, T.delay(cell.get, 100));
       });
 
       return expectExit(
@@ -777,7 +777,7 @@ describe("Stream", () => {
       pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s)));
     });
   });
-  function repeater<E, A>(w: T.Effect<T.NoEnv, E, A>, n: number): T.Effect<T.NoEnv, E, A> {
+  function repeater<E, A>(w: T.Effect<T.AsyncRT, E, A>, n: number): T.Effect<T.AsyncRT, E, A> {
     if (n <= 1) {
       return w;
     } else {
@@ -793,7 +793,7 @@ describe("Stream", () => {
       return T.effect.map(r, (n) => Math.round(n * max));
     }
 
-    function randomWait(max: number): T.Effect<T.NoEnv, never, void> {
+    function randomWait(max: number): T.Effect<T.AsyncRT, never, void> {
       return T.effect.chain(range(max), (a) => T.after(a));
     }
 
@@ -906,7 +906,7 @@ describe("Stream", () => {
 
       return pipe(
         Do(T.effect).do(program1).do(program2).do(program3).do(program4).done(),
-        T.provideS({
+        T.provide({
           [mockEnvUri]: {
             foo: "bar"
           }

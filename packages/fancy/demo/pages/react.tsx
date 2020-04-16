@@ -1,6 +1,6 @@
 import React from "react"
 import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "../../lib";
+import * as R from "../../src";
 import { DT } from "../modules/date";
 import { dateStateURI } from "../modules/date/state";
 import { ORG } from "../modules/orgs";
@@ -22,7 +22,7 @@ const PlainComponent = R.react(pipe(Home, provider))({
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
 })(
-  // in ssg initial props can be generated via async too
+  // in react initial props can only be sync
   T.pure({
     foo: "ok"
   })

@@ -22,7 +22,7 @@ const PlainComponent = R.reactAsync(pipe(Home, provider))({
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
 })(
-  // in ssg initial props can be generated via async too
+  // in react-async initial props can be generated via async 
   T.delay(
     T.pure({
       foo: "ok"

@@ -21,7 +21,7 @@ export const libcurl: (_?: {
       responseType: H.ResponseType,
       headers: Record<string, string>,
       body?: unknown
-    ): T.Effect<T.NoEnv, H.HttpError<string>, H.Response<any>> =>
+    ): T.TaskErr<H.HttpError<string>, H.Response<any>> =>
       requestType === "FORM" || requestType === "BINARY"
         ? /* istanbul ignore next */ requestType === "FORM"
           ? T.raiseError({

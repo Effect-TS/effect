@@ -30,7 +30,7 @@ describe("Api", () => {
       }
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(main));
+    const result = await T.runToPromiseExit(T.provide(env)(main));
 
     assert.deepEqual(result, EX.done({ id: "ok" }));
   });
@@ -55,7 +55,7 @@ describe("Api", () => {
       }
     };
 
-    const result = await T.runToPromiseExit(T.provideAll(env)(main));
+    const result = await T.runToPromiseExit(T.provide(env)(main));
 
     assert.deepEqual(result, EX.done(some({ id: "ok" })));
   });
@@ -66,7 +66,7 @@ describe("Api", () => {
       program,
       DB.provideApi,
       DB.bracketPool,
-      T.provideS(
+      T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
             manager:
@@ -86,7 +86,7 @@ describe("Api", () => {
           } as Connection)
         )
       ),
-      T.provideS(ORM.dbConfig(DbURI, T.pure({} as any)))
+      T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
     );
     const result = await T.runToPromiseExit(main);
 
@@ -103,7 +103,7 @@ describe("Api", () => {
       program,
       DB.provideApi,
       DB.bracketPool,
-      T.provideS(
+      T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
             manager:
@@ -125,7 +125,7 @@ describe("Api", () => {
           } as Connection)
         )
       ),
-      T.provideS(ORM.dbConfig(DbURI, T.pure({} as any)))
+      T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
     );
     const result = await T.runToPromiseExit(main);
 
@@ -139,7 +139,7 @@ describe("Api", () => {
       DB.withTransaction,
       DB.provideApi,
       DB.bracketPool,
-      T.provideS(
+      T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
             transaction: <T>(f: (_: EntityManager) => Promise<T>) =>
@@ -159,7 +159,7 @@ describe("Api", () => {
           } as Connection)
         )
       ),
-      T.provideS(ORM.dbConfig(DbURI, T.pure({} as any)))
+      T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
     );
     const result = await T.runToPromiseExit(main);
 

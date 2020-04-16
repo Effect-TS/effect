@@ -7,8 +7,8 @@ export const dateOpsURI = Symbol();
 
 export interface DateOps extends F.ModuleShape<DateOps> {
   [dateOpsURI]: {
-    updateDate: T.UIO<Date>;
-    accessDate: T.UIO<Date>;
+    updateDate: T.Io<Date>;
+    accessDate: T.Io<Date>;
   };
 }
 

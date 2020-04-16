@@ -2,27 +2,29 @@ import { effect as T, freeEnv as F } from "@matechs/effect";
 
 export const consoleURI = "@matechs/console/consoleURI";
 
+type Void = T.Io<void>;
+
 const Console_ = F.define({
   [consoleURI]: {
-    assert: F.fn<(value: any, message?: string, ...optionalParams: any[]) => T.UIO<void>>(),
-    time: F.fn<(label?: string) => T.UIO<void>>(),
-    clear: F.cn<T.UIO<void>>(),
-    info: F.fn<(message?: any, ...optionalParams: any[]) => T.UIO<void>>(),
-    count: F.fn<(label?: string) => T.UIO<void>>(),
-    countReset: F.fn<(label?: string) => T.UIO<void>>(),
-    debug: F.fn<(message?: any, ...optionalParams: any[]) => T.UIO<void>>(),
-    dir: F.fn<(obj: any, options?: NodeJS.InspectOptions) => T.UIO<void>>(),
-    dirxml: F.fn<(...data: any[]) => T.UIO<void>>(),
-    error: F.fn<(message?: any, ...optionalParams: any[]) => T.UIO<void>>(),
-    group: F.fn<(...label: any[]) => T.UIO<void>>(),
-    groupCollapsed: F.fn<(...label: any[]) => T.UIO<void>>(),
-    groupEnd: F.cn<T.UIO<void>>(),
-    log: F.fn<(message?: any, ...optionalParams: any[]) => T.UIO<void>>(),
-    table: F.fn<(tabularData: any, properties?: string[]) => T.UIO<void>>(),
-    timeEnd: F.fn<(label?: string) => T.UIO<void>>(),
-    timeLog: F.fn<(label?: string, ...data: any[]) => T.UIO<void>>(),
-    trace: F.fn<(message?: any, ...optionalParams: any[]) => T.UIO<void>>(),
-    warn: F.fn<(message?: any, ...optionalParams: any[]) => T.UIO<void>>()
+    assert: F.fn<(value: any, message?: string, ...optionalParams: any[]) => Void>(),
+    time: F.fn<(label?: string) => Void>(),
+    clear: F.cn<Void>(),
+    info: F.fn<(message?: any, ...optionalParams: any[]) => Void>(),
+    count: F.fn<(label?: string) => Void>(),
+    countReset: F.fn<(label?: string) => Void>(),
+    debug: F.fn<(message?: any, ...optionalParams: any[]) => Void>(),
+    dir: F.fn<(obj: any, options?: NodeJS.InspectOptions) => Void>(),
+    dirxml: F.fn<(...data: any[]) => Void>(),
+    error: F.fn<(message?: any, ...optionalParams: any[]) => Void>(),
+    group: F.fn<(...label: any[]) => Void>(),
+    groupCollapsed: F.fn<(...label: any[]) => Void>(),
+    groupEnd: F.cn<Void>(),
+    log: F.fn<(message?: any, ...optionalParams: any[]) => Void>(),
+    table: F.fn<(tabularData: any, properties?: string[]) => Void>(),
+    timeEnd: F.fn<(label?: string) => Void>(),
+    timeLog: F.fn<(label?: string, ...data: any[]) => Void>(),
+    trace: F.fn<(message?: any, ...optionalParams: any[]) => Void>(),
+    warn: F.fn<(message?: any, ...optionalParams: any[]) => Void>()
   }
 });
 

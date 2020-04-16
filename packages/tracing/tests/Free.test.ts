@@ -10,7 +10,7 @@ const URI: unique symbol = Symbol();
 
 const m = F.define({
   [URI]: {
-    shouldTrace: F.cn<T.UIO<void>>()
+    shouldTrace: F.cn<T.Task<void>>()
   }
 });
 
@@ -43,7 +43,7 @@ describe("Trace Free", () => {
     const mockT = new MockTracer(spans);
     const tracer = TR.tracer(T.pure(mockT));
 
-    await T.runToPromiseExit(pipe(program, T.provideS(tracer)));
+    await T.runToPromiseExit(pipe(program, T.provide(tracer)));
 
     assert.deepEqual(
       spans.map((s) => s.name),

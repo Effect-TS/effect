@@ -1,6 +1,6 @@
 import React from "react"
 import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "../../lib";
+import * as R from "../../src";
 import { DT } from "../modules/date";
 import { dateStateURI } from "../modules/date/state";
 import { ORG } from "../modules/orgs";
@@ -49,12 +49,12 @@ export default R.page(
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState
-})(
-  T.pure({
-    foo: "ok-foo"
-  }),
+})(  
   // if static then initial props effect must be sync, page will be rendered
   // as static html, if ssr the props effect can be any async or sync
   // in case of ssr mode NextContext will be embedded (via getInitialProps)
-  "ssr"
+  "ssr",
+  T.shiftAfter(T.pure({
+    foo: "ok-foo"
+  }))
 );

@@ -4,7 +4,7 @@ import { sequenceS } from "fp-ts/lib/Apply";
 import { pipe } from "fp-ts/lib/pipeable";
 import Link from "next/link";
 import { DT } from "../modules/date";
-import { UI } from "../../lib";
+import { UI } from "../../src";
 
 // alpha
 /* istanbul ignore file */

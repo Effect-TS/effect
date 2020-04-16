@@ -21,6 +21,7 @@ jobs:
           yarn
           yarn lerna bootstrap
           yarn build
+          yarn dtslint --parallel
           yarn tc --parallel
           yarn jest --detectOpenHandles
           yarn lint --parallel

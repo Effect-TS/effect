@@ -21,21 +21,21 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "@matechs/effect": "^5.0.16",
-    "@matechs/express": "^4.0.17",
-    "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.15"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
-    "@matechs/effect": "^5.0.29",
-    "@matechs/express": "^4.0.30",
-    "apollo-server": "^2.11.0",
-    "apollo-server-express": "^2.11.0",
-    "fp-ts": "^2.5.3",
-    "fp-ts-contrib": "^0.1.15",
-    "graphql": "^15.0.0",
+  "peerDependencies": {
+    "apollo-server": "^2.12.0",
+    "apollo-server-express": "^2.12.0",
+    "graphql": "^14.2.1",
     "subscriptions-transport-ws": "^0.9.16"
+  },
+  "devDependencies": {
+    "apollo-server": "^2.12.0",
+    "apollo-server-express": "^2.12.0",
+    "graphql": "^14.2.1",
+    "subscriptions-transport-ws": "^0.9.16"
+  },
+  "dependencies": {
+    "@matechs/effect": "^5.0.16",
+    "@matechs/express": "^4.0.17"
   }
 }

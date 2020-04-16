@@ -14,8 +14,8 @@ import * as T from "./effect";
 import { effect } from "./effect";
 
 export interface ConcurrentQueue<A> {
-  readonly take: T.Effect<T.NoEnv, never, A>;
-  offer(a: A): T.Effect<T.NoEnv, never, void>;
+  readonly take: T.Effect<T.AsyncRT, never, A>;
+  offer(a: A): T.Effect<T.AsyncRT, never, void>;
 }
 
 type State<A> = E.Either<Dequeue<Deferred<T.NoEnv, never, A>>, Dequeue<A>>;
@@ -45,11 +45,11 @@ function makeConcurrentQueueImpl<A>(
   overflowStrategy: F.FunctionN<[Dequeue<A>, A], Dequeue<A>>,
   // This is effect that precedes offering
   // in the case of a boudned queue it is responsible for acquiring the semaphore
-  offerGate: T.Effect<T.NoEnv, never, void>,
+  offerGate: T.Effect<T.AsyncRT, never, void>,
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: F.FunctionN<[T.Effect<T.NoEnv, never, A>], T.Effect<T.NoEnv, never, A>>
+  takeGate: F.FunctionN<[T.Effect<T.AsyncRT, never, A>], T.Effect<T.AsyncRT, never, A>>
 ): ConcurrentQueue<A> {
   function cleanupLatch(latch: Deferred<T.NoEnv, never, A>): T.Effect<T.NoEnv, never, void> {
     return T.asUnit(
@@ -101,7 +101,7 @@ function makeConcurrentQueueImpl<A>(
     )
   );
 
-  const offer = (a: A): T.Effect<T.NoEnv, never, void> =>
+  const offer = (a: A): T.Effect<T.AsyncRT, never, void> =>
     T.applySecond(
       offerGate,
       T.uninterruptible(
@@ -191,10 +191,12 @@ export function droppingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, Con
  * Create a bounded queue that blocks offers on capacity
  * @param capacity
  */
-export function boundedQueue<A>(capacity: number): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function boundedQueue<A>(
+  capacity: number
+): T.Effect<T.AsyncRT, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
+    T.effect.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),

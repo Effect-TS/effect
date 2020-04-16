@@ -26,7 +26,7 @@ import { makeRef } from "../src/ref";
 import { makeSemaphore } from "../src/semaphore";
 
 export async function expectExitIn<E, A, B>(
-  ioa: T.Effect<T.NoEnv, E, A>,
+  ioa: T.Effect<T.AsyncRT, E, A>,
   f: FunctionN<[ex.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
@@ -35,7 +35,7 @@ export async function expectExitIn<E, A, B>(
 }
 
 export function expectExit<E, A>(
-  ioa: T.Effect<T.NoEnv, E, A>,
+  ioa: T.Effect<T.AsyncRT, E, A>,
   expected: ex.Exit<E, A>
 ): Promise<void> {
   return expectExitIn(ioa, identity, expected);
@@ -68,7 +68,7 @@ describe("semaphore", () => {
       .bindL("before", ({ gate }) => gate.get)
       .doL(({ sem }) => sem.release)
       .do(T.shifted) // let the forked fiber advance
-      .bindL("after", ({ gate, sem }) => T.zip(gate.get, sem.available))
+      .bindL("after", ({ gate, sem }) => T.effect.zip(gate.get, sem.available))
       .return(({ before, after }) => [before, ...after]);
     return expectExit(eff, done([false, true, 1]));
   });
@@ -77,7 +77,7 @@ describe("semaphore", () => {
       T.effect.chain(makeSemaphore(1), (sem) =>
         T.effect.chain(T.fork(T.applySecond(sem.acquireN(2), gate.set(true))), (child) =>
           T.effect.chain(T.applySecond(child.interrupt, child.wait), (_exit) =>
-            T.zip(sem.available, gate.get)
+            T.effect.zip(sem.available, gate.get)
           )
         )
       )

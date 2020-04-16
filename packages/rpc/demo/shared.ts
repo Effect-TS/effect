@@ -14,7 +14,7 @@ export interface Todo {
 
 export interface PlaceholderJson extends F.ModuleShape<PlaceholderJson> {
   [placeholderJsonEnv]: {
-    getTodo: (n: number) => T.IO<string, Option<Todo>>;
+    getTodo: (n: number) => T.TaskErr<string, Option<Todo>>;
   };
 }
 

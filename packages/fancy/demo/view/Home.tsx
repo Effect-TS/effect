@@ -6,7 +6,7 @@ import Link from "next/link";
 import { MemoInput } from "./MemoInput";
 import { DT } from "../modules/date";
 import { ORG } from "../modules/orgs";
-import { UI, accessP } from "../../lib";
+import { UI, accessP } from "../../src";
 import { DisplayFlash } from "../modules/flash/view";
 
 // alpha

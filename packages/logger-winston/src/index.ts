@@ -7,7 +7,7 @@ export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI";
 
 export interface WinstonFactory {
   [winstonFactoryEnv]: {
-    logger: T.UIO<W.Logger>;
+    logger: T.Io<W.Logger>;
   };
 }
 
@@ -25,24 +25,21 @@ export function log(
   level: L.logger.Level,
   message: string,
   meta?: L.logger.Meta
-): T.RUIO<WinstonFactory, void> {
-  return (
-    Do(T.effect)
-      .bind("logger", logger)
-      .doL((s) =>
-        T.sync(() => {
-          s.logger.log(level, message, meta);
-        })
-      )
-      // tslint:disable-next-line: no-empty
-      .return(() => {})
-  );
+): T.IoEnv<WinstonFactory, void> {
+  return Do(T.effect)
+    .bind("logger", logger)
+    .doL((s) =>
+      T.sync(() => {
+        s.logger.log(level, message, meta);
+      })
+    )
+    .return(() => {
+      //
+    });
 }
 
-export const winstonLogger: F.Provider<WinstonFactory, L.logger.Logger, never> = F.implement(
-  L.logger.loggerM
-)({
-  [L.logger.loggerEnv]: {
+export const provideWinstonLogger = F.implement(L.logger.Logger)({
+  [L.logger.LoggerURI]: {
     debug: (message, meta) => log("debug", message, meta),
     http: (message, meta) => log("http", message, meta),
     silly: (message, meta) => log("silly", message, meta),
@@ -54,8 +51,8 @@ export const winstonLogger: F.Provider<WinstonFactory, L.logger.Logger, never> =
 });
 
 /* istanbul ignore next */
-export const loggerEnv = (loggerOpts: W.LoggerOptions) =>
-  F.instance(winstonFactoryM)({
+export const provideLoggerFactory = (loggerOpts: W.LoggerOptions) =>
+  F.implement(winstonFactoryM)({
     [winstonFactoryEnv]: {
       logger: T.sync(() => W.createLogger(loggerOpts))
     }

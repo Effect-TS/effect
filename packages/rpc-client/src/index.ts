@@ -18,9 +18,9 @@ export interface ClientConfig<M> {
 }
 
 type ClientEntry<M, X> = M extends FunctionN<infer A, T.Effect<infer _B, infer C, infer D>>
-  ? FunctionN<A, T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>>
+  ? FunctionN<A, T.TaskEnvErr<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>>
   : M extends T.Effect<infer _B, infer C, infer D>
-  ? T.Effect<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
+  ? T.TaskEnvErr<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
   : never;
 
 export type Client<M extends F.ModuleShape<M>> = {

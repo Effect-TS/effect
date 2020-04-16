@@ -54,7 +54,7 @@ const envLive: Env<typeof program> = {
 
 // run express server
 T.run(
-  T.provideAll(envLive)(program),
+  T.provide(envLive)(program),
   E.fold(
     server => {
       // listen for exit Ctrl+C

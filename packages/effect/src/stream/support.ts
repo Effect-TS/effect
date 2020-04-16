@@ -63,7 +63,7 @@ export function runFromQueue<E, A>(
 export function emitter<E, A>(
   ops: list.List<Ops<E, A>>,
   hasCB: HasCb<E, A>
-): M.Managed<unknown, never, T.Effect<unknown, E, O.Option<A>>> {
+): M.Managed<unknown, never, T.Effect<T.AsyncRT, E, O.Option<A>>> {
   return M.pure(
     T.async<E, O.Option<A>>((callback) => {
       const op = list.popUnsafe(ops);
