@@ -1061,7 +1061,7 @@ function zipWith_<R, E, A, R2, E2, B, C>(
     );
     const bgrab = T.raceFirst(btake, blatch.wait);
 
-    return T.zipWith(agrab, bgrab, (aOpt, bOpt) =>
+    return T.effect.zipWith(agrab, bgrab, (aOpt, bOpt) =>
       O.option.chain(aOpt, (a) => O.option.map(bOpt, (b) => f(a, b)))
     );
   });

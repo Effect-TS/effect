@@ -196,7 +196,7 @@ export function boundedQueue<A>(
 ): T.Effect<T.AsyncRT, never, ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
-    T.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
+    T.effect.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<T.NoEnv, never, A>(),

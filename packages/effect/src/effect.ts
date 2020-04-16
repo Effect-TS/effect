@@ -593,7 +593,7 @@ function bimap_<R, E1, E2, A, B>(
  * @param second
  * @param f
  */
-export function zipWith<R, E, A, R2, E2, B, C>(
+function zipWith_<R, E, A, R2, E2, B, C>(
   first: Effect<R, E, A>,
   second: Effect<R2, E2, B>,
   f: F.FunctionN<[A, B], C>
@@ -601,16 +601,23 @@ export function zipWith<R, E, A, R2, E2, B, C>(
   return chain_(first, (a) => map_(second, (b) => f(a, b)));
 }
 
+export function zipWith<A, R2, E2, B, C>(
+  second: Effect<R2, E2, B>,
+  f: F.FunctionN<[A, B], C>
+): <R, E>(first: Effect<R, E, A>) => Effect<R & R2, E | E2, C> {
+  return (first) => zipWith_(first, second, f);
+}
+
 /**
  * Zip the result of two IOs together into a tuple type
  * @param first
  * @param second
  */
-export function zip_<R, E, A, R2, E2, B>(
+function zip_<R, E, A, R2, E2, B>(
   first: Effect<R, E, A>,
   second: Effect<R2, E2, B>
 ): Effect<R & R2, E | E2, readonly [A, B]> {
-  return zipWith(first, second, tuple2);
+  return zipWith_(first, second, tuple2);
 }
 
 export function zip<R2, E2, B>(
@@ -628,7 +635,7 @@ export function applyFirst<R, E, A, R2, E2, B>(
   first: Effect<R, E, A>,
   second: Effect<R2, E2, B>
 ): Effect<R & R2, E | E2, A> {
-  return zipWith(first, second, fst);
+  return zipWith_(first, second, fst);
 }
 
 /**
@@ -640,7 +647,7 @@ export function applySecond<R, E, A, R2, E2, B>(
   first: Effect<R, E, A>,
   second: Effect<R2, E2, B>
 ): Effect<R & R2, E | E2, B> {
-  return zipWith(first, second, snd);
+  return zipWith_(first, second, snd);
 }
 
 /**
@@ -666,7 +673,7 @@ export function ap__<R, E, A, R2, E2, B>(
   iof: Effect<R2, E2, F.FunctionN<[A], B>>
 ): Effect<R & R2, E | E2, B> {
   // Find the apply/thrush operator I'm sure exists in fp-ts somewhere
-  return zipWith(ioa, iof, (a, f) => f(a));
+  return zipWith_(ioa, iof, (a, f) => f(a));
 }
 
 /**
@@ -678,7 +685,7 @@ function ap_<R, E, A, B, R2, E2>(
   iof: Effect<R, E, F.FunctionN<[A], B>>,
   ioa: Effect<R2, E2, A>
 ): Effect<R & R2, E | E2, B> {
-  return zipWith(iof, ioa, (f, a) => f(a));
+  return zipWith_(iof, ioa, (f, a) => f(a));
 }
 
 /**
@@ -1218,8 +1225,8 @@ export function parZipWith<R, R2, E, E2, A, B, C>(
   return raceFold(
     ioa,
     iob,
-    (aExit, bFiber) => zipWith(completed(aExit), bFiber.join, f),
-    (bExit, aFiber) => zipWith(aFiber.join, completed(bExit), f)
+    (aExit, bFiber) => zipWith_(completed(aExit), bFiber.join, f),
+    (bExit, aFiber) => zipWith_(aFiber.join, completed(bExit), f)
   );
 }
 
@@ -1539,6 +1546,17 @@ export interface EffectMonad
     ioa: Effect<R, E, A>,
     finalizer: Effect<R2, E2, unknown>
   ): Effect<R & R2, E | E2, A>;
+
+  zip<R, E, A, R2, E2, B>(
+    first: Effect<R, E, A>,
+    second: Effect<R2, E2, B>
+  ): Effect<R & R2, E | E2, readonly [A, B]>;
+
+  zipWith<R, E, A, R2, E2, B, C>(
+    first: Effect<R, E, A>,
+    second: Effect<R2, E2, B>,
+    f: F.FunctionN<[A, B], C>
+  ): Effect<R & R2, E | E2, C>
 }
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
@@ -1569,7 +1587,9 @@ export const effect: EffectMonad = {
   chainTap: chainTap_,
   alt: alt_,
   onInterrupted: onInterrupted_,
-  onComplete: onComplete_
+  onComplete: onComplete_,
+  zip: zip_,
+  zipWith: zipWith_
 };
 
 export const Do = DoG(effect);
@@ -1626,7 +1646,7 @@ export {
 export function getSemigroup<R, E, A>(s: Sem.Semigroup<A>): Sem.Semigroup<Effect<R, E, A>> {
   return {
     concat(x: Effect<R, E, A>, y: Effect<R, E, A>): Effect<R, E, A> {
-      return zipWith(x, y, s.concat);
+      return zipWith_(x, y, s.concat);
     }
   };
 }
