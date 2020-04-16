@@ -1,4 +1,4 @@
-import { Effect as T, flowP } from "../../src";
+import { T, flowP } from "../../src";
 
 interface A {
   a: {};

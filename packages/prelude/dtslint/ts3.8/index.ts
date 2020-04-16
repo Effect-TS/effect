@@ -1,4 +1,4 @@
-import { Either, pipe, Effect as T, flowF, flowP } from "../../src";
+import { E, pipe, T, flowF, flowP } from "../../src";
 
 const FooURI = "uris/foo";
 interface Foo {
@@ -48,7 +48,7 @@ const a4 = T.raiseError(new AError("mmm"));
 // $ExpectType Effect<AsyncRT, BError, number>
 const b = T.async<BError, number>((resolve) => {
   const timer = setTimeout(() => {
-    resolve(Either.right(1));
+    resolve(E.right(1));
   }, 100);
   return (cb) => {
     clearTimeout(timer);

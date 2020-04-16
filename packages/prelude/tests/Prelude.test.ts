@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { Effect as T, pipe, Either as E, pipeF, Exit as Ex, flowP } from "../src";
+import { T, pipe, E, pipeF, Ex, flowP, A } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
@@ -127,5 +127,17 @@ describe("Prelude", () => {
     );
 
     expect(useFold).toStrictEqual(Ex.raise(1));
+  });
+
+  it("should traverse array", () => {
+    const arr: Array<number> = [0, 1, 2];
+
+    const result = pipe(
+      arr,
+      A.traverse((n) => T.sync(() => n + 1)),
+      T.runUnsafeSync
+    );
+
+    expect(result).toStrictEqual([1, 2, 3]);
   });
 });

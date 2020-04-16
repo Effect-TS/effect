@@ -1,4 +1,4 @@
-import { Service, Effect as T } from "../../src";
+import { Service, T } from "../../src";
 
 interface Foo {
   foo: {

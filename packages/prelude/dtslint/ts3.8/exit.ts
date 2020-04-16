@@ -1,9 +1,9 @@
-import { Exit, pipe, Effect as T } from "../../src";
+import { Ex, pipe, T } from "../../src";
 
 // $ExpectType Effect<{ foo: string; } & { bar: string; }, string | number, string | number>
 export const X = pipe(
-  Exit.raise(1),
-  Exit.fold(
+  Ex.raise(1),
+  Ex.fold(
     () => T.pure(2),
     (n) => T.raiseError(n),
     () => T.access((_: { foo: string }) => _.foo),
@@ -13,8 +13,8 @@ export const X = pipe(
 
 // $ExpectType string | number | boolean | symbol
 export const Y = pipe(
-  Exit.raise(1),
-  Exit.fold(
+  Ex.raise(1),
+  Ex.fold(
     () => 2,
     Symbol,
     () => true,

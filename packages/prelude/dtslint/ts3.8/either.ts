@@ -1,17 +1,9 @@
-import {
-  Either,
-  pipe,
-  Effect as T,
-  Function as F,
-  Stream as S,
-  StreamEither as SE,
-  Managed as M
-} from "../../src";
+import { E, pipe, T, F, S, SE, M } from "../../src";
 
 // $ExpectType Effect<{ bar: string; } & { foo: string; }, number, string>
 export const X = pipe(
-  Either.left(1),
-  Either.fold(
+  E.left(1),
+  E.fold(
     (n) => T.accessM((_: { bar: string }) => T.raiseError(n)),
     (s) => T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`))
   )
@@ -19,8 +11,8 @@ export const X = pipe(
 
 // $ExpectType Stream<{ bar: string; } & { foo: string; }, number, string>
 export const S_ = pipe(
-  Either.left(1),
-  Either.fold(
+  E.left(1),
+  E.fold(
     (n) => S.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
     (s) => S.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
   )
@@ -28,8 +20,8 @@ export const S_ = pipe(
 
 // $ExpectType StreamEither<{ bar: string; } & { foo: string; }, number, string>
 export const SE_ = pipe(
-  Either.left(1),
-  Either.fold(
+  E.left(1),
+  E.fold(
     (n) => SE.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
     (s) => SE.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
   )
@@ -37,8 +29,8 @@ export const SE_ = pipe(
 
 // $ExpectType Managed<{ bar: string; } & { foo: string; }, number, string>
 export const M_ = pipe(
-  Either.left(1),
-  Either.fold(
+  E.left(1),
+  E.fold(
     (n) => M.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
     (s) => M.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
   )
@@ -46,51 +38,46 @@ export const M_ = pipe(
 
 // $ExpectType number
 export const Y = pipe(
-  Either.left(1),
-  Either.fold((n) => n, F.identity)
+  E.left(1),
+  E.fold((n) => n, F.identity)
 );
 
 // $ExpectType Either<never, number>
 export const Z = pipe(
-  Either.left(1),
-  Either.orElse((n) => Either.right(n))
+  E.left(1),
+  E.orElse((n) => E.right(n))
 );
 
 // $ExpectType Either<string, never>
 export const A = pipe(
-  Either.left(1),
-  Either.orElse((_) => Either.left("n"))
+  E.left(1),
+  E.orElse((_) => E.left("n"))
 );
 
 // $ExpectType string
 export const B = pipe(
-  Either.left(""),
-  Either.getOrElse((_) => "n")
+  E.left(""),
+  E.getOrElse((_) => "n")
 );
 
 // $ExpectType Either<string | number, string | symbol>
-export const C = Either.sequenceT(
-  Either.left(1),
-  Either.left(""),
-  Either.right("ok"),
-  Either.right(Symbol())
-);
+export const C = E.sequenceT(E.left(1), E.left(""), E.right("ok"), E.right(Symbol()));
 
 // $ExpectType Either<string | number | symbol, { a: never; b: never; c: string; d: symbol; }>
-export const D = Either.sequenceS({
-  a: Either.left(1),
-  b: Either.left(""),
-  c: Either.right<symbol, string>("ok"),
-  d: Either.right(Symbol())
+export const D = E.sequenceS({
+  a: E.left(1),
+  b: E.left(""),
+  c: E.right<symbol, string>("ok"),
+  d: E.right(Symbol())
 });
 
 // $ExpectType Either<"a" | "b" | "c" | "d" | "e" | "g" | "h", { c: never; } & { d: never; } & { e: never; f: never; } & { g: never; h: never; } & { i: number; } & { j: number; }>
-export const E = Either.Do.do(Either.left("a" as const))
-  .doL(() => Either.left("b" as const))
-  .bindL("c", () => Either.left("c" as const))
-  .bind("d", Either.left("d" as const))
-  .sequenceS({ e: Either.left("e" as const), f: Either.left("e" as const) })
-  .sequenceSL(() => ({ g: Either.left("g" as const), h: Either.left("h" as const) }))
+export const E_ = E.Do.do(E.left("a" as const))
+  .doL(() => E.left("b" as const))
+  .bindL("c", () => E.left("c" as const))
+  .bind("d", E.left("d" as const))
+  .sequenceS({ e: E.left("e" as const), f: E.left("e" as const) })
+  .sequenceSL(() => ({ g: E.left("g" as const), h: E.left("h" as const) }))
   .let("i", 1)
   .letL("j", () => 1)
   .done();

@@ -413,8 +413,26 @@ export const {
 } = pipeable(either);
 
 export const sequence = either.sequence(T.effect);
+export const sequenceManaged = either.sequence(M.managed);
+export const sequenceStream = either.sequence(S.stream);
+export const sequenceStreamEither = either.sequence(SE.streamEither);
 
 export const traverse: <A, R, FE, B>(
   f: (a: A) => T.Effect<R, FE, B>
 ) => <TE>(ta: Either<TE, A>) => T.Effect<R, FE, Either<TE, B>> = (f) => (ta) =>
   either.traverse(T.effect)(ta, f);
+
+export const traverseManaged: <A, R, FE, B>(
+  f: (a: A) => M.Managed<R, FE, B>
+) => <TE>(ta: Either<TE, A>) => M.Managed<R, FE, Either<TE, B>> = (f) => (ta) =>
+  either.traverse(M.managed)(ta, f);
+
+export const traverseStream: <A, R, FE, B>(
+  f: (a: A) => S.Stream<R, FE, B>
+) => <TE>(ta: Either<TE, A>) => S.Stream<T.AsyncRT & R, FE, Either<TE, B>> = (f) => (ta) =>
+  either.traverse(S.stream)(ta, f);
+
+export const traverseStreamEither: <A, R, FE, B>(
+  f: (a: A) => SE.StreamEither<R, FE, B>
+) => <TE>(ta: Either<TE, A>) => SE.StreamEither<T.AsyncRT & R, FE, Either<TE, B>> = (f) => (ta) =>
+  either.traverse(SE.streamEither)(ta, f);
