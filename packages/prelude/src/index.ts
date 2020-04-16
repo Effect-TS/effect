@@ -3,7 +3,14 @@ import {
   freeEnv as Service,
   managed as M,
   stream as S,
-  streameither as SE
+  streameither as SE,
+  concurrentRef as CRef,
+  queue as Q,
+  rec as Rec,
+  retry as RT,
+  ref as Ref,
+  semaphore as Sem,
+  utils as U
 } from "@matechs/effect";
 import * as F from "fp-ts/lib/function";
 import * as eq from "fp-ts/lib/Eq";
@@ -15,13 +22,13 @@ import * as set from "fp-ts/lib/Set";
 import * as tree from "fp-ts/lib/Tree";
 import * as magma from "fp-ts/lib/Magma";
 import * as E from "./either";
-import * as A from "./array";
+import * as A from "fp-ts/lib/Array";
 import * as O from "./option";
 import * as Ex from "./exit";
 
 export { pipe } from "fp-ts/lib/pipeable";
 
-export { T, S, SE, M, O };
+export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U };
 export { Ex };
 export { E };
 export { Service };

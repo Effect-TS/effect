@@ -10,7 +10,8 @@ import {
   function as F,
   option as O,
   pipeable as P,
-  apply as AP
+  apply as AP,
+  tree as TR
 } from "fp-ts";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
@@ -32,6 +33,7 @@ import { isSinkCont, sinkStepLeftover, sinkStepState } from "./step";
 import * as su from "./support";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
+import { Separated } from "fp-ts/lib/Compactable";
 
 export type Source<R, E, A> = T.Effect<R, E, O.Option<A>>;
 
@@ -1731,3 +1733,57 @@ export { su };
 export const Do = DoG(stream);
 export const sequenceS = SS(stream);
 export const sequenceT = ST(stream);
+
+export const sequenceOption = O.option.sequence(stream);
+
+export const traverseOption: <A, R, E, B>(
+  f: (a: A) => Stream<R, E, B>
+) => (ta: O.Option<A>) => Stream<T.AsyncRT & R, E, O.Option<B>> = (f) => (ta) =>
+  O.option.traverse(stream)(ta, f);
+
+export const wiltOption: <A, R, E, B, C>(
+  f: (a: A) => Stream<R, E, Ei.Either<B, C>>
+) => (wa: O.Option<A>) => Stream<T.AsyncRT & R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (
+  wa
+) => O.option.wilt(stream)(wa, f);
+
+export const witherOption: <A, R, E, B>(
+  f: (a: A) => Stream<R, E, O.Option<B>>
+) => (ta: O.Option<A>) => Stream<T.AsyncRT & R, E, O.Option<B>> = (f) => (ta) =>
+  O.option.wither(stream)(ta, f);
+
+export const sequenceEither = Ei.either.sequence(stream);
+
+export const traverseEither: <A, R, FE, B>(
+  f: (a: A) => Stream<R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Stream<T.AsyncRT & R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(stream)(ta, f);
+
+export const sequenceTree = TR.tree.sequence(stream);
+
+export const traverseTree: <A, R, E, B>(
+  f: (a: A) => Stream<R, E, B>
+) => (ta: TR.Tree<A>) => Stream<T.AsyncRT & R, E, TR.Tree<B>> = (f) => (ta) =>
+  TR.tree.traverse(stream)(ta, f);
+
+export const sequenceArray = A.array.sequence(stream);
+
+export const traverseArray: <A, R, E, B>(
+  f: (a: A) => Stream<R, E, B>
+) => (ta: Array<A>) => Stream<T.AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+  A.array.traverse(stream)(ta, f);
+
+export const traverseArrayWithIndex: <A, R, E, B>(
+  f: (i: number, a: A) => Stream<R, E, B>
+) => (ta: Array<A>) => Stream<T.AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+  A.array.traverseWithIndex(stream)(ta, f);
+
+export const wiltArray: <A, R, E, B, C>(
+  f: (a: A) => Stream<R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Stream<T.AsyncRT & R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  A.array.wilt(stream)(wa, f);
+
+export const witherArray: <A, R, E, B>(
+  f: (a: A) => Stream<R, E, O.Option<B>>
+) => (ta: Array<A>) => Stream<T.AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+  A.array.wither(stream)(ta, f);

@@ -12,7 +12,8 @@ import {
   pipeable as P,
   semigroup as Sem,
   taskEither as TE,
-  task as TA
+  task as TA,
+  tree as TR
 } from "fp-ts";
 import * as ex from "./original/exit";
 import { Runtime } from "./original/runtime";
@@ -36,6 +37,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { Erase } from "./erase";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
+import { Separated } from "fp-ts/lib/Compactable";
 
 export enum EffectTag {
   Pure,
@@ -1556,7 +1558,7 @@ export interface EffectMonad
     first: Effect<R, E, A>,
     second: Effect<R2, E2, B>,
     f: F.FunctionN<[A, B], C>
-  ): Effect<R & R2, E | E2, C>
+  ): Effect<R & R2, E | E2, C>;
 }
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
@@ -1831,3 +1833,82 @@ export interface Provider<Environment, Module, E2 = never> {
 }
 
 export { Erase } from "./erase";
+
+export const sequenceOption = Op.option.sequence(effect);
+
+export const traverseOption: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>
+) => (ta: Op.Option<A>) => Effect<R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.traverse(effect)(ta, f);
+
+export const wiltOption: <A, R, E, B, C>(
+  f: (a: A) => Effect<R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Effect<R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (wa) =>
+  Op.option.wilt(effect)(wa, f);
+
+export const witherOption: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Effect<R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.wither(effect)(ta, f);
+
+export const sequenceEither = Ei.either.sequence(effect);
+
+export const traverseEither: <A, R, FE, B>(
+  f: (a: A) => Effect<R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Effect<R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(effect)(ta, f);
+
+export const sequenceTree = TR.tree.sequence(effect);
+
+export const traverseTree: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>
+) => (ta: TR.Tree<A>) => Effect<R, E, TR.Tree<B>> = (f) => (ta) => TR.tree.traverse(effect)(ta, f);
+
+export const sequenceTreePar = TR.tree.sequence(parEffect);
+
+export const traverseTreePar: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>
+) => (ta: TR.Tree<A>) => Effect<AsyncRT & R, E, TR.Tree<B>> = (f) => (ta) =>
+  TR.tree.traverse(parEffect)(ta, f);
+
+export const sequenceArray = Ar.array.sequence(effect);
+
+export const traverseArray: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>
+) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(effect)(ta, f);
+
+export const traverseArrayWithIndex: <A, R, E, B>(
+  f: (i: number, a: A) => Effect<R, E, B>
+) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverseWithIndex(effect)(ta, f);
+
+export const wiltArray: <A, R, E, B, C>(
+  f: (a: A) => Effect<R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Effect<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  Ar.array.wilt(effect)(wa, f);
+
+export const witherArray: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, Op.Option<B>>
+) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(effect)(ta, f);
+
+export const sequenceArrayPar = Ar.array.sequence(parEffect);
+
+export const traverseArrayPar: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, B>
+) => (ta: Array<A>) => Effect<AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverse(parEffect)(ta, f);
+
+export const traverseArrayWithIndexPar: <A, R, E, B>(
+  f: (i: number, a: A) => Effect<R, E, B>
+) => (ta: Array<A>) => Effect<AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverseWithIndex(parEffect)(ta, f);
+
+export const wiltArrayPar: <A, R, E, B, C>(
+  f: (a: A) => Effect<R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Effect<AsyncRT & R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  Ar.array.wilt(parEffect)(wa, f);
+
+export const witherArrayPar: <A, R, E, B>(
+  f: (a: A) => Effect<R, E, Op.Option<B>>
+) => (ta: Array<A>) => Effect<AsyncRT & R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.wither(parEffect)(ta, f);

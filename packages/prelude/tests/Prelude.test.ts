@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { T, pipe, E, pipeF, Ex, flowP, A } from "../src";
+import { T, pipe, E, pipeF, Ex, flowP } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
@@ -134,7 +134,7 @@ describe("Prelude", () => {
 
     const result = pipe(
       arr,
-      A.traverse((n) => T.sync(() => n + 1)),
+      T.traverseArray((n) => T.sync(() => n + 1)),
       T.runUnsafeSync
     );
 
