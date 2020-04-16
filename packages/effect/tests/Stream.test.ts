@@ -906,7 +906,7 @@ describe("Stream", () => {
 
       return pipe(
         Do(T.effect).do(program1).do(program2).do(program3).do(program4).done(),
-        T.provideS({
+        T.provide({
           [mockEnvUri]: {
             foo: "bar"
           }
