@@ -53,7 +53,7 @@ export class FlowP<Need, Prov, AddE> {
   }
   flow<Need2, Prov2, AddE2>(
     g: Effect.Provider<Need2, Prov2, AddE2>
-  ): FlowP<CombineNeeds<Need, Prov2, Need2>, Prov & Prov2, AddE | AddE2> {
+  ): FlowP<CombineNeeds<Need, Prov2, Need2>, Prov & Prov2, AddE2 | AddE> {
     return new FlowP((x) => g(this.f(x)));
   }
   done() {
