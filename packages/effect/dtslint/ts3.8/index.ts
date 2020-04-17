@@ -1,10 +1,10 @@
 import * as T from "../../src/effect";
-import { ATypeOf, EnvOf } from "../../src/overload";
+import { ATypeOf, EnvOf } from "../../src/overloadEff";
 import { Do } from "fp-ts-contrib/lib/Do";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 
-T.pure(1); // $ExpectType Effect<unknown, never, number>
-T.effect.of(1); // $ExpectType Effect<unknown, unknown, number>
+T.pure(1); // $ExpectType Sync<number>
+T.effect.of(1); // $ExpectType Effect<never, unknown, never, number>
 
 const envA = Symbol();
 const envB = Symbol();
@@ -21,22 +21,22 @@ interface EnvB {
   };
 }
 
-const fa = T.accessM(({ [envA]: { foo } }: EnvA) => T.pure(foo)); // $ExpectType Effect<EnvA, never, string>
-const fb = T.accessM(({ [envB]: { foo } }: EnvB) => T.pure(foo)); // $ExpectType Effect<EnvB, never, string>
-const fc = T.accessM(({ [envA]: { foo } }: EnvA) => T.effect.of(foo)); // $ExpectType Effect<EnvA, unknown, string>
-const fd = T.accessM(({ [envB]: { foo } }: EnvB) => T.effect.of(foo)); // $ExpectType Effect<EnvB, unknown, string>
+const fa = T.accessM(({ [envA]: { foo } }: EnvA) => T.pure(foo)); // $ExpectType Effect<never, EnvA, never, string>
+const fb = T.accessM(({ [envB]: { foo } }: EnvB) => T.pure(foo)); // $ExpectType Effect<never, EnvB, never, string>
+const fc = T.accessM(({ [envA]: { foo } }: EnvA) => T.effect.of(foo)); // $ExpectType Effect<never, EnvA, never, string>
+const fd = T.accessM(({ [envB]: { foo } }: EnvB) => T.effect.of(foo)); // $ExpectType Effect<never, EnvB, never, string>
 
-const program = T.effect.chain(fa, (_) => fb); // $ExpectType Effect<EnvA & EnvB, never, string>
-const program2 = T.effect.chain(fa, (_) => fd); // $ExpectType Effect<EnvA & EnvB, unknown, string>
+const program = T.effect.chain(fa, (_) => fb); // $ExpectType Effect<never, EnvA & EnvB, never, string>
+const program2 = T.effect.chain(fa, (_) => fd); // $ExpectType Effect<never, EnvA & EnvB, never, string>
 program2;
-const program3 = T.effect.chain(fc, (_) => fb); // $ExpectType Effect<EnvA & EnvB, unknown, string>
+const program3 = T.effect.chain(fc, (_) => fb); // $ExpectType Effect<never, EnvA & EnvB, never, string>
 program3;
 
 const fae = T.accessM(({ [envA]: { foo } }: EnvA) => T.raiseError(foo));
 
-T.effect.chain(fae, (_) => fb); // $ExpectType Effect<EnvA & EnvB, string, string>
+T.effect.chain(fae, (_) => fb); // $ExpectType Effect<never, EnvA & EnvB, string, string>
 
-T.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<EnvB, never, string>
+T.provide<EnvA>({} as EnvA)(program); // $ExpectType Effect<never, EnvB, never, string>
 
 interface Env1 {
   value: string;
@@ -54,13 +54,11 @@ export type UnionToIntersection2<U> = (U extends any ? (k: U) => void : never) e
   ? I
   : never;
 
-type UString = T.Effect<unknown, unknown, string>;
-type Env1String = T.Effect<Env1, unknown, string>;
-type Env2String = T.Effect<Env2, unknown, string>;
-type NeverString = T.Effect<never, unknown, string>;
-export type R1 = EnvOf<{ a: Env1String; b: NeverString }>; // $ExpectType Env1
+type UString = T.SyncE<unknown, string>;
+type Env1String = T.SyncRE<Env1, unknown, string>;
+type Env2String = T.SyncRE<Env2, unknown, string>;
+type NeverString = T.SyncRE<never, unknown, string>;
 export type R2 = EnvOf<{ a: Env1String; b: UString }>; // $ExpectType Env1
-export type R3 = EnvOf<{ a: NeverString; b: UString }>; // $ExpectType unknown
 export type R4 = EnvOf<{ a: Env1String; b: Env2String }>; // $ExpectType Env1 & Env2
 export type ATypeOfU = ATypeOf<UString>; // $ExpectType string
 export type ATypeOfO = ATypeOf<Env1String>; // $ExpectType string
@@ -68,16 +66,16 @@ export type ATypeOfNever = ATypeOf<NeverString>; // $ExpectType string
 
 const M = T.effect;
 
-// $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: never; b: never; }>
+// $ExpectType Effect<never, Env2 & Env1, string, { x: string; } & { a: never; b: never; }>
 export const doAErr = Do(M)
-  .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
+  .bindL("x", () => T.accessM(({}: Env2) => T.pure("a")))
   .sequenceS({
     a: T.accessM(({}: Env1) => M.throwError("a")),
     b: M.throwError("b")
   })
   .return((r) => r);
 
-// $ExpectType Effect<Env1 & Env2, string | number, { a: never; c: never; b: never; }>
+// $ExpectType Effect<never, Env1 & Env2, string | number, { a: never; c: never; b: never; }>
 export const doSequenceSErrorUnion = Do(M)
   .sequenceS({
     a: T.accessM(({}: Env2) => M.throwError("a")),
@@ -86,7 +84,7 @@ export const doSequenceSErrorUnion = Do(M)
   })
   .return((r) => r);
 
-// $ExpectType Effect<Env1 & Env2, string | number, { a: never; c: never; b: never; }>
+// $ExpectType Effect<never, Env1 & Env2, string | number, { a: never; c: never; b: never; }>
 export const doSequenceSLErrorUnion = Do(M)
   .sequenceSL(() => ({
     a: T.accessM(({}: Env2) => M.throwError("a")),
@@ -95,27 +93,27 @@ export const doSequenceSLErrorUnion = Do(M)
   }))
   .return((r) => r);
 
-// $ExpectType Effect<Env2 & Env1, unknown, { x: string; } & { a: string; b: number; }>
+// $ExpectType Effect<never, Env2 & Env1, never, { x: string; } & { a: string; b: number; }>
 export const doA = Do(M)
-  .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
+  .bindL("x", () => T.accessM(({}: Env2) => T.pure("a")))
   .sequenceS({
-    a: T.accessM(({}: Env1) => M.of("a")),
-    b: M.of(2)
+    a: T.accessM(({}: Env1) => T.pure("a")),
+    b: T.pure(2)
   })
   .return((r) => r);
 
-// $ExpectType Effect<unknown, unknown, { x: string; } & { a: never; b: never; }>
+// $ExpectType Effect<never, unknown, string, { x: string; } & { a: never; b: never; }>
 export const doB = Do(M)
-  .bindL("x", () => M.of("a"))
+  .bindL("x", () => T.pure("a"))
   .sequenceS({
     a: M.throwError("a"),
     b: M.throwError("b")
   })
   .return((r) => r);
 
-// $ExpectType Effect<Env2 & Env1 & Env3, unknown, { x: string; } & { a: never; b: never; }>
+// $ExpectType Effect<never, Env2 & Env1 & Env3, string, { x: string; } & { a: never; b: never; }>
 export const doC = Do(M)
-  .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
+  .bindL("x", () => T.accessM(({}: Env2) => T.pure("a")))
   .sequenceS({
     a: T.accessM(({}: Env1) => M.throwError("a")),
     b: T.accessM(({}: Env3) => M.throwError("b"))
@@ -124,41 +122,41 @@ export const doC = Do(M)
 
 const M2 = T.getValidationM(semigroupString);
 
-// $ExpectType Effect<Env2 & Env1, string, { x: string; } & { a: never; b: never; }>
+// $ExpectType Effect<never, Env2 & Env1, string, { x: string; } & { a: never; b: never; }>
 export const doA2 = Do(M2)
-  .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
+  .bindL("x", () => T.accessM(({}: Env2) => T.pure("a")))
   .sequenceS({
     a: T.accessM(({}: Env1) => M.throwError("a")),
     b: M.throwError("b")
   })
   .return((r) => r);
 
-// $ExpectType Effect<unknown, string, { x: string; } & { a: never; b: never; }>
+// $ExpectType Effect<never, unknown, string, { x: string; } & { a: never; b: never; }>
 export const doB2 = Do(M2)
-  .bindL("x", () => M.of("a"))
+  .bindL("x", () => T.pure("a"))
   .sequenceS({
     a: M.throwError("a"),
     b: M.throwError("b")
   })
   .return((r) => r);
 
-// $ExpectType Effect<Env2 & Env1 & Env3, string, { x: string; } & { a: never; b: never; }>
+// $ExpectType Effect<never, Env2 & Env1 & Env3, string, { x: string; } & { a: never; b: never; }>
 export const doC2 = Do(M2)
-  .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
+  .bindL("x", () => T.accessM(({}: Env2) => T.pure("a")))
   .sequenceS({
     a: T.accessM(({}: Env1) => M.throwError("a")),
     b: T.accessM(({}: Env3) => M.throwError("b"))
   })
   .return((r) => r);
 
-// $ExpectType Effect<unknown, never, string | number>
+// $ExpectType Effect<never, unknown, never, string | number>
 T.effect.foldExit(
   T.raiseError(""),
   () => T.pure("1"),
   () => T.pure(1)
 );
 
-// $ExpectType Effect<unknown, never, string | number>
+// $ExpectType AsyncRE<unknown, never, string | number>
 T.shiftAfter(
   T.effect.foldExit(
     T.raiseError(""),

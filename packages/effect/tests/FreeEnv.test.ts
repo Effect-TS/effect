@@ -7,7 +7,7 @@ const fnEnv: unique symbol = Symbol();
 
 const fnEnvM_ = F.define({
   [fnEnv]: {
-    mapString: F.fn<(s: string) => T.UIO<string>>()
+    mapString: F.fn<(s: string) => T.Sync<string>>()
   }
 });
 
@@ -29,8 +29,8 @@ const consoleEnv: unique symbol = Symbol();
 
 const consoleM = F.define({
   [consoleEnv]: {
-    log: F.fn<(s: string) => T.RIO<FnEnv, void>>(),
-    get: F.cn<T.UIO<string[]>>()
+    log: F.fn<(s: string) => T.SyncR<FnEnv, void>>(),
+    get: F.cn<T.Sync<string[]>>()
   }
 });
 
@@ -44,7 +44,7 @@ const prefixEnv: unique symbol = Symbol();
 
 const prefixM = F.define({
   [prefixEnv]: {
-    accessPrefix: F.cn<T.UIO<string>>()
+    accessPrefix: F.cn<T.Sync<string>>()
   }
 });
 
@@ -56,7 +56,7 @@ const configEnv: unique symbol = Symbol();
 
 const configM = F.define({
   [configEnv]: {
-    accessConfig: F.cn<T.UIO<string>>()
+    accessConfig: F.cn<T.Sync<string>>()
   }
 });
 
@@ -96,7 +96,7 @@ const consoleI2 = F.implement(consoleM)({
   }
 });
 
-const program: T.RIO<Console & FnEnv, string[]> = pipe(
+const program: T.SyncR<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain((_) => get)
 );

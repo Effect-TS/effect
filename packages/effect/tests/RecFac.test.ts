@@ -37,7 +37,7 @@ const nil: Ex = R.fix({
   _tag: "nil"
 });
 
-const mapper: R.TMap<URI, unknown, never> = (ta, f) => {
+const mapper: R.TMap<URI, never, unknown, never> = (ta, f) => {
   switch (ta._tag) {
     case "nil":
       return T.pure(ta);
@@ -52,7 +52,7 @@ const mapper: R.TMap<URI, unknown, never> = (ta, f) => {
 
 const ex = cons(BigInt(2), cons(BigInt(1), cons(BigInt(1), nil)));
 
-const show: R.Algebra<URI, unknown, never, string> = (ex) => {
+const show: R.Algebra<URI, never, unknown, never, string> = (ex) => {
   switch (ex._tag) {
     case "cons":
       return T.pure(ex.tail.length > 0 ? `(${ex.head}, ${ex.tail})` : `(${ex.head})`);
@@ -61,7 +61,7 @@ const show: R.Algebra<URI, unknown, never, string> = (ex) => {
   }
 };
 
-const mul: R.Algebra<URI, unknown, never, bigint> = (ex) => {
+const mul: R.Algebra<URI, never, unknown, never, bigint> = (ex) => {
   switch (ex._tag) {
     case "cons":
       return T.pure(ex.head * ex.tail);
@@ -70,7 +70,7 @@ const mul: R.Algebra<URI, unknown, never, bigint> = (ex) => {
   }
 };
 
-const gen: R.Coalgebra<URI, unknown, never, bigint> = (n) => {
+const gen: R.Coalgebra<URI, never, unknown, never, bigint> = (n) => {
   switch (n) {
     case BigInt(-1):
       return T.pure({

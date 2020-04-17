@@ -78,7 +78,7 @@ const makeInterruptFrame = (
 });
 
 export interface DriverSync<E, A> {
-  start(run: T.Effect<T.NoEnv, E, A>): E.Either<Error, Exit<E, A>>;
+  start(run: T.SyncE<E, A>): E.Either<Error, Exit<E, A>>;
 }
 
 export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
@@ -305,7 +305,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     }
   }
 
-  start(run: T.Effect<{}, E, A>): E.Either<Error, Exit<E, A>> {
+  start(run: T.SyncRE<{}, E, A>): E.Either<Error, Exit<E, A>> {
     this.loop(run as any);
 
     if (this.completed !== null) {

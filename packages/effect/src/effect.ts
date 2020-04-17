@@ -1,102 +1,59 @@
-/*
-  based on: https://github.com/rzeigler/waveguide/blob/master/src/wave.ts
- */
 import {
-  array as Ar,
-  bifunctor as Bif,
   either as Ei,
   function as F,
-  functor as Fun,
-  monoid as Mon,
   option as Op,
-  pipeable as P,
-  semigroup as Sem,
   task as TA,
   taskEither as TE,
+  array as Ar,
+  semigroup as Sem,
+  monoid as Mon,
   tree as TR
 } from "fp-ts";
+import { pipeable, pipe } from "fp-ts/lib/pipeable";
+import * as ex from "./original/exit";
+import { Runtime } from "./original/runtime";
+import {
+  Monad4E,
+  MonadThrow4E,
+  Alt4E,
+  Monad4EC,
+  MonadThrow4EC,
+  Alt4EC,
+  Monad4EP,
+  MonadThrow4EP
+} from "./overloadEff";
+import { Bifunctor4 } from "fp-ts/lib/Bifunctor";
+import { Functor4 } from "fp-ts/lib/Functor";
+import { DriverSyncImpl } from "./driverSync";
+import { Driver, DriverImpl } from "./driver";
+import { fst, snd, tuple2 } from "./original/support/util";
+import { Effect, EffectTag, Provider } from "./defs";
+import { Ref, makeRef } from "./ref";
+import { Deferred, makeDeferred } from "./deferred";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Separated } from "fp-ts/lib/Compactable";
-import { pipe } from "fp-ts/lib/pipeable";
-import { Deferred, makeDeferred } from "./deferred";
-import { Driver, DriverImpl } from "./driver";
-import { DriverSyncImpl } from "./driverSync";
-import * as ex from "./original/exit";
-import { Runtime } from "./original/runtime";
-import { fst, snd, tuple2 } from "./original/support/util";
-import { Alt3E, Alt3EC, Monad3E, Monad3EC, MonadThrow3E, MonadThrow3EC } from "./overload";
-import { makeRef, Ref } from "./ref";
 
-export enum EffectTag {
-  Pure,
-  PureOption,
-  PureEither,
-  Raised,
-  Completed,
-  Suspended,
-  Async,
-  Chain,
-  Collapse,
-  InterruptibleRegion,
-  AccessInterruptible,
-  AccessRuntime,
-  AccessEnv,
-  ProvideEnv,
-  Map
-}
+export { Effect, EffectTag, Provider };
 
-export type NoEnv = unknown;
-export type NoErr = never;
+export type Async<A> = Effect<unknown, unknown, never, A>;
+export type AsyncE<E, A> = Effect<unknown, unknown, E, A>;
+export type AsyncR<R, A> = Effect<unknown, R, never, A>;
+export type AsyncRE<R, E, A> = Effect<unknown, R, E, A>;
 
-export const noEnv: {} = {};
+export type Sync<A> = Effect<never, unknown, never, A>;
+export type SyncE<E, A> = Effect<never, unknown, E, A>;
+export type SyncR<R, A> = Effect<never, R, never, A>;
+export type SyncRE<R, E, A> = Effect<never, R, E, A>;
 
-/**
- * A description of an effect to perform
- */
-export interface Effect<R, E, A> {
-  _tag: EffectTag;
+// WIP
+/* istanbul ignore file */
 
-  _TAG: () => "Effect";
-  _E: () => E;
-  _A: () => A;
-  _R: (_: R) => void;
-}
-
-export interface UIO<A> extends Effect<unknown, never, A> {}
-export interface EIO<E, A> extends Effect<unknown, E, A> {}
-export interface RIO<R, A> extends Effect<R, never, A> {}
-
-export class Implementation<R, E, A> implements Effect<R, E, A> {
-  static fromEffect<R, E, A>(eff: Effect<R, E, A>): Implementation<R, E, A> {
-    return eff as any;
-  }
-
-  constructor(
-    readonly _tag: EffectTag,
-    readonly f0: any = undefined,
-    readonly f1: any = undefined,
-    readonly f2: any = undefined
-  ) {}
-
-  /* istanbul ignore next */
-  _TAG(): "Effect" {
-    return undefined as any;
-  }
-
-  /* istanbul ignore next */
-  _A(): A {
-    return undefined as any;
-  }
-
-  /* istanbul ignore next */
-  _E(): E {
-    return undefined as any;
-  }
-
-  /* istanbul ignore next */
-  _R(_: R): void {
-    return undefined as any;
+export const URI = "matechs/Effect";
+export type URI = typeof URI;
+declare module "fp-ts/lib/HKT" {
+  interface URItoKind4<S, R, E, A> {
+    [URI]: Effect<S, R, E, A>;
   }
 }
 
@@ -203,11 +160,49 @@ export interface IAccessEnv<R = unknown> {
   readonly f0: R;
 }
 
+export class Implementation<S, R, E, A> implements Effect<S, R, E, A> {
+  static fromEffect<S, R, E, A>(eff: Effect<S, R, E, A>): Implementation<S, R, E, A> {
+    return eff as any;
+  }
+
+  constructor(
+    readonly _tag: EffectTag,
+    readonly f0: any = undefined,
+    readonly f1: any = undefined,
+    readonly f2: any = undefined
+  ) {}
+
+  /* istanbul ignore next */
+  _TAG(): "Effect" {
+    return undefined as any;
+  }
+
+  /* istanbul ignore next */
+  _A(): A {
+    return undefined as any;
+  }
+
+  /* istanbul ignore next */
+  _E(): E {
+    return undefined as any;
+  }
+
+  /* istanbul ignore next */
+  _S(): S {
+    return undefined as any;
+  }
+
+  /* istanbul ignore next */
+  _R(_: R): void {
+    return undefined as any;
+  }
+}
+
 /**
  * An IO has succeeded
  * @param a the value
  */
-export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
+export function pure<A>(a: A): Sync<A> {
   return new Implementation(EffectTag.Pure as const, a);
 }
 
@@ -217,7 +212,7 @@ export function pure<A>(a: A): Effect<NoEnv, NoErr, A> {
  * Prefer raiseError or raiseAbort
  * @param e
  */
-export function raised<E, A = never>(e: ex.Cause<E>): Effect<NoEnv, E, A> {
+export function raised<E, A = never>(e: ex.Cause<E>): SyncE<E, A> {
   return new Implementation(EffectTag.Raised as const, e);
 }
 
@@ -225,7 +220,7 @@ export function raised<E, A = never>(e: ex.Cause<E>): Effect<NoEnv, E, A> {
  * An IO that is failed with a checked error
  * @param e
  */
-export function raiseError<E, A = never>(e: E): Effect<NoEnv, E, A> {
+export function raiseError<E, A = never>(e: E): SyncE<E, A> {
   return raised(ex.raise(e));
 }
 
@@ -233,20 +228,20 @@ export function raiseError<E, A = never>(e: E): Effect<NoEnv, E, A> {
  * An IO that is failed with an unchecked error
  * @param u
  */
-export function raiseAbort(u: unknown): Effect<NoEnv, NoErr, never> {
+export function raiseAbort(u: unknown): Sync<never> {
   return raised(ex.abort(u));
 }
 
 /**
  * An IO that is already interrupted
  */
-export const raiseInterrupt: Effect<NoEnv, NoErr, never> = raised(ex.interrupt);
+export const raiseInterrupt: Sync<never> = raised(ex.interrupt);
 
 /**
  * An IO that is completed with the given exit
  * @param exit
  */
-export function completed<E, A>(exit: ex.Exit<E, A>): Effect<NoEnv, E, A> {
+export function completed<E, A>(exit: ex.Exit<E, A>): SyncE<E, A> {
   return new Implementation(EffectTag.Completed as const, exit);
 }
 
@@ -256,7 +251,7 @@ export function completed<E, A>(exit: ex.Exit<E, A>): Effect<NoEnv, E, A> {
  * When evaluated this IO will run the given thunk to produce the next IO to execute.
  * @param thunk
  */
-export function suspended<R, E, A>(thunk: F.Lazy<Effect<R, E, A>>): Effect<R, E, A> {
+export function suspended<S, R, E, A>(thunk: F.Lazy<Effect<S, R, E, A>>): Effect<S, R, E, A> {
   return new Implementation(EffectTag.Suspended as const, thunk);
 }
 
@@ -266,11 +261,11 @@ export function suspended<R, E, A>(thunk: F.Lazy<Effect<R, E, A>>): Effect<R, E,
  * When evaluated the this will produce a value or throw
  * @param thunk
  */
-export function sync<E = NoErr, A = unknown>(thunk: F.Lazy<A>): Effect<NoEnv, E, A> {
+export function sync<A>(thunk: F.Lazy<A>): Sync<A> {
   return suspended(() => pure(thunk()));
 }
 
-export function trySync<E = unknown, A = unknown>(thunk: F.Lazy<A>): Effect<NoEnv, E, A> {
+export function trySync<A = unknown>(thunk: F.Lazy<A>): SyncE<unknown, A> {
   return suspended(() => {
     try {
       return pure(thunk());
@@ -280,9 +275,9 @@ export function trySync<E = unknown, A = unknown>(thunk: F.Lazy<A>): Effect<NoEn
   });
 }
 
-export function trySyncMap<E = unknown>(
+export function trySyncMap<E>(
   onError: (e: unknown) => E
-): <A = unknown>(thunk: F.Lazy<A>) => Effect<NoEnv, E, A> {
+): <A = unknown>(thunk: F.Lazy<A>) => SyncE<E, A> {
   return (thunk) =>
     suspended(() => {
       try {
@@ -301,7 +296,7 @@ export function trySyncMap<E = unknown>(
  * in uninterruptible
  * @param op
  */
-export function async<E, A>(op: AsyncFn<E, A>): Effect<unknown, E, A> {
+export function async<E, A>(op: AsyncFn<E, A>): AsyncE<E, A> {
   return new Implementation(EffectTag.Async as const, op);
 }
 
@@ -313,7 +308,7 @@ export function async<E, A>(op: AsyncFn<E, A>): Effect<unknown, E, A> {
  */
 export function asyncTotal<A>(
   op: F.FunctionN<[F.FunctionN<[A], void>], AsyncCancelContFn>
-): Effect<unknown, NoErr, A> {
+): Async<A> {
   return async((callback) => op((a) => callback(Ei.right(a))));
 }
 
@@ -322,10 +317,10 @@ export function asyncTotal<A>(
  * @param inner
  * @param flag
  */
-export function interruptibleRegion<R, E, A>(
-  inner: Effect<R, E, A>,
+export function interruptibleRegion<S, R, E, A>(
+  inner: Effect<S, R, E, A>,
   flag: boolean
-): Effect<R, E, A> {
+): Effect<S, R, E, A> {
   return new Implementation(EffectTag.InterruptibleRegion as const, flag, inner);
 }
 
@@ -334,10 +329,10 @@ export function interruptibleRegion<R, E, A>(
  * @param inner
  * @param bind
  */
-function chain_<R, E, A, R2, E2, B>(
-  inner: Effect<R, E, A>,
-  bind: F.FunctionN<[A], Effect<R2, E2, B>>
-): Effect<R & R2, E | E2, B> {
+function chain_<S, R, E, A, S2, R2, E2, B>(
+  inner: Effect<S, R, E, A>,
+  bind: F.FunctionN<[A], Effect<S2, R2, E2, B>>
+): Effect<S | S2, R & R2, E | E2, B> {
   return inner._tag === EffectTag.Pure
     ? bind((inner as any).f0)
     : new Implementation(EffectTag.Chain as const, inner, bind);
@@ -347,25 +342,25 @@ export function chainOption<E>(
   onEmpty: F.Lazy<E>
 ): <A, B>(
   bind: F.FunctionN<[A], Op.Option<B>>
-) => <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+) => <S, R, E2>(eff: Effect<S, R, E2, A>) => Effect<S, R, E | E2, B> {
   return (bind) => (inner) => chain_(inner, (a) => encaseOption(bind(a), onEmpty));
 }
 
 export function chainEither<A, E, B>(
   bind: F.FunctionN<[A], Ei.Either<E, B>>
-): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+): <S, R, E2>(eff: Effect<S, R, E2, A>) => Effect<S, R, E | E2, B> {
   return (inner) => chain_(inner, (a) => encaseEither(bind(a)));
 }
 
 export function chainTask<A, B>(
   bind: F.FunctionN<[A], TA.Task<B>>
-): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E2, B> {
+): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E2, B> {
   return (inner) => chain_(inner, (a) => encaseTask(bind(a)));
 }
 
 export function chainTaskEither<A, E, B>(
   bind: F.FunctionN<[A], TE.TaskEither<E, B>>
-): <R, E2>(eff: Effect<R, E2, A>) => Effect<R, E | E2, B> {
+): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E | E2, B> {
   return (inner) => chain_(inner, (a) => encaseTaskEither(bind(a)));
 }
 
@@ -373,7 +368,7 @@ export function chainTaskEither<A, E, B>(
  * Lift an Either into an IO
  * @param e
  */
-export function encaseEither<E, A>(e: Ei.Either<E, A>): Effect<NoEnv, E, A> {
+export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncE<E, A> {
   return new Implementation(EffectTag.PureEither, e);
 }
 
@@ -382,7 +377,7 @@ export function encaseEither<E, A>(e: Ei.Either<E, A>): Effect<NoEnv, E, A> {
  * @param o
  * @param onError
  */
-export function encaseOption<E, A>(o: Op.Option<A>, onError: F.Lazy<E>): Effect<NoEnv, E, A> {
+export function encaseOption<E, A>(o: Op.Option<A>, onError: F.Lazy<E>): SyncE<E, A> {
   return new Implementation(EffectTag.PureOption, o, onError);
 }
 
@@ -391,17 +386,17 @@ export function encaseOption<E, A>(o: Op.Option<A>, onError: F.Lazy<E>): Effect<
  * @param failure
  * @param success
  */
-export function foldExit<E1, RF, E2, A1, E3, A2, RS>(
-  failure: F.FunctionN<[ex.Cause<E1>], Effect<RF, E2, A2>>,
-  success: F.FunctionN<[A1], Effect<RS, E3, A2>>
-): <R>(io: Effect<R, E1, A1>) => Effect<RF & RS & R, E2 | E3, A2> {
+export function foldExit<S1, E1, RF, E2, A1, S2, E3, A2, RS>(
+  failure: F.FunctionN<[ex.Cause<E1>], Effect<S1, RF, E2, A2>>,
+  success: F.FunctionN<[A1], Effect<S2, RS, E3, A2>>
+): <S, R>(io: Effect<S, R, E1, A1>) => Effect<S | S1 | S2, RF & RS & R, E2 | E3, A2> {
   return (io) => foldExit_(io, failure, success);
 }
 
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = new Implementation(
+export const accessInterruptible: Sync<boolean> = new Implementation(
   EffectTag.AccessInterruptible as const,
   F.identity
 );
@@ -409,7 +404,7 @@ export const accessInterruptible: Effect<NoEnv, NoErr, boolean> = new Implementa
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = new Implementation(
+export const accessRuntime: Sync<Runtime> = new Implementation(
   EffectTag.AccessRuntime as const,
   F.identity
 );
@@ -418,21 +413,23 @@ export const accessRuntime: Effect<NoEnv, NoErr, Runtime> = new Implementation(
  * Access the runtime then provide it to the provided function
  * @param f
  */
-export function withRuntime<E, A>(
-  f: F.FunctionN<[Runtime], Effect<NoEnv, E, A>>
-): Effect<NoEnv, E, A> {
-  return chain_(accessRuntime as Effect<NoEnv, E, Runtime>, f);
+export function withRuntime<S, R, E, A>(
+  f: F.FunctionN<[Runtime], Effect<S, R, E, A>>
+): Effect<S, R, E, A> {
+  return chain_(accessRuntime, f);
 }
 
-export function accessEnvironment<R>(): Effect<R, NoErr, R> {
+export function accessEnvironment<R>(): SyncR<R, R> {
   return new Implementation(EffectTag.AccessEnv);
 }
 
-export function accessM<R, R2, E, A>(f: F.FunctionN<[R], Effect<R2, E, A>>): Effect<R & R2, E, A> {
+export function accessM<S, R, R2, E, A>(
+  f: F.FunctionN<[R], Effect<S, R2, E, A>>
+): Effect<S, R & R2, E, A> {
   return chain_(accessEnvironment<R>(), f);
 }
 
-export function access<R, A, E = NoErr>(f: F.FunctionN<[R], A>): Effect<R, E, A> {
+export function access<R, A>(f: F.FunctionN<[R], A>): SyncR<R, A> {
   return map_(accessEnvironment<R>(), f);
 }
 
@@ -447,24 +444,26 @@ export function provide<R>(
   r: R,
   inverted: "regular" | "inverted" = "regular"
 ): Provider<unknown, R, never> {
-  return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2, E, A> =>
+  return <S, R2, E, A>(eff: Effect<S, R2 & R, E, A>): Effect<S, R2, E, A> =>
     provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff);
 }
 
 /**
  * Like provide where environment is resolved monadically
  */
-export function provideM<R, R3, E2>(
-  rm: Effect<R3, E2, R>,
+export function provideM<S, R, R3, E2>(
+  rm: Effect<S, R3, E2, R>,
   inverted: "regular" | "inverted" = "regular"
-): Provider<R3, R, E2> {
-  return <R2, E, A>(eff: Effect<R2 & R, E, A>): Effect<R2 & R3, E | E2, A> =>
+): Provider<R3, R, E2, S> {
+  return <S2, R2, E, A>(eff: Effect<S2, R2 & R, E, A>): Effect<S | S2, R2 & R3, E | E2, A> =>
     chain_(rm, (r) =>
       provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)
     );
 }
 
-const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(ma: Effect<R, E, A>): Effect<R2, E, A> =>
+const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
+  ma: Effect<S, R, E, A>
+): Effect<S, R2, E, A> =>
   accessM((r2: R2) => new Implementation(EffectTag.ProvideEnv as const, ma, f(r2)));
 
 /**
@@ -472,7 +471,7 @@ const provideR = <R2, R>(f: (r2: R2) => R) => <E, A>(ma: Effect<R, E, A>): Effec
  * @param io
  * @param f
  */
-function map_<R, E, A, B>(base: Effect<R, E, A>, f: F.FunctionN<[A], B>): Effect<R, E, B> {
+function map_<S, R, E, A, B>(base: Effect<S, R, E, A>, f: F.FunctionN<[A], B>): Effect<S, R, E, B> {
   return base._tag === EffectTag.Pure
     ? new Implementation(EffectTag.Pure as const, f(((base as any) as Pure<any>).f0))
     : new Implementation(EffectTag.Map as const, base, f);
@@ -482,13 +481,15 @@ function map_<R, E, A, B>(base: Effect<R, E, A>, f: F.FunctionN<[A], B>): Effect
  * Lift a function on values to a function on IOs
  * @param f
  */
-export function lift<A, B>(f: F.FunctionN<[A], B>): <R, E>(io: Effect<R, E, A>) => Effect<R, E, B> {
-  return <R, E>(io: Effect<R, E, A>) => map_(io, f);
+export function lift<A, B>(
+  f: F.FunctionN<[A], B>
+): <S, R, E>(io: Effect<S, R, E, A>) => Effect<S, R, E, B> {
+  return (io) => map_(io, f);
 }
 
 export function liftEither<A, E, B>(
   f: F.FunctionN<[A], Ei.Either<E, B>>
-): F.FunctionN<[A], EIO<E, B>> {
+): F.FunctionN<[A], SyncE<E, B>> {
   return (a) => suspended(() => fromEither(f(a)));
 }
 
@@ -497,7 +498,7 @@ export function liftEither<A, E, B>(
  * @param io
  * @param b
  */
-export function as<R, E, A, B>(io: Effect<R, E, A>, b: B): Effect<R, E, B> {
+export function as<S, R, E, A, B>(io: Effect<S, R, E, A>, b: B): Effect<S, R, E, B> {
   return map_(io, F.constant(b));
 }
 
@@ -505,41 +506,41 @@ export function as<R, E, A, B>(io: Effect<R, E, A>, b: B): Effect<R, E, B> {
  * Curried form of as
  * @param b
  */
-export function to<B>(b: B): <R, E, A>(io: Effect<R, E, A>) => Effect<R, E, B> {
+export function to<B>(b: B): <S, R, E, A>(io: Effect<S, R, E, A>) => Effect<S, R, E, B> {
   return (io) => as(io, b);
 }
 
-export function chainTap<R, E, A>(
-  bind: F.FunctionN<[A], Effect<R, E, unknown>>
-): <R2, E2>(inner: Effect<R2, E2, A>) => Effect<R & R2, E | E2, A> {
+export function chainTap<S, R, E, A>(
+  bind: F.FunctionN<[A], Effect<S, R, E, unknown>>
+): <S2, R2, E2>(inner: Effect<S2, R2, E2, A>) => Effect<S | S2, R & R2, E | E2, A> {
   return (inner) => chainTap_(inner, bind);
 }
 
-const chainTap_ = <R, E, A, R2, E2>(
-  inner: Effect<R, E, A>,
-  bind: F.FunctionN<[A], Effect<R2, E2, unknown>>
-): Effect<R & R2, E | E2, A> => chain_(inner, (a) => as(bind(a), a));
+const chainTap_ = <S, R, E, A, S2, R2, E2>(
+  inner: Effect<S, R, E, A>,
+  bind: F.FunctionN<[A], Effect<S2, R2, E2, unknown>>
+): Effect<S | S2, R & R2, E | E2, A> => chain_(inner, (a) => as(bind(a), a));
 
 /**
  * Map the value produced by an IO to void
  * @param io
  */
-export function asUnit<R, E, A>(io: Effect<R, E, A>): Effect<R, E, void> {
+export function asUnit<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, void> {
   return as(io, undefined);
 }
 
 /**
  * An IO that succeeds immediately with void
  */
-export const unit: Effect<NoEnv, NoErr, void> = pure(undefined);
+export const unit: Sync<void> = pure(undefined);
 
 /**
  * Curriend form of chainError
  * @param f
  */
-export function chainError<R, E1, E2, A>(
-  f: F.FunctionN<[E1], Effect<R, E2, A>>
-): <A2, R2>(rio: Effect<R2, E1, A2>) => Effect<R & R2, E2, A | A2> {
+export function chainError<S, R, E1, E2, A>(
+  f: F.FunctionN<[E1], Effect<S, R, E2, A>>
+): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f);
 }
 
@@ -549,15 +550,15 @@ export function chainError<R, E1, E2, A>(
  */
 export function mapError<E1, E2>(
   f: F.FunctionN<[E1], E2>
-): <R, A>(io: Effect<R, E1, A>) => Effect<R, E2, A> {
-  return <R, A>(io: Effect<R, E1, A>) => mapLeft_(io, f);
+): <S, R, A>(io: Effect<S, R, E1, A>) => Effect<S, R, E2, A> {
+  return (io) => mapLeft_(io, f);
 }
 
-function bimap_<R, E1, E2, A, B>(
-  io: Effect<R, E1, A>,
+function bimap_<S, R, E1, E2, A, B>(
+  io: Effect<S, R, E1, A>,
   leftMap: F.FunctionN<[E1], E2>,
   rightMap: F.FunctionN<[A], B>
-): Effect<R, E2, B> {
+): Effect<S, R, E2, B> {
   return foldExit_(
     io,
     (cause) => (cause._tag === "Raise" ? raiseError(leftMap(cause.error)) : completed(cause)),
@@ -571,18 +572,18 @@ function bimap_<R, E1, E2, A, B>(
  * @param second
  * @param f
  */
-function zipWith_<R, E, A, R2, E2, B, C>(
-  first: Effect<R, E, A>,
-  second: Effect<R2, E2, B>,
+function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
+  first: Effect<S, R, E, A>,
+  second: Effect<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): Effect<R & R2, E | E2, C> {
+): Effect<S | S2, R & R2, E | E2, C> {
   return chain_(first, (a) => map_(second, (b) => f(a, b)));
 }
 
-export function zipWith<A, R2, E2, B, C>(
-  second: Effect<R2, E2, B>,
+export function zipWith<S, A, R2, E2, B, C>(
+  second: Effect<S, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): <R, E>(first: Effect<R, E, A>) => Effect<R & R2, E | E2, C> {
+): <S2, R, E>(first: Effect<S2, R, E, A>) => Effect<S | S2, R & R2, E | E2, C> {
   return (first) => zipWith_(first, second, f);
 }
 
@@ -591,16 +592,16 @@ export function zipWith<A, R2, E2, B, C>(
  * @param first
  * @param second
  */
-function zip_<R, E, A, R2, E2, B>(
-  first: Effect<R, E, A>,
-  second: Effect<R2, E2, B>
-): Effect<R & R2, E | E2, readonly [A, B]> {
+function zip_<S, R, E, A, S2, R2, E2, B>(
+  first: Effect<S, R, E, A>,
+  second: Effect<S2, R2, E2, B>
+): Effect<S | S2, R & R2, E | E2, readonly [A, B]> {
   return zipWith_(first, second, tuple2);
 }
 
-export function zip<R2, E2, B>(
-  second: Effect<R2, E2, B>
-): <R, E, A>(first: Effect<R, E, A>) => Effect<R & R2, E | E2, readonly [A, B]> {
+export function zip<S2, R2, E2, B>(
+  second: Effect<S2, R2, E2, B>
+): <S, R, E, A>(first: Effect<S, R, E, A>) => Effect<S | S2, R & R2, E | E2, readonly [A, B]> {
   return (first) => zip_(first, second);
 }
 
@@ -609,10 +610,10 @@ export function zip<R2, E2, B>(
  * @param first
  * @param second
  */
-export function applyFirst<R, E, A, R2, E2, B>(
-  first: Effect<R, E, A>,
-  second: Effect<R2, E2, B>
-): Effect<R & R2, E | E2, A> {
+export function applyFirst<S, R, E, A, S2, R2, E2, B>(
+  first: Effect<S, R, E, A>,
+  second: Effect<S2, R2, E2, B>
+): Effect<S | S2, R & R2, E | E2, A> {
   return zipWith_(first, second, fst);
 }
 
@@ -621,10 +622,10 @@ export function applyFirst<R, E, A, R2, E2, B>(
  * @param first
  * @param second
  */
-export function applySecond<R, E, A, R2, E2, B>(
-  first: Effect<R, E, A>,
-  second: Effect<R2, E2, B>
-): Effect<R & R2, E | E2, B> {
+export function applySecond<S, R, E, A, S2, R2, E2, B>(
+  first: Effect<S, R, E, A>,
+  second: Effect<S2, R2, E2, B>
+): Effect<S | S2, R & R2, E | E2, B> {
   return zipWith_(first, second, snd);
 }
 
@@ -634,10 +635,10 @@ export function applySecond<R, E, A, R2, E2, B>(
  * @param first
  * @param second
  */
-export function applySecondL<R, E, A, R2, E2, B>(
-  first: Effect<R, E, A>,
-  second: F.Lazy<Effect<R2, E2, B>>
-): Effect<R & R2, E | E2, B> {
+export function applySecondL<S, R, E, A, S2, R2, E2, B>(
+  first: Effect<S, R, E, A>,
+  second: F.Lazy<Effect<S2, R2, E2, B>>
+): Effect<S | S2, R & R2, E | E2, B> {
   return chain_(first, second);
 }
 
@@ -646,10 +647,10 @@ export function applySecondL<R, E, A, R2, E2, B>(
  * @param ioa
  * @param iof
  */
-export function ap__<R, E, A, R2, E2, B>(
-  ioa: Effect<R, E, A>,
-  iof: Effect<R2, E2, F.FunctionN<[A], B>>
-): Effect<R & R2, E | E2, B> {
+export function ap__<S, R, E, A, S2, R2, E2, B>(
+  ioa: Effect<S, R, E, A>,
+  iof: Effect<S2, R2, E2, F.FunctionN<[A], B>>
+): Effect<S | S2, R & R2, E | E2, B> {
   // Find the apply/thrush operator I'm sure exists in fp-ts somewhere
   return zipWith_(ioa, iof, (a, f) => f(a));
 }
@@ -659,10 +660,10 @@ export function ap__<R, E, A, R2, E2, B>(
  * @param iof
  * @param ioa
  */
-function ap_<R, E, A, B, R2, E2>(
-  iof: Effect<R, E, F.FunctionN<[A], B>>,
-  ioa: Effect<R2, E2, A>
-): Effect<R & R2, E | E2, B> {
+function ap_<S, R, E, A, B, S2, R2, E2>(
+  iof: Effect<S, R, E, F.FunctionN<[A], B>>,
+  ioa: Effect<S2, R2, E2, A>
+): Effect<S | S2, R & R2, E | E2, B> {
   return zipWith_(iof, ioa, (f, a) => f(a));
 }
 
@@ -670,7 +671,7 @@ function ap_<R, E, A, B, R2, E2>(
  * Flip the error and success channels in an IO
  * @param io
  */
-export function flip<R, E, A>(io: Effect<R, E, A>): Effect<R, A, E> {
+export function flip<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, A, E> {
   return foldExit_(
     io,
     (error) => (error._tag === "Raise" ? pure(error.error) : completed(error)),
@@ -682,7 +683,7 @@ export function flip<R, E, A>(io: Effect<R, E, A>): Effect<R, A, E> {
  * Execute the provided IO forever (or until it errors)
  * @param io
  */
-export function forever<R, E, A>(io: Effect<R, E, A>): Effect<R, E, never> {
+export function forever<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, never> {
   return chain_(io, () => forever(io));
 }
 
@@ -692,19 +693,15 @@ export function forever<R, E, A>(io: Effect<R, E, A>): Effect<R, E, never> {
  * Note that interruption will not be caught unless in an uninterruptible region
  * @param io
  */
-export function result<R, E, A>(io: Effect<R, E, A>): Effect<R, NoErr, ex.Exit<E, A>> {
-  return foldExit_(
-    io,
-    (c) => pure(c) as Effect<R, NoErr, ex.Exit<E, A>>,
-    (d) => pure(ex.done(d))
-  );
+export function result<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, never, ex.Exit<E, A>> {
+  return foldExit_(io, pure, (d) => pure(ex.done(d)));
 }
 
 /**
  * Create an interruptible region around the evalution of io
  * @param io
  */
-export function interruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function interruptible<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, A> {
   return interruptibleRegion(io, true);
 }
 
@@ -712,7 +709,7 @@ export function interruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
  * Create an uninterruptible region around the evaluation of io
  * @param io
  */
-export function uninterruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function uninterruptible<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, A> {
   return interruptibleRegion(io, false);
 }
 
@@ -720,7 +717,7 @@ export function uninterruptible<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
  * Create an IO that produces void after ms milliseconds
  * @param ms
  */
-export function after(ms: number): Effect<unknown, NoErr, void> {
+export function after(ms: number): Async<void> {
   return chain_(accessRuntime, (runtime) =>
     asyncTotal((callback) => runtime.dispatchLater(callback, undefined, ms))
   );
@@ -729,10 +726,10 @@ export function after(ms: number): Effect<unknown, NoErr, void> {
 /**
  * The type of a function that can restore outer interruptible state
  */
-export type InterruptMaskCutout<R, E, A> = F.FunctionN<[Effect<R, E, A>], Effect<R, E, A>>;
+export type InterruptMaskCutout<S, R, E, A> = F.FunctionN<[Effect<S, R, E, A>], Effect<S, R, E, A>>;
 
-function makeInterruptMaskCutout<R, E, A>(state: boolean): InterruptMaskCutout<R, E, A> {
-  return (inner: Effect<R, E, A>) => interruptibleRegion(inner, state);
+function makeInterruptMaskCutout<S, R, E, A>(state: boolean): InterruptMaskCutout<S, R, E, A> {
+  return (inner) => interruptibleRegion(inner, state);
 }
 
 /**
@@ -742,11 +739,11 @@ function makeInterruptMaskCutout<R, E, A>(state: boolean): InterruptMaskCutout<R
  * interruptible status of the region above the one currently executing (which is uninterruptible)
  * @param f
  */
-export function uninterruptibleMask<R, E, A>(
-  f: F.FunctionN<[InterruptMaskCutout<R, E, A>], Effect<R, E, A>>
-): Effect<R, E, A> {
+export function uninterruptibleMask<S, R, E, A>(
+  f: F.FunctionN<[InterruptMaskCutout<S, R, E, A>], Effect<S, R, E, A>>
+): Effect<S, R, E, A> {
   return chain_(accessInterruptible, (flag) => {
-    const cutout = makeInterruptMaskCutout<R, E, A>(flag);
+    const cutout = makeInterruptMaskCutout<S, R, E, A>(flag);
     return uninterruptible(f(cutout));
   });
 }
@@ -757,9 +754,9 @@ export function uninterruptibleMask<R, E, A>(
  * Similar to uninterruptibleMask
  * @param f
  */
-export function interruptibleMask<R, E, A>(
-  f: F.FunctionN<[InterruptMaskCutout<R, E, A>], Effect<R, E, A>>
-): Effect<R, E, A> {
+export function interruptibleMask<S, R, E, A>(
+  f: F.FunctionN<[InterruptMaskCutout<S, R, E, A>], Effect<S, R, E, A>>
+): Effect<S, R, E, A> {
   return chain_(accessInterruptible, (flag) => interruptible(f(makeInterruptMaskCutout(flag))));
 }
 
@@ -790,11 +787,11 @@ function combineFinalizerExit<E, A>(
  * @param use
  */
 
-export function bracketExit<R, E, A, B, R2, E2, R3, E3>(
-  acquire: Effect<R, E, A>,
-  release: F.FunctionN<[A, ex.Exit<E | E3, B>], Effect<R2, E2, unknown>>,
-  use: F.FunctionN<[A], Effect<R3, E3, B>>
-): Effect<R & R2 & R3, E | E2 | E3, B> {
+export function bracketExit<S, R, E, A, B, S2, R2, E2, S3, R3, E3>(
+  acquire: Effect<S, R, E, A>,
+  release: F.FunctionN<[A, ex.Exit<E | E3, B>], Effect<S2, R2, E2, unknown>>,
+  use: F.FunctionN<[A], Effect<S3, R3, E3, B>>
+): Effect<S | S2 | S3, R & R2 & R3, E | E2 | E3, B> {
   return uninterruptibleMask((cutout) =>
     chain_(acquire, (a) =>
       chain_(result(cutout(use(a))), (exit) =>
@@ -812,11 +809,11 @@ export function bracketExit<R, E, A, B, R2, E2, R3, E3>(
  * @param release
  * @param use
  */
-export function bracket<R, E, A, R2, E2, R3, E3, B>(
-  acquire: Effect<R, E, A>,
-  release: F.FunctionN<[A], Effect<R2, E2, unknown>>,
-  use: F.FunctionN<[A], Effect<R3, E3, B>>
-): Effect<R & R2 & R3, E | E2 | E3, B> {
+export function bracket<S, R, E, A, S2, R2, E2, S3, R3, E3, B>(
+  acquire: Effect<S, R, E, A>,
+  release: F.FunctionN<[A], Effect<S2, R2, E2, unknown>>,
+  use: F.FunctionN<[A], Effect<S3, R3, E3, B>>
+): Effect<S | S2 | S3, R & R2 & R3, E | E2 | E3, B> {
   // tslint:disable-next-line: no-unnecessary-callback-wrapper
   return bracketExit(acquire, (e) => release(e), use);
 }
@@ -826,10 +823,10 @@ export function bracket<R, E, A, R2, E2, R3, E3, B>(
  * @param ioa
  * @param finalizer
  */
-function onComplete_<R, E, A, R2, E2>(
-  ioa: Effect<R, E, A>,
-  finalizer: Effect<R2, E2, unknown>
-): Effect<R & R2, E | E2, A> {
+function onComplete_<S, R, E, A, S2, R2, E2>(
+  ioa: Effect<S, R, E, A>,
+  finalizer: Effect<S2, R2, E2, unknown>
+): Effect<S | S2, R & R2, E | E2, A> {
   return uninterruptibleMask((cutout) =>
     chain_(result(cutout(ioa)), (exit) =>
       chain_(result(finalizer), (finalize) => completed(combineFinalizerExit(exit, finalize)))
@@ -837,8 +834,8 @@ function onComplete_<R, E, A, R2, E2>(
   );
 }
 
-export function onComplete<R2, E2>(finalizer: Effect<R2, E2, unknown>) {
-  return <R, E, A>(ioa: Effect<R, E, A>) => onComplete_(ioa, finalizer);
+export function onComplete<S2, R2, E2>(finalizer: Effect<S2, R2, E2, unknown>) {
+  return <S, R, E, A>(ioa: Effect<S, R, E, A>) => onComplete_(ioa, finalizer);
 }
 
 /**
@@ -846,10 +843,10 @@ export function onComplete<R2, E2>(finalizer: Effect<R2, E2, unknown>) {
  * @param ioa
  * @param finalizer
  */
-function onInterrupted_<R, E, A, R2, E2>(
-  ioa: Effect<R, E, A>,
-  finalizer: Effect<R2, E2, unknown>
-): Effect<R & R2, E | E2, A> {
+function onInterrupted_<S, R, E, A, S2, R2, E2>(
+  ioa: Effect<S, R, E, A>,
+  finalizer: Effect<S2, R2, E2, unknown>
+): Effect<S | S2, R & R2, E | E2, A> {
   return uninterruptibleMask((cutout) =>
     chain_(result(cutout(ioa)), (exit) =>
       exit._tag === "Interrupt"
@@ -859,14 +856,14 @@ function onInterrupted_<R, E, A, R2, E2>(
   );
 }
 
-export function onInterrupted<R2, E2>(finalizer: Effect<R2, E2, unknown>) {
-  return <R, E, A>(ioa: Effect<R, E, A>) => onInterrupted_(ioa, finalizer);
+export function onInterrupted<S2, R2, E2>(finalizer: Effect<S2, R2, E2, unknown>) {
+  return <S, R, E, A>(ioa: Effect<S, R, E, A>) => onInterrupted_(ioa, finalizer);
 }
 
-export function combineInterruptExit<R, E, A, R2, E2>(
-  ioa: Effect<R, E, A>,
-  finalizer: Effect<R2, E2, ex.Interrupt[]>
-): Effect<R & R2, E | E2, A> {
+export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
+  ioa: Effect<S, R, E, A>,
+  finalizer: Effect<S2, R2, E2, ex.Interrupt[]>
+): Effect<S | S2, R & R2, E | E2, A> {
   return uninterruptibleMask((cutout) =>
     chain_(result(cutout(ioa)), (exit) =>
       exit._tag === "Interrupt"
@@ -894,7 +891,7 @@ export function combineInterruptExit<R, E, A, R2, E2>(
 /**
  * Introduce a gap in executing to allow other fibers to execute (if any are pending)
  */
-export const shifted: Effect<unknown, NoErr, void> = uninterruptible(
+export const shifted: Async<void> = uninterruptible(
   chain_(accessRuntime, (runtime) =>
     asyncTotal<void>((callback) => {
       runtime.dispatch(callback, undefined);
@@ -909,7 +906,7 @@ export const shifted: Effect<unknown, NoErr, void> = uninterruptible(
  * Introduce asynchronous gap before io that will allow other fibers to execute (if any are pending)
  * @param io
  */
-export function shiftBefore<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function shiftBefore<S, R, E, A>(io: Effect<S, R, E, A>): AsyncRE<R, E, A> {
   return applySecond(shifted, io);
 }
 
@@ -917,14 +914,14 @@ export function shiftBefore<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
  * Introduce asynchronous gap after an io that will allow other fibers to execute (if any are pending)
  * @param io
  */
-export function shiftAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function shiftAfter<S, R, E, A>(io: Effect<S, R, E, A>): AsyncRE<R, E, A> {
   return applyFirst(io, shifted);
 }
 
 /**
  * Introduce an asynchronous gap that will suspend the runloop and return control to the javascript vm
  */
-export const shiftedAsync: Effect<unknown, NoErr, void> = uninterruptible(
+export const shiftedAsync: Async<void> = uninterruptible(
   chain_(accessRuntime, (runtime) =>
     asyncTotal<void>((callback) => runtime.dispatchLater(callback, undefined, 0))
   )
@@ -934,7 +931,7 @@ export const shiftedAsync: Effect<unknown, NoErr, void> = uninterruptible(
  * Introduce an asynchronous gap before IO
  * @param io
  */
-export function shiftAsyncBefore<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function shiftAsyncBefore<S, R, E, A>(io: Effect<S, R, E, A>): AsyncRE<R, E, A> {
   return applySecond(shiftedAsync, io);
 }
 
@@ -942,7 +939,7 @@ export function shiftAsyncBefore<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> 
  * Introduce asynchronous gap after an IO
  * @param io
  */
-export function shiftAsyncAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
+export function shiftAsyncAfter<S, R, E, A>(io: Effect<S, R, E, A>): AsyncRE<R, E, A> {
   return applyFirst(io, shiftedAsync);
 }
 
@@ -951,7 +948,7 @@ export function shiftAsyncAfter<R, E, A>(io: Effect<R, E, A>): Effect<R, E, A> {
  *
  * This IO will however prevent a javascript runtime such as node from exiting by scheduling an interval for 60s
  */
-export const never: Effect<unknown, NoErr, never> = asyncTotal(() => {
+export const never: Async<never> = asyncTotal(() => {
   const handle = setInterval(() => {
     //
   }, 60000);
@@ -967,14 +964,14 @@ export const never: Effect<unknown, NoErr, never> = asyncTotal(() => {
  * @param inner
  * @param ms
  */
-export function delay<R, E, A>(inner: Effect<R, E, A>, ms: number): Effect<R, E, A> {
+export function delay<S, R, E, A>(inner: Effect<S, R, E, A>, ms: number): AsyncRE<R, E, A> {
   return applySecond(after(ms), inner);
 }
 
 /**
  * Curried form of delay
  */
-export function liftDelay(ms: number): <R, E, A>(io: Effect<R, E, A>) => Effect<R, E, A> {
+export function liftDelay(ms: number): <S, R, E, A>(io: Effect<S, R, E, A>) => AsyncRE<R, E, A> {
   return (io) => delay(io, ms);
 }
 
@@ -989,24 +986,24 @@ export interface Fiber<E, A> {
    * The this will complete execution once the target fiber has halted.
    * Does nothing if the target fiber is already complete
    */
-  readonly interrupt: Effect<NoEnv, NoErr, ex.Interrupt>;
+  readonly interrupt: Async<ex.Interrupt>;
   /**
    * Await the result of this fiber
    */
-  readonly wait: Effect<unknown, NoErr, ex.Exit<E, A>>;
+  readonly wait: Async<ex.Exit<E, A>>;
   /**
    * Join with this fiber.
    * This is equivalent to fiber.wait.chain(io.completeWith)
    */
-  readonly join: Effect<unknown, E, A>;
+  readonly join: AsyncE<E, A>;
   /**
    * Poll for a fiber result
    */
-  readonly result: Effect<NoEnv, E, Op.Option<A>>;
+  readonly result: SyncE<E, Op.Option<A>>;
   /**
    * Determine if the fiber is complete
    */
-  readonly isComplete: Effect<NoEnv, NoErr, boolean>;
+  readonly isComplete: Sync<boolean>;
 }
 
 export class FiberImpl<E, A> implements Fiber<E, A> {
@@ -1016,7 +1013,7 @@ export class FiberImpl<E, A> implements Fiber<E, A> {
     this.driver.interrupt();
   });
   wait = asyncTotal((f: F.FunctionN<[ex.Exit<E, A>], void>) => this.driver.onExit(f));
-  interrupt = applySecond(this.sendInterrupt, this.wait as Effect<unknown, never, ex.Interrupt>);
+  interrupt = applySecond(this.sendInterrupt, this.wait as Async<ex.Interrupt>);
   join = chain_(this.wait, completed);
   result = chain_(
     sync(() => this.driver.completed),
@@ -1034,10 +1031,10 @@ const pureNone = pure(Op.none);
  * @param init
  * @param name
  */
-export function makeFiber<R, E, A>(
-  init: Effect<R, E, A>,
+export function makeFiber<S, R, E, A>(
+  init: Effect<S, R, E, A>,
   name?: string
-): Effect<R, NoErr, Fiber<E, A>> {
+): SyncR<R, Fiber<E, A>> {
   return accessM((r: R) =>
     chain_(accessRuntime, (runtime) =>
       sync(() => {
@@ -1058,18 +1055,18 @@ export function makeFiber<R, E, A>(
  * @param io
  * @param name
  */
-export function fork<R, E, A>(io: Effect<R, E, A>, name?: string): Effect<R, NoErr, Fiber<E, A>> {
+export function fork<S, R, E, A>(io: Effect<S, R, E, A>, name?: string): SyncR<R, Fiber<E, A>> {
   return makeFiber(io, name);
 }
 
 function completeLatched<E1, E2, E3, A, B, C, R>(
   latch: Ref<boolean>,
-  channel: Deferred<R, E3, C>,
-  combine: F.FunctionN<[ex.Exit<E1, A>, Fiber<E2, B>], Effect<R, E3, C>>,
+  channel: Deferred<unknown, R, E3, C>,
+  combine: F.FunctionN<[ex.Exit<E1, A>, Fiber<E2, B>], AsyncRE<R, E3, C>>,
   other: Fiber<E2, B>
-): F.FunctionN<[ex.Exit<E1, A>], Effect<R, NoErr, void>> {
+): F.FunctionN<[ex.Exit<E1, A>], AsyncR<R, void>> {
   return (exit) => {
-    const act: Effect<NoEnv, never, Effect<R, NoErr, void>> = latch.modify((flag) =>
+    const act: Async<AsyncR<R, void>> = latch.modify((flag) =>
       !flag ? ([channel.from(combine(exit, other)), true] as const) : ([unit, flag] as const)
     );
     return flatten(act);
@@ -1085,44 +1082,32 @@ function completeLatched<E1, E2, E3, A, B, C, R>(
  * @param onFirstWon
  * @param onSecondWon
  */
-export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
-  first: Effect<R, E1, A>,
-  second: Effect<R2, E2, B>,
-  onFirstWon: F.FunctionN<[ex.Exit<E1, A>, Fiber<E2, B>], Effect<R3, E3, C>>,
-  onSecondWon: F.FunctionN<[ex.Exit<E2, B>, Fiber<E1, A>], Effect<R4, E3, C>>
-): Effect<R & R2 & R3 & R4, E3, C> {
+export function raceFold<S, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C>(
+  first: Effect<S, R, E1, A>,
+  second: Effect<S2, R2, E2, B>,
+  onFirstWon: F.FunctionN<[ex.Exit<E1, A>, Fiber<E2, B>], Effect<S3, R3, E3, C>>,
+  onSecondWon: F.FunctionN<[ex.Exit<E2, B>, Fiber<E1, A>], Effect<S4, R4, E3, C>>
+): AsyncRE<R & R2 & R3 & R4, E3, C> {
   return accessM((r: R & R2) =>
-    uninterruptibleMask<R3 & R4, E3, C>((cutout) =>
-      chain_<NoEnv, E3, Ref<boolean>, R3 & R4, E3, C>(makeRef<boolean>(false), (latch) =>
-        chain_<R3 & R4, E3, Deferred<R3 & R4, E3, C>, R3 & R4, E3, C>(
-          makeDeferred<R3 & R4, E3, C>(),
-          (channel) =>
-            chain_(fork(provide(r)(first)), (fiber1) =>
-              chain_(fork(provide(r)(second)), (fiber2) =>
-                chain_(
-                  fork(
-                    chain_(
-                      fiber1.wait as Effect<NoEnv, NoErr, ex.Exit<E1, A>>,
-                      completeLatched(latch, channel, onFirstWon, fiber2)
-                    )
-                  ),
-                  () =>
-                    chain_(
-                      fork(
-                        chain_(
-                          fiber2.wait as Effect<NoEnv, NoErr, ex.Exit<E2, B>>,
-                          completeLatched(latch, channel, onSecondWon, fiber1)
-                        )
-                      ),
-                      () =>
-                        combineInterruptExit(
-                          cutout(channel.wait),
-                          chain_(fiber1.interrupt, (i1) => map_(fiber2.interrupt, (i2) => [i1, i2]))
-                        )
-                    )
-                )
+    uninterruptibleMask<unknown, R3 & R4, E3, C>((cutout) =>
+      chain_(makeRef<boolean>(false), (latch) =>
+        chain_(makeDeferred<unknown, R3 & R4, E3, C>(), (channel) =>
+          chain_(fork(provide(r)(first)), (fiber1) =>
+            chain_(fork(provide(r)(second)), (fiber2) =>
+              chain_(
+                fork(chain_(fiber1.wait, completeLatched(latch, channel, onFirstWon, fiber2))),
+                () =>
+                  chain_(
+                    fork(chain_(fiber2.wait, completeLatched(latch, channel, onSecondWon, fiber1))),
+                    () =>
+                      combineInterruptExit(
+                        cutout(channel.wait),
+                        chain_(fiber1.interrupt, (i1) => map_(fiber2.interrupt, (i2) => [i1, i2]))
+                      )
+                  )
               )
             )
+          )
         )
       )
     )
@@ -1136,12 +1121,12 @@ export function raceFold<R, R2, R3, R4, E1, E2, E3, A, B, C>(
  * @param onTimeout
  * @param onCompleted
  */
-export function timeoutFold<R, E1, E2, A, B>(
-  source: Effect<R, E1, A>,
+export function timeoutFold<S, S1, S2, R, R2, R3, E1, E2, A, B>(
+  source: Effect<S, R, E1, A>,
   ms: number,
-  onTimeout: F.FunctionN<[Fiber<E1, A>], Effect<NoEnv, E2, B>>,
-  onCompleted: F.FunctionN<[ex.Exit<E1, A>], Effect<NoEnv, E2, B>>
-): Effect<R, E2, B> {
+  onTimeout: F.FunctionN<[Fiber<E1, A>], Effect<S1, R2, E2, B>>,
+  onCompleted: F.FunctionN<[ex.Exit<E1, A>], Effect<S2, R3, E2, B>>
+): AsyncRE<R & R2 & R3, E2, B> {
   return raceFold(
     source,
     after(ms),
@@ -1151,7 +1136,7 @@ export function timeoutFold<R, E1, E2, A, B>(
   );
 }
 
-function interruptLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): Effect<R, E, A> {
+function interruptLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): AsyncRE<R, E, A> {
   return applySecond(loser.interrupt, completed(exit));
 }
 
@@ -1160,14 +1145,14 @@ function interruptLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): Effec
  * @param io1
  * @param io2
  */
-export function raceFirst<R, R2, E, A>(
-  io1: Effect<R, E, A>,
-  io2: Effect<R2, E, A>
-): Effect<R & R2, E, A> {
+export function raceFirst<S, S2, R, R2, E, A>(
+  io1: Effect<S, R, E, A>,
+  io2: Effect<S2, R2, E, A>
+): AsyncRE<R & R2, E, A> {
   return raceFold(io1, io2, interruptLoser, interruptLoser);
 }
 
-function fallbackToLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): Effect<R, E, A> {
+function fallbackToLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): AsyncRE<R, E, A> {
   return exit._tag === "Done" ? applySecond(loser.interrupt, completed(exit)) : loser.join;
 }
 
@@ -1179,10 +1164,10 @@ function fallbackToLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): Effe
  * @param io1
  * @param io2
  */
-export function race<R, R2, E, A>(
-  io1: Effect<R, E, A>,
-  io2: Effect<R2, E, A>
-): Effect<R & R2, E, A> {
+export function race<S, S2, R, R2, E, A>(
+  io1: Effect<S, R, E, A>,
+  io2: Effect<S2, R2, E, A>
+): AsyncRE<R & R2, E, A> {
   return raceFold(io1, io2, fallbackToLoser, fallbackToLoser);
 }
 
@@ -1192,11 +1177,11 @@ export function race<R, R2, E, A>(
  * @param iob
  * @param f
  */
-export function parZipWith<R, R2, E, E2, A, B, C>(
-  ioa: Effect<R, E, A>,
-  iob: Effect<R2, E2, B>,
+export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): Effect<R & R2, E | E2, C> {
+): AsyncRE<R & R2, E | E2, C> {
   return raceFold(
     ioa,
     iob,
@@ -1210,10 +1195,10 @@ export function parZipWith<R, R2, E, E2, A, B, C>(
  * @param ioa
  * @param iob
  */
-export function parZip<R, R2, E, A, B>(
-  ioa: Effect<R, E, A>,
-  iob: Effect<R2, E, B>
-): Effect<R & R2, E, readonly [A, B]> {
+export function parZip<S, S2, R, R2, E, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E, B>
+): AsyncRE<R & R2, E, readonly [A, B]> {
   return parZipWith(ioa, iob, tuple2);
 }
 
@@ -1222,10 +1207,10 @@ export function parZip<R, R2, E, A, B>(
  * @param ioa
  * @param iob
  */
-export function parApplyFirst<R, R2, E, A, B>(
-  ioa: Effect<R, E, A>,
-  iob: Effect<R2, E, B>
-): Effect<R & R2, E, A> {
+export function parApplyFirst<S, S2, R, R2, E, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E, B>
+): AsyncRE<R & R2, E, A> {
   return parZipWith(ioa, iob, fst);
 }
 
@@ -1234,10 +1219,10 @@ export function parApplyFirst<R, R2, E, A, B>(
  * @param ioa
  * @param iob
  */
-export function parApplySecond<R, R2, E, A, B>(
-  ioa: Effect<R, E, A>,
-  iob: Effect<R2, E, B>
-): Effect<R & R2, E, B> {
+export function parApplySecond<S, S2, R, R2, E, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E, B>
+): AsyncRE<R & R2, E, B> {
   return parZipWith(ioa, iob, snd);
 }
 
@@ -1246,10 +1231,10 @@ export function parApplySecond<R, R2, E, A, B>(
  * @param ioa
  * @param iof
  */
-export function parAp<R, R2, E, A, B>(
-  ioa: Effect<R, E, A>,
-  iof: Effect<R2, E, F.FunctionN<[A], B>>
-): Effect<R & R2, E, B> {
+export function parAp<S, S2, R, R2, E, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iof: Effect<S2, R2, E, F.FunctionN<[A], B>>
+): AsyncRE<R & R2, E, B> {
   return parZipWith(ioa, iof, (a, f) => f(a));
 }
 
@@ -1258,10 +1243,10 @@ export function parAp<R, R2, E, A, B>(
  * @param iof
  * @param ioa
  */
-export function parAp_<R, R2, E, E2, A, B>(
-  iof: Effect<R, E, F.FunctionN<[A], B>>,
-  ioa: Effect<R2, E2, A>
-): Effect<R & R2, E | E2, B> {
+export function parAp_<S, S2, R, R2, E, E2, A, B>(
+  iof: Effect<S, R, E, F.FunctionN<[A], B>>,
+  ioa: Effect<S2, R2, E2, A>
+): AsyncRE<R & R2, E | E2, B> {
   return parZipWith(iof, ioa, (f, a) => f(a));
 }
 
@@ -1269,7 +1254,7 @@ export function parAp_<R, R2, E, E2, A, B>(
  * Convert an error into an unchecked error.
  * @param io
  */
-export function orAbort<R, E, A>(io: Effect<R, E, A>): Effect<R, NoErr, A> {
+export function orAbort<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, never, A> {
   return chainError_(io, raiseAbort);
 }
 
@@ -1280,10 +1265,10 @@ export function orAbort<R, E, A>(io: Effect<R, E, A>): Effect<R, NoErr, A> {
  * @param source
  * @param ms
  */
-export function timeoutOption<R, E, A>(
-  source: Effect<R, E, A>,
+export function timeoutOption<S, R, E, A>(
+  source: Effect<S, R, E, A>,
   ms: number
-): Effect<R, E, Op.Option<A>> {
+): AsyncRE<R, E, Op.Option<A>> {
   return timeoutFold(
     source,
     ms,
@@ -1296,7 +1281,7 @@ export function timeoutOption<R, E, A>(
  * Create an IO from a Promise factory.
  * @param thunk
  */
-export function fromPromise<A>(thunk: F.Lazy<Promise<A>>): Effect<unknown, unknown, A> {
+export function fromPromise<A>(thunk: F.Lazy<Promise<A>>): AsyncE<unknown, A> {
   return uninterruptible(
     async<unknown, A>((callback) => {
       thunk()
@@ -1310,11 +1295,11 @@ export function fromPromise<A>(thunk: F.Lazy<Promise<A>>): Effect<unknown, unkno
   );
 }
 
-export function encaseTask<A>(task: TA.Task<A>): Effect<unknown, NoErr, A> {
+export function encaseTask<A>(task: TA.Task<A>): Async<A> {
   return orAbort(fromPromise(task));
 }
 
-export function encaseTaskEither<E, A>(taskEither: TE.TaskEither<E, A>): Effect<unknown, E, A> {
+export function encaseTaskEither<E, A>(taskEither: TE.TaskEither<E, A>): AsyncE<E, A> {
   return async<E, A>((callback) => {
     taskEither().then(callback);
     /* istanbul ignore next */
@@ -1326,7 +1311,7 @@ export function encaseTaskEither<E, A>(taskEither: TE.TaskEither<E, A>): Effect<
 
 export function fromPromiseMap<E>(
   onError: (e: unknown) => E
-): <A>(thunk: F.Lazy<Promise<A>>) => Effect<unknown, E, A> {
+): <A>(thunk: F.Lazy<Promise<A>>) => AsyncE<E, A> {
   return <A>(thunk: F.Lazy<Promise<A>>) =>
     async<E, A>((callback) => {
       thunk()
@@ -1346,7 +1331,7 @@ export function fromPromiseMap<E>(
  * @param callback
  */
 export function run<E, A>(
-  io: Effect<{}, E, A>,
+  io: AsyncRE<{}, E, A>,
   callback?: F.FunctionN<[ex.Exit<E, A>], void>
 ): F.Lazy<void> {
   const driver = new DriverImpl<E, A>();
@@ -1363,7 +1348,7 @@ export function run<E, A>(
  * is found
  * @param io
  */
-export function runSync<E, A>(io: Effect<{}, E, A>): ex.Exit<E, A> {
+export function runSync<E, A>(io: SyncRE<{}, E, A>): ex.Exit<E, A> {
   return pipe(
     new DriverSyncImpl<E, A>().start(io),
     Ei.fold(
@@ -1376,7 +1361,7 @@ export function runSync<E, A>(io: Effect<{}, E, A>): ex.Exit<E, A> {
 }
 
 /* istanbul skip next */
-export function runUnsafeSync<E, A>(io: Effect<{}, E, A>): A {
+export function runUnsafeSync<E, A>(io: SyncRE<{}, E, A>): A {
   const result = runSync(io);
 
   if (result._tag !== "Done") {
@@ -1396,7 +1381,7 @@ export function runUnsafeSync<E, A>(io: Effect<{}, E, A>): A {
  * @param io
  * @param r
  */
-export function runToPromise<E, A>(io: Effect<unknown, E, A> | Effect<{}, E, A>): Promise<A> {
+export function runToPromise<E, A>(io: AsyncRE<{}, E, A>): Promise<A> {
   return new Promise((resolve, reject) =>
     run(io, (exit) => {
       switch (exit._tag) {
@@ -1425,22 +1410,14 @@ export function runToPromise<E, A>(io: Effect<unknown, E, A> | Effect<{}, E, A>)
  * @param io
  * @param r
  */
-export function runToPromiseExit<E, A>(io: Effect<{}, E, A>): Promise<ex.Exit<E, A>> {
+export function runToPromiseExit<E, A>(io: AsyncRE<{}, E, A>): Promise<ex.Exit<E, A>> {
   return new Promise((result) => run(io, result));
 }
 
-export const URI = "matechs/Effect";
-export type URI = typeof URI;
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind3<R, E, A> {
-    [URI]: Effect<R, E, A>;
-  }
-}
-
-function chainError_<R, E1, R2, E2, A, A2>(
-  io: Effect<R, E1, A>,
-  f: F.FunctionN<[E1], Effect<R2, E2, A2>>
-): Effect<R & R2, E2, A | A2> {
+function chainError_<S, R, E1, S2, R2, E2, A, A2>(
+  io: Effect<S, R, E1, A>,
+  f: F.FunctionN<[E1], Effect<S2, R2, E2, A2>>
+): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
     (cause) => (cause._tag === "Raise" ? f(cause.error) : completed(cause)),
@@ -1449,87 +1426,49 @@ function chainError_<R, E1, R2, E2, A, A2>(
 }
 
 export interface EffectMonad
-  extends Monad3E<URI>,
-    Bif.Bifunctor3<URI>,
-    MonadThrow3E<URI>,
-    Alt3E<URI>,
-    Fun.Functor3<URI> {
-  /**
-   * Produce an new IO that will use the error produced by inner to produce a recovery program
-   * @param io
-   * @param f
-   */
-  chainError<R, E1, R2, E2, A, A2>(
-    io: Effect<R, E1, A>,
-    f: F.FunctionN<[E1], Effect<R2, E2, A2>>
-  ): Effect<R & R2, E2, A | A2>;
+  extends Monad4E<URI>,
+    Bifunctor4<URI>,
+    MonadThrow4E<URI>,
+    Alt4E<URI>,
+    Functor4<URI> {
+  chainError<S1, S2, R, E1, R2, E2, A, A2>(
+    io: Effect<S1, R, E1, A>,
+    f: F.FunctionN<[E1], Effect<S2, R2, E2, A2>>
+  ): Effect<S1 | S2, R & R2, E2, A | A2>;
 
-  /**
-   * Fold the result of an IO into a new IO.
-   *
-   * This can be thought of as a more powerful form of chain
-   * where the computation continues with a new IO depending on the result of inner.
-   * @param inner The IO to fold the exit of
-   * @param failure
-   * @param success
-   */
-  foldExit<R, E1, R2, E2, A1, A2, A3, R3, E3>(
-    inner: Effect<R, E1, A1>,
-    failure: F.FunctionN<[ex.Cause<E1>], Effect<R2, E2, A2>>,
-    success: F.FunctionN<[A1], Effect<R3, E3, A3>>
-  ): Effect<R & R2 & R3, E2 | E3, A2 | A3>;
+  foldExit<S1, S2, S3, R, E1, R2, E2, A1, A2, A3, R3, E3>(
+    inner: Effect<S1, R, E1, A1>,
+    failure: F.FunctionN<[ex.Cause<E1>], Effect<S2, R2, E2, A2>>,
+    success: F.FunctionN<[A1], Effect<S3, R3, E3, A3>>
+  ): Effect<S1 | S2 | S3, R & R2 & R3, E2 | E3, A2 | A3>;
 
-  /**
-   * Sequence a Stack and then produce an effect based on the produced value for observation.
-   *
-   * Produces the result of the iniital Stack
-   * @param inner
-   * @param bind
-   */
-  chainTap<R, E, A, R2, E2>(
-    inner: Effect<R, E, A>,
-    bind: F.FunctionN<[A], Effect<R2, E2, unknown>>
-  ): Effect<R & R2, E | E2, A>;
+  chainTap<S1, S2, R, E, A, R2, E2>(
+    inner: Effect<S1, R, E, A>,
+    bind: F.FunctionN<[A], Effect<S1, R2, E2, unknown>>
+  ): Effect<S1 | S2, R & R2, E | E2, A>;
 
-  /**
-   * Map over either the error or value produced by an IO
-   * @param io
-   * @param leftMap
-   * @param rightMap
-   */
-  bimap<R, E1, E2, A, B>(
-    io: Effect<R, E1, A>,
-    leftMap: F.FunctionN<[E1], E2>,
-    rightMap: F.FunctionN<[A], B>
-  ): Effect<R, E2, B>;
-
-  /**
-   * Map the error produced by an IO
-   * @param io
-   * @param f
-   */
   mapError: EffectMonad["mapLeft"];
 
-  onInterrupted<R, E, A, R2, E2>(
-    ioa: Effect<R, E, A>,
-    finalizer: Effect<R2, E2, unknown>
-  ): Effect<R & R2, E | E2, A>;
+  onInterrupted<S1, S2, R, E, A, R2, E2>(
+    ioa: Effect<S1, R, E, A>,
+    finalizer: Effect<S2, R2, E2, unknown>
+  ): Effect<S1 | S2, R & R2, E | E2, A>;
 
-  onComplete<R, E, A, R2, E2>(
-    ioa: Effect<R, E, A>,
-    finalizer: Effect<R2, E2, unknown>
-  ): Effect<R & R2, E | E2, A>;
+  onComplete<S1, S2, R, E, A, R2, E2>(
+    ioa: Effect<S1, R, E, A>,
+    finalizer: Effect<S2, R2, E2, unknown>
+  ): Effect<S1 | S2, R & R2, E | E2, A>;
 
-  zip<R, E, A, R2, E2, B>(
-    first: Effect<R, E, A>,
-    second: Effect<R2, E2, B>
-  ): Effect<R & R2, E | E2, readonly [A, B]>;
+  zip<S, R, E, A, S2, R2, E2, B>(
+    first: Effect<S, R, E, A>,
+    second: Effect<S2, R2, E2, B>
+  ): Effect<S | S2, R & R2, E | E2, readonly [A, B]>;
 
-  zipWith<R, E, A, R2, E2, B, C>(
-    first: Effect<R, E, A>,
-    second: Effect<R2, E2, B>,
+  zipWith<S, R, E, A, S2, R2, E2, B, C>(
+    first: Effect<S, R, E, A>,
+    second: Effect<S2, R2, E2, B>,
     f: F.FunctionN<[A, B], C>
-  ): Effect<R & R2, E | E2, C>;
+  ): Effect<S | S2, R & R2, E | E2, C>;
 }
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
@@ -1540,8 +1479,8 @@ const mapLeft_: EffectMonad["mapLeft"] = (io, f) => chainError_(io, F.flow(f, ra
 const alt_: EffectMonad["alt"] = chainError_;
 
 export function alt<R2, E2, A>(
-  fy: () => Effect<R2, E2, A>
-): <R, E>(fx: Effect<R, E, A>) => Effect<R & R2, E2, A> {
+  fy: () => AsyncRE<R2, E2, A>
+): <R, E>(fx: AsyncRE<R, E, A>) => AsyncRE<R & R2, E2, A> {
   return (fx) => alt_(fx, fy);
 }
 
@@ -1569,8 +1508,9 @@ export const Do = DoG(effect);
 export const sequenceS = SS(effect);
 export const sequenceT = ST(effect);
 
-export const parEffect: Monad3E<URI> & MonadThrow3E<URI> = {
+export const parEffect: Monad4EP<URI> & MonadThrow4EP<URI> = {
   URI,
+  _CTX: "async",
   of: pure,
   map: map_,
   ap: parAp_,
@@ -1597,7 +1537,7 @@ const {
   fromPredicate,
   map,
   mapLeft
-} = P.pipeable(effect);
+} = pipeable(effect);
 
 export { Erase } from "./erase";
 export {
@@ -1616,15 +1556,15 @@ export {
   mapLeft
 };
 
-export function getSemigroup<R, E, A>(s: Sem.Semigroup<A>): Sem.Semigroup<Effect<R, E, A>> {
+export function getSemigroup<S, R, E, A>(s: Sem.Semigroup<A>): Sem.Semigroup<Effect<S, R, E, A>> {
   return {
-    concat(x: Effect<R, E, A>, y: Effect<R, E, A>): Effect<R, E, A> {
+    concat(x: Effect<S, R, E, A>, y: Effect<S, R, E, A>): Effect<S, R, E, A> {
       return zipWith_(x, y, s.concat);
     }
   };
 }
 
-export function getMonoid<R, E, A>(m: Mon.Monoid<A>): Mon.Monoid<Effect<R, E, A>> {
+export function getMonoid<S, R, E, A>(m: Mon.Monoid<A>): Mon.Monoid<Effect<S, R, E, A>> {
   return {
     ...getSemigroup(m),
     empty: pure(m.empty)
@@ -1635,41 +1575,43 @@ export function getMonoid<R, E, A>(m: Mon.Monoid<A>): Mon.Monoid<Effect<R, E, A>
 
 export function when(
   predicate: boolean
-): <R, E, A>(ma: Effect<R, E, A>) => Effect<R, E, Op.Option<A>> {
+): <S, R, E, A>(ma: Effect<S, R, E, A>) => Effect<S, R, E, Op.Option<A>> {
   return (ma) => (predicate ? map_(ma, Op.some) : pure(Op.none));
 }
 
 export function or_(
   predicate: boolean
-): <R, E, A>(
-  ma: Effect<R, E, A>
-) => <R2, E2, B>(mb: Effect<R2, E2, B>) => Effect<R & R2, E | E2, Ei.Either<A, B>> {
+): <S, R, E, A>(
+  ma: Effect<S, R, E, A>
+) => <S2, R2, E2, B>(mb: Effect<S2, R2, E2, B>) => Effect<S | S2, R & R2, E | E2, Ei.Either<A, B>> {
   return (ma) => (mb) => (predicate ? map_(ma, Ei.left) : map_(mb, Ei.right));
 }
 
-export function or<R, E, A>(
-  ma: Effect<R, E, A>
-): <R2, E2, B>(
-  mb: Effect<R2, E2, B>
-) => (predicate: boolean) => Effect<R & R2, E | E2, Ei.Either<A, B>> {
+export function or<S, R, E, A>(
+  ma: Effect<S, R, E, A>
+): <S2, R2, E2, B>(
+  mb: Effect<S2, R2, E2, B>
+) => (predicate: boolean) => Effect<S | S2, R & R2, E | E2, Ei.Either<A, B>> {
   return (mb) => (predicate) => (predicate ? map_(ma, Ei.left) : map_(mb, Ei.right));
 }
 
 export function condWith(
   predicate: boolean
-): <R, E, A>(
-  ma: Effect<R, E, A>
-) => <R2, E2, B>(mb: Effect<R2, E2, B>) => Effect<R & R2, E | E2, A | B> {
+): <S, R, E, A>(
+  ma: Effect<S, R, E, A>
+) => <S2, R2, E2, B>(mb: Effect<S2, R2, E2, B>) => Effect<S | S2, R & R2, E | E2, A | B> {
   return (ma) => (mb) => (predicate ? ma : mb);
 }
 
-export function cond<R, E, A>(
-  ma: Effect<R, E, A>
-): <R2, E2, B>(mb: Effect<R2, E2, B>) => (predicate: boolean) => Effect<R & R2, E | E2, A | B> {
+export function cond<S, R, E, A>(
+  ma: Effect<S, R, E, A>
+): <S2, R2, E2, B>(
+  mb: Effect<S2, R2, E2, B>
+) => (predicate: boolean) => Effect<S | S2, R & R2, E | E2, A | B> {
   return (mb) => (predicate) => (predicate ? ma : mb);
 }
 
-export function fromNullableM<R, E, A>(ma: Effect<R, E, A>): Effect<R, E, Op.Option<A>> {
+export function fromNullableM<S, R, E, A>(ma: Effect<S, R, E, A>): Effect<S, R, E, Op.Option<A>> {
   return map_(ma, Op.fromNullable);
 }
 
@@ -1696,14 +1638,17 @@ export function getValidationM<E>(S: Sem.Semigroup<E>) {
 
 export function getCauseValidationM<E>(
   S: Sem.Semigroup<ex.Cause<E>>
-): Monad3EC<URI, E> & MonadThrow3EC<URI, E> & Alt3EC<URI, E> {
+): Monad4EC<URI, E> & MonadThrow4EC<URI, E> & Alt4EC<URI, E> {
   return {
     URI,
     _E: undefined as any,
     of: pure,
     map: map_,
     chain: chain_,
-    ap: <R, R2, A, B>(fab: Effect<R, E, (a: A) => B>, fa: Effect<R2, E, A>): Effect<R & R2, E, B> =>
+    ap: <S1, S2, R, R2, A, B>(
+      fab: Effect<S1, R, E, (a: A) => B>,
+      fa: Effect<S2, R2, E, A>
+    ): Effect<S1 | S2, R & R2, E, B> =>
       foldExit_(
         fab,
         (fabe) =>
@@ -1714,31 +1659,34 @@ export function getCauseValidationM<E>(
           ),
         (f) => map_(fa, f)
       ),
-    throwError: raiseError as <R, A>(e: E) => Effect<R, E, A>,
-    alt: <R, R2, A>(fa: Effect<R, E, A>, fb: () => Effect<R2, E, A>): Effect<R & R2, E, A> =>
+    throwError: raiseError,
+    alt: <S1, S2, R, R2, A>(
+      fa: Effect<S1, R, E, A>,
+      fb: () => Effect<S2, R2, E, A>
+    ): Effect<S1 | S2, R & R2, E, A> =>
       foldExit_(fa, (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure), pure)
   };
 }
 
 export function effectify<L, R>(
   f: (cb: (e: L | null | undefined, r?: R) => void) => void
-): () => Effect<unknown, L, R>;
+): () => AsyncE<L, R>;
 export function effectify<A, L, R>(
   f: (a: A, cb: (e: L | null | undefined, r?: R) => void) => void
-): (a: A) => Effect<unknown, L, R>;
+): (a: A) => AsyncE<L, R>;
 export function effectify<A, B, L, R>(
   f: (a: A, b: B, cb: (e: L | null | undefined, r?: R) => void) => void
-): (a: A, b: B) => Effect<unknown, L, R>;
+): (a: A, b: B) => AsyncE<L, R>;
 export function effectify<A, B, C, L, R>(
   f: (a: A, b: B, c: C, cb: (e: L | null | undefined, r?: R) => void) => void
-): (a: A, b: B, c: C) => Effect<unknown, L, R>;
+): (a: A, b: B, c: C) => AsyncE<L, R>;
 export function effectify<A, B, C, D, L, R>(
   f: (a: A, b: B, c: C, d: D, cb: (e: L | null | undefined, r?: R) => void) => void
-): (a: A, b: B, c: C, d: D) => Effect<unknown, L, R>;
+): (a: A, b: B, c: C, d: D) => AsyncE<L, R>;
 export function effectify<A, B, C, D, E, L, R>(
   f: (a: A, b: B, c: C, d: D, e: E, cb: (e: L | null | undefined, r?: R) => void) => void
-): (a: A, b: B, c: C, d: D, e: E) => Effect<unknown, L, R>;
-export function effectify<L, R>(f: Function): () => Effect<unknown, L, R> {
+): (a: A, b: B, c: C, d: D, e: E) => AsyncE<L, R>;
+export function effectify<L, R>(f: Function): () => AsyncE<L, R> {
   return function () {
     const args = Array.prototype.slice.call(arguments);
     return async<L, R>((cb) => {
@@ -1754,83 +1702,80 @@ export function effectify<L, R>(f: Function): () => Effect<unknown, L, R> {
   };
 }
 
-export interface Provider<Environment, Module, E2 = never> {
-  <R, E, A>(e: Effect<Module & R, E, A>): Effect<Environment & R, E | E2, A>;
-}
-
 export const sequenceOption = Op.option.sequence(effect);
 
-export const traverseOption: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
-) => (ta: Op.Option<A>) => Effect<R, E, Op.Option<B>> = (f) => (ta) =>
+export const traverseOption: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Op.Option<A>) => Effect<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.traverse(effect)(ta, f);
 
-export const wiltOption: <A, R, E, B, C>(
-  f: (a: A) => Effect<R, E, Ei.Either<B, C>>
-) => (wa: Op.Option<A>) => Effect<R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (wa) =>
+export const wiltOption: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Effect<S, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (wa) =>
   Op.option.wilt(effect)(wa, f);
 
-export const witherOption: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, Op.Option<B>>
-) => (ta: Op.Option<A>) => Effect<R, E, Op.Option<B>> = (f) => (ta) =>
+export const witherOption: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Effect<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(effect)(ta, f);
 
 export const sequenceEither = Ei.either.sequence(effect);
 
-export const traverseEither: <A, R, FE, B>(
-  f: (a: A) => Effect<R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => Effect<R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+export const traverseEither: <A, S, R, FE, B>(
+  f: (a: A) => Effect<S, R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Effect<S, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(effect)(ta, f);
 
 export const sequenceTree = TR.tree.sequence(effect);
 
-export const traverseTree: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
-) => (ta: TR.Tree<A>) => Effect<R, E, TR.Tree<B>> = (f) => (ta) => TR.tree.traverse(effect)(ta, f);
+export const traverseTree: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: TR.Tree<A>) => Effect<S, R, E, TR.Tree<B>> = (f) => (ta) =>
+  TR.tree.traverse(effect)(ta, f);
 
 export const sequenceTreePar = TR.tree.sequence(parEffect);
 
-export const traverseTreePar: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
-) => (ta: TR.Tree<A>) => Effect<R, E, TR.Tree<B>> = (f) => (ta) =>
+export const traverseTreePar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: TR.Tree<A>) => AsyncRE<R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(parEffect)(ta, f);
 
 export const sequenceArray = Ar.array.sequence(effect);
 
-export const traverseArray: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
-) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(effect)(ta, f);
+export const traverseArray: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Array<A>) => Effect<S, R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(effect)(ta, f);
 
-export const traverseArrayWithIndex: <A, R, E, B>(
-  f: (i: number, a: A) => Effect<R, E, B>
-) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) =>
+export const traverseArrayWithIndex: <A, S, R, E, B>(
+  f: (i: number, a: A) => Effect<S, R, E, B>
+) => (ta: Array<A>) => Effect<S, R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverseWithIndex(effect)(ta, f);
 
-export const wiltArray: <A, R, E, B, C>(
-  f: (a: A) => Effect<R, E, Ei.Either<B, C>>
-) => (wa: Array<A>) => Effect<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+export const wiltArray: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Effect<S, R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   Ar.array.wilt(effect)(wa, f);
 
-export const witherArray: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, Op.Option<B>>
-) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(effect)(ta, f);
+export const witherArray: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Array<A>) => Effect<S, R, E, Array<B>> = (f) => (ta) => Ar.array.wither(effect)(ta, f);
 
 export const sequenceArrayPar = Ar.array.sequence(parEffect);
 
-export const traverseArrayPar: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, B>
-) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(parEffect)(ta, f);
+export const traverseArrayPar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(parEffect)(ta, f);
 
-export const traverseArrayWithIndexPar: <A, R, E, B>(
-  f: (i: number, a: A) => Effect<R, E, B>
-) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) =>
+export const traverseArrayWithIndexPar: <A, S, R, E, B>(
+  f: (i: number, a: A) => Effect<S, R, E, B>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverseWithIndex(parEffect)(ta, f);
 
 export const wiltArrayPar: <A, R, E, B, C>(
-  f: (a: A) => Effect<R, E, Ei.Either<B, C>>
-) => (wa: Array<A>) => Effect<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  f: (a: A) => AsyncRE<R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   Ar.array.wilt(parEffect)(wa, f);
 
 export const witherArrayPar: <A, R, E, B>(
-  f: (a: A) => Effect<R, E, Op.Option<B>>
-) => (ta: Array<A>) => Effect<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(parEffect)(ta, f);
+  f: (a: A) => AsyncRE<R, E, Op.Option<B>>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(parEffect)(ta, f);

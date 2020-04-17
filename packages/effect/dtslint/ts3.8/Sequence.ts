@@ -9,7 +9,7 @@ const secondEffect = () => T.accessM(({ b }: { b: number }) => T.pure(b));
 const thirdEffect = () => T.raiseError("error");
 const fourthEffect = () => T.raiseError(1);
 
-// $ExpectType Effect<{ a: number; } & { b: number; }, string | number, { first: number; second: number; third: never; fourth: never; }>
+// $ExpectType Effect<never, { a: number; } & { b: number; }, string | number, { first: number; second: number; third: never; fourth: never; }>
 seqS({
   first: firstEffect(),
   second: secondEffect(),
@@ -17,5 +17,5 @@ seqS({
   fourth: fourthEffect()
 });
 
-// $ExpectType Effect<{ a: number; } & { b: number; }, string | number, [number, number, never, never]>
+// $ExpectType Effect<never, { a: number; } & { b: number; }, string | number, [number, number, never, never]>
 seqT(firstEffect(), secondEffect(), thirdEffect(), fourthEffect());

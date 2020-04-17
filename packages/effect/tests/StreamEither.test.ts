@@ -7,7 +7,7 @@ import { effect as T, streameither as S } from "../src";
 import { none, some } from "fp-ts/lib/Option";
 
 export async function expectExitIn<E, A, B>(
-  ioa: T.Effect<T.NoEnv, E, A>,
+  ioa: T.AsyncRE<{}, E, A>,
   f: FunctionN<[ex.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
@@ -15,10 +15,7 @@ export async function expectExitIn<E, A, B>(
   expect(assert.deepEqual(f(result), expected));
 }
 
-export function expectExit<E, A>(
-  ioa: T.Effect<T.NoEnv, E, A>,
-  expected: ex.Exit<E, A>
-): Promise<void> {
+export function expectExit<E, A>(ioa: T.AsyncRE<{}, E, A>, expected: ex.Exit<E, A>): Promise<void> {
   return expectExitIn(ioa, identity, expected);
 }
 
@@ -61,10 +58,7 @@ describe("StreamEither", () => {
       return x % 2 === 0;
     }
 
-    // $ExpectType Even[]
-    const res = await T.runToPromise(
-      S.collectArray(S.take(pipe(s, S.filterRefineWith(isEven)), 3))
-    );
+    const res = await T.runToPromise(S.collectArray(S.take(pipe(s, S.filterWith(isEven)), 3)));
 
     assert.deepEqual(res, [0, 2, 4]);
   });
@@ -254,16 +248,15 @@ describe("StreamEither", () => {
       second: number;
     }
 
-    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
-    const s = S.streamEither.chain(a, (n) => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial));
+    const s = S.streamEither.chain(a, (n) => S.fromRange(n, 1, 10));
 
-    // $ExpectType Stream<Config & ConfigB, never, number>
     const m = S.streamEither.chain(s, (n) =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = S.streamEither.chain(m, (n) => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
-    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+    const g = S.streamEither.chain(m, (n) => S.fromRange(0, 1, n));
+    const r = S.collectArray(g);
 
     const res = await T.runToPromise(
       T.provide<Config & ConfigB>({
@@ -291,26 +284,22 @@ describe("StreamEither", () => {
       second: number;
     }
 
-    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial));
     const s = pipe(
-      // $ExpectType Stream<Config, never, number>
       a,
       S.chain((n) => S.fromRange(n, 1, 10))
     );
 
-    // $ExpectType Stream<Config & ConfigB, never, number>
     const m = pipe(
       s,
       S.chain((n) => S.encaseEffect(T.access(({ second }: ConfigB) => n + second)))
     );
 
-    // $ExpectType Stream<Config & ConfigB, never, number>
     const g = pipe(
-      // $ExpectType Stream<Config & ConfigB, never, number>
       m,
       S.chain((n) => S.fromRange(0, 1, n))
     );
-    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+    const r = S.collectArray(g);
 
     const res = await T.runToPromise(
       T.provide<Config & ConfigB>({

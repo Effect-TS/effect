@@ -14,7 +14,7 @@ import { sinkCont, sinkDone, SinkStep } from "../src/stream/step";
 import { effect as T, managed as M, ref, stream as S } from "../src";
 
 export async function expectExitIn<E, A, B>(
-  ioa: T.Effect<unknown, E, A>,
+  ioa: T.AsyncE<E, A>,
   f: FunctionN<[ex.Exit<E, A>], B>,
   expected: B
 ): Promise<void> {
@@ -22,10 +22,7 @@ export async function expectExitIn<E, A, B>(
   expect(assert.deepEqual(f(result), expected));
 }
 
-export function expectExit<E, A>(
-  ioa: T.Effect<unknown, E, A>,
-  expected: ex.Exit<E, A>
-): Promise<void> {
+export function expectExit<E, A>(ioa: T.AsyncE<E, A>, expected: ex.Exit<E, A>): Promise<void> {
   return expectExitIn(ioa, identity, expected);
 }
 
@@ -33,7 +30,7 @@ describe("Stream", () => {
   it("fromObjectReadStream", async () => {
     let eventCount = 0;
 
-    const s: S.Stream<unknown, Error, { n: number }> = S.fromObjectReadStream(
+    const s = S.fromObjectReadStream<{ n: number }>(
       new Readable({
         objectMode: true,
         read() {
@@ -55,7 +52,7 @@ describe("Stream", () => {
   it("fromObjectReadStream - Error", async () => {
     let eventCount = 0;
 
-    const s: S.Stream<unknown, Error, { n: number }> = S.fromObjectReadStream(
+    const s = S.fromObjectReadStream<{ n: number }>(
       new Readable({
         objectMode: true,
         read() {
@@ -117,8 +114,7 @@ describe("Stream", () => {
       return x % 2 === 0;
     }
 
-    // $ExpectType Even[]
-    const res = await pipe(s, S.filterRefine(isEven), S.take(3), S.collectArray, T.runToPromise);
+    const res = await pipe(s, S.filter(isEven), S.take(3), S.collectArray, T.runToPromise);
 
     assert.deepEqual(res, [0, 2, 4]);
   });
@@ -306,17 +302,17 @@ describe("Stream", () => {
   });
 
   it("should use intoManaged", async () => {
-    const sm = M.pure(collectArraySink<T.NoEnv, T.NoErr, number>());
+    const sm = M.pure(collectArraySink<never, unknown, never, number>());
 
     const s = pipe(S.fromArray([0, 1, 2]), S.intoManaged(sm));
 
-    const res = await T.runToPromise(s);
+    const res = T.runUnsafeSync(s);
 
     assert.deepEqual(res, [0, 1, 2]);
   });
 
   it("should use into", async () => {
-    const sm = collectArraySink<T.NoEnv, T.NoErr, number>();
+    const sm = collectArraySink<never, unknown, never, number>();
 
     const s = pipe(S.fromArray([0, 1, 2]), S.into(sm));
 
@@ -326,7 +322,7 @@ describe("Stream", () => {
   });
 
   it("should use intoLeftover", async () => {
-    const sl = collectArraySink<T.NoEnv, T.NoErr, number>();
+    const sl = collectArraySink<never, unknown, never, number>();
 
     const s = pipe(S.fromArray([0, 1, 2]), S.intoLeftover(sl));
 
@@ -469,7 +465,9 @@ describe("Stream", () => {
 
     const zip = pipe(streamA, S.zip(streamB), S.take(3), S.collectArray);
 
-    const res = await T.runToPromise(T.provide<EnvA & EnvB>({ a: 1, b: 1 })(zip));
+    const res = await T.runToPromise(
+      T.provide<EnvA & EnvB>({ a: 1, b: 1 })(zip)
+    );
 
     assert.deepEqual(res, [
       [1, 1],
@@ -486,16 +484,15 @@ describe("Stream", () => {
       second: number;
     }
 
-    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
-    const s = S.stream.chain(a, (n) => S.fromRange(n, 1, 10)); // $ExpectType Stream<Config, never, number>
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial));
+    const s = S.stream.chain(a, (n) => S.fromRange(n, 1, 10));
 
-    // $ExpectType Stream<Config & ConfigB, never, number>
     const m = S.stream.chain(s, (n) =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     );
 
-    const g = S.stream.chain(m, (n) => S.fromRange(0, 1, n)); // $ExpectType Stream<Config & ConfigB, never, number>
-    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+    const g = S.stream.chain(m, (n) => S.fromRange(0, 1, n));
+    const r = S.collectArray(g);
 
     const res = await T.runToPromise(
       T.provide<Config & ConfigB>({
@@ -523,26 +520,22 @@ describe("Stream", () => {
       second: number;
     }
 
-    const a = S.encaseEffect(T.access(({ initial }: Config) => initial)); // $ExpectType Stream<Config, never, number>
+    const a = S.encaseEffect(T.access(({ initial }: Config) => initial));
     const s = pipe(
-      // $ExpectType Stream<Config, never, number>
       a,
       S.chain((n) => S.fromRange(n, 1, 10))
     );
 
-    // $ExpectType Stream<Config & ConfigB, never, number>
     const m = pipe(
       s,
       S.chain((n) => S.encaseEffect(T.access(({ second }: ConfigB) => n + second)))
     );
 
-    // $ExpectType Stream<Config & ConfigB, never, number>
     const g = pipe(
-      // $ExpectType Stream<Config & ConfigB, never, number>
       m,
       S.chain((n) => S.fromRange(0, 1, n))
     );
-    const r = S.collectArray(g); // $ExpectType Effect<Config & ConfigB, never, number[]>
+    const r = S.collectArray(g);
 
     const res = await T.runToPromise(
       T.provide<Config & ConfigB>({
@@ -564,16 +557,16 @@ describe("Stream", () => {
 
   // from https://github.com/rzeigler/waveguide-streams/blob/master/test/stream.spec.ts
   describe("peel", () => {
-    const multiplier = SK.map(SK.headSink<T.NoEnv, never, number>(), (opt) =>
+    const multiplier = SK.map(SK.headSink<never, unknown, never, number>(), (opt) =>
       opt._tag === "Some" ? opt.value : 1
     );
     it("should handle empty arrays", () => {
-      const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
+      const s1 = (S.empty as any) as S.Sync<number>;
       const s2 = pipe(s1, S.peel(multiplier));
       return expectExit(S.collectArray(S.stream.chain(s2, ([_h, r]) => r)), ex.done([]));
     });
     it("should handle empty arrays (managed)", () => {
-      const s1 = (S.empty as any) as S.Stream<T.NoEnv, never, number>;
+      const s1 = (S.empty as any) as S.Sync<number>;
       const s2 = pipe(s1, S.peelManaged(M.pure(multiplier)));
       return expectExit(S.collectArray(S.stream.chain(s2, ([_h, r]) => r)), ex.done([]));
     });
@@ -600,7 +593,7 @@ describe("Stream", () => {
     it("should raise errors", () => {
       const s1 =
         (S.fromArray([S.raised("boom"), S.once(1)]) as any) as
-        S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>;
+        S.SyncE<string, S.Sync<number>>;
       const s2 = S.flatten(s1);
       const s3 = S.stream.peel(s2, multiplier);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
@@ -608,7 +601,7 @@ describe("Stream", () => {
     it("should raise errors in the remainder stream", () => {
       const s1 =
         (S.fromArray([S.once(2), S.raised("boom"), S.once(1)]) as any) as
-        S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>;
+        S.SyncE<string, S.SyncE<string, number>>;
       const s2 = S.flatten(s1);
       const s3 = S.stream.chain(S.stream.peel(s2, multiplier), ([_head, rest]) => rest);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
@@ -619,7 +612,7 @@ describe("Stream", () => {
     // We describe transduction as the process of consuming some elements (1 or more) to produce an output element
     // The transducer used for the test is a summer
     // i.e. it consumes the number of elements to read, then that number of elements, and then outputs the sum
-    function transducer(): Sink<T.NoEnv, never, readonly [number, number], number, number> {
+    function transducer(): Sink<never, unknown, never, readonly [number, number], number, number> {
       const initial = sinkCont([-1, 0] as const);
 
       function step(
@@ -654,7 +647,7 @@ describe("Stream", () => {
       return expectExit(S.collectArray(s2), ex.done([]));
     });
 
-    function slidingBuffer(): Sink<T.NoEnv, never, number[], number, number[]> {
+    function slidingBuffer(): Sink<never, unknown, never, number[], number, number[]> {
       const initial = sinkCont([] as number[]);
 
       function step(state: number[], next: number): SinkStep<number, number[]> {
@@ -692,13 +685,7 @@ describe("Stream", () => {
     it("should produce the latest elements", () => {
       // Two streams that emit 2 elements then hang forever
       const s1 = S.stream.take(S.periodically(50), 2);
-      const s2 = S.stream.as(
-        s1,
-        S.stream.concat(
-          S.stream.take(S.periodically(10), 2),
-          (S.never as any) as S.Stream<T.NoEnv, never, number>
-        )
-      );
+      const s2 = S.stream.as(s1, S.stream.concat(S.stream.take(S.periodically(10), 2), S.never));
       // A third stream that emits 3 elements
       const after30 = T.as(T.after(50), S.stream.take(S.periodically(20), 4));
 
@@ -707,23 +694,26 @@ describe("Stream", () => {
     });
     it("should fail with errors in outer stream", () => {
       const io = T.effect.chain(ref.makeRef(0), (cell) => {
-        const s1: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+        const s1: T.AsyncE<string, S.AsyncE<string, number>> =
           T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
-        const s2: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+        const s2: T.AsyncE<string, S.AsyncE<string, number>> =
           T.delay(T.raiseError("boom"), 50) as any;
-        const s3: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+        const s3: T.AsyncE<string, S.AsyncE<string, number>> =
           T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
-          T.NoEnv,
+          unknown,
+          unknown,
           string,
-          T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>
+          T.AsyncE<string, S.AsyncE<string, number>>
         > = S.fromArray([s1, s2, s3]) as any;
 
-        const stream: S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> = S.stream.mapM(
-          set,
-          identity
-        );
+        const stream: S.Stream<
+          unknown,
+          unknown,
+          string,
+          S.AsyncE<string, number>
+        > = S.stream.mapM(set, identity);
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
         return T.effect.zip(drain, T.delay(cell.get, 100));
@@ -736,23 +726,26 @@ describe("Stream", () => {
     });
     it("should fail with errors in the inner streams", () => {
       const io = T.effect.chain(ref.makeRef(0), (cell) => {
-        const s1: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+        const s1: T.AsyncE<string, S.AsyncE<string, number>> =
           T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
-        const s2: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+        const s2: T.AsyncE<string, S.AsyncE<string, number>> =
           T.delay(T.pure(S.encaseEffect(T.raiseError("boom"))), 50) as any;
-        const s3: T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> =
+        const s3: T.AsyncE<string, S.AsyncE<string, number>> =
           T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
 
         const set: S.Stream<
-          T.NoEnv,
+          unknown,
+          unknown,
           string,
-          T.Effect<T.NoEnv, string, S.Stream<T.NoEnv, string, number>>
+          T.AsyncE<string, S.AsyncE<string, number>>
         > = S.fromArray([s1, s2, s3]) as any;
 
-        const stream: S.Stream<T.NoEnv, string, S.Stream<T.NoEnv, string, number>> = S.stream.mapM(
-          set,
-          identity
-        );
+        const stream: S.Stream<
+          unknown,
+          unknown,
+          string,
+          S.AsyncE<string, number>
+        > = S.stream.mapM(set, identity);
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
         return T.effect.zip(drain, T.delay(cell.get, 100));
@@ -777,7 +770,7 @@ describe("Stream", () => {
       pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s)));
     });
   });
-  function repeater<E, A>(w: T.Effect<unknown, E, A>, n: number): T.Effect<unknown, E, A> {
+  function repeater<E, A>(w: T.AsyncE<E, A>, n: number): T.AsyncE<E, A> {
     if (n <= 1) {
       return w;
     } else {
@@ -789,11 +782,11 @@ describe("Stream", () => {
 
     const r = T.sync(() => Math.random());
 
-    function range(max: number): T.Effect<T.NoEnv, never, number> {
+    function range(max: number): T.Async<number> {
       return T.effect.map(r, (n) => Math.round(n * max));
     }
 
-    function randomWait(max: number): T.Effect<unknown, never, void> {
+    function randomWait(max: number): T.Async<void> {
       return T.effect.chain(range(max), (a) => T.after(a));
     }
 

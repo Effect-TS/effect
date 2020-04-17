@@ -6,7 +6,7 @@ import { Exit } from "./original/exit";
 export function applyAndDelay(
   policy: RetryPolicy,
   status: RetryStatus
-): T.Effect<unknown, never, RetryStatus> {
+): T.Async<RetryStatus> {
   const newStatus = applyPolicy(policy, status);
   return P.pipe(
     newStatus.previousDelay,
@@ -17,12 +17,12 @@ export function applyAndDelay(
   );
 }
 
-export function retrying<RP, EP, R, E, A, R2, E2>(
-  policy: T.Effect<RP, EP, RetryPolicy>,
-  action: (status: RetryStatus) => T.Effect<R, E, A>,
-  check: (ex: Exit<E, A>) => T.Effect<R2, E2, boolean>
-): T.Effect<R & R2 & RP, E | E2 | EP, A> {
-  const go = (status: RetryStatus): T.Effect<R & R2 & RP, E | E2 | EP, A> =>
+export function retrying<RP, EP, S, R, E, A, R2, E2>(
+  policy: T.AsyncRE<RP, EP, RetryPolicy>,
+  action: (status: RetryStatus) => T.Effect<S, R, E, A>,
+  check: (ex: Exit<E, A>) => T.AsyncRE<R2, E2, boolean>
+): T.AsyncRE<R & R2 & RP, E | E2 | EP, A> {
+  const go = (status: RetryStatus): T.AsyncRE<R & R2 & RP, E | E2 | EP, A> =>
     P.pipe(
       status,
       F.flow(action, T.result),

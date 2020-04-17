@@ -1,8 +1,6 @@
 import { function as F, semigroup as Sem, monoid as Mon } from "fp-ts";
 import { Exit, done } from "./original/exit";
 import * as T from "./effect";
-import { Monad3E } from "./overload";
-import { NoEnv } from "./effect";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import * as Ar from "fp-ts/lib/Array";
@@ -10,6 +8,7 @@ import * as Op from "fp-ts/lib/Option";
 import * as Ei from "fp-ts/lib/Either";
 import * as TR from "fp-ts/lib/Tree";
 import { Separated } from "fp-ts/lib/Compactable";
+import { Monad4E } from "./overloadEff";
 
 export enum ManagedTag {
   Pure,
@@ -25,25 +24,36 @@ export enum ManagedTag {
  *
  * This is a friendly monadic wrapper around bracketExit.
  */
-export type ManagedT<R, E, A> = (
+export type ManagedT<S, R, E, A> = (
   _: R
 ) =>
   | Pure<A>
-  | Encase<E, A>
-  | Bracket<E, A>
-  | Suspended<R, E, A>
-  | Chain<R, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
-  | BracketExit<E, A>;
+  | Encase<S, E, A>
+  | Bracket<S, S, E, A>
+  | Suspended<S, S, E, A>
+  | Chain<S, S, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | BracketExit<S, S, E, A>;
 
-export interface Managed<R, E, A> {
+export interface Managed<S, R, E, A> {
   _TAG: () => "Managed";
   _E: () => E;
   _A: () => A;
+  _S: () => S;
   _R: (_: R) => void;
 }
 
-const toM = <R, E, A>(_: ManagedT<R, E, A>): Managed<R, E, A> => _ as any;
-const fromM = <R, E, A>(_: Managed<R, E, A>): ManagedT<R, E, A> => _ as any;
+export type Async<A> = Managed<unknown, unknown, never, A>;
+export type AsyncE<E, A> = Managed<unknown, unknown, E, A>;
+export type AsyncR<R, A> = Managed<unknown, R, never, A>;
+export type AsyncRE<R, E, A> = Managed<unknown, R, E, A>;
+
+export type Sync<A> = Managed<never, unknown, never, A>;
+export type SyncE<E, A> = Managed<never, unknown, E, A>;
+export type SyncR<R, A> = Managed<never, R, never, A>;
+export type SyncRE<R, E, A> = Managed<never, R, E, A>;
+
+const toM = <S, R, E, A>(_: ManagedT<S, R, E, A>): Managed<S, R, E, A> => _ as any;
+const fromM = <S, R, E, A>(_: Managed<S, R, E, A>): ManagedT<S, R, E, A> => _ as any;
 
 export interface Pure<A> {
   readonly _tag: ManagedTag.Pure;
@@ -54,16 +64,16 @@ export interface Pure<A> {
  * Lift a pure value into a resource
  * @param value
  */
-export function pure<R = T.NoEnv, E = T.NoErr, A = unknown>(value: A): Managed<R, E, A> {
+export function pure<A>(value: A): Sync<A> {
   return toM(() => ({
     _tag: ManagedTag.Pure,
     value
   }));
 }
 
-export interface Encase<E, A> {
+export interface Encase<S, E, A> {
   readonly _tag: ManagedTag.Encase;
-  readonly acquire: T.Effect<NoEnv, E, A>;
+  readonly acquire: T.Effect<S, unknown, E, A>;
 }
 
 /**
@@ -72,17 +82,17 @@ export interface Encase<E, A> {
  * @param res
  * @param f
  */
-export function encaseEffect<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, E, A> {
+export function encaseEffect<S, R, E, A>(rio: T.Effect<S, R, E, A>): Managed<S, R, E, A> {
   return toM((r) => ({
     _tag: ManagedTag.Encase,
     acquire: T.provide(r)(rio)
   }));
 }
 
-export interface Bracket<E, A> {
+export interface Bracket<S, S2, E, A> {
   readonly _tag: ManagedTag.Bracket;
-  readonly acquire: T.Effect<NoEnv, E, A>;
-  readonly release: F.FunctionN<[A], T.Effect<NoEnv, E, unknown>>;
+  readonly acquire: T.Effect<S, unknown, E, A>;
+  readonly release: F.FunctionN<[A], T.Effect<S2, unknown, E, unknown>>;
 }
 
 /**
@@ -90,61 +100,61 @@ export interface Bracket<E, A> {
  * @param acquire
  * @param release
  */
-export function bracket<R, E, A, R2, E2>(
-  acquire: T.Effect<R, E, A>,
-  release: F.FunctionN<[A], T.Effect<R2, E2, unknown>>
-): Managed<R & R2, E | E2, A> {
+export function bracket<S, R, E, A, S2, R2, E2>(
+  acquire: T.Effect<S, R, E, A>,
+  release: F.FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
+): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Bracket,
-    acquire: T.provide(r)(acquire as T.Effect<R, E | E2, A>),
+    acquire: T.provide(r)(acquire as T.Effect<S | S2, R & R2, E | E2, A>),
     release: (a) => T.provide(r)(release(a))
   }));
 }
 
-export interface BracketExit<E, A> {
+export interface BracketExit<S, S2, E, A> {
   readonly _tag: ManagedTag.BracketExit;
 
-  readonly acquire: T.Effect<T.NoEnv, E, A>;
-  readonly release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<T.NoEnv, E, unknown>>;
+  readonly acquire: T.Effect<S, unknown, E, A>;
+  readonly release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<S2, unknown, E, unknown>>;
 }
 
-export function bracketExit<R, E, A, R2, E2>(
-  acquire: T.Effect<R, E, A>,
-  release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<R2, E2, unknown>>
-): Managed<R & R2, E | E2, A> {
+export function bracketExit<S, R, E, A, S2, R2, E2>(
+  acquire: T.Effect<S, R, E, A>,
+  release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<S2, R2, E2, unknown>>
+): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.BracketExit,
-    acquire: T.provide(r)(acquire),
+    acquire: T.provide(r)(acquire as T.Effect<S | S2, R, E, A>),
     release: (a, e) => T.provide(r)(release(a, e as any))
   }));
 }
 
-export interface Suspended<R, E, A> {
+export interface Suspended<S, S2, E, A> {
   readonly _tag: ManagedTag.Suspended;
 
-  readonly suspended: T.Effect<NoEnv, E, Managed<NoEnv, E, A>>;
+  readonly suspended: T.Effect<S, unknown, E, Managed<S, unknown, E, A>>;
 }
 
 /**
  * Lift an IO of a Resource into a resource
  * @param suspended
  */
-export function suspend<R, E, R2, E2, A>(
-  suspended: T.Effect<R, E, Managed<R2, E2, A>>
-): Managed<R & R2, E | E2, A> {
+export function suspend<S, R, E, S2, R2, E2, A>(
+  suspended: T.Effect<S, R, E, Managed<S2, R2, E2, A>>
+): Managed<S | S2, R & R2, E | E2, A> {
   return toM(
     (r) =>
       ({
         _tag: ManagedTag.Suspended,
-        suspended: T.effect.map(T.provide(r)(suspended), (m) => (_: T.NoEnv) => fromM(m)(r))
+        suspended: T.effect.map(T.provide(r)(suspended), (m) => (_: unknown) => fromM(m)(r))
       } as any)
   );
 }
 
-export interface Chain<R, E, L, A> {
+export interface Chain<S, S2, E, L, A> {
   readonly _tag: ManagedTag.Chain;
-  readonly left: Managed<T.NoEnv, E, L>;
-  readonly bind: F.FunctionN<[L], Managed<T.NoEnv, E, A>>;
+  readonly left: Managed<S, unknown, E, L>;
+  readonly bind: F.FunctionN<[L], Managed<S2, unknown, E, A>>;
 }
 
 /**
@@ -154,13 +164,13 @@ export interface Chain<R, E, L, A> {
  * @param left
  * @param bind
  */
-function chain_<R, E, L, R2, E2, A>(
-  left: Managed<R, E, L>,
-  bind: F.FunctionN<[L], Managed<R2, E2, A>>
-): Managed<R & R2, E | E2, A> {
+function chain_<S, R, E, L, S2, R2, E2, A>(
+  left: Managed<S, R, E, L>,
+  bind: F.FunctionN<[L], Managed<S2, R2, E2, A>>
+): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.Chain,
-    left: provideAll(r)(left as Managed<R, E | E2, L>),
+    left: provideAll(r)(left as Managed<S | S2, R, E | E2, L>),
     bind: (l) => provideAll(r)(bind(l))
   }));
 }
@@ -169,9 +179,9 @@ function chain_<R, E, L, R2, E2, A>(
  * Curried form of chain
  * @param bind
  */
-export function chain<R, E, L, A>(
-  bind: F.FunctionN<[L], Managed<R, E, A>>
-): <R2, E2>(ma: Managed<R2, E2, L>) => Managed<R & R2, E | E2, A> {
+export function chain<S, R, E, L, A>(
+  bind: F.FunctionN<[L], Managed<S, R, E, A>>
+): <S2, R2, E2>(ma: Managed<S2, R2, E2, L>) => Managed<S | S2, R & R2, E | E2, A> {
   return (left) => chain_(left, bind);
 }
 
@@ -180,8 +190,11 @@ export function chain<R, E, L, A>(
  * @param res
  * @param f
  */
-function map_<R, E, L, A>(res: Managed<R, E, L>, f: F.FunctionN<[L], A>): Managed<R, E, A> {
-  return chain_(res, (r) => pure(f(r)) as Managed<R, E, A>);
+function map_<S, R, E, L, A>(
+  res: Managed<S, R, E, L>,
+  f: F.FunctionN<[L], A>
+): Managed<S, R, E, A> {
+  return chain_(res, (r) => pure(f(r)) as Managed<S, R, E, A>);
 }
 
 /**
@@ -190,8 +203,8 @@ function map_<R, E, L, A>(res: Managed<R, E, L>, f: F.FunctionN<[L], A>): Manage
  */
 export function map<L, A>(
   f: F.FunctionN<[L], A>
-): <R, E>(res: Managed<R, E, L>) => Managed<R, E, A> {
-  return <R, E>(res: Managed<R, E, L>) => map_(res, f);
+): <S, R, E>(res: Managed<S, R, E, L>) => Managed<S, R, E, A> {
+  return (res) => map_(res, f);
 }
 
 /**
@@ -202,11 +215,11 @@ export function map<L, A>(
  * @param resb
  * @param f
  */
-export function zipWith<R, E, A, R2, E2, B, C>(
-  resa: Managed<R, E, A>,
-  resb: Managed<R2, E2, B>,
+export function zipWith<S, R, E, A, S2, R2, E2, B, C>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): Managed<R & R2, E | E2, C> {
+): Managed<S | S2, R & R2, E | E2, C> {
   return chain_(resa, (a) => map_(resb, (b) => f(a, b)));
 }
 
@@ -217,10 +230,10 @@ export function zipWith<R, E, A, R2, E2, B, C>(
  * @param resa
  * @param resb
  */
-export function zip<R, E, A, R2, E2, B>(
-  resa: Managed<R, E, A>,
-  resb: Managed<R2, E2, B>
-): Managed<R & R2, E | E2, readonly [A, B]> {
+export function zip<S, R, E, A, S2, R2, E2, B>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E2, B>
+): Managed<S | S2, R & R2, E | E2, readonly [A, B]> {
   return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
@@ -229,10 +242,10 @@ export function zip<R, E, A, R2, E2, B>(
  * @param resa
  * @param resfab
  */
-export function ap<R, E, A, R2, E2, B>(
-  resa: Managed<R, E, A>,
-  resfab: Managed<R2, E2, F.FunctionN<[A], B>>
-): Managed<R & R2, E | E2, B> {
+export function ap<S, R, E, A, S2, R2, E2, B>(
+  resa: Managed<S, R, E, A>,
+  resfab: Managed<S2, R2, E2, F.FunctionN<[A], B>>
+): Managed<S | S2, R & R2, E | E2, B> {
   return zipWith(resa, resfab, (a, f) => f(a));
 }
 
@@ -241,10 +254,10 @@ export function ap<R, E, A, R2, E2, B>(
  * @param resfab
  * @param resa
  */
-function ap_<R, E, A, B, R2, E2>(
-  resfab: Managed<R, E, F.FunctionN<[A], B>>,
-  resa: Managed<R2, E2, A>
-): Managed<R & R2, E | E2, B> {
+function ap_<S, R, E, A, B, S2, R2, E2>(
+  resfab: Managed<S, R, E, F.FunctionN<[A], B>>,
+  resa: Managed<S2, R2, E2, A>
+): Managed<S | S2, R & R2, E | E2, B> {
   return zipWith(resfab, resa, (f, a) => f(a));
 }
 
@@ -255,7 +268,7 @@ function ap_<R, E, A, B, R2, E2>(
  * @param fa
  * @param b
  */
-export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
+export function as<S, R, E, A, B>(fa: Managed<S, R, E, A>, b: B): Managed<S, R, E, B> {
   return map_(fa, F.constant(b));
 }
 
@@ -263,7 +276,7 @@ export function as<R, E, A, B>(fa: Managed<R, E, A>, b: B): Managed<R, E, B> {
  * Curried form of as
  * @param b
  */
-export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B> {
+export function to<B>(b: B): <S, R, E, A>(fa: Managed<S, R, E, A>) => Managed<S, R, E, B> {
   return (fa) => as(fa, b);
 }
 
@@ -273,10 +286,10 @@ export function to<B>(b: B): <R, E, A>(fa: Managed<R, E, A>) => Managed<R, E, B>
  * @param left
  * @param bind
  */
-export function chainTap<R, E, A, R2, E2>(
-  left: Managed<R, E, A>,
-  bind: F.FunctionN<[A], Managed<R2, E2, unknown>>
-): Managed<R & R2, E | E2, A> {
+export function chainTap<S, R, E, A, S2, R2, E2>(
+  left: Managed<S, R, E, A>,
+  bind: F.FunctionN<[A], Managed<S2, R2, E2, unknown>>
+): Managed<S | S2, R & R2, E | E2, A> {
   return chain_(left, (a) => as(bind(a), a));
 }
 
@@ -284,9 +297,9 @@ export function chainTap<R, E, A, R2, E2>(
  * Curried form of chainTap
  * @param bind
  */
-export function chainTapWith<R, E, A>(
-  bind: F.FunctionN<[A], Managed<R, E, unknown>>
-): F.FunctionN<[Managed<R, E, A>], Managed<R, E, A>> {
+export function chainTapWith<S, R, E, A>(
+  bind: F.FunctionN<[A], Managed<S, R, E, unknown>>
+): <S2, R2, E2>(_: Managed<S2, R2, E2, A>) => Managed<S | S2, R & R2, E | E2, A> {
   return (inner) => chainTap(inner, bind);
 }
 
@@ -294,9 +307,9 @@ export function chainTapWith<R, E, A>(
  * Curried data last form of use
  * @param f
  */
-export function consume<R, E, A, B>(
-  f: F.FunctionN<[A], T.Effect<R, E, B>>
-): <R2, E2>(ma: Managed<R2, E2, A>) => T.Effect<R & R2, E | E2, B> {
+export function consume<S, R, E, A, B>(
+  f: F.FunctionN<[A], T.Effect<S, R, E, B>>
+): <S2, R2, E2>(ma: Managed<S2, R2, E2, A>) => T.Effect<S | S2, R & R2, E | E2, B> {
   // eslint-disable-next-line @typescript-eslint/no-use-before-define
   return (r) => use(r, f);
 }
@@ -307,7 +320,7 @@ export function consume<R, E, A, B>(
  * The destruction of the resource is interrupting said fiber.
  * @param rio
  */
-export function fiber<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, never, T.Fiber<E, A>> {
+export function fiber<S, R, E, A>(rio: T.Effect<S, R, E, A>): AsyncRE<R, never, T.Fiber<E, A>> {
   return bracket(T.fork(rio), (fiber) => fiber.interrupt);
 }
 
@@ -316,10 +329,10 @@ export function fiber<R, E, A>(rio: T.Effect<R, E, A>): Managed<R, never, T.Fibe
  * @param res
  * @param f
  */
-export function use<R, E, A, R2, E2, B>(
-  res: Managed<R, E, A>,
-  f: F.FunctionN<[A], T.Effect<R2, E2, B>>
-): T.Effect<R & R2, E | E2, B> {
+export function use<S, R, E, A, S2, R2, E2, B>(
+  res: Managed<S, R, E, A>,
+  f: F.FunctionN<[A], T.Effect<S2, R2, E2, B>>
+): T.Effect<S | S2, R & R2, E | E2, B> {
   return T.accessM((r: R & R2) => {
     const c = fromM(res)(r);
     switch (c._tag) {
@@ -339,9 +352,9 @@ export function use<R, E, A, R2, E2, B>(
   });
 }
 
-export interface Leak<R, E, A> {
+export interface Leak<S, R, E, A> {
   a: A;
-  release: T.Effect<R, E, unknown>;
+  release: T.Effect<S, R, E, unknown>;
 }
 
 /**
@@ -352,7 +365,9 @@ export interface Leak<R, E, A> {
  * Leak object is produced it is the callers responsibility to ensure release is invoked.
  * @param res
  */
-export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R, E, A>> {
+export function allocate<S, R, E, A>(
+  res: Managed<S, R, E, A>
+): T.Effect<S, R, E, Leak<S, R, E, A>> {
   return T.accessM((r: R) => {
     const c = fromM(res)(r);
 
@@ -394,23 +409,23 @@ export function allocate<R, E, A>(res: Managed<R, E, A>): T.Effect<R, E, Leak<R,
  * @param man
  * @param ma
  */
-export function provide<R3, E2, R2>(
-  man: Managed<R3, E2, R2>,
+export function provide<S2, R3, E2, R2>(
+  man: Managed<S2, R3, E2, R2>,
   inverted: "regular" | "inverted" = "regular"
-): T.Provider<R3, R2, E2> {
-  return <R, E, A>(ma: T.Effect<R & R2, E, A>) => use(man, (r) => T.provide(r, inverted)(ma));
+): T.Provider<R3, R2, E2, S2> {
+  return (ma) => use(man, (r) => T.provide(r, inverted)(ma));
 }
 
 export const URI = "matechs/Managed";
 export type URI = typeof URI;
 
 declare module "fp-ts/lib/HKT" {
-  interface URItoKind3<R, E, A> {
-    [URI]: Managed<R, E, A>;
+  interface URItoKind4<S, R, E, A> {
+    [URI]: Managed<S, R, E, A>;
   }
 }
 
-export const managed: Monad3E<URI> =
+export const managed: Monad4E<URI> =
   {
     URI,
     of: pure,
@@ -419,26 +434,26 @@ export const managed: Monad3E<URI> =
     chain: chain_
   } as const;
 
-export function getSemigroup<R, E, A>(
+export function getSemigroup<S, R, E, A>(
   Semigroup: Sem.Semigroup<A>
-): Sem.Semigroup<Managed<R, E, A>> {
+): Sem.Semigroup<Managed<S, R, E, A>> {
   return {
-    concat(x: Managed<R, E, A>, y: Managed<R, E, A>): Managed<R, E, A> {
+    concat(x: Managed<S, R, E, A>, y: Managed<S, R, E, A>): Managed<S, R, E, A> {
       return zipWith(x, y, Semigroup.concat);
     }
   };
 }
 
-export function getMonoid<R, E, A>(Monoid: Mon.Monoid<A>): Mon.Monoid<Managed<R, E, A>> {
+export function getMonoid<S, R, E, A>(Monoid: Mon.Monoid<A>): Mon.Monoid<Managed<S, R, E, A>> {
   return {
     ...getSemigroup(Monoid),
-    empty: pure(Monoid.empty) as Managed<R, E, A>
+    empty: pure(Monoid.empty) as Managed<S, R, E, A>
   };
 }
 
 function provideAll<R>(r: R) {
-  return <E, A>(ma: Managed<R, E, A>): Managed<T.NoEnv, E, A> =>
-    toM<unknown, E, A>(() => fromM(ma)(r));
+  return <S, E, A>(ma: Managed<S, R, E, A>): Managed<S, unknown, E, A> =>
+    toM<S, unknown, E, A>(() => fromM(ma)(r));
 }
 
 export const Do = DoG(managed);
@@ -447,51 +462,52 @@ export const sequenceT = ST(managed);
 
 export const sequenceOption = Op.option.sequence(managed);
 
-export const traverseOption: <A, R, E, B>(
-  f: (a: A) => Managed<R, E, B>
-) => (ta: Op.Option<A>) => Managed<R, E, Op.Option<B>> = (f) => (ta) =>
+export const traverseOption: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: Op.Option<A>) => Managed<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.traverse(managed)(ta, f);
 
-export const wiltOption: <A, R, E, B, C>(
-  f: (a: A) => Managed<R, E, Ei.Either<B, C>>
-) => (wa: Op.Option<A>) => Managed<R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (wa) =>
+export const wiltOption: <S, A, R, E, B, C>(
+  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Managed<S, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (wa) =>
   Op.option.wilt(managed)(wa, f);
 
-export const witherOption: <A, R, E, B>(
-  f: (a: A) => Managed<R, E, Op.Option<B>>
-) => (ta: Op.Option<A>) => Managed<R, E, Op.Option<B>> = (f) => (ta) =>
+export const witherOption: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Managed<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(managed)(ta, f);
 
 export const sequenceEither = Ei.either.sequence(managed);
 
-export const traverseEither: <A, R, FE, B>(
-  f: (a: A) => Managed<R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => Managed<R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+export const traverseEither: <S, A, R, FE, B>(
+  f: (a: A) => Managed<S, R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Managed<S, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(managed)(ta, f);
 
 export const sequenceTree = TR.tree.sequence(managed);
 
-export const traverseTree: <A, R, E, B>(
-  f: (a: A) => Managed<R, E, B>
-) => (ta: TR.Tree<A>) => Managed<R, E, TR.Tree<B>> = (f) => (ta) =>
+export const traverseTree: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: TR.Tree<A>) => Managed<S, R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(managed)(ta, f);
 
 export const sequenceArray = Ar.array.sequence(managed);
 
-export const traverseArray: <A, R, E, B>(
-  f: (a: A) => Managed<R, E, B>
-) => (ta: Array<A>) => Managed<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(managed)(ta, f);
+export const traverseArray: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverse(managed)(ta, f);
 
-export const traverseArrayWithIndex: <A, R, E, B>(
-  f: (i: number, a: A) => Managed<R, E, B>
-) => (ta: Array<A>) => Managed<R, E, Array<B>> = (f) => (ta) =>
+export const traverseArrayWithIndex: <S, A, R, E, B>(
+  f: (i: number, a: A) => Managed<S, R, E, B>
+) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverseWithIndex(managed)(ta, f);
 
-export const wiltArray: <A, R, E, B, C>(
-  f: (a: A) => Managed<R, E, Ei.Either<B, C>>
-) => (wa: Array<A>) => Managed<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+export const wiltArray: <S, A, R, E, B, C>(
+  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Managed<S, R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   Ar.array.wilt(managed)(wa, f);
 
-export const witherArray: <A, R, E, B>(
-  f: (a: A) => Managed<R, E, Op.Option<B>>
-) => (ta: Array<A>) => Managed<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(managed)(ta, f);
+export const witherArray: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, Op.Option<B>>
+) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) => Ar.array.wither(managed)(ta, f);

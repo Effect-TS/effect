@@ -14,11 +14,11 @@ import * as T from "./effect";
 import { effect } from "./effect";
 
 export interface ConcurrentQueue<A> {
-  readonly take: T.Effect<unknown, never, A>;
-  offer(a: A): T.Effect<unknown, never, void>;
+  readonly take: T.Async<A>;
+  offer(a: A): T.Async<void>;
 }
 
-type State<A> = E.Either<Dequeue<Deferred<T.NoEnv, never, A>>, Dequeue<A>>;
+type State<A> = E.Either<Dequeue<Deferred<unknown, unknown, never, A>>, Dequeue<A>>;
 const initial = <A>(): State<A> => E.right(empty());
 
 const poption = P.pipeable(O.option);
@@ -41,17 +41,22 @@ const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
 
 function makeConcurrentQueueImpl<A>(
   state: Ref<State<A>>,
-  factory: T.Effect<T.NoEnv, never, Deferred<T.NoEnv, never, A>>,
+  factory: T.Async<Deferred<unknown, unknown, never, A>>,
   overflowStrategy: F.FunctionN<[Dequeue<A>, A], Dequeue<A>>,
   // This is effect that precedes offering
   // in the case of a boudned queue it is responsible for acquiring the semaphore
-  offerGate: T.Effect<unknown, never, void>,
+  offerGate: T.Async<void>,
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: F.FunctionN<[T.Effect<unknown, never, A>], T.Effect<unknown, never, A>>
+  takeGate: F.FunctionN<
+    [T.Async<A>],
+    T.Async<A>
+  >
 ): ConcurrentQueue<A> {
-  function cleanupLatch(latch: Deferred<T.NoEnv, never, A>): T.Effect<T.NoEnv, never, void> {
+  function cleanupLatch(
+    latch: Deferred<unknown, unknown, never, A>
+  ): T.Async<void> {
     return T.asUnit(
       state.update((current) =>
         P.pipe(
@@ -101,7 +106,7 @@ function makeConcurrentQueueImpl<A>(
     )
   );
 
-  const offer = (a: A): T.Effect<unknown, never, void> =>
+  const offer = (a: A): T.Async<void> =>
     T.applySecond(
       offerGate,
       T.uninterruptible(
@@ -135,11 +140,11 @@ function makeConcurrentQueueImpl<A>(
 /**
  * Create an unbounded concurrent queue
  */
-export function unboundedQueue<A>(): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function unboundedQueue<A>(): T.Sync<ConcurrentQueue<A>> {
   return effect.map(makeRef(initial<A>()), (ref) =>
     makeConcurrentQueueImpl(
       ref,
-      makeDeferred<T.NoEnv, never, A>(),
+      makeDeferred<unknown, unknown, never, A>(),
       unboundedOffer,
       T.unit,
       F.identity
@@ -153,13 +158,15 @@ const natCapacity = natNumber(new Error("Die: capacity must be a natural number"
  * Create a bounded queue with the given capacity that drops older offers
  * @param capacity
  */
-export function slidingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function slidingQueue<A>(
+  capacity: number
+): T.Sync<ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     effect.map(makeRef(initial<A>()), (ref) =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoEnv, never, A>(),
+        makeDeferred<unknown, unknown, never, A>(),
         slidingOffer(capacity),
         T.unit,
         F.identity
@@ -172,13 +179,15 @@ export function slidingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, Conc
  * Create a dropping queue with the given capacity that drops offers on full
  * @param capacity
  */
-export function droppingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, ConcurrentQueue<A>> {
+export function droppingQueue<A>(
+  capacity: number
+): T.Sync<ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     effect.map(makeRef(initial<A>()), (ref) =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoEnv, never, A>(),
+        makeDeferred<unknown, unknown, never, A>(),
         droppingOffer(capacity),
         T.unit,
         F.identity
@@ -193,13 +202,13 @@ export function droppingQueue<A>(capacity: number): T.Effect<T.NoEnv, never, Con
  */
 export function boundedQueue<A>(
   capacity: number
-): T.Effect<unknown, never, ConcurrentQueue<A>> {
+): T.Sync<ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     T.effect.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
       makeConcurrentQueueImpl(
         ref,
-        makeDeferred<T.NoEnv, never, A>(),
+        makeDeferred<unknown, unknown, never, A>(),
         unboundedOffer,
         sem.acquire,
         (inner) =>
