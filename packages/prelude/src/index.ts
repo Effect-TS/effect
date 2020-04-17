@@ -1,6 +1,5 @@
 import {
   effect as T,
-  effectSync as Sync,
   freeEnv as Service,
   managed as M,
   stream as S,
@@ -29,7 +28,7 @@ import * as Ex from "./exit";
 
 export { pipe } from "fp-ts/lib/pipeable";
 
-export { T, Sync, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U };
+export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U };
 export { Ex };
 export { E };
 export { Service };

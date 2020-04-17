@@ -1,5 +1,4 @@
 import * as effect from "./effect";
-import * as effectSync from "./effectSync";
 import * as stream from "./stream/index";
 import * as sink from "./stream/sink";
 import * as managed from "./managed";
@@ -17,7 +16,6 @@ import * as rec from "./rec";
 
 export {
   effect,
-  effectSync,
   stream,
   managed,
   queue,

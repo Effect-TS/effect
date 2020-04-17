@@ -6,14 +6,14 @@ import * as assert from "assert";
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => T.Io<string>;
+    getString: () => T.UIO<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => T.Io<string>;
+    getString: () => T.UIO<string>;
   };
 }
 

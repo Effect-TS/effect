@@ -2,7 +2,6 @@ import assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import { freeEnv as F, effect as T, utils as U } from "../src";
 import { done } from "../src/original/exit";
-import { sequenceS } from "fp-ts/lib/Apply";
 
 const fnEnv: unique symbol = Symbol();
 
@@ -137,43 +136,5 @@ describe("Generic", () => {
     const main = pipe(get, consoleI2);
 
     assert.deepEqual(await T.runToPromiseExit(main), done(["message"]));
-  });
-
-  it("merge specs", async () => {
-    const envA: unique symbol = Symbol();
-    const envB: unique symbol = Symbol();
-
-    const modA = F.define({
-      [envA]: {
-        foo: F.cn<T.UIO<string>>()
-      }
-    });
-
-    const modB = F.define({
-      [envB]: {
-        bar: F.cn<T.UIO<string>>()
-      }
-    });
-
-    const m = F.merge({ modA, modB });
-
-    const {
-      [envA]: { foo },
-      [envB]: { bar }
-    } = F.access(m);
-
-    const impl = F.implement(m)({
-      [envA]: {
-        foo: T.pure("a")
-      },
-      [envB]: {
-        bar: T.pure("b")
-      }
-    });
-
-    assert.deepEqual(
-      await T.runToPromiseExit(pipe(sequenceS(T.effect)({ foo, bar }), impl)),
-      done({ foo: "a", bar: "b" })
-    );
   });
 });

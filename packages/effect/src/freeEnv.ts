@@ -89,13 +89,6 @@ type EnvOf<F> = F extends F.FunctionN<infer _ARG, T.Effect<infer R, infer _E, in
   ? R
   : never;
 
-const AsyncError = "@matechs/effect/freeEnv/AsyncError";
-interface AsyncError<k extends string> {
-  [AsyncError]: {
-    key: () => k;
-  };
-}
-
 type OnlyNew<M extends ModuleShape<M>, I extends Implementation<M>> = {
   [k in keyof I & keyof M]: {
     [h in keyof I[k] & keyof M[k] & string]: I[k][h] extends F.FunctionN<
@@ -162,13 +155,10 @@ export function implement<S extends ModuleSpec<any>>(
 ) {
   return <I extends Implementation<TypeOf<S>>>(
     i: I
-  ): ImplementationEnv<OnlyNew<TypeOf<S>, I>> extends AsyncError<infer k>
-    ? ["cannot provide async implementation to", k]
-    : T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> =>
-    ((eff: any) =>
-      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        P.pipe(eff, T.provide(providing(s, i, e), inverted))
-      )) as any;
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
+    T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+      P.pipe(eff, T.provide(providing(s, i, e), inverted))
+    );
 }
 
 export function implementWith<RW = unknown, EW = never, AW = unknown>(w: T.Effect<RW, EW, AW>) {
@@ -176,15 +166,12 @@ export function implementWith<RW = unknown, EW = never, AW = unknown>(w: T.Effec
     I extends Implementation<TypeOf<S>>
   >(
     i: (r: AW) => I
-  ): ImplementationEnv<OnlyNew<TypeOf<S>, I>> extends AsyncError<infer k>
-    ? ["cannot provide async implementation to", k]
-    : T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW> =>
-    ((eff: any) =>
-      T.effect.chain(w, (r) =>
-        T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-          P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
-        )
-      )) as any;
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW> => (eff) =>
+    T.effect.chain(w, (r) =>
+      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+        P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
+      )
+    );
 }
 
 export function instance<M extends ModuleShape<M>, S extends ModuleSpec<M>>(_: S) {
@@ -197,30 +184,6 @@ export type MergeSpec<S> = {
 
 export type ExtractShape<M> = M extends ModuleShape<infer A> ? A : never;
 export type TypeOf<M> = M extends ModuleSpec<infer A> ? A : never;
-
-export type Merged<S> = S extends {
-  [k in keyof S]: {
-    [specURI]: infer X;
-  };
-}
-  ? ModuleSpec<UnionToIntersection<ExtractShape<X>>>
-  : never;
-
-export function merge<S extends MergeSpec<S>>(s: S): Merged<S> {
-  const m =
-    {
-      [specURI]: {}
-    } as Merged<S>;
-
-  for (const k of Reflect.ownKeys(s)) {
-    m[specURI] = {
-      ...m[specURI],
-      ...(s as any)[k][specURI]
-    };
-  }
-
-  return m;
-}
 
 export const opaque = <A extends ModuleShape<A>>() => <B extends A, S extends ModuleSpec<B>>(
   _: S
