@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import * as B from "../src";
 import { some } from "fp-ts/lib/Option";
 import * as M from "@matechs/test-jest";

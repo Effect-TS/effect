@@ -25,7 +25,7 @@
     "@matechs/test-jest": "^1.0.0-alpha.1"
   },
   "dependencies": {
-    "@matechs/effect": "^6.0.0-alpha.1"
+    "@matechs/prelude": "^1.0.0-alpha.1"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

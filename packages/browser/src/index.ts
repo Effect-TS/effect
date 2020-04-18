@@ -1,34 +1,36 @@
-import { effect as T } from "@matechs/effect";
+import { T, E } from "@matechs/prelude";
 import * as O from "fp-ts/lib/Option";
 
 export const localStorageEnv = "@matechs/browser/localStorageURI";
 export const sessionStorageEnv = "@matechs/browser/sessionStorageURI";
 
 interface GenericStorage<Env> {
-  length: T.Effect<Env, Error, number>;
-  clear: T.Effect<Env, Error, void>;
-  getItem(key: string): T.Effect<Env, Error, O.Option<string>>;
-  key(index: number): T.Effect<Env, Error, O.Option<string>>;
-  removeItem(key: string): T.Effect<Env, Error, void>;
-  setItem(key: string, value: string): T.Effect<Env, Error, void>;
+  length: T.SyncRE<Env, Error, number>;
+  clear: T.SyncRE<Env, Error, void>;
+  getItem(key: string): T.SyncRE<Env, Error, O.Option<string>>;
+  key(index: number): T.SyncRE<Env, Error, O.Option<string>>;
+  removeItem(key: string): T.SyncRE<Env, Error, void>;
+  setItem(key: string, value: string): T.SyncRE<Env, Error, void>;
 }
 
 export interface SessionStorageEnv {
-  [sessionStorageEnv]: GenericStorage<T.NoEnv>;
+  [sessionStorageEnv]: GenericStorage<unknown>;
 }
 
 export interface LocalStorageEnv {
-  [localStorageEnv]: GenericStorage<T.NoEnv>;
+  [localStorageEnv]: GenericStorage<unknown>;
 }
 
-function getStorageImpl(storage: Storage): GenericStorage<T.NoEnv> {
+const tryS = T.trySyncMap(E.toError);
+
+function getStorageImpl(storage: Storage): GenericStorage<unknown> {
   return {
-    length: T.trySync(() => storage.length),
-    clear: T.trySync(() => storage.clear()),
-    getItem: (key) => T.trySync(() => O.fromNullable(storage.getItem(key))),
-    key: (index) => T.trySync(() => O.fromNullable(storage.key(index))),
-    removeItem: (key) => T.trySync(() => storage.removeItem(key)),
-    setItem: (key, value) => T.trySync(() => storage.setItem(key, value))
+    length: tryS(() => storage.length),
+    clear: tryS(() => storage.clear()),
+    getItem: (key) => tryS(() => O.fromNullable(storage.getItem(key))),
+    key: (index) => tryS(() => O.fromNullable(storage.key(index))),
+    removeItem: (key) => tryS(() => storage.removeItem(key)),
+    setItem: (key, value) => tryS(() => storage.setItem(key, value))
   };
 }
 
