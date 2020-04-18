@@ -76,7 +76,7 @@ const e = pipe(
 );
 
 // $ExpectType Effect<unknown, Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
-const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+const f = T.Do().do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 // $ExpectType Provider<unknown, Foo, never, never>
 const provideFoo = T.provide<Foo>({
@@ -137,11 +137,7 @@ pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Effect<never, unkno
 const combinedP = combineProviders().with(provideBaz).with(provideBar).with(provideFoo).done();
 
 // $ExpectType Provider<unknown, Baz & Bar & Foo, never, unknown>
-const combinedP2 = combineProviders()
-  .with(provideBazA)
-  .with(provideBar)
-  .with(provideFoo)
-  .done();
+const combinedP2 = combineProviders().with(provideBazA).with(provideBar).with(provideFoo).done();
 
 pipe(a3, combinedP); // $ExpectType Effect<never, unknown, never, string>
 pipe(a3, combinedP2); // $ExpectType Effect<unknown, unknown, never, string>

@@ -1785,7 +1785,7 @@ export function fromObjectReadStreamB<A>(stream: ReadStream, batch: number, ever
 
 export { su };
 
-export const Do = DoG(stream);
+export const Do = () => DoG(stream);
 export const sequenceS = SS(stream);
 export const sequenceT = ST(stream);
 

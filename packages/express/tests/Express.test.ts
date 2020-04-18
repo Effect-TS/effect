@@ -1,17 +1,13 @@
 import "isomorphic-fetch";
 import * as assert from "assert";
-import { effect as T, managed as M } from "@matechs/effect";
-import { Do } from "fp-ts-contrib/lib/Do";
+import { T, M, O, pipe, Ex } from "@matechs/prelude";
 import * as EX from "../src";
 import * as H from "@matechs/http-client";
 import * as L from "@matechs/http-client-fetch";
-import { pipe } from "fp-ts/lib/pipeable";
-import { raise, done } from "@matechs/effect/lib/original/exit";
-import { some } from "fp-ts/lib/Option";
 
 describe("Express", () => {
   it("should use express", async () => {
-    const routes = Do(T.effect)
+    const routes = T.Do()
       .do(
         EX.route(
           "post",
@@ -47,7 +43,7 @@ describe("Express", () => {
       )
       .done();
 
-    const program = Do(T.effect)
+    const program = T.Do()
       .bindL("res1", () =>
         pipe(
           H.post("http://127.0.0.1:3003/", {}),
@@ -96,11 +92,11 @@ describe("Express", () => {
       T.provide(EX.express),
       T.runToPromise
     ).then(({ res1, res2, res3, res4, res5 }) => {
-      assert.deepEqual(res1, done({ res: 1 }));
-      assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
-      assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-      assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
-      assert.deepEqual(res5, done({ res: 1 }));
+      assert.deepEqual(res1, Ex.done({ res: 1 }));
+      assert.deepEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
+      assert.deepEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+      assert.deepEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
+      assert.deepEqual(res5, Ex.done({ res: 1 }));
     });
   });
 });

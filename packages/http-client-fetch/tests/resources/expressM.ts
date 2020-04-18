@@ -1,6 +1,5 @@
-import { effect as T, managed as M } from "@matechs/effect";
+import { T, M, E } from "@matechs/prelude";
 import express from "express";
-import { left, right } from "fp-ts/lib/Either";
 import { Server } from "http";
 
 /* istanbul ignore file */
@@ -12,10 +11,10 @@ export const expressM = (port: number) =>
 
       const server = app.listen(port, (err) => {
         if (err) {
-          r(left(err));
+          r(E.left(err));
         } else {
           r(
-            right({
+            E.right({
               app,
               server
             })
@@ -33,9 +32,9 @@ export const expressM = (port: number) =>
       T.async((r) => {
         server.close((err) => {
           if (err) {
-            r(left(err));
+            r(E.left(err));
           } else {
-            r(right(undefined));
+            r(E.right(undefined));
           }
         });
 

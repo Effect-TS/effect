@@ -1,8 +1,6 @@
-import { effect as T } from "@matechs/effect";
+import { T, E, O } from "@matechs/prelude";
 import * as H from "@matechs/http-client";
 import querystring from "querystring";
-import { left, right } from "fp-ts/lib/Either";
-import { fromNullable } from "fp-ts/lib/Option";
 
 function getContentType(requestType: H.RequestType): string {
   return H.foldRequestType(
@@ -35,7 +33,7 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
       responseType: H.ResponseType,
       headers: Record<string, string>,
       body: unknown
-    ): T.TaskErr<H.HttpError<string>, H.Response<any>> {
+    ): T.AsyncE<H.HttpError<string>, H.Response<any>> {
       const input: RequestInit = {
         headers: {
           "Content-Type": getContentType(requestType),
@@ -60,10 +58,10 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                 () => {
                   resp.json().then((json: unknown) => {
                     r(
-                      right({
+                      E.right({
                         headers: h,
                         status: resp.status,
-                        body: fromNullable(json)
+                        body: O.fromNullable(json)
                       })
                     );
                   });
@@ -71,10 +69,10 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                 () =>
                   resp.text().then((text) => {
                     r(
-                      right({
+                      E.right({
                         headers: h,
                         status: resp.status,
-                        body: fromNullable(text)
+                        body: O.fromNullable(text)
                       })
                     );
                   }),
@@ -82,20 +80,20 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                   if (resp["arrayBuffer"]) {
                     resp.arrayBuffer().then((arrayBuffer) => {
                       r(
-                        right({
+                        E.right({
                           headers: h,
                           status: resp.status,
-                          body: fromNullable(Buffer.from(arrayBuffer))
+                          body: O.fromNullable(Buffer.from(arrayBuffer))
                         })
                       );
                     });
                   } else {
                     (resp as any).buffer().then((buffer: Buffer) => {
                       r(
-                        right({
+                        E.right({
                           headers: h,
                           status: resp.status,
-                          body: fromNullable(Buffer.from(buffer))
+                          body: O.fromNullable(Buffer.from(buffer))
                         })
                       );
                     });
@@ -105,12 +103,12 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
             } else {
               resp.text().then((text) => {
                 r(
-                  left({
+                  E.left({
                     _tag: H.HttpErrorReason.Response,
                     response: {
                       headers: h,
                       status: resp.status,
-                      body: fromNullable(text)
+                      body: O.fromNullable(text)
                     }
                   })
                 );
@@ -118,7 +116,7 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
             }
           })
           .catch((err) => {
-            r(left({ _tag: H.HttpErrorReason.Request, error: err }));
+            r(E.left({ _tag: H.HttpErrorReason.Request, error: err }));
           });
 
         // tslint:disable-next-line: no-empty

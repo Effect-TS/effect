@@ -1,15 +1,10 @@
-import { effect as T } from "@matechs/effect";
+import { T, Ex, pipe, O } from "@matechs/prelude";
 import * as H from "@matechs/http-client";
 import assert from "assert";
 import express from "express";
 import { libcurl } from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
-import { isDone, isRaise, isInterrupt } from "@matechs/effect/lib/exit";
-import { Exit } from "@matechs/effect/lib/original/exit";
-import { some, map, Option } from "fp-ts/lib/Option";
-import { Do } from "fp-ts-contrib/lib/Do";
 
-function run<E, A>(eff: T.TaskEnvErr<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
+function run<E, A>(eff: T.AsyncRE<H.RequestEnv, E, A>): Promise<Ex.Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
@@ -30,8 +25,8 @@ function run<E, A>(eff: T.TaskEnvErr<H.RequestEnv, E, A>): Promise<Exit<E, A>> {
   );
 }
 
-function timer<R, E, A>(_: T.Effect<R, E, A>) {
-  return Do(T.effect)
+function timer<S, R, E, A>(_: T.Effect<S, R, E, A>) {
+  return T.Do()
     .bind(
       "s",
       T.sync(() => new Date())
@@ -115,23 +110,26 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(isDone(post), true);
-    assert.deepEqual(isDone(post) && post.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(post), true);
+    assert.deepEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(isDone(postText), true);
-    assert.deepEqual(isDone(postText) && postText.value.body, some(JSON.stringify({ foo: "bar" })));
+    assert.deepEqual(Ex.isDone(postText), true);
+    assert.deepEqual(
+      Ex.isDone(postText) && postText.value.body,
+      O.some(JSON.stringify({ foo: "bar" }))
+    );
 
-    assert.deepEqual(isDone(postNoBody), true);
-    assert.deepEqual(isDone(postNoBody) && postNoBody.value.body, some({}));
+    assert.deepEqual(Ex.isDone(postNoBody), true);
+    assert.deepEqual(Ex.isDone(postNoBody) && postNoBody.value.body, O.some({}));
 
-    assert.deepEqual(isDone(put), true);
-    assert.deepEqual(isDone(put) && put.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(put), true);
+    assert.deepEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(isDone(patch), true);
-    assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(patch), true);
+    assert.deepEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(del), true);
+    assert.deepEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
   });
 
   it("get 404", async () => {
@@ -157,8 +155,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(isRaise(result), true);
-    assert.deepEqual(isRaise(result) && result.error, 404);
+    assert.deepEqual(Ex.isRaise(result), true);
+    assert.deepEqual(Ex.isRaise(result) && result.error, 404);
   });
 
   it("headers", async () => {
@@ -187,8 +185,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(isDone(result), true);
-    assert.deepEqual(isDone(result) && result.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(result), true);
+    assert.deepEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "bar" }));
   });
 
   it("headers middleware", async () => {
@@ -210,8 +208,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(isDone(result), true);
-    assert.deepEqual(isDone(result) && result.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(result), true);
+    assert.deepEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "bar" }));
   });
 
   it("replace headers", async () => {
@@ -248,8 +246,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(isDone(result), true);
-    assert.deepEqual(isDone(result) && result.value.body, some({ foo: "baz" }));
+    assert.deepEqual(Ex.isDone(result), true);
+    assert.deepEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "baz" }));
   });
 
   it("data", async () => {
@@ -277,17 +275,17 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(isDone(post), true);
-    assert.deepEqual(isDone(post) && post.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(post), true);
+    assert.deepEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(isDone(put), true);
-    assert.deepEqual(isDone(put) && put.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(put), true);
+    assert.deepEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(isDone(patch), true);
-    assert.deepEqual(isDone(patch) && patch.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(patch), true);
+    assert.deepEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && del.value.body, some({ foo: "bar" }));
+    assert.deepEqual(Ex.isDone(del), true);
+    assert.deepEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
   });
 
   it.skip("binary", async () => {
@@ -321,33 +319,36 @@ describe("Libcurl", () => {
       })
     );
 
-    const binaryString = (b: Option<Buffer>): Option<string> =>
+    const binaryString = (b: O.Option<Buffer>): O.Option<string> =>
       pipe(
         b,
-        map((b) => b.toString("utf-8"))
+        O.map((b) => b.toString("utf-8"))
       );
 
     assert.deepEqual(post, true);
-    assert.deepEqual(isDone(post), true);
-    assert.deepEqual(isDone(post) && binaryString(post.value.body), some(`{ foo: \"bar\" }`));
+    assert.deepEqual(Ex.isDone(post), true);
+    assert.deepEqual(Ex.isDone(post) && binaryString(post.value.body), O.some(`{ foo: \"bar\" }`));
 
-    assert.deepEqual(isDone(put), true);
-    assert.deepEqual(isDone(put) && binaryString(put.value.body), some(`{ foo: \"bar\" }`));
+    assert.deepEqual(Ex.isDone(put), true);
+    assert.deepEqual(Ex.isDone(put) && binaryString(put.value.body), O.some(`{ foo: \"bar\" }`));
 
-    assert.deepEqual(isDone(patch), true);
-    assert.deepEqual(isDone(patch) && binaryString(patch.value.body), some(`{ foo: \"bar\" }`));
+    assert.deepEqual(Ex.isDone(patch), true);
+    assert.deepEqual(
+      Ex.isDone(patch) && binaryString(patch.value.body),
+      O.some(`{ foo: \"bar\" }`)
+    );
 
-    assert.deepEqual(isDone(del), true);
-    assert.deepEqual(isDone(del) && binaryString(del.value.body), some(``)); // TODO: Verify spec; del binary body does not touch the server
+    assert.deepEqual(Ex.isDone(del), true);
+    assert.deepEqual(Ex.isDone(del) && binaryString(del.value.body), O.some(``)); // TODO: Verify spec; del binary body does not touch the server
   });
 
   it("get https", async () => {
     const result = await run(H.get("https://jsonplaceholder.typicode.com/todos/1"));
 
-    assert.deepEqual(isDone(result), true);
+    assert.deepEqual(Ex.isDone(result), true);
     assert.deepEqual(
-      isDone(result) && result.value.body,
-      some({
+      Ex.isDone(result) && result.value.body,
+      O.some({
         userId: 1,
         id: 1,
         title: "delectus aut autem",
@@ -359,9 +360,9 @@ describe("Libcurl", () => {
   it("malformed", async () => {
     const result = await run(H.get("ht-ps://wrong.com/todos/1"));
 
-    assert.deepEqual(isRaise(result), true);
+    assert.deepEqual(Ex.isRaise(result), true);
     assert.deepEqual(
-      isRaise(result) && result.error._tag === H.HttpErrorReason.Request && result.error.error,
+      Ex.isRaise(result) && result.error._tag === H.HttpErrorReason.Request && result.error.error,
       new Error("Unsupported protocol")
     );
   });
@@ -378,6 +379,6 @@ describe("Libcurl", () => {
 
     cancel();
 
-    assert.deepEqual(res && isInterrupt(res), true);
+    assert.deepEqual(res && Ex.isInterrupt(res), true);
   });
 });

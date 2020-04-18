@@ -59,7 +59,7 @@ const e = pipeF(c)
   .pipe(T.chain((_) => b))
   .done();
 
-const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+const f = T.Do().do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 const provideBar = T.provide<Bar>(
   {
@@ -114,7 +114,7 @@ describe("Prelude", () => {
   });
 
   it("should run effect composition - sync - combine", () => {
-    const combined = combineProviders().with(provideBaz).with(provideBar).done()
+    const combined = combineProviders().with(provideBaz).with(provideBar).done();
     const exit = pipe(a3, combined, T.runSync);
 
     assert.deepStrictEqual(Ex.isDone(exit) && exit.value, "value: bar");

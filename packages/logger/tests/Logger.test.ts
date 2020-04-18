@@ -14,7 +14,8 @@ const loggerSpec = M.suite("Logger")(
       debug: jest.spyOn(console, "debug").mockImplementation(empty),
       error: jest.spyOn(console, "error").mockImplementation(empty)
     }))(({ useMockM }) =>
-      T.Do.do(L.logger.info("ok"))
+      T.Do()
+        .do(L.logger.info("ok"))
         .do(L.logger.http("ok"))
         .do(L.logger.debug("ok"))
         .do(L.logger.silly("ok"))
@@ -41,7 +42,8 @@ const loggerSpec = M.suite("Logger")(
     M.mockedTestM("use logger with level")(() => ({
       debug: jest.spyOn(console, "debug").mockImplementation(empty)
     }))(({ useMockM }) =>
-      T.Do.do(L.logger.debug("ok"))
+      T.Do()
+        .do(L.logger.debug("ok"))
         .do(
           useMockM(({ debug }) =>
             T.sync(() => {

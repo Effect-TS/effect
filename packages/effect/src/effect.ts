@@ -1504,7 +1504,7 @@ export const effect: EffectMonad = {
   zipWith: zipWith_
 };
 
-export const Do = DoG(effect);
+export const Do = () => DoG(effect);
 export const sequenceS = SS(effect);
 export const sequenceT = ST(effect);
 
@@ -1518,7 +1518,7 @@ export const parEffect: Monad4EP<URI> & MonadThrow4EP<URI> = {
   throwError: raiseError
 };
 
-export const parDo = DoG(parEffect);
+export const parDo = () => DoG(parEffect);
 export const parSequenceS = SS(parEffect);
 export const parSequenceT = ST(parEffect);
 

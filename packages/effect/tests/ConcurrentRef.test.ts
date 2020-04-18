@@ -7,7 +7,8 @@ interface Config {
 
 describe("ConcurrentRef", () => {
   it("should use ref", async () => {
-    const program = T.Do.bindL("initial", () => T.access(({ initial }: Config) => initial))
+    const program = T.Do()
+      .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .bindL("next", ({ ref }) => ref.modify((n) => T.pure([n + 1, n + 1] as const)))
       .doL(({ ref, next }) => ref.set(T.pure(next + 1)))

@@ -31,7 +31,7 @@
     "querystring": "^0.2.0"
   },
   "dependencies": {
-    "@matechs/effect": "^6.0.0-alpha.1",
+    "@matechs/prelude": "^1.0.0-alpha.1",
     "@matechs/http-client": "^5.0.0-alpha.1"
   }
 }

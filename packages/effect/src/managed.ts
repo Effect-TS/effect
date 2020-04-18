@@ -413,7 +413,7 @@ export function provide<S2, R3, E2, R2>(
   man: Managed<S2, R3, E2, R2>,
   inverted: "regular" | "inverted" = "regular"
 ): T.Provider<R3, R2, E2, S2> {
-  return ((ma: any) => use(man, (r) => T.provide(r, inverted)(ma))) as any;
+  return (ma) => use(man, (r) => T.provide(r, inverted)(ma));
 }
 
 export const URI = "matechs/Managed";
@@ -456,7 +456,7 @@ function provideAll<R>(r: R) {
     toM<S, unknown, E, A>(() => fromM(ma)(r));
 }
 
-export const Do = DoG(managed);
+export const Do = () => DoG(managed);
 export const sequenceS = SS(managed);
 export const sequenceT = ST(managed);
 

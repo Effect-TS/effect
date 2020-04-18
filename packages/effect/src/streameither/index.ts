@@ -345,7 +345,7 @@ export const {
   map
 } = P.pipeable(streamEither);
 
-export const Do = DoG(streamEither);
+export const Do = () => DoG(streamEither);
 export const sequenceS = SS(streamEither);
 export const sequenceT = ST(streamEither);
 

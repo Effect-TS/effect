@@ -20,6 +20,7 @@ import * as monoid from "fp-ts/lib/Monoid";
 import * as map from "fp-ts/lib/Map";
 import * as set from "fp-ts/lib/Set";
 import * as tree from "fp-ts/lib/Tree";
+import * as record from "fp-ts/lib/Record";
 import * as magma from "fp-ts/lib/Magma";
 import * as E from "./either";
 import * as A from "fp-ts/lib/Array";
@@ -35,7 +36,7 @@ export { E };
 export { Service };
 export { F };
 export { A };
-export { eq, show, semigroup, monoid, tree, map, set, magma };
+export { eq, show, semigroup, monoid, tree, map, set, magma, record };
 
 export class Pipe<A> {
   constructor(private readonly _: A) {

@@ -1,4 +1,4 @@
-import { effect as T, managed as M } from "@matechs/effect";
+import { T, M } from "@matechs/prelude";
 import newExpress, * as EX from "express";
 import { sequenceT } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
@@ -21,7 +21,7 @@ export const serverEnv = "@matechs/express/serverURI";
 export interface HasServer {
   [serverEnv]: {
     server: Server;
-    onClose: Array<T.Task<void>>;
+    onClose: Array<T.Async<void>>;
   };
 }
 
@@ -30,14 +30,14 @@ export type Method = "post" | "get" | "put" | "patch" | "delete";
 export const expressEnv = "@matechs/express/expressURI";
 
 export interface ExpressOps {
-  withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A>;
-  route<R, E, A>(
+  withApp<S, R, E, A>(op: T.Effect<S, R & HasExpress, E, A>): T.Effect<S, R, E, A>;
+  route<S, R, E, A>(
     method: Method,
     path: string,
-    f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
+    f: (req: EX.Request) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
     ...rest: NextHandleFunction[]
-  ): T.Effect<R & HasExpress, T.NoErr, void>;
-  bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server>;
+  ): T.SyncR<R & HasExpress, void>;
+  bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server>;
 }
 
 export interface Express {
@@ -70,12 +70,12 @@ export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
 
 export const express: Express = {
   [expressEnv]: {
-    route<R, E, A>(
+    route<S, R, E, A>(
       method: Method,
       path: string,
-      f: (req: EX.Request) => T.Effect<R, RouteError<E>, RouteResponse<A>>,
+      f: (req: EX.Request) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
       ...rest: NextHandleFunction[]
-    ): T.Effect<R & HasExpress, T.NoErr, void> {
+    ): T.SyncR<R & HasExpress, void> {
       return T.accessM((r: R & HasExpress) =>
         T.sync(() => {
           r[expressAppEnv].app[method](path, ...rest, (req, res) => {
@@ -104,7 +104,7 @@ export const express: Express = {
         })
       );
     },
-    withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<R, E, A> {
+    withApp<S, R, E, A>(op: T.Effect<S, R & HasExpress, E, A>): T.Effect<S, R, E, A> {
       return T.accessM((r: R) =>
         pipe(
           op,
@@ -115,7 +115,7 @@ export const express: Express = {
         )
       );
     },
-    bind(port: number, hostname?: string): T.TaskEnvErr<HasExpress, Error, Server> {
+    bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
         T.async<Error, Server>((res) => {
           const s = app.listen(port, hostname || "0.0.0.0", (err) => {
@@ -137,7 +137,9 @@ export const express: Express = {
   }
 };
 
-export function withApp<R, E, A>(op: T.Effect<R & HasExpress, E, A>): T.Effect<Express & R, E, A> {
+export function withApp<S, R, E, A>(
+  op: T.Effect<S, R & HasExpress, E, A>
+): T.Effect<S, Express & R, E, A> {
   return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op));
 }
 
@@ -149,12 +151,12 @@ export interface RequestContext {
   };
 }
 
-export function route<R, E, A>(
+export function route<S, R, E, A>(
   method: Method,
   path: string,
-  handler: T.Effect<R, RouteError<E>, RouteResponse<A>>,
+  handler: T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
   middle: NextHandleFunction[] = [EX.json()]
-): T.Effect<T.Erase<R, RequestContext> & HasExpress & Express, T.NoErr, void> {
+): T.SyncR<T.Erase<R, RequestContext> & HasExpress & Express, void> {
   return T.accessM(({ [expressEnv]: express }: Express) =>
     express.route(
       method,
@@ -176,27 +178,27 @@ export function route<R, E, A>(
 export function bind(
   port: number,
   hostname?: string
-): T.TaskEnvErr<HasExpress & Express, Error, Server> {
+): T.AsyncRE<HasExpress & Express, Error, Server> {
   return T.accessM(({ [expressEnv]: express }: Express) => express.bind(port, hostname));
 }
 
-export function accessAppM<R, E, A>(
-  f: (app: EX.Express) => T.Effect<R, E, A>
-): T.Effect<HasExpress & R, E, A> {
+export function accessAppM<S, R, E, A>(
+  f: (app: EX.Express) => T.Effect<S, R, E, A>
+): T.Effect<S, HasExpress & R, E, A> {
   return T.accessM(({ [expressAppEnv]: express }: HasExpress) => f(express.app));
 }
 
-export function accessReqM<R, E, A>(
-  f: (req: EX.Request) => T.Effect<R, E, A>
-): T.Effect<RequestContext & R, E, A> {
+export function accessReqM<S, R, E, A>(
+  f: (req: EX.Request) => T.Effect<S, R, E, A>
+): T.Effect<S, RequestContext & R, E, A> {
   return T.accessM(({ [requestContextEnv]: { request } }: RequestContext) => f(request));
 }
 
-export function accessReq<A>(f: (req: EX.Request) => A): T.Effect<RequestContext, never, A> {
+export function accessReq<A>(f: (req: EX.Request) => A): T.SyncR<RequestContext, A> {
   return T.access(({ [requestContextEnv]: { request } }: RequestContext) => f(request));
 }
 
-export function accessApp<A>(f: (app: EX.Express) => A): T.Effect<HasExpress, T.NoErr, A> {
+export function accessApp<A>(f: (app: EX.Express) => A): T.SyncR<HasExpress, A> {
   return T.access(({ [expressAppEnv]: express }: HasExpress) => f(express.app));
 }
 
@@ -204,7 +206,10 @@ export type ExpressEnv = HasExpress & Express;
 
 export type ChildEnv = ExpressEnv & RequestContext;
 
-export const managedExpress = (port: number, hostname?: string) =>
+export const managedExpress = (
+  port: number,
+  hostname?: string
+): M.AsyncRE<Express, Error, HasServer & HasExpress> =>
   M.bracket(
     withApp(
       T.effect.map(
