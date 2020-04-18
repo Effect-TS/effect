@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 
 export const LoggerURI = "@matechs/logger/loggerURI";
 
@@ -6,7 +6,7 @@ export interface Meta {
   [k: string]: any;
 }
 
-export type LogFn = (message: string, meta?: Meta) => T.Io<void>;
+export type LogFn = (message: string, meta?: Meta) => T.Sync<void>;
 
 const loggerM_ = F.define({
   [LoggerURI]: {

@@ -134,14 +134,14 @@ pipe(ff, provideBar); // $ExpectType Effect<unknown, unknown, AError | BError, {
 pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Effect<never, unknown, never, string>
 
 // $ExpectType Provider<unknown, Baz & Bar & Foo, never, never>
-const combinedP = combineProviders().with(provideBaz).with(provideBar).with(provideFoo).asEffect();
+const combinedP = combineProviders().with(provideBaz).with(provideBar).with(provideFoo).done();
 
 // $ExpectType Provider<unknown, Baz & Bar & Foo, never, unknown>
 const combinedP2 = combineProviders()
   .with(provideBazA)
   .with(provideBar)
   .with(provideFoo)
-  .asEffect();
+  .done();
 
 pipe(a3, combinedP); // $ExpectType Effect<never, unknown, never, string>
 pipe(a3, combinedP2); // $ExpectType Effect<unknown, unknown, never, string>

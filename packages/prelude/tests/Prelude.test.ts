@@ -96,7 +96,7 @@ describe("Prelude", () => {
   });
 
   it("should run effect composition - combine", async () => {
-    const provideEnv = combineProviders().with(provideBaz).with(provideBar).asEffect();
+    const provideEnv = combineProviders().with(provideBaz).with(provideBar).done();
 
     await pipeF(f)
       .pipe(provideEnv)
@@ -114,7 +114,7 @@ describe("Prelude", () => {
   });
 
   it("should run effect composition - sync - combine", () => {
-    const combined = combineProviders().with(provideBaz).with(provideBar).asEffect()
+    const combined = combineProviders().with(provideBaz).with(provideBar).done()
     const exit = pipe(a3, combined, T.runSync);
 
     assert.deepStrictEqual(Ex.isDone(exit) && exit.value, "value: bar");

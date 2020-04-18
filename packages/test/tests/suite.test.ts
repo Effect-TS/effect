@@ -187,7 +187,7 @@ const envSuite = M.suite("env suite")(
 
 const pendingSuite = M.suite("pending suite")(M.testM("should ignore not implemented"));
 
-const provideum = T.provide<Sum>({
+const provideSum = T.provide<Sum>({
   sum: {
     a: 1,
     b: 2,
@@ -203,7 +203,7 @@ const provideMul = T.provide<Mul>({
   }
 });
 
-const provideub = T.provide<Sub>({
+const provideSub = T.provide<Sub>({
   sub: {
     a: 3,
     b: 2,
@@ -234,4 +234,4 @@ M.customRun({
   skip2Suite,
   envSuite,
   pendingSuite
-)(flow(provideub, provideum, provideDiv, M.provideGenerator));
+)(flow(provideSub, provideSum, provideDiv, M.provideGenerator));

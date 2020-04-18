@@ -3,7 +3,7 @@ import * as O from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { RetryPolicy } from "retry-ts";
 import { getConfigValue, setConfigValue } from "../config";
-import { patch, AspectE } from "../def";
+import { patch, Aspect } from "../def";
 
 export const RetryURI = "@matechs/test/RetryURI";
 
@@ -16,7 +16,7 @@ declare module "../config" {
 export const getRetry = getConfigValue(RetryURI);
 export const setRetry = setConfigValue(RetryURI)(true);
 
-export const withRetryPolicy = (retryPolicy: RetryPolicy): AspectE<T.AsyncRT> => (Spec) =>
+export const withRetryPolicy = (retryPolicy: RetryPolicy): Aspect => (Spec) =>
   pipe(
     Spec,
     patch((_) =>

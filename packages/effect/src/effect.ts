@@ -444,11 +444,8 @@ export function provide<R>(
   r: R,
   inverted: "regular" | "inverted" = "regular"
 ): Provider<unknown, R, never> {
-  return (
-    (<S, R2, E, A>(eff: Effect<S, R2 & R, E, A>): Effect<S, R2, E, A> =>
-      provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)) as
-    any
-  );
+  return <S, R2, E, A>(eff: Effect<S, R2 & R, E, A>): Effect<S, R2, E, A> =>
+    provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff);
 }
 
 /**
@@ -458,12 +455,10 @@ export function provideM<S, R, R3, E2>(
   rm: Effect<S, R3, E2, R>,
   inverted: "regular" | "inverted" = "regular"
 ): Provider<R3, R, E2, S> {
-  return (
-    (<S2, R2, E, A>(eff: Effect<S2, R2 & R, E, A>): Effect<S | S2, R2 & R3, E | E2, A> =>
-      chain_(rm, (r) =>
-        provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)
-      )) as any
-  );
+  return <S2, R2, E, A>(eff: Effect<S2, R2 & R, E, A>): Effect<S | S2, R2 & R3, E | E2, A> =>
+    chain_(rm, (r) =>
+      provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)
+    );
 }
 
 const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(

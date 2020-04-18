@@ -191,11 +191,6 @@ export const accessM: <R, R2, E, A>(f: F.FunctionN<[R], MIO<R2, E, A>>) => MIO<R
 
 export const access: <R, A>(f: F.FunctionN<[R], A>) => MIO<R, never, A> = T.access;
 
-export interface Provider<Environment, Module, E2 = never> {
-  _tag: "MIO";
-  <R, E, A>(e: MIO<Module & R, E, A>): MIO<Environment & R, E | E2, A>;
-}
-
 /**
  * Provides partial environment via the spread operator, providing several environment is possible via:
  * pipe(eff, provide(env1), provide(env2)) or pipe(eff, provide<Env1 & Env2>({...env1, ...env2}))
@@ -203,8 +198,10 @@ export interface Provider<Environment, Module, E2 = never> {
  * the second parameter is used to invert the priority of newly provided environment
  * and should be used when you want subsequent providers to take precedence (i.e. having currently provided env as default)
  */
-export const provide: <R>(r: R, inverted?: "regular" | "inverted") => Provider<unknown, R, never> =
-  T.provide as any;
+export const provide: <R>(
+  r: R,
+  inverted?: "regular" | "inverted"
+) => T.Provider<unknown, R, never, unknown> = T.provide;
 
 /**
  * Like provide where environment is resolved monadically
@@ -212,7 +209,7 @@ export const provide: <R>(r: R, inverted?: "regular" | "inverted") => Provider<u
 export const provideM: <R, R3, E2>(
   rm: MIO<R3, E2, R>,
   inverted?: "regular" | "inverted"
-) => Provider<R3, R, E2> = T.provideM as any;
+) => T.Provider<R3, R, E2, unknown> = T.provideM;
 
 /**
  * Lift a const on values to a const on IOs

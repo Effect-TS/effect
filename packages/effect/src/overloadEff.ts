@@ -250,48 +250,48 @@ declare module "fp-ts-contrib/lib/Do" {
 declare module "fp-ts/lib/Apply" {
   export function sequenceS<F extends MaURIS>(
     F: Apply4E<F>
-  ): <NER extends Record<string, GE<any, any, any, any>>>(
+  ): <NER extends Record<string, Kind4<F, any, any, any, any>>>(
     r: EnforceNonEmptyRecord<NER> & Record<string, GE<any, any, any, any>>
   ) => Kind4<
     F,
     SOf<NER>,
     EnvOf<NER>,
     {
-      [K in keyof NER]: [NER[K]] extends [GE<any, any, infer E, any>] ? E : never;
+      [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, infer E, any>] ? E : never;
     }[keyof NER],
     {
-      [K in keyof NER]: [NER[K]] extends [GE<any, any, any, infer A>] ? A : never;
+      [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
     }
   >;
 
   export function sequenceS<F extends MaURIS>(
     F: Apply4EP<F>
-  ): <NER extends Record<string, GE<any, any, any, any>>>(
-    r: EnforceNonEmptyRecord<NER> & Record<string, GE<any, any, any, any>>
+  ): <NER extends Record<string, Kind4<F, any, any, any, any>>>(
+    r: EnforceNonEmptyRecord<NER> & Record<string, Kind4<F, any, any, any, any>>
   ) => Kind4<
     F,
     unknown,
     EnvOf<NER>,
     {
-      [K in keyof NER]: [NER[K]] extends [GE<any, any, infer E, any>] ? E : never;
+      [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, infer E, any>] ? E : never;
     }[keyof NER],
     {
-      [K in keyof NER]: [NER[K]] extends [GE<any, any, any, infer A>] ? A : never;
+      [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
     }
   >;
 
   export function sequenceT<F extends MaURIS>(
     F: Apply4EP<F>
-  ): <T extends Array<GE<any, any, any, any>>>(
+  ): <T extends Array<Kind4<F, any, any, any, any>>>(
     ...t: T & {
-      0: GE<any, any, any, any>;
+      0: Kind4<F, any, any, any, any>;
     }
   ) => Kind4<
     F,
     unknown,
     UnionToIntersection<
       {
-        [K in keyof T]: [T[K]] extends [GE<any, infer R, any, any>]
+        [K in keyof T]: [T[K]] extends [Kind4<F, any, infer R, any, any>]
           ? unknown extends R
             ? never
             : R
@@ -299,27 +299,27 @@ declare module "fp-ts/lib/Apply" {
       }[number]
     >,
     {
-      [K in keyof T]: [T[K]] extends [GE<any, any, infer E, any>] ? E : never;
+      [K in keyof T]: [T[K]] extends [Kind4<F, any, any, infer E, any>] ? E : never;
     }[number],
     {
-      [K in keyof T]: [T[K]] extends [GE<any, any, any, infer A>] ? A : never;
+      [K in keyof T]: [T[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
     }
   >;
 
   export function sequenceT<F extends MaURIS>(
     F: Apply4E<F>
-  ): <T extends Array<GE<any, any, any, any>>>(
+  ): <T extends Array<Kind4<F, any, any, any, any>>>(
     ...t: T & {
-      0: GE<any, any, any, any>;
+      0: Kind4<F, any, any, any, any>;
     }
   ) => Kind4<
     F,
     {
-      [K in keyof T]: [T[K]] extends [GE<infer S, any, any, any>] ? S : never;
+      [K in keyof T]: [T[K]] extends [Kind4<F, infer S, any, any, any>] ? S : never;
     }[number],
     UnionToIntersection<
       {
-        [K in keyof T]: [T[K]] extends [GE<any, infer R, any, any>]
+        [K in keyof T]: [T[K]] extends [Kind4<F, any, infer R, any, any>]
           ? unknown extends R
             ? never
             : R
@@ -327,10 +327,10 @@ declare module "fp-ts/lib/Apply" {
       }[number]
     >,
     {
-      [K in keyof T]: [T[K]] extends [GE<any, any, infer E, any>] ? E : never;
+      [K in keyof T]: [T[K]] extends [Kind4<F, any, any, infer E, any>] ? E : never;
     }[number],
     {
-      [K in keyof T]: [T[K]] extends [GE<any, any, any, infer A>] ? A : never;
+      [K in keyof T]: [T[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
     }
   >;
 }

@@ -3,7 +3,7 @@ import { patch, AspectE, AspectR12 } from "../def";
 import { effect as T } from "@matechs/effect";
 import { Do } from "fp-ts-contrib/lib/Do";
 
-export const withInit = <R>(init: T.Effect<R, any, void>): AspectE<R> => (Spec) =>
+export const withInit = <S, R>(init: T.Effect<S, R, any, void>): AspectE<R> => (Spec) =>
   pipe(
     Spec,
     patch((_) => ({
@@ -13,7 +13,7 @@ export const withInit = <R>(init: T.Effect<R, any, void>): AspectE<R> => (Spec) 
     }))
   );
 
-export const withFinalize = <R>(finalize: T.Effect<R, any, void>): AspectE<R> => (Spec) =>
+export const withFinalize = <S, R>(finalize: T.Effect<S, R, any, void>): AspectE<R> => (Spec) =>
   pipe(
     Spec,
     patch((_) => ({
@@ -27,9 +27,9 @@ export const withFinalize = <R>(finalize: T.Effect<R, any, void>): AspectE<R> =>
     }))
   );
 
-export const withHook = <R, R2, A>(
-  init: T.Effect<R, any, A>,
-  finalize: (_: A) => T.Effect<R2, any, void>
+export const withHook = <S, S2, R, R2, A>(
+  init: T.Effect<S, R, any, A>,
+  finalize: (_: A) => T.Effect<S2, R2, any, void>
 ): AspectE<R & R2> => (Spec) =>
   pipe(
     Spec,
@@ -45,9 +45,9 @@ export const withHook = <R, R2, A>(
     }))
   );
 
-export const withHookP = <R, R2, A>(
-  init: T.Effect<R, any, A>,
-  finalize: (_: A) => T.Effect<R2, any, void>
+export const withHookP = <S, S2, R, R2, A>(
+  init: T.Effect<S, R, any, A>,
+  finalize: (_: A) => T.Effect<S2, R2, any, void>
 ): AspectR12<A, R & R2> => (Spec) =>
   pipe(
     Spec,

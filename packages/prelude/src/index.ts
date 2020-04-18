@@ -68,34 +68,19 @@ export const flowF = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B) =>
 
 export type CombineNeeds<N, P, N2> = N & P extends P & infer Q ? Q & N2 : N & P & N2;
 
-export type Combine<
-  Need,
-  Prov,
-  AddE,
-  Op,
-  K extends T.Provider<any, any, any, any> | MIO.Provider<any, any, any>
-> = K extends MIO.Provider<infer R, infer M, infer E>
-  ? FlowP<CombineNeeds<Need, M, R>, Prov & M, AddE | E, unknown>
-  : K extends T.Provider<infer R, infer M, infer E, infer Op2>
-  ? FlowP<CombineNeeds<Need, M, R>, Prov & M, AddE | E, Op | Op2>
-  : never;
-
 export class FlowP<Need, Prov, AddE, Op> {
   constructor(private readonly f?: any) {
     this.with = this.with.bind(this);
-    this.asMIO = this.asMIO.bind(this);
-    this.asEffect = this.asEffect.bind(this);
+    this.done = this.done.bind(this);
   }
 
-  with<K extends T.Provider<any, any, any, any> | MIO.Provider<any, any, any>>(_: K): Combine<Need, Prov, AddE, Op, K> {
+  with<Need2, Prov2, Err2, Op2>(
+    _: T.Provider<Need2, Prov2, Err2, Op2>
+  ): FlowP<CombineNeeds<Need, Prov2, Need2>, Prov & Prov2, AddE | Err2, Op | Op2> {
     return new FlowP((x: any) => (_ as any)(this.f(x))) as any;
   }
 
-  asMIO(): MIO.Provider<Need, Prov, AddE> {
-    return this.f;
-  }
-
-  asEffect(): T.Provider<Need, Prov, AddE, Op> {
+  done(): T.Provider<Need, Prov, AddE, Op> {
     return this.f;
   }
 }

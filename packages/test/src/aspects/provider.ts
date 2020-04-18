@@ -2,7 +2,7 @@ import { pipe } from "fp-ts/lib/pipeable";
 import { patch, AspectR12 } from "../def";
 import { effect as T } from "@matechs/effect";
 
-export const withProvider = <U, P, E>(f: T.Provider<U, P, E>): AspectR12<P, U> => (Spec) =>
+export const withProvider = <U, P, E, Op>(f: T.Provider<U, P, E, Op>): AspectR12<P, U> => (Spec) =>
   pipe(
     Spec,
     patch((_) => ({
