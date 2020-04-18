@@ -36,7 +36,7 @@ export const fibQio = (n: bigint): QIO<bigint> => {
   return QIO.chain(fibQio(n - BigInt(1)), (a) => QIO.map(fibQio(n - BigInt(2)), (b) => a + b));
 };
 
-export const fibEffect = (n: bigint): T.Effect<T.NoEnv, never, bigint> => {
+export const fibEffect = (n: bigint): T.Sync<bigint> => {
   if (n < BigInt(2)) {
     return T.pure(BigInt(1));
   }

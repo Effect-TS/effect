@@ -1,5 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { isDone } from "@matechs/effect/lib/exit";
+import { T, Service as F, Ex } from "@matechs/prelude";
 import * as L from "@matechs/logger";
 import * as assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -18,25 +17,28 @@ const factory = F.implement(W.winstonFactoryM)({
   }
 });
 
-async function testLevel(level: L.logger.Level) {
+function testLevel(level: L.logger.Level) {
   messages.splice(0, messages.length);
 
-  const res = await T.runToPromiseExit(
-    pipe(L.logger[level]("msg", { foo: "bar" }), W.provideWinstonLogger, factory)
+  const res = pipe(
+    L.logger[level]("msg", { foo: "bar" }),
+    W.provideWinstonLogger,
+    factory,
+    T.runSync
   );
 
-  assert.deepEqual(isDone(res), true);
+  assert.deepEqual(Ex.isDone(res), true);
   assert.deepEqual(messages, [[level, "msg", { foo: "bar" }]]);
 }
 
 describe("Winston", () => {
-  it("use winston", async () => {
-    await testLevel("info");
-    await testLevel("silly");
-    await testLevel("debug");
-    await testLevel("warn");
-    await testLevel("http");
-    await testLevel("verbose");
-    await testLevel("error");
+  it("use winston", () => {
+    testLevel("info");
+    testLevel("silly");
+    testLevel("debug");
+    testLevel("warn");
+    testLevel("http");
+    testLevel("verbose");
+    testLevel("error");
   });
 });
