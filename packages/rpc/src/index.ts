@@ -1,8 +1,5 @@
-import { freeEnv as F, effect as T } from "@matechs/effect";
-import * as E from "@matechs/express";
-import { array } from "fp-ts/lib/Array";
-import { right } from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/pipeable";
+import { Service as F, T, E, pipe } from "@matechs/prelude";
+import * as EXP from "@matechs/express";
 import { RPCResponse } from "@matechs/rpc-client";
 
 export const serverConfigEnv = "@matechs/rpc/serverConfigURI";
@@ -15,9 +12,11 @@ export interface ServerConfig<M> {
   };
 }
 
-export type InferR<F> = F extends (...args: any[]) => T.Effect<infer Q & E.RequestContext, any, any>
+export type InferR<F> = F extends (
+  ...args: any[]
+) => T.Effect<any, infer Q & EXP.RequestContext, any, any>
   ? Q
-  : F extends T.Effect<infer Q & E.RequestContext, any, any>
+  : F extends T.Effect<any, infer Q & EXP.RequestContext, any, any>
   ? Q
   : never;
 
@@ -33,10 +32,10 @@ export type Runtime<M> = F.UnionToIntersection<
 
 export function server<M extends F.ModuleShape<M>, R>(
   s: F.ModuleSpec<M>,
-  i: T.Provider<E.ChildEnv & R, M>
-): T.TaskEnvErr<E.ExpressEnv & Runtime<M> & ServerConfig<M> & R, T.NoErr, void> {
-  return T.accessM((r: ServerConfig<M> & E.ExpressEnv & R) => {
-    const ops: T.TaskEnvErr<E.HasExpress & E.Express, never, void>[] = [];
+  i: T.Provider<EXP.ChildEnv & R, M, any, any>
+): T.AsyncR<EXP.ExpressEnv & Runtime<M> & ServerConfig<M> & R, void> {
+  return T.accessM((r: ServerConfig<M> & EXP.ExpressEnv & R) => {
+    const ops: T.AsyncR<EXP.HasExpress & EXP.Express, void>[] = [];
 
     for (const k of Reflect.ownKeys(s[F.specURI])) {
       const { scope } = r[serverConfigEnv][k];
@@ -46,17 +45,17 @@ export function server<M extends F.ModuleShape<M>, R>(
           const path = `${scope}/${key}`;
 
           ops.push(
-            E.route(
+            EXP.route(
               "post",
               path,
-              E.accessReqM((req) =>
-                T.async<never, E.RouteResponse<RPCResponse>>((res) => {
+              EXP.accessReqM((req) =>
+                T.async<never, EXP.RouteResponse<RPCResponse>>((res) => {
                   const args: any[] = req.body.args;
 
                   const cancel = T.run(
-                    T.provide<E.HasExpress & E.Express & E.RequestContext & R>({
+                    T.provide<EXP.HasExpress & EXP.Express & EXP.RequestContext & R>({
                       ...r,
-                      [E.requestContextEnv]: { request: req }
+                      [EXP.requestContextEnv]: { request: req }
                     })(
                       pipe(
                         T.accessM((z: M) =>
@@ -65,7 +64,7 @@ export function server<M extends F.ModuleShape<M>, R>(
                         i
                       )
                     ),
-                    (x) => res(right(E.routeResponse(200, { value: x })))
+                    (x) => res(E.right(EXP.routeResponse(200, { value: x })))
                   );
 
                   return () => {
@@ -79,6 +78,6 @@ export function server<M extends F.ModuleShape<M>, R>(
       }
     }
 
-    return T.asUnit(array.sequence(T.effect)(ops));
+    return T.asUnit(T.sequenceArray(ops));
   });
 }

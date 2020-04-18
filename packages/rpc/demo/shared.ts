@@ -1,5 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { Option } from "fp-ts/lib/Option";
+import { T, Service as F, O } from "@matechs/prelude";
 
 // environment entries
 export const placeholderJsonEnv: unique symbol = Symbol();
@@ -14,7 +13,7 @@ export interface Todo {
 
 export interface PlaceholderJson extends F.ModuleShape<PlaceholderJson> {
   [placeholderJsonEnv]: {
-    getTodo: (n: number) => T.TaskErr<string, Option<Todo>>;
+    getTodo: (n: number) => T.AsyncE<string, O.Option<Todo>>;
   };
 }
 

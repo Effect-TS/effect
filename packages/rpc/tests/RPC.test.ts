@@ -1,11 +1,9 @@
 import "isomorphic-fetch";
-import { effect as T, freeEnv as F, exit as EX } from "@matechs/effect";
+import { T, Service as F, Ex, pipe } from "@matechs/prelude";
 import * as E from "@matechs/express";
 import * as RPC from "../src";
 import * as RPCCLI from "@matechs/rpc-client";
 import * as assert from "assert";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as L from "@matechs/http-client-fetch";
 
 const configEnv: unique symbol = Symbol();
@@ -26,8 +24,8 @@ const counterEnv: unique symbol = Symbol();
 
 const counterM = F.define({
   [counterEnv]: {
-    increment: F.fn<(n: number) => T.Task<number>>(),
-    ni: F.cn<T.TaskErr<string, void>>()
+    increment: F.fn<(n: number) => T.Async<number>>(),
+    ni: F.cn<T.AsyncE<string, void>>()
   }
 });
 
@@ -53,7 +51,7 @@ const { increment, ni } = RPCCLI.client(counterM);
 describe("RPC", () => {
   it("should call remote service", async () => {
     const program = E.withApp(
-      Do(T.effect).do(RPC.server(counterM, counterService)).bind("server", E.bind(9003)).done()
+      T.Do().do(RPC.server(counterM, counterService)).bind("server", E.bind(9003)).done()
     );
 
     const result = await T.runToPromise(
@@ -101,7 +99,7 @@ describe("RPC", () => {
 
     result.server.close();
 
-    assert.deepEqual(incResult, EX.done(2));
-    assert.deepEqual(niResult, EX.raise("not implemented"));
+    assert.deepEqual(incResult, Ex.done(2));
+    assert.deepEqual(niResult, Ex.raise("not implemented"));
   });
 });
