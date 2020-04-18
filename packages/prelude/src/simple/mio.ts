@@ -683,18 +683,6 @@ export const run: <E, A>(
 ) => F.Lazy<void> = T.run;
 
 /**
- * Run the given IO syncroniously
- * returns left if any async operation
- * is found
- * @param io
- */
-export const runSync: <E, A>(io: MIO<{}, E, A>) => E.Either<Error, ex.Exit<E, A>> =
-  T.runSync as any;
-
-/* istanbul skip next */
-export const runUnsafeSync: <E, A>(io: MIO<{}, E, A>) => A = T.runUnsafeSync as any;
-
-/**
  * Run an IO and return a Promise of its result
  *
  * Allows providing an environment parameter directly
