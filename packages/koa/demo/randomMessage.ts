@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 
 /**
  * Definition of a random message module
@@ -8,7 +8,7 @@ export const RandomMessageURI = "@uris-free/RandomMessage";
 
 const RandomMessage_ = F.define({
   [RandomMessageURI]: {
-    hitMe: F.fn<() => T.Task<string>>()
+    hitMe: F.fn<() => T.Sync<string>>()
   }
 });
 

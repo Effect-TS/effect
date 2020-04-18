@@ -1,8 +1,5 @@
-import { effect as T, managed as M, exit as E } from "@matechs/effect";
+import { T, M, Ex, pipe } from "@matechs/prelude";
 import * as KOA from "../src";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { pipe } from "fp-ts/lib/pipeable";
-import { sequenceT } from "fp-ts/lib/Apply";
 import * as RM from "./randomMessage";
 
 const routeA = KOA.route(
@@ -18,7 +15,7 @@ const routeA = KOA.route(
 const routeB = KOA.route(
   "get",
   "/random-message",
-  Do(T.effect)
+  T.Do()
     .bind("message", RM.hitMe())
     .return(({ message }) => KOA.routeResponse(200, { message }))
 );
@@ -36,16 +33,16 @@ const routeC = KOA.route(
 const routeD = KOA.route(
   "get",
   "/random-message",
-  Do(T.effect)
+  T.Do()
     .bind("message", RM.hitMe())
     .return(({ message }) => KOA.routeResponse(200, { message: `sub-${message}` }))
 );
 
-const mainR = sequenceT(T.effect)(routeA, routeB);
-const subR = pipe(sequenceT(T.effect)(routeC, routeD), KOA.withSubRouter("/sub"));
+const mainR = T.sequenceT(routeA, routeB);
+const subR = pipe(T.sequenceT(routeC, routeD), KOA.withSubRouter("/sub"));
 
 const program = pipe(
-  sequenceT(T.effect)(
+  T.sequenceT(
     mainR,
     subR,
     KOA.middleware((ctx, next) => {
@@ -61,7 +58,7 @@ const program = pipe(
 
 T.run(
   pipe(program, RM.provideRandomMessage, KOA.provideKoa),
-  E.fold(
+  Ex.fold(
     (server) => {
       process.on("SIGINT", () => {
         T.runToPromise(server.interrupt).then(({ error }) => {

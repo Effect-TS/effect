@@ -1,14 +1,10 @@
 import KoaApp from "koa";
-import { effect as T, managed as M } from "@matechs/effect";
+import { T, M, pipe, E } from "@matechs/prelude";
 import * as KOA from "koa";
 import koaBodyParser from "koa-bodyparser";
 import KoaRouter from "koa-router";
 import KC from "koa-compose";
 import { Server } from "http";
-import { pipe } from "fp-ts/lib/pipeable";
-import { array } from "fp-ts/lib/Array";
-import { left, right } from "fp-ts/lib/Either";
-import { Do } from "fp-ts-contrib/lib/Do";
 
 export const koaAppEnv = "@matechs/koa/koaAppURI";
 export interface HasKoa {
@@ -29,7 +25,7 @@ export const serverEnv = "@matechs/koa/serverURI";
 export interface HasServer {
   [serverEnv]: {
     server: Server;
-    onClose: Array<T.Task<void>>;
+    onClose: Array<T.Async<void>>;
   };
 }
 
@@ -46,18 +42,20 @@ export type Method = "post" | "get" | "put" | "patch" | "delete";
 export const koaEnv = "@matechs/koa/koaURI";
 
 export interface KoaOps {
-  withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A>;
-  withRouter<R, E, A>(op: T.Effect<R & HasMiddle & HasRouter, E, A>): T.Effect<R & HasKoa, E, A>;
-  withSubRouter<R, E, A>(
+  withApp<S, R, E, A>(op: T.Effect<S, R & HasKoa, E, A>): T.Effect<S, R, E, A>;
+  withRouter<S, R, E, A>(
+    op: T.Effect<S, R & HasMiddle & HasRouter, E, A>
+  ): T.Effect<S, R & HasKoa, E, A>;
+  withSubRouter<S, R, E, A>(
     path: string,
-    op: T.Effect<R & HasRouter, E, A>
-  ): T.Effect<R & HasRouter, E, A>;
-  route<R, E, A>(
+    op: T.Effect<S, R & HasRouter, E, A>
+  ): T.Effect<S, R & HasRouter, E, A>;
+  route<S, R, E, A>(
     method: Method,
     path: string,
-    f: (ctx: KOA.ParameterizedContext) => T.Effect<R, RouteError<E>, RouteResponse<A>>
-  ): T.Effect<R & HasRouter, T.NoErr, void>;
-  bind(port: number, hostname?: string): T.TaskEnv<HasKoa, Server>;
+    f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>
+  ): T.SyncR<R & HasRouter, void>;
+  bind(port: number, hostname?: string): T.AsyncR<HasKoa, Server>;
 }
 
 export interface Koa {
@@ -90,11 +88,11 @@ export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
 
 export const provideKoa = T.provide<Koa>({
   [koaEnv]: {
-    route<R, E, A>(
+    route<S, R, E, A>(
       method: Method,
       path: string,
-      f: (ctx: KOA.ParameterizedContext) => T.Effect<R, RouteError<E>, RouteResponse<A>>
-    ): T.Effect<R & HasRouter, T.NoErr, void> {
+      f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>
+    ): T.SyncR<R & HasRouter, void> {
       return T.accessM((r: R & HasRouter) =>
         T.sync(() => {
           const router = r[koaRouterEnv].router;
@@ -128,12 +126,14 @@ export const provideKoa = T.provide<Koa>({
         })
       );
     },
-    withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<R, E, A> {
+    withApp<S, R, E, A>(op: T.Effect<S, R & HasKoa, E, A>): T.Effect<S, R, E, A> {
       return T.accessM((r: R) =>
         T.provide<R & HasKoa>({ ...r, [koaAppEnv]: { ...r[koaAppEnv], app: new KoaApp() } })(op)
       );
     },
-    withRouter<R, E, A>(op: T.Effect<R & HasMiddle & HasRouter, E, A>): T.Effect<R & HasKoa, E, A> {
+    withRouter<S, R, E, A>(
+      op: T.Effect<S, R & HasMiddle & HasRouter, E, A>
+    ): T.Effect<S, R & HasKoa, E, A> {
       return T.accessM((r: R & HasKoa) =>
         T.provide<R & HasMiddle & HasKoa & HasRouter>({
           ...r,
@@ -142,7 +142,7 @@ export const provideKoa = T.provide<Koa>({
             middlewares: []
           }
         })(
-          Do(T.effect)
+          T.Do()
             .bind("result", op)
             .do(
               T.accessM(
@@ -162,10 +162,10 @@ export const provideKoa = T.provide<Koa>({
         )
       );
     },
-    withSubRouter<R, E, A>(
+    withSubRouter<S, R, E, A>(
       path: string,
-      op: T.Effect<R & HasRouter, E, A>
-    ): T.Effect<R & HasRouter, E, A> {
+      op: T.Effect<S, R & HasRouter, E, A>
+    ): T.Effect<S, R & HasRouter, E, A> {
       return T.accessM((r: R & HasRouter) =>
         T.provide({
           ...r,
@@ -175,7 +175,7 @@ export const provideKoa = T.provide<Koa>({
             router: new KoaRouter<any, {}>()
           }
         })(
-          Do(T.effect)
+          T.Do()
             .bind("result", op)
             .do(
               T.accessM(({ [koaRouterEnv]: { parent, router } }: HasRouter) =>
@@ -189,15 +189,15 @@ export const provideKoa = T.provide<Koa>({
         )
       );
     },
-    bind(port: number, hostname?: string): T.TaskEnv<HasKoa, Server> {
+    bind(port: number, hostname?: string): T.AsyncR<HasKoa, Server> {
       return T.accessM(({ [koaAppEnv]: { app } }: HasKoa) =>
         T.orAbort(
           T.async<Error, Server>((res) => {
             const s = app.listen(port, hostname || "0.0.0.0", (err?: Error) => {
               if (err) {
-                res(left(err));
+                res(E.left(err));
               } else {
-                res(right(s));
+                res(E.right(s));
               }
             });
 
@@ -213,19 +213,19 @@ export const provideKoa = T.provide<Koa>({
   }
 });
 
-export function withApp<R, E, A>(op: T.Effect<R & HasKoa, E, A>): T.Effect<Koa & R, E, A> {
+export function withApp<S, R, E, A>(op: T.Effect<S, R & HasKoa, E, A>): T.Effect<S, Koa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withApp(op));
 }
 
-function withRouter<R, E, A>(
-  op: T.Effect<R & HasMiddle & HasRouter, E, A>
-): T.Effect<Koa & HasKoa & R, E, A> {
+function withRouter<S, R, E, A>(
+  op: T.Effect<S, R & HasMiddle & HasRouter, E, A>
+): T.Effect<S, Koa & HasKoa & R, E, A> {
   return T.accessM(({ [koaEnv]: koa }: Koa) => koa.withRouter(op));
 }
 
 export function withSubRouter(
   path: string
-): <R, E, A>(op: T.Effect<R, E, A>) => T.Effect<Koa & HasRouter & R, E, A> {
+): <S, R, E, A>(op: T.Effect<S, R, E, A>) => T.Effect<S, Koa & HasRouter & R, E, A> {
   return (op) => T.accessM(({ [koaEnv]: koa }: Koa) => koa.withSubRouter(path, op));
 }
 
@@ -237,11 +237,11 @@ export interface Context {
   };
 }
 
-export function route<R, E, A>(
+export function route<S, R, E, A>(
   method: Method,
   path: string,
-  handler: T.Effect<R, RouteError<E>, RouteResponse<A>>
-): T.Effect<T.Erase<R, Context> & Koa & HasRouter, T.NoErr, void> {
+  handler: T.Effect<S, R, RouteError<E>, RouteResponse<A>>
+): T.SyncR<T.Erase<R, Context> & Koa & HasRouter, void> {
   return T.accessM(({ [koaEnv]: koa }: Koa) =>
     koa.route(method, path, (x) =>
       T.accessM((r: R & Koa) =>
@@ -259,9 +259,9 @@ export function route<R, E, A>(
 export function bind(
   port: number,
   hostname?: string
-): <R, E, A>(
-  _: T.Effect<R & HasRouter & HasMiddle & HasServer, E, A>
-) => T.TaskEnvErr<HasKoa & Koa & R, E, A> {
+): <S, R, E, A>(
+  _: T.Effect<S, R & HasRouter & HasMiddle & HasServer, E, A>
+) => T.AsyncRE<HasKoa & Koa & R, E, A> {
   return (op) =>
     T.effect.chain(
       T.accessM(({ [koaEnv]: koa }: Koa) => koa.bind(port, hostname)),
@@ -286,13 +286,13 @@ export const managedKoa = (port: number, hostname?: string) =>
     ),
     (_) =>
       T.uninterruptible(
-        T.effect.chain(T.result(array.sequence(T.effect)(_[serverEnv].onClose)), () =>
+        T.effect.chain(T.result(T.sequenceArray(_[serverEnv].onClose)), () =>
           T.async<Error, void>((res) => {
             _[serverEnv].server.close((err) => {
               if (err) {
-                res(left(err));
+                res(E.left(err));
               } else {
-                res(right(undefined));
+                res(E.right(undefined));
               }
             });
             return () => {
@@ -303,47 +303,47 @@ export const managedKoa = (port: number, hostname?: string) =>
       )
   );
 
-export function accessServerM<R, E, A>(
-  f: (app: Server) => T.Effect<R, E, A>
-): T.Effect<HasServer & R, E, A> {
+export function accessServerM<S, R, E, A>(
+  f: (app: Server) => T.Effect<S, R, E, A>
+): T.Effect<S, HasServer & R, E, A> {
   return T.accessM(({ [serverEnv]: koa }: HasServer) => f(koa.server));
 }
 
-export function accessServer<A>(f: (app: Server) => A): T.Effect<HasServer, never, A> {
+export function accessServer<A>(f: (app: Server) => A): T.SyncR<HasServer, A> {
   return T.access(({ [serverEnv]: koa }: HasServer) => f(koa.server));
 }
 
-export function accessAppM<R, E, A>(
-  f: (app: KOA) => T.Effect<R, E, A>
-): T.Effect<HasKoa & R, E, A> {
+export function accessAppM<S, R, E, A>(
+  f: (app: KOA) => T.Effect<S, R, E, A>
+): T.Effect<S, HasKoa & R, E, A> {
   return T.accessM(({ [koaAppEnv]: koa }: HasKoa) => f(koa.app));
 }
 
-export function accessReqM<R, E, A>(
-  f: (ctx: KOA.ParameterizedContext) => T.Effect<R, E, A>
-): T.Effect<Context & R, E, A> {
+export function accessReqM<S, R, E, A>(
+  f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, E, A>
+): T.Effect<S, Context & R, E, A> {
   return T.accessM(({ [contextEnv]: { ctx } }: Context) => f(ctx));
 }
 
-export function accessReq<A>(f: (ctx: KOA.ParameterizedContext) => A): T.Effect<Context, never, A> {
+export function accessReq<A>(f: (ctx: KOA.ParameterizedContext) => A): T.SyncR<Context, A> {
   return T.access(({ [contextEnv]: { ctx } }: Context) => f(ctx));
 }
 
-export function accessApp<A>(f: (app: KOA) => A): T.Effect<HasKoa, T.NoErr, A> {
+export function accessApp<A>(f: (app: KOA) => A): T.SyncR<HasKoa, A> {
   return T.access(({ [koaAppEnv]: koa }: HasKoa) => f(koa.app));
 }
 
 export function middleware(
   middle: KOA.Middleware<KOA.ParameterizedContext<any, any>>
-): T.Effect<HasMiddle, never, void> {
+): T.SyncR<HasMiddle, void> {
   return T.access((_: HasMiddle) => {
     _[middleURI].middlewares.push(middle);
   });
 }
 
-export function middlewareM<R, E, A>(
-  middle: (cont: T.Task<void>) => T.Effect<R, E, A>
-): T.Effect<HasMiddle & T.Erase<R, Context>, never, void> {
+export function middlewareM<S, R, E, A>(
+  middle: (cont: T.Async<void>) => T.Effect<S, R, E, A>
+): T.SyncR<HasMiddle & T.Erase<R, Context>, void> {
   return T.access((_: HasMiddle & R) => {
     _[middleURI].middlewares.push((ctx, next) =>
       pipe(

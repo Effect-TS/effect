@@ -81,7 +81,8 @@ export const D = E.sequenceS({
 });
 
 // $ExpectType Either<"a" | "b" | "c" | "d" | "e" | "g" | "h", { c: never; } & { d: never; } & { e: never; f: never; } & { g: never; h: never; } & { i: number; } & { j: number; }>
-export const E_ = E.Do.do(E.left("a" as const))
+export const E_ = E.Do()
+  .do(E.left("a" as const))
   .doL(() => E.left("b" as const))
   .bindL("c", () => E.left("c" as const))
   .bind("d", E.left("d" as const))

@@ -1,5 +1,7 @@
 import { effect as T, managed as M, stream as S, streameither as SE } from "@matechs/effect";
-import { isNone, Option } from "fp-ts/lib/Option";
+import { isNone, Option, option } from "fp-ts/lib/Option";
+import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
+import { Do as DoG } from "fp-ts-contrib/lib/Do";
 
 // from fp-ts just retyped
 /* istanbul ignore file */
@@ -76,3 +78,7 @@ export function fold<A, B, C>(onNone: () => B, onSome: (a: A) => C): (ma: Option
 export function fold<A, B>(onNone: () => B, onSome: (a: A) => B): (ma: Option<A>) => B {
   return (ma) => (isNone(ma) ? onNone() : onSome(ma.value));
 }
+
+export const sequenceT = ST(option);
+export const sequenceS = SS(option);
+export const Do = () => DoG(option);

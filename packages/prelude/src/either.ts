@@ -390,7 +390,7 @@ export const either: Monad2M<URIM> &
   throwError: left
 };
 
-export const Do = DoG(either);
+export const Do = () => DoG(either);
 export const sequenceT = ST(either);
 export const sequenceS = SS(either);
 
