@@ -1,20 +1,14 @@
-import { effect as T, freeEnv as F, stream as S } from "@matechs/effect";
+import { T, Service as F, S, A, pipe } from "@matechs/prelude";
 import * as R from "@matechs/rxjs";
-import * as A from "fp-ts/lib/Array";
 import { Action } from "redux";
 import * as Rxo from "redux-observable";
-import { pipe } from "fp-ts/lib/pipeable";
 
 export interface Epic<R, State, A extends Action<any>, O extends A> {
   _A: A;
   _O: O;
   _R: R;
   _S: State;
-  (current: StateAccess<State>, action$: S.StreamAsync<T.NoEnv, never, A>): S.StreamAsync<
-    R,
-    never,
-    O
-  >;
+  (current: StateAccess<State>, action$: S.Async<A>): S.AsyncR<R, O>;
 }
 
 function toNever(_: any): never {
@@ -30,19 +24,23 @@ type Act<K extends AnyEpic> = K["_A"];
 type AOut<K extends AnyEpic> = K["_O"];
 
 export interface StateAccess<S> {
-  value: T.Effect<T.NoEnv, never, S>;
-  stream: S.StreamAsync<T.NoEnv, never, S>;
+  value: T.Sync<S>;
+  stream: S.Async<S>;
 }
 
-type EpicsEnvType<EPS extends AnyEpic> = T.Erase<
-  F.UnionToIntersection<Env<Exclude<EPS, Epic<T.NoEnv, any, any, any>>>>,
-  T.AsyncRT
+type EpicsEnvType<EPS extends AnyEpic> = F.UnionToIntersection<
+  Env<Exclude<EPS, Epic<unknown, any, any, any>>>
 >;
 
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
-  provider: T.Provider<StateAccess<Sta<EPS[number]>>, EpicsEnvType<typeof epics[number]>>
+  provider: T.Provider<
+    StateAccess<Sta<EPS[number]>>,
+    EpicsEnvType<typeof epics[number]>,
+    never,
+    any
+  >
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
   type EPSType = EPS[number];
   type Action = Act<EPSType>;
@@ -76,7 +74,7 @@ export function embed<EPS extends AnyEpic[]>(
 }
 
 export function epic<S, A extends Action>(): <R, O extends A>(
-  e: (current: StateAccess<S>, action$: S.StreamAsync<T.NoEnv, never, A>) => S.Stream<R, never, O>
+  e: (current: StateAccess<S>, action$: S.Async<A>) => S.AsyncR<R, O>
 ) => Epic<R, S, A, O> {
   return (e) => e as any;
 }
