@@ -1,19 +1,19 @@
 /* istanbul ignore file */
 
-import { T, pipe, E, pipeF, Ex, flowP } from "../src";
+import { T, pipe, E, pipeF, Ex, combineProviders, MIO } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => T.UIO<string>;
+    getString: () => T.Sync<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => T.UIO<string>;
+    getString: () => T.Sync<string>;
   };
 }
 
@@ -95,8 +95,8 @@ describe("Prelude", () => {
       });
   });
 
-  it("should run effect composition - flowP", async () => {
-    const provideEnv = flowP(provideBaz).flow(provideBar).done();
+  it("should run effect composition - combine", async () => {
+    const provideEnv = combineProviders().with(provideBaz).with(provideBar).asEffect();
 
     await pipeF(f)
       .pipe(provideEnv)
@@ -109,6 +109,13 @@ describe("Prelude", () => {
 
   it("should run effect composition - sync", () => {
     const exit = pipe(a3, provideBaz, provideBar, T.runSync);
+
+    assert.deepStrictEqual(Ex.isDone(exit) && exit.value, "value: bar");
+  });
+
+  it("should run effect composition - sync - combine", () => {
+    const combined = combineProviders().with(provideBaz).with(provideBar).asEffect()
+    const exit = pipe(a3, combined, T.runSync);
 
     assert.deepStrictEqual(Ex.isDone(exit) && exit.value, "value: bar");
   });
@@ -136,6 +143,21 @@ describe("Prelude", () => {
       arr,
       T.traverseArray((n) => T.sync(() => n + 1)),
       T.runUnsafeSync
+    );
+
+    expect(result).toStrictEqual([1, 2, 3]);
+  });
+
+  it("should traverse array - MIO - mix", async () => {
+    const arr: Array<number> = [0, 1, 2];
+
+    const result = await pipe(
+      arr,
+      MIO.traverseArray((n) => T.access((_: { foo: string }) => n + 1)),
+      MIO.provide({
+        foo: "ok"
+      }),
+      MIO.runToPromise
     );
 
     expect(result).toStrictEqual([1, 2, 3]);

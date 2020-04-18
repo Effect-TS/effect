@@ -27,5 +27,6 @@ export interface Effect<S, R, E, A> {
 }
 
 export interface Provider<Environment, Module, E2 = never, S2 = never> {
+  _tag: "Effect"
   <S, R, E, A>(e: Effect<S, Module & R, E, A>): Effect<S | S2, Environment & R, E | E2, A>;
 }

@@ -34,6 +34,9 @@ import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Separated } from "fp-ts/lib/Compactable";
 
+// WIP
+/* istanbul ignore file */
+
 export { Effect, EffectTag, Provider };
 
 export type Async<A> = Effect<unknown, unknown, never, A>;
@@ -45,9 +48,6 @@ export type Sync<A> = Effect<never, unknown, never, A>;
 export type SyncE<E, A> = Effect<never, unknown, E, A>;
 export type SyncR<R, A> = Effect<never, R, never, A>;
 export type SyncRE<R, E, A> = Effect<never, R, E, A>;
-
-// WIP
-/* istanbul ignore file */
 
 export const URI = "matechs/Effect";
 export type URI = typeof URI;
@@ -444,8 +444,11 @@ export function provide<R>(
   r: R,
   inverted: "regular" | "inverted" = "regular"
 ): Provider<unknown, R, never> {
-  return <S, R2, E, A>(eff: Effect<S, R2 & R, E, A>): Effect<S, R2, E, A> =>
-    provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff);
+  return (
+    (<S, R2, E, A>(eff: Effect<S, R2 & R, E, A>): Effect<S, R2, E, A> =>
+      provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)) as
+    any
+  );
 }
 
 /**
@@ -455,10 +458,12 @@ export function provideM<S, R, R3, E2>(
   rm: Effect<S, R3, E2, R>,
   inverted: "regular" | "inverted" = "regular"
 ): Provider<R3, R, E2, S> {
-  return <S2, R2, E, A>(eff: Effect<S2, R2 & R, E, A>): Effect<S | S2, R2 & R3, E | E2, A> =>
-    chain_(rm, (r) =>
-      provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)
-    );
+  return (
+    (<S2, R2, E, A>(eff: Effect<S2, R2 & R, E, A>): Effect<S | S2, R2 & R3, E | E2, A> =>
+      chain_(rm, (r) =>
+        provideR((r2: R2) => (inverted === "inverted" ? { ...r, ...r2 } : { ...r2, ...r }))(eff)
+      )) as any
+  );
 }
 
 const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(

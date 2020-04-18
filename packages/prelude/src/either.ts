@@ -1,7 +1,7 @@
 import { effect as T, stream as S, streameither as SE, managed as M } from "@matechs/effect";
 import { Alt2 } from "fp-ts/lib/Alt";
 import { Applicative, Applicative2M } from "fp-ts/lib/Applicative";
-import { Apply2M, sequenceS as SS, sequenceT as ST, EnforceNonEmptyRecord } from "fp-ts/lib/Apply";
+import { Apply2M, sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Bifunctor2 } from "fp-ts/lib/Bifunctor";
 import { Chain2M } from "fp-ts/lib/Chain";
 import { ChainRec2M, tailRec } from "fp-ts/lib/ChainRec";
@@ -89,22 +89,22 @@ export const left: {
   <E, A>(_: E): Either<E, A>;
 } = ELeft as any;
 
-export function fold<E, A, B, C, R1, E1, R2, E2>(
-  onLeft: (e: E) => SE.StreamEither<R1, E1, B>,
-  onRight: (a: A) => SE.StreamEither<R2, E2, C>
-): (ma: Either<E, A>) => SE.StreamEither<R1 & R2, E1 | E2, B | C>;
-export function fold<E, A, B, C, R1, E1, R2, E2>(
-  onLeft: (e: E) => S.Stream<R1, E1, B>,
-  onRight: (a: A) => S.Stream<R2, E2, C>
-): (ma: Either<E, A>) => S.Stream<R1 & R2, E1 | E2, B | C>;
-export function fold<E, A, B, C, R1, E1, R2, E2>(
-  onLeft: (e: E) => M.Managed<R1, E1, B>,
-  onRight: (a: A) => M.Managed<R2, E2, C>
-): (ma: Either<E, A>) => M.Managed<R1 & R2, E1 | E2, B | C>;
-export function fold<E, A, B, C, R1, E1, R2, E2>(
-  onLeft: (e: E) => T.Effect<R1, E1, B>,
-  onRight: (a: A) => T.Effect<R2, E2, C>
-): (ma: Either<E, A>) => T.Effect<R1 & R2, E1 | E2, B | C>;
+export function fold<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => SE.StreamEither<S1, R1, E1, B>,
+  onRight: (a: A) => SE.StreamEither<S2, R2, E2, C>
+): (ma: Either<E, A>) => SE.StreamEither<S1 | S2, R1 & R2, E1 | E2, B | C>;
+export function fold<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => S.Stream<S1, R1, E1, B>,
+  onRight: (a: A) => S.Stream<S2, R2, E2, C>
+): (ma: Either<E, A>) => S.Stream<S1 | S2, R1 & R2, E1 | E2, B | C>;
+export function fold<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => M.Managed<S1, R1, E1, B>,
+  onRight: (a: A) => M.Managed<S2, R2, E2, C>
+): (ma: Either<E, A>) => M.Managed<S1 | S2, R1 & R2, E1 | E2, B | C>;
+export function fold<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  onLeft: (e: E) => T.Effect<S1 | S2, R1, E1, B>,
+  onRight: (a: A) => T.Effect<S1 | S2, R2, E2, C>
+): (ma: Either<E, A>) => T.Effect<S1 | S2, R1 & R2, E1 | E2, B | C>;
 export function fold<E, A, B, C>(
   onLeft: (e: E) => B,
   onRight: (a: A) => C
@@ -157,6 +157,9 @@ declare module "fp-ts/lib/MonadThrow" {
     readonly throwError: <E, A>(e: E) => Kind2<M, E, A>;
   }
 }
+
+declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
+
 declare module "fp-ts/lib/Apply" {
   export interface Apply2M<F extends URIM> extends Functor2<F> {
     readonly ap: <E, A, B, E2>(

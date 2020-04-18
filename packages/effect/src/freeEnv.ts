@@ -166,10 +166,10 @@ export function implement<S extends ModuleSpec<any>>(
 ) {
   return <I extends Implementation<TypeOf<S>>>(
     i: I
-  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
-    T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-      P.pipe(eff, T.provide(providing(s, i, e), inverted))
-    );
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => ((eff: any) =>
+  T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+    P.pipe(eff, T.provide(providing(s, i, e), inverted))
+  )) as any;
 }
 
 export function implementWith<SW, RW, EW, AW>(w: D.Effect<SW, RW, EW, AW>) {
@@ -177,12 +177,12 @@ export function implementWith<SW, RW, EW, AW>(w: D.Effect<SW, RW, EW, AW>) {
     I extends Implementation<TypeOf<S>>
   >(
     i: (r: AW) => I
-  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (eff) =>
-    T.effect.chain(w, (r) =>
-      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
-      )
-    );
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => ((eff: any) =>
+  T.effect.chain(w, (r) =>
+    T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+      P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
+    )
+  )) as any;
 }
 
 export function instance<M extends ModuleShape<M>, S extends ModuleSpec<M>>(_: S) {

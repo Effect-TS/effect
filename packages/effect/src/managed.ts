@@ -413,7 +413,7 @@ export function provide<S2, R3, E2, R2>(
   man: Managed<S2, R3, E2, R2>,
   inverted: "regular" | "inverted" = "regular"
 ): T.Provider<R3, R2, E2, S2> {
-  return (ma) => use(man, (r) => T.provide(r, inverted)(ma));
+  return ((ma: any) => use(man, (r) => T.provide(r, inverted)(ma))) as any;
 }
 
 export const URI = "matechs/Managed";
