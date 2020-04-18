@@ -1,5 +1,5 @@
 import { Span, SpanOptions, Tracer as OT } from "opentracing";
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 import { withTracer, withControllerSpan } from "../src";
 import * as TR from "../src";
 import { pipe } from "fp-ts/lib/pipeable";
@@ -10,7 +10,7 @@ const URI: unique symbol = Symbol();
 
 const m = F.define({
   [URI]: {
-    shouldTrace: F.cn<T.Task<void>>()
+    shouldTrace: F.cn<T.Sync<void>>()
   }
 });
 

@@ -72,7 +72,7 @@
     "no-string-literal": false,
     "unified-signatures": true,
     "no-bitwise": true,
-    "no-empty": true,
+    "no-empty": false,
     "use-isnan": true,
     "no-duplicate-imports": false,
     "interface-name": false,

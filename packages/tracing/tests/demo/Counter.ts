@@ -1,6 +1,4 @@
-import { effect as T } from "@matechs/effect";
-import * as A from "fp-ts/lib/Array";
-import { Do } from "fp-ts-contrib/lib/Do";
+import { T, A, pipe } from "@matechs/prelude";
 import { print, Printer } from "./Printer";
 import { withChildSpan } from "../../src";
 
@@ -9,7 +7,7 @@ export const CounterState: unique symbol = Symbol();
 export interface CounterState {
   [CounterState]: {
     ref: number;
-    increment(): T.Effect<CounterState, T.NoErr, void>;
+    increment(): T.SyncR<CounterState, void>;
   };
 }
 
@@ -38,29 +36,31 @@ export const Counter: unique symbol = Symbol();
 
 export interface Counter {
   [Counter]: {
-    count(): T.Effect<Printer & CounterState, Error, void[]>;
+    count(): T.SyncRE<Printer & CounterState, Error, void[]>;
   };
 }
 
 export const counter: Counter = {
   [Counter]: {
     count() {
-      return A.array.traverse(T.effect)(A.range(1, 10), (n) =>
-        Do(T.effect)
-          .do(increment())
-          .bind("count", withChildSpan("span-current-count")(currentCount()))
-          .doL(({ count }) => print(`n: ${n} (${count})`))
-          // tslint:disable-next-line: no-empty
-          .return(() => {})
+      return pipe(
+        A.range(1, 10),
+        T.traverseArray((n) =>
+          T.Do()
+            .do(increment())
+            .bind("count", withChildSpan("span-current-count")(currentCount()))
+            .doL(({ count }) => print(`n: ${n} (${count})`))
+            .return(() => {})
+        )
       );
     }
   }
 };
 
-export function increment(): T.Effect<CounterState, T.NoErr, void> {
+export function increment(): T.SyncR<CounterState, void> {
   return T.accessM(({ [CounterState]: counter }: CounterState) => counter.increment());
 }
 
-export function count(): T.Effect<Counter & Printer & CounterState, Error, void[]> {
+export function count(): T.SyncRE<Counter & Printer & CounterState, Error, void[]> {
   return T.accessM(({ [Counter]: counter }: Counter) => counter.count());
 }

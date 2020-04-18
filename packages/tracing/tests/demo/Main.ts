@@ -1,8 +1,6 @@
-import { effect as E, utils as U } from "@matechs/effect";
+import { T, U, pipe } from "@matechs/prelude";
 import * as P from "./Printer";
 import * as C from "./Counter";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { pipe } from "fp-ts/lib/pipeable";
 import { withControllerSpan, withTracer, tracer } from "../../src";
 
 export const program = withTracer(
@@ -11,7 +9,7 @@ export const program = withTracer(
     "demo-main"
   )(
     pipe(
-      Do(E.effect)
+      T.Do()
         .bind("start", C.currentCount())
         .do(C.count())
         .do(C.count())
@@ -29,4 +27,4 @@ export const env: U.Env<typeof program> = {
   ...tracer()
 };
 
-export const main = E.run(pipe(program, E.provide(env)));
+export const main = pipe(program, T.provide(env));
