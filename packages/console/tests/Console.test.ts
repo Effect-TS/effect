@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import * as M from "@matechs/test-jest";
 import { pipe } from "fp-ts/lib/pipeable";
 import * as C from "../src";
