@@ -1,6 +1,4 @@
-import { effect as T } from "@matechs/effect";
-import { Predicate } from "fp-ts/lib/function";
-import { Option } from "fp-ts/lib/Option";
+import { T, O, F } from "@matechs/prelude";
 import { ParsedUrlQueryInput } from "querystring";
 
 /* tested in the implementation packages */
@@ -98,7 +96,7 @@ export interface DataInput {
 export type Headers = Record<string, string>;
 
 export interface Response<Body> {
-  body: Option<Body>;
+  body: O.Option<Body>;
   headers: Headers;
   status: number;
 }
@@ -161,7 +159,7 @@ export interface HttpOps {
     responseType: Resp,
     headers: Record<string, string>,
     body: RequestBodyTypes[Req][M]
-  ): T.TaskErr<HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+  ): T.AsyncE<HttpError<string>, Response<ResponseTypes[Resp][M]>>;
 }
 
 export interface Http {
@@ -178,7 +176,7 @@ export type RequestF = <R, M extends Method, Req extends RequestType, Resp exten
   requestType: Req,
   responseType: Resp,
   body?: RequestBodyTypes[Req][M]
-) => T.TaskEnvErr<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
 
 export type RequestMiddleware = (request: RequestF) => RequestF;
 
@@ -225,7 +223,7 @@ export function requestInner<
   requestType: Req,
   responseType: Resp,
   body: RequestBodyTypes[Req][M]
-): T.TaskEnvErr<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
+): T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
   return T.accessM((r: Http & R) =>
     r[httpEnv].request<M, Req, Resp>(
       method,
@@ -245,7 +243,7 @@ export function request<R, Req extends RequestType, Resp extends ResponseType>(
 ): (
   url: string,
   body?: RequestBodyTypes[Req]["GET"]
-) => T.TaskEnvErr<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["GET"]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["GET"]>>;
 export function request<R, Req extends RequestType, Resp extends ResponseType>(
   method: "DELETE",
   requestType: Req,
@@ -253,7 +251,7 @@ export function request<R, Req extends RequestType, Resp extends ResponseType>(
 ): (
   url: string,
   body?: RequestBodyTypes[Req]["DELETE"]
-) => T.TaskEnvErr<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["DELETE"]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp]["DELETE"]>>;
 export function request<R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
   method: M,
   requestType: Req,
@@ -261,7 +259,7 @@ export function request<R, M extends Method, Req extends RequestType, Resp exten
 ): (
   url: string,
   body: RequestBodyTypes[Req][M]
-) => T.TaskEnvErr<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>>;
 export function request<R, M extends Method, Req extends RequestType, Resp extends ResponseType>(
   method: M,
   requestType: Req,
@@ -269,7 +267,7 @@ export function request<R, M extends Method, Req extends RequestType, Resp exten
 ): (
   url: string,
   body: RequestBodyTypes[Req][M]
-) => T.TaskEnvErr<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
+) => T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
   return (url, body) =>
     T.accessM((r: MiddlewareStack) =>
       foldMiddlewareStack(r, requestInner)<R, M, Req, Resp>(
@@ -321,8 +319,8 @@ export const delBinaryGetBinary = request("DELETE", "BINARY", "BINARY");
 export function withHeaders(
   headers: Record<string, string>,
   replace = false
-): <R, E, A>(eff: T.Effect<R, E, A>) => T.Effect<R, E, A> {
-  return <R, E, A>(eff: T.Effect<R, E, A>) =>
+): <S, R, E, A>(eff: T.Effect<S, R, E, A>) => T.Effect<S, R, E, A> {
+  return <S, R, E, A>(eff: T.Effect<S, R, E, A>) =>
     replace
       ? T.accessM((r: R) => T.provide({ ...r, [httpHeadersEnv]: headers })(eff))
       : T.accessM((r: R) =>
@@ -332,7 +330,7 @@ export function withHeaders(
 
 export function withPathHeaders(
   headers: Record<string, string>,
-  path: Predicate<string>,
+  path: F.Predicate<string>,
   replace = false
 ): RequestMiddleware {
   return (req) => (m, u, reqT, respT, b) =>

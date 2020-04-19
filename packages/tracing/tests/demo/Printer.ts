@@ -1,13 +1,13 @@
-import { effect as E } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 
 export interface Printer {
   printer: {
-    print(s: string): E.Effect<E.NoEnv, E.NoErr, void>;
+    print(s: string): T.Sync<void>;
   };
 }
 
 export const printer: Printer = {} as Printer; // not implemented for the purpose of tests it will not be called
 
 export function print(s: string) {
-  return E.accessM(({ printer }: Printer) => printer.print(s));
+  return T.accessM(({ printer }: Printer) => printer.print(s));
 }

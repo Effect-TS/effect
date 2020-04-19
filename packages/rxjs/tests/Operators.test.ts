@@ -2,7 +2,7 @@ import * as assert from "assert";
 import * as O from "../src/operators";
 import * as Rx from "rxjs";
 import { filter, catchError } from "rxjs/operators";
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 
 describe("Operators", () => {
   it("chainEffect", async () => {

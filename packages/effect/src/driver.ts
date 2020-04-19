@@ -75,7 +75,7 @@ const makeInterruptFrame = (
 });
 
 export interface Driver<E, A> {
-  start(run: T.Effect<T.NoEnv, E, A>): void;
+  start(run: T.AsyncE<E, A>): void;
   interrupt(): void;
   onExit(f: F.FunctionN<[Exit<E, A>], void>): F.Lazy<void>;
   completed: Exit<E, A> | null;
@@ -348,7 +348,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  start(run: T.Effect<T.AsyncRT, E, A>): void {
+  start(run: T.AsyncRE<{}, E, A>): void {
     if (this.started) {
       /* istanbul ignore next */
       throw new Error("Bug: Runtime may not be started multiple times");

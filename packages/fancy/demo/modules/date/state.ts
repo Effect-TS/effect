@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { State } from "../../../src";

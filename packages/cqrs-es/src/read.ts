@@ -3,11 +3,8 @@ import {} from "@morphic-ts/batteries/lib/program";
 import {} from "@morphic-ts/batteries/lib/program-orderable";
 
 import Long from "long";
-import { effect as T, managed as M } from "@matechs/effect";
+import { T, M, pipe, E } from "@matechs/prelude";
 import { eventStoreTcpConnection, accessConfig, EventStoreError } from "./client";
-import { pipe } from "fp-ts/lib/pipeable";
-import { left } from "fp-ts/lib/Either";
-import { sequenceT } from "fp-ts/lib/Apply";
 import { ResolvedEvent } from "node-eventstore-client";
 
 export interface DecodeError<E> {
@@ -34,9 +31,9 @@ export type SubError<E, E2, E3> = DecodeError<E> | ProcessError<E2> | OffsetErro
 
 export type ReadError<E, E2, E3, E4> = SubError<E, E2, E3> | ProviderError<E4>;
 
-export interface OffsetStore<R, E, R2, E2> {
-  set: (readId: string, streamId: string, offset: bigint) => T.Effect<R, E, void>;
-  get: (readId: string, streamId: string) => T.Effect<R2, E2, bigint>;
+export interface OffsetStore<S1, S2, R, E, R2, E2> {
+  set: (readId: string, streamId: string, offset: bigint) => T.Effect<S1, R, E, void>;
+  get: (readId: string, streamId: string) => T.Effect<S2, R2, E2, bigint>;
 }
 
 export const esMetaURI = "@matechs/cqrs-es/esMetaURI";
@@ -47,18 +44,14 @@ export interface ESMeta {
   };
 }
 
-export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
-  decode: (u: unknown) => T.Effect<R, E, A>
-) => <R2, E2>(process: (a: A & ESMeta) => T.Effect<R2, E2, void>) => <OR, OE, OR2, OE2>(
-  store: OffsetStore<OR, OE, OR2, OE2>
-) => <RF, EF>(
-  provider: <AF>(
-    _e: T.Effect<R2 & OR & R, OE | SubError<E, E2, OE>, AF>
-  ) => T.Effect<RF & R, SubError<E, E2, OE> | EF, AF>
-) =>
+export const readEvents = (readId: string) => (streamId: string) => <S, R, E, A>(
+  decode: (u: unknown) => T.Effect<S, R, E, A>
+) => <S2, R2, E2>(process: (a: A & ESMeta) => T.Effect<S2, R2, E2, void>) => <S3, S4, OR, OE, OR2, OE2>(
+  store: OffsetStore<S3, S4, OR, OE, OR2, OE2>
+) => <SF, RF, EF>(provider: T.Provider<RF & R, R2 & OR, EF, SF>) =>
   M.use(eventStoreTcpConnection, (connection) =>
     pipe(
-      sequenceT(T.effect)(accessConfig, store.get(readId, streamId), T.accessEnvironment<R & RF>()),
+      T.sequenceT(accessConfig, store.get(readId, streamId), T.accessEnvironment<R & RF>()),
       T.chain(([config, from, r]) =>
         T.async<EventStoreError | ReadError<E, E2, OE, EF>, never>((done) => {
           const subscription = connection.subscribeToStreamFrom(
@@ -122,15 +115,15 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
               if (error) {
                 done(
                   "type" in error
-                    ? left(error)
-                    : left<EventStoreError>({
+                    ? E.left(error)
+                    : E.left<EventStoreError>({
                         type: "EventStoreError",
                         message: error["message"]
                       })
                 );
               } else {
                 done(
-                  left<EventStoreError>({
+                  E.left<EventStoreError>({
                     type: "EventStoreError",
                     message: _reason
                   })
@@ -148,4 +141,4 @@ export const readEvents = (readId: string) => (streamId: string) => <R, E, A>(
     )
   );
 
-export const offsetStore = <R, E, R2, E2>(_: OffsetStore<R, E, R2, E2>) => _;
+export const offsetStore = <S1, S2, R, E, R2, E2>(_: OffsetStore<S1, S2, R, E, R2, E2>) => _;

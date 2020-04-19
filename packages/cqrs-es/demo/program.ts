@@ -8,14 +8,11 @@ import {
   dbConfigLive,
   todosES
 } from "./db";
-import { pipe } from "fp-ts/lib/pipeable";
-import { effect as T } from "@matechs/effect";
-import { Do } from "fp-ts-contrib/lib/Do";
+import { T, pipe } from "@matechs/prelude";
 import { liveFactory } from "@matechs/orm";
 import * as CQ from "@matechs/cqrs";
 import { provideApp } from "./app";
 import * as ES from "../src";
-import { sequenceT } from "fp-ts/lib/Apply";
 
 const program = withTransaction(
   pipe(
@@ -62,10 +59,10 @@ export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todo
 );
 
 export const main = bracketPool(
-  Do(T.effect)
+  T.Do()
     .do(domain.init())
     .do(
-      sequenceT(T.parEffect)(
+      T.parSequenceT(
         // main program
         program,
         // diapatcher

@@ -1,8 +1,7 @@
 import { dbT } from "@matechs/orm";
 import { Aggregate } from "./aggregate";
 import { createTable } from "./createTable";
-import { effect as T } from "@matechs/effect";
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
+import { T, NEA } from "@matechs/prelude";
 import { Read } from "./read";
 import { ReadSideConfig } from "./config";
 import { DomainFetcher, DomainFetcherAll } from "./fetchSlice";
@@ -43,7 +42,7 @@ export class Domain<
     matchEffect: matcher(this.S)
   };
 
-  aggregate<Keys extends NonEmptyArray<keyof Types>>(aggregate: string, eventTypes: Keys) {
+  aggregate<Keys extends NEA.NonEmptyArray<keyof Types>>(aggregate: string, eventTypes: Keys) {
     return new Aggregate(aggregate, eventTypes, this.S, this.dbURI, this.db);
   }
 
@@ -56,7 +55,7 @@ export class Domain<
   }
 
   readOnly(config: ReadSideConfig) {
-    return <Keys extends NonEmptyArray<keyof Types>>(eventTypes: Keys) =>
+    return <Keys extends NEA.NonEmptyArray<keyof Types>>(eventTypes: Keys) =>
       this.read.readSide(config)(
         new DomainFetcher(this.S, eventTypes, this.db).fetchSlice(),
         eventTypes

@@ -1,11 +1,7 @@
 import {} from "@morphic-ts/batteries/lib/summoner-ESBAST";
-import { effect as T } from "@matechs/effect";
+import { T, NEA, pipe } from "@matechs/prelude";
 import { DbT } from "@matechs/orm";
-import { sequenceS } from "fp-ts/lib/Apply";
-import { array } from "fp-ts/lib/Array";
-import { pipe } from "fp-ts/lib/pipeable";
 import { accessConfig } from "./config";
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
 import { ElemType } from "@morphic-ts/adt/lib/utils";
 import * as t from "io-ts";
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
@@ -22,7 +18,7 @@ export class SliceFetcher<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<keyof Types>,
   Db extends symbol | string
 > {
   private readonly inDomain: (
@@ -70,30 +66,28 @@ export class SliceFetcher<
           }>
         ) => x.map((e) => e)
       ),
-      T.chain((events) =>
-        array.traverse(T.effect)(
-          events,
-          ({ id, event, kind, aggregate, root, sequence, created_at }) =>
-            sequenceS(T.effect)({
-              id: T.pure(id),
-              aggregate: T.pure(aggregate),
-              root: T.pure(root),
-              sequence: T.pure(BigInt(sequence)),
-              kind: T.pure(kind),
-              createdAt: T.pure(created_at),
-              event: T.orAbort(
-                pipe(
-                  this.S.keys[kind]
-                    ? T.fromEither(this.S.type.decode(event))
-                    : T.raiseError<Error | t.Errors, AOfTypes<Types>>(new Error("unknown event")),
-                  T.chain((a) =>
-                    this.inDomain(a)
-                      ? T.pure(a)
-                      : T.raiseError(new Error("decoded event is out of bounds"))
-                  )
+      T.chain(
+        T.traverseArray(({ id, event, kind, aggregate, root, sequence, created_at }) =>
+          T.sequenceS({
+            id: T.pure(id),
+            aggregate: T.pure(aggregate),
+            root: T.pure(root),
+            sequence: T.pure(BigInt(sequence)),
+            kind: T.pure(kind),
+            createdAt: T.pure(created_at),
+            event: T.orAbort(
+              pipe(
+                this.S.keys[kind]
+                  ? T.fromEither(this.S.type.decode(event))
+                  : T.raiseError<Error | t.Errors, AOfTypes<Types>>(new Error("unknown event")),
+                T.chain((a) =>
+                  this.inDomain(a)
+                    ? T.pure(a)
+                    : T.raiseError(new Error("decoded event is out of bounds"))
                 )
               )
-            })
+            )
+          })
         )
       )
     );
@@ -107,7 +101,7 @@ export class AggregateFetcher<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<keyof Types>,
   Db extends symbol | string
 > {
   private readonly inDomain: (
@@ -151,30 +145,28 @@ export class AggregateFetcher<
           }>
         ) => x.map((e) => e)
       ),
-      T.chain((events) =>
-        array.traverse(T.effect)(
-          events,
-          ({ id, event, kind, sequence, root, aggregate, created_at }) =>
-            sequenceS(T.effect)({
-              id: T.pure(id),
-              aggregate: T.pure(aggregate),
-              root: T.pure(root),
-              sequence: T.pure(BigInt(sequence)),
-              kind: T.pure(kind),
-              createdAt: T.pure(created_at),
-              event: T.orAbort(
-                pipe(
-                  this.S.keys[kind]
-                    ? T.fromEither(this.S.type.decode(event))
-                    : T.raiseError<Error | t.Errors, AOfTypes<Types>>(new Error("unknown event")),
-                  T.chain((a) =>
-                    this.inDomain(a)
-                      ? T.pure(a)
-                      : T.raiseError(new Error("decoded event is out of bounds"))
-                  )
+      T.chain(
+        T.traverseArray(({ id, event, kind, sequence, root, aggregate, created_at }) =>
+          T.sequenceS({
+            id: T.pure(id),
+            aggregate: T.pure(aggregate),
+            root: T.pure(root),
+            sequence: T.pure(BigInt(sequence)),
+            kind: T.pure(kind),
+            createdAt: T.pure(created_at),
+            event: T.orAbort(
+              pipe(
+                this.S.keys[kind]
+                  ? T.fromEither(this.S.type.decode(event))
+                  : T.raiseError<Error | t.Errors, AOfTypes<Types>>(new Error("unknown event")),
+                T.chain((a) =>
+                  this.inDomain(a)
+                    ? T.pure(a)
+                    : T.raiseError(new Error("decoded event is out of bounds"))
                 )
               )
-            })
+            )
+          })
         )
       )
     );
@@ -188,7 +180,7 @@ export class DomainFetcher<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<keyof Types>,
   Db extends symbol | string
 > {
   private readonly inDomain: (
@@ -236,30 +228,28 @@ export class DomainFetcher<
           }>
         ) => x.map((e) => e)
       ),
-      T.chain((events) =>
-        array.traverse(T.effect)(
-          events,
-          ({ id, event, kind, aggregate, root, sequence, created_at }) =>
-            sequenceS(T.effect)({
-              id: T.pure(id),
-              aggregate: T.pure(aggregate),
-              root: T.pure(root),
-              sequence: T.pure(BigInt(sequence)),
-              kind: T.pure(kind),
-              createdAt: T.pure(created_at),
-              event: T.orAbort(
-                pipe(
-                  this.S.keys[kind]
-                    ? T.fromEither(this.S.type.decode(event))
-                    : T.raiseError<Error | t.Errors, AOfTypes<Types>>(new Error("unknown event")),
-                  T.chain((a) =>
-                    this.inDomain(a)
-                      ? T.pure(a)
-                      : T.raiseError(new Error("decoded event is out of bounds"))
-                  )
+      T.chain(
+        T.traverseArray(({ id, event, kind, aggregate, root, sequence, created_at }) =>
+          T.sequenceS({
+            id: T.pure(id),
+            aggregate: T.pure(aggregate),
+            root: T.pure(root),
+            sequence: T.pure(BigInt(sequence)),
+            kind: T.pure(kind),
+            createdAt: T.pure(created_at),
+            event: T.orAbort(
+              pipe(
+                this.S.keys[kind]
+                  ? T.fromEither(this.S.type.decode(event))
+                  : T.raiseError<Error | t.Errors, AOfTypes<Types>>(new Error("unknown event")),
+                T.chain((a) =>
+                  this.inDomain(a)
+                    ? T.pure(a)
+                    : T.raiseError(new Error("decoded event is out of bounds"))
                 )
               )
-            })
+            )
+          })
         )
       )
     );
@@ -304,19 +294,17 @@ export class DomainFetcherAll<
           }>
         ) => x.map((e) => e)
       ),
-      T.chain((events) =>
-        array.traverse(T.effect)(
-          events,
-          ({ id, event, sequence, root, aggregate, kind, created_at }) =>
-            sequenceS(T.effect)({
-              id: T.pure(id),
-              aggregate: T.pure(aggregate),
-              root: T.pure(root),
-              kind: T.pure(kind),
-              createdAt: T.pure(created_at),
-              sequence: T.pure(BigInt(sequence)),
-              event: T.orAbort(T.fromEither(this.S.type.decode(event)))
-            })
+      T.chain(
+        T.traverseArray(({ id, event, sequence, root, aggregate, kind, created_at }) =>
+          T.sequenceS({
+            id: T.pure(id),
+            aggregate: T.pure(aggregate),
+            root: T.pure(root),
+            kind: T.pure(kind),
+            createdAt: T.pure(created_at),
+            sequence: T.pure(BigInt(sequence)),
+            event: T.orAbort(T.fromEither(this.S.type.decode(event)))
+          })
         )
       )
     );

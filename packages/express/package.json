@@ -29,6 +29,6 @@
     "express": "^4.17.1"
   },
   "dependencies": {
-    "@matechs/effect": "^6.0.0-alpha.1"
+    "@matechs/prelude": "^1.0.0-alpha.1"
   }
 }

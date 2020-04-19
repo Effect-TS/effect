@@ -11,12 +11,12 @@ export type MockT<Mocks> = {
 
 export interface JestMocks<Mocks extends MockT<Mocks>> {
   [JestMocksURI]: {
-    useMockM: <R, E, A>(op: (_: Mocks) => T.Effect<R, E, A>) => T.Effect<R, E, A>;
+    useMockM: <S, R, E, A>(op: (_: Mocks) => T.Effect<S, R, E, A>) => T.Effect<S, R, E, A>;
   };
 }
 
-export const useMockM = <Mocks extends MockT<Mocks>>() => <R, E, A>(
-  op: (_: Mocks) => T.Effect<R, E, A>
+export const useMockM = <Mocks extends MockT<Mocks>>() => <S, R, E, A>(
+  op: (_: Mocks) => T.Effect<S, R, E, A>
 ) => T.accessM((_: JestMocks<Mocks>) => _[JestMocksURI].useMockM(op));
 
 export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(acquire: Lazy<Mocks>) => <
@@ -25,10 +25,10 @@ export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(acquir
   A
 >(
   eff: (_: {
-    useMockM: <R, E, A>(
-      op: (_: Mocks) => T.Effect<R, E, A>
-    ) => T.Effect<R & JestMocks<Mocks>, E, A>;
-  }) => T.Effect<R & JestMocks<Mocks>, E, A>
+    useMockM: <S, R, E, A>(
+      op: (_: Mocks) => T.Effect<S, R, E, A>
+    ) => T.Effect<S, R & JestMocks<Mocks>, E, A>;
+  }) => T.Effect<unknown, R & JestMocks<Mocks>, E, A>
 ) =>
   pipe(
     M.testM(

@@ -1,5 +1,4 @@
 import * as assert from "assert";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { effect as T, concurrentRef as R } from "../src";
 
 interface Config {
@@ -8,7 +7,7 @@ interface Config {
 
 describe("ConcurrentRef", () => {
   it("should use ref", async () => {
-    const program = Do(T.effect)
+    const program = T.Do()
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .bindL("next", ({ ref }) => ref.modify((n) => T.pure([n + 1, n + 1] as const)))
@@ -25,7 +24,7 @@ describe("ConcurrentRef", () => {
   });
 
   it("should prevent concurrency issues", async () => {
-    const program = Do(T.parEffect)
+    const program = T.parDo()
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .sequenceSL(({ ref }) => ({

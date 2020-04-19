@@ -1,9 +1,6 @@
 import * as Rx from "rxjs";
-
-import { effect as T, streameither as S, exit as EX } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
+import { T, SE, Ex, pipe, E } from "@matechs/prelude";
 import * as R from "./";
-import { fold } from "fp-ts/lib/Either";
 
 /**
  * Chain an effect into an rxjs .pipe()
@@ -11,13 +8,13 @@ import { fold } from "fp-ts/lib/Either";
  */
 
 export function chainEffect<A, E, B>(
-  f: (a: A) => T.TaskErr<E, B>
+  f: (a: A) => T.AsyncE<E, B>
 ): (o: Rx.Observable<A>) => Rx.Observable<B> {
   return (o) =>
     pipe(
       R.encaseObservableEither<A>(o), // wrap an eventual observable error in stream either
-      S.chain((a) => S.encaseEffect(T.result(f(a)))),
-      S.toStream,
+      SE.chain((a) => SE.encaseEffect(T.result(f(a)))),
+      SE.toStream,
       R.toObservable, // convert to observable
       R.runToObservable // run effect as observable
     ).pipe(
@@ -27,9 +24,9 @@ export function chainEffect<A, E, B>(
             (exit) =>
               pipe(
                 exit,
-                fold(
+                E.fold(
                   (e) => sub.error(e), // this represent an error in source that we propagate
-                  EX.fold(
+                  Ex.fold(
                     (b) => sub.next(b), // all fine
                     (e) => sub.error(e), // error in effect
                     (x) => {

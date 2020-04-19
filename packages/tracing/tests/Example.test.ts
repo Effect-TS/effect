@@ -1,14 +1,10 @@
 import * as assert from "assert";
-
-import { effect as T } from "@matechs/effect";
-
+import { T, pipe, Ex } from "@matechs/prelude";
 import { program } from "./demo/Main";
-import { pipe } from "fp-ts/lib/pipeable";
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
 import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from "../src";
 import { counter } from "./demo/Counter";
 import { Printer } from "./demo/Printer";
-import { done, raise } from "@matechs/effect/lib/original/exit";
 
 class MockTracer extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
@@ -70,7 +66,7 @@ describe("Example", () => {
     assert.deepEqual(spans.filter((s) => s.name.indexOf("demo-main") >= 0).length, 1);
     assert.deepEqual(spans.filter((s) => s.name.indexOf("span-") >= 0).length, 20);
 
-    assert.deepEqual(result, done({ start: 0, end: 20 }));
+    assert.deepEqual(result, Ex.done({ start: 0, end: 20 }));
     assert.deepEqual(messages, [
       "n: 1 (1)",
       "n: 2 (2)",
@@ -130,7 +126,7 @@ describe("Example", () => {
 
     const result = await T.runToPromiseExit(program2);
 
-    assert.deepEqual(result, raise(new Error("not implemented")));
+    assert.deepEqual(result, Ex.raise(new Error("not implemented")));
   });
 
   it("skip tracing if out of context", async () => {
@@ -138,6 +134,6 @@ describe("Example", () => {
 
     const result = await T.runToPromiseExit(T.provide(tracer())(program2));
 
-    assert.deepEqual(result, raise(new Error("not implemented")));
+    assert.deepEqual(result, Ex.raise(new Error("not implemented")));
   });
 });

@@ -1,4 +1,4 @@
-import { freeEnv as F } from "@matechs/effect";
+import { Service as F } from "@matechs/prelude";
 import * as R from "../../../src";
 import { dateOpsSpec, dateOpsURI } from "./def";
 import { DateStateEnv, dateStateURI } from "./state";

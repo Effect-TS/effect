@@ -69,7 +69,7 @@ interface Config2 {
 const fetchUser = Ep.epic<State, MyAction>()((_, action$) =>
   pipe(
     action$,
-    S.filterRefine(isFetchUser),
+    S.filter(isFetchUser),
     S.chain(({ id }) =>
       S.encaseEffect(
         T.accessM(({ config: { prefix } }: Config) =>
@@ -96,7 +96,7 @@ const fetchUser = Ep.epic<State, MyAction>()((_, action$) =>
 const fetchUser2 = Ep.epic<State, MyAction>()((_, action$) =>
   pipe(
     action$,
-    S.filterRefine(isFetchUser),
+    S.filter(isFetchUser),
     S.chain(() =>
       S.encaseEffect(
         T.accessM(({ config2: { prefix } }: Config2) =>
@@ -225,7 +225,7 @@ describe("Epics", () => {
     const incReducer = Ep.epic<State, MyAction>()((state$, action$) =>
       pipe(
         action$,
-        S.filterRefine(isAdd),
+        S.filter(isAdd),
         S.chain(() => S.encaseEffect(state$.value)),
         S.map((state) => {
           updates.push({ from: "a", state: state.reducer });

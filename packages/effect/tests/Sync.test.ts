@@ -26,7 +26,9 @@ describe("Sync", () => {
       T.chain((n) => T.sync(() => n + 1))
     );
 
-    const provide = T.provideM(T.effect.map(T.pure(10), (n): { n: number } => ({ n })));
+    const provide = T.provideM(
+      T.effect.map(T.pure(10), (n): { n: number } => ({ n }))
+    );
 
     const res = T.runSync(pipe(program, provide));
 

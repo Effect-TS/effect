@@ -4,7 +4,7 @@ export interface Test<R> {
   _R: (_: R) => void;
   _tag: "test";
   name: string;
-  eff: T.Effect<R, any, any>;
+  eff: T.Effect<any, R, any, any>;
   config: Record<string, unknown>;
 }
 

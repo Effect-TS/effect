@@ -19,7 +19,7 @@ describe("EffectSafe", () => {
     expect(await T.runToPromiseExit(program)).toStrictEqual(ex.done([0, 1]));
   });
   it("Sync", () => {
-    const program = array.sequence(T.effect)([T.pure(0), T.pure(1)]);
+    const program = T.sequenceArray([T.pure(0), T.pure(1)]);
 
     expect(T.runSync(program)).toStrictEqual(ex.done([0, 1]));
   });
@@ -512,12 +512,6 @@ describe("EffectSafe", () => {
       const ma = T.pure(1);
       const x = await T.runToPromiseExit(T.parEffect.ap(mab, ma));
       assert.deepStrictEqual(x, ex.done(2));
-    });
-
-    it("sequenceP", async () => {
-      const res = await T.runToPromiseExit(T.sequenceP(1)([T.pure(1), T.pure(2)]));
-
-      assert.deepEqual(res, ex.done([1, 2]));
     });
   });
 

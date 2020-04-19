@@ -1,14 +1,11 @@
-import { managed as M, effect as T } from "@matechs/effect";
+import { T, M, E, pipe } from "@matechs/prelude";
 import { managedClient, ZooError, error, ConnectionDroppedError } from "./client";
-import { pipe } from "fp-ts/lib/pipeable";
 import { State } from "node-zookeeper-client";
-import { right } from "fp-ts/lib/Either";
-import { sequenceT } from "fp-ts/lib/Apply";
 
 // work in progress
 /* istanbul ignore file */
 
-export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, A>) =>
+export const election = (electionPath: string) => <S, R, E, A>(run: T.Effect<S, R, E, A>) =>
   M.use(managedClient, (c) => {
     // run election
     const proc = pipe(
@@ -24,7 +21,7 @@ export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, 
             T.chain(
               (masterId) =>
                 id.id === masterId.id
-                  ? T.asUnit<R & T.AsyncRT, E | ZooError, A>(run) // I'm master
+                  ? T.asUnit<unknown, R, E | ZooError, A>(run) // I'm master
                   : T.asUnit(c.waitDelete(`${electionPath}/${masterId.id}`)) // I'm slave waiting for master to drop
             )
           )
@@ -41,7 +38,7 @@ export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, 
           s.code === State.EXPIRED.code
         ) {
           disp();
-          retD(right(undefined));
+          retD(E.right(undefined));
         }
       });
 
@@ -57,7 +54,7 @@ export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, 
       proc,
       T.fork,
       T.chain((f) =>
-        sequenceT(T.parEffect)(
+        T.parSequenceT(
           T.fork(
             pipe(
               waitDisconnected,
@@ -76,9 +73,9 @@ export const election = (electionPath: string) => <R, E, A>(run: T.Effect<R, E, 
         )
       ),
       T.chain((_) =>
-        sequenceT(T.parEffect)(
+        T.parSequenceT(
           T.async(() => (cb) => {
-            T.run(sequenceT(T.effect)(_[0].interrupt, _[1].interrupt), () => {
+            T.run(T.parSequenceT(_[0].interrupt, _[1].interrupt), () => {
               cb();
             });
           }),

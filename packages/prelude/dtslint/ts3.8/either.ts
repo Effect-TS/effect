@@ -1,6 +1,6 @@
 import { E, pipe, T, F, S, SE, M } from "../../src";
 
-// $ExpectType Effect<{ bar: string; } & { foo: string; }, number, string>
+// $ExpectType Effect<never, { bar: string; } & { foo: string; }, number, string>
 export const X = pipe(
   E.left(1),
   E.fold(
@@ -9,7 +9,7 @@ export const X = pipe(
   )
 );
 
-// $ExpectType Stream<{ bar: string; } & { foo: string; }, number, string>
+// $ExpectType Stream<never, { bar: string; } & { foo: string; }, number, string>
 export const S_ = pipe(
   E.left(1),
   E.fold(
@@ -18,7 +18,7 @@ export const S_ = pipe(
   )
 );
 
-// $ExpectType StreamEither<{ bar: string; } & { foo: string; }, number, string>
+// $ExpectType StreamEither<never, { bar: string; } & { foo: string; }, number, string>
 export const SE_ = pipe(
   E.left(1),
   E.fold(
@@ -27,11 +27,20 @@ export const SE_ = pipe(
   )
 );
 
-// $ExpectType Managed<{ bar: string; } & { foo: string; }, number, string>
+// $ExpectType Managed<never, { bar: string; } & { foo: string; }, number, string>
 export const M_ = pipe(
   E.left(1),
   E.fold(
     (n) => M.encaseEffect(T.accessM((_: { bar: string }) => T.raiseError(n))),
+    (s) => M.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
+  )
+);
+
+// $ExpectType Managed<unknown, { bar: string; } & { foo: string; }, number, string>
+export const M2_ = pipe(
+  E.left(1),
+  E.fold(
+    (n) => M.encaseEffect(T.shiftAfter(T.accessM((_: { bar: string }) => T.raiseError(n)))),
     (s) => M.encaseEffect(T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`)))
   )
 );
@@ -72,7 +81,8 @@ export const D = E.sequenceS({
 });
 
 // $ExpectType Either<"a" | "b" | "c" | "d" | "e" | "g" | "h", { c: never; } & { d: never; } & { e: never; f: never; } & { g: never; h: never; } & { i: number; } & { j: number; }>
-export const E_ = E.Do.do(E.left("a" as const))
+export const E_ = E.Do()
+  .do(E.left("a" as const))
   .doL(() => E.left("b" as const))
   .bindL("c", () => E.left("c" as const))
   .bind("d", E.left("d" as const))

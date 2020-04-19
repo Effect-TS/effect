@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F, utils as U, exit as EX } from "@matechs/effect";
+import { T, Service as F, U, Ex, pipe } from "@matechs/prelude";
 import * as assert from "assert";
 import {
   Connection,
@@ -12,7 +12,6 @@ import {
   Repository
 } from "typeorm";
 import * as DB from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
 
 @Entity()
 export class DemoEntity {
@@ -76,7 +75,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       result,
-      EX.raise(new DB.TaskError(new Error("not implemented"), "withRepositoryTask"))
+      Ex.raise(new DB.TaskError(new Error("not implemented"), "withRepositoryTask"))
     );
   });
 
@@ -122,7 +121,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       result,
-      EX.raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
+      Ex.raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
     );
   });
 
@@ -163,7 +162,7 @@ describe("Orm", () => {
 
     assert.deepEqual(
       result,
-      EX.raise(new DB.TaskError(new Error("not implemented"), "withConnectionTask"))
+      Ex.raise(new DB.TaskError(new Error("not implemented"), "withConnectionTask"))
     );
   });
 
@@ -172,7 +171,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -217,7 +216,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -272,7 +271,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 
@@ -322,7 +321,7 @@ describe("Orm", () => {
 
     const res = await T.runToPromiseExit(T.provide(env)(program));
 
-    assert.deepEqual(res, EX.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
+    assert.deepEqual(res, Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
     assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
   });
 
@@ -331,7 +330,7 @@ describe("Orm", () => {
 
     const spec = F.define({
       [uri]: {
-        demo: F.fn<() => T.TaskErr<DB.TaskError, any>>()
+        demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
     });
 

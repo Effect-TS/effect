@@ -1,12 +1,11 @@
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import { DbT } from "@matechs/orm";
-import { sequenceT } from "fp-ts/lib/Apply";
 
 // experimental alpha
 /* istanbul ignore file */
 
 export const createTable = <Db extends symbol | string>(db: DbT<Db>) =>
-  sequenceT(T.effect)(
+  T.sequenceT(
     db.withManagerTask((manager) => () =>
       manager.query(
         "CREATE TABLE IF NOT EXISTS public.event_log (" +

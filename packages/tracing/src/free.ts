@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 import * as TR from "./tracing";
 
 export function access<A extends F.ModuleShape<A>>(sp: F.ModuleSpec<A>): F.Derived<A> {

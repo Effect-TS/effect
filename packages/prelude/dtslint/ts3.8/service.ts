@@ -8,12 +8,12 @@ interface Foo {
 
 const MyServiceURI = Symbol();
 
-// $ExpectType ModuleSpec<{ [MyServiceURI]: { a: Task<number>; b: (_: number) => IoErr<Error, number>; c: (_: number) => TaskEnvErr<Foo, never, string>; }; }>
+// $ExpectType ModuleSpec<{ [MyServiceURI]: { a: Async<number>; b: (_: number) => SyncE<Error, number>; c: (_: number) => AsyncRE<Foo, never, string>; }; }>
 const MyService_ = Service.define({
   [MyServiceURI]: {
-    a: Service.cn<T.Task<number>>(),
-    b: Service.fn<(_: number) => T.IoErr<Error, number>>(),
-    c: Service.fn<(_: number) => T.TaskEnvErr<Foo, never, string>>()
+    a: Service.cn<T.Async<number>>(),
+    b: Service.fn<(_: number) => T.SyncE<Error, number>>(),
+    c: Service.fn<(_: number) => T.AsyncRE<Foo, never, string>>()
   }
 });
 
@@ -23,15 +23,15 @@ export interface MyService extends Service.TypeOf<typeof MyService_> {}
 export const MyService = Service.opaque<MyService>()(MyService_);
 
 export const {
-  // $ExpectType Effect<AsyncRT & MyService, never, number>
+  // $ExpectType Effect<unknown, MyService, never, number>
   a,
-  // $ExpectType FunctionN<[number], Effect<MyService, Error, number>>
+  // $ExpectType FunctionN<[number], Effect<never, MyService, Error, number>>
   b,
-  // $ExpectType FunctionN<[number], Effect<AsyncRT & Foo & MyService, never, string>>
+  // $ExpectType FunctionN<[number], Effect<unknown, Foo & MyService, never, string>>
   c
 } = Service.access(MyService)[MyServiceURI];
 
-// $ExpectType Provider<Foo & AsyncRT, MyService, Error>
+// $ExpectType Provider<Foo, MyService, Error, unknown>
 Service.implementWith(
   T.async<Error, number>(() => () => {})
 )(MyService)(() => ({
@@ -42,7 +42,7 @@ Service.implementWith(
   }
 }));
 
-// $ExpectType Provider<Foo, MyService, never>
+// $ExpectType Provider<Foo, MyService, never, never>
 Service.implementWith(T.access((_: Foo) => 1))(MyService)(() => ({
   [MyServiceURI]: {
     a: T.pure(1),
@@ -51,7 +51,7 @@ Service.implementWith(T.access((_: Foo) => 1))(MyService)(() => ({
   }
 }));
 
-// $ExpectType Provider<Foo, MyService, string>
+// $ExpectType Provider<Foo, MyService, string, never>
 Service.implementWith(T.accessM((_: Foo) => T.raiseError("ooo")))(MyService)(() => ({
   [MyServiceURI]: {
     a: T.pure(1),
@@ -60,7 +60,7 @@ Service.implementWith(T.accessM((_: Foo) => T.raiseError("ooo")))(MyService)(() 
   }
 }));
 
-// $ExpectType Provider<unknown, MyService, never>
+// $ExpectType Provider<unknown, MyService, never, never>
 Service.implement(MyService)({
   [MyServiceURI]: {
     a: T.pure(1),

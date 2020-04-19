@@ -1,10 +1,7 @@
-import { effect as T, managed as M } from "@matechs/effect";
+import { T, M, O, A, pipe, combineProviders } from "@matechs/prelude";
 import * as EX from "@matechs/express";
 import { gql } from "apollo-server";
-import { array as A } from "fp-ts";
-import { pipe } from "fp-ts/lib/pipeable";
 import { apollo } from "../src";
-import * as O from "fp-ts/lib/Option";
 
 // EXPERIMENTAL
 /* istanbul ignore file */
@@ -126,36 +123,57 @@ const resolvers = Apollo.binder({
   ...demo
 });
 
-const main = pipe(Apollo.bindToSchema(resolvers, typeDefs), M.provide(EX.managedExpress(8080)));
+const main = pipe(
+  // Bind apollo
+  Apollo.bindToSchema(resolvers, typeDefs),
+  // keep server waiting
+  T.chainTap(() => T.never)
+);
 
-const cancel = pipe(
-  main,
-  T.provide({
-    foo: "foo"
-  }),
-  T.provide({
-    bar: "bar"
-  }),
-  T.provide({
-    subN: 10
-  }),
-  T.provide({
-    prefix: "ok"
-  }),
-  T.provide({
-    subOnDisconnect: "ok"
-  }),
-  T.provide({
-    subOnConnect: "ok"
-  }),
-  T.provide({
-    contextFnEnv: "ok"
-  }),
-  T.provide(EX.express),
-  (x) =>
-    T.run(x, (ex) => {
-      console.log(ex);
+const provider = combineProviders()
+  .with(M.provide(EX.managedExpress(8080)))
+  .with(T.provide(EX.express))
+  .with(
+    T.provide({
+      foo: "foo"
     })
+  )
+  .with(
+    T.provide({
+      bar: "bar"
+    })
+  )
+  .with(
+    T.provide({
+      subN: 10
+    })
+  )
+  .with(
+    T.provide({
+      prefix: "ok"
+    })
+  )
+  .with(
+    T.provide({
+      subOnDisconnect: "ok"
+    })
+  )
+  .with(
+    T.provide({
+      subOnConnect: "ok"
+    })
+  )
+  .with(
+    T.provide({
+      contextFnEnv: "ok"
+    })
+  )
+  .done();
+
+const cancel = pipe(main, provider, (x) =>
+  T.run(x, (ex) => {
+    console.log(ex);
+  })
 );
 
 process.on("SIGINT", () => {

@@ -1,19 +1,13 @@
 import "isomorphic-fetch";
 import * as assert from "assert";
-import { effect as T, managed as M } from "@matechs/effect";
-import { Do } from "fp-ts-contrib/lib/Do";
+import { T, M, O, pipe, Ex } from "@matechs/prelude";
 import * as KOA from "../src";
 import * as H from "@matechs/http-client";
 import * as L from "@matechs/http-client-fetch";
-import { pipe } from "fp-ts/lib/pipeable";
-import { raise, done } from "@matechs/effect/lib/original/exit";
-import { some } from "fp-ts/lib/Option";
-import * as O from "fp-ts/lib/Option";
-import { sequenceT } from "fp-ts/lib/Apply";
 
 describe("Koa", () => {
   it("should use koa", async () => {
-    const config = Do(T.effect)
+    const config = T.Do()
       .do(
         KOA.route(
           "post",
@@ -30,7 +24,7 @@ describe("Koa", () => {
       )
       .do(
         pipe(
-          sequenceT(T.effect)(
+          T.sequenceT(
             KOA.route(
               "post",
               "/",
@@ -61,7 +55,7 @@ describe("Koa", () => {
       )
       .do(
         KOA.middlewareM((cont) =>
-          Do(T.effect)
+          T.Do()
             .do(KOA.accessReq((ctx) => ctx.set("X-Request-Id-2", "my-id-2")))
             .do(cont)
             .done()
@@ -85,7 +79,7 @@ describe("Koa", () => {
       )
       .done();
 
-    const program = Do(T.effect)
+    const program = T.Do()
       .bindL("res", () =>
         pipe(
           H.post("http://127.0.0.1:3004/", {}),
@@ -143,7 +137,7 @@ describe("Koa", () => {
           H.post("http://127.0.0.1:3004/", {}),
           T.chain((s) =>
             T.fromOption(() => new Error("empty body"))(
-              sequenceT(O.option)(
+              O.sequenceT(
                 O.fromNullable(s.headers["x-request-id"]),
                 O.fromNullable(s.headers["x-request-id-2"])
               )
@@ -168,15 +162,15 @@ describe("Koa", () => {
       T.provide(L.client(fetch)),
       T.runToPromise
     ).then(({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
-      assert.deepEqual(res, done({ res: 1 }));
-      assert.deepEqual(res5, done({ res: 1 }));
-      assert.deepEqual(res6, done({ res: 1 }));
-      assert.deepEqual(res7, done({ res: 1 }));
-      assert.deepEqual(res9, done({ res: 1 }));
-      assert.deepEqual(res8, done(["my-id", "my-id-2"]));
-      assert.deepEqual(res2, raise(some(`{\"res\":1}`)));
-      assert.deepEqual(res3, raise(some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-      assert.deepEqual(res4, raise(some(`{\"status\":\"interrupted\"}`)));
+      assert.deepEqual(res, Ex.done({ res: 1 }));
+      assert.deepEqual(res5, Ex.done({ res: 1 }));
+      assert.deepEqual(res6, Ex.done({ res: 1 }));
+      assert.deepEqual(res7, Ex.done({ res: 1 }));
+      assert.deepEqual(res9, Ex.done({ res: 1 }));
+      assert.deepEqual(res8, Ex.done(["my-id", "my-id-2"]));
+      assert.deepEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
+      assert.deepEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+      assert.deepEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
     });
   });
 });

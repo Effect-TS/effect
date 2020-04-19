@@ -1,5 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { Option } from "fp-ts/lib/Option";
+import { T, Service as F, O } from "@matechs/prelude";
 
 // alpha
 /* istanbul ignore file */
@@ -8,7 +7,7 @@ export const orgsOpsURI = Symbol();
 
 export interface OrgsOps extends F.ModuleShape<OrgsOps> {
   [orgsOpsURI]: {
-    updateOrgs: T.Task<Option<string>>;
+    updateOrgs: T.Async<O.Option<string>>;
   };
 }
 

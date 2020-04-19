@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -21,13 +21,13 @@ export interface MatcherT<A, Tag extends keyof A>
 interface MatcherTIntern<A, Record> {
   <M extends Cases<Record, any>>(match: M): (
     a: A
-  ) => ReturnType<M[keyof M]> extends T.Effect<infer R, infer E, infer B>
-    ? T.Effect<R, E, B>
+  ) => ReturnType<M[keyof M]> extends T.Effect<infer S, infer R, infer E, infer B>
+    ? T.Effect<S, R, E, B>
     : never;
 
   <M extends Partial<Cases<Record, any>> & Default<A, any>>(match: M): (
     a: A
-  ) => ReturnType<NonNullable<M[keyof M]>> extends T.Effect<infer R, infer E, infer B>
-    ? T.Effect<R, E, B>
+  ) => ReturnType<NonNullable<M[keyof M]>> extends T.Effect<infer S, infer R, infer E, infer B>
+    ? T.Effect<S, R, E, B>
     : never;
 }

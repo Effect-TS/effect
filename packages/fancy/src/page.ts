@@ -1,11 +1,8 @@
-import { effect as T } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "fp-ts/lib/Record";
+import { T, pipe, Ex } from "@matechs/prelude";
 import * as M from "mobx";
 import * as React from "react";
 import { View, ComponentProps } from ".";
 import { Fancy, State, stateURI } from "./fancy";
-import { isDone } from "@matechs/effect/lib/exit";
 import { componentPropsURI } from "./componentProps";
 import { NextPageContext } from "next";
 import { NextContext, nextContextURI } from "./next-ctx";
@@ -15,7 +12,7 @@ import { NextContext, nextContextURI } from "./next-ctx";
 
 export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.Io<K[k]>;
+    [k in keyof K]: T.Sync<K[k]>;
   }
 ) => <KI extends "static" | "ssr">(
   _KIND: unknown extends P & Q ? void : {} extends P & Q ? void : KI,
@@ -24,14 +21,14 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
     : {} extends P & Q
     ? void
     : KI extends "static"
-    ? T.Io<P & Q>
-    : T.Task<P & Q>
+    ? T.Sync<P & Q>
+    : T.Async<P & Q>
 ): React.FC<P & Q> => {
   const initial = pipe(
     _I as Record<string, any>,
-    R.traverseWithIndex(T.effect)((k: string) =>
+    T.traverseRecordWithIndex((k: string) =>
       pipe(
-        _I[k],
+        _I[k] as T.Sync<any>,
         T.map((x) => M.observable(x as any))
       )
     ),
@@ -69,7 +66,7 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
       T.runSync
     );
 
-    if (isDone(C)) {
+    if (Ex.isDone(C)) {
       return React.createElement(C.value);
     } else {
       return React.createElement("div", {
@@ -85,15 +82,15 @@ export const page = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
           [nextContextURI]: {
             ctx
           }
-        })(_P as T.Effect<NextContext, never, P>)
+        })(_P as T.Effect<unknown, NextContext, never, P>)
       );
 
     return Cmp;
   } else {
     if (_P && _KIND && typeof _KIND === "string" && _KIND === "static") {
-      const props = T.runSync(_P as T.Effect<unknown, never, P>);
+      const props = T.runSync(_P as T.Effect<never, unknown, never, P>);
 
-      if (isDone(props)) {
+      if (Ex.isDone(props)) {
         const p = props.value;
 
         return () =>

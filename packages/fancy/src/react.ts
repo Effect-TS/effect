@@ -1,11 +1,8 @@
-import { effect as T } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "fp-ts/lib/Record";
+import { T, pipe, Ex } from "@matechs/prelude";
 import * as M from "mobx";
 import * as React from "react";
 import { View, ComponentProps } from ".";
 import { Fancy, State, stateURI } from "./fancy";
-import { isDone } from "@matechs/effect/lib/exit";
 import { componentPropsURI } from "./componentProps";
 
 // alpha
@@ -13,14 +10,14 @@ import { componentPropsURI } from "./componentProps";
 
 export const react = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   _I: {
-    [k in keyof K]: T.Io<K[k]>;
+    [k in keyof K]: T.Sync<K[k]>;
   }
-) => (_P: unknown extends P ? void : {} extends P ? void : T.Io<P>): React.FC<Q> => {
+) => (_P: unknown extends P ? void : {} extends P ? void : T.Sync<P>): React.FC<Q> => {
   const initial = pipe(
-    _I as Record<string, any>,
-    R.traverseWithIndex(T.effect)((k: string) =>
+    _I as Record<string, T.Sync<any>>,
+    T.traverseRecordWithIndex((k: string) =>
       pipe(
-        _I[k],
+        _I[k] as T.Sync<any>,
         T.map((x) => M.observable(x as any))
       )
     ),
@@ -60,7 +57,7 @@ export const react = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
       T.runSync
     );
 
-    if (isDone(C)) {
+    if (Ex.isDone(C)) {
       return React.createElement(C.value);
     } else {
       return React.createElement("div", {
@@ -70,9 +67,9 @@ export const react = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) => (
   };
 
   if (_P) {
-    const props = T.runSync(_P as T.Effect<unknown, never, P>);
+    const props = T.runSync(_P as T.Sync<P>);
 
-    if (isDone(props)) {
+    if (Ex.isDone(props)) {
       const p = props.value;
 
       return (q) =>

@@ -1,9 +1,8 @@
 import * as U from "../src";
-import { effect as T } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
+import { T, pipe } from "@matechs/prelude";
 import * as assert from "assert";
 
-function run<E, A>(eff: T.Effect<U.UUIDEnv, E, A>): Promise<A> {
+function run<E, A>(eff: T.SyncRE<U.UUIDEnv, E, A>): Promise<A> {
   return pipe(eff, U.provideUUID, T.runToPromise);
 }
 

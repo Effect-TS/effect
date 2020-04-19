@@ -1,19 +1,19 @@
 /* istanbul ignore file */
 
-import { T, pipe, E, pipeF, Ex, flowP } from "../src";
+import { T, pipe, E, pipeF, Ex, combineProviders } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => T.Io<string>;
+    getString: () => T.Sync<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => T.Io<string>;
+    getString: () => T.Sync<string>;
   };
 }
 
@@ -59,7 +59,7 @@ const e = pipeF(c)
   .pipe(T.chain((_) => b))
   .done();
 
-const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+const f = T.Do().do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
 const provideBar = T.provide<Bar>(
   {
@@ -95,8 +95,8 @@ describe("Prelude", () => {
       });
   });
 
-  it("should run effect composition - flowP", async () => {
-    const provideEnv = flowP(provideBaz).flow(provideBar).done();
+  it("should run effect composition - combine", async () => {
+    const provideEnv = combineProviders().with(provideBaz).with(provideBar).done();
 
     await pipeF(f)
       .pipe(provideEnv)
@@ -109,6 +109,13 @@ describe("Prelude", () => {
 
   it("should run effect composition - sync", () => {
     const exit = pipe(a3, provideBaz, provideBar, T.runSync);
+
+    assert.deepStrictEqual(Ex.isDone(exit) && exit.value, "value: bar");
+  });
+
+  it("should run effect composition - sync - combine", () => {
+    const combined = combineProviders().with(provideBaz).with(provideBar).done();
+    const exit = pipe(a3, combined, T.runSync);
 
     assert.deepStrictEqual(Ex.isDone(exit) && exit.value, "value: bar");
   });

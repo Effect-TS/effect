@@ -1,6 +1,6 @@
 import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import { State } from "../../../src";
 
 const FlashState_ = summon(F =>

@@ -2,13 +2,12 @@ import assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
 import { freeEnv as F, effect as T, utils as U } from "../src";
 import { done } from "../src/original/exit";
-import { sequenceS } from "fp-ts/lib/Apply";
 
 const fnEnv: unique symbol = Symbol();
 
 const fnEnvM_ = F.define({
   [fnEnv]: {
-    mapString: F.fn<(s: string) => T.Io<string>>()
+    mapString: F.fn<(s: string) => T.Sync<string>>()
   }
 });
 
@@ -30,8 +29,8 @@ const consoleEnv: unique symbol = Symbol();
 
 const consoleM = F.define({
   [consoleEnv]: {
-    log: F.fn<(s: string) => T.IoEnv<FnEnv, void>>(),
-    get: F.cn<T.Io<string[]>>()
+    log: F.fn<(s: string) => T.SyncR<FnEnv, void>>(),
+    get: F.cn<T.Sync<string[]>>()
   }
 });
 
@@ -45,7 +44,7 @@ const prefixEnv: unique symbol = Symbol();
 
 const prefixM = F.define({
   [prefixEnv]: {
-    accessPrefix: F.cn<T.Io<string>>()
+    accessPrefix: F.cn<T.Sync<string>>()
   }
 });
 
@@ -57,7 +56,7 @@ const configEnv: unique symbol = Symbol();
 
 const configM = F.define({
   [configEnv]: {
-    accessConfig: F.cn<T.Io<string>>()
+    accessConfig: F.cn<T.Sync<string>>()
   }
 });
 
@@ -97,7 +96,7 @@ const consoleI2 = F.implement(consoleM)({
   }
 });
 
-const program: T.IoEnv<Console & FnEnv, string[]> = pipe(
+const program: T.SyncR<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain((_) => get)
 );
@@ -137,43 +136,5 @@ describe("Generic", () => {
     const main = pipe(get, consoleI2);
 
     assert.deepEqual(await T.runToPromiseExit(main), done(["message"]));
-  });
-
-  it("merge specs", async () => {
-    const envA: unique symbol = Symbol();
-    const envB: unique symbol = Symbol();
-
-    const modA = F.define({
-      [envA]: {
-        foo: F.cn<T.Io<string>>()
-      }
-    });
-
-    const modB = F.define({
-      [envB]: {
-        bar: F.cn<T.Io<string>>()
-      }
-    });
-
-    const m = F.merge({ modA, modB });
-
-    const {
-      [envA]: { foo },
-      [envB]: { bar }
-    } = F.access(m);
-
-    const impl = F.implement(m)({
-      [envA]: {
-        foo: T.pure("a")
-      },
-      [envB]: {
-        bar: T.pure("b")
-      }
-    });
-
-    assert.deepEqual(
-      await T.runToPromiseExit(pipe(sequenceS(T.effect)({ foo, bar }), impl)),
-      done({ foo: "a", bar: "b" })
-    );
   });
 });

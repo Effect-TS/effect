@@ -33,7 +33,7 @@
     "rxjs": "^6.5.5"
   },
   "dependencies": {
-    "@matechs/effect": "^6.0.0-alpha.1",
+    "@matechs/prelude": "^1.0.0-alpha.1",
     "@matechs/rxjs": "^4.0.0-alpha.1"
   }
 }

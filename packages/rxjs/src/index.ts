@@ -1,17 +1,10 @@
-import {
-  effect as T,
-  managed as M,
-  exit as E,
-  stream as S,
-  streameither as SE
-} from "@matechs/effect";
+import { T, M, Ex, S, SE, F } from "@matechs/prelude";
 import * as Rx from "rxjs";
-import { identity } from "fp-ts/lib/function";
 
 export function encaseObservable<E, A>(
   observable: Rx.Observable<A>,
   onError: (e: any) => E
-): S.StreamAsync<unknown, E, A> {
+): S.AsyncE<E, A> {
   return S.fromSource(
     M.managed.chain(
       M.bracket(
@@ -37,8 +30,8 @@ export function encaseObservable<E, A>(
 
 export function encaseObservableEither<A, E = unknown>(
   observable: Rx.Observable<A>,
-  mapError: (_: any) => E = identity
-): SE.StreamEitherAsync<unknown, E, A> {
+  mapError: (_: any) => E = F.identity
+): SE.AsyncE<E, A> {
   return SE.fromSource(
     M.managed.chain(
       M.bracket(
@@ -62,13 +55,11 @@ export function encaseObservableEither<A, E = unknown>(
   );
 }
 
-export function runToObservable<A>(
-  o: T.Task<Rx.Observable<A>>
-): Rx.Observable<A> {
+export function runToObservable<A>(o: T.Async<Rx.Observable<A>>): Rx.Observable<A> {
   return new Rx.Observable((sub) => {
     T.run(
       o,
-      E.fold(
+      Ex.fold(
         (ob) => {
           const running = ob.subscribe(
             (r) => {
@@ -104,9 +95,7 @@ export function runToObservable<A>(
   });
 }
 
-export function toObservable<R, E, A>(
-  s: S.Stream<R, E, A>
-): T.EffectEnv<R, Rx.Observable<A>> {
+export function toObservable<S, R, E, A>(s: S.Stream<S, R, E, A>): T.AsyncR<R, Rx.Observable<A>> {
   return T.access(
     (r: R) =>
       new Rx.Observable((sub) => {
@@ -121,7 +110,7 @@ export function toObservable<R, E, A>(
         );
         const interruptDrain = T.run(
           drainer,
-          E.fold(
+          Ex.fold(
             () => {
               sub.complete();
             },

@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 import * as L from "./logger";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -6,7 +6,7 @@ function format(level: L.Level, message: string, meta?: L.Meta) {
   return `${level}: ${message}${meta ? `(${JSON.stringify({ meta })})` : ""}`;
 }
 
-function log(config: Config, level: L.Level, message: string, meta?: L.Meta): T.Io<void> {
+function log(config: Config, level: L.Level, message: string, meta?: L.Meta): T.Sync<void> {
   return (
     Do(T.effect)
       .let("config", config)

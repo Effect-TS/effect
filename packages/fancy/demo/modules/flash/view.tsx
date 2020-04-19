@@ -1,10 +1,8 @@
-import React from "react"
+import { O, pipe, T } from "@matechs/prelude";
+import * as M from "mobx";
+import React from "react";
 import { UI } from "../../../src";
 import { FlashStateEnv, flashStateURI } from "./state";
-import * as M from "mobx";
-import * as O from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
-import { effect as T } from "@matechs/effect";
 
 export const DisplayFlash = UI.withRun()((run, dispose) =>
   UI.withState<FlashStateEnv>()<{
@@ -42,7 +40,7 @@ export const DisplayFlash = UI.withRun()((run, dispose) =>
       message,
       O.fold(
         () => <></>,
-        m =>
+        (m) =>
           React.createElement(children, {
             message: m
           })

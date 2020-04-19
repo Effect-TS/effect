@@ -1,11 +1,11 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 import { logger } from "@matechs/logger";
 
 export const appURI = Symbol();
 
 export interface App {
   [appURI]: {
-    printTodo: (todo: string) => T.Io<void>;
+    printTodo: (todo: string) => T.Sync<void>;
   };
 }
 

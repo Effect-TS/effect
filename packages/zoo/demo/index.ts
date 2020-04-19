@@ -1,6 +1,5 @@
-import { effect as T } from "@matechs/effect";
+import { T, pipe } from "@matechs/prelude";
 import { election, provideClientFactory, provideClientConfig } from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
 
 // work in progress
 /* istanbul ignore file */

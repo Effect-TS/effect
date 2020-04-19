@@ -1,7 +1,5 @@
-import React from "react"
-import { effect as T } from "@matechs/effect";
-import { sequenceS } from "fp-ts/lib/Apply";
-import { pipe } from "fp-ts/lib/pipeable";
+import React from "react";
+import { T, pipe } from "@matechs/prelude";
 import Link from "next/link";
 import { DT } from "../modules/date";
 import { UI } from "../../src";
@@ -11,11 +9,11 @@ import { UI } from "../../src";
 
 export const Foo = UI.of(
   pipe(
-    sequenceS(T.effect)({
+    T.sequenceS({
       UpdateDate: DT.UpdateDate,
       ShowDate: DT.ShowDate
     }),
-    T.map(v => () => (
+    T.map((v) => () => (
       <>
         <v.ShowDate foo={"foo"} />
         <v.UpdateDate />

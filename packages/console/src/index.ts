@@ -1,8 +1,8 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 
 export const consoleURI = "@matechs/console/consoleURI";
 
-type Void = T.Io<void>;
+type Void = T.Sync<void>;
 
 const Console_ = F.define({
   [consoleURI]: {

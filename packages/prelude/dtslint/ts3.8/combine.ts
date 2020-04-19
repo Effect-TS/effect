@@ -1,4 +1,4 @@
-import { T, flowP } from "../../src";
+import { T, combineProviders } from "../../src";
 
 interface A {
   a: {};
@@ -22,15 +22,22 @@ interface E {
 
 declare const providerA: T.Provider<B, A>;
 declare const providerC: T.Provider<D & E, C>;
-declare const providerB: T.Provider<unknown, B, "errB">;
-declare const providerD: T.Provider<E, D, "errD">;
+declare const providerB: T.Provider<unknown, B, "errB", unknown>;
+declare const providerD: T.Provider<E, D, never>;
 declare const providerE: T.Provider<unknown, E>;
+declare const providerF: T.Provider<unknown, E, unknown>;
 
-// $ExpectType Provider<B & E, A & C & D, "errD">
-flowP(providerA).flow(providerC).flow(providerD).done();
+// $ExpectType Provider<B & E, A & C & D, never, never>
+combineProviders().with(providerA).with(providerC).with(providerD).done();
 
-// $ExpectType Provider<E, A & C & D & B, "errD" | "errB">
-flowP(providerA).flow(providerC).flow(providerD).flow(providerB).done();
+// $ExpectType Provider<E, A & C & D & B, "errB", unknown>
+combineProviders().with(providerA).with(providerC).with(providerD).with(providerB).done();
 
-// $ExpectType Provider<unknown, A & C & D & B & E, "errD" | "errB">
-flowP(providerA).flow(providerC).flow(providerD).flow(providerB).flow(providerE).done();
+// $ExpectType Provider<unknown, A & C & D & B & E, "errB", unknown>
+combineProviders()
+  .with(providerA)
+  .with(providerC)
+  .with(providerD)
+  .with(providerB)
+  .with(providerE)
+  .done();

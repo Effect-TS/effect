@@ -64,7 +64,7 @@ const add = (l: Ex, r: Ex): Ex =>
     r
   });
 
-const alg: R.Algebra<URI, unknown, never, string> = (_) => {
+const alg: R.Algebra<URI, never, unknown, never, string> = (_) => {
   switch (_._tag) {
     case "ConstF":
       return T.pure(`${_.d}`);
@@ -85,7 +85,7 @@ const alg: R.Algebra<URI, unknown, never, string> = (_) => {
   }
 };
 
-const coalg: R.Coalgebra<URI, unknown, never, number> = (n) => {
+const coalg: R.Coalgebra<URI, never, unknown, never, number> = (n) => {
   switch (n) {
     case 0:
       return T.pure({
@@ -106,7 +106,7 @@ const coalg: R.Coalgebra<URI, unknown, never, number> = (n) => {
   }
 };
 
-const mapper: R.TMap<URI, unknown, never> = (ta, f) => {
+const mapper: R.TMap<URI, never, unknown, never> = (ta, f) => {
   switch (ta._tag) {
     case "ConstF":
       return T.pure({

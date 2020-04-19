@@ -10,31 +10,31 @@ import { effect } from "./effect";
 /* tested in wave */
 /* istanbul ignore file */
 
-export interface Deferred<R, E, A> {
+export interface Deferred<S, R, E, A> {
   /**
    * Wait for this deferred to complete.
    *
    * This Stack will produce the value set by done, raise the error set by error or interrupt
    */
-  readonly wait: T.Effect<T.AsyncRT & R, E, A>;
+  readonly wait: T.AsyncRE<R, E, A>;
   /**
    * Interrupt any waitersa on this Deferred
    */
-  interrupt: T.Effect<T.NoEnv, T.NoErr, void>;
+  interrupt: T.Sync<void>;
   /**
    * Complete this Deferred with a value
    *
    * Any waiters will receive it
    * @param a
    */
-  done(a: A): T.Effect<T.NoEnv, T.NoErr, void>;
+  done(a: A): T.Sync<void>;
   /**
    *
    * @param e Complete this deferred with an error
    *
    * Any waiters will produce an error
    */
-  error(e: E): T.Effect<T.NoEnv, T.NoErr, void>;
+  error(e: E): T.Sync<void>;
 
   /**
    * Complete this Deferred with an abort
@@ -42,37 +42,37 @@ export interface Deferred<R, E, A> {
    * Any waiters will produce an error
    * @param e
    */
-  abort(e: unknown): T.Effect<T.NoEnv, T.NoErr, void>;
+  abort(e: unknown): T.Sync<void>;
 
   /**
    * Complete this deferred with the given cuase
    * @param c
    */
-  cause(c: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void>;
+  cause(c: Cause<E>): T.Sync<void>;
 
   /**
    * complete this Defered with the provide exit status
    * @param e
    */
-  complete(e: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
+  complete(e: Exit<E, A>): T.Sync<void>;
 
   /**
    * Set this deferred with the result of source
    * @param source
    */
-  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void>;
+  from(source: T.Effect<S, R, E, A>): T.Effect<S, unknown, never, void>;
 }
 
-export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
-  wait: T.Effect<T.AsyncRT & R, E, A>;
-  interrupt: T.Effect<T.NoEnv, T.NoErr, void>;
-  c: Completable<T.Effect<R, E, A>>;
+export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
+  wait: T.AsyncRE<R, E, A>;
+  interrupt: T.Sync<void>;
+  c: Completable<T.Effect<S, R, E, A>>;
 
   constructor(readonly r: R) {
     this.c = new CompletableImpl();
 
     this.wait = T.flatten(
-      T.asyncTotal<T.Effect<R, E, A>>((callback) => this.c.listen(callback))
+      T.asyncTotal<T.Effect<S, R, E, A>>((callback) => this.c.listen(callback))
     );
 
     this.interrupt = T.sync(() => {
@@ -80,37 +80,37 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
     });
   }
 
-  done(a: A): T.Effect<T.NoEnv, T.NoErr, void> {
+  done(a: A): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.pure(a));
     });
   }
 
-  error(e: E): T.Effect<T.NoEnv, T.NoErr, void> {
+  error(e: E): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.raiseError(e));
     });
   }
 
-  abort(e: unknown): T.Effect<T.NoEnv, T.NoErr, void> {
+  abort(e: unknown): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.raiseAbort(e));
     });
   }
 
-  cause(e: Cause<E>): T.Effect<T.NoEnv, T.NoErr, void> {
+  cause(e: Cause<E>): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.raised(e));
     });
   }
 
-  complete(exit: Exit<E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
+  complete(exit: Exit<E, A>): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.completed(exit));
     });
   }
 
-  from(source: T.Effect<R, E, A>): T.Effect<T.NoEnv, T.NoErr, void> {
+  from(source: T.Effect<S, R, E, A>): T.Effect<S, unknown, never, void> {
     const completed = effect.chain(T.result(T.provide(this.r as R)(source)), (e) =>
       this.complete(e)
     );
@@ -118,6 +118,11 @@ export class DeferredImpl<R, E, A> implements Deferred<R, E, A> {
   }
 }
 
-export function makeDeferred<R, E, A, E2 = never>(): T.Effect<R, E2, Deferred<R, E, A>> {
+export function makeDeferred<S, R, E, A, E2 = never>(): T.Effect<
+  never,
+  R,
+  E2,
+  Deferred<S, R, E, A>
+> {
   return T.access((r: R) => new DeferredImpl(r));
 }

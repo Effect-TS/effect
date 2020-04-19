@@ -1,23 +1,23 @@
-import { E, pipe, T, flowF, flowP } from "../../src";
+import { E, pipe, T, flowF, combineProviders } from "../../src";
 
 const FooURI = "uris/foo";
 interface Foo {
   [FooURI]: {
-    getNumber: () => T.Io<number>;
+    getNumber: () => T.Sync<number>;
   };
 }
 
 const BarURI = "uris/bar";
 interface Bar {
   [BarURI]: {
-    getString: () => T.Io<string>;
+    getString: () => T.Sync<string>;
   };
 }
 
 const BazURI = "uris/baz";
 interface Baz {
   [BazURI]: {
-    getString: () => T.Io<string>;
+    getString: () => T.Sync<string>;
   };
 }
 
@@ -33,19 +33,19 @@ class BError extends Error {
   }
 }
 
-// $ExpectType Effect<unknown, never, number>
+// $ExpectType Sync<number>
 const a1 = T.pure(1);
 
-// $ExpectType Effect<Bar, never, string>
+// $ExpectType Effect<never, Bar, never, string>
 const a2 = T.accessM((_: Bar) => _[BarURI].getString());
 
-// $ExpectType Effect<Baz, never, string>
+// $ExpectType Effect<never, Baz, never, string>
 const a3 = T.accessM((_: Baz) => _[BazURI].getString());
 
-// $ExpectType Effect<unknown, AError, never>
+// $ExpectType SyncE<AError, never>
 const a4 = T.raiseError(new AError("mmm"));
 
-// $ExpectType Effect<AsyncRT, BError, number>
+// $ExpectType AsyncE<BError, number>
 const b = T.async<BError, number>((resolve) => {
   const timer = setTimeout(() => {
     resolve(E.right(1));
@@ -56,36 +56,36 @@ const b = T.async<BError, number>((resolve) => {
   };
 });
 
-// $ExpectType Effect<unknown, AError, never>
+// $ExpectType Effect<never, unknown, AError, never>
 const c = pipe(
   a1,
   T.chain((_) => a4)
 );
 
-// $ExpectType Effect<Baz & Bar, never, string>
+// $ExpectType Effect<never, Baz & Bar, never, string>
 const d = pipe(
   a2,
   T.chain((_) => a3)
 );
 
-// $ExpectType Effect<AsyncRT & Baz & Bar, AError | BError, number>
+// $ExpectType Effect<unknown, Baz & Bar, AError | BError, number>
 const e = pipe(
   c,
   T.chain((_) => d),
   T.chain((_) => b)
 );
 
-// $ExpectType Effect<AsyncRT & Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
-const f = T.Do.do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
+// $ExpectType Effect<unknown, Baz & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+const f = T.Do().do(a1).do(b).bind("c", c).bind("d", d).bind("e", e).done();
 
-// $ExpectType Provider<unknown, Foo, never>
+// $ExpectType Provider<unknown, Foo, never, never>
 const provideFoo = T.provide<Foo>({
   [FooURI]: {
     getNumber: () => T.pure(1)
   }
 });
 
-// $ExpectType Provider<unknown, Bar, never>
+// $ExpectType Provider<unknown, Bar, never, never>
 const provideBar = T.provide<Bar>(
   {
     [BarURI]: {
@@ -95,7 +95,7 @@ const provideBar = T.provide<Bar>(
   "inverted"
 );
 
-// $ExpectType Provider<Foo, Baz, never>
+// $ExpectType Provider<Foo, Baz, never, never>
 const provideBaz = T.provideM(
   pipe(
     T.accessM((_: Foo) => _[FooURI].getNumber()),
@@ -109,20 +109,38 @@ const provideBaz = T.provideM(
   )
 );
 
-// $ExpectType Effect<Foo & AsyncRT & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+// $ExpectType Provider<Foo, Baz, never, unknown>
+const provideBazA = T.provideM(
+  pipe(
+    T.shiftAfter(T.accessM((_: Foo) => _[FooURI].getNumber())),
+    T.map(
+      (n): Baz => ({
+        [BazURI]: {
+          getString: () => T.pure(`value: ${n}`)
+        }
+      })
+    )
+  )
+);
+
+// $ExpectType Effect<unknown, Foo & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 const fb = pipe(f, provideBaz);
 
-// $ExpectType Effect<AsyncRT & Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+// $ExpectType Effect<unknown, Bar, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 const ff = pipe(fb, provideFoo);
 
-pipe(ff, provideBar); // $ExpectType Effect<AsyncRT, AError | BError, { c: never; } & { d: string; } & { e: number; }>
+pipe(ff, provideBar); // $ExpectType Effect<unknown, unknown, AError | BError, { c: never; } & { d: string; } & { e: number; }>
 
-pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Effect<unknown, never, string>
+pipe(a3, provideBaz, provideFoo, provideBar); // $ExpectType Effect<never, unknown, never, string>
 
-// $ExpectType Provider<unknown, Baz & Bar & Foo, never>
-const combinedP = flowP(provideBaz).flow(provideBar).flow(provideFoo).done();
+// $ExpectType Provider<unknown, Baz & Bar & Foo, never, never>
+const combinedP = combineProviders().with(provideBaz).with(provideBar).with(provideFoo).done();
 
-pipe(a3, combinedP); // $ExpectType Effect<unknown, never, string>
+// $ExpectType Provider<unknown, Baz & Bar & Foo, never, unknown>
+const combinedP2 = combineProviders().with(provideBazA).with(provideBar).with(provideFoo).done();
+
+pipe(a3, combinedP); // $ExpectType Effect<never, unknown, never, string>
+pipe(a3, combinedP2); // $ExpectType Effect<unknown, unknown, never, string>
 
 // $ExpectType (_: number) => number
 export const h = flowF((_: number) => `s: ${_}`)

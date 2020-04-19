@@ -1,9 +1,8 @@
 import { dbT, DbConfig, configEnv } from "@matechs/orm";
 import * as CQ from "@matechs/cqrs";
 import { DomainEvent } from "./events";
-import { Do } from "fp-ts-contrib/lib/Do";
 import { ConnectionOptions } from "typeorm";
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import { printTodo } from "./app";
 import * as ES from "../src";
 
@@ -17,10 +16,7 @@ export const { bracketPool, withTransaction } = dbT(dbURI);
 export const domain = CQ.cqrs(DomainEvent, dbURI);
 
 // define the todo aggregate by identifiying specific domain events
-export const todosAggregate = domain.aggregate("todos", [
-  "TodoAdded",
-  "TodoRemoved"
-]);
+export const todosAggregate = domain.aggregate("todos", ["TodoAdded", "TodoRemoved"]);
 
 export const todosES = ES.aggregate(todosAggregate);
 
@@ -30,13 +26,12 @@ export const onTodoAdded = todosAggregate.adt.matchEffect({
 });
 
 // construct a utility to instanciate the aggregate root with a specific id
-export const todoRoot = (id: string) =>
-  todosAggregate.root(`todo-${id}`, [onTodoAdded]);
+export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`, [onTodoAdded]);
 
 export const dbConfigLive: DbConfig<typeof dbURI> = {
   [configEnv]: {
     [dbURI]: {
-      readConfig: Do(T.effect)
+      readConfig: T.Do()
         .bind("type", T.pure("postgres"))
         .bind("name", T.pure("CONNECTION_NAME"))
         .bind("username", T.pure("DB_USER"))
@@ -51,7 +46,7 @@ export const dbConfigLive: DbConfig<typeof dbURI> = {
             [CQ.EventLog, ES.TableOffset]
           )
         )
-        .return(s => s as ConnectionOptions)
+        .return((s) => s as ConnectionOptions)
     }
   }
 };

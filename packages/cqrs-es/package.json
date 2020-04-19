@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@matechs/cqrs": "^4.0.0-alpha.1",
-    "@matechs/effect": "^6.0.0-alpha.1",
+    "@matechs/prelude": "^1.0.0-alpha.1",
     "@matechs/logger": "^4.0.0-alpha.1",
     "@matechs/orm": "^4.0.0-alpha.1"
   }

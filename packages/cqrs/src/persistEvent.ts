@@ -1,11 +1,8 @@
-import { effect as T } from "@matechs/effect";
+import { T, pipe } from "@matechs/prelude";
 import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as t from "io-ts";
 import { v4 } from "uuid";
 import { EventLog } from "./eventLog";
-import { array } from "fp-ts/lib/Array";
 import { ADT } from "@morphic-ts/adt/lib";
 
 // experimental alpha
@@ -21,27 +18,30 @@ export const aggregateRootId = ({ aggregate, root }: AggregateRoot) => `${aggreg
 export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
   return <E, A extends { [t in Tag]: A[Tag] }, Tag extends keyof A & string>(
     S: ADT<A, Tag> & { type: t.Encoder<A, E> }
-  ) => (events: A[], aggregateRoot: AggregateRoot): T.TaskEnvErr<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
-    Do(T.effect)
+  ) => (events: A[], aggregateRoot: AggregateRoot): T.AsyncRE<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
+    T.Do()
       .bindL("date", () => T.sync(() => new Date()))
       .bindL("id", () => T.sync(v4))
       .do(sequenceLock(db, dbS)(aggregateRoot))
       .bind("seq", currentSequence(db)(aggregateRoot))
       .bindL("saved", ({ id, date, seq }) =>
-        array.traverseWithIndex(T.effect)(events, (idx, event) =>
-          db.withRepositoryTask(EventLog)((r) => () =>
-            r.save({
-              id: id,
-              createdAt: date,
-              kind: event[S.tag],
-              meta: {},
-              offsets: {},
-              event: S.type.encode(event),
-              sequenceId: aggregateRootId(aggregateRoot),
-              sequence: (seq + BigInt(1 + idx)).toString(),
-              aggregate: aggregateRoot.aggregate,
-              root: aggregateRoot.root
-            })
+        pipe(
+          events,
+          T.traverseArrayWithIndex((idx, event) =>
+            db.withRepositoryTask(EventLog)((r) => () =>
+              r.save({
+                id: id,
+                createdAt: date,
+                kind: event[S.tag],
+                meta: {},
+                offsets: {},
+                event: S.type.encode(event),
+                sequenceId: aggregateRootId(aggregateRoot),
+                sequence: (seq + BigInt(1 + idx)).toString(),
+                aggregate: aggregateRoot.aggregate,
+                root: aggregateRoot.root
+              })
+            )
           )
         )
       )

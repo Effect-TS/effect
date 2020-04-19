@@ -20,9 +20,11 @@ import * as monoid from "fp-ts/lib/Monoid";
 import * as map from "fp-ts/lib/Map";
 import * as set from "fp-ts/lib/Set";
 import * as tree from "fp-ts/lib/Tree";
+import * as record from "fp-ts/lib/Record";
 import * as magma from "fp-ts/lib/Magma";
 import * as E from "./either";
 import * as A from "fp-ts/lib/Array";
+import * as NEA from "fp-ts/lib/NonEmptyArray";
 import * as O from "./option";
 import * as Ex from "./exit";
 
@@ -33,8 +35,8 @@ export { Ex };
 export { E };
 export { Service };
 export { F };
-export { A };
-export { eq, show, semigroup, monoid, tree, map, set, magma };
+export { A, NEA };
+export { eq, show, semigroup, monoid, tree, map, set, magma, record };
 
 export class Pipe<A> {
   constructor(private readonly _: A) {
@@ -62,23 +64,28 @@ export class Flow<A extends ReadonlyArray<unknown>, B> {
   }
 }
 
+export const pipeF = <A>(_: A) => new Pipe(_);
+export const flowF = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B) => new Flow(f);
+
 export type CombineNeeds<N, P, N2> = N & P extends P & infer Q ? Q & N2 : N & P & N2;
 
-export class FlowP<Need, Prov, AddE> {
-  constructor(private readonly f: T.Provider<Need, Prov, AddE>) {
-    this.flow = this.flow.bind(this);
+export class FlowP<Need, Prov, AddE, Op> {
+  constructor(private readonly f?: any) {
+    this.with = this.with.bind(this);
     this.done = this.done.bind(this);
   }
-  flow<Need2, Prov2, AddE2>(
-    g: T.Provider<Need2, Prov2, AddE2>
-  ): FlowP<CombineNeeds<Need, Prov2, Need2>, Prov & Prov2, AddE2 | AddE> {
-    return new FlowP((x) => g(this.f(x)));
+
+  with<Need2, Prov2, Err2, Op2>(
+    _: T.Provider<Need2, Prov2, Err2, Op2>
+  ): FlowP<CombineNeeds<Need, Prov2, Need2>, Prov & Prov2, AddE | Err2, Op | Op2> {
+    return new FlowP((x: any) => (_ as any)(this.f(x))) as any;
   }
-  done() {
+
+  done(): T.Provider<Need, Prov, AddE, Op> {
     return this.f;
   }
 }
 
-export const pipeF = <A>(_: A) => new Pipe(_);
-export const flowF = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B) => new Flow(f);
-export const flowP = <Need, Prov, AddE>(p: T.Provider<Need, Prov, AddE>) => new FlowP(p);
+export function combineProviders() {
+  return new FlowP<unknown, unknown, never, never>((x: any) => x);
+}

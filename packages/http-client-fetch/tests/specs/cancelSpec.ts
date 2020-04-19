@@ -1,7 +1,6 @@
-import { effect as T, exit as E } from "@matechs/effect";
+import { T, Ex, pipe } from "@matechs/prelude";
 import * as H from "@matechs/http-client";
 import * as J from "@matechs/test-jest";
-import { pipe } from "fp-ts/lib/pipeable";
 
 /* istanbul ignore file */
 
@@ -11,7 +10,7 @@ export const cancelSpec = J.testM(
     T.fork(H.get("https://jsonplaceholder.typicode.com/todos/1")),
     T.chain((f) => f.interrupt),
     T.map((res) => {
-      J.assert.deepEqual(res && E.isInterrupt(res), true);
+      J.assert.deepEqual(res && Ex.isInterrupt(res), true);
     })
   )
 );

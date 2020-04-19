@@ -1,17 +1,12 @@
-import { effect as T } from "@matechs/effect";
+import { T, E, pipe, record as R, O, F } from "@matechs/prelude";
 import * as H from "@matechs/http-client";
-import * as E from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/pipeable";
-import * as R from "fp-ts/lib/Record";
 import * as C from "node-libcurl";
 import path from "path";
 import querystring, { ParsedUrlQueryInput } from "querystring";
-import { fromNullable } from "fp-ts/lib/Option";
-import { Endomorphism, identity } from "fp-ts/lib/function";
 
 export const libcurl: (_?: {
   caPath?: string;
-  requestTransformer?: Endomorphism<C.Curl>;
+  requestTransformer?: F.Endomorphism<C.Curl>;
 }) => H.Http = (_ = {}) => ({
   [H.httpEnv]: {
     request: (
@@ -21,7 +16,7 @@ export const libcurl: (_?: {
       responseType: H.ResponseType,
       headers: Record<string, string>,
       body?: unknown
-    ): T.TaskErr<H.HttpError<string>, H.Response<any>> =>
+    ): T.AsyncE<H.HttpError<string>, H.Response<any>> =>
       requestType === "FORM" || requestType === "BINARY"
         ? /* istanbul ignore next */ requestType === "FORM"
           ? T.raiseError({
@@ -40,7 +35,7 @@ export const libcurl: (_?: {
                 require.resolve("@matechs/http-client-libcurl").replace("index.js", ""),
                 "../cacert-2019-11-27.pem"
               ),
-              requestTransformer = identity
+              requestTransformer = F.identity
             } = _;
 
             const req = new C.Curl();
@@ -157,7 +152,7 @@ function getResponse<A>(
 ): H.Response<NonNullable<A>> {
   return {
     status: statusCode,
-    body: fromNullable(body),
+    body: O.fromNullable(body),
     headers: getHeaders(headers)
   };
 }

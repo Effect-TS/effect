@@ -25,8 +25,8 @@ export const nestedChainWave = (): wave.Wave<never, bigint> => {
   return io;
 };
 
-export const nestedChainEffect = (): T.Effect<T.NoEnv, never, bigint> => {
-  let io: T.Effect<T.NoEnv, never, bigint> = T.pure(BigInt(0));
+export const nestedChainEffect = (): T.Sync<bigint> => {
+  let io: T.Sync<bigint> = T.pure(BigInt(0));
   for (let i = 0; i < MAX; i++) {
     io = T.effect.chain(io, effectMapper);
   }
@@ -63,10 +63,10 @@ benchmark
     },
     { defer: true }
   )
-  .on("cycle", function(event: any) {
+  .on("cycle", function (event: any) {
     console.log(String(event.target));
   })
-  .on("complete", function(this: any) {
+  .on("complete", function (this: any) {
     console.log(`Fastest is ${this.filter("fastest").map("name")}`);
   })
   .run({ async: true });

@@ -1,13 +1,11 @@
-import { effect as T, utils as UT } from "@matechs/effect";
+import { T, U, O, pipe } from "@matechs/prelude";
 import * as EX from "@matechs/express";
-import { option as O } from "fp-ts";
 import {
   ApolloServer,
   makeExecutableSchema,
   ITypeDefinitions,
   IResolvers
 } from "apollo-server-express";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as express from "express";
 import { ExpressContext, ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer";
 import {
@@ -36,14 +34,18 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
     res: R,
     typeDefs: ITypeDefinitions,
     additionalResolvers?: IResolvers
-  ) => T.IoEnv<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, void>;
+  ) => T.SyncR<ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE, void>;
   binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K;
-  accessContext: T.Effect<ContextEnv<U, Ctx>, never, { [k in U]: Ctx }[U]>;
-  resolver: <ARGS, S = any>() => <R extends ResolverF<ARGS, U, Ctx, S, any, any, any>>(_: R) => R;
-  subscription: <ARGS, S = any>() => <B, C, D, E, F, G>(
-    subscribe: (_: ResolverInput<S, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
-    resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
-  ) => ResolverSubF<ARGS, U, Ctx, S, B, C, D, E, F, G>;
+  accessContext: T.SyncR<ContextEnv<U, Ctx>, { [k in U]: Ctx }[U]>;
+  resolver: <ARGS, S = any>() => <R extends ResolverF<ARGS, U, Ctx, S, any, any, any, any>>(
+    _: R
+  ) => R;
+  subscription: <ARGS, S = any>() => <B, C, D, E, F, G, S, S2>(
+    subscribe: (
+      _: ResolverInput<S, ARGS>
+    ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
+    resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>
+  ) => ResolverSubF<ARGS, U, Ctx, S, B, C, D, E, F, G, S, S2>;
 }
 
 export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
@@ -53,22 +55,24 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
     req: express.Request;
     res: express.Response;
     connection?: C["subscriptions"] extends {
-      onConnect: (..._: any[]) => T.Effect<any, never, any>;
+      onConnect: (..._: any[]) => T.Effect<any, any, never, any>;
     }
       ? Omit<ExpressContext["connection"], "context"> & {
-          context: UT.Ret<ReturnType<C["subscriptions"]["onConnect"]>>;
+          context: U.Ret<ReturnType<C["subscriptions"]["onConnect"]>>;
         }
       : ExpressContext["connection"];
-  }) => T.Effect<RE, never, Ctx>
+  }) => T.Effect<any, RE, never, Ctx>
 ): ApolloHelper<RE, U, Ctx, C> {
   const config = configP as Omit<ApolloServerExpressConfig, "context" | "schema">;
 
   const accessContext = T.access((_: ContextEnv<U, Ctx>) => _[contextURI][uri]);
 
-  const subscription = <ARGS, A, B, C, D, E, F, G>(
-    subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
-    resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>
-  ): ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G> => ({
+  const subscription = <ARGS, A, B, C, D, E, F, G, S, S2>(
+    subscribe: (
+      _: ResolverInput<A, ARGS>
+    ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
+    resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>
+  ): ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G, S, S2> => ({
     subscribe,
     resolve
   });

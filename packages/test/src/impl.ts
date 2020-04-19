@@ -8,7 +8,7 @@ import { getSkip } from "./aspects/skip";
 import { getTodo, TodoURI } from "./aspects/todo";
 import { identity } from "fp-ts/lib/function";
 
-export const testM = <R, E, A>(name: string, eff?: T.Effect<R, E, A>): Spec<R> => ({
+export const testM = <S, R, E, A>(name: string, eff?: T.Effect<S, R, E, A>): Spec<R> => ({
   _R: undefined as any,
   _tag: "test",
   name,
@@ -40,9 +40,7 @@ export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
 >;
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
-  provider: unknown extends T.Erase<SpecsEnv<Specs>, T.AsyncRT>
-    ? void
-    : T.Provider<unknown, T.Erase<SpecsEnv<Specs>, T.AsyncRT>, any>
+  provider: unknown extends SpecsEnv<Specs> ? void : T.Provider<unknown, SpecsEnv<Specs>, any, any>
 ) => {
   specs.map((s) => {
     switch (s._tag) {
@@ -62,7 +60,7 @@ export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Sp
 function desc<Suites extends Suite<any>[]>(
   _: Runner,
   s: Suite<any>,
-  provider: T.Provider<unknown, SpecsEnv<Suites>, any>
+  provider: T.Provider<unknown, SpecsEnv<Suites>, any, any>
 ) {
   _.describe(s.name, () => {
     s.specs.map((spec) => {
@@ -93,7 +91,7 @@ function desc<Suites extends Suite<any>[]>(
   });
 }
 
-function runTest<R>(_: Runner, spec: Test<R>, provider: T.Provider<unknown, R, any>) {
+function runTest<R>(_: Runner, spec: Test<R>, provider: T.Provider<unknown, R, any, any>) {
   pipe(
     getSkip(spec),
     O.filter((x): x is true => x === true),

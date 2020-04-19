@@ -1,9 +1,8 @@
-import { effect as T, exit as E } from "@matechs/effect";
+import { T, Ex } from "@matechs/prelude";
 import * as EX from "../src";
-import { Do } from "fp-ts-contrib/lib/Do";
 
 const program = EX.withApp(
-  Do(T.effect)
+  T.Do()
     .do(
       EX.route(
         "get",
@@ -21,7 +20,7 @@ const program = EX.withApp(
 
 T.run(
   T.provide(EX.express)(program),
-  E.fold(
+  Ex.fold(
     (server) => {
       process.on("SIGINT", () => {
         server.close((err) => {

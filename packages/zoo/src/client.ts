@@ -1,10 +1,6 @@
-import { effect as T, managed as M, freeEnv as F } from "@matechs/effect";
+import { T, M, Service, O, F, E, pipe } from "@matechs/prelude";
 import * as ZC from "node-zookeeper-client";
 import { CreateMode } from "node-zookeeper-client";
-import { Option, none, some } from "fp-ts/lib/Option";
-import { FunctionN, Lazy } from "fp-ts/lib/function";
-import { left, right } from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/pipeable";
 
 // work in progress
 /* istanbul ignore file */
@@ -96,24 +92,24 @@ type Out = Mkdirp | Createp | NodeId | Children | Deleted;
 const out = <A extends Out>(a: A): A => a;
 
 export interface Client {
-  connect(): T.TaskErr<ConnectError, Client>;
-  listen(f: FunctionN<[ZC.State], void>): Lazy<void>;
-  state(): T.TaskErr<never, Option<ZC.State>>;
-  mkdirp(path: string): T.TaskErr<MkdirpError, Mkdirp>;
-  dispose(): T.TaskErr<never, void>;
-  currentId(path: string): T.TaskErr<never, NodeId>;
+  connect(): T.AsyncE<ConnectError, Client>;
+  listen(f: F.FunctionN<[ZC.State], void>): F.Lazy<void>;
+  state(): T.AsyncE<never, O.Option<ZC.State>>;
+  mkdirp(path: string): T.AsyncE<MkdirpError, Mkdirp>;
+  dispose(): T.AsyncE<never, void>;
+  currentId(path: string): T.AsyncE<never, NodeId>;
   create(
     path: string,
     mode: keyof typeof CreateMode,
     data?: Buffer | undefined
-  ): T.TaskErr<CreateError, Createp>;
-  getChildren(root: string): T.TaskErr<GetChildrenError, Children>;
-  waitDelete(path: string): T.TaskErr<WaitDeleteError, Deleted>;
+  ): T.AsyncE<CreateError, Createp>;
+  getChildren(root: string): T.AsyncE<GetChildrenError, Children>;
+  waitDelete(path: string): T.AsyncE<WaitDeleteError, Deleted>;
 }
 
 export class ClientImpl implements Client {
-  private _state: Option<ZC.State> = none;
-  private readonly listeners: Map<number, FunctionN<[ZC.State], void>> = new Map();
+  private _state: O.Option<ZC.State> = O.none;
+  private readonly listeners: Map<number, F.FunctionN<[ZC.State], void>> = new Map();
   private opc = 0;
 
   constructor(readonly client: ZC.Client) {
@@ -138,14 +134,14 @@ export class ClientImpl implements Client {
   }
 
   private dispatch(state: ZC.State) {
-    this._state = some(state);
+    this._state = O.some(state);
 
     this.listeners.forEach((l) => {
       l(state);
     });
   }
 
-  listen(f: FunctionN<[ZC.State], void>): Lazy<void> {
+  listen(f: F.FunctionN<[ZC.State], void>): F.Lazy<void> {
     const op = this.opc;
 
     this.opc = this.opc + 1;
@@ -171,7 +167,7 @@ export class ClientImpl implements Client {
         ) {
           l();
           res(
-            left(
+            E.left(
               error({
                 _tag: "ConnectError",
                 message: ZC.State.name
@@ -181,7 +177,7 @@ export class ClientImpl implements Client {
         }
         if (s.code === ZC.State.SYNC_CONNECTED.code) {
           l();
-          res(right(this));
+          res(E.right(this));
         }
       });
 
@@ -205,7 +201,7 @@ export class ClientImpl implements Client {
         if (err) {
           if ("code" in err) {
             res(
-              left(
+              E.left(
                 error({
                   _tag: "MkdirpError",
                   message: err.toString()
@@ -214,7 +210,7 @@ export class ClientImpl implements Client {
             );
           } else {
             res(
-              left(
+              E.left(
                 error({
                   _tag: "MkdirpError",
                   message: err.message
@@ -223,7 +219,7 @@ export class ClientImpl implements Client {
             );
           }
         } else {
-          res(right(out({ path: p, _tag: "Mkdirp" })));
+          res(E.right(out({ path: p, _tag: "Mkdirp" })));
         }
       });
 
@@ -249,7 +245,7 @@ export class ClientImpl implements Client {
         if (err) {
           if ("code" in err) {
             res(
-              left(
+              E.left(
                 error({
                   _tag: "CreateError",
                   message: err.toString()
@@ -258,7 +254,7 @@ export class ClientImpl implements Client {
             );
           } else {
             res(
-              left(
+              E.left(
                 error({
                   _tag: "CreateError",
                   message: err.message
@@ -267,7 +263,7 @@ export class ClientImpl implements Client {
             );
           }
         } else {
-          res(right(out({ path: p, _tag: "Createp" })));
+          res(E.right(out({ path: p, _tag: "Createp" })));
         }
       };
 
@@ -289,7 +285,7 @@ export class ClientImpl implements Client {
         if (err) {
           if ("code" in err) {
             res(
-              left(
+              E.left(
                 error({
                   _tag: "GetChildrenError",
                   message: err.toString()
@@ -298,7 +294,7 @@ export class ClientImpl implements Client {
             );
           } else {
             res(
-              left(
+              E.left(
                 error({
                   _tag: "GetChildrenError",
                   message: err.message
@@ -307,7 +303,7 @@ export class ClientImpl implements Client {
             );
           }
         } else {
-          res(right(out({ paths: paths.sort(), _tag: "Children", root })));
+          res(E.right(out({ paths: paths.sort(), _tag: "Children", root })));
         }
       });
 
@@ -323,16 +319,16 @@ export class ClientImpl implements Client {
         path,
         (event) => {
           if (event.type === ZC.Event.NODE_DELETED) {
-            res(right(out({ _tag: "Deleted", path })));
+            res(E.right(out({ _tag: "Deleted", path })));
           }
         },
         (err) => {
           if (err) {
             if ("code" in err) {
-              res(left(error({ _tag: "WaitDeleteError", message: "" })));
+              res(E.left(error({ _tag: "WaitDeleteError", message: "" })));
             } else {
               res(
-                left(
+                E.left(
                   error({
                     _tag: "WaitDeleteError",
                     message: err.message
@@ -353,17 +349,17 @@ export class ClientImpl implements Client {
 
 export const ClientFactoryURI = "@matechs/zoo/clientFactoryURI";
 
-const ClientFactory_ = F.define({
+const ClientFactory_ = Service.define({
   [ClientFactoryURI]: {
-    createClient: F.cn<T.Task<Client>>()
+    createClient: Service.cn<T.Async<Client>>()
   }
 });
 
-export interface ClientFactory extends F.TypeOf<typeof ClientFactory_> {}
+export interface ClientFactory extends Service.TypeOf<typeof ClientFactory_> {}
 
-export const ClientFactory = F.opaque<ClientFactory>()(ClientFactory_);
+export const ClientFactory = Service.opaque<ClientFactory>()(ClientFactory_);
 
-export const provideClientFactory = F.implement(ClientFactory)({
+export const provideClientFactory = Service.implement(ClientFactory)({
   [ClientFactoryURI]: {
     createClient: T.access(
       (_: ClientConfig) =>
@@ -374,7 +370,7 @@ export const provideClientFactory = F.implement(ClientFactory)({
   }
 });
 
-const { createClient } = F.access(ClientFactory)[ClientFactoryURI];
+const { createClient } = Service.access(ClientFactory)[ClientFactoryURI];
 
 export const managedClient = M.bracket(
   pipe(

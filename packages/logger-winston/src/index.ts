@@ -1,5 +1,5 @@
 import * as L from "@matechs/logger";
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 import * as W from "winston";
 import { Do } from "fp-ts-contrib/lib/Do";
 
@@ -7,7 +7,7 @@ export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI";
 
 export interface WinstonFactory {
   [winstonFactoryEnv]: {
-    logger: T.Io<W.Logger>;
+    logger: T.Sync<W.Logger>;
   };
 }
 
@@ -25,7 +25,7 @@ export function log(
   level: L.logger.Level,
   message: string,
   meta?: L.logger.Meta
-): T.IoEnv<WinstonFactory, void> {
+): T.SyncR<WinstonFactory, void> {
   return Do(T.effect)
     .bind("logger", logger)
     .doL((s) =>

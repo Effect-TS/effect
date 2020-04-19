@@ -1,15 +1,15 @@
-import React from "react";
-import { effect as T } from "@matechs/effect";
-import * as R from "../../../src";
-import { DateOps, updateDate } from "./def";
-import { useInterval } from "../../hooks/useInterval";
+import { T } from "@matechs/prelude";
 import * as M from "mobx";
+import React from "react";
+import * as R from "../../../src";
+import { useInterval } from "../../hooks/useInterval";
+import { DateOps, updateDate } from "./def";
 import { DateStateEnv, dateStateURI } from "./state";
 
 // alpha
 /* istanbul ignore file */
 
-export const UpdateDate = R.UI.withRun<DateOps>()(run =>
+export const UpdateDate = R.UI.withRun<DateOps>()((run) =>
   T.pure(() => (
     <button
       onClick={() => {
@@ -35,15 +35,13 @@ export const ShowDate = R.UI.withState<DateStateEnv>()<{ foo: string }>(
   ({ [dateStateURI]: date, foo }) => <ShowDateComponent {...date} foo={foo} />
 );
 
-export const LogDate = R.UI.withState<DateStateEnv>()(
-  ({ [dateStateURI]: date }) => {
-    React.useEffect(
-      () =>
-        M.autorun(() => {
-          console.log(date.current);
-        }),
-      []
-    );
-    return <></>;
-  }
-);
+export const LogDate = R.UI.withState<DateStateEnv>()(({ [dateStateURI]: date }) => {
+  React.useEffect(
+    () =>
+      M.autorun(() => {
+        console.log(date.current);
+      }),
+    []
+  );
+  return <></>;
+});

@@ -1,6 +1,6 @@
 import { O, pipe, T, S, SE, M } from "../../src";
 
-// $ExpectType Effect<{ bar: string; } & { foo: string; }, string, string>
+// $ExpectType Effect<never, { bar: string; } & { foo: string; }, string, string>
 export const X = pipe(
   O.some(1),
   O.fold(
@@ -9,7 +9,7 @@ export const X = pipe(
   )
 );
 
-// $ExpectType Managed<{ bar: string; } & { foo: string; }, string, string>
+// $ExpectType Managed<never, { bar: string; } & { foo: string; }, string, string>
 export const Y = pipe(
   O.some(1),
   O.fold(
@@ -18,7 +18,7 @@ export const Y = pipe(
   )
 );
 
-// $ExpectType StreamEither<{ bar: string; } & { foo: string; }, string, string>
+// $ExpectType StreamEither<never, { bar: string; } & { foo: string; }, string, string>
 export const A = pipe(
   O.some(1),
   O.fold(
@@ -27,7 +27,7 @@ export const A = pipe(
   )
 );
 
-// $ExpectType Stream<{ bar: string; } & { foo: string; }, string, string>
+// $ExpectType Stream<never, { bar: string; } & { foo: string; }, string, string>
 export const B = pipe(
   O.some(1),
   O.fold(

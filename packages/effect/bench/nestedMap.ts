@@ -23,8 +23,8 @@ export const nestedMapQio = (): QIO<bigint> => {
   return io;
 };
 
-export const nestedMapEffect = (): T.Effect<T.NoEnv, never, bigint> => {
-  let io: T.Effect<T.NoEnv, never, bigint> = T.pure(BigInt(0));
+export const nestedMapEffect = (): T.Sync<bigint> => {
+  let io: T.Sync<bigint> = T.pure(BigInt(0));
   for (let i = 0; i < MAX; i++) {
     io = T.effect.map(io, inc);
   }
