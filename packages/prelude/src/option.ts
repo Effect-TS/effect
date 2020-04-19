@@ -2,6 +2,9 @@ import { effect as T, managed as M, stream as S, streameither as SE } from "@mat
 import { isNone, Option, option } from "fp-ts/lib/Option";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
+import { array as Ar, tree as TR, record as RE } from "fp-ts";
+import * as Ei from "./either";
+import { Separated } from "fp-ts/lib/Compactable";
 
 // from fp-ts just retyped
 /* istanbul ignore file */
@@ -82,3 +85,72 @@ export function fold<A, B>(onNone: () => B, onSome: (a: A) => B): (ma: Option<A>
 export const sequenceT = ST(option);
 export const sequenceS = SS(option);
 export const Do = () => DoG(option);
+
+export const sequenceOption = option.sequence(option);
+
+export const traverseOption: <A, B>(
+  f: (a: A) => Option<B>
+) => (ta: Option<A>) => Option<Option<B>> = (f) => (ta) => option.traverse(option)(ta, f);
+
+export const wiltOption: <A, B, C>(
+  f: (a: A) => Option<Ei.Either<B, C>>
+) => (wa: Option<A>) => Option<Separated<Option<B>, Option<C>>> = (f) => (wa) =>
+  option.wilt(option)(wa, f);
+
+export const witherOption: <A, E, B>(
+  f: (a: A) => Option<Option<B>>
+) => (ta: Option<A>) => Option<Option<B>> = (f) => (ta) => option.wither(option)(ta, f);
+
+export const sequenceEither = option.sequence(Ei.either);
+
+export const traverseEither: <A, E, B>(
+  f: (a: A) => Ei.Either<E, B>
+) => (ta: Option<A>) => Ei.Either<E, Option<B>> = (f) => (ta) => option.traverse(Ei.either)(ta, f);
+
+export const sequenceTree = TR.tree.sequence(option);
+
+export const traverseTree: <A, B>(
+  f: (a: A) => Option<B>
+) => (ta: TR.Tree<A>) => Option<TR.Tree<B>> = (f) => (ta) => TR.tree.traverse(option)(ta, f);
+
+export const sequenceArray = Ar.array.sequence(option);
+
+export const traverseArray: <A, B>(f: (a: A) => Option<B>) => (ta: Array<A>) => Option<Array<B>> = (
+  f
+) => (ta) => Ar.array.traverse(option)(ta, f);
+
+export const traverseArrayWithIndex: <A, E, B>(
+  f: (i: number, a: A) => Option<B>
+) => (ta: Array<A>) => Option<Array<B>> = (f) => (ta) => Ar.array.traverseWithIndex(option)(ta, f);
+
+export const wiltArray: <A, B, C>(
+  f: (a: A) => Option<Ei.Either<B, C>>
+) => (wa: Array<A>) => Option<Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  Ar.array.wilt(option)(wa, f);
+
+export const witherArray: <A, B>(
+  f: (a: A) => Option<Option<B>>
+) => (ta: Array<A>) => Option<Array<B>> = (f) => (ta) => Ar.array.wither(option)(ta, f);
+
+export const sequenceRecord = RE.record.sequence(option);
+
+export const traverseRecord: <A, B>(
+  f: (a: A) => Option<B>
+) => (ta: Record<string, A>) => Option<Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(option)(ta, f);
+
+export const traverseRecordWithIndex: <A, E, B>(
+  f: (k: string, a: A) => Option<B>
+) => (ta: Record<string, A>) => Option<Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(option)(ta, f);
+
+export const wiltRecord: <A, B, C>(
+  f: (a: A) => Option<Ei.Either<B, C>>
+) => (wa: Record<string, A>) => Option<Separated<Record<string, B>, Record<string, C>>> = (f) => (
+  wa
+) => RE.record.wilt(option)(wa, f);
+
+export const witherRecord: <A, B>(
+  f: (a: A) => Option<Option<B>>
+) => (ta: Record<string, A>) => Option<Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(option)(ta, f);
