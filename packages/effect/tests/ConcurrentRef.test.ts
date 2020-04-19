@@ -24,7 +24,7 @@ describe("ConcurrentRef", () => {
   });
 
   it("should prevent concurrency issues", async () => {
-    const program = T.parDo
+    const program = T.parDo()
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .sequenceSL(({ ref }) => ({
