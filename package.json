@@ -3,7 +3,12 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages_inc/*",
+    "packages_sys/*",
+    "packages_http/*",
+    "packages_fe/*",
+    "packages_be/*"
   ],
   "scripts": {
     "build": "lerna run build",
