@@ -1,6 +1,4 @@
-import { effect as T, exit as EX } from "@matechs/effect";
-import { toError } from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/pipeable";
+import { T, Ex, E, pipe, F } from "@matechs/prelude";
 import {
   Connection,
   ConnectionOptions,
@@ -10,7 +8,6 @@ import {
   ObjectType,
   Repository
 } from "typeorm";
-import { Task } from "fp-ts/lib/Task";
 
 export const configEnv = "@matechs/orm/configURI";
 export const poolEnv = "@matechs/orm/poolURI";
@@ -20,14 +17,14 @@ export const factoryEnv = "@matechs/orm/factoryURI";
 export interface DbConfig<A extends symbol | string> {
   [configEnv]: {
     [k in A]: {
-      readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>;
+      readConfig: T.Async<ConnectionOptions>;
     };
   };
 }
 
 export function dbConfig<A extends symbol | string>(
   env: A,
-  readConfig: T.Effect<T.NoEnv, T.NoErr, ConnectionOptions>
+  readConfig: T.Async<ConnectionOptions>
 ) {
   return (
     {
@@ -140,9 +137,9 @@ export class DbT<Db extends symbol | string> {
     this.withNewRegion = this.withNewRegion.bind(this);
   }
 
-  requireTx = <R, E, A>(op: T.Effect<R, E, A>): T.Effect<R & DbTx<Db>, E, A> => op;
+  requireTx = <S, R, E, A>(op: T.Effect<S, R, E, A>): T.Effect<S, R & DbTx<Db>, E, A> => op;
 
-  withNewRegion<R extends ORM<Db>, E, A>(op: T.Effect<R, E, A>): T.Effect<R, E, A> {
+  withNewRegion<S, R extends ORM<Db>, E, A>(op: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> {
     return this.withConnection((connection) =>
       T.accessM((r: R) =>
         T.provide({
@@ -158,9 +155,9 @@ export class DbT<Db extends symbol | string> {
     );
   }
 
-  bracketPool<R, E, A>(
-    op: T.Effect<ORM<Db> & R, E, A>
-  ): T.TaskEnvErr<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
+  bracketPool<S, R, E, A>(
+    op: T.Effect<S, ORM<Db> & R, E, A>
+  ): T.AsyncRE<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
     return T.accessM(
       ({
         [configEnv]: {
@@ -172,13 +169,13 @@ export class DbT<Db extends symbol | string> {
           T.bracket(
             pipe(
               () => f.createConnection(options),
-              T.fromPromiseMap(toError),
+              T.fromPromiseMap(E.toError),
               T.mapError((x) => new TaskError(x, "bracketPoolOpen"))
             ),
             (db) =>
               pipe(
                 () => db.close(),
-                T.fromPromiseMap(toError),
+                T.fromPromiseMap(E.toError),
                 T.mapError((x) => new TaskError(x, "bracketPoolClose"))
               ),
             (db) =>
@@ -209,13 +206,13 @@ export class DbT<Db extends symbol | string> {
 
   withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(f: (r: Repository<Entity>) => Task<A>) => T.TaskEnvErr<ORM<Db>, TaskError, A> {
+  ): <A>(f: (r: Repository<Entity>) => F.Lazy<Promise<A>>) => T.AsyncRE<ORM<Db>, TaskError, A> {
     return (f) =>
       this.withRepository(target)((r) =>
         pipe(
           r,
           f,
-          T.fromPromiseMap(toError),
+          T.fromPromiseMap(E.toError),
           T.mapError((x) => new TaskError(x, "withRepositoryTask"))
         )
       );
@@ -223,71 +220,81 @@ export class DbT<Db extends symbol | string> {
 
   withRepository<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <R, E, A>(f: (r: Repository<Entity>) => T.Effect<R, E, A>) => T.Effect<ORM<Db> & R, E, A> {
+  ): <S, R, E, A>(
+    f: (r: Repository<Entity>) => T.Effect<S, R, E, A>
+  ) => T.Effect<S, ORM<Db> & R, E, A> {
     return (f) =>
       T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) =>
         f(manager.getRepository(target))
       );
   }
 
-  withManagerTask<A>(f: (m: EntityManager) => Task<A>): T.TaskEnvErr<ORM<Db>, TaskError, A> {
+  withManagerTask<A>(
+    f: (m: EntityManager) => F.Lazy<Promise<A>>
+  ): T.AsyncRE<ORM<Db>, TaskError, A> {
     return this.withManager((manager) =>
       pipe(
         manager,
         f,
-        T.fromPromiseMap(toError),
+        T.fromPromiseMap(E.toError),
         T.mapError((x) => new TaskError(x, "withManagerTask"))
       )
     );
   }
 
-  withManager<R, E, A>(f: (m: EntityManager) => T.Effect<R, E, A>): T.Effect<ORM<Db> & R, E, A> {
+  withManager<S, R, E, A>(
+    f: (m: EntityManager) => T.Effect<S, R, E, A>
+  ): T.Effect<S, ORM<Db> & R, E, A> {
     return T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) => f(manager));
   }
 
-  withConnectionTask<A>(f: (m: Connection) => Task<A>): T.TaskEnvErr<ORM<Db>, TaskError, A> {
+  withConnectionTask<A>(
+    f: (m: Connection) => F.Lazy<Promise<A>>
+  ): T.AsyncRE<ORM<Db>, TaskError, A> {
     return this.withConnection((pool) =>
       pipe(
         pool,
         f,
-        T.fromPromiseMap(toError),
+        T.fromPromiseMap(E.toError),
         T.mapError((x) => new TaskError(x, "withConnectionTask"))
       )
     );
   }
 
-  withConnection<R, E, A>(f: (m: Connection) => T.Effect<R, E, A>): T.Effect<ORM<Db> & R, E, A> {
+  withConnection<S, R, E, A>(
+    f: (m: Connection) => T.Effect<S, R, E, A>
+  ): T.Effect<S, ORM<Db> & R, E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) => f(pool));
   }
 
-  withORMTransaction<R, E, A>(
-    op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
-  ): T.TaskEnvErr<ORM<Db> & R, TaskError | E, A> {
+  withORMTransaction<S, R, E, A>(
+    op: T.Effect<S, Manager<Db> & DbTx<Db> & R, E, A>
+  ): T.AsyncRE<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.bracketExit(
         pipe(
           pool.createQueryRunner(),
           (runner) =>
             pipe(
-              T.fromPromiseMap(toError)(() => runner.manager.query("BEGIN")),
+              T.fromPromiseMap(E.toError)(() => runner.manager.query("BEGIN")),
               T.map((_) => runner)
             ),
           T.mapError((x) => new TaskError(x, "withTransaction"))
         ),
         (runner, exit) =>
-          EX.isDone(exit)
+          Ex.isDone(exit)
             ? pipe(
-                T.fromPromiseMap(toError)(() => runner.manager.query("COMMIT")),
+                T.fromPromiseMap(E.toError)(() => runner.manager.query("COMMIT")),
                 T.chainError((err) =>
                   pipe(
-                    T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
+                    T.fromPromiseMap(E.toError)(() => runner.manager.query("ROLLBACK")),
                     T.chain((_) => T.raiseError(err))
                   )
                 ),
                 T.mapError((x) => new TaskError(x, "withTransaction"))
               )
             : pipe(
-                T.fromPromiseMap(toError)(() => runner.manager.query("ROLLBACK")),
+                T.fromPromiseMap(E.toError)(() => runner.manager.query("ROLLBACK")),
                 T.mapError((x) => new TaskError(x, "withTransaction")),
                 T.chain((_) => T.raised(exit))
               ),
@@ -316,9 +323,9 @@ export class DbT<Db extends symbol | string> {
     );
   }
 
-  withTransaction<R, E, A>(
-    op: T.Effect<Manager<Db> & DbTx<Db> & R, E, A>
-  ): T.TaskEnvErr<ORM<Db> & R, TaskError | E, A> {
+  withTransaction<S, R, E, A>(
+    op: T.Effect<S, Manager<Db> & DbTx<Db> & R, E, A>
+  ): T.AsyncRE<ORM<Db> & R, TaskError | E, A> {
     return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) =>
       T.accessM((r: R) =>
         pipe(
@@ -350,7 +357,7 @@ export class DbT<Db extends symbol | string> {
           T.fromPromiseMap((x) =>
             typeof x === "object" && x !== null && x["_tag"] === "inner"
               ? ((x["error"] as any) as E)
-              : new TaskError(toError(x), "withTransaction")
+              : new TaskError(E.toError(x), "withTransaction")
           )
         )
       )

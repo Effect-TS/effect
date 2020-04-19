@@ -1,10 +1,8 @@
-import { effect as T, exit as EX, utils as U } from "@matechs/effect";
+import { T, Ex, U, pipe, O } from "@matechs/prelude";
 import * as assert from "assert";
 import { deepEqual } from "fast-equals";
 import { Entity, PrimaryColumn, Connection, EntityManager, Repository } from "typeorm";
 import * as ORM from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
-import { some } from "fp-ts/lib/Option";
 
 @Entity()
 export class DemoEntity {
@@ -32,7 +30,7 @@ describe("Api", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(main));
 
-    assert.deepEqual(result, EX.done({ id: "ok" }));
+    assert.deepEqual(result, Ex.done({ id: "ok" }));
   });
 
   it("should use mock repository findOne", async () => {
@@ -48,7 +46,7 @@ describe("Api", () => {
           repository: () => ({
             findOne: (o) =>
               deepEqual(o, { where: { id: "ok" } })
-                ? T.pure(some({ id: "ok" } as any))
+                ? T.pure(O.some({ id: "ok" } as any))
                 : T.raiseAbort("error")
           })
         })
@@ -57,7 +55,7 @@ describe("Api", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(main));
 
-    assert.deepEqual(result, EX.done(some({ id: "ok" })));
+    assert.deepEqual(result, Ex.done(O.some({ id: "ok" })));
   });
 
   it("should use concrete repository", async () => {
@@ -90,7 +88,7 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, EX.done({ id: "ok" }));
+    assert.deepEqual(result, Ex.done({ id: "ok" }));
   });
 
   it("should use concrete repository findOne", async () => {
@@ -129,7 +127,7 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, EX.done(some({ id: "ok" })));
+    assert.deepEqual(result, Ex.done(O.some({ id: "ok" })));
   });
 
   it("should use concrete repository in tx", async () => {
@@ -163,6 +161,6 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, EX.done({ id: "ok" }));
+    assert.deepEqual(result, Ex.done({ id: "ok" }));
   });
 });

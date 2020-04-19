@@ -20,8 +20,8 @@ export interface Repository<O> {
   save<T extends DeepPartial<O>>(
     entity: T,
     options?: SaveOptions | undefined
-  ): T.TaskErr<OR.TaskError, O>;
-  findOne(options?: FindOneOptions<O> | undefined): T.TaskErr<OR.TaskError, OP.Option<O>>;
+  ): T.AsyncE<OR.TaskError, O>;
+  findOne(options?: FindOneOptions<O> | undefined): T.AsyncE<OR.TaskError, OP.Option<O>>;
 }
 
 const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(Target: Target<O>) => ({
@@ -37,9 +37,9 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const repository = repository_(DbURI);
   const orm = OR.dbT(DbURI);
 
-  const provideApi = <R, E, A>(
-    eff: T.Effect<R & Database<DbURI>, E, A>
-  ): T.Effect<R & OR.ORM<DbURI>, E, A> => {
+  const provideApi = <S, R, E, A>(
+    eff: T.Effect<S, R & Database<DbURI>, E, A>
+  ): T.Effect<S, R & OR.ORM<DbURI>, E, A> => {
     const provideDb = T.provideM(
       T.access(
         (r: OR.ORM<DbURI>): Database<DbURI> => ({
