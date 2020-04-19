@@ -24,6 +24,7 @@ import * as record from "fp-ts/lib/Record";
 import * as magma from "fp-ts/lib/Magma";
 import * as E from "./either";
 import * as A from "fp-ts/lib/Array";
+import * as NEA from "fp-ts/lib/NonEmptyArray";
 import * as O from "./option";
 import * as Ex from "./exit";
 
@@ -34,7 +35,7 @@ export { Ex };
 export { E };
 export { Service };
 export { F };
-export { A };
+export { A, NEA };
 export { eq, show, semigroup, monoid, tree, map, set, magma, record };
 
 export class Pipe<A> {

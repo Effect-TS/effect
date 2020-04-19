@@ -1,10 +1,10 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 import { logger } from "@matechs/logger";
 
 export const appURI = "@matechs/cqrs/demo/appURI";
 
 export interface AppOps {
-  printTodo: (todo: string) => T.Io<void>;
+  printTodo: (todo: string) => T.Sync<void>;
 }
 
 export interface App {
@@ -21,6 +21,6 @@ export const { printTodo } = F.access(appSpec)[appURI];
 
 export const provideApp = F.implement(appSpec)({
   [appURI]: {
-    printTodo: todo => logger.info(`todo: ${JSON.stringify(todo)}`)
+    printTodo: (todo) => logger.info(`todo: ${JSON.stringify(todo)}`)
   }
 });

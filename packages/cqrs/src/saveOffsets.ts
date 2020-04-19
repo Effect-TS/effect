@@ -1,14 +1,12 @@
-import { effect as T } from "@matechs/effect";
+import { T, NEA, pipe } from "@matechs/prelude";
 import { DbT } from "@matechs/orm";
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray";
-import { pipe } from "fp-ts/lib/pipeable";
 import { accessConfig } from "./config";
 
 // experimental alpha
 /* istanbul ignore file */
 
 export function saveOffsets<Db extends symbol | string>(db: DbT<Db>) {
-  return (events: NonEmptyArray<string>) =>
+  return (events: NEA.NonEmptyArray<string>) =>
     pipe(
       accessConfig,
       T.chain(({ id }) =>

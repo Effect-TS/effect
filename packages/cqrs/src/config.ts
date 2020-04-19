@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F } from "@matechs/prelude";
 
 // experimental alpha
 /* istanbul ignore file */
@@ -13,7 +13,7 @@ export interface ReadSideConfig {
 
 export interface ReadSideConfigService extends F.ModuleShape<ReadSideConfigService> {
   [readSideURI]: {
-    accessConfig: T.Task<ReadSideConfig>;
+    accessConfig: T.Async<ReadSideConfig>;
   };
 }
 
