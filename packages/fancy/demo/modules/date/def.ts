@@ -1,4 +1,4 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { Service as F, T } from "@matechs/prelude";
 
 // alpha
 /* istanbul ignore file */
@@ -7,8 +7,8 @@ export const dateOpsURI = Symbol();
 
 export interface DateOps extends F.ModuleShape<DateOps> {
   [dateOpsURI]: {
-    updateDate: T.Io<Date>;
-    accessDate: T.Io<Date>;
+    updateDate: T.Sync<Date>;
+    accessDate: T.Sync<Date>;
   };
 }
 

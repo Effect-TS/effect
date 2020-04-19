@@ -1,6 +1,4 @@
-import { effect as T, exit as EX } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
-import { Lazy } from "fp-ts/lib/function";
+import { T, Ex, pipe, F } from "@matechs/prelude";
 
 // alpha
 /* istanbul ignore file */
@@ -9,7 +7,7 @@ export const dispatcherURI = "@matechs/fancy/dispatcherURI";
 
 export interface Runner<R> {
   [dispatcherURI]: {
-    run: (env: R) => <A>(_: T.TaskEnv<R, A>, cb?: (a: A) => void) => Lazy<void>;
+    run: (env: R) => <A>(_: T.AsyncR<R, A>, cb?: (a: A) => void) => F.Lazy<void>;
   };
 }
 
@@ -28,13 +26,13 @@ export const stateOf = <S>(s: S): State<S> => ({
 });
 
 export class Fancy<R, P> {
-  readonly ui: T.IoEnv<R, React.FC<P>>;
+  readonly ui: T.SyncR<R, React.FC<P>>;
   private opsC = 0;
-  private readonly cancellers: Map<number, Lazy<void>> = new Map();
+  private readonly cancellers: Map<number, F.Lazy<void>> = new Map();
 
-  constructor(renderEffect: T.IoEnv<R, React.FC<P>>) {
+  constructor(renderEffect: T.SyncR<R, React.FC<P>>) {
     const dispatch = <R>(r: R) => <A>(
-      eff: T.TaskEnv<R, A>,
+      eff: T.AsyncR<R, A>,
       cb: (a: A) => void = () => {
         //
       }
@@ -48,10 +46,10 @@ export class Fancy<R, P> {
         T.run(T.provide(r)(eff), (ex) => {
           this.cancellers.delete(n);
 
-          if (EX.isDone(ex)) {
+          if (Ex.isDone(ex)) {
             cb(ex.value);
           } else {
-            if (!EX.isInterrupt(ex)) {
+            if (!Ex.isInterrupt(ex)) {
               console.error("dispatched effects are not supposed to fail");
               console.error(ex);
             }
@@ -97,18 +95,17 @@ function hasRunner<R>(u: unknown): u is Runner<R> {
   return typeof u === "object" && u !== null && dispatcherURI in u;
 }
 
-export const runner = <R>(): T.Effect<
+export const runner = <R>(): T.SyncR<
   R,
-  never,
-  [<A>(_: T.TaskEnv<R, A>, cb?: ((a: A) => void) | undefined) => Lazy<void>, Lazy<void>]
+  [<A>(_: T.AsyncR<R, A>, cb?: ((a: A) => void) | undefined) => F.Lazy<void>, F.Lazy<void>]
 > =>
   T.access((s: R) => {
-    const session: Map<number, Lazy<void>> = new Map();
+    const session: Map<number, F.Lazy<void>> = new Map();
     let counter = 0;
 
     return hasRunner<R>(s)
       ? [
-          <A>(_: T.Effect<R, never, A>, cb?: ((a: A) => void) | undefined) => {
+          <A>(_: T.SyncR<R, A>, cb?: ((a: A) => void) | undefined) => {
             const id = counter;
             counter = counter + 1;
             const cancel = s[dispatcherURI].run(s)(_, (e) => {

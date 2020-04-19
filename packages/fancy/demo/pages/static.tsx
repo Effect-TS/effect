@@ -7,16 +7,13 @@ import { ORG } from "../modules/orgs";
 import { orgsStateURI } from "../modules/orgs/state";
 import { Home } from "../view/Home";
 import { flashInitialState, flashStateURI } from "../modules/flash/state";
-import { effect as T } from "@matechs/effect";
-import { DateOps } from "../modules/date/def";
-import { OrgsOps } from "../modules/orgs/def";
+import { T, combineProviders } from "@matechs/prelude";
 import Link from "next/link";
 
 // alpha
 /* istanbul ignore file */
 
-const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
-  pipe(eff, ORG.provide, DT.provide);
+const provider = combineProviders().with(ORG.provide).with(DT.provide).done();
 
 // tslint:disable-next-line: no-default-export
 export default R.page(

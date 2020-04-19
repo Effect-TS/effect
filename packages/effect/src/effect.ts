@@ -7,7 +7,8 @@ import {
   array as Ar,
   semigroup as Sem,
   monoid as Mon,
-  tree as TR
+  tree as TR,
+  record as RE
 } from "fp-ts";
 import { pipeable, pipe } from "fp-ts/lib/pipeable";
 import * as ex from "./original/exit";
@@ -1779,3 +1780,49 @@ export const wiltArrayPar: <A, R, E, B, C>(
 export const witherArrayPar: <A, R, E, B>(
   f: (a: A) => AsyncRE<R, E, Op.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(parEffect)(ta, f);
+
+export const sequenceRecord = RE.record.sequence(effect);
+
+export const traverseRecord: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Record<string, A>) => Effect<S, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(effect)(ta, f);
+
+export const traverseRecordWithIndex: <A, S, R, E, B>(
+  f: (k: string, a: A) => Effect<S, R, E, B>
+) => (ta: Record<string, A>) => Effect<S, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(effect)(ta, f);
+
+export const wiltRecord: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Record<string, A>) => Effect<S, R, E, Separated<Record<string, B>, Record<string, C>>> = (
+  f
+) => (wa) => RE.record.wilt(effect)(wa, f);
+
+export const witherRecord: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Record<string, A>) => Effect<S, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(effect)(ta, f);
+
+export const sequenceRecordPar = RE.record.sequence(parEffect);
+
+export const traverseRecordPar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(parEffect)(ta, f);
+
+export const traverseRecordWithIndexPar: <A, S, R, E, B>(
+  f: (k: string, a: A) => Effect<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(parEffect)(ta, f);
+
+export const wiltRecordPar: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
+  f
+) => (wa) => RE.record.wilt(parEffect)(wa, f);
+
+export const witherRecordPar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(parEffect)(ta, f);

@@ -8,7 +8,8 @@ import {
   bifunctor as B,
   pipeable as P,
   array as A,
-  tree as TR
+  tree as TR,
+  record as RE
 } from "fp-ts";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
@@ -353,52 +354,73 @@ export const sequenceOption = O.option.sequence(streamEither);
 
 export const traverseOption: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: O.Option<A>) => StreamEither<unknown, R, E, O.Option<B>> = (f) => (ta) =>
+) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
   O.option.traverse(streamEither)(ta, f);
 
 export const wiltOption: <S, A, R, E, B, C>(
   f: (a: A) => StreamEither<S, R, E, Ei.Either<B, C>>
-) => (wa: O.Option<A>) => StreamEither<unknown, R, E, Separated<O.Option<B>, O.Option<C>>> = (
-  f
-) => (wa) => O.option.wilt(streamEither)(wa, f);
+) => (wa: O.Option<A>) => AsyncRE<R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (wa) =>
+  O.option.wilt(streamEither)(wa, f);
 
 export const witherOption: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, O.Option<B>>
-) => (ta: O.Option<A>) => StreamEither<unknown, R, E, O.Option<B>> = (f) => (ta) =>
+) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
   O.option.wither(streamEither)(ta, f);
 
 export const sequenceEither = Ei.either.sequence(streamEither);
 
 export const traverseEither: <S, A, R, FE, B>(
   f: (a: A) => StreamEither<S, R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => StreamEither<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+) => <TE>(ta: Ei.Either<TE, A>) => AsyncRE<R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(streamEither)(ta, f);
 
 export const sequenceTree = TR.tree.sequence(streamEither);
 
 export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: TR.Tree<A>) => StreamEither<unknown, R, E, TR.Tree<B>> = (f) => (ta) =>
+) => (ta: TR.Tree<A>) => AsyncRE<R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(streamEither)(ta, f);
 
 export const sequenceArray = A.array.sequence(streamEither);
 
 export const traverseArray: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: Array<A>) => StreamEither<unknown, R, E, Array<B>> = (f) => (ta) =>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   A.array.traverse(streamEither)(ta, f);
 
 export const traverseArrayWithIndex: <S, A, R, E, B>(
   f: (i: number, a: A) => StreamEither<S, R, E, B>
-) => (ta: Array<A>) => StreamEither<unknown, R, E, Array<B>> = (f) => (ta) =>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   A.array.traverseWithIndex(streamEither)(ta, f);
 
 export const wiltArray: <S, A, R, E, B, C>(
   f: (a: A) => StreamEither<S, R, E, Ei.Either<B, C>>
-) => (wa: Array<A>) => StreamEither<unknown, R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   A.array.wilt(streamEither)(wa, f);
 
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, O.Option<B>>
-) => (ta: Array<A>) => StreamEither<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.array.wither(streamEither)(ta, f);
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => A.array.wither(streamEither)(ta, f);
+
+export const sequenceRecord = RE.record.sequence(streamEither);
+
+export const traverseRecord: <A, S, R, E, B>(
+  f: (a: A) => StreamEither<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(streamEither)(ta, f);
+
+export const traverseRecordWithIndex: <A, S, R, E, B>(
+  f: (k: string, a: A) => StreamEither<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(streamEither)(ta, f);
+
+export const wiltRecord: <A, S, R, E, B, C>(
+  f: (a: A) => StreamEither<S, R, E, Ei.Either<B, C>>
+) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
+  f
+) => (wa) => RE.record.wilt(streamEither)(wa, f);
+
+export const witherRecord: <A, S, R, E, B>(
+  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(streamEither)(ta, f);

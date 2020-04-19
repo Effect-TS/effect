@@ -1,4 +1,4 @@
-import { pipe } from "fp-ts/lib/pipeable";
+import { pipe } from "@matechs/prelude";
 import { Foo } from "../view/Foo";
 import { DT } from "../modules/date";
 import * as R from "../../lib";

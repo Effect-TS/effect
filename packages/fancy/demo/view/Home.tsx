@@ -1,7 +1,5 @@
-import React from "react"
-import { effect as T } from "@matechs/effect";
-import { sequenceS } from "fp-ts/lib/Apply";
-import { pipe } from "fp-ts/lib/pipeable";
+import React from "react";
+import { T, pipe } from "@matechs/prelude";
 import Link from "next/link";
 import { MemoInput } from "./MemoInput";
 import { DT } from "../modules/date";
@@ -17,7 +15,7 @@ import { DisplayFlash } from "../modules/flash/view";
 // any async op (same as for runSync)
 export const Home = UI.of(
   pipe(
-    sequenceS(T.effect)({
+    T.sequenceS({
       UpdateOrganisations: ORG.UpdateOrganisations,
       ShowOrgs: ORG.ShowOrgs,
       MemoInput,
@@ -27,7 +25,7 @@ export const Home = UI.of(
       Flash: DisplayFlash,
       Foo: accessP((_: { foo: string }) => _.foo) // requires initial props
     }),
-    T.map(v => (_: { bar: string }) => (
+    T.map((v) => (_: { bar: string }) => (
       <>
         <v.MemoInput />
         <br />

@@ -1,4 +1,3 @@
-import { pipe } from "fp-ts/lib/pipeable";
 import * as R from "../../src";
 import { DT } from "../modules/date";
 import { dateStateURI } from "../modules/date/state";
@@ -6,17 +5,14 @@ import { ORG } from "../modules/orgs";
 import { orgsStateURI } from "../modules/orgs/state";
 import { Home } from "../view/Home";
 import { flashInitialState, flashStateURI } from "../modules/flash/state";
-import { effect as T } from "@matechs/effect";
-import { DateOps } from "../modules/date/def";
-import { OrgsOps } from "../modules/orgs/def";
+import { T, combineProviders } from "@matechs/prelude";
 
 // alpha
 /* istanbul ignore file */
 
-const provider = <R, E, A>(eff: T.Effect<R & DateOps & OrgsOps, E, A>) =>
-  pipe(eff, ORG.provide, DT.provide);
+const provider = combineProviders().with(ORG.provide).with(DT.provide).done();
 
-const SSG = R.pageSSG(pipe(Home, provider))({
+const SSG = R.pageSSG(provider(Home))({
   [dateStateURI]: DT.initial,
   [orgsStateURI]: ORG.initial,
   [flashStateURI]: flashInitialState

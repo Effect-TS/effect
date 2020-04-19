@@ -573,7 +573,7 @@ declare module "fp-ts/lib/Witherable" {
     <F extends MaURIS>(F: Applicative4EP<F>): <A, S, R, E, B>(
       ta: Kind<W, A>,
       f: (a: A) => Kind4<F, unknown, R, E, Option<B>>
-    ) => Kind4<F, S, R, E, Kind<W, B>>;
+    ) => Kind4<F, unknown, R, E, Kind<W, B>>;
     <F extends MaURIS>(F: Applicative4E<F>): <A, S, R, E, B>(
       ta: Kind<W, A>,
       f: (a: A) => Kind4<F, S, R, E, Option<B>>

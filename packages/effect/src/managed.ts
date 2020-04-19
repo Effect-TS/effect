@@ -7,6 +7,7 @@ import * as Ar from "fp-ts/lib/Array";
 import * as Op from "fp-ts/lib/Option";
 import * as Ei from "fp-ts/lib/Either";
 import * as TR from "fp-ts/lib/Tree";
+import * as RE from "fp-ts/lib/Record";
 import { Separated } from "fp-ts/lib/Compactable";
 import { Monad4E } from "./overloadEff";
 
@@ -511,3 +512,27 @@ export const wiltArray: <S, A, R, E, B, C>(
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => Managed<S, R, E, Op.Option<B>>
 ) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) => Ar.array.wither(managed)(ta, f);
+
+export const sequenceRecord = RE.record.sequence(managed);
+
+export const traverseRecord: <A, S, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(managed)(ta, f);
+
+export const traverseRecordWithIndex: <A, S, R, E, B>(
+  f: (k: string, a: A) => Managed<S, R, E, B>
+) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(managed)(ta, f);
+
+export const wiltRecord: <A, S, R, E, B, C>(
+  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
+) => (
+  wa: Record<string, A>
+) => Managed<S, R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
+  RE.record.wilt(managed)(wa, f);
+
+export const witherRecord: <A, S, R, E, B>(
+  f: (a: A) => Managed<S, R, E, Op.Option<B>>
+) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(managed)(ta, f);

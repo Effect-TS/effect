@@ -11,7 +11,8 @@ import {
   option as O,
   pipeable as P,
   apply as AP,
-  tree as TR
+  tree as TR,
+  record as RE
 } from "fp-ts";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
@@ -70,9 +71,7 @@ const fromS = <S, R, E, A>(_: Stream<S, R, E, A>): StreamT<S, R, E, S, R, E, A> 
 // The contract of a Stream's fold is that state is preserved within the lifecycle of the managed
 // Therefore, we must track the offset in the array via a ref
 // This allows, for instance, this to work with transduce
-function arrayFold<A>(
-  as: readonly A[]
-): M.Sync<Fold<never, unknown, never, A>> {
+function arrayFold<A>(as: readonly A[]): M.Sync<Fold<never, unknown, never, A>> {
   return M.encaseEffect(
     effect.map(
       ref.makeRef(0),
@@ -1359,28 +1358,26 @@ function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): T.Async<void> {
 }
 
 // Track many fibers for the purpose of clean interruption on failure
-const makeWeave: M.Async<Weave> = M.managed.chain(
-  M.encaseEffect(ref.makeRef(0)),
-  (cell) =>
-    // On cleanup we want to interrupt any running fibers
-    M.managed.map(M.bracket(ref.makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
-      function attach(action: T.Sync<void>): T.Sync<void> {
-        return P.pipe(
-          AP.sequenceS(T.effect)({
-            next: cell.update((n) => n + 1),
-            fiber: T.fork(action)
-          }),
-          T.chainTap(({ next, fiber }) =>
-            store.update((handles) => [...handles, [next, fiber] as const])
-          ),
-          T.chainTap(({ next, fiber }) =>
-            T.fork(T.applySecond(fiber.wait, store.update(A.filter((h) => h[0] !== next))))
-          ),
-          T.asUnit
-        );
-      }
-      return { attach };
-    })
+const makeWeave: M.Async<Weave> = M.managed.chain(M.encaseEffect(ref.makeRef(0)), (cell) =>
+  // On cleanup we want to interrupt any running fibers
+  M.managed.map(M.bracket(ref.makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
+    function attach(action: T.Sync<void>): T.Sync<void> {
+      return P.pipe(
+        AP.sequenceS(T.effect)({
+          next: cell.update((n) => n + 1),
+          fiber: T.fork(action)
+        }),
+        T.chainTap(({ next, fiber }) =>
+          store.update((handles) => [...handles, [next, fiber] as const])
+        ),
+        T.chainTap(({ next, fiber }) =>
+          T.fork(T.applySecond(fiber.wait, store.update(A.filter((h) => h[0] !== next))))
+        ),
+        T.asUnit
+      );
+    }
+    return { attach };
+  })
 );
 
 /**
@@ -1680,9 +1677,7 @@ export const stream: Monad4EP<URI> & StreamF = {
 /* extensions */
 
 /* istanbul ignore next */
-function getSourceFromObjectReadStream<A>(
-  stream: Readable
-): M.Sync<T.AsyncE<Error, O.Option<A>>> {
+function getSourceFromObjectReadStream<A>(stream: Readable): M.Sync<T.AsyncE<Error, O.Option<A>>> {
   return M.managed.chain(
     M.encaseEffect(
       T.sync(() => {
@@ -1838,3 +1833,26 @@ export const wiltArray: <S, A, R, E, B, C>(
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, O.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => A.array.wither(stream)(ta, f);
+
+export const sequenceRecord = RE.record.sequence(stream);
+
+export const traverseRecord: <A, S, R, E, B>(
+  f: (a: A) => Stream<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(stream)(ta, f);
+
+export const traverseRecordWithIndex: <A, S, R, E, B>(
+  f: (k: string, a: A) => Stream<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(stream)(ta, f);
+
+export const wiltRecord: <A, S, R, E, B, C>(
+  f: (a: A) => Stream<S, R, E, Ei.Either<B, C>>
+) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
+  f
+) => (wa) => RE.record.wilt(stream)(wa, f);
+
+export const witherRecord: <A, S, R, E, B>(
+  f: (a: A) => Stream<S, R, E, O.Option<B>>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(stream)(ta, f);

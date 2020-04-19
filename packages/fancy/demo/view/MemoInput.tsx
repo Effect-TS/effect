@@ -1,5 +1,5 @@
 import React from "react"
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import { UI } from "../../src";
 
 // alpha
