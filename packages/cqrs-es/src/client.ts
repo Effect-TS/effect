@@ -1,9 +1,7 @@
 import client from "node-eventstore-client";
 import Long from "long";
 import { EventMetaHidden, metaURI } from "@matechs/cqrs";
-import { effect as T, managed as M } from "@matechs/effect";
-import { right, left } from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/pipeable";
+import { T, M, pipe, E } from "@matechs/prelude";
 
 export const eventStoreURI = "@matechs/cqrs-es/eventStoreURI";
 
@@ -27,10 +25,10 @@ export const eventStoreTcpConnection = M.bracket(
         conn
           .connect()
           .then(() => {
-            r(right(conn));
+            r(E.right(conn));
           })
           .catch((e) => {
-            r(left({ type: "EventStoreError", message: e.message }));
+            r(E.left({ type: "EventStoreError", message: e.message }));
           });
 
         return () => {

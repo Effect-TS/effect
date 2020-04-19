@@ -1,4 +1,4 @@
-import { effect as T } from "@matechs/effect";
+import { T } from "@matechs/prelude";
 import { liveMain } from "./program";
 
 T.run(liveMain, exit => {

@@ -89,7 +89,7 @@ export const main = bracketPool(
     .do(domain.init()) // creates tables for event log and index
     .do(
       // run all programs
-      T.sequenceT(
+      T.parSequenceT(
         program,
         readInAggregateTodosOnlyTodoAdded,
         readInAggregateTodosOnlyTodoRemoved,
