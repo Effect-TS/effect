@@ -35,7 +35,7 @@
     "subscriptions-transport-ws": "^0.9.16"
   },
   "dependencies": {
-    "@matechs/effect": "^6.0.0-alpha.1",
+    "@matechs/prelude": "^1.0.0-alpha.1",
     "@matechs/express": "^5.0.0-alpha.1"
   }
 }

@@ -1,6 +1,5 @@
 import exp from "express";
-import { option as O } from "fp-ts";
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F, O } from "@matechs/prelude";
 import { ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer";
 import { ConnectionContext } from "subscriptions-transport-ws";
 import WebSocket from "ws";
@@ -25,29 +24,29 @@ export interface ContextEnv<U extends string, Ctx> {
   };
 }
 
-export type ResolverF<ARGS, U extends string, Ctx, A, B, C, D> = (
+export type ResolverF<ARGS, U extends string, Ctx, A, B, C, D, S> = (
   _: ResolverInput<A, ARGS>
-) => T.Effect<B & ContextEnv<U, Ctx>, C, D>;
+) => T.Effect<S, B & ContextEnv<U, Ctx>, C, D>;
 
-export interface ResolverSubF<ARGS, U extends string, Ctx, A, B, C, D, E, F, G> {
-  subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>;
-  resolve?: (_: D) => T.Effect<E & ContextEnv<U, Ctx>, F, G>;
+export interface ResolverSubF<ARGS, U extends string, Ctx, A, B, C, D, E, F, G, S, S2> {
+  subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>;
+  resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>;
 }
 
 export type Resolver<ARGS, K, U extends string, Ctx> = {
   [k in keyof K]:
-    | ResolverF<ARGS, U, Ctx, any, any, any, any>
-    | ResolverSubF<ARGS, U, Ctx, any, any, any, any, any, any, any>;
+    | ResolverF<ARGS, U, Ctx, any, any, any, any, any>
+    | ResolverSubF<ARGS, U, Ctx, any, any, any, any, any, any, any, any, any>;
 };
 
 export type ResolverEnv<R, U extends string, Ctx> = R extends Resolver<any, any, U, Ctx>
   ? F.UnionToIntersection<
       {
-        [k in keyof R]: R[k] extends ResolverF<any, U, Ctx, any, infer B, any, any>
+        [k in keyof R]: R[k] extends ResolverF<any, U, Ctx, any, infer B, any, any, any>
           ? unknown extends B
             ? never
             : B
-          : R[k] extends ResolverSubF<any, U, Ctx, any, infer B, any, any, infer B2, any, any>
+          : R[k] extends ResolverSubF<any, U, Ctx, any, infer B, any, any, infer B2, any, any, any, any>
           ? unknown extends B
             ? unknown extends B2
               ? never
@@ -68,8 +67,8 @@ export type ApolloConf = Omit<ApolloServerExpressConfig, "context" | "schema" | 
       connectionParams: unknown,
       websocket: WebSocket,
       context: ConnectionContext
-    ) => T.Effect<any, never, any>;
-    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<any, never, any>;
+    ) => T.Effect<any, any, never, any>;
+    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<any, any, never, any>;
   }>;
 };
 
@@ -79,11 +78,11 @@ export type ApolloEnv<C extends ApolloConf> = C extends {
       connectionParams: unknown,
       websocket: WebSocket,
       context: ConnectionContext
-    ) => T.Effect<infer R, never, any>;
+    ) => T.Effect<any, infer R, never, any>;
     onDisconnect?: (
       websocket: WebSocket,
       context: ConnectionContext
-    ) => T.Effect<infer R2, never, any>;
+    ) => T.Effect<any, infer R2, never, any>;
   };
 }
   ? (R extends never ? unknown : R) & (R2 extends never ? unknown : R2)
