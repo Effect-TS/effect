@@ -108,7 +108,7 @@ export interface Functor4EC<F extends MaURIS, E> {
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
-type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
+export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
   ? I
   : never;
 
