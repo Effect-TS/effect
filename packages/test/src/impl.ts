@@ -39,8 +39,10 @@ export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
   ROf<Exclude<Specs[number], Spec<unknown>>>
 >;
 
-export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
-  provider: unknown extends SpecsEnv<Specs> ? void : T.Provider<unknown, SpecsEnv<Specs>, any, any>
+export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => <K>(
+  provider: unknown extends SpecsEnv<Specs>
+    ? void
+    : T.Provider<unknown, SpecsEnv<Specs> & K, any, any>
 ) => {
   specs.map((s) => {
     switch (s._tag) {
