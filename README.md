@@ -6,6 +6,14 @@ Matechs Effect is a Fully-fledged functional effect system for typescript with a
 
 Docs at [https://arnaldimichael.gitbook.io/matechs-effect/](https://arnaldimichael.gitbook.io/matechs-effect/)
 
+## Folders
+* packages : core packages
+* packages_inc : projects in incubation stage
+* packages_sys : system level utilities
+* packages_http : http related utilities (client/server)
+* packages_fe : frontend related utilities (pure client)
+* packages_be : backend related utilities (pure server)
+
 ## Note on Docs
 Docs are meant to be only for introduction to the architecture but are still outdated, for proper usage refer to the test & demo packages in each package
 
