@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-fetch",
-  "version": "5.0.0-beta.0",
+  "version": "5.0.0-beta.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -25,8 +25,8 @@
     "querystring": "^0.2.0"
   },
   "dependencies": {
-    "@matechs/http-client": "^5.0.0-beta.0",
-    "@matechs/prelude": "^1.0.0-beta.0"
+    "@matechs/http-client": "^5.0.0-beta.1",
+    "@matechs/prelude": "^1.0.0-beta.1"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
