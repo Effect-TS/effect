@@ -26,11 +26,10 @@ import * as E from "./either";
 import * as A from "fp-ts/lib/Array";
 import * as O from "./option";
 import * as Ex from "./exit";
-import * as MIO from "./simple/mio";
 
 export { pipe } from "fp-ts/lib/pipeable";
 
-export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U, MIO };
+export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U };
 export { Ex };
 export { E };
 export { Service };

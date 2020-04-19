@@ -1,4 +1,4 @@
-import { T, MIO, combineProviders } from "../../src";
+import { T, combineProviders } from "../../src";
 
 interface A {
   a: {};

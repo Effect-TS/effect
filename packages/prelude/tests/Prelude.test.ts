@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 
-import { T, pipe, E, pipeF, Ex, combineProviders, MIO } from "../src";
+import { T, pipe, E, pipeF, Ex, combineProviders } from "../src";
 import * as assert from "assert";
 
 const BarURI = "uris/bar";
@@ -143,21 +143,6 @@ describe("Prelude", () => {
       arr,
       T.traverseArray((n) => T.sync(() => n + 1)),
       T.runUnsafeSync
-    );
-
-    expect(result).toStrictEqual([1, 2, 3]);
-  });
-
-  it("should traverse array - MIO - mix", async () => {
-    const arr: Array<number> = [0, 1, 2];
-
-    const result = await pipe(
-      arr,
-      MIO.traverseArray((n) => T.access((_: { foo: string }) => n + 1)),
-      MIO.provide({
-        foo: "ok"
-      }),
-      MIO.runToPromise
     );
 
     expect(result).toStrictEqual([1, 2, 3]);
