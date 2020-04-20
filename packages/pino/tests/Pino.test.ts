@@ -77,7 +77,6 @@ const pinoLoggerSpec = M.suite("Pino")(
             trace: checkLevel(calls, "trace", [{ msg: "msg", foo: "bar" }, { msg: "msg" }])
           }))
           .done(),
-        P.providePino,
         F.implementWith(useMockM(({ write }) => T.sync(() => Pino({ level: "trace" }, { write }))))(
           P.pinoInstanceM
         )((logger) => ({ [P.PinoInstanceURI]: { logger: T.pure(logger) } }))
@@ -117,7 +116,7 @@ const pinoLoggerSpec = M.suite("Pino")(
             trace: checkLevel(calls, "trace", [{ msg: "ok" }])
           }))
           .done(),
-        P.providePinoForLogger,
+        P.providePinoLogger,
         F.implementWith(useMockM(({ write }) => T.sync(() => Pino({ level: "trace" }, { write }))))(
           P.pinoInstanceM
         )((logger) => ({ [P.PinoInstanceURI]: { logger: T.pure(logger) } }))
@@ -125,8 +124,7 @@ const pinoLoggerSpec = M.suite("Pino")(
   ),
   pipe(
     M.testM("provides instance", T.Do().do(P.info("ok")).done()),
-    M.withProvider(P.providePino),
-    M.withProvider(P.providePinoInstance({}, { write: empty }))
+    M.withProvider(P.providePino({}, { write: empty }))
   )
 );
 
