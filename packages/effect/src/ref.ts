@@ -14,52 +14,56 @@ export interface Ref<A> {
    * Set the current value of the ref
    * @param a
    */
-  set(a: A): T.Sync<A>;
+  readonly set: (a: A) => T.Sync<A>;
   /**
    * Update the current value of the ref with a function.
    * Produces the new value
    * @param f
    */
-  update(f: F.FunctionN<[A], A>): T.Sync<A>;
+  readonly update: (f: F.FunctionN<[A], A>) => T.Sync<A>;
   /**
    * Update the current value of a ref with a function.
    *
    * This function may return a second value of type B that will be produced on complete
    * @param f
    */
-  modify<B>(f: F.FunctionN<[A], readonly [B, A]>): T.Sync<B>;
+  readonly modify: <B>(f: F.FunctionN<[A], readonly [B, A]>) => T.Sync<B>;
+}
+
+class RefImpl<A> implements Ref<A> {
+  private value: A;
+  constructor(initial: A) {
+    this.value = initial;
+    this.set = this.set.bind(this);
+    this.modify = this.modify.bind(this);
+    this.update = this.update.bind(this);
+  }
+
+  get = T.sync(() => this.value);
+
+  set(a: A) {
+    return T.sync(() => {
+      const prev = this.value;
+      this.value = a;
+      return prev;
+    });
+  }
+
+  modify<B>(f: F.FunctionN<[A], readonly [B, A]>) {
+    return T.sync(() => {
+      const [b, a] = f(this.value);
+      this.value = a;
+      return b;
+    });
+  }
+
+  update(f: F.FunctionN<[A], A>) {
+    return T.sync(() => (this.value = f(this.value)));
+  }
 }
 
 /**
  * Creates an IO that will allocate a Ref.
- * Curried form of makeRef_ to allow for inference on the initial type
+ * Curried form of makeRef to allow for inference on the initial type
  */
-export const makeRef = <A>(initial: A): T.Sync<Ref<A>> =>
-  T.sync(() => {
-    let value = initial;
-
-    const get = T.sync(() => value);
-
-    const set = (a: A) =>
-      T.sync(() => {
-        const prev = value;
-        value = a;
-        return prev;
-      });
-
-    const update = (f: F.FunctionN<[A], A>) => T.sync(() => (value = f(value)));
-
-    const modify = <B>(f: F.FunctionN<[A], readonly [B, A]>) =>
-      T.sync(() => {
-        const [b, a] = f(value);
-        value = a;
-        return b;
-      });
-
-    return {
-      get,
-      set,
-      update,
-      modify
-    };
-  });
+export const makeRef = <A>(initial: A): T.Sync<Ref<A>> => T.sync(() => new RefImpl(initial));
