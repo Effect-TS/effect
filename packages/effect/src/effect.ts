@@ -107,7 +107,7 @@ export interface Suspended {
 }
 
 export type AsyncContFn<E, A> = F.FunctionN<[Ei.Either<E, A>], void>;
-export type AsyncCancelContFn = F.FunctionN<[(error?: Error) => void], void>;
+export type AsyncCancelContFn = F.FunctionN<[(error?: Error, others?: Error[]) => void], void>;
 export type AsyncFn<E, A> = F.FunctionN<[AsyncContFn<E, A>], AsyncCancelContFn>;
 
 export interface IAsync<E = unknown, A = unknown> {
@@ -872,7 +872,11 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
             /* istanbul ignore else */
             if (finalize._tag === "Done") {
               const errors = pipe(
-                [exit.error, ...finalize.value.map((x) => x.error)],
+                [
+                  exit.error,
+                  ...(exit.others ? exit.others : []),
+                  ...Ar.flatten(finalize.value.map((x) => [x.error, ...(x.others ? x.others : [])]))
+                ],
                 Ar.filter((x): x is Error => x !== undefined)
               );
 
