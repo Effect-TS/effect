@@ -2,7 +2,7 @@ import { T, E, pipe, record as R, O, F } from "@matechs/prelude";
 import * as H from "@matechs/http-client";
 import * as C from "node-libcurl";
 import path from "path";
-import querystring, { ParsedUrlQueryInput } from "querystring";
+import querystring, { ParsedQuery } from "query-string";
 
 export const libcurl: (_?: {
   caPath?: string;
@@ -135,8 +135,8 @@ function customReq(method: string, req: C.Curl, requestType: H.RequestType, body
       H.foldRequestType(
         requestType,
         () => JSON.stringify(body),
-        () => querystring.stringify(body as ParsedUrlQueryInput),
-        () => querystring.stringify(body as ParsedUrlQueryInput),
+        () => querystring.stringify(body as ParsedQuery<string | number | boolean>),
+        () => querystring.stringify(body as ParsedQuery<string | number | boolean>),
         () => (body as Buffer).toString("utf-8")
       )
     );

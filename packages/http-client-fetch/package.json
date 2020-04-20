@@ -22,7 +22,7 @@
     "es6"
   ],
   "peerDependencies": {
-    "querystring": "^0.2.0"
+    "query-string": "^6.12.1"
   },
   "dependencies": {
     "@matechs/http-client": "^5.0.0-beta.2",
@@ -33,6 +33,6 @@
     "@matechs/test-jest": "^1.0.0-beta.3",
     "@types/isomorphic-fetch": "^0.0.35",
     "isomorphic-fetch": "^2.2.1",
-    "querystring": "^0.2.0"
+    "query-string": "^6.12.1"
   }
 }

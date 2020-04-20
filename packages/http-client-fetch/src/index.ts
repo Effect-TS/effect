@@ -1,6 +1,6 @@
 import { T, E, O } from "@matechs/prelude";
 import * as H from "@matechs/http-client";
-import querystring from "querystring";
+import querystring from "query-string";
 
 function getContentType(requestType: H.RequestType): string {
   return H.foldRequestType(

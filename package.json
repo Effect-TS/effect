@@ -65,7 +65,7 @@
     "node-zookeeper-client": "^1.1.0",
     "opentracing": "^0.14.4",
     "prettier": "^2.0.3",
-    "querystring": "^0.2.0",
+    "query-string": "^6.12.1",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "redux": "^4.0.4",
