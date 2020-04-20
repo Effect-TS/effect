@@ -1,5 +1,5 @@
 import { T, O, F } from "@matechs/prelude";
-import { ParsedUrlQueryInput } from "querystring";
+import { ParsedQuery } from "query-string";
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
@@ -37,11 +37,11 @@ export type RequestBodyTypes = MakeIndexed<
       PATCH: unknown;
     };
     DATA: {
-      GET: ParsedUrlQueryInput;
-      POST: ParsedUrlQueryInput;
-      PUT: ParsedUrlQueryInput;
-      DELETE: ParsedUrlQueryInput;
-      PATCH: ParsedUrlQueryInput;
+      GET: ParsedQuery<string | number | boolean>;
+      POST: ParsedQuery<string | number | boolean>;
+      PUT: ParsedQuery<string | number | boolean>;
+      DELETE: ParsedQuery<string | number | boolean>;
+      PATCH: ParsedQuery<string | number | boolean>;
     };
     FORM: {
       GET: FormData;
