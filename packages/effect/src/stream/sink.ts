@@ -175,12 +175,12 @@ export function queueSink<R, E, A>(queue: ConcurrentQueue<A>): Sink<unknown, R, 
  * The sink will offer one final none into the queue when the stream terminates
  * @param queue
  */
-export function queueOptionSink<R, E, A>(
+export function queueOptionSink<A>(
   queue: ConcurrentQueue<O.Option<A>>
-): Sink<unknown, R, E, void, A, void> {
+): Sink<unknown, unknown, never, void, A, void> {
   const initial = T.pure(sinkCont(undefined));
 
-  function step(_state: void, a: A): T.AsyncRE<R, E, SinkStep<A, void>> {
+  function step(_state: void, a: A): T.AsyncRE<unknown, never, SinkStep<A, void>> {
     return T.as(queue.offer(O.some(a)), sinkCont(undefined));
   }
 
