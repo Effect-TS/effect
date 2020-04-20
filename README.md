@@ -48,6 +48,7 @@ As with any good library there is a commercial project that support the developm
 | @matechs/graceful             |   beta     |      yes     | Utility to register callbacks to improve graceful exit scenarios. |![weekly-downloads](https://badgen.net/npm/dw/@matechs/graceful)            |
 | @matechs/logger               |   stable   |      yes     | Define a generic logger interface and provide a console interpret.|![weekly-downloads](https://badgen.net/npm/dw/@matechs/logger)              |
 | @matechs/logger-winston       |   stable   |      yes     | Integrates logger with a winston based interpreter.               |![weekly-downloads](https://badgen.net/npm/dw/@matechs/logger-winston)      |
+| @matechs/logger-pino          |   stable   |      no      | Integrates logger with pino & provides pino specific utilities.   |![weekly-downloads](https://badgen.net/npm/dw/@matechs/logger-pino)         |
 | @matechs/uuid                 |   beta     |      yes     | Generates v4 uuids with different encodings, classic & short.     |![weekly-downloads](https://badgen.net/npm/dw/@matechs/uuid)                |
 | @matechs/zoo                  |   beta     |      yes     | Integrates zookeeper for leader elections.                        |![weekly-downloads](https://badgen.net/npm/dw/@matechs/zoo)                 |
 | @matechs/fancy                |   beta     |      no      | Full blown integration with Next.js / React & Mobx.               |![weekly-downloads](https://badgen.net/npm/dw/@matechs/fancy)               |
