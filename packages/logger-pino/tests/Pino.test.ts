@@ -1,7 +1,5 @@
-import { effect as T, freeEnv as F } from "@matechs/effect";
+import { T, Service as F, pipe, A } from "@matechs/prelude";
 import * as M from "@matechs/test-jest";
-import * as A from "fp-ts/lib/Array";
-import { pipe } from "fp-ts/lib/pipeable";
 import * as P from "../src";
 import Pino from "pino";
 import * as L from "@matechs/logger";
