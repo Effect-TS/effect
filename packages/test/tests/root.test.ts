@@ -11,6 +11,10 @@ customRun({
 })(
   testM(
     "simple root",
-    T.sync(() => assert.deepEqual(2, 2))
+    T.access((_: { n: number }) => assert.deepEqual(2, _.n))
   )
-)();
+)(
+  T.provide({
+    n: 2
+  })
+);

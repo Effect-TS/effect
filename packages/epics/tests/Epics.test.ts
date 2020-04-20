@@ -125,7 +125,7 @@ describe("Epics", () => {
         fetchUser,
         fetchUser2
       )(
-        T.provide({
+        T.provide<Config & Config2>({
           config: { prefix: "prefix" },
           config2: { prefix: "prefix2" }
         })

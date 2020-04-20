@@ -1,9 +1,5 @@
-import { effect as T } from "@matechs/effect";
+import { T, combineProviders, O, pipe } from "@matechs/prelude";
 import * as fc from "fast-check";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { flow } from "fp-ts/lib/function";
-import { isSome } from "fp-ts/lib/Option";
-import { pipe } from "fp-ts/lib/pipeable";
 import { limitRetries } from "retry-ts";
 import * as M from "../src";
 
@@ -42,7 +38,7 @@ interface Sub {
 const demoSuite = M.suite("demo")(
   M.testM(
     "sum",
-    Do(T.effect)
+    T.Do()
       .bind("env", T.accessEnvironment<Sum>())
       .bindL("c", ({ env: { sum: { a, b } } }) =>
         T.delay(
@@ -54,7 +50,7 @@ const demoSuite = M.suite("demo")(
   ),
   M.testM(
     "mul",
-    Do(T.effect)
+    T.Do()
       .bind("env", T.accessEnvironment<Mul>())
       .bindL("c", ({ env: { mul: { a, b } } }) =>
         T.delay(
@@ -69,7 +65,7 @@ const demoSuite = M.suite("demo")(
 const demo2Suite = M.suite("demo2")(
   M.testM(
     "sub",
-    Do(T.effect)
+    T.Do()
       .bind("env", T.accessEnvironment<Sub>())
       .bindL("c", ({ env: { sub: { a, b } } }) =>
         T.delay(
@@ -81,7 +77,7 @@ const demo2Suite = M.suite("demo2")(
   ),
   M.testM(
     "div",
-    Do(T.effect)
+    T.Do()
       .bind("env", T.accessEnvironment<Div>())
       .bindL("c", ({ env: { div: { a, b } } }) =>
         T.delay(
@@ -174,14 +170,14 @@ const envSuite = M.suite("env suite")(
       "skip because env not defined",
       T.sync(() => M.assert.deepEqual(1, 1))
     ),
-    M.withEnvFilter("jioejiofjioewjsalcs")(isSome)
+    M.withEnvFilter("jioejiofjioewjsalcs")(O.isSome)
   ),
   pipe(
     M.testM(
       "not skip because env is demo",
       T.sync(() => M.assert.deepEqual(1, 1))
     ),
-    M.withEnvFilter("EXAMPLE_ENV")((x) => isSome(x) && x.value === "demo")
+    M.withEnvFilter("EXAMPLE_ENV")((x) => O.isSome(x) && x.value === "demo")
   )
 );
 
@@ -219,6 +215,22 @@ const provideDiv = T.provide<Div>({
   }
 });
 
+export interface OverProvide {
+  over: {};
+}
+
+const provideOver = T.provide<OverProvide>({
+  over: {}
+});
+
+const combined = combineProviders()
+  .with(provideSub)
+  .with(provideSum)
+  .with(provideDiv)
+  .with(M.provideGenerator)
+  .with(provideOver)
+  .done();
+
 M.customRun({
   describe,
   it: {
@@ -234,4 +246,4 @@ M.customRun({
   skip2Suite,
   envSuite,
   pendingSuite
-)(flow(provideSub, provideSum, provideDiv, M.provideGenerator));
+)(combined);

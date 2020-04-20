@@ -35,12 +35,9 @@ type EpicsEnvType<EPS extends AnyEpic> = F.UnionToIntersection<
 export function embed<EPS extends AnyEpic[]>(
   ...epics: EPS
 ): (
-  provider: T.Provider<
-    StateAccess<Sta<EPS[number]>>,
-    EpicsEnvType<typeof epics[number]>,
-    never,
-    any
-  >
+  provider: (
+    _: T.Effect<any, EpicsEnvType<typeof epics[number]>, never, any>
+  ) => T.Effect<any, StateAccess<Sta<EPS[number]>>, never, any>
 ) => Rxo.Epic<Act<EPS[number]>, AOut<EPS[number]>, Sta<EPS[number]>> {
   type EPSType = EPS[number];
   type Action = Act<EPSType>;
