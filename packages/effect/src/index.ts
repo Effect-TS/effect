@@ -1,5 +1,5 @@
 import * as effect from "./effect";
-import * as stream from "./stream/index";
+import * as stream from "./stream";
 import * as sink from "./stream/sink";
 import * as managed from "./managed";
 import * as queue from "./queue";
