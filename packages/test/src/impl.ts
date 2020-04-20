@@ -39,7 +39,7 @@ export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
   ROf<Exclude<Specs[number], Spec<unknown>>>
 >;
 
-export type Provider<R> = (_: T.Effect<any, R, any, any>) => T.Effect<any, unknown, any, any>;
+export type Provider<R> = (_: T.Effect<any, R, any, any>) => T.Effect<any, {}, any, any>;
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(...specs: Specs) => (
   provider: unknown extends SpecsEnv<Specs> ? void : Provider<SpecsEnv<Specs>>
