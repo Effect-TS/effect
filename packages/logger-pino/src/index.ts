@@ -3,7 +3,7 @@ import { logger as L } from "@matechs/logger";
 import P from "pino";
 
 // region Pino instance
-export const PinoInstanceURI = "@matechs/pino/instanceURI";
+export const PinoInstanceURI = "@matechs/logger-pino/instanceURI";
 
 export interface PinoInstanceEnv {
   [PinoInstanceURI]: {
@@ -21,8 +21,6 @@ export const {
 // endregion
 
 // region Pino ops
-export const PinoLoggerURI = "@matechs/pino/loggerURI";
-
 export interface LogFn {
   (obj: object, msg?: string, ...args: unknown[]): T.Sync<void>;
   (msg: string, ...args: unknown[]): T.Sync<void>;
