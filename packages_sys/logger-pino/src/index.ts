@@ -1,4 +1,4 @@
-import { T, Service as F } from "@matechs/prelude";
+import { T, Service as F, pipe } from "@matechs/prelude";
 import { logger as L } from "@matechs/logger";
 import P from "pino";
 
@@ -89,7 +89,12 @@ export function providePino(
   stream?: P.DestinationStream
 ): T.Provider<unknown, PinoInstanceEnv>;
 export function providePino(opts: P.LoggerOptions = {}, stream?: P.DestinationStream) {
-  return F.implementWith(T.sync(() => P(...[opts, stream])))(pinoInstanceM)((logger) => ({
+  return F.implementWith(
+    pipe(
+      T.trySync(() => P(...[opts, stream])),
+      T.orAbort
+    )
+  )(pinoInstanceM)((logger) => ({
     [PinoInstanceURI]: { logger: T.pure(logger) }
   }));
 }
