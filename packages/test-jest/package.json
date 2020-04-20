@@ -1,6 +1,6 @@
 {
   "name": "@matechs/test-jest",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -33,6 +33,6 @@
   },
   "dependencies": {
     "@matechs/effect": "^6.0.0-beta.0",
-    "@matechs/test": "^1.0.0-beta.1"
+    "@matechs/test": "^1.0.0-beta.2"
   }
 }
