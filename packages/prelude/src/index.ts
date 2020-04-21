@@ -29,6 +29,7 @@ import * as O from "./option";
 import * as Ex from "./exit";
 import { Pipe, Flow, FlowP } from "./internals";
 
+export { flow } from "fp-ts/lib/function"
 export { pipe } from "fp-ts/lib/pipeable";
 
 export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U };

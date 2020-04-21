@@ -147,3 +147,76 @@ export function fold<E, A, B>(
 ): (e: Exit<E, A>) => B {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt);
 }
+
+export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
+  onDone: (v: A) => SE.StreamEither<S1, R1, E1, B1>,
+  onCause: (v: Cause<E>) => SE.StreamEither<S2, R2, E2, B2>
+): (e: Exit<E, A>) => SE.StreamEither<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
+export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
+  onDone: (v: A) => S.Stream<S1, R1, E1, B1>,
+  onCause: (v: Cause<E>) => S.Stream<S2, R2, E2, B2>
+): (e: Exit<E, A>) => S.Stream<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
+export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
+  onDone: (v: A) => M.Managed<S1, R1, E1, B1>,
+  onCause: (v: Cause<E>) => M.Managed<S2, R2, E2, B2>
+): (e: Exit<E, A>) => M.Managed<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
+export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
+  onDone: (v: A) => T.Effect<S1, R1, E1, B1>,
+  onCause: (v: Cause<E>) => T.Effect<S2, R2, E2, B2>
+): (e: Exit<E, A>) => T.Effect<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
+export function foldExit<E, A, B1, B2>(
+  onDone: (v: A) => B1,
+  onCause: (v: Cause<E>) => B2
+): (e: Exit<E, A>) => B1 | B2;
+export function foldExit<E, A, B1, B2>(
+  onDone: (v: A) => B1,
+  onCause: (v: Cause<E>) => B2
+): (e: Exit<E, A>) => B1 | B2;
+export function foldExit<E, A, B>(
+  onDone: (v: A) => B,
+  onCause: (v: Cause<E>) => B
+): (e: Exit<E, A>) => B {
+  return (e) => (isDone(e) ? onDone(e.value) : onCause(e));
+}
+
+export function foldCause<S1, S2, S3, S4, E, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
+  onRaise: (v: E) => T.Effect<S2, R2, E2, B2>,
+  onAbort: (v: unknown) => T.Effect<S3, R3, E3, B3>,
+  onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
+): (
+  e: Cause<E>
+) => T.Effect<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>;
+export function foldCause<S1, S2, S3, S4, E, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
+  onRaise: (v: E) => M.Managed<S2, R2, E2, B2>,
+  onAbort: (v: unknown) => M.Managed<S3, R3, E3, B3>,
+  onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
+): (
+  e: Cause<E>
+) => M.Managed<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>;
+export function foldCause<S1, S2, S3, S4, E, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
+  onRaise: (v: E) => S.Stream<S2, R2, E2, B2>,
+  onAbort: (v: unknown) => S.Stream<S3, R3, E3, B3>,
+  onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
+): (
+  e: Cause<E>
+) => S.Stream<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>;
+export function foldCause<S1, S2, S3, S4, E, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
+  onRaise: (v: E) => SE.StreamEither<S2, R2, E2, B2>,
+  onAbort: (v: unknown) => SE.StreamEither<S3, R3, E3, B3>,
+  onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
+): (
+  e: Cause<E>
+) => SE.StreamEither<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>;
+export function foldCause<E, B1, B2, B3, B4>(
+  onRaise: (v: E) => B2,
+  onAbort: (v: unknown) => B3,
+  onInterrupt: (i: Interrupt) => B4
+): (e: Cause<E>) => B1 | B2 | B3 | B4;
+export function foldCause<E, B>(
+  onRaise: (v: E) => B,
+  onAbort: (v: unknown) => B,
+  onInterrupt: (i: Interrupt) => B
+): (e: Cause<E>) => B {
+  return (e) =>
+    isRaise(e) ? onRaise(e.error) : isAbort(e) ? onAbort(e.abortedWith) : onInterrupt(e);
+}
