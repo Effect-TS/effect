@@ -242,7 +242,7 @@ export const raiseInterrupt: Sync<never> = raised(ex.interrupt);
  * An IO that is completed with the given exit
  * @param exit
  */
-export function completed<E, A>(exit: ex.Exit<E, A>): SyncE<E, A> {
+export function completed<E = never, A = never>(exit: ex.Exit<E, A>): SyncE<E, A> {
   return new Implementation(EffectTag.Completed as const, exit);
 }
 
