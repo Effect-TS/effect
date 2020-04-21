@@ -95,15 +95,15 @@ export function providePino(...args: any[]) {
   }));
 }
 
-export const providePinoLogger = F.implementWith(logger)(L.Logger)((l) => ({
+export const providePinoLogger = F.implement(L.Logger)({
   [L.LoggerURI]: {
-    error: (message, meta = {}) => T.sync(() => l.error(meta, message)),
-    warn: (message, meta = {}) => T.sync(() => l.warn(meta, message)),
-    info: (message, meta = {}) => T.sync(() => l.info(meta, message)),
-    http: (message, meta = {}) => T.sync(() => l.info(meta, message)),
-    verbose: (message, meta = {}) => T.sync(() => l.info(meta, message)),
-    debug: (message, meta = {}) => T.sync(() => l.debug(meta, message)),
-    silly: (message, meta = {}) => T.sync(() => l.trace(meta, message))
+    error: (message, meta = {}) => error(meta, message),
+    warn: (message, meta = {}) => warn(meta, message),
+    info: (message, meta = {}) => info(meta, message),
+    http: (message, meta = {}) => info(meta, message),
+    verbose: (message, meta = {}) => info(meta, message),
+    debug: (message, meta = {}) => debug(meta, message),
+    silly: (message, meta = {}) => trace(meta, message)
   }
-}));
+});
 // endregion
