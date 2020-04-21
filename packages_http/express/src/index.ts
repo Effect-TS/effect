@@ -6,7 +6,6 @@ import { left, right } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
 import { Server } from "http";
 import { NextHandleFunction } from "connect";
-import { pipe } from "fp-ts/lib/pipeable";
 
 export const expressAppEnv = "@matechs/express/expressAppURI";
 
@@ -105,15 +104,9 @@ export const express: Express = {
       );
     },
     withApp<S, R, E, A>(op: T.Effect<S, R & HasExpress, E, A>): T.Effect<S, R, E, A> {
-      return T.accessM((r: R) =>
-        pipe(
-          op,
-          T.provide<R & HasExpress>({
-            ...r,
-            [expressAppEnv]: { ...r[expressAppEnv], app: newExpress() }
-          })
-        )
-      );
+      return T.provide<HasExpress>({
+        [expressAppEnv]: { app: newExpress() }
+      })(op);
     },
     bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server> {
       return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
@@ -162,14 +155,11 @@ export function route<S, R, E, A>(
       method,
       path,
       (x) =>
-        T.accessM((r: R & HasExpress & Express) =>
-          T.provide({
-            ...r,
-            [requestContextEnv]: {
-              request: x
-            }
-          })(handler)
-        ),
+        T.provide<RequestContext>({
+          [requestContextEnv]: {
+            request: x
+          }
+        })(handler),
       ...middle
     )
   );
