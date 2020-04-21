@@ -127,16 +127,13 @@ export const provideKoa = T.provide<Koa>({
       );
     },
     withApp<S, R, E, A>(op: T.Effect<S, R & HasKoa, E, A>): T.Effect<S, R, E, A> {
-      return T.accessM((r: R) =>
-        T.provide<R & HasKoa>({ ...r, [koaAppEnv]: { ...r[koaAppEnv], app: new KoaApp() } })(op)
-      );
+      return T.provide<HasKoa>({ [koaAppEnv]: { app: new KoaApp() } })(op);
     },
     withRouter<S, R, E, A>(
       op: T.Effect<S, R & HasMiddle & HasRouter, E, A>
     ): T.Effect<S, R & HasKoa, E, A> {
       return T.accessM((r: R & HasKoa) =>
-        T.provide<R & HasMiddle & HasKoa & HasRouter>({
-          ...r,
+        T.provide<HasMiddle & HasRouter>({
           [koaRouterEnv]: { ...r[koaRouterEnv], router: new KoaRouter<any, {}>() },
           [middleURI]: {
             middlewares: []
@@ -166,11 +163,9 @@ export const provideKoa = T.provide<Koa>({
       path: string,
       op: T.Effect<S, R & HasRouter, E, A>
     ): T.Effect<S, R & HasRouter, E, A> {
-      return T.accessM((r: R & HasRouter) =>
+      return T.accessM((r: HasRouter) =>
         T.provide({
-          ...r,
           [koaRouterEnv]: {
-            ...r[koaRouterEnv],
             parent: r[koaRouterEnv].router,
             router: new KoaRouter<any, {}>()
           }
@@ -244,14 +239,11 @@ export function route<S, R, E, A>(
 ): T.SyncR<T.Erase<R, Context> & Koa & HasRouter, void> {
   return T.accessM(({ [koaEnv]: koa }: Koa) =>
     koa.route(method, path, (x) =>
-      T.accessM((r: R & Koa) =>
-        T.provide({
-          ...r,
-          [contextEnv]: {
-            ctx: x
-          }
-        })(handler)
-      )
+      T.provide<Context>({
+        [contextEnv]: {
+          ctx: x
+        }
+      })(handler)
     )
   );
 }
