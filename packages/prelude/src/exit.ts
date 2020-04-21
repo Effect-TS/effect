@@ -149,32 +149,32 @@ export function fold<E, A, B>(
 }
 
 export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
-  onDone: (v: A) => SE.StreamEither<S1, R1, E1, B1>,
-  onCause: (v: Cause<E>) => SE.StreamEither<S2, R2, E2, B2>
+  onCause: (v: Cause<E>) => SE.StreamEither<S2, R2, E2, B2>,
+  onDone: (v: A) => SE.StreamEither<S1, R1, E1, B1>
 ): (e: Exit<E, A>) => SE.StreamEither<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
 export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
-  onDone: (v: A) => S.Stream<S1, R1, E1, B1>,
-  onCause: (v: Cause<E>) => S.Stream<S2, R2, E2, B2>
+  onCause: (v: Cause<E>) => S.Stream<S2, R2, E2, B2>,
+  onDone: (v: A) => S.Stream<S1, R1, E1, B1>
 ): (e: Exit<E, A>) => S.Stream<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
 export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
-  onDone: (v: A) => M.Managed<S1, R1, E1, B1>,
-  onCause: (v: Cause<E>) => M.Managed<S2, R2, E2, B2>
+  onCause: (v: Cause<E>) => M.Managed<S2, R2, E2, B2>,
+  onDone: (v: A) => M.Managed<S1, R1, E1, B1>
 ): (e: Exit<E, A>) => M.Managed<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
 export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
-  onDone: (v: A) => T.Effect<S1, R1, E1, B1>,
-  onCause: (v: Cause<E>) => T.Effect<S2, R2, E2, B2>
+  onCause: (v: Cause<E>) => T.Effect<S2, R2, E2, B2>,
+  onDone: (v: A) => T.Effect<S1, R1, E1, B1>
 ): (e: Exit<E, A>) => T.Effect<S1 | S2, R1 & R2, E1 | E2, B1 | B2>;
 export function foldExit<E, A, B1, B2>(
-  onDone: (v: A) => B1,
-  onCause: (v: Cause<E>) => B2
+  onCause: (v: Cause<E>) => B2,
+  onDone: (v: A) => B1
 ): (e: Exit<E, A>) => B1 | B2;
 export function foldExit<E, A, B1, B2>(
-  onDone: (v: A) => B1,
-  onCause: (v: Cause<E>) => B2
+  onCause: (v: Cause<E>) => B2,
+  onDone: (v: A) => B1
 ): (e: Exit<E, A>) => B1 | B2;
 export function foldExit<E, A, B>(
-  onDone: (v: A) => B,
-  onCause: (v: Cause<E>) => B
+  onCause: (v: Cause<E>) => B,
+  onDone: (v: A) => B
 ): (e: Exit<E, A>) => B {
   return (e) => (isDone(e) ? onDone(e.value) : onCause(e));
 }

@@ -147,4 +147,81 @@ describe("Prelude", () => {
 
     expect(result).toStrictEqual([1, 2, 3]);
   });
+
+  it("should use foldExit - cause", () => {
+    expect(
+      pipe(
+        T.raiseError("err"),
+        T.runSync,
+        Ex.foldExit(
+          (x) => x,
+          (x) => x
+        )
+      )
+    ).toStrictEqual(Ex.raise("err"));
+  });
+
+  it("should use foldExit - foldCause - raise", () => {
+    expect(
+      pipe(
+        T.raiseError("err"),
+        T.runSync,
+        Ex.foldExit(
+          Ex.foldCause(
+            (x) => x,
+            (x) => x,
+            (x) => x
+          ),
+          (x) => x
+        )
+      )
+    ).toStrictEqual("err");
+  });
+
+  it("should use foldExit - foldCause - abort", () => {
+    expect(
+      pipe(
+        T.raiseAbort("err"),
+        T.runSync,
+        Ex.foldExit(
+          Ex.foldCause(
+            (x) => x,
+            (x) => x,
+            (x) => x
+          ),
+          (x) => x
+        )
+      )
+    ).toStrictEqual("err");
+  });
+
+  it("should use foldExit - foldCause - interrupt", () => {
+    expect(
+      pipe(
+        T.raiseInterrupt,
+        T.runSync,
+        Ex.foldExit(
+          Ex.foldCause(
+            (x) => x,
+            (x) => x,
+            (x) => x
+          ),
+          (x) => x
+        )
+      )
+    ).toStrictEqual(Ex.interrupt);
+  });
+
+  it("should use foldExit - done", () => {
+    expect(
+      pipe(
+        T.pure("done"),
+        T.runSync,
+        Ex.foldExit(
+          (x) => x,
+          (x) => x
+        )
+      )
+    ).toStrictEqual("done");
+  });
 });
