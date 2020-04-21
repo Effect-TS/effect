@@ -21,11 +21,6 @@ export const {
 // endregion
 
 // region Pino ops
-export interface LogFn {
-  (obj: object, msg?: string, ...args: unknown[]): T.Sync<void>;
-  (msg: string, ...args: unknown[]): T.Sync<void>;
-}
-
 const withLogger = (f: (_: P.Logger) => T.Sync<void>) => T.effect.chain(logger, f);
 
 export function fatal(
@@ -79,19 +74,20 @@ export function trace(msg: string, ...args: unknown[]): T.SyncR<PinoInstanceEnv,
 export function trace(...args: [any, ...unknown[]]): T.SyncR<PinoInstanceEnv, void> {
   return withLogger((l) => T.sync(() => l.trace(...args)));
 }
-
 // endregion
 
 // region instances
-export function providePino(opts?: {}): T.Provider<unknown, PinoInstanceEnv>;
+export function providePino(
+  opts?: P.LoggerOptions | P.DestinationStream
+): T.Provider<unknown, PinoInstanceEnv>;
 export function providePino(
   opts: P.LoggerOptions,
-  stream?: P.DestinationStream
+  stream: P.DestinationStream
 ): T.Provider<unknown, PinoInstanceEnv>;
-export function providePino(opts: P.LoggerOptions = {}, stream?: P.DestinationStream) {
+export function providePino(...args: any[]) {
   return F.implementWith(
     pipe(
-      T.trySync(() => P(...[opts, stream])),
+      T.trySync(() => P(...args)),
       T.orAbort
     )
   )(pinoInstanceM)((logger) => ({
