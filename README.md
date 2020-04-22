@@ -1,6 +1,6 @@
 # Introduction
 
-[![codecov.io](http://codecov.io/github/mikearnaldi/matechs-effect/coverage.svg?branch=master)](http://codecov.io/github/mikearnaldi/matechs-effect) [![Greenkeeper badge](https://badges.greenkeeper.io/mikearnaldi/matechs-effect.svg)](https://greenkeeper.io/)
+[![codecov.io](http://codecov.io/github/mikearnaldi/matechs-effect/coverage.svg?branch=master)](http://codecov.io/github/mikearnaldi/matechs-effect) [![Known Vulnerabilities](https://snyk.io/test/github/Matechs-Garage/matechs-effect/badge.svg)](https://snyk.io/test/github/Matechs-Garage/{matechs-effect})
 
 Matechs Effect is a Fully-fledged functional effect system for typescript with a rich standard library including modules for http server & client, logger, orm, cqrs+es, zookeeper leader election, next.js, apollo, rxjs, redux-observables and more.
 

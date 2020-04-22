@@ -6385,7 +6385,7 @@ import-local@^3.0.2:
 
 "import-path-rewrite@github:mikearnaldi/import-path-rewrite":
   version "0.0.1"
-  resolved "https://codeload.github.com/mikearnaldi/import-path-rewrite/tar.gz/567791ce89b2d9fb4768bf25098b4ba1c4a83702"
+  resolved "https://codeload.github.com/mikearnaldi/import-path-rewrite/tar.gz/7cd855146f7adc748852db023b487c9ac7e52925"
   dependencies:
     chalk "^3.0.0"
     glob "^7.1.6"
@@ -8111,7 +8111,7 @@ modify-values@^1.0.0:
   resolved "https://registry.yarnpkg.com/modify-values/-/modify-values-1.0.1.tgz#b3939fa605546474e3e3e3c63d64bd43b4ee6022"
   integrity sha512-xV2bxeN6F7oYjZWTe/YPAy6MN2M+sL4u/Rlm2AHCIVGfo2p1yGmBHQ6vHehl4bRTZBdHu3TSkWdYgkwpYzAGSw==
 
-monocle-ts@^2.0.1:
+monocle-ts@^2.0.1, monocle-ts@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/monocle-ts/-/monocle-ts-2.1.0.tgz#5c1bbade7952b57e33f2179866467e87d9ed5977"
   integrity sha512-YWH8TDcZSEeCaxp0ZjgccLChnaDvTiUHILpuI0DSZeASYSCgwdz+h6+uEG4QCwYreGsn1oI18ysrcUPv6xWK7w==
