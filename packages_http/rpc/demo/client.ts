@@ -1,15 +1,16 @@
+import "isomorphic-fetch"
 import { T, Ex, U, A, pipe } from "@matechs/prelude";
 import * as RPC from "@matechs/rpc-client";
 import * as H from "@matechs/http-client";
-import * as L from "@matechs/http-client-libcurl";
+import * as L from "@matechs/http-client-fetch";
 import { placeholderJsonM, placeholderJsonEnv } from "./shared";
 
 const { getTodo } = RPC.client(placeholderJsonM);
 
-const program = pipe(A.range(1, 10), T.traverseArrayPar(getTodo));
+const program = pipe(A.range(1, 5), T.traverseArrayPar(getTodo));
 
 const envLive: U.Env<typeof program> = {
-  ...L.libcurl(),
+  ...L.client(fetch),
   ...H.middlewareStack([
     H.withPathHeaders({ token: "check" }, (p) => p.startsWith("http://127.0.0.1:8081"))
   ]),
