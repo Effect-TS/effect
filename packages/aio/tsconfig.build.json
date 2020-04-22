@@ -1,0 +1,9 @@
+{
+  "extends": "../../base.tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib",
+    "lib": ["DOM"]
+  },
+  "exclude": ["tests", "node_modules"],
+  "include": ["src/**/*"]
+}
