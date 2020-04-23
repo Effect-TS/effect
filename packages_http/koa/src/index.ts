@@ -2,7 +2,7 @@ import KoaApp from "koa";
 import { T, M, pipe, E } from "@matechs/prelude";
 import * as KOA from "koa";
 import koaBodyParser from "koa-bodyparser";
-import KoaRouter from "koa-router";
+import KoaRouter, { RouterContext } from "koa-router";
 import KC from "koa-compose";
 import { Server } from "http";
 
@@ -228,7 +228,7 @@ export const contextEnv = "@matechs/koa/ContextURI";
 
 export interface Context {
   [contextEnv]: {
-    ctx: KOA.ParameterizedContext;
+    ctx: KOA.ParameterizedContext<any, any>;
   };
 }
 
@@ -311,22 +311,41 @@ export function accessAppM<S, R, E, A>(
   return T.accessM(({ [koaAppEnv]: koa }: HasKoa) => f(koa.app));
 }
 
-export function accessReqM<S, R, E, A>(
-  f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, E, A>
-): T.Effect<S, Context & R, E, A> {
-  return T.accessM(({ [contextEnv]: { ctx } }: Context) => f(ctx));
+export function accessMiddlewareReqM<StateT = KOA.DefaultState, CustomT = KOA.DefaultContext>(): <
+  S,
+  R,
+  E,
+  A
+>(
+  f: (ctx: KOA.ParameterizedContext<StateT, CustomT>) => T.Effect<S, R, E, A>
+) => T.Effect<S, Context & R, E, A> {
+  return (f) => T.accessM(({ [contextEnv]: { ctx } }: Context) => f(ctx));
 }
 
-export function accessReq<A>(f: (ctx: KOA.ParameterizedContext) => A): T.SyncR<Context, A> {
-  return T.access(({ [contextEnv]: { ctx } }: Context) => f(ctx));
+export function accessReqM<StateT = any, CustomT = {}>(): <S, R, E, A>(
+  f: (ctx: RouterContext<StateT, CustomT>) => T.Effect<S, R, E, A>
+) => T.Effect<S, Context & R, E, A> {
+  return (f) => T.accessM(({ [contextEnv]: { ctx } }: Context) => f(ctx));
+}
+
+export function accessMiddlewareReq<StateT = KOA.DefaultState, CustomT = KOA.DefaultContext>(): <A>(
+  f: (ctx: KOA.ParameterizedContext<StateT, CustomT>) => A
+) => T.SyncR<Context, A> {
+  return (f) => T.access(({ [contextEnv]: { ctx } }: Context) => f(ctx));
+}
+
+export function accessReq<StateT = any, CustomT = {}>(): <A>(
+  f: (ctx: RouterContext<StateT, CustomT>) => A
+) => T.SyncR<Context, A> {
+  return (f) => T.access(({ [contextEnv]: { ctx } }: Context) => f(ctx));
 }
 
 export function accessApp<A>(f: (app: KOA) => A): T.SyncR<HasKoa, A> {
   return T.access(({ [koaAppEnv]: koa }: HasKoa) => f(koa.app));
 }
 
-export function middleware(
-  middle: KOA.Middleware<KOA.ParameterizedContext<any, any>>
+export function middleware<StateT = KOA.DefaultState, CustomT = KOA.DefaultContext>(
+  middle: KOA.Middleware<KOA.ParameterizedContext<StateT, CustomT>>
 ): T.SyncR<HasMiddle, void> {
   return T.access((_: HasMiddle) => {
     _[middleURI].middlewares.push(middle);

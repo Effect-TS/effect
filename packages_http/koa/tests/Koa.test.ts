@@ -12,14 +12,14 @@ describe("Koa", () => {
         KOA.route(
           "post",
           "/",
-          KOA.accessReqM((r) => T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500, { res: 1 })))
+          KOA.accessReqM()((r) => T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500, { res: 1 })))
         )
       )
       .do(
         KOA.route(
           "post",
           "/access",
-          KOA.accessReq((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
+          KOA.accessReq()((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
         )
       )
       .do(
@@ -28,14 +28,14 @@ describe("Koa", () => {
             KOA.route(
               "post",
               "/",
-              KOA.accessReqM((r) =>
+              KOA.accessReqM()((r) =>
                 T.pure(KOA.routeResponse(r.path === "/sub" ? 200 : 500, { res: 1 }))
               )
             ),
             KOA.route(
               "post",
               "/access",
-              KOA.accessReq((r) =>
+              KOA.accessReq()((r) =>
                 KOA.routeResponse(r.path === "/sub/access" ? 200 : 500, { res: 1 })
               )
             )
@@ -56,7 +56,7 @@ describe("Koa", () => {
       .do(
         KOA.middlewareM((cont) =>
           T.Do()
-            .do(KOA.accessReq((ctx) => ctx.set("X-Request-Id-2", "my-id-2")))
+            .do(KOA.accessMiddlewareReq()((ctx) => ctx.set("X-Request-Id-2", "my-id-2")))
             .do(cont)
             .done()
         )
