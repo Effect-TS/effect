@@ -5,6 +5,7 @@
   "private": false,
   "scripts": {
     "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
+    "postbuild": "prettier --write \"./{lib,es6}/**/*.ts\"",
     "lint": "tslint --project .",
     "bench": "yarn ts-node bench/index.ts && yarn ts-node bench/nestedMap.ts && yarn ts-node bench/nestedChain.ts",
     "import-path-rewrite": "import-path-rewrite",
