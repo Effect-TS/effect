@@ -1,6 +1,6 @@
 {
   "name": "@matechs/aio",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -23,7 +23,7 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/prelude": "^1.0.0-beta.5",
+    "@matechs/prelude": "^1.0.0",
     "fp-ts": "^2.5.3",
     "io-ts": "^2.1.3",
     "io-ts-types": "^0.5.6",
