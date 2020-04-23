@@ -53,7 +53,7 @@ export interface KoaOps {
   route<S, R, E, A>(
     method: Method,
     path: string,
-    f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>
+    f: (ctx: KoaRouter.RouterContext) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>
   ): T.SyncR<R & HasRouter, void>;
   bind(port: number, hostname?: string): T.AsyncR<HasKoa, Server>;
 }
@@ -91,7 +91,7 @@ export const provideKoa = T.provide<Koa>({
     route<S, R, E, A>(
       method: Method,
       path: string,
-      f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>
+      f: (ctx: KoaRouter.RouterContext) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>
     ): T.SyncR<R & HasRouter, void> {
       return T.accessM((r: R & HasRouter) =>
         T.sync(() => {
@@ -226,9 +226,14 @@ export function withSubRouter(
 
 export const contextEnv = "@matechs/koa/ContextURI";
 
-export interface Context {
+export interface Context<TState=KOA.DefaultState, TContext=KOA.DefaultContext> {
   [contextEnv]: {
-    ctx: KOA.ParameterizedContext;
+    ctx: KOA.ParameterizedContext<TState, TContext>;
+  };
+}
+export interface RouterContext {
+  [contextEnv]: {
+    ctx: KoaRouter.RouterContext;
   };
 }
 
@@ -236,10 +241,10 @@ export function route<S, R, E, A>(
   method: Method,
   path: string,
   handler: T.Effect<S, R, RouteError<E>, RouteResponse<A>>
-): T.SyncR<T.Erase<R, Context> & Koa & HasRouter, void> {
+): T.SyncR<T.Erase<R, RouterContext> & Koa & HasRouter, void> {
   return T.accessM(({ [koaEnv]: koa }: Koa) =>
     koa.route(method, path, (x) =>
-      T.provide<Context>({
+      T.provide<RouterContext>({
         [contextEnv]: {
           ctx: x
         }
@@ -312,13 +317,13 @@ export function accessAppM<S, R, E, A>(
 }
 
 export function accessReqM<S, R, E, A>(
-  f: (ctx: KOA.ParameterizedContext) => T.Effect<S, R, E, A>
-): T.Effect<S, Context & R, E, A> {
-  return T.accessM(({ [contextEnv]: { ctx } }: Context) => f(ctx));
+  f: (ctx: KoaRouter.RouterContext) => T.Effect<S, R, E, A>
+): T.Effect<S, RouterContext & R, E, A> {
+  return T.accessM(({ [contextEnv]: { ctx } }: RouterContext) => f(ctx));
 }
 
-export function accessReq<A>(f: (ctx: KOA.ParameterizedContext) => A): T.SyncR<Context, A> {
-  return T.access(({ [contextEnv]: { ctx } }: Context) => f(ctx));
+export function accessReq<A>(f: (ctx: KoaRouter.RouterContext) => A): T.SyncR<RouterContext, A> {
+  return T.access(({ [contextEnv]: { ctx } }: RouterContext) => f(ctx));
 }
 
 export function accessApp<A>(f: (app: KOA) => A): T.SyncR<HasKoa, A> {
