@@ -6509,10 +6509,10 @@ io-ts-types@^0.5.6:
   resolved "https://registry.yarnpkg.com/io-ts-types/-/io-ts-types-0.5.6.tgz#4d9afdf7220d865c5bf74f30d9b2fcf1d51f11e3"
   integrity sha512-E8mClvIN6sotGqICJQMyt8nMG9VkwejRYwOcKjAj5hndlWib9o8MRmP3HiyVK4Mn1lrpY6bB/B3LrMcV/HcWGQ==
 
-io-ts@^2.1.3:
-  version "2.1.3"
-  resolved "https://registry.yarnpkg.com/io-ts/-/io-ts-2.1.3.tgz#02c03c375d14079496f0c046ef8a9aad4fbaeb74"
-  integrity sha512-QFMR2QEBSP6w1TPmkpfca6xkzBbXO+K7ubdbV26GlCGI7CP9LV59bfty422JYtWgbBITuL/zBb1+mziv9f5Wfg==
+io-ts@^2.2.1:
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/io-ts/-/io-ts-2.2.1.tgz#d8cb21a23cf8fbe697d78445a65bab42c0eb467f"
+  integrity sha512-RufppkTV58MfDKF2gXlHVBvi+WIyL7nUcAQMkJ1O3SiQcqwlxf6dBOJP/LV19UxHRkGKJZ6ImSj7LqYcELIejQ==
 
 ip-regex@^2.1.0:
   version "2.1.0"
