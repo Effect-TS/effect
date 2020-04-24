@@ -6,8 +6,8 @@ const { summon } = MO.summonFor({});
 const Person = summon((F) =>
   F.interface(
     {
-      firstName: F.string({ ...MO.fastCheckConfig((x) => x.map((n) => `f_${n}`)) }),
-      lastName: F.string({ ...MO.fastCheckConfig((x) => x.map((n) => `l_${n}`)) })
+      firstName: F.string({ [MO.FastCheckURI]: (x) => x.map((n) => `f_${n}`) }),
+      lastName: F.string({ [MO.FastCheckURI]: (x) => x.map((n) => `l_${n}`) })
     },
     "Person"
   )
