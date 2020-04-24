@@ -289,6 +289,16 @@ export function trySyncMap<E>(
     });
 }
 
+export function tryEffect<S, R, E, A>(thunk: F.Lazy<Effect<S, R, E, A>>): Effect<S, R, unknown, A> {
+  return flatten(trySync(thunk));
+}
+
+export function tryEffectMap<E>(
+  onError: (e: unknown) => E
+): <S, R, E2, A>(thunk: F.Lazy<Effect<S, R, E2, A>>) => Effect<S, R, E | E2, A> {
+  return (thunk) => flatten(trySyncMap(onError)(thunk));
+}
+
 /**
  * Wrap an impure callback in an IO
  *

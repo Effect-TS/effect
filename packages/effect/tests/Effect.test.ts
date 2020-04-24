@@ -120,6 +120,50 @@ describe("EffectSafe", () => {
       );
     });
 
+    it("trySyncMap", async () => {
+      assert.deepEqual(await T.runToPromiseExit(T.trySyncMap((_err) => 2)(() => 1)), ex.done(1));
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.trySyncMap((err) => `got ${err}`)(() => {
+            throw 10;
+          })
+        ),
+        ex.raise(`got 10`)
+      );
+    });
+
+    it("tryEffect", async () => {
+      assert.deepEqual(await T.runToPromiseExit(T.tryEffect(() => T.pure(1))), ex.done(1));
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.tryEffect(() => {
+            throw 10;
+          })
+        ),
+        ex.raise(10)
+      );
+      assert.deepEqual(await T.runToPromiseExit(T.tryEffect(() => T.raiseError(10))), ex.raise(10));
+    });
+
+    it("tryEffectMap", async () => {
+      assert.deepEqual(
+        await T.runToPromiseExit(T.tryEffectMap((_err) => 2)(() => T.pure(1))),
+        ex.done(1)
+      );
+      assert.deepEqual(
+        await T.runToPromiseExit(
+          T.tryEffectMap((err) => `got ${err}`)(() => {
+            throw 10;
+          })
+        ),
+        ex.raise(`got 10`)
+      );
+      assert.deepEqual(
+        await T.runToPromiseExit(T.tryEffectMap((err) => `got ${err}`)(() => T.raiseError(10))),
+        ex.raise(10)
+      );
+    });
+
     it("abort on throw", async () => {
       assert.deepEqual(
         await T.runToPromiseExit(
