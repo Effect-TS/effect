@@ -1,9 +1,18 @@
+import "isomorphic-fetch";
 import { T, Service as F, Ex, pipe, U, O } from "@matechs/prelude";
 import * as RPC from "../src";
-import * as H from "@matechs/http-client";
 import * as EX from "@matechs/express";
-import * as L from "@matechs/http-client-libcurl";
 import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared";
+
+const todos: Array<Todo> = [
+  { id: 1, completed: false, title: "todo 1", userId: 1 },
+  { id: 2, completed: false, title: "todo 2", userId: 2 },
+  { id: 3, completed: false, title: "todo 3", userId: 3 },
+  { id: 4, completed: false, title: "todo 4", userId: 1 },
+  { id: 5, completed: false, title: "todo 5", userId: 2 },
+  { id: 6, completed: false, title: "todo 6", userId: 3 },
+  { id: 7, completed: false, title: "todo 7", userId: 4 }
+];
 
 export function authenticated<S, R, E, A>(
   eff: T.Effect<S, R, E, A>
@@ -21,9 +30,9 @@ export const placeholderJsonLive = F.implement(placeholderJsonM)({
   [placeholderJsonEnv]: {
     getTodo: (n) =>
       pipe(
-        H.get(`https://jsonplaceholder.typicode.com/todos/${n}`),
+        T.trySync(() => todos[n]),
         T.chainError(() => T.raiseError("error fetching todo")),
-        T.map(({ body }) => body as O.Some<Todo>),
+        T.map(O.fromNullable),
         authenticated
       )
   }
@@ -39,7 +48,6 @@ const program = pipe(
 // construct live environment
 const envLive: U.Env<typeof program> = {
   ...EX.express,
-  ...L.libcurl(),
   [RPC.serverConfigEnv]: {
     [placeholderJsonEnv]: {
       scope: "/placeholderJson" // exposed at /placeholderJson

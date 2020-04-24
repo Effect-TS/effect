@@ -1,11 +1,12 @@
 {
   "name": "@matechs/prelude",
-  "version": "1.0.0-beta.5",
+  "version": "1.0.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
     "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
+    "postbuild": "prettier --write \"./{lib,es6}/**/*.ts\"",
     "lint": "tslint --project .",
     "import-path-rewrite": "import-path-rewrite",
     "tc": "tsc --noEmit",
@@ -23,7 +24,7 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/effect": "^6.0.0-beta.3"
+    "@matechs/effect": "^6.0.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

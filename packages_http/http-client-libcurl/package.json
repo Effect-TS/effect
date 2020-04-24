@@ -1,11 +1,12 @@
 {
   "name": "@matechs/http-client-libcurl",
-  "version": "5.0.0-beta.6",
+  "version": "5.0.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
     "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
+    "postbuild": "prettier --write \"./{lib,es6}/**/*.ts\"",
     "lint": "tslint --project .",
     "import-path-rewrite": "import-path-rewrite",
     "tc": "tsc --noEmit"
@@ -31,7 +32,7 @@
     "query-string": "^6.12.1"
   },
   "dependencies": {
-    "@matechs/http-client": "^5.0.0-beta.6",
-    "@matechs/prelude": "^1.0.0-beta.5"
+    "@matechs/http-client": "^5.0.0",
+    "@matechs/prelude": "^1.0.0"
   }
 }
