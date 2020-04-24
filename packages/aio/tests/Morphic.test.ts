@@ -1,19 +1,31 @@
 import { MO } from "../src";
 import * as J from "@matechs/test-jest";
 
-const { summon } = MO.summonFor({});
+interface Config {
+  [MO.FastCheckURI]: {
+    firstName: string;
+    lastName: string;
+  };
+}
+
+const { summon } = MO.summonFor<Config>({});
 
 const Person = summon((F) =>
   F.interface(
     {
-      firstName: F.string({ [MO.FastCheckURI]: (x) => x.map((n) => `f_${n}`) }),
-      lastName: F.string({ [MO.FastCheckURI]: (x) => x.map((n) => `l_${n}`) })
+      firstName: F.string({ [MO.FastCheckURI]: (x, _) => x.map((n) => `${_.firstName}${n}`) }),
+      lastName: F.string({ [MO.FastCheckURI]: (x, _) => x.map((n) => `${_.lastName}${n}`) })
     },
     "Person"
   )
 );
 
-const PersonArb = MO.arb(Person)({});
+const PersonArb = MO.arb(Person)({
+  [MO.FastCheckURI]: {
+    firstName: "f_",
+    lastName: "l_"
+  }
+});
 
 const MorphicSuite = J.suite("Morphic")(
   J.testM(
