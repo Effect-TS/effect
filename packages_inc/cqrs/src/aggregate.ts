@@ -25,14 +25,15 @@ export class Aggregate<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NEA.NonEmptyArray<keyof Types>,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
-  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db>;
+  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db, Env>;
 
   constructor(
     public aggregate: string,
     public eventTypes: Keys,
-    public S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    public S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     public dbS: Db,
     public db: DbT<Db>
   ) {
@@ -60,7 +61,7 @@ export class Aggregate<
         any
       >
     > = never[]
-  >(root: string, handlers?: H): AggregateRoot<Types, Tag, ProgURI, InterpURI, Keys, Db, H> {
+  >(root: string, handlers?: H): AggregateRoot<Types, Tag, ProgURI, InterpURI, Keys, Db, H, Env> {
     return new AggregateRoot(this, root, this.eventTypes, handlers);
   }
 
@@ -98,12 +99,13 @@ export class AggregateRoot<
   Db extends symbol | string,
   H extends Array<
     Handler<any, AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>, any, any, any>
-  >
+  >,
+  Env
 > {
   private readonly narrowedS = this.aggregate.S.selectMorph(this.keys);
 
   constructor(
-    public aggregate: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>,
+    public aggregate: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db, Env>,
     public root: string,
     private readonly keys: Keys,
     private readonly handlers?: H

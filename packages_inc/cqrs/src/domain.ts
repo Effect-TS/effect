@@ -20,12 +20,13 @@ export class Domain<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
-  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db>;
+  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db, Env>;
 
   constructor(
-    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     private readonly dbURI: Db,
     private readonly db = dbT(dbURI)
   ) {

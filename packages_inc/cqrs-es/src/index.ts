@@ -21,9 +21,10 @@ const aggregateRead = <
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NEA.NonEmptyArray<keyof Types>,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 >(
-  agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>
+  agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db, Env>
 ) => (config: ReadSideConfig) =>
   M.use(eventStoreTcpConnection, (connection) =>
     agg.readAll(config)((_) => T.traverseArray(sendEvent(connection)))
@@ -37,9 +38,10 @@ export const aggregate = <
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NEA.NonEmptyArray<keyof Types>,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 >(
-  agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db>
+  agg: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db, Env>
 ) => ({
   dispatcher: aggregateRead(agg),
   read: (readId: string) => <S2, R2, E2>(

@@ -19,14 +19,15 @@ export class SliceFetcher<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NEA.NonEmptyArray<keyof Types>,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
   private readonly inDomain: (
     a: AOfTypes<Types>
   ) => a is AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>;
 
   constructor(
-    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
@@ -102,14 +103,15 @@ export class AggregateFetcher<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NEA.NonEmptyArray<keyof Types>,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
   private readonly inDomain: (
     a: AOfTypes<Types>
   ) => a is AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>;
 
   constructor(
-    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
@@ -181,14 +183,15 @@ export class DomainFetcher<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
   Keys extends NEA.NonEmptyArray<keyof Types>,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
   private readonly inDomain: (
     a: AOfTypes<Types>
   ) => a is AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys>>]: Types[k] }>;
 
   constructor(
-    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
@@ -263,10 +266,11 @@ export class DomainFetcherAll<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
   constructor(
-    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     private readonly db: DbT<Db>
   ) {}
 

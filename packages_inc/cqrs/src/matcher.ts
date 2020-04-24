@@ -9,7 +9,8 @@ export const matcher = <
   },
   Tag extends string,
   ProgURI extends ProgramURI,
-  InterpURI extends InterpreterURI
+  InterpURI extends InterpreterURI,
+  Env
 >(
-  adt: MorphADT<Types, Tag, ProgURI, InterpURI>
+  adt: MorphADT<Types, Tag, ProgURI, InterpURI, Env>
 ): MatcherT<AOfMorhpADT<typeof adt>, Tag> => adt.matchWiden as any;
