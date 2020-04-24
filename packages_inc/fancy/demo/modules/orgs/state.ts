@@ -1,8 +1,7 @@
 import { T, O } from "@matechs/prelude";
-import { AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { State } from "../../../src";
-import { summon } from "../../morphic";
+import { summon, AsOpaque } from "../../morphic";
 
 // alpha
 /* istanbul ignore file */
@@ -10,8 +9,8 @@ import { summon } from "../../morphic";
 export const OrgsState_ = summon((F) =>
   F.interface(
     {
-      found: F.nullable(F.string),
-      error: F.nullable(F.string)
+      found: F.nullable(F.string()),
+      error: F.nullable(F.string())
     },
     "OrgsState"
   )

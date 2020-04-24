@@ -1,13 +1,12 @@
-import { AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { T } from "@matechs/prelude";
 import { State } from "../../../src";
-import { summon } from "../../morphic";
+import { summon, AsOpaque } from "../../morphic";
 
-const FlashState_ = summon(F =>
+const FlashState_ = summon((F) =>
   F.interface(
     {
-      messages: F.array(F.string)
+      messages: F.array(F.string())
     },
     "FlashMessage"
   )
