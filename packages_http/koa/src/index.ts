@@ -67,11 +67,11 @@ export interface RouteError<E> {
   body: E;
 }
 
-export function routeError<E>(status: number, body: E): RouteError<E> {
-  return {
+export function routeError(status: number) {
+  return <E>(body: E): RouteError<E> => ({
     status,
     body
-  };
+  });
 }
 
 export interface RouteResponse<A> {
@@ -79,11 +79,11 @@ export interface RouteResponse<A> {
   body: A;
 }
 
-export function routeResponse<A>(status: number, body: A): RouteResponse<A> {
-  return {
+export function routeResponse(status: number) {
+  return <A>(body: A): RouteResponse<A> => ({
     status,
     body
-  };
+  });
 }
 
 export const provideKoa = T.provide<Koa>({

@@ -64,7 +64,7 @@ export function server<M extends F.ModuleShape<M>, R>(
                         i
                       )
                     ),
-                    (x) => res(E.right(EXP.routeResponse(200, { value: x })))
+                    (x) => res(E.right(EXP.routeResponse(200)({ value: x })))
                   );
 
                   return () => {
