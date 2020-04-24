@@ -1,6 +1,6 @@
 {
   "name": "@matechs/aio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -23,17 +23,17 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/prelude": "^1.0.0",
+    "@matechs/prelude": "^1.0.1",
+    "@morphic-ts/batteries": "^1.4.1",
     "fp-ts": "^2.5.3",
     "io-ts": "^2.2.1",
     "io-ts-types": "^0.5.6",
     "monocle-ts": "^2.1.0",
     "newtype-ts": "^0.3.4",
-    "retry-ts": "^0.1.2",
-    "@morphic-ts/batteries": "^1.4.1"
+    "retry-ts": "^0.1.2"
   },
   "devDependencies": {
-    "@matechs/test-jest": "^1.0.0"
+    "@matechs/test-jest": "^1.0.1"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
