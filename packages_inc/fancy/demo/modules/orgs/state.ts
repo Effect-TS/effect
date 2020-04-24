@@ -1,7 +1,7 @@
 import { T, O } from "@matechs/prelude";
-import { summon, AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { State } from "../../../src";
+import { summon, AsOpaque } from "../../morphic";
 
 // alpha
 /* istanbul ignore file */
@@ -19,7 +19,7 @@ export const OrgsState_ = summon((F) =>
 export interface OrgsState extends AType<typeof OrgsState_> {}
 export interface OrgsStateR extends EType<typeof OrgsState_> {}
 
-export const OrgsState = AsOpaque<OrgsStateR, OrgsState>(OrgsState_);
+export const OrgsState = AsOpaque<OrgsStateR, OrgsState>()(OrgsState_);
 
 export const initialState = T.pure(OrgsState.build({ error: O.none, found: O.none }));
 

@@ -36,10 +36,11 @@ export class Read<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Db extends symbol | string
+  Db extends symbol | string,
+  Env
 > {
   constructor(
-    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI>,
+    private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     private readonly db: DbT<Db>
   ) {}
 
