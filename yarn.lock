@@ -2092,10 +2092,10 @@
   dependencies:
     "@morphic-ts/common" "^1.2.0"
 
-"@morphic-ts/batteries@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/batteries/-/batteries-1.4.0.tgz#f1f69853bad9bacbf2558f55fd15b362fce70299"
-  integrity sha512-e/NL2wxZoioThW6XDfKmqmg5cllmjazNYiOYgQE3gDkhU8AiEbsT6ZHSDiTm4DQMcPmK0pWEHrQstr8z+scYtw==
+"@morphic-ts/batteries@^1.4.0", "@morphic-ts/batteries@^1.4.1":
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/batteries/-/batteries-1.4.1.tgz#11b00d60b4943a6c5938e3cd07dc3d71dbe1c65a"
+  integrity sha512-jp3ohY17ZvdYxGtXF2l2Dq69btlA84dLGGoxhdGst81UdWrfwMr85o01hKlUi77EaEUhYL9BeAVf+QxJnOi0cA==
   dependencies:
     "@morphic-ts/adt" "^1.2.0"
     "@morphic-ts/algebras" "^1.2.0"
