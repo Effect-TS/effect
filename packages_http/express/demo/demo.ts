@@ -8,7 +8,7 @@ const program = EX.withApp(
         "get",
         "/",
         T.pure(
-          EX.routeResponse(200, {
+          EX.routeResponse(200)({
             message: "OK"
           })
         )

@@ -12,14 +12,14 @@ describe("Koa", () => {
         KOA.route(
           "post",
           "/",
-          KOA.accessReqM()((r) => T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500, { res: 1 })))
+          KOA.accessReqM()((r) => T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500)({ res: 1 })))
         )
       )
       .do(
         KOA.route(
           "post",
           "/access",
-          KOA.accessReq()((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
+          KOA.accessReq()((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500)({ res: 1 }))
         )
       )
       .do(
@@ -29,22 +29,22 @@ describe("Koa", () => {
               "post",
               "/",
               KOA.accessReqM()((r) =>
-                T.pure(KOA.routeResponse(r.path === "/sub" ? 200 : 500, { res: 1 }))
+                T.pure(KOA.routeResponse(r.path === "/sub" ? 200 : 500)({ res: 1 }))
               )
             ),
             KOA.route(
               "post",
               "/access",
               KOA.accessReq()((r) =>
-                KOA.routeResponse(r.path === "/sub/access" ? 200 : 500, { res: 1 })
+                KOA.routeResponse(r.path === "/sub/access" ? 200 : 500)({ res: 1 })
               )
             )
           ),
           KOA.withSubRouter("/sub")
         )
       )
-      .do(KOA.route("post", "/delay", T.delay(T.pure(KOA.routeResponse(200, { res: 1 })), 0)))
-      .do(KOA.route("post", "/bad", T.raiseError(KOA.routeError(500, { res: 1 }))))
+      .do(KOA.route("post", "/delay", T.delay(T.pure(KOA.routeResponse(200)({ res: 1 })), 0)))
+      .do(KOA.route("post", "/bad", T.raiseError(KOA.routeError(500)({ res: 1 }))))
       .do(KOA.route("post", "/bad2", T.raiseAbort("abort")))
       .do(KOA.route("post", "/bad3", T.raiseInterrupt))
       .do(

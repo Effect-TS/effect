@@ -12,17 +12,17 @@ describe("Express", () => {
         EX.route(
           "post",
           "/",
-          EX.accessReqM((r) => T.pure(EX.routeResponse(r.path === "/" ? 200 : 500, { res: 1 })))
+          EX.accessReqM((r) => T.pure(EX.routeResponse(r.path === "/" ? 200 : 500)({ res: 1 })))
         )
       )
       .do(
         EX.route(
           "post",
           "/access",
-          EX.accessReq((r) => EX.routeResponse(r.path === "/access" ? 200 : 500, { res: 1 }))
+          EX.accessReq((r) => EX.routeResponse(r.path === "/access" ? 200 : 500)({ res: 1 }))
         )
       )
-      .do(EX.route("post", "/bad", T.raiseError(EX.routeError(500, { res: 1 }))))
+      .do(EX.route("post", "/bad", T.raiseError(EX.routeError(500)({ res: 1 }))))
       .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
       .do(EX.route("post", "/bad3", T.raiseInterrupt))
       .do(

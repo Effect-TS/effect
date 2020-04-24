@@ -6,7 +6,7 @@ const routeA = KOA.route(
   "get",
   "/",
   T.pure(
-    KOA.routeResponse(200, {
+    KOA.routeResponse(200)({
       message: "OK"
     })
   )
@@ -17,14 +17,14 @@ const routeB = KOA.route(
   "/random-message",
   T.Do()
     .bind("message", RM.hitMe())
-    .return(({ message }) => KOA.routeResponse(200, { message }))
+    .return(KOA.routeResponse(200))
 );
 
 const routeC = KOA.route(
   "get",
   "/",
   T.pure(
-    KOA.routeResponse(200, {
+    KOA.routeResponse(200)({
       message: "sub-OK"
     })
   )
@@ -35,7 +35,7 @@ const routeD = KOA.route(
   "/random-message",
   T.Do()
     .bind("message", RM.hitMe())
-    .return(({ message }) => KOA.routeResponse(200, { message: `sub-${message}` }))
+    .return(({ message }) => KOA.routeResponse(200)({ message: `sub-${message}` }))
 );
 
 const mainR = T.sequenceT(routeA, routeB);
