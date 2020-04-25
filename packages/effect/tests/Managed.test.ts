@@ -1,9 +1,10 @@
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { semigroupSum } from "fp-ts/lib/Semigroup";
+import { semigroupSum, getLastSemigroup } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
+import * as Ar from "fp-ts/lib/Array";
 
-import { effect as T, managed as M } from "../src";
+import { effect as T, managed as M, exit as Ex } from "../src";
 
 describe("Managed", () => {
   it("should use resource encaseEffect", async () => {
@@ -96,6 +97,28 @@ describe("Managed", () => {
     const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)));
 
     assert.deepEqual(result, 2);
+  });
+
+  describe("parZip", () => {
+    it("should use both resources", async () => {
+      const ma = M.pure(1);
+      const mb = M.pure(1);
+      const zip = M.parZip(ma, mb, getLastSemigroup());
+
+      const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)));
+
+      assert.deepEqual(result, 2);
+    });
+
+    it("should catch both errors", async () => {
+      const ma = M.bracket(T.pure(1), () => T.raiseError(["first"]));
+      const mb = M.bracket(T.pure(2), () => T.raiseError(["second"]));
+      const zip = M.parZip(ma, mb, Ar.getMonoid<string>());
+
+      const result = await T.runToPromiseExit(M.use(zip, ([n, m]) => T.pure(n + m)));
+
+      assert.deepEqual(result, Ex.raise(["first", "second"]));
+    });
   });
 
   it("should use resource ap", async () => {

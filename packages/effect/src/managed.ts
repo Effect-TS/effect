@@ -9,7 +9,7 @@ import * as Ei from "fp-ts/lib/Either";
 import * as TR from "fp-ts/lib/Tree";
 import * as RE from "fp-ts/lib/Record";
 import { Separated } from "fp-ts/lib/Compactable";
-import { Monad4E } from "./overloadEff";
+import { Monad4E, UnionToIntersection } from "./overloadEff";
 
 export enum ManagedTag {
   Pure,
@@ -236,6 +236,19 @@ export function zip<S, R, E, A, S2, R2, E2, B>(
   resb: Managed<S2, R2, E2, B>
 ): Managed<S | S2, R & R2, E | E2, readonly [A, B]> {
   return zipWith(resa, resb, (a, b) => [a, b] as const);
+}
+
+export function parZip<S, S2, R, R2, E, A, B>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E, B>,
+  sem: Sem.Semigroup<E>
+): Managed<S | S2, UnionToIntersection<R | R2>, E, [A, B]> {
+  const vST = ST(T.getValidationM(sem));
+
+  return map_(
+    bracket(vST(allocate(resa), allocate(resb)), ([a, b]) => vST(a.release, b.release)),
+    ([fst, snd]) => F.tuple(fst.a, snd.a)
+  );
 }
 
 /**
