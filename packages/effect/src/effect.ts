@@ -975,6 +975,38 @@ export const never: Async<never> = asyncTotal(() => {
 });
 
 /**
+ * An IO that produces a void result when res is involed.
+ *
+ * This IO will however prevent a javascript runtime such as node from exiting by scheduling an interval for 60s
+ * 
+ * Example usage:
+ * 
+ * until((cb) => {
+ *    process.on("SIGINT", () => {
+ *      cb();
+ *    });
+ *    process.on("SIGTERM", () => {
+ *      cb();
+ *    });
+ * })
+ * 
+ */
+export const until = (f: (res: () => void) => void) =>
+  asyncTotal<void>((res) => {
+    const handle = setTimeout(() => {
+      // keep process going
+    }, 60000);
+    f(() => {
+      res(undefined);
+      clearTimeout(handle);
+    });
+    return (cb) => {
+      clearTimeout(handle);
+      cb();
+    };
+  });
+
+/**
  * Delay evaluation of inner by some amount of time
  * @param inner
  * @param ms

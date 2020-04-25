@@ -39,6 +39,15 @@ describe("EffectSafe", () => {
     cancel();
     assert.deepEqual(count > 0, true);
   });
+  it("until", async () => {
+    const eff = T.until((cb) => {
+      setTimeout(() => {
+        cb();
+      }, 100);
+    });
+    const res = await T.runToPromiseExit(eff);
+    assert.deepEqual(res._tag, "Done");
+  });
   describe("Kleisly", () => {
     it("chainOption", async () => {
       const pipeableErr = await pipe(
