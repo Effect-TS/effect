@@ -238,6 +238,14 @@ export function zip<S, R, E, A, S2, R2, E2, B>(
   return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
+/**
+ * Zip two resources together into a tuple, while allocating and releasing
+ * them in parallel and combining errors using provided semigroup.
+ *
+ * @param resa
+ * @param resb
+ * @param sem
+ */
 export function parZip<S, S2, R, R2, E, A, B>(
   resa: Managed<S, R, E, A>,
   resb: Managed<S2, R2, E, B>,
