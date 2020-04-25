@@ -9,6 +9,7 @@ import * as Ei from "fp-ts/lib/Either";
 import * as TR from "fp-ts/lib/Tree";
 import * as RE from "fp-ts/lib/Record";
 import { Separated } from "fp-ts/lib/Compactable";
+import { pipe } from "fp-ts/lib/pipeable";
 import { Monad4E } from "./overloadEff";
 
 export enum ManagedTag {
@@ -236,6 +237,107 @@ export function zip<S, R, E, A, S2, R2, E2, B>(
   resb: Managed<S2, R2, E2, B>
 ): Managed<S | S2, R & R2, E | E2, readonly [A, B]> {
   return zipWith(resa, resb, (a, b) => [a, b] as const);
+}
+
+function foldExitAndFiber<E, A, B, S, S2, R, R2>(
+  aExit: Exit<E, A>,
+  bFiber: T.Fiber<E, B>,
+  onBFail: F.FunctionN<[A], T.Effect<S, R, E, unknown>>,
+  onAFail: F.FunctionN<[B], T.Effect<S2, R2, E, unknown>>
+): T.AsyncRE<R & R2, E, [A, B]> {
+  return T.effect.chain(bFiber.wait, (bExit) =>
+    aExit._tag === "Done"
+      ? bExit._tag === "Done"
+        ? F.unsafeCoerce<T.Sync<[A, B]>, T.AsyncRE<R & R2, E, [A, B]>>(
+            T.pure(F.tuple(aExit.value, bExit.value))
+          )
+        : pipe(
+            onBFail(aExit.value),
+            T.chain(() => T.raised(bExit)),
+            T.chainError(() => T.raised(bExit))
+          )
+      : bExit._tag === "Done"
+        ? pipe(
+            onAFail(bExit.value),
+            T.chain(() => T.raised(aExit)),
+            T.chainError(() => T.raised(aExit))
+          )
+        : T.raised(aExit)
+  );
+}
+
+/**
+ * Zip two resources together with provided function, while allocating and
+ * releasing them in parallel and returning first error that was raised.
+ *
+ * @param resa
+ * @param resb
+ * @param f
+ */
+export function parZipWith<S, S2, R, R2, E, A, B, C>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E, B>,
+  f: F.FunctionN<[A, B], C>
+): AsyncRE<R & R2, E, C> {
+  const alloc = T.raceFold(
+    allocate(resa),
+    allocate(resb),
+    (aExit, bFiber) =>
+      foldExitAndFiber(
+        aExit,
+        bFiber,
+        (aLeak) => aLeak.release,
+        (bLeak) => bLeak.release
+      ),
+    (bExit, aFiber) =>
+      T.effect.map(
+        foldExitAndFiber(
+          bExit,
+          aFiber,
+          (bLeak) => bLeak.release,
+          (aLeak) => aLeak.release
+        ),
+        ([b, a]) => F.tuple(a, b)
+      )
+  );
+
+  return map_(
+    bracket(alloc, ([aLeak, bLeak]) =>
+      T.raceFold(
+        aLeak.release,
+        bLeak.release,
+        (aExit, bFiber) =>
+          foldExitAndFiber(
+            aExit,
+            bFiber,
+            () => T.unit,
+            () => T.unit
+          ),
+        (bExit, aFiber) =>
+          foldExitAndFiber(
+            bExit,
+            aFiber,
+            () => T.unit,
+            () => T.unit
+          )
+      )
+    ),
+    ([aLeak, bLeak]) => f(aLeak.a, bLeak.a)
+  );
+}
+
+/**
+ * Zip two resources together into tuple, while allocating and releasing them
+ * in parallel and returning first error that was raised.
+ *
+ * @param resa
+ * @param resb
+ */
+export function parZip<S, S2, R, R2, E, A, B>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E, B>,
+): AsyncRE<R & R2, E, [A, B]> {
+  return parZipWith(resa, resb, F.tuple);
 }
 
 /**
