@@ -504,6 +504,23 @@ export function liftEither<A, E, B>(
   return (a) => suspended(() => fromEither(f(a)));
 }
 
+export function liftOption<E>(
+  onNone: () => E
+): <A, B>(f: F.FunctionN<[A], Op.Option<B>>) => F.FunctionN<[A], SyncE<E, B>> {
+  return (f) => (a) => suspended(() => encaseOption(f(a), onNone));
+}
+
+/**
+ * Combines T.chain and T.fromOption
+ */
+export const flattenOption = <E>(onNone: () => E) => <S, R, E2, A>(
+  eff: Effect<S, R, E2, Op.Option<A>>
+): Effect<S, R, E | E2, A> => chain_(eff, (x) => encaseOption(x, onNone));
+
+export const flattenEither = <S, R, E, E2, A>(
+  eff: Effect<S, R, E, Ei.Either<E2, A>>
+): Effect<S, R, E | E2, A> => chain_(eff, encaseEither);
+
 /**
  * Map the value produced by an IO to the constant b
  * @param io
@@ -978,9 +995,9 @@ export const never: Async<never> = asyncTotal(() => {
  * An IO that produces a void result when res is involed.
  *
  * This IO will however prevent a javascript runtime such as node from exiting by scheduling an interval for 60s
- * 
+ *
  * Example usage:
- * 
+ *
  * until((cb) => {
  *    process.on("SIGINT", () => {
  *      cb();
@@ -989,7 +1006,7 @@ export const never: Async<never> = asyncTotal(() => {
  *      cb();
  *    });
  * })
- * 
+ *
  */
 export const until = (f: (res: () => void) => void) =>
   asyncTotal<void>((res) => {

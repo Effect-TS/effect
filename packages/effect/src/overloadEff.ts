@@ -108,7 +108,9 @@ export interface Functor4EC<F extends MaURIS, E> {
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
 
-export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (k: infer I) => void
+export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I
+) => void
   ? I
   : never;
 
@@ -411,6 +413,25 @@ export interface PipeableFunctor4EC<F extends MaURIS, E> {
   readonly map: <A, B>(f: (a: A) => B) => <S, R>(fa: Kind4<F, S, R, E, A>) => Kind4<F, S, R, E, B>;
 }
 
+export interface PipeableMonadThrow4E<F extends MaURIS> {
+  readonly fromOption: <E>(onNone: () => E) => <A>(ma: Option<A>) => Kind4<F, never, unknown, E, A>;
+  readonly fromEither: <E, A>(ma: Either<E, A>) => Kind4<F, never, unknown, E, A>;
+  readonly fromPredicate: {
+    <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): (
+      a: A
+    ) => Kind4<F, never, unknown, E, B>;
+    <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): (a: A) => Kind4<F, never, unknown, E, A>;
+  };
+  readonly filterOrElse: {
+    <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <S, R>(
+      ma: Kind4<F, S, R, E, A>
+    ) => Kind4<F, S, R, E, B>;
+    <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): <S, R>(
+      ma: Kind4<F, S, R, E, A>
+    ) => Kind4<F, S, R, E, A>;
+  };
+}
+
 export interface PipeableAlt4E<F extends MaURIS> {
   readonly alt: <S1, R, E, A>(
     that: () => Kind4<F, S1, R, E, A>
@@ -450,7 +471,7 @@ declare module "fp-ts/lib/pipeable" {
       : {}) &
     (I extends Profunctor4<F> ? PipeableProfunctor4<F> : {}) &
     (I extends Semigroupoid4<F> ? PipeableSemigroupoid4<F> : {}) &
-    (I extends MonadThrow4E<F> ? PipeableMonadThrow4<F> : {});
+    (I extends MonadThrow4E<F> ? PipeableMonadThrow4E<F> : {});
   export function pipeable<F extends MaURIS, I, E>(
     I: {
       URI: F;
