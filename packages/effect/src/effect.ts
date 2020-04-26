@@ -1101,16 +1101,12 @@ export function makeFiber<S, R, E, A>(
   init: Effect<S, R, E, A>,
   name?: string
 ): SyncR<R, Fiber<E, A>> {
-  return accessM((r: R) =>
-    chain_(accessRuntime, (runtime) =>
-      sync(() => {
-        const driver = new DriverImpl<E, A>(runtime);
-        const fiber = new FiberImpl(driver, name);
-        driver.start(provide(r)(init));
-        return fiber;
-      })
-    )
-  );
+  return access((r: R) => {
+    const driver = new DriverImpl<E, A>();
+    const fiber = new FiberImpl(driver, name);
+    driver.start(provide(r)(init));
+    return fiber;
+  });
 }
 
 /**

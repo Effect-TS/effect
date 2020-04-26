@@ -12,7 +12,7 @@ import {
   raise,
   interruptWithErrorAndOthers
 } from "./original/exit";
-import { defaultRuntime, Runtime } from "./original/runtime";
+import { defaultRuntime } from "./original/runtime";
 import * as T from "./effect";
 import { DoublyLinkedList } from "./listc";
 
@@ -92,15 +92,11 @@ export interface Driver<E, A> {
 export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Exit<E, A> | null = null;
   listeners: F.FunctionN<[Exit<E, A>], void>[] | undefined;
-
-  started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
   cancelAsync: T.AsyncCancelContFn | undefined;
   envStack = new DoublyLinkedList<any>();
-
-  constructor(readonly runtime: Runtime = defaultRuntime) {}
 
   set(a: Exit<E, A>): void {
     this.completed = a;
@@ -171,9 +167,10 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   dispatchResumeInterrupt(_: { err?: Error; others?: Error[] }) {
-    const go = _.others && _.err
-      ? this.handle(interruptWithErrorAndOthers(_.err, _.others))
-      : this.handle(interruptWithError(_.err));
+    const go =
+      _.others && _.err
+        ? this.handle(interruptWithErrorAndOthers(_.err, _.others))
+        : this.handle(interruptWithError(_.err));
     if (go) {
       // eslint-disable-next-line
       this.loop(go);
@@ -181,7 +178,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   resumeInterrupt(err?: Error, others?: Error[]): void {
-    this.runtime.dispatch(this.dispatchResumeInterrupt.bind(this), { err, others });
+    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { err, others });
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -226,7 +223,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   resume(status: E.Either<unknown, unknown>): void {
     this.cancelAsync = undefined;
-    this.runtime.dispatch(this.foldResume.bind(this), status);
+    defaultRuntime.dispatch(this.foldResume.bind(this), status);
   }
 
   contextSwitch(op: T.AsyncFn<unknown, unknown>): void {
@@ -339,7 +336,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             current = current.f1;
             break;
           case T.EffectTag.AccessRuntime:
-            current = T.Implementation.fromEffect(T.pure(current.f0(this.runtime)));
+            current = T.Implementation.fromEffect(T.pure(current.f0(defaultRuntime)));
             break;
           case T.EffectTag.AccessInterruptible:
             current = T.Implementation.fromEffect(T.pure(current.f0(this.isInterruptible())));
@@ -359,12 +356,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   start(run: T.AsyncRE<{}, E, A>): void {
-    if (this.started) {
-      /* istanbul ignore next */
-      throw new Error("Bug: Runtime may not be started multiple times");
-    }
-    this.started = true;
-    this.runtime.dispatch(this.loop.bind(this), run as any);
+    defaultRuntime.dispatch(this.loop.bind(this), run as any);
   }
 
   interrupt(): void {
