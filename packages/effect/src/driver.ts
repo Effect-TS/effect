@@ -55,7 +55,7 @@ export class InterruptFrame {
   constructor(readonly interruptStatus: boolean[], readonly prev: FrameType | undefined) {}
   apply(u: unknown) {
     this.interruptStatus.pop();
-    return new T.Pure(u);
+    return new T.IPure(u);
   }
   exitRegion() {
     this.interruptStatus.pop();
@@ -174,7 +174,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
           this.complete(done(frame.apply(value)) as Done<A>);
           return;
         }
-        return new T.Pure(frame.apply(value));
+        return new T.IPure(frame.apply(value));
       } else {
         return frame.apply(value) as any;
       }
@@ -248,11 +248,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     );
   }
 
-  Pure(_: T.Pure<A>) {
+  IPure(_: T.IPure<A>) {
     return this.next(_.a);
   }
 
-  PureOption(_: T.PureOption<any, any>) {
+  IPureOption(_: T.IPureOption<any, any>) {
     if (_.a._tag === "Some") {
       return this.next(_.a.value);
     } else {
@@ -260,7 +260,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  PureEither(_: T.PureEither<any, any>) {
+  IPureEither(_: T.IPureEither<any, any>) {
     if (_.a._tag === "Right") {
       return this.next(_.a.right);
     } else {
@@ -268,14 +268,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  Raised(_: T.Raised<any>) {
+  IRaised(_: T.IRaised<any>) {
     if (_.e._tag === "Interrupt") {
       this.interrupted = true;
     }
     return this.handle(_.e);
   }
 
-  Completed(_: T.Completed<any, any>) {
+  ICompleted(_: T.ICompleted<any, any>) {
     if (_.e._tag === "Done") {
       return this.next(_.e.value);
     } else {
@@ -283,7 +283,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  Suspended(_: T.Suspended<any, any, any, any>) {
+  ISuspended(_: T.ISuspended<any, any, any, any>) {
     return _.e();
   }
 
@@ -318,11 +318,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   IAccessRuntime(_: T.IAccessRuntime<any>) {
-    return new T.Pure(_.f(defaultRuntime));
+    return new T.IPure(_.f(defaultRuntime));
   }
 
   IAccessInterruptible(_: T.IAccessInterruptible<any>) {
-    return new T.Pure(_.f(this.isInterruptible()));
+    return new T.IPure(_.f(this.isInterruptible()));
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
@@ -333,7 +333,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         current = this[current.tag()](current as any);
       } catch (e) {
-        current = new T.Raised({ _tag: "Abort", abortedWith: e });
+        current = new T.IRaised({ _tag: "Abort", abortedWith: e });
       }
     }
 

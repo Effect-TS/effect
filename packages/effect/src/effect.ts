@@ -61,12 +61,12 @@ declare module "fp-ts/lib/HKT" {
 }
 
 export type Instructions =
-  | Pure<any>
-  | PureOption<any, any>
-  | PureEither<any, any>
-  | Raised<any>
-  | Completed<any, any>
-  | Suspended<any, any, any, any>
+  | IPure<any>
+  | IPureOption<any, any>
+  | IPureEither<any, any>
+  | IRaised<any>
+  | ICompleted<any, any>
+  | ISuspended<any, any, any, any>
   | IAsync<any, any>
   | IChain<any, any, any, any, any, any, any, any>
   | ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>
@@ -77,63 +77,63 @@ export type Instructions =
   | IProvideEnv<any, any, any, any>
   | IMap<any, any, any, any, any>;
 
-const PureTag = "Pure" as const;
+const IPureTag = "IPure" as const;
 
-export class Pure<A> {
+export class IPure<A> {
   constructor(readonly a: A) {}
 
   tag() {
-    return PureTag;
+    return IPureTag;
   }
 }
 
-const PureOptionTag = "PureOption" as const;
+const IPureOptionTag = "IPureOption" as const;
 
-export class PureOption<E, A> {
+export class IPureOption<E, A> {
   constructor(readonly a: Op.Option<A>, readonly onEmpty: () => E) {}
 
   tag() {
-    return PureOptionTag;
+    return IPureOptionTag;
   }
 }
 
-const PureEitherTag = "PureEither" as const;
+const IPureEitherTag = "IPureEither" as const;
 
-export class PureEither<E, A> {
+export class IPureEither<E, A> {
   constructor(readonly a: Ei.Either<E, A>) {}
 
   tag() {
-    return PureEitherTag;
+    return IPureEitherTag;
   }
 }
 
-const RaisedTag = "Raised" as const;
+const IRaisedTag = "IRaised" as const;
 
-export class Raised<E> {
+export class IRaised<E> {
   constructor(readonly e: ex.Cause<E>) {}
 
   tag() {
-    return RaisedTag;
+    return IRaisedTag;
   }
 }
 
-const CompletedTag = "Completed" as const;
+const ICompletedTag = "ICompleted" as const;
 
-export class Completed<E, A> {
+export class ICompleted<E, A> {
   constructor(readonly e: ex.Exit<E, A>) {}
 
   tag() {
-    return CompletedTag;
+    return ICompletedTag;
   }
 }
 
-const SuspendedTag = "Suspended" as const;
+const ISuspendedTag = "ISuspended" as const;
 
-export class Suspended<S, R, E, A> {
+export class ISuspended<S, R, E, A> {
   constructor(readonly e: F.Lazy<Effect<S, R, E, A>>) {}
 
   tag() {
-    return SuspendedTag;
+    return ISuspendedTag;
   }
 }
 
@@ -238,7 +238,7 @@ export class IAccessEnv<R> {
  * @param a the value
  */
 export function pure<A>(a: A): Sync<A> {
-  return new Pure(a) as any;
+  return new IPure(a) as any;
 }
 
 /**
@@ -248,7 +248,7 @@ export function pure<A>(a: A): Sync<A> {
  * @param e
  */
 export function raised<E, A = never>(e: ex.Cause<E>): SyncE<E, A> {
-  return new Raised(e) as any;
+  return new IRaised(e) as any;
 }
 
 /**
@@ -277,7 +277,7 @@ export const raiseInterrupt: Sync<never> = raised(ex.interrupt);
  * @param exit
  */
 export function completed<E = never, A = never>(exit: ex.Exit<E, A>): SyncE<E, A> {
-  return new Completed(exit) as any;
+  return new ICompleted(exit) as any;
 }
 
 /**
@@ -287,7 +287,7 @@ export function completed<E = never, A = never>(exit: ex.Exit<E, A>): SyncE<E, A
  * @param thunk
  */
 export function suspended<S, R, E, A>(thunk: F.Lazy<Effect<S, R, E, A>>): Effect<S, R, E, A> {
-  return new Suspended(thunk) as any;
+  return new ISuspended(thunk) as any;
 }
 
 /**
@@ -379,8 +379,8 @@ function chain_<S, R, E, A, S2, R2, E2, B>(
   bind: F.FunctionN<[A], Effect<S2, R2, E2, B>>
 ): Effect<S | S2, R & R2, E | E2, B> {
   return (
-    (((inner as any) as Instructions).tag() === PureTag
-      ? bind(((inner as any) as Pure<A>).a)
+    (((inner as any) as Instructions).tag() === IPureTag
+      ? bind(((inner as any) as IPure<A>).a)
       : new IChain(inner, bind)) as any
   );
 }
@@ -416,7 +416,7 @@ export function chainTaskEither<A, E, B>(
  * @param e
  */
 export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncE<E, A> {
-  return new PureEither(e) as any;
+  return new IPureEither(e) as any;
 }
 
 /**
@@ -425,7 +425,7 @@ export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncE<E, A> {
  * @param onError
  */
 export function encaseOption<E, A>(o: Op.Option<A>, onError: F.Lazy<E>): SyncE<E, A> {
-  return new PureOption(o, onError) as any;
+  return new IPureOption(o, onError) as any;
 }
 
 /**
@@ -513,8 +513,8 @@ const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
  */
 function map_<S, R, E, A, B>(base: Effect<S, R, E, A>, f: F.FunctionN<[A], B>): Effect<S, R, E, B> {
   return (
-    (((base as any) as Instructions).tag() === PureTag
-      ? new Pure(f(((base as any) as Pure<A>).a))
+    (((base as any) as Instructions).tag() === IPureTag
+      ? new IPure(f(((base as any) as IPure<A>).a))
       : new IMap(base, f)) as any
   );
 }
