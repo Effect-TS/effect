@@ -63,9 +63,9 @@ export function toStream<S, R, E, A>(
 export function toStreamError<S, R, E, A>(_: StreamEither<S, R, E, A>): S.Stream<S, R, E, A> {
   return S.stream.chain(fromS(_), (e) => {
     if (Ei.isLeft(e)) {
-      return S.encaseEffect<S, R, E, A>(T.raiseError(e.left));
+      return S.encaseEffect(T.raiseError(e.left));
     } else {
-      return S.stream.of<S, R, E, A>(e.right);
+      return S.stream.of(e.right);
     }
   });
 }
