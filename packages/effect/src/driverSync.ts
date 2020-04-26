@@ -2,80 +2,24 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { option as O, either as E, function as F } from "fp-ts";
+import { either as E, function as F } from "fp-ts";
 import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./original/exit";
-import { defaultRuntime, Runtime } from "./original/runtime";
+import { defaultRuntime } from "./original/runtime";
 import * as T from "./effect";
-import * as L from "./list";
+import { DoublyLinkedList } from "./listc";
+import {
+  FrameType,
+  Frame,
+  MapFrame,
+  FoldFrame,
+  InterruptFrame,
+  FoldFrameTag,
+  InterruptFrameTag,
+  MapFrameTag
+} from "./driver";
 
 // the same as Driver but backs runSync
 /* istanbul ignore file */
-
-export type RegionFrameType = InterruptFrame;
-export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
-
-interface Frame {
-  readonly _tag: "frame";
-  readonly prev: FrameType | undefined;
-  readonly apply: (u: unknown) => T.Instructions;
-}
-
-class Frame implements Frame {
-  constructor(
-    readonly apply: (u: unknown) => T.Instructions,
-    readonly prev: FrameType | undefined
-  ) {}
-  readonly _tag = "frame" as const;
-}
-
-interface FoldFrame {
-  readonly _tag: "fold-frame";
-  readonly prev: FrameType | undefined;
-  readonly apply: (u: unknown) => T.Instructions;
-  readonly recover: (cause: Cause<unknown>) => T.Instructions;
-}
-
-class FoldFrame implements FoldFrame {
-  constructor(
-    readonly apply: (u: unknown) => T.Instructions,
-    readonly recover: (cause: Cause<unknown>) => T.Instructions,
-    readonly prev: FrameType | undefined
-  ) {}
-  readonly _tag = "fold-frame" as const;
-}
-
-interface MapFrame {
-  readonly _tag: "map-frame";
-  readonly prev: FrameType | undefined;
-  readonly apply: (u: unknown) => unknown;
-}
-
-class MapFrame implements MapFrame {
-  constructor(readonly apply: (u: unknown) => unknown, readonly prev: FrameType | undefined) {}
-  readonly _tag = "map-frame" as const;
-}
-
-interface InterruptFrame {
-  readonly _tag: "interrupt-frame";
-  readonly prev: FrameType | undefined;
-  readonly apply: (u: unknown) => T.Instructions;
-  readonly exitRegion: () => void;
-}
-
-const makeInterruptFrame = (
-  interruptStatus: boolean[],
-  prev: FrameType | undefined
-): InterruptFrame => ({
-  prev,
-  _tag: "interrupt-frame",
-  apply(u: unknown) {
-    interruptStatus.pop();
-    return T.Implementation.fromEffect(T.pure(u));
-  },
-  exitRegion() {
-    interruptStatus.pop();
-  }
-});
 
 export interface DriverSync<E, A> {
   start(run: T.SyncE<E, A>): E.Either<Error, Exit<E, A>>;
@@ -84,13 +28,10 @@ export interface DriverSync<E, A> {
 export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   completed: Exit<E, A> | null = null;
   listeners: F.FunctionN<[Exit<E, A>], void>[] | undefined;
-  started = false;
   interrupted = false;
   currentFrame: FrameType | undefined = undefined;
   interruptRegionStack: boolean[] | undefined;
-  envStack = L.empty<any>();
-
-  constructor(readonly runtime: Runtime = defaultRuntime) {}
+  envStack = new DoublyLinkedList<any>();
 
   set(a: Exit<E, A>): void {
     this.completed = a;
@@ -123,12 +64,12 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     let frame = this.currentFrame;
     this.currentFrame = this.currentFrame?.prev;
     while (frame) {
-      if (frame._tag === "fold-frame" && (e._tag !== "Interrupt" || !this.isInterruptible())) {
-        return frame.recover(e);
+      if (frame.tag() === FoldFrameTag && (e._tag !== "Interrupt" || !this.isInterruptible())) {
+        return (frame as FoldFrame).recover(e);
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
-      if (frame._tag === "interrupt-frame") {
-        frame.exitRegion();
+      if (frame.tag() === InterruptFrameTag) {
+        (frame as InterruptFrame).exitRegion();
       }
       frame = this.currentFrame;
       this.currentFrame = this.currentFrame?.prev;
@@ -155,16 +96,14 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     this.currentFrame = this.currentFrame?.prev;
 
     if (frame) {
-      switch (frame._tag) {
-        case "map-frame": {
-          if (this.currentFrame === undefined) {
-            this.complete(done(frame.apply(value)) as Done<A>);
-            return;
-          }
-          return new T.Implementation(T.EffectTag.Pure, frame.apply(value));
+      if (frame.tag() === MapFrameTag) {
+        if (this.currentFrame === undefined) {
+          this.complete(done(frame.apply(value)) as Done<A>);
+          return;
         }
-        default:
-          return frame.apply(value);
+        return new T.IPure(frame.apply(value));
+      } else {
+        return frame.apply(value) as any;
       }
     }
     this.complete(done(value) as Done<A>);
@@ -172,26 +111,126 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   }
 
   foldResume(status: E.Either<unknown, unknown>) {
-    E.fold(
-      (cause: unknown) => {
-        const go = this.handle(raise(cause));
-        if (go) {
-          /* eslint-disable-next-line */
-          this.loop(go);
-        }
-      },
-      (value: unknown) => {
-        const go = this.next(value);
-        if (go) {
-          /* eslint-disable-next-line */
-          this.loop(go);
-        }
+    if (status._tag === "Right") {
+      const go = this.next(status.right);
+      if (go) {
+        /* eslint-disable-next-line */
+        this.loop(go);
       }
-    )(status);
+    } else {
+      const go = this.handle(raise(status.left));
+      if (go) {
+        /* eslint-disable-next-line */
+        this.loop(go);
+      }
+    }
   }
 
   resume(status: E.Either<unknown, unknown>): void {
     this.foldResume(status);
+  }
+
+  IAccessEnv(_: T.IAccessEnv<any>) {
+    const env = !this.envStack.empty() ? this.envStack.tail!.value : {};
+    return this.next(env);
+  }
+
+  IProvideEnv(_: T.IProvideEnv<any, any, any, any>) {
+    this.envStack.append(_.r as any);
+    return (
+      T.effect.foldExit(
+        _.e as any,
+        (e) =>
+          T.effect.chain(
+            T.sync(() => {
+              this.envStack.deleteTail();
+              return {};
+            }),
+            (_) => T.raised(e)
+          ),
+        (r) =>
+          T.sync(() => {
+            this.envStack.deleteTail();
+            return r;
+          })
+      ) as any
+    );
+  }
+
+  IPure(_: T.IPure<A>) {
+    return this.next(_.a);
+  }
+
+  IPureOption(_: T.IPureOption<any, any>) {
+    if (_.a._tag === "Some") {
+      return this.next(_.a.value);
+    } else {
+      return this.handle(raise(_.onEmpty()));
+    }
+  }
+
+  IPureEither(_: T.IPureEither<any, any>) {
+    if (_.a._tag === "Right") {
+      return this.next(_.a.right);
+    } else {
+      return this.handle(raise(_.a.left));
+    }
+  }
+
+  IRaised(_: T.IRaised<any>) {
+    if (_.e._tag === "Interrupt") {
+      this.interrupted = true;
+    }
+    return this.handle(_.e);
+  }
+
+  ICompleted(_: T.ICompleted<any, any>) {
+    if (_.e._tag === "Done") {
+      return this.next(_.e.value);
+    } else {
+      return this.handle(_.e);
+    }
+  }
+
+  ISuspended(_: T.ISuspended<any, any, any, any>) {
+    return _.e();
+  }
+
+  IAsync(_: T.IAsync<any, any>) {
+    return undefined;
+  }
+
+  IChain(_: T.IChain<any, any, any, any, any, any, any, any>) {
+    this.currentFrame = new Frame(_.f as any, this.currentFrame);
+    return _.e as any;
+  }
+
+  IMap(_: T.IMap<any, any, any, any, any>) {
+    this.currentFrame = new MapFrame(_.f, this.currentFrame);
+    return _.e as any;
+  }
+
+  ICollapse(_: T.ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>) {
+    this.currentFrame = new FoldFrame(_.success as any, _.failure as any, this.currentFrame);
+    return _.inner as any;
+  }
+
+  IInterruptibleRegion(_: T.IInterruptibleRegion<any, any, any, any>) {
+    if (this.interruptRegionStack === undefined) {
+      this.interruptRegionStack = [_.int];
+    } else {
+      this.interruptRegionStack.push(_.int);
+    }
+    this.currentFrame = new InterruptFrame(this.interruptRegionStack, this.currentFrame);
+    return _.e as any;
+  }
+
+  IAccessRuntime(_: T.IAccessRuntime<any>) {
+    return new T.IPure(_.f(defaultRuntime));
+  }
+
+  IAccessInterruptible(_: T.IAccessInterruptible<any>) {
+    return new T.IPure(_.f(this.isInterruptible()));
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
@@ -200,105 +239,12 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
 
     while (current && (!this.interrupted || !this.isInterruptible())) {
       try {
-        switch (current._tag) {
-          case T.EffectTag.AccessEnv:
-            const env = L.isNotEmpty(this.envStack) ? L.lastUnsafe(this.envStack) : {};
-            current = this.next(env);
-            break;
-          case T.EffectTag.ProvideEnv:
-            L.push(this.envStack, current.f1 as any);
-            current = T.Implementation.fromEffect(
-              T.effect.foldExit(
-                current.f0 as any,
-                (e) =>
-                  T.effect.chain(
-                    T.sync(() => {
-                      L.popLastUnsafe(this.envStack);
-                      return {};
-                    }),
-                    (_) => T.raised(e)
-                  ),
-                (r) =>
-                  T.sync(() => {
-                    L.popLastUnsafe(this.envStack);
-                    return r;
-                  })
-              )
-            );
-            break;
-          case T.EffectTag.Pure:
-            current = this.next(current.f0);
-            break;
-          case T.EffectTag.PureOption: {
-            if (O.isSome(current.f0)) {
-              current = this.next(current.f0.value);
-            } else {
-              current = this.handle(raise(current.f1()));
-            }
-            break;
-          }
-          case T.EffectTag.PureEither: {
-            if (E.isRight(current.f0)) {
-              current = this.next(current.f0.right);
-            } else {
-              current = this.handle(raise(current.f0.left));
-            }
-            break;
-          }
-          case T.EffectTag.Raised:
-            if (current.f0._tag === "Interrupt") {
-              this.interrupted = true;
-            }
-            current = this.handle(current.f0);
-            break;
-          case T.EffectTag.Completed:
-            if (current.f0._tag === "Done") {
-              current = this.next(current.f0.value);
-            } else {
-              current = this.handle(current.f0);
-            }
-            break;
-          case T.EffectTag.Suspended:
-            current = current.f0();
-            break;
-          case T.EffectTag.Async:
-            current = undefined;
-            break;
-          case T.EffectTag.Chain:
-            this.currentFrame = new Frame(current.f1, this.currentFrame);
-            current = current.f0;
-            break;
-          case T.EffectTag.Map:
-            this.currentFrame = new MapFrame(current.f1, this.currentFrame);
-            current = current.f0;
-            break;
-          case T.EffectTag.Collapse:
-            this.currentFrame = new FoldFrame(current.f2, current.f1, this.currentFrame);
-            current = current.f0;
-            break;
-          case T.EffectTag.InterruptibleRegion:
-            if (this.interruptRegionStack === undefined) {
-              this.interruptRegionStack = [current.f0];
-            } else {
-              this.interruptRegionStack.push(current.f0);
-            }
-            this.currentFrame = makeInterruptFrame(this.interruptRegionStack, this.currentFrame);
-            current = current.f1;
-            break;
-          case T.EffectTag.AccessRuntime:
-            current = T.Implementation.fromEffect(T.pure(current.f0(this.runtime)));
-            break;
-          case T.EffectTag.AccessInterruptible:
-            current = T.Implementation.fromEffect(T.pure(current.f0(this.isInterruptible())));
-            break;
-          default:
-            /* istanbul ignore next */
-            throw new Error(`Die: Unrecognized current type ${current}`);
-        }
+        current = this[current.tag()](current as any);
       } catch (e) {
-        current = T.Implementation.fromEffect(T.raiseAbort(e));
+        current = new T.IRaised({ _tag: "Abort", abortedWith: e });
       }
     }
+
     // If !current then the interrupt came to late and we completed everything
     if (this.interrupted && current) {
       this.resumeInterrupt();

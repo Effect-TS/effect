@@ -61,143 +61,175 @@ declare module "fp-ts/lib/HKT" {
 }
 
 export type Instructions =
-  | Pure
-  | PureOption
-  | PureEither
-  | Raised
-  | Completed
-  | Suspended
-  | IAsync
-  | IChain
-  | ICollapse
-  | IInterruptibleRegion
-  | IAccessInterruptible
-  | IAccessRuntime
-  | IAccessEnv
-  | IProvideEnv
-  | IMap;
+  | IPure<any>
+  | IPureOption<any, any>
+  | IPureEither<any, any>
+  | IRaised<any>
+  | ICompleted<any, any>
+  | ISuspended<any, any, any, any>
+  | IAsync<any, any>
+  | IChain<any, any, any, any, any, any, any, any>
+  | ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>
+  | IInterruptibleRegion<any, any, any, any>
+  | IAccessInterruptible<any>
+  | IAccessRuntime<any>
+  | IAccessEnv<any>
+  | IProvideEnv<any, any, any, any>
+  | IMap<any, any, any, any, any>;
 
-export interface Pure<A = unknown> {
-  readonly _tag: EffectTag.Pure;
-  readonly f0: A;
+const IPureTag = "IPure" as const;
+
+export class IPure<A> {
+  constructor(readonly a: A) {}
+
+  tag() {
+    return IPureTag;
+  }
 }
 
-export interface PureOption<A = unknown, E = never> {
-  readonly _tag: EffectTag.PureOption;
-  readonly f0: Op.Option<A>;
-  readonly f1: F.Lazy<E>;
+const IPureOptionTag = "IPureOption" as const;
+
+export class IPureOption<E, A> {
+  constructor(readonly a: Op.Option<A>, readonly onEmpty: () => E) {}
+
+  tag() {
+    return IPureOptionTag;
+  }
 }
 
-export interface PureEither<A = unknown, E = never> {
-  readonly _tag: EffectTag.PureEither;
-  readonly f0: Ei.Either<E, A>;
+const IPureEitherTag = "IPureEither" as const;
+
+export class IPureEither<E, A> {
+  constructor(readonly a: Ei.Either<E, A>) {}
+
+  tag() {
+    return IPureEitherTag;
+  }
 }
 
-export interface Raised<E = unknown> {
-  readonly _tag: EffectTag.Raised;
-  readonly f0: ex.Cause<E>;
+const IRaisedTag = "IRaised" as const;
+
+export class IRaised<E> {
+  constructor(readonly e: ex.Cause<E>) {}
+
+  tag() {
+    return IRaisedTag;
+  }
 }
 
-export interface Completed<E = unknown, A = unknown> {
-  readonly _tag: EffectTag.Completed;
-  readonly f0: ex.Exit<E, A>;
+const ICompletedTag = "ICompleted" as const;
+
+export class ICompleted<E, A> {
+  constructor(readonly e: ex.Exit<E, A>) {}
+
+  tag() {
+    return ICompletedTag;
+  }
 }
 
-export interface Suspended {
-  readonly _tag: EffectTag.Suspended;
-  readonly f0: F.Lazy<Instructions>;
+const ISuspendedTag = "ISuspended" as const;
+
+export class ISuspended<S, R, E, A> {
+  constructor(readonly e: F.Lazy<Effect<S, R, E, A>>) {}
+
+  tag() {
+    return ISuspendedTag;
+  }
 }
 
 export type AsyncContFn<E, A> = F.FunctionN<[Ei.Either<E, A>], void>;
 export type AsyncCancelContFn = F.FunctionN<[(error?: Error, others?: Error[]) => void], void>;
 export type AsyncFn<E, A> = F.FunctionN<[AsyncContFn<E, A>], AsyncCancelContFn>;
 
-export interface IAsync<E = unknown, A = unknown> {
-  readonly _tag: EffectTag.Async;
-  readonly f0: AsyncFn<E, A>;
-}
+const IAsyncTag = "IAsync" as const;
 
-export interface IChain<Z = unknown> {
-  readonly _tag: EffectTag.Chain;
-  readonly f0: Instructions;
-  readonly f1: F.FunctionN<[Z], Instructions>;
-}
+export class IAsync<E, A> {
+  constructor(readonly e: AsyncFn<E, A>) {}
 
-export interface IMap<A = unknown, B = unknown> {
-  readonly _tag: EffectTag.Map;
-  readonly f0: Instructions;
-  readonly f1: F.FunctionN<[A], B>;
-}
-
-export interface ICollapse<E1 = unknown, A1 = unknown> {
-  readonly _tag: EffectTag.Collapse;
-  readonly f0: Instructions;
-  readonly f1: F.FunctionN<[ex.Cause<E1>], Instructions>;
-  readonly f2: F.FunctionN<[A1], Instructions>;
-}
-
-export interface IInterruptibleRegion {
-  readonly _tag: EffectTag.InterruptibleRegion;
-  readonly f0: boolean;
-  readonly f1: Instructions;
-}
-
-export interface IAccessInterruptible<A = unknown> {
-  readonly _tag: EffectTag.AccessInterruptible;
-  readonly f0: F.FunctionN<[boolean], A>;
-}
-
-export interface IAccessRuntime<A = unknown> {
-  readonly _tag: EffectTag.AccessRuntime;
-  readonly f0: F.FunctionN<[Runtime], A>;
-}
-
-export interface IProvideEnv<R = unknown> {
-  readonly _tag: EffectTag.ProvideEnv;
-  readonly f0: Instructions;
-  readonly f1: R;
-}
-
-export interface IAccessEnv<R = unknown> {
-  readonly _tag: EffectTag.AccessEnv;
-  readonly f0: R;
-}
-
-export class Implementation<S, R, E, A> implements Effect<S, R, E, A> {
-  static fromEffect<S, R, E, A>(eff: Effect<S, R, E, A>): Implementation<S, R, E, A> {
-    return eff as any;
+  tag() {
+    return IAsyncTag;
   }
+}
 
+const IChainTag = "IChain" as const;
+
+export class IChain<S, R, E, A, S1, R1, E1, B> {
+  constructor(readonly e: Effect<S, R, E, A>, readonly f: (a: A) => Effect<S1, R1, E1, B>) {}
+
+  tag() {
+    return IChainTag;
+  }
+}
+
+const IMapTag = "IMap" as const;
+
+export class IMap<S, R, E, A, B> {
+  constructor(readonly e: Effect<S, R, E, A>, readonly f: (a: A) => B) {}
+
+  tag() {
+    return IMapTag;
+  }
+}
+
+const ICollapseTag = "ICollapse" as const;
+
+export class ICollapse<S1, S2, S3, R, R2, R3, E1, E2, E3, A1, A2, A3> {
   constructor(
-    readonly _tag: EffectTag,
-    readonly f0: any = undefined,
-    readonly f1: any = undefined,
-    readonly f2: any = undefined
+    readonly inner: Effect<S1, R, E1, A1>,
+    readonly failure: F.FunctionN<[ex.Cause<E1>], Effect<S2, R2, E2, A2>>,
+    readonly success: F.FunctionN<[A1], Effect<S3, R3, E3, A3>>
   ) {}
 
-  /* istanbul ignore next */
-  _TAG(): "Effect" {
-    return undefined as any;
+  tag() {
+    return ICollapseTag;
   }
+}
 
-  /* istanbul ignore next */
-  _A(): A {
-    return undefined as any;
+const IInterruptibleRegionTag = "IInterruptibleRegion" as const;
+
+export class IInterruptibleRegion<S, R, E, A> {
+  constructor(readonly e: Effect<S, R, E, A>, readonly int: boolean) {}
+
+  tag() {
+    return IInterruptibleRegionTag;
   }
+}
 
-  /* istanbul ignore next */
-  _E(): E {
-    return undefined as any;
+const IAccessInterruptibleTag = "IAccessInterruptible" as const;
+
+export class IAccessInterruptible<A> {
+  constructor(readonly f: (_: boolean) => A) {}
+
+  tag() {
+    return IAccessInterruptibleTag;
   }
+}
 
-  /* istanbul ignore next */
-  _S(): S {
-    return undefined as any;
+const IAccessRuntimeTag = "IAccessRuntime" as const;
+
+export class IAccessRuntime<A> {
+  constructor(readonly f: (_: Runtime) => A) {}
+
+  tag() {
+    return IAccessRuntimeTag;
   }
+}
 
-  /* istanbul ignore next */
-  _R(_: R): void {
-    return undefined as any;
+const IProvideEnvTag = "IProvideEnv" as const;
+
+export class IProvideEnv<S, R, E, A> {
+  constructor(readonly e: Effect<S, R, E, A>, readonly r: R) {}
+
+  tag() {
+    return IProvideEnvTag;
+  }
+}
+
+const IAccessEnvTag = "IAccessEnv" as const;
+
+export class IAccessEnv<R> {
+  tag() {
+    return IAccessEnvTag;
   }
 }
 
@@ -206,7 +238,7 @@ export class Implementation<S, R, E, A> implements Effect<S, R, E, A> {
  * @param a the value
  */
 export function pure<A>(a: A): Sync<A> {
-  return new Implementation(EffectTag.Pure as const, a);
+  return new IPure(a) as any;
 }
 
 /**
@@ -216,7 +248,7 @@ export function pure<A>(a: A): Sync<A> {
  * @param e
  */
 export function raised<E, A = never>(e: ex.Cause<E>): SyncE<E, A> {
-  return new Implementation(EffectTag.Raised as const, e);
+  return new IRaised(e) as any;
 }
 
 /**
@@ -245,7 +277,7 @@ export const raiseInterrupt: Sync<never> = raised(ex.interrupt);
  * @param exit
  */
 export function completed<E = never, A = never>(exit: ex.Exit<E, A>): SyncE<E, A> {
-  return new Implementation(EffectTag.Completed as const, exit);
+  return new ICompleted(exit) as any;
 }
 
 /**
@@ -255,7 +287,7 @@ export function completed<E = never, A = never>(exit: ex.Exit<E, A>): SyncE<E, A
  * @param thunk
  */
 export function suspended<S, R, E, A>(thunk: F.Lazy<Effect<S, R, E, A>>): Effect<S, R, E, A> {
-  return new Implementation(EffectTag.Suspended as const, thunk);
+  return new ISuspended(thunk) as any;
 }
 
 /**
@@ -310,7 +342,7 @@ export function tryEffectMap<E>(
  * @param op
  */
 export function async<E, A>(op: AsyncFn<E, A>): AsyncE<E, A> {
-  return new Implementation(EffectTag.Async as const, op);
+  return new IAsync(op) as any;
 }
 
 /**
@@ -334,7 +366,7 @@ export function interruptibleRegion<S, R, E, A>(
   inner: Effect<S, R, E, A>,
   flag: boolean
 ): Effect<S, R, E, A> {
-  return new Implementation(EffectTag.InterruptibleRegion as const, flag, inner);
+  return new IInterruptibleRegion(inner, flag) as any;
 }
 
 /**
@@ -346,9 +378,11 @@ function chain_<S, R, E, A, S2, R2, E2, B>(
   inner: Effect<S, R, E, A>,
   bind: F.FunctionN<[A], Effect<S2, R2, E2, B>>
 ): Effect<S | S2, R & R2, E | E2, B> {
-  return inner._tag === EffectTag.Pure
-    ? bind((inner as any).f0)
-    : new Implementation(EffectTag.Chain as const, inner, bind);
+  return (
+    (((inner as any) as Instructions).tag() === IPureTag
+      ? bind(((inner as any) as IPure<A>).a)
+      : new IChain(inner, bind)) as any
+  );
 }
 
 export function chainOption<E>(
@@ -382,7 +416,7 @@ export function chainTaskEither<A, E, B>(
  * @param e
  */
 export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncE<E, A> {
-  return new Implementation(EffectTag.PureEither, e);
+  return new IPureEither(e) as any;
 }
 
 /**
@@ -391,7 +425,7 @@ export function encaseEither<E, A>(e: Ei.Either<E, A>): SyncE<E, A> {
  * @param onError
  */
 export function encaseOption<E, A>(o: Op.Option<A>, onError: F.Lazy<E>): SyncE<E, A> {
-  return new Implementation(EffectTag.PureOption, o, onError);
+  return new IPureOption(o, onError) as any;
 }
 
 /**
@@ -409,18 +443,12 @@ export function foldExit<S1, E1, RF, E2, A1, S2, E3, A2, RS>(
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: Sync<boolean> = new Implementation(
-  EffectTag.AccessInterruptible as const,
-  F.identity
-);
+export const accessInterruptible: Sync<boolean> = new IAccessInterruptible(F.identity) as any;
 
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: Sync<Runtime> = new Implementation(
-  EffectTag.AccessRuntime as const,
-  F.identity
-);
+export const accessRuntime: Sync<Runtime> = new IAccessRuntime(F.identity) as any;
 
 /**
  * Access the runtime then provide it to the provided function
@@ -433,7 +461,7 @@ export function withRuntime<S, R, E, A>(
 }
 
 export function accessEnvironment<R>(): SyncR<R, R> {
-  return new Implementation(EffectTag.AccessEnv);
+  return new IAccessEnv() as any;
 }
 
 export function accessM<S, R, R2, E, A>(
@@ -476,8 +504,7 @@ export function provideM<S, R, R3, E2>(
 
 const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
   ma: Effect<S, R, E, A>
-): Effect<S, R2, E, A> =>
-  accessM((r2: R2) => new Implementation(EffectTag.ProvideEnv as const, ma, f(r2)));
+): Effect<S, R2, E, A> => accessM((r2: R2) => new IProvideEnv(ma, f(r2)) as any);
 
 /**
  * Map the value produced by an IO
@@ -485,9 +512,11 @@ const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
  * @param f
  */
 function map_<S, R, E, A, B>(base: Effect<S, R, E, A>, f: F.FunctionN<[A], B>): Effect<S, R, E, B> {
-  return base._tag === EffectTag.Pure
-    ? new Implementation(EffectTag.Pure as const, f(((base as any) as Pure<any>).f0))
-    : new Implementation(EffectTag.Map as const, base, f);
+  return (
+    (((base as any) as Instructions).tag() === IPureTag
+      ? new IPure(f(((base as any) as IPure<A>).a))
+      : new IMap(base, f)) as any
+  );
 }
 
 /**
@@ -1101,16 +1130,12 @@ export function makeFiber<S, R, E, A>(
   init: Effect<S, R, E, A>,
   name?: string
 ): SyncR<R, Fiber<E, A>> {
-  return accessM((r: R) =>
-    chain_(accessRuntime, (runtime) =>
-      sync(() => {
-        const driver = new DriverImpl<E, A>(runtime);
-        const fiber = new FiberImpl(driver, name);
-        driver.start(provide(r)(init));
-        return fiber;
-      })
-    )
-  );
+  return access((r: R) => {
+    const driver = new DriverImpl<E, A>();
+    const fiber = new FiberImpl(driver, name);
+    driver.start(provide(r)(init));
+    return fiber;
+  });
 }
 
 /**
@@ -1538,7 +1563,7 @@ export interface EffectMonad
 }
 
 const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
-  new Implementation(EffectTag.Collapse as const, inner, failure, success);
+  new ICollapse(inner, failure, success) as any;
 
 const mapLeft_: EffectMonad["mapLeft"] = (io, f) => chainError_(io, F.flow(f, raiseError));
 
