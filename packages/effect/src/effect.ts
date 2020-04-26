@@ -77,11 +77,12 @@ export type Instructions =
   | IProvideEnv<any, any, any, any>
   | IMap<any, any, any, any, any>;
 
+const PureTag = "Pure" as const;
 export class Pure<A> implements Effect<never, unknown, never, A> {
   constructor(readonly a: A) {}
 
   tag() {
-    return "Pure" as const;
+    return PureTag;
   }
 
   /* istanbul ignore next */
@@ -110,11 +111,13 @@ export class Pure<A> implements Effect<never, unknown, never, A> {
   }
 }
 
+const PureOptionTag = "PureOption" as const;
+
 export class PureOption<E, A> implements Effect<never, unknown, E, A> {
   constructor(readonly a: Op.Option<A>, readonly onEmpty: () => E) {}
 
   tag() {
-    return "PureOption" as const;
+    return PureOptionTag;
   }
 
   /* istanbul ignore next */
@@ -142,12 +145,14 @@ export class PureOption<E, A> implements Effect<never, unknown, E, A> {
     return undefined as any;
   }
 }
+
+const PureEitherTag = "PureEither" as const;
 
 export class PureEither<E, A> implements Effect<never, unknown, E, A> {
   constructor(readonly a: Ei.Either<E, A>) {}
 
   tag() {
-    return "PureEither" as const;
+    return PureEitherTag;
   }
 
   /* istanbul ignore next */
@@ -176,11 +181,13 @@ export class PureEither<E, A> implements Effect<never, unknown, E, A> {
   }
 }
 
+const RaisedTag = "Raised" as const;
+
 export class Raised<E> implements Effect<never, unknown, E, never> {
   constructor(readonly e: ex.Cause<E>) {}
 
   tag() {
-    return "Raised" as const;
+    return RaisedTag;
   }
 
   /* istanbul ignore next */
@@ -209,11 +216,13 @@ export class Raised<E> implements Effect<never, unknown, E, never> {
   }
 }
 
+const CompletedTag = "Completed" as const;
+
 export class Completed<E, A> implements Effect<never, unknown, E, A> {
   constructor(readonly e: ex.Exit<E, A>) {}
 
   tag() {
-    return "Completed" as const;
+    return CompletedTag;
   }
 
   /* istanbul ignore next */
@@ -242,11 +251,13 @@ export class Completed<E, A> implements Effect<never, unknown, E, A> {
   }
 }
 
+const SuspendedTag = "Suspended" as const;
+
 export class Suspended<S, R, E, A> implements Effect<S, R, E, A> {
   constructor(readonly e: F.Lazy<Effect<S, R, E, A>>) {}
 
   tag() {
-    return "Suspended" as const;
+    return SuspendedTag;
   }
 
   /* istanbul ignore next */
@@ -279,11 +290,13 @@ export type AsyncContFn<E, A> = F.FunctionN<[Ei.Either<E, A>], void>;
 export type AsyncCancelContFn = F.FunctionN<[(error?: Error, others?: Error[]) => void], void>;
 export type AsyncFn<E, A> = F.FunctionN<[AsyncContFn<E, A>], AsyncCancelContFn>;
 
+const IAsyncTag = "IAsync" as const;
+
 export class IAsync<E, A> implements Effect<unknown, unknown, E, A> {
   constructor(readonly e: AsyncFn<E, A>) {}
 
   tag() {
-    return "IAsync" as const;
+    return IAsyncTag;
   }
 
   /* istanbul ignore next */
@@ -312,11 +325,13 @@ export class IAsync<E, A> implements Effect<unknown, unknown, E, A> {
   }
 }
 
+const IChainTag = "IChain" as const;
+
 export class IChain<S, R, E, A, S1, R1, E1, B> implements Effect<S | S1, R & R1, E | E1, B> {
   constructor(readonly e: Effect<S, R, E, A>, readonly f: (a: A) => Effect<S1, R1, E1, B>) {}
 
   tag() {
-    return "IChain" as const;
+    return IChainTag;
   }
 
   /* istanbul ignore next */
@@ -345,11 +360,13 @@ export class IChain<S, R, E, A, S1, R1, E1, B> implements Effect<S | S1, R & R1,
   }
 }
 
+const IMapTag = "IMap" as const;
+
 export class IMap<S, R, E, A, B> implements Effect<S, R, E, B> {
   constructor(readonly e: Effect<S, R, E, A>, readonly f: (a: A) => B) {}
 
   tag() {
-    return "IMap" as const;
+    return IMapTag;
   }
 
   /* istanbul ignore next */
@@ -378,6 +395,8 @@ export class IMap<S, R, E, A, B> implements Effect<S, R, E, B> {
   }
 }
 
+const ICollapseTag = "ICollapse" as const;
+
 export class ICollapse<S1, S2, S3, R, R2, R3, E1, E2, E3, A1, A2, A3>
   implements Effect<S1 | S2 | S3, R & R2 & R3, E2 | E3, A2 | A3> {
   constructor(
@@ -387,7 +406,7 @@ export class ICollapse<S1, S2, S3, R, R2, R3, E1, E2, E3, A1, A2, A3>
   ) {}
 
   tag() {
-    return "ICollapse" as const;
+    return ICollapseTag;
   }
 
   /* istanbul ignore next */
@@ -416,11 +435,13 @@ export class ICollapse<S1, S2, S3, R, R2, R3, E1, E2, E3, A1, A2, A3>
   }
 }
 
+const IInterruptibleRegionTag = "IInterruptibleRegion" as const;
+
 export class IInterruptibleRegion<S, R, E, A> implements Effect<S, R, E, A> {
   constructor(readonly e: Effect<S, R, E, A>, readonly int: boolean) {}
 
   tag() {
-    return "IInterruptibleRegion" as const;
+    return IInterruptibleRegionTag;
   }
 
   /* istanbul ignore next */
@@ -449,11 +470,13 @@ export class IInterruptibleRegion<S, R, E, A> implements Effect<S, R, E, A> {
   }
 }
 
+const IAccessInterruptibleTag = "IAccessInterruptible" as const;
+
 export class IAccessInterruptible<A> implements Effect<never, unknown, never, A> {
   constructor(readonly f: (_: boolean) => A) {}
 
   tag() {
-    return "IAccessInterruptible" as const;
+    return IAccessInterruptibleTag;
   }
 
   /* istanbul ignore next */
@@ -481,12 +504,14 @@ export class IAccessInterruptible<A> implements Effect<never, unknown, never, A>
     return undefined as any;
   }
 }
+
+const IAccessRuntimeTag = "IAccessRuntime" as const;
 
 export class IAccessRuntime<A> implements Effect<never, unknown, never, A> {
   constructor(readonly f: (_: Runtime) => A) {}
 
   tag() {
-    return "IAccessRuntime" as const;
+    return IAccessRuntimeTag;
   }
 
   /* istanbul ignore next */
@@ -515,11 +540,13 @@ export class IAccessRuntime<A> implements Effect<never, unknown, never, A> {
   }
 }
 
+const IProvideEnvTag = "IProvideEnv" as const;
+
 export class IProvideEnv<S, R, E, A> implements Effect<S, unknown, E, A> {
   constructor(readonly e: Effect<S, R, E, A>, readonly r: R) {}
 
   tag() {
-    return "IProvideEnv" as const;
+    return IProvideEnvTag;
   }
 
   /* istanbul ignore next */
@@ -548,9 +575,11 @@ export class IProvideEnv<S, R, E, A> implements Effect<S, unknown, E, A> {
   }
 }
 
+const IAccessEnvTag = "IAccessEnv" as const;
+
 export class IAccessEnv<R> implements Effect<never, R, never, R> {
   tag() {
-    return "IAccessEnv" as const;
+    return IAccessEnvTag;
   }
   /* istanbul ignore next */
   _TAG(): "Effect" {
