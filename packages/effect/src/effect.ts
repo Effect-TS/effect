@@ -18,7 +18,9 @@ import {
   MonadThrow4E,
   Alt4E,
   Monad4EC,
+  Monad4ECP,
   MonadThrow4EC,
+  MonadThrow4ECP,
   Alt4EC,
   Monad4EP,
   MonadThrow4EP
@@ -221,7 +223,7 @@ export function raised<E, A = never>(e: ex.Cause<E>): SyncE<E, A> {
  * An IO that is failed with a checked error
  * @param e
  */
-export function raiseError<E, A = never>(e: E): SyncE<E, A> {
+export function raiseError<E>(e: E): SyncE<E, never> {
   return raised(ex.raise(e));
 }
 
@@ -1544,7 +1546,7 @@ const alt_: EffectMonad["alt"] = chainError_;
 
 export function alt<R2, E2, A>(
   fy: () => AsyncRE<R2, E2, A>
-): <R, E>(fx: AsyncRE<R, E, A>) => AsyncRE<R & R2, E2, A> {
+): <R, E, B>(fx: AsyncRE<R, E, B>) => AsyncRE<R & R2, E2, A | B> {
   return (fx) => alt_(fx, fy);
 }
 
@@ -1698,6 +1700,42 @@ export function getCauseSemigroup<E>(S: Sem.Semigroup<E>): Sem.Semigroup<ex.Caus
 
 export function getValidationM<E>(S: Sem.Semigroup<E>) {
   return getCauseValidationM(getCauseSemigroup(S));
+}
+
+export function getParValidationM<E>(S: Sem.Semigroup<E>) {
+  return getParCauseValidationM(getCauseSemigroup(S));
+}
+
+export function getParCauseValidationM<E>(
+  S: Sem.Semigroup<ex.Cause<E>>
+): Monad4ECP<URI, E> & MonadThrow4ECP<URI, E> & Alt4EC<URI, E> {
+  return {
+    URI,
+    _E: undefined as any,
+    _CTX: "async",
+    of: pure,
+    map: map_,
+    chain: chain_,
+    ap: <S1, S2, R, R2, A, B>(
+      fab: Effect<S1, R, E, (a: A) => B>,
+      fa: Effect<S2, R2, E, A>
+    ): Effect<unknown, R & R2, E, B> =>
+      chain_(parZip(result(fa), result(fab)), ([faEx, fabEx]) =>
+        fabEx._tag === "Done"
+          ? faEx._tag === "Done"
+            ? pure(fabEx.value(faEx.value))
+            : raised(faEx)
+          : faEx._tag === "Done"
+          ? raised(fabEx)
+          : raised(S.concat(faEx, fabEx))
+      ),
+    throwError: raiseError,
+    alt: <S1, S2, R, R2, A>(
+      fa: Effect<S1, R, E, A>,
+      fb: () => Effect<S2, R2, E, A>
+    ): Effect<S1 | S2, R & R2, E, A> =>
+      foldExit_(fa, (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure), pure)
+  };
 }
 
 export function getCauseValidationM<E>(

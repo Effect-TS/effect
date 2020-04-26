@@ -64,26 +64,31 @@ export interface Chain4EP<F extends MaURIS> extends Apply4EP<F> {
 }
 
 export interface Applicative4E<F extends MaURIS> extends Apply4E<F> {
-  readonly of: <S = never, R = unknown, E = never, A = unknown>(a: A) => Kind4<F, S, R, E, A>;
+  readonly of: <A>(a: A) => Kind4<F, never, unknown, never, A>;
 }
 
 export interface Applicative4EP<F extends MaURIS> extends Apply4EP<F> {
-  readonly of: <S = never, R = unknown, E = never, A = unknown>(a: A) => Kind4<F, S, R, E, A>;
+  readonly of: <A>(a: A) => Kind4<F, never, unknown, never, A>;
 }
 
 export interface Alt4E<F extends MaURIS> extends Functor4<F> {
-  readonly alt: <S1, S2, R, R2, E, E2, A>(
+  readonly alt: <S1, S2, R, R2, E, E2, A, B>(
     fx: Kind4<F, S1, R, E, A>,
-    fy: () => Kind4<F, S2, R2, E2, A>
-  ) => Kind4<F, S1 | S2, R & R2, E2, A>;
+    fy: () => Kind4<F, S2, R2, E2, B>
+  ) => Kind4<F, S1 | S2, R & R2, E2, A | B>;
 }
 
 export interface Monad4E<M extends MaURIS> extends Applicative4E<M>, Chain4E<M> {}
 export interface Monad4EP<M extends MaURIS> extends Applicative4EP<M>, Chain4EP<M> {}
 export interface Monad4EC<M extends MaURIS, E> extends Applicative4EC<M, E>, Chain4EC<M, E> {}
+export interface Monad4ECP<M extends MaURIS, E> extends Applicative4ECP<M, E>, Chain4ECP<M, E> {}
 
 export interface Applicative4EC<F extends MaURIS, E> extends Apply4EC<F, E> {
-  readonly of: <S, R, A>(a: A) => Kind4<F, S, R, E, A>;
+  readonly of: <A>(a: A) => Kind4<F, never, unknown, E, A>;
+}
+
+export interface Applicative4ECP<F extends MaURIS, E> extends Apply4ECP<F, E> {
+  readonly of: <A>(a: A) => Kind4<F, never, unknown, E, A>;
 }
 
 export interface Apply4EC<F extends MaURIS, E> extends Functor4EC<F, E> {
@@ -93,7 +98,22 @@ export interface Apply4EC<F extends MaURIS, E> extends Functor4EC<F, E> {
   ) => Kind4<F, S1 | S2, R & R2, E, B>;
 }
 
+export interface Apply4ECP<F extends MaURIS, E> extends Functor4EC<F, E> {
+  _CTX: "async";
+  readonly ap: <S1, S2, R, R2, A, B>(
+    fab: Kind4<F, S1, R, E, (a: A) => B>,
+    fa: Kind4<F, S2, R2, E, A>
+  ) => Kind4<F, unknown, R & R2, E, B>;
+}
+
 export interface Chain4EC<F extends MaURIS, E> extends Apply4EC<F, E> {
+  readonly chain: <S1, S2, R, A, R2, B>(
+    fa: Kind4<F, S1, R, E, A>,
+    f: (a: A) => Kind4<F, S2, R2, E, B>
+  ) => Kind4<F, S1 | S2, R & R2, E, B>;
+}
+
+export interface Chain4ECP<F extends MaURIS, E> extends Apply4ECP<F, E> {
   readonly chain: <S1, S2, R, A, R2, B>(
     fa: Kind4<F, S1, R, E, A>,
     f: (a: A) => Kind4<F, S2, R2, E, B>
@@ -155,7 +175,7 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE<
     M,
-    SOf<R>,
+    SOf<R> | Q,
     S & { [K in keyof R]: ATypeOf<R[K]> },
     U & EnvOf<R>,
     L | ETypeOf<R[keyof R]>
@@ -164,48 +184,7 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE<
     M,
-    SOf<R>,
-    S & { [K in keyof R]: ATypeOf<R[K]> },
-    U & EnvOf<R>,
-    L | ETypeOf<R[keyof R]>
-  >;
-  return: <A>(f: (s: S) => A) => Kind4<M, Q, U, L, A>;
-  done: () => Kind4<M, Q, U, L, S>;
-}
-
-export interface Do4CEP<M extends MaURIS, Q, S extends object, U, L> {
-  do: <Q1, E, R>(ma: Kind4<M, Q1, R, E, unknown>) => Do4CE<M, Q | Q1, S, U & R, L | E>;
-  doL: <Q1, E, R>(f: (s: S) => Kind4<M, Q1, R, E, unknown>) => Do4CE<M, Q | Q1, S, U & R, L | E>;
-  bind: <N extends string, Q1, E, R, A>(
-    name: Exclude<N, keyof S>,
-    ma: Kind4<M, Q1, R, E, A>
-  ) => Do4CE<M, Q | Q1, S & { [K in N]: A }, U & R, L | E>;
-  bindL: <N extends string, Q1, E, R, A>(
-    name: Exclude<N, keyof S>,
-    f: (s: S) => Kind4<M, Q1, R, E, A>
-  ) => Do4CE<M, Q | Q1, S & { [K in N]: A }, U & R, L | E>;
-  let: <N extends string, A>(
-    name: Exclude<N, keyof S>,
-    a: A
-  ) => Do4CE<M, Q, S & { [K in N]: A }, U, L>;
-  letL: <N extends string, A>(
-    name: Exclude<N, keyof S>,
-    f: (s: S) => A
-  ) => Do4CE<M, Q, S & { [K in N]: A }, U, L>;
-  sequenceS: <R extends Record<string, GE<unknown, any, any, any>>>(
-    r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do4CE<
-    M,
-    unknown,
-    S & { [K in keyof R]: ATypeOf<R[K]> },
-    U & EnvOf<R>,
-    L | ETypeOf<R[keyof R]>
-  >;
-  sequenceSL: <R extends Record<string, GE<unknown, any, any, any>>>(
-    f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do4CE<
-    M,
-    unknown,
+    SOf<R> | Q,
     S & { [K in keyof R]: ATypeOf<R[K]> },
     U & EnvOf<R>,
     L | ETypeOf<R[keyof R]>
@@ -233,27 +212,28 @@ export interface Do4CE_<M extends MaURIS, Q, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => A
   ) => Do4CE<M, Q, S & { [K in N]: A }, U, L>;
-  sequenceS: <R extends Record<string, GE<any, any, L, any>>>(
+  sequenceS: <R extends Record<string, Kind4<M, any, any, L, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do4CE_<M, SOf<R>, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
-  sequenceSL: <R extends Record<string, GE<any, any, L, any>>>(
+  ) => Do4CE_<M, SOf<R> | Q, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  sequenceSL: <R extends Record<string, Kind4<M, any, any, L, any>>>(
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
-  ) => Do4CE_<M, SOf<R>, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
+  ) => Do4CE_<M, SOf<R> | Q, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>;
   return: <A>(f: (s: S) => A) => Kind4<M, Q, U, L, A>;
   done: () => Kind4<M, Q, U, L, S>;
 }
 
 declare module "fp-ts-contrib/lib/Do" {
   export function Do<M extends MaURIS>(M: Monad4E<M>): Do4CE<M, never, {}, unknown, never>;
-  export function Do<M extends MaURIS>(M: Monad4EP<M>): Do4CEP<M, never, {}, unknown, never>;
+  export function Do<M extends MaURIS>(M: Monad4EP<M>): Do4CE<M, unknown, {}, unknown, never>;
   export function Do<M extends MaURIS, E>(M: Monad4EC<M, E>): Do4CE_<M, never, {}, unknown, E>;
+  export function Do<M extends MaURIS, E>(M: Monad4ECP<M, E>): Do4CE_<M, unknown, {}, unknown, E>;
 }
 
 declare module "fp-ts/lib/Apply" {
   export function sequenceS<F extends MaURIS>(
     F: Apply4E<F>
   ): <NER extends Record<string, Kind4<F, any, any, any, any>>>(
-    r: EnforceNonEmptyRecord<NER> & Record<string, GE<any, any, any, any>>
+    r: EnforceNonEmptyRecord<NER> & Record<string, Kind4<F, any, any, any, any>>
   ) => Kind4<
     F,
     SOf<NER>,
@@ -261,6 +241,34 @@ declare module "fp-ts/lib/Apply" {
     {
       [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, infer E, any>] ? E : never;
     }[keyof NER],
+    {
+      [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
+    }
+  >;
+
+  export function sequenceS<F extends MaURIS, E>(
+    F: Apply4ECP<F, E>
+  ): <NER extends Record<string, Kind4<F, any, any, E, any>>>(
+    r: EnforceNonEmptyRecord<NER> & Record<string, Kind4<F, any, any, E, any>>
+  ) => Kind4<
+    F,
+    unknown,
+    EnvOf<NER>,
+    E,
+    {
+      [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
+    }
+  >;
+
+  export function sequenceS<F extends MaURIS, E>(
+    F: Apply4EC<F, E>
+  ): <NER extends Record<string, Kind4<F, any, any, E, any>>>(
+    r: EnforceNonEmptyRecord<NER> & Record<string, Kind4<F, any, any, E, any>>
+  ) => Kind4<
+    F,
+    SOf<NER>,
+    EnvOf<NER>,
+    E,
     {
       [K in keyof NER]: [NER[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
     }
@@ -331,6 +339,56 @@ declare module "fp-ts/lib/Apply" {
     {
       [K in keyof T]: [T[K]] extends [Kind4<F, any, any, infer E, any>] ? E : never;
     }[number],
+    {
+      [K in keyof T]: [T[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
+    }
+  >;
+
+  export function sequenceT<F extends MaURIS, E>(
+    F: Apply4ECP<F, E>
+  ): <T extends Array<Kind4<F, any, any, E, any>>>(
+    ...t: T & {
+      0: Kind4<F, any, any, E, any>;
+    }
+  ) => Kind4<
+    F,
+    unknown,
+    UnionToIntersection<
+      {
+        [K in keyof T]: [T[K]] extends [Kind4<F, any, infer R, any, any>]
+          ? unknown extends R
+            ? never
+            : R
+          : never;
+      }[number]
+    >,
+    E,
+    {
+      [K in keyof T]: [T[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
+    }
+  >;
+
+  export function sequenceT<F extends MaURIS, E>(
+    F: Apply4EC<F, E>
+  ): <T extends Array<Kind4<F, any, any, E, any>>>(
+    ...t: T & {
+      0: Kind4<F, any, any, E, any>;
+    }
+  ) => Kind4<
+    F,
+    {
+      [K in keyof T]: [T[K]] extends [Kind4<F, infer S, any, any, any>] ? S : never;
+    }[number],
+    UnionToIntersection<
+      {
+        [K in keyof T]: [T[K]] extends [Kind4<F, any, infer R, any, any>]
+          ? unknown extends R
+            ? never
+            : R
+          : never;
+      }[number]
+    >,
+    E,
     {
       [K in keyof T]: [T[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never;
     }
@@ -499,6 +557,10 @@ export interface MonadThrow4EC<M extends MaURIS, E> extends Monad4EC<M, E> {
   readonly throwError: (e: E) => Kind4<M, never, unknown, E, never>;
 }
 
+export interface MonadThrow4ECP<M extends MaURIS, E> extends Monad4ECP<M, E> {
+  readonly throwError: (e: E) => Kind4<M, never, unknown, E, never>;
+}
+
 export interface Alt4EC<F extends MaURIS, E> extends Functor4EC<F, E> {
   readonly alt: <S1, S2, R, R2, A>(
     fx: Kind4<F, S1, R, E, A>,
@@ -533,12 +595,14 @@ export interface PipeableMonadThrow4EC<F extends MaURIS, E> {
 
 declare module "fp-ts/lib/Traversable" {
   export interface Traverse1<T extends URIS> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <A, S, R, B>(
+      ta: Kind<T, A>,
+      f: (a: A) => Kind4<F, S, R, E, B>
+    ) => Kind4<F, unknown, R, E, Kind<T, B>>;
     <F extends MaURIS, E>(F: Applicative4EC<F, E>): <A, S, R, B>(
       ta: Kind<T, A>,
       f: (a: A) => Kind4<F, S, R, E, B>
     ) => Kind4<F, S, R, E, Kind<T, B>>;
-  }
-  export interface Traverse1<T extends URIS> {
     <F extends MaURIS>(F: Applicative4EP<F>): <A, S, R, E, B>(
       ta: Kind<T, A>,
       f: (a: A) => Kind4<F, S, R, E, B>
@@ -549,6 +613,9 @@ declare module "fp-ts/lib/Traversable" {
     ) => Kind4<F, S, R, E, Kind<T, B>>;
   }
   export interface Sequence1<T extends URIS> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <S, R, A>(
+      ta: Kind<T, Kind4<F, S, R, E, A>>
+    ) => Kind4<F, unknown, R, E, Kind<T, A>>;
     <F extends MaURIS, E>(F: Applicative4EC<F, E>): <S, R, A>(
       ta: Kind<T, Kind4<F, S, R, E, A>>
     ) => Kind4<F, S, R, E, Kind<T, A>>;
@@ -560,6 +627,14 @@ declare module "fp-ts/lib/Traversable" {
     ) => Kind4<F, S, R, E, Kind<T, A>>;
   }
   export interface Traverse2<T extends URIS2> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <TE, A, S, R, B>(
+      ta: Kind2<T, TE, A>,
+      f: (a: A) => Kind4<F, S, R, E, B>
+    ) => Kind4<F, unknown, R, E, Kind2<T, TE, B>>;
+    <F extends MaURIS, E>(F: Applicative4EC<F, E>): <TE, A, S, R, B>(
+      ta: Kind2<T, TE, A>,
+      f: (a: A) => Kind4<F, S, R, E, B>
+    ) => Kind4<F, S, R, E, Kind2<T, TE, B>>;
     <F extends MaURIS>(F: Applicative4EP<F>): <TE, A, S, R, FE, B>(
       ta: Kind2<T, TE, A>,
       f: (a: A) => Kind4<F, S, R, FE, B>
@@ -570,6 +645,12 @@ declare module "fp-ts/lib/Traversable" {
     ) => Kind4<F, S, R, FE, Kind2<T, TE, B>>;
   }
   export interface Sequence2<T extends URIS2> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <TE, S, R, A>(
+      ta: Kind2<T, E, Kind4<F, S, R, E, A>>
+    ) => Kind4<F, unknown, R, E, Kind2<T, TE, A>>;
+    <F extends MaURIS, E>(F: Applicative4EC<F, E>): <TE, S, R, A>(
+      ta: Kind2<T, E, Kind4<F, S, R, E, A>>
+    ) => Kind4<F, S, R, E, Kind2<T, TE, A>>;
     <F extends MaURIS>(F: Applicative4EP<F>): <TE, S, R, FE, A>(
       ta: Kind2<T, TE, Kind4<F, S, R, FE, A>>
     ) => Kind4<F, unknown, R, FE, Kind2<T, TE, A>>;
@@ -581,6 +662,14 @@ declare module "fp-ts/lib/Traversable" {
 
 declare module "fp-ts/lib/Witherable" {
   export interface Wilt1<W extends URIS> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <A, S, R, B, C>(
+      wa: Kind<W, A>,
+      f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+    ) => Kind4<F, unknown, R, E, Separated<Kind<W, B>, Kind<W, C>>>;
+    <F extends MaURIS, E>(F: Applicative4EC<F, E>): <A, S, R, B, C>(
+      wa: Kind<W, A>,
+      f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+    ) => Kind4<F, S, R, E, Separated<Kind<W, B>, Kind<W, C>>>;
     <F extends MaURIS>(F: Applicative4EP<F>): <A, S, R, E, B, C>(
       wa: Kind<W, A>,
       f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
@@ -591,6 +680,14 @@ declare module "fp-ts/lib/Witherable" {
     ) => Kind4<F, S, R, E, Separated<Kind<W, B>, Kind<W, C>>>;
   }
   export interface Wither1<W extends URIS> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <A, S, R, B>(
+      ta: Kind<W, A>,
+      f: (a: A) => Kind4<F, S, R, E, Option<B>>
+    ) => Kind4<F, unknown, R, E, Kind<W, B>>;
+    <F extends MaURIS, E>(F: Applicative4EC<F, E>): <A, S, R, B>(
+      ta: Kind<W, A>,
+      f: (a: A) => Kind4<F, S, R, E, Option<B>>
+    ) => Kind4<F, S, R, E, Kind<W, B>>;
     <F extends MaURIS>(F: Applicative4EP<F>): <A, S, R, E, B>(
       ta: Kind<W, A>,
       f: (a: A) => Kind4<F, unknown, R, E, Option<B>>
@@ -604,6 +701,14 @@ declare module "fp-ts/lib/Witherable" {
 
 declare module "fp-ts/lib/TraversableWithIndex" {
   export interface TraverseWithIndex1<T extends URIS, I> {
+    <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <A, S, R, B>(
+      ta: Kind<T, A>,
+      f: (i: I, a: A) => Kind4<F, S, R, E, B>
+    ) => Kind4<F, unknown, R, E, Kind<T, B>>;
+    <F extends MaURIS, E>(F: Applicative4EC<F, E>): <A, S, R, B>(
+      ta: Kind<T, A>,
+      f: (i: I, a: A) => Kind4<F, S, R, E, B>
+    ) => Kind4<F, S, R, E, Kind<T, B>>;
     <F extends MaURIS>(F: Applicative4EP<F>): <A, S, R, E, B>(
       ta: Kind<T, A>,
       f: (i: I, a: A) => Kind4<F, S, R, E, B>

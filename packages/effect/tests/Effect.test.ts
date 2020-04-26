@@ -11,6 +11,7 @@ import { semigroupString } from "fp-ts/lib/Semigroup";
 import { effect as T } from "../src";
 import { effect, parEffect } from "../src/effect";
 import * as ex from "../src/original/exit";
+import { sequenceT, sequenceS } from "fp-ts/lib/Apply";
 
 describe("EffectSafe", () => {
   it("Par", async () => {
@@ -630,8 +631,8 @@ describe("EffectSafe", () => {
     it("pipe alt", async () => {
       const a = effect.of("a");
       const a2 = effect.of("a2");
-      const err = T.raiseError<string, string>("e");
-      const err2 = T.raiseError<string, string>("err2");
+      const err = T.raiseError("e");
+      const err2 = T.raiseError("err2");
       assert.deepStrictEqual(
         await T.runToPromiseExit(
           pipe(
@@ -805,7 +806,7 @@ describe("EffectSafe", () => {
     });
   });
 
-  it("getCauseValidationM", async () => {
+  it("getValidationM", async () => {
     const M = T.getValidationM(semigroupString);
 
     const f = (s: string) => M.of(s.length);
@@ -835,7 +836,7 @@ describe("EffectSafe", () => {
       await T.runToPromiseExit(T.raiseError("foo"))
     );
     assert.deepStrictEqual(
-      await T.runToPromiseExit(M.ap(T.raiseError<string, (n: number) => number>("foo"), T.pure(1))),
+      await T.runToPromiseExit(M.ap(T.raiseError("foo"), T.pure(1))),
       await T.runToPromiseExit(T.raiseError("foo"))
     );
     assert.deepStrictEqual(
@@ -856,7 +857,58 @@ describe("EffectSafe", () => {
     );
   });
 
-  describe("Do", () => {
+  it("getParValidationM", async () => {
+    const M = T.getParValidationM(semigroupString);
+
+    const f = (s: string) => M.of(s.length);
+
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.chain(T.pure("abc"), f)),
+      await T.runToPromiseExit(T.pure(3))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.chain(T.raiseError("a"), f)),
+      await T.runToPromiseExit(T.raiseError("a"))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.chain(T.raiseError("a"), () => T.raiseError("b"))),
+      await T.runToPromiseExit(T.raiseError("a"))
+    );
+    assert.deepStrictEqual(await T.runToPromiseExit(M.of(1)), await T.runToPromiseExit(T.pure(1)));
+
+    const double = (n: number) => n * 2;
+
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.ap(T.pure(double), T.pure(1))),
+      await T.runToPromiseExit(T.pure(2))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.ap(T.pure(double), T.raiseError("foo"))),
+      await T.runToPromiseExit(T.raiseError("foo"))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.ap(T.raiseError("foo"), T.pure(1))),
+      await T.runToPromiseExit(T.raiseError("foo"))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.ap(T.raiseError("foo"), T.raiseError("bar"))),
+      await T.runToPromiseExit(T.raiseError("foobar"))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.alt(T.raiseError("a"), () => T.pure(1))),
+      await T.runToPromiseExit(T.pure(1))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.alt(T.pure(1), () => T.raiseError("a"))),
+      await T.runToPromiseExit(T.pure(1))
+    );
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(M.alt(T.raiseError("a"), () => T.raiseError("b"))),
+      await T.runToPromiseExit(T.raiseError("ab"))
+    );
+  });
+
+  describe("Do and validation", () => {
     const valueEnv = Symbol();
     interface Env1 {
       [valueEnv]: string;
@@ -884,7 +936,7 @@ describe("EffectSafe", () => {
       );
       assert.deepStrictEqual(e, ex.raise("a"));
     });
-    it("getCauseValidationM", async () => {
+    it("getValidationM", async () => {
       const M = T.getValidationM(semigroupString);
       const e = await T.runToPromiseExit(
         Do(M)
@@ -897,8 +949,32 @@ describe("EffectSafe", () => {
       );
       assert.deepStrictEqual(e, ex.raise("ab"));
     });
-    it("getCauseValidationM env", async () => {
+    it("getParValidationM", async () => {
+      const M = T.getParValidationM(semigroupString);
+      const p = Do(M)
+        .bindL("x", () => M.of("a"))
+        .sequenceS({
+          a: M.throwError("a"),
+          b: M.throwError("b")
+        })
+        .return((r) => r);
+      const e = await T.runToPromiseExit(p);
+      assert.deepStrictEqual(e, ex.raise("ab"));
+    });
+    it("getValidationM env", async () => {
       const M = T.getValidationM(semigroupString);
+      const p = Do(M)
+        .bindL("x", () => M.of("a"))
+        .sequenceS({
+          a: T.accessM(({}: Env1) => M.throwError("a")),
+          b: M.throwError("b")
+        })
+        .return((r) => r);
+      const e = await T.runToPromiseExit(T.provide(env1)(p));
+      assert.deepStrictEqual(e, ex.raise("ab"));
+    });
+    it("getParValidationM env", async () => {
+      const M = T.getParValidationM(semigroupString);
       const p = Do(M)
         .bindL("x", () => M.of("a"))
         .sequenceS({
@@ -922,6 +998,98 @@ describe("EffectSafe", () => {
       assert.deepEqual(res, ex.raise("(error: 0)(error: 1)"));
     });
 
+    it("should traverse validation - par", async () => {
+      const V = T.getParValidationM(semigroupString);
+
+      const checks = array.traverse(V)([0, 1, 2, 3, 4], (x) =>
+        x < 2 ? T.raiseError(`(error: ${x})`) : T.pure(x)
+      );
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(error: 0)(error: 1)"));
+    });
+
+    it("should traverse validation - sequenceT", async () => {
+      const V = T.getValidationM(semigroupString);
+
+      const checks = sequenceT(V)(T.raiseError("(1)"), T.pure(1), T.raiseError("(2)"));
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(1)(2)"));
+    });
+
+    it("should traverse validation - sequenceT - par", async () => {
+      const V = T.getParValidationM(semigroupString);
+
+      const checks = sequenceT(V)(T.raiseError("(1)"), T.pure(1), T.raiseError("(2)"));
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(1)(2)"));
+    });
+
+    it("should traverse validation - sequenceS", async () => {
+      const V = T.getValidationM(semigroupString);
+
+      const checks = sequenceS(V)({
+        a: T.raiseError("(1)"),
+        b: T.pure(1),
+        c: T.raiseError("(2)")
+      });
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(1)(2)"));
+    });
+
+    it("should traverse validation - sequenceS - par", async () => {
+      const V = T.getParValidationM(semigroupString);
+
+      const checks = sequenceS(V)({
+        a: T.raiseError("(1)"),
+        b: T.pure(1),
+        c: T.raiseError("(2)")
+      });
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(1)(2)"));
+    });
+
+    it("should traverse validation - Do", async () => {
+      const V = T.getValidationM(semigroupString);
+
+      const checks = Do(V)
+        .sequenceS({
+          a: T.raiseError("(1)"),
+          b: T.pure(1),
+          c: T.raiseError("(2)")
+        })
+        .done();
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(1)(2)"));
+    });
+    
+    it("should traverse validation - Do - par", async () => {
+      const V = T.getParValidationM(semigroupString);
+
+      const checks = Do(V)
+        .sequenceS({
+          a: T.raiseError("(1)"),
+          b: T.pure(1),
+          c: T.raiseError("(2)")
+        })
+        .done();
+
+      const res = await T.runToPromiseExit(checks);
+
+      assert.deepEqual(res, ex.raise("(1)(2)"));
+    });
+
     it("should traverse validation with env", async () => {
       const prefixEnv = Symbol();
       interface PrefixEnv {
@@ -932,6 +1100,28 @@ describe("EffectSafe", () => {
       };
 
       const V = T.getValidationM(semigroupString);
+
+      const checks = array.traverse(V)([0, 1, 2, 3, 4], (x) =>
+        x < 2
+          ? T.accessM(({ [prefixEnv]: prefix }: PrefixEnv) => T.raiseError(`(${prefix}: ${x})`))
+          : T.pure(x)
+      );
+
+      const res = await T.runToPromiseExit(T.provide(env)(checks));
+
+      assert.deepEqual(res, ex.raise("(error: 0)(error: 1)"));
+    });
+
+    it("should traverse validation with env - par", async () => {
+      const prefixEnv = Symbol();
+      interface PrefixEnv {
+        [prefixEnv]: "error";
+      }
+      const env: PrefixEnv = {
+        [prefixEnv]: "error"
+      };
+
+      const V = T.getParValidationM(semigroupString);
 
       const checks = array.traverse(V)([0, 1, 2, 3, 4], (x) =>
         x < 2

@@ -22,7 +22,7 @@ export function expectExit<E, A>(ioa: T.AsyncRE<{}, E, A>, expected: ex.Exit<E, 
 describe("StreamEither", () => {
   it("use chainError", async () => {
     const stream = pipe(
-      S.encaseEffect(T.raiseError<string, number>("error")),
+      S.encaseEffect(T.raiseError("error")),
       S.chainError((_) => S.encaseEffect(T.pure(100)))
     );
 
