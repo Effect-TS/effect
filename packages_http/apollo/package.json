@@ -1,6 +1,6 @@
 {
   "name": "@matechs/apollo",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -36,7 +36,7 @@
     "subscriptions-transport-ws": "^0.9.16"
   },
   "dependencies": {
-    "@matechs/express": "^5.0.5",
-    "@matechs/prelude": "^1.0.4"
+    "@matechs/express": "^5.1.0",
+    "@matechs/prelude": "^1.1.0"
   }
 }

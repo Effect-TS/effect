@@ -1,6 +1,6 @@
 {
   "name": "@matechs/orm",
-  "version": "4.0.4",
+  "version": "4.1.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -32,6 +32,6 @@
     "typeorm": "^0.2.24"
   },
   "dependencies": {
-    "@matechs/prelude": "^1.0.4"
+    "@matechs/prelude": "^1.1.0"
   }
 }
