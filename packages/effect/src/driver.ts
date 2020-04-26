@@ -19,25 +19,38 @@ import { DoublyLinkedList } from "./listc";
 export type RegionFrameType = InterruptFrame;
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame;
 
+export const FrameTag = "Frame" as const;
 export class Frame implements Frame {
   constructor(
     readonly apply: (u: unknown) => T.Instructions,
     readonly prev: FrameType | undefined
   ) {}
+  tag() {
+    return FrameTag;
+  }
 }
 
+export const FoldFrameTag = "FoldFrame" as const;
 export class FoldFrame implements FoldFrame {
   constructor(
     readonly apply: (u: unknown) => T.Instructions,
     readonly recover: (cause: Cause<unknown>) => T.Instructions,
     readonly prev: FrameType | undefined
   ) {}
+  tag() {
+    return FoldFrameTag;
+  }
 }
 
+export const MapFrameTag = "MapFrame" as const;
 export class MapFrame implements MapFrame {
   constructor(readonly apply: (u: unknown) => unknown, readonly prev: FrameType | undefined) {}
+  tag() {
+    return MapFrameTag;
+  }
 }
 
+export const InterruptFrameTag = "InterruptFrame" as const;
 export class InterruptFrame {
   constructor(readonly interruptStatus: boolean[], readonly prev: FrameType | undefined) {}
   apply(u: unknown) {
@@ -46,6 +59,9 @@ export class InterruptFrame {
   }
   exitRegion() {
     this.interruptStatus.pop();
+  }
+  tag() {
+    return InterruptFrameTag;
   }
 }
 
@@ -118,12 +134,12 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     let frame = this.currentFrame;
     this.currentFrame = this.currentFrame?.prev;
     while (frame) {
-      if (frame instanceof FoldFrame && (e._tag !== "Interrupt" || !this.isInterruptible())) {
-        return frame.recover(e);
+      if (frame.tag() === FoldFrameTag && (e._tag !== "Interrupt" || !this.isInterruptible())) {
+        return (frame as FoldFrame).recover(e);
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
-      if (frame instanceof InterruptFrame) {
-        frame.exitRegion();
+      if (frame.tag() === InterruptFrameTag) {
+        (frame as InterruptFrame).exitRegion();
       }
       frame = this.currentFrame;
       this.currentFrame = this.currentFrame?.prev;
@@ -153,14 +169,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.currentFrame = this.currentFrame?.prev;
 
     if (frame) {
-      if (frame instanceof MapFrame) {
+      if (frame.tag() === MapFrameTag) {
         if (this.currentFrame === undefined) {
           this.complete(done(frame.apply(value)) as Done<A>);
           return;
         }
         return new T.Pure(frame.apply(value));
       } else {
-        return frame.apply(value);
+        return frame.apply(value) as any;
       }
     }
     this.complete(done(value) as Done<A>);

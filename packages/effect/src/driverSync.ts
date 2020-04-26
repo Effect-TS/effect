@@ -7,7 +7,16 @@ import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "./or
 import { defaultRuntime } from "./original/runtime";
 import * as T from "./effect";
 import { DoublyLinkedList } from "./listc";
-import { FrameType, Frame, MapFrame, FoldFrame, InterruptFrame } from "./driver";
+import {
+  FrameType,
+  Frame,
+  MapFrame,
+  FoldFrame,
+  InterruptFrame,
+  FoldFrameTag,
+  InterruptFrameTag,
+  MapFrameTag
+} from "./driver";
 
 // the same as Driver but backs runSync
 /* istanbul ignore file */
@@ -55,12 +64,12 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     let frame = this.currentFrame;
     this.currentFrame = this.currentFrame?.prev;
     while (frame) {
-      if (frame instanceof FoldFrame && (e._tag !== "Interrupt" || !this.isInterruptible())) {
-        return frame.recover(e);
+      if (frame.tag() === FoldFrameTag && (e._tag !== "Interrupt" || !this.isInterruptible())) {
+        return (frame as FoldFrame).recover(e);
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
-      if (frame instanceof InterruptFrame) {
-        frame.exitRegion();
+      if (frame.tag() === InterruptFrameTag) {
+        (frame as InterruptFrame).exitRegion();
       }
       frame = this.currentFrame;
       this.currentFrame = this.currentFrame?.prev;
@@ -87,14 +96,14 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     this.currentFrame = this.currentFrame?.prev;
 
     if (frame) {
-      if (frame instanceof MapFrame) {
+      if (frame.tag() === MapFrameTag) {
         if (this.currentFrame === undefined) {
           this.complete(done(frame.apply(value)) as Done<A>);
           return;
         }
         return new T.Pure(frame.apply(value));
       } else {
-        return frame.apply(value);
+        return frame.apply(value) as any;
       }
     }
     this.complete(done(value) as Done<A>);
