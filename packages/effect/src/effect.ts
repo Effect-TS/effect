@@ -82,7 +82,7 @@ const IPureTag = "IPure" as const;
 export class IPure<A> {
   constructor(readonly a: A) {}
 
-  tag() {
+  get tag() {
     return IPureTag;
   }
 }
@@ -92,7 +92,7 @@ const IPureOptionTag = "IPureOption" as const;
 export class IPureOption<E, A> {
   constructor(readonly a: Op.Option<A>, readonly onEmpty: () => E) {}
 
-  tag() {
+  get tag() {
     return IPureOptionTag;
   }
 }
@@ -102,7 +102,7 @@ const IPureEitherTag = "IPureEither" as const;
 export class IPureEither<E, A> {
   constructor(readonly a: Ei.Either<E, A>) {}
 
-  tag() {
+  get tag() {
     return IPureEitherTag;
   }
 }
@@ -112,7 +112,7 @@ const IRaisedTag = "IRaised" as const;
 export class IRaised<E> {
   constructor(readonly e: ex.Cause<E>) {}
 
-  tag() {
+  get tag() {
     return IRaisedTag;
   }
 }
@@ -122,7 +122,7 @@ const ICompletedTag = "ICompleted" as const;
 export class ICompleted<E, A> {
   constructor(readonly e: ex.Exit<E, A>) {}
 
-  tag() {
+  get tag() {
     return ICompletedTag;
   }
 }
@@ -132,7 +132,7 @@ const ISuspendedTag = "ISuspended" as const;
 export class ISuspended<S, R, E, A> {
   constructor(readonly e: F.Lazy<Effect<S, R, E, A>>) {}
 
-  tag() {
+  get tag() {
     return ISuspendedTag;
   }
 }
@@ -146,7 +146,7 @@ const IAsyncTag = "IAsync" as const;
 export class IAsync<E, A> {
   constructor(readonly e: AsyncFn<E, A>) {}
 
-  tag() {
+  get tag() {
     return IAsyncTag;
   }
 }
@@ -156,7 +156,7 @@ const IChainTag = "IChain" as const;
 export class IChain<S, R, E, A, S1, R1, E1, B> {
   constructor(readonly e: Effect<S, R, E, A>, readonly f: (a: A) => Effect<S1, R1, E1, B>) {}
 
-  tag() {
+  get tag() {
     return IChainTag;
   }
 }
@@ -166,7 +166,7 @@ const IMapTag = "IMap" as const;
 export class IMap<S, R, E, A, B> {
   constructor(readonly e: Effect<S, R, E, A>, readonly f: (a: A) => B) {}
 
-  tag() {
+  get tag() {
     return IMapTag;
   }
 }
@@ -180,7 +180,7 @@ export class ICollapse<S1, S2, S3, R, R2, R3, E1, E2, E3, A1, A2, A3> {
     readonly success: F.FunctionN<[A1], Effect<S3, R3, E3, A3>>
   ) {}
 
-  tag() {
+  get tag() {
     return ICollapseTag;
   }
 }
@@ -190,7 +190,7 @@ const IInterruptibleRegionTag = "IInterruptibleRegion" as const;
 export class IInterruptibleRegion<S, R, E, A> {
   constructor(readonly e: Effect<S, R, E, A>, readonly int: boolean) {}
 
-  tag() {
+  get tag() {
     return IInterruptibleRegionTag;
   }
 }
@@ -200,7 +200,7 @@ const IAccessInterruptibleTag = "IAccessInterruptible" as const;
 export class IAccessInterruptible<A> {
   constructor(readonly f: (_: boolean) => A) {}
 
-  tag() {
+  get tag() {
     return IAccessInterruptibleTag;
   }
 }
@@ -210,7 +210,7 @@ const IAccessRuntimeTag = "IAccessRuntime" as const;
 export class IAccessRuntime<A> {
   constructor(readonly f: (_: Runtime) => A) {}
 
-  tag() {
+  get tag() {
     return IAccessRuntimeTag;
   }
 }
@@ -220,7 +220,7 @@ const IProvideEnvTag = "IProvideEnv" as const;
 export class IProvideEnv<S, R, E, A> {
   constructor(readonly e: Effect<S, R, E, A>, readonly r: R) {}
 
-  tag() {
+  get tag() {
     return IProvideEnvTag;
   }
 }
@@ -228,7 +228,7 @@ export class IProvideEnv<S, R, E, A> {
 const IAccessEnvTag = "IAccessEnv" as const;
 
 export class IAccessEnv<R> {
-  tag() {
+  get tag() {
     return IAccessEnvTag;
   }
 }
@@ -379,7 +379,7 @@ function chain_<S, R, E, A, S2, R2, E2, B>(
   bind: F.FunctionN<[A], Effect<S2, R2, E2, B>>
 ): Effect<S | S2, R & R2, E | E2, B> {
   return (
-    (((inner as any) as Instructions).tag() === IPureTag
+    (((inner as any) as Instructions).tag === IPureTag
       ? bind(((inner as any) as IPure<A>).a)
       : new IChain(inner, bind)) as any
   );
@@ -513,7 +513,7 @@ const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
  */
 function map_<S, R, E, A, B>(base: Effect<S, R, E, A>, f: F.FunctionN<[A], B>): Effect<S, R, E, B> {
   return (
-    (((base as any) as Instructions).tag() === IPureTag
+    (((base as any) as Instructions).tag === IPureTag
       ? new IPure(f(((base as any) as IPure<A>).a))
       : new IMap(base, f)) as any
   );
