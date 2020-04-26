@@ -1,6 +1,6 @@
 {
   "name": "@matechs/test",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -31,6 +31,6 @@
     "fast-check": "^1.24.1"
   },
   "dependencies": {
-    "@matechs/prelude": "^1.1.0"
+    "@matechs/prelude": "^1.2.0"
   }
 }
