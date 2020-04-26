@@ -42,7 +42,7 @@ export class InterruptFrame {
   constructor(readonly interruptStatus: boolean[], readonly prev: FrameType | undefined) {}
   apply(u: unknown) {
     this.interruptStatus.pop();
-    return T.Implementation.fromEffect(T.pure(u));
+    return new T.Pure(u);
   }
   exitRegion() {
     this.interruptStatus.pop();
@@ -158,7 +158,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
           this.complete(done(frame.apply(value)) as Done<A>);
           return;
         }
-        return new T.Implementation(T.EffectTag.Pure, frame.apply(value));
+        return new T.Pure(frame.apply(value));
       } else {
         return frame.apply(value);
       }
@@ -214,106 +214,91 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
     while (current && (!this.interrupted || !this.isInterruptible())) {
       try {
-        switch (current._tag) {
-          case T.EffectTag.AccessEnv:
-            const env = !this.envStack.empty() ? this.envStack.tail!.value : {};
-            current = this.next(env);
-            break;
-          case T.EffectTag.ProvideEnv:
-            this.envStack.append(current.f1 as any);
-            current = T.Implementation.fromEffect(
-              T.effect.foldExit(
-                current.f0 as any,
-                (e) =>
-                  T.effect.chain(
-                    T.sync(() => {
-                      this.envStack.deleteTail();
-                      return {};
-                    }),
-                    (_) => T.raised(e)
-                  ),
-                (r) =>
+        if (current instanceof T.IAccessEnv) {
+          const env = !this.envStack.empty() ? this.envStack.tail!.value : {};
+          current = this.next(env);
+        } else if (current instanceof T.IProvideEnv) {
+          this.envStack.append(current.r as any);
+          current =
+            T.effect.foldExit(
+              current.e as any,
+              (e) =>
+                T.effect.chain(
                   T.sync(() => {
                     this.envStack.deleteTail();
-                    return r;
-                  })
-              )
-            );
-            break;
-          case T.EffectTag.Pure:
-            current = this.next(current.f0);
-            break;
-          case T.EffectTag.PureOption: {
-            if (O.isSome(current.f0)) {
-              current = this.next(current.f0.value);
-            } else {
-              current = this.handle(raise(current.f1()));
-            }
-            break;
+                    return {};
+                  }),
+                  (_) => T.raised(e)
+                ),
+              (r) =>
+                T.sync(() => {
+                  this.envStack.deleteTail();
+                  return r;
+                })
+            ) as any;
+        } else if (current instanceof T.Pure) {
+          current = this.next(current.a);
+        } else if (current instanceof T.PureOption) {
+          if (O.isSome(current.a)) {
+            current = this.next(current.a.value);
+          } else {
+            current = this.handle(raise(current.onEmpty()));
           }
-          case T.EffectTag.PureEither: {
-            if (E.isRight(current.f0)) {
-              current = this.next(current.f0.right);
-            } else {
-              current = this.handle(raise(current.f0.left));
-            }
-            break;
+        } else if (current instanceof T.PureEither) {
+          if (E.isRight(current.a)) {
+            current = this.next(current.a.right);
+          } else {
+            current = this.handle(raise(current.a.left));
           }
-          case T.EffectTag.Raised:
-            if (current.f0._tag === "Interrupt") {
-              this.interrupted = true;
-            }
-            current = this.handle(current.f0);
-            break;
-          case T.EffectTag.Completed:
-            if (current.f0._tag === "Done") {
-              current = this.next(current.f0.value);
-            } else {
-              current = this.handle(current.f0);
-            }
-            break;
-          case T.EffectTag.Suspended:
-            current = current.f0();
-            break;
-          case T.EffectTag.Async:
-            this.contextSwitch(current.f0);
-            current = undefined;
-            break;
-          case T.EffectTag.Chain:
-            this.currentFrame = new Frame(current.f1, this.currentFrame);
-            current = current.f0;
-            break;
-          case T.EffectTag.Map:
-            this.currentFrame = new MapFrame(current.f1, this.currentFrame);
-            current = current.f0;
-            break;
-          case T.EffectTag.Collapse:
-            this.currentFrame = new FoldFrame(current.f2, current.f1, this.currentFrame);
-            current = current.f0;
-            break;
-          case T.EffectTag.InterruptibleRegion:
-            if (this.interruptRegionStack === undefined) {
-              this.interruptRegionStack = [current.f0];
-            } else {
-              this.interruptRegionStack.push(current.f0);
-            }
-            this.currentFrame = new InterruptFrame(this.interruptRegionStack, this.currentFrame);
-            current = current.f1;
-            break;
-          case T.EffectTag.AccessRuntime:
-            current = T.Implementation.fromEffect(T.pure(current.f0(defaultRuntime)));
-            break;
-          case T.EffectTag.AccessInterruptible:
-            current = T.Implementation.fromEffect(T.pure(current.f0(this.isInterruptible())));
-            break;
-          default:
-            /* istanbul ignore next */
-            throw new Error(`Die: Unrecognized current type ${current}`);
+        } else if (current instanceof T.Raised) {
+          if (current.e._tag === "Interrupt") {
+            this.interrupted = true;
+          }
+          current = this.handle(current.e);
+        } else if (current instanceof T.Completed) {
+          if (current.e._tag === "Done") {
+            current = this.next(current.e.value);
+          } else {
+            current = this.handle(current.e);
+          }
+        } else if (current instanceof T.Suspended) {
+          current = current.e() as any;
+        } else if (current instanceof T.IAsync) {
+          this.contextSwitch(current.e);
+          current = undefined;
+        } else if (current instanceof T.IChain) {
+          this.currentFrame = new Frame(current.f as any, this.currentFrame);
+          current = current.e as any;
+        } else if (current instanceof T.IMap) {
+          this.currentFrame = new MapFrame(current.f, this.currentFrame);
+          current = current.e as any;
+        } else if (current instanceof T.ICollapse) {
+          this.currentFrame = new FoldFrame(
+            current.success as any,
+            current.failure as any,
+            this.currentFrame
+          );
+          current = current.inner as any;
+        } else if (current instanceof T.IInterruptibleRegion) {
+          if (this.interruptRegionStack === undefined) {
+            this.interruptRegionStack = [current.int];
+          } else {
+            this.interruptRegionStack.push(current.int);
+          }
+          this.currentFrame = new InterruptFrame(this.interruptRegionStack, this.currentFrame);
+          current = current.e as any;
+        } else if (current instanceof T.IAccessRuntime) {
+          current = new T.Pure(current.f(defaultRuntime));
+        } else if (current instanceof T.IAccessInterruptible) {
+          current = new T.Pure(current.f(this.isInterruptible()));
+        } else {
+          throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
-        current = T.Implementation.fromEffect(T.raiseAbort(e));
+        current = T.raiseAbort(e);
       }
     }
+
     // If !current then the interrupt came to late and we completed everything
     if (this.interrupted && current) {
       this.resumeInterrupt();

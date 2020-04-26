@@ -17,8 +17,6 @@ export enum EffectTag {
 }
 
 export interface Effect<S, R, E, A> {
-  _tag: EffectTag;
-
   _TAG: () => "Effect";
   _E: () => E;
   _A: () => A;
