@@ -2,7 +2,7 @@
   based on: https://github.com/rzeigler/waveguide/blob/master/src/driver.ts
  */
 
-import { either as E, function as F, option as O } from "fp-ts";
+import { either as E, function as F } from "fp-ts";
 import {
   Cause,
   Done,
@@ -168,22 +168,19 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   foldResume(status: E.Either<unknown, unknown>) {
-    E.fold(
-      (cause: unknown) => {
-        const go = this.handle(raise(cause));
-        if (go) {
-          /* eslint-disable-next-line */
-          this.loop(go);
-        }
-      },
-      (value: unknown) => {
-        const go = this.next(value);
-        if (go) {
-          /* eslint-disable-next-line */
-          this.loop(go);
-        }
+    if (status._tag === "Right") {
+      const go = this.next(status.right);
+      if (go) {
+        /* eslint-disable-next-line */
+        this.loop(go);
       }
-    )(status);
+    } else {
+      const go = this.handle(raise(status.left));
+      if (go) {
+        /* eslint-disable-next-line */
+        this.loop(go);
+      }
+    }
   }
 
   resume(status: E.Either<unknown, unknown>): void {
@@ -240,7 +237,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   PureOption(_: T.PureOption<any, any>) {
-    if (O.isSome(_.a)) {
+    if (_.a._tag === "Some") {
       return this.next(_.a.value);
     } else {
       return this.handle(raise(_.onEmpty()));
@@ -248,7 +245,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   PureEither(_: T.PureEither<any, any>) {
-    if (E.isRight(_.a)) {
+    if (_.a._tag === "Right") {
       return this.next(_.a.right);
     } else {
       return this.handle(raise(_.a.left));
