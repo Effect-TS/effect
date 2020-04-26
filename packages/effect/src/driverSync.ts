@@ -210,7 +210,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
           throw new Error(`Die: Unrecognized current type ${current}`);
         }
       } catch (e) {
-        current = T.raiseAbort(e);
+        current = new T.Raised({ _tag: "Abort", abortedWith: e });
       }
     }
     // If !current then the interrupt came to late and we completed everything
