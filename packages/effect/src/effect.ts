@@ -1727,7 +1727,7 @@ export function getParCauseValidationM<E>(
             : raised(faEx)
           : faEx._tag === "Done"
           ? raised(fabEx)
-          : raised(S.concat(faEx, fabEx))
+          : raised(S.concat(fabEx, faEx))
       ),
     throwError: raiseError,
     alt: <S1, S2, R, R2, A>(
