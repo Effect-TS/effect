@@ -1010,15 +1010,15 @@ export const never: Async<never> = asyncTotal(() => {
  */
 export const until = (f: (res: () => void) => void) =>
   asyncTotal<void>((res) => {
-    const handle = setTimeout(() => {
+    const handle = setInterval(() => {
       // keep process going
     }, 60000);
     f(() => {
       res(undefined);
-      clearTimeout(handle);
+      clearInterval(handle);
     });
     return (cb) => {
-      clearTimeout(handle);
+      clearInterval(handle);
       cb();
     };
   });
