@@ -2,9 +2,6 @@
   "extends": "./base.tsconfig.json",
   "files": [],
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@matechs/*": ["packages/*/src"]
-    }
+    "baseUrl": "."
   }
 }
