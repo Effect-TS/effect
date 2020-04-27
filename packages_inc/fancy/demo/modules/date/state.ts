@@ -1,7 +1,7 @@
 import { T } from "@matechs/prelude";
 import { AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBST";
-import { iotsConfig } from "@morphic-ts/io-ts-interpreters/lib/config";
-import { fastCheckConfig } from "@morphic-ts/fastcheck-interpreters/lib/config";
+import { IoTsURI } from "@morphic-ts/io-ts-interpreters/lib/config";
+import { FastCheckURI } from "@morphic-ts/fastcheck-interpreters/lib/config";
 import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils";
 import { State } from "../../../src";
 import { summon } from "../../morphic";
@@ -12,7 +12,7 @@ import { summon } from "../../morphic";
 export const DateState_ = summon((F) =>
   F.interface(
     {
-      current: F.date({ ...iotsConfig((x, _) => x), ...fastCheckConfig((x, _) => x) })
+      current: F.date({ [IoTsURI]: (x, _) => x, [FastCheckURI]: (x, _) => x })
     },
     "DateState"
   )

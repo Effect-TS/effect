@@ -23,7 +23,7 @@
     "es6"
   ],
   "peerDependencies": {
-    "@morphic-ts/batteries": "^1.4.1",
+    "@morphic-ts/batteries": "^1.6.0",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",
