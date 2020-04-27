@@ -26,7 +26,7 @@
     "es6"
   ],
   "peerDependencies": {
-    "@morphic-ts/batteries": "^1.6.1",
+    "@morphic-ts/batteries": "^1.7.0",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",
     "io-ts": "^2.2.1",
@@ -40,7 +40,7 @@
     "react-dom": "^16.13.1"
   },
   "devDependencies": {
-    "@morphic-ts/batteries": "^1.6.1",
+    "@morphic-ts/batteries": "^1.7.0",
     "@types/react": "^16.9.32",
     "@types/react-dom": "^16.9.6",
     "fast-check": "^1.24.1",

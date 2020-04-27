@@ -2110,89 +2110,89 @@
   dependencies:
     "@morphic-ts/common" "^1.4.0"
 
-"@morphic-ts/batteries@^1.6.1":
-  version "1.6.1"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/batteries/-/batteries-1.6.1.tgz#b573f8a0c0fc9214fb883dfb4b3c649b70367b63"
-  integrity sha512-TLUQOebULWolvVazcBIyz43tORmznFStx9yWevYJzCk1Tl/k7hGO+L4HNbpYv5XCbl8DjAckt26SDdOWiOVtSw==
+"@morphic-ts/batteries@^1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/batteries/-/batteries-1.7.0.tgz#62182bf4bd09230c8e0ded907650684edda33e11"
+  integrity sha512-UkVSG6uaKGsN/gzC7bpRQ6oNRQELKLKUpv6E2ufP27XR2WfRPvHp2qWFSJ8CcoBHAdPXw3wR3tdcjalzMHhfJg==
   dependencies:
     "@morphic-ts/adt" "^1.4.0"
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/eq-interpreters" "^1.4.0"
-    "@morphic-ts/fastcheck-interpreters" "^1.4.1"
-    "@morphic-ts/io-ts-interpreters" "^1.4.0"
-    "@morphic-ts/json-schema-interpreters" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
-    "@morphic-ts/ord-interpreters" "^1.4.0"
-    "@morphic-ts/show-interpreters" "^1.4.0"
+    "@morphic-ts/eq-interpreters" "^1.5.0"
+    "@morphic-ts/fastcheck-interpreters" "^1.5.0"
+    "@morphic-ts/io-ts-interpreters" "^1.5.0"
+    "@morphic-ts/json-schema-interpreters" "^1.5.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
+    "@morphic-ts/ord-interpreters" "^1.5.0"
+    "@morphic-ts/show-interpreters" "^1.5.0"
 
 "@morphic-ts/common@^1.4.0":
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/@morphic-ts/common/-/common-1.4.0.tgz#c283390b6a1ee638af52016095b35bda8a3681f0"
   integrity sha512-V8nNazAGYXjPrglLc6vEd2FU8+0eNuGtbt0o/xRV9huLWkIP5NaTkacHhlAXXpyzH8J6hAusx1S3pRKL9/J7SQ==
 
-"@morphic-ts/eq-interpreters@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/eq-interpreters/-/eq-interpreters-1.4.0.tgz#a2bb7506dffedc642b9d1508bcd6296804ded2b9"
-  integrity sha512-Kj0FgTHMPVcAL2mvke7rbMQGmORMS3BAZ0eHZZcQQQdq3p/KQ3gLMy3lRhIImIPE1ZRB/K7pPDNOCfvSRmDYiw==
+"@morphic-ts/eq-interpreters@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/eq-interpreters/-/eq-interpreters-1.5.0.tgz#29e44c6f81f7c864c33620b52b48f46abbb3d035"
+  integrity sha512-VSN3VNrJwk4mKkg6I54g+0jdK8cizjJJSss8IooPHyig2XTkWmJMFSl9qaJu7SlKYIdXhtLKxSDMI4yZQ1t+1g==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
     fast-equals "^2.0.0"
 
-"@morphic-ts/fastcheck-interpreters@^1.4.1":
-  version "1.4.1"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/fastcheck-interpreters/-/fastcheck-interpreters-1.4.1.tgz#1a4a2b876b41ac3ed72b65d6e60fcef04a564c4e"
-  integrity sha512-2CfGzZrKge+wAA5thR5vCL1mUrHC54deyy9fA7FV7uTjRdqL4y0NPBB7O7w+RIV4ssrtth5WPcVP0PCuThodlA==
+"@morphic-ts/fastcheck-interpreters@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/fastcheck-interpreters/-/fastcheck-interpreters-1.5.0.tgz#4411299c5a169383f56b3049f58f0b2a3524d423"
+  integrity sha512-jgSOwPS6Mj1xjcx0GceBOK+UtSAY2imhvEwFz61HJcbEks66M4Jtd/06qZQbVCQKs3y99XN3S3nbxkFMNB+lNA==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
 
-"@morphic-ts/io-ts-interpreters@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/io-ts-interpreters/-/io-ts-interpreters-1.4.0.tgz#54e31c418270a68ece6d70620768dd6b487c365e"
-  integrity sha512-/owgVb6PwBZJ/nccCi915/sr12LlgMqmNxDtVjP9iiimvjDMqYit3hDEuXnKhMgXwM7xKcqDWtrVbK9Xlg0slQ==
+"@morphic-ts/io-ts-interpreters@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/io-ts-interpreters/-/io-ts-interpreters-1.5.0.tgz#c5e74b245870cfafbce538cc31b52cb0b8a03670"
+  integrity sha512-vtyizSKM1eTx1bgIg49/B3AGNhufKNJJRUY1wDna1dT+dAOSaFC9Mhj7ifP21tEqgIPKbIDGfMck7YXpxiUdpw==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
 
-"@morphic-ts/json-schema-interpreters@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/json-schema-interpreters/-/json-schema-interpreters-1.4.0.tgz#56df98f3a0fbae7a23ad4dd5e72548ea711a2d24"
-  integrity sha512-VHJtWgLikw2RuIkFmhjS/1iAJQqMyssrnqA/kFUy2Nj4DrEytJ0H1QCAM6hl5EW9JWBs6PBuBnD0daFO0rNPFg==
+"@morphic-ts/json-schema-interpreters@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/json-schema-interpreters/-/json-schema-interpreters-1.5.0.tgz#910f09698acf20a1bcc547476478b9a277d41e04"
+  integrity sha512-bidtNf7Tti78ZXF44I5Y8/DG83L9Q+mJ9k9t5W71qKt82GJ4gllspNhb1ShHngqwlaWOIqXoFhxcNvSjQoG9Zw==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
 
-"@morphic-ts/model-algebras@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/model-algebras/-/model-algebras-1.4.0.tgz#01ba211bdc10bd5e9c49c71a2f25afd10da01429"
-  integrity sha512-sIu+bqyPclNDcEEQ+o8peGQwE0yIRhySgAM30+j0al3aAbeoByNE/z3cpPN2MIYNYFGWsZlFLKRgEboDRTLSzw==
+"@morphic-ts/model-algebras@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/model-algebras/-/model-algebras-1.5.0.tgz#0d7b2cf059a735e347821313cf93f202d898dbf1"
+  integrity sha512-J+KF8e+Ub6H7QOpr6xjmuyugfhjDZKNjbqsCXuZg5s+/DgZ6wNZ5xSoq58/OV7gnMFAHSSXH2fSOJv6ADRTMiA==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
 
-"@morphic-ts/ord-interpreters@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/ord-interpreters/-/ord-interpreters-1.4.0.tgz#b96ff1a76b8c61eb1919b89de7fe1a0b8c089b3c"
-  integrity sha512-Gg6H4rS0nqeY1QzfTmt27M4wuSiN58ZuylS5MQwL+AhwplzxW5GQwnpF+2zuet46mX84GkCHtIxXbWbVtHjHzA==
+"@morphic-ts/ord-interpreters@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/ord-interpreters/-/ord-interpreters-1.5.0.tgz#ebeb5358ec9a6ad0c77dd45955f57a457f813670"
+  integrity sha512-8laBmN5GyoxTPPxuLffxrqInUvGnsJlcwURqh7S3RO84qwyrOJjWDcsBBkz/u+N59NrfenkrOK3GSLZCxhzvWQ==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
 
-"@morphic-ts/show-interpreters@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/show-interpreters/-/show-interpreters-1.4.0.tgz#6b2e27dfbd1ff69d4cb50ddb414eb5a0376fc656"
-  integrity sha512-XpC/Agd1h29EQcWCPn1VHfhUYkfcZrFL4RhqR5MsXlchhUSanwAa5AN9S9As34qO4YEP8a99bbvw3iwl5QDFqg==
+"@morphic-ts/show-interpreters@^1.5.0":
+  version "1.5.0"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/show-interpreters/-/show-interpreters-1.5.0.tgz#074b6f7827793672388ed330c3503d6c8b455c06"
+  integrity sha512-gE7pixYk0BUq/j4F5e+6z08zRw/AAZeRnsnR0qT0vXWtVHZADK6nuuED+Ewg5RPSUjS1Cy729Lp5ChdTKluqnw==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
-    "@morphic-ts/model-algebras" "^1.4.0"
+    "@morphic-ts/model-algebras" "^1.5.0"
 
 "@mrmlnc/readdir-enhanced@^2.2.1":
   version "2.2.1"
