@@ -46,9 +46,20 @@ export interface ESMeta {
 
 export const readEvents = (readId: string) => (streamId: string) => <S, R, E, A>(
   decode: (u: unknown) => T.Effect<S, R, E, A>
-) => <S2, R2, E2>(process: (a: A & ESMeta) => T.Effect<S2, R2, E2, void>) => <S3, S4, OR, OE, OR2, OE2>(
+) => <S2, R2, E2>(process: (a: A & ESMeta) => T.Effect<S2, R2, E2, void>) => <
+  S3,
+  S4,
+  OR,
+  OE,
+  OR2,
+  OE2
+>(
   store: OffsetStore<S3, S4, OR, OE, OR2, OE2>
-) => <SF, RF, EF>(provider: T.Provider<RF & R, R2 & OR, EF, SF>) =>
+) => <SF, RF, EF>(
+  provider: (
+    _: T.Effect<S3 | S | S2, OR & R2 & R, SubError<E, E2, OE>, void>
+  ) => T.Effect<S3 | S | S2 | SF, RF & R, SubError<E, E2, OE> | EF, void>
+) =>
   M.use(eventStoreTcpConnection, (connection) =>
     pipe(
       T.sequenceT(accessConfig, store.get(readId, streamId), T.accessEnvironment<R & RF>()),
