@@ -88,7 +88,7 @@
     "tslint": "^6.1.1",
     "typeorm": "^0.2.24",
     "uuid": "^7.0.3",
-    "typescript": "beta",
+    "typescript": "next",
     "waveguide": "^1.4.0",
     "winston": "^3.2.1",
     "yarn-deduplicate": "^2.0.0"

@@ -11259,11 +11259,6 @@ typeorm@^0.2.24:
     yargonaut "^1.1.2"
     yargs "^13.2.1"
 
-typescript@beta:
-  version "3.9.0-beta"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.0-beta.tgz#3d73e2e2797904562d9d6840387a9794fdce4bc8"
-  integrity sha512-8KFblEWBTXath2UwPQ9Ho7/fAEcBragPwmUALeeSymCpJlHOll6gV/1YTY96e+iqeDJ174JM2EJ/ymWbbQRyHw==
-
 typescript@next:
   version "3.9.0-dev.20200416"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.0-dev.20200416.tgz#8cd09b68d0ec409bcbd2d6381297d476d982db85"
