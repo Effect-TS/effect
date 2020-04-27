@@ -9,8 +9,8 @@ import * as Ei from "fp-ts/lib/Either";
 import * as TR from "fp-ts/lib/Tree";
 import * as RE from "fp-ts/lib/Record";
 import { Separated } from "fp-ts/lib/Compactable";
-import { pipe } from "fp-ts/lib/pipeable";
-import { Monad4E } from "./overloadEff";
+import { pipe, pipeable } from "fp-ts/lib/pipeable";
+import { Monad4E, Monad4EP, MonadThrow4E } from "./overloadEff";
 
 export enum ManagedTag {
   Pure,
@@ -178,16 +178,6 @@ function chain_<S, R, E, L, S2, R2, E2, A>(
 }
 
 /**
- * Curried form of chain
- * @param bind
- */
-export function chain<S, R, E, L, A>(
-  bind: F.FunctionN<[L], Managed<S, R, E, A>>
-): <S2, R2, E2>(ma: Managed<S2, R2, E2, L>) => Managed<S | S2, R & R2, E | E2, A> {
-  return (left) => chain_(left, bind);
-}
-
-/**
  * Map a resource
  * @param res
  * @param f
@@ -197,16 +187,6 @@ function map_<S, R, E, L, A>(
   f: F.FunctionN<[L], A>
 ): Managed<S, R, E, A> {
   return chain_(res, (r) => pure(f(r)) as Managed<S, R, E, A>);
-}
-
-/**
- * Curried form of map
- * @param f
- */
-export function map<L, A>(
-  f: F.FunctionN<[L], A>
-): <S, R, E>(res: Managed<S, R, E, L>) => Managed<S, R, E, A> {
-  return (res) => map_(res, f);
 }
 
 /**
@@ -257,12 +237,12 @@ function foldExitAndFiber<E, A, B, S, S2, R, R2>(
             T.chainError(() => T.raised(bExit))
           )
       : bExit._tag === "Done"
-        ? pipe(
-            onAFail(bExit.value),
-            T.chain(() => T.raised(aExit)),
-            T.chainError(() => T.raised(aExit))
-          )
-        : T.raised(aExit)
+      ? pipe(
+          onAFail(bExit.value),
+          T.chain(() => T.raised(aExit)),
+          T.chainError(() => T.raised(aExit))
+        )
+      : T.raised(aExit)
   );
 }
 
@@ -274,13 +254,13 @@ function foldExitAndFiber<E, A, B, S, S2, R, R2>(
  * @param resb
  * @param f
  */
-export function parZipWith<S, S2, R, R2, E, A, B, C>(
+export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
   resa: Managed<S, R, E, A>,
-  resb: Managed<S2, R2, E, B>,
+  resb: Managed<S2, R2, E2, B>,
   f: F.FunctionN<[A, B], C>
-): AsyncRE<R & R2, E, C> {
+): AsyncRE<R & R2, E | E2, C> {
   const alloc = T.raceFold(
-    allocate(resa),
+    allocate(resa as Managed<S, R, E | E2, A>),
     allocate(resb),
     (aExit, bFiber) =>
       foldExitAndFiber(
@@ -335,21 +315,21 @@ export function parZipWith<S, S2, R, R2, E, A, B, C>(
  */
 export function parZip<S, S2, R, R2, E, A, B>(
   resa: Managed<S, R, E, A>,
-  resb: Managed<S2, R2, E, B>,
+  resb: Managed<S2, R2, E, B>
 ): AsyncRE<R & R2, E, [A, B]> {
   return parZipWith(resa, resb, F.tuple);
 }
 
 /**
- * Apply the function produced by resfab to the value produced by resa to produce a new resource.
- * @param resa
- * @param resfab
+ * Parallel form of ap_
+ * @param iof
+ * @param ioa
  */
-export function ap<S, R, E, A, S2, R2, E2, B>(
-  resa: Managed<S, R, E, A>,
-  resfab: Managed<S2, R2, E2, F.FunctionN<[A], B>>
-): Managed<S | S2, R & R2, E | E2, B> {
-  return zipWith(resa, resfab, (a, f) => f(a));
+export function parAp_<S, S2, R, R2, E, E2, A, B>(
+  iof: Managed<S, R, E, F.FunctionN<[A], B>>,
+  ioa: Managed<S2, R2, E2, A>
+): AsyncRE<R & R2, E | E2, B> {
+  return parZipWith(iof, ioa, (f, a) => f(a));
 }
 
 /**
@@ -528,14 +508,23 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-export const managed: Monad4E<URI> =
-  {
-    URI,
-    of: pure,
-    map: map_,
-    ap: ap_,
-    chain: chain_
-  } as const;
+export const managed: Monad4E<URI> & MonadThrow4E<URI> = {
+  URI,
+  of: pure,
+  map: map_,
+  ap: ap_,
+  chain: chain_,
+  throwError: (e) => encaseEffect(T.raiseError(e))
+};
+
+export const parManaged: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  of: pure,
+  map: map_,
+  ap: parAp_,
+  chain: chain_
+};
 
 export function getSemigroup<S, R, E, A>(
   Semigroup: Sem.Semigroup<A>
@@ -563,6 +552,10 @@ export const Do = () => DoG(managed);
 export const sequenceS = SS(managed);
 export const sequenceT = ST(managed);
 
+export const parDo = () => DoG(parManaged);
+export const parSequenceS = SS(parManaged);
+export const parSequenceT = ST(parManaged);
+
 export const sequenceOption = Op.option.sequence(managed);
 
 export const traverseOption: <S, A, R, E, B>(
@@ -580,6 +573,24 @@ export const witherOption: <S, A, R, E, B>(
 ) => (ta: Op.Option<A>) => Managed<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(managed)(ta, f);
 
+export const parSequenceOption = Op.option.sequence(parManaged);
+
+export const parTraverseOption: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: Op.Option<A>) => Managed<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.traverse(parManaged)(ta, f);
+
+export const parWiltOption: <S, A, R, E, B, C>(
+  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Managed<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
+  wa
+) => Op.option.wilt(parManaged)(wa, f);
+
+export const parWitherOption: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Managed<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.wither(parManaged)(ta, f);
+
 export const sequenceEither = Ei.either.sequence(managed);
 
 export const traverseEither: <S, A, R, FE, B>(
@@ -593,6 +604,20 @@ export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => Managed<S, R, E, B>
 ) => (ta: TR.Tree<A>) => Managed<S, R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(managed)(ta, f);
+
+export const parSequenceEither = Ei.either.sequence(parManaged);
+
+export const parTraverseEither: <S, A, R, FE, B>(
+  f: (a: A) => Managed<S, R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Managed<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(parManaged)(ta, f);
+
+export const parSequenceTree = TR.tree.sequence(managed);
+
+export const parTraverseTree: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: TR.Tree<A>) => Managed<unknown, R, E, TR.Tree<B>> = (f) => (ta) =>
+  TR.tree.traverse(parManaged)(ta, f);
 
 export const sequenceArray = Ar.array.sequence(managed);
 
@@ -614,6 +639,28 @@ export const wiltArray: <S, A, R, E, B, C>(
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => Managed<S, R, E, Op.Option<B>>
 ) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) => Ar.array.wither(managed)(ta, f);
+
+export const parSequenceArray = Ar.array.sequence(parManaged);
+
+export const parTraverseArray: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: Array<A>) => Managed<unknown, R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverse(parManaged)(ta, f);
+
+export const parTraverseArrayWithIndex: <S, A, R, E, B>(
+  f: (i: number, a: A) => Managed<S, R, E, B>
+) => (ta: Array<A>) => Managed<unknown, R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverseWithIndex(parManaged)(ta, f);
+
+export const parWiltArray: <S, A, R, E, B, C>(
+  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => Managed<unknown, R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  Ar.array.wilt(parManaged)(wa, f);
+
+export const parWitherArray: <S, A, R, E, B>(
+  f: (a: A) => Managed<S, R, E, Op.Option<B>>
+) => (ta: Array<A>) => Managed<unknown, R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.wither(parManaged)(ta, f);
 
 export const sequenceRecord = RE.record.sequence(managed);
 
@@ -638,3 +685,43 @@ export const witherRecord: <A, S, R, E, B>(
   f: (a: A) => Managed<S, R, E, Op.Option<B>>
 ) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(managed)(ta, f);
+
+export const parSequenceRecord = RE.record.sequence(parManaged);
+
+export const parTraverseRecord: <A, S, R, E, B>(
+  f: (a: A) => Managed<S, R, E, B>
+) => (ta: Record<string, A>) => Managed<unknown, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverse(parManaged)(ta, f);
+
+export const parTraverseRecordWithIndex: <A, S, R, E, B>(
+  f: (k: string, a: A) => Managed<S, R, E, B>
+) => (ta: Record<string, A>) => Managed<unknown, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(parManaged)(ta, f);
+
+export const parWiltRecord: <A, S, R, E, B, C>(
+  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
+) => (
+  wa: Record<string, A>
+) => Managed<unknown, R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
+  RE.record.wilt(parManaged)(wa, f);
+
+export const parWitherRecord: <A, S, R, E, B>(
+  f: (a: A) => Managed<S, R, E, Op.Option<B>>
+) => (ta: Record<string, A>) => Managed<unknown, R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(parManaged)(ta, f);
+
+export const {
+  ap,
+  apFirst,
+  apSecond,
+  chain,
+  chainFirst,
+  flatten,
+  map,
+  filterOrElse,
+  fromEither,
+  fromOption,
+  fromPredicate
+} = pipeable(managed);
+
+export const { ap: parAp, apFirst: parApFirst, apSecond: parApSecond } = pipeable(parManaged);
