@@ -2110,16 +2110,16 @@
   dependencies:
     "@morphic-ts/common" "^1.4.0"
 
-"@morphic-ts/batteries@^1.4.1", "@morphic-ts/batteries@^1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/batteries/-/batteries-1.6.0.tgz#94416ad3c258e102971acce088ee48c7e6e88ae8"
-  integrity sha512-aCiLNH8qytKyflcwEcT7xHe2JOGtGMP+WK94qGj2dpzuCg6rc/Urf4808cIchL2/f2fAy3ISbn2zFGZ+Z5MJGg==
+"@morphic-ts/batteries@^1.6.1":
+  version "1.6.1"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/batteries/-/batteries-1.6.1.tgz#b573f8a0c0fc9214fb883dfb4b3c649b70367b63"
+  integrity sha512-TLUQOebULWolvVazcBIyz43tORmznFStx9yWevYJzCk1Tl/k7hGO+L4HNbpYv5XCbl8DjAckt26SDdOWiOVtSw==
   dependencies:
     "@morphic-ts/adt" "^1.4.0"
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
     "@morphic-ts/eq-interpreters" "^1.4.0"
-    "@morphic-ts/fastcheck-interpreters" "^1.4.0"
+    "@morphic-ts/fastcheck-interpreters" "^1.4.1"
     "@morphic-ts/io-ts-interpreters" "^1.4.0"
     "@morphic-ts/json-schema-interpreters" "^1.4.0"
     "@morphic-ts/model-algebras" "^1.4.0"
@@ -2141,10 +2141,10 @@
     "@morphic-ts/model-algebras" "^1.4.0"
     fast-equals "^2.0.0"
 
-"@morphic-ts/fastcheck-interpreters@^1.4.0":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@morphic-ts/fastcheck-interpreters/-/fastcheck-interpreters-1.4.0.tgz#d41107f423eb7710abf9c3d54e2be1fadc90af7b"
-  integrity sha512-td74ZQn16LnLaPs1Z+AdNni7MvvSpNRgEMwikLgm5Z0B0hh1VUu0eTgbW1hf89544uUIqXabcQv8PBu/Tealvw==
+"@morphic-ts/fastcheck-interpreters@^1.4.1":
+  version "1.4.1"
+  resolved "https://registry.yarnpkg.com/@morphic-ts/fastcheck-interpreters/-/fastcheck-interpreters-1.4.1.tgz#1a4a2b876b41ac3ed72b65d6e60fcef04a564c4e"
+  integrity sha512-2CfGzZrKge+wAA5thR5vCL1mUrHC54deyy9fA7FV7uTjRdqL4y0NPBB7O7w+RIV4ssrtth5WPcVP0PCuThodlA==
   dependencies:
     "@morphic-ts/algebras" "^1.4.0"
     "@morphic-ts/common" "^1.4.0"
