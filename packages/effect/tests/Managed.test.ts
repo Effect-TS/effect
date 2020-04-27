@@ -1,9 +1,13 @@
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
+import { eqString } from "fp-ts/lib/Eq";
+import { constVoid } from "fp-ts/lib/function";
+import { pipe } from "fp-ts/lib/pipeable";
 import { semigroupSum } from "fp-ts/lib/Semigroup";
 import { monoidSum } from "fp-ts/lib/Monoid";
+import * as Ar from "fp-ts/lib/Array";
 
-import { effect as T, managed as M } from "../src";
+import { effect as T, managed as M, exit as Ex } from "../src";
 
 describe("Managed", () => {
   it("should use resource encaseEffect", async () => {
@@ -96,6 +100,183 @@ describe("Managed", () => {
     const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)));
 
     assert.deepEqual(result, 2);
+  });
+
+  describe("parZipWith", () => {
+    let logMock: jest.SpyInstance<void, any[]>;
+    beforeEach(() => {
+      logMock = jest.spyOn(console, "log").mockImplementation(constVoid);
+    });
+    afterEach(() => {
+      logMock.mockRestore();
+    });
+
+    const sAllocStr = (type: "A" | "B") => `called alloc ${type}`;
+    const sDeallocStr = (type: "A" | "B") => `called de-alloc ${type}`;
+    const fAllocStr = (type: "A" | "B") => `fail alloc ${type}`;
+    const fDeallocStr = (type: "A" | "B") => `fail de-alloc ${type}`;
+
+    const sAllocEff = (type: "A" | "B", value: number) =>
+      T.delay(
+        T.sync(() => {
+          console.log(sAllocStr(type));
+          return value;
+        }),
+        type === "A" ? 0 : 10
+      );
+    const fAllocEff = (type: "A" | "B") =>
+      pipe(
+        T.sync(() => {
+          console.log(fAllocStr(type));
+        }),
+        T.chain(() => T.raiseError(fAllocStr(type))),
+        T.liftDelay(type === "A" ? 0 : 10)
+      );
+    const sDeallocEff = (type: "A" | "B") =>
+      T.delay(
+        T.sync(() => {
+          console.log(sDeallocStr(type));
+        }),
+        type === "A" ? 0 : 10
+      );
+    const fDeallocEff = (type: "A" | "B") =>
+      pipe(
+        T.sync(() => {
+          console.log(fDeallocStr(type));
+        }),
+        T.chain(() => T.raiseError(fDeallocStr(type))),
+        T.liftDelay(type === "A" ? 0 : 10)
+      );
+
+    const maSS = M.bracket(sAllocEff("A", 1), () => sDeallocEff("A"));
+    const maSF = M.bracket(sAllocEff("A", 1), () => fDeallocEff("A"));
+    const maFS = M.bracket(fAllocEff("A"), () => sDeallocEff("A"));
+    const maFF = M.bracket(fAllocEff("A"), () => fDeallocEff("A"));
+
+    const mbSS = M.bracket(sAllocEff("B", 2), () => sDeallocEff("B"));
+    const mbSF = M.bracket(sAllocEff("B", 2), () => fDeallocEff("B"));
+    const mbFS = M.bracket(fAllocEff("B"), () => sDeallocEff("B"));
+    const mbFF = M.bracket(fAllocEff("B"), () => fDeallocEff("B"));
+
+    function createTest<S>(
+      title: string,
+      ma: M.Managed<S, unknown, string, number>,
+      mb: M.Managed<S, unknown, string, number>,
+      expectCalls: string[],
+      expectResult: Ex.Exit<string, number>
+    ) {
+      it(title, async () => {
+        const strArrDiff = Ar.difference(Ar.getEq(eqString));
+        const expectCalls_ = Ar.array.map(expectCalls, Ar.of);
+
+        const zip = M.parZipWith(ma, mb, (n, m) => n + m);
+        const result = await T.runToPromiseExit(M.use(zip, T.pure));
+
+        expect(strArrDiff(logMock.mock.calls, expectCalls_)).toEqual([]);
+        expect(strArrDiff(expectCalls_, logMock.mock.calls)).toEqual([]);
+        assert.deepEqual(result, expectResult);
+      });
+    }
+
+    // region maSS
+    createTest(
+      "maSS mbSS",
+      maSS,
+      mbSS,
+      [sAllocStr("A"), sDeallocStr("A"), sAllocStr("B"), sDeallocStr("B")],
+      Ex.done(3)
+    );
+    createTest(
+      "maSS mbSF",
+      maSS,
+      mbSF,
+      [sAllocStr("A"), sDeallocStr("A"), sAllocStr("B"), fDeallocStr("B")],
+      Ex.raise(fDeallocStr("B"))
+    );
+    createTest(
+      "maSS mbFS",
+      maSS,
+      mbFS,
+      [sAllocStr("A"), sDeallocStr("A"), fAllocStr("B")],
+      Ex.raise(fAllocStr("B"))
+    );
+    createTest(
+      "maSS mbFF",
+      maSS,
+      mbFF,
+      [sAllocStr("A"), sDeallocStr("A"), fAllocStr("B")],
+      Ex.raise(fAllocStr("B"))
+    );
+    // endregion
+
+    // region maSF
+    createTest(
+      "maSF mbSS",
+      maSF,
+      mbSS,
+      [sAllocStr("A"), fDeallocStr("A"), sAllocStr("B"), sDeallocStr("B")],
+      Ex.raise(fDeallocStr("A"))
+    );
+    createTest(
+      "maSF mbSF",
+      maSF,
+      mbSF,
+      [sAllocStr("A"), fDeallocStr("A"), sAllocStr("B"), fDeallocStr("B")],
+      Ex.raise(fDeallocStr("A"))
+    );
+    createTest(
+      "maSF mbFS",
+      maSF,
+      mbFS,
+      [sAllocStr("A"), fDeallocStr("A"), fAllocStr("B")],
+      Ex.raise(fAllocStr("B"))
+    );
+    createTest(
+      "maSF mbFF",
+      maSF,
+      mbFF,
+      [sAllocStr("A"), fDeallocStr("A"), fAllocStr("B")],
+      Ex.raise(fAllocStr("B"))
+    );
+    // endregion
+
+    // region maFS
+    createTest(
+      "maFS mbSS",
+      maFS,
+      mbSS,
+      [fAllocStr("A"), sAllocStr("B"), sDeallocStr("B")],
+      Ex.raise(fAllocStr("A"))
+    );
+    createTest(
+      "maFS mbSF",
+      maFS,
+      mbSF,
+      [fAllocStr("A"), sAllocStr("B"), fDeallocStr("B")],
+      Ex.raise(fAllocStr("A"))
+    );
+    createTest("maFS mbFS", maFS, mbFS, [fAllocStr("A"), fAllocStr("B")], Ex.raise(fAllocStr("A")));
+    createTest("maFS mbFF", maFS, mbFF, [fAllocStr("A"), fAllocStr("B")], Ex.raise(fAllocStr("A")));
+    // endregion
+
+    // region maFF
+    createTest(
+      "maFF mbSS",
+      maFF,
+      mbSS,
+      [fAllocStr("A"), sAllocStr("B"), sDeallocStr("B")],
+      Ex.raise(fAllocStr("A"))
+    );
+    createTest(
+      "maFF mbSF",
+      maFF,
+      mbSF,
+      [fAllocStr("A"), sAllocStr("B"), fDeallocStr("B")],
+      Ex.raise(fAllocStr("A"))
+    );
+    createTest("maFF mbFS", maFF, mbFS, [fAllocStr("A"), fAllocStr("B")], Ex.raise(fAllocStr("A")));
+    createTest("maFF mbFF", maFF, mbFF, [fAllocStr("A"), fAllocStr("B")], Ex.raise(fAllocStr("A")));
+    // endregion
   });
 
   it("should use resource ap", async () => {
