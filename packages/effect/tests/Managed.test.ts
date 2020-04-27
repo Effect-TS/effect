@@ -282,17 +282,17 @@ describe("Managed", () => {
   it("should use resource ap", async () => {
     const ma = M.pure(1);
     const mfab = M.pure((n: number) => n + 1);
-    const ap = M.ap(ma, mfab);
+    const ap = M.managed.ap(mfab, ma);
 
     const result = await T.runToPromise(M.use(ap, (n) => T.pure(n + 1)));
 
     assert.deepEqual(result, 3);
   });
 
-  it("should use resource ap_", async () => {
+  it("should use resource ap", async () => {
     const ma = M.pure(1);
     const mfab = M.pure((n: number) => n + 1);
-    const ap = M.managed.ap(mfab, ma);
+    const ap = pipe(mfab, M.ap(ma));
 
     const result = await T.runToPromise(M.use(ap, (n) => T.pure(n + 1)));
 
