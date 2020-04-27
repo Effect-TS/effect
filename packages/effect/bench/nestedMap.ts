@@ -1,5 +1,5 @@
 import * as wave from "waveguide/lib/wave";
-import * as T from "../src/effect";
+import * as T from "../lib/effect";
 import { QIO, defaultRuntime } from "@qio/core";
 import { Suite } from "benchmark";
 

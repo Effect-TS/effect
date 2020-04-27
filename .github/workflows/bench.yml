@@ -22,6 +22,8 @@ jobs:
           npm install -g yarn
           yarn
           cd packages/effect
+          yarn build
+          yarn tsc bench/*.ts
           yarn bench
         env:
           CI: "true"
