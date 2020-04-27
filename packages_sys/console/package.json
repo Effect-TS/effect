@@ -1,6 +1,6 @@
 {
   "name": "@matechs/console",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -24,9 +24,9 @@
   ],
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/test-jest": "^1.2.0"
+    "@matechs/test-jest": "^1.3.0"
   },
   "dependencies": {
-    "@matechs/prelude": "^1.2.0"
+    "@matechs/prelude": "^1.3.0"
   }
 }
