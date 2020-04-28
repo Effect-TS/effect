@@ -63,6 +63,16 @@ export interface Deferred<S, R, E, A> {
   from(source: T.Effect<S, R, E, A>): T.Effect<S, unknown, never, void>;
 }
 
+export type Async<A> = Deferred<unknown, unknown, never, A>;
+export type AsyncE<E, A> = Deferred<unknown, unknown, E, A>;
+export type AsyncR<R, A> = Deferred<unknown, R, never, A>;
+export type AsyncRE<R, E, A> = Deferred<unknown, R, E, A>;
+
+export type Sync<A> = Deferred<never, unknown, never, A>;
+export type SyncE<E, A> = Deferred<never, unknown, E, A>;
+export type SyncR<R, A> = Deferred<never, R, never, A>;
+export type SyncRE<R, E, A> = Deferred<never, R, E, A>;
+
 export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
   wait: T.AsyncRE<R, E, A>;
   interrupt: T.Sync<void>;

@@ -106,7 +106,7 @@ const coalg: R.Coalgebra<URI, never, unknown, never, number> = (n) => {
   }
 };
 
-const mapper: R.TMap<URI, never, unknown, never> = (ta, f) => {
+const mapper: R.FunctorM<URI, never, unknown, never> = (ta, f) => {
   switch (ta._tag) {
     case "ConstF":
       return T.pure({

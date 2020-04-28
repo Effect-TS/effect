@@ -5,5 +5,5 @@
 export { fix, Fix } from "./Fix";
 export { cata, Algebra } from "./cata";
 export { ana, Coalgebra } from "./ana";
-export { TMap } from "./TMap";
+export { FunctorM } from "./functor";
 export { hylo } from "./hylo";

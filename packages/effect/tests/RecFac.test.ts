@@ -37,7 +37,7 @@ const nil: Ex = R.fix({
   _tag: "nil"
 });
 
-const mapper: R.TMap<URI, never, unknown, never> = (ta, f) => {
+const mapper: R.FunctorM<URI, never, unknown, never> = (ta, f) => {
   switch (ta._tag) {
     case "nil":
       return T.pure(ta);
