@@ -5,6 +5,7 @@ import {
   task as TA,
   taskEither as TE,
   array as Ar,
+  nonEmptyArray as NEA,
   semigroup as Sem,
   monoid as Mon,
   tree as TR,
@@ -12,6 +13,7 @@ import {
 } from "fp-ts";
 import { pipeable, pipe } from "fp-ts/lib/pipeable";
 import * as ex from "./original/exit";
+import { fold as exFold } from "./exit";
 import { Runtime } from "./original/runtime";
 import {
   Monad4E,
@@ -1155,6 +1157,76 @@ export function makeFiber<S, R, E, A>(
  */
 export function fork<S, R, E, A>(io: Effect<S, R, E, A>, name?: string): SyncR<R, Fiber<E, A>> {
   return makeFiber(io, name);
+}
+
+function combineTwoInterrupts(a: ex.Interrupt, b: ex.Interrupt): ex.Interrupt {
+  const mon = Op.getMonoid(Ar.getMonoid<Error>());
+  return pipe(
+    Mon.fold(mon)([
+      Op.option.map(Op.fromNullable(a.error), Ar.of),
+      Op.option.map(Op.fromNullable(b.error), Ar.of),
+      Op.fromNullable(a.others),
+      Op.fromNullable(b.others)
+    ]),
+    Op.fold(
+      () => ex.interrupt,
+      (errs) =>
+        Ar.isNonEmpty(errs)
+          ? pipe(NEA.tail(errs), (arr) =>
+              Ar.isEmpty(arr)
+                ? ex.interruptWithError(NEA.head(errs))
+                : ex.interruptWithErrorAndOthers(NEA.head(errs), arr)
+            )
+          : ex.interrupt
+    )
+  );
+}
+
+export function zipFibers<E, A, B, C>(
+  fa: Fiber<E, A>,
+  fb: Fiber<E, B>,
+  f: F.FunctionN<[A, B], C>
+): Sync<Fiber<E, C>> {
+  const combinedEff = async<Ei.Either<unknown, E>, C>((next) => {
+    run(
+      chain_(fa.join, (a) => map_(fb.join, (b) => f(a, b))),
+      exFold(
+        (v) => next(Ei.right(v)),
+        (e) => next(Ei.left(Ei.right(e))),
+        (a) => next(Ei.left(Ei.left(a))),
+        F.constVoid
+      )
+    );
+
+    return (cb) => {
+      run(
+        chain_(fa.interrupt, (a) => map_(fb.interrupt, (b) => F.tuple(a, b))),
+        exFold(
+          ([ia, ib]) => {
+            const combined = combineTwoInterrupts(ia, ib);
+            return cb(combined.error, combined.others);
+          },
+          cb,
+          (a) => cb(new Error(String(a))),
+          () => cb(new Error("interruption was interrupted"))
+        )
+      );
+    };
+  });
+
+  return makeFiber(chainError_(combinedEff, Ei.fold(raiseAbort, raiseError)));
+}
+
+export function forkAll<S, R, E, A>(ios: Effect<S, R, E, A>[]): SyncR<R, Fiber<E, A[]>> {
+  return pipe(
+    ios,
+    traverseArray(fork),
+    chain(
+      Ar.reduce(fork<never, R, E, A[]>(pure(Ar.empty)), (asEff, a) =>
+        chain_(asEff, (as) => zipFibers(as, a, Ar.snoc))
+      )
+    )
+  );
 }
 
 function completeLatched<E1, E2, E3, A, B, C, R>(
