@@ -12,7 +12,7 @@ describe("Retry", () => {
       F.flow(E.isRaise, T.pure)
     );
 
-    assert.deepEqual(await T.runToPromise(program), 0);
+    assert.deepStrictEqual(await T.runToPromise(program), 0);
   });
 
   it("should retry & fail", async () => {
@@ -22,6 +22,6 @@ describe("Retry", () => {
       F.flow(E.isRaise, T.pure)
     );
 
-    assert.deepEqual(await T.runToPromiseExit(program), raise("error"));
+    assert.deepStrictEqual(await T.runToPromiseExit(program), raise("error"));
   });
 });

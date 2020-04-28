@@ -12,36 +12,36 @@ describe("Exit", () => {
 
   describe("refinements", () => {
     it("isDone", () => {
-      assert.equal(isDone(e1), true);
-      assert.equal(isDone(a2), false);
-      assert.equal(isDone(r3), false);
-      assert.equal(isDone(ipt), false);
+      assert.strictEqual(isDone(e1), true);
+      assert.strictEqual(isDone(a2), false);
+      assert.strictEqual(isDone(r3), false);
+      assert.strictEqual(isDone(ipt), false);
     });
     it("isAbort", () => {
-      assert.equal(isAbort(e1), false);
-      assert.equal(isAbort(a2), true);
-      assert.equal(isAbort(r3), false);
-      assert.equal(isAbort(ipt), false);
+      assert.strictEqual(isAbort(e1), false);
+      assert.strictEqual(isAbort(a2), true);
+      assert.strictEqual(isAbort(r3), false);
+      assert.strictEqual(isAbort(ipt), false);
     });
     it("isRaise", () => {
-      assert.equal(isRaise(e1), false);
-      assert.equal(isRaise(a2), false);
-      assert.equal(isRaise(r3), true);
-      assert.equal(isRaise(ipt), false);
+      assert.strictEqual(isRaise(e1), false);
+      assert.strictEqual(isRaise(a2), false);
+      assert.strictEqual(isRaise(r3), true);
+      assert.strictEqual(isRaise(ipt), false);
     });
     it("isInterrupt", () => {
-      assert.equal(isInterrupt(e1), false);
-      assert.equal(isInterrupt(a2), false);
-      assert.equal(isInterrupt(r3), false);
-      assert.equal(isInterrupt(ipt), true);
+      assert.strictEqual(isInterrupt(e1), false);
+      assert.strictEqual(isInterrupt(a2), false);
+      assert.strictEqual(isInterrupt(r3), false);
+      assert.strictEqual(isInterrupt(ipt), true);
     });
   });
   describe("fold", () => {
     it("fold curried", () => {
-      assert.deepEqual(fold(identity, identity, identity, () => "ipt")(e1), 1);
-      assert.deepEqual(fold(identity, identity, identity, () => "ipt")(a2), 2);
-      assert.deepEqual(fold(identity, identity, identity, () => "ipt")(r3), 3);
-      assert.deepEqual(fold(identity, identity, identity, () => "ipt")(ipt), "ipt");
+      assert.deepStrictEqual(fold(identity, identity, identity, () => "ipt")(e1), 1);
+      assert.deepStrictEqual(fold(identity, identity, identity, () => "ipt")(a2), 2);
+      assert.deepStrictEqual(fold(identity, identity, identity, () => "ipt")(r3), 3);
+      assert.deepStrictEqual(fold(identity, identity, identity, () => "ipt")(ipt), "ipt");
     });
     it("fold", () => {
       const e1 = done(1);
@@ -49,19 +49,19 @@ describe("Exit", () => {
       const r3 = raise(3);
       const ipt = interrupt;
 
-      assert.deepEqual(
+      assert.deepStrictEqual(
         exit.fold(e1, identity, identity, identity, () => "ipt"),
         1
       );
-      assert.deepEqual(
+      assert.deepStrictEqual(
         exit.fold(a2, identity, identity, identity, () => "ipt"),
         2
       );
-      assert.deepEqual(
+      assert.deepStrictEqual(
         exit.fold(r3, identity, identity, identity, () => "ipt"),
         3
       );
-      assert.deepEqual(
+      assert.deepStrictEqual(
         exit.fold(ipt, identity, identity, identity, () => "ipt"),
         "ipt"
       );

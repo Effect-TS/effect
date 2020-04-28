@@ -22,7 +22,7 @@ describe("Interrupt", () => {
 
     await T.runToPromise(T.delay(T.unit, 110));
 
-    assert.deepEqual(exit, interruptWithError(new Error("test error")));
+    assert.deepStrictEqual(exit, interruptWithError(new Error("test error")));
   });
 
   it("should interrupt with error parallel", async () => {
@@ -49,7 +49,7 @@ describe("Interrupt", () => {
 
     await T.runToPromise(T.delay(T.unit, 250));
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       exit,
       interruptWithErrorAndOthers(new Error("test error"), [new Error("test error 2")])
     );

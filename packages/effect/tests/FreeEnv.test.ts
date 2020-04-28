@@ -1,6 +1,6 @@
 import assert from "assert";
 import { pipe } from "fp-ts/lib/pipeable";
-import { freeEnv as F, effect as T, utils as U } from "../src";
+import { freeEnv as F, effect as T, utils as U, managed as M } from "../src";
 import { done } from "../src/original/exit";
 
 const fnEnv: unique symbol = Symbol();
@@ -111,7 +111,7 @@ describe("Generic", () => {
 
     const main = pipe(program, consoleI, prefixI);
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       await T.runToPromiseExit(
         T.provide<U.Env<typeof main>>({
           ...fnLive,
@@ -126,15 +126,63 @@ describe("Generic", () => {
     );
   });
 
+  it("use generic module - with", async () => {
+    const prefixI = F.implementWith(T.pure("prefix: "))(prefixM)((s) => ({
+      [prefixEnv]: {
+        accessPrefix: T.pure(s)
+      }
+    }));
+
+    const main = pipe(program, consoleI, prefixI);
+
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(
+        T.provide<U.Env<typeof main>>({
+          ...fnLive,
+          ...F.instance(configM)({
+            [configEnv]: {
+              accessConfig: T.pure("")
+            }
+          })
+        })(main)
+      ),
+      done(["(prefix: message)", "(prefix: message)"])
+    );
+  });
+
+  it("use generic module - withM", async () => {
+    const prefixI = F.implementWithM(M.pure("prefix: "))(prefixM)((s) => ({
+      [prefixEnv]: {
+        accessPrefix: T.pure(s)
+      }
+    }));
+
+    const main = pipe(program, consoleI, prefixI);
+
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(
+        T.provide<U.Env<typeof main>>({
+          ...fnLive,
+          ...F.instance(configM)({
+            [configEnv]: {
+              accessConfig: T.pure("")
+            }
+          })
+        })(main)
+      ),
+      done(["(prefix: message)", "(prefix: message)", "(prefix: message)"])
+    );
+  });
+
   it("use generic module (different interpreter)", async () => {
     const main = pipe(program, consoleI2);
 
-    assert.deepEqual(await T.runToPromiseExit(T.provide(fnLive)(main)), done(["message"]));
+    assert.deepStrictEqual(await T.runToPromiseExit(T.provide(fnLive)(main)), done(["message"]));
   });
 
   it("use generic module (different interpreter, not need fnEnv)", async () => {
     const main = pipe(get, consoleI2);
 
-    assert.deepEqual(await T.runToPromiseExit(main), done(["message"]));
+    assert.deepStrictEqual(await T.runToPromiseExit(main), done(["message"]));
   });
 });

@@ -25,7 +25,7 @@ describe("Env", () => {
       pipe(program, T.provide<TestEnv & TestEnv2>({ [foo]: "foo", [bar]: "bar" }))
     );
 
-    assert.deepEqual(result, "foo-bar");
+    assert.deepStrictEqual(result, "foo-bar");
   });
   it("env should work", async () => {
     const res = await T.runToPromise(
@@ -44,7 +44,7 @@ describe("Env", () => {
         .return((s) => `${s.a} - ${s.b}`)
     );
 
-    assert.deepEqual(res, "a - b");
+    assert.deepStrictEqual(res, "a - b");
   });
 
   it("env should work - par", async () => {
@@ -60,6 +60,6 @@ describe("Env", () => {
       ])
     );
 
-    assert.deepEqual(res.join(" - "), "a - b");
+    assert.deepStrictEqual(res.join(" - "), "a - b");
   });
 });

@@ -31,7 +31,7 @@ export async function expectExitIn<E, A, B>(
   expected: B
 ): Promise<void> {
   const result = await T.runToPromiseExit(ioa);
-  expect(assert.deepEqual(f(result), expected));
+  expect(assert.deepStrictEqual(f(result), expected));
 }
 
 export function expectExit<E, A>(

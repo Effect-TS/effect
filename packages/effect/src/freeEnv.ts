@@ -2,6 +2,7 @@ import * as T from "./effect";
 import * as D from "./defs";
 import { function as F, pipeable as P } from "fp-ts";
 import { FunctionN } from "fp-ts/lib/function";
+import { Managed, use } from "./managed";
 
 export type Patched<A, B> = B extends F.FunctionN<
   infer ARG,
@@ -179,6 +180,19 @@ export function implementWith<SW, RW, EW, AW>(w: D.Effect<SW, RW, EW, AW>) {
     i: (r: AW) => I
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (eff) =>
     T.effect.chain(w, (r) =>
+      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+        P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
+      )
+    );
+}
+
+export function implementWithM<SW, RW, EW, AW>(w: Managed<SW, RW, EW, AW>) {
+  return <S extends ModuleSpec<any>>(s: S, inverted: "regular" | "inverted" = "regular") => <
+    I extends Implementation<TypeOf<S>>
+  >(
+    i: (r: AW) => I
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (eff) =>
+    use(w, (r) =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
         P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )

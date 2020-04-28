@@ -21,6 +21,6 @@ describe("Ref", () => {
       T.provide<Config>({ initial: 0 })(program)
     );
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 });

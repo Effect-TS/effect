@@ -15,7 +15,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource encaseEffect with environment", async () => {
@@ -31,7 +31,7 @@ describe("Managed", () => {
       )
     );
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource bracket", async () => {
@@ -45,8 +45,8 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
-    assert.deepEqual(released, true);
+    assert.deepStrictEqual(result, 2);
+    assert.deepStrictEqual(released, true);
   });
 
   it("should use resource pure", async () => {
@@ -54,7 +54,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource suspend", async () => {
@@ -62,7 +62,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource chain", async () => {
@@ -71,7 +71,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(chain(resource), (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource map", async () => {
@@ -80,7 +80,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(mapped, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource mapWith", async () => {
@@ -89,7 +89,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(mapped(resource), (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource zip", async () => {
@@ -99,7 +99,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   describe("parZipWith", () => {
@@ -174,7 +174,7 @@ describe("Managed", () => {
 
         expect(strArrDiff(logMock.mock.calls, expectCalls_)).toEqual([]);
         expect(strArrDiff(expectCalls_, logMock.mock.calls)).toEqual([]);
-        assert.deepEqual(result, expectResult);
+        assert.deepStrictEqual(result, expectResult);
       });
     }
 
@@ -286,7 +286,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(ap, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource ap", async () => {
@@ -296,21 +296,21 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(ap, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource as", async () => {
     const ma = M.pure(1);
     const result = await T.runToPromise(M.use(M.as(ma, 2), (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource to", async () => {
     const ma = M.pure(1);
     const result = await T.runToPromise(M.use(M.to(2)(ma), (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource chainTap", async () => {
@@ -320,7 +320,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(mb, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource chainTapWith", async () => {
@@ -330,7 +330,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(mb(ma), (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource allocate", async () => {
@@ -352,8 +352,8 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 2);
-    assert.deepEqual(released, true);
+    assert.deepStrictEqual(result, 2);
+    assert.deepStrictEqual(released, true);
   });
 
   it("should use resource consume", async () => {
@@ -362,7 +362,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(T.effect.chain(mapped(resource), (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource provide", async () => {
@@ -371,7 +371,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.provide(resourceA)(program));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource of", async () => {
@@ -379,7 +379,7 @@ describe("Managed", () => {
 
     const result = await T.runToPromise(M.use(resourceA, (n) => T.pure(n + 1)));
 
-    assert.deepEqual(result, 2);
+    assert.deepStrictEqual(result, 2);
   });
 
   it("should use resource getSemigroup", async () => {
@@ -392,7 +392,7 @@ describe("Managed", () => {
       M.use(S.concat(resourceB, resourceA), (n) => T.pure(n + 1))
     );
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use resource getMonoid", async () => {
@@ -405,6 +405,6 @@ describe("Managed", () => {
       M.use(S.concat(resourceB, resourceA), (n) => T.pure(n + 1))
     );
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 });

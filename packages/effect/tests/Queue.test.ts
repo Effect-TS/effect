@@ -17,7 +17,7 @@ describe("QueueSafe", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use bounded queue", async () => {
@@ -33,7 +33,7 @@ describe("QueueSafe", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use dropping queue", async () => {
@@ -49,7 +49,7 @@ describe("QueueSafe", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use dropping queue - 2", async () => {
@@ -64,7 +64,7 @@ describe("QueueSafe", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use sliding queue", async () => {
@@ -80,7 +80,7 @@ describe("QueueSafe", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should use sliding queue - 2", async () => {
@@ -95,6 +95,6 @@ describe("QueueSafe", () => {
 
     const result = await T.runToPromise(program);
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 });

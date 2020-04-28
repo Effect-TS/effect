@@ -12,7 +12,7 @@ export async function expectExitIn<E, A, B>(
   expected: B
 ): Promise<void> {
   const result = await T.runToPromiseExit(ioa);
-  expect(assert.deepEqual(f(result), expected));
+  expect(assert.deepStrictEqual(f(result), expected));
 }
 
 export function expectExit<E, A>(ioa: T.AsyncRE<{}, E, A>, expected: ex.Exit<E, A>): Promise<void> {
@@ -30,7 +30,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(program);
 
-    assert.deepEqual(res, [100]);
+    assert.deepStrictEqual(res, [100]);
   });
 
   it("should use fromArray", async () => {
@@ -38,7 +38,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2]);
   });
 
   it("should use fromRange", async () => {
@@ -46,7 +46,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(S.take(s, 3)));
 
-    assert.deepEqual(res, [0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2]);
   });
 
   it("should use filterRefineWith", async () => {
@@ -60,7 +60,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(S.take(pipe(s, S.filterWith(isEven)), 3)));
 
-    assert.deepEqual(res, [0, 2, 4]);
+    assert.deepStrictEqual(res, [0, 2, 4]);
   });
 
   it("should use once", async () => {
@@ -68,7 +68,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0]);
+    assert.deepStrictEqual(res, [0]);
   });
 
   it("should use repeatedly", async () => {
@@ -76,7 +76,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(S.take(s, 3)));
 
-    assert.deepEqual(res, [0, 0, 0]);
+    assert.deepStrictEqual(res, [0, 0, 0]);
   });
 
   it("should use periodically", async () => {
@@ -84,7 +84,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(S.takeWhile(s, (n) => n < 10)));
 
-    assert.deepEqual(res, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.deepStrictEqual(res, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it("should use empty", async () => {
@@ -92,7 +92,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use raised", async () => {
@@ -100,7 +100,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromiseExit(S.collectArray(s));
 
-    assert.deepEqual(res, ex.raise("message"));
+    assert.deepStrictEqual(res, ex.raise("message"));
   });
 
   it("should use aborted", async () => {
@@ -108,7 +108,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromiseExit(S.collectArray(s));
 
-    assert.deepEqual(res, ex.abort("message"));
+    assert.deepStrictEqual(res, ex.abort("message"));
   });
 
   it("should use fromOption - none", async () => {
@@ -116,7 +116,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use fromOption - some", async () => {
@@ -124,7 +124,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use zipWithIndex", async () => {
@@ -132,7 +132,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [
+    assert.deepStrictEqual(res, [
       [0, 0],
       [1, 1]
     ]);
@@ -146,7 +146,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1, 2, 3]);
+    assert.deepStrictEqual(res, [1, 2, 3]);
   });
 
   it("should use as", async () => {
@@ -154,7 +154,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use filter", async () => {
@@ -162,7 +162,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use filter - 2", async () => {
@@ -170,7 +170,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use filterWith", async () => {
@@ -181,7 +181,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use zipWith", async () => {
@@ -191,7 +191,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(z));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use zipWith - 2", async () => {
@@ -202,7 +202,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(z));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use concat", async () => {
@@ -210,7 +210,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1]);
+    assert.deepStrictEqual(res, [0, 1]);
   });
 
   it("should use fromIteratorUnsafe", async () => {
@@ -237,7 +237,7 @@ describe("StreamEither", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1, 3, 5, 7, 9]);
+    assert.deepStrictEqual(res, [1, 3, 5, 7, 9]);
   });
 
   it("should use stream with environment", async () => {
@@ -265,7 +265,7 @@ describe("StreamEither", () => {
       })(r)
     );
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       res,
       // prettier-ignore
       [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2
@@ -308,7 +308,7 @@ describe("StreamEither", () => {
       })(r)
     );
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       res,
       // prettier-ignore
       [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2

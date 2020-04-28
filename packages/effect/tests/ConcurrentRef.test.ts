@@ -20,7 +20,7 @@ describe("ConcurrentRef", () => {
       T.provide<Config>({ initial: 0 })(program)
     );
 
-    assert.deepEqual(result, 3);
+    assert.deepStrictEqual(result, 3);
   });
 
   it("should prevent concurrency issues", async () => {
@@ -37,6 +37,6 @@ describe("ConcurrentRef", () => {
       T.provide<Config>({ initial: 0 })(program)
     );
 
-    assert.notDeepEqual(result.first, result.second);
+    assert.notDeepStrictEqual(result.first, result.second);
   });
 });

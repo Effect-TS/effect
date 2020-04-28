@@ -19,7 +19,7 @@ export async function expectExitIn<E, A, B>(
   expected: B
 ): Promise<void> {
   const result = await T.runToPromiseExit(ioa);
-  expect(assert.deepEqual(f(result), expected));
+  expect(assert.deepStrictEqual(f(result), expected));
 }
 
 export function expectExit<E, A>(ioa: T.AsyncE<E, A>, expected: ex.Exit<E, A>): Promise<void> {
@@ -46,7 +46,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(S.stream.map(s, ({ n }) => n)));
 
-    assert.deepEqual(res, array.range(1, 10));
+    assert.deepStrictEqual(res, array.range(1, 10));
   });
 
   it("fromObjectReadStream - Error", async () => {
@@ -73,7 +73,7 @@ describe("Stream", () => {
       T.runToPromiseExit
     );
 
-    assert.deepEqual(res, ex.raise(new Error("test")));
+    assert.deepStrictEqual(res, ex.raise(new Error("test")));
   });
 
   it("stack safe", async () => {
@@ -86,7 +86,7 @@ describe("Stream", () => {
       T.runToPromise
     );
 
-    assert.deepEqual(res, [5000050000]);
+    assert.deepStrictEqual(res, [5000050000]);
   });
 
   it("should use fromArray", async () => {
@@ -94,7 +94,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2]);
   });
 
   it("should use fromRange", async () => {
@@ -102,7 +102,7 @@ describe("Stream", () => {
 
     const res = await pipe(s, S.take(3), S.collectArray, T.runToPromise);
 
-    assert.deepEqual(res, [0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2]);
   });
 
   it("should use filterRefine", async () => {
@@ -116,7 +116,7 @@ describe("Stream", () => {
 
     const res = await pipe(s, S.filter(isEven), S.take(3), S.collectArray, T.runToPromise);
 
-    assert.deepEqual(res, [0, 2, 4]);
+    assert.deepStrictEqual(res, [0, 2, 4]);
   });
 
   it("should use once", async () => {
@@ -124,14 +124,14 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0]);
+    assert.deepStrictEqual(res, [0]);
   });
 
   it("should use repeatedly", async () => {
     const s = S.repeatedly(0);
 
     const res = await pipe(s, S.take(3), S.collectArray, T.runToPromise);
-    assert.deepEqual(res, [0, 0, 0]);
+    assert.deepStrictEqual(res, [0, 0, 0]);
   });
 
   it("should use periodically", async () => {
@@ -144,7 +144,7 @@ describe("Stream", () => {
       T.runToPromise
     );
 
-    assert.deepEqual(res, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    assert.deepStrictEqual(res, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
   it("should use empty", async () => {
@@ -152,7 +152,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use raised", async () => {
@@ -160,7 +160,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromiseExit(S.collectArray(s));
 
-    assert.deepEqual(res, ex.raise("message"));
+    assert.deepStrictEqual(res, ex.raise("message"));
   });
 
   it("should use aborted", async () => {
@@ -168,7 +168,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromiseExit(S.collectArray(s));
 
-    assert.deepEqual(res, ex.abort("message"));
+    assert.deepStrictEqual(res, ex.abort("message"));
   });
 
   it("should use fromOption - none", async () => {
@@ -176,7 +176,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use fromOption - some", async () => {
@@ -184,7 +184,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use zipWithIndex", async () => {
@@ -192,7 +192,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [
+    assert.deepStrictEqual(res, [
       [0, 0],
       [1, 1]
     ]);
@@ -206,7 +206,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1, 2, 3]);
+    assert.deepStrictEqual(res, [1, 2, 3]);
   });
 
   it("should use as", async () => {
@@ -214,7 +214,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use filter", async () => {
@@ -225,7 +225,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use filter - 2", async () => {
@@ -236,7 +236,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use distinctAdjacent", async () => {
@@ -244,7 +244,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1, 2, 3]);
+    assert.deepStrictEqual(res, [0, 1, 2, 3]);
   });
 
   it("should use drop", async () => {
@@ -252,7 +252,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use dropWhile", async () => {
@@ -263,7 +263,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use zipWith", async () => {
@@ -276,7 +276,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(z));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use zipWith - 2", async () => {
@@ -290,7 +290,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(z));
 
-    assert.deepEqual(res, []);
+    assert.deepStrictEqual(res, []);
   });
 
   it("should use drop - 2", async () => {
@@ -298,7 +298,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1]);
+    assert.deepStrictEqual(res, [1]);
   });
 
   it("should use intoManaged", async () => {
@@ -308,7 +308,7 @@ describe("Stream", () => {
 
     const res = T.runUnsafeSync(s);
 
-    assert.deepEqual(res, [0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2]);
   });
 
   it("should use into", async () => {
@@ -318,7 +318,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(s);
 
-    assert.deepEqual(res, [0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2]);
   });
 
   it("should use intoLeftover", async () => {
@@ -328,7 +328,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(s);
 
-    assert.deepEqual(res, [[0, 1, 2], []]);
+    assert.deepStrictEqual(res, [[0, 1, 2], []]);
   });
 
   it("should use fold", async () => {
@@ -339,7 +339,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [3]);
+    assert.deepStrictEqual(res, [3]);
   });
 
   it("should use fold - 2", async () => {
@@ -350,7 +350,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0]);
+    assert.deepStrictEqual(res, [0]);
   });
 
   it("should use scan", async () => {
@@ -361,7 +361,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1, 2, 3]);
+    assert.deepStrictEqual(res, [0, 1, 2, 3]);
   });
 
   it("should use scanM", async () => {
@@ -372,7 +372,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1, 2, 3]);
+    assert.deepStrictEqual(res, [0, 1, 2, 3]);
   });
 
   it("should use flatten", async () => {
@@ -380,7 +380,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1, 2, 0, 1, 2]);
+    assert.deepStrictEqual(res, [0, 1, 2, 0, 1, 2]);
   });
 
   it("should use ap", async () => {
@@ -392,7 +392,7 @@ describe("Stream", () => {
       S.collectArray,
       T.runToPromiseExit
     );
-    assert.deepEqual(res, ex.done([2]));
+    assert.deepStrictEqual(res, ex.done([2]));
   });
 
   it("should use mapM", async () => {
@@ -403,7 +403,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1, 2, 3]);
+    assert.deepStrictEqual(res, [1, 2, 3]);
   });
 
   it("should use concat", async () => {
@@ -411,7 +411,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1]);
+    assert.deepStrictEqual(res, [0, 1]);
   });
 
   it("should use concatL", async () => {
@@ -422,7 +422,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [0, 1]);
+    assert.deepStrictEqual(res, [0, 1]);
   });
 
   it("should use fromIteratorUnsafe", async () => {
@@ -449,7 +449,7 @@ describe("Stream", () => {
 
     const res = await T.runToPromise(S.collectArray(s));
 
-    assert.deepEqual(res, [1, 3, 5, 7, 9]);
+    assert.deepStrictEqual(res, [1, 3, 5, 7, 9]);
   });
 
   it("should zip two streams", async () => {
@@ -469,7 +469,7 @@ describe("Stream", () => {
       T.provide<EnvA & EnvB>({ a: 1, b: 1 })(zip)
     );
 
-    assert.deepEqual(res, [
+    assert.deepStrictEqual(res, [
       [1, 1],
       [1, 1],
       [1, 1]
@@ -501,7 +501,7 @@ describe("Stream", () => {
       })(r)
     );
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       res,
       // prettier-ignore
       [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2
@@ -544,7 +544,7 @@ describe("Stream", () => {
       })(r)
     );
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       res,
       // prettier-ignore
       [ 0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2
@@ -792,7 +792,7 @@ describe("Stream", () => {
 
     it("should merge", async () => {
       const res = await pipe(S.merge(1)(S.once(S.once(1))), S.collectArray, T.runToPromiseExit);
-      assert.deepEqual(res, ex.done([1]));
+      assert.deepStrictEqual(res, ex.done([1]));
     });
 
     it("should merge output", () => {
