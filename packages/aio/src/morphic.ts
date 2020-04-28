@@ -1,5 +1,5 @@
 import { T } from "@matechs/prelude";
-
+import { ADT } from "@morphic-ts/adt";
 import {
   AsOpaque,
   AsUOpaque,
@@ -8,15 +8,13 @@ import {
   summonFor,
   UM
 } from "@morphic-ts/batteries/lib/summoner-ESBST";
+import { AOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { AType, EType, RType } from "@morphic-ts/batteries/lib/usage/utils";
 import { EqURI } from "@morphic-ts/eq-interpreters/lib/config";
 import { FastCheckURI } from "@morphic-ts/fastcheck-interpreters/lib/config";
 import { modelFastCheckInterpreter as fc } from "@morphic-ts/fastcheck-interpreters/lib/interpreters";
 import { IoTsURI } from "@morphic-ts/io-ts-interpreters/lib/config";
 import { ShowURI } from "@morphic-ts/show-interpreters/lib/config";
-import { MorphADT, AOfTypes, AOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
-import { AType, EType, RType } from "@morphic-ts/batteries/lib/usage/utils";
 
 export {
   AsOpaque,
@@ -78,15 +76,7 @@ interface MatcherWidenIntern<A, Record> {
         | (unknown extends ReturnType<D> ? never : ReturnType<D>);
 }
 
-export const match = <
-  Types extends {
-    [k in keyof Types]: [any, any];
-  },
-  Tag extends string,
-  ProgURI extends ProgramURI,
-  InterpURI extends InterpreterURI,
-  R
->(
-  _: MorphADT<Types, Tag, ProgURI, InterpURI, R>
-): MatcherWiden<AOfTypes<Types>, Tag> => (match: any, def?: any) => (a: any): any =>
-  (match[a[_.tag]] || def)(a);
+export const match = <A, Tag extends string & keyof A>(_: ADT<A, Tag>): MatcherWiden<A, Tag> => (
+  match: any,
+  def?: any
+) => (a: any): any => (match[a[_.tag]] || def)(a);
