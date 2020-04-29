@@ -378,11 +378,9 @@ function chain_<S, R, E, A, S2, R2, E2, B>(
   inner: Effect<S, R, E, A>,
   bind: F.FunctionN<[A], Effect<S2, R2, E2, B>>
 ): Effect<S | S2, R & R2, E | E2, B> {
-  return (
-    (((inner as any) as Instructions).tag() === IPureTag
-      ? bind(((inner as any) as IPure<A>).a)
-      : new IChain(inner, bind)) as any
-  );
+  return (((inner as any) as Instructions).tag() === IPureTag
+    ? bind(((inner as any) as IPure<A>).a)
+    : new IChain(inner, bind)) as any;
 }
 
 export function chainOption<E>(
@@ -512,11 +510,9 @@ const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
  * @param f
  */
 function map_<S, R, E, A, B>(base: Effect<S, R, E, A>, f: F.FunctionN<[A], B>): Effect<S, R, E, B> {
-  return (
-    (((base as any) as Instructions).tag() === IPureTag
-      ? new IPure(f(((base as any) as IPure<A>).a))
-      : new IMap(base, f)) as any
-  );
+  return (((base as any) as Instructions).tag() === IPureTag
+    ? new IPure(f(((base as any) as IPure<A>).a))
+    : new IMap(base, f)) as any;
 }
 
 /**
@@ -1952,3 +1948,22 @@ export const witherRecordPar: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(parEffect)(ta, f);
+
+export const handle = <E, K extends string & keyof E, KK extends string & E[K], S2, R2, E2, A2>(
+  k: K,
+  kk: KK,
+  f: (_: Extract<E, { [k in K]: KK }>) => Effect<S2, R2, E2, A2>
+) => <S, R, A>(
+  _: Effect<S, R, E, A>
+): Effect<S | S2, R & R2, Exclude<E, { [k in K]: KK }> | E2, A | A2> =>
+  pipe(
+    _,
+    chainError((e) => {
+      if (k in e) {
+        if (e[k] === kk) {
+          return f(e as any) as any;
+        }
+      }
+      return raiseError(e);
+    })
+  ) as any;
