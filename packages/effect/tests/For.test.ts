@@ -3,20 +3,20 @@ import { effect as T, exit as Ex } from "../src";
 describe("For", () => {
   it("uses For", async () => {
     const X = T.For()
-      .with("k")(() => T.pure(1))
-      .with("y")(() => T.pure(2))
-      .with("z")(() => T.access((_: { foo: string }) => _.foo))
+      .with("k", () => T.pure(1))
+      .with("y", () => T.pure(2))
+      .with("z", () => T.access((_: { foo: string }) => _.foo))
       .pipe(
         T.provide({
           foo: "ok"
         })
       )
-      .let("f")(({ y }) => 4 + y)
+      .let("f", ({ y }) => 4 + y)
       .all(() => ({
         p: T.pure(2),
         q: T.trySyncMap(() => "test")(() => 3)
       }))
-      .withPipe("l")((s) =>
+      .withPipe("l", (s) =>
         s
           .pipe(({ k }) => T.pure(k + 1))
           .pipe(T.shiftAfter)
