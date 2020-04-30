@@ -7,3 +7,4 @@ yarn-error.log
 .npmrc
 .ionide/
 .metals/
+.ultra.cache.json

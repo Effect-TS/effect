@@ -88,6 +88,7 @@
     "tslint": "^6.1.1",
     "typeorm": "^0.2.24",
     "typescript": "^3.8.3",
+    "ultra-runner": "^3.2.2",
     "uuid": "^7.0.3",
     "waveguide": "^1.4.0",
     "winston": "^3.2.1",

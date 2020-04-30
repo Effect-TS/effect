@@ -7,5 +7,5 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false
   },
-  "include": ["src/**/*", "tests/**/*", "type-tests/**/*"]
+  "include": ["src/**/*", "test/**/*", "type-tests/**/*"]
 }
