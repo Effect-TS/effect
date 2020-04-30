@@ -1698,7 +1698,9 @@ export function cond<S, R, E, A>(
   return (mb) => (predicate) => (predicate ? ma : mb);
 }
 
-export function fromNullableM<S, R, E, A>(ma: Effect<S, R, E, A>): Effect<S, R, E, Op.Option<A>> {
+export function fromNullableM<S, R, E, A>(
+  ma: Effect<S, R, E, A>
+): Effect<S, R, E, Op.Option<NonNullable<A>>> {
   return map_(ma, Op.fromNullable);
 }
 
