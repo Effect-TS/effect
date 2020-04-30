@@ -41,8 +41,8 @@ export const replaceHeadersSpec = J.testM(
         )
       )
       .return(({ get }) => {
-        J.assert.deepEqual(Ex.isDone(get), true);
-        J.assert.deepEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "baz" }));
+        J.assert.deepStrictEqual(Ex.isDone(get), true);
+        J.assert.deepStrictEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "baz" }));
       })
   )
 );

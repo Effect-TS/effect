@@ -73,7 +73,7 @@ describe("Orm", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(program));
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       result,
       Ex.raise(new DB.TaskError(new Error("not implemented"), "withRepositoryTask"))
     );
@@ -119,7 +119,7 @@ describe("Orm", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(program));
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       result,
       Ex.raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
     );
@@ -160,7 +160,7 @@ describe("Orm", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(program));
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       result,
       Ex.raise(new DB.TaskError(new Error("not implemented"), "withConnectionTask"))
     );
@@ -208,7 +208,7 @@ describe("Orm", () => {
 
     const res = await T.runToPromise(T.provide(env)(program));
 
-    assert.deepEqual(res, "ok");
+    assert.deepStrictEqual(res, "ok");
   });
 
   it("should use ORM transaction in higer order", async () => {
@@ -263,7 +263,7 @@ describe("Orm", () => {
 
     const res = await T.runToPromise(T.provide(env)(program));
 
-    assert.deepEqual(res, "ok");
+    assert.deepStrictEqual(res, "ok");
   });
 
   it("should rollback ORM transaction in failure", async () => {
@@ -321,8 +321,8 @@ describe("Orm", () => {
 
     const res = await T.runToPromiseExit(T.provide(env)(program));
 
-    assert.deepEqual(res, Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
-    assert.deepEqual(queries, ["BEGIN", "", "ROLLBACK"]);
+    assert.deepStrictEqual(res, Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
+    assert.deepStrictEqual(queries, ["BEGIN", "", "ROLLBACK"]);
   });
 
   it("should jump in new region", async () => {
@@ -383,6 +383,6 @@ describe("Orm", () => {
 
     const res = await T.runToPromise(T.provide(env)(program));
 
-    assert.deepEqual(res, "ok");
+    assert.deepStrictEqual(res, "ok");
   });
 });

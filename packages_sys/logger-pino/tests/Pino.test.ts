@@ -26,7 +26,7 @@ const checkLevel = <O extends object>(
       A.filter((c) => c.level === Pino.levels.values[level]),
       A.map(({ hostname, level, pid, time, msg, ...rest }) => ({ msg, ...rest })),
       (fatal) => {
-        M.assert.deepEqual(fatal, expected);
+        expect(fatal).toEqual(expected);
       }
     )
   );
@@ -61,7 +61,7 @@ const pinoLoggerSpec = M.suite("Pino")(
           )
           .sequenceSL(({ calls }) => ({
             len: T.sync(() => {
-              M.assert.strictEqual(calls.length, 13);
+              expect(calls.length).toStrictEqual(13);
             }),
             fatal: checkLevel(calls, "fatal", [
               { msg: "msg", foo: "bar" },

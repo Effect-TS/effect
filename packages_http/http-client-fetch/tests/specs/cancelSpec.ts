@@ -10,7 +10,7 @@ export const cancelSpec = J.testM(
     T.fork(H.get("https://jsonplaceholder.typicode.com/todos/1")),
     T.chain((f) => f.interrupt),
     T.map((res) => {
-      J.assert.deepEqual(res && Ex.isInterrupt(res), true);
+      J.assert.deepStrictEqual(res && Ex.isInterrupt(res), true);
     })
   )
 );

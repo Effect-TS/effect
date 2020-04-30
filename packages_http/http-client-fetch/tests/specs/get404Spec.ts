@@ -23,8 +23,8 @@ export const get404Spec = J.testM(
         )
       )
       .return(({ get }) => {
-        J.assert.deepEqual(Ex.isRaise(get), true);
-        J.assert.deepEqual(Ex.isRaise(get) && get.error, 404);
+        J.assert.deepStrictEqual(Ex.isRaise(get), true);
+        J.assert.deepStrictEqual(Ex.isRaise(get) && get.error, 404);
       })
   )
 );

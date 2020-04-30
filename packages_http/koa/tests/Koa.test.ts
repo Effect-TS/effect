@@ -162,15 +162,15 @@ describe("Koa", () => {
       T.provide(L.client(fetch)),
       T.runToPromise
     ).then(({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
-      assert.deepEqual(res, Ex.done({ res: 1 }));
-      assert.deepEqual(res5, Ex.done({ res: 1 }));
-      assert.deepEqual(res6, Ex.done({ res: 1 }));
-      assert.deepEqual(res7, Ex.done({ res: 1 }));
-      assert.deepEqual(res9, Ex.done({ res: 1 }));
-      assert.deepEqual(res8, Ex.done(["my-id", "my-id-2"]));
-      assert.deepEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
-      assert.deepEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-      assert.deepEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
+      assert.deepStrictEqual(res, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res5, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res6, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res7, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res9, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res8, Ex.done(["my-id", "my-id-2"]));
+      assert.deepStrictEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
+      assert.deepStrictEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+      assert.deepStrictEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
     });
   });
 });

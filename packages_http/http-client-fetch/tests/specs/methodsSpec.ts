@@ -53,20 +53,20 @@ export const methodsSpec = J.testM(
       )
       .bindL("del", () => T.result(H.del("http://127.0.0.1:4011/delete", { foo: "bar" })))
       .return(({ del, patch, post, postNoBody, put }) => {
-        J.assert.deepEqual(Ex.isDone(post), true);
-        J.assert.deepEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(post), true);
+        J.assert.deepStrictEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
 
-        J.assert.deepEqual(Ex.isDone(postNoBody), true);
-        J.assert.deepEqual(Ex.isDone(postNoBody) && postNoBody.value.body, O.some({}));
+        J.assert.deepStrictEqual(Ex.isDone(postNoBody), true);
+        J.assert.deepStrictEqual(Ex.isDone(postNoBody) && postNoBody.value.body, O.some({}));
 
-        J.assert.deepEqual(Ex.isDone(put), true);
-        J.assert.deepEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(put), true);
+        J.assert.deepStrictEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
 
-        J.assert.deepEqual(Ex.isDone(patch), true);
-        J.assert.deepEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(patch), true);
+        J.assert.deepStrictEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
 
-        J.assert.deepEqual(Ex.isDone(del), true);
-        J.assert.deepEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(del), true);
+        J.assert.deepStrictEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
       })
   )
 );

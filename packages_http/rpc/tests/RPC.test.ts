@@ -99,7 +99,7 @@ describe("RPC", () => {
 
     result.server.close();
 
-    assert.deepEqual(incResult, Ex.done(2));
-    assert.deepEqual(niResult, Ex.raise("not implemented"));
+    assert.deepStrictEqual(incResult, Ex.done(2));
+    assert.deepStrictEqual(niResult, Ex.raise("not implemented"));
   });
 });

@@ -153,7 +153,7 @@ describe("Epics", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(updates, [
+    assert.deepStrictEqual(updates, [
       { user: Op.none, error: Op.none },
       { user: Op.some({ id: "test", prefix: "prefix" }), error: Op.none },
       { user: Op.some({ id: "test", prefix: "prefix" }), error: Op.none }
@@ -185,7 +185,7 @@ describe("Epics", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(updates, [
+    assert.deepStrictEqual(updates, [
       { user: Op.none, error: Op.none },
       { user: Op.none, error: Op.some("wrong prefix") }
     ]);
@@ -273,7 +273,7 @@ describe("Epics", () => {
       state: { counter }
     });
 
-    assert.deepEqual(updates, [
+    assert.deepStrictEqual(updates, [
       makeState("a", 1),
       makeState("b", 1),
       makeState("b", 4),

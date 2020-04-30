@@ -1,5 +1,4 @@
 import * as assert from "assert";
-import { expect } from "chai";
 import * as array from "fp-ts/lib/Array";
 import { eqNumber } from "fp-ts/lib/Eq";
 import { FunctionN, identity, constant } from "fp-ts/lib/function";
@@ -19,7 +18,7 @@ export async function expectExitIn<E, A, B>(
   expected: B
 ): Promise<void> {
   const result = await T.runToPromiseExit(ioa);
-  expect(assert.deepStrictEqual(f(result), expected));
+  expect(f(result)).toStrictEqual(expected);
 }
 
 export function expectExit<E, A>(ioa: T.AsyncE<E, A>, expected: ex.Exit<E, A>): Promise<void> {
@@ -591,17 +590,19 @@ describe("Stream", () => {
       return expectExit(S.collectArray(s3), ex.done([24, 32]));
     });
     it("should raise errors", () => {
-      const s1 =
-        (S.fromArray([S.raised("boom"), S.once(1)]) as any) as
-        S.SyncE<string, S.Sync<number>>;
+      const s1 = (S.fromArray([S.raised("boom"), S.once(1)]) as any) as S.SyncE<
+        string,
+        S.Sync<number>
+      >;
       const s2 = S.flatten(s1);
       const s3 = S.stream.peel(s2, multiplier);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
     });
     it("should raise errors in the remainder stream", () => {
-      const s1 =
-        (S.fromArray([S.once(2), S.raised("boom"), S.once(1)]) as any) as
-        S.SyncE<string, S.SyncE<string, number>>;
+      const s1 = (S.fromArray([S.once(2), S.raised("boom"), S.once(1)]) as any) as S.SyncE<
+        string,
+        S.SyncE<string, number>
+      >;
       const s2 = S.flatten(s1);
       const s3 = S.stream.chain(S.stream.peel(s2, multiplier), ([_head, rest]) => rest);
       return expectExit(S.collectArray(s3), ex.raise("boom"));
@@ -694,12 +695,18 @@ describe("Stream", () => {
     });
     it("should fail with errors in outer stream", () => {
       const io = T.effect.chain(ref.makeRef(0), (cell) => {
-        const s1: T.AsyncE<string, S.AsyncE<string, number>> =
-          T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
-        const s2: T.AsyncE<string, S.AsyncE<string, number>> =
-          T.delay(T.raiseError("boom"), 50) as any;
-        const s3: T.AsyncE<string, S.AsyncE<string, number>> =
-          T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
+        const s1: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
+          T.pure(S.encaseEffect(cell.set(1))),
+          50
+        ) as any;
+        const s2: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
+          T.raiseError("boom"),
+          50
+        ) as any;
+        const s3: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
+          T.pure(S.encaseEffect(cell.set(2))),
+          50
+        ) as any;
 
         const set: S.Stream<
           unknown,
@@ -708,30 +715,36 @@ describe("Stream", () => {
           T.AsyncE<string, S.AsyncE<string, number>>
         > = S.fromArray([s1, s2, s3]) as any;
 
-        const stream: S.Stream<
-          unknown,
-          unknown,
-          string,
-          S.AsyncE<string, number>
-        > = S.stream.mapM(set, identity);
+        const stream: S.Stream<unknown, unknown, string, S.AsyncE<string, number>> = S.stream.mapM(
+          set,
+          identity
+        );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
         return T.effect.zip(drain, T.delay(cell.get, 100));
       });
       return expectExit(
         io,
-        ex.done([ex.raise("boom"), 1] as const) as
-          ex.Exit<never, readonly [ex.Exit<string, void>, number]>
+        ex.done([ex.raise("boom"), 1] as const) as ex.Exit<
+          never,
+          readonly [ex.Exit<string, void>, number]
+        >
       );
     });
     it("should fail with errors in the inner streams", () => {
       const io = T.effect.chain(ref.makeRef(0), (cell) => {
-        const s1: T.AsyncE<string, S.AsyncE<string, number>> =
-          T.delay(T.pure(S.encaseEffect(cell.set(1))), 50) as any;
-        const s2: T.AsyncE<string, S.AsyncE<string, number>> =
-          T.delay(T.pure(S.encaseEffect(T.raiseError("boom"))), 50) as any;
-        const s3: T.AsyncE<string, S.AsyncE<string, number>> =
-          T.delay(T.pure(S.encaseEffect(cell.set(2))), 50) as any;
+        const s1: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
+          T.pure(S.encaseEffect(cell.set(1))),
+          50
+        ) as any;
+        const s2: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
+          T.pure(S.encaseEffect(T.raiseError("boom"))),
+          50
+        ) as any;
+        const s3: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
+          T.pure(S.encaseEffect(cell.set(2))),
+          50
+        ) as any;
 
         const set: S.Stream<
           unknown,
@@ -740,12 +753,10 @@ describe("Stream", () => {
           T.AsyncE<string, S.AsyncE<string, number>>
         > = S.fromArray([s1, s2, s3]) as any;
 
-        const stream: S.Stream<
-          unknown,
-          unknown,
-          string,
-          S.AsyncE<string, number>
-        > = S.stream.mapM(set, identity);
+        const stream: S.Stream<unknown, unknown, string, S.AsyncE<string, number>> = S.stream.mapM(
+          set,
+          identity
+        );
 
         const drain = T.result(S.drain(S.switchLatest(stream)));
         return T.effect.zip(drain, T.delay(cell.get, 100));
@@ -753,8 +764,10 @@ describe("Stream", () => {
 
       return expectExit(
         io,
-        ex.done([ex.raise("boom"), 1] as const) as
-          ex.Exit<never, readonly [ex.Exit<string, void>, number]>
+        ex.done([ex.raise("boom"), 1] as const) as ex.Exit<
+          never,
+          readonly [ex.Exit<string, void>, number]
+        >
       );
     });
     // TODO: issue https://github.com/rzeigler/waveguide-streams/issues/1
@@ -767,7 +780,7 @@ describe("Stream", () => {
       const output = S.collectArray(s2);
       const values = await T.runToPromise(output);
       const pairs = array.chunksOf(2)(values);
-      pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).to.be.greaterThan(values.indexOf(s)));
+      pairs.forEach(([f, s]) => expect(values.lastIndexOf(f)).toBeGreaterThan(values.indexOf(s)));
     });
   });
   function repeater<E, A>(w: T.AsyncE<E, A>, n: number): T.AsyncE<E, A> {
@@ -816,7 +829,7 @@ describe("Stream", () => {
               ] as const
           );
           stats.forEach(([_i, ct]) => {
-            expect(ct).to.equal(20);
+            expect(ct).toEqual(20);
           });
           return;
         })
@@ -833,7 +846,7 @@ describe("Stream", () => {
         .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(200)), S.collectArray))
         .doL(({ list }) =>
           T.sync(() => {
-            expect(list, "The output of program1 should be [0, 1, 2]").to.deep.equal([0, 1, 2]);
+            expect(list).toEqual([0, 1, 2]);
           })
         )
         .done();
@@ -842,12 +855,7 @@ describe("Stream", () => {
         .bind("list", pipe(S.periodically(50), S.takeUntil(sleep(225)), S.collectArray))
         .doL(({ list }) =>
           T.sync(() => {
-            expect(list, "The output of program2 should be [0, 1, 2, 3]").to.deep.equal([
-              0,
-              1,
-              2,
-              3
-            ]);
+            expect(list).toStrictEqual([0, 1, 2, 3]);
           })
         )
         .done();
@@ -868,10 +876,7 @@ describe("Stream", () => {
               index.get,
               T.chain((result) =>
                 T.sync(() => {
-                  expect(
-                    result,
-                    "The 'periodically' stream will have terminated and the last reference update is 3"
-                  ).to.equal(3);
+                  expect(result).toEqual(3);
                 })
               )
             ),
@@ -894,7 +899,7 @@ describe("Stream", () => {
         S.repeat,
         S.takeUntil(T.delay(T.pure(1), 100)),
         S.collectArray,
-        T.chain((array) => T.sync(() => expect(array.length).to.eq(1)))
+        T.chain((array) => T.sync(() => expect(array.length).toEqual(1)))
       );
 
       return pipe(

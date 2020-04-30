@@ -14,7 +14,7 @@ const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) 
 
         mock.mockReset();
 
-        M.assert.deepEqual(l, 1);
+        M.assert.deepStrictEqual(l, 1);
       })
   );
 

@@ -92,11 +92,11 @@ describe("Express", () => {
       T.provide(EX.express),
       T.runToPromise
     ).then(({ res1, res2, res3, res4, res5 }) => {
-      assert.deepEqual(res1, Ex.done({ res: 1 }));
-      assert.deepEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
-      assert.deepEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-      assert.deepEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
-      assert.deepEqual(res5, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res1, Ex.done({ res: 1 }));
+      assert.deepStrictEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
+      assert.deepStrictEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
+      assert.deepStrictEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
+      assert.deepStrictEqual(res5, Ex.done({ res: 1 }));
     });
   });
 });

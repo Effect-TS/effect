@@ -5,7 +5,7 @@ import { Do } from "fp-ts-contrib/lib/Do";
 run(
   testM(
     "simple root",
-    T.sync(() => assert.deepEqual(2, 2))
+    T.sync(() => assert.deepStrictEqual(2, 2))
   )
 )();
 
@@ -23,7 +23,7 @@ run(
         .do(
           useMockM(({ info }) =>
             T.sync(() => {
-              assert.deepEqual(info.mock.calls, [["ok"]]);
+              expect(info.mock.calls).toEqual([["ok"]]);
             })
           )
         )

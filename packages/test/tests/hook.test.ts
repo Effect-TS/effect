@@ -57,7 +57,7 @@ customRun({
 
           infoSpy.mockRestore();
 
-          assert.deepEqual(calls, ["mocked"]);
+          expect(calls).toEqual(["mocked"]);
         })
     )
   ),
@@ -68,7 +68,7 @@ customRun({
         TV.value,
         T.chain((v) =>
           T.sync(() => {
-            assert.deepEqual(v, "ok-ok");
+            assert.strictEqual(v, "ok-ok");
           })
         )
       )
@@ -83,7 +83,7 @@ customRun({
       "run initializer",
       T.accessM((_: TestValue) =>
         T.sync(() => {
-          assert.deepEqual(_.test.value, T.pure("patched"));
+          assert.deepStrictEqual(_.test.value, T.pure("patched"));
         })
       )
     ),
@@ -110,7 +110,7 @@ customRun({
         T.chain((v) =>
           T.accessM((_: TestValue) =>
             T.sync(() => {
-              assert.deepEqual(v, "initial");
+              assert.deepStrictEqual(v, "initial");
               _.test.value = T.pure("patched");
             })
           )
@@ -122,7 +122,7 @@ customRun({
         TV.value,
         T.chain((v) =>
           T.sync(() => {
-            assert.deepEqual(v, "patched");
+            assert.deepStrictEqual(v, "patched");
           })
         )
       )

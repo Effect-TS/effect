@@ -21,8 +21,8 @@ export const headersMiddlewareSpec = J.testM(
       )
       .bindL("get", () => T.result(H.get("http://127.0.0.1:4015/middle")))
       .return(({ get }) => {
-        J.assert.deepEqual(Ex.isDone(get), true);
-        J.assert.deepEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(get), true);
+        J.assert.deepStrictEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "bar" }));
       })
   )
 );

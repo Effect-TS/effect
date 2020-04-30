@@ -9,8 +9,8 @@ export const malformedSpec = J.testM(
   T.Do()
     .bindL("get", () => T.result(H.get("ht-ps://wrong.com/todos/1")))
     .return(({ get }) => {
-      J.assert.deepEqual(Ex.isRaise(get), true);
-      J.assert.deepEqual(
+      J.assert.deepStrictEqual(Ex.isRaise(get), true);
+      J.assert.deepStrictEqual(
         Ex.isRaise(get) && get.error._tag === H.HttpErrorReason.Request && get.error.error,
         new Error("only http(s) protocols are supported")
       );

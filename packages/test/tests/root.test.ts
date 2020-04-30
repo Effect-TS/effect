@@ -11,7 +11,7 @@ customRun({
 })(
   testM(
     "simple root",
-    T.accessM(({ n }: { n: number }) => T.access((_: { k?: string }) => assert.deepEqual(2, n)))
+    T.accessM(({ n }: { n: number }) => T.access((_: { k?: string }) => assert.deepStrictEqual(2, n)))
   )
 )(
   T.provide({

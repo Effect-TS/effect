@@ -30,7 +30,7 @@ describe("Api", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(main));
 
-    assert.deepEqual(result, Ex.done({ id: "ok" }));
+    assert.deepStrictEqual(result, Ex.done({ id: "ok" }));
   });
 
   it("should use mock repository findOne", async () => {
@@ -55,7 +55,7 @@ describe("Api", () => {
 
     const result = await T.runToPromiseExit(T.provide(env)(main));
 
-    assert.deepEqual(result, Ex.done(O.some({ id: "ok" })));
+    assert.deepStrictEqual(result, Ex.done(O.some({ id: "ok" })));
   });
 
   it("should use concrete repository", async () => {
@@ -88,7 +88,7 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, Ex.done({ id: "ok" }));
+    assert.deepStrictEqual(result, Ex.done({ id: "ok" }));
   });
 
   it("should use concrete repository findOne", async () => {
@@ -127,7 +127,7 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, Ex.done(O.some({ id: "ok" })));
+    assert.deepStrictEqual(result, Ex.done(O.some({ id: "ok" })));
   });
 
   it("should use concrete repository in tx", async () => {
@@ -161,6 +161,6 @@ describe("Api", () => {
     );
     const result = await T.runToPromiseExit(main);
 
-    assert.deepEqual(result, Ex.done({ id: "ok" }));
+    assert.deepStrictEqual(result, Ex.done({ id: "ok" }));
   });
 });

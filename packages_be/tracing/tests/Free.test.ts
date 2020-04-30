@@ -45,7 +45,7 @@ describe("Trace Free", () => {
 
     await T.runToPromiseExit(pipe(program, T.provide(tracer)));
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       spans.map((s) => s.name),
       ["main", "shouldTrace"]
     );

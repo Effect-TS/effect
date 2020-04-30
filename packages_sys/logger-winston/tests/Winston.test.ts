@@ -27,8 +27,8 @@ function testLevel(level: L.logger.Level) {
     T.runSync
   );
 
-  assert.deepEqual(Ex.isDone(res), true);
-  assert.deepEqual(messages, [[level, "msg", { foo: "bar" }]]);
+  assert.deepStrictEqual(Ex.isDone(res), true);
+  assert.deepStrictEqual(messages, [[level, "msg", { foo: "bar" }]]);
 }
 
 describe("Winston", () => {
