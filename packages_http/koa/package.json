@@ -1,6 +1,6 @@
 {
   "name": "@matechs/koa",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -36,6 +36,6 @@
     "koa-router": "^8.0.8"
   },
   "dependencies": {
-    "@matechs/prelude": "^1.4.0"
+    "@matechs/prelude": "^1.4.1"
   }
 }
