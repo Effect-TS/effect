@@ -131,7 +131,10 @@ describe("EffectSafe", () => {
     });
 
     it("trySyncMap", async () => {
-      assert.deepStrictEqual(await T.runToPromiseExit(T.trySyncMap((_err) => 2)(() => 1)), ex.done(1));
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(T.trySyncMap((_err) => 2)(() => 1)),
+        ex.done(1)
+      );
       assert.deepStrictEqual(
         await T.runToPromiseExit(
           T.trySyncMap((err) => `got ${err}`)(() => {
@@ -152,7 +155,10 @@ describe("EffectSafe", () => {
         ),
         ex.raise(10)
       );
-      assert.deepStrictEqual(await T.runToPromiseExit(T.tryEffect(() => T.raiseError(10))), ex.raise(10));
+      assert.deepStrictEqual(
+        await T.runToPromiseExit(T.tryEffect(() => T.raiseError(10))),
+        ex.raise(10)
+      );
     });
 
     it("tryEffectMap", async () => {
@@ -458,8 +464,18 @@ describe("EffectSafe", () => {
         T.provide(env)(T.access(({ [valueEnv]: value }: ValueEnv) => value))
       );
 
+      const c = await T.runToPromiseExit(
+        T.provideWith(() => env)(T.access(({ [valueEnv]: value }: ValueEnv) => value))
+      );
+
+      const d = await T.runToPromiseExit(
+        T.provideWithM(() => T.pure(env))(T.access(({ [valueEnv]: value }: ValueEnv) => value))
+      );
+
       assert.deepStrictEqual(a, ex.done("ok"));
       assert.deepStrictEqual(b, ex.done("ok"));
+      assert.deepStrictEqual(c, ex.done("ok"));
+      assert.deepStrictEqual(d, ex.done("ok"));
     });
 
     it("provideM", async () => {
@@ -1073,7 +1089,7 @@ describe("EffectSafe", () => {
 
       assert.deepStrictEqual(res, ex.raise("(1)(2)"));
     });
-    
+
     it("should traverse validation - Do - par", async () => {
       const V = T.getParValidationM(semigroupString);
 

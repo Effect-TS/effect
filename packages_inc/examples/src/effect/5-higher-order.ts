@@ -1,4 +1,4 @@
-import { T, pipe, Ex } from "@matechs/aio";
+import { T, pipe, Ex, S } from "@matechs/aio";
 import * as assert from "assert";
 
 // define a unique resource identifier
@@ -48,19 +48,19 @@ interface Logger {
   };
 }
 
-// access logger from environment
-const accessLogger = T.access(({ [LoggerURI]: logger }: Logger) => logger);
+const log = (message: string) =>
+  T.accessM(({ [LoggerURI]: { log } }: Logger) => log(message));
 
 // define a provider for the specific Add module depending on Logger
 const provideAdd = pipe(
-  accessLogger,
+  T.access(({ [LoggerURI]: logger }: Logger) => logger),
   T.map(
     (logger): Add => ({
       [AddURI]: {
         add: (x, y) =>
           pipe(
             T.sync(() => x + y),
-            T.chainTap((n) => logger.log(`result: ${n}`))
+            T.chainTap((n) => logger.log(`result-add: ${n}`))
           )
       }
     })
@@ -69,11 +69,18 @@ const provideAdd = pipe(
 );
 
 // define a provider for the specific Mul module
-const provideMul = T.provide<Mul>({
-  [MulURI]: {
-    mul: (x, y) => T.sync(() => x * y)
-  }
-});
+const provideMul = T.provideWith(
+  (_: Logger): Mul => ({
+    [MulURI]: {
+      mul: (x, y) =>
+        pipe(
+          T.sync(() => x * y),
+          T.chainTap((n) => log(`result-mul: ${n}`)),
+          T.provide(_)
+        )
+    }
+  })
+);
 
 // define a provider for the specific Log module
 const provideLog = (messages: Array<string>) =>
@@ -97,4 +104,4 @@ const result: Ex.Exit<never, number> = pipe(
 );
 
 assert.deepStrictEqual(result, Ex.done(6));
-assert.deepStrictEqual(messages, ["result: 3"]);
+assert.deepStrictEqual(messages, ["result-add: 3", "result-mul: 6"]);
