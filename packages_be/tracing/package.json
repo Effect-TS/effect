@@ -1,6 +1,6 @@
 {
   "name": "@matechs/tracing",
-  "version": "4.4.1",
+  "version": "4.4.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -30,6 +30,6 @@
     "opentracing": "^0.14.4"
   },
   "dependencies": {
-    "@matechs/prelude": "^1.4.1"
+    "@matechs/prelude": "^1.4.2"
   }
 }
