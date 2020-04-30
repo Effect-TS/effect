@@ -110,26 +110,26 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(Ex.isDone(post), true);
-    assert.deepEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(post), true);
+    assert.deepStrictEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(Ex.isDone(postText), true);
-    assert.deepEqual(
+    assert.deepStrictEqual(Ex.isDone(postText), true);
+    assert.deepStrictEqual(
       Ex.isDone(postText) && postText.value.body,
       O.some(JSON.stringify({ foo: "bar" }))
     );
 
-    assert.deepEqual(Ex.isDone(postNoBody), true);
-    assert.deepEqual(Ex.isDone(postNoBody) && postNoBody.value.body, O.some({}));
+    assert.deepStrictEqual(Ex.isDone(postNoBody), true);
+    assert.deepStrictEqual(Ex.isDone(postNoBody) && postNoBody.value.body, O.some({}));
 
-    assert.deepEqual(Ex.isDone(put), true);
-    assert.deepEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(put), true);
+    assert.deepStrictEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(Ex.isDone(patch), true);
-    assert.deepEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(patch), true);
+    assert.deepStrictEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(Ex.isDone(del), true);
-    assert.deepEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(del), true);
+    assert.deepStrictEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
   });
 
   it("get 404", async () => {
@@ -155,8 +155,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(Ex.isRaise(result), true);
-    assert.deepEqual(Ex.isRaise(result) && result.error, 404);
+    assert.deepStrictEqual(Ex.isRaise(result), true);
+    assert.deepStrictEqual(Ex.isRaise(result) && result.error, 404);
   });
 
   it("headers", async () => {
@@ -185,8 +185,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(Ex.isDone(result), true);
-    assert.deepEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(result), true);
+    assert.deepStrictEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "bar" }));
   });
 
   it("headers middleware", async () => {
@@ -208,8 +208,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(Ex.isDone(result), true);
-    assert.deepEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(result), true);
+    assert.deepStrictEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "bar" }));
   });
 
   it("replace headers", async () => {
@@ -246,8 +246,8 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(Ex.isDone(result), true);
-    assert.deepEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "baz" }));
+    assert.deepStrictEqual(Ex.isDone(result), true);
+    assert.deepStrictEqual(Ex.isDone(result) && result.value.body, O.some({ foo: "baz" }));
   });
 
   it("data", async () => {
@@ -275,17 +275,17 @@ describe("Libcurl", () => {
       })
     );
 
-    assert.deepEqual(Ex.isDone(post), true);
-    assert.deepEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(post), true);
+    assert.deepStrictEqual(Ex.isDone(post) && post.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(Ex.isDone(put), true);
-    assert.deepEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(put), true);
+    assert.deepStrictEqual(Ex.isDone(put) && put.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(Ex.isDone(patch), true);
-    assert.deepEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(patch), true);
+    assert.deepStrictEqual(Ex.isDone(patch) && patch.value.body, O.some({ foo: "bar" }));
 
-    assert.deepEqual(Ex.isDone(del), true);
-    assert.deepEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
+    assert.deepStrictEqual(Ex.isDone(del), true);
+    assert.deepStrictEqual(Ex.isDone(del) && del.value.body, O.some({ foo: "bar" }));
   });
 
   it.skip("binary", async () => {
@@ -325,28 +325,34 @@ describe("Libcurl", () => {
         O.map((b) => b.toString("utf-8"))
       );
 
-    assert.deepEqual(post, true);
-    assert.deepEqual(Ex.isDone(post), true);
-    assert.deepEqual(Ex.isDone(post) && binaryString(post.value.body), O.some(`{ foo: \"bar\" }`));
+    assert.deepStrictEqual(post, true);
+    assert.deepStrictEqual(Ex.isDone(post), true);
+    assert.deepStrictEqual(
+      Ex.isDone(post) && binaryString(post.value.body),
+      O.some(`{ foo: \"bar\" }`)
+    );
 
-    assert.deepEqual(Ex.isDone(put), true);
-    assert.deepEqual(Ex.isDone(put) && binaryString(put.value.body), O.some(`{ foo: \"bar\" }`));
+    assert.deepStrictEqual(Ex.isDone(put), true);
+    assert.deepStrictEqual(
+      Ex.isDone(put) && binaryString(put.value.body),
+      O.some(`{ foo: \"bar\" }`)
+    );
 
-    assert.deepEqual(Ex.isDone(patch), true);
-    assert.deepEqual(
+    assert.deepStrictEqual(Ex.isDone(patch), true);
+    assert.deepStrictEqual(
       Ex.isDone(patch) && binaryString(patch.value.body),
       O.some(`{ foo: \"bar\" }`)
     );
 
-    assert.deepEqual(Ex.isDone(del), true);
-    assert.deepEqual(Ex.isDone(del) && binaryString(del.value.body), O.some(``)); // TODO: Verify spec; del binary body does not touch the server
+    assert.deepStrictEqual(Ex.isDone(del), true);
+    assert.deepStrictEqual(Ex.isDone(del) && binaryString(del.value.body), O.some(``)); // TODO: Verify spec; del binary body does not touch the server
   });
 
   it("get https", async () => {
     const result = await run(H.get("https://jsonplaceholder.typicode.com/todos/1"));
 
-    assert.deepEqual(Ex.isDone(result), true);
-    assert.deepEqual(
+    assert.deepStrictEqual(Ex.isDone(result), true);
+    assert.deepStrictEqual(
       Ex.isDone(result) && result.value.body,
       O.some({
         userId: 1,
@@ -360,11 +366,10 @@ describe("Libcurl", () => {
   it("malformed", async () => {
     const result = await run(H.get("ht-ps://wrong.com/todos/1"));
 
-    assert.deepEqual(Ex.isRaise(result), true);
-    assert.deepEqual(
-      Ex.isRaise(result) && result.error._tag === H.HttpErrorReason.Request && result.error.error,
-      new Error("Unsupported protocol")
-    );
+    expect(Ex.isRaise(result)).toStrictEqual(true);
+    expect(
+      Ex.isRaise(result) && result.error._tag === H.HttpErrorReason.Request && result.error.error
+    ).toEqual(new Error("Unsupported protocol"));
   });
 
   it("cancel", async () => {
@@ -379,6 +384,6 @@ describe("Libcurl", () => {
 
     cancel();
 
-    assert.deepEqual(res && Ex.isInterrupt(res), true);
+    assert.deepStrictEqual(res && Ex.isInterrupt(res), true);
   });
 });

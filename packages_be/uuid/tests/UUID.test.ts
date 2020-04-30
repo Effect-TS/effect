@@ -10,7 +10,7 @@ describe("UUID", () => {
   it("gen", async () => {
     const uuid = await pipe(U.gen, run);
 
-    assert.deepEqual(U.isoUUID.unwrap(uuid).length, 36);
+    assert.deepStrictEqual(U.isoUUID.unwrap(uuid).length, 36);
   });
 
   it("base58", async () => {
@@ -18,7 +18,7 @@ describe("UUID", () => {
     const base58 = await pipe(uuid, U.toBase58, run);
     const fromBase58 = await pipe(base58, U.fromBase58, run);
 
-    assert.deepEqual(uuid, fromBase58);
+    assert.deepStrictEqual(uuid, fromBase58);
   });
 
   it("base90", async () => {
@@ -26,6 +26,6 @@ describe("UUID", () => {
     const base90 = await pipe(uuid, U.toBase90, run);
     const fromBase90 = await pipe(base90, U.fromBase90, run);
 
-    assert.deepEqual(uuid, fromBase90);
+    assert.deepStrictEqual(uuid, fromBase90);
   });
 });

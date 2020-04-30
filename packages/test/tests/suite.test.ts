@@ -46,7 +46,7 @@ const demoSuite = M.suite("demo")(
           100
         )
       )
-      .return((s) => M.assert.deepEqual(s.c, s.env.sum.e))
+      .return((s) => M.assert.deepStrictEqual(s.c, s.env.sum.e))
   ),
   M.testM(
     "mul",
@@ -58,7 +58,7 @@ const demoSuite = M.suite("demo")(
           100
         )
       )
-      .return((s) => M.assert.deepEqual(s.c, s.env.mul.e))
+      .return((s) => M.assert.deepStrictEqual(s.c, s.env.mul.e))
   )
 );
 
@@ -73,7 +73,7 @@ const demo2Suite = M.suite("demo2")(
           500
         )
       )
-      .return((s) => M.assert.deepEqual(s.c, s.env.sub.e))
+      .return((s) => M.assert.deepStrictEqual(s.c, s.env.sub.e))
   ),
   M.testM(
     "div",
@@ -85,7 +85,7 @@ const demo2Suite = M.suite("demo2")(
           500
         )
       )
-      .return((s) => M.assert.deepEqual(s.c, s.env.div.e))
+      .return((s) => M.assert.deepStrictEqual(s.c, s.env.div.e))
   )
 );
 
@@ -94,7 +94,7 @@ const comboSuite = M.suite("combo")(
   M.withTimeout(600)(demo2Suite),
   M.testM(
     "simple",
-    T.sync(() => M.assert.deepEqual(1, 1))
+    T.sync(() => M.assert.deepStrictEqual(1, 1))
   )
 );
 
@@ -103,7 +103,7 @@ const flackySuite = M.suite("flacky")(
     "random",
     pipe(
       T.sync(() => Math.random()),
-      T.map((n) => M.assert.deepEqual(n < 0.3, true))
+      T.map((n) => M.assert.deepStrictEqual(n < 0.3, true))
     )
   ),
   pipe(
@@ -111,7 +111,7 @@ const flackySuite = M.suite("flacky")(
       "random2",
       pipe(
         T.sync(() => Math.random()),
-        T.map((n) => M.assert.deepEqual(n < 0.1, true))
+        T.map((n) => M.assert.deepStrictEqual(n < 0.1, true))
       )
     ),
     M.withRetryPolicy(limitRetries(200))
@@ -124,14 +124,14 @@ const genSuite = M.suite("generative")(
     M.propertyM(1000)({
       a: M.arb(fc.nat()),
       b: M.arb(fc.nat())
-    })(({ a, b }) => T.access((_: Sum) => M.assert.deepEqual(a > 0 && b > 0 && _.sum.a > 0, true)))
+    })(({ a, b }) => T.access((_: Sum) => M.assert.deepStrictEqual(a > 0 && b > 0 && _.sum.a > 0, true)))
   ),
   M.testM(
     "generate strings",
     M.property(1000)({
       a: M.arb(fc.hexaString(2, 100)),
       b: M.arb(fc.hexaString(4, 100))
-    })(({ a, b }) => M.assert.deepEqual(a.length >= 2 && b.length >= 4, true))
+    })(({ a, b }) => M.assert.deepStrictEqual(a.length >= 2 && b.length >= 4, true))
   )
 );
 
@@ -139,7 +139,7 @@ const skipSuite = pipe(
   M.suite("skip suite")(
     M.testM(
       "dummy",
-      T.sync(() => M.assert.deepEqual(1, 1))
+      T.sync(() => M.assert.deepStrictEqual(1, 1))
     )
   ),
   M.withSkip(true)
@@ -149,12 +149,12 @@ const skip2Suite = pipe(
   M.suite("skip 2 suite")(
     M.testM(
       "dummy2",
-      T.sync(() => M.assert.deepEqual(1, 1))
+      T.sync(() => M.assert.deepStrictEqual(1, 1))
     ),
     pipe(
       M.testM(
         "dummy3",
-        T.sync(() => M.assert.deepEqual(1, 1))
+        T.sync(() => M.assert.deepStrictEqual(1, 1))
       ),
       M.withSkip(false)
     )
@@ -168,14 +168,14 @@ const envSuite = M.suite("env suite")(
   pipe(
     M.testM(
       "skip because env not defined",
-      T.sync(() => M.assert.deepEqual(1, 1))
+      T.sync(() => M.assert.deepStrictEqual(1, 1))
     ),
     M.withEnvFilter("jioejiofjioewjsalcs")(O.isSome)
   ),
   pipe(
     M.testM(
       "not skip because env is demo",
-      T.sync(() => M.assert.deepEqual(1, 1))
+      T.sync(() => M.assert.deepStrictEqual(1, 1))
     ),
     M.withEnvFilter("EXAMPLE_ENV")((x) => O.isSome(x) && x.value === "demo")
   )

@@ -9,8 +9,8 @@ export const getHttpsSpec = J.testM(
   T.Do()
     .bindL("get", () => T.result(H.get("https://jsonplaceholder.typicode.com/todos/1")))
     .return(({ get }) => {
-      J.assert.deepEqual(Ex.isDone(get), true);
-      J.assert.deepEqual(
+      J.assert.deepStrictEqual(Ex.isDone(get), true);
+      J.assert.deepStrictEqual(
         Ex.isDone(get) && get.value.body,
         O.some({
           userId: 1,

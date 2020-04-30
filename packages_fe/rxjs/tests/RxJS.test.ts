@@ -15,7 +15,7 @@ describe("RxJS", () => {
 
     const r = await T.runToPromise(p);
 
-    assert.deepEqual(r, A.range(0, 9));
+    assert.deepStrictEqual(r, A.range(0, 9));
   });
 
   it("should encaseObservable - complete", async () => {
@@ -24,7 +24,7 @@ describe("RxJS", () => {
 
     const r = await T.runToPromise(p);
 
-    assert.deepEqual(r, A.range(0, 2));
+    assert.deepStrictEqual(r, A.range(0, 2));
   });
 
   it("should encaseObservable - subject", async () => {
@@ -43,7 +43,7 @@ describe("RxJS", () => {
 
     const r = await results;
 
-    assert.deepEqual(r, A.range(2, 3));
+    assert.deepStrictEqual(r, A.range(2, 3));
   });
 
   it("should encaseObservable - replay subject", async () => {
@@ -62,7 +62,7 @@ describe("RxJS", () => {
 
     const r = await results;
 
-    assert.deepEqual(r, A.range(1, 3));
+    assert.deepStrictEqual(r, A.range(1, 3));
   });
 
   it("should encaseObservable - error", async () => {
@@ -71,7 +71,7 @@ describe("RxJS", () => {
 
     const r = await T.runToPromiseExit(p);
 
-    assert.deepEqual(r, raise(new Error("error")));
+    assert.deepStrictEqual(r, raise(new Error("error")));
   });
 
   it("should runToObservable", async () => {
@@ -86,7 +86,7 @@ describe("RxJS", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(a, [0, 1, 2]);
+    assert.deepStrictEqual(a, [0, 1, 2]);
   });
 
   it("should runToObservable - Error", async () => {
@@ -107,7 +107,7 @@ describe("RxJS", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(errors, ["error"]);
+    assert.deepStrictEqual(errors, ["error"]);
   });
 
   it("should runToObservable - Abort", async () => {
@@ -128,7 +128,7 @@ describe("RxJS", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(errors, ["error"]);
+    assert.deepStrictEqual(errors, ["error"]);
   });
 
   it("should toObservable - Error", async () => {
@@ -151,8 +151,8 @@ describe("RxJS", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(errors, [new Error("error")]);
-    assert.deepEqual(sub.closed, true);
+    assert.deepStrictEqual(errors, [new Error("error")]);
+    assert.deepStrictEqual(sub.closed, true);
   });
 
   it("should toObservable - Abort", async () => {
@@ -175,8 +175,8 @@ describe("RxJS", () => {
 
     await T.runToPromise(T.delay(T.unit, 10));
 
-    assert.deepEqual(errors, ["aborted"]);
-    assert.deepEqual(sub.closed, true);
+    assert.deepStrictEqual(errors, ["aborted"]);
+    assert.deepStrictEqual(sub.closed, true);
   });
 
   it("unsubscribe should stop drain", async () => {
@@ -201,7 +201,7 @@ describe("RxJS", () => {
 
     sub.unsubscribe();
 
-    assert.deepEqual(errors, []);
-    assert.deepEqual(sub.closed, true);
+    assert.deepStrictEqual(errors, []);
+    assert.deepStrictEqual(sub.closed, true);
   });
 });

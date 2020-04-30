@@ -41,26 +41,26 @@ export const binarySpec = J.testM(
             O.map((b) => b.toString("utf-8"))
           );
 
-        J.assert.deepEqual(Ex.isDone(post), true);
-        J.assert.deepEqual(
+        J.assert.deepStrictEqual(Ex.isDone(post), true);
+        J.assert.deepStrictEqual(
           Ex.isDone(post) && binaryString(post.value.body),
           O.some(`{ foo: \"bar\" }`)
         );
 
-        J.assert.deepEqual(Ex.isDone(put), true);
-        J.assert.deepEqual(
+        J.assert.deepStrictEqual(Ex.isDone(put), true);
+        J.assert.deepStrictEqual(
           Ex.isDone(put) && binaryString(put.value.body),
           O.some(`{ foo: \"bar\" }`)
         );
 
-        J.assert.deepEqual(Ex.isDone(patch), true);
-        J.assert.deepEqual(
+        J.assert.deepStrictEqual(Ex.isDone(patch), true);
+        J.assert.deepStrictEqual(
           Ex.isDone(patch) && binaryString(patch.value.body),
           O.some(`{ foo: \"bar\" }`)
         );
 
-        J.assert.deepEqual(Ex.isDone(del), true);
-        J.assert.deepEqual(Ex.isDone(del) && binaryString(del.value.body), O.some(``));
+        J.assert.deepStrictEqual(Ex.isDone(del), true);
+        J.assert.deepStrictEqual(Ex.isDone(del) && binaryString(del.value.body), O.some(``));
       })
   )
 );

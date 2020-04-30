@@ -19,6 +19,6 @@ describe("Graceful", () => {
       )
     );
 
-    assert.deepEqual(calls, 1);
+    assert.deepStrictEqual(calls, 1);
   });
 });

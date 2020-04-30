@@ -63,11 +63,11 @@ describe("Example", () => {
       )
     );
 
-    assert.deepEqual(spans.filter((s) => s.name.indexOf("demo-main") >= 0).length, 1);
-    assert.deepEqual(spans.filter((s) => s.name.indexOf("span-") >= 0).length, 20);
+    assert.deepStrictEqual(spans.filter((s) => s.name.indexOf("demo-main") >= 0).length, 1);
+    assert.deepStrictEqual(spans.filter((s) => s.name.indexOf("span-") >= 0).length, 20);
 
-    assert.deepEqual(result, Ex.done({ start: 0, end: 20 }));
-    assert.deepEqual(messages, [
+    assert.deepStrictEqual(result, Ex.done({ start: 0, end: 20 }));
+    assert.deepStrictEqual(messages, [
       "n: 1 (1)",
       "n: 2 (2)",
       "n: 3 (3)",
@@ -106,12 +106,12 @@ describe("Example", () => {
 
     await T.runToPromise(pipe(program2, T.provide(mockModule)));
 
-    assert.deepEqual(
+    assert.deepStrictEqual(
       // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toSpanId(),
       "demo-span-id"
     );
-    assert.deepEqual(
+    assert.deepStrictEqual(
       // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toTraceId(),
       "demo-trace-id"
@@ -126,7 +126,7 @@ describe("Example", () => {
 
     const result = await T.runToPromiseExit(program2);
 
-    assert.deepEqual(result, Ex.raise(new Error("not implemented")));
+    assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")));
   });
 
   it("skip tracing if out of context", async () => {
@@ -134,6 +134,6 @@ describe("Example", () => {
 
     const result = await T.runToPromiseExit(T.provide(tracer())(program2));
 
-    assert.deepEqual(result, Ex.raise(new Error("not implemented")));
+    assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")));
   });
 });

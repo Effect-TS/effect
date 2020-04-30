@@ -19,7 +19,7 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    assert.deepEqual(numbers, [0, 2]);
+    assert.deepStrictEqual(numbers, [0, 2]);
   });
 
   it("chainEffect effect raise", async () => {
@@ -37,8 +37,8 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    assert.deepEqual(numbers, []);
-    assert.deepEqual(errors, ["error", "error"]);
+    assert.deepStrictEqual(numbers, []);
+    assert.deepStrictEqual(errors, ["error", "error"]);
   });
 
   it("chainEffect effect abort", async () => {
@@ -56,8 +56,8 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    assert.deepEqual(numbers, []);
-    assert.deepEqual(errors, ["error", "error"]);
+    assert.deepStrictEqual(numbers, []);
+    assert.deepStrictEqual(errors, ["error", "error"]);
   });
 
   it("chainEffect effect interrupt", async () => {
@@ -75,8 +75,8 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    assert.deepEqual(numbers, []);
-    assert.deepEqual(errors, []);
+    assert.deepStrictEqual(numbers, []);
+    assert.deepStrictEqual(errors, []);
   });
 
   it("chainEffect observable error", async () => {
@@ -100,7 +100,7 @@ describe("Operators", () => {
       )
       .subscribe();
 
-    assert.deepEqual(numbers, [0, 2]);
-    assert.deepEqual(errors, ["error"]);
+    assert.deepStrictEqual(numbers, [0, 2]);
+    assert.deepStrictEqual(errors, ["error"]);
   });
 });

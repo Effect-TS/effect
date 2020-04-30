@@ -19,11 +19,11 @@ const browserSpec = M.suite("browser")(
       .do(B.localStore.clear)
       .bind("l3", B.localStore.length)
       .return(({ f, k, l, l2, l3 }) => {
-        M.assert.deepEqual(l, 1);
-        M.assert.deepEqual(k, some("foo"));
-        M.assert.deepEqual(f, some("bar"));
-        M.assert.deepEqual(l2, 0);
-        M.assert.deepEqual(l3, 0);
+        M.assert.deepStrictEqual(l, 1);
+        M.assert.deepStrictEqual(k, some("foo"));
+        M.assert.deepStrictEqual(f, some("bar"));
+        M.assert.deepStrictEqual(l2, 0);
+        M.assert.deepStrictEqual(l3, 0);
       })
   ),
   M.testM(
@@ -39,11 +39,11 @@ const browserSpec = M.suite("browser")(
       .do(B.sessionStore.clear)
       .bind("l3", B.sessionStore.length)
       .return(({ f, k, l, l2, l3 }) => {
-        M.assert.deepEqual(l, 1);
-        M.assert.deepEqual(k, some("foo"));
-        M.assert.deepEqual(f, some("bar"));
-        M.assert.deepEqual(l2, 0);
-        M.assert.deepEqual(l3, 0);
+        M.assert.deepStrictEqual(l, 1);
+        M.assert.deepStrictEqual(k, some("foo"));
+        M.assert.deepStrictEqual(f, some("bar"));
+        M.assert.deepStrictEqual(l2, 0);
+        M.assert.deepStrictEqual(l3, 0);
       })
   )
 );

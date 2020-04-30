@@ -30,8 +30,8 @@ export const headersSpec = J.testM(
         )
       )
       .return(({ get }) => {
-        J.assert.deepEqual(Ex.isDone(get), true);
-        J.assert.deepEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(get), true);
+        J.assert.deepStrictEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "bar" }));
       })
   )
 );

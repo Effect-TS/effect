@@ -26,10 +26,10 @@ const loggerSpec = M.suite("Logger")(
         .do(
           useMockM(({ info, debug, error, warn }) =>
             T.sync(() => {
-              M.assert.deepEqual(info.mock.calls.length, 2);
-              M.assert.deepEqual(debug.mock.calls.length, 3);
-              M.assert.deepEqual(error.mock.calls.length, 2);
-              M.assert.deepEqual(warn.mock.calls.length, 1);
+              M.assert.deepStrictEqual(info.mock.calls.length, 2);
+              M.assert.deepStrictEqual(debug.mock.calls.length, 3);
+              M.assert.deepStrictEqual(error.mock.calls.length, 2);
+              M.assert.deepStrictEqual(warn.mock.calls.length, 1);
             })
           )
         )
@@ -47,7 +47,7 @@ const loggerSpec = M.suite("Logger")(
         .do(
           useMockM(({ debug }) =>
             T.sync(() => {
-              M.assert.deepEqual(debug.mock.calls.length, 0);
+              M.assert.deepStrictEqual(debug.mock.calls.length, 0);
             })
           )
         )
