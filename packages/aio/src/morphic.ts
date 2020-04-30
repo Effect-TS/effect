@@ -1,5 +1,5 @@
 import { T } from "@matechs/prelude";
-import { ADT } from "@morphic-ts/adt";
+import { ADT, intersectADT, isIn, makeADT, ofType, unionADT } from "@morphic-ts/adt";
 import {
   AsOpaque,
   AsUOpaque,
@@ -30,7 +30,12 @@ export {
   AType,
   EType,
   RType,
-  AOfMorhpADT
+  AOfMorhpADT,
+  intersectADT,
+  isIn,
+  makeADT,
+  ofType,
+  unionADT
 };
 
 export const arb = <Env, E, A>(F: M<Env, E, A>) => (

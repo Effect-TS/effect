@@ -15,6 +15,7 @@ import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Separated } from "fp-ts/lib/Compactable";
 import { Monad4EP, MonadThrow4EP } from "../overloadEff";
+import { ForM } from "../for";
 
 // alpha version exposed for exeperimentation purposes
 /* istanbul ignore file */
@@ -347,6 +348,7 @@ export const {
 } = P.pipeable(streamEither);
 
 export const Do = () => DoG(streamEither);
+export const For = () => ForM(streamEither);
 export const sequenceS = SS(streamEither);
 export const sequenceT = ST(streamEither);
 

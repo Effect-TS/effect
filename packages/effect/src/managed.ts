@@ -11,6 +11,7 @@ import * as RE from "fp-ts/lib/Record";
 import { Separated } from "fp-ts/lib/Compactable";
 import { pipe, pipeable } from "fp-ts/lib/pipeable";
 import { Monad4E, Monad4EP, MonadThrow4E } from "./overloadEff";
+import { ForM } from "./for";
 
 export enum ManagedTag {
   Pure,
@@ -549,10 +550,12 @@ function provideAll<R>(r: R) {
 }
 
 export const Do = () => DoG(managed);
+export const For = () => ForM(managed);
 export const sequenceS = SS(managed);
 export const sequenceT = ST(managed);
 
 export const parDo = () => DoG(parManaged);
+export const parFor = () => ForM(parManaged);
 export const parSequenceS = SS(parManaged);
 export const parSequenceT = ST(parManaged);
 
