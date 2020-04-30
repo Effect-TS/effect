@@ -140,11 +140,11 @@ export type ATypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? A : 
 
 export type ETypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? E : never;
 
-export type EffypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? R : never;
+export type RTypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? R : never;
 
 export type EnvOf<R extends Record<string, GE<any, any, any, any>>> = UnionToIntersection<
   {
-    [K in keyof R]: unknown extends EffypeOf<R[K]> ? never : EffypeOf<R[K]>;
+    [K in keyof R]: unknown extends RTypeOf<R[K]> ? never : RTypeOf<R[K]>;
   }[keyof R]
 >;
 
@@ -171,7 +171,7 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
     name: Exclude<N, keyof S>,
     f: (s: S) => A
   ) => Do4CE<M, Q, S & { [K in N]: A }, U, L>;
-  sequenceS: <R extends Record<string, GE<any, any, any, any>>>(
+  sequenceS: <R extends Record<string, Kind4<M, any, any, any, any>>>(
     r: EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE<
     M,
@@ -180,7 +180,7 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
     U & EnvOf<R>,
     L | ETypeOf<R[keyof R]>
   >;
-  sequenceSL: <R extends Record<string, GE<any, any, any, any>>>(
+  sequenceSL: <R extends Record<string, Kind4<M, any, any, any, any>>>(
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE<
     M,

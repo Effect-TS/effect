@@ -36,6 +36,7 @@ import { Deferred, makeDeferred } from "./deferred";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Separated } from "fp-ts/lib/Compactable";
+import { ForM } from "./for";
 
 // WIP
 /* istanbul ignore file */
@@ -1592,6 +1593,7 @@ export const effect: EffectMonad = {
 };
 
 export const Do = () => DoG(effect);
+export const For = () => ForM(effect);
 export const sequenceS = SS(effect);
 export const sequenceT = ST(effect);
 
@@ -1606,6 +1608,7 @@ export const parEffect: Monad4EP<URI> & MonadThrow4EP<URI> = {
 };
 
 export const parDo = () => DoG(parEffect);
+export const parFor = () => ForM(parEffect);
 export const parSequenceS = SS(parEffect);
 export const parSequenceT = ST(parEffect);
 
