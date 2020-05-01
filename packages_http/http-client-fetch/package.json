@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-fetch",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -23,11 +23,11 @@
     "es6"
   ],
   "dependencies": {
-    "@types/isomorphic-fetch": "^0.0.35",
     "@matechs/http-client": "^5.5.0",
     "@matechs/prelude": "^1.5.0",
-    "query-string": "^6.12.1",
-    "isomorphic-fetch": "^2.2.1"
+    "@types/isomorphic-fetch": "^0.0.35",
+    "isomorphic-fetch": "^2.2.1",
+    "query-string": "^6.12.1"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
