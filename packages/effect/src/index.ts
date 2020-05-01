@@ -13,6 +13,7 @@ import * as list from "./list";
 import * as utils from "./utils/types";
 import * as retry from "./retry";
 import * as rec from "./rec";
+import * as proc from "./proc"
 
 export {
   effect,
@@ -29,5 +30,6 @@ export {
   utils,
   sink,
   retry,
-  rec
+  rec,
+  proc
 };
