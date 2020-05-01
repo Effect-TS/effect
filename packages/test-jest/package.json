@@ -9,7 +9,9 @@
     "postbuild": "prettier --write \"./{lib,es6}/**/*.ts\"",
     "lint": "tslint --project .",
     "import-path-rewrite": "import-path-rewrite",
-    "tc": "tsc --noEmit"
+    "tc": "tsc --noEmit",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
   },
   "publishConfig": {
     "access": "public"
@@ -28,6 +30,8 @@
     "@matechs/test": "^1.5.0",
     "@types/jest": "^25.2.1",
     "fast-check": "^1.24.1",
-    "jest": "^25.5.3"
-  }
+    "jest": "^25.5.3",
+    "snyk": "^1.316.2"
+  },
+  "snyk": true
 }
