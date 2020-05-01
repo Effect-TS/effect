@@ -1,5 +1,5 @@
 import * as I from "./iots";
-import * as IT from "io-ts-types";
+import * as IT from "./types";
 import * as NT from "newtype-ts";
 import * as MN from "monocle-ts";
 import * as MO from "./morphic";
