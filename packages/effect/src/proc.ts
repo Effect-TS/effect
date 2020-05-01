@@ -5,7 +5,14 @@ import { record as Rec } from "fp-ts";
 import { pipe } from "fp-ts/lib/pipeable";
 
 export function runAll<Procs extends Record<string, T.Effect<any, any, any, any>>>(
-  procs: Procs
+  procs: Procs,
+  onExit: (
+    _: {
+      [k in keyof Procs]: Exit<ETypeOf<Procs[k]>, ATypeOf<Procs[k]>>;
+    }
+  ) => void = () => {
+    //
+  }
 ): T.AsyncR<
   UnionToIntersection<
     {
@@ -53,7 +60,29 @@ export function runAll<Procs extends Record<string, T.Effect<any, any, any, any>
     )
   );
 
-  const exits = T.effect.chain(waits, Rec.record.sequence(T.parEffect));
+  const exits = T.accessM((r: any) =>
+    T.asyncTotal((res) => {
+      const fiber = T.runUnsafeSync(
+        pipe(
+          T.effect.chain(waits, Rec.record.sequence(T.parEffect)),
+          T.chainTap((done) =>
+            T.sync(() => {
+              res(done);
+              onExit(done as any);
+            })
+          ),
+          T.provide(r),
+          T.fork
+        )
+      );
+      return (cb) => {
+        fire();
+        T.run(fiber.wait, () => {
+          cb();
+        });
+      };
+    })
+  );
 
   return exits as any;
 }

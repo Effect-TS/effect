@@ -27,4 +27,40 @@ describe("Process", () => {
       d: done(4)
     });
   });
+
+  it("should interrupt on interrupt", async () => {
+    interface Foo {
+      test: {
+        n: number;
+      };
+    }
+
+    let end = {};
+
+    const all = P.runAll(
+      {
+        a: T.delay(T.pure(1), 100),
+        b: T.delay(T.pure(2), 5000),
+        d: T.delay(
+          T.access(({ test: { n } }: Foo) => n),
+          50
+        )
+      },
+      (ex) => {
+        end = ex;
+      }
+    );
+
+    const fiber = await T.runToPromise(pipe(all, T.provide({ test: { n: 4 } }), T.fork));
+
+    await T.runToPromise(T.delay(T.unit, 60));
+
+    await T.runToPromise(fiber.interrupt);
+
+    expect(end).toStrictEqual({
+      a: interrupt,
+      b: interrupt,
+      d: done(4)
+    });
+  });
 });

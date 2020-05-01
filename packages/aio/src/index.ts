@@ -31,6 +31,7 @@ export {
   Service, // FreeEnv Service Definition & Derivation
   T, // Effect
   U, // Type Utils
+  P, // Process 
   combineProviders, // Combine Providers
   eq, // fp-ts Eq
   flow, // fp-ts flow

@@ -10,7 +10,8 @@ import {
   retry as RT,
   ref as Ref,
   semaphore as Sem,
-  utils as U
+  utils as U,
+  proc as P
 } from "@matechs/effect";
 import * as F from "fp-ts/lib/function";
 import * as eq from "fp-ts/lib/Eq";
@@ -32,7 +33,7 @@ import { Pipe, Flow, FlowP } from "./internals";
 export { flow } from "fp-ts/lib/function"
 export { pipe } from "fp-ts/lib/pipeable";
 
-export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U };
+export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U, P };
 export { Ex };
 export { E };
 export { Service };
