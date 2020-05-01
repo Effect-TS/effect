@@ -28,7 +28,7 @@
     "@matechs/prelude": "^1.5.0",
     "apollo-server": "^2.12.0",
     "apollo-server-express": "^2.12.0",
-    "graphql": "^14.2.1",
+    "graphql": "^15.0.0",
     "subscriptions-transport-ws": "^0.9.16"
   }
 }

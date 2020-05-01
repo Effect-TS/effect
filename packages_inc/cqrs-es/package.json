@@ -38,6 +38,6 @@
     "reflect-metadata": "^0.1.13",
     "typeorm": "^0.2.24",
     "node-eventstore-client": "^0.2.16",
-    "uuid": "^7.0.3"
+    "uuid": "^8.0.0"
   }
 }
