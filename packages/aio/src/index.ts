@@ -1,12 +1,10 @@
 import * as I from "./iots";
-import * as IT from "./types";
 import * as NT from "newtype-ts";
 import * as MN from "monocle-ts";
 import * as MO from "./morphic";
 
 export {
-  I, // io-ts
-  IT, // io-ts-types
+  I, // io-ts & io-ts-types
   NT, // newtype-ts
   MN, // monocle-ts
   MO // morphic-ts
