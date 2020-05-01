@@ -1,4 +1,4 @@
-import * as I from "io-ts";
+import * as I from "./iots";
 import * as IT from "io-ts-types";
 import * as NT from "newtype-ts";
 import * as MN from "monocle-ts";
