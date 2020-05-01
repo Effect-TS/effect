@@ -1,7 +1,0 @@
-{
-  "extends": "./base.tsconfig.json",
-  "files": [],
-  "compilerOptions": {
-    "baseUrl": "."
-  }
-}

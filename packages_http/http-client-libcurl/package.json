@@ -26,7 +26,7 @@
   "dependencies": {
     "@matechs/http-client": "^5.5.0",
     "@matechs/prelude": "^1.5.0",
-    "node-libcurl": "^2.0.3",
+    "node-libcurl": "^2.1.1",
     "query-string": "^6.12.1"
   }
 }

@@ -28,6 +28,6 @@
     "@matechs/test": "^1.5.0",
     "@types/jest": "^25.2.1",
     "fast-check": "^1.24.1",
-    "jest": "^25.2.7"
+    "jest": "^25.5.3"
   }
 }

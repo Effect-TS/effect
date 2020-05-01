@@ -26,6 +26,6 @@
   "dependencies": {
     "@matechs/prelude": "^1.5.0",
     "short-uuid": "^3.1.1",
-    "uuid": "^7.0.3"
+    "uuid": "^8.0.0"
   }
 }
