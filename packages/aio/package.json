@@ -30,7 +30,10 @@
     "io-ts-types": "^0.5.6",
     "monocle-ts": "^2.1.0",
     "newtype-ts": "^0.3.4",
-    "retry-ts": "^0.1.2"
+    "retry-ts": "^0.1.2",
+    "fp-ts-contrib": "^0.1.15",
+    "fast-check": "^1.24.1",
+    "fast-equals": "^2.0.0"
   },
   "devDependencies": {
     "@matechs/test-jest": "^1.5.0"

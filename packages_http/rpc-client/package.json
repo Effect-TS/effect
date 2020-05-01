@@ -22,13 +22,11 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "fp-ts": "^2.5.4",
-    "fp-ts-contrib": "^0.1.15"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
     "@matechs/effect": "^1.0.0-alpha.1",
-    "@matechs/http-client": "^5.5.0"
+    "@matechs/http-client": "^5.5.0",
+    "fp-ts": "^2.5.4",
+    "fp-ts-contrib": "^0.1.15"
   }
 }

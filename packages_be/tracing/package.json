@@ -22,14 +22,9 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "opentracing": "^0.14.4"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
-    "opentracing": "^0.14.4"
-  },
   "dependencies": {
-    "@matechs/prelude": "^1.5.0"
+    "@matechs/prelude": "^1.5.0",
+    "opentracing": "^0.14.4"
   }
 }

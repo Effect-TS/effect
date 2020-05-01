@@ -22,14 +22,9 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "@types/node-zookeeper-client": "^0.2.7"
-  },
-  "devDependencies": {
+  "dependencies": {
+    "@matechs/prelude": "^1.5.0",
     "@types/node-zookeeper-client": "^0.2.7",
     "node-zookeeper-client": "^1.1.0"
-  },
-  "dependencies": {
-    "@matechs/prelude": "^1.5.0"
   }
 }

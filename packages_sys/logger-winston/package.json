@@ -22,15 +22,10 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "winston": "^3.2.1"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
-    "winston": "^3.2.1"
-  },
   "dependencies": {
     "@matechs/logger": "^4.5.0",
-    "@matechs/prelude": "^1.5.0"
+    "@matechs/prelude": "^1.5.0",
+    "winston": "^3.2.1"
   }
 }

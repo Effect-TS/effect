@@ -22,35 +22,20 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "@morphic-ts/batteries": "^1.7.0",
-    "class-transformer": "^0.2.3",
-    "fast-check": "^1.24.1",
-    "fast-equals": "^2.0.0",
-    "io-ts": "^2.2.1",
-    "io-ts-types": "^0.5.6",
-    "monocle-ts": "^2.0.1",
-    "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.2.24",
-    "uuid": "^7.0.3"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
-    "@morphic-ts/batteries": "^1.7.0",
-    "class-transformer": "^0.2.3",
-    "fast-check": "^1.24.1",
-    "fast-equals": "^2.0.0",
-    "io-ts": "^2.2.1",
-    "io-ts-types": "^0.5.6",
-    "monocle-ts": "^2.0.1",
-    "newtype-ts": "^0.3.4",
-    "reflect-metadata": "^0.1.13",
-    "typeorm": "^0.2.24",
-    "uuid": "^7.0.3"
-  },
   "dependencies": {
     "@matechs/logger": "^4.5.0",
     "@matechs/orm": "^4.5.0",
-    "@matechs/prelude": "^1.5.0"
+    "@matechs/prelude": "^1.5.0",
+    "@morphic-ts/batteries": "^1.7.0",
+    "class-transformer": "^0.2.3",
+    "fast-check": "^1.24.1",
+    "fast-equals": "^2.0.0",
+    "io-ts": "^2.2.1",
+    "io-ts-types": "^0.5.6",
+    "monocle-ts": "^2.0.1",
+    "reflect-metadata": "^0.1.13",
+    "typeorm": "^0.2.24",
+    "uuid": "^7.0.3"
   }
 }

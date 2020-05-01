@@ -22,18 +22,12 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "fast-check": "^1.24.1",
-    "jest": "^25.2.7"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
+  "dependencies": {
+    "@matechs/effect": "^6.5.0",
+    "@matechs/test": "^1.5.0",
     "@types/jest": "^25.2.1",
     "fast-check": "^1.24.1",
     "jest": "^25.2.7"
-  },
-  "dependencies": {
-    "@matechs/effect": "^6.5.0",
-    "@matechs/test": "^1.5.0"
   }
 }

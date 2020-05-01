@@ -22,14 +22,9 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "rxjs": "^6.5.5"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
-    "rxjs": "^6.5.5"
-  },
   "dependencies": {
-    "@matechs/prelude": "^1.5.0"
+    "@matechs/prelude": "^1.5.0",
+    "rxjs": "^6.5.5"
   }
 }

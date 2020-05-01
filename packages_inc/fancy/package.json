@@ -25,21 +25,8 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "@morphic-ts/batteries": "^1.7.0",
-    "fast-check": "^1.24.1",
-    "fast-equals": "^2.0.0",
-    "io-ts": "^2.2.1",
-    "io-ts-types": "^0.5.6",
-    "mobx": "^5.15.4",
-    "mobx-react": "^6.1.8",
-    "monocle-ts": "^2.0.1",
-    "newtype-ts": "^0.3.4",
-    "next": "^9.3.4",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1"
-  },
-  "devDependencies": {
+  "dependencies": {
+    "@matechs/prelude": "^1.5.0",
     "@morphic-ts/batteries": "^1.7.0",
     "@types/react": "^16.9.32",
     "@types/react-dom": "^16.9.6",
@@ -54,9 +41,6 @@
     "next": "^9.3.4",
     "react": "^16.13.1",
     "react-dom": "^16.13.1"
-  },
-  "dependencies": {
-    "@matechs/prelude": "^1.5.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

@@ -22,15 +22,12 @@
     "lib",
     "es6"
   ],
-  "peerDependencies": {
-    "fast-check": "^1.24.1"
-  },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
-  "devDependencies": {
-    "@types/jest": "^25.2.1",
+  "dependencies": {
+    "@matechs/prelude": "^1.5.0",
     "fast-check": "^1.24.1"
   },
-  "dependencies": {
-    "@matechs/prelude": "^1.5.0"
+  "devDependencies": {
+    "@types/jest": "^25.2.1"
   }
 }
