@@ -1,6 +1,6 @@
 {
   "name": "@matechs/epics",
-  "version": "4.4.2",
+  "version": "4.5.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -34,7 +34,7 @@
     "rxjs": "^6.5.5"
   },
   "dependencies": {
-    "@matechs/prelude": "^1.4.2",
-    "@matechs/rxjs": "^4.4.2"
+    "@matechs/prelude": "^1.5.0",
+    "@matechs/rxjs": "^4.5.0"
   }
 }
