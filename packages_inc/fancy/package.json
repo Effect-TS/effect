@@ -12,7 +12,9 @@
     "build-demo": "next build demo",
     "dev-demo": "next dev demo",
     "start-demo": "next start demo",
-    "tc": "tsc --noEmit"
+    "tc": "tsc --noEmit",
+    "snyk-protect": "snyk protect",
+    "prepublish": "npm run snyk-protect"
   },
   "publishConfig": {
     "access": "public"
@@ -40,7 +42,9 @@
     "newtype-ts": "^0.3.4",
     "next": "^9.3.6",
     "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react-dom": "^16.13.1",
+    "snyk": "^1.316.2"
   },
-  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "snyk": true
 }
