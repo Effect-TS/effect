@@ -1,6 +1,6 @@
 {
   "name": "@matechs/fancy",
-  "version": "4.8.0",
+  "version": "4.8.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -26,7 +26,7 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/prelude": "^1.6.0",
+    "@matechs/prelude": "^1.6.1",
     "@morphic-ts/batteries": "^1.7.0",
     "@types/react": "^16.9.32",
     "@types/react-dom": "^16.9.7",

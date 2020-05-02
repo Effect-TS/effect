@@ -1,6 +1,6 @@
 {
   "name": "@matechs/apollo",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -24,8 +24,8 @@
   ],
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/express": "^5.7.0",
-    "@matechs/prelude": "^1.6.0",
+    "@matechs/express": "^5.7.1",
+    "@matechs/prelude": "^1.6.1",
     "apollo-server": "^2.12.0",
     "apollo-server-express": "^2.12.0",
     "graphql": "^15.0.0",
