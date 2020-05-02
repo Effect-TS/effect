@@ -41,6 +41,8 @@ export {
   pipeF, // fluent pipe - not limited to 10
   record, // fp-ts Record
   semigroup, // fp-ts Semigroup
+  ord,
+  ordering,
   set, // fp-ts Set
   show, // fp-ts Show
   tree // fp-ts Tree
