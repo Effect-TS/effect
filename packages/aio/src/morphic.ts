@@ -8,7 +8,7 @@ import {
   summonFor,
   UM
 } from "@morphic-ts/batteries/lib/summoner-ESBST";
-import { AOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
+import { AOfMorhpADT, EOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
 import { AType, EType, RType } from "@morphic-ts/batteries/lib/usage/utils";
 import { EqURI } from "@morphic-ts/eq-interpreters/lib/config";
 import { FastCheckURI } from "@morphic-ts/fastcheck-interpreters/lib/config";
@@ -31,6 +31,7 @@ export {
   EType,
   RType,
   AOfMorhpADT,
+  EOfMorhpADT,
   intersectADT,
   isIn,
   makeADT,
