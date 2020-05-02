@@ -72,11 +72,11 @@ export const B = pipe(
 // $ExpectType Either<string | number, string | symbol>
 export const C = E.sequenceT(E.left(1), E.left(""), E.right("ok"), E.right(Symbol()));
 
-// $ExpectType Either<string | number | symbol, { a: never; b: never; c: string; d: symbol; }>
+// $ExpectType Either<string | number, { a: never; b: never; c: string; d: symbol; }>
 export const D = E.sequenceS({
   a: E.left(1),
   b: E.left(""),
-  c: E.right<symbol, string>("ok"),
+  c: E.right("ok"),
   d: E.right(Symbol())
 });
 

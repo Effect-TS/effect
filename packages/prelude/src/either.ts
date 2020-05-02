@@ -81,18 +81,14 @@ export {
   getValidationSemigroup
 };
 
-export function right<A>(a: A): Either<never, A>;
-export function right<E = never, A = unknown>(a: A): Either<E, A>;
-export function right(a: unknown): Either<never, unknown> {
+export function right<A>(a: A): Either<never, A> {
   return {
     _tag: "Right",
     right: a
   };
 }
 
-export function left<E>(e: E): Either<E, never>;
-export function left<E, A = never>(e: E): Either<E, A>;
-export function left(e: unknown): Either<unknown, never> {
+export function left<E>(e: E): Either<E, never> {
   return {
     _tag: "Left",
     left: e

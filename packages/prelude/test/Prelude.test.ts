@@ -122,7 +122,7 @@ describe("Prelude", () => {
 
   it("should use either fold", () => {
     const useFold = pipe(
-      E.left<number, string>(1),
+      E.left(1),
       E.fold(
         (n) => T.raiseError(n),
         (s) => T.accessM((_: { foo: string }) => T.sync(() => `${_.foo} - ${s}`))
