@@ -81,15 +81,23 @@ export {
   getValidationSemigroup
 };
 
-export const right: {
-  <A>(_: A): Either<never, A>;
-  <E, A>(_: A): Either<E, A>;
-} = ERight as any;
+export function right<A>(a: A): Either<never, A>;
+export function right<E = never, A = unknown>(a: A): Either<E, A>;
+export function right(a: unknown): Either<never, unknown> {
+  return {
+    _tag: "Right",
+    right: a
+  };
+}
 
-export const left: {
-  <E>(_: E): Either<E, never>;
-  <E, A>(_: E): Either<E, A>;
-} = ELeft as any;
+export function left<E>(e: E): Either<E, never>;
+export function left<E, A = never>(e: E): Either<E, A>;
+export function left(e: unknown): Either<unknown, never> {
+  return {
+    _tag: "Left",
+    left: e
+  };
+}
 
 export function fold<S1, S2, E, A, B, C, R1, E1, R2, E2>(
   onLeft: (e: E) => SE.StreamEither<S1, R1, E1, B>,
