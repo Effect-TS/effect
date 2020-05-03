@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import { Do } from "fp-ts-contrib/lib/Do";
-import { array, range } from "fp-ts/lib/Array";
+import { array, makeBy, range } from "fp-ts/lib/Array";
 import * as E from "fp-ts/lib/Either";
 import { toError } from "fp-ts/lib/Either";
 import { monoidSum } from "fp-ts/lib/Monoid";
@@ -9,9 +9,10 @@ import { none, some } from "fp-ts/lib/Option";
 import { pipe } from "fp-ts/lib/pipeable";
 import { semigroupString } from "fp-ts/lib/Semigroup";
 import { effect as T } from "../src";
-import { effect, parEffect } from "../src/effect";
+import { effect, forkAll, parEffect } from "../src/effect";
 import * as ex from "../src/original/exit";
-import { sequenceT, sequenceS } from "fp-ts/lib/Apply";
+import { sequenceS, sequenceT } from "fp-ts/lib/Apply";
+import { identity } from "fp-ts/lib/function";
 
 describe("EffectSafe", () => {
   it("Par", async () => {
@@ -1148,6 +1149,55 @@ describe("EffectSafe", () => {
       const res = await T.runToPromiseExit(T.provide(env)(checks));
 
       assert.deepStrictEqual(res, ex.raise("(error: 0)(error: 1)"));
+    });
+  });
+
+  describe("forkAll", () => {
+    it("returns results of all sub-effects", async () => {
+      const res = makeBy(5, (i) => `effect #${i + 1}`);
+
+      const effs = array.map(res, (i) => T.delay(T.pure(i), 10));
+      const fiberExit = T.effect.chain(forkAll(effs), (f) => f.wait);
+
+      const actual = await T.runToPromise(fiberExit);
+      expect(actual).toEqual(ex.done(res));
+    });
+
+    it("interrupts all sub-effects", async () => {
+      const mock = jest.fn<void, [string]>();
+      const effs = makeBy(5, (i) =>
+        T.asyncTotal((next) => {
+          const handle = setTimeout(() => {
+            next(`eff #${i + 1}`);
+          }, 100);
+
+          return (cb) => {
+            mock(`interrupt eff #${i + 1}`);
+            clearTimeout(handle);
+            cb();
+          };
+        })
+      );
+
+      const fiberInterrupt = T.effect.chain(forkAll(effs), (f) => T.delay(f.interrupt, 10));
+
+      const actual = await T.runToPromise(fiberInterrupt);
+      expect(actual).toEqual(ex.interrupt);
+      expect(mock.mock.calls).toEqual(makeBy(5, (i) => [`interrupt eff #${i + 1}`]));
+    });
+
+    it("propagates the first error", async () => {
+      const mock = jest.fn<string, [string]>(identity);
+      const effs = [
+        T.raiseError("first error"),
+        ...makeBy<T.SyncE<string, string>>(5, (i) => T.sync(() => mock(`eff #${i + 1}`))),
+        T.raiseError("second error")
+      ];
+      const fiberExit = T.effect.chain(forkAll(effs), (f) => f.wait);
+
+      const actual = await T.runToPromise(fiberExit);
+      expect(actual).toEqual(ex.raise("first error"));
+      expect(mock.mock.calls).toEqual(makeBy(5, (i) => [`eff #${i + 1}`]));
     });
   });
 });
