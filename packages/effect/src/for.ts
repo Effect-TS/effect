@@ -28,6 +28,12 @@ export class Pipe<A> {
 
 export class ForImpl<U extends MaURIS, S, R, E, A> {
   constructor(private readonly M: Monad4E<U>, private readonly res: Kind4<U, any, any, any, any>) {}
+  do<S2, R2, E2, A2>(f: (_: A) => Kind4<U, S2, R2, E2, A2>) {
+    return new ForImpl<U, S | S2, R & R2, E | E2, A>(
+      this.M,
+      this.M.chain(this.res, (k) => this.M.map(f(k), (_) => k))
+    );
+  }
   with<N extends string, S2, R2, E2, A2>(
     n: Exclude<N, keyof A>,
     f: (_: A) => Kind4<U, S2, R2, E2, A2>
