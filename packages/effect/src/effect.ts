@@ -1283,8 +1283,22 @@ export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
   return raceFold(
     ioa,
     iob,
-    (aExit, bFiber) => zipWith_(completed(aExit), bFiber.join, f),
-    (bExit, aFiber) => zipWith_(aFiber.join, completed(bExit), f)
+    (aExit, bFiber) =>
+      aExit._tag === "Done"
+        ? zipWith_(completed(aExit), bFiber.join, f)
+        : chain_(bFiber.isComplete, (isCompleted) =>
+            isCompleted
+              ? zipWith_(completed(aExit), bFiber.join, f)
+              : chain_(bFiber.interrupt, () => completed(aExit))
+          ),
+    (bExit, aFiber) =>
+      bExit._tag === "Done"
+        ? zipWith_(aFiber.join, completed(bExit), f)
+        : chain_(aFiber.isComplete, (isCompleted) =>
+            isCompleted
+              ? zipWith_(aFiber.join, completed(bExit), f)
+              : chain_(aFiber.interrupt, () => completed(bExit))
+          )
   );
 }
 
