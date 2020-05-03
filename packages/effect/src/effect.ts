@@ -1283,6 +1283,26 @@ export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
   return raceFold(
     ioa,
     iob,
+    (aExit, bFiber) => zipWith_(completed(aExit), bFiber.join, f),
+    (bExit, aFiber) => zipWith_(aFiber.join, completed(bExit), f)
+  );
+}
+
+/**
+ * Zip the result of 2 ios executed in parallel together with the provided function.
+ * Interrupt at first failure returning the error
+ * @param ioa
+ * @param iob
+ * @param f
+ */
+export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E2, B>,
+  f: F.FunctionN<[A, B], C>
+): AsyncRE<R & R2, E | E2, C> {
+  return raceFold(
+    ioa,
+    iob,
     (aExit, bFiber) =>
       aExit._tag === "Done"
         ? zipWith_(completed(aExit), bFiber.join, f)
@@ -1308,6 +1328,19 @@ export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
  * @param iob
  */
 export function parZip<S, S2, R, R2, E, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E, B>
+): AsyncRE<R & R2, E, readonly [A, B]> {
+  return parZipWith(ioa, iob, tuple2);
+}
+
+/**
+ * Tuple the result of 2 ios executed in parallel
+ * Interrupt at first error
+ * @param ioa
+ * @param iob
+ */
+export function parFastZip<S, S2, R, R2, E, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E, B>
 ): AsyncRE<R & R2, E, readonly [A, B]> {
@@ -1360,6 +1393,18 @@ export function parAp_<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S2, R2, E2, A>
 ): AsyncRE<R & R2, E | E2, B> {
   return parZipWith(iof, ioa, (f, a) => f(a));
+}
+
+/**
+ * Parallel form of ap_ using parFastZipWith
+ * @param iof
+ * @param ioa
+ */
+export function parFastAp_<S, S2, R, R2, E, E2, A, B>(
+  iof: Effect<S, R, E, F.FunctionN<[A], B>>,
+  ioa: Effect<S2, R2, E2, A>
+): AsyncRE<R & R2, E | E2, B> {
+  return parFastZipWith(iof, ioa, (f, a) => f(a));
 }
 
 /**
@@ -1636,6 +1681,21 @@ export const parFor = () => ForM(parEffect);
 export const parSequenceS = SS(parEffect);
 export const parSequenceT = ST(parEffect);
 
+export const parFastEffect: Monad4EP<URI> & MonadThrow4EP<URI> = {
+  URI,
+  _CTX: "async",
+  of: pure,
+  map: map_,
+  ap: parFastAp_,
+  chain: chain_,
+  throwError: raiseError
+};
+
+export const parFastDo = () => DoG(parFastEffect);
+export const parFastFor = () => ForM(parFastEffect);
+export const parFastSequenceS = SS(parFastEffect);
+export const parFastSequenceT = ST(parFastEffect);
+
 const {
   ap,
   apFirst,
@@ -1871,12 +1931,62 @@ export const witherOption: <A, S, R, E, B>(
 ) => (ta: Op.Option<A>) => Effect<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(effect)(ta, f);
 
+export const sequenceOptionPar = Op.option.sequence(parEffect);
+
+export const sequenceOptionParFast = Op.option.sequence(parFastEffect);
+
+export const traverseOptionPar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.traverse(parEffect)(ta, f);
+
+export const traverseOptionFastPar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.traverse(parFastEffect)(ta, f);
+
+export const wiltOptionPar: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Effect<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
+  wa
+) => Op.option.wilt(parEffect)(wa, f);
+
+export const wiltOptionParFast: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Op.Option<A>) => Effect<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
+  wa
+) => Op.option.wilt(parFastEffect)(wa, f);
+
+export const witherOptionPar: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.wither(parEffect)(ta, f);
+
+export const witherOptionParFast: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
+  Op.option.wither(parFastEffect)(ta, f);
+
 export const sequenceEither = Ei.either.sequence(effect);
 
 export const traverseEither: <A, S, R, FE, B>(
   f: (a: A) => Effect<S, R, FE, B>
 ) => <TE>(ta: Ei.Either<TE, A>) => Effect<S, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(effect)(ta, f);
+
+export const sequenceEitherPar = Ei.either.sequence(parEffect);
+
+export const sequenceEitherParFast = Ei.either.sequence(parFastEffect);
+
+export const traverseEitherPar: <A, S, R, FE, B>(
+  f: (a: A) => Effect<S, R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Effect<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(parEffect)(ta, f);
+
+export const traverseEitherParFast: <A, S, R, FE, B>(
+  f: (a: A) => Effect<S, R, FE, B>
+) => <TE>(ta: Ei.Either<TE, A>) => Effect<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
+  Ei.either.traverse(parFastEffect)(ta, f);
 
 export const sequenceTree = TR.tree.sequence(effect);
 
@@ -1886,11 +1996,17 @@ export const traverseTree: <A, S, R, E, B>(
   TR.tree.traverse(effect)(ta, f);
 
 export const sequenceTreePar = TR.tree.sequence(parEffect);
+export const sequenceTreeParFast = TR.tree.sequence(parFastEffect);
 
 export const traverseTreePar: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: TR.Tree<A>) => AsyncRE<R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(parEffect)(ta, f);
+
+export const traverseTreeParFast: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: TR.Tree<A>) => AsyncRE<R, E, TR.Tree<B>> = (f) => (ta) =>
+  TR.tree.traverse(parFastEffect)(ta, f);
 
 export const sequenceArray = Ar.array.sequence(effect);
 
@@ -1914,23 +2030,45 @@ export const witherArray: <A, S, R, E, B>(
 
 export const sequenceArrayPar = Ar.array.sequence(parEffect);
 
+export const sequenceArrayParFast = Ar.array.sequence(parFastEffect);
+
 export const traverseArrayPar: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(parEffect)(ta, f);
+
+export const traverseArrayParFast: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, B>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverse(parFastEffect)(ta, f);
 
 export const traverseArrayWithIndexPar: <A, S, R, E, B>(
   f: (i: number, a: A) => Effect<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverseWithIndex(parEffect)(ta, f);
 
+export const traverseArrayWithIndexParFast: <A, S, R, E, B>(
+  f: (i: number, a: A) => Effect<S, R, E, B>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.traverseWithIndex(parFastEffect)(ta, f);
+
 export const wiltArrayPar: <A, R, E, B, C>(
   f: (a: A) => AsyncRE<R, E, Ei.Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   Ar.array.wilt(parEffect)(wa, f);
 
+export const wiltArrayParFast: <A, R, E, B, C>(
+  f: (a: A) => AsyncRE<R, E, Ei.Either<B, C>>
+) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
+  Ar.array.wilt(parFastEffect)(wa, f);
+
 export const witherArrayPar: <A, R, E, B>(
   f: (a: A) => AsyncRE<R, E, Op.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(parEffect)(ta, f);
+
+export const witherArrayParFast: <A, R, E, B>(
+  f: (a: A) => AsyncRE<R, E, Op.Option<B>>
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
+  Ar.array.wither(parFastEffect)(ta, f);
 
 export const sequenceRecord = RE.record.sequence(effect);
 
@@ -1957,6 +2095,8 @@ export const witherRecord: <A, S, R, E, B>(
 
 export const sequenceRecordPar = RE.record.sequence(parEffect);
 
+export const sequenceRecordParFast = RE.record.sequence(parFastEffect);
+
 export const traverseRecordPar: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
@@ -1967,16 +2107,32 @@ export const traverseRecordWithIndexPar: <A, S, R, E, B>(
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.traverseWithIndex(parEffect)(ta, f);
 
+export const traverseRecordWithIndexParFast: <A, S, R, E, B>(
+  f: (k: string, a: A) => Effect<S, R, E, B>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.traverseWithIndex(parFastEffect)(ta, f);
+
 export const wiltRecordPar: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
 ) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
   f
 ) => (wa) => RE.record.wilt(parEffect)(wa, f);
 
+export const wiltRecordParFast: <A, S, R, E, B, C>(
+  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
+) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
+  f
+) => (wa) => RE.record.wilt(parFastEffect)(wa, f);
+
 export const witherRecordPar: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(parEffect)(ta, f);
+
+export const witherRecordParFast: <A, S, R, E, B>(
+  f: (a: A) => Effect<S, R, E, Op.Option<B>>
+) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
+  RE.record.wither(parFastEffect)(ta, f);
 
 export const handle = <E, K extends string & keyof E, KK extends string & E[K], S2, R2, E2, A2>(
   k: K,
