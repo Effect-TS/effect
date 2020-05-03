@@ -50,7 +50,7 @@
     "fast-equals": "^2.0.0",
     "fp-ts": "^2.5.4",
     "fp-ts-contrib": "^0.1.15",
-    "graphql": "^15.0.0",
+    "graphql": "^14.2.1",
     "husky": "4.2.5",
     "import-path-rewrite": "github:mikearnaldi/import-path-rewrite",
     "inquirer": "^7.1.0",

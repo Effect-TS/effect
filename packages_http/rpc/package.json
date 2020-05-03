@@ -27,7 +27,9 @@
     "@matechs/express": "^5.8.0",
     "@matechs/http-client": "^5.7.0",
     "@matechs/prelude": "^1.7.0",
-    "@matechs/rpc-client": "^6.8.0",
+    "@matechs/rpc-client": "^6.8.0"
+  },
+  "peerDependencies": {
     "express": "^4.17.1"
   }
 }
