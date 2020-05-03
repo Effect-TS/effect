@@ -1182,6 +1182,14 @@ function combineTwoInterrupts(a: ex.Interrupt, b: ex.Interrupt): ex.Interrupt {
   );
 }
 
+/**
+ * Zip two fibers into one. This fiber completes when both sub-fibers complete,
+ * it errors with the first error of the two fibers, and interrupting the
+ * fiber will interrupt both sub-fibers.
+ * @param fa
+ * @param fb
+ * @param f
+ */
 export function zipFibers<E, A, B, C>(
   fa: Fiber<E, A>,
   fb: Fiber<E, B>,
@@ -1217,6 +1225,10 @@ export function zipFibers<E, A, B, C>(
   return makeFiber(chainError_(combinedEff, Ei.fold(raiseAbort, raiseError)));
 }
 
+/**
+ * Fork all effects in the array and return one fiber controlling all of them
+ * @param ios
+ */
 export function forkAll<S, R, E, A>(ios: Effect<S, R, E, A>[]): SyncR<R, Fiber<E, A[]>> {
   return pipe(
     ios,
