@@ -9,6 +9,7 @@ import { ROf, EOf, AOf, SOf } from "./utils";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { Separated } from "fp-ts/lib/Compactable";
+import { ForM } from "@matechs/effect/lib/for"
 
 export type EffectOption<S, R, E, A> = T.Effect<S, R, E, O.Option<A>>;
 
@@ -92,6 +93,7 @@ export const getLast = <Effs extends EffectOption<any, any, any, any>[]>(
 export const sequenceT = ST(effectOption);
 export const sequenceS = SS(effectOption);
 export const Do = () => DoG(effectOption);
+export const For = () => ForM(effectOption);
 
 export const sequenceOption = O.option.sequence(effectOption);
 
@@ -174,6 +176,7 @@ export const witherRecord: <A, S, R, E, B>(
 export const parSequenceT = ST(effectOptionPar);
 export const parSequenceS = SS(effectOptionPar);
 export const parDo = () => DoG(effectOptionPar);
+export const parFor = () => ForM(effectOptionPar);
 
 export const parSequenceOption = O.option.sequence(effectOptionPar);
 

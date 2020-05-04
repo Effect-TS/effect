@@ -21,14 +21,6 @@ import { URI as StrURI, Stream } from "./stream";
 import { URI as ManURI, Managed } from "./managed";
 import { URI as StrEitURI, StreamEither } from "./streameither";
 
-export interface GE<S, R, E, A> {
-  _TAG: () => "Effect" | "Managed" | "Stream" | "StreamEither";
-  _E: () => E;
-  _A: () => A;
-  _S: () => S;
-  _R: (_: R) => void;
-}
-
 export interface MaToKind<S, R, E, A> {
   [EffURI]: Effect<S, R, E, A>;
   [ManURI]: Managed<S, R, E, A>;
@@ -141,13 +133,20 @@ export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) ex
   ? I
   : never;
 
-export type STypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? S : never;
+export interface GE<S, R, E, A> {
+  _E: () => E;
+  _A: () => A;
+  _S: () => S;
+  _R: (_: R) => void;
+}
 
-export type ATypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? A : never;
+export type STypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A> ? _S : never;
 
-export type ETypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? E : never;
+export type ATypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A> ? _A : never;
 
-export type RTypeOf<X> = X extends GE<infer S, infer R, infer E, infer A> ? R : never;
+export type ETypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A> ? _E : never;
+
+export type RTypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A> ? _R : never;
 
 export type EnvOf<R extends Record<string, GE<any, any, any, any>>> = UnionToIntersection<
   {
