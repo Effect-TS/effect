@@ -16,10 +16,10 @@ import { Option } from "fp-ts/lib/Option";
 import { PipeableFunctor4 } from "fp-ts/lib/pipeable";
 import { Profunctor4 } from "fp-ts/lib/Profunctor";
 import { Semigroupoid4 } from "fp-ts/lib/Semigroupoid";
-import { URI as EffURI } from "./effect";
-import { URI as StrURI } from "./stream";
-import { URI as ManURI } from "./managed";
-import { URI as StrEitURI } from "./streameither";
+import { URI as EffURI, Effect } from "./effect";
+import { URI as StrURI, Stream } from "./stream";
+import { URI as ManURI, Managed } from "./managed";
+import { URI as StrEitURI, StreamEither } from "./streameither";
 
 export interface GE<S, R, E, A> {
   _TAG: () => "Effect" | "Managed" | "Stream" | "StreamEither";
@@ -29,7 +29,14 @@ export interface GE<S, R, E, A> {
   _R: (_: R) => void;
 }
 
-export type MaURIS = EffURI | ManURI | StrURI | StrEitURI;
+export interface MaToKind<S, R, E, A> {
+  [EffURI]: Effect<S, R, E, A>;
+  [ManURI]: Managed<S, R, E, A>;
+  [StrURI]: Stream<S, R, E, A>;
+  [StrEitURI]: StreamEither<S, R, E, A>;
+}
+
+export type MaURIS = keyof MaToKind<any, any, any, any>;
 
 // WIP
 /* istanbul ignore file */

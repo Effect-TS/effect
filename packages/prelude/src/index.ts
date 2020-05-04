@@ -29,19 +29,21 @@ import * as NEA from "fp-ts/lib/NonEmptyArray";
 import * as ord from "fp-ts/lib/Ord";
 import * as ordering from "fp-ts/lib/Ordering";
 import * as O from "./option";
+import * as boolean from "./boolean";
 import * as Ex from "./exit";
+import * as EO from "./effectOption";
 import { Pipe, Flow, FlowP } from "./internals";
 
 export { flow } from "fp-ts/lib/function";
 export { pipe } from "fp-ts/lib/pipeable";
 
-export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U, P };
+export { T, S, SE, M, O, CRef, Q, Rec, RT, Ref, Sem, U, P, EO };
 export { Ex };
 export { E };
 export { Service };
 export { F };
 export { A, NEA };
-export { eq, show, semigroup, monoid, tree, map, set, magma, record, ord, ordering };
+export { eq, show, semigroup, monoid, tree, map, set, magma, record, ord, ordering, boolean };
 
 export const pipeF = <A>(_: A) => new Pipe(_);
 export const flowF = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B) => new Flow(f);
