@@ -44,8 +44,8 @@ describe("EffectOption", () => {
 
     expect(T.runSync(program)).toStrictEqual(Ex.done(O.none));
   });
-  it("should use matchFirst", () => {
-    const program = EO.matchFirst(
+  it("should use getFirst", () => {
+    const program = EO.getFirst(
       T.pure(O.none),
       T.pure(O.none),
       T.pure(O.some(2)),
@@ -55,8 +55,8 @@ describe("EffectOption", () => {
 
     expect(T.runSync(program)).toStrictEqual(Ex.done(O.some(2)));
   });
-  it("should use matchFirst - with env", () => {
-    const program = EO.matchFirst(
+  it("should use getFirst - with env", () => {
+    const program = EO.getFirst(
       T.pure(O.none),
       T.pure(O.none),
       T.access(({ n }: { n: number }) => O.some(n)),
@@ -66,8 +66,8 @@ describe("EffectOption", () => {
 
     expect(T.runSync(pipe(program, T.provide({ n: 2 })))).toStrictEqual(Ex.done(O.some(2)));
   });
-  it("should use matchFirst - with error", () => {
-    const program = EO.matchFirst(
+  it("should use getFirst - with error", () => {
+    const program = EO.getFirst(
       T.pure(O.none),
       T.raiseError("error"),
       T.access(({ n }: { n: number }) => O.some(n)),
@@ -76,5 +76,16 @@ describe("EffectOption", () => {
     );
 
     expect(T.runSync(pipe(program, T.provide({ n: 2 })))).toStrictEqual(Ex.raise("error"));
+  });
+  it("should use getLast - with env", () => {
+    const program = EO.getLast(
+      T.pure(O.none),
+      T.pure(O.none),
+      T.access(({ n }: { n: number }) => O.some(n)),
+      T.pure(O.none),
+      T.pure(O.some(4))
+    );
+
+    expect(T.runSync(pipe(program, T.provide({ n: 2 })))).toStrictEqual(Ex.done(O.some(4)));
   });
 });

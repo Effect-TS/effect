@@ -1,10 +1,12 @@
 import { effect as T, managed as M, stream as S, streameither as SE } from "@matechs/effect";
-import { isNone, Option, option } from "fp-ts/lib/Option";
+import { isNone, Option, option, getFirstMonoid, getLastMonoid } from "fp-ts/lib/Option";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 import { array as Ar, tree as TR, record as RE } from "fp-ts";
 import * as Ei from "./either";
 import { Separated } from "fp-ts/lib/Compactable";
+import * as MON from "fp-ts/lib/Monoid";
+import { AOfOptions } from "./utils";
 
 // from fp-ts just retyped
 /* istanbul ignore file */
@@ -154,3 +156,9 @@ export const witherRecord: <A, B>(
   f: (a: A) => Option<Option<B>>
 ) => (ta: Record<string, A>) => Option<Record<string, B>> = (f) => (ta) =>
   RE.record.wither(option)(ta, f);
+
+export const getFirst = <Ts extends Option<any>[]>(...items: Ts): Option<AOfOptions<Ts>> =>
+  MON.fold(getFirstMonoid<AOfOptions<Ts>>())(items);
+
+export const getLast = <Ts extends Option<any>[]>(...items: Ts): Option<AOfOptions<Ts>> =>
+  MON.fold(getLastMonoid<AOfOptions<Ts>>())(items);

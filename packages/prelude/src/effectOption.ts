@@ -3,7 +3,7 @@ import * as O from "./option";
 import * as E from "./either";
 import { record as RE, tree as TR, array as Ar } from "fp-ts";
 import { Monad4E } from "@matechs/effect/lib/overloadEff";
-import { pipeable, pipe } from "fp-ts/lib/pipeable";
+import { pipeable } from "fp-ts/lib/pipeable";
 import * as MON from "fp-ts/lib/Monoid";
 import { ROf, EOf, AOf, SOf } from "./utils";
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply";
@@ -56,19 +56,30 @@ export const { ap, apFirst, apSecond, chain, chainFirst, flatten, map } = pipeab
 export function getFirstMonoid<S, R, E, A>(): MON.Monoid<EffectOption<S, R, E, A>> {
   return {
     concat(x: EffectOption<S, R, E, A>, y: EffectOption<S, R, E, A>) {
-      return pipe(
-        x,
-        T.chain((o) => (O.isNone(o) ? y : x))
-      );
+      return T.effect.chain(x, (o) => (O.isNone(o) ? y : x));
     },
     empty: T.pure(O.none)
   };
 }
 
-export const matchFirst = <Effs extends EffectOption<any, any, any, any>[]>(
+export function getLastMonoid<S, R, E, A>(): MON.Monoid<EffectOption<S, R, E, A>> {
+  return {
+    concat(x: EffectOption<S, R, E, A>, y: EffectOption<S, R, E, A>) {
+      return T.effect.chain(y, (o) => (O.isNone(o) ? x : y));
+    },
+    empty: T.pure(O.none)
+  };
+}
+
+export const getFirst = <Effs extends EffectOption<any, any, any, any>[]>(
   ...items: Effs
 ): EffectOption<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>> =>
-  pipe(items, MON.fold(getFirstMonoid<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>>()));
+  MON.fold(getFirstMonoid<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>>())(items);
+
+export const getLast = <Effs extends EffectOption<any, any, any, any>[]>(
+  ...items: Effs
+): EffectOption<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>> =>
+  MON.fold(getLastMonoid<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>>())(items);
 
 export const sequenceT = ST(effectOption);
 export const sequenceS = SS(effectOption);

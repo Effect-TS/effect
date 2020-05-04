@@ -25,3 +25,7 @@ export type EOf<Effs extends EffectOption<any, any, any, any>[]> = {
 export type AOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: ATypeOf<Effs[k]> extends O.Option<infer A> ? A : never;
 }[number];
+
+export type AOfOptions<Ts extends O.Option<any>[]> = {
+  [k in keyof Ts]: Ts[k] extends O.Option<infer A> ? A : never;
+}[number];
