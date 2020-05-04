@@ -39,7 +39,7 @@ import { HKT, Kind2 } from "fp-ts/lib/HKT";
 import { Monad2M } from "fp-ts/lib/Monad";
 import { MonadThrow2M } from "fp-ts/lib/MonadThrow";
 import { Traversable2 } from "fp-ts/lib/Traversable";
-import { pipeable } from "fp-ts/lib/pipeable";
+import { pipeable, pipe } from "fp-ts/lib/pipeable";
 import { Contravariant2 } from "fp-ts/lib/Contravariant";
 import { FunctorWithIndex2 } from "fp-ts/lib/FunctorWithIndex";
 import { FoldableWithIndex2 } from "fp-ts/lib/FoldableWithIndex";
@@ -51,6 +51,7 @@ import { Semigroupoid2 } from "fp-ts/lib/Semigroupoid";
 import { Do as DoG } from "fp-ts-contrib/lib/Do";
 
 import { array as Ar, option as Op, tree as TR, record as RE } from "fp-ts";
+import { flow } from "fp-ts/lib/function";
 
 // from fp-ts just retyped
 /* istanbul ignore file */
@@ -93,6 +94,14 @@ export function left<E>(e: E): Either<E, never> {
     _tag: "Left",
     left: e
   };
+}
+
+export function widenLeft<E2>(): <E, A>(_: Either<E, A>) => Either<E | E2, A> {
+  return (_) => _;
+}
+
+export function widenRight<A2>(): <E, A>(_: Either<E, A>) => Either<E, A | A2> {
+  return (_) => _;
 }
 
 export function fold<S1, S2, E, A, B, C, R1, E1, R2, E2>(
@@ -492,3 +501,11 @@ export const witherRecord: <A, E, B>(
   f: (a: A) => Either<E, Op.Option<B>>
 ) => (ta: Record<string, A>) => Either<E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(either)(ta, f);
+
+export const nonFailable = <S, R, E, A>(
+  _: T.Effect<S, R, E, A>
+): T.Effect<S, R, never, Either<E, A>> => pipe(_, T.map(right), T.chainError(flow(left, T.pure)));
+
+export const failable = <S, R, E, A>(
+  _: T.Effect<S, R, never, Either<E, A>>
+): T.Effect<S, R, E, A> => pipe(_, T.chain(fold(T.raiseError, T.pure)));

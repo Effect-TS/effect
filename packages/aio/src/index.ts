@@ -29,7 +29,8 @@ export {
   Service, // FreeEnv Service Definition & Derivation
   T, // Effect
   U, // Type Utils
-  P, // Process 
+  P, // Process
+  EO, // EffectOption
   combineProviders, // Combine Providers
   eq, // fp-ts Eq
   flow, // fp-ts flow
@@ -41,9 +42,10 @@ export {
   pipeF, // fluent pipe - not limited to 10
   record, // fp-ts Record
   semigroup, // fp-ts Semigroup
-  ord,
-  ordering,
+  ord, // fp-ts Order
+  ordering, // fp-ts Ordering
   set, // fp-ts Set
   show, // fp-ts Show
-  tree // fp-ts Tree
+  tree, // fp-ts Tree
+  boolean // fp-ts boolean augumented
 } from "@matechs/prelude";
