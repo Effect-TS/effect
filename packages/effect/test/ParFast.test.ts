@@ -38,7 +38,7 @@ describe("ParFast", () => {
       calling(d)
     ];
 
-    const result = await T.runToPromiseExit(T.sequenceArrayParFast(processes));
+    const result = await T.runToPromiseExit(T.parFastSequenceArray(processes));
 
     expect(result).toStrictEqual(raise("ok"));
     expect(a.mock.calls.length).toStrictEqual(1);
@@ -67,7 +67,7 @@ describe("ParFast", () => {
 
     const processes = [calling(a, "a"), calling(b, "b"), calling(c, "c"), calling(d, "d")];
 
-    const fiber = await T.runToPromise(T.fork(T.sequenceArrayParFast(processes)));
+    const fiber = await T.runToPromise(T.fork(T.parFastSequenceArray(processes)));
     const result = await T.runToPromise(fiber.interrupt);
 
     expect(a.mock.calls.length).toStrictEqual(1);
