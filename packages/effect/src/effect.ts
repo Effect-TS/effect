@@ -1352,11 +1352,24 @@ export function parFastZip<S, S2, R, R2, E, A, B>(
  * @param ioa
  * @param iob
  */
-export function parApplyFirst<S, S2, R, R2, E, A, B>(
+export function parApplyFirst<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
-  iob: Effect<S2, R2, E, B>
-): AsyncRE<R & R2, E, A> {
+  iob: Effect<S2, R2, E2, B>
+): AsyncRE<R & R2, E | E2, A> {
   return parZipWith(ioa, iob, fst);
+}
+
+/**
+ * Execute two ios in parallel and take the result of the first.
+ * Interrupt at first error
+ * @param ioa
+ * @param iob
+ */
+export function parFastApplyFirst<S, S2, R, R2, E, E2, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E2, B>
+): AsyncRE<R & R2, E | E2, A> {
+  return parFastZipWith(ioa, iob, fst);
 }
 
 /**
@@ -1364,11 +1377,24 @@ export function parApplyFirst<S, S2, R, R2, E, A, B>(
  * @param ioa
  * @param iob
  */
-export function parApplySecond<S, S2, R, R2, E, A, B>(
+export function parApplySecond<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
-  iob: Effect<S2, R2, E, B>
-): AsyncRE<R & R2, E, B> {
+  iob: Effect<S2, R2, E2, B>
+): AsyncRE<R & R2, E | E2, B> {
   return parZipWith(ioa, iob, snd);
+}
+
+/**
+ * Exeute two IOs in parallel and take the result of the second
+ * Interrupt at first error
+ * @param ioa
+ * @param iob
+ */
+export function parFastApplySecond<S, S2, R, R2, E, E2, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iob: Effect<S2, R2, E2, B>
+): AsyncRE<R & R2, E | E2, B> {
+  return parFastZipWith(ioa, iob, snd);
 }
 
 /**
@@ -1376,11 +1402,24 @@ export function parApplySecond<S, S2, R, R2, E, A, B>(
  * @param ioa
  * @param iof
  */
-export function parAp<S, S2, R, R2, E, A, B>(
+export function parAp<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
-  iof: Effect<S2, R2, E, F.FunctionN<[A], B>>
-): AsyncRE<R & R2, E, B> {
+  iof: Effect<S2, R2, E2, F.FunctionN<[A], B>>
+): AsyncRE<R & R2, E | E2, B> {
   return parZipWith(ioa, iof, (a, f) => f(a));
+}
+
+/**
+ * Parallel form of ap
+ * Interrupt at first error
+ * @param ioa
+ * @param iof
+ */
+export function parFastAp<S, S2, R, R2, E, E2, A, B>(
+  ioa: Effect<S, R, E, A>,
+  iof: Effect<S2, R2, E2, F.FunctionN<[A], B>>
+): AsyncRE<R & R2, E | E2, B> {
+  return parFastZipWith(ioa, iof, (a, f) => f(a));
 }
 
 /**
@@ -1681,6 +1720,7 @@ export const parFor = () => ForM(parEffect);
 export const parSequenceS = SS(parEffect);
 export const parSequenceT = ST(parEffect);
 
+/* Note that this instance is not respecting the classical apply law */
 export const parFastEffect: Monad4EP<URI> & MonadThrow4EP<URI> = {
   URI,
   _CTX: "async",
@@ -1700,7 +1740,6 @@ const {
   ap,
   apFirst,
   apSecond,
-  // toto
   bimap,
   chain,
   chainFirst,
