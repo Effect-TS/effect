@@ -1970,38 +1970,38 @@ export const witherOption: <A, S, R, E, B>(
 ) => (ta: Op.Option<A>) => Effect<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(effect)(ta, f);
 
-export const sequenceOptionPar = Op.option.sequence(parEffect);
+export const parSequenceOption = Op.option.sequence(parEffect);
 
-export const sequenceOptionParFast = Op.option.sequence(parFastEffect);
+export const parFastSequenceOption = Op.option.sequence(parFastEffect);
 
-export const traverseOptionPar: <A, S, R, E, B>(
+export const parTraverseOption: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.traverse(parEffect)(ta, f);
 
-export const traverseOptionFastPar: <A, S, R, E, B>(
+export const parFastTraverseOption: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.traverse(parFastEffect)(ta, f);
 
-export const wiltOptionPar: <A, S, R, E, B, C>(
+export const parWiltOption: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
 ) => (wa: Op.Option<A>) => Effect<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
   wa
 ) => Op.option.wilt(parEffect)(wa, f);
 
-export const wiltOptionParFast: <A, S, R, E, B, C>(
+export const parFastWiltOption: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
 ) => (wa: Op.Option<A>) => Effect<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
   wa
 ) => Op.option.wilt(parFastEffect)(wa, f);
 
-export const witherOptionPar: <A, S, R, E, B>(
+export const parWitherOption: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(parEffect)(ta, f);
 
-export const witherOptionParFast: <A, S, R, E, B>(
+export const parFastWitherOption: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(parFastEffect)(ta, f);
@@ -2013,16 +2013,16 @@ export const traverseEither: <A, S, R, FE, B>(
 ) => <TE>(ta: Ei.Either<TE, A>) => Effect<S, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(effect)(ta, f);
 
-export const sequenceEitherPar = Ei.either.sequence(parEffect);
+export const parSequenceEither = Ei.either.sequence(parEffect);
 
-export const sequenceEitherParFast = Ei.either.sequence(parFastEffect);
+export const parFastSequenceEither = Ei.either.sequence(parFastEffect);
 
-export const traverseEitherPar: <A, S, R, FE, B>(
+export const parTraverseEither: <A, S, R, FE, B>(
   f: (a: A) => Effect<S, R, FE, B>
 ) => <TE>(ta: Ei.Either<TE, A>) => Effect<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(parEffect)(ta, f);
 
-export const traverseEitherParFast: <A, S, R, FE, B>(
+export const parFastTraverseEither: <A, S, R, FE, B>(
   f: (a: A) => Effect<S, R, FE, B>
 ) => <TE>(ta: Ei.Either<TE, A>) => Effect<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(parFastEffect)(ta, f);
@@ -2034,15 +2034,15 @@ export const traverseTree: <A, S, R, E, B>(
 ) => (ta: TR.Tree<A>) => Effect<S, R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(effect)(ta, f);
 
-export const sequenceTreePar = TR.tree.sequence(parEffect);
-export const sequenceTreeParFast = TR.tree.sequence(parFastEffect);
+export const parSequenceTree = TR.tree.sequence(parEffect);
+export const parFastSequenceTree = TR.tree.sequence(parFastEffect);
 
-export const traverseTreePar: <A, S, R, E, B>(
+export const parTraverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: TR.Tree<A>) => AsyncRE<R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(parEffect)(ta, f);
 
-export const traverseTreeParFast: <A, S, R, E, B>(
+export const parFastTraverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: TR.Tree<A>) => AsyncRE<R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(parFastEffect)(ta, f);
@@ -2067,44 +2067,44 @@ export const witherArray: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Array<A>) => Effect<S, R, E, Array<B>> = (f) => (ta) => Ar.array.wither(effect)(ta, f);
 
-export const sequenceArrayPar = Ar.array.sequence(parEffect);
+export const parSequenceArray = Ar.array.sequence(parEffect);
 
-export const sequenceArrayParFast = Ar.array.sequence(parFastEffect);
+export const parFastSequenceArray = Ar.array.sequence(parFastEffect);
 
-export const traverseArrayPar: <A, S, R, E, B>(
+export const parTraverseArray: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.traverse(parEffect)(ta, f);
 
-export const traverseArrayParFast: <A, S, R, E, B>(
+export const parFastTraverseArray: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverse(parFastEffect)(ta, f);
 
-export const traverseArrayWithIndexPar: <A, S, R, E, B>(
+export const parTraverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => Effect<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverseWithIndex(parEffect)(ta, f);
 
-export const traverseArrayWithIndexParFast: <A, S, R, E, B>(
+export const parFastTraverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => Effect<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   Ar.array.traverseWithIndex(parFastEffect)(ta, f);
 
-export const wiltArrayPar: <A, R, E, B, C>(
+export const parWiltArray: <A, R, E, B, C>(
   f: (a: A) => AsyncRE<R, E, Ei.Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   Ar.array.wilt(parEffect)(wa, f);
 
-export const wiltArrayParFast: <A, R, E, B, C>(
+export const parFastWiltArray: <A, R, E, B, C>(
   f: (a: A) => AsyncRE<R, E, Ei.Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
   Ar.array.wilt(parFastEffect)(wa, f);
 
-export const witherArrayPar: <A, R, E, B>(
+export const parWitherArray: <A, R, E, B>(
   f: (a: A) => AsyncRE<R, E, Op.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => Ar.array.wither(parEffect)(ta, f);
 
-export const witherArrayParFast: <A, R, E, B>(
+export const parFastWitherArray: <A, R, E, B>(
   f: (a: A) => AsyncRE<R, E, Op.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   Ar.array.wither(parFastEffect)(ta, f);
@@ -2132,43 +2132,43 @@ export const witherRecord: <A, S, R, E, B>(
 ) => (ta: Record<string, A>) => Effect<S, R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(effect)(ta, f);
 
-export const sequenceRecordPar = RE.record.sequence(parEffect);
+export const parSequenceRecord = RE.record.sequence(parEffect);
 
-export const sequenceRecordParFast = RE.record.sequence(parFastEffect);
+export const parFastSequenceRecord = RE.record.sequence(parFastEffect);
 
-export const traverseRecordPar: <A, S, R, E, B>(
+export const parTraverseRecord: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.traverse(parEffect)(ta, f);
 
-export const traverseRecordWithIndexPar: <A, S, R, E, B>(
+export const parTraverseRecordWithIndex: <A, S, R, E, B>(
   f: (k: string, a: A) => Effect<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.traverseWithIndex(parEffect)(ta, f);
 
-export const traverseRecordWithIndexParFast: <A, S, R, E, B>(
+export const parFastTraverseRecordWithIndex: <A, S, R, E, B>(
   f: (k: string, a: A) => Effect<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.traverseWithIndex(parFastEffect)(ta, f);
 
-export const wiltRecordPar: <A, S, R, E, B, C>(
+export const parWiltRecord: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
 ) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
   f
 ) => (wa) => RE.record.wilt(parEffect)(wa, f);
 
-export const wiltRecordParFast: <A, S, R, E, B, C>(
+export const parFastWiltRecord: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
 ) => (wa: Record<string, A>) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (
   f
 ) => (wa) => RE.record.wilt(parFastEffect)(wa, f);
 
-export const witherRecordPar: <A, S, R, E, B>(
+export const parWitherRecord: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(parEffect)(ta, f);
 
-export const witherRecordParFast: <A, S, R, E, B>(
+export const parFastWitherRecord: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Op.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   RE.record.wither(parFastEffect)(ta, f);
