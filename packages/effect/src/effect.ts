@@ -938,19 +938,17 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
             if (finalize._tag === "Done") {
               const errors = pipe(
                 [
-                  exit.error,
-                  ...(exit.others ? exit.others : []),
-                  ...Ar.flatten(finalize.value.map((x) => [x.error, ...(x.others ? x.others : [])]))
+                  ...(exit.errors ? exit.errors : []),
+                  ...Ar.flatten(finalize.value.map((x) => x.errors ? x.errors : []))
                 ],
                 Ar.filter((x): x is Error => x !== undefined)
               );
 
               return errors.length > 0
-                ? completed(ex.interruptWithErrorAndOthers(errors[0], Ar.dropLeft(1)(errors)))
+                ? completed(ex.withErrors(errors)(exit))
                 : completed(exit);
             } else {
-              console.warn("BUG: interrupt finalizer should not fail");
-              return completed(exit);
+              throw new Error("BUG: interrupt finalizer should not fail");
             }
           })
         : completed(exit)

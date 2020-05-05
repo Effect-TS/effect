@@ -1,6 +1,6 @@
 import { effect as T } from "../src";
 import * as assert from "assert";
-import { interruptWithError, interruptWithErrorAndOthers } from "../src/original/exit";
+import { interrupt, withErrors } from "../src/original/exit";
 import { sequenceT } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
 
@@ -22,7 +22,7 @@ describe("Interrupt", () => {
 
     await T.runToPromise(T.delay(T.unit, 110));
 
-    assert.deepStrictEqual(exit, interruptWithError(new Error("test error")));
+    assert.deepStrictEqual(exit, withErrors([new Error("test error")])(interrupt));
   });
 
   it("should interrupt with error parallel", async () => {
@@ -51,7 +51,7 @@ describe("Interrupt", () => {
 
     assert.deepStrictEqual(
       exit,
-      interruptWithErrorAndOthers(new Error("test error"), [new Error("test error 2")])
+      withErrors([new Error("test error"), new Error("test error 2")])(interrupt)
     );
   });
 

@@ -1,6 +1,6 @@
 import { effect as T } from "../src";
 import { right, left } from "fp-ts/lib/Either";
-import { raise, interruptWithErrorAndOthers } from "../src/exit";
+import { raise, interrupt, withErrors } from "../src/exit";
 
 describe("ParFast", () => {
   it("should cancel", async () => {
@@ -76,7 +76,7 @@ describe("ParFast", () => {
     expect(d.mock.calls.length).toStrictEqual(1);
 
     expect(result).toStrictEqual(
-      interruptWithErrorAndOthers(new Error("a"), [new Error("b"), new Error("c"), new Error("d")])
+      withErrors([new Error("a"), new Error("b"), new Error("c"), new Error("d")])(interrupt)
     );
   });
 });

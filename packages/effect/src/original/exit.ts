@@ -17,7 +17,11 @@
 export type Exit<E, A> = Done<A> | Cause<E>;
 export type ExitTag = Exit<unknown, unknown>["_tag"];
 
-export interface Done<A> {
+export interface HasErrors {
+  readonly errors?: Array<Error>;
+}
+
+export interface Done<A> extends HasErrors {
   readonly _tag: "Done";
   readonly value: A;
 }
@@ -31,7 +35,7 @@ export function done<A>(v: A): Done<A> {
 
 export type Cause<E> = Raise<E> | Abort | Interrupt;
 
-export interface Raise<E> {
+export interface Raise<E> extends HasErrors {
   readonly _tag: "Raise";
   readonly error: E;
 }
@@ -43,7 +47,7 @@ export function raise<E>(e: E): Raise<E> {
   };
 }
 
-export interface Abort {
+export interface Abort extends HasErrors {
   readonly _tag: "Abort";
   readonly abortedWith: unknown;
 }
@@ -55,34 +59,24 @@ export function abort(a: unknown): Abort {
   };
 }
 
-export interface Interrupt {
+export interface Interrupt extends HasErrors {
   readonly _tag: "Interrupt";
-  readonly error?: Error;
-  readonly others?: Error[];
 }
 
 export const interrupt: Interrupt = {
   _tag: "Interrupt"
 };
 
-export const interruptWithError = (err?: Error): Interrupt =>
-  err
-    ? {
-        _tag: "Interrupt",
-        error: err
-      }
-    : {
-        _tag: "Interrupt"
-      };
-
-export const interruptWithErrorAndOthers = (err: Error, others?: Error[]): Interrupt =>
-  others
-    ? {
-        _tag: "Interrupt",
-        error: err,
-        others
-      }
-    : {
-        _tag: "Interrupt",
-        error: err
-      };
+export function withErrors(errors?: Array<Error>): <E>(_: Cause<E>) => Cause<E>;
+export function withErrors(errors?: Array<Error>): <E, A>(_: Exit<E, A>) => Exit<E, A>;
+export function withErrors(errors?: Array<Error>) {
+  return (e: any) => {
+    const merged = e.errors ? [...e.errors, ...(errors ? errors : [])] : errors;
+    return merged && merged.length > 0
+      ? {
+          ...e,
+          errors: merged
+        }
+      : e;
+  };
+}

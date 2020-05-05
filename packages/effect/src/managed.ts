@@ -436,9 +436,9 @@ export function use<S, R, E, A, S2, R2, E2, B>(
   });
 }
 
-export interface Leak<S, R, E, A> {
+export interface Leak<S, E, A> {
   a: A;
-  release: T.Effect<S, R, E, unknown>;
+  release: T.Effect<S, unknown, E, unknown>;
 }
 
 /**
@@ -451,7 +451,7 @@ export interface Leak<S, R, E, A> {
  */
 export function allocate<S, R, E, A>(
   res: Managed<S, R, E, A>
-): T.Effect<S, R, E, Leak<S, R, E, A>> {
+): T.Effect<S, R, E, Leak<S, E, A>> {
   return T.accessM((r: R) => {
     const c = fromM(res)(r);
 

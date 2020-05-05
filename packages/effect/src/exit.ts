@@ -7,8 +7,7 @@ import {
   done,
   abort,
   interrupt,
-  interruptWithError,
-  interruptWithErrorAndOthers,
+  withErrors,
   Cause,
   ExitTag,
   raise
@@ -23,8 +22,7 @@ export {
   done,
   abort,
   interrupt,
-  interruptWithError,
-  interruptWithErrorAndOthers,
+  withErrors,
   Cause,
   ExitTag,
   raise
@@ -40,20 +38,20 @@ export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt => e._tag === "
 
 function fold_<E, A, R>(
   e: Exit<E, A>,
-  onDone: (v: A) => R,
-  onRaise: (v: E) => R,
-  onAbort: (v: unknown) => R,
-  onInterrupt: (i: Interrupt) => R
+  onDone: (v: A, errors?: Array<Error>) => R,
+  onRaise: (v: E, errors?: Array<Error>) => R,
+  onAbort: (v: unknown, errors?: Array<Error>) => R,
+  onInterrupt: (i: Interrupt, errors?: Array<Error>) => R
 ) {
   switch (e._tag) {
     case "Done":
-      return onDone(e.value);
+      return onDone(e.value, e.errors);
     case "Raise":
-      return onRaise(e.error);
+      return onRaise(e.error, e.errors);
     case "Abort":
-      return onAbort(e.abortedWith);
+      return onAbort(e.abortedWith, e.errors);
     case "Interrupt":
-      return onInterrupt(e);
+      return onInterrupt(e, e.errors);
   }
 }
 
@@ -62,10 +60,10 @@ export const exit = {
 };
 
 export function fold<E, A, R>(
-  onDone: (v: A) => R,
-  onRaise: (v: E) => R,
-  onAbort: (v: unknown) => R,
-  onInterrupt: () => R
+  onDone: (v: A, errors?: Array<Error>) => R,
+  onRaise: (v: E, errors?: Array<Error>) => R,
+  onAbort: (v: unknown, errors?: Array<Error>) => R,
+  onInterrupt: (i: Interrupt, errors?: Array<Error>) => R
 ): (e: Exit<E, A>) => R {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt);
 }

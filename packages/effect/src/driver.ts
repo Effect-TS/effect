@@ -3,15 +3,7 @@
  */
 
 import { either as E, function as F } from "fp-ts";
-import {
-  Cause,
-  Done,
-  done,
-  Exit,
-  interruptWithError,
-  raise,
-  interruptWithErrorAndOthers
-} from "./original/exit";
+import { Cause, Done, done, Exit, raise, withErrors, interrupt } from "./original/exit";
 import { defaultRuntime } from "./original/runtime";
 import * as T from "./effect";
 import { DoublyLinkedList } from "./listc";
@@ -152,8 +144,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   dispatchResumeInterrupt(_: { err?: Error; others?: Error[] }) {
     const go =
       _.others && _.err
-        ? this.handle(interruptWithErrorAndOthers(_.err, _.others))
-        : this.handle(interruptWithError(_.err));
+        ? this.handle(withErrors([_.err, ..._.others])(interrupt))
+        : this.handle(withErrors(_.err ? [_.err] : undefined)(interrupt));
     if (go) {
       // eslint-disable-next-line
       this.loop(go);
@@ -228,24 +220,22 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   IProvideEnv(_: T.IProvideEnv<any, any, any, any>) {
     this.envStack.append(_.r as any);
-    return (
-      T.effect.foldExit(
-        _.e as any,
-        (e) =>
-          T.effect.chain(
-            T.sync(() => {
-              this.envStack.deleteTail();
-              return {};
-            }),
-            (_) => T.raised(e)
-          ),
-        (r) =>
+    return T.effect.foldExit(
+      _.e as any,
+      (e) =>
+        T.effect.chain(
           T.sync(() => {
             this.envStack.deleteTail();
-            return r;
-          })
-      ) as any
-    );
+            return {};
+          }),
+          (_) => T.raised(e)
+        ),
+      (r) =>
+        T.sync(() => {
+          this.envStack.deleteTail();
+          return r;
+        })
+    ) as any;
   }
 
   IPure(_: T.IPure<A>) {
