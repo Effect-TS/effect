@@ -1180,16 +1180,16 @@ function completeLatched<E1, E2, E3, A, B, C, R>(
  * @param onFirstWon
  * @param onSecondWon
  */
-export function raceFold<S, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C>(
+export function raceFold<S, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C, D>(
   first: Effect<S, R, E1, A>,
   second: Effect<S2, R2, E2, B>,
   onFirstWon: F.FunctionN<[ex.Exit<E1, A>, Fiber<E2, B>], Effect<S3, R3, E3, C>>,
-  onSecondWon: F.FunctionN<[ex.Exit<E2, B>, Fiber<E1, A>], Effect<S4, R4, E3, C>>
-): AsyncRE<R & R2 & R3 & R4, E3, C> {
+  onSecondWon: F.FunctionN<[ex.Exit<E2, B>, Fiber<E1, A>], Effect<S4, R4, E3, D>>
+): AsyncRE<R & R2 & R3 & R4, E3, C | D> {
   return accessM((r: R & R2) =>
-    uninterruptibleMask<unknown, R3 & R4, E3, C>((cutout) =>
+    uninterruptibleMask<unknown, R3 & R4, E3, C | D>((cutout) =>
       chain_(makeRef<boolean>(false), (latch) =>
-        chain_(makeDeferred<unknown, R3 & R4, E3, C>(), (channel) =>
+        chain_(makeDeferred<unknown, R3 & R4, E3, C | D>(), (channel) =>
           chain_(fork(provide(r)(first)), (fiber1) =>
             chain_(fork(provide(r)(second)), (fiber2) =>
               chain_(
@@ -1219,12 +1219,12 @@ export function raceFold<S, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C>(
  * @param onTimeout
  * @param onCompleted
  */
-export function timeoutFold<S, S1, S2, R, R2, R3, E1, E2, A, B>(
+export function timeoutFold<S, S1, S2, R, R2, R3, E1, E2, A, B, C>(
   source: Effect<S, R, E1, A>,
   ms: number,
   onTimeout: F.FunctionN<[Fiber<E1, A>], Effect<S1, R2, E2, B>>,
-  onCompleted: F.FunctionN<[ex.Exit<E1, A>], Effect<S2, R3, E2, B>>
-): AsyncRE<R & R2 & R3, E2, B> {
+  onCompleted: F.FunctionN<[ex.Exit<E1, A>], Effect<S2, R3, E2, C>>
+): AsyncRE<R & R2 & R3, E2, B | C> {
   return raceFold(
     source,
     after(ms),
@@ -1235,7 +1235,10 @@ export function timeoutFold<S, S1, S2, R, R2, R3, E1, E2, A, B>(
 }
 
 function interruptLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): AsyncRE<R, E, A> {
-  return applySecond(loser.interrupt, completed(exit));
+  return chain_(loser.interrupt, (x) =>
+    // TODO: stream peel seems to push a raise exit here in case of error
+    x._tag === "Interrupt" && x.error ? raiseAbort(x) : completed(exit)
+  );
 }
 
 /**
@@ -1251,7 +1254,7 @@ export function raceFirst<S, S2, R, R2, E, A>(
 }
 
 function fallbackToLoser<R, E, A>(exit: ex.Exit<E, A>, loser: Fiber<E, A>): AsyncRE<R, E, A> {
-  return exit._tag === "Done" ? applySecond(loser.interrupt, completed(exit)) : loser.join;
+  return exit._tag === "Done" ? interruptLoser(exit, loser) : loser.join;
 }
 
 /**
@@ -1309,7 +1312,7 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
         : chain_(bFiber.isComplete, (isCompleted) =>
             isCompleted
               ? zipWith_(completed(aExit), bFiber.join, f)
-              : chain_(bFiber.interrupt, () => completed(aExit))
+              : chain_(bFiber.interrupt, (x) => x._tag === "Interrupt" && x.error ? raiseAbort(x) : completed(aExit))
           ),
     (bExit, aFiber) =>
       bExit._tag === "Done"
@@ -1317,7 +1320,7 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
         : chain_(aFiber.isComplete, (isCompleted) =>
             isCompleted
               ? zipWith_(aFiber.join, completed(bExit), f)
-              : chain_(aFiber.interrupt, () => completed(bExit))
+              : chain_(aFiber.interrupt, (x) => x._tag === "Interrupt" && x.error ? raiseAbort(x) : completed(bExit))
           )
   );
 }
