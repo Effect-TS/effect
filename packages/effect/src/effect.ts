@@ -1640,7 +1640,7 @@ export interface EffectMonad
 
   chainTap<S1, S2, R, E, A, R2, E2>(
     inner: Effect<S1, R, E, A>,
-    bind: F.FunctionN<[A], Effect<S1, R2, E2, unknown>>
+    bind: F.FunctionN<[A], Effect<S2, R2, E2, unknown>>
   ): Effect<S1 | S2, R & R2, E | E2, A>;
 
   mapError: EffectMonad["mapLeft"];
