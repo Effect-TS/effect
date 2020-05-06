@@ -875,9 +875,12 @@ function combineFinalizerExit<E, A>(
   } else if (releaseExit._tag === "Done") {
     return fiberExit
   } else {
-    // TODO: Figure out how to sanely report both of these, we swallow them currently
-    // This would affect chainError (i.e. assume multiples are actually an abort condition that happens to be typed)
-    return fiberExit
+    return {
+      ...fiberExit,
+      remaining: fiberExit.remaining
+        ? [...fiberExit.remaining, releaseExit]
+        : [releaseExit]
+    }
   }
 }
 

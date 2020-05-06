@@ -34,6 +34,7 @@ export type Cause<E> = Raise<E> | Abort | Interrupt
 export interface Raise<E> {
   readonly _tag: "Raise"
   readonly error: E
+  readonly remaining?: Array<Cause<any>>
 }
 
 export function raise<E>(e: E): Raise<E> {
@@ -46,6 +47,7 @@ export function raise<E>(e: E): Raise<E> {
 export interface Abort {
   readonly _tag: "Abort"
   readonly abortedWith: unknown
+  readonly remaining?: Array<Cause<any>>
 }
 
 export function abort(a: unknown): Abort {
@@ -58,6 +60,7 @@ export function abort(a: unknown): Abort {
 export interface Interrupt {
   readonly _tag: "Interrupt"
   readonly errors?: Error[]
+  readonly remaining?: Array<Cause<any>>
 }
 
 export const interrupt: Interrupt = {
@@ -73,3 +76,17 @@ export const interruptWithError = (...errors: Array<Error>): Interrupt =>
     : {
         _tag: "Interrupt"
       }
+
+export const withRemaining = <E>(
+  cause: Cause<E>,
+  ...remaining: Array<Cause<any>>
+): Cause<E> => {
+  const rem = cause.remaining ? [...cause.remaining, ...remaining] : remaining
+
+  return rem.length > 0
+    ? {
+        ...cause,
+        remaining: rem
+      }
+    : cause
+}
