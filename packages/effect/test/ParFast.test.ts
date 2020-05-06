@@ -1,8 +1,37 @@
 import { effect as T } from "../src";
 import { right, left } from "fp-ts/lib/Either";
-import { raise, interruptWithErrorAndOthers, abort, interruptWithError } from "../src/exit";
+import { raise, interruptWithErrorAndOthers, done } from "../src/exit";
 
 describe("ParFast", () => {
+  it("should complete", async () => {
+    const a = jest.fn();
+    const b = jest.fn();
+    const c = jest.fn();
+    const d = jest.fn();
+
+    function calling(f: () => void, s: string) {
+      return T.async((r) => {
+        const handle = setTimeout(() => {
+          r(right(s));
+        }, 2000);
+        return (cb) => {
+          f();
+          clearTimeout(handle);
+          cb();
+        };
+      });
+    }
+
+    const processes = [calling(a, "a"), calling(b, "b"), calling(c, "c"), calling(d, "d")];
+
+    const result = await T.runToPromiseExit(T.parFastSequenceArray(processes));
+
+    expect(result).toStrictEqual(done(["a", "b", "c", "d"]));
+    expect(a.mock.calls.length).toStrictEqual(0);
+    expect(b.mock.calls.length).toStrictEqual(0);
+    expect(c.mock.calls.length).toStrictEqual(0);
+    expect(d.mock.calls.length).toStrictEqual(0);
+  });
   it("should cancel", async () => {
     const a = jest.fn();
     const b = jest.fn();
@@ -46,13 +75,13 @@ describe("ParFast", () => {
     expect(c.mock.calls.length).toStrictEqual(1);
     expect(d.mock.calls.length).toStrictEqual(1);
   });
-  it("should cancel - abort", async () => {
+  it("should abort", async () => {
     const a = jest.fn();
     const b = jest.fn();
     const c = jest.fn();
     const d = jest.fn();
 
-    function calling(f: () => void) {
+    function calling(f: () => void, s: string) {
       return T.async((r) => {
         const handle = setTimeout(() => {
           r(right(undefined));
@@ -60,14 +89,14 @@ describe("ParFast", () => {
         return (cb) => {
           f();
           clearTimeout(handle);
-          cb(new Error("abort"));
+          cb(new Error(s));
         };
       });
     }
 
     const processes = [
-      calling(a),
-      calling(b),
+      calling(a, "a"),
+      calling(b, "b"),
       T.async((r) => {
         const handle = setTimeout(() => {
           r(left("ok"));
@@ -77,13 +106,15 @@ describe("ParFast", () => {
           cb();
         };
       }),
-      calling(c),
-      calling(d)
+      calling(c, "c"),
+      calling(d, "d")
     ];
 
     const result = await T.runToPromiseExit(T.parFastSequenceArray(processes));
 
-    expect(result).toStrictEqual(abort(interruptWithError(new Error("abort"))));
+    expect(result).toStrictEqual(
+      interruptWithErrorAndOthers(new Error("a"), [new Error("b"), new Error("c"), new Error("d")])
+    );
     expect(a.mock.calls.length).toStrictEqual(1);
     expect(b.mock.calls.length).toStrictEqual(1);
     expect(c.mock.calls.length).toStrictEqual(1);
