@@ -24,17 +24,13 @@ export interface ConcurrentRef<A> {
    * This function may return a second value of type B that will be produced on complete
    * @param f
    */
-  modify<R, B>(
-    f: F.FunctionN<[A], T.AsyncRE<R, never, readonly [B, A]>>
-  ): T.AsyncRE<R, never, B>;
+  modify<R, B>(f: F.FunctionN<[A], T.AsyncRE<R, never, readonly [B, A]>>): T.AsyncRE<R, never, B>;
 }
 
 /**
  * Creates an IO that will allocate a ConcurrentRef.
  */
-export const makeConcurrentRef = <A>(
-  initial: A
-): T.Sync<ConcurrentRef<A>> =>
+export const makeConcurrentRef = <A>(initial: A): T.Sync<ConcurrentRef<A>> =>
   T.effect.map(makeSemaphore(1), (semaphore) => {
     let value = initial;
 
@@ -49,9 +45,7 @@ export const makeConcurrentRef = <A>(
         })
       );
 
-    const update = <R>(
-      f: F.FunctionN<[A], T.AsyncRE<R, never, A>>
-    ): T.AsyncRE<R, never, A> =>
+    const update = <R>(f: F.FunctionN<[A], T.AsyncRE<R, never, A>>): T.AsyncRE<R, never, A> =>
       semaphore.withPermit(
         T.effect.map(
           T.effect.chain(

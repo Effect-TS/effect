@@ -35,12 +35,10 @@ export const patch = <R, R2>(f: (_: Test<R>) => Test<R2>) => (s: Spec<R>): Spec<
     case "test":
       return f(s);
     case "suite":
-      return (
-        {
-          ...s,
-          specs: s.specs.map(patch(f))
-        } as any
-      );
+      return {
+        ...s,
+        specs: s.specs.map(patch(f))
+      } as any;
   }
 };
 

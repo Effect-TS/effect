@@ -6,4 +6,4 @@ export { withSkip, withEnvFilter } from "./aspects/skip";
 export { withTodo } from "./aspects/todo";
 export { withProvider } from "./aspects/provider";
 export { withFinalize, withInit, withHook, withHookP } from "./aspects/hook";
-export { implementMock } from "./mock"
+export { implementMock } from "./mock";

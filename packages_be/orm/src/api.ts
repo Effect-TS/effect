@@ -43,26 +43,24 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     const provideDb = T.provideM(
       T.access(
         (r: OR.ORM<DbURI>): Database<DbURI> => ({
-          [DatabaseURI]:
-            {
-              ...r[DatabaseURI],
-              [DbURI]:
-                {
-                  repository: (Target) => ({
-                    save: (entity, options) =>
-                      pipe(
-                        orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
-                        T.provide(r, "inverted")
-                      ),
-                    findOne: (options) =>
-                      pipe(
-                        orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
-                        T.map(OP.fromNullable),
-                        T.provide(r, "inverted")
-                      )
-                  })
-                } as Database<DbURI>[typeof DatabaseURI][DbURI]
-            } as Database<DbURI>[typeof DatabaseURI]
+          [DatabaseURI]: {
+            ...r[DatabaseURI],
+            [DbURI]: {
+              repository: (Target) => ({
+                save: (entity, options) =>
+                  pipe(
+                    orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
+                    T.provide(r, "inverted")
+                  ),
+                findOne: (options) =>
+                  pipe(
+                    orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
+                    T.map(OP.fromNullable),
+                    T.provide(r, "inverted")
+                  )
+              })
+            } as Database<DbURI>[typeof DatabaseURI][DbURI]
+          } as Database<DbURI>[typeof DatabaseURI]
         })
       )
     );

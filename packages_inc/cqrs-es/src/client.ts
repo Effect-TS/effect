@@ -97,13 +97,12 @@ export const adaptEvent = <T>(event: T & EventMetaHidden): EventStoreEvent => {
 
   esE.expectedStreamVersion = BigInt(event[metaURI].sequence) - BigInt(1);
 
-  esE.eventMetadata =
-    {
-      createdAt: event[metaURI].createdAt,
-      aggregate: event[metaURI].aggregate,
-      root: event[metaURI].root,
-      sequence: BigInt(event[metaURI].sequence).toString(10)
-    } as EventStoreAggregateEventMetadata;
+  esE.eventMetadata = {
+    createdAt: event[metaURI].createdAt,
+    aggregate: event[metaURI].aggregate,
+    root: event[metaURI].root,
+    sequence: BigInt(event[metaURI].sequence).toString(10)
+  } as EventStoreAggregateEventMetadata;
 
   return esE;
 };

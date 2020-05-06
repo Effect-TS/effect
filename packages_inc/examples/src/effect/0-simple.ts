@@ -29,10 +29,10 @@ T.runToPromise(addAndMul)
 
 // invoking canceller cancel the computation (not in this case because all sync)
 const canceller: F.Lazy<void> = T.run(addAndMul, (result) => {
-    assert.deepStrictEqual(result, Ex.done(6));
-})
+  assert.deepStrictEqual(result, Ex.done(6));
+});
 
 // run as throwable
-const result_n: number = T.runUnsafeSync(addAndMul)
+const result_n: number = T.runUnsafeSync(addAndMul);
 
 assert.deepStrictEqual(result_n, 6);

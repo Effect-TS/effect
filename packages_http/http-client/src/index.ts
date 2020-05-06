@@ -101,11 +101,10 @@ export interface Response<Body> {
   status: number;
 }
 
-export const HttpErrorReason =
-  {
-    Request: "HttpErrorRequest",
-    Response: "HttpErrorResponse"
-  } as const;
+export const HttpErrorReason = {
+  Request: "HttpErrorRequest",
+  Response: "HttpErrorResponse"
+} as const;
 
 export type HttpErrorReason = typeof HttpErrorReason;
 
