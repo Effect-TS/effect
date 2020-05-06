@@ -1,5 +1,5 @@
 #!/bin/sh
-yarn prettier --write "./packages*/**/{src,tests}/**/*.ts"
+yarn prettier --write "./packages*/**/{src,demo,tests}/**/*.ts"
 git add --all
 
 if yarn yarn-deduplicate -fl
