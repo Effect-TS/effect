@@ -1538,13 +1538,18 @@ export function fromPromiseMap<E>(
 export function run<E, A>(
   io: AsyncRE<{}, E, A>,
   callback?: F.FunctionN<[ex.Exit<E, A>], void>
-): F.Lazy<void> {
+): (cb?: (exit: ex.Exit<E, A>) => void) => void {
   const driver = new DriverImpl<E, A>();
   if (callback) {
     driver.onExit(callback);
   }
   driver.start(io);
-  return () => driver.interrupt();
+  return (cb) => {
+    driver.interrupt();
+    if (cb) {
+      driver.onExit(cb);
+    }
+  };
 }
 
 /**

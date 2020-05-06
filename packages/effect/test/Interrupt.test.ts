@@ -1,10 +1,44 @@
 import { effect as T } from "../src";
 import * as assert from "assert";
-import { interruptWithError, interruptWithErrorAndOthers } from "../src/original/exit";
+import { interruptWithError, interruptWithErrorAndOthers, done } from "../src/original/exit";
 import { sequenceT } from "fp-ts/lib/Apply";
 import { array } from "fp-ts/lib/Array";
+import { right } from "fp-ts/lib/Either";
 
 describe("Interrupt", () => {
+  it("run gets exit in cb", async () => {
+    const program = T.async(() => (cb) => {
+      setTimeout(() => {
+        cb(new Error("ok"));
+      }, 100);
+    });
+
+    const cancel = T.run(program);
+    let pExit = {};
+    cancel((exit) => {
+      pExit = exit;
+    });
+    await T.runToPromise(T.delay(T.unit, 100));
+    expect(pExit).toStrictEqual(interruptWithError(new Error("ok")));
+  });
+  it("run gets exit in cb - 2", async () => {
+    const program = T.async((res) => {
+      res(right("ok"));
+      return (cb) => {
+        setTimeout(() => {
+          cb(new Error("ok"));
+        }, 100);
+      };
+    });
+
+    const cancel = T.run(program);
+    let pExit = {};
+    cancel((exit) => {
+      pExit = exit;
+    });
+    await T.runToPromise(T.delay(T.unit, 100));
+    expect(pExit).toStrictEqual(done("ok"));
+  });
   it("should interrupt with error", async () => {
     let exit: any = null;
 
