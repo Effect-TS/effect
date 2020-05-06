@@ -1,36 +1,41 @@
-import { T, pipe } from "@matechs/prelude";
-import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm";
-import * as t from "io-ts";
-import { v4 } from "uuid";
-import { EventLog } from "./eventLog";
-import { ADT } from "@morphic-ts/adt/lib";
+import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm"
+import { T, pipe } from "@matechs/prelude"
+import { ADT } from "@morphic-ts/adt/lib"
+import * as t from "io-ts"
+import { v4 } from "uuid"
+
+import { EventLog } from "./eventLog"
 
 // experimental alpha
 /* istanbul ignore file */
 
 export interface AggregateRoot {
-  aggregate: string;
-  root: string;
+  aggregate: string
+  root: string
 }
 
-export const aggregateRootId = ({ aggregate, root }: AggregateRoot) => `${aggregate}-${root}`;
+export const aggregateRootId = ({ aggregate, root }: AggregateRoot) =>
+  `${aggregate}-${root}`
 
 export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
   return <E, A extends { [t in Tag]: A[Tag] }, Tag extends keyof A & string>(
     S: ADT<A, Tag> & { type: t.Encoder<A, E> }
-  ) => (events: A[], aggregateRoot: AggregateRoot): T.AsyncRE<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
+  ) => (
+    events: A[],
+    aggregateRoot: AggregateRoot
+  ): T.AsyncRE<ORM<Db> & DbTx<Db>, TaskError, A[]> =>
     T.Do()
       .bindL("date", () => T.sync(() => new Date()))
       .bindL("id", () => T.sync(v4))
       .do(sequenceLock(db, dbS)(aggregateRoot))
       .bind("seq", currentSequence(db)(aggregateRoot))
-      .bindL("saved", ({ id, date, seq }) =>
+      .bindL("saved", ({ date, id, seq }) =>
         pipe(
           events,
           T.traverseArrayWithIndex((idx, event) =>
             db.withRepositoryTask(EventLog)((r) => () =>
               r.save({
-                id: id,
+                id,
                 createdAt: date,
                 kind: event[S.tag],
                 meta: {},
@@ -46,13 +51,13 @@ export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
         )
       )
       .doL(({ seq }) => saveSequence(db)(aggregateRoot)(seq + BigInt(events.length)))
-      .return(() => events);
+      .return(() => events)
 }
 
 export const sequenceLock = <Db extends symbol | string>(db: DbT<Db>, dbS: Db) => (
   aggregateRoot: AggregateRoot
 ) => {
-  const id = aggregateRootId(aggregateRoot);
+  const id = aggregateRootId(aggregateRoot)
 
   return pipe(
     T.access(({ [dbTxURI]: { [dbS]: ctx } }: DbTx<Db>) => ctx),
@@ -66,11 +71,11 @@ export const sequenceLock = <Db extends symbol | string>(db: DbT<Db>, dbS: Db) =
     T.chain((_) => T.access(({ [dbTxURI]: { [dbS]: ctx } }: DbTx<Db>) => ctx)),
     T.chain((ctx) =>
       T.sync(() => {
-        ctx[id] = true;
+        ctx[id] = true
       })
     )
-  );
-};
+  )
+}
 
 export const saveSequence = <Db extends symbol | string>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
@@ -87,14 +92,18 @@ export const saveSequence = <Db extends symbol | string>(db: DbT<Db>) => (
             aggregateRoot
           )}'`
         )
-  );
+  )
 
 export const currentSequence = <Db extends symbol | string>(db: DbT<Db>) => (
   aggregateRoot: AggregateRoot
 ) =>
   pipe(
     db.withManagerTask((m) => () =>
-      m.query(`SELECT current FROM event_log_seq WHERE id = '${aggregateRootId(aggregateRoot)}'`)
+      m.query(
+        `SELECT current FROM event_log_seq WHERE id = '${aggregateRootId(
+          aggregateRoot
+        )}'`
+      )
     ),
     T.chain((a) =>
       Array.isArray(a)
@@ -103,4 +112,4 @@ export const currentSequence = <Db extends symbol | string>(db: DbT<Db>) => (
           : T.pure(BigInt(a[0].current))
         : T.raiseAbort(new Error("should be impossible"))
     )
-  );
+  )

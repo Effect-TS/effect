@@ -1,31 +1,36 @@
-import { MO, T, Ex, pipe, combineProviders } from "../src";
-import * as J from "@matechs/test-jest";
+import * as J from "@matechs/test-jest"
+
+import { MO, T, Ex, pipe, combineProviders } from "../src"
 
 interface Config {
   [MO.FastCheckURI]: {
-    firstName: string;
-    lastName: string;
-  };
+    firstName: string
+    lastName: string
+  }
 }
 
-const { summon, tagged } = MO.summonFor<Config>({});
+const { summon, tagged } = MO.summonFor<Config>({})
 
 const Person = summon((F) =>
   F.interface(
     {
-      firstName: F.string({ [MO.FastCheckURI]: (x, _) => x.map((n) => `${_.firstName}${n}`) }),
-      lastName: F.string({ [MO.FastCheckURI]: (x, _) => x.map((n) => `${_.lastName}${n}`) })
+      firstName: F.string({
+        [MO.FastCheckURI]: (x, _) => x.map((n) => `${_.firstName}${n}`)
+      }),
+      lastName: F.string({
+        [MO.FastCheckURI]: (x, _) => x.map((n) => `${_.lastName}${n}`)
+      })
     },
     "Person"
   )
-);
+)
 
 const PersonArb = MO.arb(Person)({
   [MO.FastCheckURI]: {
     firstName: "f_",
     lastName: "l_"
   }
-});
+})
 
 const A_ = summon((F) =>
   F.interface(
@@ -35,11 +40,12 @@ const A_ = summon((F) =>
     },
     "A"
   )
-);
+)
 
 interface A extends MO.AType<typeof A_> {}
+// eslint-disable-next-line @typescript-eslint/class-name-casing
 interface A_ extends MO.EType<typeof A_> {}
-const A = MO.AsOpaque<A_, A>()(A_);
+const A = MO.AsOpaque<A_, A>()(A_)
 
 const B_ = summon((F) =>
   F.interface(
@@ -49,11 +55,12 @@ const B_ = summon((F) =>
     },
     "B"
   )
-);
+)
 
 interface B extends MO.AType<typeof B_> {}
+// eslint-disable-next-line @typescript-eslint/class-name-casing
 interface B_ extends MO.EType<typeof B_> {}
-const B = MO.AsOpaque<B_, B>()(B_);
+const B = MO.AsOpaque<B_, B>()(B_)
 
 const C_ = summon((F) =>
   F.interface(
@@ -63,14 +70,15 @@ const C_ = summon((F) =>
     },
     "C"
   )
-);
+)
 
 interface C extends MO.AType<typeof C_> {}
+// eslint-disable-next-line @typescript-eslint/class-name-casing
 interface C_ extends MO.EType<typeof C_> {}
-const C = MO.AsOpaque<C_, C>()(C_);
+const C = MO.AsOpaque<C_, C>()(C_)
 
-const Tagged = tagged("_tag")({ A, B, C });
-const TaggedMatch = MO.match(Tagged);
+const Tagged = tagged("_tag")({ A, B, C })
+const TaggedMatch = MO.match(Tagged)
 
 const MorphicSuite = J.suite("Morphic")(
   J.testM(
@@ -78,9 +86,9 @@ const MorphicSuite = J.suite("Morphic")(
     J.property(1000)({
       pers: J.arb(PersonArb)
     })(({ pers }) => {
-      expect(Object.keys(pers)).toStrictEqual(["firstName", "lastName"]);
-      expect(pers.firstName.substr(0, 2)).toStrictEqual("f_");
-      expect(pers.lastName.substr(0, 2)).toStrictEqual("l_");
+      expect(Object.keys(pers)).toStrictEqual(["firstName", "lastName"])
+      expect(pers.firstName.substr(0, 2)).toStrictEqual("f_")
+      expect(pers.lastName.substr(0, 2)).toStrictEqual("l_")
     })
   ),
   J.testM(
@@ -91,11 +99,11 @@ const MorphicSuite = J.suite("Morphic")(
           A: (a) => a._tag
         },
         (bc) => bc._tag
-      );
+      )
 
-      J.assert.deepStrictEqual(matcher(Tagged.of.A({ foo: "ok" })), "A");
-      J.assert.deepStrictEqual(matcher(Tagged.of.B({ bar: "ok" })), "B");
-      J.assert.deepStrictEqual(matcher(Tagged.of.C({ baz: "ok" })), "C");
+      J.assert.deepStrictEqual(matcher(Tagged.of.A({ foo: "ok" })), "A")
+      J.assert.deepStrictEqual(matcher(Tagged.of.B({ bar: "ok" })), "B")
+      J.assert.deepStrictEqual(matcher(Tagged.of.C({ baz: "ok" })), "C")
     })
   ),
   J.testM(
@@ -105,11 +113,20 @@ const MorphicSuite = J.suite("Morphic")(
         A: (a) => T.sync(() => a._tag),
         B: (b) => T.sync(() => b._tag),
         C: (c) => T.sync(() => c._tag)
-      });
+      })
 
-      J.assert.deepStrictEqual(T.runSync(matcher(Tagged.of.A({ foo: "ok" }))), Ex.done("A"));
-      J.assert.deepStrictEqual(T.runSync(matcher(Tagged.of.B({ bar: "ok" }))), Ex.done("B"));
-      J.assert.deepStrictEqual(T.runSync(matcher(Tagged.of.C({ baz: "ok" }))), Ex.done("C"));
+      J.assert.deepStrictEqual(
+        T.runSync(matcher(Tagged.of.A({ foo: "ok" }))),
+        Ex.done("A")
+      )
+      J.assert.deepStrictEqual(
+        T.runSync(matcher(Tagged.of.B({ bar: "ok" }))),
+        Ex.done("B")
+      )
+      J.assert.deepStrictEqual(
+        T.runSync(matcher(Tagged.of.C({ baz: "ok" }))),
+        Ex.done("C")
+      )
     })
   ),
   J.testM(
@@ -121,7 +138,7 @@ const MorphicSuite = J.suite("Morphic")(
           B: (b) => T.sync(() => b._tag)
         },
         (c) => T.access((_: { t: string }) => c._tag)
-      );
+      )
 
       J.assert.deepStrictEqual(
         T.runSync(
@@ -133,7 +150,7 @@ const MorphicSuite = J.suite("Morphic")(
           )
         ),
         Ex.done("A")
-      );
+      )
       J.assert.deepStrictEqual(
         T.runSync(
           pipe(
@@ -144,7 +161,7 @@ const MorphicSuite = J.suite("Morphic")(
           )
         ),
         Ex.done("B")
-      );
+      )
       J.assert.deepStrictEqual(
         T.runSync(
           pipe(
@@ -155,7 +172,7 @@ const MorphicSuite = J.suite("Morphic")(
           )
         ),
         Ex.done("C")
-      );
+      )
     })
   ),
   J.testM(
@@ -171,11 +188,11 @@ const MorphicSuite = J.suite("Morphic")(
       T.map((res) => J.assert.deepStrictEqual(res, "A"))
     )
   )
-);
+)
 
 J.run(MorphicSuite)(
   combineProviders()
     .with(J.provideGenerator)
     .with(T.provide({ t: "ok" }))
     .done()
-);
+)

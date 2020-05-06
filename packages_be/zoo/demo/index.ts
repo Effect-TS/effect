@@ -1,5 +1,6 @@
-import { T, pipe } from "@matechs/prelude";
-import { election, provideClientFactory, provideClientConfig } from "../src";
+import { T, pipe } from "@matechs/prelude"
+
+import { election, provideClientFactory, provideClientConfig } from "../src"
 
 // work in progress
 /* istanbul ignore file */
@@ -7,11 +8,11 @@ import { election, provideClientFactory, provideClientConfig } from "../src";
 const program = T.forever(
   T.delay(
     T.sync(() => {
-      console.log("process!!");
+      console.log("process!!")
     }),
     3000
   )
-);
+)
 
 const main = pipe(
   election("/election/bbbb")(program),
@@ -19,15 +20,15 @@ const main = pipe(
   provideClientConfig({
     connectionString: "127.0.0.1:2181"
   })
-);
+)
 
-const can = T.run(main, ex => {
-  console.log(ex);
-});
+const can = T.run(main, (ex) => {
+  console.log(ex)
+})
 
 process.on("SIGTERM", () => {
-  can();
-});
+  can()
+})
 process.on("SIGINT", () => {
-  can();
-});
+  can()
+})

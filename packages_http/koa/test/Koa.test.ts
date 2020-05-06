@@ -1,9 +1,11 @@
-import "isomorphic-fetch";
-import * as assert from "assert";
-import { T, M, O, pipe, Ex } from "@matechs/prelude";
-import * as KOA from "../src";
-import * as H from "@matechs/http-client";
-import * as L from "@matechs/http-client-fetch";
+import "isomorphic-fetch"
+import * as assert from "assert"
+
+import * as H from "@matechs/http-client"
+import * as L from "@matechs/http-client-fetch"
+import { T, M, O, pipe, Ex } from "@matechs/prelude"
+
+import * as KOA from "../src"
 
 describe("Koa", () => {
   it("should use koa", async () => {
@@ -12,14 +14,18 @@ describe("Koa", () => {
         KOA.route(
           "post",
           "/",
-          KOA.accessReqM()((r) => T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500)({ res: 1 })))
+          KOA.accessReqM()((r) =>
+            T.pure(KOA.routeResponse(r.path === "/" ? 200 : 500)({ res: 1 }))
+          )
         )
       )
       .do(
         KOA.route(
           "post",
           "/access",
-          KOA.accessReq()((r) => KOA.routeResponse(r.path === "/access" ? 200 : 500)({ res: 1 }))
+          KOA.accessReq()((r) =>
+            KOA.routeResponse(r.path === "/access" ? 200 : 500)({ res: 1 })
+          )
         )
       )
       .do(
@@ -43,20 +49,28 @@ describe("Koa", () => {
           KOA.withSubRouter("/sub")
         )
       )
-      .do(KOA.route("post", "/delay", T.delay(T.pure(KOA.routeResponse(200)({ res: 1 })), 0)))
+      .do(
+        KOA.route(
+          "post",
+          "/delay",
+          T.delay(T.pure(KOA.routeResponse(200)({ res: 1 })), 0)
+        )
+      )
       .do(KOA.route("post", "/bad", T.raiseError(KOA.routeError(500)({ res: 1 }))))
       .do(KOA.route("post", "/bad2", T.raiseAbort("abort")))
       .do(KOA.route("post", "/bad3", T.raiseInterrupt))
       .do(
         KOA.middleware((ctx, next) => {
-          ctx.set("X-Request-Id", "my-id");
-          return next();
+          ctx.set("X-Request-Id", "my-id")
+          return next()
         })
       )
       .do(
         KOA.middlewareM((cont) =>
           T.Do()
-            .do(KOA.accessMiddlewareReq()((ctx) => ctx.set("X-Request-Id-2", "my-id-2")))
+            .do(
+              KOA.accessMiddlewareReq()((ctx) => ctx.set("X-Request-Id-2", "my-id-2"))
+            )
             .do(cont)
             .done()
         )
@@ -64,7 +78,7 @@ describe("Koa", () => {
       .do(
         KOA.accessApp((app) => {
           if (!app) {
-            throw new Error("Aborted app not found");
+            throw new Error("Aborted app not found")
           }
         })
       )
@@ -72,12 +86,12 @@ describe("Koa", () => {
         KOA.accessAppM((app) =>
           T.trySync(() => {
             if (!app) {
-              throw new Error("Aborted app not found");
+              throw new Error("Aborted app not found")
             }
           })
         )
       )
-      .done();
+      .done()
 
     const program = T.Do()
       .bindL("res", () =>
@@ -90,7 +104,10 @@ describe("Koa", () => {
       .bindL("res2", () =>
         pipe(
           H.post("http://127.0.0.1:3004/bad", {}),
-          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.mapError(
+            (s) =>
+              s._tag === H.HttpErrorReason.Response && s.response && s.response.body
+          ),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
           T.result
         )
@@ -98,7 +115,10 @@ describe("Koa", () => {
       .bindL("res3", () =>
         pipe(
           H.post("http://127.0.0.1:3004/bad2", {}),
-          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.mapError(
+            (s) =>
+              s._tag === H.HttpErrorReason.Response && s.response && s.response.body
+          ),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
           T.result
         )
@@ -106,7 +126,10 @@ describe("Koa", () => {
       .bindL("res4", () =>
         pipe(
           H.post("http://127.0.0.1:3004/bad3", {}),
-          T.mapError((s) => s._tag === H.HttpErrorReason.Response && s.response && s.response.body),
+          T.mapError(
+            (s) =>
+              s._tag === H.HttpErrorReason.Response && s.response && s.response.body
+          ),
           T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
           T.result
         )
@@ -153,7 +176,7 @@ describe("Koa", () => {
           T.result
         )
       )
-      .done();
+      .done()
 
     await pipe(
       T.effect.chain(config, (_) => program),
@@ -162,15 +185,18 @@ describe("Koa", () => {
       T.provide(L.client(fetch)),
       T.runToPromise
     ).then(({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
-      assert.deepStrictEqual(res, Ex.done({ res: 1 }));
-      assert.deepStrictEqual(res5, Ex.done({ res: 1 }));
-      assert.deepStrictEqual(res6, Ex.done({ res: 1 }));
-      assert.deepStrictEqual(res7, Ex.done({ res: 1 }));
-      assert.deepStrictEqual(res9, Ex.done({ res: 1 }));
-      assert.deepStrictEqual(res8, Ex.done(["my-id", "my-id-2"]));
-      assert.deepStrictEqual(res2, Ex.raise(O.some(`{\"res\":1}`)));
-      assert.deepStrictEqual(res3, Ex.raise(O.some(`{\"status\":\"aborted\",\"with\":\"abort\"}`)));
-      assert.deepStrictEqual(res4, Ex.raise(O.some(`{\"status\":\"interrupted\"}`)));
-    });
-  });
-});
+      assert.deepStrictEqual(res, Ex.done({ res: 1 }))
+      assert.deepStrictEqual(res5, Ex.done({ res: 1 }))
+      assert.deepStrictEqual(res6, Ex.done({ res: 1 }))
+      assert.deepStrictEqual(res7, Ex.done({ res: 1 }))
+      assert.deepStrictEqual(res9, Ex.done({ res: 1 }))
+      assert.deepStrictEqual(res8, Ex.done(["my-id", "my-id-2"]))
+      assert.deepStrictEqual(res2, Ex.raise(O.some('{"res":1}')))
+      assert.deepStrictEqual(
+        res3,
+        Ex.raise(O.some('{"status":"aborted","with":"abort"}'))
+      )
+      assert.deepStrictEqual(res4, Ex.raise(O.some('{"status":"interrupted"}')))
+    })
+  })
+})

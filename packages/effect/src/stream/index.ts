@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 import {
   Async,
   AsyncE,
@@ -86,7 +87,7 @@ import {
   su,
   traverseArray,
   traverseArrayWithIndex
-} from "./stream";
+} from "./stream"
 
 export {
   Async,
@@ -176,8 +177,8 @@ export {
   su,
   traverseArray,
   traverseArrayWithIndex
-};
+}
 
-import { subject } from "./subject";
+import { subject } from "./subject"
 
-export { subject };
+export { subject }

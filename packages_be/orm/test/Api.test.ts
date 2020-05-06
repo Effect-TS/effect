@@ -1,44 +1,47 @@
-import { T, Ex, U, pipe, O } from "@matechs/prelude";
-import * as assert from "assert";
-import { deepEqual } from "fast-equals";
-import { Entity, PrimaryColumn, Connection, EntityManager, Repository } from "typeorm";
-import * as ORM from "../src";
+import * as assert from "assert"
+
+import { T, Ex, U, pipe, O } from "@matechs/prelude"
+import { deepEqual } from "fast-equals"
+import { Entity, PrimaryColumn, Connection, EntityManager, Repository } from "typeorm"
+
+import * as ORM from "../src"
 
 @Entity()
 export class DemoEntity {
   @PrimaryColumn()
-  id: string;
+  id: string
 }
 
-const DbURI: unique symbol = Symbol();
+const DbURI: unique symbol = Symbol()
 
-const DB = ORM.database(DbURI);
+const DB = ORM.database(DbURI)
 
 describe("Api", () => {
   it("should use mock repository", async () => {
-    const main = DB.repository(DemoEntity).save({ id: "ok" });
+    const main = DB.repository(DemoEntity).save({ id: "ok" })
 
     const env: U.Env<typeof main> = {
       [ORM.DatabaseURI]: {
         [DbURI]: ORM.mockDatabase({
           repository: () => ({
-            save: (o) => (deepEqual(o, { id: "ok" }) ? T.pure(o as any) : T.raiseAbort("error"))
+            save: (o) =>
+              deepEqual(o, { id: "ok" }) ? T.pure(o as any) : T.raiseAbort("error")
           })
         })
       }
-    };
+    }
 
-    const result = await T.runToPromiseExit(T.provide(env)(main));
+    const result = await T.runToPromiseExit(T.provide(env)(main))
 
-    assert.deepStrictEqual(result, Ex.done({ id: "ok" }));
-  });
+    assert.deepStrictEqual(result, Ex.done({ id: "ok" }))
+  })
 
   it("should use mock repository findOne", async () => {
     const main = DB.repository(DemoEntity).findOne({
       where: {
         id: "ok"
       }
-    });
+    })
 
     const env: U.Env<typeof main> = {
       [ORM.DatabaseURI]: {
@@ -51,15 +54,15 @@ describe("Api", () => {
           })
         })
       }
-    };
+    }
 
-    const result = await T.runToPromiseExit(T.provide(env)(main));
+    const result = await T.runToPromiseExit(T.provide(env)(main))
 
-    assert.deepStrictEqual(result, Ex.done(O.some({ id: "ok" })));
-  });
+    assert.deepStrictEqual(result, Ex.done(O.some({ id: "ok" })))
+  })
 
   it("should use concrete repository", async () => {
-    const program = DB.repository(DemoEntity).save({ id: "ok" });
+    const program = DB.repository(DemoEntity).save({ id: "ok" })
     const main = pipe(
       program,
       DB.provideApi,
@@ -67,36 +70,35 @@ describe("Api", () => {
       T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
-            manager:
-              {
-                getRepository<Entity>(
-                  _: string | Function | (new () => Entity)
-                ): Repository<Entity> {
-                  return (
-                    {
-                      save: (o: any) =>
-                        deepEqual(o, { id: "ok" }) ? Promise.resolve(o) : Promise.reject("error")
-                    } as Repository<Entity>
-                  );
-                }
-              } as EntityManager,
+            manager: {
+              getRepository<Entity>(
+                _: string | Function | (new () => Entity)
+              ): Repository<Entity> {
+                return {
+                  save: (o: any) =>
+                    deepEqual(o, { id: "ok" })
+                      ? Promise.resolve(o)
+                      : Promise.reject("error")
+                } as Repository<Entity>
+              }
+            } as EntityManager,
             close: () => Promise.resolve()
           } as Connection)
         )
       ),
       T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
-    );
-    const result = await T.runToPromiseExit(main);
+    )
+    const result = await T.runToPromiseExit(main)
 
-    assert.deepStrictEqual(result, Ex.done({ id: "ok" }));
-  });
+    assert.deepStrictEqual(result, Ex.done({ id: "ok" }))
+  })
 
   it("should use concrete repository findOne", async () => {
     const program = DB.repository(DemoEntity).findOne({
       where: {
         id: "ok"
       }
-    });
+    })
     const main = pipe(
       program,
       DB.provideApi,
@@ -104,34 +106,31 @@ describe("Api", () => {
       T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
-            manager:
-              {
-                getRepository<Entity>(
-                  _: string | Function | (new () => Entity)
-                ): Repository<Entity> {
-                  return (
-                    {
-                      findOne: (o: any) =>
-                        deepEqual(o, { where: { id: "ok" } })
-                          ? Promise.resolve({ id: "ok" } as any)
-                          : Promise.reject("error")
-                    } as Repository<Entity>
-                  );
-                }
-              } as EntityManager,
+            manager: {
+              getRepository<Entity>(
+                _: string | Function | (new () => Entity)
+              ): Repository<Entity> {
+                return {
+                  findOne: (o: any) =>
+                    deepEqual(o, { where: { id: "ok" } })
+                      ? Promise.resolve({ id: "ok" } as any)
+                      : Promise.reject("error")
+                } as Repository<Entity>
+              }
+            } as EntityManager,
             close: () => Promise.resolve()
           } as Connection)
         )
       ),
       T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
-    );
-    const result = await T.runToPromiseExit(main);
+    )
+    const result = await T.runToPromiseExit(main)
 
-    assert.deepStrictEqual(result, Ex.done(O.some({ id: "ok" })));
-  });
+    assert.deepStrictEqual(result, Ex.done(O.some({ id: "ok" })))
+  })
 
   it("should use concrete repository in tx", async () => {
-    const program = DB.repository(DemoEntity).save({ id: "ok" });
+    const program = DB.repository(DemoEntity).save({ id: "ok" })
     const main = pipe(
       program,
       DB.withTransaction,
@@ -145,12 +144,12 @@ describe("Api", () => {
                 getRepository<Entity>(
                   _: string | Function | (new () => Entity)
                 ): Repository<Entity> {
-                  return (
-                    {
-                      save: (o: any) =>
-                        deepEqual(o, { id: "ok" }) ? Promise.resolve(o) : Promise.reject("error")
-                    } as Repository<Entity>
-                  );
+                  return {
+                    save: (o: any) =>
+                      deepEqual(o, { id: "ok" })
+                        ? Promise.resolve(o)
+                        : Promise.reject("error")
+                  } as Repository<Entity>
                 }
               } as EntityManager),
             close: () => Promise.resolve()
@@ -158,9 +157,9 @@ describe("Api", () => {
         )
       ),
       T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
-    );
-    const result = await T.runToPromiseExit(main);
+    )
+    const result = await T.runToPromiseExit(main)
 
-    assert.deepStrictEqual(result, Ex.done({ id: "ok" }));
-  });
-});
+    assert.deepStrictEqual(result, Ex.done({ id: "ok" }))
+  })
+})

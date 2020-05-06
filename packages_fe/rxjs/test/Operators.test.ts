@@ -1,106 +1,108 @@
-import * as assert from "assert";
-import * as O from "../src/operators";
-import * as Rx from "rxjs";
-import { filter, catchError } from "rxjs/operators";
-import { T } from "@matechs/prelude";
+import * as assert from "assert"
+
+import { T } from "@matechs/prelude"
+import * as Rx from "rxjs"
+import { filter, catchError } from "rxjs/operators"
+
+import * as O from "../src/operators"
 
 describe("Operators", () => {
   it("chainEffect", async () => {
-    const numbers: number[] = [];
+    const numbers: number[] = []
 
     Rx.from([0, 1, 2, 3])
       .pipe(filter((n) => n % 2 === 0))
       .pipe(
         O.chainEffect((n) =>
           T.sync(() => {
-            numbers.push(n);
+            numbers.push(n)
           })
         )
       )
-      .subscribe();
+      .subscribe()
 
-    assert.deepStrictEqual(numbers, [0, 2]);
-  });
+    assert.deepStrictEqual(numbers, [0, 2])
+  })
 
   it("chainEffect effect raise", async () => {
-    const numbers: number[] = [];
-    const errors: any[] = [];
+    const numbers: number[] = []
+    const errors: any[] = []
 
     Rx.from([0, 1, 2, 3])
       .pipe(filter((n) => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseError("error")))
       .pipe(
         catchError((e, o) => {
-          errors.push(e);
-          return o;
+          errors.push(e)
+          return o
         })
       )
-      .subscribe();
+      .subscribe()
 
-    assert.deepStrictEqual(numbers, []);
-    assert.deepStrictEqual(errors, ["error", "error"]);
-  });
+    assert.deepStrictEqual(numbers, [])
+    assert.deepStrictEqual(errors, ["error", "error"])
+  })
 
   it("chainEffect effect abort", async () => {
-    const numbers: number[] = [];
-    const errors: any[] = [];
+    const numbers: number[] = []
+    const errors: any[] = []
 
     Rx.from([0, 1, 2, 3])
       .pipe(filter((n) => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseAbort("error")))
       .pipe(
         catchError((e, o) => {
-          errors.push(e);
-          return o;
+          errors.push(e)
+          return o
         })
       )
-      .subscribe();
+      .subscribe()
 
-    assert.deepStrictEqual(numbers, []);
-    assert.deepStrictEqual(errors, ["error", "error"]);
-  });
+    assert.deepStrictEqual(numbers, [])
+    assert.deepStrictEqual(errors, ["error", "error"])
+  })
 
   it("chainEffect effect interrupt", async () => {
-    const numbers: number[] = [];
-    const errors: any[] = [];
+    const numbers: number[] = []
+    const errors: any[] = []
 
     Rx.from([0, 1, 2, 3])
       .pipe(filter((n) => n % 2 === 0))
       .pipe(O.chainEffect(() => T.raiseInterrupt))
       .pipe(
         catchError((e) => {
-          errors.push(e);
-          return Rx.from([]);
+          errors.push(e)
+          return Rx.from([])
         })
       )
-      .subscribe();
+      .subscribe()
 
-    assert.deepStrictEqual(numbers, []);
-    assert.deepStrictEqual(errors, []);
-  });
+    assert.deepStrictEqual(numbers, [])
+    assert.deepStrictEqual(errors, [])
+  })
 
   it("chainEffect observable error", async () => {
-    const numbers: number[] = [];
-    const errors: any[] = [];
+    const numbers: number[] = []
+    const errors: any[] = []
 
     Rx.concat(Rx.from([0, 1, 2, 3]), Rx.throwError("error"))
       .pipe(filter((n) => n % 2 === 0))
       .pipe(
         O.chainEffect((n) =>
           T.sync(() => {
-            numbers.push(n);
+            numbers.push(n)
           })
         )
       )
       .pipe(
         catchError((e) => {
-          errors.push(e);
-          return Rx.EMPTY;
+          errors.push(e)
+          return Rx.EMPTY
         })
       )
-      .subscribe();
+      .subscribe()
 
-    assert.deepStrictEqual(numbers, [0, 2]);
-    assert.deepStrictEqual(errors, ["error"]);
-  });
-});
+    assert.deepStrictEqual(numbers, [0, 2])
+    assert.deepStrictEqual(errors, ["error"])
+  })
+})

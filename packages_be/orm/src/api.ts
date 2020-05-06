@@ -1,41 +1,46 @@
-import * as OR from "./orm";
-import { effect as T } from "@matechs/effect";
-import { ObjectType, DeepPartial, SaveOptions, FindOneOptions } from "typeorm";
-import { pipe } from "fp-ts/lib/pipeable";
-import * as OP from "fp-ts/lib/Option";
+import { effect as T } from "@matechs/effect"
+import * as OP from "fp-ts/lib/Option"
+import { pipe } from "fp-ts/lib/pipeable"
+import { ObjectType, DeepPartial, SaveOptions, FindOneOptions } from "typeorm"
 
-export type Target<O> = ObjectType<O>;
+import * as OR from "./orm"
 
-export const DatabaseURI = "@matechs/orm/DatabaseURI";
+export type Target<O> = ObjectType<O>
+
+export const DatabaseURI = "@matechs/orm/DatabaseURI"
 
 export interface Database<DbURI extends symbol | string> {
   [DatabaseURI]: {
     [k in DbURI]: {
-      repository<O>(_: Target<O>): Repository<O>;
-    };
-  };
+      repository<O>(_: Target<O>): Repository<O>
+    }
+  }
 }
 
 export interface Repository<O> {
   save<T extends DeepPartial<O>>(
     entity: T,
     options?: SaveOptions | undefined
-  ): T.AsyncE<OR.TaskError, O>;
-  findOne(options?: FindOneOptions<O> | undefined): T.AsyncE<OR.TaskError, OP.Option<O>>;
+  ): T.AsyncE<OR.TaskError, O>
+  findOne(options?: FindOneOptions<O> | undefined): T.AsyncE<OR.TaskError, OP.Option<O>>
 }
 
-const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(Target: Target<O>) => ({
+const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(
+  Target: Target<O>
+) => ({
   save: <T extends DeepPartial<O>>(entity: T, options?: SaveOptions) =>
     T.accessM((_: Database<DbURI>) =>
       _[DatabaseURI][DbURI].repository(Target).save(entity, options)
     ),
   findOne: (options: FindOneOptions<O>) =>
-    T.accessM((_: Database<DbURI>) => _[DatabaseURI][DbURI].repository(Target).findOne(options))
-});
+    T.accessM((_: Database<DbURI>) =>
+      _[DatabaseURI][DbURI].repository(Target).findOne(options)
+    )
+})
 
 export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
-  const repository = repository_(DbURI);
-  const orm = OR.dbT(DbURI);
+  const repository = repository_(DbURI)
+  const orm = OR.dbT(DbURI)
 
   const provideApi = <S, R, E, A>(
     eff: T.Effect<S, R & Database<DbURI>, E, A>
@@ -49,7 +54,9 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
               repository: (Target) => ({
                 save: (entity, options) =>
                   pipe(
-                    orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
+                    orm.withRepositoryTask(Target)((_) => () =>
+                      _.save(entity, options)
+                    ),
                     T.provide(r, "inverted")
                   ),
                 findOne: (options) =>
@@ -63,10 +70,10 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
           } as Database<DbURI>[typeof DatabaseURI]
         })
       )
-    );
+    )
 
-    return pipe(eff, provideDb);
-  };
+    return pipe(eff, provideDb)
+  }
 
   const {
     bracketPool,
@@ -80,7 +87,7 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     withRepository,
     withRepositoryTask,
     withTransaction
-  } = orm;
+  } = orm
 
   return {
     repository,
@@ -96,11 +103,11 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     withRepository,
     withRepositoryTask,
     withTransaction
-  };
-};
+  }
+}
 
 export const mockDatabase = <O>(M: {
-  repository?: (_: ObjectType<O>) => Partial<Repository<O>>;
+  repository?: (_: ObjectType<O>) => Partial<Repository<O>>
 }) => ({
   repository: (_: ObjectType<O>) =>
     ({
@@ -108,4 +115,4 @@ export const mockDatabase = <O>(M: {
       findOne: () => T.unit,
       ...M.repository?.(_)
     } as any)
-});
+})

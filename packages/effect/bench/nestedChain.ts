@@ -1,47 +1,48 @@
-import * as wave from "waveguide/lib/wave";
-import * as T from "../lib/effect";
-import { QIO, defaultRuntime } from "@qio/core";
-import { Suite } from "benchmark";
+import { QIO, defaultRuntime } from "@qio/core"
+import { Suite } from "benchmark"
+import * as wave from "waveguide/lib/wave"
 
-const MAX = 1e4;
+import * as T from "../lib/effect"
 
-const waveMapper = (_: bigint) => wave.pure(_ + BigInt(1));
-const effectMapper = (_: bigint) => T.pure(_ + BigInt(1));
-const qioMapper = (_: bigint) => QIO.resolve(_ + BigInt(1));
+const MAX = 1e4
+
+const waveMapper = (_: bigint) => wave.pure(_ + BigInt(1))
+const effectMapper = (_: bigint) => T.pure(_ + BigInt(1))
+const qioMapper = (_: bigint) => QIO.resolve(_ + BigInt(1))
 
 export const nestedChainQio = (): QIO<bigint> => {
-  let io: QIO<bigint> = QIO.resolve(BigInt(0));
+  let io: QIO<bigint> = QIO.resolve(BigInt(0))
   for (let i = 0; i < MAX; i++) {
-    io = QIO.chain(io, qioMapper);
+    io = QIO.chain(io, qioMapper)
   }
-  return io;
-};
+  return io
+}
 
 export const nestedChainWave = (): wave.Wave<never, bigint> => {
-  let io: wave.Wave<never, bigint> = wave.pure(BigInt(0));
+  let io: wave.Wave<never, bigint> = wave.pure(BigInt(0))
   for (let i = 0; i < MAX; i++) {
-    io = wave.chain(io, waveMapper);
+    io = wave.chain(io, waveMapper)
   }
-  return io;
-};
+  return io
+}
 
 export const nestedChainEffect = (): T.Sync<bigint> => {
-  let io: T.Sync<bigint> = T.pure(BigInt(0));
+  let io: T.Sync<bigint> = T.pure(BigInt(0))
   for (let i = 0; i < MAX; i++) {
-    io = T.effect.chain(io, effectMapper);
+    io = T.effect.chain(io, effectMapper)
   }
-  return io;
-};
+  return io
+}
 
-const benchmark = new Suite(`NestedChain ${MAX}`, { minTime: 10000 });
+const benchmark = new Suite(`NestedChain ${MAX}`, { minTime: 10000 })
 
 benchmark
   .add(
     "effect",
     (cb: any) => {
       T.run(nestedChainEffect(), () => {
-        cb.resolve();
-      });
+        cb.resolve()
+      })
     },
     { defer: true }
   )
@@ -49,8 +50,8 @@ benchmark
     "wave",
     (cb: any) => {
       wave.run(nestedChainWave(), () => {
-        cb.resolve();
-      });
+        cb.resolve()
+      })
     },
     { defer: true }
   )
@@ -58,15 +59,15 @@ benchmark
     "qio",
     (cb: any) => {
       defaultRuntime().unsafeExecute(nestedChainQio(), () => {
-        cb.resolve();
-      });
+        cb.resolve()
+      })
     },
     { defer: true }
   )
   .on("cycle", function (event: any) {
-    console.log(String(event.target));
+    console.log(String(event.target))
   })
   .on("complete", function (this: any) {
-    console.log(`Fastest is ${this.filter("fastest").map("name")}`);
+    console.log(`Fastest is ${this.filter("fastest").map("name")}`)
   })
-  .run({ async: true });
+  .run({ async: true })

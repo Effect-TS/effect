@@ -1,11 +1,14 @@
-import { T, M, E, pipe } from "@matechs/prelude";
-import { managedClient, ZooError, error, ConnectionDroppedError } from "./client";
-import { State } from "node-zookeeper-client";
+import { T, M, E, pipe } from "@matechs/prelude"
+import { State } from "node-zookeeper-client"
+
+import { managedClient, ZooError, error, ConnectionDroppedError } from "./client"
 
 // work in progress
 /* istanbul ignore file */
 
-export const election = (electionPath: string) => <S, R, E, A>(run: T.Effect<S, R, E, A>) =>
+export const election = (electionPath: string) => <S, R, E, A>(
+  run: T.Effect<S, R, E, A>
+) =>
   M.use(managedClient, (c) => {
     // run election
     const proc = pipe(
@@ -27,7 +30,7 @@ export const election = (electionPath: string) => <S, R, E, A>(run: T.Effect<S, 
           )
         )
       )
-    );
+    )
 
     // wait for connection dropped event
     const waitDisconnected = T.async<never, void>((retD) => {
@@ -37,16 +40,16 @@ export const election = (electionPath: string) => <S, R, E, A>(run: T.Effect<S, 
           s.code === State.DISCONNECTED.code ||
           s.code === State.EXPIRED.code
         ) {
-          disp();
-          retD(E.right(undefined));
+          disp()
+          retD(E.right(undefined))
         }
-      });
+      })
 
       return (cb) => {
-        disp();
-        cb();
-      };
-    });
+        disp()
+        cb()
+      }
+    })
 
     // fork the process while listening for connection drop,
     // in case of drop interrupt the process
@@ -76,13 +79,13 @@ export const election = (electionPath: string) => <S, R, E, A>(run: T.Effect<S, 
         T.parSequenceT(
           T.async(() => (cb) => {
             T.run(T.parSequenceT(_[0].interrupt, _[1].interrupt), () => {
-              cb();
-            });
+              cb()
+            })
           }),
           _[0].join,
           _[1].join
         )
       ),
       T.map((_) => _[1])
-    );
-  });
+    )
+  })

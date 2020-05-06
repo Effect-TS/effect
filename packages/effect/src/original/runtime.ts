@@ -14,8 +14,8 @@
 
 /* istanbul ignore file */
 
-import { AsyncCancelContFn } from "../effect";
-import { LinkedList } from "../listc";
+import { AsyncCancelContFn } from "../effect"
+import { LinkedList } from "../listc"
 
 /**
  * An interface for the IO system runtime.
@@ -29,7 +29,7 @@ export interface Runtime {
    * The default runtime trampolines this dispatch to for stack safety.
    * @param thunk the action to execute
    */
-  dispatch<A>(thunk: (a: A) => void, a: A): void;
+  dispatch<A>(thunk: (a: A) => void, a: A): void
 
   /**
    * Dispatch a thunk after some amount of time has elapsed.
@@ -39,42 +39,42 @@ export interface Runtime {
    * @param thunk the action to execute
    * @param ms delay in milliseconds
    */
-  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn;
+  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn
 }
 
 class RuntimeImpl implements Runtime {
-  running = false;
+  running = false
 
-  array = new LinkedList<[(a: any) => void, any]>();
+  array = new LinkedList<[(a: any) => void, any]>()
 
-  isRunning = (): boolean => this.running;
+  isRunning = (): boolean => this.running
 
   run(): void {
-    this.running = true;
-    let next = this.array.deleteHead()?.value;
+    this.running = true
+    let next = this.array.deleteHead()?.value
 
     while (next) {
-      next[0](next[1]);
-      next = this.array.deleteHead()?.value;
+      next[0](next[1])
+      next = this.array.deleteHead()?.value
     }
-    this.running = false;
+    this.running = false
   }
 
   dispatch<A>(thunk: (a: A) => void, a: A): void {
-    this.array.append([thunk, a]);
+    this.array.append([thunk, a])
 
     if (!this.running) {
-      this.run();
+      this.run()
     }
   }
 
   dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn {
-    const handle = setTimeout(() => this.dispatch(thunk, a), ms);
+    const handle = setTimeout(() => this.dispatch(thunk, a), ms)
     return (cb) => {
-      clearTimeout(handle);
-      cb();
-    };
+      clearTimeout(handle)
+      cb()
+    }
   }
 }
 
-export const defaultRuntime: Runtime = new RuntimeImpl();
+export const defaultRuntime: Runtime = new RuntimeImpl()

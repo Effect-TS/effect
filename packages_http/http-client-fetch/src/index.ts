@@ -1,6 +1,6 @@
-import { T, E, O } from "@matechs/prelude";
-import * as H from "@matechs/http-client";
-import querystring from "query-string";
+import * as H from "@matechs/http-client"
+import { T, E, O } from "@matechs/prelude"
+import querystring from "query-string"
 
 function getContentType(requestType: H.RequestType): string {
   return H.foldRequestType(
@@ -9,7 +9,7 @@ function getContentType(requestType: H.RequestType): string {
     () => "application/x-www-form-urlencoded",
     () => "multipart/form-data",
     () => "application/octet-stream"
-  );
+  )
 }
 function getBody(
   body: unknown,
@@ -21,7 +21,7 @@ function getBody(
     () => querystring.stringify(body as any),
     () => (body as any) as FormData,
     () => body as Buffer
-  );
+  )
 }
 
 export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
@@ -41,16 +41,16 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
         },
         body: body ? getBody(body, requestType) : undefined,
         method: H.getMethodAsString(method)
-      };
+      }
 
       return T.async((r) => {
         fetchApi(url, input)
           .then((resp) => {
-            const h: Record<string, string> = {};
+            const h: Record<string, string> = {}
 
             resp.headers.forEach((val, key) => {
-              h[key] = val;
-            });
+              h[key] = val
+            })
 
             if (resp.status >= 200 && resp.status < 300) {
               H.foldResponseType(
@@ -63,8 +63,8 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                         status: resp.status,
                         body: O.fromNullable(json)
                       })
-                    );
-                  });
+                    )
+                  })
                 },
                 () =>
                   resp.text().then((text) => {
@@ -74,7 +74,7 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                         status: resp.status,
                         body: O.fromNullable(text)
                       })
-                    );
+                    )
                   }),
                 () => {
                   if (resp["arrayBuffer"]) {
@@ -85,21 +85,21 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                           status: resp.status,
                           body: O.fromNullable(Buffer.from(arrayBuffer))
                         })
-                      );
-                    });
+                      )
+                    })
                   } else {
-                    (resp as any).buffer().then((buffer: Buffer) => {
+                    ;(resp as any).buffer().then((buffer: Buffer) => {
                       r(
                         E.right({
                           headers: h,
                           status: resp.status,
                           body: O.fromNullable(Buffer.from(buffer))
                         })
-                      );
-                    });
+                      )
+                    })
                   }
                 }
-              );
+              )
             } else {
               resp.text().then((text) => {
                 r(
@@ -111,19 +111,19 @@ export const client: (fetchApi: typeof fetch) => H.Http = (fetchApi) => ({
                       body: O.fromNullable(text)
                     }
                   })
-                );
-              });
+                )
+              })
             }
           })
           .catch((err) => {
-            r(E.left({ _tag: H.HttpErrorReason.Request, error: err }));
-          });
+            r(E.left({ _tag: H.HttpErrorReason.Request, error: err }))
+          })
 
-        // tslint:disable-next-line: no-empty
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         return (cb) => {
-          cb();
-        };
-      });
+          cb()
+        }
+      })
     }
   }
-});
+})

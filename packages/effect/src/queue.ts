@@ -3,27 +3,28 @@
   credits to original author
  */
 
-import { either as E, function as F, option as O, pipeable as P } from "fp-ts";
-import { Deferred, makeDeferred } from "./deferred";
-import { makeRef, Ref } from "./ref";
-import { natNumber } from "./sanity";
-import { makeSemaphore } from "./semaphore";
-import { Dequeue, empty, of } from "./original/support/dequeue";
-import { makeTicket, ticketExit, ticketUse } from "./ticket";
-import * as T from "./effect";
-import { effect } from "./effect";
+import { either as E, function as F, option as O, pipeable as P } from "fp-ts"
+
+import { Deferred, makeDeferred } from "./deferred"
+import * as T from "./effect"
+import { effect } from "./effect"
+import { Dequeue, empty, of } from "./original/support/dequeue"
+import { makeRef, Ref } from "./ref"
+import { natNumber } from "./sanity"
+import { makeSemaphore } from "./semaphore"
+import { makeTicket, ticketExit, ticketUse } from "./ticket"
 
 export interface ConcurrentQueue<A> {
-  readonly take: T.Async<A>;
-  offer(a: A): T.Async<void>;
+  readonly take: T.Async<A>
+  offer(a: A): T.Async<void>
 }
 
-type State<A> = E.Either<Dequeue<Deferred<unknown, unknown, never, A>>, Dequeue<A>>;
-const initial = <A>(): State<A> => E.right(empty());
+type State<A> = E.Either<Dequeue<Deferred<unknown, unknown, never, A>>, Dequeue<A>>
+const initial = <A>(): State<A> => E.right(empty())
 
-const poption = P.pipeable(O.option);
+const poption = P.pipeable(O.option)
 
-const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> => queue.offer(a);
+const unboundedOffer = <A>(queue: Dequeue<A>, a: A): Dequeue<A> => queue.offer(a)
 
 // TODO: Need a better way of checking for this
 // Possibly predicates that allow testing if the queue is at least of some size
@@ -34,10 +35,10 @@ const slidingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
         poption.map((t) => t[1]),
         O.getOrElse(() => queue)
       ).offer(a)
-    : queue.offer(a);
+    : queue.offer(a)
 
 const droppingOffer = (n: number) => <A>(queue: Dequeue<A>, a: A): Dequeue<A> =>
-  queue.size() >= n ? queue : queue.offer(a);
+  queue.size() >= n ? queue : queue.offer(a)
 
 function makeConcurrentQueueImpl<A>(
   state: Ref<State<A>>,
@@ -62,7 +63,7 @@ function makeConcurrentQueueImpl<A>(
           )
         )
       )
-    );
+    )
   }
 
   const take = takeGate(
@@ -82,7 +83,10 @@ function makeConcurrentQueueImpl<A>(
                   ready.take(),
                   poption.map(
                     ([next, q]) =>
-                      [makeTicket(T.pure(next), T.unit), E.right(q) as State<A>] as const
+                      [
+                        makeTicket(T.pure(next), T.unit),
+                        E.right(q) as State<A>
+                      ] as const
                   ),
                   O.getOrElse(
                     () =>
@@ -99,7 +103,7 @@ function makeConcurrentQueueImpl<A>(
       ticketExit,
       ticketUse
     )
-  );
+  )
 
   const offer = (a: A): T.Async<void> =>
     T.applySecond(
@@ -113,9 +117,15 @@ function makeConcurrentQueueImpl<A>(
                 (waiting) =>
                   P.pipe(
                     waiting.take(),
-                    poption.map(([next, q]) => [next.done(a), E.left(q) as State<A>] as const),
+                    poption.map(
+                      ([next, q]) => [next.done(a), E.left(q) as State<A>] as const
+                    ),
                     O.getOrElse(
-                      () => [T.unit, E.right(overflowStrategy(empty(), a)) as State<A>] as const
+                      () =>
+                        [
+                          T.unit,
+                          E.right(overflowStrategy(empty(), a)) as State<A>
+                        ] as const
                     )
                   ),
                 (available) =>
@@ -125,11 +135,11 @@ function makeConcurrentQueueImpl<A>(
           )
         )
       )
-    );
+    )
   return {
     take,
     offer
-  };
+  }
 }
 
 /**
@@ -144,10 +154,10 @@ export function unboundedQueue<A>(): T.Sync<ConcurrentQueue<A>> {
       T.unit,
       F.identity
     )
-  );
+  )
 }
 
-const natCapacity = natNumber(new Error("Die: capacity must be a natural number"));
+const natCapacity = natNumber(new Error("Die: capacity must be a natural number"))
 
 /**
  * Create a bounded queue with the given capacity that drops older offers
@@ -165,7 +175,7 @@ export function slidingQueue<A>(capacity: number): T.Sync<ConcurrentQueue<A>> {
         F.identity
       )
     )
-  );
+  )
 }
 
 /**
@@ -184,7 +194,7 @@ export function droppingQueue<A>(capacity: number): T.Sync<ConcurrentQueue<A>> {
         F.identity
       )
     )
-  );
+  )
 }
 
 /**
@@ -209,5 +219,5 @@ export function boundedQueue<A>(capacity: number): T.Sync<ConcurrentQueue<A>> {
           )
       )
     )
-  );
+  )
 }

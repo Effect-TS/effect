@@ -1,37 +1,42 @@
-import { Service, T, Ex, F, O, pipe } from "@matechs/prelude";
-import * as H from "@matechs/http-client";
+import * as H from "@matechs/http-client"
+import { Service, T, Ex, F, O, pipe } from "@matechs/prelude"
 
 // tested in @matechs/rpc
 /* istanbul ignore file */
 
-export const clientConfigEnv = "@matechs/rpc-client/clientConfigURI";
+export const clientConfigEnv = "@matechs/rpc-client/clientConfigURI"
 
 export interface ClientConfig<M> {
   [clientConfigEnv]: {
     [k in keyof M]: {
-      baseUrl: string;
-    };
-  };
+      baseUrl: string
+    }
+  }
 }
 
 type ClientEntry<M, X> = M extends F.FunctionN<
   infer A,
   T.Effect<infer _S, infer _B, infer C, infer D>
 >
-  ? F.FunctionN<A, T.AsyncRE<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>>
+  ? F.FunctionN<
+      A,
+      T.AsyncRE<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
+    >
   : M extends T.Effect<infer _S, infer _B, infer C, infer D>
   ? T.AsyncRE<H.RequestEnv & ClientConfig<X>, C | H.HttpError<unknown>, D>
-  : never;
+  : never
 
 export type Client<M extends Service.ModuleShape<M>> = {
-  [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>;
-};
+  [k in keyof M[keyof M]]: ClientEntry<M[keyof M][k], M>
+}
 
-export function client<M extends Service.ModuleShape<M>>(s: Service.ModuleSpec<M>): Client<M> {
-  const r = {} as any;
+export function client<M extends Service.ModuleShape<M>>(
+  s: Service.ModuleSpec<M>
+): Client<M> {
+  const r = {} as any
 
   for (const entry of Reflect.ownKeys(s[Service.specURI])) {
-    const x = s[Service.specURI][entry];
+    const x = s[Service.specURI][entry]
 
     for (const z of Object.keys(x)) {
       if (typeof x[z] === "function") {
@@ -51,7 +56,7 @@ export function client<M extends Service.ModuleShape<M>>(s: Service.ModuleSpec<M
                 )
               )
             )
-            .return((s) => s.ret);
+            .return((s) => s.ret)
       } else if (typeof x[z] === "object") {
         r[z] = T.Do()
           .bindL("req", () => T.pure<RPCRequest>({ args: [] }))
@@ -68,18 +73,18 @@ export function client<M extends Service.ModuleShape<M>>(s: Service.ModuleSpec<M
               )
             )
           )
-          .return((s) => s.ret);
+          .return((s) => s.ret)
       }
     }
   }
 
-  return r;
+  return r
 }
 
 export interface RPCRequest {
-  args: unknown[];
+  args: unknown[]
 }
 
 export interface RPCResponse {
-  value: Ex.Exit<unknown, unknown>;
+  value: Ex.Exit<unknown, unknown>
 }

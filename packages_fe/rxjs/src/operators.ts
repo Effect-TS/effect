@@ -1,6 +1,7 @@
-import * as Rx from "rxjs";
-import { T, SE, Ex, pipe, E } from "@matechs/prelude";
-import * as R from "./";
+import { T, SE, Ex, pipe, E } from "@matechs/prelude"
+import * as Rx from "rxjs"
+
+import * as R from "./"
 
 /**
  * Chain an effect into an rxjs .pipe()
@@ -30,7 +31,7 @@ export function chainEffect<A, E, B>(
                     (b) => sub.next(b), // all fine
                     (e) => sub.error(e), // error in effect
                     (x) => {
-                      sub.error(x); // effect aborted, (i.e. via raiseAbort)
+                      sub.error(x) // effect aborted, (i.e. via raiseAbort)
                     },
                     () => {
                       // if effect is interrupted we won't get here
@@ -43,7 +44,7 @@ export function chainEffect<A, E, B>(
               // never
             },
             () => sub.complete()
-          );
+          )
         })
-    );
+    )
 }

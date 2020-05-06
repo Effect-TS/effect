@@ -1,38 +1,39 @@
-import { T, combineProviders, O, pipe } from "@matechs/prelude";
-import * as fc from "fast-check";
-import { limitRetries } from "retry-ts";
-import * as M from "../src";
+import { T, combineProviders, O, pipe } from "@matechs/prelude"
+import * as fc from "fast-check"
+import { limitRetries } from "retry-ts"
+
+import * as M from "../src"
 
 interface Sum {
   sum: {
-    a: number;
-    b: number;
-    e: number;
-  };
+    a: number
+    b: number
+    e: number
+  }
 }
 
 interface Mul {
   mul: {
-    a: number;
-    b: number;
-    e: number;
-  };
+    a: number
+    b: number
+    e: number
+  }
 }
 
 interface Div {
   div: {
-    a: number;
-    b: number;
-    e: number;
-  };
+    a: number
+    b: number
+    e: number
+  }
 }
 
 interface Sub {
   sub: {
-    a: number;
-    b: number;
-    e: number;
-  };
+    a: number
+    b: number
+    e: number
+  }
 }
 
 const demoSuite = M.suite("demo")(
@@ -60,7 +61,7 @@ const demoSuite = M.suite("demo")(
       )
       .return((s) => M.assert.deepStrictEqual(s.c, s.env.mul.e))
   )
-);
+)
 
 const demo2Suite = M.suite("demo2")(
   M.testM(
@@ -87,7 +88,7 @@ const demo2Suite = M.suite("demo2")(
       )
       .return((s) => M.assert.deepStrictEqual(s.c, s.env.div.e))
   )
-);
+)
 
 const comboSuite = M.suite("combo")(
   demoSuite,
@@ -96,7 +97,7 @@ const comboSuite = M.suite("combo")(
     "simple",
     T.sync(() => M.assert.deepStrictEqual(1, 1))
   )
-);
+)
 
 const flackySuite = M.suite("flacky")(
   M.testM(
@@ -116,7 +117,7 @@ const flackySuite = M.suite("flacky")(
     ),
     M.withRetryPolicy(limitRetries(200))
   )
-);
+)
 
 const genSuite = M.suite("generative")(
   M.testM(
@@ -124,7 +125,11 @@ const genSuite = M.suite("generative")(
     M.propertyM(1000)({
       a: M.arb(fc.nat()),
       b: M.arb(fc.nat())
-    })(({ a, b }) => T.access((_: Sum) => M.assert.deepStrictEqual(a > 0 && b > 0 && _.sum.a > 0, true)))
+    })(({ a, b }) =>
+      T.access((_: Sum) =>
+        M.assert.deepStrictEqual(a > 0 && b > 0 && _.sum.a > 0, true)
+      )
+    )
   ),
   M.testM(
     "generate strings",
@@ -133,7 +138,7 @@ const genSuite = M.suite("generative")(
       b: M.arb(fc.hexaString(4, 100))
     })(({ a, b }) => M.assert.deepStrictEqual(a.length >= 2 && b.length >= 4, true))
   )
-);
+)
 
 const skipSuite = pipe(
   M.suite("skip suite")(
@@ -143,7 +148,7 @@ const skipSuite = pipe(
     )
   ),
   M.withSkip(true)
-);
+)
 
 const skip2Suite = pipe(
   M.suite("skip 2 suite")(
@@ -160,9 +165,9 @@ const skip2Suite = pipe(
     )
   ),
   M.withSkip(true)
-);
+)
 
-process.env["EXAMPLE_ENV"] = "demo";
+process.env["EXAMPLE_ENV"] = "demo"
 
 const envSuite = M.suite("env suite")(
   pipe(
@@ -179,9 +184,9 @@ const envSuite = M.suite("env suite")(
     ),
     M.withEnvFilter("EXAMPLE_ENV")((x) => O.isSome(x) && x.value === "demo")
   )
-);
+)
 
-const pendingSuite = M.suite("pending suite")(M.testM("should ignore not implemented"));
+const pendingSuite = M.suite("pending suite")(M.testM("should ignore not implemented"))
 
 const provideSum = T.provide<Sum>({
   sum: {
@@ -189,7 +194,7 @@ const provideSum = T.provide<Sum>({
     b: 2,
     e: 3
   }
-});
+})
 
 const provideMul = T.provide<Mul>({
   mul: {
@@ -197,7 +202,7 @@ const provideMul = T.provide<Mul>({
     b: 3,
     e: 6
   }
-});
+})
 
 const provideSub = T.provide<Sub>({
   sub: {
@@ -205,7 +210,7 @@ const provideSub = T.provide<Sub>({
     b: 2,
     e: 1
   }
-});
+})
 
 const provideDiv = T.provide<Div>({
   div: {
@@ -213,15 +218,15 @@ const provideDiv = T.provide<Div>({
     b: 3,
     e: 2
   }
-});
+})
 
 export interface OverProvide {
-  over: {};
+  over: {}
 }
 
 const provideOver = T.provide<OverProvide>({
   over: {}
-});
+})
 
 const combined = combineProviders()
   .with(provideSub)
@@ -229,7 +234,7 @@ const combined = combineProviders()
   .with(provideDiv)
   .with(M.provideGenerator)
   .with(provideOver)
-  .done();
+  .done()
 
 M.customRun({
   describe,
@@ -246,4 +251,4 @@ M.customRun({
   skip2Suite,
   envSuite,
   pendingSuite
-)(combined);
+)(combined)

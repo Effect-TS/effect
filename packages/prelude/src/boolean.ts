@@ -1,12 +1,15 @@
 export function not(a: boolean) {
-  return !a;
+  return !a
 }
 export function and(a: boolean, b: boolean) {
-  return a && b;
+  return a && b
 }
 export function or(a: boolean, b: boolean) {
-  return a || b;
+  return a || b
 }
-export function fold<A, B>(onFalse: () => A, onTrue: () => B): (value: boolean) => A | B {
-  return (value) => (value ? onTrue() : onFalse());
+export function fold<A, B>(
+  onFalse: () => A,
+  onTrue: () => B
+): (value: boolean) => A | B {
+  return (value) => (value ? onTrue() : onFalse())
 }

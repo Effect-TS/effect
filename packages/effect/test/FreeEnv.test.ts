@@ -1,71 +1,73 @@
-import assert from "assert";
-import { pipe } from "fp-ts/lib/pipeable";
-import { freeEnv as F, effect as T, utils as U, managed as M } from "../src";
-import { done } from "../src/original/exit";
+import assert from "assert"
 
-const fnEnv: unique symbol = Symbol();
+import { pipe } from "fp-ts/lib/pipeable"
+
+import { freeEnv as F, effect as T, utils as U, managed as M } from "../src"
+import { done } from "../src/original/exit"
+
+const fnEnv: unique symbol = Symbol()
 
 const fnEnvM_ = F.define({
   [fnEnv]: {
     mapString: F.fn<(s: string) => T.Sync<string>>()
   }
-});
+})
 
 interface FnEnv extends F.TypeOf<typeof fnEnvM_> {}
 
-const fnEnvM = F.opaque<FnEnv>()(fnEnvM_);
+const fnEnvM = F.opaque<FnEnv>()(fnEnvM_)
 
 const fnLive: FnEnv = {
   [fnEnv]: {
     mapString: (s) => T.pure(`(${s})`)
   }
-};
+}
 
 const {
   [fnEnv]: { mapString }
-} = F.access(fnEnvM);
+} = F.access(fnEnvM)
 
-const consoleEnv: unique symbol = Symbol();
+const consoleEnv: unique symbol = Symbol()
 
 const consoleM = F.define({
   [consoleEnv]: {
     log: F.fn<(s: string) => T.SyncR<FnEnv, void>>(),
     get: F.cn<T.Sync<string[]>>()
   }
-});
+})
 
-type Console = F.TypeOf<typeof consoleM>;
+type Console = F.TypeOf<typeof consoleM>
 
 const {
-  [consoleEnv]: { log, get }
-} = F.access(consoleM);
+  [consoleEnv]: { get, log }
+} = F.access(consoleM)
 
-const prefixEnv: unique symbol = Symbol();
+const prefixEnv: unique symbol = Symbol()
 
 const prefixM = F.define({
   [prefixEnv]: {
     accessPrefix: F.cn<T.Sync<string>>()
   }
-});
+})
 
 const {
   [prefixEnv]: { accessPrefix }
-} = F.access(prefixM);
+} = F.access(prefixM)
 
-const configEnv: unique symbol = Symbol();
+const configEnv: unique symbol = Symbol()
 
 const configM = F.define({
   [configEnv]: {
     accessConfig: F.cn<T.Sync<string>>()
   }
-});
+})
 
 const {
   [configEnv]: { accessConfig }
-} = F.access(configM);
+} = F.access(configM)
 
-const messages: string[] = [];
-const messages2: string[] = [];
+const messages: string[] = []
+const messages2: string[] = []
 
 const consoleI = F.implement(consoleM)({
   [consoleEnv]: {
@@ -75,7 +77,7 @@ const consoleI = F.implement(consoleM)({
         T.chain((prefix) => mapString(`${prefix}${s}`)),
         T.chain((s) =>
           T.sync(() => {
-            messages.push(s);
+            messages.push(s)
           })
         )
       ),
@@ -84,22 +86,22 @@ const consoleI = F.implement(consoleM)({
       T.chain((_) => T.pure(messages))
     )
   }
-});
+})
 
 const consoleI2 = F.implement(consoleM)({
   [consoleEnv]: {
     log: (s) =>
       T.sync(() => {
-        messages2.push(`${s}`);
+        messages2.push(`${s}`)
       }),
     get: T.pure(messages2)
   }
-});
+})
 
 const program: T.SyncR<Console & FnEnv, string[]> = pipe(
   log("message"),
   T.chain((_) => get)
-);
+)
 
 describe("Generic", () => {
   it("use generic module", async () => {
@@ -107,9 +109,9 @@ describe("Generic", () => {
       [prefixEnv]: {
         accessPrefix: T.pure("prefix: ")
       }
-    });
+    })
 
-    const main = pipe(program, consoleI, prefixI);
+    const main = pipe(program, consoleI, prefixI)
 
     assert.deepStrictEqual(
       await T.runToPromiseExit(
@@ -123,17 +125,17 @@ describe("Generic", () => {
         })(main)
       ),
       done(["(prefix: message)"])
-    );
-  });
+    )
+  })
 
   it("use generic module - with", async () => {
     const prefixI = F.implementWith(T.pure("prefix: "))(prefixM)((s) => ({
       [prefixEnv]: {
         accessPrefix: T.pure(s)
       }
-    }));
+    }))
 
-    const main = pipe(program, consoleI, prefixI);
+    const main = pipe(program, consoleI, prefixI)
 
     assert.deepStrictEqual(
       await T.runToPromiseExit(
@@ -147,17 +149,17 @@ describe("Generic", () => {
         })(main)
       ),
       done(["(prefix: message)", "(prefix: message)"])
-    );
-  });
+    )
+  })
 
   it("use generic module - withM", async () => {
     const prefixI = F.implementWithM(M.pure("prefix: "))(prefixM)((s) => ({
       [prefixEnv]: {
         accessPrefix: T.pure(s)
       }
-    }));
+    }))
 
-    const main = pipe(program, consoleI, prefixI);
+    const main = pipe(program, consoleI, prefixI)
 
     assert.deepStrictEqual(
       await T.runToPromiseExit(
@@ -171,18 +173,21 @@ describe("Generic", () => {
         })(main)
       ),
       done(["(prefix: message)", "(prefix: message)", "(prefix: message)"])
-    );
-  });
+    )
+  })
 
   it("use generic module (different interpreter)", async () => {
-    const main = pipe(program, consoleI2);
+    const main = pipe(program, consoleI2)
 
-    assert.deepStrictEqual(await T.runToPromiseExit(T.provide(fnLive)(main)), done(["message"]));
-  });
+    assert.deepStrictEqual(
+      await T.runToPromiseExit(T.provide(fnLive)(main)),
+      done(["message"])
+    )
+  })
 
   it("use generic module (different interpreter, not need fnEnv)", async () => {
-    const main = pipe(get, consoleI2);
+    const main = pipe(get, consoleI2)
 
-    assert.deepStrictEqual(await T.runToPromiseExit(main), done(["message"]));
-  });
-});
+    assert.deepStrictEqual(await T.runToPromiseExit(main), done(["message"]))
+  })
+})

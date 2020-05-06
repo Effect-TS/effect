@@ -1,8 +1,8 @@
-import { T, Service as F } from "@matechs/prelude";
+import { T, Service as F } from "@matechs/prelude"
 
-export const consoleURI = "@matechs/console/consoleURI";
+export const consoleURI = "@matechs/console/consoleURI"
 
-type Void = T.Sync<void>;
+type Void = T.Sync<void>
 
 const Console_ = F.define({
   [consoleURI]: {
@@ -26,11 +26,11 @@ const Console_ = F.define({
     trace: F.fn<(message?: any, ...optionalParams: any[]) => Void>(),
     warn: F.fn<(message?: any, ...optionalParams: any[]) => Void>()
   }
-});
+})
 
 export interface Console extends F.TypeOf<typeof Console_> {}
 
-export const Console = F.opaque<Console>()(Console_);
+export const Console = F.opaque<Console>()(Console_)
 
 export const provideConsole = F.implement(Console)({
   [consoleURI]: {
@@ -54,14 +54,12 @@ export const provideConsole = F.implement(Console)({
     trace: (m, ...o) => T.sync(() => console.trace(m, ...o)),
     warn: (m, ...o) => T.sync(() => console.warn(m, ...o))
   }
-});
+})
 
 export const {
   [consoleURI]: {
     assert,
-    time,
     clear,
-    info,
     count,
     countReset,
     debug,
@@ -71,11 +69,13 @@ export const {
     group,
     groupCollapsed,
     groupEnd,
+    info,
     log,
     table,
+    time,
     timeEnd,
     timeLog,
     trace,
     warn
   }
-} = F.access(Console);
+} = F.access(Console)

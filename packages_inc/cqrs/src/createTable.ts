@@ -1,5 +1,5 @@
-import { T } from "@matechs/prelude";
-import { DbT } from "@matechs/orm";
+import { DbT } from "@matechs/orm"
+import { T } from "@matechs/prelude"
 
 // experimental alpha
 /* istanbul ignore file */
@@ -58,7 +58,9 @@ export const createTable = <Db extends symbol | string>(db: DbT<Db>) =>
       )
     ),
     db.withManagerTask((manager) => () =>
-      manager.query("CREATE INDEX IF NOT EXISTS event_log_idx_meta ON event_log USING GIN (meta);")
+      manager.query(
+        "CREATE INDEX IF NOT EXISTS event_log_idx_meta ON event_log USING GIN (meta);"
+      )
     ),
     db.withManagerTask((manager) => () =>
       manager.query(
@@ -68,4 +70,4 @@ export const createTable = <Db extends symbol | string>(db: DbT<Db>) =>
           ");"
       )
     )
-  );
+  )

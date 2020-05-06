@@ -1,25 +1,25 @@
-import * as L from "@matechs/logger";
-import { T, Service as F } from "@matechs/prelude";
-import * as W from "winston";
-import { Do } from "fp-ts-contrib/lib/Do";
+import * as L from "@matechs/logger"
+import { T, Service as F } from "@matechs/prelude"
+import { Do } from "fp-ts-contrib/lib/Do"
+import * as W from "winston"
 
-export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI";
+export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI"
 
 export interface WinstonFactory {
   [winstonFactoryEnv]: {
-    logger: T.Sync<W.Logger>;
-  };
+    logger: T.Sync<W.Logger>
+  }
 }
 
 export const winstonFactoryM = F.define<WinstonFactory>({
   [winstonFactoryEnv]: {
     logger: F.cn()
   }
-});
+})
 
 export const {
   [winstonFactoryEnv]: { logger }
-} = F.access(winstonFactoryM);
+} = F.access(winstonFactoryM)
 
 export function log(
   level: L.logger.Level,
@@ -30,12 +30,12 @@ export function log(
     .bind("logger", logger)
     .doL((s) =>
       T.sync(() => {
-        s.logger.log(level, message, meta);
+        s.logger.log(level, message, meta)
       })
     )
     .return(() => {
       //
-    });
+    })
 }
 
 export const provideWinstonLogger = F.implement(L.logger.Logger)({
@@ -48,7 +48,7 @@ export const provideWinstonLogger = F.implement(L.logger.Logger)({
     verbose: (message, meta) => log("verbose", message, meta),
     warn: (message, meta) => log("warn", message, meta)
   }
-});
+})
 
 /* istanbul ignore next */
 export const provideLoggerFactory = (loggerOpts: W.LoggerOptions) =>
@@ -56,4 +56,4 @@ export const provideLoggerFactory = (loggerOpts: W.LoggerOptions) =>
     [winstonFactoryEnv]: {
       logger: T.sync(() => W.createLogger(loggerOpts))
     }
-  });
+  })

@@ -1,5 +1,4 @@
-import * as T from "./effect";
-import { option as O, pipeable as P, function as F } from "fp-ts";
+import { option as O, pipeable as P, function as F } from "fp-ts"
 import {
   applyPolicy,
   defaultRetryStatus,
@@ -11,18 +10,23 @@ import {
   limitRetries,
   limitRetriesByDelay,
   monoidRetryPolicy
-} from "retry-ts";
-import { Exit } from "./original/exit";
+} from "retry-ts"
 
-export function applyAndDelay(policy: RetryPolicy, status: RetryStatus): T.Async<RetryStatus> {
-  const newStatus = applyPolicy(policy, status);
+import * as T from "./effect"
+import { Exit } from "./original/exit"
+
+export function applyAndDelay(
+  policy: RetryPolicy,
+  status: RetryStatus
+): T.Async<RetryStatus> {
+  const newStatus = applyPolicy(policy, status)
   return P.pipe(
     newStatus.previousDelay,
     O.fold(
       () => T.pure(newStatus),
       (millis) => T.delay(T.pure(newStatus), millis)
     )
-  );
+  )
 }
 
 export function retrying<RP, EP, S, R, E, A, R2, E2>(
@@ -56,9 +60,9 @@ export function retrying<RP, EP, S, R, E, A, R2, E2>(
           )
         )
       )
-    );
+    )
 
-  return go(defaultRetryStatus);
+  return go(defaultRetryStatus)
 }
 
 export {
@@ -72,4 +76,4 @@ export {
   limitRetries,
   limitRetriesByDelay,
   monoidRetryPolicy
-};
+}

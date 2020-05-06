@@ -1,11 +1,13 @@
-import React from "react";
-import { T, pipe } from "@matechs/prelude";
-import Link from "next/link";
-import { MemoInput } from "./MemoInput";
-import { DT } from "../modules/date";
-import { ORG } from "../modules/orgs";
-import { UI, accessP } from "../../src";
-import { DisplayFlash } from "../modules/flash/view";
+import { T, pipe } from "@matechs/prelude"
+import Link from "next/link"
+import React from "react"
+
+import { UI, accessP } from "../../src"
+import { DT } from "../modules/date"
+import { DisplayFlash } from "../modules/flash/view"
+import { ORG } from "../modules/orgs"
+
+import { MemoInput } from "./MemoInput"
 
 // alpha
 /* istanbul ignore file */
@@ -42,4 +44,4 @@ export const Home = UI.of(
       </>
     ))
   )
-);
+)

@@ -1,9 +1,18 @@
-import { logger, console } from "@matechs/logger";
-import { withTransaction, todoRoot, todosAggregate, bracketPool, domain, dbConfigLive } from "./db";
-import { T, pipe } from "@matechs/prelude";
-import { liveFactory } from "@matechs/orm";
-import { ReadSideConfig } from "../src/config";
-import { provideApp } from "./app";
+import { logger, console } from "@matechs/logger"
+import { liveFactory } from "@matechs/orm"
+import { T, pipe } from "@matechs/prelude"
+
+import { ReadSideConfig } from "../src/config"
+
+import { provideApp } from "./app"
+import {
+  withTransaction,
+  todoRoot,
+  todosAggregate,
+  bracketPool,
+  domain,
+  dbConfigLive
+} from "./db"
 
 // simple program just append 3 new events to the log in the aggregate root todos-a
 const program = withTransaction(
@@ -13,29 +22,32 @@ const program = withTransaction(
       of.TodoAdded({ id: 1, todo: "todo" }),
       of.TodoAdded({ id: 2, todo: "todo-2" })
     ]),
-    T.chain(([_event0, _event1]) => todoRoot("a").persistEvent((of) => of.TodoRemoved({ id: 1 })))
+    T.chain(([_event0, _event1]) =>
+      todoRoot("a").persistEvent((of) => of.TodoRemoved({ id: 1 }))
+    )
   )
-);
+)
 
 const defaultConfig = (id: string): ReadSideConfig => ({
   delay: 3000, // how long to wait after each poll
   id, // unique id for this read
   limit: 100 // how many events to fetch in each pool
-});
+})
 
 // ideal for dispatch to locations like event-store that support idempotent writes
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order
-const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(defaultConfig("read-todo-added"))(
-  (match) =>
-    T.traverseArray(
-      match({
-        TodoAdded: (todoAdded) => logger.info(JSON.stringify(todoAdded)),
-        default: () => T.unit
-      })
-    )
-);
+const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
+  defaultConfig("read-todo-added")
+)((match) =>
+  T.traverseArray(
+    match({
+      TodoAdded: (todoAdded) => logger.info(JSON.stringify(todoAdded)),
+      default: () => T.unit
+    })
+  )
+)
 
 // ideal to process actions that need to happen on certain events
 // process only filtered events, events are guaranteed to be delivered in strong order
@@ -50,21 +62,22 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
       TodoRemoved: (todoRemoved) => logger.info(JSON.stringify(todoRemoved))
     })
   )
-);
+)
 
 // ideal for operations that care about all the events in the db
 // process all events, events are guaranteed to be delivered in strong order
 // within the same partition (namely aggregate root)
 // events of different root may appear out of order (especially in replay)
-const readAllDomainTodoAdded = domain.readAll(defaultConfig("read-todo-added-all-domain"))(
-  (match) =>
-    T.traverseArray(
-      match({
-        TodoAdded: (todoAdded) => logger.info(JSON.stringify(todoAdded)),
-        default: () => T.unit
-      })
-    )
-);
+const readAllDomainTodoAdded = domain.readAll(
+  defaultConfig("read-todo-added-all-domain")
+)((match) =>
+  T.traverseArray(
+    match({
+      TodoAdded: (todoAdded) => logger.info(JSON.stringify(todoAdded)),
+      default: () => T.unit
+    })
+  )
+)
 
 // ideal to process actions that need to happen on certain events across different aggregates
 // process only filtered events, events are guaranteed to be delivered in strong order
@@ -80,7 +93,7 @@ const readAllDomainOnlyTodoRemoved = domain.readOnly(
       TodoRemoved: (todoRemoved) => logger.info(JSON.stringify(todoRemoved))
     })
   )
-);
+)
 
 // provide env like you would normally do with ORM
 // keep in mind to include EventLog in your entities
@@ -100,7 +113,7 @@ export const main = bracketPool(
     .return(() => {
       //
     })
-);
+)
 
 export const liveMain = pipe(
   main,
@@ -109,4 +122,4 @@ export const liveMain = pipe(
   console.provideConsoleLoggerConfig(),
   T.provide(dbConfigLive),
   T.provide(liveFactory)
-);
+)

@@ -1,3 +1,4 @@
+/* eslint-disable import/order */
 import {
   Any,
   AnyArrayType,
@@ -152,7 +153,7 @@ import {
   unknown,
   void as v,
   voidType
-} from "io-ts";
+} from "io-ts"
 
 export {
   Any,
@@ -308,19 +309,20 @@ export {
   unknown,
   v as void,
   voidType
-};
+}
 
-import * as PR from "io-ts/lib/PathReporter";
-import * as R from "io-ts/lib/Reporter";
-import * as T from "io-ts/lib/Tree";
-import * as TR from "io-ts/lib/ThrowReporter";
-import * as G from "io-ts/lib/Guard";
-import * as E from "io-ts/lib/Encoder";
-import * as D from "io-ts/lib/Decoder";
-import * as C from "io-ts/lib/Codec";
-import * as S from "./schema";
+import * as C from "io-ts/lib/Codec"
+import * as D from "io-ts/lib/Decoder"
+import * as E from "io-ts/lib/Encoder"
+import * as G from "io-ts/lib/Guard"
+import * as PR from "io-ts/lib/PathReporter"
+import * as R from "io-ts/lib/Reporter"
+import * as TR from "io-ts/lib/ThrowReporter"
+import * as T from "io-ts/lib/Tree"
 
-export { PR, R, T, TR, S, G, E, D, C };
+import * as S from "./schema"
+
+export { PR, R, T, TR, S, G, E, D, C }
 
 import {
   BooleanFromString,
@@ -365,7 +367,7 @@ import {
   withFallback,
   withMessage,
   withValidate
-} from "./types";
+} from "./types"
 
 export {
   BooleanFromString,
@@ -410,4 +412,4 @@ export {
   withFallback,
   withMessage,
   withValidate
-};
+}

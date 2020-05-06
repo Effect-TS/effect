@@ -1,21 +1,22 @@
-import { dbT } from "@matechs/orm";
-import { Aggregate } from "./aggregate";
-import { createTable } from "./createTable";
-import { T, NEA } from "@matechs/prelude";
-import { Read } from "./read";
-import { ReadSideConfig } from "./config";
-import { DomainFetcher, DomainFetcherAll } from "./fetchSlice";
-import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union";
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
-import { matcher } from "./matcher";
+import { dbT } from "@matechs/orm"
+import { T, NEA } from "@matechs/prelude"
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
+import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
+
+import { Aggregate } from "./aggregate"
+import { ReadSideConfig } from "./config"
+import { createTable } from "./createTable"
+import { DomainFetcher, DomainFetcherAll } from "./fetchSlice"
+import { matcher } from "./matcher"
+import { Read } from "./read"
 
 // experimental alpha
 /* istanbul ignore file */
 
 export class Domain<
   Types extends {
-    [k in keyof Types]: [any, any];
+    [k in keyof Types]: [any, any]
   },
   Tag extends string,
   ProgURI extends ProgramURI,
@@ -23,36 +24,41 @@ export class Domain<
   Db extends symbol | string,
   Env
 > {
-  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db, Env>;
+  private readonly read: Read<Types, Tag, ProgURI, InterpURI, Db, Env>
 
   constructor(
     private readonly S: MorphADT<Types, Tag, ProgURI, InterpURI, Env>,
     private readonly dbURI: Db,
     private readonly db = dbT(dbURI)
   ) {
-    this.aggregate = this.aggregate.bind(this);
-    this.init = this.init.bind(this);
-    this.readAll = this.readAll.bind(this);
-    this.readOnly = this.readOnly.bind(this);
+    this.aggregate = this.aggregate.bind(this)
+    this.init = this.init.bind(this)
+    this.readAll = this.readAll.bind(this)
+    this.readOnly = this.readOnly.bind(this)
 
-    this.read = new Read(S, db);
+    this.read = new Read(S, db)
   }
 
   adt = {
     ...this.S,
     matchEffect: matcher(this.S)
-  };
+  }
 
-  aggregate<Keys extends NEA.NonEmptyArray<keyof Types>>(aggregate: string, eventTypes: Keys) {
-    return new Aggregate(aggregate, eventTypes, this.S, this.dbURI, this.db);
+  aggregate<Keys extends NEA.NonEmptyArray<keyof Types>>(
+    aggregate: string,
+    eventTypes: Keys
+  ) {
+    return new Aggregate(aggregate, eventTypes, this.S, this.dbURI, this.db)
   }
 
   init() {
-    return T.asUnit(createTable(this.db));
+    return T.asUnit(createTable(this.db))
   }
 
   readAll(config: ReadSideConfig) {
-    return this.read.readSideAll(config)(new DomainFetcherAll(this.S, this.db).fetchSlice());
+    return this.read.readSideAll(config)(
+      new DomainFetcherAll(this.S, this.db).fetchSlice()
+    )
   }
 
   readOnly(config: ReadSideConfig) {
@@ -60,6 +66,6 @@ export class Domain<
       this.read.readSide(config)(
         new DomainFetcher(this.S, eventTypes, this.db).fetchSlice(),
         eventTypes
-      );
+      )
   }
 }

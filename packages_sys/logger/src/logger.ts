@@ -1,12 +1,12 @@
-import { T, Service as F } from "@matechs/prelude";
+import { T, Service as F } from "@matechs/prelude"
 
-export const LoggerURI = "@matechs/logger/loggerURI";
+export const LoggerURI = "@matechs/logger/loggerURI"
 
 export interface Meta {
-  [k: string]: any;
+  [k: string]: any
 }
 
-export type LogFn = (message: string, meta?: Meta) => T.Sync<void>;
+export type LogFn = (message: string, meta?: Meta) => T.Sync<void>
 
 const loggerM_ = F.define({
   [LoggerURI]: {
@@ -18,13 +18,13 @@ const loggerM_ = F.define({
     warn: F.fn<LogFn>(),
     error: F.fn<LogFn>()
   }
-});
+})
 
 export interface Logger extends F.TypeOf<typeof loggerM_> {}
 
-export const Logger = F.opaque<Logger>()(loggerM_);
+export const Logger = F.opaque<Logger>()(loggerM_)
 
-export type Level = keyof Logger[typeof LoggerURI];
+export type Level = keyof Logger[typeof LoggerURI]
 
 export const severity: Record<Level, number> = {
   error: 0,
@@ -34,8 +34,8 @@ export const severity: Record<Level, number> = {
   verbose: 4,
   debug: 5,
   silly: 6
-};
+}
 
 export const {
-  [LoggerURI]: { silly, debug, verbose, http, info, warn, error }
-} = F.access(Logger);
+  [LoggerURI]: { debug, error, http, info, silly, verbose, warn }
+} = F.access(Logger)

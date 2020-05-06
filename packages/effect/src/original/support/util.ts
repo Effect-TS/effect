@@ -16,14 +16,14 @@
 
 // Some utilities
 export function tuple2<A, B>(a: A, b: B): readonly [A, B] {
-  return [a, b] as const;
+  return [a, b] as const
 }
 
 export function fst<A>(a: A): A {
   // eslint-disable-line no-unused-vars
-  return a;
+  return a
 }
 
 export function snd<A, B>(_: A, b: B): B {
-  return b;
+  return b
 }

@@ -1,47 +1,48 @@
-import {} from "@morphic-ts/batteries/lib/summoner-ESBAST";
-import {} from "@morphic-ts/batteries/lib/program";
-import {} from "@morphic-ts/batteries/lib/program-orderable";
+import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
+import {} from "@morphic-ts/batteries/lib/program"
+import {} from "@morphic-ts/batteries/lib/program-orderable"
 
-import Long from "long";
-import { T, M, pipe, E } from "@matechs/prelude";
-import { eventStoreTcpConnection, accessConfig, EventStoreError } from "./client";
-import { ResolvedEvent } from "node-eventstore-client";
+import { T, M, pipe, E } from "@matechs/prelude"
+import Long from "long"
+import { ResolvedEvent } from "node-eventstore-client"
+
+import { eventStoreTcpConnection, accessConfig, EventStoreError } from "./client"
 
 export interface DecodeError<E> {
-  type: "decode";
-  error: E;
+  type: "decode"
+  error: E
 }
 
 export interface ProcessError<E> {
-  type: "process";
-  error: E;
+  type: "process"
+  error: E
 }
 
 export interface OffsetError<E> {
-  type: "offset";
-  error: E;
+  type: "offset"
+  error: E
 }
 
 export interface ProviderError<E> {
-  type: "provider";
-  error: E;
+  type: "provider"
+  error: E
 }
 
-export type SubError<E, E2, E3> = DecodeError<E> | ProcessError<E2> | OffsetError<E3>;
+export type SubError<E, E2, E3> = DecodeError<E> | ProcessError<E2> | OffsetError<E3>
 
-export type ReadError<E, E2, E3, E4> = SubError<E, E2, E3> | ProviderError<E4>;
+export type ReadError<E, E2, E3, E4> = SubError<E, E2, E3> | ProviderError<E4>
 
 export interface OffsetStore<S1, S2, R, E, R2, E2> {
-  set: (readId: string, streamId: string, offset: bigint) => T.Effect<S1, R, E, void>;
-  get: (readId: string, streamId: string) => T.Effect<S2, R2, E2, bigint>;
+  set: (readId: string, streamId: string, offset: bigint) => T.Effect<S1, R, E, void>
+  get: (readId: string, streamId: string) => T.Effect<S2, R2, E2, bigint>
 }
 
-export const esMetaURI = "@matechs/cqrs-es/esMetaURI";
+export const esMetaURI = "@matechs/cqrs-es/esMetaURI"
 
 export interface ESMeta {
   [esMetaURI]: {
-    raw: ResolvedEvent;
-  };
+    raw: ResolvedEvent
+  }
 }
 
 export const readEvents = (readId: string) => (streamId: string) => <S, R, E, A>(
@@ -62,7 +63,11 @@ export const readEvents = (readId: string) => (streamId: string) => <S, R, E, A>
 ) =>
   M.use(eventStoreTcpConnection, (connection) =>
     pipe(
-      T.sequenceT(accessConfig, store.get(readId, streamId), T.accessEnvironment<R & RF>()),
+      T.sequenceT(
+        accessConfig,
+        store.get(readId, streamId),
+        T.accessEnvironment<R & RF>()
+      ),
       T.chain(([config, from, r]) =>
         T.async<EventStoreError | ReadError<E, E2, OE, EF>, never>((done) => {
           const subscription = connection.subscribeToStreamFrom(
@@ -114,9 +119,9 @@ export const readEvents = (readId: string) => (streamId: string) => <S, R, E, A>
                     ),
                     T.provide(r)
                   )
-                );
+                )
               } else {
-                return Promise.resolve();
+                return Promise.resolve()
               }
             },
             () => {
@@ -131,25 +136,27 @@ export const readEvents = (readId: string) => (streamId: string) => <S, R, E, A>
                         type: "EventStoreError",
                         message: error["message"]
                       })
-                );
+                )
               } else {
                 done(
                   E.left<EventStoreError>({
                     type: "EventStoreError",
                     message: _reason
                   })
-                );
+                )
               }
             },
             config.settings.defaultUserCredentials
-          );
+          )
 
           return () => {
-            subscription.stop();
-          };
+            subscription.stop()
+          }
         })
       )
     )
-  );
+  )
 
-export const offsetStore = <S1, S2, R, E, R2, E2>(_: OffsetStore<S1, S2, R, E, R2, E2>) => _;
+export const offsetStore = <S1, S2, R, E, R2, E2>(
+  _: OffsetStore<S1, S2, R, E, R2, E2>
+) => _

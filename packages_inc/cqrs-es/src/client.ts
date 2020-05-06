@@ -1,47 +1,51 @@
-import client from "node-eventstore-client";
-import Long from "long";
-import { EventMetaHidden, metaURI } from "@matechs/cqrs";
-import { T, M, pipe, E } from "@matechs/prelude";
+import { EventMetaHidden, metaURI } from "@matechs/cqrs"
+import { T, M, pipe, E } from "@matechs/prelude"
+import Long from "long"
+import client from "node-eventstore-client"
 
-export const eventStoreURI = "@matechs/cqrs-es/eventStoreURI";
+export const eventStoreURI = "@matechs/cqrs-es/eventStoreURI"
 
 export interface EventStoreConfig {
   [eventStoreURI]: {
-    settings: client.ConnectionSettings;
-    endPointOrGossipSeed: string | client.TcpEndPoint | client.GossipSeed[];
-    connectionName?: string | undefined;
-  };
+    settings: client.ConnectionSettings
+    endPointOrGossipSeed: string | client.TcpEndPoint | client.GossipSeed[]
+    connectionName?: string | undefined
+  }
 }
 
-export const accessConfig = T.access((r: EventStoreConfig) => r[eventStoreURI]);
+export const accessConfig = T.access((r: EventStoreConfig) => r[eventStoreURI])
 
 export const eventStoreTcpConnection = M.bracket(
   pipe(
     accessConfig,
-    T.chain(({ endPointOrGossipSeed, settings, connectionName }) =>
+    T.chain(({ connectionName, endPointOrGossipSeed, settings }) =>
       T.async<EventStoreError, client.EventStoreNodeConnection>((r) => {
-        const conn = client.createConnection(settings, endPointOrGossipSeed, connectionName);
+        const conn = client.createConnection(
+          settings,
+          endPointOrGossipSeed,
+          connectionName
+        )
 
         conn
           .connect()
           .then(() => {
-            r(E.right(conn));
+            r(E.right(conn))
           })
           .catch((e) => {
-            r(E.left({ type: "EventStoreError", message: e.message }));
-          });
+            r(E.left({ type: "EventStoreError", message: e.message }))
+          })
 
         return () => {
-          conn.close();
-        };
+          conn.close()
+        }
       })
     )
   ),
   (c) =>
     T.sync(() => {
-      c.close();
+      c.close()
     })
-);
+)
 
 export const sendEventToEventStore = (event: EventStoreEvent) => (
   connection: client.EventStoreNodeConnection
@@ -55,58 +59,63 @@ export const sendEventToEventStore = (event: EventStoreEvent) => (
     connection.appendToStream(
       event.streamId,
       Long.fromString(event.expectedStreamVersion.toString(10), false, 10),
-      client.createJsonEventData(event.eventId, event.data, event.eventMetadata, event.eventType)
+      client.createJsonEventData(
+        event.eventId,
+        event.data,
+        event.eventMetadata,
+        event.eventType
+      )
     )
-  );
+  )
 
 export interface EventStoreEvent {
-  streamId: string;
-  eventId: string;
-  expectedStreamVersion: bigint;
-  eventType: string;
-  eventMetadata: {};
-  data: {};
+  streamId: string
+  eventId: string
+  expectedStreamVersion: bigint
+  eventType: string
+  eventMetadata: {}
+  data: {}
 }
 
 export interface EventStoreAggregateEventMetadata {
-  createdAt: string;
-  aggregate: string;
-  root: string;
-  sequence: string;
+  createdAt: string
+  aggregate: string
+  root: string
+  sequence: string
 }
 
 export interface EventStoreError {
-  type: "EventStoreError";
-  message: string;
+  type: "EventStoreError"
+  message: string
 }
 
 export const adaptEvent = <T>(event: T & EventMetaHidden): EventStoreEvent => {
-  const esE = {} as EventStoreEvent;
+  const esE = {} as EventStoreEvent
 
   esE.data = {
     ...event
-  };
+  }
 
-  delete esE.data[metaURI];
+  delete esE.data[metaURI]
 
-  esE.eventId = event[metaURI].id;
+  esE.eventId = event[metaURI].id
 
-  esE.eventType = event[metaURI].kind;
+  esE.eventType = event[metaURI].kind
 
-  esE.streamId = `${event[metaURI].aggregate}-${event[metaURI].root}`;
+  esE.streamId = `${event[metaURI].aggregate}-${event[metaURI].root}`
 
-  esE.expectedStreamVersion = BigInt(event[metaURI].sequence) - BigInt(1);
+  esE.expectedStreamVersion = BigInt(event[metaURI].sequence) - BigInt(1)
 
   esE.eventMetadata = {
     createdAt: event[metaURI].createdAt,
     aggregate: event[metaURI].aggregate,
     root: event[metaURI].root,
     sequence: BigInt(event[metaURI].sequence).toString(10)
-  } as EventStoreAggregateEventMetadata;
+  } as EventStoreAggregateEventMetadata
 
-  return esE;
-};
+  return esE
+}
 
 export const sendEvent = (connection: client.EventStoreNodeConnection) => <T>(
   event: T & EventMetaHidden
-) => T.asUnit(sendEventToEventStore(adaptEvent(event))(connection));
+) => T.asUnit(sendEventToEventStore(adaptEvent(event))(connection))

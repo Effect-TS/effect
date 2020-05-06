@@ -1,53 +1,57 @@
-import { Span, SpanOptions, Tracer as OT } from "opentracing";
-import { T, Service as F } from "@matechs/prelude";
-import { withTracer, withControllerSpan } from "../src";
-import * as TR from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
+import * as assert from "assert"
 
-import * as assert from "assert";
+import { T, Service as F } from "@matechs/prelude"
+import { pipe } from "fp-ts/lib/pipeable"
+import { Span, SpanOptions, Tracer as OT } from "opentracing"
 
-const URI: unique symbol = Symbol();
+import { withTracer, withControllerSpan } from "../src"
+import * as TR from "../src"
+
+const URI: unique symbol = Symbol()
 
 const m = F.define({
   [URI]: {
     shouldTrace: F.cn<T.Sync<void>>()
   }
-});
+})
 
 const i = F.implement(m)({
   [URI]: {
     shouldTrace: T.unit
   }
-});
+})
 
 class MockTracer extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
-    super();
+    super()
   }
   startSpan(name: string, options?: SpanOptions): Span {
-    this.spans.push({ name, options: options || {} });
+    this.spans.push({ name, options: options || {} })
 
-    return super.startSpan(name, options);
+    return super.startSpan(name, options)
   }
 }
 
 const {
   [URI]: { shouldTrace }
-} = TR.free.access(m);
+} = TR.free.access(m)
 
-const program = pipe(withTracer(withControllerSpan("my program", "main")(shouldTrace)), i);
+const program = pipe(
+  withTracer(withControllerSpan("my program", "main")(shouldTrace)),
+  i
+)
 
 describe("Trace Free", () => {
   it("trace access", async () => {
-    const spans: any[] = [];
-    const mockT = new MockTracer(spans);
-    const tracer = TR.tracer(T.pure(mockT));
+    const spans: any[] = []
+    const mockT = new MockTracer(spans)
+    const tracer = TR.tracer(T.pure(mockT))
 
-    await T.runToPromiseExit(pipe(program, T.provide(tracer)));
+    await T.runToPromiseExit(pipe(program, T.provide(tracer)))
 
     assert.deepStrictEqual(
       spans.map((s) => s.name),
       ["main", "shouldTrace"]
-    );
-  });
-});
+    )
+  })
+})

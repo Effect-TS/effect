@@ -1,12 +1,13 @@
-import { T, E, pipe, record as R, O, F } from "@matechs/prelude";
-import * as H from "@matechs/http-client";
-import * as C from "node-libcurl";
-import path from "path";
-import querystring, { ParsedQuery } from "query-string";
+import path from "path"
+
+import * as H from "@matechs/http-client"
+import { T, E, pipe, record as R, O, F } from "@matechs/prelude"
+import * as C from "node-libcurl"
+import querystring, { ParsedQuery } from "query-string"
 
 export const libcurl: (_?: {
-  caPath?: string;
-  requestTransformer?: F.Endomorphism<C.Curl>;
+  caPath?: string
+  requestTransformer?: F.Endomorphism<C.Curl>
 }) => H.Http = (_ = {}) => ({
   [H.httpEnv]: {
     request: (
@@ -36,9 +37,9 @@ export const libcurl: (_?: {
                 "../cacert-2019-11-27.pem"
               ),
               requestTransformer = F.identity
-            } = _;
+            } = _
 
-            const req = new C.Curl();
+            const req = new C.Curl()
             const reqHead = [
               ...H.foldRequestType(
                 requestType,
@@ -51,20 +52,20 @@ export const libcurl: (_?: {
                 headers,
                 R.collect((k, v) => `${k}: ${v}`)
               )
-            ];
+            ]
 
-            requestTransformer(req);
+            requestTransformer(req)
 
-            req.setOpt("URL", url);
-            req.setOpt("CAINFO", caPath);
-            req.setOpt("FOLLOWLOCATION", 1);
-            req.setOpt("VERBOSE", 0);
-            req.setOpt("SSL_VERIFYHOST", 2);
-            req.setOpt("SSL_VERIFYPEER", 1);
+            req.setOpt("URL", url)
+            req.setOpt("CAINFO", caPath)
+            req.setOpt("FOLLOWLOCATION", 1)
+            req.setOpt("VERBOSE", 0)
+            req.setOpt("SSL_VERIFYHOST", 2)
+            req.setOpt("SSL_VERIFYPEER", 1)
 
-            req.setOpt(C.Curl.option.HTTPHEADER, reqHead);
+            req.setOpt(C.Curl.option.HTTPHEADER, reqHead)
 
-            customReq(H.getMethodAsString(method), req, requestType, body);
+            customReq(H.getMethodAsString(method), req, requestType, body)
 
             req
               .on("error", (error) => {
@@ -73,7 +74,7 @@ export const libcurl: (_?: {
                     _tag: H.HttpErrorReason.Request,
                     error
                   })
-                );
+                )
               })
               .on("end", (statusCode, body, headers) => {
                 if (statusCode >= 200 && statusCode < 300) {
@@ -107,28 +108,33 @@ export const libcurl: (_?: {
                               response: getResponse(statusCode, "not a buffer", headers)
                             })
                           )
-                  );
+                  )
                 } else {
                   done(
                     E.left({
                       _tag: H.HttpErrorReason.Response,
                       response: getResponse(statusCode, body.toString(), headers)
                     })
-                  );
+                  )
                 }
-              });
+              })
 
-            req.perform();
+            req.perform()
 
             return (cb) => {
-              req.close();
-              cb();
-            };
+              req.close()
+              cb()
+            }
           })
   }
-});
+})
 
-function customReq(method: string, req: C.Curl, requestType: H.RequestType, body?: unknown): void {
+function customReq(
+  method: string,
+  req: C.Curl,
+  requestType: H.RequestType,
+  body?: unknown
+): void {
   if (body) {
     req.setOpt(
       C.Curl.option.POSTFIELDS,
@@ -139,10 +145,10 @@ function customReq(method: string, req: C.Curl, requestType: H.RequestType, body
         () => querystring.stringify(body as ParsedQuery<string | number | boolean>),
         () => (body as Buffer).toString("utf-8")
       )
-    );
+    )
   }
 
-  req.setOpt(C.Curl.option.CUSTOMREQUEST, method);
+  req.setOpt(C.Curl.option.CUSTOMREQUEST, method)
 }
 
 function getResponse<A>(
@@ -154,10 +160,10 @@ function getResponse<A>(
     status: statusCode,
     body: O.fromNullable(body),
     headers: getHeaders(headers)
-  };
+  }
 }
 
 function getHeaders(headers: Buffer | C.HeaderInfo[]): C.HeaderInfo {
   /* istanbul ignore next */
-  return headers.length > 0 ? (typeof headers[0] !== "number" ? headers[0] : {}) : {};
+  return headers.length > 0 ? (typeof headers[0] !== "number" ? headers[0] : {}) : {}
 }

@@ -1,7 +1,9 @@
-import { T, U, pipe } from "@matechs/prelude";
-import * as P from "./Printer";
-import * as C from "./Counter";
-import { withControllerSpan, withTracer, tracer } from "../../src";
+import { T, U, pipe } from "@matechs/prelude"
+
+import { withControllerSpan, withTracer, tracer } from "../../src"
+
+import * as C from "./Counter"
+import * as P from "./Printer"
 
 export const program = withTracer(
   withControllerSpan(
@@ -14,17 +16,17 @@ export const program = withTracer(
         .do(C.count())
         .do(C.count())
         .bind("end", C.currentCount())
-        .doL(({ start, end }) => P.print(`done - ${start} <-> ${end}`))
+        .doL(({ end, start }) => P.print(`done - ${start} <-> ${end}`))
         .done(),
       C.counterState
     )
   )
-);
+)
 
 export const env: U.Env<typeof program> = {
   ...P.printer,
   ...C.counter,
   ...tracer()
-};
+}
 
-export const main = pipe(program, T.provide(env));
+export const main = pipe(program, T.provide(env))

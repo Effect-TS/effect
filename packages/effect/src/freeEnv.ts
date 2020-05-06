@@ -1,8 +1,9 @@
-import * as T from "./effect";
-import * as D from "./defs";
-import { function as F, pipeable as P } from "fp-ts";
-import { FunctionN } from "fp-ts/lib/function";
-import { Managed, use } from "./managed";
+import { function as F, pipeable as P } from "fp-ts"
+import { FunctionN } from "fp-ts/lib/function"
+
+import * as D from "./defs"
+import * as T from "./effect"
+import { Managed, use } from "./managed"
 
 export type Patched<A, B> = B extends F.FunctionN<
   infer ARG,
@@ -15,61 +16,61 @@ export type Patched<A, B> = B extends F.FunctionN<
   ? D.Effect<S, R, E, RET> extends B
     ? D.Effect<S, R & A, E, RET>
     : never
-  : never;
+  : never
 
 export type Derived<A extends ModuleShape<A>> = {
   [k in keyof A]: {
-    [h in keyof A[k]]: Patched<A, A[k][h]>;
-  };
-};
+    [h in keyof A[k]]: Patched<A, A[k][h]>
+  }
+}
 
 export function access<A extends ModuleShape<A>>(sp: ModuleSpec<A>): Derived<A> {
-  const derived = {} as any;
-  const a = sp[specURI] as any;
+  const derived = {} as any
+  const a = sp[specURI] as any
 
   for (const s of Reflect.ownKeys(a)) {
-    derived[s] = {};
+    derived[s] = {}
 
     for (const k of Object.keys(a[s])) {
       if (typeof a[s][k] === "function") {
-        derived[s][k] = (...args: any[]) => T.accessM((r: any) => r[s][k](...args));
+        derived[s][k] = (...args: any[]) => T.accessM((r: any) => r[s][k](...args))
       } else {
-        derived[s][k] = T.accessM((r: any) => r[s][k]);
+        derived[s][k] = T.accessM((r: any) => r[s][k])
       }
     }
   }
 
-  return derived;
+  return derived
 }
 
 export type ModuleShape<M> = {
   [k in keyof M]: {
     [h in Exclude<keyof M[k], symbol>]:
       | F.FunctionN<any, D.Effect<any, any, any, any>>
-      | D.Effect<any, any, any, any>;
+      | D.Effect<any, any, any, any>
   } &
     {
-      [h in Extract<keyof M[k], symbol>]: never;
-    };
-};
+      [h in Extract<keyof M[k], symbol>]: never
+    }
+}
 
-export const specURI = "@matechs/effect/freeEnv/specURI";
+export const specURI = "@matechs/effect/freeEnv/specURI"
 
 export interface ModuleSpec<M> {
-  [specURI]: ModuleShape<M>;
+  [specURI]: ModuleShape<M>
 }
 
 export function define<T extends ModuleShape<T>>(m: T): ModuleSpec<T> {
-  return { [specURI]: m };
+  return { [specURI]: m }
 }
 
 export function cn<T extends D.Effect<any, any, any, any>>(): T {
-  return {} as T;
+  return {} as T
 }
 
 export function fn<T extends F.FunctionN<any, D.Effect<any, any, any, any>>>(): T {
-  // tslint:disable-next-line: no-empty
-  return (() => {}) as any;
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  return (() => {}) as any
 }
 
 export type Implementation<M> = {
@@ -85,21 +86,24 @@ export type Implementation<M> = {
       ? unknown extends _S
         ? D.Effect<any, any, E, A>
         : T.SyncRE<any, E, A>
-      : never;
-  };
-};
+      : never
+  }
+}
 
 export type InferR<F> = F extends (...args: any[]) => T.Effect<any, infer Q, any, any>
   ? Q
   : F extends T.Effect<any, infer Q, any, any>
   ? Q
-  : never;
+  : never
 
-type EnvOf<F> = F extends F.FunctionN<infer _ARG, T.Effect<infer _S, infer R, infer _E, infer _A>>
+type EnvOf<F> = F extends F.FunctionN<
+  infer _ARG,
+  T.Effect<infer _S, infer R, infer _E, infer _A>
+>
   ? R
   : F extends T.Effect<infer _S, infer R, infer _E, infer _A>
   ? R
-  : never;
+  : never
 
 type OnlyNew<M extends ModuleShape<M>, I extends Implementation<M>> = {
   [k in keyof I & keyof M]: {
@@ -110,9 +114,9 @@ type OnlyNew<M extends ModuleShape<M>, I extends Implementation<M>> = {
       ? F.FunctionN<ARG, T.Effect<S, R, E, A>>
       : I[k][h] extends T.Effect<infer S, infer R & EnvOf<M[k][h]>, infer E, infer A>
       ? T.Effect<S, R, E, A>
-      : never;
-  };
-};
+      : never
+  }
+}
 
 export type ImplementationEnv<I> = UnionToIntersection<
   {
@@ -127,38 +131,38 @@ export type ImplementationEnv<I> = UnionToIntersection<
         ? unknown extends R
           ? never
           : R
-        : never;
-    }[keyof I[k]];
+        : never
+    }[keyof I[k]]
   }[keyof I]
->;
+>
 
 export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   k: infer I
 ) => void
   ? I
-  : never;
+  : never
 
 export function providing<
   M extends ModuleShape<M>,
   S extends ModuleSpec<M>,
   I extends Implementation<M>
 >(s: S, a: I, env: ImplementationEnv<OnlyNew<M, I>>): TypeOf<S> {
-  const r = {} as any;
+  const r = {} as any
 
   for (const sym of Reflect.ownKeys((s as any)[specURI])) {
-    r[sym] = {};
+    r[sym] = {}
 
     for (const entry of Object.keys((s as any)[specURI][sym])) {
       if (typeof (a as any)[sym][entry] === "function") {
         r[sym][entry] = (...args: any[]) =>
-          T.provide(env, "inverted")((a as any)[sym][entry](...args));
+          T.provide(env, "inverted")((a as any)[sym][entry](...args))
       } else if (typeof (a as any)[sym][entry] === "object") {
-        r[sym][entry] = T.provide(env, "inverted")((a as any)[sym][entry]);
+        r[sym][entry] = T.provide(env, "inverted")((a as any)[sym][entry])
       }
     }
   }
 
-  return r;
+  return r
 }
 
 export function implement<S extends ModuleSpec<any>>(
@@ -170,46 +174,55 @@ export function implement<S extends ModuleSpec<any>>(
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       P.pipe(eff, T.provide(providing(s, i, e), inverted))
-    );
+    )
 }
 
 export function implementWith<SW, RW, EW, AW>(w: D.Effect<SW, RW, EW, AW>) {
-  return <S extends ModuleSpec<any>>(s: S, inverted: "regular" | "inverted" = "regular") => <
-    I extends Implementation<TypeOf<S>>
-  >(
+  return <S extends ModuleSpec<any>>(
+    s: S,
+    inverted: "regular" | "inverted" = "regular"
+  ) => <I extends Implementation<TypeOf<S>>>(
     i: (r: AW) => I
-  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (eff) =>
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (
+    eff
+  ) =>
     T.effect.chain(w, (r) =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
         P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )
-    );
+    )
 }
 
 export function implementWithM<SW, RW, EW, AW>(w: Managed<SW, RW, EW, AW>) {
-  return <S extends ModuleSpec<any>>(s: S, inverted: "regular" | "inverted" = "regular") => <
-    I extends Implementation<TypeOf<S>>
-  >(
+  return <S extends ModuleSpec<any>>(
+    s: S,
+    inverted: "regular" | "inverted" = "regular"
+  ) => <I extends Implementation<TypeOf<S>>>(
     i: (r: AW) => I
-  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (eff) =>
+  ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (
+    eff
+  ) =>
     use(w, (r) =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
         P.pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )
-    );
+    )
 }
 
 export function instance<M extends ModuleShape<M>, S extends ModuleSpec<M>>(_: S) {
-  return (m: TypeOf<S>) => m;
+  return (m: TypeOf<S>) => m
 }
 
 export type MergeSpec<S> = {
-  [k in keyof S]: ModuleSpec<any>;
-};
+  [k in keyof S]: ModuleSpec<any>
+}
 
-export type ExtractShape<M> = M extends ModuleShape<infer A> ? A : never;
-export type TypeOf<M> = M extends ModuleSpec<infer A> ? A : never;
+export type ExtractShape<M> = M extends ModuleShape<infer A> ? A : never
+export type TypeOf<M> = M extends ModuleSpec<infer A> ? A : never
 
-export const opaque = <A extends ModuleShape<A>>() => <B extends A, S extends ModuleSpec<B>>(
+export const opaque = <A extends ModuleShape<A>>() => <
+  B extends A,
+  S extends ModuleSpec<B>
+>(
   _: S
-): ModuleSpec<A> => _;
+): ModuleSpec<A> => _

@@ -1,7 +1,8 @@
-import * as assert from "assert";
+import * as assert from "assert"
 
-import { Do } from "fp-ts-contrib/lib/Do";
-import { queue as Q, effect as T } from "../src";
+import { Do } from "fp-ts-contrib/lib/Do"
+
+import { queue as Q, effect as T } from "../src"
 
 describe("QueueSafe", () => {
   it("should use unbounded queue", async () => {
@@ -13,12 +14,12 @@ describe("QueueSafe", () => {
       .bindL("a", ({ queue }) => queue.take)
       .bindL("b", ({ queue }) => queue.take)
       .bindL("c", ({ queue }) => queue.take)
-      .return(({ a, b, c }) => a + b + c);
+      .return(({ a, b, c }) => a + b + c)
 
-    const result = await T.runToPromise(program);
+    const result = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 3);
-  });
+    assert.deepStrictEqual(result, 3)
+  })
 
   it("should use bounded queue", async () => {
     const program = Do(T.effect)
@@ -29,12 +30,12 @@ describe("QueueSafe", () => {
       .bindL("a", ({ queue }) => queue.take)
       .bindL("b", ({ queue }) => queue.take)
       .bindL("c", ({ queue }) => queue.take)
-      .return(({ a, b, c }) => a + b + c);
+      .return(({ a, b, c }) => a + b + c)
 
-    const result = await T.runToPromise(program);
+    const result = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 3);
-  });
+    assert.deepStrictEqual(result, 3)
+  })
 
   it("should use dropping queue", async () => {
     const program = Do(T.effect)
@@ -45,12 +46,12 @@ describe("QueueSafe", () => {
       .bindL("a", ({ queue }) => queue.take)
       .bindL("b", ({ queue }) => queue.take)
       .bindL("c", ({ queue }) => queue.take)
-      .return(({ a, b, c }) => a + b + c);
+      .return(({ a, b, c }) => a + b + c)
 
-    const result = await T.runToPromise(program);
+    const result = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 3);
-  });
+    assert.deepStrictEqual(result, 3)
+  })
 
   it("should use dropping queue - 2", async () => {
     const program = Do(T.effect)
@@ -60,12 +61,12 @@ describe("QueueSafe", () => {
       .doL(({ queue }) => queue.offer(1))
       .bindL("a", ({ queue }) => queue.take)
       .bindL("b", ({ queue }) => queue.take)
-      .return(({ a, b }) => a + b);
+      .return(({ a, b }) => a + b)
 
-    const result = await T.runToPromise(program);
+    const result = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 3);
-  });
+    assert.deepStrictEqual(result, 3)
+  })
 
   it("should use sliding queue", async () => {
     const program = Do(T.effect)
@@ -76,12 +77,12 @@ describe("QueueSafe", () => {
       .bindL("a", ({ queue }) => queue.take)
       .bindL("b", ({ queue }) => queue.take)
       .bindL("c", ({ queue }) => queue.take)
-      .return(({ a, b, c }) => a + b + c);
+      .return(({ a, b, c }) => a + b + c)
 
-    const result = await T.runToPromise(program);
+    const result = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 3);
-  });
+    assert.deepStrictEqual(result, 3)
+  })
 
   it("should use sliding queue - 2", async () => {
     const program = Do(T.effect)
@@ -91,10 +92,10 @@ describe("QueueSafe", () => {
       .doL(({ queue }) => queue.offer(2))
       .bindL("a", ({ queue }) => queue.take)
       .bindL("b", ({ queue }) => queue.take)
-      .return(({ a, b }) => a + b);
+      .return(({ a, b }) => a + b)
 
-    const result = await T.runToPromise(program);
+    const result = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 3);
-  });
-});
+    assert.deepStrictEqual(result, 3)
+  })
+})

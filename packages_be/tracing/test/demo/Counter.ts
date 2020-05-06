@@ -1,18 +1,20 @@
-import { T, A, pipe } from "@matechs/prelude";
-import { print, Printer } from "./Printer";
-import { withChildSpan } from "../../src";
+import { T, A, pipe } from "@matechs/prelude"
 
-export const CounterState: unique symbol = Symbol();
+import { withChildSpan } from "../../src"
+
+import { print, Printer } from "./Printer"
+
+export const CounterState: unique symbol = Symbol()
 
 export interface CounterState {
   [CounterState]: {
-    ref: number;
-    increment(): T.SyncR<CounterState, void>;
-  };
+    ref: number
+    increment(): T.SyncR<CounterState, void>
+  }
 }
 
 export function currentCount() {
-  return T.accessM(({ [CounterState]: counter }: CounterState) => T.pure(counter.ref));
+  return T.accessM(({ [CounterState]: counter }: CounterState) => T.pure(counter.ref))
 }
 
 export const counterState = T.provideM(
@@ -23,21 +25,21 @@ export const counterState = T.provideM(
         increment() {
           return T.accessM((s: CounterState) =>
             T.sync(() => {
-              s[CounterState].ref += 1;
+              s[CounterState].ref += 1
             })
-          );
+          )
         }
       }
     })
   )
-);
+)
 
-export const Counter: unique symbol = Symbol();
+export const Counter: unique symbol = Symbol()
 
 export interface Counter {
   [Counter]: {
-    count(): T.SyncRE<Printer & CounterState, Error, void[]>;
-  };
+    count(): T.SyncRE<Printer & CounterState, Error, void[]>
+  }
 }
 
 export const counter: Counter = {
@@ -50,17 +52,18 @@ export const counter: Counter = {
             .do(increment())
             .bind("count", withChildSpan("span-current-count")(currentCount()))
             .doL(({ count }) => print(`n: ${n} (${count})`))
+            // eslint-disable-next-line @typescript-eslint/no-empty-function
             .return(() => {})
         )
-      );
+      )
     }
   }
-};
+}
 
 export function increment(): T.SyncR<CounterState, void> {
-  return T.accessM(({ [CounterState]: counter }: CounterState) => counter.increment());
+  return T.accessM(({ [CounterState]: counter }: CounterState) => counter.increment())
 }
 
 export function count(): T.SyncRE<Counter & Printer & CounterState, Error, void[]> {
-  return T.accessM(({ [Counter]: counter }: Counter) => counter.count());
+  return T.accessM(({ [Counter]: counter }: Counter) => counter.count())
 }

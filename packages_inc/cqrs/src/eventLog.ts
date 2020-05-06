@@ -1,5 +1,5 @@
-import { Column, Entity, PrimaryColumn } from "typeorm";
-import { Type } from "class-transformer";
+import { Type } from "class-transformer"
+import { Column, Entity, PrimaryColumn } from "typeorm"
 
 // experimental alpha
 /* istanbul ignore file */
@@ -9,39 +9,39 @@ import { Type } from "class-transformer";
 })
 export class EventLog {
   @PrimaryColumn("uuid")
-  id: string;
+  id: string
 
   @Column("jsonb")
-  event: {};
+  event: {}
 
   @Column("text")
-  kind: string;
+  kind: string
 
   @Column("bigint")
-  sequence: string;
+  sequence: string
 
   @Column({
     type: "text",
     name: "sequence_id"
   })
-  sequenceId: string;
+  sequenceId: string
 
   @Column("text")
-  aggregate: string;
+  aggregate: string
 
   @Column("text")
-  root: string;
+  root: string
 
   @Column({
     type: "timestamp",
     name: "created_at"
   })
   @Type(() => Date)
-  createdAt: Date;
+  createdAt: Date
 
   @Column("jsonb")
-  offsets: {};
+  offsets: {}
 
   @Column("jsonb")
-  meta: {};
+  meta: {}
 }

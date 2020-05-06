@@ -1,32 +1,37 @@
-import * as T from "../src/effect";
-import { Do } from "fp-ts-contrib/lib/Do";
-import * as assert from "assert";
-import { array } from "fp-ts/lib/Array";
-import { pipe } from "fp-ts/lib/pipeable";
+import * as assert from "assert"
 
-const foo: unique symbol = Symbol();
-const bar: unique symbol = Symbol();
+import { Do } from "fp-ts-contrib/lib/Do"
+import { array } from "fp-ts/lib/Array"
+import { pipe } from "fp-ts/lib/pipeable"
+
+import * as T from "../src/effect"
+
+const foo: unique symbol = Symbol()
+const bar: unique symbol = Symbol()
 
 interface TestEnv {
-  [foo]: string;
+  [foo]: string
 }
 
 interface TestEnv2 {
-  [bar]: string;
+  [bar]: string
 }
 
 describe("Env", () => {
   it("merge env", async () => {
-    const program = T.accessM(({ [foo]: fooS, [bar]: barS }: TestEnv & TestEnv2) =>
+    const program = T.accessM(({ [bar]: barS, [foo]: fooS }: TestEnv & TestEnv2) =>
       T.sync(() => `${fooS}-${barS}`)
-    );
+    )
 
     const result = await T.runToPromise(
-      pipe(program, T.provide<TestEnv & TestEnv2>({ [foo]: "foo", [bar]: "bar" }))
-    );
+      pipe(
+        program,
+        T.provide<TestEnv & TestEnv2>({ [foo]: "foo", [bar]: "bar" })
+      )
+    )
 
-    assert.deepStrictEqual(result, "foo-bar");
-  });
+    assert.deepStrictEqual(result, "foo-bar")
+  })
   it("env should work", async () => {
     const res = await T.runToPromise(
       Do(T.effect)
@@ -42,10 +47,10 @@ describe("Env", () => {
           T.provide<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
         )
         .return((s) => `${s.a} - ${s.b}`)
-    );
+    )
 
-    assert.deepStrictEqual(res, "a - b");
-  });
+    assert.deepStrictEqual(res, "a - b")
+  })
 
   it("env should work - par", async () => {
     const res = await T.runToPromise(
@@ -58,8 +63,8 @@ describe("Env", () => {
         ),
         T.provide<TestEnv>({ [foo]: "b" })(T.access(({ [foo]: s }: TestEnv) => s))
       ])
-    );
+    )
 
-    assert.deepStrictEqual(res.join(" - "), "a - b");
-  });
-});
+    assert.deepStrictEqual(res.join(" - "), "a - b")
+  })
+})

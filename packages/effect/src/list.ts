@@ -1,31 +1,32 @@
-import * as _ from "./effect";
-import { option as O } from "fp-ts";
+import { option as O } from "fp-ts"
+
+import * as _ from "./effect"
 
 /**
  * Implements a basic FIFO list
  */
 
 export interface NonEmptyList<A> {
-  first: Node<A>;
-  last: Node<A>;
+  first: Node<A>
+  last: Node<A>
 }
 
 export interface List<A> {
-  first: null | Node<A>;
-  last: null | Node<A>;
+  first: null | Node<A>
+  last: null | Node<A>
 }
 
 interface Node<A> {
-  a: A;
-  prev: Node<A>;
-  next: Node<A>;
+  a: A
+  prev: Node<A>
+  next: Node<A>
 }
 
 function singleNode<A>(a: A): Node<A> {
-  const l: Node<A> = { a, prev: null, next: null } as any;
-  l.prev = l;
-  l.next = l;
-  return l;
+  const l: Node<A> = { a, prev: null, next: null } as any
+  l.prev = l
+  l.next = l
+  return l
 }
 
 /**
@@ -33,16 +34,16 @@ function singleNode<A>(a: A): Node<A> {
  */
 export function push<A>(list: List<A>, a: A) {
   if (isNotEmpty(list)) {
-    const last = list.last;
-    const first = list.first;
-    const newLast: Node<A> = { a, next: first, prev: last };
-    last.next = newLast;
-    first.prev = newLast;
-    list.last = newLast;
+    const { last } = list
+    const { first } = list
+    const newLast: Node<A> = { a, next: first, prev: last }
+    last.next = newLast
+    first.prev = newLast
+    list.last = newLast
   } else {
-    const l = singleNode(a);
-    list.first = l;
-    list.last = l;
+    const l = singleNode(a)
+    list.first = l
+    list.last = l
   }
 }
 
@@ -50,40 +51,40 @@ export function push<A>(list: List<A>, a: A) {
  * Creates an empty List
  */
 export function empty<A>(): List<A> {
-  return { first: null, last: null };
+  return { first: null, last: null }
 }
 
 /**
  * Indicates if a List is a singleton
  */
 function isSingleton<A>(list: List<A>): boolean {
-  return list.first === list.last && isNotEmpty(list);
+  return list.first === list.last && isNotEmpty(list)
 }
 
 /**
  * Indicates if a List is not empty
  */
 export function isNotEmpty<A>(list: List<A>): list is NonEmptyList<A> {
-  return list.first !== null;
+  return list.first !== null
 }
 
 /**
  * Pops the first element of a List (A | null)
  */
 export function popUnsafe<A>(list: List<A>): A | null {
-  const first = list.first;
+  const { first } = list
   if (first) {
     if (isSingleton(list)) {
-      list.first = null;
-      list.last = null;
+      list.first = null
+      list.last = null
     } else {
-      first.next.prev = first.prev;
-      first.prev.next = first.next;
-      list.first = first.next;
+      first.next.prev = first.prev
+      first.prev.next = first.next
+      list.first = first.next
     }
-    return first.a;
+    return first.a
   } else {
-    return null;
+    return null
   }
 }
 
@@ -91,19 +92,19 @@ export function popUnsafe<A>(list: List<A>): A | null {
  * Pops the first element of a List (A | null)
  */
 export function popLastUnsafe<A>(list: List<A>): A | null {
-  const last = list.last;
+  const { last } = list
   if (last) {
     if (isSingleton(list)) {
-      list.first = null;
-      list.last = null;
+      list.first = null
+      list.last = null
     } else {
-      last.prev.next = last.next;
-      last.next.prev = last.prev;
-      list.last = last.prev;
+      last.prev.next = last.next
+      last.next.prev = last.prev
+      list.last = last.prev
     }
-    return last.a;
+    return last.a
   } else {
-    return null;
+    return null
   }
 }
 
@@ -111,7 +112,7 @@ export function popLastUnsafe<A>(list: List<A>): A | null {
  * Pops the first element of a List Option<A>
  */
 export function pop<A>(list: List<A>): O.Option<A> {
-  return O.fromNullable(popUnsafe(list));
+  return O.fromNullable(popUnsafe(list))
 }
 
 /**
@@ -119,23 +120,23 @@ export function pop<A>(list: List<A>): O.Option<A> {
  */
 
 export function headUnsafe<A>(list: List<A>): A | null {
-  return list.first !== null ? list.first.a : null;
+  return list.first !== null ? list.first.a : null
 }
 /**
  * Gets the first element of the List as Option<A> (does not change the List)
  */
 export function head<A>(list: List<A>): O.Option<A> {
-  return O.fromNullable(headUnsafe(list));
+  return O.fromNullable(headUnsafe(list))
 }
 /**
  * Gets the last element of the List as A | null (does not change the List)
  */
 export function lastUnsafe<A>(list: List<A>): A | null {
-  return list.last !== null ? list.last.a : null;
+  return list.last !== null ? list.last.a : null
 }
 /**
  * Gets the last element of the List as Option<A> (does not change the List)
  */
 export function last<A>(list: List<A>): O.Option<A> {
-  return O.fromNullable(lastUnsafe(list));
+  return O.fromNullable(lastUnsafe(list))
 }

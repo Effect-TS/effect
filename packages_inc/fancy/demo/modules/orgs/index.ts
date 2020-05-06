@@ -1,7 +1,7 @@
-import { updateOrgs } from "./def";
-import { provideOrgsOps } from "./orgs";
-import { ShowOrgs, UpdateOrganisations } from "./views";
-import { initialState, OrgsState } from "./state";
+import { updateOrgs } from "./def"
+import { provideOrgsOps } from "./orgs"
+import { initialState, OrgsState } from "./state"
+import { ShowOrgs, UpdateOrganisations } from "./views"
 
 export const ORG = {
   updateOrgs,
@@ -10,4 +10,4 @@ export const ORG = {
   provide: provideOrgsOps,
   initial: initialState,
   OrgsState
-};
+}

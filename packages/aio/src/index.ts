@@ -1,14 +1,15 @@
-import * as I from "./iots";
-import * as NT from "newtype-ts";
-import * as MN from "monocle-ts";
-import * as MO from "./morphic";
+import * as MN from "monocle-ts"
+import * as NT from "newtype-ts"
+
+import * as I from "./iots"
+import * as MO from "./morphic"
 
 export {
   I, // io-ts & io-ts-types
   NT, // newtype-ts
   MN, // monocle-ts
   MO // morphic-ts
-};
+}
 
 export {
   A, // fp-ts Array
@@ -48,4 +49,4 @@ export {
   show, // fp-ts Show
   tree, // fp-ts Tree
   boolean // fp-ts boolean augumented
-} from "@matechs/prelude";
+} from "@matechs/prelude"
