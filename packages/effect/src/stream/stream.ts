@@ -16,7 +16,7 @@ import {
 } from "fp-ts";
 import { ReadStream } from "fs";
 import { Writable, Readable } from "stream";
-import { Cause, Interrupt } from "../original/exit";
+import { Cause, Exit } from "../original/exit";
 import * as T from "../effect";
 import { Fiber, effect } from "../effect";
 import * as deferred from "../deferred";
@@ -1211,7 +1211,7 @@ export function peelManaged<A, S, B, K2, R2, E2, K3, R3, E3>(
   return <K, R, E>(s: Stream<K, R, E, A>) => peelManaged_(s, managedSink);
 }
 
-function interruptFiberSlot(slot: Ref<O.Option<Fiber<never, void>>>): T.Async<O.Option<Interrupt>> {
+function interruptFiberSlot(slot: Ref<O.Option<Fiber<never, void>>>): T.Async<O.Option<Exit<never, void>>> {
   return effect.chain(slot.get, (optFiber) =>
     P.pipe(
       optFiber,
@@ -1266,7 +1266,7 @@ export function switchLatest<R, E, A, R2, E2>(
               // Spawn a fiber that should push elements from stream into pushQueue as long as it is able
               function spawnPushFiber(
                 stream: AsyncRE<R & R2, E | E2, A>
-              ): T.AsyncRE<R & R2, never, O.Option<Interrupt>> {
+              ): T.AsyncRE<R & R2, never, O.Option<Exit<never, void>>> {
                 const writer = P.pipe(
                   // The writer process pushes things into the queue
                   into_(map_(stream, O.some), queueSink(pushQueue)) as any,

@@ -15,9 +15,7 @@ const routeA = KOA.route(
 const routeB = KOA.route(
   "get",
   "/random-message",
-  T.Do()
-    .bind("message", RM.hitMe())
-    .return(KOA.routeResponse(200))
+  T.Do().bind("message", RM.hitMe()).return(KOA.routeResponse(200))
 );
 
 const routeC = KOA.route(
@@ -61,13 +59,13 @@ T.run(
   Ex.fold(
     (server) => {
       process.on("SIGINT", () => {
-        T.runToPromise(server.interrupt).then(({ error }) => {
-          process.exit(error ? 2 : 0);
+        T.runToPromise(server.interrupt).then((x) => {
+          process.exit(Ex.isInterrupt(x) && x.error ? 2 : 0);
         });
       });
       process.on("SIGTERM", () => {
-        T.runToPromise(server.interrupt).then(({ error }) => {
-          process.exit(error ? 2 : 0);
+        T.runToPromise(server.interrupt).then((x) => {
+          process.exit(Ex.isInterrupt(x) && x.error ? 2 : 0);
         });
       });
     },

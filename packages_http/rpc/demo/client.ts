@@ -7,7 +7,7 @@ import { placeholderJsonM, placeholderJsonEnv } from "./shared";
 
 const { getTodo } = RPC.client(placeholderJsonM);
 
-const program = pipe(A.range(1, 5), T.traverseArrayPar(getTodo));
+const program = pipe(A.range(1, 5), T.parTraverseArray(getTodo));
 
 const envLive: U.Env<typeof program> = {
   ...L.client(fetch),
