@@ -10,10 +10,7 @@ import { flow, FunctionN } from "fp-ts/lib/function"
 import { pipeable } from "fp-ts/lib/pipeable"
 
 import * as E from "./either"
-import * as E from "./either"
 import * as O from "./option"
-import * as O from "./option"
-import { ROf, EOf, AOf, SOf } from "./utils"
 import { ROf, EOf, AOf, SOf } from "./utils"
 
 export type EffectOption<S, R, E, A> = T.Effect<S, R, E, O.Option<A>>
