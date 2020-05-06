@@ -137,24 +137,22 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
 
   IProvideEnv(_: T.IProvideEnv<any, any, any, any>) {
     this.envStack.append(_.r as any);
-    return (
-      T.effect.foldExit(
-        _.e as any,
-        (e) =>
-          T.effect.chain(
-            T.sync(() => {
-              this.envStack.deleteTail();
-              return {};
-            }),
-            (_) => T.raised(e)
-          ),
-        (r) =>
+    return T.effect.foldExit(
+      _.e as any,
+      (e) =>
+        T.effect.chain(
           T.sync(() => {
             this.envStack.deleteTail();
-            return r;
-          })
-      ) as any
-    );
+            return {};
+          }),
+          (_) => T.raised(e)
+        ),
+      (r) =>
+        T.sync(() => {
+          this.envStack.deleteTail();
+          return r;
+        })
+    ) as any;
   }
 
   IPure(_: T.IPure<A>) {

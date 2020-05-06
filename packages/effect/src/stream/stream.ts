@@ -1211,7 +1211,9 @@ export function peelManaged<A, S, B, K2, R2, E2, K3, R3, E3>(
   return <K, R, E>(s: Stream<K, R, E, A>) => peelManaged_(s, managedSink);
 }
 
-function interruptFiberSlot(slot: Ref<O.Option<Fiber<never, void>>>): T.Async<O.Option<Exit<never, void>>> {
+function interruptFiberSlot(
+  slot: Ref<O.Option<Fiber<never, void>>>
+): T.Async<O.Option<Exit<never, void>>> {
   return effect.chain(slot.get, (optFiber) =>
     P.pipe(
       optFiber,

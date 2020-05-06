@@ -29,7 +29,9 @@ export type ResolverF<ARGS, U extends string, Ctx, A, B, C, D, S> = (
 ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, D>;
 
 export interface ResolverSubF<ARGS, U extends string, Ctx, A, B, C, D, E, F, G, S, S2> {
-  subscribe: (_: ResolverInput<A, ARGS>) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>;
+  subscribe: (
+    _: ResolverInput<A, ARGS>
+  ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>;
   resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>;
 }
 
@@ -46,7 +48,20 @@ export type ResolverEnv<R, U extends string, Ctx> = R extends Resolver<any, any,
           ? unknown extends B
             ? never
             : B
-          : R[k] extends ResolverSubF<any, U, Ctx, any, infer B, any, any, infer B2, any, any, any, any>
+          : R[k] extends ResolverSubF<
+              any,
+              U,
+              Ctx,
+              any,
+              infer B,
+              any,
+              any,
+              infer B2,
+              any,
+              any,
+              any,
+              any
+            >
           ? unknown extends B
             ? unknown extends B2
               ? never
@@ -68,7 +83,10 @@ export type ApolloConf = Omit<ApolloServerExpressConfig, "context" | "schema" | 
       websocket: WebSocket,
       context: ConnectionContext
     ) => T.Effect<any, any, never, any>;
-    onDisconnect?: (websocket: WebSocket, context: ConnectionContext) => T.Effect<any, any, never, any>;
+    onDisconnect?: (
+      websocket: WebSocket,
+      context: ConnectionContext
+    ) => T.Effect<any, any, never, any>;
   }>;
 };
 

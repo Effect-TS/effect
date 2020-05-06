@@ -67,7 +67,6 @@ export function routeResponse(status: number) {
   });
 }
 
-
 export const express: Express = {
   [expressEnv]: {
     route<S, R, E, A>(

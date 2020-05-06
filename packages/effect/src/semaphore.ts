@@ -91,8 +91,10 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
                                   ),
                                   E.left(q) as State
                                 ] as const)
-                              : ([T.unit, E.left(q.push([needed - n, latch] as const)) as State] as
-                                const)
+                              : ([
+                                  T.unit,
+                                  E.left(q.push([needed - n, latch] as const)) as State
+                                ] as const)
                         )
                       ),
                     (ready) => [T.unit, E.right(ready + n) as State] as const
@@ -103,10 +105,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       )
     );
 
-  const cancelWait = (
-    n: number,
-    latch: Deferred<unknown, unknown, never, void>
-  ): T.Async<void> =>
+  const cancelWait = (n: number, latch: Deferred<unknown, unknown, never, void>): T.Async<void> =>
     T.uninterruptible(
       T.flatten(
         ref.modify((current) =>
@@ -161,10 +160,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
       n === 0 ? T.unit : T.bracketExit(ticketN(n), ticketExit, ticketUse)
     );
 
-  const withPermitsN = <S, R, E, A>(
-    n: number,
-    inner: T.Effect<S, R, E, A>
-  ): T.AsyncRE<R, E, A> => {
+  const withPermitsN = <S, R, E, A>(n: number, inner: T.Effect<S, R, E, A>): T.AsyncRE<R, E, A> => {
     const acquire = T.interruptible(acquireN(n));
     const release = releaseN(n);
     return T.bracket(acquire, F.constant(release), () => inner);

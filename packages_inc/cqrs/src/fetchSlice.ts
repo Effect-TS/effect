@@ -80,8 +80,10 @@ export class SliceFetcher<
               pipe(
                 this.S.keys[kind]
                   ? T.fromEither(this.S.type.decode(event))
-                  : (T.raiseError(new Error("unknown event")) as
-                      T.SyncE<Error | t.Errors, AOfTypes<Types>>),
+                  : (T.raiseError(new Error("unknown event")) as T.SyncE<
+                      Error | t.Errors,
+                      AOfTypes<Types>
+                    >),
                 T.chain((a) =>
                   this.inDomain(a)
                     ? T.pure(a)
@@ -161,8 +163,10 @@ export class AggregateFetcher<
               pipe(
                 this.S.keys[kind]
                   ? T.fromEither(this.S.type.decode(event))
-                  : (T.raiseError(new Error("unknown event")) as
-                      T.SyncE<Error | t.Errors, AOfTypes<Types>>),
+                  : (T.raiseError(new Error("unknown event")) as T.SyncE<
+                      Error | t.Errors,
+                      AOfTypes<Types>
+                    >),
                 T.chain((a) =>
                   this.inDomain(a)
                     ? T.pure(a)
@@ -246,8 +250,10 @@ export class DomainFetcher<
               pipe(
                 this.S.keys[kind]
                   ? T.fromEither(this.S.type.decode(event))
-                  : (T.raiseError(new Error("unknown event")) as
-                      T.SyncE<Error | t.Errors, AOfTypes<Types>>),
+                  : (T.raiseError(new Error("unknown event")) as T.SyncE<
+                      Error | t.Errors,
+                      AOfTypes<Types>
+                    >),
                 T.chain((a) =>
                   this.inDomain(a)
                     ? T.pure(a)

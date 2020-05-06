@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "lerna run build",
-    "fix-format": "prettier --write \"./packages/**/{src,tests}/**/*.ts\"",
+    "fix-format": "prettier --write \"./packages*/**/{src,tests}/**/*.ts\"",
     "lint": "lerna run lint",
     "tc": "lerna run tc",
     "dtslint": "lerna run dtslint"

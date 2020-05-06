@@ -1631,14 +1631,13 @@ function chainError_<S, R, E1, S2, R2, E2, A, A2>(
 }
 
 const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
-    io: Effect<S, R, E1, A>,
-    f: F.FunctionN<[E1], Effect<S2, R2, E2, unknown>>,
-  ) => chainError_(io, e => chain_(f(e), () => raiseError(e)))
+  io: Effect<S, R, E1, A>,
+  f: F.FunctionN<[E1], Effect<S2, R2, E2, unknown>>
+) => chainError_(io, (e) => chain_(f(e), () => raiseError(e)));
 
-export const chainErrorTap = <S, R, E1, E2, A>(
-    f: (e: E1) => Effect<S, R, E2, unknown>,
-  ) => (io: Effect<S, R, E1, A>) => chainErrorTap_(io, f)
-
+export const chainErrorTap = <S, R, E1, E2, A>(f: (e: E1) => Effect<S, R, E2, unknown>) => (
+  io: Effect<S, R, E1, A>
+) => chainErrorTap_(io, f);
 
 export interface EffectMonad
   extends Monad4E<URI>,

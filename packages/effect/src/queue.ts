@@ -49,14 +49,9 @@ function makeConcurrentQueueImpl<A>(
   // This is the function that wraps the constructed take IO action
   // In the case of a bounded queue, it is responsible for releasing the
   // semaphore and re-acquiring it on interrupt
-  takeGate: F.FunctionN<
-    [T.Async<A>],
-    T.Async<A>
-  >
+  takeGate: F.FunctionN<[T.Async<A>], T.Async<A>>
 ): ConcurrentQueue<A> {
-  function cleanupLatch(
-    latch: Deferred<unknown, unknown, never, A>
-  ): T.Async<void> {
+  function cleanupLatch(latch: Deferred<unknown, unknown, never, A>): T.Async<void> {
     return T.asUnit(
       state.update((current) =>
         P.pipe(
@@ -158,9 +153,7 @@ const natCapacity = natNumber(new Error("Die: capacity must be a natural number"
  * Create a bounded queue with the given capacity that drops older offers
  * @param capacity
  */
-export function slidingQueue<A>(
-  capacity: number
-): T.Sync<ConcurrentQueue<A>> {
+export function slidingQueue<A>(capacity: number): T.Sync<ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     effect.map(makeRef(initial<A>()), (ref) =>
@@ -179,9 +172,7 @@ export function slidingQueue<A>(
  * Create a dropping queue with the given capacity that drops offers on full
  * @param capacity
  */
-export function droppingQueue<A>(
-  capacity: number
-): T.Sync<ConcurrentQueue<A>> {
+export function droppingQueue<A>(capacity: number): T.Sync<ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     effect.map(makeRef(initial<A>()), (ref) =>
@@ -200,9 +191,7 @@ export function droppingQueue<A>(
  * Create a bounded queue that blocks offers on capacity
  * @param capacity
  */
-export function boundedQueue<A>(
-  capacity: number
-): T.Sync<ConcurrentQueue<A>> {
+export function boundedQueue<A>(capacity: number): T.Sync<ConcurrentQueue<A>> {
   return T.applySecond(
     natCapacity(capacity),
     T.effect.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
