@@ -1,4 +1,11 @@
-import { console } from "@matechs/logger";
+import * as CQ from "@matechs/cqrs"
+import { console } from "@matechs/logger"
+import { liveFactory } from "@matechs/orm"
+import { T, pipe } from "@matechs/prelude"
+
+import * as ES from "../src"
+
+import { provideApp } from "./app"
 import {
   withTransaction,
   todoRoot,
@@ -7,12 +14,7 @@ import {
   domain,
   dbConfigLive,
   todosES
-} from "./db";
-import { T, pipe } from "@matechs/prelude";
-import { liveFactory } from "@matechs/orm";
-import * as CQ from "@matechs/cqrs";
-import { provideApp } from "./app";
-import * as ES from "../src";
+} from "./db"
 
 const program = withTransaction(
   pipe(
@@ -20,15 +22,17 @@ const program = withTransaction(
       of.TodoAdded({ id: 1, todo: "todo" }),
       of.TodoAdded({ id: 2, todo: "todo-2" })
     ]),
-    T.chain(([_event0, _event1]) => todoRoot("a").persistEvent((of) => of.TodoRemoved({ id: 1 })))
+    T.chain(([_event0, _event1]) =>
+      todoRoot("a").persistEvent((of) => of.TodoRemoved({ id: 1 }))
+    )
   )
-);
+)
 
 const defaultConfig = (id: string): CQ.ReadSideConfig => ({
   delay: 3000,
   id,
   limit: 100
-});
+})
 
 // streams all events from eventstore in the $ce-todos stream
 // keep track of latest offset transactionally in postgres
@@ -38,7 +42,7 @@ const processTodos = todosES.read("read_todos_from_es")(
     TodoAdded: () => T.unit,
     TodoRemoved: () => T.unit
   })
-);
+)
 
 // note the above is equivalent to the following
 export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todos")(
@@ -56,7 +60,7 @@ export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todo
   // provides environment and bracket over process step
   // this will wrap process + set offset on a single event
   (processEff) => todosAggregate.db.withORMTransaction(processEff)
-);
+)
 
 export const main = bracketPool(
   T.Do()
@@ -74,7 +78,7 @@ export const main = bracketPool(
     .return(() => {
       //
     })
-);
+)
 
 export const liveMain = pipe(
   main,
@@ -89,4 +93,4 @@ export const liveMain = pipe(
   console.provideConsoleLoggerConfig(),
   T.provide(dbConfigLive),
   T.provide(liveFactory)
-);
+)

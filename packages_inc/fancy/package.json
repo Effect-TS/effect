@@ -6,8 +6,10 @@
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
     "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
-    "postbuild": "prettier --write \"./{lib,es6}/**/*.ts\"",
-    "lint": "tslint --project .",
+    "postbuild": "yarn prettier --write \"./{lib,es6}/**/*.ts\"",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "prettier --write \"./{src,tests,demo}/**/*.ts\"",
     "import-path-rewrite": "import-path-rewrite",
     "build-demo": "next build demo",
     "dev-demo": "next dev demo",

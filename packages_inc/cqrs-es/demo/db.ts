@@ -1,32 +1,34 @@
-import { dbT, DbConfig, configEnv } from "@matechs/orm";
-import * as CQ from "@matechs/cqrs";
-import { DomainEvent } from "./events";
-import { ConnectionOptions } from "typeorm";
-import { T } from "@matechs/prelude";
-import { printTodo } from "./app";
-import * as ES from "../src";
+import * as CQ from "@matechs/cqrs"
+import { dbT, DbConfig, configEnv } from "@matechs/orm"
+import { T } from "@matechs/prelude"
+import { ConnectionOptions } from "typeorm"
+
+import * as ES from "../src"
+
+import { printTodo } from "./app"
+import { DomainEvent } from "./events"
 
 // configure ORM db
-export const dbURI: unique symbol = Symbol();
+export const dbURI: unique symbol = Symbol()
 
 // get ORM utils for db
-export const { bracketPool, withTransaction } = dbT(dbURI);
+export const { bracketPool, withTransaction } = dbT(dbURI)
 
 // get CQRS utils for db and event domain
-export const domain = CQ.cqrs(DomainEvent, dbURI);
+export const domain = CQ.cqrs(DomainEvent, dbURI)
 
 // define the todo aggregate by identifiying specific domain events
-export const todosAggregate = domain.aggregate("todos", ["TodoAdded", "TodoRemoved"]);
+export const todosAggregate = domain.aggregate("todos", ["TodoAdded", "TodoRemoved"])
 
-export const todosES = ES.aggregate(todosAggregate);
+export const todosES = ES.aggregate(todosAggregate)
 
 export const onTodoAdded = todosAggregate.adt.matchEffect({
   TodoAdded: ({ todo }) => printTodo(todo),
   default: () => T.unit
-});
+})
 
 // construct a utility to instanciate the aggregate root with a specific id
-export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`, [onTodoAdded]);
+export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`, [onTodoAdded])
 
 export const dbConfigLive: DbConfig<typeof dbURI> = {
   [configEnv]: {
@@ -49,4 +51,4 @@ export const dbConfigLive: DbConfig<typeof dbURI> = {
         .return((s) => s as ConnectionOptions)
     }
   }
-};
+}

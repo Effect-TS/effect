@@ -14,56 +14,56 @@
 
 /* istanbul ignore file */
 
-export type Exit<E, A> = Done<A> | Cause<E>;
-export type ExitTag = Exit<unknown, unknown>["_tag"];
+export type Exit<E, A> = Done<A> | Cause<E>
+export type ExitTag = Exit<unknown, unknown>["_tag"]
 
 export interface Done<A> {
-  readonly _tag: "Done";
-  readonly value: A;
+  readonly _tag: "Done"
+  readonly value: A
 }
 
 export function done<A>(v: A): Done<A> {
   return {
     _tag: "Done",
     value: v
-  };
+  }
 }
 
-export type Cause<E> = Raise<E> | Abort | Interrupt;
+export type Cause<E> = Raise<E> | Abort | Interrupt
 
 export interface Raise<E> {
-  readonly _tag: "Raise";
-  readonly error: E;
+  readonly _tag: "Raise"
+  readonly error: E
 }
 
 export function raise<E>(e: E): Raise<E> {
   return {
     _tag: "Raise",
     error: e
-  };
+  }
 }
 
 export interface Abort {
-  readonly _tag: "Abort";
-  readonly abortedWith: unknown;
+  readonly _tag: "Abort"
+  readonly abortedWith: unknown
 }
 
 export function abort(a: unknown): Abort {
   return {
     _tag: "Abort",
     abortedWith: a
-  };
+  }
 }
 
 export interface Interrupt {
-  readonly _tag: "Interrupt";
-  readonly error?: Error;
-  readonly others?: Error[];
+  readonly _tag: "Interrupt"
+  readonly error?: Error
+  readonly others?: Error[]
 }
 
 export const interrupt: Interrupt = {
   _tag: "Interrupt"
-};
+}
 
 export const interruptWithError = (err?: Error): Interrupt =>
   err
@@ -73,7 +73,7 @@ export const interruptWithError = (err?: Error): Interrupt =>
       }
     : {
         _tag: "Interrupt"
-      };
+      }
 
 export const interruptWithErrorAndOthers = (err: Error, others?: Error[]): Interrupt =>
   others
@@ -85,4 +85,4 @@ export const interruptWithErrorAndOthers = (err: Error, others?: Error[]): Inter
     : {
         _tag: "Interrupt",
         error: err
-      };
+      }

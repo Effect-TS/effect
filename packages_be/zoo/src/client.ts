@@ -1,17 +1,17 @@
-import { T, M, Service, O, F, E, pipe } from "@matechs/prelude";
-import * as ZC from "node-zookeeper-client";
-import { CreateMode } from "node-zookeeper-client";
+import { T, M, Service, O, F, E, pipe } from "@matechs/prelude"
+import * as ZC from "node-zookeeper-client"
+import { CreateMode } from "node-zookeeper-client"
 
 // work in progress
 /* istanbul ignore file */
 
-export const clientConfigURI = "@matechs/zoo/clientConfigURI";
+export const clientConfigURI = "@matechs/zoo/clientConfigURI"
 
 export interface ClientConfig {
   [clientConfigURI]: {
-    connectionString: string;
-    options?: Partial<ZC.Option>;
-  };
+    connectionString: string
+    options?: Partial<ZC.Option>
+  }
 }
 
 export interface ZooError {
@@ -21,141 +21,141 @@ export interface ZooError {
     | "CreateError"
     | "GetChildrenError"
     | "WaitDeleteError"
-    | "ConnectionDroppedError";
+    | "ConnectionDroppedError"
 }
 
 export const provideClientConfig = (_: ClientConfig[typeof clientConfigURI]) =>
   T.provide<ClientConfig>({
     [clientConfigURI]: _
-  });
+  })
 
 export interface ConnectError extends ZooError {
-  _tag: "ConnectError";
-  message: string;
+  _tag: "ConnectError"
+  message: string
 }
 
 export interface MkdirpError extends ZooError {
-  _tag: "MkdirpError";
-  message: string;
+  _tag: "MkdirpError"
+  message: string
 }
 
 export interface CreateError extends ZooError {
-  _tag: "CreateError";
-  message: string;
+  _tag: "CreateError"
+  message: string
 }
 
 export interface GetChildrenError extends ZooError {
-  _tag: "GetChildrenError";
-  message: string;
+  _tag: "GetChildrenError"
+  message: string
 }
 
 export interface WaitDeleteError extends ZooError {
-  _tag: "WaitDeleteError";
-  message: string;
+  _tag: "WaitDeleteError"
+  message: string
 }
 
 export interface ConnectionDroppedError extends ZooError {
-  _tag: "ConnectionDroppedError";
-  message: string;
+  _tag: "ConnectionDroppedError"
+  message: string
 }
 
-export const error = <E extends ZooError>(e: E): E => e;
+export const error = <E extends ZooError>(e: E): E => e
 
 interface Mkdirp {
-  _tag: "Mkdirp";
-  path: string;
+  _tag: "Mkdirp"
+  path: string
 }
 
 interface Createp {
-  _tag: "Createp";
-  path: string;
+  _tag: "Createp"
+  path: string
 }
 
 interface NodeId {
-  _tag: "NodeId";
-  id: string;
+  _tag: "NodeId"
+  id: string
 }
 
 interface Deleted {
-  _tag: "Deleted";
-  path: string;
+  _tag: "Deleted"
+  path: string
 }
 
 interface Children {
-  _tag: "Children";
-  root: string;
-  paths: string[];
+  _tag: "Children"
+  root: string
+  paths: string[]
 }
 
-type Out = Mkdirp | Createp | NodeId | Children | Deleted;
+type Out = Mkdirp | Createp | NodeId | Children | Deleted
 
-const out = <A extends Out>(a: A): A => a;
+const out = <A extends Out>(a: A): A => a
 
 export interface Client {
-  connect(): T.AsyncE<ConnectError, Client>;
-  listen(f: F.FunctionN<[ZC.State], void>): F.Lazy<void>;
-  state(): T.AsyncE<never, O.Option<ZC.State>>;
-  mkdirp(path: string): T.AsyncE<MkdirpError, Mkdirp>;
-  dispose(): T.AsyncE<never, void>;
-  currentId(path: string): T.AsyncE<never, NodeId>;
+  connect(): T.AsyncE<ConnectError, Client>
+  listen(f: F.FunctionN<[ZC.State], void>): F.Lazy<void>
+  state(): T.AsyncE<never, O.Option<ZC.State>>
+  mkdirp(path: string): T.AsyncE<MkdirpError, Mkdirp>
+  dispose(): T.AsyncE<never, void>
+  currentId(path: string): T.AsyncE<never, NodeId>
   create(
     path: string,
     mode: keyof typeof CreateMode,
     data?: Buffer | undefined
-  ): T.AsyncE<CreateError, Createp>;
-  getChildren(root: string): T.AsyncE<GetChildrenError, Children>;
-  waitDelete(path: string): T.AsyncE<WaitDeleteError, Deleted>;
+  ): T.AsyncE<CreateError, Createp>
+  getChildren(root: string): T.AsyncE<GetChildrenError, Children>
+  waitDelete(path: string): T.AsyncE<WaitDeleteError, Deleted>
 }
 
 export class ClientImpl implements Client {
-  private _state: O.Option<ZC.State> = O.none;
-  private readonly listeners: Map<number, F.FunctionN<[ZC.State], void>> = new Map();
-  private opc = 0;
+  private _state: O.Option<ZC.State> = O.none
+  private readonly listeners: Map<number, F.FunctionN<[ZC.State], void>> = new Map()
+  private opc = 0
 
   constructor(readonly client: ZC.Client) {
     client.on("state", (state) => {
-      this.dispatch(state);
-    });
+      this.dispatch(state)
+    })
 
-    this.connect = this.connect.bind(this);
-    this.dispatch = this.dispatch.bind(this);
-    this.listen = this.listen.bind(this);
-    this.state = this.state.bind(this);
-    this.dispose = this.dispose.bind(this);
-    this.mkdirp = this.mkdirp.bind(this);
-    this.create = this.create.bind(this);
-    this.currentId = this.currentId.bind(this);
-    this.getChildren = this.getChildren.bind(this);
-    this.waitDelete = this.waitDelete.bind(this);
+    this.connect = this.connect.bind(this)
+    this.dispatch = this.dispatch.bind(this)
+    this.listen = this.listen.bind(this)
+    this.state = this.state.bind(this)
+    this.dispose = this.dispose.bind(this)
+    this.mkdirp = this.mkdirp.bind(this)
+    this.create = this.create.bind(this)
+    this.currentId = this.currentId.bind(this)
+    this.getChildren = this.getChildren.bind(this)
+    this.waitDelete = this.waitDelete.bind(this)
   }
 
   state() {
-    return T.pure(this._state);
+    return T.pure(this._state)
   }
 
   private dispatch(state: ZC.State) {
-    this._state = O.some(state);
+    this._state = O.some(state)
 
     this.listeners.forEach((l) => {
-      l(state);
-    });
+      l(state)
+    })
   }
 
   listen(f: F.FunctionN<[ZC.State], void>): F.Lazy<void> {
-    const op = this.opc;
+    const op = this.opc
 
-    this.opc = this.opc + 1;
+    this.opc = this.opc + 1
 
-    this.listeners.set(op, f);
+    this.listeners.set(op, f)
 
     return () => {
-      this.listeners.delete(op);
-    };
+      this.listeners.delete(op)
+    }
   }
 
   connect() {
     return T.async<ConnectError, Client>((res) => {
-      this.client.connect();
+      this.client.connect()
 
       const l = this.listen((s) => {
         if (
@@ -165,7 +165,7 @@ export class ClientImpl implements Client {
             ZC.State.DISCONNECTED.code
           ].indexOf(s.code) !== -1
         ) {
-          l();
+          l()
           res(
             E.left(
               error({
@@ -173,26 +173,26 @@ export class ClientImpl implements Client {
                 message: ZC.State.name
               })
             )
-          );
+          )
         }
         if (s.code === ZC.State.SYNC_CONNECTED.code) {
-          l();
-          res(E.right(this));
+          l()
+          res(E.right(this))
         }
-      });
+      })
 
       return (cb) => {
-        l();
-        this.dispose();
-        cb();
-      };
-    });
+        l()
+        this.dispose()
+        cb()
+      }
+    })
   }
 
   dispose() {
     return T.sync(() => {
-      this.client.close();
-    });
+      this.client.close()
+    })
   }
 
   mkdirp(path: string) {
@@ -207,7 +207,7 @@ export class ClientImpl implements Client {
                   message: err.toString()
                 })
               )
-            );
+            )
           } else {
             res(
               E.left(
@@ -216,27 +216,27 @@ export class ClientImpl implements Client {
                   message: err.message
                 })
               )
-            );
+            )
           }
         } else {
-          res(E.right(out({ path: p, _tag: "Mkdirp" })));
+          res(E.right(out({ path: p, _tag: "Mkdirp" })))
         }
-      });
+      })
 
       return (cb) => {
-        cb();
-      };
-    });
+        cb()
+      }
+    })
   }
 
   // tslint:disable-next-line: prefer-function-over-method
   currentId(path: string) {
     return T.sync(
       (): NodeId => {
-        const p = path.split("/");
-        return out({ id: p[p.length - 1], _tag: "NodeId" });
+        const p = path.split("/")
+        return out({ id: p[p.length - 1], _tag: "NodeId" })
       }
-    );
+    )
   }
 
   create(path: string, mode: keyof typeof CreateMode, data?: Buffer) {
@@ -251,7 +251,7 @@ export class ClientImpl implements Client {
                   message: err.toString()
                 })
               )
-            );
+            )
           } else {
             res(
               E.left(
@@ -260,23 +260,23 @@ export class ClientImpl implements Client {
                   message: err.message
                 })
               )
-            );
+            )
           }
         } else {
-          res(E.right(out({ path: p, _tag: "Createp" })));
+          res(E.right(out({ path: p, _tag: "Createp" })))
         }
-      };
+      }
 
       if (data) {
-        this.client.create(path, data, CreateMode[mode], cb);
+        this.client.create(path, data, CreateMode[mode], cb)
       } else {
-        this.client.create(path, CreateMode[mode], cb);
+        this.client.create(path, CreateMode[mode], cb)
       }
 
       return (cb) => {
-        cb();
-      };
-    });
+        cb()
+      }
+    })
   }
 
   getChildren(root: string) {
@@ -291,7 +291,7 @@ export class ClientImpl implements Client {
                   message: err.toString()
                 })
               )
-            );
+            )
           } else {
             res(
               E.left(
@@ -300,17 +300,17 @@ export class ClientImpl implements Client {
                   message: err.message
                 })
               )
-            );
+            )
           }
         } else {
-          res(E.right(out({ paths: paths.sort(), _tag: "Children", root })));
+          res(E.right(out({ paths: paths.sort(), _tag: "Children", root })))
         }
-      });
+      })
 
       return (cb) => {
-        cb();
-      };
-    });
+        cb()
+      }
+    })
   }
 
   waitDelete(path: string) {
@@ -319,13 +319,13 @@ export class ClientImpl implements Client {
         path,
         (event) => {
           if (event.type === ZC.Event.NODE_DELETED) {
-            res(E.right(out({ _tag: "Deleted", path })));
+            res(E.right(out({ _tag: "Deleted", path })))
           }
         },
         (err) => {
           if (err) {
             if ("code" in err) {
-              res(E.left(error({ _tag: "WaitDeleteError", message: "" })));
+              res(E.left(error({ _tag: "WaitDeleteError", message: "" })))
             } else {
               res(
                 E.left(
@@ -334,43 +334,46 @@ export class ClientImpl implements Client {
                     message: err.message
                   })
                 )
-              );
+              )
             }
           }
         }
-      );
+      )
 
       return (cb) => {
-        cb();
-      };
-    });
+        cb()
+      }
+    })
   }
 }
 
-export const ClientFactoryURI = "@matechs/zoo/clientFactoryURI";
+export const ClientFactoryURI = "@matechs/zoo/clientFactoryURI"
 
 const ClientFactory_ = Service.define({
   [ClientFactoryURI]: {
     createClient: Service.cn<T.Async<Client>>()
   }
-});
+})
 
 export interface ClientFactory extends Service.TypeOf<typeof ClientFactory_> {}
 
-export const ClientFactory = Service.opaque<ClientFactory>()(ClientFactory_);
+export const ClientFactory = Service.opaque<ClientFactory>()(ClientFactory_)
 
 export const provideClientFactory = Service.implement(ClientFactory)({
   [ClientFactoryURI]: {
     createClient: T.access(
       (_: ClientConfig) =>
         new ClientImpl(
-          ZC.createClient(_[clientConfigURI].connectionString, _[clientConfigURI].options)
+          ZC.createClient(
+            _[clientConfigURI].connectionString,
+            _[clientConfigURI].options
+          )
         )
     )
   }
-});
+})
 
-const { createClient } = Service.access(ClientFactory)[ClientFactoryURI];
+const { createClient } = Service.access(ClientFactory)[ClientFactoryURI]
 
 export const managedClient = M.bracket(
   pipe(
@@ -378,4 +381,4 @@ export const managedClient = M.bracket(
     T.chain((c) => c.connect())
   ),
   (client) => client.dispose()
-);
+)

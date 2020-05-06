@@ -1,37 +1,43 @@
-import { T, Ex, A, NEA, pipe } from "@matechs/prelude";
-import { logger } from "@matechs/logger";
-import { DbT, ORM, TaskError } from "@matechs/orm";
-import { ElemType } from "@morphic-ts/adt/lib/utils";
-import { accessConfig, ReadSideConfigService, ReadSideConfig, withConfig } from "./config";
-import { saveOffsets } from "./saveOffsets";
-import { MatcherT } from "./matchers";
-import { MorphADT, AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union";
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType";
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult";
+import { logger } from "@matechs/logger"
+import { DbT, ORM, TaskError } from "@matechs/orm"
+import { T, Ex, A, NEA, pipe } from "@matechs/prelude"
+import { ElemType } from "@morphic-ts/adt/lib/utils"
+import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
+import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
+import { MorphADT, AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union"
+
+import {
+  accessConfig,
+  ReadSideConfigService,
+  ReadSideConfig,
+  withConfig
+} from "./config"
+import { MatcherT } from "./matchers"
+import { saveOffsets } from "./saveOffsets"
 
 // experimental alpha
 /* istanbul ignore file */
 
 export interface EventMeta {
-  sequence: bigint;
-  aggregate: string;
-  root: string;
-  kind: string;
-  id: string;
-  createdAt: string;
+  sequence: bigint
+  aggregate: string
+  root: string
+  kind: string
+  id: string
+  createdAt: string
 }
 
-export const metaURI = "@matechs/cqrs/metaURI";
+export const metaURI = "@matechs/cqrs/metaURI"
 
 export interface EventMetaHidden {
-  [metaURI]: EventMeta;
+  [metaURI]: EventMeta
 }
 
-export type ReadType = "domain" | "aggregate";
+export type ReadType = "domain" | "aggregate"
 
 export class Read<
   Types extends {
-    [k in keyof Types]: [any, any];
+    [k in keyof Types]: [any, any]
   },
   Tag extends string,
   ProgURI extends ProgramURI,
@@ -48,7 +54,7 @@ export class Read<
     pipe(
       accessConfig,
       T.chain(({ id }) => logger.error(`[readSide ${id}]: ${JSON.stringify(cause)}`))
-    );
+    )
 
   readSide(config: ReadSideConfig) {
     return <Keys2 extends NEA.NonEmptyArray<keyof Types>>(
@@ -56,22 +62,27 @@ export class Read<
         ORM<Db> & ReadSideConfigService,
         TaskError,
         ({
-          id: string;
-          event: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>;
+          id: string
+          event: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>
         } & EventMeta)[]
       >,
       eventTypes: Keys2
     ) => <S, R, ER, R2, ER2 = never>(
       op: (
-        matcher: MatcherT<AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>, Tag>
+        matcher: MatcherT<
+          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>,
+          Tag
+        >
       ) => (
         events: Array<
-          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }> & EventMetaHidden
+          AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }> &
+            EventMetaHidden
         >
       ) => T.Effect<S, R, ER, void[]>,
       onError: (
         cause: Ex.Cause<ER | TaskError>
-      ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
+      ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this
+        .logCause
     ) =>
       pipe(
         fetchEvents,
@@ -110,7 +121,7 @@ export class Read<
         ),
         T.forever,
         withConfig(config)
-      );
+      )
   }
 
   readSideAll(config: ReadSideConfig) {
@@ -126,7 +137,8 @@ export class Read<
       ) => (event: (AOfTypes<Types> & EventMetaHidden)[]) => T.Effect<S, R, ER, void[]>,
       onError: (
         cause: Ex.Cause<ER | TaskError>
-      ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this.logCause
+      ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this
+        .logCause
     ) =>
       pipe(
         fetchEvents,
@@ -165,6 +177,6 @@ export class Read<
         ),
         T.forever,
         withConfig(config)
-      );
+      )
   }
 }

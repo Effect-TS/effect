@@ -14,58 +14,59 @@
 
 /* istanbul ignore file */
 
-import { function as F } from "fp-ts";
-import { option as O } from "fp-ts";
-import { AsyncCancelContFn } from "../../effect";
+import { function as F } from "fp-ts"
+import { option as O } from "fp-ts"
+
+import { AsyncCancelContFn } from "../../effect"
 
 export interface Completable<A> {
-  value(): O.Option<A>;
-  isComplete(): boolean;
-  complete(a: A): void;
-  tryComplete(a: A): boolean;
-  listen(f: F.FunctionN<[A], void>): AsyncCancelContFn;
+  value(): O.Option<A>
+  isComplete(): boolean
+  complete(a: A): void
+  tryComplete(a: A): boolean
+  listen(f: F.FunctionN<[A], void>): AsyncCancelContFn
 }
 
 export class CompletableImpl<A> implements Completable<A> {
-  completed: O.Option<A>;
-  listeners: F.FunctionN<[A], void>[];
+  completed: O.Option<A>
+  listeners: F.FunctionN<[A], void>[]
   constructor() {
-    this.completed = O.none;
-    this.listeners = [];
+    this.completed = O.none
+    this.listeners = []
   }
 
   set(a: A): void {
-    this.completed = O.some(a);
-    this.listeners.forEach((f) => f(a));
+    this.completed = O.some(a)
+    this.listeners.forEach((f) => f(a))
   }
 
   value(): O.Option<A> {
-    return this.completed;
+    return this.completed
   }
   isComplete(): boolean {
-    return O.isSome(this.completed);
+    return O.isSome(this.completed)
   }
   complete(a: A): void {
     if (O.isSome(this.completed)) {
-      throw new Error("Die: Completable is already completed");
+      throw new Error("Die: Completable is already completed")
     }
-    this.set(a);
+    this.set(a)
   }
   tryComplete(a: A): boolean {
     if (O.isSome(this.completed)) {
-      return false;
+      return false
     }
-    this.set(a);
-    return true;
+    this.set(a)
+    return true
   }
   listen(f: F.FunctionN<[A], void>): AsyncCancelContFn {
     if (O.isSome(this.completed)) {
-      f(this.completed.value);
+      f(this.completed.value)
     }
-    this.listeners.push(f);
+    this.listeners.push(f)
     return (cb) => {
-      this.listeners = this.listeners.filter((cb) => cb !== f);
-      cb();
-    };
+      this.listeners = this.listeners.filter((cb) => cb !== f)
+      cb()
+    }
   }
 }

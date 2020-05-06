@@ -1,13 +1,14 @@
 import "isomorphic-fetch"
-import { T, Ex, U, A, pipe } from "@matechs/prelude";
-import * as RPC from "@matechs/rpc-client";
-import * as H from "@matechs/http-client";
-import * as L from "@matechs/http-client-fetch";
-import { placeholderJsonM, placeholderJsonEnv } from "./shared";
+import * as H from "@matechs/http-client"
+import * as L from "@matechs/http-client-fetch"
+import { T, Ex, U, A, pipe } from "@matechs/prelude"
+import * as RPC from "@matechs/rpc-client"
 
-const { getTodo } = RPC.client(placeholderJsonM);
+import { placeholderJsonM, placeholderJsonEnv } from "./shared"
 
-const program = pipe(A.range(1, 5), T.parTraverseArray(getTodo));
+const { getTodo } = RPC.client(placeholderJsonM)
+
+const program = pipe(A.range(1, 5), T.parTraverseArray(getTodo))
 
 const envLive: U.Env<typeof program> = {
   ...L.client(fetch),
@@ -19,16 +20,16 @@ const envLive: U.Env<typeof program> = {
       baseUrl: "http://127.0.0.1:8081/placeholderJson"
     }
   }
-};
+}
 
 T.run(
   T.provide(envLive)(program),
   Ex.fold(
     (todos) => {
-      console.log(todos);
+      console.log(todos)
     },
     (e) => console.error("error", e),
     (e) => console.error("abort", e),
     () => console.error("interrupted")
   )
-);
+)

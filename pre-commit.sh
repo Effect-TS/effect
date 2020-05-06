@@ -1,6 +1,11 @@
 #!/bin/sh
-yarn prettier --write "./packages*/**/{src,tests}/**/*.ts"
-git add --all
+if yarn prettier "./packages*/**/{src,demo,tests}/**/*.ts"
+then
+echo "All prettified"
+else
+echo "ERROR: There's stuff left to be prettified, please fix!"
+exit 1
+fi
 
 if yarn yarn-deduplicate -fl
 then

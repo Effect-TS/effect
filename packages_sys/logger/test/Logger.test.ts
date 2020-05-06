@@ -1,10 +1,11 @@
-import { T } from "@matechs/prelude";
-import * as L from "../src";
-import * as M from "@matechs/test-jest";
-import { pipe } from "fp-ts/lib/pipeable";
+import { T } from "@matechs/prelude"
+import * as M from "@matechs/test-jest"
+import { pipe } from "fp-ts/lib/pipeable"
 
-// tslint:disable-next-line: no-empty
-const empty = () => {};
+import * as L from "../src"
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const empty = () => {}
 
 const loggerSpec = M.suite("Logger")(
   pipe(
@@ -24,12 +25,12 @@ const loggerSpec = M.suite("Logger")(
         .do(L.logger.error("ok"))
         .do(L.logger.error("ok", { foo: "ok" }))
         .do(
-          useMockM(({ info, debug, error, warn }) =>
+          useMockM(({ debug, error, info, warn }) =>
             T.sync(() => {
-              M.assert.deepStrictEqual(info.mock.calls.length, 2);
-              M.assert.deepStrictEqual(debug.mock.calls.length, 3);
-              M.assert.deepStrictEqual(error.mock.calls.length, 2);
-              M.assert.deepStrictEqual(warn.mock.calls.length, 1);
+              M.assert.deepStrictEqual(info.mock.calls.length, 2)
+              M.assert.deepStrictEqual(debug.mock.calls.length, 3)
+              M.assert.deepStrictEqual(error.mock.calls.length, 2)
+              M.assert.deepStrictEqual(warn.mock.calls.length, 1)
             })
           )
         )
@@ -47,7 +48,7 @@ const loggerSpec = M.suite("Logger")(
         .do(
           useMockM(({ debug }) =>
             T.sync(() => {
-              M.assert.deepStrictEqual(debug.mock.calls.length, 0);
+              M.assert.deepStrictEqual(debug.mock.calls.length, 0)
             })
           )
         )
@@ -56,6 +57,6 @@ const loggerSpec = M.suite("Logger")(
     M.withProvider(L.console.provideConsoleLogger),
     M.withProvider(L.console.provideConsoleLoggerConfig({ level: "warn" }))
   )
-);
+)
 
-M.run(loggerSpec)();
+M.run(loggerSpec)()

@@ -1,7 +1,8 @@
-import { T, Ex, M, pipe } from "@matechs/prelude";
-import * as H from "@matechs/http-client";
-import * as J from "@matechs/test-jest";
-import { expressM } from "../resources/expressM";
+import * as H from "@matechs/http-client"
+import { T, Ex, M, pipe } from "@matechs/prelude"
+import * as J from "@matechs/test-jest"
+
+import { expressM } from "../resources/expressM"
 
 /* istanbul ignore file */
 
@@ -23,8 +24,8 @@ export const get404Spec = J.testM(
         )
       )
       .return(({ get }) => {
-        J.assert.deepStrictEqual(Ex.isRaise(get), true);
-        J.assert.deepStrictEqual(Ex.isRaise(get) && get.error, 404);
+        J.assert.deepStrictEqual(Ex.isRaise(get), true)
+        J.assert.deepStrictEqual(Ex.isRaise(get) && get.error, 404)
       })
   )
-);
+)

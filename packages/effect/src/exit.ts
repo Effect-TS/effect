@@ -12,7 +12,7 @@ import {
   Cause,
   ExitTag,
   raise
-} from "./original/exit";
+} from "./original/exit"
 
 export {
   Raise,
@@ -28,15 +28,16 @@ export {
   Cause,
   ExitTag,
   raise
-};
+}
 
-export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> => e._tag === "Done";
+export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> => e._tag === "Done"
 
-export const isRaise = <E, A>(e: Exit<E, A>): e is Raise<E> => e._tag === "Raise";
+export const isRaise = <E, A>(e: Exit<E, A>): e is Raise<E> => e._tag === "Raise"
 
-export const isAbort = <E, A>(e: Exit<E, A>): e is Abort => e._tag === "Abort";
+export const isAbort = <E, A>(e: Exit<E, A>): e is Abort => e._tag === "Abort"
 
-export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt => e._tag === "Interrupt";
+export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt =>
+  e._tag === "Interrupt"
 
 function fold_<E, A, R>(
   e: Exit<E, A>,
@@ -47,19 +48,19 @@ function fold_<E, A, R>(
 ) {
   switch (e._tag) {
     case "Done":
-      return onDone(e.value);
+      return onDone(e.value)
     case "Raise":
-      return onRaise(e.error);
+      return onRaise(e.error)
     case "Abort":
-      return onAbort(e.abortedWith);
+      return onAbort(e.abortedWith)
     case "Interrupt":
-      return onInterrupt(e);
+      return onInterrupt(e)
   }
 }
 
 export const exit = {
   fold: fold_
-};
+}
 
 export function fold<E, A, R>(
   onDone: (v: A) => R,
@@ -67,5 +68,5 @@ export function fold<E, A, R>(
   onAbort: (v: unknown) => R,
   onInterrupt: () => R
 ): (e: Exit<E, A>) => R {
-  return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt);
+  return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
 }

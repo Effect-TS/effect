@@ -18,7 +18,7 @@ import {
   implementMock,
   withHookP,
   withTodo
-} from "@matechs/test";
+} from "@matechs/test"
 
 export const run = customRun({
   describe,
@@ -27,7 +27,7 @@ export const run = customRun({
     skip: it.skip,
     todo: it.todo
   }
-});
+})
 
 export {
   arb,
@@ -49,6 +49,6 @@ export {
   implementMock,
   withHookP,
   withTodo
-};
+}
 
-export { mockedTestM } from "./aspects/withJestMocks";
+export { mockedTestM } from "./aspects/withJestMocks"

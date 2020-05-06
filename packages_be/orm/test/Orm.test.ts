@@ -1,5 +1,6 @@
-import { T, Service as F, U, Ex, pipe } from "@matechs/prelude";
-import * as assert from "assert";
+import * as assert from "assert"
+
+import { T, Service as F, U, Ex, pipe } from "@matechs/prelude"
 import {
   Connection,
   createConnection,
@@ -10,27 +11,28 @@ import {
   ObjectID,
   PrimaryColumn,
   Repository
-} from "typeorm";
-import * as DB from "../src";
+} from "typeorm"
+
+import * as DB from "../src"
 
 @Entity()
 export class DemoEntity {
   @PrimaryColumn()
-  id: string;
+  id: string
 }
 
-const testDbEnv: unique symbol = Symbol();
+const testDbEnv: unique symbol = Symbol()
 
 const {
-  withTransaction,
-  withRepositoryTask,
   bracketPool,
+  requireTx,
   withConnectionTask,
   withManagerTask,
-  withORMTransaction,
   withNewRegion,
-  requireTx
-} = DB.dbT(testDbEnv);
+  withORMTransaction,
+  withRepositoryTask,
+  withTransaction
+} = DB.dbT(testDbEnv)
 
 describe("Orm", () => {
   it("should use db", async () => {
@@ -38,305 +40,308 @@ describe("Orm", () => {
       Promise.resolve({
         manager: {} as EntityManager,
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
-        transaction<T>(runInTransaction: (entityManager: EntityManager) => Promise<T>): Promise<T> {
+        transaction<T>(
+          runInTransaction: (entityManager: EntityManager) => Promise<T>
+        ): Promise<T> {
           return runInTransaction({
             getRepository<Entity>(
               _: { new (): Entity } | Function | EntitySchema<Entity> | string
             ): Repository<Entity> {
-              return (
-                {
-                  findOne(
-                    _?: string | number | Date | ObjectID,
-                    _2?: FindOneOptions<Entity>
-                  ): Promise<Entity | undefined> {
-                    return Promise.reject("not implemented");
-                  }
-                } as Repository<Entity>
-              );
+              return {
+                findOne(
+                  _?: string | number | Date | ObjectID,
+                  _2?: FindOneOptions<Entity>
+                ): Promise<Entity | undefined> {
+                  return Promise.reject("not implemented")
+                }
+              } as Repository<Entity>
             }
-          } as EntityManager);
+          } as EntityManager)
         }
-      } as Connection);
+      } as Connection)
 
     const main = requireTx(
       withRepositoryTask(DemoEntity)((r) => () => r.findOne({ where: { id: "test" } }))
-    );
+    )
 
-    const program = bracketPool(withTransaction(main));
+    const program = bracketPool(withTransaction(main))
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const result = await T.runToPromiseExit(T.provide(env)(program));
+    const result = await T.runToPromiseExit(T.provide(env)(program))
 
     assert.deepStrictEqual(
       result,
       Ex.raise(new DB.TaskError(new Error("not implemented"), "withRepositoryTask"))
-    );
-  });
+    )
+  })
 
   it("should use withManager", async () => {
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
         manager: {} as EntityManager,
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
-        transaction<T>(runInTransaction: (entityManager: EntityManager) => Promise<T>): Promise<T> {
+        transaction<T>(
+          runInTransaction: (entityManager: EntityManager) => Promise<T>
+        ): Promise<T> {
           return runInTransaction({
             getRepository<Entity>(
               _: { new (): Entity } | Function | EntitySchema<Entity> | string
             ): Repository<Entity> {
-              return (
-                {
-                  findOne(
-                    _?: string | number | Date | ObjectID,
-                    _2?: FindOneOptions<Entity>
-                  ): Promise<Entity | undefined> {
-                    return Promise.reject("not implemented");
-                  }
-                } as Repository<Entity>
-              );
+              return {
+                findOne(
+                  _?: string | number | Date | ObjectID,
+                  _2?: FindOneOptions<Entity>
+                ): Promise<Entity | undefined> {
+                  return Promise.reject("not implemented")
+                }
+              } as Repository<Entity>
             }
-          } as EntityManager);
+          } as EntityManager)
         }
-      } as Connection);
+      } as Connection)
 
     const program = bracketPool(
       withTransaction(
-        withManagerTask((m) => () => m.getRepository(DemoEntity).findOne({ where: { id: "test" } }))
+        withManagerTask((m) => () =>
+          m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
+        )
       )
-    );
+    )
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const result = await T.runToPromiseExit(T.provide(env)(program));
+    const result = await T.runToPromiseExit(T.provide(env)(program))
 
     assert.deepStrictEqual(
       result,
       Ex.raise(new DB.TaskError(new Error("not implemented"), "withManagerTask"))
-    );
-  });
+    )
+  })
 
   it("should use withConnection", async () => {
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
         getRepository<Entity>(
           _: { new (): Entity } | Function | EntitySchema<Entity> | string
         ): Repository<Entity> {
-          return (
-            {
-              findOne(
-                _?: string | number | Date | ObjectID,
-                _2?: FindOneOptions<Entity>
-              ): Promise<Entity | undefined> {
-                return Promise.reject("not implemented");
-              }
-            } as Repository<Entity>
-          );
+          return {
+            findOne(
+              _?: string | number | Date | ObjectID,
+              _2?: FindOneOptions<Entity>
+            ): Promise<Entity | undefined> {
+              return Promise.reject("not implemented")
+            }
+          } as Repository<Entity>
         }
-      } as Connection);
+      } as Connection)
 
     const program = bracketPool(
       withConnectionTask((c) => () =>
         c.getRepository(DemoEntity).findOne({ where: { id: "test" } })
       )
-    );
+    )
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const result = await T.runToPromiseExit(T.provide(env)(program));
+    const result = await T.runToPromiseExit(T.provide(env)(program))
 
     assert.deepStrictEqual(
       result,
       Ex.raise(new DB.TaskError(new Error("not implemented"), "withConnectionTask"))
-    );
-  });
+    )
+  })
 
   it("should use transaction in higher order", async () => {
-    const uri = Symbol();
+    const uri = Symbol()
 
     const spec = F.define({
       [uri]: {
         demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
-    });
+    })
 
     const {
       [uri]: { demo }
-    } = F.access(spec);
+    } = F.access(spec)
 
     const provider = F.implement(spec)({
       [uri]: {
         demo: () => withManagerTask((r) => () => r.query(""))
       }
-    });
+    })
 
-    const program = pipe(withTransaction(demo()), provider, bracketPool);
+    const program = pipe(withTransaction(demo()), provider, bracketPool)
 
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
-        transaction<T>(runInTransaction: (entityManager: EntityManager) => Promise<T>): Promise<T> {
+        transaction<T>(
+          runInTransaction: (entityManager: EntityManager) => Promise<T>
+        ): Promise<T> {
           return runInTransaction({
             query(_query: string, _parameters?: any[] | undefined): Promise<any> {
-              return Promise.resolve("ok");
+              return Promise.resolve("ok")
             }
-          } as EntityManager);
+          } as EntityManager)
         }
-      } as Connection);
+      } as Connection)
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const res = await T.runToPromise(T.provide(env)(program));
+    const res = await T.runToPromise(T.provide(env)(program))
 
-    assert.deepStrictEqual(res, "ok");
-  });
+    assert.deepStrictEqual(res, "ok")
+  })
 
   it("should use ORM transaction in higer order", async () => {
-    const uri = Symbol();
+    const uri = Symbol()
 
     const spec = F.define({
       [uri]: {
         demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
-    });
+    })
 
     const {
       [uri]: { demo }
-    } = F.access(spec);
+    } = F.access(spec)
 
     const provider = F.implement(spec)({
       [uri]: {
         demo: () => withManagerTask((r) => () => r.query(""))
       }
-    });
+    })
 
-    const program = pipe(withORMTransaction(demo()), provider, bracketPool);
+    const program = pipe(withORMTransaction(demo()), provider, bracketPool)
 
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
         createQueryRunner() {
           return {
-            manager:
-              {
-                query(_query) {
-                  if (_query === "") {
-                    return Promise.resolve("ok");
-                  }
-                  if (["BEGIN", "COMMIT"].indexOf(_query) !== -1) {
-                    return Promise.resolve();
-                  } else {
-                    return Promise.reject();
-                  }
+            manager: {
+              query(_query) {
+                if (_query === "") {
+                  return Promise.resolve("ok")
                 }
-              } as EntityManager
-          };
+                if (["BEGIN", "COMMIT"].indexOf(_query) !== -1) {
+                  return Promise.resolve()
+                } else {
+                  return Promise.reject()
+                }
+              }
+            } as EntityManager
+          }
         }
-      } as Connection);
+      } as Connection)
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const res = await T.runToPromise(T.provide(env)(program));
+    const res = await T.runToPromise(T.provide(env)(program))
 
-    assert.deepStrictEqual(res, "ok");
-  });
+    assert.deepStrictEqual(res, "ok")
+  })
 
   it("should rollback ORM transaction in failure", async () => {
-    const uri = Symbol();
+    const uri = Symbol()
 
     const spec = F.define({
       [uri]: {
         demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
-    });
+    })
 
     const {
       [uri]: { demo }
-    } = F.access(spec);
+    } = F.access(spec)
 
     const provider = F.implement(spec)({
       [uri]: {
         demo: () => withManagerTask((r) => () => r.query(""))
       }
-    });
+    })
 
-    const program = pipe(withORMTransaction(demo()), provider, bracketPool);
+    const program = pipe(withORMTransaction(demo()), provider, bracketPool)
 
-    const queries: string[] = [];
+    const queries: string[] = []
 
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
         createQueryRunner() {
           return {
-            manager:
-              {
-                query(_query) {
-                  queries.push(_query);
-                  if (_query === "") {
-                    return Promise.reject(new Error("ok"));
-                  }
-                  if (["BEGIN", "ROLLBACK"].indexOf(_query) !== -1) {
-                    return Promise.resolve();
-                  } else {
-                    return Promise.reject();
-                  }
+            manager: {
+              query(_query) {
+                queries.push(_query)
+                if (_query === "") {
+                  return Promise.reject(new Error("ok"))
                 }
-              } as EntityManager
-          };
+                if (["BEGIN", "ROLLBACK"].indexOf(_query) !== -1) {
+                  return Promise.resolve()
+                } else {
+                  return Promise.reject()
+                }
+              }
+            } as EntityManager
+          }
         }
-      } as Connection);
+      } as Connection)
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const res = await T.runToPromiseExit(T.provide(env)(program));
+    const res = await T.runToPromiseExit(T.provide(env)(program))
 
-    assert.deepStrictEqual(res, Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")));
-    assert.deepStrictEqual(queries, ["BEGIN", "", "ROLLBACK"]);
-  });
+    assert.deepStrictEqual(
+      res,
+      Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
+    )
+    assert.deepStrictEqual(queries, ["BEGIN", "", "ROLLBACK"])
+  })
 
   it("should jump in new region", async () => {
-    const uri = Symbol();
+    const uri = Symbol()
 
     const spec = F.define({
       [uri]: {
         demo: F.fn<() => T.AsyncE<DB.TaskError, any>>()
       }
-    });
+    })
 
     const {
       [uri]: { demo }
-    } = F.access(spec);
+    } = F.access(spec)
 
     const provider = F.implement(spec)({
       [uri]: {
@@ -346,43 +351,42 @@ describe("Orm", () => {
             withNewRegion
           )
       }
-    });
+    })
 
-    const program = pipe(withORMTransaction(demo()), provider, bracketPool);
+    const program = pipe(withORMTransaction(demo()), provider, bracketPool)
 
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
         close(): Promise<void> {
-          return Promise.resolve();
+          return Promise.resolve()
         },
         createQueryRunner() {
           return {
             manager: {
               query(query) {
                 if (["BEGIN", "COMMIT"].indexOf(query) !== -1) {
-                  return Promise.resolve();
+                  return Promise.resolve()
                 } else {
-                  return Promise.reject();
+                  return Promise.reject()
                 }
               }
             }
-          };
+          }
         },
-        manager:
-          {
-            query(_query) {
-              return Promise.resolve("ok");
-            }
-          } as EntityManager
-      } as Connection);
+        manager: {
+          query(_query) {
+            return Promise.resolve("ok")
+          }
+        } as EntityManager
+      } as Connection)
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
       ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    };
+    }
 
-    const res = await T.runToPromise(T.provide(env)(program));
+    const res = await T.runToPromise(T.provide(env)(program))
 
-    assert.deepStrictEqual(res, "ok");
-  });
-});
+    assert.deepStrictEqual(res, "ok")
+  })
+})

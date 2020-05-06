@@ -1,8 +1,10 @@
-import "isomorphic-fetch";
-import { T, Service as F, Ex, pipe, U, O } from "@matechs/prelude";
-import * as RPC from "../src";
-import * as EX from "@matechs/express";
-import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared";
+import "isomorphic-fetch"
+import * as EX from "@matechs/express"
+import { T, Service as F, Ex, pipe, U, O } from "@matechs/prelude"
+
+import * as RPC from "../src"
+
+import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared"
 
 const todos: Array<Todo> = [
   { id: 1, completed: false, title: "todo 1", userId: 1 },
@@ -12,7 +14,7 @@ const todos: Array<Todo> = [
   { id: 5, completed: false, title: "todo 5", userId: 2 },
   { id: 6, completed: false, title: "todo 6", userId: 3 },
   { id: 7, completed: false, title: "todo 7", userId: 4 }
-];
+]
 
 export function authenticated<S, R, E, A>(
   eff: T.Effect<S, R, E, A>
@@ -22,7 +24,7 @@ export function authenticated<S, R, E, A>(
       T.condWith(req.headers["token"] === "check")(T.unit)(T.raiseError("bad token"))
     ),
     (_) => eff
-  );
+  )
 }
 
 // implement the service
@@ -36,14 +38,14 @@ export const placeholderJsonLive = F.implement(placeholderJsonM)({
         authenticated
       )
   }
-});
+})
 
 // create a new express server
 const program = pipe(
   RPC.server(placeholderJsonM, placeholderJsonLive),
   T.chain(() => EX.bind(8081)),
   EX.withApp
-);
+)
 
 // construct live environment
 const envLive: U.Env<typeof program> = {
@@ -53,7 +55,7 @@ const envLive: U.Env<typeof program> = {
       scope: "/placeholderJson" // exposed at /placeholderJson
     }
   }
-};
+}
 
 // run express server
 T.run(
@@ -63,19 +65,19 @@ T.run(
       // listen for exit Ctrl+C
       process.on("SIGINT", () => {
         server.close((err) => {
-          process.exit(err ? 2 : 0);
-        });
-      });
+          process.exit(err ? 2 : 0)
+        })
+      })
 
       // listen for SIGTERM
       process.on("SIGTERM", () => {
         server.close((err) => {
-          process.exit(err ? 2 : 0);
-        });
-      });
+          process.exit(err ? 2 : 0)
+        })
+      })
     },
     (e) => console.error(e),
     (e) => console.error(e),
     () => console.error("interrupted")
   )
-);
+)

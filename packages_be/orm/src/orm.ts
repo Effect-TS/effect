@@ -1,4 +1,4 @@
-import { T, Ex, E, pipe, F } from "@matechs/prelude";
+import { T, Ex, E, pipe, F } from "@matechs/prelude"
 import {
   Connection,
   ConnectionOptions,
@@ -7,19 +7,19 @@ import {
   EntitySchema,
   ObjectType,
   Repository
-} from "typeorm";
+} from "typeorm"
 
-export const configEnv = "@matechs/orm/configURI";
-export const poolEnv = "@matechs/orm/poolURI";
-export const managerEnv = "@matechs/orm/managerURI";
-export const factoryEnv = "@matechs/orm/factoryURI";
+export const configEnv = "@matechs/orm/configURI"
+export const poolEnv = "@matechs/orm/poolURI"
+export const managerEnv = "@matechs/orm/managerURI"
+export const factoryEnv = "@matechs/orm/factoryURI"
 
 export interface DbConfig<A extends symbol | string> {
   [configEnv]: {
     [k in A]: {
-      readConfig: T.Async<ConnectionOptions>;
-    };
-  };
+      readConfig: T.Async<ConnectionOptions>
+    }
+  }
 }
 
 export function dbConfig<A extends symbol | string>(
@@ -32,7 +32,7 @@ export function dbConfig<A extends symbol | string>(
         readConfig
       }
     }
-  } as DbConfig<A>;
+  } as DbConfig<A>
 }
 
 /* istanbul ignore next */
@@ -43,21 +43,25 @@ export function mergeConfig<R>(a: R) {
       ...a[configEnv],
       ...b[configEnv]
     }
-  });
+  })
 }
 
 /* istanbul ignore next */
 export function dbConfigs<A extends symbol | string, B extends symbol | string>(
   a: DbConfig<A>,
   b: DbConfig<B>
-): DbConfig<A> & DbConfig<B>;
+): DbConfig<A> & DbConfig<B>
 
 /* istanbul ignore next */
 export function dbConfigs<
   A extends symbol | string,
   B extends symbol | string,
   C extends symbol | string
->(a: DbConfig<A>, b: DbConfig<B>, c: DbConfig<C>): DbConfig<A> & DbConfig<B> & DbConfig<C>;
+>(
+  a: DbConfig<A>,
+  b: DbConfig<B>,
+  c: DbConfig<C>
+): DbConfig<A> & DbConfig<B> & DbConfig<C>
 
 /* istanbul ignore next */
 export function dbConfigs<
@@ -70,114 +74,120 @@ export function dbConfigs<
   b: DbConfig<B>,
   c: DbConfig<C>,
   d: DbConfig<D>
-): DbConfig<A> & DbConfig<B> & DbConfig<C> & DbConfig<D>;
+): DbConfig<A> & DbConfig<B> & DbConfig<C> & DbConfig<D>
 
 /* istanbul ignore next */
 export function dbConfigs(...configs: DbConfig<any>[]) {
-  return configs.reduce((a, b) => mergeConfig(a)(b));
+  return configs.reduce((a, b) => mergeConfig(a)(b))
 }
 
 export interface Pool<A extends symbol | string> {
   [poolEnv]: {
     [k in A]: {
-      pool: Connection;
-    };
-  };
+      pool: Connection
+    }
+  }
 }
 
 export interface Manager<A extends symbol | string> {
   [managerEnv]: {
     [k in A]: {
-      manager: EntityManager;
-    };
-  };
+      manager: EntityManager
+    }
+  }
 }
 
 export interface DbFactory {
   [factoryEnv]: {
-    createConnection: typeof createConnection;
-  };
+    createConnection: typeof createConnection
+  }
 }
 
 export const liveFactory: DbFactory = {
   [factoryEnv]: {
-    createConnection: createConnection
+    createConnection
   }
-};
+}
 
 export const mockFactory: (x: typeof createConnection) => DbFactory = (x) => ({
   [factoryEnv]: {
     createConnection: x
   }
-});
+})
 
-export const dbTxURI = "@matechs/orm/dbTxURI";
+export const dbTxURI = "@matechs/orm/dbTxURI"
 
 export interface DbTx<A extends symbol | string> {
   [dbTxURI]: {
     [k in A]: {
-      tx: {};
-    };
-  };
+      tx: {}
+    }
+  }
 }
 
 export interface DbT<Db extends symbol | string> {
-  readonly requireTx: <S, R, E, A>(op: T.Effect<S, R, E, A>) => T.Effect<S, R & DbTx<Db>, E, A>;
+  readonly requireTx: <S, R, E, A>(
+    op: T.Effect<S, R, E, A>
+  ) => T.Effect<S, R & DbTx<Db>, E, A>
   readonly withNewRegion: <S, R extends ORM<Db>, E, A>(
     op: T.Effect<S, R, E, A>
-  ) => T.Effect<S, R, E, A>;
+  ) => T.Effect<S, R, E, A>
   readonly bracketPool: <S, R, E, A>(
     op: T.Effect<S, ORM<Db> & R, E, A>
-  ) => T.AsyncRE<DbConfig<Db> & DbFactory & R, TaskError | E, A>;
+  ) => T.AsyncRE<DbConfig<Db> & DbFactory & R, TaskError | E, A>
   readonly withRepositoryTask: <Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ) => <A>(f: (r: Repository<Entity>) => F.Lazy<Promise<A>>) => T.AsyncRE<ORM<Db>, TaskError, A>;
+  ) => <A>(
+    f: (r: Repository<Entity>) => F.Lazy<Promise<A>>
+  ) => T.AsyncRE<ORM<Db>, TaskError, A>
   readonly withRepository: <Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
   ) => <S, R, E, A>(
     f: (r: Repository<Entity>) => T.Effect<S, R, E, A>
-  ) => T.Effect<S, ORM<Db> & R, E, A>;
+  ) => T.Effect<S, ORM<Db> & R, E, A>
   readonly withManagerTask: <A>(
     f: (m: EntityManager) => F.Lazy<Promise<A>>
-  ) => T.AsyncRE<ORM<Db>, TaskError, A>;
+  ) => T.AsyncRE<ORM<Db>, TaskError, A>
   readonly withManager: <S, R, E, A>(
     f: (m: EntityManager) => T.Effect<S, R, E, A>
-  ) => T.Effect<S, ORM<Db> & R, E, A>;
+  ) => T.Effect<S, ORM<Db> & R, E, A>
   readonly withConnectionTask: <A>(
     f: (m: Connection) => F.Lazy<Promise<A>>
-  ) => T.AsyncRE<ORM<Db>, TaskError, A>;
+  ) => T.AsyncRE<ORM<Db>, TaskError, A>
   readonly withConnection: <S, R, E, A>(
     f: (m: Connection) => T.Effect<S, R, E, A>
-  ) => T.Effect<S, ORM<Db> & R, E, A>;
+  ) => T.Effect<S, ORM<Db> & R, E, A>
   readonly withORMTransaction: <S, R, E, A>(
     op: T.Effect<S, Manager<Db> & DbTx<Db> & R, E, A>
-  ) => T.AsyncRE<ORM<Db> & R, TaskError | E, A>;
+  ) => T.AsyncRE<ORM<Db> & R, TaskError | E, A>
   readonly withTransaction: <S, R, E, A>(
     op: T.Effect<S, Manager<Db> & DbTx<Db> & R, E, A>
-  ) => T.AsyncRE<ORM<Db> & R, TaskError | E, A>;
+  ) => T.AsyncRE<ORM<Db> & R, TaskError | E, A>
 }
 
 export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
   constructor(private readonly dbEnv: Db) {
-    this.bracketPool = this.bracketPool.bind(this);
-    this.withRepositoryTask = this.withRepositoryTask.bind(this);
-    this.withRepository = this.withRepository.bind(this);
-    this.withTransaction = this.withTransaction.bind(this);
-    this.withORMTransaction = this.withORMTransaction.bind(this);
-    this.withConnectionTask = this.withConnectionTask.bind(this);
-    this.withConnection = this.withConnection.bind(this);
-    this.withManagerTask = this.withManagerTask.bind(this);
-    this.withManager = this.withManager.bind(this);
-    this.withNewRegion = this.withNewRegion.bind(this);
-    this.requireTx = this.requireTx.bind(this);
+    this.bracketPool = this.bracketPool.bind(this)
+    this.withRepositoryTask = this.withRepositoryTask.bind(this)
+    this.withRepository = this.withRepository.bind(this)
+    this.withTransaction = this.withTransaction.bind(this)
+    this.withORMTransaction = this.withORMTransaction.bind(this)
+    this.withConnectionTask = this.withConnectionTask.bind(this)
+    this.withConnection = this.withConnection.bind(this)
+    this.withManagerTask = this.withManagerTask.bind(this)
+    this.withManager = this.withManager.bind(this)
+    this.withNewRegion = this.withNewRegion.bind(this)
+    this.requireTx = this.requireTx.bind(this)
   }
 
   // tslint:disable-next-line: prefer-function-over-method
   requireTx<S, R, E, A>(op: T.Effect<S, R, E, A>): T.Effect<S, R & DbTx<Db>, E, A> {
-    return op;
+    return op
   }
 
-  withNewRegion<S, R extends ORM<Db>, E, A>(op: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> {
+  withNewRegion<S, R extends ORM<Db>, E, A>(
+    op: T.Effect<S, R, E, A>
+  ): T.Effect<S, R, E, A> {
     return this.withConnection((connection) =>
       T.accessM((r: R) =>
         T.provide({
@@ -190,7 +200,7 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
           }
         })(op)
       )
-    );
+    )
   }
 
   bracketPool<S, R, E, A>(
@@ -239,12 +249,14 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
               )
           )
         )
-    );
+    )
   }
 
   withRepositoryTask<Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
-  ): <A>(f: (r: Repository<Entity>) => F.Lazy<Promise<A>>) => T.AsyncRE<ORM<Db>, TaskError, A> {
+  ): <A>(
+    f: (r: Repository<Entity>) => F.Lazy<Promise<A>>
+  ) => T.AsyncRE<ORM<Db>, TaskError, A> {
     return (f) =>
       this.withRepository(target)((r) =>
         pipe(
@@ -253,7 +265,7 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
           T.fromPromiseMap(E.toError),
           T.mapError((x) => new TaskError(x, "withRepositoryTask"))
         )
-      );
+      )
   }
 
   withRepository<Entity>(
@@ -264,7 +276,7 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
     return (f) =>
       T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) =>
         f(manager.getRepository(target))
-      );
+      )
   }
 
   withManagerTask<A>(
@@ -277,13 +289,15 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
         T.fromPromiseMap(E.toError),
         T.mapError((x) => new TaskError(x, "withManagerTask"))
       )
-    );
+    )
   }
 
   withManager<S, R, E, A>(
     f: (m: EntityManager) => T.Effect<S, R, E, A>
   ): T.Effect<S, ORM<Db> & R, E, A> {
-    return T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) => f(manager));
+    return T.accessM(({ [managerEnv]: { [this.dbEnv]: { manager } } }: Manager<Db>) =>
+      f(manager)
+    )
   }
 
   withConnectionTask<A>(
@@ -296,13 +310,13 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
         T.fromPromiseMap(E.toError),
         T.mapError((x) => new TaskError(x, "withConnectionTask"))
       )
-    );
+    )
   }
 
   withConnection<S, R, E, A>(
     f: (m: Connection) => T.Effect<S, R, E, A>
   ): T.Effect<S, ORM<Db> & R, E, A> {
-    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) => f(pool));
+    return T.accessM(({ [poolEnv]: { [this.dbEnv]: { pool } } }: Pool<Db>) => f(pool))
   }
 
   withORMTransaction<S, R, E, A>(
@@ -358,7 +372,7 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
             )
           )
       )
-    );
+    )
   }
 
   withTransaction<S, R, E, A>(
@@ -399,18 +413,18 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
           )
         )
       )
-    );
+    )
   }
 }
 
-export type ORM<A extends symbol | string> = Pool<A> & Manager<A>;
+export type ORM<A extends symbol | string> = Pool<A> & Manager<A>
 
 export function dbT<Db extends symbol | string>(dbEnv: Db): DbT<Db> {
-  return new DbTImpl(dbEnv);
+  return new DbTImpl(dbEnv)
 }
 
 export class TaskError extends Error {
-  public _tag = "TaskError" as const;
+  public _tag = "TaskError" as const
 
   constructor(
     public error: Error,
@@ -422,13 +436,13 @@ export class TaskError extends Error {
       | "bracketPoolOpen"
       | "bracketPoolClose"
   ) {
-    super(error.message);
-    this.name = this._tag;
-    this.stack = error.stack;
-    Object.setPrototypeOf(this, TaskError.prototype);
+    super(error.message)
+    this.name = this._tag
+    this.stack = error.stack
+    Object.setPrototypeOf(this, TaskError.prototype)
   }
 }
 
 export function isTaskError(u: unknown): u is TaskError {
-  return u instanceof TaskError;
+  return u instanceof TaskError
 }

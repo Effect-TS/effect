@@ -1,15 +1,15 @@
-import { Service as F, T, E, pipe } from "@matechs/prelude";
-import * as EXP from "@matechs/express";
-import { RPCResponse } from "@matechs/rpc-client";
+import * as EXP from "@matechs/express"
+import { Service as F, T, E, pipe } from "@matechs/prelude"
+import { RPCResponse } from "@matechs/rpc-client"
 
-export const serverConfigEnv = "@matechs/rpc/serverConfigURI";
+export const serverConfigEnv = "@matechs/rpc/serverConfigURI"
 
 export interface ServerConfig<M> {
   [serverConfigEnv]: {
     [k in keyof M]: {
-      scope: string;
-    };
-  };
+      scope: string
+    }
+  }
 }
 
 export type InferR<F> = F extends (
@@ -18,31 +18,31 @@ export type InferR<F> = F extends (
   ? Q
   : F extends T.Effect<any, infer Q & EXP.RequestContext, any, any>
   ? Q
-  : never;
+  : never
 
 export type Runtime<M> = F.UnionToIntersection<
   M extends {
     [k in keyof M]: {
-      [h: string]: infer X;
-    };
+      [h: string]: infer X
+    }
   }
     ? InferR<X>
     : never
->;
+>
 
 export function server<M extends F.ModuleShape<M>, R>(
   s: F.ModuleSpec<M>,
   i: T.Provider<EXP.ChildEnv & R, M, any, any>
 ): T.AsyncR<EXP.ExpressEnv & Runtime<M> & ServerConfig<M> & R, void> {
   return T.accessM((r: ServerConfig<M> & EXP.ExpressEnv & R) => {
-    const ops: T.AsyncR<EXP.HasExpress & EXP.Express, void>[] = [];
+    const ops: T.AsyncR<EXP.HasExpress & EXP.Express, void>[] = []
 
     for (const k of Reflect.ownKeys(s[F.specURI])) {
-      const { scope } = r[serverConfigEnv][k];
+      const { scope } = r[serverConfigEnv][k]
 
       for (const key of Reflect.ownKeys(s[F.specURI][k])) {
         if (typeof key === "string") {
-          const path = `${scope}/${key}`;
+          const path = `${scope}/${key}`
 
           ops.push(
             EXP.route(
@@ -50,7 +50,7 @@ export function server<M extends F.ModuleShape<M>, R>(
               path,
               EXP.accessReqM((req) =>
                 T.async<never, EXP.RouteResponse<RPCResponse>>((res) => {
-                  const args: any[] = req.body.args;
+                  const { args } = req.body
 
                   const cancel = T.run(
                     T.provide<EXP.HasExpress & EXP.Express & EXP.RequestContext & R>({
@@ -59,25 +59,27 @@ export function server<M extends F.ModuleShape<M>, R>(
                     })(
                       pipe(
                         T.accessM((z: M) =>
-                          typeof z[k][key] === "function" ? z[k][key](...args) : z[k][key]
+                          typeof z[k][key] === "function"
+                            ? z[k][key](...args)
+                            : z[k][key]
                         ),
                         i
                       )
                     ),
                     (x) => res(E.right(EXP.routeResponse(200)({ value: x })))
-                  );
+                  )
 
                   return () => {
-                    cancel();
-                  };
+                    cancel()
+                  }
                 })
               )
             )
-          );
+          )
         }
       }
     }
 
-    return T.asUnit(T.sequenceArray(ops));
-  });
+    return T.asUnit(T.sequenceArray(ops))
+  })
 }

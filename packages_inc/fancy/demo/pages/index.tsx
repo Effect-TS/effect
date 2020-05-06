@@ -1,18 +1,19 @@
-import React from "react";
-import { pipe, T, combineProviders } from "@matechs/prelude";
-import * as R from "../../src";
-import { DT } from "../modules/date";
-import { dateStateURI } from "../modules/date/state";
-import { ORG } from "../modules/orgs";
-import { orgsStateURI } from "../modules/orgs/state";
-import { Home } from "../view/Home";
-import { flashInitialState, flashStateURI } from "../modules/flash/state";
-import Link from "next/link";
+import { pipe, T, combineProviders } from "@matechs/prelude"
+import Link from "next/link"
+import React from "react"
+
+import * as R from "../../src"
+import { DT } from "../modules/date"
+import { dateStateURI } from "../modules/date/state"
+import { flashInitialState, flashStateURI } from "../modules/flash/state"
+import { ORG } from "../modules/orgs"
+import { orgsStateURI } from "../modules/orgs/state"
+import { Home } from "../view/Home"
 
 // alpha
 /* istanbul ignore file */
 
-const provider = combineProviders().with(ORG.provide).with(DT.provide).done();
+const provider = combineProviders().with(ORG.provide).with(DT.provide).done()
 
 // tslint:disable-next-line: no-default-export
 export default R.page(
@@ -55,4 +56,4 @@ export default R.page(
       foo: "ok-foo"
     })
   )
-);
+)

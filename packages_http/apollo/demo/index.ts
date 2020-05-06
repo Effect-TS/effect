@@ -1,12 +1,13 @@
-import { T, M, O, A, pipe, combineProviders } from "@matechs/prelude";
-import * as EX from "@matechs/express";
-import { gql } from "apollo-server";
-import { apollo } from "../src";
+import * as EX from "@matechs/express"
+import { T, M, O, A, pipe, combineProviders } from "@matechs/prelude"
+import { gql } from "apollo-server"
+
+import { apollo } from "../src"
 
 // EXPERIMENTAL
 /* istanbul ignore file */
 
-const apolloURI = "myapp/unique-uri";
+const apolloURI = "myapp/unique-uri"
 const Apollo = apollo(
   apolloURI,
   {
@@ -23,12 +24,12 @@ const Apollo = apollo(
         })
     }
   },
-  ({ req, connection }) =>
+  ({ connection, req }) =>
     T.access((_: { contextFnEnv: string }) => ({
       req: connection ? O.none : O.some(req),
       sub: connection ? O.some(connection.context) : O.none
     }))
-);
+)
 
 const typeDefs = gql`
   type Book {
@@ -49,7 +50,7 @@ const typeDefs = gql`
     query: Query
     subscription: Subscription
   }
-`;
+`
 
 const books = Apollo.binder({
   ["Query/books"]: Apollo.resolver<{ n: number }>()(({ args }) =>
@@ -63,24 +64,26 @@ const books = Apollo.binder({
       )
     )
   )
-});
+})
 
 const hi = Apollo.binder({
   ["Query/hi"]: () =>
     T.accessM((_: { bar: string }) =>
       pipe(
         Apollo.accessContext,
-        T.chain(({ req }) => (O.isSome(req) ? T.pure(`${_.bar} - with req`) : T.pure(_.bar)))
+        T.chain(({ req }) =>
+          O.isSome(req) ? T.pure(`${_.bar} - with req`) : T.pure(_.bar)
+        )
       )
     )
-});
+})
 
 async function* gen(n: number, message: O.Option<string>) {
-  let i = 0;
+  let i = 0
   while (i < n) {
     yield {
       demo: { message: `${i++} - ${O.isSome(message) ? message.value : "no-sub"}` }
-    };
+    }
   }
 }
 
@@ -109,26 +112,28 @@ export const demo = Apollo.binder({
           Apollo.accessContext,
           T.chain(({ sub }) =>
             O.isSome(sub)
-              ? T.pure({ message: `${prefix}: ${x.demo.message} (resolve: ${sub.value.message})` })
+              ? T.pure({
+                  message: `${prefix}: ${x.demo.message} (resolve: ${sub.value.message})`
+                })
               : T.pure({ message: `${prefix}: ${x.demo.message}` })
           )
         )
       )
   )
-});
+})
 
 const resolvers = Apollo.binder({
   ...hi,
   ...books,
   ...demo
-});
+})
 
 const main = pipe(
   // Bind apollo
   Apollo.bindToSchema(resolvers, typeDefs),
   // keep server waiting
   T.chainTap(() => T.never)
-);
+)
 
 const provider = combineProviders()
   .with(M.provide(EX.managedExpress(8080)))
@@ -168,14 +173,14 @@ const provider = combineProviders()
       contextFnEnv: "ok"
     })
   )
-  .done();
+  .done()
 
 const cancel = pipe(main, provider, (x) =>
   T.run(x, (ex) => {
-    console.log(ex);
+    console.log(ex)
   })
-);
+)
 
 process.on("SIGINT", () => {
-  cancel();
-});
+  cancel()
+})

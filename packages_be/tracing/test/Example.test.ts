@@ -1,50 +1,53 @@
-import * as assert from "assert";
-import { T, pipe, Ex } from "@matechs/prelude";
-import { program } from "./demo/Main";
-import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing";
-import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from "../src";
-import { counter } from "./demo/Counter";
-import { Printer } from "./demo/Printer";
+import * as assert from "assert"
+
+import { T, pipe, Ex } from "@matechs/prelude"
+import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing"
+
+import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from "../src"
+
+import { counter } from "./demo/Counter"
+import { program } from "./demo/Main"
+import { Printer } from "./demo/Printer"
 
 class MockTracer extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
-    super();
+    super()
   }
   startSpan(name: string, options?: SpanOptions): Span {
-    this.spans.push({ name, options: options || {} });
+    this.spans.push({ name, options: options || {} })
 
-    return super.startSpan(name, options);
+    return super.startSpan(name, options)
   }
 }
 
 class MockTracer2 extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
-    super();
+    super()
   }
   startSpan(name: string, options?: SpanOptions): Span {
-    this.spans.push({ name, options: options || {} });
+    this.spans.push({ name, options: options || {} })
 
-    return super.startSpan(name, options);
+    return super.startSpan(name, options)
   }
   // tslint:disable-next-line: prefer-function-over-method
   extract(format: string, carrier: any): SpanContext | null {
     return {
       toSpanId(): string {
-        return "demo-span-id";
+        return "demo-span-id"
       },
       toTraceId(): string {
-        return "demo-trace-id";
+        return "demo-trace-id"
       }
-    };
+    }
   }
 }
 
 describe("Example", () => {
   it("should collect messages from log", async () => {
-    const messages: Array<string> = [];
-    const spans: Array<{ name: string; options: SpanOptions }> = [];
+    const messages: Array<string> = []
+    const spans: Array<{ name: string; options: SpanOptions }> = []
 
-    const mockTracer = new MockTracer(spans);
+    const mockTracer = new MockTracer(spans)
 
     const result = await T.runToPromiseExit(
       pipe(
@@ -54,19 +57,22 @@ describe("Example", () => {
           printer: {
             print(s) {
               return T.sync(() => {
-                messages.push(s);
-              });
+                messages.push(s)
+              })
             }
           }
         }),
         T.provide(counter)
       )
-    );
+    )
 
-    assert.deepStrictEqual(spans.filter((s) => s.name.indexOf("demo-main") >= 0).length, 1);
-    assert.deepStrictEqual(spans.filter((s) => s.name.indexOf("span-") >= 0).length, 20);
+    assert.deepStrictEqual(
+      spans.filter((s) => s.name.indexOf("demo-main") >= 0).length,
+      1
+    )
+    assert.deepStrictEqual(spans.filter((s) => s.name.indexOf("span-") >= 0).length, 20)
 
-    assert.deepStrictEqual(result, Ex.done({ start: 0, end: 20 }));
+    assert.deepStrictEqual(result, Ex.done({ start: 0, end: 20 }))
     assert.deepStrictEqual(messages, [
       "n: 1 (1)",
       "n: 2 (2)",
@@ -89,51 +95,53 @@ describe("Example", () => {
       "n: 9 (19)",
       "n: 10 (20)",
       "done - 0 <-> 20"
-    ]);
-  });
+    ])
+  })
 
   it("should extract trace", async () => {
-    const spans: Array<{ name: string; options: SpanOptions }> = [];
+    const spans: Array<{ name: string; options: SpanOptions }> = []
 
-    const mockTracer = new MockTracer2(spans);
+    const mockTracer = new MockTracer2(spans)
 
-    const mockModule: Tracer = tracer(T.sync(() => mockTracer));
+    const mockModule: Tracer = tracer(T.sync(() => mockTracer))
 
     const program2 = withTracer(
-      // tslint:disable-next-line: no-empty
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       withControllerSpan("", "", {})(T.sync(() => {}))
-    );
+    )
 
-    await T.runToPromise(pipe(program2, T.provide(mockModule)));
+    await T.runToPromise(pipe(program2, T.provide(mockModule)))
 
     assert.deepStrictEqual(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
       // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toSpanId(),
       "demo-span-id"
-    );
+    )
     assert.deepStrictEqual(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
       // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toTraceId(),
       "demo-trace-id"
-    );
-  });
+    )
+  })
 
   it("should use dummy tracer by default", async () => {
     const program2 = withControllerSpan(
       "noop",
       "noop"
-    )(withChildSpan("noop")(T.raiseError(new Error("not implemented"))));
+    )(withChildSpan("noop")(T.raiseError(new Error("not implemented"))))
 
-    const result = await T.runToPromiseExit(program2);
+    const result = await T.runToPromiseExit(program2)
 
-    assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")));
-  });
+    assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")))
+  })
 
   it("skip tracing if out of context", async () => {
-    const program2 = withChildSpan("noop")(T.raiseError(new Error("not implemented")));
+    const program2 = withChildSpan("noop")(T.raiseError(new Error("not implemented")))
 
-    const result = await T.runToPromiseExit(T.provide(tracer())(program2));
+    const result = await T.runToPromiseExit(T.provide(tracer())(program2))
 
-    assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")));
-  });
-});
+    assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")))
+  })
+})

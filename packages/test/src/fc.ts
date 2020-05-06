@@ -1,18 +1,18 @@
-import { effect as T, stream as S, managed as M } from "@matechs/effect";
-import fc, { Arbitrary } from "fast-check";
-import prand from "pure-rand";
-import { some } from "fp-ts/lib/Option";
-import { sequenceS } from "fp-ts/lib/Apply";
-import { pipe } from "fp-ts/lib/pipeable";
+import { effect as T, stream as S, managed as M } from "@matechs/effect"
+import fc, { Arbitrary } from "fast-check"
+import { sequenceS } from "fp-ts/lib/Apply"
+import { some } from "fp-ts/lib/Option"
+import { pipe } from "fp-ts/lib/pipeable"
+import prand from "pure-rand"
 
-declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
+declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
-export const RandomGenURI = "@matechs/test/RandomGenURI";
+export const RandomGenURI = "@matechs/test/RandomGenURI"
 
 export interface RandomGen {
   [RandomGenURI]: {
-    randomGenerator: fc.Random;
-  };
+    randomGenerator: fc.Random
+  }
 }
 
 export const provideGenerator = T.provideM(
@@ -26,7 +26,7 @@ export const provideGenerator = T.provideM(
       })
     )
   )
-);
+)
 
 export interface Arb<R, A> extends S.Stream<unknown, R, never, A> {}
 
@@ -37,7 +37,7 @@ export const arb = <T0>(a: Arbitrary<T0>): Arb<RandomGen, T0> =>
         T.sync(() => some(a.generate(_[RandomGenURI].randomGenerator).value))
       )
     )
-  );
+  )
 
 export const propertyM = (iterations: number) => <
   NER extends Record<string, S.Stream<any, any, any, any>>
@@ -45,7 +45,9 @@ export const propertyM = (iterations: number) => <
   r: EnforceNonEmptyRecord<NER> & Record<string, S.Stream<any, any, any, any>>
 ) => <R>(
   f: (
-    _: { [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, any, infer A>] ? A : never }
+    _: {
+      [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, any, infer A>] ? A : never
+    }
   ) => T.Effect<unknown, R, any, void>
 ) =>
   pipe(
@@ -53,13 +55,17 @@ export const propertyM = (iterations: number) => <
     S.chain((x) => S.encaseEffect(f(x))),
     S.take(iterations),
     S.drain
-  );
+  )
 
-export const property = (iterations: number) => <NER extends Record<string, Arb<any, any>>>(
+export const property = (iterations: number) => <
+  NER extends Record<string, Arb<any, any>>
+>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Arb<any, any>>
 ) => (
   f: (
-    _: { [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, any, infer A>] ? A : never }
+    _: {
+      [K in keyof NER]: [NER[K]] extends [S.Stream<any, any, any, infer A>] ? A : never
+    }
   ) => void
 ) =>
   pipe(
@@ -67,4 +73,4 @@ export const property = (iterations: number) => <NER extends Record<string, Arb<
     S.chain((x) => S.encaseEffect(T.sync(() => f(x)))),
     S.take(iterations),
     S.drain
-  );
+  )

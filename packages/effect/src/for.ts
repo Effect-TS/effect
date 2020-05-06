@@ -1,3 +1,6 @@
+import { sequenceS } from "fp-ts/lib/Apply"
+import { Kind4 } from "fp-ts/lib/HKT"
+
 import {
   MaURIS,
   Monad4E,
@@ -7,32 +10,33 @@ import {
   UnionToIntersection,
   ATypeOf,
   Monad4EP
-} from "./overloadEff";
-import { Kind4 } from "fp-ts/lib/HKT";
-import { sequenceS } from "fp-ts/lib/Apply";
+} from "./overloadEff"
 
-declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R;
+declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
 export class Pipe<A> {
   constructor(private readonly _: A) {
-    this.pipe = this.pipe.bind(this);
-    this.done = this.done.bind(this);
+    this.pipe = this.pipe.bind(this)
+    this.done = this.done.bind(this)
   }
   pipe<B>(f: (_: A) => B) {
-    return new Pipe(f(this._));
+    return new Pipe(f(this._))
   }
   done(): A {
-    return this._;
+    return this._
   }
 }
 
 export class ForImpl<U extends MaURIS, S, R, E, A> {
-  constructor(private readonly M: Monad4E<U>, private readonly res: Kind4<U, any, any, any, any>) {}
+  constructor(
+    private readonly M: Monad4E<U>,
+    private readonly res: Kind4<U, any, any, any, any>
+  ) {}
   do<S2, R2, E2, A2>(f: (_: A) => Kind4<U, S2, R2, E2, A2>) {
     return new ForImpl<U, S | S2, R & R2, E | E2, A>(
       this.M,
       this.M.chain(this.res, (k) => this.M.map(f(k), (_) => k))
-    );
+    )
   }
   with<N extends string, S2, R2, E2, A2>(
     n: Exclude<N, keyof A>,
@@ -41,7 +45,7 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
     return new ForImpl<U, S | S2, R & R2, E | E2, A & { [k in N]: A2 }>(
       this.M,
       this.M.chain(this.res, (k) => this.M.map(f(k), (_) => ({ ...k, [n]: _ })))
-    );
+    )
   }
   withPipe<N extends string, S2, R2, E2, A2>(
     n: Exclude<N, keyof A>,
@@ -49,14 +53,16 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
   ) {
     return new ForImpl<U, S | S2, R & R2, E | E2, A & { [k in N]: A2 }>(
       this.M,
-      this.M.chain(this.res, (k) => this.M.map(f(new Pipe(k)), (_) => ({ ...k, [n]: _ })))
-    );
+      this.M.chain(this.res, (k) =>
+        this.M.map(f(new Pipe(k)), (_) => ({ ...k, [n]: _ }))
+      )
+    )
   }
   let<N extends string, A2>(n: Exclude<N, keyof A>, f: (_: A) => A2) {
     return new ForImpl<U, S, R, E, A & { [k in N]: A2 }>(
       this.M,
       this.M.map(this.res, (k) => ({ ...k, [n]: f(k) }))
-    );
+    )
   }
   all<NER extends Record<string, Kind4<U, any, any, any, any>>>(
     f: (_: A) => EnforceNonEmptyRecord<NER> & { [K in keyof A]?: never }
@@ -72,26 +78,30 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
       this.M.chain(this.res, (k) =>
         this.M.map(sequenceS(this.M)(f(k) as any), (_) => ({ ...k, ..._ }))
       )
-    );
+    )
   }
   pipe<S2, R2, E2, A2>(f: (_: Kind4<U, S, R, E, A>) => Kind4<U, S2, R2, E2, A2>) {
-    return new ForImpl<U, S2, R2, E2, A2>(this.M, f(this.res));
+    return new ForImpl<U, S2, R2, E2, A2>(this.M, f(this.res))
   }
   return<A2>(f: (_: A) => A2): Kind4<U, S, R, E, A2> {
-    return this.M.map(this.res, f);
+    return this.M.map(this.res, f)
   }
   unit(): Kind4<U, S, R, E, void> {
     return this.M.map(this.res, () => {
       //
-    });
+    })
   }
   done(): Kind4<U, S, R, E, A> {
-    return this.res;
+    return this.res
   }
 }
 
-export function ForM<U extends MaURIS>(_: Monad4EP<U>): ForImpl<U, unknown, unknown, never, {}>;
-export function ForM<U extends MaURIS>(_: Monad4E<U>): ForImpl<U, never, unknown, never, {}>;
+export function ForM<U extends MaURIS>(
+  _: Monad4EP<U>
+): ForImpl<U, unknown, unknown, never, {}>
+export function ForM<U extends MaURIS>(
+  _: Monad4E<U>
+): ForImpl<U, never, unknown, never, {}>
 export function ForM<U extends MaURIS>(_: unknown): unknown {
-  return new ForImpl<U, never, unknown, never, {}>(_ as any, (_ as any).of({}) as any);
+  return new ForImpl<U, never, unknown, never, {}>(_ as any, (_ as any).of({}) as any)
 }

@@ -1,3 +1,6 @@
+import { effect as T, freeEnv as F } from "@matechs/effect"
+import { pipe } from "fp-ts/lib/pipeable"
+
 import {
   assert,
   testM,
@@ -8,21 +11,19 @@ import {
   withProvider,
   withFinalize,
   implementMock
-} from "../src";
-import { effect as T, freeEnv as F } from "@matechs/effect";
-import { pipe } from "fp-ts/lib/pipeable";
+} from "../src"
 
 const TestValue_ = F.define({
   test: {
     value: F.cn<T.Sync<string>>()
   }
-});
+})
 
 interface TestValue extends F.TypeOf<typeof TestValue_> {}
 
-const TestValue = F.opaque<TestValue>()(TestValue_);
+const TestValue = F.opaque<TestValue>()(TestValue_)
 
-const TV = F.access(TestValue)["test"];
+const TV = F.access(TestValue)["test"]
 
 customRun({
   describe,
@@ -36,28 +37,29 @@ customRun({
     testM(
       "mock concrete console using hook",
       T.asyncTotal((r) => {
-        console.info("mocked");
-        r(undefined);
+        console.info("mocked")
+        r(undefined)
         return () => {
           //
-        };
+        }
       })
     ),
     withHook(
       T.sync(() => {
-        const infoSpy = jest.spyOn(console, "info").mockImplementation(() => {});
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        const infoSpy = jest.spyOn(console, "info").mockImplementation(() => {})
 
         return {
           infoSpy
-        };
+        }
       }),
       ({ infoSpy }) =>
         T.sync(() => {
-          const calls = infoSpy.mock.calls.map((c) => c[0]);
+          const calls = infoSpy.mock.calls.map((c) => c[0])
 
-          infoSpy.mockRestore();
+          infoSpy.mockRestore()
 
-          expect(calls).toEqual(["mocked"]);
+          expect(calls).toEqual(["mocked"])
         })
     )
   ),
@@ -68,7 +70,7 @@ customRun({
         TV.value,
         T.chain((v) =>
           T.sync(() => {
-            assert.strictEqual(v, "ok-ok");
+            assert.strictEqual(v, "ok-ok")
           })
         )
       )
@@ -83,14 +85,14 @@ customRun({
       "run initializer",
       T.accessM((_: TestValue) =>
         T.sync(() => {
-          assert.deepStrictEqual(_.test.value, T.pure("patched"));
+          assert.deepStrictEqual(_.test.value, T.pure("patched"))
         })
       )
     ),
     withInit(
       T.accessM((_: TestValue) =>
         T.sync(() => {
-          _.test.value = T.pure("patched");
+          _.test.value = T.pure("patched")
         })
       )
     ),
@@ -110,8 +112,8 @@ customRun({
         T.chain((v) =>
           T.accessM((_: TestValue) =>
             T.sync(() => {
-              assert.deepStrictEqual(v, "initial");
-              _.test.value = T.pure("patched");
+              assert.deepStrictEqual(v, "initial")
+              _.test.value = T.pure("patched")
             })
           )
         )
@@ -122,7 +124,7 @@ customRun({
         TV.value,
         T.chain((v) =>
           T.sync(() => {
-            assert.deepStrictEqual(v, "patched");
+            assert.deepStrictEqual(v, "patched")
           })
         )
       )
@@ -135,4 +137,4 @@ customRun({
       })
     )
   )
-)();
+)()

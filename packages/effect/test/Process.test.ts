@@ -1,13 +1,14 @@
-import { proc as P, effect as T } from "../src";
-import { pipe } from "fp-ts/lib/pipeable";
-import { done, interrupt, raise } from "../src/exit";
+import { pipe } from "fp-ts/lib/pipeable"
+
+import { proc as P, effect as T } from "../src"
+import { done, interrupt, raise } from "../src/exit"
 
 describe("Process", () => {
   it("should interrupt on failures", async () => {
     interface Foo {
       test: {
-        n: number;
-      };
+        n: number
+      }
     }
 
     const all = P.runAll({
@@ -18,24 +19,26 @@ describe("Process", () => {
         T.access(({ test: { n } }: Foo) => n),
         50
       )
-    });
+    })
 
-    expect(await T.runToPromise(pipe(all, T.provide({ test: { n: 4 } })))).toStrictEqual({
+    expect(
+      await T.runToPromise(pipe(all, T.provide({ test: { n: 4 } })))
+    ).toStrictEqual({
       a: done(1),
       b: interrupt,
       c: raise("3"),
       d: done(4)
-    });
-  });
+    })
+  })
 
   it("should interrupt on interrupt", async () => {
     interface Foo {
       test: {
-        n: number;
-      };
+        n: number
+      }
     }
 
-    let end = {};
+    let end = {}
 
     const all = P.runAll(
       {
@@ -47,20 +50,20 @@ describe("Process", () => {
         )
       },
       (ex) => {
-        end = ex;
+        end = ex
       }
-    );
+    )
 
-    const fiber = await T.runToPromise(pipe(all, T.provide({ test: { n: 4 } }), T.fork));
+    const fiber = await T.runToPromise(pipe(all, T.provide({ test: { n: 4 } }), T.fork))
 
-    await T.runToPromise(T.delay(T.unit, 60));
+    await T.runToPromise(T.delay(T.unit, 60))
 
-    await T.runToPromise(fiber.interrupt);
+    await T.runToPromise(fiber.interrupt)
 
     expect(end).toStrictEqual({
       a: interrupt,
       b: interrupt,
       d: done(4)
-    });
-  });
-});
+    })
+  })
+})

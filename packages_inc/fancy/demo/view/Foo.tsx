@@ -1,8 +1,9 @@
-import React from "react";
-import { T, pipe } from "@matechs/prelude";
-import Link from "next/link";
-import { DT } from "../modules/date";
-import { UI } from "../../src";
+import { T, pipe } from "@matechs/prelude"
+import Link from "next/link"
+import React from "react"
+
+import { UI } from "../../src"
+import { DT } from "../modules/date"
 
 // alpha
 /* istanbul ignore file */
@@ -23,4 +24,4 @@ export const Foo = UI.of(
       </>
     ))
   )
-);
+)

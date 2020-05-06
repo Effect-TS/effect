@@ -1,8 +1,9 @@
-import { T, Ex, M, O } from "@matechs/prelude";
-import * as H from "@matechs/http-client";
-import * as J from "@matechs/test-jest";
-import express from "express";
-import { expressM } from "../resources/expressM";
+import * as H from "@matechs/http-client"
+import { T, Ex, M, O } from "@matechs/prelude"
+import * as J from "@matechs/test-jest"
+import express from "express"
+
+import { expressM } from "../resources/expressM"
 
 /* istanbul ignore file */
 
@@ -15,14 +16,17 @@ export const headersMiddlewareSpec = J.testM(
           app.get("/middle", express.json(), (req, res) => {
             res.send({
               foo: req.header("foo")
-            });
-          });
+            })
+          })
         })
       )
       .bindL("get", () => T.result(H.get("http://127.0.0.1:4015/middle")))
       .return(({ get }) => {
-        J.assert.deepStrictEqual(Ex.isDone(get), true);
-        J.assert.deepStrictEqual(Ex.isDone(get) && get.value.body, O.some({ foo: "bar" }));
+        J.assert.deepStrictEqual(Ex.isDone(get), true)
+        J.assert.deepStrictEqual(
+          Ex.isDone(get) && get.value.body,
+          O.some({ foo: "bar" })
+        )
       })
   )
-);
+)

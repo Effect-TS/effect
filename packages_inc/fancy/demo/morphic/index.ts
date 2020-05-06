@@ -1,11 +1,15 @@
-import { summonFor, AsOpaque, AsUOpaque } from "@morphic-ts/batteries/lib/summoner-ESBST";
-import { FastCheckURI } from "@morphic-ts/fastcheck-interpreters/lib/hkt";
+import {
+  summonFor,
+  AsOpaque,
+  AsUOpaque
+} from "@morphic-ts/batteries/lib/summoner-ESBST"
+import { FastCheckURI } from "@morphic-ts/fastcheck-interpreters/lib/hkt"
 
 export interface Config {
   [FastCheckURI]: {
-    foo: string;
-  };
+    foo: string
+  }
 }
 
-export const { tagged, define, summon } = summonFor<Config>({});
-export { AsOpaque, AsUOpaque };
+export const { define, summon, tagged } = summonFor<Config>({})
+export { AsOpaque, AsUOpaque }

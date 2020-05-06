@@ -1,5 +1,5 @@
-import { freeEnv as F, effect as T } from "@matechs/effect";
-import { FunctionN } from "fp-ts/lib/function";
+import { freeEnv as F, effect as T } from "@matechs/effect"
+import { FunctionN } from "fp-ts/lib/function"
 
 export type EnvOf<F> = F extends FunctionN<
   infer _ARG,
@@ -8,7 +8,7 @@ export type EnvOf<F> = F extends FunctionN<
   ? R
   : F extends T.Effect<infer _S, infer R, infer _E, infer _A>
   ? R
-  : never;
+  : never
 
 export type OnlyNew<M extends F.ModuleShape<M>, I extends Implementation<M>> = {
   [k in keyof I & keyof M]: {
@@ -19,9 +19,9 @@ export type OnlyNew<M extends F.ModuleShape<M>, I extends Implementation<M>> = {
       ? FunctionN<ARG, T.Effect<_S, R, E, A>>
       : I[k][h] extends T.Effect<infer _S, infer R & EnvOf<M[k][h]>, infer E, infer A>
       ? T.Effect<_S, R, E, A>
-      : never;
-  };
-};
+      : never
+  }
+}
 
 export type ImplementationEnv<I> = F.UnionToIntersection<
   {
@@ -36,10 +36,10 @@ export type ImplementationEnv<I> = F.UnionToIntersection<
         ? unknown extends R
           ? never
           : R
-        : never;
-    }[keyof I[k]];
+        : never
+    }[keyof I[k]]
   }[keyof I]
->;
+>
 
 export type Implementation<M> = {
   [k in keyof M]: {
@@ -54,14 +54,14 @@ export type Implementation<M> = {
       ? unknown extends _S
         ? T.Effect<any, any, E, A>
         : T.SyncRE<any, E, A>
-      : never;
-  };
-};
+      : never
+  }
+}
 
 export function implementMock<S extends F.ModuleSpec<any>>(
   s: S
 ): <I extends Implementation<F.TypeOf<S>>>(
   i: I
 ) => T.Provider<ImplementationEnv<OnlyNew<F.TypeOf<S>, I>>, F.TypeOf<S>, never> {
-  return (i) => F.implement(s)(i as any) as any;
+  return (i) => F.implement(s)(i as any) as any
 }

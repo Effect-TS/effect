@@ -1,8 +1,9 @@
-import * as assert from "assert";
-import { effect as T, concurrentRef as R } from "../src";
+import * as assert from "assert"
+
+import { effect as T, concurrentRef as R } from "../src"
 
 interface Config {
-  initial: number;
+  initial: number
 }
 
 describe("ConcurrentRef", () => {
@@ -11,17 +12,17 @@ describe("ConcurrentRef", () => {
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .bindL("next", ({ ref }) => ref.modify((n) => T.pure([n + 1, n + 1] as const)))
-      .doL(({ ref, next }) => ref.set(T.pure(next + 1)))
+      .doL(({ next, ref }) => ref.set(T.pure(next + 1)))
       .doL(({ ref }) => ref.update((n) => T.pure(n + 1)))
       .bindL("result", ({ ref }) => ref.get)
-      .return((s) => s.result);
+      .return((s) => s.result)
 
     const result = await T.runToPromise(
       T.provide<Config>({ initial: 0 })(program)
-    );
+    )
 
-    assert.deepStrictEqual(result, 3);
-  });
+    assert.deepStrictEqual(result, 3)
+  })
 
   it("should prevent concurrency issues", async () => {
     const program = T.parDo()
@@ -31,12 +32,12 @@ describe("ConcurrentRef", () => {
         first: ref.modify((n) => T.delay(T.pure([n + 1, n + 1] as const), 10)),
         second: ref.modify((n) => T.delay(T.pure([n + 1, n + 1] as const), 10))
       }))
-      .return(({ first, second }) => ({ first, second }));
+      .return(({ first, second }) => ({ first, second }))
 
     const result = await T.runToPromise(
       T.provide<Config>({ initial: 0 })(program)
-    );
+    )
 
-    assert.notDeepStrictEqual(result.first, result.second);
-  });
-});
+    assert.notDeepStrictEqual(result.first, result.second)
+  })
+})
