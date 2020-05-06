@@ -1,9 +1,9 @@
 #!/bin/sh
-if yarn prettier --write "./packages*/**/{src,demo,tests}/**/*.ts"
+if yarn prettier "./packages*/**/{src,demo,tests}/**/*.ts"
 then
 echo "All prettified"
 else
-echo "ERROR: Prettifying failed"
+echo "ERROR: There's stuff left to be prettified, please fix!"
 exit 1
 fi
 
