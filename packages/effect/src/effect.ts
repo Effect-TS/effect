@@ -629,7 +629,7 @@ export const unit: Sync<void> = pure(undefined)
  * @param f
  */
 export function chainError<S, R, E1, E2, A>(
-  f: F.FunctionN<[E1], Effect<S, R, E2, A>>
+  f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S, R, E2, A>
 ): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f)
 }
@@ -1704,23 +1704,29 @@ export function runToPromiseExit<E, A>(io: AsyncRE<{}, E, A>): Promise<ex.Exit<E
 
 function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: F.FunctionN<[E1], Effect<S2, R2, E2, A2>>
+  f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, A2>
 ): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
-    (cause) => (cause._tag === "Raise" ? f(cause.error) : completed(cause)),
+    (cause) =>
+      cause._tag === "Raise" ? f(cause.error, cause.remaining) : completed(cause),
     pure
   )
 }
 
 const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   io: Effect<S, R, E1, A>,
-  f: F.FunctionN<[E1], Effect<S2, R2, E2, unknown>>
-) => chainError_(io, (e) => chain_(f(e), () => raiseError(e)))
+  f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
+) =>
+  chainError_(io, (e, remaining) =>
+    chain_(f(e, remaining), () =>
+      completed(ex.withRemaining(ex.raise(e), ...(remaining || [])))
+    )
+  )
 
-export const chainErrorTap = <S, R, E1, E2, A>(
-  f: (e: E1) => Effect<S, R, E2, unknown>
-) => (io: Effect<S, R, E1, A>) => chainErrorTap_(io, f)
+export const chainErrorTap = <S, R, E1, E2>(
+  f: (e: E1, remaining?: Array<ex.Cause<any>>) => Effect<S, R, E2, unknown>
+) => <S2, R2, A>(io: Effect<S2, R2, E1, A>) => chainErrorTap_(io, f)
 
 export interface EffectMonad
   extends Monad4E<URI>,
@@ -1730,7 +1736,7 @@ export interface EffectMonad
     Functor4<URI> {
   chainError<S1, S2, R, E1, R2, E2, A, A2>(
     io: Effect<S1, R, E1, A>,
-    f: F.FunctionN<[E1], Effect<S2, R2, E2, A2>>
+    f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, A2>
   ): Effect<S1 | S2, R & R2, E2, A | A2>
 
   foldExit<S1, S2, S3, R, E1, R2, E2, A1, A2, A3, R3, E3>(
@@ -1746,7 +1752,7 @@ export interface EffectMonad
 
   chainErrorTap<S1, S2, R, E1, R2, E2, A>(
     io: Effect<S1, R, E1, A>,
-    f: F.FunctionN<[E1], Effect<S2, R2, E2, unknown>>
+    f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
   ): Effect<S1 | S2, R & R2, E1 | E2, A>
 
   mapError: EffectMonad["mapLeft"]

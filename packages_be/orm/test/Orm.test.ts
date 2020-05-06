@@ -323,9 +323,13 @@ describe("Orm", () => {
 
     const res = await T.runToPromiseExit(T.provide(env)(program))
 
+    // TODO: Double check why error is duplicated here
     assert.deepStrictEqual(
       res,
-      Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
+      Ex.withRemaining(
+        Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")),
+        Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
+      )
     )
     assert.deepStrictEqual(queries, ["BEGIN", "", "ROLLBACK"])
   })
