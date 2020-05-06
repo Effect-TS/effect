@@ -5,11 +5,7 @@ import { array } from "fp-ts/lib/Array"
 import { right } from "fp-ts/lib/Either"
 
 import { effect as T } from "../src"
-import {
-  interruptWithError,
-  interruptWithErrorAndOthers,
-  done
-} from "../src/original/exit"
+import { interruptWithError, done } from "../src/original/exit"
 
 describe("Interrupt", () => {
   it("run gets exit in cb", async () => {
@@ -91,7 +87,7 @@ describe("Interrupt", () => {
 
     assert.deepStrictEqual(
       exit,
-      interruptWithErrorAndOthers(new Error("test error"), [new Error("test error 2")])
+      interruptWithError(new Error("test error"), new Error("test error 2"))
     )
   })
 

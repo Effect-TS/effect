@@ -62,12 +62,12 @@ T.run(
     (server) => {
       process.on("SIGINT", () => {
         T.runToPromise(server.interrupt).then((x) => {
-          process.exit(Ex.isInterrupt(x) && x.error ? 2 : 0)
+          process.exit(Ex.isInterrupt(x) && x.errors ? 2 : 0)
         })
       })
       process.on("SIGTERM", () => {
         T.runToPromise(server.interrupt).then((x) => {
-          process.exit(Ex.isInterrupt(x) && x.error ? 2 : 0)
+          process.exit(Ex.isInterrupt(x) && x.errors ? 2 : 0)
         })
       })
     },

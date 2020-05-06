@@ -6,15 +6,7 @@ import { either as E, function as F } from "fp-ts"
 
 import * as T from "./effect"
 import { DoublyLinkedList } from "./listc"
-import {
-  Cause,
-  Done,
-  done,
-  Exit,
-  interruptWithError,
-  raise,
-  interruptWithErrorAndOthers
-} from "./original/exit"
+import { Cause, Done, done, Exit, interruptWithError, raise } from "./original/exit"
 import { defaultRuntime } from "./original/runtime"
 
 export type RegionFrameType = InterruptFrame
@@ -160,19 +152,16 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return
   }
 
-  dispatchResumeInterrupt(_: { err?: Error; others?: Error[] }) {
-    const go =
-      _.others && _.err
-        ? this.handle(interruptWithErrorAndOthers(_.err, _.others))
-        : this.handle(interruptWithError(_.err))
+  dispatchResumeInterrupt({ errors }: { errors?: Error[] }) {
+    const go = this.handle(interruptWithError(...(errors || [])))
     if (go) {
       // eslint-disable-next-line
       this.loop(go)
     }
   }
 
-  resumeInterrupt(err?: Error, others?: Error[]): void {
-    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { err, others })
+  resumeInterrupt(errors?: Error[]): void {
+    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { errors })
   }
 
   next(value: unknown): T.Instructions | undefined {
@@ -370,7 +359,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.interrupted = true
     if (this.cancelAsync && this.isInterruptible()) {
       this.cancelAsync((err, others) => {
-        this.resumeInterrupt(err, others)
+        this.resumeInterrupt([...(err ? [err] : []), ...(others || [])])
       })
     }
   }

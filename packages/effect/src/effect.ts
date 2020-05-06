@@ -141,7 +141,7 @@ export class ISuspended<S, R, E, A> {
 
 export type AsyncContFn<E, A> = F.FunctionN<[Ei.Either<E, A>], void>
 export type AsyncCancelContFn = F.FunctionN<
-  [(error?: Error, others?: Error[]) => void],
+  [(rootError?: Error, remainingErrors?: Error[]) => void],
   void
 >
 export type AsyncFn<E, A> = F.FunctionN<[AsyncContFn<E, A>], AsyncCancelContFn>
@@ -980,13 +980,10 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
             if (finalize._tag === "Done") {
               const errors = pipe(
                 [
-                  exit.error,
-                  ...(exit.others ? exit.others : []),
+                  ...(exit.errors ? exit.errors : []),
                   ...Ar.flatten(
                     finalize.value.map((x) =>
-                      x._tag === "Interrupt"
-                        ? [x.error, ...(x.others ? x.others : [])]
-                        : []
+                      x._tag === "Interrupt" ? (x.errors ? x.errors : []) : []
                     )
                   )
                 ],
@@ -994,9 +991,7 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
               )
 
               return errors.length > 0
-                ? completed(
-                    ex.interruptWithErrorAndOthers(errors[0], Ar.dropLeft(1)(errors))
-                  )
+                ? completed(ex.interruptWithError(...errors))
                 : completed(exit)
             } else {
               throw new Error("BUG: interrupt finalizer should not fail")
@@ -1310,7 +1305,9 @@ function interruptLoser<R, E, A>(
   loser: Fiber<E, A>
 ): AsyncRE<R, E, A> {
   return chain_(loser.interrupt, (x) =>
-    x._tag === "Interrupt" && x.error ? completed(x) : completed(exit)
+    x._tag === "Interrupt" && x.errors && x.errors.length > 0
+      ? completed(x)
+      : completed(exit)
   )
 }
 
@@ -1389,7 +1386,9 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
             isCompleted
               ? zipWith_(completed(aExit), bFiber.join, f)
               : chain_(bFiber.interrupt, (x) =>
-                  x._tag === "Interrupt" && x.error ? completed(x) : completed(aExit)
+                  x._tag === "Interrupt" && x.errors && x.errors.length > 0
+                    ? completed(x)
+                    : completed(aExit)
                 )
           ),
     (bExit, aFiber) =>
@@ -1399,7 +1398,9 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
             isCompleted
               ? zipWith_(aFiber.join, completed(bExit), f)
               : chain_(aFiber.interrupt, (x) =>
-                  x._tag === "Interrupt" && x.error ? completed(x) : completed(bExit)
+                  x._tag === "Interrupt" && x.errors && x.errors.length > 0
+                    ? completed(x)
+                    : completed(bExit)
                 )
           )
   )
