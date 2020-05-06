@@ -8,7 +8,7 @@
     "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
     "postbuild": "yarn prettier --write \"./{lib,es6}/**/*.ts\"",
     "lint": "eslint . --ignore-pattern lib/ --ignore-pattern es6/ --ignore-pattern dtslint/ --ext .ts,.tsx",
-    "autofix": "yarn lint --fix || true && yarn prettier --write \"./{src,demo}/**/*.ts\"",
+    "autofix": "yarn lint --fix && yarn prettier --write \"./{src,demo}/**/*.ts\"",
     "import-path-rewrite": "import-path-rewrite",
     "build-demo": "next build demo",
     "dev-demo": "next dev demo",
