@@ -3,7 +3,7 @@
  */
 
 export { fix, Fix } from "./Fix";
-export { cata, Algebra } from "./cata";
-export { ana, Coalgebra } from "./ana";
-export { FunctorM } from "./functor";
+export { cata, Algebra, algebra } from "./cata";
+export { ana, Coalgebra, coalgebra } from "./ana";
+export { FunctorM, functorM } from "./functor";
 export { hylo } from "./hylo";

@@ -7,6 +7,10 @@ export interface Algebra<F extends URIS, S, R, E, A> {
   (_: Kind<F, A>): EF.Effect<S, R, E, A>;
 }
 
+export function algebra<F extends URIS, A>() {
+  return <S, R, E>(f: (_: Kind<F, A>) => EF.Effect<S, R, E, A>): Algebra<F, S, R, E, A> => f;
+}
+
 export function cata<S, R, E, F extends URIS>(
   F: FunctorM<F, S, R, E>
 ): <S2, R2, E2, A>(

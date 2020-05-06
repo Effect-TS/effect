@@ -7,6 +7,10 @@ export interface Coalgebra<F extends URIS, S, R, E, A> {
   (_: A): EF.Effect<S, R, E, Kind<F, A>>;
 }
 
+export function coalgebra<F extends URIS, A>() {
+  return <S, R, E>(f: (_: A) => EF.Effect<S, R, E, Kind<F, A>>): Coalgebra<F, S, R, E, A> => f;
+}
+
 export function ana<S, R, E, F extends URIS>(
   F: FunctorM<F, S, R, E>
 ): <S2, R2, E2, A>(
