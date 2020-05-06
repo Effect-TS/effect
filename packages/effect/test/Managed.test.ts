@@ -122,7 +122,7 @@ describe("Managed", () => {
           console.log(sAllocStr(type));
           return value;
         }),
-        type === "A" ? 0 : 10
+        type === "B" ? 0 : 10
       );
     const fAllocEff = (type: "A" | "B") =>
       pipe(
@@ -130,14 +130,14 @@ describe("Managed", () => {
           console.log(fAllocStr(type));
         }),
         T.chain(() => T.raiseError(fAllocStr(type))),
-        T.liftDelay(type === "A" ? 0 : 10)
+        T.liftDelay(type === "B" ? 0 : 10)
       );
     const sDeallocEff = (type: "A" | "B") =>
       T.delay(
         T.sync(() => {
           console.log(sDeallocStr(type));
         }),
-        type === "A" ? 0 : 10
+        type === "B" ? 0 : 10
       );
     const fDeallocEff = (type: "A" | "B") =>
       pipe(
@@ -145,7 +145,7 @@ describe("Managed", () => {
           console.log(fDeallocStr(type));
         }),
         T.chain(() => T.raiseError(fDeallocStr(type))),
-        T.liftDelay(type === "A" ? 0 : 10)
+        T.liftDelay(type === "B" ? 0 : 10)
       );
 
     const maSS = M.bracket(sAllocEff("A", 1), () => sDeallocEff("A"));
