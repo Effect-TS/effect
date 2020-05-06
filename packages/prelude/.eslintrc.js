@@ -44,7 +44,7 @@ module.exports =  {
     // Place to specify ESLint rules. Can be used to overwrite rules specified from the extended configs
     // e.g. "@typescript-eslint/explicit-function-return-type": "off",
     "sort-destructure-keys/sort-destructure-keys": "error", // Mainly to sort render props
-    "import/no-default-export": "error",
+    "@typescript-eslint/camelcase": "off",
     "import/no-unresolved": "error",
     "import/order": [
       "error",
