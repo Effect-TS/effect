@@ -1630,6 +1630,16 @@ function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   );
 }
 
+const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
+    io: Effect<S, R, E1, A>,
+    f: F.FunctionN<[E1], Effect<S2, R2, E2, unknown>>,
+  ) => chainError_(io, e => chain_(f(e), () => raiseError(e)))
+
+export const chainErrorTap = <S, R, E1, E2, A>(
+    f: (e: E1) => Effect<S, R, E2, unknown>,
+  ) => (io: Effect<S, R, E1, A>) => chainErrorTap_(io, f)
+
+
 export interface EffectMonad
   extends Monad4E<URI>,
     Bifunctor4<URI>,
@@ -1651,6 +1661,11 @@ export interface EffectMonad
     inner: Effect<S1, R, E, A>,
     bind: F.FunctionN<[A], Effect<S2, R2, E2, unknown>>
   ): Effect<S1 | S2, R & R2, E | E2, A>;
+
+  chainErrorTap<S1, S2, R, E1, R2, E2, A>(
+    io: Effect<S1, R, E1, A>,
+    f: F.FunctionN<[E1], Effect<S2, R2, E2, unknown>>
+  ): Effect<S1 | S2, R & R2, E1 | E2, A>;
 
   mapError: EffectMonad["mapLeft"];
 
@@ -1702,6 +1717,7 @@ export const effect: EffectMonad = {
   chainError: chainError_,
   foldExit: foldExit_,
   chainTap: chainTap_,
+  chainErrorTap: chainErrorTap_,
   alt: alt_,
   onInterrupted: onInterrupted_,
   onComplete: onComplete_,
