@@ -220,36 +220,44 @@ export function zip<S, R, E, A, S2, R2, E2, B>(
   return zipWith(resa, resb, (a, b) => [a, b] as const);
 }
 
-function foldExitAndFiber<E, A, B, S, S2, R, R2>(
+/**
+ * Fold two exits, while running functions when one succeeds but other one
+ * fails. Gives error priority to first passed exit (aExit).
+ *
+ * @param aExit
+ * @param bExit
+ * @param onBFail - run when a succeeds, but b fails
+ * @param onAFail - run when b succeeds, but a fails
+ */
+function foldExitsWithFallback<E, A, B, S, S2, R, R2>(
   aExit: Exit<E, A>,
-  bFiber: T.Fiber<E, B>,
+  bExit: Exit<E, B>,
   onBFail: F.FunctionN<[A], T.Effect<S, R, E, unknown>>,
   onAFail: F.FunctionN<[B], T.Effect<S2, R2, E, unknown>>
 ): T.AsyncRE<R & R2, E, [A, B]> {
-  return T.effect.chain(bFiber.wait, (bExit) =>
-    aExit._tag === "Done"
-      ? bExit._tag === "Done"
-        ? F.unsafeCoerce<T.Sync<[A, B]>, T.AsyncRE<R & R2, E, [A, B]>>(
-            T.pure(F.tuple(aExit.value, bExit.value))
-          )
-        : pipe(
-            onBFail(aExit.value),
-            T.chain(() => T.raised(bExit)),
-            T.chainError(() => T.raised(bExit))
-          )
-      : bExit._tag === "Done"
-      ? pipe(
-          onAFail(bExit.value),
-          T.chain(() => T.raised(aExit)),
-          T.chainError(() => T.raised(aExit))
+  return aExit._tag === "Done"
+    ? bExit._tag === "Done"
+      ? F.unsafeCoerce<T.Sync<[A, B]>, T.AsyncRE<R & R2, E, [A, B]>>(
+          T.pure(F.tuple(aExit.value, bExit.value))
         )
-      : T.raised(aExit)
-  );
+      : pipe(
+          onBFail(aExit.value),
+          T.chain(() => T.raised(bExit)),
+          T.chainError(() => T.raised(bExit))
+        )
+    : bExit._tag === "Done"
+    ? pipe(
+        onAFail(bExit.value),
+        T.chain(() => T.raised(aExit)),
+        T.chainError(() => T.raised(aExit))
+      )
+    : T.raised(aExit);
 }
 
 /**
  * Zip two resources together with provided function, while allocating and
- * releasing them in parallel and returning first error that was raised.
+ * releasing them in parallel and always prioritizing error of first passed
+ * resource.
  *
  * @param resa
  * @param resb
@@ -264,19 +272,102 @@ export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
     allocate(resa as Managed<S, R, E | E2, A>),
     allocate(resb),
     (aExit, bFiber) =>
-      foldExitAndFiber(
-        aExit,
-        bFiber,
-        (aLeak) => aLeak.release,
-        (bLeak) => bLeak.release
+      T.effect.chain(bFiber.wait, (bExit) =>
+        foldExitsWithFallback(
+          aExit,
+          bExit,
+          (aLeak) => aLeak.release,
+          (bLeak) => bLeak.release
+        )
+      ),
+    (bExit, aFiber) =>
+      T.effect.chain(aFiber.wait, (aExit) =>
+        foldExitsWithFallback(
+          aExit,
+          bExit,
+          (aLeak) => aLeak.release,
+          (bLeak) => bLeak.release
+        )
+      )
+  );
+
+  return map_(
+    bracket(alloc, ([aLeak, bLeak]) =>
+      T.raceFold(
+        aLeak.release,
+        bLeak.release,
+        (aExit, bFiber) =>
+          T.effect.chain(bFiber.wait, (bExit) =>
+            foldExitsWithFallback(
+              aExit,
+              bExit,
+              () => T.unit,
+              () => T.unit
+            )
+          ),
+        (bExit, aFiber) =>
+          T.effect.chain(aFiber.wait, (aExit) =>
+            foldExitsWithFallback(
+              aExit,
+              bExit,
+              () => T.unit,
+              () => T.unit
+            )
+          )
+      )
+    ),
+    ([aLeak, bLeak]) => f(aLeak.a, bLeak.a)
+  );
+}
+
+/**
+ * Zip two resources together into tuple, while allocating and releasing them
+ * in parallel and always prioritizing error of resa.
+ *
+ * @param resa
+ * @param resb
+ */
+export function parZip<S, S2, R, R2, E, A, B>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E, B>
+): AsyncRE<R & R2, E, [A, B]> {
+  return parZipWith(resa, resb, F.tuple);
+}
+
+/**
+ * Zip two resources together with provided function, while allocating and
+ * releasing them in parallel and returning first error that was raised.
+ *
+ * @param resa
+ * @param resb
+ * @param f
+ */
+export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
+  resa: Managed<S, R, E, A>,
+  resb: Managed<S2, R2, E2, B>,
+  f: F.FunctionN<[A, B], C>
+): AsyncRE<R & R2, E | E2, C> {
+  const alloc = T.raceFold(
+    allocate(resa as Managed<S, R, E | E2, A>),
+    allocate(resb),
+    (aExit, bFiber) =>
+      T.effect.chain(bFiber.wait, (bExit) =>
+        foldExitsWithFallback(
+          aExit,
+          bExit,
+          (aLeak) => aLeak.release,
+          (bLeak) => bLeak.release
+        )
       ),
     (bExit, aFiber) =>
       T.effect.map(
-        foldExitAndFiber(
-          bExit,
-          aFiber,
-          (bLeak) => bLeak.release,
-          (aLeak) => aLeak.release
+        T.effect.chain(aFiber.wait, (aExit) =>
+          foldExitsWithFallback(
+            bExit,
+            aExit,
+            (bLeak) => bLeak.release,
+            (aLeak) => aLeak.release
+          )
         ),
         ([b, a]) => F.tuple(a, b)
       )
@@ -288,18 +379,22 @@ export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
         aLeak.release,
         bLeak.release,
         (aExit, bFiber) =>
-          foldExitAndFiber(
-            aExit,
-            bFiber,
-            () => T.unit,
-            () => T.unit
+          T.effect.chain(bFiber.wait, (bExit) =>
+            foldExitsWithFallback(
+              aExit,
+              bExit,
+              () => T.unit,
+              () => T.unit
+            )
           ),
         (bExit, aFiber) =>
-          foldExitAndFiber(
-            bExit,
-            aFiber,
-            () => T.unit,
-            () => T.unit
+          T.effect.chain(aFiber.wait, (aExit) =>
+            foldExitsWithFallback(
+              bExit,
+              aExit,
+              () => T.unit,
+              () => T.unit
+            )
           )
       )
     ),
@@ -314,11 +409,11 @@ export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
  * @param resa
  * @param resb
  */
-export function parZip<S, S2, R, R2, E, A, B>(
+export function parFastZip<S, S2, R, R2, E, A, B>(
   resa: Managed<S, R, E, A>,
   resb: Managed<S2, R2, E, B>
 ): AsyncRE<R & R2, E, [A, B]> {
-  return parZipWith(resa, resb, F.tuple);
+  return parFastZipWith(resa, resb, F.tuple);
 }
 
 /**
