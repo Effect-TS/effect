@@ -7,6 +7,14 @@ echo "ERROR: There's stuff left to be prettified, please fix!"
 exit 1
 fi
 
+if yarn lint
+then
+echo "All linted"
+else
+echo "ERROR: There's stuff left to be lint fixed, please fix!"
+exit 1
+fi
+
 if yarn yarn-deduplicate -fl
 then
 echo "No duplicates found. Pursuing..."
