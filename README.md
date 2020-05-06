@@ -63,7 +63,8 @@ As with any good library there is a commercial project that support the developm
 | @matechs/apollo               |   beta     |      no      | Integrates with apollo-server with full env support in resolvers  |![weekly-downloads](https://badgen.net/npm/dw/@matechs/apollo)              |
 | @matechs/test                 |   beta     |      no      | Port of ZIO Test, integrates fast-check & customizable runner.    |![weekly-downloads](https://badgen.net/npm/dw/@matechs/test)                |
 | @matechs/test-jest            |   beta     |      no      | Integrates jest as runner for `@matechs/test`.                    |![weekly-downloads](https://badgen.net/npm/dw/@matechs/test-jest)           |
-| @matechs/prelude              |   beta     |      no      | One stop shop, base effect and nice fp-ts interops.               |![weekly-downloads](https://badgen.net/npm/dw/@matechs/prelude)             |
+| @matechs/prelude              |   stable   |      yes     | One stop shop, base effect and nice fp-ts interops.               |![weekly-downloads](https://badgen.net/npm/dw/@matechs/prelude)             |
+| @matechs/aio                  |   stable   |      yes     | One stop shop, prelude plus useful defaults.                      |![weekly-downloads](https://badgen.net/npm/dw/@matechs/aio)                 |
 
 ## Performance
 Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
