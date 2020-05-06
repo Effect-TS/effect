@@ -46,6 +46,7 @@ module.exports =  {
     "sort-destructure-keys/sort-destructure-keys": "error", // Mainly to sort render props
     "@typescript-eslint/camelcase": "off",
     "import/no-unresolved": "error",
+    "no-irregular-whitespace": "off",
     "import/order": [
       "error",
       {
