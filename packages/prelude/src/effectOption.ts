@@ -231,31 +231,6 @@ export const parSequenceS = SS(effectOptionPar);
 export const parDo = () => DoG(effectOptionPar);
 export const parFor = () => ForM(effectOptionPar);
 
-export const parSequenceOption = O.option.sequence(effectOptionPar);
-
-export const parTraverseOption: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: O.Option<A>) => EffectOption<unknown, R, E, O.Option<B>> = (f) => (ta) =>
-  O.option.traverse(effectOptionPar)(ta, f);
-
-export const parWiltOption: <A, S, R, E, B, C>(
-  f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
-) => (wa: O.Option<A>) => EffectOption<unknown, R, E, Separated<O.Option<B>, O.Option<C>>> = (
-  f
-) => (wa) => O.option.wilt(effectOptionPar)(wa, f);
-
-export const parWitherOption: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, O.Option<B>>
-) => (ta: O.Option<A>) => EffectOption<unknown, R, E, O.Option<B>> = (f) => (ta) =>
-  O.option.wither(effectOptionPar)(ta, f);
-
-export const parSequenceEither = E.either.sequence(effectOptionPar);
-
-export const parTraverseEither: <A, S, R, FE, B>(
-  f: (a: A) => EffectOption<S, R, FE, B>
-) => <TE>(ta: E.Either<TE, A>) => EffectOption<unknown, R, FE, E.Either<TE, B>> = (f) => (ta) =>
-  E.either.traverse(effectOptionPar)(ta, f);
-
 export const parSequenceTree = TR.tree.sequence(effectOptionPar);
 
 export const parTraverseTree: <A, S, R, E, B>(

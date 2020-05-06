@@ -88,21 +88,6 @@ export const sequenceT = ST(option);
 export const sequenceS = SS(option);
 export const Do = () => DoG(option);
 
-export const sequenceOption = option.sequence(option);
-
-export const traverseOption: <A, B>(
-  f: (a: A) => Option<B>
-) => (ta: Option<A>) => Option<Option<B>> = (f) => (ta) => option.traverse(option)(ta, f);
-
-export const wiltOption: <A, B, C>(
-  f: (a: A) => Option<Ei.Either<B, C>>
-) => (wa: Option<A>) => Option<Separated<Option<B>, Option<C>>> = (f) => (wa) =>
-  option.wilt(option)(wa, f);
-
-export const witherOption: <A, E, B>(
-  f: (a: A) => Option<Option<B>>
-) => (ta: Option<A>) => Option<Option<B>> = (f) => (ta) => option.wither(option)(ta, f);
-
 export const sequenceEither = option.sequence(Ei.either);
 
 export const traverseEither: <A, E, B>(

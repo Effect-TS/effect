@@ -576,24 +576,6 @@ export const witherOption: <S, A, R, E, B>(
 ) => (ta: Op.Option<A>) => Managed<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(managed)(ta, f);
 
-export const parSequenceOption = Op.option.sequence(parManaged);
-
-export const parTraverseOption: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Op.Option<A>) => Managed<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
-  Op.option.traverse(parManaged)(ta, f);
-
-export const parWiltOption: <S, A, R, E, B, C>(
-  f: (a: A) => Managed<S, R, E, Ei.Either<B, C>>
-) => (wa: Op.Option<A>) => Managed<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
-  wa
-) => Op.option.wilt(parManaged)(wa, f);
-
-export const parWitherOption: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, Op.Option<B>>
-) => (ta: Op.Option<A>) => Managed<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
-  Op.option.wither(parManaged)(ta, f);
-
 export const sequenceEither = Ei.either.sequence(managed);
 
 export const traverseEither: <S, A, R, FE, B>(
@@ -607,13 +589,6 @@ export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => Managed<S, R, E, B>
 ) => (ta: TR.Tree<A>) => Managed<S, R, E, TR.Tree<B>> = (f) => (ta) =>
   TR.tree.traverse(managed)(ta, f);
-
-export const parSequenceEither = Ei.either.sequence(parManaged);
-
-export const parTraverseEither: <S, A, R, FE, B>(
-  f: (a: A) => Managed<S, R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => Managed<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
-  Ei.either.traverse(parManaged)(ta, f);
 
 export const parSequenceTree = TR.tree.sequence(managed);
 

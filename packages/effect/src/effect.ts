@@ -1999,62 +1999,12 @@ export const witherOption: <A, S, R, E, B>(
 ) => (ta: Op.Option<A>) => Effect<S, R, E, Op.Option<B>> = (f) => (ta) =>
   Op.option.wither(effect)(ta, f);
 
-export const parSequenceOption = Op.option.sequence(parEffect);
-
-export const parFastSequenceOption = Op.option.sequence(parFastEffect);
-
-export const parTraverseOption: <A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, B>
-) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
-  Op.option.traverse(parEffect)(ta, f);
-
-export const parFastTraverseOption: <A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, B>
-) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
-  Op.option.traverse(parFastEffect)(ta, f);
-
-export const parWiltOption: <A, S, R, E, B, C>(
-  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
-) => (wa: Op.Option<A>) => Effect<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
-  wa
-) => Op.option.wilt(parEffect)(wa, f);
-
-export const parFastWiltOption: <A, S, R, E, B, C>(
-  f: (a: A) => Effect<S, R, E, Ei.Either<B, C>>
-) => (wa: Op.Option<A>) => Effect<unknown, R, E, Separated<Op.Option<B>, Op.Option<C>>> = (f) => (
-  wa
-) => Op.option.wilt(parFastEffect)(wa, f);
-
-export const parWitherOption: <A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, Op.Option<B>>
-) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
-  Op.option.wither(parEffect)(ta, f);
-
-export const parFastWitherOption: <A, S, R, E, B>(
-  f: (a: A) => Effect<S, R, E, Op.Option<B>>
-) => (ta: Op.Option<A>) => Effect<unknown, R, E, Op.Option<B>> = (f) => (ta) =>
-  Op.option.wither(parFastEffect)(ta, f);
-
 export const sequenceEither = Ei.either.sequence(effect);
 
 export const traverseEither: <A, S, R, FE, B>(
   f: (a: A) => Effect<S, R, FE, B>
 ) => <TE>(ta: Ei.Either<TE, A>) => Effect<S, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
   Ei.either.traverse(effect)(ta, f);
-
-export const parSequenceEither = Ei.either.sequence(parEffect);
-
-export const parFastSequenceEither = Ei.either.sequence(parFastEffect);
-
-export const parTraverseEither: <A, S, R, FE, B>(
-  f: (a: A) => Effect<S, R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => Effect<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
-  Ei.either.traverse(parEffect)(ta, f);
-
-export const parFastTraverseEither: <A, S, R, FE, B>(
-  f: (a: A) => Effect<S, R, FE, B>
-) => <TE>(ta: Ei.Either<TE, A>) => Effect<unknown, R, FE, Ei.Either<TE, B>> = (f) => (ta) =>
-  Ei.either.traverse(parFastEffect)(ta, f);
 
 export const sequenceTree = TR.tree.sequence(effect);
 
