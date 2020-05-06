@@ -1,4 +1,7 @@
 #!/bin/sh
+yarn prettier --write "./packages*/**/{src,tests}/**/*.ts"
+git add --all
+
 if yarn yarn-deduplicate -fl
 then
 echo "No duplicates found. Pursuing..."
