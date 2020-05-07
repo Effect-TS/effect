@@ -2326,18 +2326,23 @@ export const handle = <
 >(
   k: K,
   kk: KK,
-  f: (_: Extract<E, { [k in K]: KK }>) => Effect<S2, R2, E2, A2>
+  f: (
+    _: Extract<E, { [k in K]: KK }>,
+    remaining: Op.Option<NonEmptyArray<ex.Cause<any>>>
+  ) => Effect<S2, R2, E2, A2>
 ) => <S, R, A>(
   _: Effect<S, R, E, A>
 ): Effect<S | S2, R & R2, Exclude<E, { [k in K]: KK }> | E2, A | A2> =>
-  pipe(
-    _,
-    chainError((e) => {
-      if (k in e) {
-        if (e[k] === kk) {
-          return f(e as any) as any
-        }
+  chainError_(_, (e, remaining) => {
+    if (k in e) {
+      if (e[k] === kk) {
+        return f(e as any, remaining) as any
       }
-      return raiseError(e)
-    })
-  ) as any
+    }
+    return completed(
+      ex.withRemaining(
+        ex.raise(e),
+        ...(remaining._tag === "Some" ? remaining.value : [])
+      )
+    )
+  })
