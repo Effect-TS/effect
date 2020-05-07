@@ -652,7 +652,11 @@ function bimap_<S, R, E1, E2, A, B>(
   return foldExit_(
     io,
     (cause) =>
-      cause._tag === "Raise" ? raiseError(leftMap(cause.error)) : completed(cause),
+      cause._tag === "Raise"
+        ? completed(
+            ex.withRemaining(ex.raise(leftMap(cause.error)), ...(cause.remaining || []))
+          )
+        : completed(cause),
     F.flow(rightMap, pure)
   )
 }
