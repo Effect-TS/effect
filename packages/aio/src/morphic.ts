@@ -1,5 +1,6 @@
 import { T } from "@matechs/prelude"
 import { ADT, intersectADT, isIn, makeADT, ofType, unionADT } from "@morphic-ts/adt"
+import { Validated } from "@morphic-ts/batteries/lib/create"
 import {
   AsOpaque,
   AsUOpaque,
@@ -36,7 +37,8 @@ export {
   isIn,
   makeADT,
   ofType,
-  unionADT
+  unionADT,
+  Validated
 }
 
 export const arb = <Env, E, A>(F: M<Env, E, A>) => (
