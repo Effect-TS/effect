@@ -216,8 +216,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     })
     this.cancelAsync = (cb) => {
       complete = true
-      wrappedCancel((err) => {
-        cb(err)
+      wrappedCancel((...errors) => {
+        cb(...errors)
       })
     }
   }
@@ -359,8 +359,8 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
     this.interrupted = true
     if (this.cancelAsync && this.isInterruptible()) {
-      this.cancelAsync((err, others) => {
-        this.resumeInterrupt([...(err ? [err] : []), ...(others || [])])
+      this.cancelAsync((...errors) => {
+        this.resumeInterrupt(errors)
       })
     }
   }

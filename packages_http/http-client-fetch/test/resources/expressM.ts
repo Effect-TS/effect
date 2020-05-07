@@ -25,7 +25,7 @@ export const expressM = (port: number) =>
 
       return (cb) => {
         server.close((err) => {
-          cb(err)
+          err ? cb(err) : cb()
         })
       }
     }),

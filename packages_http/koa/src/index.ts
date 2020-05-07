@@ -205,7 +205,7 @@ export const provideKoa = T.provide<Koa>({
 
             return (cb) => {
               s.close((e) => {
-                cb(e)
+                e ? cb(e) : cb()
               })
             }
           })

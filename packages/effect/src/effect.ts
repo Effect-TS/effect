@@ -141,10 +141,7 @@ export class ISuspended<S, R, E, A> {
 }
 
 export type AsyncContFn<E, A> = F.FunctionN<[Ei.Either<E, A>], void>
-export type AsyncCancelContFn = F.FunctionN<
-  [(rootError?: Error, remainingErrors?: Error[]) => void],
-  void
->
+export type AsyncCancelContFn = F.FunctionN<[(...errors: Error[]) => void], void>
 export type AsyncFn<E, A> = F.FunctionN<[AsyncContFn<E, A>], AsyncCancelContFn>
 
 const IAsyncTag = "IAsync" as const
