@@ -1,3 +1,5 @@
+import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
+
 import {
   Raise,
   Abort,
@@ -42,8 +44,8 @@ export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt =>
 function fold_<E, A, R>(
   e: Exit<E, A>,
   onDone: (v: A) => R,
-  onRaise: (v: E, remaining?: Array<Cause<any>>) => R,
-  onAbort: (v: unknown, remaining?: Array<Cause<any>>) => R,
+  onRaise: (v: E, remaining?: NonEmptyArray<Cause<any>>) => R,
+  onAbort: (v: unknown, remaining?: NonEmptyArray<Cause<any>>) => R,
   onInterrupt: (i: Interrupt) => R
 ) {
   switch (e._tag) {
@@ -64,8 +66,8 @@ export const exit = {
 
 export function fold<E, A, R>(
   onDone: (v: A) => R,
-  onRaise: (v: E, remaining?: Array<Cause<any>>) => R,
-  onAbort: (v: unknown, remaining?: Array<Cause<any>>) => R,
+  onRaise: (v: E, remaining?: NonEmptyArray<Cause<any>>) => R,
+  onAbort: (v: unknown, remaining?: NonEmptyArray<Cause<any>>) => R,
   onInterrupt: (i: Interrupt) => R
 ): (e: Exit<E, A>) => R {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)

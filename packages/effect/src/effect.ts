@@ -15,6 +15,7 @@ import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
 import { Bifunctor4 } from "fp-ts/lib/Bifunctor"
 import { Separated } from "fp-ts/lib/Compactable"
 import { Functor4 } from "fp-ts/lib/Functor"
+import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
 import { pipeable, pipe } from "fp-ts/lib/pipeable"
 
 import { Deferred, makeDeferred } from "./deferred"
@@ -629,7 +630,7 @@ export const unit: Sync<void> = pure(undefined)
  * @param f
  */
 export function chainError<S, R, E1, E2, A>(
-  f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S, R, E2, A>
+  f: (_: E1, remaining?: NonEmptyArray<ex.Cause<any>>) => Effect<S, R, E2, A>
 ): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f)
 }
@@ -882,8 +883,8 @@ function combineFinalizerExit<E, A>(
     return {
       ...fiberExit,
       remaining: fiberExit.remaining
-        ? [...fiberExit.remaining, releaseExit]
-        : [releaseExit]
+        ? ([...fiberExit.remaining, releaseExit] as NonEmptyArray<ex.Cause<any>>)
+        : ([releaseExit] as NonEmptyArray<ex.Cause<any>>)
     }
   }
 }
@@ -1542,7 +1543,9 @@ export function parFastAp_<S, S2, R, R2, E, E2, A, B>(
  * @param io
  */
 export function orAbort<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, never, A> {
-  return chainError_(io, raiseAbort)
+  return chainError_(io, (e, rem) =>
+    completed(ex.withRemaining(ex.abort(e), ...(rem || [])))
+  )
 }
 
 /**
@@ -1708,7 +1711,7 @@ export function runToPromiseExit<E, A>(io: AsyncRE<{}, E, A>): Promise<ex.Exit<E
 
 function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, A2>
+  f: (_: E1, remaining?: NonEmptyArray<ex.Cause<any>>) => Effect<S2, R2, E2, A2>
 ): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
@@ -1720,7 +1723,7 @@ function chainError_<S, R, E1, S2, R2, E2, A, A2>(
 
 const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   io: Effect<S, R, E1, A>,
-  f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
+  f: (_: E1, remaining?: NonEmptyArray<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
 ) =>
   chainError_(io, (e, remaining) =>
     foldExit_(
@@ -1731,7 +1734,7 @@ const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   )
 
 export const chainErrorTap = <S, R, E1, E2>(
-  f: (e: E1, remaining?: Array<ex.Cause<any>>) => Effect<S, R, E2, unknown>
+  f: (e: E1, remaining?: NonEmptyArray<ex.Cause<any>>) => Effect<S, R, E2, unknown>
 ) => <S2, R2, A>(io: Effect<S2, R2, E1, A>) => chainErrorTap_(io, f)
 
 export interface EffectMonad
@@ -1742,7 +1745,7 @@ export interface EffectMonad
     Functor4<URI> {
   chainError<S1, S2, R, E1, R2, E2, A, A2>(
     io: Effect<S1, R, E1, A>,
-    f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, A2>
+    f: (_: E1, remaining?: NonEmptyArray<ex.Cause<any>>) => Effect<S2, R2, E2, A2>
   ): Effect<S1 | S2, R & R2, E2, A | A2>
 
   foldExit<S1, S2, S3, R, E1, R2, E2, A1, A2, A3, R3, E3>(
@@ -1758,7 +1761,7 @@ export interface EffectMonad
 
   chainErrorTap<S1, S2, R, E1, R2, E2, A>(
     io: Effect<S1, R, E1, A>,
-    f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
+    f: (_: E1, remaining?: NonEmptyArray<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
   ): Effect<S1 | S2, R & R2, E1 | E2, A>
 
   mapError: EffectMonad["mapLeft"]
@@ -1789,7 +1792,9 @@ const foldExit_: EffectMonad["foldExit"] = (inner, failure, success) =>
   new ICollapse(inner, failure, success) as any
 
 const mapLeft_: EffectMonad["mapLeft"] = (io, f) =>
-  chainError_(io, F.flow(f, raiseError))
+  chainError_(io, (x, rem) =>
+    completed(ex.withRemaining(ex.raise(f(x)), ...(rem || [])))
+  )
 
 const alt_: EffectMonad["alt"] = chainError_
 

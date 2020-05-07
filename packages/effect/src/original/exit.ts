@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
+import { isNonEmpty } from "fp-ts/lib/ReadonlyArray"
+
 /* istanbul ignore file */
 
 export type Exit<E, A> = Done<A> | Cause<E>
@@ -34,7 +37,7 @@ export type Cause<E> = Raise<E> | Abort | Interrupt
 export interface Raise<E> {
   readonly _tag: "Raise"
   readonly error: E
-  readonly remaining?: Array<Cause<any>>
+  readonly remaining?: NonEmptyArray<Cause<any>>
 }
 
 export function raise<E>(e: E): Raise<E> {
@@ -47,7 +50,7 @@ export function raise<E>(e: E): Raise<E> {
 export interface Abort {
   readonly _tag: "Abort"
   readonly abortedWith: unknown
-  readonly remaining?: Array<Cause<any>>
+  readonly remaining?: NonEmptyArray<Cause<any>>
 }
 
 export function abort(a: unknown): Abort {
@@ -60,7 +63,7 @@ export function abort(a: unknown): Abort {
 export interface Interrupt {
   readonly _tag: "Interrupt"
   readonly errors?: Error[]
-  readonly remaining?: Array<Cause<any>>
+  readonly remaining?: NonEmptyArray<Cause<any>>
 }
 
 export const interrupt: Interrupt = {
@@ -83,7 +86,7 @@ export const withRemaining = <E>(
 ): Cause<E> => {
   const rem = cause.remaining ? [...cause.remaining, ...remaining] : remaining
 
-  return rem.length > 0
+  return isNonEmpty(rem)
     ? {
         ...cause,
         remaining: rem
