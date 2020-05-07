@@ -52,24 +52,21 @@ function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4,
   onDone: (v: A) => T.Effect<S1, R1, E1, B1>,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => T.Effect<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => T.Effect<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => T.Effect<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
 ): T.Effect<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
   onDone: (v: A) => M.Managed<S1, R1, E1, B1>,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => M.Managed<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => M.Managed<S3, R3, E3, B3>,
-  onInterrupt: (
-    i: Interrupt,
-    remaining?: Array<Cause<any>>
-  ) => M.Managed<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
 ): M.Managed<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
   onDone: (v: A) => S.Stream<S1, R1, E1, B1>,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => S.Stream<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => S.Stream<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => S.Stream<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
 ): S.Stream<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
@@ -79,10 +76,7 @@ function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4,
     v: unknown,
     remaining?: Array<Cause<any>>
   ) => SE.StreamEither<S3, R3, E3, B3>,
-  onInterrupt: (
-    i: Interrupt,
-    remaining?: Array<Cause<any>>
-  ) => SE.StreamEither<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
 ): SE.StreamEither<
   S1 | S2 | S3 | S4,
   R1 & R2 & R3 & R4,
@@ -94,14 +88,14 @@ function fold_<E, A, B1, B2, B3, B4>(
   onDone: (v: A) => B1,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => B2,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => B3,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => B4
+  onInterrupt: (i: Interrupt) => B4
 ): B1 | B2 | B3 | B4
 function fold_<E, A, B>(
   e: Exit<E, A>,
   onDone: (v: A) => B,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => B,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => B,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => B
+  onInterrupt: (i: Interrupt) => B
 ): B | B | B | B {
   switch (e._tag) {
     case "Done":
@@ -111,7 +105,7 @@ function fold_<E, A, B>(
     case "Abort":
       return onAbort(e.abortedWith, e.remaining)
     case "Interrupt":
-      return onInterrupt(e, e.remaining)
+      return onInterrupt(e)
   }
 }
 
@@ -142,7 +136,7 @@ export function fold<
   onDone: (v: A) => T.Effect<S1, R1, E1, B1>,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => T.Effect<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => T.Effect<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => T.Effect<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => T.Effect<
@@ -174,10 +168,7 @@ export function fold<
   onDone: (v: A) => M.Managed<S1, R1, E1, B1>,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => M.Managed<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => M.Managed<S3, R3, E3, B3>,
-  onInterrupt: (
-    i: Interrupt,
-    remaining?: Array<Cause<any>>
-  ) => M.Managed<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => M.Managed<
@@ -209,7 +200,7 @@ export function fold<
   onDone: (v: A) => S.Stream<S1, R1, E1, B1>,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => S.Stream<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => S.Stream<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => S.Stream<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => S.Stream<
@@ -244,10 +235,7 @@ export function fold<
     v: unknown,
     remaining?: Array<Cause<any>>
   ) => SE.StreamEither<S3, R3, E3, B3>,
-  onInterrupt: (
-    i: Interrupt,
-    remaining?: Array<Cause<any>>
-  ) => SE.StreamEither<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => SE.StreamEither<
@@ -260,13 +248,13 @@ export function fold<E, A, B1, B2, B3, B4>(
   onDone: (v: A) => B1,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => B2,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => B3,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => B4
+  onInterrupt: (i: Interrupt) => B4
 ): (e: Exit<E, A>) => B1 | B2 | B3 | B4
 export function fold<E, A, B>(
   onDone: (v: A) => B,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => B,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => B,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => B
+  onInterrupt: (i: Interrupt) => B
 ): (e: Exit<E, A>) => B {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
 }
@@ -323,7 +311,7 @@ export function foldCause<
 >(
   onRaise: (v: E, remaining?: Array<Cause<any>>) => T.Effect<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => T.Effect<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => T.Effect<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => T.Effect<
@@ -353,10 +341,7 @@ export function foldCause<
 >(
   onRaise: (v: E, remaining?: Array<Cause<any>>) => M.Managed<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => M.Managed<S3, R3, E3, B3>,
-  onInterrupt: (
-    i: Interrupt,
-    remaining?: Array<Cause<any>>
-  ) => M.Managed<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => M.Managed<
@@ -386,7 +371,7 @@ export function foldCause<
 >(
   onRaise: (v: E, remaining?: Array<Cause<any>>) => S.Stream<S2, R2, E2, B2>,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => S.Stream<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => S.Stream<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => S.Stream<
@@ -419,10 +404,7 @@ export function foldCause<
     v: unknown,
     remaining?: Array<Cause<any>>
   ) => SE.StreamEither<S3, R3, E3, B3>,
-  onInterrupt: (
-    i: Interrupt,
-    remaining?: Array<Cause<any>>
-  ) => SE.StreamEither<S4, R4, E4, B4>
+  onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => SE.StreamEither<
@@ -434,17 +416,17 @@ export function foldCause<
 export function foldCause<E, B1, B2, B3, B4>(
   onRaise: (v: E, remaining?: Array<Cause<any>>) => B2,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => B3,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => B4
+  onInterrupt: (i: Interrupt) => B4
 ): (e: Cause<E>) => B1 | B2 | B3 | B4
 export function foldCause<E, B>(
   onRaise: (v: E, remaining?: Array<Cause<any>>) => B,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => B,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => B
+  onInterrupt: (i: Interrupt) => B
 ): (e: Cause<E>) => B {
   return (e) =>
     isRaise(e)
       ? onRaise(e.error, e.remaining)
       : isAbort(e)
       ? onAbort(e.abortedWith, e.remaining)
-      : onInterrupt(e, e.remaining)
+      : onInterrupt(e)
 }

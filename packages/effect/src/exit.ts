@@ -44,7 +44,7 @@ function fold_<E, A, R>(
   onDone: (v: A) => R,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => R,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => R,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => R
+  onInterrupt: (i: Interrupt) => R
 ) {
   switch (e._tag) {
     case "Done":
@@ -54,7 +54,7 @@ function fold_<E, A, R>(
     case "Abort":
       return onAbort(e.abortedWith, e.remaining)
     case "Interrupt":
-      return onInterrupt(e, e.remaining)
+      return onInterrupt(e)
   }
 }
 
@@ -63,10 +63,10 @@ export const exit = {
 }
 
 export function fold<E, A, R>(
-  onDone: (v: A, remaining?: Array<Cause<any>>) => R,
+  onDone: (v: A) => R,
   onRaise: (v: E, remaining?: Array<Cause<any>>) => R,
   onAbort: (v: unknown, remaining?: Array<Cause<any>>) => R,
-  onInterrupt: (i: Interrupt, remaining?: Array<Cause<any>>) => R
+  onInterrupt: (i: Interrupt) => R
 ): (e: Exit<E, A>) => R {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
 }
