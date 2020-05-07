@@ -1,5 +1,6 @@
-import { T, pipe, Ex } from "@matechs/aio";
 import * as assert from "assert";
+
+import { T, pipe, Ex } from "@matechs/aio";
 
 // define a unique resource identifier
 const CalculatorURI = "@matechs/examples/CalculatorURI";

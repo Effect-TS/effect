@@ -1,5 +1,6 @@
-import { T, pipe, Ex, F } from "@matechs/aio";
 import * as assert from "assert";
+
+import { T, pipe, Ex, F } from "@matechs/aio";
 
 const add = (x: number, y: number): T.Sync<number> => T.sync(() => x + y);
 const mul = (x: number, y: number): T.Sync<number> => T.sync(() => x * y);
