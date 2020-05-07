@@ -11,7 +11,7 @@ import { pipe, pipeable } from "fp-ts/lib/pipeable"
 
 import * as T from "./effect"
 import { ForM } from "./for"
-import { Exit, done } from "./original/exit"
+import * as ex from "./original/exit"
 import { Monad4E, Monad4EP, MonadThrow4E } from "./overloadEff"
 
 export enum ManagedTag {
@@ -122,14 +122,14 @@ export interface BracketExit<S, S2, E, A> {
 
   readonly acquire: T.Effect<S, unknown, E, A>
   readonly release: F.FunctionN<
-    [A, Exit<E, unknown>],
+    [A, ex.Exit<E, unknown>],
     T.Effect<S2, unknown, E, unknown>
   >
 }
 
 export function bracketExit<S, R, E, A, S2, R2, E2>(
   acquire: T.Effect<S, R, E, A>,
-  release: F.FunctionN<[A, Exit<E, unknown>], T.Effect<S2, R2, E2, unknown>>
+  release: F.FunctionN<[A, ex.Exit<E, unknown>], T.Effect<S2, R2, E2, unknown>>
 ): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
     _tag: ManagedTag.BracketExit,
@@ -238,8 +238,8 @@ export function zip<S, R, E, A, S2, R2, E2, B>(
  * @param onAFail - run when b succeeds, but a fails
  */
 function foldExitsWithFallback<E, A, B, S, S2, R, R2>(
-  aExit: Exit<E, A>,
-  bExit: Exit<E, B>,
+  aExit: ex.Exit<E, A>,
+  bExit: ex.Exit<E, B>,
   onBFail: F.FunctionN<[A], T.Effect<S, R, E, unknown>>,
   onAFail: F.FunctionN<[B], T.Effect<S2, R2, E, unknown>>
 ): T.AsyncRE<R & R2, E, [A, B]> {
@@ -250,16 +250,20 @@ function foldExitsWithFallback<E, A, B, S, S2, R, R2>(
         )
       : pipe(
           onBFail(aExit.value),
-          T.chain(() => T.raised(bExit)),
-          T.chainError(() => T.raised(bExit))
+          T.foldExit(
+            (_) => T.completed(ex.withRemaining(bExit, _)),
+            () => T.raised(bExit)
+          )
         )
     : bExit._tag === "Done"
     ? pipe(
         onAFail(bExit.value),
-        T.chain(() => T.raised(aExit)),
-        T.chainError(() => T.raised(aExit))
+        T.foldExit(
+          (_) => T.completed(ex.withRemaining(aExit, _)),
+          () => T.raised(aExit)
+        )
       )
-    : T.raised(aExit)
+    : T.completed(ex.withRemaining(aExit, bExit))
 }
 
 /**
@@ -491,7 +495,7 @@ export function allocate<S, R, E, A>(
         // best effort, because we cannot know what the exit status here
         return T.effect.map(c.acquire, (a) => ({
           a,
-          release: c.release(a, done(undefined))
+          release: c.release(a, ex.done(undefined))
         }))
       case ManagedTag.Suspended:
         return T.effect.chain(c.suspended, allocate)

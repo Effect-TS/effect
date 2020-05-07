@@ -240,21 +240,21 @@ describe("Managed", () => {
       maSF,
       mbSF,
       [sAllocStr("A"), fDeallocStr("A"), sAllocStr("B"), fDeallocStr("B")],
-      Ex.raise(fDeallocStr("A"))
+      Ex.withRemaining(Ex.raise(fDeallocStr("A")), Ex.raise(fDeallocStr("B")))
     )
     createTest(
       "maSF mbFS",
       maSF,
       mbFS,
       [sAllocStr("A"), fDeallocStr("A"), fAllocStr("B")],
-      Ex.raise(fAllocStr("B"))
+      Ex.withRemaining(Ex.raise(fAllocStr("B")), Ex.raise(fDeallocStr("A")))
     )
     createTest(
       "maSF mbFF",
       maSF,
       mbFF,
       [sAllocStr("A"), fDeallocStr("A"), fAllocStr("B")],
-      Ex.raise(fAllocStr("B"))
+      Ex.withRemaining(Ex.raise(fAllocStr("B")), Ex.raise(fDeallocStr("A")))
     )
     // endregion
 
@@ -271,21 +271,21 @@ describe("Managed", () => {
       maFS,
       mbSF,
       [fAllocStr("A"), sAllocStr("B"), fDeallocStr("B")],
-      Ex.raise(fAllocStr("A"))
+      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fDeallocStr("B")))
     )
     createTest(
       "maFS mbFS",
       maFS,
       mbFS,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.raise(fAllocStr("A"))
+      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
     )
     createTest(
       "maFS mbFF",
       maFS,
       mbFF,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.raise(fAllocStr("A"))
+      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
     )
     // endregion
 
@@ -302,21 +302,21 @@ describe("Managed", () => {
       maFF,
       mbSF,
       [fAllocStr("A"), sAllocStr("B"), fDeallocStr("B")],
-      Ex.raise(fAllocStr("A"))
+      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fDeallocStr("B")))
     )
     createTest(
       "maFF mbFS",
       maFF,
       mbFS,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.raise(fAllocStr("A"))
+      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
     )
     createTest(
       "maFF mbFF",
       maFF,
       mbFF,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.raise(fAllocStr("A"))
+      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
     )
     // endregion
   })
