@@ -3,6 +3,7 @@
  */
 
 import { either as E, function as F } from "fp-ts"
+import { none } from "fp-ts/lib/Option"
 
 import * as T from "./effect"
 import { DoublyLinkedList } from "./listc"
@@ -338,7 +339,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         current = this[current.tag()](current as any)
       } catch (e) {
-        current = new T.IRaised({ _tag: "Abort", abortedWith: e })
+        current = new T.IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
       }
     }
 
