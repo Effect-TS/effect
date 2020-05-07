@@ -1,10 +1,11 @@
 name: Node CI Bench
 
 on:
+  pull_request:
+    branches:
+      - master
   push:
     branches:
-      - features/**
-      - preview/**
       - master
 
 jobs:
