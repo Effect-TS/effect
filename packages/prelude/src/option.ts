@@ -44,7 +44,6 @@ export {
   getLeft,
   getMonoid,
   getOrd,
-  getOrElse,
   getRefinement,
   getRight,
   getShow,
@@ -163,3 +162,28 @@ export const getFirst = <Ts extends Option<any>[]>(
 export const getLast = <Ts extends Option<any>[]>(
   ...items: Ts
 ): Option<AOfOptions<Ts>> => MON.fold(getLastMonoid<AOfOptions<Ts>>())(items)
+
+export function getOrElse<S2, R2, E2, B>(
+  onNone: () => T.Effect<S2, R2, E2, B>
+): <S, R, E, A>(
+  ma: Option<T.Effect<S, R, E, A>>
+) => T.Effect<S | S2, R & R2, E | E2, A | B>
+export function getOrElse<S2, R2, E2, B>(
+  onNone: () => M.Managed<S2, R2, E2, B>
+): <S, R, E, A>(
+  ma: Option<M.Managed<S, R, E, A>>
+) => M.Managed<S | S2, R & R2, E | E2, A | B>
+export function getOrElse<S2, R2, E2, B>(
+  onNone: () => S.Stream<S2, R2, E2, B>
+): <S, R, E, A>(
+  ma: Option<S.Stream<S, R, E, A>>
+) => S.Stream<S | S2, R & R2, E | E2, A | B>
+export function getOrElse<S2, R2, E2, B>(
+  onNone: () => SE.StreamEither<S2, R2, E2, B>
+): <S, R, E, A>(
+  ma: Option<SE.StreamEither<S, R, E, A>>
+) => SE.StreamEither<S | S2, R & R2, E | E2, A | B>
+export function getOrElse<B>(onNone: () => B): <A>(ma: Option<A>) => A | B
+export function getOrElse<A>(onNone: () => A): (ma: Option<A>) => A {
+  return (o) => (o._tag === "None" ? onNone() : o.value)
+}
