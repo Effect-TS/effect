@@ -8,6 +8,7 @@ import {
   abort,
   interrupt,
   interruptWithError,
+  withRemaining,
   Cause,
   ExitTag,
   raise
@@ -23,6 +24,7 @@ export {
   abort,
   interrupt,
   interruptWithError,
+  withRemaining,
   Cause,
   ExitTag,
   raise

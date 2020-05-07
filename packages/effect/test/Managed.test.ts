@@ -19,6 +19,21 @@ describe("Managed", () => {
     assert.deepStrictEqual(result, 2)
   })
 
+  it("should hold to errors in chain", () => {
+    const program = pipe(
+      M.bracket(T.pure(0), () => T.raiseError("a")),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("b"))),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("c"))),
+      M.consume(() => T.raiseAbort("d"))
+    )
+
+    const result = T.runSync(program)
+
+    expect(result).toStrictEqual(
+      Ex.withRemaining(Ex.abort("d"), Ex.raise("c"), Ex.raise("b"), Ex.raise("a"))
+    )
+  })
+
   it("should use resource encaseEffect with environment", async () => {
     const config = {
       test: 1
