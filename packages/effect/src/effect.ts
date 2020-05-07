@@ -1723,8 +1723,10 @@ const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   f: (_: E1, remaining?: Array<ex.Cause<any>>) => Effect<S2, R2, E2, unknown>
 ) =>
   chainError_(io, (e, remaining) =>
-    chain_(f(e, remaining), () =>
-      completed(ex.withRemaining(ex.raise(e), ...(remaining || [])))
+    foldExit_(
+      f(e, remaining),
+      (_) => completed(ex.withRemaining(_, ex.raise(e), ...(remaining || []))),
+      () => completed(ex.withRemaining(ex.raise(e), ...(remaining || [])))
     )
   )
 
