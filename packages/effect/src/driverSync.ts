@@ -3,6 +3,7 @@
  */
 
 import { either as E, function as F } from "fp-ts"
+import { none } from "fp-ts/lib/Option"
 
 import {
   FrameType,
@@ -258,7 +259,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       try {
         current = this[current.tag()](current as any)
       } catch (e) {
-        current = new T.IRaised({ _tag: "Abort", abortedWith: e })
+        current = new T.IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
       }
     }
 

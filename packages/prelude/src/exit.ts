@@ -4,8 +4,6 @@ import {
   managed as M,
   streameither as SE
 } from "@matechs/effect"
-// from effect just retyped
-/* istanbul ignore file */
 import {
   Raise,
   Abort,
@@ -16,11 +14,14 @@ import {
   abort,
   interrupt,
   interruptWithError,
-  interruptWithErrorAndOthers,
+  withRemaining,
   Cause,
   ExitTag,
   raise
 } from "@matechs/effect/lib/original/exit"
+import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
+
+import * as O from "./option"
 
 export {
   Raise,
@@ -32,11 +33,14 @@ export {
   abort,
   interrupt,
   interruptWithError,
-  interruptWithErrorAndOthers,
+  withRemaining,
   Cause,
   ExitTag,
   raise
 }
+
+// from effect just retyped
+/* istanbul ignore file */
 
 export const isDone = <E, A>(e: Exit<E, A>): e is Done<A> => e._tag === "Done"
 
@@ -50,29 +54,53 @@ export const isInterrupt = <E, A>(e: Exit<E, A>): e is Interrupt =>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
   onDone: (v: A) => T.Effect<S1, R1, E1, B1>,
-  onRaise: (v: E) => T.Effect<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => T.Effect<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => T.Effect<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => T.Effect<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
 ): T.Effect<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
   onDone: (v: A) => M.Managed<S1, R1, E1, B1>,
-  onRaise: (v: E) => M.Managed<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => M.Managed<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => M.Managed<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => M.Managed<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
 ): M.Managed<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
   onDone: (v: A) => S.Stream<S1, R1, E1, B1>,
-  onRaise: (v: E) => S.Stream<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => S.Stream<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => S.Stream<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => S.Stream<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
 ): S.Stream<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4, E4>(
   e: Exit<E, A>,
   onDone: (v: A) => SE.StreamEither<S1, R1, E1, B1>,
-  onRaise: (v: E) => SE.StreamEither<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => SE.StreamEither<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => SE.StreamEither<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => SE.StreamEither<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
 ): SE.StreamEither<
   S1 | S2 | S3 | S4,
@@ -83,24 +111,24 @@ function fold_<S1, S2, S3, S4, E, A, B1, B2, B3, B4, R1, E1, R2, E2, R3, E3, R4,
 function fold_<E, A, B1, B2, B3, B4>(
   e: Exit<E, A>,
   onDone: (v: A) => B1,
-  onRaise: (v: E) => B2,
-  onAbort: (v: unknown) => B3,
+  onRaise: (v: E, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B2,
+  onAbort: (v: unknown, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B3,
   onInterrupt: (i: Interrupt) => B4
 ): B1 | B2 | B3 | B4
 function fold_<E, A, B>(
   e: Exit<E, A>,
   onDone: (v: A) => B,
-  onRaise: (v: E) => B,
-  onAbort: (v: unknown) => B,
+  onRaise: (v: E, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B,
+  onAbort: (v: unknown, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B,
   onInterrupt: (i: Interrupt) => B
 ): B | B | B | B {
   switch (e._tag) {
     case "Done":
       return onDone(e.value)
     case "Raise":
-      return onRaise(e.error)
+      return onRaise(e.error, e.remaining)
     case "Abort":
-      return onAbort(e.abortedWith)
+      return onAbort(e.abortedWith, e.remaining)
     case "Interrupt":
       return onInterrupt(e)
   }
@@ -131,8 +159,14 @@ export function fold<
   E4
 >(
   onDone: (v: A) => T.Effect<S1, R1, E1, B1>,
-  onRaise: (v: E) => T.Effect<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => T.Effect<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => T.Effect<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => T.Effect<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
@@ -163,8 +197,14 @@ export function fold<
   E4
 >(
   onDone: (v: A) => M.Managed<S1, R1, E1, B1>,
-  onRaise: (v: E) => M.Managed<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => M.Managed<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => M.Managed<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => M.Managed<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
@@ -195,8 +235,14 @@ export function fold<
   E4
 >(
   onDone: (v: A) => S.Stream<S1, R1, E1, B1>,
-  onRaise: (v: E) => S.Stream<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => S.Stream<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => S.Stream<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => S.Stream<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
@@ -227,8 +273,14 @@ export function fold<
   E4
 >(
   onDone: (v: A) => SE.StreamEither<S1, R1, E1, B1>,
-  onRaise: (v: E) => SE.StreamEither<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => SE.StreamEither<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => SE.StreamEither<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => SE.StreamEither<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
@@ -240,14 +292,14 @@ export function fold<
 >
 export function fold<E, A, B1, B2, B3, B4>(
   onDone: (v: A) => B1,
-  onRaise: (v: E) => B2,
-  onAbort: (v: unknown) => B3,
+  onRaise: (v: E, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B2,
+  onAbort: (v: unknown, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B3,
   onInterrupt: (i: Interrupt) => B4
 ): (e: Exit<E, A>) => B1 | B2 | B3 | B4
 export function fold<E, A, B>(
   onDone: (v: A) => B,
-  onRaise: (v: E) => B,
-  onAbort: (v: unknown) => B,
+  onRaise: (v: E, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B,
+  onAbort: (v: unknown, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B,
   onInterrupt: (i: Interrupt) => B
 ): (e: Exit<E, A>) => B {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
@@ -303,8 +355,14 @@ export function foldCause<
   R4,
   E4
 >(
-  onRaise: (v: E) => T.Effect<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => T.Effect<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => T.Effect<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => T.Effect<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => T.Effect<S4, R4, E4, B4>
 ): (
   e: Cause<E>
@@ -333,8 +391,14 @@ export function foldCause<
   R4,
   E4
 >(
-  onRaise: (v: E) => M.Managed<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => M.Managed<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => M.Managed<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => M.Managed<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => M.Managed<S4, R4, E4, B4>
 ): (
   e: Cause<E>
@@ -363,8 +427,14 @@ export function foldCause<
   R4,
   E4
 >(
-  onRaise: (v: E) => S.Stream<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => S.Stream<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => S.Stream<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => S.Stream<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => S.Stream<S4, R4, E4, B4>
 ): (
   e: Cause<E>
@@ -393,8 +463,14 @@ export function foldCause<
   R4,
   E4
 >(
-  onRaise: (v: E) => SE.StreamEither<S2, R2, E2, B2>,
-  onAbort: (v: unknown) => SE.StreamEither<S3, R3, E3, B3>,
+  onRaise: (
+    v: E,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => SE.StreamEither<S2, R2, E2, B2>,
+  onAbort: (
+    v: unknown,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => SE.StreamEither<S3, R3, E3, B3>,
   onInterrupt: (i: Interrupt) => SE.StreamEither<S4, R4, E4, B4>
 ): (
   e: Cause<E>
@@ -405,15 +481,19 @@ export function foldCause<
   B1 | B2 | B3 | B4
 >
 export function foldCause<E, B1, B2, B3, B4>(
-  onRaise: (v: E) => B2,
-  onAbort: (v: unknown) => B3,
+  onRaise: (v: E, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B2,
+  onAbort: (v: unknown, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B3,
   onInterrupt: (i: Interrupt) => B4
 ): (e: Cause<E>) => B1 | B2 | B3 | B4
 export function foldCause<E, B>(
-  onRaise: (v: E) => B,
-  onAbort: (v: unknown) => B,
+  onRaise: (v: E, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B,
+  onAbort: (v: unknown, remaining: O.Option<NonEmptyArray<Cause<any>>>) => B,
   onInterrupt: (i: Interrupt) => B
 ): (e: Cause<E>) => B {
   return (e) =>
-    isRaise(e) ? onRaise(e.error) : isAbort(e) ? onAbort(e.abortedWith) : onInterrupt(e)
+    isRaise(e)
+      ? onRaise(e.error, e.remaining)
+      : isAbort(e)
+      ? onAbort(e.abortedWith, e.remaining)
+      : onInterrupt(e)
 }

@@ -1,7 +1,7 @@
 import { right, left } from "fp-ts/lib/Either"
 
 import { effect as T } from "../src"
-import { raise, interruptWithErrorAndOthers, done } from "../src/exit"
+import { raise, interruptWithError, done } from "../src/exit"
 
 describe("ParFast", () => {
   it("should complete", async () => {
@@ -119,11 +119,7 @@ describe("ParFast", () => {
     const result = await T.runToPromiseExit(T.parFastSequenceArray(processes))
 
     expect(result).toStrictEqual(
-      interruptWithErrorAndOthers(new Error("a"), [
-        new Error("b"),
-        new Error("c"),
-        new Error("d")
-      ])
+      interruptWithError(new Error("a"), new Error("b"), new Error("c"), new Error("d"))
     )
     expect(a.mock.calls.length).toStrictEqual(1)
     expect(b.mock.calls.length).toStrictEqual(1)
@@ -165,11 +161,7 @@ describe("ParFast", () => {
     expect(d.mock.calls.length).toStrictEqual(1)
 
     expect(result).toStrictEqual(
-      interruptWithErrorAndOthers(new Error("a"), [
-        new Error("b"),
-        new Error("c"),
-        new Error("d")
-      ])
+      interruptWithError(new Error("a"), new Error("b"), new Error("c"), new Error("d"))
     )
   })
 })

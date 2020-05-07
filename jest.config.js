@@ -1,3 +1,4 @@
+// eslint-disable-next-line
 module.exports = {
   rootDir: "./",
   clearMocks: true,
@@ -14,4 +15,4 @@ module.exports = {
   setupFiles: ["./jest-setup.ts"],
   modulePathIgnorePatterns: ["dtslint"],
   verbose: true
-};
+}

@@ -797,7 +797,10 @@ describe("EffectSafe", () => {
       const e = await T.runToPromiseExit(
         T.bracket(acquireSuccess, releaseFailure, useFailure)
       )
-      assert.deepStrictEqual(e, ex.raise("use failure"))
+      assert.deepStrictEqual(
+        e,
+        ex.withRemaining(ex.raise("use failure"), ex.raise("release failure"))
+      )
     })
 
     it("release must be called if the body returns", async () => {
@@ -861,7 +864,10 @@ describe("EffectSafe", () => {
       const e = await T.runToPromiseExit(
         T.bracketExit(acquireSuccess, releaseFailure, useFailure)
       )
-      assert.deepStrictEqual(e, ex.raise("use failure"))
+      assert.deepStrictEqual(
+        e,
+        ex.withRemaining(ex.raise("use failure"), ex.raise("release failure"))
+      )
     })
 
     it("release must be called if the body returns", async () => {

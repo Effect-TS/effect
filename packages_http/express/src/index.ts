@@ -122,7 +122,7 @@ export const express: Express = {
 
           return (cb) => {
             s.close((e) => {
-              cb(e)
+              e ? cb(e) : cb()
             })
           }
         })
