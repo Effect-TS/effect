@@ -1,7 +1,11 @@
 {
-  "extends": "./base.tsconfig.json",
+  "extends": "./tsconfig.base.json",
   "files": [],
   "compilerOptions": {
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@matechs/core/*": ["./shaking/core/src/*"],
+      "@matechs/core": ["./shaking/core/src"]
+    }
   }
 }

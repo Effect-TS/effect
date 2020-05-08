@@ -2,6 +2,10 @@ import { logger as L } from "@matechs/logger"
 import { T, Service as F, pipe } from "@matechs/prelude"
 import P from "pino"
 
+import { add } from "@matechs/core/demo"
+
+console.log(add)
+
 // region Pino instance
 export const PinoInstanceURI = "@matechs/logger-pino/instanceURI"
 
