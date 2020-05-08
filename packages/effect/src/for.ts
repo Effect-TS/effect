@@ -1,5 +1,6 @@
 import { sequenceS } from "fp-ts/lib/Apply"
 import { Kind4 } from "fp-ts/lib/HKT"
+import { constVoid } from "fp-ts/lib/function"
 
 import {
   MaURIS,
@@ -44,7 +45,9 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
   ) {
     return new ForImpl<U, S | S2, R & R2, E | E2, A & { [k in N]: A2 }>(
       this.M,
-      this.M.chain(this.res, (k) => this.M.map(f(k), (_) => ({ ...k, [n]: _ })))
+      this.M.chain(this.res, (k) =>
+        this.M.map(f(k), (_) => Object.assign(k, { [n]: _ }))
+      )
     )
   }
   withPipe<N extends string, S2, R2, E2, A2>(
@@ -54,14 +57,14 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
     return new ForImpl<U, S | S2, R & R2, E | E2, A & { [k in N]: A2 }>(
       this.M,
       this.M.chain(this.res, (k) =>
-        this.M.map(f(new Pipe(k)), (_) => ({ ...k, [n]: _ }))
+        this.M.map(f(new Pipe(k)), (_) => Object.assign(k, { [n]: _ }))
       )
     )
   }
   let<N extends string, A2>(n: Exclude<N, keyof A>, f: (_: A) => A2) {
     return new ForImpl<U, S, R, E, A & { [k in N]: A2 }>(
       this.M,
-      this.M.map(this.res, (k) => ({ ...k, [n]: f(k) }))
+      this.M.map(this.res, (k) => Object.assign(k, { [n]: f(k) }))
     )
   }
   all<NER extends Record<string, Kind4<U, any, any, any, any>>>(
@@ -76,7 +79,7 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
     return new ForImpl(
       this.M,
       this.M.chain(this.res, (k) =>
-        this.M.map(sequenceS(this.M)(f(k) as any), (_) => ({ ...k, ..._ }))
+        this.M.map(sequenceS(this.M)(f(k) as any), (_) => Object.assign(k, _))
       )
     )
   }
@@ -87,9 +90,7 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
     return this.M.map(this.res, f)
   }
   unit(): Kind4<U, S, R, E, void> {
-    return this.M.map(this.res, () => {
-      //
-    })
+    return this.M.map(this.res, constVoid)
   }
   done(): Kind4<U, S, R, E, A> {
     return this.res
