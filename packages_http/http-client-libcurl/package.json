@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-libcurl",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -26,8 +26,8 @@
   ],
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/http-client": "^6.0.0",
-    "@matechs/prelude": "^2.0.0",
+    "@matechs/http-client": "^6.0.1",
+    "@matechs/prelude": "^2.0.1",
     "node-libcurl": "^2.1.1",
     "query-string": "^6.12.1"
   }
