@@ -83,7 +83,7 @@ export const effectOptionPar: EffectOptionEP = {
   ): EffectOption<S1 | S2, R & R2, E | E2, B> => T.effect.chain(fa, T.witherOption(f)),
   chainTap: <S1, S2, R, E, A, R2, E2>(
     inner: EffectOption<S1, R, E, A>,
-    bind: FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
+    bind: FunctionN<[A], EffectOption<S2, R2, E2, unknown>>
   ): EffectOption<S1 | S2, R & R2, E | E2, A> =>
     T.effect.chainTap<S1, S2, R, E, O.Option<A>, R2, E2>(
       inner,
@@ -128,8 +128,11 @@ export const chainNone = <S2, R2, E2, A2>(f: EffectOption<S2, R2, E2, A2>) => <
   T.effect.chain(_, (x) => (O.isNone(x) ? f : T.pure(x as O.Option<A | A2>)))
 
 export const chainTap = <S, R, E, A>(
-  bind: FunctionN<[A], T.Effect<S, R, E, unknown>>
+  bind: FunctionN<[A], EffectOption<S, R, E, unknown>>
 ) => T.chainTap(O.fold(() => none, bind))
+
+export const fromEffect = <A1, S, R, E, A2>(f: (input: A1) => T.Effect<S, R, E, A2>) =>
+  flow(f, T.map(O.some))
 
 export function getFirstMonoid<S, R, E, A>(): MON.Monoid<EffectOption<S, R, E, A>> {
   return {
