@@ -131,7 +131,7 @@ export const chainTap = <S, R, E, A>(
   bind: FunctionN<[A], EffectOption<S, R, E, unknown>>
 ) => T.chainTap(O.fold(() => none, bind))
 
-export const fromEffect = <A1, S, R, E, A2>(eff: T.Effect<S, R, E, A2>) =>
+export const fromEffect = <S, R, E, A>(eff: T.Effect<S, R, E, A>) =>
   T.effect.map(eff, O.some)
 
 export function getFirstMonoid<S, R, E, A>(): MON.Monoid<EffectOption<S, R, E, A>> {
