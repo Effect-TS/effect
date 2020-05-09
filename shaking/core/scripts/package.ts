@@ -31,6 +31,8 @@ const modules: string[] = [
   "Managed",
   "Process",
   "ConcurrentRef",
+  "Either",
+  "Option",
   "Stream",
   "Stream/Node",
   "Stream/Sink",

@@ -1,9 +1,11 @@
 import * as concurrentRef from "./ConcurrentRef"
 import * as deferred from "./Deferred"
 import * as effect from "./Effect"
+import * as either from "./Either"
 import * as exit from "./Exit"
 import * as functionF from "./Function"
 import * as managed from "./Managed"
+import * as option from "./Option"
 import * as pipeable from "./Pipe"
 import * as process from "./Process"
 import * as provider from "./Provider"
@@ -31,5 +33,7 @@ export {
   managed,
   process,
   concurrentRef,
-  stream
+  stream,
+  either,
+  option
 }
