@@ -29,6 +29,8 @@ const modules: string[] = [
   "Queue",
   "Ticket",
   "Managed",
+  "Process",
+  "ConcurrentRef",
   "Support",
   "Support/Common",
   "Support/Dequeue",
