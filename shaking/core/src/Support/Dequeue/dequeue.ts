@@ -14,7 +14,7 @@ import {
   isEmpty,
   find,
   of as listOf
-} from "../List"
+} from "../../List"
 
 export interface Dequeue<A> {
   take(): Option<readonly [A, Dequeue<A>]>

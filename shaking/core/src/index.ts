@@ -8,6 +8,7 @@ import * as either from "./Either"
 import * as eq from "./Eq"
 import * as exit from "./Exit"
 import * as functionF from "./Function"
+import * as list from "./List"
 import * as magma from "./Magma"
 import * as managed from "./Managed"
 import * as map from "./Map"
@@ -73,5 +74,6 @@ export {
   these,
   tree,
   tuple,
-  effectOption
+  effectOption,
+  list
 }

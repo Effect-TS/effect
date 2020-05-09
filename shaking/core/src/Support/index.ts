@@ -5,14 +5,12 @@ import * as doublyLinkedList from "./DoublyLinkedList"
 import * as driver from "./Driver"
 import * as forM from "./For"
 import * as linkedList from "./LinkedList"
-import * as list from "./List"
 import * as overloads from "./Overloads"
 import * as runtime from "./Runtime"
 import * as utils from "./Utils"
 
 export {
   dequeue,
-  list,
   utils,
   completable,
   linkedList,

@@ -31,6 +31,7 @@ const modules: string[] = [
   "Ticket",
   "Managed",
   "Process",
+  "List",
   "ConcurrentRef",
   "Either",
   "Option",
