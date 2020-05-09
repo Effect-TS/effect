@@ -28,6 +28,7 @@ const modules: string[] = [
   "Semaphore",
   "Queue",
   "Ticket",
+  "Managed",
   "Support",
   "Support/Common",
   "Support/Dequeue",

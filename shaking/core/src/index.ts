@@ -2,6 +2,7 @@ import * as deferred from "./Deferred"
 import * as effect from "./Effect"
 import * as exit from "./Exit"
 import * as functionF from "./Function"
+import * as managed from "./Managed"
 import * as pipeable from "./Pipe"
 import * as provider from "./Provider"
 import * as queue from "./Queue"
@@ -23,5 +24,6 @@ export {
   provider,
   semaphore,
   queue,
-  ticket
+  ticket,
+  managed
 }
