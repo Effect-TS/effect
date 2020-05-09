@@ -4,8 +4,11 @@ import * as exit from "./Exit"
 import * as functionF from "./Function"
 import * as pipeable from "./Pipe"
 import * as provider from "./Provider"
+import * as queue from "./Queue"
 import * as ref from "./Ref"
+import * as semaphore from "./Semaphore"
 import * as support from "./Support"
+import * as ticket from "./Ticket"
 import * as utils from "./Utils"
 
 export {
@@ -17,5 +20,8 @@ export {
   effect,
   pipeable,
   functionF as function,
-  provider
+  provider,
+  semaphore,
+  queue,
+  ticket
 }
