@@ -1,5 +1,6 @@
-import * as common from "./Common"
+import * as deferred from "./Deferred"
 import * as exit from "./Exit"
 import * as support from "./Support"
+import * as utils from "./Utils"
 
-export { common, exit, support }
+export { exit, support, utils, deferred }

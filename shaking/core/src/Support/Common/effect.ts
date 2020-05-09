@@ -9,3 +9,12 @@ export type Sync<A> = Effect<never, unknown, never, A>
 export type SyncE<E, A> = Effect<never, unknown, E, A>
 export type SyncR<R, A> = Effect<never, R, never, A>
 export type SyncRE<R, E, A> = Effect<never, R, E, A>
+
+export interface Provider<Environment, Module, E2 = never, S2 = never> {
+  <S, R, E, A>(e: Effect<S, Module & R, E, A>): Effect<
+    S | S2,
+    Environment & R,
+    E | E2,
+    A
+  >
+}

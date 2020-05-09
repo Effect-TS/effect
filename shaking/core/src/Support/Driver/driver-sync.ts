@@ -2,6 +2,7 @@ import { Either, right, left } from "fp-ts/lib/Either"
 import { none } from "fp-ts/lib/Option"
 import { FunctionN } from "fp-ts/lib/function"
 
+import { Exit, Cause, interrupt as interruptExit, Done, done, raise } from "../../Exit"
 import {
   EffectTypes,
   Instructions,
@@ -20,8 +21,7 @@ import {
   IInterruptibleRegion,
   IAccessRuntime,
   IAccessInterruptible
-} from "../../Common"
-import { Exit, Cause, interrupt as interruptExit, Done, done, raise } from "../../Exit"
+} from "../Common"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 import { defaultRuntime } from "../Runtime"
 

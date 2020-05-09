@@ -1,4 +1,4 @@
-import { AsyncCancelContFn } from "../../Common"
+import { AsyncCancelContFn } from "../Common"
 import { LinkedList } from "../LinkedList"
 
 /**

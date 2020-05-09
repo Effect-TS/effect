@@ -1,7 +1,7 @@
 import { none, some, isSome, Option } from "fp-ts/lib/Option"
 import { FunctionN } from "fp-ts/lib/function"
 
-import { AsyncCancelContFn } from "../../Common"
+import { AsyncCancelContFn } from "../Common"
 
 export interface Completable<A> {
   value(): Option<A>
