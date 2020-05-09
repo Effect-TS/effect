@@ -10,6 +10,7 @@ import * as provider from "./Provider"
 import * as queue from "./Queue"
 import * as ref from "./Ref"
 import * as semaphore from "./Semaphore"
+import * as stream from "./Stream"
 import * as support from "./Support"
 import * as ticket from "./Ticket"
 import * as utils from "./Utils"
@@ -29,5 +30,6 @@ export {
   ticket,
   managed,
   process,
-  concurrentRef
+  concurrentRef,
+  stream
 }
