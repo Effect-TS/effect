@@ -19,6 +19,8 @@ const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
 const modules: string[] = [
   "Exit",
   "Deferred",
+  "Effect",
+  "Ref",
   "Support",
   "Support/Common",
   "Support/Dequeue",
@@ -29,7 +31,9 @@ const modules: string[] = [
   "Support/DoublyLinkedList",
   "Support/Runtime",
   "Support/Driver",
-  "Support/Utils"
+  "Support/Utils",
+  "Support/Overloads",
+  "Support/For"
 ]
 
 pipe(
