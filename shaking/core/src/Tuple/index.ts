@@ -1,0 +1,21 @@
+export {
+  URI,
+  bimap,
+  compose,
+  duplicate,
+  extend,
+  foldMap,
+  fst,
+  getApplicative,
+  getApply,
+  getChain,
+  getChainRec,
+  getMonad,
+  map,
+  mapLeft,
+  reduce,
+  reduceRight,
+  snd,
+  swap,
+  tuple
+} from "fp-ts/lib/Tuple"
