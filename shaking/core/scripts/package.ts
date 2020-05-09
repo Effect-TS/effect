@@ -3,7 +3,7 @@
  */
 import * as fs from "fs"
 
-import { array } from "fp-ts/lib/Array"
+import * as A from "fp-ts/lib/Array"
 import { parseJSON } from "fp-ts/lib/Either"
 import * as TE from "fp-ts/lib/TaskEither"
 import { pipe } from "fp-ts/lib/pipeable"
@@ -16,7 +16,19 @@ const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
   fs.writeFile
 )
 
-const modules: string[] = ["exit", "common"]
+const modules: string[] = [
+  "Exit",
+  "Common",
+  "Support",
+  "Support/Dequeue",
+  "Support/List",
+  "Support/Utils",
+  "Support/Completable",
+  "Support/LinkedList",
+  "Support/DoublyLinkedList",
+  "Support/Runtime",
+  "Support/Driver"
+]
 
 pipe(
   readFile("./package.json", "utf8"),
@@ -45,14 +57,17 @@ pipe(
     )
   ),
   TE.chain(() =>
-    array.traverse(TE.taskEither)(modules, (m) =>
+    A.array.traverse(TE.taskEither)(modules, (m) =>
       writeFile(
         `./build/${m}/package.json`,
         JSON.stringify(
           {
             sideEffects: false,
-            module: `../esm/${m}/index.js`,
-            typings: `../esm/${m}/index.d.ts`
+            main: "./index.js",
+            module: `${A.range(1, m.split("/").length)
+              .map(() => "../")
+              .join("")}esm/${m}/index.js`,
+            typings: `./index.d.ts`
           },
           null,
           2

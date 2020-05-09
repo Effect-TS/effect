@@ -1,4 +1,5 @@
-import * as common from "./common"
-import * as exit from "./exit"
+import * as common from "./Common"
+import * as exit from "./Exit"
+import * as support from "./Support"
 
-export { common, exit }
+export { common, exit, support }
