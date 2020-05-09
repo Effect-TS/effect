@@ -11,8 +11,11 @@ import * as process from "./Process"
 import * as provider from "./Provider"
 import * as queue from "./Queue"
 import * as ref from "./Ref"
+import * as retry from "./Retry"
 import * as semaphore from "./Semaphore"
+import * as service from "./Service"
 import * as stream from "./Stream"
+import * as streamEither from "./StreamEither"
 import * as support from "./Support"
 import * as ticket from "./Ticket"
 import * as utils from "./Utils"
@@ -35,5 +38,8 @@ export {
   concurrentRef,
   stream,
   either,
-  option
+  option,
+  service,
+  retry,
+  streamEither
 }
