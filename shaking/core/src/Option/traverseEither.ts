@@ -2,9 +2,11 @@ import type { Option } from "fp-ts/lib/Option"
 
 import { Either, either } from "../Either"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
 
-export const traverseEither: <A, E, B>(
-  f: (a: A) => Either<E, B>
-) => (ta: Option<A>) => Either<E, Option<B>> = (f) => (ta) =>
-  option.traverse(either)(ta, f)
+export const traverseEither_ = either.traverse(optionMonad)
+
+export const traverseEither: <A, B>(
+  f: (a: A) => Option<B>
+) => <E>(ta: Either<E, A>) => Option<Either<E, B>> = (f) => (ta) =>
+  traverseEither_(ta, f)

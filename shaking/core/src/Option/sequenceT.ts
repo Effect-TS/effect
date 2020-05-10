@@ -1,5 +1,5 @@
 import { sequenceT as ST } from "fp-ts/lib/Apply"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
 
-export const sequenceT = ST(option)
+export const sequenceT = ST(optionMonad)

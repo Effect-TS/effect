@@ -4,11 +4,13 @@ import type { Option } from "fp-ts/lib/Option"
 import { Either } from "../Either"
 import { record } from "../Record"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
+
+export const wiltRecord_ = record.wilt(optionMonad)
 
 export const wiltRecord: <A, B, C>(
   f: (a: A) => Option<Either<B, C>>
 ) => (
   wa: Record<string, A>
 ) => Option<Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  record.wilt(option)(wa, f)
+  wiltRecord_(wa, f)

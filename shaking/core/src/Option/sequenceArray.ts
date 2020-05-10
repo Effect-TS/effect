@@ -1,5 +1,5 @@
 import { array } from "../Array"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
 
-export const sequenceArray = array.sequence(option)
+export const sequenceArray = array.sequence(optionMonad)

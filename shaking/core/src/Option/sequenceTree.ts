@@ -1,5 +1,5 @@
 import { tree } from "../Tree"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
 
-export const sequenceTree = tree.sequence(option)
+export const sequenceTree = tree.sequence(optionMonad)

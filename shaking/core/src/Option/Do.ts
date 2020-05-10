@@ -1,5 +1,5 @@
 import { Do as DoG } from "fp-ts-contrib/lib/Do"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
 
-export const Do = () => DoG(option)
+export const Do = () => DoG(optionMonad)

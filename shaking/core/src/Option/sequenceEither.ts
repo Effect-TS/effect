@@ -1,5 +1,5 @@
 import { either } from "../Either"
 
-import { option } from "./instances"
+import { optionMonad } from "./monad"
 
-export const sequenceEither = option.sequence(either)
+export const sequenceEither = either.sequence(optionMonad)
