@@ -1,72 +1,86 @@
-export {
-  AOfOptions,
-  Do,
-  None,
-  Option,
-  Some,
-  URI,
-  alt,
-  ap,
-  apFirst,
-  apSecond,
-  chain,
-  chainFirst,
-  compact,
-  duplicate,
-  elem,
-  exists,
-  extend,
-  filter,
-  filterMap,
-  flatten,
-  fold,
-  foldMap,
-  fromEither,
-  fromNullable,
-  fromPredicate,
-  getApplyMonoid,
-  getApplySemigroup,
-  getEq,
-  getFirst,
-  getFirstMonoid,
-  getLast,
-  getLastMonoid,
-  getLeft,
-  getMonoid,
-  getOrElse,
-  getOrd,
-  getRefinement,
-  getRight,
-  getShow,
-  isNone,
-  isSome,
-  map,
-  mapNullable,
-  none,
-  option,
-  partition,
-  partitionMap,
-  reduce,
-  reduceRight,
-  separate,
-  sequenceArray,
-  sequenceEither,
-  sequenceRecord,
-  sequenceS,
-  sequenceT,
-  sequenceTree,
-  some,
-  toNullable,
-  toUndefined,
-  traverseArray,
-  traverseArrayWithIndex,
-  traverseEither,
-  traverseRecord,
-  traverseRecordWithIndex,
-  traverseTree,
-  tryCatch,
-  wiltArray,
-  wiltRecord,
-  witherArray,
-  witherRecord
-} from "./option"
+export { Option } from "fp-ts/lib/Option"
+
+export { alt_ } from "./alt_"
+export { alt } from "./alt"
+export { ap_ } from "./ap_"
+export { AOfOptions } from "./AOfOptions"
+export { ap } from "./ap"
+export { apFirst } from "./apFirst"
+export { apSecond } from "./apSecond"
+export { chain_ } from "./chain_"
+export { chain } from "./chain"
+export { chainFirst } from "./chainFirst"
+export { compact } from "./compact"
+export { Do } from "./Do"
+export { duplicate } from "./duplicate"
+export { elem } from "./elem"
+export { exists } from "./exists"
+export { extend_ } from "./extend_"
+export { extend } from "./extend"
+export { filter_ } from "./filter_"
+export { filter } from "./filter"
+export { filterMap } from "./filterMap"
+export { filterMap_ } from "./filterMap_"
+export { flatten } from "./flatten"
+export { fold } from "./fold"
+export { foldMap } from "./foldMap"
+export { foldMap_ } from "./foldMap_"
+export { fromEither } from "./fromEither"
+export { fromNullable } from "./fromNullable"
+export { fromPredicate } from "./fromPredicate"
+export { getApplyMonoid } from "./getApplyMonoid"
+export { getApplySemigroup } from "./getApplySemigroup"
+export { getEq } from "./getEq"
+export { getFirst } from "./getFirst"
+export { getFirstMonoid } from "./getFirstMonoid"
+export { getLast } from "./getLast"
+export { getLastMonoid } from "./getLastMonoid"
+export { getLeft } from "./getLeft"
+export { getMonoid } from "./getMonoid"
+export { getOrd } from "./getOrd"
+export { getOrElse } from "./getOrElse"
+export { getRefinement } from "./getRefinement"
+export { getRight } from "./getRight"
+export { getShow } from "./getShow"
+export { option } from "./instances"
+export { isNone } from "./isNone"
+export { isSome } from "./isSome"
+export { map_ } from "./map_"
+export { map } from "./map"
+export { mapNullable } from "./mapNullable"
+export { none } from "./none"
+export { partition_ } from "./partition_"
+export { partition } from "./partition"
+export { partitionMap_ } from "./partitionMap_"
+export { partitionMap } from "./partitionMap"
+export { reduce_ } from "./reduce_"
+export { reduce } from "./reduce"
+export { reduceRight_ } from "./reduceRight_"
+export { reduceRight } from "./reduceRight"
+export { separate } from "./separate"
+export { sequence } from "./sequence"
+export { sequenceArray } from "./sequenceArray"
+export { sequenceEither } from "./sequenceEither"
+export { sequenceRecord } from "./sequenceRecord"
+export { sequenceS } from "./sequenceS"
+export { sequenceT } from "./sequenceT"
+export { sequenceTree } from "./sequenceTree"
+export { some } from "./some"
+export { throwError } from "./throwError"
+export { toNullable } from "./toNullable"
+export { toUndefined } from "./toUndefined"
+export { traverse } from "./traverse"
+export { traverseArray } from "./traverseArray"
+export { traverseArrayWithIndex } from "./traverseArrayWithIndex"
+export { traverseEither } from "./traverseEither"
+export { traverseRecord } from "./traverseRecord"
+export { traverseRecordWithIndex } from "./traverseRecordWithIndex"
+export { traverseTree } from "./traverseTree"
+export { tryCatch } from "./tryCatch"
+export { wilt } from "./wilt"
+export { wiltArray } from "./wiltArray"
+export { wiltRecord } from "./wiltRecord"
+export { wither } from "./wither"
+export { witherArray } from "./witherArray"
+export { witherRecord } from "./witherRecord"
+export { zero } from "./zero"

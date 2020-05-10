@@ -1,6 +1,6 @@
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
-import { Option, none, some } from "fp-ts/lib/Option"
-import { isNonEmpty } from "fp-ts/lib/ReadonlyArray"
+import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
+
+import { none, Option, some } from "../Option"
 
 export type Exit<E, A> = Done<A> | Cause<E>
 export type ExitTag = Exit<unknown, unknown>["_tag"]
@@ -79,10 +79,10 @@ export const withRemaining = <E>(
       ? [...cause.remaining.value, ...remaining]
       : remaining
 
-  return isNonEmpty(rem)
+  return rem.length > 0
     ? {
         ...cause,
-        remaining: some(rem)
+        remaining: some(rem as NonEmptyArray<Cause<any>>)
       }
     : cause
 }

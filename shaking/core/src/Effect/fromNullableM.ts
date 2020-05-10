@@ -1,5 +1,4 @@
-import { Option, fromNullable } from "fp-ts/lib/Option"
-
+import { Option, fromNullable } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { map_ } from "./map"

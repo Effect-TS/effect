@@ -1,6 +1,5 @@
-import { Option } from "fp-ts/lib/Option"
-import { FunctionN } from "fp-ts/lib/function"
-
+import { FunctionN } from "../Function"
+import { Option } from "../Option"
 import { SyncE } from "../Support/Common/effect"
 
 import { encaseOption } from "./encaseOption"

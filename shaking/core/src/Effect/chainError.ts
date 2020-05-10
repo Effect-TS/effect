@@ -1,7 +1,6 @@
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
-import { Option } from "fp-ts/lib/Option"
-
 import { Cause } from "../Exit"
+import { NonEmptyArray } from "../NonEmptyArray"
+import { Option } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { completed } from "./completed"

@@ -1,15 +1,9 @@
 import { Do as DoG } from "fp-ts-contrib/lib/Do"
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
-import { array } from "fp-ts/lib/Array"
 import { Bifunctor4 } from "fp-ts/lib/Bifunctor"
 import { Separated } from "fp-ts/lib/Compactable"
-import { Either, right, left, isLeft, isRight, fold, either } from "fp-ts/lib/Either"
-import { Option, option, some } from "fp-ts/lib/Option"
-import { record } from "fp-ts/lib/Record"
-import { Tree, tree } from "fp-ts/lib/Tree"
-import { FunctionN, Lazy, Predicate, Refinement } from "fp-ts/lib/function"
-import { pipeable } from "fp-ts/lib/pipeable"
 
+import { array } from "../Array"
 import {
   Effect,
   pure as pureEffect,
@@ -17,7 +11,22 @@ import {
   chainError_ as chainErrorEffect_,
   map_ as mapEffect_
 } from "../Effect"
+import {
+  Either,
+  right,
+  left,
+  isLeft,
+  isRight,
+  fold,
+  either,
+  rightW,
+  leftW
+} from "../Either"
+import { FunctionN, Lazy, Predicate, Refinement } from "../Function"
 import { managed } from "../Managed"
+import { Option, option, some } from "../Option"
+import { pipeable } from "../Pipe"
+import { record } from "../Record"
 import {
   Stream,
   encaseEffect as encaseEffectS,
@@ -41,6 +50,7 @@ import {
 import { StreamEither, StreamEitherURI as URI, Managed } from "../Support/Common"
 import { ForM } from "../Support/For"
 import { Monad4EP, MonadThrow4EP } from "../Support/Overloads"
+import { Tree, tree } from "../Tree"
 
 type StreamEitherT<S, R, E, A> = Stream<S, R, never, Either<E, A>>
 
@@ -133,15 +143,19 @@ export function zipWith<S, R, E, A, S2, R2, E2, B, C>(
   f: FunctionN<[A, B], C>
 ): StreamEither<unknown, R & R2, E | E2, C> {
   return toS(
-    streamS.zipWith(fromS(as), fromS(bs), (ea, eb) => {
-      if (isLeft(ea)) {
-        return left(ea.left)
-      } else if (isLeft(eb)) {
-        return left(eb.left)
-      } else {
-        return right(f(ea.right, eb.right))
+    streamS.zipWith(
+      fromS(as),
+      fromS(bs),
+      (ea, eb): Either<E | E2, C> => {
+        if (isLeft(ea)) {
+          return left(ea.left)
+        } else if (isLeft(eb)) {
+          return left(eb.left)
+        } else {
+          return right(f(ea.right, eb.right))
+        }
       }
-    })
+    )
   )
 }
 
@@ -186,8 +200,8 @@ export function fromSource<S, R, E, S2, R2, E2, A>(
     fromSourceS(
       managed.map(r, (e) =>
         chainErrorEffect_(
-          mapEffect_(e, (oa) => option.map(oa, right)),
-          (e) => pureEffect(some(left(e)))
+          mapEffect_(e, (oa) => option.map(oa, rightW)),
+          (e) => pureEffect(some(leftW(e)))
         )
       )
     )

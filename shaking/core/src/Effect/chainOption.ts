@@ -1,6 +1,5 @@
-import { Option } from "fp-ts/lib/Option"
-import { Lazy, FunctionN } from "fp-ts/lib/function"
-
+import { Lazy, FunctionN } from "../Function"
+import { Option } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"

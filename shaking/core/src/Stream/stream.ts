@@ -1,29 +1,8 @@
 import { Do as DoG } from "fp-ts-contrib/lib/Do"
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
-import { array, filter as filterArray } from "fp-ts/lib/Array"
 import { Separated } from "fp-ts/lib/Compactable"
-import { Either, either } from "fp-ts/lib/Either"
-import { Eq } from "fp-ts/lib/Eq"
-import {
-  fold as foldOption,
-  isSome,
-  none,
-  Option,
-  option,
-  some
-} from "fp-ts/lib/Option"
-import { record } from "fp-ts/lib/Record"
-import { Tree, tree } from "fp-ts/lib/Tree"
-import {
-  constant,
-  FunctionN,
-  identity,
-  Lazy,
-  Predicate,
-  Refinement
-} from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
 
+import { array, filter as filterArray } from "../Array"
 import { Deferred, makeDeferred } from "../Deferred"
 import {
   applyFirst as applyFirstEffect,
@@ -62,7 +41,10 @@ import {
   unit as unitEffect,
   zipWith_ as zipWith_Effect
 } from "../Effect"
+import { Either, either } from "../Either"
+import { Eq } from "../Eq"
 import { Cause, Exit } from "../Exit"
+import { constant, FunctionN, identity, Lazy, Predicate, Refinement } from "../Function"
 import {
   as as asManaged,
   Async as ManagedAsync,
@@ -80,12 +62,16 @@ import {
   zip as zipManaged,
   zipWith as zipWithManaged
 } from "../Managed"
+import { fold as foldOption, isSome, none, Option, option, some } from "../Option"
+import { pipe } from "../Pipe"
 import { boundedQueue, ConcurrentQueue, unboundedQueue } from "../Queue"
+import { record } from "../Record"
 import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
 import { StreamURI as URI } from "../Support/Common"
 import { ForM } from "../Support/For"
 import { Monad4EP } from "../Support/Overloads"
+import { Tree, tree } from "../Tree"
 
 import {
   collectArraySink,

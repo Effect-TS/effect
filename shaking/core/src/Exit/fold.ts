@@ -1,7 +1,6 @@
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
-import { Option } from "fp-ts/lib/Option"
-
-import { Effect, Managed, Stream, StreamEither } from "../Support/Common/types"
+import type { NonEmptyArray } from "../NonEmptyArray"
+import type { Option } from "../Option"
+import type { Effect, Managed, Stream, StreamEither } from "../Support/Common/types"
 
 import { Abort, Cause, Done, Exit, Interrupt, Raise } from "./Exit"
 

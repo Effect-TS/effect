@@ -1,10 +1,10 @@
 import { FunctionN } from "fp-ts/lib/function"
 
 import { SyncRE, Provider } from "../Effect"
+import * as T from "../Effect"
 import { use, Managed } from "../Managed"
 import { pipe } from "../Pipe"
 import { Effect } from "../Support/Common"
-import { chain, accessM, provide } from "../Support/Common/instructions"
 
 export type Patched<A, B> = B extends FunctionN<
   infer ARG,
@@ -34,9 +34,9 @@ export function access<A extends ModuleShape<A>>(sp: ModuleSpec<A>): Derived<A> 
 
     for (const k of Object.keys(a[s])) {
       if (typeof a[s][k] === "function") {
-        derived[s][k] = (...args: any[]) => accessM((r: any) => r[s][k](...args))
+        derived[s][k] = (...args: any[]) => T.accessM((r: any) => r[s][k](...args))
       } else {
-        derived[s][k] = accessM((r: any) => r[s][k])
+        derived[s][k] = T.accessM((r: any) => r[s][k])
       }
     }
   }
@@ -156,9 +156,9 @@ export function providing<
     for (const entry of Object.keys((s as any)[specURI][sym])) {
       if (typeof (a as any)[sym][entry] === "function") {
         r[sym][entry] = (...args: any[]) =>
-          provide(env, "inverted")((a as any)[sym][entry](...args))
+          T.provide(env, "inverted")((a as any)[sym][entry](...args))
       } else if (typeof (a as any)[sym][entry] === "object") {
-        r[sym][entry] = provide(env, "inverted")((a as any)[sym][entry])
+        r[sym][entry] = T.provide(env, "inverted")((a as any)[sym][entry])
       }
     }
   }
@@ -173,8 +173,8 @@ export function implement<S extends ModuleSpec<any>>(
   return <I extends Implementation<TypeOf<S>>>(
     i: I
   ): Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
-    accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-      pipe(eff, provide(providing(s, i, e), inverted))
+    T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+      pipe(eff, T.provide(providing(s, i, e), inverted))
     )
 }
 
@@ -187,9 +187,9 @@ export function implementWith<SW, RW, EW, AW>(w: Effect<SW, RW, EW, AW>) {
   ): Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (
     eff
   ) =>
-    chain(w, (r) =>
-      accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        pipe(eff, provide(providing(s, i(r), e), inverted))
+    T.chain_(w, (r) =>
+      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+        pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )
     )
 }
@@ -204,8 +204,8 @@ export function implementWithManaged<SW, RW, EW, AW>(w: Managed<SW, RW, EW, AW>)
     eff
   ) =>
     use(w, (r) =>
-      accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
-        pipe(eff, provide(providing(s, i(r), e), inverted))
+      T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
+        pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )
     )
 }

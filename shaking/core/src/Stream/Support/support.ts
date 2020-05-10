@@ -1,8 +1,7 @@
-import { Either, left, right } from "fp-ts/lib/Either"
-import { none, some, Option } from "fp-ts/lib/Option"
-
 import { AsyncE, async } from "../../Effect"
+import { Either, left, right } from "../../Either"
 import { pure as managedPure, Sync as ManagedSync } from "../../Managed"
+import { none, some, Option } from "../../Option"
 import { DoublyLinkedList } from "../../Support/DoublyLinkedList"
 
 export interface Offer<A> {

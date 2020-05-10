@@ -1,5 +1,4 @@
-import { Option } from "fp-ts/lib/Option"
-
+import { Option } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"

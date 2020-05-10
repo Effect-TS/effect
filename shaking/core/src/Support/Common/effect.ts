@@ -1,4 +1,4 @@
-import { Effect } from "./types"
+import type { Effect } from "./types"
 
 export type Async<A> = Effect<unknown, unknown, never, A>
 export type AsyncE<E, A> = Effect<unknown, unknown, E, A>

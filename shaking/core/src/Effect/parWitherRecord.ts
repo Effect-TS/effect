@@ -1,6 +1,5 @@
-import { Option } from "fp-ts/lib/Option"
-import { record } from "fp-ts/lib/Record"
-
+import { Option } from "../Option"
+import { record } from "../Record"
 import { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"

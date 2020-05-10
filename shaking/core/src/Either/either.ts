@@ -2,7 +2,6 @@ import { Do as DoG } from "fp-ts-contrib/lib/Do"
 import { Alt2 } from "fp-ts/lib/Alt"
 import { Applicative, Applicative2M } from "fp-ts/lib/Applicative"
 import { Apply2M, sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
-import { array } from "fp-ts/lib/Array"
 import { Bifunctor2 } from "fp-ts/lib/Bifunctor"
 import { Chain2M } from "fp-ts/lib/Chain"
 import { ChainRec2M, tailRec } from "fp-ts/lib/ChainRec"
@@ -45,15 +44,12 @@ import { FunctorWithIndex2 } from "fp-ts/lib/FunctorWithIndex"
 import { HKT, Kind2 } from "fp-ts/lib/HKT"
 import { Monad2M } from "fp-ts/lib/Monad"
 import { MonadThrow2M } from "fp-ts/lib/MonadThrow"
-import { Option, option } from "fp-ts/lib/Option"
 import { Profunctor2 } from "fp-ts/lib/Profunctor"
-import { record } from "fp-ts/lib/Record"
 import { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
 import { Traversable2 } from "fp-ts/lib/Traversable"
-import { Tree, tree } from "fp-ts/lib/Tree"
-import { flow } from "fp-ts/lib/function"
 import { pipe, pipeable } from "fp-ts/lib/pipeable"
 
+import { array } from "../Array"
 import {
   chain as chainEffect,
   chainError as chainErrorEffect,
@@ -61,7 +57,11 @@ import {
   pure as pureEffect,
   raiseError as raiseErrorEffect
 } from "../Effect"
+import { flow } from "../Function"
+import { Option, option } from "../Option"
+import { record } from "../Record"
 import { Effect, Managed, Stream, StreamEither } from "../Support/Common"
+import { Tree, tree } from "../Tree"
 
 export {
   URI,
@@ -96,7 +96,21 @@ export function right<A>(a: A): Either<never, A> {
   }
 }
 
+export function rightW<E = never, A = unknown>(a: A): Either<E, A> {
+  return {
+    _tag: "Right",
+    right: a
+  }
+}
+
 export function left<E>(e: E): Either<E, never> {
+  return {
+    _tag: "Left",
+    left: e
+  }
+}
+
+export function leftW<E, A = unknown>(e: E): Either<E, A> {
   return {
     _tag: "Left",
     left: e

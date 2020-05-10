@@ -43,6 +43,7 @@ const modules: string[] = [
   "Ord",
   "Eq",
   "Magma",
+  "Monoid",
   "Map",
   "Set",
   "Show",

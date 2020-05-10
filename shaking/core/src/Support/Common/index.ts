@@ -1,4 +1,4 @@
-export {
+export type {
   Effect,
   Managed,
   Stream,
@@ -8,8 +8,8 @@ export {
   StreamEitherURI,
   StreamURI
 } from "./types"
-export { AsyncCancelContFn, AsyncContFn, AsyncFn } from "./async"
-export { EffectTag } from "./tags"
+export type { AsyncCancelContFn, AsyncContFn, AsyncFn } from "./async"
+export type { EffectTag } from "./tags"
 export {
   IAccessEnv,
   IAccessEnvTag,
@@ -44,6 +44,6 @@ export {
   Instructions
 } from "./instructions"
 
-import * as EffectTypes from "./effect"
+import type * as EffectTypes from "./effect"
 
 export { EffectTypes }

@@ -1,10 +1,9 @@
-import { Either, right, left } from "fp-ts/lib/Either"
-import { none } from "fp-ts/lib/Option"
-import { FunctionN } from "fp-ts/lib/function"
-
+import type { Either } from "../../Either"
 import { Exit, Cause, interrupt as interruptExit, Done, done, raise } from "../../Exit"
+import { FunctionN } from "../../Function"
+import { none } from "../../Option"
+import type * as EffectTypes from "../Common/effect"
 import {
-  EffectTypes,
   Instructions,
   IPure,
   IAccessEnv,
@@ -21,7 +20,7 @@ import {
   IInterruptibleRegion,
   IAccessRuntime,
   IAccessInterruptible
-} from "../Common"
+} from "../Common/instructions"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 import { defaultRuntime } from "../Runtime"
 
@@ -273,12 +272,15 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     this.loop(run as any)
 
     if (this.completed !== null) {
-      return right(this.completed)
+      return { _tag: "Right", right: this.completed }
     }
 
     this.interrupt()
 
-    return left(new Error("async operations running"))
+    return {
+      _tag: "Left",
+      left: new Error("async operations running")
+    }
   }
 
   interrupt(): void {

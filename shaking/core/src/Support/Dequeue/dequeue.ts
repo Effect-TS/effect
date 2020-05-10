@@ -1,7 +1,4 @@
-import { Option, some, none, option } from "fp-ts/lib/Option"
-import { Predicate } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
-
+import { Predicate } from "../../Function"
 import {
   cons,
   List,
@@ -15,6 +12,8 @@ import {
   find,
   of as listOf
 } from "../../List"
+import { Option, some, none, option } from "../../Option"
+import { pipe } from "../../Pipe"
 
 export interface Dequeue<A> {
   take(): Option<readonly [A, Dequeue<A>]>

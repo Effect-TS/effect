@@ -1,8 +1,8 @@
-import { FunctionN } from "fp-ts/lib/function"
+import type { FunctionN } from "fp-ts/lib/function"
 
-import { Exit } from "../Exit"
-import { AsyncRE } from "../Support/Common/effect"
-import { DriverImpl } from "../Support/Driver"
+import type { Exit } from "../Exit"
+import type { AsyncRE } from "../Support/Common/effect"
+import { DriverImpl } from "../Support/Driver/driver"
 
 /**
  * Run the given IO with the provided environment.

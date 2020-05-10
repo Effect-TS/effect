@@ -1,7 +1,8 @@
-import { Monad1 } from "fp-ts/lib/Monad"
-import { some, none, Option } from "fp-ts/lib/Option"
-import { FunctionN, flip, Lazy, not, Predicate } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
+import type { Monad1 } from "fp-ts/lib/Monad"
+
+import { FunctionN, flip, Lazy, not, Predicate } from "../Function"
+import { some, none, Option } from "../Option"
+import { pipe } from "../Pipe"
 
 export type List<A> = Cons<A> | Nil
 

@@ -1,7 +1,6 @@
-import { Option, some, fromNullable } from "fp-ts/lib/Option"
-import { FunctionN } from "fp-ts/lib/function"
-
 import { Exit } from "../Exit"
+import { FunctionN } from "../Function"
+import { Option, some, fromNullable } from "../Option"
 import { Effect, Sync, SyncE, AsyncE, Async, SyncR } from "../Support/Common/effect"
 import { Driver, DriverImpl } from "../Support/Driver"
 

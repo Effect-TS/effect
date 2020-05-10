@@ -1,5 +1,4 @@
-import { Option, some, none } from "fp-ts/lib/Option"
-
+import { Option, some, none } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { map_ } from "./map"

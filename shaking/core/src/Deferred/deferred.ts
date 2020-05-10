@@ -1,21 +1,6 @@
-import { Exit, Cause } from "../Exit"
-import { EffectTypes, Effect } from "../Support/Common"
-import {
-  asyncTotal,
-  flatten,
-  sync,
-  raiseInterrupt,
-  pure,
-  raiseError,
-  chain,
-  result,
-  provide,
-  onInterrupted,
-  completed,
-  raiseAbort,
-  raised,
-  access
-} from "../Support/Common/instructions"
+import * as T from "../Effect"
+import type { Exit, Cause } from "../Exit"
+import type { EffectTypes, Effect } from "../Support/Common"
 import { Completable, makeCompletable } from "../Support/Completable"
 
 export interface Deferred<S, R, E, A> {
@@ -89,50 +74,50 @@ export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
   constructor(readonly r: R) {
     this.c = makeCompletable()
 
-    this.wait = flatten(
-      asyncTotal<Effect<S, R, E, A>>((callback) => this.c.listen(callback))
+    this.wait = T.flatten(
+      T.asyncTotal<Effect<S, R, E, A>>((callback) => this.c.listen(callback))
     )
 
-    this.interrupt = sync(() => {
-      this.c.complete(raiseInterrupt)
+    this.interrupt = T.sync(() => {
+      this.c.complete(T.raiseInterrupt)
     })
   }
 
   done(a: A): EffectTypes.Sync<void> {
-    return sync(() => {
-      this.c.complete(pure(a))
+    return T.sync(() => {
+      this.c.complete(T.pure(a))
     })
   }
 
   error(e: E): EffectTypes.Sync<void> {
-    return sync(() => {
-      this.c.complete(raiseError(e))
+    return T.sync(() => {
+      this.c.complete(T.raiseError(e))
     })
   }
 
   abort(e: unknown): EffectTypes.Sync<void> {
-    return sync(() => {
-      this.c.complete(raiseAbort(e))
+    return T.sync(() => {
+      this.c.complete(T.raiseAbort(e))
     })
   }
 
   cause(e: Cause<E>): EffectTypes.Sync<void> {
-    return sync(() => {
-      this.c.complete(raised(e))
+    return T.sync(() => {
+      this.c.complete(T.raised(e))
     })
   }
 
   complete(exit: Exit<E, A>): EffectTypes.Sync<void> {
-    return sync(() => {
-      this.c.complete(completed(exit))
+    return T.sync(() => {
+      this.c.complete(T.completed(exit))
     })
   }
 
   from(source: Effect<S, R, E, A>): Effect<S, unknown, never, void> {
-    const completed = chain(result(provide(this.r as R)(source)), (e) =>
+    const completed = T.chain_(T.result(T.provide(this.r as R)(source)), (e) =>
       this.complete(e)
     )
-    return onInterrupted(completed, this.interrupt)
+    return T.onInterrupted_(completed, this.interrupt)
   }
 }
 
@@ -142,5 +127,5 @@ export function makeDeferred<S, R, E, A, E2 = never>(): Effect<
   E2,
   Deferred<S, R, E, A>
 > {
-  return access((r: R) => new DeferredImpl(r))
+  return T.access((r: R) => new DeferredImpl(r))
 }

@@ -1,7 +1,6 @@
-import { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
-import { some } from "fp-ts/lib/Option"
-
 import { Cause, Exit } from "../Exit"
+import { NonEmptyArray } from "../NonEmptyArray"
+import { some } from "../Option"
 
 export function combineFinalizerExit<E, A>(
   fiberExit: Exit<E, A>,

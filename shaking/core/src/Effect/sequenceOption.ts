@@ -1,4 +1,4 @@
-import { option } from "fp-ts/lib/Option"
+import { option } from "../Option"
 
 import { effect } from "./effect"
 

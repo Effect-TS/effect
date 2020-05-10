@@ -1,21 +1,20 @@
 import { ReadStream } from "fs"
 import { Readable, Writable } from "stream"
 
-import { toError, right, left } from "fp-ts/lib/Either"
-import { Option, none, some } from "fp-ts/lib/Option"
-
 import {
   async as asyncT,
   AsyncE as TAsyncE,
   delay as delayT,
   sync as syncT
 } from "../../Effect"
+import { toError, right, left } from "../../Either"
 import {
   encaseEffect as encaseEffectM,
   managed,
   Sync as MSync,
   SyncE as MSyncE
 } from "../../Managed"
+import { Option, none, some } from "../../Option"
 import { emitter, queueUtils } from "../Support"
 import { fromSource } from "../stream"
 

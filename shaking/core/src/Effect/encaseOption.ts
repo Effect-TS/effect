@@ -1,6 +1,5 @@
-import { Option } from "fp-ts/lib/Option"
-import { Lazy } from "fp-ts/lib/function"
-
+import { Lazy } from "../Function"
+import { Option } from "../Option"
 import { IPureOption } from "../Support/Common"
 import { SyncE } from "../Support/Common/effect"
 

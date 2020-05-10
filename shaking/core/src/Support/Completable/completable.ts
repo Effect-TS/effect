@@ -1,6 +1,5 @@
-import { none, some, isSome, Option } from "fp-ts/lib/Option"
-import { FunctionN } from "fp-ts/lib/function"
-
+import { FunctionN } from "../../Function"
+import { none, some, isSome, Option } from "../../Option"
 import { AsyncCancelContFn } from "../Common"
 
 export interface Completable<A> {

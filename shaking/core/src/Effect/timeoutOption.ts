@@ -1,5 +1,4 @@
-import { Option, some } from "fp-ts/lib/Option"
-
+import { Option, some } from "../Option"
 import { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { applySecond } from "./applySecond"

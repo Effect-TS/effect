@@ -1,4 +1,4 @@
-import { none } from "fp-ts/lib/Option"
+import { none } from "../Option"
 
 import { pure } from "./pure"
 

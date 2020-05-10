@@ -1,6 +1,5 @@
-import { array } from "fp-ts/lib/Array"
-import { Option } from "fp-ts/lib/Option"
-
+import { array } from "../Array"
+import { Option } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"

@@ -1,7 +1,7 @@
 import { FunctionN } from "fp-ts/lib/function"
 
+import * as T from "../Effect"
 import { Sync } from "../Support/Common/effect"
-import { sync } from "../Support/Common/instructions"
 
 export interface Ref<A> {
   /**
@@ -37,10 +37,10 @@ class RefImpl<A> implements Ref<A> {
     this.update = this.update.bind(this)
   }
 
-  get = sync(() => this.value)
+  get = T.sync(() => this.value)
 
   set(a: A) {
-    return sync(() => {
+    return T.sync(() => {
       const prev = this.value
       this.value = a
       return prev
@@ -48,7 +48,7 @@ class RefImpl<A> implements Ref<A> {
   }
 
   modify<B>(f: FunctionN<[A], readonly [B, A]>) {
-    return sync(() => {
+    return T.sync(() => {
       const [b, a] = f(this.value)
       this.value = a
       return b
@@ -56,7 +56,7 @@ class RefImpl<A> implements Ref<A> {
   }
 
   update(f: FunctionN<[A], A>) {
-    return sync(() => (this.value = f(this.value)))
+    return T.sync(() => (this.value = f(this.value)))
   }
 }
 
@@ -64,4 +64,5 @@ class RefImpl<A> implements Ref<A> {
  * Creates an IO that will allocate a Ref.
  * Curried form of makeRef to allow for inference on the initial type
  */
-export const makeRef = <A>(initial: A): Sync<Ref<A>> => sync(() => new RefImpl(initial))
+export const makeRef = <A>(initial: A): Sync<Ref<A>> =>
+  T.sync(() => new RefImpl(initial))

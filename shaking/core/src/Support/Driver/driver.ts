@@ -1,6 +1,5 @@
-import { Either } from "fp-ts/lib/Either"
-import { none } from "fp-ts/lib/Option"
-import { Lazy, FunctionN } from "fp-ts/lib/function"
+import type { Either } from "fp-ts/lib/Either"
+import type { Lazy, FunctionN } from "fp-ts/lib/function"
 
 import { Cause, Exit, interruptWithError, done, Done, raise } from "../../Exit"
 import {
@@ -336,7 +335,11 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         current = this[current.tag()](current as any)
       } catch (e) {
-        current = new IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
+        current = new IRaised({
+          _tag: "Abort",
+          abortedWith: e,
+          remaining: { _tag: "None" }
+        })
       }
     }
 

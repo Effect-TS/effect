@@ -1,8 +1,3 @@
-import { Either, left, fold, right } from "fp-ts/lib/Either"
-import { fold as foldOption } from "fp-ts/lib/Option"
-import { not, constant, identity } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { Deferred, makeDeferred } from "../Deferred"
 import {
   Async,
@@ -22,6 +17,10 @@ import {
   chain_,
   map_
 } from "../Effect"
+import { Either, left, fold, right } from "../Either"
+import { not, constant, identity } from "../Function"
+import { fold as foldOption } from "../Option"
+import { pipe } from "../Pipe"
 import { makeRef, Ref } from "../Ref"
 import { Dequeue, empty } from "../Support/Dequeue"
 import { makeTicket, Ticket, ticketExit, ticketUse } from "../Ticket"

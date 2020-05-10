@@ -2,9 +2,9 @@ import { Refinement, Predicate } from "fp-ts/lib/function"
 
 import { done, raise } from "../Exit"
 import { Effect } from "../Support/Common/effect"
-import { completed } from "../Support/Common/instructions"
 
 import { chain_ } from "./chain"
+import { completed } from "./completed"
 
 export const filterOrElse: {
   <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <S, R>(

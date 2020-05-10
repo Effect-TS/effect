@@ -12,6 +12,7 @@ import * as list from "./List"
 import * as magma from "./Magma"
 import * as managed from "./Managed"
 import * as map from "./Map"
+import * as monoid from "./Monoid"
 import * as nonEmptyArray from "./NonEmptyArray"
 import * as option from "./Option"
 import * as ord from "./Ord"
@@ -79,5 +80,6 @@ export {
   effectOption,
   list,
   recursionSchemes,
-  prelude
+  prelude,
+  monoid
 }

@@ -1,16 +1,8 @@
 import { Do as DoG } from "fp-ts-contrib/lib/Do"
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
-import { array } from "fp-ts/lib/Array"
 import { Separated } from "fp-ts/lib/Compactable"
-import { Either, either } from "fp-ts/lib/Either"
-import { Monoid } from "fp-ts/lib/Monoid"
-import { Option, option } from "fp-ts/lib/Option"
-import { record } from "fp-ts/lib/Record"
-import { Semigroup } from "fp-ts/lib/Semigroup"
-import { tree, Tree } from "fp-ts/lib/Tree"
-import { FunctionN, unsafeCoerce, tuple, constant } from "fp-ts/lib/function"
-import { pipe, pipeable } from "fp-ts/lib/pipeable"
 
+import { array } from "../Array"
 import {
   Effect,
   provide as provideEffect,
@@ -32,10 +24,18 @@ import {
   bracketExit as bracketExitEffect,
   onComplete_ as onCompleteEffect
 } from "../Effect"
+import { Either, either } from "../Either"
 import { Exit, withRemaining, done } from "../Exit"
+import { FunctionN, unsafeCoerce, tuple, constant } from "../Function"
+import { Monoid } from "../Monoid"
+import { Option, option } from "../Option"
+import { pipe, pipeable } from "../Pipe"
+import { record } from "../Record"
+import { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
 import { ForM } from "../Support/For"
 import { Monad4E, MonadThrow4E, Monad4EP } from "../Support/Overloads"
+import { tree, Tree } from "../Tree"
 
 export enum ManagedTag {
   Pure,

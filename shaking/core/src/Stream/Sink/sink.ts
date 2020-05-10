@@ -1,7 +1,3 @@
-import { none, some, Option } from "fp-ts/lib/Option"
-import { flow, constant, FunctionN, identity, Predicate } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import {
   Effect,
   pure,
@@ -12,6 +8,9 @@ import {
   map as mapEffect,
   chain_
 } from "../../Effect"
+import { flow, constant, FunctionN, identity, Predicate } from "../../Function"
+import { none, some, Option } from "../../Option"
+import { pipe } from "../../Pipe"
 import { ConcurrentQueue } from "../../Queue"
 import { SinkStep, sinkDone, sinkCont, isSinkDone } from "../Step"
 

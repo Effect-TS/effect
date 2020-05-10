@@ -1,7 +1,7 @@
-import { Separated } from "fp-ts/lib/Compactable"
-import { Either } from "fp-ts/lib/Either"
-import { Option, option } from "fp-ts/lib/Option"
+import type { Separated } from "fp-ts/lib/Compactable"
 
+import { Either } from "../Either"
+import { Option, option } from "../Option"
 import { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
