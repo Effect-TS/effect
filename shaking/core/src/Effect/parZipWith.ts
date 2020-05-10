@@ -1,6 +1,5 @@
-import { FunctionN } from "fp-ts/lib/function"
-
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { completed } from "./completed"
 import { raceFold } from "./raceFold"

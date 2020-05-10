@@ -1,5 +1,4 @@
-import { identity } from "fp-ts/lib/function"
-
+import { identity } from "../Function"
 import { IAccessRuntime } from "../Support/Common"
 import { Sync } from "../Support/Common/effect"
 import { Runtime } from "../Support/Runtime"

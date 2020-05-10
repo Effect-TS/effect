@@ -1,8 +1,6 @@
-import { fold as foldEither } from "fp-ts/lib/Either"
-import { pipe } from "fp-ts/lib/pipeable"
-
-import { Exit } from "../Exit"
-import { SyncRE } from "../Support/Common/effect"
+import type { Exit } from "../Exit"
+import { pipe } from "../Pipe"
+import type { SyncRE } from "../Support/Common/effect"
 import { DriverSyncImpl } from "../Support/Driver"
 
 /**
@@ -12,13 +10,10 @@ import { DriverSyncImpl } from "../Support/Driver"
  * @param io
  */
 export function runSync<E, A>(io: SyncRE<{}, E, A>): Exit<E, A> {
-  return pipe(
-    new DriverSyncImpl<E, A>().start(io),
-    foldEither(
-      (e) => {
-        throw e
-      },
-      (e) => e
-    )
-  )
+  return pipe(new DriverSyncImpl<E, A>().start(io), (ei) => {
+    if (ei._tag === "Left") {
+      throw ei.left
+    }
+    return ei.right
+  })
 }

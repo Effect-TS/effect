@@ -1,6 +1,7 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 import type { Option } from "fp-ts/lib/Option"
-import type { Predicate } from "fp-ts/lib/function"
+
+import type { Predicate } from "../Function"
 
 import { filter_ } from "./filter_"
 

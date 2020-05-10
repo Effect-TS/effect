@@ -1,8 +1,7 @@
-import { left, right } from "fp-ts/lib/Either"
-
 import { AsyncE } from "../Support/Common/effect"
 
 import { async } from "./async"
+import { left, right } from "./lr"
 
 export function effectify<L, R>(
   f: (cb: (e: L | null | undefined, r?: R) => void) => void

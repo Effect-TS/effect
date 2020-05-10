@@ -1,5 +1,6 @@
 import type { Option } from "fp-ts/lib/Option"
-import type { Refinement } from "fp-ts/lib/function"
+
+import type { Refinement } from "../Function"
 
 import { isSome } from "./isSome"
 /**

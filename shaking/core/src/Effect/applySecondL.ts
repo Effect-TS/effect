@@ -1,5 +1,4 @@
-import { Lazy } from "fp-ts/lib/function"
-
+import type { Lazy } from "../Function"
 import { Effect } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"

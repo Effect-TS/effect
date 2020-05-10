@@ -1,8 +1,8 @@
-import { Separated } from "fp-ts/lib/Compactable"
-import { Either } from "fp-ts/lib/Either"
+import type { Separated } from "fp-ts/lib/Compactable"
+import type { Either } from "fp-ts/lib/Either"
 import { record } from "fp-ts/lib/Record"
 
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 

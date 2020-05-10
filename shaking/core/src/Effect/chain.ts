@@ -1,7 +1,6 @@
-import { FunctionN } from "fp-ts/lib/function"
-
+import type { FunctionN } from "../Function"
 import { IPure, Instructions, IPureTag, IChain } from "../Support/Common"
-import { Effect } from "../Support/Common/effect"
+import type { Effect } from "../Support/Common/effect"
 
 /**
  * Produce an new IO that will use the value produced by inner to produce the next IO to evaluate

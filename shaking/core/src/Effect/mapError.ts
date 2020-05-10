@@ -1,7 +1,6 @@
-import { FunctionN } from "fp-ts/lib/function"
-
 import { raise, withRemaining } from "../Exit"
-import { Effect } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect } from "../Support/Common/effect"
 
 import { chainError_ } from "./chainError"
 import { completed } from "./completed"

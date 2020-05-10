@@ -1,3 +1,5 @@
+import { pipe, pipeable } from "fp-ts/lib/pipeable"
+
 import { Deferred, makeDeferred } from "../Deferred"
 import {
   applySecond,
@@ -17,7 +19,6 @@ import {
 import { Either, fold, left, right } from "../Either"
 import { FunctionN, identity } from "../Function"
 import { getOrElse, option } from "../Option"
-import { pipe, pipeable } from "../Pipe"
 import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
 import { Dequeue, empty, of } from "../Support/Dequeue"

@@ -2,6 +2,7 @@ import { Do as DoG } from "fp-ts-contrib/lib/Do"
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
 import { Bifunctor4 } from "fp-ts/lib/Bifunctor"
 import { Separated } from "fp-ts/lib/Compactable"
+import { pipeable } from "fp-ts/lib/pipeable"
 
 import { array } from "../Array"
 import {
@@ -25,7 +26,6 @@ import {
 import { FunctionN, Lazy, Predicate, Refinement } from "../Function"
 import { managed } from "../Managed"
 import { Option, option, some } from "../Option"
-import { pipeable } from "../Pipe"
 import { record } from "../Record"
 import {
   Stream,

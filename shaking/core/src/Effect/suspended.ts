@@ -1,7 +1,6 @@
-import { Lazy } from "fp-ts/lib/function"
-
+import type { Lazy } from "../Function"
 import { ISuspended } from "../Support/Common"
-import { Effect } from "../Support/Common/effect"
+import type { Effect } from "../Support/Common/effect"
 
 /**
  * Wrap a block of impure code that returns an IO into an IO

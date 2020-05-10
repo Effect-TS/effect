@@ -1,5 +1,6 @@
 import type { Option } from "fp-ts/lib/Option"
-import type { Predicate, Refinement } from "fp-ts/lib/function"
+
+import type { Predicate, Refinement } from "../Function"
 
 import { none } from "./none"
 import { some } from "./some"

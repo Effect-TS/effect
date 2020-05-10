@@ -5,7 +5,6 @@ import { Separated } from "fp-ts/lib/Compactable"
 import { Monoid, fold as foldMonoid } from "fp-ts/lib/Monoid"
 import { record } from "fp-ts/lib/Record"
 import { tree, Tree } from "fp-ts/lib/Tree"
-import { flow, FunctionN } from "fp-ts/lib/function"
 import { pipeable } from "fp-ts/lib/pipeable"
 
 import {
@@ -19,6 +18,7 @@ import {
   zipWith_
 } from "../Effect"
 import { Either, either } from "../Either"
+import { flow, FunctionN } from "../Function"
 import {
   some as some_1,
   map as map_1,

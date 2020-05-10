@@ -1,6 +1,5 @@
-import { Lazy } from "fp-ts/lib/function"
-
-import { Effect } from "../Support/Common/effect"
+import type { Lazy } from "../Function"
+import type { Effect } from "../Support/Common/effect"
 
 import { flatten } from "./chain"
 import { trySyncMap } from "./trySyncMap"

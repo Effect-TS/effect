@@ -1,8 +1,8 @@
 import { sequenceS } from "fp-ts/lib/Apply"
-import { Kind4 } from "fp-ts/lib/HKT"
-import { constVoid } from "fp-ts/lib/function"
+import type { Kind4 } from "fp-ts/lib/HKT"
 
-import {
+import { constVoid } from "../../Function"
+import type {
   MaURIS,
   Monad4E,
   STypeOf,

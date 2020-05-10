@@ -1,9 +1,8 @@
-import { left, right } from "fp-ts/lib/Either"
-import { Lazy } from "fp-ts/lib/function"
-
-import { AsyncE } from "../Support/Common/effect"
+import type { Lazy } from "../Function"
+import type { AsyncE } from "../Support/Common/effect"
 
 import { async } from "./async"
+import { left, right } from "./lr"
 import { uninterruptible } from "./uninterruptible"
 
 /**

@@ -1,6 +1,7 @@
 import { Do as DoG } from "fp-ts-contrib/lib/Do"
 import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
 import { Separated } from "fp-ts/lib/Compactable"
+import { pipe, pipeable } from "fp-ts/lib/pipeable"
 
 import { array } from "../Array"
 import {
@@ -29,7 +30,6 @@ import { Exit, withRemaining, done } from "../Exit"
 import { FunctionN, unsafeCoerce, tuple, constant } from "../Function"
 import { Monoid } from "../Monoid"
 import { Option, option } from "../Option"
-import { pipe, pipeable } from "../Pipe"
 import { record } from "../Record"
 import { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"

@@ -1,9 +1,8 @@
-import { FunctionN } from "fp-ts/lib/function"
-
 import { Deferred } from "../Deferred"
-import { Exit } from "../Exit"
+import type { Exit } from "../Exit"
+import type { FunctionN } from "../Function"
 import { Ref } from "../Ref"
-import { Async, AsyncRE, AsyncR } from "../Support/Common/effect"
+import type { Async, AsyncRE, AsyncR } from "../Support/Common/effect"
 
 import { flatten } from "./chain"
 import { Fiber } from "./makeFiber"

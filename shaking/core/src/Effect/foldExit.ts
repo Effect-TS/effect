@@ -1,6 +1,5 @@
-import { FunctionN } from "fp-ts/lib/function"
-
 import { Cause } from "../Exit"
+import type { FunctionN } from "../Function"
 import { ICollapse } from "../Support/Common"
 import { Effect } from "../Support/Common/effect"
 

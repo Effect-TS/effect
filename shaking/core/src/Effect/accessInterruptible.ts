@@ -1,5 +1,4 @@
-import { identity } from "fp-ts/lib/function"
-
+import { identity } from "../Function"
 import { IAccessInterruptible } from "../Support/Common"
 import { Sync } from "../Support/Common/effect"
 

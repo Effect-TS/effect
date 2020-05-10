@@ -1,7 +1,7 @@
-import { Either } from "fp-ts/lib/Either"
+import type { Either } from "fp-ts/lib/Either"
 
 import { IPureEither } from "../Support/Common"
-import { SyncE } from "../Support/Common/effect"
+import type { SyncE } from "../Support/Common/effect"
 
 /**
  * Lift an Either into an IO

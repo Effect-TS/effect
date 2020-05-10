@@ -1,7 +1,7 @@
-import { Either } from "fp-ts/lib/Either"
-import { FunctionN } from "fp-ts/lib/function"
+import type { Either } from "fp-ts/lib/Either"
 
-import { SyncE } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { SyncE } from "../Support/Common/effect"
 
 import { encaseEither } from "./encaseEither"
 import { suspended } from "./suspended"

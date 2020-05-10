@@ -1,7 +1,8 @@
-import { Either, left, right } from "fp-ts/lib/Either"
+import type { Either } from "fp-ts/lib/Either"
 
-import { Effect } from "../Support/Common/effect"
+import type { Effect } from "../Support/Common/effect"
 
+import { left, right } from "./lr"
 import { map_ } from "./map"
 
 export function or_(

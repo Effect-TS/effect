@@ -1,6 +1,5 @@
-import { FunctionN } from "fp-ts/lib/function"
-
-import { Effect } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect } from "../Support/Common/effect"
 
 import { accessEnvironment } from "./accessEnvironment"
 import { chain_ } from "./chain"

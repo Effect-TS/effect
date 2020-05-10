@@ -1,6 +1,5 @@
-import { Lazy } from "fp-ts/lib/function"
-
-import { SyncE } from "../Support/Common/effect"
+import type { Lazy } from "../Function"
+import type { SyncE } from "../Support/Common/effect"
 
 import { pure } from "./pure"
 import { raiseError } from "./raiseError"

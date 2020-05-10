@@ -1,9 +1,8 @@
-import { FunctionN } from "fp-ts/lib/function"
-
 import { makeDeferred } from "../Deferred"
-import { Exit } from "../Exit"
+import type { Exit } from "../Exit"
+import type { FunctionN } from "../Function"
 import { makeRef } from "../Ref"
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { accessM } from "./accessM"
 import { chain_ } from "./chain"

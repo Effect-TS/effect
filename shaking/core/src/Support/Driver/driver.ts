@@ -1,7 +1,7 @@
 import type { Either } from "fp-ts/lib/Either"
-import type { Lazy, FunctionN } from "fp-ts/lib/function"
 
 import { Cause, Exit, interruptWithError, done, Done, raise } from "../../Exit"
+import type { Lazy, FunctionN } from "../../Function"
 import {
   Instructions,
   IPure,

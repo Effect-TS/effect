@@ -1,6 +1,5 @@
-import { Lazy } from "fp-ts/lib/function"
-
-import { Sync } from "../Support/Common/effect"
+import type { Lazy } from "../Function"
+import type { Sync } from "../Support/Common/effect"
 
 import { pure } from "./pure"
 import { suspended } from "./suspended"

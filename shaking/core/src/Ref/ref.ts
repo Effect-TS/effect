@@ -1,6 +1,5 @@
-import { FunctionN } from "fp-ts/lib/function"
-
 import * as T from "../Effect"
+import type { FunctionN } from "../Function"
 import { Sync } from "../Support/Common/effect"
 
 export interface Ref<A> {

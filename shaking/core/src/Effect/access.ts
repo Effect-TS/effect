@@ -1,6 +1,5 @@
-import { FunctionN } from "fp-ts/lib/function"
-
-import { SyncR } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { SyncR } from "../Support/Common/effect"
 
 import { accessEnvironment } from "./accessEnvironment"
 import { map_ } from "./map"

@@ -1,5 +1,4 @@
-import { FunctionN } from "fp-ts/lib/function"
-
+import type { FunctionN } from "../Function"
 import { IPure, Instructions, IPureTag, IMap } from "../Support/Common"
 import { Effect } from "../Support/Common/effect"
 

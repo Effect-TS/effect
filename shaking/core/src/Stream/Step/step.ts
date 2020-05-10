@@ -1,6 +1,7 @@
-import { Applicative } from "fp-ts/lib/Applicative"
-import { HKT } from "fp-ts/lib/HKT"
-import { FunctionN } from "fp-ts/lib/function"
+import type { Applicative } from "fp-ts/lib/Applicative"
+import type { HKT } from "fp-ts/lib/HKT"
+
+import type { FunctionN } from "../../Function"
 
 export enum SinkStepTag {
   Cont,

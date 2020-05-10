@@ -1,6 +1,7 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 import type { Option } from "fp-ts/lib/Option"
-import type { Predicate, Refinement } from "fp-ts/lib/function"
+
+import type { Predicate, Refinement } from "../Function"
 
 import { partition_ } from "./partition_"
 

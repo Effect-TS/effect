@@ -1,7 +1,7 @@
-import { TaskEither } from "fp-ts/lib/TaskEither"
-import { FunctionN } from "fp-ts/lib/function"
+import type { TaskEither } from "fp-ts/lib/TaskEither"
 
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"
 import { encaseTaskEither } from "./encaseTaskEither"

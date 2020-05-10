@@ -1,6 +1,5 @@
-import { Either, either } from "fp-ts/lib/Either"
-
-import { Effect } from "../Support/Common/effect"
+import { Either, either } from "../Either/either"
+import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 

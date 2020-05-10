@@ -1,7 +1,7 @@
-import { FunctionN, flow } from "fp-ts/lib/function"
-
 import { raise, withRemaining } from "../Exit"
-import { Effect } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import { flow } from "../Function"
+import type { Effect } from "../Support/Common/effect"
 
 import { completed } from "./completed"
 import { foldExit_ } from "./foldExit"

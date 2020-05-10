@@ -1,7 +1,7 @@
-import { Either } from "fp-ts/lib/Either"
-import { FunctionN } from "fp-ts/lib/function"
+import type { Either } from "fp-ts/lib/Either"
 
-import { Effect } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"
 import { encaseEither } from "./encaseEither"

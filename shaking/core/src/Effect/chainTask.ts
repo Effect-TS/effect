@@ -1,7 +1,7 @@
-import { Task } from "fp-ts/lib/Task"
-import { FunctionN } from "fp-ts/lib/function"
+import type { Task } from "fp-ts/lib/Task"
 
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"
 import { encaseTask } from "./encaseTask"

@@ -1,5 +1,6 @@
 import type { Option } from "fp-ts/lib/Option"
-import type { Predicate } from "fp-ts/lib/function"
+
+import type { Predicate } from "../Function"
 
 import { isNone } from "./isNone"
 

@@ -1,7 +1,6 @@
-import { Refinement, Predicate } from "fp-ts/lib/function"
-
 import { done, raise } from "../Exit"
-import { Effect } from "../Support/Common/effect"
+import type { Refinement, Predicate } from "../Function"
+import type { Effect } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"
 import { completed } from "./completed"

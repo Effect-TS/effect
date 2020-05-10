@@ -1,7 +1,6 @@
-import { FunctionN } from "fp-ts/lib/function"
-
-import { Exit } from "../Exit"
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { Exit } from "../Exit"
+import type { FunctionN } from "../Function"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { after } from "./after"
 import { applySecond } from "./applySecond"

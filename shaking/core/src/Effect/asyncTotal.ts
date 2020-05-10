@@ -1,6 +1,4 @@
-import { right } from "fp-ts/lib/Either"
-import { FunctionN } from "fp-ts/lib/function"
-
+import { FunctionN } from "../Function"
 import { AsyncCancelContFn } from "../Support/Common"
 import { Async } from "../Support/Common/effect"
 
@@ -15,5 +13,5 @@ import { async } from "./async"
 export function asyncTotal<A>(
   op: FunctionN<[FunctionN<[A], void>], AsyncCancelContFn>
 ): Async<A> {
-  return async((callback) => op((a) => callback(right(a))))
+  return async((callback) => op((a) => callback({ _tag: "Right", right: a })))
 }

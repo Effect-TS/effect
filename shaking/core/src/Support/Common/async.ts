@@ -1,5 +1,6 @@
 import type { Either } from "fp-ts/lib/Either"
-import type { FunctionN } from "fp-ts/lib/function"
+
+import type { FunctionN } from "../../Function"
 
 export type AsyncContFn<E, A> = FunctionN<[Either<E, A>], void>
 

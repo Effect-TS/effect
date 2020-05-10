@@ -1,6 +1,5 @@
-import { FunctionN } from "fp-ts/lib/function"
-
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import type { FunctionN } from "../Function"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parFastZipWith } from "./parFastZipWith"
 

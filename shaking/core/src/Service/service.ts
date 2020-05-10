@@ -1,10 +1,9 @@
-import { FunctionN } from "fp-ts/lib/function"
-
 import { SyncRE, Provider } from "../Effect"
 import * as T from "../Effect"
+import type { FunctionN } from "../Function"
 import { use, Managed } from "../Managed"
 import { pipe } from "../Pipe"
-import { Effect } from "../Support/Common"
+import type { Effect } from "../Support/Common"
 
 export type Patched<A, B> = B extends FunctionN<
   infer ARG,

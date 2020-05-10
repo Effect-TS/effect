@@ -1,4 +1,4 @@
-import { either } from "fp-ts/lib/Either"
+import { either } from "../Either/either"
 
 import { effect } from "./effect"
 
