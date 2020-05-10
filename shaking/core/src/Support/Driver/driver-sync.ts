@@ -162,7 +162,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       _.e as any,
       (e) => {
         this.envStack.deleteTail()
-        return new ICompleted(raise(e)) as any
+        return new ICompleted(e) as any
       },
       (r) => {
         this.envStack.deleteTail()

@@ -10,9 +10,10 @@ module.exports = {
     "packages_fe/**/src/**/*.ts",
     "packages_http/**/src/**/*.ts",
     "packages_inc/**/src/**/*.ts",
-    "packages_sys/**/src/**/*.ts"
+    "packages_sys/**/src/**/*.ts",
+    "shaking/**/src/**/*.ts"
   ],
   setupFiles: ["./jest-setup.ts"],
-  modulePathIgnorePatterns: ["dtslint"],
+  modulePathIgnorePatterns: ["dtslint", "build"],
   verbose: true
 }

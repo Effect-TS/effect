@@ -82,7 +82,8 @@ export {
   witherRecord,
   zip,
   zipWith,
-  zipWithIndex
+  zipWithIndex,
+  subject
 } from "./stream"
 
 import * as node from "./Node"

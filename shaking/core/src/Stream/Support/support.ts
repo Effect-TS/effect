@@ -66,14 +66,14 @@ export function emitter<E, A>(
 ): ManagedSync<AsyncE<E, Option<A>>> {
   return managedPure(
     async<E, Option<A>>((callback) => {
-      const op = ops.deleteTail()
+      const op = ops.deleteHead()
       if (op !== null && op.value !== null) {
         runFromQueue(op.value, callback)
       } else {
         hasCB.cb = (o) => {
           if (!ops.empty()) {
             ops.append(o)
-            const op = ops.deleteTail()
+            const op = ops.deleteHead()
             if (op !== null && op.value !== null) {
               runFromQueue(op.value, callback)()
             }

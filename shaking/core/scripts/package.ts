@@ -52,6 +52,7 @@ const modules: string[] = [
   "Random",
   "Semigroup",
   "Record",
+  "RecursionSchemes",
   "Stream",
   "Stream/Node",
   "Stream/Sink",

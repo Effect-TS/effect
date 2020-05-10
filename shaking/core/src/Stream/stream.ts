@@ -4,7 +4,14 @@ import { array, filter as filterArray } from "fp-ts/lib/Array"
 import { Separated } from "fp-ts/lib/Compactable"
 import { Either, either } from "fp-ts/lib/Either"
 import { Eq } from "fp-ts/lib/Eq"
-import { fold as foldOption, none, Option, option, some } from "fp-ts/lib/Option"
+import {
+  fold as foldOption,
+  none,
+  Option,
+  option,
+  some,
+  isSome
+} from "fp-ts/lib/Option"
 import { record } from "fp-ts/lib/Record"
 import { Tree, tree } from "fp-ts/lib/Tree"
 import {
@@ -32,7 +39,7 @@ import {
   effect,
   Fiber,
   foldExit as foldExitEffect,
-  fork as forkT,
+  fork as forkEffect,
   map as mapEffect,
   never as neverEffect,
   pure as pureEffect,
@@ -44,7 +51,11 @@ import {
   shiftAfter as shiftAfterEffect,
   sync as syncEffect,
   Sync as SyncEffect,
-  unit as unitEffect
+  unit as unitEffect,
+  Do as DoEffect,
+  chainError as chainErrorEffect,
+  forever as foreverEffect,
+  sequenceT as sequenceTEffect
 } from "../Effect"
 import { Cause, Exit } from "../Exit"
 import {
@@ -61,9 +72,10 @@ import {
   Sync as SyncManaged,
   use as useManaged,
   zip as zipManaged,
-  zipWith as zipWithManaged
+  zipWith as zipWithManaged,
+  chain as chainManaged
 } from "../Managed"
-import { boundedQueue, ConcurrentQueue } from "../Queue"
+import { boundedQueue, ConcurrentQueue, unboundedQueue } from "../Queue"
 import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
 import { StreamURI as URI } from "../Support/Common"
@@ -76,9 +88,11 @@ import {
   drainWhileSink,
   queueSink,
   Sink,
-  stepMany
+  stepMany,
+  queueOptionSink
 } from "./Sink"
 import { isSinkCont, sinkStepLeftover, sinkStepState } from "./Step"
+import { Ops, queueUtils, emitter } from "./Support"
 
 export type Source<K, R, E, A> = Effect<K, R, E, Option<A>>
 
@@ -1384,7 +1398,7 @@ export function switchLatest<R, E, A, R2, E2>(
 
                 return applyFirstEffect(
                   interruptPushFiber,
-                  effect.chain(forkT(writer), (f) => fiberSlot.set(some(f)))
+                  effect.chain(forkEffect(writer), (f) => fiberSlot.set(some(f)))
                 )
               }
 
@@ -1475,13 +1489,13 @@ const makeWeave: ManagedAsync<Weave> = managed.chain(
           return pipe(
             SS(effect)({
               next: cell.update((n) => n + 1),
-              fiber: forkT(action)
+              fiber: forkEffect(action)
             }),
             chainTapEffect(({ fiber, next }) =>
               store.update((handles) => [...handles, [next, fiber] as const])
             ),
             chainTapEffect(({ fiber, next }) =>
-              forkT(
+              forkEffect(
                 applySecondEffect(
                   fiber.wait,
                   store.update(filterArray((h) => h[0] !== next))
@@ -1887,3 +1901,81 @@ export const witherRecord: <A, S, R, E, B>(
   f: (a: A) => Stream<S, R, E, Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   record.wither(stream)(ta, f)
+
+export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
+  const listeners: Map<any, (_: Ops<E, A>) => void> = new Map()
+
+  function next(_: Ops<E, A>) {
+    listeners.forEach((f) => {
+      f(_)
+    })
+  }
+
+  return DoEffect()
+    .bind("q", unboundedQueue<Option<A>>())
+    .bindL("into", ({ q }) =>
+      pipe(
+        _,
+        into(queueOptionSink(q)),
+        chainErrorEffect((e) =>
+          pipe(
+            syncEffect(() => {
+              next({ _tag: "error", e })
+            }),
+            chainEffect(() => raiseErrorEffect(e))
+          )
+        ),
+        forkEffect
+      )
+    )
+    .bindL("extract", ({ q }) =>
+      pipe(
+        q.take,
+        chainTapEffect((_) =>
+          syncEffect(() =>
+            next(isSome(_) ? { _tag: "offer", a: _.value } : { _tag: "complete" })
+          )
+        ),
+        foreverEffect,
+        forkEffect
+      )
+    )
+    .return(({ extract, into }) => {
+      const interrupt = pipe(
+        sequenceTEffect(
+          into.interrupt,
+          extract.interrupt,
+          syncEffect(() => {
+            next({ _tag: "complete" })
+          })
+        ),
+        asUnitEffect
+      )
+
+      const subscribe = syncEffect(() => {
+        const { hasCB, next, ops } = queueUtils<E, A>()
+
+        const push = (_: Ops<E, A>) => {
+          next(_)
+        }
+
+        listeners.set(push, push)
+
+        return fromSource(
+          pipe(
+            bracketManaged(unitEffect, () =>
+              syncEffect(() => {
+                listeners.delete(push)
+              })
+            ),
+            chainManaged(() => emitter(ops, hasCB))
+          )
+        )
+      })
+
+      return {
+        interrupt,
+        subscribe
+      }
+    })
+}

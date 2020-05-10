@@ -21,6 +21,7 @@ import * as provider from "./Provider"
 import * as queue from "./Queue"
 import * as random from "./Random"
 import * as record from "./Record"
+import * as recursionSchemes from "./RecursionSchemes"
 import * as ref from "./Ref"
 import * as retry from "./Retry"
 import * as semaphore from "./Semaphore"
@@ -75,5 +76,6 @@ export {
   tree,
   tuple,
   effectOption,
-  list
+  list,
+  recursionSchemes
 }
