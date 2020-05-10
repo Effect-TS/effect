@@ -1,6 +1,6 @@
 import type { Either } from "../../Either"
 import { Exit, Cause, interrupt as interruptExit, Done, done, raise } from "../../Exit"
-import { FunctionN } from "../../Function"
+import type { FunctionN } from "../../Function"
 import { none } from "../../Option"
 import type * as EffectTypes from "../Common/effect"
 import {
