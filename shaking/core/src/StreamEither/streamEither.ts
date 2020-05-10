@@ -10,7 +10,13 @@ import { Tree, tree } from "fp-ts/lib/Tree"
 import { FunctionN, Lazy, Predicate, Refinement } from "fp-ts/lib/function"
 import { pipeable } from "fp-ts/lib/pipeable"
 
-import { Effect, effect, pure as pureEffect, raiseError } from "../Effect"
+import {
+  Effect,
+  pure as pureEffect,
+  raiseError,
+  chainError_ as chainErrorEffect_,
+  map_ as mapEffect_
+} from "../Effect"
 import { managed } from "../Managed"
 import {
   Stream,
@@ -57,7 +63,7 @@ export function encaseEffect<S, R, E, A>(
   eff: Effect<S, R, E, A>
 ): StreamEither<S, R, E, A> {
   return toS(
-    encaseEffectS(effect.chainError(effect.map(eff, right), (e) => pureEffect(left(e))))
+    encaseEffectS(chainErrorEffect_(mapEffect_(eff, right), (e) => pureEffect(left(e))))
   )
 }
 
@@ -179,8 +185,8 @@ export function fromSource<S, R, E, S2, R2, E2, A>(
   return toS(
     fromSourceS(
       managed.map(r, (e) =>
-        effect.chainError(
-          effect.map(e, (oa) => option.map(oa, right)),
+        chainErrorEffect_(
+          mapEffect_(e, (oa) => option.map(oa, right)),
           (e) => pureEffect(some(left(e)))
         )
       )

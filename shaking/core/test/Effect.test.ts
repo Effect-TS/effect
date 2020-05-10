@@ -642,15 +642,15 @@ describe("EffectSafe", () => {
       const f = (s: string): number => s.length
       const g = (n: number): boolean => n > 2
 
-      const e1 = await T.runToPromiseExit(T.effect.bimap(T.pure(1), f, g))
+      const e1 = await T.runToPromiseExit(T.bimap_(T.pure(1), f, g))
       assert.deepStrictEqual(e1, ex.done(false))
-      const e2 = await T.runToPromiseExit(T.effect.bimap(T.raiseError("foo"), f, g))
+      const e2 = await T.runToPromiseExit(T.bimap_(T.raiseError("foo"), f, g))
       assert.deepStrictEqual(e2, ex.raise(3))
     })
 
     it("mapLeft", async () => {
       const e = await T.runToPromiseExit(
-        T.effect.mapLeft(T.raiseError("1"), (x) => new Error(x))
+        T.mapLeft_(T.raiseError("1"), (x) => new Error(x))
       )
       assert.deepStrictEqual(e, ex.raise(new Error("1")))
     })
@@ -663,19 +663,19 @@ describe("EffectSafe", () => {
       const err = T.raiseError("e")
       const err2 = T.raiseError("err2")
       assert.deepStrictEqual(
-        await T.runToPromiseExit(T.effect.alt(err, () => a)),
+        await T.runToPromiseExit(T.alt_(err, () => a)),
         ex.done("a")
       )
       assert.deepStrictEqual(
-        await T.runToPromiseExit(T.effect.alt(err, () => err2)),
+        await T.runToPromiseExit(T.alt_(err, () => err2)),
         ex.raise("err2")
       )
       assert.deepStrictEqual(
-        await T.runToPromiseExit(T.effect.alt(a, () => a2)),
+        await T.runToPromiseExit(T.alt_(a, () => a2)),
         ex.done("a")
       )
       assert.deepStrictEqual(
-        await T.runToPromiseExit(T.effect.alt(a, () => err)),
+        await T.runToPromiseExit(T.alt_(a, () => err)),
         ex.done("a")
       )
     })
@@ -1017,8 +1017,8 @@ describe("EffectSafe", () => {
         .bindL("x", () => T.accessM(({}: Env2) => M.of("a")))
         .sequenceS({
           // eslint-disable-next-line no-empty-pattern
-          a: T.accessM(({}: Env1) => M.throwError("a")),
-          b: M.throwError("b")
+          a: T.accessM(({}: Env1) => T.raiseError("a")),
+          b: T.raiseError("b")
         })
         .let("y", 1)
         .letL("z", () => 1)

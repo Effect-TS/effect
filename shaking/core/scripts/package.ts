@@ -53,6 +53,7 @@ const modules: string[] = [
   "Semigroup",
   "Record",
   "RecursionSchemes",
+  "Prelude",
   "Stream",
   "Stream/Node",
   "Stream/Sink",

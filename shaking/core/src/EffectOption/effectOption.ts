@@ -14,7 +14,9 @@ import {
   effect,
   witherOption as witherOption_1,
   parZipWith,
-  chainTap as chainTap_1
+  chainTap as chainTap_1,
+  chainTap_,
+  zipWith_
 } from "../Effect"
 import { Either, either } from "../Either"
 import {
@@ -105,14 +107,14 @@ export const effectOption: EffectOptionE = {
     inner: EffectOption<S1, R, E, A>,
     bind: FunctionN<[A], Effect<S2, R2, E2, unknown>>
   ): EffectOption<S1 | S2, R & R2, E | E2, A> =>
-    effect.chainTap(
+    chainTap_(
       inner,
       fold(() => none, bind)
     ),
   ap: <S1, S2, R, E, A, B, R2, E2>(
     fab: EffectOption<S1, R, E, (a: A) => B>,
     fa: EffectOption<S2, R2, E2, A>
-  ): EffectOption<S1 | S2, R & R2, E | E2, B> => effect.zipWith(fab, fa, option.ap)
+  ): EffectOption<S1 | S2, R & R2, E | E2, B> => zipWith_(fab, fa, option.ap)
 }
 
 export interface EffectOptionEP extends Monad4EP<URI> {
@@ -138,7 +140,7 @@ export const effectOptionPar: EffectOptionEP = {
     inner: EffectOption<S1, R, E, A>,
     bind: FunctionN<[A], Effect<S2, R2, E2, unknown>>
   ): EffectOption<S1 | S2, R & R2, E | E2, A> =>
-    effect.chainTap<S1, S2, R, E, Option<A>, R2, E2>(
+    chainTap_(
       inner,
       fold(() => none, bind)
     ),

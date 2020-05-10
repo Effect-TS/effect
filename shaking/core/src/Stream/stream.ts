@@ -6,11 +6,11 @@ import { Either, either } from "fp-ts/lib/Either"
 import { Eq } from "fp-ts/lib/Eq"
 import {
   fold as foldOption,
+  isSome,
   none,
   Option,
   option,
-  some,
-  isSome
+  some
 } from "fp-ts/lib/Option"
 import { record } from "fp-ts/lib/Record"
 import { Tree, tree } from "fp-ts/lib/Tree"
@@ -33,14 +33,19 @@ import {
   Async as AsyncEffect,
   AsyncRE as AsyncEffectRE,
   chain as chainEffect,
+  chainError as chainErrorEffect,
   chainTap as chainTapEffect,
+  chain_ as chain_Effect,
   delay as delayEffect,
+  Do as DoEffect,
   Effect,
-  effect,
   Fiber,
   foldExit as foldExitEffect,
+  foldExit_ as foldExit_Effect,
+  forever as foreverEffect,
   fork as forkEffect,
   map as mapEffect,
+  map_ as map_Effect,
   never as neverEffect,
   pure as pureEffect,
   race as raceEffect,
@@ -48,14 +53,14 @@ import {
   raiseAbort as raiseAbortEffect,
   raised as raisedEffect,
   raiseError as raiseErrorEffect,
+  sequenceS as sequenceSEffect,
+  sequenceT as sequenceTEffect,
   shiftAfter as shiftAfterEffect,
   sync as syncEffect,
   Sync as SyncEffect,
+  traverseArray as traverseArrayEffect,
   unit as unitEffect,
-  Do as DoEffect,
-  chainError as chainErrorEffect,
-  forever as foreverEffect,
-  sequenceT as sequenceTEffect
+  zipWith_ as zipWith_Effect
 } from "../Effect"
 import { Cause, Exit } from "../Exit"
 import {
@@ -63,6 +68,7 @@ import {
   Async as ManagedAsync,
   AsyncRE as ManagedAsyncRE,
   bracket as bracketManaged,
+  chain as chainManaged,
   encaseEffect as encaseEffectManaged,
   fiber as fiberManaged,
   Managed,
@@ -72,8 +78,7 @@ import {
   Sync as SyncManaged,
   use as useManaged,
   zip as zipManaged,
-  zipWith as zipWithManaged,
-  chain as chainManaged
+  zipWith as zipWithManaged
 } from "../Managed"
 import { boundedQueue, ConcurrentQueue, unboundedQueue } from "../Queue"
 import { makeRef, Ref } from "../Ref"
@@ -86,13 +91,13 @@ import {
   collectArraySink,
   drainSink,
   drainWhileSink,
+  queueOptionSink,
   queueSink,
   Sink,
-  stepMany,
-  queueOptionSink
+  stepMany
 } from "./Sink"
 import { isSinkCont, sinkStepLeftover, sinkStepState } from "./Step"
-import { Ops, queueUtils, emitter } from "./Support"
+import { emitter, Ops, queueUtils } from "./Support"
 
 export type Source<K, R, E, A> = Effect<K, R, E, Option<A>>
 
@@ -134,7 +139,7 @@ const fromS = <S, R, E, A>(_: Stream<S, R, E, A>): StreamT<S, R, E, S, R, E, A> 
 // This allows, for instance, this to work with transduce
 function arrayFold<A>(as: readonly A[]): SyncManaged<Fold<never, unknown, never, A>> {
   return encaseEffectManaged(
-    effect.map(
+    map_Effect(
       makeRef(0),
       (cell) => <S>(
         initial: S,
@@ -148,7 +153,7 @@ function arrayFold<A>(as: readonly A[]): SyncManaged<Fold<never, unknown, never,
               cell.modify((i) => [i, i + 1] as const), // increment the i
               chainEffect((i) =>
                 i < as.length
-                  ? effect.chain(f(current, as[i]), step)
+                  ? chain_Effect(f(current, as[i]), step)
                   : pureEffect(current)
               )
             )
@@ -212,7 +217,7 @@ export function fromSource<K, R, E, K2, R2, E2, A>(
                   foldOption(
                     () => pureEffect(initial) as Effect<K2, R2, E2, S>,
                     (a) =>
-                      effect.chain(step(initial, a), (next) => fold(next, cont, step))
+                      chain_Effect(step(initial, a), (next) => fold(next, cont, step))
                   )
                 )
               )
@@ -301,7 +306,7 @@ export function repeatedly<A>(a: A): Async<A> {
   ): AsyncEffect<S> {
     function step(current: S): AsyncEffect<S> {
       if (cont(current)) {
-        return shiftAfterEffect(effect.chain(f(current, a), step))
+        return shiftAfterEffect(chain_Effect(f(current, a), step))
       }
       return shiftAfterEffect(pureEffect(current))
     }
@@ -401,9 +406,9 @@ export function zipWithIndex<K, R, E, A>(
         const folded = fold<readonly [S, number]>(
           [initial, 0 as number],
           (s) => cont(s[0]),
-          ([s, i], a) => effect.map(f(s, [a, i]), (s) => [s, i + 1])
+          ([s, i], a) => map_Effect(f(s, [a, i]), (s) => [s, i + 1])
         )
-        return effect.map(folded, (s) => s[0])
+        return map_Effect(folded, (s) => s[0])
       }
 
       return zipFold
@@ -575,15 +580,15 @@ function distinctAdjacent_<K, R, E, A>(
             current[1],
             foldOption(
               // We haven't seen anything so just return
-              () => effect.map(step(current[0], next), (s) => [s, some(next)]),
+              () => map_Effect(step(current[0], next), (s) => [s, some(next)]),
               (seen) =>
                 eq.equals(seen, next)
                   ? pureEffect(current)
-                  : effect.map(step(current[0], next), (s) => [s, some(next)])
+                  : map_Effect(step(current[0], next), (s) => [s, some(next)])
             )
           )
         }
-        return effect.map(base(init, c, stp), (s) => s[0])
+        return map_Effect(base(init, c, stp), (s) => s[0])
       }
     )
   )
@@ -618,7 +623,7 @@ function foldM_<K, R, E, A, K2, R2, E2, B>(
       ): Effect<K | K2, R & R2, E | E2, S> => {
         /* istanbul ignore else */
         if (cont(initial)) {
-          return effect.chain(base(seed, constant(true), f), (result) =>
+          return chain_Effect(base(seed, constant(true), f), (result) =>
             step(initial, result)
           )
         } else {
@@ -698,7 +703,7 @@ function scanM_<K, R, E, A, B, K2, R2, E2>(
                   base(
                     t2(b, true),
                     (s) => s[1],
-                    (s, a) => effect.map(f(s[0], a), (r) => t2(r, false))
+                    (s, a) => map_Effect(f(s[0], a), (r) => t2(r, false))
                   )
                 ),
                 chainEffect(
@@ -708,7 +713,7 @@ function scanM_<K, R, E, A, B, K2, R2, E2>(
                       ? pureEffect(initial)
                       : applySecondEffect(
                           accum.set(s[0]),
-                          effect.chain(step(initial, s[0]), (next) =>
+                          chain_Effect(step(initial, s[0]), (next) =>
                             fold(next, cont, step)
                           )
                         )
@@ -869,7 +874,7 @@ function transduce_<K, R, E, A, K2, R2, E2, S, B>(
           sinkState: S,
           chunk: A[]
         ): Effect<K | K2, R & R2, E | E2, TDuceFused<S0, S>> {
-          return effect.chain(stepMany(sink, sinkState, chunk), (nextSinkStep) =>
+          return chain_Effect(stepMany(sink, sinkState, chunk), (nextSinkStep) =>
             isSinkCont(nextSinkStep)
               ? // We need to let more data in to drive the sink
                 pureEffect([foldState, nextSinkStep.state, true] as const)
@@ -904,7 +909,7 @@ function transduce_<K, R, E, A, K2, R2, E2, S, B>(
           )
         }
 
-        const derivedInitial = effect.map(
+        const derivedInitial = map_Effect(
           sink.initial,
           (initSink) => [initial, sinkStepState(initSink), false] as TDuceFused<S0, S>
         )
@@ -920,7 +925,7 @@ function transduce_<K, R, E, A, K2, R2, E2, S, B>(
           ),
           chainEffect(([foldState, sinkState, extract]) =>
             extract && cont(foldState)
-              ? effect.chain(sink.extract(sinkState), (b) => step(foldState, b))
+              ? chain_Effect(sink.extract(sinkState), (b) => step(foldState, b))
               : pureEffect(foldState)
           )
         )
@@ -970,11 +975,11 @@ function take_<K, R, E, A>(stream: Stream<K, R, E, A>, n: number): Stream<K, R, 
         cont: Predicate<S>,
         step: FunctionN<[S, A], Effect<K, R, E, S>>
       ): Effect<K, R, E, S> =>
-        effect.map(
+        map_Effect(
           fold(
             t2(initial, 0),
             (t2s) => t2s[1] < n && cont(t2s[0]),
-            (s, a) => effect.map(step(s[0], a), (next) => t2(next, s[1] + 1))
+            (s, a) => map_Effect(step(s[0], a), (next) => t2(next, s[1] + 1))
           ),
           (t2s) => t2s[0]
         )
@@ -1005,13 +1010,13 @@ function takeWhile_<K, R, E, A>(
         cont: Predicate<S>,
         step: FunctionN<[S, A], Effect<K, R, E, S>>
       ): Effect<K, R, E, S> =>
-        effect.map(
+        map_Effect(
           fold(
             t2(initial, true),
             (t2s) => t2s[1] && cont(t2s[0]),
             (s, a) =>
               pred(a)
-                ? effect.map(step(s[0], a), (next) => t2(next, true))
+                ? map_Effect(step(s[0], a), (next) => t2(next, true))
                 : pureEffect(t2(s[0], false))
           ),
           (t2s) => t2s[0]
@@ -1121,7 +1126,7 @@ function intoLeftover_<K, R, E, A, S, B, K2, R2, E2>(
       sink.initial,
       chainEffect((init) => fold(init, isSinkCont, (s, a) => sink.step(s.state, a))),
       chainEffect((end) =>
-        effect.map(sink.extract(end.state), (b) => [b, sinkStepLeftover(end)] as const)
+        map_Effect(sink.extract(end.state), (b) => [b, sinkStepLeftover(end)] as const)
       )
     )
   )
@@ -1150,7 +1155,7 @@ function sinkQueue<S, R, E, A>(
       encaseEffectManaged(makeDeferred<unknown, R, E, Option<A>, E>())
     ),
     ([q, latch]) => {
-      const write = effect.foldExit(
+      const write = foldExit_Effect(
         into_(map_(stream, some), queueSink(q)) as AsyncEffectRE<R, E, void>,
         (c) => latch.cause(c),
         constant(q.offer(none))
@@ -1205,7 +1210,7 @@ function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
       )
       const bgrab = raceFirstEffect(btake, blatch.wait)
 
-      return effect.zipWith(agrab, bgrab, (aOpt, bOpt) =>
+      return zipWith_Effect(agrab, bgrab, (aOpt, bOpt) =>
         option.chain(aOpt, (a) => option.map(bOpt, (b) => f(a, b)))
       )
     }
@@ -1330,19 +1335,19 @@ export function peelManaged<A, S, B, K2, R2, E2, K3, R3, E3>(
 function interruptFiberSlot(
   slot: Ref<Option<Fiber<never, void>>>
 ): AsyncEffect<Option<Exit<never, void>>> {
-  return effect.chain(slot.get, (optFiber) =>
+  return chain_Effect(slot.get, (optFiber) =>
     pipe(
       optFiber,
       foldOption(
         () => pureEffect(none),
-        (f) => effect.map(f.interrupt, some)
+        (f) => map_Effect(f.interrupt, some)
       )
     )
   )
 }
 
 function waitFiberSlot(slot: Ref<Option<Fiber<never, void>>>): AsyncEffect<void> {
-  return effect.chain(slot.get, (optFiber) =>
+  return chain_Effect(slot.get, (optFiber) =>
     pipe(
       optFiber,
       foldOption(
@@ -1398,7 +1403,7 @@ export function switchLatest<R, E, A, R2, E2>(
 
                 return applyFirstEffect(
                   interruptPushFiber,
-                  effect.chain(forkEffect(writer), (f) => fiberSlot.set(some(f)))
+                  chain_Effect(forkEffect(writer), (f) => fiberSlot.set(some(f)))
                 )
               }
 
@@ -1406,9 +1411,9 @@ export function switchLatest<R, E, A, R2, E2>(
               function advanceStreams(): AsyncEffectRE<R & R2, never, void> {
                 // We need a way of looking ahead to see errors in the output streams in order to cause termination
                 // The push fiber will generate this when it encounters a failure
-                const breakerError = effect.chain(internalBreaker.wait, raisedEffect)
+                const breakerError = chain_Effect(internalBreaker.wait, raisedEffect)
 
-                return effect.foldExit(
+                return foldExit_Effect(
                   raceFirstEffect(pull, breakerError),
                   // In the event of an error either from pull or from upstream we need to shut everything down
                   // On managed unwind the active production fiber will be interrupted if there is one
@@ -1472,8 +1477,10 @@ interface Weave {
 type WeaveHandle = readonly [number, Fiber<never, void>]
 
 function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): AsyncEffect<void> {
-  return effect.chain(ref.get, (fibers) =>
-    asUnitEffect(array.traverse(effect)(fibers, (fiber) => fiber[1].interrupt))
+  return chain_Effect(ref.get, (fibers) =>
+    asUnitEffect(
+      traverseArrayEffect((fiber: WeaveHandle) => fiber[1].interrupt)(fibers)
+    )
   )
 }
 
@@ -1487,7 +1494,7 @@ const makeWeave: ManagedAsync<Weave> = managed.chain(
       (store) => {
         function attach(action: SyncEffect<void>): SyncEffect<void> {
           return pipe(
-            SS(effect)({
+            sequenceSEffect({
               next: cell.update((n) => n + 1),
               fiber: forkEffect(action)
             }),
@@ -1557,12 +1564,12 @@ function merge_<K, R, E, A, K2, R2, E2>(
 
                   // The action that will pull a single stream upstream and attempt to activate it to push downstream
                   function advanceStreams(): AsyncEffectRE<R & R2, never, void> {
-                    const breakerError = effect.chain(
+                    const breakerError = chain_Effect(
                       internalBreaker.wait,
                       raisedEffect
                     )
 
-                    return effect.foldExit(
+                    return foldExit_Effect(
                       raceFirstEffect(
                         pull, // we don't want to pull until there is capacity
                         breakerError
@@ -1665,7 +1672,7 @@ export function dropWhile<A>(
 export function collectArray<K, R, E, A>(
   stream: Stream<K, R, E, A>
 ): Effect<K, R, E, A[]> {
-  return into_(stream, collectArraySink())
+  return into_(stream, /*#__PURE__*/ collectArraySink())
 }
 
 /**

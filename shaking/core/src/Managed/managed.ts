@@ -29,7 +29,8 @@ import {
   pure as pureEffect,
   accessM as accessMEffect,
   bracket as bracketEffect,
-  bracketExit as bracketExitEffect
+  bracketExit as bracketExitEffect,
+  onComplete_ as onCompleteEffect
 } from "../Effect"
 import { Exit, withRemaining, done } from "../Exit"
 import { ManagedURI as URI } from "../Support/Common"
@@ -526,7 +527,7 @@ export function allocate<S, R, E, A>(
               // Combine the finalizer actions of the outer and inner resource
               (innerLeak) => ({
                 a: innerLeak.a,
-                release: effect.onComplete(innerLeak.release, leak.release)
+                release: onCompleteEffect(innerLeak.release, leak.release)
               })
             )
         )

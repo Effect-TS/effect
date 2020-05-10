@@ -2,7 +2,7 @@
 module.exports = {
   rootDir: "./",
   clearMocks: true,
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: "coverage",
   collectCoverageFrom: [
     "packages/**/src/**/*.ts",
@@ -15,5 +15,5 @@ module.exports = {
   ],
   setupFiles: ["./jest-setup.ts"],
   modulePathIgnorePatterns: ["dtslint", "build"],
-  verbose: true
+  verbose: false
 }

@@ -1,6 +1,6 @@
 import { Kind, URIS } from "fp-ts/lib/HKT"
 
-import { Effect, effect, suspended } from "../Effect"
+import { Effect, suspended, chain_ } from "../Effect"
 
 import { Fix } from "./Fix"
 import { FunctorM } from "./functor"
@@ -23,7 +23,7 @@ export function cata<S, R, E, F extends URIS>(
   F: FunctorM<F, S, R, E>
 ): <A>(alg: Algebra<F, S, R, E, A>) => (_: Fix<F>) => Effect<S, R, E, A> {
   return (alg) => (_) =>
-    effect.chain(
+    chain_(
       suspended(() => F(_.unfix, cata(F)(alg))),
       alg
     )

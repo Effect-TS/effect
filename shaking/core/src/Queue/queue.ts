@@ -1,21 +1,23 @@
-import { Either, right, fold, left } from "fp-ts/lib/Either"
-import { option, getOrElse } from "fp-ts/lib/Option"
+import { Either, fold, left, right } from "fp-ts/lib/Either"
+import { getOrElse, option } from "fp-ts/lib/Option"
 import { FunctionN, identity } from "fp-ts/lib/function"
-import { pipeable, pipe } from "fp-ts/lib/pipeable"
+import { pipe, pipeable } from "fp-ts/lib/pipeable"
 
 import { Deferred, makeDeferred } from "../Deferred"
 import {
-  Async,
-  Sync,
-  raiseAbort,
-  unit,
-  asUnit,
-  bracketExit,
-  effect,
-  pure,
   applySecond,
+  asUnit,
+  Async,
+  bracketExit,
+  chain_,
+  flatten,
+  map_,
+  pure,
+  raiseAbort,
+  Sync,
   uninterruptible,
-  flatten
+  unit,
+  zipWith_
 } from "../Effect"
 import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
@@ -77,7 +79,7 @@ function makeConcurrentQueueImpl<A>(
 
   const take = takeGate(
     bracketExit(
-      effect.chain(factory, (latch) =>
+      chain_(factory, (latch) =>
         state.modify((current) =>
           pipe(
             current,
@@ -149,7 +151,7 @@ function makeConcurrentQueueImpl<A>(
  * Create an unbounded concurrent queue
  */
 export function unboundedQueue<A>(): Sync<ConcurrentQueue<A>> {
-  return effect.map(makeRef(initial<A>()), (ref) =>
+  return map_(makeRef(initial<A>()), (ref) =>
     makeConcurrentQueueImpl(
       ref,
       makeDeferred<unknown, unknown, never, A>(),
@@ -169,7 +171,7 @@ const natCapacity = natNumber(new Error("Die: capacity must be a natural number"
 export function slidingQueue<A>(capacity: number): Sync<ConcurrentQueue<A>> {
   return applySecond(
     natCapacity(capacity),
-    effect.map(makeRef(initial<A>()), (ref) =>
+    map_(makeRef(initial<A>()), (ref) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<unknown, unknown, never, A>(),
@@ -188,7 +190,7 @@ export function slidingQueue<A>(capacity: number): Sync<ConcurrentQueue<A>> {
 export function droppingQueue<A>(capacity: number): Sync<ConcurrentQueue<A>> {
   return applySecond(
     natCapacity(capacity),
-    effect.map(makeRef(initial<A>()), (ref) =>
+    map_(makeRef(initial<A>()), (ref) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<unknown, unknown, never, A>(),
@@ -207,7 +209,7 @@ export function droppingQueue<A>(capacity: number): Sync<ConcurrentQueue<A>> {
 export function boundedQueue<A>(capacity: number): Sync<ConcurrentQueue<A>> {
   return applySecond(
     natCapacity(capacity),
-    effect.zipWith(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
+    zipWith_(makeRef(initial<A>()), makeSemaphore(capacity), (ref, sem) =>
       makeConcurrentQueueImpl(
         ref,
         makeDeferred<unknown, unknown, never, A>(),

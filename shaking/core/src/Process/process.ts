@@ -13,12 +13,14 @@ import {
   provide,
   fork,
   runUnsafeSync,
-  effect,
   sync,
   accessM,
   asyncTotal,
   parEffect,
-  chainTap
+  chainTap,
+  chainTap_,
+  map_,
+  chain_
 } from "../Effect"
 import { Exit } from "../Exit"
 import { ATypeOf, ETypeOf, RTypeOf, UnionToIntersection } from "../Support/Overloads"
@@ -67,9 +69,9 @@ export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>
     })
   )
 
-  const waits = effect.map(fibers, (rec) =>
+  const waits = map_(fibers, (rec) =>
     Rec.record.map(rec, (f) =>
-      effect.chainTap(f.wait, (ex) =>
+      chainTap_(f.wait, (ex) =>
         sync(() => {
           if (ex._tag !== "Done") {
             fire()
@@ -83,7 +85,7 @@ export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>
     asyncTotal((res) => {
       const fiber = runUnsafeSync(
         pipe(
-          effect.chain(waits, Rec.record.sequence(parEffect)),
+          chain_(waits, Rec.record.sequence(parEffect)),
           chainTap((done) =>
             sync(() => {
               res(done)

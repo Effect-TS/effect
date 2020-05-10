@@ -5,12 +5,12 @@ import { pipe } from "fp-ts/lib/pipeable"
 import {
   Effect,
   pure,
-  effect,
   unit,
   apSecond,
   AsyncRE,
   as,
-  map as mapEffect
+  map as mapEffect,
+  chain_
 } from "../../Effect"
 import { ConcurrentQueue } from "../../Queue"
 import { SinkStep, sinkDone, sinkCont, isSinkDone } from "../Step"
@@ -46,7 +46,7 @@ export function stepMany<K, R, E, S, A, B>(
     } else if (isSinkDone(current)) {
       return pure(sinkDone(current.state, current.leftover.concat(multi.slice(i))))
     } else {
-      return effect.chain(sink.step(current.state, multi[i]), (next) => go(next, i + 1))
+      return chain_(sink.step(current.state, multi[i]), (next) => go(next, i + 1))
     }
   }
   return go(sinkCont(s), 0)

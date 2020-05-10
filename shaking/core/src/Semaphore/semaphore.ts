@@ -16,10 +16,11 @@ import {
   uninterruptible,
   flatten,
   applyFirst,
-  effect,
   bracketExit,
   interruptible,
-  bracket
+  bracket,
+  chain_,
+  map_
 } from "../Effect"
 import { makeRef, Ref } from "../Ref"
 import { Dequeue, empty } from "../Support/Dequeue"
@@ -149,7 +150,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     )
 
   const ticketN = (n: number): Async<Ticket<unknown, unknown, void>> =>
-    effect.chain(makeDeferred<unknown, unknown, never, void>(), (latch) =>
+    chain_(makeDeferred<unknown, unknown, never, void>(), (latch) =>
       ref.modify((current) =>
         pipe(
           current,
@@ -186,7 +187,7 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     return bracket(acquire, constant(release), () => inner)
   }
 
-  const available = effect.map(
+  const available = map_(
     ref.get,
     fold((q) => -1 * q.size(), identity)
   )
@@ -211,6 +212,6 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
 export function makeSemaphore(n: number): Sync<Semaphore> {
   return applySecond(
     sanityCheck(n),
-    effect.map(makeRef(right(n) as State), makeSemaphoreImpl)
+    map_(makeRef(right(n) as State), makeSemaphoreImpl)
   )
 }

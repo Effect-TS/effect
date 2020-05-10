@@ -16,6 +16,7 @@ import * as nonEmptyArray from "./NonEmptyArray"
 import * as option from "./Option"
 import * as ord from "./Ord"
 import * as pipeable from "./Pipe"
+import * as prelude from "./Prelude"
 import * as process from "./Process"
 import * as provider from "./Provider"
 import * as queue from "./Queue"
@@ -77,5 +78,6 @@ export {
   tuple,
   effectOption,
   list,
-  recursionSchemes
+  recursionSchemes,
+  prelude
 }

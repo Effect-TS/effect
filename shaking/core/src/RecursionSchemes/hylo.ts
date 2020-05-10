@@ -1,6 +1,6 @@
 import { URIS } from "fp-ts/lib/HKT"
 
-import { effect, suspended, Effect } from "../Effect"
+import { suspended, Effect, chain_ } from "../Effect"
 
 import { Coalgebra } from "./ana"
 import { Algebra } from "./cata"
@@ -19,10 +19,8 @@ export function hylo<S, R, E, F extends URIS>(
   coalg: Coalgebra<F, S, R, E, A>
 ) => (a: A) => Effect<S, R, E, B> {
   return (alg, coalg) => (a) =>
-    effect.chain(
-      effect.chain(coalg(a), (x) =>
-        suspended(() => F(x, (y) => hylo(F)(alg, coalg)(y)))
-      ),
+    chain_(
+      chain_(coalg(a), (x) => suspended(() => F(x, (y) => hylo(F)(alg, coalg)(y)))),
       alg
     )
 }

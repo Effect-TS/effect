@@ -1,6 +1,6 @@
 import { Kind, URIS } from "fp-ts/lib/HKT"
 
-import { Effect, effect, suspended } from "../Effect"
+import { Effect, chain_, map_, suspended } from "../Effect"
 
 import { Fix } from "./Fix"
 import { FunctorM } from "./functor"
@@ -24,8 +24,8 @@ export function ana<S, R, E, F extends URIS>(
   F: FunctorM<F, S, R, E>
 ): <S2, A>(coalg: Coalgebra<F, S, R, E, A>) => (_: A) => Effect<S | S2, R, E, Fix<F>> {
   return (coalg) => (a) =>
-    effect.map(
-      effect.chain(coalg(a), (x) => suspended(() => F(x, (y) => ana(F)(coalg)(y)))),
+    map_(
+      chain_(coalg(a), (x) => suspended(() => F(x, (y) => ana(F)(coalg)(y)))),
       (unfix) => ({ unfix })
     )
 }
