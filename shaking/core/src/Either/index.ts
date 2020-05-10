@@ -49,8 +49,6 @@ export {
   right,
   rightW,
   sequenceArray,
-  sequenceEither,
-  sequenceOption,
   sequenceRecord,
   sequenceS,
   sequenceT,
@@ -60,8 +58,6 @@ export {
   toError,
   traverseArray,
   traverseArrayWithIndex,
-  traverseEither,
-  traverseOption,
   traverseRecord,
   traverseRecordWithIndex,
   traverseTree,
@@ -69,9 +65,9 @@ export {
   widenLeft,
   widenRight,
   wiltArray,
-  wiltOption,
   wiltRecord,
   witherArray,
-  witherOption,
   witherRecord
 } from "./either"
+
+export { sequenceOption, traverseOption, wiltOption, witherOption } from "./option"

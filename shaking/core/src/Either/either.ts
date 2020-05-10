@@ -44,21 +44,19 @@ import { FunctorWithIndex2 } from "fp-ts/lib/FunctorWithIndex"
 import { HKT, Kind2 } from "fp-ts/lib/HKT"
 import { Monad2M } from "fp-ts/lib/Monad"
 import { MonadThrow2M } from "fp-ts/lib/MonadThrow"
+import type { Option } from "fp-ts/lib/Option"
 import { Profunctor2 } from "fp-ts/lib/Profunctor"
 import { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
 import { Traversable2 } from "fp-ts/lib/Traversable"
 import { pipe, pipeable } from "fp-ts/lib/pipeable"
 
 import { array } from "../Array"
-import {
-  chain as chainEffect,
-  chainError as chainErrorEffect,
-  map as mapEffect,
-  pure as pureEffect,
-  raiseError as raiseErrorEffect
-} from "../Effect"
+import { chain as chainEffect } from "../Effect/chain"
+import { chainError as chainErrorEffect } from "../Effect/chainError"
+import { map as mapEffect } from "../Effect/map"
+import { pure as pureEffect } from "../Effect/pure"
+import { raiseError as raiseErrorEffect } from "../Effect/raiseError"
 import { flow } from "../Function"
-import { Option, option } from "../Option"
 import { record } from "../Record"
 import { Effect, Managed, Stream, StreamEither } from "../Support/Common"
 import { Tree, tree } from "../Tree"
@@ -460,30 +458,6 @@ export const {
   reduce,
   reduceRight
 } = pipeable(either)
-
-export const sequenceOption = option.sequence(either)
-
-export const traverseOption: <A, E, B>(
-  f: (a: A) => Either<E, B>
-) => (ta: Option<A>) => Either<E, Option<B>> = (f) => (ta) =>
-  option.traverse(either)(ta, f)
-
-export const wiltOption: <A, E, B, C>(
-  f: (a: A) => Either<E, Either<B, C>>
-) => (wa: Option<A>) => Either<E, Separated<Option<B>, Option<C>>> = (f) => (wa) =>
-  option.wilt(either)(wa, f)
-
-export const witherOption: <A, E, B>(
-  f: (a: A) => Either<E, Option<B>>
-) => (ta: Option<A>) => Either<E, Option<B>> = (f) => (ta) =>
-  option.wither(either)(ta, f)
-
-export const sequenceEither = either.sequence(either)
-
-export const traverseEither: <A, FE, B>(
-  f: (a: A) => Either<FE, B>
-) => <TE>(ta: Either<TE, A>) => Either<FE, Either<TE, B>> = (f) => (ta) =>
-  either.traverse(either)(ta, f)
 
 export const sequenceTree = tree.sequence(either)
 

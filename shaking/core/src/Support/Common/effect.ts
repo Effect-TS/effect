@@ -19,4 +19,4 @@ export interface Provider<Environment, Module, E2 = never, S2 = never> {
   >
 }
 
-export { Effect }
+export type { Effect }

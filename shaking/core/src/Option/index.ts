@@ -1,4 +1,4 @@
-export { Option } from "fp-ts/lib/Option"
+export type { Option } from "fp-ts/lib/Option"
 
 export { alt_ } from "./alt_"
 export { alt } from "./alt"
@@ -61,7 +61,6 @@ export { reduceRight } from "./reduceRight"
 export { separate } from "./separate"
 export { sequence } from "./sequence"
 export { sequenceArray } from "./sequenceArray"
-export { sequenceEither } from "./sequenceEither"
 export { sequenceRecord } from "./sequenceRecord"
 export { sequenceS } from "./sequenceS"
 export { sequenceT } from "./sequenceT"
@@ -76,7 +75,6 @@ export {
   traverseArrayWithIndex,
   traverseArrayWithIndex_
 } from "./traverseArrayWithIndex"
-export { traverseEither, traverseEither_ } from "./traverseEither"
 export { traverseRecord, traverseRecord_ } from "./traverseRecord"
 export {
   traverseRecordWithIndex,
@@ -91,3 +89,5 @@ export { wither } from "./wither"
 export { witherArray, witherArray_ } from "./witherArray"
 export { witherRecord, witherRecord_ } from "./witherRecord"
 export { zero } from "./zero"
+export { sequenceEither } from "./sequenceEither"
+export { traverseEither, traverseEither_ } from "./traverseEither"

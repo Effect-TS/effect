@@ -46,4 +46,4 @@ export {
 
 import type * as EffectTypes from "./effect"
 
-export { EffectTypes }
+export type { EffectTypes }

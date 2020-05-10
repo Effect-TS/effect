@@ -1,6 +1,7 @@
+import type { Either } from "fp-ts/lib/Either"
 import type { Option } from "fp-ts/lib/Option"
 
-import { Either, either } from "../Either"
+import { either } from "../Either/either"
 
 import { optionMonad } from "./monad"
 

@@ -1,4 +1,4 @@
-import { either } from "../Either"
+import { either } from "../Either/either"
 
 import { optionMonad } from "./monad"
 
