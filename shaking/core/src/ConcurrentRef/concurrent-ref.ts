@@ -1,23 +1,23 @@
-import { Async, AsyncRE, Sync, effect, sync } from "../Effect"
-import { FunctionN } from "../Function"
+import * as T from "../Effect"
+import type { FunctionN } from "../Function"
 import { makeSemaphore } from "../Semaphore"
 
 export interface ConcurrentRef<A> {
   /**
    * Get the current value of the ConcurrentRef
    */
-  readonly get: Async<A>
+  readonly get: T.Async<A>
   /**
    * Set the current value of the ConcurrentRef
    * @param a
    */
-  set<R>(a: AsyncRE<R, never, A>): AsyncRE<R, never, A>
+  set<R>(a: T.AsyncRE<R, never, A>): T.AsyncRE<R, never, A>
   /**
    * Update the current value of the ConcurrentRef with an effect.
    * Produces the new value
    * @param f
    */
-  update<R>(f: FunctionN<[A], AsyncRE<R, never, A>>): AsyncRE<R, never, A>
+  update<R>(f: FunctionN<[A], T.AsyncRE<R, never, A>>): T.AsyncRE<R, never, A>
   /**
    * Update the current value of a ConcurrentRef with an effect.
    *
@@ -25,33 +25,35 @@ export interface ConcurrentRef<A> {
    * @param f
    */
   modify<R, B>(
-    f: FunctionN<[A], AsyncRE<R, never, readonly [B, A]>>
-  ): AsyncRE<R, never, B>
+    f: FunctionN<[A], T.AsyncRE<R, never, readonly [B, A]>>
+  ): T.AsyncRE<R, never, B>
 }
 
 /**
  * Creates an IO that will allocate a ConcurrentRef.
  */
-export const makeConcurrentRef = <A>(initial: A): Sync<ConcurrentRef<A>> =>
-  effect.map(makeSemaphore(1), (semaphore) => {
+export const makeConcurrentRef = <A>(initial: A): T.Sync<ConcurrentRef<A>> =>
+  T.effect.map(makeSemaphore(1), (semaphore) => {
     let value = initial
 
-    const get = sync(() => value)
+    const get = T.sync(() => value)
 
-    const set = <R>(a: AsyncRE<R, never, A>): AsyncRE<R, never, A> =>
+    const set = <R>(a: T.AsyncRE<R, never, A>): T.AsyncRE<R, never, A> =>
       semaphore.withPermit(
-        effect.map(a, (a) => {
+        T.effect.map(a, (a) => {
           const prev = value
           value = a
           return prev
         })
       )
 
-    const update = <R>(f: FunctionN<[A], AsyncRE<R, never, A>>): AsyncRE<R, never, A> =>
+    const update = <R>(
+      f: FunctionN<[A], T.AsyncRE<R, never, A>>
+    ): T.AsyncRE<R, never, A> =>
       semaphore.withPermit(
-        effect.map(
-          effect.chain(
-            sync(() => value),
+        T.effect.map(
+          T.effect.chain(
+            T.sync(() => value),
             f
           ),
           (v) => {
@@ -62,12 +64,12 @@ export const makeConcurrentRef = <A>(initial: A): Sync<ConcurrentRef<A>> =>
       )
 
     const modify = <R, B>(
-      f: FunctionN<[A], AsyncRE<R, never, readonly [B, A]>>
-    ): AsyncRE<R, never, B> =>
+      f: FunctionN<[A], T.AsyncRE<R, never, readonly [B, A]>>
+    ): T.AsyncRE<R, never, B> =>
       semaphore.withPermit(
-        effect.map(
-          effect.chain(
-            sync(() => value),
+        T.effect.map(
+          T.effect.chain(
+            T.sync(() => value),
             f
           ),
           (v) => {

@@ -4,7 +4,7 @@ import { identity } from "fp-ts/lib/function"
 
 import {
   fold,
-  exit,
+  fold_,
   isDone,
   isAbort,
   isRaise,
@@ -64,19 +64,19 @@ describe("Exit", () => {
       const ipt = interrupt
 
       assert.deepStrictEqual(
-        exit.fold(e1, identity, identity, identity, () => "ipt"),
+        fold_(e1, identity, identity, identity, () => "ipt"),
         1
       )
       assert.deepStrictEqual(
-        exit.fold(a2, identity, identity, identity, () => "ipt"),
+        fold_(a2, identity, identity, identity, () => "ipt"),
         2
       )
       assert.deepStrictEqual(
-        exit.fold(r3, identity, identity, identity, () => "ipt"),
+        fold_(r3, identity, identity, identity, () => "ipt"),
         3
       )
       assert.deepStrictEqual(
-        exit.fold(ipt, identity, identity, identity, () => "ipt"),
+        fold_(ipt, identity, identity, identity, () => "ipt"),
         "ipt"
       )
     })
