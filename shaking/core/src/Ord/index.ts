@@ -1,32 +1,30 @@
-export {
-  Ord,
-  URI,
-  between,
-  clamp,
-  contramap,
-  fromCompare,
-  geq,
-  getDualOrd,
-  getMonoid,
-  getSemigroup,
-  getTupleOrd,
-  gt,
-  leq,
-  lt,
-  max,
-  min,
-  ord,
-  ordBoolean,
-  ordDate,
-  ordNumber,
-  ordString
-} from "fp-ts/lib/Ord"
-
-export {
-  Ordering,
-  eqOrdering,
-  invert,
-  monoidOrdering,
-  semigroupOrdering,
-  sign
-} from "fp-ts/lib/Ordering"
+export type { Bounded } from "fp-ts/lib/Bounded"
+export { between } from "./between"
+export { boundedNumber } from "./boundedNumber"
+export { clamp } from "./clamp"
+export { compare } from "./compare"
+export { contramap, contramap_ } from "./contramap"
+export { eqOrdering } from "./eqOrdering"
+export { fromCompare } from "./fromCompare"
+export { geq } from "./geq"
+export { getDualOrd } from "./getDualOrd"
+export { getMonoid } from "./getMonoid"
+export { getSemigroup } from "./getSemigroup"
+export { getTupleOrd } from "./getTupleOrd"
+export { gt } from "./gt"
+export { ord } from "./instances"
+export { invert } from "./invert"
+export { leq } from "./leq"
+export { lt } from "./lt"
+export { max } from "./max"
+export { min } from "./min"
+export { monoidOrdering } from "./monoidOrdering"
+export type { Ord } from "./Ord"
+export { ordBoolean } from "./ordBoolean"
+export { ordDate } from "./ordDate"
+export type { Ordering } from "./Ordering"
+export { ordNumber } from "./ordNumber"
+export { ordString } from "./ordString"
+export { semigroupOrdering } from "./semigroupOrdering"
+export { sign } from "./sign"
+export { URI } from "./URI"

@@ -1,14 +1,12 @@
-export {
-  RetryPolicy,
-  RetryStatus,
-  applyAndDelay,
-  applyPolicy,
-  capDelay,
-  constantDelay,
-  defaultRetryStatus,
-  exponentialBackoff,
-  limitRetries,
-  limitRetriesByDelay,
-  monoidRetryPolicy,
-  retrying
-} from "./retry"
+export { applyAndDelay } from "./applyAndDelay"
+export { applyPolicy } from "./applyPolicy"
+export { capDelay } from "./capDelay"
+export { constantDelay } from "./constantDelay"
+export { defaultRetryStatus } from "./defaultRetryStatus"
+export { exponentialBackoff } from "./exponentialBackoff"
+export { limitRetries } from "./limitRetries"
+export { limitRetriesByDelay } from "./limitRetriesByDelay"
+export { monoidRetryPolicy } from "./monoidRetryPolicy"
+export { retrying } from "./retrying"
+export type { RetryPolicy } from "./RetryPolicy"
+export type { RetryStatus } from "./RetryStatus"

@@ -1,17 +1,15 @@
-export {
-  Monoid,
-  fold,
-  getDualMonoid,
-  getEndomorphismMonoid,
-  getFunctionMonoid,
-  getJoinMonoid,
-  getMeetMonoid,
-  getStructMonoid,
-  getTupleMonoid,
-  monoidAll,
-  monoidAny,
-  monoidProduct,
-  monoidString,
-  monoidSum,
-  monoidVoid
-} from "fp-ts/lib/Monoid"
+export { fold } from "./fold"
+export { getDualMonoid } from "./getDualMonoid"
+export { getEndomorphismMonoid } from "./getEndomorphismMonoid"
+export { getFunctionMonoid } from "./getFunctionMonoid"
+export { getJoinMonoid } from "./getJoinMonoid"
+export { getMeetMonoid } from "./getMeetMonoid"
+export { getStructMonoid } from "./getStructMonoid"
+export { getTupleMonoid } from "./getTupleMonoid"
+export type { Monoid } from "./Monoid"
+export { monoidAll } from "./monoidAll"
+export { monoidAny } from "./monoidAny"
+export { monoidProduct } from "./monoidProduct"
+export { monoidString } from "./monoidString"
+export { monoidSum } from "./monoidSum"
+export { monoidVoid } from "./monoidVoid"

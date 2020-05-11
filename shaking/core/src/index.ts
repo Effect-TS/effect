@@ -22,6 +22,7 @@ import * as process from "./Process"
 import * as provider from "./Provider"
 import * as queue from "./Queue"
 import * as random from "./Random"
+import * as readOnly from "./ReadOnly"
 import * as record from "./Record"
 import * as recursionSchemes from "./RecursionSchemes"
 import * as ref from "./Ref"
@@ -81,5 +82,6 @@ export {
   list,
   recursionSchemes,
   prelude,
-  monoid
+  monoid,
+  readOnly
 }

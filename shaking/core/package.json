@@ -17,8 +17,7 @@
   },
   "dependencies": {
     "fp-ts": "^2.5.4",
-    "fp-ts-contrib": "^0.1.15",
-    "retry-ts": "^0.1.2"
+    "fp-ts-contrib": "^0.1.15"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
