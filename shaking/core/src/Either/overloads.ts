@@ -1,8 +1,6 @@
 import type { Alt2 } from "fp-ts/lib/Alt"
-import type { Applicative2M } from "fp-ts/lib/Applicative"
 import type { Apply2M } from "fp-ts/lib/Apply"
 import type { Bifunctor2 } from "fp-ts/lib/Bifunctor"
-import type { Chain2M } from "fp-ts/lib/Chain"
 import type { Compactable2 } from "fp-ts/lib/Compactable"
 import type { Contravariant2 } from "fp-ts/lib/Contravariant"
 import type { Either } from "fp-ts/lib/Either"
@@ -14,35 +12,26 @@ import type { FoldableWithIndex2 } from "fp-ts/lib/FoldableWithIndex"
 import type { Functor2 } from "fp-ts/lib/Functor"
 import type { FunctorWithIndex2 } from "fp-ts/lib/FunctorWithIndex"
 import type { Kind2 } from "fp-ts/lib/HKT"
-import type { Monad2M } from "fp-ts/lib/Monad"
-import type { MonadThrow2M } from "fp-ts/lib/MonadThrow"
 import type { Profunctor2 } from "fp-ts/lib/Profunctor"
 import type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
 
 import { URI } from "./URI"
 
-declare module "fp-ts/lib/ChainRec" {
-  export interface ChainRec2M<F extends URI> extends Chain2M<F> {
-    readonly chainRec: <E, A, B>(
-      a: A,
-      f: (a: A) => Kind2<F, E, Either<A, B>>
-    ) => Kind2<F, E, B>
-  }
+export interface ChainRec2M<F extends URI> extends Chain2M<F> {
+  readonly chainRec: <E, A, B>(
+    a: A,
+    f: (a: A) => Kind2<F, E, Either<A, B>>
+  ) => Kind2<F, E, B>
 }
-declare module "fp-ts/lib/Chain" {
-  export interface Chain2M<F extends URI> extends Apply2M<F> {
-    readonly chain: <E, A, B, E2>(
-      fa: Kind2<F, E, A>,
-      f: (a: A) => Kind2<F, E2, B>
-    ) => Kind2<F, E | E2, B>
-  }
+export interface Chain2M<F extends URI> extends Apply2M<F> {
+  readonly chain: <E, A, B, E2>(
+    fa: Kind2<F, E, A>,
+    f: (a: A) => Kind2<F, E2, B>
+  ) => Kind2<F, E | E2, B>
 }
-declare module "fp-ts/lib/MonadThrow" {
-  export interface MonadThrow2M<M extends URI> extends Monad2M<M> {
-    readonly throwError: <E, A>(e: E) => Kind2<M, E, A>
-  }
+export interface MonadThrow2M<M extends URI> extends Monad2M<M> {
+  readonly throwError: <E, A>(e: E) => Kind2<M, E, A>
 }
-
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
 declare module "fp-ts/lib/Apply" {
@@ -81,15 +70,11 @@ declare module "fp-ts/lib/Apply" {
     }
   >
 }
-declare module "fp-ts/lib/Applicative" {
-  export interface Applicative2M<F extends URI> extends Apply2M<F> {
-    readonly of: <E, A>(a: A) => Kind2<F, E, A>
-  }
+export interface Applicative2M<F extends URI> extends Apply2M<F> {
+  readonly of: <E, A>(a: A) => Kind2<F, E, A>
 }
-declare module "fp-ts/lib/Monad" {
-  export interface Monad2M<M extends URI> extends Applicative2M<M>, Chain2M<M> {
-    _K: "Monad2M"
-  }
+export interface Monad2M<M extends URI> extends Applicative2M<M>, Chain2M<M> {
+  _K: "Monad2M"
 }
 declare module "fp-ts/lib/pipeable" {
   export interface PipeableApply2M<F extends URI> extends PipeableFunctor2<F> {

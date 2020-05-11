@@ -1,11 +1,11 @@
-import type { ChainRec2M } from "fp-ts/lib/ChainRec"
-import type { Monad2M } from "fp-ts/lib/Monad"
+import {} from "./overloads"
 
 import { URI } from "./URI"
 import { ap_ } from "./ap"
 import { chain_ } from "./chain"
 import { chainRec } from "./chainRec"
 import { map_ } from "./map"
+import type { Monad2M, ChainRec2M } from "./overloads"
 import { right } from "./right"
 
 /**
