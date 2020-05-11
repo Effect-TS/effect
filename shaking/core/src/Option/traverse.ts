@@ -1,12 +1,13 @@
 import type { Applicative } from "fp-ts/lib/Applicative"
 import type { HKT } from "fp-ts/lib/HKT"
-import type { Option } from "fp-ts/lib/Option"
+import type { Option, URI } from "fp-ts/lib/Option"
+import { Traverse1 } from "fp-ts/lib/Traversable"
 
 import { isNone } from "./isNone"
 import { none } from "./none"
 import { some } from "./some"
 
-export const traverse = <F>(F: Applicative<F>) => <A, B>(
+export const traverse: Traverse1<URI> = <F>(F: Applicative<F>) => <A, B>(
   ta: Option<A>,
   f: (a: A) => HKT<F, B>
 ): HKT<F, Option<B>> => {

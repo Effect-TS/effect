@@ -1,5 +1,5 @@
-import { option } from "../Option"
+import { sequence } from "../Option/sequence"
 
 import { effect } from "./effect"
 
-export const sequenceOption = option.sequence(effect)
+export const sequenceOption = sequence(effect)

@@ -1,73 +1,66 @@
+export { alt_, alt } from "./alt"
+export { ap_, ap } from "./ap"
+export { apFirst } from "./apFirst"
+export { apSecond } from "./apSecond"
+export { bimap_, bimap } from "./bimap"
+export { chain_, chain } from "./chain"
+export { chainFirst } from "./chainFirst"
+export { chainRec } from "./chainRec"
+export { duplicate } from "./duplicate"
+export type { Either, Left, Right } from "./Either"
+export { eitherMonad } from "./eitherMonad"
+export { eitherMonadClassic } from "./eitherMonadClassic"
+export { elem } from "./elem"
+export { exists } from "./exists"
+export { extend_, extend } from "./extend"
+export { filterOrElse } from "./filterOrElse"
+export { flatten } from "./flatten"
+export { fold } from "./fold"
+export { foldMap, foldMap_ } from "./foldMap"
+export { fromNullable } from "./fromNullable"
+export { fromPredicate } from "./fromPredicate"
+export { getApplyMonoid } from "./getApplyMonoid"
+export { getApplySemigroup } from "./getApplySemigroup"
+export { getEq } from "./getEq"
+export { getOrElse } from "./getOrElse"
+export { getSemigroup } from "./getSemigroup"
+export { getShow } from "./getShow"
+export { getValidation } from "./getValidation"
+export { getValidationMonoid } from "./getValidationMonoid"
+export { getValidationSemigroup } from "./getValidationSemigroup"
+export { getWitherable } from "./getWitherable"
+export { either } from "./instances"
+export { isLeft } from "./isLeft"
+export { isRight } from "./isRight"
+export { left, leftW } from "./left"
+export { right, rightW } from "./right"
+export { sequence } from "./sequence"
+export { sequenceArray } from "./sequenceArray"
+export { sequenceRecord } from "./sequenceRecord"
+export { sequenceTree } from "./sequenceTree"
+export { stringifyJSON } from "./stringifyJSON"
+export { swap } from "./swap"
+export { tailRec } from "./tailRec"
+export { toError } from "./toError"
+export { traverse } from "./traverse"
+export { traverseArray, traverseArray_ } from "./traverseArray"
 export {
-  Do,
-  Either,
-  Left,
-  Right,
-  URI,
-  URIM,
-  alt,
-  ap,
-  apFirst,
-  apSecond,
-  bimap,
-  chain,
-  chainFirst,
-  duplicate,
-  either,
-  elem,
-  exists,
-  extend,
-  failable,
-  filterOrElse,
-  flatten,
-  fold,
-  foldMap,
-  fromNullable,
-  fromOption,
-  fromPredicate,
-  getApplyMonoid,
-  getApplySemigroup,
-  getEq,
-  getOrElse,
-  getSemigroup,
-  getShow,
-  getValidation,
-  getValidationMonoid,
-  getValidationSemigroup,
-  getWitherable,
-  isLeft,
-  isRight,
-  left,
-  leftW,
-  map,
-  mapLeft,
-  nonFailable,
-  orElse,
-  parseJSON,
-  reduce,
-  reduceRight,
-  right,
-  rightW,
-  sequenceArray,
-  sequenceRecord,
-  sequenceS,
-  sequenceT,
-  sequenceTree,
-  stringifyJSON,
-  swap,
-  toError,
-  traverseArray,
   traverseArrayWithIndex,
-  traverseRecord,
+  traverseArrayWithIndex_
+} from "./traverseArrayWithIndex"
+export { traverseRecord, traverseRecord_ } from "./traverseRecord"
+export {
   traverseRecordWithIndex,
-  traverseTree,
-  tryCatch,
-  widenLeft,
-  widenRight,
-  wiltArray,
-  wiltRecord,
-  witherArray,
-  witherRecord
-} from "./either"
-
-export { sequenceOption, traverseOption, wiltOption, witherOption } from "./option"
+  traverseRecordWithIndex_
+} from "./traverseRecordWithIndex"
+export { traverseTree, traverseTree_ } from "./traverseTree"
+export { tryCatch } from "./tryCatch"
+export { URI } from "./URI"
+export { wiltArray, wiltArray_ } from "./wiltArray"
+export { wiltRecord, wiltRecord_ } from "./wiltRecord"
+export { witherArray, witherArray_ } from "./witherArray"
+export { witherRecord, witherRecord_ } from "./witherRecord"
+export { sequenceOption } from "./sequenceOption"
+export { traverseOption, traverseOption_ } from "./traverseOption"
+export { wiltOption, wiltOption_ } from "./wiltOption"
+export { witherOption, witherOption_ } from "./witherOption"

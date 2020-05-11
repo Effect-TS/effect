@@ -1,5 +1,5 @@
-import { either } from "../Either/either"
+import { sequence } from "../Either/sequence"
 
 import { effect } from "./effect"
 
-export const sequenceEither = either.sequence(effect)
+export const sequenceEither = sequence(effect)
