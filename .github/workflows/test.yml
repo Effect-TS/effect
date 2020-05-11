@@ -21,6 +21,11 @@ jobs:
           yarn
           yarn lerna run build --scope @matechs/core
           yarn jest shaking/core --detectOpenHandles
+          cd shaking/core
+          yarn tsc bench/*.ts
+          node bench/index.js
+          node bench/nestedChain.js
+          node bench/nestedMap.js
         env:
           CI: "true"
 
