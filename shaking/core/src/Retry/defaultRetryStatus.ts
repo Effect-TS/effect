@@ -1,5 +1,6 @@
-import type { RetryStatus } from "./RetryStatus"
+import * as O from "../Option"
 
+import type { RetryStatus } from "./RetryStatus"
 /**
  * Initial, default retry status. Exported mostly to allow user code
  * to test their handlers and retry policies.

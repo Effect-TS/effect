@@ -1,3 +1,5 @@
+import * as O from "../Option"
+
 import type { RetryPolicy } from "./RetryPolicy"
 
 /**

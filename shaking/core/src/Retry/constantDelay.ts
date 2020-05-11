@@ -1,5 +1,6 @@
-import type { RetryPolicy } from "./RetryPolicy"
+import * as O from "../Option"
 
+import type { RetryPolicy } from "./RetryPolicy"
 /**
  * Constant delay with unlimited retries
  *
