@@ -1,15 +1,13 @@
-export {
-  Eq,
-  URI,
-  contramap,
-  eq,
-  eqBoolean,
-  eqDate,
-  eqNumber,
-  eqStrict,
-  eqString,
-  fromEquals,
-  getStructEq,
-  getTupleEq,
-  strictEqual
-} from "fp-ts/lib/Eq"
+export { contramap_, contramap } from "./contramap"
+export type { Eq } from "./Eq"
+export { eqBoolean } from "./eqBoolean"
+export { eqDate } from "./eqDate"
+export { eqNumber } from "./eqNumber"
+export { eqString } from "./eqString"
+export { fromEquals } from "./fromEquals"
+export { getMonoid } from "./getMonoid"
+export { getStructEq } from "./getStructEq"
+export { getTupleEq } from "./getTupleEq"
+export { eq } from "./instances"
+export { strictEqual } from "./strictEqual"
+export { URI } from "./URI"
