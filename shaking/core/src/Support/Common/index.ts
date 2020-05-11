@@ -1,13 +1,5 @@
-export type {
-  Effect,
-  Managed,
-  Stream,
-  StreamEither,
-  ManagedURI,
-  EffectURI,
-  StreamEitherURI,
-  StreamURI
-} from "./types"
+export type { Effect, Managed, Stream, StreamEither } from "./types"
+export { ManagedURI, EffectURI, StreamEitherURI, StreamURI } from "./types"
 export type { AsyncCancelContFn, AsyncContFn, AsyncFn } from "./async"
 export type { EffectTag } from "./tags"
 export {

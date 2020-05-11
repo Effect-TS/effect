@@ -13,6 +13,7 @@ import * as L from "../List"
 import * as Mg from "../Magma"
 import * as M from "../Managed"
 import * as Mp from "../Map"
+import * as Mn from "../Monoid"
 import * as Nea from "../NonEmptyArray"
 import * as O from "../Option"
 import * as Ord from "../Ord"
@@ -79,5 +80,6 @@ export {
   Ti,
   Tr,
   Tu,
-  U
+  U,
+  Mn
 }
