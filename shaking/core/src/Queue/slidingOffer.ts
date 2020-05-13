@@ -1,3 +1,4 @@
+import * as O from "../Option"
 import { pipe } from "../Pipe"
 import type { Dequeue } from "../Support/Dequeue"
 
