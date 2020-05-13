@@ -1,7 +1,5 @@
-export {
-  ConcurrentQueue,
-  boundedQueue,
-  droppingQueue,
-  slidingQueue,
-  unboundedQueue
-} from "./queue"
+export { boundedQueue } from "./boundedQueue"
+export type { ConcurrentQueue } from "./ConcurrentQueue"
+export { droppingQueue } from "./droppingQueue"
+export { slidingQueue } from "./slidingQueue"
+export { unboundedQueue } from "./unboundedQueue"
