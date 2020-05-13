@@ -1,3 +1,5 @@
+import * as T from "../Effect"
+
 import type { Implementation } from "./Implementation"
 import type { ImplementationEnv } from "./ImplementationEnv"
 import type { ModuleShape } from "./ModuleShape"

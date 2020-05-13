@@ -1,4 +1,5 @@
 import type { Provider } from "../Effect"
+import * as T from "../Effect"
 import { pipe } from "../Pipe"
 import type { Effect } from "../Support/Common"
 
