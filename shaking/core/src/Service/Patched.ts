@@ -1,5 +1,5 @@
-import { FunctionN } from "../Function"
-import { Effect } from "../Support/Common"
+import type { FunctionN } from "../Function"
+import type { Effect } from "../Support/Common"
 
 export type Patched<A, B> = B extends FunctionN<
   infer ARG,

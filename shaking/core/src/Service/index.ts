@@ -1,24 +1,24 @@
-export {
-  Derived,
-  ExtractShape,
-  Implementation,
-  ImplementationEnv,
-  InferR,
-  MergeSpec,
-  ModuleShape,
-  ModuleSpec,
-  Patched,
-  TypeOf,
-  UnionToIntersection,
-  access,
-  cn,
-  define,
-  fn,
-  implement,
-  implementWith,
-  implementWithManaged,
-  instance,
-  opaque,
-  providing,
-  specURI
-} from "./service"
+export type { Derived } from "./Derived"
+export type { ExtractShape } from "./ExtractShape"
+export type { Implementation } from "./Implementation"
+export type { ImplementationEnv } from "./ImplementationEnv"
+export type { InferR } from "./InferR"
+export type { MergeSpec } from "./MergeSpec"
+export type { ModuleShape } from "./ModuleShape"
+export type { ModuleSpec } from "./ModuleSpec"
+export type { Patched } from "./Patched"
+export type { TypeOf } from "./TypeOf"
+export type { UnionToIntersection } from "./UnionToIntersection"
+export type { access } from "./access"
+export type { cn } from "./cn"
+export type { define } from "./define"
+export type { fn } from "./fn"
+export type { implement } from "./implement"
+export type { implementWith } from "./implementWith"
+export type { implementWithManaged } from "./implementWithManaged"
+export type { instance } from "./instance"
+export type { opaque } from "./opaque"
+export type { providing } from "./providing"
+export type { specURI } from "./specURI"
+export type { EnvOf } from "./EnvOf"
+export type { OnlyNew } from "./OnlyNew"
