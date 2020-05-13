@@ -1,38 +1,32 @@
-export {
-  Cons,
-  List,
-  Nil,
-  URI,
-  ap,
-  cata,
-  catac,
-  chain,
-  concat,
-  cons,
-  filter,
-  filterc,
-  find,
-  findc,
-  flatten,
-  foldl,
-  foldlc,
-  foldr,
-  foldrc,
-  fromArray,
-  head,
-  isCons,
-  isEmpty,
-  isNil,
-  last,
-  lift,
-  list,
-  map,
-  nil,
-  nonEmpty,
-  of,
-  reverse,
-  size,
-  snoc,
-  tail,
-  toArray
-} from "./list"
+export { ap } from "./ap"
+export { cata } from "./cata"
+export { catac } from "./catac"
+export { chain } from "./chain"
+export type { Cons, List, Nil } from "./common"
+export { filter } from "./filter"
+export { filterc } from "./filterc"
+export { find } from "./find"
+export { findc } from "./findc"
+export { flatten } from "./flatten"
+export { foldl } from "./foldl"
+export { foldlc } from "./foldlc"
+export { foldr } from "./foldr"
+export { foldrc } from "./foldrc"
+export { fromArray } from "./fromArray"
+export { head } from "./head"
+export { list } from "./instances"
+export { isCons } from "./isCons"
+export { isEmpty } from "./isEmpty"
+export { isNil } from "./isNil"
+export { last } from "./last"
+export { lift } from "./lift"
+export { map } from "./map"
+export { nil } from "./nil"
+export { nonEmpty } from "./nonEmpty"
+export { of } from "./of"
+export { reverse } from "./reverse"
+export { size } from "./size"
+export { snoc } from "./snoc"
+export { tail } from "./tail"
+export { toArray } from "./toArray"
+export { URI } from "./URI"
