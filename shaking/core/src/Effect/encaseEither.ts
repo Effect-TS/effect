@@ -1,5 +1,4 @@
-import type { Either } from "fp-ts/lib/Either"
-
+import type { Either } from "../Either/Either"
 import { IPureEither } from "../Support/Common"
 import type { SyncE } from "../Support/Common/effect"
 

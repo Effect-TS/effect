@@ -7,7 +7,7 @@ import { reduceWithIndex_ } from "./reduceWithIndex_"
 import { snoc } from "./snoc"
 import { zero } from "./zero"
 
-export const traverseWithIndex_: TraverseWithIndex1<URI, number> = <F>(
+export const traverseWithIndex: TraverseWithIndex1<URI, number> = <F>(
   F: Applicative<F>
 ) => <A, B>(
   ta: ReadonlyArray<A>,

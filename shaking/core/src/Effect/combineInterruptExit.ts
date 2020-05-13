@@ -1,6 +1,6 @@
-import { flatten as flattenArray, filter as filterArray } from "fp-ts/lib/Array"
 import { pipe } from "fp-ts/lib/pipeable"
 
+import { flatten as flattenArray, filter as filterArray } from "../Array"
 import { Exit, interruptWithError } from "../Exit"
 import { Effect } from "../Support/Common/effect"
 

@@ -1,5 +1,4 @@
-import type { Either } from "fp-ts/lib/Either"
-
+import type { Either } from "../Either/Either"
 import type { Effect } from "../Support/Common/effect"
 
 import { chain_ } from "./chain"

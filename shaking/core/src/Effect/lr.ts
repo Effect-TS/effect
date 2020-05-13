@@ -1,4 +1,4 @@
-import type { Either } from "fp-ts/lib/Either"
+import type { Either } from "../Either/Either"
 
 export const left = <E>(_: E): Either<E, never> => ({
   _tag: "Left",

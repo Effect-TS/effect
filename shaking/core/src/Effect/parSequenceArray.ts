@@ -1,5 +1,5 @@
-import { array } from "fp-ts/lib/Array"
+import { sequence } from "../Array"
 
 import { parEffect } from "./parEffect"
 
-export const parSequenceArray = array.sequence(parEffect)
+export const parSequenceArray = sequence(parEffect)

@@ -36,7 +36,7 @@ import { reduce_ } from "./reduce_"
 import { separate } from "./separate"
 import { sequence } from "./sequence"
 import { traverse } from "./traverse"
-import { traverseWithIndex_ } from "./traverseWithIndex_"
+import { traverseWithIndex } from "./traverseWithIndex"
 import { unfold } from "./unfold"
 import { wilt } from "./wilt"
 import { wither } from "./wither"
@@ -82,7 +82,7 @@ export const readonlyArray: Monad1<URI> &
   reduceWithIndex: reduceWithIndex_,
   foldMapWithIndex: foldMapWithIndex_,
   reduceRightWithIndex: reduceRightWithIndex_,
-  traverseWithIndex: traverseWithIndex_,
+  traverseWithIndex,
   partitionMapWithIndex: partitionMapWithIndex_,
   partitionWithIndex: partitionWithIndex_,
   filterMapWithIndex: filterMapWithIndex_,

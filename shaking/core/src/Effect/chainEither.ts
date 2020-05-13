@@ -1,5 +1,4 @@
-import type { Either } from "fp-ts/lib/Either"
-
+import type { Either } from "../Either/Either"
 import type { FunctionN } from "../Function"
 import type { Effect } from "../Support/Common/effect"
 
