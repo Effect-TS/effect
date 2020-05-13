@@ -1,6 +1,7 @@
 import { Semigroup } from "../../Semigroup"
 
 import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import { concat } from "./concat"
 
 /**
  * Builds a `Semigroup` instance for `ReadonlyNonEmptyArray`
