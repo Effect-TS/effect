@@ -3,25 +3,33 @@ import type { Kind4 } from "fp-ts/lib/HKT"
 
 import { constVoid } from "../../Function"
 import type {
+  ATypeOf,
+  ETypeOf,
   MaURIS,
   Monad4E,
-  STypeOf,
+  Monad4EP,
   RTypeOf,
-  ETypeOf,
-  UnionToIntersection,
-  ATypeOf,
-  Monad4EP
+  STypeOf,
+  UnionToIntersection
 } from "../Overloads"
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
-export class Pipe<A> {
-  constructor(private readonly _: A) {
+export class Pipe<A, A2> {
+  constructor(private readonly _: A, private readonly _2: A2) {
+    this.do = this.do.bind(this)
+    this.access = this.access.bind(this)
     this.pipe = this.pipe.bind(this)
     this.done = this.done.bind(this)
   }
+  do<B>(f: (_: A2) => B) {
+    return new Pipe(f(this._2), this._2)
+  }
+  access<B>(f: (_: A2) => (_: A) => B) {
+    return new Pipe(f(this._2)(this._), this._2)
+  }
   pipe<B>(f: (_: A) => B) {
-    return new Pipe(f(this._))
+    return new Pipe(f(this._), this._2)
   }
   done(): A {
     return this._
@@ -52,12 +60,12 @@ export class ForImpl<U extends MaURIS, S, R, E, A> {
   }
   withPipe<N extends string, S2, R2, E2, A2>(
     n: Exclude<N, keyof A>,
-    f: (_: Pipe<A>) => Kind4<U, S2, R2, E2, A2>
+    f: (_: Pipe<A, A>) => Kind4<U, S2, R2, E2, A2>
   ) {
     return new ForImpl<U, S | S2, R & R2, E | E2, A & { [k in N]: A2 }>(
       this.M,
       this.M.chain(this.res, (k) =>
-        this.M.map(f(new Pipe(k)), (_) => Object.assign(k, { [n]: _ }))
+        this.M.map(f(new Pipe(k, k)), (_) => Object.assign(k, { [n]: _ }))
       )
     )
   }

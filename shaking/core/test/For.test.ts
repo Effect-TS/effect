@@ -17,10 +17,11 @@ describe("For", () => {
         p: T.pure(2),
         q: T.trySyncMap(() => "test")(() => 3)
       }))
-      .withPipe("l", (s) =>
-        s
-          .pipe(({ k }) => T.pure(k + 1))
+      .withPipe("l", (op) =>
+        op
+          .do(({ k }) => T.pure(k + 1))
           .pipe(T.shiftAfter)
+          .access(({ k }) => T.map((n) => n + 1 + k))
           .done()
       )
       .do(() =>

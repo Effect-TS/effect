@@ -1,37 +1,37 @@
 import type { Either } from "../../Either"
-import { Exit, Cause, interrupt as interruptExit, Done, done, raise } from "../../Exit"
+import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "../../Exit"
 import type { FunctionN } from "../../Function"
 import { none } from "../../Option"
 import type * as EffectTypes from "../Common/effect"
 import {
-  Instructions,
-  IPure,
   IAccessEnv,
-  IProvideEnv,
-  IPureOption,
-  IPureEither,
-  IRaised,
-  ICompleted,
-  ISuspended,
+  IAccessInterruptible,
+  IAccessRuntime,
   IAsync,
   IChain,
-  IMap,
   ICollapse,
+  ICompleted,
   IInterruptibleRegion,
-  IAccessRuntime,
-  IAccessInterruptible
+  IMap,
+  Instructions,
+  IProvideEnv,
+  IPure,
+  IPureEither,
+  IPureOption,
+  IRaised,
+  ISuspended
 } from "../Common/instructions"
 import { DoublyLinkedList } from "../DoublyLinkedList"
 import { defaultRuntime } from "../Runtime"
 
 import {
-  FrameType,
-  Frame,
-  MapFrame,
   FoldFrame,
-  InterruptFrame,
   FoldFrameTag,
+  Frame,
+  FrameType,
+  InterruptFrame,
   InterruptFrameTag,
+  MapFrame,
   MapFrameTag
 } from "./driver"
 
@@ -47,25 +47,17 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   interruptRegionStack: boolean[] | undefined
   envStack = new DoublyLinkedList<any>()
 
-  set(a: Exit<E, A>): void {
+  isComplete(): boolean {
+    return this.completed !== null
+  }
+
+  complete(a: Exit<E, A>): void {
     this.completed = a
     if (this.listeners !== undefined) {
       for (const f of this.listeners) {
         f(a)
       }
     }
-  }
-
-  isComplete(): boolean {
-    return this.completed !== null
-  }
-
-  complete(a: Exit<E, A>): void {
-    /* istanbul ignore if */
-    if (this.completed !== null) {
-      throw new Error("Die: Completable is already completed")
-    }
-    this.set(a)
   }
 
   isInterruptible(): boolean {
@@ -149,8 +141,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   }
 
   IAccessEnv(_: IAccessEnv<any>) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const env = !this.envStack.empty() ? this.envStack.tail!.value : {}
+    const env = this.envStack.tail?.value || {}
     return this.next(env)
   }
 
