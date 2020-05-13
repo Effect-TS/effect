@@ -7,7 +7,7 @@ import { reduce_ } from "./reduce_"
 import { snoc } from "./snoc"
 import { zero } from "./zero"
 
-export const sequence_: Sequence1<URI> = <F>(F: Applicative<F>) => <A>(
+export const sequence: Sequence1<URI> = <F>(F: Applicative<F>) => <A>(
   ta: ReadonlyArray<HKT<F, A>>
 ): HKT<F, ReadonlyArray<A>> => {
   return reduce_(ta, F.of(zero()), (fas, fa) =>

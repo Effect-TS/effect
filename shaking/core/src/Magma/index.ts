@@ -1,1 +1,1 @@
-export { Magma } from "fp-ts/lib/Magma"
+export type { Magma } from "fp-ts/lib/Magma"

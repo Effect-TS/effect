@@ -1,5 +1,4 @@
 import { record as Rec } from "fp-ts"
-import { pipe } from "fp-ts/lib/pipeable"
 
 import {
   Effect,
@@ -23,6 +22,7 @@ import {
   chain_
 } from "../Effect"
 import { Exit } from "../Exit"
+import { pipe } from "../Pipe"
 import { ATypeOf, ETypeOf, RTypeOf, UnionToIntersection } from "../Support/Overloads"
 
 export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>(

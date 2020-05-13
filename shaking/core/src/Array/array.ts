@@ -43,9 +43,9 @@ import { wither } from "./wither"
 import { zero } from "./zero"
 
 /**
- * @since 2.5.0
+ * @since 2.0.0
  */
-export const readonlyArray: Monad1<URI> &
+export const array: Monad1<URI> &
   Foldable1<URI> &
   Unfoldable1<URI> &
   TraversableWithIndex1<URI, number> &

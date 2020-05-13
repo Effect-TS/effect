@@ -52,6 +52,6 @@ module.exports = {
       },
     ],
     "object-shorthand": "error",
-    "prefer-destructuring": "warn",
+    "prefer-destructuring": "off",
   },
 };

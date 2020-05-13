@@ -1,7 +1,7 @@
 import type { Option } from "../../Option/Option"
 import { isSome } from "../../Option/isSome"
 
-export const unfold_ = <A, B>(
+export const unfold = <A, B>(
   b: B,
   f: (b: B) => Option<readonly [A, B]>
 ): ReadonlyArray<A> => {

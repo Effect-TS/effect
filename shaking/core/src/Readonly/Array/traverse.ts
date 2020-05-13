@@ -5,7 +5,7 @@ import type { Traverse1 } from "fp-ts/lib/Traversable"
 import { URI } from "./URI"
 import { traverseWithIndex_ } from "./traverseWithIndex_"
 
-export const traverse_: Traverse1<URI> = <F>(
+export const traverse: Traverse1<URI> = <F>(
   F: Applicative<F>
 ): (<A, B>(
   ta: ReadonlyArray<A>,

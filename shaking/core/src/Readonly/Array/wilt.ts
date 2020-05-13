@@ -6,15 +6,15 @@ import type { Wilt1 } from "fp-ts/lib/Witherable"
 import type { Either } from "../../Either/Either"
 
 import { URI } from "./URI"
-import { separate_ } from "./separate_"
-import { traverse_ } from "./traverse_"
+import { separate } from "./separate"
+import { traverse } from "./traverse"
 
-export const wilt_: Wilt1<URI> = <F>(
+export const wilt: Wilt1<URI> = <F>(
   F: Applicative<F>
 ): (<A, B, C>(
   wa: ReadonlyArray<A>,
   f: (a: A) => HKT<F, Either<B, C>>
 ) => HKT<F, Separated<ReadonlyArray<B>, ReadonlyArray<C>>>) => {
-  const traverseF = traverse_(F)
-  return (wa, f) => F.map(traverseF(wa, f), separate_)
+  const traverseF = traverse(F)
+  return (wa, f) => F.map(traverseF(wa, f), separate)
 }

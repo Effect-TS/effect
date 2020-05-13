@@ -5,15 +5,15 @@ import type { Wither1 } from "fp-ts/lib/Witherable"
 import type { Option } from "../../Option/Option"
 
 import { URI } from "./URI"
-import { compact_ } from "./compact_"
-import { traverse_ } from "./traverse_"
+import { compact } from "./compact"
+import { traverse } from "./traverse"
 
-export const wither_: Wither1<URI> = <F>(
+export const wither: Wither1<URI> = <F>(
   F: Applicative<F>
 ): (<A, B>(
   ta: ReadonlyArray<A>,
   f: (a: A) => HKT<F, Option<B>>
 ) => HKT<F, ReadonlyArray<B>>) => {
-  const traverseF = traverse_(F)
-  return (wa, f) => F.map(traverseF(wa, f), compact_)
+  const traverseF = traverse(F)
+  return (wa, f) => F.map(traverseF(wa, f), compact)
 }
