@@ -1,5 +1,6 @@
 export { ap } from "./ap"
 export { cata } from "./cata"
+export { cons } from "./cons"
 export { catac } from "./catac"
 export { chain } from "./chain"
 export type { Cons, List, Nil } from "./common"
