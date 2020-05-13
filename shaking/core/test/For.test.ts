@@ -32,7 +32,7 @@ describe("For", () => {
       .done()
 
     expect(await T.runToPromiseExit(X)).toStrictEqual(
-      Ex.done({ k: 1, y: 2, z: "ok", f: 6, p: 2, q: 3, l: 2 })
+      Ex.done({ k: 1, y: 2, z: "ok", f: 6, p: 2, q: 3, l: 4 })
     )
 
     expect(doExecuted).toStrictEqual(true)
