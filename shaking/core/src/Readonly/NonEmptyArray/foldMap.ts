@@ -1,6 +1,6 @@
-import { Semigroup } from "../../Semigroup"
+import type { Semigroup } from "../../Semigroup"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const foldMap = <S>(S: Semigroup<S>) => <A>(f: (a: A) => S) => (
   fa: ReadonlyNonEmptyArray<A>

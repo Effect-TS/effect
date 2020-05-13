@@ -1,4 +1,4 @@
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * Get all but the last element of a non empty array, creating a new array.

@@ -1,6 +1,6 @@
 import { snoc as snoc_1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * Append an element to the end of an array, creating a new non empty array

@@ -1,9 +1,9 @@
 import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
 
-import { Eq } from "../../Eq"
+import type { Eq } from "../../Eq"
 import { empty } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * Group equal, consecutive elements of an array into non empty arrays.

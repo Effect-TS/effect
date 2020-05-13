@@ -1,6 +1,6 @@
 import { reduce_ as reduce__1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const reduce_: <A, B>(
   fa: ReadonlyNonEmptyArray<A>,

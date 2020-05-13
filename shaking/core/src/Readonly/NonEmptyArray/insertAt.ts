@@ -1,7 +1,7 @@
-import { Option } from "../../Option"
+import type { Option } from "../../Option"
 import { insertAt as insertAt_1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * @since 2.5.0

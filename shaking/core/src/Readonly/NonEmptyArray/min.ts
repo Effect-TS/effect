@@ -1,7 +1,7 @@
-import { Ord } from "../../Ord"
+import type { Ord } from "../../Ord"
 import { getMeetSemigroup } from "../../Semigroup"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * @since 2.5.0

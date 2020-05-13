@@ -1,6 +1,6 @@
 import { extend_ as extend__1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const extend_: <A, B>(
   wa: ReadonlyNonEmptyArray<A>,

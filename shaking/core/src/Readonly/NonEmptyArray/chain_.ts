@@ -1,6 +1,6 @@
 import { chain_ as chain__1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const chain_: <A, B>(
   fa: ReadonlyNonEmptyArray<A>,

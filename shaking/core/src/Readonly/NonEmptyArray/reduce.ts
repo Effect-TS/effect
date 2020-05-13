@@ -1,6 +1,6 @@
 import { reduce as reduce_1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const reduce: <A, B>(
   b: B,

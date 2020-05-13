@@ -1,4 +1,4 @@
-import { Sequence1 } from "fp-ts/lib/Traversable"
+import type { Sequence1 } from "fp-ts/lib/Traversable"
 
 import { sequence as sequence_1 } from "../Array"
 

@@ -1,6 +1,6 @@
 import { apSecond as apSecond_1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const apSecond: <B>(
   fb: ReadonlyNonEmptyArray<B>

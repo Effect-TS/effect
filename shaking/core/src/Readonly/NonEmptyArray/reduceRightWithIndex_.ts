@@ -1,6 +1,6 @@
 import { reduceRightWithIndex_ as reduceRightWithIndex__1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const reduceRightWithIndex_: <A, B>(
   fa: ReadonlyNonEmptyArray<A>,

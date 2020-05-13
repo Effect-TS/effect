@@ -1,6 +1,6 @@
-import { Option } from "../../Option"
+import type { Option } from "../../Option"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 import { fromReadonlyArray } from "./fromReadonlyArray"
 
 /**

@@ -1,4 +1,4 @@
-import { Eq } from "../../Eq"
+import type { Eq } from "../../Eq"
 import { getEq as getEq_1 } from "../Array"
 
 import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"

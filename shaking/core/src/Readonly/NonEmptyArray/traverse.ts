@@ -1,4 +1,4 @@
-import { Traverse1 } from "fp-ts/lib/Traversable"
+import type { Traverse1 } from "fp-ts/lib/Traversable"
 
 import { traverse as traverse_1 } from "../Array"
 

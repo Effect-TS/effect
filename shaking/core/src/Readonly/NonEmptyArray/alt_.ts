@@ -1,4 +1,4 @@
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 import { concat } from "./concat"
 
 export const alt_: <A>(

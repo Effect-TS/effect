@@ -1,6 +1,6 @@
 import { map as map_1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const map: <A, B>(
   f: (a: A) => B

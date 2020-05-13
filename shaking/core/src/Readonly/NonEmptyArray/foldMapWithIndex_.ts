@@ -1,8 +1,7 @@
-import type { Monoid } from "fp-ts/lib/Monoid"
-
+import type { Monoid } from "../../Monoid"
 import { foldMapWithIndex_ as foldMapWithIndex__1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const foldMapWithIndex_: <M>(
   M: Monoid<M>

@@ -1,7 +1,7 @@
-import { Option } from "../../Option"
+import type { Option } from "../../Option"
 import { fromArray as fromArray_1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 import { fromReadonlyArray } from "./fromReadonlyArray"
 
 /**

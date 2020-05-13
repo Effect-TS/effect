@@ -1,7 +1,7 @@
 import { none, Option, some } from "../../Option"
 import { isNonEmpty } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * Builds a `ReadonlyNonEmptyArray` from an array returning `none` if `as` is an empty array

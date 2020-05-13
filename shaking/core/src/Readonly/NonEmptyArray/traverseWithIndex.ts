@@ -1,4 +1,4 @@
-import { TraverseWithIndex1 } from "fp-ts/lib/TraversableWithIndex"
+import type { TraverseWithIndex1 } from "fp-ts/lib/TraversableWithIndex"
 
 import { traverseWithIndex as traverseWithIndex_1 } from "../Array"
 

@@ -1,7 +1,7 @@
-import { Predicate, Refinement } from "../../Function"
-import { Option } from "../../Option"
+import type { Predicate, Refinement } from "../../Function"
+import type { Option } from "../../Option"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 import { filterWithIndex } from "./filterWithIndex"
 
 /**

@@ -1,6 +1,6 @@
-import { Semigroup } from "../../Semigroup"
+import type { Semigroup } from "../../Semigroup"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 import { concat } from "./concat"
 
 /**

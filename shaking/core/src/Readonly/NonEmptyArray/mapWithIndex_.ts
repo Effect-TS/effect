@@ -1,6 +1,6 @@
 import { mapWithIndex_ as mapWithIndex__1 } from "../Array"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 export const mapWithIndex_: <A, B>(
   fa: ReadonlyNonEmptyArray<A>,

@@ -1,7 +1,7 @@
 import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
 import type { ReadonlyRecord } from "fp-ts/lib/ReadonlyRecord"
 
-import { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
+import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
 /**
  * Splits an array into sub-non-empty-arrays stored in an object, based on the result of calling a `string`-returning
