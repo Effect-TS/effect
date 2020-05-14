@@ -1,6 +1,7 @@
 import * as array from "./Array"
 import * as boolean from "./Boolean"
 import * as concurrentRef from "./ConcurrentRef"
+import * as const_ from "./Const"
 import * as deferred from "./Deferred"
 import * as effect from "./Effect"
 import * as effectOption from "./EffectOption"
@@ -83,5 +84,6 @@ export {
   recursionSchemes,
   prelude,
   monoid,
-  readOnly
+  readOnly,
+  const_ as const
 }
