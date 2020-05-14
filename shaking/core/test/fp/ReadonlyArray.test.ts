@@ -5,14 +5,14 @@ import * as fc from "fast-check"
 import * as C from "fp-ts/lib/Const"
 import * as I from "fp-ts/lib/Identity"
 
-import * as E from "../src/Either"
-import * as Eq from "../src/Eq"
-import * as F from "../src/Function"
-import * as M from "../src/Monoid"
-import * as O from "../src/Option"
-import * as Ord from "../src/Ord"
-import * as _ from "../src/Readonly/Array"
-import { showString } from "../src/Show"
+import * as E from "../../src/Either"
+import * as Eq from "../../src/Eq"
+import * as F from "../../src/Function"
+import * as M from "../../src/Monoid"
+import * as O from "../../src/Option"
+import * as Ord from "../../src/Ord"
+import * as _ from "../../src/Readonly/Array"
+import { showString } from "../../src/Show"
 
 describe("ReadonlyArray", () => {
   const as: ReadonlyArray<number> = [1, 2, 3]

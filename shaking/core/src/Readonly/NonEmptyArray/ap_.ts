@@ -1,4 +1,4 @@
-import { ap as ap_1 } from "../Array"
+import { ap_ as ap_1 } from "../Array"
 
 import type { ReadonlyNonEmptyArray } from "./ReadonlyNonEmptyArray"
 
