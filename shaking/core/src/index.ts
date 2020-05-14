@@ -9,6 +9,7 @@ import * as either from "./Either"
 import * as eq from "./Eq"
 import * as exit from "./Exit"
 import * as functionF from "./Function"
+import * as identity from "./Identity"
 import * as list from "./List"
 import * as magma from "./Magma"
 import * as managed from "./Managed"
@@ -85,5 +86,6 @@ export {
   prelude,
   monoid,
   readOnly,
-  const_ as const
+  const_ as const,
+  identity
 }
