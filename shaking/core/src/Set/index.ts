@@ -1,30 +1,28 @@
-export {
-  chain,
-  compact,
-  difference,
-  elem,
-  empty,
-  every,
-  filter,
-  filterMap,
-  foldMap,
-  fromArray,
-  getEq,
-  getIntersectionSemigroup,
-  getShow,
-  getUnionMonoid,
-  insert,
-  intersection,
-  map,
-  partition,
-  partitionMap,
-  reduce,
-  remove,
-  separate,
-  singleton,
-  some,
-  subset,
-  toArray,
-  toggle,
-  union
-} from "fp-ts/lib/Set"
+export { getShow } from "./getShow"
+export { empty } from "./empty"
+export { toArray } from "./toArray"
+export { getEq } from "./getEq"
+export { some } from "./some"
+export { map } from "./map"
+export { every } from "./every"
+export { chain } from "./chain"
+export { subset } from "./subset"
+export { filter } from "./filter"
+export { partition } from "./partition"
+export { elem } from "./elem"
+export { union } from "./union"
+export { intersection } from "./intersection"
+export { partitionMap } from "./partitionMap"
+export { difference } from "./difference"
+export { getUnionMonoid } from "./getUnionMonoid"
+export { getIntersectionSemigroup } from "./getIntersectionSemigroup"
+export { reduce } from "./reduce"
+export { foldMap } from "./foldMap"
+export { singleton } from "./singleton"
+export { insert } from "./insert"
+export { remove } from "./remove"
+export { toggle } from "./toggle"
+export { fromArray } from "./fromArray"
+export { compact } from "./compact"
+export { separate } from "./separate"
+export { filterMap } from "./filterMap"
