@@ -3,13 +3,13 @@ import {
   cons,
   List,
   nil,
-  cata,
+  cata_,
   reverse,
-  catac,
-  filter,
+  cata,
+  filter_,
   size,
   isEmpty,
-  find,
+  find_,
   of as listOf
 } from "../../List"
 import { Option, some, none, option } from "../../Option"
@@ -30,14 +30,14 @@ class DequeueImpl<A> implements Dequeue<A> {
   constructor(readonly front: List<A>, readonly back: List<A>) {}
 
   take(): Option<readonly [A, Dequeue<A>]> {
-    return cata(
+    return cata_(
       this.front,
       (h, t) => some([h, new DequeueImpl(t, this.back)] as const),
       () =>
         pipe(
           this.back,
           reverse,
-          catac(
+          cata(
             (h, t) => some([h, new DequeueImpl(t, nil)] as const),
             () => none
           )
@@ -50,14 +50,14 @@ class DequeueImpl<A> implements Dequeue<A> {
   }
 
   pull(): Option<readonly [A, Dequeue<A>]> {
-    return cata(
+    return cata_(
       this.back,
       (h, t) => some([h, new DequeueImpl(this.front, t)] as const),
       () =>
         pipe(
           this.front,
           reverse,
-          catac(
+          cata(
             (h, t) => some([h, new DequeueImpl(nil, t)] as const),
             () => none
           )
@@ -70,7 +70,7 @@ class DequeueImpl<A> implements Dequeue<A> {
   }
 
   filter(p: Predicate<A>): Dequeue<A> {
-    return new DequeueImpl(filter(this.front, p), filter(this.back, p))
+    return new DequeueImpl(filter_(this.front, p), filter_(this.back, p))
   }
 
   size(): number {
@@ -82,7 +82,7 @@ class DequeueImpl<A> implements Dequeue<A> {
   }
 
   find(p: Predicate<A>): Option<A> {
-    return option.alt(find(this.front, p), () => find(this.back, p))
+    return option.alt(find_(this.front, p), () => find_(this.back, p))
   }
 }
 

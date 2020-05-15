@@ -1,8 +1,8 @@
-import type { List } from "./common"
+import { List } from "./common"
 import { cons } from "./cons"
-import { foldr } from "./foldr"
+import { foldr_ } from "./foldr_"
 import { of } from "./of"
 
-export function snoc<A>(append: A, list: List<A>): List<A> {
-  return foldr(list, of(append), cons)
+export function snoc<A>(append: A): (list: List<A>) => List<A> {
+  return (list) => foldr_(list, of(append), cons)
 }

@@ -1,18 +1,9 @@
-import type { Predicate } from "../Function"
-import { Option } from "../Option/Option"
-import { none } from "../Option/none"
-import { some } from "../Option/some"
+import type { FunctionN, Predicate } from "../Function"
+import type { Option } from "../Option/Option"
 
-import { List } from "./common"
-import { isCons } from "./isCons"
+import type { List } from "./common"
+import { find_ } from "./find_"
 
-export function find<A>(list: List<A>, f: Predicate<A>): Option<A> {
-  let iter = list
-  while (isCons(iter)) {
-    if (f(iter.head)) {
-      return some(iter.head)
-    }
-    iter = iter.tail
-  }
-  return none
+export function find<A>(f: Predicate<A>): FunctionN<[List<A>], Option<A>> {
+  return (list) => find_(list, f)
 }

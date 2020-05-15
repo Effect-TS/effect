@@ -1,10 +1,8 @@
-import { FunctionN, flip } from "../Function"
-import { pipe } from "../Pipe"
+import type { FunctionN } from "../Function"
 
 import type { List } from "./common"
-import { foldlc } from "./foldlc"
-import { reverse } from "./reverse"
+import { foldr_ } from "./foldr_"
 
-export function foldr<A, B>(list: List<A>, b: B, f: FunctionN<[A, B], B>): B {
-  return pipe(list, reverse, foldlc(b, flip(f)))
+export function foldr<A, B>(b: B, f: FunctionN<[A, B], B>): FunctionN<[List<A>], B> {
+  return (list) => foldr_(list, b, f)
 }

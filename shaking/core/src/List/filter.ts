@@ -1,10 +1,8 @@
-import type { Predicate } from "../Function"
+import type { FunctionN, Predicate } from "../Function"
 
 import type { List } from "./common"
-import { cons } from "./cons"
-import { foldr } from "./foldr"
-import { nil } from "./nil"
+import { filter_ } from "./filter_"
 
-export function filter<A>(list: List<A>, f: Predicate<A>): List<A> {
-  return foldr(list, nil as List<A>, (a, t) => (f(a) ? cons(a, t) : t))
+export function filter<A>(f: Predicate<A>): FunctionN<[List<A>], List<A>> {
+  return (list) => filter_(list, f)
 }

@@ -1,14 +1,8 @@
 import type { FunctionN } from "../Function"
 
-import { List } from "./common"
-import { isCons } from "./isCons"
+import type { List } from "./common"
+import { foldl_ } from "./foldl_"
 
-export function foldl<A, B>(list: List<A>, b: B, f: FunctionN<[B, A], B>): B {
-  let iter = list
-  let seed = b
-  while (isCons(iter)) {
-    seed = f(seed, iter.head)
-    iter = iter.tail
-  }
-  return seed
+export function foldl<A, B>(b: B, f: FunctionN<[B, A], B>): FunctionN<[List<A>], B> {
+  return (list) => foldl_(list, b, f)
 }

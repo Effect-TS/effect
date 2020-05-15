@@ -36,6 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+exports.fibEffect = exports.fibQio = exports.fibWave = exports.fib = exports.fibPromise = void 0;
 var core_1 = require("@qio/core");
 var benchmark_1 = require("benchmark");
 var wave = require("waveguide/lib/wave");

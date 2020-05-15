@@ -1,15 +1,11 @@
 import type { FunctionN, Lazy } from "../Function"
 
+import { cata_ } from "./cata_"
 import type { List } from "./common"
-import { isCons } from "./isCons"
 
 export function cata<A, B>(
-  list: List<A>,
   ifCons: FunctionN<[A, List<A>], B>,
   ifNil: Lazy<B>
-): B {
-  if (isCons(list)) {
-    return ifCons(list.head, list.tail)
-  }
-  return ifNil()
+): FunctionN<[List<A>], B> {
+  return (list) => cata_(list, ifCons, ifNil)
 }

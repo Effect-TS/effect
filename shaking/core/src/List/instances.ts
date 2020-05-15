@@ -4,14 +4,14 @@ import { flip } from "../Function"
 
 import { URI } from "./URI"
 import { ap } from "./ap"
-import { chain } from "./chain"
-import { map } from "./map"
+import { chain_ } from "./chain_"
+import { map_ } from "./map_"
 import { of } from "./of"
 
 export const list: Monad1<URI> = {
   URI,
-  map,
+  map: map_,
   of,
   ap: flip(ap),
-  chain
+  chain: chain_
 }

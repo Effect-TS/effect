@@ -1,16 +1,17 @@
-import type { FunctionN } from "../Function"
+import { FunctionN } from "../Function"
 import { pipe } from "../Pipe"
 
-import type { List } from "./common"
+import { List } from "./common"
 import { cons } from "./cons"
-import { foldlc } from "./foldlc"
+import { foldl } from "./foldl"
 import { nil } from "./nil"
 import { reverse } from "./reverse"
 
-export function map<A, B>(list: List<A>, f: FunctionN<[A], B>): List<B> {
-  return pipe(
-    list,
-    foldlc(nil as List<B>, (t, a) => cons(f(a), t)),
-    reverse
-  )
+export function map<A, B>(f: FunctionN<[A], B>): (list: List<A>) => List<B> {
+  return (list) =>
+    pipe(
+      list,
+      foldl(nil as List<B>, (t, a) => cons(f(a), t)),
+      reverse
+    )
 }
