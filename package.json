@@ -59,7 +59,7 @@
     "express": "^4.17.1",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",
-    "fp-ts": "^2.5.4",
+    "fp-ts": "^2.6.1",
     "fp-ts-contrib": "^0.1.15",
     "glob": "^7.1.6",
     "graphql": "^14.2.1",

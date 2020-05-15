@@ -16,7 +16,7 @@
     "@types/node": "^13.11.0"
   },
   "dependencies": {
-    "fp-ts": "^2.5.4",
+    "fp-ts": "^2.6.1",
     "fp-ts-contrib": "^0.1.15"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
