@@ -20,6 +20,7 @@ jobs:
           npm install -g yarn
           yarn
           yarn lerna run build --scope @matechs/core
+          yarn lerna run build --scope @matechs/model
           yarn jest shaking/core --detectOpenHandles
           cd shaking/core
           yarn tsc bench/*.ts
