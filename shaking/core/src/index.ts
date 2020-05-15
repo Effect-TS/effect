@@ -1,3 +1,4 @@
+import * as apply from "./Apply"
 import * as array from "./Array"
 import * as boolean from "./Boolean"
 import * as concurrentRef from "./ConcurrentRef"
@@ -87,5 +88,6 @@ export {
   monoid,
   readOnly,
   const_ as const,
-  identity
+  identity,
+  apply
 }
