@@ -6346,7 +6346,12 @@ fp-ts-contrib@^0.1.15:
   resolved "https://registry.yarnpkg.com/fp-ts-contrib/-/fp-ts-contrib-0.1.15.tgz#3b7225f7143f49b4a7719fa59bb9f04ff45bf634"
   integrity sha512-aSuDUJAHN3QBlDf8PJ8M62l7mdUNeOWTGFFuIrK+A7tCLejGU43dDj2FM0c5dmz8CV/GXsRU3XPWCzaL5uIyvA==
 
-fp-ts@^2.5.3, fp-ts@^2.5.4:
+fp-ts@2.6.1, fp-ts@^2.6.1:
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.6.1.tgz#f2505a4b44a77a344a1e451c667383e42f3728de"
+  integrity sha512-ZYOgqEOvUuO59rvItjf1OniEG4k/ClY3rd+AiuRYbl3skY4X/s7Oig25/wvORjycjeOjjr5OO+VcpprLQQOpIQ==
+
+fp-ts@^2.5.3:
   version "2.5.4"
   resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.5.4.tgz#f184079aaa78403ea66458517be7787e0d593429"
   integrity sha512-cZlLeEneRYypc2dOzB9h8+bd9mQhJVyt2g0Dny2gKR7uWNgA4EmLSJyguLYsTU44nJSSG9EjurUalEc0wQqeKw==
@@ -8838,7 +8843,7 @@ modify-values@^1.0.0:
   resolved "https://registry.yarnpkg.com/modify-values/-/modify-values-1.0.1.tgz#b3939fa605546474e3e3e3c63d64bd43b4ee6022"
   integrity sha512-xV2bxeN6F7oYjZWTe/YPAy6MN2M+sL4u/Rlm2AHCIVGfo2p1yGmBHQ6vHehl4bRTZBdHu3TSkWdYgkwpYzAGSw==
 
-monocle-ts@^2.0.1, monocle-ts@^2.1.0:
+monocle-ts@2.1.0, monocle-ts@^2.0.1, monocle-ts@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/monocle-ts/-/monocle-ts-2.1.0.tgz#5c1bbade7952b57e33f2179866467e87d9ed5977"
   integrity sha512-YWH8TDcZSEeCaxp0ZjgccLChnaDvTiUHILpuI0DSZeASYSCgwdz+h6+uEG4QCwYreGsn1oI18ysrcUPv6xWK7w==
@@ -8962,7 +8967,7 @@ neo-async@^2.5.0, neo-async@^2.6.0, neo-async@^2.6.1:
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.1.tgz#ac27ada66167fa8849a6addd837f6b189ad2081c"
   integrity sha512-iyam8fBuCUpWeKPGpaNMetEocMt364qkCsfL9JuhjXX6dRnguRVOfk2GZaDpPjcOKiiXCPINZC1GczQ7iTq3Zw==
 
-newtype-ts@^0.3.4:
+newtype-ts@0.3.4, newtype-ts@^0.3.4:
   version "0.3.4"
   resolved "https://registry.yarnpkg.com/newtype-ts/-/newtype-ts-0.3.4.tgz#65c74b7d5195edaa9abfcdba6549a33a5c0e298d"
   integrity sha512-lFJnWAt0oXX1j1ErNy9RU5+FPNtVyzugHW2MchaaMiOeeS9LEmqAAOqyHPFQ0Uw895jStSYGSCslrByzYxFJYQ==
