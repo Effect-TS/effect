@@ -2,11 +2,11 @@ import type { Separated } from "fp-ts/lib/Compactable"
 import type { Option } from "fp-ts/lib/Option"
 
 import { Either } from "../Either"
-import { record } from "../Record"
+import { wilt } from "../Record/wilt"
 
 import { optionMonad } from "./monad"
 
-export const wiltRecord_ = record.wilt(optionMonad)
+export const wiltRecord_ = wilt(optionMonad)
 
 export const wiltRecord: <A, B, C>(
   f: (a: A) => Option<Either<B, C>>

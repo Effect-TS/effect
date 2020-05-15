@@ -1,49 +1,68 @@
-export {
-  URI,
-  collect,
-  compact,
-  deleteAt,
-  elem,
-  empty,
-  every,
-  filter,
-  filterMap,
-  filterMapWithIndex,
-  filterWithIndex,
-  foldMap,
-  foldMapWithIndex,
-  fromFoldable,
-  fromFoldableMap,
-  getEq,
-  getMonoid,
-  getShow,
-  hasOwnProperty,
-  insertAt,
-  isEmpty,
-  isSubrecord,
-  keys,
-  lookup,
-  map,
-  mapWithIndex,
-  modifyAt,
-  partition,
-  partitionMap,
-  partitionMapWithIndex,
-  partitionWithIndex,
-  pop,
-  record,
-  reduce,
-  reduceRight,
-  reduceRightWithIndex,
-  reduceWithIndex,
-  separate,
-  sequence,
-  singleton,
-  size,
-  some,
-  toArray,
-  toUnfoldable,
-  traverse,
-  traverseWithIndex,
-  updateAt
-} from "fp-ts/lib/Record"
+export { URI } from "./URI"
+export { getShow } from "./getShow"
+export { size } from "./size"
+export { isEmpty } from "./isEmpty"
+export { keys } from "./keys"
+export { collect } from "./collect"
+export { toArray } from "./toArray"
+export { toUnfoldable } from "./toUnfoldable"
+export { insertAt } from "./insertAt"
+export { hasOwnProperty } from "./hasOwnProperty"
+export { deleteAt } from "./deleteAt"
+export { updateAt } from "./updateAt"
+export { modifyAt } from "./modifyAt"
+export { pop } from "./pop"
+export { isSubrecord } from "./isSubrecord"
+export { getEq } from "./getEq"
+export { getMonoid } from "./getMonoid"
+export { lookup } from "./lookup"
+export { empty } from "./empty"
+export { mapWithIndex } from "./mapWithIndex"
+export { map } from "./map"
+export { reduceWithIndex } from "./reduceWithIndex"
+export { foldMapWithIndex } from "./foldMapWithIndex"
+export { reduceRightWithIndex } from "./reduceRightWithIndex"
+export { singleton } from "./singleton"
+export { traverseWithIndex } from "./traverseWithIndex"
+export { traverse } from "./traverse"
+export { sequence } from "./sequence"
+export { partitionMapWithIndex } from "./partitionMapWithIndex"
+export { partitionWithIndex } from "./partitionWithIndex"
+export { filterMapWithIndex } from "./filterMapWithIndex"
+export { filterWithIndex } from "./filterWithIndex"
+export { fromFoldable } from "./fromFoldable"
+export { fromFoldableMap } from "./fromFoldableMap"
+export { every } from "./every"
+export { some } from "./some"
+export { map_ } from "./map_"
+export { foldMap_ } from "./foldMap_"
+export { reduce_ } from "./reduce_"
+export { reduceRight_ } from "./reduceRight_"
+export { traverse_ } from "./traverse_"
+export { compact } from "./compact"
+export { separate } from "./separate"
+export { filter_ } from "./filter_"
+export { filterMap_ } from "./filterMap_"
+export { partition_ } from "./partition_"
+export { partitionMap_ } from "./partitionMap_"
+export { wither } from "./wither"
+export { wilt } from "./wilt"
+export { mapWithIndex_ } from "./mapWithIndex_"
+export { reduceWithIndex_ } from "./reduceWithIndex_"
+export { foldMapWithIndex_ } from "./foldMapWithIndex_"
+export { reduceRightWithIndex_ } from "./reduceRightWithIndex_"
+export { traverseWithIndex_ } from "./traverseWithIndex_"
+export { partitionMapWithIndex_ } from "./partitionMapWithIndex_"
+export { partitionWithIndex_ } from "./partitionWithIndex_"
+export { filterMapWithIndex_ } from "./filterMapWithIndex_"
+export { filterWithIndex_ } from "./filterWithIndex_"
+export { filter } from "./filter"
+export { filterMap } from "./filterMap"
+export { foldMap } from "./foldMap"
+export { partition } from "./partition"
+export { partitionMap } from "./partitionMap"
+export { reduce } from "./reduce"
+export { reduceRight } from "./reduceRight"
+export { record } from "./instances"
+export { recordFoldable } from "./foldable"
+export { elem } from "./elem"

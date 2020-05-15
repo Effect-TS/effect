@@ -1,10 +1,10 @@
 import type { Option } from "fp-ts/lib/Option"
 
-import { record } from "../Record"
+import { traverse_ } from "../Record/traverse_"
 
 import { optionMonad } from "./monad"
 
-export const traverseRecord_ = record.traverse(optionMonad)
+export const traverseRecord_ = traverse_(optionMonad)
 
 export const traverseRecord: <A, B>(
   f: (a: A) => Option<B>

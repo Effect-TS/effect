@@ -1,5 +1,5 @@
-import { record } from "../Record"
+import { sequence } from "../Record/sequence"
 
 import { optionMonad } from "./monad"
 
-export const sequenceRecord = record.sequence(optionMonad)
+export const sequenceRecord = sequence(optionMonad)
