@@ -41,11 +41,6 @@ export {
   parApSecond,
   parDo,
   parFor,
-  parSequenceArray,
-  parSequenceRecord,
-  parSequenceS,
-  parSequenceT,
-  parSequenceTree,
   parTraverseArray,
   parTraverseArrayWithIndex,
   parTraverseRecord,
@@ -55,13 +50,6 @@ export {
   parWiltRecord,
   parWitherArray,
   parWitherRecord,
-  sequenceArray,
-  sequenceEither,
-  sequenceOption,
-  sequenceRecord,
-  sequenceS,
-  sequenceT,
-  sequenceTree,
   some,
   traverseArray,
   traverseArrayWithIndex,
@@ -75,5 +63,24 @@ export {
   wiltRecord,
   witherArray,
   witherOption,
-  witherRecord
+  witherRecord,
+  ap_,
+  chainTap_,
+  chain_,
+  map_,
+  of,
+  parAp_
 } from "./effectOption"
+
+export { sequenceArray } from "./sequenceArray"
+export { sequenceEither } from "./sequenceEither"
+export { sequenceOption } from "./sequenceOption"
+export { sequenceRecord } from "./sequenceRecord"
+export { sequenceS } from "./sequenceS"
+export { sequenceT } from "./sequenceT"
+export { sequenceTree } from "./sequenceTree"
+export { parSequenceArray } from "./parSequenceArray"
+export { parSequenceRecord } from "./parSequenceRecord"
+export { parSequenceS } from "./parSequenceS"
+export { parSequenceT } from "./parSequenceT"
+export { parSequenceTree } from "./parSequenceTree"
