@@ -86,9 +86,8 @@ export {
   subject
 } from "./stream"
 
-import * as node from "./Node"
 import * as sink from "./Sink"
 import * as step from "./Step"
 import * as support from "./Support"
 
-export { node, sink, step, support }
+export { sink, step, support }

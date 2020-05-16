@@ -10,7 +10,6 @@ import { pipe } from "fp-ts/lib/pipeable"
 
 import { effect as T, managed as M, ref, stream as S } from "../src"
 import * as ex from "../src/Exit"
-import * as N from "../src/Stream/Node"
 import * as SK from "../src/Stream/Sink"
 import { collectArraySink, liftPureSink, Sink } from "../src/Stream/Sink"
 import { sinkCont, sinkDone, SinkStep } from "../src/Stream/Step"
@@ -32,55 +31,6 @@ export function expectExit<E, A>(
 }
 
 describe("Stream", () => {
-  it("fromObjectReadStream", async () => {
-    let eventCount = 0
-
-    const s = N.fromObjectReadStream<{ n: number }>(
-      new Readable({
-        objectMode: true,
-        read() {
-          if (eventCount < 10) {
-            eventCount = eventCount + 1
-            this.push({ n: eventCount })
-          } else {
-            this.push(null)
-          }
-        }
-      })
-    )
-
-    const res = await T.runToPromise(S.collectArray(S.stream.map(s, ({ n }) => n)))
-
-    assert.deepStrictEqual(res, array.range(1, 10))
-  })
-
-  it("fromObjectReadStream - Error", async () => {
-    let eventCount = 0
-
-    const s = N.fromObjectReadStream<{ n: number }>(
-      new Readable({
-        objectMode: true,
-        read() {
-          if (eventCount < 10) {
-            eventCount = eventCount + 1
-            this.push({ n: eventCount })
-          } else {
-            this.destroy(new Error("test"))
-          }
-        }
-      })
-    )
-
-    const res = await pipe(
-      s,
-      S.mapM(({ n }) => T.delay(T.pure(n), 100)),
-      S.collectArray,
-      T.runToPromiseExit
-    )
-
-    assert.deepStrictEqual(res, ex.raise(new Error("test")))
-  })
-
   it("stack safe", async () => {
     const s = S.fromArray(array.range(0, 100000))
 
