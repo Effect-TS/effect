@@ -1,5 +1,5 @@
-import { traverse } from "../Array"
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import { traverse } from "../Array/traverse"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 

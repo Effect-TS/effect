@@ -1,10 +1,9 @@
-import { record } from "fp-ts/lib/Record"
-
+import { traverse_ } from "../Record/traverse_"
 import { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parTraverseRecord_ = record.traverse(parEffect)
+export const parTraverseRecord_ = traverse_(parEffect)
 
 export const parTraverseRecord: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

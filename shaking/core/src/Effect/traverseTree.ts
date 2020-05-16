@@ -1,10 +1,10 @@
-import { tree, Tree } from "fp-ts/lib/Tree"
-
-import { Effect } from "../Support/Common/effect"
+import type { Effect } from "../Support/Common/effect"
+import type { Tree } from "../Tree"
+import { traverse } from "../Tree/traverse"
 
 import { effect } from "./effect"
 
-export const traverseTree_ = tree.traverse(effect)
+export const traverseTree_ = traverse(effect)
 
 export const traverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

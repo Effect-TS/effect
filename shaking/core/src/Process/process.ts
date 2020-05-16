@@ -1,5 +1,3 @@
-import { record as Rec } from "fp-ts"
-
 import {
   Effect,
   AsyncR,
@@ -15,15 +13,21 @@ import {
   sync,
   accessM,
   asyncTotal,
-  parEffect,
   chainTap,
   chainTap_,
   map_,
-  chain_
+  chain_,
+  parSequenceRecord
 } from "../Effect"
-import { Exit } from "../Exit"
+import type { Exit } from "../Exit"
 import { pipe } from "../Pipe"
-import { ATypeOf, ETypeOf, RTypeOf, UnionToIntersection } from "../Support/Overloads"
+import { map_ as mapRecord } from "../Record/map_"
+import type {
+  ATypeOf,
+  ETypeOf,
+  RTypeOf,
+  UnionToIntersection
+} from "../Support/Overloads"
 
 export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>(
   procs: Procs,
@@ -62,7 +66,7 @@ export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>
   }
 
   const fibers = access((_: any) =>
-    Rec.record.map(procs, (x) => {
+    mapRecord(procs, (x) => {
       const fiber = pipe(x, provide(_), fork, runUnsafeSync)
       listeners.push(fiber)
       return fiber
@@ -70,7 +74,7 @@ export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>
   )
 
   const waits = map_(fibers, (rec) =>
-    Rec.record.map(rec, (f) =>
+    mapRecord(rec, (f) =>
       chainTap_(f.wait, (ex) =>
         sync(() => {
           if (ex._tag !== "Done") {
@@ -85,7 +89,7 @@ export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>
     asyncTotal((res) => {
       const fiber = runUnsafeSync(
         pipe(
-          chain_(waits, Rec.record.sequence(parEffect)),
+          chain_(waits, parSequenceRecord),
           chainTap((done) =>
             sync(() => {
               res(done)

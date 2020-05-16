@@ -1,6 +1,6 @@
-import { wither } from "../Array"
-import { Option } from "../Option"
-import { Effect } from "../Support/Common/effect"
+import { wither } from "../Array/wither"
+import type { Option } from "../Option"
+import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 

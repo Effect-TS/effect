@@ -46,6 +46,7 @@ const modules: string[] = [
   "Readonly/NonEmptyArray",
   "Readonly/Set",
   "Readonly/Map",
+  "Readonly/Tuple",
   "Boolean",
   "Array",
   "NonEmptyArray",

@@ -1,4 +1,4 @@
-import { sequence } from "../Array"
+import { sequence } from "../Array/sequence"
 
 import { effect } from "./effect"
 

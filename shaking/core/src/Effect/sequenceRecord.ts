@@ -1,5 +1,5 @@
-import { record } from "fp-ts/lib/Record"
+import { sequence } from "../Record/sequence"
 
 import { effect } from "./effect"
 
-export const sequenceRecord = record.sequence(effect)
+export const sequenceRecord = sequence(effect)

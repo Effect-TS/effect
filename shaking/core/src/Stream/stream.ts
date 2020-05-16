@@ -1,9 +1,9 @@
-import { Do as DoG } from "fp-ts-contrib/lib/Do"
-import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
-import { Separated } from "fp-ts/lib/Compactable"
+import type { Separated } from "fp-ts/lib/Compactable"
 
+import { sequenceS as SS, sequenceT as ST } from "../Apply"
 import { array, filter as filterArray } from "../Array"
 import { Deferred, makeDeferred } from "../Deferred"
+import { Do as DoG } from "../Do"
 import {
   applyFirst as applyFirstEffect,
   applySecond as applySecondEffect,

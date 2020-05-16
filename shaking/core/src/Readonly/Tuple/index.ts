@@ -13,7 +13,6 @@ export {
   getApplicative,
   getApply,
   getChain,
-  traverse,
   getChainRec,
   getMonad,
   map,
@@ -21,12 +20,13 @@ export {
   mapLeft_,
   map_,
   of,
-  tuple,
+  readonlyTuple,
   reduce,
   reduceRight,
   reduceRight_,
   reduce_,
   sequence,
   snd,
-  swap
+  swap,
+  traverse
 } from "./tuple"

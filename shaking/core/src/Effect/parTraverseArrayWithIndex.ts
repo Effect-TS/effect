@@ -1,5 +1,5 @@
-import { traverseWithIndex } from "../Array"
-import { Effect, AsyncRE } from "../Support/Common/effect"
+import { traverseWithIndex } from "../Array/traverseWithIndex"
+import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 

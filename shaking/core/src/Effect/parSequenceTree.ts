@@ -1,5 +1,5 @@
-import { tree } from "fp-ts/lib/Tree"
+import { sequence } from "../Tree/sequence"
 
 import { parEffect } from "./parEffect"
 
-export const parSequenceTree = tree.sequence(parEffect)
+export const parSequenceTree = sequence(parEffect)

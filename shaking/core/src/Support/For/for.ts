@@ -1,6 +1,6 @@
-import { sequenceS } from "fp-ts/lib/Apply"
 import type { Kind4 } from "fp-ts/lib/HKT"
 
+import { sequenceS } from "../../Apply"
 import { constVoid } from "../../Function"
 import type {
   ATypeOf,

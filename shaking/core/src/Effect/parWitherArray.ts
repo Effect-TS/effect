@@ -1,6 +1,6 @@
-import { wither } from "../Array"
-import { Option } from "../Option"
-import { AsyncRE } from "../Support/Common/effect"
+import { wither } from "../Array/wither"
+import type { Option } from "../Option/Option"
+import type { AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 

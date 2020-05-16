@@ -1,4 +1,4 @@
-import { sequenceS as SS } from "fp-ts/lib/Apply"
+import { sequenceS as SS } from "../Apply"
 
 import { parEffect } from "./parEffect"
 

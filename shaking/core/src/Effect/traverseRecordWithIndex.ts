@@ -1,10 +1,9 @@
-import { record } from "fp-ts/lib/Record"
-
-import { Effect } from "../Support/Common/effect"
+import { traverseWithIndex_ } from "../Record/traverseWithIndex_"
+import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 
-export const traverseRecordWithIndex_ = record.traverseWithIndex(effect)
+export const traverseRecordWithIndex_ = traverseWithIndex_(effect)
 
 export const traverseRecordWithIndex: <A, S, R, E, B>(
   f: (k: string, a: A) => Effect<S, R, E, B>

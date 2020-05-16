@@ -1,5 +1,5 @@
-import { traverse } from "../Array"
-import { Effect } from "../Support/Common/effect"
+import { traverse } from "../Array/traverse"
+import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 

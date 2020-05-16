@@ -1,4 +1,4 @@
-import { traverseWithIndex } from "../Array"
+import { traverseWithIndex } from "../Array/traverseWithIndex"
 import { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"

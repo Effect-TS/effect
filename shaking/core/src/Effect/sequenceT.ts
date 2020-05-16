@@ -1,4 +1,4 @@
-import { sequenceT as ST } from "fp-ts/lib/Apply"
+import { sequenceT as ST } from "../Apply"
 
 import { effect } from "./effect"
 

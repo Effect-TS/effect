@@ -1,6 +1,6 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
-import { wilt } from "../Array"
+import { wilt } from "../Array/wilt"
 import type { Either } from "../Either/Either"
 import type { AsyncRE } from "../Support/Common/effect"
 
