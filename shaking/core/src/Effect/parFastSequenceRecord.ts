@@ -1,5 +1,5 @@
-import { record } from "fp-ts/lib/Record"
+import { sequence } from "../Record/sequence"
 
 import { parFastEffect } from "./parFastEffect"
 
-export const parFastSequenceRecord = record.sequence(parFastEffect)
+export const parFastSequenceRecord = sequence(parFastEffect)

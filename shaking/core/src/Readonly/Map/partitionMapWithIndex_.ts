@@ -1,5 +1,6 @@
 import type { Separated } from "fp-ts/lib/Compactable"
-import { Either, isLeft } from "fp-ts/lib/Either"
+
+import { Either, isLeft } from "../../Either"
 
 import type { Next } from "./Next"
 

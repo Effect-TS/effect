@@ -1,4 +1,4 @@
-import { Do as DoG } from "fp-ts-contrib/lib/Do"
+import { Do as DoG } from "../Do"
 
 import { parEffect } from "./parEffect"
 

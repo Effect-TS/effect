@@ -4,7 +4,8 @@
     "outDir": "build",
     "target": "ES5",
     "module": "CommonJS",
-    "sourceMap": false
+    "sourceMap": false,
+    "removeComments": true
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]

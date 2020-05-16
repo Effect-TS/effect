@@ -6,13 +6,40 @@ import type {
   Applicative3,
   Applicative3C
 } from "fp-ts/lib/Applicative"
-import type { HKT, Kind, Kind2, Kind3, URIS, URIS2, URIS3 } from "fp-ts/lib/HKT"
+import type { HKT, Kind, Kind2, Kind3, URIS, URIS2, URIS3, Kind4 } from "fp-ts/lib/HKT"
 
 import { sequence as sequence_1 } from "../Readonly/Record/sequence"
+import type {
+  Applicative4E,
+  MaURIS,
+  Applicative4EP,
+  Applicative4EC,
+  Applicative4ECP
+} from "../Support/Overloads"
 
 /**
  * @since 2.0.0
  */
+export function sequence<F extends MaURIS, E>(
+  F: Applicative4ECP<F, E>
+): <K extends string, S, R, A>(
+  ta: Record<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, unknown, R, E, Record<K, A>>
+export function sequence<F extends MaURIS, E>(
+  F: Applicative4EC<F, E>
+): <K extends string, S, R, A>(
+  ta: Record<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, S, R, E, Record<K, A>>
+export function sequence<F extends MaURIS>(
+  F: Applicative4EP<F>
+): <K extends string, S, R, E, A>(
+  ta: Record<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, unknown, R, E, Record<K, A>>
+export function sequence<F extends MaURIS>(
+  F: Applicative4E<F>
+): <K extends string, S, R, E, A>(
+  ta: Record<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, S, R, E, Record<K, A>>
 export function sequence<F extends URIS3>(
   F: Applicative3<F>
 ): <K extends string, R, E, A>(
