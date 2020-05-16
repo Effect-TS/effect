@@ -433,7 +433,7 @@ export function zipWithIndex<K, R, E, A>(
  * @param stream1
  * @param stream2
  */
-function concatL_<K, R, E, A, K2, R2, E2>(
+export function concatL_<K, R, E, A, K2, R2, E2>(
   stream1: Stream<K, R, E, A>,
   stream2: Lazy<Stream<K2, R2, E2, A>>
 ): Stream<K | K2, R & R2, E | E2, A> {
@@ -471,7 +471,7 @@ export function concatL<S, A, R2, E2>(
  * @param stream1
  * @param stream2
  */
-function concat_<S, R, E, A, S2, R2, E2>(
+export function concat_<S, R, E, A, S2, R2, E2>(
   stream1: Stream<S, R, E, A>,
   stream2: Stream<S2, R2, E2, A>
 ): Stream<S | S2, R & R2, E | E2, A> {
@@ -494,7 +494,7 @@ export function repeat<S, R, E, A>(stream: Stream<S, R, E, A>): Stream<S, R, E, 
   return concatL_(stream, () => repeat(stream))
 }
 
-function map_<K, R, E, A, B>(
+export function map_<K, R, E, A, B>(
   stream: Stream<K, R, E, A>,
   f: FunctionN<[A], B>
 ): Stream<K, R, E, B> {
@@ -526,7 +526,10 @@ export function map<R, A, B>(
  * @param stream
  * @param b
  */
-function as_<S, R, E, A, B>(stream: Stream<S, R, E, A>, b: B): Stream<S, R, E, B> {
+export function as_<S, R, E, A, B>(
+  stream: Stream<S, R, E, A>,
+  b: B
+): Stream<S, R, E, B> {
   return map_(stream, constant(b))
 }
 
@@ -539,7 +542,7 @@ export function as<B>(b: B): <S, R, E, A>(s: Stream<S, R, E, A>) => Stream<S, R,
  * @param stream
  * @param f
  */
-function filter_<K, R, E, A>(
+export function filter_<K, R, E, A>(
   stream: Stream<K, R, E, A>,
   f: Predicate<A>
 ): Stream<K, R, E, A> {
@@ -570,7 +573,7 @@ export function filter<A>(f: Predicate<A>) {
  * Filter the stream so that only items that are not equal to the previous item emitted are emitted
  * @param eq
  */
-function distinctAdjacent_<K, R, E, A>(
+export function distinctAdjacent_<K, R, E, A>(
   stream: Stream<K, R, E, A>,
   eq: Eq<A>
 ): Stream<K, R, E, A> {
@@ -620,7 +623,7 @@ export function distinctAdjacent<A>(
  * @param f
  * @param seed
  */
-function foldM_<K, R, E, A, K2, R2, E2, B>(
+export function foldM_<K, R, E, A, K2, R2, E2, B>(
   stream: Stream<K, R, E, A>,
   f: FunctionN<[B, A], Effect<K2, R2, E2, B>>,
   seed: B
@@ -659,7 +662,7 @@ export function foldM<K, A, R2, E2, B>(
  * @param f
  * @param seed
  */
-function fold_<S, R, E, A, B>(
+export function fold_<S, R, E, A, B>(
   stream: Stream<S, R, E, A>,
   f: FunctionN<[B, A], B>,
   seed: B
@@ -686,7 +689,7 @@ export function fold<A, B>(
  * @param f
  * @param seed
  */
-function scanM_<K, R, E, A, B, K2, R2, E2>(
+export function scanM_<K, R, E, A, B, K2, R2, E2>(
   stream: Stream<K, R, E, A>,
   f: FunctionN<[B, A], Effect<K2, R2, E2, B>>,
   seed: B
@@ -755,7 +758,7 @@ export function scanM<S, A, B, R2, E2>(
  * @param f
  * @param seed
  */
-function scan_<S, R, E, A, B>(
+export function scan_<S, R, E, A, B>(
   stream: Stream<S, R, E, A>,
   f: FunctionN<[B, A], B>,
   seed: B
@@ -770,7 +773,7 @@ export function scan<A, B>(
   return <S, R, E>(s: Stream<S, R, E, A>) => scan_(s, f, seed)
 }
 
-function chain_<K, R, E, A, K2, R2, E2, B>(
+export function chain_<K, R, E, A, K2, R2, E2, B>(
   stream: Stream<K, R, E, A>,
   f: FunctionN<[A], Stream<K2, R2, E2, B>>
 ): Stream<K | K2, R & R2, E | E2, B> {
@@ -840,7 +843,7 @@ export function flatten<S, R, E, S2, R2, E2, A>(
  * @param stream
  * @param f
  */
-function mapM_<S, R, E, A, S2, R2, E2, B>(
+export function mapM_<S, R, E, A, S2, R2, E2, B>(
   stream: Stream<S, R, E, A>,
   f: FunctionN<[A], Effect<S2, R2, E2, B>>
 ): Stream<S | S2, R & R2, E | E2, B> {
@@ -869,7 +872,7 @@ type TDuceFused<FoldState, SinkState> = readonly [FoldState, SinkState, boolean]
  * @param stream
  * @param sink
  */
-function transduce_<K, R, E, A, K2, R2, E2, S, B>(
+export function transduce_<K, R, E, A, K2, R2, E2, S, B>(
   stream: Stream<K, R, E, A>,
   sink: Sink<K2, R2, E2, S, A, B>
 ): Stream<K | K2, R & R2, E | E2, B> {
@@ -959,7 +962,10 @@ export function transduce<K, A, R2, E2, S, B>(
  * @param stream
  * @param n
  */
-function drop_<K, R, E, A>(stream: Stream<K, R, E, A>, n: number): Stream<K, R, E, A> {
+export function drop_<K, R, E, A>(
+  stream: Stream<K, R, E, A>,
+  n: number
+): Stream<K, R, E, A> {
   return pipe(
     zipWithIndex(stream),
     filter(([_, i]) => i >= n),
@@ -978,7 +984,10 @@ export function drop(
  * @param stream
  * @param n
  */
-function take_<K, R, E, A>(stream: Stream<K, R, E, A>, n: number): Stream<K, R, E, A> {
+export function take_<K, R, E, A>(
+  stream: Stream<K, R, E, A>,
+  n: number
+): Stream<K, R, E, A> {
   return toS(
     map_Managed(
       fromS(stream),
@@ -1010,7 +1019,7 @@ export function take(
  * @param stream
  * @param pred
  */
-function takeWhile_<K, R, E, A>(
+export function takeWhile_<K, R, E, A>(
   stream: Stream<K, R, E, A>,
   pred: Predicate<A>
 ): Stream<K, R, E, A> {
@@ -1049,7 +1058,7 @@ export function takeWhile<A>(
  * @param until The effect that will terminate the stream
  * @param stream The stream
  */
-function takeUntil_<K, R1, E1, K2, R2, E2, A>(
+export function takeUntil_<K, R1, E1, K2, R2, E2, A>(
   stream: Stream<K, R1, E1, A>,
   until: Effect<K2, R2, E2, any>
 ) {
@@ -1084,7 +1093,7 @@ export function takeUntil<K, R2, E2>(
  * @param stream
  * @param sink
  */
-function into_<K, R, E, A, K2, R2, E2, S, B>(
+export function into_<K, R, E, A, K2, R2, E2, S, B>(
   stream: Stream<K, R, E, A>,
   sink: Sink<K2, R2, E2, S, A, B>
 ): Effect<K | K2, R & R2, E | E2, B> {
@@ -1109,7 +1118,7 @@ export function into<K, A, R2, E2, S, B>(
  * @param stream
  * @param managedSink
  */
-function intoManaged_<K, R, E, A, S, B, K2, R2, E2, K3, R3, E3>(
+export function intoManaged_<K, R, E, A, S, B, K2, R2, E2, K3, R3, E3>(
   stream: Stream<K, R, E, A>,
   managedSink: Managed<K2, R2, E2, Sink<K3, R3, E3, S, A, B>>
 ): Effect<K | K2 | K3, R & R2 & R3, E | E2 | E3, B> {
@@ -1129,7 +1138,7 @@ export function intoManaged<K2, R2, E2, K3, R3, E3, A, S, B>(
  * @param stream
  * @param sink
  */
-function intoLeftover_<K, R, E, A, S, B, K2, R2, E2>(
+export function intoLeftover_<K, R, E, A, S, B, K2, R2, E2>(
   stream: Stream<K, R, E, A>,
   sink: Sink<K2, R2, E2, S, A, B>
 ): Effect<K | K2, R & R2, E | E2, readonly [B, readonly A[]]> {
@@ -1184,7 +1193,7 @@ function sinkQueue<S, R, E, A>(
  * @param bs
  * @param f
  */
-function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
+export function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
   as: Stream<S, R, E, A>,
   bs: Stream<S2, R2, E2, B>,
   f: FunctionN<[A, B], C>
@@ -1243,7 +1252,7 @@ export function zipWith<A, S2, R2, E2, B, C>(
  * @param as
  * @param bs
  */
-function zip_<S, R, E, A, S2, R2, E2, B>(
+export function zip_<S, R, E, A, S2, R2, E2, B>(
   as: Stream<S, R, E, A>,
   bs: Stream<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, readonly [A, B]> {
@@ -1304,7 +1313,7 @@ function streamQueueSource<S, R, E, A>(
  * @param stream
  * @param sink
  */
-function peel_<K, R, E, A, S, B, K2, R2, E2>(
+export function peel_<K, R, E, A, S, B, K2, R2, E2>(
   stream: Stream<K, R, E, A>,
   sink: Sink<K2, R2, E2, S, A, B>
 ): AsyncRE<R & R2, E | E2, readonly [B, AsyncRE<R & R2, E | E2, A>]> {
@@ -1326,7 +1335,7 @@ export function peel<K, A, S, B, R2, E2>(sink: Sink<K, R2, E2, S, A, B>) {
   return <K2, R, E>(s: Stream<K2, R, E, A>) => peel_(s, sink)
 }
 
-function peelManaged_<K, R, E, A, S, B, R2, E2, K2, K3, R3, E3>(
+export function peelManaged_<K, R, E, A, S, B, R2, E2, K2, K3, R3, E3>(
   stream: Stream<K, R, E, A>,
   managedSink: Managed<K2, R2, E2, Sink<K3, R3, E3, S, A, B>>
 ): Stream<
@@ -1468,7 +1477,7 @@ export function switchLatest<R, E, A, R2, E2>(
  */
 
 /* istanbul ignore next */
-function chainSwitchLatest_<S, R, E, A, S2, R2, E2, B>(
+export function chainSwitchLatest_<S, R, E, A, S2, R2, E2, B>(
   stream: Stream<S, R, E, A>,
   f: FunctionN<[A], Stream<S2, R2, E2, B>>
 ): AsyncRE<R & R2, E | E2, B> {
@@ -1537,7 +1546,7 @@ const makeWeave: ManagedAsync<Weave> = chain_Managed(
  * @param maxActive the maximum number of streams to hold active at any given time
  * this controls how much active streams are able to collectively produce in the face of a slow downstream consumer
  */
-function merge_<K, R, E, A, K2, R2, E2>(
+export function merge_<K, R, E, A, K2, R2, E2>(
   stream: Stream<K, R, E, Stream<K2, R2, E2, A>>,
   maxActive: number
 ): AsyncRE<R & R2, E | E2, A> {
@@ -1635,7 +1644,7 @@ export function merge(
     merge_(stream, maxActive)
 }
 
-function chainMerge_<S, R, E, A, B, S2, R2, E2>(
+export function chainMerge_<S, R, E, A, B, S2, R2, E2>(
   stream: Stream<S, R, E, A>,
   f: FunctionN<[A], Stream<S2, R2, E2, B>>,
   maxActive: number
@@ -1662,7 +1671,7 @@ export function mergeAll<R, E, A>(streams: Array<AsyncRE<R, E, A>>): AsyncRE<R, 
  * @param stream
  * @param pred
  */
-function dropWhile_<S, R, E, A>(
+export function dropWhile_<S, R, E, A>(
   stream: Stream<S, R, E, A>,
   pred: Predicate<A>
 ): AsyncRE<R, E, A> {
@@ -1801,15 +1810,20 @@ export interface StreamF {
   ): AsyncRE<R & R2, E | E2, C>
 }
 
+export const of = <S, R, E, A>(a: A): Stream<S, R, E, A> =>
+  (once(a) as any) as Stream<S, R, E, A>
+
+export const ap_ = <S1, S2, R, R2, E, E2, A, B>(
+  sfab: Stream<S1, R, E, FunctionN<[A], B>>,
+  sa: Stream<S2, R2, E2, A>
+) => zipWith_(sfab, sa, (f, a) => f(a))
+
 export const stream: Monad4EP<URI> & StreamF = {
   URI,
   _CTX: "async",
   map: map_,
-  of: <S, R, E, A>(a: A): Stream<S, R, E, A> => (once(a) as any) as Stream<S, R, E, A>,
-  ap: <S1, S2, R, R2, E, E2, A, B>(
-    sfab: Stream<S1, R, E, FunctionN<[A], B>>,
-    sa: Stream<S2, R2, E2, A>
-  ) => zipWith_(sfab, sa, (f, a) => f(a)),
+  of,
+  ap: ap_,
   chain: chain_,
   as: as_,
   chainMerge: chainMerge_,

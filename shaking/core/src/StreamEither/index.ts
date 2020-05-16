@@ -45,13 +45,6 @@ export {
   raised,
   repeat,
   repeatedly,
-  sequenceArray,
-  sequenceEither,
-  sequenceOption,
-  sequenceRecord,
-  sequenceS,
-  sequenceT,
-  sequenceTree,
   streamEither,
   take,
   takeWhile,
@@ -73,3 +66,12 @@ export {
   zipWith,
   zipWithIndex
 } from "./streamEither"
+
+export { sequenceS } from "./sequenceS"
+export { sequenceT } from "./sequenceT"
+
+export { sequenceArray } from "./sequenceArray"
+export { sequenceEither } from "./sequenceEither"
+export { sequenceOption } from "./sequenceOption"
+export { sequenceRecord } from "./sequenceRecord"
+export { sequenceTree } from "./sequenceTree"

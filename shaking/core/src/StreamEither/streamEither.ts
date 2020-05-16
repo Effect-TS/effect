@@ -1,58 +1,22 @@
-import { Do as DoG } from "fp-ts-contrib/lib/Do"
-import { sequenceS as SS, sequenceT as ST } from "fp-ts/lib/Apply"
-import { Bifunctor4 } from "fp-ts/lib/Bifunctor"
-import { Separated } from "fp-ts/lib/Compactable"
-import { pipeable } from "fp-ts/lib/pipeable"
+import type { Bifunctor4 } from "fp-ts/lib/Bifunctor"
+import type { Separated } from "fp-ts/lib/Compactable"
 
-import { array } from "../Array"
-import {
-  Effect,
-  pure as pureEffect,
-  raiseError,
-  chainError_ as chainErrorEffect_,
-  map_ as mapEffect_
-} from "../Effect"
-import {
-  Either,
-  right,
-  left,
-  isLeft,
-  isRight,
-  fold,
-  either,
-  rightW,
-  leftW
-} from "../Either"
+import * as A from "../Array"
+import { Do as DoG } from "../Do"
+import * as T from "../Effect"
+import * as E from "../Either"
 import { FunctionN, Lazy, Predicate, Refinement } from "../Function"
-import { managed } from "../Managed"
+import * as M from "../Managed"
 import { Option, option, some } from "../Option"
-import { record } from "../Record"
-import {
-  Stream,
-  encaseEffect as encaseEffectS,
-  stream as streamS,
-  collectArray as collectArrayS,
-  drain as drainS,
-  fromSource as fromSourceS,
-  fromArray as fromArrayS,
-  fromIterator as fromIteratorS,
-  fromRange as fromRangeS,
-  fromIteratorUnsafe as fromIteratorUnsafeS,
-  once as onceS,
-  repeatedly as repeatedlyS,
-  periodically as periodicallyS,
-  empty as emptyS,
-  aborted as abortedS,
-  fromOption as fromOptionS,
-  zipWithIndex as zipWithIndexS,
-  repeat as repeatS
-} from "../Stream"
+import * as record from "../Record"
+import * as Stream from "../Stream"
 import { StreamEither, StreamEitherURI as URI, Managed } from "../Support/Common"
 import { ForM } from "../Support/For"
-import { Monad4EP, MonadThrow4EP } from "../Support/Overloads"
-import { Tree, tree } from "../Tree"
+import type { Monad4EP, MonadThrow4EP } from "../Support/Overloads"
+import type { Tree } from "../Tree"
+import * as tree from "../Tree"
 
-type StreamEitherT<S, R, E, A> = Stream<S, R, never, Either<E, A>>
+type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
 export type Async<A> = StreamEither<unknown, unknown, never, A>
 export type AsyncE<E, A> = StreamEither<unknown, unknown, E, A>
@@ -70,55 +34,55 @@ const fromS = <S, R, E, A>(_: StreamEither<S, R, E, A>): StreamEitherT<S, R, E, 
   _ as any
 
 export function encaseEffect<S, R, E, A>(
-  eff: Effect<S, R, E, A>
+  eff: T.Effect<S, R, E, A>
 ): StreamEither<S, R, E, A> {
   return toS(
-    encaseEffectS(chainErrorEffect_(mapEffect_(eff, right), (e) => pureEffect(left(e))))
+    Stream.encaseEffect(T.chainError_(T.map_(eff, E.right), (e) => T.pure(E.left(e))))
   )
 }
 
 export function encaseStream<S, R, E, A>(
-  _: Stream<S, R, never, Either<E, A>>
+  _: Stream.Stream<S, R, never, E.Either<E, A>>
 ): StreamEither<S, R, E, A> {
   return toS(_)
 }
 
 export function toStream<S, R, E, A>(
   _: StreamEither<S, R, E, A>
-): Stream<S, R, never, Either<E, A>> {
+): Stream.Stream<S, R, never, E.Either<E, A>> {
   return fromS(_)
 }
 
 export function toStreamError<S, R, E, A>(
   _: StreamEither<S, R, E, A>
-): Stream<S, R, E, A> {
-  return streamS.chain(fromS(_), (e) => {
-    if (isLeft(e)) {
-      return encaseEffectS(raiseError(e.left))
+): Stream.Stream<S, R, E, A> {
+  return Stream.chain_(fromS(_), (e) => {
+    if (E.isLeft(e)) {
+      return Stream.encaseEffect(T.raiseError(e.left))
     } else {
-      return streamS.of(e.right)
+      return Stream.once(e.right)
     }
   })
 }
 
-function chain_<S, R, E, A, S2, R2, E2, B>(
+export function chain_<S, R, E, A, S2, R2, E2, B>(
   str: StreamEither<S, R, E, A>,
   f: (a: A) => StreamEither<S2, R2, E2, B>
 ): StreamEither<S | S2, R & R2, E | E2, B> {
   return toS(
-    streamS.chain(fromS(str), (ea) =>
-      fromS(isLeft(ea) ? (streamS.of(ea) as any) : f(ea.right))
+    Stream.chain_(fromS(str), (ea) =>
+      fromS(E.isLeft(ea) ? (Stream.once(ea) as any) : f(ea.right))
     )
   )
 }
 
-function chainError_<S, R, E, A, S2, R2, E2>(
+export function chainError_<S, R, E, A, S2, R2, E2>(
   str: StreamEither<S, R, E, A>,
   f: (a: E) => StreamEither<S2, R2, E2, A>
 ): StreamEither<S | S2, R & R2, E2, A> {
   return toS(
-    streamS.chain(fromS(str), (ea) =>
-      fromS(isRight(ea) ? streamS.of(ea) : (f(ea.left) as any))
+    Stream.chain_(fromS(str), (ea) =>
+      fromS(E.isRight(ea) ? Stream.of(ea) : (f(ea.left) as any))
     )
   )
 }
@@ -130,11 +94,11 @@ export function chainError<S2, E, A, R2, E2>(
 }
 
 export function of<S, R, E, A>(a: A): StreamEither<S, R, E, A> {
-  return toS(streamS.of(right(a)))
+  return toS(Stream.of(E.right(a)))
 }
 
 export function pure<A>(a: A): StreamEither<never, unknown, never, A> {
-  return toS(streamS.of(right(a)))
+  return toS(Stream.of(E.right(a)))
 }
 
 export function zipWith<S, R, E, A, S2, R2, E2, B, C>(
@@ -143,32 +107,32 @@ export function zipWith<S, R, E, A, S2, R2, E2, B, C>(
   f: FunctionN<[A, B], C>
 ): StreamEither<unknown, R & R2, E | E2, C> {
   return toS(
-    streamS.zipWith(
+    Stream.zipWith_(
       fromS(as),
       fromS(bs),
-      (ea, eb): Either<E | E2, C> => {
-        if (isLeft(ea)) {
-          return left(ea.left)
-        } else if (isLeft(eb)) {
-          return left(eb.left)
+      (ea, eb): E.Either<E | E2, C> => {
+        if (E.isLeft(ea)) {
+          return E.left(ea.left)
+        } else if (E.isLeft(eb)) {
+          return E.left(eb.left)
         } else {
-          return right(f(ea.right, eb.right))
+          return E.right(f(ea.right, eb.right))
         }
       }
     )
   )
 }
 
-function map_<S, R, E, A, B>(
+export function map_<S, R, E, A, B>(
   ma: StreamEither<S, R, E, A>,
   f: (a: A) => B
 ): StreamEither<S, R, E, B> {
   return toS(
-    streamS.map(fromS(ma), (ea) => {
-      if (isLeft(ea)) {
-        return left(ea.left)
+    Stream.map_(fromS(ma), (ea) => {
+      if (E.isLeft(ea)) {
+        return E.left(ea.left)
       } else {
-        return right(f(ea.right))
+        return E.right(f(ea.right))
       }
     })
   )
@@ -176,32 +140,32 @@ function map_<S, R, E, A, B>(
 
 export function collectArray<S, R, E, A>(
   stream: StreamEither<S, R, E, A>
-): Effect<S, R, E, A[]> {
-  return collectArrayS(toStreamError(stream))
+): T.Effect<S, R, E, A[]> {
+  return Stream.collectArray(toStreamError(stream))
 }
 
 export function take<S, R, E, A>(
   stream: StreamEither<S, R, E, A>,
   n: number
 ): StreamEither<S, R, E, A> {
-  return toS(streamS.take(fromS(stream), n))
+  return toS(Stream.take_(fromS(stream), n))
 }
 
 export function drain<S, R, E, A>(
   stream: StreamEither<S, R, E, A>
-): Effect<S, R, E, void> {
-  return drainS(toStreamError(stream))
+): T.Effect<S, R, E, void> {
+  return Stream.drain(toStreamError(stream))
 }
 
 export function fromSource<S, R, E, S2, R2, E2, A>(
-  r: Managed<S, R, never, Effect<S2, R2, E2, Option<A>>>
+  r: Managed<S, R, never, T.Effect<S2, R2, E2, Option<A>>>
 ): StreamEither<S | S2, R & R2, E | E2, A> {
   return toS(
-    fromSourceS(
-      managed.map(r, (e) =>
-        chainErrorEffect_(
-          mapEffect_(e, (oa) => option.map(oa, rightW)),
-          (e) => pureEffect(some(leftW(e)))
+    Stream.fromSource(
+      M.map_(r, (e) =>
+        T.chainError_(
+          T.map_(e, (oa) => option.map(oa, E.rightW)),
+          (e) => T.pure(some(E.leftW(e)))
         )
       )
     )
@@ -209,13 +173,13 @@ export function fromSource<S, R, E, S2, R2, E2, A>(
 }
 
 export function fromArray<A>(as: readonly A[]): StreamEither<never, unknown, never, A> {
-  return toS(streamS.map(fromArrayS(as), (a) => right(a)))
+  return toS(Stream.map_(Stream.fromArray(as), (a) => E.right(a)))
 }
 
 export function fromIterator<A>(
   iter: Lazy<Iterator<A>>
 ): StreamEither<never, unknown, never, A> {
-  return toS(streamS.map(fromIteratorS(iter), (a) => right(a)))
+  return toS(Stream.map_(Stream.fromIterator(iter), (a) => E.right(a)))
 }
 
 export function fromRange(
@@ -223,52 +187,52 @@ export function fromRange(
   interval?: number,
   end?: number
 ): StreamEither<never, unknown, never, number> {
-  return toS(streamS.map(fromRangeS(start, interval, end), (a) => right(a)))
+  return toS(Stream.map_(Stream.fromRange(start, interval, end), (a) => E.right(a)))
 }
 
 export function fromIteratorUnsafe<A>(
   iter: Iterator<A>
 ): StreamEither<never, unknown, never, A> {
-  return toS(streamS.map(fromIteratorUnsafeS(iter), (a) => right(a)))
+  return toS(Stream.map_(Stream.fromIteratorUnsafe(iter), (a) => E.right(a)))
 }
 
 export function once<A>(a: A): StreamEither<never, unknown, never, A> {
-  return toS(streamS.map(onceS(a), (a) => right(a)))
+  return toS(Stream.map_(Stream.once(a), (a) => E.right(a)))
 }
 
 export function repeatedly<A>(a: A): StreamEither<unknown, unknown, never, A> {
-  return toS(streamS.map(repeatedlyS(a), (a) => right(a)))
+  return toS(Stream.map_(Stream.repeatedly(a), (a) => E.right(a)))
 }
 
 export function periodically(
   ms: number
 ): StreamEither<unknown, unknown, never, number> {
-  return toS(streamS.map(periodicallyS(ms), (a) => right(a)))
+  return toS(Stream.map_(Stream.periodically(ms), (a) => E.right(a)))
 }
 
-export const empty: StreamEither<never, unknown, never, never> = emptyS as any
+export const empty: StreamEither<never, unknown, never, never> = Stream.empty as any
 
 export function raised<E>(e: E): StreamEither<never, unknown, E, never> {
-  return toS(onceS(left(e)))
+  return toS(Stream.once(E.left(e)))
 }
 
 export function aborted(e: unknown): StreamEither<never, unknown, never, never> {
-  return toS(streamS.map(abortedS(e), (a) => right(a)))
+  return toS(Stream.map_(Stream.aborted(e), (a) => E.right(a)))
 }
 
 export function fromOption<A>(opt: Option<A>): StreamEither<never, unknown, never, A> {
-  return toS(streamS.map(fromOptionS(opt), (a) => right(a)))
+  return toS(Stream.map_(Stream.fromOption(opt), (a) => E.right(a)))
 }
 
 export function zipWithIndex<S, R, E, A>(
   stream: StreamEither<S, R, E, A>
 ): StreamEither<unknown, R, E, readonly [A, number]> {
   return toS(
-    streamS.map(zipWithIndexS(fromS(stream)), (a) => {
-      if (isLeft(a[0])) {
-        return left(a[0].left)
+    Stream.map_(Stream.zipWithIndex(fromS(stream)), (a) => {
+      if (E.isLeft(a[0])) {
+        return E.left(a[0].left)
       } else {
-        return right([a[0].right, a[1]])
+        return E.right([a[0].right, a[1]])
       }
     })
   )
@@ -278,7 +242,7 @@ export function concatL<S, R, E, A, S2, R2, E2>(
   stream1: StreamEither<S, R, E, A>,
   stream2: Lazy<StreamEither<S2, R2, E2, A>>
 ): StreamEither<S | S2, R & R2, E | E2, A> {
-  return toS(streamS.concatL(fromS(stream1), () => fromS(stream2()) as any))
+  return toS(Stream.concatL_(fromS(stream1), () => fromS(stream2()) as any))
 }
 
 export function concat<S, R, E, A, S2, R2, E2>(
@@ -291,7 +255,7 @@ export function concat<S, R, E, A, S2, R2, E2>(
 export function repeat<S, R, E, A>(
   stream: StreamEither<S, R, E, A>
 ): StreamEither<S, R, E, A> {
-  return toS(repeatS(fromS(stream)))
+  return toS(Stream.repeat(fromS(stream)))
 }
 
 export function as<S, R, E, A, B>(
@@ -316,13 +280,13 @@ export function filter<S, R, E, A>(
   f: Predicate<A>,
   propagate = true
 ) {
-  return toS(streamS.filter(fromS(stream), getEitherP(f, propagate)))
+  return toS(Stream.filter_(fromS(stream), getEitherP(f, propagate)))
 }
 
 export const getEitherP = <E, A>(
   p: Predicate<A>,
   propagate = true
-): Predicate<Either<E, A>> => fold(() => propagate, p)
+): Predicate<E.Either<E, A>> => E.fold(() => propagate, p)
 
 export function filterWith<A, B extends A>(
   f: Refinement<A, B>,
@@ -350,50 +314,100 @@ export function takeWhile<S, R, E, A>(
   stream: StreamEither<S, R, E, A>,
   pred: Predicate<A>
 ): StreamEither<S, R, E, A> {
-  return toS(streamS.takeWhile(fromS(stream), (x) => isRight(x) && pred(x.right)))
+  return toS(Stream.takeWhile_(fromS(stream), (x) => E.isRight(x) && pred(x.right)))
 }
 
-const mapLeft_ = <S, R, E, A, G>(fea: StreamEither<S, R, E, A>, f: (e: E) => G) =>
-  chainError_(fea, (x) => encaseEffect(raiseError(f(x))))
+export const mapLeft_ = <S, R, E, A, G>(
+  fea: StreamEither<S, R, E, A>,
+  f: (e: E) => G
+) => chainError_(fea, (x) => encaseEffect(T.raiseError(f(x))))
+
+export const ap_ = <S1, S2, R, R2, E, E2, A, B>(
+  sfab: StreamEither<S1, R, E, FunctionN<[A], B>>,
+  sa: StreamEither<S2, R2, E2, A>
+) => zipWith(sfab, sa, (f, a) => f(a))
+
+export const throwError = <E>(e: E) => encaseEffect(T.raiseError(e))
+
+export const bimap_ = <S, R, E, A, G, B>(
+  fea: StreamEither<S, R, E, A>,
+  f: (e: E) => G,
+  g: (a: A) => B
+) => map_(mapLeft_(fea, f), g)
 
 export const streamEither: Monad4EP<URI> & MonadThrow4EP<URI> & Bifunctor4<URI> = {
   URI,
   _CTX: "async",
   map: map_,
-  of: <S, R, E, A>(a: A): StreamEither<S, R, E, A> =>
-    (onceS(right(a)) as any) as StreamEither<S, R, E, A>,
-  ap: <S1, S2, R, R2, E, E2, A, B>(
-    sfab: StreamEither<S1, R, E, FunctionN<[A], B>>,
-    sa: StreamEither<S2, R2, E2, A>
-  ) => zipWith(sfab, sa, (f, a) => f(a)),
+  of,
+  ap: ap_,
   chain: chain_,
-  throwError: <E>(e: E) => encaseEffect(raiseError(e)),
+  throwError,
   mapLeft: mapLeft_,
-  bimap: <S, R, E, A, G, B>(
-    fea: StreamEither<S, R, E, A>,
-    f: (e: E) => G,
-    g: (a: A) => B
-  ) => map_(mapLeft_(fea, f), g)
+  bimap: bimap_
 }
+export const ap: <S1, R, E, A, E2>(
+  fa: StreamEither<S1, R, E, A>
+) => <S2, R2, B>(
+  fab: StreamEither<S2, R2, E2, (a: A) => B>
+) => StreamEither<unknown, R & R2, E | E2, B> = (fa) => (fab) => ap_(fab, fa)
 
-export const {
-  ap,
-  apFirst,
-  apSecond,
-  bimap,
-  chain,
-  chainFirst,
-  flatten,
-  map,
-  mapLeft
-} = pipeable(streamEither)
+export const apFirst: <S1, R, E, B>(
+  fb: StreamEither<S1, R, E, B>
+) => <A, S2, R2, E2>(
+  fa: StreamEither<S2, R2, E2, A>
+) => StreamEither<unknown, R & R2, E | E2, A> = (fb) => (fa) =>
+  ap_(
+    map_(fa, (a) => () => a),
+    fb
+  )
+
+export const apSecond = <S1, R, E, B>(fb: StreamEither<S1, R, E, B>) => <A, S2, R2, E2>(
+  fa: StreamEither<S2, R2, E2, A>
+): StreamEither<unknown, R & R2, E | E2, B> =>
+  ap_(
+    map_(fa, () => (b: B) => b),
+    fb
+  )
+
+export const bimap: <E, G, A, B>(
+  f: (e: E) => G,
+  g: (a: A) => B
+) => <S, R>(fa: StreamEither<S, R, E, A>) => StreamEither<S, R, G, B> = (f, g) => (
+  fa
+) => bimap_(fa, f, g)
+
+export const chain: <S1, R, E, A, B>(
+  f: (a: A) => StreamEither<S1, R, E, B>
+) => <S2, R2, E2>(
+  ma: StreamEither<S2, R2, E2, A>
+) => StreamEither<S1 | S2, R & R2, E | E2, B> = (f) => (fa) => chain_(fa, f)
+
+export const chainFirst: <S1, R, E, A, B>(
+  f: (a: A) => StreamEither<S1, R, E, B>
+) => <S2, R2, E2>(
+  ma: StreamEither<S2, R2, E2, A>
+) => StreamEither<S1 | S2, R & R2, E | E2, A> = (f) => (ma) =>
+  chain_(ma, (x) => map_(f(x), () => x))
+
+export const flatten: <S1, S2, R, E, R2, E2, A>(
+  mma: StreamEither<S1, R, E, StreamEither<S2, R2, E2, A>>
+) => StreamEither<S1 | S2, R & R2, E | E2, A> = (mma) => chain_(mma, (x) => x)
+
+export const map: <A, B>(
+  f: (a: A) => B
+) => <S, R, E>(fa: StreamEither<S, R, E, A>) => StreamEither<S, R, E, B> = (f) => (
+  ma
+) => map_(ma, f)
+
+export const mapLeft: <E, G>(
+  f: (e: E) => G
+) => <S, R, A>(fa: StreamEither<S, R, E, A>) => StreamEither<S, R, G, A> = (f) => (
+  fa
+) => mapLeft_(fa, f)
 
 export const Do = () => DoG(streamEither)
 export const For = () => ForM(streamEither)
-export const sequenceS = SS(streamEither)
-export const sequenceT = ST(streamEither)
-
-export const sequenceOption = option.sequence(streamEither)
 
 export const traverseOption: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
@@ -401,7 +415,7 @@ export const traverseOption: <S, A, R, E, B>(
   option.traverse(streamEither)(ta, f)
 
 export const wiltOption: <S, A, R, E, B, C>(
-  f: (a: A) => StreamEither<S, R, E, Either<B, C>>
+  f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
 ) => (wa: Option<A>) => AsyncRE<R, E, Separated<Option<B>, Option<C>>> = (f) => (wa) =>
   option.wilt(streamEither)(wa, f)
 
@@ -410,56 +424,48 @@ export const witherOption: <S, A, R, E, B>(
 ) => (ta: Option<A>) => AsyncRE<R, E, Option<B>> = (f) => (ta) =>
   option.wither(streamEither)(ta, f)
 
-export const sequenceEither = either.sequence(streamEither)
-
 export const traverseEither: <S, A, R, FE, B>(
   f: (a: A) => StreamEither<S, R, FE, B>
-) => <TE>(ta: Either<TE, A>) => AsyncRE<R, FE, Either<TE, B>> = (f) => (ta) =>
-  either.traverse(streamEither)(ta, f)
-
-export const sequenceTree = tree.sequence(streamEither)
+) => <TE>(ta: E.Either<TE, A>) => AsyncRE<R, FE, E.Either<TE, B>> = (f) => (ta) =>
+  E.traverse(streamEither)(ta, f)
 
 export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
 ) => (ta: Tree<A>) => AsyncRE<R, E, Tree<B>> = (f) => (ta) =>
   tree.traverse(streamEither)(ta, f)
 
-export const sequenceArray = array.sequence(streamEither)
-
 export const traverseArray: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  array.traverse(streamEither)(ta, f)
+  A.traverse(streamEither)(ta, f)
 
 export const traverseArrayWithIndex: <S, A, R, E, B>(
   f: (i: number, a: A) => StreamEither<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  array.traverseWithIndex(streamEither)(ta, f)
+  A.traverseWithIndex(streamEither)(ta, f)
 
 export const wiltArray: <S, A, R, E, B, C>(
-  f: (a: A) => StreamEither<S, R, E, Either<B, C>>
+  f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  array.wilt(streamEither)(wa, f)
+  A.wilt(streamEither)(wa, f)
 
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  array.wither(streamEither)(ta, f)
-
-export const sequenceRecord = record.sequence(streamEither)
+  A.wither(streamEither)(ta, f)
 
 export const traverseRecord: <A, S, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.traverse(streamEither)(ta, f)
+  record.traverse_(streamEither)(ta, f)
 
 export const traverseRecordWithIndex: <A, S, R, E, B>(
   f: (k: string, a: A) => StreamEither<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.traverseWithIndex(streamEither)(ta, f)
+  record.traverseWithIndex_(streamEither)(ta, f)
 
 export const wiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => StreamEither<S, R, E, Either<B, C>>
+  f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
 ) => (
   wa: Record<string, A>
 ) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
