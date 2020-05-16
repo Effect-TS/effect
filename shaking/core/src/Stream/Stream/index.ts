@@ -1,9 +1,14 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
-import { array, filter as filterArray } from "../Array"
-import { Deferred, makeDeferred } from "../Deferred"
-import { Do as DoG } from "../Do"
+import {
+  traverse as a_traverse,
+  traverseWithIndex as a_traverseWithIndex,
+  wilt as a_wilt,
+  wither as a_wither
+} from "../../Array"
+import { filter as filterArray } from "../../Array"
+import { Deferred, makeDeferred } from "../../Deferred"
+import { Do as DoG } from "../../Do"
 import {
   applyFirst as applyFirstEffect,
   applySecond as applySecondEffect,
@@ -40,39 +45,60 @@ import {
   traverseArray as traverseArrayEffect,
   unit as unitEffect,
   zipWith_ as zipWith_Effect
-} from "../Effect"
-import { Either, either } from "../Either"
-import { Eq } from "../Eq"
-import { Cause, Exit } from "../Exit"
-import { constant, FunctionN, identity, Lazy, Predicate, Refinement } from "../Function"
+} from "../../Effect"
+import { Either } from "../../Either"
+import { traverse as e_traverse } from "../../Either"
+import { Eq } from "../../Eq"
+import { Cause, Exit } from "../../Exit"
+import {
+  constant,
+  FunctionN,
+  identity,
+  Lazy,
+  Predicate,
+  Refinement
+} from "../../Function"
 import {
   as as asManaged,
   Async as ManagedAsync,
   AsyncRE as ManagedAsyncRE,
   bracket as bracketManaged,
   chain as chainManaged,
+  chain_ as chain_Managed,
+  map_ as map_Managed,
   encaseEffect as encaseEffectManaged,
   fiber as fiberManaged,
   Managed,
-  managed,
   map as mapManaged,
   pure as pureManaged,
   Sync as SyncManaged,
   use as useManaged,
   zip as zipManaged,
   zipWith as zipWithManaged
-} from "../Managed"
-import { fold as foldOption, isSome, none, Option, option, some } from "../Option"
-import { pipe } from "../Pipe"
-import { boundedQueue, ConcurrentQueue, unboundedQueue } from "../Queue"
-import { record } from "../Record"
-import { makeRef, Ref } from "../Ref"
-import { makeSemaphore } from "../Semaphore"
-import { StreamURI as URI } from "../Support/Common"
-import { ForM } from "../Support/For"
-import { Monad4EP } from "../Support/Overloads"
-import { Tree, tree } from "../Tree"
-
+} from "../../Managed"
+import { fold as foldOption, isSome, none, Option, some } from "../../Option"
+import {
+  chain_ as chain__1,
+  map_ as map__1,
+  traverse as o_traverse,
+  wilt as o_wilt,
+  wither as o_wither
+} from "../../Option"
+import { pipe } from "../../Pipe"
+import { boundedQueue, ConcurrentQueue, unboundedQueue } from "../../Queue"
+import {
+  traverse_ as r_traverse_,
+  traverseWithIndex_ as r_traverseWithIndex_,
+  wilt as r_wilt,
+  wither as r_wither
+} from "../../Record"
+import { makeRef, Ref } from "../../Ref"
+import { makeSemaphore } from "../../Semaphore"
+import { StreamURI as URI } from "../../Support/Common"
+import { ForM } from "../../Support/For"
+import { Monad4EP } from "../../Support/Overloads"
+import { Tree } from "../../Tree"
+import { traverse as t_traverse } from "../../Tree"
 import {
   collectArraySink,
   drainSink,
@@ -81,9 +107,9 @@ import {
   queueSink,
   Sink,
   stepMany
-} from "./Sink"
-import { isSinkCont, sinkStepLeftover, sinkStepState } from "./Step"
-import { emitter, Ops, queueUtils } from "./Support"
+} from "../Sink"
+import { isSinkCont, sinkStepLeftover, sinkStepState } from "../Step"
+import { emitter, Ops, queueUtils } from "../Support"
 
 export type Source<K, R, E, A> = Effect<K, R, E, Option<A>>
 
@@ -188,7 +214,7 @@ export function fromSource<K, R, E, K2, R2, E2, A>(
   r: Managed<K, R, E, Effect<K2, R2, E2, Option<A>>>
 ): Stream<K | K2, R & R2, E | E2, A> {
   return toS(
-    managed.map(r, (pull) => {
+    map_Managed(r, (pull) => {
       function fold<S>(
         initial: S,
         cont: Predicate<S>,
@@ -383,7 +409,7 @@ export function zipWithIndex<K, R, E, A>(
   stream: Stream<K, R, E, A>
 ): Stream<K, R, E, readonly [A, number]> {
   return toS(
-    managed.map(fromS(stream), (fold) => {
+    map_Managed(fromS(stream), (fold) => {
       function zipFold<S>(
         initial: S,
         cont: Predicate<S>,
@@ -473,7 +499,7 @@ function map_<K, R, E, A, B>(
   f: FunctionN<[A], B>
 ): Stream<K, R, E, B> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream),
       (outer) => <S>(
         initial: S,
@@ -518,7 +544,7 @@ function filter_<K, R, E, A>(
   f: Predicate<A>
 ): Stream<K, R, E, A> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream),
       (outer) => <S>(
         initial: S,
@@ -549,7 +575,7 @@ function distinctAdjacent_<K, R, E, A>(
   eq: Eq<A>
 ): Stream<K, R, E, A> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream),
       (base) => <S>(
         initial: S,
@@ -600,7 +626,7 @@ function foldM_<K, R, E, A, K2, R2, E2, B>(
   seed: B
 ): Stream<K | K2, R & R2, E | E2, B> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream as Stream<K | K2, R & R2, E | E2, A>),
       (base) => <S>(
         initial: S,
@@ -749,7 +775,7 @@ function chain_<K, R, E, A, K2, R2, E2, B>(
   f: FunctionN<[A], Stream<K2, R2, E2, B>>
 ): Stream<K | K2, R & R2, E | E2, B> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream as Stream<K | K2, R & R2, E | E2, A>),
       (outerfold) => <S>(
         initial: S,
@@ -779,7 +805,7 @@ export function chain<K, A, R2, E2, B>(
 ): <K2, R, E>(stream: Stream<K | K2, R, E, A>) => Stream<K | K2, R & R2, E | E2, B> {
   return <K2, R, E>(stream: Stream<K2, R, E, A>) =>
     toS(
-      managed.map(
+      map_Managed(
         fromS(stream as Stream<K | K2, R & R2, E | E2, A>),
         (outerfold) => <S>(
           initial: S,
@@ -848,7 +874,7 @@ function transduce_<K, R, E, A, K2, R2, E2, S, B>(
   sink: Sink<K2, R2, E2, S, A, B>
 ): Stream<K | K2, R & R2, E | E2, B> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream as Stream<K | K2, R & R2, E | E2, A>),
       (base) => <S0>(
         initial: S0,
@@ -954,7 +980,7 @@ export function drop(
  */
 function take_<K, R, E, A>(stream: Stream<K, R, E, A>, n: number): Stream<K, R, E, A> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream),
       (fold) => <S>(
         initial: S,
@@ -989,7 +1015,7 @@ function takeWhile_<K, R, E, A>(
   pred: Predicate<A>
 ): Stream<K, R, E, A> {
   return toS(
-    managed.map(
+    map_Managed(
       fromS(stream),
       (fold) => <S>(
         initial: S,
@@ -1134,7 +1160,7 @@ function sinkQueue<S, R, E, A>(
   E,
   readonly [ConcurrentQueue<Option<A>>, Deferred<unknown, R, E, Option<A>>]
 > {
-  return managed.chain(
+  return chain_Managed(
     zipManaged(
       // 0 allows maximum backpressure throttling (i.e. a reader must be waiting already to produce the item)
       encaseEffectManaged(boundedQueue<Option<A>>(0)),
@@ -1197,7 +1223,7 @@ function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
       const bgrab = raceFirstEffect(btake, blatch.wait)
 
       return zipWith_Effect(agrab, bgrab, (aOpt, bOpt) =>
-        option.chain(aOpt, (a) => option.map(bOpt, (b) => f(a, b)))
+        chain__1(aOpt, (a) => map__1(bOpt, (b) => f(a, b)))
       )
     }
   )
@@ -1266,7 +1292,7 @@ function queueBreakerSource<R, E, A>(
 function streamQueueSource<S, R, E, A>(
   stream: Stream<S, R, E, A>
 ): ManagedAsyncRE<R, E, AsyncEffectRE<R, E, Option<A>>> {
-  return managed.map(sinkQueue(stream), ([q, breaker]) =>
+  return map_Managed(sinkQueue(stream), ([q, breaker]) =>
     queueBreakerSource(q, breaker)
   )
 }
@@ -1283,7 +1309,7 @@ function peel_<K, R, E, A, S, B, K2, R2, E2>(
   sink: Sink<K2, R2, E2, S, A, B>
 ): AsyncRE<R & R2, E | E2, readonly [B, AsyncRE<R & R2, E | E2, A>]> {
   return toS(
-    managed.chain(streamQueueSource(stream), (pull) => {
+    chain_Managed(streamQueueSource(stream), (pull) => {
       const pullStream = fromSource(pureManaged(pull))
       // We now have a shared pull instantiation that we can use as a sink to drive and return as a stream
       return fromS(
@@ -1309,7 +1335,7 @@ function peelManaged_<K, R, E, A, S, B, R2, E2, K2, K3, R3, E3>(
   E | E2 | E3,
   readonly [B, AsyncRE<R & R2 & R3, E | E2 | E3, A>]
 > {
-  return toS(managed.chain(managedSink, (sink) => fromS(peel_(stream, sink))))
+  return toS(chain_Managed(managedSink, (sink) => fromS(peel_(stream, sink))))
 }
 
 export function peelManaged<A, S, B, K2, R2, E2, K3, R3, E3>(
@@ -1355,10 +1381,10 @@ function singleFiberSlot(): ManagedAsync<Ref<Option<Fiber<never, void>>>> {
 export function switchLatest<R, E, A, R2, E2>(
   stream: AsyncRE<R, E, AsyncRE<R2, E2, A>>
 ): AsyncRE<R & R2, E | E2, A> {
-  const source = managed.chain(streamQueueSource(stream), (
+  const source = chain_Managed(streamQueueSource(stream), (
     pull // read streams
   ) =>
-    managed.chain(
+    chain_Managed(
       zipManaged(
         // The queue and latch to push into
         encaseEffectManaged(boundedQueue<Option<A>>(0)),
@@ -1366,11 +1392,11 @@ export function switchLatest<R, E, A, R2, E2>(
       ),
       ([pushQueue, pushBreaker]) =>
         // The internal latch that can be used to signal failures and shut down the read process
-        managed.chain(
+        chain_Managed(
           encaseEffectManaged(makeDeferred<unknown, unknown, never, Cause<E>, E>()),
           (internalBreaker) =>
             // somewhere to hold the currently running fiber so we can interrupt it on termination
-            managed.chain(singleFiberSlot(), (fiberSlot) => {
+            chain_Managed(singleFiberSlot(), (fiberSlot) => {
               const interruptPushFiber = interruptFiberSlot(fiberSlot)
               // Spawn a fiber that should push elements from stream into pushQueue as long as it is able
               function spawnPushFiber(
@@ -1471,11 +1497,11 @@ function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): AsyncEffect<void> {
 }
 
 // Track many fibers for the purpose of clean interruption on failure
-const makeWeave: ManagedAsync<Weave> = managed.chain(
+const makeWeave: ManagedAsync<Weave> = chain_Managed(
   encaseEffectManaged(makeRef(0)),
   (cell) =>
     // On cleanup we want to interrupt any running fibers
-    managed.map(
+    map_Managed(
       bracketManaged(makeRef<WeaveHandle[]>([]), interruptWeaveHandles),
       (store) => {
         function attach(action: SyncEffect<void>): SyncEffect<void> {
@@ -1515,18 +1541,18 @@ function merge_<K, R, E, A, K2, R2, E2>(
   stream: Stream<K, R, E, Stream<K2, R2, E2, A>>,
   maxActive: number
 ): AsyncRE<R & R2, E | E2, A> {
-  const source = managed.chain(streamQueueSource(stream), (pull) =>
-    managed.chain(encaseEffectManaged(makeSemaphore(maxActive)), (sem) =>
+  const source = chain_Managed(streamQueueSource(stream), (pull) =>
+    chain_Managed(encaseEffectManaged(makeSemaphore(maxActive)), (sem) =>
       // create the queue that output will be forced into
-      managed.chain(encaseEffectManaged(boundedQueue<Option<A>>(0)), (pushQueue) =>
+      chain_Managed(encaseEffectManaged(boundedQueue<Option<A>>(0)), (pushQueue) =>
         // create the mechanism t hrough which we can signal completion
-        managed.chain(
+        chain_Managed(
           encaseEffectManaged(
             makeDeferred<unknown, R & R2, E | E2, Option<A>, E | E2>()
           ),
           (pushBreaker) =>
-            managed.chain(makeWeave, (weave) =>
-              managed.chain(
+            chain_Managed(makeWeave, (weave) =>
+              chain_Managed(
                 encaseEffectManaged(
                   makeDeferred<unknown, unknown, never, Cause<E | E2>, E | E2>()
                 ),
@@ -1815,85 +1841,71 @@ export const stream: Monad4EP<URI> & StreamF = {
 
 export const Do = () => DoG(stream)
 export const For = () => ForM(stream)
-export const sequenceS = SS(stream)
-export const sequenceT = ST(stream)
-
-export const sequenceOption = option.sequence(stream)
 
 export const traverseOption: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, B>
 ) => (ta: Option<A>) => AsyncRE<R, E, Option<B>> = (f) => (ta) =>
-  option.traverse(stream)(ta, f)
+  o_traverse(stream)(ta, f)
 
 export const wiltOption: <S, A, R, E, B, C>(
   f: (a: A) => Stream<S, R, E, Either<B, C>>
 ) => (wa: Option<A>) => AsyncRE<R, E, Separated<Option<B>, Option<C>>> = (f) => (wa) =>
-  option.wilt(stream)(wa, f)
+  o_wilt(stream)(wa, f)
 
 export const witherOption: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, Option<B>>
 ) => (ta: Option<A>) => AsyncRE<R, E, Option<B>> = (f) => (ta) =>
-  option.wither(stream)(ta, f)
-
-export const sequenceEither = either.sequence(stream)
+  o_wither(stream)(ta, f)
 
 export const traverseEither: <S, A, R, FE, B>(
   f: (a: A) => Stream<S, R, FE, B>
 ) => <TE>(ta: Either<TE, A>) => AsyncRE<R, FE, Either<TE, B>> = (f) => (ta) =>
-  either.traverse(stream)(ta, f)
-
-export const sequenceTree = tree.sequence(stream)
+  e_traverse(stream)(ta, f)
 
 export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, B>
-) => (ta: Tree<A>) => AsyncRE<R, E, Tree<B>> = (f) => (ta) =>
-  tree.traverse(stream)(ta, f)
-
-export const sequenceArray = array.sequence(stream)
+) => (ta: Tree<A>) => AsyncRE<R, E, Tree<B>> = (f) => (ta) => t_traverse(stream)(ta, f)
 
 export const traverseArray: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  array.traverse(stream)(ta, f)
+  a_traverse(stream)(ta, f)
 
 export const traverseArrayWithIndex: <S, A, R, E, B>(
   f: (i: number, a: A) => Stream<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  array.traverseWithIndex(stream)(ta, f)
+  a_traverseWithIndex(stream)(ta, f)
 
 export const wiltArray: <S, A, R, E, B, C>(
   f: (a: A) => Stream<S, R, E, Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  array.wilt(stream)(wa, f)
+  a_wilt(stream)(wa, f)
 
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, Option<B>>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  array.wither(stream)(ta, f)
-
-export const sequenceRecord = record.sequence(stream)
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => a_wither(stream)(ta, f)
 
 export const traverseRecord: <A, S, R, E, B>(
   f: (a: A) => Stream<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.traverse(stream)(ta, f)
+  r_traverse_(stream)(ta, f)
 
 export const traverseRecordWithIndex: <A, S, R, E, B>(
   f: (k: string, a: A) => Stream<S, R, E, B>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.traverseWithIndex(stream)(ta, f)
+  r_traverseWithIndex_(stream)(ta, f)
 
 export const wiltRecord: <A, S, R, E, B, C>(
   f: (a: A) => Stream<S, R, E, Either<B, C>>
 ) => (
   wa: Record<string, A>
 ) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  record.wilt(stream)(wa, f)
+  r_wilt(stream)(wa, f)
 
 export const witherRecord: <A, S, R, E, B>(
   f: (a: A) => Stream<S, R, E, Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.wither(stream)(ta, f)
+  r_wither(stream)(ta, f)
 
 export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
   const listeners: Map<any, (_: Ops<E, A>) => void> = new Map()

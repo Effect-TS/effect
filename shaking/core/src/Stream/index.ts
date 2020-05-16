@@ -54,13 +54,6 @@ export {
   repeatedly,
   scan,
   scanM,
-  sequenceArray,
-  sequenceEither,
-  sequenceOption,
-  sequenceRecord,
-  sequenceS,
-  sequenceT,
-  sequenceTree,
   stream,
   switchLatest,
   take,
@@ -84,7 +77,15 @@ export {
   zipWith,
   zipWithIndex,
   subject
-} from "./stream"
+} from "./Stream"
+
+export { sequenceArray } from "./Stream/sequenceArray"
+export { sequenceEither } from "./Stream/sequenceEither"
+export { sequenceOption } from "./Stream/sequenceOption"
+export { sequenceRecord } from "./Stream/sequenceRecord"
+export { sequenceS } from "./Stream/sequenceS"
+export { sequenceT } from "./Stream/sequenceT"
+export { sequenceTree } from "./Stream/sequenceTree"
 
 import * as sink from "./Sink"
 import * as step from "./Step"
