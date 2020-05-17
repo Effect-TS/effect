@@ -1,18 +1,19 @@
-/**
- * @since 2.5.0
- */
-import type { Applicative, Applicative2C } from "fp-ts/lib/Applicative"
-import type { Bifunctor2 } from "fp-ts/lib/Bifunctor"
-import type { Chain2C } from "fp-ts/lib/Chain"
-import type { ChainRec2C } from "fp-ts/lib/ChainRec"
-import type { Comonad2 } from "fp-ts/lib/Comonad"
-import type { Foldable2 } from "fp-ts/lib/Foldable"
-import type { HKT } from "fp-ts/lib/HKT"
-import type { Monad2C } from "fp-ts/lib/Monad"
-import type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
-import type { Traversable2, Traverse2, Sequence2 } from "fp-ts/lib/Traversable"
-
 import type { Apply2C } from "../../Apply"
+import type {
+  Applicative2C,
+  Chain2C,
+  Monad2C,
+  ChainRec2C,
+  Traverse2,
+  Applicative,
+  HKT,
+  Sequence2,
+  Semigroupoid2,
+  Bifunctor2,
+  Comonad2,
+  Foldable2,
+  Traversable2
+} from "../../Base"
 import type { Either } from "../../Either"
 import type { Monoid } from "../../Monoid"
 import type { Semigroup } from "../../Semigroup"
@@ -23,40 +24,22 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-/**
- * @since 2.5.0
- */
 export const URI = "ReadonlyTuple"
 
-/**
- * @since 2.5.0
- */
 export type URI = typeof URI
 
-/**
- * @since 2.5.0
- */
 export function fst<A, S>(sa: readonly [A, S]): A {
   return sa[0]
 }
 
-/**
- * @since 2.5.0
- */
 export function snd<A, S>(sa: readonly [A, S]): S {
   return sa[1]
 }
 
-/**
- * @since 2.5.0
- */
 export function swap<A, S>(sa: readonly [A, S]): readonly [S, A] {
   return [snd(sa), fst(sa)]
 }
 
-/**
- * @since 2.5.0
- */
 export function getApply<S>(S: Semigroup<S>): Apply2C<URI, S> {
   return {
     URI,
@@ -70,9 +53,6 @@ export const of = <S>(M: Monoid<S>) => <A>(a: A): readonly [A, S] => {
   return [a, M.empty]
 }
 
-/**
- * @since 2.5.0
- */
 export function getApplicative<S>(M: Monoid<S>): Applicative2C<URI, S> {
   return {
     ...getApply(M),
@@ -80,9 +60,6 @@ export function getApplicative<S>(M: Monoid<S>): Applicative2C<URI, S> {
   }
 }
 
-/**
- * @since 2.5.0
- */
 export function getChain<S>(S: Semigroup<S>): Chain2C<URI, S> {
   return {
     ...getApply(S),
@@ -93,9 +70,6 @@ export function getChain<S>(S: Semigroup<S>): Chain2C<URI, S> {
   }
 }
 
-/**
- * @since 2.5.0
- */
 export function getMonad<S>(M: Monoid<S>): Monad2C<URI, S> {
   return {
     ...getChain(M),
@@ -103,9 +77,6 @@ export function getMonad<S>(M: Monoid<S>): Monad2C<URI, S> {
   }
 }
 
-/**
- * @since 2.5.0
- */
 export function getChainRec<S>(M: Monoid<S>): ChainRec2C<URI, S> {
   const chainRec = <A, B>(
     a: A,
@@ -183,9 +154,6 @@ export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <A, S>(
   return F.map(fst(fas), (a) => [a, snd(fas)])
 }
 
-/**
- * @since 2.5.0
- */
 export const readonlyTuple: Semigroupoid2<URI> &
   Bifunctor2<URI> &
   Comonad2<URI> &

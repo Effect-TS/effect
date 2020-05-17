@@ -60,38 +60,22 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-/**
- * @since 2.0.0
- */
 export const URI = "Record"
 
-/**
- * @since 2.0.0
- */
 export type URI = typeof URI
 
-/**
- * @since 2.0.0
- */
 export const getShow: <A>(S: Show<A>) => Show<Record<string, A>> = RR.getShow
 
 /**
  * Calculate the number of key/value pairs in a record
- *
- * @since 2.0.0
  */
 export const size: (r: Record<string, unknown>) => number = RR.size
 
 /**
  * Test whether a record is empty
- *
- * @since 2.0.0
  */
 export const isEmpty: (r: Record<string, unknown>) => boolean = RR.isEmpty
 
-/**
- * @since 2.0.0
- */
 export const keys: <K extends string>(
   r: Record<K, unknown>
 ) => Array<K> = RR.keys as any
@@ -107,24 +91,17 @@ export const keys: <K extends string>(
  *   collect((key, val) => ({key: key, value: val}))(x),
  *   [{key: 'a', value: 'foo'}, {key: 'b', value: false}]
  * )
- *
- * @since 2.0.0
  */
 export const collect: <K extends string, A, B>(
   f: (k: K, a: A) => B
 ) => (r: Record<K, A>) => Array<B> = RR.collect as any
 
-/**
- * @since 2.0.0
- */
 export const toArray: <K extends string, A>(
   r: Record<K, A>
 ) => Array<[K, A]> = RR.toReadonlyArray as any
 
 /**
  * Unfolds a record into a list of key/value pairs
- *
- * @since 2.0.0
  */
 export function toUnfoldable<F extends URIS>(
   U: Unfoldable1<F>
@@ -140,8 +117,6 @@ export function toUnfoldable<F>(
 
 /**
  * Insert or replace a key/value pair in a record
- *
- * @since 2.0.0
  */
 export function insertAt<K extends string, A>(
   k: K,
@@ -154,9 +129,6 @@ export function insertAt<A>(
   return RR.insertAt(k, a) as any
 }
 
-/**
- * @since 2.0.0
- */
 export const hasOwnProperty: <K extends string>(
   k: string,
   r: Record<K, unknown>
@@ -164,8 +136,6 @@ export const hasOwnProperty: <K extends string>(
 
 /**
  * Delete a key and value from a map
- *
- * @since 2.0.0
  */
 export function deleteAt<K extends string>(
   k: K
@@ -176,17 +146,11 @@ export function deleteAt(k: string): <A>(r: Record<string, A>) => Record<string,
   return RR.deleteAt(k) as any
 }
 
-/**
- * @since 2.0.0
- */
 export const updateAt: <A>(
   k: string,
   a: A
 ) => <K extends string>(r: Record<K, A>) => Option<Record<K, A>> = RR.updateAt
 
-/**
- * @since 2.0.0
- */
 export const modifyAt: <A>(
   k: string,
   f: (a: A) => A
@@ -194,8 +158,6 @@ export const modifyAt: <A>(
 
 /**
  * Delete a key and value from a map, returning the value as well as the subsequent map
- *
- * @since 2.0.0
  */
 export function pop<K extends string>(
   k: K
@@ -210,16 +172,11 @@ export function pop(
 
 /**
  * Test whether one record contains all of the keys and values contained in another record
- *
- * @since 2.0.0
  */
 export const isSubrecord: <A>(
   E: Eq<A>
 ) => (x: Record<string, A>, y: Record<string, A>) => boolean = RR.isSubrecord
 
-/**
- * @since 2.0.0
- */
 export function getEq<K extends string, A>(E: Eq<A>): Eq<Record<K, A>>
 export function getEq<A>(E: Eq<A>): Eq<Record<string, A>> {
   return RR.getEq(E)
@@ -234,8 +191,6 @@ export function getEq<A>(E: Eq<A>): Eq<Record<string, A>> {
  *
  * const M = getMonoid(semigroupSum)
  * assert.deepStrictEqual(M.concat({ foo: 123 }, { foo: 456 }), { foo: 579 })
- *
- * @since 2.0.0
  */
 export function getMonoid<K extends string, A>(S: Semigroup<A>): Monoid<Record<K, A>>
 export function getMonoid<A>(S: Semigroup<A>): Monoid<Record<string, A>> {
@@ -244,20 +199,13 @@ export function getMonoid<A>(S: Semigroup<A>): Monoid<Record<string, A>> {
 
 /**
  * Lookup the value for a key in a record
- *
- * @since 2.0.0
  */
 export const lookup: <A>(k: string, r: Record<string, A>) => Option<A> = RR.lookup
 
-/**
- * @since 2.0.0
- */
 export const empty: Record<string, never> = {}
 
 /**
  * Map a record passing the keys to the iterating function
- *
- * @since 2.0.0
  */
 export function mapWithIndex<K extends string, A, B>(
   f: (k: K, a: A) => B
@@ -270,8 +218,6 @@ export function mapWithIndex<A, B>(
 
 /**
  * Map a record passing the values to the iterating function
- *
- * @since 2.0.0
  */
 export function map<A, B>(
   f: (a: A) => B
@@ -282,9 +228,6 @@ export function map<A, B>(
   return RR.map(f)
 }
 
-/**
- * @since 2.0.0
- */
 export function reduceWithIndex<K extends string, A, B>(
   b: B,
   f: (k: K, b: B, a: A) => B
@@ -296,9 +239,6 @@ export function reduceWithIndex<A, B>(
   return RR.reduceWithIndex(b, f)
 }
 
-/**
- * @since 2.0.0
- */
 export function foldMapWithIndex<M>(
   M: Monoid<M>
 ): <K extends string, A>(f: (k: K, a: A) => M) => (fa: Record<K, A>) => M
@@ -308,9 +248,6 @@ export function foldMapWithIndex<M>(
   return RR.foldMapWithIndex(M)
 }
 
-/**
- * @since 2.0.0
- */
 export function reduceRightWithIndex<K extends string, A, B>(
   b: B,
   f: (k: K, a: A, b: B) => B
@@ -324,14 +261,9 @@ export function reduceRightWithIndex<A, B>(
 
 /**
  * Create a record with one key/value pair
- *
- * @since 2.0.0
  */
 export const singleton: <K extends string, A>(k: K, a: A) => Record<K, A> = RR.singleton
 
-/**
- * @since 2.0.0
- */
 export function traverseWithIndex<F extends URIS3>(
   F: Applicative3<F>
 ): <K extends string, R, E, A, B>(
@@ -370,9 +302,6 @@ export function traverseWithIndex<F>(
   return RR.traverseWithIndex(F)
 }
 
-/**
- * @since 2.0.0
- */
 export function traverse<F extends URIS3>(
   F: Applicative3<F>
 ): <R, E, A, B>(
@@ -411,9 +340,6 @@ export function traverse<F>(
   return RR.traverse(F)
 }
 
-/**
- * @since 2.0.0
- */
 export function partitionMapWithIndex<K extends string, A, B, C>(
   f: (key: K, a: A) => Either<B, C>
 ): (fa: Record<K, A>) => Separated<Record<string, B>, Record<string, C>>
@@ -423,9 +349,6 @@ export function partitionMapWithIndex<A, B, C>(
   return RR.partitionMapWithIndex(f)
 }
 
-/**
- * @since 2.0.0
- */
 export function partitionWithIndex<K extends string, A, B extends A>(
   refinementWithIndex: RefinementWithIndex<K, A, B>
 ): (fa: Record<K, A>) => Separated<Record<string, A>, Record<string, B>>
@@ -438,9 +361,6 @@ export function partitionWithIndex<A>(
   return RR.partitionWithIndex(predicateWithIndex)
 }
 
-/**
- * @since 2.0.0
- */
 export function filterMapWithIndex<K extends string, A, B>(
   f: (key: K, a: A) => Option<B>
 ): (fa: Record<K, A>) => Record<string, B>
@@ -450,9 +370,6 @@ export function filterMapWithIndex<A, B>(
   return RR.filterMapWithIndex(f)
 }
 
-/**
- * @since 2.0.0
- */
 export function filterWithIndex<K extends string, A, B extends A>(
   refinementWithIndex: RefinementWithIndex<K, A, B>
 ): (fa: Record<K, A>) => Record<string, B>
@@ -468,8 +385,6 @@ export function filterWithIndex<A>(
 /**
  * Create a record from a foldable collection of key/value pairs, using the
  * specified `Magma` to combine values for duplicate keys.
- *
- * @since 2.0.0
  */
 export function fromFoldable<F extends URIS3, A>(
   M: Magma<A>,
@@ -528,8 +443,6 @@ export function fromFoldable<F, A>(
  *   id1: { id: 'id1', name: 'name3' },
  *   id2: { id: 'id2', name: 'name2' }
  * })
- *
- * @since 2.0.0
  */
 export function fromFoldableMap<F extends URIS3, B>(
   M: Magma<B>,
@@ -557,22 +470,13 @@ export function fromFoldableMap<F, B>(
   return RR.fromFoldableMap(M, F)
 }
 
-/**
- * @since 2.0.0
- */
 export const every: <A>(predicate: Predicate<A>) => (r: Record<string, A>) => boolean =
   RR.every
 
-/**
- * @since 2.0.0
- */
 export const some: <A>(
   predicate: (a: A) => boolean
 ) => (r: Record<string, A>) => boolean = RR.some
 
-/**
- * @since 2.0.0
- */
 export const elem: <A>(E: Eq<A>) => (a: A, fa: Record<string, A>) => boolean = RR.elem
 
 export const map_: <A, B>(fa: Record<string, A>, f: (a: A) => B) => Record<string, B> =
@@ -593,9 +497,6 @@ export const reduceRight_: <A, B>(
 
 export const traverse_: Traverse1<URI> = RR.traverse_
 
-/**
- * @since 2.0.0
- */
 export function sequence<F extends MaURIS, E>(
   F: Applicative4ECP<F, E>
 ): <K extends string, S, R, A>(
@@ -710,9 +611,6 @@ export const partitionWithIndex_: PartitionWithIndex1<URI, string> =
 
 export const filterWithIndex_: FilterWithIndex1<URI, string> = RR.filterWithIndex_
 
-/**
- * @since 2.0.0
- */
 export const record: FunctorWithIndex1<URI, string> &
   Foldable1<URI> &
   TraversableWithIndex1<URI, string> &
