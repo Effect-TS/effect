@@ -1,7 +1,8 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
 import { Either, isLeft } from "../../Either"
-import type { Next } from "../Set/Next"
+
+import type { Next } from "./Next"
 
 export const separate = <K, A, B>(
   fa: ReadonlyMap<K, Either<A, B>>
