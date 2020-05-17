@@ -1,5 +1,15 @@
-export { boundedQueue } from "./boundedQueue"
-export type { ConcurrentQueue } from "./ConcurrentQueue"
-export { droppingQueue } from "./droppingQueue"
-export { slidingQueue } from "./slidingQueue"
-export { unboundedQueue } from "./unboundedQueue"
+export {
+  ConcurrentQueue,
+  State,
+  boundedQueue,
+  droppingOffer,
+  droppingQueue,
+  initial,
+  makeConcurrentQueueImpl,
+  natCapacity,
+  natNumber,
+  slidingOffer,
+  slidingQueue,
+  unboundedOffer,
+  unboundedQueue
+} from "./queue"

@@ -1,4 +1,2 @@
-export { randomRange } from "./randomRange"
-export { randomInt } from "./randomInt"
-export { randomBool } from "./randomBool"
-export { random } from "./random"
+/* adapted from https://github.com/gcanti/fp-ts */
+export { randomRange, random, randomBool, randomInt } from "./random"
