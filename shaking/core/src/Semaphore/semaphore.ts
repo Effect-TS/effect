@@ -1,25 +1,8 @@
 import { Deferred, makeDeferred } from "../Deferred"
-import {
-  Async,
-  Effect,
-  AsyncRE,
-  Sync,
-  raiseAbort,
-  unit,
-  AsyncE,
-  applySecond,
-  uninterruptible,
-  flatten,
-  applyFirst,
-  bracketExit,
-  interruptible,
-  bracket,
-  chain_,
-  map_
-} from "../Effect"
-import { Either, left, fold, right } from "../Either"
-import { not, constant, identity } from "../Function"
-import { fold as foldOption } from "../Option"
+import * as T from "../Effect"
+import * as E from "../Either"
+import * as F from "../Function"
+import * as O from "../Option"
 import { pipe } from "../Pipe"
 import { makeRef, Ref } from "../Ref"
 import { Dequeue, empty } from "../Support/Dequeue"
@@ -29,89 +12,89 @@ export interface Semaphore {
   /**
    * Acquire a permit, blocking if not all are vailable
    */
-  readonly acquire: Async<void>
+  readonly acquire: T.Async<void>
   /**
    * Release a permit
    */
-  readonly release: Async<void>
+  readonly release: T.Async<void>
   /**
    * Get the number of available permits
    */
-  readonly available: Async<number>
+  readonly available: T.Async<number>
 
   /**
    * Acquire multiple permits blocking if not all are available
    * @param n
    */
-  acquireN(n: number): Async<void>
+  acquireN(n: number): T.Async<void>
   /**
    * Release mutliple permits
    * @param n
    */
-  releaseN(n: number): Async<void>
+  releaseN(n: number): T.Async<void>
   /**
    * Bracket the given io with acquireN/releaseN calls
    * @param n
    * @param io
    */
-  withPermitsN<S, R, E, A>(n: number, io: Effect<S, R, E, A>): AsyncRE<R, E, A>
+  withPermitsN<S, R, E, A>(n: number, io: T.Effect<S, R, E, A>): T.AsyncRE<R, E, A>
   /**
    * withPermitN(1, _)
    * @param n
    */
-  withPermit<S, R, E, A>(n: Effect<S, R, E, A>): AsyncRE<R, E, A>
+  withPermit<S, R, E, A>(n: T.Effect<S, R, E, A>): T.AsyncRE<R, E, A>
 }
 
 type Reservation = readonly [number, Deferred<unknown, unknown, never, void>]
-type State = Either<Dequeue<Reservation>, number>
+type State = E.Either<Dequeue<Reservation>, number>
 
 const isReservationFor = (latch: Deferred<unknown, unknown, never, void>) => (
   rsv: readonly [number, Deferred<unknown, unknown, never, void>]
 ): boolean => rsv[1] === latch
 
-function sanityCheck(n: number): Sync<void> {
+function sanityCheck(n: number): T.Sync<void> {
   if (n < 0) {
-    return raiseAbort(new Error("Die: semaphore permits must be non negative"))
+    return T.raiseAbort(new Error("Die: semaphore permits must be non negative"))
   }
   if (Math.round(n) !== n) {
-    return raiseAbort(new Error("Die: semaphore permits may not be fractional"))
+    return T.raiseAbort(new Error("Die: semaphore permits may not be fractional"))
   }
-  return unit
+  return T.unit
 }
 
 function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
-  const releaseN = <E = never>(n: number): AsyncE<E, void> =>
-    applySecond(
+  const releaseN = <E = never>(n: number): T.AsyncE<E, void> =>
+    T.applySecond(
       sanityCheck(n),
-      uninterruptible(
+      T.uninterruptible(
         n === 0
-          ? unit
-          : flatten(
+          ? T.unit
+          : T.flatten(
               ref.modify((current) =>
                 pipe(
                   current,
-                  fold(
+                  E.fold(
                     (waiting) =>
                       pipe(
                         waiting.take(),
-                        foldOption(
-                          () => [unit, right(n) as State] as const,
+                        O.fold(
+                          () => [T.unit, E.right(n) as State] as const,
                           ([[needed, latch], q]) =>
                             n >= needed
                               ? ([
-                                  applyFirst(
+                                  T.applyFirst(
                                     latch.done(undefined),
-                                    n > needed ? releaseN(n - needed) : unit
+                                    n > needed ? releaseN(n - needed) : T.unit
                                   ),
-                                  left(q) as State
+                                  E.left(q) as State
                                 ] as const)
                               : ([
-                                  unit,
-                                  left(q.push([needed - n, latch] as const)) as State
+                                  T.unit,
+                                  E.left(q.push([needed - n, latch] as const)) as State
                                 ] as const)
                         )
                       ),
-                    (ready) => [unit, right(ready + n) as State] as const
+                    (ready) => [T.unit, E.right(ready + n) as State] as const
                   )
                 )
               )
@@ -122,73 +105,76 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   const cancelWait = (
     n: number,
     latch: Deferred<unknown, unknown, never, void>
-  ): Async<void> =>
-    uninterruptible(
-      flatten(
+  ): T.Async<void> =>
+    T.uninterruptible(
+      T.flatten(
         ref.modify((current) =>
           pipe(
             current,
-            fold(
+            E.fold(
               (waiting) =>
                 pipe(
                   waiting.find(isReservationFor(latch)),
-                  foldOption(
-                    () => [releaseN(n), left(waiting) as State] as const,
+                  O.fold(
+                    () => [releaseN(n), E.left(waiting) as State] as const,
                     ([pending]) =>
                       [
                         releaseN(n - pending),
-                        left(waiting.filter(not(isReservationFor(latch)))) as State
+                        E.left(waiting.filter(F.not(isReservationFor(latch)))) as State
                       ] as const
                   )
                 ),
-              (ready) => [unit, right(ready + n) as State] as const
+              (ready) => [T.unit, E.right(ready + n) as State] as const
             )
           )
         )
       )
     )
 
-  const ticketN = (n: number): Async<Ticket<unknown, unknown, void>> =>
-    chain_(makeDeferred<unknown, unknown, never, void>(), (latch) =>
+  const ticketN = (n: number): T.Async<Ticket<unknown, unknown, void>> =>
+    T.chain_(makeDeferred<unknown, unknown, never, void>(), (latch) =>
       ref.modify((current) =>
         pipe(
           current,
-          fold(
+          E.fold(
             (waiting) =>
               [
                 makeTicket(latch.wait, cancelWait(n, latch)),
-                left(waiting.offer([n, latch] as const)) as State
+                E.left(waiting.offer([n, latch] as const)) as State
               ] as const,
             (ready) =>
               ready >= n
-                ? ([makeTicket(unit, releaseN(n)), right(ready - n) as State] as const)
+                ? ([
+                    makeTicket(T.unit, releaseN(n)),
+                    E.right(ready - n) as State
+                  ] as const)
                 : ([
                     makeTicket(latch.wait, cancelWait(n, latch)),
-                    left(empty().offer([n - ready, latch] as const)) as State
+                    E.left(empty().offer([n - ready, latch] as const)) as State
                   ] as const)
           )
         )
       )
     )
 
-  const acquireN = (n: number): Async<void> =>
-    applySecond(
+  const acquireN = (n: number): T.Async<void> =>
+    T.applySecond(
       sanityCheck(n),
-      n === 0 ? unit : bracketExit(ticketN(n), ticketExit, ticketUse)
+      n === 0 ? T.unit : T.bracketExit(ticketN(n), ticketExit, ticketUse)
     )
 
   const withPermitsN = <S, R, E, A>(
     n: number,
-    inner: Effect<S, R, E, A>
-  ): AsyncRE<R, E, A> => {
-    const acquire = interruptible(acquireN(n))
+    inner: T.Effect<S, R, E, A>
+  ): T.AsyncRE<R, E, A> => {
+    const acquire = T.interruptible(acquireN(n))
     const release = releaseN(n)
-    return bracket(acquire, constant(release), () => inner)
+    return T.bracket(acquire, F.constant(release), () => inner)
   }
 
-  const available = map_(
+  const available = T.map_(
     ref.get,
-    fold((q) => -1 * q.size(), identity)
+    E.fold((q) => -1 * q.size(), F.identity)
   )
 
   return {
@@ -208,9 +194,9 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
  * @param n the number of permits
  * This must be non-negative
  */
-export function makeSemaphore(n: number): Sync<Semaphore> {
-  return applySecond(
+export function makeSemaphore(n: number): T.Sync<Semaphore> {
+  return T.applySecond(
     sanityCheck(n),
-    map_(makeRef(right(n) as State), makeSemaphoreImpl)
+    T.map_(makeRef(E.right(n) as State), makeSemaphoreImpl)
   )
 }
