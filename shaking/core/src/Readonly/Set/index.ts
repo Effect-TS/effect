@@ -1,29 +1,32 @@
-export { fromSet } from "./fromSet"
-export { toSet } from "./toSet"
-export { getShow } from "./getShow"
-export { empty } from "./empty"
-export { toReadonlyArray } from "./toReadonlyArray"
-export { getEq } from "./getEq"
-export { some } from "./some"
-export { map } from "./map"
-export { every } from "./every"
-export { chain } from "./chain"
-export { isSubset } from "./isSubset"
-export { filter } from "./filter"
-export { partition } from "./partition"
-export { elem } from "./elem"
-export { union } from "./union"
-export { intersection } from "./intersection"
-export { partitionMap } from "./partitionMap"
-export { difference } from "./difference"
-export { getUnionMonoid } from "./getUnionMonoid"
-export { getIntersectionSemigroup } from "./getIntersectionSemigroup"
-export { reduce } from "./reduce"
-export { foldMap } from "./foldMap"
-export { singleton } from "./singleton"
-export { insert } from "./insert"
-export { remove } from "./remove"
-export { fromArray } from "./fromArray"
-export { compact } from "./compact"
-export { separate } from "./separate"
-export { filterMap } from "./filterMap"
+/* adapted from https://github.com/gcanti/fp-ts */
+export {
+  chain,
+  compact,
+  difference,
+  elem,
+  empty,
+  every,
+  filter,
+  filterMap,
+  foldMap,
+  fromArray,
+  fromSet,
+  getEq,
+  getIntersectionSemigroup,
+  getShow,
+  getUnionMonoid,
+  insert,
+  intersection,
+  isSubset,
+  map,
+  partition,
+  partitionMap,
+  reduce,
+  remove,
+  separate,
+  singleton,
+  some,
+  toReadonlyArray,
+  toSet,
+  union
+} from "./set"

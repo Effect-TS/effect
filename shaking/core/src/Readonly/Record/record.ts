@@ -1,3 +1,4 @@
+/* adapted from https://github.com/gcanti/fp-ts */
 import type { ReadonlyRecord } from "fp-ts/lib/ReadonlyRecord"
 
 import type {
