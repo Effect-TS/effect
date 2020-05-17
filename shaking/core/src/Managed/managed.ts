@@ -43,7 +43,11 @@ import {
 } from "../Function"
 import type { Monoid } from "../Monoid"
 import type { Option } from "../Option"
-import { traverse as o_traverse, wilt as o_wilt, wither as o_wither } from "../Option"
+import {
+  traverse_ as o_traverse,
+  wilt_ as o_wilt,
+  wither_ as o_wither
+} from "../Option"
 import { pipe } from "../Pipe"
 import {
   traverse_ as r_traverse_,

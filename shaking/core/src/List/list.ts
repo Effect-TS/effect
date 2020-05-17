@@ -1,9 +1,7 @@
 import type { Monad1 } from "../Base"
 import { flip, not } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
-import { Option } from "../Option/Option"
-import { none } from "../Option/none"
-import { some } from "../Option/some"
+import { some, none, Option } from "../Option/option"
 import { pipe } from "../Pipe"
 
 export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> {

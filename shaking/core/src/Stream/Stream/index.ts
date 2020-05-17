@@ -1747,18 +1747,18 @@ export const For = () => ForM(stream)
 export const traverseOption: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, B>
 ) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
-  O.traverse(stream)(ta, f)
+  O.traverse_(stream)(ta, f)
 
 export const wiltOption: <S, A, R, E, B, C>(
   f: (a: A) => Stream<S, R, E, Either<B, C>>
 ) => (wa: O.Option<A>) => AsyncRE<R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (
   wa
-) => O.wilt(stream)(wa, f)
+) => O.wilt_(stream)(wa, f)
 
 export const witherOption: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, O.Option<B>>
 ) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
-  O.wither(stream)(ta, f)
+  O.wither_(stream)(ta, f)
 
 export const traverseEither: <S, A, R, FE, B>(
   f: (a: A) => Stream<S, R, FE, B>

@@ -264,18 +264,18 @@ export const For = () => ForM(effectOption)
 export const traverseOption: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>
 ) => (ta: O.Option<A>) => EffectOption<S, R, E, O.Option<B>> = (f) => (ta) =>
-  O.traverse(effectOption)(ta, f)
+  O.traverse_(effectOption)(ta, f)
 
 export const wiltOption: <A, S, R, E, B, C>(
   f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
 ) => (wa: O.Option<A>) => EffectOption<S, R, E, Separated<O.Option<B>, O.Option<C>>> = (
   f
-) => (wa) => O.wilt(effectOption)(wa, f)
+) => (wa) => O.wilt_(effectOption)(wa, f)
 
 export const witherOption: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, O.Option<B>>
 ) => (ta: O.Option<A>) => EffectOption<S, R, E, O.Option<B>> = (f) => (ta) =>
-  O.wither(effectOption)(ta, f)
+  O.wither_(effectOption)(ta, f)
 
 export const traverseEither: <A, S, R, FE, B>(
   f: (a: A) => EffectOption<S, R, FE, B>

@@ -4,7 +4,7 @@ import type { Option } from "fp-ts/lib/Option"
 import { Either } from "../Either"
 import { wilt_ } from "../Record/record"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
 export const wiltRecord_ = wilt_(optionMonad)
 

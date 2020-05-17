@@ -1,5 +1,4 @@
-import type { Option } from "../Option"
-import { isNone } from "../Option/isNone"
+import { isNone, Option } from "../Option"
 
 import type { Either } from "./Either"
 import { left } from "./left"

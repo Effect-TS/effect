@@ -41,11 +41,7 @@ import type {
 import type { Either } from "../../Either/Either"
 import { Eq, fromEquals } from "../../Eq"
 import { identity, Predicate, Refinement } from "../../Function"
-import { Option } from "../../Option/Option"
-import { isNone } from "../../Option/isNone"
-import { isSome } from "../../Option/isSome"
-import { none } from "../../Option/none"
-import { some as some_1 } from "../../Option/some"
+import { Option, isNone, isSome, none, some as some_1 } from "../../Option/option"
 
 export type { ReadonlyRecord }
 

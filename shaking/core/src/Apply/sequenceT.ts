@@ -1,7 +1,7 @@
 import type { Apply, sequenceT as ST } from "fp-ts/lib/Apply"
 import type { HKT } from "fp-ts/lib/HKT"
 
-import { tuple } from "../Function/tuple"
+import { tuple } from "../Function"
 
 import { curried } from "./curried"
 

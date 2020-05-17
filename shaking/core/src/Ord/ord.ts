@@ -1,8 +1,7 @@
 import type { Ordering } from "fp-ts/lib/Ordering"
 
 import type { Bounded, Contravariant1 } from "../Base"
-import { Eq } from "../Eq"
-import { strictEqual } from "../Eq/strictEqual"
+import { Eq, strictEqual } from "../Eq"
 import type { Monoid } from "../Monoid"
 import type { Semigroup } from "../Semigroup"
 

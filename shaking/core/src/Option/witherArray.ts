@@ -2,7 +2,7 @@ import type { Option } from "fp-ts/lib/Option"
 
 import { array } from "../Array"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
 export const witherArray_ = array.wither(optionMonad)
 

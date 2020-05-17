@@ -3,8 +3,6 @@ import type { Exit } from "../Exit"
 import { flow } from "../Function"
 import { getFunctionMonoid, Monoid } from "../Monoid"
 import * as O from "../Option"
-import { getApplyMonoid } from "../Option"
-import type { Option } from "../Option/Option"
 import { ordNumber } from "../Ord"
 import { pipe } from "../Pipe"
 import { getJoinSemigroup } from "../Semigroup"
@@ -121,7 +119,7 @@ export function limitRetriesByDelay(
  * export const limitedBackoff = monoidRetryPolicy.concat(exponentialBackoff(50), limitRetries(5))
  */
 export const monoidRetryPolicy: Monoid<RetryPolicy> = getFunctionMonoid(
-  getApplyMonoid({
+  O.getApplyMonoid({
     ...getJoinSemigroup(ordNumber),
     empty: 0
   })
@@ -170,7 +168,7 @@ export function retrying<RP, EP, S, R, E, A, R2, E2>(
  * the function implies we have reached the retry limit.
  */
 export interface RetryPolicy {
-  (status: RetryStatus): Option<number>
+  (status: RetryStatus): O.Option<number>
 }
 
 export interface RetryStatus {
@@ -179,5 +177,5 @@ export interface RetryStatus {
   /** Delay incurred so far from retries */
   cumulativeDelay: number
   /** Latest attempt's delay. Will always be `none` on first run. */
-  previousDelay: Option<number>
+  previousDelay: O.Option<number>
 }

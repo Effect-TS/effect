@@ -1,5 +1,5 @@
 import { sequence } from "../Either/sequence"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
 export const sequenceEither = sequence(optionMonad)

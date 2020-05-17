@@ -1,10 +1,10 @@
 import type { Option } from "fp-ts/lib/Option"
 
-import { array } from "../Array"
+import { traverseWithIndex_ } from "../Array"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
-export const traverseArrayWithIndex_ = array.traverseWithIndex(optionMonad)
+export const traverseArrayWithIndex_ = traverseWithIndex_(optionMonad)
 
 export const traverseArrayWithIndex: <A, E, B>(
   f: (i: number, a: A) => Option<B>

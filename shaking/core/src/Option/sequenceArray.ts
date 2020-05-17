@@ -1,5 +1,5 @@
-import { array } from "../Array"
+import { sequence } from "../Array"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
-export const sequenceArray = array.sequence(optionMonad)
+export const sequenceArray = sequence(optionMonad)

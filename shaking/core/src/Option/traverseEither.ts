@@ -1,8 +1,7 @@
 import type { Either } from "../Either/Either"
 import { traverse } from "../Either/traverse"
 
-import type { Option } from "./Option"
-import { optionMonad } from "./monad"
+import { optionMonad, Option } from "./option"
 
 export const traverseEither_ = traverse(optionMonad)
 

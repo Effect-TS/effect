@@ -1,14 +1,17 @@
-export { contramap_, contramap } from "./contramap"
-export type { Eq } from "./Eq"
-export { eqBoolean } from "./eqBoolean"
-export { eqDate } from "./eqDate"
-export { eqNumber } from "./eqNumber"
-export { eqString } from "./eqString"
-export { fromEquals } from "./fromEquals"
-export { getMonoid } from "./getMonoid"
-export { getStructEq } from "./getStructEq"
-export { getTupleEq } from "./getTupleEq"
-export { eq } from "./instances"
-export { strictEqual } from "./strictEqual"
-export { eqStrict } from "./eqStrict"
-export { URI } from "./URI"
+export {
+  Eq,
+  URI,
+  contramap,
+  contramap_,
+  eq,
+  eqBoolean,
+  eqDate,
+  eqNumber,
+  eqStrict,
+  eqString,
+  fromEquals,
+  getMonoid,
+  getStructEq,
+  getTupleEq,
+  strictEqual
+} from "./eq"

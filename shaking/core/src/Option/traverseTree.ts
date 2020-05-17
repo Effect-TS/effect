@@ -1,10 +1,10 @@
 import type { Option } from "fp-ts/lib/Option"
 
-import { tree, Tree } from "../Tree"
+import { traverse_, Tree } from "../Tree"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
-export const traverseTree_ = tree.traverse(optionMonad)
+export const traverseTree_ = traverse_(optionMonad)
 
 export const traverseTree: <A, B>(
   f: (a: A) => Option<B>

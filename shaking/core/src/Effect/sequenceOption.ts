@@ -1,4 +1,4 @@
-import { sequence } from "../Option/sequence"
+import { sequence } from "../Option/option"
 
 import { effect } from "./effect"
 

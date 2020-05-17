@@ -1,5 +1,5 @@
 import { array } from "../Array"
-import type { Option } from "../Option/Option"
+import type { Option } from "../Option/option"
 
 import type { Either } from "./Either"
 import { eitherMonad } from "./eitherMonad"

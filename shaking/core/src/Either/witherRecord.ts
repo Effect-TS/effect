@@ -1,4 +1,4 @@
-import type { Option } from "../Option/Option"
+import type { Option } from "../Option/option"
 import { record } from "../Record/record"
 
 import type { Either } from "./Either"

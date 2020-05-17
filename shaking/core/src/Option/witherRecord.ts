@@ -2,7 +2,7 @@ import type { Option } from "fp-ts/lib/Option"
 
 import { wither_ } from "../Record/record"
 
-import { optionMonad } from "./monad"
+import { optionMonad } from "./option"
 
 export const witherRecord_ = wither_(optionMonad)
 

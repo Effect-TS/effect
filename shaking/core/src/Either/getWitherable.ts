@@ -5,7 +5,7 @@ import type { Witherable2C } from "fp-ts/lib/Witherable"
 
 import type { Predicate } from "../Function"
 import type { Monoid } from "../Monoid"
-import type { Option } from "../Option/Option"
+import type { Option } from "../Option/option"
 
 import type { Either } from "./Either"
 import { URI } from "./URI"
