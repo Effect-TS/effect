@@ -1,9 +1,9 @@
-import { traverseWithIndex } from "../Array/traverseWithIndex"
+import { traverseWithIndex_ } from "../Array/array"
 import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parTraverseArrayWithIndex_ = traverseWithIndex(parEffect)
+export const parTraverseArrayWithIndex_ = traverseWithIndex_(parEffect)
 
 export const parTraverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => Effect<S, R, E, B>

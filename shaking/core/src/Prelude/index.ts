@@ -1,4 +1,5 @@
 import * as A from "../Array"
+import * as base from "../Base"
 import * as B from "../Boolean"
 import * as CRef from "../ConcurrentRef"
 import * as D from "../Deferred"
@@ -81,5 +82,6 @@ export {
   Tr,
   Tu,
   U,
-  Mn
+  Mn,
+  base
 }

@@ -296,18 +296,18 @@ export const traverseArray: <A, S, R, E, B>(
 export const traverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => EffectOption<S, R, E, B>
 ) => (ta: Array<A>) => EffectOption<S, R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex(effectOption)(ta, f)
+  A.traverseWithIndex_(effectOption)(ta, f)
 
 export const wiltArray: <A, S, R, E, B, C>(
   f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
 ) => (wa: Array<A>) => EffectOption<S, R, E, Separated<Array<B>, Array<C>>> = (f) => (
   wa
-) => A.wilt(effectOption)(wa, f)
+) => A.wilt_(effectOption)(wa, f)
 
 export const witherArray: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, O.Option<B>>
 ) => (ta: Array<A>) => EffectOption<S, R, E, Array<B>> = (f) => (ta) =>
-  A.wither(effectOption)(ta, f)
+  A.wither_(effectOption)(ta, f)
 
 export const traverseRecord: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>
@@ -351,18 +351,18 @@ export const parTraverseArray: <A, S, R, E, B>(
 export const parTraverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => EffectOption<S, R, E, B>
 ) => (ta: Array<A>) => EffectOption<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex(effectOptionPar)(ta, f)
+  A.traverseWithIndex_(effectOptionPar)(ta, f)
 
 export const parWiltArray: <A, S, R, E, B, C>(
   f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
 ) => (wa: Array<A>) => EffectOption<unknown, R, E, Separated<Array<B>, Array<C>>> = (
   f
-) => (wa) => A.wilt(effectOptionPar)(wa, f)
+) => (wa) => A.wilt_(effectOptionPar)(wa, f)
 
 export const parWitherArray: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, O.Option<B>>
 ) => (ta: Array<A>) => EffectOption<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.wither(effectOptionPar)(ta, f)
+  A.wither_(effectOptionPar)(ta, f)
 
 export const parTraverseRecord: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>

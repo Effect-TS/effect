@@ -1,4 +1,4 @@
-import { sequence } from "../Array/sequence"
+import { sequence } from "../Array/array"
 
 import { parEffect } from "./parEffect"
 

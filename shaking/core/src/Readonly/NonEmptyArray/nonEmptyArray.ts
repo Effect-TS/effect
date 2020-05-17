@@ -348,7 +348,7 @@ export const reduceRight_: <A, B>(
   f: (a: A, b: B) => B
 ) => B = RA.reduceRight_ as any
 
-export const traverse_: Traverse1<URI> = RA.traverse as any
+export const traverse_: Traverse1<URI> = RA.traverse_ as any
 
 export const sequence: Sequence1<URI> = RA.sequence as any
 
@@ -374,7 +374,7 @@ export const reduceRightWithIndex_: <A, B>(
 export const traverseWithIndex_: TraverseWithIndex1<
   URI,
   number
-> = RA.traverseWithIndex as any
+> = RA.traverseWithIndex_ as any
 
 export const alt_: <A>(
   fx: ReadonlyNonEmptyArray<A>,

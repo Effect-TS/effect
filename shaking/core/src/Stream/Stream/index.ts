@@ -1778,16 +1778,16 @@ export const traverseArray: <S, A, R, E, B>(
 export const traverseArrayWithIndex: <S, A, R, E, B>(
   f: (i: number, a: A) => Stream<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex(stream)(ta, f)
+  A.traverseWithIndex_(stream)(ta, f)
 
 export const wiltArray: <S, A, R, E, B, C>(
   f: (a: A) => Stream<S, R, E, Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  A.wilt(stream)(wa, f)
+  A.wilt_(stream)(wa, f)
 
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => Stream<S, R, E, O.Option<B>>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => A.wither(stream)(ta, f)
+) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => A.wither_(stream)(ta, f)
 
 export const traverseRecord: <A, S, R, E, B>(
   f: (a: A) => Stream<S, R, E, B>

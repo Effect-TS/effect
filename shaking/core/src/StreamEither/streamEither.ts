@@ -442,17 +442,17 @@ export const traverseArray: <S, A, R, E, B>(
 export const traverseArrayWithIndex: <S, A, R, E, B>(
   f: (i: number, a: A) => StreamEither<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex(streamEither)(ta, f)
+  A.traverseWithIndex_(streamEither)(ta, f)
 
 export const wiltArray: <S, A, R, E, B, C>(
   f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
 ) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  A.wilt(streamEither)(wa, f)
+  A.wilt_(streamEither)(wa, f)
 
 export const witherArray: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, O.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.wither(streamEither)(ta, f)
+  A.wither_(streamEither)(ta, f)
 
 export const traverseRecord: <A, S, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>

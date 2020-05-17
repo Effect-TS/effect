@@ -255,7 +255,7 @@ export const chain_: <A, B>(
 export const extend_: <A, B>(
   wa: NonEmptyArray<A>,
   f: (wa: NonEmptyArray<A>) => B
-) => NonEmptyArray<B> = RNEA.extend as any
+) => NonEmptyArray<B> = RNEA.extend_ as any
 
 export const reduce_: <A, B>(
   fa: NonEmptyArray<A>,

@@ -2,9 +2,9 @@ import type { Separated } from "fp-ts/lib/Compactable"
 
 import {
   traverse_ as a_traverse,
-  traverseWithIndex as a_traverseWithIndex,
-  wilt as a_wilt,
-  wither as a_wither
+  traverseWithIndex_ as a_traverseWithIndex,
+  wilt_ as a_wilt,
+  wither_ as a_wither
 } from "../Array"
 import {
   Effect,

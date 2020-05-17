@@ -1,39 +1,42 @@
-export { URI } from "./URI"
-export { getShow } from "./getShow"
-export { size } from "./size"
-export { isEmpty } from "./isEmpty"
-export { member } from "./member"
-export { elem } from "./elem"
-export { values } from "./values"
-export { keys } from "./keys"
-export { collect } from "./collect"
-export { toUnfoldable } from "./toUnfoldable"
-export { insertAt } from "./insertAt"
-export { deleteAt } from "./deleteAt"
-export { updateAt } from "./updateAt"
-export { modifyAt } from "./modifyAt"
-export { pop } from "./pop"
-export { lookupWithKey } from "./lookupWithKey"
-export { isSubmap } from "./isSubmap"
-export { empty } from "./empty"
-export { getMonoid } from "./getMonoid"
-export { singleton } from "./singleton"
-export { fromFoldable } from "./fromFoldable"
-export { getFilterableWithIndex } from "./getFilterableWithIndex"
-export { filter } from "./filter"
-export { getWitherable } from "./getWitherable"
-export { map_ } from "./map_"
-export { compact } from "./compact"
-export { separate } from "./separate"
-export { filter_ } from "./filter_"
-export { filterMap_ } from "./filterMap_"
-export { partition_ } from "./partition_"
-export { partitionMap_ } from "./partitionMap_"
-export { filterMap } from "./filterMap"
-export { map } from "./map"
-export { partition } from "./partition"
-export { partitionMap } from "./partitionMap"
-export { toArray } from "./toArray"
-export { lookup } from "./lookup"
-export { getEq } from "./getEq"
-export { mapF } from "./mapF"
+/* adapted from https://github.com/gcanti/fp-ts */
+export {
+  URI,
+  collect,
+  compact,
+  deleteAt,
+  elem,
+  empty,
+  filter,
+  filterMap,
+  filterMap_,
+  filter_,
+  fromFoldable,
+  getEq,
+  getFilterableWithIndex,
+  getMonoid,
+  getShow,
+  getWitherable,
+  insertAt,
+  isEmpty,
+  isSubmap,
+  keys,
+  lookup,
+  lookupWithKey,
+  map,
+  mapF,
+  map_,
+  member,
+  modifyAt,
+  partition,
+  partitionMap,
+  partitionMap_,
+  partition_,
+  pop,
+  separate,
+  singleton,
+  size,
+  toArray,
+  toUnfoldable,
+  updateAt,
+  values
+} from "./map"

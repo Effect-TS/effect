@@ -1,4 +1,4 @@
-import { sequence } from "../Array/sequence"
+import { sequence } from "../Array/array"
 
 import { managed } from "./managed"
 

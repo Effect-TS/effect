@@ -1,123 +1,126 @@
-export { URI } from "./URI"
-export { fromArray } from "./fromArray"
-export { toArray } from "./toArray"
-export { getShow } from "./getShow"
-export { concat } from "./concat"
-export { getMonoid } from "./getMonoid"
-export { getEq } from "./getEq"
-export { getOrd } from "./getOrd"
-export { empty } from "./empty"
-export { makeBy } from "./makeBy"
-export { range } from "./range"
-export { replicate } from "./replicate"
-export { flatten } from "./flatten"
-export { foldLeft } from "./foldLeft"
-export { foldRight } from "./foldRight"
-export { scanLeft } from "./scanLeft"
-export { scanRight } from "./scanRight"
-export { isEmpty } from "./isEmpty"
-export { isNonEmpty } from "./isNonEmpty"
-export { isOutOfBound } from "./isOutOfBound"
-export { lookup } from "./lookup"
-export { cons } from "./cons"
-export { snoc } from "./snoc"
-export { head } from "./head"
-export { last } from "./last"
-export { tail } from "./tail"
-export { init } from "./init"
-export { takeLeft } from "./takeLeft"
-export { takeRight } from "./takeRight"
-export { takeLeftWhile } from "./takeLeftWhile"
-export { spanIndexUncurry } from "./spanIndexUncurry"
-export type { Spanned } from "./Spanned"
-export { spanLeft } from "./spanLeft"
-export { dropLeft } from "./dropLeft"
-export { dropRight } from "./dropRight"
-export { dropLeftWhile } from "./dropLeftWhile"
-export { findIndex } from "./findIndex"
-export { findFirst } from "./findFirst"
-export { findFirstMap } from "./findFirstMap"
-export { findLast } from "./findLast"
-export { findLastMap } from "./findLastMap"
-export { findLastIndex } from "./findLastIndex"
-export { unsafeInsertAt } from "./unsafeInsertAt"
-export { insertAt } from "./insertAt"
-export { unsafeUpdateAt } from "./unsafeUpdateAt"
-export { updateAt } from "./updateAt"
-export { unsafeDeleteAt } from "./unsafeDeleteAt"
-export { deleteAt } from "./deleteAt"
-export { modifyAt } from "./modifyAt"
-export { reverse } from "./reverse"
-export { rights } from "./rights"
-export { lefts } from "./lefts"
-export { sort } from "./sort"
-export { zipWith } from "./zipWith"
-export { zip } from "./zip"
-export { unzip } from "./unzip"
-export { rotate } from "./rotate"
-export { elem } from "./elem"
-export { uniq } from "./uniq"
-export { sortBy } from "./sortBy"
-export { chop } from "./chop"
-export { splitAt } from "./splitAt"
-export { chunksOf } from "./chunksOf"
-export { comprehension } from "./comprehension"
-export { chain_ } from "./chain_"
-export { union } from "./union"
-export { intersection } from "./intersection"
-export { difference } from "./difference"
-export { of } from "./of"
-export { map_ } from "./map_"
-export { mapWithIndex_ } from "./mapWithIndex_"
-export { foldMapWithIndex_ } from "./foldMapWithIndex_"
-export { filterMapWithIndex_ } from "./filterMapWithIndex_"
-export { filterMap_ } from "./filterMap_"
-export { filter_ } from "./filter_"
-export { traverse } from "./traverse"
-export { unfold } from "./unfold"
-export { reduceWithIndex_ } from "./reduceWithIndex_"
-export { partitionMapWithIndex_ } from "./partitionMapWithIndex_"
-export { partitionWithIndex_ } from "./partitionWithIndex_"
-export { foldMap_ } from "./foldMap_"
-export { wither } from "./wither"
-export { partition_ } from "./partition_"
-export { reduceRightWithIndex_ } from "./reduceRightWithIndex_"
-export { wilt } from "./wilt"
-export { zero } from "./zero"
-export { traverseWithIndex } from "./traverseWithIndex"
-export { filterWithIndex_ } from "./filterWithIndex_"
-export { reduce_ } from "./reduce_"
-export { extend_ } from "./extend_"
-export { alt_ } from "./alt_"
-export { sequence } from "./sequence"
-export { partitionMap_ } from "./partitionMap_"
-export { ap_ } from "./ap_"
-export { reduceRight_ } from "./reduceRight_"
-export { ap } from "./ap"
-export { alt } from "./alt"
-export { apFirst } from "./apFirst"
-export { apSecond } from "./apSecond"
-export { readonlyArray } from "./readonlyArray"
-export { readonlyArrayMonad } from "./readonlyArrayMonad"
-export { chain } from "./chain"
-export { chainFirst } from "./chainFirst"
-export { compact } from "./compact"
-export { duplicate } from "./duplicate"
-export { extend } from "./extend"
-export { filter } from "./filter"
-export { filterMap } from "./filterMap"
-export { filterMapWithIndex } from "./filterMapWithIndex"
-export { filterWithIndex } from "./filterWithIndex"
-export { foldMap } from "./foldMap"
-export { foldMapWithIndex } from "./foldMapWithIndex"
-export { map } from "./map"
-export { mapWithIndex } from "./mapWithIndex"
-export { partition } from "./partition"
-export { partitionMap } from "./partitionMap"
-export { partitionMapWithIndex } from "./partitionMapWithIndex"
-export { partitionWithIndex } from "./partitionWithIndex"
-export { reduce } from "./reduce"
-export { reduceRight } from "./reduceRight"
-export { reduceRightWithIndex } from "./reduceRightWithIndex"
-export { reduceWithIndex } from "./reduceWithIndex"
-export { separate } from "./separate"
+/* adapted from https://github.com/gcanti/fp-ts */
+export {
+  Spanned,
+  URI,
+  alt,
+  alt_,
+  ap,
+  apFirst,
+  apSecond,
+  ap_,
+  chain,
+  chainFirst,
+  chain_,
+  chop,
+  chunksOf,
+  compact,
+  comprehension,
+  concat,
+  cons,
+  deleteAt,
+  difference,
+  dropLeft,
+  dropLeftWhile,
+  dropRight,
+  duplicate,
+  elem,
+  empty,
+  extend,
+  extend_,
+  filter,
+  filterMap,
+  filterMapWithIndex,
+  filterMapWithIndex_,
+  filterMap_,
+  filterWithIndex,
+  filterWithIndex_,
+  filter_,
+  findFirst,
+  findFirstMap,
+  findIndex,
+  findLast,
+  findLastIndex,
+  findLastMap,
+  flatten,
+  foldLeft,
+  foldMap,
+  foldMapWithIndex,
+  foldMapWithIndex_,
+  foldMap_,
+  foldRight,
+  fromArray,
+  getEq,
+  getMonoid,
+  getOrd,
+  getShow,
+  head,
+  init,
+  insertAt,
+  intersection,
+  isEmpty,
+  isNonEmpty,
+  isOutOfBound,
+  last,
+  lefts,
+  lookup,
+  makeBy,
+  map,
+  mapWithIndex,
+  mapWithIndex_,
+  map_,
+  modifyAt,
+  of,
+  partition,
+  partitionMap,
+  partitionMapWithIndex,
+  partitionMapWithIndex_,
+  partitionMap_,
+  partitionWithIndex,
+  partitionWithIndex_,
+  partition_,
+  range,
+  readonlyArray,
+  readonlyArrayMonad,
+  reduce,
+  reduceRight,
+  reduceRightWithIndex,
+  reduceRightWithIndex_,
+  reduceRight_,
+  reduceWithIndex,
+  reduceWithIndex_,
+  reduce_,
+  replicate,
+  reverse,
+  rights,
+  rotate,
+  scanLeft,
+  scanRight,
+  separate,
+  sequence,
+  snoc,
+  sort,
+  sortBy,
+  spanIndexUncurry,
+  spanLeft,
+  splitAt,
+  tail,
+  takeLeft,
+  takeLeftWhile,
+  takeRight,
+  toArray,
+  traverse_,
+  traverseWithIndex_,
+  unfold,
+  union,
+  uniq,
+  unsafeDeleteAt,
+  unsafeInsertAt,
+  unsafeUpdateAt,
+  unzip,
+  updateAt,
+  wilt_,
+  wither_,
+  zero,
+  zip,
+  zipWith
+} from "./array"

@@ -1,12 +1,12 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
-import { wilt } from "../Array/wilt"
+import { wilt_ } from "../Array/array"
 import type { Either } from "../Either/Either"
 import type { AsyncRE } from "../Support/Common/effect"
 
 import { parFastEffect } from "./parFastEffect"
 
-export const parFastWiltArray_ = wilt(parFastEffect)
+export const parFastWiltArray_ = wilt_(parFastEffect)
 
 export const parFastWiltArray: <A, R, E, B, C>(
   f: (a: A) => AsyncRE<R, E, Either<B, C>>

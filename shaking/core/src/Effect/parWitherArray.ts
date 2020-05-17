@@ -1,10 +1,10 @@
-import { wither } from "../Array/wither"
+import { wither_ } from "../Array/array"
 import type { Option } from "../Option/Option"
 import type { AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parWitherArray_ = wither(parEffect)
+export const parWitherArray_ = wither_(parEffect)
 
 export const parWitherArray: <A, R, E, B>(
   f: (a: A) => AsyncRE<R, E, Option<B>>
