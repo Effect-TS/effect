@@ -1,20 +1,26 @@
-export type { Endomorphism, FunctionN, Lazy, Predicate, Refinement } from "./types"
-
-export { Flow, flowF } from "./flow-f"
-
-export { absurd } from "./absurd"
-export { constant } from "./constant"
-export { constFalse } from "./constFalse"
-export { constNull } from "./constNull"
-export { constUndefined } from "./constUndefined"
-export { constVoid } from "./constVoid"
-export { decrement } from "./decrement"
-export { flip } from "./flip"
-export { flow } from "./flow"
-export { identity } from "./identity"
-export { increment } from "./increment"
-export { not } from "./not"
-export { tuple } from "./tuple"
-export { tupled } from "./tupled"
-export { unsafeCoerce } from "./unsafeCoerce"
-export { untupled } from "./untupled"
+export {
+  Endomorphism,
+  Flow,
+  FunctionN,
+  Lazy,
+  Predicate,
+  Refinement,
+  absurd,
+  constFalse,
+  constNull,
+  constTrue,
+  constUndefined,
+  constVoid,
+  constant,
+  decrement,
+  flip,
+  flow,
+  flowF,
+  identity,
+  increment,
+  not,
+  tuple,
+  tupled,
+  unsafeCoerce,
+  untupled
+} from "./function"

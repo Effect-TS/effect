@@ -1,3 +1,4 @@
+/* adapted from https://github.com/gcanti/fp-ts */
 export {
   Monoid,
   fold,

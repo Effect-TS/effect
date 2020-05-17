@@ -1,10 +1,91 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-rest-params */
+
+import type {
+  Lazy,
+  Predicate,
+  Endomorphism,
+  FunctionN,
+  Refinement
+} from "fp-ts/lib/function"
+
+export type { Lazy, Predicate, Endomorphism, FunctionN, Refinement }
+
+export function absurd<A>(_: never): A {
+  throw new Error("Called `absurd` function which should be uncallable")
+}
+
+export function constant<A>(a: A): Lazy<A> {
+  return () => a
+}
+
+/**
+ * A thunk that returns always `false`
+ */
+export const constFalse = (): boolean => {
+  return false
+}
+
+/**
+ * A thunk that returns always `null`
+ */
+export const constNull = (): null => {
+  return null
+}
+
+/**
+ * A thunk that returns always `true`
+ */
+export const constTrue = (): boolean => {
+  return true
+}
+
+/**
+ * A thunk that returns always `undefined`
+ */
+export const constUndefined = (): undefined => {
+  return
+}
+
+/**
+ * A thunk that returns always `void`
+ */
+export const constVoid = (): void => {
+  return
+}
+
+export function decrement(n: number): number {
+  return n - 1
+}
+
+/**
+ * Flips the order of the arguments of a function of two arguments.
+ */
+export function flip<A, B, C>(f: (a: A, b: B) => C): (b: B, a: A) => C {
+  return (b, a) => f(a, b)
+}
+
+export class Flow<A extends ReadonlyArray<unknown>, B> {
+  constructor(private readonly f: (...a: A) => B) {
+    this.flow = this.flow.bind(this)
+    this.done = this.done.bind(this)
+  }
+  flow<C>(g: (_: B) => C) {
+    return new Flow((...a: A) => g(this.f(...a)))
+  }
+  done(): (...a: A) => B {
+    return this.f
+  }
+}
+
+export const flowF = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B) =>
+  new Flow(f)
+
 /**
  * Function composition (from left to right).
  *
  * @example
- * import { flow } from 'fp-ts/lib/function'
+ * import { flow } from '@matechs/core/Function'
  *
  * const len = (s: string): number => s.length
  * const double = (n: number): number => n * 2
@@ -12,8 +93,6 @@
  * const f = flow(len, double)
  *
  * assert.strictEqual(f('aaa'), 6)
- *
- * @since 2.0.0
  */
 export function flow<A extends ReadonlyArray<unknown>, B>(
   ab: (...a: A) => B
@@ -126,4 +205,47 @@ export function flow(
       }
   }
   return
+}
+
+export function identity<A>(a: A): A {
+  return a
+}
+
+export function increment(n: number): number {
+  return n + 1
+}
+
+export function not<A>(predicate: Predicate<A>): Predicate<A> {
+  return (a) => !predicate(a)
+}
+
+export function tuple<T extends ReadonlyArray<any>>(...t: T): T {
+  return t
+}
+
+/**
+ * Creates a tupled version of this function: instead of `n` arguments, it accepts a single tuple argument.
+ *
+ * @example
+ * import { tupled } from '@matechs/core/Function'
+ *
+ * const add = tupled((x: number, y: number): number => x + y)
+ *
+ * assert.strictEqual(add([1, 2]), 3)
+ */
+export function tupled<A extends ReadonlyArray<unknown>, B>(
+  f: (...a: A) => B
+): (a: A) => B {
+  return (a) => f(...a)
+}
+
+export const unsafeCoerce: <A, B>(a: A) => B = identity as any
+
+/**
+ * Inverse function of `tupled`
+ */
+export function untupled<A extends ReadonlyArray<unknown>, B>(
+  f: (a: A) => B
+): (...a: A) => B {
+  return (...a) => f(a)
 }

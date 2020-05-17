@@ -1,36 +1,41 @@
-export { ap } from "./ap"
-export { cata_ } from "./cata_"
-export { cons } from "./cons"
-export { cata } from "./cata"
-export { chain_ } from "./chain_"
-export { chain } from "./chain"
-export type { Cons, List, Nil } from "./common"
-export { filter_ } from "./filter_"
-export { filter } from "./filter"
-export { find_ } from "./find_"
-export { find } from "./find"
-export { flatten } from "./flatten"
-export { foldl_ } from "./foldl_"
-export { foldl } from "./foldl"
-export { foldr_ } from "./foldr_"
-export { foldr } from "./foldr"
-export { fromArray } from "./fromArray"
-export { head } from "./head"
-export { list } from "./instances"
-export { isCons } from "./isCons"
-export { isEmpty } from "./isEmpty"
-export { isNil } from "./isNil"
-export { last } from "./last"
-export { lift } from "./lift"
-export { map_ } from "./map_"
-export { map } from "./map"
-export { nil } from "./nil"
-export { nonEmpty } from "./nonEmpty"
-export { of } from "./of"
-export { reverse } from "./reverse"
-export { size } from "./size"
-export { snoc_ } from "./snoc_"
-export { snoc } from "./snoc"
-export { tail } from "./tail"
-export { toArray } from "./toArray"
-export { URI } from "./URI"
+export {
+  Cons,
+  List,
+  Nil,
+  URI,
+  ap,
+  cata,
+  cata_,
+  chain,
+  chain_,
+  concat,
+  cons,
+  filter,
+  filter_,
+  find,
+  find_,
+  flatten,
+  foldl,
+  foldl_,
+  foldr,
+  foldr_,
+  fromArray,
+  head,
+  isCons,
+  isEmpty,
+  isNil,
+  last,
+  lift,
+  list,
+  map,
+  map_,
+  nil,
+  nonEmpty,
+  of,
+  reverse,
+  size,
+  snoc,
+  snoc_,
+  tail,
+  toArray
+} from "./list"
