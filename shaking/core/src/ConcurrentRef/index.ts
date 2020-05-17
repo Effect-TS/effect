@@ -1,1 +1,1 @@
-export { ConcurrentRef, makeConcurrentRef } from "./concurrent-ref"
+export { ConcurrentRef, makeConcurrentRef } from "./concurrentRef"
