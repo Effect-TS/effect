@@ -1,24 +1,27 @@
-export { URI } from "./URI"
-export type { Const } from "./Const"
-export { make } from "./make"
-export { getShow } from "./getShow"
-export { getEq } from "./getEq"
-export { getOrd } from "./getOrd"
-export { getBounded } from "./getBounded"
-export { getSemigroup } from "./getSemigroup"
-export { getMonoid } from "./getMonoid"
-export { getSemiring } from "./getSemiring"
-export { getRing } from "./getRing"
-export { getHeytingAlgebra } from "./getHeytingAlgebra"
-export { getBooleanAlgebra } from "./getBooleanAlgebra"
-export { getApply } from "./getApply"
-export { getApplicative } from "./getApplicative"
-export { map_ } from "./map_"
-export { contramap_ } from "./contramap_"
-export { bimap_ } from "./bimap_"
-export { mapLeft_ } from "./mapLeft_"
-export { contramap } from "./contramap"
-export { mapLeft } from "./mapLeft"
-export { map } from "./map"
-export { bimap } from "./bimap"
-export { const_ as const } from "./instances"
+/* adapted from https://github.com/gcanti/fp-ts */
+export {
+  Const,
+  URI,
+  bimap,
+  bimap_,
+  const_,
+  contramap,
+  contramap_,
+  getApplicative,
+  getApply,
+  getBooleanAlgebra,
+  getBounded,
+  getEq,
+  getHeytingAlgebra,
+  getMonoid,
+  getOrd,
+  getRing,
+  getSemigroup,
+  getSemiring,
+  getShow,
+  map_,
+  map,
+  make,
+  mapLeft,
+  mapLeft_
+} from "./const"
