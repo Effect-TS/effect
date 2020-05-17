@@ -10,7 +10,5 @@ import { lookup as lookup_1 } from "../Readonly/Array/lookup"
  *
  * assert.deepStrictEqual(lookup(1, [1, 2, 3]), some(2))
  * assert.deepStrictEqual(lookup(3, [1, 2, 3]), none)
- *
- * @since 2.0.0
  */
 export const lookup: <A>(i: number, as: Array<A>) => Option<A> = lookup_1

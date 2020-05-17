@@ -11,7 +11,6 @@ import { difference as difference_1 } from "../Readonly/Array/difference"
  *
  * assert.deepStrictEqual(difference(eqNumber)([1, 2], [2, 3]), [1])
  *
- * @since 2.0.0
  */
 export const difference: <A>(
   E: Eq<A>

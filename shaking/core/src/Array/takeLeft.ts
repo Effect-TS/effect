@@ -8,7 +8,5 @@ import { takeLeft as takeLeft_1 } from "../Readonly/Array/takeLeft"
  * import { takeLeft } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(takeLeft(2)([1, 2, 3]), [1, 2])
- *
- * @since 2.0.0
  */
 export const takeLeft: (n: number) => <A>(as: Array<A>) => Array<A> = takeLeft_1 as any

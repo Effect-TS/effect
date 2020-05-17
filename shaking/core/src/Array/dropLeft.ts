@@ -8,6 +8,5 @@ import { dropLeft as dropLeft_1 } from "../Readonly/Array/dropLeft"
  *
  * assert.deepStrictEqual(dropLeft(2)([1, 2, 3]), [3])
  *
- * @since 2.0.0
  */
 export const dropLeft: (n: number) => <A>(as: Array<A>) => Array<A> = dropLeft_1 as any

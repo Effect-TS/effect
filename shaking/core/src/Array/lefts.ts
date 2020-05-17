@@ -9,7 +9,5 @@ import { lefts as lefts_1 } from "../Readonly/Array/lefts"
  * import { left, right } from 'fp-ts/lib/Either'
  *
  * assert.deepStrictEqual(lefts([right(1), left('foo'), right(2)]), ['foo'])
- *
- * @since 2.0.0
  */
 export const lefts: <E, A>(as: Array<Either<E, A>>) => Array<E> = lefts_1 as any

@@ -1,1 +1,1 @@
-export type { Show } from "fp-ts/lib/Show"
+export type { Show } from "../Base"

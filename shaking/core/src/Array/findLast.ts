@@ -10,8 +10,6 @@ import { findLast as findLast_1 } from "../Readonly/Array/findLast"
  * import { some } from 'fp-ts/lib/Option'
  *
  * assert.deepStrictEqual(findLast((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 2 }))
- *
- * @since 2.0.0
  */
 export function findLast<A, B extends A>(
   refinement: Refinement<A, B>

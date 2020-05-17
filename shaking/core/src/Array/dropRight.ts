@@ -8,7 +8,6 @@ import { dropRight as dropRight_1 } from "../Readonly/Array/dropRight"
  *
  * assert.deepStrictEqual(dropRight(2)([1, 2, 3, 4, 5]), [1, 2, 3])
  *
- * @since 2.0.0
  */
 export const dropRight: (
   n: number

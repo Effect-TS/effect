@@ -1,7 +1,7 @@
-import { AsyncE, async } from "../../Effect"
-import { Either, left, right } from "../../Either"
-import { pure as managedPure, Sync as ManagedSync } from "../../Managed"
-import { none, some, Option } from "../../Option"
+import * as T from "../../Effect"
+import * as E from "../../Either"
+import * as M from "../../Managed"
+import * as O from "../../Option"
 import { DoublyLinkedList } from "../../Support/DoublyLinkedList"
 
 export interface Offer<A> {
@@ -39,21 +39,21 @@ export function queueUtils<E, A>() {
 
 export function runFromQueue<E, A>(
   op: Ops<E, A>,
-  callback: (r: Either<E, Option<A>>) => void
+  callback: (r: E.Either<E, O.Option<A>>) => void
 ): () => void {
   switch (op._tag) {
     case "error":
-      callback(left(op.e))
+      callback(E.left(op.e))
       // this will never be called
       /* istanbul ignore next */
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       return () => {}
     case "complete":
-      callback(right(none))
+      callback(E.right(O.none))
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       return () => {}
     case "offer":
-      callback(right(some(op.a)))
+      callback(E.right(O.some(op.a)))
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       return () => {}
   }
@@ -62,9 +62,9 @@ export function runFromQueue<E, A>(
 export function emitter<E, A>(
   ops: DoublyLinkedList<Ops<E, A>>,
   hasCB: HasCb<E, A>
-): ManagedSync<AsyncE<E, Option<A>>> {
-  return managedPure(
-    async<E, Option<A>>((callback) => {
+): M.Sync<T.AsyncE<E, O.Option<A>>> {
+  return M.pure(
+    T.async<E, O.Option<A>>((callback) => {
       const op = ops.deleteHead()
       if (op !== null && op.value !== null) {
         runFromQueue(op.value, callback)

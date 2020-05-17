@@ -18,7 +18,6 @@ import { comprehension as comprehension_1 } from "../Readonly/Array/comprehensio
  *   [3, 'b']
  * ])
  *
- * @since 2.0.0
  */
 export function comprehension<A, B, C, D, R>(
   input: [Array<A>, Array<B>, Array<C>, Array<D>],

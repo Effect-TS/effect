@@ -8,8 +8,6 @@ import { takeLeftWhile as takeLeftWhile_1 } from "../Readonly/Array/takeLeftWhil
  * import { takeLeftWhile } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(takeLeftWhile((n: number) => n % 2 === 0)([2, 4, 3, 6]), [2, 4])
- *
- * @since 2.0.0
  */
 export function takeLeftWhile<A, B extends A>(
   refinement: Refinement<A, B>

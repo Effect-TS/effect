@@ -13,6 +13,5 @@ import { elem as elem_1 } from "../Readonly/Array/elem"
  * assert.strictEqual(elem(eqNumber)(1, [1, 2, 3]), true)
  * assert.strictEqual(elem(eqNumber)(4, [1, 2, 3]), false)
  *
- * @since 2.0.0
  */
 export const elem: <A>(E: Eq<A>) => (a: A, as: Array<A>) => boolean = elem_1

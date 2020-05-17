@@ -9,7 +9,5 @@ import { snoc as snoc_1 } from "../Readonly/Array/snoc"
  * import { snoc } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
- *
- * @since 2.0.0
  */
 export const snoc: <A>(init: Array<A>, end: A) => NonEmptyArray<A> = snoc_1 as any

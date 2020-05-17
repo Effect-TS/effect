@@ -9,8 +9,6 @@ import { insertAt as insertAt_1 } from "../Readonly/Array/insertAt"
  * import { some } from 'fp-ts/lib/Option'
  *
  * assert.deepStrictEqual(insertAt(2, 5)([1, 2, 3, 4]), some([1, 2, 5, 3, 4]))
- *
- * @since 2.0.0
  */
 export const insertAt: <A>(
   i: number,

@@ -9,7 +9,5 @@ import { getMonoid as getMonoid_1 } from "../Readonly/Array/getMonoid"
  *
  * const M = getMonoid<number>()
  * assert.deepStrictEqual(M.concat([1, 2], [3, 4]), [1, 2, 3, 4])
- *
- * @since 2.0.0
  */
 export const getMonoid: <A = never>() => Monoid<Array<A>> = getMonoid_1 as any

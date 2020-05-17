@@ -16,25 +16,26 @@
  * (description adapted from https://package.elm-lang.org/packages/joneshf/elm-these)
  *
  * Adapted from https://github.com/purescript-contrib/purescript-these
- *
- * @since 2.0.0
  */
 
-import type { Applicative } from "fp-ts/lib/Applicative"
-import type { Bifunctor2 } from "fp-ts/lib/Bifunctor"
-import type { Either, Left, Right } from "fp-ts/lib/Either"
-import type { Foldable2 } from "fp-ts/lib/Foldable"
-import type { Functor2 } from "fp-ts/lib/Functor"
-import type { HKT } from "fp-ts/lib/HKT"
-import type { Monad2C } from "fp-ts/lib/Monad"
-import type { MonadThrow2C } from "fp-ts/lib/MonadThrow"
-import type { Semigroup } from "fp-ts/lib/Semigroup"
-import type { Show } from "fp-ts/lib/Show"
-import type { Traversable2, Traverse2, Sequence2 } from "fp-ts/lib/Traversable"
-
-import { Eq, fromEquals } from "../Eq"
-import type { Monoid } from "../Monoid"
-import { isNone, none, Option, some } from "../Option"
+import type {
+  Show,
+  Semigroup,
+  Monad2C,
+  MonadThrow2C,
+  Monoid,
+  Traverse2,
+  Applicative,
+  HKT,
+  Sequence2,
+  Functor2,
+  Bifunctor2,
+  Foldable2,
+  Traversable2
+} from "../Base"
+import * as E from "../Either"
+import * as Eq from "../Eq"
+import * as O from "../Option"
 
 declare module "fp-ts/lib/HKT" {
   interface URItoKind2<E, A> {
@@ -42,54 +43,30 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
-/**
- * @since 2.0.0
- */
 export const URI = "These"
 
-/**
- * @since 2.0.0
- */
 export type URI = typeof URI
 
-/**
- * @since 2.0.0
- */
 export interface Both<E, A> {
   readonly _tag: "Both"
   readonly left: E
   readonly right: A
 }
 
-/**
- * @since 2.0.0
- */
-export type These<E, A> = Either<E, A> | Both<E, A>
+export type These<E, A> = E.Either<E, A> | Both<E, A>
 
-/**
- * @since 2.0.0
- */
 export function left<E = never, A = never>(left: E): These<E, A> {
   return { _tag: "Left", left }
 }
 
-/**
- * @since 2.0.0
- */
 export function right<E = never, A = never>(right: A): These<E, A> {
   return { _tag: "Right", right }
 }
 
-/**
- * @since 2.0.0
- */
 export function both<E, A>(left: E, right: A): These<E, A> {
   return { _tag: "Both", left, right }
 }
 
-/**
- * @since 2.0.0
- */
 export function fold<E, A, B>(
   onLeft: (e: E) => B,
   onRight: (a: A) => B,
@@ -107,16 +84,10 @@ export function fold<E, A, B>(
   }
 }
 
-/**
- * @since 2.4.0
- */
 export const swap: <E, A>(fa: These<E, A>) => These<A, E> = fold(right, left, (e, a) =>
   both(a, e)
 )
 
-/**
- * @since 2.0.0
- */
 export function getShow<E, A>(SE: Show<E>, SA: Show<A>): Show<These<E, A>> {
   return {
     show: fold(
@@ -127,11 +98,8 @@ export function getShow<E, A>(SE: Show<E>, SA: Show<A>): Show<These<E, A>> {
   }
 }
 
-/**
- * @since 2.0.0
- */
-export function getEq<E, A>(EE: Eq<E>, EA: Eq<A>): Eq<These<E, A>> {
-  return fromEquals((x, y) =>
+export function getEq<E, A>(EE: Eq.Eq<E>, EA: Eq.Eq<A>): Eq.Eq<These<E, A>> {
+  return Eq.fromEquals((x, y) =>
     isLeft(x)
       ? isLeft(y) && EE.equals(x.left, y.left)
       : isRight(x)
@@ -140,9 +108,6 @@ export function getEq<E, A>(EE: Eq<E>, EA: Eq<A>): Eq<These<E, A>> {
   )
 }
 
-/**
- * @since 2.0.0
- */
 export function getSemigroup<E, A>(
   SE: Semigroup<E>,
   SA: Semigroup<A>
@@ -169,9 +134,6 @@ export function getSemigroup<E, A>(
   }
 }
 
-/**
- * @since 2.0.0
- */
 export function getMonad<E>(S: Semigroup<E>): Monad2C<URI, E> & MonadThrow2C<URI, E> {
   const chain = <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>): These<E, B> => {
     if (isLeft(ma)) {
@@ -199,10 +161,9 @@ export function getMonad<E>(S: Semigroup<E>): Monad2C<URI, E> & MonadThrow2C<URI
   }
 }
 
-/* tslint:disable:readonly-array */
 /**
  * @example
- * import { toTuple, left, right, both } from 'fp-ts/lib/These'
+ * import { toTuple, left, right, both } from '@matechs/core/These'
  *
  * assert.deepStrictEqual(toTuple('a', 1)(left('b')), ['b', 1])
  * assert.deepStrictEqual(toTuple('a', 1)(right(2)), ['a', 2])
@@ -214,64 +175,53 @@ export function toTuple<E, A>(e: E, a: A): (fa: These<E, A>) => [E, A] {
   return (fa) =>
     isLeft(fa) ? [fa.left, a] : isRight(fa) ? [e, fa.right] : [fa.left, fa.right]
 }
-/* tslint:enable:readonly-array */
 
 /**
  * Returns an `E` value if possible
  *
  * @example
- * import { getLeft, left, right, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { getLeft, left, right, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(getLeft(left('a')), some('a'))
  * assert.deepStrictEqual(getLeft(right(1)), none)
  * assert.deepStrictEqual(getLeft(both('a', 1)), some('a'))
- *
- * @since 2.0.0
  */
-export function getLeft<E, A>(fa: These<E, A>): Option<E> {
-  return isLeft(fa) ? some(fa.left) : isRight(fa) ? none : some(fa.left)
+export function getLeft<E, A>(fa: These<E, A>): O.Option<E> {
+  return isLeft(fa) ? O.some(fa.left) : isRight(fa) ? O.none : O.some(fa.left)
 }
 
 /**
  * Returns an `A` value if possible
  *
  * @example
- * import { getRight, left, right, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { getRight, left, right, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(getRight(left('a')), none)
  * assert.deepStrictEqual(getRight(right(1)), some(1))
  * assert.deepStrictEqual(getRight(both('a', 1)), some(1))
- *
- * @since 2.0.0
  */
-export function getRight<E, A>(fa: These<E, A>): Option<A> {
-  return isLeft(fa) ? none : isRight(fa) ? some(fa.right) : some(fa.right)
+export function getRight<E, A>(fa: These<E, A>): O.Option<A> {
+  return isLeft(fa) ? O.none : isRight(fa) ? O.some(fa.right) : O.some(fa.right)
 }
 
 /**
  * Returns `true` if the these is an instance of `Left`, `false` otherwise
- *
- * @since 2.0.0
  */
-export function isLeft<E, A>(fa: These<E, A>): fa is Left<E> {
+export function isLeft<E, A>(fa: These<E, A>): fa is E.Left<E> {
   return fa._tag === "Left"
 }
 
 /**
  * Returns `true` if the these is an instance of `Right`, `false` otherwise
- *
- * @since 2.0.0
  */
-export function isRight<E, A>(fa: These<E, A>): fa is Right<A> {
+export function isRight<E, A>(fa: These<E, A>): fa is E.Right<A> {
   return fa._tag === "Right"
 }
 
 /**
  * Returns `true` if the these is an instance of `Both`, `false` otherwise
- *
- * @since 2.0.0
  */
 export function isBoth<E, A>(fa: These<E, A>): fa is Both<E, A> {
   return fa._tag === "Both"
@@ -279,89 +229,81 @@ export function isBoth<E, A>(fa: These<E, A>): fa is Both<E, A> {
 
 /**
  * @example
- * import { leftOrBoth, left, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { leftOrBoth, left, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(leftOrBoth('a')(none), left('a'))
  * assert.deepStrictEqual(leftOrBoth('a')(some(1)), both('a', 1))
- *
- * @since 2.0.0
  */
-export function leftOrBoth<E>(e: E): <A>(ma: Option<A>) => These<E, A> {
-  return (ma) => (isNone(ma) ? left(e) : both(e, ma.value))
+export function leftOrBoth<E>(e: E): <A>(ma: O.Option<A>) => These<E, A> {
+  return (ma) => (O.isNone(ma) ? left(e) : both(e, ma.value))
 }
 
 /**
  * @example
- * import { rightOrBoth, right, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { rightOrBoth, right, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(rightOrBoth(1)(none), right(1))
  * assert.deepStrictEqual(rightOrBoth(1)(some('a')), both('a', 1))
- *
- * @since 2.0.0
  */
-export function rightOrBoth<A>(a: A): <E>(me: Option<E>) => These<E, A> {
-  return (me) => (isNone(me) ? right(a) : both(me.value, a))
+export function rightOrBoth<A>(a: A): <E>(me: O.Option<E>) => These<E, A> {
+  return (me) => (O.isNone(me) ? right(a) : both(me.value, a))
 }
 
 /**
  * Returns the `E` value if and only if the value is constructed with `Left`
  *
  * @example
- * import { getLeftOnly, left, right, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { getLeftOnly, left, right, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(getLeftOnly(left('a')), some('a'))
  * assert.deepStrictEqual(getLeftOnly(right(1)), none)
  * assert.deepStrictEqual(getLeftOnly(both('a', 1)), none)
- *
- * @since 2.0.0
  */
-export function getLeftOnly<E, A>(fa: These<E, A>): Option<E> {
-  return isLeft(fa) ? some(fa.left) : none
+export function getLeftOnly<E, A>(fa: These<E, A>): O.Option<E> {
+  return isLeft(fa) ? O.some(fa.left) : O.none
 }
 
 /**
  * Returns the `A` value if and only if the value is constructed with `Right`
  *
  * @example
- * import { getRightOnly, left, right, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { getRightOnly, left, right, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(getRightOnly(left('a')), none)
  * assert.deepStrictEqual(getRightOnly(right(1)), some(1))
  * assert.deepStrictEqual(getRightOnly(both('a', 1)), none)
- *
- *
- * @since 2.0.0
  */
-export function getRightOnly<E, A>(fa: These<E, A>): Option<A> {
-  return isRight(fa) ? some(fa.right) : none
+export function getRightOnly<E, A>(fa: These<E, A>): O.Option<A> {
+  return isRight(fa) ? O.some(fa.right) : O.none
 }
 
 /**
  * Takes a pair of `Option`s and attempts to create a `These` from them
  *
  * @example
- * import { fromOptions, left, right, both } from 'fp-ts/lib/These'
- * import { none, some } from 'fp-ts/lib/Option'
+ * import { fromOptions, left, right, both } from '@matechs/core/These'
+ * import { none, some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(fromOptions(none, none), none)
  * assert.deepStrictEqual(fromOptions(some('a'), none), some(left('a')))
  * assert.deepStrictEqual(fromOptions(none, some(1)), some(right(1)))
  * assert.deepStrictEqual(fromOptions(some('a'), some(1)), some(both('a', 1)))
- *
- * @since 2.0.0
  */
-export function fromOptions<E, A>(fe: Option<E>, fa: Option<A>): Option<These<E, A>> {
-  return isNone(fe)
-    ? isNone(fa)
-      ? none
-      : some(right(fa.value))
-    : isNone(fa)
-    ? some(left(fe.value))
-    : some(both(fe.value, fa.value))
+export function fromOptions<E, A>(
+  fe: O.Option<E>,
+  fa: O.Option<A>
+): O.Option<These<E, A>> {
+  return O.isNone(fe)
+    ? O.isNone(fa)
+      ? O.none
+      : O.some(right(fa.value))
+    : O.isNone(fa)
+    ? O.some(left(fe.value))
+    : O.some(both(fe.value, fa.value))
 }
 
 export const map_: <E, A, B>(fa: These<E, A>, f: (a: A) => B) => These<E, B> = (
@@ -423,9 +365,7 @@ export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <E, A>(
     ? F.map(ta.right, right)
     : F.map(ta.right, (b) => both(ta.left, b))
 }
-/**
- * @since 2.0.0
- */
+
 export const these: Functor2<URI> &
   Bifunctor2<URI> &
   Foldable2<URI> &

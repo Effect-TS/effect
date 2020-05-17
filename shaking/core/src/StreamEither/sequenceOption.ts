@@ -1,5 +1,5 @@
-import { option } from "../Option"
+import * as O from "../Option"
 
 import { streamEither } from "./streamEither"
 
-export const sequenceOption = option.sequence(streamEither)
+export const sequenceOption = O.sequence(streamEither)

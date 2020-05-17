@@ -1,4 +1,4 @@
-import { sequence } from "../Tree/sequence"
+import { sequence } from "../Tree"
 
 import { effect } from "./effect"
 

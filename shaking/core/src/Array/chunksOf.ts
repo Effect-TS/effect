@@ -16,8 +16,6 @@ import { chunksOf as chunksOf_1 } from "../Readonly/Array/chunksOf"
  *
  * assert.deepStrictEqual(chunksOf(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4], [5]])
  *
- *
- * @since 2.0.0
  */
 export const chunksOf: (
   n: number

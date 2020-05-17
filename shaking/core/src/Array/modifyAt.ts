@@ -12,8 +12,6 @@ import { modifyAt as modifyAt_1 } from "../Readonly/Array/modifyAt"
  * const double = (x: number): number => x * 2
  * assert.deepStrictEqual(modifyAt(1, double)([1, 2, 3]), some([1, 4, 3]))
  * assert.deepStrictEqual(modifyAt(1, double)([]), none)
- *
- * @since 2.0.0
  */
 export const modifyAt: <A>(
   i: number,

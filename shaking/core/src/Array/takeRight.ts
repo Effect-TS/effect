@@ -8,8 +8,6 @@ import { takeRight as takeRight_1 } from "../Readonly/Array/takeRight"
  * import { takeRight } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(takeRight(2)([1, 2, 3, 4, 5]), [4, 5])
- *
- * @since 2.0.0
  */
 export const takeRight: (
   n: number

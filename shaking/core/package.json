@@ -4,7 +4,8 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/package.ts"
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/package.ts",
+    "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src"
   },
   "publishConfig": {
     "access": "public",

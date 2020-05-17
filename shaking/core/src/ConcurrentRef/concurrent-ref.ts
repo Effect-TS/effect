@@ -33,14 +33,14 @@ export interface ConcurrentRef<A> {
  * Creates an IO that will allocate a ConcurrentRef.
  */
 export const makeConcurrentRef = <A>(initial: A): T.Sync<ConcurrentRef<A>> =>
-  T.effect.map(makeSemaphore(1), (semaphore) => {
+  T.map_(makeSemaphore(1), (semaphore) => {
     let value = initial
 
     const get = T.sync(() => value)
 
     const set = <R>(a: T.AsyncRE<R, never, A>): T.AsyncRE<R, never, A> =>
       semaphore.withPermit(
-        T.effect.map(a, (a) => {
+        T.map_(a, (a) => {
           const prev = value
           value = a
           return prev
@@ -51,8 +51,8 @@ export const makeConcurrentRef = <A>(initial: A): T.Sync<ConcurrentRef<A>> =>
       f: FunctionN<[A], T.AsyncRE<R, never, A>>
     ): T.AsyncRE<R, never, A> =>
       semaphore.withPermit(
-        T.effect.map(
-          T.effect.chain(
+        T.map_(
+          T.chain_(
             T.sync(() => value),
             f
           ),
@@ -67,8 +67,8 @@ export const makeConcurrentRef = <A>(initial: A): T.Sync<ConcurrentRef<A>> =>
       f: FunctionN<[A], T.AsyncRE<R, never, readonly [B, A]>>
     ): T.AsyncRE<R, never, B> =>
       semaphore.withPermit(
-        T.effect.map(
-          T.effect.chain(
+        T.map_(
+          T.chain_(
             T.sync(() => value),
             f
           ),

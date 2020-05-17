@@ -1,3 +1,4 @@
+/* adapted from https://github.com/gcanti/fp-ts */
 export type { Show } from "./Show"
 export { getStructShow } from "./getStructShow"
 export { getTupleShow } from "./getTupleShow"

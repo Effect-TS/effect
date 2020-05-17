@@ -7,7 +7,5 @@ import { reverse as reverse_1 } from "../Readonly/Array/reverse"
  * import { reverse } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(reverse([1, 2, 3]), [3, 2, 1])
- *
- * @since 2.0.0
  */
 export const reverse: <A>(as: Array<A>) => Array<A> = reverse_1 as any

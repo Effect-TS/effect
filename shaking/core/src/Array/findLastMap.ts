@@ -17,8 +17,6 @@ import { findLastMap as findLastMap_1 } from "../Readonly/Array/findLastMap"
  *
  * // returns the name of the last person that has an age
  * assert.deepStrictEqual(findLastMap((p: Person) => (p.age === undefined ? none : some(p.name)))(persons), some('Joey'))
- *
- * @since 2.0.0
  */
 export const findLastMap: <A, B>(
   f: (a: A) => Option<B>

@@ -9,7 +9,6 @@ import { dropLeftWhile as dropLeftWhile_1 } from "../Readonly/Array/dropLeftWhil
  *
  * assert.deepStrictEqual(dropLeftWhile((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), [2, 4, 5])
  *
- * @since 2.0.0
  */
 export const dropLeftWhile: <A>(
   predicate: Predicate<A>

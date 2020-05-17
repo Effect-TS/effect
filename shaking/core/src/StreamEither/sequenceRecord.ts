@@ -1,5 +1,5 @@
-import * as record from "../Record"
+import * as R from "../Record"
 
 import { streamEither } from "./streamEither"
 
-export const sequenceRecord = record.sequence(streamEither)
+export const sequenceRecord = R.sequence(streamEither)

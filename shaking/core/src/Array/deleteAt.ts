@@ -11,7 +11,6 @@ import { deleteAt as deleteAt_1 } from "../Readonly/Array/deleteAt"
  * assert.deepStrictEqual(deleteAt(0)([1, 2, 3]), some([2, 3]))
  * assert.deepStrictEqual(deleteAt(1)([]), none)
  *
- * @since 2.0.0
  */
 export const deleteAt: (
   i: number

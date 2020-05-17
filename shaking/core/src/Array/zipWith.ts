@@ -8,8 +8,6 @@ import { zipWith as zipWith_1 } from "../Readonly/Array/zipWith"
  * import { zipWith } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(zipWith([1, 2, 3], ['a', 'b', 'c', 'd'], (n, s) => s + n), ['a1', 'b2', 'c3'])
- *
- * @since 2.0.0
  */
 export const zipWith: <A, B, C>(
   fa: Array<A>,

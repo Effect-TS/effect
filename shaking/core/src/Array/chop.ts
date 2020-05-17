@@ -19,7 +19,6 @@ import { chop as chop_1 } from "../Readonly/Array/chop"
  * }
  * assert.deepStrictEqual(group(eqNumber)([1, 1, 2, 3, 3, 4]), [[1, 1], [2], [3, 3], [4]])
  *
- * @since 2.0.0
  */
 export const chop: <A, B>(
   f: (as: NonEmptyArray<A>) => [B, Array<A>]

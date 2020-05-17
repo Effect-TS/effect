@@ -8,8 +8,6 @@ import { scanLeft as scanLeft_1 } from "../Readonly/Array/scanLeft"
  *
  * assert.deepStrictEqual(scanLeft(10, (b, a: number) => b - a)([1, 2, 3]), [10, 9, 7, 4])
  * ```
- *
- * @since 2.0.0
  */
 export const scanLeft: <A, B>(
   b: B,

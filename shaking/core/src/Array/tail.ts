@@ -10,7 +10,5 @@ import { tail as tail_1 } from "../Readonly/Array/tail"
  *
  * assert.deepStrictEqual(tail([1, 2, 3]), some([2, 3]))
  * assert.deepStrictEqual(tail([]), none)
- *
- * @since 2.0.0
  */
 export const tail: <A>(as: Array<A>) => Option<Array<A>> = tail_1 as any

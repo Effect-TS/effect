@@ -10,8 +10,6 @@ import { spanLeft as spanLeft_1 } from "../Readonly/Array/spanLeft"
  * import { spanLeft } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(spanLeft((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), { init: [1, 3], rest: [2, 4, 5] })
- *
- * @since 2.0.0
  */
 export function spanLeft<A, B extends A>(
   refinement: Refinement<A, B>

@@ -286,12 +286,12 @@ export const traverseEither: <A, S, R, FE, B>(
 export const traverseTree: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>
 ) => (ta: TR.Tree<A>) => EffectOption<S, R, E, TR.Tree<B>> = (f) => (ta) =>
-  TR.traverse(effectOption)(ta, f)
+  TR.traverse_(effectOption)(ta, f)
 
 export const traverseArray: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>
 ) => (ta: Array<A>) => EffectOption<S, R, E, Array<B>> = (f) => (ta) =>
-  A.traverse(effectOption)(ta, f)
+  A.traverse_(effectOption)(ta, f)
 
 export const traverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => EffectOption<S, R, E, B>
@@ -341,12 +341,12 @@ export const parFor = () => ForM(effectOptionPar)
 export const parTraverseTree: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>
 ) => (ta: TR.Tree<A>) => EffectOption<unknown, R, E, TR.Tree<B>> = (f) => (ta) =>
-  TR.traverse(effectOptionPar)(ta, f)
+  TR.traverse_(effectOptionPar)(ta, f)
 
 export const parTraverseArray: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>
 ) => (ta: Array<A>) => EffectOption<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.traverse(effectOptionPar)(ta, f)
+  A.traverse_(effectOptionPar)(ta, f)
 
 export const parTraverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => EffectOption<S, R, E, B>

@@ -8,7 +8,5 @@ import { makeBy as makeBy_1 } from "../Readonly/Array/makeBy"
  *
  * const double = (n: number): number => n * 2
  * assert.deepStrictEqual(makeBy(5, double), [0, 2, 4, 6, 8])
- *
- * @since 2.0.0
  */
 export const makeBy: <A>(n: number, f: (i: number) => A) => Array<A> = makeBy_1 as any

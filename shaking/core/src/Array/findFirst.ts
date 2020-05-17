@@ -10,8 +10,6 @@ import { findFirst as findFirst_1 } from "../Readonly/Array/findFirst"
  * import { some } from 'fp-ts/lib/Option'
  *
  * assert.deepStrictEqual(findFirst((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 1 }))
- *
- * @since 2.0.0
  */
 export function findFirst<A, B extends A>(
   refinement: Refinement<A, B>

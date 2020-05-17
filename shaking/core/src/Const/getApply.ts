@@ -6,9 +6,6 @@ import { URI } from "./URI"
 import { const_ } from "./instances"
 import { make } from "./make"
 
-/**
- * @since 2.0.0
- */
 export function getApply<E>(S: Semigroup<E>): Apply2C<URI, E> {
   return {
     URI,

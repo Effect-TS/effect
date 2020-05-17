@@ -1,10 +1,9 @@
 import type { Effect, AsyncRE } from "../Support/Common/effect"
-import type { Tree } from "../Tree"
-import { traverse } from "../Tree/traverse"
+import { traverse_, Tree } from "../Tree"
 
 import { parFastEffect } from "./parFastEffect"
 
-export const parFastTraverseTree_ = traverse(parFastEffect)
+export const parFastTraverseTree_ = traverse_(parFastEffect)
 
 export const parFastTraverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

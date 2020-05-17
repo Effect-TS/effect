@@ -6,9 +6,6 @@ import { chain_ } from "./chain_"
 import { map_ } from "./map_"
 import { of } from "./of"
 
-/**
- * @since 2.0.0
- */
 export const arrayMonad: Monad1<URI> = {
   URI,
   map: map_,

@@ -25,8 +25,6 @@ import { sortBy as sortBy_1 } from "../Readonly/Array/sortBy"
  *   { name: 'b', age: 3 },
  *   { name: 'c', age: 2 }
  * ])
- *
- * @since 2.0.0
  */
 export const sortBy: <A>(
   ords: Array<Ord<A>>

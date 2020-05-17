@@ -1,19 +1,16 @@
-import type { Bifunctor4 } from "fp-ts/lib/Bifunctor"
-import type { Separated } from "fp-ts/lib/Compactable"
-
 import * as A from "../Array"
+import type { Separated, Bifunctor4 } from "../Base"
 import { Do as DoG } from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
-import { FunctionN, Lazy, Predicate, Refinement } from "../Function"
+import * as F from "../Function"
 import * as M from "../Managed"
-import { Option, option, some } from "../Option"
+import * as O from "../Option"
 import * as record from "../Record"
 import * as Stream from "../Stream"
 import { StreamEither, StreamEitherURI as URI, Managed } from "../Support/Common"
 import { ForM } from "../Support/For"
 import type { Monad4EP, MonadThrow4EP } from "../Support/Overloads"
-import type { Tree } from "../Tree"
 import * as tree from "../Tree"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
@@ -104,7 +101,7 @@ export function pure<A>(a: A): StreamEither<never, unknown, never, A> {
 export function zipWith<S, R, E, A, S2, R2, E2, B, C>(
   as: StreamEither<S, R, E, A>,
   bs: StreamEither<S2, R2, E2, B>,
-  f: FunctionN<[A, B], C>
+  f: F.FunctionN<[A, B], C>
 ): StreamEither<unknown, R & R2, E | E2, C> {
   return toS(
     Stream.zipWith_(
@@ -158,14 +155,14 @@ export function drain<S, R, E, A>(
 }
 
 export function fromSource<S, R, E, S2, R2, E2, A>(
-  r: Managed<S, R, never, T.Effect<S2, R2, E2, Option<A>>>
+  r: Managed<S, R, never, T.Effect<S2, R2, E2, O.Option<A>>>
 ): StreamEither<S | S2, R & R2, E | E2, A> {
   return toS(
     Stream.fromSource(
       M.map_(r, (e) =>
         T.chainError_(
-          T.map_(e, (oa) => option.map(oa, E.rightW)),
-          (e) => T.pure(some(E.leftW(e)))
+          T.map_(e, (oa) => O.option.map(oa, E.rightW)),
+          (e) => T.pure(O.some(E.leftW(e)))
         )
       )
     )
@@ -177,7 +174,7 @@ export function fromArray<A>(as: readonly A[]): StreamEither<never, unknown, nev
 }
 
 export function fromIterator<A>(
-  iter: Lazy<Iterator<A>>
+  iter: F.Lazy<Iterator<A>>
 ): StreamEither<never, unknown, never, A> {
   return toS(Stream.map_(Stream.fromIterator(iter), (a) => E.right(a)))
 }
@@ -220,7 +217,9 @@ export function aborted(e: unknown): StreamEither<never, unknown, never, never> 
   return toS(Stream.map_(Stream.aborted(e), (a) => E.right(a)))
 }
 
-export function fromOption<A>(opt: Option<A>): StreamEither<never, unknown, never, A> {
+export function fromOption<A>(
+  opt: O.Option<A>
+): StreamEither<never, unknown, never, A> {
   return toS(Stream.map_(Stream.fromOption(opt), (a) => E.right(a)))
 }
 
@@ -240,7 +239,7 @@ export function zipWithIndex<S, R, E, A>(
 
 export function concatL<S, R, E, A, S2, R2, E2>(
   stream1: StreamEither<S, R, E, A>,
-  stream2: Lazy<StreamEither<S2, R2, E2, A>>
+  stream2: F.Lazy<StreamEither<S2, R2, E2, A>>
 ): StreamEither<S | S2, R & R2, E | E2, A> {
   return toS(Stream.concatL_(fromS(stream1), () => fromS(stream2()) as any))
 }
@@ -267,44 +266,44 @@ export function as<S, R, E, A, B>(
 
 export function filter<S, R, E, A, B extends A>(
   stream: StreamEither<S, R, E, A>,
-  f: Refinement<A, B>,
+  f: F.Refinement<A, B>,
   propagate?: boolean
 ): StreamEither<S, R, E, B>
 export function filter<S, R, E, A>(
   stream: StreamEither<S, R, E, A>,
-  f: Predicate<A>,
+  f: F.Predicate<A>,
   propagate?: boolean
 ): StreamEither<S, R, E, A>
 export function filter<S, R, E, A>(
   stream: StreamEither<S, R, E, A>,
-  f: Predicate<A>,
+  f: F.Predicate<A>,
   propagate = true
 ) {
   return toS(Stream.filter_(fromS(stream), getEitherP(f, propagate)))
 }
 
 export const getEitherP = <E, A>(
-  p: Predicate<A>,
+  p: F.Predicate<A>,
   propagate = true
-): Predicate<E.Either<E, A>> => E.fold(() => propagate, p)
+): F.Predicate<E.Either<E, A>> => E.fold(() => propagate, p)
 
 export function filterWith<A, B extends A>(
-  f: Refinement<A, B>,
+  f: F.Refinement<A, B>,
   propagate?: boolean
 ): <S, R, E>(stream: StreamEither<S, R, E, A>) => StreamEither<S, R, E, A>
 export function filterWith<A>(
-  f: Predicate<A>,
+  f: F.Predicate<A>,
   propagate?: boolean
 ): <S, R, E>(stream: StreamEither<S, R, E, A>) => StreamEither<S, R, E, A>
 export function filterWith<A>(
-  f: Predicate<A>,
+  f: F.Predicate<A>,
   propagate = false
 ): <S, R, E>(stream: StreamEither<S, R, E, A>) => StreamEither<S, R, E, A> {
   return (stream) => filter(stream, f, propagate)
 }
 
 export function filteRefineWith<A, B extends A>(
-  f: Refinement<A, B>,
+  f: F.Refinement<A, B>,
   propagate = false
 ): <S, R, E>(stream: StreamEither<S, R, E, A>) => StreamEither<S, R, E, B> {
   return (stream) => filter(stream, f, propagate) as any
@@ -312,7 +311,7 @@ export function filteRefineWith<A, B extends A>(
 
 export function takeWhile<S, R, E, A>(
   stream: StreamEither<S, R, E, A>,
-  pred: Predicate<A>
+  pred: F.Predicate<A>
 ): StreamEither<S, R, E, A> {
   return toS(Stream.takeWhile_(fromS(stream), (x) => E.isRight(x) && pred(x.right)))
 }
@@ -323,7 +322,7 @@ export const mapLeft_ = <S, R, E, A, G>(
 ) => chainError_(fea, (x) => encaseEffect(T.raiseError(f(x))))
 
 export const ap_ = <S1, S2, R, R2, E, E2, A, B>(
-  sfab: StreamEither<S1, R, E, FunctionN<[A], B>>,
+  sfab: StreamEither<S1, R, E, F.FunctionN<[A], B>>,
   sa: StreamEither<S2, R2, E2, A>
 ) => zipWith(sfab, sa, (f, a) => f(a))
 
@@ -411,18 +410,19 @@ export const For = () => ForM(streamEither)
 
 export const traverseOption: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: Option<A>) => AsyncRE<R, E, Option<B>> = (f) => (ta) =>
-  option.traverse(streamEither)(ta, f)
+) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
+  O.option.traverse(streamEither)(ta, f)
 
 export const wiltOption: <S, A, R, E, B, C>(
   f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
-) => (wa: Option<A>) => AsyncRE<R, E, Separated<Option<B>, Option<C>>> = (f) => (wa) =>
-  option.wilt(streamEither)(wa, f)
+) => (wa: O.Option<A>) => AsyncRE<R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (
+  wa
+) => O.option.wilt(streamEither)(wa, f)
 
 export const witherOption: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, Option<B>>
-) => (ta: Option<A>) => AsyncRE<R, E, Option<B>> = (f) => (ta) =>
-  option.wither(streamEither)(ta, f)
+  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
+) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
+  O.option.wither(streamEither)(ta, f)
 
 export const traverseEither: <S, A, R, FE, B>(
   f: (a: A) => StreamEither<S, R, FE, B>
@@ -431,13 +431,13 @@ export const traverseEither: <S, A, R, FE, B>(
 
 export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: Tree<A>) => AsyncRE<R, E, Tree<B>> = (f) => (ta) =>
-  tree.traverse(streamEither)(ta, f)
+) => (ta: tree.Tree<A>) => AsyncRE<R, E, tree.Tree<B>> = (f) => (ta) =>
+  tree.traverse_(streamEither)(ta, f)
 
 export const traverseArray: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverse(streamEither)(ta, f)
+  A.traverse_(streamEither)(ta, f)
 
 export const traverseArrayWithIndex: <S, A, R, E, B>(
   f: (i: number, a: A) => StreamEither<S, R, E, B>
@@ -450,7 +450,7 @@ export const wiltArray: <S, A, R, E, B, C>(
   A.wilt(streamEither)(wa, f)
 
 export const witherArray: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, Option<B>>
+  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
 ) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
   A.wither(streamEither)(ta, f)
 
@@ -472,6 +472,6 @@ export const wiltRecord: <A, S, R, E, B, C>(
   record.wilt(streamEither)(wa, f)
 
 export const witherRecord: <A, S, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, Option<B>>
+  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
   record.wither(streamEither)(ta, f)

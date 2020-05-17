@@ -10,7 +10,5 @@ import { head as head_1 } from "../Readonly/Array/head"
  *
  * assert.deepStrictEqual(head([1, 2, 3]), some(1))
  * assert.deepStrictEqual(head([]), none)
- *
- * @since 2.0.0
  */
 export const head: <A>(as: Array<A>) => Option<A> = head_1

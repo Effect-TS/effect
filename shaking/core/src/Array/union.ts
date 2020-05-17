@@ -9,8 +9,6 @@ import { union as union_1 } from "../Readonly/Array/union"
  * import { eqNumber } from 'fp-ts/lib/Eq'
  *
  * assert.deepStrictEqual(union(eqNumber)([1, 2], [2, 3]), [1, 2, 3])
- *
- * @since 2.0.0
  */
 export const union: <A>(
   E: Eq<A>

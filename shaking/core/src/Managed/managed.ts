@@ -1,7 +1,7 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
 import {
-  traverse as a_traverse,
+  traverse_ as a_traverse,
   traverseWithIndex as a_traverseWithIndex,
   wilt as a_wilt,
   wither as a_wither
@@ -55,7 +55,7 @@ import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
 import type { Monad4E, MonadThrow4E, Monad4EP } from "../Support/Overloads"
 import type { Tree } from "../Tree"
-import { traverse as t_traverse } from "../Tree"
+import { traverse_ as t_traverse } from "../Tree"
 
 export enum ManagedTag {
   Pure,

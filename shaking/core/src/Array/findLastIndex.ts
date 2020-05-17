@@ -16,9 +16,6 @@ import { findLastIndex as findLastIndex_1 } from "../Readonly/Array/findLastInde
  * const xs: Array<X> = [{ a: 1, b: 0 }, { a: 1, b: 1 }]
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 1)(xs), some(1))
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 4)(xs), none)
- *
- *
- * @since 2.0.0
  */
 export const findLastIndex: <A>(
   predicate: Predicate<A>

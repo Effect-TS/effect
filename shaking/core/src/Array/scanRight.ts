@@ -7,8 +7,6 @@ import { scanRight as scanRight_1 } from "../Readonly/Array/scanRight"
  * import { scanRight } from 'fp-ts/lib/Array'
  *
  * assert.deepStrictEqual(scanRight(10, (a: number, b) => b - a)([1, 2, 3]), [4, 5, 7, 10])
- *
- * @since 2.0.0
  */
 export const scanRight: <A, B>(
   b: B,

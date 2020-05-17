@@ -42,9 +42,6 @@ import { wilt } from "./wilt"
 import { wither } from "./wither"
 import { zero } from "./zero"
 
-/**
- * @since 2.0.0
- */
 export const array: Monad1<URI> &
   Foldable1<URI> &
   Unfoldable1<URI> &

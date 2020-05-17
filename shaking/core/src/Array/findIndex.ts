@@ -11,8 +11,6 @@ import { findIndex as findIndex_1 } from "../Readonly/Array/findIndex"
  *
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([1, 2, 3]), some(1))
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([]), none)
- *
- * @since 2.0.0
  */
 export const findIndex: <A>(
   predicate: Predicate<A>

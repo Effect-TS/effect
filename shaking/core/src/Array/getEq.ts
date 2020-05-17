@@ -13,7 +13,5 @@ import { getEq as getEq_1 } from "../Readonly/Array/getEq"
  * const E = getEq(eqString)
  * assert.strictEqual(E.equals(['a', 'b'], ['a', 'b']), true)
  * assert.strictEqual(E.equals(['a'], []), false)
- *
- * @since 2.0.0
  */
 export const getEq: <A>(E: Eq<A>) => Eq<Array<A>> = getEq_1

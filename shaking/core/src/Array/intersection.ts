@@ -10,8 +10,6 @@ import { intersection as intersection_1 } from "../Readonly/Array/intersection"
  * import { eqNumber } from 'fp-ts/lib/Eq'
  *
  * assert.deepStrictEqual(intersection(eqNumber)([1, 2], [2, 3]), [2])
- *
- * @since 2.0.0
  */
 export const intersection: <A>(
   E: Eq<A>

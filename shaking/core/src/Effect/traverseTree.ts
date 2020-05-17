@@ -1,10 +1,9 @@
 import type { Effect } from "../Support/Common/effect"
-import type { Tree } from "../Tree"
-import { traverse } from "../Tree/traverse"
+import { traverse_, Tree } from "../Tree"
 
 import { effect } from "./effect"
 
-export const traverseTree_ = traverse(effect)
+export const traverseTree_ = traverse_(effect)
 
 export const traverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

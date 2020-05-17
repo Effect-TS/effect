@@ -10,8 +10,6 @@ import { updateAt as updateAt_1 } from "../Readonly/Array/updateAt"
  *
  * assert.deepStrictEqual(updateAt(1, 1)([1, 2, 3]), some([1, 1, 3]))
  * assert.deepStrictEqual(updateAt(1, 1)([]), none)
- *
- * @since 2.0.0
  */
 export const updateAt: <A>(
   i: number,

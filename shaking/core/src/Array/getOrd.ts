@@ -15,8 +15,5 @@ import { getOrd as getOrd_1 } from "../Readonly/Array/getOrd"
  * assert.strictEqual(O.compare(['b'], ['a']), 1)
  * assert.strictEqual(O.compare(['a'], ['a']), 0)
  * assert.strictEqual(O.compare(['a'], ['b']), -1)
- *
- *
- * @since 2.0.0
  */
 export const getOrd: <A>(O: Ord<A>) => Ord<Array<A>> = getOrd_1
