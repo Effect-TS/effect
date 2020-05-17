@@ -1,19 +1,21 @@
-export type { Semigroup } from "fp-ts/lib/Semigroup"
-
-export { fold } from "./fold"
-export { getDualSemigroup } from "./getDualSemigroup"
-export { getFirstSemigroup } from "./getFirstSemigroup"
-export { getFunctionSemigroup } from "./getFunctionSemigroup"
-export { getIntercalateSemigroup } from "./getIntercalateSemigroup"
-export { getJoinSemigroup } from "./getJoinSemigroup"
-export { getLastSemigroup } from "./getLastSemigroup"
-export { getMeetSemigroup } from "./getMeetSemigroup"
-export { getObjectSemigroup } from "./getObjectSemigroup"
-export { getStructSemigroup } from "./getStructSemigroup"
-export { getTupleSemigroup } from "./getTupleSemigroup"
-export { semigroupAll } from "./semigroupAll"
-export { semigroupAny } from "./semigroupAny"
-export { semigroupProduct } from "./semigroupProduct"
-export { semigroupString } from "./semigroupString"
-export { semigroupSum } from "./semigroupSum"
-export { semigroupVoid } from "./semigroupVoid"
+/* adapted from https://github.com/gcanti/fp-ts */
+export {
+  Semigroup,
+  fold,
+  getDualSemigroup,
+  getFirstSemigroup,
+  getFunctionSemigroup,
+  getIntercalateSemigroup,
+  getJoinSemigroup,
+  getLastSemigroup,
+  getMeetSemigroup,
+  getObjectSemigroup,
+  getStructSemigroup,
+  getTupleSemigroup,
+  semigroupAll,
+  semigroupAny,
+  semigroupProduct,
+  semigroupString,
+  semigroupSum,
+  semigroupVoid
+} from "./semigroup"
