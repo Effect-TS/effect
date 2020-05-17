@@ -1,3 +1,4 @@
+/* adapted from https://github.com/gcanti/retry-ts */
 export { applyAndDelay } from "./applyAndDelay"
 export { applyPolicy } from "./applyPolicy"
 export { capDelay } from "./capDelay"

@@ -1,4 +1,4 @@
-import { HKT, Kind, URIS } from "fp-ts/lib/HKT"
+import { HKT, Kind, URIS } from "../Base"
 
 /**
  * Abstractly specify the initial algebra of a Functor F as its fixed point.

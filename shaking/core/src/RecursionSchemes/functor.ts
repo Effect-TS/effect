@@ -1,9 +1,13 @@
-import { Kind, URIS } from "fp-ts/lib/HKT"
-
-import { Effect } from "../Effect"
+import { Kind, URIS } from "../Base"
+import * as T from "../Effect"
 
 export interface FunctorM<T extends URIS, S, R, E> {
-  <A, B>(ta: Kind<T, A>, f: (a: A) => Effect<S, R, E, B>): Effect<S, R, E, Kind<T, B>>
+  <A, B>(ta: Kind<T, A>, f: (a: A) => T.Effect<S, R, E, B>): T.Effect<
+    S,
+    R,
+    E,
+    Kind<T, B>
+  >
 }
 
 export function functorM<URI extends URIS, S = never, R = unknown, E = never>() {

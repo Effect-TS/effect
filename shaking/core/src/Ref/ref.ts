@@ -1,30 +1,29 @@
 import * as T from "../Effect"
 import type { FunctionN } from "../Function"
-import { Sync } from "../Support/Common/effect"
 
 export interface Ref<A> {
   /**
    * Get the current value of the Ref
    */
-  readonly get: Sync<A>
+  readonly get: T.Sync<A>
   /**
    * Set the current value of the ref
    * @param a
    */
-  readonly set: (a: A) => Sync<A>
+  readonly set: (a: A) => T.Sync<A>
   /**
    * Update the current value of the ref with a function.
    * Produces the new value
    * @param f
    */
-  readonly update: (f: FunctionN<[A], A>) => Sync<A>
+  readonly update: (f: FunctionN<[A], A>) => T.Sync<A>
   /**
    * Update the current value of a ref with a function.
    *
    * This function may return a second value of type B that will be produced on complete
    * @param f
    */
-  readonly modify: <B>(f: FunctionN<[A], readonly [B, A]>) => Sync<B>
+  readonly modify: <B>(f: FunctionN<[A], readonly [B, A]>) => T.Sync<B>
 }
 
 class RefImpl<A> implements Ref<A> {
@@ -63,5 +62,5 @@ class RefImpl<A> implements Ref<A> {
  * Creates an IO that will allocate a Ref.
  * Curried form of makeRef to allow for inference on the initial type
  */
-export const makeRef = <A>(initial: A): Sync<Ref<A>> =>
+export const makeRef = <A>(initial: A): T.Sync<Ref<A>> =>
   T.sync(() => new RefImpl(initial))
