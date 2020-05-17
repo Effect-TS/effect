@@ -1,4 +1,4 @@
-import { traverse_ } from "../Record/traverse_"
+import { traverse_ } from "../Record"
 import { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"

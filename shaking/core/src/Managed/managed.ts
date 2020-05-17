@@ -48,8 +48,8 @@ import { pipe } from "../Pipe"
 import {
   traverse_ as r_traverse_,
   traverseWithIndex_ as r_traverseWithIndex_,
-  wilt as r_wilt,
-  wither as r_wither
+  wilt_ as r_wilt,
+  wither_ as r_wither
 } from "../Record"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"

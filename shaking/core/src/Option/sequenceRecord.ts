@@ -1,4 +1,4 @@
-import { sequence } from "../Record/sequence"
+import { sequence } from "../Record/record"
 
 import { optionMonad } from "./monad"
 

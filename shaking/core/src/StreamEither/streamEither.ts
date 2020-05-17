@@ -469,9 +469,9 @@ export const wiltRecord: <A, S, R, E, B, C>(
 ) => (
   wa: Record<string, A>
 ) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  record.wilt(streamEither)(wa, f)
+  record.wilt_(streamEither)(wa, f)
 
 export const witherRecord: <A, S, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, O.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.wither(streamEither)(ta, f)
+  record.wither_(streamEither)(ta, f)

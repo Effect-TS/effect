@@ -1,4 +1,4 @@
-import { traverseWithIndex_ } from "../Record/traverseWithIndex_"
+import { traverseWithIndex_ } from "../Record"
 import { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parFastEffect } from "./parFastEffect"

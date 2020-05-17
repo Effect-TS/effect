@@ -18,6 +18,8 @@
  * Adapted from https://github.com/purescript-contrib/purescript-these
  */
 
+import type { These, Both } from "fp-ts/lib/These"
+
 import type {
   Show,
   Semigroup,
@@ -43,17 +45,11 @@ declare module "fp-ts/lib/HKT" {
   }
 }
 
+export type { These, Both }
+
 export const URI = "These"
 
 export type URI = typeof URI
-
-export interface Both<E, A> {
-  readonly _tag: "Both"
-  readonly left: E
-  readonly right: A
-}
-
-export type These<E, A> = E.Either<E, A> | Both<E, A>
 
 export function left<E = never, A = never>(left: E): These<E, A> {
   return { _tag: "Left", left }

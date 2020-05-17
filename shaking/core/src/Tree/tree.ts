@@ -8,6 +8,8 @@
  * @since 2.0.0
  */
 
+import type { Tree, Forest } from "fp-ts/lib/Tree"
+
 import * as A from "../Array"
 import type {
   Show,
@@ -45,12 +47,7 @@ export const URI = "Tree"
 
 export type URI = typeof URI
 
-export type Forest<A> = Array<Tree<A>>
-
-export interface Tree<A> {
-  readonly value: A
-  readonly forest: Forest<A>
-}
+export type { Forest, Tree }
 
 export function make<A>(value: A, forest: Forest<A> = A.empty): Tree<A> {
   return {

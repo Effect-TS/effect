@@ -1,6 +1,6 @@
 import type { Option } from "fp-ts/lib/Option"
 
-import { traverseWithIndex_ } from "../Record/traverseWithIndex_"
+import { traverseWithIndex_ } from "../Record/record"
 
 import { optionMonad } from "./monad"
 

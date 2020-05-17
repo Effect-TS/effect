@@ -1804,12 +1804,12 @@ export const wiltRecord: <A, S, R, E, B, C>(
 ) => (
   wa: Record<string, A>
 ) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  R.wilt(stream)(wa, f)
+  R.wilt_(stream)(wa, f)
 
 export const witherRecord: <A, S, R, E, B>(
   f: (a: A) => Stream<S, R, E, O.Option<B>>
 ) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  R.wither(stream)(ta, f)
+  R.wither_(stream)(ta, f)
 
 export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
   const listeners: Map<any, (_: Ops<E, A>) => void> = new Map()

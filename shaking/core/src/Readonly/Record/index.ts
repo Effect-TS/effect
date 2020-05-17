@@ -1,71 +1,72 @@
-export { ReadonlyRecord } from "./ReadonlyRecord"
-export { URI } from "./URI"
-export { fromRecord } from "./fromRecord"
-export { toRecord } from "./toRecord"
-export { getShow } from "./getShow"
-export { size } from "./size"
-export { isEmpty } from "./isEmpty"
-export { keys } from "./keys"
-export { collect } from "./collect"
-export { toReadonlyArray } from "./toReadonlyArray"
-export { toUnfoldable } from "./toUnfoldable"
-export { insertAt } from "./insertAt"
-export { hasOwnProperty } from "./hasOwnProperty"
-export { deleteAt } from "./deleteAt"
-export { updateAt } from "./updateAt"
-export { modifyAt } from "./modifyAt"
-export { pop } from "./pop"
-export { elem } from "./elem"
-export { filterWithIndex } from "./filterWithIndex"
-export { isSubrecord } from "./isSubrecord"
-export { getEq } from "./getEq"
-export { getMonoid } from "./getMonoid"
-export { lookup } from "./lookup"
-export { empty } from "./empty"
-export { mapWithIndex } from "./mapWithIndex"
-export { mapWithIndex_ } from "./mapWithIndex_"
-export { map } from "./map"
-export { reduceWithIndex } from "./reduceWithIndex"
-export { reduceWithIndex_ } from "./reduceWithIndex_"
-export { foldMapWithIndex_ } from "./foldMapWithIndex_"
-export { foldMapWithIndex } from "./foldMapWithIndex"
-export { reduceRightWithIndex_ } from "./reduceRightWithIndex_"
-export { reduceRightWithIndex } from "./reduceRightWithIndex"
-export { singleton } from "./singleton"
-export { traverseWithIndex_ } from "./traverseWithIndex_"
-export { traverseWithIndex } from "./traverseWithIndex"
-export { traverse } from "./traverse"
-export { sequence } from "./sequence"
-export { partitionMapWithIndex_ } from "./partitionMapWithIndex_"
-export { traverse_ } from "./traverse_"
-export { partitionMapWithIndex } from "./partitionMapWithIndex"
-export { partitionWithIndex_ } from "./partitionWithIndex_"
-export { partitionWithIndex } from "./partitionWithIndex"
-export { filterMapWithIndex_ } from "./filterMapWithIndex_"
-export { filterMapWithIndex } from "./filterMapWithIndex"
-export { filterWithIndex_ } from "./filterWithIndex_"
-export { fromFoldable } from "./fromFoldable"
-export { fromFoldableMap } from "./fromFoldableMap"
-export { every } from "./every"
-export { some } from "./some"
-export { map_ } from "./map_"
-export { reduce_ } from "./reduce_"
-export { foldMap_ } from "./foldMap_"
-export { reduceRight_ } from "./reduceRight_"
-export { compact } from "./compact"
-export { separate } from "./separate"
-export { wilt } from "./wilt"
-export { wither } from "./wither"
-export { partitionMap_ } from "./partitionMap_"
-export { filter_ } from "./filter_"
-export { filterMap_ } from "./filterMap_"
-export { partition_ } from "./partition_"
-export { readonlyRecordFoldable } from "./readonlyRecordFoldable"
-export { filter } from "./filter"
-export { filterMap } from "./filterMap"
-export { partition } from "./partition"
-export { partitionMap } from "./partitionMap"
-export { foldMap } from "./foldMap"
-export { reduce } from "./reduce"
-export { reduceRight } from "./reduceRight"
-export { readonlyRecord } from "./instances"
+export {
+  ReadonlyRecord,
+  URI,
+  collect,
+  compact,
+  deleteAt,
+  elem,
+  empty,
+  every,
+  filter,
+  filterMap,
+  filterMapWithIndex,
+  filterMapWithIndex_,
+  filterMap_,
+  filterWithIndex,
+  filterWithIndex_,
+  filter_,
+  foldMap,
+  foldMapWithIndex,
+  foldMapWithIndex_,
+  foldMap_,
+  fromFoldable,
+  fromFoldableMap,
+  fromRecord,
+  getEq,
+  getMonoid,
+  getShow,
+  hasOwnProperty,
+  insertAt,
+  isEmpty,
+  isSubrecord,
+  keys,
+  lookup,
+  map,
+  mapWithIndex,
+  mapWithIndex_,
+  map_,
+  modifyAt,
+  partition,
+  partitionMap,
+  partitionMapWithIndex,
+  partitionMapWithIndex_,
+  partitionMap_,
+  partitionWithIndex,
+  partitionWithIndex_,
+  partition_,
+  pop,
+  readonlyRecord,
+  reduce,
+  reduceRight,
+  reduceRightWithIndex,
+  reduceRightWithIndex_,
+  reduceRight_,
+  reduceWithIndex,
+  reduceWithIndex_,
+  reduce_,
+  separate,
+  sequence,
+  singleton,
+  size,
+  some,
+  toReadonlyArray,
+  toRecord,
+  toUnfoldable,
+  traverse,
+  traverseWithIndex,
+  traverseWithIndex_,
+  traverse_,
+  updateAt,
+  wilt_,
+  wither_
+} from "./record"

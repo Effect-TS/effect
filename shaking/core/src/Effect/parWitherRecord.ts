@@ -1,10 +1,10 @@
 import type { Option } from "../Option"
-import { wither } from "../Record/wither"
+import { wither_ } from "../Record"
 import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parWitherRecord_ = wither(parEffect)
+export const parWitherRecord_ = wither_(parEffect)
 
 export const parWitherRecord: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, Option<B>>

@@ -1,6 +1,6 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
-import { record } from "../Record"
+import { record } from "../Record/record"
 
 import type { Either } from "./Either"
 import { eitherMonad } from "./eitherMonad"

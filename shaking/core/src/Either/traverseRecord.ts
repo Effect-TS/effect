@@ -1,4 +1,4 @@
-import { record } from "../Record"
+import { record } from "../Record/record"
 
 import type { Either } from "./Either"
 import { eitherMonad } from "./eitherMonad"

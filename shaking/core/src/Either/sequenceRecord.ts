@@ -1,4 +1,4 @@
-import { record } from "../Record"
+import { record } from "../Record/record"
 
 import { eitherMonad } from "./eitherMonad"
 

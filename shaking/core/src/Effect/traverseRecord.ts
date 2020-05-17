@@ -1,4 +1,4 @@
-import { traverse_ } from "../Record/traverse_"
+import { traverse_ } from "../Record"
 import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"

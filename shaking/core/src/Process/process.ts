@@ -21,7 +21,7 @@ import {
 } from "../Effect"
 import type { Exit } from "../Exit"
 import { pipe } from "../Pipe"
-import { map_ as mapRecord } from "../Record/map_"
+import { map_ as mapRecord } from "../Record"
 import type {
   ATypeOf,
   ETypeOf,

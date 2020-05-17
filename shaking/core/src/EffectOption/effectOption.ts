@@ -327,13 +327,13 @@ export const wiltRecord: <A, S, R, E, B, C>(
   wa: Record<string, A>
 ) => EffectOption<S, R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (
   wa
-) => R.wilt(effectOption)(wa, f)
+) => R.wilt_(effectOption)(wa, f)
 
 export const witherRecord: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, O.Option<B>>
 ) => (ta: Record<string, A>) => EffectOption<S, R, E, Record<string, B>> = (f) => (
   ta
-) => R.wither(effectOption)(ta, f)
+) => R.wither_(effectOption)(ta, f)
 
 export const parDo = () => DoG(effectOptionPar)
 export const parFor = () => ForM(effectOptionPar)
@@ -382,10 +382,10 @@ export const parWiltRecord: <A, S, R, E, B, C>(
   wa: Record<string, A>
 ) => EffectOption<unknown, R, E, Separated<Record<string, B>, Record<string, C>>> = (
   f
-) => (wa) => R.wilt(effectOptionPar)(wa, f)
+) => (wa) => R.wilt_(effectOptionPar)(wa, f)
 
 export const parWitherRecord: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, O.Option<B>>
 ) => (ta: Record<string, A>) => EffectOption<unknown, R, E, Record<string, B>> = (
   f
-) => (ta) => R.wither(effectOptionPar)(ta, f)
+) => (ta) => R.wither_(effectOptionPar)(ta, f)
