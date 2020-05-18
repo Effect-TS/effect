@@ -1,5 +1,5 @@
 module.exports = {
-  ignorePatterns: ["dtslint/", "lib/", "es6/"],
+  ignorePatterns: ["dtslint/", "lib/", "es6/", "build/", "bench/"],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 2018,
@@ -52,6 +52,6 @@ module.exports = {
       },
     ],
     "object-shorthand": "error",
-    "prefer-destructuring": "warn",
+    "prefer-destructuring": "off",
   },
 };

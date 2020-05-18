@@ -1,4 +1,4 @@
-import * as assert from "assert"
+import * as a from "assert"
 
 import { effect as T, freeEnv as F } from "@matechs/effect"
 import * as O from "fp-ts/lib/Option"
@@ -39,7 +39,12 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
   specs
 })
 
-export { assert }
+export const assert = {
+  deepStrictEqual: <T>(actual: any, expected: T, message?: string | Error): void =>
+    a.deepStrictEqual(actual, expected, message),
+  strictEqual: <T>(actual: any, expected: T, message?: string | Error): void =>
+    a.strictEqual(actual, expected, message)
+}
 
 export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
   ROf<Exclude<Specs[number], Spec<unknown>>>
@@ -49,7 +54,13 @@ export type Provider<R> = (_: T.Effect<any, R, any, any>) => T.Effect<any, {}, a
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(
   ...specs: Specs
-) => (provider: unknown extends SpecsEnv<Specs> ? void : Provider<SpecsEnv<Specs>>) => {
+) => (
+  provider: unknown extends SpecsEnv<Specs>
+    ? void
+    : {} extends SpecsEnv<Specs>
+    ? void
+    : Provider<SpecsEnv<Specs>>
+) => {
   specs.map((s) => {
     switch (s._tag) {
       case "suite": {

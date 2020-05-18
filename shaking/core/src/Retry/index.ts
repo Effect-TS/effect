@@ -1,0 +1,13 @@
+/* adapted from https://github.com/gcanti/retry-ts */
+export { RetryPolicy } from "./RetryPolicy"
+export { RetryStatus } from "./RetryStatus"
+export { applyAndDelay } from "./applyAndDelay"
+export { applyPolicy } from "./applyPolicy"
+export { capDelay } from "./capDelay"
+export { constantDelay } from "./constantDelay"
+export { defaultRetryStatus } from "./defaultRetryStatus"
+export { exponentialBackoff } from "./exponentialBackoff"
+export { limitRetries } from "./limitRetries"
+export { limitRetriesByDelay } from "./limitRetriesByDelay"
+export { monoidRetryPolicy } from "./monoidRetryPolicy"
+export { retrying } from "./retrying"

@@ -1,5 +1,6 @@
 {
   "packages": [
+    "shaking/*",
     "packages/*",
     "packages_inc/*",
     "packages_sys/*",

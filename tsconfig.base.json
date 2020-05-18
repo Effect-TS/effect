@@ -25,7 +25,14 @@
     "stripInternal": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "baseUrl": ".",
+    "paths": {
+      "@matechs/core/*": ["shaking/core/build/*"],
+      "@matechs/core": ["shaking/core/build"],
+      "@matechs/model/*": ["shaking/model/build/*"],
+      "@matechs/model": ["shaking/model/build"]
+    }
   },
   "exclude": ["node_modules", "lib"]
 }

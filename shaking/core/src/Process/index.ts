@@ -1,0 +1,1 @@
+export { runAll } from "./process"

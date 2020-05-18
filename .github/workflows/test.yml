@@ -18,14 +18,12 @@ jobs:
       - name: npm install, build, and test
         run: |
           npm install -g yarn
-          mv packages/test packages/check
           yarn
           yarn ultra -r build
           yarn ultra -r dtslint
           yarn ultra -r tc
           yarn ultra -r lint
           yarn jest --detectOpenHandles
-          mv packages/check packages/test
         env:
           CI: "true"
 

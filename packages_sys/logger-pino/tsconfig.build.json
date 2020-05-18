@@ -1,8 +1,9 @@
 {
-  "extends": "../../base.tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "lib",
-    "lib": ["DOM"]
+    "lib": ["DOM"],
+    "esModuleInterop": true
   },
   "exclude": ["tests", "node_modules"],
   "include": ["src/**/*"]

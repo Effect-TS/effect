@@ -1,0 +1,27 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+export {
+  Const,
+  URI,
+  bimap,
+  bimap_,
+  const_ as const,
+  contramap,
+  contramap_,
+  getApplicative,
+  getApply,
+  getBooleanAlgebra,
+  getBounded,
+  getEq,
+  getHeytingAlgebra,
+  getMonoid,
+  getOrd,
+  getRing,
+  getSemigroup,
+  getSemiring,
+  getShow,
+  map_,
+  map,
+  make,
+  mapLeft,
+  mapLeft_
+} from "./const"
