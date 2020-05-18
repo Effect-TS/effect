@@ -1,1 +1,1 @@
-export { Dequeue, empty, from, of } from "./dequeue"
+export { Dequeue, empty, from, of, a } from "./dequeue"

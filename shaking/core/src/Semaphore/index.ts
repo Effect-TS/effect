@@ -1,1 +1,2 @@
-export { Semaphore, makeSemaphore } from "./semaphore"
+export { Semaphore } from "./Semaphore"
+export { makeSemaphore } from "./makeSemaphore"

@@ -1,7 +1,7 @@
 import type { Exit } from "../Exit"
 import type { FunctionN } from "../Function"
 import type { AsyncRE } from "../Support/Common/effect"
-import { DriverImpl } from "../Support/Driver/driver"
+import { DriverImpl } from "../Support/Driver"
 
 /**
  * Run the given IO with the provided environment.

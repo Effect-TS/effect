@@ -4,65 +4,16 @@ import * as E from "../Either"
 import * as F from "../Function"
 import * as O from "../Option"
 import { pipe } from "../Pipe"
-import { makeRef, Ref } from "../Ref"
-import { Dequeue, empty } from "../Support/Dequeue"
+import { Ref } from "../Ref"
+import { empty } from "../Support/Dequeue"
 import { makeTicket, Ticket, ticketExit, ticketUse } from "../Ticket"
 
-export interface Semaphore {
-  /**
-   * Acquire a permit, blocking if not all are vailable
-   */
-  readonly acquire: T.Async<void>
-  /**
-   * Release a permit
-   */
-  readonly release: T.Async<void>
-  /**
-   * Get the number of available permits
-   */
-  readonly available: T.Async<number>
+import { Semaphore } from "./Semaphore"
+import { State } from "./State"
+import { isReservationFor } from "./isReservationFor"
+import { sanityCheck } from "./sanityCheck"
 
-  /**
-   * Acquire multiple permits blocking if not all are available
-   * @param n
-   */
-  acquireN(n: number): T.Async<void>
-  /**
-   * Release mutliple permits
-   * @param n
-   */
-  releaseN(n: number): T.Async<void>
-  /**
-   * Bracket the given io with acquireN/releaseN calls
-   * @param n
-   * @param io
-   */
-  withPermitsN<S, R, E, A>(n: number, io: T.Effect<S, R, E, A>): T.AsyncRE<R, E, A>
-  /**
-   * withPermitN(1, _)
-   * @param n
-   */
-  withPermit<S, R, E, A>(n: T.Effect<S, R, E, A>): T.AsyncRE<R, E, A>
-}
-
-type Reservation = readonly [number, Deferred<unknown, unknown, never, void>]
-type State = E.Either<Dequeue<Reservation>, number>
-
-const isReservationFor = (latch: Deferred<unknown, unknown, never, void>) => (
-  rsv: readonly [number, Deferred<unknown, unknown, never, void>]
-): boolean => rsv[1] === latch
-
-function sanityCheck(n: number): T.Sync<void> {
-  if (n < 0) {
-    return T.raiseAbort(new Error("Die: semaphore permits must be non negative"))
-  }
-  if (Math.round(n) !== n) {
-    return T.raiseAbort(new Error("Die: semaphore permits may not be fractional"))
-  }
-  return T.unit
-}
-
-function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
+export function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
   const releaseN = <E = never>(n: number): T.AsyncE<E, void> =>
     T.applySecond(
       sanityCheck(n),
@@ -186,17 +137,4 @@ function makeSemaphoreImpl(ref: Ref<State>): Semaphore {
     withPermit: (inner) => withPermitsN(1, inner),
     available
   }
-}
-
-/**
- * Allocate a semaphore.
- *
- * @param n the number of permits
- * This must be non-negative
- */
-export function makeSemaphore(n: number): T.Sync<Semaphore> {
-  return T.applySecond(
-    sanityCheck(n),
-    T.map_(makeRef(E.right(n) as State), makeSemaphoreImpl)
-  )
 }

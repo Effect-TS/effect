@@ -5,7 +5,6 @@ import { Predicate, not, Refinement, identity } from "../../Function"
 import { Monoid } from "../../Monoid"
 import { Option } from "../../Option"
 import { Ord } from "../../Ord"
-import { Semigroup } from "../../Semigroup"
 import { Show } from "../../Show"
 
 export function fromSet<A>(s: Set<A>): ReadonlySet<A> {
@@ -30,8 +29,6 @@ export function getShow<A>(S: Show<A>): Show<ReadonlySet<A>> {
     }
   }
 }
-
-export const empty: ReadonlySet<never> = new Set()
 
 export function toReadonlyArray<A>(
   O: Ord<A>
@@ -179,51 +176,6 @@ export function elem<A>(E: Eq<A>): (a: A, set: ReadonlySet<A>) => boolean {
   }
 }
 
-/**
- * Form the union of two sets
- */
-export function union<A>(
-  E: Eq<A>
-): (set: ReadonlySet<A>, y: ReadonlySet<A>) => ReadonlySet<A> {
-  const elemE = elem(E)
-  return (x, y) => {
-    if (x === empty) {
-      return y
-    }
-    if (y === empty) {
-      return x
-    }
-    const r = new Set(x)
-    y.forEach((e) => {
-      if (!elemE(e, r)) {
-        r.add(e)
-      }
-    })
-    return r
-  }
-}
-
-/**
- * The set of elements which are in both the first and second set
- */
-export function intersection<A>(
-  E: Eq<A>
-): (set: ReadonlySet<A>, y: ReadonlySet<A>) => ReadonlySet<A> {
-  const elemE = elem(E)
-  return (x, y) => {
-    if (x === empty || y === empty) {
-      return empty
-    }
-    const r = new Set<A>()
-    x.forEach((e) => {
-      if (elemE(e, y)) {
-        r.add(e)
-      }
-    })
-    return r
-  }
-}
-
 export function partitionMap<B, C>(
   EB: Eq<B>,
   EC: Eq<C>
@@ -270,19 +222,6 @@ export function difference<A>(
 ): (x: ReadonlySet<A>, y: ReadonlySet<A>) => ReadonlySet<A> {
   const elemE = elem(E)
   return (x, y) => filter((a: A) => !elemE(a, y))(x)
-}
-
-export function getUnionMonoid<A>(E: Eq<A>): Monoid<ReadonlySet<A>> {
-  return {
-    concat: union(E),
-    empty
-  }
-}
-
-export function getIntersectionSemigroup<A>(E: Eq<A>): Semigroup<ReadonlySet<A>> {
-  return {
-    concat: intersection(E)
-  }
 }
 
 export function reduce<A>(

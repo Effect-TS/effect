@@ -58,8 +58,6 @@ export {
   singleton,
   size,
   some,
-  toArray,
-  toUnfoldable,
   traverse,
   traverseWithIndex,
   traverseWithIndex_,
@@ -68,3 +66,6 @@ export {
   wilt_,
   wither_
 } from "./record"
+
+export { toArray } from "./toArray"
+export { toUnfoldable } from "./toUnfoldable"

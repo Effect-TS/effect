@@ -1,6 +1,5 @@
+export { DriverImpl } from "./driver"
 export {
-  Driver,
-  DriverImpl,
   FoldFrame,
   FoldFrameTag,
   Frame,
@@ -11,6 +10,9 @@ export {
   MapFrame,
   MapFrameTag,
   RegionFrameType
-} from "./driver"
+} from "./driver/Frame"
 
-export { DriverSync, DriverSyncImpl } from "./driver-sync"
+export { Driver } from "./driver/Driver"
+
+export { DriverSyncImpl } from "./driverSync"
+export { DriverSync } from "./driverSync/DriverSync"

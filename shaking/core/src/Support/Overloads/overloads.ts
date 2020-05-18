@@ -1,4 +1,4 @@
-import {} from "fp-ts-contrib/lib/Do"
+import type {} from "fp-ts-contrib/lib/Do"
 import type { Bifunctor4 } from "fp-ts/lib/Bifunctor"
 import type { Compactable4, Separated } from "fp-ts/lib/Compactable"
 import type { Contravariant4 } from "fp-ts/lib/Contravariant"
@@ -27,7 +27,7 @@ import type {
   StreamURI,
   StreamEither,
   StreamEitherURI
-} from "../Common/types"
+} from "../Common"
 
 export interface MaToKind<S, R, E, A> {
   [EffectURI]: Effect<S, R, E, A>

@@ -1,15 +1,11 @@
-export {
-  ConcurrentQueue,
-  State,
-  boundedQueue,
-  droppingOffer,
-  droppingQueue,
-  initial,
-  makeConcurrentQueueImpl,
-  natCapacity,
-  natNumber,
-  slidingOffer,
-  slidingQueue,
-  unboundedOffer,
-  unboundedQueue
-} from "./queue"
+export { ConcurrentQueue } from "./ConcurrentQueue"
+export { State } from "./State"
+export { boundedQueue } from "./boundedQueue"
+export { droppingOffer } from "./droppingOffer"
+export { droppingQueue } from "./droppingQueue"
+export { initial } from "./initial"
+export { makeConcurrentQueueImpl } from "./makeConcurrentQueueImpl"
+export { slidingOffer } from "./slidingOffer"
+export { slidingQueue } from "./slidingQueue"
+export { unboundedOffer } from "./unboundedOffer"
+export { unboundedQueue } from "./unboundedQueue"

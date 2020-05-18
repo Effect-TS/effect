@@ -4,9 +4,7 @@ import type { ReadonlyRecord } from "fp-ts/lib/ReadonlyRecord"
 import type {
   Show,
   URIS,
-  Unfoldable1,
   Kind,
-  Unfoldable,
   HKT,
   Semigroup,
   Monoid,
@@ -118,29 +116,6 @@ export function collect<K extends string, A, B>(
   }
 }
 
-export const toReadonlyArray: <K extends string, A>(
-  r: ReadonlyRecord<K, A>
-) => ReadonlyArray<readonly [K, A]> = collect((k, a) => [k, a])
-
-/**
- * Unfolds a record into a list of key/value pairs
- */
-export function toUnfoldable<F extends URIS>(
-  U: Unfoldable1<F>
-): <K extends string, A>(r: ReadonlyRecord<K, A>) => Kind<F, readonly [K, A]>
-export function toUnfoldable<F>(
-  U: Unfoldable<F>
-): <K extends string, A>(r: ReadonlyRecord<K, A>) => HKT<F, readonly [K, A]>
-export function toUnfoldable<F>(
-  U: Unfoldable<F>
-): <A>(r: ReadonlyRecord<string, A>) => HKT<F, readonly [string, A]> {
-  return (r) => {
-    const arr = toReadonlyArray(r)
-    const len = arr.length
-    return U.unfold(0, (b) => (b < len ? some_1([arr[b], b + 1]) : none))
-  }
-}
-
 /**
  * Insert or replace a key/value pair in a record
  */
@@ -162,13 +137,11 @@ export function insertAt<A>(
   }
 }
 
-const _hasOwnProperty = Object.prototype.hasOwnProperty
-
 export function hasOwnProperty<K extends string>(
   k: string,
   r: ReadonlyRecord<K, unknown>
 ): k is K {
-  return _hasOwnProperty.call(r, k)
+  return Object.prototype.hasOwnProperty.call(r, k)
 }
 
 /**
@@ -183,7 +156,7 @@ export function deleteAt(
   k: string
 ): <A>(r: ReadonlyRecord<string, A>) => ReadonlyRecord<string, A> {
   return <A>(r: ReadonlyRecord<string, A>) => {
-    if (!_hasOwnProperty.call(r, k)) {
+    if (!Object.prototype.hasOwnProperty.call(r, k)) {
       return r
     }
     const out: Record<string, A> = Object.assign({}, r)
@@ -251,7 +224,7 @@ export function isSubrecord<A>(
 ): (x: ReadonlyRecord<string, A>, y: ReadonlyRecord<string, A>) => boolean {
   return (x, y) => {
     for (const k in x) {
-      if (!_hasOwnProperty.call(y, k) || !E.equals(x[k], y[k])) {
+      if (!Object.prototype.hasOwnProperty.call(y, k) || !E.equals(x[k], y[k])) {
         return false
       }
     }
@@ -295,7 +268,7 @@ export function getMonoid<A>(S: Semigroup<A>): Monoid<ReadonlyRecord<string, A>>
       const r: Record<string, A> = { ...x }
       for (let i = 0; i < len; i++) {
         const k = keys[i]
-        r[k] = _hasOwnProperty.call(x, k) ? S.concat(x[k], y[k]) : y[k]
+        r[k] = Object.prototype.hasOwnProperty.call(x, k) ? S.concat(x[k], y[k]) : y[k]
       }
       return r
     },
@@ -307,7 +280,7 @@ export function getMonoid<A>(S: Semigroup<A>): Monoid<ReadonlyRecord<string, A>>
  * Lookup the value for a key in a record
  */
 export function lookup<A>(k: string, r: ReadonlyRecord<string, A>): Option<A> {
-  return _hasOwnProperty.call(r, k) ? some_1(r[k]) : none
+  return Object.prototype.hasOwnProperty.call(r, k) ? some_1(r[k]) : none
 }
 
 export const empty: ReadonlyRecord<string, never> = {}
@@ -645,7 +618,7 @@ export function fromFoldableMap<F, B>(
   return <A>(ta: HKT<F, A>, f: (a: A) => readonly [string, B]) => {
     return F.reduce<A, Record<string, B>>(ta, {}, (r, a) => {
       const [k, b] = f(a)
-      r[k] = _hasOwnProperty.call(r, k) ? M.concat(r[k], b) : b
+      r[k] = Object.prototype.hasOwnProperty.call(r, k) ? M.concat(r[k], b) : b
       return r
     })
   }
@@ -948,7 +921,7 @@ export const filterWithIndex_ = <A>(
   const out: Record<string, A> = {}
   let changed = false
   for (const key in fa) {
-    if (_hasOwnProperty.call(fa, key)) {
+    if (Object.prototype.hasOwnProperty.call(fa, key)) {
       const a = fa[key]
       if (predicateWithIndex(key, a)) {
         out[key] = a

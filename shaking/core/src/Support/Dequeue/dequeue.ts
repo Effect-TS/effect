@@ -97,3 +97,7 @@ export function empty<A>(): Dequeue<A> {
 export function of<A>(a: A): Dequeue<A> {
   return from(listOf(a), nil)
 }
+
+export function a() {
+  return "a"
+}

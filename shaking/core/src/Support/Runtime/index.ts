@@ -1,1 +1,2 @@
-export { Runtime, defaultRuntime } from "./runtime"
+export { Runtime } from "./runtime"
+export { defaultRuntime } from "./defaultRuntime"

@@ -26,7 +26,7 @@ export interface Runtime {
   dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): AsyncCancelContFn
 }
 
-class RuntimeImpl implements Runtime {
+export class RuntimeImpl implements Runtime {
   running = false
 
   array = new LinkedList<[(a: any) => void, any]>()
@@ -60,5 +60,3 @@ class RuntimeImpl implements Runtime {
     }
   }
 }
-
-export const defaultRuntime: Runtime = new RuntimeImpl()

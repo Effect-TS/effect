@@ -4,7 +4,6 @@ export {
   compact,
   difference,
   elem,
-  empty,
   every,
   filter,
   filterMap,
@@ -12,11 +11,8 @@ export {
   fromArray,
   fromSet,
   getEq,
-  getIntersectionSemigroup,
   getShow,
-  getUnionMonoid,
   insert,
-  intersection,
   isSubset,
   map,
   partition,
@@ -27,6 +23,11 @@ export {
   singleton,
   some,
   toReadonlyArray,
-  toSet,
-  union
+  toSet
 } from "./set"
+
+export { empty } from "./empty"
+export { getUnionMonoid } from "./getUnionMonoid"
+export { intersection } from "./intersection"
+export { union } from "./union"
+export { getIntersectionSemigroup } from "./getIntersectionSemigroup"

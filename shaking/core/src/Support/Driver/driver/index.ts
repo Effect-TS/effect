@@ -1,50 +1,50 @@
-import type { Either } from "../../Either"
-import { Cause, Done, done, Exit, interrupt as interruptExit, raise } from "../../Exit"
-import type { FunctionN } from "../../Function"
-import { none } from "../../Option"
-import type * as EffectTypes from "../Common/effect"
+import type { Either } from "fp-ts/lib/Either"
+
+import { Cause, Exit, interruptWithError, done, Done, raise } from "../../../Exit"
+import type { Lazy, FunctionN } from "../../../Function"
 import {
+  Instructions,
+  IPure,
+  AsyncFn,
+  EffectTypes,
+  AsyncCancelContFn,
   IAccessEnv,
-  IAccessInterruptible,
-  IAccessRuntime,
+  IProvideEnv,
+  IPureOption,
+  IPureEither,
+  IRaised,
+  ICompleted,
+  ISuspended,
   IAsync,
   IChain,
-  ICollapse,
-  ICompleted,
-  IInterruptibleRegion,
   IMap,
-  Instructions,
-  IProvideEnv,
-  IPure,
-  IPureEither,
-  IPureOption,
-  IRaised,
-  ISuspended
-} from "../Common/instructions"
-import { DoublyLinkedList } from "../DoublyLinkedList"
-import { defaultRuntime } from "../Runtime"
+  ICollapse,
+  IInterruptibleRegion,
+  IAccessRuntime,
+  IAccessInterruptible
+} from "../../Common"
+import { DoublyLinkedList } from "../../DoublyLinkedList"
+import { defaultRuntime } from "../../Runtime"
 
+import { Driver } from "./Driver"
 import {
-  FoldFrame,
-  FoldFrameTag,
-  Frame,
   FrameType,
-  InterruptFrame,
+  FoldFrameTag,
+  FoldFrame,
   InterruptFrameTag,
-  MapFrame,
-  MapFrameTag
-} from "./driver"
+  InterruptFrame,
+  MapFrameTag,
+  Frame,
+  MapFrame
+} from "./Frame"
 
-export interface DriverSync<E, A> {
-  start(run: EffectTypes.SyncE<E, A>): Either<Error, Exit<E, A>>
-}
-
-export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
+export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Exit<E, A> | null = null
   listeners: FunctionN<[Exit<E, A>], void>[] | undefined
   interrupted = false
   currentFrame: FrameType | undefined = undefined
   interruptRegionStack: boolean[] | undefined
+  cancelAsync: AsyncCancelContFn | undefined
   envStack = new DoublyLinkedList<any>()
 
   isComplete(): boolean {
@@ -58,6 +58,26 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
         f(a)
       }
     }
+  }
+
+  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
+    if (this.completed !== null) {
+      f(this.completed)
+    }
+    if (this.listeners === undefined) {
+      this.listeners = [f]
+    } else {
+      this.listeners.push(f)
+    }
+    return () => {
+      if (this.listeners !== undefined) {
+        this.listeners = this.listeners.filter((cb) => cb !== f)
+      }
+    }
+  }
+
+  exit(): Exit<E, A> | null {
+    return this.completed
   }
 
   isInterruptible(): boolean {
@@ -89,16 +109,16 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     return
   }
 
-  dispatchResumeInterrupt() {
-    const go = this.handle(interruptExit)
+  dispatchResumeInterrupt({ errors }: { errors?: Error[] }) {
+    const go = this.handle(interruptWithError(...(errors || [])))
     if (go) {
       // eslint-disable-next-line
       this.loop(go)
     }
   }
 
-  resumeInterrupt(): void {
-    this.dispatchResumeInterrupt()
+  resumeInterrupt(errors?: Error[]): void {
+    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { errors })
   }
 
   next(value: unknown): Instructions | undefined {
@@ -124,20 +144,36 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     if (status._tag === "Right") {
       const go = this.next(status.right)
       if (go) {
-        /* eslint-disable-next-line */
         this.loop(go)
       }
     } else {
       const go = this.handle(raise(status.left))
       if (go) {
-        /* eslint-disable-next-line */
         this.loop(go)
       }
     }
   }
 
   resume(status: Either<unknown, unknown>): void {
-    this.foldResume(status)
+    this.cancelAsync = undefined
+    defaultRuntime.dispatch(this.foldResume.bind(this), status)
+  }
+
+  contextSwitch(op: AsyncFn<unknown, unknown>): void {
+    let complete = false
+    const wrappedCancel = op((status) => {
+      if (complete) {
+        return
+      }
+      complete = true
+      this.resume(status)
+    })
+    this.cancelAsync = (cb) => {
+      complete = true
+      wrappedCancel((...errors) => {
+        cb(...errors)
+      })
+    }
   }
 
   IAccessEnv(_: IAccessEnv<any>) {
@@ -201,6 +237,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   }
 
   IAsync(_: IAsync<any, any>) {
+    this.contextSwitch(_.e)
     return undefined
   }
 
@@ -241,7 +278,6 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     return new IPure(_.f(this.isInterruptible()))
   }
 
-  // tslint:disable-next-line: cyclomatic-complexity
   loop(go: Instructions): void {
     let current: Instructions | undefined = go
 
@@ -249,29 +285,21 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       try {
         current = this[current.tag()](current as any)
       } catch (e) {
-        current = new IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
+        current = new IRaised({
+          _tag: "Abort",
+          abortedWith: e,
+          remaining: { _tag: "None" }
+        })
       }
     }
 
-    // If !current then the interrupt came to late and we completed everything
     if (this.interrupted && current) {
       this.resumeInterrupt()
     }
   }
 
-  start(run: EffectTypes.SyncRE<{}, E, A>): Either<Error, Exit<E, A>> {
-    this.loop(run as any)
-
-    if (this.completed !== null) {
-      return { _tag: "Right", right: this.completed }
-    }
-
-    this.interrupt()
-
-    return {
-      _tag: "Left",
-      left: new Error("async operations running")
-    }
+  start(run: EffectTypes.AsyncRE<{}, E, A>): void {
+    defaultRuntime.dispatch(this.loop.bind(this), run as any)
   }
 
   interrupt(): void {
@@ -279,5 +307,10 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       return
     }
     this.interrupted = true
+    if (this.cancelAsync && this.isInterruptible()) {
+      this.cancelAsync((...errors) => {
+        this.resumeInterrupt(errors)
+      })
+    }
   }
 }

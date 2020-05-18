@@ -4,18 +4,14 @@ export {
   compact,
   difference,
   elem,
-  empty,
   every,
   filter,
   filterMap,
   foldMap,
   fromArray,
   getEq,
-  getIntersectionSemigroup,
   getShow,
-  getUnionMonoid,
   insert,
-  intersection,
   map,
   partition,
   partitionMap,
@@ -26,6 +22,11 @@ export {
   some,
   subset,
   toArray,
-  toggle,
-  union
+  toggle
 } from "./set"
+
+export { empty } from "./empty"
+export { getUnionMonoid } from "./getUnionMonoid"
+export { intersection } from "./intersection"
+export { union } from "./union"
+export { getIntersectionSemigroup } from "./getIntersectionSemigroup"

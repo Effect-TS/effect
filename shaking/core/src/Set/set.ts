@@ -1,4 +1,4 @@
-import { Show, Separated, Monoid, Semigroup } from "../Base"
+import { Show, Separated, Monoid } from "../Base"
 import { Either } from "../Either"
 import { Eq } from "../Eq"
 import { Predicate, Refinement } from "../Function"
@@ -7,8 +7,6 @@ import { Ord } from "../Ord"
 import * as RS from "../Readonly/Set"
 
 export const getShow: <A>(S: Show<A>) => Show<Set<A>> = RS.getShow
-
-export const empty: Set<never> = new Set()
 
 export const toArray: <A>(
   O: Ord<A>
@@ -61,20 +59,6 @@ export function partition<A>(
  */
 export const elem: <A>(E: Eq<A>) => (a: A, set: Set<A>) => boolean = RS.elem
 
-/**
- * Form the union of two sets
- */
-export const union: <A>(
-  E: Eq<A>
-) => (set: Set<A>, y: Set<A>) => Set<A> = RS.union as any
-
-/**
- * The set of elements which are in both the first and second set
- */
-export const intersection: <A>(
-  E: Eq<A>
-) => (set: Set<A>, y: Set<A>) => Set<A> = RS.intersection as any
-
 export const partitionMap: <B, C>(
   EB: Eq<B>,
   EC: Eq<C>
@@ -94,12 +78,6 @@ export const partitionMap: <B, C>(
 export const difference: <A>(
   E: Eq<A>
 ) => (x: Set<A>, y: Set<A>) => Set<A> = RS.difference as any
-
-export const getUnionMonoid: <A>(E: Eq<A>) => Monoid<Set<A>> = RS.getUnionMonoid as any
-
-export const getIntersectionSemigroup: <A>(
-  E: Eq<A>
-) => Semigroup<Set<A>> = RS.getIntersectionSemigroup as any
 
 export const reduce: <A>(
   O: Ord<A>

@@ -1,8 +1,6 @@
 import type {
   URIS,
-  Unfoldable1,
   Kind,
-  Unfoldable,
   HKT,
   URIS3,
   Applicative3,
@@ -43,7 +41,7 @@ import type { Predicate, Refinement } from "../Function"
 import type { Magma } from "../Magma"
 import type { Monoid } from "../Monoid"
 import type { Option } from "../Option"
-import * as RR from "../Readonly/Record/record"
+import * as RR from "../Readonly/Record"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 import type {
@@ -95,25 +93,6 @@ export const keys: <K extends string>(
 export const collect: <K extends string, A, B>(
   f: (k: K, a: A) => B
 ) => (r: Record<K, A>) => Array<B> = RR.collect as any
-
-export const toArray: <K extends string, A>(
-  r: Record<K, A>
-) => Array<[K, A]> = RR.toReadonlyArray as any
-
-/**
- * Unfolds a record into a list of key/value pairs
- */
-export function toUnfoldable<F extends URIS>(
-  U: Unfoldable1<F>
-): <K extends string, A>(r: Record<K, A>) => Kind<F, [K, A]>
-export function toUnfoldable<F>(
-  U: Unfoldable<F>
-): <K extends string, A>(r: Record<K, A>) => HKT<F, [K, A]>
-export function toUnfoldable<F>(
-  U: Unfoldable<F>
-): <A>(r: Record<string, A>) => HKT<F, [string, A]> {
-  return RR.toUnfoldable(U) as any
-}
 
 /**
  * Insert or replace a key/value pair in a record

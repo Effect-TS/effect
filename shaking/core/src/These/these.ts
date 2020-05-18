@@ -39,6 +39,11 @@ import * as E from "../Either"
 import * as Eq from "../Eq"
 import * as O from "../Option"
 
+import { both } from "./both"
+import { fold } from "./fold"
+import { left } from "./left"
+import { right } from "./right"
+
 declare module "fp-ts/lib/HKT" {
   interface URItoKind2<E, A> {
     readonly These: These<E, A>
@@ -50,39 +55,6 @@ export type { These, Both }
 export const URI = "These"
 
 export type URI = typeof URI
-
-export function left<E = never, A = never>(left: E): These<E, A> {
-  return { _tag: "Left", left }
-}
-
-export function right<E = never, A = never>(right: A): These<E, A> {
-  return { _tag: "Right", right }
-}
-
-export function both<E, A>(left: E, right: A): These<E, A> {
-  return { _tag: "Both", left, right }
-}
-
-export function fold<E, A, B>(
-  onLeft: (e: E) => B,
-  onRight: (a: A) => B,
-  onBoth: (e: E, a: A) => B
-): (fa: These<E, A>) => B {
-  return (fa) => {
-    switch (fa._tag) {
-      case "Left":
-        return onLeft(fa.left)
-      case "Right":
-        return onRight(fa.right)
-      case "Both":
-        return onBoth(fa.left, fa.right)
-    }
-  }
-}
-
-export const swap: <E, A>(fa: These<E, A>) => These<A, E> = fold(right, left, (e, a) =>
-  both(a, e)
-)
 
 export function getShow<E, A>(SE: Show<E>, SA: Show<A>): Show<These<E, A>> {
   return {

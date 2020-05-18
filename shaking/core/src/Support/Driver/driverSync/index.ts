@@ -1,100 +1,54 @@
-import type { Either } from "fp-ts/lib/Either"
-
-import { Cause, Exit, interruptWithError, done, Done, raise } from "../../Exit"
-import type { Lazy, FunctionN } from "../../Function"
+import type { Either } from "../../../Either"
 import {
-  Instructions,
-  IPure,
-  AsyncFn,
-  EffectTypes,
-  AsyncCancelContFn,
+  Cause,
+  Done,
+  done,
+  Exit,
+  interrupt as interruptExit,
+  raise
+} from "../../../Exit"
+import type { FunctionN } from "../../../Function"
+import { none } from "../../../Option"
+import type * as EffectTypes from "../../Common/effect"
+import {
   IAccessEnv,
-  IProvideEnv,
-  IPureOption,
-  IPureEither,
-  IRaised,
-  ICompleted,
-  ISuspended,
+  IAccessInterruptible,
+  IAccessRuntime,
   IAsync,
   IChain,
-  IMap,
   ICollapse,
+  ICompleted,
   IInterruptibleRegion,
-  IAccessRuntime,
-  IAccessInterruptible
-} from "../Common"
-import { DoublyLinkedList } from "../DoublyLinkedList"
-import { defaultRuntime } from "../Runtime"
+  IMap,
+  Instructions,
+  IProvideEnv,
+  IPure,
+  IPureEither,
+  IPureOption,
+  IRaised,
+  ISuspended
+} from "../../Common/instructions"
+import { DoublyLinkedList } from "../../DoublyLinkedList"
+import { defaultRuntime } from "../../Runtime"
+import {
+  FoldFrame,
+  FoldFrameTag,
+  Frame,
+  FrameType,
+  InterruptFrame,
+  InterruptFrameTag,
+  MapFrame,
+  MapFrameTag
+} from "../driver/Frame"
 
-export type RegionFrameType = InterruptFrame
-export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame
+import { DriverSync } from "./DriverSync"
 
-export const FrameTag = "Frame" as const
-export class Frame implements Frame {
-  constructor(
-    readonly apply: (u: unknown) => Instructions,
-    readonly prev: FrameType | undefined
-  ) {}
-  tag() {
-    return FrameTag
-  }
-}
-
-export const FoldFrameTag = "FoldFrame" as const
-export class FoldFrame implements FoldFrame {
-  constructor(
-    readonly apply: (u: unknown) => Instructions,
-    readonly recover: (cause: Cause<unknown>) => Instructions,
-    readonly prev: FrameType | undefined
-  ) {}
-  tag() {
-    return FoldFrameTag
-  }
-}
-
-export const MapFrameTag = "MapFrame" as const
-export class MapFrame implements MapFrame {
-  constructor(
-    readonly apply: (u: unknown) => unknown,
-    readonly prev: FrameType | undefined
-  ) {}
-  tag() {
-    return MapFrameTag
-  }
-}
-
-export const InterruptFrameTag = "InterruptFrame" as const
-export class InterruptFrame {
-  constructor(
-    readonly interruptStatus: boolean[],
-    readonly prev: FrameType | undefined
-  ) {}
-  apply(u: unknown) {
-    this.interruptStatus.pop()
-    return new IPure(u)
-  }
-  exitRegion() {
-    this.interruptStatus.pop()
-  }
-  tag() {
-    return InterruptFrameTag
-  }
-}
-
-export interface Driver<E, A> {
-  start(run: EffectTypes.AsyncE<E, A>): void
-  interrupt(): void
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>
-  completed: Exit<E, A> | null
-}
-
-export class DriverImpl<E, A> implements Driver<E, A> {
+export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
   completed: Exit<E, A> | null = null
   listeners: FunctionN<[Exit<E, A>], void>[] | undefined
   interrupted = false
   currentFrame: FrameType | undefined = undefined
   interruptRegionStack: boolean[] | undefined
-  cancelAsync: AsyncCancelContFn | undefined
   envStack = new DoublyLinkedList<any>()
 
   isComplete(): boolean {
@@ -108,26 +62,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         f(a)
       }
     }
-  }
-
-  onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void> {
-    if (this.completed !== null) {
-      f(this.completed)
-    }
-    if (this.listeners === undefined) {
-      this.listeners = [f]
-    } else {
-      this.listeners.push(f)
-    }
-    return () => {
-      if (this.listeners !== undefined) {
-        this.listeners = this.listeners.filter((cb) => cb !== f)
-      }
-    }
-  }
-
-  exit(): Exit<E, A> | null {
-    return this.completed
   }
 
   isInterruptible(): boolean {
@@ -159,16 +93,16 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return
   }
 
-  dispatchResumeInterrupt({ errors }: { errors?: Error[] }) {
-    const go = this.handle(interruptWithError(...(errors || [])))
+  dispatchResumeInterrupt() {
+    const go = this.handle(interruptExit)
     if (go) {
       // eslint-disable-next-line
       this.loop(go)
     }
   }
 
-  resumeInterrupt(errors?: Error[]): void {
-    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { errors })
+  resumeInterrupt(): void {
+    this.dispatchResumeInterrupt()
   }
 
   next(value: unknown): Instructions | undefined {
@@ -194,36 +128,20 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     if (status._tag === "Right") {
       const go = this.next(status.right)
       if (go) {
+        /* eslint-disable-next-line */
         this.loop(go)
       }
     } else {
       const go = this.handle(raise(status.left))
       if (go) {
+        /* eslint-disable-next-line */
         this.loop(go)
       }
     }
   }
 
   resume(status: Either<unknown, unknown>): void {
-    this.cancelAsync = undefined
-    defaultRuntime.dispatch(this.foldResume.bind(this), status)
-  }
-
-  contextSwitch(op: AsyncFn<unknown, unknown>): void {
-    let complete = false
-    const wrappedCancel = op((status) => {
-      if (complete) {
-        return
-      }
-      complete = true
-      this.resume(status)
-    })
-    this.cancelAsync = (cb) => {
-      complete = true
-      wrappedCancel((...errors) => {
-        cb(...errors)
-      })
-    }
+    this.foldResume(status)
   }
 
   IAccessEnv(_: IAccessEnv<any>) {
@@ -287,7 +205,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   IAsync(_: IAsync<any, any>) {
-    this.contextSwitch(_.e)
     return undefined
   }
 
@@ -328,6 +245,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return new IPure(_.f(this.isInterruptible()))
   }
 
+  // tslint:disable-next-line: cyclomatic-complexity
   loop(go: Instructions): void {
     let current: Instructions | undefined = go
 
@@ -335,21 +253,29 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       try {
         current = this[current.tag()](current as any)
       } catch (e) {
-        current = new IRaised({
-          _tag: "Abort",
-          abortedWith: e,
-          remaining: { _tag: "None" }
-        })
+        current = new IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
       }
     }
 
+    // If !current then the interrupt came to late and we completed everything
     if (this.interrupted && current) {
       this.resumeInterrupt()
     }
   }
 
-  start(run: EffectTypes.AsyncRE<{}, E, A>): void {
-    defaultRuntime.dispatch(this.loop.bind(this), run as any)
+  start(run: EffectTypes.SyncRE<{}, E, A>): Either<Error, Exit<E, A>> {
+    this.loop(run as any)
+
+    if (this.completed !== null) {
+      return { _tag: "Right", right: this.completed }
+    }
+
+    this.interrupt()
+
+    return {
+      _tag: "Left",
+      left: new Error("async operations running")
+    }
   }
 
   interrupt(): void {
@@ -357,10 +283,5 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       return
     }
     this.interrupted = true
-    if (this.cancelAsync && this.isInterruptible()) {
-      this.cancelAsync((...errors) => {
-        this.resumeInterrupt(errors)
-      })
-    }
   }
 }

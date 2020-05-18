@@ -4,6 +4,7 @@ export {
   Nil,
   URI,
   ap,
+  ap_,
   cata,
   cata_,
   chain,

@@ -5,8 +5,6 @@ export {
   URI,
   bimap,
   bimap_,
-  both,
-  fold,
   foldMap,
   foldMap_,
   fromOptions,
@@ -21,7 +19,6 @@ export {
   isBoth,
   isLeft,
   isRight,
-  left,
   leftOrBoth,
   map,
   mapLeft,
@@ -31,11 +28,15 @@ export {
   reduceRight,
   reduceRight_,
   reduce_,
-  right,
   rightOrBoth,
   sequence,
-  swap,
   these,
   toTuple,
   traverse
 } from "./these"
+
+export { swap } from "./swap"
+export { both } from "./both"
+export { fold } from "./fold"
+export { left } from "./left"
+export { right } from "./right"

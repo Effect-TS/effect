@@ -1,10 +1,14 @@
 import type { Monad1 } from "../Base"
-import { flip, not } from "../Function"
+import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
 import { some, none, Option } from "../Option/option"
 import { pipe } from "../Pipe"
 
 export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> {
+  return chain_(list, (a) => map_(fns, (f) => f(a)))
+}
+
+export function ap_<A, B>(fns: List<FunctionN<[A], B>>, list: List<A>): List<B> {
   return chain_(list, (a) => map_(fns, (f) => f(a)))
 }
 
@@ -118,7 +122,7 @@ export function isCons<A>(list: List<A>): list is Cons<A> {
   return list._tag === "cons"
 }
 
-export const isEmpty = isNil
+export const isEmpty = <A>(_: List<A>) => _._tag === "nil"
 
 export function isNil<A>(list: List<A>): list is Nil {
   return list._tag === "nil"
@@ -158,7 +162,7 @@ export function map<A, B>(f: FunctionN<[A], B>): (list: List<A>) => List<B> {
 
 export const nil: List<never> = { _tag: "nil" }
 
-export const nonEmpty = not(isNil)
+export const nonEmpty = <A>(_: List<A>) => _._tag === "cons"
 
 export function of<A>(a: A): List<A> {
   return cons(a, nil)
@@ -223,6 +227,6 @@ export const list: Monad1<URI> = {
   URI,
   map: map_,
   of,
-  ap: flip(ap),
+  ap: ap_,
   chain: chain_
 }
