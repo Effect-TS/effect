@@ -20,7 +20,6 @@ export {
   left,
   leftState,
   map,
-  mkState,
   modify,
   put,
   right,
