@@ -22,7 +22,7 @@ jobs:
         run: |
           npm install -g yarn
           yarn
-          cd packages/effect
+          cd shaking/core
           yarn build
           yarn tsc bench/*.ts
           yarn bench
