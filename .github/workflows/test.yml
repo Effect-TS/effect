@@ -18,15 +18,14 @@ jobs:
       - name: npm install, build, and test
         run: |
           npm install -g yarn
+          mv packages/test packages/check
           yarn
-          yarn lerna run build --scope @matechs/core
-          yarn lerna run build --scope @matechs/model
-          yarn jest shaking/core --detectOpenHandles
-          cd shaking/core
-          yarn tsc bench/*.ts
-          node bench/index.js
-          node bench/nestedChain.js
-          node bench/nestedMap.js
+          yarn ultra -r build
+          yarn ultra -r dtslint
+          yarn ultra -r tc
+          yarn ultra -r lint
+          yarn jest --detectOpenHandles
+          mv packages/check packages/test
         env:
           CI: "true"
 
