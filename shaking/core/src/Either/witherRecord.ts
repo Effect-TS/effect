@@ -3,7 +3,9 @@ import { wither_ } from "../Record/record"
 
 import { eitherMonad, Either } from "./either"
 
-export const witherRecord_ = wither_(eitherMonad)
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => wither_(eitherMonad))()
 
 export const witherRecord: <A, E, B>(
   f: (a: A) => Either<E, Option<B>>

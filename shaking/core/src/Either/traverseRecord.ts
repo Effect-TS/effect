@@ -2,7 +2,9 @@ import { traverse_ } from "../Record/record"
 
 import { eitherMonad, Either } from "./either"
 
-export const traverseRecord_ = traverse_(eitherMonad)
+export const traverseRecord_ =
+  /*#__PURE__*/
+  (() => traverse_(eitherMonad))()
 
 export const traverseRecord: <A, E, B>(
   f: (a: A) => Either<E, B>

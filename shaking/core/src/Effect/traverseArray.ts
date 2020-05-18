@@ -3,7 +3,9 @@ import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 
-export const traverseArray_ = traverse_(effect)
+export const traverseArray_ =
+  /*#__PURE__*/
+  (() => traverse_(effect))()
 
 export const traverseArray: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

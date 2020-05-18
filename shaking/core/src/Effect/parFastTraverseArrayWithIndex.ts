@@ -3,7 +3,9 @@ import { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parFastEffect } from "./parFastEffect"
 
-export const parFastTraverseArrayWithIndex_ = traverseWithIndex_(parFastEffect)
+export const parFastTraverseArrayWithIndex_ =
+  /*#__PURE__*/
+  (() => traverseWithIndex_(parFastEffect))()
 
 export const parFastTraverseArrayWithIndex: <A, S, R, E, B>(
   f: (i: number, a: A) => Effect<S, R, E, B>

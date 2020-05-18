@@ -6,7 +6,9 @@ import type { AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parWiltArray_ = wilt_(parEffect)
+export const parWiltArray_ =
+  /*#__PURE__*/
+  (() => wilt_(parEffect))()
 
 export const parWiltArray: <A, R, E, B, C>(
   f: (a: A) => AsyncRE<R, E, Either<B, C>>

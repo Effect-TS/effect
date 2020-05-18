@@ -4,7 +4,9 @@ import { traverseWithIndex_ } from "../Record/record"
 
 import { optionMonad } from "./option"
 
-export const traverseRecordWithIndex_ = traverseWithIndex_(optionMonad)
+export const traverseRecordWithIndex_ =
+  /*#__PURE__*/
+  (() => traverseWithIndex_(optionMonad))()
 
 export const traverseRecordWithIndex: <A, B>(
   f: (k: string, a: A) => Option<B>

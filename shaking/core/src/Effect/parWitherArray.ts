@@ -4,7 +4,9 @@ import type { AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parWitherArray_ = wither_(parEffect)
+export const parWitherArray_ =
+  /*#__PURE__*/
+  (() => wither_(parEffect))()
 
 export const parWitherArray: <A, R, E, B>(
   f: (a: A) => AsyncRE<R, E, Option<B>>

@@ -2,7 +2,9 @@ import { traverse_, Either } from "../Either/either"
 
 import { optionMonad, Option } from "./option"
 
-export const traverseEither_ = traverse_(optionMonad)
+export const traverseEither_ =
+  /*#__PURE__*/
+  (() => traverse_(optionMonad))()
 
 export const traverseEither: <A, B>(
   f: (a: A) => Option<B>

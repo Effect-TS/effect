@@ -10,7 +10,6 @@ export {
   Leak,
   Managed,
   ManagedT,
-  ManagedTag,
   Pure,
   Suspended,
   Sync,

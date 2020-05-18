@@ -3,7 +3,9 @@ import type { Option } from "../Option/option"
 
 import { eitherMonad, Either } from "./either"
 
-export const witherArray_ = wither_(eitherMonad)
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => wither_(eitherMonad))()
 
 export const witherArray: <A, E, B>(
   f: (a: A) => Either<E, Option<B>>

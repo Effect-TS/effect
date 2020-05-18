@@ -4,7 +4,9 @@ import type { Tree } from "../Tree"
 
 import { parEffect } from "./parEffect"
 
-export const parTraverseTree_ = traverse_(parEffect)
+export const parTraverseTree_ =
+  /*#__PURE__*/
+  (() => traverse_(parEffect))()
 
 export const parTraverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

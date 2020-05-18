@@ -252,12 +252,18 @@ export function periodically(ms: number): Async<number> {
 /**
  * A stream that emits no elements an immediately terminates
  */
-export const empty: Sync<never> = toS(
-  M.pure(
-    <S>(initial: S, _cont: F.Predicate<S>, _f: F.FunctionN<[S, never], T.Sync<S>>) =>
-      T.pure(initial)
-  )
-)
+export const empty: Sync<never> =
+  /*#__PURE__*/
+  (() =>
+    toS(
+      M.pure(
+        <S>(
+          initial: S,
+          _cont: F.Predicate<S>,
+          _f: F.FunctionN<[S, never], T.Sync<S>>
+        ) => T.pure(initial)
+      )
+    ))()
 
 /**
  * Create a stream that evalutes w to emit a single element
@@ -764,7 +770,9 @@ export function mapM<S, A, R2, E2, B>(
 /**
  * A stream that emits no elements but never terminates.
  */
-export const never: Async<never> = mapM_(once(undefined), F.constant(T.never))
+export const never: Async<never> =
+  /*#__PURE__*/
+  (() => mapM_(once(undefined), F.constant(T.never)))()
 
 type TDuceFused<FoldState, SinkState> = readonly [FoldState, SinkState, boolean]
 
@@ -1407,29 +1415,32 @@ function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): T.Async<void> {
 }
 
 // Track many fibers for the purpose of clean interruption on failure
-const makeWeave: M.Async<Weave> = M.chain_(M.encaseEffect(makeRef(0)), (cell) =>
-  // On cleanup we want to interrupt any running fibers
-  M.map_(M.bracket(makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
-    function attach(action: T.Sync<void>): T.Sync<void> {
-      return pipe(
-        T.sequenceS({
-          next: cell.update((n) => n + 1),
-          fiber: T.fork(action)
-        }),
-        T.chainTap(({ fiber, next }) =>
-          store.update((handles) => [...handles, [next, fiber] as const])
-        ),
-        T.chainTap(({ fiber, next }) =>
-          T.fork(
-            T.applySecond(fiber.wait, store.update(A.filter((h) => h[0] !== next)))
+const makeWeave: M.Async<Weave> =
+  /*#__PURE__*/
+  (() =>
+    M.chain_(M.encaseEffect(makeRef(0)), (cell) =>
+      // On cleanup we want to interrupt any running fibers
+      M.map_(M.bracket(makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
+        function attach(action: T.Sync<void>): T.Sync<void> {
+          return pipe(
+            T.sequenceS({
+              next: cell.update((n) => n + 1),
+              fiber: T.fork(action)
+            }),
+            T.chainTap(({ fiber, next }) =>
+              store.update((handles) => [...handles, [next, fiber] as const])
+            ),
+            T.chainTap(({ fiber, next }) =>
+              T.fork(
+                T.applySecond(fiber.wait, store.update(A.filter((h) => h[0] !== next)))
+              )
+            ),
+            T.asUnit
           )
-        ),
-        T.asUnit
-      )
-    }
-    return { attach }
-  })
-)
+        }
+        return { attach }
+      })
+    ))()
 
 /**
  * Merge a stream of streams into a single stream.
@@ -1581,7 +1592,7 @@ export function dropWhile<A>(
 export function collectArray<K, R, E, A>(
   stream: Stream<K, R, E, A>
 ): T.Effect<K, R, E, A[]> {
-  return into_(stream, /*#__PURE__*/ Sink.collectArraySink())
+  return into_(stream, Sink.collectArraySink())
 }
 
 /**

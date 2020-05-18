@@ -1,5 +1,7 @@
-import { array } from "../Array"
+import { sequence } from "../Array"
 
 import { parManaged } from "./managed"
 
-export const parSequenceArray = array.sequence(parManaged)
+export const parSequenceArray =
+  /*#__PURE__*/
+  (() => sequence(parManaged))()

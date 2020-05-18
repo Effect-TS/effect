@@ -2,4 +2,6 @@ import { sequence } from "../../Tree"
 
 import { stream } from "./index"
 
-export const sequenceTree = sequence(stream)
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => sequence(stream))()

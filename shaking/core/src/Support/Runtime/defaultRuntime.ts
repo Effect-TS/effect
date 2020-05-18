@@ -1,3 +1,5 @@
 import { Runtime, RuntimeImpl } from "./runtime"
 
-export const defaultRuntime: Runtime = new RuntimeImpl()
+export const defaultRuntime: Runtime =
+  /*#__PURE__*/
+  (() => new RuntimeImpl())()

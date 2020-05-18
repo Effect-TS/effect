@@ -2,4 +2,6 @@ import { sequenceT as ST } from "../../Apply"
 
 import { stream } from "./index"
 
-export const sequenceT = ST(stream)
+export const sequenceT =
+  /*#__PURE__*/
+  (() => ST(stream))()

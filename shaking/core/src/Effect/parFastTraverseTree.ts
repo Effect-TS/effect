@@ -3,7 +3,9 @@ import { traverse_, Tree } from "../Tree"
 
 import { parFastEffect } from "./parFastEffect"
 
-export const parFastTraverseTree_ = traverse_(parFastEffect)
+export const parFastTraverseTree_ =
+  /*#__PURE__*/
+  (() => traverse_(parFastEffect))()
 
 export const parFastTraverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

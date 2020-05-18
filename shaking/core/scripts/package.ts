@@ -67,7 +67,7 @@ const modules: string[] = [
   "RecursionSchemes",
   "Prelude",
   "Stream",
-  "Stream/Node",
+  "Stream/Stream",
   "Stream/Sink",
   "Stream/Step",
   "Stream/Support",

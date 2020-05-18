@@ -6,7 +6,9 @@ import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 
-export const wiltRecord_ = wilt_(effect)
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => wilt_(effect))()
 
 export const wiltRecord: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Either<B, C>>

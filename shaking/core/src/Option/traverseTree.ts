@@ -4,7 +4,9 @@ import { traverse_, Tree } from "../Tree"
 
 import { optionMonad } from "./option"
 
-export const traverseTree_ = traverse_(optionMonad)
+export const traverseTree_ =
+  /*#__PURE__*/
+  (() => traverse_(optionMonad))()
 
 export const traverseTree: <A, B>(
   f: (a: A) => Option<B>

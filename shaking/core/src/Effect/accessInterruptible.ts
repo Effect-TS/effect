@@ -5,6 +5,6 @@ import { Sync } from "../Support/Common/effect"
 /**
  * Get the interruptible state of the current fiber
  */
-export const accessInterruptible: Sync<boolean> = new IAccessInterruptible(
-  identity
-) as any
+export const accessInterruptible: Sync<boolean> =
+  /*#__PURE__*/
+  (() => new IAccessInterruptible(identity) as any)()

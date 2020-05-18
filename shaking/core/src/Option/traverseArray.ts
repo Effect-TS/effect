@@ -4,7 +4,9 @@ import { traverse_ } from "../Array"
 
 import { optionMonad } from "./option"
 
-export const traverseArray_ = traverse_(optionMonad)
+export const traverseArray_ =
+  /*#__PURE__*/
+  (() => traverse_(optionMonad))()
 
 export const traverseArray: <A, B>(
   f: (a: A) => Option<B>

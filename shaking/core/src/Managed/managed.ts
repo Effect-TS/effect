@@ -61,15 +61,6 @@ import type { Monad4E, MonadThrow4E, Monad4EP } from "../Support/Overloads"
 import type { Tree } from "../Tree"
 import { traverse_ as t_traverse } from "../Tree"
 
-export enum ManagedTag {
-  Pure,
-  Encase,
-  Bracket,
-  Suspended,
-  Chain,
-  BracketExit
-}
-
 /**
  * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
  *
@@ -107,7 +98,7 @@ const toM = <S, R, E, A>(_: ManagedT<S, R, E, A>): Managed<S, R, E, A> => _ as a
 const fromM = <S, R, E, A>(_: Managed<S, R, E, A>): ManagedT<S, R, E, A> => _ as any
 
 export interface Pure<A> {
-  readonly _tag: ManagedTag.Pure
+  readonly _tag: "Pure"
   readonly value: A
 }
 
@@ -117,13 +108,13 @@ export interface Pure<A> {
  */
 export function pure<A>(value: A): Sync<A> {
   return toM(() => ({
-    _tag: ManagedTag.Pure,
+    _tag: "Pure",
     value
   }))
 }
 
 export interface Encase<S, E, A> {
-  readonly _tag: ManagedTag.Encase
+  readonly _tag: "Encase"
   readonly acquire: Effect<S, unknown, E, A>
 }
 
@@ -135,13 +126,13 @@ export interface Encase<S, E, A> {
  */
 export function encaseEffect<S, R, E, A>(rio: Effect<S, R, E, A>): Managed<S, R, E, A> {
   return toM((r) => ({
-    _tag: ManagedTag.Encase,
+    _tag: "Encase",
     acquire: provideEffect(r)(rio)
   }))
 }
 
 export interface Bracket<S, S2, E, A> {
-  readonly _tag: ManagedTag.Bracket
+  readonly _tag: "Bracket"
   readonly acquire: Effect<S, unknown, E, A>
   readonly release: FunctionN<[A], Effect<S2, unknown, E, unknown>>
 }
@@ -156,14 +147,14 @@ export function bracket<S, R, E, A, S2, R2, E2>(
   release: FunctionN<[A], Effect<S2, R2, E2, unknown>>
 ): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
-    _tag: ManagedTag.Bracket,
+    _tag: "Bracket",
     acquire: provideEffect(r)(acquire as Effect<S | S2, R & R2, E | E2, A>),
     release: (a) => provideEffect(r)(release(a))
   }))
 }
 
 export interface BracketExit<S, S2, E, A> {
-  readonly _tag: ManagedTag.BracketExit
+  readonly _tag: "BracketExit"
 
   readonly acquire: Effect<S, unknown, E, A>
   readonly release: FunctionN<[A, Exit<E, unknown>], Effect<S2, unknown, E, unknown>>
@@ -174,14 +165,14 @@ export function bracketExit<S, R, E, A, S2, R2, E2>(
   release: FunctionN<[A, Exit<E, unknown>], Effect<S2, R2, E2, unknown>>
 ): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
-    _tag: ManagedTag.BracketExit,
+    _tag: "BracketExit",
     acquire: provideEffect(r)(acquire as Effect<S | S2, R, E, A>),
     release: (a, e) => provideEffect(r)(release(a, e as any))
   }))
 }
 
 export interface Suspended<S, S2, E, A> {
-  readonly _tag: ManagedTag.Suspended
+  readonly _tag: "Suspended"
 
   readonly suspended: Effect<S, unknown, E, Managed<S, unknown, E, A>>
 }
@@ -196,7 +187,7 @@ export function suspend<S, R, E, S2, R2, E2, A>(
   return toM(
     (r) =>
       ({
-        _tag: ManagedTag.Suspended,
+        _tag: "Suspended",
         suspended: map_Effect(provideEffect(r)(suspended), (m) => (_: unknown) =>
           fromM(m)(r)
         )
@@ -205,7 +196,7 @@ export function suspend<S, R, E, S2, R2, E2, A>(
 }
 
 export interface Chain<S, S2, E, L, A> {
-  readonly _tag: ManagedTag.Chain
+  readonly _tag: "Chain"
   readonly left: Managed<S, unknown, E, L>
   readonly bind: FunctionN<[L], Managed<S2, unknown, E, A>>
 }
@@ -222,7 +213,7 @@ export function chain_<S, R, E, L, S2, R2, E2, A>(
   bind: FunctionN<[L], Managed<S2, R2, E2, A>>
 ): Managed<S | S2, R & R2, E | E2, A> {
   return toM((r) => ({
-    _tag: ManagedTag.Chain,
+    _tag: "Chain",
     left: provideAll(r)(left as Managed<S | S2, R, E | E2, L>),
     bind: (l) => provideAll(r)(bind(l))
   }))
@@ -491,17 +482,17 @@ export function use<S, R, E, A, S2, R2, E2, B>(
   return accessMEffect((r: R & R2) => {
     const c = fromM(res)(r)
     switch (c._tag) {
-      case ManagedTag.Pure:
+      case "Pure":
         return f(c.value)
-      case ManagedTag.Encase:
+      case "Encase":
         return chain_Effect(c.acquire, f)
-      case ManagedTag.Bracket:
+      case "Bracket":
         return bracketEffect(c.acquire, c.release, f)
-      case ManagedTag.BracketExit:
+      case "BracketExit":
         return bracketExitEffect(c.acquire, (a, e) => c.release(a, e as any), f)
-      case ManagedTag.Suspended:
+      case "Suspended":
         return chain_Effect(c.suspended, consume(f))
-      case ManagedTag.Chain:
+      case "Chain":
         return use(c.left, (a) => use(c.bind(a), f))
     }
   })
@@ -527,21 +518,21 @@ export function allocate<S, R, E, A>(
     const c = fromM(res)(r)
 
     switch (c._tag) {
-      case ManagedTag.Pure:
+      case "Pure":
         return pureEffect({ a: c.value, release: unit })
-      case ManagedTag.Encase:
+      case "Encase":
         return map_Effect(c.acquire, (a) => ({ a, release: unit }))
-      case ManagedTag.Bracket:
+      case "Bracket":
         return map_Effect(c.acquire, (a) => ({ a, release: c.release(a) }))
-      case ManagedTag.BracketExit:
+      case "BracketExit":
         // best effort, because we cannot know what the exit status here
         return map_Effect(c.acquire, (a) => ({
           a,
           release: c.release(a, done(undefined))
         }))
-      case ManagedTag.Suspended:
+      case "Suspended":
         return chain_Effect(c.suspended, allocate)
-      case ManagedTag.Chain:
+      case "Chain":
         return bracketExitEffect(
           allocate(c.left),
           (leak, exit) => (exit._tag === "Done" ? unit : leak.release),

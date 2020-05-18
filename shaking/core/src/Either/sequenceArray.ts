@@ -2,4 +2,6 @@ import { sequence } from "../Array/array"
 
 import { eitherMonad } from "./either"
 
-export const sequenceArray = sequence(eitherMonad)
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => sequence(eitherMonad))()

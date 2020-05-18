@@ -1,42 +1,37 @@
 import type { Applicative, HKT } from "../../Base"
 import type { FunctionN } from "../../Function"
 
-export enum SinkStepTag {
-  Cont,
-  Done
-}
-
 export type SinkStep<A, S> = SinkStepCont<S> | SinkStepDone<A, S>
 
 export function sinkCont<S>(s: S): SinkStepCont<S> {
-  return { _tag: SinkStepTag.Cont, state: s }
+  return { _tag: "Cont", state: s }
 }
 
 export interface SinkStepCont<S> {
-  readonly _tag: SinkStepTag.Cont
+  readonly _tag: "Cont"
   readonly state: S
 }
 
 export function sinkDone<A, S>(s: S, leftover: readonly A[]): SinkStepDone<A, S> {
-  return { _tag: SinkStepTag.Done, state: s, leftover }
+  return { _tag: "Done", state: s, leftover }
 }
 
 export function isSinkCont<A0, S>(s: SinkStep<A0, S>): s is SinkStepCont<S> {
-  return s._tag === SinkStepTag.Cont
+  return s._tag === "Cont"
 }
 
 export function isSinkDone<S, A0>(s: SinkStep<S, A0>): s is SinkStepDone<S, A0> {
-  return s._tag === SinkStepTag.Done
+  return s._tag === "Done"
 }
 
 export interface SinkStepDone<A, S> {
-  readonly _tag: SinkStepTag.Done
+  readonly _tag: "Done"
   readonly state: S
   readonly leftover: readonly A[]
 }
 
 export function sinkStepLeftover<A, S>(s: SinkStep<A, S>): readonly A[] {
-  if (s._tag === SinkStepTag.Cont) {
+  if (s._tag === "Cont") {
     return []
   } else {
     return s.leftover

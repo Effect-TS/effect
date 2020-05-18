@@ -10,6 +10,5 @@ export {
   SinkStepDone,
   sinkStepLeftover,
   sinkStepState,
-  SinkStepTag,
   traverse
 } from "./step"

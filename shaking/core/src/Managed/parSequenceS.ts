@@ -2,4 +2,6 @@ import { sequenceS as SS } from "../Apply"
 
 import { parManaged } from "./managed"
 
-export const parSequenceS = SS(parManaged)
+export const parSequenceS =
+  /*#__PURE__*/
+  (() => SS(parManaged))()

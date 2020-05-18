@@ -8,13 +8,16 @@ import { uninterruptible } from "./uninterruptible"
 /**
  * Introduce a gap in executing to allow other fibers to execute (if any are pending)
  */
-export const shifted: Async<void> = uninterruptible(
-  chain_(accessRuntime, (runtime) =>
-    asyncTotal<void>((callback) => {
-      runtime.dispatch(callback, undefined)
-      return (cb) => {
-        cb()
-      }
-    })
-  )
-)
+export const shifted: Async<void> =
+  /*#__PURE__*/
+  (() =>
+    uninterruptible(
+      chain_(accessRuntime, (runtime) =>
+        asyncTotal<void>((callback) => {
+          runtime.dispatch(callback, undefined)
+          return (cb) => {
+            cb()
+          }
+        })
+      )
+    ))()

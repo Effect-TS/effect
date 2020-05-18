@@ -6,4 +6,6 @@ import { raised } from "./raised"
 /**
  * An IO that is already interrupted
  */
-export const raiseInterrupt: Sync<never> = raised(interrupt)
+export const raiseInterrupt: Sync<never> =
+  /*#__PURE__*/
+  (() => raised(interrupt))() as any

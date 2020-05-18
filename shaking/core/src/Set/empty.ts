@@ -1,3 +1,3 @@
 export const empty: Set<never> =
   /*#__PURE__*/
-  new Set()
+  (() => new Set())() as any

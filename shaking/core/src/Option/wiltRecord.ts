@@ -6,7 +6,9 @@ import { wilt_ } from "../Record/record"
 
 import { optionMonad } from "./option"
 
-export const wiltRecord_ = wilt_(optionMonad)
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => wilt_(optionMonad))()
 
 export const wiltRecord: <A, B, C>(
   f: (a: A) => Option<Either<B, C>>

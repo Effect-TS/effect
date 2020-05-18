@@ -3,7 +3,9 @@ import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"
 
-export const parTraverseRecordWithIndex_ = traverseWithIndex_(parEffect)
+export const parTraverseRecordWithIndex_ =
+  /*#__PURE__*/
+  (() => traverseWithIndex_(parEffect))()
 
 export const parTraverseRecordWithIndex: <A, S, R, E, B>(
   f: (k: string, a: A) => Effect<S, R, E, B>

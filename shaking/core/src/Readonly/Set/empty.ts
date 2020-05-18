@@ -1,3 +1,3 @@
 export const empty: ReadonlySet<never> =
   /*#__PURE__*/
-  new Set()
+  (() => new Set())() as any

@@ -6,7 +6,9 @@ import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 
-export const wiltArray_ = wilt_(effect)
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => wilt_(effect))()
 
 export const wiltArray: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Either<B, C>>

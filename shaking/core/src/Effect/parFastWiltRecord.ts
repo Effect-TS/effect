@@ -6,7 +6,9 @@ import type { Effect, AsyncRE } from "../Support/Common/effect"
 
 import { parFastEffect } from "./parFastEffect"
 
-export const parFastWiltRecord_ = wilt_(parFastEffect)
+export const parFastWiltRecord_ =
+  /*#__PURE__*/
+  (() => wilt_(parFastEffect))()
 
 export const parFastWiltRecord: <A, S, R, E, B, C>(
   f: (a: A) => Effect<S, R, E, Either<B, C>>

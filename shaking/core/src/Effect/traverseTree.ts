@@ -3,7 +3,9 @@ import { traverse_, Tree } from "../Tree"
 
 import { effect } from "./effect"
 
-export const traverseTree_ = traverse_(effect)
+export const traverseTree_ =
+  /*#__PURE__*/
+  (() => traverse_(effect))()
 
 export const traverseTree: <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>

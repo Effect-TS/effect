@@ -4,7 +4,9 @@ import { wilt_ } from "../Array"
 
 import { Either, eitherMonad } from "./either"
 
-export const wiltArray_ = wilt_(eitherMonad)
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => wilt_(eitherMonad))()
 
 export const wiltArray: <A, E, B, C>(
   f: (a: A) => Either<E, Either<B, C>>

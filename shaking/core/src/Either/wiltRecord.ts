@@ -4,7 +4,9 @@ import { wilt_ } from "../Record/record"
 
 import { eitherMonad, Either } from "./either"
 
-export const wiltRecord_ = wilt_(eitherMonad)
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => wilt_(eitherMonad))()
 
 export const wiltRecord: <A, E, B, C>(
   f: (a: A) => Either<E, Either<B, C>>

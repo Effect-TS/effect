@@ -6,4 +6,6 @@ import { Runtime } from "../Support/Runtime"
 /**
  * Get the runtime of the current fiber
  */
-export const accessRuntime: Sync<Runtime> = new IAccessRuntime(identity) as any
+export const accessRuntime: Sync<Runtime> =
+  /*#__PURE__*/
+  (() => new IAccessRuntime(identity) as any)()

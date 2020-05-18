@@ -8,8 +8,11 @@ import { uninterruptible } from "./uninterruptible"
 /**
  * Introduce an asynchronous gap that will suspend the runloop and return control to the javascript vm
  */
-export const shiftedAsync: Async<void> = uninterruptible(
-  chain_(accessRuntime, (runtime) =>
-    asyncTotal<void>((callback) => runtime.dispatchLater(callback, undefined, 0))
-  )
-)
+export const shiftedAsync: Async<void> =
+  /*#__PURE__*/
+  (() =>
+    uninterruptible(
+      chain_(accessRuntime, (runtime) =>
+        asyncTotal<void>((callback) => runtime.dispatchLater(callback, undefined, 0))
+      )
+    ))()
