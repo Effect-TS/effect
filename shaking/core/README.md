@@ -10,6 +10,12 @@ import * as T from "@matechs/core/Effect"
 pipe(S.repeatedly(1), S.take(10), S.collectArray, T.runToPromiseExit).then(console.log)
 ```
 
+# Install
+
+```bash
+yarn add @matechs/core
+```
+
 # Docs
 
 To come
