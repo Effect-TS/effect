@@ -1,6 +1,6 @@
 {
   "name": "@matechs/prelude",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -26,7 +26,7 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/effect": "^7.0.1"
+    "@matechs/effect": "^7.0.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
