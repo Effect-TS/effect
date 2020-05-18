@@ -108,7 +108,10 @@ pipe(
           gitHead: content["gitHead"],
           main: "./index.js",
           module: "./esm/index.js",
-          typings: "./index.d.ts"
+          typings: "./index.d.ts",
+          publishConfig: {
+            access: "public"
+          }
         },
         null,
         2
