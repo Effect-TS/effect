@@ -1,6 +1,6 @@
 import { sequence } from "../Array/array"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parSequenceArray =
   /*#__PURE__*/

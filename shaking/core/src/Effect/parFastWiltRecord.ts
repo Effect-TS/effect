@@ -4,7 +4,7 @@ import type { Either } from "../Either/either"
 import { wilt_ } from "../Record"
 import type { Effect, AsyncRE } from "../Support/Common/effect"
 
-import { parFastEffect } from "./parFastEffect"
+import { parFastEffect } from "./effect"
 
 export const parFastWiltRecord_ =
   /*#__PURE__*/

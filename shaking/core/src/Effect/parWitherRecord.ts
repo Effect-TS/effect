@@ -2,7 +2,7 @@ import type { Option } from "../Option"
 import { wither_ } from "../Record"
 import type { Effect, AsyncRE } from "../Support/Common/effect"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parWitherRecord_ =
   /*#__PURE__*/

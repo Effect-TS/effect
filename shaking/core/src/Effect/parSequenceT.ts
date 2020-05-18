@@ -1,6 +1,6 @@
 import { sequenceT as ST } from "../Apply"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parSequenceT =
   /*#__PURE__*/

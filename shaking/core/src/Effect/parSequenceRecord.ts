@@ -1,6 +1,6 @@
 import { sequence } from "../Record"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parSequenceRecord =
   /*#__PURE__*/

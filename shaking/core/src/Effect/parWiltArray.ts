@@ -4,7 +4,7 @@ import { wilt_ } from "../Array"
 import type { Either } from "../Either/either"
 import type { AsyncRE } from "../Support/Common/effect"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parWiltArray_ =
   /*#__PURE__*/

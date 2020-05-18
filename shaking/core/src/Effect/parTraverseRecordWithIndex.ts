@@ -1,7 +1,7 @@
 import { traverseWithIndex_ } from "../Record"
 import type { Effect, AsyncRE } from "../Support/Common/effect"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parTraverseRecordWithIndex_ =
   /*#__PURE__*/

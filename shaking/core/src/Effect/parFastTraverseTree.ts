@@ -1,7 +1,7 @@
 import type { Effect, AsyncRE } from "../Support/Common/effect"
 import { traverse_, Tree } from "../Tree"
 
-import { parFastEffect } from "./parFastEffect"
+import { parFastEffect } from "./effect"
 
 export const parFastTraverseTree_ =
   /*#__PURE__*/

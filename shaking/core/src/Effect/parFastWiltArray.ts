@@ -4,7 +4,7 @@ import { wilt_ } from "../Array/array"
 import type { Either } from "../Either/either"
 import type { AsyncRE } from "../Support/Common/effect"
 
-import { parFastEffect } from "./parFastEffect"
+import { parFastEffect } from "./effect"
 
 export const parFastWiltArray_ =
   /*#__PURE__*/

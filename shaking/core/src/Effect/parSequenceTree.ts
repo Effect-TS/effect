@@ -1,6 +1,6 @@
 import { sequence } from "../Tree"
 
-import { parEffect } from "./parEffect"
+import { parEffect } from "./effect"
 
 export const parSequenceTree =
   /*#__PURE__*/

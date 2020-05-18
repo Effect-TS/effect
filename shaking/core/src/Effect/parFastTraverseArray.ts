@@ -1,7 +1,7 @@
 import { traverse_ } from "../Array"
 import { Effect, AsyncRE } from "../Support/Common/effect"
 
-import { parFastEffect } from "./parFastEffect"
+import { parFastEffect } from "./effect"
 
 export const parFastTraverseArray_ =
   /*#__PURE__*/

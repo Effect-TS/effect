@@ -2,7 +2,7 @@ import { wither_ } from "../Array/array"
 import type { Option } from "../Option/option"
 import type { AsyncRE } from "../Support/Common/effect"
 
-import { parFastEffect } from "./parFastEffect"
+import { parFastEffect } from "./effect"
 
 export const parFastWitherArray_ =
   /*#__PURE__*/
