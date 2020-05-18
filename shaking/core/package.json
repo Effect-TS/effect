@@ -5,7 +5,8 @@
   "private": false,
   "scripts": {
     "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/package.ts",
-    "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src"
+    "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src",
+    "bench": "node bench/index.js && node bench/nestedMap.js && node bench/nestedChain.js"
   },
   "publishConfig": {
     "access": "public",
