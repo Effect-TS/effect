@@ -1,3 +1,5 @@
+import assert from "assert"
+
 import { T } from "@matechs/prelude"
 import * as M from "@matechs/test-jest"
 import { pipe } from "fp-ts/lib/pipeable"
@@ -48,7 +50,7 @@ const loggerSpec = M.suite("Logger")(
         .do(
           useMockM(({ debug }) =>
             T.sync(() => {
-              M.assert.deepStrictEqual(debug.mock.calls.length, 0)
+              assert.deepStrictEqual(debug.mock.calls.length, 0)
             })
           )
         )

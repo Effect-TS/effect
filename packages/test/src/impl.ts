@@ -1,4 +1,4 @@
-import * as assert from "assert"
+import * as a from "assert"
 
 import { effect as T, freeEnv as F } from "@matechs/effect"
 import * as O from "fp-ts/lib/Option"
@@ -39,7 +39,10 @@ export const suite = (name: string) => <Specs extends Spec<any>[]>(
   specs
 })
 
-export { assert }
+export const assert = {
+  deepStrictEqual: <T>(actual: any, expected: T, message?: string | Error): void =>
+    a.deepStrictEqual(actual, expected, message)
+}
 
 export type SpecsEnv<Specs extends Spec<any>[]> = F.UnionToIntersection<
   ROf<Exclude<Specs[number], Spec<unknown>>>

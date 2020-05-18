@@ -6475,7 +6475,7 @@ fp-ts-contrib@^0.1.15:
   resolved "https://registry.yarnpkg.com/fp-ts-contrib/-/fp-ts-contrib-0.1.15.tgz#3b7225f7143f49b4a7719fa59bb9f04ff45bf634"
   integrity sha512-aSuDUJAHN3QBlDf8PJ8M62l7mdUNeOWTGFFuIrK+A7tCLejGU43dDj2FM0c5dmz8CV/GXsRU3XPWCzaL5uIyvA==
 
-fp-ts@2.6.1, fp-ts@^2.5.3, fp-ts@^2.6.1:
+fp-ts@^2.5.3, fp-ts@^2.6.1:
   version "2.6.1"
   resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.6.1.tgz#f2505a4b44a77a344a1e451c667383e42f3728de"
   integrity sha512-ZYOgqEOvUuO59rvItjf1OniEG4k/ClY3rd+AiuRYbl3skY4X/s7Oig25/wvORjycjeOjjr5OO+VcpprLQQOpIQ==
@@ -9134,7 +9134,7 @@ module-lookup-amd@^6.1.0:
     requirejs "^2.3.5"
     requirejs-config-file "^3.1.1"
 
-monocle-ts@2.1.0, monocle-ts@^2.0.1, monocle-ts@^2.1.0:
+monocle-ts@^2.0.1, monocle-ts@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/monocle-ts/-/monocle-ts-2.1.0.tgz#5c1bbade7952b57e33f2179866467e87d9ed5977"
   integrity sha512-YWH8TDcZSEeCaxp0ZjgccLChnaDvTiUHILpuI0DSZeASYSCgwdz+h6+uEG4QCwYreGsn1oI18ysrcUPv6xWK7w==
@@ -9258,7 +9258,7 @@ neo-async@2.6.1, neo-async@^2.5.0, neo-async@^2.6.0, neo-async@^2.6.1:
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.1.tgz#ac27ada66167fa8849a6addd837f6b189ad2081c"
   integrity sha512-iyam8fBuCUpWeKPGpaNMetEocMt364qkCsfL9JuhjXX6dRnguRVOfk2GZaDpPjcOKiiXCPINZC1GczQ7iTq3Zw==
 
-newtype-ts@0.3.4, newtype-ts@^0.3.4:
+newtype-ts@^0.3.4:
   version "0.3.4"
   resolved "https://registry.yarnpkg.com/newtype-ts/-/newtype-ts-0.3.4.tgz#65c74b7d5195edaa9abfcdba6549a33a5c0e298d"
   integrity sha512-lFJnWAt0oXX1j1ErNy9RU5+FPNtVyzugHW2MchaaMiOeeS9LEmqAAOqyHPFQ0Uw895jStSYGSCslrByzYxFJYQ==
@@ -13008,7 +13008,7 @@ uid-number@0.0.6:
   resolved "https://registry.yarnpkg.com/uid-number/-/uid-number-0.0.6.tgz#0ea10e8035e8eb5b8e4449f06da1c730663baa81"
   integrity sha1-DqEOgDXo61uOREnwbaHHMGY7qoE=
 
-ultra-runner@^3.2.2:
+ultra-runner@^3.3.0:
   version "3.3.0"
   resolved "https://registry.yarnpkg.com/ultra-runner/-/ultra-runner-3.3.0.tgz#419f9b663106dbb8e5f5561ebd65eff78c9a68cd"
   integrity sha512-q2rqdCHJ27094SjKuatxGyNpvgG90NYcO1houzyJKPI0ajoU752ibtsm6lWPFvjqJv8l7w8s9pjF7EKESqw9Og==

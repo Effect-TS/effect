@@ -100,7 +100,7 @@
     "ts-node": "^8.8.2",
     "typeorm": "^0.2.24",
     "typescript": "^3.9.2",
-    "ultra-runner": "^3.2.2",
+    "ultra-runner": "^3.3.0",
     "uuid": "^8.0.0",
     "waveguide": "^1.4.0",
     "winston": "^3.2.1",
