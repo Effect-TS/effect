@@ -5,7 +5,7 @@
     "target": "ES5",
     "module": "CommonJS",
     "sourceMap": false,
-    "removeComments": true
+    "removeComments": false
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]

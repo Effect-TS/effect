@@ -49,7 +49,9 @@ export const deleteAt: <K>(
  */
 export const elem: <A>(E: Eq<A>) => <K>(a: A, m: Map<K, A>) => boolean = RM.elem
 
-export const empty = new Map<never, never>()
+export const empty =
+  /*#__PURE__*/
+  new Map<never, never>()
 
 export const filter_: Filter2<URI> = RM.filter_ as any
 

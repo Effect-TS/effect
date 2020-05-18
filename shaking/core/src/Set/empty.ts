@@ -1,1 +1,3 @@
-export const empty: Set<never> = new Set()
+export const empty: Set<never> =
+  /*#__PURE__*/
+  new Set()

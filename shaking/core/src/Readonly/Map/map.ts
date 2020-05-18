@@ -97,7 +97,9 @@ export function elem<A>(E: Eq<A>): <K>(a: A, m: ReadonlyMap<K, A>) => boolean {
   }
 }
 
-export const empty: ReadonlyMap<never, never> = new Map<never, never>()
+export const empty: ReadonlyMap<never, never> =
+  /*#__PURE__*/
+  new Map<never, never>()
 
 export const filter_: Filter2<URI> = <K, A>(
   fa: ReadonlyMap<K, A>,
