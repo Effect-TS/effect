@@ -1,4 +1,4 @@
-import { Either } from "fp-ts/lib/Either"
+import type { Either } from "fp-ts/lib/Either"
 
 export const URI = "EitherMerge"
 export type URI = typeof URI

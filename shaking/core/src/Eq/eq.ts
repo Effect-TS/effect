@@ -21,18 +21,6 @@ export const contramap_: <A, B>(fa: Eq<A>, f: (b: B) => A) => Eq<B> = (fa, f) =>
 export const contramap: <A, B>(f: (b: B) => A) => (fa: Eq<A>) => Eq<B> = (f) => (fa) =>
   contramap_(fa, f)
 
-export const eqStrict: Eq<unknown> = {
-  equals: strictEqual
-}
-
-export const eqBoolean: Eq<boolean> = eqStrict
-
-export const eqNumber: Eq<number> = eqStrict
-
-export const eqDate: Eq<Date> = contramap_(eqNumber, (date) => date.valueOf())
-
-export const eqString: Eq<string> = eqStrict
-
 export function fromEquals<A>(equals: (x: A, y: A) => boolean): Eq<A> {
   return {
     equals: (x, y) => x === y || equals(x, y)

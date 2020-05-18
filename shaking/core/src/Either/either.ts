@@ -27,7 +27,7 @@ import type { Show } from "../Show"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common"
 
 import { URI } from "./URI"
-import { Monad2M, ChainRec2M, MonadThrow2M } from "./overloads"
+import type { Monad2M, ChainRec2M, MonadThrow2M } from "./overloads"
 import { tailRec } from "./tailRec"
 
 export type { Either, Left, Right }

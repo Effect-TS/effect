@@ -5,12 +5,9 @@ export {
   Bounded,
   URI,
   between,
-  boundedNumber,
   clamp,
-  compare,
   contramap,
   contramap_,
-  eqOrdering,
   fromCompare,
   geq,
   getDualOrd,
@@ -23,12 +20,17 @@ export {
   lt,
   max,
   min,
-  monoidOrdering,
   ord,
-  ordBoolean,
-  ordDate,
-  ordNumber,
-  ordString,
-  semigroupOrdering,
   sign
 } from "./ord"
+
+export { ordDate } from "./ordDate"
+
+export { boundedNumber } from "./boundedNumber"
+export { eqOrdering } from "./eqOrdering"
+export { compare } from "./compare"
+export { monoidOrdering } from "./monoidOrdering"
+export { ordBoolean } from "./ordBoolean"
+export { ordNumber } from "./ordNumber"
+export { ordString } from "./ordString"
+export { semigroupOrdering } from "./semigroupOrdering"

@@ -1,12 +1,14 @@
 import type { Ordering } from "fp-ts/lib/Ordering"
 
-import type { Bounded, Contravariant1 } from "../Base"
-import { Eq, strictEqual } from "../Eq"
+import type { Contravariant1 } from "../Base"
+import type { Eq } from "../Eq"
 import type { Monoid } from "../Monoid"
 import type { Semigroup } from "../Semigroup"
 
+import { monoidOrdering } from "./monoidOrdering"
+
 export type { Ordering } from "fp-ts/lib/Ordering"
-export type { Bounded }
+export type { Bounded } from "fp-ts/lib/Bounded"
 
 /**
  * Test whether a value is between a minimum and a maximum (inclusive)
@@ -26,20 +28,12 @@ export function clamp<A>(O: Ord<A>): (low: A, hi: A) => (x: A) => A {
   return (low, hi) => (x) => maxO(minO(x, hi), low)
 }
 
-export const compare = (x: any, y: any): Ordering => {
-  return x < y ? -1 : x > y ? 1 : 0
-}
-
 export const contramap: <A, B>(f: (b: B) => A) => (fa: Ord<A>) => Ord<B> = (f) => (
   fa
 ) => contramap_(fa, f)
 
 export const contramap_: <A, B>(fa: Ord<A>, f: (b: B) => A) => Ord<B> = (fa, f) =>
   fromCompare((x, y) => fa.compare(f(x), f(y)))
-
-export const eqOrdering: Eq<Ordering> = {
-  equals: (x, y) => x === y
-}
 
 export function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A> {
   const optimizedCompare = (x: A, y: A): Ordering => (x === y ? 0 : compare(x, y))
@@ -216,43 +210,8 @@ export function min<A>(O: Ord<A>): (x: A, y: A) => A {
   return (x, y) => (O.compare(x, y) === 1 ? y : x)
 }
 
-/**
- * Use `monoidOrdering` instead
- */
-export const semigroupOrdering: Semigroup<Ordering> = {
-  concat: (x, y) => (x !== 0 ? x : y)
-}
-
-export const monoidOrdering: Monoid<Ordering> = {
-  concat: semigroupOrdering.concat,
-  empty: 0
-}
-
 export interface Ord<A> extends Eq<A> {
   readonly compare: (x: A, y: A) => Ordering
-}
-
-export const ordBoolean: Ord<boolean> = {
-  equals: strictEqual,
-  compare
-}
-
-export const ordNumber: Ord<number> = {
-  equals: strictEqual,
-  compare
-}
-
-export const ordDate: Ord<Date> = contramap_(ordNumber, (date) => date.valueOf())
-
-export const boundedNumber: Bounded<number> = {
-  ...ordNumber,
-  top: Infinity,
-  bottom: -Infinity
-}
-
-export const ordString: Ord<string> = {
-  equals: strictEqual,
-  compare
 }
 
 export function sign(n: number): Ordering {

@@ -4,14 +4,16 @@ export {
   contramap,
   contramap_,
   eq,
-  eqBoolean,
-  eqDate,
-  eqNumber,
-  eqStrict,
-  eqString,
   fromEquals,
   getMonoid,
   getStructEq,
   getTupleEq,
   strictEqual
 } from "./eq"
+
+export { eqDate } from "./eqDate"
+
+export { eqBoolean } from "./eqBoolean"
+export { eqNumber } from "./eqNumber"
+export { eqStrict } from "./eqStrict"
+export { eqString } from "./eqString"

@@ -63,10 +63,10 @@ export {
   tryCatch,
   getWitherable
 } from "./either"
+export { tailRec } from "./tailRec"
 export { sequenceArray } from "./sequenceArray"
 export { sequenceRecord } from "./sequenceRecord"
 export { sequenceTree } from "./sequenceTree"
-export { tailRec } from "./tailRec"
 export { traverseArray, traverseArray_ } from "./traverseArray"
 export {
   traverseArrayWithIndex,

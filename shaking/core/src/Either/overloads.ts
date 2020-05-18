@@ -13,7 +13,7 @@ import type { FunctorWithIndex2 } from "fp-ts/lib/FunctorWithIndex"
 import type { Kind2 } from "fp-ts/lib/HKT"
 import type { Profunctor2 } from "fp-ts/lib/Profunctor"
 import type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
-import { PipeableFunctor2 } from "fp-ts/lib/pipeable"
+import type { PipeableFunctor2 } from "fp-ts/lib/pipeable"
 
 import type { URI } from "./URI"
 
