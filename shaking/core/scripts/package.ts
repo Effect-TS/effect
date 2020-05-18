@@ -115,6 +115,11 @@ pipe(
       )
     )
   ),
+  TE.chain(() => readFile("./README.md", "utf8")),
+  TE.chain((content) =>
+    TE.fromEither(parseJSON(content, () => new Error("json parse error")))
+  ),
+  TE.chain((content: any) => writeFile("./build/README.md", content)),
   TE.chain(() =>
     A.array.traverse(TE.taskEither)(modules, (m) =>
       writeFile(
