@@ -371,3 +371,4 @@ export type {
   Witherable2C,
   Witherable3
 } from "fp-ts/lib/Witherable"
+export type { State } from "fp-ts/lib/State"

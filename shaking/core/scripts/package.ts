@@ -84,7 +84,8 @@ const modules: string[] = [
   "Support/Driver",
   "Support/Utils",
   "Support/Overloads",
-  "Support/For"
+  "Support/For",
+  "StateEither"
 ]
 
 pipe(
