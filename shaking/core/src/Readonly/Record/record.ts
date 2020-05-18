@@ -38,7 +38,7 @@ import type {
   Wilt1,
   TraverseWithIndex1
 } from "../../Base"
-import type { Either } from "../../Either/Either"
+import type { Either } from "../../Either/either"
 import { Eq, fromEquals } from "../../Eq"
 import { identity, Predicate, Refinement } from "../../Function"
 import { Option, isNone, isSome, none, some as some_1 } from "../../Option/option"

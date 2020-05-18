@@ -1,7 +1,7 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
 import { wilt_ } from "../Array"
-import type { Either } from "../Either/Either"
+import type { Either } from "../Either/either"
 import type { AsyncRE } from "../Support/Common/effect"
 
 import { parEffect } from "./parEffect"

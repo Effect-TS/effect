@@ -281,7 +281,7 @@ export const traverseEither: <A, S, R, FE, B>(
   f: (a: A) => EffectOption<S, R, FE, B>
 ) => <TE>(ta: E.Either<TE, A>) => EffectOption<S, R, FE, E.Either<TE, B>> = (f) => (
   ta
-) => E.traverse(effectOption)(ta, f)
+) => E.traverse_(effectOption)(ta, f)
 
 export const traverseTree: <A, S, R, E, B>(
   f: (a: A) => EffectOption<S, R, E, B>

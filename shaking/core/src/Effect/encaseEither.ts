@@ -1,4 +1,4 @@
-import type { Either } from "../Either/Either"
+import type { Either } from "../Either/either"
 import { IPureEither } from "../Support/Common"
 import type { SyncE } from "../Support/Common/effect"
 

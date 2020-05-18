@@ -1,10 +1,9 @@
-import { array } from "../Array"
+import { wither_ } from "../Array"
 import type { Option } from "../Option/option"
 
-import type { Either } from "./Either"
-import { eitherMonad } from "./eitherMonad"
+import { eitherMonad, Either } from "./either"
 
-export const witherArray_ = array.wither(eitherMonad)
+export const witherArray_ = wither_(eitherMonad)
 
 export const witherArray: <A, E, B>(
   f: (a: A) => Either<E, Option<B>>

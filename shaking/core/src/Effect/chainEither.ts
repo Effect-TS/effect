@@ -1,4 +1,4 @@
-import type { Either } from "../Either/Either"
+import type { Either } from "../Either/either"
 import type { FunctionN } from "../Function"
 import type { Effect } from "../Support/Common/effect"
 

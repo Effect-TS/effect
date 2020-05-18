@@ -1,7 +1,7 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
 import { wilt_ } from "../Array/array"
-import type { Either } from "../Either/Either"
+import type { Either } from "../Either/either"
 import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"

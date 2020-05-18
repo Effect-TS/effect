@@ -1,4 +1,4 @@
-import type { Either } from "./Either"
+import type { Either } from "fp-ts/lib/Either"
 
 export function tailRec<A, B>(a: A, f: (a: A) => Either<A, B>): B {
   let v = f(a)

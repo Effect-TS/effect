@@ -1,5 +1,4 @@
 import type { Alt2 } from "fp-ts/lib/Alt"
-import type { Apply2M } from "fp-ts/lib/Apply"
 import type { Bifunctor2 } from "fp-ts/lib/Bifunctor"
 import type { Compactable2 } from "fp-ts/lib/Compactable"
 import type { Contravariant2 } from "fp-ts/lib/Contravariant"
@@ -14,8 +13,9 @@ import type { FunctorWithIndex2 } from "fp-ts/lib/FunctorWithIndex"
 import type { Kind2 } from "fp-ts/lib/HKT"
 import type { Profunctor2 } from "fp-ts/lib/Profunctor"
 import type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
+import { PipeableFunctor2 } from "fp-ts/lib/pipeable"
 
-import { URI } from "./URI"
+import type { URI } from "./URI"
 
 export interface ChainRec2M<F extends URI> extends Chain2M<F> {
   readonly chainRec: <E, A, B>(
@@ -34,13 +34,14 @@ export interface MonadThrow2M<M extends URI> extends Monad2M<M> {
 }
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
+export interface Apply2M<F extends URI> extends Functor2<F> {
+  readonly ap: <E, A, B, E2>(
+    fab: Kind2<F, E, (a: A) => B>,
+    fa: Kind2<F, E2, A>
+  ) => Kind2<F, E | E2, B>
+}
+
 declare module "fp-ts/lib/Apply" {
-  export interface Apply2M<F extends URI> extends Functor2<F> {
-    readonly ap: <E, A, B, E2>(
-      fab: Kind2<F, E, (a: A) => B>,
-      fa: Kind2<F, E2, A>
-    ) => Kind2<F, E | E2, B>
-  }
   export function sequenceT<F extends URI>(
     F: Apply2M<F>
   ): <Z extends Array<Kind2<F, any, any>>>(
@@ -76,31 +77,30 @@ export interface Applicative2M<F extends URI> extends Apply2M<F> {
 export interface Monad2M<M extends URI> extends Applicative2M<M>, Chain2M<M> {
   _K: "Monad2M"
 }
+
+export interface PipeableApply2M<F extends URI> extends PipeableFunctor2<F> {
+  readonly ap: <E, A>(
+    fa: Kind2<F, E, A>
+  ) => <E2, B>(fab: Kind2<F, E2, (a: A) => B>) => Kind2<F, E | E2, B>
+  readonly apFirst: <E, B>(
+    fb: Kind2<F, E, B>
+  ) => <E2, A>(fa: Kind2<F, E2, A>) => Kind2<F, E | E2, A>
+  readonly apSecond: <E, B>(
+    fb: Kind2<F, E, B>
+  ) => <E2, A>(fa: Kind2<F, E2, A>) => Kind2<F, E | E2, B>
+}
+
+export interface PipeableChain2M<F extends URI> extends PipeableApply2M<F> {
+  readonly chain: <E, A, B>(
+    f: (a: A) => Kind2<F, E, B>
+  ) => <E2>(ma: Kind2<F, E2, A>) => Kind2<F, E | E2, B>
+  readonly chainFirst: <E, A, B>(
+    f: (a: A) => Kind2<F, E, B>
+  ) => <E2>(ma: Kind2<F, E2, A>) => Kind2<F, E | E2, A>
+  readonly flatten: <E, E2, A>(mma: Kind2<F, E, Kind2<F, E2, A>>) => Kind2<F, E | E2, A>
+}
+
 declare module "fp-ts/lib/pipeable" {
-  export interface PipeableApply2M<F extends URI> extends PipeableFunctor2<F> {
-    readonly ap: <E, A>(
-      fa: Kind2<F, E, A>
-    ) => <E2, B>(fab: Kind2<F, E2, (a: A) => B>) => Kind2<F, E | E2, B>
-    readonly apFirst: <E, B>(
-      fb: Kind2<F, E, B>
-    ) => <E2, A>(fa: Kind2<F, E2, A>) => Kind2<F, E | E2, A>
-    readonly apSecond: <E, B>(
-      fb: Kind2<F, E, B>
-    ) => <E2, A>(fa: Kind2<F, E2, A>) => Kind2<F, E | E2, B>
-  }
-
-  export interface PipeableChain2M<F extends URI> extends PipeableApply2M<F> {
-    readonly chain: <E, A, B>(
-      f: (a: A) => Kind2<F, E, B>
-    ) => <E2>(ma: Kind2<F, E2, A>) => Kind2<F, E | E2, B>
-    readonly chainFirst: <E, A, B>(
-      f: (a: A) => Kind2<F, E, B>
-    ) => <E2>(ma: Kind2<F, E2, A>) => Kind2<F, E | E2, A>
-    readonly flatten: <E, E2, A>(
-      mma: Kind2<F, E, Kind2<F, E2, A>>
-    ) => Kind2<F, E | E2, A>
-  }
-
   export function pipeable<F extends URI, I>(
     I: {
       readonly URI: F

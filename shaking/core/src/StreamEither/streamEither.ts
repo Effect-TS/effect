@@ -427,7 +427,7 @@ export const witherOption: <S, A, R, E, B>(
 export const traverseEither: <S, A, R, FE, B>(
   f: (a: A) => StreamEither<S, R, FE, B>
 ) => <TE>(ta: E.Either<TE, A>) => AsyncRE<R, FE, E.Either<TE, B>> = (f) => (ta) =>
-  E.traverse(streamEither)(ta, f)
+  E.traverse_(streamEither)(ta, f)
 
 export const traverseTree: <S, A, R, E, B>(
   f: (a: A) => StreamEither<S, R, E, B>

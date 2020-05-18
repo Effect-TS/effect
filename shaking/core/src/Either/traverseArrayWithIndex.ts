@@ -1,9 +1,8 @@
-import { array } from "../Array"
+import { traverseWithIndex_ } from "../Array"
 
-import type { Either } from "./Either"
-import { eitherMonad } from "./eitherMonad"
+import { eitherMonad, Either } from "./either"
 
-export const traverseArrayWithIndex_ = array.traverseWithIndex(eitherMonad)
+export const traverseArrayWithIndex_ = traverseWithIndex_(eitherMonad)
 
 export const traverseArrayWithIndex: <A, E, B>(
   f: (i: number, a: A) => Either<E, B>

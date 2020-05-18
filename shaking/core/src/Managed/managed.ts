@@ -31,7 +31,7 @@ import {
   encaseOption as encaseOptionEffect
 } from "../Effect"
 import type { Either } from "../Either"
-import { traverse as e_traverse } from "../Either"
+import { traverse_ as e_traverse } from "../Either"
 import { Exit, withRemaining, done, raise } from "../Exit"
 import {
   FunctionN,

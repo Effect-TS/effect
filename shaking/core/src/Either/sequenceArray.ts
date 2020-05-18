@@ -1,5 +1,5 @@
-import { array } from "../Array"
+import { sequence } from "../Array/array"
 
-import { eitherMonad } from "./eitherMonad"
+import { eitherMonad } from "./either"
 
-export const sequenceArray = array.sequence(eitherMonad)
+export const sequenceArray = sequence(eitherMonad)

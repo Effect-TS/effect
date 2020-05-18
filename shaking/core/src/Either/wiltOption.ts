@@ -2,10 +2,9 @@ import type { Separated } from "fp-ts/lib/Compactable"
 
 import { wilt_, Option } from "../Option/option"
 
-import type { Either } from "./Either"
-import { eitherMonadClassic } from "./eitherMonadClassic"
+import { eitherMonad, Either } from "./either"
 
-export const wiltOption_ = wilt_(eitherMonadClassic)
+export const wiltOption_ = wilt_(eitherMonad)
 
 export const wiltOption: <A, E, B, C>(
   f: (a: A) => Either<E, Either<B, C>>

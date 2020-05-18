@@ -21,7 +21,7 @@ import type {
   FunctorWithIndex1,
   FoldableWithIndex1
 } from "../../Base"
-import type { Either } from "../../Either/Either"
+import type { Either } from "../../Either/either"
 import type { Eq } from "../../Eq"
 import { identity } from "../../Function"
 import type { Predicate, Refinement } from "../../Function"

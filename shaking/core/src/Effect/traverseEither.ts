@@ -1,10 +1,9 @@
-import type { Either } from "../Either/Either"
-import { traverse } from "../Either/traverse"
+import { Either, traverse_ } from "../Either/either"
 import type { Effect } from "../Support/Common/effect"
 
 import { effect } from "./effect"
 
-export const traverseEither_ = traverse(effect)
+export const traverseEither_ = traverse_(effect)
 
 export const traverseEither: <A, S, R, FE, B>(
   f: (a: A) => Effect<S, R, FE, B>

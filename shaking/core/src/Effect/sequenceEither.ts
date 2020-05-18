@@ -1,4 +1,4 @@
-import { sequence } from "../Either/sequence"
+import { sequence } from "../Either/either"
 
 import { effect } from "./effect"
 

@@ -1,9 +1,8 @@
-import { record } from "../Record/record"
+import { traverseWithIndex_ } from "../Record/record"
 
-import type { Either } from "./Either"
-import { eitherMonad } from "./eitherMonad"
+import { Either, eitherMonad } from "./either"
 
-export const traverseRecordWithIndex_ = record.traverseWithIndex(eitherMonad)
+export const traverseRecordWithIndex_ = traverseWithIndex_(eitherMonad)
 
 export const traverseRecordWithIndex: <A, E, B>(
   f: (k: string, a: A) => Either<E, B>

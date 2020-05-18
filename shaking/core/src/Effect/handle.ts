@@ -50,3 +50,23 @@ export const handle = <
       withRemaining(raise(e), ...(remaining._tag === "Some" ? remaining.value : []))
     )
   })
+
+export const makeHandle = <K extends string>(k: K) => <
+  E extends { [k in K]: any },
+  KK extends string & E[K],
+  S2,
+  R2,
+  E2,
+  A2
+>(
+  kk: KK,
+  f: (
+    _: Extract<
+      E,
+      {
+        [k in K]: KK
+      }
+    >,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Effect<S2, R2, E2, A2>
+) => handle<E, K, KK, S2, R2, E2, A2>(k, kk, f)

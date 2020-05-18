@@ -1,9 +1,8 @@
 import { Option, traverse_ } from "../Option/option"
 
-import type { Either } from "./Either"
-import { eitherMonadClassic } from "./eitherMonadClassic"
+import { Either, eitherMonad } from "./either"
 
-export const traverseOption_ = traverse_(eitherMonadClassic)
+export const traverseOption_ = traverse_(eitherMonad)
 
 export const traverseOption: <A, E, B>(
   f: (a: A) => Either<E, B>

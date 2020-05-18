@@ -1,11 +1,10 @@
 import type { Separated } from "fp-ts/lib/Compactable"
 
-import { array } from "../Array"
+import { wilt_ } from "../Array"
 
-import type { Either } from "./Either"
-import { eitherMonad } from "./eitherMonad"
+import { Either, eitherMonad } from "./either"
 
-export const wiltArray_ = array.wilt(eitherMonad)
+export const wiltArray_ = wilt_(eitherMonad)
 
 export const wiltArray: <A, E, B, C>(
   f: (a: A) => Either<E, Either<B, C>>

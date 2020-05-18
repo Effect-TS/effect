@@ -1,10 +1,9 @@
 import type { Option } from "../Option/option"
-import { record } from "../Record/record"
+import { wither_ } from "../Record/record"
 
-import type { Either } from "./Either"
-import { eitherMonad } from "./eitherMonad"
+import { eitherMonad, Either } from "./either"
 
-export const witherRecord_ = record.wither(eitherMonad)
+export const witherRecord_ = wither_(eitherMonad)
 
 export const witherRecord: <A, E, B>(
   f: (a: A) => Either<E, Option<B>>

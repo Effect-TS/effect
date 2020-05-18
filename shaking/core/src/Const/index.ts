@@ -4,7 +4,7 @@ export {
   URI,
   bimap,
   bimap_,
-  const_,
+  const_ as const,
   contramap,
   contramap_,
   getApplicative,

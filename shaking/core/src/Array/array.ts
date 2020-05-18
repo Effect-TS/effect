@@ -23,7 +23,7 @@ import type {
   FunctorWithIndex1,
   FoldableWithIndex1
 } from "../Base"
-import type { Either } from "../Either/Either"
+import type { Either } from "../Either/either"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
 import type { Monoid } from "../Monoid"

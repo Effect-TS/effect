@@ -1,5 +1,5 @@
 import { sequence } from "../Option/option"
 
-import { eitherMonadClassic } from "./eitherMonadClassic"
+import { eitherMonad } from "./either"
 
-export const sequenceOption = sequence(eitherMonadClassic)
+export const sequenceOption = sequence(eitherMonad)

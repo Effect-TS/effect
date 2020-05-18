@@ -1,9 +1,8 @@
 import { wither_, Option } from "../Option/option"
 
-import type { Either } from "./Either"
-import { eitherMonadClassic } from "./eitherMonadClassic"
+import { eitherMonad, Either } from "./either"
 
-export const witherOption_ = wither_(eitherMonadClassic)
+export const witherOption_ = wither_(eitherMonad)
 
 export const witherOption: <A, E, B>(
   f: (a: A) => Either<E, Option<B>>

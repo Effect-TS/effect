@@ -1,9 +1,8 @@
-import { tree, Tree } from "../Tree"
+import { Tree, traverse_ } from "../Tree"
 
-import type { Either } from "./Either"
-import { eitherMonad } from "./eitherMonad"
+import { Either, eitherMonad } from "./either"
 
-export const traverseTree_ = tree.traverse(eitherMonad)
+export const traverseTree_ = traverse_(eitherMonad)
 
 export const traverseTree: <A, E, B>(
   f: (a: A) => Either<E, B>

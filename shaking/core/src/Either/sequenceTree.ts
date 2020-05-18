@@ -1,5 +1,5 @@
-import { tree } from "../Tree"
+import { sequence } from "../Tree"
 
-import { eitherMonad } from "./eitherMonad"
+import { eitherMonad } from "./either"
 
-export const sequenceTree = tree.sequence(eitherMonad)
+export const sequenceTree = sequence(eitherMonad)

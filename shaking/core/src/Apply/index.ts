@@ -4,7 +4,6 @@ export type {
   Apply1,
   Apply2,
   Apply2C,
-  Apply2M,
   Apply3,
   Apply3C,
   Apply4

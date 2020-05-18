@@ -1,4 +1,4 @@
-import type { Either } from "../Either/Either"
+import type { Either } from "../Either/either"
 
 export const left = <E>(_: E): Either<E, never> => ({
   _tag: "Left",
