@@ -1,7 +1,11 @@
 import * as fs from "fs"
 
+import chalk from "chalk"
 import * as A from "fp-ts/lib/Array"
+import { log } from "fp-ts/lib/Console"
 import { parseJSON } from "fp-ts/lib/Either"
+import * as IO from "fp-ts/lib/IO"
+import * as T from "fp-ts/lib/Task"
 import * as TE from "fp-ts/lib/TaskEither"
 import { pipe } from "fp-ts/lib/pipeable"
 
@@ -73,7 +77,6 @@ const modules: string[] = [
   "Support",
   "Support/Common",
   "Support/Dequeue",
-  "Support/List",
   "Support/Utils",
   "Support/Completable",
   "Support/LinkedList",
@@ -85,6 +88,21 @@ const modules: string[] = [
   "Support/For",
   "StateEither"
 ]
+
+const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
+
+function onLeft(e: NodeJS.ErrnoException): T.Task<void> {
+  return T.fromIO(
+    pipe(
+      log(e),
+      IO.chain(() => exit(1))
+    )
+  )
+}
+
+function onRight(): T.Task<void> {
+  return T.fromIO(log(chalk.bold.green("package copy succeeded!")))
+}
 
 pipe(
   readFile("./package.json", "utf8"),
@@ -136,11 +154,6 @@ pipe(
         )
       )
     )
-  )
-)()
-  .catch((e) => {
-    console.error(e)
-  })
-  .then(() => {
-    console.log("DONE")
-  })
+  ),
+  TE.fold(onLeft, onRight)
+)().catch((e) => console.log(chalk.bold.red(`Unexpected error: ${e}`)))
