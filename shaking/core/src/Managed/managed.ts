@@ -37,7 +37,15 @@ import type { Option } from "../Option"
 import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
-import type { Monad4E, Monad4EP, MonadThrow4E } from "../Support/Overloads"
+import type {
+  Monad4E,
+  Monad4EP,
+  MonadThrow4E,
+  STypeOf,
+  RTypeOf,
+  ETypeOf,
+  ATypeOf
+} from "../Support/Overloads"
 
 /**
  * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
@@ -685,3 +693,13 @@ export const parApSecond = <S1, R, E, B>(fb: Managed<S1, R, E, B>) => <A, S2, R2
     map_(fa, () => (b: B) => b),
     fb
   )
+
+/**
+ * Used to merge types of the form Managed<S, R, E, A> | Managed<S2, R2, E2, A2> into Managed<S | S2, R & R2, E | E2, A | A2>
+ * @param _
+ */
+export function compact<H extends Managed<any, any, any, any>>(
+  _: H
+): Managed<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+  return _ as any
+}

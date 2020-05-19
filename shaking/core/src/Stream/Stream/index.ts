@@ -13,7 +13,13 @@ import { makeRef, Ref } from "../../Ref"
 import { makeSemaphore } from "../../Semaphore"
 import { StreamURI as URI } from "../../Support/Common"
 import { ForM } from "../../Support/For"
-import type { Monad4EP } from "../../Support/Overloads"
+import type {
+  Monad4EP,
+  STypeOf,
+  RTypeOf,
+  ETypeOf,
+  ATypeOf
+} from "../../Support/Overloads"
 import * as Sink from "../Sink"
 import * as Step from "../Step"
 import { emitter, Ops, queueUtils } from "../Support"
@@ -1826,4 +1832,14 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
         subscribe
       }
     })
+}
+
+/**
+ * Used to merge types of the form Stream<S, R, E, A> | Stream<S2, R2, E2, A2> into Stream<S | S2, R & R2, E | E2, A | A2>
+ * @param _
+ */
+export function compact<H extends Stream<any, any, any, any>>(
+  _: H
+): Stream<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+  return _ as any
 }

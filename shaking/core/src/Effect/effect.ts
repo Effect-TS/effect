@@ -63,7 +63,11 @@ import {
   Monad4ECP,
   Monad4EP,
   MonadThrow4EC,
-  MonadThrow4ECP
+  MonadThrow4ECP,
+  STypeOf,
+  RTypeOf,
+  ETypeOf,
+  ATypeOf
 } from "../Support/Overloads"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
@@ -2004,4 +2008,14 @@ export function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
   f: FunctionN<[A, B], C>
 ): Effect<S | S2, R & R2, E | E2, C> {
   return chain_(first, (a) => map_(second, (b) => f(a, b)))
+}
+
+/**
+ * Used to merge types of the form Effect<S, R, E, A> | Effect<S2, R2, E2, A2> into Effect<S | S2, R & R2, E | E2, A | A2>
+ * @param _
+ */
+export function compact<H extends Effect<any, any, any, any>>(
+  _: H
+): Effect<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+  return _ as any
 }

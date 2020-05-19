@@ -252,3 +252,13 @@ export const For = () => ForM(effectOption)
 
 export const parDo = () => DoG(effectOptionPar)
 export const parFor = () => ForM(effectOptionPar)
+
+/**
+ * Used to merge types of the form EffectOption<S, R, E, A> | EffectOption<S2, R2, E2, A2> into EffectOption<S | S2, R & R2, E | E2, A | A2>
+ * @param _
+ */
+export function compact<H extends EffectOption<any, any, any, any>>(
+  _: H
+): EffectOption<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+  return _ as any
+}

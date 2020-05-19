@@ -8,7 +8,14 @@ import * as O from "../Option"
 import * as Stream from "../Stream"
 import { Managed, StreamEither, StreamEitherURI as URI } from "../Support/Common"
 import { ForM } from "../Support/For"
-import type { Monad4EP, MonadThrow4EP } from "../Support/Overloads"
+import type {
+  Monad4EP,
+  MonadThrow4EP,
+  STypeOf,
+  RTypeOf,
+  ETypeOf,
+  ATypeOf
+} from "../Support/Overloads"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
@@ -404,3 +411,13 @@ export const mapLeft: <E, G>(
 
 export const Do = () => DoG(streamEither)
 export const For = () => ForM(streamEither)
+
+/**
+ * Used to merge types of the form StreamEither<S, R, E, A> | StreamEither<S2, R2, E2, A2> into StreamEither<S | S2, R & R2, E | E2, A | A2>
+ * @param _
+ */
+export function compact<H extends StreamEither<any, any, any, any>>(
+  _: H
+): StreamEither<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+  return _ as any
+}
