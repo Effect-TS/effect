@@ -1,5 +1,15 @@
-/* adapted from https://github.com/gcanti/fp-ts */
-export { randomRange } from "./randomRange"
-export { random } from "./random"
-export { randomBool } from "./randomBool"
-export { randomInt } from "./randomInt"
+import { map_, sync, Sync } from "../Effect"
+
+export const random: Sync<number> =
+  /*#__PURE__*/
+  (() => sync(() => Math.random()))()
+
+export const randomBool: Sync<boolean> =
+  /*#__PURE__*/
+  (() => map_(random, (n) => n < 0.5))()
+
+export const randomInt = (low: number, high: number): Sync<number> =>
+  map_(random, (n) => Math.floor((high - low + 1) * n + low))
+
+export const randomRange = (min: number, max: number): Sync<number> =>
+  map_(random, (n) => (max - min) * n + min)

@@ -1,7 +1,43 @@
 /* adapted from https://github.com/gcanti/fp-ts */
-export type { Show } from "./Show"
-export { getStructShow } from "./getStructShow"
-export { getTupleShow } from "./getTupleShow"
-export { showBoolean } from "./showBoolean"
-export { showNumber } from "./showNumber"
-export { showString } from "./showString"
+
+import type { Show } from "../Base"
+import type { ReadonlyRecord } from "../Readonly/Record"
+
+export type { Show } from "../Base"
+
+export function getStructShow<O extends ReadonlyRecord<string, any>>(
+  shows: {
+    [K in keyof O]: Show<O[K]>
+  }
+): Show<O> {
+  return {
+    show: (s) =>
+      `{ ${Object.keys(shows)
+        .map((k) => `${k}: ${shows[k].show(s[k])}`)
+        .join(", ")} }`
+  }
+}
+
+export function getTupleShow<T extends ReadonlyArray<Show<any>>>(
+  ...shows: T
+): Show<
+  {
+    [K in keyof T]: T[K] extends Show<infer A> ? A : never
+  }
+> {
+  return {
+    show: (t) => `[${t.map((a, i) => shows[i].show(a)).join(", ")}]`
+  }
+}
+
+export const showBoolean: Show<boolean> = {
+  show: (a) => JSON.stringify(a)
+}
+
+export const showNumber: Show<number> = {
+  show: (a) => JSON.stringify(a)
+}
+
+export const showString: Show<string> = {
+  show: (a) => JSON.stringify(a)
+}

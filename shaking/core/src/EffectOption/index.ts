@@ -48,7 +48,7 @@ export type AOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: ATypeOf<Effs[k]> extends O.Option<infer A> ? A : never
 }[number]
 
-declare module "../Support/Overloads/overloads" {
+declare module "../Support/Overloads" {
   interface MaToKind<S, R, E, A> {
     [URI]: EffectOption<S, R, E, A>
   }

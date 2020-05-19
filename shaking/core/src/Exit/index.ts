@@ -1,6 +1,6 @@
 import type { NonEmptyArray } from "../NonEmptyArray"
 import { none, some } from "../Option"
-import type { Option } from "../Option/option"
+import type { Option } from "../Option"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common/types"
 
 export function abort(a: unknown): Abort {

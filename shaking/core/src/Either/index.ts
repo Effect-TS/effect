@@ -24,7 +24,7 @@ import type {
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
 import type { Monoid } from "../Monoid"
-import { isNone, Option } from "../Option/option"
+import { isNone, Option } from "../Option"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common"
