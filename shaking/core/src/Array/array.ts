@@ -1030,13 +1030,14 @@ export const updateAt: <A>(
   i: number,
   a: A
 ) => (as: Array<A>) => Option<Array<A>> = RA.updateAt as any
-export const URI = "Array"
+
+export const URI = "@matechs/core/Array"
 
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind<A> {
-    readonly Array: Array<A>
+    readonly [URI]: Array<A>
   }
 }
 

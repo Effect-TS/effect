@@ -98,13 +98,13 @@ export const traverse: Traverse1<URI> = <F>(F: Applicative<F>) => <A, B>(
   return F.map(f(ta), id)
 }
 
-export const URI = "Identity"
+export const URI = "@matechs/core/Identity"
 
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind<A> {
-    readonly Identity: Identity<A>
+    readonly [URI]: Identity<A>
   }
 }
 

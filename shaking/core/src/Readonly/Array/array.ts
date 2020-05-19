@@ -1620,13 +1620,13 @@ export function updateAt<A>(
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, a, as)))
 }
 
-export const URI = "ReadonlyArray"
+export const URI = "@matechs/core/Readonly/Array"
 
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../../Base/HKT" {
   interface URItoKind<A> {
-    readonly ReadonlyArray: ReadonlyArray<A>
+    readonly [URI]: ReadonlyArray<A>
   }
 }
 

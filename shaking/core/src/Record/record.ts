@@ -52,15 +52,15 @@ import type {
   Applicative4E
 } from "../Support/Overloads/overloads"
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind<A> {
-    readonly Record: Record<string, A>
-  }
-}
-
-export const URI = "Record"
+export const URI = "@matechs/core/Record"
 
 export type URI = typeof URI
+
+declare module "../Base/HKT" {
+  interface URItoKind<A> {
+    readonly [URI]: Record<string, A>
+  }
+}
 
 export const getShow: <A>(S: Show<A>) => Show<Record<string, A>> = RR.getShow
 

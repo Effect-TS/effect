@@ -80,7 +80,7 @@ export function strictEqual<A>(a: A, b: A): boolean {
   return a === b
 }
 
-export const URI = "Eq"
+export const URI = "@matechs/core/Eq"
 
 export type URI = typeof URI
 
@@ -89,8 +89,8 @@ export const eq: Contravariant1<URI> = {
   contramap: contramap_
 }
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind<A> {
-    readonly Eq: Eq<A>
+    readonly [URI]: Eq<A>
   }
 }

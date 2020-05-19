@@ -115,13 +115,13 @@ export const mapLeft: <E, G>(f: (e: E) => G) => <A>(fa: Const<E, A>) => Const<G,
   f
 ) => (fa) => mapLeft_(fa, f)
 
-export const URI = "Const"
+export const URI = "@matechs/core/Const"
 
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind2<E, A> {
-    readonly Const: Const<E, A>
+    readonly [URI]: Const<E, A>
   }
 }
 

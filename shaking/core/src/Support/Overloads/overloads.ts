@@ -36,13 +36,8 @@ export interface MaToKind<S, R, E, A> {
   [StreamEitherURI]: StreamEither<S, R, E, A>
 }
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind4<S, R, E, A> {
-    [EffectURI]: Effect<S, R, E, A>
-    [ManagedURI]: Managed<S, R, E, A>
-    [StreamURI]: Stream<S, R, E, A>
-    [StreamEitherURI]: StreamEither<S, R, E, A>
-  }
+declare module "../../Base/HKT" {
+  interface URItoKind4<S, R, E, A> extends MaToKind<S, R, E, A> {}
 }
 
 export type MaURIS = keyof MaToKind<any, any, any, any>

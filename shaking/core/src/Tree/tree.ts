@@ -37,15 +37,15 @@ import type {
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind<A> {
-    readonly Tree: Tree<A>
-  }
-}
-
-export const URI = "Tree"
+export const URI = "@matechs/core/Tree"
 
 export type URI = typeof URI
+
+declare module "../Base/HKT" {
+  interface URItoKind<A> {
+    readonly [URI]: Tree<A>
+  }
+}
 
 export type { Forest, Tree }
 

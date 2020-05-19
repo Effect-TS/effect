@@ -32,7 +32,7 @@ export type SyncE<E, A> = EffectOption<never, unknown, E, A>
 export type SyncR<R, A> = EffectOption<never, R, never, A>
 export type SyncRE<R, E, A> = EffectOption<never, R, E, A>
 
-export const URI = "@matechs/core/EffectOptionURI"
+export const URI = "@matechs/core/EffectOption"
 export type URI = typeof URI
 
 export type SOf<Effs extends EffectOption<any, any, any, any>[]> = {
@@ -52,12 +52,6 @@ export type EOf<Effs extends EffectOption<any, any, any, any>[]> = {
 export type AOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: ATypeOf<Effs[k]> extends O.Option<infer A> ? A : never
 }[number]
-
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind4<S, R, E, A> {
-    [URI]: EffectOption<S, R, E, A>
-  }
-}
 
 declare module "../Support/Overloads/overloads" {
   interface MaToKind<S, R, E, A> {

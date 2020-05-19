@@ -250,13 +250,13 @@ export const updateAt: <K>(
   E: Eq<K>
 ) => <A>(k: K, a: A) => (m: Map<K, A>) => Option<Map<K, A>> = RM.updateAt as any
 
-export const URI = "Map"
+export const URI = "@matechs/core/Map"
 
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind2<E, A> {
-    readonly Map: Map<E, A>
+    readonly [URI]: Map<E, A>
   }
 }
 

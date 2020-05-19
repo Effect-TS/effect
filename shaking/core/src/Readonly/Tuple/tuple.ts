@@ -18,15 +18,15 @@ import type { Either } from "../../Either"
 import type { Monoid } from "../../Monoid"
 import type { Semigroup } from "../../Semigroup"
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind2<E, A> {
-    readonly ReadonlyTuple: readonly [A, E]
-  }
-}
-
-export const URI = "ReadonlyTuple"
+export const URI = "@matechs/core/Readonly/Tuple"
 
 export type URI = typeof URI
+
+declare module "../../Base/HKT" {
+  interface URItoKind2<E, A> {
+    readonly [URI]: readonly [A, E]
+  }
+}
 
 export function fst<A, S>(sa: readonly [A, S]): A {
   return sa[0]
