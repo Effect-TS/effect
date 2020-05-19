@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { Either, Left, Right } from "fp-ts/lib/Either"
 
 import type {
