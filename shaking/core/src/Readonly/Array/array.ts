@@ -19,7 +19,8 @@ import type {
   Compactable1,
   FilterableWithIndex1,
   FunctorWithIndex1,
-  FoldableWithIndex1
+  FoldableWithIndex1,
+  TraverseCurried1
 } from "../../Base"
 import type { Either } from "../../Either/either"
 import type { Eq } from "../../Eq"
@@ -1471,6 +1472,15 @@ export const traverse_: Traverse1<URI> = <F>(
 ) => HKT<F, ReadonlyArray<B>>) => {
   const traverseWithIndexF = traverseWithIndex_(F)
   return (ta, f) => traverseWithIndexF(ta, (_, a) => f(a))
+}
+
+export const traverse: TraverseCurried1<URI> = <F>(
+  F: Applicative<F>
+): (<A, B>(
+  f: (a: A) => HKT<F, B>
+) => (ta: ReadonlyArray<A>) => HKT<F, ReadonlyArray<B>>) => {
+  const traverseWithIndexF = traverseWithIndex_(F)
+  return (f) => (ta) => traverseWithIndexF(ta, (_, a) => f(a))
 }
 
 export const traverseWithIndex_: TraverseWithIndex1<URI, number> = <F>(

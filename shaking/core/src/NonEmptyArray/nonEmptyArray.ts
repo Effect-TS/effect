@@ -13,7 +13,8 @@ import type {
   Monoid,
   Traverse1,
   Sequence1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  TraverseCurried1
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -274,6 +275,7 @@ export const reduceRight_: <A, B>(
 ) => B = RNEA.reduceRight_ as any
 
 export const traverse_: Traverse1<URI> = RNEA.traverse_ as any
+export const traverse: TraverseCurried1<URI> = RNEA.traverse as any
 
 export const sequence: Sequence1<URI> = RNEA.sequence as any
 

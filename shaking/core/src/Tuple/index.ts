@@ -14,7 +14,7 @@ export {
   getApplicative,
   getApply,
   getChain,
-  traverse,
+  traverse_,
   getChainRec,
   getMonad,
   map,

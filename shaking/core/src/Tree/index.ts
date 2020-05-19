@@ -33,6 +33,7 @@ export {
   reduce_,
   sequence,
   traverse_,
+  traverse,
   tree,
   unfoldForest,
   unfoldForestM,

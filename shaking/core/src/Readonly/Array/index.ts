@@ -109,6 +109,7 @@ export {
   takeRight,
   toArray,
   traverse_,
+  traverse,
   traverseWithIndex_,
   unfold,
   union,

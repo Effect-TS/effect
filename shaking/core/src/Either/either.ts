@@ -16,7 +16,8 @@ import type {
   Bifunctor2,
   Extend2,
   Separated,
-  Witherable2C
+  Witherable2C,
+  TraverseCurried2
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
@@ -496,6 +497,13 @@ export const traverse_: Traverse2<URI> = <F>(F: Applicative<F>) => <E, A, B>(
   f: (a: A) => HKT<F, B>
 ): HKT<F, Either<E, B>> => {
   return isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<E, B>>(f(ma.right), right)
+}
+
+export const traverse: TraverseCurried2<URI> = <F>(F: Applicative<F>) => <A, B>(
+  f: (a: A) => HKT<F, B>
+): (<TE>(ma: Either<TE, A>) => HKT<F, Either<TE, B>>) => {
+  return <TE>(ma: Either<TE, A>) =>
+    isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<TE, B>>(f(ma.right), right)
 }
 
 /**

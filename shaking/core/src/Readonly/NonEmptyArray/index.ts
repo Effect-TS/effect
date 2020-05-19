@@ -59,6 +59,7 @@ export {
   tail,
   traverseWithIndex_,
   traverse_,
+  traverse,
   unzip,
   updateAt,
   zip,

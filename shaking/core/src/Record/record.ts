@@ -33,7 +33,9 @@ import type {
   Wilt1,
   TraverseWithIndex1,
   PartitionWithIndex1,
-  FilterWithIndex1
+  FilterWithIndex1,
+  URIS4,
+  Applicative4
 } from "../Base"
 import type { Either } from "../Either/either"
 import type { Eq } from "../Eq"
@@ -281,6 +283,31 @@ export function traverseWithIndex<F>(
   return RR.traverseWithIndex(F)
 }
 
+export function traverse<F extends MaURIS, E>(
+  F: Applicative4EC<F, E>
+): <S, R, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
+export function traverse<F extends MaURIS, E>(
+  F: Applicative4ECP<F, E>
+): <S, R, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(ta: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
+export function traverse<F extends MaURIS>(
+  F: Applicative4EP<F>
+): <S, R, E, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(ta: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
+export function traverse<F extends MaURIS>(
+  F: Applicative4E<F>
+): <S, R, E, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
+export function traverse<F extends URIS4>(
+  F: Applicative4<F>
+): <S, R, E, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
 export function traverse<F extends URIS3>(
   F: Applicative3<F>
 ): <R, E, A, B>(
@@ -474,7 +501,7 @@ export const reduceRight_: <A, B>(
   f: (a: A, b: B) => B
 ) => B = RR.reduceRight_
 
-export const traverse_: Traverse1<URI> = RR.traverse_
+export const traverse_: Traverse1<URI> = RR.traverse_ as any
 
 export function sequence<F extends MaURIS, E>(
   F: Applicative4ECP<F, E>

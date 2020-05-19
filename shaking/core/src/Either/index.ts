@@ -60,6 +60,7 @@ export {
   swap,
   toError,
   traverse_,
+  traverse,
   tryCatch,
   getWitherable
 } from "./either"

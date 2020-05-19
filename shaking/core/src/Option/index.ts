@@ -71,6 +71,7 @@ export {
   toNullable,
   toUndefined,
   traverse_,
+  traverse,
   tryCatch,
   wilt_,
   wither_,

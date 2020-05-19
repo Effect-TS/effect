@@ -32,7 +32,8 @@ import type {
   Sequence1,
   Foldable1,
   Traversable1,
-  Comonad1
+  Comonad1,
+  TraverseCurried1
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
@@ -311,6 +312,21 @@ export const traverse_: Traverse1<URI> = <F>(
         forest
       })),
       traverseF(ta.forest, (t) => r(t, f))
+    )
+  return r
+}
+
+export const traverse: TraverseCurried1<URI> = <F>(
+  F: Applicative<F>
+): (<A, B>(f: (a: A) => HKT<F, B>) => (ta: Tree<A>) => HKT<F, Tree<B>>) => {
+  const traverseF = A.traverse_(F)
+  const r = <A, B>(f: (a: A) => HKT<F, B>) => (ta: Tree<A>): HKT<F, Tree<B>> =>
+    F.ap(
+      F.map(f(ta.value), (value: B) => (forest: Forest<B>) => ({
+        value,
+        forest
+      })),
+      traverseF(ta.forest, (t) => r(f)(t))
     )
   return r
 }

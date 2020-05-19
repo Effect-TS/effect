@@ -17,7 +17,8 @@ import type {
   Separated,
   Applicative,
   Alternative1,
-  Compactable1
+  Compactable1,
+  TraverseCurried1
 } from "../Base"
 import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
@@ -733,6 +734,12 @@ export const traverse_: Traverse1<URI> = <F>(F: Applicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
 ): HKT<F, Option<B>> => {
   return isNone(ta) ? F.of(none) : F.map(f(ta.value), some)
+}
+
+export const traverse: TraverseCurried1<URI> = <F>(F: Applicative<F>) => <A, B>(
+  f: (a: A) => HKT<F, B>
+): ((ta: Option<A>) => HKT<F, Option<B>>) => {
+  return (ta) => (isNone(ta) ? F.of(none) : F.map(f(ta.value), some))
 }
 
 /**

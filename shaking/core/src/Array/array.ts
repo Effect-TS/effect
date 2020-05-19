@@ -21,7 +21,8 @@ import type {
   FilterableWithIndex1,
   Witherable1,
   FunctorWithIndex1,
-  FoldableWithIndex1
+  FoldableWithIndex1,
+  TraverseCurried1
 } from "../Base"
 import type { Either } from "../Either/either"
 import type { Eq } from "../Eq"
@@ -957,6 +958,8 @@ export const takeRight: (
 ) => <A>(as: Array<A>) => Array<A> = RA.takeRight as any
 
 export const traverse_: Traverse1<URI> = RA.traverse_ as any
+
+export const traverse: TraverseCurried1<URI> = RA.traverse as any
 
 export const traverseWithIndex_: TraverseWithIndex1<
   URI,

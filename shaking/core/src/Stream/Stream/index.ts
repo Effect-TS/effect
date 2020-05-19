@@ -1405,7 +1405,7 @@ type WeaveHandle = readonly [number, T.Fiber<never, void>]
 
 function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): T.Async<void> {
   return T.chain_(ref.get, (fibers) =>
-    T.asUnit(A.traverse_(T.effect)(fibers, (fiber: WeaveHandle) => fiber[1].interrupt))
+    T.asUnit(A.traverse_(T.effect)(fibers, (fiber) => fiber[1].interrupt))
   )
 }
 

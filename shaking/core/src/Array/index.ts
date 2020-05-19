@@ -74,6 +74,7 @@ export {
   reduceRight_,
   unfold,
   traverse_,
+  traverse,
   sequence,
   zero,
   alt_,

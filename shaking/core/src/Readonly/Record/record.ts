@@ -34,16 +34,27 @@ import type {
   FoldableWithIndex1,
   Wither1,
   Wilt1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  Traverse1,
+  Applicative4,
+  URIS4,
+  Kind4
 } from "../../Base"
 import type { Either } from "../../Either/either"
 import { Eq, fromEquals } from "../../Eq"
 import { identity, Predicate, Refinement } from "../../Function"
 import { Option, isNone, isSome, none, some as some_1 } from "../../Option/option"
+import {
+  MaURIS,
+  Applicative4E,
+  Applicative4EC,
+  Applicative4EP,
+  Applicative4ECP
+} from "../../Support/Overloads"
 
 export type { ReadonlyRecord }
 
-export const URI = "@matechs/core/Readonly/Record"
+export const URI = "../../Readonly/Record"
 
 export type URI = typeof URI
 
@@ -387,6 +398,41 @@ export function traverseWithIndex<F>(
   return (f) => (ta) => traverseWithIndexF(ta, f)
 }
 
+export function traverse<F extends MaURIS, E>(
+  F: Applicative4EC<F, E>
+): <S, R, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(
+  ta: ReadonlyRecord<K, A>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function traverse<F extends MaURIS, E>(
+  F: Applicative4ECP<F, E>
+): <S, R, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(
+  ta: ReadonlyRecord<K, A>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function traverse<F extends MaURIS>(
+  F: Applicative4EP<F>
+): <S, R, E, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(
+  ta: ReadonlyRecord<K, A>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function traverse<F extends MaURIS>(
+  F: Applicative4E<F>
+): <S, R, E, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(
+  ta: ReadonlyRecord<K, A>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function traverse<F extends URIS4>(
+  F: Applicative4<F>
+): <S, R, E, A, B>(
+  f: (a: A) => Kind4<F, S, R, E, B>
+) => <K extends string>(
+  ta: ReadonlyRecord<K, A>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
 export function traverse<F extends URIS3>(
   F: Applicative3<F>
 ): <R, E, A, B>(
@@ -732,7 +778,7 @@ export const reduceRightWithIndex_: <A, B>(
   return out
 }
 
-export const traverse_ = <F>(
+export const traverse_: Traverse1<URI> = <F>(
   F: Applicative<F>
 ): (<A, B>(
   ta: ReadonlyRecord<string, A>,

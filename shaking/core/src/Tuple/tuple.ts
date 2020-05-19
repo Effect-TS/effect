@@ -14,7 +14,8 @@ import type {
   Bifunctor2,
   Comonad2,
   Foldable2,
-  Traversable2
+  Traversable2,
+  TraverseCurried2
 } from "../Base"
 import type { Either } from "../Either"
 
@@ -138,11 +139,17 @@ export const reduceRight_: <E, A, B>(fa: [A, E], b: B, f: (a: A, b: B) => B) => 
   f
 ) => f(fst(ae), b)
 
-export const traverse: Traverse2<URI> = <F>(F: Applicative<F>) => <A, S, B>(
+export const traverse_: Traverse2<URI> = <F>(F: Applicative<F>) => <A, S, B>(
   as: [A, S],
   f: (a: A) => HKT<F, B>
 ): HKT<F, [B, S]> => {
   return F.map(f(fst(as)), (b) => [b, snd(as)])
+}
+
+export const traverse: TraverseCurried2<URI> = <F>(F: Applicative<F>) => <A, B>(
+  f: (a: A) => HKT<F, B>
+): (<S>(as: [A, S]) => HKT<F, [B, S]>) => {
+  return (as) => F.map(f(fst(as)), (b) => [b, snd(as)])
 }
 
 export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <A, S>(
@@ -166,7 +173,7 @@ export const tuple: Semigroupoid2<URI> &
   reduce: reduce_,
   foldMap: foldMap_,
   reduceRight: reduceRight_,
-  traverse,
+  traverse: traverse_,
   sequence
 }
 
