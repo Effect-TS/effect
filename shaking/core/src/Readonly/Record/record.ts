@@ -476,6 +476,31 @@ export function traverse<F>(
   return (f) => traverseWithIndexF((_, a) => f(a))
 }
 
+export function sequence<F extends URIS4, E>(
+  F: Applicative4EC<F, E>
+): <K extends string, S, R, A>(
+  ta: ReadonlyRecord<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, A>>
+export function sequence<F extends URIS4, E>(
+  F: Applicative4ECP<F, E>
+): <K extends string, S, R, A>(
+  ta: ReadonlyRecord<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, A>>
+export function sequence<F extends URIS4>(
+  F: Applicative4E<F>
+): <K extends string, S, R, E, A>(
+  ta: ReadonlyRecord<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, A>>
+export function sequence<F extends URIS4>(
+  F: Applicative4EP<F>
+): <K extends string, S, R, E, A>(
+  ta: ReadonlyRecord<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, A>>
+export function sequence<F extends URIS4>(
+  F: Applicative4<F>
+): <K extends string, S, R, E, A>(
+  ta: ReadonlyRecord<K, Kind4<F, S, R, E, A>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, A>>
 export function sequence<F extends URIS3>(
   F: Applicative3<F>
 ): <K extends string, R, E, A>(
