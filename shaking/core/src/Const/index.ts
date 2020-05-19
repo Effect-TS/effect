@@ -134,3 +134,5 @@ export const const_: Functor2<URI> & Contravariant2<URI> & Bifunctor2<URI> = {
   bimap: bimap_,
   mapLeft: mapLeft_
 }
+
+export { const_ as const }
