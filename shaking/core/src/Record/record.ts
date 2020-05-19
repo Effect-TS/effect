@@ -37,7 +37,7 @@ import type {
   URIS4,
   Applicative4
 } from "../Base"
-import type { Either } from "../Either/either"
+import type { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
 import type { Magma } from "../Magma"

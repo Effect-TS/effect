@@ -25,7 +25,7 @@ import type {
   FoldableWithIndex1,
   TraverseCurried1
 } from "../Base"
-import type { Either } from "../Either/either"
+import type { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
 import type { Monoid } from "../Monoid"

@@ -40,7 +40,7 @@ import type {
   URIS4,
   Kind4
 } from "../../Base"
-import type { Either } from "../../Either/either"
+import type { Either } from "../../Either"
 import { Eq, fromEquals } from "../../Eq"
 import { identity, Predicate, Refinement } from "../../Function"
 import { Option, isNone, isSome, none, some as some_1 } from "../../Option/option"

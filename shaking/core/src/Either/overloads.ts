@@ -15,7 +15,7 @@ import type { Profunctor2 } from "fp-ts/lib/Profunctor"
 import type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
 import type { PipeableFunctor2 } from "fp-ts/lib/pipeable"
 
-import type { URI } from "./URI"
+import type { URI } from "./index"
 
 export interface ChainRec2M<F extends URI> extends Chain2M<F> {
   readonly chainRec: <E, A, B>(
