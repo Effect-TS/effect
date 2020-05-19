@@ -106,7 +106,19 @@ const modules: string[] = [
   "Support/DoublyLinkedList",
   "Support/Runtime",
   "Support/Driver",
-  "Support/Utils"
+  "Support/Utils",
+  "Monocle",
+  "Monocle/common",
+  "Monocle/Fold",
+  "Monocle/Getter",
+  "Monocle/Iso",
+  "Monocle/Lens",
+  "Monocle/Optional",
+  "Monocle/Prism",
+  "Monocle/Setter",
+  "Monocle/Traversal",
+  "Monocle/At",
+  "Monocle/Index"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)

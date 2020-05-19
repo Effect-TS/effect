@@ -31,7 +31,7 @@ type ExprF<R> = ConstF | VarF | TimesF<R> | PlusF<R>
 const URI = "RS/ExprF"
 type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../src/Base/HKT" {
   interface URItoKind<A> {
     readonly [URI]: ExprF<A>
   }

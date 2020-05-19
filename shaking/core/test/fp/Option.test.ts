@@ -162,7 +162,7 @@ describe("Option", () => {
     assert.deepStrictEqual(
       pipe(
         O.some(2),
-        O.option.alt(() => O.none)
+        O.option.alt((): O.Option<number> => O.none)
       ),
       O.some(2)
     )

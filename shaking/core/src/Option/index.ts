@@ -95,8 +95,7 @@ export const chainFirst = <A, B>(f: (a: A) => Option<B>) => (
 export const URI = "@matechs/core/Option"
 export type URI = typeof URI
 
-export const defaultSeparate = { left: none, right: none }
-export const identity = <A>(a: A): A => a
+const identity = <A>(a: A): A => a
 
 declare module "../Base/HKT" {
   interface URItoKind<A> {
@@ -216,6 +215,35 @@ export function fold<A, B, C>(
 ): (ma: Option<A>) => B | C
 export function fold<A, B>(onNone: () => B, onSome: (a: A) => B): (ma: Option<A>) => B {
   return (ma) => (isNone(ma) ? onNone() : onSome(ma.value))
+}
+
+export function fold_<S1, S2, A, B, C, R1, E1, R2, E2>(
+  ma: Option<A>,
+  onNone: () => Effect<S1, R1, E1, B>,
+  onSome: (a: A) => Effect<S2, R2, E2, C>
+): Effect<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<S1, S2, A, B, C, R1, E1, R2, E2>(
+  ma: Option<A>,
+  onNone: () => Stream<S1, R1, E1, B>,
+  onSome: (a: A) => Stream<S2, R2, E2, C>
+): Stream<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<S1, S2, A, B, C, R1, E1, R2, E2>(
+  ma: Option<A>,
+  onNone: () => StreamEither<S1, R1, E1, B>,
+  onSome: (a: A) => StreamEither<S2, R2, E2, C>
+): StreamEither<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<S1, S2, A, B, C, R1, E1, R2, E2>(
+  ma: Option<A>,
+  onNone: () => Managed<S1, R1, E1, B>,
+  onSome: (a: A) => Managed<S2, R2, E2, C>
+): Managed<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<A, B, C>(
+  ma: Option<A>,
+  onNone: () => B,
+  onSome: (a: A) => C
+): B | C
+export function fold_<A, B>(ma: Option<A>, onNone: () => B, onSome: (a: A) => B): B {
+  return isNone(ma) ? onNone() : onSome(ma.value)
 }
 
 export const foldMap: <M>(
@@ -616,6 +644,8 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: Option<A>) 
   b,
   f
 ) => reduce(b, (b_, a_) => f(a_, b_))
+
+const defaultSeparate = { left: none, right: none }
 
 export const separate = <A, B>(
   ma: Option<Either<A, B>>

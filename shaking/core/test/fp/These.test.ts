@@ -88,23 +88,27 @@ describe("These", () => {
 
   it("traverse", () => {
     assert.deepStrictEqual(
-      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.left("a")),
+      _.these.traverse(option)((n: number) => (n >= 2 ? some(n) : none))(_.left("a")),
       some(_.left("a"))
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.right(2)),
+      _.these.traverse(option)((n: number) => (n >= 2 ? some(n) : none))(_.right(2)),
       some(_.right(2))
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.right(1)),
+      _.these.traverse(option)((n: number) => (n >= 2 ? some(n) : none))(_.right(1)),
       none
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.both("a", 2)),
+      _.these.traverse(option)((n: number) => (n >= 2 ? some(n) : none))(
+        _.both("a", 2)
+      ),
       some(_.both("a", 2))
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.both("a", 1)),
+      _.these.traverse(option)((n: number) => (n >= 2 ? some(n) : none))(
+        _.both("a", 1)
+      ),
       none
     )
   })
