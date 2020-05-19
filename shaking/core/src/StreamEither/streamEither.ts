@@ -1,17 +1,14 @@
-import * as A from "../Array"
-import type { Separated, Bifunctor4 } from "../Base"
+import type { Bifunctor4 } from "../Base"
 import { Do as DoG } from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
 import * as F from "../Function"
 import * as M from "../Managed"
 import * as O from "../Option"
-import * as record from "../Record"
 import * as Stream from "../Stream"
-import { StreamEither, StreamEitherURI as URI, Managed } from "../Support/Common"
+import { Managed, StreamEither, StreamEitherURI as URI } from "../Support/Common"
 import { ForM } from "../Support/For"
 import type { Monad4EP, MonadThrow4EP } from "../Support/Overloads"
-import * as tree from "../Tree"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
@@ -407,71 +404,3 @@ export const mapLeft: <E, G>(
 
 export const Do = () => DoG(streamEither)
 export const For = () => ForM(streamEither)
-
-export const traverseOption: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
-  O.option.traverse(streamEither)(ta, f)
-
-export const wiltOption: <S, A, R, E, B, C>(
-  f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
-) => (wa: O.Option<A>) => AsyncRE<R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (
-  wa
-) => O.option.wilt(streamEither)(wa, f)
-
-export const witherOption: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
-) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
-  O.option.wither(streamEither)(ta, f)
-
-export const traverseEither: <S, A, R, FE, B>(
-  f: (a: A) => StreamEither<S, R, FE, B>
-) => <TE>(ta: E.Either<TE, A>) => AsyncRE<R, FE, E.Either<TE, B>> = (f) => (ta) =>
-  E.traverse_(streamEither)(ta, f)
-
-export const traverseTree: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: tree.Tree<A>) => AsyncRE<R, E, tree.Tree<B>> = (f) => (ta) =>
-  tree.traverse_(streamEither)(ta, f)
-
-export const traverseArray: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverse_(streamEither)(ta, f)
-
-export const traverseArrayWithIndex: <S, A, R, E, B>(
-  f: (i: number, a: A) => StreamEither<S, R, E, B>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex_(streamEither)(ta, f)
-
-export const wiltArray: <S, A, R, E, B, C>(
-  f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
-) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  A.wilt_(streamEither)(wa, f)
-
-export const witherArray: <S, A, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.wither_(streamEither)(ta, f)
-
-export const traverseRecord: <A, S, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, B>
-) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.traverse_(streamEither)(ta, f)
-
-export const traverseRecordWithIndex: <A, S, R, E, B>(
-  f: (k: string, a: A) => StreamEither<S, R, E, B>
-) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.traverseWithIndex_(streamEither)(ta, f)
-
-export const wiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => StreamEither<S, R, E, E.Either<B, C>>
-) => (
-  wa: Record<string, A>
-) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  record.wilt_(streamEither)(wa, f)
-
-export const witherRecord: <A, S, R, E, B>(
-  f: (a: A) => StreamEither<S, R, E, O.Option<B>>
-) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  record.wither_(streamEither)(ta, f)

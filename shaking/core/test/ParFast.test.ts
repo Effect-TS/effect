@@ -1,6 +1,7 @@
 import { right, left } from "fp-ts/lib/Either"
 
 import { effect as T } from "../src"
+import * as A from "../src/Array"
 import { raise, interruptWithError, done } from "../src/Exit"
 
 describe("ParFast", () => {
@@ -30,7 +31,7 @@ describe("ParFast", () => {
       calling(d, "d")
     ]
 
-    const result = await T.runToPromiseExit(T.parFastSequenceArray(processes))
+    const result = await T.runToPromiseExit(A.sequence(T.parFastEffect)(processes))
 
     expect(result).toStrictEqual(done(["a", "b", "c", "d"]))
     expect(a.mock.calls.length).toStrictEqual(0)
@@ -73,7 +74,7 @@ describe("ParFast", () => {
       calling(d)
     ]
 
-    const result = await T.runToPromiseExit(T.parFastSequenceArray(processes))
+    const result = await T.runToPromiseExit(A.sequence(T.parFastEffect)(processes))
 
     expect(result).toStrictEqual(raise("ok"))
     expect(a.mock.calls.length).toStrictEqual(1)
@@ -116,7 +117,7 @@ describe("ParFast", () => {
       calling(d, "d")
     ]
 
-    const result = await T.runToPromiseExit(T.parFastSequenceArray(processes))
+    const result = await T.runToPromiseExit(A.sequence(T.parFastEffect)(processes))
 
     expect(result).toStrictEqual(
       interruptWithError(new Error("a"), new Error("b"), new Error("c"), new Error("d"))
@@ -152,7 +153,7 @@ describe("ParFast", () => {
       calling(d, "d")
     ]
 
-    const fiber = await T.runToPromise(T.fork(T.parFastSequenceArray(processes)))
+    const fiber = await T.runToPromise(T.fork(A.sequence(T.parFastEffect)(processes)))
     const result = await T.runToPromise(fiber.interrupt)
 
     expect(a.mock.calls.length).toStrictEqual(1)

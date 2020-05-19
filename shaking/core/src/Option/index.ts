@@ -76,25 +76,5 @@ export {
   wither_,
   zero
 } from "./option"
-export { sequenceArray } from "./sequenceArray"
-export { sequenceRecord } from "./sequenceRecord"
 export { sequenceS } from "./sequenceS"
 export { sequenceT } from "./sequenceT"
-export { sequenceTree } from "./sequenceTree"
-export { traverseArray, traverseArray_ } from "./traverseArray"
-export {
-  traverseArrayWithIndex,
-  traverseArrayWithIndex_
-} from "./traverseArrayWithIndex"
-export { traverseRecord, traverseRecord_ } from "./traverseRecord"
-export {
-  traverseRecordWithIndex,
-  traverseRecordWithIndex_
-} from "./traverseRecordWithIndex"
-export { traverseTree, traverseTree_ } from "./traverseTree"
-export { wiltArray, wiltArray_ } from "./wiltArray"
-export { wiltRecord, wiltRecord_ } from "./wiltRecord"
-export { witherArray, witherArray_ } from "./witherArray"
-export { witherRecord, witherRecord_ } from "./witherRecord"
-export { sequenceEither } from "./sequenceEither"
-export { traverseEither, traverseEither_ } from "./traverseEither"

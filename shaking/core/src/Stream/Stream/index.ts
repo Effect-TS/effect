@@ -1,10 +1,7 @@
 import * as A from "../../Array"
-import type { Separated } from "../../Base"
 import { Deferred, makeDeferred } from "../../Deferred"
 import { Do as DoG } from "../../Do"
 import * as T from "../../Effect"
-import { Either } from "../../Either"
-import { traverse_ as e_traverse } from "../../Either"
 import { Eq } from "../../Eq"
 import { Cause, Exit } from "../../Exit"
 import * as F from "../../Function"
@@ -12,13 +9,11 @@ import * as M from "../../Managed"
 import * as O from "../../Option"
 import { pipe } from "../../Pipe"
 import * as Q from "../../Queue"
-import * as R from "../../Record"
 import { makeRef, Ref } from "../../Ref"
 import { makeSemaphore } from "../../Semaphore"
 import { StreamURI as URI } from "../../Support/Common"
 import { ForM } from "../../Support/For"
 import type { Monad4EP } from "../../Support/Overloads"
-import * as Tree from "../../Tree"
 import * as Sink from "../Sink"
 import * as Step from "../Step"
 import { emitter, Ops, queueUtils } from "../Support"
@@ -1410,7 +1405,7 @@ type WeaveHandle = readonly [number, T.Fiber<never, void>]
 
 function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): T.Async<void> {
   return T.chain_(ref.get, (fibers) =>
-    T.asUnit(T.traverseArray((fiber: WeaveHandle) => fiber[1].interrupt)(fibers))
+    T.asUnit(A.traverse_(T.effect)(fibers, (fiber: WeaveHandle) => fiber[1].interrupt))
   )
 }
 
@@ -1754,73 +1749,6 @@ export const stream: Monad4EP<URI> & StreamF = {
 
 export const Do = () => DoG(stream)
 export const For = () => ForM(stream)
-
-export const traverseOption: <S, A, R, E, B>(
-  f: (a: A) => Stream<S, R, E, B>
-) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
-  O.traverse_(stream)(ta, f)
-
-export const wiltOption: <S, A, R, E, B, C>(
-  f: (a: A) => Stream<S, R, E, Either<B, C>>
-) => (wa: O.Option<A>) => AsyncRE<R, E, Separated<O.Option<B>, O.Option<C>>> = (f) => (
-  wa
-) => O.wilt_(stream)(wa, f)
-
-export const witherOption: <S, A, R, E, B>(
-  f: (a: A) => Stream<S, R, E, O.Option<B>>
-) => (ta: O.Option<A>) => AsyncRE<R, E, O.Option<B>> = (f) => (ta) =>
-  O.wither_(stream)(ta, f)
-
-export const traverseEither: <S, A, R, FE, B>(
-  f: (a: A) => Stream<S, R, FE, B>
-) => <TE>(ta: Either<TE, A>) => AsyncRE<R, FE, Either<TE, B>> = (f) => (ta) =>
-  e_traverse(stream)(ta, f)
-
-export const traverseTree: <S, A, R, E, B>(
-  f: (a: A) => Stream<S, R, E, B>
-) => (ta: Tree.Tree<A>) => AsyncRE<R, E, Tree.Tree<B>> = (f) => (ta) =>
-  Tree.traverse_(stream)(ta, f)
-
-export const traverseArray: <S, A, R, E, B>(
-  f: (a: A) => Stream<S, R, E, B>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverse_(stream)(ta, f)
-
-export const traverseArrayWithIndex: <S, A, R, E, B>(
-  f: (i: number, a: A) => Stream<S, R, E, B>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex_(stream)(ta, f)
-
-export const wiltArray: <S, A, R, E, B, C>(
-  f: (a: A) => Stream<S, R, E, Either<B, C>>
-) => (wa: Array<A>) => AsyncRE<R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  A.wilt_(stream)(wa, f)
-
-export const witherArray: <S, A, R, E, B>(
-  f: (a: A) => Stream<S, R, E, O.Option<B>>
-) => (ta: Array<A>) => AsyncRE<R, E, Array<B>> = (f) => (ta) => A.wither_(stream)(ta, f)
-
-export const traverseRecord: <A, S, R, E, B>(
-  f: (a: A) => Stream<S, R, E, B>
-) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  R.traverse_(stream)(ta, f)
-
-export const traverseRecordWithIndex: <A, S, R, E, B>(
-  f: (k: string, a: A) => Stream<S, R, E, B>
-) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  R.traverseWithIndex_(stream)(ta, f)
-
-export const wiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => Stream<S, R, E, Either<B, C>>
-) => (
-  wa: Record<string, A>
-) => AsyncRE<R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  R.wilt_(stream)(wa, f)
-
-export const witherRecord: <A, S, R, E, B>(
-  f: (a: A) => Stream<S, R, E, O.Option<B>>
-) => (ta: Record<string, A>) => AsyncRE<R, E, Record<string, B>> = (f) => (ta) =>
-  R.wither_(stream)(ta, f)
 
 export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
   const listeners: Map<any, (_: Ops<E, A>) => void> = new Map()

@@ -44,35 +44,13 @@ export {
   parApSecond,
   parAp_,
   parManaged,
-  parTraverseArray,
-  parTraverseArrayWithIndex,
-  parTraverseRecord,
-  parTraverseRecordWithIndex,
-  parTraverseTree,
-  parWiltArray,
-  parWiltRecord,
-  parWitherArray,
-  parWitherRecord,
   parZip,
   parZipWith,
   provide,
   pure,
   suspend,
   to,
-  traverseArray,
-  traverseArrayWithIndex,
-  traverseEither,
-  traverseOption,
-  traverseRecord,
-  traverseRecordWithIndex,
-  traverseTree,
   use,
-  wiltArray,
-  wiltOption,
-  wiltRecord,
-  witherArray,
-  witherOption,
-  witherRecord,
   zip,
   zipWith,
   ap_,
@@ -88,24 +66,3 @@ export { parDo } from "./parDo"
 export { parFor } from "./parFor"
 export { parSequenceS } from "./parSequenceS"
 export { parSequenceT } from "./parSequenceT"
-export { sequenceOption } from "./sequenceOption"
-export { parSequenceArray } from "./parSequenceArray"
-export { parSequenceRecord } from "./parSequenceRecord"
-export { parSequenceTree } from "./parSequenceTree"
-export { sequenceArray } from "./sequenceArray"
-export { sequenceEither } from "./sequenceEither"
-export { sequenceRecord } from "./sequenceRecord"
-export { sequenceTree } from "./sequenceTree"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"
-export {} from "./"

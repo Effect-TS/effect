@@ -20,7 +20,7 @@ describe("EffectSafe", () => {
     expect(await T.runToPromiseExit(program)).toStrictEqual(ex.done([0, 1]))
   })
   it("Sync", () => {
-    const program = T.sequenceArray([T.pure(0), T.pure(1)])
+    const program = T.sequenceT(T.pure(0), T.pure(1))
 
     expect(T.runSync(program)).toStrictEqual(ex.done([0, 1]))
   })

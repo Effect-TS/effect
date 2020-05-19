@@ -64,26 +64,4 @@ export {
   getWitherable
 } from "./either"
 export { tailRec } from "./tailRec"
-export { sequenceArray } from "./sequenceArray"
-export { sequenceRecord } from "./sequenceRecord"
-export { sequenceTree } from "./sequenceTree"
-export { traverseArray, traverseArray_ } from "./traverseArray"
-export {
-  traverseArrayWithIndex,
-  traverseArrayWithIndex_
-} from "./traverseArrayWithIndex"
-export { traverseRecord, traverseRecord_ } from "./traverseRecord"
-export {
-  traverseRecordWithIndex,
-  traverseRecordWithIndex_
-} from "./traverseRecordWithIndex"
-export { traverseTree, traverseTree_ } from "./traverseTree"
 export { URI } from "./URI"
-export { wiltArray, wiltArray_ } from "./wiltArray"
-export { wiltRecord, wiltRecord_ } from "./wiltRecord"
-export { witherArray, witherArray_ } from "./witherArray"
-export { witherRecord, witherRecord_ } from "./witherRecord"
-export { sequenceOption } from "./sequenceOption"
-export { traverseOption, traverseOption_ } from "./traverseOption"
-export { wiltOption, wiltOption_ } from "./wiltOption"
-export { witherOption, witherOption_ } from "./witherOption"

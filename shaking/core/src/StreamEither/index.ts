@@ -50,28 +50,9 @@ export {
   takeWhile,
   toStream,
   toStreamError,
-  traverseArray,
-  traverseArrayWithIndex,
-  traverseEither,
-  traverseOption,
-  traverseRecord,
-  traverseRecordWithIndex,
-  traverseTree,
-  wiltArray,
-  wiltOption,
-  wiltRecord,
-  witherArray,
-  witherOption,
-  witherRecord,
   zipWith,
   zipWithIndex
 } from "./streamEither"
 
 export { sequenceS } from "./sequenceS"
 export { sequenceT } from "./sequenceT"
-
-export { sequenceArray } from "./sequenceArray"
-export { sequenceEither } from "./sequenceEither"
-export { sequenceOption } from "./sequenceOption"
-export { sequenceRecord } from "./sequenceRecord"
-export { sequenceTree } from "./sequenceTree"

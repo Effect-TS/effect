@@ -1,24 +1,18 @@
-import type { Separated } from "fp-ts/lib/Compactable"
-
-import * as A from "../Array"
 import { Do as DoG } from "../Do"
 import * as T from "../Effect"
-import * as E from "../Either"
 import { flow, FunctionN } from "../Function"
 import * as M from "../Monoid"
 import * as O from "../Option"
-import * as R from "../Record"
 import { ForM } from "../Support/For"
 import type {
-  STypeOf,
-  RTypeOf,
-  ETypeOf,
   ATypeOf,
+  ETypeOf,
   Monad4E,
   Monad4EP,
+  RTypeOf,
+  STypeOf,
   UnionToIntersection
 } from "../Support/Overloads"
-import * as TR from "../Tree"
 
 export interface EffectOption<S, R, E, A> extends T.Effect<S, R, E, O.Option<A>> {}
 
@@ -76,7 +70,8 @@ export const map_ = <S, R, E, A, B>(
 export const chain_ = <S1, S2, R, E, A, R2, E2, B>(
   fa: EffectOption<S1, R, E, A>,
   f: (a: A) => EffectOption<S2, R2, E2, B>
-): EffectOption<S1 | S2, R & R2, E | E2, B> => T.chain_(fa, T.witherOption(f))
+): EffectOption<S1 | S2, R & R2, E | E2, B> =>
+  T.chain_(fa, (x) => O.wither_(T.effect)(x, f))
 
 export const chainTap_ = <S1, S2, R, E, A, R2, E2>(
   inner: EffectOption<S1, R, E, A>,
@@ -255,131 +250,5 @@ export const getLast = <Effs extends EffectOption<any, any, any, any>[]>(
 export const Do = () => DoG(effectOption)
 export const For = () => ForM(effectOption)
 
-export const traverseOption: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: O.Option<A>) => EffectOption<S, R, E, O.Option<B>> = (f) => (ta) =>
-  O.traverse_(effectOption)(ta, f)
-
-export const wiltOption: <A, S, R, E, B, C>(
-  f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
-) => (wa: O.Option<A>) => EffectOption<S, R, E, Separated<O.Option<B>, O.Option<C>>> = (
-  f
-) => (wa) => O.wilt_(effectOption)(wa, f)
-
-export const witherOption: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, O.Option<B>>
-) => (ta: O.Option<A>) => EffectOption<S, R, E, O.Option<B>> = (f) => (ta) =>
-  O.wither_(effectOption)(ta, f)
-
-export const traverseEither: <A, S, R, FE, B>(
-  f: (a: A) => EffectOption<S, R, FE, B>
-) => <TE>(ta: E.Either<TE, A>) => EffectOption<S, R, FE, E.Either<TE, B>> = (f) => (
-  ta
-) => E.traverse_(effectOption)(ta, f)
-
-export const traverseTree: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: TR.Tree<A>) => EffectOption<S, R, E, TR.Tree<B>> = (f) => (ta) =>
-  TR.traverse_(effectOption)(ta, f)
-
-export const traverseArray: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: Array<A>) => EffectOption<S, R, E, Array<B>> = (f) => (ta) =>
-  A.traverse_(effectOption)(ta, f)
-
-export const traverseArrayWithIndex: <A, S, R, E, B>(
-  f: (i: number, a: A) => EffectOption<S, R, E, B>
-) => (ta: Array<A>) => EffectOption<S, R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex_(effectOption)(ta, f)
-
-export const wiltArray: <A, S, R, E, B, C>(
-  f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
-) => (wa: Array<A>) => EffectOption<S, R, E, Separated<Array<B>, Array<C>>> = (f) => (
-  wa
-) => A.wilt_(effectOption)(wa, f)
-
-export const witherArray: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, O.Option<B>>
-) => (ta: Array<A>) => EffectOption<S, R, E, Array<B>> = (f) => (ta) =>
-  A.wither_(effectOption)(ta, f)
-
-export const traverseRecord: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: Record<string, A>) => EffectOption<S, R, E, Record<string, B>> = (f) => (
-  ta
-) => R.traverse_(effectOption)(ta, f)
-
-export const traverseRecordWithIndex: <A, S, R, E, B>(
-  f: (k: string, a: A) => EffectOption<S, R, E, B>
-) => (ta: Record<string, A>) => EffectOption<S, R, E, Record<string, B>> = (f) => (
-  ta
-) => R.traverseWithIndex_(effectOption)(ta, f)
-
-export const wiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
-) => (
-  wa: Record<string, A>
-) => EffectOption<S, R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (
-  wa
-) => R.wilt_(effectOption)(wa, f)
-
-export const witherRecord: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, O.Option<B>>
-) => (ta: Record<string, A>) => EffectOption<S, R, E, Record<string, B>> = (f) => (
-  ta
-) => R.wither_(effectOption)(ta, f)
-
 export const parDo = () => DoG(effectOptionPar)
 export const parFor = () => ForM(effectOptionPar)
-
-export const parTraverseTree: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: TR.Tree<A>) => EffectOption<unknown, R, E, TR.Tree<B>> = (f) => (ta) =>
-  TR.traverse_(effectOptionPar)(ta, f)
-
-export const parTraverseArray: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: Array<A>) => EffectOption<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.traverse_(effectOptionPar)(ta, f)
-
-export const parTraverseArrayWithIndex: <A, S, R, E, B>(
-  f: (i: number, a: A) => EffectOption<S, R, E, B>
-) => (ta: Array<A>) => EffectOption<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.traverseWithIndex_(effectOptionPar)(ta, f)
-
-export const parWiltArray: <A, S, R, E, B, C>(
-  f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
-) => (wa: Array<A>) => EffectOption<unknown, R, E, Separated<Array<B>, Array<C>>> = (
-  f
-) => (wa) => A.wilt_(effectOptionPar)(wa, f)
-
-export const parWitherArray: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, O.Option<B>>
-) => (ta: Array<A>) => EffectOption<unknown, R, E, Array<B>> = (f) => (ta) =>
-  A.wither_(effectOptionPar)(ta, f)
-
-export const parTraverseRecord: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, B>
-) => (ta: Record<string, A>) => EffectOption<unknown, R, E, Record<string, B>> = (
-  f
-) => (ta) => R.traverse_(effectOptionPar)(ta, f)
-
-export const parTraverseRecordWithIndex: <A, S, R, E, B>(
-  f: (k: string, a: A) => EffectOption<S, R, E, B>
-) => (ta: Record<string, A>) => EffectOption<unknown, R, E, Record<string, B>> = (
-  f
-) => (ta) => R.traverseWithIndex_(effectOptionPar)(ta, f)
-
-export const parWiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => EffectOption<S, R, E, E.Either<B, C>>
-) => (
-  wa: Record<string, A>
-) => EffectOption<unknown, R, E, Separated<Record<string, B>, Record<string, C>>> = (
-  f
-) => (wa) => R.wilt_(effectOptionPar)(wa, f)
-
-export const parWitherRecord: <A, S, R, E, B>(
-  f: (a: A) => EffectOption<S, R, E, O.Option<B>>
-) => (ta: Record<string, A>) => EffectOption<unknown, R, E, Record<string, B>> = (
-  f
-) => (ta) => R.wither_(effectOptionPar)(ta, f)

@@ -17,11 +17,11 @@ import {
   chainTap_,
   map_,
   chain_,
-  parSequenceRecord
+  parEffect
 } from "../Effect"
 import type { Exit } from "../Exit"
 import { pipe } from "../Pipe"
-import { map_ as mapRecord } from "../Record"
+import { map_ as mapRecord, sequence } from "../Record"
 import type {
   ATypeOf,
   ETypeOf,
@@ -89,7 +89,7 @@ export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>
     asyncTotal((res) => {
       const fiber = runUnsafeSync(
         pipe(
-          chain_(waits, parSequenceRecord),
+          chain_(waits, sequence(parEffect)),
           chainTap((done) =>
             sync(() => {
               res(done)

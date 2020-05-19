@@ -11,71 +11,12 @@ export {
   SyncRE
 } from "../Support/Common/effect"
 export { Env, Erase, Err, Op, Ret } from "../Utils"
-export { parFastSequenceArray } from "./parFastSequenceArray"
-export { parFastSequenceRecord } from "./parFastSequenceRecord"
 export { parFastSequenceS } from "./parFastSequenceS"
 export { parFastSequenceT } from "./parFastSequenceT"
-export { parFastSequenceTree } from "./parFastSequenceTree"
-export { parFastTraverseArray, parFastTraverseArray_ } from "./parFastTraverseArray"
-export {
-  parFastTraverseArrayWithIndex,
-  parFastTraverseArrayWithIndex_
-} from "./parFastTraverseArrayWithIndex"
-export {
-  parFastTraverseRecordWithIndex,
-  parFastTraverseRecordWithIndex_
-} from "./parFastTraverseRecordWithIndex"
-export { parFastTraverseTree, parFastTraverseTree_ } from "./parFastTraverseTree"
-export { parFastWiltArray, parFastWiltArray_ } from "./parFastWiltArray"
-export { parFastWiltRecord, parFastWiltRecord_ } from "./parFastWiltRecord"
-export { parFastWitherArray, parFastWitherArray_ } from "./parFastWitherArray"
-export { parFastWitherRecord, parFastWitherRecord_ } from "./parFastWitherRecord"
-export { parSequenceArray } from "./parSequenceArray"
-export { parSequenceRecord } from "./parSequenceRecord"
 export { parSequenceS } from "./parSequenceS"
 export { parSequenceT } from "./parSequenceT"
-export { parSequenceTree } from "./parSequenceTree"
-export { parTraverseArray, parTraverseArray_ } from "./parTraverseArray"
-export {
-  parTraverseArrayWithIndex,
-  parTraverseArrayWithIndex_
-} from "./parTraverseArrayWithIndex"
-export { parTraverseRecord, parTraverseRecord_ } from "./parTraverseRecord"
-export {
-  parTraverseRecordWithIndex,
-  parTraverseRecordWithIndex_
-} from "./parTraverseRecordWithIndex"
-export { parTraverseTree, parTraverseTree_ } from "./parTraverseTree"
-export { parWiltArray, parWiltArray_ } from "./parWiltArray"
-export { parWiltRecord, parWiltRecord_ } from "./parWiltRecord"
-export { parWitherArray, parWitherArray_ } from "./parWitherArray"
-export { parWitherRecord, parWitherRecord_ } from "./parWitherRecord"
-export { sequenceArray } from "./sequenceArray"
-export { sequenceEither } from "./sequenceEither"
-export { sequenceOption } from "./sequenceOption"
-export { sequenceRecord } from "./sequenceRecord"
 export { sequenceS } from "./sequenceS"
 export { sequenceT } from "./sequenceT"
-export { sequenceTree } from "./sequenceTree"
-export { traverseArray, traverseArray_ } from "./traverseArray"
-export {
-  traverseArrayWithIndex,
-  traverseArrayWithIndex_
-} from "./traverseArrayWithIndex"
-export { traverseEither, traverseEither_ } from "./traverseEither"
-export { traverseOption, traverseOption_ } from "./traverseOption"
-export { traverseRecord, traverseRecord_ } from "./traverseRecord"
-export {
-  traverseRecordWithIndex,
-  traverseRecordWithIndex_
-} from "./traverseRecordWithIndex"
-export { traverseTree, traverseTree_ } from "./traverseTree"
-export { wiltArray, wiltArray_ } from "./wiltArray"
-export { wiltOption, wiltOption_ } from "./wiltOption"
-export { wiltRecord, wiltRecord_ } from "./wiltRecord"
-export { witherArray, witherArray_ } from "./witherArray"
-export { witherOption, witherOption_ } from "./witherOption"
-export { witherRecord, witherRecord_ } from "./witherRecord"
 export {
   Do,
   Fiber,

@@ -1,65 +1,43 @@
-import type { Separated } from "fp-ts/lib/Compactable"
-
 import {
-  traverse_ as a_traverse,
-  traverseWithIndex_ as a_traverseWithIndex,
-  wilt_ as a_wilt,
-  wither_ as a_wither
-} from "../Array"
-import {
-  Effect,
-  provide as provideEffect,
-  map_ as map_Effect,
-  chain_ as chain_Effect,
-  fork,
-  completed,
-  raised,
-  foldExit,
-  raceFold,
-  unit,
-  Fiber,
-  Provider,
-  raiseError,
-  Sync as SyncEffect,
-  AsyncRE as AsyncREEffect,
-  pure as pureEffect,
   accessM as accessMEffect,
+  AsyncRE as AsyncREEffect,
   bracket as bracketEffect,
   bracketExit as bracketExitEffect,
-  onComplete_ as onCompleteEffect,
+  chain_ as chain_Effect,
+  completed,
+  Effect,
   encaseEither as encaseEitherEffect,
-  encaseOption as encaseOptionEffect
+  encaseOption as encaseOptionEffect,
+  Fiber,
+  foldExit,
+  fork,
+  map_ as map_Effect,
+  onComplete_ as onCompleteEffect,
+  provide as provideEffect,
+  Provider,
+  pure as pureEffect,
+  raceFold,
+  raised,
+  raiseError,
+  Sync as SyncEffect,
+  unit
 } from "../Effect"
 import type { Either } from "../Either"
-import { traverse_ as e_traverse } from "../Either"
-import { Exit, withRemaining, done, raise } from "../Exit"
+import { done, Exit, raise, withRemaining } from "../Exit"
 import {
-  FunctionN,
-  unsafeCoerce,
-  tuple,
   constant,
+  FunctionN,
+  Predicate,
   Refinement,
-  Predicate
+  tuple,
+  unsafeCoerce
 } from "../Function"
 import type { Monoid } from "../Monoid"
 import type { Option } from "../Option"
-import {
-  traverse_ as o_traverse,
-  wilt_ as o_wilt,
-  wither_ as o_wither
-} from "../Option"
 import { pipe } from "../Pipe"
-import {
-  traverse_ as r_traverse_,
-  traverseWithIndex_ as r_traverseWithIndex_,
-  wilt_ as r_wilt,
-  wither_ as r_wither
-} from "../Record"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
-import type { Monad4E, MonadThrow4E, Monad4EP } from "../Support/Overloads"
-import type { Tree } from "../Tree"
-import { traverse_ as t_traverse } from "../Tree"
+import type { Monad4E, Monad4EP, MonadThrow4E } from "../Support/Overloads"
 
 /**
  * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
@@ -601,126 +579,6 @@ function provideAll<R>(r: R) {
   return <S, E, A>(ma: Managed<S, R, E, A>): Managed<S, unknown, E, A> =>
     toM<S, unknown, E, A>(() => fromM(ma)(r))
 }
-
-export const traverseOption: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Option<A>) => Managed<S, R, E, Option<B>> = (f) => (ta) =>
-  o_traverse(managed)(ta, f)
-
-export const wiltOption: <S, A, R, E, B, C>(
-  f: (a: A) => Managed<S, R, E, Either<B, C>>
-) => (wa: Option<A>) => Managed<S, R, E, Separated<Option<B>, Option<C>>> = (f) => (
-  wa
-) => o_wilt(managed)(wa, f)
-
-export const witherOption: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, Option<B>>
-) => (ta: Option<A>) => Managed<S, R, E, Option<B>> = (f) => (ta) =>
-  o_wither(managed)(ta, f)
-
-export const traverseEither: <S, A, R, FE, B>(
-  f: (a: A) => Managed<S, R, FE, B>
-) => <TE>(ta: Either<TE, A>) => Managed<S, R, FE, Either<TE, B>> = (f) => (ta) =>
-  e_traverse(managed)(ta, f)
-
-export const traverseTree: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Tree<A>) => Managed<S, R, E, Tree<B>> = (f) => (ta) =>
-  t_traverse(managed)(ta, f)
-
-export const parTraverseTree: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Tree<A>) => Managed<unknown, R, E, Tree<B>> = (f) => (ta) =>
-  t_traverse(parManaged)(ta, f)
-
-export const traverseArray: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) =>
-  a_traverse(managed)(ta, f)
-
-export const traverseArrayWithIndex: <S, A, R, E, B>(
-  f: (i: number, a: A) => Managed<S, R, E, B>
-) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) =>
-  a_traverseWithIndex(managed)(ta, f)
-
-export const wiltArray: <S, A, R, E, B, C>(
-  f: (a: A) => Managed<S, R, E, Either<B, C>>
-) => (wa: Array<A>) => Managed<S, R, E, Separated<Array<B>, Array<C>>> = (f) => (wa) =>
-  a_wilt(managed)(wa, f)
-
-export const witherArray: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, Option<B>>
-) => (ta: Array<A>) => Managed<S, R, E, Array<B>> = (f) => (ta) =>
-  a_wither(managed)(ta, f)
-
-export const parTraverseArray: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Array<A>) => Managed<unknown, R, E, Array<B>> = (f) => (ta) =>
-  a_traverse(parManaged)(ta, f)
-
-export const parTraverseArrayWithIndex: <S, A, R, E, B>(
-  f: (i: number, a: A) => Managed<S, R, E, B>
-) => (ta: Array<A>) => Managed<unknown, R, E, Array<B>> = (f) => (ta) =>
-  a_traverseWithIndex(parManaged)(ta, f)
-
-export const parWiltArray: <S, A, R, E, B, C>(
-  f: (a: A) => Managed<S, R, E, Either<B, C>>
-) => (wa: Array<A>) => Managed<unknown, R, E, Separated<Array<B>, Array<C>>> = (f) => (
-  wa
-) => a_wilt(parManaged)(wa, f)
-
-export const parWitherArray: <S, A, R, E, B>(
-  f: (a: A) => Managed<S, R, E, Option<B>>
-) => (ta: Array<A>) => Managed<unknown, R, E, Array<B>> = (f) => (ta) =>
-  a_wither(parManaged)(ta, f)
-
-export const traverseRecord: <A, S, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
-  r_traverse_(managed)(ta, f)
-
-export const traverseRecordWithIndex: <A, S, R, E, B>(
-  f: (k: string, a: A) => Managed<S, R, E, B>
-) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
-  r_traverseWithIndex_(managed)(ta, f)
-
-export const wiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => Managed<S, R, E, Either<B, C>>
-) => (
-  wa: Record<string, A>
-) => Managed<S, R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (wa) =>
-  r_wilt(managed)(wa, f)
-
-export const witherRecord: <A, S, R, E, B>(
-  f: (a: A) => Managed<S, R, E, Option<B>>
-) => (ta: Record<string, A>) => Managed<S, R, E, Record<string, B>> = (f) => (ta) =>
-  r_wither(managed)(ta, f)
-
-export const parTraverseRecord: <A, S, R, E, B>(
-  f: (a: A) => Managed<S, R, E, B>
-) => (ta: Record<string, A>) => Managed<unknown, R, E, Record<string, B>> = (f) => (
-  ta
-) => r_traverse_(parManaged)(ta, f)
-
-export const parTraverseRecordWithIndex: <A, S, R, E, B>(
-  f: (k: string, a: A) => Managed<S, R, E, B>
-) => (ta: Record<string, A>) => Managed<unknown, R, E, Record<string, B>> = (f) => (
-  ta
-) => r_traverseWithIndex_(parManaged)(ta, f)
-
-export const parWiltRecord: <A, S, R, E, B, C>(
-  f: (a: A) => Managed<S, R, E, Either<B, C>>
-) => (
-  wa: Record<string, A>
-) => Managed<unknown, R, E, Separated<Record<string, B>, Record<string, C>>> = (f) => (
-  wa
-) => r_wilt(parManaged)(wa, f)
-
-export const parWitherRecord: <A, S, R, E, B>(
-  f: (a: A) => Managed<S, R, E, Option<B>>
-) => (ta: Record<string, A>) => Managed<unknown, R, E, Record<string, B>> = (f) => (
-  ta
-) => r_wither(parManaged)(ta, f)
 
 export const ap: <S1, R, E, A, E2>(
   fa: Managed<S1, R, E, A>
