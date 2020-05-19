@@ -218,9 +218,15 @@ export function sign(n: number): Ordering {
   return n <= -1 ? -1 : n >= 1 ? 1 : 0
 }
 
-export const URI = "Ord"
+export const URI = "@matechs/core/Ord"
 
 export type URI = typeof URI
+
+declare module "../Base/HKT" {
+  interface URItoKind<A> {
+    [URI]: Ord<A>
+  }
+}
 
 export const ord: Contravariant1<URI> = {
   URI,

@@ -125,10 +125,10 @@ export function chainEitherK<E, A, B>(
     )
 }
 
-export const URI = StateURI
+export const URI = "@matechs/core/StateEither"
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind3<R, E, A> {
     [URI]: StateEither<R, E, A>
   }

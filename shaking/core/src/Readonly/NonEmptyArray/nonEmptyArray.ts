@@ -25,15 +25,15 @@ import type { Show } from "../../Show"
 import * as RA from "../Array"
 import type { ReadonlyRecord } from "../Record"
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind<A> {
-    readonly ReadonlyNonEmptyArray: ReadonlyNonEmptyArray<A>
-  }
-}
-
-export const URI = "ReadonlyNonEmptyArray"
+export const URI = "@matechs/core/Readonly/NonEmptyArray"
 
 export type URI = typeof URI
+
+declare module "../../Base/HKT" {
+  interface URItoKind<A> {
+    readonly [URI]: ReadonlyNonEmptyArray<A>
+  }
+}
 
 export type { ReadonlyNonEmptyArray }
 

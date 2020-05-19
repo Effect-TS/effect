@@ -715,13 +715,13 @@ export function updateAt<K>(
   }
 }
 
-export const URI = "ReadonlyMap"
+export const URI = "@matechs/core/Readonly/Map"
 
 export type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../../Base/HKT" {
   interface URItoKind2<E, A> {
-    readonly ReadonlyMap: ReadonlyMap<E, A>
+    readonly [URI]: ReadonlyMap<E, A>
   }
 }
 

@@ -1,6 +1,3 @@
-/**
- * @since 0.0.1
- */
 import * as fs from "fs"
 
 import * as A from "fp-ts/lib/Array"
@@ -19,6 +16,7 @@ const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
 const modules: string[] = [
   "Const",
   "Base",
+  "Base/HKT",
   "Apply",
   "Identity",
   "Exit",

@@ -23,15 +23,15 @@ import * as RNEA from "../Readonly/NonEmptyArray"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind<A> {
-    readonly NonEmptyArray: NonEmptyArray<A>
-  }
-}
-
-export const URI = "NonEmptyArray"
+export const URI = "@matechs/core/NonEmptyArray"
 
 export type URI = typeof URI
+
+declare module "../Base/HKT" {
+  interface URItoKind<A> {
+    readonly [URI]: NonEmptyArray<A>
+  }
+}
 
 export type { NonEmptyArray }
 

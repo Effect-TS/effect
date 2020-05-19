@@ -44,17 +44,17 @@ import { fold } from "./fold"
 import { left } from "./left"
 import { right } from "./right"
 
-declare module "fp-ts/lib/HKT" {
+export const URI = "@matechs/core/These"
+
+export type URI = typeof URI
+
+declare module "../Base/HKT" {
   interface URItoKind2<E, A> {
-    readonly These: These<E, A>
+    readonly [URI]: These<E, A>
   }
 }
 
 export type { These, Both }
-
-export const URI = "These"
-
-export type URI = typeof URI
 
 export function getShow<E, A>(SE: Show<E>, SA: Show<A>): Show<These<E, A>> {
   return {

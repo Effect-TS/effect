@@ -80,15 +80,15 @@ export const chainFirst = <A, B>(f: (a: A) => Option<B>) => (
   ma: Option<A>
 ): Option<A> => chain_(ma, (a) => map_(f(a), () => a))
 
-export const URI: "Option" = "Option"
-export type URI = "Option"
+export const URI = "@matechs/core/Option"
+export type URI = typeof URI
 
 export const defaultSeparate = { left: none, right: none }
 export const identity = <A>(a: A): A => a
 
-declare module "fp-ts/lib/HKT" {
+declare module "../Base/HKT" {
   interface URItoKind<A> {
-    readonly Option: Option<A>
+    readonly [URI]: Option<A>
   }
 }
 
@@ -792,7 +792,7 @@ export const option: Monad1<URI> &
   Filterable1<URI> &
   Witherable1<URI> &
   MonadThrow1<URI> = {
-  URI: "Option",
+  URI,
   map: map_,
   of: some,
   ap: ap_,
@@ -817,7 +817,7 @@ export const option: Monad1<URI> &
 }
 
 export const optionMonad: Monad1<URI> = {
-  URI: "Option",
+  URI,
   map: map_,
   of: some,
   ap: ap_,

@@ -43,15 +43,15 @@ import { Option, isNone, isSome, none, some as some_1 } from "../../Option/optio
 
 export type { ReadonlyRecord }
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind<A> {
-    readonly ReadonlyRecord: ReadonlyRecord<string, A>
-  }
-}
-
-export const URI = "ReadonlyRecord"
+export const URI = "@matechs/core/Readonly/Record"
 
 export type URI = typeof URI
+
+declare module "../../Base/HKT" {
+  interface URItoKind<A> {
+    readonly [URI]: ReadonlyRecord<string, A>
+  }
+}
 
 export function fromRecord<K extends string, A>(r: Record<K, A>): ReadonlyRecord<K, A> {
   return Object.assign({}, r)

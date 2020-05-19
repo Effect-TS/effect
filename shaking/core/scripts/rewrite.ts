@@ -1,6 +1,3 @@
-/**
- * @since 0.0.1
- */
 import * as fs from "fs"
 
 import chalk from "chalk"

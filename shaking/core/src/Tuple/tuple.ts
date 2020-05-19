@@ -18,15 +18,15 @@ import type {
 } from "../Base"
 import type { Either } from "../Either"
 
-declare module "fp-ts/lib/HKT" {
-  interface URItoKind2<E, A> {
-    readonly Tuple: [A, E]
-  }
-}
-
-export const URI = "Tuple"
+export const URI = "@matechs/core/Tuple"
 
 export type URI = typeof URI
+
+declare module "../Base/HKT" {
+  interface URItoKind2<E, A> {
+    readonly [URI]: [A, E]
+  }
+}
 
 export function fst<A, S>(sa: [A, S]): A {
   return sa[0]
