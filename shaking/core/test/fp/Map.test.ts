@@ -52,7 +52,7 @@ const repo = new Map<Key, Value>([
 
 describe("Map", () => {
   it("URI", () => {
-    assert.deepStrictEqual(M.URI, "Map")
+    assert.deepStrictEqual(M.URI, "@matechs/core/Map")
   })
 
   it("size", () => {
