@@ -4,21 +4,17 @@
  * Data structure which represents non-empty arrays
  */
 import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
-import type { ReadonlyNonEmptyArray } from "fp-ts/lib/ReadonlyNonEmptyArray"
 
 import type {
-  Alt1,
-  Monad1,
-  Comonad1,
-  TraversableWithIndex1,
-  FunctorWithIndex1,
-  FoldableWithIndex1,
-  Monoid,
-  Traverse1,
-  Sequence1,
-  TraverseWithIndex1,
-  TraverseCurried1,
-  TraverseWithIndexCurried1
+  CTraverse1,
+  CSequence1,
+  CTraverseWithIndex1,
+  CMonad1,
+  CComonad1,
+  CTraversableWithIndex1,
+  CFunctorWithIndex1,
+  CFoldableWithIndex1,
+  CAlt1
 } from "../../Base"
 import type { Eq } from "../../Eq"
 import type { Predicate, Refinement } from "../../Function"
@@ -33,13 +29,15 @@ export const URI = "@matechs/core/Readonly/NonEmptyArray"
 
 export type URI = typeof URI
 
+export type ReadonlyNonEmptyArray<A> = ReadonlyArray<A> & {
+  readonly 0: A
+}
+
 declare module "../../Base/HKT" {
   interface URItoKind<A> {
     readonly [URI]: ReadonlyNonEmptyArray<A>
   }
 }
-
-export type { ReadonlyNonEmptyArray }
 
 /**
  * Append an element to the front of an array, creating a new non empty array
@@ -311,111 +309,19 @@ export const unzip: <A, B>(
   as: ReadonlyNonEmptyArray<readonly [A, B]>
 ) => readonly [ReadonlyNonEmptyArray<A>, ReadonlyNonEmptyArray<B>] = RA.unzip as any
 
-export const map_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  f: (a: A) => B
-) => ReadonlyNonEmptyArray<B> = RA.map_ as any
+export const traverse: CTraverse1<URI> = RA.traverse as any
 
-export const mapWithIndex_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  f: (i: number, a: A) => B
-) => ReadonlyNonEmptyArray<B> = RA.mapWithIndex_ as any
+export const sequence: CSequence1<URI> = RA.sequence as any
 
-export const ap_: <A, B>(
-  fab: ReadonlyNonEmptyArray<(a: A) => B>,
-  fa: ReadonlyNonEmptyArray<A>
-) => ReadonlyNonEmptyArray<B> = RA.ap_ as any
-
-export const chain_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  f: (a: A) => ReadonlyNonEmptyArray<B>
-) => ReadonlyNonEmptyArray<B> = RA.chain_ as any
-
-export const extend_: <A, B>(
-  wa: ReadonlyNonEmptyArray<A>,
-  f: (wa: ReadonlyNonEmptyArray<A>) => B
-) => ReadonlyNonEmptyArray<B> = RA.extend_ as any
-
-export const reduce_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  b: B,
-  f: (b: B, a: A) => B
-) => B = RA.reduce_ as any
-
-export const foldMap_: <M>(
-  M: Monoid<M>
-) => <A>(fa: ReadonlyNonEmptyArray<A>, f: (a: A) => M) => M = RA.foldMap_ as any
-
-export const reduceRight_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  b: B,
-  f: (a: A, b: B) => B
-) => B = RA.reduceRight_ as any
-
-export const traverse_: Traverse1<URI> = RA.traverse_ as any
-export const traverse: TraverseCurried1<URI> = RA.traverse as any
-
-export const sequence: Sequence1<URI> = RA.sequence as any
-
-export const reduceWithIndex_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  b: B,
-  f: (i: number, b: B, a: A) => B
-) => B = RA.reduceWithIndex_ as any
-
-export const foldMapWithIndex_: <M>(
-  M: Monoid<M>
-) => <A>(
-  fa: ReadonlyNonEmptyArray<A>,
-  f: (i: number, a: A) => M
-) => M = RA.foldMapWithIndex_ as any
-
-export const reduceRightWithIndex_: <A, B>(
-  fa: ReadonlyNonEmptyArray<A>,
-  b: B,
-  f: (i: number, a: A, b: B) => B
-) => B = RA.reduceRightWithIndex_ as any
-
-export const traverseWithIndex_: TraverseWithIndex1<
-  URI,
-  number
-> = RA.traverseWithIndex_ as any
-
-export const traverseWithIndex: TraverseWithIndexCurried1<
+export const traverseWithIndex: CTraverseWithIndex1<
   URI,
   number
 > = RA.traverseWithIndex as any
 
-export const alt_: <A>(
-  fx: ReadonlyNonEmptyArray<A>,
+export const alt: <A>(
   fy: () => ReadonlyNonEmptyArray<A>
-) => ReadonlyNonEmptyArray<A> = (fx, fy) => concat(fx, fy())
-
-export const readonlyNonEmptyArray: Monad1<URI> &
-  Comonad1<URI> &
-  TraversableWithIndex1<URI, number> &
-  FunctorWithIndex1<URI, number> &
-  FoldableWithIndex1<URI, number> &
-  Alt1<URI> = {
-  URI,
-  map: map_,
-  mapWithIndex: mapWithIndex_,
-  of,
-  ap: ap_,
-  chain: chain_,
-  extend: extend_,
-  extract: head,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
-  sequence,
-  reduceWithIndex: reduceWithIndex_,
-  foldMapWithIndex: foldMapWithIndex_,
-  reduceRightWithIndex: reduceRightWithIndex_,
-  traverseWithIndex: traverseWithIndex_,
-  alt: alt_
-}
+) => (fx: ReadonlyNonEmptyArray<A>) => ReadonlyNonEmptyArray<A> = (fy) => (fx) =>
+  concat(fx, fy())
 
 export const ap: <A>(
   fa: ReadonlyNonEmptyArray<A>
@@ -487,3 +393,30 @@ export const foldMapWithIndex = <S>(S: Semigroup<S>) => <A>(
 export const foldMap = <S>(S: Semigroup<S>) => <A>(f: (a: A) => S) => (
   fa: ReadonlyNonEmptyArray<A>
 ) => fa.slice(1).reduce((s, a) => S.concat(s, f(a)), f(fa[0]))
+
+export const readonlyNonEmptyArray: CMonad1<URI> &
+  CComonad1<URI> &
+  CTraversableWithIndex1<URI, number> &
+  CFunctorWithIndex1<URI, number> &
+  CFoldableWithIndex1<URI, number> &
+  CAlt1<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  mapWithIndex,
+  of,
+  ap,
+  chain,
+  extend,
+  extract: head,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
+  sequence,
+  reduceWithIndex,
+  foldMapWithIndex,
+  reduceRightWithIndex,
+  traverseWithIndex,
+  alt
+}

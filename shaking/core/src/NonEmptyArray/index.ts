@@ -6,18 +6,15 @@
 import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
 
 import type {
-  Alt1,
-  Comonad1,
-  FoldableWithIndex1,
-  FunctorWithIndex1,
-  Monad1,
-  TraversableWithIndex1,
-  Monoid,
-  Traverse1,
-  Sequence1,
-  TraverseWithIndex1,
-  TraverseCurried1,
-  TraverseWithIndexCurried1
+  CTraverse1,
+  CSequence1,
+  CTraverseWithIndex1,
+  CMonad1,
+  CComonad1,
+  CTraversableWithIndex1,
+  CFunctorWithIndex1,
+  CFoldableWithIndex1,
+  CAlt1
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -232,108 +229,14 @@ export const unzip: <A, B>(
   as: NonEmptyArray<[A, B]>
 ) => [NonEmptyArray<A>, NonEmptyArray<B>] = RNEA.unzip as any
 
-export const map_: <A, B>(
-  fa: NonEmptyArray<A>,
-  f: (a: A) => B
-) => NonEmptyArray<B> = RNEA.map_ as any
+export const traverse: CTraverse1<URI> = RNEA.traverse as any
 
-export const foldMapWithIndex_: <M>(
-  M: Monoid<M>
-) => <A>(fa: NonEmptyArray<A>, f: (i: number, a: A) => M) => M = RNEA.foldMapWithIndex_
+export const sequence: CSequence1<URI> = RNEA.sequence as any
 
-export const mapWithIndex_: <A, B>(
-  fa: NonEmptyArray<A>,
-  f: (i: number, a: A) => B
-) => NonEmptyArray<B> = RNEA.mapWithIndex_ as any
-
-export const ap_: <A, B>(
-  fab: NonEmptyArray<(a: A) => B>,
-  fa: NonEmptyArray<A>
-) => NonEmptyArray<B> = RNEA.ap_ as any
-
-export const chain_: <A, B>(
-  fa: NonEmptyArray<A>,
-  f: (a: A) => NonEmptyArray<B>
-) => NonEmptyArray<B> = RNEA.chain_ as any
-
-export const extend_: <A, B>(
-  wa: NonEmptyArray<A>,
-  f: (wa: NonEmptyArray<A>) => B
-) => NonEmptyArray<B> = RNEA.extend_ as any
-
-export const reduce_: <A, B>(
-  fa: NonEmptyArray<A>,
-  b: B,
-  f: (b: B, a: A) => B
-) => B = RNEA.reduce_ as any
-
-export const foldMap_: <M>(
-  M: Monoid<M>
-) => <A>(fa: NonEmptyArray<A>, f: (a: A) => M) => M = RNEA.foldMap_ as any
-
-export const reduceRight_: <A, B>(
-  fa: NonEmptyArray<A>,
-  b: B,
-  f: (a: A, b: B) => B
-) => B = RNEA.reduceRight_ as any
-
-export const traverse_: Traverse1<URI> = RNEA.traverse_ as any
-export const traverse: TraverseCurried1<URI> = RNEA.traverse as any
-
-export const sequence: Sequence1<URI> = RNEA.sequence as any
-
-export const reduceWithIndex_: <A, B>(
-  fa: NonEmptyArray<A>,
-  b: B,
-  f: (i: number, b: B, a: A) => B
-) => B = RNEA.reduceWithIndex_ as any
-
-export const reduceRightWithIndex_: <A, B>(
-  fa: NonEmptyArray<A>,
-  b: B,
-  f: (i: number, a: A, b: B) => B
-) => B = RNEA.reduceRightWithIndex_ as any
-
-export const traverseWithIndex_: TraverseWithIndex1<
-  URI,
-  number
-> = RNEA.traverseWithIndex_ as any
-
-export const traverseWithIndex: TraverseWithIndexCurried1<
+export const traverseWithIndex: CTraverseWithIndex1<
   URI,
   number
 > = RNEA.traverseWithIndex as any
-
-export const alt_: <A>(
-  fx: NonEmptyArray<A>,
-  fy: () => NonEmptyArray<A>
-) => NonEmptyArray<A> = RNEA.alt_ as any
-
-export const nonEmptyArray: Monad1<URI> &
-  Comonad1<URI> &
-  TraversableWithIndex1<URI, number> &
-  FunctorWithIndex1<URI, number> &
-  FoldableWithIndex1<URI, number> &
-  Alt1<URI> = {
-  URI,
-  map: map_,
-  mapWithIndex: mapWithIndex_,
-  of,
-  ap: ap_,
-  chain: chain_,
-  extend: extend_,
-  extract: head,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
-  sequence,
-  reduceWithIndex: reduceWithIndex_,
-  foldMapWithIndex: foldMapWithIndex_,
-  reduceRightWithIndex: reduceRightWithIndex_,
-  traverseWithIndex: traverseWithIndex_,
-  alt: alt_
-}
 
 export const ap: <A>(
   fa: NonEmptyArray<A>
@@ -403,3 +306,34 @@ export const foldMapWithIndex: <S>(
 export const foldMap: <S>(
   S: Semigroup<S>
 ) => <A>(f: (a: A) => S) => (fa: NonEmptyArray<A>) => S = RNEA.foldMap
+
+export const alt: <A>(
+  fy: () => NonEmptyArray<A>
+) => (fx: NonEmptyArray<A>) => NonEmptyArray<A> = (fy) => (fx) => concat(fx, fy())
+
+export const nonEmptyArray: CMonad1<URI> &
+  CComonad1<URI> &
+  CTraversableWithIndex1<URI, number> &
+  CFunctorWithIndex1<URI, number> &
+  CFoldableWithIndex1<URI, number> &
+  CAlt1<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  mapWithIndex,
+  of,
+  ap,
+  chain,
+  extend,
+  extract: head,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
+  sequence,
+  reduceWithIndex,
+  foldMapWithIndex,
+  reduceRightWithIndex,
+  traverseWithIndex,
+  alt
+}

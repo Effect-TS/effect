@@ -1,9 +1,8 @@
 import * as assert from "assert"
 
-import { function as F } from "fp-ts"
-import { limitRetries } from "retry-ts"
-
+import { function as F } from "../src"
 import { effect as T, retry as R, exit as E } from "../src"
+import { limitRetries } from "../src/Retry"
 
 describe("Retry", () => {
   it("should retry", async () => {

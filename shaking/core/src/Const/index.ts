@@ -10,15 +10,15 @@
 import type { Const } from "fp-ts/lib/Const"
 
 import type {
-  Applicative2C,
-  Apply2C,
   BooleanAlgebra,
   HeytingAlgebra,
   Ring,
   Semiring,
-  Functor2,
-  Contravariant2,
-  Bifunctor2
+  CApplicative2C,
+  CApply2C,
+  CFunctor2,
+  CContravariant2,
+  CBifunctor2
 } from "../Base"
 import type { Eq } from "../Eq"
 import { identity, unsafeCoerce } from "../Function"
@@ -49,19 +49,20 @@ export const contramap: <A, B>(
   f: (b: B) => A
 ) => <E>(fa: Const<E, A>) => Const<E, B> = (f) => (fa) => contramap_(fa, f)
 
-export function getApplicative<E>(M: Monoid<E>): Applicative2C<URI, E> {
+export function getApplicative<E>(M: Monoid<E>): CApplicative2C<URI, E> {
   return {
     ...getApply(M),
     of: () => make(M.empty)
   }
 }
 
-export function getApply<E>(S: Semigroup<E>): Apply2C<URI, E> {
+export function getApply<E>(S: Semigroup<E>): CApply2C<URI, E> {
   return {
     URI,
+    _F: "curried",
     _E: undefined as any,
-    map: const_.map,
-    ap: (fab, fa) => make(S.concat(fab, fa))
+    map,
+    ap: (fa) => (fab) => make(S.concat(fab, fa))
   }
 }
 
@@ -127,12 +128,13 @@ declare module "../Base/HKT" {
   }
 }
 
-export const const_: Functor2<URI> & Contravariant2<URI> & Bifunctor2<URI> = {
+export const const_: CFunctor2<URI> & CContravariant2<URI> & CBifunctor2<URI> = {
   URI,
-  map: map_,
-  contramap: contramap_,
-  bimap: bimap_,
-  mapLeft: mapLeft_
+  _F: "curried",
+  map,
+  contramap,
+  bimap,
+  mapLeft
 }
 
 export { const_ as const }

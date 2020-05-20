@@ -1,2 +1,3 @@
 build/
 scripts/merge.ts
+scripts/genp.ts

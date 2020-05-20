@@ -3,7 +3,16 @@ import type { TaskEither } from "fp-ts/lib/TaskEither"
 
 import { sequenceS as SS, sequenceT as ST } from "../Apply"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
-import type { Monoid, Semigroup } from "../Base"
+import type {
+  Monoid,
+  Semigroup,
+  CMonad4MA,
+  CMonad4MAC,
+  CAlt4MAC,
+  CMonad4MAPC,
+  CMonad4MAP
+} from "../Base"
+import type { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
 import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
@@ -59,19 +68,6 @@ import type {
 } from "../Support/Common/effect"
 import { Driver, DriverImpl, DriverSyncImpl } from "../Support/Driver"
 import { ForM } from "../Support/For"
-import {
-  Alt4EC,
-  ATypeOf,
-  ETypeOf,
-  Monad4E,
-  Monad4EC,
-  Monad4ECP,
-  Monad4EP,
-  MonadThrow4EC,
-  MonadThrow4ECP,
-  RTypeOf,
-  STypeOf
-} from "../Support/Overloads"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 export {
@@ -150,9 +146,9 @@ export function ap__<S, R, E, A, S2, R2, E2, B>(
   return zipWith_(ioa, iof, (a, f) => f(a))
 }
 
-export const ap: <S1, R, E, A, E2>(
+export const ap: <S1, R, E, A>(
   fa: Effect<S1, R, E, A>
-) => <S2, R2, B>(
+) => <S2, R2, E2, B>(
   fab: Effect<S2, R2, E2, (a: A) => B>
 ) => Effect<S1 | S2, R & R2, E | E2, B> = (fa) => (fab) => ap_(fab, fa)
 
@@ -551,16 +547,6 @@ export function delay<S, R, E, A>(
   return applySecond(after(ms), inner)
 }
 
-export const Do = () => DoG(effect)
-
-export const effect: Monad4E<URI> = {
-  URI,
-  map: map_,
-  of: pure,
-  ap: ap_,
-  chain: chain_
-}
-
 export function effectify<L, R>(
   f: (cb: (e: L | null | undefined, r?: R) => void) => void
 ): () => AsyncE<L, R>
@@ -702,8 +688,6 @@ export function foldExit<S1, E1, RF, E2, A1, S2, E3, A2, RS>(
   return (io) => foldExit_(io, failure, success)
 }
 
-export const For = () => ForM(effect)
-
 /**
  * Execute the provided IO forever (or until it errors)
  * @param io
@@ -785,17 +769,19 @@ export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
 
 export function getCauseValidationM<E>(
   S: Semigroup<Cause<E>>
-): Monad4EC<URI, E> & MonadThrow4EC<URI, E> & Alt4EC<URI, E> {
+): CMonad4MAC<URI, E> & CAlt4MAC<URI, E> {
   return {
     URI,
+    _F: "curried",
     _E: undefined as any,
     of: pure,
-    map: map_,
-    chain: chain_,
-    ap: <S1, S2, R, R2, A, B>(
-      fab: Effect<S1, R, E, (a: A) => B>,
+    map,
+    chain,
+    ap: <S2, R2, A>(
       fa: Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, B> =>
+    ): (<S1, R, B>(
+      fab: Effect<S1, R, E, (a: A) => B>
+    ) => Effect<S1 | S2, R & R2, E, B>) => (fab) =>
       foldExit_(
         fab,
         (fabe) =>
@@ -806,11 +792,11 @@ export function getCauseValidationM<E>(
           ),
         (f) => map_(fa, f)
       ),
-    throwError: raiseError,
-    alt: <S1, S2, R, R2, A>(
-      fa: Effect<S1, R, E, A>,
+    alt: <S2, R2, A>(
       fb: () => Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, A> =>
+    ): (<S1, R, B>(fa: Effect<S1, R, E, B>) => Effect<S1 | S2, R & R2, E, A | B>) => (
+      fa
+    ) =>
       foldExit_(
         fa,
         (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure),
@@ -828,18 +814,20 @@ export function getMonoid<S, R, E, A>(m: Monoid<A>): Monoid<Effect<S, R, E, A>> 
 
 export function getParCauseValidationM<E>(
   S: Semigroup<Cause<E>>
-): Monad4ECP<URI, E> & MonadThrow4ECP<URI, E> & Alt4EC<URI, E> {
+): CMonad4MAPC<URI, E> & CAlt4MAC<URI, E> {
   return {
     URI,
     _E: undefined as any,
+    _F: "curried",
     _CTX: "async",
     of: pure,
-    map: map_,
-    chain: chain_,
-    ap: <S1, S2, R, R2, A, B>(
-      fab: Effect<S1, R, E, (a: A) => B>,
+    map,
+    chain,
+    ap: <S2, R2, A>(
       fa: Effect<S2, R2, E, A>
-    ): Effect<unknown, R & R2, E, B> =>
+    ): (<S1, R, B>(
+      fab: Effect<S1, R, E, (a: A) => B>
+    ) => Effect<unknown, R & R2, E, B>) => (fab) =>
       chain_(parZip(result(fa), result(fab)), ([faEx, fabEx]) =>
         fabEx._tag === "Done"
           ? faEx._tag === "Done"
@@ -849,11 +837,11 @@ export function getParCauseValidationM<E>(
           ? raised(fabEx)
           : raised(S.concat(fabEx, faEx))
       ),
-    throwError: raiseError,
-    alt: <S1, S2, R, R2, A>(
-      fa: Effect<S1, R, E, A>,
+    alt: <S2, R2, A>(
       fb: () => Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, A> =>
+    ): (<S1, R, A2>(
+      fa: Effect<S1, R, E, A2>
+    ) => Effect<S1 | S2, R & R2, E, A | A2>) => (fa) =>
       foldExit_(
         fa,
         (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure),
@@ -1254,11 +1242,12 @@ export function parAp_<S, S2, R, R2, E, E2, A, B>(
  * @param ioa
  * @param iof
  */
-export function parAp<S, S2, R, R2, E, E2, A, B>(
-  ioa: Effect<S, R, E, A>,
+export function parAp<S, R, E, A>(
+  ioa: Effect<S, R, E, A>
+): <S2, R2, E2, B>(
   iof: Effect<S2, R2, E2, FunctionN<[A], B>>
-): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(ioa, iof, (a, f) => f(a))
+) => AsyncRE<R & R2, E | E2, B> {
+  return (iof) => parZipWith(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1287,13 +1276,14 @@ export function parApplySecond<S, S2, R, R2, E, E2, A, B>(
 
 export const parDo = () => DoG(parEffect)
 
-export const parEffect: Monad4EP<URI> = {
+export const parEffect: CMonad4MAP<URI> = {
   URI,
   _CTX: "async",
+  _F: "curried",
   of: pure,
-  map: map_,
-  ap: parAp_,
-  chain: chain_
+  map,
+  ap: parAp,
+  chain
 }
 
 /**
@@ -1314,11 +1304,12 @@ export function parFastAp_<S, S2, R, R2, E, E2, A, B>(
  * @param ioa
  * @param iof
  */
-export function parFastAp<S, S2, R, R2, E, E2, A, B>(
-  ioa: Effect<S, R, E, A>,
+export function parFastAp<S, R, E, A>(
+  ioa: Effect<S, R, E, A>
+): <S2, R2, E2, B>(
   iof: Effect<S2, R2, E2, FunctionN<[A], B>>
-): AsyncRE<R & R2, E | E2, B> {
-  return parFastZipWith(ioa, iof, (a, f) => f(a))
+) => AsyncRE<R & R2, E | E2, B> {
+  return (iof) => parFastZipWith(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1350,13 +1341,14 @@ export function parFastApplySecond<S, S2, R, R2, E, E2, A, B>(
 export const parFastDo = () => DoG(parFastEffect)
 
 /* Note that this instance is not respecting the classical apply law */
-export const parFastEffect: Monad4EP<URI> = {
+export const parFastEffect: CMonad4MAP<URI> = {
   URI,
   _CTX: "async",
+  _F: "curried",
   of: pure,
-  map: map_,
-  ap: parFastAp_,
-  chain: chain_
+  map,
+  ap: parFastAp,
+  chain
 }
 
 export const parFastFor = () => ForM(parFastEffect)
@@ -2025,6 +2017,19 @@ export function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
 ): Effect<S | S2, R & R2, E | E2, C> {
   return chain_(first, (a) => map_(second, (b) => f(a, b)))
 }
+
+export const Do = () => DoG(effect)
+
+export const effect: CMonad4MA<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  of: pure,
+  ap,
+  chain
+}
+
+export const For = () => ForM(effect)
 
 /**
  * Used to merge types of the form Effect<S, R, E, A> | Effect<S2, R2, E2, A2> into Effect<S | S2, R & R2, E | E2, A | A2>

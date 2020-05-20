@@ -1,23 +1,23 @@
 import type {
   Semigroup,
-  Apply2C,
   Monoid,
-  Applicative2C,
-  Chain2C,
-  Monad2C,
-  ChainRec2C,
-  Traverse2,
-  Applicative,
   HKT,
-  Sequence2,
-  Semigroupoid2,
-  Bifunctor2,
-  Comonad2,
-  Foldable2,
-  Traversable2,
-  TraverseCurried2
+  CApply2C,
+  CApplicative2C,
+  CChain2C,
+  CMonad2C,
+  CChainRec2C,
+  CTraverse2,
+  CApplicative,
+  CSequence2,
+  CSemigroupoid2,
+  CBifunctor2,
+  CComonad2,
+  CFoldable2,
+  CTraversable2
 } from "../Base"
 import type { Either } from "../Either"
+import { pipe } from "../Pipe"
 
 export const URI = "@matechs/core/Tuple"
 
@@ -41,12 +41,13 @@ export function swap<A, S>(sa: [A, S]): [S, A] {
   return [snd(sa), fst(sa)]
 }
 
-export function getApply<S>(S: Semigroup<S>): Apply2C<URI, S> {
+export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {
   return {
     URI,
+    _F: "curried",
     _E: undefined as any,
-    map: tuple.map,
-    ap: (fab, fa) => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
+    map,
+    ap: (fa) => (fab) => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
   }
 }
 
@@ -54,31 +55,31 @@ export const of = <S>(M: Monoid<S>) => <A>(a: A): [A, S] => {
   return [a, M.empty]
 }
 
-export function getApplicative<S>(M: Monoid<S>): Applicative2C<URI, S> {
+export function getApplicative<S>(M: Monoid<S>): CApplicative2C<URI, S> {
   return {
     ...getApply(M),
     of: of(M)
   }
 }
 
-export function getChain<S>(S: Semigroup<S>): Chain2C<URI, S> {
+export function getChain<S>(S: Semigroup<S>): CChain2C<URI, S> {
   return {
     ...getApply(S),
-    chain: (fa, f) => {
+    chain: (f) => (fa) => {
       const [b, s] = f(fst(fa))
       return [b, S.concat(snd(fa), s)]
     }
   }
 }
 
-export function getMonad<S>(M: Monoid<S>): Monad2C<URI, S> {
+export function getMonad<S>(M: Monoid<S>): CMonad2C<URI, S> {
   return {
     ...getChain(M),
     of: of(M)
   }
 }
 
-export function getChainRec<S>(M: Monoid<S>): ChainRec2C<URI, S> {
+export function getChainRec<S>(M: Monoid<S>): CChainRec2C<URI, S> {
   const chainRec = <A, B>(a: A, f: (a: A) => [Either<A, B>, S]): [B, S] => {
     let result: [Either<A, B>, S] = f(a)
     let acc: S = M.empty
@@ -139,42 +140,25 @@ export const reduceRight_: <E, A, B>(fa: [A, E], b: B, f: (a: A, b: B) => B) => 
   f
 ) => f(fst(ae), b)
 
-export const traverse_: Traverse2<URI> = <F>(F: Applicative<F>) => <A, S, B>(
-  as: [A, S],
-  f: (a: A) => HKT<F, B>
-): HKT<F, [B, S]> => {
-  return F.map(f(fst(as)), (b) => [b, snd(as)])
-}
-
-export const traverse: TraverseCurried2<URI> = <F>(F: Applicative<F>) => <A, B>(
+export const traverse: CTraverse2<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
 ): (<S>(as: [A, S]) => HKT<F, [B, S]>) => {
-  return (as) => F.map(f(fst(as)), (b) => [b, snd(as)])
+  return (as) =>
+    pipe(
+      as,
+      fst,
+      f,
+      F.map((b) => [b, snd(as)])
+    )
 }
 
-export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <A, S>(
+export const sequence: CSequence2<URI> = <F>(F: CApplicative<F>) => <A, S>(
   fas: [HKT<F, A>, S]
 ): HKT<F, [A, S]> => {
-  return F.map(fst(fas), (a) => [a, snd(fas)])
-}
-
-export const tuple: Semigroupoid2<URI> &
-  Bifunctor2<URI> &
-  Comonad2<URI> &
-  Foldable2<URI> &
-  Traversable2<URI> = {
-  URI,
-  compose: compose_,
-  map: map_,
-  bimap: bimap_,
-  mapLeft: mapLeft_,
-  extract: fst,
-  extend: extend_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
-  sequence
+  return pipe(
+    fst(fas),
+    F.map((a) => [a, snd(fas)])
+  )
 }
 
 export const bimap: <E, G, A, B>(
@@ -213,3 +197,23 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => <E>(fa: [A, E]) 
   b,
   f
 ) => (fa) => reduceRight_(fa, b, f)
+
+export const tuple: CSemigroupoid2<URI> &
+  CBifunctor2<URI> &
+  CComonad2<URI> &
+  CFoldable2<URI> &
+  CTraversable2<URI> = {
+  URI,
+  _F: "curried",
+  compose,
+  map,
+  bimap,
+  mapLeft,
+  extract: fst,
+  extend,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
+  sequence
+}

@@ -1,8 +1,9 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import type { Bounded } from "fp-ts/lib/Bounded"
 import type { Ordering } from "fp-ts/lib/Ordering"
 
-import type { Bounded, Contravariant1 } from "../Base"
+import type { CContravariant1 } from "../Base"
 import { strictEqual } from "../Eq"
 import type { Eq } from "../Eq"
 import type { Monoid } from "../Monoid"
@@ -43,7 +44,7 @@ export const contramap: <A, B>(f: (b: B) => A) => (fa: Ord<A>) => Ord<B> = (f) =
   fa
 ) => contramap_(fa, f)
 
-export const contramap_: <A, B>(fa: Ord<A>, f: (b: B) => A) => Ord<B> = (fa, f) =>
+const contramap_: <A, B>(fa: Ord<A>, f: (b: B) => A) => Ord<B> = (fa, f) =>
   fromCompare((x, y) => fa.compare(f(x), f(y)))
 
 export function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A> {
@@ -160,12 +161,12 @@ declare module "../Base/HKT" {
   }
 }
 
-export const ord: Contravariant1<URI> =
+export const ord: CContravariant1<URI> =
   /*#__PURE__*/
   (() =>
     ({
       URI,
-      contramap: contramap_
+      contramap
     } as const))()
 
 export const ordBoolean: Ord<boolean> =

@@ -1,24 +1,23 @@
 import type { Both, These } from "fp-ts/lib/These"
 
 import type {
-  Applicative,
-  Bifunctor2,
-  Foldable2,
-  Functor2,
   HKT,
-  Monad2C,
-  MonadThrow2C,
   Monoid,
   Semigroup,
-  Sequence2,
   Show,
-  Traversable2,
-  Traverse2,
-  TraverseCurried2
+  CMonad2C,
+  CTraverse2,
+  CApplicative,
+  CSequence2,
+  CFunctor2,
+  CBifunctor2,
+  CFoldable2,
+  CTraversable2
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
 import * as O from "../Option"
+import { pipe } from "../Pipe"
 
 export function both<E, A>(left: E, right: A): These<E, A> {
   return { _tag: "Both", left, right }
@@ -111,30 +110,34 @@ export function getSemigroup<E, A>(
   }
 }
 
-export function getMonad<E>(S: Semigroup<E>): Monad2C<URI, E> & MonadThrow2C<URI, E> {
-  const chain = <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>): These<E, B> => {
-    if (isLeft(ma)) {
-      return ma
+export function getMonad<E>(S: Semigroup<E>): CMonad2C<URI, E> {
+  const chain = <A, B>(
+    f: (a: A) => These<E, B>
+  ): ((ma: These<E, A>) => These<E, B>) => {
+    return (ma) => {
+      if (isLeft(ma)) {
+        return ma
+      }
+      if (isRight(ma)) {
+        return f(ma.right)
+      }
+      const fb = f(ma.right)
+      return isLeft(fb)
+        ? left(S.concat(ma.left, fb.left))
+        : isRight(fb)
+        ? both(ma.left, fb.right)
+        : both(S.concat(ma.left, fb.left), fb.right)
     }
-    if (isRight(ma)) {
-      return f(ma.right)
-    }
-    const fb = f(ma.right)
-    return isLeft(fb)
-      ? left(S.concat(ma.left, fb.left))
-      : isRight(fb)
-      ? both(ma.left, fb.right)
-      : both(S.concat(ma.left, fb.left), fb.right)
   }
 
   return {
     URI,
+    _F: "curried",
     _E: undefined as any,
-    map: these.map,
+    map,
     of: right,
-    ap: (mab, ma) => chain(mab, (f) => these.map(ma, f)),
-    chain,
-    throwError: left
+    ap: (ma) => chain((f) => map(f)(ma)),
+    chain
   }
 }
 
@@ -322,51 +325,31 @@ export const reduceRight_: <E, A, B>(
   f: (a: A, b: B) => B
 ) => B = (fa, b, f) => (isLeft(fa) ? b : isRight(fa) ? f(fa.right, b) : f(fa.right, b))
 
-export const traverse_: Traverse2<URI> = <F>(F: Applicative<F>) => <E, A, B>(
-  ta: These<E, A>,
-  f: (a: A) => HKT<F, B>
-): HKT<F, These<E, B>> => {
-  return isLeft(ta)
-    ? F.of(ta)
-    : isRight(ta)
-    ? F.map(f(ta.right), right)
-    : F.map(f(ta.right), (b) => both(ta.left, b))
-}
-
-export const traverse: TraverseCurried2<URI> = <F>(F: Applicative<F>) => <A, B>(
+export const traverse: CTraverse2<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
 ): (<E>(ta: These<E, A>) => HKT<F, These<E, B>>) => {
   return (ta) =>
     isLeft(ta)
       ? F.of(ta)
       : isRight(ta)
-      ? F.map(f(ta.right), right)
-      : F.map(f(ta.right), (b) => both(ta.left, b))
+      ? pipe(f(ta.right), F.map(right))
+      : pipe(
+          f(ta.right),
+          F.map((b) => both(ta.left, b))
+        )
 }
 
-export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <E, A>(
+export const sequence: CSequence2<URI> = <F>(F: CApplicative<F>) => <E, A>(
   ta: These<E, HKT<F, A>>
 ): HKT<F, These<E, A>> => {
   return isLeft(ta)
     ? F.of(ta)
     : isRight(ta)
-    ? F.map(ta.right, right)
-    : F.map(ta.right, (b) => both(ta.left, b))
-}
-
-export const these: Functor2<URI> &
-  Bifunctor2<URI> &
-  Foldable2<URI> &
-  Traversable2<URI> = {
-  URI,
-  map: map_,
-  bimap: bimap_,
-  mapLeft: mapLeft_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
-  sequence
+    ? pipe(ta.right, F.map(right))
+    : pipe(
+        ta.right,
+        F.map((b) => both(ta.left, b))
+      )
 }
 
 export const bimap: <E, G, A, B>(
@@ -396,3 +379,19 @@ export const reduceRight: <A, B>(
   b: B,
   f: (a: A, b: B) => B
 ) => <E>(fa: These<E, A>) => B = (b, f) => (fa) => reduceRight_(fa, b, f)
+
+export const these: CFunctor2<URI> &
+  CBifunctor2<URI> &
+  CFoldable2<URI> &
+  CTraversable2<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  bimap,
+  mapLeft,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
+  sequence
+}

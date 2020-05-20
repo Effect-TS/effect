@@ -1,7 +1,6 @@
-import { right, left } from "fp-ts/lib/Either"
-
-import { effect as T } from "../src"
 import * as A from "../src/Array"
+import * as T from "../src/Effect"
+import { right, left } from "../src/Either"
 import { raise, interruptWithError, done } from "../src/Exit"
 
 describe("ParFast", () => {

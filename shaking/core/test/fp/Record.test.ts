@@ -7,6 +7,7 @@ import { identity } from "../../src/Function"
 import * as I from "../../src/Identity"
 import { monoidString } from "../../src/Monoid"
 import { getOrElse, isSome, none, option, Option, some } from "../../src/Option"
+import { pipe } from "../../src/Pipe"
 import { readonlyArray, zip } from "../../src/Readonly/Array"
 import * as R from "../../src/Record"
 import { getFirstSemigroup, getLastSemigroup, semigroupSum } from "../../src/Semigroup"
@@ -35,27 +36,21 @@ describe("Record", () => {
 
   it("record.map", () => {
     const double = (n: number): number => n * 2
-    assert.deepStrictEqual(R.record.map({ a: 1, b: 2 }, double), { a: 2, b: 4 })
+    assert.deepStrictEqual(R.record.map(double)({ a: 1, b: 2 }), { a: 2, b: 4 })
   })
 
   it("reduce", () => {
     const d1 = { k1: "a", k2: "b" }
-    assert.deepStrictEqual(
-      R.record.reduce(d1, "", (b, a) => b + a),
-      "ab"
-    )
+    assert.deepStrictEqual(R.record.reduce("", (b, a) => b + a)(d1), "ab")
     const d2 = { k2: "b", k1: "a" }
-    assert.deepStrictEqual(
-      R.record.reduce(d2, "", (b, a) => b + a),
-      "ab"
-    )
+    assert.deepStrictEqual(R.record.reduce("", (b, a) => b + a)(d2), "ab")
   })
 
   it("foldMap", () => {
     const foldMap = R.record.foldMap(monoidString)
     const x1 = { a: "a", b: "b" }
     const f1 = identity
-    assert.deepStrictEqual(foldMap(x1, f1), "ab")
+    assert.deepStrictEqual(pipe(x1, foldMap(f1)), "ab")
   })
 
   it("reduceRight", () => {
@@ -63,7 +58,7 @@ describe("Record", () => {
     const x1 = { a: "a", b: "b" }
     const init1 = ""
     const f1 = (a: string, acc: string) => acc + a
-    assert.deepStrictEqual(reduceRight(x1, init1, f1), "ba")
+    assert.deepStrictEqual(pipe(x1, reduceRight(init1, f1)), "ba")
   })
 
   it("traverse", () => {
@@ -202,34 +197,31 @@ describe("Record", () => {
 
   it("filter", () => {
     const d = { a: 1, b: 3 }
-    assert.deepStrictEqual(R.record.filter(d, p), { b: 3 })
+    assert.deepStrictEqual(R.record.filter(p)(d), { b: 3 })
 
     // refinements
     const isNumber = (u: string | number): u is number => typeof u === "number"
     const y: Record<string, string | number> = { a: 1, b: "foo" }
-    const actual = R.record.filter(y, isNumber)
+    const actual = R.record.filter(isNumber)(y)
     assert.deepStrictEqual(actual, { a: 1 })
 
-    assert.deepStrictEqual(
-      R.record.filter(y, (_) => true),
-      y
-    )
+    assert.deepStrictEqual(R.record.filter((_) => true)(y), y)
 
     const x = Object.assign(Object.create({ c: true }), { a: 1, b: "foo" })
-    assert.deepStrictEqual(R.record.filter(x, isNumber), { a: 1 })
+    assert.deepStrictEqual(R.record.filter(isNumber)(x), { a: 1 })
 
-    assert.deepStrictEqual(R.record.filter(noPrototype, isNumber), noPrototype)
+    assert.deepStrictEqual(R.record.filter(isNumber)(noPrototype), noPrototype)
   })
 
   it("filterMap", () => {
     const f = (n: number) => (p(n) ? some(n + 1) : none)
-    assert.deepStrictEqual(R.record.filterMap({}, f), {})
-    assert.deepStrictEqual(R.record.filterMap({ a: 1, b: 3 }, f), { b: 4 })
+    assert.deepStrictEqual(R.record.filterMap(f)({}), {})
+    assert.deepStrictEqual(R.record.filterMap(f)({ a: 1, b: 3 }), { b: 4 })
   })
 
   it("partition", () => {
-    assert.deepStrictEqual(R.record.partition({}, p), { left: {}, right: {} })
-    assert.deepStrictEqual(R.record.partition({ a: 1, b: 3 }, p), {
+    assert.deepStrictEqual(R.record.partition(p)({}), { left: {}, right: {} })
+    assert.deepStrictEqual(R.record.partition(p)({ a: 1, b: 3 }), {
       left: { a: 1 },
       right: { b: 3 }
     })
@@ -237,8 +229,8 @@ describe("Record", () => {
 
   it("partitionMap", () => {
     const f = (n: number) => (p(n) ? right(n + 1) : left(n - 1))
-    assert.deepStrictEqual(R.record.partitionMap({}, f), { left: {}, right: {} })
-    assert.deepStrictEqual(R.record.partitionMap({ a: 1, b: 3 }, f), {
+    assert.deepStrictEqual(R.record.partitionMap(f)({}), { left: {}, right: {} })
+    assert.deepStrictEqual(R.record.partitionMap(f)({ a: 1, b: 3 }), {
       left: { a: 0 },
       right: { b: 4 }
     })
@@ -248,18 +240,18 @@ describe("Record", () => {
     const witherIdentity = R.record.wither(I.identity)
     const f = (n: number) => I.identity.of(p(n) ? some(n + 1) : none)
     assert.deepStrictEqual(
-      witherIdentity({}, f),
+      witherIdentity(f)({}),
       I.identity.of<Record<string, number>>({})
     )
-    assert.deepStrictEqual(witherIdentity({ a: 1, b: 3 }, f), I.identity.of({ b: 4 }))
+    assert.deepStrictEqual(witherIdentity(f)({ a: 1, b: 3 }), I.identity.of({ b: 4 }))
   })
 
   it("wilt", () => {
     const wiltIdentity = R.record.wilt(I.identity)
     const f = (n: number) => I.identity.of(p(n) ? right(n + 1) : left(n - 1))
-    assert.deepStrictEqual(wiltIdentity({}, f), I.identity.of({ left: {}, right: {} }))
+    assert.deepStrictEqual(wiltIdentity(f)({}), I.identity.of({ left: {}, right: {} }))
     assert.deepStrictEqual(
-      wiltIdentity({ a: 1, b: 3 }, f),
+      wiltIdentity(f)({ a: 1, b: 3 }),
       I.identity.of({ left: { a: 0 }, right: { b: 4 } })
     )
   })
@@ -311,9 +303,9 @@ describe("Record", () => {
       keys: ReadonlyArray<K>,
       values: ReadonlyArray<A>
     ): Record<K, A> =>
-      R.fromFoldableMap(getLastSemigroup<A>(), readonlyArray)(
+      pipe(
         zip(keys, values),
-        ([k, a]) => [k, a]
+        R.fromFoldableMap(getLastSemigroup<A>(), readonlyArray)(([k, a]) => [k, a])
       )
 
     assert.deepStrictEqual(zipObject(["a", "b"], [1, 2, 3]), { a: 1, b: 2 })
@@ -330,10 +322,13 @@ describe("Record", () => {
     ]
 
     assert.deepStrictEqual(
-      R.fromFoldableMap(getLastSemigroup<User>(), readonlyArray)(users, (user) => [
-        user.id,
-        user
-      ]),
+      pipe(
+        users,
+        R.fromFoldableMap(
+          getLastSemigroup<User>(),
+          readonlyArray
+        )((user) => [user.id, user])
+      ),
       {
         id1: { id: "id1", name: "name3" },
         id2: { id: "id2", name: "name2" }

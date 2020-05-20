@@ -1,7 +1,6 @@
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { effect as T } from "../src"
 import { done } from "../src/Exit"
+import { pipe } from "../src/Pipe"
 
 describe("Sync", () => {
   it("should exec sync", () => {
@@ -27,7 +26,7 @@ describe("Sync", () => {
       T.chain((n) => T.sync(() => n + 1))
     )
 
-    const provide = T.provideM(T.effect.map(T.pure(10), (n): { n: number } => ({ n })))
+    const provide = T.provideM(T.map_(T.pure(10), (n): { n: number } => ({ n })))
 
     const res = T.runSync(pipe(program, provide))
 

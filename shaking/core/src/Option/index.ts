@@ -2,28 +2,27 @@ import type { None, Option, Some } from "fp-ts/lib/Option"
 
 import { sequenceS as SS, sequenceT as ST } from "../Apply"
 import type {
-  Alternative1,
-  Applicative,
-  Compactable1,
-  Extend1,
-  Filterable1,
-  Foldable1,
+  CAlternative1,
+  CApplicative,
+  CCompactable1,
+  CExtend1,
+  CFilterable1,
+  CFoldable1,
+  CMonad1,
+  CSequence1,
+  CTraversable1,
+  CTraverse1,
+  CWilt1,
+  CWither1,
+  CWitherable1,
   HKT,
-  Monad1,
-  MonadThrow1,
   Monoid,
   Separated,
-  Sequence1,
-  Traversable1,
-  Traverse1,
-  TraverseCurried1,
-  Wilt1,
-  Wither1,
-  Witherable1,
-  WitherCurried1
+  CFilter1,
+  CPartition1
 } from "../Base"
 import { Do as DoG } from "../Do"
-import type { Either } from "../Either"
+import { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
 import { fold as foldMonoid } from "../Monoid"
@@ -150,28 +149,12 @@ export function exists<A>(predicate: Predicate<A>): (ma: Option<A>) => boolean {
   return (ma) => (isNone(ma) ? false : predicate(ma.value))
 }
 
-export const extend_: <A, B>(wa: Option<A>, f: (wa: Option<A>) => B) => Option<B> = (
-  wa,
-  f
-) => (isNone(wa) ? none : some(f(wa)))
-
 export const extend = <A, B>(f: (fa: Option<A>) => B) => (wa: Option<A>): Option<B> =>
   isNone(wa) ? none : some(f(wa))
 
-export const filter_ = <A>(fa: Option<A>, predicate: Predicate<A>): Option<A> => {
-  return isNone(fa) ? none : predicate(fa.value) ? fa : none
-}
-
-export const filter: {
-  <A, B extends A>(refinement: Refinement<A, B>): (fa: Option<A>) => Option<B>
-  <A>(predicate: Predicate<A>): (fa: Option<A>) => Option<A>
-} = <A>(predicate: Predicate<A>) => (fa: Option<A>): Option<A> =>
-  isNone(fa) ? none : predicate(fa.value) ? fa : none
-
-export const filterMap_: <A, B>(fa: Option<A>, f: (a: A) => Option<B>) => Option<B> = (
-  ma,
-  f
-) => (isNone(ma) ? none : f(ma.value))
+export const filter: CFilter1<URI> = <A>(predicate: Predicate<A>) => (
+  fa: Option<A>
+): Option<A> => (isNone(fa) ? none : predicate(fa.value) ? fa : none)
 
 export const filterMap: <A, B>(
   f: (a: A) => Option<B>
@@ -226,10 +209,6 @@ export function fold<A, B, C>(
 export function fold<A, B>(onNone: () => B, onSome: (a: A) => B): (ma: Option<A>) => B {
   return (ma) => (isNone(ma) ? onNone() : onSome(ma.value))
 }
-
-export const foldMap_: <M>(M: Monoid<M>) => <A>(fa: Option<A>, f: (a: A) => M) => M = (
-  M
-) => (fa, f) => (isNone(fa) ? M.empty : f(fa.value))
 
 export const foldMap: <M>(
   M: Monoid<M>
@@ -608,54 +587,27 @@ export function mapNullable<A, B>(
   return (ma) => (isNone(ma) ? none : fromNullable(f(ma.value)))
 }
 
-export const partition_ = <A>(
-  fa: Option<A>,
-  predicate: Predicate<A>
-): Separated<Option<A>, Option<A>> => {
-  return {
-    left: filter_(fa, (a) => !predicate(a)),
-    right: filter_(fa, predicate)
-  }
-}
-
-export const partition: {
-  <A, B extends A>(refinement: Refinement<A, B>): (
-    fa: Option<A>
-  ) => Separated<Option<A>, Option<B>>
-  <A>(predicate: Predicate<A>): (fa: Option<A>) => Separated<Option<A>, Option<A>>
-} = <A>(predicate: Predicate<A>) => (fa: Option<A>) => partition_(fa, predicate)
-
-export const partitionMap_: <A, B, C>(
-  fa: Option<A>,
-  f: (a: A) => Either<B, C>
-) => Separated<Option<B>, Option<C>> = (fa, f) => separate(map_(fa, f))
+export const partition: CPartition1<URI> = <A>(predicate: Predicate<A>) => (
+  fa: Option<A>
+) => ({
+  left: filter((a: A) => !predicate(a))(fa),
+  right: filter(predicate)(fa)
+})
 
 export const partitionMap: <A, B, C>(
   f: (a: A) => Either<B, C>
 ) => (fa: Option<A>) => Separated<Option<B>, Option<C>> = (f) => (fa) =>
-  partitionMap_(fa, f)
-
-export const reduce_: <A, B>(fa: Option<A>, b: B, f: (b: B, a: A) => B) => B = (
-  fa,
-  b,
-  f
-) => (isNone(fa) ? b : f(b, fa.value))
+  separate(map_(fa, f))
 
 export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: Option<A>) => B = (
   b,
   f
-) => (fa) => reduce_(fa, b, f)
-
-export const reduceRight_: <A, B>(fa: Option<A>, b: B, f: (a: A, b: B) => B) => B = (
-  fa,
-  b,
-  f
-) => (isNone(fa) ? b : f(fa.value, b))
+) => (fa) => (isNone(fa) ? b : f(b, fa.value))
 
 export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: Option<A>) => B = (
   b,
   f
-) => (fa) => reduce_(fa, b, (b_, a_) => f(a_, b_))
+) => reduce(b, (b_, a_) => f(a_, b_))
 
 export const separate = <A, B>(
   ma: Option<Either<A, B>>
@@ -667,10 +619,10 @@ export const separate = <A, B>(
   return isNone(o) ? defaultSeparate : o.value
 }
 
-export const sequence: Sequence1<URI> = <F>(F: Applicative<F>) => <A>(
+export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
   ta: Option<HKT<F, A>>
 ): HKT<F, Option<A>> => {
-  return isNone(ta) ? F.of(none) : F.map(ta.value, some)
+  return isNone(ta) ? F.of(none) : F.map(some)(ta.value)
 }
 
 export function some<A>(a: A): Option<A> {
@@ -731,17 +683,10 @@ export function toUndefined<A>(ma: Option<A>): A | undefined {
   return isNone(ma) ? undefined : ma.value
 }
 
-export const traverse_: Traverse1<URI> = <F>(F: Applicative<F>) => <A, B>(
-  ta: Option<A>,
-  f: (a: A) => HKT<F, B>
-): HKT<F, Option<B>> => {
-  return isNone(ta) ? F.of(none) : F.map(f(ta.value), some)
-}
-
-export const traverse: TraverseCurried1<URI> = <F>(F: Applicative<F>) => <A, B>(
+export const traverse: CTraverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
 ): ((ta: Option<A>) => HKT<F, Option<B>>) => {
-  return (ta) => (isNone(ta) ? F.of(none) : F.map(f(ta.value), some))
+  return (ta) => (isNone(ta) ? F.of(none) : F.map(some)(f(ta.value)))
 }
 
 /**
@@ -767,75 +712,71 @@ export function tryCatch<A>(f: Lazy<A>): Option<A> {
   }
 }
 
-export const wilt_: Wilt1<URI> = <F>(F: Applicative<F>) => <A, B, C>(
-  fa: Option<A>,
+export const wilt: CWilt1<URI> = <F>(F: CApplicative<F>) => <A, B, C>(
   f: (a: A) => HKT<F, Either<B, C>>
-): HKT<F, Separated<Option<B>, Option<C>>> => {
-  const o = map_(fa, (a) =>
-    F.map(f(a), (e) => ({
-      left: getLeft(e),
-      right: getRight(e)
-    }))
-  )
-  return isNone(o)
-    ? F.of({
-        left: none,
-        right: none
-      })
-    : o.value
+): ((fa: Option<A>) => HKT<F, Separated<Option<B>, Option<C>>>) => {
+  return (fa) => {
+    const o = map_(fa, (a) =>
+      F.map((e: Either<B, C>) => ({
+        left: getLeft(e),
+        right: getRight(e)
+      }))(f(a))
+    )
+    return isNone(o)
+      ? F.of({
+          left: none,
+          right: none
+        })
+      : o.value
+  }
 }
 
-export const wither_: Wither1<URI> = <F>(F: Applicative<F>) => <A, B>(
-  fa: Option<A>,
-  f: (a: A) => HKT<F, Option<B>>
-): HKT<F, Option<B>> => (isNone(fa) ? F.of(none) : f(fa.value))
-
-export const wither: WitherCurried1<URI> = <F>(F: Applicative<F>) => <A, B>(
+export const wither: CWither1<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, Option<B>>
 ): ((fa: Option<A>) => HKT<F, Option<B>>) => (fa) =>
   isNone(fa) ? F.of(none) : f(fa.value)
 
 export const zero = () => none
 
-export const option: Monad1<URI> &
-  Foldable1<URI> &
-  Traversable1<URI> &
-  Alternative1<URI> &
-  Extend1<URI> &
-  Compactable1<URI> &
-  Filterable1<URI> &
-  Witherable1<URI> &
-  MonadThrow1<URI> = {
+export const option: CMonad1<URI> &
+  CFoldable1<URI> &
+  CTraversable1<URI> &
+  CAlternative1<URI> &
+  CExtend1<URI> &
+  CCompactable1<URI> &
+  CFilterable1<URI> &
+  CWitherable1<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   of: some,
-  ap: ap_,
-  chain: chain_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
+  ap,
+  chain,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
   sequence,
   zero,
-  alt: alt_,
-  extend: extend_,
+  alt,
+  extend,
   compact,
   separate,
-  filter: filter_,
-  filterMap: filterMap_,
-  partition: partition_,
-  partitionMap: partitionMap_,
-  wither: wither_,
-  wilt: wilt_,
-  throwError
+  filter,
+  filterMap,
+  partition,
+  partitionMap,
+  wither,
+  wilt
 }
 
-export const optionMonad: Monad1<URI> = {
+export const optionMonad: CMonad1<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   of: some,
-  ap: ap_,
-  chain: chain_
+  ap,
+  chain
 }
 
 export const sequenceS =

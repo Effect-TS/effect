@@ -1,3 +1,4 @@
+import type { ATypeOf, ETypeOf, RTypeOf, UnionToIntersection } from "../Base/Apply"
 import {
   Effect,
   AsyncR,
@@ -22,12 +23,6 @@ import {
 import type { Exit } from "../Exit"
 import { pipe } from "../Pipe"
 import { map_ as mapRecord, sequence } from "../Record"
-import type {
-  ATypeOf,
-  ETypeOf,
-  RTypeOf,
-  UnionToIntersection
-} from "../Support/Overloads"
 
 export function runAll<Procs extends Record<string, Effect<any, any, any, any>>>(
   procs: Procs,

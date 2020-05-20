@@ -34,7 +34,7 @@ describe("Eq", () => {
   })
 
   it("contramap", () => {
-    const S = _.eq.contramap(_.eqString, (p: Person) => p.name)
+    const S = _.eq.contramap((p: Person) => p.name)(_.eqString)
     assert.deepStrictEqual(S.equals({ name: "a", age: 1 }, { name: "a", age: 2 }), true)
     assert.deepStrictEqual(S.equals({ name: "a", age: 1 }, { name: "a", age: 1 }), true)
     assert.deepStrictEqual(

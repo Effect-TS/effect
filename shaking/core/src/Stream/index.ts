@@ -1,9 +1,11 @@
 import { sequenceS as SS, sequenceT as ST } from "../Apply"
 import * as A from "../Array"
+import type { CMonad4MAP } from "../Base"
+import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
 import { Do as DoG } from "../Do"
 import * as T from "../Effect"
-import { Eq } from "../Eq"
+import type { Eq } from "../Eq"
 import { Cause, Exit } from "../Exit"
 import * as F from "../Function"
 import * as M from "../Managed"
@@ -14,7 +16,6 @@ import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
 import { StreamURI as URI } from "../Support/Common"
 import { ForM } from "../Support/For"
-import type { ATypeOf, ETypeOf, Monad4EP, RTypeOf, STypeOf } from "../Support/Overloads"
 
 import * as Sink from "./Sink"
 import * as sink from "./Sink"
@@ -428,9 +429,9 @@ export function map_<K, R, E, A, B>(
  * @param stream
  * @param f
  */
-export function map<R, A, B>(
+export function map<A, B>(
   f: F.FunctionN<[A], B>
-): <S, E>(stream: Stream<S, R, E, A>) => Stream<S, R, E, B> {
+): <R, S, E>(stream: Stream<S, R, E, A>) => Stream<S, R, E, B> {
   return (stream) => map_(stream, f)
 }
 
@@ -1412,7 +1413,7 @@ type WeaveHandle = readonly [number, T.Fiber<never, void>]
 
 function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): T.Async<void> {
   return T.chain_(ref.get, (fibers) =>
-    T.asUnit(A.traverse_(T.effect)(fibers, (fiber) => fiber[1].interrupt))
+    T.asUnit(A.traverse(T.effect)((fiber: WeaveHandle) => fiber[1].interrupt)(fibers))
   )
 }
 
@@ -1605,112 +1606,6 @@ export function drain<K, R, E, A>(stream: Stream<K, R, E, A>): T.Effect<K, R, E,
   return into_(stream, Sink.drainSink())
 }
 
-export interface StreamF {
-  as<S, R, E, A, B>(stream: Stream<S, R, E, A>, b: B): Stream<S, R, E, B>
-  chainMerge<S, R, E, A, B, S2, R2, E2>(
-    stream: Stream<S, R, E, A>,
-    f: F.FunctionN<[A], Stream<S2, R2, E2, B>>,
-    maxActive: number
-  ): AsyncRE<R & R2, E | E2, B>
-  chainSwitchLatest<S, R, E, A, S2, R2, E2, B>(
-    stream: Stream<S, R, E, A>,
-    f: F.FunctionN<[A], Stream<S2, R2, E2, B>>
-  ): AsyncRE<R & R2, E | E2, B>
-  concat<S, R, E, A, S2, R2, E2>(
-    stream1: Stream<S, R, E, A>,
-    stream2: Stream<S2, R2, E2, A>
-  ): Stream<S | S2, R & R2, E | E2, A>
-  concatL<K, R, E, A, K2, R2, E2>(
-    stream1: Stream<K, R, E, A>,
-    stream2: F.Lazy<Stream<K2, R2, E2, A>>
-  ): Stream<K | K2, R & R2, E | E2, A>
-  distinctAdjacent<K, R, E, A>(
-    stream: Stream<K, R, E, A>,
-    eq: Eq<A>
-  ): Stream<K, R, E, A>
-  drop<K, R, E, A>(stream: Stream<K, R, E, A>, n: number): Stream<K, R, E, A>
-  dropWhile<S, R, E, A>(
-    stream: Stream<S, R, E, A>,
-    pred: F.Predicate<A>
-  ): AsyncRE<R, E, A>
-  filter<K, R, E, A>(stream: Stream<K, R, E, A>, f: F.Predicate<A>): Stream<K, R, E, A>
-  fold<S, R, E, A, B>(
-    stream: Stream<S, R, E, A>,
-    f: F.FunctionN<[B, A], B>,
-    seed: B
-  ): Stream<S, R, E, B>
-  foldM<K, R, E, A, K2, R2, E2, B>(
-    stream: Stream<K, R, E, A>,
-    f: F.FunctionN<[B, A], T.Effect<K2, R2, E2, B>>,
-    seed: B
-  ): Stream<K | K2, R & R2, E | E2, B>
-  into<K, R, E, A, K2, R2, E2, S, B>(
-    stream: Stream<K, R, E, A>,
-    sink: Sink.Sink<K2, R2, E2, S, A, B>
-  ): T.Effect<K | K2, R & R2, E | E2, B>
-  intoLeftover<K, R, E, A, S, B, K2, R2, E2>(
-    stream: Stream<K, R, E, A>,
-    sink: Sink.Sink<K2, R2, E2, S, A, B>
-  ): T.Effect<K | K2, R & R2, E | E2, readonly [B, readonly A[]]>
-  intoManaged<K, R, E, A, S, B, K2, R2, E2, K3, R3, E3>(
-    stream: Stream<K, R, E, A>,
-    managedSink: M.Managed<K2, R2, E2, Sink.Sink<K3, R3, E3, S, A, B>>
-  ): T.Effect<K | K2 | K3, R & R2 & R3, E | E2 | E3, B>
-  mapM<S, R, E, A, S2, R2, E2, B>(
-    stream: Stream<S, R, E, A>,
-    f: F.FunctionN<[A], T.Effect<S2, R2, E2, B>>
-  ): Stream<S | S2, R & R2, E | E2, B>
-  merge<K, R, E, A, K2, R2, E2>(
-    stream: Stream<K, R, E, Stream<K2, R2, E2, A>>,
-    maxActive: number
-  ): AsyncRE<R & R2, E | E2, A>
-  peel<K, R, E, A, S, B, K2, R2, E2>(
-    stream: Stream<K, R, E, A>,
-    sink: Sink.Sink<K2, R2, E2, S, A, B>
-  ): AsyncRE<R & R2, E | E2, readonly [B, AsyncRE<R & R2, E | E2, A>]>
-  peelManaged<K, R, E, A, S, B, R2, E2, K2, K3, R3, E3>(
-    stream: Stream<K, R, E, A>,
-    managedSink: M.Managed<K2, R2, E2, Sink.Sink<K3, R3, E3, S, A, B>>
-  ): Stream<
-    unknown,
-    R & R2 & R3,
-    E | E2 | E3,
-    readonly [B, AsyncRE<R & R2 & R3, E | E2 | E3, A>]
-  >
-  scan<S, R, E, A, B>(
-    stream: Stream<S, R, E, A>,
-    f: F.FunctionN<[B, A], B>,
-    seed: B
-  ): Stream<S, R, E, B>
-  scanM<K, R, E, A, B, K2, R2, E2>(
-    stream: Stream<K, R, E, A>,
-    f: F.FunctionN<[B, A], T.Effect<K2, R2, E2, B>>,
-    seed: B
-  ): Stream<K | K2, R & R2, E | E2, B>
-  take<K, R, E, A>(stream: Stream<K, R, E, A>, n: number): Stream<K, R, E, A>
-  takeWhile<K, R, E, A>(
-    stream: Stream<K, R, E, A>,
-    pred: F.Predicate<A>
-  ): Stream<K, R, E, A>
-  transduce<K, R, E, A, K2, R2, E2, S, B>(
-    stream: Stream<K, R, E, A>,
-    sink: Sink.Sink<K2, R2, E2, S, A, B>
-  ): Stream<K | K2, R & R2, E | E2, B>
-  takeUntil<K, R1, E1, K2, R2, E2, A>(
-    stream: Stream<K, R1, E1, A>,
-    until: T.Effect<K2, R2, E2, any>
-  ): AsyncRE<R1 & R2, E1 | E2, A>
-  zip<S, R, E, A, S2, R2, E2, B>(
-    as: Stream<S, R, E, A>,
-    bs: Stream<S2, R2, E2, B>
-  ): AsyncRE<R & R2, E | E2, readonly [A, B]>
-  zipWith<S, R, E, A, S2, R2, E2, B, C>(
-    as: Stream<S, R, E, A>,
-    bs: Stream<S2, R2, E2, B>,
-    f: F.FunctionN<[A, B], C>
-  ): AsyncRE<R & R2, E | E2, C>
-}
-
 export const of = <S, R, E, A>(a: A): Stream<S, R, E, A> =>
   (once(a) as any) as Stream<S, R, E, A>
 
@@ -1719,43 +1614,9 @@ export const ap_ = <S1, S2, R, R2, E, E2, A, B>(
   sa: Stream<S2, R2, E2, A>
 ) => zipWith_(sfab, sa, (f, a) => f(a))
 
-export const stream: Monad4EP<URI> & StreamF = {
-  URI,
-  _CTX: "async",
-  map: map_,
-  of,
-  ap: ap_,
-  chain: chain_,
-  as: as_,
-  chainMerge: chainMerge_,
-  chainSwitchLatest: chainSwitchLatest_,
-  concat: concat_,
-  concatL: concatL_,
-  distinctAdjacent: distinctAdjacent_,
-  drop: drop_,
-  dropWhile: dropWhile_,
-  filter: filter_,
-  fold: fold_,
-  foldM: foldM_,
-  into: into_,
-  intoLeftover: intoLeftover_,
-  intoManaged: intoManaged_,
-  mapM: mapM_,
-  merge: merge_,
-  peel: peel_,
-  peelManaged: peelManaged_,
-  scan: scan_,
-  scanM: scanM_,
-  take: take_,
-  takeWhile: takeWhile_,
-  takeUntil: takeUntil_,
-  transduce: transduce_,
-  zip: zip_,
-  zipWith: zipWith_
-}
-
-export const Do = () => DoG(stream)
-export const For = () => ForM(stream)
+export const ap = <S2, R2, E2, A>(sa: Stream<S2, R2, E2, A>) => <S1, R, E, B>(
+  sfab: Stream<S1, R, E, F.FunctionN<[A], B>>
+) => zipWith_(sfab, sa, (f, a) => f(a))
 
 export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
   const listeners: Map<any, (_: Ops<E, A>) => void> = new Map()
@@ -1834,6 +1695,19 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
       }
     })
 }
+
+export const stream: CMonad4MAP<URI> = {
+  URI,
+  _CTX: "async",
+  _F: "curried",
+  map,
+  of,
+  ap,
+  chain
+}
+
+export const Do = () => DoG(stream)
+export const For = () => ForM(stream)
 
 /**
  * Used to merge types of the form Stream<S, R, E, A> | Stream<S2, R2, E2, A2> into Stream<S | S2, R & R2, E | E2, A | A2>

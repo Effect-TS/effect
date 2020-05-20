@@ -1,10 +1,9 @@
 import * as assert from "assert"
 
-import { sequenceT } from "fp-ts/lib/Apply"
-import { array } from "fp-ts/lib/Array"
-import { right } from "fp-ts/lib/Either"
-
-import { effect as T } from "../src"
+import { sequenceT } from "../src/Apply"
+import { array } from "../src/Array"
+import * as T from "../src/Effect"
+import { right } from "../src/Either"
 import { interruptWithError, done } from "../src/Exit"
 
 describe("Interrupt", () => {

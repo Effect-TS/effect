@@ -2,18 +2,18 @@
 import type { Identity } from "fp-ts/lib/Identity"
 
 import type {
-  Alt1,
-  Monad1,
-  Foldable1,
-  Traversable1,
-  Comonad1,
-  ChainRec1,
-  Sequence1,
-  Applicative,
   HKT,
-  Traverse1
+  CSequence1,
+  CApplicative,
+  CTraverse1,
+  CMonad1,
+  CFoldable1,
+  CTraversable1,
+  CAlt1,
+  CComonad1
 } from "../Base"
-import { Either, tailRec } from "../Either"
+import { tailRec, CChainRec1 } from "../Base/ChainRec"
+import type { Either } from "../Either"
 import type { Eq } from "../Eq"
 import { identity as id } from "../Function"
 import type { Monoid } from "../Monoid"
@@ -86,17 +86,16 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: A) => B = (
   f
 ) => (fa) => reduceRight_(fa, b, f)
 
-export const sequence: Sequence1<URI> = <F>(F: Applicative<F>) => <A>(
+export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
   ta: Identity<HKT<F, A>>
 ): HKT<F, Identity<A>> => {
-  return F.map(ta, id)
+  return F.map(id)(ta)
 }
 
-export const traverse: Traverse1<URI> = <F>(F: Applicative<F>) => <A, B>(
-  ta: Identity<A>,
+export const traverse: CTraverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
-): HKT<F, Identity<B>> => {
-  return F.map(f(ta), id)
+): ((ta: Identity<A>) => HKT<F, Identity<B>>) => {
+  return (ta) => F.map(id)(f(ta))
 }
 
 export const URI = "@matechs/core/Identity"
@@ -109,32 +108,34 @@ declare module "../Base/HKT" {
   }
 }
 
-export const identity: Monad1<URI> &
-  Foldable1<URI> &
-  Traversable1<URI> &
-  Alt1<URI> &
-  Comonad1<URI> &
-  ChainRec1<URI> = {
+export const identity: CMonad1<URI> &
+  CFoldable1<URI> &
+  CTraversable1<URI> &
+  CAlt1<URI> &
+  CComonad1<URI> &
+  CChainRec1<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   of: id,
-  ap: ap_,
-  chain: chain_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
+  ap,
+  chain,
+  reduce,
+  foldMap,
+  reduceRight,
   traverse,
   sequence,
-  alt: alt_,
+  alt,
   extract,
-  extend: extend_,
+  extend,
   chainRec
 }
 
-export const identityMonad: Monad1<URI> = {
+export const identityMonad: CMonad1<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   of: id,
-  ap: ap_,
-  chain: chain_
+  ap,
+  chain
 }

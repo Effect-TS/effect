@@ -1,15 +1,15 @@
-import type { Monad1 } from "../Base"
+import type { CMonad1 } from "../Base"
 import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
 import { some, none, Option } from "../Option"
 import { pipe } from "../Pipe"
 
-export function ap<A, B>(list: List<A>, fns: List<FunctionN<[A], B>>): List<B> {
+export function ap_<A, B>(fns: List<FunctionN<[A], B>>, list: List<A>): List<B> {
   return chain_(list, (a) => map_(fns, (f) => f(a)))
 }
 
-export function ap_<A, B>(fns: List<FunctionN<[A], B>>, list: List<A>): List<B> {
-  return chain_(list, (a) => map_(fns, (f) => f(a)))
+export function ap<A>(list: List<A>): <B>(fns: List<FunctionN<[A], B>>) => List<B> {
+  return (fns) => chain_(list, (a) => map_(fns, (f) => f(a)))
 }
 
 export function cata_<A, B>(
@@ -223,10 +223,11 @@ declare module "../Base/HKT" {
   }
 }
 
-export const list: Monad1<URI> = {
+export const list: CMonad1<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   of,
-  ap: ap_,
-  chain: chain_
+  ap,
+  chain
 }

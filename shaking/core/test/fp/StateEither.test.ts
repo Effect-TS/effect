@@ -1,6 +1,5 @@
 import * as assert from "assert"
 
-import { State } from "../../src/Base"
 import * as E from "../../src/Either"
 import { pipe } from "../../src/Pipe"
 import * as _ from "../../src/StateEither"
@@ -10,7 +9,7 @@ describe("StateEither", () => {
     it("map", async () => {
       const len = (s: string): number => s.length
       const ma = _.right("aaa")
-      const e = _.evalState(_.stateEither.map(ma, len), {})
+      const e = _.evalState(_.stateEither.map(len)(ma), {})
       assert.deepStrictEqual(e, E.right(3))
     })
 
@@ -18,14 +17,14 @@ describe("StateEither", () => {
       const len = (s: string): number => s.length
       const mab = _.right(len)
       const ma = _.right("aaa")
-      const e = _.evalState(_.stateEither.ap(mab, ma), {})
+      const e = _.evalState(_.stateEither.ap(ma)(mab), {})
       assert.deepStrictEqual(e, E.right(3))
     })
 
     it("chain", async () => {
       const f = (s: string) => (s.length > 2 ? _.right(s.length) : _.right(0))
       const ma = _.right("aaa")
-      const e = _.evalState(_.stateEither.chain(ma, f), {})
+      const e = _.evalState(_.stateEither.chain(f)(ma), {})
       assert.deepStrictEqual(e, E.right(3))
     })
   })
@@ -50,13 +49,13 @@ describe("StateEither", () => {
   })
 
   it("rightState", () => {
-    const state: State<{}, number> = (s) => [1, s]
+    const state: _.State<{}, number> = (s) => [1, s]
     const e = _.evalState(_.rightState(state), {})
     assert.deepStrictEqual(e, E.right(1))
   })
 
   it("leftState", () => {
-    const state: State<{}, number> = (s) => [1, s]
+    const state: _.State<{}, number> = (s) => [1, s]
     const e = _.evalState(_.leftState(state), {})
     assert.deepStrictEqual(e, E.left(1))
   })

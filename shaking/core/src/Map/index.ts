@@ -1,25 +1,23 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 import type {
   Separated,
-  Filter2,
   URIS3,
-  Foldable3,
   Kind3,
   URIS2,
-  Foldable2,
   Kind2,
   URIS,
-  Foldable1,
   Kind,
-  Foldable,
   HKT,
-  FilterableWithIndex2C,
-  TraversableWithIndexCurried2C,
-  Partition2,
-  Unfoldable1,
-  Unfoldable,
-  Filterable2,
-  WitherableCurried2C
+  CFoldable3,
+  CFoldable2,
+  CFoldable1,
+  CFoldable,
+  CFilterableWithIndex2C,
+  CUnfoldable1,
+  CUnfoldable,
+  CFilterable2,
+  CWitherable2C,
+  CTraversableWithIndex2C
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -54,17 +52,10 @@ export const empty =
   /*#__PURE__*/
   (() => new Map<never, never>())()
 
-export const filter_: Filter2<URI> = RM.filter_ as any
-
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): <E>(fa: Map<E, A>) => Map<E, B>
   <A>(predicate: Predicate<A>): <E>(fa: Map<E, A>) => Map<E, A>
 } = RM.filter as any
-
-export const filterMap_: <E, A, B>(
-  fa: Map<E, A>,
-  f: (a: A) => Option<B>
-) => Map<E, B> = RM.filterMap_ as any
 
 export const filterMap: <A, B>(
   f: (a: A) => Option<B>
@@ -77,34 +68,34 @@ export const filterMap: <A, B>(
 export function fromFoldable<F extends URIS3, K, A>(
   E: Eq<K>,
   M: Magma<A>,
-  F: Foldable3<F>
+  F: CFoldable3<F>
 ): <R, E>(fka: Kind3<F, R, E, [K, A]>) => Map<K, A>
 export function fromFoldable<F extends URIS2, K, A>(
   E: Eq<K>,
   M: Magma<A>,
-  F: Foldable2<F>
+  F: CFoldable2<F>
 ): <E>(fka: Kind2<F, E, [K, A]>) => Map<K, A>
 export function fromFoldable<F extends URIS, K, A>(
   E: Eq<K>,
   M: Magma<A>,
-  F: Foldable1<F>
+  F: CFoldable1<F>
 ): (fka: Kind<F, [K, A]>) => Map<K, A>
 export function fromFoldable<F, K, A>(
   E: Eq<K>,
   M: Magma<A>,
-  F: Foldable<F>
+  F: CFoldable<F>
 ): (fka: HKT<F, [K, A]>) => Map<K, A>
 export function fromFoldable<F, K, A>(
   E: Eq<K>,
   M: Magma<A>,
-  F: Foldable<F>
+  F: CFoldable<F>
 ): (fka: HKT<F, [K, A]>) => Map<K, A> {
   return RM.fromFoldable(E, M, F) as any
 }
 
 export const getEq: <K, A>(SK: Eq<K>, SA: Eq<A>) => Eq<Map<K, A>> = RM.getEq
 
-export const getFilterableWithIndex: <K = never>() => FilterableWithIndex2C<
+export const getFilterableWithIndex: <K = never>() => CFilterableWithIndex2C<
   URI,
   K,
   K
@@ -122,8 +113,8 @@ export const getShow: <K, A>(SK: Show<K>, SA: Show<A>) => Show<Map<K, A>> = RM.g
 
 export const getWitherable: <K>(
   O: Ord<K>
-) => WitherableCurried2C<URI, K> &
-  TraversableWithIndexCurried2C<URI, K, K> = RM.getWitherable as any
+) => CWitherable2C<URI, K> &
+  CTraversableWithIndex2C<URI, K, K> = RM.getWitherable as any
 
 /**
  * Insert or replace a key/value pair in a map
@@ -184,19 +175,12 @@ export const modifyAt: <K>(
   f: (a: A) => A
 ) => (m: Map<K, A>) => Option<Map<K, A>> = RM.modifyAt as any
 
-export const partition_: Partition2<URI> = RM.partition_ as any
-
 export const partition: {
   <A, B extends A>(refinement: Refinement<A, B>): <E>(
     fa: Map<E, A>
   ) => Separated<Map<E, A>, Map<E, B>>
   <A>(predicate: Predicate<A>): <E>(fa: Map<E, A>) => Separated<Map<E, A>, Map<E, A>>
 } = RM.partition as any
-
-export const partitionMap_: <E, A, B, C>(
-  fa: Map<E, A>,
-  f: (a: A) => Either<B, C>
-) => Separated<Map<E, B>, Map<E, C>> = RM.partitionMap_ as any
 
 export const partitionMap: <A, B, C>(
   f: (a: A) => Either<B, C>
@@ -235,15 +219,15 @@ export const toArray: <K>(
  */
 export function toUnfoldable<K, F extends URIS>(
   O: Ord<K>,
-  U: Unfoldable1<F>
+  U: CUnfoldable1<F>
 ): <A>(d: Map<K, A>) => Kind<F, [K, A]>
 export function toUnfoldable<K, F>(
   O: Ord<K>,
-  U: Unfoldable<F>
+  U: CUnfoldable<F>
 ): <A>(d: Map<K, A>) => HKT<F, [K, A]>
 export function toUnfoldable<K, F>(
   O: Ord<K>,
-  U: Unfoldable<F>
+  U: CUnfoldable<F>
 ): <A>(d: Map<K, A>) => HKT<F, [K, A]> {
   return RM.toUnfoldable(O, U) as any
 }
@@ -267,13 +251,14 @@ declare module "../Base/HKT" {
  */
 export const values: <A>(O: Ord<A>) => <K>(m: Map<K, A>) => Array<A> = RM.values as any
 
-export const mapF: Filterable2<URI> = {
+export const mapF: CFilterable2<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   compact,
   separate,
-  filter: filter_,
-  filterMap: filterMap_,
-  partition: partition_,
-  partitionMap: partitionMap_
+  filter,
+  filterMap,
+  partition,
+  partitionMap
 }

@@ -40,9 +40,9 @@ describe("These", () => {
 
   it("map", () => {
     const double = (n: number) => n * 2
-    assert.deepStrictEqual(_.these.map(_.left(2), double), _.left(2))
-    assert.deepStrictEqual(_.these.map(_.right(2), double), _.right(4))
-    assert.deepStrictEqual(_.these.map(_.both(1, 2), double), _.both(1, 4))
+    assert.deepStrictEqual(_.these.map(double)(_.left(2)), _.left(2))
+    assert.deepStrictEqual(_.these.map(double)(_.right(2)), _.right(4))
+    assert.deepStrictEqual(_.these.map(double)(_.both(1, 2)), _.both(1, 4))
   })
 
   it("getMonad", () => {
@@ -50,7 +50,7 @@ describe("These", () => {
     const F = _.getMonad(semigroupString)
     const fab = F.of(double)
     const fa = F.of(1)
-    assert.deepStrictEqual(F.ap(fab, fa), F.of(2))
+    assert.deepStrictEqual(F.ap(fa)(fab), F.of(2))
   })
 
   it("fold", () => {
@@ -67,16 +67,16 @@ describe("These", () => {
     it("bimap", () => {
       const len = (s: string): number => s.length
       const double = (n: number): number => n * 2
-      assert.deepStrictEqual(_.these.bimap(_.left("a"), len, double), _.left(1))
-      assert.deepStrictEqual(_.these.bimap(_.right(2), len, double), _.right(4))
-      assert.deepStrictEqual(_.these.bimap(_.both("foo", 1), len, double), _.both(3, 2))
+      assert.deepStrictEqual(_.these.bimap(len, double)(_.left("a")), _.left(1))
+      assert.deepStrictEqual(_.these.bimap(len, double)(_.right(2)), _.right(4))
+      assert.deepStrictEqual(_.these.bimap(len, double)(_.both("foo", 1)), _.both(3, 2))
     })
 
     it("mapLeft", () => {
       const len = (s: string): number => s.length
-      assert.deepStrictEqual(_.these.mapLeft(_.left("a"), len), _.left(1))
-      assert.deepStrictEqual(_.these.mapLeft(_.right(2), len), _.right(2))
-      assert.deepStrictEqual(_.these.mapLeft(_.both("foo", 1), len), _.both(3, 1))
+      assert.deepStrictEqual(_.these.mapLeft(len)(_.left("a")), _.left(1))
+      assert.deepStrictEqual(_.these.mapLeft(len)(_.right(2)), _.right(2))
+      assert.deepStrictEqual(_.these.mapLeft(len)(_.both("foo", 1)), _.both(3, 1))
     })
   })
 
@@ -88,23 +88,23 @@ describe("These", () => {
 
   it("traverse", () => {
     assert.deepStrictEqual(
-      _.these.traverse(option)(_.left("a"), (n) => (n >= 2 ? some(n) : none)),
+      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.left("a")),
       some(_.left("a"))
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)(_.right(2), (n) => (n >= 2 ? some(n) : none)),
+      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.right(2)),
       some(_.right(2))
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)(_.right(1), (n) => (n >= 2 ? some(n) : none)),
+      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.right(1)),
       none
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)(_.both("a", 2), (n) => (n >= 2 ? some(n) : none)),
+      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.both("a", 2)),
       some(_.both("a", 2))
     )
     assert.deepStrictEqual(
-      _.these.traverse(option)(_.both("a", 1), (n) => (n >= 2 ? some(n) : none)),
+      _.these.traverse(option)((n) => (n >= 2 ? some(n) : none))(_.both("a", 1)),
       none
     )
   })
@@ -127,13 +127,13 @@ describe("These", () => {
     const M = _.getMonad(monoidString)
     const f = (n: number) =>
       n >= 2 ? (n <= 5 ? _.right(n * 2) : _.both("bar", n)) : _.left("bar")
-    assert.deepStrictEqual(M.chain(_.left("foo"), f), _.left("foo"))
-    assert.deepStrictEqual(M.chain(_.right(2), f), _.right(4))
-    assert.deepStrictEqual(M.chain(_.right(1), f), _.left("bar"))
-    assert.deepStrictEqual(M.chain(_.right(6), f), _.both("bar", 6))
-    assert.deepStrictEqual(M.chain(_.both("foo", 2), f), _.both("foo", 4))
-    assert.deepStrictEqual(M.chain(_.both("foo", 1), f), _.left("foobar"))
-    assert.deepStrictEqual(M.chain(_.both("foo", 6), f), _.both("foobar", 6))
+    assert.deepStrictEqual(M.chain(f)(_.left("foo")), _.left("foo"))
+    assert.deepStrictEqual(M.chain(f)(_.right(2)), _.right(4))
+    assert.deepStrictEqual(M.chain(f)(_.right(1)), _.left("bar"))
+    assert.deepStrictEqual(M.chain(f)(_.right(6)), _.both("bar", 6))
+    assert.deepStrictEqual(M.chain(f)(_.both("foo", 2)), _.both("foo", 4))
+    assert.deepStrictEqual(M.chain(f)(_.both("foo", 1)), _.left("foobar"))
+    assert.deepStrictEqual(M.chain(f)(_.both("foo", 6)), _.both("foobar", 6))
   })
 
   it("getLeft", () => {
@@ -196,29 +196,20 @@ describe("These", () => {
   })
 
   it("reduce", () => {
-    assert.deepStrictEqual(
-      _.these.reduce(_.left("b"), "a", (b, a) => b + a),
-      "a"
-    )
-    assert.deepStrictEqual(
-      _.these.reduce(_.right("b"), "a", (b, a) => b + a),
-      "ab"
-    )
-    assert.deepStrictEqual(
-      _.these.reduce(_.both(1, "b"), "a", (b, a) => b + a),
-      "ab"
-    )
+    assert.deepStrictEqual(_.these.reduce("a", (b, a) => b + a)(_.left("b")), "a")
+    assert.deepStrictEqual(_.these.reduce("a", (b, a) => b + a)(_.right("b")), "ab")
+    assert.deepStrictEqual(_.these.reduce("a", (b, a) => b + a)(_.both(1, "b")), "ab")
   })
 
   it("foldMap", () => {
     const foldMap = _.these.foldMap(monoidString)
     const x1 = _.right("a")
     const f1 = identity
-    assert.deepStrictEqual(foldMap(x1, f1), "a")
+    assert.deepStrictEqual(pipe(x1, foldMap(f1)), "a")
     const x2 = _.left(1)
-    assert.deepStrictEqual(foldMap(x2, f1), "")
+    assert.deepStrictEqual(pipe(x2, foldMap(f1)), "")
     const x3 = _.both(1, "a")
-    assert.deepStrictEqual(foldMap(x3, f1), "a")
+    assert.deepStrictEqual(pipe(x3, foldMap(f1)), "a")
   })
 
   it("reduceRight", () => {
@@ -226,11 +217,11 @@ describe("These", () => {
     const x1 = _.right("a")
     const init1 = ""
     const f1 = (a: string, acc: string) => acc + a
-    assert.deepStrictEqual(reduceRight(x1, init1, f1), "a")
+    assert.deepStrictEqual(pipe(x1, reduceRight(init1, f1)), "a")
     const x2 = _.left(1)
-    assert.deepStrictEqual(reduceRight(x2, init1, f1), "")
+    assert.deepStrictEqual(pipe(x2, reduceRight(init1, f1)), "")
     const x3 = _.both(1, "a")
-    assert.deepStrictEqual(reduceRight(x3, init1, f1), "a")
+    assert.deepStrictEqual(pipe(x3, reduceRight(init1, f1)), "a")
   })
 
   it("getShow", () => {

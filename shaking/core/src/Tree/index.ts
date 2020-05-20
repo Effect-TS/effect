@@ -4,8 +4,6 @@
  * ```ts
  * type Forest<A> = Array<Tree<A>>
  * ```
- *
- * @since 2.0.0
  */
 
 import type { Tree, Forest } from "fp-ts/lib/Tree"
@@ -14,29 +12,29 @@ import * as A from "../Array"
 import type {
   Show,
   URIS3,
-  Monad3,
   Kind3,
-  Monad3C,
   URIS2,
-  Monad2,
   Kind2,
-  Monad2C,
   URIS,
-  Monad1,
   Kind,
-  Monad,
   HKT,
   Monoid,
-  Traverse1,
-  Applicative,
-  Sequence1,
-  Foldable1,
-  Traversable1,
-  Comonad1,
-  TraverseCurried1
+  CTraverse1,
+  CApplicative,
+  CSequence1,
+  CMonad3,
+  CMonad3C,
+  CMonad2,
+  CMonad2C,
+  CMonad1,
+  CMonad,
+  CFoldable1,
+  CTraversable1,
+  CComonad1
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
+import { pipe } from "../Pipe"
 
 export const URI = "@matechs/core/Tree"
 
@@ -143,36 +141,42 @@ export function unfoldForest<A, B>(
  * Monadic tree builder, in depth-first order
  */
 export function unfoldTreeM<M extends URIS3>(
-  M: Monad3<M>
+  M: CMonad3<M>
 ): <R, E, A, B>(
   b: B,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Tree<A>>
 export function unfoldTreeM<M extends URIS3, E>(
-  M: Monad3C<M, E>
+  M: CMonad3C<M, E>
 ): <R, A, B>(
   b: B,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Tree<A>>
 export function unfoldTreeM<M extends URIS2>(
-  M: Monad2<M>
+  M: CMonad2<M>
 ): <E, A, B>(b: B, f: (b: B) => Kind2<M, E, [A, Array<B>]>) => Kind2<M, E, Tree<A>>
 export function unfoldTreeM<M extends URIS2, E>(
-  M: Monad2C<M, E>
+  M: CMonad2C<M, E>
 ): <A, B>(b: B, f: (b: B) => Kind2<M, E, [A, Array<B>]>) => Kind2<M, E, Tree<A>>
 export function unfoldTreeM<M extends URIS>(
-  M: Monad1<M>
+  M: CMonad1<M>
 ): <A, B>(b: B, f: (b: B) => Kind<M, [A, Array<B>]>) => Kind<M, Tree<A>>
 export function unfoldTreeM<M>(
-  M: Monad<M>
+  M: CMonad<M>
 ): <A, B>(b: B, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Tree<A>>
 export function unfoldTreeM<M>(
-  M: Monad<M>
+  M: CMonad<M>
 ): <A, B>(b: B, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Tree<A>> {
   const unfoldForestMM = unfoldForestM(M)
   return (b, f) =>
-    M.chain(f(b), ([a, bs]) =>
-      M.chain(unfoldForestMM(bs, f), (ts) => M.of({ value: a, forest: ts }))
+    pipe(
+      f(b),
+      M.chain(([a, bs]) =>
+        pipe(
+          unfoldForestMM(bs, f),
+          M.chain((ts) => M.of({ value: a, forest: ts }))
+        )
+      )
     )
 }
 
@@ -180,40 +184,44 @@ export function unfoldTreeM<M>(
  * Monadic forest builder, in depth-first order
  */
 export function unfoldForestM<M extends URIS3>(
-  M: Monad3<M>
+  M: CMonad3<M>
 ): <R, E, A, B>(
   bs: Array<B>,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Forest<A>>
 export function unfoldForestM<M extends URIS3, E>(
-  M: Monad3C<M, E>
+  M: CMonad3C<M, E>
 ): <R, A, B>(
   bs: Array<B>,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Forest<A>>
 export function unfoldForestM<M extends URIS2>(
-  M: Monad2<M>
+  M: CMonad2<M>
 ): <R, E, B>(
   bs: Array<B>,
   f: (b: B) => Kind2<M, R, [E, Array<B>]>
 ) => Kind2<M, R, Forest<E>>
 export function unfoldForestM<M extends URIS2, E>(
-  M: Monad2C<M, E>
+  M: CMonad2C<M, E>
 ): <A, B>(
   bs: Array<B>,
   f: (b: B) => Kind2<M, E, [A, Array<B>]>
 ) => Kind2<M, E, Forest<A>>
 export function unfoldForestM<M extends URIS>(
-  M: Monad1<M>
+  M: CMonad1<M>
 ): <A, B>(bs: Array<B>, f: (b: B) => Kind<M, [A, Array<B>]>) => Kind<M, Forest<A>>
 export function unfoldForestM<M>(
-  M: Monad<M>
+  M: CMonad<M>
 ): <A, B>(bs: Array<B>, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Forest<A>>
 export function unfoldForestM<M>(
-  M: Monad<M>
+  M: CMonad<M>
 ): <A, B>(bs: Array<B>, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Forest<A>> {
-  const traverseM = A.traverse_(M)
-  return (bs, f) => traverseM(bs, (b) => unfoldTreeM(M)(b, f))
+  const traverseM = A.traverse(M)
+  return (bs, f) =>
+    pipe(
+      bs,
+      traverseM((b) => unfoldTreeM(M)(b, f))
+    )
 }
 
 export function elem<A>(E: Eq<A>): (a: A, fa: Tree<A>) => boolean {
@@ -259,7 +267,7 @@ export const map_: <A, B>(fa: Tree<A>, f: (a: A) => B) => Tree<B> = (fa, f) => (
   forest: fa.forest.map((t) => map_(t, f))
 })
 
-export const of_: <A>(a: A) => Tree<A> = (a) => ({
+export const of: <A>(a: A) => Tree<A> = (a) => ({
   value: a,
   forest: A.empty
 })
@@ -301,44 +309,35 @@ export const reduceRight_ = <A, B>(fa: Tree<A>, b: B, f: (a: A, b: B) => B): B =
   return f(fa.value, r)
 }
 
-export const traverse_: Traverse1<URI> = <F>(
-  F: Applicative<F>
-): (<A, B>(ta: Tree<A>, f: (a: A) => HKT<F, B>) => HKT<F, Tree<B>>) => {
-  const traverseF = A.traverse_(F)
-  const r = <A, B>(ta: Tree<A>, f: (a: A) => HKT<F, B>): HKT<F, Tree<B>> =>
-    F.ap(
-      F.map(f(ta.value), (value: B) => (forest: Forest<B>) => ({
-        value,
-        forest
-      })),
-      traverseF(ta.forest, (t) => r(t, f))
-    )
-  return r
-}
-
-export const traverse: TraverseCurried1<URI> = <F>(
-  F: Applicative<F>
+export const traverse: CTraverse1<URI> = <F>(
+  F: CApplicative<F>
 ): (<A, B>(f: (a: A) => HKT<F, B>) => (ta: Tree<A>) => HKT<F, Tree<B>>) => {
-  const traverseF = A.traverse_(F)
+  const traverseF = A.traverse(F)
   const r = <A, B>(f: (a: A) => HKT<F, B>) => (ta: Tree<A>): HKT<F, Tree<B>> =>
-    F.ap(
-      F.map(f(ta.value), (value: B) => (forest: Forest<B>) => ({
+    pipe(
+      f(ta.value),
+      F.map((value: B) => (forest: Forest<B>) => ({
         value,
         forest
       })),
-      traverseF(ta.forest, (t) => r(f)(t))
+      F.ap(
+        pipe(
+          ta.forest,
+          traverseF((t) => r(f)(t))
+        )
+      )
     )
   return r
 }
 
-export const sequence: Sequence1<URI> = <F>(
-  F: Applicative<F>
+export const sequence: CSequence1<URI> = <F>(
+  F: CApplicative<F>
 ): (<A>(ta: Tree<HKT<F, A>>) => HKT<F, Tree<A>>) => {
-  const traverseF = traverse_(F)
-  return (ta) => traverseF(ta, identity)
+  const traverseF = traverse(F)
+  return traverseF(identity)
 }
 
-export const extract_: <A>(wa: Tree<A>) => A = (wa) => wa.value
+export const extract: <A>(wa: Tree<A>) => A = (wa) => wa.value
 
 export const extend_: <A, B>(wa: Tree<A>, f: (wa: Tree<A>) => B) => Tree<B> = (
   wa,
@@ -347,21 +346,6 @@ export const extend_: <A, B>(wa: Tree<A>, f: (wa: Tree<A>) => B) => Tree<B> = (
   value: f(wa),
   forest: wa.forest.map((t) => extend_(t, f))
 })
-
-export const tree: Monad1<URI> & Foldable1<URI> & Traversable1<URI> & Comonad1<URI> = {
-  URI,
-  map: map_,
-  of: of_,
-  ap: ap_,
-  chain: chain_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
-  sequence,
-  extract: extract_,
-  extend: extend_
-}
 
 export const extend: <A, B>(f: (fa: Tree<A>) => B) => (ma: Tree<A>) => Tree<B> = (
   f
@@ -411,3 +395,22 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: Tree<A>) =>
   b,
   f
 ) => (fa) => reduceRight_(fa, b, f)
+
+export const tree: CMonad1<URI> &
+  CFoldable1<URI> &
+  CTraversable1<URI> &
+  CComonad1<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  of,
+  ap,
+  chain,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
+  sequence,
+  extract,
+  extend
+}

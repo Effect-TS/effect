@@ -1,6 +1,5 @@
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { effect as T, exit as Ex } from "../src"
+import { pipe } from "../src/Pipe"
 
 export interface InputError {
   _tag: "InputError"

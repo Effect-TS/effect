@@ -1,5 +1,6 @@
 import { sequenceS as SS, sequenceT as ST } from "../Apply"
-import type { Bifunctor4 } from "../Base"
+import type { CBifunctor4, CMonad4MAP } from "../Base"
+import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Do as DoG } from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
@@ -9,14 +10,6 @@ import * as O from "../Option"
 import * as Stream from "../Stream"
 import { Managed, StreamEither, StreamEitherURI as URI } from "../Support/Common"
 import { ForM } from "../Support/For"
-import type {
-  ATypeOf,
-  ETypeOf,
-  Monad4EP,
-  MonadThrow4EP,
-  RTypeOf,
-  STypeOf
-} from "../Support/Overloads"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
@@ -166,7 +159,7 @@ export function fromSource<S, R, E, S2, R2, E2, A>(
     Stream.fromSource(
       M.map_(r, (e) =>
         T.chainError_(
-          T.map_(e, (oa) => O.option.map(oa, E.rightW)),
+          T.map_(e, (oa) => O.map_(oa, E.rightW)),
           (e) => T.pure(O.some(E.leftW(e)))
         )
       )
@@ -339,20 +332,9 @@ export const bimap_ = <S, R, E, A, G, B>(
   g: (a: A) => B
 ) => map_(mapLeft_(fea, f), g)
 
-export const streamEither: Monad4EP<URI> & MonadThrow4EP<URI> & Bifunctor4<URI> = {
-  URI,
-  _CTX: "async",
-  map: map_,
-  of,
-  ap: ap_,
-  chain: chain_,
-  throwError,
-  mapLeft: mapLeft_,
-  bimap: bimap_
-}
-export const ap: <S1, R, E, A, E2>(
+export const ap: <S1, R, E, A>(
   fa: StreamEither<S1, R, E, A>
-) => <S2, R2, B>(
+) => <S2, R2, E2, B>(
   fab: StreamEither<S2, R2, E2, (a: A) => B>
 ) => StreamEither<unknown, R & R2, E | E2, B> = (fa) => (fab) => ap_(fab, fa)
 
@@ -409,6 +391,18 @@ export const mapLeft: <E, G>(
 ) => <S, R, A>(fa: StreamEither<S, R, E, A>) => StreamEither<S, R, G, A> = (f) => (
   fa
 ) => mapLeft_(fa, f)
+
+export const streamEither: CMonad4MAP<URI> & CBifunctor4<URI> = {
+  URI,
+  _CTX: "async",
+  _F: "curried",
+  map,
+  of,
+  ap,
+  chain,
+  mapLeft,
+  bimap
+}
 
 export const Do = () => DoG(streamEither)
 export const For = () => ForM(streamEither)

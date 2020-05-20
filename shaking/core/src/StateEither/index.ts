@@ -1,6 +1,6 @@
 import type { State } from "fp-ts/lib/State"
 
-import { Monad3, MonadThrow3 } from "../Base"
+import { CMonad3 } from "../Base"
 import * as T from "../Effect"
 import * as E from "../Either"
 import * as Ex from "../Exit"
@@ -9,6 +9,8 @@ import * as O from "../Option"
 import { pipe } from "../Pipe"
 import * as R from "../Ref"
 import * as TU from "../Tuple"
+
+export type { State }
 
 export const StateURI = "@matechs/core/StateEither/StateURI"
 
@@ -134,13 +136,13 @@ declare module "../Base/HKT" {
   }
 }
 
-export const stateEither: Monad3<URI> & MonadThrow3<URI> = {
+export const stateEither: CMonad3<URI> = {
   URI,
-  map: T.map_,
+  _F: "curried",
+  map: T.map,
   of: right,
-  ap: T.ap_,
-  chain: T.chain_,
-  throwError: left
+  ap: T.ap,
+  chain: T.chain
 }
 
 export const ap: <R, E, A>(

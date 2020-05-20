@@ -1,31 +1,24 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 import type {
-  Alternative1,
-  Filter1,
-  FilterWithIndex1,
-  RefinementWithIndex,
-  PredicateWithIndex,
-  Partition1,
   Separated,
-  PartitionWithIndex1,
-  Sequence1,
-  Traverse1,
-  TraverseWithIndex1,
-  Wilt1,
-  Wither1,
-  Monad1,
-  Foldable1,
-  Unfoldable1,
-  TraversableWithIndex1,
-  Extend1,
-  Compactable1,
-  FilterableWithIndex1,
-  Witherable1,
-  FunctorWithIndex1,
-  FoldableWithIndex1,
-  TraverseCurried1,
-  TraverseWithIndexCurried1,
-  WitherCurried1
+  CFilterWithIndex1,
+  CPartitionWithIndex1,
+  CSequence1,
+  CTraverse1,
+  CTraverseWithIndex1,
+  CWilt1,
+  CWither1,
+  CMonad1,
+  CFoldable1,
+  CUnfoldable1,
+  CTraversableWithIndex1,
+  CAlternative1,
+  CExtend1,
+  CCompactable1,
+  CFilterableWithIndex1,
+  CWitherable1,
+  CFunctorWithIndex1,
+  CFoldableWithIndex1
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -37,19 +30,13 @@ import type { Ord } from "../Ord"
 import * as RA from "../Readonly/Array"
 import type { Show } from "../Show"
 
-export const alt_: <A>(fx: A[], fy: () => A[]) => A[] = RA.alt_ as any
-
 export const alt: <A>(that: () => A[]) => (fa: A[]) => A[] = RA.alt as any
-
-export const ap_: <A, B>(fab: ((a: A) => B)[], fa: A[]) => B[] = RA.ap_ as any
 
 export const ap: <A>(fa: A[]) => <B>(fab: ((a: A) => B)[]) => B[] = RA.ap as any
 
 export const apFirst: <B>(fb: B[]) => <A>(fa: A[]) => A[] = RA.apFirst as any
 
 export const apSecond: <B>(fb: B[]) => <A>(fa: A[]) => B[] = RA.apSecond as any
-
-export const chain_: <A, B>(fa: A[], f: (a: A) => B[]) => B[] = RA.chain_ as any
 
 export const chain: <A, B>(f: (a: A) => B[]) => (ma: A[]) => B[] = RA.chain as any
 
@@ -247,46 +234,22 @@ export const elem: <A>(E: Eq<A>) => (a: A, as: Array<A>) => boolean = RA.elem
  */
 export const empty: Array<never> = []
 
-export const extend_: <A, B>(wa: A[], f: (wa: A[]) => B) => B[] = RA.extend_ as any
-
 export const extend: <A, B>(f: (fa: A[]) => B) => (ma: A[]) => B[] = RA.extend as any
-
-export const filter_: Filter1<URI> = RA.filter_ as any
 
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (fa: A[]) => B[]
   <A>(predicate: Predicate<A>): (fa: A[]) => A[]
 } = RA.filter as any
 
-export const filterMap_: <A, B>(
-  fa: A[],
-  f: (a: A) => Option<B>
-) => B[] = RA.filterMap_ as any
-
 export const filterMap: <A, B>(
   f: (a: A) => Option<B>
 ) => (fa: A[]) => B[] = RA.filterMap as any
-
-export const filterMapWithIndex_: <A, B>(
-  fa: A[],
-  f: (i: number, a: A) => Option<B>
-) => B[] = RA.filterMapWithIndex_ as any
 
 export const filterMapWithIndex: <A, B>(
   f: (i: number, a: A) => Option<B>
 ) => (fa: A[]) => B[] = RA.filterMapWithIndex as any
 
-export const filterWithIndex_: FilterWithIndex1<
-  URI,
-  number
-> = RA.filterWithIndex_ as any
-
-export const filterWithIndex: {
-  <A, B extends A>(refinementWithIndex: RefinementWithIndex<number, A, B>): (
-    fa: A[]
-  ) => B[]
-  <A>(predicateWithIndex: PredicateWithIndex<number, A>): (fa: A[]) => A[]
-} = RA.filterWithIndex as any
+export const filterWithIndex: CFilterWithIndex1<URI, number> = RA.filterWithIndex as any
 
 /**
  * Find the first element which satisfies a predicate (or a refinement) function
@@ -421,17 +384,9 @@ export const foldLeft: <A, B>(
   onCons: (head: A, tail: Array<A>) => B
 ) => (as: Array<A>) => B = RA.foldLeft as any
 
-export const foldMap_: <M>(
-  M: Monoid<M>
-) => <A>(fa: A[], f: (a: A) => M) => M = RA.foldMap_ as any
-
 export const foldMap: <M>(
   M: Monoid<M>
 ) => <A>(f: (a: A) => M) => (fa: A[]) => M = RA.foldMap as any
-
-export const foldMapWithIndex_: <M>(
-  M: Monoid<M>
-) => <A>(fa: A[], f: (i: number, a: A) => M) => M = RA.foldMapWithIndex_ as any
 
 export const foldMapWithIndex: <M>(
   M: Monoid<M>
@@ -610,14 +565,7 @@ export const lookup: <A>(i: number, as: Array<A>) => Option<A> = RA.lookup
  */
 export const makeBy: <A>(n: number, f: (i: number) => A) => Array<A> = RA.makeBy as any
 
-export const map_: <A, B>(fa: A[], f: (a: A) => B) => B[] = RA.map_ as any
-
 export const map: <A, B>(f: (a: A) => B) => (fa: A[]) => B[] = RA.map as any
-
-export const mapWithIndex_: <A, B>(
-  fa: A[],
-  f: (i: number, a: A) => B
-) => B[] = RA.mapWithIndex_ as any
 
 export const mapWithIndex: <A, B>(
   f: (i: number, a: A) => B
@@ -642,44 +590,23 @@ export const modifyAt: <A>(
 
 export const of: <A>(a: A) => Array<A> = RA.of as any
 
-export const partition_: Partition1<URI> = RA.partition_ as any
-
 export const partition: {
   <A, B extends A>(refinement: Refinement<A, B>): (fa: A[]) => Separated<A[], B[]>
   <A>(predicate: Predicate<A>): (fa: A[]) => Separated<A[], A[]>
 } = RA.partition as any
 
-export const partitionMap_: <A, B, C>(
-  fa: A[],
-  f: (a: A) => Either<B, C>
-) => Separated<B[], C[]> = RA.partitionMap_ as any
-
 export const partitionMap: <A, B, C>(
   f: (a: A) => Either<B, C>
 ) => (fa: A[]) => Separated<B[], C[]> = RA.partitionMap as any
-
-export const partitionMapWithIndex_: <A, B, C>(
-  fa: A[],
-  f: (i: number, a: A) => Either<B, C>
-) => Separated<B[], C[]> = RA.partitionMapWithIndex_ as any
 
 export const partitionMapWithIndex: <A, B, C>(
   f: (i: number, a: A) => Either<B, C>
 ) => (fa: A[]) => Separated<B[], C[]> = RA.partitionMapWithIndex as any
 
-export const partitionWithIndex_: PartitionWithIndex1<
+export const partitionWithIndex: CPartitionWithIndex1<
   URI,
   number
-> = RA.partitionWithIndex_ as any
-
-export const partitionWithIndex: {
-  <A, B extends A>(refinementWithIndex: RefinementWithIndex<number, A, B>): (
-    fa: A[]
-  ) => Separated<A[], B[]>
-  <A>(predicateWithIndex: PredicateWithIndex<number, A>): (
-    fa: A[]
-  ) => Separated<A[], A[]>
-} = RA.partitionWithIndex as any
+> = RA.partitionWithIndex as any
 
 /**
  * Create an array containing a range of integers, including both endpoints
@@ -691,44 +618,20 @@ export const partitionWithIndex: {
  */
 export const range: (start: number, end: number) => Array<number> = RA.range as any
 
-export const reduce_: <A, B>(
-  fa: A[],
-  b: B,
-  f: (b: B, a: A) => B
-) => B = RA.reduce_ as any
-
 export const reduce: <A, B>(
   b: B,
   f: (b: B, a: A) => B
 ) => (fa: A[]) => B = RA.reduce as any
-
-export const reduceRight_: <A, B>(
-  fa: A[],
-  b: B,
-  f: (a: A, b: B) => B
-) => B = RA.reduceRight_ as any
 
 export const reduceRight: <A, B>(
   b: B,
   f: (a: A, b: B) => B
 ) => (fa: A[]) => B = RA.reduceRight as any
 
-export const reduceRightWithIndex_: <A, B>(
-  fa: A[],
-  b: B,
-  f: (i: number, a: A, b: B) => B
-) => B = RA.reduceRightWithIndex_ as any
-
 export const reduceRightWithIndex: <A, B>(
   b: B,
   f: (i: number, a: A, b: B) => B
 ) => (fa: A[]) => B = RA.reduceRightWithIndex as any
-
-export const reduceWithIndex_: <A, B>(
-  fa: A[],
-  b: B,
-  f: (i: number, b: B, a: A) => B
-) => B = RA.reduceWithIndex_ as any
 
 export const reduceWithIndex: <A, B>(
   b: B,
@@ -807,7 +710,7 @@ export const separate: <A, B>(
   fa: Either<A, B>[]
 ) => Separated<A[], B[]> = RA.separate as any
 
-export const sequence: Sequence1<URI> = RA.sequence as any
+export const sequence: CSequence1<URI> = RA.sequence as any
 
 /**
  * Append an element to the end of an array, creating a new non empty array
@@ -960,16 +863,9 @@ export const takeRight: (
   n: number
 ) => <A>(as: Array<A>) => Array<A> = RA.takeRight as any
 
-export const traverse_: Traverse1<URI> = RA.traverse_ as any
+export const traverse: CTraverse1<URI> = RA.traverse as any
 
-export const traverse: TraverseCurried1<URI> = RA.traverse as any
-
-export const traverseWithIndex_: TraverseWithIndex1<
-  URI,
-  number
-> = RA.traverseWithIndex_ as any
-
-export const traverseWithIndex: TraverseWithIndexCurried1<
+export const traverseWithIndex: CTraverseWithIndex1<
   URI,
   number
 > = RA.traverseWithIndex as any
@@ -1052,10 +948,9 @@ declare module "../Base/HKT" {
   }
 }
 
-export const wilt_: Wilt1<URI> = RA.wilt_ as any
+export const wilt: CWilt1<URI> = RA.wilt as any
 
-export const wither_: Wither1<URI> = RA.wither_ as any
-export const wither: WitherCurried1<URI> = RA.wither as any
+export const wither: CWither1<URI> = RA.wither as any
 
 export const zero: <A>() => A[] = RA.zero as any
 
@@ -1085,54 +980,56 @@ export const zipWith: <A, B, C>(
   f: (a: A, b: B) => C
 ) => Array<C> = RA.zipWith as any
 
-export const array: Monad1<URI> &
-  Foldable1<URI> &
-  Unfoldable1<URI> &
-  TraversableWithIndex1<URI, number> &
-  Alternative1<URI> &
-  Extend1<URI> &
-  Compactable1<URI> &
-  FilterableWithIndex1<URI, number> &
-  Witherable1<URI> &
-  FunctorWithIndex1<URI, number> &
-  FoldableWithIndex1<URI, number> = {
+export const array: CMonad1<URI> &
+  CFoldable1<URI> &
+  CUnfoldable1<URI> &
+  CTraversableWithIndex1<URI, number> &
+  CAlternative1<URI> &
+  CExtend1<URI> &
+  CCompactable1<URI> &
+  CFilterableWithIndex1<URI, number> &
+  CWitherable1<URI> &
+  CFunctorWithIndex1<URI, number> &
+  CFoldableWithIndex1<URI, number> = {
   URI,
-  map: map_,
-  mapWithIndex: mapWithIndex_,
+  _F: "curried",
+  map,
+  mapWithIndex,
   compact,
   separate,
-  filter: filter_,
-  filterMap: filterMap_,
-  partition: partition_,
-  partitionMap: partitionMap_,
+  filter,
+  filterMap,
+  partition,
+  partitionMap,
   of,
-  ap: ap_,
-  chain: chain_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
+  ap,
+  chain,
+  reduce,
+  foldMap,
+  reduceRight,
   unfold,
-  traverse: traverse_,
+  traverse,
   sequence,
   zero,
-  alt: alt_,
-  extend: extend_,
-  wither: wither_,
-  wilt: wilt_,
-  reduceWithIndex: reduceWithIndex_,
-  foldMapWithIndex: foldMapWithIndex_,
-  reduceRightWithIndex: reduceRightWithIndex_,
-  traverseWithIndex: traverseWithIndex_,
-  partitionMapWithIndex: partitionMapWithIndex_,
-  partitionWithIndex: partitionWithIndex_,
-  filterMapWithIndex: filterMapWithIndex_,
-  filterWithIndex: filterWithIndex_
+  alt,
+  extend,
+  wither,
+  wilt,
+  reduceWithIndex,
+  foldMapWithIndex,
+  reduceRightWithIndex,
+  traverseWithIndex,
+  partitionMapWithIndex,
+  partitionWithIndex,
+  filterMapWithIndex,
+  filterWithIndex
 }
 
-export const arrayMonad: Monad1<URI> = {
+export const arrayMonad: CMonad1<URI> = {
   URI,
-  map: map_,
+  _F: "curried",
+  map,
   of,
-  ap: ap_,
-  chain: chain_
+  ap,
+  chain
 }

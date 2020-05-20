@@ -9,7 +9,7 @@
  */
 import type { Eq } from "fp-ts/lib/Eq"
 
-import type { Contravariant1 } from "../Base"
+import type { CContravariant1 } from "../Base"
 import type { Monoid } from "../Monoid"
 import type { ReadonlyRecord } from "../Readonly/Record"
 
@@ -84,12 +84,12 @@ export const URI = "@matechs/core/Eq"
 
 export type URI = typeof URI
 
-export const eq: Contravariant1<URI> =
+export const eq: CContravariant1<URI> =
   /*#__PURE__*/
   (() =>
     ({
       URI,
-      contramap: contramap_
+      contramap
     } as const))()
 
 declare module "../Base/HKT" {

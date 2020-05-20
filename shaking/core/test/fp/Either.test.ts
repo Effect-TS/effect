@@ -1,10 +1,9 @@
 import * as assert from "assert"
 
-import * as I from "fp-ts/lib/Identity"
-
 import * as _ from "../../src/Either"
 import { eqNumber, eqString } from "../../src/Eq"
 import { identity } from "../../src/Function"
+import * as I from "../../src/Identity"
 import { monoidString, monoidSum } from "../../src/Monoid"
 import { none, option, some } from "../../src/Option"
 import { pipe } from "../../src/Pipe"
@@ -141,22 +140,16 @@ describe("Either", () => {
   })
 
   it("alt", () => {
+    assert.deepStrictEqual(_.either.alt(() => _.right(2))(_.right(1)), _.right(1))
     assert.deepStrictEqual(
-      _.either.alt(_.right(1), () => _.right(2)),
+      pipe(
+        _.right(1),
+        _.either.alt(() => _.left("a"))
+      ),
       _.right(1)
     )
-    assert.deepStrictEqual(
-      _.either.alt(_.right(1), () => _.left("a")),
-      _.right(1)
-    )
-    assert.deepStrictEqual(
-      _.either.alt(_.left("a"), () => _.right(2)),
-      _.right(2)
-    )
-    assert.deepStrictEqual(
-      _.either.alt(_.left("a"), () => _.left("b")),
-      _.left("b")
-    )
+    assert.deepStrictEqual(_.either.alt(() => _.right(2))(_.left("a")), _.right(2))
+    assert.deepStrictEqual(_.either.alt(() => _.left("b"))(_.left("a")), _.left("b"))
   })
 
   it("swap", () => {
@@ -197,31 +190,31 @@ describe("Either", () => {
   describe("Monad", () => {
     it("map", () => {
       const f = (s: string): number => s.length
-      assert.deepStrictEqual(_.either.map(_.right("abc"), f), _.right(3))
-      assert.deepStrictEqual(_.either.map(_.left("s"), f), _.left("s"))
+      assert.deepStrictEqual(_.either.map(f)(_.right("abc")), _.right(3))
+      assert.deepStrictEqual(_.either.map(f)(_.left("s")), _.left("s"))
     })
 
     it("ap", () => {
       const f = (s: string): number => s.length
-      assert.deepStrictEqual(_.either.ap(_.right(f), _.right("abc")), _.right(3))
+      assert.deepStrictEqual(_.either.ap(_.right("abc"))(_.right(f)), _.right(3))
       assert.deepStrictEqual(
-        _.either.ap(_.right(f), _.left("maError")),
+        _.either.ap(_.left("maError"))(_.right(f)),
         _.left("maError")
       )
       assert.deepStrictEqual(
-        _.either.ap(_.left("mabError"), _.right("abc")),
+        _.either.ap(_.right("abc"))(_.left("mabError")),
         _.left("mabError")
       )
       assert.deepStrictEqual(
-        _.either.ap(_.left("mabError"), _.left("maError")),
+        _.either.ap(_.left("maError"))(_.left("mabError")),
         _.left("mabError")
       )
     })
 
     it("chain", () => {
       const f = (s: string) => _.right(s.length)
-      assert.deepStrictEqual(_.either.chain(_.right("abc"), f), _.right(3))
-      assert.deepStrictEqual(_.either.chain(_.left("maError"), f), _.left("maError"))
+      assert.deepStrictEqual(_.either.chain(f)(_.right("abc")), _.right(3))
+      assert.deepStrictEqual(_.either.chain(f)(_.left("maError")), _.left("maError"))
     })
   })
 
@@ -229,13 +222,13 @@ describe("Either", () => {
     it("bimap", () => {
       const f = (s: string): number => s.length
       const g = (n: number): boolean => n > 2
-      assert.deepStrictEqual(_.either.bimap(_.right(1), f, g), _.right(false))
+      assert.deepStrictEqual(_.either.bimap(f, g)(_.right(1)), _.right(false))
     })
 
     it("mapLeft", () => {
       const double = (n: number): number => n * 2
-      assert.deepStrictEqual(_.either.mapLeft(_.right("bar"), double), _.right("bar"))
-      assert.deepStrictEqual(_.either.mapLeft(_.left(2), double), _.left(4))
+      assert.deepStrictEqual(_.either.mapLeft(double)(_.right("bar")), _.right("bar"))
+      assert.deepStrictEqual(_.either.mapLeft(double)(_.left(2)), _.left(4))
     })
   })
 
@@ -295,15 +288,15 @@ describe("Either", () => {
   describe("Traversable", () => {
     it("traverse", () => {
       assert.deepStrictEqual(
-        _.either.traverse(option)(_.left("foo"), (a) => (a >= 2 ? some(a) : none)),
+        _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))(_.left("foo")),
         some(_.left("foo"))
       )
       assert.deepStrictEqual(
-        _.either.traverse(option)(_.right(1), (a) => (a >= 2 ? some(a) : none)),
+        _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))(_.right(1)),
         none
       )
       assert.deepStrictEqual(
-        _.either.traverse(option)(_.right(3), (a) => (a >= 2 ? some(a) : none)),
+        _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))(_.right(3)),
         some(_.right(3))
       )
     })
@@ -342,41 +335,35 @@ describe("Either", () => {
 
   describe("Extend", () => {
     it("extend", () => {
-      assert.deepStrictEqual(
-        _.either.extend(_.right(1), () => 2),
-        _.right(2)
-      )
-      assert.deepStrictEqual(
-        _.either.extend(_.left("err"), () => 2),
-        _.left("err")
-      )
+      assert.deepStrictEqual(_.either.extend(() => 2)(_.right(1)), _.right(2))
+      assert.deepStrictEqual(_.either.extend(() => 2)(_.left("err")), _.left("err"))
     })
   })
 
   describe("Foldable", () => {
     it("reduce", () => {
       assert.deepStrictEqual(
-        _.either.reduce(_.right("bar"), "foo", (b, a) => b + a),
+        _.either.reduce("foo", (b, a) => b + a)(_.right("bar")),
         "foobar"
       )
       assert.deepStrictEqual(
-        _.either.reduce(_.left("bar"), "foo", (b, a) => b + a),
+        _.either.reduce("foo", (b, a) => b + a)(_.left("bar")),
         "foo"
       )
     })
 
     it("foldMap", () => {
       const foldMap = _.either.foldMap(monoidString)
-      assert.deepStrictEqual(foldMap(_.right("a"), identity), "a")
-      assert.deepStrictEqual(foldMap(_.left(1), identity), "")
+      assert.deepStrictEqual(pipe(_.right("a"), foldMap(identity)), "a")
+      assert.deepStrictEqual(pipe(_.left(1), foldMap(identity)), "")
     })
 
     it("reduceRight", () => {
       const reduceRight = _.either.reduceRight
       const init = ""
       const f = (a: string, acc: string) => acc + a
-      assert.deepStrictEqual(reduceRight(_.right("a"), init, f), "a")
-      assert.deepStrictEqual(reduceRight(_.left(1), init, f), "")
+      assert.deepStrictEqual(reduceRight(init, f)(_.right("a")), "a")
+      assert.deepStrictEqual(reduceRight(init, f)(_.left(1)), "")
     })
   })
 
@@ -406,15 +393,15 @@ describe("Either", () => {
     })
 
     it("partition", () => {
-      assert.deepStrictEqual(W.partition(_.left("123"), p), {
+      assert.deepStrictEqual(W.partition(p)(_.left("123")), {
         left: _.left("123"),
         right: _.left("123")
       })
-      assert.deepStrictEqual(W.partition(_.right(1), p), {
+      assert.deepStrictEqual(W.partition(p)(_.right(1)), {
         left: _.right(1),
         right: _.left(monoidString.empty)
       })
-      assert.deepStrictEqual(W.partition(_.right(3), p), {
+      assert.deepStrictEqual(W.partition(p)(_.right(3)), {
         left: _.left(monoidString.empty),
         right: _.right(3)
       })
@@ -422,31 +409,31 @@ describe("Either", () => {
 
     it("partitionMap", () => {
       const f = (n: number) => (p(n) ? _.right(n + 1) : _.left(n - 1))
-      assert.deepStrictEqual(W.partitionMap(_.left("123"), f), {
+      assert.deepStrictEqual(W.partitionMap(f)(_.left("123")), {
         left: _.left("123"),
         right: _.left("123")
       })
-      assert.deepStrictEqual(W.partitionMap(_.right(1), f), {
+      assert.deepStrictEqual(W.partitionMap(f)(_.right(1)), {
         left: _.right(0),
         right: _.left(monoidString.empty)
       })
-      assert.deepStrictEqual(W.partitionMap(_.right(3), f), {
+      assert.deepStrictEqual(W.partitionMap(f)(_.right(3)), {
         left: _.left(monoidString.empty),
         right: _.right(4)
       })
     })
 
     it("filter", () => {
-      assert.deepStrictEqual(W.filter(_.left("123"), p), _.left("123"))
-      assert.deepStrictEqual(W.filter(_.right(1), p), _.left(monoidString.empty))
-      assert.deepStrictEqual(W.filter(_.right(3), p), _.right(3))
+      assert.deepStrictEqual(W.filter(p)(_.left("123")), _.left("123"))
+      assert.deepStrictEqual(W.filter(p)(_.right(1)), _.left(monoidString.empty))
+      assert.deepStrictEqual(W.filter(p)(_.right(3)), _.right(3))
     })
 
     it("filterMap", () => {
       const f = (n: number) => (p(n) ? some(n + 1) : none)
-      assert.deepStrictEqual(W.filterMap(_.left("123"), f), _.left("123"))
-      assert.deepStrictEqual(W.filterMap(_.right(1), f), _.left(monoidString.empty))
-      assert.deepStrictEqual(W.filterMap(_.right(3), f), _.right(4))
+      assert.deepStrictEqual(W.filterMap(f)(_.left("123")), _.left("123"))
+      assert.deepStrictEqual(W.filterMap(f)(_.right(1)), _.left(monoidString.empty))
+      assert.deepStrictEqual(W.filterMap(f)(_.right(3)), _.right(4))
     })
 
     it("wither", () => {
@@ -467,21 +454,21 @@ describe("Either", () => {
       const wiltIdentity = W.wilt(I.identity)
       const f = (n: number) => I.identity.of(p(n) ? _.right(n + 1) : _.left(n - 1))
       assert.deepStrictEqual(
-        wiltIdentity(_.left("foo"), f),
+        wiltIdentity(f)(_.left("foo")),
         I.identity.of({
           left: _.left("foo"),
           right: _.left("foo")
         })
       )
       assert.deepStrictEqual(
-        wiltIdentity(_.right(1), f),
+        wiltIdentity(f)(_.right(1)),
         I.identity.of({
           left: _.right(0),
           right: _.left(monoidString.empty)
         })
       )
       assert.deepStrictEqual(
-        wiltIdentity(_.right(3), f),
+        wiltIdentity(f)(_.right(3)),
         I.identity.of({
           left: _.left(monoidString.empty),
           right: _.right(4)
@@ -532,30 +519,24 @@ describe("Either", () => {
     it("getValidation", () => {
       const M = _.getValidation(monoidString)
       const f = (s: string) => _.right(s.length)
-      assert.deepStrictEqual(M.chain(_.right("abc"), f), _.right(3))
-      assert.deepStrictEqual(M.chain(_.left("a"), f), _.left("a"))
-      assert.deepStrictEqual(
-        M.chain(_.left("a"), () => _.left("b")),
-        _.left("a")
-      )
+      assert.deepStrictEqual(M.chain(f)(_.right("abc")), _.right(3))
+      assert.deepStrictEqual(M.chain(f)(_.left("a")), _.left("a"))
+      assert.deepStrictEqual(M.chain(() => _.left("b"))(_.left("a")), _.left("a"))
       assert.deepStrictEqual(M.of(1), _.right(1))
       const double = (n: number) => n * 2
-      assert.deepStrictEqual(M.ap(_.right(double), _.right(1)), _.right(2))
-      assert.deepStrictEqual(M.ap(_.right(double), _.left("foo")), _.left("foo"))
-      assert.deepStrictEqual(M.ap(_.left("foo"), _.right(1)), _.left("foo"))
-      assert.deepStrictEqual(M.ap(_.left("foo"), _.left("bar")), _.left("foobar"))
+      assert.deepStrictEqual(M.ap(_.right(1))(_.right(double)), _.right(2))
+      assert.deepStrictEqual(M.ap(_.left("foo"))(_.right(double)), _.left("foo"))
+      assert.deepStrictEqual(M.ap(_.right(1))(_.left("foo")), _.left("foo"))
+      assert.deepStrictEqual(M.ap(_.left("bar"))(_.left("foo")), _.left("foobar"))
+      assert.deepStrictEqual(M.alt(() => _.right(1))(_.left("a")), _.right(1))
       assert.deepStrictEqual(
-        M.alt(_.left("a"), () => _.right(1)),
+        pipe(
+          _.right(1),
+          M.alt(() => _.leftW("a"))
+        ),
         _.right(1)
       )
-      assert.deepStrictEqual(
-        M.alt(_.right(1), () => _.left("a")),
-        _.right(1)
-      )
-      assert.deepStrictEqual(
-        M.alt(_.left("a"), () => _.left("b")),
-        _.left("ab")
-      )
+      assert.deepStrictEqual(M.alt(() => _.left("b"))(_.left("a")), _.left("ab"))
     })
 
     it("getValidationMonoid", () => {

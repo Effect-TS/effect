@@ -1,19 +1,12 @@
 import { sequenceS as SS, sequenceT as ST } from "../Apply"
+import { CMonad4MA, CMonad4MAP } from "../Base"
+import { STypeOf, UnionToIntersection, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
 import { Do as DoG } from "../Do"
 import * as T from "../Effect"
 import { flow, FunctionN } from "../Function"
 import * as M from "../Monoid"
 import * as O from "../Option"
 import { ForM } from "../Support/For"
-import type {
-  ATypeOf,
-  ETypeOf,
-  Monad4E,
-  Monad4EP,
-  RTypeOf,
-  STypeOf,
-  UnionToIntersection
-} from "../Support/Overloads"
 
 export interface EffectOption<S, R, E, A> extends T.Effect<S, R, E, O.Option<A>> {}
 
@@ -48,17 +41,10 @@ export type AOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: ATypeOf<Effs[k]> extends O.Option<infer A> ? A : never
 }[number]
 
-declare module "../Support/Overloads" {
+declare module "../Base/HKT" {
   interface MaToKind<S, R, E, A> {
     [URI]: EffectOption<S, R, E, A>
   }
-}
-
-export interface EffectOptionE extends Monad4E<URI> {
-  chainTap<S1, S2, R, E, A, R2, E2>(
-    inner: EffectOption<S1, R, E, A>,
-    bind: FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
-  ): EffectOption<S1 | S2, R & R2, E | E2, A>
 }
 
 export const of = <A>(a: A): EffectOption<never, unknown, never, A> => T.pure(O.some(a))
@@ -71,8 +57,7 @@ export const map_ = <S, R, E, A, B>(
 export const chain_ = <S1, S2, R, E, A, R2, E2, B>(
   fa: EffectOption<S1, R, E, A>,
   f: (a: A) => EffectOption<S2, R2, E2, B>
-): EffectOption<S1 | S2, R & R2, E | E2, B> =>
-  T.chain_(fa, (x) => O.wither_(T.effect)(x, f))
+): EffectOption<S1 | S2, R & R2, E | E2, B> => T.chain_(fa, O.wither(T.effect)(f))
 
 export const chainTap_ = <S1, S2, R, E, A, R2, E2>(
   inner: EffectOption<S1, R, E, A>,
@@ -88,40 +73,14 @@ export const ap_ = <S1, S2, R, E, A, B, R2, E2>(
   fa: EffectOption<S2, R2, E2, A>
 ): EffectOption<S1 | S2, R & R2, E | E2, B> => T.zipWith_(fab, fa, O.ap_)
 
-export const effectOption: EffectOptionE = {
-  URI,
-  of,
-  map: map_,
-  chain: chain_,
-  chainTap: chainTap_,
-  ap: ap_
-}
-
-export interface EffectOptionEP extends Monad4EP<URI> {
-  chainTap<S1, S2, R, E, A, R2, E2>(
-    inner: EffectOption<S1, R, E, A>,
-    bind: FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
-  ): EffectOption<S1 | S2, R & R2, E | E2, A>
-}
-
 export const parAp_ = <S1, S2, R, E, A, B, R2, E2>(
   fab: EffectOption<S1, R, E, (a: A) => B>,
   fa: EffectOption<S2, R2, E2, A>
 ): EffectOption<unknown, R & R2, E | E2, B> => T.parZipWith(fab, fa, O.ap_)
 
-export const effectOptionPar: EffectOptionEP = {
-  URI,
-  _CTX: "async",
-  of,
-  map: map_,
-  chain: chain_,
-  chainTap: chainTap_,
-  ap: parAp_
-}
-
-export const ap: <S1, R, E, A, E2>(
+export const ap: <S1, R, E, A>(
   fa: EffectOption<S1, R, E, A>
-) => <S2, R2, B>(
+) => <S2, R2, E2, B>(
   fab: EffectOption<S2, R2, E2, (a: A) => B>
 ) => EffectOption<S1 | S2, R & R2, E | E2, B> = (fa) => (fab) => ap_(fab, fa)
 
@@ -165,9 +124,9 @@ export const map: <A, B>(
   fa
 ) => map_(fa, f)
 
-export const parAp: <S1, R, E, A, E2>(
+export const parAp: <S1, R, E, A>(
   fa: EffectOption<S1, R, E, A>
-) => <S2, R2, B>(
+) => <S2, R2, E2, B>(
   fab: EffectOption<S2, R2, E2, (a: A) => B>
 ) => EffectOption<unknown, R & R2, E | E2, B> = (fa) => (fab) => parAp_(fab, fa)
 
@@ -247,6 +206,25 @@ export const getLast = <Effs extends EffectOption<any, any, any, any>[]>(
   ...items: Effs
 ): EffectOption<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>> =>
   M.fold(getLastMonoid<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>>())(items)
+
+export const effectOption: CMonad4MA<URI> = {
+  URI,
+  _F: "curried",
+  of,
+  map,
+  chain,
+  ap
+}
+
+export const effectOptionPar: CMonad4MAP<URI> = {
+  URI,
+  _CTX: "async",
+  _F: "curried",
+  of,
+  map,
+  chain,
+  ap: parAp
+}
 
 export const Do = () => DoG(effectOption)
 export const For = () => ForM(effectOption)

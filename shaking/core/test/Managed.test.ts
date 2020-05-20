@@ -1,14 +1,13 @@
 import * as assert from "assert"
 
-import { Do } from "fp-ts-contrib/lib/Do"
-import * as Ar from "fp-ts/lib/Array"
-import { eqString } from "fp-ts/lib/Eq"
-import { monoidSum } from "fp-ts/lib/Monoid"
-import { semigroupSum } from "fp-ts/lib/Semigroup"
-import { constVoid } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { effect as T, managed as M, exit as Ex } from "../src"
+import * as Ar from "../src/Array"
+import { Do } from "../src/Do"
+import { eqString } from "../src/Eq"
+import { constVoid } from "../src/Function"
+import { monoidSum } from "../src/Monoid"
+import { pipe } from "../src/Pipe"
+import { semigroupSum } from "../src/Semigroup"
 
 describe("Managed", () => {
   it("should use resource encaseEffect", async () => {
@@ -94,7 +93,10 @@ describe("Managed", () => {
 
   it("should use resource map", async () => {
     const resource = M.pure(1)
-    const mapped = M.managed.map(resource, (n) => n + 1)
+    const mapped = pipe(
+      resource,
+      M.managed.map((n) => n + 1)
+    )
 
     const result = await T.runToPromise(M.use(mapped, (n) => T.pure(n + 1)))
 
@@ -185,7 +187,7 @@ describe("Managed", () => {
     ) {
       it(title, async () => {
         const strArrDiff = Ar.difference(Ar.getEq(eqString))
-        const expectCalls_ = Ar.array.map(expectCalls, Ar.of)
+        const expectCalls_ = Ar.array.map(Ar.of)(expectCalls)
 
         const zip = M.parZipWith(ma, mb, (n, m) => n + m)
         const result = await T.runToPromiseExit(M.use(zip, T.pure))
@@ -324,7 +326,7 @@ describe("Managed", () => {
   it("should use resource ap", async () => {
     const ma = M.pure(1)
     const mfab = M.pure((n: number) => n + 1)
-    const ap = M.managed.ap(mfab, ma)
+    const ap = M.managed.ap(ma)(mfab)
 
     const result = await T.runToPromise(M.use(ap, (n) => T.pure(n + 1)))
 
@@ -403,7 +405,7 @@ describe("Managed", () => {
     const mapped = M.consume((n: number) => T.pure(n + 1))
 
     const result = await T.runToPromise(
-      T.effect.chain(mapped(resource), (n) => T.pure(n + 1))
+      T.chain_(mapped(resource), (n) => T.pure(n + 1))
     )
 
     assert.deepStrictEqual(result, 3)

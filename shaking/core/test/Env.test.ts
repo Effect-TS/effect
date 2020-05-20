@@ -1,10 +1,9 @@
 import * as assert from "assert"
 
-import { Do } from "fp-ts-contrib/lib/Do"
-import { array } from "fp-ts/lib/Array"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { effect as T } from "../src"
+import { array } from "../src/Array"
+import { Do } from "../src/Do"
+import { pipe } from "../src/Pipe"
 
 const foo: unique symbol = Symbol()
 const bar: unique symbol = Symbol()

@@ -3,44 +3,42 @@
 import type { Either, Left, Right } from "fp-ts/lib/Either"
 
 import type {
-  Alt2,
-  Alt2C,
-  Applicative,
-  Bifunctor2,
-  ChainRec2,
-  ChainRec2C,
-  Extend2,
-  Foldable2,
   HKT,
-  Monad2,
-  Monad2C,
   Separated,
-  Sequence2,
-  Traversable2,
-  Traverse2,
-  TraverseCurried2,
-  WitherableCurried2C
+  CSequence2,
+  CApplicative,
+  CTraverse2,
+  CWitherable2C,
+  CMonad2C,
+  CAlt2C,
+  CChainRec2C,
+  CFoldable2,
+  CTraversable2,
+  CBifunctor2,
+  CExtend2
 } from "../Base"
 import type { Eq } from "../Eq"
-import type { Lazy, Predicate, Refinement } from "../Function"
+import { Lazy, Predicate, Refinement, flow } from "../Function"
 import type { Monoid } from "../Monoid"
 import { isNone, Option } from "../Option"
+import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common"
 
-import type { ChainRec2M, Monad2M, MonadThrow2M } from "./overloads"
+import type { ChainRec2M, Monad2M, MonadThrow2M, CAlt2M } from "./overloads"
 
 export type { Either, Left, Right }
 
-export const alt_: <E, E2, A>(
+export const alt_: <E, E2, A, A2>(
   fx: Either<E, A>,
-  fy: () => Either<E2, A>
-) => Either<E | E2, A> = (fx, fy) => (isLeft(fx) ? fy() : fx)
+  fy: () => Either<E2, A2>
+) => Either<E | E2, A | A2> = (fx, fy) => (isLeft(fx) ? fy() : fx)
 
 export const alt: <E, A>(
   that: () => Either<E, A>
-) => <E2>(fa: Either<E2, A>) => Either<E | E2, A> = (that) => (fa) => alt_(fa, that)
+) => <E2, A2>(fa: Either<E2, A2>) => Either<E | E2, A | A2> = (that) => (fa) =>
+  alt_(fa, that)
 
 export const ap_: <E, A, B, E2>(
   fab: Either<E, (a: A) => B>,
@@ -98,12 +96,15 @@ export const chainRec: <E, A, B>(
   a: A,
   f: (a: A) => Either<E, Either<A, B>>
 ) => Either<E, B> = (a, f) =>
-  tailRec(f(a), (e) =>
-    isLeft(e)
-      ? rightW(leftW(e.left))
-      : isLeft(e.right)
-      ? leftW(f(e.right.left))
-      : rightW(rightW(e.right.right))
+  pipe(
+    f(a),
+    tailRec((e) =>
+      isLeft(e)
+        ? rightW(leftW(e.left))
+        : isLeft(e.right)
+        ? leftW(f(e.right.left))
+        : rightW(rightW(e.right.right))
+    )
   )
 
 export const duplicate: <E, A>(ma: Either<E, A>) => Either<E, Either<E, A>> = (ma) =>
@@ -450,10 +451,10 @@ export function rightW<E = never, A = never>(a: A): Either<E, A> {
   return { _tag: "Right", right: a }
 }
 
-export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <E, A>(
+export const sequence: CSequence2<URI> = <F>(F: CApplicative<F>) => <E, A>(
   ma: Either<E, HKT<F, A>>
 ): HKT<F, Either<E, A>> => {
-  return isLeft(ma) ? F.of(left(ma.left)) : F.map<A, Either<E, A>>(ma.right, right)
+  return isLeft(ma) ? F.of(left(ma.left)) : F.map<A, Either<E, A>>(right)(ma.right)
 }
 
 /**
@@ -492,18 +493,11 @@ export function toError(e: unknown): Error {
   return e instanceof Error ? e : new Error(String(e))
 }
 
-export const traverse_: Traverse2<URI> = <F>(F: Applicative<F>) => <E, A, B>(
-  ma: Either<E, A>,
-  f: (a: A) => HKT<F, B>
-): HKT<F, Either<E, B>> => {
-  return isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<E, B>>(f(ma.right), right)
-}
-
-export const traverse: TraverseCurried2<URI> = <F>(F: Applicative<F>) => <A, B>(
+export const traverse: CTraverse2<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
 ): (<TE>(ma: Either<TE, A>) => HKT<F, Either<TE, B>>) => {
   return <TE>(ma: Either<TE, A>) =>
-    isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<TE, B>>(f(ma.right), right)
+    isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<TE, B>>(right)(f(ma.right))
 }
 
 /**
@@ -535,7 +529,7 @@ export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E
   }
 }
 
-export function getWitherable<E>(M: Monoid<E>): WitherableCurried2C<URI, E> {
+export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
   const empty = left(M.empty)
 
   const compact = <A>(ma: Either<E, Option<A>>): Either<E, A> => {
@@ -557,63 +551,69 @@ export function getWitherable<E>(M: Monoid<E>): WitherableCurried2C<URI, E> {
   }
 
   const partitionMap = <A, B, C>(
-    ma: Either<E, A>,
     f: (a: A) => Either<B, C>
-  ): Separated<Either<E, B>, Either<E, C>> => {
-    if (isLeft(ma)) {
-      return { left: ma, right: ma }
+  ): ((ma: Either<E, A>) => Separated<Either<E, B>, Either<E, C>>) => {
+    return (ma) => {
+      if (isLeft(ma)) {
+        return { left: ma, right: ma }
+      }
+      const e = f(ma.right)
+      return isLeft(e)
+        ? { left: right(e.left), right: empty }
+        : { left: empty, right: right(e.right) }
     }
-    const e = f(ma.right)
-    return isLeft(e)
-      ? { left: right(e.left), right: empty }
-      : { left: empty, right: right(e.right) }
   }
 
   const partition = <A>(
-    ma: Either<E, A>,
     p: Predicate<A>
-  ): Separated<Either<E, A>, Either<E, A>> => {
-    return isLeft(ma)
-      ? { left: ma, right: ma }
-      : p(ma.right)
-      ? { left: empty, right: right(ma.right) }
-      : { left: right(ma.right), right: empty }
+  ): ((ma: Either<E, A>) => Separated<Either<E, A>, Either<E, A>>) => {
+    return (ma) =>
+      isLeft(ma)
+        ? { left: ma, right: ma }
+        : p(ma.right)
+        ? { left: empty, right: right(ma.right) }
+        : { left: right(ma.right), right: empty }
   }
 
-  const filterMap = <A, B>(ma: Either<E, A>, f: (a: A) => Option<B>): Either<E, B> => {
-    if (isLeft(ma)) {
-      return ma
+  const filterMap = <A, B>(
+    f: (a: A) => Option<B>
+  ): ((ma: Either<E, A>) => Either<E, B>) => {
+    return (ma) => {
+      if (isLeft(ma)) {
+        return ma
+      }
+      const ob = f(ma.right)
+      return ob._tag === "None" ? left(M.empty) : right(ob.value)
     }
-    const ob = f(ma.right)
-    return ob._tag === "None" ? left(M.empty) : right(ob.value)
   }
 
-  const filter = <A>(ma: Either<E, A>, predicate: Predicate<A>): Either<E, A> =>
-    isLeft(ma) ? ma : predicate(ma.right) ? ma : left(M.empty)
+  const filter = <A>(predicate: Predicate<A>): ((ma: Either<E, A>) => Either<E, A>) => (
+    ma
+  ) => (isLeft(ma) ? ma : predicate(ma.right) ? ma : left(M.empty))
 
   const wither = <F>(
-    F: Applicative<F>
+    F: CApplicative<F>
   ): (<A, B>(
     f: (a: A) => HKT<F, Option<B>>
   ) => (ma: Either<E, A>) => HKT<F, Either<E, B>>) => {
-    const traverseF = traverse_(F)
-    return (f) => (ma) => F.map(traverseF(ma, f), compact)
+    const traverseF = traverse(F)
+    return (f) => flow(traverseF(f), F.map(compact))
   }
 
   const wilt = <F>(
-    F: Applicative<F>
+    F: CApplicative<F>
   ): (<A, B, C>(
-    ma: Either<E, A>,
     f: (a: A) => HKT<F, Either<B, C>>
-  ) => HKT<F, Separated<Either<E, B>, Either<E, C>>>) => {
-    const traverseF = traverse_(F)
-    return (ma, f) => F.map(traverseF(ma, f), separate)
+  ) => (ma: Either<E, A>) => HKT<F, Separated<Either<E, B>, Either<E, C>>>) => {
+    const traverseF = traverse(F)
+    return (f) => flow(traverseF(f), F.map(separate))
   }
 
   return {
     URI,
+    _F: "curried",
     _E: undefined as any,
-    map: map_,
+    map,
     compact,
     separate,
     filter,
@@ -622,20 +622,22 @@ export function getWitherable<E>(M: Monoid<E>): WitherableCurried2C<URI, E> {
     partitionMap,
     traverse,
     sequence,
-    reduce: reduce_,
-    foldMap: foldMap_,
-    reduceRight: reduceRight_,
+    reduce,
+    foldMap,
+    reduceRight,
     wither,
     wilt
   }
 }
 
-export function tailRec<A, B>(a: A, f: (a: A) => Either<A, B>): B {
-  let v = f(a)
-  while (v._tag === "Left") {
-    v = f(v.left)
+export function tailRec<A, B>(f: (a: A) => Either<A, B>): (a: A) => B {
+  return (a) => {
+    let v = f(a)
+    while (v._tag === "Left") {
+      v = f(v.left)
+    }
+    return v.right
   }
-  return v.right
 }
 
 export const URI = "@matechs/core/Either"
@@ -649,30 +651,23 @@ declare module "../Base/HKT" {
 
 export const eitherMonad: Monad2M<URI> & ChainRec2M<URI> = {
   URI,
+  _F: "curried",
   _K: "Monad2M",
-  map: map_,
+  map,
   of: right,
-  ap: ap_,
-  chain: chain_,
-  chainRec
-}
-
-export const eitherMonadClassic: Monad2<URI> & ChainRec2<URI> = {
-  URI,
-  map: map_,
-  of: right,
-  ap: ap_,
-  chain: chain_,
+  ap,
+  chain,
   chainRec
 }
 
 export function getValidation<E>(
   S: Semigroup<E>
-): Monad2C<URI, E> & Alt2C<URI, E> & ChainRec2C<URI, E> {
+): CMonad2C<URI, E> & CAlt2C<URI, E> & CChainRec2C<URI, E> {
   return {
     ...eitherMonad,
     _E: undefined as any,
-    ap: (mab, ma) =>
+    _F: "curried",
+    ap: (ma) => (mab) =>
       isLeft(mab)
         ? isLeft(ma)
           ? left(S.concat(mab.left, ma.left))
@@ -680,7 +675,7 @@ export function getValidation<E>(
         : isLeft(ma)
         ? ma
         : right(mab.right(ma.right)),
-    alt: (fx, f) => {
+    alt: (f) => (fx) => {
       if (isRight(fx)) {
         return fx
       }
@@ -691,28 +686,29 @@ export function getValidation<E>(
 }
 
 export const either: Monad2M<URI> &
-  Foldable2<URI> &
-  Traversable2<URI> &
-  Bifunctor2<URI> &
-  Alt2<URI> &
-  Extend2<URI> &
+  CFoldable2<URI> &
+  CTraversable2<URI> &
+  CBifunctor2<URI> &
+  CAlt2M<URI> &
+  CExtend2<URI> &
   ChainRec2M<URI> &
   MonadThrow2M<URI> = {
   URI,
+  _F: "curried",
   _K: "Monad2M",
-  map: map_,
+  map,
   of: right,
-  ap: ap_,
-  chain: chain_,
-  reduce: reduce_,
-  foldMap: foldMap_,
-  reduceRight: reduceRight_,
-  traverse: traverse_,
+  ap,
+  chain,
+  reduce,
+  foldMap,
+  reduceRight,
+  traverse,
   sequence,
-  bimap: bimap_,
-  mapLeft: mapLeft_,
-  alt: alt_,
-  extend: extend_,
+  bimap,
+  mapLeft,
+  alt,
+  extend,
   chainRec,
   throwError: left
 }

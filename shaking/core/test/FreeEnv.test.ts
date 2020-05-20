@@ -1,9 +1,8 @@
 import assert from "assert"
 
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { service as F, effect as T, utils as U, managed as M } from "../src"
 import { done } from "../src/Exit"
+import { pipe } from "../src/Pipe"
 
 const fnEnv: unique symbol = Symbol()
 
