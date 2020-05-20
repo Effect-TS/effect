@@ -21,7 +21,8 @@ import type {
   FilterableWithIndex1,
   FunctorWithIndex1,
   FoldableWithIndex1,
-  TraverseCurried1
+  TraverseCurried1,
+  TraverseWithIndexCurried1
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
@@ -1489,6 +1490,19 @@ export const traverseWithIndex_: TraverseWithIndex1<URI, number> = <F>(
 ) => <A, B>(
   ta: ReadonlyArray<A>,
   f: (i: number, a: A) => HKT<F, B>
+): HKT<F, ReadonlyArray<B>> => {
+  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a) =>
+    F.ap(
+      F.map(fbs, (bs) => (b: B) => snoc(bs, b)),
+      f(i, a)
+    )
+  )
+}
+
+export const traverseWithIndex: TraverseWithIndexCurried1<URI, number> = <F>(
+  F: Applicative<F>
+) => <A, B>(f: (i: number, a: A) => HKT<F, B>) => (
+  ta: ReadonlyArray<A>
 ): HKT<F, ReadonlyArray<B>> => {
   return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a) =>
     F.ap(

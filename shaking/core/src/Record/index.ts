@@ -247,6 +247,31 @@ export function reduceRightWithIndex<A, B>(
  */
 export const singleton: <K extends string, A>(k: K, a: A) => Record<K, A> = RR.singleton
 
+export function traverseWithIndex<F extends URIS4>(
+  F: Applicative4EP<F>
+): <K extends string, S, R, E, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
+export function traverseWithIndex<F extends URIS4, E>(
+  F: Applicative4ECP<F, E>
+): <K extends string, S, R, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
+export function traverseWithIndex<F extends URIS4>(
+  F: Applicative4E<F>
+): <K extends string, S, R, E, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
+export function traverseWithIndex<F extends URIS4, E>(
+  F: Applicative4EC<F, E>
+): <K extends string, S, R, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
+export function traverseWithIndex<F extends URIS4>(
+  F: Applicative4<F>
+): <K extends string, S, R, E, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
 export function traverseWithIndex<F extends URIS3>(
   F: Applicative3<F>
 ): <K extends string, R, E, A, B>(

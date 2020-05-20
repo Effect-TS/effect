@@ -13,7 +13,8 @@ import type {
   Sequence2,
   Show,
   Traversable2,
-  Traverse2
+  Traverse2,
+  TraverseCurried2
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
@@ -321,7 +322,7 @@ export const reduceRight_: <E, A, B>(
   f: (a: A, b: B) => B
 ) => B = (fa, b, f) => (isLeft(fa) ? b : isRight(fa) ? f(fa.right, b) : f(fa.right, b))
 
-export const traverse: Traverse2<URI> = <F>(F: Applicative<F>) => <E, A, B>(
+export const traverse_: Traverse2<URI> = <F>(F: Applicative<F>) => <E, A, B>(
   ta: These<E, A>,
   f: (a: A) => HKT<F, B>
 ): HKT<F, These<E, B>> => {
@@ -330,6 +331,17 @@ export const traverse: Traverse2<URI> = <F>(F: Applicative<F>) => <E, A, B>(
     : isRight(ta)
     ? F.map(f(ta.right), right)
     : F.map(f(ta.right), (b) => both(ta.left, b))
+}
+
+export const traverse: TraverseCurried2<URI> = <F>(F: Applicative<F>) => <A, B>(
+  f: (a: A) => HKT<F, B>
+): (<E>(ta: These<E, A>) => HKT<F, These<E, B>>) => {
+  return (ta) =>
+    isLeft(ta)
+      ? F.of(ta)
+      : isRight(ta)
+      ? F.map(f(ta.right), right)
+      : F.map(f(ta.right), (b) => both(ta.left, b))
 }
 
 export const sequence: Sequence2<URI> = <F>(F: Applicative<F>) => <E, A>(
@@ -353,7 +365,7 @@ export const these: Functor2<URI> &
   reduce: reduce_,
   foldMap: foldMap_,
   reduceRight: reduceRight_,
-  traverse,
+  traverse: traverse_,
   sequence
 }
 

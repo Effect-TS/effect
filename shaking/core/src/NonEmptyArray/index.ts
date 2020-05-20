@@ -16,7 +16,8 @@ import type {
   Traverse1,
   Sequence1,
   TraverseWithIndex1,
-  TraverseCurried1
+  TraverseCurried1,
+  TraverseWithIndexCurried1
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -297,6 +298,11 @@ export const traverseWithIndex_: TraverseWithIndex1<
   URI,
   number
 > = RNEA.traverseWithIndex_ as any
+
+export const traverseWithIndex: TraverseWithIndexCurried1<
+  URI,
+  number
+> = RNEA.traverseWithIndex as any
 
 export const alt_: <A>(
   fx: NonEmptyArray<A>,

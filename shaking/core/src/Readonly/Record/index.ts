@@ -360,6 +360,31 @@ export function singleton<K extends string, A>(k: K, a: A): ReadonlyRecord<K, A>
   return { [k]: a } as any
 }
 
+export function traverseWithIndex<F extends URIS4>(
+  F: Applicative4EP<F>
+): <K extends string, S, R, E, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: ReadonlyRecord<K, A>) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function traverseWithIndex<F extends URIS4, E>(
+  F: Applicative4ECP<F, E>
+): <K extends string, S, R, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: ReadonlyRecord<K, A>) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function traverseWithIndex<F extends URIS4>(
+  F: Applicative4E<F>
+): <K extends string, S, R, E, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: ReadonlyRecord<K, A>) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function traverseWithIndex<F extends URIS4, E>(
+  F: Applicative4EC<F, E>
+): <K extends string, S, R, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: ReadonlyRecord<K, A>) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function traverseWithIndex<F extends URIS4>(
+  F: Applicative4<F>
+): <K extends string, S, R, E, A, B>(
+  f: (k: K, a: A) => Kind4<F, S, R, E, B>
+) => (ta: ReadonlyRecord<K, A>) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
 export function traverseWithIndex<F extends URIS3>(
   F: Applicative3<F>
 ): <K extends string, R, E, A, B>(

@@ -23,7 +23,8 @@ import type {
   Witherable1,
   FunctorWithIndex1,
   FoldableWithIndex1,
-  TraverseCurried1
+  TraverseCurried1,
+  TraverseWithIndexCurried1
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -966,6 +967,11 @@ export const traverseWithIndex_: TraverseWithIndex1<
   URI,
   number
 > = RA.traverseWithIndex_ as any
+
+export const traverseWithIndex: TraverseWithIndexCurried1<
+  URI,
+  number
+> = RA.traverseWithIndex as any
 
 export const unfold: <A, B>(b: B, f: (b: B) => Option<[A, B]>) => A[] = RA.unfold as any
 

@@ -78,3 +78,36 @@ export interface TraverseCurried2<T extends URIS2> {
     f: (a: A) => HKT<F, B>
   ) => <TE>(ta: Kind2<T, TE, A>) => HKT<F, Kind2<T, TE, B>>
 }
+
+export interface TraverseWithIndexCurried1<T extends URIS, I> {
+  <F extends MaURIS, E>(F: Applicative4ECP<F, E>): <A, S, R, B>(
+    f: (i: I, a: A) => Kind4<F, S, R, E, B>
+  ) => (ta: Kind<T, A>) => Kind4<F, unknown, R, E, Kind<T, B>>
+  <F extends MaURIS, E>(F: Applicative4EC<F, E>): <A, S, R, B>(
+    f: (i: I, a: A) => Kind4<F, S, R, E, B>
+  ) => (ta: Kind<T, A>) => Kind4<F, S, R, E, Kind<T, B>>
+  <F extends MaURIS>(F: Applicative4EP<F>): <A, S, R, E, B>(
+    f: (i: I, a: A) => Kind4<F, S, R, E, B>
+  ) => (ta: Kind<T, A>) => Kind4<F, unknown, R, E, Kind<T, B>>
+  <F extends MaURIS>(F: Applicative4E<F>): <A, S, R, E, B>(
+    f: (i: I, a: A) => Kind4<F, S, R, E, B>
+  ) => (ta: Kind<T, A>) => Kind4<F, S, R, E, Kind<T, B>>
+  <F extends URIS3>(F: Applicative3<F>): <A, R, E, B>(
+    f: (i: I, a: A) => Kind3<F, R, E, B>
+  ) => (ta: Kind<T, A>) => Kind3<F, R, E, Kind<T, B>>
+  <F extends URIS3, E>(F: Applicative3C<F, E>): <A, R, B>(
+    f: (i: I, a: A) => Kind3<F, R, E, B>
+  ) => (ta: Kind<T, A>) => Kind3<F, R, E, Kind<T, B>>
+  <F extends URIS2>(F: Applicative2<F>): <A, E, B>(
+    f: (i: I, a: A) => Kind2<F, E, B>
+  ) => (ta: Kind<T, A>) => Kind2<F, E, Kind<T, B>>
+  <F extends URIS2, E>(F: Applicative2C<F, E>): <A, B>(
+    f: (i: I, a: A) => Kind2<F, E, B>
+  ) => (ta: Kind<T, A>) => Kind2<F, E, Kind<T, B>>
+  <F extends URIS>(F: Applicative1<F>): <A, B>(
+    f: (i: I, a: A) => Kind<F, B>
+  ) => (ta: Kind<T, A>) => Kind<F, Kind<T, B>>
+  <F>(F: Applicative<F>): <A, B>(
+    f: (i: I, a: A) => HKT<F, B>
+  ) => (ta: Kind<T, A>) => HKT<F, Kind<T, B>>
+}
