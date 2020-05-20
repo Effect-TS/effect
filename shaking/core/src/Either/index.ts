@@ -19,7 +19,7 @@ import type {
   Traversable2,
   Traverse2,
   TraverseCurried2,
-  Witherable2C
+  WitherableCurried2C
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
@@ -535,7 +535,7 @@ export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E
   }
 }
 
-export function getWitherable<E>(M: Monoid<E>): Witherable2C<URI, E> {
+export function getWitherable<E>(M: Monoid<E>): WitherableCurried2C<URI, E> {
   const empty = left(M.empty)
 
   const compact = <A>(ma: Either<E, Option<A>>): Either<E, A> => {
@@ -594,10 +594,18 @@ export function getWitherable<E>(M: Monoid<E>): Witherable2C<URI, E> {
   const wither = <F>(
     F: Applicative<F>
   ): (<A, B>(
+    f: (a: A) => HKT<F, Option<B>>
+  ) => (ma: Either<E, A>) => HKT<F, Either<E, B>>) => {
+    const traverseF = traverse_(F)
+    return (f) => (ma) => F.map(traverseF(ma, f), compact)
+  }
+  const wither_ = <F>(
+    F: Applicative<F>
+  ): (<A, B>(
     ma: Either<E, A>,
     f: (a: A) => HKT<F, Option<B>>
   ) => HKT<F, Either<E, B>>) => {
-    const traverseF = either.traverse(F)
+    const traverseF = traverse_(F)
     return (ma, f) => F.map(traverseF(ma, f), compact)
   }
 
@@ -607,26 +615,28 @@ export function getWitherable<E>(M: Monoid<E>): Witherable2C<URI, E> {
     ma: Either<E, A>,
     f: (a: A) => HKT<F, Either<B, C>>
   ) => HKT<F, Separated<Either<E, B>, Either<E, C>>>) => {
-    const traverseF = either.traverse(F)
+    const traverseF = traverse_(F)
     return (ma, f) => F.map(traverseF(ma, f), separate)
   }
 
   return {
     URI,
     _E: undefined as any,
-    map: either.map,
+    map: map_,
     compact,
     separate,
     filter,
     filterMap,
     partition,
     partitionMap,
-    traverse: either.traverse,
-    sequence: either.sequence,
-    reduce: either.reduce,
-    foldMap: either.foldMap,
-    reduceRight: either.reduceRight,
+    traverse,
+    traverse_,
+    sequence,
+    reduce: reduce_,
+    foldMap: foldMap_,
+    reduceRight: reduceRight_,
     wither,
+    wither_,
     wilt
   }
 }

@@ -22,7 +22,8 @@ import type {
   FunctorWithIndex1,
   FoldableWithIndex1,
   TraverseCurried1,
-  TraverseWithIndexCurried1
+  TraverseWithIndexCurried1,
+  WitherCurried1
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
@@ -1673,6 +1674,15 @@ export const wither_: Wither1<URI> = <F>(
 ) => HKT<F, ReadonlyArray<B>>) => {
   const traverseF = traverse_(F)
   return (wa, f) => F.map(traverseF(wa, f), compact)
+}
+
+export const wither: WitherCurried1<URI> = <F>(
+  F: Applicative<F>
+): (<A, B>(
+  f: (a: A) => HKT<F, Option<B>>
+) => (ta: ReadonlyArray<A>) => HKT<F, ReadonlyArray<B>>) => {
+  const traverseF = traverse_(F)
+  return (f) => (wa) => F.map(traverseF(wa, f), compact)
 }
 
 export const zero: <A>() => readonly A[] = () => empty

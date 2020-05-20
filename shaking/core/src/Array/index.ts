@@ -24,7 +24,8 @@ import type {
   FunctorWithIndex1,
   FoldableWithIndex1,
   TraverseCurried1,
-  TraverseWithIndexCurried1
+  TraverseWithIndexCurried1,
+  WitherCurried1
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -1054,6 +1055,7 @@ declare module "../Base/HKT" {
 export const wilt_: Wilt1<URI> = RA.wilt_ as any
 
 export const wither_: Wither1<URI> = RA.wither_ as any
+export const wither: WitherCurried1<URI> = RA.wither as any
 
 export const zero: <A>() => A[] = RA.zero as any
 

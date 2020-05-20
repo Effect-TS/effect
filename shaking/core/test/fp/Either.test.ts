@@ -453,14 +453,14 @@ describe("Either", () => {
       const f = (n: number) => I.identity.of(p(n) ? some(n + 1) : none)
       const witherIdentity = W.wither(I.identity)
       assert.deepStrictEqual(
-        witherIdentity(_.left("foo"), f),
+        witherIdentity(f)(_.left("foo")),
         I.identity.of(_.left("foo"))
       )
       assert.deepStrictEqual(
-        witherIdentity(_.right(1), f),
+        witherIdentity(f)(_.right(1)),
         I.identity.of(_.left(monoidString.empty))
       )
-      assert.deepStrictEqual(witherIdentity(_.right(3), f), I.identity.of(_.right(4)))
+      assert.deepStrictEqual(witherIdentity(f)(_.right(3)), I.identity.of(_.right(4)))
     })
 
     it("wilt", () => {

@@ -9,6 +9,7 @@ import * as M from "../../src/Map"
 import { monoidString } from "../../src/Monoid"
 import { option, some, none, Option } from "../../src/Option"
 import { ord, ordString, fromCompare, ordNumber } from "../../src/Ord"
+import { pipe } from "../../src/Pipe"
 import {
   semigroupSum,
   getStructSemigroup,
@@ -864,13 +865,10 @@ describe("Map", () => {
         [{ id: "k2" }, 2]
       ])
       assert.deepStrictEqual(
-        optionTraverse(x, (n) => (n <= 2 ? some(n) : none)),
+        optionTraverse((n) => (n <= 2 ? some(n) : none))(x),
         some(x)
       )
-      assert.deepStrictEqual(
-        optionTraverse(x, (n) => (n >= 2 ? some(n) : none)),
-        none
-      )
+      assert.deepStrictEqual(optionTraverse((n) => (n >= 2 ? some(n) : none))(x), none)
     })
 
     it("sequence", () => {
@@ -901,18 +899,22 @@ describe("Map", () => {
         [{ id: "k1" }, 1],
         [{ id: "k2" }, 2]
       ])
-      const t1 = optionTraverseWithIndex(
+      const t1 = pipe(
         d1,
-        (k, n): Option<number> => (!ordUser.equals(k, { id: "k1" }) ? some(n) : none)
+        optionTraverseWithIndex(
+          (k, n): Option<number> => (!ordUser.equals(k, { id: "k1" }) ? some(n) : none)
+        )
       )
       assert.deepStrictEqual(t1, none)
       const d2 = new Map<User, number>([
         [{ id: "k1" }, 2],
         [{ id: "k2" }, 3]
       ])
-      const t2 = optionTraverseWithIndex(
+      const t2 = pipe(
         d2,
-        (k, n): Option<number> => (!ordUser.equals(k, { id: "k3" }) ? some(n) : none)
+        optionTraverseWithIndex(
+          (k, n): Option<number> => (!ordUser.equals(k, { id: "k3" }) ? some(n) : none)
+        )
       )
       const expected = new Map<User, number>([
         [{ id: "k1" }, 2],
@@ -930,8 +932,8 @@ describe("Map", () => {
       const b4 = new Map<User, number>([[{ id: "b" }, 4]])
       const witherIdentity = W.wither(I.identity)
       const f = (n: number) => I.identity.of(p(n) ? some(n + 1) : none)
-      assert.deepStrictEqual(witherIdentity(emptyMap, f), I.identity.of(emptyMap))
-      assert.deepStrictEqual(witherIdentity(a1b3, f), I.identity.of(b4))
+      assert.deepStrictEqual(witherIdentity(f)(emptyMap), I.identity.of(emptyMap))
+      assert.deepStrictEqual(witherIdentity(f)(a1b3), I.identity.of(b4))
     })
 
     it("wilt", () => {

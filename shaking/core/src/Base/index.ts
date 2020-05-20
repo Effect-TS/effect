@@ -385,8 +385,15 @@ declare module "fp-ts/lib/HKT" {
 
 export { URItoKind, URItoKind2, URItoKind3, URItoKind4 } from "./HKT"
 
-export {
+export type {
   TraverseCurried1,
   TraverseCurried2,
-  TraverseWithIndexCurried1
+  TraverseWithIndexCurried1,
+  WitherCurried1,
+  TraversableCurried2C,
+  TraverseCurried2C,
+  WitherCurried2C,
+  WitherableCurried2C,
+  TraversableWithIndexCurried2C,
+  TraverseWithIndexCurried2C
 } from "./curried"

@@ -38,7 +38,6 @@ import type {
   URIS3,
   URIS4,
   Wilt1,
-  Wither1,
   Witherable1
 } from "../../Base"
 import type { Either } from "../../Either"
@@ -943,14 +942,123 @@ export const partitionMap_: <A, B, C>(
 ) => Separated<Readonly<Record<string, B>>, Readonly<Record<string, C>>> = (fa, f) =>
   partitionMapWithIndex_(fa, (_, a) => f(a))
 
-export const wither_: Wither1<URI> = <F>(
+export function wither_<F extends URIS4>(
+  F: Applicative4EP<F>
+): <K extends string, A, S, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4>(
+  F: Applicative4E<F>
+): <K extends string, A, S, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4, E>(
+  F: Applicative4ECP<F, E>
+): <K extends string, A, S, R, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4, E>(
+  F: Applicative4EC<F, E>
+): <K extends string, A, S, R, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4>(
+  F: Applicative4<F>
+): <K extends string, A, S, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS3>(
+  F: Applicative3<F>
+): <K extends string, A, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind3<F, R, E, Option<B>>
+) => Kind3<F, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS2>(
+  F: Applicative2<F>
+): <K extends string, A, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind2<F, E, Option<B>>
+) => Kind2<F, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS>(
+  F: Applicative1<F>
+): <K extends string, A, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind<F, Option<B>>
+) => Kind<F, ReadonlyRecord<K, B>>
+export function wither_<F>(
   F: Applicative<F>
-): (<A, B>(
-  wa: ReadonlyRecord<string, A>,
+): <K extends string, A, B>(
+  wa: ReadonlyRecord<K, A>,
   f: (a: A) => HKT<F, Option<B>>
-) => HKT<F, ReadonlyRecord<string, B>>) => {
+) => HKT<F, ReadonlyRecord<K, B>> {
   const traverseF = traverse_(F)
   return (wa, f) => F.map(traverseF(wa, f), compact)
+}
+
+export function wither<F extends URIS4>(
+  F: Applicative4EP<F>
+): <A, S, R, E, B>(
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => <K extends string>(
+  wa: ReadonlyRecord<K, A>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS4, E>(
+  F: Applicative4ECP<F, E>
+): <A, S, R, B>(
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => <K extends string>(
+  wa: ReadonlyRecord<K, A>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS4, E>(
+  F: Applicative4EC<F, E>
+): <A, S, R, B>(
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => <K extends string>(
+  wa: ReadonlyRecord<K, A>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS4>(
+  F: Applicative4E<F>
+): <A, S, R, E, B>(
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => <K extends string>(
+  wa: ReadonlyRecord<K, A>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS4>(
+  F: Applicative4<F>
+): <A, S, R, E, B>(
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => <K extends string>(
+  wa: ReadonlyRecord<K, A>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS3>(
+  F: Applicative3<F>
+): <A, R, E, B>(
+  f: (a: A) => Kind3<F, R, E, Option<B>>
+) => <K extends string>(
+  wa: ReadonlyRecord<K, A>
+) => Kind3<F, R, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS2>(
+  F: Applicative2<F>
+): <A, E, B>(
+  f: (a: A) => Kind2<F, E, Option<B>>
+) => <K extends string>(wa: ReadonlyRecord<K, A>) => Kind2<F, E, ReadonlyRecord<K, B>>
+export function wither<F extends URIS>(
+  F: Applicative1<F>
+): <A, B>(
+  f: (a: A) => Kind<F, Option<B>>
+) => <K extends string>(wa: ReadonlyRecord<K, A>) => Kind<F, ReadonlyRecord<K, B>>
+export function wither<F>(
+  F: Applicative<F>
+): <A, B>(
+  f: (a: A) => HKT<F, Option<B>>
+) => <K extends string>(wa: ReadonlyRecord<K, A>) => HKT<F, ReadonlyRecord<K, B>> {
+  const traverseF = traverse_(F)
+  return (f) => (wa) => F.map(traverseF(wa, f), compact)
 }
 
 export const wilt_: Wilt1<URI> = <F>(

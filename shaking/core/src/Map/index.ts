@@ -14,12 +14,12 @@ import type {
   Foldable,
   HKT,
   FilterableWithIndex2C,
-  Witherable2C,
-  TraversableWithIndex2C,
+  TraversableWithIndexCurried2C,
   Partition2,
   Unfoldable1,
   Unfoldable,
-  Filterable2
+  Filterable2,
+  WitherableCurried2C
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -122,7 +122,8 @@ export const getShow: <K, A>(SK: Show<K>, SA: Show<A>) => Show<Map<K, A>> = RM.g
 
 export const getWitherable: <K>(
   O: Ord<K>
-) => Witherable2C<URI, K> & TraversableWithIndex2C<URI, K, K> = RM.getWitherable as any
+) => WitherableCurried2C<URI, K> &
+  TraversableWithIndexCurried2C<URI, K, K> = RM.getWitherable as any
 
 /**
  * Insert or replace a key/value pair in a map

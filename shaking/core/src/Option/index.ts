@@ -19,7 +19,8 @@ import type {
   TraverseCurried1,
   Wilt1,
   Wither1,
-  Witherable1
+  Witherable1,
+  WitherCurried1
 } from "../Base"
 import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
@@ -788,6 +789,11 @@ export const wither_: Wither1<URI> = <F>(F: Applicative<F>) => <A, B>(
   fa: Option<A>,
   f: (a: A) => HKT<F, Option<B>>
 ): HKT<F, Option<B>> => (isNone(fa) ? F.of(none) : f(fa.value))
+
+export const wither: WitherCurried1<URI> = <F>(F: Applicative<F>) => <A, B>(
+  f: (a: A) => HKT<F, Option<B>>
+): ((fa: Option<A>) => HKT<F, Option<B>>) => (fa) =>
+  isNone(fa) ? F.of(none) : f(fa.value)
 
 export const zero = () => none
 
