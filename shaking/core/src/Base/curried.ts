@@ -13,9 +13,8 @@ import type { Functor2C } from "fp-ts/lib/Functor"
 import type { FunctorWithIndex2C } from "fp-ts/lib/FunctorWithIndex"
 import type { HKT, Kind, Kind2, Kind3, Kind4, URIS, URIS2, URIS3 } from "fp-ts/lib/HKT"
 import type { Option } from "fp-ts/lib/Option"
-import type { Sequence2C, Traverse2C } from "fp-ts/lib/Traversable"
-import type { TraverseWithIndex2C } from "fp-ts/lib/TraversableWithIndex"
-import type { Wilt2C, Wither2C } from "fp-ts/lib/Witherable"
+import type { Sequence2C } from "fp-ts/lib/Traversable"
+import type { Wilt2C } from "fp-ts/lib/Witherable"
 
 import type {
   Applicative4E,
@@ -188,7 +187,6 @@ export interface TraversableCurried2C<T extends URIS2, TL>
   extends Functor2C<T, TL>,
     Foldable2C<T, TL> {
   readonly traverse: TraverseCurried2C<T, TL>
-  readonly traverse_: Traverse2C<T, TL>
   readonly sequence: Sequence2C<T, TL>
 }
 
@@ -230,7 +228,6 @@ export interface WitherableCurried2C<T extends URIS2, TL>
     Filterable2C<T, TL> {
   readonly wilt: Wilt2C<T, TL>
   readonly wither: WitherCurried2C<T, TL>
-  readonly wither_: Wither2C<T, TL>
 }
 
 export interface TraverseWithIndexCurried2C<T extends URIS2, I, TE> {
@@ -271,7 +268,6 @@ export interface TraversableWithIndexCurried2C<T extends URIS2, I, E>
     FoldableWithIndex2C<T, I, E>,
     TraversableCurried2C<T, E> {
   readonly traverseWithIndex: TraverseWithIndexCurried2C<T, I, E>
-  readonly traverseWithIndex_: TraverseWithIndex2C<T, I, E>
 }
 
 declare module "fp-ts/lib/Witherable" {

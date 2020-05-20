@@ -599,15 +599,6 @@ export function getWitherable<E>(M: Monoid<E>): WitherableCurried2C<URI, E> {
     const traverseF = traverse_(F)
     return (f) => (ma) => F.map(traverseF(ma, f), compact)
   }
-  const wither_ = <F>(
-    F: Applicative<F>
-  ): (<A, B>(
-    ma: Either<E, A>,
-    f: (a: A) => HKT<F, Option<B>>
-  ) => HKT<F, Either<E, B>>) => {
-    const traverseF = traverse_(F)
-    return (ma, f) => F.map(traverseF(ma, f), compact)
-  }
 
   const wilt = <F>(
     F: Applicative<F>
@@ -630,13 +621,11 @@ export function getWitherable<E>(M: Monoid<E>): WitherableCurried2C<URI, E> {
     partition,
     partitionMap,
     traverse,
-    traverse_,
     sequence,
     reduce: reduce_,
     foldMap: foldMap_,
     reduceRight: reduceRight_,
     wither,
-    wither_,
     wilt
   }
 }
