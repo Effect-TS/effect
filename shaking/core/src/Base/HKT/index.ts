@@ -38,6 +38,4 @@ export type {
   HKT
 } from "fp-ts/lib/HKT"
 
-import type {} from "./aug"
-
 export type MaURIS = keyof MaToKind<any, any, any, any>

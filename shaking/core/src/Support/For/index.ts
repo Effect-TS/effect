@@ -1,7 +1,12 @@
-import type { Kind4 } from "fp-ts/lib/HKT"
-
 import { sequenceS } from "../../Apply"
-import { CMonad4MA, CMonad4MAC, CMonad4MAP, CMonad4MAPC, MaURIS } from "../../Base"
+import {
+  CMonad4MA,
+  CMonad4MAC,
+  CMonad4MAP,
+  CMonad4MAPC,
+  MaURIS,
+  Kind4
+} from "../../Base"
 import {
   ATypeOf,
   ETypeOf,
