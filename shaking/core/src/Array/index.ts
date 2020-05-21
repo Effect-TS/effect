@@ -32,13 +32,19 @@ import type { Show } from "../Show"
 
 export const alt: <A>(that: () => A[]) => (fa: A[]) => A[] = RA.alt as any
 
+export const alt_: <A>(fa: A[], that: () => A[]) => A[] = RA.alt_ as any
+
 export const ap: <A>(fa: A[]) => <B>(fab: ((a: A) => B)[]) => B[] = RA.ap as any
+
+export const ap_: <A, B>(fab: ((a: A) => B)[], fa: A[]) => B[] = RA.ap_ as any
 
 export const apFirst: <B>(fb: B[]) => <A>(fa: A[]) => A[] = RA.apFirst as any
 
 export const apSecond: <B>(fb: B[]) => <A>(fa: A[]) => B[] = RA.apSecond as any
 
 export const chain: <A, B>(f: (a: A) => B[]) => (ma: A[]) => B[] = RA.chain as any
+
+export const chain_: <A, B>(ma: A[], f: (a: A) => B[]) => B[] = RA.chain_ as any
 
 export const chainFirst: <A, B>(
   f: (a: A) => B[]
@@ -570,6 +576,11 @@ export const map: <A, B>(f: (a: A) => B) => (fa: A[]) => B[] = RA.map as any
 export const mapWithIndex: <A, B>(
   f: (i: number, a: A) => B
 ) => (fa: A[]) => B[] = RA.mapWithIndex as any
+
+export const mapWithIndex_: <A, B>(
+  fa: A[],
+  f: (i: number, a: A) => B
+) => B[] = RA.mapWithIndex_ as any
 
 /**
  * Apply a function to the element at the specified index, creating a new array, or returning `None` if the index is out

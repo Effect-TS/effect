@@ -43,8 +43,18 @@ export const alt: <A>(
   that: () => readonly A[]
 ) => (fa: readonly A[]) => readonly A[] = (that) => (fa) => concat(fa, that())
 
+export const alt_: <A>(fa: readonly A[], that: () => readonly A[]) => readonly A[] = (
+  fa,
+  that
+) => concat(fa, that())
+
 export const ap = <A>(fa: readonly A[]) => <B>(
   fab: readonly ((a: A) => B)[]
+): readonly B[] => flatten(map((f: (a: A) => B) => map(f)(fa))(fab))
+
+export const ap_ = <A, B>(
+  fab: readonly ((a: A) => B)[],
+  fa: readonly A[]
 ): readonly B[] => flatten(map((f: (a: A) => B) => map(f)(fa))(fab))
 
 export const apFirst = <B>(fb: readonly B[]) => <A>(fa: readonly A[]): readonly A[] =>
@@ -56,6 +66,32 @@ export const apSecond = <B>(fb: readonly B[]) => <A>(fa: readonly A[]): readonly
 export const chain: <A, B>(
   f: (a: A) => readonly B[]
 ) => (ma: readonly A[]) => readonly B[] = (f) => (fa) => {
+  let resLen = 0
+  const l = fa.length
+  const temp = new Array(l)
+  for (let i = 0; i < l; i++) {
+    const e = fa[i]
+    const arr = f(e)
+    resLen += arr.length
+    temp[i] = arr
+  }
+  const r = Array(resLen)
+  let start = 0
+  for (let i = 0; i < l; i++) {
+    const arr = temp[i]
+    const l = arr.length
+    for (let j = 0; j < l; j++) {
+      r[j + start] = arr[j]
+    }
+    start += l
+  }
+  return r
+}
+
+export const chain_: <A, B>(
+  ma: readonly A[],
+  f: (a: A) => readonly B[]
+) => readonly B[] = (fa, f) => {
   let resLen = 0
   const l = fa.length
   const temp = new Array(l)
@@ -879,6 +915,11 @@ export const map: <A, B>(f: (a: A) => B) => (fa: readonly A[]) => readonly B[] =
 export const mapWithIndex: <A, B>(
   f: (i: number, a: A) => B
 ) => (fa: readonly A[]) => readonly B[] = (f) => (fa) => fa.map((a, i) => f(i, a))
+
+export const mapWithIndex_: <A, B>(
+  fa: readonly A[],
+  f: (i: number, a: A) => B
+) => readonly B[] = (fa, f) => fa.map((a, i) => f(i, a))
 
 /**
  * Apply a function to the element at the specified index, creating a new array, or returning `None` if the index is out
