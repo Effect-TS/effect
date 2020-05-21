@@ -45,8 +45,8 @@ export const fibEffect = (n: bigint): T.Sync<bigint> => {
   if (n < BigInt(2)) {
     return T.pure(BigInt(1))
   }
-  return T.effect.chain(fibEffect(n - BigInt(1)), (a) =>
-    T.effect.map(fibEffect(n - BigInt(2)), (b) => a + b)
+  return T.chain_(fibEffect(n - BigInt(1)), (a) =>
+    T.map_(fibEffect(n - BigInt(2)), (b) => a + b)
   )
 }
 

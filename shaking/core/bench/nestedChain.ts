@@ -29,7 +29,7 @@ export const nestedChainWave = (): wave.Wave<never, bigint> => {
 export const nestedChainEffect = (): T.Sync<bigint> => {
   let io: T.Sync<bigint> = T.pure(BigInt(0))
   for (let i = 0; i < MAX; i++) {
-    io = T.effect.chain(io, effectMapper)
+    io = T.chain_(io, effectMapper)
   }
   return io
 }
