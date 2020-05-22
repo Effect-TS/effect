@@ -1,3 +1,5 @@
+import * as AP from "../Apply"
+import * as A from "../Array"
 import type { CMonad4MA, CApplicative4MA, CApplicative4MAP } from "../Base"
 import type {
   STypeOf,
@@ -6,10 +8,14 @@ import type {
   ETypeOf,
   ATypeOf
 } from "../Base/Apply"
+import * as D from "../Do"
 import * as T from "../Effect"
+import * as E from "../Either"
 import { flow, FunctionN } from "../Function"
 import * as M from "../Monoid"
 import * as O from "../Option"
+import * as RE from "../Record"
+import * as TR from "../Tree"
 
 export interface EffectOption<S, R, E, A> extends T.Effect<S, R, E, O.Option<A>> {}
 
@@ -242,3 +248,105 @@ export function compact<H extends EffectOption<any, any, any, any>>(
 ): EffectOption<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
+
+// region classic
+export const Do = () => D.Do(effectOption)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(effectOption))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(effectOption))()
+
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(effectOption))()
+
+export const sequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(effectOption))()
+
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(effectOption))()
+
+export const sequenceOption =
+  /*#__PURE__*/
+  (() => O.sequence(effectOption))()
+
+export const sequenceEither =
+  /*#__PURE__*/
+  (() => E.sequence(effectOption))()
+
+export const traverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(effectOption))()
+
+export const traverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(effectOption))()
+
+export const traverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(effectOption))()
+
+export const traverseOption =
+  /*#__PURE__*/
+  (() => O.traverse(effectOption))()
+
+export const traverseEither =
+  /*#__PURE__*/
+  (() => E.traverse(effectOption))()
+
+export const traverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(effectOption))()
+
+export const traverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(effectOption))()
+
+// region parallel
+export const parDo = () => D.Do(par(effectOption))
+
+export const parSequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(par(effectOption)))()
+
+export const parSequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(par(effectOption)))()
+
+export const parSequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(par(effectOption)))()
+
+export const parSequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(par(effectOption)))()
+
+export const parSequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(par(effectOption)))()
+
+export const parTraverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(par(effectOption)))()
+
+export const parTraverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(par(effectOption)))()
+
+export const parTraverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(par(effectOption)))()
+
+export const parTraverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(par(effectOption)))()
+
+export const parTraverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(par(effectOption)))()

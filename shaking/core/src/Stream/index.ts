@@ -1,10 +1,11 @@
-import { sequenceS, sequenceT } from "../Apply"
+import * as AP from "../Apply"
 import * as A from "../Array"
 import type { CMonad4MA, CApplicative4MAP } from "../Base"
 import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
-import { Do } from "../Do"
+import * as D from "../Do"
 import * as T from "../Effect"
+import * as E from "../Either"
 import type { Eq } from "../Eq"
 import { Cause, Exit } from "../Exit"
 import * as F from "../Function"
@@ -12,9 +13,11 @@ import * as M from "../Managed"
 import * as O from "../Option"
 import { pipe } from "../Pipe"
 import * as Q from "../Queue"
+import * as RE from "../Record"
 import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
 import { StreamURI as URI } from "../Support/Common"
+import * as TR from "../Tree"
 
 import * as Sink from "./Sink"
 import * as sink from "./Sink"
@@ -1425,7 +1428,7 @@ const makeWeave: M.Async<Weave> =
       M.map_(M.bracket(makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
         function attach(action: T.Sync<void>): T.Sync<void> {
           return pipe(
-            sequenceS(T.effect)({
+            T.sequenceS({
               next: cell.update((n) => n + 1),
               fiber: T.fork(action)
             }),
@@ -1626,7 +1629,7 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
     })
   }
 
-  return Do(T.effect)
+  return T.Do()
     .bind("q", Q.unboundedQueue<O.Option<A>>())
     .bindL("into", ({ q }) =>
       pipe(
@@ -1657,7 +1660,7 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
     )
     .return(({ extract, into }) => {
       const interrupt = pipe(
-        sequenceT(T.effect)(
+        AP.sequenceT(T.effect)(
           into.interrupt,
           extract.interrupt,
           T.sync(() => {
@@ -1714,3 +1717,62 @@ export function compact<H extends Stream<any, any, any, any>>(
 ): Stream<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
+
+// region classic
+export const Do = () => D.Do(stream)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(stream))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(stream))()
+
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(stream))()
+
+export const sequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(stream))()
+
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(stream))()
+
+export const sequenceOption =
+  /*#__PURE__*/
+  (() => O.sequence(stream))()
+
+export const sequenceEither =
+  /*#__PURE__*/
+  (() => E.sequence(stream))()
+
+export const traverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(stream))()
+
+export const traverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(stream))()
+
+export const traverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(stream))()
+
+export const traverseOption =
+  /*#__PURE__*/
+  (() => O.traverse(stream))()
+
+export const traverseEither =
+  /*#__PURE__*/
+  (() => E.traverse(stream))()
+
+export const traverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(stream))()
+
+export const traverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(stream))()

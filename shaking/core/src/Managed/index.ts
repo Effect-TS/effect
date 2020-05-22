@@ -1,7 +1,11 @@
+import * as AP from "../Apply"
+import * as A from "../Array"
 import { CMonad4MA, CApplicative4MAP, CApplicative4MA } from "../Base"
 import { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
+import * as D from "../Do"
 import * as T from "../Effect"
 import type { Either } from "../Either"
+import * as E from "../Either"
 import { done, Exit, raise, withRemaining } from "../Exit"
 import {
   constant,
@@ -13,9 +17,12 @@ import {
 } from "../Function"
 import type { Monoid } from "../Monoid"
 import type { Option } from "../Option"
+import * as O from "../Option"
 import { pipe } from "../Pipe"
+import * as RE from "../Record"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
+import * as TR from "../Tree"
 
 /**
  * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
@@ -679,3 +686,105 @@ export function compact<H extends Managed<any, any, any, any>>(
 ): Managed<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
+
+// region classic
+export const Do = () => D.Do(managed)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(managed))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(managed))()
+
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(managed))()
+
+export const sequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(managed))()
+
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(managed))()
+
+export const sequenceOption =
+  /*#__PURE__*/
+  (() => O.sequence(managed))()
+
+export const sequenceEither =
+  /*#__PURE__*/
+  (() => E.sequence(managed))()
+
+export const traverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(managed))()
+
+export const traverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(managed))()
+
+export const traverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(managed))()
+
+export const traverseOption =
+  /*#__PURE__*/
+  (() => O.traverse(managed))()
+
+export const traverseEither =
+  /*#__PURE__*/
+  (() => E.traverse(managed))()
+
+export const traverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(managed))()
+
+export const traverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(managed))()
+
+// region parallel
+export const parDo = () => D.Do(par(managed))
+
+export const parSequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(par(managed)))()
+
+export const parSequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(par(managed)))()
+
+export const parSequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(par(managed)))()
+
+export const parSequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(par(managed)))()
+
+export const parSequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(par(managed)))()
+
+export const parTraverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(par(managed)))()
+
+export const parTraverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(par(managed)))()
+
+export const parTraverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(par(managed)))()
+
+export const parTraverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(par(managed)))()
+
+export const parTraverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(par(managed)))()

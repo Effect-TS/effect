@@ -1,14 +1,18 @@
 /* adapted from https://github.com/gcanti/fp-ts-contrib */
 
+import * as A from "../Array"
 import type { CBifunctor4, CMonad4MA, CApplicative4MAP } from "../Base"
-import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
+import * as AP from "../Base/Apply"
+import * as D from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
 import * as F from "../Function"
 import * as M from "../Managed"
 import * as O from "../Option"
+import * as RE from "../Record"
 import * as Stream from "../Stream"
 import { Managed, StreamEither, StreamEitherURI as URI } from "../Support/Common"
+import * as TR from "../Tree"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
@@ -409,6 +413,65 @@ export const streamEither: CMonad4MA<URI> & CBifunctor4<URI> & CApplicative4MAP<
  */
 export function compact<H extends StreamEither<any, any, any, any>>(
   _: H
-): StreamEither<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+): StreamEither<AP.STypeOf<H>, AP.RTypeOf<H>, AP.ETypeOf<H>, AP.ATypeOf<H>> {
   return _ as any
 }
+
+// region classic
+export const Do = () => D.Do(streamEither)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(streamEither))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(streamEither))()
+
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(streamEither))()
+
+export const sequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(streamEither))()
+
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(streamEither))()
+
+export const sequenceOption =
+  /*#__PURE__*/
+  (() => O.sequence(streamEither))()
+
+export const sequenceEither =
+  /*#__PURE__*/
+  (() => E.sequence(streamEither))()
+
+export const traverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(streamEither))()
+
+export const traverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(streamEither))()
+
+export const traverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(streamEither))()
+
+export const traverseOption =
+  /*#__PURE__*/
+  (() => O.traverse(streamEither))()
+
+export const traverseEither =
+  /*#__PURE__*/
+  (() => E.traverse(streamEither))()
+
+export const traverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(streamEither))()
+
+export const traverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(streamEither))()
