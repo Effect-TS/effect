@@ -1985,8 +1985,8 @@ export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
     ...I,
     _CTX: "async",
     ap: (fa) => (fab) =>
-      chain_(parZip(result(fa), result(fab)), (r) =>
-        I.ap(completed(r[0]))(completed(r[1]))
+      chain_(parZip(result(fab), result(fa)), (r) =>
+        I.ap(completed(r[1]))(completed(r[0]))
       )
   }
 }
