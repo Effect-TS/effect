@@ -27,7 +27,8 @@ import {
   CFilterable1,
   CTraversable1,
   CPartitionWithIndex1,
-  CPartition1
+  CPartition1,
+  Partition1
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
@@ -60,7 +61,13 @@ export const ap_ = <A, B>(
 export const apFirst = <B>(fb: readonly B[]) => <A>(fa: readonly A[]): readonly A[] =>
   ap(fb)(map((a: A) => () => a)(fa))
 
+export const apFirst_ = <A, B>(fa: readonly A[], fb: readonly B[]): readonly A[] =>
+  ap(fb)(map((a: A) => () => a)(fa))
+
 export const apSecond = <B>(fb: readonly B[]) => <A>(fa: readonly A[]): readonly B[] =>
+  ap(fb)(map(() => (b: B) => b)(fa))
+
+export const apSecond_ = <A, B>(fa: readonly A[], fb: readonly B[]): readonly B[] =>
   ap(fb)(map(() => (b: B) => b)(fa))
 
 export const chain: <A, B>(
@@ -118,6 +125,11 @@ export const chainFirst: <A, B>(
   f: (a: A) => readonly B[]
 ) => (ma: readonly A[]) => readonly A[] = (f) => chain((a) => map(() => a)(f(a)))
 
+export const chainFirst_: <A, B>(
+  ma: readonly A[],
+  f: (a: A) => readonly B[]
+) => readonly A[] = (ma, f) => chain_(ma, (a) => map(() => a)(f(a)))
+
 /**
  * A useful recursion pattern for processing an array to produce a new array, often used for "chopping" up the input
  * array. Typically chop is called with some function that will consume an initial prefix of the array and produce a
@@ -150,6 +162,20 @@ export function chop<A, B>(
   }
 }
 
+export function chop_<A, B>(
+  as: ReadonlyArray<A>,
+  f: (as: ReadonlyNonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
+): ReadonlyArray<B> {
+  const result: Array<B> = []
+  let cs: ReadonlyArray<A> = as
+  while (isNonEmpty(cs)) {
+    const [b, c] = f(cs)
+    result.push(b)
+    cs = c
+  }
+  return result
+}
+
 /**
  * Splits an array into length-`n` pieces. The last piece will be shorter if `n` does not evenly divide the length of
  * the array. Note that `chunksOf(n)([])` is `[]`, not `[[]]`. This is intentional, and is consistent with a recursive
@@ -171,6 +197,14 @@ export function chunksOf(
 ): <A>(as: ReadonlyArray<A>) => ReadonlyArray<ReadonlyArray<A>> {
   const f = chop(splitAt(n))
   return (as) => (as.length === 0 ? empty : isOutOfBound(n - 1, as) ? [as] : f(as))
+}
+
+export function chunksOf_<A>(
+  as: ReadonlyArray<A>,
+  n: number
+): ReadonlyArray<ReadonlyArray<A>> {
+  const f = chop(splitAt(n))
+  return as.length === 0 ? empty : isOutOfBound(n - 1, as) ? [as] : f(as)
 }
 
 export const compact = <A>(fa: readonly Option<A>[]): readonly A[] =>
@@ -298,6 +332,13 @@ export function deleteAt(
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeDeleteAt(i, as)))
 }
 
+export function deleteAt_<A>(
+  as: ReadonlyArray<A>,
+  i: number
+): Option<ReadonlyArray<A>> {
+  return isOutOfBound(i, as) ? none : some(unsafeDeleteAt(i, as))
+}
+
 /**
  * Creates an array of array values not included in the other given array using a `Eq` for equality
  * comparisons. The order and references of result values are determined by the first array.
@@ -326,6 +367,10 @@ export function dropLeft(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<
   return (as) => as.slice(n, as.length)
 }
 
+export function dropLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+  return as.slice(n, as.length)
+}
+
 /**
  * Remove the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
@@ -338,7 +383,7 @@ export function dropLeftWhile<A>(
   predicate: Predicate<A>
 ): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
   return (as) => {
-    const i = spanIndexUncurry(as, predicate)
+    const i = spanIndex_(as, predicate)
     const l = as.length
     const rest = Array(l - i)
     for (let j = i; j < l; j++) {
@@ -347,6 +392,20 @@ export function dropLeftWhile<A>(
     return rest
   }
 }
+
+export function dropLeftWhile_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): ReadonlyArray<A> {
+  const i = spanIndex_(as, predicate)
+  const l = as.length
+  const rest = Array(l - i)
+  for (let j = i; j < l; j++) {
+    rest[j - i] = as[j]
+  }
+  return rest
+}
+
 /**
  * Drop a number of elements from the end of an array, creating a new array
  *
@@ -357,6 +416,10 @@ export function dropLeftWhile<A>(
  */
 export function dropRight(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
   return (as) => as.slice(0, as.length - n)
+}
+
+export function dropRight_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+  return as.slice(0, as.length - n)
 }
 
 export const duplicate = <A>(ma: readonly A[]): readonly (readonly A[])[] =>
@@ -398,18 +461,47 @@ export const extend: <A, B>(
 ) => (ma: readonly A[]) => readonly B[] = (f) => (ma) =>
   ma.map((_, i, as) => f(as.slice(i)))
 
+export const extend_: <A, B>(
+  ma: readonly A[],
+  f: (fa: readonly A[]) => B
+) => readonly B[] = (ma, f) => ma.map((_, i, as) => f(as.slice(i)))
+
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): (fa: readonly A[]) => readonly B[]
   <A>(predicate: Predicate<A>): (fa: readonly A[]) => readonly A[]
 } = <A>(predicate: Predicate<A>) => (fa: readonly A[]): readonly A[] =>
   fa.filter(predicate)
 
+export const filter_: {
+  <A, B extends A>(fa: readonly A[], refinement: Refinement<A, B>): readonly B[]
+  <A>(fa: readonly A[], predicate: Predicate<A>): readonly A[]
+} = <A>(fa: readonly A[], predicate: Predicate<A>): readonly A[] => fa.filter(predicate)
+
 export const filterMap: <A, B>(
   f: (a: A) => Option<B>
 ) => (fa: readonly A[]) => readonly B[] = (f) => filterMapWithIndex((_, a) => f(a))
 
+export const filterMap_: <A, B>(
+  fa: readonly A[],
+  f: (a: A) => Option<B>
+) => readonly B[] = (fa, f) => filterMapWithIndex_(fa, (_, a) => f(a))
+
 export const filterMapWithIndex = <A, B>(f: (i: number, a: A) => Option<B>) => (
   fa: readonly A[]
+): readonly B[] => {
+  const result: Array<B> = []
+  for (let i = 0; i < fa.length; i++) {
+    const optionB = f(i, fa[i])
+    if (isSome(optionB)) {
+      result.push(optionB.value)
+    }
+  }
+  return result
+}
+
+export const filterMapWithIndex_ = <A, B>(
+  fa: readonly A[],
+  f: (i: number, a: A) => Option<B>
 ): readonly B[] => {
   const result: Array<B> = []
   for (let i = 0; i < fa.length; i++) {
@@ -430,6 +522,17 @@ export const filterWithIndex: {
   ) => readonly A[]
 } = <A>(predicateWithIndex: PredicateWithIndex<number, A>) => (
   fa: readonly A[]
+): readonly A[] => fa.filter((a, i) => predicateWithIndex(i, a))
+
+export const filterWithIndex_: {
+  <A, B extends A>(
+    fa: readonly A[],
+    refinementWithIndex: RefinementWithIndex<number, A, B>
+  ): readonly B[]
+  <A>(fa: readonly A[], predicateWithIndex: PredicateWithIndex<number, A>): readonly A[]
+} = <A>(
+  fa: readonly A[],
+  predicateWithIndex: PredicateWithIndex<number, A>
 ): readonly A[] => fa.filter((a, i) => predicateWithIndex(i, a))
 
 /**
@@ -459,6 +562,24 @@ export function findFirst<A>(
     }
     return none
   }
+}
+
+export function findFirst_<A, B extends A>(
+  as: ReadonlyArray<A>,
+  refinement: Refinement<A, B>
+): Option<B>
+export function findFirst_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Option<A>
+export function findFirst_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): Option<A> {
+  const len = as.length
+  for (let i = 0; i < len; i++) {
+    if (predicate(as[i])) {
+      return some(as[i])
+    }
+  }
+  return none
 }
 
 /**
@@ -493,6 +614,20 @@ export function findFirstMap<A, B>(
   }
 }
 
+export function findFirstMap_<A, B>(
+  as: ReadonlyArray<A>,
+  f: (a: A) => Option<B>
+): Option<B> {
+  const len = as.length
+  for (let i = 0; i < len; i++) {
+    const v = f(as[i])
+    if (isSome(v)) {
+      return v
+    }
+  }
+  return none
+}
+
 /**
  * Find the first index for which a predicate holds
  *
@@ -515,6 +650,19 @@ export function findIndex<A>(
     }
     return none
   }
+}
+
+export function findIndex_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): Option<number> {
+  const len = as.length
+  for (let i = 0; i < len; i++) {
+    if (predicate(as[i])) {
+      return some(i)
+    }
+  }
+  return none
 }
 
 /**
@@ -546,6 +694,21 @@ export function findLast<A>(
   }
 }
 
+export function findLast_<A, B extends A>(
+  as: ReadonlyArray<A>,
+  refinement: Refinement<A, B>
+): Option<B>
+export function findLast_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Option<A>
+export function findLast_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Option<A> {
+  const len = as.length
+  for (let i = len - 1; i >= 0; i--) {
+    if (predicate(as[i])) {
+      return some(as[i])
+    }
+  }
+  return none
+}
+
 /**
  * Returns the index of the last element of the list which matches the predicate
  *
@@ -573,6 +736,19 @@ export function findLastIndex<A>(
     }
     return none
   }
+}
+
+export function findLastIndex_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): Option<number> {
+  const len = as.length
+  for (let i = len - 1; i >= 0; i--) {
+    if (predicate(as[i])) {
+      return some(i)
+    }
+  }
+  return none
 }
 
 /**
@@ -606,6 +782,21 @@ export function findLastMap<A, B>(
     return none
   }
 }
+
+export function findLastMap_<A, B>(
+  as: ReadonlyArray<A>,
+  f: (a: A) => Option<B>
+): Option<B> {
+  const len = as.length
+  for (let i = len - 1; i >= 0; i--) {
+    const v = f(as[i])
+    if (isSome(v)) {
+      return v
+    }
+  }
+  return none
+}
+
 /**
  * Removes one level of nesting
  *
@@ -649,14 +840,32 @@ export function foldLeft<A, B>(
   return (as) => (isEmpty(as) ? onNil() : onCons(as[0], as.slice(1)))
 }
 
+export function foldLeft_<A, B>(
+  as: ReadonlyArray<A>,
+  onNil: () => B,
+  onCons: (head: A, tail: ReadonlyArray<A>) => B
+): B {
+  return isEmpty(as) ? onNil() : onCons(as[0], as.slice(1))
+}
+
 export const foldMap: <M>(
   M: Monoid<M>
 ) => <A>(f: (a: A) => M) => (fa: readonly A[]) => M = (M) => (f) =>
   foldMapWithIndex(M)((_, a) => f(a))
 
+export const foldMap_: <M>(
+  M: Monoid<M>
+) => <A>(fa: readonly A[], f: (a: A) => M) => M = (M) => (fa, f) =>
+  foldMapWithIndex_(M)(fa, (_, a) => f(a))
+
 export const foldMapWithIndex: <M>(
   M: Monoid<M>
 ) => <A>(f: (i: number, a: A) => M) => (fa: readonly A[]) => M = (M) => (f) => (fa) =>
+  fa.reduce((b, a, i) => M.concat(b, f(i, a)), M.empty)
+
+export const foldMapWithIndex_: <M>(
+  M: Monoid<M>
+) => <A>(fa: readonly A[], f: (i: number, a: A) => M) => M = (M) => (fa, f) =>
   fa.reduce((b, a, i) => M.concat(b, f(i, a)), M.empty)
 
 /**
@@ -912,6 +1121,9 @@ export const map: <A, B>(f: (a: A) => B) => (fa: readonly A[]) => readonly B[] =
   f
 ) => (fa) => fa.map((a) => f(a))
 
+export const map_: <A, B>(fa: readonly A[], f: (a: A) => B) => readonly B[] = (fa, f) =>
+  fa.map((a) => f(a))
+
 export const mapWithIndex: <A, B>(
   f: (i: number, a: A) => B
 ) => (fa: readonly A[]) => readonly B[] = (f) => (fa) => fa.map((a, i) => f(i, a))
@@ -940,10 +1152,24 @@ export function modifyAt<A>(
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, f(as[i]), as)))
 }
 
+export function modifyAt_<A>(
+  as: ReadonlyArray<A>,
+  i: number,
+  f: (a: A) => A
+): Option<ReadonlyArray<A>> {
+  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, f(as[i]), as))
+}
+
 export const of = <A>(a: A): ReadonlyArray<A> => [a]
 
 export const partition: CPartition1<URI> = <A>(predicate: Predicate<A>) => (
   fa: readonly A[]
+): Separated<readonly A[], readonly A[]> =>
+  partitionWithIndex((_, a: A) => predicate(a))(fa)
+
+export const partition_: Partition1<URI> = <A>(
+  fa: readonly A[],
+  predicate: Predicate<A>
 ): Separated<readonly A[], readonly A[]> =>
   partitionWithIndex((_, a: A) => predicate(a))(fa)
 
@@ -952,9 +1178,35 @@ export const partitionMap: <A, B, C>(
 ) => (fa: readonly A[]) => Separated<readonly B[], readonly C[]> = (f) =>
   partitionMapWithIndex((_, a) => f(a))
 
+export const partitionMap_: <A, B, C>(
+  fa: readonly A[],
+  f: (a: A) => Either<B, C>
+) => Separated<readonly B[], readonly C[]> = (fa, f) =>
+  partitionMapWithIndex_(fa, (_, a) => f(a))
+
 export const partitionMapWithIndex = <A, B, C>(
   f: (i: number, a: A) => Either<B, C>
 ) => (fa: readonly A[]): Separated<readonly B[], readonly C[]> => {
+  const left: Array<B> = []
+  const right: Array<C> = []
+  for (let i = 0; i < fa.length; i++) {
+    const e = f(i, fa[i])
+    if (e._tag === "Left") {
+      left.push(e.left)
+    } else {
+      right.push(e.right)
+    }
+  }
+  return {
+    left,
+    right
+  }
+}
+
+export const partitionMapWithIndex_ = <A, B, C>(
+  fa: readonly A[],
+  f: (i: number, a: A) => Either<B, C>
+): Separated<readonly B[], readonly C[]> => {
   const left: Array<B> = []
   const right: Array<C> = []
   for (let i = 0; i < fa.length; i++) {
@@ -990,6 +1242,25 @@ export const partitionWithIndex: CPartitionWithIndex1<URI, number> = <A>(
   }
 }
 
+export const partitionWithIndex_: CPartitionWithIndex1<URI, number> = <A>(
+  predicateWithIndex: PredicateWithIndex<number, A>
+) => (fa: readonly A[]): Separated<readonly A[], readonly A[]> => {
+  const left: Array<A> = []
+  const right: Array<A> = []
+  for (let i = 0; i < fa.length; i++) {
+    const a = fa[i]
+    if (predicateWithIndex(i, a)) {
+      right.push(a)
+    } else {
+      left.push(a)
+    }
+  }
+  return {
+    left,
+    right
+  }
+}
+
 /**
  * Create an array containing a range of integers, including both endpoints
  *
@@ -1007,10 +1278,22 @@ export const reduce: <A, B>(b: B, f: (b: B, a: A) => B) => (fa: readonly A[]) =>
   f
 ) => reduceWithIndex(b, (_, b, a) => f(b, a))
 
+export const reduce_: <A, B>(fa: readonly A[], b: B, f: (b: B, a: A) => B) => B = (
+  fa,
+  b,
+  f
+) => reduceWithIndex_(fa, b, (_, b, a) => f(b, a))
+
 export const reduceRight: <A, B>(
   b: B,
   f: (a: A, b: B) => B
 ) => (fa: readonly A[]) => B = (b, f) => reduceRightWithIndex(b, (_, a, b) => f(a, b))
+
+export const reduceRight_: <A, B>(fa: readonly A[], b: B, f: (a: A, b: B) => B) => B = (
+  fa,
+  b,
+  f
+) => reduceRightWithIndex_(fa, b, (_, a, b) => f(a, b))
 
 export const reduceRightWithIndex: <A, B>(
   b: B,
@@ -1018,10 +1301,29 @@ export const reduceRightWithIndex: <A, B>(
 ) => (fa: readonly A[]) => B = (b, f) => (fa) =>
   fa.reduceRight((b, a, i) => f(i, a, b), b)
 
+export const reduceRightWithIndex_: <A, B>(
+  fa: readonly A[],
+  b: B,
+  f: (i: number, a: A, b: B) => B
+) => B = (fa, b, f) => fa.reduceRight((b, a, i) => f(i, a, b), b)
+
 export const reduceWithIndex: <A, B>(
   b: B,
   f: (i: number, b: B, a: A) => B
 ) => (fa: readonly A[]) => B = (b, f) => (fa) => {
+  const l = fa.length
+  let r = b
+  for (let i = 0; i < l; i++) {
+    r = f(i, r, fa[i])
+  }
+  return r
+}
+
+export const reduceWithIndex_: <A, B>(
+  fa: readonly A[],
+  b: B,
+  f: (i: number, b: B, a: A) => B
+) => B = (fa, b, f) => {
   const l = fa.length
   let r = b
   for (let i = 0; i < l; i++) {
@@ -1095,6 +1397,17 @@ export function rotate(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A>
   }
 }
 
+export function rotate_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+  const len = as.length
+  if (n === 0 || len <= 1 || len === Math.abs(n)) {
+    return as
+  } else if (n < 0) {
+    return rotate(len + n)(as)
+  } else {
+    return as.slice(-n).concat(as.slice(0, len - n))
+  }
+}
+
 /**
  * Same as `reduce` but it carries over the intermediate steps
  *
@@ -1119,6 +1432,20 @@ export function scanLeft<A, B>(
   }
 }
 
+export function scanLeft_<A, B>(
+  as: ReadonlyArray<A>,
+  b: B,
+  f: (b: B, a: A) => B
+): ReadonlyArray<B> {
+  const l = as.length
+  const r: Array<B> = new Array(l + 1)
+  r[0] = b
+  for (let i = 0; i < l; i++) {
+    r[i + 1] = f(r[i], as[i])
+  }
+  return r
+}
+
 /**
  * Fold an array from the right, keeping all intermediate results instead of only the final result
  *
@@ -1140,6 +1467,20 @@ export function scanRight<A, B>(
     }
     return r
   }
+}
+
+export function scanRight_<A, B>(
+  as: ReadonlyArray<A>,
+  b: B,
+  f: (a: A, b: B) => B
+): ReadonlyArray<B> {
+  const l = as.length
+  const r: Array<B> = new Array(l + 1)
+  r[l] = b
+  for (let i = l - 1; i >= 0; i--) {
+    r[i] = f(as[i], r[i + 1])
+  }
+  return r
 }
 
 export const separate = <B, C>(
@@ -1199,6 +1540,10 @@ export function sort<A>(O: Ord<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
   return (as) => [...as].sort(O.compare)
 }
 
+export function sort_<A>(as: ReadonlyArray<A>, O: Ord<A>): ReadonlyArray<A> {
+  return [...as].sort(O.compare)
+}
+
 /**
  * Sort the elements of an array in increasing order, where elements are compared using first `ords[0]`, then `ords[1]`,
  * etc...
@@ -1231,7 +1576,15 @@ export function sortBy<A>(
   return sort(ords.reduce(M.concat, M.empty))
 }
 
-export const spanIndexUncurry = <A>(
+export function sortBy_<A>(
+  as: ReadonlyArray<A>,
+  ords: ReadonlyArray<Ord<A>>
+): ReadonlyArray<A> {
+  const M = getOrdMonoid<A>()
+  return sort_(as, ords.reduce(M.concat, M.empty))
+}
+
+export const spanIndex_ = <A>(
   as: ReadonlyArray<A>,
   predicate: Predicate<A>
 ): number => {
@@ -1265,7 +1618,7 @@ export function spanLeft<A>(
   predicate: Predicate<A>
 ): (as: ReadonlyArray<A>) => Spanned<A, A> {
   return (as) => {
-    const i = spanIndexUncurry(as, predicate)
+    const i = spanIndex_(as, predicate)
     const init = Array(i)
     for (let j = 0; j < i; j++) {
       init[j] = as[j]
@@ -1277,6 +1630,31 @@ export function spanLeft<A>(
     }
     return { init, rest }
   }
+}
+
+export function spanLeft_<A, B extends A>(
+  as: ReadonlyArray<A>,
+  refinement: Refinement<A, B>
+): Spanned<B, A>
+export function spanLeft_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): Spanned<A, A>
+export function spanLeft_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): Spanned<A, A> {
+  const i = spanIndex_(as, predicate)
+  const init = Array(i)
+  for (let j = 0; j < i; j++) {
+    init[j] = as[j]
+  }
+  const l = as.length
+  const rest = Array(l - i)
+  for (let j = i; j < l; j++) {
+    rest[j - i] = as[j]
+  }
+  return { init, rest }
 }
 
 export interface Spanned<I, R> {
@@ -1296,6 +1674,13 @@ export function splitAt(
   n: number
 ): <A>(as: ReadonlyArray<A>) => readonly [ReadonlyArray<A>, ReadonlyArray<A>] {
   return (as) => [as.slice(0, n), as.slice(n)]
+}
+
+export function splitAt_<A>(
+  as: ReadonlyArray<A>,
+  n: number
+): readonly [ReadonlyArray<A>, ReadonlyArray<A>] {
+  return [as.slice(0, n), as.slice(n)]
 }
 
 /**
@@ -1325,6 +1710,10 @@ export function takeLeft(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<
   return (as) => as.slice(0, n)
 }
 
+export function takeLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+  return as.slice(0, n)
+}
+
 /**
  * Calculate the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
@@ -1343,13 +1732,33 @@ export function takeLeftWhile<A>(
   predicate: Predicate<A>
 ): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
   return (as) => {
-    const i = spanIndexUncurry(as, predicate)
+    const i = spanIndex_(as, predicate)
     const init = Array(i)
     for (let j = 0; j < i; j++) {
       init[j] = as[j]
     }
     return init
   }
+}
+
+export function takeLeftWhile_<A, B extends A>(
+  as: ReadonlyArray<A>,
+  refinement: Refinement<A, B>
+): ReadonlyArray<B>
+export function takeLeftWhile_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): ReadonlyArray<A>
+export function takeLeftWhile_<A>(
+  as: ReadonlyArray<A>,
+  predicate: Predicate<A>
+): ReadonlyArray<A> {
+  const i = spanIndex_(as, predicate)
+  const init = Array(i)
+  for (let j = 0; j < i; j++) {
+    init[j] = as[j]
+  }
+  return init
 }
 
 /**
@@ -1363,6 +1772,10 @@ export function takeLeftWhile<A>(
  */
 export function takeRight(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
   return (as) => (n === 0 ? empty : as.slice(-n))
+}
+
+export function takeRight_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+  return n === 0 ? empty : as.slice(-n)
 }
 
 export function toArray<A>(ras: ReadonlyArray<A>): Array<A> {
@@ -1457,6 +1870,20 @@ export function uniq<A>(E: Eq<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
   }
 }
 
+export function uniq_<A>(as: ReadonlyArray<A>, E: Eq<A>): ReadonlyArray<A> {
+  const elemS = elem(E)
+  const r: Array<A> = []
+  const len = as.length
+  let i = 0
+  for (; i < len; i++) {
+    const a = as[i]
+    if (!elemS(a, r)) {
+      r.push(a)
+    }
+  }
+  return len === r.length ? as : r
+}
+
 export function unsafeDeleteAt<A>(i: number, as: ReadonlyArray<A>): ReadonlyArray<A> {
   const xs = [...as]
   xs.splice(i, 1)
@@ -1524,6 +1951,14 @@ export function updateAt<A>(
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, a, as)))
 }
 
+export function updateAt_<A>(
+  as: ReadonlyArray<A>,
+  i: number,
+  a: A
+): Option<ReadonlyArray<A>> {
+  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, a, as))
+}
+
 export const URI = "@matechs/core/Readonly/Array"
 
 export type URI = typeof URI
@@ -1566,10 +2001,16 @@ export const zero: <A>() => readonly A[] = () => empty
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  */
 export function zip<A, B>(
+  fb: ReadonlyArray<B>
+): (fa: ReadonlyArray<A>) => ReadonlyArray<readonly [A, B]> {
+  return zipWith(fb, (a, b) => [a, b])
+}
+
+export function zip_<A, B>(
   fa: ReadonlyArray<A>,
   fb: ReadonlyArray<B>
 ): ReadonlyArray<readonly [A, B]> {
-  return zipWith(fa, fb, (a, b) => [a, b])
+  return zipWith_(fa, fb, (a, b) => [a, b])
 }
 
 /**
@@ -1581,7 +2022,7 @@ export function zip<A, B>(
  *
  * assert.deepStrictEqual(zipWith([1, 2, 3], ['a', 'b', 'c', 'd'], (n, s) => s + n), ['a1', 'b2', 'c3'])
  */
-export function zipWith<A, B, C>(
+export function zipWith_<A, B, C>(
   fa: ReadonlyArray<A>,
   fb: ReadonlyArray<B>,
   f: (a: A, b: B) => C
@@ -1592,6 +2033,20 @@ export function zipWith<A, B, C>(
     fc[i] = f(fa[i], fb[i])
   }
   return fc
+}
+
+export function zipWith<A, B, C>(
+  fb: ReadonlyArray<B>,
+  f: (a: A, b: B) => C
+): (fa: ReadonlyArray<A>) => ReadonlyArray<C> {
+  return (fa) => {
+    const fc: Array<C> = []
+    const len = Math.min(fa.length, fb.length)
+    for (let i = 0; i < len; i++) {
+      fc[i] = f(fa[i], fb[i])
+    }
+    return fc
+  }
 }
 
 export const readonlyArrayApply: CApply1<URI> = {

@@ -976,7 +976,7 @@ export const zero: <A>() => A[] = RA.zero as any
  *
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  */
-export const zip: <A, B>(fa: Array<A>, fb: Array<B>) => Array<[A, B]> = RA.zip as any
+export const zip_: <A, B>(fa: Array<A>, fb: Array<B>) => Array<[A, B]> = RA.zip_ as any
 
 /**
  * Apply a function to pairs of elements at the same index in two arrays, collecting the results in a new array. If one
@@ -991,7 +991,7 @@ export const zipWith: <A, B, C>(
   fa: Array<A>,
   fb: Array<B>,
   f: (a: A, b: B) => C
-) => Array<C> = RA.zipWith as any
+) => Array<C> = RA.zipWith_ as any
 
 export const array: CMonad1<URI> &
   CFoldable1<URI> &

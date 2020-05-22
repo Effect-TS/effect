@@ -224,7 +224,7 @@ export const zipWith: <A, B, C>(
 export const zip: <A, B>(
   fa: NonEmptyArray<A>,
   fb: NonEmptyArray<B>
-) => NonEmptyArray<[A, B]> = RNEA.zip as any
+) => NonEmptyArray<[A, B]> = RNEA.zip_ as any
 
 export const unzip: <A, B>(
   as: NonEmptyArray<[A, B]>

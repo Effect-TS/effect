@@ -145,6 +145,7 @@ export type {
   CFilterable4,
   CPartition,
   CPartition1,
+  Partition1,
   CPartition2,
   CPartition2C,
   CPartition3,

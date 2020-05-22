@@ -299,12 +299,12 @@ export const zipWith: <A, B, C>(
   fa: ReadonlyNonEmptyArray<A>,
   fb: ReadonlyNonEmptyArray<B>,
   f: (a: A, b: B) => C
-) => ReadonlyNonEmptyArray<C> = RA.zipWith as any
+) => ReadonlyNonEmptyArray<C> = RA.zipWith_ as any
 
-export const zip: <A, B>(
+export const zip_: <A, B>(
   fa: ReadonlyNonEmptyArray<A>,
   fb: ReadonlyNonEmptyArray<B>
-) => ReadonlyNonEmptyArray<readonly [A, B]> = RA.zip as any
+) => ReadonlyNonEmptyArray<readonly [A, B]> = RA.zip_ as any
 
 export const unzip: <A, B>(
   as: ReadonlyNonEmptyArray<readonly [A, B]>

@@ -57,6 +57,14 @@ export interface CPartition1<F extends URIS> {
   <A>(predicate: Predicate<A>): (fa: Kind<F, A>) => Separated<Kind<F, A>, Kind<F, A>>
 }
 
+export interface Partition1<F extends URIS> {
+  <A, B extends A>(fa: Kind<F, A>, refinement: Refinement<A, B>): Separated<
+    Kind<F, A>,
+    Kind<F, B>
+  >
+  <A>(fa: Kind<F, A>, predicate: Predicate<A>): Separated<Kind<F, A>, Kind<F, A>>
+}
+
 export interface CFilterable1<F extends URIS> extends CFunctor1<F>, CCompactable1<F> {
   readonly partitionMap: <A, B, C>(
     f: (a: A) => Either<B, C>

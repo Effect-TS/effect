@@ -344,8 +344,11 @@ export function chain_<S, R, E, A, S2, R2, E2, B>(
 export const chain: <S1, R, E, A, B>(
   f: (a: A) => Effect<S1, R, E, B>
 ) => <S2, R2, E2>(ma: Effect<S2, R2, E2, A>) => Effect<S1 | S2, R & R2, E | E2, B> = (
-  f
-) => (ma) => chain_(ma, f)
+  bind
+) => (inner) =>
+  (((inner as any) as Instructions).tag() === IPureTag
+    ? bind(((inner as any) as IPure<any>).a)
+    : new IChain(inner, bind)) as any
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(
   mma: Effect<S1, R, E, Effect<S2, R2, E2, A>>
@@ -1079,8 +1082,10 @@ export function map_<S, R, E, A, B>(
 
 export const map: <A, B>(
   f: (a: A) => B
-) => <S, R, E>(fa: Effect<S, R, E, A>) => Effect<S, R, E, B> = (f) => (fa) =>
-  map_(fa, f)
+) => <S, R, E>(fa: Effect<S, R, E, A>) => Effect<S, R, E, B> = (f) => (base) =>
+  (((base as any) as Instructions).tag() === IPureTag
+    ? new IPure(f(((base as any) as IPure<any>).a))
+    : new IMap(base, f)) as any
 
 /**
  * Map the error produced by an IO
@@ -1202,7 +1207,7 @@ export function parAp_<S, S2, R, R2, E, E2, A, B>(
   iof: Effect<S, R, E, FunctionN<[A], B>>,
   ioa: Effect<S2, R2, E2, A>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(iof, ioa, (f, a) => f(a))
+  return parZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1215,7 +1220,7 @@ export function parAp<S, R, E, A>(
 ): <S2, R2, E2, B>(
   iof: Effect<S2, R2, E2, FunctionN<[A], B>>
 ) => AsyncRE<R & R2, E | E2, B> {
-  return (iof) => parZipWith(iof, ioa, (f, a) => f(a))
+  return (iof) => parZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1227,7 +1232,7 @@ export function parApplyFirst<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, A> {
-  return parZipWith(ioa, iob, fst)
+  return parZipWith_(ioa, iob, fst)
 }
 
 /**
@@ -1239,7 +1244,7 @@ export function parApplySecond<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(ioa, iob, snd)
+  return parZipWith_(ioa, iob, snd)
 }
 
 /**
@@ -1251,7 +1256,7 @@ export function parFastAp_<S, S2, R, R2, E, E2, A, B>(
   iof: Effect<S, R, E, FunctionN<[A], B>>,
   ioa: Effect<S2, R2, E2, A>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parFastZipWith(iof, ioa, (f, a) => f(a))
+  return parFastZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1265,7 +1270,7 @@ export function parFastAp<S, R, E, A>(
 ): <S2, R2, E2, B>(
   iof: Effect<S2, R2, E2, FunctionN<[A], B>>
 ) => AsyncRE<R & R2, E | E2, B> {
-  return (iof) => parFastZipWith(iof, ioa, (f, a) => f(a))
+  return (iof) => parFastZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1278,7 +1283,7 @@ export function parFastApplyFirst<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, A> {
-  return parFastZipWith(ioa, iob, fst)
+  return parFastZipWith_(ioa, iob, fst)
 }
 
 /**
@@ -1291,7 +1296,7 @@ export function parFastApplySecond<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parFastZipWith(ioa, iob, snd)
+  return parFastZipWith_(ioa, iob, snd)
 }
 
 /**
@@ -1300,11 +1305,17 @@ export function parFastApplySecond<S, S2, R, R2, E, E2, A, B>(
  * @param ioa
  * @param iob
  */
-export function parFastZip<S, S2, R, R2, E, E2, A, B>(
+export function parFastZip<S2, R2, E2, B>(
+  second: Effect<S2, R2, E2, B>
+): <S, R, E, A>(first: Effect<S, R, E, A>) => AsyncRE<R & R2, E | E2, readonly [A, B]> {
+  return parFastZipWith(second, tuple2)
+}
+
+export function parFastZip_<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, readonly [A, B]> {
-  return parZipWith(ioa, iob, tuple2)
+  return parZipWith_(ioa, iob, tuple2)
 }
 
 /**
@@ -1314,7 +1325,14 @@ export function parFastZip<S, S2, R, R2, E, E2, A, B>(
  * @param iob
  * @param f
  */
-export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
+export function parFastZipWith<S, A, R2, E2, B, C>(
+  second: Effect<S, R2, E2, B>,
+  f: FunctionN<[A, B], C>
+): <S2, R, E>(first: Effect<S2, R, E, A>) => AsyncRE<R & R2, E | E2, C> {
+  return (first) => parFastZipWith_(first, second, f)
+}
+
+export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>,
   f: FunctionN<[A, B], C>
@@ -1354,11 +1372,17 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
  * @param ioa
  * @param iob
  */
-export function parZip<S, S2, R, R2, E, A, B>(
+export function parZip<S2, R2, E2, B>(
+  second: Effect<S2, R2, E2, B>
+): <S, R, E, A>(first: Effect<S, R, E, A>) => AsyncRE<R & R2, E | E2, readonly [A, B]> {
+  return parZipWith(second, tuple2)
+}
+
+export function parZip_<S, S2, R, R2, E, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E, B>
 ): AsyncRE<R & R2, E, readonly [A, B]> {
-  return parZipWith(ioa, iob, tuple2)
+  return parZipWith_(ioa, iob, tuple2)
 }
 
 /**
@@ -1367,7 +1391,20 @@ export function parZip<S, S2, R, R2, E, A, B>(
  * @param iob
  * @param f
  */
-export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
+export function parZipWith<S, A, R2, E2, B, C>(
+  second: Effect<S, R2, E2, B>,
+  f: FunctionN<[A, B], C>
+): <S2, R, E>(first: Effect<S2, R, E, A>) => AsyncRE<R & R2, E | E2, C> {
+  return (first) =>
+    raceFold(
+      first,
+      second,
+      (aExit, bFiber) => zipWith_(completed(aExit), bFiber.join, f),
+      (bExit, aFiber) => zipWith_(aFiber.join, completed(bExit), f)
+    )
+}
+
+export function parZipWith_<S, S2, R, R2, E, E2, A, B, C>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>,
   f: FunctionN<[A, B], C>
@@ -1921,7 +1958,7 @@ export function zip<S2, R2, E2, B>(
 ): <S, R, E, A>(
   first: Effect<S, R, E, A>
 ) => Effect<S | S2, R & R2, E | E2, readonly [A, B]> {
-  return (first) => zip_(first, second)
+  return (first) => chain_(first, (x) => map_(second, (y) => [x, y]))
 }
 
 /**
@@ -1987,7 +2024,7 @@ export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
     ...I,
     _CTX: "async",
     ap: (fa) => (fab) =>
-      chain_(parZip(result(fab), result(fa)), (r) =>
+      chain_(parZip_(result(fab), result(fa)), (r) =>
         I.ap(completed(r[1]))(completed(r[0]))
       )
   }

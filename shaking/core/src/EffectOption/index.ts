@@ -87,7 +87,7 @@ export const ap_ = <S1, S2, R, E, A, B, R2, E2>(
 export const parAp_ = <S1, S2, R, E, A, B, R2, E2>(
   fab: EffectOption<S1, R, E, (a: A) => B>,
   fa: EffectOption<S2, R2, E2, A>
-): EffectOption<unknown, R & R2, E | E2, B> => T.parZipWith(fab, fa, O.ap_)
+): EffectOption<unknown, R & R2, E | E2, B> => T.parZipWith_(fab, fa, O.ap_)
 
 export const ap: <S1, R, E, A>(
   fa: EffectOption<S1, R, E, A>
@@ -235,7 +235,7 @@ export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
     ...I,
     _CTX: "async",
     ap: (fa) => (fab) =>
-      T.chain_(T.parZip(T.result(fa), T.result(fab)), (r) =>
+      T.chain_(T.parZip_(T.result(fa), T.result(fab)), (r) =>
         I.ap(T.completed(r[0]))(T.completed(r[1]))
       )
   }

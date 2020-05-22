@@ -36,15 +36,6 @@ const benchmark = new Suite(`NestedMap ${MAX}`, { minTime: 10000 })
 
 benchmark
   .add(
-    "effect",
-    (cb: any) => {
-      T.run(nestedMapEffect(), () => {
-        cb.resolve()
-      })
-    },
-    { defer: true }
-  )
-  .add(
     "wave",
     (cb: any) => {
       wave.run(nestedMapWave(), () => {
@@ -57,6 +48,15 @@ benchmark
     "qio",
     (cb: any) => {
       defaultRuntime().unsafeExecute(nestedMapQio(), () => {
+        cb.resolve()
+      })
+    },
+    { defer: true }
+  )
+  .add(
+    "effect",
+    (cb: any) => {
+      T.run(nestedMapEffect(), () => {
         cb.resolve()
       })
     },

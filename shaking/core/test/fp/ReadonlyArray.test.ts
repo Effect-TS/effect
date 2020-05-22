@@ -344,13 +344,13 @@ describe("ReadonlyArray", () => {
 
   it("zipWith", () => {
     assert.deepStrictEqual(
-      _.zipWith([1, 2, 3], ["a", "b", "c", "d"], (n, s) => s + n),
+      _.zipWith_([1, 2, 3], ["a", "b", "c", "d"], (n, s) => s + n),
       ["a1", "b2", "c3"]
     )
   })
 
   it("zip", () => {
-    assert.deepStrictEqual(_.zip([1, 2, 3], ["a", "b", "c", "d"]), [
+    assert.deepStrictEqual(_.zip_([1, 2, 3], ["a", "b", "c", "d"]), [
       [1, "a"],
       [2, "b"],
       [3, "c"]

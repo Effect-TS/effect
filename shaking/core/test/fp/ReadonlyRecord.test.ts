@@ -8,7 +8,7 @@ import * as I from "../../src/Identity"
 import { monoidString } from "../../src/Monoid"
 import { option, some, none, Option, getOrElse, isSome } from "../../src/Option"
 import { pipe } from "../../src/Pipe"
-import { readonlyArray, zip } from "../../src/Readonly/Array"
+import { readonlyArray, zip_ } from "../../src/Readonly/Array"
 import * as _ from "../../src/Readonly/Record"
 import { semigroupSum, getLastSemigroup, getFirstSemigroup } from "../../src/Semigroup"
 import { showString } from "../../src/Show"
@@ -306,7 +306,7 @@ describe("ReadonlyRecord", () => {
       values: ReadonlyArray<A>
     ): _.ReadonlyRecord<K, A> =>
       pipe(
-        zip(keys, values),
+        zip_(keys, values),
         _.fromFoldableMap(getLastSemigroup<A>(), readonlyArray)(identity)
       )
 

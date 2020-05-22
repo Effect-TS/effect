@@ -38,15 +38,6 @@ const benchmark = new Suite(`NestedChain ${MAX}`, { minTime: 10000 })
 
 benchmark
   .add(
-    "effect",
-    (cb: any) => {
-      T.run(nestedChainEffect(), () => {
-        cb.resolve()
-      })
-    },
-    { defer: true }
-  )
-  .add(
     "wave",
     (cb: any) => {
       wave.run(nestedChainWave(), () => {
@@ -59,6 +50,15 @@ benchmark
     "qio",
     (cb: any) => {
       defaultRuntime().unsafeExecute(nestedChainQio(), () => {
+        cb.resolve()
+      })
+    },
+    { defer: true }
+  )
+  .add(
+    "effect",
+    (cb: any) => {
+      T.run(nestedChainEffect(), () => {
         cb.resolve()
       })
     },
