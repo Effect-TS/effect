@@ -1993,7 +1993,7 @@ export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
 
 export function parFast<I>(
   I: CApplicative4MA<URI> & I
-): CApplicative4MAP<URI> & (I extends CApplicative4MA<URI> & infer Q ? Q : I)
+): CApplicative4MAP<URI> & Erase<I, CApplicative4MA<URI>>
 export function parFast<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
   return {
     ...I,
