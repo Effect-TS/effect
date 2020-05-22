@@ -51,6 +51,23 @@ describe("Managed", () => {
     assert.deepStrictEqual(result, 2)
   })
 
+  it("should use nested env", async () => {
+    const program = pipe(
+      M.pure(1),
+      M.chain((n) =>
+        M.bracket(
+          T.access(({ s }: { s: number }) => n + s),
+          () => T.unit
+        )
+      ),
+      M.consume(T.pure)
+    )
+
+    const res = await pipe(program, T.provide({ s: 2 }), T.runToPromiseExit)
+
+    assert.deepStrictEqual(res, Ex.done(3))
+  })
+
   it("should use resource bracket", async () => {
     let released = false
 

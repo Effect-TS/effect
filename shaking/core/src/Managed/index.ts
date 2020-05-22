@@ -31,15 +31,13 @@ import * as TR from "../Tree"
  *
  * This is a friendly monadic wrapper around bracketExit.
  */
-export type ManagedT<S, R, E, A> = (
-  _: R
-) =>
+export type ManagedT<S, R, E, A> =
   | Pure<A>
-  | Encase<S, E, A>
-  | Bracket<S, S, E, A>
-  | Suspended<S, S, E, A>
-  | Chain<S, S, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
-  | BracketExit<S, S, E, A>
+  | Encase<S, R, E, A>
+  | Bracket<S, S, R, R, E, A>
+  | Suspended<S, R, E, A>
+  | Chain<S, S, R, R, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
+  | BracketExit<S, S, R, R, E, E, A>
 
 export interface Managed<S, R, E, A> {
   _TAG: () => "Managed"
@@ -72,15 +70,15 @@ export interface Pure<A> {
  * @param value
  */
 export function pure<A>(value: A): Sync<A> {
-  return toM(() => ({
+  return toM({
     _tag: "Pure",
     value
-  }))
+  })
 }
 
-export interface Encase<S, E, A> {
+export interface Encase<S, R, E, A> {
   readonly _tag: "Encase"
-  readonly acquire: T.Effect<S, unknown, E, A>
+  readonly acquire: T.Effect<S, R, E, A>
 }
 
 /**
@@ -92,20 +90,20 @@ export interface Encase<S, E, A> {
 export function encaseEffect<S, R, E, A>(
   rio: T.Effect<S, R, E, A>
 ): Managed<S, R, E, A> {
-  return toM((r) => ({
+  return toM({
     _tag: "Encase",
-    acquire: T.provide(r)(rio)
-  }))
+    acquire: rio
+  })
 }
 
 export function raiseError<E>(_: E): SyncE<E, never> {
   return encaseEffect(T.raiseError(_))
 }
 
-export interface Bracket<S, S2, E, A> {
+export interface Bracket<S, S2, R1, R2, E, A> {
   readonly _tag: "Bracket"
-  readonly acquire: T.Effect<S, unknown, E, A>
-  readonly release: FunctionN<[A], T.Effect<S2, unknown, E, unknown>>
+  readonly acquire: T.Effect<S, R1, E, A>
+  readonly release: FunctionN<[A], T.Effect<S2, R2, E, unknown>>
 }
 
 /**
@@ -117,35 +115,38 @@ export function bracket<S, R, E, A, S2, R2, E2>(
   acquire: T.Effect<S, R, E, A>,
   release: FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
 ): Managed<S | S2, R & R2, E | E2, A> {
-  return toM((r) => ({
+  return toM({
     _tag: "Bracket",
-    acquire: T.provide(r)(acquire as T.Effect<S | S2, R & R2, E | E2, A>),
-    release: (a) => T.provide(r)(release(a))
-  }))
+    acquire: acquire as T.Effect<S | S2, R & R2, E | E2, A>,
+    release
+  })
 }
 
-export interface BracketExit<S, S2, E, A> {
+export interface BracketExit<S, S2, R1, R2, E, E2, A> {
   readonly _tag: "BracketExit"
 
-  readonly acquire: T.Effect<S, unknown, E, A>
-  readonly release: FunctionN<[A, Exit<E, unknown>], T.Effect<S2, unknown, E, unknown>>
+  readonly acquire: T.Effect<S, R1, E, A>
+  readonly release: FunctionN<[A, Exit<E, unknown>], T.Effect<S2, R2, E2, unknown>>
 }
 
 export function bracketExit<S, R, E, A, S2, R2, E2>(
   acquire: T.Effect<S, R, E, A>,
   release: FunctionN<[A, Exit<E, unknown>], T.Effect<S2, R2, E2, unknown>>
 ): Managed<S | S2, R & R2, E | E2, A> {
-  return toM((r) => ({
+  return toM<S | S2, R & R2, E | E2, A>({
     _tag: "BracketExit",
-    acquire: T.provide(r)(acquire as T.Effect<S | S2, R, E, A>),
-    release: (a, e) => T.provide(r)(release(a, e as any))
-  }))
+    acquire: acquire as T.Effect<S | S2, R & R2, E, A>,
+    release: release as FunctionN<
+      [A, Exit<E | E2, unknown>],
+      T.Effect<S | S2, R & R2, E2, unknown>
+    >
+  })
 }
 
-export interface Suspended<S, S2, E, A> {
+export interface Suspended<S, R, E, A> {
   readonly _tag: "Suspended"
 
-  readonly suspended: T.Effect<S, unknown, E, Managed<S, unknown, E, A>>
+  readonly suspended: T.Effect<S, R, E, Managed<S, R, E, A>>
 }
 
 /**
@@ -155,19 +156,21 @@ export interface Suspended<S, S2, E, A> {
 export function suspend<S, R, E, S2, R2, E2, A>(
   suspended: T.Effect<S, R, E, Managed<S2, R2, E2, A>>
 ): Managed<S | S2, R & R2, E | E2, A> {
-  return toM(
-    (r) =>
-      ({
-        _tag: "Suspended",
-        suspended: T.map_(T.provide(r)(suspended), (m) => (_: unknown) => fromM(m)(r))
-      } as any)
-  )
+  return toM({
+    _tag: "Suspended",
+    suspended: suspended as T.Effect<
+      S | S2,
+      R & R2,
+      E | E2,
+      Managed<S | S2, R & R2, E | E2, A>
+    >
+  })
 }
 
-export interface Chain<S, S2, E, L, A> {
+export interface Chain<S, S2, R, R2, E, L, A> {
   readonly _tag: "Chain"
-  readonly left: Managed<S, unknown, E, L>
-  readonly bind: FunctionN<[L], Managed<S2, unknown, E, A>>
+  readonly left: Managed<S, R, E, L>
+  readonly bind: FunctionN<[L], Managed<S2, R2, E, A>>
 }
 
 /**
@@ -181,11 +184,11 @@ export function chain_<S, R, E, L, S2, R2, E2, A>(
   left: Managed<S, R, E, L>,
   bind: FunctionN<[L], Managed<S2, R2, E2, A>>
 ): Managed<S | S2, R & R2, E | E2, A> {
-  return toM((r) => ({
+  return toM({
     _tag: "Chain",
-    left: provideAll(r)(left as Managed<S | S2, R, E | E2, L>),
-    bind: (l) => provideAll(r)(bind(l))
-  }))
+    left: left as Managed<S | S2, R, E | E2, L>,
+    bind: bind as FunctionN<[L], Managed<S | S2, R & R2, E | E2, A>>
+  })
 }
 
 /**
@@ -449,20 +452,22 @@ export function use<S, R, E, A, S2, R2, E2, B>(
   f: FunctionN<[A], T.Effect<S2, R2, E2, B>>
 ): T.Effect<S | S2, R & R2, E | E2, B> {
   return T.accessM((r: R & R2) => {
-    const c = fromM(res)(r)
+    const c = fromM(res)
     switch (c._tag) {
       case "Pure":
         return f(c.value)
       case "Encase":
-        return T.chain_(c.acquire, f)
+        return T.provide(r)(T.chain_(c.acquire, f))
       case "Bracket":
-        return T.bracket(c.acquire, c.release, f)
+        return T.provide(r)(T.bracket(c.acquire, c.release, f))
       case "BracketExit":
-        return T.bracketExit(c.acquire, (a, e) => c.release(a, e as any), f)
+        return T.provide(r)(
+          T.bracketExit(c.acquire, (a, e) => c.release(a, e as any), f)
+        )
       case "Suspended":
-        return T.chain_(c.suspended, consume(f))
+        return T.provide(r)(T.chain_(c.suspended, consume(f)))
       case "Chain":
-        return use(c.left, (a) => use(c.bind(a), f))
+        return T.provide(r)(use(c.left, (a) => use(c.bind(a), f)))
     }
   })
 }
@@ -484,34 +489,40 @@ export function allocate<S, R, E, A>(
   res: Managed<S, R, E, A>
 ): T.Effect<S, R, E, Leak<S, R, E, A>> {
   return T.accessM((r: R) => {
-    const c = fromM(res)(r)
+    const c = fromM(res)
 
     switch (c._tag) {
       case "Pure":
         return T.pure({ a: c.value, release: T.unit })
       case "Encase":
-        return T.map_(c.acquire, (a) => ({ a, release: T.unit }))
+        return T.map_(T.provide(r)(c.acquire), (a) => ({ a, release: T.unit }))
       case "Bracket":
-        return T.map_(c.acquire, (a) => ({ a, release: c.release(a) }))
+        return T.map_(T.provide(r)(c.acquire), (a) => ({
+          a,
+          release: T.provide(r)(c.release(a))
+        }))
       case "BracketExit":
         // best effort, because we cannot know what the exit status here
-        return T.map_(c.acquire, (a) => ({
+        return T.map_(T.provide(r)(c.acquire), (a) => ({
           a,
-          release: c.release(a, done(undefined))
+          release: T.provide(r)(c.release(a, done(undefined)))
         }))
       case "Suspended":
-        return T.chain_(c.suspended, allocate)
+        return T.chain_(T.provide(r)(c.suspended), (x) => T.provide(r)(allocate(x)))
       case "Chain":
         return T.bracketExit(
-          allocate(c.left),
-          (leak, exit) => (exit._tag === "Done" ? T.unit : leak.release),
+          T.provide(r)(allocate(c.left)),
+          (leak, exit) => (exit._tag === "Done" ? T.unit : T.provide(r)(leak.release)),
           (leak) =>
             T.map_(
-              allocate(c.bind(leak.a)),
+              T.provide(r)(allocate(c.bind(leak.a))),
               // Combine the finalizer actions of the outer and inner resource
               (innerLeak) => ({
                 a: innerLeak.a,
-                release: T.onComplete_(innerLeak.release, leak.release)
+                release: T.onComplete_(
+                  T.provide(r)(innerLeak.release),
+                  T.provide(r)(leak.release)
+                )
               })
             )
         )
@@ -546,11 +557,6 @@ export function getMonoid<S, R, E, A>(Monoid: Monoid<A>): Monoid<Managed<S, R, E
     ...getSemigroup(Monoid),
     empty: pure(Monoid.empty) as Managed<S, R, E, A>
   }
-}
-
-function provideAll<R>(r: R) {
-  return <S, E, A>(ma: Managed<S, R, E, A>): Managed<S, unknown, E, A> =>
-    toM<S, unknown, E, A>(() => fromM(ma)(r))
 }
 
 export const ap: <S1, R, E, A>(
