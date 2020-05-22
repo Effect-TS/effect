@@ -26,7 +26,14 @@ import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common"
 
-import type { ChainRec2M, Monad2M, MonadThrow2M, CAlt2M } from "./overloads"
+import type {
+  ChainRec2M,
+  Monad2M,
+  MonadThrow2M,
+  CAlt2M,
+  Applicative2M,
+  Applicative2MC
+} from "./overloads"
 
 export type { Either, Left, Right }
 
@@ -649,10 +656,9 @@ declare module "../Base/HKT" {
   }
 }
 
-export const eitherMonad: Monad2M<URI> & ChainRec2M<URI> = {
+export const eitherMonad: Monad2M<URI> & ChainRec2M<URI> & Applicative2M<URI> = {
   URI,
   _F: "curried",
-  _K: "Monad2M",
   map,
   of: right,
   ap,
@@ -660,9 +666,17 @@ export const eitherMonad: Monad2M<URI> & ChainRec2M<URI> = {
   chainRec
 }
 
+export const eitherAp: Applicative2M<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  of: right,
+  ap
+}
+
 export function getValidation<E>(
   S: Semigroup<E>
-): CMonad2C<URI, E> & CAlt2C<URI, E> & CChainRec2C<URI, E> {
+): CMonad2C<URI, E> & CAlt2C<URI, E> & CChainRec2C<URI, E> & Applicative2MC<URI, E> {
   return {
     ...eitherMonad,
     _E: undefined as any,
@@ -692,10 +706,10 @@ export const either: Monad2M<URI> &
   CAlt2M<URI> &
   CExtend2<URI> &
   ChainRec2M<URI> &
-  MonadThrow2M<URI> = {
+  MonadThrow2M<URI> &
+  Applicative2M<URI> = {
   URI,
   _F: "curried",
-  _K: "Monad2M",
   map,
   of: right,
   ap,

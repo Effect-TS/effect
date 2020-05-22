@@ -1,4 +1,15 @@
 import { sequenceS } from "../Apply"
+import {
+  CApplicative,
+  CApplicative4MA,
+  CApplicative4MAP,
+  CApplicative4MAC,
+  CApplicative4MAPC,
+  CApplicative3,
+  CApplicative2,
+  CApplicative2C,
+  CApplicative1
+} from "../Base"
 import type { SOf, ATypeOf, EnvOf, ETypeOf } from "../Base/Apply"
 import type {
   HKT,
@@ -18,15 +29,32 @@ import type {
   CMonad2C,
   CMonad1,
   CMonad4MA,
-  CMonad4MAP,
-  CMonad4MAC,
-  CMonad4MAPC
+  CMonad4MAC
 } from "../Base/Monad"
-import type { URI as EitherURI } from "../Either"
-import type { Monad2M } from "../Either/overloads"
+
+export class Pipe<A, A2> {
+  constructor(private readonly _: A, private readonly _2: A2) {
+    this.do = this.do.bind(this)
+    this.access = this.access.bind(this)
+    this.pipe = this.pipe.bind(this)
+    this.done = this.done.bind(this)
+  }
+  do<B>(f: (_: A2) => B) {
+    return new Pipe(f(this._2), this._2)
+  }
+  access<B>(f: (_: A2) => (_: A) => B) {
+    return new Pipe(f(this._2)(this._), this._2)
+  }
+  pipe<B>(f: (_: A) => B) {
+    return new Pipe(f(this._), this._2)
+  }
+  done(): A {
+    return this._
+  }
+}
 
 class DoClass<M> {
-  constructor(readonly M: CMonad<M>, private result: HKT<M, any>) {}
+  constructor(readonly M: CMonad<M> & CApplicative<M>, private result: HKT<M, any>) {}
   do(action: HKT<M, any>): DoClass<M> {
     return new DoClass(
       this.M,
@@ -83,6 +111,9 @@ class DoClass<M> {
       )(this.result)
     )
   }
+  pipe(f: (s: HKT<M, any>) => HKT<M, any>) {
+    return new DoClass(this.M, f(this.result))
+  }
   return<B>(f: (s: any) => B): HKT<M, B> {
     return this.M.map(f)(this.result)
   }
@@ -132,6 +163,9 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
     U & EnvOf<R>,
     L | ETypeOf<R[keyof R]>
   >
+  pipe: <Q2, U2, L2>(
+    f: (s: Kind4<M, Q, U, L, S>) => Kind4<M, Q2, U2, L2, S>
+  ) => Do4CE<M, Q2, S, U2, L2>
   return: <A>(f: (s: S) => A) => Kind4<M, Q, U, L, A>
   done: () => Kind4<M, Q, U, L, S>
 }
@@ -164,6 +198,9 @@ export interface Do4CE_<M extends MaURIS, Q, S extends object, U, L> {
   sequenceSL: <R extends Record<string, Kind4<M, any, any, L, any>>>(
     f: (s: S) => EnforceNonEmptyRecord<R> & { [K in keyof S]?: never }
   ) => Do4CE_<M, SOf<R> | Q, S & { [K in keyof R]: ATypeOf<R[K]> }, U & EnvOf<R>, L>
+  pipe: <Q2, U2>(
+    f: (s: Kind4<M, Q, U, L, S>) => Kind4<M, Q2, U2, L, S>
+  ) => Do4CE<M, Q2, S, U2, L>
   return: <A>(f: (s: S) => A) => Kind4<M, Q, U, L, A>
   done: () => Kind4<M, Q, U, L, S>
 }
@@ -390,109 +427,25 @@ export interface Do0<M, S extends object> {
   done: () => HKT<M, S>
 }
 
-export interface Do2MC<M extends EitherURI, S extends object, E> {
-  do: <E2>(ma: Kind2<M, E2, any>) => Do2MC<M, S, E | E2>
-  doL: <E2>(f: (s: S) => Kind2<M, E2, any>) => Do2MC<M, S, E | E2>
-  bind: <N extends string, A, E2>(
-    name: Exclude<N, keyof S>,
-    ma: Kind2<M, E2, A>
-  ) => Do2MC<
-    M,
-    S &
-      {
-        [K in N]: A
-      },
-    E | E2
-  >
-  bindL: <N extends string, A, E2>(
-    name: Exclude<N, keyof S>,
-    f: (s: S) => Kind2<M, E2, A>
-  ) => Do2MC<
-    M,
-    S &
-      {
-        [K in N]: A
-      },
-    E | E2
-  >
-  let: <N extends string, A>(
-    name: Exclude<N, keyof S>,
-    a: A
-  ) => Do2MC<
-    M,
-    S &
-      {
-        [K in N]: A
-      },
-    E
-  >
-  letL: <N extends string, A>(
-    name: Exclude<N, keyof S>,
-    f: (s: S) => A
-  ) => Do2MC<
-    M,
-    S &
-      {
-        [K in N]: A
-      },
-    E
-  >
-  sequenceS: <I extends Record<string, Kind2<M, any, any>>>(
-    r: EnforceNonEmptyRecord<I> &
-      {
-        [K in keyof S]?: never
-      }
-  ) => Do2MC<
-    M,
-    S &
-      {
-        [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never
-      },
-    | E
-    | {
-        [K in keyof I]: [I[K]] extends [Kind2<M, infer E2, any>] ? E2 : never
-      }[keyof I]
-  >
-  sequenceSL: <I extends Record<string, Kind2<M, any, any>>>(
-    f: (
-      s: S
-    ) => EnforceNonEmptyRecord<I> &
-      {
-        [K in keyof S]?: never
-      }
-  ) => Do2MC<
-    M,
-    S &
-      {
-        [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never
-      },
-    | E
-    | {
-        [K in keyof I]: [I[K]] extends [Kind2<M, infer E2, any>] ? E2 : never
-      }[keyof I]
-  >
-  return: <A>(f: (s: S) => A) => Kind2<M, E, A>
-  done: () => Kind2<M, E, S>
-}
-
-export function Do<M extends EitherURI>(M: Monad2M<M>): Do2MC<M, {}, never>
 export function Do<M extends MaURIS>(
-  M: CMonad4MA<M>
+  M: CMonad4MA<M> & CApplicative4MA<M>
 ): Do4CE<M, never, {}, unknown, never>
 export function Do<M extends MaURIS>(
-  M: CMonad4MAP<M>
+  M: CMonad4MA<M> & CApplicative4MAP<M>
 ): Do4CE<M, unknown, {}, unknown, never>
 export function Do<M extends MaURIS, E>(
-  M: CMonad4MAC<M, E>
+  M: CMonad4MAC<M, E> & CApplicative4MAC<M, E>
 ): Do4CE_<M, never, {}, unknown, E>
 export function Do<M extends MaURIS, E>(
-  M: CMonad4MAPC<M, E>
+  M: CMonad4MAC<M, E> & CApplicative4MAPC<M, E>
 ): Do4CE_<M, unknown, {}, unknown, E>
-export function Do<M extends URIS3>(M: CMonad3<M>): Do3<M, {}>
-export function Do<M extends URIS2>(M: CMonad2<M>): Do2<M, {}>
-export function Do<M extends URIS2, L>(M: CMonad2C<M, L>): Do2C<M, {}, L>
-export function Do<M extends URIS>(M: CMonad1<M>): Do1<M, {}>
-export function Do<M>(M: CMonad<M>): Do0<M, {}>
-export function Do<M>(M: CMonad<M>): any {
+export function Do<M extends URIS3>(M: CMonad3<M> & CApplicative3<M>): Do3<M, {}>
+export function Do<M extends URIS2>(M: CMonad2<M> & CApplicative2<M>): Do2<M, {}>
+export function Do<M extends URIS2, L>(
+  M: CMonad2C<M, L> & CApplicative2C<M, L>
+): Do2C<M, {}, L>
+export function Do<M extends URIS>(M: CMonad1<M> & CApplicative1<M>): Do1<M, {}>
+export function Do<M>(M: CMonad<M> & CApplicative<M>): Do0<M, {}>
+export function Do<M>(M: CMonad<M> & CApplicative<M>): any {
   return new DoClass(M, M.of({}))
 }

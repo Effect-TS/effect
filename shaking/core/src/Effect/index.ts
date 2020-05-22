@@ -1,7 +1,6 @@
-import type { Task } from "fp-ts/lib/Task"
+import type { Task as T } from "fp-ts/lib/Task"
 import type { TaskEither } from "fp-ts/lib/TaskEither"
 
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
 import type {
   Monoid,
@@ -9,12 +8,13 @@ import type {
   CMonad4MA,
   CMonad4MAC,
   CAlt4MAC,
-  CMonad4MAPC,
-  CMonad4MAP
+  CApplicative4MAC,
+  CApplicative4MAPC,
+  CApplicative4MAP,
+  CApplicative4MA
 } from "../Base"
 import type { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
-import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
 import {
   abort,
@@ -67,9 +67,9 @@ import type {
   SyncRE
 } from "../Support/Common/effect"
 import { Driver, DriverImpl, DriverSyncImpl } from "../Support/Driver"
-import { ForM } from "../Support/For"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
+import type { Erase } from "../Utils"
 export {
   Async,
   AsyncE,
@@ -427,7 +427,7 @@ export const chainTap_ = <S, R, E, A, S2, R2, E2>(
 ): Effect<S | S2, R & R2, E | E2, A> => chain_(inner, (a) => as(bind(a), a))
 
 export function chainTask<A, B>(
-  bind: FunctionN<[A], Task<B>>
+  bind: FunctionN<[A], T<B>>
 ): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E2, B> {
   return (inner) => chain_(inner, (a) => encaseTask(bind(a)))
 }
@@ -607,7 +607,7 @@ export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): SyncE<E, A> 
   return new IPureOption(o, onError) as any
 }
 
-export function encaseTask<A>(task: Task<A>): Async<A> {
+export function encaseTask<A>(task: T<A>): Async<A> {
   return orAbort(fromPromise(task))
 }
 
@@ -769,7 +769,7 @@ export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
 
 export function getCauseValidationM<E>(
   S: Semigroup<Cause<E>>
-): CMonad4MAC<URI, E> & CAlt4MAC<URI, E> {
+): CMonad4MAC<URI, E> & CAlt4MAC<URI, E> & CApplicative4MAC<URI, E> {
   return {
     URI,
     _F: "curried",
@@ -810,48 +810,6 @@ export function getMonoid<S, R, E, A>(m: Monoid<A>): Monoid<Effect<S, R, E, A>> 
     ...getSemigroup(m),
     empty: pure(m.empty)
   }
-}
-
-export function getParCauseValidationM<E>(
-  S: Semigroup<Cause<E>>
-): CMonad4MAPC<URI, E> & CAlt4MAC<URI, E> {
-  return {
-    URI,
-    _E: undefined as any,
-    _F: "curried",
-    _CTX: "async",
-    of: pure,
-    map,
-    chain,
-    ap: <S2, R2, A>(
-      fa: Effect<S2, R2, E, A>
-    ): (<S1, R, B>(
-      fab: Effect<S1, R, E, (a: A) => B>
-    ) => Effect<unknown, R & R2, E, B>) => (fab) =>
-      chain_(parZip(result(fa), result(fab)), ([faEx, fabEx]) =>
-        fabEx._tag === "Done"
-          ? faEx._tag === "Done"
-            ? pure(fabEx.value(faEx.value))
-            : raised(faEx)
-          : faEx._tag === "Done"
-          ? raised(fabEx)
-          : raised(S.concat(fabEx, faEx))
-      ),
-    alt: <S2, R2, A>(
-      fb: () => Effect<S2, R2, E, A>
-    ): (<S1, R, A2>(
-      fa: Effect<S1, R, E, A2>
-    ) => Effect<S1 | S2, R & R2, E, A | A2>) => (fa) =>
-      foldExit_(
-        fa,
-        (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure),
-        pure
-      )
-  }
-}
-
-export function getParValidationM<E>(S: Semigroup<E>) {
-  return getParCauseValidationM(getCauseSemigroup(S))
 }
 
 export function getSemigroup<S, R, E, A>(
@@ -1274,18 +1232,6 @@ export function parApplySecond<S, S2, R, R2, E, E2, A, B>(
   return parZipWith(ioa, iob, snd)
 }
 
-export const parDo = () => DoG(parEffect)
-
-export const parEffect: CMonad4MAP<URI> = {
-  URI,
-  _CTX: "async",
-  _F: "curried",
-  of: pure,
-  map,
-  ap: parAp,
-  chain
-}
-
 /**
  * Parallel form of ap_ using parFastZipWith
  * @param iof
@@ -1338,31 +1284,16 @@ export function parFastApplySecond<S, S2, R, R2, E, E2, A, B>(
   return parFastZipWith(ioa, iob, snd)
 }
 
-export const parFastDo = () => DoG(parFastEffect)
-
-/* Note that this instance is not respecting the classical apply law */
-export const parFastEffect: CMonad4MAP<URI> = {
-  URI,
-  _CTX: "async",
-  _F: "curried",
-  of: pure,
-  map,
-  ap: parFastAp,
-  chain
-}
-
-export const parFastFor = () => ForM(parFastEffect)
-
 /**
  * Tuple the result of 2 ios executed in parallel
  * Interrupt at first error
  * @param ioa
  * @param iob
  */
-export function parFastZip<S, S2, R, R2, E, A, B>(
+export function parFastZip<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
-  iob: Effect<S2, R2, E, B>
-): AsyncRE<R & R2, E, readonly [A, B]> {
+  iob: Effect<S2, R2, E2, B>
+): AsyncRE<R & R2, E | E2, readonly [A, B]> {
   return parZipWith(ioa, iob, tuple2)
 }
 
@@ -1407,8 +1338,6 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
           )
   )
 }
-
-export const parFor = () => ForM(parEffect)
 
 /**
  * Tuple the result of 2 ios executed in parallel
@@ -2018,19 +1947,6 @@ export function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
   return chain_(first, (a) => map_(second, (b) => f(a, b)))
 }
 
-export const Do = () => DoG(effect)
-
-export const effect: CMonad4MA<URI> = {
-  URI,
-  _F: "curried",
-  map,
-  of: pure,
-  ap,
-  chain
-}
-
-export const For = () => ForM(effect)
-
 /**
  * Used to merge types of the form Effect<S, R, E, A> | Effect<S2, R2, E2, A2> into Effect<S | S2, R & R2, E | E2, A | A2>
  * @param _
@@ -2041,26 +1957,39 @@ export function compact<H extends Effect<any, any, any, any>>(
   return _ as any
 }
 
-export const parFastSequenceS =
-  /*#__PURE__*/
-  (() => SS(parFastEffect))()
+export const effect: CMonad4MA<URI> & CApplicative4MA<URI> = {
+  URI,
+  _F: "curried",
+  map,
+  of: pure,
+  ap,
+  chain
+}
 
-export const parFastSequenceT =
-  /*#__PURE__*/
-  (() => ST(parFastEffect))()
+export function par<I, E>(
+  I: CApplicative4MAC<URI, E> & I
+): CApplicative4MAPC<URI, E> & Erase<I, CApplicative4MAC<URI, E>>
+export function par<I>(
+  I: CApplicative4MA<URI> & I
+): CApplicative4MAP<URI> & Erase<I, CApplicative4MA<URI>>
+export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
+  return {
+    ...I,
+    _CTX: "async",
+    ap: (fa) => (fab) =>
+      chain_(parZip(result(fa), result(fab)), (r) =>
+        I.ap(completed(r[0]))(completed(r[1]))
+      )
+  }
+}
 
-export const parSequenceS =
-  /*#__PURE__*/
-  (() => SS(parEffect))()
-
-export const parSequenceT =
-  /*#__PURE__*/
-  (() => ST(parEffect))()
-
-export const sequenceS =
-  /*#__PURE__*/
-  (() => SS(effect))()
-
-export const sequenceT =
-  /*#__PURE__*/
-  (() => ST(effect))()
+export function parFast<I>(
+  I: CApplicative4MA<URI> & I
+): CApplicative4MAP<URI> & (I extends CApplicative4MA<URI> & infer Q ? Q : I)
+export function parFast<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
+  return {
+    ...I,
+    _CTX: "async",
+    ap: parFastAp
+  }
+}

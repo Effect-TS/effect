@@ -1,4 +1,4 @@
-import type { CMonad1 } from "../Base"
+import type { CMonad1, CApplicative1 } from "../Base"
 import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
 import { some, none, Option } from "../Option"
@@ -223,7 +223,7 @@ declare module "../Base/HKT" {
   }
 }
 
-export const list: CMonad1<URI> = {
+export const list: CMonad1<URI> & CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,

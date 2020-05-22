@@ -1,4 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
+
 import type { Identity } from "fp-ts/lib/Identity"
 
 import type {
@@ -10,7 +11,8 @@ import type {
   CFoldable1,
   CTraversable1,
   CAlt1,
-  CComonad1
+  CComonad1,
+  CApplicative1
 } from "../Base"
 import { tailRec, CChainRec1 } from "../Base/ChainRec"
 import type { Either } from "../Either"
@@ -113,7 +115,8 @@ export const identity: CMonad1<URI> &
   CTraversable1<URI> &
   CAlt1<URI> &
   CComonad1<URI> &
-  CChainRec1<URI> = {
+  CChainRec1<URI> &
+  CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,
@@ -131,11 +134,10 @@ export const identity: CMonad1<URI> &
   chainRec
 }
 
-export const identityMonad: CMonad1<URI> = {
+export const identityApp: CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,
   of: id,
-  ap,
-  chain
+  ap
 }

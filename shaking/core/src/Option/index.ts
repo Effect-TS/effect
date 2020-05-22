@@ -1,6 +1,7 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { None, Option, Some } from "fp-ts/lib/Option"
 
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
 import type {
   CAlternative1,
   CApplicative,
@@ -19,9 +20,9 @@ import type {
   Monoid,
   Separated,
   CFilter1,
-  CPartition1
+  CPartition1,
+  CApplicative1
 } from "../Base"
-import { Do as DoG } from "../Do"
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
@@ -95,8 +96,6 @@ declare module "../Base/HKT" {
 }
 
 export const compact = <A>(fa: Option<Option<A>>): Option<A> => chain_(fa, identity)
-
-export const Do = () => DoG(optionMonad)
 
 export const duplicate: <A>(ma: Option<A>) => Option<Option<A>> = (ma) =>
   isNone(ma) ? none : some(ma)
@@ -745,7 +744,8 @@ export const option: CMonad1<URI> &
   CExtend1<URI> &
   CCompactable1<URI> &
   CFilterable1<URI> &
-  CWitherable1<URI> = {
+  CWitherable1<URI> &
+  CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,
@@ -770,7 +770,7 @@ export const option: CMonad1<URI> &
   wilt
 }
 
-export const optionMonad: CMonad1<URI> = {
+export const optionMonad: CMonad1<URI> & CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,
@@ -778,11 +778,3 @@ export const optionMonad: CMonad1<URI> = {
   ap,
   chain
 }
-
-export const sequenceS =
-  /*#__PURE__*/
-  (() => SS(optionMonad))()
-
-export const sequenceT =
-  /*#__PURE__*/
-  (() => ST(optionMonad))()

@@ -14,7 +14,8 @@ import type {
   CTraversableWithIndex1,
   CFunctorWithIndex1,
   CFoldableWithIndex1,
-  CAlt1
+  CAlt1,
+  CApplicative1
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -316,7 +317,8 @@ export const nonEmptyArray: CMonad1<URI> &
   CTraversableWithIndex1<URI, number> &
   CFunctorWithIndex1<URI, number> &
   CFoldableWithIndex1<URI, number> &
-  CAlt1<URI> = {
+  CAlt1<URI> &
+  CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,

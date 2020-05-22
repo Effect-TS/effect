@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/retry-ts */
+
 import * as T from "../Effect"
 import { Exit } from "../Exit"
 import { flow } from "../Function"

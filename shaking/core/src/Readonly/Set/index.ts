@@ -1,4 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
+
 import { Separated } from "../../Base"
 import { Either } from "../../Either"
 import { Eq, fromEquals } from "../../Eq"

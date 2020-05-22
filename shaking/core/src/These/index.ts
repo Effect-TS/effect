@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { Both, These } from "fp-ts/lib/These"
 
 import type {
@@ -12,7 +14,8 @@ import type {
   CFunctor2,
   CBifunctor2,
   CFoldable2,
-  CTraversable2
+  CTraversable2,
+  CApplicative2C
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
@@ -110,7 +113,9 @@ export function getSemigroup<E, A>(
   }
 }
 
-export function getMonad<E>(S: Semigroup<E>): CMonad2C<URI, E> {
+export function getMonad<E>(
+  S: Semigroup<E>
+): CMonad2C<URI, E> & CApplicative2C<URI, E> {
   const chain = <A, B>(
     f: (a: A) => These<E, B>
   ): ((ma: These<E, A>) => These<E, B>) => {

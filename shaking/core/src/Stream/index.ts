@@ -1,9 +1,9 @@
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
+import { sequenceS, sequenceT } from "../Apply"
 import * as A from "../Array"
-import type { CMonad4MAP } from "../Base"
+import type { CMonad4MA, CApplicative4MAP } from "../Base"
 import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
-import { Do as DoG } from "../Do"
+import { Do } from "../Do"
 import * as T from "../Effect"
 import type { Eq } from "../Eq"
 import { Cause, Exit } from "../Exit"
@@ -15,7 +15,6 @@ import * as Q from "../Queue"
 import { makeRef, Ref } from "../Ref"
 import { makeSemaphore } from "../Semaphore"
 import { StreamURI as URI } from "../Support/Common"
-import { ForM } from "../Support/For"
 
 import * as Sink from "./Sink"
 import * as sink from "./Sink"
@@ -1426,7 +1425,7 @@ const makeWeave: M.Async<Weave> =
       M.map_(M.bracket(makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
         function attach(action: T.Sync<void>): T.Sync<void> {
           return pipe(
-            T.sequenceS({
+            sequenceS(T.effect)({
               next: cell.update((n) => n + 1),
               fiber: T.fork(action)
             }),
@@ -1627,7 +1626,7 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
     })
   }
 
-  return T.Do()
+  return Do(T.effect)
     .bind("q", Q.unboundedQueue<O.Option<A>>())
     .bindL("into", ({ q }) =>
       pipe(
@@ -1658,7 +1657,7 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
     )
     .return(({ extract, into }) => {
       const interrupt = pipe(
-        T.sequenceT(
+        sequenceT(T.effect)(
           into.interrupt,
           extract.interrupt,
           T.sync(() => {
@@ -1696,7 +1695,7 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
     })
 }
 
-export const stream: CMonad4MAP<URI> = {
+export const stream: CMonad4MA<URI> & CApplicative4MAP<URI> = {
   URI,
   _CTX: "async",
   _F: "curried",
@@ -1705,9 +1704,6 @@ export const stream: CMonad4MAP<URI> = {
   ap,
   chain
 }
-
-export const Do = () => DoG(stream)
-export const For = () => ForM(stream)
 
 /**
  * Used to merge types of the form Stream<S, R, E, A> | Stream<S2, R2, E2, A2> into Stream<S | S2, R & R2, E | E2, A | A2>
@@ -1718,11 +1714,3 @@ export function compact<H extends Stream<any, any, any, any>>(
 ): Stream<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
-
-export const sequenceS =
-  /*#__PURE__*/
-  (() => SS(stream))()
-
-export const sequenceT =
-  /*#__PURE__*/
-  (() => ST(stream))()

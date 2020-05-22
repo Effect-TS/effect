@@ -53,7 +53,7 @@ describe("Env", () => {
 
   it("env should work - par", async () => {
     const res = await T.runToPromise(
-      array.sequence(T.parEffect)([
+      array.sequence(T.par(T.effect))([
         T.provide({ [foo]: "a" })(
           T.delay(
             T.access(({ [foo]: s }: TestEnv) => s),

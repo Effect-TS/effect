@@ -1,4 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
+
 import type {
   CApply2C,
   CApplicative2C,
@@ -40,6 +41,10 @@ export function snd<A, S>(sa: readonly [A, S]): S {
 
 export function swap<A, S>(sa: readonly [A, S]): readonly [S, A] {
   return [snd(sa), fst(sa)]
+}
+
+export const cons = <A, S>(a: A, s: S): readonly [A, S] => {
+  return [a, s]
 }
 
 export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {

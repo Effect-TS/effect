@@ -1,12 +1,15 @@
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
-import { CMonad4MA, CMonad4MAP } from "../Base"
-import { STypeOf, UnionToIntersection, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
-import { Do as DoG } from "../Do"
+import type { CMonad4MA, CApplicative4MA, CApplicative4MAP } from "../Base"
+import type {
+  STypeOf,
+  UnionToIntersection,
+  RTypeOf,
+  ETypeOf,
+  ATypeOf
+} from "../Base/Apply"
 import * as T from "../Effect"
 import { flow, FunctionN } from "../Function"
 import * as M from "../Monoid"
 import * as O from "../Option"
-import { ForM } from "../Support/For"
 
 export interface EffectOption<S, R, E, A> extends T.Effect<S, R, E, O.Option<A>> {}
 
@@ -207,7 +210,7 @@ export const getLast = <Effs extends EffectOption<any, any, any, any>[]>(
 ): EffectOption<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>> =>
   M.fold(getLastMonoid<SOf<Effs>, ROf<Effs>, EOf<Effs>, AOf<Effs>>())(items)
 
-export const effectOption: CMonad4MA<URI> = {
+export const effectOption: CMonad4MA<URI> & CApplicative4MA<URI> = {
   URI,
   _F: "curried",
   of,
@@ -216,21 +219,19 @@ export const effectOption: CMonad4MA<URI> = {
   ap
 }
 
-export const effectOptionPar: CMonad4MAP<URI> = {
-  URI,
-  _CTX: "async",
-  _F: "curried",
-  of,
-  map,
-  chain,
-  ap: parAp
+export function par<I>(
+  I: CApplicative4MA<URI> & I
+): CApplicative4MAP<URI> & T.Erase<I, CApplicative4MA<URI>>
+export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
+  return {
+    ...I,
+    _CTX: "async",
+    ap: (fa) => (fab) =>
+      T.chain_(T.parZip(T.result(fa), T.result(fab)), (r) =>
+        I.ap(T.completed(r[0]))(T.completed(r[1]))
+      )
+  }
 }
-
-export const Do = () => DoG(effectOption)
-export const For = () => ForM(effectOption)
-
-export const parDo = () => DoG(effectOptionPar)
-export const parFor = () => ForM(effectOptionPar)
 
 /**
  * Used to merge types of the form EffectOption<S, R, E, A> | EffectOption<S2, R2, E2, A2> into EffectOption<S | S2, R & R2, E | E2, A | A2>
@@ -241,19 +242,3 @@ export function compact<H extends EffectOption<any, any, any, any>>(
 ): EffectOption<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
-
-export const parSequenceS =
-  /*#__PURE__*/
-  (() => SS(effectOptionPar))()
-
-export const parSequenceT =
-  /*#__PURE__*/
-  (() => ST(effectOptionPar))()
-
-export const sequenceS =
-  /*#__PURE__*/
-  (() => SS(effectOption))()
-
-export const sequenceT =
-  /*#__PURE__*/
-  (() => ST(effectOption))()

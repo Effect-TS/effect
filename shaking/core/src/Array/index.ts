@@ -18,7 +18,8 @@ import type {
   CFilterableWithIndex1,
   CWitherable1,
   CFunctorWithIndex1,
-  CFoldableWithIndex1
+  CFoldableWithIndex1,
+  CApplicative1
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -1001,7 +1002,8 @@ export const array: CMonad1<URI> &
   CFilterableWithIndex1<URI, number> &
   CWitherable1<URI> &
   CFunctorWithIndex1<URI, number> &
-  CFoldableWithIndex1<URI, number> = {
+  CFoldableWithIndex1<URI, number> &
+  CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,
@@ -1036,7 +1038,7 @@ export const array: CMonad1<URI> &
   filterWithIndex
 }
 
-export const arrayMonad: CMonad1<URI> = {
+export const arrayMonad: CMonad1<URI> & CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,

@@ -41,6 +41,7 @@ const modules: string[] = [
   "Base/ChainRec",
   "Base/Bifunctor",
   "Base/Alt",
+  "Base/Of",
   "Base/Alternative",
   "Base/Contravariant",
   "Base/Semigroupoid",
@@ -106,7 +107,6 @@ const modules: string[] = [
   "Support/Runtime",
   "Support/Driver",
   "Support/Utils",
-  "Support/For",
   "StateEither"
 ]
 

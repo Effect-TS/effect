@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 /**
  * Multi-way trees (aka rose trees) and forests, where a forest is
  *
@@ -30,7 +32,23 @@ import type {
   CMonad,
   CFoldable1,
   CTraversable1,
-  CComonad1
+  CComonad1,
+  CApplicative3,
+  CApplicative3C,
+  CApplicative2,
+  CApplicative2C,
+  CApplicative1,
+  CMonad4,
+  CApplicative4,
+  URIS4,
+  Kind4,
+  CApplicative4MA,
+  MaURIS,
+  CApplicative4MAP,
+  CApplicative4MAPC,
+  CApplicative4MAC,
+  CMonad4MA,
+  CMonad4MAC
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
@@ -140,32 +158,62 @@ export function unfoldForest<A, B>(
 /**
  * Monadic tree builder, in depth-first order
  */
+export function unfoldTreeM<M extends MaURIS, E>(
+  M: CMonad4MA<M> & CApplicative4MAC<M, E>
+): <S, R, A, B>(
+  b: B,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, S, R, E, Tree<A>>
+export function unfoldTreeM<M extends MaURIS, E>(
+  M: CMonad4MAC<M, E> & CApplicative4MAPC<M, E>
+): <S, R, A, B>(
+  b: B,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, unknown, R, E, Tree<A>>
+export function unfoldTreeM<M extends MaURIS>(
+  M: CMonad4MA<M> & CApplicative4MAP<M>
+): <S, R, E, A, B>(
+  b: B,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, unknown, R, E, Tree<A>>
+export function unfoldTreeM<M extends MaURIS>(
+  M: CMonad4MA<M> & CApplicative4MA<M>
+): <S, R, E, A, B>(
+  b: B,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, S, R, E, Tree<A>>
+export function unfoldTreeM<M extends URIS4>(
+  M: CMonad4<M> & CApplicative4<M>
+): <S, R, E, A, B>(
+  b: B,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, S, R, E, Tree<A>>
 export function unfoldTreeM<M extends URIS3>(
-  M: CMonad3<M>
+  M: CMonad3<M> & CApplicative3<M>
 ): <R, E, A, B>(
   b: B,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Tree<A>>
 export function unfoldTreeM<M extends URIS3, E>(
-  M: CMonad3C<M, E>
+  M: CMonad3C<M, E> & CApplicative3C<M, E>
 ): <R, A, B>(
   b: B,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Tree<A>>
 export function unfoldTreeM<M extends URIS2>(
-  M: CMonad2<M>
+  M: CMonad2<M> & CApplicative2<M>
 ): <E, A, B>(b: B, f: (b: B) => Kind2<M, E, [A, Array<B>]>) => Kind2<M, E, Tree<A>>
 export function unfoldTreeM<M extends URIS2, E>(
-  M: CMonad2C<M, E>
+  M: CMonad2C<M, E> & CApplicative2C<M, E>
 ): <A, B>(b: B, f: (b: B) => Kind2<M, E, [A, Array<B>]>) => Kind2<M, E, Tree<A>>
 export function unfoldTreeM<M extends URIS>(
-  M: CMonad1<M>
+  M: CMonad1<M> & CApplicative1<M>
 ): <A, B>(b: B, f: (b: B) => Kind<M, [A, Array<B>]>) => Kind<M, Tree<A>>
 export function unfoldTreeM<M>(
-  M: CMonad<M>
+  M: CMonad<M> & CApplicative<M>
 ): <A, B>(b: B, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Tree<A>>
 export function unfoldTreeM<M>(
-  M: CMonad<M>
+  M: CMonad<M> & CApplicative<M>
 ): <A, B>(b: B, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Tree<A>> {
   const unfoldForestMM = unfoldForestM(M)
   return (b, f) =>
@@ -183,38 +231,68 @@ export function unfoldTreeM<M>(
 /**
  * Monadic forest builder, in depth-first order
  */
+export function unfoldForestM<M extends MaURIS, E>(
+  M: CMonad4MAC<M, E> & CApplicative4MAC<M, E>
+): <S, R, E, A, B>(
+  bs: Array<B>,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, S, R, E, Forest<A>>
+export function unfoldForestM<M extends MaURIS, E>(
+  M: CMonad4MAC<M, E> & CApplicative4MAPC<M, E>
+): <S, R, E, A, B>(
+  bs: Array<B>,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, unknown, R, E, Forest<A>>
+export function unfoldForestM<M extends MaURIS>(
+  M: CMonad4MA<M> & CApplicative4MAP<M>
+): <S, R, E, A, B>(
+  bs: Array<B>,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, unknown, R, E, Forest<A>>
+export function unfoldForestM<M extends MaURIS>(
+  M: CMonad4MA<M> & CApplicative4MA<M>
+): <S, R, E, A, B>(
+  bs: Array<B>,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, S, R, E, Forest<A>>
+export function unfoldForestM<M extends URIS4>(
+  M: CMonad4<M> & CApplicative4<M>
+): <S, R, E, A, B>(
+  bs: Array<B>,
+  f: (b: B) => Kind4<M, S, R, E, [A, Array<B>]>
+) => Kind4<M, S, R, E, Forest<A>>
 export function unfoldForestM<M extends URIS3>(
-  M: CMonad3<M>
+  M: CMonad3<M> & CApplicative3<M>
 ): <R, E, A, B>(
   bs: Array<B>,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Forest<A>>
 export function unfoldForestM<M extends URIS3, E>(
-  M: CMonad3C<M, E>
+  M: CMonad3C<M, E> & CApplicative3C<M, E>
 ): <R, A, B>(
   bs: Array<B>,
   f: (b: B) => Kind3<M, R, E, [A, Array<B>]>
 ) => Kind3<M, R, E, Forest<A>>
 export function unfoldForestM<M extends URIS2>(
-  M: CMonad2<M>
+  M: CMonad2<M> & CApplicative2<M>
 ): <R, E, B>(
   bs: Array<B>,
   f: (b: B) => Kind2<M, R, [E, Array<B>]>
 ) => Kind2<M, R, Forest<E>>
 export function unfoldForestM<M extends URIS2, E>(
-  M: CMonad2C<M, E>
+  M: CMonad2C<M, E> & CApplicative2C<M, E>
 ): <A, B>(
   bs: Array<B>,
   f: (b: B) => Kind2<M, E, [A, Array<B>]>
 ) => Kind2<M, E, Forest<A>>
 export function unfoldForestM<M extends URIS>(
-  M: CMonad1<M>
+  M: CMonad1<M> & CApplicative1<M>
 ): <A, B>(bs: Array<B>, f: (b: B) => Kind<M, [A, Array<B>]>) => Kind<M, Forest<A>>
 export function unfoldForestM<M>(
-  M: CMonad<M>
+  M: CMonad<M> & CApplicative<M>
 ): <A, B>(bs: Array<B>, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Forest<A>>
 export function unfoldForestM<M>(
-  M: CMonad<M>
+  M: CMonad<M> & CApplicative<M>
 ): <A, B>(bs: Array<B>, f: (b: B) => HKT<M, [A, Array<B>]>) => HKT<M, Forest<A>> {
   const traverseM = A.traverse(M)
   return (bs, f) =>
@@ -399,7 +477,8 @@ export const reduceRight: <A, B>(b: B, f: (a: A, b: B) => B) => (fa: Tree<A>) =>
 export const tree: CMonad1<URI> &
   CFoldable1<URI> &
   CTraversable1<URI> &
-  CComonad1<URI> = {
+  CComonad1<URI> &
+  CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,

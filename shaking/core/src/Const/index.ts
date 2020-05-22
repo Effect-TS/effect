@@ -10,15 +10,11 @@
 import type { Const } from "fp-ts/lib/Const"
 
 import type {
-  BooleanAlgebra,
-  HeytingAlgebra,
-  Ring,
-  Semiring,
   CApplicative2C,
   CApply2C,
-  CFunctor2,
+  CBifunctor2,
   CContravariant2,
-  CBifunctor2
+  CFunctor2
 } from "../Base"
 import type { Eq } from "../Eq"
 import { identity, unsafeCoerce } from "../Function"
@@ -28,6 +24,7 @@ import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 
 export type { Const }
+export { const_ as const }
 
 export const bimap_: <E, A, G, B>(
   fea: Const<E, A>,
@@ -66,31 +63,17 @@ export function getApply<E>(S: Semigroup<E>): CApply2C<URI, E> {
   }
 }
 
-export const getBooleanAlgebra: <E, A>(
-  H: BooleanAlgebra<E>
-) => BooleanAlgebra<Const<E, A>> = identity as any
-
 export const getBounded: <E, A>(B: Bounded<E>) => Bounded<Const<E, A>> = identity as any
 
 export const getEq: <E, A>(E: Eq<E>) => Eq<Const<E, A>> = identity
-
-export const getHeytingAlgebra: <E, A>(
-  H: HeytingAlgebra<E>
-) => HeytingAlgebra<Const<E, A>> = identity as any
 
 export const getMonoid: <E, A>(M: Monoid<E>) => Monoid<Const<E, A>> = identity as any
 
 export const getOrd: <E, A>(O: Ord<E>) => Ord<Const<E, A>> = identity
 
-export const getRing: <E, A>(S: Ring<E>) => Ring<Const<E, A>> = identity as any
-
 export const getSemigroup: <E, A>(
   S: Semigroup<E>
 ) => Semigroup<Const<E, A>> = identity as any
-
-export const getSemiring: <E, A>(
-  S: Semiring<E>
-) => Semiring<Const<E, A>> = identity as any
 
 export function getShow<E, A>(S: Show<E>): Show<Const<E, A>> {
   return {
@@ -136,5 +119,3 @@ export const const_: CFunctor2<URI> & CContravariant2<URI> & CBifunctor2<URI> = 
   bimap,
   mapLeft
 }
-
-export { const_ as const }

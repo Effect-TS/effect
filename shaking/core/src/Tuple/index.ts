@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type {
   Semigroup,
   Monoid,
@@ -49,6 +51,10 @@ export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {
     map,
     ap: (fa) => (fab) => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
   }
+}
+
+export const cons = <A, S>(a: A, s: S): [A, S] => {
+  return [a, s]
 }
 
 export const of = <S>(M: Monoid<S>) => <A>(a: A): [A, S] => {

@@ -1,6 +1,8 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { State } from "fp-ts/lib/State"
 
-import { CMonad3 } from "../Base"
+import { CMonad3, CApplicative3 } from "../Base"
 import * as T from "../Effect"
 import * as E from "../Either"
 import * as Ex from "../Exit"
@@ -136,7 +138,7 @@ declare module "../Base/HKT" {
   }
 }
 
-export const stateEither: CMonad3<URI> = {
+export const stateEither: CMonad3<URI> & CApplicative3<URI> = {
   URI,
   _F: "curried",
   map: T.map,

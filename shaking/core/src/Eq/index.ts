@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 /**
  * The `Eq` type class represents types which support decidable equality.
  *

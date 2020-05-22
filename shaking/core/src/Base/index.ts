@@ -84,9 +84,7 @@ export type {
   CChain3C,
   CChain4,
   CChain4MA,
-  CChain4MAP,
-  CChain4MAC,
-  CChain4MAPC
+  CChain4MAC
 } from "./Chain"
 
 export type {
@@ -231,9 +229,7 @@ export type {
   CMonad3C,
   CMonad4,
   CMonad4MA,
-  CMonad4MAP,
-  CMonad4MAC,
-  CMonad4MAPC
+  CMonad4MAC
 } from "./Monad"
 
 export type {
@@ -302,14 +298,12 @@ export type {
   CTraverseWithIndex3
 } from "./TraversableWithIndex"
 
+export type { COf, COf1, COf2, COf2C, COf3, COf3C, COf4, COf4C } from "./Of"
+
 export type { Show } from "fp-ts/lib/Show"
 export type { Monoid } from "fp-ts/lib/Monoid"
 export type { Magma } from "fp-ts/lib/Magma"
 export type { Semigroup } from "fp-ts/lib/Semigroup"
-export type { Ring } from "fp-ts/lib/Ring"
-export type { Semiring } from "fp-ts/lib/Semiring"
-export type { HeytingAlgebra } from "fp-ts/lib/HeytingAlgebra"
-export type { BooleanAlgebra } from "fp-ts/lib/BooleanAlgebra"
 
 import type {
   URItoKind as U1,

@@ -1,6 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
+
 import type { ReadonlyRecord } from "fp-ts/lib/ReadonlyRecord"
-import { Unfoldable1, Unfoldable } from "fp-ts/lib/Unfoldable"
 
 import type {
   MaURIS,
@@ -43,7 +43,9 @@ import type {
   CWitherable1,
   CFoldableWithIndex1,
   CFilter1,
-  CPartition1
+  CPartition1,
+  CUnfoldable1,
+  CUnfoldable
 } from "../../Base"
 import type { Either } from "../../Either"
 import { Eq, fromEquals } from "../../Eq"
@@ -1030,13 +1032,13 @@ export const toReadonlyArray: <K extends string, A>(
  * Unfolds a record into a list of key/value pairs
  */
 export function toUnfoldable<F extends URIS>(
-  U: Unfoldable1<F>
+  U: CUnfoldable1<F>
 ): <K extends string, A>(r: ReadonlyRecord<K, A>) => Kind<F, readonly [K, A]>
 export function toUnfoldable<F>(
-  U: Unfoldable<F>
+  U: CUnfoldable<F>
 ): <K extends string, A>(r: ReadonlyRecord<K, A>) => HKT<F, readonly [K, A]>
 export function toUnfoldable<F>(
-  U: Unfoldable<F>
+  U: CUnfoldable<F>
 ): <A>(r: ReadonlyRecord<string, A>) => HKT<F, readonly [string, A]> {
   return (r) => {
     const arr = toReadonlyArray(r)

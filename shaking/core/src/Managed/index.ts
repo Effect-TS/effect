@@ -1,7 +1,5 @@
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
-import { CMonad4MA, CMonad4MAP } from "../Base"
+import { CMonad4MA, CApplicative4MAP, CApplicative4MA } from "../Base"
 import { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
-import { Do as DoG } from "../Do"
 import * as T from "../Effect"
 import type { Either } from "../Either"
 import { done, Exit, raise, withRemaining } from "../Exit"
@@ -18,11 +16,6 @@ import type { Option } from "../Option"
 import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
-import { ForM } from "../Support/For"
-
-export const Do = () => DoG(managed)
-
-export const For = () => ForM(managed)
 
 /**
  * A Managed<E, A> is a type that encapsulates the safe acquisition and release of a resource.
@@ -657,7 +650,7 @@ export const parApSecond = <S1, R, E, B>(fb: Managed<S1, R, E, B>) => <A, S2, R2
     fb
   )
 
-export const managed: CMonad4MA<URI> = {
+export const managed: CMonad4MA<URI> & CApplicative4MA<URI> = {
   URI,
   _F: "curried",
   of: pure,
@@ -666,14 +659,15 @@ export const managed: CMonad4MA<URI> = {
   chain
 }
 
-export const parManaged: CMonad4MAP<URI> = {
-  URI,
-  _CTX: "async",
-  _F: "curried",
-  of: pure,
-  map,
-  ap: parAp,
-  chain
+export function par<I>(
+  I: CApplicative4MA<URI> & I
+): CApplicative4MAP<URI> & T.Erase<I, CApplicative4MA<URI>>
+export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
+  return {
+    ...I,
+    _CTX: "async",
+    ap: parAp
+  }
 }
 
 /**
@@ -685,23 +679,3 @@ export function compact<H extends Managed<any, any, any, any>>(
 ): Managed<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
-
-export const parDo = () => DoG(parManaged)
-
-export const parFor = () => ForM(parManaged)
-
-export const parSequenceS =
-  /*#__PURE__*/
-  (() => SS(parManaged))()
-
-export const parSequenceT =
-  /*#__PURE__*/
-  (() => ST(parManaged))()
-
-export const sequenceS =
-  /*#__PURE__*/
-  (() => SS(managed))()
-
-export const sequenceT =
-  /*#__PURE__*/
-  (() => ST(managed))()

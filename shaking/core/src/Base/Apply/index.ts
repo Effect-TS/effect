@@ -160,7 +160,6 @@ export function sequenceT<F extends MaURIS>(
     [K in keyof T]: [T[K]] extends [Kind4<F, any, any, any, infer A>] ? A : never
   }
 >
-
 export function sequenceT<F extends MaURIS>(
   F: CApply4MA<F>
 ): <T extends Array<Kind4<F, any, any, any, any>>>(

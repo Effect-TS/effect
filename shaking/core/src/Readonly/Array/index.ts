@@ -1609,7 +1609,7 @@ export const readonlyArrayApplicative: CApplicative1<URI> = {
   of
 }
 
-export const readonlyArrayMonad: CMonad1<URI> = {
+export const readonlyArrayMonad: CMonad1<URI> & CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,
@@ -1630,7 +1630,8 @@ export const readonlyArray: CMonad1<URI> &
   CFunctorWithIndex1<URI, number> &
   CFoldableWithIndex1<URI, number> &
   CFilterable1<URI> &
-  CTraversable1<URI> = {
+  CTraversable1<URI> &
+  CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,

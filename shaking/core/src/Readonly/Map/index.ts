@@ -1,4 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
+
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type {
   CFilter2,

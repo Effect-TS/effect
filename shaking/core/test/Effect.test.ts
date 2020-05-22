@@ -12,12 +12,12 @@ import { semigroupString } from "../src/Semigroup"
 
 describe("EffectSafe", () => {
   it("Par", async () => {
-    const program = array.sequence(T.parEffect)([T.pure(0), T.pure(1)])
+    const program = array.sequence(T.par(T.effect))([T.pure(0), T.pure(1)])
 
     expect(await T.runToPromiseExit(program)).toStrictEqual(ex.done([0, 1]))
   })
   it("Sync", () => {
-    const program = T.sequenceT(T.pure(0), T.pure(1))
+    const program = sequenceT(T.effect)(T.pure(0), T.pure(1))
 
     expect(T.runSync(program)).toStrictEqual(ex.done([0, 1]))
   })
@@ -601,7 +601,7 @@ describe("EffectSafe", () => {
       const double = (n: number): number => n * 2
       const mab = T.pure(double)
       const ma = T.pure(1)
-      const x = await T.runToPromiseExit(T.parEffect.ap(ma)(mab))
+      const x = await T.runToPromiseExit(T.par(T.effect).ap(ma)(mab))
       assert.deepStrictEqual(x, ex.done(2))
     })
   })
@@ -947,7 +947,7 @@ describe("EffectSafe", () => {
   })
 
   it("getParValidationM", async () => {
-    const M = T.getParValidationM(semigroupString)
+    const M = T.par(T.getValidationM(semigroupString))
 
     const f = (s: string) => M.of(s.length)
 
@@ -1044,7 +1044,7 @@ describe("EffectSafe", () => {
       assert.deepStrictEqual(e, ex.raise("ab"))
     })
     it("getParValidationM", async () => {
-      const M = T.getParValidationM(semigroupString)
+      const M = T.par(T.getValidationM(semigroupString))
       const p = Do(M)
         .bindL("x", () => M.of("a"))
         .sequenceS({
@@ -1069,7 +1069,7 @@ describe("EffectSafe", () => {
       assert.deepStrictEqual(e, ex.raise("ab"))
     })
     it("getParValidationM env", async () => {
-      const M = T.getParValidationM(semigroupString)
+      const M = T.par(T.getValidationM(semigroupString))
       const p = Do(M)
         .bindL("x", () => M.of("a"))
         .sequenceS({
@@ -1096,7 +1096,7 @@ describe("EffectSafe", () => {
     })
 
     it("should traverse validation - par", async () => {
-      const V = T.getParValidationM(semigroupString)
+      const V = T.par(T.getValidationM(semigroupString))
 
       const checks = pipe(
         [0, 1, 2, 3, 4],
@@ -1119,7 +1119,7 @@ describe("EffectSafe", () => {
     })
 
     it("should traverse validation - sequenceT - par", async () => {
-      const V = T.getParValidationM(semigroupString)
+      const V = T.par(T.getValidationM(semigroupString))
 
       const checks = sequenceT(V)(T.raiseError("(1)"), T.pure(1), T.raiseError("(2)"))
 
@@ -1143,7 +1143,7 @@ describe("EffectSafe", () => {
     })
 
     it("should traverse validation - sequenceS - par", async () => {
-      const V = T.getParValidationM(semigroupString)
+      const V = T.par(T.getValidationM(semigroupString))
 
       const checks = sequenceS(V)({
         a: T.raiseError("(1)"),
@@ -1173,7 +1173,7 @@ describe("EffectSafe", () => {
     })
 
     it("should traverse validation - Do - par", async () => {
-      const V = T.getParValidationM(semigroupString)
+      const V = T.par(T.getValidationM(semigroupString))
 
       const checks = Do(V)
         .sequenceS({
@@ -1224,7 +1224,7 @@ describe("EffectSafe", () => {
         [prefixEnv]: "error"
       }
 
-      const V = T.getParValidationM(semigroupString)
+      const V = T.par(T.getValidationM(semigroupString))
 
       const checks = pipe(
         [0, 1, 2, 3, 4],

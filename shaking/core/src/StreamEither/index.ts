@@ -1,7 +1,7 @@
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
-import type { CBifunctor4, CMonad4MAP } from "../Base"
+/* adapted from https://github.com/gcanti/fp-ts-contrib */
+
+import type { CBifunctor4, CMonad4MA, CApplicative4MAP } from "../Base"
 import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
-import { Do as DoG } from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
 import * as F from "../Function"
@@ -9,7 +9,6 @@ import * as M from "../Managed"
 import * as O from "../Option"
 import * as Stream from "../Stream"
 import { Managed, StreamEither, StreamEitherURI as URI } from "../Support/Common"
-import { ForM } from "../Support/For"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
@@ -392,7 +391,7 @@ export const mapLeft: <E, G>(
   fa
 ) => mapLeft_(fa, f)
 
-export const streamEither: CMonad4MAP<URI> & CBifunctor4<URI> = {
+export const streamEither: CMonad4MA<URI> & CBifunctor4<URI> & CApplicative4MAP<URI> = {
   URI,
   _CTX: "async",
   _F: "curried",
@@ -404,9 +403,6 @@ export const streamEither: CMonad4MAP<URI> & CBifunctor4<URI> = {
   bimap
 }
 
-export const Do = () => DoG(streamEither)
-export const For = () => ForM(streamEither)
-
 /**
  * Used to merge types of the form StreamEither<S, R, E, A> | StreamEither<S2, R2, E2, A2> into StreamEither<S | S2, R & R2, E | E2, A | A2>
  * @param _
@@ -416,11 +412,3 @@ export function compact<H extends StreamEither<any, any, any, any>>(
 ): StreamEither<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
   return _ as any
 }
-
-export const sequenceS =
-  /*#__PURE__*/
-  (() => SS(streamEither))()
-
-export const sequenceT =
-  /*#__PURE__*/
-  (() => ST(streamEither))()
