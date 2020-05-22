@@ -63,7 +63,7 @@ describe("Interrupt", () => {
   it("should interrupt with error parallel", async () => {
     let exit: any = null
 
-    const program = sequenceT(T.parEffect)(
+    const program = sequenceT(T.par(T.effect))(
       T.async(() => (cb) => {
         setTimeout(() => {
           cb(new Error("test error"))
@@ -104,7 +104,7 @@ describe("Interrupt", () => {
       }
     })
 
-    const par = array.sequence(T.parEffect)([program, program, program])
+    const par = array.sequence(T.par(T.effect))([program, program, program])
 
     const fiber = await T.runToPromise(T.fork(par))
 
