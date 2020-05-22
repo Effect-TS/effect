@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import { FunctionN } from "../../Function"
 import { none, some, isSome, Option } from "../../Option"
 import { AsyncCancelContFn } from "../Common"

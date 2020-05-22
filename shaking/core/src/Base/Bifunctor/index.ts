@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { Kind2, HKT2, URIS2, URIS3, Kind3, URIS4, Kind4 } from "../HKT"
 
 export interface CBifunctor<F> {

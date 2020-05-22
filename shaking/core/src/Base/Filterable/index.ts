@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { Either } from "../../Either"
 import type { Refinement, Predicate } from "../../Function"
 import type { Option } from "../../Option"

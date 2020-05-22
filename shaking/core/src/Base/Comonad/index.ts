@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { CExtend, CExtend1, CExtend2, CExtend2C, CExtend3 } from "../Extend"
 import type { HKT, URIS, Kind, URIS2, Kind2, URIS3, Kind3 } from "../HKT"
 

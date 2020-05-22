@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import * as AP from "../Apply"
 import * as A from "../Array"
 import { CMonad4MA, CApplicative4MAP, CApplicative4MA } from "../Base"

@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import type { CMonad1, CApplicative1 } from "../Base"
 import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"

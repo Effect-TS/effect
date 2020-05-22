@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import type { Task as T } from "fp-ts/lib/Task"
 import type { TaskEither } from "fp-ts/lib/TaskEither"
 

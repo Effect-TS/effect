@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type {
   CApplicative3,
   CApplicative3C,

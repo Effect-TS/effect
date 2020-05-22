@@ -1,33 +1,9 @@
 import type { Either } from "../../../Either"
-import {
-  Cause,
-  Done,
-  done,
-  Exit,
-  interrupt as interruptExit,
-  raise
-} from "../../../Exit"
+import * as Ex from "../../../Exit"
 import type { FunctionN } from "../../../Function"
 import { none } from "../../../Option"
+import * as Common from "../../Common"
 import type * as EffectTypes from "../../Common/effect"
-import {
-  IAccessEnv,
-  IAccessInterruptible,
-  IAccessRuntime,
-  IAsync,
-  IChain,
-  ICollapse,
-  ICompleted,
-  IInterruptibleRegion,
-  IMap,
-  Instructions,
-  IProvideEnv,
-  IPure,
-  IPureEither,
-  IPureOption,
-  IRaised,
-  ISuspended
-} from "../../Common/instructions"
 import { DoublyLinkedList } from "../../DoublyLinkedList"
 import { defaultRuntime } from "../../Runtime"
 import {
@@ -44,8 +20,8 @@ import {
 import { DriverSync } from "./DriverSync"
 
 export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
-  completed: Exit<E, A> | null = null
-  listeners: FunctionN<[Exit<E, A>], void>[] | undefined
+  completed: Ex.Exit<E, A> | null = null
+  listeners: FunctionN<[Ex.Exit<E, A>], void>[] | undefined
   interrupted = false
   currentFrame: FrameType | undefined = undefined
   interruptRegionStack: boolean[] | undefined
@@ -55,7 +31,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     return this.completed !== null
   }
 
-  complete(a: Exit<E, A>): void {
+  complete(a: Ex.Exit<E, A>): void {
     this.completed = a
     if (this.listeners !== undefined) {
       for (const f of this.listeners) {
@@ -71,7 +47,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       : true
   }
 
-  handle(e: Cause<unknown>): Instructions | undefined {
+  handle(e: Ex.Cause<unknown>): Common.Instructions | undefined {
     let frame = this.currentFrame
     this.currentFrame = this.currentFrame?.prev
     while (frame) {
@@ -89,12 +65,12 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
       this.currentFrame = this.currentFrame?.prev
     }
     // At the end... so we have failed
-    this.complete(e as Cause<E>)
+    this.complete(e as Ex.Cause<E>)
     return
   }
 
   dispatchResumeInterrupt() {
-    const go = this.handle(interruptExit)
+    const go = this.handle(Ex.interrupt)
     if (go) {
       // eslint-disable-next-line
       this.loop(go)
@@ -105,22 +81,22 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     this.dispatchResumeInterrupt()
   }
 
-  next(value: unknown): Instructions | undefined {
+  next(value: unknown): Common.Instructions | undefined {
     const frame = this.currentFrame
     this.currentFrame = this.currentFrame?.prev
 
     if (frame) {
       if (frame.tag() === MapFrameTag) {
         if (this.currentFrame === undefined) {
-          this.complete(done(frame.apply(value)) as Done<A>)
+          this.complete(Ex.done(frame.apply(value)) as Ex.Done<A>)
           return
         }
-        return new IPure(frame.apply(value))
+        return new Common.IPure(frame.apply(value))
       } else {
         return frame.apply(value) as any
       }
     }
-    this.complete(done(value) as Done<A>)
+    this.complete(Ex.done(value) as Ex.Done<A>)
     return
   }
 
@@ -132,7 +108,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
         this.loop(go)
       }
     } else {
-      const go = this.handle(raise(status.left))
+      const go = this.handle(Ex.raise(status.left))
       if (go) {
         /* eslint-disable-next-line */
         this.loop(go)
@@ -144,55 +120,55 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     this.foldResume(status)
   }
 
-  IAccessEnv(_: IAccessEnv<any>) {
+  IAccessEnv(_: Common.IAccessEnv<any>) {
     const env = this.envStack.tail?.value || {}
     return this.next(env)
   }
 
-  IProvideEnv(_: IProvideEnv<any, any, any, any>) {
+  IProvideEnv(_: Common.IProvideEnv<any, any, any, any>) {
     this.envStack.append(_.r as any)
 
-    return new ICollapse(
+    return new Common.ICollapse(
       _.e as any,
       (e) => {
         this.envStack.deleteTail()
-        return new ICompleted(e) as any
+        return new Common.ICompleted(e) as any
       },
       (r) => {
         this.envStack.deleteTail()
-        return new ICompleted(done(r)) as any
+        return new Common.ICompleted(Ex.done(r)) as any
       }
     )
   }
 
-  IPure(_: IPure<A>) {
+  IPure(_: Common.IPure<A>) {
     return this.next(_.a)
   }
 
-  IPureOption(_: IPureOption<any, any>) {
+  IPureOption(_: Common.IPureOption<any, any>) {
     if (_.a._tag === "Some") {
       return this.next(_.a.value)
     } else {
-      return this.handle(raise(_.onEmpty()))
+      return this.handle(Ex.raise(_.onEmpty()))
     }
   }
 
-  IPureEither(_: IPureEither<any, any>) {
+  IPureEither(_: Common.IPureEither<any, any>) {
     if (_.a._tag === "Right") {
       return this.next(_.a.right)
     } else {
-      return this.handle(raise(_.a.left))
+      return this.handle(Ex.raise(_.a.left))
     }
   }
 
-  IRaised(_: IRaised<any>) {
+  IRaised(_: Common.IRaised<any>) {
     if (_.e._tag === "Interrupt") {
       this.interrupted = true
     }
     return this.handle(_.e)
   }
 
-  ICompleted(_: ICompleted<any, any>) {
+  ICompleted(_: Common.ICompleted<any, any>) {
     if (_.e._tag === "Done") {
       return this.next(_.e.value)
     } else {
@@ -200,25 +176,27 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     }
   }
 
-  ISuspended(_: ISuspended<any, any, any, any>) {
+  ISuspended(_: Common.ISuspended<any, any, any, any>) {
     return _.e()
   }
 
-  IAsync(_: IAsync<any, any>) {
+  IAsync(_: Common.IAsync<any, any>) {
     return undefined
   }
 
-  IChain(_: IChain<any, any, any, any, any, any, any, any>) {
+  IChain(_: Common.IChain<any, any, any, any, any, any, any, any>) {
     this.currentFrame = new Frame(_.f as any, this.currentFrame)
     return _.e as any
   }
 
-  IMap(_: IMap<any, any, any, any, any>) {
+  IMap(_: Common.IMap<any, any, any, any, any>) {
     this.currentFrame = new MapFrame(_.f, this.currentFrame)
     return _.e as any
   }
 
-  ICollapse(_: ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>) {
+  ICollapse(
+    _: Common.ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>
+  ) {
     this.currentFrame = new FoldFrame(
       _.success as any,
       _.failure as any,
@@ -227,7 +205,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     return _.inner as any
   }
 
-  IInterruptibleRegion(_: IInterruptibleRegion<any, any, any, any>) {
+  IInterruptibleRegion(_: Common.IInterruptibleRegion<any, any, any, any>) {
     if (this.interruptRegionStack === undefined) {
       this.interruptRegionStack = [_.int]
     } else {
@@ -237,23 +215,23 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     return _.e as any
   }
 
-  IAccessRuntime(_: IAccessRuntime<any>) {
-    return new IPure(_.f(defaultRuntime))
+  IAccessRuntime(_: Common.IAccessRuntime<any>) {
+    return new Common.IPure(_.f(defaultRuntime))
   }
 
-  IAccessInterruptible(_: IAccessInterruptible<any>) {
-    return new IPure(_.f(this.isInterruptible()))
+  IAccessInterruptible(_: Common.IAccessInterruptible<any>) {
+    return new Common.IPure(_.f(this.isInterruptible()))
   }
 
   // tslint:disable-next-line: cyclomatic-complexity
-  loop(go: Instructions): void {
-    let current: Instructions | undefined = go
+  loop(go: Common.Instructions): void {
+    let current: Common.Instructions | undefined = go
 
     while (current && (!this.interrupted || !this.isInterruptible())) {
       try {
         current = this[current.tag()](current as any)
       } catch (e) {
-        current = new IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
+        current = new Common.IRaised({ _tag: "Abort", abortedWith: e, remaining: none })
       }
     }
 
@@ -263,7 +241,7 @@ export class DriverSyncImpl<E, A> implements DriverSync<E, A> {
     }
   }
 
-  start(run: EffectTypes.SyncRE<{}, E, A>): Either<Error, Exit<E, A>> {
+  start(run: EffectTypes.SyncRE<{}, E, A>): Either<Error, Ex.Exit<E, A>> {
     this.loop(run as any)
 
     if (this.completed !== null) {

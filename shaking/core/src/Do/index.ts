@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts-contrib */
+
 import { sequenceS } from "../Apply"
 import {
   CApplicative,

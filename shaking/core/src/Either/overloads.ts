@@ -1,8 +1,10 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import type { Either } from "fp-ts/lib/Either"
 import type { Kind2 } from "fp-ts/lib/HKT"
 
 import type { CFunctor2, CFunctor2C } from "../Base"
-import { COf2, COf2C } from "../Base/Of"
+import type { COf2, COf2C } from "../Base/Of"
 
 import type { URI } from "./index"
 

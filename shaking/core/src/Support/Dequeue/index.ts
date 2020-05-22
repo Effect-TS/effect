@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import { Predicate } from "../../Function"
 import {
   cons,

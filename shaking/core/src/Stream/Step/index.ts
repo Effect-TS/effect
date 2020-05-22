@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import type { CApplicative, HKT } from "../../Base"
 import type { FunctionN } from "../../Function"
 

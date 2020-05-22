@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { Either } from "../../Either"
 import type { CChain, CChain1, CChain2, CChain2C, CChain3 } from "../Chain"
 import type { HKT, URIS, Kind, URIS2, Kind2, URIS3, Kind3 } from "../HKT"

@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import { tuple } from "../../Function"
 import type { GE } from "../../Utils"
 import type {

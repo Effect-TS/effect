@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 import type { CAlt, CAlt1, CAlt2, CAlt2C, CAlt3 } from "../Alt"
 import type { CFunctor, CFunctor1, CFunctor2, CFunctor2C, CFunctor3 } from "../Functor"
 import type { HKT, URIS, Kind, URIS2, Kind2, URIS3, Kind3 } from "../HKT"
