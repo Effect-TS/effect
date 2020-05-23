@@ -81,6 +81,11 @@ export interface CFilter2<F extends URIS2> {
   <A>(predicate: Predicate<A>): <E>(fa: Kind2<F, E, A>) => Kind2<F, E, A>
 }
 
+export interface Filter2<F extends URIS2> {
+  <E, A, B extends A>(fa: Kind2<F, E, A>, refinement: Refinement<A, B>): Kind2<F, E, B>
+  <E, A>(fa: Kind2<F, E, A>, predicate: Predicate<A>): Kind2<F, E, A>
+}
+
 export interface CPartition2<F extends URIS2> {
   <A, B extends A>(refinement: Refinement<A, B>): <E>(
     fa: Kind2<F, E, A>
@@ -88,6 +93,17 @@ export interface CPartition2<F extends URIS2> {
   <A>(predicate: Predicate<A>): <E>(
     fa: Kind2<F, E, A>
   ) => Separated<Kind2<F, E, A>, Kind2<F, E, A>>
+}
+
+export interface Partition2<F extends URIS2> {
+  <E, A, B extends A>(fa: Kind2<F, E, A>, refinement: Refinement<A, B>): Separated<
+    Kind2<F, E, A>,
+    Kind2<F, E, B>
+  >
+  <E, A>(fa: Kind2<F, E, A>, predicate: Predicate<A>): Separated<
+    Kind2<F, E, A>,
+    Kind2<F, E, A>
+  >
 }
 
 export interface CFilterable2<F extends URIS2> extends CFunctor2<F>, CCompactable2<F> {

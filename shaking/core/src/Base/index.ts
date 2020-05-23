@@ -150,7 +150,9 @@ export type {
   CPartition2C,
   CPartition3,
   CPartition3C,
-  CPartition4
+  CPartition4,
+  Filter2,
+  Partition2
 } from "./Filterable"
 
 export {

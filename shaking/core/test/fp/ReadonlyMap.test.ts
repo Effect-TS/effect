@@ -80,14 +80,14 @@ describe("ReadonlyMap", () => {
       [{ id: "b" }, 2]
     ])
     const memberS = _.member(eqUser)
-    assert.deepStrictEqual(memberS({ id: "a" }, a1b2), true)
-    assert.deepStrictEqual(memberS({ id: "c" }, a1b2), false)
+    assert.deepStrictEqual(memberS({ id: "a" })(a1b2), true)
+    assert.deepStrictEqual(memberS({ id: "c" })(a1b2), false)
 
     const member = _.member(eqKey)
-    assert.deepStrictEqual(member({ id: 1 }, repo), true)
-    assert.deepStrictEqual(member({ id: 2 }, repo), true)
-    assert.deepStrictEqual(member({ id: 4 }, repo), true)
-    assert.deepStrictEqual(member({ id: 3 }, repo), false)
+    assert.deepStrictEqual(member({ id: 1 })(repo), true)
+    assert.deepStrictEqual(member({ id: 2 })(repo), true)
+    assert.deepStrictEqual(member({ id: 4 })(repo), true)
+    assert.deepStrictEqual(member({ id: 3 })(repo), false)
   })
 
   it("elem", () => {
@@ -96,14 +96,14 @@ describe("ReadonlyMap", () => {
       ["b", 2]
     ])
     const elemS = _.elem(eqNumber)
-    assert.deepStrictEqual(elemS(2, a1b2), true)
-    assert.deepStrictEqual(elemS(3, a1b2), false)
+    assert.deepStrictEqual(elemS(2)(a1b2), true)
+    assert.deepStrictEqual(elemS(3)(a1b2), false)
 
     const elem = _.elem(eqValue)
-    assert.deepStrictEqual(elem({ value: 1 }, repo), true)
-    assert.deepStrictEqual(elem({ value: 2 }, repo), true)
-    assert.deepStrictEqual(elem({ value: 4 }, repo), true)
-    assert.deepStrictEqual(elem({ value: 3 }, repo), false)
+    assert.deepStrictEqual(elem({ value: 1 })(repo), true)
+    assert.deepStrictEqual(elem({ value: 2 })(repo), true)
+    assert.deepStrictEqual(elem({ value: 4 })(repo), true)
+    assert.deepStrictEqual(elem({ value: 3 })(repo), false)
   })
 
   it("keys", () => {
@@ -473,31 +473,31 @@ describe("ReadonlyMap", () => {
   it("lookupWithKey", () => {
     const a1 = new Map<User, number>([[{ id: "a" }, 1]])
     const lookupWithKeyS = _.lookupWithKey(eqUser)
-    assert.deepStrictEqual(lookupWithKeyS({ id: "a" }, a1), some([{ id: "a" }, 1]))
-    assert.deepStrictEqual(lookupWithKeyS({ id: "b" }, a1), none)
+    assert.deepStrictEqual(lookupWithKeyS({ id: "a" })(a1), some([{ id: "a" }, 1]))
+    assert.deepStrictEqual(lookupWithKeyS({ id: "b" })(a1), none)
 
     const lookupWithKey = _.lookupWithKey(eqKey)
     assert.deepStrictEqual(
-      lookupWithKey({ id: 1 }, repo),
+      lookupWithKey({ id: 1 })(repo),
       some([{ id: 1 }, { value: 1 }])
     )
     assert.deepStrictEqual(
-      lookupWithKey({ id: 4 }, repo),
+      lookupWithKey({ id: 4 })(repo),
       some([{ id: 1 }, { value: 1 }])
     )
-    assert.deepStrictEqual(lookupWithKey({ id: 3 }, repo), none)
+    assert.deepStrictEqual(lookupWithKey({ id: 3 })(repo), none)
   })
 
   it("lookup", () => {
     const a1 = new Map<User, number>([[{ id: "a" }, 1]])
     const lookupS = _.lookup(eqUser)
-    assert.deepStrictEqual(lookupS({ id: "a" }, a1), some(1))
-    assert.deepStrictEqual(lookupS({ id: "b" }, a1), none)
+    assert.deepStrictEqual(lookupS({ id: "a" })(a1), some(1))
+    assert.deepStrictEqual(lookupS({ id: "b" })(a1), none)
 
     const lookup = _.lookup(eqKey)
-    assert.deepStrictEqual(lookup({ id: 1 }, repo), some({ value: 1 }))
-    assert.deepStrictEqual(lookup({ id: 4 }, repo), some({ value: 1 }))
-    assert.deepStrictEqual(lookup({ id: 3 }, repo), none)
+    assert.deepStrictEqual(lookup({ id: 1 })(repo), some({ value: 1 }))
+    assert.deepStrictEqual(lookup({ id: 4 })(repo), some({ value: 1 }))
+    assert.deepStrictEqual(lookup({ id: 3 })(repo), none)
   })
 
   it("isSubmap", () => {
@@ -641,10 +641,10 @@ describe("ReadonlyMap", () => {
     )
   })
 
-  describe("readonlyMap", () => {
+  describe("readonlyMapFilterable", () => {
     describe("functor", () => {
       it("map", () => {
-        const map = _.readonlyMap.map
+        const map = _.readonlyMapFilterable.map
         const d1 = new Map<string, number>([
           ["k1", 1],
           ["k2", 2]
@@ -660,7 +660,7 @@ describe("ReadonlyMap", () => {
 
     describe("filterable", () => {
       it("compact", () => {
-        const compact = _.readonlyMap.compact
+        const compact = _.readonlyMapFilterable.compact
         const fooBar = new Map<string, Option<number>>([
           ["foo", none],
           ["bar", some(123)]
@@ -670,7 +670,7 @@ describe("ReadonlyMap", () => {
       })
 
       it("partitionMap", () => {
-        const partitionMap = _.readonlyMap.partitionMap
+        const partitionMap = _.readonlyMapFilterable.partitionMap
         const emptyMap = new Map<string, number>()
         const a1b3 = new Map<string, number>([
           ["a", 1],
@@ -690,7 +690,7 @@ describe("ReadonlyMap", () => {
       })
 
       it("partition", () => {
-        const partition = _.readonlyMap.partition
+        const partition = _.readonlyMapFilterable.partition
         const emptyMap = new Map<string, number>()
         const a1b3 = new Map<string, number>([
           ["a", 1],
@@ -709,7 +709,7 @@ describe("ReadonlyMap", () => {
       })
 
       it("separate", () => {
-        const separate = _.readonlyMap.separate
+        const separate = _.readonlyMapFilterable.separate
         const fooBar = new Map<string, Either<number, number>>([
           ["foo", left(123)],
           ["bar", right(123)]
@@ -723,7 +723,7 @@ describe("ReadonlyMap", () => {
       })
 
       it("filter", () => {
-        const filter = _.readonlyMap.filter
+        const filter = _.readonlyMapFilterable.filter
         const a1b3 = new Map<string, number>([
           ["a", 1],
           ["b", 3]
@@ -743,7 +743,7 @@ describe("ReadonlyMap", () => {
       })
 
       it("filterMap", () => {
-        const filterMap = _.readonlyMap.filterMap
+        const filterMap = _.readonlyMapFilterable.filterMap
         const emptyMap = new Map<string, number>()
         const a1b3 = new Map<string, number>([
           ["a", 1],
