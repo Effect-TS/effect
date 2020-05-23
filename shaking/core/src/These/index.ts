@@ -10,7 +10,8 @@ import type {
   CBifunctor2,
   CFoldable2,
   CTraversable2,
-  CApplicative2C
+  CApplicative2C,
+  Traverse2
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
@@ -147,6 +148,31 @@ export function getMonad<E>(
     of: right,
     ap: (ma) => chain((f) => map(f)(ma)),
     chain
+  }
+}
+
+export function getMonad_<E>(S: Semigroup<E>) {
+  const chain_ = <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>): These<E, B> => {
+    if (isLeft(ma)) {
+      return ma
+    }
+    if (isRight(ma)) {
+      return f(ma.right)
+    }
+    const fb = f(ma.right)
+    return isLeft(fb)
+      ? left(S.concat(ma.left, fb.left))
+      : isRight(fb)
+      ? both(ma.left, fb.right)
+      : both(S.concat(ma.left, fb.left), fb.right)
+  }
+
+  return {
+    map_,
+    of: right,
+    ap: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>): These<E, B> =>
+      chain_(fab, (f) => map(f)(fa)),
+    chain_
   }
 }
 
@@ -346,6 +372,20 @@ export const traverse: CTraverse2<URI> = <F>(F: CApplicative<F>) => <A, B>(
           f(ta.right),
           F.map((b) => both(ta.left, b))
         )
+}
+
+export const traverse_: Traverse2<URI> = <F>(F: CApplicative<F>) => <A, B, E>(
+  ta: These<E, A>,
+  f: (a: A) => HKT<F, B>
+): HKT<F, These<E, B>> => {
+  return isLeft(ta)
+    ? F.of(ta)
+    : isRight(ta)
+    ? pipe(f(ta.right), F.map(right))
+    : pipe(
+        f(ta.right),
+        F.map((b) => both(ta.left, b))
+      )
 }
 
 export const sequence: CSequence2<URI> = <F>(F: CApplicative<F>) => <E, A>(

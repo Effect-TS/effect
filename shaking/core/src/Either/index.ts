@@ -13,7 +13,8 @@ import type {
   CFoldable2,
   CTraversable2,
   CBifunctor2,
-  CExtend2
+  CExtend2,
+  Traverse2
 } from "../Base"
 import type { Eq } from "../Eq"
 import { Lazy, Predicate, Refinement, flow } from "../Function"
@@ -513,6 +514,13 @@ export const traverse: CTraverse2<URI> = <F>(F: CApplicative<F>) => <A, B>(
 ): (<TE>(ma: Either<TE, A>) => HKT<F, Either<TE, B>>) => {
   return <TE>(ma: Either<TE, A>) =>
     isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<TE, B>>(right)(f(ma.right))
+}
+
+export const traverse_: Traverse2<URI> = <F>(F: CApplicative<F>) => <A, B, TE>(
+  ma: Either<TE, A>,
+  f: (a: A) => HKT<F, B>
+): HKT<F, Either<TE, B>> => {
+  return isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<TE, B>>(right)(f(ma.right))
 }
 
 /**

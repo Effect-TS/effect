@@ -44,7 +44,8 @@ import type {
   CApplicative4MAPC,
   CApplicative4MAC,
   CMonad4MA,
-  CMonad4MAC
+  CMonad4MAC,
+  Traverse1
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
@@ -405,6 +406,27 @@ export const traverse: CTraverse1<URI> = <F>(
         pipe(
           ta.forest,
           traverseF((t) => r(f)(t))
+        )
+      )
+    )
+  return r
+}
+
+export const traverse_: Traverse1<URI> = <F>(
+  F: CApplicative<F>
+): (<A, B>(ta: Tree<A>, f: (a: A) => HKT<F, B>) => HKT<F, Tree<B>>) => {
+  const traverseF = A.traverse(F)
+  const r = <A, B>(ta: Tree<A>, f: (a: A) => HKT<F, B>): HKT<F, Tree<B>> =>
+    pipe(
+      f(ta.value),
+      F.map((value: B) => (forest: Forest<B>) => ({
+        value,
+        forest
+      })),
+      F.ap(
+        pipe(
+          ta.forest,
+          traverseF((t) => r(t, f))
         )
       )
     )

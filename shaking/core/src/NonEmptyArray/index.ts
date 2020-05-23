@@ -14,7 +14,9 @@ import type {
   CFunctorWithIndex1,
   CFoldableWithIndex1,
   CAlt1,
-  CApplicative1
+  CApplicative1,
+  Traverse1,
+  TraverseWithIndex1
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -233,12 +235,19 @@ export const unzip: <A, B>(
 
 export const traverse: CTraverse1<URI> = RNEA.traverse as any
 
+export const traverse_: Traverse1<URI> = RNEA.traverse_ as any
+
 export const sequence: CSequence1<URI> = RNEA.sequence as any
 
 export const traverseWithIndex: CTraverseWithIndex1<
   URI,
   number
 > = RNEA.traverseWithIndex as any
+
+export const traverseWithIndex_: TraverseWithIndex1<
+  URI,
+  number
+> = RNEA.traverseWithIndex_ as any
 
 export const ap: <A>(
   fa: NonEmptyArray<A>

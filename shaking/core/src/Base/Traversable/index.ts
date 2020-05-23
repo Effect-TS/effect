@@ -133,6 +133,53 @@ export interface CTraverse1<T extends URIS> {
   ) => (ta: Kind<T, A>) => HKT<F, Kind<T, B>>
 }
 
+export interface Traverse1<T extends URIS> {
+  <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <A, S, R, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind4<F, S, R, E, B>
+  ) => Kind4<F, unknown, R, E, Kind<T, B>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, E, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind4<F, S, R, E, B>
+  ) => Kind4<F, unknown, R, E, Kind<T, B>>
+  <F extends MaURIS, E>(F: CApplicative4MAC<F, E>): <A, S, R, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind4<F, S, R, E, B>
+  ) => Kind4<F, S, R, E, Kind<T, B>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, E, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind4<F, S, R, E, B>
+  ) => Kind4<F, S, R, E, Kind<T, B>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, E, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind4<F, S, R, E, B>
+  ) => Kind4<F, S, R, E, Kind<T, B>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, E, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind3<F, R, E, B>
+  ) => Kind3<F, R, E, Kind<T, B>>
+  <F extends URIS3, E>(F: CApplicative3C<F, E>): <A, R, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind3<F, R, E, B>
+  ) => Kind3<F, R, E, Kind<T, B>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, E, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind2<F, E, B>
+  ) => Kind2<F, E, Kind<T, B>>
+  <F extends URIS2, E>(F: CApplicative2C<F, E>): <A, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind2<F, E, B>
+  ) => Kind2<F, E, Kind<T, B>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => Kind<F, B>
+  ) => Kind<F, Kind<T, B>>
+  <F>(F: CApplicative<F>): <A, B>(
+    ta: Kind<T, A>,
+    f: (a: A) => HKT<F, B>
+  ) => HKT<F, Kind<T, B>>
+}
+
 export interface CTraverse2<T extends URIS2> {
   <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B>(
     f: (a: A) => Kind4<F, S, R, FE, B>
@@ -166,6 +213,49 @@ export interface CTraverse2<T extends URIS2> {
   ) => <TE>(ta: Kind2<T, TE, A>) => HKT<F, Kind2<T, TE, B>>
 }
 
+export interface Traverse2<T extends URIS2> {
+  <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, unknown, R, FE, Kind2<T, TE, B>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, FE, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, unknown, R, FE, Kind2<T, TE, B>>
+  <F extends MaURIS, FE>(F: CApplicative4MAC<F, FE>): <A, S, R, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, S, R, FE, Kind2<T, TE, B>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, FE, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, S, R, FE, Kind2<T, TE, B>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, FE, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, S, R, FE, Kind2<T, TE, B>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, FE, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind3<F, R, FE, B>
+  ) => Kind3<F, R, FE, Kind2<T, TE, B>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, FE, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind2<F, FE, B>
+  ) => Kind2<F, FE, Kind2<T, TE, B>>
+  <F extends URIS2, FE>(F: CApplicative2C<F, FE>): <A, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind2<F, FE, B>
+  ) => Kind2<F, FE, Kind2<T, TE, B>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => Kind<F, B>
+  ) => Kind<F, Kind2<T, TE, B>>
+  <F>(F: CApplicative<F>): <A, B, TE>(
+    ta: Kind2<T, TE, A>,
+    f: (a: A) => HKT<F, B>
+  ) => HKT<F, Kind2<T, TE, B>>
+}
+
 export interface CTraverse2C<T extends URIS2, E> {
   <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B>(
     f: (a: A) => Kind4<F, S, R, FE, B>
@@ -197,6 +287,49 @@ export interface CTraverse2C<T extends URIS2, E> {
   <F>(F: CApplicative<F>): <A, B>(
     f: (a: A) => HKT<F, B>
   ) => (ta: Kind2<T, E, A>) => HKT<F, Kind2<T, E, B>>
+}
+
+export interface Traverse2C<T extends URIS2, E> {
+  <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, unknown, R, FE, Kind2<T, E, B>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, FE, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, unknown, R, FE, Kind2<T, E, B>>
+  <F extends MaURIS, FE>(F: CApplicative4MAC<F, FE>): <A, S, R, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, S, R, FE, Kind2<T, E, B>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, FE, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, S, R, FE, Kind2<T, E, B>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, FE, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, B>
+  ) => Kind4<F, S, R, FE, Kind2<T, E, B>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, FE, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind3<F, R, FE, B>
+  ) => Kind3<F, R, FE, Kind2<T, E, B>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, FE, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind2<F, FE, B>
+  ) => Kind2<F, FE, Kind2<T, E, B>>
+  <F extends URIS2, FE>(F: CApplicative2C<F, FE>): <A, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind2<F, FE, B>
+  ) => Kind2<F, FE, Kind2<T, E, B>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => Kind<F, B>
+  ) => Kind<F, Kind2<T, E, B>>
+  <F>(F: CApplicative<F>): <A, B>(
+    ta: Kind2<T, E, A>,
+    f: (a: A) => HKT<F, B>
+  ) => HKT<F, Kind2<T, E, B>>
 }
 
 export interface CTraverse3<T extends URIS3> {

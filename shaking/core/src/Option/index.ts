@@ -18,7 +18,8 @@ import type {
   Separated,
   CFilter1,
   CPartition1,
-  CApplicative1
+  CApplicative1,
+  Traverse1
 } from "../Base"
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -692,6 +693,13 @@ export const traverse: CTraverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, B>
 ): ((ta: Option<A>) => HKT<F, Option<B>>) => {
   return (ta) => (isNone(ta) ? F.of(none) : F.map(some)(f(ta.value)))
+}
+
+export const traverse_: Traverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
+  ta: Option<A>,
+  f: (a: A) => HKT<F, B>
+): HKT<F, Option<B>> => {
+  return isNone(ta) ? F.of(none) : F.map(some)(f(ta.value))
 }
 
 /**

@@ -23,7 +23,9 @@ import type {
   CApplicative1,
   RefinementWithIndex,
   PredicateWithIndex,
-  PartitionWithIndex1
+  PartitionWithIndex1,
+  Traverse1,
+  TraverseWithIndex1
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -1109,10 +1111,17 @@ export const takeRight_: <A>(as: Array<A>, n: number) => Array<A> = RA.takeRight
 
 export const traverse: CTraverse1<URI> = RA.traverse as any
 
+export const traverse_: Traverse1<URI> = RA.traverse_ as any
+
 export const traverseWithIndex: CTraverseWithIndex1<
   URI,
   number
 > = RA.traverseWithIndex as any
+
+export const traverseWithIndex_: TraverseWithIndex1<
+  URI,
+  number
+> = RA.traverseWithIndex_ as any
 
 export const unfold: <A, B>(b: B, f: (b: B) => Option<[A, B]>) => A[] = RA.unfold as any
 

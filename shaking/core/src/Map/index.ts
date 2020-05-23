@@ -29,7 +29,9 @@ import type {
   CSequence2C,
   CWilt2C,
   CWither2C,
-  Partition2
+  Partition2,
+  Traverse2C,
+  TraverseWithIndex2C
 } from "../Base"
 import { isLeft, Either } from "../Either"
 import { fromEquals } from "../Eq"
@@ -370,11 +372,40 @@ export function traverseWithIndex<K>(_: Ord<K>): CTraverseWithIndex2C<URI, K, K>
   }
 }
 
+export function traverseWithIndex_<K>(_: Ord<K>): TraverseWithIndex2C<URI, K, K> {
+  return <F>(F: CApplicative<F>) => <A, B>(
+    ta: Map<K, A>,
+    f: (k: K, a: A) => HKT<F, B>
+  ): HKT<F, Map<K, B>> => {
+    let fm: HKT<F, Map<K, B>> = F.of(empty)
+    const entries = ta.entries()
+    let e: Next<readonly [K, A]>
+    while (!(e = entries.next()).done) {
+      const [key, a] = e.value
+      fm = pipe(
+        fm,
+        F.map((m) => (b: B) => new Map(m).set(key, b)),
+        F.ap(f(key, a))
+      )
+    }
+    return fm
+  }
+}
+
 export function traverse<K>(_: Ord<K>): CTraverse2C<URI, K> {
   const T = traverseWithIndex(_)
   return <F>(F: CApplicative<F>) => {
     const traverseWithIndexF = T(F)
     return <A, B>(f: (a: A) => HKT<F, B>) => traverseWithIndexF((_, a: A) => f(a))
+  }
+}
+
+export function traverse_<K>(_: Ord<K>): Traverse2C<URI, K> {
+  const T = traverseWithIndex_(_)
+  return <F>(F: CApplicative<F>) => {
+    const traverseWithIndexF = T(F)
+    return <A, B>(ta: Map<K, A>, f: (a: A) => HKT<F, B>) =>
+      traverseWithIndexF(ta, (_, a: A) => f(a))
   }
 }
 

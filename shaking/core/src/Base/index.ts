@@ -260,7 +260,10 @@ export type {
   CTraverse1,
   CTraverse2,
   CTraverse2C,
-  CTraverse3
+  CTraverse3,
+  Traverse2,
+  Traverse1,
+  Traverse2C
 } from "./Traversable"
 
 export type {
@@ -299,7 +302,9 @@ export type {
   CTraverseWithIndex1,
   CTraverseWithIndex2,
   CTraverseWithIndex2C,
-  CTraverseWithIndex3
+  CTraverseWithIndex3,
+  TraverseWithIndex1,
+  TraverseWithIndex2C
 } from "./TraversableWithIndex"
 
 export type { COf, COf1, COf2, COf2C, COf3, COf3C, COf4, COf4C } from "./Of"

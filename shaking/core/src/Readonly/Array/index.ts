@@ -14,6 +14,7 @@ import {
   CTraversableWithIndex1,
   CTraverse1,
   CTraverseWithIndex1,
+  TraverseWithIndex1,
   CUnfoldable1,
   CWilt1,
   CWither1,
@@ -29,7 +30,8 @@ import {
   CPartitionWithIndex1,
   CPartition1,
   Partition1,
-  PartitionWithIndex1
+  PartitionWithIndex1,
+  Traverse1
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
@@ -1809,14 +1811,34 @@ export const traverse: CTraverse1<URI> = <F>(
   return (f) => traverseWithIndex(F)((_, a) => f(a))
 }
 
+export const traverse_: Traverse1<URI> = <F>(
+  F: CApplicative<F>
+): (<A, B>(
+  ta: ReadonlyArray<A>,
+  f: (a: A) => HKT<F, B>
+) => HKT<F, ReadonlyArray<B>>) => {
+  return (ta, f) => traverseWithIndex_(F)(ta, (_, a) => f(a))
+}
+
 export const traverseWithIndex: CTraverseWithIndex1<URI, number> = <F>(
   F: CApplicative<F>
 ) => <A, B>(f: (i: number, a: A) => HKT<F, B>) => (
   ta: ReadonlyArray<A>
 ): HKT<F, ReadonlyArray<B>> => {
-  return reduceWithIndex(F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
+  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
     F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc(bs, b))(fbs))
-  )(ta)
+  )
+}
+
+export const traverseWithIndex_: TraverseWithIndex1<URI, number> = <F>(
+  F: CApplicative<F>
+) => <A, B>(
+  ta: ReadonlyArray<A>,
+  f: (i: number, a: A) => HKT<F, B>
+): HKT<F, ReadonlyArray<B>> => {
+  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
+    F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc(bs, b))(fbs))
+  )
 }
 
 export const unfold = <A, B>(
