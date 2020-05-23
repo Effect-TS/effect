@@ -274,7 +274,9 @@ export const duplicate: <A>(ma: A[]) => A[][] = RA.duplicate as any
  * assert.strictEqual(elem(eqNumber)(1, [1, 2, 3]), true)
  * assert.strictEqual(elem(eqNumber)(4, [1, 2, 3]), false)
  */
-export const elem: <A>(E: Eq<A>) => (a: A, as: Array<A>) => boolean = RA.elem
+export const elem_: <A>(E: Eq<A>) => (as: Array<A>, a: A) => boolean = RA.elem_
+
+export const elem: <A>(E: Eq<A>) => (a: A) => (as: Array<A>) => boolean = RA.elem
 
 /**
  * An empty array
@@ -1155,22 +1157,36 @@ export const uniq: <A>(E: Eq<A>) => (as: Array<A>) => Array<A> = RA.uniq as any
 
 export const uniq_: <A>(as: Array<A>, E: Eq<A>) => Array<A> = RA.uniq_ as any
 
+export const unsafeDeleteAt_: <A>(
+  as: Array<A>,
+  i: number
+) => Array<A> = RA.unsafeDeleteAt_ as any
+
 export const unsafeDeleteAt: <A>(
+  i: number
+) => (as: Array<A>) => Array<A> = RA.unsafeDeleteAt as any
+
+export const unsafeInsertAt_: <A>(
+  as: Array<A>,
   i: number,
-  as: Array<A>
-) => Array<A> = RA.unsafeDeleteAt as any
+  a: A
+) => Array<A> = RA.unsafeInsertAt_ as any
 
 export const unsafeInsertAt: <A>(
   i: number,
-  a: A,
-  as: Array<A>
-) => Array<A> = RA.unsafeInsertAt as any
+  a: A
+) => (as: Array<A>) => Array<A> = RA.unsafeInsertAt as any
+
+export const unsafeUpdateAt_: <A>(
+  as: Array<A>,
+  i: number,
+  a: A
+) => Array<A> = RA.unsafeUpdateAt_ as any
 
 export const unsafeUpdateAt: <A>(
   i: number,
-  a: A,
-  as: Array<A>
-) => Array<A> = RA.unsafeUpdateAt as any
+  a: A
+) => (as: Array<A>) => Array<A> = RA.unsafeUpdateAt as any
 
 /**
  * The function is reverse of `zip`. Takes an array of pairs and return two corresponding arrays

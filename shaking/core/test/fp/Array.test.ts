@@ -304,7 +304,7 @@ describe("Array", () => {
     // should return the same reference if nothing changed
     const x = { a: 1 }
     const as = [x]
-    const result = A.unsafeUpdateAt(0, x, as)
+    const result = A.unsafeUpdateAt_(as, 0, x)
     assert.deepStrictEqual(result, as)
   })
 

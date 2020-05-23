@@ -344,14 +344,14 @@ export function cons<A>(head: A): (tail: ReadonlyArray<A>) => ReadonlyNonEmptyAr
 export function deleteAt(
   i: number
 ): <A>(as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeDeleteAt(i, as)))
+  return (as) => (isOutOfBound(i, as) ? none : some(unsafeDeleteAt_(as, i)))
 }
 
 export function deleteAt_<A>(
   as: ReadonlyArray<A>,
   i: number
 ): Option<ReadonlyArray<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeDeleteAt(i, as))
+  return isOutOfBound(i, as) ? none : some(unsafeDeleteAt_(as, i))
 }
 
 /**
@@ -367,8 +367,8 @@ export function deleteAt_<A>(
 export function difference<A>(
   E: Eq<A>
 ): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
-  const elemE = elem(E)
-  return (xs, ys) => xs.filter((a) => !elemE(a, ys))
+  const elemE = elem_(E)
+  return (xs, ys) => xs.filter((a) => !elemE(ys, a))
 }
 /**
  * Drop a number of elements from the start of an array, creating a new array
@@ -452,8 +452,22 @@ export const duplicate = <A>(ma: readonly A[]): readonly (readonly A[])[] =>
  * assert.strictEqual(elem(eqNumber)(1, [1, 2, 3]), true)
  * assert.strictEqual(elem(eqNumber)(4, [1, 2, 3]), false)
  */
-export function elem<A>(E: Eq<A>): (a: A, as: ReadonlyArray<A>) => boolean {
-  return (a, as) => {
+export function elem<A>(E: Eq<A>): (a: A) => (as: ReadonlyArray<A>) => boolean {
+  return (a) => (as) => {
+    const predicate = (element: A) => E.equals(element, a)
+    let i = 0
+    const len = as.length
+    for (; i < len; i++) {
+      if (predicate(as[i])) {
+        return true
+      }
+    }
+    return false
+  }
+}
+
+export function elem_<A>(E: Eq<A>): (as: ReadonlyArray<A>, a: A) => boolean {
+  return (as, a) => {
     const predicate = (element: A) => E.equals(element, a)
     let i = 0
     const len = as.length
@@ -894,6 +908,14 @@ export function foldRight<A, B>(
     isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1])
 }
 
+export function foldRight_<A, B>(
+  as: ReadonlyArray<A>,
+  onNil: () => B,
+  onCons: (init: ReadonlyArray<A>, last: A) => B
+): B {
+  return isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1])
+}
+
 export function fromArray<A>(as: Array<A>): ReadonlyArray<A> {
   const l = as.length
   if (l === 0) {
@@ -1020,7 +1042,7 @@ export function insertAt<A>(
   i: number,
   a: A
 ): (as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
-  return (as) => (i < 0 || i > as.length ? none : some(unsafeInsertAt(i, a, as)))
+  return (as) => (i < 0 || i > as.length ? none : some(unsafeInsertAt_(as, i, a)))
 }
 
 export function insertAt_<A>(
@@ -1028,7 +1050,7 @@ export function insertAt_<A>(
   i: number,
   a: A
 ): Option<ReadonlyArray<A>> {
-  return i < 0 || i > as.length ? none : some(unsafeInsertAt(i, a, as))
+  return i < 0 || i > as.length ? none : some(unsafeInsertAt_(as, i, a))
 }
 
 /**
@@ -1044,8 +1066,8 @@ export function insertAt_<A>(
 export function intersection<A>(
   E: Eq<A>
 ): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
-  const elemE = elem(E)
-  return (xs, ys) => xs.filter((a) => elemE(a, ys))
+  const elemE = elem_(E)
+  return (xs, ys) => xs.filter((a) => elemE(ys, a))
 }
 
 /**
@@ -1176,7 +1198,7 @@ export function modifyAt<A>(
   i: number,
   f: (a: A) => A
 ): (as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, f(as[i]), as)))
+  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]))))
 }
 
 export function modifyAt_<A>(
@@ -1184,7 +1206,7 @@ export function modifyAt_<A>(
   i: number,
   f: (a: A) => A
 ): Option<ReadonlyArray<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, f(as[i]), as))
+  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i])))
 }
 
 export const of = <A>(a: A): ReadonlyArray<A> => [a]
@@ -1897,11 +1919,11 @@ export const unfold = <A, B>(
 export function union<A>(
   E: Eq<A>
 ): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
-  const elemE = elem(E)
+  const elemE = elem_(E)
   return (xs, ys) =>
     concat(
       xs,
-      ys.filter((a) => !elemE(a, xs))
+      ys.filter((a) => !elemE(xs, a))
     )
 }
 
@@ -1915,14 +1937,14 @@ export function union<A>(
  * assert.deepStrictEqual(uniq(eqNumber)([1, 2, 1]), [1, 2])
  */
 export function uniq<A>(E: Eq<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
-  const elemS = elem(E)
+  const elemS = elem_(E)
   return (as) => {
     const r: Array<A> = []
     const len = as.length
     let i = 0
     for (; i < len; i++) {
       const a = as[i]
-      if (!elemS(a, r)) {
+      if (!elemS(r, a)) {
         r.push(a)
       }
     }
@@ -1931,39 +1953,60 @@ export function uniq<A>(E: Eq<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
 }
 
 export function uniq_<A>(as: ReadonlyArray<A>, E: Eq<A>): ReadonlyArray<A> {
-  const elemS = elem(E)
+  const elemS = elem_(E)
   const r: Array<A> = []
   const len = as.length
   let i = 0
   for (; i < len; i++) {
     const a = as[i]
-    if (!elemS(a, r)) {
+    if (!elemS(r, a)) {
       r.push(a)
     }
   }
   return len === r.length ? as : r
 }
 
-export function unsafeDeleteAt<A>(i: number, as: ReadonlyArray<A>): ReadonlyArray<A> {
+export function unsafeDeleteAt_<A>(as: ReadonlyArray<A>, i: number): ReadonlyArray<A> {
   const xs = [...as]
   xs.splice(i, 1)
   return xs
 }
 
-export function unsafeInsertAt<A>(
+export function unsafeDeleteAt(
+  i: number
+): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+  return (as) => {
+    const xs = [...as]
+    xs.splice(i, 1)
+    return xs
+  }
+}
+
+export function unsafeInsertAt_<A>(
+  as: ReadonlyArray<A>,
   i: number,
-  a: A,
-  as: ReadonlyArray<A>
+  a: A
 ): ReadonlyArray<A> {
   const xs = [...as]
   xs.splice(i, 0, a)
   return xs
 }
 
-export function unsafeUpdateAt<A>(
+export function unsafeInsertAt<A>(
   i: number,
-  a: A,
-  as: ReadonlyArray<A>
+  a: A
+): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+  return (as) => {
+    const xs = [...as]
+    xs.splice(i, 0, a)
+    return xs
+  }
+}
+
+export function unsafeUpdateAt_<A>(
+  as: ReadonlyArray<A>,
+  i: number,
+  a: A
 ): ReadonlyArray<A> {
   if (as[i] === a) {
     return as
@@ -1971,6 +2014,21 @@ export function unsafeUpdateAt<A>(
     const xs = [...as]
     xs[i] = a
     return xs
+  }
+}
+
+export function unsafeUpdateAt<A>(
+  i: number,
+  a: A
+): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+  return (as) => {
+    if (as[i] === a) {
+      return as
+    } else {
+      const xs = [...as]
+      xs[i] = a
+      return xs
+    }
   }
 }
 
@@ -2008,7 +2066,7 @@ export function updateAt<A>(
   i: number,
   a: A
 ): (as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
-  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, a, as)))
+  return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a)))
 }
 
 export function updateAt_<A>(
@@ -2016,7 +2074,7 @@ export function updateAt_<A>(
   i: number,
   a: A
 ): Option<ReadonlyArray<A>> {
-  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt(i, a, as))
+  return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a))
 }
 
 export const URI = "@matechs/core/Readonly/Array"
