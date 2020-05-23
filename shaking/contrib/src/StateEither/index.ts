@@ -140,7 +140,6 @@ declare module "@matechs/core/Base/HKT" {
 
 export const stateEither: CMonad3<URI> & CApplicative3<URI> = {
   URI,
-  _F: "curried",
   map: T.map,
   of: right,
   ap: T.ap,
