@@ -341,11 +341,11 @@ describe("Array", () => {
 
   it("zipWith", () => {
     assert.deepStrictEqual(
-      A.zipWith([], [], (n, s) => s + n),
+      A.zipWith_([], [], (n, s) => s + n),
       []
     )
     assert.deepStrictEqual(
-      A.zipWith([1, 2, 3], ["a", "b", "c", "d"], (n, s) => s + n),
+      A.zipWith_([1, 2, 3], ["a", "b", "c", "d"], (n, s) => s + n),
       ["a1", "b2", "c3"]
     )
   })

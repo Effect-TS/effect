@@ -1,7 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { Identity } from "fp-ts/lib/Identity"
-
 import type {
   HKT,
   CSequence1,
@@ -20,7 +18,8 @@ import type { Eq } from "../Eq"
 import { identity as id } from "../Function"
 import type { Monoid } from "../Monoid"
 import type { Show } from "../Show"
-export type { Identity }
+
+export type Identity<A> = A
 
 export const alt_: <A>(fx: A, fy: () => A) => A = id
 

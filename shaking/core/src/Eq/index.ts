@@ -9,13 +9,13 @@
  * 2. Symmetry: `E.equals(a, b) === E.equals(b, a)`
  * 3. Transitivity: if `E.equals(a, b) === true` and `E.equals(b, c) === true`, then `E.equals(a, c) === true`
  */
-import type { Eq } from "fp-ts/lib/Eq"
-
 import type { CContravariant1 } from "../Base"
 import type { Monoid } from "../Monoid"
 import type { ReadonlyRecord } from "../Readonly/Record"
 
-export type { Eq } from "fp-ts/lib/Eq"
+export interface Eq<A> {
+  readonly equals: (x: A, y: A) => boolean
+}
 
 export const contramap_: <A, B>(fa: Eq<A>, f: (b: B) => A) => Eq<B> = (fa, f) =>
   fromEquals((x, y) => fa.equals(f(x), f(y)))
@@ -86,13 +86,10 @@ export const URI = "@matechs/core/Eq"
 
 export type URI = typeof URI
 
-export const eq: CContravariant1<URI> =
-  /*#__PURE__*/
-  (() =>
-    ({
-      URI,
-      contramap
-    } as const))()
+export const eq: CContravariant1<URI> = {
+  URI,
+  contramap
+}
 
 declare module "../Base/HKT" {
   interface URItoKind<A> {
@@ -100,24 +97,16 @@ declare module "../Base/HKT" {
   }
 }
 
-export const eqStrict: Eq<unknown> =
-  /*#__PURE__*/
-  (() => ({
-    equals: strictEqual
-  }))()
+export const eqStrict: Eq<unknown> = {
+  equals: strictEqual
+}
 
-export const eqBoolean: Eq<boolean> =
-  /*#__PURE__*/
-  (() => eqStrict)()
+export const eqBoolean: Eq<boolean> = eqStrict
 
-export const eqNumber: Eq<number> =
-  /*#__PURE__*/
-  (() => eqStrict)()
+export const eqNumber: Eq<number> = eqStrict
 
 export const eqDate: Eq<Date> =
   /*#__PURE__*/
   (() => contramap_(eqNumber, (date: Date) => date.valueOf()))()
 
-export const eqString: Eq<string> =
-  /*#__PURE__*/
-  (() => eqStrict)()
+export const eqString: Eq<string> = eqStrict

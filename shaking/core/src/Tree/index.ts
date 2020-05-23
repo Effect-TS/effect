@@ -8,11 +8,8 @@
  * ```
  */
 
-import type { Tree, Forest } from "fp-ts/lib/Tree"
-
 import * as A from "../Array"
 import type {
-  Show,
   URIS3,
   Kind3,
   URIS2,
@@ -20,7 +17,6 @@ import type {
   URIS,
   Kind,
   HKT,
-  Monoid,
   CTraverse1,
   CApplicative,
   CSequence1,
@@ -52,19 +48,26 @@ import type {
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
+import type { Monoid } from "../Monoid"
 import { pipe } from "../Pipe"
+import type { Show } from "../Show"
 
 export const URI = "@matechs/core/Tree"
 
 export type URI = typeof URI
+
+export declare type Forest<A> = Array<Tree<A>>
+
+export interface Tree<A> {
+  readonly value: A
+  readonly forest: Forest<A>
+}
 
 declare module "../Base/HKT" {
   interface URItoKind<A> {
     readonly [URI]: Tree<A>
   }
 }
-
-export type { Forest, Tree }
 
 export function make<A>(value: A, forest: Forest<A> = A.empty): Tree<A> {
   return {

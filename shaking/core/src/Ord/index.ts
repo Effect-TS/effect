@@ -1,26 +1,29 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { Bounded } from "fp-ts/lib/Bounded"
-import type { Ordering } from "fp-ts/lib/Ordering"
-
 import type { CContravariant1 } from "../Base"
 import { strictEqual } from "../Eq"
 import type { Eq } from "../Eq"
 import type { Monoid } from "../Monoid"
 import type { Semigroup } from "../Semigroup"
 
-export type { Bounded } from "fp-ts/lib/Bounded"
-export type { Ordering } from "fp-ts/lib/Ordering"
+export type Ordering = 0 | 1 | -1
+
+export interface Ord<A> extends Eq<A> {
+  readonly compare: (x: A, y: A) => Ordering
+}
+
+export interface Bounded<A> extends Ord<A> {
+  readonly top: A
+  readonly bottom: A
+}
 
 export const compare = (x: any, y: any): Ordering => {
   return x < y ? -1 : x > y ? 1 : 0
 }
 
-export const eqOrdering: Eq<Ordering> =
-  /*#__PURE__*/
-  (() => ({
-    equals: (x: Ordering, y: Ordering) => x === y
-  }))()
+export const eqOrdering: Eq<Ordering> = {
+  equals: (x: Ordering, y: Ordering) => x === y
+}
 
 /**
  * Test whether a value is between a minimum and a maximum (inclusive)
@@ -44,7 +47,7 @@ export const contramap: <A, B>(f: (b: B) => A) => (fa: Ord<A>) => Ord<B> = (f) =
   fa
 ) => contramap_(fa, f)
 
-const contramap_: <A, B>(fa: Ord<A>, f: (b: B) => A) => Ord<B> = (fa, f) =>
+export const contramap_: <A, B>(fa: Ord<A>, f: (b: B) => A) => Ord<B> = (fa, f) =>
   fromCompare((x, y) => fa.compare(f(x), f(y)))
 
 export function fromCompare<A>(compare: (x: A, y: A) => Ordering): Ord<A> {
@@ -143,10 +146,6 @@ export function min<A>(O: Ord<A>): (x: A, y: A) => A {
   return (x, y) => (O.compare(x, y) === 1 ? y : x)
 }
 
-export interface Ord<A> extends Eq<A> {
-  readonly compare: (x: A, y: A) => Ordering
-}
-
 export function sign(n: number): Ordering {
   return n <= -1 ? -1 : n >= 1 ? 1 : 0
 }
@@ -161,38 +160,29 @@ declare module "../Base/HKT" {
   }
 }
 
-export const ord: CContravariant1<URI> =
-  /*#__PURE__*/
-  (() =>
-    ({
-      URI,
-      contramap
-    } as const))()
+export const ord: CContravariant1<URI> = {
+  URI,
+  contramap
+}
 
-export const ordBoolean: Ord<boolean> =
-  /*#__PURE__*/
-  (() => ({
-    equals: strictEqual,
-    compare
-  }))()
+export const ordBoolean: Ord<boolean> = {
+  equals: strictEqual,
+  compare
+}
 
-export const ordNumber: Ord<number> =
-  /*#__PURE__*/
-  (() => ({
-    equals: strictEqual,
-    compare
-  }))()
+export const ordNumber: Ord<number> = {
+  equals: strictEqual,
+  compare
+}
 
 export const ordDate: Ord<Date> =
   /*#__PURE__*/
   (() => contramap_(ordNumber, (date: Date) => date.valueOf()))()
 
-export const ordString: Ord<string> =
-  /*#__PURE__*/
-  (() => ({
-    equals: strictEqual,
-    compare
-  }))()
+export const ordString: Ord<string> = {
+  equals: strictEqual,
+  compare
+}
 
 /**
  * Use `monoidOrdering` instead
@@ -278,13 +268,10 @@ export const boundedNumber: Bounded<number> =
     bottom: -Infinity
   }))()
 
-export const monoidOrdering: Monoid<Ordering> =
-  /*#__PURE__*/
-  (() =>
-    ({
-      concat: semigroupOrdering.concat,
-      empty: 0
-    } as const))()
+export const monoidOrdering: Monoid<Ordering> = {
+  concat: semigroupOrdering.concat,
+  empty: 0
+}
 
 /**
  * Use `getMonoid` instead

@@ -1,8 +1,9 @@
 import * as assert from "assert"
 
-import * as E from "../../src/Either"
-import { pipe } from "../../src/Pipe"
-import * as _ from "../../src/StateEither"
+import * as _ from "../src/StateEither"
+
+import * as E from "@matechs/core/Either"
+import { pipe } from "@matechs/core/Pipe"
 
 describe("StateEither", () => {
   describe("Monad", () => {

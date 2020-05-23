@@ -1,12 +1,15 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import { Monoid, Semigroup, Separated, Show } from "../Base"
+import { Separated } from "../Base"
 import { Either } from "../Either"
 import { Eq } from "../Eq"
 import { Predicate, Refinement } from "../Function"
+import { Monoid } from "../Monoid"
 import { Option } from "../Option"
 import { Ord } from "../Ord"
 import * as RS from "../Readonly/Set"
+import { Semigroup } from "../Semigroup"
+import { Show } from "../Show"
 
 export const empty: Set<never> =
   /*#__PURE__*/

@@ -1,12 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { ReadonlyRecord } from "fp-ts/lib/ReadonlyRecord"
-
 import type {
   MaURIS,
-  Show,
-  Semigroup,
-  Monoid,
   URIS4,
   CApplicative4MA,
   CApplicative4MAP,
@@ -30,7 +25,6 @@ import type {
   Separated,
   RefinementWithIndex,
   PredicateWithIndex,
-  Magma,
   CFoldable3,
   CFoldable2,
   CFoldable1,
@@ -50,10 +44,14 @@ import type {
 import type { Either } from "../../Either"
 import { Eq, fromEquals } from "../../Eq"
 import { identity, Predicate, flow } from "../../Function"
+import type { Magma } from "../../Magma"
+import type { Monoid } from "../../Monoid"
 import { isNone, isSome, none, Option, some as some_1 } from "../../Option"
 import { pipe } from "../../Pipe"
+import type { Semigroup } from "../../Semigroup"
+import type { Show } from "../../Show"
 
-export type { ReadonlyRecord }
+export type ReadonlyRecord<K extends string, T> = Readonly<Record<K, T>>
 
 export const URI = "../../Readonly/Record"
 

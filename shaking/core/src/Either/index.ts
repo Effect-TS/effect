@@ -1,7 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { Either, Left, Right } from "fp-ts/lib/Either"
-
 import type {
   HKT,
   Separated,
@@ -35,7 +33,17 @@ import type {
   Applicative2MC
 } from "./overloads"
 
-export type { Either, Left, Right }
+export interface Left<E> {
+  readonly _tag: "Left"
+  readonly left: E
+}
+
+export interface Right<A> {
+  readonly _tag: "Right"
+  readonly right: A
+}
+
+export type Either<E, A> = Left<E> | Right<A>
 
 export const alt_: <E, E2, A, A2>(
   fx: Either<E, A>,

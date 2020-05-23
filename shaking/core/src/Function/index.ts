@@ -3,15 +3,25 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-rest-params */
 
-import type {
-  Lazy,
-  Predicate,
-  Endomorphism,
-  FunctionN,
-  Refinement
-} from "fp-ts/lib/function"
+export interface Lazy<A> {
+  (): A
+}
 
-export type { Lazy, Predicate, Endomorphism, FunctionN, Refinement }
+export interface Predicate<A> {
+  (a: A): boolean
+}
+
+export interface Refinement<A, B extends A> {
+  (a: A): a is B
+}
+
+export interface Endomorphism<A> {
+  (a: A): A
+}
+
+export interface FunctionN<A extends ReadonlyArray<unknown>, B> {
+  (...args: A): B
+}
 
 export function absurd<A>(_: never): A {
   throw new Error("Called `absurd` function which should be uncallable")

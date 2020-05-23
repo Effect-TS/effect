@@ -1,12 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { Both, These } from "fp-ts/lib/These"
-
 import type {
   HKT,
-  Monoid,
-  Semigroup,
-  Show,
   CMonad2C,
   CTraverse2,
   CApplicative,
@@ -19,8 +14,19 @@ import type {
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
+import type { Monoid } from "../Monoid"
 import * as O from "../Option"
 import { pipe } from "../Pipe"
+import type { Semigroup } from "../Semigroup"
+import type { Show } from "../Show"
+
+export interface Both<E, A> {
+  readonly _tag: "Both"
+  readonly left: E
+  readonly right: A
+}
+
+export type These<E, A> = E.Either<E, A> | Both<E, A>
 
 export function both<E, A>(left: E, right: A): These<E, A> {
   return { _tag: "Both", left, right }
@@ -64,8 +70,6 @@ declare module "../Base/HKT" {
     readonly [URI]: These<E, A>
   }
 }
-
-export type { These, Both }
 
 export function getShow<E, A>(SE: Show<E>, SA: Show<A>): Show<These<E, A>> {
   return {

@@ -1,7 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { None, Option, Some } from "fp-ts/lib/Option"
-
 import type {
   CAlternative1,
   CApplicative,
@@ -17,7 +15,6 @@ import type {
   CWither1,
   CWitherable1,
   HKT,
-  Monoid,
   Separated,
   CFilter1,
   CPartition1,
@@ -26,13 +23,22 @@ import type {
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
-import { fold as foldMonoid } from "../Monoid"
+import { fold as foldMonoid, Monoid } from "../Monoid"
 import type { Ord } from "../Ord"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common"
 
-export type { None, Option, Some }
+export interface None {
+  readonly _tag: "None"
+}
+
+export interface Some<A> {
+  readonly _tag: "Some"
+  readonly value: A
+}
+
+export declare type Option<A> = None | Some<A>
 
 export const alt_: <A>(fx: Option<A>, fy: () => Option<A>) => Option<A> = (ma, f) =>
   isNone(ma) ? f() : ma

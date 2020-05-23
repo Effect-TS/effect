@@ -35,7 +35,6 @@ import * as semigroup from "./Semigroup"
 import * as service from "./Service"
 import * as set from "./Set"
 import * as show from "./Show"
-import * as stateEither from "./StateEither"
 import * as stream from "./Stream"
 import * as streamEither from "./StreamEither"
 import * as support from "./Support"
@@ -90,6 +89,5 @@ export {
   readOnly,
   const_ as const,
   identity,
-  apply,
-  stateEither
+  apply
 }

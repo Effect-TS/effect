@@ -3,7 +3,6 @@
 /**
  * Data structure which represents non-empty arrays
  */
-import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
 
 import type {
   CTraverse1,
@@ -29,13 +28,15 @@ export const URI = "@matechs/core/NonEmptyArray"
 
 export type URI = typeof URI
 
+export type NonEmptyArray<A> = Array<A> & {
+  0: A
+}
+
 declare module "../Base/HKT" {
   interface URItoKind<A> {
     readonly [URI]: NonEmptyArray<A>
   }
 }
-
-export type { NonEmptyArray }
 
 /**
  * Append an element to the front of an array, creating a new non empty array

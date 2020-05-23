@@ -1,18 +1,18 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { State } from "fp-ts/lib/State"
+import { CMonad3, CApplicative3 } from "@matechs/core/Base"
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as Ex from "@matechs/core/Exit"
+import * as F from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as R from "@matechs/core/Ref"
+import * as TU from "@matechs/core/Tuple"
 
-import { CMonad3, CApplicative3 } from "../Base"
-import * as T from "../Effect"
-import * as E from "../Either"
-import * as Ex from "../Exit"
-import * as F from "../Function"
-import * as O from "../Option"
-import { pipe } from "../Pipe"
-import * as R from "../Ref"
-import * as TU from "../Tuple"
-
-export type { State }
+export interface State<S, A> {
+  (s: S): [A, S]
+}
 
 export const StateURI = "@matechs/core/StateEither/StateURI"
 
@@ -132,7 +132,7 @@ export function chainEitherK<E, A, B>(
 export const URI = "@matechs/core/StateEither"
 export type URI = typeof URI
 
-declare module "../Base/HKT" {
+declare module "@matechs/core/Base/HKT" {
   interface URItoKind3<R, E, A> {
     [URI]: StateEither<R, E, A>
   }

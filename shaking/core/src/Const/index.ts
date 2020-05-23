@@ -7,7 +7,6 @@
  * `Const` has some useful instances. For example, the `Applicative` instance allows us to collect results using a `Monoid`
  * while ignoring return values.
  */
-import type { Const } from "fp-ts/lib/Const"
 
 import type {
   CApplicative2C,
@@ -23,8 +22,11 @@ import type { Bounded, Ord } from "../Ord"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 
-export type { Const }
 export { const_ as const }
+
+export type Const<E, A> = E & {
+  readonly _A: A
+}
 
 export const bimap_: <E, A, G, B>(
   fea: Const<E, A>,

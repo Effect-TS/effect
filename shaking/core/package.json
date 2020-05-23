@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/package.ts",
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/package.ts",
     "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src",
     "bench": "node bench/index.js && node bench/nestedMap.js && node bench/nestedChain.js"
   },
@@ -16,10 +16,6 @@
   "sideEffects": false,
   "devDependencies": {
     "@types/node": "^13.11.0"
-  },
-  "dependencies": {
-    "fp-ts": "^2.6.1",
-    "fp-ts-contrib": "^0.1.15"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

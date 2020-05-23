@@ -20,9 +20,9 @@ import {
   semigroupVoid
 } from "../Semigroup"
 
-import type { Monoid } from "."
-
-export type { Monoid } from "fp-ts/lib/Monoid"
+export interface Monoid<A> extends Semigroup<A> {
+  readonly empty: A
+}
 
 export function fold<A>(M: Monoid<A>): (as: ReadonlyArray<A>) => A {
   const foldM = foldSemigroup(M)

@@ -28,7 +28,8 @@ import {
   CTraversable1,
   CPartitionWithIndex1,
   CPartition1,
-  Partition1
+  Partition1,
+  PartitionWithIndex1
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
@@ -1008,6 +1009,14 @@ export function insertAt<A>(
   return (as) => (i < 0 || i > as.length ? none : some(unsafeInsertAt(i, a, as)))
 }
 
+export function insertAt_<A>(
+  as: ReadonlyArray<A>,
+  i: number,
+  a: A
+): Option<ReadonlyArray<A>> {
+  return i < 0 || i > as.length ? none : some(unsafeInsertAt(i, a, as))
+}
+
 /**
  * Creates an array of unique values that are included in all given arrays using a `Eq` for equality
  * comparisons. The order and references of result values are determined by the first array.
@@ -1062,7 +1071,7 @@ export function isOutOfBound<A>(i: number, as: ReadonlyArray<A>): boolean {
  * assert.deepStrictEqual(last([]), none)
  */
 export function last<A>(as: ReadonlyArray<A>): Option<A> {
-  return lookup(as.length - 1, as)
+  return lookup_(as.length - 1, as)
 }
 
 /**
@@ -1096,8 +1105,12 @@ export function lefts<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<E> {
  * assert.deepStrictEqual(lookup(1, [1, 2, 3]), some(2))
  * assert.deepStrictEqual(lookup(3, [1, 2, 3]), none)
  */
-export function lookup<A>(i: number, as: ReadonlyArray<A>): Option<A> {
+export function lookup_<A>(i: number, as: ReadonlyArray<A>): Option<A> {
   return isOutOfBound(i, as) ? none : some(as[i])
+}
+
+export function lookup(i: number): <A>(as: ReadonlyArray<A>) => Option<A> {
+  return (as) => (isOutOfBound(i, as) ? none : some(as[i]))
 }
 
 /**
@@ -1242,9 +1255,10 @@ export const partitionWithIndex: CPartitionWithIndex1<URI, number> = <A>(
   }
 }
 
-export const partitionWithIndex_: CPartitionWithIndex1<URI, number> = <A>(
+export const partitionWithIndex_: PartitionWithIndex1<URI, number> = <A>(
+  fa: readonly A[],
   predicateWithIndex: PredicateWithIndex<number, A>
-) => (fa: readonly A[]): Separated<readonly A[], readonly A[]> => {
+): Separated<readonly A[], readonly A[]> => {
   const left: Array<A> = []
   const right: Array<A> = []
   for (let i = 0; i < fa.length; i++) {
@@ -2056,7 +2070,7 @@ export const readonlyArrayApply: CApply1<URI> = {
   ap
 }
 
-export const readonlyArrayApplicative: CApplicative1<URI> = {
+export const readonlyArrayAp: CApplicative1<URI> = {
   URI,
   _F: "curried",
   map,

@@ -71,6 +71,17 @@ export interface CPartitionWithIndex1<F extends URIS, I> {
   ) => Separated<Kind<F, A>, Kind<F, A>>
 }
 
+export interface PartitionWithIndex1<F extends URIS, I> {
+  <A, B extends A>(fa: Kind<F, A>, refinement: RefinementWithIndex<I, A, B>): Separated<
+    Kind<F, A>,
+    Kind<F, B>
+  >
+  <A>(fa: Kind<F, A>, predicate: PredicateWithIndex<I, A>): Separated<
+    Kind<F, A>,
+    Kind<F, A>
+  >
+}
+
 export interface CFilterableWithIndex1<F extends URIS, I>
   extends CFunctorWithIndex1<F, I>,
     CFilterable1<F> {

@@ -1,14 +1,9 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
-import type { Task as T } from "fp-ts/lib/Task"
-import type { TaskEither } from "fp-ts/lib/TaskEither"
-
 import * as AP from "../Apply"
 import * as A from "../Array"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
 import type {
-  Monoid,
-  Semigroup,
   CMonad4MA,
   CMonad4MAC,
   CAlt4MAC,
@@ -33,11 +28,13 @@ import {
 } from "../Exit"
 import { flow, identity } from "../Function"
 import type { FunctionN, Lazy, Predicate, Refinement } from "../Function"
+import type { Monoid } from "../Monoid"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as O from "../Option"
 import { pipe } from "../Pipe"
 import * as RE from "../Record"
 import { makeRef, Ref } from "../Ref"
+import type { Semigroup } from "../Semigroup"
 import {
   AsyncCancelContFn,
   AsyncFn,
@@ -440,13 +437,13 @@ export const chainTap_ = <S, R, E, A, S2, R2, E2>(
 ): Effect<S | S2, R & R2, E | E2, A> => chain_(inner, (a) => as(bind(a), a))
 
 export function chainTask<A, B>(
-  bind: FunctionN<[A], T<B>>
+  bind: FunctionN<[A], Lazy<Promise<B>>>
 ): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E2, B> {
   return (inner) => chain_(inner, (a) => encaseTask(bind(a)))
 }
 
 export function chainTaskEither<A, E, B>(
-  bind: FunctionN<[A], TaskEither<E, B>>
+  bind: FunctionN<[A], Lazy<Promise<E.Either<E, B>>>>
 ): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E | E2, B> {
   return (inner) => chain_(inner, (a) => encaseTaskEither(bind(a)))
 }
@@ -620,11 +617,13 @@ export function encaseOption<E, A>(o: O.Option<A>, onError: Lazy<E>): SyncE<E, A
   return new IPureOption(o, onError) as any
 }
 
-export function encaseTask<A>(task: T<A>): Async<A> {
+export function encaseTask<A>(task: () => Promise<A>): Async<A> {
   return orAbort(fromPromise(task))
 }
 
-export function encaseTaskEither<E, A>(taskEither: TaskEither<E, A>): AsyncE<E, A> {
+export function encaseTaskEither<E, A>(
+  taskEither: Lazy<Promise<E.Either<E, A>>>
+): AsyncE<E, A> {
   return async<E, A>((callback) => {
     taskEither().then(callback)
     /* istanbul ignore next */

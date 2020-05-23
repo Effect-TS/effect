@@ -1,8 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import type {
-  Semigroup,
-  Monoid,
   HKT,
   CApply2C,
   CApplicative2C,
@@ -19,7 +17,9 @@ import type {
   CTraversable2
 } from "../Base"
 import type { Either } from "../Either"
+import type { Monoid } from "../Monoid"
 import { pipe } from "../Pipe"
+import type { Semigroup } from "../Semigroup"
 
 export const URI = "@matechs/core/Tuple"
 

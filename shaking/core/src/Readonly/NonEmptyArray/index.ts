@@ -3,7 +3,6 @@
 /**
  * Data structure which represents non-empty arrays
  */
-import type { NonEmptyArray } from "fp-ts/lib/NonEmptyArray"
 
 import type {
   CTraverse1,
@@ -19,6 +18,7 @@ import type {
 } from "../../Base"
 import type { Eq } from "../../Eq"
 import type { Predicate, Refinement } from "../../Function"
+import type { NonEmptyArray } from "../../NonEmptyArray"
 import { none, Option, some } from "../../Option"
 import type { Ord } from "../../Ord"
 import { getJoinSemigroup, getMeetSemigroup, Semigroup } from "../../Semigroup"

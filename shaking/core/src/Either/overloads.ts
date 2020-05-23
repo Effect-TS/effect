@@ -1,11 +1,10 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
-import type { Either } from "fp-ts/lib/Either"
-import type { Kind2 } from "fp-ts/lib/HKT"
-
 import type { CFunctor2, CFunctor2C } from "../Base"
+import type { Kind2 } from "../Base/HKT"
 import type { COf2, COf2C } from "../Base/Of"
 
+import type { Either } from "."
 import type { URI } from "./index"
 
 export interface ChainRec2M<F extends URI> extends Chain2M<F> {
