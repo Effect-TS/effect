@@ -178,7 +178,9 @@ export function comprehension<R>(
  *
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
  */
-export const cons: <A>(head: A, tail: Array<A>) => NonEmptyArray<A> = RA.cons as any
+export const cons_: <A>(tail: Array<A>, head: A) => NonEmptyArray<A> = RA.cons_ as any
+
+export const cons: <A>(head: A) => (tail: Array<A>) => NonEmptyArray<A> = RA.cons as any
 
 export const copy: <A>(as: Array<A>) => Array<A> = RA.toArray
 
@@ -917,7 +919,9 @@ export const sequence: CSequence1<URI> = RA.sequence as any
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export const snoc: <A>(init: Array<A>, end: A) => NonEmptyArray<A> = RA.snoc as any
+export const snoc_: <A>(init: Array<A>, end: A) => NonEmptyArray<A> = RA.snoc_ as any
+
+export const snoc: <A>(end: A) => (init: Array<A>) => NonEmptyArray<A> = RA.snoc as any
 
 /**
  * Sort the elements of an array in increasing order, creating a new array

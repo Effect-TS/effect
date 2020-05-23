@@ -110,13 +110,13 @@ describe("Array", () => {
   })
 
   it("cons", () => {
-    assert.deepStrictEqual(A.cons(0, as), [0, 1, 2, 3])
-    assert.deepStrictEqual(A.cons([1], [[2]]), [[1], [2]])
+    assert.deepStrictEqual(A.cons(0)(as), [0, 1, 2, 3])
+    assert.deepStrictEqual(A.cons([1])([[2]]), [[1], [2]])
   })
 
   it("snoc", () => {
-    assert.deepStrictEqual(A.snoc(as, 4), [1, 2, 3, 4])
-    assert.deepStrictEqual(A.snoc([[1]], [2]), [[1], [2]])
+    assert.deepStrictEqual(A.snoc(4)(as), [1, 2, 3, 4])
+    assert.deepStrictEqual(A.snoc([2])([[1]]), [[1], [2]])
   })
 
   it("head", () => {

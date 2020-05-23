@@ -48,7 +48,11 @@ declare module "../Base/HKT" {
  *
  * assert.deepStrictEqual(cons(1, [2, 3, 4]), [1, 2, 3, 4])
  */
-export const cons: <A>(head: A, tail: Array<A>) => NonEmptyArray<A> = RNEA.cons as any
+export const cons_: <A>(tail: Array<A>, head: A) => NonEmptyArray<A> = RNEA.cons_ as any
+
+export const cons: <A>(
+  head: A
+) => (tail: Array<A>) => NonEmptyArray<A> = RNEA.cons as any
 
 /**
  * Append an element to the end of an array, creating a new non empty array
@@ -58,7 +62,11 @@ export const cons: <A>(head: A, tail: Array<A>) => NonEmptyArray<A> = RNEA.cons 
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export const snoc: <A>(init: Array<A>, end: A) => NonEmptyArray<A> = RNEA.snoc as any
+export const snoc_: <A>(init: Array<A>, end: A) => NonEmptyArray<A> = RNEA.snoc_ as any
+
+export const snoc: <A>(
+  end: A
+) => (init: Array<A>) => NonEmptyArray<A> = RNEA.snoc as any
 
 /**
  * Builds a `NonEmptyArray` from an `Array` returning `none` if `as` is an empty array

@@ -109,13 +109,13 @@ describe("ReadonlyArray", () => {
   })
 
   it("cons", () => {
-    assert.deepStrictEqual(_.cons(0, as), [0, 1, 2, 3])
-    assert.deepStrictEqual(_.cons([1], [[2]]), [[1], [2]])
+    assert.deepStrictEqual(_.cons(0)(as), [0, 1, 2, 3])
+    assert.deepStrictEqual(_.cons([1])([[2]]), [[1], [2]])
   })
 
   it("snoc", () => {
-    assert.deepStrictEqual(_.snoc(as, 4), [1, 2, 3, 4])
-    assert.deepStrictEqual(_.snoc([[1]], [2]), [[1], [2]])
+    assert.deepStrictEqual(_.snoc(4)(as), [1, 2, 3, 4])
+    assert.deepStrictEqual(_.snoc([2])([[1]]), [[1], [2]])
   })
 
   it("head", () => {

@@ -229,12 +229,12 @@ describe("NonEmptyArray", () => {
 
   it("modifyAt", () => {
     const double = (n: number): number => n * 2
-    assert.deepStrictEqual(modifyAt(1, double)(cons(1, [])), none)
-    assert.deepStrictEqual(modifyAt(1, double)(cons(1, [2])), some(cons(1, [4])))
+    assert.deepStrictEqual(modifyAt(1, double)(cons(1)([])), none)
+    assert.deepStrictEqual(modifyAt(1, double)(cons(1)([2])), some(cons(1)([4])))
   })
 
   it("copy", () => {
-    const nea1 = cons(1, [])
+    const nea1 = cons(1)([])
     const nea2 = copy(nea1)
     assert.deepStrictEqual(nea2, nea1)
     assert.deepStrictEqual(nea2 === nea1, false)
@@ -343,11 +343,11 @@ describe("NonEmptyArray", () => {
   })
 
   it("cons", () => {
-    assert.deepStrictEqual(cons(1, [2, 3, 4]), [1, 2, 3, 4])
+    assert.deepStrictEqual(cons(1)([2, 3, 4]), [1, 2, 3, 4])
   })
 
   it("snoc", () => {
-    assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
+    assert.deepStrictEqual(snoc(4)([1, 2, 3]), [1, 2, 3, 4])
   })
 
   it("getShow", () => {

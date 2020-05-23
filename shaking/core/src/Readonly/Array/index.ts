@@ -273,7 +273,7 @@ export function comprehension<R>(
     if (input.length === 0) {
       return g(...scope) ? [f(...scope)] : empty
     } else {
-      return chain((x) => go(snoc(scope, x), input.slice(1)))(input[0])
+      return chain((x) => go(snoc_(scope, x), input.slice(1)))(input[0])
     }
   }
   return go(empty, input)
@@ -309,7 +309,7 @@ export const concat = <A>(
  *
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
  */
-export function cons<A>(head: A, tail: ReadonlyArray<A>): ReadonlyNonEmptyArray<A> {
+export function cons_<A>(tail: ReadonlyArray<A>, head: A): ReadonlyNonEmptyArray<A> {
   const len = tail.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
@@ -317,6 +317,18 @@ export function cons<A>(head: A, tail: ReadonlyArray<A>): ReadonlyNonEmptyArray<
   }
   r[0] = head
   return (r as unknown) as ReadonlyNonEmptyArray<A>
+}
+
+export function cons<A>(head: A): (tail: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> {
+  return (tail) => {
+    const len = tail.length
+    const r = Array(len + 1)
+    for (let i = 0; i < len; i++) {
+      r[i + 1] = tail[i]
+    }
+    r[0] = head
+    return (r as unknown) as ReadonlyNonEmptyArray<A>
+  }
 }
 
 /**
@@ -1521,7 +1533,7 @@ export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
   ta: ReadonlyArray<HKT<F, A>>
 ): HKT<F, ReadonlyArray<A>> => {
   return reduce(F.of(zero<A>()), (fas, fa: HKT<F, A>) =>
-    F.ap(fa)(F.map((as: readonly A[]) => (a: A) => snoc(as, a))(fas))
+    F.ap(fa)(F.map((as: readonly A[]) => (a: A) => snoc_(as, a))(fas))
   )(ta)
 }
 
@@ -1533,7 +1545,7 @@ export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export function snoc<A>(init: ReadonlyArray<A>, end: A): ReadonlyNonEmptyArray<A> {
+export function snoc_<A>(init: ReadonlyArray<A>, end: A): ReadonlyNonEmptyArray<A> {
   const len = init.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
@@ -1541,6 +1553,18 @@ export function snoc<A>(init: ReadonlyArray<A>, end: A): ReadonlyNonEmptyArray<A
   }
   r[len] = end
   return (r as unknown) as ReadonlyNonEmptyArray<A>
+}
+
+export function snoc<A>(end: A): (init: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> {
+  return (init) => {
+    const len = init.length
+    const r = Array(len + 1)
+    for (let i = 0; i < len; i++) {
+      r[i] = init[i]
+    }
+    r[len] = end
+    return (r as unknown) as ReadonlyNonEmptyArray<A>
+  }
 }
 
 /**
@@ -1826,7 +1850,7 @@ export const traverseWithIndex: CTraverseWithIndex1<URI, number> = <F>(
   ta: ReadonlyArray<A>
 ): HKT<F, ReadonlyArray<B>> => {
   return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
-    F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc(bs, b))(fbs))
+    F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc_(bs, b))(fbs))
   )
 }
 
@@ -1837,7 +1861,7 @@ export const traverseWithIndex_: TraverseWithIndex1<URI, number> = <F>(
   f: (i: number, a: A) => HKT<F, B>
 ): HKT<F, ReadonlyArray<B>> => {
   return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
-    F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc(bs, b))(fbs))
+    F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc_(bs, b))(fbs))
   )
 }
 

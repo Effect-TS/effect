@@ -50,8 +50,12 @@ declare module "../../Base/HKT" {
  *
  * assert.deepStrictEqual(cons(1, [2, 3, 4]), [1, 2, 3, 4])
  */
-export const cons: <A>(head: A, tail: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> =
-  RA.cons
+export const cons_: <A>(tail: ReadonlyArray<A>, head: A) => ReadonlyNonEmptyArray<A> =
+  RA.cons_
+
+export const cons: <A>(
+  head: A
+) => (tail: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> = RA.cons
 
 /**
  * Append an element to the end of an array, creating a new non empty array
@@ -61,7 +65,10 @@ export const cons: <A>(head: A, tail: ReadonlyArray<A>) => ReadonlyNonEmptyArray
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export const snoc: <A>(init: ReadonlyArray<A>, end: A) => ReadonlyNonEmptyArray<A> =
+export const snoc_: <A>(init: ReadonlyArray<A>, end: A) => ReadonlyNonEmptyArray<A> =
+  RA.snoc_
+
+export const snoc: <A>(end: A) => (init: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> =
   RA.snoc
 
 /**
