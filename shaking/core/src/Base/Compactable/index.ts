@@ -11,14 +11,12 @@ export interface Separated<A, B> {
 
 export interface CCompactable<F> {
   readonly URI: F
-  readonly _F: "curried"
   readonly compact: <A>(fa: HKT<F, Option<A>>) => HKT<F, A>
   readonly separate: <A, B>(fa: HKT<F, Either<A, B>>) => Separated<HKT<F, A>, HKT<F, B>>
 }
 
 export interface CCompactable1<F extends URIS> {
   readonly URI: F
-  readonly _F: "curried"
   readonly compact: <A>(fa: Kind<F, Option<A>>) => Kind<F, A>
   readonly separate: <A, B>(
     fa: Kind<F, Either<A, B>>
@@ -27,7 +25,6 @@ export interface CCompactable1<F extends URIS> {
 
 export interface CCompactable2<F extends URIS2> {
   readonly URI: F
-  readonly _F: "curried"
   readonly compact: <E, A>(fa: Kind2<F, E, Option<A>>) => Kind2<F, E, A>
   readonly separate: <E, A, B>(
     fa: Kind2<F, E, Either<A, B>>
@@ -37,7 +34,6 @@ export interface CCompactable2<F extends URIS2> {
 export interface CCompactable2C<F extends URIS2, E> {
   readonly URI: F
   readonly _E: E
-  readonly _F: "curried"
   readonly compact: <A>(fa: Kind2<F, E, Option<A>>) => Kind2<F, E, A>
   readonly separate: <A, B>(
     fa: Kind2<F, E, Either<A, B>>
@@ -46,7 +42,6 @@ export interface CCompactable2C<F extends URIS2, E> {
 
 export interface CCompactable3<F extends URIS3> {
   readonly URI: F
-  readonly _F: "curried"
   readonly compact: <R, E, A>(fa: Kind3<F, R, E, Option<A>>) => Kind3<F, R, E, A>
   readonly separate: <R, E, A, B>(
     fa: Kind3<F, R, E, Either<A, B>>
@@ -55,7 +50,6 @@ export interface CCompactable3<F extends URIS3> {
 
 export interface CCompactable3C<F extends URIS3, E> {
   readonly URI: F
-  readonly _F: "curried"
   readonly compact: <R, A>(fa: Kind3<F, R, E, Option<A>>) => Kind3<F, R, E, A>
   readonly separate: <R, A, B>(
     fa: Kind3<F, R, E, Either<A, B>>
@@ -64,7 +58,6 @@ export interface CCompactable3C<F extends URIS3, E> {
 
 export interface CCompactable4<F extends URIS4> {
   readonly URI: F
-  readonly _F: "curried"
   readonly compact: <S, R, E, A>(
     fa: Kind4<F, S, R, E, Option<A>>
   ) => Kind4<F, S, R, E, A>

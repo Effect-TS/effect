@@ -117,7 +117,6 @@ export const identity: CMonad1<URI> &
   CChainRec1<URI> &
   CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of: id,
   ap,
@@ -135,7 +134,6 @@ export const identity: CMonad1<URI> &
 
 export const identityApp: CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of: id,
   ap

@@ -667,7 +667,6 @@ export const parApSecond = <S1, R, E, B>(fb: Managed<S1, R, E, B>) => <A, S2, R2
 
 export const managed: CMonad4MA<URI> & CApplicative4MA<URI> = {
   URI,
-  _F: "curried",
   of: pure,
   map,
   ap,

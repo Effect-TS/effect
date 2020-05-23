@@ -1703,7 +1703,6 @@ export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
 export const stream: CMonad4MA<URI> & CApplicative4MAP<URI> = {
   URI,
   _CTX: "async",
-  _F: "curried",
   map,
   of,
   ap,

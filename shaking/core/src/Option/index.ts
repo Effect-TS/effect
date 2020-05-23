@@ -761,7 +761,6 @@ export const option: CMonad1<URI> &
   CWitherable1<URI> &
   CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of: some,
   ap,
@@ -786,7 +785,6 @@ export const option: CMonad1<URI> &
 
 export const optionMonad: CMonad1<URI> & CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of: some,
   ap,

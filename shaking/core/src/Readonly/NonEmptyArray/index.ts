@@ -412,7 +412,6 @@ export const readonlyNonEmptyArray: CMonad1<URI> &
   CAlt1<URI> &
   CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   mapWithIndex,
   of,

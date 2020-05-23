@@ -1263,7 +1263,6 @@ export const array: CMonad1<URI> &
   CFoldableWithIndex1<URI, number> &
   CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   mapWithIndex,
   compact,
@@ -1298,7 +1297,6 @@ export const array: CMonad1<URI> &
 
 export const arrayMonad: CMonad1<URI> & CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of,
   ap,
@@ -1307,7 +1305,6 @@ export const arrayMonad: CMonad1<URI> & CApplicative1<URI> = {
 
 export const arrayAp: CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of,
   ap

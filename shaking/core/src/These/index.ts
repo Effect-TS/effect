@@ -142,7 +142,6 @@ export function getMonad<E>(
 
   return {
     URI,
-    _F: "curried",
     _E: undefined as any,
     map,
     of: right,
@@ -151,7 +150,14 @@ export function getMonad<E>(
   }
 }
 
-export function getMonad_<E>(S: Semigroup<E>) {
+export function getMonad_<E>(
+  S: Semigroup<E>
+): {
+  map_: <E, A, B>(fa: These<E, A>, f: (a: A) => B) => These<E, B>
+  ap_: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>) => These<E, B>
+  of: <E = never, A = never>(right: A) => These<E, A>
+  chain_: <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>) => These<E, B>
+} {
   const chain_ = <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>): These<E, B> => {
     if (isLeft(ma)) {
       return ma
@@ -170,7 +176,7 @@ export function getMonad_<E>(S: Semigroup<E>) {
   return {
     map_,
     of: right,
-    ap: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>): These<E, B> =>
+    ap_: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>): These<E, B> =>
       chain_(fab, (f) => map(f)(fa)),
     chain_
   }
@@ -434,7 +440,6 @@ export const these: CFunctor2<URI> &
   CFoldable2<URI> &
   CTraversable2<URI> = {
   URI,
-  _F: "curried",
   map,
   bimap,
   mapLeft,

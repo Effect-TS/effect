@@ -46,7 +46,6 @@ export function swap<A, S>(sa: [A, S]): [S, A] {
 export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {
   return {
     URI,
-    _F: "curried",
     _E: undefined as any,
     map,
     ap: (fa) => (fab) => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
@@ -210,7 +209,6 @@ export const tuple: CSemigroupoid2<URI> &
   CFoldable2<URI> &
   CTraversable2<URI> = {
   URI,
-  _F: "curried",
   compose,
   map,
   bimap,

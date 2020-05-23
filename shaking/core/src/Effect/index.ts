@@ -784,7 +784,7 @@ export function getCauseValidationM<E>(
 ): CMonad4MAC<URI, E> & CAlt4MAC<URI, E> & CApplicative4MAC<URI, E> {
   return {
     URI,
-    _F: "curried",
+
     _E: undefined as any,
     of: pure,
     map,
@@ -2005,7 +2005,6 @@ export function compact<H extends Effect<any, any, any, any>>(
 
 export const effect: CMonad4MA<URI> & CApplicative4MA<URI> = {
   URI,
-  _F: "curried",
   map,
   of: pure,
   ap,

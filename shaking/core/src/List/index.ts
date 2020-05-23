@@ -227,7 +227,6 @@ declare module "../Base/HKT" {
 
 export const list: CMonad1<URI> & CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of,
   ap,

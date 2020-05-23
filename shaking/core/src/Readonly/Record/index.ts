@@ -1053,7 +1053,6 @@ export const readonlyRecord: CFunctorWithIndex1<URI, string> &
   CWitherable1<URI> &
   CFoldableWithIndex1<URI, string> = {
   URI,
-  _F: "curried",
   map,
   reduce,
   foldMap,

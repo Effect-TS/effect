@@ -1062,7 +1062,6 @@ export function values<A>(O: Ord<A>): <K>(m: Map<K, A>) => Array<A> {
 
 export const mapFilterable: CFilterable2<URI> = {
   URI,
-  _F: "curried",
   map,
   compact,
   separate,

@@ -58,7 +58,6 @@ export function getApplicative<E>(M: Monoid<E>): CApplicative2C<URI, E> {
 export function getApply<E>(S: Semigroup<E>): CApply2C<URI, E> {
   return {
     URI,
-    _F: "curried",
     _E: undefined as any,
     map,
     ap: (fa) => (fab) => make(S.concat(fab, fa))
@@ -115,7 +114,6 @@ declare module "../Base/HKT" {
 
 export const const_: CFunctor2<URI> & CContravariant2<URI> & CBifunctor2<URI> = {
   URI,
-  _F: "curried",
   map,
   contramap,
   bimap,

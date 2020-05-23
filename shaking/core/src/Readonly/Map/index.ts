@@ -1097,7 +1097,6 @@ export function values<A>(O: Ord<A>): <K>(m: ReadonlyMap<K, A>) => ReadonlyArray
 
 export const readonlyMapFilterable: CFilterable2<URI> = {
   URI,
-  _F: "curried",
   map,
   compact,
   separate,

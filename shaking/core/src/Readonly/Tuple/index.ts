@@ -51,7 +51,6 @@ export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {
   return {
     URI,
     _E: undefined as any,
-    _F: "curried",
     map,
     ap: (fa) => (fab) => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
   }
@@ -181,7 +180,6 @@ export const readonlyTuple: CSemigroupoid2<URI> &
   CFoldable2<URI> &
   CTraversable2<URI> = {
   URI,
-  _F: "curried",
   compose,
   map,
   bimap,

@@ -505,7 +505,6 @@ export const tree: CMonad1<URI> &
   CComonad1<URI> &
   CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of,
   ap,

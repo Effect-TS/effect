@@ -220,7 +220,6 @@ export const getLast = <Effs extends EffectOption<any, any, any, any>[]>(
 
 export const effectOption: CMonad4MA<URI> & CApplicative4MA<URI> = {
   URI,
-  _F: "curried",
   of,
   map,
   chain,

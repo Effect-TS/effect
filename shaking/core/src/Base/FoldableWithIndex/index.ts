@@ -5,7 +5,6 @@ import type { HKT, URIS, Kind, URIS2, Kind2, URIS3, Kind3, URIS4, Kind4 } from "
 
 export interface CFoldableWithIndex<F, I> {
   readonly URI: F
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B
@@ -20,7 +19,6 @@ export interface CFoldableWithIndex<F, I> {
 }
 export interface CFoldableWithIndex1<F extends URIS, I> {
   readonly URI: F
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B
@@ -35,7 +33,6 @@ export interface CFoldableWithIndex1<F extends URIS, I> {
 }
 export interface CFoldableWithIndex2<F extends URIS2, I> {
   readonly URI: F
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B
@@ -51,7 +48,6 @@ export interface CFoldableWithIndex2<F extends URIS2, I> {
 export interface CFoldableWithIndex2C<F extends URIS2, I, E> {
   readonly URI: F
   readonly _E: E
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B
@@ -66,7 +62,6 @@ export interface CFoldableWithIndex2C<F extends URIS2, I, E> {
 }
 export interface CFoldableWithIndex3<F extends URIS3, I> {
   readonly URI: F
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B
@@ -82,7 +77,6 @@ export interface CFoldableWithIndex3<F extends URIS3, I> {
 export interface CFoldableWithIndex3C<F extends URIS3, I, E> {
   readonly URI: F
   readonly _E: E
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B
@@ -97,7 +91,6 @@ export interface CFoldableWithIndex3C<F extends URIS3, I, E> {
 }
 export interface CFoldableWithIndex4<F extends URIS4, I> {
   readonly URI: F
-  readonly _F: "curried"
   readonly reduceWithIndex: <A, B>(
     b: B,
     f: (i: I, b: B, a: A) => B

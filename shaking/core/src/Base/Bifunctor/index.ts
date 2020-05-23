@@ -4,7 +4,6 @@ import type { Kind2, HKT2, URIS2, URIS3, Kind3, URIS4, Kind4 } from "../HKT"
 
 export interface CBifunctor<F> {
   readonly URI: F
-  readonly _F: "curried"
   readonly bimap: <E, A, G, B>(
     f: (e: E) => G,
     g: (a: A) => B
@@ -14,7 +13,6 @@ export interface CBifunctor<F> {
 
 export interface CBifunctor2<F extends URIS2> {
   readonly URI: F
-  readonly _F: "curried"
   readonly bimap: <E, A, G, B>(
     f: (e: E) => G,
     g: (a: A) => B
@@ -25,7 +23,6 @@ export interface CBifunctor2<F extends URIS2> {
 export interface CBifunctor2C<F extends URIS2, E> {
   readonly URI: F
   readonly _E: E
-  readonly _F: "curried"
   readonly bimap: <A, G, B>(
     f: (e: E) => G,
     g: (a: A) => B
@@ -35,7 +32,6 @@ export interface CBifunctor2C<F extends URIS2, E> {
 
 export interface CBifunctor3<F extends URIS3> {
   readonly URI: F
-  readonly _F: "curried"
   readonly bimap: <E, A, G, B>(
     f: (e: E) => G,
     g: (a: A) => B
@@ -47,7 +43,6 @@ export interface CBifunctor3<F extends URIS3> {
 
 export interface CBifunctor3C<F extends URIS3, E> {
   readonly URI: F
-  readonly _F: "curried"
   readonly bimap: <A, G, B>(
     f: (e: E) => G,
     g: (a: A) => B
@@ -59,7 +54,6 @@ export interface CBifunctor3C<F extends URIS3, E> {
 
 export interface CBifunctor4<F extends URIS4> {
   readonly URI: F
-  readonly _F: "curried"
   readonly bimap: <E, A, G, B>(
     f: (e: E) => G,
     g: (a: A) => B

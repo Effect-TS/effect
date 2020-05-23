@@ -398,7 +398,6 @@ export const mapLeft: <E, G>(
 export const streamEither: CMonad4MA<URI> & CBifunctor4<URI> & CApplicative4MAP<URI> = {
   URI,
   _CTX: "async",
-  _F: "curried",
   map,
   of,
   ap,

@@ -634,7 +634,6 @@ export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
 
   return {
     URI,
-    _F: "curried",
     _E: undefined as any,
     map,
     compact,
@@ -674,7 +673,6 @@ declare module "../Base/HKT" {
 
 export const eitherMonad: Monad2M<URI> & ChainRec2M<URI> & Applicative2M<URI> = {
   URI,
-  _F: "curried",
   map,
   of: right,
   ap,
@@ -684,7 +682,6 @@ export const eitherMonad: Monad2M<URI> & ChainRec2M<URI> & Applicative2M<URI> = 
 
 export const eitherAp: Applicative2M<URI> = {
   URI,
-  _F: "curried",
   map,
   of: right,
   ap
@@ -696,7 +693,6 @@ export function getValidation<E>(
   return {
     ...eitherMonad,
     _E: undefined as any,
-    _F: "curried",
     ap: (ma) => (mab) =>
       isLeft(mab)
         ? isLeft(ma)
@@ -725,7 +721,6 @@ export const either: Monad2M<URI> &
   MonadThrow2M<URI> &
   Applicative2M<URI> = {
   URI,
-  _F: "curried",
   map,
   of: right,
   ap,

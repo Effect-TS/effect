@@ -2087,14 +2087,12 @@ export function zipWith<A, B, C>(
 
 export const readonlyArrayApply: CApply1<URI> = {
   URI,
-  _F: "curried",
   map,
   ap
 }
 
 export const readonlyArrayAp: CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   ap,
   of
@@ -2102,7 +2100,6 @@ export const readonlyArrayAp: CApplicative1<URI> = {
 
 export const readonlyArrayMonad: CMonad1<URI> & CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   of,
   ap,
@@ -2124,7 +2121,6 @@ export const readonlyArray: CMonad1<URI> &
   CTraversable1<URI> &
   CApplicative1<URI> = {
   URI,
-  _F: "curried",
   map,
   mapWithIndex,
   compact,
