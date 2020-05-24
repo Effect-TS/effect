@@ -1,15 +1,13 @@
 import * as assert from "assert"
-import { Readable } from "stream"
-
-import { Do } from "fp-ts-contrib/lib/Do"
-import * as array from "fp-ts/lib/Array"
-import { eqNumber } from "fp-ts/lib/Eq"
-import { none, some } from "fp-ts/lib/Option"
-import { FunctionN, identity, constant } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
 
 import { effect as T, managed as M, ref, stream as S } from "../src"
+import * as array from "../src/Array"
+import { Do } from "../src/Do"
+import { eqNumber } from "../src/Eq"
 import * as ex from "../src/Exit"
+import { FunctionN, identity, constant } from "../src/Function"
+import { none, some } from "../src/Option"
+import { pipe } from "../src/Pipe"
 import * as SK from "../src/Stream/Sink"
 import { collectArraySink, liftPureSink, Sink } from "../src/Stream/Sink"
 import { sinkCont, sinkDone, SinkStep } from "../src/Stream/Step"
@@ -346,7 +344,7 @@ describe("Stream", () => {
 
   it("should use ap", async () => {
     const res = await pipe(
-      S.stream.ap(
+      S.ap_(
         S.once((n: number) => n + 1),
         S.once(1)
       ),
@@ -446,13 +444,13 @@ describe("Stream", () => {
     }
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial))
-    const s = S.stream.chain(a, (n) => S.fromRange(n, 1, 10))
+    const s = S.chain_(a, (n) => S.fromRange(n, 1, 10))
 
-    const m = S.stream.chain(s, (n) =>
+    const m = S.chain_(s, (n) =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     )
 
-    const g = S.stream.chain(m, (n) => S.fromRange(0, 1, n))
+    const g = S.chain_(m, (n) => S.fromRange(0, 1, n))
     const r = S.collectArray(g)
 
     const res = await T.runToPromise(
@@ -524,30 +522,36 @@ describe("Stream", () => {
     it("should handle empty arrays", () => {
       const s1 = (S.empty as any) as S.Sync<number>
       const s2 = pipe(s1, S.peel(multiplier))
-      return expectExit(S.collectArray(S.stream.chain(s2, ([_h, r]) => r)), ex.done([]))
+      return expectExit(S.collectArray(S.chain_(s2, ([_h, r]) => r)), ex.done([]))
     })
     it("should handle empty arrays (managed)", () => {
       const s1 = (S.empty as any) as S.Sync<number>
       const s2 = pipe(s1, S.peelManaged(M.pure(multiplier)))
-      return expectExit(S.collectArray(S.stream.chain(s2, ([_h, r]) => r)), ex.done([]))
+      return expectExit(S.collectArray(S.chain_(s2, ([_h, r]) => r)), ex.done([]))
     })
     it("should extract a head and return a subsequent element", () => {
       const s1 = S.fromArray([2, 6, 9])
       const s2 = pipe(
         s1,
         S.peel(multiplier),
-        S.chain(([head, rest]) => S.stream.map(rest, (v) => v * head))
+        S.chain(([head, rest]) => S.map_(rest, (v) => v * head))
       )
       return expectExit(S.collectArray(s2), ex.done([12, 18]))
     })
     it("should compose", () => {
       const s1 = S.fromRange(3, 1, 9) // emits 3, 4, 5, 6, 7, 8
-      const s2 = S.stream.filter(s1, (x) => x % 2 === 0) // emits 4 6 8
-      const s3 = S.stream.chain(
-        S.stream.peel(s2, multiplier),
-        ([head, rest]) =>
-          // head is 4
-          S.stream.map(rest, (v) => v * head) // emits 24 32
+      const s2 = pipe(
+        s1,
+        S.filter((x) => x % 2 === 0)
+      ) // emits 4 6 8
+      const s3 = pipe(
+        s2,
+        S.peel(multiplier),
+        S.stream.chain(
+          ([head, rest]) =>
+            // head is 4
+            S.map_(rest, (v) => v * head) // emits 24 32
+        )
       )
       return expectExit(S.collectArray(s3), ex.done([24, 32]))
     })
@@ -557,7 +561,7 @@ describe("Stream", () => {
         S.Sync<number>
       >
       const s2 = S.flatten(s1)
-      const s3 = S.stream.peel(s2, multiplier)
+      const s3 = S.peel_(s2, multiplier)
       return expectExit(S.collectArray(s3), ex.raise("boom"))
     })
     it("should raise errors in the remainder stream", () => {
@@ -567,7 +571,7 @@ describe("Stream", () => {
         S.once(1)
       ]) as any) as S.SyncE<string, S.SyncE<string, number>>
       const s2 = S.flatten(s1)
-      const s3 = S.stream.chain(S.stream.peel(s2, multiplier), ([_head, rest]) => rest)
+      const s3 = S.chain_(S.peel_(s2, multiplier), ([_head, rest]) => rest)
       return expectExit(S.collectArray(s3), ex.raise("boom"))
     })
   })
@@ -655,19 +659,16 @@ describe("Stream", () => {
   describe("switchLatest", () => {
     it("should produce the latest elements", () => {
       // Two streams that emit 2 elements then hang forever
-      const s1 = S.stream.take(S.periodically(50), 2)
-      const s2 = S.stream.as(
-        s1,
-        S.stream.concat(S.stream.take(S.periodically(10), 2), S.never)
-      )
+      const s1 = S.take_(S.periodically(50), 2)
+      const s2 = S.as_(s1, S.concat_(S.take_(S.periodically(10), 2), S.never))
       // A third stream that emits 3 elements
-      const after30 = T.as(T.after(50), S.stream.take(S.periodically(20), 4))
+      const after30 = T.as(T.after(50), S.take_(S.periodically(20), 4))
 
-      const s3 = S.switchLatest(S.stream.concat(s2, S.encaseEffect(after30)))
+      const s3 = S.switchLatest(S.concat_(s2, S.encaseEffect(after30)))
       return expectExit(S.collectArray(s3), ex.done([0, 1, 0, 1, 0, 1, 2, 3]))
     })
     it("should fail with errors in outer stream", () => {
-      const io = T.effect.chain(ref.makeRef(0), (cell) => {
+      const io = T.chain_(ref.makeRef(0), (cell) => {
         const s1: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
           T.pure(S.encaseEffect(cell.set(1))),
           50
@@ -693,7 +694,7 @@ describe("Stream", () => {
           unknown,
           string,
           S.AsyncE<string, number>
-        > = S.stream.mapM(set, identity)
+        > = S.mapM_(set, identity)
 
         const drain = T.result(S.drain(S.switchLatest(stream)))
         return T.zip_(drain, T.delay(cell.get, 100))
@@ -707,7 +708,7 @@ describe("Stream", () => {
       )
     })
     it("should fail with errors in the inner streams", () => {
-      const io = T.effect.chain(ref.makeRef(0), (cell) => {
+      const io = T.chain_(ref.makeRef(0), (cell) => {
         const s1: T.AsyncE<string, S.AsyncE<string, number>> = T.delay(
           T.pure(S.encaseEffect(cell.set(1))),
           50
@@ -733,7 +734,7 @@ describe("Stream", () => {
           unknown,
           string,
           S.AsyncE<string, number>
-        > = S.stream.mapM(set, identity)
+        > = S.mapM_(set, identity)
 
         const drain = T.result(S.drain(S.switchLatest(stream)))
         return T.zip_(drain, T.delay(cell.get, 100))
@@ -749,12 +750,10 @@ describe("Stream", () => {
     })
     // TODO: issue https://github.com/rzeigler/waveguide-streams/issues/1
     it.skip("switching should occur", async () => {
-      const s1 = S.stream.take(S.periodically(50), 10)
+      const s1 = S.take_(S.periodically(50), 10)
       const s2 = pipe(
         s1,
-        S.chainSwitchLatest((i) =>
-          S.stream.as(S.stream.take(S.periodically(10), 10), i)
-        )
+        S.chainSwitchLatest((i) => S.as_(S.take_(S.periodically(10), 10), i))
       )
       const output = S.collectArray(s2)
       const values = await T.runToPromise(output)
@@ -777,11 +776,11 @@ describe("Stream", () => {
     const r = T.sync(() => Math.random())
 
     function range(max: number): T.Async<number> {
-      return T.effect.map(r, (n) => Math.round(n * max))
+      return T.map_(r, (n) => Math.round(n * max))
     }
 
     function randomWait(max: number): T.Async<void> {
-      return T.effect.chain(range(max), (a) => T.after(a))
+      return T.chain_(range(max), (a) => T.after(a))
     }
 
     it("should merge", async () => {
@@ -798,22 +797,27 @@ describe("Stream", () => {
       const s2 = pipe(
         s1,
         S.chainMerge(4, (i) =>
-          S.stream.mapM(S.fromRange(0, 1, 20), () => T.as(randomWait(50), i))
+          S.mapM_(S.fromRange(0, 1, 20), () => T.as(randomWait(50), i))
         )
       )
       const output = S.collectArray(s2)
-      const check = T.effect.chain(output, (values) =>
+      const check = T.chain_(output, (values) =>
         T.sync(() => {
           const uniq = array.uniq(eqNumber)(values).sort()
-          const stats = array.array.map(
+          const stats = pipe(
             uniq,
-            (u) =>
-              [
-                u,
-                array.array.filter(values, (v) => v === u).length,
-                values.indexOf(u),
-                values.lastIndexOf(u)
-              ] as const
+            array.array.map(
+              (u) =>
+                [
+                  u,
+                  pipe(
+                    values,
+                    array.array.filter((v) => v === u)
+                  ).length,
+                  values.indexOf(u),
+                  values.lastIndexOf(u)
+                ] as const
+            )
           )
           stats.forEach(([_i, ct]) => {
             expect(ct).toEqual(20)

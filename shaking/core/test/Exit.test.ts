@@ -1,7 +1,5 @@
 import * as assert from "assert"
 
-import { identity } from "fp-ts/lib/function"
-
 import {
   fold,
   fold_,
@@ -14,6 +12,7 @@ import {
   raise,
   interrupt
 } from "../src/Exit"
+import { identity } from "../src/Function"
 
 describe("Exit", () => {
   const e1 = done(1)

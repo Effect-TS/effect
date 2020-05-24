@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import * as T from "../Effect"
 import { Exit } from "../Exit"
 

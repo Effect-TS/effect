@@ -4,6 +4,7 @@ import { eq, Eq, eqNumber } from "../../src/Eq"
 import { identity } from "../../src/Function"
 import * as I from "../../src/Identity"
 import { monoidString } from "../../src/Monoid"
+import { pipe } from "../../src/Pipe"
 import { showString } from "../../src/Show"
 import {
   drawTree,
@@ -23,7 +24,7 @@ describe("Tree", () => {
     const double = (n: number): number => n * 2
     const fa = make(1, [make(2), make(3)])
     const expected = make(2, [make(4), make(6)])
-    assert.deepStrictEqual(tree.map(fa, double), expected)
+    assert.deepStrictEqual(tree.map(double)(fa), expected)
   })
 
   it("ap", () => {
@@ -31,14 +32,14 @@ describe("Tree", () => {
     const fab = tree.of(double)
     const fa = make(1, [make(2), make(3)])
     const expected = make(2, [make(4), make(6)])
-    assert.deepStrictEqual(tree.ap(fab, fa), expected)
+    assert.deepStrictEqual(tree.ap(fa)(fab), expected)
   })
 
   it("chain", () => {
     const f = (n: number) => tree.of(n * 2)
     const fa = make(1, [make(2), make(3)])
     const expected = make(2, [make(4), make(6)])
-    assert.deepStrictEqual(tree.chain(fa, f), expected)
+    assert.deepStrictEqual(tree.chain(f)(fa), expected)
   })
 
   it("extract", () => {
@@ -50,22 +51,19 @@ describe("Tree", () => {
     const fa = make("a", [make("foo"), make("b")])
     const f = (fa: Tree<string>) => fa.value.length + fa.forest.length
     const expected = make(3, [make(3), make(1)])
-    assert.deepStrictEqual(tree.extend(fa, f), expected)
+    assert.deepStrictEqual(tree.extend(f)(fa), expected)
   })
 
   it("reduce", () => {
     const fa = make("a", [make("b"), make("c")])
-    assert.deepStrictEqual(
-      tree.reduce(fa, "", (b, a) => b + a),
-      "abc"
-    )
+    assert.deepStrictEqual(tree.reduce("", (b, a) => b + a)(fa), "abc")
   })
 
   it("foldMap", () => {
     const foldMap = tree.foldMap(monoidString)
     const x1 = make("a", [make("b"), make("c")])
     const f1 = identity
-    assert.deepStrictEqual(foldMap(x1, f1), "abc")
+    assert.deepStrictEqual(pipe(x1, foldMap(f1)), "abc")
   })
 
   it("reduceRight", () => {
@@ -73,13 +71,16 @@ describe("Tree", () => {
     const x1 = make("a", [make("b"), make("c")])
     const init1 = ""
     const f1 = (a: string, acc: string) => acc + a
-    assert.deepStrictEqual(reduceRight(x1, init1, f1), "cba")
+    assert.deepStrictEqual(pipe(x1, reduceRight(init1, f1)), "cba")
   })
 
   it("traverse", () => {
     const fa = make("a", [make("b"), make("c")])
     assert.deepStrictEqual(
-      tree.traverse(I.identity)(fa, (a) => I.identity.of(a)),
+      pipe(
+        fa,
+        tree.traverse(I.identity)((a) => I.identity.of(a))
+      ),
       I.identity.of(fa)
     )
   })
@@ -179,14 +180,14 @@ describe("Tree", () => {
     interface User {
       readonly id: number
     }
-    const S: Eq<User> = eq.contramap(eqNumber, (user: User) => user.id)
+    const S: Eq<User> = eq.contramap((user: User) => user.id)(eqNumber)
     const users = make({ id: 1 }, [
       make({ id: 1 }, [make({ id: 3 }), make({ id: 4 })]),
       make({ id: 2 })
     ])
-    assert.deepStrictEqual(elem(S)({ id: 1 }, users), true)
-    assert.deepStrictEqual(elem(S)({ id: 4 }, users), true)
-    assert.deepStrictEqual(elem(S)({ id: 5 }, users), false)
+    assert.deepStrictEqual(elem(S)({ id: 1 })(users), true)
+    assert.deepStrictEqual(elem(S)({ id: 4 })(users), true)
+    assert.deepStrictEqual(elem(S)({ id: 5 })(users), false)
   })
 
   it("getShow", () => {

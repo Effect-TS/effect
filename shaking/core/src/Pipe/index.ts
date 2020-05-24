@@ -1,3 +1,5 @@
+/* adapted from https://github.com/gcanti/fp-ts */
+
 export class Pipe<A> {
   constructor(private readonly _: A) {
     this.pipe = this.pipe.bind(this)

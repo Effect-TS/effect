@@ -1,9 +1,10 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { Show } from "../Base"
 import type { ReadonlyRecord } from "../Readonly/Record"
 
-export type { Show } from "../Base"
+export interface Show<A> {
+  readonly show: (a: A) => string
+}
 
 export function getStructShow<O extends ReadonlyRecord<string, any>>(
   shows: {

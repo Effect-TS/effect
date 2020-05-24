@@ -1,4 +1,6 @@
-import type { Applicative, HKT } from "../../Base"
+/* adapted from https://github.com/rzeigler/waveguide */
+
+import type { CApplicative, HKT } from "../../Base"
 import type { FunctionN } from "../../Function"
 
 export type SinkStep<A, S> = SinkStepCont<S> | SinkStepDone<A, S>
@@ -42,7 +44,7 @@ export function sinkStepState<A0, S>(s: SinkStep<A0, S>): S {
   return s.state
 }
 
-export function map<A0, S, S1>(
+export function map_<A0, S, S1>(
   step: SinkStep<A0, S>,
   f: FunctionN<[S], S1>
 ): SinkStep<A0, S1> {
@@ -52,20 +54,19 @@ export function map<A0, S, S1>(
   }
 }
 
-export function mapWith<S, S1>(
+export function map<S, S1>(
   f: FunctionN<[S], S1>
 ): <A>(step: SinkStep<A, S>) => SinkStep<A, S1> {
-  return <A>(step: SinkStep<A, S>) => map(step, f)
+  return <A>(step: SinkStep<A, S>) => map_(step, f)
 }
 
 export function traverse<F>(
-  F: Applicative<F>
+  F: CApplicative<F>
 ): <A0, S, S1>(
-  step: SinkStep<A0, S>,
   f: FunctionN<[S], HKT<F, S1>>
-) => HKT<F, SinkStep<A0, S1>> {
-  return <A0, S, S1>(
-    step: SinkStep<A0, S>,
-    f: FunctionN<[S], HKT<F, S1>>
-  ): HKT<F, SinkStep<A0, S1>> => F.map(f(step.state), (s1) => ({ ...step, state: s1 }))
+) => (step: SinkStep<A0, S>) => HKT<F, SinkStep<A0, S1>> {
+  return <A0, S, S1>(f: FunctionN<[S], HKT<F, S1>>) => (
+    step: SinkStep<A0, S>
+  ): HKT<F, SinkStep<A0, S1>> =>
+    F.map((s1: S1) => ({ ...step, state: s1 }))(f(step.state))
 }

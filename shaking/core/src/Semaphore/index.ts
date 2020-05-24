@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import { Deferred, makeDeferred } from "../Deferred"
 import * as T from "../Effect"
 import * as E from "../Either"

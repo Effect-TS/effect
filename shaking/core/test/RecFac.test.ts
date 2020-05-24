@@ -1,9 +1,8 @@
 import * as assert from "assert"
 
-import { sequenceS } from "fp-ts/lib/Apply"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { effect as T, exit as EX, recursionSchemes as R } from "../src"
+import { sequenceS } from "../src/Apply"
+import { pipe } from "../src/Pipe"
 
 interface ConsF<A> {
   readonly _tag: "cons"

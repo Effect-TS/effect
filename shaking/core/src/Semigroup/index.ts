@@ -1,7 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import { Semigroup } from "../Base"
 import { identity } from "../Function"
+import { Magma } from "../Magma"
 import { max, min, Ord } from "../Ord"
 import { ReadonlyRecord } from "../Readonly/Record"
 
@@ -10,7 +10,8 @@ import { ReadonlyRecord } from "../Readonly/Record"
  *
  * Associativiy: `concat(concat(x, y), z) = concat(x, concat(y, z))`
  */
-export { Semigroup }
+
+export interface Semigroup<A> extends Magma<A> {}
 
 export function fold<A>(S: Semigroup<A>): (a: A, as: ReadonlyArray<A>) => A {
   return (a, as) => as.reduce(S.concat, a)

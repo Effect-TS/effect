@@ -1,6 +1,7 @@
 import * as assert from "assert"
 
 import { effect as T, concurrentRef as R } from "../src"
+import { Do } from "../src/Do"
 
 interface Config {
   initial: number
@@ -8,7 +9,7 @@ interface Config {
 
 describe("ConcurrentRef", () => {
   it("should use ref", async () => {
-    const program = T.Do()
+    const program = Do(T.effect)
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .bindL("next", ({ ref }) => ref.modify((n) => T.pure([n + 1, n + 1] as const)))
@@ -25,7 +26,7 @@ describe("ConcurrentRef", () => {
   })
 
   it("should prevent concurrency issues", async () => {
-    const program = T.parDo()
+    const program = Do(T.par(T.effect))
       .bindL("initial", () => T.access(({ initial }: Config) => initial))
       .bindL("ref", ({ initial }) => R.makeConcurrentRef(initial))
       .sequenceSL(({ ref }) => ({

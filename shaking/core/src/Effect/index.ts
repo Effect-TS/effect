@@ -1,12 +1,21 @@
-import type { Task } from "fp-ts/lib/Task"
-import type { TaskEither } from "fp-ts/lib/TaskEither"
+/* adapted from https://github.com/rzeigler/waveguide */
 
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
+import * as AP from "../Apply"
+import * as A from "../Array"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
-import type { Monoid, Semigroup } from "../Base"
+import type {
+  CMonad4MA,
+  CMonad4MAC,
+  CAlt4MAC,
+  CApplicative4MAC,
+  CApplicative4MAPC,
+  CApplicative4MAP,
+  CApplicative4MA
+} from "../Base"
+import type { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
-import { Do as DoG } from "../Do"
-import type { Either } from "../Either"
+import * as D from "../Do"
+import * as E from "../Either"
 import {
   abort,
   Cause,
@@ -19,10 +28,13 @@ import {
 } from "../Exit"
 import { flow, identity } from "../Function"
 import type { FunctionN, Lazy, Predicate, Refinement } from "../Function"
+import type { Monoid } from "../Monoid"
 import type { NonEmptyArray } from "../NonEmptyArray"
-import { fromNullable, none, Option, some } from "../Option"
+import * as O from "../Option"
 import { pipe } from "../Pipe"
+import * as RE from "../Record"
 import { makeRef, Ref } from "../Ref"
+import type { Semigroup } from "../Semigroup"
 import {
   AsyncCancelContFn,
   AsyncFn,
@@ -58,22 +70,10 @@ import type {
   SyncRE
 } from "../Support/Common/effect"
 import { Driver, DriverImpl, DriverSyncImpl } from "../Support/Driver"
-import { ForM } from "../Support/For"
-import {
-  Alt4EC,
-  ATypeOf,
-  ETypeOf,
-  Monad4E,
-  Monad4EC,
-  Monad4ECP,
-  Monad4EP,
-  MonadThrow4EC,
-  MonadThrow4ECP,
-  RTypeOf,
-  STypeOf
-} from "../Support/Overloads"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
+import * as TR from "../Tree"
+import type { Erase } from "../Utils"
 export {
   Async,
   AsyncE,
@@ -150,9 +150,9 @@ export function ap__<S, R, E, A, S2, R2, E2, B>(
   return zipWith_(ioa, iof, (a, f) => f(a))
 }
 
-export const ap: <S1, R, E, A, E2>(
+export const ap: <S1, R, E, A>(
   fa: Effect<S1, R, E, A>
-) => <S2, R2, B>(
+) => <S2, R2, E2, B>(
   fab: Effect<S2, R2, E2, (a: A) => B>
 ) => Effect<S1 | S2, R & R2, E | E2, B> = (fa) => (fab) => ap_(fab, fa)
 
@@ -341,15 +341,18 @@ export function chain_<S, R, E, A, S2, R2, E2, B>(
 export const chain: <S1, R, E, A, B>(
   f: (a: A) => Effect<S1, R, E, B>
 ) => <S2, R2, E2>(ma: Effect<S2, R2, E2, A>) => Effect<S1 | S2, R & R2, E | E2, B> = (
-  f
-) => (ma) => chain_(ma, f)
+  bind
+) => (inner) =>
+  (((inner as any) as Instructions).tag() === IPureTag
+    ? bind(((inner as any) as IPure<any>).a)
+    : new IChain(inner, bind)) as any
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(
   mma: Effect<S1, R, E, Effect<S2, R2, E2, A>>
 ) => Effect<S1 | S2, R & R2, E | E2, A> = (mma) => chain_(mma, (x) => x)
 
 export function chainEither<A, E, B>(
-  bind: FunctionN<[A], Either<E, B>>
+  bind: FunctionN<[A], E.Either<E, B>>
 ): <S, R, E2>(eff: Effect<S, R, E2, A>) => Effect<S, R, E | E2, B> {
   return (inner) => chain_(inner, (a) => encaseEither(bind(a)))
 }
@@ -359,14 +362,14 @@ export function chainEither<A, E, B>(
  * @param f
  */
 export function chainError<S, R, E1, E2, A>(
-  f: (_: E1, remaining: Option<NonEmptyArray<Cause<any>>>) => Effect<S, R, E2, A>
+  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<any>>>) => Effect<S, R, E2, A>
 ): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f)
 }
 
 export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: (_: E1, remaining: Option<NonEmptyArray<Cause<any>>>) => Effect<S2, R2, E2, A2>
+  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<any>>>) => Effect<S2, R2, E2, A2>
 ): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
@@ -377,14 +380,17 @@ export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
 }
 
 export const chainErrorTap = <S, R, E1, E2>(
-  f: (e: E1, remaining: Option<NonEmptyArray<Cause<any>>>) => Effect<S, R, E2, unknown>
+  f: (
+    e: E1,
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
+  ) => Effect<S, R, E2, unknown>
 ) => <S2, R2, A>(io: Effect<S2, R2, E1, A>) => chainErrorTap_(io, f)
 
 export const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   io: Effect<S, R, E1, A>,
   f: (
     _: E1,
-    remaining: Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
   ) => Effect<S2, R2, E2, unknown>
 ) =>
   chainError_(io, (e, remaining) =>
@@ -414,7 +420,7 @@ export const chainFirst: <S1, R, E, A, B>(
 export function chainOption<E>(
   onEmpty: Lazy<E>
 ): <A, B>(
-  bind: FunctionN<[A], Option<B>>
+  bind: FunctionN<[A], O.Option<B>>
 ) => <S, R, E2>(eff: Effect<S, R, E2, A>) => Effect<S, R, E | E2, B> {
   return (bind) => (inner) => chain_(inner, (a) => encaseOption(bind(a), onEmpty))
 }
@@ -431,13 +437,13 @@ export const chainTap_ = <S, R, E, A, S2, R2, E2>(
 ): Effect<S | S2, R & R2, E | E2, A> => chain_(inner, (a) => as(bind(a), a))
 
 export function chainTask<A, B>(
-  bind: FunctionN<[A], Task<B>>
+  bind: FunctionN<[A], Lazy<Promise<B>>>
 ): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E2, B> {
   return (inner) => chain_(inner, (a) => encaseTask(bind(a)))
 }
 
 export function chainTaskEither<A, E, B>(
-  bind: FunctionN<[A], TaskEither<E, B>>
+  bind: FunctionN<[A], Lazy<Promise<E.Either<E, B>>>>
 ): <S, R, E2>(eff: Effect<S, R, E2, A>) => AsyncRE<R, E | E2, B> {
   return (inner) => chain_(inner, (a) => encaseTaskEither(bind(a)))
 }
@@ -455,7 +461,7 @@ export function combineFinalizerExit<E, A>(
   } else {
     return {
       ...fiberExit,
-      remaining: some(
+      remaining: O.some(
         fiberExit.remaining._tag === "Some"
           ? ([...fiberExit.remaining.value, releaseExit] as NonEmptyArray<Cause<any>>)
           : ([releaseExit] as NonEmptyArray<Cause<any>>)
@@ -551,16 +557,6 @@ export function delay<S, R, E, A>(
   return applySecond(after(ms), inner)
 }
 
-export const Do = () => DoG(effect)
-
-export const effect: Monad4E<URI> = {
-  URI,
-  map: map_,
-  of: pure,
-  ap: ap_,
-  chain: chain_
-}
-
 export function effectify<L, R>(
   f: (cb: (e: L | null | undefined, r?: R) => void) => void
 ): () => AsyncE<L, R>
@@ -608,7 +604,7 @@ export function effectify<L, R>(f: Function): () => AsyncE<L, R> {
  * Lift an Either into an IO
  * @param e
  */
-export function encaseEither<E, A>(e: Either<E, A>): SyncE<E, A> {
+export function encaseEither<E, A>(e: E.Either<E, A>): SyncE<E, A> {
   return new IPureEither(e) as any
 }
 
@@ -617,15 +613,17 @@ export function encaseEither<E, A>(e: Either<E, A>): SyncE<E, A> {
  * @param o
  * @param onError
  */
-export function encaseOption<E, A>(o: Option<A>, onError: Lazy<E>): SyncE<E, A> {
+export function encaseOption<E, A>(o: O.Option<A>, onError: Lazy<E>): SyncE<E, A> {
   return new IPureOption(o, onError) as any
 }
 
-export function encaseTask<A>(task: Task<A>): Async<A> {
+export function encaseTask<A>(task: () => Promise<A>): Async<A> {
   return orAbort(fromPromise(task))
 }
 
-export function encaseTaskEither<E, A>(taskEither: TaskEither<E, A>): AsyncE<E, A> {
+export function encaseTaskEither<E, A>(
+  taskEither: Lazy<Promise<E.Either<E, A>>>
+): AsyncE<E, A> {
   return async<E, A>((callback) => {
     taskEither().then(callback)
     /* istanbul ignore next */
@@ -660,14 +658,14 @@ export const fromPredicate: {
   predicate(a) ? completed(done(a)) : completed(raise(onFalse(a)))
 
 export const flattenEither = <S, R, E, E2, A>(
-  eff: Effect<S, R, E, Either<E2, A>>
+  eff: Effect<S, R, E, E.Either<E2, A>>
 ): Effect<S, R, E | E2, A> => chain_(eff, encaseEither)
 
 /**
  * Combines T.chain and T.fromOption
  */
 export const flattenOption = <E>(onNone: () => E) => <S, R, E2, A>(
-  eff: Effect<S, R, E2, Option<A>>
+  eff: Effect<S, R, E2, O.Option<A>>
 ): Effect<S, R, E | E2, A> => chain_(eff, (x) => encaseOption(x, onNone))
 
 /**
@@ -702,8 +700,6 @@ export function foldExit<S1, E1, RF, E2, A1, S2, E3, A2, RS>(
   return (io) => foldExit_(io, failure, success)
 }
 
-export const For = () => ForM(effect)
-
 /**
  * Execute the provided IO forever (or until it errors)
  * @param io
@@ -729,8 +725,8 @@ export function fork<S, R, E, A>(
 
 export function fromNullableM<S, R, E, A>(
   ma: Effect<S, R, E, A>
-): Effect<S, R, E, Option<NonNullable<A>>> {
-  return map_(ma, fromNullable)
+): Effect<S, R, E, O.Option<NonNullable<A>>> {
+  return map_(ma, O.fromNullable)
 }
 
 /**
@@ -785,17 +781,19 @@ export function getCauseSemigroup<E>(S: Semigroup<E>): Semigroup<Cause<E>> {
 
 export function getCauseValidationM<E>(
   S: Semigroup<Cause<E>>
-): Monad4EC<URI, E> & MonadThrow4EC<URI, E> & Alt4EC<URI, E> {
+): CMonad4MAC<URI, E> & CAlt4MAC<URI, E> & CApplicative4MAC<URI, E> {
   return {
     URI,
+
     _E: undefined as any,
     of: pure,
-    map: map_,
-    chain: chain_,
-    ap: <S1, S2, R, R2, A, B>(
-      fab: Effect<S1, R, E, (a: A) => B>,
+    map,
+    chain,
+    ap: <S2, R2, A>(
       fa: Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, B> =>
+    ): (<S1, R, B>(
+      fab: Effect<S1, R, E, (a: A) => B>
+    ) => Effect<S1 | S2, R & R2, E, B>) => (fab) =>
       foldExit_(
         fab,
         (fabe) =>
@@ -806,11 +804,11 @@ export function getCauseValidationM<E>(
           ),
         (f) => map_(fa, f)
       ),
-    throwError: raiseError,
-    alt: <S1, S2, R, R2, A>(
-      fa: Effect<S1, R, E, A>,
+    alt: <S2, R2, A>(
       fb: () => Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, A> =>
+    ): (<S1, R, B>(fa: Effect<S1, R, E, B>) => Effect<S1 | S2, R & R2, E, A | B>) => (
+      fa
+    ) =>
       foldExit_(
         fa,
         (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure),
@@ -824,46 +822,6 @@ export function getMonoid<S, R, E, A>(m: Monoid<A>): Monoid<Effect<S, R, E, A>> 
     ...getSemigroup(m),
     empty: pure(m.empty)
   }
-}
-
-export function getParCauseValidationM<E>(
-  S: Semigroup<Cause<E>>
-): Monad4ECP<URI, E> & MonadThrow4ECP<URI, E> & Alt4EC<URI, E> {
-  return {
-    URI,
-    _E: undefined as any,
-    _CTX: "async",
-    of: pure,
-    map: map_,
-    chain: chain_,
-    ap: <S1, S2, R, R2, A, B>(
-      fab: Effect<S1, R, E, (a: A) => B>,
-      fa: Effect<S2, R2, E, A>
-    ): Effect<unknown, R & R2, E, B> =>
-      chain_(parZip(result(fa), result(fab)), ([faEx, fabEx]) =>
-        fabEx._tag === "Done"
-          ? faEx._tag === "Done"
-            ? pure(fabEx.value(faEx.value))
-            : raised(faEx)
-          : faEx._tag === "Done"
-          ? raised(fabEx)
-          : raised(S.concat(fabEx, faEx))
-      ),
-    throwError: raiseError,
-    alt: <S1, S2, R, R2, A>(
-      fa: Effect<S1, R, E, A>,
-      fb: () => Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, A> =>
-      foldExit_(
-        fa,
-        (e) => foldExit_(fb(), (fbe) => raised(S.concat(e, fbe)), pure),
-        pure
-      )
-  }
-}
-
-export function getParValidationM<E>(S: Semigroup<E>) {
-  return getParCauseValidationM(getCauseSemigroup(S))
 }
 
 export function getSemigroup<S, R, E, A>(
@@ -898,7 +856,7 @@ export const handle = <
         [k in K]: KK
       }
     >,
-    remaining: Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
   ) => Effect<S2, R2, E2, A2>
 ) => <S, R, A>(
   _: Effect<S, R, E, A>
@@ -941,7 +899,7 @@ export const makeHandle = <K extends string>(k: K) => <
         [k in K]: KK
       }
     >,
-    remaining: Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<any>>>
   ) => Effect<S2, R2, E2, A2>
 ) => handle<E, K, KK, S2, R2, E2, A2>(k, kk, f)
 
@@ -1024,23 +982,23 @@ export function liftDelay(
 }
 
 export function liftEither<A, E, B>(
-  f: FunctionN<[A], Either<E, B>>
+  f: FunctionN<[A], E.Either<E, B>>
 ): FunctionN<[A], SyncE<E, B>> {
   return (a) => suspended(() => encaseEither(f(a)))
 }
 
 export function liftOption<E>(
   onNone: () => E
-): <A, B>(f: FunctionN<[A], Option<B>>) => FunctionN<[A], SyncE<E, B>> {
+): <A, B>(f: FunctionN<[A], O.Option<B>>) => FunctionN<[A], SyncE<E, B>> {
   return (f) => (a) => suspended(() => encaseOption(f(a), onNone))
 }
 
-export const left = <E>(_: E): Either<E, never> => ({
+export const left = <E>(_: E): E.Either<E, never> => ({
   _tag: "Left",
   left: _
 })
 
-export const right = <A>(_: A): Either<never, A> => ({
+export const right = <A>(_: A): E.Either<never, A> => ({
   _tag: "Right",
   right: _
 })
@@ -1065,7 +1023,7 @@ export interface Fiber<E, A> {
   /**
    * The name of the fiber
    */
-  readonly name: Option<string>
+  readonly name: O.Option<string>
   /**
    * Send an interrupt signal to this fiber.
    *
@@ -1085,14 +1043,14 @@ export interface Fiber<E, A> {
   /**
    * Poll for a fiber result
    */
-  readonly result: SyncE<E, Option<A>>
+  readonly result: SyncE<E, O.Option<A>>
   /**
    * Determine if the fiber is complete
    */
   readonly isComplete: Sync<boolean>
 }
 export class FiberImpl<E, A> implements Fiber<E, A> {
-  name = fromNullable(this.n)
+  name = O.fromNullable(this.n)
   sendInterrupt = sync(() => {
     this.driver.interrupt()
   })
@@ -1101,7 +1059,7 @@ export class FiberImpl<E, A> implements Fiber<E, A> {
   join = chain_(this.wait, completed)
   result = chain_(
     sync(() => this.driver.completed),
-    (opt) => (opt === null ? pureNone : map_(completed(opt), some))
+    (opt) => (opt === null ? pureNone : map_(completed(opt), O.some))
   )
   isComplete = sync(() => this.driver.completed !== null)
   constructor(readonly driver: Driver<E, A>, readonly n?: string) {}
@@ -1123,8 +1081,10 @@ export function map_<S, R, E, A, B>(
 
 export const map: <A, B>(
   f: (a: A) => B
-) => <S, R, E>(fa: Effect<S, R, E, A>) => Effect<S, R, E, B> = (f) => (fa) =>
-  map_(fa, f)
+) => <S, R, E>(fa: Effect<S, R, E, A>) => Effect<S, R, E, B> = (f) => (base) =>
+  (((base as any) as Instructions).tag() === IPureTag
+    ? new IPure(f(((base as any) as IPure<any>).a))
+    : new IMap(base, f)) as any
 
 /**
  * Map the error produced by an IO
@@ -1215,7 +1175,7 @@ export function or_(
   ma: Effect<S, R, E, A>
 ) => <S2, R2, E2, B>(
   mb: Effect<S2, R2, E2, B>
-) => Effect<S | S2, R & R2, E | E2, Either<A, B>> {
+) => Effect<S | S2, R & R2, E | E2, E.Either<A, B>> {
   return (ma) => (mb) => (predicate ? map_(ma, left) : map_(mb, right))
 }
 
@@ -1223,7 +1183,7 @@ export function or<S, R, E, A>(
   ma: Effect<S, R, E, A>
 ): <S2, R2, E2, B>(
   mb: Effect<S2, R2, E2, B>
-) => (predicate: boolean) => Effect<S | S2, R & R2, E | E2, Either<A, B>> {
+) => (predicate: boolean) => Effect<S | S2, R & R2, E | E2, E.Either<A, B>> {
   return (mb) => (predicate) => (predicate ? map_(ma, left) : map_(mb, right))
 }
 
@@ -1246,7 +1206,7 @@ export function parAp_<S, S2, R, R2, E, E2, A, B>(
   iof: Effect<S, R, E, FunctionN<[A], B>>,
   ioa: Effect<S2, R2, E2, A>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(iof, ioa, (f, a) => f(a))
+  return parZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1254,11 +1214,12 @@ export function parAp_<S, S2, R, R2, E, E2, A, B>(
  * @param ioa
  * @param iof
  */
-export function parAp<S, S2, R, R2, E, E2, A, B>(
-  ioa: Effect<S, R, E, A>,
+export function parAp<S, R, E, A>(
+  ioa: Effect<S, R, E, A>
+): <S2, R2, E2, B>(
   iof: Effect<S2, R2, E2, FunctionN<[A], B>>
-): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(ioa, iof, (a, f) => f(a))
+) => AsyncRE<R & R2, E | E2, B> {
+  return (iof) => parZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1270,7 +1231,7 @@ export function parApplyFirst<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, A> {
-  return parZipWith(ioa, iob, fst)
+  return parZipWith_(ioa, iob, fst)
 }
 
 /**
@@ -1282,18 +1243,7 @@ export function parApplySecond<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(ioa, iob, snd)
-}
-
-export const parDo = () => DoG(parEffect)
-
-export const parEffect: Monad4EP<URI> = {
-  URI,
-  _CTX: "async",
-  of: pure,
-  map: map_,
-  ap: parAp_,
-  chain: chain_
+  return parZipWith_(ioa, iob, snd)
 }
 
 /**
@@ -1305,7 +1255,7 @@ export function parFastAp_<S, S2, R, R2, E, E2, A, B>(
   iof: Effect<S, R, E, FunctionN<[A], B>>,
   ioa: Effect<S2, R2, E2, A>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parFastZipWith(iof, ioa, (f, a) => f(a))
+  return parFastZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1314,11 +1264,12 @@ export function parFastAp_<S, S2, R, R2, E, E2, A, B>(
  * @param ioa
  * @param iof
  */
-export function parFastAp<S, S2, R, R2, E, E2, A, B>(
-  ioa: Effect<S, R, E, A>,
+export function parFastAp<S, R, E, A>(
+  ioa: Effect<S, R, E, A>
+): <S2, R2, E2, B>(
   iof: Effect<S2, R2, E2, FunctionN<[A], B>>
-): AsyncRE<R & R2, E | E2, B> {
-  return parFastZipWith(ioa, iof, (a, f) => f(a))
+) => AsyncRE<R & R2, E | E2, B> {
+  return (iof) => parFastZipWith_(iof, ioa, (f, a) => f(a))
 }
 
 /**
@@ -1331,7 +1282,7 @@ export function parFastApplyFirst<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, A> {
-  return parFastZipWith(ioa, iob, fst)
+  return parFastZipWith_(ioa, iob, fst)
 }
 
 /**
@@ -1344,22 +1295,8 @@ export function parFastApplySecond<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, B> {
-  return parFastZipWith(ioa, iob, snd)
+  return parFastZipWith_(ioa, iob, snd)
 }
-
-export const parFastDo = () => DoG(parFastEffect)
-
-/* Note that this instance is not respecting the classical apply law */
-export const parFastEffect: Monad4EP<URI> = {
-  URI,
-  _CTX: "async",
-  of: pure,
-  map: map_,
-  ap: parFastAp_,
-  chain: chain_
-}
-
-export const parFastFor = () => ForM(parFastEffect)
 
 /**
  * Tuple the result of 2 ios executed in parallel
@@ -1367,11 +1304,17 @@ export const parFastFor = () => ForM(parFastEffect)
  * @param ioa
  * @param iob
  */
-export function parFastZip<S, S2, R, R2, E, A, B>(
+export function parFastZip<S2, R2, E2, B>(
+  second: Effect<S2, R2, E2, B>
+): <S, R, E, A>(first: Effect<S, R, E, A>) => AsyncRE<R & R2, E | E2, readonly [A, B]> {
+  return parFastZipWith(second, tuple2)
+}
+
+export function parFastZip_<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
-  iob: Effect<S2, R2, E, B>
-): AsyncRE<R & R2, E, readonly [A, B]> {
-  return parZipWith(ioa, iob, tuple2)
+  iob: Effect<S2, R2, E2, B>
+): AsyncRE<R & R2, E | E2, readonly [A, B]> {
+  return parZipWith_(ioa, iob, tuple2)
 }
 
 /**
@@ -1381,7 +1324,14 @@ export function parFastZip<S, S2, R, R2, E, A, B>(
  * @param iob
  * @param f
  */
-export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
+export function parFastZipWith<S, A, R2, E2, B, C>(
+  second: Effect<S, R2, E2, B>,
+  f: FunctionN<[A, B], C>
+): <S2, R, E>(first: Effect<S2, R, E, A>) => AsyncRE<R & R2, E | E2, C> {
+  return (first) => parFastZipWith_(first, second, f)
+}
+
+export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>,
   f: FunctionN<[A, B], C>
@@ -1416,18 +1366,22 @@ export function parFastZipWith<S, S2, R, R2, E, E2, A, B, C>(
   )
 }
 
-export const parFor = () => ForM(parEffect)
-
 /**
  * Tuple the result of 2 ios executed in parallel
  * @param ioa
  * @param iob
  */
-export function parZip<S, S2, R, R2, E, A, B>(
+export function parZip<S2, R2, E2, B>(
+  second: Effect<S2, R2, E2, B>
+): <S, R, E, A>(first: Effect<S, R, E, A>) => AsyncRE<R & R2, E | E2, readonly [A, B]> {
+  return parZipWith(second, tuple2)
+}
+
+export function parZip_<S, S2, R, R2, E, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E, B>
 ): AsyncRE<R & R2, E, readonly [A, B]> {
-  return parZipWith(ioa, iob, tuple2)
+  return parZipWith_(ioa, iob, tuple2)
 }
 
 /**
@@ -1436,7 +1390,20 @@ export function parZip<S, S2, R, R2, E, A, B>(
  * @param iob
  * @param f
  */
-export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
+export function parZipWith<S, A, R2, E2, B, C>(
+  second: Effect<S, R2, E2, B>,
+  f: FunctionN<[A, B], C>
+): <S2, R, E>(first: Effect<S2, R, E, A>) => AsyncRE<R & R2, E | E2, C> {
+  return (first) =>
+    raceFold(
+      first,
+      second,
+      (aExit, bFiber) => zipWith_(completed(aExit), bFiber.join, f),
+      (bExit, aFiber) => zipWith_(aFiber.join, completed(bExit), f)
+    )
+}
+
+export function parZipWith_<S, S2, R, R2, E, E2, A, B, C>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>,
   f: FunctionN<[A, B], C>
@@ -1508,7 +1475,7 @@ export function pure<A>(a: A): Sync<A> {
 
 export const pureNone =
   /*#__PURE__*/
-  (() => pure(none))()
+  (() => pure(O.none))()
 
 /**
  * Return the result of the first IO to complete successfully.
@@ -1849,12 +1816,12 @@ export function timeoutFold<S, S1, S2, R, R2, R3, E1, E2, A, B, C>(
 export function timeoutOption<S, R, E, A>(
   source: Effect<S, R, E, A>,
   ms: number
-): AsyncRE<R, E, Option<A>> {
+): AsyncRE<R, E, O.Option<A>> {
   return timeoutFold(
     source,
     ms,
     (actionFiber) => applySecond(actionFiber.interrupt, pureNone),
-    (exit) => map_(completed(exit), some)
+    (exit) => map_(completed(exit), O.some)
   )
 }
 
@@ -1970,8 +1937,8 @@ export const until = (f: (res: () => void) => void) =>
 
 export function when(
   predicate: boolean
-): <S, R, E, A>(ma: Effect<S, R, E, A>) => Effect<S, R, E, Option<A>> {
-  return (ma) => (predicate ? map_(ma, some) : pure(none))
+): <S, R, E, A>(ma: Effect<S, R, E, A>) => Effect<S, R, E, O.Option<A>> {
+  return (ma) => (predicate ? map_(ma, O.some) : pure(O.none))
 }
 
 /**
@@ -1990,7 +1957,7 @@ export function zip<S2, R2, E2, B>(
 ): <S, R, E, A>(
   first: Effect<S, R, E, A>
 ) => Effect<S | S2, R & R2, E | E2, readonly [A, B]> {
-  return (first) => zip_(first, second)
+  return (first) => chain_(first, (x) => map_(second, (y) => [x, y]))
 }
 
 /**
@@ -2036,26 +2003,362 @@ export function compact<H extends Effect<any, any, any, any>>(
   return _ as any
 }
 
-export const parFastSequenceS =
-  /*#__PURE__*/
-  (() => SS(parFastEffect))()
+export const effect: CMonad4MA<URI> & CApplicative4MA<URI> = {
+  URI,
+  map,
+  of: pure,
+  ap,
+  chain
+}
 
-export const parFastSequenceT =
-  /*#__PURE__*/
-  (() => ST(parFastEffect))()
+export function par<I, E>(
+  I: CApplicative4MAC<URI, E> & I
+): CApplicative4MAPC<URI, E> & Erase<I, CApplicative4MAC<URI, E>>
+export function par<I>(
+  I: CApplicative4MA<URI> & I
+): CApplicative4MAP<URI> & Erase<I, CApplicative4MA<URI>>
+export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
+  return {
+    ...I,
+    _CTX: "async",
+    ap: (fa) => (fab) =>
+      chain_(parZip_(result(fab), result(fa)), (r) =>
+        I.ap(completed(r[1]))(completed(r[0]))
+      )
+  }
+}
 
-export const parSequenceS =
-  /*#__PURE__*/
-  (() => SS(parEffect))()
+export function parFast<I>(
+  I: CApplicative4MA<URI> & I
+): CApplicative4MAP<URI> & Erase<I, CApplicative4MA<URI>>
+export function parFast<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
+  return {
+    ...I,
+    _CTX: "async",
+    ap: parFastAp
+  }
+}
 
-export const parSequenceT =
-  /*#__PURE__*/
-  (() => ST(parEffect))()
+// region classic
+
+export const Do = () => D.Do(effect)
 
 export const sequenceS =
   /*#__PURE__*/
-  (() => SS(effect))()
+  (() => AP.sequenceS(effect))()
 
 export const sequenceT =
   /*#__PURE__*/
-  (() => ST(effect))()
+  (() => AP.sequenceT(effect))()
+
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(effect))()
+
+export const sequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(effect))()
+
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(effect))()
+
+export const sequenceOption =
+  /*#__PURE__*/
+  (() => O.sequence(effect))()
+
+export const sequenceEither =
+  /*#__PURE__*/
+  (() => E.sequence(effect))()
+
+export const traverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(effect))()
+
+export const traverseArray_ =
+  /*#__PURE__*/
+  (() => A.traverse_(effect))()
+
+export const traverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(effect))()
+
+export const traverseRecord_ =
+  /*#__PURE__*/
+  (() => RE.traverse_(effect))()
+
+export const traverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(effect))()
+
+export const traverseTree_ =
+  /*#__PURE__*/
+  (() => TR.traverse_(effect))()
+
+export const traverseOption =
+  /*#__PURE__*/
+  (() => O.traverse(effect))()
+
+export const traverseOption_ =
+  /*#__PURE__*/
+  (() => O.traverse_(effect))()
+
+export const traverseEither =
+  /*#__PURE__*/
+  (() => E.traverse(effect))()
+
+export const traverseEither_ =
+  /*#__PURE__*/
+  (() => E.traverse_(effect))()
+
+export const traverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(effect))()
+
+export const traverseArrayWI_ =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex_(effect))()
+
+export const traverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(effect))()
+
+export const traverseRecordWI_ =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex_(effect))()
+
+export const witherArray =
+  /*#__PURE__*/
+  (() => A.wither(effect))()
+
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(effect))()
+
+export const witherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(effect))()
+
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(effect))()
+
+export const witherOption =
+  /*#__PURE__*/
+  (() => O.wither(effect))()
+
+export const witherOption_ =
+  /*#__PURE__*/
+  (() => O.wither_(effect))()
+
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(effect))()
+
+export const wiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(effect))()
+
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(effect))()
+
+export const wiltOption =
+  /*#__PURE__*/
+  (() => O.wilt(effect))()
+
+export const wiltOption_ =
+  /*#__PURE__*/
+  (() => O.wilt_(effect))()
+
+// region parallel
+
+export const parDo = () => D.Do(par(effect))
+
+export const parSequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(par(effect)))()
+
+export const parSequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(par(effect)))()
+
+export const parSequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(par(effect)))()
+
+export const parSequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(par(effect)))()
+
+export const parSequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(par(effect)))()
+
+export const parTraverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(par(effect)))()
+
+export const parTraverseArray_ =
+  /*#__PURE__*/
+  (() => A.traverse_(par(effect)))()
+
+export const parTraverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(par(effect)))()
+
+export const parTraverseRecord_ =
+  /*#__PURE__*/
+  (() => RE.traverse_(par(effect)))()
+
+export const parTraverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(par(effect)))()
+
+export const parTraverseTree_ =
+  /*#__PURE__*/
+  (() => TR.traverse_(par(effect)))()
+
+export const parWitherArray =
+  /*#__PURE__*/
+  (() => A.wither(par(effect)))()
+
+export const parWitherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(par(effect)))()
+
+export const parWitherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(par(effect)))()
+
+export const parWitherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(par(effect)))()
+
+export const parWiltArray =
+  /*#__PURE__*/
+  (() => A.wilt(par(effect)))()
+
+export const parWiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(par(effect)))()
+
+export const parWiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(par(effect)))()
+
+export const parWiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(par(effect)))()
+
+export const parTraverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(par(effect)))()
+
+export const parTraverseArrayWI_ =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex_(par(effect)))()
+
+export const parTraverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(par(effect)))()
+
+export const parTraverseRecordWI_ =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex_(par(effect)))()
+
+// region parallel fast
+
+export const parFastDo = () => D.Do(parFast(effect))
+
+export const parFastSequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(parFast(effect)))()
+
+export const parFastSequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(parFast(effect)))()
+
+export const parFastSequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(parFast(effect)))()
+
+export const parFastSequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(parFast(effect)))()
+
+export const parFastSequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(parFast(effect)))()
+
+export const parFastTraverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(parFast(effect)))()
+
+export const parFastTraverseArray_ =
+  /*#__PURE__*/
+  (() => A.traverse_(parFast(effect)))()
+
+export const parFastTraverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(parFast(effect)))()
+
+export const parFastTraverseRecord_ =
+  /*#__PURE__*/
+  (() => RE.traverse_(parFast(effect)))()
+
+export const parFastTraverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(parFast(effect)))()
+
+export const parFastTraverseTree_ =
+  /*#__PURE__*/
+  (() => TR.traverse_(parFast(effect)))()
+
+export const parFastWitherArray =
+  /*#__PURE__*/
+  (() => A.wither(parFast(effect)))()
+
+export const parFastWitherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(parFast(effect)))()
+
+export const parFastWitherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(parFast(effect)))()
+
+export const parFastWitherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(parFast(effect)))()
+
+export const parFastWiltArray =
+  /*#__PURE__*/
+  (() => A.wilt(parFast(effect)))()
+
+export const parFastWiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(parFast(effect)))()
+
+export const parFastWiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(parFast(effect)))()
+
+export const parFastWiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(parFast(effect)))()
+
+export const parFastTraverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(parFast(effect)))()
+
+export const parFastTraverseArrayWI_ =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex_(parFast(effect)))()
+
+export const parFastTraverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(parFast(effect)))()
+
+export const parFastTraverseRecordWI_ =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex_(parFast(effect)))()

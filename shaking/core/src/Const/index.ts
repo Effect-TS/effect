@@ -7,18 +7,13 @@
  * `Const` has some useful instances. For example, the `Applicative` instance allows us to collect results using a `Monoid`
  * while ignoring return values.
  */
-import type { Const } from "fp-ts/lib/Const"
 
 import type {
-  Applicative2C,
-  Apply2C,
-  BooleanAlgebra,
-  HeytingAlgebra,
-  Ring,
-  Semiring,
-  Functor2,
-  Contravariant2,
-  Bifunctor2
+  CApplicative2C,
+  CApply2C,
+  CBifunctor2,
+  CContravariant2,
+  CFunctor2
 } from "../Base"
 import type { Eq } from "../Eq"
 import { identity, unsafeCoerce } from "../Function"
@@ -27,7 +22,11 @@ import type { Bounded, Ord } from "../Ord"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 
-export type { Const }
+export { const_ as const }
+
+export type Const<E, A> = E & {
+  readonly _A: A
+}
 
 export const bimap_: <E, A, G, B>(
   fea: Const<E, A>,
@@ -49,47 +48,33 @@ export const contramap: <A, B>(
   f: (b: B) => A
 ) => <E>(fa: Const<E, A>) => Const<E, B> = (f) => (fa) => contramap_(fa, f)
 
-export function getApplicative<E>(M: Monoid<E>): Applicative2C<URI, E> {
+export function getApplicative<E>(M: Monoid<E>): CApplicative2C<URI, E> {
   return {
     ...getApply(M),
     of: () => make(M.empty)
   }
 }
 
-export function getApply<E>(S: Semigroup<E>): Apply2C<URI, E> {
+export function getApply<E>(S: Semigroup<E>): CApply2C<URI, E> {
   return {
     URI,
     _E: undefined as any,
-    map: const_.map,
-    ap: (fab, fa) => make(S.concat(fab, fa))
+    map,
+    ap: (fa) => (fab) => make(S.concat(fab, fa))
   }
 }
-
-export const getBooleanAlgebra: <E, A>(
-  H: BooleanAlgebra<E>
-) => BooleanAlgebra<Const<E, A>> = identity as any
 
 export const getBounded: <E, A>(B: Bounded<E>) => Bounded<Const<E, A>> = identity as any
 
 export const getEq: <E, A>(E: Eq<E>) => Eq<Const<E, A>> = identity
 
-export const getHeytingAlgebra: <E, A>(
-  H: HeytingAlgebra<E>
-) => HeytingAlgebra<Const<E, A>> = identity as any
-
 export const getMonoid: <E, A>(M: Monoid<E>) => Monoid<Const<E, A>> = identity as any
 
 export const getOrd: <E, A>(O: Ord<E>) => Ord<Const<E, A>> = identity
 
-export const getRing: <E, A>(S: Ring<E>) => Ring<Const<E, A>> = identity as any
-
 export const getSemigroup: <E, A>(
   S: Semigroup<E>
 ) => Semigroup<Const<E, A>> = identity as any
-
-export const getSemiring: <E, A>(
-  S: Semiring<E>
-) => Semiring<Const<E, A>> = identity as any
 
 export function getShow<E, A>(S: Show<E>): Show<Const<E, A>> {
   return {
@@ -127,12 +112,10 @@ declare module "../Base/HKT" {
   }
 }
 
-export const const_: Functor2<URI> & Contravariant2<URI> & Bifunctor2<URI> = {
+export const const_: CFunctor2<URI> & CContravariant2<URI> & CBifunctor2<URI> = {
   URI,
-  map: map_,
-  contramap: contramap_,
-  bimap: bimap_,
-  mapLeft: mapLeft_
+  map,
+  contramap,
+  bimap,
+  mapLeft
 }
-
-export { const_ as const }

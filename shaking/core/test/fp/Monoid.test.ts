@@ -36,17 +36,22 @@ describe("Monoid", () => {
     const isEven = (n: number) => n % 2 === 0
 
     assert.deepStrictEqual(
-      array.filter(
-        [1, 2, 3, 40],
-        fold(getPredicateMonoidAll<number>())([isLessThan10, isEven])
-      ),
+      array.filter(fold(getPredicateMonoidAll<number>())([isLessThan10, isEven]))([
+        1,
+        2,
+        3,
+        40
+      ]),
       [2]
     )
     assert.deepStrictEqual(
-      array.filter(
-        [1, 2, 3, 40, 41],
-        fold(getPredicateMonoidAny<number>())([isLessThan10, isEven])
-      ),
+      array.filter(fold(getPredicateMonoidAny<number>())([isLessThan10, isEven]))([
+        1,
+        2,
+        3,
+        40,
+        41
+      ]),
       [1, 2, 3, 40]
     )
   })

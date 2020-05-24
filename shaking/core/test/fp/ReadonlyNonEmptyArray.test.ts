@@ -1,13 +1,13 @@
 import * as assert from "assert"
 
-import * as C from "fp-ts/lib/Const"
-import * as I from "fp-ts/lib/Identity"
-
+import * as C from "../../src/Const"
 import { eqNumber } from "../../src/Eq"
 import { identity } from "../../src/Function"
+import * as I from "../../src/Identity"
 import * as M from "../../src/Monoid"
 import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
+import { pipe } from "../../src/Pipe"
 import * as _ from "../../src/Readonly/NonEmptyArray"
 import * as S from "../../src/Semigroup"
 import { showString } from "../../src/Show"
@@ -23,12 +23,12 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("map", () => {
     const double = (n: number) => n * 2
-    assert.deepStrictEqual(_.readonlyNonEmptyArray.map([1, 2], double), [2, 4])
+    assert.deepStrictEqual(_.readonlyNonEmptyArray.map(double)([1, 2]), [2, 4])
   })
 
   it("mapWithIndex", () => {
     const add = (i: number, n: number) => n + i
-    assert.deepStrictEqual(_.readonlyNonEmptyArray.mapWithIndex([1, 2], add), [1, 3])
+    assert.deepStrictEqual(_.readonlyNonEmptyArray.mapWithIndex(add)([1, 2]), [1, 3])
   })
 
   it("of", () => {
@@ -37,7 +37,7 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("ap", () => {
     const double = (n: number) => n * 2
-    assert.deepStrictEqual(_.readonlyNonEmptyArray.ap([double, double], [1, 2]), [
+    assert.deepStrictEqual(_.readonlyNonEmptyArray.ap([1, 2])([double, double]), [
       2,
       4,
       2,
@@ -47,12 +47,12 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("chain", () => {
     const f = (a: number): _.ReadonlyNonEmptyArray<number> => [a, 4]
-    assert.deepStrictEqual(_.readonlyNonEmptyArray.chain([1, 2], f), [1, 4, 2, 4])
+    assert.deepStrictEqual(_.readonlyNonEmptyArray.chain(f)([1, 2]), [1, 4, 2, 4])
   })
 
   it("extend", () => {
     const sum = M.fold(M.monoidSum)
-    assert.deepStrictEqual(_.readonlyNonEmptyArray.extend([1, 2, 3, 4], sum), [
+    assert.deepStrictEqual(_.readonlyNonEmptyArray.extend(sum)([1, 2, 3, 4]), [
       10,
       9,
       7,
@@ -66,14 +66,16 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("traverse", () => {
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.traverse(O.option)([1, 2, 3], (n) =>
-        n >= 0 ? O.some(n) : O.none
+      pipe(
+        [1, 2, 3],
+        _.readonlyNonEmptyArray.traverse(O.option)((n) => (n >= 0 ? O.some(n) : O.none))
       ),
       O.some([1, 2, 3])
     )
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.traverse(O.option)([1, 2, 3], (n) =>
-        n >= 2 ? O.some(n) : O.none
+      pipe(
+        [1, 2, 3],
+        _.readonlyNonEmptyArray.traverse(O.option)((n) => (n >= 2 ? O.some(n) : O.none))
       ),
       O.none
     )
@@ -100,21 +102,24 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("reduce", () => {
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.reduce(["a", "b"], "", (b, a) => b + a),
+      pipe(
+        ["a", "b"],
+        _.readonlyNonEmptyArray.reduce("", (b, a) => b + a)
+      ),
       "ab"
     )
   })
 
   it("foldMap", () => {
-    const foldMap = _.readonlyNonEmptyArray.foldMap(M.monoidString)
-    assert.deepStrictEqual(foldMap(["a", "b", "c"], identity), "abc")
+    const foldMap = _.readonlyNonEmptyArray.foldMap(M.monoidString)((s: string) => s)
+    assert.deepStrictEqual(foldMap(["a", "b", "c"]), "abc")
   })
 
   it("reduceRight", () => {
     const reduceRight = _.readonlyNonEmptyArray.reduceRight
     const init1 = ""
     const f = (a: string, acc: string) => acc + a
-    assert.deepStrictEqual(reduceRight(["a", "b", "c"], init1, f), "cba")
+    assert.deepStrictEqual(reduceRight(init1, f)(["a", "b", "c"]), "cba")
   })
 
   it("fromReadonlyArray", () => {
@@ -224,10 +229,10 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("modifyAt", () => {
     const double = (n: number): number => n * 2
-    assert.deepStrictEqual(_.modifyAt(1, double)(_.cons(1, [])), O.none)
+    assert.deepStrictEqual(_.modifyAt(1, double)(_.cons(1)([])), O.none)
     assert.deepStrictEqual(
-      _.modifyAt(1, double)(_.cons(1, [2])),
-      O.some(_.cons(1, [4]))
+      _.modifyAt(1, double)(_.cons(1)([2])),
+      O.some(_.cons(1)([4]))
     )
   })
 
@@ -269,16 +274,19 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("reduceWithIndex", () => {
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.reduceWithIndex(["a", "b"], "", (i, b, a) => b + i + a),
+      pipe(
+        ["a", "b"],
+        _.readonlyNonEmptyArray.reduceWithIndex("", (i, b, a) => b + i + a)
+      ),
       "0a1b"
     )
   })
 
   it("foldMapWithIndex", () => {
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.foldMapWithIndex(M.monoidString)(
+      pipe(
         ["a", "b"],
-        (i, a) => i + a
+        _.readonlyNonEmptyArray.foldMapWithIndex(M.monoidString)((i, a) => i + a)
       ),
       "0a1b"
     )
@@ -286,10 +294,9 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("reduceRightWithIndex", () => {
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.reduceRightWithIndex(
+      pipe(
         ["a", "b"],
-        "",
-        (i, a, b) => b + i + a
+        _.readonlyNonEmptyArray.reduceRightWithIndex("", (i, a, b) => b + i + a)
       ),
       "1b0a"
     )
@@ -297,14 +304,20 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("traverseWithIndex", () => {
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.traverseWithIndex(O.option)(["a", "bb"], (i, s) =>
-        s.length >= 1 ? O.some(s + i) : O.none
+      pipe(
+        ["a", "bb"],
+        _.readonlyNonEmptyArray.traverseWithIndex(O.option)((i, s) =>
+          s.length >= 1 ? O.some(s + i) : O.none
+        )
       ),
       O.some(["a0", "bb1"])
     )
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.traverseWithIndex(O.option)(["a", "bb"], (i, s) =>
-        s.length > 1 ? O.some(s + i) : O.none
+      pipe(
+        ["a", "bb"],
+        _.readonlyNonEmptyArray.traverseWithIndex(O.option)((i, s) =>
+          s.length > 1 ? O.some(s + i) : O.none
+        )
       ),
       O.none
     )
@@ -312,28 +325,33 @@ describe("ReadonlyNonEmptyArray", () => {
     // FoldableWithIndex compatibility
     const f = (i: number, s: string): string => s + i
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.foldMapWithIndex(M.monoidString)(["a", "bb"], f),
-      _.readonlyNonEmptyArray.traverseWithIndex(C.getApplicative(M.monoidString))(
+      _.readonlyNonEmptyArray.foldMapWithIndex(M.monoidString)(f)(["a", "bb"]),
+      pipe(
         ["a", "bb"],
-        (i, a) => C.make(f(i, a))
+        _.readonlyNonEmptyArray.traverseWithIndex(
+          C.getApplicative(M.monoidString)
+        )((i, a) => C.make(f(i, a)))
       )
     )
 
     // FunctorWithIndex compatibility
     assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.mapWithIndex(["a", "bb"], f),
-      _.readonlyNonEmptyArray.traverseWithIndex(I.identity)(["a", "bb"], (i, a) =>
-        I.identity.of(f(i, a))
+      _.readonlyNonEmptyArray.mapWithIndex(f)(["a", "bb"]),
+      pipe(
+        ["a", "bb"],
+        _.readonlyNonEmptyArray.traverseWithIndex(I.identity)((i, a) =>
+          I.identity.of(f(i, a))
+        )
       )
     )
   })
 
   it("cons", () => {
-    assert.deepStrictEqual(_.cons(1, [2, 3, 4]), [1, 2, 3, 4])
+    assert.deepStrictEqual(_.cons(1)([2, 3, 4]), [1, 2, 3, 4])
   })
 
   it("snoc", () => {
-    assert.deepStrictEqual(_.snoc([1, 2, 3], 4), [1, 2, 3, 4])
+    assert.deepStrictEqual(_.snoc(4)([1, 2, 3]), [1, 2, 3, 4])
   })
 
   it("getShow", () => {
@@ -344,10 +362,7 @@ describe("ReadonlyNonEmptyArray", () => {
 
   it("alt / concat", () => {
     assert.deepStrictEqual(_.concat(["a"], []), ["a"])
-    assert.deepStrictEqual(
-      _.readonlyNonEmptyArray.alt(["a"], () => ["b"]),
-      ["a", "b"]
-    )
+    assert.deepStrictEqual(_.readonlyNonEmptyArray.alt(() => ["b"])(["a"]), ["a", "b"])
   })
 
   it("foldMap", () => {

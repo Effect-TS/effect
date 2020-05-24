@@ -1,22 +1,18 @@
-import { sequenceS as SS, sequenceT as ST } from "../Apply"
-import type { Bifunctor4 } from "../Base"
-import { Do as DoG } from "../Do"
+/* adapted from https://github.com/gcanti/fp-ts-contrib */
+
+import * as A from "../Array"
+import type { CBifunctor4, CMonad4MA, CApplicative4MAP } from "../Base"
+import * as AP from "../Base/Apply"
+import * as D from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
 import * as F from "../Function"
 import * as M from "../Managed"
 import * as O from "../Option"
+import * as RE from "../Record"
 import * as Stream from "../Stream"
 import { Managed, StreamEither, StreamEitherURI as URI } from "../Support/Common"
-import { ForM } from "../Support/For"
-import type {
-  ATypeOf,
-  ETypeOf,
-  Monad4EP,
-  MonadThrow4EP,
-  RTypeOf,
-  STypeOf
-} from "../Support/Overloads"
+import * as TR from "../Tree"
 
 type StreamEitherT<S, R, E, A> = Stream.Stream<S, R, never, E.Either<E, A>>
 
@@ -166,7 +162,7 @@ export function fromSource<S, R, E, S2, R2, E2, A>(
     Stream.fromSource(
       M.map_(r, (e) =>
         T.chainError_(
-          T.map_(e, (oa) => O.option.map(oa, E.rightW)),
+          T.map_(e, (oa) => O.map_(oa, E.rightW)),
           (e) => T.pure(O.some(E.leftW(e)))
         )
       )
@@ -339,20 +335,9 @@ export const bimap_ = <S, R, E, A, G, B>(
   g: (a: A) => B
 ) => map_(mapLeft_(fea, f), g)
 
-export const streamEither: Monad4EP<URI> & MonadThrow4EP<URI> & Bifunctor4<URI> = {
-  URI,
-  _CTX: "async",
-  map: map_,
-  of,
-  ap: ap_,
-  chain: chain_,
-  throwError,
-  mapLeft: mapLeft_,
-  bimap: bimap_
-}
-export const ap: <S1, R, E, A, E2>(
+export const ap: <S1, R, E, A>(
   fa: StreamEither<S1, R, E, A>
-) => <S2, R2, B>(
+) => <S2, R2, E2, B>(
   fab: StreamEither<S2, R2, E2, (a: A) => B>
 ) => StreamEither<unknown, R & R2, E | E2, B> = (fa) => (fab) => ap_(fab, fa)
 
@@ -410,8 +395,16 @@ export const mapLeft: <E, G>(
   fa
 ) => mapLeft_(fa, f)
 
-export const Do = () => DoG(streamEither)
-export const For = () => ForM(streamEither)
+export const streamEither: CMonad4MA<URI> & CBifunctor4<URI> & CApplicative4MAP<URI> = {
+  URI,
+  _CTX: "async",
+  map,
+  of,
+  ap,
+  chain,
+  mapLeft,
+  bimap
+}
 
 /**
  * Used to merge types of the form StreamEither<S, R, E, A> | StreamEither<S2, R2, E2, A2> into StreamEither<S | S2, R & R2, E | E2, A | A2>
@@ -419,14 +412,109 @@ export const For = () => ForM(streamEither)
  */
 export function compact<H extends StreamEither<any, any, any, any>>(
   _: H
-): StreamEither<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+): StreamEither<AP.STypeOf<H>, AP.RTypeOf<H>, AP.ETypeOf<H>, AP.ATypeOf<H>> {
   return _ as any
 }
 
+// region classic
+export const Do = () => D.Do(streamEither)
+
 export const sequenceS =
   /*#__PURE__*/
-  (() => SS(streamEither))()
+  (() => AP.sequenceS(streamEither))()
 
 export const sequenceT =
   /*#__PURE__*/
-  (() => ST(streamEither))()
+  (() => AP.sequenceT(streamEither))()
+
+export const sequenceArray =
+  /*#__PURE__*/
+  (() => A.sequence(streamEither))()
+
+export const sequenceRecord =
+  /*#__PURE__*/
+  (() => RE.sequence(streamEither))()
+
+export const sequenceTree =
+  /*#__PURE__*/
+  (() => TR.sequence(streamEither))()
+
+export const sequenceOption =
+  /*#__PURE__*/
+  (() => O.sequence(streamEither))()
+
+export const sequenceEither =
+  /*#__PURE__*/
+  (() => E.sequence(streamEither))()
+
+export const traverseArray =
+  /*#__PURE__*/
+  (() => A.traverse(streamEither))()
+
+export const traverseRecord =
+  /*#__PURE__*/
+  (() => RE.traverse(streamEither))()
+
+export const traverseTree =
+  /*#__PURE__*/
+  (() => TR.traverse(streamEither))()
+
+export const traverseOption =
+  /*#__PURE__*/
+  (() => O.traverse(streamEither))()
+
+export const traverseEither =
+  /*#__PURE__*/
+  (() => E.traverse(streamEither))()
+
+export const traverseArrayWI =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex(streamEither))()
+
+export const traverseRecordWI =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex(streamEither))()
+
+export const witherArray =
+  /*#__PURE__*/
+  (() => A.wither(streamEither))()
+
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(streamEither))()
+
+export const witherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(streamEither))()
+
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(streamEither))()
+
+export const witherOption =
+  /*#__PURE__*/
+  (() => O.wither(streamEither))()
+
+export const witherOption_ =
+  /*#__PURE__*/
+  (() => O.wither_(streamEither))()
+
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(streamEither))()
+
+export const wiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(streamEither))()
+
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(streamEither))()
+
+export const wiltOption =
+  /*#__PURE__*/
+  (() => O.wilt(streamEither))()
+
+export const wiltOption_ =
+  /*#__PURE__*/
+  (() => O.wilt_(streamEither))()

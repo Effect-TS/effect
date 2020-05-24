@@ -184,7 +184,7 @@ export function implementWith<SW, RW, EW, AW>(w: T.Effect<SW, RW, EW, AW>) {
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>> & RW, TypeOf<S>, EW, SW> => (
     eff
   ) =>
-    T.effect.chain(w, (r) =>
+    T.chain_(w, (r) =>
       T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
         pipe(eff, T.provide(providing(s, i(r), e), inverted))
       )

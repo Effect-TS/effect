@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 export function tuple2<A, B>(a: A, b: B): readonly [A, B] {
   return [a, b] as const
 }

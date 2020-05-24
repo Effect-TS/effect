@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import { Predicate } from "../../Function"
 import {
   cons,
@@ -12,7 +14,7 @@ import {
   find_,
   of as listOf
 } from "../../List"
-import { Option, some, none, option } from "../../Option"
+import { Option, some, none, alt_ } from "../../Option"
 import { pipe } from "../../Pipe"
 
 export interface Dequeue<A> {
@@ -82,7 +84,7 @@ class DequeueImpl<A> implements Dequeue<A> {
   }
 
   find(p: Predicate<A>): Option<A> {
-    return option.alt(find_(this.front, p), () => find_(this.back, p))
+    return alt_(find_(this.front, p), () => find_(this.back, p))
   }
 }
 

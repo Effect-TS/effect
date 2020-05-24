@@ -3,6 +3,7 @@ import { Suite } from "benchmark"
 import * as wave from "waveguide/lib/wave"
 
 import * as T from "../build/Effect"
+import { pipe } from "../build/Pipe"
 
 export const fibPromise = async (n: bigint): Promise<bigint> => {
   if (n < BigInt(2)) {
@@ -45,8 +46,20 @@ export const fibEffect = (n: bigint): T.Sync<bigint> => {
   if (n < BigInt(2)) {
     return T.pure(BigInt(1))
   }
-  return T.effect.chain(fibEffect(n - BigInt(1)), (a) =>
-    T.effect.map(fibEffect(n - BigInt(2)), (b) => a + b)
+  return T.chain_(fibEffect(n - BigInt(1)), (a) =>
+    T.map_(fibEffect(n - BigInt(2)), (b) => a + b)
+  )
+}
+
+export const fibEffectPipe = (n: bigint): T.Sync<bigint> => {
+  if (n < BigInt(2)) {
+    return T.pure(BigInt(1))
+  }
+
+  return pipe(
+    fibEffect(n - BigInt(2)),
+    T.zip(fibEffect(n - BigInt(1))),
+    T.map(([a,b]) => a + b)
   )
 }
 
@@ -55,15 +68,6 @@ const n = BigInt(10)
 const benchmark = new Suite("Fibonacci", { minTime: 10000 })
 
 benchmark
-  .add(
-    "effect",
-    (cb: any) => {
-      T.run(fibEffect(n), () => {
-        cb.resolve()
-      })
-    },
-    { defer: true }
-  )
   .add(
     "qio",
     (cb: any) => {
@@ -96,6 +100,24 @@ benchmark
     (cb: any) => {
       fib(n)
       cb.resolve()
+    },
+    { defer: true }
+  )
+  .add(
+    "effect",
+    (cb: any) => {
+      T.run(fibEffect(n), () => {
+        cb.resolve()
+      })
+    },
+    { defer: true }
+  )
+  .add(
+    "effectPipe",
+    (cb: any) => {
+      T.run(fibEffectPipe(n), () => {
+        cb.resolve()
+      })
     },
     { defer: true }
   )

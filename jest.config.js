@@ -15,5 +15,8 @@ module.exports = {
   ],
   setupFiles: ["./jest-setup.ts"],
   modulePathIgnorePatterns: ["dtslint", "build"],
-  verbose: false
+  verbose: false,
+  moduleNameMapper: {
+    "@matechs/core/(.*)$": "<rootDir>/shaking/core/build/$1"
+  }
 }

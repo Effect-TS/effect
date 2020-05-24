@@ -2,13 +2,13 @@ import * as assert from "assert"
 
 import { expect } from "chai"
 import fc from "fast-check"
-import { Do } from "fp-ts-contrib/lib/Do"
-import { array } from "fp-ts/lib/Array"
-import { FunctionN, identity } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
 
 import { effect as T } from "../src"
+import { array } from "../src/Array"
+import { Do } from "../src/Do"
 import * as ex from "../src/Exit"
+import { FunctionN, identity } from "../src/Function"
+import { pipe } from "../src/Pipe"
 import { makeRef } from "../src/Ref"
 import { makeSemaphore } from "../src/Semaphore"
 
@@ -60,14 +60,12 @@ describe("semaphore", () => {
     return expectExit(eff, ex.done([false, true, 1]))
   })
   it("should allow acquire to be interruptible", () => {
-    const eff1 = T.effect.chain(makeRef(false), (gate) =>
-      T.effect.chain(makeSemaphore(1), (sem) =>
-        T.effect.chain(
-          T.fork(T.applySecond(sem.acquireN(2), gate.set(true))),
-          (child) =>
-            T.effect.chain(T.applySecond(child.interrupt, child.wait), (_exit) =>
-              T.zip_(sem.available, gate.get)
-            )
+    const eff1 = T.chain_(makeRef(false), (gate) =>
+      T.chain_(makeSemaphore(1), (sem) =>
+        T.chain_(T.fork(T.applySecond(sem.acquireN(2), gate.set(true))), (child) =>
+          T.chain_(T.applySecond(child.interrupt, child.wait), (_exit) =>
+            T.zip_(sem.available, gate.get)
+          )
         )
       )
     )
@@ -113,9 +111,10 @@ describe("semaphore", () => {
         fc.asyncProperty(
           fc.array(fc.tuple(fc.nat(100), fc.nat(10), fc.nat(10), fc.boolean()), 100),
           (acquires) => {
-            const eff = T.effect.chain(makeSemaphore(100), (sem) =>
+            const eff = T.chain_(makeSemaphore(100), (sem) =>
               pipe(
-                array.traverse(T.effect)(acquires, ([n, pre, post, int]) =>
+                acquires,
+                array.traverse(T.effect)(([n, pre, post, int]) =>
                   sem.withPermitsN(
                     n,
                     pipe(
@@ -125,7 +124,7 @@ describe("semaphore", () => {
                     )
                   )
                 ),
-                T.chain((fibers) => array.traverse(T.effect)(fibers, (f) => f.wait)),
+                T.chain(array.traverse(T.effect)((f) => f.wait)),
                 (result) => T.applySecond(result, sem.available)
               )
             )

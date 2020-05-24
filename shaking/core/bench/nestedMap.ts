@@ -27,7 +27,7 @@ export const nestedMapQio = (): QIO<bigint> => {
 export const nestedMapEffect = (): T.Sync<bigint> => {
   let io: T.Sync<bigint> = T.pure(BigInt(0))
   for (let i = 0; i < MAX; i++) {
-    io = T.effect.map(io, inc)
+    io = T.map_(io, inc)
   }
   return io
 }
@@ -35,15 +35,6 @@ export const nestedMapEffect = (): T.Sync<bigint> => {
 const benchmark = new Suite(`NestedMap ${MAX}`, { minTime: 10000 })
 
 benchmark
-  .add(
-    "effect",
-    (cb: any) => {
-      T.run(nestedMapEffect(), () => {
-        cb.resolve()
-      })
-    },
-    { defer: true }
-  )
   .add(
     "wave",
     (cb: any) => {
@@ -57,6 +48,15 @@ benchmark
     "qio",
     (cb: any) => {
       defaultRuntime().unsafeExecute(nestedMapQio(), () => {
+        cb.resolve()
+      })
+    },
+    { defer: true }
+  )
+  .add(
+    "effect",
+    (cb: any) => {
+      T.run(nestedMapEffect(), () => {
         cb.resolve()
       })
     },

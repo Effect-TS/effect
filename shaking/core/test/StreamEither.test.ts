@@ -1,12 +1,12 @@
 import * as assert from "assert"
 
 import { expect } from "chai"
-import { none, some } from "fp-ts/lib/Option"
-import { FunctionN, identity } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
 
 import { effect as T, streamEither as S } from "../src"
 import * as ex from "../src/Exit"
+import { FunctionN, identity } from "../src/Function"
+import { none, some } from "../src/Option"
+import { pipe } from "../src/Pipe"
 
 export async function expectExitIn<E, A, B>(
   ioa: T.AsyncRE<{}, E, A>,
@@ -256,13 +256,13 @@ describe("StreamEither", () => {
     }
 
     const a = S.encaseEffect(T.access(({ initial }: Config) => initial))
-    const s = S.streamEither.chain(a, (n) => S.fromRange(n, 1, 10))
+    const s = S.chain_(a, (n) => S.fromRange(n, 1, 10))
 
-    const m = S.streamEither.chain(s, (n) =>
+    const m = S.chain_(s, (n) =>
       S.encaseEffect(T.access(({ second }: ConfigB) => n + second))
     )
 
-    const g = S.streamEither.chain(m, (n) => S.fromRange(0, 1, n))
+    const g = S.chain_(m, (n) => S.fromRange(0, 1, n))
     const r = S.collectArray(g)
 
     const res = await T.runToPromise(

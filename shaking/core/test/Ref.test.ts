@@ -1,8 +1,7 @@
 import * as assert from "assert"
 
-import { Do } from "fp-ts-contrib/lib/Do"
-
 import { effect as T, ref as R } from "../src"
+import { Do } from "../src/Do"
 
 interface Config {
   initial: number

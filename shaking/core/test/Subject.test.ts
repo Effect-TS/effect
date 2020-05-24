@@ -1,7 +1,6 @@
-import { some } from "fp-ts/lib/Option"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import { stream as S, effect as T, managed as M } from "../src"
+import { some } from "../src/Option"
+import { pipe } from "../src/Pipe"
 
 describe("Subject", () => {
   it("use subscribe", async () => {

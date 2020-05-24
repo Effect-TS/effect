@@ -35,8 +35,8 @@ describe("Ord", () => {
       [1, "c"]
     ]
     const M = getMonoid<T>()
-    const sortByFst = ord.contramap(ordNumber, (x: T) => x[0])
-    const sortBySnd = ord.contramap(ordString, (x: T) => x[1])
+    const sortByFst = ord.contramap((x: T) => x[0])(ordNumber)
+    const sortBySnd = ord.contramap((x: T) => x[1])(ordString)
     //                  v-- left unit
     const O1 = fold(M)([M.empty, sortByFst, sortBySnd])
     assert.deepStrictEqual(sort(O1)(tuples), [

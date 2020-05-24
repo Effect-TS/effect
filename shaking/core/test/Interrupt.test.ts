@@ -1,10 +1,9 @@
 import * as assert from "assert"
 
-import { sequenceT } from "fp-ts/lib/Apply"
-import { array } from "fp-ts/lib/Array"
-import { right } from "fp-ts/lib/Either"
-
-import { effect as T } from "../src"
+import { sequenceT } from "../src/Apply"
+import { array } from "../src/Array"
+import * as T from "../src/Effect"
+import { right } from "../src/Either"
 import { interruptWithError, done } from "../src/Exit"
 
 describe("Interrupt", () => {
@@ -64,7 +63,7 @@ describe("Interrupt", () => {
   it("should interrupt with error parallel", async () => {
     let exit: any = null
 
-    const program = sequenceT(T.parEffect)(
+    const program = sequenceT(T.par(T.effect))(
       T.async(() => (cb) => {
         setTimeout(() => {
           cb(new Error("test error"))
@@ -105,7 +104,7 @@ describe("Interrupt", () => {
       }
     })
 
-    const par = array.sequence(T.parEffect)([program, program, program])
+    const par = array.sequence(T.par(T.effect))([program, program, program])
 
     const fiber = await T.runToPromise(T.fork(par))
 

@@ -1,3 +1,5 @@
+/* adapted from https://github.com/rzeigler/waveguide */
+
 import { AsyncCancelContFn } from "../Common"
 import { LinkedList } from "../LinkedList"
 
