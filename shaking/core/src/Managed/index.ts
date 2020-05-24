@@ -753,6 +753,50 @@ export const traverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(managed))()
 
+export const witherArray =
+  /*#__PURE__*/
+  (() => A.wither(managed))()
+
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(managed))()
+
+export const witherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(managed))()
+
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(managed))()
+
+export const witherOption =
+  /*#__PURE__*/
+  (() => O.wither(managed))()
+
+export const witherOption_ =
+  /*#__PURE__*/
+  (() => O.wither_(managed))()
+
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(managed))()
+
+export const wiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(managed))()
+
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(managed))()
+
+export const wiltOption =
+  /*#__PURE__*/
+  (() => O.wilt(managed))()
+
+export const wiltOption_ =
+  /*#__PURE__*/
+  (() => O.wilt_(managed))()
+
 // region parallel
 export const parDo = () => D.Do(par(managed))
 
@@ -795,3 +839,35 @@ export const parTraverseArrayWI =
 export const parTraverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(par(managed)))()
+
+export const parWitherArray =
+  /*#__PURE__*/
+  (() => A.wither(par(managed)))()
+
+export const parWitherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(par(managed)))()
+
+export const parWitherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(par(managed)))()
+
+export const parWitherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(par(managed)))()
+
+export const parWiltArray =
+  /*#__PURE__*/
+  (() => A.wilt(par(managed)))()
+
+export const parWiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(par(managed)))()
+
+export const parWiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(par(managed)))()
+
+export const parWiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(par(managed)))()

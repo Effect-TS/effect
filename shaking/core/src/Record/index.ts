@@ -755,6 +755,45 @@ export const wither: {
   ) => <K extends string>(wa: Record<K, A>) => HKT<F, Record<K, B>>
 } = RR.wither
 
+export const wither_: {
+  <F extends URIS4>(F: CApplicative4MAP<F>): <K extends string, A, S, R, E, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, unknown, R, E, Record<K, B>>
+  <F extends URIS4, E>(F: CApplicative4MAPC<F, E>): <K extends string, A, S, R, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, unknown, R, E, Record<K, B>>
+  <F extends URIS4, E>(F: CApplicative4MAC<F, E>): <K extends string, A, S, R, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, S, R, E, Record<K, B>>
+  <F extends URIS4>(F: CApplicative4MA<F>): <K extends string, A, S, R, E, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, S, R, E, Record<K, B>>
+  <F extends URIS4>(F: CApplicative4<F>): <K extends string, A, S, R, E, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, S, R, E, Record<K, B>>
+  <F extends URIS3>(F: CApplicative3<F>): <K extends string, A, R, E, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind3<F, R, E, Option<B>>
+  ) => Kind3<F, R, E, Record<K, B>>
+  <F extends URIS2>(F: CApplicative2<F>): <K extends string, A, E, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind2<F, E, Option<B>>
+  ) => Kind2<F, E, Record<K, B>>
+  <F extends URIS>(F: CApplicative1<F>): <K extends string, A, B>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind<F, Option<B>>
+  ) => Kind<F, Record<K, B>>
+  <F>(F: CApplicative<F>): <K extends string, A, B>(
+    wa: Record<K, A>,
+    f: (a: A) => HKT<F, Option<B>>
+  ) => HKT<F, Record<K, B>>
+} = RR.wither_
+
 export const wilt: {
   <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <A, S, R, B, C>(
     f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
@@ -812,6 +851,53 @@ export const wilt: {
     wa: Record<K, A>
   ) => HKT<F, Separated<Record<K, B>, Record<K, C>>>
 } = RR.wilt
+
+export const wilt_: {
+  <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <K extends string, A, S, R, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, unknown, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <K extends string, A, S, R, E, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, unknown, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends MaURIS, E>(F: CApplicative4MAC<F, E>): <K extends string, A, S, R, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <K extends string, A, S, R, E, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends URIS4>(F: CApplicative4<F>): <K extends string, A, S, R, E, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends URIS3>(F: CApplicative3<F>): <K extends string, A, R, E, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind3<F, R, E, Either<B, C>>
+  ) => Kind3<F, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends URIS3, E>(F: CApplicative3C<F, E>): <K extends string, A, R, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind3<F, R, E, Either<B, C>>
+  ) => Kind3<F, R, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends URIS2>(F: CApplicative2<F>): <K extends string, A, E, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind2<F, E, Either<B, C>>
+  ) => Kind2<F, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends URIS2, E>(F: CApplicative2C<F, E>): <K extends string, A, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind2<F, E, Either<B, C>>
+  ) => Kind2<F, E, Separated<Record<K, B>, Record<K, C>>>
+  <F extends URIS>(F: CApplicative1<F>): <K extends string, A, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => Kind<F, Either<B, C>>
+  ) => Kind<F, Separated<Record<K, B>, Record<K, C>>>
+  <F>(F: CApplicative<F>): <K extends string, A, B, C>(
+    wa: Record<K, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<Record<K, B>, Record<K, C>>>
+} = RR.wilt_
 
 export const filter: {
   <A, B extends A>(refinement: Refinement<A, B>): <K extends string>(

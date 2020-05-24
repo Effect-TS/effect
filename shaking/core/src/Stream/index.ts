@@ -1777,3 +1777,47 @@ export const traverseArrayWI =
 export const traverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(stream))()
+
+export const witherArray =
+  /*#__PURE__*/
+  (() => A.wither(stream))()
+
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(stream))()
+
+export const witherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(stream))()
+
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(stream))()
+
+export const witherOption =
+  /*#__PURE__*/
+  (() => O.wither(stream))()
+
+export const witherOption_ =
+  /*#__PURE__*/
+  (() => O.wither_(stream))()
+
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(stream))()
+
+export const wiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(stream))()
+
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(stream))()
+
+export const wiltOption =
+  /*#__PURE__*/
+  (() => O.wilt(stream))()
+
+export const wiltOption_ =
+  /*#__PURE__*/
+  (() => O.wilt_(stream))()

@@ -347,6 +347,50 @@ export const traverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(effectOption))()
 
+export const witherArray =
+  /*#__PURE__*/
+  (() => A.wither(effectOption))()
+
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(effectOption))()
+
+export const witherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(effectOption))()
+
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(effectOption))()
+
+export const witherOption =
+  /*#__PURE__*/
+  (() => O.wither(effectOption))()
+
+export const witherOption_ =
+  /*#__PURE__*/
+  (() => O.wither_(effectOption))()
+
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(effectOption))()
+
+export const wiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(effectOption))()
+
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(effectOption))()
+
+export const wiltOption =
+  /*#__PURE__*/
+  (() => O.wilt(effectOption))()
+
+export const wiltOption_ =
+  /*#__PURE__*/
+  (() => O.wilt_(effectOption))()
+
 // region parallel
 export const parDo = () => D.Do(par(effectOption))
 
@@ -389,3 +433,35 @@ export const parTraverseArrayWI =
 export const parTraverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(par(effectOption)))()
+
+export const parWitherArray =
+  /*#__PURE__*/
+  (() => A.wither(par(effectOption)))()
+
+export const parWitherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(par(effectOption)))()
+
+export const parWitherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(par(effectOption)))()
+
+export const parWitherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(par(effectOption)))()
+
+export const parWiltArray =
+  /*#__PURE__*/
+  (() => A.wilt(par(effectOption)))()
+
+export const parWiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(par(effectOption)))()
+
+export const parWiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(par(effectOption)))()
+
+export const parWiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(par(effectOption)))()

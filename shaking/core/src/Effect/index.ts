@@ -2075,29 +2075,101 @@ export const traverseArray =
   /*#__PURE__*/
   (() => A.traverse(effect))()
 
+export const traverseArray_ =
+  /*#__PURE__*/
+  (() => A.traverse_(effect))()
+
 export const traverseRecord =
   /*#__PURE__*/
   (() => RE.traverse(effect))()
+
+export const traverseRecord_ =
+  /*#__PURE__*/
+  (() => RE.traverse_(effect))()
 
 export const traverseTree =
   /*#__PURE__*/
   (() => TR.traverse(effect))()
 
+export const traverseTree_ =
+  /*#__PURE__*/
+  (() => TR.traverse_(effect))()
+
 export const traverseOption =
   /*#__PURE__*/
   (() => O.traverse(effect))()
+
+export const traverseOption_ =
+  /*#__PURE__*/
+  (() => O.traverse_(effect))()
 
 export const traverseEither =
   /*#__PURE__*/
   (() => E.traverse(effect))()
 
+export const traverseEither_ =
+  /*#__PURE__*/
+  (() => E.traverse_(effect))()
+
 export const traverseArrayWI =
   /*#__PURE__*/
   (() => A.traverseWithIndex(effect))()
 
+export const traverseArrayWI_ =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex_(effect))()
+
 export const traverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(effect))()
+
+export const traverseRecordWI_ =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex_(effect))()
+
+export const witherArray =
+  /*#__PURE__*/
+  (() => A.wither(effect))()
+
+export const witherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(effect))()
+
+export const witherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(effect))()
+
+export const witherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(effect))()
+
+export const witherOption =
+  /*#__PURE__*/
+  (() => O.wither(effect))()
+
+export const witherOption_ =
+  /*#__PURE__*/
+  (() => O.wither_(effect))()
+
+export const wiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(effect))()
+
+export const wiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(effect))()
+
+export const wiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(effect))()
+
+export const wiltOption =
+  /*#__PURE__*/
+  (() => O.wilt(effect))()
+
+export const wiltOption_ =
+  /*#__PURE__*/
+  (() => O.wilt_(effect))()
 
 // region parallel
 
@@ -2127,21 +2199,73 @@ export const parTraverseArray =
   /*#__PURE__*/
   (() => A.traverse(par(effect)))()
 
+export const parTraverseArray_ =
+  /*#__PURE__*/
+  (() => A.traverse_(par(effect)))()
+
 export const parTraverseRecord =
   /*#__PURE__*/
   (() => RE.traverse(par(effect)))()
+
+export const parTraverseRecord_ =
+  /*#__PURE__*/
+  (() => RE.traverse_(par(effect)))()
 
 export const parTraverseTree =
   /*#__PURE__*/
   (() => TR.traverse(par(effect)))()
 
+export const parTraverseTree_ =
+  /*#__PURE__*/
+  (() => TR.traverse_(par(effect)))()
+
+export const parWitherArray =
+  /*#__PURE__*/
+  (() => A.wither(par(effect)))()
+
+export const parWitherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(par(effect)))()
+
+export const parWitherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(par(effect)))()
+
+export const parWitherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(par(effect)))()
+
+export const parWiltArray =
+  /*#__PURE__*/
+  (() => A.wilt(par(effect)))()
+
+export const parWiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(par(effect)))()
+
+export const parWiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(par(effect)))()
+
+export const parWiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(par(effect)))()
+
 export const parTraverseArrayWI =
   /*#__PURE__*/
   (() => A.traverseWithIndex(par(effect)))()
 
+export const parTraverseArrayWI_ =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex_(par(effect)))()
+
 export const parTraverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(par(effect)))()
+
+export const parTraverseRecordWI_ =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex_(par(effect)))()
 
 // region parallel fast
 
@@ -2171,18 +2295,70 @@ export const parFastTraverseArray =
   /*#__PURE__*/
   (() => A.traverse(parFast(effect)))()
 
+export const parFastTraverseArray_ =
+  /*#__PURE__*/
+  (() => A.traverse_(parFast(effect)))()
+
 export const parFastTraverseRecord =
   /*#__PURE__*/
   (() => RE.traverse(parFast(effect)))()
+
+export const parFastTraverseRecord_ =
+  /*#__PURE__*/
+  (() => RE.traverse_(parFast(effect)))()
 
 export const parFastTraverseTree =
   /*#__PURE__*/
   (() => TR.traverse(parFast(effect)))()
 
+export const parFastTraverseTree_ =
+  /*#__PURE__*/
+  (() => TR.traverse_(parFast(effect)))()
+
+export const parFastWitherArray =
+  /*#__PURE__*/
+  (() => A.wither(parFast(effect)))()
+
+export const parFastWitherArray_ =
+  /*#__PURE__*/
+  (() => A.wither_(parFast(effect)))()
+
+export const parFastWitherRecord =
+  /*#__PURE__*/
+  (() => RE.wither(parFast(effect)))()
+
+export const parFastWitherRecord_ =
+  /*#__PURE__*/
+  (() => RE.wither_(parFast(effect)))()
+
+export const parFastWiltArray =
+  /*#__PURE__*/
+  (() => A.wilt(parFast(effect)))()
+
+export const parFastWiltArray_ =
+  /*#__PURE__*/
+  (() => A.wilt_(parFast(effect)))()
+
+export const parFastWiltRecord =
+  /*#__PURE__*/
+  (() => RE.wilt(parFast(effect)))()
+
+export const parFastWiltRecord_ =
+  /*#__PURE__*/
+  (() => RE.wilt_(parFast(effect)))()
+
 export const parFastTraverseArrayWI =
   /*#__PURE__*/
   (() => A.traverseWithIndex(parFast(effect)))()
 
+export const parFastTraverseArrayWI_ =
+  /*#__PURE__*/
+  (() => A.traverseWithIndex_(parFast(effect)))()
+
 export const parFastTraverseRecordWI =
   /*#__PURE__*/
   (() => RE.traverseWithIndex(parFast(effect)))()
+
+export const parFastTraverseRecordWI_ =
+  /*#__PURE__*/
+  (() => RE.traverseWithIndex_(parFast(effect)))()

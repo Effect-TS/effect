@@ -1500,6 +1500,64 @@ export function wither<F>(
   return (f) => flow(traverseF(f), F.map(compact))
 }
 
+export function wither_<F extends URIS4>(
+  F: CApplicative4MAP<F>
+): <K extends string, A, S, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4, E>(
+  F: CApplicative4MAPC<F, E>
+): <K extends string, A, S, R, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, unknown, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4, E>(
+  F: CApplicative4MAC<F, E>
+): <K extends string, A, S, R, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4>(
+  F: CApplicative4MA<F>
+): <K extends string, A, S, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS4>(
+  F: CApplicative4<F>
+): <K extends string, A, S, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind4<F, S, R, E, Option<B>>
+) => Kind4<F, S, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS3>(
+  F: CApplicative3<F>
+): <K extends string, A, R, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind3<F, R, E, Option<B>>
+) => Kind3<F, R, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS2>(
+  F: CApplicative2<F>
+): <K extends string, A, E, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind2<F, E, Option<B>>
+) => Kind2<F, E, ReadonlyRecord<K, B>>
+export function wither_<F extends URIS>(
+  F: CApplicative1<F>
+): <K extends string, A, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => Kind<F, Option<B>>
+) => Kind<F, ReadonlyRecord<K, B>>
+export function wither_<F>(
+  F: CApplicative<F>
+): <K extends string, A, B>(
+  wa: ReadonlyRecord<K, A>,
+  f: (a: A) => HKT<F, Option<B>>
+) => HKT<F, ReadonlyRecord<K, B>> {
+  const traverseF = traverse_(F)
+  return (wa, f) => F.map(compact)(traverseF(wa, f))
+}
+
 export const wilt: {
   <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <A, S, R, B, C>(
     f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
@@ -1565,6 +1623,61 @@ export const wilt: {
 ) => HKT<F, Separated<ReadonlyRecord<string, B>, ReadonlyRecord<string, C>>>) => {
   const traverseF = traverse(F)
   return (f) => flow(traverseF(f), F.map(separate))
+}
+
+export const wilt_: {
+  <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <K extends string, A, S, R, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, unknown, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <K extends string, A, S, R, E, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, unknown, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends MaURIS, E>(F: CApplicative4MAC<F, E>): <K extends string, A, S, R, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <K extends string, A, S, R, E, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends URIS4>(F: CApplicative4<F>): <K extends string, A, S, R, E, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends URIS3>(F: CApplicative3<F>): <K extends string, A, R, E, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind3<F, R, E, Either<B, C>>
+  ) => Kind3<F, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends URIS3, E>(F: CApplicative3C<F, E>): <K extends string, A, R, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind3<F, R, E, Either<B, C>>
+  ) => Kind3<F, R, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends URIS2>(F: CApplicative2<F>): <K extends string, A, E, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind2<F, E, Either<B, C>>
+  ) => Kind2<F, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends URIS2, E>(F: CApplicative2C<F, E>): <K extends string, A, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind2<F, E, Either<B, C>>
+  ) => Kind2<F, E, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F extends URIS>(F: CApplicative1<F>): <K extends string, A, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => Kind<F, Either<B, C>>
+  ) => Kind<F, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+  <F>(F: CApplicative<F>): <K extends string, A, B, C>(
+    wa: ReadonlyRecord<K, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<ReadonlyRecord<K, B>, ReadonlyRecord<K, C>>>
+} = <F>(
+  F: CApplicative<F>
+): (<A, B, C>(
+  wa: ReadonlyRecord<string, A>,
+  f: (a: A) => HKT<F, Either<B, C>>
+) => HKT<F, Separated<ReadonlyRecord<string, B>, ReadonlyRecord<string, C>>>) => {
+  const traverseF = traverse_(F)
+  return (wa, f) => F.map(separate)(traverseF(wa, f))
 }
 
 export const filter: {
