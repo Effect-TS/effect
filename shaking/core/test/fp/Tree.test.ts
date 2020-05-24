@@ -185,9 +185,9 @@ describe("Tree", () => {
       make({ id: 1 }, [make({ id: 3 }), make({ id: 4 })]),
       make({ id: 2 })
     ])
-    assert.deepStrictEqual(elem(S)({ id: 1 }, users), true)
-    assert.deepStrictEqual(elem(S)({ id: 4 }, users), true)
-    assert.deepStrictEqual(elem(S)({ id: 5 }, users), false)
+    assert.deepStrictEqual(elem(S)({ id: 1 })(users), true)
+    assert.deepStrictEqual(elem(S)({ id: 4 })(users), true)
+    assert.deepStrictEqual(elem(S)({ id: 5 })(users), false)
   })
 
   it("getShow", () => {

@@ -306,12 +306,22 @@ export function unfoldForestM<M>(
     )
 }
 
-export function elem<A>(E: Eq<A>): (a: A, fa: Tree<A>) => boolean {
-  const go = (a: A, fa: Tree<A>): boolean => {
+export function elem_<A>(E: Eq<A>): (fa: Tree<A>, a: A) => boolean {
+  const go = (fa: Tree<A>, a: A): boolean => {
     if (E.equals(a, fa.value)) {
       return true
     }
-    return fa.forest.some((tree) => go(a, tree))
+    return fa.forest.some((tree) => go(tree, a))
+  }
+  return go
+}
+
+export function elem<A>(E: Eq<A>): (a: A) => (fa: Tree<A>) => boolean {
+  const go = (a: A) => (fa: Tree<A>): boolean => {
+    if (E.equals(a, fa.value)) {
+      return true
+    }
+    return fa.forest.some(go(a))
   }
   return go
 }
@@ -463,11 +473,25 @@ export const apFirst: <B>(fb: Tree<B>) => <A>(fa: Tree<A>) => Tree<A> = (fb) => 
     map_(fa, (a) => () => a),
     fb
   )
+
+export const apFirst_: <A, B>(fa: Tree<A>, fb: Tree<B>) => Tree<A> = (fa, fb) =>
+  ap_(
+    map_(fa, (a) => () => a),
+    fb
+  )
+
 export const apSecond = <B>(fb: Tree<B>) => <A>(fa: Tree<A>): Tree<B> =>
   ap_(
     map_(fa, () => (b: B) => b),
     fb
   )
+
+export const apSecond_ = <A, B>(fa: Tree<A>, fb: Tree<B>): Tree<B> =>
+  ap_(
+    map_(fa, () => (b: B) => b),
+    fb
+  )
+
 export const chain: <A, B>(f: (a: A) => Tree<B>) => (ma: Tree<A>) => Tree<B> = (f) => (
   ma
 ) => chain_(ma, f)
@@ -475,6 +499,11 @@ export const chain: <A, B>(f: (a: A) => Tree<B>) => (ma: Tree<A>) => Tree<B> = (
 export const chainFirst: <A, B>(f: (a: A) => Tree<B>) => (ma: Tree<A>) => Tree<A> = (
   f
 ) => (ma) => chain_(ma, (x) => map_(f(x), () => x))
+
+export const chainFirst_: <A, B>(ma: Tree<A>, f: (a: A) => Tree<B>) => Tree<A> = (
+  ma,
+  f
+) => chain_(ma, (x) => map_(f(x), () => x))
 
 export const duplicate: <A>(ma: Tree<A>) => Tree<Tree<A>> = (ma) =>
   extend_(ma, (x) => x)

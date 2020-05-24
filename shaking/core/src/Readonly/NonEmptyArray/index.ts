@@ -423,6 +423,18 @@ export function concat<A>(
   return fx.concat(fy)
 }
 
+export function concat_<A>(
+  fy: ReadonlyNonEmptyArray<A>
+): (fx: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A>
+export function concat_<A>(
+  fy: ReadonlyArray<A>
+): (fx: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A>
+export function concat_<A>(
+  fy: ReadonlyArray<A>
+): (fx: ReadonlyArray<A>) => ReadonlyArray<A> {
+  return (fx) => fx.concat(fy)
+}
+
 export function fold<A>(S: Semigroup<A>): (fa: ReadonlyNonEmptyArray<A>) => A {
   return (fa) => fa.reduce(S.concat)
 }

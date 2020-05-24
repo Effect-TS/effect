@@ -88,9 +88,9 @@ describe("Record", () => {
   })
 
   it("lookup", () => {
-    assert.deepStrictEqual(R.lookup("a", { a: 1 }), some(1))
-    assert.deepStrictEqual(R.lookup("b", { a: 1 }), none)
-    assert.deepStrictEqual(R.lookup("b", noPrototype), none)
+    assert.deepStrictEqual(R.lookup("a")({ a: 1 }), some(1))
+    assert.deepStrictEqual(R.lookup("b")({ a: 1 }), none)
+    assert.deepStrictEqual(R.lookup("b")(noPrototype), none)
   })
 
   it("fromFoldable", () => {
@@ -294,8 +294,8 @@ describe("Record", () => {
   })
 
   it("elem", () => {
-    assert.deepStrictEqual(R.elem(eqNumber)(1, { a: 1, b: 2 }), true)
-    assert.deepStrictEqual(R.elem(eqNumber)(3, { a: 1, b: 2 }), false)
+    assert.deepStrictEqual(R.elem(eqNumber)(1)({ a: 1, b: 2 }), true)
+    assert.deepStrictEqual(R.elem(eqNumber)(3)({ a: 1, b: 2 }), false)
   })
 
   it("fromFoldableMap", () => {

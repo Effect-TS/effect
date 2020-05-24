@@ -284,11 +284,17 @@ export const filterWithIndex_: <A>(
 
 export const of: <A>(a: A) => NonEmptyArray<A> = RNEA.of as any
 
-export function concat<A>(fx: Array<A>, fy: NonEmptyArray<A>): NonEmptyArray<A>
-export function concat<A>(fx: NonEmptyArray<A>, fy: Array<A>): NonEmptyArray<A>
-export function concat<A>(fx: Array<A>, fy: Array<A>): Array<A> {
-  return RNEA.concat(fx as any, fy as any) as any
-}
+export const concat: {
+  <A>(fx: Array<A>, fy: NonEmptyArray<A>): NonEmptyArray<A>
+  <A>(fx: NonEmptyArray<A>, fy: Array<A>): NonEmptyArray<A>
+  <A>(fx: Array<A>, fy: Array<A>): Array<A>
+} = RNEA.concat as any
+
+export const concat_: {
+  <A>(fy: NonEmptyArray<A>): (fx: Array<A>) => NonEmptyArray<A>
+  <A>(fy: Array<A>): (fx: NonEmptyArray<A>) => NonEmptyArray<A>
+  <A>(fy: Array<A>): (fx: Array<A>) => Array<A>
+} = RNEA.concat as any
 
 export const fold: <A>(S: Semigroup<A>) => (fa: NonEmptyArray<A>) => A = RNEA.fold
 
