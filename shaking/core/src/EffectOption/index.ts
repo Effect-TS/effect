@@ -13,7 +13,7 @@ import type {
 import * as D from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
-import { flow, FunctionN } from "../Function"
+import { FunctionN } from "../Function"
 import * as M from "../Monoid"
 import * as O from "../Option"
 import * as RE from "../Record"
@@ -70,7 +70,7 @@ export const chain_ = <S1, S2, R, E, A, R2, E2, B>(
   f: (a: A) => EffectOption<S2, R2, E2, B>
 ): EffectOption<S1 | S2, R & R2, E | E2, B> => T.chain_(fa, O.wither(T.effect)(f))
 
-export const chainTap_ = <S1, S2, R, E, A, R2, E2>(
+export const chainFirst_ = <S1, S2, R, E, A, R2, E2>(
   inner: EffectOption<S1, R, E, A>,
   bind: FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
 ): EffectOption<S1 | S2, R & R2, E | E2, A> =>
@@ -105,8 +105,26 @@ export const apFirst: <S1, R, E, B>(
     fb
   )
 
+export const apFirst_: <A, S2, R2, E2, S1, R, E, B>(
+  fa: EffectOption<S2, R2, E2, A>,
+  fb: EffectOption<S1, R, E, B>
+) => EffectOption<S1 | S2, R & R2, E | E2, A> = (fa, fb) =>
+  ap_(
+    map_(fa, (a) => () => a),
+    fb
+  )
+
 export const apSecond = <S1, R, E, B>(fb: EffectOption<S1, R, E, B>) => <A, S2, R2, E2>(
   fa: EffectOption<S2, R2, E2, A>
+): EffectOption<S1 | S2, R & R2, E | E2, B> =>
+  ap_(
+    map_(fa, () => (b: B) => b),
+    fb
+  )
+
+export const apSecond_ = <A, S2, R2, E2, S1, R, E, B>(
+  fa: EffectOption<S2, R2, E2, A>,
+  fb: EffectOption<S1, R, E, B>
 ): EffectOption<S1 | S2, R & R2, E | E2, B> =>
   ap_(
     map_(fa, () => (b: B) => b),
@@ -123,7 +141,7 @@ export const chainFirst: <S1, R, E, A, B>(
   f: (a: A) => EffectOption<S1, R, E, B>
 ) => <S2, R2, E2>(
   ma: EffectOption<S2, R2, E2, A>
-) => EffectOption<S1 | S2, R & R2, E | E2, A> = (f) => (ma) => chainTap_(ma, f)
+) => EffectOption<S1 | S2, R & R2, E | E2, A> = (f) => (ma) => chainFirst_(ma, f)
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(
   mma: EffectOption<S1, R, E, EffectOption<S2, R2, E2, A>>
@@ -151,6 +169,15 @@ export const parApFirst: <S1, R, E, B>(
     fb
   )
 
+export const parApFirst_: <A, S2, R2, E2, S1, R, E, B>(
+  fa: EffectOption<S2, R2, E2, A>,
+  fb: EffectOption<S1, R, E, B>
+) => EffectOption<unknown, R & R2, E | E2, A> = (fa, fb) =>
+  parAp_(
+    map_(fa, (a) => () => a),
+    fb
+  )
+
 export const parApSecond = <S1, R, E, B>(fb: EffectOption<S1, R, E, B>) => <
   A,
   S2,
@@ -164,11 +191,22 @@ export const parApSecond = <S1, R, E, B>(fb: EffectOption<S1, R, E, B>) => <
     fb
   )
 
-export const fromNullable = flow(O.fromNullable, T.pure)
+export const parApSecond_ = <A, S2, R2, E2, S1, R, E, B>(
+  fa: EffectOption<S2, R2, E2, A>,
+  fb: EffectOption<S1, R, E, B>
+): EffectOption<unknown, R & R2, E | E2, B> =>
+  parAp_(
+    map_(fa, () => (b: B) => b),
+    fb
+  )
+
+export const fromNullable = <A>(a: A) => T.pure(O.fromNullable(a))
 
 export const some = <A>(a: A): Sync<A> => T.pure(O.some(a))
 
-export const none: Sync<never> = T.pure(O.none)
+export const none: Sync<never> =
+  /*#__PURE__*/
+  (() => T.pure(O.none))()
 
 export const fromOption = <A>(a: O.Option<A>): Sync<A> => T.pure(a)
 

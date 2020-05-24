@@ -289,7 +289,11 @@ export type {
   CWitherable1,
   CWitherable2,
   CWitherable3,
-  CWitherable2C
+  CWitherable2C,
+  Wither1,
+  Wither2C,
+  Wilt2C,
+  Wilt1
 } from "./Witherable"
 
 export type {

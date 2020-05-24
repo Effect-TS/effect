@@ -31,7 +31,9 @@ import type {
   CWilt2C,
   CWither2C,
   Partition2,
-  Traverse2C
+  Traverse2C,
+  Wither2C,
+  Wilt2C
 } from "../../Base"
 import { isLeft, Either } from "../../Either"
 import { fromEquals } from "../../Eq"
@@ -537,6 +539,19 @@ export function wilt<K>(_: Ord<K>): CWilt2C<URI, K> {
   }
 }
 
+export function wilt_<K>(_: Ord<K>): Wilt2C<URI, K> {
+  const T = traverse_(_)
+  return <F>(
+    F: CApplicative<F>
+  ): (<A, B, C>(
+    wa: ReadonlyMap<K, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<ReadonlyMap<K, B>, ReadonlyMap<K, C>>>) => {
+    const traverseF = T(F)
+    return (wa, f) => F.map(separate)(traverseF(wa, f))
+  }
+}
+
 export function wither<K>(_: Ord<K>): CWither2C<URI, K> {
   const T = traverse(_)
   return <F>(
@@ -546,6 +561,19 @@ export function wither<K>(_: Ord<K>): CWither2C<URI, K> {
   ) => (wa: ReadonlyMap<K, A>) => HKT<F, ReadonlyMap<K, B>>) => {
     const traverseF = T(F)
     return (f) => flow(traverseF(f), F.map(compact))
+  }
+}
+
+export function wither_<K>(_: Ord<K>): Wither2C<URI, K> {
+  const T = traverse(_)
+  return <F>(
+    F: CApplicative<F>
+  ): (<A, B>(
+    wa: ReadonlyMap<K, A>,
+    f: (a: A) => HKT<F, Op.Option<B>>
+  ) => HKT<F, ReadonlyMap<K, B>>) => {
+    const traverseF = T(F)
+    return (ta, f) => flow(traverseF(f), F.map(compact))(ta)
   }
 }
 

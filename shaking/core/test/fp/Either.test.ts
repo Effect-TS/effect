@@ -44,9 +44,9 @@ describe("Either", () => {
   })
 
   it("elem", () => {
-    assert.deepStrictEqual(_.elem(eqNumber)(2, _.left("a")), false)
-    assert.deepStrictEqual(_.elem(eqNumber)(2, _.right(2)), true)
-    assert.deepStrictEqual(_.elem(eqNumber)(1, _.right(2)), false)
+    assert.deepStrictEqual(_.elem(eqNumber)(2)(_.left("a")), false)
+    assert.deepStrictEqual(_.elem(eqNumber)(2)(_.right(2)), true)
+    assert.deepStrictEqual(_.elem(eqNumber)(1)(_.right(2)), false)
   })
 
   it("filterOrElse", () => {
@@ -158,9 +158,9 @@ describe("Either", () => {
   })
 
   it("parseJSON", () => {
-    assert.deepStrictEqual(_.parseJSON('{"a":1}', _.toError), _.right({ a: 1 }))
+    assert.deepStrictEqual(_.parseJSON(_.toError)('{"a":1}'), _.right({ a: 1 }))
     assert.deepStrictEqual(
-      _.parseJSON('{"a":}', _.toError),
+      _.parseJSON(_.toError)('{"a":}'),
       _.left(new SyntaxError("Unexpected token } in JSON at position 5"))
     )
   })
@@ -250,24 +250,27 @@ describe("Either", () => {
     })
 
     it("fromNullable", () => {
-      assert.deepStrictEqual(_.fromNullable("default")(null), _.left("default"))
-      assert.deepStrictEqual(_.fromNullable("default")(undefined), _.left("default"))
-      assert.deepStrictEqual(_.fromNullable("default")(1), _.right(1))
+      assert.deepStrictEqual(_.fromNullable(() => "default")(null), _.left("default"))
+      assert.deepStrictEqual(
+        _.fromNullable(() => "default")(undefined),
+        _.left("default")
+      )
+      assert.deepStrictEqual(_.fromNullable(() => "default")(1), _.right(1))
     })
 
     it("tryCatch", () => {
       assert.deepStrictEqual(
-        _.tryCatch(() => {
+        _.tryCatch(_.toError)(() => {
           return 1
-        }, _.toError),
+        }),
         _.right(1)
       )
 
       assert.deepStrictEqual(
-        _.tryCatch(() => {
+        _.tryCatch(_.toError)(() => {
           // tslint:disable-next-line: no-string-throw
           throw "string error"
-        }, _.toError),
+        }),
         _.left(new Error("string error"))
       )
     })

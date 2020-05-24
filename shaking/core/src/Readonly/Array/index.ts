@@ -31,7 +31,9 @@ import {
   CPartition1,
   Partition1,
   PartitionWithIndex1,
-  Traverse1
+  Traverse1,
+  Wither1,
+  Wilt1
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
@@ -2098,6 +2100,16 @@ export const wilt: CWilt1<URI> = <F>(
   return (f) => flow(traverseF(f), F.map(separate))
 }
 
+export const wilt_: Wilt1<URI> = <F>(
+  F: CApplicative<F>
+): (<A, B, C>(
+  wa: ReadonlyArray<A>,
+  f: (a: A) => HKT<F, Either<B, C>>
+) => HKT<F, Separated<ReadonlyArray<B>, ReadonlyArray<C>>>) => {
+  const traverseF = traverse_(F)
+  return (wa, f) => F.map(separate)(traverseF(wa, f))
+}
+
 export const wither: CWither1<URI> = <F>(
   F: CApplicative<F>
 ): (<A, B>(
@@ -2105,6 +2117,16 @@ export const wither: CWither1<URI> = <F>(
 ) => (ta: ReadonlyArray<A>) => HKT<F, ReadonlyArray<B>>) => {
   const traverseF = traverse(F)
   return (f) => flow(traverseF(f), F.map(compact))
+}
+
+export const wither_: Wither1<URI> = <F>(
+  F: CApplicative<F>
+): (<A, B>(
+  ta: ReadonlyArray<A>,
+  f: (a: A) => HKT<F, Option<B>>
+) => HKT<F, ReadonlyArray<B>>) => {
+  const traverseF = traverse(F)
+  return (ta, f) => flow(traverseF(f), F.map(compact))(ta)
 }
 
 export const zero: <A>() => readonly A[] = () => empty

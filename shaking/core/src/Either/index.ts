@@ -14,13 +14,17 @@ import type {
   CTraversable2,
   CBifunctor2,
   CExtend2,
-  Traverse2
+  Traverse2,
+  CWilt2C,
+  CWither2C,
+  Wither2C,
+  Wilt2C
 } from "../Base"
+import { tailRec } from "../Base/ChainRec"
 import type { Eq } from "../Eq"
 import { Lazy, Predicate, Refinement, flow } from "../Function"
 import type { Monoid } from "../Monoid"
 import { isNone, Option } from "../Option"
-import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common"
@@ -75,8 +79,26 @@ export const apFirst: <E, B>(
     fb
   )
 
+export const apFirst_: <E2, A, E, B>(
+  fa: Either<E2, A>,
+  fb: Either<E, B>
+) => Either<E | E2, A> = (fa, fb) =>
+  ap_(
+    map_(fa, (a) => () => a),
+    fb
+  )
+
 export const apSecond = <E, B>(fb: Either<E, B>) => <E2, A>(
   fa: Either<E2, A>
+): Either<E | E2, B> =>
+  ap_(
+    map_(fa, () => (b: B) => b),
+    fb
+  )
+
+export const apSecond_ = <E2, A, E, B>(
+  fa: Either<E2, A>,
+  fb: Either<E, B>
 ): Either<E | E2, B> =>
   ap_(
     map_(fa, () => (b: B) => b),
@@ -108,26 +130,32 @@ export const chainFirst = <E, A, B>(f: (a: A) => Either<E, B>) => <E2>(
   ma: Either<E2, A>
 ): Either<E | E2, A> => chain_(ma, (a) => map_(f(a), () => a))
 
+export const chainFirst_ = <E2, E, A, B>(
+  ma: Either<E2, A>,
+  f: (a: A) => Either<E, B>
+): Either<E | E2, A> => chain_(ma, (a) => map_(f(a), () => a))
+
 export const chainRec: <E, A, B>(
   a: A,
   f: (a: A) => Either<E, Either<A, B>>
 ) => Either<E, B> = (a, f) =>
-  pipe(
-    f(a),
-    tailRec((e) =>
-      isLeft(e)
-        ? rightW(leftW(e.left))
-        : isLeft(e.right)
-        ? leftW(f(e.right.left))
-        : rightW(rightW(e.right.right))
-    )
+  tailRec(f(a), (e) =>
+    isLeft(e)
+      ? rightW(leftW(e.left))
+      : isLeft(e.right)
+      ? leftW(f(e.right.left))
+      : rightW(rightW(e.right.right))
   )
 
 export const duplicate: <E, A>(ma: Either<E, A>) => Either<E, Either<E, A>> = (ma) =>
   extend_(ma, (x) => x)
 
-export function elem<A>(E: Eq<A>): <E>(a: A, ma: Either<E, A>) => boolean {
-  return (a, ma) => (isLeft(ma) ? false : E.equals(a, ma.right))
+export function elem<A>(E: Eq<A>): (a: A) => <E>(ma: Either<E, A>) => boolean {
+  return (a) => (ma) => (isLeft(ma) ? false : E.equals(a, ma.right))
+}
+
+export function elem_<A>(E: Eq<A>): <E>(ma: Either<E, A>, a: A) => boolean {
+  return (ma, a) => (isLeft(ma) ? false : E.equals(a, ma.right))
 }
 
 /**
@@ -146,6 +174,10 @@ export function exists<A>(predicate: Predicate<A>): <E>(ma: Either<E, A>) => boo
   return (ma) => (isLeft(ma) ? false : predicate(ma.right))
 }
 
+export function exists_<E, A>(ma: Either<E, A>, predicate: Predicate<A>): boolean {
+  return isLeft(ma) ? false : predicate(ma.right)
+}
+
 export const extend_: <E, A, B, E2>(
   wa: Either<E, A>,
   f: (wa: Either<E2, A>) => B
@@ -156,14 +188,30 @@ export const extend: <E, A, B>(
 ) => <E2>(ma: Either<E2, A>) => Either<E | E2, B> = (f) => (ma) => extend_(ma, f)
 
 export const filterOrElse: {
-  <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): (
-    ma: Either<E, A>
-  ) => Either<E, B>
-  <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): (
-    ma: Either<E, A>
-  ) => Either<E, A>
+  <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <E2>(
+    ma: Either<E2, A>
+  ) => Either<E | E2, B>
+  <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): <E2>(
+    ma: Either<E2, A>
+  ) => Either<E | E2, A>
 } = <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E) => (
   ma: Either<E, A>
+): Either<E, A> => chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
+
+export const filterOrElse_: {
+  <E, E2, A, B extends A>(
+    ma: Either<E2, A>,
+    refinement: Refinement<A, B>,
+    onFalse: (a: A) => E
+  ): Either<E | E2, B>
+  <E, E2, A>(ma: Either<E2, A>, predicate: Predicate<A>, onFalse: (a: A) => E): Either<
+    E | E2,
+    A
+  >
+} = <E, A>(
+  ma: Either<E, A>,
+  predicate: Predicate<A>,
+  onFalse: (a: A) => E
 ): Either<E, A> => chain_(ma, (a) => (predicate(a) ? right(a) : left(onFalse(a))))
 
 export const flatten: <E, E2, A>(mma: Either<E, Either<E2, A>>) => Either<E | E2, A> = (
@@ -228,6 +276,39 @@ export function fold<E, A, B>(
   return (ma) => (isLeft(ma) ? onLeft(ma.left) : onRight(ma.right))
 }
 
+export function fold_<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => StreamEither<S1, R1, E1, B>,
+  onRight: (a: A) => StreamEither<S2, R2, E2, C>
+): StreamEither<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => Stream<S1, R1, E1, B>,
+  onRight: (a: A) => Stream<S2, R2, E2, C>
+): Stream<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => Managed<S1, R1, E1, B>,
+  onRight: (a: A) => Managed<S2, R2, E2, C>
+): Managed<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<S1, S2, E, A, B, C, R1, E1, R2, E2>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => Effect<S1 | S2, R1, E1, B>,
+  onRight: (a: A) => Effect<S1 | S2, R2, E2, C>
+): Effect<S1 | S2, R1 & R2, E1 | E2, B | C>
+export function fold_<E, A, B, C>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => B,
+  onRight: (a: A) => C
+): B | C
+export function fold_<E, A, B>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => B,
+  onRight: (a: A) => B
+): B {
+  return isLeft(ma) ? onLeft(ma.left) : onRight(ma.right)
+}
+
 export const foldMap_: <M>(
   M: Monoid<M>
 ) => <E, A>(fa: Either<E, A>, f: (a: A) => M) => M = (M) => (fa, f) =>
@@ -250,13 +331,21 @@ export const foldMap: <M>(
  * assert.deepStrictEqual(parse(1), right(1))
  * assert.deepStrictEqual(parse(null), left('nully'))
  */
-export function fromNullable<E>(e: E): <A>(a: A) => Either<E, NonNullable<A>> {
-  return <A>(a: A) => (a == null ? left(e) : right(a as NonNullable<A>))
+export function fromNullable<E>(e: Lazy<E>): <A>(a: A) => Either<E, NonNullable<A>> {
+  return <A>(a: A) => (a == null ? left(e()) : right(a as NonNullable<A>))
+}
+export function fromNullable_<A, E>(a: A, e: Lazy<E>): Either<E, NonNullable<A>> {
+  return a == null ? left(e()) : right(a as NonNullable<A>)
 }
 
 export const fromOption: <E>(onNone: () => E) => <A>(ma: Option<A>) => Either<E, A> = (
   onNone
 ) => (ma) => (isNone(ma) ? left(onNone()) : right(ma.value))
+
+export const fromOption_: <A, E>(ma: Option<A>, onNone: () => E) => Either<E, A> = (
+  ma,
+  onNone
+) => (isNone(ma) ? left(onNone()) : right(ma.value))
 
 export const fromPredicate: {
   <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): (
@@ -264,6 +353,15 @@ export const fromPredicate: {
   ) => Either<E, B>
   <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E): (a: A) => Either<E, A>
 } = <E, A>(predicate: Predicate<A>, onFalse: (a: A) => E) => (a: A): Either<E, A> =>
+  predicate(a) ? right(a) : left(onFalse(a))
+
+export const fromPredicate_: {
+  <E, A, B extends A>(a: A, refinement: Refinement<A, B>, onFalse: (a: A) => E): Either<
+    E,
+    B
+  >
+  <E, A>(a: A, predicate: Predicate<A>, onFalse: (a: A) => E): Either<E, A>
+} = <E, A>(a: A, predicate: Predicate<A>, onFalse: (a: A) => E): Either<E, A> =>
   predicate(a) ? right(a) : left(onFalse(a))
 
 export function getApplyMonoid<E, A>(M: Monoid<A>): Monoid<Either<E, A>> {
@@ -417,6 +515,13 @@ export function orElse<E, A, M>(
   return (ma) => (isLeft(ma) ? onLeft(ma.left) : ma)
 }
 
+export function orElse_<E, A, M>(
+  ma: Either<E, A>,
+  onLeft: (e: E) => Either<M, A>
+): Either<M, A> {
+  return isLeft(ma) ? onLeft(ma.left) : ma
+}
+
 /**
  * Converts a JavaScript Object Notation (JSON) string into an object.
  *
@@ -426,11 +531,17 @@ export function orElse<E, A, M>(
  * assert.deepStrictEqual(parseJSON('{"a":1}', toError), right({ a: 1 }))
  * assert.deepStrictEqual(parseJSON('{"a":}', toError), left(new SyntaxError('Unexpected token } in JSON at position 5')))
  */
-export function parseJSON<E>(
+export function parseJSON_<E>(
   s: string,
   onError: (reason: unknown) => E
 ): Either<E, unknown> {
-  return tryCatch(() => JSON.parse(s), onError)
+  return tryCatch_(() => JSON.parse(s), onError)
+}
+
+export function parseJSON<E>(
+  onError: (reason: unknown) => E
+): (s: string) => Either<E, unknown> {
+  return (s) => tryCatch_(() => JSON.parse(s), onError)
 }
 
 export const reduce_: <E, A, B>(fa: Either<E, A>, b: B, f: (b: B, a: A) => B) => B = (
@@ -495,7 +606,7 @@ export function stringifyJSON<E>(
   u: unknown,
   onError: (reason: unknown) => E
 ): Either<E, string> {
-  return tryCatch(() => JSON.stringify(u), onError)
+  return tryCatch_(() => JSON.stringify(u), onError)
 }
 
 export function swap<E, A>(ma: Either<E, A>): Either<A, E> {
@@ -544,7 +655,7 @@ export const traverse_: Traverse2<URI> = <F>(F: CApplicative<F>) => <A, B, TE>(
  * assert.deepStrictEqual(head([]), left(new Error('empty array')))
  * assert.deepStrictEqual(head([1, 2, 3]), right(1))
  */
-export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E, A> {
+export function tryCatch_<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E, A> {
   try {
     return right(f())
   } catch (e) {
@@ -552,28 +663,44 @@ export function tryCatch<E, A>(f: Lazy<A>, onError: (e: unknown) => E): Either<E
   }
 }
 
-export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
-  const empty = left(M.empty)
+export function tryCatch<E>(
+  onError: (e: unknown) => E
+): <A>(f: Lazy<A>) => Either<E, A> {
+  return (f) => {
+    try {
+      return right(f())
+    } catch (e) {
+      return left(onError(e))
+    }
+  }
+}
 
-  const compact = <A>(ma: Either<E, Option<A>>): Either<E, A> => {
+export function compact<E>(M: Monoid<E>) {
+  return <A>(ma: Either<E, Option<A>>): Either<E, A> => {
     return isLeft(ma)
       ? ma
       : ma.right._tag === "None"
       ? left(M.empty)
       : right(ma.right.value)
   }
+}
 
-  const separate = <A, B>(
-    ma: Either<E, Either<A, B>>
-  ): Separated<Either<E, A>, Either<E, B>> => {
+export function separate<E>(M: Monoid<E>) {
+  const empty = left(M.empty)
+
+  return <A, B>(ma: Either<E, Either<A, B>>): Separated<Either<E, A>, Either<E, B>> => {
     return isLeft(ma)
       ? { left: ma, right: ma }
       : isLeft(ma.right)
       ? { left: right(ma.right.left), right: empty }
       : { left: empty, right: right(ma.right.right) }
   }
+}
 
-  const partitionMap = <A, B, C>(
+export function partitionMap<E>(M: Monoid<E>) {
+  const empty = left(M.empty)
+
+  return <A, B, C>(
     f: (a: A) => Either<B, C>
   ): ((ma: Either<E, A>) => Separated<Either<E, B>, Either<E, C>>) => {
     return (ma) => {
@@ -586,8 +713,29 @@ export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
         : { left: empty, right: right(e.right) }
     }
   }
+}
 
-  const partition = <A>(
+export function partitionMap_<E>(M: Monoid<E>) {
+  const empty = left(M.empty)
+
+  return <A, B, C>(
+    ma: Either<E, A>,
+    f: (a: A) => Either<B, C>
+  ): Separated<Either<E, B>, Either<E, C>> => {
+    if (isLeft(ma)) {
+      return { left: ma, right: ma }
+    }
+    const e = f(ma.right)
+    return isLeft(e)
+      ? { left: right(e.left), right: empty }
+      : { left: empty, right: right(e.right) }
+  }
+}
+
+export function partition<E>(M: Monoid<E>) {
+  const empty = left(M.empty)
+
+  return <A>(
     p: Predicate<A>
   ): ((ma: Either<E, A>) => Separated<Either<E, A>, Either<E, A>>) => {
     return (ma) =>
@@ -597,10 +745,25 @@ export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
         ? { left: empty, right: right(ma.right) }
         : { left: right(ma.right), right: empty }
   }
+}
 
-  const filterMap = <A, B>(
-    f: (a: A) => Option<B>
-  ): ((ma: Either<E, A>) => Either<E, B>) => {
+export function partition_<E>(M: Monoid<E>) {
+  const empty = left(M.empty)
+
+  return <A>(
+    ma: Either<E, A>,
+    p: Predicate<A>
+  ): Separated<Either<E, A>, Either<E, A>> => {
+    return isLeft(ma)
+      ? { left: ma, right: ma }
+      : p(ma.right)
+      ? { left: empty, right: right(ma.right) }
+      : { left: right(ma.right), right: empty }
+  }
+}
+
+export function filterMap<E>(M: Monoid<E>) {
+  return <A, B>(f: (a: A) => Option<B>): ((ma: Either<E, A>) => Either<E, B>) => {
     return (ma) => {
       if (isLeft(ma)) {
         return ma
@@ -609,56 +772,96 @@ export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
       return ob._tag === "None" ? left(M.empty) : right(ob.value)
     }
   }
+}
 
-  const filter = <A>(predicate: Predicate<A>): ((ma: Either<E, A>) => Either<E, A>) => (
-    ma
-  ) => (isLeft(ma) ? ma : predicate(ma.right) ? ma : left(M.empty))
+export function filterMap_<E>(M: Monoid<E>) {
+  return <A, B>(ma: Either<E, A>, f: (a: A) => Option<B>): Either<E, B> => {
+    if (isLeft(ma)) {
+      return ma
+    }
+    const ob = f(ma.right)
+    return ob._tag === "None" ? left(M.empty) : right(ob.value)
+  }
+}
 
-  const wither = <F>(
+export function filter<E>(M: Monoid<E>) {
+  return <A>(predicate: Predicate<A>): ((ma: Either<E, A>) => Either<E, A>) => (ma) =>
+    isLeft(ma) ? ma : predicate(ma.right) ? ma : left(M.empty)
+}
+
+export function filter_<E>(M: Monoid<E>) {
+  return <A>(ma: Either<E, A>, predicate: Predicate<A>): Either<E, A> =>
+    isLeft(ma) ? ma : predicate(ma.right) ? ma : left(M.empty)
+}
+
+export function wither<E>(M: Monoid<E>): CWither2C<URI, E> {
+  const com = compact(M)
+  return <F>(
     F: CApplicative<F>
   ): (<A, B>(
     f: (a: A) => HKT<F, Option<B>>
   ) => (ma: Either<E, A>) => HKT<F, Either<E, B>>) => {
     const traverseF = traverse(F)
-    return (f) => flow(traverseF(f), F.map(compact))
+    return (f) => flow(traverseF(f), F.map(com))
   }
+}
 
-  const wilt = <F>(
+export function wither_<E>(M: Monoid<E>): Wither2C<URI, E> {
+  const com = compact(M)
+  return <F>(
+    F: CApplicative<F>
+  ): (<A, B>(
+    ma: Either<E, A>,
+    f: (a: A) => HKT<F, Option<B>>
+  ) => HKT<F, Either<E, B>>) => {
+    const traverseF = traverse_(F)
+    return (ma, f) => F.map(com)(traverseF(ma, f))
+  }
+}
+
+export function wilt<E>(M: Monoid<E>): CWilt2C<URI, E> {
+  const sep = separate(M)
+  return <F>(
     F: CApplicative<F>
   ): (<A, B, C>(
     f: (a: A) => HKT<F, Either<B, C>>
   ) => (ma: Either<E, A>) => HKT<F, Separated<Either<E, B>, Either<E, C>>>) => {
     const traverseF = traverse(F)
-    return (f) => flow(traverseF(f), F.map(separate))
+    return (f) => flow(traverseF(f), F.map(sep))
   }
+}
 
+export function wilt_<E>(M: Monoid<E>): Wilt2C<URI, E> {
+  const sep = separate(M)
+  return <F>(
+    F: CApplicative<F>
+  ): (<A, B, C>(
+    ma: Either<E, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<Either<E, B>, Either<E, C>>>) => {
+    const traverseF = traverse_(F)
+    return (ma, f) => F.map(sep)(traverseF(ma, f))
+  }
+}
+
+export function getWitherable<E>(M: Monoid<E>): CWitherable2C<URI, E> {
   return {
     URI,
     _E: undefined as any,
     map,
-    compact,
-    separate,
-    filter,
-    filterMap,
-    partition,
-    partitionMap,
+    compact: compact(M),
+    separate: separate(M),
+    filter: filter(M),
+    filterMap: filterMap(M),
+    partition: partition(M),
+    partitionMap: partitionMap(M),
     traverse,
     sequence,
     reduce,
     foldMap,
     reduceRight,
-    wither,
-    wilt
-  }
-}
-
-export function tailRec<A, B>(f: (a: A) => Either<A, B>): (a: A) => B {
-  return (a) => {
-    let v = f(a)
-    while (v._tag === "Left") {
-      v = f(v.left)
-    }
-    return v.right
+    wither: wither(M),
+    wilt: wilt(M)
   }
 }
 

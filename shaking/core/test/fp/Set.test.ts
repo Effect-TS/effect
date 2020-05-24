@@ -23,7 +23,6 @@ import {
   remove,
   singleton,
   some,
-  subset,
   toArray,
   toggle,
   union,
@@ -33,7 +32,8 @@ import {
   filterMap,
   foldMap,
   getShow,
-  empty
+  empty,
+  isSubset
 } from "../../src/Set"
 import { showString } from "../../src/Show"
 
@@ -106,9 +106,12 @@ describe("Set", () => {
   })
 
   it("subset", () => {
-    assert.deepStrictEqual(subset(eqNumber)(new Set([1, 2]), new Set([1, 2, 3])), true)
     assert.deepStrictEqual(
-      subset(eqNumber)(new Set([1, 2, 4]), new Set([1, 2, 3])),
+      isSubset(eqNumber)(new Set([1, 2, 3]))(new Set([1, 2])),
+      true
+    )
+    assert.deepStrictEqual(
+      isSubset(eqNumber)(new Set([1, 2, 4]))(new Set([1, 2, 3])),
       false
     )
   })
@@ -154,14 +157,14 @@ describe("Set", () => {
 
   it("union", () => {
     assert.deepStrictEqual(
-      union(eqNumber)(new Set([1, 2]), new Set([1, 3])),
+      union(eqNumber)(new Set([1, 2]))(new Set([1, 3])),
       new Set([1, 2, 3])
     )
   })
 
   it("intersection", () => {
     assert.deepStrictEqual(
-      intersection(eqNumber)(new Set([1, 2]), new Set([1, 3])),
+      intersection(eqNumber)(new Set([1, 2]))(new Set([1, 3])),
       new Set([1])
     )
   })
@@ -219,7 +222,7 @@ describe("Set", () => {
 
   it("difference", () => {
     assert.deepStrictEqual(
-      difference(eqNumber)(new Set([1, 2]), new Set([1, 3])),
+      difference(eqNumber)(new Set([1, 3]))(new Set([1, 2])),
       new Set([2])
     )
   })

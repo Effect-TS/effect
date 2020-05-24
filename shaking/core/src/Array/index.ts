@@ -25,7 +25,9 @@ import type {
   PredicateWithIndex,
   PartitionWithIndex1,
   Traverse1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  Wither1,
+  Wilt1
 } from "../Base"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -1231,7 +1233,11 @@ declare module "../Base/HKT" {
 
 export const wilt: CWilt1<URI> = RA.wilt as any
 
+export const wilt_: Wilt1<URI> = RA.wilt_ as any
+
 export const wither: CWither1<URI> = RA.wither as any
+
+export const wither_: Wither1<URI> = RA.wither_ as any
 
 export const zero: <A>() => A[] = RA.zero as any
 

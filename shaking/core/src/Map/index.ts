@@ -30,7 +30,9 @@ import type {
   TraverseWithIndex2C,
   URIS,
   URIS2,
-  URIS3
+  URIS3,
+  Wither2C,
+  Wilt2C
 } from "../Base"
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -191,9 +193,17 @@ export const wilt: {
   <K>(_: Ord<K>): CWilt2C<URI, K>
 } = RM.wilt as any
 
+export const wilt_: {
+  <K>(_: Ord<K>): Wilt2C<URI, K>
+} = RM.wilt_ as any
+
 export const wither: {
   <K>(_: Ord<K>): CWither2C<URI, K>
 } = RM.wither as any
+
+export const wither_: {
+  <K>(_: Ord<K>): Wither2C<URI, K>
+} = RM.wither_ as any
 
 export const reduce: {
   <K>(_: Ord<K>): <A, B>(b: B, f: (b: B, a: A) => B) => (fa: Map<K, A>) => B

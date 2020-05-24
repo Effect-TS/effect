@@ -19,7 +19,9 @@ import type {
   CFilter1,
   CPartition1,
   CApplicative1,
-  Traverse1
+  Traverse1,
+  Wither1,
+  Wilt1
 } from "../Base"
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -744,10 +746,33 @@ export const wilt: CWilt1<URI> = <F>(F: CApplicative<F>) => <A, B, C>(
   }
 }
 
+export const wilt_: Wilt1<URI> = <F>(F: CApplicative<F>) => <A, B, C>(
+  fa: Option<A>,
+  f: (a: A) => HKT<F, Either<B, C>>
+): HKT<F, Separated<Option<B>, Option<C>>> => {
+  const o = map_(fa, (a) =>
+    F.map((e: Either<B, C>) => ({
+      left: getLeft(e),
+      right: getRight(e)
+    }))(f(a))
+  )
+  return isNone(o)
+    ? F.of({
+        left: none,
+        right: none
+      })
+    : o.value
+}
+
 export const wither: CWither1<URI> = <F>(F: CApplicative<F>) => <A, B>(
   f: (a: A) => HKT<F, Option<B>>
 ): ((fa: Option<A>) => HKT<F, Option<B>>) => (fa) =>
   isNone(fa) ? F.of(none) : f(fa.value)
+
+export const wither_: Wither1<URI> = <F>(F: CApplicative<F>) => <A, B>(
+  fa: Option<A>,
+  f: (a: A) => HKT<F, Option<B>>
+): HKT<F, Option<B>> => (isNone(fa) ? F.of(none) : f(fa.value))
 
 export const zero = () => none
 

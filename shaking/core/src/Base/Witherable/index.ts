@@ -148,6 +148,53 @@ export interface CWither1<W extends URIS> {
   ) => (ta: Kind<W, A>) => HKT<F, Kind<W, B>>
 }
 
+export interface Wither1<W extends URIS> {
+  <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <A, S, R, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, unknown, R, E, Kind<W, B>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, E, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, unknown, R, E, Kind<W, B>>
+  <F extends MaURIS, E>(F: CApplicative4MAC<F, E>): <A, S, R, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, S, R, E, Kind<W, B>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, E, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, S, R, E, Kind<W, B>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, E, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Option<B>>
+  ) => Kind4<F, S, R, E, Kind<W, B>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, E, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind3<F, R, E, Option<B>>
+  ) => Kind3<F, R, E, Kind<W, B>>
+  <F extends URIS3, E>(F: CApplicative3C<F, E>): <A, R, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind3<F, R, E, Option<B>>
+  ) => Kind3<F, R, E, Kind<W, B>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, E, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind2<F, E, Option<B>>
+  ) => Kind2<F, E, Kind<W, B>>
+  <F extends URIS2, E>(F: CApplicative2C<F, E>): <A, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind2<F, E, Option<B>>
+  ) => Kind2<F, E, Kind<W, B>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => Kind<F, Option<B>>
+  ) => Kind<F, Kind<W, B>>
+  <F>(F: CApplicative<F>): <A, B>(
+    ta: Kind<W, A>,
+    f: (a: A) => HKT<F, Option<B>>
+  ) => HKT<F, Kind<W, B>>
+}
+
 export interface CWither2<W extends URIS2> {
   <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B>(
     f: (a: A) => Kind4<F, S, R, FE, Option<B>>
@@ -212,6 +259,49 @@ export interface CWither2C<W extends URIS2, E> {
   <F>(F: CApplicative<F>): <A, B>(
     f: (a: A) => HKT<F, Option<B>>
   ) => (ta: Kind2<W, E, A>) => HKT<F, Kind2<W, E, B>>
+}
+
+export interface Wither2C<W extends URIS2, E> {
+  <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Option<B>>
+  ) => Kind4<F, unknown, R, FE, Kind2<W, E, B>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, FE, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Option<B>>
+  ) => Kind4<F, unknown, R, FE, Kind2<W, E, B>>
+  <F extends MaURIS, FE>(F: CApplicative4MAC<F, FE>): <A, S, R, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Option<B>>
+  ) => Kind4<F, S, R, FE, Kind2<W, E, B>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, FE, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Option<B>>
+  ) => Kind4<F, S, R, FE, Kind2<W, E, B>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, FE, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Option<B>>
+  ) => Kind4<F, S, R, FE, Kind2<W, E, B>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, FE, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind3<F, R, FE, Option<B>>
+  ) => Kind3<F, R, FE, Kind2<W, E, B>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, FE, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind2<F, FE, Option<B>>
+  ) => Kind2<F, FE, Kind2<W, E, B>>
+  <F extends URIS2, FE>(F: CApplicative2C<F, FE>): <A, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind2<F, FE, Option<B>>
+  ) => Kind2<F, FE, Kind2<W, E, B>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => Kind<F, Option<B>>
+  ) => Kind<F, Kind2<W, E, B>>
+  <F>(F: CApplicative<F>): <A, B>(
+    ta: Kind2<W, E, A>,
+    f: (a: A) => HKT<F, Option<B>>
+  ) => HKT<F, Kind2<W, E, B>>
 }
 
 export interface CWither3<W extends URIS3> {
@@ -323,6 +413,53 @@ export interface CWilt1<W extends URIS> {
   ) => (wa: Kind<W, A>) => HKT<F, Separated<Kind<W, B>, Kind<W, C>>>
 }
 
+export interface Wilt1<W extends URIS> {
+  <F extends MaURIS, E>(F: CApplicative4MAPC<F, E>): <A, S, R, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, unknown, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, E, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, unknown, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends MaURIS, E>(F: CApplicative4MAC<F, E>): <A, S, R, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, E, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, E, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind4<F, S, R, E, Either<B, C>>
+  ) => Kind4<F, S, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, E, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind3<F, R, E, Either<B, C>>
+  ) => Kind3<F, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends URIS3, E>(F: CApplicative3C<F, E>): <A, R, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind3<F, R, E, Either<B, C>>
+  ) => Kind3<F, R, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, E, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind2<F, E, Either<B, C>>
+  ) => Kind2<F, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends URIS2, E>(F: CApplicative2C<F, E>): <A, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind2<F, E, Either<B, C>>
+  ) => Kind2<F, E, Separated<Kind<W, B>, Kind<W, C>>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => Kind<F, Either<B, C>>
+  ) => Kind<F, Separated<Kind<W, B>, Kind<W, C>>>
+  <F>(F: CApplicative<F>): <A, B, C>(
+    wa: Kind<W, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<Kind<W, B>, Kind<W, C>>>
+}
+
 export interface CWilt2<W extends URIS2> {
   <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B, C>(
     f: (a: A) => Kind4<F, S, R, FE, Either<B, C>>
@@ -415,6 +552,49 @@ export interface CWilt2C<W extends URIS2, E> {
   <F>(F: CApplicative<F>): <A, B, C>(
     f: (a: A) => HKT<F, Either<B, C>>
   ) => (wa: Kind2<W, E, A>) => HKT<F, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+}
+
+export interface Wilt2C<W extends URIS2, E> {
+  <F extends MaURIS, FE>(F: CApplicative4MAPC<F, FE>): <A, S, R, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Either<B, C>>
+  ) => Kind4<F, unknown, R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends MaURIS, FE>(F: CApplicative4MAC<F, FE>): <A, S, R, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Either<B, C>>
+  ) => Kind4<F, S, R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends MaURIS>(F: CApplicative4MAP<F>): <A, S, R, FE, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Either<B, C>>
+  ) => Kind4<F, unknown, R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends MaURIS>(F: CApplicative4MA<F>): <A, S, R, FE, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Either<B, C>>
+  ) => Kind4<F, S, R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends URIS4>(F: CApplicative4<F>): <A, S, R, FE, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind4<F, S, R, FE, Either<B, C>>
+  ) => Kind4<F, S, R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends URIS3>(F: CApplicative3<F>): <A, R, FE, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind3<F, R, FE, Either<B, C>>
+  ) => Kind3<F, R, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends URIS2>(F: CApplicative2<F>): <A, FE, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind2<F, FE, Either<B, C>>
+  ) => Kind2<F, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends URIS2, FE>(F: CApplicative2C<F, FE>): <A, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind2<F, FE, Either<B, C>>
+  ) => Kind2<F, FE, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F extends URIS>(F: CApplicative1<F>): <A, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => Kind<F, Either<B, C>>
+  ) => Kind<F, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
+  <F>(F: CApplicative<F>): <A, B, C>(
+    wa: Kind2<W, E, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<Kind2<W, E, B>, Kind2<W, E, C>>>
 }
 
 export interface CWilt3<W extends URIS3> {

@@ -79,11 +79,11 @@ describe("ReadonlySet", () => {
 
   it("isSubset", () => {
     assert.deepStrictEqual(
-      _.isSubset(eqNumber)(new Set([1, 2]), new Set([1, 2, 3])),
+      _.isSubset(eqNumber)(new Set([1, 2, 3]))(new Set([1, 2])),
       true
     )
     assert.deepStrictEqual(
-      _.isSubset(eqNumber)(new Set([1, 2, 4]), new Set([1, 2, 3])),
+      _.isSubset(eqNumber)(new Set([1, 2, 4]))(new Set([1, 2, 3])),
       false
     )
   })
@@ -129,14 +129,14 @@ describe("ReadonlySet", () => {
 
   it("union", () => {
     assert.deepStrictEqual(
-      _.union(eqNumber)(new Set([1, 2]), new Set([1, 3])),
+      _.union(eqNumber)(new Set([1, 2]))(new Set([1, 3])),
       new Set([1, 2, 3])
     )
   })
 
   it("intersection", () => {
     assert.deepStrictEqual(
-      _.intersection(eqNumber)(new Set([1, 2]), new Set([1, 3])),
+      _.intersection(eqNumber)(new Set([1, 2]))(new Set([1, 3])),
       new Set([1])
     )
   })
@@ -194,7 +194,7 @@ describe("ReadonlySet", () => {
 
   it("difference", () => {
     assert.deepStrictEqual(
-      _.difference(eqNumber)(new Set([1, 2]), new Set([1, 3])),
+      _.difference(eqNumber)(new Set([1, 3]))(new Set([1, 2])),
       new Set([2])
     )
   })
