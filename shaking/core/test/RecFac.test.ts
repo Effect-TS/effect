@@ -19,7 +19,7 @@ type ListF<A> = ConsF<A> | NilF
 const URI = "RS/ListF"
 type URI = typeof URI
 
-declare module "fp-ts/lib/HKT" {
+declare module "../src/Base/HKT" {
   interface URItoKind<A> {
     readonly [URI]: ListF<A>
   }

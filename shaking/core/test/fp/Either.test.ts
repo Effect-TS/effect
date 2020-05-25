@@ -119,7 +119,7 @@ describe("Either", () => {
     assert.deepStrictEqual(
       pipe(
         _.right(1),
-        _.orElse(() => _.left("foo"))
+        _.orElse(() => _.leftW("foo"))
       ),
       _.right(1)
     )
@@ -291,15 +291,24 @@ describe("Either", () => {
   describe("Traversable", () => {
     it("traverse", () => {
       assert.deepStrictEqual(
-        _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))(_.left("foo")),
+        pipe(
+          _.left("foo"),
+          _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))
+        ),
         some(_.left("foo"))
       )
       assert.deepStrictEqual(
-        _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))(_.right(1)),
+        pipe(
+          _.right(1),
+          _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))
+        ),
         none
       )
       assert.deepStrictEqual(
-        _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))(_.right(3)),
+        pipe(
+          _.right(3),
+          _.either.traverse(option)((a) => (a >= 2 ? some(a) : none))
+        ),
         some(_.right(3))
       )
     })

@@ -102,11 +102,17 @@ describe("Tuple", () => {
 
   it("traverse", () => {
     assert.deepStrictEqual(
-      T.tuple.traverse(option)((n) => (n >= 2 ? some(n) : none))([2, "a"]),
+      pipe(
+        [2, "a"] as [number, string],
+        T.tuple.traverse(option)((n) => (n >= 2 ? some(n) : none))
+      ),
       some([2, "a"])
     )
     assert.deepStrictEqual(
-      T.tuple.traverse(option)((n) => (n >= 2 ? some(n) : none))([1, "a"]),
+      pipe(
+        [1, "a"] as [number, string],
+        T.tuple.traverse(option)((n) => (n >= 2 ? some(n) : none))
+      ),
       none
     )
   })

@@ -6,5 +6,5 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*"]
+  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*"]
 }

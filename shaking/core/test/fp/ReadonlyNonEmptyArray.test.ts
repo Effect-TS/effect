@@ -2,7 +2,6 @@ import * as assert from "assert"
 
 import * as C from "../../src/Const"
 import { eqNumber } from "../../src/Eq"
-import { identity } from "../../src/Function"
 import * as I from "../../src/Identity"
 import * as M from "../../src/Monoid"
 import * as O from "../../src/Option"

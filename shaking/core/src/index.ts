@@ -15,6 +15,7 @@ import * as list from "./List"
 import * as magma from "./Magma"
 import * as managed from "./Managed"
 import * as map from "./Map"
+import * as monocle from "./Monocle"
 import * as monoid from "./Monoid"
 import * as nonEmptyArray from "./NonEmptyArray"
 import * as option from "./Option"
@@ -89,5 +90,6 @@ export {
   readOnly,
   const_ as const,
   identity,
-  apply
+  apply,
+  monocle
 }

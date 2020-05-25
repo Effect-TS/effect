@@ -879,10 +879,13 @@ describe("ReadonlyMap", () => {
         [{ id: "k2" }, 2]
       ])
       assert.deepStrictEqual(
-        optionTraverse((n) => (n <= 2 ? some(n) : none))(x),
+        optionTraverse((n: number) => (n <= 2 ? some(n) : none))(x),
         some(x)
       )
-      assert.deepStrictEqual(optionTraverse((n) => (n >= 2 ? some(n) : none))(x), none)
+      assert.deepStrictEqual(
+        optionTraverse((n: number) => (n >= 2 ? some(n) : none))(x),
+        none
+      )
     })
 
     it("sequence", () => {
