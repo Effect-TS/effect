@@ -2210,6 +2210,13 @@ export const readonlyArrayMonad: CMonad1<URI> & CApplicative1<URI> = {
   chain
 }
 
+export const readonlyArrayFoldable: CFoldable1<URI> = {
+  URI,
+  foldMap,
+  reduce,
+  reduceRight
+}
+
 export const readonlyArray: CMonad1<URI> &
   CFoldable1<URI> &
   CUnfoldable1<URI> &

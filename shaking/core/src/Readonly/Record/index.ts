@@ -1837,6 +1837,13 @@ export function toUnfoldable<F>(
   }
 }
 
+export const readonlyRecordFoldable: CFoldable1<URI> = {
+  URI,
+  foldMap,
+  reduce,
+  reduceRight
+}
+
 export const readonlyRecord: CFunctorWithIndex1<URI, string> &
   CFoldable1<URI> &
   CTraversableWithIndex1<URI, string> &

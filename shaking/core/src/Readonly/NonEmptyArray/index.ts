@@ -16,7 +16,8 @@ import type {
   CAlt1,
   CApplicative1,
   Traverse1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  CFoldable1
 } from "../../Base"
 import type { Eq } from "../../Eq"
 import type { Predicate, Refinement } from "../../Function"
@@ -635,6 +636,13 @@ export const foldMap_ = <S>(S: Semigroup<S>) => <A>(
   fa: ReadonlyNonEmptyArray<A>,
   f: (a: A) => S
 ) => fa.slice(1).reduce((s, a) => S.concat(s, f(a)), f(fa[0]))
+
+export const readonlyNonEmptyArrayFoldable: CFoldable1<URI> = {
+  URI,
+  foldMap,
+  reduce,
+  reduceRight
+}
 
 export const readonlyNonEmptyArray: CMonad1<URI> &
   CComonad1<URI> &

@@ -1335,3 +1335,10 @@ export const arrayAp: CApplicative1<URI> = {
   of,
   ap
 }
+
+export const arrayFoldable: CFoldable1<URI> = {
+  URI,
+  foldMap,
+  reduce,
+  reduceRight
+}

@@ -1007,6 +1007,13 @@ export const toUnfoldable: {
   <F>(U: CUnfoldable<F>): <A>(r: Record<string, A>) => HKT<F, readonly [string, A]>
 } = RR.toUnfoldable
 
+export const recordFoldable: CFoldable1<URI> = {
+  URI,
+  foldMap,
+  reduce,
+  reduceRight
+}
+
 export const record: CFunctorWithIndex1<URI, string> &
   CFoldable1<URI> &
   CTraversableWithIndex1<URI, string> &

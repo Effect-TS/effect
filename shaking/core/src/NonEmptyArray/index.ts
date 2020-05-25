@@ -16,7 +16,8 @@ import type {
   CAlt1,
   CApplicative1,
   Traverse1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  CFoldable1
 } from "../Base"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -487,6 +488,13 @@ export const alt_: <A>(
   fx: NonEmptyArray<A>,
   fy: () => NonEmptyArray<A>
 ) => NonEmptyArray<A> = (fx, fy) => concat(fx, fy())
+
+export const nonEmptyArrayFoldable: CFoldable1<URI> = {
+  URI,
+  foldMap,
+  reduce,
+  reduceRight
+}
 
 export const nonEmptyArray: CMonad1<URI> &
   CComonad1<URI> &
