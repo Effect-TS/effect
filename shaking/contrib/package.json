@@ -17,7 +17,7 @@
     "@types/node": "^13.11.0"
   },
   "peerDependencies": {
-    "@matechs/core": "^0.1.2"
+    "@matechs/core": "^0.3.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
