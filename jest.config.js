@@ -35,6 +35,12 @@ module.exports = {
     "@matechs/uuid/(.*)$": "<rootDir>/packages_be/uuid/build/$1",
     "@matechs/uuid$": "<rootDir>/packages_be/uuid/build",
     "@matechs/zoo/(.*)$": "<rootDir>/packages_be/zoo/build/$1",
-    "@matechs/zoo$": "<rootDir>/packages_be/zoo/build"
+    "@matechs/zoo$": "<rootDir>/packages_be/zoo/build",
+    "@matechs/browser/(.*)$": "<rootDir>/packages_fe/browser/build/$1",
+    "@matechs/browser$": "<rootDir>/packages_fe/browser/build",
+    "@matechs/rxjs/(.*)$": "<rootDir>/packages_fe/rxjs/build/$1",
+    "@matechs/rxjs$": "<rootDir>/packages_fe/rxjs/build",
+    "@matechs/epics/(.*)$": "<rootDir>/packages_fe/epics/build/$1",
+    "@matechs/epics$": "<rootDir>/packages_fe/epics/build"
   }
 }

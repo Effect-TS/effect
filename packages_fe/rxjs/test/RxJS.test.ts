@@ -1,19 +1,21 @@
 import * as assert from "assert"
 
-import { effect as T, stream as S } from "@matechs/effect"
-import { raise } from "@matechs/effect/lib/original/exit"
-import * as A from "fp-ts/lib/Array"
-import * as E from "fp-ts/lib/Either"
 import * as Rx from "rxjs"
 
-import * as O from "../src"
+import * as O from "../src/Rx"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import { raise } from "@matechs/core/Exit"
+import * as S from "@matechs/core/Stream"
 
 describe("RxJS", () => {
   jest.setTimeout(5000)
 
   it("should encaseObservable", async () => {
     const s = O.encaseObservable(Rx.interval(10), E.toError)
-    const p = S.collectArray(S.stream.take(s, 10))
+    const p = S.collectArray(S.take_(s, 10))
 
     const r = await T.runToPromise(p)
 
@@ -69,7 +71,7 @@ describe("RxJS", () => {
 
   it("should encaseObservable - error", async () => {
     const s = O.encaseObservable(Rx.throwError(new Error("error")), E.toError)
-    const p = S.collectArray(S.stream.take(s, 10))
+    const p = S.collectArray(S.take_(s, 10))
 
     const r = await T.runToPromiseExit(p)
 
@@ -182,9 +184,7 @@ describe("RxJS", () => {
   })
 
   it("unsubscribe should stop drain", async () => {
-    const s = S.stream.chain(S.repeatedly(0), (n) =>
-      S.encaseEffect(T.delay(T.pure(n), 10))
-    )
+    const s = S.chain_(S.repeatedly(0), (n) => S.encaseEffect(T.delay(T.pure(n), 10)))
     const o = O.toObservable(s)
 
     const r = await T.runToPromise(o)

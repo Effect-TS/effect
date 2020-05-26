@@ -1,10 +1,11 @@
 import * as assert from "assert"
 
-import { T } from "@matechs/prelude"
 import * as Rx from "rxjs"
 import { filter, catchError } from "rxjs/operators"
 
-import * as O from "../src/operators"
+import * as O from "../src/Operators"
+
+import * as T from "@matechs/core/Effect"
 
 describe("Operators", () => {
   it("chainEffect", async () => {

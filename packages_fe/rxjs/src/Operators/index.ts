@@ -1,7 +1,12 @@
-import { T, SE, Ex, pipe, E } from "@matechs/prelude"
 import * as Rx from "rxjs"
 
-import * as R from "./"
+import * as R from "../Rx"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
+import * as SE from "@matechs/core/StreamEither"
 
 /**
  * Chain an effect into an rxjs .pipe()

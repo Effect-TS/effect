@@ -1,5 +1,6 @@
-import { T, E } from "@matechs/prelude"
-import * as O from "fp-ts/lib/Option"
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as O from "@matechs/core/Option"
 
 export const localStorageEnv = "@matechs/browser/localStorageURI"
 export const sessionStorageEnv = "@matechs/browser/sessionStorageURI"

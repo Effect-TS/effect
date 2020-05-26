@@ -47,7 +47,13 @@
       "@matechs/uuid/*": ["packages_be/uuid/build/*"],
       "@matechs/uuid": ["packages_be/uuid/build"],
       "@matechs/zoo/*": ["packages_be/zoo/build/*"],
-      "@matechs/zoo": ["packages_be/zoo/build"]
+      "@matechs/zoo": ["packages_be/zoo/build"],
+      "@matechs/browser/*": ["packages_fe/browser/build/*"],
+      "@matechs/browser": ["packages_fe/browser/build"],
+      "@matechs/rxjs/*": ["packages_fe/rxjs/build/*"],
+      "@matechs/rxjs": ["packages_fe/rxjs/build"],
+      "@matechs/epics/*": ["packages_fe/epics/build/*"],
+      "@matechs/epics": ["packages_fe/epics/build"]
     }
   },
   "exclude": ["node_modules", "lib"]
