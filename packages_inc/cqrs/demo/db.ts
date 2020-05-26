@@ -1,11 +1,12 @@
-import { dbT, DbConfig, configEnv } from "@matechs/orm"
-import { T } from "@matechs/prelude"
 import { ConnectionOptions } from "typeorm"
 
 import * as CQ from "../src"
 
 import { printTodo } from "./app"
 import { DomainEvent } from "./events"
+
+import * as T from "@matechs/core/Effect"
+import { dbT, DbConfig, configEnv } from "@matechs/orm"
 
 // configure ORM db
 export const dbURI = "@matechs/cqrs/demo/dbURI"

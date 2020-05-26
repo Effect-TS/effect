@@ -2,11 +2,15 @@ import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
 import {} from "@morphic-ts/batteries/lib/program"
 import {} from "@morphic-ts/batteries/lib/program-orderable"
 
-import { T, M, pipe, E } from "@matechs/prelude"
 import Long from "long"
 import { ResolvedEvent } from "node-eventstore-client"
 
 import { eventStoreTcpConnection, accessConfig, EventStoreError } from "./client"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as M from "@matechs/core/Managed"
+import { pipe } from "@matechs/core/Pipe"
 
 export interface DecodeError<E> {
   type: "decode"

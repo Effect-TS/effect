@@ -1,4 +1,4 @@
-import { T } from "@matechs/prelude"
+import * as T from "@matechs/core/Effect"
 
 // experimental alpha
 /* istanbul ignore file */

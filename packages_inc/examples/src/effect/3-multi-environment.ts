@@ -1,6 +1,8 @@
 import * as assert from "assert";
 
-import { T, pipe, Ex } from "@matechs/aio";
+import * as T from "@matechs/core/Effect";
+import * as Ex from "@matechs/core/Exit";
+import { pipe } from "@matechs/core/Pipe";
 
 // define a unique resource identifier
 const AddURI = "@matechs/examples/AddURI";

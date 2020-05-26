@@ -1,12 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "lib",
+    "outDir": "build",
+    "target": "ES5",
+    "module": "CommonJS",
+    "sourceMap": false,
+    "removeComments": false,
     "lib": ["DOM"],
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
     "strictPropertyInitialization": false
   },
-  "exclude": ["tests", "node_modules", "demo"],
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
 }

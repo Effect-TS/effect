@@ -1,7 +1,3 @@
-import { logger, console } from "@matechs/logger"
-import { liveFactory } from "@matechs/orm"
-import { T, pipe } from "@matechs/prelude"
-
 import { ReadSideConfig } from "../src/config"
 
 import { provideApp } from "./app"
@@ -13,6 +9,11 @@ import {
   domain,
   dbConfigLive
 } from "./db"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import { logger, console } from "@matechs/logger"
+import { liveFactory } from "@matechs/orm"
 
 // simple program just append 3 new events to the log in the aggregate root todos-a
 const program = withTransaction(

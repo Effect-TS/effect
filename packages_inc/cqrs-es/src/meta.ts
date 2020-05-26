@@ -1,8 +1,8 @@
-import { EventMetaHidden, metaURI } from "@matechs/cqrs"
-import { O } from "@matechs/prelude"
-
 import { EventStoreAggregateEventMetadata } from "./client"
 import { ESMeta, esMetaURI } from "./read"
+
+import * as O from "@matechs/core/Option"
+import { EventMetaHidden, metaURI } from "@matechs/cqrs"
 
 export function adaptMeta(meta: ESMeta): O.Option<EventMetaHidden> {
   const event = O.fromNullable(meta[esMetaURI].raw.event)

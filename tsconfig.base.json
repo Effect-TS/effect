@@ -77,7 +77,11 @@
       "@matechs/rpc-client/*": ["packages_http/rpc-client/build/*"],
       "@matechs/rpc-client": ["packages_http/rpc-client/build"],
       "@matechs/rpc/*": ["packages_http/rpc/build/*"],
-      "@matechs/rpc": ["packages_http/rpc/build"]
+      "@matechs/rpc": ["packages_http/rpc/build"],
+      "@matechs/cqrs/*": ["packages_inc/cqrs/build/*"],
+      "@matechs/cqrs": ["packages_inc/cqrs/build"],
+      "@matechs/fancy/*": ["packages_inc/fancy/build/*"],
+      "@matechs/fancy": ["packages_inc/fancy/build"]
     }
   },
   "exclude": ["node_modules", "build", "lib"]

@@ -1,6 +1,3 @@
-import { logger } from "@matechs/logger"
-import { DbT, ORM, TaskError } from "@matechs/orm"
-import { T, Ex, A, NEA, pipe } from "@matechs/prelude"
 import { ElemType } from "@morphic-ts/adt/lib/utils"
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
@@ -14,6 +11,14 @@ import {
 } from "./config"
 import { MatcherT } from "./matchers"
 import { saveOffsets } from "./saveOffsets"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as NEA from "@matechs/core/NonEmptyArray"
+import { pipe } from "@matechs/core/Pipe"
+import { logger } from "@matechs/logger"
+import { DbT, ORM, TaskError } from "@matechs/orm"
 
 // experimental alpha
 /* istanbul ignore file */

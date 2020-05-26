@@ -68,6 +68,12 @@ module.exports = {
     "@matechs/rpc-client/(.*)$": "<rootDir>/packages_http/rpc-client/build/$1",
     "@matechs/rpc-client$": "<rootDir>/packages_http/rpc-client/build",
     "@matechs/rpc/(.*)$": "<rootDir>/packages_http/rpc/build/$1",
-    "@matechs/rpc$": "<rootDir>/packages_http/rpc/build"
+    "@matechs/rpc$": "<rootDir>/packages_http/rpc/build",
+    "@matechs/cqrs/(.*)$": "<rootDir>/packages_inc/cqrs/build/$1",
+    "@matechs/cqrs$": "<rootDir>/packages_inc/cqrs/build",
+    "@matechs/cqrs-es/(.*)$": "<rootDir>/packages_inc/cqrs-es/build/$1",
+    "@matechs/cqrs-es$": "<rootDir>/packages_inc/cqrs-es/build",
+    "@matechs/fancy/(.*)$": "<rootDir>/packages_inc/fancy/build/$1",
+    "@matechs/fancy$": "<rootDir>/packages_inc/fancy/build"
   }
 }
