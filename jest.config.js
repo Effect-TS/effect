@@ -41,6 +41,14 @@ module.exports = {
     "@matechs/rxjs/(.*)$": "<rootDir>/packages_fe/rxjs/build/$1",
     "@matechs/rxjs$": "<rootDir>/packages_fe/rxjs/build",
     "@matechs/epics/(.*)$": "<rootDir>/packages_fe/epics/build/$1",
-    "@matechs/epics$": "<rootDir>/packages_fe/epics/build"
+    "@matechs/epics$": "<rootDir>/packages_fe/epics/build",
+    "@matechs/console/(.*)$": "<rootDir>/packages_sys/console/build/$1",
+    "@matechs/console$": "<rootDir>/packages_sys/console/build",
+    "@matechs/logger/(.*)$": "<rootDir>/packages_sys/logger/build/$1",
+    "@matechs/logger$": "<rootDir>/packages_sys/logger/build",
+    "@matechs/logger-pino/(.*)$": "<rootDir>/packages_sys/logger-pino/build/$1",
+    "@matechs/logger-pino$": "<rootDir>/packages_sys/logger-pino/build",
+    "@matechs/logger-winston/(.*)$": "<rootDir>/packages_sys/logger-winston/build/$1",
+    "@matechs/logger-winston$": "<rootDir>/packages_sys/logger-winston/build"
   }
 }

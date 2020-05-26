@@ -1,4 +1,4 @@
-import * as console from "./console"
-import * as logger from "./logger"
+import * as console from "./Console"
+import * as logger from "./Logger"
 
 export { logger, console }

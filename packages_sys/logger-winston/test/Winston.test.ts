@@ -1,11 +1,14 @@
 import * as assert from "assert"
 
-import * as L from "@matechs/logger"
-import { T, Service as F, Ex } from "@matechs/prelude"
-import { pipe } from "fp-ts/lib/pipeable"
 import { Logger } from "winston"
 
 import * as W from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+import * as L from "@matechs/logger"
 
 const messages: any[][] = []
 

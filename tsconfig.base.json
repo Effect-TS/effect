@@ -53,7 +53,15 @@
       "@matechs/rxjs/*": ["packages_fe/rxjs/build/*"],
       "@matechs/rxjs": ["packages_fe/rxjs/build"],
       "@matechs/epics/*": ["packages_fe/epics/build/*"],
-      "@matechs/epics": ["packages_fe/epics/build"]
+      "@matechs/epics": ["packages_fe/epics/build"],
+      "@matechs/console/*": ["packages_sys/console/build/*"],
+      "@matechs/console": ["packages_sys/console/build"],
+      "@matechs/logger/*": ["packages_sys/logger/build/*"],
+      "@matechs/logger": ["packages_sys/logger/build"],
+      "@matechs/logger-pino/*": ["packages_sys/logger-pino/build/*"],
+      "@matechs/logger-pino": ["packages_sys/logger-pino/build"],
+      "@matechs/logger-winston/*": ["packages_sys/logger-winston/build/*"],
+      "@matechs/logger-winston": ["packages_sys/logger-winston/build"]
     }
   },
   "exclude": ["node_modules", "lib"]

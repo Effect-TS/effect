@@ -1,7 +1,7 @@
-import { T, Service as F } from "@matechs/prelude"
-import { Do } from "fp-ts-contrib/lib/Do"
+import * as L from "../Logger"
 
-import * as L from "./logger"
+import * as T from "@matechs/core/Effect"
+import * as F from "@matechs/core/Service"
 
 function format(level: L.Level, message: string, meta?: L.Meta) {
   return `${level}: ${message}${meta ? `(${JSON.stringify({ meta })})` : ""}`
@@ -14,7 +14,7 @@ function log(
   meta?: L.Meta
 ): T.Sync<void> {
   return (
-    Do(T.effect)
+    T.Do()
       .let("config", config)
       .bindL("formatter", (s) => T.pure(s.config.formatter ?? format))
       .bindL("level", (s) => T.pure(s.config.level ?? "silly"))

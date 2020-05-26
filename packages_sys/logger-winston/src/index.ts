@@ -1,7 +1,8 @@
-import * as L from "@matechs/logger"
-import { T, Service as F } from "@matechs/prelude"
-import { Do } from "fp-ts-contrib/lib/Do"
 import * as W from "winston"
+
+import * as T from "@matechs/core/Effect"
+import * as F from "@matechs/core/Service"
+import * as L from "@matechs/logger"
 
 export const winstonFactoryEnv = "@matechs/logger-winston/winstonFactoryURI"
 
@@ -26,7 +27,7 @@ export function log(
   message: string,
   meta?: L.logger.Meta
 ): T.SyncR<WinstonFactory, void> {
-  return Do(T.effect)
+  return T.Do()
     .bind("logger", logger)
     .doL((s) =>
       T.sync(() => {

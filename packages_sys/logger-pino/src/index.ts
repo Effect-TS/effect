@@ -1,6 +1,9 @@
-import { logger as L } from "@matechs/logger"
-import { T, Service as F, pipe } from "@matechs/prelude"
 import P from "pino"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+import { logger as L } from "@matechs/logger"
 
 // region Pino instance
 export const PinoInstanceURI = "@matechs/logger-pino/instanceURI"
@@ -21,7 +24,7 @@ export const {
 // endregion
 
 // region Pino ops
-const withLogger = (f: (_: P.Logger) => T.Sync<void>) => T.effect.chain(logger, f)
+const withLogger = (f: (_: P.Logger) => T.Sync<void>) => T.chain_(logger, f)
 
 export function fatal(
   obj: object,

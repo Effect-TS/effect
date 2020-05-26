@@ -36,10 +36,21 @@ import type {
 
 class DoClass<M> {
   constructor(readonly M: CMonad<M> & CApplicative<M>, private result: HKT<M, any>) {}
+  do(f: HKT<M, any>): DoClass<M> {
+    return new DoClass(this.M, this.M.chain((s) => this.M.map(() => s)(f))(this.result))
+  }
   doL(f: (s: any) => HKT<M, any>): DoClass<M> {
     return new DoClass(
       this.M,
       this.M.chain((s) => this.M.map(() => s)(f(s)))(this.result)
+    )
+  }
+  bind(name: string, f: HKT<M, any>): DoClass<M> {
+    return new DoClass(
+      this.M,
+      this.M.chain((s) => this.M.map((b) => Object.assign({}, s, { [name]: b }))(f))(
+        this.result
+      )
     )
   }
   bindL(name: string, f: (s: any) => HKT<M, any>): DoClass<M> {
@@ -50,10 +61,24 @@ class DoClass<M> {
       )
     )
   }
+  let(name: string, f: any): DoClass<M> {
+    return new DoClass(
+      this.M,
+      this.M.map((s) => Object.assign({}, s, { [name]: f }))(this.result)
+    )
+  }
   letL(name: string, f: (s: any) => any): DoClass<M> {
     return new DoClass(
       this.M,
       this.M.map((s) => Object.assign({}, s, { [name]: f(s) }))(this.result)
+    )
+  }
+  sequenceS(f: Record<string, HKT<M, any>>): DoClass<M> {
+    return new DoClass(
+      this.M,
+      this.M.chain((s) =>
+        this.M.map((r) => Object.assign({}, s, r))(sequenceS(this.M)(f))
+      )(this.result)
     )
   }
   sequenceSL(f: (s: any) => Record<string, HKT<M, any>>): DoClass<M> {
