@@ -1,6 +1,6 @@
 import * as fs from "fs"
 
-import * as chalk from "chalk"
+import chalk from "chalk"
 import * as A from "fp-ts/lib/Array"
 import { log } from "fp-ts/lib/Console"
 import * as IO from "fp-ts/lib/IO"
