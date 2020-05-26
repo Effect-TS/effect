@@ -6,7 +6,8 @@
     "module": "CommonJS",
     "sourceMap": false,
     "removeComments": false,
-    "lib": ["DOM"]
+    "lib": ["DOM"],
+    "jsx": "react"
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]
