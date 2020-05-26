@@ -13,16 +13,10 @@
     "tc": "tsc --noEmit"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "build"
   },
-  "main": "lib/index.js",
-  "module": "es6/index.js",
-  "typings": "lib/index.d.ts",
   "sideEffects": false,
-  "files": [
-    "lib",
-    "es6"
-  ],
   "dependencies": {
     "@matechs/prelude": "^2.0.2",
     "@morphic-ts/batteries": "^1.7.0",

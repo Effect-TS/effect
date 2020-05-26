@@ -1,7 +1,8 @@
-import { T, Service as F, Ref as R } from "@matechs/prelude"
-import { array } from "fp-ts/lib/Array"
-import { flow } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
+import * as T from "@matechs/core/Effect"
+import { flow } from "@matechs/core/Function"
+import { pipe } from "@matechs/core/Pipe"
+import * as R from "@matechs/core/Ref"
+import * as F from "@matechs/core/Service"
 
 export const gracefulURI = "@matechs/graceful/gracefulURI"
 
@@ -25,6 +26,6 @@ export const provideGraceful = F.implementWith(R.makeRef<T.Async<void>[]>([]))(
 )((_) => ({
   [gracefulURI]: {
     onExit: flow(insert, _.update, T.asUnit),
-    trigger: pipe(_.get, T.chain(array.sequence(T.parEffect)), T.asUnit)
+    trigger: pipe(_.get, T.chain(T.parSequenceArray), T.asUnit)
   }
 }))

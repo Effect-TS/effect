@@ -35,7 +35,9 @@
       "@matechs/test/*": ["packages/test/build/*"],
       "@matechs/test": ["packages/test/build"],
       "@matechs/test-jest/*": ["packages/test-jest/build/*"],
-      "@matechs/test-jest": ["packages/test-jest/build"]
+      "@matechs/test-jest": ["packages/test-jest/build"],
+      "@matechs/aio/*": ["packages/aio/build/*"],
+      "@matechs/aio": ["packages/aio/build"]
     }
   },
   "exclude": ["node_modules", "lib"]

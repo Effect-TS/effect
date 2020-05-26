@@ -23,6 +23,8 @@ module.exports = {
     "@matechs/test/(.*)$": "<rootDir>/packages/test/build/$1",
     "@matechs/test$": "<rootDir>/packages/test/build",
     "@matechs/test-jest/(.*)$": "<rootDir>/packages/test-jest/build/$1",
-    "@matechs/test-jest$": "<rootDir>/packages/test-jest/build"
+    "@matechs/test-jest$": "<rootDir>/packages/test-jest/build",
+    "@matechs/aio/(.*)$": "<rootDir>/packages/aio/build/$1",
+    "@matechs/aio$": "<rootDir>/packages/aio/build"
   }
 }

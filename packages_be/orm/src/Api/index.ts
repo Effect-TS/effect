@@ -1,9 +1,10 @@
-import { effect as T } from "@matechs/effect"
-import * as OP from "fp-ts/lib/Option"
-import { pipe } from "fp-ts/lib/pipeable"
 import { ObjectType, DeepPartial, SaveOptions, FindOneOptions } from "typeorm"
 
-import * as OR from "./orm"
+import * as ORM from "../ORM"
+
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
 
 export type Target<O> = ObjectType<O>
 
@@ -21,8 +22,8 @@ export interface Repository<O> {
   save<T extends DeepPartial<O>>(
     entity: T,
     options?: SaveOptions | undefined
-  ): T.AsyncE<OR.TaskError, O>
-  findOne(options?: FindOneOptions<O> | undefined): T.AsyncE<OR.TaskError, OP.Option<O>>
+  ): T.AsyncE<ORM.TaskError, O>
+  findOne(options?: FindOneOptions<O> | undefined): T.AsyncE<ORM.TaskError, O.Option<O>>
 }
 
 const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(
@@ -40,14 +41,14 @@ const repository_ = <DbURI extends symbol | string>(DbURI: DbURI) => <O>(
 
 export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const repository = repository_(DbURI)
-  const orm = OR.dbT(DbURI)
+  const orm = ORM.dbT(DbURI)
 
   const provideApi = <S, R, E, A>(
     eff: T.Effect<S, R & Database<DbURI>, E, A>
-  ): T.Effect<S, R & OR.ORM<DbURI>, E, A> => {
+  ): T.Effect<S, R & ORM.ORM<DbURI>, E, A> => {
     const provideDb = T.provideM(
       T.access(
-        (r: OR.ORM<DbURI>): Database<DbURI> => ({
+        (r: ORM.ORM<DbURI>): Database<DbURI> => ({
           [DatabaseURI]: {
             ...r[DatabaseURI],
             [DbURI]: {
@@ -62,7 +63,7 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
                 findOne: (options) =>
                   pipe(
                     orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
-                    T.map(OP.fromNullable),
+                    T.map(O.fromNullable),
                     T.provide(r, "inverted")
                   )
               })

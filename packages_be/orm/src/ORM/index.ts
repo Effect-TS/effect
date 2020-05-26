@@ -1,4 +1,3 @@
-import { T, Ex, E, pipe, F } from "@matechs/prelude"
 import {
   Connection,
   ConnectionOptions,
@@ -8,6 +7,12 @@ import {
   ObjectType,
   Repository
 } from "typeorm"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as Ex from "@matechs/core/Exit"
+import * as F from "@matechs/core/Function"
+import { pipe } from "@matechs/core/Pipe"
 
 export const configEnv = "@matechs/orm/configURI"
 export const poolEnv = "@matechs/orm/poolURI"
@@ -213,7 +218,7 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
         },
         [factoryEnv]: f
       }: DbConfig<Db> & DbFactory) =>
-        T.effect.chain(readConfig, (options) =>
+        T.chain_(readConfig, (options) =>
           T.bracket(
             pipe(
               () => f.createConnection(options),
