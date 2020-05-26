@@ -17,6 +17,7 @@ import * as managed from "./Managed"
 import * as map from "./Map"
 import * as monocle from "./Monocle"
 import * as monoid from "./Monoid"
+import * as newtype from "./Newtype"
 import * as nonEmptyArray from "./NonEmptyArray"
 import * as option from "./Option"
 import * as ord from "./Ord"
@@ -91,5 +92,6 @@ export {
   const_ as const,
   identity,
   apply,
-  monocle
+  monocle,
+  newtype
 }

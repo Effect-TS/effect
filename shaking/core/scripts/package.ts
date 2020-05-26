@@ -118,7 +118,8 @@ const modules: string[] = [
   "Monocle/Setter",
   "Monocle/Traversal",
   "Monocle/At",
-  "Monocle/Index"
+  "Monocle/Index",
+  "Newtype"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
