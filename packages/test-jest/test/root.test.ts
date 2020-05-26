@@ -1,6 +1,4 @@
-import * as fc from "fast-check"
-
-import { testM, run, suite, mockedTestM, expect, property, arb } from "../src"
+import { testM, run, suite, mockedTestM, expect } from "../src"
 
 import * as T from "@matechs/core/Effect"
 
@@ -10,10 +8,6 @@ run(
     T.sync(() => expect(2).toBe(2))
   )
 )()
-
-const x = property(100)({
-  a: arb(fc.integer())
-})
 
 run(
   suite("jest mock")(
