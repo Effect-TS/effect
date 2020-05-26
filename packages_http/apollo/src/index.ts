@@ -1,5 +1,3 @@
-import * as EX from "@matechs/express"
-import { T, U, O, pipe } from "@matechs/prelude"
 import {
   ApolloServer,
   makeExecutableSchema,
@@ -23,7 +21,13 @@ import {
   Resolver,
   ResolverEnv,
   ResolverF
-} from "./apollo"
+} from "./Apollo"
+
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as U from "@matechs/core/Utils"
+import * as EX from "@matechs/express"
 
 // EXPERIMENTAL
 /* istanbul ignore file */

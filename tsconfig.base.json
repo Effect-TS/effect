@@ -61,8 +61,24 @@
       "@matechs/logger-pino/*": ["packages_sys/logger-pino/build/*"],
       "@matechs/logger-pino": ["packages_sys/logger-pino/build"],
       "@matechs/logger-winston/*": ["packages_sys/logger-winston/build/*"],
-      "@matechs/logger-winston": ["packages_sys/logger-winston/build"]
+      "@matechs/logger-winston": ["packages_sys/logger-winston/build"],
+      "@matechs/http-client/*": ["packages_http/http-client/build/*"],
+      "@matechs/http-client": ["packages_http/http-client/build"],
+      "@matechs/http-client-fetch/*": ["packages_http/http-client-fetch/build/*"],
+      "@matechs/http-client-fetch": ["packages_http/http-client-fetch/build"],
+      "@matechs/http-client-libcurl/*": ["packages_http/http-client-libcurl/build/*"],
+      "@matechs/http-client-libcurl": ["packages_http/http-client-libcurl/build"],
+      "@matechs/express/*": ["packages_http/express/build/*"],
+      "@matechs/express": ["packages_http/express/build"],
+      "@matechs/apollo/*": ["packages_http/apollo/build/*"],
+      "@matechs/apollo": ["packages_http/apollo/build"],
+      "@matechs/koa/*": ["packages_http/koa/build/*"],
+      "@matechs/koa": ["packages_http/koa/build"],
+      "@matechs/rpc-client/*": ["packages_http/rpc-client/build/*"],
+      "@matechs/rpc-client": ["packages_http/rpc-client/build"],
+      "@matechs/rpc/*": ["packages_http/rpc/build/*"],
+      "@matechs/rpc": ["packages_http/rpc/build"]
     }
   },
-  "exclude": ["node_modules", "lib"]
+  "exclude": ["node_modules", "build", "lib"]
 }

@@ -5,32 +5,29 @@
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
-    "postbuild": "yarn prettier --write \"./{lib,es6}/**/*.ts\"",
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/package.ts",
+    "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
-    "prettier": "prettier --write \"./{src,tests,demo}/**/*.ts\"",
-    "import-path-rewrite": "import-path-rewrite",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "tsc --noEmit"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "build"
   },
-  "main": "lib/index.js",
-  "module": "es6/index.js",
-  "typings": "lib/index.d.ts",
   "sideEffects": false,
-  "files": [
-    "lib",
-    "es6"
-  ],
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/prelude": "^2.0.2",
-    "@types/koa-bodyparser": "^4.3.0",
-    "@types/koa-router": "^7.4.0",
+    "@matechs/core": "^0.3.0"
+  },
+  "peerDependencies": {
     "koa": "^2.11.0",
     "koa-bodyparser": "^4.3.0",
     "koa-router": "^8.0.8"
+  },
+  "devDependencies": {
+    "@types/koa-bodyparser": "^4.3.0",
+    "@types/koa-router": "^7.4.0"
   }
 }

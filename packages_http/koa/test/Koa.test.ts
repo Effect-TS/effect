@@ -1,11 +1,16 @@
 import "isomorphic-fetch"
 import * as assert from "assert"
 
+import * as KOA from "../src"
+
+import { sequenceT } from "@matechs/core/Base/Apply"
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as M from "@matechs/core/Managed"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
 import * as H from "@matechs/http-client"
 import * as L from "@matechs/http-client-fetch"
-import { T, M, O, pipe, Ex } from "@matechs/prelude"
-
-import * as KOA from "../src"
 
 describe("Koa", () => {
   it("should use koa", async () => {
@@ -160,7 +165,7 @@ describe("Koa", () => {
           H.post("http://127.0.0.1:3004/", {}),
           T.chain((s) =>
             T.fromOption(() => new Error("empty body"))(
-              O.sequenceT(
+              sequenceT(O.optionMonad)(
                 O.fromNullable(s.headers["x-request-id"]),
                 O.fromNullable(s.headers["x-request-id-2"])
               )
@@ -179,7 +184,7 @@ describe("Koa", () => {
       .done()
 
     await pipe(
-      T.effect.chain(config, (_) => program),
+      T.chain_(config, (_) => program),
       M.provide(KOA.managedKoa(3004, "127.0.0.1")),
       KOA.provideKoa,
       T.provide(L.client(fetch)),

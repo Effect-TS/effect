@@ -617,6 +617,10 @@ export function encaseOption<E, A>(o: O.Option<A>, onError: Lazy<E>): SyncE<E, A
   return new IPureOption(o, onError) as any
 }
 
+export function fromOption<E>(onError: Lazy<E>): <A>(o: O.Option<A>) => SyncE<E, A> {
+  return (o) => new IPureOption(o, onError) as any
+}
+
 export function encaseTask<A>(task: () => Promise<A>): Async<A> {
   return orAbort(fromPromise(task))
 }

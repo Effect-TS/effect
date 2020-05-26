@@ -1,12 +1,15 @@
 import "isomorphic-fetch"
 import * as assert from "assert"
 
+import * as RPC from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
 import * as E from "@matechs/express"
 import * as L from "@matechs/http-client-fetch"
-import { T, Service as F, Ex, pipe } from "@matechs/prelude"
 import * as RPCCLI from "@matechs/rpc-client"
-
-import * as RPC from "../src"
 
 const configEnv: unique symbol = Symbol()
 

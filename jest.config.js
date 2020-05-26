@@ -49,6 +49,25 @@ module.exports = {
     "@matechs/logger-pino/(.*)$": "<rootDir>/packages_sys/logger-pino/build/$1",
     "@matechs/logger-pino$": "<rootDir>/packages_sys/logger-pino/build",
     "@matechs/logger-winston/(.*)$": "<rootDir>/packages_sys/logger-winston/build/$1",
-    "@matechs/logger-winston$": "<rootDir>/packages_sys/logger-winston/build"
+    "@matechs/logger-winston$": "<rootDir>/packages_sys/logger-winston/build",
+    "@matechs/http-client/(.*)$": "<rootDir>/packages_http/http-client/build/$1",
+    "@matechs/http-client$": "<rootDir>/packages_http/http-client/build",
+    "@matechs/http-client-fetch/(.*)$":
+      "<rootDir>/packages_http/http-client-fetch/build/$1",
+    "@matechs/http-client-fetch$": "<rootDir>/packages_http/http-client-fetch/build",
+    "@matechs/http-client-libcurl/(.*)$":
+      "<rootDir>/packages_http/http-client-libcurl/build/$1",
+    "@matechs/http-client-libcurl$":
+      "<rootDir>/packages_http/http-client-libcurl/build",
+    "@matechs/express/(.*)$": "<rootDir>/packages_http/express/build/$1",
+    "@matechs/express$": "<rootDir>/packages_http/express/build",
+    "@matechs/apollo/(.*)$": "<rootDir>/packages_http/apollo/build/$1",
+    "@matechs/apollo$": "<rootDir>/packages_http/apollo/build",
+    "@matechs/koa/(.*)$": "<rootDir>/packages_http/koa/build/$1",
+    "@matechs/koa$": "<rootDir>/packages_http/koa/build",
+    "@matechs/rpc-client/(.*)$": "<rootDir>/packages_http/rpc-client/build/$1",
+    "@matechs/rpc-client$": "<rootDir>/packages_http/rpc-client/build",
+    "@matechs/rpc/(.*)$": "<rootDir>/packages_http/rpc/build/$1",
+    "@matechs/rpc$": "<rootDir>/packages_http/rpc/build"
   }
 }

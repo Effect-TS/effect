@@ -1,5 +1,7 @@
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
 import * as H from "@matechs/http-client"
-import { T, Ex, pipe } from "@matechs/prelude"
 import * as J from "@matechs/test-jest"
 
 /* istanbul ignore file */

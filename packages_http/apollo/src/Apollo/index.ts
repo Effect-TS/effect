@@ -1,8 +1,11 @@
-import { T, Service as F, O } from "@matechs/prelude"
 import { ApolloServerExpressConfig } from "apollo-server-express/dist/ApolloServer"
 import exp from "express"
 import { ConnectionContext } from "subscriptions-transport-ws"
 import WebSocket from "ws"
+
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import * as F from "@matechs/core/Service"
 
 // EXPERIMENTAL
 /* istanbul ignore file */

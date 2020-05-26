@@ -1,11 +1,15 @@
 import "isomorphic-fetch"
 import * as assert from "assert"
 
+import * as EX from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as M from "@matechs/core/Managed"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
 import * as H from "@matechs/http-client"
 import * as L from "@matechs/http-client-fetch"
-import { T, M, O, pipe, Ex } from "@matechs/prelude"
-
-import * as EX from "../src"
 
 describe("Express", () => {
   it("should use express", async () => {
@@ -53,7 +57,7 @@ describe("Express", () => {
       .bindL("res1", () =>
         pipe(
           H.post("http://127.0.0.1:3003/", {}),
-          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.chain((s) => T.encaseOption(s.body, () => new Error("empty body"))),
           T.result
         )
       )
@@ -64,7 +68,7 @@ describe("Express", () => {
             (s) =>
               s._tag === H.HttpErrorReason.Response && s.response && s.response.body
           ),
-          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.chain((s) => T.encaseOption(s.body, () => new Error("empty body"))),
           T.result
         )
       )
@@ -75,7 +79,7 @@ describe("Express", () => {
             (s) =>
               s._tag === H.HttpErrorReason.Response && s.response && s.response.body
           ),
-          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.chain((s) => T.encaseOption(s.body, () => new Error("empty body"))),
           T.result
         )
       )
@@ -86,14 +90,14 @@ describe("Express", () => {
             (s) =>
               s._tag === H.HttpErrorReason.Response && s.response && s.response.body
           ),
-          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.chain((s) => T.encaseOption(s.body, () => new Error("empty body"))),
           T.result
         )
       )
       .bindL("res5", () =>
         pipe(
           H.post("http://127.0.0.1:3003/access", {}),
-          T.chain((s) => T.fromOption(() => new Error("empty body"))(s.body)),
+          T.chain((s) => T.encaseOption(s.body, () => new Error("empty body"))),
           T.result
         )
       )

@@ -1,8 +1,14 @@
-import * as EX from "@matechs/express"
-import { T, M, O, A, pipe, combineProviders } from "@matechs/prelude"
 import { gql } from "apollo-server"
 
 import { apollo } from "../src"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import * as M from "@matechs/core/Managed"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import { combine } from "@matechs/core/Provider"
+import * as EX from "@matechs/express"
 
 // EXPERIMENTAL
 /* istanbul ignore file */
@@ -135,7 +141,7 @@ const main = pipe(
   T.chainTap(() => T.never)
 )
 
-const provider = combineProviders()
+const provider = combine()
   .with(M.provide(EX.managedExpress(8080)))
   .with(T.provide(EX.express))
   .with(

@@ -1,6 +1,9 @@
-import * as H from "@matechs/http-client"
-import { T, E, O } from "@matechs/prelude"
 import querystring from "query-string"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as O from "@matechs/core/Option"
+import * as H from "@matechs/http-client"
 
 function getContentType(requestType: H.RequestType): string {
   return H.foldRequestType(

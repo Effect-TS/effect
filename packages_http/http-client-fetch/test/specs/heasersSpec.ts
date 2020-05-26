@@ -1,9 +1,14 @@
-import * as H from "@matechs/http-client"
-import { T, Ex, O, pipe, M } from "@matechs/prelude"
-import * as J from "@matechs/test-jest"
 import express from "express"
 
 import { expressM } from "../resources/expressM"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as M from "@matechs/core/Managed"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as H from "@matechs/http-client"
+import * as J from "@matechs/test-jest"
 
 /* istanbul ignore file */
 

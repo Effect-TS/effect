@@ -4,7 +4,8 @@
     "lib": ["DOM"],
     "target": "ES5",
     "emitDecoratorMetadata": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false
   },
-  "include": ["src/**/*", "test/**/*", "type-tests/**/*", "demo/**/*"]
+  "include": ["src/**/*", "scripts/**/*", "test/**/*", "demo/**/*"]
 }

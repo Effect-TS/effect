@@ -1,12 +1,12 @@
 import { Server } from "http"
 
-import { T, M } from "@matechs/prelude"
 import { NextHandleFunction } from "connect"
 import newExpress, * as EX from "express"
-import { sequenceT } from "fp-ts/lib/Apply"
-import { array } from "fp-ts/lib/Array"
-import { left, right } from "fp-ts/lib/Either"
-import { identity } from "fp-ts/lib/function"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as F from "@matechs/core/Function"
+import * as M from "@matechs/core/Managed"
 
 export const expressAppEnv = "@matechs/express/expressAppURI"
 
@@ -114,9 +114,9 @@ export const express: Express = {
         T.async<Error, Server>((res) => {
           const s = app.listen(port, hostname || "0.0.0.0", (err) => {
             if (err) {
-              res(left(err))
+              res(E.left(err))
             } else {
-              res(right(s))
+              res(E.right(s))
             }
           })
 
@@ -203,8 +203,8 @@ export const managedExpress = (
 ): M.AsyncRE<Express, Error, HasServer & HasExpress> =>
   M.bracket(
     withApp(
-      T.effect.map(
-        sequenceT(T.effect)(bind(port, hostname), accessApp(identity)),
+      T.map_(
+        T.sequenceT(bind(port, hostname), accessApp(F.identity)),
         ([server, app]): HasServer & HasExpress => ({
           [serverEnv]: {
             server,
@@ -218,13 +218,13 @@ export const managedExpress = (
     ),
     (_) =>
       T.uninterruptible(
-        T.effect.chain(T.result(array.sequence(T.effect)(_[serverEnv].onClose)), () =>
+        T.chain_(T.result(T.sequenceArray(_[serverEnv].onClose)), () =>
           T.async<Error, void>((res) => {
             _[serverEnv].server.close((err) => {
               if (err) {
-                res(left(err))
+                res(E.left(err))
               } else {
-                res(right(undefined))
+                res(E.right(undefined))
               }
             })
             return () => {

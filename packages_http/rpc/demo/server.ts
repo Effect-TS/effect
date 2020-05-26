@@ -1,10 +1,16 @@
 import "isomorphic-fetch"
-import * as EX from "@matechs/express"
-import { T, Service as F, Ex, pipe, U, O } from "@matechs/prelude"
 
 import * as RPC from "../src"
 
 import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+import * as U from "@matechs/core/Utils"
+import * as EX from "@matechs/express"
 
 const todos: Array<Todo> = [
   { id: 1, completed: false, title: "todo 1", userId: 1 },
@@ -19,7 +25,7 @@ const todos: Array<Todo> = [
 export function authenticated<S, R, E, A>(
   eff: T.Effect<S, R, E, A>
 ): T.Effect<S, EX.ChildEnv & R, E | string, A> {
-  return T.effect.chain(
+  return T.chain_(
     EX.accessReqM((req) =>
       T.condWith(req.headers["token"] === "check")(T.unit)(T.raiseError("bad token"))
     ),
