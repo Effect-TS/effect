@@ -14,8 +14,7 @@
     "build": "lerna run build",
     "autofix": "lerna run --parallel autofix",
     "lint": "lerna run lint",
-    "tc": "lerna run tc",
-    "dtslint": "lerna run dtslint"
+    "tc": "lerna run tc"
   },
   "devDependencies": {
     "@babel/core": "^7.9.6",
