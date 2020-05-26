@@ -1,9 +1,11 @@
-import { T, U, pipe } from "@matechs/prelude"
-
 import { withControllerSpan, withTracer, tracer } from "../../src"
 
 import * as C from "./Counter"
 import * as P from "./Printer"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as U from "@matechs/core/Utils"
 
 export const program = withTracer(
   withControllerSpan(

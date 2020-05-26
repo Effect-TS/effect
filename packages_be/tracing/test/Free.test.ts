@@ -1,11 +1,13 @@
 import * as assert from "assert"
 
-import { T, Service as F } from "@matechs/prelude"
-import { pipe } from "fp-ts/lib/pipeable"
 import { Span, SpanOptions, Tracer as OT } from "opentracing"
 
 import { withTracer, withControllerSpan } from "../src"
 import * as TR from "../src"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
 
 const URI: unique symbol = Symbol()
 
@@ -34,7 +36,7 @@ class MockTracer extends OT {
 
 const {
   [URI]: { shouldTrace }
-} = TR.free.access(m)
+} = TR.access(m)
 
 const program = pipe(
   withTracer(withControllerSpan("my program", "main")(shouldTrace)),

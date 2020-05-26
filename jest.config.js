@@ -25,6 +25,16 @@ module.exports = {
     "@matechs/test-jest/(.*)$": "<rootDir>/packages/test-jest/build/$1",
     "@matechs/test-jest$": "<rootDir>/packages/test-jest/build",
     "@matechs/aio/(.*)$": "<rootDir>/packages/aio/build/$1",
-    "@matechs/aio$": "<rootDir>/packages/aio/build"
+    "@matechs/aio$": "<rootDir>/packages/aio/build",
+    "@matechs/graceful/(.*)$": "<rootDir>/packages_be/graceful/build/$1",
+    "@matechs/graceful$": "<rootDir>/packages_be/graceful/build",
+    "@matechs/orm/(.*)$": "<rootDir>/packages_be/orm/build/$1",
+    "@matechs/orm$": "<rootDir>/packages_be/orm/build",
+    "@matechs/tracing/(.*)$": "<rootDir>/packages_be/tracing/build/$1",
+    "@matechs/tracing$": "<rootDir>/packages_be/tracing/build",
+    "@matechs/uuid/(.*)$": "<rootDir>/packages_be/uuid/build/$1",
+    "@matechs/uuid$": "<rootDir>/packages_be/uuid/build",
+    "@matechs/zoo/(.*)$": "<rootDir>/packages_be/zoo/build/$1",
+    "@matechs/zoo$": "<rootDir>/packages_be/zoo/build"
   }
 }

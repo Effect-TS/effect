@@ -1,7 +1,11 @@
-import { T, M, E, pipe } from "@matechs/prelude"
 import { State } from "node-zookeeper-client"
 
-import { managedClient, ZooError, error, ConnectionDroppedError } from "./client"
+import { managedClient, ZooError, error, ConnectionDroppedError } from "../Client"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as M from "@matechs/core/Managed"
+import { pipe } from "@matechs/core/Pipe"
 
 // work in progress
 /* istanbul ignore file */

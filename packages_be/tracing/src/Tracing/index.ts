@@ -1,7 +1,9 @@
-import { T, pipe } from "@matechs/prelude"
 import { Tracer as OT, Span as OS, FORMAT_HTTP_HEADERS, Tags } from "opentracing"
 import { ERROR } from "opentracing/lib/ext/tags"
 import Span from "opentracing/lib/span"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
 
 export const TracerContext = "@matechs/tracing/tracerContextURI"
 

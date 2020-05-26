@@ -37,7 +37,17 @@
       "@matechs/test-jest/*": ["packages/test-jest/build/*"],
       "@matechs/test-jest": ["packages/test-jest/build"],
       "@matechs/aio/*": ["packages/aio/build/*"],
-      "@matechs/aio": ["packages/aio/build"]
+      "@matechs/aio": ["packages/aio/build"],
+      "@matechs/graceful/*": ["packages_be/graceful/build/*"],
+      "@matechs/graceful": ["packages_be/graceful/build"],
+      "@matechs/orm/*": ["packages_be/orm/build/*"],
+      "@matechs/orm": ["packages_be/orm/build"],
+      "@matechs/tracing/*": ["packages_be/tracing/build/*"],
+      "@matechs/tracing": ["packages_be/tracing/build"],
+      "@matechs/uuid/*": ["packages_be/uuid/build/*"],
+      "@matechs/uuid": ["packages_be/uuid/build"],
+      "@matechs/zoo/*": ["packages_be/zoo/build/*"],
+      "@matechs/zoo": ["packages_be/zoo/build"]
     }
   },
   "exclude": ["node_modules", "lib"]

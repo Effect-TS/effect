@@ -1,6 +1,13 @@
-import { T, M, Service, O, F, E, pipe } from "@matechs/prelude"
 import * as ZC from "node-zookeeper-client"
 import { CreateMode } from "node-zookeeper-client"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as F from "@matechs/core/Function"
+import * as M from "@matechs/core/Managed"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as Service from "@matechs/core/Service"
 
 // work in progress
 /* istanbul ignore file */
