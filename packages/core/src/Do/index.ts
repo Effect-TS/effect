@@ -34,47 +34,12 @@ import type {
   CMonad4MAC
 } from "../Base/Monad"
 
-export class Pipe<A, A2> {
-  constructor(private readonly _: A, private readonly _2: A2) {
-    this.do = this.do.bind(this)
-    this.access = this.access.bind(this)
-    this.pipe = this.pipe.bind(this)
-    this.done = this.done.bind(this)
-  }
-  do<B>(f: (_: A2) => B) {
-    return new Pipe(f(this._2), this._2)
-  }
-  access<B>(f: (_: A2) => (_: A) => B) {
-    return new Pipe(f(this._2)(this._), this._2)
-  }
-  pipe<B>(f: (_: A) => B) {
-    return new Pipe(f(this._), this._2)
-  }
-  done(): A {
-    return this._
-  }
-}
-
 class DoClass<M> {
   constructor(readonly M: CMonad<M> & CApplicative<M>, private result: HKT<M, any>) {}
-  do(action: HKT<M, any>): DoClass<M> {
-    return new DoClass(
-      this.M,
-      this.M.chain((s) => this.M.map(() => s)(action))(this.result)
-    )
-  }
   doL(f: (s: any) => HKT<M, any>): DoClass<M> {
     return new DoClass(
       this.M,
       this.M.chain((s) => this.M.map(() => s)(f(s)))(this.result)
-    )
-  }
-  bind(name: string, action: HKT<M, any>): DoClass<M> {
-    return new DoClass(
-      this.M,
-      this.M.chain((s) =>
-        this.M.map((b) => Object.assign({}, s, { [name]: b }))(action)
-      )(this.result)
     )
   }
   bindL(name: string, f: (s: any) => HKT<M, any>): DoClass<M> {
@@ -85,24 +50,10 @@ class DoClass<M> {
       )
     )
   }
-  let(name: string, a: any): DoClass<M> {
-    return new DoClass(
-      this.M,
-      this.M.map((s) => Object.assign({}, s, { [name]: a }))(this.result)
-    )
-  }
   letL(name: string, f: (s: any) => any): DoClass<M> {
     return new DoClass(
       this.M,
       this.M.map((s) => Object.assign({}, s, { [name]: f(s) }))(this.result)
-    )
-  }
-  sequenceS(r: Record<string, HKT<M, any>>): DoClass<M> {
-    return new DoClass(
-      this.M,
-      this.M.chain((s) =>
-        this.M.map((r) => Object.assign({}, s, r))(sequenceS(this.M)(r))
-      )(this.result)
     )
   }
   sequenceSL(f: (s: any) => Record<string, HKT<M, any>>): DoClass<M> {
@@ -121,6 +72,9 @@ class DoClass<M> {
   }
   done(): HKT<M, any> {
     return this.result
+  }
+  unit(): HKT<M, void> {
+    return this.M.of(undefined)
   }
 }
 
@@ -170,6 +124,7 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
   ) => Do4CE<M, Q2, S, U2, L2>
   return: <A>(f: (s: S) => A) => Kind4<M, Q, U, L, A>
   done: () => Kind4<M, Q, U, L, S>
+  unit: () => Kind4<M, Q, U, L, void>
 }
 
 // eslint-disable-next-line @typescript-eslint/class-name-casing
@@ -205,6 +160,7 @@ export interface Do4CE_<M extends MaURIS, Q, S extends object, U, L> {
   ) => Do4CE<M, Q2, S, U2, L>
   return: <A>(f: (s: S) => A) => Kind4<M, Q, U, L, A>
   done: () => Kind4<M, Q, U, L, S>
+  unit: () => Kind4<M, Q, U, L, void>
 }
 
 export interface Do3<M extends URIS3, S extends object> {
@@ -250,6 +206,7 @@ export interface Do3<M extends URIS3, S extends object> {
   >
   return: <R, E, A>(f: (s: S) => A) => Kind3<M, R, E, A>
   done: <R, E>() => Kind3<M, R, E, S>
+  unit: <R, E>() => Kind3<M, R, E, void>
 }
 
 export interface Do3C<M extends URIS3, S extends object, R, E> {
@@ -287,8 +244,10 @@ export interface Do3C<M extends URIS3, S extends object, R, E> {
     R,
     E
   >
+  pipe: <R2, E2>(f: (s: Kind3<M, R, E, S>) => Kind3<M, R2, E2, S>) => Do3C<M, S, R2, E2>
   return: <A>(f: (s: S) => A) => Kind3<M, R, E, A>
   done: () => Kind3<M, R, E, S>
+  unit: () => Kind3<M, R, E, void>
 }
 
 export interface Do2<M extends URIS2, S extends object> {
@@ -331,7 +290,7 @@ export interface Do2<M extends URIS2, S extends object> {
     E
   >
   return: <E, A>(f: (s: S) => A) => Kind2<M, E, A>
-  done: <E>() => Kind2<M, E, S>
+  unit: <E>() => Kind2<M, E, void>
 }
 
 export interface Do2C<M extends URIS2, S extends object, E> {
@@ -367,8 +326,10 @@ export interface Do2C<M extends URIS2, S extends object, E> {
     S & { [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never },
     E
   >
+  pipe: <E2>(f: (s: Kind2<M, E, S>) => Kind2<M, E2, S>) => Do2C<M, S, E2>
   return: <A>(f: (s: S) => A) => Kind2<M, E, A>
   done: () => Kind2<M, E, S>
+  unit: () => Kind2<M, E, void>
 }
 
 export interface Do1<M extends URIS, S extends object> {
@@ -398,6 +359,7 @@ export interface Do1<M extends URIS, S extends object> {
   ) => Do1<M, S & { [K in keyof I]: [I[K]] extends [Kind<M, infer A>] ? A : never }>
   return: <A>(f: (s: S) => A) => Kind<M, A>
   done: () => Kind<M, S>
+  unit: () => Kind<M, void>
 }
 
 export interface Do0<M, S extends object> {
@@ -427,6 +389,7 @@ export interface Do0<M, S extends object> {
   ) => Do0<M, S & { [K in keyof R]: [R[K]] extends [HKT<M, infer A>] ? A : never }>
   return: <A>(f: (s: S) => A) => HKT<M, A>
   done: () => HKT<M, S>
+  unit: () => HKT<M, void>
 }
 
 export function Do<M extends MaURIS>(
