@@ -27,9 +27,11 @@
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
     "@matechs/prelude": "^2.0.2",
-    "@matechs/rxjs": "^5.0.2",
+    "@matechs/rxjs": "^5.0.2"
+  },
+  "peerDependencies": {
+    "rxjs": "^6.5.5",
     "redux": "^4.0.4",
-    "redux-observable": "^1.2.0",
-    "rxjs": "^6.5.5"
+    "redux-observable": "^1.2.0"
   }
 }
