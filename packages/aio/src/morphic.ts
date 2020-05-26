@@ -1,4 +1,3 @@
-import { T } from "@matechs/prelude"
 import { ADT, intersectADT, isIn, makeADT, ofType, unionADT } from "@morphic-ts/adt"
 import { Validated } from "@morphic-ts/batteries/lib/create"
 import {
@@ -16,6 +15,8 @@ import { FastCheckURI } from "@morphic-ts/fastcheck-interpreters/lib/config"
 import { modelFastCheckInterpreter as fc } from "@morphic-ts/fastcheck-interpreters/lib/interpreters"
 import { IoTsURI } from "@morphic-ts/io-ts-interpreters/lib/config"
 import { ShowURI } from "@morphic-ts/show-interpreters/lib/config"
+
+import * as T from "@matechs/core/Effect"
 
 export {
   AsOpaque,

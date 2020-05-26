@@ -1,6 +1,6 @@
-import { effect as T } from "@matechs/effect"
-
 import { assert, testM, customRun } from "../src"
+
+import * as T from "@matechs/core/Effect"
 
 customRun({
   describe,

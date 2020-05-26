@@ -28,10 +28,14 @@
     "strictNullChecks": true,
     "baseUrl": ".",
     "paths": {
-      "@matechs/core/*": ["shaking/core/build/*"],
-      "@matechs/core": ["shaking/core/build"],
-      "@matechs/model/*": ["shaking/model/build/*"],
-      "@matechs/model": ["shaking/model/build"]
+      "@matechs/core/*": ["packages/core/build/*"],
+      "@matechs/core": ["packages/core/build"],
+      "@matechs/contrib/*": ["packages/contrib/build/*"],
+      "@matechs/contrib": ["packages/contrib/build"],
+      "@matechs/test/*": ["packages/test/build/*"],
+      "@matechs/test": ["packages/test/build"],
+      "@matechs/test-jest/*": ["packages/test-jest/build/*"],
+      "@matechs/test-jest": ["packages/test-jest/build"]
     }
   },
   "exclude": ["node_modules", "lib"]

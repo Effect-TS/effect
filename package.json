@@ -3,7 +3,6 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "workspaces": [
-    "shaking/*",
     "packages/*",
     "packages_inc/*",
     "packages_sys/*",
