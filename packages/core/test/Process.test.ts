@@ -41,7 +41,7 @@ describe("Process", () => {
 
     const all = P.runAll(
       {
-        a: T.delay(T.pure(1), 100),
+        a: T.delay(T.pure(1), 500),
         b: T.delay(T.pure(2), 5000),
         d: T.delay(
           T.access(({ test: { n } }: Foo) => n),
