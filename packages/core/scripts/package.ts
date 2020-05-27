@@ -45,6 +45,7 @@ const modules: string[] = [
   "Base/Alternative",
   "Base/Contravariant",
   "Base/Semigroupoid",
+  "Model",
   "Apply",
   "Identity",
   "Exit",
