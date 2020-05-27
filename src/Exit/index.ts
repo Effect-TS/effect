@@ -1,7 +1,7 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
-import type { NonEmptyArray } from "../NonEmptyArray"
 import { isNonEmpty } from "../Array"
+import type { NonEmptyArray } from "../NonEmptyArray"
 import { none, some } from "../Option"
 import type { Option } from "../Option"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common/types"
