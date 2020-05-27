@@ -24,7 +24,7 @@
     "@types/react-dom": "^16.9.7",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",
-    "io-ts": "^2.2.1",
+    "io-ts": "^2.2.4",
     "io-ts-types": "^0.5.6",
     "mobx": "^5.15.4",
     "mobx-react": "^6.1.8",
