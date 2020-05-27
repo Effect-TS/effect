@@ -1,7 +1,7 @@
-export { election } from "./election"
+export { election } from "./Election"
 export {
   ClientConfig,
   clientConfigURI,
   provideClientFactory,
   provideClientConfig
-} from "./client"
+} from "./Client"

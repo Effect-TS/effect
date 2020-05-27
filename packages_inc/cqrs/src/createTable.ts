@@ -1,5 +1,5 @@
+import * as T from "@matechs/core/Effect"
 import { DbT } from "@matechs/orm"
-import { T } from "@matechs/prelude"
 
 // experimental alpha
 /* istanbul ignore file */

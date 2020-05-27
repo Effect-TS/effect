@@ -1,4 +1,3 @@
-import { T, Ex, pipe } from "@matechs/prelude"
 import * as M from "mobx"
 import * as React from "react"
 
@@ -6,6 +5,10 @@ import { componentPropsURI } from "./componentProps"
 import { Fancy, State, stateURI } from "./fancy"
 
 import { View, ComponentProps } from "."
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
 
 // alpha
 /* istanbul ignore file */
@@ -19,7 +22,7 @@ export const reactAsync = <K, P, Q>(_V: View<State<K> & ComponentProps<P>, Q>) =
 ): React.FC<Q & { children?: React.ReactElement }> => {
   const initial = pipe(
     _I as Record<string, any>,
-    T.traverseRecordWithIndex((k: string) =>
+    T.traverseRecordWI((k: string) =>
       pipe(
         _I[k] as T.Sync<any>,
         T.map((x) => M.observable(x as any))

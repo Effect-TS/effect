@@ -3,7 +3,6 @@
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "workspaces": [
-    "shaking/*",
     "packages/*",
     "packages_inc/*",
     "packages_sys/*",
@@ -15,8 +14,7 @@
     "build": "lerna run build",
     "autofix": "lerna run --parallel autofix",
     "lint": "lerna run lint",
-    "tc": "lerna run tc",
-    "dtslint": "lerna run dtslint"
+    "tc": "lerna run tc"
   },
   "devDependencies": {
     "@babel/core": "^7.9.6",
@@ -35,6 +33,7 @@
     "@types/jest": "^25.2.1",
     "@types/node": "^13.11.0",
     "@types/node-zookeeper-client": "^0.2.7",
+    "@types/pino": "^6.0.1",
     "@types/std-mocks": "^1.0.0",
     "@types/uuid": "^7.0.2",
     "@typescript-eslint/eslint-plugin": "^2.31.0",
@@ -68,6 +67,7 @@
     "inquirer": "^7.1.0",
     "io-ts": "^2.2.1",
     "io-ts-types": "^0.5.6",
+    "isomorphic-fetch": "^2.2.1",
     "jest": "^25.5.3",
     "koa": "^2.11.0",
     "koa-bodyparser": "^4.3.0",

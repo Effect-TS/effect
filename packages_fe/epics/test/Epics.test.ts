@@ -1,13 +1,15 @@
 import * as assert from "assert"
 
-import { effect as T, stream as S } from "@matechs/effect"
-import * as Op from "fp-ts/lib/Option"
-import { identity } from "fp-ts/lib/function"
-import { pipe } from "fp-ts/lib/pipeable"
 import { Action, applyMiddleware, combineReducers, createStore } from "redux"
 import { combineEpics, createEpicMiddleware } from "redux-observable"
 
 import * as Ep from "../src"
+
+import * as T from "@matechs/core/Effect"
+import { identity } from "@matechs/core/Function"
+import * as Op from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as S from "@matechs/core/Stream"
 
 interface User {
   id: string

@@ -51,4 +51,8 @@ export {
   withTodo
 }
 
-export { mockedTestM } from "./aspects/withJestMocks"
+export { mockedTestM } from "./Aspects/WithJestMocks"
+
+const exp = expect
+
+export { exp as expect }

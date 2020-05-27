@@ -1,6 +1,7 @@
-import { T, Ex } from "@matechs/prelude"
-
 import * as EX from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
 
 const program = EX.withApp(
   T.Do()

@@ -1,6 +1,5 @@
 import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
-import { DbT, DbTx, ORM, TaskError } from "@matechs/orm"
-import { T, NEA, pipe } from "@matechs/prelude"
+
 import { Of } from "@morphic-ts/adt/lib/ctors"
 import { ElemType } from "@morphic-ts/adt/lib/utils"
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
@@ -12,6 +11,11 @@ import { SliceFetcher, AggregateFetcher } from "./fetchSlice"
 import { matcher } from "./matcher"
 import { persistEvent } from "./persistEvent"
 import { Read } from "./read"
+
+import * as T from "@matechs/core/Effect"
+import * as NEA from "@matechs/core/NonEmptyArray"
+import { pipe } from "@matechs/core/Pipe"
+import { DbT, DbTx, ORM, TaskError } from "@matechs/orm"
 
 // experimental alpha
 /* istanbul ignore file */

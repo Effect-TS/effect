@@ -1,5 +1,2 @@
-import * as free from "./free"
-
-export * from "./tracing"
-
-export { free }
+export * from "./Free"
+export * from "./Tracing"

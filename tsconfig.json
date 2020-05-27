@@ -2,12 +2,6 @@
   "extends": "./tsconfig.base.json",
   "files": [],
   "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@matechs/core/*": ["shaking/core/src/*"],
-      "@matechs/core": ["shaking/core/src"],
-      "@matechs/model/*": ["shaking/model/build/*"],
-      "@matechs/model": ["shaking/model/build"]
-    }
+    "baseUrl": "."
   }
 }

@@ -1,8 +1,12 @@
-import { T, combineProviders, O, pipe } from "@matechs/prelude"
 import * as fc from "fast-check"
 import { limitRetries } from "retry-ts"
 
 import * as M from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import { combine } from "@matechs/core/Provider"
 
 interface Sum {
   sum: {
@@ -228,7 +232,7 @@ const provideOver = T.provide<OverProvide>({
   over: {}
 })
 
-const combined = combineProviders()
+const combined = combine()
   .with(provideSub)
   .with(provideSum)
   .with(provideDiv)

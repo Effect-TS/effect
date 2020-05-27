@@ -1,5 +1,10 @@
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as F from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as Service from "@matechs/core/Service"
 import * as H from "@matechs/http-client"
-import { Service, T, Ex, F, O, pipe } from "@matechs/prelude"
 
 // tested in @matechs/rpc
 /* istanbul ignore file */

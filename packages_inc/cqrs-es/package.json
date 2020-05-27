@@ -5,31 +5,24 @@
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "build": "rimraf lib && rimraf es6 && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && yarn import-path-rewrite",
-    "postbuild": "yarn prettier --write \"./{lib,es6}/**/*.ts\"",
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/package.ts",
+    "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
-    "prettier": "prettier --write \"./{src,tests,demo}/**/*.ts\"",
-    "import-path-rewrite": "import-path-rewrite",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "tsc --noEmit"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "directory": "build"
   },
-  "main": "lib/index.js",
-  "module": "es6/index.js",
-  "typings": "lib/index.d.ts",
   "sideEffects": false,
-  "files": [
-    "lib",
-    "es6"
-  ],
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
     "@matechs/cqrs": "^5.0.2",
     "@matechs/logger": "^5.0.2",
     "@matechs/orm": "^5.0.2",
-    "@matechs/prelude": "^2.0.2",
+    "@matechs/core": "^0.3.0",
     "@morphic-ts/batteries": "^1.7.0",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.24.1",

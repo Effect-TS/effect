@@ -1,6 +1,6 @@
-import * as J from "@matechs/test-jest"
-
 import { MO, T, Ex, pipe, combineProviders } from "../src"
+
+import * as J from "@matechs/test-jest"
 
 interface Config {
   [MO.FastCheckURI]: {

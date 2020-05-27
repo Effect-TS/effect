@@ -1,8 +1,8 @@
-import { T } from "@matechs/prelude"
-import * as M from "@matechs/test-jest"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import * as C from "../src"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as M from "@matechs/test-jest"
 
 const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) =>
   M.withHook(

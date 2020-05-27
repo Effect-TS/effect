@@ -1,10 +1,12 @@
-import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm"
-import { T, pipe } from "@matechs/prelude"
 import { ADT } from "@morphic-ts/adt/lib"
 import * as t from "io-ts"
 import { v4 } from "uuid"
 
 import { EventLog } from "./eventLog"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm"
 
 // experimental alpha
 /* istanbul ignore file */
@@ -32,7 +34,7 @@ export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
       .bindL("saved", ({ date, id, seq }) =>
         pipe(
           events,
-          T.traverseArrayWithIndex((idx, event) =>
+          T.traverseArrayWI((idx, event) =>
             db.withRepositoryTask(EventLog)((r) => () =>
               r.save({
                 id,

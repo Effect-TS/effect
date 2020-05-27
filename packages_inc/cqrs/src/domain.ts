@@ -1,5 +1,3 @@
-import { dbT } from "@matechs/orm"
-import { T, NEA } from "@matechs/prelude"
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
 import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
@@ -10,6 +8,10 @@ import { createTable } from "./createTable"
 import { DomainFetcher, DomainFetcherAll } from "./fetchSlice"
 import { matcher } from "./matcher"
 import { Read } from "./read"
+
+import * as T from "@matechs/core/Effect"
+import * as NEA from "@matechs/core/NonEmptyArray"
+import { dbT } from "@matechs/orm"
 
 // experimental alpha
 /* istanbul ignore file */

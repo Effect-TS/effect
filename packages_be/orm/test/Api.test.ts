@@ -1,10 +1,15 @@
 import * as assert from "assert"
 
-import { T, Ex, U, pipe, O } from "@matechs/prelude"
 import { deepEqual } from "fast-equals"
 import { Entity, PrimaryColumn, Connection, EntityManager, Repository } from "typeorm"
 
 import * as ORM from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as U from "@matechs/core/Utils"
 
 @Entity()
 export class DemoEntity {

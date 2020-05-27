@@ -1,20 +1,24 @@
-import { T, pipe, Service as F } from "@matechs/prelude"
-import { Newtype, iso } from "newtype-ts"
 import U from "short-uuid"
 import { v4 } from "uuid"
 
+import * as T from "@matechs/core/Effect"
+import * as I from "@matechs/core/Monocle/Iso"
+import * as NT from "@matechs/core/Newtype"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+
 export interface UUID
-  extends Newtype<{ readonly UUID: "@matechs/uuid/uuidNT" }, string> {}
+  extends NT.Newtype<{ readonly UUID: "@matechs/uuid/uuidNT" }, string> {}
 
 export interface UUIDBase90
-  extends Newtype<{ readonly UUIDBase90: "@matechs/uuid/uuidBase90NT" }, string> {}
+  extends NT.Newtype<{ readonly UUIDBase90: "@matechs/uuid/uuidBase90NT" }, string> {}
 
 export interface UUIDBase58
-  extends Newtype<{ readonly UUIDBase58: "@matechs/uuid/uuidBase58" }, string> {}
+  extends NT.Newtype<{ readonly UUIDBase58: "@matechs/uuid/uuidBase58" }, string> {}
 
-export const isoUUID = iso<UUID>()
-export const isoUUIDBase90 = iso<UUIDBase90>()
-export const isoUUIDBase58 = iso<UUIDBase58>()
+export const isoUUID = NT.iso<UUID>()
+export const isoUUIDBase90 = NT.iso<UUIDBase90>()
+export const isoUUIDBase58 = NT.iso<UUIDBase58>()
 
 export const uuidURI = "@matechs/uuid/uuidURI"
 
@@ -34,41 +38,41 @@ export const uuidM = F.opaque<UUIDEnv>()(uuidM_)
 
 export const provideUUID = F.implement(uuidM)({
   [uuidURI]: {
-    gen: T.sync(() => isoUUID.wrap(v4())),
+    gen: T.sync(() => I.wrap(isoUUID)(v4())),
     toBase90: (uuid) =>
       T.sync(() =>
         pipe(
           uuid,
-          isoUUID.unwrap,
+          I.unwrap(isoUUID),
           (x) => U(U.constants.cookieBase90).fromUUID(x),
-          isoUUIDBase90.wrap
+          I.wrap(isoUUIDBase90)
         )
       ),
     fromBase90: (uuid) =>
       T.sync(() =>
         pipe(
           uuid,
-          isoUUIDBase90.unwrap,
+          I.unwrap(isoUUIDBase90),
           (x) => U(U.constants.cookieBase90).toUUID(x),
-          isoUUID.wrap
+          I.wrap(isoUUID)
         )
       ),
     toBase58: (uuid) =>
       T.sync(() =>
         pipe(
           uuid,
-          isoUUID.unwrap,
+          I.unwrap(isoUUID),
           (x) => U(U.constants.flickrBase58).fromUUID(x),
-          isoUUIDBase58.wrap
+          I.wrap(isoUUIDBase58)
         )
       ),
     fromBase58: (uuid) =>
       T.sync(() =>
         pipe(
           uuid,
-          isoUUIDBase58.unwrap,
+          I.unwrap(isoUUIDBase58),
           (x) => U(U.constants.flickrBase58).toUUID(x),
-          isoUUID.wrap
+          I.wrap(isoUUID)
         )
       )
   }

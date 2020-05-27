@@ -1,12 +1,11 @@
-import { effect as T } from "@matechs/effect"
-import { Do } from "fp-ts-contrib/lib/Do"
+import { testM, run, suite, mockedTestM, expect } from "../src"
 
-import { assert, testM, run, suite, mockedTestM } from "../src"
+import * as T from "@matechs/core/Effect"
 
 run(
   testM(
     "simple root",
-    T.sync(() => assert.deepStrictEqual(2, 2))
+    T.sync(() => expect(2).toBe(2))
   )
 )()
 
@@ -16,7 +15,7 @@ run(
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       info: jest.spyOn(console, "info").mockImplementation(() => {})
     }))(({ useMockM }) =>
-      Do(T.effect)
+      T.Do()
         .do(
           T.sync(() => {
             console.info("ok")

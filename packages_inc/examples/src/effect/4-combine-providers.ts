@@ -1,6 +1,9 @@
 import * as assert from "assert";
 
-import { T, pipe, Ex, combineProviders } from "@matechs/aio";
+import * as T from "@matechs/core/Effect";
+import * as Ex from "@matechs/core/Exit";
+import { pipe } from "@matechs/core/Pipe";
+import { combine } from "@matechs/core/Provider";
 
 // define a unique resource identifier
 const AddURI = "@matechs/examples/AddURI";
@@ -54,7 +57,7 @@ const provideMul = T.provide<Mul>({
 
 // combine the 2 providers into a single
 // inferred as T.Provider<unknown, Add & Mul, never, never>
-const provideLive = combineProviders().with(provideAdd).with(provideMul).done();
+const provideLive = combine().with(provideAdd).with(provideMul).done();
 
 // run the program providing the concrete implementation
 const result: Ex.Exit<never, number> = pipe(addAndMul, provideLive, T.runSync);

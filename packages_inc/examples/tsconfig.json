@@ -8,5 +8,5 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": ["src/**/*", "test/**/*", "type-tests/**/*", "demo/**/*"]
+  "include": ["src/**/*", "scripts/**/*", "test/**/*", "demo/**/*"]
 }

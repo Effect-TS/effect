@@ -1,16 +1,15 @@
-import { T } from "@matechs/prelude"
-import * as M from "@matechs/test-jest"
-import { Do } from "fp-ts-contrib/lib/Do"
-import { some } from "fp-ts/lib/Option"
-
 import * as B from "../src"
 
 import { MockStorage } from "./mock"
 
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import * as M from "@matechs/test-jest"
+
 const browserSpec = M.suite("browser")(
   M.testM(
     "use local storage",
-    Do(T.effect)
+    T.Do()
       .do(B.localStore.setItem("foo", "bar"))
       .bind("l", B.localStore.length)
       .bind("f", B.localStore.getItem("foo"))
@@ -22,15 +21,19 @@ const browserSpec = M.suite("browser")(
       .bind("l3", B.localStore.length)
       .return(({ f, k, l, l2, l3 }) => {
         M.assert.deepStrictEqual(l, 1)
-        M.assert.deepStrictEqual(k, some("foo"))
-        M.assert.deepStrictEqual(f, some("bar"))
+        M.assert.deepStrictEqual(l, 1)
+        M.assert.deepStrictEqual(l, 1)
+        M.assert.deepStrictEqual(k, O.some("foo"))
+        M.assert.deepStrictEqual(k, O.some("foo"))
+        M.assert.deepStrictEqual(k, O.some("foo"))
+        M.assert.deepStrictEqual(f, O.some("bar"))
         M.assert.deepStrictEqual(l2, 0)
         M.assert.deepStrictEqual(l3, 0)
       })
   ),
   M.testM(
     "use session storage",
-    Do(T.effect)
+    T.Do()
       .do(B.sessionStore.setItem("foo", "bar"))
       .bind("l", B.sessionStore.length)
       .bind("f", B.sessionStore.getItem("foo"))
@@ -42,8 +45,8 @@ const browserSpec = M.suite("browser")(
       .bind("l3", B.sessionStore.length)
       .return(({ f, k, l, l2, l3 }) => {
         M.assert.deepStrictEqual(l, 1)
-        M.assert.deepStrictEqual(k, some("foo"))
-        M.assert.deepStrictEqual(f, some("bar"))
+        M.assert.deepStrictEqual(k, O.some("foo"))
+        M.assert.deepStrictEqual(f, O.some("bar"))
         M.assert.deepStrictEqual(l2, 0)
         M.assert.deepStrictEqual(l3, 0)
       })

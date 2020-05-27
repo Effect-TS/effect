@@ -1,6 +1,3 @@
-import { effect as T, freeEnv as F } from "@matechs/effect"
-import { pipe } from "fp-ts/lib/pipeable"
-
 import {
   assert,
   testM,
@@ -12,6 +9,10 @@ import {
   withFinalize,
   implementMock
 } from "../src"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
 
 const TestValue_ = F.define({
   test: {

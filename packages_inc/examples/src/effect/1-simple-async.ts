@@ -1,6 +1,8 @@
 import * as assert from "assert";
 
-import { T, pipe, Ex, F } from "@matechs/aio";
+import * as T from "@matechs/core/Effect";
+import * as Ex from "@matechs/core/Exit";
+import { pipe } from "@matechs/core/Pipe";
 
 const add = (x: number, y: number): T.Sync<number> => T.sync(() => x + y);
 const mul = (x: number, y: number): T.Sync<number> => T.sync(() => x * y);
@@ -26,6 +28,6 @@ T.runToPromise(addAndMul)
   });
 
 // invoking canceller cancel the computation (not in this case because all sync)
-const canceller: F.Lazy<void> = T.run(addAndMul, (result) => {
+export const canceller = T.run(addAndMul, (result) => {
   assert.deepStrictEqual(result, Ex.done(6));
 });

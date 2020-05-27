@@ -1,11 +1,15 @@
 import { Server } from "http"
 
-import { T, M, pipe, E } from "@matechs/prelude"
 import KoaApp from "koa"
 import * as KOA from "koa"
 import koaBodyParser from "koa-bodyparser"
 import KC from "koa-compose"
 import KoaRouter, { RouterContext } from "koa-router"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as M from "@matechs/core/Managed"
+import { pipe } from "@matechs/core/Pipe"
 
 export const koaAppEnv = "@matechs/koa/koaAppURI"
 export interface HasKoa {
@@ -264,7 +268,7 @@ export function bind(
   _: T.Effect<S, R & HasRouter & HasMiddle & HasServer, E, A>
 ) => T.AsyncRE<HasKoa & Koa & R, E, A> {
   return (op) =>
-    T.effect.chain(
+    T.chain_(
       T.accessM(({ [koaEnv]: koa }: Koa) => koa.bind(port, hostname)),
       (server) =>
         pipe(
@@ -290,7 +294,7 @@ export const managedKoa = (port: number, hostname?: string) =>
     ),
     (_) =>
       T.uninterruptible(
-        T.effect.chain(T.result(T.sequenceArray(_[serverEnv].onClose)), () =>
+        T.chain_(T.result(T.sequenceArray(_[serverEnv].onClose)), () =>
           T.async<Error, void>((res) => {
             _[serverEnv].server.close((err) => {
               if (err) {

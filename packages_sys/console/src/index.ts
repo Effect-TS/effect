@@ -1,4 +1,5 @@
-import { T, Service as F } from "@matechs/prelude"
+import * as T from "@matechs/core/Effect"
+import * as F from "@matechs/core/Service"
 
 export const consoleURI = "@matechs/console/consoleURI"
 

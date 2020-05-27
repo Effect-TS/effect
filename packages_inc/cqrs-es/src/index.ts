@@ -2,8 +2,6 @@ import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
 import {} from "@morphic-ts/batteries/lib/program"
 import {} from "@morphic-ts/batteries/lib/program-orderable"
 
-import { Aggregate, ReadSideConfig, EventMetaHidden } from "@matechs/cqrs"
-import { T, M, pipe, O, NEA } from "@matechs/prelude"
 import { ElemType } from "@morphic-ts/adt/lib/utils"
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
@@ -13,6 +11,13 @@ import { sendEvent, eventStoreTcpConnection } from "./client"
 import { adaptMeta } from "./meta"
 import { ormOffsetStore } from "./offset"
 import { readEvents } from "./read"
+
+import * as T from "@matechs/core/Effect"
+import * as M from "@matechs/core/Managed"
+import * as NEA from "@matechs/core/NonEmptyArray"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import { Aggregate, ReadSideConfig, EventMetaHidden } from "@matechs/cqrs"
 
 const aggregateRead = <
   Types extends {

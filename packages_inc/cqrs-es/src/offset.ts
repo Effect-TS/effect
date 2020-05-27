@@ -1,8 +1,11 @@
-import { DbT } from "@matechs/orm"
-import { T, O, pipe } from "@matechs/prelude"
 import { Entity, PrimaryColumn, Column } from "typeorm"
 
 import { offsetStore } from "./read"
+
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import { DbT } from "@matechs/orm"
 
 @Entity({
   name: "event_store_reads",

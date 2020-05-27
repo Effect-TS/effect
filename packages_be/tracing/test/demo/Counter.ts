@@ -1,8 +1,10 @@
-import { T, A, pipe } from "@matechs/prelude"
-
 import { withChildSpan } from "../../src"
 
 import { print, Printer } from "./Printer"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
 
 export const CounterState: unique symbol = Symbol()
 

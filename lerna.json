@@ -1,12 +1,11 @@
 {
   "packages": [
-    "shaking/*",
     "packages/*",
-    "packages_inc/*",
-    "packages_sys/*",
-    "packages_http/*",
+    "packages_be/*",
     "packages_fe/*",
-    "packages_be/*"
+    "packages_http/*",
+    "packages_inc/*",
+    "packages_sys/*"
   ],
   "npmClient": "yarn",
   "useWorkspaces": true,

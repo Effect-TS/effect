@@ -1,10 +1,15 @@
 import "isomorphic-fetch"
-import * as H from "@matechs/http-client"
-import * as L from "@matechs/http-client-fetch"
-import { T, Ex, U, A, pipe } from "@matechs/prelude"
-import * as RPC from "@matechs/rpc-client"
 
 import { placeholderJsonM, placeholderJsonEnv } from "./shared"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
+import * as U from "@matechs/core/Utils"
+import * as H from "@matechs/http-client"
+import * as L from "@matechs/http-client-fetch"
+import * as RPC from "@matechs/rpc-client"
 
 const { getTodo } = RPC.client(placeholderJsonM)
 

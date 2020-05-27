@@ -1,7 +1,12 @@
-import { T, Service as F, S, A, pipe } from "@matechs/prelude"
-import * as R from "@matechs/rxjs"
 import { Action } from "redux"
 import * as Rxo from "redux-observable"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+import * as S from "@matechs/core/Stream"
+import * as R from "@matechs/rxjs"
 
 export interface Epic<R, State, A extends Action<any>, O extends A> {
   _A: A

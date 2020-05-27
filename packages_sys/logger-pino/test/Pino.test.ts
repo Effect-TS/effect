@@ -1,9 +1,13 @@
-import * as L from "@matechs/logger"
-import { T, Service as F, pipe, A } from "@matechs/prelude"
-import * as M from "@matechs/test-jest"
 import Pino from "pino"
 
 import * as P from "../src"
+
+import * as A from "@matechs/core/Array"
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+import * as L from "@matechs/logger"
+import * as M from "@matechs/test-jest"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const empty = () => {}

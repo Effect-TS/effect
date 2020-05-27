@@ -1,9 +1,15 @@
 import path from "path"
 
-import * as H from "@matechs/http-client"
-import { T, E, pipe, record as R, O, F } from "@matechs/prelude"
 import * as C from "node-libcurl"
 import querystring, { ParsedQuery } from "query-string"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as F from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
+import { pipe } from "@matechs/core/Pipe"
+import * as R from "@matechs/core/Record"
+import * as H from "@matechs/http-client"
 
 export const libcurl: (_?: {
   caPath?: string
@@ -83,8 +89,8 @@ export const libcurl: (_?: {
                     () =>
                       // JSON
                       done(
-                        E.either.map(
-                          E.tryCatch(
+                        E.map_(
+                          E.tryCatch_(
                             () => JSON.parse(body.toString()),
                             () => ({
                               // TODO: verify what to do exactly, this is not an error from the API => we should enlarge our error type

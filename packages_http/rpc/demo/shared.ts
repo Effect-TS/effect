@@ -1,4 +1,6 @@
-import { T, Service as F, O } from "@matechs/prelude"
+import * as T from "@matechs/core/Effect"
+import * as O from "@matechs/core/Option"
+import * as F from "@matechs/core/Service"
 
 // environment entries
 export const placeholderJsonEnv: unique symbol = Symbol()

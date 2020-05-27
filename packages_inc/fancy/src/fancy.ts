@@ -1,4 +1,7 @@
-import { T, Ex, pipe, F } from "@matechs/prelude"
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import * as F from "@matechs/core/Function"
+import { pipe } from "@matechs/core/Pipe"
 
 // alpha
 /* istanbul ignore file */

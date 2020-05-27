@@ -1,8 +1,10 @@
 import * as assert from "assert"
 
-import { T, pipe } from "@matechs/prelude"
-
 import * as U from "../src"
+
+import * as T from "@matechs/core/Effect"
+import { unwrap } from "@matechs/core/Monocle/Iso"
+import { pipe } from "@matechs/core/Pipe"
 
 function run<E, A>(eff: T.SyncRE<U.UUIDEnv, E, A>): Promise<A> {
   return pipe(eff, U.provideUUID, T.runToPromise)
@@ -12,7 +14,7 @@ describe("UUID", () => {
   it("gen", async () => {
     const uuid = await pipe(U.gen, run)
 
-    assert.deepStrictEqual(U.isoUUID.unwrap(uuid).length, 36)
+    assert.deepStrictEqual(unwrap(U.isoUUID)(uuid).length, 36)
   })
 
   it("base58", async () => {

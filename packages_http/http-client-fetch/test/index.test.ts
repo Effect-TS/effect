@@ -1,7 +1,3 @@
-import { effect as T } from "@matechs/effect"
-import * as H from "@matechs/http-client"
-import * as J from "@matechs/test-jest"
-import { flow } from "fp-ts/lib/function"
 import fetch from "isomorphic-fetch"
 
 import * as F from "../src"
@@ -16,6 +12,11 @@ import { headersSpec } from "./specs/heasersSpec"
 import { malformedSpec } from "./specs/malformedSpec"
 import { methodsSpec } from "./specs/methodsSpec"
 import { replaceHeadersSpec } from "./specs/replaceHeadersSpec"
+
+import * as T from "@matechs/core/Effect"
+import { flow } from "@matechs/core/Function"
+import * as H from "@matechs/http-client"
+import * as J from "@matechs/test-jest"
 
 const fetchSuite = J.suite("Fetch")(
   methodsSpec,

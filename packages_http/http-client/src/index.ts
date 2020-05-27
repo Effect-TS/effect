@@ -1,5 +1,8 @@
-import { T, O, F } from "@matechs/prelude"
 import { ParsedQuery } from "query-string"
+
+import * as T from "@matechs/core/Effect"
+import * as F from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
@@ -300,41 +303,77 @@ export function request<
     )
 }
 
-export const get = request("GET", "JSON", "JSON")
+export const get =
+  /*#__PURE__*/
+  (() => request("GET", "JSON", "JSON"))()
 
-export const post = request("POST", "JSON", "JSON")
+export const post =
+  /*#__PURE__*/
+  (() => request("POST", "JSON", "JSON"))()
 
-export const postReturnText = request("POST", "JSON", "TEXT")
+export const postReturnText =
+  /*#__PURE__*/
+  (() => request("POST", "JSON", "TEXT"))()
 
-export const postData = request("POST", "DATA", "JSON")
+export const postData =
+  /*#__PURE__*/
+  (() => request("POST", "DATA", "JSON"))()
 
-export const postBinaryGetBinary = request("POST", "BINARY", "BINARY")
+export const postBinaryGetBinary =
+  /*#__PURE__*/
+  (() => request("POST", "BINARY", "BINARY"))()
 
-export const patch = request("PATCH", "JSON", "JSON")
+export const patch =
+  /*#__PURE__*/
+  (() => request("PATCH", "JSON", "JSON"))()
 
-export const patchData = request("PATCH", "DATA", "JSON")
+export const patchData =
+  /*#__PURE__*/
+  (() => request("PATCH", "DATA", "JSON"))()
 
-export const patchBinaryGetBinary = request("PATCH", "BINARY", "BINARY")
+export const patchBinaryGetBinary =
+  /*#__PURE__*/
+  (() => request("PATCH", "BINARY", "BINARY"))()
 
-export const put = request("PUT", "JSON", "JSON")
+export const put =
+  /*#__PURE__*/
+  (() => request("PUT", "JSON", "JSON"))()
 
-export const putData = request("PUT", "DATA", "JSON")
+export const putData =
+  /*#__PURE__*/
+  (() => request("PUT", "DATA", "JSON"))()
 
-export const postForm = request("POST", "FORM", "JSON")
+export const postForm =
+  /*#__PURE__*/
+  (() => request("POST", "FORM", "JSON"))()
 
-export const putForm = request("PUT", "FORM", "JSON")
+export const putForm =
+  /*#__PURE__*/
+  (() => request("PUT", "FORM", "JSON"))()
 
-export const patchForm = request("PATCH", "FORM", "JSON")
+export const patchForm =
+  /*#__PURE__*/
+  (() => request("PATCH", "FORM", "JSON"))()
 
-export const putBinaryGetBinary = request("PUT", "BINARY", "BINARY")
+export const putBinaryGetBinary =
+  /*#__PURE__*/
+  (() => request("PUT", "BINARY", "BINARY"))()
 
-export const del = request("DELETE", "JSON", "JSON")
+export const del =
+  /*#__PURE__*/
+  (() => request("DELETE", "JSON", "JSON"))()
 
-export const delForm = request("DELETE", "FORM", "JSON")
+export const delForm =
+  /*#__PURE__*/
+  (() => request("DELETE", "FORM", "JSON"))()
 
-export const delData = request("DELETE", "DATA", "JSON")
+export const delData =
+  /*#__PURE__*/
+  (() => request("DELETE", "DATA", "JSON"))()
 
-export const delBinaryGetBinary = request("DELETE", "BINARY", "BINARY")
+export const delBinaryGetBinary =
+  /*#__PURE__*/
+  (() => request("DELETE", "BINARY", "BINARY"))()
 
 export function withHeaders(
   headers: Record<string, string>,

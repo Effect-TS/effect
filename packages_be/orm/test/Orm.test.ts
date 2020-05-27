@@ -1,6 +1,5 @@
 import * as assert from "assert"
 
-import { T, Service as F, U, Ex, pipe } from "@matechs/prelude"
 import {
   Connection,
   createConnection,
@@ -14,6 +13,12 @@ import {
 } from "typeorm"
 
 import * as DB from "../src"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
+import * as F from "@matechs/core/Service"
+import * as U from "@matechs/core/Utils"
 
 @Entity()
 export class DemoEntity {

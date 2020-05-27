@@ -1,7 +1,10 @@
 import { Server } from "http"
 
-import { T, M, E } from "@matechs/prelude"
 import express from "express"
+
+import * as T from "@matechs/core/Effect"
+import * as E from "@matechs/core/Either"
+import * as M from "@matechs/core/Managed"
 
 /* istanbul ignore file */
 

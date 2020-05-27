@@ -1,6 +1,5 @@
 import * as assert from "assert"
 
-import { T, pipe, Ex } from "@matechs/prelude"
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing"
 
 import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from "../src"
@@ -8,6 +7,10 @@ import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from ".
 import { counter } from "./demo/Counter"
 import { program } from "./demo/Main"
 import { Printer } from "./demo/Printer"
+
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Pipe"
 
 class MockTracer extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
