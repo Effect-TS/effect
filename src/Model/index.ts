@@ -237,8 +237,14 @@ export function refinement<A, O, I, B extends A>(
   )
 }
 
-export function opaque<Opaque>() {
-  return <A extends Opaque, O, I>(c: Type<A, O, I>): Type<Opaque, O, I> => c as any
+export function opaque<Opaque, OpaqueR = unknown, OpaqueI = unknown>() {
+  return <A extends Opaque, O extends OpaqueR, I extends OpaqueI>(
+    c: Type<A, O, I>
+  ): Type<
+    Opaque,
+    unknown extends OpaqueR ? O : OpaqueR,
+    unknown extends OpaqueI ? I : OpaqueI
+  > => c as any
 }
 
 export {
