@@ -9,7 +9,8 @@ import {
   OutputOf
 } from "io-ts"
 
-import { mapLeft, map_ } from "../Either"
+import { mapLeft, map_, chain_ } from "../Either"
+import { Refinement } from "../Function"
 import { wrap, unwrap } from "../Monocle/Iso"
 import { AnyNewtype, CarrierOf, iso } from "../Newtype"
 
@@ -155,7 +156,6 @@ export {
   readonlyArray,
   record,
   recursion,
-  refinement,
   strict,
   string,
   success,
@@ -220,6 +220,20 @@ export function fromNewtype<N extends AnyNewtype = never>(
     (u): u is N => codec.is(u),
     (u, c) => map_(codec.validate(u, c), wrap(i)),
     (a) => codec.encode(unwrap(i)(a))
+  )
+}
+
+export function refinement<A, O, I, B extends A>(
+  codec: Type<A, O, I>,
+  refinement: Refinement<A, B>,
+  name = `refinment(${codec.name})`
+): Type<B, O, I> {
+  return new Type(
+    name,
+    (u): u is B => codec.is(u) && refinement(u),
+    (u, c) =>
+      chain_(codec.validate(u, c), (a) => (refinement(a) ? success(a) : failure(u, c))),
+    (a) => codec.encode(a)
   )
 }
 
