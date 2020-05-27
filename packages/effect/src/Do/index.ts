@@ -99,7 +99,7 @@ class DoClass<M> {
     return this.result
   }
   unit(): HKT<M, void> {
-    return this.M.of(undefined)
+    return this.M.chain(() => this.M.of(undefined))(this.result)
   }
 }
 
