@@ -9,7 +9,7 @@ import * as T from "fp-ts/lib/Task"
 import * as TE from "fp-ts/lib/TaskEither"
 import { pipe } from "fp-ts/lib/pipeable"
 
-const modules: string[] = [""]
+const modules: string[] = []
 
 const readFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, string>(
   fs.readFile
