@@ -1,3 +1,4 @@
+import { UnionToIntersection } from "@matechs/core/Service"
 import {
   arb,
   assert,
@@ -19,8 +20,20 @@ import {
   withHookP,
   withTodo
 } from "@matechs/test"
+import { Spec } from "@matechs/test/Def"
+import { ROf, Provider } from "@matechs/test/Impl"
 
-export const run = customRun({
+export const run: <Specs extends Spec<any>[]>(
+  ...specs: Specs
+) => (
+  provider: unknown extends UnionToIntersection<
+    ROf<Exclude<Specs[number], Spec<unknown>>>
+  >
+    ? void
+    : {} extends UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>
+    ? void
+    : Provider<UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>>
+) => void = customRun({
   describe,
   it: {
     run: it,
