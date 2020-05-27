@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite-locals.ts && ts-node scripts/package.ts",
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/rewrite-locals.ts && ts-node scripts/package.ts",
     "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src",
     "bench": "node bench/index.js && node bench/nestedMap.js && node bench/nestedChain.js",
     "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
@@ -21,6 +21,10 @@
   "sideEffects": false,
   "devDependencies": {
     "@types/node": "^14.0.5"
+  },
+  "dependencies": {
+    "io-ts": "2.2.4",
+    "fp-ts": "2.6.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
