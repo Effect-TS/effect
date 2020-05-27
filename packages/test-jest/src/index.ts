@@ -54,5 +54,7 @@ export {
 export { mockedTestM } from "./Aspects/WithJestMocks"
 
 const exp = expect
+const spyOn = jest.spyOn
+const j = jest
 
-export { exp as expect }
+export { exp as expect, spyOn, j as jest }
