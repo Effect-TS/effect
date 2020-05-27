@@ -1,6 +1,6 @@
 {
   "name": "@matechs/cqrs-es",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -19,10 +19,10 @@
   "sideEffects": false,
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/core": "^1.0.2",
-    "@matechs/cqrs": "^6.0.2",
-    "@matechs/logger": "^6.0.2",
-    "@matechs/orm": "^6.0.2",
+    "@matechs/core": "^1.0.3",
+    "@matechs/cqrs": "^6.0.3",
+    "@matechs/logger": "^6.0.3",
+    "@matechs/orm": "^6.0.3",
     "@morphic-ts/batteries": "^1.7.0",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.24.1",
