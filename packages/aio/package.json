@@ -1,6 +1,6 @@
 {
   "name": "@matechs/aio",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -31,7 +31,7 @@
     "retry-ts": "^0.1.2"
   },
   "devDependencies": {
-    "@matechs/test-jest": "^3.3.0"
+    "@matechs/test-jest": "^3.3.1"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
