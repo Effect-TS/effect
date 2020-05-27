@@ -2,6 +2,7 @@ import * as T from "@matechs/core/Effect"
 import { Lazy } from "@matechs/core/Function"
 import { pipe } from "@matechs/core/Pipe"
 import * as M from "@matechs/test"
+import { Spec } from "@matechs/test/Def"
 
 export const JestMocksURI = "@matechs/test-jest/JestMocksURI"
 
@@ -29,7 +30,7 @@ export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(
       op: (_: Mocks) => T.Effect<S, R, E, A>
     ) => T.Effect<S, R & JestMocks<Mocks>, E, A>
   }) => T.Effect<unknown, R & JestMocks<Mocks>, E, A>
-) =>
+): Spec<R> =>
   pipe(
     M.testM(
       name,
