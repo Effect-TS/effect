@@ -1,6 +1,7 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
 import type { NonEmptyArray } from "../NonEmptyArray"
+import { isNonEmpty } from "../Array"
 import { none, some } from "../Option"
 import type { Option } from "../Option"
 import type { Effect, Managed, Stream, StreamEither } from "../Support/Common/types"
@@ -78,7 +79,10 @@ export function fold_<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Effect<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Effect<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Effect<S4, R4, E4, B4>
 ): Effect<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 export function fold_<
   S1,
@@ -110,7 +114,10 @@ export function fold_<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Managed<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Managed<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Managed<S4, R4, E4, B4>
 ): Managed<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 export function fold_<
   S1,
@@ -142,7 +149,10 @@ export function fold_<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Stream<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Stream<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Stream<S4, R4, E4, B4>
 ): Stream<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
 export function fold_<
   S1,
@@ -174,7 +184,10 @@ export function fold_<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => StreamEither<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => StreamEither<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => StreamEither<S4, R4, E4, B4>
 ): StreamEither<
   S1 | S2 | S3 | S4,
   R1 & R2 & R3 & R4,
@@ -186,14 +199,20 @@ export function fold_<E, A, B1, B2, B3, B4>(
   onDone: (v: A) => B1,
   onRaise: (v: E, remaining: Option<NonEmptyArray<Cause<any>>>) => B2,
   onAbort: (v: unknown, remaining: Option<NonEmptyArray<Cause<any>>>) => B3,
-  onInterrupt: (i: Interrupt) => B4
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => B4
 ): B1 | B2 | B3 | B4
 export function fold_<E, A, B>(
   e: Exit<E, A>,
   onDone: (v: A) => B,
   onRaise: (v: E, remaining: Option<NonEmptyArray<Cause<any>>>) => B,
   onAbort: (v: unknown, remaining: Option<NonEmptyArray<Cause<any>>>) => B,
-  onInterrupt: (i: Interrupt) => B
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => B
 ): B | B | B | B {
   switch (e._tag) {
     case "Done":
@@ -203,7 +222,10 @@ export function fold_<E, A, B>(
     case "Abort":
       return onAbort(e.abortedWith, e.remaining)
     case "Interrupt":
-      return onInterrupt(e)
+      return onInterrupt(
+        e.errors && isNonEmpty(e.errors) ? some(e.errors) : none,
+        e.remaining
+      )
   }
 }
 
@@ -236,7 +258,10 @@ export function fold<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Effect<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Effect<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Effect<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => Effect<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
@@ -269,7 +294,10 @@ export function fold<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Managed<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Managed<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Managed<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => Managed<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
@@ -302,7 +330,10 @@ export function fold<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Stream<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Stream<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Stream<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => Stream<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
@@ -335,7 +366,10 @@ export function fold<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => StreamEither<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => StreamEither<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => StreamEither<S4, R4, E4, B4>
 ): (
   e: Exit<E, A>
 ) => StreamEither<
@@ -348,13 +382,19 @@ export function fold<E, A, B1, B2, B3, B4>(
   onDone: (v: A) => B1,
   onRaise: (v: E, remaining: Option<NonEmptyArray<Cause<any>>>) => B2,
   onAbort: (v: unknown, remaining: Option<NonEmptyArray<Cause<any>>>) => B3,
-  onInterrupt: (i: Interrupt) => B4
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => B4
 ): (e: Exit<E, A>) => B1 | B2 | B3 | B4
 export function fold<E, A, B>(
   onDone: (v: A) => B,
   onRaise: (v: E, remaining: Option<NonEmptyArray<Cause<any>>>) => B,
   onAbort: (v: unknown, remaining: Option<NonEmptyArray<Cause<any>>>) => B,
-  onInterrupt: (i: Interrupt) => B
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => B
 ): (e: Exit<E, A>) => B {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
 }
@@ -386,7 +426,10 @@ export function foldCause<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Effect<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Effect<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Effect<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => Effect<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
@@ -417,7 +460,10 @@ export function foldCause<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Managed<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Managed<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Managed<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => Managed<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
@@ -448,7 +494,10 @@ export function foldCause<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => Stream<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => Stream<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => Stream<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => Stream<S1 | S2 | S3 | S4, R1 & R2 & R3 & R4, E1 | E2 | E3 | E4, B1 | B2 | B3 | B4>
@@ -479,7 +528,10 @@ export function foldCause<
     v: unknown,
     remaining: Option<NonEmptyArray<Cause<any>>>
   ) => StreamEither<S3, R3, E3, B3>,
-  onInterrupt: (i: Interrupt) => StreamEither<S4, R4, E4, B4>
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => StreamEither<S4, R4, E4, B4>
 ): (
   e: Cause<E>
 ) => StreamEither<
@@ -491,19 +543,28 @@ export function foldCause<
 export function foldCause<E, B1, B2, B3, B4>(
   onRaise: (v: E, remaining: Option<NonEmptyArray<Cause<any>>>) => B2,
   onAbort: (v: unknown, remaining: Option<NonEmptyArray<Cause<any>>>) => B3,
-  onInterrupt: (i: Interrupt) => B4
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => B4
 ): (e: Cause<E>) => B1 | B2 | B3 | B4
 export function foldCause<E, B>(
   onRaise: (v: E, remaining: Option<NonEmptyArray<Cause<any>>>) => B,
   onAbort: (v: unknown, remaining: Option<NonEmptyArray<Cause<any>>>) => B,
-  onInterrupt: (i: Interrupt) => B
+  onInterrupt: (
+    errors: Option<NonEmptyArray<Error>>,
+    remaining: Option<NonEmptyArray<Cause<any>>>
+  ) => B
 ): (e: Cause<E>) => B {
   return (e) =>
     isRaise(e)
       ? onRaise(e.error, e.remaining)
       : isAbort(e)
       ? onAbort(e.abortedWith, e.remaining)
-      : onInterrupt(e)
+      : onInterrupt(
+          e.errors && isNonEmpty(e.errors) ? some(e.errors) : none,
+          e.remaining
+        )
 }
 
 export function foldExit<S1, S2, R1, R2, E, E1, E2, A, B1, B2>(
