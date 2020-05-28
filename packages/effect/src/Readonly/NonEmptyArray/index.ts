@@ -4,21 +4,23 @@
  * Data structure which represents non-empty arrays
  */
 
+import * as AP from "../../Apply"
 import type {
-  CTraverse1,
-  CSequence1,
-  CTraverseWithIndex1,
-  CMonad1,
-  CComonad1,
-  CTraversableWithIndex1,
-  CFunctorWithIndex1,
-  CFoldableWithIndex1,
   CAlt1,
   CApplicative1,
+  CComonad1,
+  CFoldable1,
+  CFoldableWithIndex1,
+  CFunctorWithIndex1,
+  CMonad1,
+  CSequence1,
+  CTraversableWithIndex1,
+  CTraverse1,
+  CTraverseWithIndex1,
   Traverse1,
-  TraverseWithIndex1,
-  CFoldable1
+  TraverseWithIndex1
 } from "../../Base"
+import { Do as DoG } from "../../Do"
 import type { Eq } from "../../Eq"
 import type { Predicate, Refinement } from "../../Function"
 import type { NonEmptyArray } from "../../NonEmptyArray"
@@ -670,3 +672,29 @@ export const readonlyNonEmptyArray: CMonad1<URI> &
   traverseWithIndex,
   alt
 }
+
+export const readonlyNonEmptyMonad: CMonad1<URI> & CApplicative1<URI> = {
+  URI,
+  map,
+  of,
+  ap,
+  chain
+}
+
+export const readonlyNonEmptyAp: CMonad1<URI> & CApplicative1<URI> = {
+  URI,
+  map,
+  of,
+  ap,
+  chain
+}
+
+export const Do = () => DoG(readonlyNonEmptyMonad)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(readonlyNonEmptyAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(readonlyNonEmptyAp))()
