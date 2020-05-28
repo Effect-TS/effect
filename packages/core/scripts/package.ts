@@ -108,7 +108,6 @@ const modules: string[] = [
   "Support/Runtime",
   "Support/Driver",
   "Support/Utils",
-  "Monocle",
   "Monocle/common",
   "Monocle/Fold",
   "Monocle/Getter",
@@ -120,6 +119,7 @@ const modules: string[] = [
   "Monocle/Traversal",
   "Monocle/At",
   "Monocle/Index",
+  "Monocle/All",
   "Newtype"
 ]
 
