@@ -61,13 +61,9 @@ export const chain: <A, B>(f: (a: A) => B[]) => (ma: A[]) => B[] = RA.chain as a
 
 export const chain_: <A, B>(ma: A[], f: (a: A) => B[]) => B[] = RA.chain_ as any
 
-export const chainFirst: <A, B>(
-  f: (a: A) => B[]
-) => (ma: A[]) => A[] = RA.chainFirst as any
+export const chainTap: <A, B>(f: (a: A) => B[]) => (ma: A[]) => A[] = RA.chainTap as any
 
-export const chainFirst_: <A, B>(
-  f: (ma: A[], a: A) => B[]
-) => A[] = RA.chainFirst_ as any
+export const chainTap_: <A, B>(f: (ma: A[], a: A) => B[]) => A[] = RA.chainTap_ as any
 
 /**
  * A useful recursion pattern for processing an array to produce a new array, often used for "chopping" up the input

@@ -402,7 +402,7 @@ export function to<B>(
  * @param left
  * @param bind
  */
-export function chainTap<S, R, E, A, S2, R2, E2>(
+export function chainTap_<S, R, E, A, S2, R2, E2>(
   left: Managed<S, R, E, A>,
   bind: FunctionN<[A], Managed<S2, R2, E2, unknown>>
 ): Managed<S | S2, R & R2, E | E2, A> {
@@ -413,10 +413,10 @@ export function chainTap<S, R, E, A, S2, R2, E2>(
  * Curried form of chainTap
  * @param bind
  */
-export function chainTapWith<S, R, E, A>(
+export function chainTap<S, R, E, A>(
   bind: FunctionN<[A], Managed<S, R, E, unknown>>
 ): <S2, R2, E2>(_: Managed<S2, R2, E2, A>) => Managed<S | S2, R & R2, E | E2, A> {
-  return (inner) => chainTap(inner, bind)
+  return (inner) => chainTap_(inner, bind)
 }
 
 /**
@@ -588,12 +588,6 @@ export const chain: <S1, R, E, A, B>(
 ) => <S2, R2, E2>(ma: Managed<S2, R2, E2, A>) => Managed<S1 | S2, R & R2, E | E2, B> = (
   f
 ) => (fa) => chain_(fa, f)
-
-export const chainFirst: <S1, R, E, A, B>(
-  f: (a: A) => Managed<S1, R, E, B>
-) => <S2, R2, E2>(ma: Managed<S2, R2, E2, A>) => Managed<S1 | S2, R & R2, E | E2, A> = (
-  f
-) => (ma) => chain_(ma, (x) => map_(f(x), () => x))
 
 export const filterOrElse: {
   <E, A, B extends A>(refinement: Refinement<A, B>, onFalse: (a: A) => E): <S, R>(

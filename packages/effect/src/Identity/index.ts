@@ -40,7 +40,10 @@ export const chain_: <A, B>(fa: A, f: (a: A) => B) => B = (ma, f) => f(ma)
 
 export const chain: <A, B>(f: (a: A) => B) => (ma: A) => B = (f) => (ma) => f(ma)
 
-export const chainFirst: <A, B>(f: (a: A) => B) => (ma: A) => A = (f) => (ma) =>
+export const chainTap: <A, B>(f: (a: A) => B) => (ma: A) => A = (f) => (ma) =>
+  chain_(ma, (x) => map_(f(x), () => x))
+
+export const chainTap_: <A, B>(ma: A, f: (a: A) => B) => A = (ma, f) =>
   chain_(ma, (x) => map_(f(x), () => x))
 
 export const chainRec: <A, B>(a: A, f: (a: A) => Either<A, B>) => B = tailRec

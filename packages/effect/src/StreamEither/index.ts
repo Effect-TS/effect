@@ -372,11 +372,17 @@ export const chain: <S1, R, E, A, B>(
   ma: StreamEither<S2, R2, E2, A>
 ) => StreamEither<S1 | S2, R & R2, E | E2, B> = (f) => (fa) => chain_(fa, f)
 
-export const chainFirst: <S1, R, E, A, B>(
+export const chainTap: <S1, R, E, A, B>(
   f: (a: A) => StreamEither<S1, R, E, B>
 ) => <S2, R2, E2>(
   ma: StreamEither<S2, R2, E2, A>
 ) => StreamEither<S1 | S2, R & R2, E | E2, A> = (f) => (ma) =>
+  chain_(ma, (x) => map_(f(x), () => x))
+
+export const chainTap_: <S1, R, E, A, B, S2, R2, E2>(
+  ma: StreamEither<S2, R2, E2, A>,
+  f: (a: A) => StreamEither<S1, R, E, B>
+) => StreamEither<S1 | S2, R & R2, E | E2, A> = (ma, f) =>
   chain_(ma, (x) => map_(f(x), () => x))
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(

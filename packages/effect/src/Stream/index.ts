@@ -716,6 +716,18 @@ export function chain_<K, R, E, A, K2, R2, E2, B>(
   )
 }
 
+export const chainTap: <S1, R, E, A, B>(
+  f: (a: A) => Stream<S1, R, E, B>
+) => <S2, R2, E2>(ma: Stream<S2, R2, E2, A>) => Stream<S1 | S2, R & R2, E | E2, A> = (
+  f
+) => (ma) => chain_(ma, (x) => map_(f(x), () => x))
+
+export const chainTap_: <S1, R, E, A, B, S2, R2, E2>(
+  ma: Stream<S2, R2, E2, A>,
+  f: (a: A) => Stream<S1, R, E, B>
+) => Stream<S1 | S2, R & R2, E | E2, A> = (ma, f) =>
+  chain_(ma, (x) => map_(f(x), () => x))
+
 /**
  * Monadic chain on a stream
  * @param stream

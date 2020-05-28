@@ -70,7 +70,7 @@ export const chain_ = <S1, S2, R, E, A, R2, E2, B>(
   f: (a: A) => EffectOption<S2, R2, E2, B>
 ): EffectOption<S1 | S2, R & R2, E | E2, B> => T.chain_(fa, O.wither(T.effect)(f))
 
-export const chainFirst_ = <S1, S2, R, E, A, R2, E2>(
+export const chainTap_ = <S1, S2, R, E, A, R2, E2>(
   inner: EffectOption<S1, R, E, A>,
   bind: FunctionN<[A], T.Effect<S2, R2, E2, unknown>>
 ): EffectOption<S1 | S2, R & R2, E | E2, A> =>
@@ -136,12 +136,6 @@ export const chain: <S1, R, E, A, B>(
 ) => <S2, R2, E2>(
   ma: EffectOption<S2, R2, E2, A>
 ) => EffectOption<S1 | S2, R & R2, E | E2, B> = (f) => (ma) => chain_(ma, f)
-
-export const chainFirst: <S1, R, E, A, B>(
-  f: (a: A) => EffectOption<S1, R, E, B>
-) => <S2, R2, E2>(
-  ma: EffectOption<S2, R2, E2, A>
-) => EffectOption<S1 | S2, R & R2, E | E2, A> = (f) => (ma) => chainFirst_(ma, f)
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(
   mma: EffectOption<S1, R, E, EffectOption<S2, R2, E2, A>>
