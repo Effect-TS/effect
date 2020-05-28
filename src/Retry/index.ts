@@ -187,9 +187,31 @@ export interface RetryStatus {
   previousDelay: O.Option<number>
 }
 
-function withPolicy<RP, EP, R2, E2>(
-  policy: T.AsyncRE<RP, EP, RetryPolicy>
-): <S, R, E, A>(_: T.Effect<S, R, E, A>) => T.AsyncRE<R & R2 & RP, E | E2 | EP, A> {
+function withPolicy(
+  policy: RetryPolicy
+): <S, R, E, A>(_: T.Effect<S, R, E, A>) => T.AsyncRE<R, E, A> {
+  return (_) =>
+    retrying(
+      T.pure(policy),
+      () => _,
+      (ex) => T.pure(ex._tag !== "Done")
+    )
+}
+
+function withPolicy_<S, R, E, A>(
+  policy: RetryPolicy,
+  _: T.Effect<S, R, E, A>
+): T.AsyncRE<R, E, A> {
+  return retrying(
+    T.pure(policy),
+    () => _,
+    (ex) => T.pure(ex._tag !== "Done")
+  )
+}
+
+function withPolicyM<S1, R1, E1>(
+  policy: T.Effect<S1, R1, E1, RetryPolicy>
+): <S, R, E, A>(_: T.Effect<S, R, E, A>) => T.AsyncRE<R & R1, E | E1, A> {
   return (_) =>
     retrying(
       policy,
@@ -198,4 +220,20 @@ function withPolicy<RP, EP, R2, E2>(
     )
 }
 
-export { withPolicy as with }
+function withPolicyM_<S1, R1, E1, S, R, E, A>(
+  policy: T.Effect<S1, R1, E1, RetryPolicy>,
+  _: T.Effect<S, R, E, A>
+): T.AsyncRE<R & R1, E | E1, A> {
+  return retrying(
+    policy,
+    () => _,
+    (ex) => T.pure(ex._tag !== "Done")
+  )
+}
+
+export {
+  withPolicy as with,
+  withPolicy_ as with_,
+  withPolicyM as withM,
+  withPolicyM_ as withM_
+}
