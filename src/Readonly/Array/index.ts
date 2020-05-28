@@ -1,40 +1,42 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import * as AP from "../../Apply"
 import {
   CAlternative1,
   CApplicative,
+  CApplicative1,
+  CApply1,
   CCompactable1,
   CExtend1,
+  CFilterable1,
   CFilterableWithIndex1,
   CFoldable1,
   CFoldableWithIndex1,
   CFunctorWithIndex1,
   CMonad1,
+  CPartition1,
+  CPartitionWithIndex1,
   CSequence1,
+  CTraversable1,
   CTraversableWithIndex1,
   CTraverse1,
   CTraverseWithIndex1,
-  TraverseWithIndex1,
   CUnfoldable1,
   CWilt1,
   CWither1,
   CWitherable1,
   HKT,
+  Partition1,
+  PartitionWithIndex1,
   PredicateWithIndex,
   RefinementWithIndex,
   Separated,
-  CApply1,
-  CApplicative1,
-  CFilterable1,
-  CTraversable1,
-  CPartitionWithIndex1,
-  CPartition1,
-  Partition1,
-  PartitionWithIndex1,
   Traverse1,
-  Wither1,
-  Wilt1
+  TraverseWithIndex1,
+  Wilt1,
+  Wither1
 } from "../../Base"
+import { Do as DoG } from "../../Do"
 import type { Either } from "../../Either"
 import type { Eq } from "../../Eq"
 import { flow } from "../../Function"
@@ -2263,3 +2265,13 @@ export const readonlyArray: CMonad1<URI> &
   filterMapWithIndex,
   filterWithIndex
 }
+
+export const Do = () => DoG(readonlyArrayMonad)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(readonlyArrayAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(readonlyArrayAp))()

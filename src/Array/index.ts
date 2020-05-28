@@ -1,5 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import * as AP from "../Apply"
 import type {
   Separated,
   CFilterWithIndex1,
@@ -29,6 +30,7 @@ import type {
   Wither1,
   Wilt1
 } from "../Base"
+import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
@@ -1342,3 +1344,13 @@ export const arrayFoldable: CFoldable1<URI> = {
   reduce,
   reduceRight
 }
+
+export const Do = () => DoG(arrayMonad)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(arrayAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(arrayAp))()

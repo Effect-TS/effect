@@ -1,5 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import * as AP from "../Apply"
 import type {
   CAlternative1,
   CApplicative,
@@ -23,6 +24,7 @@ import type {
   Wither1,
   Wilt1
 } from "../Base"
+import { Do as DoG } from "../Do"
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
 import type { Lazy, Predicate, Refinement } from "../Function"
@@ -845,3 +847,20 @@ export const optionMonad: CMonad1<URI> & CApplicative1<URI> = {
   ap,
   chain
 }
+
+export const optionAp: CApplicative1<URI> = {
+  URI,
+  map,
+  of: some,
+  ap
+}
+
+export const Do = () => DoG(optionMonad)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(optionAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(optionAp))()

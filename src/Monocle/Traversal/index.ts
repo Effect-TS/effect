@@ -14,7 +14,7 @@ import type {
 } from "../../Base"
 import { getApplicative, make } from "../../Const"
 import { constant, Predicate, Refinement } from "../../Function"
-import { identity } from "../../Identity"
+import { identityAp } from "../../Identity"
 import * as I from "../Iso"
 import * as L from "../Lens"
 import * as Op from "../Optional"
@@ -34,7 +34,7 @@ export function create<S, A>(modifyF: ModifyF<S, A>): Traversal<S, A> {
 }
 
 export function modify<S, A>(tra: Traversal<S, A>) {
-  return tra.modifyF(identity)
+  return tra.modifyF(identityAp)
 }
 
 export function set<S, A>(tra: Traversal<S, A>) {
