@@ -6,16 +6,19 @@ import * as M from "../Managed"
 export type Pure<A> = {
   _tag: "Pure"
   value: A
+  inverted?: "regular" | "inverted"
 }
 
 export type EncaseEffect<S, R, E, A> = {
   _tag: "EncaseEffect"
   effect: T.Effect<S, R, E, A>
+  inverted?: "regular" | "inverted"
 }
 
 export type EncaseManaged<S, R, E, A> = {
   _tag: "EncaseManaged"
   managed: M.Managed<S, R, E, A>
+  inverted?: "regular" | "inverted"
 }
 
 export type Merge<S, R, E, A> = {
@@ -32,66 +35,81 @@ export type Layer<S, R, E, A> =
 /**
  * Construct a layer by using a value
  */
-export function fromValue<A>(_: A): Layer<never, unknown, never, A> {
+export function fromValue<A>(
+  _: A,
+  inverted?: "regular" | "inverted"
+): Layer<never, unknown, never, A> {
   return {
     _tag: "Pure",
-    value: _
+    value: _,
+    inverted
   }
 }
 
 /**
  * Construct a layer by using a value constructed by requiring an environment R2
  */
-export function fromValueWith<R2>(): <A>(
-  _: (_: R2) => A
-) => Layer<never, R2, never, A> {
+export function fromValueWith<R2>(
+  inverted?: "regular" | "inverted"
+): <A>(_: (_: R2) => A) => Layer<never, R2, never, A> {
   return (_) => ({
     _tag: "EncaseEffect",
-    effect: T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r)))
+    effect: T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r))),
+    inverted
   })
 }
 
 /**
  * Construct a layer by using an effect
  */
-export function fromEffect<S, R, E, A>(_: T.Effect<S, R, E, A>): Layer<S, R, E, A> {
+export function fromEffect<S, R, E, A>(
+  _: T.Effect<S, R, E, A>,
+  inverted?: "regular" | "inverted"
+): Layer<S, R, E, A> {
   return {
     _tag: "EncaseEffect",
-    effect: _
+    effect: _,
+    inverted
   }
 }
 
 /**
  * Construct a layer by using an effect constructed by requiring an environment R2
  */
-export function fromEffectWith<R2>(): <S, R, E, A>(
-  _: (_: R2) => T.Effect<S, R, E, A>
-) => Layer<S, R & R2, E, A> {
+export function fromEffectWith<R2>(
+  inverted?: "regular" | "inverted"
+): <S, R, E, A>(_: (_: R2) => T.Effect<S, R, E, A>) => Layer<S, R & R2, E, A> {
   return (_) => ({
     _tag: "EncaseEffect",
-    effect: T.chain_(T.accessEnvironment<R2>(), _)
+    effect: T.chain_(T.accessEnvironment<R2>(), _),
+    inverted
   })
 }
 
 /**
  * Construct a layer by using a managed
  */
-export function fromManaged<S, R, E, A>(_: M.Managed<S, R, E, A>): Layer<S, R, E, A> {
+export function fromManaged<S, R, E, A>(
+  _: M.Managed<S, R, E, A>,
+  inverted?: "regular" | "inverted"
+): Layer<S, R, E, A> {
   return {
     _tag: "EncaseManaged",
-    managed: _
+    managed: _,
+    inverted
   }
 }
 
 /**
  * Construct a layer by using a managed constructed by requiring an environment R2
  */
-export function fromManagedWith<R2>(): <S, R, E, A>(
-  _: (_: R2) => M.Managed<S, R, E, A>
-) => Layer<S, R & R2, E, A> {
+export function fromManagedWith<R2>(
+  inverted?: "regular" | "inverted"
+): <S, R, E, A>(_: (_: R2) => M.Managed<S, R, E, A>) => Layer<S, R & R2, E, A> {
   return (_) => ({
     _tag: "EncaseManaged",
-    managed: M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _)
+    managed: M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _),
+    inverted
   })
 }
 
@@ -184,13 +202,13 @@ export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E,
 
       switch (current._tag) {
         case "Pure":
-          currentOp = T.provide(current.value)(op)
+          currentOp = T.provide(current.value, current.inverted)(op)
           break
         case "EncaseEffect":
-          currentOp = T.provideM(current.effect)(op)
+          currentOp = T.provideM(current.effect, current.inverted)(op)
           break
         case "EncaseManaged":
-          currentOp = M.provide(current.managed)(op)
+          currentOp = M.provide(current.managed, current.inverted)(op)
           break
         case "Merge":
           currentOp = A.reduce_(
