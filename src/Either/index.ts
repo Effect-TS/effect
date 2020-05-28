@@ -18,9 +18,11 @@ import type {
   CWilt2C,
   CWither2C,
   Wither2C,
-  Wilt2C
+  Wilt2C,
+  CApplicative2C
 } from "../Base"
 import { tailRec } from "../Base/ChainRec"
+import { Do as DoG } from "../Do"
 import type { Eq } from "../Eq"
 import { Lazy, Predicate, Refinement, flow } from "../Function"
 import type { Monoid } from "../Monoid"
@@ -34,8 +36,7 @@ import type {
   Monad2M,
   MonadThrow2M,
   CAlt2M,
-  Applicative2M,
-  Applicative2MC
+  Applicative2M
 } from "./overloads"
 
 export interface Left<E> {
@@ -892,7 +893,7 @@ export const eitherAp: Applicative2M<URI> = {
 
 export function getValidation<E>(
   S: Semigroup<E>
-): CMonad2C<URI, E> & CAlt2C<URI, E> & CChainRec2C<URI, E> & Applicative2MC<URI, E> {
+): CMonad2C<URI, E> & CAlt2C<URI, E> & CChainRec2C<URI, E> & CApplicative2C<URI, E> {
   return {
     ...eitherMonad,
     _E: undefined as any,
@@ -940,3 +941,5 @@ export const either: Monad2M<URI> &
   chainRec,
   throwError: left
 }
+
+export const Do = () => DoG(eitherMonad)
