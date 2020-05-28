@@ -377,14 +377,14 @@ export const chain_: <A, B>(
   f: (a: A) => NonEmptyArray<B>
 ) => NonEmptyArray<B> = RNEA.chain_ as any
 
-export const chainFirst: <A, B>(
+export const chainTap: <A, B>(
   f: (a: A) => NonEmptyArray<B>
-) => (ma: NonEmptyArray<A>) => NonEmptyArray<A> = RNEA.chainFirst as any
+) => (ma: NonEmptyArray<A>) => NonEmptyArray<A> = RNEA.chainTap as any
 
-export const chainFirst_: <A, B>(
+export const chainTap_: <A, B>(
   ma: NonEmptyArray<A>,
   f: (a: A) => NonEmptyArray<B>
-) => NonEmptyArray<A> = RNEA.chainFirst_ as any
+) => NonEmptyArray<A> = RNEA.chainTap_ as any
 
 export const duplicate: <A>(
   ma: NonEmptyArray<A>

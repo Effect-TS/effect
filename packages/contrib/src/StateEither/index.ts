@@ -162,9 +162,9 @@ export const chain: <R, E, A, B>(
   f: (a: A) => StateEither<R, E, B>
 ) => (ma: StateEither<R, E, A>) => StateEither<R, E, B> = T.chain
 
-export const chainFirst: <R, E, A, B>(
+export const chainTap: <R, E, A, B>(
   f: (a: A) => StateEither<R, E, B>
-) => (ma: StateEither<R, E, A>) => StateEither<R, E, A> = T.chainFirst
+) => (ma: StateEither<R, E, A>) => StateEither<R, E, A> = T.chainTap
 
 export const filterOrElse: {
   <E, A, B extends A>(refinement: F.Refinement<A, B>, onFalse: (a: A) => E): <R>(

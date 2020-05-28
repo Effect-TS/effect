@@ -496,11 +496,11 @@ export const chain: <A, B>(f: (a: A) => Tree<B>) => (ma: Tree<A>) => Tree<B> = (
   ma
 ) => chain_(ma, f)
 
-export const chainFirst: <A, B>(f: (a: A) => Tree<B>) => (ma: Tree<A>) => Tree<A> = (
+export const chainTap: <A, B>(f: (a: A) => Tree<B>) => (ma: Tree<A>) => Tree<A> = (
   f
 ) => (ma) => chain_(ma, (x) => map_(f(x), () => x))
 
-export const chainFirst_: <A, B>(ma: Tree<A>, f: (a: A) => Tree<B>) => Tree<A> = (
+export const chainTap_: <A, B>(ma: Tree<A>, f: (a: A) => Tree<B>) => Tree<A> = (
   ma,
   f
 ) => chain_(ma, (x) => map_(f(x), () => x))
