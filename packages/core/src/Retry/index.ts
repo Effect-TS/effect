@@ -186,3 +186,16 @@ export interface RetryStatus {
   /** Latest attempt's delay. Will always be `none` on first run. */
   previousDelay: O.Option<number>
 }
+
+function withPolicy<RP, EP, R2, E2>(
+  policy: T.AsyncRE<RP, EP, RetryPolicy>
+): <S, R, E, A>(_: T.Effect<S, R, E, A>) => T.AsyncRE<R & R2 & RP, E | E2 | EP, A> {
+  return (_) =>
+    retrying(
+      policy,
+      () => _,
+      (ex) => T.pure(ex._tag !== "Done")
+    )
+}
+
+export { withPolicy as with }
