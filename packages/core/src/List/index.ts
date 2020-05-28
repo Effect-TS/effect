@@ -1,9 +1,11 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
-import type { CMonad1, CApplicative1 } from "../Base"
+import * as AP from "../Apply"
+import type { CApplicative1, CMonad1 } from "../Base"
+import { Do as DoG } from "../Do"
 import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
-import { some, none, Option } from "../Option"
+import { none, Option, some } from "../Option"
 import { pipe } from "../Pipe"
 
 export function ap_<A, B>(fns: List<FunctionN<[A], B>>, list: List<A>): List<B> {
@@ -232,3 +234,20 @@ export const list: CMonad1<URI> & CApplicative1<URI> = {
   ap,
   chain
 }
+
+export const listAp: CApplicative1<URI> = {
+  URI,
+  map,
+  of,
+  ap
+}
+
+export const Do = () => DoG(list)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(listAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(listAp))()

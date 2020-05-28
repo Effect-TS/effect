@@ -1,5 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import * as AP from "../Apply"
 import type {
   HKT,
   CSequence1,
@@ -13,6 +14,7 @@ import type {
   CApplicative1
 } from "../Base"
 import { tailRec, CChainRec1 } from "../Base/ChainRec"
+import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
 import type { Eq } from "../Eq"
 import { identity as id } from "../Function"
@@ -132,9 +134,27 @@ export const identity: CMonad1<URI> &
   chainRec
 }
 
-export const identityApp: CApplicative1<URI> = {
+export const identityAp: CApplicative1<URI> = {
   URI,
   map,
   of: id,
   ap
 }
+
+export const identityMonad: CMonad1<URI> & CApplicative1<URI> = {
+  URI,
+  map,
+  of: id,
+  ap,
+  chain
+}
+
+export const Do = () => DoG(identityMonad)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(identityAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(identityAp))()

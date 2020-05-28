@@ -1,5 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import * as AP from "../Apply"
 import type {
   HKT,
   Separated,
@@ -943,3 +944,11 @@ export const either: Monad2M<URI> &
 }
 
 export const Do = () => DoG(eitherMonad)
+
+export const sequenceS =
+  /*#__PURE__*/
+  (() => AP.sequenceS(eitherAp))()
+
+export const sequenceT =
+  /*#__PURE__*/
+  (() => AP.sequenceT(eitherAp))()
