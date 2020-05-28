@@ -90,9 +90,11 @@ export const chain: <A, B>(f: (a: A) => Option<B>) => (ma: Option<A>) => Option<
   f
 ) => (ma) => chain_(ma, f)
 
-export const chainFirst = <A, B>(f: (a: A) => Option<B>) => (
-  ma: Option<A>
-): Option<A> => chain_(ma, (a) => map_(f(a), () => a))
+export const chainTap = <A, B>(f: (a: A) => Option<B>) => (ma: Option<A>): Option<A> =>
+  chain_(ma, (a) => map_(f(a), () => a))
+
+export const chainTap_ = <A, B>(ma: Option<A>, f: (a: A) => Option<B>): Option<A> =>
+  chain_(ma, (a) => map_(f(a), () => a))
 
 export const URI = "@matechs/core/Option"
 export type URI = typeof URI

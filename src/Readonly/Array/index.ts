@@ -128,11 +128,11 @@ export const chain_: <A, B>(
   return r
 }
 
-export const chainFirst: <A, B>(
+export const chainTap: <A, B>(
   f: (a: A) => readonly B[]
 ) => (ma: readonly A[]) => readonly A[] = (f) => chain((a) => map(() => a)(f(a)))
 
-export const chainFirst_: <A, B>(
+export const chainTap_: <A, B>(
   ma: readonly A[],
   f: (a: A) => readonly B[]
 ) => readonly A[] = (ma, f) => chain_(ma, (a) => map(() => a)(f(a)))

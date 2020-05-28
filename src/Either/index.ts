@@ -128,11 +128,11 @@ export const chain: <E, A, B>(
   f: (a: A) => Either<E, B>
 ) => <E2>(ma: Either<E2, A>) => Either<E | E2, B> = (f) => (ma) => chain_(ma, f)
 
-export const chainFirst = <E, A, B>(f: (a: A) => Either<E, B>) => <E2>(
+export const chainTap = <E, A, B>(f: (a: A) => Either<E, B>) => <E2>(
   ma: Either<E2, A>
 ): Either<E | E2, A> => chain_(ma, (a) => map_(f(a), () => a))
 
-export const chainFirst_ = <E2, E, A, B>(
+export const chainTap_ = <E2, E, A, B>(
   ma: Either<E2, A>,
   f: (a: A) => Either<E, B>
 ): Either<E | E2, A> => chain_(ma, (a) => map_(f(a), () => a))

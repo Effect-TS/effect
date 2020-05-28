@@ -532,14 +532,14 @@ export const chain_: <A, B>(
   f: (a: A) => ReadonlyNonEmptyArray<B>
 ) => ReadonlyNonEmptyArray<B> = RA.chain_ as any
 
-export const chainFirst: <A, B>(
+export const chainTap: <A, B>(
   f: (a: A) => ReadonlyNonEmptyArray<B>
-) => (ma: ReadonlyNonEmptyArray<A>) => ReadonlyNonEmptyArray<A> = RA.chainFirst as any
+) => (ma: ReadonlyNonEmptyArray<A>) => ReadonlyNonEmptyArray<A> = RA.chainTap as any
 
-export const chainFirst_: <A, B>(
+export const chainTap_: <A, B>(
   ma: ReadonlyNonEmptyArray<A>,
   f: (a: A) => ReadonlyNonEmptyArray<B>
-) => ReadonlyNonEmptyArray<A> = RA.chainFirst_ as any
+) => ReadonlyNonEmptyArray<A> = RA.chainTap_ as any
 
 export const duplicate: <A>(
   ma: ReadonlyNonEmptyArray<A>

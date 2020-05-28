@@ -411,7 +411,7 @@ export const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
     )
   )
 
-export const chainFirst: <S1, R, E, A, B>(
+export const chainTap: <S1, R, E, A, B>(
   f: (a: A) => Effect<S1, R, E, B>
 ) => <S2, R2, E2>(ma: Effect<S2, R2, E2, A>) => Effect<S1 | S2, R & R2, E | E2, A> = (
   f
@@ -423,12 +423,6 @@ export function chainOption<E>(
   bind: FunctionN<[A], O.Option<B>>
 ) => <S, R, E2>(eff: Effect<S, R, E2, A>) => Effect<S, R, E | E2, B> {
   return (bind) => (inner) => chain_(inner, (a) => encaseOption(bind(a), onEmpty))
-}
-
-export function chainTap<S, R, E, A>(
-  bind: FunctionN<[A], Effect<S, R, E, unknown>>
-): <S2, R2, E2>(inner: Effect<S2, R2, E2, A>) => Effect<S | S2, R & R2, E | E2, A> {
-  return (inner) => chainTap_(inner, bind)
 }
 
 export const chainTap_ = <S, R, E, A, S2, R2, E2>(
