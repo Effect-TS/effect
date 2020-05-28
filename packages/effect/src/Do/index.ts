@@ -33,6 +33,8 @@ import type {
   CMonad4MA,
   CMonad4MAC
 } from "../Base/Monad"
+import type { URI as EitherURI } from "../Either/index"
+import type { Monad2M, Applicative2M } from "../Either/overloads"
 
 class DoClass<M> {
   constructor(readonly M: CMonad<M> & CApplicative<M>, private result: HKT<M, any>) {}
@@ -417,6 +419,91 @@ export interface Do0<M, S extends object> {
   unit: () => HKT<M, void>
 }
 
+export interface Do2MC<M extends EitherURI, S extends object, E> {
+  do: <E2>(ma: Kind2<M, E2, any>) => Do2MC<M, S, E | E2>
+  doL: <E2>(f: (s: S) => Kind2<M, E2, any>) => Do2MC<M, S, E | E2>
+  bind: <N extends string, A, E2>(
+    name: Exclude<N, keyof S>,
+    ma: Kind2<M, E2, A>
+  ) => Do2MC<
+    M,
+    S &
+      {
+        [K in N]: A
+      },
+    E | E2
+  >
+  bindL: <N extends string, A, E2>(
+    name: Exclude<N, keyof S>,
+    f: (s: S) => Kind2<M, E2, A>
+  ) => Do2MC<
+    M,
+    S &
+      {
+        [K in N]: A
+      },
+    E | E2
+  >
+  let: <N extends string, A>(
+    name: Exclude<N, keyof S>,
+    a: A
+  ) => Do2MC<
+    M,
+    S &
+      {
+        [K in N]: A
+      },
+    E
+  >
+  letL: <N extends string, A>(
+    name: Exclude<N, keyof S>,
+    f: (s: S) => A
+  ) => Do2MC<
+    M,
+    S &
+      {
+        [K in N]: A
+      },
+    E
+  >
+  sequenceS: <I extends Record<string, Kind2<M, any, any>>>(
+    r: EnforceNonEmptyRecord<I> &
+      {
+        [K in keyof S]?: never
+      }
+  ) => Do2MC<
+    M,
+    S &
+      {
+        [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never
+      },
+    | E
+    | {
+        [K in keyof I]: [I[K]] extends [Kind2<M, infer E2, any>] ? E2 : never
+      }[keyof I]
+  >
+  sequenceSL: <I extends Record<string, Kind2<M, any, any>>>(
+    f: (
+      s: S
+    ) => EnforceNonEmptyRecord<I> &
+      {
+        [K in keyof S]?: never
+      }
+  ) => Do2MC<
+    M,
+    S &
+      {
+        [K in keyof I]: [I[K]] extends [Kind2<M, any, infer A>] ? A : never
+      },
+    | E
+    | {
+        [K in keyof I]: [I[K]] extends [Kind2<M, infer E2, any>] ? E2 : never
+      }[keyof I]
+  >
+  return: <A>(f: (s: S) => A) => Kind2<M, E, A>
+  done: () => Kind2<M, E, S>
+}
+
 export function Do<M extends MaURIS>(
   M: CMonad4MA<M> & CApplicative4MA<M>
 ): Do4CE<M, never, {}, unknown, never>
@@ -434,6 +521,9 @@ export function Do<M extends URIS2>(M: CMonad2<M> & CApplicative2<M>): Do2<M, {}
 export function Do<M extends URIS2, L>(
   M: CMonad2C<M, L> & CApplicative2C<M, L>
 ): Do2C<M, {}, L>
+export function Do<M extends EitherURI>(
+  M: Monad2M<M> & Applicative2M<M>
+): Do2MC<M, {}, never>
 export function Do<M extends URIS>(M: CMonad1<M> & CApplicative1<M>): Do1<M, {}>
 export function Do<M>(M: CMonad<M> & CApplicative<M>): Do0<M, {}>
 export function Do<M>(M: CMonad<M> & CApplicative<M>): any {
