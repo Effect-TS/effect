@@ -49,4 +49,17 @@ export interface MaToKind<S, R, E, A> {
  */
 export type MaURIS = keyof MaToKind<any, any, any, any>
 
-export { HKT, HKT2, HKT3, HKT4, Kind, Kind2, Kind3, Kind4, URIS, URIS2, URIS3, URIS4 }
+export type {
+  HKT,
+  HKT2,
+  HKT3,
+  HKT4,
+  Kind,
+  Kind2,
+  Kind3,
+  Kind4,
+  URIS,
+  URIS2,
+  URIS3,
+  URIS4
+}
