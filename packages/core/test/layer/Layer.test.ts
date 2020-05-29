@@ -84,11 +84,29 @@ const Console = pipe(
   )
 )
 
-const AppLayer = Calculator.merge(Logger).with(Console)
+const MessageURI = "@matechs/core/test/layers/MessageURI"
 
-const program = T.sequenceT(info("ok"), add(10, 2), log("done"))
+interface Message {
+  [MessageURI]: {
+    message: string
+  }
+}
 
-const main = pipe(program, L.using(AppLayer))
+export const Message = L.fromValue<Message>({
+  [MessageURI]: {
+    message: "ok"
+  }
+})
+
+const App = Calculator.merge(Logger, Message).with(Console)
+
+const program = T.sequenceT(
+  T.accessM((_: Message) => info(_[MessageURI].message)),
+  add(10, 2),
+  log("done")
+)
+
+const main = pipe(program, App.use)
 
 describe("Layer", () => {
   it("should use layers", () => {

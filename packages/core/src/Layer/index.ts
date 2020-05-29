@@ -128,6 +128,8 @@ export class Layer<S, R, E, A> {
       _S: undefined as any
     })
   }
+
+  use: T.Provider<R, A, E, S> = (eff) => using(this)(eff)
 }
 
 /**
@@ -432,3 +434,5 @@ export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E,
       return T.provide(env)(currentOp) as any
     })
 }
+
+export const Empty = fromValue({})
