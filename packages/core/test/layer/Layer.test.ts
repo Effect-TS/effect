@@ -3,7 +3,7 @@ import * as L from "../../src/Layer"
 import * as M from "../../src/Managed"
 import { pipe } from "../../src/Pipe"
 
-const ConsoleURI = Symbol()
+const ConsoleURI = "@matechs/core/test/layers/ConsoleURI"
 
 interface Console {
   [ConsoleURI]: {
@@ -15,7 +15,7 @@ function log(message: string) {
   return T.accessM((_: Console) => _[ConsoleURI].log(message))
 }
 
-const LoggerURI = Symbol()
+const LoggerURI = "@matechs/core/test/layers/LoggerURI"
 
 interface Logger {
   [LoggerURI]: {
@@ -27,7 +27,7 @@ function info(message: string) {
   return T.accessM((_: Logger) => _[LoggerURI].info(message))
 }
 
-const CalculatorURI = Symbol()
+const CalculatorURI = "@matechs/core/test/layers/CalculatorURI"
 
 interface Calculator {
   [CalculatorURI]: {
@@ -39,11 +39,21 @@ function add(x: number, y: number) {
   return T.accessM((_: Calculator) => _[CalculatorURI].add(x, y))
 }
 
-const Calculator = L.fromValue<Calculator>({
-  [CalculatorURI]: {
-    add: (x: number, y: number) => T.sync(() => x + y)
+class LiveCalculator implements L.Implementation<Calculator> {
+  static readonly _tag = CalculatorURI
+
+  private readonly base: number
+
+  constructor() {
+    this.base = 1
   }
-})
+
+  add(x: number, y: number) {
+    return T.sync(() => x + y + this.base)
+  }
+}
+
+const Calculator = L.fromConstructor<Calculator>()(LiveCalculator)
 
 const Logger = L.fromManagedWith<Console>()((_) =>
   M.pure<Logger>({
@@ -83,8 +93,9 @@ describe("Layer", () => {
       //
     })
 
-    T.runSync(main)
+    const res = T.runUnsafeSync(main)
 
     expect(mock.mock.calls).toEqual([["prefix:ok"], ["prefix:done"]])
+    expect(res[1]).toStrictEqual(13)
   })
 })

@@ -174,6 +174,41 @@ export function fromProviderWith<R2>(): <
   })
 }
 
+export type Implementation<C> = C[keyof C]
+
+export function fromConstructor<C>() {
+  return <
+    K extends Implementation<C>,
+    X extends { new (): K; _tag: keyof C } | { new (deps: any): K; _tag: keyof C }
+  >(
+    X: X
+  ): Layer<
+    never,
+    UnionToIntersection<
+      X extends { new (...args: infer args): K; _tag: keyof C } ? args[number] : never
+    >,
+    never,
+    C
+  > =>
+    fromProvider(
+      T.provideM(
+        T.map_(
+          T.accessEnvironment<
+            UnionToIntersection<
+              X extends { new (...args: infer args): K; _tag: keyof C }
+                ? args[number]
+                : never
+            >
+          >(),
+          (env): C =>
+            ({
+              [X._tag]: new X(env)
+            } as any)
+        )
+      )
+    )
+}
+
 export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
   return <S, R, E>(
     effect: T.Effect<S, R, E, A>
