@@ -39,8 +39,6 @@ function add(x: number, y: number) {
 }
 
 class LiveCalculator implements L.Implementation<Calculator> {
-  static readonly _tag = CalculatorURI
-
   private readonly base: number
 
   constructor() {
@@ -52,11 +50,9 @@ class LiveCalculator implements L.Implementation<Calculator> {
   }
 }
 
-const Calculator = L.fromConstructor<Calculator>()(LiveCalculator)
+const Calculator = L.fromConstructor<Calculator>(CalculatorURI)(LiveCalculator)
 
 class LiveLogger implements L.Implementation<Logger> {
-  static readonly _tag = LoggerURI
-
   constructor(private readonly env: Console) {}
 
   info(message: string): T.Sync<void> {
@@ -64,7 +60,7 @@ class LiveLogger implements L.Implementation<Logger> {
   }
 }
 
-const Logger = L.fromConstructor<Logger>()(LiveLogger)
+const Logger = L.fromConstructor<Logger>(LoggerURI)(LiveLogger)
 
 const Console = pipe(
   T.pure("prefix"),

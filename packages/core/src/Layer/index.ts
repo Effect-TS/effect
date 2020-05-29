@@ -180,16 +180,16 @@ export type Implementation<C> = C[keyof C]
  * Construct a layer by using a class based constructor
  * requiring additional environment if specified as first parameter in the constructor
  */
-export function fromConstructor<C>() {
+export function fromConstructor<C>(uri: keyof C) {
   return <
     K extends Implementation<C>,
-    X extends { new (): K; _tag: keyof C } | { new (deps: any): K; _tag: keyof C }
+    X extends { new (): K } | { new (deps: any): K }
   >(
     X: X
   ): Layer<
     never,
     UnionToIntersection<
-      X extends { new (...args: infer args): K; _tag: keyof C } ? args[number] : never
+      X extends { new (...args: infer args): K } ? args[number] : never
     >,
     never,
     C
@@ -199,14 +199,12 @@ export function fromConstructor<C>() {
         T.map_(
           T.accessEnvironment<
             UnionToIntersection<
-              X extends { new (...args: infer args): K; _tag: keyof C }
-                ? args[number]
-                : never
+              X extends { new (...args: infer args): K } ? args[number] : never
             >
           >(),
           (env): C =>
             ({
-              [X._tag]: new X(env)
+              [uri]: new X(env)
             } as any)
         )
       )
