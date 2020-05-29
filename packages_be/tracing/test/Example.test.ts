@@ -119,13 +119,13 @@ describe("Example", () => {
     await T.runToPromise(pipe(program2, mockModule.use))
 
     assert.deepStrictEqual(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toSpanId(),
       "demo-span-id"
     )
     assert.deepStrictEqual(
-      // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       spans[0]["options"]["references"][0]["_referencedContext"].toTraceId(),
       "demo-trace-id"
