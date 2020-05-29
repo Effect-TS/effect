@@ -14,11 +14,7 @@ import type {
   URIS,
   URIS2,
   URIS3,
-  URIS4,
-  URItoKind,
-  URItoKind2,
-  URItoKind3,
-  URItoKind4
+  URIS4
 } from "fp-ts/lib/HKT"
 
 import type {
@@ -31,6 +27,11 @@ import type {
   StreamEither,
   StreamEitherURI
 } from "../../Support/Common"
+
+export interface URItoKind<A> {}
+export interface URItoKind2<E, A> {}
+export interface URItoKind3<R, E, A> {}
+export interface URItoKind4<S, R, E, A> extends MaToKind<S, R, E, A> {}
 
 declare module "fp-ts/lib/HKT" {
   interface URItoKind4<S, R, E, A> extends MaToKind<S, R, E, A> {}
@@ -48,21 +49,4 @@ export interface MaToKind<S, R, E, A> {
  */
 export type MaURIS = keyof MaToKind<any, any, any, any>
 
-export {
-  HKT,
-  HKT2,
-  HKT3,
-  HKT4,
-  Kind,
-  Kind2,
-  Kind3,
-  Kind4,
-  URIS,
-  URIS2,
-  URIS3,
-  URIS4,
-  URItoKind,
-  URItoKind2,
-  URItoKind3,
-  URItoKind4
-}
+export { HKT, HKT2, HKT3, HKT4, Kind, Kind2, Kind3, Kind4, URIS, URIS2, URIS3, URIS4 }

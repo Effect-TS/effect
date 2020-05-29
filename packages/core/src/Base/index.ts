@@ -385,3 +385,12 @@ export type {
   Applicative4
 } from "fp-ts/lib/Applicative"
 export type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"
+
+import type * as H from "./HKT"
+
+declare module "fp-ts/lib/HKT" {
+  interface URItoKind<A> extends H.URItoKind<A> {}
+  interface URItoKind2<E, A> extends H.URItoKind2<E, A> {}
+  interface URItoKind3<R, E, A> extends H.URItoKind3<R, E, A> {}
+  interface URItoKind4<S, R, E, A> extends H.URItoKind4<S, R, E, A> {}
+}
