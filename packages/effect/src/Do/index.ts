@@ -35,6 +35,7 @@ import type {
 } from "../Base/Monad"
 import type { URI as EitherURI } from "../Either/index"
 import type { Monad2M, Applicative2M } from "../Either/overloads"
+export { Do as Do_ } from "fp-ts-contrib/lib/Do"
 
 class DoClass<M> {
   constructor(readonly M: CMonad<M> & CApplicative<M>, private result: HKT<M, any>) {}

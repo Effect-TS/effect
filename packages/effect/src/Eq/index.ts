@@ -9,7 +9,7 @@
  * 2. Symmetry: `E.equals(a, b) === E.equals(b, a)`
  * 3. Transitivity: if `E.equals(a, b) === true` and `E.equals(b, c) === true`, then `E.equals(a, c) === true`
  */
-import type { CContravariant1 } from "../Base"
+import type { CContravariant1, Contravariant1 } from "../Base"
 import type { Monoid } from "../Monoid"
 import type { ReadonlyRecord } from "../Readonly/Record"
 
@@ -110,3 +110,12 @@ export const eqDate: Eq<Date> =
   (() => contramap_(eqNumber, (date: Date) => date.valueOf()))()
 
 export const eqString: Eq<string> = eqStrict
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const eq_: Contravariant1<URI> = {
+  URI,
+  contramap: contramap_
+}

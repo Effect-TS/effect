@@ -2,7 +2,7 @@
 
 import * as AP from "../Apply"
 import * as A from "../Array"
-import type { CMonad4MA, CApplicative4MAP } from "../Base"
+import type { CMonad4MA, CApplicative4MAP, Monad4EP } from "../Base"
 import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
 import * as D from "../Do"
@@ -1833,3 +1833,16 @@ export const wiltOption =
 export const wiltOption_ =
   /*#__PURE__*/
   (() => O.wilt_(stream))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const stream_: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  map: map_,
+  of,
+  ap: ap_,
+  chain: chain_
+}

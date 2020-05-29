@@ -1,7 +1,7 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
 import * as AP from "../Apply"
-import type { CApplicative1, CMonad1 } from "../Base"
+import type { CApplicative1, CMonad1, Monad1 } from "../Base"
 import { Do as DoG } from "../Do"
 import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
@@ -251,3 +251,15 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(listAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const list_: Monad1<URI> = {
+  URI,
+  ap: ap_,
+  chain: chain_,
+  map: map_,
+  of
+}

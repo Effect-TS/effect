@@ -1,5 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+import { Traversable2 } from "fp-ts/lib/Traversable"
+
 import * as AP from "../Apply"
 import type {
   HKT,
@@ -20,7 +22,20 @@ import type {
   CWither2C,
   Wither2C,
   Wilt2C,
-  CApplicative2C
+  CApplicative2C,
+  Monad2,
+  Foldable2,
+  Bifunctor2,
+  Extend2,
+  ChainRec2,
+  MonadThrow2,
+  Applicative2,
+  Alt2,
+  Monad2C,
+  Alt2C,
+  ChainRec2C,
+  Applicative,
+  Witherable2C
 } from "../Base"
 import { tailRec } from "../Base/ChainRec"
 import { Do as DoG } from "../Do"
@@ -952,3 +967,176 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(eitherAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+const traverse__ = <F>(F: Applicative<F>) => <A, B, TE>(
+  ma: Either<TE, A>,
+  f: (a: A) => HKT<F, B>
+): HKT<F, Either<TE, B>> => {
+  return isLeft(ma) ? F.of(left(ma.left)) : F.map<B, Either<TE, B>>(f(ma.right), right)
+}
+
+const sequence_ = <F>(F: Applicative<F>) => <E, A>(
+  ma: Either<E, HKT<F, A>>
+): HKT<F, Either<E, A>> => {
+  return isLeft(ma) ? F.of(left(ma.left)) : F.map<A, Either<E, A>>(ma.right, right)
+}
+
+export const either_: Monad2<URI> &
+  Foldable2<URI> &
+  Traversable2<URI> &
+  Bifunctor2<URI> &
+  Alt2<URI> &
+  Extend2<URI> &
+  ChainRec2<URI> &
+  MonadThrow2<URI> &
+  Applicative2<URI> = {
+  URI,
+  map: map_,
+  of: right,
+  ap: ap_,
+  chain: chain_,
+  reduce: reduce_,
+  foldMap: foldMap_,
+  reduceRight: reduceRight_,
+  traverse: traverse__,
+  sequence: sequence_,
+  bimap: bimap_,
+  mapLeft: mapLeft_,
+  alt: alt_,
+  extend: extend_,
+  chainRec,
+  throwError: left
+}
+
+export const eitherMonad_: Monad2<URI> & ChainRec2<URI> = {
+  URI,
+  map: map_,
+  of: right,
+  ap: ap_,
+  chain: chain_,
+  chainRec
+}
+
+export function getValidation_<E>(
+  S: Semigroup<E>
+): Monad2C<URI, E> & Alt2C<URI, E> & ChainRec2C<URI, E> {
+  return {
+    ...eitherMonad_,
+    _E: undefined as any,
+    ap: (mab, ma) =>
+      isLeft(mab)
+        ? isLeft(ma)
+          ? left(S.concat(mab.left, ma.left))
+          : mab
+        : isLeft(ma)
+        ? ma
+        : right(mab.right(ma.right)),
+    alt: (fx, f) => {
+      if (isRight(fx)) {
+        return fx
+      }
+      const fy = f()
+      return isLeft(fy) ? left(S.concat(fx.left, fy.left)) : fy
+    }
+  }
+}
+
+export function getWitherable_<E>(M: Monoid<E>): Witherable2C<URI, E> {
+  const empty = left(M.empty)
+
+  const compact = <A>(ma: Either<E, Option<A>>): Either<E, A> => {
+    return isLeft(ma)
+      ? ma
+      : ma.right._tag === "None"
+      ? left(M.empty)
+      : right(ma.right.value)
+  }
+
+  const separate = <A, B>(
+    ma: Either<E, Either<A, B>>
+  ): Separated<Either<E, A>, Either<E, B>> => {
+    return isLeft(ma)
+      ? { left: ma, right: ma }
+      : isLeft(ma.right)
+      ? { left: right(ma.right.left), right: empty }
+      : { left: empty, right: right(ma.right.right) }
+  }
+
+  const partitionMap = <A, B, C>(
+    ma: Either<E, A>,
+    f: (a: A) => Either<B, C>
+  ): Separated<Either<E, B>, Either<E, C>> => {
+    if (isLeft(ma)) {
+      return { left: ma, right: ma }
+    }
+    const e = f(ma.right)
+    return isLeft(e)
+      ? { left: right(e.left), right: empty }
+      : { left: empty, right: right(e.right) }
+  }
+
+  const partition = <A>(
+    ma: Either<E, A>,
+    p: Predicate<A>
+  ): Separated<Either<E, A>, Either<E, A>> => {
+    return isLeft(ma)
+      ? { left: ma, right: ma }
+      : p(ma.right)
+      ? { left: empty, right: right(ma.right) }
+      : { left: right(ma.right), right: empty }
+  }
+
+  const filterMap = <A, B>(ma: Either<E, A>, f: (a: A) => Option<B>): Either<E, B> => {
+    if (isLeft(ma)) {
+      return ma
+    }
+    const ob = f(ma.right)
+    return ob._tag === "None" ? left(M.empty) : right(ob.value)
+  }
+
+  const filter = <A>(ma: Either<E, A>, predicate: Predicate<A>): Either<E, A> =>
+    isLeft(ma) ? ma : predicate(ma.right) ? ma : left(M.empty)
+
+  const wither = <F>(
+    F: Applicative<F>
+  ): (<A, B>(
+    ma: Either<E, A>,
+    f: (a: A) => HKT<F, Option<B>>
+  ) => HKT<F, Either<E, B>>) => {
+    const traverseF = traverse__(F)
+    return (ma, f) => F.map(traverseF(ma, f), compact)
+  }
+
+  const wilt = <F>(
+    F: Applicative<F>
+  ): (<A, B, C>(
+    ma: Either<E, A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<Either<E, B>, Either<E, C>>>) => {
+    const traverseF = traverse__(F)
+    return (ma, f) => F.map(traverseF(ma, f), separate)
+  }
+
+  return {
+    URI,
+    _E: undefined as any,
+    map: map_,
+    compact,
+    separate,
+    filter,
+    filterMap,
+    partition,
+    partitionMap,
+    traverse: traverse__,
+    sequence: sequence_,
+    reduce: reduce_,
+    foldMap: foldMap_,
+    reduceRight: reduceRight_,
+    wither,
+    wilt
+  }
+}
