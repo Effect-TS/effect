@@ -1,6 +1,5 @@
 import * as T from "../../src/Effect"
 import * as L from "../../src/Layer"
-import * as M from "../../src/Managed"
 import { pipe } from "../../src/Pipe"
 
 const ConsoleURI = "@matechs/core/test/layers/ConsoleURI"
@@ -19,7 +18,7 @@ const LoggerURI = "@matechs/core/test/layers/LoggerURI"
 
 interface Logger {
   [LoggerURI]: {
-    info: (message: string) => T.Sync<void>
+    info(message: string): T.Sync<void>
   }
 }
 
@@ -31,7 +30,7 @@ const CalculatorURI = "@matechs/core/test/layers/CalculatorURI"
 
 interface Calculator {
   [CalculatorURI]: {
-    add: (x: number, y: number) => T.Sync<number>
+    add(x: number, y: number): T.Sync<number>
   }
 }
 
@@ -55,13 +54,17 @@ class LiveCalculator implements L.Implementation<Calculator> {
 
 const Calculator = L.fromConstructor<Calculator>()(LiveCalculator)
 
-const Logger = L.fromManagedWith<Console>()((_) =>
-  M.pure<Logger>({
-    [LoggerURI]: {
-      info: (message) => _[ConsoleURI].log(message)
-    }
-  })
-)
+class LiveLogger implements L.Implementation<Logger> {
+  static readonly _tag = LoggerURI
+
+  constructor(private readonly env: Console) {}
+
+  info(message: string): T.Sync<void> {
+    return this.env[ConsoleURI].log(message)
+  }
+}
+
+const Logger = L.fromConstructor<Logger>()(LiveLogger)
 
 const Console = pipe(
   T.pure("prefix"),

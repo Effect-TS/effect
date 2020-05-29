@@ -176,6 +176,10 @@ export function fromProviderWith<R2>(): <
 
 export type Implementation<C> = C[keyof C]
 
+/**
+ * Construct a layer by using a class based constructor
+ * requiring additional environment if specified as first parameter in the constructor
+ */
 export function fromConstructor<C>() {
   return <
     K extends Implementation<C>,
