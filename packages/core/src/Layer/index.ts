@@ -21,6 +21,15 @@ export type EncaseManaged<S, R, E, A> = {
   inverted?: "regular" | "inverted"
 }
 
+export type EncaseProvider<S, R, E, A> = {
+  _tag: "EncaseProvider"
+  provider: T.Provider<any, any, any, any>
+  _S: () => S
+  _R: (_: R) => void
+  _E: () => E
+  _A: () => A
+}
+
 export type Merge<S, R, E, A> = {
   _tag: "Merge"
   layers: Layer<S, R, E, A>[]
@@ -31,6 +40,7 @@ export type Layer<S, R, E, A> =
   | EncaseEffect<S, R, E, A>
   | EncaseManaged<S, R, E, A>
   | Merge<S, R, E, A>
+  | EncaseProvider<S, R, E, A>
 
 /**
  * Construct a layer by using a value
@@ -110,6 +120,38 @@ export function fromManagedWith<R2>(
     _tag: "EncaseManaged",
     managed: M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _),
     inverted
+  })
+}
+
+/**
+ * Construct a layer by using a provider
+ */
+export function fromProvider<S, R, E, A>(
+  provider: T.Provider<R, A, E, S>
+): Layer<S, R, E, A> {
+  return {
+    _tag: "EncaseProvider",
+    provider,
+    _A: undefined as any,
+    _E: undefined as any,
+    _R: undefined as any,
+    _S: undefined as any
+  }
+}
+
+/**
+ * Construct a layer by using a provider constructed by requiring an environment R2
+ */
+export function fromProviderWith<R2>(): <SK, RK, EK, AK>(
+  provider: (_: R2) => T.Provider<RK, AK, EK, SK>
+) => Layer<SK, RK & R2, EK, AK> {
+  return <SK, RK, EK, AK>(provider: (_: R2) => T.Provider<RK, AK, EK, SK>) => ({
+    _tag: "EncaseProvider",
+    provider: (eff) => T.accessM((r2: R2) => provider(r2)(eff)),
+    _A: undefined as any,
+    _E: undefined as any,
+    _R: undefined as any,
+    _S: undefined as any
   })
 }
 
@@ -209,6 +251,9 @@ export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E,
           break
         case "EncaseManaged":
           currentOp = M.provide(current.managed, current.inverted)(op)
+          break
+        case "EncaseProvider":
+          currentOp = current.provider(op)
           break
         case "Merge":
           currentOp = A.reduce_(
