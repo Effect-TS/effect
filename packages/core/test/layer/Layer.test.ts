@@ -84,7 +84,7 @@ const Console = pipe(
   )
 )
 
-const AppLayer = pipe(L.merge(Calculator, Logger), L.join(Console))
+const AppLayer = Calculator.merge(Logger).with(Console)
 
 const program = T.sequenceT(info("ok"), add(10, 2), log("done"))
 

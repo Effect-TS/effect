@@ -47,7 +47,7 @@ export type Merge<S, R, E, A> = {
   layers: Layer<S, R, E, A>[]
 }
 
-export type Layer<S, R, E, A> =
+export type LayerPayload<S, R, E, A> = (
   | Pure<A>
   | EncaseEffect<S, R, E, A>
   | ChainEffect<S, R, E, A>
@@ -55,6 +55,80 @@ export type Layer<S, R, E, A> =
   | ChainManaged<S, R, E, A>
   | Merge<S, R, E, A>
   | EncaseProvider<S, R, E, A>
+) & {
+  _S: () => S
+  _R: (_: R) => void
+  _E: () => E
+  _A: () => A
+}
+
+export type SL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
+  [k in keyof Layers & number]: Layers[k]["payload"]["_S"] extends () => infer X
+    ? X
+    : never
+}[number]
+
+export type RL<
+  Layers extends { payload: LayerPayload<any, any, any, any> }[]
+> = UnionToIntersection<
+  {
+    [k in keyof Layers & number]: Layers[k]["payload"]["_R"] extends (
+      _R: infer X
+    ) => void
+      ? unknown extends X
+        ? never
+        : X
+      : never
+  }[number]
+>
+
+export type EL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
+  [k in keyof Layers & number]: Layers[k]["payload"]["_E"] extends () => infer X
+    ? X
+    : never
+}[number]
+
+export type AL<
+  Layers extends { payload: LayerPayload<any, any, any, any> }[]
+> = UnionToIntersection<
+  {
+    [k in keyof Layers & number]: Layers[k]["payload"]["_A"] extends () => infer X
+      ? unknown extends X
+        ? never
+        : X
+      : never
+  }[number]
+>
+
+export class Layer<S, R, E, A> {
+  constructor(readonly payload: LayerPayload<S, R, E, A>) {}
+
+  with<S2, R2, E2, A2>(
+    _: Layer<S2, R2, E2, A2>
+  ): Layer<S | S2, T.Erase<R, A2> & R2, E | E2, A2 & A> {
+    return new Layer({
+      _tag: "Merge",
+      layers: [this as any, _ as any],
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
+  }
+
+  merge<Layers extends Layer<any, any, any, any>[]>(
+    ...layers: Layers & { 0: Layer<any, any, any, any> }
+  ): Layer<SL<Layers> | S, RL<Layers> & R, EL<Layers> | E, AL<Layers> & A> {
+    return new Layer({
+      _tag: "Merge",
+      layers: [this, ...layers],
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
+  }
+}
 
 /**
  * Construct a layer by using a value
@@ -63,11 +137,15 @@ export function fromValue<A>(
   _: A,
   inverted?: "regular" | "inverted"
 ): Layer<never, unknown, never, A> {
-  return {
+  return new Layer({
     _tag: "Pure",
     value: _,
-    inverted
-  }
+    inverted,
+    _A: undefined as any,
+    _E: undefined as any,
+    _R: undefined as any,
+    _S: undefined as any
+  })
 }
 
 /**
@@ -76,11 +154,16 @@ export function fromValue<A>(
 export function fromValueWith<R2>(
   inverted?: "regular" | "inverted"
 ): <A>(_: (_: R2) => A) => Layer<never, R2, never, A> {
-  return (_) => ({
-    _tag: "EncaseEffect",
-    effect: T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r))),
-    inverted
-  })
+  return (_) =>
+    new Layer({
+      _tag: "EncaseEffect",
+      effect: T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r))),
+      inverted,
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
 }
 
 /**
@@ -90,11 +173,15 @@ export function fromEffect<S, R, E, A>(
   _: T.Effect<S, R, E, A>,
   inverted?: "regular" | "inverted"
 ): Layer<S, R, E, A> {
-  return {
+  return new Layer({
     _tag: "EncaseEffect",
     effect: _,
-    inverted
-  }
+    inverted,
+    _A: undefined as any,
+    _E: undefined as any,
+    _R: undefined as any,
+    _S: undefined as any
+  })
 }
 
 /**
@@ -103,11 +190,16 @@ export function fromEffect<S, R, E, A>(
 export function fromEffectWith<R2>(
   inverted?: "regular" | "inverted"
 ): <S, R, E, A>(_: (_: R2) => T.Effect<S, R, E, A>) => Layer<S, R & R2, E, A> {
-  return (_) => ({
-    _tag: "EncaseEffect",
-    effect: T.chain_(T.accessEnvironment<R2>(), _),
-    inverted
-  })
+  return (_) =>
+    new Layer({
+      _tag: "EncaseEffect",
+      effect: T.chain_(T.accessEnvironment<R2>(), _),
+      inverted,
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
 }
 
 /**
@@ -117,11 +209,15 @@ export function fromManaged<S, R, E, A>(
   _: M.Managed<S, R, E, A>,
   inverted?: "regular" | "inverted"
 ): Layer<S, R, E, A> {
-  return {
+  return new Layer({
     _tag: "EncaseManaged",
     managed: _,
-    inverted
-  }
+    inverted,
+    _A: undefined as any,
+    _E: undefined as any,
+    _R: undefined as any,
+    _S: undefined as any
+  })
 }
 
 /**
@@ -130,11 +226,16 @@ export function fromManaged<S, R, E, A>(
 export function fromManagedWith<R2>(
   inverted?: "regular" | "inverted"
 ): <S, R, E, A>(_: (_: R2) => M.Managed<S, R, E, A>) => Layer<S, R & R2, E, A> {
-  return (_) => ({
-    _tag: "EncaseManaged",
-    managed: M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _),
-    inverted
-  })
+  return (_) =>
+    new Layer({
+      _tag: "EncaseManaged",
+      managed: M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _),
+      inverted,
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
 }
 
 /**
@@ -143,14 +244,14 @@ export function fromManagedWith<R2>(
 export function fromProvider<S = never, R = unknown, E = never, A = unknown>(
   provider: T.Provider<R, A, E, S>
 ): Layer<S, R, E, A> {
-  return {
+  return new Layer({
     _tag: "EncaseProvider",
     provider,
     _A: undefined as any,
     _E: undefined as any,
     _R: undefined as any,
     _S: undefined as any
-  }
+  })
 }
 
 /**
@@ -164,14 +265,15 @@ export function fromProviderWith<R2>(): <
 >(
   provider: (_: R2) => T.Provider<RK, AK, EK, SK>
 ) => Layer<SK, RK & R2, EK, AK> {
-  return <SK, RK, EK, AK>(provider: (_: R2) => T.Provider<RK, AK, EK, SK>) => ({
-    _tag: "EncaseProvider",
-    provider: (eff) => T.accessM((r2: R2) => provider(r2)(eff)),
-    _A: undefined as any,
-    _E: undefined as any,
-    _R: undefined as any,
-    _S: undefined as any
-  })
+  return <SK, RK, EK, AK>(provider: (_: R2) => T.Provider<RK, AK, EK, SK>) =>
+    new Layer({
+      _tag: "EncaseProvider",
+      provider: (eff) => T.accessM((r2: R2) => provider(r2)(eff)),
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
 }
 
 export type Implementation<C> = C[keyof C]
@@ -235,15 +337,14 @@ export function fromManagedConstructor<C>(uri: keyof C) {
       ? _S
       : never,
     UnionToIntersection<
-      X extends { new (...args: infer args): Implementation<C> } ? args[number] : never
-    > &
       X extends {
-      new (...args: any[]): {
-        destroy(): T.Effect<infer _S, infer _R, infer _E, infer _A>
+        new (...args: infer args): {
+          destroy(): T.Effect<infer _S, infer _R, infer _E, infer _A>
+        }
       }
-    }
-      ? _R
-      : never,
+        ? (unknown extends _R ? never : _R) | args[number]
+        : never
+    >,
     X extends {
       new (...args: any[]): {
         destroy(): T.Effect<infer _S, infer _R, infer _E, infer _A>
@@ -254,123 +355,41 @@ export function fromManagedConstructor<C>(uri: keyof C) {
     C
   > =>
     fromManaged(
-      M.chain_(
-        M.encaseEffect(
-          T.accessEnvironment<
-            UnionToIntersection<
-              X extends { new (...args: infer args): Implementation<C> }
-                ? args[number]
-                : never
-            >
-          >()
-        ),
-        (env) =>
-          M.bracket(
-            T.pure<C>({
-              [uri]: new X(env)
-            } as any),
-            (x) => T.provide(env)((x[uri] as ManagedImplementation<C>).destroy())
-          )
+      M.chain_(M.encaseEffect(T.accessEnvironment<any>()), (env) =>
+        M.bracket(
+          T.pure<C>({
+            [uri]: new X(env)
+          } as any),
+          (x) => T.provide(env)((x[uri] as ManagedImplementation<C>).destroy())
+        )
       )
     )
 }
 
 export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
-  return <S, R, E>(
-    effect: T.Effect<S, R, E, A>
-  ): Layer<S | S2, R & R2, E | E2, A2> => ({
-    _tag: "ChainEffect",
-    effect,
-    layer: layer as any
-  })
+  return <S, R, E>(effect: T.Effect<S, R, E, A>): Layer<S | S2, R & R2, E | E2, A2> =>
+    new Layer({
+      _tag: "ChainEffect",
+      effect,
+      layer: layer as any,
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
 }
 
 export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
-  return <S, R, E>(
-    managed: M.Managed<S, R, E, A>
-  ): Layer<S | S2, R & R2, E | E2, A2> => ({
-    _tag: "ChainManaged",
-    managed,
-    layer: layer as any
-  })
-}
-
-export type SL<Layers extends Layer<any, any, any, any>[]> = {
-  [k in keyof Layers & number]: Layers[k] extends Layer<
-    infer _S,
-    infer _R,
-    infer _E,
-    infer _A
-  >
-    ? _S
-    : never
-}[number]
-
-export type RL<Layers extends Layer<any, any, any, any>[]> = UnionToIntersection<
-  {
-    [k in keyof Layers & number]: Layers[k] extends Layer<
-      infer _S,
-      infer _R,
-      infer _E,
-      infer _A
-    >
-      ? unknown extends _R
-        ? never
-        : _R
-      : never
-  }[number]
->
-
-export type EL<Layers extends Layer<any, any, any, any>[]> = {
-  [k in keyof Layers & number]: Layers[k] extends Layer<
-    infer _S,
-    infer _R,
-    infer _E,
-    infer _A
-  >
-    ? _E
-    : never
-}[number]
-
-export type AL<Layers extends Layer<any, any, any, any>[]> = UnionToIntersection<
-  {
-    [k in keyof Layers & number]: Layers[k] extends Layer<
-      infer _S,
-      infer _R,
-      infer _E,
-      infer _A
-    >
-      ? unknown extends _A
-        ? never
-        : _A
-      : never
-  }[number]
->
-
-/**
- * Merge n layers together, the result will require all the environments that each layer requires and will provide all environments that each layer provides
- */
-export function merge<Layers extends Layer<any, any, any, any>[]>(
-  ...layers: Layers & { 0: Layer<any, any, any, any> }
-): Layer<SL<Layers>, RL<Layers>, EL<Layers>, AL<Layers>> {
-  return {
-    _tag: "Merge",
-    layers
-  }
-}
-
-/**
- * Merges 2 layers vertically, the dependencies of the left are used in the right so the result will only require the difference
- */
-export function join<S, R, E, A>(
-  left: Layer<S, R, E, A>
-): <S2, R2, E2, A2>(
-  right: Layer<S2, R2, E2, A2>
-) => Layer<S | S2, T.Erase<R & R2, A>, E | E2, A & A2> {
-  return (right) => ({
-    _tag: "Merge",
-    layers: [right as any, left as any]
-  })
+  return <S, R, E>(managed: M.Managed<S, R, E, A>): Layer<S | S2, R & R2, E | E2, A2> =>
+    new Layer({
+      _tag: "ChainManaged",
+      managed,
+      layer: layer as any,
+      _A: undefined as any,
+      _E: undefined as any,
+      _R: undefined as any,
+      _S: undefined as any
+    })
 }
 
 /**
@@ -379,7 +398,7 @@ export function join<S, R, E, A>(
 export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E, S> {
   return (op) =>
     T.accessM((env: R) => {
-      const current = layer
+      const current = layer.payload
       let currentOp: any = op
 
       switch (current._tag) {
