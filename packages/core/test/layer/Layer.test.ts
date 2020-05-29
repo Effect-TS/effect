@@ -53,16 +53,21 @@ const Logger = L.fromManagedWith<Console>()((_) =>
   })
 )
 
-const Console = L.fromEffect(
-  T.sync(
-    (): Console => ({
-      [ConsoleURI]: {
-        log: (message) =>
-          T.sync(() => {
-            console.log(message)
-          })
-      }
-    })
+const Console = pipe(
+  T.pure("prefix"),
+  L.useEffect((_) =>
+    L.fromEffect(
+      T.sync(
+        (): Console => ({
+          [ConsoleURI]: {
+            log: (message) =>
+              T.sync(() => {
+                console.log(`${_}:${message}`)
+              })
+          }
+        })
+      )
+    )
   )
 )
 
@@ -80,6 +85,6 @@ describe("Layer", () => {
 
     T.runSync(main)
 
-    expect(mock.mock.calls).toEqual([["ok"], ["done"]])
+    expect(mock.mock.calls).toEqual([["prefix:ok"], ["prefix:done"]])
   })
 })

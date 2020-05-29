@@ -15,6 +15,18 @@ export type EncaseEffect<S, R, E, A> = {
   inverted?: "regular" | "inverted"
 }
 
+export type ChainEffect<S, R, E, A> = {
+  _tag: "ChainEffect"
+  effect: T.Effect<S, R, E, unknown>
+  layer: (_: unknown) => Layer<S, R, E, A>
+}
+
+export type ChainManaged<S, R, E, A> = {
+  _tag: "ChainManaged"
+  managed: M.Managed<S, R, E, unknown>
+  layer: (_: unknown) => Layer<S, R, E, A>
+}
+
 export type EncaseManaged<S, R, E, A> = {
   _tag: "EncaseManaged"
   managed: M.Managed<S, R, E, A>
@@ -38,7 +50,9 @@ export type Merge<S, R, E, A> = {
 export type Layer<S, R, E, A> =
   | Pure<A>
   | EncaseEffect<S, R, E, A>
+  | ChainEffect<S, R, E, A>
   | EncaseManaged<S, R, E, A>
+  | ChainManaged<S, R, E, A>
   | Merge<S, R, E, A>
   | EncaseProvider<S, R, E, A>
 
@@ -126,7 +140,7 @@ export function fromManagedWith<R2>(
 /**
  * Construct a layer by using a provider
  */
-export function fromProvider<S, R, E, A>(
+export function fromProvider<S = never, R = unknown, E = never, A = unknown>(
   provider: T.Provider<R, A, E, S>
 ): Layer<S, R, E, A> {
   return {
@@ -142,7 +156,12 @@ export function fromProvider<S, R, E, A>(
 /**
  * Construct a layer by using a provider constructed by requiring an environment R2
  */
-export function fromProviderWith<R2>(): <SK, RK, EK, AK>(
+export function fromProviderWith<R2>(): <
+  SK = never,
+  RK = unknown,
+  EK = never,
+  AK = unknown
+>(
   provider: (_: R2) => T.Provider<RK, AK, EK, SK>
 ) => Layer<SK, RK & R2, EK, AK> {
   return <SK, RK, EK, AK>(provider: (_: R2) => T.Provider<RK, AK, EK, SK>) => ({
@@ -152,6 +171,26 @@ export function fromProviderWith<R2>(): <SK, RK, EK, AK>(
     _E: undefined as any,
     _R: undefined as any,
     _S: undefined as any
+  })
+}
+
+export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
+  return <S, R, E>(
+    effect: T.Effect<S, R, E, A>
+  ): Layer<S | S2, R & R2, E | E2, A2> => ({
+    _tag: "ChainEffect",
+    effect,
+    layer: layer as any
+  })
+}
+
+export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
+  return <S, R, E>(
+    managed: M.Managed<S, R, E, A>
+  ): Layer<S | S2, R & R2, E | E2, A2> => ({
+    _tag: "ChainManaged",
+    managed,
+    layer: layer as any
   })
 }
 
@@ -254,6 +293,12 @@ export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E,
           break
         case "EncaseProvider":
           currentOp = current.provider(op)
+          break
+        case "ChainEffect":
+          currentOp = T.chain_(current.effect, (u) => using(current.layer(u))(op))
+          break
+        case "ChainManaged":
+          currentOp = M.use(current.managed, (u) => using(current.layer(u))(op))
           break
         case "Merge":
           currentOp = A.reduce_(
