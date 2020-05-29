@@ -194,19 +194,17 @@ export function fromConstructor<C>(uri: keyof C) {
     never,
     C
   > =>
-    fromProvider(
-      T.provideM(
-        T.map_(
-          T.accessEnvironment<
-            UnionToIntersection<
-              X extends { new (...args: infer args): K } ? args[number] : never
-            >
-          >(),
-          (env): C =>
-            ({
-              [uri]: new X(env)
-            } as any)
-        )
+    fromEffect(
+      T.map_(
+        T.accessEnvironment<
+          UnionToIntersection<
+            X extends { new (...args: infer args): K } ? args[number] : never
+          >
+        >(),
+        (env): C =>
+          ({
+            [uri]: new X(env)
+          } as any)
       )
     )
 }
@@ -255,26 +253,24 @@ export function fromManagedConstructor<C>(uri: keyof C) {
       : never,
     C
   > =>
-    fromProvider(
-      M.provide(
-        M.chain_(
-          M.encaseEffect(
-            T.accessEnvironment<
-              UnionToIntersection<
-                X extends { new (...args: infer args): Implementation<C> }
-                  ? args[number]
-                  : never
-              >
-            >()
-          ),
-          (env) =>
-            M.bracket(
-              T.pure<C>({
-                [uri]: new X(env)
-              } as any),
-              (x) => T.provide(env)((x[uri] as ManagedImplementation<C>).destroy())
-            )
-        )
+    fromManaged(
+      M.chain_(
+        M.encaseEffect(
+          T.accessEnvironment<
+            UnionToIntersection<
+              X extends { new (...args: infer args): Implementation<C> }
+                ? args[number]
+                : never
+            >
+          >()
+        ),
+        (env) =>
+          M.bracket(
+            T.pure<C>({
+              [uri]: new X(env)
+            } as any),
+            (x) => T.provide(env)((x[uri] as ManagedImplementation<C>).destroy())
+          )
       )
     )
 }
