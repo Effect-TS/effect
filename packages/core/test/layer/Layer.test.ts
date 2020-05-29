@@ -52,15 +52,19 @@ class LiveCalculator implements L.Implementation<Calculator> {
 
 const Calculator = L.fromConstructor<Calculator>(CalculatorURI)(LiveCalculator)
 
-class LiveLogger implements L.Implementation<Logger> {
+class LiveLogger implements L.ManagedImplementation<Logger> {
   constructor(private readonly env: Console) {}
+
+  destroy() {
+    return this.env[ConsoleURI].log("destroy")
+  }
 
   info(message: string): T.Sync<void> {
     return this.env[ConsoleURI].log(message)
   }
 }
 
-const Logger = L.fromConstructor<Logger>(LoggerURI)(LiveLogger)
+const Logger = L.fromManagedConstructor<Logger>(LoggerURI)(LiveLogger)
 
 const Console = pipe(
   T.pure("prefix"),
@@ -94,7 +98,11 @@ describe("Layer", () => {
 
     const res = T.runUnsafeSync(main)
 
-    expect(mock.mock.calls).toEqual([["prefix:ok"], ["prefix:done"]])
+    expect(mock.mock.calls).toEqual([
+      ["prefix:ok"],
+      ["prefix:done"],
+      ["prefix:destroy"]
+    ])
     expect(res[1]).toStrictEqual(13)
   })
 })

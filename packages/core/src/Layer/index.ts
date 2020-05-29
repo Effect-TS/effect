@@ -211,6 +211,74 @@ export function fromConstructor<C>(uri: keyof C) {
     )
 }
 
+export type ManagedImplementation<C> = C[keyof C] & {
+  destroy(): T.Effect<any, any, any, any>
+}
+
+/**
+ * Construct a layer by using a class based constructor
+ * requiring additional environment if specified as first parameter in the constructor
+ *
+ * uses a managed internally that upon release will call the destroy method provided
+ */
+export function fromManagedConstructor<C>(uri: keyof C) {
+  return <
+    X extends
+      | { new (): ManagedImplementation<C> }
+      | { new (deps: any): ManagedImplementation<C> }
+  >(
+    X: X
+  ): Layer<
+    X extends {
+      new (...args: any[]): {
+        destroy(): T.Effect<infer _S, infer _R, infer _E, infer _A>
+      }
+    }
+      ? _S
+      : never,
+    UnionToIntersection<
+      X extends { new (...args: infer args): Implementation<C> } ? args[number] : never
+    > &
+      X extends {
+      new (...args: any[]): {
+        destroy(): T.Effect<infer _S, infer _R, infer _E, infer _A>
+      }
+    }
+      ? _R
+      : never,
+    X extends {
+      new (...args: any[]): {
+        destroy(): T.Effect<infer _S, infer _R, infer _E, infer _A>
+      }
+    }
+      ? _E
+      : never,
+    C
+  > =>
+    fromProvider(
+      M.provide(
+        M.chain_(
+          M.encaseEffect(
+            T.accessEnvironment<
+              UnionToIntersection<
+                X extends { new (...args: infer args): Implementation<C> }
+                  ? args[number]
+                  : never
+              >
+            >()
+          ),
+          (env) =>
+            M.bracket(
+              T.pure<C>({
+                [uri]: new X(env)
+              } as any),
+              (x) => T.provide(env)((x[uri] as ManagedImplementation<C>).destroy())
+            )
+        )
+      )
+    )
+}
+
 export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
   return <S, R, E>(
     effect: T.Effect<S, R, E, A>
