@@ -32,37 +32,6 @@ export interface Apply2M<F extends URI> extends CFunctor2<F> {
   ) => <E>(fab: Kind2<F, E, (a: A) => B>) => Kind2<F, E | E2, B>
 }
 
-declare module "../Base/Apply" {
-  export function sequenceT<F extends URI>(
-    F: Apply2M<F>
-  ): <Z extends Array<Kind2<F, any, any>>>(
-    ...t: Z & {
-      readonly 0: Kind2<F, any, any>
-    }
-  ) => Kind2<
-    F,
-    {
-      [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _E : never
-    }[number],
-    {
-      [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _A : never
-    }[number]
-  >
-
-  export function sequenceS<F extends URI>(
-    F: Apply2M<F>
-  ): <NER extends Record<string, Kind2<F, any, any>>>(
-    r: EnforceNonEmptyRecord<NER> & Record<string, Kind2<F, any, any>>
-  ) => Kind2<
-    F,
-    {
-      [K in keyof NER]: [NER[K]] extends [Kind2<F, infer _E, infer _A>] ? _E : never
-    }[keyof NER],
-    {
-      [K in keyof NER]: [NER[K]] extends [Kind2<F, infer _E, infer _A>] ? _A : never
-    }
-  >
-}
 export interface Applicative2M<F extends URI> extends Apply2M<F>, COf2<F> {}
 export interface Monad2M<M extends URI> extends Chain2M<M>, COf2<M> {}
 export interface CAlt2M<F extends URI> extends CFunctor2<F> {

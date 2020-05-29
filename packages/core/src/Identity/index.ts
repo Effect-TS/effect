@@ -11,7 +11,16 @@ import type {
   CTraversable1,
   CAlt1,
   CComonad1,
-  CApplicative1
+  CApplicative1,
+  Monad1,
+  Foldable1,
+  Traversable1,
+  Alt1,
+  Comonad1,
+  ChainRec1,
+  Applicative1,
+  Traverse1,
+  Applicative
 } from "../Base"
 import { tailRec, CChainRec1 } from "../Base/ChainRec"
 import { Do as DoG } from "../Do"
@@ -104,6 +113,13 @@ export const traverse: CTraverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
   return (ta) => F.map(id)(f(ta))
 }
 
+export const traverse_: Traverse1<URI> = <F>(F: CApplicative<F>) => <A, B>(
+  ta: Identity<A>,
+  f: (a: A) => HKT<F, B>
+): HKT<F, Identity<B>> => {
+  return F.map(id)(f(ta))
+}
+
 export const URI = "@matechs/core/Identity"
 
 export type URI = typeof URI
@@ -161,3 +177,43 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(identityAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+const traverse__ = <F>(F: Applicative<F>) => <A, B>(
+  ta: Identity<A>,
+  f: (a: A) => HKT<F, B>
+): HKT<F, Identity<B>> => {
+  return F.map(f(ta), id)
+}
+
+const sequence_ = <F>(F: Applicative<F>) => <A>(
+  ta: Identity<HKT<F, A>>
+): HKT<F, Identity<A>> => {
+  return F.map(ta, id)
+}
+
+export const identity_: Monad1<URI> &
+  Foldable1<URI> &
+  Traversable1<URI> &
+  Alt1<URI> &
+  Comonad1<URI> &
+  ChainRec1<URI> &
+  Applicative1<URI> = {
+  URI,
+  map: map_,
+  of: id,
+  ap: ap_,
+  chain: chain_,
+  reduce: reduce_,
+  foldMap: foldMap_,
+  reduceRight: reduceRight_,
+  traverse: traverse__,
+  sequence: sequence_,
+  alt: alt_,
+  extract,
+  extend: extend_,
+  chainRec
+}

@@ -45,7 +45,13 @@ import type {
   CApplicative4MAC,
   CMonad4MA,
   CMonad4MAC,
-  Traverse1
+  Traverse1,
+  Monad1,
+  Foldable1,
+  Traversable1,
+  Comonad1,
+  Applicative1,
+  Applicative
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
@@ -545,4 +551,45 @@ export const tree: CMonad1<URI> &
   sequence,
   extract,
   extend
+}
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+const traverse__ = <F>(
+  F: Applicative<F>
+): (<A, B>(ta: Tree<A>, f: (a: A) => HKT<F, B>) => HKT<F, Tree<B>>) => {
+  const traverseF = A.array_.traverse(F)
+  const r = <A, B>(ta: Tree<A>, f: (a: A) => HKT<F, B>): HKT<F, Tree<B>> =>
+    F.ap(
+      F.map(f(ta.value), (value: B) => (forest: Forest<B>) => ({
+        value,
+        forest
+      })),
+      traverseF(ta.forest, (t) => r(t, f))
+    )
+  return r
+}
+
+export const tree_: Monad1<URI> &
+  Foldable1<URI> &
+  Traversable1<URI> &
+  Comonad1<URI> &
+  Applicative1<URI> = {
+  URI,
+  map: map_,
+  of,
+  ap: ap_,
+  chain: chain_,
+  reduce: reduce_,
+  foldMap: foldMap_,
+  reduceRight: reduceRight_,
+  traverse: traverse__,
+  sequence: <F>(F: Applicative<F>): (<A>(ta: Tree<HKT<F, A>>) => HKT<F, Tree<A>>) => {
+    const traverseF = traverse__(F)
+    return (ta) => traverseF(ta, identity)
+  },
+  extract,
+  extend: extend_
 }

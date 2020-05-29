@@ -1,6 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { CContravariant1 } from "../Base"
+import type { CContravariant1, Contravariant1 } from "../Base"
 import { strictEqual } from "../Eq"
 import type { Eq } from "../Eq"
 import type { Monoid } from "../Monoid"
@@ -281,4 +281,13 @@ export function getSemigroup<A = never>(): Semigroup<Ord<A>> {
     concat: (x, y) =>
       fromCompare((a, b) => monoidOrdering.concat(x.compare(a, b), y.compare(a, b)))
   }
+}
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const ord_: Contravariant1<URI> = {
+  URI,
+  contramap: contramap_
 }

@@ -50,6 +50,11 @@ export interface CFilter1<F extends URIS> {
   <A>(predicate: Predicate<A>): (fa: Kind<F, A>) => Kind<F, A>
 }
 
+export interface Filter1<F extends URIS> {
+  <A, B extends A>(fa: Kind<F, A>, refinement: Refinement<A, B>): Kind<F, B>
+  <A>(fa: Kind<F, A>, predicate: Predicate<A>): Kind<F, A>
+}
+
 export interface CPartition1<F extends URIS> {
   <A, B extends A>(refinement: Refinement<A, B>): (
     fa: Kind<F, A>

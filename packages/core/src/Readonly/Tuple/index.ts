@@ -15,7 +15,18 @@ import type {
   CComonad2,
   CFoldable2,
   CTraversable2,
-  Traverse2
+  Traverse2,
+  Semigroupoid2,
+  Bifunctor2,
+  Foldable2,
+  Comonad2,
+  Traversable2,
+  Applicative,
+  Apply2C,
+  Applicative2C,
+  Chain2C,
+  Monad2C,
+  ChainRec2C
 } from "../../Base"
 import type { Either } from "../../Either"
 import type { Monoid } from "../../Monoid"
@@ -270,4 +281,73 @@ export const readonlyTuple: CSemigroupoid2<URI> &
   reduceRight,
   traverse,
   sequence
+}
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const readonlyTuple_: Semigroupoid2<URI> &
+  Bifunctor2<URI> &
+  Comonad2<URI> &
+  Foldable2<URI> &
+  Traversable2<URI> = {
+  URI,
+  compose: compose_,
+  map: map_,
+  bimap: bimap_,
+  mapLeft: mapLeft_,
+  extract: fst,
+  extend: extend_,
+  reduce: reduce_,
+  foldMap: foldMap_,
+  reduceRight: reduceRight_,
+  traverse: <F>(F: Applicative<F>) => <S, A, B>(
+    as: readonly [A, S],
+    f: (a: A) => HKT<F, B>
+  ): HKT<F, readonly [B, S]> => {
+    return F.map(pipe(as, fst, f), (b) => [b, snd(as)])
+  },
+  sequence: <F>(F: Applicative<F>) => <A, S>(
+    fas: readonly [HKT<F, A>, S]
+  ): HKT<F, readonly [A, S]> => {
+    return F.map(pipe(fas, fst), (a) => [a, snd(fas)])
+  }
+}
+
+export function getApply_<S>(S: Semigroup<S>): Apply2C<URI, S> {
+  return {
+    URI,
+    _E: undefined as any,
+    map: map_,
+    ap: ap_(S)
+  }
+}
+
+export function getApplicative_<S>(M: Monoid<S>): Applicative2C<URI, S> {
+  return {
+    ...getApply_(M),
+    of: of(M)
+  }
+}
+
+export function getChain_<S>(S: Semigroup<S>): Chain2C<URI, S> & Apply2C<URI, S> {
+  return {
+    ...getApply_(S),
+    chain: chain_(S)
+  }
+}
+
+export function getMonad_<S>(M: Monoid<S>): Monad2C<URI, S> & Applicative2C<URI, S> {
+  return {
+    ...getChain_(M),
+    of: of(M)
+  }
+}
+
+export function getChainRec_<S>(M: Monoid<S>): ChainRec2C<URI, S> {
+  return {
+    ...getMonad_(M),
+    chainRec: chainRec(M)
+  }
 }

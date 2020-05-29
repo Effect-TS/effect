@@ -1,5 +1,9 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
+export { sequenceS as sequenceS_, sequenceT as sequenceT_ } from "fp-ts/lib/Apply"
+
+import type { URI as EitherURI } from "../../Either"
+import type { Apply2M } from "../../Either/overloads"
 import { tuple } from "../../Function"
 import type { GE } from "../../Utils"
 import type {
@@ -137,6 +141,21 @@ export type SOf<R extends Record<string, GE<any, any, any, any>>> = {
   [K in keyof R]: STypeOf<R[K]>
 }[keyof R]
 
+export function sequenceT<F extends EitherURI>(
+  F: Apply2M<F>
+): <Z extends Array<Kind2<F, any, any>>>(
+  ...t: Z & {
+    readonly 0: Kind2<F, any, any>
+  }
+) => Kind2<
+  F,
+  {
+    [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _E : never
+  }[number],
+  {
+    [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _A : never
+  }[number]
+>
 export function sequenceT<F extends MaURIS>(
   F: CApply4MAP<F>
 ): <T extends Array<Kind4<F, any, any, any, any>>>(
@@ -317,6 +336,19 @@ function getRecordConstructor(keys: ReadonlyArray<string>) {
   )
 }
 
+export function sequenceS<F extends EitherURI>(
+  F: Apply2M<F>
+): <NER extends Record<string, Kind2<F, any, any>>>(
+  r: EnforceNonEmptyRecord<NER> & Record<string, Kind2<F, any, any>>
+) => Kind2<
+  F,
+  {
+    [K in keyof NER]: [NER[K]] extends [Kind2<F, infer _E, infer _A>] ? _E : never
+  }[keyof NER],
+  {
+    [K in keyof NER]: [NER[K]] extends [Kind2<F, infer _E, infer _A>] ? _A : never
+  }
+>
 export function sequenceS<F extends MaURIS>(
   F: CApply4MA<F>
 ): <NER extends Record<string, Kind4<F, any, any, any, any>>>(

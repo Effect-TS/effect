@@ -10,7 +10,12 @@ import type {
   CApplicative4MAC,
   CApplicative4MAPC,
   CApplicative4MAP,
-  CApplicative4MA
+  CApplicative4MA,
+  Monad4E,
+  Monad4EP,
+  Monad4EC,
+  Alt4EC,
+  Monad4ECP
 } from "../Base"
 import type { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
@@ -782,7 +787,6 @@ export function getCauseValidationM<E>(
 ): CMonad4MAC<URI, E> & CAlt4MAC<URI, E> & CApplicative4MAC<URI, E> {
   return {
     URI,
-
     _E: undefined as any,
     of: pure,
     map,
@@ -2360,3 +2364,76 @@ export const parFastTraverseRecordWI =
 export const parFastTraverseRecordWI_ =
   /*#__PURE__*/
   (() => RE.traverseWithIndex_(parFast(effect)))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const effect_: Monad4E<URI> = {
+  URI,
+  ap: ap_,
+  chain: chain_,
+  map: map_,
+  of: pure
+}
+
+export const effectPar_: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  ap: parAp_,
+  chain: chain_,
+  map: map_,
+  of: pure
+}
+
+export const effectParFast_: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  ap: parFastAp_,
+  chain: chain_,
+  map: map_,
+  of: pure
+}
+
+export function getCauseValidationM_<E>(
+  S: Semigroup<Cause<E>>
+): Monad4EC<URI, E> & Alt4EC<URI, E> {
+  const cv = getCauseValidationM(S)
+  return {
+    URI,
+    _E: undefined as any,
+    of: pure,
+    map: map_,
+    chain: chain_,
+    ap: <S1, R, B, S2, R2, A>(
+      fab: Effect<S1, R, E, (a: A) => B>,
+      fa: Effect<S2, R2, E, A>
+    ): Effect<S1 | S2, R & R2, E, B> => cv.ap(fa)(fab),
+    alt: <S1, R, B, S2, R2, A>(
+      fa: Effect<S1, R, E, B>,
+      fb: () => Effect<S2, R2, E, A>
+    ): Effect<S1 | S2, R & R2, E, A | B> => cv.alt(fb)(fa)
+  }
+}
+
+export function getParCauseValidationM_<E>(
+  S: Semigroup<Cause<E>>
+): Monad4ECP<URI, E> & Alt4EC<URI, E> {
+  const cv = par(getCauseValidationM(S))
+  return {
+    URI,
+    _CTX: "async",
+    _E: undefined as any,
+    of: pure,
+    map: map_,
+    chain: chain_,
+    ap: <S1, R, B, S2, R2, A>(
+      fab: Effect<S1, R, E, (a: A) => B>,
+      fa: Effect<S2, R2, E, A>
+    ): Effect<unknown, R & R2, E, B> => cv.ap(fa)(fab),
+    alt: <S1, R, B, S2, R2, A>(
+      fa: Effect<S1, R, E, B>,
+      fb: () => Effect<S2, R2, E, A>
+    ): Effect<S1 | S2, R & R2, E, A | B> => cv.alt(fb)(fa)
+  }
+}
