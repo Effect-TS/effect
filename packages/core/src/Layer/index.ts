@@ -423,11 +423,7 @@ export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E,
           currentOp = M.use(current.managed, (u) => using(current.layer(u))(op))
           break
         case "Merge":
-          currentOp = A.reduce_(
-            current.layers as any,
-            op,
-            (eff, l) => using(l as any)(eff) as any
-          )
+          currentOp = A.reduce_(current.layers, op, (eff, l) => using(l)(eff) as any)
           break
       }
 
