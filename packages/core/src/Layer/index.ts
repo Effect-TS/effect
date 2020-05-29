@@ -362,7 +362,7 @@ export function fromManagedConstructor<C>(uri: keyof C) {
           T.pure<C>({
             [uri]: new X(env)
           } as any),
-          (x) => T.provide(env)((x[uri] as ManagedImplementation<C>).destroy())
+          (x) => (x[uri] as ManagedImplementation<C>).destroy()
         )
       )
     )
