@@ -18,7 +18,14 @@ import type {
   CTraverse1,
   CTraverseWithIndex1,
   Traverse1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  Monad1,
+  Comonad1,
+  TraversableWithIndex1,
+  FunctorWithIndex1,
+  FoldableWithIndex1,
+  Alt1,
+  Applicative1
 } from "../Base"
 import { Do as DoG } from "../Do"
 import type { Eq } from "../Eq"
@@ -525,31 +532,11 @@ export const nonEmptyArray: CMonad1<URI> &
   alt
 }
 
-export const nonEmptyArrayAp: CMonad1<URI> &
-  CComonad1<URI> &
-  CTraversableWithIndex1<URI, number> &
-  CFunctorWithIndex1<URI, number> &
-  CFoldableWithIndex1<URI, number> &
-  CAlt1<URI> &
-  CApplicative1<URI> = {
+export const nonEmptyArrayAp: CApplicative1<URI> = {
   URI,
   map,
-  mapWithIndex,
   of,
-  ap,
-  chain,
-  extend,
-  extract: head,
-  reduce,
-  foldMap,
-  reduceRight,
-  traverse,
-  sequence,
-  reduceWithIndex,
-  foldMapWithIndex,
-  reduceRightWithIndex,
-  traverseWithIndex,
-  alt
+  ap
 }
 
 export const nonEmptyArrayMonad: CMonad1<URI> & CApplicative1<URI> = {
@@ -569,3 +556,37 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(nonEmptyArrayAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const nonEmptyArray_: Monad1<URI> &
+  Comonad1<URI> &
+  TraversableWithIndex1<URI, number> &
+  FunctorWithIndex1<URI, number> &
+  FoldableWithIndex1<URI, number> &
+  Alt1<URI> &
+  Applicative1<URI> =
+  /*#__PURE__*/
+  (() =>
+    ({
+      URI,
+      map: map_,
+      mapWithIndex: mapWithIndex_,
+      of,
+      ap: ap_,
+      chain: chain_,
+      extend: extend_,
+      extract: head,
+      reduce: reduce_,
+      foldMap: foldMap_,
+      reduceRight: reduceRight_,
+      traverse: RNEA.readonlyNonEmptyArray_.traverse as any,
+      sequence: RNEA.readonlyNonEmptyArray_.sequence as any,
+      reduceWithIndex: reduceWithIndex_,
+      foldMapWithIndex: foldMapWithIndex_,
+      reduceRightWithIndex: reduceRightWithIndex_,
+      traverseWithIndex: RNEA.readonlyNonEmptyArray_.traverseWithIndex as any,
+      alt: alt_
+    } as const))()

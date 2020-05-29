@@ -28,7 +28,19 @@ import type {
   Traverse1,
   TraverseWithIndex1,
   Wither1,
-  Wilt1
+  Wilt1,
+  Monad1,
+  Foldable1,
+  Unfoldable1,
+  TraversableWithIndex1,
+  Alternative1,
+  Extend1,
+  Compactable1,
+  FilterableWithIndex1,
+  Witherable1,
+  FunctorWithIndex1,
+  FoldableWithIndex1,
+  Applicative1
 } from "../Base"
 import { Do as DoG } from "../Do"
 import type { Either } from "../Either"
@@ -1350,3 +1362,26 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(arrayAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const array_: Monad1<URI> &
+  Foldable1<URI> &
+  Unfoldable1<URI> &
+  TraversableWithIndex1<URI, number> &
+  Alternative1<URI> &
+  Extend1<URI> &
+  Compactable1<URI> &
+  FilterableWithIndex1<URI, number> &
+  Witherable1<URI> &
+  FunctorWithIndex1<URI, number> &
+  FoldableWithIndex1<URI, number> &
+  Applicative1<URI> =
+  /*#__PURE__*/
+  (() =>
+    ({
+      ...RA.readonlyArray_,
+      URI
+    } as any))()

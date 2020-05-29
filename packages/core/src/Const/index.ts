@@ -13,7 +13,10 @@ import type {
   CApply2C,
   CBifunctor2,
   CContravariant2,
-  CFunctor2
+  CFunctor2,
+  Functor2,
+  Contravariant2,
+  Bifunctor2
 } from "../Base"
 import type { Eq } from "../Eq"
 import { identity, unsafeCoerce } from "../Function"
@@ -21,8 +24,6 @@ import type { Monoid } from "../Monoid"
 import type { Bounded, Ord } from "../Ord"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
-
-export { const_ as const }
 
 export type Const<E, A> = E & {
   readonly _A: A
@@ -112,10 +113,26 @@ declare module "../Base/HKT" {
   }
 }
 
-export const const_: CFunctor2<URI> & CContravariant2<URI> & CBifunctor2<URI> = {
+const const_: CFunctor2<URI> & CContravariant2<URI> & CBifunctor2<URI> = {
   URI,
   map,
   contramap,
   bimap,
   mapLeft
 }
+
+export { const_ as const }
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+const const__: Functor2<URI> & Contravariant2<URI> & Bifunctor2<URI> = {
+  URI,
+  map: map_,
+  contramap: contramap_,
+  bimap: bimap_,
+  mapLeft: mapLeft_
+}
+
+export { const__ as const_ }

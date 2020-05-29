@@ -34,7 +34,22 @@ import {
   Traverse1,
   TraverseWithIndex1,
   Wilt1,
-  Wither1
+  Wither1,
+  Monad1,
+  Foldable1,
+  Unfoldable1,
+  TraversableWithIndex1,
+  Alternative1,
+  Extend1,
+  Compactable1,
+  Witherable1,
+  FunctorWithIndex1,
+  FoldableWithIndex1,
+  Filterable1,
+  Traversable1,
+  Applicative1,
+  FilterableWithIndex1,
+  Applicative
 } from "../../Base"
 import { Do as DoG } from "../../Do"
 import type { Either } from "../../Either"
@@ -2275,3 +2290,100 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(readonlyArrayAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+const traverseWithIndex__ = <F>(F: Applicative<F>) => <A, B>(
+  ta: ReadonlyArray<A>,
+  f: (i: number, a: A) => HKT<F, B>
+): HKT<F, ReadonlyArray<B>> => {
+  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
+    F.ap(
+      F.map(fbs, (bs: readonly B[]) => (b: B) => snoc_(bs, b)),
+      f(i, a)
+    )
+  )
+}
+
+const traverse__ = <F>(
+  F: Applicative<F>
+): (<A, B>(
+  ta: ReadonlyArray<A>,
+  f: (a: A) => HKT<F, B>
+) => HKT<F, ReadonlyArray<B>>) => {
+  return (ta, f) => traverseWithIndex__(F)(ta, (_, a) => f(a))
+}
+
+export const readonlyArray_: Monad1<URI> &
+  Foldable1<URI> &
+  Unfoldable1<URI> &
+  TraversableWithIndex1<URI, number> &
+  Alternative1<URI> &
+  Extend1<URI> &
+  Compactable1<URI> &
+  FilterableWithIndex1<URI, number> &
+  Witherable1<URI> &
+  FunctorWithIndex1<URI, number> &
+  FoldableWithIndex1<URI, number> &
+  Filterable1<URI> &
+  Traversable1<URI> &
+  Applicative1<URI> = {
+  URI,
+  map: map_,
+  mapWithIndex: mapWithIndex_,
+  compact,
+  separate,
+  filter: filter_,
+  filterMap: filterMap_,
+  partition: partition_,
+  partitionMap: partitionMap_,
+  of,
+  ap: ap_,
+  chain: chain_,
+  reduce: reduce_,
+  foldMap: foldMap_,
+  reduceRight: reduceRight_,
+  unfold,
+  traverse: traverse__,
+  sequence: <F>(F: Applicative<F>) => <A>(
+    ta: ReadonlyArray<HKT<F, A>>
+  ): HKT<F, ReadonlyArray<A>> => {
+    return reduce(F.of(zero<A>()), (fas, fa: HKT<F, A>) =>
+      F.ap(
+        F.map(fas, (as: readonly A[]) => (a: A) => snoc_(as, a)),
+        fa
+      )
+    )(ta)
+  },
+  zero,
+  alt: alt_,
+  extend: extend_,
+  wither: <F>(
+    F: Applicative<F>
+  ): (<A, B>(
+    ta: ReadonlyArray<A>,
+    f: (a: A) => HKT<F, Option<B>>
+  ) => HKT<F, ReadonlyArray<B>>) => {
+    const traverseF = traverse__(F)
+    return (ta, f) => F.map(traverseF(ta, f), compact)
+  },
+  wilt: <F>(
+    F: Applicative<F>
+  ): (<A, B, C>(
+    wa: ReadonlyArray<A>,
+    f: (a: A) => HKT<F, Either<B, C>>
+  ) => HKT<F, Separated<ReadonlyArray<B>, ReadonlyArray<C>>>) => {
+    const traverseF = traverse__(F)
+    return (wa, f) => F.map(traverseF(wa, f), separate)
+  },
+  reduceWithIndex: reduceWithIndex_,
+  foldMapWithIndex: foldMapWithIndex_,
+  reduceRightWithIndex: reduceRightWithIndex_,
+  traverseWithIndex: traverseWithIndex__,
+  partitionMapWithIndex: partitionMapWithIndex_,
+  partitionWithIndex: partitionWithIndex_,
+  filterMapWithIndex: filterMapWithIndex_,
+  filterWithIndex: filterWithIndex_
+}

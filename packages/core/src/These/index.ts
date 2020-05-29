@@ -11,7 +11,13 @@ import type {
   CFoldable2,
   CTraversable2,
   CApplicative2C,
-  Traverse2
+  Traverse2,
+  Monad2C,
+  Functor2,
+  Bifunctor2,
+  Foldable2,
+  Traversable2,
+  Applicative
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
@@ -147,38 +153,6 @@ export function getMonad<E>(
     of: right,
     ap: (ma) => chain((f) => map(f)(ma)),
     chain
-  }
-}
-
-export function getMonad_<E>(
-  S: Semigroup<E>
-): {
-  map_: <E, A, B>(fa: These<E, A>, f: (a: A) => B) => These<E, B>
-  ap_: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>) => These<E, B>
-  of: <E = never, A = never>(right: A) => These<E, A>
-  chain_: <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>) => These<E, B>
-} {
-  const chain_ = <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>): These<E, B> => {
-    if (isLeft(ma)) {
-      return ma
-    }
-    if (isRight(ma)) {
-      return f(ma.right)
-    }
-    const fb = f(ma.right)
-    return isLeft(fb)
-      ? left(S.concat(ma.left, fb.left))
-      : isRight(fb)
-      ? both(ma.left, fb.right)
-      : both(S.concat(ma.left, fb.left), fb.right)
-  }
-
-  return {
-    map_,
-    of: right,
-    ap_: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>): These<E, B> =>
-      chain_(fab, (f) => map(f)(fa)),
-    chain_
   }
 }
 
@@ -448,4 +422,67 @@ export const these: CFunctor2<URI> &
   reduceRight,
   traverse,
   sequence
+}
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const these_: Functor2<URI> &
+  Bifunctor2<URI> &
+  Foldable2<URI> &
+  Traversable2<URI> = {
+  URI,
+  map: map_,
+  bimap: bimap_,
+  mapLeft: mapLeft_,
+  reduce: reduce_,
+  foldMap: foldMap_,
+  reduceRight: reduceRight_,
+  traverse: <F>(F: Applicative<F>) => <A, B, E>(
+    ta: These<E, A>,
+    f: (a: A) => HKT<F, B>
+  ): HKT<F, These<E, B>> => {
+    return isLeft(ta)
+      ? F.of(ta)
+      : isRight(ta)
+      ? F.map(f(ta.right), right)
+      : F.map(f(ta.right), (b) => both(ta.left, b))
+  },
+  sequence: <F>(F: Applicative<F>) => <E, A>(
+    ta: These<E, HKT<F, A>>
+  ): HKT<F, These<E, A>> => {
+    return isLeft(ta)
+      ? F.of(ta)
+      : isRight(ta)
+      ? F.map(ta.right, right)
+      : F.map(ta.right, (b) => both(ta.left, b))
+  }
+}
+
+export function getMonad_<E>(S: Semigroup<E>): Monad2C<URI, E> {
+  const chain_ = <A, B>(ma: These<E, A>, f: (a: A) => These<E, B>): These<E, B> => {
+    if (isLeft(ma)) {
+      return ma
+    }
+    if (isRight(ma)) {
+      return f(ma.right)
+    }
+    const fb = f(ma.right)
+    return isLeft(fb)
+      ? left(S.concat(ma.left, fb.left))
+      : isRight(fb)
+      ? both(ma.left, fb.right)
+      : both(S.concat(ma.left, fb.left), fb.right)
+  }
+
+  return {
+    URI,
+    _E: undefined as any,
+    map: map_,
+    of: right,
+    ap: <A, B>(fab: These<E, (a: A) => B>, fa: These<E, A>): These<E, B> =>
+      chain_(fab, (f) => map(f)(fa)),
+    chain: chain_
+  }
 }

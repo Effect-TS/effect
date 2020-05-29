@@ -152,7 +152,8 @@ export type {
   CPartition3C,
   CPartition4,
   Filter2,
-  Partition2
+  Partition2,
+  Filter1
 } from "./Filterable"
 
 export {
@@ -312,3 +313,75 @@ export type {
 } from "./TraversableWithIndex"
 
 export type { COf, COf1, COf2, COf2C, COf3, COf3C, COf4, COf4C } from "./Of"
+
+export type {
+  Alt4E,
+  Alt4EC,
+  Applicative4E,
+  Applicative4EC,
+  Applicative4ECP,
+  Applicative4EP,
+  Apply4E,
+  Apply4EC,
+  Apply4ECP,
+  Apply4EP,
+  Chain4E,
+  Chain4EC,
+  Chain4ECP,
+  Chain4EP,
+  Do4CE,
+  Do4CE_,
+  Functor4EC,
+  Monad4E,
+  Monad4EC,
+  Monad4ECP,
+  Monad4EP,
+  MonadThrow4E,
+  MonadThrow4EC,
+  MonadThrow4ECP,
+  MonadThrow4EP,
+  PipeableAlt4E,
+  PipeableAlt4EC,
+  PipeableApply4E,
+  PipeableApply4EC,
+  PipeableApply4EP,
+  PipeableChain4E,
+  PipeableChain4EC,
+  PipeableChain4EP,
+  PipeableFunctor4EC,
+  PipeableMonadThrow4E,
+  PipeableMonadThrow4EC
+} from "./Overloads"
+
+export type { Functor2, Functor1 } from "fp-ts/lib/Functor"
+export type { FunctorWithIndex1 } from "fp-ts/lib/FunctorWithIndex"
+export type { Contravariant2, Contravariant1 } from "fp-ts/lib/Contravariant"
+export type { Compactable1 } from "fp-ts/lib/Compactable"
+export type { Filterable1, Filterable2 } from "fp-ts/lib/Filterable"
+export type { Witherable1, Witherable2C } from "fp-ts/lib/Witherable"
+export type { Apply2C } from "fp-ts/lib/Apply"
+export type { Chain2C } from "fp-ts/lib/Chain"
+export type { Bifunctor2 } from "fp-ts/lib/Bifunctor"
+export type { Monad2, Monad1, Monad2C } from "fp-ts/lib/Monad"
+export type { Comonad1, Comonad2 } from "fp-ts/lib/Comonad"
+export type { Foldable2, Foldable1 } from "fp-ts/lib/Foldable"
+export type { Unfoldable1 } from "fp-ts/lib/Unfoldable"
+export type { FoldableWithIndex1 } from "fp-ts/lib/FoldableWithIndex"
+export type { Traversable1, Traversable2 } from "fp-ts/lib/Traversable"
+export type { TraversableWithIndex1 } from "fp-ts/lib/TraversableWithIndex"
+export type { FilterableWithIndex1 } from "fp-ts/lib/FilterableWithIndex"
+export type { Alt2, Alt1, Alt2C } from "fp-ts/lib/Alt"
+export type { Alternative1 } from "fp-ts/lib/Alternative"
+export type { Extend2, Extend1 } from "fp-ts/lib/Extend"
+export type { ChainRec2, ChainRec1, ChainRec2C } from "fp-ts/lib/ChainRec"
+export type { MonadThrow2 } from "fp-ts/lib/MonadThrow"
+export type {
+  Applicative2,
+  Applicative1,
+  Applicative,
+  Applicative3,
+  Applicative2C,
+  Applicative3C,
+  Applicative4
+} from "fp-ts/lib/Applicative"
+export type { Semigroupoid2 } from "fp-ts/lib/Semigroupoid"

@@ -32,7 +32,8 @@ import type {
   URIS2,
   URIS3,
   Wither2C,
-  Wilt2C
+  Wilt2C,
+  Filterable2
 } from "../Base"
 import { Either } from "../Either"
 import type { Eq } from "../Eq"
@@ -443,4 +444,19 @@ export const mapFilterable: CFilterable2<URI> = {
   filterMap,
   partition,
   partitionMap
+}
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const mapFilterable_: Filterable2<URI> = {
+  URI,
+  map: map_,
+  compact,
+  separate,
+  filter: filter_,
+  filterMap: filterMap_,
+  partition: partition_,
+  partitionMap: partitionMap_
 }

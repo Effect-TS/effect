@@ -33,7 +33,8 @@ import type {
   Partition2,
   Traverse2C,
   Wither2C,
-  Wilt2C
+  Wilt2C,
+  Filterable2
 } from "../../Base"
 import { isLeft, Either } from "../../Either"
 import { fromEquals } from "../../Eq"
@@ -1132,4 +1133,19 @@ export const readonlyMapFilterable: CFilterable2<URI> = {
   filterMap,
   partition,
   partitionMap
+}
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const readonlyMapFilterable_: Filterable2<URI> = {
+  URI,
+  map: map_,
+  compact,
+  separate,
+  filter: filter_,
+  filterMap: filterMap_,
+  partition: partition_,
+  partitionMap: partitionMap_
 }

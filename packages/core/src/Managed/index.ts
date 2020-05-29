@@ -2,7 +2,13 @@
 
 import * as AP from "../Apply"
 import * as A from "../Array"
-import { CMonad4MA, CApplicative4MAP, CApplicative4MA } from "../Base"
+import {
+  CMonad4MA,
+  CApplicative4MAP,
+  CApplicative4MA,
+  Monad4E,
+  Monad4EP
+} from "../Base"
 import { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
 import * as D from "../Do"
 import * as T from "../Effect"
@@ -865,3 +871,24 @@ export const parWiltRecord =
 export const parWiltRecord_ =
   /*#__PURE__*/
   (() => RE.wilt_(par(managed)))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const managed_: Monad4E<URI> = {
+  URI,
+  ap: ap_,
+  chain: chain_,
+  map: map_,
+  of: pure
+}
+
+export const managedPar_: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  ap: parAp_,
+  chain: chain_,
+  map: map_,
+  of: pure
+}
