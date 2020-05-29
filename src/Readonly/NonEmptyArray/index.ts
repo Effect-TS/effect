@@ -18,7 +18,14 @@ import type {
   CTraverse1,
   CTraverseWithIndex1,
   Traverse1,
-  TraverseWithIndex1
+  TraverseWithIndex1,
+  Monad1,
+  Comonad1,
+  TraversableWithIndex1,
+  FunctorWithIndex1,
+  FoldableWithIndex1,
+  Alt1,
+  Applicative1
 } from "../../Base"
 import { Do as DoG } from "../../Do"
 import type { Eq } from "../../Eq"
@@ -698,3 +705,37 @@ export const sequenceS =
 export const sequenceT =
   /*#__PURE__*/
   (() => AP.sequenceT(readonlyNonEmptyAp))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const readonlyNonEmptyArray_: Monad1<URI> &
+  Comonad1<URI> &
+  TraversableWithIndex1<URI, number> &
+  FunctorWithIndex1<URI, number> &
+  FoldableWithIndex1<URI, number> &
+  Alt1<URI> &
+  Applicative1<URI> =
+  /*#__PURE__*/
+  (() =>
+    ({
+      URI,
+      map: map_,
+      mapWithIndex: mapWithIndex_,
+      of,
+      ap: ap_,
+      chain: chain_,
+      extend: extend_,
+      extract: head,
+      reduce: reduce_,
+      foldMap: foldMap_,
+      reduceRight: reduceRight_,
+      traverse: RA.readonlyArray_.traverse as any,
+      sequence: RA.readonlyArray_.sequence as any,
+      reduceWithIndex: reduceWithIndex_,
+      foldMapWithIndex: foldMapWithIndex_,
+      reduceRightWithIndex: reduceRightWithIndex_,
+      traverseWithIndex: RA.readonlyArray_.traverseWithIndex as any,
+      alt: alt_
+    } as const))()

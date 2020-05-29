@@ -1,7 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts-contrib */
 
 import * as A from "../Array"
-import type { CBifunctor4, CMonad4MA, CApplicative4MAP } from "../Base"
+import type { CBifunctor4, CMonad4MA, CApplicative4MAP, Monad4EP } from "../Base"
 import * as AP from "../Base/Apply"
 import * as D from "../Do"
 import * as T from "../Effect"
@@ -524,3 +524,16 @@ export const wiltOption =
 export const wiltOption_ =
   /*#__PURE__*/
   (() => O.wilt_(streamEither))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const streamEither_: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  map: map_,
+  of,
+  ap: ap_,
+  chain: chain_
+}

@@ -2,7 +2,13 @@
 
 import * as AP from "../Apply"
 import * as A from "../Array"
-import type { CMonad4MA, CApplicative4MA, CApplicative4MAP } from "../Base"
+import type {
+  CMonad4MA,
+  CApplicative4MA,
+  CApplicative4MAP,
+  Monad4E,
+  Monad4EP
+} from "../Base"
 import type {
   STypeOf,
   UnionToIntersection,
@@ -459,3 +465,24 @@ export const parWiltRecord =
 export const parWiltRecord_ =
   /*#__PURE__*/
   (() => RE.wilt_(par(effectOption)))()
+
+//
+// Compatibility with fp-ts ecosystem
+//
+
+export const effectOption_: Monad4E<URI> = {
+  URI,
+  ap: ap_,
+  chain: chain_,
+  map: map_,
+  of
+}
+
+export const effectOptionPar_: Monad4EP<URI> = {
+  URI,
+  _CTX: "async",
+  ap: parAp_,
+  chain: chain_,
+  map: map_,
+  of
+}
