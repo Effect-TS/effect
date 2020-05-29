@@ -198,7 +198,6 @@ export interface Do4CE<M extends MaURIS, Q, S extends object, U, L> {
   done: () => Kind4<M, Q, U, L, S>
 }
 
-// eslint-disable-next-line @typescript-eslint/class-name-casing
 export interface Do4CE_<M extends MaURIS, Q, S extends object, U, L> {
   do: <Q1, R>(ma: Kind4<M, Q1, R, L, unknown>) => Do4CE_<M, Q | Q1, S, U & R, L>
   doL: <Q1, R>(

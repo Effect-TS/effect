@@ -15,7 +15,7 @@ export function useInterval(callback: Lazy<void>, delay: number) {
   React.useEffect(() => {
     function tick() {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      savedCallback.current!!()
+      savedCallback.current!()
     }
     if (delay !== null) {
       const id = setInterval(tick, delay)

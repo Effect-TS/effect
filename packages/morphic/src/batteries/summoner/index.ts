@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/class-name-casing */
-
 import type { BaseFC } from "../../fc/config"
 import { reportFailure, Errors, Codec } from "../../model/codec"
 import { ModelURI } from "../../model/hkt"
