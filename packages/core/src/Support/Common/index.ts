@@ -32,7 +32,9 @@ export {
   IRaisedTag,
   ISuspended,
   ISuspendedTag,
-  Instructions
+  Instructions,
+  IFork,
+  IForkTag
 } from "./instructions"
 
 import type * as EffectTypes from "./effect"

@@ -178,3 +178,17 @@ export class IAccessEnv<R> {
     return IAccessEnvTag
   }
 }
+
+export const IForkTag = "IFork" as const
+
+export class IFork<S, R, E, A> {
+  constructor(
+    readonly op: Effect<S, R, E, A>,
+    readonly supervised: boolean,
+    readonly name?: string
+  ) {}
+
+  tag() {
+    return IForkTag
+  }
+}

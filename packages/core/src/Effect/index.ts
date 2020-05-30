@@ -1,23 +1,22 @@
 /* adapted from https://github.com/rzeigler/waveguide */
-
 import * as AP from "../Apply"
 import * as A from "../Array"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
 import type {
+  Alt4EC,
+  CAlt4MAC,
+  CApplicative4MA,
+  CApplicative4MAC,
+  CApplicative4MAP,
+  CApplicative4MAPC,
   CMonad4MA,
   CMonad4MAC,
-  CAlt4MAC,
-  CApplicative4MAC,
-  CApplicative4MAPC,
-  CApplicative4MAP,
-  CApplicative4MA,
   Monad4E,
-  Monad4EP,
   Monad4EC,
-  Alt4EC,
-  Monad4ECP
+  Monad4ECP,
+  Monad4EP
 } from "../Base"
-import type { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
+import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
 import * as D from "../Do"
 import * as E from "../Either"
@@ -41,16 +40,13 @@ import * as RE from "../Record"
 import { makeRef, Ref } from "../Ref"
 import type { Semigroup } from "../Semigroup"
 import {
-  AsyncCancelContFn,
-  AsyncFn,
   EffectURI as URI,
   IAccessEnv,
   IAccessInterruptible,
   IAccessRuntime,
-  IAsync,
   IChain,
   ICollapse,
-  ICompleted,
+  IFork,
   IInterruptibleRegion,
   IMap,
   Instructions,
@@ -59,8 +55,7 @@ import {
   IPureEither,
   IPureOption,
   IPureTag,
-  IRaised,
-  ISuspended
+  IRaised
 } from "../Support/Common"
 import type {
   Async,
@@ -74,7 +69,7 @@ import type {
   SyncR,
   SyncRE
 } from "../Support/Common/effect"
-import { Driver, DriverImpl, DriverSyncImpl } from "../Support/Driver"
+import * as Dr from "../Support/Driver"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 import * as TR from "../Tree"
@@ -92,6 +87,7 @@ export {
   SyncRE
 } from "../Support/Common/effect"
 export { Env, Erase, Err, Op, Ret } from "../Utils"
+export type { Fiber } from "../Support/Driver"
 
 export function access<R, A>(f: FunctionN<[R], A>): SyncR<R, A> {
   return map_(accessEnvironment<R>(), f)
@@ -196,12 +192,7 @@ export const apFirst: <S1, R, E, B>(
  * @param first
  * @param second
  */
-export function applySecond<S, R, E, A, S2, R2, E2, B>(
-  first: Effect<S, R, E, A>,
-  second: Effect<S2, R2, E2, B>
-): Effect<S | S2, R & R2, E | E2, B> {
-  return zipWith_(first, second, snd)
-}
+export const applySecond = Dr.applySecond
 
 export const apSecond: <S1, R, E, B>(
   fb: Effect<S1, R, E, B>
@@ -247,9 +238,7 @@ export function asUnit<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, void
  * in uninterruptible
  * @param op
  */
-export function async<E, A>(op: AsyncFn<E, A>): AsyncE<E, A> {
-  return new IAsync(op) as any
-}
+export const async = Dr.async
 
 /**
  * Wrap an impure callback in IO
@@ -257,11 +246,7 @@ export function async<E, A>(op: AsyncFn<E, A>): AsyncE<E, A> {
  * This is a variant of async where the effect cannot fail with a checked exception.
  * @param op
  */
-export function asyncTotal<A>(
-  op: FunctionN<[FunctionN<[A], void>], AsyncCancelContFn>
-): Async<A> {
-  return async((callback) => op((a) => callback({ _tag: "Right", right: a })))
-}
+export const asyncTotal = Dr.asyncTotal
 
 export const bimap: <E, G, A, B>(
   f: (e: E) => G,
@@ -334,14 +319,7 @@ export function bracketExit<S, R, E, A, B, S2, R2, E2, S3, R3, E3>(
  * @param inner
  * @param bind
  */
-export function chain_<S, R, E, A, S2, R2, E2, B>(
-  inner: Effect<S, R, E, A>,
-  bind: FunctionN<[A], Effect<S2, R2, E2, B>>
-): Effect<S | S2, R & R2, E | E2, B> {
-  return (((inner as any) as Instructions).tag() === IPureTag
-    ? bind(((inner as any) as IPure<A>).a)
-    : new IChain(inner, bind)) as any
-}
+export const chain_ = Dr.chain_
 
 export const chain: <S1, R, E, A, B>(
   f: (a: A) => Effect<S1, R, E, B>
@@ -367,14 +345,17 @@ export function chainEither<A, E, B>(
  * @param f
  */
 export function chainError<S, R, E1, E2, A>(
-  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<any>>>) => Effect<S, R, E2, A>
+  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<unknown>>>) => Effect<S, R, E2, A>
 ): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f)
 }
 
 export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<any>>>) => Effect<S2, R2, E2, A2>
+  f: (
+    _: E1,
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
+  ) => Effect<S2, R2, E2, A2>
 ): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
@@ -387,7 +368,7 @@ export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
 export const chainErrorTap = <S, R, E1, E2>(
   f: (
     e: E1,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S, R, E2, unknown>
 ) => <S2, R2, A>(io: Effect<S2, R2, E1, A>) => chainErrorTap_(io, f)
 
@@ -395,7 +376,7 @@ export const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   io: Effect<S, R, E1, A>,
   f: (
     _: E1,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S2, R2, E2, unknown>
 ) =>
   chainError_(io, (e, remaining) =>
@@ -462,8 +443,10 @@ export function combineFinalizerExit<E, A>(
       ...fiberExit,
       remaining: O.some(
         fiberExit.remaining._tag === "Some"
-          ? ([...fiberExit.remaining.value, releaseExit] as NonEmptyArray<Cause<any>>)
-          : ([releaseExit] as NonEmptyArray<Cause<any>>)
+          ? ([...fiberExit.remaining.value, releaseExit] as NonEmptyArray<
+              Cause<unknown>
+            >)
+          : ([releaseExit] as NonEmptyArray<Cause<unknown>>)
       )
     }
   }
@@ -481,14 +464,18 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
             if (finalize._tag === "Done") {
               const errors = pipe(
                 [
-                  ...(exit.errors ? exit.errors : []),
+                  ...(exit.errors._tag === "Some" ? exit.errors.value : []),
                   ...flattenArray(
                     finalize.value.map((x) =>
-                      x._tag === "Interrupt" ? (x.errors ? x.errors : []) : []
+                      x._tag === "Interrupt"
+                        ? x.errors._tag === "Some"
+                          ? x.errors.value
+                          : []
+                        : []
                     )
                   )
                 ],
-                filterArray((x): x is Error => x !== undefined)
+                filterArray((x): x is unknown => x !== undefined)
               )
               return errors.length > 0
                 ? completed(interruptWithError(...errors))
@@ -506,15 +493,13 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
  * An IO that is completed with the given exit
  * @param exit
  */
-export function completed<E = never, A = never>(exit: Exit<E, A>): SyncE<E, A> {
-  return new ICompleted(exit) as any
-}
+export const completed = Dr.completed
 
 export function completeLatched<E1, E2, E3, A, B, C, R>(
   latch: Ref<boolean>,
   channel: Deferred<unknown, R, E3, C>,
-  combine: FunctionN<[Exit<E1, A>, Fiber<E2, B>], AsyncRE<R, E3, C>>,
-  other: Fiber<E2, B>
+  combine: FunctionN<[Exit<E1, A>, Dr.Fiber<E2, B>], AsyncRE<R, E3, C>>,
+  other: Dr.Fiber<E2, B>
 ): FunctionN<[Exit<E1, A>], AsyncR<R, void>> {
   return (exit) => {
     const act: Async<AsyncR<R, void>> = latch.modify((flag) =>
@@ -722,8 +707,15 @@ export function forever<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, nev
 export function fork<S, R, E, A>(
   io: Effect<S, R, E, A>,
   name?: string
-): SyncR<R, Fiber<E, A>> {
-  return makeFiber(io, name)
+): SyncR<R, Dr.Fiber<E, A>> {
+  return new IFork(io, false, name) as any
+}
+
+export function supervised<S, R, E, A>(
+  io: Effect<S, R, E, A>,
+  name?: string
+): AsyncR<R, Dr.Fiber<E, A>> {
+  return new IFork(io, true, name) as any
 }
 
 export function fromNullableM<S, R, E, A>(
@@ -858,7 +850,7 @@ export const handle = <
         [k in K]: KK
       }
     >,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S2, R2, E2, A2>
 ) => <S, R, A>(
   _: Effect<S, R, E, A>
@@ -901,7 +893,7 @@ export const makeHandle = <K extends string>(k: K) => <
         [k in K]: KK
       }
     >,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S2, R2, E2, A2>
 ) => handle<E, K, KK, S2, R2, E2, A2>(k, kk, f)
 
@@ -941,12 +933,10 @@ export function interruptibleRegion<S, R, E, A>(
 
 export function interruptLoser<R, E, A>(
   exit: Exit<E, A>,
-  loser: Fiber<E, A>
+  loser: Dr.Fiber<E, A>
 ): AsyncRE<R, E, A> {
   return chain_(loser.interrupt, (x) =>
-    x._tag === "Interrupt" && x.errors && x.errors.length > 0
-      ? completed(x)
-      : completed(exit)
+    x._tag === "Interrupt" && x.errors._tag === "Some" ? completed(x) : completed(exit)
   )
 }
 
@@ -1006,80 +996,11 @@ export const right = <A>(_: A): E.Either<never, A> => ({
 })
 
 /**
- * Implementation of Stack/waver fork. Creates an IO that will fork a fiber in the background
- * @param init
- * @param name
- */
-export function makeFiber<S, R, E, A>(
-  init: Effect<S, R, E, A>,
-  name?: string
-): SyncR<R, Fiber<E, A>> {
-  return access((r: R) => {
-    const driver = new DriverImpl<E, A>()
-    const fiber = new FiberImpl(driver, name)
-    driver.start(provide(r)(init))
-    return fiber
-  })
-}
-export interface Fiber<E, A> {
-  /**
-   * The name of the fiber
-   */
-  readonly name: O.Option<string>
-  /**
-   * Send an interrupt signal to this fiber.
-   *
-   * The this will complete execution once the target fiber has halted.
-   * Does nothing if the target fiber is already complete
-   */
-  readonly interrupt: Async<Exit<E, A>>
-  /**
-   * Await the result of this fiber
-   */
-  readonly wait: Async<Exit<E, A>>
-  /**
-   * Join with this fiber.
-   * This is equivalent to fiber.wait.chain(io.completeWith)
-   */
-  readonly join: AsyncE<E, A>
-  /**
-   * Poll for a fiber result
-   */
-  readonly result: SyncE<E, O.Option<A>>
-  /**
-   * Determine if the fiber is complete
-   */
-  readonly isComplete: Sync<boolean>
-}
-export class FiberImpl<E, A> implements Fiber<E, A> {
-  name = O.fromNullable(this.n)
-  sendInterrupt = sync(() => {
-    this.driver.interrupt()
-  })
-  wait = asyncTotal((f: FunctionN<[Exit<E, A>], void>) => this.driver.onExit(f))
-  interrupt = applySecond(this.sendInterrupt, this.wait)
-  join = chain_(this.wait, completed)
-  result = chain_(
-    sync(() => this.driver.completed),
-    (opt) => (opt === null ? pureNone : map_(completed(opt), O.some))
-  )
-  isComplete = sync(() => this.driver.completed !== null)
-  constructor(readonly driver: Driver<E, A>, readonly n?: string) {}
-}
-
-/**
  * Map the value produced by an IO
  * @param io
  * @param f
  */
-export function map_<S, R, E, A, B>(
-  base: Effect<S, R, E, A>,
-  f: FunctionN<[A], B>
-): Effect<S, R, E, B> {
-  return (((base as any) as Instructions).tag() === IPureTag
-    ? new IPure(f(((base as any) as IPure<A>).a))
-    : new IMap(base, f)) as any
-}
+export const map_ = Dr.map_
 
 export const map: <A, B>(
   f: (a: A) => B
@@ -1348,7 +1269,7 @@ export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
             isCompleted
               ? zipWith_(completed(aExit), bFiber.join, f)
               : chain_(bFiber.interrupt, (x) =>
-                  x._tag === "Interrupt" && x.errors && x.errors.length > 0
+                  x._tag === "Interrupt" && x.errors._tag === "Some"
                     ? completed(x)
                     : completed(aExit)
                 )
@@ -1360,7 +1281,7 @@ export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
             isCompleted
               ? zipWith_(aFiber.join, completed(bExit), f)
               : chain_(aFiber.interrupt, (x) =>
-                  x._tag === "Interrupt" && x.errors && x.errors.length > 0
+                  x._tag === "Interrupt" && x.errors._tag === "Some"
                     ? completed(x)
                     : completed(bExit)
                 )
@@ -1471,13 +1392,11 @@ export const provideWithM = <R2, S, R, E, A>(
  * @param a the value
  */
 
-export function pure<A>(a: A): Sync<A> {
-  return new IPure(a) as any
-}
+export const pure = Dr.pure
 
 export const pureNone =
   /*#__PURE__*/
-  (() => pure(O.none))()
+  (() => Dr.pureNone)()
 
 /**
  * Return the result of the first IO to complete successfully.
@@ -1495,7 +1414,7 @@ export function race<S, S2, R, R2, E, A>(
 }
 function fallbackToLoser<R, E, A>(
   exit: Exit<E, A>,
-  loser: Fiber<E, A>
+  loser: Dr.Fiber<E, A>
 ): AsyncRE<R, E, A> {
   return exit._tag === "Done" ? interruptLoser(exit, loser) : loser.join
 }
@@ -1524,8 +1443,8 @@ export function raceFirst<S, S2, R, R2, E, A>(
 export function raceFold<S, S2, S3, S4, R, R2, R3, R4, E1, E2, E3, A, B, C, D>(
   first: Effect<S, R, E1, A>,
   second: Effect<S2, R2, E2, B>,
-  onFirstWon: FunctionN<[Exit<E1, A>, Fiber<E2, B>], Effect<S3, R3, E3, C>>,
-  onSecondWon: FunctionN<[Exit<E2, B>, Fiber<E1, A>], Effect<S4, R4, E3, D>>
+  onFirstWon: FunctionN<[Exit<E1, A>, Dr.Fiber<E2, B>], Effect<S3, R3, E3, C>>,
+  onSecondWon: FunctionN<[Exit<E2, B>, Dr.Fiber<E1, A>], Effect<S4, R4, E3, D>>
 ): AsyncRE<R & R2 & R3 & R4, E3, C | D> {
   return accessM((r: R & R2) =>
     uninterruptibleMask<unknown, R3 & R4, E3, C | D>((cutout) =>
@@ -1621,7 +1540,7 @@ export function run<E, A>(
   io: AsyncRE<{}, E, A>,
   callback?: FunctionN<[Exit<E, A>], void>
 ): (cb?: (exit: Exit<E, A>) => void) => void {
-  const driver = new DriverImpl<E, A>()
+  const driver = new Dr.DriverImpl<E, A>()
   if (callback) {
     driver.onExit(callback)
   }
@@ -1641,12 +1560,7 @@ export function run<E, A>(
  * @param io
  */
 export function runSync<E, A>(io: SyncRE<{}, E, A>): Exit<E, A> {
-  return pipe(new DriverSyncImpl<E, A>().start(io), (ei) => {
-    if (ei._tag === "Left") {
-      throw ei.left
-    }
-    return ei.right
-  })
+  return new Dr.DriverImpl<E, A>().startSync(io)
 }
 
 /**
@@ -1769,11 +1683,7 @@ export const shiftedAsync: Async<void> =
  * @param thunk
  */
 
-export function suspended<S, R, E, A>(
-  thunk: Lazy<Effect<S, R, E, A>>
-): Effect<S, R, E, A> {
-  return new ISuspended(thunk) as any
-}
+export const suspended = Dr.suspended
 
 /**
  * Wrap a block of impure code in an IO
@@ -1782,9 +1692,7 @@ export function suspended<S, R, E, A>(
  * @param thunk
  */
 
-export function sync<A>(thunk: Lazy<A>): Sync<A> {
-  return suspended(() => pure(thunk()))
-}
+export const sync = Dr.sync
 
 /**
  * Execute an IO and produce the next IO to run based on whether it completed successfully in the alotted time or not
@@ -1796,7 +1704,7 @@ export function sync<A>(thunk: Lazy<A>): Sync<A> {
 export function timeoutFold<S, S1, S2, R, R2, R3, E1, E2, A, B, C>(
   source: Effect<S, R, E1, A>,
   ms: number,
-  onTimeout: FunctionN<[Fiber<E1, A>], Effect<S1, R2, E2, B>>,
+  onTimeout: FunctionN<[Dr.Fiber<E1, A>], Effect<S1, R2, E2, B>>,
   onCompleted: FunctionN<[Exit<E1, A>], Effect<S2, R3, E2, C>>
 ): AsyncRE<R & R2 & R3, E2, B | C> {
   return raceFold(
@@ -1987,13 +1895,7 @@ export function zipWith<S, A, R2, E2, B, C>(
  * @param second
  * @param f
  */
-export function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
-  first: Effect<S, R, E, A>,
-  second: Effect<S2, R2, E2, B>,
-  f: FunctionN<[A, B], C>
-): Effect<S | S2, R & R2, E | E2, C> {
-  return chain_(first, (a) => map_(second, (b) => f(a, b)))
-}
+export const zipWith_ = Dr.zipWith_
 
 /**
  * Used to merge types of the form Effect<S, R, E, A> | Effect<S2, R2, E2, A2> into Effect<S | S2, R & R2, E | E2, A | A2>

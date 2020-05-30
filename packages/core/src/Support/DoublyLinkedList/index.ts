@@ -1,4 +1,5 @@
 export class DoublyLinkedListNode<T> {
+  removed = false
   constructor(
     public value: T | null,
     public next: DoublyLinkedListNode<T> | null = null,
@@ -39,6 +40,21 @@ export class DoublyLinkedList<T> {
     return this
   }
 
+  appendNode(value: T): DoublyLinkedListNode<T> {
+    const newNode = new DoublyLinkedListNode(value)
+    if (!this.head) {
+      this.head = newNode
+      this.tail = newNode
+
+      return newNode
+    }
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    this.tail!.next = newNode
+    newNode.previous = this.tail
+    this.tail = newNode
+    return newNode
+  }
+
   deleteTail() {
     if (!this.tail) {
       return null
@@ -54,6 +70,9 @@ export class DoublyLinkedList<T> {
     this.tail = this.tail.previous
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this.tail!.next = null
+
+    deletedTail.removed = true
+
     return deletedTail
   }
 
@@ -69,6 +88,9 @@ export class DoublyLinkedList<T> {
       this.head = null
       this.tail = null
     }
+
+    deletedHead.removed = true
+
     return deletedHead
   }
 
