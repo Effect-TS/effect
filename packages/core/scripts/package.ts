@@ -55,6 +55,7 @@ const modules: string[] = [
   "Ref",
   "Utils",
   "Pipe",
+  "Pipe/Operator",
   "Function",
   "Provider",
   "Semaphore",
