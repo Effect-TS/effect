@@ -11,6 +11,7 @@ import * as eq from "./Eq"
 import * as exit from "./Exit"
 import * as functionF from "./Function"
 import * as identity from "./Identity"
+import * as layer from "./Layer"
 import * as list from "./List"
 import * as magma from "./Magma"
 import * as managed from "./Managed"
@@ -93,5 +94,6 @@ export {
   identity,
   apply,
   monocle,
-  newtype
+  newtype,
+  layer
 }
