@@ -3,37 +3,37 @@ import { UnionToIntersection } from "../Base/Apply"
 import * as T from "../Effect"
 import * as M from "../Managed"
 
-export type Pure<A> = {
+type Pure<A> = {
   _tag: "Pure"
   value: A
   inverted?: "regular" | "inverted"
 }
 
-export type EncaseEffect<S, R, E, A> = {
+type EncaseEffect<S, R, E, A> = {
   _tag: "EncaseEffect"
   effect: T.Effect<S, R, E, A>
   inverted?: "regular" | "inverted"
 }
 
-export type ChainEffect<S, R, E, A> = {
+type ChainEffect<S, R, E, A> = {
   _tag: "ChainEffect"
-  effect: T.Effect<S, R, E, unknown>
-  layer: (_: unknown) => Layer<S, R, E, A>
+  effect: T.Effect<S, R, E, any>
+  layer: (_: any) => Layer<S, R, E, A>
 }
 
-export type ChainManaged<S, R, E, A> = {
+type ChainManaged<S, R, E, A> = {
   _tag: "ChainManaged"
-  managed: M.Managed<S, R, E, unknown>
-  layer: (_: unknown) => Layer<S, R, E, A>
+  managed: M.Managed<S, R, E, any>
+  layer: (_: any) => Layer<S, R, E, A>
 }
 
-export type EncaseManaged<S, R, E, A> = {
+type EncaseManaged<S, R, E, A> = {
   _tag: "EncaseManaged"
   managed: M.Managed<S, R, E, A>
   inverted?: "regular" | "inverted"
 }
 
-export type EncaseProvider<S, R, E, A> = {
+type EncaseProvider<S, R, E, A> = {
   _tag: "EncaseProvider"
   provider: T.Provider<any, any, any, any>
   _S: () => S
@@ -42,12 +42,12 @@ export type EncaseProvider<S, R, E, A> = {
   _A: () => A
 }
 
-export type Merge<S, R, E, A> = {
+type Merge<S, R, E, A> = {
   _tag: "Merge"
   layers: Layer<S, R, E, A>[]
 }
 
-export type LayerPayload<S, R, E, A> = (
+type LayerPayload<S, R, E, A> = (
   | Pure<A>
   | EncaseEffect<S, R, E, A>
   | ChainEffect<S, R, E, A>
@@ -62,13 +62,13 @@ export type LayerPayload<S, R, E, A> = (
   _A: () => A
 }
 
-export type SL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
+type SL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
   [k in keyof Layers & number]: Layers[k]["payload"]["_S"] extends () => infer X
     ? X
     : never
 }[number]
 
-export type RL<
+type RL<
   Layers extends { payload: LayerPayload<any, any, any, any> }[]
 > = UnionToIntersection<
   {
@@ -82,13 +82,13 @@ export type RL<
   }[number]
 >
 
-export type EL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
+type EL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
   [k in keyof Layers & number]: Layers[k]["payload"]["_E"] extends () => infer X
     ? X
     : never
 }[number]
 
-export type AL<
+type AL<
   Layers extends { payload: LayerPayload<any, any, any, any> }[]
 > = UnionToIntersection<
   {
@@ -108,7 +108,7 @@ export class Layer<S, R, E, A> {
   ): Layer<S | S2, T.Erase<R, A2> & R2, E | E2, A2 & A> {
     return new Layer({
       _tag: "Merge",
-      layers: [this as any, _ as any],
+      layers: [this, _],
       _A: undefined as any,
       _E: undefined as any,
       _R: undefined as any,
@@ -118,7 +118,12 @@ export class Layer<S, R, E, A> {
 
   merge<Layers extends Layer<any, any, any, any>[]>(
     ...layers: Layers & { 0: Layer<any, any, any, any> }
-  ): Layer<SL<Layers> | S, RL<Layers> & R, EL<Layers> | E, AL<Layers> & A> {
+  ): Layer<
+    SL<Layers> | S,
+    T.Erase<R, RL<Layers>> & RL<Layers>,
+    EL<Layers> | E,
+    AL<Layers> & A
+  > {
     return new Layer({
       _tag: "Merge",
       layers: [this, ...layers],
@@ -373,7 +378,7 @@ export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, 
     new Layer({
       _tag: "ChainEffect",
       effect,
-      layer: layer as any,
+      layer,
       _A: undefined as any,
       _E: undefined as any,
       _R: undefined as any,
@@ -386,7 +391,7 @@ export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2,
     new Layer({
       _tag: "ChainManaged",
       managed,
-      layer: layer as any,
+      layer,
       _A: undefined as any,
       _E: undefined as any,
       _R: undefined as any,
@@ -431,4 +436,6 @@ export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E,
     })
 }
 
-export const Empty = fromValue({})
+export const Empty =
+  /*#__PURE__*/
+  (() => fromValue({}))()
