@@ -1,23 +1,97 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
+import { FiberImpl } from "../../../Effect/Fiber"
 import type { Either } from "../../../Either"
 import * as Ex from "../../../Exit"
-import type { Lazy, FunctionN } from "../../../Function"
+import type { FunctionN, Lazy } from "../../../Function"
 import * as Common from "../../Common"
 import { DoublyLinkedList } from "../../DoublyLinkedList"
 import { defaultRuntime } from "../../Runtime"
 
 import { Driver } from "./Driver"
 import {
-  FrameType,
-  FoldFrameTag,
   FoldFrame,
-  InterruptFrameTag,
-  InterruptFrame,
-  MapFrameTag,
+  FoldFrameTag,
   Frame,
-  MapFrame
+  FrameType,
+  InterruptFrame,
+  InterruptFrameTag,
+  MapFrame,
+  MapFrameTag
 } from "./Frame"
+
+export const setExitSymbol = Symbol()
+
+export interface SetExit {
+  _tag: typeof setExitSymbol
+  exit: Ex.Exit<any, any>
+}
+
+export function setExit(exit: Ex.Exit<any, any>): SetExit {
+  return {
+    _tag: setExitSymbol,
+    exit
+  }
+}
+
+export function isSetExit(u: any): u is SetExit {
+  return typeof u !== "undefined" && u !== null && u["_tag"] === setExitSymbol
+}
+
+export class Supervisor {
+  fibers = new Map<Driver<any, any>, Driver<any, any>>()
+
+  add(driver: Driver<any, any>) {
+    this.fibers.set(driver, driver)
+
+    driver.onExit((fibExit) => {
+      if (fibExit._tag === "Done") {
+        this.fibers.delete(driver)
+      } else if (
+        fibExit._tag === "Interrupt" &&
+        fibExit.errors._tag === "None" &&
+        fibExit.remaining._tag === "None"
+      ) {
+        this.fibers.delete(driver)
+      }
+    })
+  }
+
+  complete(a: Ex.Exit<any, any>, driver: DriverImpl<any, any>) {
+    const drivers = this.fibers.keys()
+
+    const next = drivers.next()
+
+    if (next.done) {
+      driver.complete(a)
+      return
+    }
+
+    const fiber = next.value
+
+    this.fibers.delete(fiber)
+
+    fiber.onExit((fibExit) => {
+      if (fibExit._tag === "Done") {
+        this.complete(a, driver)
+      } else if (
+        fibExit._tag === "Interrupt" &&
+        fibExit.errors._tag === "None" &&
+        fibExit.remaining._tag === "None"
+      ) {
+        this.complete(a, driver)
+      } else {
+        if (a._tag === "Done") {
+          this.complete(Ex.withRemaining(Ex.abort(a.value), fibExit), driver)
+        } else {
+          this.complete(Ex.withRemaining(a, fibExit), driver)
+        }
+      }
+    })
+
+    fiber.interrupt()
+  }
+}
 
 export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Ex.Exit<E, A> | null = null
@@ -27,6 +101,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interruptRegionStack: boolean[] | undefined
   cancelAsync: Common.AsyncCancelContFn | undefined
   envStack = new DoublyLinkedList<any>()
+  sync = false
+  supervisor = new Supervisor()
+
+  constructor(initialEnv?: any) {
+    if (initialEnv) {
+      this.envStack.append(initialEnv)
+    }
+  }
 
   isComplete(): boolean {
     return this.completed !== null
@@ -86,19 +168,23 @@ export class DriverImpl<E, A> implements Driver<E, A> {
       this.currentFrame = this.currentFrame?.prev
     }
     // At the end... so we have failed
-    this.complete(e as Ex.Cause<E>)
+    this.supervisor.complete(e as Ex.Cause<E>, this)
     return
   }
 
-  dispatchResumeInterrupt({ errors }: { errors?: Error[] }) {
-    const go = this.handle(Ex.interruptWithError(...(errors || [])))
-    if (go) {
-      // eslint-disable-next-line
-      this.loop(go)
+  dispatchResumeInterrupt({ errors }: { errors?: unknown[] }) {
+    if (errors && errors.length === 1 && isSetExit(errors[0])) {
+      this.supervisor.complete(errors[0].exit, this)
+    } else {
+      const go = this.handle(Ex.interruptWithError(...(errors || [])))
+      if (go) {
+        // eslint-disable-next-line
+        this.loop(go)
+      }
     }
   }
 
-  resumeInterrupt(errors?: Error[]): void {
+  resumeInterrupt(errors?: unknown[]): void {
     defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { errors })
   }
 
@@ -109,7 +195,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     if (frame) {
       if (frame.tag() === MapFrameTag) {
         if (this.currentFrame === undefined) {
-          this.complete(Ex.done(frame.apply(value)) as Ex.Done<A>)
+          this.supervisor.complete(Ex.done(frame.apply(value)) as Ex.Done<A>, this)
           return
         }
         return new Common.IPure(frame.apply(value))
@@ -117,7 +203,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         return frame.apply(value) as any
       }
     }
-    this.complete(Ex.done(value) as Ex.Done<A>)
+    this.supervisor.complete(Ex.done(value) as Ex.Done<A>, this)
     return
   }
 
@@ -155,6 +241,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         cb(...errors)
       })
     }
+  }
+
+  ISupervised(_: Common.ISupervised<any, any, any, any>) {
+    const driver = new DriverImpl<E, A>(this.envStack.tail?.value || {})
+    const fiber = new FiberImpl(driver, _.name)
+    this.supervisor.add(driver)
+    driver.start(_.effect)
+    return this.next(fiber)
   }
 
   IAccessEnv(_: Common.IAccessEnv<any>) {
@@ -218,6 +312,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   IAsync(_: Common.IAsync<any, any>) {
+    if (this.sync) {
+      throw new Error("async operations not supported")
+    }
     this.contextSwitch(_.e)
     return undefined
   }
@@ -283,6 +380,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   start(run: Common.EffectTypes.AsyncRE<{}, E, A>): void {
     defaultRuntime.dispatch(this.loop.bind(this), run as any)
+  }
+  startSync(run: Common.EffectTypes.SyncRE<{}, E, A>): Ex.Exit<E, A> {
+    this.sync = true
+
+    this.loop(run as any)
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return this.completed!
   }
 
   interrupt(): void {
