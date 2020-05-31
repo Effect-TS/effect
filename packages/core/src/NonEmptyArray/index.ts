@@ -37,7 +37,7 @@ import type { ReadonlyRecord } from "../Readonly/Record"
 import { getJoinSemigroup, getMeetSemigroup, Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 
-export const URI = "@matechs/core/Readonly/NonEmptyArray"
+export const URI = "@matechs/core/NonEmptyArray"
 
 export type URI = typeof URI
 
@@ -55,7 +55,7 @@ declare module "../Base/HKT" {
  * Append an element to the front of an array, creating a new non empty array
  *
  * @example
- * import { cons } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { cons } from '@matechs/core/NonEmptyArray'
  *
  * assert.deepStrictEqual(cons(1, [2, 3, 4]), [1, 2, 3, 4])
  */
@@ -68,7 +68,7 @@ export const cons: <A>(head: A) => (tail: ReadonlyArray<A>) => NonEmptyArray<A> 
  * Append an element to the end of an array, creating a new non empty array
  *
  * @example
- * import { snoc } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { snoc } from '@matechs/core/NonEmptyArray'
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
@@ -130,7 +130,7 @@ export function getSemigroup<A = never>(): Semigroup<NonEmptyArray<A>> {
 
 /**
  * @example
- * import { getEq, cons } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { getEq, cons } from '@matechs/core/NonEmptyArray'
  * import { eqNumber } from '@matechs/core/Eq'
  *
  * const E = getEq(eqNumber)
@@ -143,7 +143,7 @@ export const getEq: <A>(E: Eq<A>) => Eq<NonEmptyArray<A>> = RA.getEq
  * Group equal, consecutive elements of an array into non empty arrays.
  *
  * @example
- * import { cons, group } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { cons, group } from '@matechs/core/NonEmptyArray'
  * import { ordNumber } from '@matechs/core/Ord'
  *
  * assert.deepStrictEqual(group(ordNumber)([1, 2, 1, 1]), [
@@ -223,7 +223,7 @@ export function group_<A>(
  * Sort and then group the elements of an array into non empty arrays.
  *
  * @example
- * import { cons, groupSort } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { cons, groupSort } from '@matechs/core/NonEmptyArray'
  * import { ordNumber } from '@matechs/core/Ord'
  *
  * assert.deepStrictEqual(groupSort(ordNumber)([1, 2, 1, 1]), [cons(1, [1, 1]), cons(2, [])])
@@ -250,7 +250,7 @@ export function groupSort_<A>(
  * function on each element, and grouping the results according to values returned
  *
  * @example
- * import { cons, groupBy } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { cons, groupBy } from '@matechs/core/NonEmptyArray'
  *
  * assert.deepStrictEqual(groupBy((s: string) => String(s.length))(['foo', 'bar', 'foobar']), {
  *   '3': cons('foo', ['bar']),
@@ -300,7 +300,7 @@ export function last<A>(nea: NonEmptyArray<A>): A {
  * Get all but the last element of a non empty array, creating a new array.
  *
  * @example
- * import { init } from '@matechs/core/Readonly/NonEmptyArray'
+ * import { init } from '@matechs/core/NonEmptyArray'
  *
  * assert.deepStrictEqual(init([1, 2, 3]), [1, 2])
  * assert.deepStrictEqual(init([1]), [])

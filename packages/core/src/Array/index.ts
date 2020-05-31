@@ -159,7 +159,7 @@ export const chainTap_: <A, B>(
  *
  * @example
  * import { Eq, eqNumber } from '@matechs/core/Eq'
- * import { chop, spanLeft } from '@matechs/core/Readonly/Array'
+ * import { chop, spanLeft } from '@matechs/core/Array'
  *
  * const group = <A>(S: Eq<A>): ((as: ReadonlyArray<A>) => ReadonlyArray<ReadonlyArray<A>>) => {
  *   return chop(as => {
@@ -210,7 +210,7 @@ export function chop_<A, B>(
  * whenever `n` evenly divides the length of `xs`.
  *
  * @example
- * import { chunksOf } from '@matechs/core/Readonly/Array'
+ * import { chunksOf } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(chunksOf(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4], [5]])
  */
@@ -240,7 +240,7 @@ export const compact = <A>(fa: readonly Option<A>[]): readonly A[] =>
  * ```
  *
  * @example
- * import { comprehension } from '@matechs/core/Readonly/Array'
+ * import { comprehension } from '@matechs/core/Array'
  * import { tuple } from '@matechs/core/Function'
  *
  * assert.deepStrictEqual(comprehension([[1, 2, 3], ['a', 'b']], tuple, (a, b) => (a + b.length) % 2 === 0), [
@@ -324,7 +324,7 @@ export const concat = <A>(
  * Attaches an element to the front of an array, creating a new non empty array
  *
  * @example
- * import { cons } from '@matechs/core/Readonly/Array'
+ * import { cons } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
  */
@@ -354,7 +354,7 @@ export function cons<A>(head: A): (tail: ReadonlyArray<A>) => NonEmptyArray<A> {
  * Delete the element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  *
  * @example
- * import { deleteAt } from '@matechs/core/Readonly/Array'
+ * import { deleteAt } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(deleteAt(0)([1, 2, 3]), some([2, 3]))
@@ -378,7 +378,7 @@ export function deleteAt_<A>(
  * comparisons. The order and references of result values are determined by the first array.
  *
  * @example
- * import { difference } from '@matechs/core/Readonly/Array'
+ * import { difference } from '@matechs/core/Array'
  * import { eqNumber } from '@matechs/core/Eq'
  *
  * assert.deepStrictEqual(difference(eqNumber)([1, 2], [2, 3]), [1])
@@ -393,7 +393,7 @@ export function difference<A>(
  * Drop a number of elements from the start of an array, creating a new array
  *
  * @example
- * import { dropLeft } from '@matechs/core/Readonly/Array'
+ * import { dropLeft } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(dropLeft(2)([1, 2, 3]), [3])
  */
@@ -409,7 +409,7 @@ export function dropLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> 
  * Remove the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
  * @example
- * import { dropLeftWhile } from '@matechs/core/Readonly/Array'
+ * import { dropLeftWhile } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(dropLeftWhile((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), [2, 4, 5])
  */
@@ -444,7 +444,7 @@ export function dropLeftWhile_<A>(
  * Drop a number of elements from the end of an array, creating a new array
  *
  * @example
- * import { dropRight } from '@matechs/core/Readonly/Array'
+ * import { dropRight } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(dropRight(2)([1, 2, 3, 4, 5]), [1, 2, 3])
  */
@@ -465,7 +465,7 @@ export const duplicate = <A>(ma: readonly A[]): readonly (readonly A[])[] =>
  * an array of type `ReadonlyArray<A>`.
  *
  * @example
- * import { elem } from '@matechs/core/Readonly/Array'
+ * import { elem } from '@matechs/core/Array'
  * import { eqNumber } from '@matechs/core/Eq'
  *
  * assert.strictEqual(elem(eqNumber)(1, [1, 2, 3]), true)
@@ -587,7 +587,7 @@ export const filterWithIndex_: {
  * Find the first element which satisfies a predicate (or a refinement) function
  *
  * @example
- * import { findFirst } from '@matechs/core/Readonly/Array'
+ * import { findFirst } from '@matechs/core/Array'
  * import { some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(findFirst((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 1 }))
@@ -634,7 +634,7 @@ export function findFirst_<A>(
  * Find the first element returned by an option based selector function
  *
  * @example
- * import { findFirstMap } from '@matechs/core/Readonly/Array'
+ * import { findFirstMap } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * interface Person {
@@ -680,7 +680,7 @@ export function findFirstMap_<A, B>(
  * Find the first index for which a predicate holds
  *
  * @example
- * import { findIndex } from '@matechs/core/Readonly/Array'
+ * import { findIndex } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(findIndex((n: number) => n === 2)([1, 2, 3]), some(1))
@@ -717,7 +717,7 @@ export function findIndex_<A>(
  * Find the last element which satisfies a predicate function
  *
  * @example
- * import { findLast } from '@matechs/core/Readonly/Array'
+ * import { findLast } from '@matechs/core/Array'
  * import { some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(findLast((x: { a: number, b: number }) => x.a === 1)([{ a: 1, b: 1 }, { a: 1, b: 2 }]), some({ a: 1, b: 2 }))
@@ -761,7 +761,7 @@ export function findLast_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Opt
  * Returns the index of the last element of the list which matches the predicate
  *
  * @example
- * import { findLastIndex } from '@matechs/core/Readonly/Array'
+ * import { findLastIndex } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * interface X {
@@ -803,7 +803,7 @@ export function findLastIndex_<A>(
  * Find the last element returned by an option based selector function
  *
  * @example
- * import { findLastMap } from '@matechs/core/Readonly/Array'
+ * import { findLastMap } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * interface Person {
@@ -849,7 +849,7 @@ export function findLastMap_<A, B>(
  * Removes one level of nesting
  *
  * @example
- * import { flatten } from '@matechs/core/Readonly/Array'
+ * import { flatten } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(flatten([[1], [2], [3]]), [1, 2, 3])
  */
@@ -876,7 +876,7 @@ export function flatten<A>(mma: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<
  * Break an array into its first element and remaining elements
  *
  * @example
- * import { foldLeft } from '@matechs/core/Readonly/Array'
+ * import { foldLeft } from '@matechs/core/Array'
  *
  * const len: <A>(as: ReadonlyArray<A>) => number = foldLeft(() => 0, (_, tail) => 1 + len(tail))
  * assert.strictEqual(len([1, 2, 3]), 3)
@@ -954,7 +954,7 @@ export function fromArray<A>(as: Array<A>): ReadonlyArray<A> {
  *
  * @example
  * import { eqString } from '@matechs/core/Eq'
- * import { getEq } from '@matechs/core/Readonly/Array'
+ * import { getEq } from '@matechs/core/Array'
  *
  * const E = getEq(eqString)
  * assert.strictEqual(E.equals(['a', 'b'], ['a', 'b']), true)
@@ -971,7 +971,7 @@ export function getEq<A>(E: Eq<A>): Eq<ReadonlyArray<A>> {
  * Returns a `Monoid` for `ReadonlyArray<A>`
  *
  * @example
- * import { getMonoid } from '@matechs/core/Readonly/Array'
+ * import { getMonoid } from '@matechs/core/Array'
  *
  * const M = getMonoid<number>()
  * assert.deepStrictEqual(M.concat([1, 2], [3, 4]), [1, 2, 3, 4])
@@ -990,7 +990,7 @@ export function getMonoid<A = never>(): Monoid<ReadonlyArray<A>> {
  * the same length, the result is equality.
  *
  * @example
- * import { getOrd } from '@matechs/core/Readonly/Array'
+ * import { getOrd } from '@matechs/core/Array'
  * import { ordString } from '@matechs/core/Ord'
  *
  * const O = getOrd(ordString)
@@ -1023,7 +1023,7 @@ export function getShow<A>(S: Show<A>): Show<ReadonlyArray<A>> {
  * Get the first element in an array, or `None` if the array is empty
  *
  * @example
- * import { head } from '@matechs/core/Readonly/Array'
+ * import { head } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(head([1, 2, 3]), some(1))
@@ -1037,7 +1037,7 @@ export function head<A>(as: ReadonlyArray<A>): Option<A> {
  * Get all but the last element of an array, creating a new array, or `None` if the array is empty
  *
  * @example
- * import { init } from '@matechs/core/Readonly/Array'
+ * import { init } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(init([1, 2, 3]), some([1, 2]))
@@ -1052,7 +1052,7 @@ export function init<A>(as: ReadonlyArray<A>): Option<ReadonlyArray<A>> {
  * Insert an element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  *
  * @example
- * import { insertAt } from '@matechs/core/Readonly/Array'
+ * import { insertAt } from '@matechs/core/Array'
  * import { some } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(insertAt(2, 5)([1, 2, 3, 4]), some([1, 2, 5, 3, 4]))
@@ -1077,7 +1077,7 @@ export function insertAt_<A>(
  * comparisons. The order and references of result values are determined by the first array.
  *
  * @example
- * import { intersection } from '@matechs/core/Readonly/Array'
+ * import { intersection } from '@matechs/core/Array'
  * import { eqNumber } from '@matechs/core/Eq'
  *
  * assert.deepStrictEqual(intersection(eqNumber)([1, 2], [2, 3]), [2])
@@ -1093,7 +1093,7 @@ export function intersection<A>(
  * Test whether an array is empty
  *
  * @example
- * import { isEmpty } from '@matechs/core/Readonly/Array'
+ * import { isEmpty } from '@matechs/core/Array'
  *
  * assert.strictEqual(isEmpty([]), true)
  */
@@ -1119,7 +1119,7 @@ export function isOutOfBound<A>(i: number, as: ReadonlyArray<A>): boolean {
  * Get the last element in an array, or `None` if the array is empty
  *
  * @example
- * import { last } from '@matechs/core/Readonly/Array'
+ * import { last } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(last([1, 2, 3]), some(3))
@@ -1133,7 +1133,7 @@ export function last<A>(as: ReadonlyArray<A>): Option<A> {
  * Extracts from an array of `Either` all the `Left` elements. All the `Left` elements are extracted in order
  *
  * @example
- * import { lefts } from '@matechs/core/Readonly/Array'
+ * import { lefts } from '@matechs/core/Array'
  * import { left, right } from '@matechs/core/Either'
  *
  * assert.deepStrictEqual(lefts([right(1), left('foo'), right(2)]), ['foo'])
@@ -1154,7 +1154,7 @@ export function lefts<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<E> {
  * This function provides a safe way to read a value at a particular index from an array
  *
  * @example
- * import { lookup } from '@matechs/core/Readonly/Array'
+ * import { lookup } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(lookup(1, [1, 2, 3]), some(2))
@@ -1172,7 +1172,7 @@ export function lookup(i: number): <A>(as: ReadonlyArray<A>) => Option<A> {
  * Return a list of length `n` with element `i` initialized with `f(i)`
  *
  * @example
- * import { makeBy } from '@matechs/core/Readonly/Array'
+ * import { makeBy } from '@matechs/core/Array'
  *
  * const double = (n: number): number => n * 2
  * assert.deepStrictEqual(makeBy(5, double), [0, 2, 4, 6, 8])
@@ -1206,7 +1206,7 @@ export const mapWithIndex_: <A, B>(
  * of bounds
  *
  * @example
- * import { modifyAt } from '@matechs/core/Readonly/Array'
+ * import { modifyAt } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * const double = (x: number): number => x * 2
@@ -1334,7 +1334,7 @@ export const partitionWithIndex_: PartitionWithIndex1<URI, number> = <A>(
  * Create an array containing a range of integers, including both endpoints
  *
  * @example
- * import { range } from '@matechs/core/Readonly/Array'
+ * import { range } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(range(1, 5), [1, 2, 3, 4, 5])
  */
@@ -1405,7 +1405,7 @@ export const reduceWithIndex_: <A, B>(
  * Create an array containing a value repeated the specified number of times
  *
  * @example
- * import { replicate } from '@matechs/core/Readonly/Array'
+ * import { replicate } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(replicate(3, 'a'), ['a', 'a', 'a'])
  */
@@ -1416,7 +1416,7 @@ export function replicate<A>(n: number, a: A): ReadonlyArray<A> {
  * Reverse an array, creating a new array
  *
  * @example
- * import { reverse } from '@matechs/core/Readonly/Array'
+ * import { reverse } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(reverse([1, 2, 3]), [3, 2, 1])
  */
@@ -1428,7 +1428,7 @@ export function reverse<A>(as: ReadonlyArray<A>): ReadonlyArray<A> {
  * Extracts from an array of `Either` all the `Right` elements. All the `Right` elements are extracted in order
  *
  * @example
- * import { rights } from '@matechs/core/Readonly/Array'
+ * import { rights } from '@matechs/core/Array'
  * import { right, left } from '@matechs/core/Either'
  *
  * assert.deepStrictEqual(rights([right(1), left('foo'), right(2)]), [1, 2])
@@ -1449,7 +1449,7 @@ export function rights<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<A> 
  * Rotate an array to the right by `n` steps
  *
  * @example
- * import { rotate } from '@matechs/core/Readonly/Array'
+ * import { rotate } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(rotate(2)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
  */
@@ -1481,7 +1481,7 @@ export function rotate_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
  * Same as `reduce` but it carries over the intermediate steps
  *
  * ```ts
- * import { scanLeft } from '@matechs/core/Readonly/Array'
+ * import { scanLeft } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(scanLeft(10, (b, a: number) => b - a)([1, 2, 3]), [10, 9, 7, 4])
  * ```
@@ -1519,7 +1519,7 @@ export function scanLeft_<A, B>(
  * Fold an array from the right, keeping all intermediate results instead of only the final result
  *
  * @example
- * import { scanRight } from '@matechs/core/Readonly/Array'
+ * import { scanRight } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(scanRight(10, (a: number, b) => b - a)([1, 2, 3]), [4, 5, 7, 10])
  */
@@ -1582,7 +1582,7 @@ export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
  * Append an element to the end of an array, creating a new non empty array
  *
  * @example
- * import { snoc } from '@matechs/core/Readonly/Array'
+ * import { snoc } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
@@ -1612,7 +1612,7 @@ export function snoc<A>(end: A): (init: ReadonlyArray<A>) => NonEmptyArray<A> {
  * Sort the elements of an array in increasing order, creating a new array
  *
  * @example
- * import { sort } from '@matechs/core/Readonly/Array'
+ * import { sort } from '@matechs/core/Array'
  * import { ordNumber } from '@matechs/core/Ord'
  *
  * assert.deepStrictEqual(sort(ordNumber)([3, 2, 1]), [1, 2, 3])
@@ -1630,7 +1630,7 @@ export function sort_<A>(as: ReadonlyArray<A>, O: Ord<A>): ReadonlyArray<A> {
  * etc...
  *
  * @example
- * import { sortBy } from '@matechs/core/Readonly/Array'
+ * import { sortBy } from '@matechs/core/Array'
  * import { ord, ordString, ordNumber } from '@matechs/core/Ord'
  *
  * interface Person {
@@ -1685,7 +1685,7 @@ export const spanIndex_ = <A>(
  * 2. the remaining elements
  *
  * @example
- * import { spanLeft } from '@matechs/core/Readonly/Array'
+ * import { spanLeft } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(spanLeft((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), { init: [1, 3], rest: [2, 4, 5] })
  */
@@ -1747,7 +1747,7 @@ export interface Spanned<I, R> {
  * Splits an array into two pieces, the first piece has `n` elements.
  *
  * @example
- * import { splitAt } from '@matechs/core/Readonly/Array'
+ * import { splitAt } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(splitAt(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4, 5]])
  */
@@ -1768,7 +1768,7 @@ export function splitAt_<A>(
  * Get all but the first element of an array, creating a new array, or `None` if the array is empty
  *
  * @example
- * import { tail } from '@matechs/core/Readonly/Array'
+ * import { tail } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(tail([1, 2, 3]), some([2, 3]))
@@ -1783,7 +1783,7 @@ export function tail<A>(as: ReadonlyArray<A>): Option<ReadonlyArray<A>> {
  * `n` must be a natural number
  *
  * @example
- * import { takeLeft } from '@matechs/core/Readonly/Array'
+ * import { takeLeft } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(takeLeft(2)([1, 2, 3]), [1, 2])
  */
@@ -1799,7 +1799,7 @@ export function takeLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> 
  * Calculate the longest initial subarray for which all element satisfy the specified predicate, creating a new array
  *
  * @example
- * import { takeLeftWhile } from '@matechs/core/Readonly/Array'
+ * import { takeLeftWhile } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(takeLeftWhile((n: number) => n % 2 === 0)([2, 4, 3, 6]), [2, 4])
  */
@@ -1847,7 +1847,7 @@ export function takeLeftWhile_<A>(
  * `n` must be a natural number
  *
  * @example
- * import { takeRight } from '@matechs/core/Readonly/Array'
+ * import { takeRight } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(takeRight(2)([1, 2, 3, 4, 5]), [4, 5])
  */
@@ -1930,7 +1930,7 @@ export const unfold = <A, B>(
  * Creates an array of unique values, in order, from all given arrays using a `Eq` for equality comparisons
  *
  * @example
- * import { union } from '@matechs/core/Readonly/Array'
+ * import { union } from '@matechs/core/Array'
  * import { eqNumber } from '@matechs/core/Eq'
  *
  * assert.deepStrictEqual(union(eqNumber)([1, 2], [2, 3]), [1, 2, 3])
@@ -1950,7 +1950,7 @@ export function union<A>(
  * Remove duplicates from an array, keeping the first occurrence of an element.
  *
  * @example
- * import { uniq } from '@matechs/core/Readonly/Array'
+ * import { uniq } from '@matechs/core/Array'
  * import { eqNumber } from '@matechs/core/Eq'
  *
  * assert.deepStrictEqual(uniq(eqNumber)([1, 2, 1]), [1, 2])
@@ -2055,7 +2055,7 @@ export function unsafeUpdateAt<A>(
  * The function is reverse of `zip`. Takes an array of pairs and return two corresponding arrays
  *
  * @example
- * import { unzip } from '@matechs/core/Readonly/Array'
+ * import { unzip } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(unzip([[1, 'a'], [2, 'b'], [3, 'c']]), [[1, 2, 3], ['a', 'b', 'c']])
  */
@@ -2075,7 +2075,7 @@ export function unzip<A, B>(
  * Change the element at the specified index, creating a new array, or returning `None` if the index is out of bounds
  *
  * @example
- * import { updateAt } from '@matechs/core/Readonly/Array'
+ * import { updateAt } from '@matechs/core/Array'
  * import { some, none } from '@matechs/core/Option'
  *
  * assert.deepStrictEqual(updateAt(1, 1)([1, 2, 3]), some([1, 1, 3]))
@@ -2096,7 +2096,7 @@ export function updateAt_<A>(
   return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a))
 }
 
-export const URI = "@matechs/core/Readonly/Array"
+export const URI = "@matechs/core/Array"
 
 export type URI = typeof URI
 
@@ -2153,7 +2153,7 @@ export const zero: <A>() => readonly A[] = () => empty
  * longer array are discarded
  *
  * @example
- * import { zip } from '@matechs/core/Readonly/Array'
+ * import { zip } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  */
@@ -2175,7 +2175,7 @@ export function zip_<A, B>(
  * input array is short, excess elements of the longer array are discarded.
  *
  * @example
- * import { zipWith } from '@matechs/core/Readonly/Array'
+ * import { zipWith } from '@matechs/core/Array'
  *
  * assert.deepStrictEqual(zipWith([1, 2, 3], ['a', 'b', 'c', 'd'], (n, s) => s + n), ['a1', 'b2', 'c3'])
  */
