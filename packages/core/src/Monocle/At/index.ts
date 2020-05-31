@@ -18,7 +18,11 @@ export function fromIso<T, S>(iso: Iso<T, S>) {
     create((i) => I.composeLens(at.at(i))(iso))
 }
 
-export function record<A = never>(): At<Record<string, A>, string, O.Option<A>> {
+export function record<A = never>(): At<
+  R.ReadonlyRecord<string, A>,
+  string,
+  O.Option<A>
+> {
   return create((k) =>
     L.create(
       R.lookup(k),
