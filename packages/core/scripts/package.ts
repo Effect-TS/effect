@@ -72,7 +72,6 @@ const modules: string[] = [
   "Retry",
   "Readonly",
   "Readonly/Record",
-  "Readonly/NonEmptyArray",
   "Readonly/Set",
   "Readonly/Map",
   "Readonly/Tuple",

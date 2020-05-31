@@ -7,6 +7,7 @@ import * as t from "io-ts"
 
 import { accessConfig } from "./config"
 
+import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import { pipe } from "@matechs/core/Pipe"
@@ -35,7 +36,7 @@ export class SliceFetcher<
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
-    const nS = S.select(eventTypes)
+    const nS = S.select(A.toArray(eventTypes))
 
     this.inDomain = (
       a
@@ -126,7 +127,7 @@ export class AggregateFetcher<
     eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
-    const nS = S.select(eventTypes)
+    const nS = S.select(A.toArray(eventTypes))
 
     this.inDomain = (
       a
@@ -213,7 +214,7 @@ export class DomainFetcher<
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
-    const nS = S.select(eventTypes)
+    const nS = S.select(A.toArray(eventTypes))
 
     this.inDomain = (
       a

@@ -66,10 +66,12 @@ export class Read<
       fetchEvents: T.AsyncRE<
         ORM<Db> & ReadSideConfigService,
         TaskError,
-        ({
-          id: string
-          event: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>
-        } & EventMeta)[]
+        ReadonlyArray<
+          {
+            id: string
+            event: AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }>
+          } & EventMeta
+        >
       >,
       eventTypes: Keys2
     ) => <S, R, ER, R2, ER2 = never>(
@@ -92,7 +94,7 @@ export class Read<
       pipe(
         fetchEvents,
         T.chainTap((events) =>
-          op(this.S.select(eventTypes).matchWiden as any)(
+          op(this.S.select(A.toArray(eventTypes)).matchWiden as any)(
             events.map((event) => ({
               ...event.event,
               [metaURI]: {
@@ -134,7 +136,7 @@ export class Read<
       fetchEvents: T.AsyncRE<
         ORM<Db> & ReadSideConfigService,
         TaskError,
-        ({ id: string; event: AOfTypes<Types> } & EventMeta)[]
+        ReadonlyArray<{ id: string; event: AOfTypes<Types> } & EventMeta>
       >
     ) => <S, R, ER, R2, ER2 = never>(
       op: (

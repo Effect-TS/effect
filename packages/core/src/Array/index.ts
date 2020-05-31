@@ -57,9 +57,9 @@ import type { Eq } from "../Eq"
 import { flow } from "../Function"
 import type { Predicate, Refinement } from "../Function"
 import type { Monoid } from "../Monoid"
+import { NonEmptyArray } from "../NonEmptyArray"
 import { isSome, none, Option, some } from "../Option"
 import { fromCompare, getMonoid as getOrdMonoid, Ord, ordNumber } from "../Ord"
-import { ReadonlyNonEmptyArray } from "../Readonly/NonEmptyArray"
 import type { Show } from "../Show"
 
 export const alt: <A>(
@@ -170,7 +170,7 @@ export const chainTap_: <A, B>(
  * assert.deepStrictEqual(group(eqNumber)([1, 1, 2, 3, 3, 4]), [[1, 1], [2], [3, 3], [4]])
  */
 export function chop<A, B>(
-  f: (as: ReadonlyNonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
+  f: (as: NonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
 ): (as: ReadonlyArray<A>) => ReadonlyArray<B> {
   return (as) => {
     const result: Array<B> = []
@@ -186,7 +186,7 @@ export function chop<A, B>(
 
 export function chop_<A, B>(
   as: ReadonlyArray<A>,
-  f: (as: ReadonlyNonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
+  f: (as: NonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
 ): ReadonlyArray<B> {
   const result: Array<B> = []
   let cs: ReadonlyArray<A> = as
@@ -328,17 +328,17 @@ export const concat = <A>(
  *
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
  */
-export function cons_<A>(tail: ReadonlyArray<A>, head: A): ReadonlyNonEmptyArray<A> {
+export function cons_<A>(tail: ReadonlyArray<A>, head: A): NonEmptyArray<A> {
   const len = tail.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
     r[i + 1] = tail[i]
   }
   r[0] = head
-  return (r as unknown) as ReadonlyNonEmptyArray<A>
+  return (r as unknown) as NonEmptyArray<A>
 }
 
-export function cons<A>(head: A): (tail: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> {
+export function cons<A>(head: A): (tail: ReadonlyArray<A>) => NonEmptyArray<A> {
   return (tail) => {
     const len = tail.length
     const r = Array(len + 1)
@@ -346,7 +346,7 @@ export function cons<A>(head: A): (tail: ReadonlyArray<A>) => ReadonlyNonEmptyAr
       r[i + 1] = tail[i]
     }
     r[0] = head
-    return (r as unknown) as ReadonlyNonEmptyArray<A>
+    return (r as unknown) as NonEmptyArray<A>
   }
 }
 
@@ -1104,7 +1104,7 @@ export function isEmpty<A>(as: ReadonlyArray<A>): boolean {
 /**
  * Test whether an array is non empty narrowing down the type to `NonEmptyReadonlyArray<A>`
  */
-export function isNonEmpty<A>(as: ReadonlyArray<A>): as is ReadonlyNonEmptyArray<A> {
+export function isNonEmpty<A>(as: ReadonlyArray<A>): as is NonEmptyArray<A> {
   return as.length > 0
 }
 
@@ -1586,17 +1586,17 @@ export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export function snoc_<A>(init: ReadonlyArray<A>, end: A): ReadonlyNonEmptyArray<A> {
+export function snoc_<A>(init: ReadonlyArray<A>, end: A): NonEmptyArray<A> {
   const len = init.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
     r[i] = init[i]
   }
   r[len] = end
-  return (r as unknown) as ReadonlyNonEmptyArray<A>
+  return (r as unknown) as NonEmptyArray<A>
 }
 
-export function snoc<A>(end: A): (init: ReadonlyArray<A>) => ReadonlyNonEmptyArray<A> {
+export function snoc<A>(end: A): (init: ReadonlyArray<A>) => NonEmptyArray<A> {
   return (init) => {
     const len = init.length
     const r = Array(len + 1)
@@ -1604,7 +1604,7 @@ export function snoc<A>(end: A): (init: ReadonlyArray<A>) => ReadonlyNonEmptyArr
       r[i] = init[i]
     }
     r[len] = end
-    return (r as unknown) as ReadonlyNonEmptyArray<A>
+    return (r as unknown) as NonEmptyArray<A>
   }
 }
 

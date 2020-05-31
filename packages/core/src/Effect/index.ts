@@ -34,6 +34,7 @@ import {
 import { flow, identity } from "../Function"
 import type { FunctionN, Lazy, Predicate, Refinement } from "../Function"
 import type { Monoid } from "../Monoid"
+import * as NA from "../NonEmptyArray"
 import type { NonEmptyArray } from "../NonEmptyArray"
 import * as O from "../Option"
 import { pipe } from "../Pipe"
@@ -454,10 +455,8 @@ export function combineFinalizerExit<E, A>(
       ...fiberExit,
       remaining: O.some(
         fiberExit.remaining._tag === "Some"
-          ? ([...fiberExit.remaining.value, releaseExit] as NonEmptyArray<
-              Cause<unknown>
-            >)
-          : ([releaseExit] as NonEmptyArray<Cause<unknown>>)
+          ? NA.snoc_(fiberExit.remaining.value, releaseExit)
+          : NA.of(releaseExit)
       )
     }
   }

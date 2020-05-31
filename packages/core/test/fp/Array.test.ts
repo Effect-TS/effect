@@ -15,7 +15,7 @@ import * as Ord from "../../src/Ord"
 import { pipe } from "../../src/Pipe"
 import { showString } from "../../src/Show"
 
-describe("ReadonlyArray", () => {
+describe("Array", () => {
   const as: ReadonlyArray<number> = [1, 2, 3]
 
   it("alt", () => {
