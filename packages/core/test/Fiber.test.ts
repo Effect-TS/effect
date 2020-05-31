@@ -1,6 +1,7 @@
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
+import { pipe } from "../src/Pipe"
 
 describe("Fiber", () => {
   it("fork/join", async () => {
@@ -31,5 +32,88 @@ describe("Fiber", () => {
     expect(b.mock.calls.length).toBe(1)
 
     expect(a.mock.calls[0][0]).toStrictEqual(Ex.interruptWithError("aaa"))
+  })
+  it("supervised + fork", async () => {
+    const a = jest.fn()
+
+    const f = await pipe(
+      T.sequenceT(
+        T.supervised(T.delay(T.pure(1), 100)),
+        T.supervised(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 50)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err")
+              a()
+            }
+          })
+        ),
+        T.supervised(T.delay(T.pure(1), 100)),
+        T.supervised(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 50)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err")
+              a()
+            }
+          })
+        )
+      ),
+      T.chain(([fa, fb, fc, fd]) => T.sequenceT(fa.join, fb.join, fc.join, fd.join)),
+      T.fork,
+      T.runToPromise
+    )
+
+    const result = await T.runToPromise(T.delay(f.interrupt, 25))
+
+    expect(result).toStrictEqual(
+      Ex.withRemaining(
+        Ex.interrupt,
+        Ex.interruptWithError("err"),
+        Ex.interruptWithError("err")
+      )
+    )
+    expect(a).toBeCalledTimes(2)
+  })
+  it("purely supervised", async () => {
+    let runs = 0
+    let interrupted = 0
+    const program = await pipe(
+      T.supervised(
+        T.forever(
+          T.onInterrupted_(
+            T.delay(
+              T.access((_: { n: number }) => {
+                runs += _.n
+              }),
+              10
+            ),
+            T.sync(() => {
+              interrupted += 1
+            })
+          )
+        )
+      ),
+      T.chainTap(() => T.delay(T.unit, 100)),
+      T.supervisedRegion,
+      T.chainTap(() => T.delay(T.unit, 200)),
+      T.provide({
+        n: 1
+      }),
+      T.runToPromise
+    )
+
+    const result = await T.runToPromise(program.isComplete)
+
+    expect(result).toStrictEqual(true)
+    expect(interrupted).toStrictEqual(1)
+    expect(runs).toBeGreaterThan(8)
+    expect(runs).toBeLessThan(11)
   })
 })

@@ -4,20 +4,20 @@ import * as AP from "../Apply"
 import * as A from "../Array"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
 import type {
+  Alt4EC,
+  CAlt4MAC,
+  CApplicative4MA,
+  CApplicative4MAC,
+  CApplicative4MAP,
+  CApplicative4MAPC,
   CMonad4MA,
   CMonad4MAC,
-  CAlt4MAC,
-  CApplicative4MAC,
-  CApplicative4MAPC,
-  CApplicative4MAP,
-  CApplicative4MA,
   Monad4E,
-  Monad4EP,
   Monad4EC,
-  Alt4EC,
-  Monad4ECP
+  Monad4ECP,
+  Monad4EP
 } from "../Base"
-import type { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
+import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { Deferred, makeDeferred } from "../Deferred"
 import * as D from "../Do"
 import * as E from "../Either"
@@ -42,15 +42,12 @@ import { makeRef, Ref } from "../Ref"
 import type { Semigroup } from "../Semigroup"
 import {
   AsyncCancelContFn,
-  AsyncFn,
   EffectURI as URI,
   IAccessEnv,
   IAccessInterruptible,
   IAccessRuntime,
-  IAsync,
   IChain,
   ICollapse,
-  ICompleted,
   IInterruptibleRegion,
   IMap,
   Instructions,
@@ -60,7 +57,7 @@ import {
   IPureOption,
   IPureTag,
   IRaised,
-  ISuspended
+  ISupervised
 } from "../Support/Common"
 import type {
   Async,
@@ -74,12 +71,27 @@ import type {
   SyncR,
   SyncRE
 } from "../Support/Common/effect"
-import { Driver, DriverImpl } from "../Support/Driver"
+import { DriverImpl } from "../Support/Driver"
 import { setExit } from "../Support/Driver/driver"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 import * as TR from "../Tree"
 import type { Erase } from "../Utils"
+
+import {
+  applySecond,
+  async,
+  chain_,
+  completed,
+  Fiber,
+  FiberImpl,
+  map_,
+  pure,
+  pureNone,
+  suspended,
+  zipWith_
+} from "./Fiber"
+
 export {
   Async,
   AsyncE,
@@ -93,6 +105,20 @@ export {
   SyncRE
 } from "../Support/Common/effect"
 export { Env, Erase, Err, Op, Ret } from "../Utils"
+export {
+  applySecond,
+  async,
+  chain_,
+  completed,
+  Fiber,
+  FiberImpl,
+  map_,
+  pure,
+  pureNone,
+  suspended,
+  sync,
+  zipWith_
+} from "./Fiber"
 
 export function access<R, A>(f: FunctionN<[R], A>): SyncR<R, A> {
   return map_(accessEnvironment<R>(), f)
@@ -192,18 +218,6 @@ export const apFirst: <S1, R, E, B>(
   fa: Effect<S2, R2, E2, A>
 ) => Effect<S1 | S2, R & R2, E | E2, A> = (fb) => (fa) => applyFirst(fa, fb)
 
-/**
- * Evaluate two IOs in sequence and produce the value produced by the second
- * @param first
- * @param second
- */
-export function applySecond<S, R, E, A, S2, R2, E2, B>(
-  first: Effect<S, R, E, A>,
-  second: Effect<S2, R2, E2, B>
-): Effect<S | S2, R & R2, E | E2, B> {
-  return zipWith_(first, second, snd)
-}
-
 export const apSecond: <S1, R, E, B>(
   fb: Effect<S1, R, E, B>
 ) => <A, S2, R2, E2>(
@@ -238,18 +252,6 @@ export function as<S, R, E, A, B>(io: Effect<S, R, E, A>, b: B): Effect<S, R, E,
  */
 export function asUnit<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, void> {
   return as(io, undefined)
-}
-
-/**
- * Wrap an impure callback in an IO
- *
- * The provided function must accept a callback to report results to and return a cancellation action.
- * If your action is uncancellable for some reason, you should return an empty thunk and wrap the created IO
- * in uninterruptible
- * @param op
- */
-export function async<E, A>(op: AsyncFn<E, A>): AsyncE<E, A> {
-  return new IAsync(op) as any
 }
 
 /**
@@ -328,20 +330,6 @@ export function bracketExit<S, R, E, A, B, S2, R2, E2, S3, R3, E3>(
       )
     )
   )
-}
-
-/**
- * Produce an new IO that will use the value produced by inner to produce the next IO to evaluate
- * @param inner
- * @param bind
- */
-export function chain_<S, R, E, A, S2, R2, E2, B>(
-  inner: Effect<S, R, E, A>,
-  bind: FunctionN<[A], Effect<S2, R2, E2, B>>
-): Effect<S | S2, R & R2, E | E2, B> {
-  return (((inner as any) as Instructions).tag() === IPureTag
-    ? bind(((inner as any) as IPure<A>).a)
-    : new IChain(inner, bind)) as any
 }
 
 export const chain: <S1, R, E, A, B>(
@@ -473,14 +461,6 @@ export function combineFinalizerExit<E, A>(
       )
     }
   }
-}
-
-/**
- * An IO that is completed with the given exit
- * @param exit
- */
-export function completed<E = never, A = never>(exit: Exit<E, A>): SyncE<E, A> {
-  return new ICompleted(exit) as any
 }
 
 export function completeLatched<E1, E2, E3, A, B, C, R>(
@@ -688,7 +668,6 @@ export function forever<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, E, nev
  * Fork the program described by IO in a separate fiber.
  *
  * This fiber will begin executing once the current fiber releases control of the runloop.
- * If you need to begin the fiber immediately you should use applyFirst(forkIO, shifted)
  * @param io
  * @param name
  */
@@ -697,6 +676,39 @@ export function fork<S, R, E, A>(
   name?: string
 ): SyncR<R, Fiber<E, A>> {
   return makeFiber(io, name)
+}
+
+/**
+ * Fork the program described by IO in a separate supervised fiber.
+ *
+ * This fiber will begin executing once the current fiber releases control of the runloop.
+ * If you need to begin the fiber immediately you should use applyFirst(forkIO, shifted)
+ * @param io
+ * @param name
+ */
+export function supervised<S, R, E, A>(
+  io: Effect<S, R, E, A>,
+  name?: string
+): SyncR<R, Fiber<E, A>> {
+  return new ISupervised(io, name) as any
+}
+
+export function supervisedRegion<S, R, E, A>(io: Effect<S, R, E, A>) {
+  return pipe(
+    fork(io),
+    chain((f) =>
+      asyncTotal<Exit<E, A>>((res) => {
+        const cancel = run(f.join, res)
+
+        return (cb) => {
+          cancel((ex) => {
+            cb(setExit(ex))
+          })
+        }
+      })
+    ),
+    chain(completed)
+  )
 }
 
 export function fromNullableM<S, R, E, A>(
@@ -991,88 +1003,6 @@ export function makeFiber<S, R, E, A>(
     driver.start(provide(r)(init))
     return fiber
   })
-}
-export interface Fiber<E, A> {
-  /**
-   * The name of the fiber
-   */
-  readonly name: O.Option<string>
-  /**
-   * Send an interrupt signal to this fiber.
-   *
-   * The this will complete execution once the target fiber has halted.
-   * Does nothing if the target fiber is already complete
-   */
-  readonly interrupt: Async<Exit<E, A>>
-  /**
-   * Await the result of this fiber
-   */
-  readonly wait: Async<Exit<E, A>>
-  /**
-   * Join with this fiber.
-   * This is equivalent to fiber.wait.chain(io.completeWith)
-   */
-  readonly join: AsyncE<E, A>
-  /**
-   * Poll for a fiber result
-   */
-  readonly result: SyncE<E, O.Option<A>>
-  /**
-   * Determine if the fiber is complete
-   */
-  readonly isComplete: Sync<boolean>
-}
-export class FiberImpl<E, A> implements Fiber<E, A> {
-  name = O.fromNullable(this.n)
-  sendInterrupt = sync(() => {
-    this.driver.interrupt()
-  })
-  wait = async<never, Exit<E, A>>((f) => {
-    const listen = this.driver.onExit((ex) => {
-      f(E.right(ex))
-    })
-
-    return (cb) => {
-      listen()
-      cb()
-    }
-  })
-  interrupt = applySecond(this.sendInterrupt, this.wait)
-  join = chain_(
-    async<never, Exit<E, A>>((f) => {
-      this.driver.onExit((ex) => {
-        f(E.right(ex))
-      })
-
-      return (cb) => {
-        this.driver.onExit((ex) => {
-          cb(setExit(ex))
-        })
-        this.driver.interrupt()
-      }
-    }),
-    completed
-  )
-  result = chain_(
-    sync(() => this.driver.completed),
-    (opt) => (opt === null ? pureNone : map_(completed(opt), O.some))
-  )
-  isComplete = sync(() => this.driver.completed !== null)
-  constructor(readonly driver: Driver<E, A>, readonly n?: string) {}
-}
-
-/**
- * Map the value produced by an IO
- * @param io
- * @param f
- */
-export function map_<S, R, E, A, B>(
-  base: Effect<S, R, E, A>,
-  f: FunctionN<[A], B>
-): Effect<S, R, E, B> {
-  return (((base as any) as Instructions).tag() === IPureTag
-    ? new IPure(f(((base as any) as IPure<A>).a))
-    : new IMap(base, f)) as any
 }
 
 export const map: <A, B>(
@@ -1461,19 +1391,6 @@ export const provideWithM = <R2, S, R, E, A>(
 ): Provider<R & R2, A, E, S> => provideM(accessM(f), _)
 
 /**
- * An IO has succeeded
- * @param a the value
- */
-
-export function pure<A>(a: A): Sync<A> {
-  return new IPure(a) as any
-}
-
-export const pureNone =
-  /*#__PURE__*/
-  (() => pure(O.none))()
-
-/**
  * Return the result of the first IO to complete successfully.
  *
  * If an error occurs, fall back to the other IO.
@@ -1789,30 +1706,6 @@ export const shiftedAsync: Async<void> =
     ))()
 
 /**
- * Wrap a block of impure code that returns an IO into an IO
- *
- * When evaluated this IO will run the given thunk to produce the next IO to execute.
- * @param thunk
- */
-
-export function suspended<S, R, E, A>(
-  thunk: Lazy<Effect<S, R, E, A>>
-): Effect<S, R, E, A> {
-  return new ISuspended(thunk) as any
-}
-
-/**
- * Wrap a block of impure code in an IO
- *
- * When evaluated the this will produce a value or throw
- * @param thunk
- */
-
-export function sync<A>(thunk: Lazy<A>): Sync<A> {
-  return suspended(() => pure(thunk()))
-}
-
-/**
  * Execute an IO and produce the next IO to run based on whether it completed successfully in the alotted time or not
  * @param source
  * @param ms
@@ -2005,20 +1898,6 @@ export function zipWith<S, A, R2, E2, B, C>(
   f: FunctionN<[A, B], C>
 ): <S2, R, E>(first: Effect<S2, R, E, A>) => Effect<S | S2, R & R2, E | E2, C> {
   return (first) => zipWith_(first, second, f)
-}
-
-/**
- * Zip the result of two IOs together using the provided function
- * @param first
- * @param second
- * @param f
- */
-export function zipWith_<S, R, E, A, S2, R2, E2, B, C>(
-  first: Effect<S, R, E, A>,
-  second: Effect<S2, R2, E2, B>,
-  f: FunctionN<[A, B], C>
-): Effect<S | S2, R & R2, E | E2, C> {
-  return chain_(first, (a) => map_(second, (b) => f(a, b)))
 }
 
 /**

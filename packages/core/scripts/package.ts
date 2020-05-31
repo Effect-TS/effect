@@ -51,6 +51,7 @@ const modules: string[] = [
   "Exit",
   "Deferred",
   "Effect",
+  "Effect/Fiber",
   "EffectOption",
   "Ref",
   "Utils",
