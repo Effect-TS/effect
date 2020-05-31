@@ -40,7 +40,7 @@ export const Counter: unique symbol = Symbol()
 
 export interface Counter {
   [Counter]: {
-    count(): T.SyncRE<Printer & CounterState, Error, void[]>
+    count(): T.SyncRE<Printer & CounterState, Error, ReadonlyArray<void>>
   }
 }
 
@@ -66,6 +66,10 @@ export function increment(): T.SyncR<CounterState, void> {
   return T.accessM(({ [CounterState]: counter }: CounterState) => counter.increment())
 }
 
-export function count(): T.SyncRE<Counter & Printer & CounterState, Error, void[]> {
+export function count(): T.SyncRE<
+  Counter & Printer & CounterState,
+  Error,
+  ReadonlyArray<void>
+> {
   return T.accessM(({ [Counter]: counter }: Counter) => counter.count())
 }

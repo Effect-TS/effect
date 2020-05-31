@@ -21,9 +21,9 @@ type PinoLoggedObject<T extends object> = T & {
 }
 
 const checkLevel = <O extends object>(
-  calls: PinoLoggedObject<O>[],
+  calls: ReadonlyArray<PinoLoggedObject<O>>,
   level: Pino.Level,
-  expected: (O & { msg: string })[]
+  expected: ReadonlyArray<O & { msg: string }>
 ) =>
   T.sync(() =>
     pipe(
