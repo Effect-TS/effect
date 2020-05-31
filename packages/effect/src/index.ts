@@ -28,7 +28,6 @@ import * as process from "./Process"
 import * as provider from "./Provider"
 import * as queue from "./Queue"
 import * as random from "./Random"
-import * as readOnly from "./Readonly"
 import * as record from "./Record"
 import * as recursionSchemes from "./RecursionSchemes"
 import * as ref from "./Ref"
@@ -89,7 +88,6 @@ export {
   recursionSchemes,
   prelude,
   monoid,
-  readOnly,
   const_ as const,
   identity,
   apply,

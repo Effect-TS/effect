@@ -7,6 +7,7 @@ import { eqNumber } from "../src/Eq"
 import * as ex from "../src/Exit"
 import { FunctionN, identity, constant } from "../src/Function"
 import { none, some } from "../src/Option"
+import { ordNumber } from "../src/Ord"
 import { pipe } from "../src/Pipe"
 import * as SK from "../src/Stream/Sink"
 import { collectArraySink, liftPureSink, Sink } from "../src/Stream/Sink"
@@ -803,7 +804,7 @@ describe("Stream", () => {
       const output = S.collectArray(s2)
       const check = T.chain_(output, (values) =>
         T.sync(() => {
-          const uniq = array.uniq(eqNumber)(values).sort()
+          const uniq = array.sort(ordNumber)(array.uniq(eqNumber)(values))
           const stats = pipe(
             uniq,
             array.array.map(

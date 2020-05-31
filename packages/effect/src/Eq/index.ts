@@ -11,7 +11,7 @@
  */
 import type { CContravariant1, Contravariant1 } from "../Base"
 import type { Monoid } from "../Monoid"
-import type { ReadonlyRecord } from "../Readonly/Record"
+import type { ReadonlyRecord } from "../Record"
 
 export interface Eq<A> {
   readonly equals: (x: A, y: A) => boolean
