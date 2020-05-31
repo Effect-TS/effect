@@ -33,7 +33,7 @@ import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
 import { none, Option, some } from "../Option"
 import type { Ord } from "../Ord"
-import type { ReadonlyRecord } from "../Readonly/Record"
+import type { ReadonlyRecord } from "../Record"
 import { getJoinSemigroup, getMeetSemigroup, Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 
