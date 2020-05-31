@@ -74,7 +74,7 @@ import type {
   SyncR,
   SyncRE
 } from "../Support/Common/effect"
-import { Driver, DriverImpl, DriverSyncImpl } from "../Support/Driver"
+import { Driver, DriverImpl } from "../Support/Driver"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 import * as TR from "../Tree"
@@ -367,14 +367,17 @@ export function chainEither<A, E, B>(
  * @param f
  */
 export function chainError<S, R, E1, E2, A>(
-  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<any>>>) => Effect<S, R, E2, A>
+  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<unknown>>>) => Effect<S, R, E2, A>
 ): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f)
 }
 
 export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<any>>>) => Effect<S2, R2, E2, A2>
+  f: (
+    _: E1,
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
+  ) => Effect<S2, R2, E2, A2>
 ): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
@@ -387,7 +390,7 @@ export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
 export const chainErrorTap = <S, R, E1, E2>(
   f: (
     e: E1,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S, R, E2, unknown>
 ) => <S2, R2, A>(io: Effect<S2, R2, E1, A>) => chainErrorTap_(io, f)
 
@@ -395,7 +398,7 @@ export const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
   io: Effect<S, R, E1, A>,
   f: (
     _: E1,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S2, R2, E2, unknown>
 ) =>
   chainError_(io, (e, remaining) =>
@@ -462,8 +465,10 @@ export function combineFinalizerExit<E, A>(
       ...fiberExit,
       remaining: O.some(
         fiberExit.remaining._tag === "Some"
-          ? ([...fiberExit.remaining.value, releaseExit] as NonEmptyArray<Cause<any>>)
-          : ([releaseExit] as NonEmptyArray<Cause<any>>)
+          ? ([...fiberExit.remaining.value, releaseExit] as NonEmptyArray<
+              Cause<unknown>
+            >)
+          : ([releaseExit] as NonEmptyArray<Cause<unknown>>)
       )
     }
   }
@@ -481,14 +486,18 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
             if (finalize._tag === "Done") {
               const errors = pipe(
                 [
-                  ...(exit.errors ? exit.errors : []),
+                  ...(exit.errors._tag === "Some" ? exit.errors.value : []),
                   ...flattenArray(
                     finalize.value.map((x) =>
-                      x._tag === "Interrupt" ? (x.errors ? x.errors : []) : []
+                      x._tag === "Interrupt"
+                        ? x.errors._tag === "Some"
+                          ? x.errors.value
+                          : []
+                        : []
                     )
                   )
                 ],
-                filterArray((x): x is Error => x !== undefined)
+                filterArray((x): x is unknown => x !== undefined)
               )
               return errors.length > 0
                 ? completed(interruptWithError(...errors))
@@ -858,7 +867,7 @@ export const handle = <
         [k in K]: KK
       }
     >,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S2, R2, E2, A2>
 ) => <S, R, A>(
   _: Effect<S, R, E, A>
@@ -901,7 +910,7 @@ export const makeHandle = <K extends string>(k: K) => <
         [k in K]: KK
       }
     >,
-    remaining: O.Option<NonEmptyArray<Cause<any>>>
+    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
   ) => Effect<S2, R2, E2, A2>
 ) => handle<E, K, KK, S2, R2, E2, A2>(k, kk, f)
 
@@ -944,9 +953,7 @@ export function interruptLoser<R, E, A>(
   loser: Fiber<E, A>
 ): AsyncRE<R, E, A> {
   return chain_(loser.interrupt, (x) =>
-    x._tag === "Interrupt" && x.errors && x.errors.length > 0
-      ? completed(x)
-      : completed(exit)
+    x._tag === "Interrupt" && x.errors._tag === "Some" ? completed(x) : completed(exit)
   )
 }
 
@@ -1348,7 +1355,7 @@ export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
             isCompleted
               ? zipWith_(completed(aExit), bFiber.join, f)
               : chain_(bFiber.interrupt, (x) =>
-                  x._tag === "Interrupt" && x.errors && x.errors.length > 0
+                  x._tag === "Interrupt" && x.errors._tag === "Some"
                     ? completed(x)
                     : completed(aExit)
                 )
@@ -1360,7 +1367,7 @@ export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
             isCompleted
               ? zipWith_(aFiber.join, completed(bExit), f)
               : chain_(aFiber.interrupt, (x) =>
-                  x._tag === "Interrupt" && x.errors && x.errors.length > 0
+                  x._tag === "Interrupt" && x.errors._tag === "Some"
                     ? completed(x)
                     : completed(bExit)
                 )
@@ -1641,12 +1648,7 @@ export function run<E, A>(
  * @param io
  */
 export function runSync<E, A>(io: SyncRE<{}, E, A>): Exit<E, A> {
-  return pipe(new DriverSyncImpl<E, A>().start(io), (ei) => {
-    if (ei._tag === "Left") {
-      throw ei.left
-    }
-    return ei.right
-  })
+  return new DriverImpl<E, A>().startSync(io)
 }
 
 /**

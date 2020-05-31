@@ -27,6 +27,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   interruptRegionStack: boolean[] | undefined
   cancelAsync: Common.AsyncCancelContFn | undefined
   envStack = new DoublyLinkedList<any>()
+  sync = false
 
   isComplete(): boolean {
     return this.completed !== null
@@ -90,7 +91,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return
   }
 
-  dispatchResumeInterrupt({ errors }: { errors?: Error[] }) {
+  dispatchResumeInterrupt({ errors }: { errors?: unknown[] }) {
     const go = this.handle(Ex.interruptWithError(...(errors || [])))
     if (go) {
       // eslint-disable-next-line
@@ -98,7 +99,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  resumeInterrupt(errors?: Error[]): void {
+  resumeInterrupt(errors?: unknown[]): void {
     defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { errors })
   }
 
@@ -218,6 +219,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   IAsync(_: Common.IAsync<any, any>) {
+    if (this.sync) {
+      throw new Error("async operations not supported")
+    }
     this.contextSwitch(_.e)
     return undefined
   }
@@ -283,6 +287,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
   start(run: Common.EffectTypes.AsyncRE<{}, E, A>): void {
     defaultRuntime.dispatch(this.loop.bind(this), run as any)
+  }
+  startSync(run: Common.EffectTypes.SyncRE<{}, E, A>): Ex.Exit<E, A> {
+    this.sync = true
+
+    this.loop(run as any)
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return this.completed!
   }
 
   interrupt(): void {
