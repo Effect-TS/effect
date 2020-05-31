@@ -71,7 +71,6 @@ const modules: string[] = [
   "Service",
   "Retry",
   "Readonly",
-  "Readonly/Array",
   "Readonly/Record",
   "Readonly/NonEmptyArray",
   "Readonly/Set",

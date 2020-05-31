@@ -1,6 +1,7 @@
 /* eslint-disable no-prototype-builtins */
 import * as assert from "assert"
 
+import { array, zip_ } from "../../src/Array"
 import { left, right } from "../../src/Either"
 import { eqNumber } from "../../src/Eq"
 import { identity } from "../../src/Function"
@@ -8,7 +9,6 @@ import * as I from "../../src/Identity"
 import { monoidString } from "../../src/Monoid"
 import { getOrElse, isSome, none, option, Option, some } from "../../src/Option"
 import { pipe } from "../../src/Pipe"
-import { readonlyArray, zip_ } from "../../src/Readonly/Array"
 import * as R from "../../src/Record"
 import { getFirstSemigroup, getLastSemigroup, semigroupSum } from "../../src/Semigroup"
 import { showString } from "../../src/Show"
@@ -95,11 +95,11 @@ describe("Record", () => {
 
   it("fromFoldable", () => {
     const First = getFirstSemigroup<number>()
-    assert.deepStrictEqual(R.fromFoldable(First, readonlyArray)([["a", 1]]), { a: 1 })
+    assert.deepStrictEqual(R.fromFoldable(First, array)([["a", 1]]), { a: 1 })
     assert.deepStrictEqual(
       R.fromFoldable(
         First,
-        readonlyArray
+        array
       )([
         ["a", 1],
         ["a", 2]
@@ -112,7 +112,7 @@ describe("Record", () => {
     assert.deepStrictEqual(
       R.fromFoldable(
         Last,
-        readonlyArray
+        array
       )([
         ["a", 1],
         ["a", 2]
@@ -135,7 +135,7 @@ describe("Record", () => {
   })
 
   it("toUnfoldable", () => {
-    assert.deepStrictEqual(R.toUnfoldable(readonlyArray)({ a: 1 }), [["a", 1]])
+    assert.deepStrictEqual(R.toUnfoldable(array)({ a: 1 }), [["a", 1]])
   })
 
   it("traverseWithIndex", () => {
@@ -305,7 +305,7 @@ describe("Record", () => {
     ): Record<K, A> =>
       pipe(
         zip_(keys, values),
-        R.fromFoldableMap(getLastSemigroup<A>(), readonlyArray)(([k, a]) => [k, a])
+        R.fromFoldableMap(getLastSemigroup<A>(), array)(([k, a]) => [k, a])
       )
 
     assert.deepStrictEqual(zipObject(["a", "b"], [1, 2, 3]), { a: 1, b: 2 })
@@ -324,10 +324,7 @@ describe("Record", () => {
     assert.deepStrictEqual(
       pipe(
         users,
-        R.fromFoldableMap(
-          getLastSemigroup<User>(),
-          readonlyArray
-        )((user) => [user.id, user])
+        R.fromFoldableMap(getLastSemigroup<User>(), array)((user) => [user.id, user])
       ),
       {
         id1: { id: "id1", name: "name3" },

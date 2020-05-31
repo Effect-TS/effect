@@ -5,6 +5,7 @@
  */
 
 import * as AP from "../../Apply"
+import * as RA from "../../Array"
 import type {
   CAlt1,
   CApplicative1,
@@ -35,7 +36,6 @@ import { none, Option, some } from "../../Option"
 import type { Ord } from "../../Ord"
 import { getJoinSemigroup, getMeetSemigroup, Semigroup } from "../../Semigroup"
 import type { Show } from "../../Show"
-import * as RA from "../Array"
 import type { ReadonlyRecord } from "../Record"
 
 export const URI = "@matechs/core/Readonly/NonEmptyArray"
@@ -731,11 +731,11 @@ export const readonlyNonEmptyArray_: Monad1<URI> &
       reduce: reduce_,
       foldMap: foldMap_,
       reduceRight: reduceRight_,
-      traverse: RA.readonlyArray_.traverse as any,
-      sequence: RA.readonlyArray_.sequence as any,
+      traverse: RA.array_.traverse as any,
+      sequence: RA.array_.sequence as any,
       reduceWithIndex: reduceWithIndex_,
       foldMapWithIndex: foldMapWithIndex_,
       reduceRightWithIndex: reduceRightWithIndex_,
-      traverseWithIndex: RA.readonlyArray_.traverseWithIndex as any,
+      traverseWithIndex: RA.array_.traverseWithIndex as any,
       alt: alt_
     } as const))()
