@@ -1427,7 +1427,7 @@ interface Weave {
 
 type WeaveHandle = readonly [number, T.Fiber<never, void>]
 
-function interruptWeaveHandles(ref: Ref<WeaveHandle[]>): T.Async<void> {
+function interruptWeaveHandles(ref: Ref<ReadonlyArray<WeaveHandle>>): T.Async<void> {
   return T.chain_(ref.get, (fibers) =>
     T.asUnit(A.traverse(T.effect)((fiber: WeaveHandle) => fiber[1].interrupt)(fibers))
   )
@@ -1439,26 +1439,32 @@ const makeWeave: M.Async<Weave> =
   (() =>
     M.chain_(M.encaseEffect(makeRef(0)), (cell) =>
       // On cleanup we want to interrupt any running fibers
-      M.map_(M.bracket(makeRef<WeaveHandle[]>([]), interruptWeaveHandles), (store) => {
-        function attach(action: T.Sync<void>): T.Sync<void> {
-          return pipe(
-            T.sequenceS({
-              next: cell.update((n) => n + 1),
-              fiber: T.fork(action)
-            }),
-            T.chainTap(({ fiber, next }) =>
-              store.update((handles) => [...handles, [next, fiber] as const])
-            ),
-            T.chainTap(({ fiber, next }) =>
-              T.fork(
-                T.applySecond(fiber.wait, store.update(A.filter((h) => h[0] !== next)))
-              )
-            ),
-            T.asUnit
-          )
+      M.map_(
+        M.bracket(makeRef<ReadonlyArray<WeaveHandle>>([]), interruptWeaveHandles),
+        (store) => {
+          function attach(action: T.Sync<void>): T.Sync<void> {
+            return pipe(
+              T.sequenceS({
+                next: cell.update((n) => n + 1),
+                fiber: T.fork(action)
+              }),
+              T.chainTap(({ fiber, next }) =>
+                store.update((handles) => [...handles, [next, fiber] as const])
+              ),
+              T.chainTap(({ fiber, next }) =>
+                T.fork(
+                  T.applySecond(
+                    fiber.wait,
+                    store.update(A.filter((h) => h[0] !== next))
+                  )
+                )
+              ),
+              T.asUnit
+            )
+          }
+          return { attach }
         }
-        return { attach }
-      })
+      )
     ))()
 
 /**

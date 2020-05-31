@@ -2,7 +2,7 @@
 
 import { Endomorphism, identity } from "../Function"
 import type { Bounded } from "../Ord"
-import type { ReadonlyRecord } from "../Readonly/Record"
+import type { ReadonlyRecord } from "../Record"
 import {
   fold as foldSemigroup,
   getDualSemigroup,

@@ -1,26 +1,27 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import type {
-  CApplicative2C,
   CApply2C,
-  CBifunctor2,
+  CApplicative2C,
   CChain2C,
+  CMonad2C,
   CChainRec2C,
+  CTraverse2,
+  CApplicative,
+  HKT,
+  CSequence2,
+  CSemigroupoid2,
+  CBifunctor2,
   CComonad2,
   CFoldable2,
-  CMonad2C,
-  CSemigroupoid2,
-  CSequence2,
   CTraversable2,
-  CTraverse2,
   Traverse2,
   Semigroupoid2,
   Bifunctor2,
-  Comonad2,
   Foldable2,
+  Comonad2,
   Traversable2,
   Applicative,
-  HKT,
   Apply2C,
   Applicative2C,
   Chain2C,
@@ -30,42 +31,48 @@ import type {
 import type { Either } from "../Either"
 import type { Monoid } from "../Monoid"
 import { pipe } from "../Pipe"
-import * as RT from "../Readonly/Tuple"
 import type { Semigroup } from "../Semigroup"
 
 export const URI = "@matechs/core/Tuple"
 
 export type URI = typeof URI
 
+export type Tuple<E, A> = readonly [A, E]
+
 declare module "../Base/HKT" {
   interface URItoKind2<E, A> {
-    readonly [URI]: [A, E]
+    readonly [URI]: Tuple<E, A>
   }
 }
 
-export const fst: {
-  <A, S>(sa: [A, S]): A
-} = RT.fst
+export function fst<A, S>(sa: readonly [A, S]): A {
+  return sa[0]
+}
 
-export const snd: {
-  <A, S>(sa: [A, S]): S
-} = RT.snd
+export function snd<A, S>(sa: readonly [A, S]): S {
+  return sa[1]
+}
 
-export const swap: {
-  <A, S>(sa: [A, S]): [S, A]
-} = RT.swap as any
+export function swap<A, S>(sa: readonly [A, S]): readonly [S, A] {
+  return [snd(sa), fst(sa)]
+}
 
-export const make: {
-  <A, S>(a: A, s: S): [A, S]
-} = RT.make as any
+export const make = <A, S>(a: A, s: S): readonly [A, S] => {
+  return [a, s]
+}
 
-export const ap: {
-  <S>(S: Semigroup<S>): <A>(fa: [A, S]) => <B>(fab: [(a: A) => B, S]) => [B, S]
-} = RT.ap as any
+export function ap<S>(S: Semigroup<S>) {
+  return <A>(fa: readonly [A, S]) => <B>(
+    fab: readonly [(a: A) => B, S]
+  ): readonly [B, S] => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
+}
 
-export const ap_: {
-  <S>(S: Semigroup<S>): <A, B>(fab: [(a: A) => B, S], fa: [A, S]) => [B, S]
-} = RT.ap_ as any
+export function ap_<S>(S: Semigroup<S>) {
+  return <A, B>(
+    fab: readonly [(a: A) => B, S],
+    fa: readonly [A, S]
+  ): readonly [B, S] => [fst(fab)(fst(fa)), S.concat(snd(fab), snd(fa))]
+}
 
 export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {
   return {
@@ -76,7 +83,9 @@ export function getApply<S>(S: Semigroup<S>): CApply2C<URI, S> {
   }
 }
 
-export const of: <S>(M: Monoid<S>) => <A>(a: A) => [A, S] = RT.of as any
+export const of = <S>(M: Monoid<S>) => <A>(a: A): readonly [A, S] => {
+  return [a, M.empty]
+}
 
 export function getApplicative<S>(M: Monoid<S>): CApplicative2C<URI, S> {
   return {
@@ -85,13 +94,21 @@ export function getApplicative<S>(M: Monoid<S>): CApplicative2C<URI, S> {
   }
 }
 
-export const chain: {
-  <S>(S: Semigroup<S>): <A, B>(f: (a: A) => [B, S]) => (fa: [A, S]) => [B, S]
-} = RT.chain as any
+export function chain<S>(S: Semigroup<S>) {
+  return <A, B>(f: (a: A) => readonly [B, S]) => (
+    fa: readonly [A, S]
+  ): readonly [B, S] => {
+    const [b, s] = f(fst(fa))
+    return [b, S.concat(snd(fa), s)]
+  }
+}
 
-export const chain_: {
-  <S>(S: Semigroup<S>): <A, B>(fa: [A, S], f: (a: A) => [B, S]) => [B, S]
-} = RT.chain_ as any
+export function chain_<S>(S: Semigroup<S>) {
+  return <A, B>(fa: readonly [A, S], f: (a: A) => readonly [B, S]): readonly [B, S] => {
+    const [b, s] = f(fst(fa))
+    return [b, S.concat(snd(fa), s)]
+  }
+}
 
 export function getChain<S>(S: Semigroup<S>): CChain2C<URI, S> & CApply2C<URI, S> {
   return {
@@ -116,86 +133,138 @@ export function getChainRec<S>(
   }
 }
 
-export const chainRec: {
-  <S>(M: Monoid<S>): <A, B>(a: A, f: (a: A) => [Either<A, B>, S]) => [B, S]
-} = RT.chainRec as any
+export function chainRec<S>(M: Monoid<S>) {
+  return <A, B>(a: A, f: (a: A) => readonly [Either<A, B>, S]): readonly [B, S] => {
+    let result: readonly [Either<A, B>, S] = f(a)
+    let acc: S = M.empty
+    let s: Either<A, B> = fst(result)
+    while (s._tag === "Left") {
+      acc = M.concat(acc, snd(result))
+      result = f(s.left)
+      s = fst(result)
+    }
+    return [s.right, M.concat(acc, snd(result))]
+  }
+}
 
 export const compose: <E, A>(
-  la: [A, E]
-) => <B>(ab: [B, A]) => [B, E] = RT.compose as any
+  la: readonly [A, E]
+) => <B>(ab: readonly [B, A]) => readonly [B, E] = (ae) => (ba) => [fst(ba), snd(ae)]
 
-export const compose_: <B, E, A>(ab: [B, A], la: [A, E]) => [B, E] = RT.compose_ as any
+export const compose_: <B, E, A>(
+  ab: readonly [B, A],
+  la: readonly [A, E]
+) => readonly [B, E] = (ba, ae) => [fst(ba), snd(ae)]
 
-export const traverse: CTraverse2<URI> = RT.traverse as any
+export const traverse: CTraverse2<URI> = <F>(F: CApplicative<F>) => <A, B>(
+  f: (a: A) => HKT<F, B>
+): (<S>(as: readonly [A, S]) => HKT<F, readonly [B, S]>) => {
+  return (as) =>
+    pipe(
+      as,
+      fst,
+      f,
+      F.map((b) => [b, snd(as)])
+    )
+}
 
-export const traverse_: Traverse2<URI> = RT.traverse_ as any
+export const traverse_: Traverse2<URI> = <F>(F: CApplicative<F>) => <S, A, B>(
+  as: readonly [A, S],
+  f: (a: A) => HKT<F, B>
+): HKT<F, readonly [B, S]> => {
+  return pipe(
+    as,
+    fst,
+    f,
+    F.map((b) => [b, snd(as)])
+  )
+}
 
-export const sequence: CSequence2<URI> = RT.sequence as any
+export const sequence: CSequence2<URI> = <F>(F: CApplicative<F>) => <A, S>(
+  fas: readonly [HKT<F, A>, S]
+): HKT<F, readonly [A, S]> => {
+  return pipe(
+    fas,
+    fst,
+    F.map((a) => [a, snd(fas)])
+  )
+}
 
 export const bimap: <E, G, A, B>(
   f: (e: E) => G,
   g: (a: A) => B
-) => (fa: [A, E]) => [B, G] = RT.bimap as any
+) => (fa: readonly [A, E]) => readonly [B, G] = (f, g) => (fa) => [
+  g(fst(fa)),
+  f(snd(fa))
+]
 
 export const bimap_: <E, G, A, B>(
-  fa: [A, E],
+  fa: readonly [A, E],
   f: (e: E) => G,
   g: (a: A) => B
-) => [B, G] = RT.bimap_ as any
+) => readonly [B, G] = (fa, f, g) => [g(fst(fa)), f(snd(fa))]
 
 export const extend: <E, A, B>(
-  f: (fa: [A, E]) => B
-) => (ma: [A, E]) => [B, E] = RT.extend as any
+  f: (fa: readonly [A, E]) => B
+) => (ma: readonly [A, E]) => readonly [B, E] = (f) => (fa) => [f(fa), snd(fa)]
 
 export const extend_: <E, A, B>(
-  ma: [A, E],
-  f: (fa: [A, E]) => B
-) => [B, E] = RT.extend_ as any
+  ma: readonly [A, E],
+  f: (fa: readonly [A, E]) => B
+) => readonly [B, E] = (fa, f) => [f(fa), snd(fa)]
 
-export const duplicate: <E, A>(ma: [A, E]) => [[A, E], E] = RT.duplicate as any
+export const duplicate: <E, A>(ma: readonly [A, E]) => readonly [readonly [A, E], E] = (
+  ma
+) => extend_(ma, (x) => x)
 
 export const foldMap: <M>(
   M: Monoid<M>
-) => <A>(f: (a: A) => M) => <E>(fa: [A, E]) => M = RT.foldMap as any
+) => <A>(f: (a: A) => M) => <E>(fa: readonly [A, E]) => M = () => (f) => (fa) =>
+  f(fst(fa))
 
 export const foldMap_: <M>(
   M: Monoid<M>
-) => <A, E>(fa: [A, E], f: (a: A) => M) => M = RT.foldMap_ as any
+) => <A, E>(fa: readonly [A, E], f: (a: A) => M) => M = () => (fa, f) => f(fst(fa))
 
-export const map: <A, B>(f: (a: A) => B) => <E>(fa: [A, E]) => [B, E] = RT.map as any
+export const map: <A, B>(
+  f: (a: A) => B
+) => <E>(fa: readonly [A, E]) => readonly [B, E] = (f) => (fa) => [f(fst(fa)), snd(fa)]
 
-export const map_: <A, E, B>(fa: [A, E], f: (a: A) => B) => [B, E] = RT.map_ as any
+export const map_: <A, E, B>(fa: readonly [A, E], f: (a: A) => B) => readonly [B, E] = (
+  fa,
+  f
+) => [f(fst(fa)), snd(fa)]
 
 export const mapLeft: <E, G>(
   f: (e: E) => G
-) => <A>(fa: [A, E]) => [A, G] = RT.mapLeft as any
+) => <A>(fa: readonly [A, E]) => readonly [A, G] = (f) => (fa) => [fst(fa), f(snd(fa))]
 
 export const mapLeft_: <A, E, G>(
-  fa: [A, E],
+  fa: readonly [A, E],
   f: (e: E) => G
-) => [A, G] = RT.mapLeft_ as any
+) => readonly [A, G] = (fa, f) => [fst(fa), f(snd(fa))]
 
 export const reduce: <A, B>(
   b: B,
   f: (b: B, a: A) => B
-) => <E>(fa: [A, E]) => B = RT.reduce as any
+) => <E>(fa: readonly [A, E]) => B = (b, f) => (fa) => f(b, fst(fa))
 
 export const reduce_: <A, E, B>(
-  fa: [A, E],
+  fa: readonly [A, E],
   b: B,
   f: (b: B, a: A) => B
-) => B = RT.reduce_ as any
+) => B = (fa, b, f) => f(b, fst(fa))
 
 export const reduceRight: <A, B>(
   b: B,
   f: (a: A, b: B) => B
-) => <E>(fa: [A, E]) => B = RT.reduceRight as any
+) => <E>(fa: readonly [A, E]) => B = (b, f) => (fa) => f(fst(fa), b)
 
 export const reduceRight_: <A, E, B>(
-  fa: [A, E],
+  fa: readonly [A, E],
   b: B,
   f: (a: A, b: B) => B
-) => B = RT.reduceRight_ as any
+) => B = (fa, b, f) => f(fst(fa), b)
 
 export const tuple: CSemigroupoid2<URI> &
   CBifunctor2<URI> &
@@ -236,12 +305,14 @@ export const tuple_: Semigroupoid2<URI> &
   foldMap: foldMap_,
   reduceRight: reduceRight_,
   traverse: <F>(F: Applicative<F>) => <S, A, B>(
-    as: [A, S],
+    as: readonly [A, S],
     f: (a: A) => HKT<F, B>
-  ): HKT<F, [B, S]> => {
+  ): HKT<F, readonly [B, S]> => {
     return F.map(pipe(as, fst, f), (b) => [b, snd(as)])
   },
-  sequence: <F>(F: Applicative<F>) => <A, S>(fas: [HKT<F, A>, S]): HKT<F, [A, S]> => {
+  sequence: <F>(F: Applicative<F>) => <A, S>(
+    fas: readonly [HKT<F, A>, S]
+  ): HKT<F, readonly [A, S]> => {
     return F.map(pipe(fas, fst), (a) => [a, snd(fas)])
   }
 }

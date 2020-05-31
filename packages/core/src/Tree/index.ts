@@ -63,7 +63,7 @@ export const URI = "@matechs/core/Tree"
 
 export type URI = typeof URI
 
-export declare type Forest<A> = Array<Tree<A>>
+export declare type Forest<A> = ReadonlyArray<Tree<A>>
 
 export interface Tree<A> {
   readonly value: A
@@ -96,7 +96,7 @@ export function getShow<A>(S: Show<A>): Show<Tree<A>> {
 
 export function getEq<A>(E: Eq<A>): Eq<Tree<A>> {
   // eslint-disable-next-line prefer-const
-  let SA: Eq<Array<Tree<A>>>
+  let SA: Eq<ReadonlyArray<Tree<A>>>
   const R: Eq<Tree<A>> = fromEquals(
     (x, y) => E.equals(x.value, y.value) && SA.equals(x.forest, y.forest)
   )

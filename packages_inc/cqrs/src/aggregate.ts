@@ -12,6 +12,7 @@ import { matcher } from "./matcher"
 import { persistEvent } from "./persistEvent"
 import { Read } from "./read"
 
+import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import { pipe } from "@matechs/core/Pipe"
@@ -49,7 +50,7 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this)
   }
 
-  private readonly narrowADT = this.S.selectMorph(this.eventTypes)
+  private readonly narrowADT = this.S.selectMorph(A.toArray(this.eventTypes))
 
   adt = {
     ...this.narrowADT,
@@ -118,7 +119,7 @@ export class AggregateRoot<
   >,
   Env
 > {
-  private readonly narrowedS = this.aggregate.S.selectMorph(this.keys)
+  private readonly narrowedS = this.aggregate.S.selectMorph(A.toArray(this.keys))
 
   constructor(
     public aggregate: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db, Env>,

@@ -1,5 +1,6 @@
 import * as assert from "assert"
 
+import { sort } from "../../src/Array"
 import { fold } from "../../src/Monoid"
 import {
   ord,
@@ -16,7 +17,6 @@ import {
   getTupleOrd,
   ordBoolean
 } from "../../src/Ord"
-import { sort } from "../../src/Readonly/Array"
 
 describe("Ord", () => {
   it("getTupleOrd", () => {

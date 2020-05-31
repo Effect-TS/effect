@@ -1,6 +1,6 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import type { ReadonlyRecord } from "../Readonly/Record"
+import type { ReadonlyRecord } from "../Record"
 
 export interface Show<A> {
   readonly show: (a: A) => string

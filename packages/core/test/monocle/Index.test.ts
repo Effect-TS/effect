@@ -93,7 +93,7 @@ describe("Index", () => {
   })
 
   it("fromIso", () => {
-    const iso = I.create<Array<string>, Array<number>>(
+    const iso = I.create<ReadonlyArray<string>, ReadonlyArray<number>>(
       (s) => s.map((v) => +v),
       (a) => a.map(String)
     )
