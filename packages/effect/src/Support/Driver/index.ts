@@ -13,6 +13,3 @@ export {
 } from "./driver/Frame"
 
 export { Driver } from "./driver/Driver"
-
-export { DriverSyncImpl } from "./driverSync"
-export { DriverSync } from "./driverSync/DriverSync"

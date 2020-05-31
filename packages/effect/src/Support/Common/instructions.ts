@@ -23,6 +23,7 @@ export type Instructions =
   | IAccessEnv<any>
   | IProvideEnv<any, any, any, any>
   | IMap<any, any, any, any, any>
+  | ISupervised<any, any, any, any>
 
 export const IPureTag = "IPure" as const
 
@@ -168,6 +169,16 @@ export class IProvideEnv<S, R, E, A> {
 
   tag() {
     return IProvideEnvTag
+  }
+}
+
+export const ISupervisedTag = "ISupervised" as const
+
+export class ISupervised<S, R, E, A> {
+  constructor(readonly effect: Effect<S, R, E, A>, readonly name?: string) {}
+
+  tag() {
+    return ISupervisedTag
   }
 }
 
