@@ -26,7 +26,6 @@ import * as Pr from "../Process"
 import { combine } from "../Provider"
 import * as Q from "../Queue"
 import * as Ran from "../Random"
-import * as RO from "../Readonly"
 import * as Re from "../Record"
 import * as RS from "../RecursionSchemes"
 import * as Ref from "../Ref"
@@ -90,6 +89,5 @@ export {
   base,
   Bo,
   Mc,
-  RO,
   NT
 }

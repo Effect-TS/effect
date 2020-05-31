@@ -34,7 +34,7 @@ export function record<A = never>(): At<
   )
 }
 
-export function set<A = never>(E: Eq<A>): At<Set<A>, A, boolean> {
+export function set<A = never>(E: Eq<A>): At<ReadonlySet<A>, A, boolean> {
   const elemE = S.elem(E)
   const insertE = S.insert(E)
   const removeE = S.remove(E)
