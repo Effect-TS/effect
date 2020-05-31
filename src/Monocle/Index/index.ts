@@ -27,7 +27,7 @@ export function fromIso<T, S>(iso: I.Iso<T, S>) {
     create((i) => pipe(iso, I.composeOptional(ind.index(i))))
 }
 
-export function array<A = never>(): Index<Array<A>, number, A> {
+export function array<A = never>(): Index<ReadonlyArray<A>, number, A> {
   return create((i) =>
     Op.create(A.lookup(i), (a) => (as) =>
       O.fold_(A.updateAt(i, a)(as), () => as, identity)

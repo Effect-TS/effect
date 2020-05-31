@@ -597,7 +597,7 @@ export const interrupt: Interrupt = {
   errors: none
 }
 
-export const interruptWithError = (...errors: Array<unknown>): Interrupt =>
+export const interruptWithError = (...errors: ReadonlyArray<unknown>): Interrupt =>
   errors.length > 0
     ? {
         _tag: "Interrupt",
@@ -631,7 +631,7 @@ export function raise<E>(e: E): Raise<E> {
 
 export const withRemaining = <E>(
   cause: Cause<E>,
-  ...remaining: Array<Cause<unknown>>
+  ...remaining: ReadonlyArray<Cause<unknown>>
 ): Cause<E> => {
   const rem =
     cause.remaining._tag === "Some"

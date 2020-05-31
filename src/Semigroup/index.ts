@@ -3,7 +3,7 @@
 import { identity } from "../Function"
 import { Magma } from "../Magma"
 import { max, min, Ord } from "../Ord"
-import { ReadonlyRecord } from "../Readonly/Record"
+import { ReadonlyRecord } from "../Record"
 
 /**
  * A `Semigroup` is a `Magma` where `concat` is associative, that is:
