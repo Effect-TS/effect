@@ -2,22 +2,40 @@
 
 import type { Either } from "../../../Either"
 import * as Ex from "../../../Exit"
-import type { Lazy, FunctionN } from "../../../Function"
+import type { FunctionN, Lazy } from "../../../Function"
 import * as Common from "../../Common"
 import { DoublyLinkedList } from "../../DoublyLinkedList"
 import { defaultRuntime } from "../../Runtime"
 
 import { Driver } from "./Driver"
 import {
-  FrameType,
-  FoldFrameTag,
   FoldFrame,
-  InterruptFrameTag,
-  InterruptFrame,
-  MapFrameTag,
+  FoldFrameTag,
   Frame,
-  MapFrame
+  FrameType,
+  InterruptFrame,
+  InterruptFrameTag,
+  MapFrame,
+  MapFrameTag
 } from "./Frame"
+
+export const setExitSymbol = Symbol()
+
+export interface SetExit {
+  _tag: typeof setExitSymbol
+  exit: Ex.Exit<any, any>
+}
+
+export function setExit(exit: Ex.Exit<any, any>): SetExit {
+  return {
+    _tag: setExitSymbol,
+    exit
+  }
+}
+
+export function isSetExit(u: any): u is SetExit {
+  return typeof u !== "undefined" && u !== null && u["_tag"] === setExitSymbol
+}
 
 export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Ex.Exit<E, A> | null = null
@@ -92,10 +110,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   dispatchResumeInterrupt({ errors }: { errors?: unknown[] }) {
-    const go = this.handle(Ex.interruptWithError(...(errors || [])))
-    if (go) {
-      // eslint-disable-next-line
-      this.loop(go)
+    if (errors && errors.length === 1 && isSetExit(errors[0])) {
+      this.complete(errors[0].exit)
+    } else {
+      const go = this.handle(Ex.interruptWithError(...(errors || [])))
+      if (go) {
+        // eslint-disable-next-line
+        this.loop(go)
+      }
     }
   }
 

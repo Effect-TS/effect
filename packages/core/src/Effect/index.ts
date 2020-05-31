@@ -75,6 +75,7 @@ import type {
   SyncRE
 } from "../Support/Common/effect"
 import { Driver, DriverImpl } from "../Support/Driver"
+import { setExit } from "../Support/Driver/driver"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 import * as TR from "../Tree"
@@ -472,43 +473,6 @@ export function combineFinalizerExit<E, A>(
       )
     }
   }
-}
-
-export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
-  ioa: Effect<S, R, E, A>,
-  finalizer: Effect<S2, R2, E2, Exit<any, any>[]>
-): Effect<S | S2, R & R2, E | E2, A> {
-  return uninterruptibleMask((cutout) =>
-    chain_(result(cutout(ioa)), (exit) =>
-      exit._tag === "Interrupt"
-        ? chain_(result(finalizer), (finalize) => {
-            /* istanbul ignore else */
-            if (finalize._tag === "Done") {
-              const errors = pipe(
-                [
-                  ...(exit.errors._tag === "Some" ? exit.errors.value : []),
-                  ...flattenArray(
-                    finalize.value.map((x) =>
-                      x._tag === "Interrupt"
-                        ? x.errors._tag === "Some"
-                          ? x.errors.value
-                          : []
-                        : []
-                    )
-                  )
-                ],
-                filterArray((x): x is unknown => x !== undefined)
-              )
-              return errors.length > 0
-                ? completed(interruptWithError(...errors))
-                : completed(exit)
-            } else {
-              throw new Error("BUG: interrupt finalizer should not fail")
-            }
-          })
-        : completed(exit)
-    )
-  )
 }
 
 /**
@@ -1063,9 +1027,32 @@ export class FiberImpl<E, A> implements Fiber<E, A> {
   sendInterrupt = sync(() => {
     this.driver.interrupt()
   })
-  wait = asyncTotal((f: FunctionN<[Exit<E, A>], void>) => this.driver.onExit(f))
+  wait = async<never, Exit<E, A>>((f) => {
+    const listen = this.driver.onExit((ex) => {
+      f(E.right(ex))
+    })
+
+    return (cb) => {
+      listen()
+      cb()
+    }
+  })
   interrupt = applySecond(this.sendInterrupt, this.wait)
-  join = chain_(this.wait, completed)
+  join = chain_(
+    async<never, Exit<E, A>>((f) => {
+      this.driver.onExit((ex) => {
+        f(E.right(ex))
+      })
+
+      return (cb) => {
+        this.driver.onExit((ex) => {
+          cb(setExit(ex))
+        })
+        this.driver.interrupt()
+      }
+    }),
+    completed
+  )
   result = chain_(
     sync(() => this.driver.completed),
     (opt) => (opt === null ? pureNone : map_(completed(opt), O.some))
@@ -1517,6 +1504,43 @@ export function raceFirst<S, S2, R, R2, E, A>(
   io2: Effect<S2, R2, E, A>
 ): AsyncRE<R & R2, E, A> {
   return raceFold(io1, io2, interruptLoser, interruptLoser)
+}
+
+export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
+  ioa: Effect<S, R, E, A>,
+  finalizer: Effect<S2, R2, E2, Exit<any, any>[]>
+): Effect<S | S2, R & R2, E | E2, A> {
+  return uninterruptibleMask((cutout) =>
+    chain_(result(cutout(ioa)), (exit) =>
+      exit._tag === "Interrupt"
+        ? chain_(result(finalizer), (finalize) => {
+            /* istanbul ignore else */
+            if (finalize._tag === "Done") {
+              const errors = pipe(
+                [
+                  ...(exit.errors._tag === "Some" ? exit.errors.value : []),
+                  ...flattenArray(
+                    finalize.value.map((x) =>
+                      x._tag === "Interrupt"
+                        ? x.errors._tag === "Some"
+                          ? x.errors.value
+                          : []
+                        : []
+                    )
+                  )
+                ],
+                filterArray((x): x is unknown => x !== undefined)
+              )
+              return errors.length > 0
+                ? completed(interruptWithError(...errors))
+                : completed(exit)
+            } else {
+              throw new Error("BUG: interrupt finalizer should not fail")
+            }
+          })
+        : completed(exit)
+    )
+  )
 }
 
 /**
