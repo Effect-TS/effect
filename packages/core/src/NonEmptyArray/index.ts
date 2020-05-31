@@ -169,18 +169,18 @@ export function group<A>(
     // tslint:disable-next-line: readonly-array
     const r: Array<NonEmptyArray<A>> = []
     let head: A = as[0]
-    let nea: Array<A> = [head]
+    let nea: Array<A> & { 0: A } = [head]
     for (let i = 1; i < len; i++) {
       const x = as[i]
       if (E.equals(x, head)) {
         nea.push(x)
       } else {
-        r.push(nea as any)
+        r.push(nea)
         head = x
         nea = [head]
       }
     }
-    r.push(nea as any)
+    r.push(nea)
     return r
   }
 }
@@ -204,18 +204,18 @@ export function group_<A>(
   // tslint:disable-next-line: readonly-array
   const r: Array<NonEmptyArray<A>> = []
   let head: A = as[0]
-  let nea: Array<A> = [head]
+  let nea: Array<A> & { 0: A } = [head]
   for (let i = 1; i < len; i++) {
     const x = as[i]
     if (E.equals(x, head)) {
       nea.push(x)
     } else {
-      r.push(nea as any)
+      r.push(nea)
       head = x
       nea = [head]
     }
   }
-  r.push(nea as any)
+  r.push(nea)
   return r
 }
 
@@ -261,7 +261,7 @@ export function groupBy<A>(
   f: (a: A) => string
 ): (as: ReadonlyArray<A>) => ReadonlyRecord<string, NonEmptyArray<A>> {
   return (as) => {
-    const r: Record<string, Array<A>> = {}
+    const r: Record<string, Array<A> & { 0: A }> = {}
     for (const a of as) {
       const k = f(a)
       // eslint-disable-next-line no-prototype-builtins
@@ -271,7 +271,7 @@ export function groupBy<A>(
         r[k] = [a]
       }
     }
-    return r as any
+    return r
   }
 }
 
@@ -279,7 +279,7 @@ export function groupBy_<A>(
   as: ReadonlyArray<A>,
   f: (a: A) => string
 ): ReadonlyRecord<string, NonEmptyArray<A>> {
-  const r: Record<string, Array<A>> = {}
+  const r: Record<string, Array<A> & { 0: A }> = {}
   for (const a of as) {
     const k = f(a)
     // eslint-disable-next-line no-prototype-builtins
@@ -289,7 +289,7 @@ export function groupBy_<A>(
       r[k] = [a]
     }
   }
-  return r as any
+  return r
 }
 
 export function last<A>(nea: NonEmptyArray<A>): A {
@@ -621,14 +621,14 @@ export const foldMap_ = <S>(S: Semigroup<S>) => <A>(
   f: (a: A) => S
 ) => fa.slice(1).reduce((s, a) => S.concat(s, f(a)), f(fa[0]))
 
-export const readonlyNonEmptyArrayFoldable: CFoldable1<URI> = {
+export const foldableNonEmptyArray: CFoldable1<URI> = {
   URI,
   foldMap,
   reduce,
   reduceRight
 }
 
-export const readonlyNonEmptyArray: CMonad1<URI> &
+export const nonEmptyArray: CMonad1<URI> &
   CComonad1<URI> &
   CTraversableWithIndex1<URI, number> &
   CFunctorWithIndex1<URI, number> &
@@ -655,7 +655,7 @@ export const readonlyNonEmptyArray: CMonad1<URI> &
   alt
 }
 
-export const readonlyNonEmptyMonad: CMonad1<URI> & CApplicative1<URI> = {
+export const monadNonEmptyArray: CMonad1<URI> & CApplicative1<URI> = {
   URI,
   map,
   of,
@@ -663,7 +663,7 @@ export const readonlyNonEmptyMonad: CMonad1<URI> & CApplicative1<URI> = {
   chain
 }
 
-export const readonlyNonEmptyAp: CMonad1<URI> & CApplicative1<URI> = {
+export const applicativeNonEmptyArray: CMonad1<URI> & CApplicative1<URI> = {
   URI,
   map,
   of,
@@ -671,21 +671,21 @@ export const readonlyNonEmptyAp: CMonad1<URI> & CApplicative1<URI> = {
   chain
 }
 
-export const Do = () => DoG(readonlyNonEmptyMonad)
+export const Do = () => DoG(monadNonEmptyArray)
 
 export const sequenceS =
   /*#__PURE__*/
-  (() => AP.sequenceS(readonlyNonEmptyAp))()
+  (() => AP.sequenceS(applicativeNonEmptyArray))()
 
 export const sequenceT =
   /*#__PURE__*/
-  (() => AP.sequenceT(readonlyNonEmptyAp))()
+  (() => AP.sequenceT(applicativeNonEmptyArray))()
 
 //
 // Compatibility with fp-ts ecosystem
 //
 
-export const readonlyNonEmptyArray_: Monad1<URI> &
+export const nonEmptyArray_: Monad1<URI> &
   Comonad1<URI> &
   TraversableWithIndex1<URI, number> &
   FunctorWithIndex1<URI, number> &

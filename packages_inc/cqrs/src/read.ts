@@ -85,7 +85,7 @@ export class Read<
           AOfTypes<{ [k in Extract<keyof Types, ElemType<Keys2>>]: Types[k] }> &
             EventMetaHidden
         >
-      ) => T.Effect<S, R, ER, void[]>,
+      ) => T.Effect<S, R, ER, ReadonlyArray<void>>,
       onError: (
         cause: Ex.Cause<ER | TaskError>
       ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this
@@ -141,7 +141,9 @@ export class Read<
     ) => <S, R, ER, R2, ER2 = never>(
       op: (
         matcher: MatcherT<AOfTypes<Types>, Tag>
-      ) => (event: (AOfTypes<Types> & EventMetaHidden)[]) => T.Effect<S, R, ER, void[]>,
+      ) => (
+        event: ReadonlyArray<AOfTypes<Types> & EventMetaHidden>
+      ) => T.Effect<S, R, ER, ReadonlyArray<void>>,
       onError: (
         cause: Ex.Cause<ER | TaskError>
       ) => T.AsyncRE<R2 & logger.Logger & ReadSideConfigService, ER2, void> = this
