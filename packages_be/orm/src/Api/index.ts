@@ -84,7 +84,6 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     withManager,
     withManagerTask,
     withNewRegion,
-    withORMTransaction,
     withRepository,
     withRepositoryTask,
     withTransaction
@@ -100,7 +99,6 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
     withManager,
     withManagerTask,
     withNewRegion,
-    withORMTransaction,
     withRepository,
     withRepositoryTask,
     withTransaction
