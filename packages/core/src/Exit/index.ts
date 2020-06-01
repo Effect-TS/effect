@@ -1,5 +1,6 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
+import * as A from "../Array"
 import * as NA from "../NonEmptyArray"
 import { none, some } from "../Option"
 import * as O from "../Option"
@@ -45,8 +46,8 @@ export interface Abort {
 
 export interface Interrupt {
   readonly _tag: "Interrupt"
-  readonly errors: O.Option<NA.NonEmptyArray<unknown>>
   readonly causedBy: O.Option<Cause<unknown>>
+  errors: O.Option<NA.NonEmptyArray<unknown>>
   next: O.Option<Cause<unknown>>
 }
 
@@ -564,7 +565,16 @@ export function raise<E>(e: E): Raise<E> {
 
 const append_ = <E>(root: Cause<E>, next: Cause<E>) => {
   if (root.next._tag === "None") {
-    root.next = some(next)
+    if (root._tag === "Interrupt" && next._tag === "Interrupt") {
+      const combo = A.concat_(
+        O.getOrElse_(root.errors, (): unknown[] => []),
+        O.getOrElse_(next.errors, (): unknown[] => [])
+      )
+
+      root.errors = A.isNonEmpty(combo) ? O.some(combo) : O.none
+    } else {
+      root.next = some(next)
+    }
   } else {
     append_(root.next.value, next)
   }

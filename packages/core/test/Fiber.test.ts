@@ -72,12 +72,7 @@ describe("Fiber", () => {
 
     const result = await T.runToPromise(T.delay(f.interrupt, 25))
 
-    expect(result).toStrictEqual(
-      Ex.combinedCause(Ex.interrupt)(
-        Ex.interruptWithError("err0"),
-        Ex.interruptWithError("err1")
-      )
-    )
+    expect(result).toStrictEqual(Ex.interruptWithError("err0", "err1"))
     expect(a).toBeCalledTimes(2)
   })
   it("purely supervised", async () => {
