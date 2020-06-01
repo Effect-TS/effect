@@ -46,7 +46,7 @@ describe("Fiber", () => {
             }, 50)
             return (cb) => {
               clearTimeout(t)
-              cb("err")
+              cb("err0")
               a()
             }
           })
@@ -59,7 +59,7 @@ describe("Fiber", () => {
             }, 50)
             return (cb) => {
               clearTimeout(t)
-              cb("err")
+              cb("err1")
               a()
             }
           })
@@ -73,10 +73,9 @@ describe("Fiber", () => {
     const result = await T.runToPromise(T.delay(f.interrupt, 25))
 
     expect(result).toStrictEqual(
-      Ex.withRemaining(
-        Ex.interrupt,
-        Ex.interruptWithError("err"),
-        Ex.interruptWithError("err")
+      Ex.combinedCause(Ex.interrupt)(
+        Ex.interruptWithError("err0"),
+        Ex.interruptWithError("err1")
       )
     )
     expect(a).toBeCalledTimes(2)

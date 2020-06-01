@@ -799,7 +799,7 @@ describe("EffectSafe", () => {
       )
       assert.deepStrictEqual(
         e,
-        ex.withRemaining(ex.raise("use failure"), ex.raise("release failure"))
+        ex.combinedCause(ex.raise("use failure"))(ex.raise("release failure"))
       )
     })
 
@@ -866,7 +866,7 @@ describe("EffectSafe", () => {
       )
       assert.deepStrictEqual(
         e,
-        ex.withRemaining(ex.raise("use failure"), ex.raise("release failure"))
+        ex.combinedCause(ex.raise("use failure"))(ex.raise("release failure"))
       )
     })
 

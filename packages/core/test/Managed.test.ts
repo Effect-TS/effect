@@ -29,7 +29,7 @@ describe("Managed", () => {
     const result = T.runSync(program)
 
     expect(result).toStrictEqual(
-      Ex.withRemaining(Ex.abort("d"), Ex.raise("c"), Ex.raise("b"), Ex.raise("a"))
+      Ex.combinedCause(Ex.abort("d"))(Ex.raise("c"), Ex.raise("b"), Ex.raise("a"))
     )
   })
 
@@ -259,21 +259,21 @@ describe("Managed", () => {
       maSF,
       mbSF,
       [sAllocStr("A"), fDeallocStr("A"), sAllocStr("B"), fDeallocStr("B")],
-      Ex.withRemaining(Ex.raise(fDeallocStr("A")), Ex.raise(fDeallocStr("B")))
+      Ex.combinedCause(Ex.raise(fDeallocStr("A")))(Ex.raise(fDeallocStr("B")))
     )
     createTest(
       "maSF mbFS",
       maSF,
       mbFS,
       [sAllocStr("A"), fDeallocStr("A"), fAllocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("B")), Ex.raise(fDeallocStr("A")))
+      Ex.combinedCause(Ex.raise(fAllocStr("B")))(Ex.raise(fDeallocStr("A")))
     )
     createTest(
       "maSF mbFF",
       maSF,
       mbFF,
       [sAllocStr("A"), fDeallocStr("A"), fAllocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("B")), Ex.raise(fDeallocStr("A")))
+      Ex.combinedCause(Ex.raise(fAllocStr("B")))(Ex.raise(fDeallocStr("A")))
     )
     // endregion
 
@@ -290,21 +290,21 @@ describe("Managed", () => {
       maFS,
       mbSF,
       [fAllocStr("A"), sAllocStr("B"), fDeallocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fDeallocStr("B")))
+      Ex.combinedCause(Ex.raise(fAllocStr("A")))(Ex.raise(fDeallocStr("B")))
     )
     createTest(
       "maFS mbFS",
       maFS,
       mbFS,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
+      Ex.combinedCause(Ex.raise(fAllocStr("A")))(Ex.raise(fAllocStr("B")))
     )
     createTest(
       "maFS mbFF",
       maFS,
       mbFF,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
+      Ex.combinedCause(Ex.raise(fAllocStr("A")))(Ex.raise(fAllocStr("B")))
     )
     // endregion
 
@@ -321,21 +321,21 @@ describe("Managed", () => {
       maFF,
       mbSF,
       [fAllocStr("A"), sAllocStr("B"), fDeallocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fDeallocStr("B")))
+      Ex.combinedCause(Ex.raise(fAllocStr("A")))(Ex.raise(fDeallocStr("B")))
     )
     createTest(
       "maFF mbFS",
       maFF,
       mbFS,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
+      Ex.combinedCause(Ex.raise(fAllocStr("A")))(Ex.raise(fAllocStr("B")))
     )
     createTest(
       "maFF mbFF",
       maFF,
       mbFF,
       [fAllocStr("A"), fAllocStr("B")],
-      Ex.withRemaining(Ex.raise(fAllocStr("A")), Ex.raise(fAllocStr("B")))
+      Ex.combinedCause(Ex.raise(fAllocStr("A")))(Ex.raise(fAllocStr("B")))
     )
     // endregion
   })

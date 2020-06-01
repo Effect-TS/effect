@@ -1,7 +1,7 @@
 import * as A from "../src/Array"
 import * as T from "../src/Effect"
 import { right, left } from "../src/Either"
-import { raise, interruptWithError, done } from "../src/Exit"
+import { raise, interruptWithError, done, causedBy } from "../src/Exit"
 
 describe("ParFast", () => {
   it("should complete", async () => {
@@ -95,7 +95,7 @@ describe("ParFast", () => {
         return (cb) => {
           f()
           clearTimeout(handle)
-          cb(new Error(s))
+          cb(s)
         }
       })
     }
@@ -119,7 +119,7 @@ describe("ParFast", () => {
     const result = await T.runToPromiseExit(A.sequence(T.parFast(T.effect))(processes))
 
     expect(result).toStrictEqual(
-      interruptWithError(new Error("a"), new Error("b"), new Error("c"), new Error("d"))
+      causedBy(raise("ok"))(interruptWithError("a", "b", "c", "d"))
     )
     expect(a.mock.calls.length).toStrictEqual(1)
     expect(b.mock.calls.length).toStrictEqual(1)

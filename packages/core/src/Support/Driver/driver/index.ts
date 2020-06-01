@@ -50,7 +50,7 @@ export class Supervisor {
       } else if (
         fibExit._tag === "Interrupt" &&
         fibExit.errors._tag === "None" &&
-        fibExit.remaining._tag === "None"
+        fibExit.next._tag === "None"
       ) {
         this.fibers.delete(driver)
       }
@@ -77,14 +77,14 @@ export class Supervisor {
       } else if (
         fibExit._tag === "Interrupt" &&
         fibExit.errors._tag === "None" &&
-        fibExit.remaining._tag === "None"
+        fibExit.next._tag === "None"
       ) {
         this.complete(a, driver)
       } else {
         if (a._tag === "Done") {
-          this.complete(Ex.withRemaining(Ex.abort(a.value), fibExit), driver)
+          this.complete(Ex.combinedCause(Ex.abort(a.value))(fibExit), driver)
         } else {
-          this.complete(Ex.withRemaining(a, fibExit), driver)
+          this.complete(Ex.combinedCause(a)(fibExit), driver)
         }
       }
     })
@@ -368,7 +368,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         current = new Common.IRaised({
           _tag: "Abort",
           abortedWith: e,
-          remaining: { _tag: "None" }
+          next: {
+            _tag: "None"
+          }
         })
       }
     }
