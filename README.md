@@ -32,7 +32,7 @@ The library is released with an MIT license and the codebase is fully open-sourc
 As with any good library there is a commercial project that support the development and maintainance, if you want to know more find us at [https://www.matechs.com/](https://www.matechs.com/) we are a digital accelerator looking for smart founders!
 
 ## Performance
-Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly.
+Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly. Additionally there is a radical difference on how we manage interruptability & resource safety, in `effect` we will always prefer safety over performance for this reason we support async interruption with error tracking and full bracketing semantics
 
 Running on cpu i9 @ 4ghz free of load:
 ```
