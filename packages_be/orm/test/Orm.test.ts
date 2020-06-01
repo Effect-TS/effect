@@ -331,8 +331,7 @@ describe("Orm", () => {
     // TODO: Double check why error is duplicated here
     assert.deepStrictEqual(
       res,
-      Ex.withRemaining(
-        Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")),
+      Ex.combinedCause(Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask")))(
         Ex.raise(new DB.TaskError(new Error("ok"), "withManagerTask"))
       )
     )
