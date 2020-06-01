@@ -53,6 +53,8 @@ export class Supervisor {
         fibExit.next._tag === "None"
       ) {
         this.fibers.delete(driver)
+      } else if (fibExit._tag === "Raise" || fibExit._tag === "Abort") {
+        this.fibers.delete(driver)
       }
     })
   }
@@ -72,24 +74,23 @@ export class Supervisor {
     this.fibers.delete(fiber)
 
     fiber.onExit((fibExit) => {
-      if (fibExit._tag === "Done") {
-        this.complete(a, driver)
-      } else if (
+      if (
         fibExit._tag === "Interrupt" &&
-        fibExit.errors._tag === "None" &&
-        fibExit.next._tag === "None"
+        (fibExit.errors._tag === "Some" || fibExit.next._tag === "Some")
       ) {
-        this.complete(a, driver)
-      } else {
         if (a._tag === "Done") {
           this.complete(Ex.combinedCause(Ex.abort(a.value))(fibExit), driver)
         } else {
           this.complete(Ex.combinedCause(a)(fibExit), driver)
         }
+      } else {
+        this.complete(a, driver)
       }
     })
 
-    fiber.interrupt()
+    if (!fiber.completed) {
+      fiber.interrupt()
+    }
   }
 }
 

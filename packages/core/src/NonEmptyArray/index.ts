@@ -124,7 +124,7 @@ export function max_<A>(nea: NonEmptyArray<A>, ord: Ord<A>): A {
  */
 export function getSemigroup<A = never>(): Semigroup<NonEmptyArray<A>> {
   return {
-    concat
+    concat: concat_
   }
 }
 
@@ -404,22 +404,22 @@ export function filterWithIndex_<A>(
 
 export const of: <A>(a: A) => NonEmptyArray<A> = RA.of as any
 
-export function concat<A>(fx: ReadonlyArray<A>, fy: NonEmptyArray<A>): NonEmptyArray<A>
-export function concat<A>(fx: NonEmptyArray<A>, fy: ReadonlyArray<A>): NonEmptyArray<A>
-export function concat<A>(
+export function concat_<A>(fx: ReadonlyArray<A>, fy: NonEmptyArray<A>): NonEmptyArray<A>
+export function concat_<A>(fx: NonEmptyArray<A>, fy: ReadonlyArray<A>): NonEmptyArray<A>
+export function concat_<A>(
   fx: ReadonlyArray<A>,
   fy: ReadonlyArray<A>
 ): ReadonlyArray<A> {
   return fx.concat(fy)
 }
 
-export function concat_<A>(
+export function concat<A>(
   fy: NonEmptyArray<A>
 ): (fx: ReadonlyArray<A>) => NonEmptyArray<A>
-export function concat_<A>(
+export function concat<A>(
   fy: ReadonlyArray<A>
 ): (fx: ReadonlyArray<A>) => NonEmptyArray<A>
-export function concat_<A>(
+export function concat<A>(
   fy: ReadonlyArray<A>
 ): (fx: ReadonlyArray<A>) => ReadonlyArray<A> {
   return (fx) => fx.concat(fy)
@@ -471,12 +471,12 @@ export const traverseWithIndex_: TraverseWithIndex1<
 
 export const alt: <A>(
   fy: () => NonEmptyArray<A>
-) => (fx: NonEmptyArray<A>) => NonEmptyArray<A> = (fy) => (fx) => concat(fx, fy())
+) => (fx: NonEmptyArray<A>) => NonEmptyArray<A> = (fy) => (fx) => concat_(fx, fy())
 
 export const alt_: <A>(
   fx: NonEmptyArray<A>,
   fy: () => NonEmptyArray<A>
-) => NonEmptyArray<A> = (fx, fy) => concat(fx, fy())
+) => NonEmptyArray<A> = (fx, fy) => concat_(fx, fy())
 
 export const ap: <A>(
   fa: NonEmptyArray<A>

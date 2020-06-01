@@ -33,6 +33,22 @@ describe("Managed", () => {
     )
   })
 
+  it("should hold to errors in chain & handle them", () => {
+    const program = pipe(
+      M.bracket(T.pure(0), () => T.raiseError("a")),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("b"))),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("c"))),
+      M.consume(() => T.raiseAbort("d")),
+      T.chainCause(
+        Ex.ifAll((x) => Ex.isCause(x) || Ex.isAbort(x))((_) => T.pure(1), T.completed)
+      )
+    )
+
+    const result = T.runSync(program)
+
+    expect(result).toStrictEqual(Ex.done(1))
+  })
+
   it("should use resource encaseEffect with environment", async () => {
     const config = {
       test: 1

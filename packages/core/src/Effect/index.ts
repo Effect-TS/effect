@@ -372,6 +372,19 @@ export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   )
 }
 
+export function chainCause<S, R, E1, E2, A>(
+  f: (_: Cause<E1>) => Effect<S, R, E2, A>
+): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
+  return (io) => chainCause_(io, f)
+}
+
+export function chainCause_<S, R, E1, S2, R2, E2, A, A2>(
+  io: Effect<S, R, E1, A>,
+  f: (_: Cause<E1>) => Effect<S2, R2, E2, A2>
+): Effect<S | S2, R & R2, E2, A | A2> {
+  return foldExit_(io, f, pure)
+}
+
 export const chainErrorTap = <S, R, E1>(f: (e: E1) => Effect<S, R, never, unknown>) => <
   S2,
   R2,
@@ -1456,12 +1469,26 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
                 finalBCausedBy
               ])
 
-              const ex =
+              let ex: Cause<E> =
                 errors.length > 0
                   ? caused._tag === "Some"
                     ? causedBy(caused.value)(interruptWithError(...errors))
                     : interruptWithError(...errors)
                   : exit
+
+              if (
+                finalize.value[0]._tag === "Raise" ||
+                finalize.value[0]._tag === "Abort"
+              ) {
+                ex = combinedCause(ex)(finalize.value[0])
+              }
+
+              if (
+                finalize.value[1]._tag === "Raise" ||
+                finalize.value[1]._tag === "Abort"
+              ) {
+                ex = combinedCause(ex)(finalize.value[1])
+              }
 
               return completed(ex)
             } else {
