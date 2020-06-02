@@ -83,6 +83,23 @@ const Console = pipe(
     )
   )
 )
+const Console2 = pipe(
+  T.pure("prefix2"),
+  L.useEffect((_) =>
+    L.fromEffect(
+      T.sync(
+        (): Console => ({
+          [ConsoleURI]: {
+            log: (message) =>
+              T.sync(() => {
+                console.log(`${_}:${message}`)
+              })
+          }
+        })
+      )
+    )
+  )
+)
 
 const MessageURI = "@matechs/core/test/layers/MessageURI"
 
@@ -97,8 +114,18 @@ export const Message = L.fromValue<Message>({
     message: "ok"
   }
 })
+export const Message2 = L.fromValue<Message>({
+  [MessageURI]: {
+    message: "okok"
+  }
+})
 
 const App = Calculator.merge(Logger, Message).with(Console)
+const App2 = Calculator.with(Logger)
+  .with(Console.default())
+  .with(Message)
+  .with(Message2)
+  .with(Console2)
 
 const program = T.sequenceT(
   T.accessM((_: Message) => info(_[MessageURI].message)),
@@ -120,6 +147,20 @@ describe("Layer", () => {
       ["prefix:ok"],
       ["prefix:done"],
       ["prefix:destroy"]
+    ])
+    expect(res[1]).toStrictEqual(13)
+  })
+  it("should use inverted layer", () => {
+    const mock = jest.spyOn(console, "log").mockImplementation(() => {
+      //
+    })
+
+    const res = T.runUnsafeSync(App2.use(program))
+
+    expect(mock.mock.calls).toEqual([
+      ["prefix2:ok"],
+      ["prefix2:done"],
+      ["prefix2:destroy"]
     ])
     expect(res[1]).toStrictEqual(13)
   })
