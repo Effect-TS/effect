@@ -1,7 +1,7 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
 import * as T from "../Effect"
-import type { Exit, Cause } from "../Exit"
+import * as Ex from "../Exit"
 import { Completable, makeCompletable } from "../Support/Completable"
 
 export interface Deferred<S, R, E, A> {
@@ -42,13 +42,13 @@ export interface Deferred<S, R, E, A> {
    * Complete this deferred with the given cuase
    * @param c
    */
-  cause(c: Cause<E>): T.Sync<void>
+  cause(c: Ex.Cause<E>): T.Sync<void>
 
   /**
    * complete this Defered with the provide exit status
    * @param e
    */
-  complete(e: Exit<E, A>): T.Sync<void>
+  complete(e: Ex.Exit<E, A>): T.Sync<void>
 
   /**
    * Set this deferred with the result of source
@@ -71,6 +71,7 @@ export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
   wait: T.AsyncRE<R, E, A>
   interrupt: T.Sync<void>
   c: Completable<T.Effect<S, R, E, A>>
+  causedBy: Ex.Cause<unknown> | undefined
 
   constructor(readonly r: R) {
     this.c = makeCompletable()
@@ -80,7 +81,11 @@ export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
     )
 
     this.interrupt = T.sync(() => {
-      this.c.complete(T.raiseInterrupt)
+      this.c.complete(
+        this.causedBy
+          ? T.completed(Ex.causedBy(this.causedBy)(Ex.interrupt))
+          : T.raiseInterrupt
+      )
     })
   }
 
@@ -102,13 +107,13 @@ export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
     })
   }
 
-  cause(e: Cause<E>): T.Sync<void> {
+  cause(e: Ex.Cause<E>): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.raised(e))
     })
   }
 
-  complete(exit: Exit<E, A>): T.Sync<void> {
+  complete(exit: Ex.Exit<E, A>): T.Sync<void> {
     return T.sync(() => {
       this.c.complete(T.completed(exit))
     })
@@ -118,7 +123,12 @@ export class DeferredImpl<S, R, E, A> implements Deferred<S, R, E, A> {
     const completed = T.chain_(T.result(T.provide(this.r as R)(source)), (e) =>
       this.complete(e)
     )
-    return T.onInterrupted_(completed, this.interrupt)
+    return T.onInterruptedExit_(completed, (int) => {
+      if (int.causedBy._tag === "Some") {
+        this.causedBy = int.causedBy.value
+      }
+      return this.interrupt
+    })
   }
 }
 
