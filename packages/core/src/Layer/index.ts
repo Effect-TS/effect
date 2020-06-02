@@ -83,8 +83,14 @@ export class Layer<S, R, E, A> {
 
   use: T.Provider<R, A, E, S> = (op) => M.use(this.payload, (a) => T.provide(a)(op))
 
-  default: T.Provider<R, A, E, S> = (op) =>
-    M.use(this.payload, (a) => T.provide(a, "inverted")(op))
+  /**
+   * Use a layer as a default provider that can be overwritten by subsequent ones
+   */
+  inverted() {
+    return fromProvider<S, R, E, A>((op) =>
+      M.use(this.payload, (a) => T.provide(a, "inverted")(op))
+    )
+  }
 }
 
 /**
