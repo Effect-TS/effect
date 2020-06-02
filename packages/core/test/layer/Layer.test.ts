@@ -122,7 +122,7 @@ export const Message2 = L.fromValue<Message>({
 
 const App = Calculator.merge(Logger, Message).with(Console)
 const App2 = Calculator.with(Logger)
-  .with(Console.inverted())
+  .with(Console.default())
   .with(Message)
   .with(Message2)
   .with(Console2)
