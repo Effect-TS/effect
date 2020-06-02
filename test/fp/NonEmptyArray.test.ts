@@ -348,7 +348,7 @@ describe("NonEmptyArray", () => {
   })
 
   it("alt / concat", () => {
-    assert.deepStrictEqual(_.concat(["a"], []), ["a"])
+    assert.deepStrictEqual(_.concat_(["a"], []), ["a"])
     assert.deepStrictEqual(_.nonEmptyArray.alt(() => ["b"])(["a"]), ["a", "b"])
   })
 

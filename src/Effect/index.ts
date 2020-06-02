@@ -24,18 +24,18 @@ import * as E from "../Either"
 import {
   abort,
   Cause,
+  causedBy,
+  combinedCause,
   done,
   Exit,
   interrupt,
   interruptWithError,
   raise,
-  withRemaining
+  Interrupt
 } from "../Exit"
 import { flow, identity } from "../Function"
 import type { FunctionN, Lazy, Predicate, Refinement } from "../Function"
-import type { Monoid } from "../Monoid"
-import * as NA from "../NonEmptyArray"
-import type { NonEmptyArray } from "../NonEmptyArray"
+import * as Mon from "../Monoid"
 import * as O from "../Option"
 import { pipe } from "../Pipe"
 import * as RE from "../Record"
@@ -90,7 +90,8 @@ import {
   pure,
   pureNone,
   suspended,
-  zipWith_
+  zipWith_,
+  sync
 } from "./Fiber"
 
 export {
@@ -281,14 +282,9 @@ export function bimap_<S, R, E1, E2, A, B>(
   return foldExit_(
     io,
     (cause) =>
-      cause._tag === "Raise"
-        ? completed(
-            withRemaining(
-              raise(leftMap(cause.error)),
-              ...(cause.remaining._tag === "Some" ? cause.remaining.value : [])
-            )
-          )
-        : completed(cause),
+      cause._tag === "Raise" && cause.next._tag === "None"
+        ? completed(raise(leftMap(cause.error)))
+        : completed(combinedCause(abort("bimap with multiple errors"))(cause)),
     flow(rightMap, pure)
   )
 }
@@ -357,57 +353,50 @@ export function chainEither<A, E, B>(
  * @param f
  */
 export function chainError<S, R, E1, E2, A>(
-  f: (_: E1, remaining: O.Option<NonEmptyArray<Cause<unknown>>>) => Effect<S, R, E2, A>
+  f: (_: E1) => Effect<S, R, E2, A>
 ): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
   return (io) => chainError_(io, f)
 }
 
 export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: (
-    _: E1,
-    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
-  ) => Effect<S2, R2, E2, A2>
+  f: (_: E1) => Effect<S2, R2, E2, A2>
 ): Effect<S | S2, R & R2, E2, A | A2> {
   return foldExit_(
     io,
     (cause) =>
-      cause._tag === "Raise" ? f(cause.error, cause.remaining) : completed(cause),
+      cause._tag === "Raise" && cause.next._tag === "None"
+        ? f(cause.error)
+        : completed(combinedCause(abort("chainError with multiple errors"))(cause)),
     pure
   )
 }
 
-export const chainErrorTap = <S, R, E1, E2>(
-  f: (
-    e: E1,
-    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
-  ) => Effect<S, R, E2, unknown>
-) => <S2, R2, A>(io: Effect<S2, R2, E1, A>) => chainErrorTap_(io, f)
+export function chainCause<S, R, E1, E2, A>(
+  f: (_: Cause<E1>) => Effect<S, R, E2, A>
+): <S2, A2, R2>(rio: Effect<S2, R2, E1, A2>) => Effect<S | S2, R & R2, E2, A | A2> {
+  return (io) => chainCause_(io, f)
+}
 
-export const chainErrorTap_ = <S, R, E1, S2, R2, E2, A>(
+export function chainCause_<S, R, E1, S2, R2, E2, A, A2>(
   io: Effect<S, R, E1, A>,
-  f: (
-    _: E1,
-    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
-  ) => Effect<S2, R2, E2, unknown>
-) =>
-  chainError_(io, (e, remaining) =>
-    foldExit_(
-      f(e, remaining),
-      (_) =>
-        completed(
-          withRemaining(
-            _,
-            raise(e),
-            ...(remaining._tag === "Some" ? remaining.value : [])
-          )
-        ),
-      () =>
-        completed(
-          withRemaining(raise(e), ...(remaining._tag === "Some" ? remaining.value : []))
-        )
-    )
-  )
+  f: (_: Cause<E1>) => Effect<S2, R2, E2, A2>
+): Effect<S | S2, R & R2, E2, A | A2> {
+  return foldExit_(io, f, pure)
+}
+
+export const chainErrorTap = <S, R, E1>(f: (e: E1) => Effect<S, R, never, unknown>) => <
+  S2,
+  R2,
+  A
+>(
+  io: Effect<S2, R2, E1, A>
+) => chainErrorTap_(io, f)
+
+export const chainErrorTap_ = <S, R, E1, S2, R2, A>(
+  io: Effect<S, R, E1, A>,
+  f: (_: E1) => Effect<S2, R2, never, unknown>
+) => chainError_(io, (e) => chain_(f(e), () => completed(raise(e))))
 
 export const chainTap: <S1, R, E, A, B>(
   f: (a: A) => Effect<S1, R, E, B>
@@ -451,15 +440,19 @@ export function combineFinalizerExit<E, A>(
   } else if (releaseExit._tag === "Done") {
     return fiberExit
   } else {
-    return {
-      ...fiberExit,
-      remaining: O.some(
-        fiberExit.remaining._tag === "Some"
-          ? NA.snoc_(fiberExit.remaining.value, releaseExit)
-          : NA.of(releaseExit)
-      )
-    }
+    return combinedCause(fiberExit)(releaseExit)
   }
+}
+
+export function inspect<S, R, E, A>(_: Effect<S, R, E, A>) {
+  return chain_(result(_), (x) =>
+    chain_(
+      sync(() => {
+        console.log(x)
+      }),
+      () => completed(x)
+    )
+  )
 }
 
 export function completeLatched<E1, E2, E3, A, B, C, R>(
@@ -803,7 +796,9 @@ export function getCauseValidationM<E>(
   }
 }
 
-export function getMonoid<S, R, E, A>(m: Monoid<A>): Monoid<Effect<S, R, E, A>> {
+export function getMonoid<S, R, E, A>(
+  m: Mon.Monoid<A>
+): Mon.Monoid<Effect<S, R, E, A>> {
   return {
     ...getSemigroup(m),
     empty: pure(m.empty)
@@ -841,8 +836,7 @@ export const handle = <
       {
         [k in K]: KK
       }
-    >,
-    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
+    >
   ) => Effect<S2, R2, E2, A2>
 ) => <S, R, A>(
   _: Effect<S, R, E, A>
@@ -858,15 +852,13 @@ export const handle = <
   | E2,
   A | A2
 > =>
-  chainError_(_, (e, remaining) => {
+  chainError_(_, (e) => {
     if (k in e) {
       if (e[k] === kk) {
-        return f(e as any, remaining) as any
+        return f(e as any) as any
       }
     }
-    return completed(
-      withRemaining(raise(e), ...(remaining._tag === "Some" ? remaining.value : []))
-    )
+    return completed(raise(e))
   })
 
 export const makeHandle = <K extends string>(k: K) => <
@@ -884,8 +876,7 @@ export const makeHandle = <K extends string>(k: K) => <
       {
         [k in K]: KK
       }
-    >,
-    remaining: O.Option<NonEmptyArray<Cause<unknown>>>
+    >
   ) => Effect<S2, R2, E2, A2>
 ) => handle<E, K, KK, S2, R2, E2, A2>(k, kk, f)
 
@@ -1024,10 +1015,7 @@ export function mapError<E1, E2>(
 export const mapLeft_: <S, R, E, A, G>(
   fea: Effect<S, R, E, A>,
   f: (e: E) => G
-) => Effect<S, R, G, A> = (io, f) =>
-  chainError_(io, (x, rem) =>
-    completed(withRemaining(raise(f(x)), ...(rem._tag === "Some" ? rem.value : [])))
-  )
+) => Effect<S, R, G, A> = (io, f) => chainError_(io, (x) => completed(raise(f(x))))
 
 /**
  * An IO that never produces a value or an error.
@@ -1094,6 +1082,21 @@ export function onInterrupted_<S, R, E, A, S2, R2, E2>(
   )
 }
 
+export function onInterruptedExit_<S, R, E, A, S2, R2, E2>(
+  ioa: Effect<S, R, E, A>,
+  finalizer: (_: Interrupt) => Effect<S2, R2, E2, unknown>
+): Effect<S | S2, R & R2, E | E2, A> {
+  return uninterruptibleMask((cutout) =>
+    chain_(result(cutout(ioa)), (exit) =>
+      exit._tag === "Interrupt"
+        ? chain_(result(finalizer(exit)), (finalize) =>
+            completed(combineFinalizerExit(exit, finalize))
+          )
+        : completed(exit)
+    )
+  )
+}
+
 export function or_(
   predicate: boolean
 ): <S, R, E, A>(
@@ -1117,9 +1120,7 @@ export function or<S, R, E, A>(
  * @param io
  */
 export function orAbort<S, R, E, A>(io: Effect<S, R, E, A>): Effect<S, R, never, A> {
-  return chainError_(io, (e, rem) =>
-    completed(withRemaining(abort(e), ...(rem._tag === "Some" ? rem.value : [])))
-  )
+  return chainError_(io, (e) => completed(abort(e)))
 }
 
 /**
@@ -1272,7 +1273,9 @@ export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
               ? zipWith_(completed(aExit), bFiber.join, f)
               : chain_(bFiber.interrupt, (x) =>
                   x._tag === "Interrupt" && x.errors._tag === "Some"
-                    ? completed(x)
+                    ? aExit._tag === "Raise" || aExit._tag === "Abort"
+                      ? completed(causedBy(aExit)(x))
+                      : completed(x)
                     : completed(aExit)
                 )
           ),
@@ -1284,7 +1287,9 @@ export function parFastZipWith_<S, S2, R, R2, E, E2, A, B, C>(
               ? zipWith_(aFiber.join, completed(bExit), f)
               : chain_(aFiber.interrupt, (x) =>
                   x._tag === "Interrupt" && x.errors._tag === "Some"
-                    ? completed(x)
+                    ? bExit._tag === "Raise" || bExit._tag === "Abort"
+                      ? completed(causedBy(bExit)(x))
+                      : completed(x)
                     : completed(bExit)
                 )
           )
@@ -1424,7 +1429,7 @@ export function raceFirst<S, S2, R, R2, E, A>(
 
 export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
   ioa: Effect<S, R, E, A>,
-  finalizer: Effect<S2, R2, E2, Exit<any, any>[]>
+  finalizer: Effect<S2, R2, E2, [Exit<any, any>, Exit<any, any>]>
 ): Effect<S | S2, R & R2, E | E2, A> {
   return uninterruptibleMask((cutout) =>
     chain_(result(cutout(ioa)), (exit) =>
@@ -1447,9 +1452,45 @@ export function combineInterruptExit<S, R, E, A, S2, R2, E2>(
                 ],
                 filterArray((x): x is unknown => x !== undefined)
               )
-              return errors.length > 0
-                ? completed(interruptWithError(...errors))
-                : completed(exit)
+
+              const exCausedBy = exit.causedBy
+              const finalACausedBy =
+                finalize.value[0]._tag === "Interrupt"
+                  ? finalize.value[0].causedBy
+                  : O.none
+              const finalBCausedBy =
+                finalize.value[1]._tag === "Interrupt"
+                  ? finalize.value[1].causedBy
+                  : O.none
+
+              const caused = Mon.fold(O.getFirstMonoid<Cause<unknown>>())([
+                exCausedBy,
+                finalACausedBy,
+                finalBCausedBy
+              ])
+
+              let ex: Cause<E> =
+                errors.length > 0
+                  ? caused._tag === "Some"
+                    ? causedBy(caused.value)(interruptWithError(...errors))
+                    : interruptWithError(...errors)
+                  : exit
+
+              if (
+                finalize.value[0]._tag === "Raise" ||
+                finalize.value[0]._tag === "Abort"
+              ) {
+                ex = combinedCause(ex)(finalize.value[0])
+              }
+
+              if (
+                finalize.value[1]._tag === "Raise" ||
+                finalize.value[1]._tag === "Abort"
+              ) {
+                ex = combinedCause(ex)(finalize.value[1])
+              }
+
+              return completed(ex)
             } else {
               throw new Error("BUG: interrupt finalizer should not fail")
             }

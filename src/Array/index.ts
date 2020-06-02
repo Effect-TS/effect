@@ -64,12 +64,12 @@ import type { Show } from "../Show"
 
 export const alt: <A>(
   that: () => readonly A[]
-) => (fa: readonly A[]) => readonly A[] = (that) => (fa) => concat(fa, that())
+) => (fa: readonly A[]) => readonly A[] = (that) => (fa) => concat_(fa, that())
 
 export const alt_: <A>(fa: readonly A[], that: () => readonly A[]) => readonly A[] = (
   fa,
   that
-) => concat(fa, that())
+) => concat_(fa, that())
 
 export const ap = <A>(fa: readonly A[]) => <B>(
   fab: readonly ((a: A) => B)[]
@@ -298,7 +298,7 @@ export function comprehension<R>(
   return go(empty, input)
 }
 
-export const concat = <A>(
+export const concat_ = <A>(
   x: ReadonlyArray<A>,
   y: ReadonlyArray<A>
 ): ReadonlyArray<A> => {
@@ -318,6 +318,29 @@ export const concat = <A>(
     r[i + lenx] = y[i]
   }
   return r
+}
+
+export const concat = <A>(
+  y: ReadonlyArray<A>
+): ((x: ReadonlyArray<A>) => ReadonlyArray<A>) => {
+  return (x) => {
+    const lenx = x.length
+    if (lenx === 0) {
+      return y
+    }
+    const leny = y.length
+    if (leny === 0) {
+      return x
+    }
+    const r = Array(lenx + leny)
+    for (let i = 0; i < lenx; i++) {
+      r[i] = x[i]
+    }
+    for (let i = 0; i < leny; i++) {
+      r[i + lenx] = y[i]
+    }
+    return r
+  }
 }
 
 /**
@@ -978,7 +1001,7 @@ export function getEq<A>(E: Eq<A>): Eq<ReadonlyArray<A>> {
  */
 export function getMonoid<A = never>(): Monoid<ReadonlyArray<A>> {
   return {
-    concat,
+    concat: concat_,
     empty
   }
 }
@@ -1940,7 +1963,7 @@ export function union<A>(
 ): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
   const elemE = elem_(E)
   return (xs, ys) =>
-    concat(
+    concat_(
       xs,
       ys.filter((a) => !elemE(xs, a))
     )
