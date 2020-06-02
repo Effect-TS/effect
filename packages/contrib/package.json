@@ -1,6 +1,6 @@
 {
   "name": "@matechs/contrib",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -21,7 +21,7 @@
     "@types/node": "^14.0.5"
   },
   "dependencies": {
-    "@matechs/core": "^2.0.0"
+    "@matechs/core": "^2.1.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
