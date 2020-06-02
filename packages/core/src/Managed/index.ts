@@ -14,7 +14,7 @@ import * as D from "../Do"
 import * as T from "../Effect"
 import type { Either } from "../Either"
 import * as E from "../Either"
-import { done, Exit, raise, withRemaining } from "../Exit"
+import { done, Exit, raise, combinedCause } from "../Exit"
 import {
   constant,
   FunctionN,
@@ -262,7 +262,7 @@ function foldExitsWithFallback<E, A, B, S, S2, R, R2>(
       : pipe(
           onBFail(aExit.value),
           T.foldExit(
-            (_) => T.completed(withRemaining(bExit, _)),
+            (_) => T.completed(combinedCause(bExit)(_)),
             () => T.raised(bExit)
           )
         )
@@ -270,11 +270,11 @@ function foldExitsWithFallback<E, A, B, S, S2, R, R2>(
     ? pipe(
         onAFail(bExit.value),
         T.foldExit(
-          (_) => T.completed(withRemaining(aExit, _)),
+          (_) => T.completed(combinedCause(aExit)(_)),
           () => T.raised(aExit)
         )
       )
-    : T.completed(withRemaining(aExit, bExit))
+    : T.completed(combinedCause(aExit)(bExit))
 }
 
 /**

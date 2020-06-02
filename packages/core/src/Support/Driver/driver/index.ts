@@ -50,8 +50,10 @@ export class Supervisor {
       } else if (
         fibExit._tag === "Interrupt" &&
         fibExit.errors._tag === "None" &&
-        fibExit.remaining._tag === "None"
+        fibExit.next._tag === "None"
       ) {
+        this.fibers.delete(driver)
+      } else if (fibExit._tag === "Raise" || fibExit._tag === "Abort") {
         this.fibers.delete(driver)
       }
     })
@@ -72,24 +74,23 @@ export class Supervisor {
     this.fibers.delete(fiber)
 
     fiber.onExit((fibExit) => {
-      if (fibExit._tag === "Done") {
-        this.complete(a, driver)
-      } else if (
+      if (
         fibExit._tag === "Interrupt" &&
-        fibExit.errors._tag === "None" &&
-        fibExit.remaining._tag === "None"
+        (fibExit.errors._tag === "Some" || fibExit.next._tag === "Some")
       ) {
-        this.complete(a, driver)
-      } else {
         if (a._tag === "Done") {
-          this.complete(Ex.withRemaining(Ex.abort(a.value), fibExit), driver)
+          this.complete(Ex.combinedCause(Ex.abort(a.value))(fibExit), driver)
         } else {
-          this.complete(Ex.withRemaining(a, fibExit), driver)
+          this.complete(Ex.combinedCause(a)(fibExit), driver)
         }
+      } else {
+        this.complete(a, driver)
       }
     })
 
-    fiber.interrupt()
+    if (!fiber.completed) {
+      fiber.interrupt()
+    }
   }
 }
 
@@ -368,7 +369,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
         current = new Common.IRaised({
           _tag: "Abort",
           abortedWith: e,
-          remaining: { _tag: "None" }
+          next: {
+            _tag: "None"
+          }
         })
       }
     }

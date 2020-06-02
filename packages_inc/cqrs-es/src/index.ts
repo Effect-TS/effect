@@ -64,7 +64,7 @@ export const aggregate = <
           ? process({ ...a, ...meta.value })
           : T.raiseAbort(new Error("cannot decode metadata"))
       )
-    )(ormOffsetStore(agg.db))((x) => agg.db.withORMTransaction(x))
+    )(ormOffsetStore(agg.db))((x) => agg.db.withTransaction(x))
 })
 
 export { EventStoreError, EventStoreConfig, eventStoreURI } from "./client"

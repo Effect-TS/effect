@@ -60,7 +60,7 @@ export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todo
 )(
   // provides environment and bracket over process step
   // this will wrap process + set offset on a single event
-  (processEff) => todosAggregate.db.withORMTransaction(processEff)
+  (processEff) => todosAggregate.db.withTransaction(processEff)
 )
 
 export const main = bracketPool(

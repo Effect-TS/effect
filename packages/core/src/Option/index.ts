@@ -543,6 +543,27 @@ export function getOrElse<A>(onNone: () => A): (ma: Option<A>) => A {
   return (o) => (o._tag === "None" ? onNone() : o.value)
 }
 
+export function getOrElse_<S, R, E, A, S2, R2, E2, B>(
+  ma: Option<Effect<S, R, E, A>>,
+  onNone: () => Effect<S2, R2, E2, B>
+): Effect<S | S2, R & R2, E | E2, A | B>
+export function getOrElse_<S, R, E, A, S2, R2, E2, B>(
+  ma: Option<Managed<S, R, E, A>>,
+  onNone: () => Managed<S2, R2, E2, B>
+): Managed<S | S2, R & R2, E | E2, A | B>
+export function getOrElse_<S, R, E, A, S2, R2, E2, B>(
+  ma: Option<Stream<S, R, E, A>>,
+  onNone: () => Stream<S2, R2, E2, B>
+): Stream<S | S2, R & R2, E | E2, A | B>
+export function getOrElse_<S, R, E, A, S2, R2, E2, B>(
+  ma: Option<StreamEither<S, R, E, A>>,
+  onNone: () => StreamEither<S2, R2, E2, B>
+): StreamEither<S | S2, R & R2, E | E2, A | B>
+export function getOrElse_<A, B>(ma: Option<A>, onNone: () => B): A | B
+export function getOrElse_<A>(o: Option<A>, onNone: () => A): A {
+  return o._tag === "None" ? onNone() : o.value
+}
+
 /**
  * Returns a `Refinement` (i.e. a custom type guard) from a `Option` returning function.
  * This function ensures that a custom type guard definition is type-safe.
