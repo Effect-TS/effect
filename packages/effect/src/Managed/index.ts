@@ -30,7 +30,7 @@ import type { Option } from "../Option"
 import { pipe } from "../Pipe"
 import * as RE from "../Record"
 import type { Semigroup } from "../Semigroup"
-import { ManagedURI as URI } from "../Support/Common"
+import { ManagedURI as URI, AsyncFn } from "../Support/Common"
 import * as TR from "../Tree"
 
 /**
@@ -104,6 +104,24 @@ export function useProvider_<S, R, E, A, S2, R2, E2, A2>(
     managed: ma,
     provider
   })
+}
+
+export function accessM<S, R, E, A, R2>(
+  f: (_: R2) => Managed<S, R, E, A>
+): Managed<S, R2 & R, E, A> {
+  return chain_(encaseEffect(T.accessEnvironment<R2>()), f)
+}
+
+export function access<R2, A>(f: (_: R2) => A): SyncR<R2, A> {
+  return map_(encaseEffect(T.accessEnvironment<R2>()), f)
+}
+
+export function sync<A>(f: () => A): Sync<A> {
+  return encaseEffect(T.sync(f))
+}
+
+export function async<E, A>(f: AsyncFn<E, A>): AsyncE<E, A> {
+  return encaseEffect(T.async(f))
 }
 
 export function useProvider<S2, R2, E2, A2>(
