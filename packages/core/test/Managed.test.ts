@@ -1,8 +1,7 @@
 import * as assert from "assert"
 
-import { effect as T, managed as M, exit as Ex } from "../src"
+import { effect as T, exit as Ex, managed as M } from "../src"
 import * as Ar from "../src/Array"
-import { Do } from "../src/Do"
 import { eqString } from "../src/Eq"
 import { constVoid } from "../src/Function"
 import { monoidSum } from "../src/Monoid"
@@ -33,126 +32,51 @@ describe("Managed", () => {
     )
   })
 
-  it("should hold to errors in chain & handle them", () => {
-    const program = pipe(
-      M.bracket(T.pure(0), () => T.raiseError("a")),
-      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("b"))),
-      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("c"))),
-      M.consume(() => T.raiseAbort("d")),
-      T.chainCause(
-        Ex.ifAll((x) => Ex.isCause(x) || Ex.isAbort(x))((_) => T.pure(1), T.completed)
-      )
-    )
-
-    const result = T.runSync(program)
-
-    expect(result).toStrictEqual(Ex.done(1))
-  })
-
-  it("should use resource encaseEffect with environment", async () => {
-    const config = {
-      test: 1
-    }
-
-    const resource = M.encaseEffect(
-      T.accessM(({ test }: typeof config) => T.pure(test))
-    )
-
-    const result = await T.runToPromise(
-      T.provide(config)(
-        M.use(resource, (n) => T.accessM(({ test }: typeof config) => T.pure(n + test)))
-      )
-    )
-
-    assert.deepStrictEqual(result, 2)
-  })
-
-  it("should use nested env", async () => {
-    const program = pipe(
-      M.pure(1),
-      M.chain((n) =>
-        M.bracket(
-          T.access(({ s }: { s: number }) => n + s),
-          () => T.unit
-        )
-      ),
-      M.consume(T.pure)
-    )
-
-    const res = await pipe(program, T.provide({ s: 2 }), T.runToPromiseExit)
-
-    assert.deepStrictEqual(res, Ex.done(3))
-  })
-
-  it("should use resource bracket", async () => {
+  it("should use resource allocate", async () => {
     let released = false
 
-    const resource = M.bracket(T.pure(1), () =>
-      T.sync(() => {
-        released = true
-      })
-    )
+    const program = T.Do()
+      .bindL("resource", () =>
+        M.allocate(
+          M.bracket(T.pure(1), () =>
+            T.sync(() => {
+              released = true
+            })
+          )
+        )
+      )
+      .bindL("result", ({ resource }) => T.pure(resource.a + 1))
+      .doL(({ resource }) => resource.release)
+      .return(({ result }) => result)
 
-    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
+    const result = await T.runToPromise(program)
 
     assert.deepStrictEqual(result, 2)
     assert.deepStrictEqual(released, true)
   })
+  it("should use resource leaked", async () => {
+    let released = false
 
-  it("should use resource pure", async () => {
-    const resource = M.pure(1)
+    const program = T.Do()
+      .bindL("resource", () =>
+        M.allocate(
+          M.bracket(T.pure(1), () =>
+            T.sync(() => {
+              released = true
+            })
+          )
+        )
+      )
+      .bindL("result", ({ resource }) => T.pure(resource.a + 1))
+      .return(({ resource }) => resource.release)
 
-    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
+    const release = await T.runToPromise(program)
 
-    assert.deepStrictEqual(result, 2)
-  })
+    assert.deepStrictEqual(released, false)
 
-  it("should use resource suspend", async () => {
-    const resource = M.suspend(T.sync(() => M.pure(1)))
+    await T.runToPromise(release)
 
-    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
-
-    assert.deepStrictEqual(result, 2)
-  })
-
-  it("should use resource chain", async () => {
-    const resource = M.pure(1)
-    const chain = M.chain((n: number) => M.pure(n + 1))
-
-    const result = await T.runToPromise(M.use(chain(resource), (n) => T.pure(n + 1)))
-
-    assert.deepStrictEqual(result, 3)
-  })
-
-  it("should use resource map", async () => {
-    const resource = M.pure(1)
-    const mapped = pipe(
-      resource,
-      M.managed.map((n) => n + 1)
-    )
-
-    const result = await T.runToPromise(M.use(mapped, (n) => T.pure(n + 1)))
-
-    assert.deepStrictEqual(result, 3)
-  })
-
-  it("should use resource mapWith", async () => {
-    const resource = M.pure(1)
-    const mapped = M.map((n: number) => n + 1)
-
-    const result = await T.runToPromise(M.use(mapped(resource), (n) => T.pure(n + 1)))
-
-    assert.deepStrictEqual(result, 3)
-  })
-
-  it("should use resource zip", async () => {
-    const ma = M.pure(1)
-    const mb = M.pure(1)
-    const zip = M.zip(ma, mb)
-
-    const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)))
-
-    assert.deepStrictEqual(result, 2)
+    assert.deepStrictEqual(released, true)
   })
 
   describe("parZipWith", () => {
@@ -222,7 +146,7 @@ describe("Managed", () => {
         const strArrDiff = Ar.difference(Ar.getEq(eqString))
         const expectCalls_ = Ar.array.map(Ar.of)(expectCalls)
 
-        const zip = M.parZipWith(ma, mb, (n, m) => n + m)
+        const zip = M.parZipWith_(ma, mb, (n, m) => n + m)
         const result = await T.runToPromiseExit(M.use(zip, T.pure))
 
         expect(strArrDiff(logMock.mock.calls, expectCalls_)).toEqual([])
@@ -356,6 +280,128 @@ describe("Managed", () => {
     // endregion
   })
 
+  it("should hold to errors in chain & handle them", () => {
+    const program = pipe(
+      M.bracket(T.pure(0), () => T.raiseError("a")),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("b"))),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("c"))),
+      M.consume(() => T.raiseAbort("d")),
+      T.chainCause(
+        Ex.ifAll((x) => Ex.isCause(x) || Ex.isAbort(x))((_) => T.pure(1), T.completed)
+      )
+    )
+
+    const result = T.runSync(program)
+
+    expect(result).toStrictEqual(Ex.done(1))
+  })
+
+  it("should use resource encaseEffect with environment", async () => {
+    const config = {
+      test: 1
+    }
+
+    const resource = M.encaseEffect(
+      T.accessM(({ test }: typeof config) => T.pure(test))
+    )
+
+    const result = await T.runToPromise(
+      T.provide(config)(
+        M.use(resource, (n) => T.accessM(({ test }: typeof config) => T.pure(n + test)))
+      )
+    )
+
+    assert.deepStrictEqual(result, 2)
+  })
+
+  it("should use nested env", async () => {
+    const program = pipe(
+      M.pure(1),
+      M.chain((n) =>
+        M.bracket(
+          T.access(({ s }: { s: number }) => n + s),
+          () => T.unit
+        )
+      ),
+      M.consume(T.pure)
+    )
+
+    const res = await pipe(program, T.provide({ s: 2 }), T.runToPromiseExit)
+
+    assert.deepStrictEqual(res, Ex.done(3))
+  })
+
+  it("should use resource bracket", async () => {
+    let released = false
+
+    const resource = M.bracket(T.pure(1), () =>
+      T.sync(() => {
+        released = true
+      })
+    )
+
+    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
+
+    assert.deepStrictEqual(result, 2)
+    assert.deepStrictEqual(released, true)
+  })
+
+  it("should use resource pure", async () => {
+    const resource = M.pure(1)
+
+    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
+
+    assert.deepStrictEqual(result, 2)
+  })
+
+  it("should use resource suspend", async () => {
+    const resource = M.suspend(T.sync(() => M.pure(1)))
+
+    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
+
+    assert.deepStrictEqual(result, 2)
+  })
+
+  it("should use resource chain", async () => {
+    const resource = M.pure(1)
+    const chain = M.chain((n: number) => M.pure(n + 1))
+
+    const result = await T.runToPromise(M.use(chain(resource), (n) => T.pure(n + 1)))
+
+    assert.deepStrictEqual(result, 3)
+  })
+
+  it("should use resource map", async () => {
+    const resource = M.pure(1)
+    const mapped = pipe(
+      resource,
+      M.managed.map((n) => n + 1)
+    )
+
+    const result = await T.runToPromise(M.use(mapped, (n) => T.pure(n + 1)))
+
+    assert.deepStrictEqual(result, 3)
+  })
+
+  it("should use resource mapWith", async () => {
+    const resource = M.pure(1)
+    const mapped = M.map((n: number) => n + 1)
+
+    const result = await T.runToPromise(M.use(mapped(resource), (n) => T.pure(n + 1)))
+
+    assert.deepStrictEqual(result, 3)
+  })
+
+  it("should use resource zip", async () => {
+    const ma = M.pure(1)
+    const mb = M.pure(1)
+    const zip = M.zip(ma, mb)
+
+    const result = await T.runToPromise(M.use(zip, ([n, m]) => T.pure(n + m)))
+
+    assert.deepStrictEqual(result, 2)
+  })
+
   it("should use resource ap", async () => {
     const ma = M.pure(1)
     const mfab = M.pure((n: number) => n + 1)
@@ -408,29 +454,6 @@ describe("Managed", () => {
     const result = await T.runToPromise(M.use(mb(ma), (n) => T.pure(n + 1)))
 
     assert.deepStrictEqual(result, 2)
-  })
-
-  it("should use resource allocate", async () => {
-    let released = false
-
-    const program = Do(T.effect)
-      .bindL("resource", () =>
-        M.allocate(
-          M.bracket(T.pure(1), () =>
-            T.sync(() => {
-              released = true
-            })
-          )
-        )
-      )
-      .bindL("result", ({ resource }) => T.pure(resource.a + 1))
-      .doL(({ resource }) => resource.release)
-      .return(({ result }) => result)
-
-    const result = await T.runToPromise(program)
-
-    assert.deepStrictEqual(result, 2)
-    assert.deepStrictEqual(released, true)
   })
 
   it("should use resource consume", async () => {
