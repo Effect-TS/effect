@@ -2,31 +2,17 @@
 
 import * as AP from "../Apply"
 import * as A from "../Array"
-import {
-  CMonad4MA,
-  CApplicative4MAP,
-  CApplicative4MA,
-  Monad4E,
-  Monad4EP
-} from "../Base"
-import { STypeOf, RTypeOf, ETypeOf, ATypeOf } from "../Base/Apply"
+import { CApplicative4MA, CMonad4MA, Monad4E } from "../Base"
+import { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import * as D from "../Do"
 import * as T from "../Effect"
-import type { Either } from "../Either"
 import * as E from "../Either"
-import { done, Exit, raise, combinedCause } from "../Exit"
-import {
-  constant,
-  FunctionN,
-  Predicate,
-  Refinement,
-  tuple,
-  unsafeCoerce
-} from "../Function"
+import type { Either } from "../Either"
+import { done, Exit, raise } from "../Exit"
+import { constant, FunctionN, Predicate, Refinement } from "../Function"
 import type { Monoid } from "../Monoid"
-import type { Option } from "../Option"
 import * as O from "../Option"
-import { pipe } from "../Pipe"
+import type { Option } from "../Option"
 import * as RE from "../Record"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI } from "../Support/Common"
@@ -44,6 +30,7 @@ export type ManagedT<S, R, E, A> =
   | Suspended<S, R, E, A>
   | Chain<S, S, R, R, E, any, A> // eslint-disable-line @typescript-eslint/no-explicit-any
   | BracketExit<S, S, R, R, E, E, A>
+  | UseProvider
 
 export interface Managed<S, R, E, A> {
   _TAG: () => "Managed"
@@ -66,6 +53,12 @@ export type SyncRE<R, E, A> = Managed<never, R, E, A>
 const toM = <S, R, E, A>(_: ManagedT<S, R, E, A>): Managed<S, R, E, A> => _ as any
 const fromM = <S, R, E, A>(_: Managed<S, R, E, A>): ManagedT<S, R, E, A> => _ as any
 
+export interface UseProvider {
+  readonly _tag: "UseProvider"
+  readonly provider: T.Provider<any, any, any, any>
+  readonly managed: Managed<any, any, any, any>
+}
+
 export interface Pure<A> {
   readonly _tag: "Pure"
   readonly value: A
@@ -85,6 +78,28 @@ export function pure<A>(value: A): Sync<A> {
 export interface Encase<S, R, E, A> {
   readonly _tag: "Encase"
   readonly acquire: T.Effect<S, R, E, A>
+}
+
+export function useProvider_<S, R, E, A, S2, R2, E2, A2>(
+  ma: Managed<S, R & A2, E, A>,
+  provider: T.Provider<R2, A2, E2, S2>
+): Managed<S | S2, R2 & R, E | E2, A> {
+  return toM({
+    _tag: "UseProvider",
+    managed: ma,
+    provider
+  })
+}
+
+export function useProvider<S2, R2, E2, A2>(
+  provider: T.Provider<R2, A2, E2, S2>
+): <S, R, E, A>(ma: Managed<S, R & A2, E, A>) => Managed<S | S2, R2 & R, E | E2, A> {
+  return (ma) =>
+    toM({
+      _tag: "UseProvider",
+      managed: ma,
+      provider
+    })
 }
 
 /**
@@ -240,136 +255,6 @@ export function zip<S, R, E, A, S2, R2, E2, B>(
 }
 
 /**
- * Fold two exits, while running functions when one succeeds but other one
- * fails. Gives error priority to first passed exit (aExit).
- *
- * @param aExit
- * @param bExit
- * @param onBFail - run when a succeeds, but b fails
- * @param onAFail - run when b succeeds, but a fails
- */
-function foldExitsWithFallback<E, A, B, S, S2, R, R2>(
-  aExit: Exit<E, A>,
-  bExit: Exit<E, B>,
-  onBFail: FunctionN<[A], T.Effect<S, R, E, unknown>>,
-  onAFail: FunctionN<[B], T.Effect<S2, R2, E, unknown>>
-): T.AsyncRE<R & R2, E, [A, B]> {
-  return aExit._tag === "Done"
-    ? bExit._tag === "Done"
-      ? unsafeCoerce<T.Sync<[A, B]>, T.AsyncRE<R & R2, E, [A, B]>>(
-          T.pure(tuple(aExit.value, bExit.value))
-        )
-      : pipe(
-          onBFail(aExit.value),
-          T.foldExit(
-            (_) => T.completed(combinedCause(bExit)(_)),
-            () => T.raised(bExit)
-          )
-        )
-    : bExit._tag === "Done"
-    ? pipe(
-        onAFail(bExit.value),
-        T.foldExit(
-          (_) => T.completed(combinedCause(aExit)(_)),
-          () => T.raised(aExit)
-        )
-      )
-    : T.completed(combinedCause(aExit)(bExit))
-}
-
-/**
- * Zip two resources together with provided function, while allocating and
- * releasing them in parallel and always prioritizing error of first passed
- * resource.
- *
- * @param resa
- * @param resb
- * @param f
- */
-export function parZipWith<S, S2, R, R2, E, E2, A, B, C>(
-  resa: Managed<S, R, E, A>,
-  resb: Managed<S2, R2, E2, B>,
-  f: FunctionN<[A, B], C>
-): AsyncRE<R & R2, E | E2, C> {
-  const alloc = T.raceFold(
-    allocate(resa as Managed<S, R, E | E2, A>),
-    allocate(resb),
-    (aExit, bFiber) =>
-      T.chain_(bFiber.wait, (bExit) =>
-        foldExitsWithFallback(
-          aExit,
-          bExit,
-          (aLeak) => aLeak.release,
-          (bLeak) => bLeak.release
-        )
-      ),
-    (bExit, aFiber) =>
-      T.chain_(aFiber.wait, (aExit) =>
-        foldExitsWithFallback(
-          aExit,
-          bExit,
-          (aLeak) => aLeak.release,
-          (bLeak) => bLeak.release
-        )
-      )
-  )
-
-  return map_(
-    bracket(alloc, ([aLeak, bLeak]) =>
-      T.raceFold(
-        aLeak.release,
-        bLeak.release,
-        (aExit, bFiber) =>
-          T.chain_(bFiber.wait, (bExit) =>
-            foldExitsWithFallback(
-              aExit,
-              bExit,
-              () => T.unit,
-              () => T.unit
-            )
-          ),
-        (bExit, aFiber) =>
-          T.chain_(aFiber.wait, (aExit) =>
-            foldExitsWithFallback(
-              aExit,
-              bExit,
-              () => T.unit,
-              () => T.unit
-            )
-          )
-      )
-    ),
-    ([aLeak, bLeak]) => f(aLeak.a, bLeak.a)
-  )
-}
-
-/**
- * Zip two resources together into tuple, while allocating and releasing them
- * in parallel and always prioritizing error of resa.
- *
- * @param resa
- * @param resb
- */
-export function parZip<S, S2, R, R2, E, A, B>(
-  resa: Managed<S, R, E, A>,
-  resb: Managed<S2, R2, E, B>
-): AsyncRE<R & R2, E, [A, B]> {
-  return parZipWith(resa, resb, tuple)
-}
-
-/**
- * Parallel form of ap_
- * @param iof
- * @param ioa
- */
-export function parAp_<S, S2, R, R2, E, E2, A, B>(
-  iof: Managed<S, R, E, FunctionN<[A], B>>,
-  ioa: Managed<S2, R2, E2, A>
-): AsyncRE<R & R2, E | E2, B> {
-  return parZipWith(iof, ioa, (f, a) => f(a))
-}
-
-/**
  * Flipped version of ap
  * @param resfab
  * @param resa
@@ -457,83 +342,28 @@ export function use<S, R, E, A, S2, R2, E2, B>(
   res: Managed<S, R, E, A>,
   f: FunctionN<[A], T.Effect<S2, R2, E2, B>>
 ): T.Effect<S | S2, R & R2, E | E2, B> {
-  return T.accessM((r: R & R2) => {
-    const c = fromM(res)
-    switch (c._tag) {
-      case "Pure":
-        return f(c.value)
-      case "Encase":
-        return T.provide(r)(T.chain_(c.acquire, f))
-      case "Bracket":
-        return T.provide(r)(T.bracket(c.acquire, c.release, f))
-      case "BracketExit":
-        return T.provide(r)(
-          T.bracketExit(c.acquire, (a, e) => c.release(a, e as any), f)
-        )
-      case "Suspended":
-        return T.provide(r)(T.chain_(c.suspended, consume(f)))
-      case "Chain":
-        return T.provide(r)(use(c.left, (a) => use(c.bind(a), f)))
-    }
-  })
+  const c = fromM(res)
+  switch (c._tag) {
+    case "Pure":
+      return f(c.value)
+    case "Encase":
+      return T.chain_(c.acquire, f)
+    case "Bracket":
+      return T.bracket(c.acquire, c.release, f)
+    case "BracketExit":
+      return T.bracketExit(c.acquire, (a, e) => c.release(a, e as any), f)
+    case "Suspended":
+      return T.chain_(c.suspended, consume(f))
+    case "Chain":
+      return use(c.left, (a) => use(c.bind(a), f))
+    case "UseProvider":
+      return c.provider(T.suspended(() => use(c.managed, f)))
+  }
 }
 
 export interface Leak<S, R, E, A> {
   a: A
   release: T.Effect<S, R, E, unknown>
-}
-
-/**
- * Create an IO action that will produce the resource for this managed along with its finalizer
- * action seperately.
- *
- * If an error occurs during allocation then any allocated resources should be cleaned up, but once the
- * Leak object is produced it is the callers responsibility to ensure release is invoked.
- * @param res
- */
-export function allocate<S, R, E, A>(
-  res: Managed<S, R, E, A>
-): T.Effect<S, R, E, Leak<S, R, E, A>> {
-  return T.accessM((r: R) => {
-    const c = fromM(res)
-
-    switch (c._tag) {
-      case "Pure":
-        return T.pure({ a: c.value, release: T.unit })
-      case "Encase":
-        return T.map_(T.provide(r)(c.acquire), (a) => ({ a, release: T.unit }))
-      case "Bracket":
-        return T.map_(T.provide(r)(c.acquire), (a) => ({
-          a,
-          release: T.provide(r)(c.release(a))
-        }))
-      case "BracketExit":
-        // best effort, because we cannot know what the exit status here
-        return T.map_(T.provide(r)(c.acquire), (a) => ({
-          a,
-          release: T.provide(r)(c.release(a, done(undefined)))
-        }))
-      case "Suspended":
-        return T.chain_(T.provide(r)(c.suspended), (x) => T.provide(r)(allocate(x)))
-      case "Chain":
-        return T.bracketExit(
-          T.provide(r)(allocate(c.left)),
-          (leak, exit) => (exit._tag === "Done" ? T.unit : T.provide(r)(leak.release)),
-          (leak) =>
-            T.map_(
-              T.provide(r)(allocate(c.bind(leak.a))),
-              // Combine the finalizer actions of the outer and inner resource
-              (innerLeak) => ({
-                a: innerLeak.a,
-                release: T.onComplete_(
-                  T.provide(r)(innerLeak.release),
-                  T.provide(r)(leak.release)
-                )
-              })
-            )
-        )
-    }
-  })
 }
 
 /**
@@ -641,47 +471,12 @@ export const fromPredicate: {
 ): Managed<never, unknown, E, A> =>
   predicate(a) ? pure(a) : encaseEffect(T.completed(raise(onFalse(a))))
 
-export const parAp: <S1, R, E, A>(
-  fa: Managed<S1, R, E, A>
-) => <S2, R2, E2, B>(
-  fab: Managed<S2, R2, E2, (a: A) => B>
-) => Managed<unknown, R & R2, E | E2, B> = (fa) => (fab) => parAp_(fab, fa)
-
-export const parApFirst: <S1, R, E, B>(
-  fb: Managed<S1, R, E, B>
-) => <A, S2, R2, E2>(
-  fa: Managed<S2, R2, E2, A>
-) => Managed<unknown, R & R2, E | E2, A> = (fb) => (fa) =>
-  parAp_(
-    map_(fa, (a) => () => a),
-    fb
-  )
-
-export const parApSecond = <S1, R, E, B>(fb: Managed<S1, R, E, B>) => <A, S2, R2, E2>(
-  fa: Managed<S2, R2, E2, A>
-): Managed<unknown, R & R2, E | E2, B> =>
-  parAp_(
-    map_(fa, () => (b: B) => b),
-    fb
-  )
-
 export const managed: CMonad4MA<URI> & CApplicative4MA<URI> = {
   URI,
   of: pure,
   map,
   ap,
   chain
-}
-
-export function par<I>(
-  I: CApplicative4MA<URI> & I
-): CApplicative4MAP<URI> & T.Erase<I, CApplicative4MA<URI>>
-export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
-  return {
-    ...I,
-    _CTX: "async",
-    ap: parAp
-  }
 }
 
 /**
@@ -797,81 +592,6 @@ export const wiltOption_ =
   /*#__PURE__*/
   (() => O.wilt_(managed))()
 
-// region parallel
-export const parDo = () => D.Do(par(managed))
-
-export const parSequenceS =
-  /*#__PURE__*/
-  (() => AP.sequenceS(par(managed)))()
-
-export const parSequenceT =
-  /*#__PURE__*/
-  (() => AP.sequenceT(par(managed)))()
-
-export const parSequenceArray =
-  /*#__PURE__*/
-  (() => A.sequence(par(managed)))()
-
-export const parSequenceRecord =
-  /*#__PURE__*/
-  (() => RE.sequence(par(managed)))()
-
-export const parSequenceTree =
-  /*#__PURE__*/
-  (() => TR.sequence(par(managed)))()
-
-export const parTraverseArray =
-  /*#__PURE__*/
-  (() => A.traverse(par(managed)))()
-
-export const parTraverseRecord =
-  /*#__PURE__*/
-  (() => RE.traverse(par(managed)))()
-
-export const parTraverseTree =
-  /*#__PURE__*/
-  (() => TR.traverse(par(managed)))()
-
-export const parTraverseArrayWI =
-  /*#__PURE__*/
-  (() => A.traverseWithIndex(par(managed)))()
-
-export const parTraverseRecordWI =
-  /*#__PURE__*/
-  (() => RE.traverseWithIndex(par(managed)))()
-
-export const parWitherArray =
-  /*#__PURE__*/
-  (() => A.wither(par(managed)))()
-
-export const parWitherArray_ =
-  /*#__PURE__*/
-  (() => A.wither_(par(managed)))()
-
-export const parWitherRecord =
-  /*#__PURE__*/
-  (() => RE.wither(par(managed)))()
-
-export const parWitherRecord_ =
-  /*#__PURE__*/
-  (() => RE.wither_(par(managed)))()
-
-export const parWiltArray =
-  /*#__PURE__*/
-  (() => A.wilt(par(managed)))()
-
-export const parWiltArray_ =
-  /*#__PURE__*/
-  (() => A.wilt_(par(managed)))()
-
-export const parWiltRecord =
-  /*#__PURE__*/
-  (() => RE.wilt(par(managed)))()
-
-export const parWiltRecord_ =
-  /*#__PURE__*/
-  (() => RE.wilt_(par(managed)))()
-
 //
 // Compatibility with fp-ts ecosystem
 //
@@ -879,15 +599,6 @@ export const parWiltRecord_ =
 export const managed_: Monad4E<URI> = {
   URI,
   ap: ap_,
-  chain: chain_,
-  map: map_,
-  of: pure
-}
-
-export const managedPar_: Monad4EP<URI> = {
-  URI,
-  _CTX: "async",
-  ap: parAp_,
   chain: chain_,
   map: map_,
   of: pure

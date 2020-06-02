@@ -2,74 +2,19 @@ import * as A from "../Array"
 import { UnionToIntersection } from "../Base/Apply"
 import * as T from "../Effect"
 import * as M from "../Managed"
+import { NonEmptyArray } from "../NonEmptyArray"
+import { pipe } from "../Pipe"
 
-type Pure<A> = {
-  _tag: "Pure"
-  value: A
-  inverted?: "regular" | "inverted"
-}
+type LayerPayload<S, R, E, A> = M.Managed<S, R, E, A>
 
-type EncaseEffect<S, R, E, A> = {
-  _tag: "EncaseEffect"
-  effect: T.Effect<S, R, E, A>
-  inverted?: "regular" | "inverted"
-}
-
-type ChainEffect<S, R, E, A> = {
-  _tag: "ChainEffect"
-  effect: T.Effect<S, R, E, any>
-  layer: (_: any) => Layer<S, R, E, A>
-}
-
-type ChainManaged<S, R, E, A> = {
-  _tag: "ChainManaged"
-  managed: M.Managed<S, R, E, any>
-  layer: (_: any) => Layer<S, R, E, A>
-}
-
-type EncaseManaged<S, R, E, A> = {
-  _tag: "EncaseManaged"
-  managed: M.Managed<S, R, E, A>
-  inverted?: "regular" | "inverted"
-}
-
-type EncaseProvider<S, R, E, A> = {
-  _tag: "EncaseProvider"
-  provider: T.Provider<any, any, any, any>
-  _S: () => S
-  _R: (_: R) => void
-  _E: () => E
-  _A: () => A
-}
-
-type Merge<S, R, E, A> = {
-  _tag: "Merge"
-  layers: Layer<S, R, E, A>[]
-}
-
-type LayerPayload<S, R, E, A> = (
-  | Pure<A>
-  | EncaseEffect<S, R, E, A>
-  | ChainEffect<S, R, E, A>
-  | EncaseManaged<S, R, E, A>
-  | ChainManaged<S, R, E, A>
-  | Merge<S, R, E, A>
-  | EncaseProvider<S, R, E, A>
-) & {
-  _S: () => S
-  _R: (_: R) => void
-  _E: () => E
-  _A: () => A
-}
-
-type SL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
+type SL<Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]> = {
   [k in keyof Layers & number]: Layers[k]["payload"]["_S"] extends () => infer X
     ? X
     : never
 }[number]
 
 type RL<
-  Layers extends { payload: LayerPayload<any, any, any, any> }[]
+  Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]
 > = UnionToIntersection<
   {
     [k in keyof Layers & number]: Layers[k]["payload"]["_R"] extends (
@@ -82,14 +27,14 @@ type RL<
   }[number]
 >
 
-type EL<Layers extends { payload: LayerPayload<any, any, any, any> }[]> = {
+type EL<Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]> = {
   [k in keyof Layers & number]: Layers[k]["payload"]["_E"] extends () => infer X
     ? X
     : never
 }[number]
 
 type AL<
-  Layers extends { payload: LayerPayload<any, any, any, any> }[]
+  Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]
 > = UnionToIntersection<
   {
     [k in keyof Layers & number]: Layers[k]["payload"]["_A"] extends () => infer X
@@ -106,17 +51,19 @@ export class Layer<S, R, E, A> {
   with<S2, R2, E2, A2>(
     _: Layer<S2, R2, E2, A2>
   ): Layer<S | S2, T.Erase<R, A2> & R2, E | E2, A2 & A> {
-    return new Layer({
-      _tag: "Merge",
-      layers: [this, _],
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+    return new Layer(
+      M.chain_(_.payload, (a2) =>
+        M.chain_(M.useProvider_(this.payload as any, T.provide(a2)), (a: any) =>
+          M.pure({
+            ...a2,
+            ...a
+          })
+        )
+      )
+    )
   }
 
-  merge<Layers extends Layer<any, any, any, any>[]>(
+  merge<Layers extends NonEmptyArray<Layer<any, any, any, any>>>(
     ...layers: Layers & { 0: Layer<any, any, any, any> }
   ): Layer<
     SL<Layers> | S,
@@ -124,125 +71,69 @@ export class Layer<S, R, E, A> {
     EL<Layers> | E,
     AL<Layers> & A
   > {
-    return new Layer({
-      _tag: "Merge",
-      layers: [this, ...layers],
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+    return this.with(
+      new Layer(
+        M.map_(
+          M.sequenceArray(layers.map((_) => _.payload)),
+          A.reduce({} as any, (b, a) => ({ ...b, ...a }))
+        )
+      )
+    )
   }
 
-  use: T.Provider<R, A, E, S> = (eff) => using(this)(eff)
+  use: T.Provider<R, A, E, S> = (op) => M.use(this.payload, (a) => T.provide(a)(op))
+
+  default: T.Provider<R, A, E, S> = (op) =>
+    M.use(this.payload, (a) => T.provide(a, "inverted")(op))
 }
 
 /**
  * Construct a layer by using a value
  */
-export function fromValue<A>(
-  _: A,
-  inverted?: "regular" | "inverted"
-): Layer<never, unknown, never, A> {
-  return new Layer({
-    _tag: "Pure",
-    value: _,
-    inverted,
-    _A: undefined as any,
-    _E: undefined as any,
-    _R: undefined as any,
-    _S: undefined as any
-  })
+export function fromValue<A>(_: A): Layer<never, unknown, never, A> {
+  return new Layer(M.pure(_))
 }
 
 /**
  * Construct a layer by using a value constructed by requiring an environment R2
  */
-export function fromValueWith<R2>(
-  inverted?: "regular" | "inverted"
-): <A>(_: (_: R2) => A) => Layer<never, R2, never, A> {
+export function fromValueWith<R2>(): <A>(
+  _: (_: R2) => A
+) => Layer<never, R2, never, A> {
   return (_) =>
-    new Layer({
-      _tag: "EncaseEffect",
-      effect: T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r))),
-      inverted,
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+    new Layer(M.encaseEffect(T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r)))))
 }
 
 /**
  * Construct a layer by using an effect
  */
-export function fromEffect<S, R, E, A>(
-  _: T.Effect<S, R, E, A>,
-  inverted?: "regular" | "inverted"
-): Layer<S, R, E, A> {
-  return new Layer({
-    _tag: "EncaseEffect",
-    effect: _,
-    inverted,
-    _A: undefined as any,
-    _E: undefined as any,
-    _R: undefined as any,
-    _S: undefined as any
-  })
+export function fromEffect<S, R, E, A>(_: T.Effect<S, R, E, A>): Layer<S, R, E, A> {
+  return new Layer(M.encaseEffect(_))
 }
 
 /**
  * Construct a layer by using an effect constructed by requiring an environment R2
  */
-export function fromEffectWith<R2>(
-  inverted?: "regular" | "inverted"
-): <S, R, E, A>(_: (_: R2) => T.Effect<S, R, E, A>) => Layer<S, R & R2, E, A> {
-  return (_) =>
-    new Layer({
-      _tag: "EncaseEffect",
-      effect: T.chain_(T.accessEnvironment<R2>(), _),
-      inverted,
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+export function fromEffectWith<R2>(): <S, R, E, A>(
+  _: (_: R2) => T.Effect<S, R, E, A>
+) => Layer<S, R & R2, E, A> {
+  return (_) => new Layer(M.encaseEffect(T.chain_(T.accessEnvironment<R2>(), _)))
 }
 
 /**
  * Construct a layer by using a managed
  */
-export function fromManaged<S, R, E, A>(
-  _: M.Managed<S, R, E, A>,
-  inverted?: "regular" | "inverted"
-): Layer<S, R, E, A> {
-  return new Layer({
-    _tag: "EncaseManaged",
-    managed: _,
-    inverted,
-    _A: undefined as any,
-    _E: undefined as any,
-    _R: undefined as any,
-    _S: undefined as any
-  })
+export function fromManaged<S, R, E, A>(_: M.Managed<S, R, E, A>): Layer<S, R, E, A> {
+  return new Layer(_)
 }
 
 /**
  * Construct a layer by using a managed constructed by requiring an environment R2
  */
-export function fromManagedWith<R2>(
-  inverted?: "regular" | "inverted"
-): <S, R, E, A>(_: (_: R2) => M.Managed<S, R, E, A>) => Layer<S, R & R2, E, A> {
-  return (_) =>
-    new Layer({
-      _tag: "EncaseManaged",
-      managed: M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _),
-      inverted,
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+export function fromManagedWith<R2>(): <S, R, E, A>(
+  _: (_: R2) => M.Managed<S, R, E, A>
+) => Layer<S, R & R2, E, A> {
+  return (_) => new Layer(M.chain_(M.encaseEffect(T.accessEnvironment<R2>()), _))
 }
 
 /**
@@ -251,14 +142,7 @@ export function fromManagedWith<R2>(
 export function fromProvider<S = never, R = unknown, E = never, A = unknown>(
   provider: T.Provider<R, A, E, S>
 ): Layer<S, R, E, A> {
-  return new Layer({
-    _tag: "EncaseProvider",
-    provider,
-    _A: undefined as any,
-    _E: undefined as any,
-    _R: undefined as any,
-    _S: undefined as any
-  })
+  return new Layer(M.useProvider_(M.encaseEffect(T.accessEnvironment<A>()), provider))
 }
 
 /**
@@ -273,14 +157,10 @@ export function fromProviderWith<R2>(): <
   provider: (_: R2) => T.Provider<RK, AK, EK, SK>
 ) => Layer<SK, RK & R2, EK, AK> {
   return <SK, RK, EK, AK>(provider: (_: R2) => T.Provider<RK, AK, EK, SK>) =>
-    new Layer({
-      _tag: "EncaseProvider",
-      provider: (eff) => T.accessM((r2: R2) => provider(r2)(eff)),
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+    pipe(
+      T.accessEnvironment<R2>(),
+      useEffect((r) => fromProvider(provider(r)))
+    )
 }
 
 export type Implementation<C> = C[keyof C]
@@ -375,65 +255,12 @@ export function fromManagedConstructor<C>(uri: keyof C) {
 
 export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
   return <S, R, E>(effect: T.Effect<S, R, E, A>): Layer<S | S2, R & R2, E | E2, A2> =>
-    new Layer({
-      _tag: "ChainEffect",
-      effect,
-      layer,
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
+    new Layer(M.chain_(M.encaseEffect(effect), (a) => layer(a).payload))
 }
 
 export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
   return <S, R, E>(managed: M.Managed<S, R, E, A>): Layer<S | S2, R & R2, E | E2, A2> =>
-    new Layer({
-      _tag: "ChainManaged",
-      managed,
-      layer,
-      _A: undefined as any,
-      _E: undefined as any,
-      _R: undefined as any,
-      _S: undefined as any
-    })
-}
-
-/**
- * Interprets a layer returning a provider function
- */
-export function using<S, R, E, A>(layer: Layer<S, R, E, A>): T.Provider<R, A, E, S> {
-  return (op) =>
-    T.accessM((env: R) => {
-      const current = layer.payload
-      let currentOp: any = op
-
-      switch (current._tag) {
-        case "Pure":
-          currentOp = T.provide(current.value, current.inverted)(op)
-          break
-        case "EncaseEffect":
-          currentOp = T.provideM(current.effect, current.inverted)(op)
-          break
-        case "EncaseManaged":
-          currentOp = M.provide(current.managed, current.inverted)(op)
-          break
-        case "EncaseProvider":
-          currentOp = current.provider(op)
-          break
-        case "ChainEffect":
-          currentOp = T.chain_(current.effect, (u) => using(current.layer(u))(op))
-          break
-        case "ChainManaged":
-          currentOp = M.use(current.managed, (u) => using(current.layer(u))(op))
-          break
-        case "Merge":
-          currentOp = A.reduce_(current.layers, op, (eff, l) => using(l)(eff) as any)
-          break
-      }
-
-      return T.provide(env)(currentOp) as any
-    })
+    new Layer(M.chain_(managed, (a) => layer(a).payload))
 }
 
 export const Empty =
