@@ -301,15 +301,12 @@ describe("Managed", () => {
       test: 1
     }
 
-    const resource = M.encaseEffect(
-      T.accessM(({ test }: typeof config) => T.pure(test))
+    const resource = pipe(
+      M.encaseEffect(T.accessM(({ test }: typeof config) => T.pure(test))),
+      M.useProvider(T.provide(config))
     )
 
-    const result = await T.runToPromise(
-      T.provide(config)(
-        M.use(resource, (n) => T.accessM(({ test }: typeof config) => T.pure(n + test)))
-      )
-    )
+    const result = await T.runToPromise(M.use(resource, (n) => T.pure(n + 1)))
 
     assert.deepStrictEqual(result, 2)
   })
