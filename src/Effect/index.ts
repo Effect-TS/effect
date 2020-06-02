@@ -1241,7 +1241,7 @@ export function parFastZip_<S, S2, R, R2, E, E2, A, B>(
   ioa: Effect<S, R, E, A>,
   iob: Effect<S2, R2, E2, B>
 ): AsyncRE<R & R2, E | E2, readonly [A, B]> {
-  return parZipWith_(ioa, iob, tuple2)
+  return parFastZipWith_(ioa, iob, tuple2)
 }
 
 /**
