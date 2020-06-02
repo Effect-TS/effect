@@ -18,6 +18,7 @@ import type {
   Monad4EP
 } from "../Base"
 import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
+import { monad, validation } from "../Compatibility"
 import { Deferred, makeDeferred } from "../Deferred"
 import * as D from "../Do"
 import * as E from "../Either"
@@ -2314,71 +2315,37 @@ export const parFastTraverseRecordWI_ =
 // Compatibility with fp-ts ecosystem
 //
 
-export const effect_: Monad4E<URI> = {
-  URI,
-  ap: ap_,
-  chain: chain_,
-  map: map_,
-  of: pure
-}
+export const effect_: Monad4E<URI> =
+  /*#__PURE__*/
 
-export const effectPar_: Monad4EP<URI> = {
-  URI,
-  _CTX: "async",
-  ap: parAp_,
-  chain: chain_,
-  map: map_,
-  of: pure
-}
+  (() => monad(effect))()
 
-export const effectParFast_: Monad4EP<URI> = {
-  URI,
-  _CTX: "async",
-  ap: parFastAp_,
-  chain: chain_,
-  map: map_,
-  of: pure
-}
+export const effectPar_: Monad4EP<URI> =
+  /*#__PURE__*/
+  (() => monad(par(effect)))()
+
+export const effectParFast_: Monad4EP<URI> =
+  /*#__PURE__*/
+  (() => monad(parFast(effect)))()
 
 export function getCauseValidationM_<E>(
   S: Semigroup<Cause<E>>
 ): Monad4EC<URI, E> & Alt4EC<URI, E> {
-  const cv = getCauseValidationM(S)
-  return {
-    URI,
-    _E: undefined as any,
-    of: pure,
-    map: map_,
-    chain: chain_,
-    ap: <S1, R, B, S2, R2, A>(
-      fab: Effect<S1, R, E, (a: A) => B>,
-      fa: Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, B> => cv.ap(fa)(fab),
-    alt: <S1, R, B, S2, R2, A>(
-      fa: Effect<S1, R, E, B>,
-      fb: () => Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, A | B> => cv.alt(fb)(fa)
-  }
+  return validation(getCauseValidationM(S))
+}
+
+export function getValidationM_<E>(S: Semigroup<E>): Monad4EC<URI, E> & Alt4EC<URI, E> {
+  return validation(getValidationM(S))
 }
 
 export function getParCauseValidationM_<E>(
   S: Semigroup<Cause<E>>
 ): Monad4ECP<URI, E> & Alt4EC<URI, E> {
-  const cv = par(getCauseValidationM(S))
-  return {
-    URI,
-    _CTX: "async",
-    _E: undefined as any,
-    of: pure,
-    map: map_,
-    chain: chain_,
-    ap: <S1, R, B, S2, R2, A>(
-      fab: Effect<S1, R, E, (a: A) => B>,
-      fa: Effect<S2, R2, E, A>
-    ): Effect<unknown, R & R2, E, B> => cv.ap(fa)(fab),
-    alt: <S1, R, B, S2, R2, A>(
-      fa: Effect<S1, R, E, B>,
-      fb: () => Effect<S2, R2, E, A>
-    ): Effect<S1 | S2, R & R2, E, A | B> => cv.alt(fb)(fa)
-  }
+  return validation(par(getCauseValidationM(S)))
+}
+
+export function getParValidationM_<E>(
+  S: Semigroup<E>
+): Monad4ECP<URI, E> & Alt4EC<URI, E> {
+  return validation(par(getValidationM(S)))
 }

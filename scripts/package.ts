@@ -18,6 +18,7 @@ const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
 )
 
 const modules: string[] = [
+  "Compatibility",
   "Const",
   "Base",
   "Base/HKT",
