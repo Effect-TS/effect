@@ -111,10 +111,10 @@ describe("NonEmptyArray", () => {
     assert.deepStrictEqual(reduceRight(init1, f)(["a", "b", "c"]), "cba")
   })
 
-  it("fromReadonlyArray", () => {
-    assert.deepStrictEqual(_.fromReadonlyArray([]), O.none)
-    assert.deepStrictEqual(_.fromReadonlyArray([1]), O.some([1]))
-    assert.deepStrictEqual(_.fromReadonlyArray([1, 2]), O.some([1, 2]))
+  it("fromArray", () => {
+    assert.deepStrictEqual(_.fromArray([]), O.none)
+    assert.deepStrictEqual(_.fromArray([1]), O.some([1]))
+    assert.deepStrictEqual(_.fromArray([1, 2]), O.some([1, 2]))
   })
 
   it("getSemigroup", () => {
@@ -362,22 +362,6 @@ describe("NonEmptyArray", () => {
     const f = _.foldMapWithIndex(S.semigroupSum)((i: number, s: string) => s.length + i)
     assert.deepStrictEqual(f(["a"]), 1)
     assert.deepStrictEqual(f(["a", "bb"]), 4)
-  })
-
-  it("fromArray", () => {
-    assert.strictEqual(_.fromArray([]), O.none)
-    // tslint:disable-next-line: readonly-array
-    const as = [1, 2, 3]
-    const bs = _.fromArray(as)
-    assert.deepStrictEqual(bs, O.some(as))
-    assert.notStrictEqual((bs as any).value, as)
-  })
-
-  it("fromReadonlyArray", () => {
-    const as: ReadonlyArray<number> = [1, 2, 3]
-    const bs = _.fromReadonlyArray(as)
-    assert.deepStrictEqual(bs, O.some(as))
-    assert.strictEqual((bs as any).value, as)
   })
 
   it("fold", () => {
