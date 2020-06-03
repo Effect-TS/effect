@@ -72,11 +72,11 @@ export class Layer<S, R, E, A> {
    * the layers are merged horizontally between each other and vertically with the current layer
    * @param layers layers
    */
-  merge<Layers extends NonEmptyArray<Layer<any, any, any, any>>>(
+  withMany<Layers extends NonEmptyArray<Layer<any, any, any, any>>>(
     ...layers: Layers & { 0: Layer<any, any, any, any> }
   ): Layer<
     SL<Layers> | S,
-    T.Erase<R, RL<Layers>> & RL<Layers>,
+    RL<Layers> & T.Erase<R, AL<Layers>>,
     EL<Layers> | E,
     AL<Layers> & A
   > {
@@ -86,6 +86,21 @@ export class Layer<S, R, E, A> {
           M.sequenceArray(layers.map((_) => _.payload)),
           A.reduce({} as any, (b, a) => ({ ...b, ...a }))
         )
+      )
+    )
+  }
+
+  /**
+   * Merge the current layer with a non empty array of layers, all the layers are merged horizontally
+   * @param layers layers
+   */
+  combine<Layers extends NonEmptyArray<Layer<any, any, any, any>>>(
+    ...layers: Layers & { 0: Layer<any, any, any, any> }
+  ): Layer<SL<Layers> | S, R & RL<Layers>, EL<Layers> | E, AL<Layers> & A> {
+    return new Layer(
+      M.map_(
+        M.sequenceArray([this, ...layers].map((_) => _.payload)),
+        A.reduce({} as any, (b, a) => ({ ...b, ...a }))
       )
     )
   }
