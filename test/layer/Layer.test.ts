@@ -120,7 +120,8 @@ export const Message2 = L.fromValue<Message>({
   }
 })
 
-const App = Calculator.merge(Logger, Message).with(Console)
+const App = Logger.withMany(Calculator, Message, Console)
+
 const App2 = Calculator.with(Logger)
   .with(Console.default())
   .with(Message)
