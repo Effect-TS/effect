@@ -110,4 +110,42 @@ describe("Fiber", () => {
     expect(runs).toBeGreaterThan(7)
     expect(runs).toBeLessThan(11)
   })
+  it("supervised with finished fibers", async () => {
+    let runs = 0
+    let interrupted = 0
+    const program = await pipe(
+      T.supervised(T.delay(T.pure(1), 10)),
+      T.chain(() =>
+        T.supervised(
+          T.forever(
+            T.onInterrupted_(
+              T.delay(
+                T.access((_: { n: number }) => {
+                  runs += _.n
+                }),
+                10
+              ),
+              T.sync(() => {
+                interrupted += 1
+              })
+            )
+          )
+        )
+      ),
+      T.chainTap(() => T.delay(T.unit, 100)),
+      T.supervisedRegion,
+      T.chainTap(() => T.delay(T.unit, 200)),
+      T.provide({
+        n: 1
+      }),
+      T.runToPromise
+    )
+
+    const result = await T.runToPromise(program.isComplete)
+
+    expect(result).toStrictEqual(true)
+    expect(interrupted).toStrictEqual(1)
+    expect(runs).toBeGreaterThan(7)
+    expect(runs).toBeLessThan(11)
+  })
 })
