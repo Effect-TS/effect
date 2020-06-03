@@ -1,6 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import type { Array } from "../Array"
 import type {
   CFilter2,
   CFoldable3,
@@ -47,13 +48,16 @@ import type { Ord } from "../Ord"
 import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
+import { MutableArray, MutableMap } from "../Support/Types"
+
+export type Map<K, T> = ReadonlyMap<K, T>
 
 export function collect<K>(
   O: Ord<K>
-): <A, B>(f: (k: K, a: A) => B) => (m: ReadonlyMap<K, A>) => ReadonlyArray<B> {
+): <A, B>(f: (k: K, a: A) => B) => (m: Map<K, A>) => Array<B> {
   const keysO = keys(O)
-  return <A, B>(f: (k: K, a: A) => B) => (m: ReadonlyMap<K, A>): ReadonlyArray<B> => {
-    const out: Array<B> = []
+  return <A, B>(f: (k: K, a: A) => B) => (m: Map<K, A>): Array<B> => {
+    const out: MutableArray<B> = []
     const ks = keysO(m)
     for (const key of ks) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -65,10 +69,10 @@ export function collect<K>(
 
 export function collect_<K>(
   O: Ord<K>
-): <A, B>(m: ReadonlyMap<K, A>, f: (k: K, a: A) => B) => ReadonlyArray<B> {
+): <A, B>(m: Map<K, A>, f: (k: K, a: A) => B) => Array<B> {
   const keysO = keys(O)
-  return <A, B>(m: ReadonlyMap<K, A>, f: (k: K, a: A) => B): ReadonlyArray<B> => {
-    const out: Array<B> = []
+  return <A, B>(m: Map<K, A>, f: (k: K, a: A) => B): Array<B> => {
+    const out: MutableArray<B> = []
     const ks = keysO(m)
     for (const key of ks) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -78,7 +82,7 @@ export function collect_<K>(
   }
 }
 
-export const compact = <K, A>(fa: ReadonlyMap<K, Op.Option<A>>): ReadonlyMap<K, A> => {
+export const compact = <K, A>(fa: Map<K, Op.Option<A>>): Map<K, A> => {
   const m = new Map<K, A>()
   const entries = fa.entries()
   let e: Next<readonly [K, Op.Option<A>]>
@@ -94,9 +98,7 @@ export const compact = <K, A>(fa: ReadonlyMap<K, Op.Option<A>>): ReadonlyMap<K, 
 /**
  * Delete a key and value from a map
  */
-export function deleteAt<K>(
-  E: Eq<K>
-): (k: K) => <A>(m: ReadonlyMap<K, A>) => ReadonlyMap<K, A> {
+export function deleteAt<K>(E: Eq<K>): (k: K) => <A>(m: Map<K, A>) => Map<K, A> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (k) => (m) => {
     const found = lookupWithKeyE(m, k)
@@ -109,9 +111,7 @@ export function deleteAt<K>(
   }
 }
 
-export function deleteAt_<K>(
-  E: Eq<K>
-): <A>(m: ReadonlyMap<K, A>, k: K) => ReadonlyMap<K, A> {
+export function deleteAt_<K>(E: Eq<K>): <A>(m: Map<K, A>, k: K) => Map<K, A> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (m, k) => {
     const found = lookupWithKeyE(m, k)
@@ -127,7 +127,7 @@ export function deleteAt_<K>(
 /**
  * Test whether or not a value is a member of a map
  */
-export function elem<A>(E: Eq<A>): (a: A) => <K>(m: ReadonlyMap<K, A>) => boolean {
+export function elem<A>(E: Eq<A>): (a: A) => <K>(m: Map<K, A>) => boolean {
   return (a) => (m) => {
     const values = m.values()
     let e: Next<A>
@@ -142,7 +142,7 @@ export function elem<A>(E: Eq<A>): (a: A) => <K>(m: ReadonlyMap<K, A>) => boolea
   }
 }
 
-export function elem_<A>(E: Eq<A>): <K>(m: ReadonlyMap<K, A>, a: A) => boolean {
+export function elem_<A>(E: Eq<A>): <K>(m: Map<K, A>, a: A) => boolean {
   return (m, a) => {
     const values = m.values()
     let e: Next<A>
@@ -157,36 +157,35 @@ export function elem_<A>(E: Eq<A>): <K>(m: ReadonlyMap<K, A>, a: A) => boolean {
   }
 }
 
-export const empty: ReadonlyMap<never, never> =
+export const empty: Map<never, never> =
   /*#__PURE__*/
   (() => new Map<never, never>())()
 
 export const filter: CFilter2<URI> = <A>(predicate: Predicate<A>) => <E>(
-  fa: ReadonlyMap<E, A>
-): ReadonlyMap<E, A> =>
+  fa: Map<E, A>
+): Map<E, A> =>
   pipe(
     fa,
     filterWithIndex((_, a) => predicate(a))
   )
 
 export const filter_: Filter2<URI> = <A, E>(
-  fa: ReadonlyMap<E, A>,
+  fa: Map<E, A>,
   predicate: Predicate<A>
-): ReadonlyMap<E, A> => filterWithIndex_(fa, (_, a) => predicate(a))
+): Map<E, A> => filterWithIndex_(fa, (_, a) => predicate(a))
 
 export const filterMap: <A, B>(
   f: (a: A) => Op.Option<B>
-) => <E>(fa: ReadonlyMap<E, A>) => ReadonlyMap<E, B> = (f) =>
-  filterMapWithIndex((_, a) => f(a))
+) => <E>(fa: Map<E, A>) => Map<E, B> = (f) => filterMapWithIndex((_, a) => f(a))
 
 export const filterMap_: <E, A, B>(
-  fa: ReadonlyMap<E, A>,
+  fa: Map<E, A>,
   f: (a: A) => Op.Option<B>
-) => ReadonlyMap<E, B> = (fa, f) => filterMapWithIndex_(fa, (_, a) => f(a))
+) => Map<E, B> = (fa, f) => filterMapWithIndex_(fa, (_, a) => f(a))
 
 export const filterMapWithIndex = <K, A, B>(
   f: (k: K, a: A) => Op.Option<B>
-): ((fa: ReadonlyMap<K, A>) => ReadonlyMap<K, B>) => {
+): ((fa: Map<K, A>) => Map<K, B>) => {
   return (fa) => {
     const m = new Map<K, B>()
     const entries = fa.entries()
@@ -204,9 +203,9 @@ export const filterMapWithIndex = <K, A, B>(
 }
 
 export const filterMapWithIndex_ = <K, A, B>(
-  fa: ReadonlyMap<K, A>,
+  fa: Map<K, A>,
   f: (k: K, a: A) => Op.Option<B>
-): ReadonlyMap<K, B> => {
+): Map<K, B> => {
   const m = new Map<K, B>()
   const entries = fa.entries()
   let e: Next<readonly [K, A]>
@@ -223,7 +222,7 @@ export const filterMapWithIndex_ = <K, A, B>(
 
 export const filterWithIndex = <K, A>(
   p: (k: K, a: A) => boolean
-): ((fa: ReadonlyMap<K, A>) => ReadonlyMap<K, A>) => {
+): ((fa: Map<K, A>) => Map<K, A>) => {
   return (fa) => {
     const m = new Map<K, A>()
     const entries = fa.entries()
@@ -240,9 +239,9 @@ export const filterWithIndex = <K, A>(
 }
 
 export const filterWithIndex_ = <K, A>(
-  fa: ReadonlyMap<K, A>,
+  fa: Map<K, A>,
   p: (k: K, a: A) => boolean
-): ReadonlyMap<K, A> => {
+): Map<K, A> => {
   const m = new Map<K, A>()
   const entries = fa.entries()
   let e: Next<readonly [K, A]>
@@ -264,29 +263,29 @@ export function fromFoldable<F extends URIS3, K, A>(
   E: Eq<K>,
   M: Magma<A>,
   F: CFoldable3<F>
-): <R, E>(fka: Kind3<F, R, E, readonly [K, A]>) => ReadonlyMap<K, A>
+): <R, E>(fka: Kind3<F, R, E, readonly [K, A]>) => Map<K, A>
 export function fromFoldable<F extends URIS2, K, A>(
   E: Eq<K>,
   M: Magma<A>,
   F: CFoldable2<F>
-): <E>(fka: Kind2<F, E, readonly [K, A]>) => ReadonlyMap<K, A>
+): <E>(fka: Kind2<F, E, readonly [K, A]>) => Map<K, A>
 export function fromFoldable<F extends URIS, K, A>(
   E: Eq<K>,
   M: Magma<A>,
   F: CFoldable1<F>
-): (fka: Kind<F, readonly [K, A]>) => ReadonlyMap<K, A>
+): (fka: Kind<F, readonly [K, A]>) => Map<K, A>
 export function fromFoldable<F, K, A>(
   E: Eq<K>,
   M: Magma<A>,
   F: CFoldable<F>
-): (fka: HKT<F, readonly [K, A]>) => ReadonlyMap<K, A>
+): (fka: HKT<F, readonly [K, A]>) => Map<K, A>
 export function fromFoldable<F, K, A>(
   E: Eq<K>,
   M: Magma<A>,
   F: CFoldable<F>
-): (fka: HKT<F, readonly [K, A]>) => ReadonlyMap<K, A> {
+): (fka: HKT<F, readonly [K, A]>) => Map<K, A> {
   const lookupWithKeyE = lookupWithKey_(E)
-  return F.reduce<readonly [K, A], Map<K, A>>(new Map<K, A>(), (b, [k, a]) => {
+  return F.reduce<readonly [K, A], MutableMap<K, A>>(new Map<K, A>(), (b, [k, a]) => {
     const bOpt = lookupWithKeyE(b, k)
     if (Op.isSome(bOpt)) {
       b.set(bOpt.value[0], M.concat(bOpt.value[1], a))
@@ -297,11 +296,11 @@ export function fromFoldable<F, K, A>(
   })
 }
 
-export function fromMap<K, A>(m: Map<K, A>): ReadonlyMap<K, A> {
+export function fromMutable<K, A>(m: MutableMap<K, A>): Map<K, A> {
   return new Map(m)
 }
 
-export function getEq<K, A>(SK: Eq<K>, SA: Eq<A>): Eq<ReadonlyMap<K, A>> {
+export function getEq<K, A>(SK: Eq<K>, SA: Eq<A>): Eq<Map<K, A>> {
   const isSubmap_ = isSubmap(SK, SA)
   return fromEquals((x, y) => isSubmap_(x, y) && isSubmap_(y, x))
 }
@@ -321,10 +320,7 @@ export function getFilterableWithIndex<K = never>(): CFilterableWithIndex2C<URI,
 /**
  * Gets `Monoid` instance for Maps given `Semigroup` instance for their values
  */
-export function getMonoid<K, A>(
-  SK: Eq<K>,
-  SA: Semigroup<A>
-): Monoid<ReadonlyMap<K, A>> {
+export function getMonoid<K, A>(SK: Eq<K>, SA: Semigroup<A>): Monoid<Map<K, A>> {
   const lookupWithKeyS = lookupWithKey_(SK)
   return {
     concat: (mx, my) => {
@@ -353,7 +349,7 @@ export function getMonoid<K, A>(
   }
 }
 
-export function getShow<K, A>(SK: Show<K>, SA: Show<A>): Show<ReadonlyMap<K, A>> {
+export function getShow<K, A>(SK: Show<K>, SA: Show<A>): Show<Map<K, A>> {
   return {
     show: (m) => {
       let elements = ""
@@ -370,9 +366,9 @@ export function getShow<K, A>(SK: Show<K>, SA: Show<A>): Show<ReadonlyMap<K, A>>
 
 export function traverseWithIndex<K>(_: Ord<K>): CTraverseWithIndex2C<URI, K, K> {
   return <F>(F: CApplicative<F>) => <A, B>(f: (k: K, a: A) => HKT<F, B>) => (
-    ta: ReadonlyMap<K, A>
-  ): HKT<F, ReadonlyMap<K, B>> => {
-    let fm: HKT<F, ReadonlyMap<K, B>> = F.of(empty)
+    ta: Map<K, A>
+  ): HKT<F, Map<K, B>> => {
+    let fm: HKT<F, Map<K, B>> = F.of(empty)
     const entries = ta.entries()
     let e: Next<readonly [K, A]>
     while (!(e = entries.next()).done) {
@@ -389,10 +385,10 @@ export function traverseWithIndex<K>(_: Ord<K>): CTraverseWithIndex2C<URI, K, K>
 
 export function traverseWithIndex_<K>(_: Ord<K>): TraverseWithIndex2C<URI, K, K> {
   return <F>(F: CApplicative<F>) => <A, B>(
-    ta: ReadonlyMap<K, A>,
+    ta: Map<K, A>,
     f: (k: K, a: A) => HKT<F, B>
-  ): HKT<F, ReadonlyMap<K, B>> => {
-    let fm: HKT<F, ReadonlyMap<K, B>> = F.of(empty)
+  ): HKT<F, Map<K, B>> => {
+    let fm: HKT<F, Map<K, B>> = F.of(empty)
     const entries = ta.entries()
     let e: Next<readonly [K, A]>
     while (!(e = entries.next()).done) {
@@ -419,14 +415,14 @@ export function traverse_<K>(_: Ord<K>): Traverse2C<URI, K> {
   const T = traverseWithIndex_(_)
   return <F>(F: CApplicative<F>) => {
     const traverseWithIndexF = T(F)
-    return <A, B>(ta: ReadonlyMap<K, A>, f: (a: A) => HKT<F, B>) =>
+    return <A, B>(ta: Map<K, A>, f: (a: A) => HKT<F, B>) =>
       traverseWithIndexF(ta, (_, a: A) => f(a))
   }
 }
 
 export function reduceWithIndex<K>(_: Ord<K>) {
   const keysO = keys(_)
-  return <A, B>(b: B, f: (k: K, b: B, a: A) => B): ((fa: ReadonlyMap<K, A>) => B) => {
+  return <A, B>(b: B, f: (k: K, b: B, a: A) => B): ((fa: Map<K, A>) => B) => {
     return (fa) => {
       let out: B = b
       const ks = keysO(fa)
@@ -442,7 +438,7 @@ export function reduceWithIndex<K>(_: Ord<K>) {
 
 export function reduceWithIndex_<K>(_: Ord<K>) {
   const keysO = keys(_)
-  return <A, B>(fa: ReadonlyMap<K, A>, b: B, f: (k: K, b: B, a: A) => B): B => {
+  return <A, B>(fa: Map<K, A>, b: B, f: (k: K, b: B, a: A) => B): B => {
     let out: B = b
     const ks = keysO(fa)
     const len = ks.length
@@ -456,9 +452,7 @@ export function reduceWithIndex_<K>(_: Ord<K>) {
 
 export function foldMapWithIndex<K>(_: Ord<K>) {
   const keysO = keys(_)
-  return <M>(M: Monoid<M>) => <A>(
-    f: (k: K, a: A) => M
-  ): ((fa: ReadonlyMap<K, A>) => M) => {
+  return <M>(M: Monoid<M>) => <A>(f: (k: K, a: A) => M): ((fa: Map<K, A>) => M) => {
     return (fa) => {
       let out: M = M.empty
       const ks = keysO(fa)
@@ -474,7 +468,7 @@ export function foldMapWithIndex<K>(_: Ord<K>) {
 
 export function foldMapWithIndex_<K>(_: Ord<K>) {
   const keysO = keys(_)
-  return <M>(M: Monoid<M>) => <A>(fa: ReadonlyMap<K, A>, f: (k: K, a: A) => M): M => {
+  return <M>(M: Monoid<M>) => <A>(fa: Map<K, A>, f: (k: K, a: A) => M): M => {
     let out: M = M.empty
     const ks = keysO(fa)
     const len = ks.length
@@ -488,7 +482,7 @@ export function foldMapWithIndex_<K>(_: Ord<K>) {
 
 export function reduceRightWithIndex<K>(_: Ord<K>) {
   const keysO = keys(_)
-  return <A, B>(b: B, f: (k: K, a: A, b: B) => B): ((fa: ReadonlyMap<K, A>) => B) => {
+  return <A, B>(b: B, f: (k: K, a: A, b: B) => B): ((fa: Map<K, A>) => B) => {
     return (fa) => {
       let out: B = b
       const ks = keysO(fa)
@@ -504,7 +498,7 @@ export function reduceRightWithIndex<K>(_: Ord<K>) {
 
 export function reduceRightWithIndex_<K>(_: Ord<K>) {
   const keysO = keys(_)
-  return <A, B>(fa: ReadonlyMap<K, A>, b: B, f: (k: K, a: A, b: B) => B): B => {
+  return <A, B>(fa: Map<K, A>, b: B, f: (k: K, a: A, b: B) => B): B => {
     let out: B = b
     const ks = keysO(fa)
     const len = ks.length
@@ -518,9 +512,7 @@ export function reduceRightWithIndex_<K>(_: Ord<K>) {
 
 export function sequence<K>(_: Ord<K>): CSequence2C<URI, K> {
   const T = traverseWithIndex(_)
-  return <F>(
-    F: CApplicative<F>
-  ): (<A>(ta: ReadonlyMap<K, HKT<F, A>>) => HKT<F, ReadonlyMap<K, A>>) => {
+  return <F>(F: CApplicative<F>): (<A>(ta: Map<K, HKT<F, A>>) => HKT<F, Map<K, A>>) => {
     const traverseWithIndexF = T(F)
     return traverseWithIndexF((_, a) => a)
   }
@@ -532,9 +524,7 @@ export function wilt<K>(_: Ord<K>): CWilt2C<URI, K> {
     F: CApplicative<F>
   ): (<A, B, C>(
     f: (a: A) => HKT<F, Either<B, C>>
-  ) => (
-    wa: ReadonlyMap<K, A>
-  ) => HKT<F, Separated<ReadonlyMap<K, B>, ReadonlyMap<K, C>>>) => {
+  ) => (wa: Map<K, A>) => HKT<F, Separated<Map<K, B>, Map<K, C>>>) => {
     const traverseF = T(F)
     return (f) => flow(traverseF(f), F.map(separate))
   }
@@ -545,9 +535,9 @@ export function wilt_<K>(_: Ord<K>): Wilt2C<URI, K> {
   return <F>(
     F: CApplicative<F>
   ): (<A, B, C>(
-    wa: ReadonlyMap<K, A>,
+    wa: Map<K, A>,
     f: (a: A) => HKT<F, Either<B, C>>
-  ) => HKT<F, Separated<ReadonlyMap<K, B>, ReadonlyMap<K, C>>>) => {
+  ) => HKT<F, Separated<Map<K, B>, Map<K, C>>>) => {
     const traverseF = T(F)
     return (wa, f) => F.map(separate)(traverseF(wa, f))
   }
@@ -559,7 +549,7 @@ export function wither<K>(_: Ord<K>): CWither2C<URI, K> {
     F: CApplicative<F>
   ): (<A, B>(
     f: (a: A) => HKT<F, Op.Option<B>>
-  ) => (wa: ReadonlyMap<K, A>) => HKT<F, ReadonlyMap<K, B>>) => {
+  ) => (wa: Map<K, A>) => HKT<F, Map<K, B>>) => {
     const traverseF = T(F)
     return (f) => flow(traverseF(f), F.map(compact))
   }
@@ -570,9 +560,9 @@ export function wither_<K>(_: Ord<K>): Wither2C<URI, K> {
   return <F>(
     F: CApplicative<F>
   ): (<A, B>(
-    wa: ReadonlyMap<K, A>,
+    wa: Map<K, A>,
     f: (a: A) => HKT<F, Op.Option<B>>
-  ) => HKT<F, ReadonlyMap<K, B>>) => {
+  ) => HKT<F, Map<K, B>>) => {
     const traverseF = T(F)
     return (ta, f) => flow(traverseF(f), F.map(compact))(ta)
   }
@@ -585,7 +575,7 @@ export function reduce<K>(_: Ord<K>) {
 
 export function reduce_<K>(_: Ord<K>) {
   const ri = reduceWithIndex_(_)
-  return <A, B>(fa: ReadonlyMap<K, A>, b: B, f: (b: B, a: A) => B) =>
+  return <A, B>(fa: Map<K, A>, b: B, f: (b: B, a: A) => B) =>
     ri(fa, b, (_, b, a: A) => f(b, a))
 }
 
@@ -601,7 +591,7 @@ export function foldMap_<K>(_: Ord<K>) {
   const F = foldMapWithIndex_(_)
   return <M>(M: Monoid<M>) => {
     const foldMapWithIndexM = F(M)
-    return <A>(fa: ReadonlyMap<K, A>, f: (a: A) => M) =>
+    return <A>(fa: Map<K, A>, f: (a: A) => M) =>
       foldMapWithIndexM(fa, (_, a: A) => f(a))
   }
 }
@@ -613,7 +603,7 @@ export function reduceRight<K>(_: Ord<K>) {
 
 export function reduceRight_<K>(_: Ord<K>) {
   const ri = reduceRightWithIndex_(_)
-  return <A, B>(fa: ReadonlyMap<K, A>, b: B, f: (a: A, b: B) => B) =>
+  return <A, B>(fa: Map<K, A>, b: B, f: (a: A, b: B) => B) =>
     ri(fa, b, (_, a: A, b) => f(a, b))
 }
 
@@ -641,9 +631,7 @@ export function getWitherable<K>(
 /**
  * Insert or replace a key/value pair in a map
  */
-export function insertAt<K>(
-  E: Eq<K>
-): <A>(k: K, a: A) => (m: ReadonlyMap<K, A>) => ReadonlyMap<K, A> {
+export function insertAt<K>(E: Eq<K>): <A>(k: K, a: A) => (m: Map<K, A>) => Map<K, A> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (k, a) => (m) => {
     const found = lookupWithKeyE(m, k)
@@ -660,9 +648,7 @@ export function insertAt<K>(
   }
 }
 
-export function insertAt_<K>(
-  E: Eq<K>
-): <A>(m: ReadonlyMap<K, A>, k: K, a: A) => ReadonlyMap<K, A> {
+export function insertAt_<K>(E: Eq<K>): <A>(m: Map<K, A>, k: K, a: A) => Map<K, A> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (m, k, a) => {
     const found = lookupWithKeyE(m, k)
@@ -682,7 +668,7 @@ export function insertAt_<K>(
 /**
  * Test whether or not a map is empty
  */
-export function isEmpty<K, A>(d: ReadonlyMap<K, A>): boolean {
+export function isEmpty<K, A>(d: Map<K, A>): boolean {
   return d.size === 0
 }
 
@@ -692,9 +678,9 @@ export function isEmpty<K, A>(d: ReadonlyMap<K, A>): boolean {
 export function isSubmap<K, A>(
   SK: Eq<K>,
   SA: Eq<A>
-): (d1: ReadonlyMap<K, A>, d2: ReadonlyMap<K, A>) => boolean {
+): (d1: Map<K, A>, d2: Map<K, A>) => boolean {
   const lookupWithKeyS = lookupWithKey_(SK)
-  return (d1: ReadonlyMap<K, A>, d2: ReadonlyMap<K, A>): boolean => {
+  return (d1: Map<K, A>, d2: Map<K, A>): boolean => {
     const entries = d1.entries()
     let e: Next<readonly [K, A]>
     // tslint:disable-next-line: strict-boolean-expressions
@@ -716,25 +702,23 @@ export function isSubmap<K, A>(
 /**
  * Get a sorted array of the keys contained in a map
  */
-export function keys<K>(O: Ord<K>): <A>(m: ReadonlyMap<K, A>) => ReadonlyArray<K> {
+export function keys<K>(O: Ord<K>): <A>(m: Map<K, A>) => Array<K> {
   return (m) => Array.from(m.keys()).sort(O.compare)
 }
 
-export function keys_<K, A>(m: ReadonlyMap<K, A>, O: Ord<K>): ReadonlyArray<K> {
+export function keys_<K, A>(m: Map<K, A>, O: Ord<K>): Array<K> {
   return Array.from(m.keys()).sort(O.compare)
 }
 
 /**
  * Lookup the value for a key in a `Map`.
  */
-export function lookup<K>(
-  E: Eq<K>
-): (k: K) => <A>(m: ReadonlyMap<K, A>) => Op.Option<A> {
+export function lookup<K>(E: Eq<K>): (k: K) => <A>(m: Map<K, A>) => Op.Option<A> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (k) => (m) => Op.map_(lookupWithKeyE(m, k), ([_, a]) => a)
 }
 
-export function lookup_<K>(E: Eq<K>): <A>(m: ReadonlyMap<K, A>, k: K) => Op.Option<A> {
+export function lookup_<K>(E: Eq<K>): <A>(m: Map<K, A>, k: K) => Op.Option<A> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (m, k) => Op.map_(lookupWithKeyE(m, k), ([_, a]) => a)
 }
@@ -745,8 +729,8 @@ export function lookup_<K>(E: Eq<K>): <A>(m: ReadonlyMap<K, A>, k: K) => Op.Opti
  */
 export function lookupWithKey<K>(
   E: Eq<K>
-): (k: K) => <A>(m: ReadonlyMap<K, A>) => Op.Option<readonly [K, A]> {
-  return (k: K) => <A>(m: ReadonlyMap<K, A>) => {
+): (k: K) => <A>(m: Map<K, A>) => Op.Option<readonly [K, A]> {
+  return (k: K) => <A>(m: Map<K, A>) => {
     const entries = m.entries()
     let e: Next<readonly [K, A]>
     // tslint:disable-next-line: strict-boolean-expressions
@@ -762,8 +746,8 @@ export function lookupWithKey<K>(
 
 export function lookupWithKey_<K>(
   E: Eq<K>
-): <A>(m: ReadonlyMap<K, A>, k: K) => Op.Option<readonly [K, A]> {
-  return <A>(m: ReadonlyMap<K, A>, k: K) => {
+): <A>(m: Map<K, A>, k: K) => Op.Option<readonly [K, A]> {
+  return <A>(m: Map<K, A>, k: K) => {
     const entries = m.entries()
     let e: Next<readonly [K, A]>
     // tslint:disable-next-line: strict-boolean-expressions
@@ -777,19 +761,15 @@ export function lookupWithKey_<K>(
   }
 }
 
-export const map_: <E, A, B>(
-  fa: ReadonlyMap<E, A>,
-  f: (a: A) => B
-) => ReadonlyMap<E, B> = (fa, f) => map(f)(fa)
+export const map_: <E, A, B>(fa: Map<E, A>, f: (a: A) => B) => Map<E, B> = (fa, f) =>
+  map(f)(fa)
 
-export const map: <A, B>(
-  f: (a: A) => B
-) => <E>(fa: ReadonlyMap<E, A>) => ReadonlyMap<E, B> = (f) =>
+export const map: <A, B>(f: (a: A) => B) => <E>(fa: Map<E, A>) => Map<E, B> = (f) =>
   mapWithIndex((_, a) => f(a))
 
 export const mapWithIndex = <K, A, B>(
   f: (k: K, a: A) => B
-): ((fa: ReadonlyMap<K, A>) => ReadonlyMap<K, B>) => {
+): ((fa: Map<K, A>) => Map<K, B>) => {
   return (fa) => {
     const m = new Map<K, B>()
     const entries = fa.entries()
@@ -803,9 +783,9 @@ export const mapWithIndex = <K, A, B>(
 }
 
 export const mapWithIndex_ = <K, A, B>(
-  fa: ReadonlyMap<K, A>,
+  fa: Map<K, A>,
   f: (k: K, a: A) => B
-): ReadonlyMap<K, B> => {
+): Map<K, B> => {
   const m = new Map<K, B>()
   const entries = fa.entries()
   let e: Next<readonly [K, A]>
@@ -819,19 +799,19 @@ export const mapWithIndex_ = <K, A, B>(
 /**
  * Test whether or not a key exists in a map
  */
-export function member<K>(E: Eq<K>): (k: K) => <A>(m: ReadonlyMap<K, A>) => boolean {
+export function member<K>(E: Eq<K>): (k: K) => <A>(m: Map<K, A>) => boolean {
   const lookupE = lookup_(E)
   return (k) => (m) => Op.isSome(lookupE(m, k))
 }
 
-export function member_<K>(E: Eq<K>): <A>(m: ReadonlyMap<K, A>, k: K) => boolean {
+export function member_<K>(E: Eq<K>): <A>(m: Map<K, A>, k: K) => boolean {
   const lookupE = lookup_(E)
   return (m, k) => Op.isSome(lookupE(m, k))
 }
 
 export function modifyAt<K>(
   E: Eq<K>
-): <A>(k: K, f: (a: A) => A) => (m: ReadonlyMap<K, A>) => Op.Option<ReadonlyMap<K, A>> {
+): <A>(k: K, f: (a: A) => A) => (m: Map<K, A>) => Op.Option<Map<K, A>> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (k, f) => (m) => {
     const found = lookupWithKeyE(m, k)
@@ -846,7 +826,7 @@ export function modifyAt<K>(
 
 export function modifyAt_<K>(
   E: Eq<K>
-): <A>(m: ReadonlyMap<K, A>, k: K, f: (a: A) => A) => Op.Option<ReadonlyMap<K, A>> {
+): <A>(m: Map<K, A>, k: K, f: (a: A) => A) => Op.Option<Map<K, A>> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (m, k, f) => {
     const found = lookupWithKeyE(m, k)
@@ -865,29 +845,28 @@ export interface Next<A> {
 }
 
 export const partition: CPartition2<URI> = <A>(predicate: Predicate<A>) => <K>(
-  fa: ReadonlyMap<K, A>
+  fa: Map<K, A>
 ) => partitionWithIndex_(fa, (_, a) => predicate(a))
 
 export const partition_: Partition2<URI> = <K, A>(
-  fa: ReadonlyMap<K, A>,
+  fa: Map<K, A>,
   predicate: Predicate<A>
 ) => partitionWithIndex_(fa, (_, a) => predicate(a))
 
 export const partitionMap: <A, B, C>(
   f: (a: A) => Either<B, C>
-) => <E>(fa: ReadonlyMap<E, A>) => Separated<ReadonlyMap<E, B>, ReadonlyMap<E, C>> = (
-  f
-) => partitionMapWithIndex((_, a) => f(a))
+) => <E>(fa: Map<E, A>) => Separated<Map<E, B>, Map<E, C>> = (f) =>
+  partitionMapWithIndex((_, a) => f(a))
 
 export const partitionMap_: <E, A, B, C>(
-  fa: ReadonlyMap<E, A>,
+  fa: Map<E, A>,
   f: (a: A) => Either<B, C>
-) => Separated<ReadonlyMap<E, B>, ReadonlyMap<E, C>> = (fa, f) =>
+) => Separated<Map<E, B>, Map<E, C>> = (fa, f) =>
   partitionMapWithIndex_(fa, (_, a) => f(a))
 
 export const partitionMapWithIndex = <K, A, B, C>(
   f: (k: K, a: A) => Either<B, C>
-): ((fa: ReadonlyMap<K, A>) => Separated<ReadonlyMap<K, B>, ReadonlyMap<K, C>>) => {
+): ((fa: Map<K, A>) => Separated<Map<K, B>, Map<K, C>>) => {
   return (fa) => {
     const left = new Map<K, B>()
     const right = new Map<K, C>()
@@ -911,9 +890,9 @@ export const partitionMapWithIndex = <K, A, B, C>(
 }
 
 export const partitionMapWithIndex_ = <K, A, B, C>(
-  fa: ReadonlyMap<K, A>,
+  fa: Map<K, A>,
   f: (k: K, a: A) => Either<B, C>
-): Separated<ReadonlyMap<K, B>, ReadonlyMap<K, C>> => {
+): Separated<Map<K, B>, Map<K, C>> => {
   const left = new Map<K, B>()
   const right = new Map<K, C>()
   const entries = fa.entries()
@@ -936,7 +915,7 @@ export const partitionMapWithIndex_ = <K, A, B, C>(
 
 export const partitionWithIndex = <K, A>(
   p: (k: K, a: A) => boolean
-): ((fa: ReadonlyMap<K, A>) => Separated<ReadonlyMap<K, A>, ReadonlyMap<K, A>>) => {
+): ((fa: Map<K, A>) => Separated<Map<K, A>, Map<K, A>>) => {
   return (fa) => {
     const left = new Map<K, A>()
     const right = new Map<K, A>()
@@ -959,9 +938,9 @@ export const partitionWithIndex = <K, A>(
 }
 
 export const partitionWithIndex_ = <K, A>(
-  fa: ReadonlyMap<K, A>,
+  fa: Map<K, A>,
   p: (k: K, a: A) => boolean
-): Separated<ReadonlyMap<K, A>, ReadonlyMap<K, A>> => {
+): Separated<Map<K, A>, Map<K, A>> => {
   const left = new Map<K, A>()
   const right = new Map<K, A>()
   const entries = fa.entries()
@@ -986,7 +965,7 @@ export const partitionWithIndex_ = <K, A>(
  */
 export function pop<K>(
   E: Eq<K>
-): (k: K) => <A>(m: ReadonlyMap<K, A>) => Op.Option<readonly [A, ReadonlyMap<K, A>]> {
+): (k: K) => <A>(m: Map<K, A>) => Op.Option<readonly [A, Map<K, A>]> {
   const lookupE = lookup_(E)
   const deleteAtE = deleteAt(E)
   return (k) => {
@@ -997,7 +976,7 @@ export function pop<K>(
 
 export function pop_<K>(
   E: Eq<K>
-): <A>(m: ReadonlyMap<K, A>, k: K) => Op.Option<readonly [A, ReadonlyMap<K, A>]> {
+): <A>(m: Map<K, A>, k: K) => Op.Option<readonly [A, Map<K, A>]> {
   const lookupE = lookup_(E)
   const deleteAtE = deleteAt(E)
   return (m, k) => {
@@ -1007,8 +986,8 @@ export function pop_<K>(
 }
 
 export const separate = <K, A, B>(
-  fa: ReadonlyMap<K, Either<A, B>>
-): Separated<ReadonlyMap<K, A>, ReadonlyMap<K, B>> => {
+  fa: Map<K, Either<A, B>>
+): Separated<Map<K, A>, Map<K, B>> => {
   const left = new Map<K, A>()
   const right = new Map<K, B>()
   const entries = fa.entries()
@@ -1030,27 +1009,25 @@ export const separate = <K, A, B>(
 /**
  * Create a map with one key/value pair
  */
-export function singleton<K, A>(k: K, a: A): ReadonlyMap<K, A> {
+export function singleton<K, A>(k: K, a: A): Map<K, A> {
   return new Map([[k, a]])
 }
 
 /**
  * Calculate the number of key/value pairs in a map
  */
-export function size<K, A>(d: ReadonlyMap<K, A>): number {
+export function size<K, A>(d: Map<K, A>): number {
   return d.size
 }
 
-export function toMap<K, A>(m: ReadonlyMap<K, A>): Map<K, A> {
+export function toMutable<K, A>(m: Map<K, A>): MutableMap<K, A> {
   return new Map(m)
 }
 
 /**
  * Get a sorted of the key/value pairs contained in a map
  */
-export function toReadonlyArray<K>(
-  O: Ord<K>
-): <A>(m: ReadonlyMap<K, A>) => ReadonlyArray<readonly [K, A]> {
+export function toArray<K>(O: Ord<K>): <A>(m: Map<K, A>) => Array<readonly [K, A]> {
   return collect(O)((k, a) => [k, a] as const)
 }
 
@@ -1060,16 +1037,16 @@ export function toReadonlyArray<K>(
 export function toUnfoldable<K, F extends URIS>(
   O: Ord<K>,
   U: CUnfoldable1<F>
-): <A>(d: ReadonlyMap<K, A>) => Kind<F, readonly [K, A]>
+): <A>(d: Map<K, A>) => Kind<F, readonly [K, A]>
 export function toUnfoldable<K, F>(
   O: Ord<K>,
   U: CUnfoldable<F>
-): <A>(d: ReadonlyMap<K, A>) => HKT<F, readonly [K, A]>
+): <A>(d: Map<K, A>) => HKT<F, readonly [K, A]>
 export function toUnfoldable<K, F>(
   O: Ord<K>,
   U: CUnfoldable<F>
-): <A>(d: ReadonlyMap<K, A>) => HKT<F, readonly [K, A]> {
-  const toArrayO = toReadonlyArray(O)
+): <A>(d: Map<K, A>) => HKT<F, readonly [K, A]> {
+  const toArrayO = toArray(O)
   return (d) => {
     const arr = toArrayO(d)
     const len = arr.length
@@ -1079,7 +1056,7 @@ export function toUnfoldable<K, F>(
 
 export function updateAt<K>(
   E: Eq<K>
-): <A>(k: K, a: A) => (m: ReadonlyMap<K, A>) => Op.Option<ReadonlyMap<K, A>> {
+): <A>(k: K, a: A) => (m: Map<K, A>) => Op.Option<Map<K, A>> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (k, a) => (m) => {
     const found = lookupWithKeyE(m, k)
@@ -1094,7 +1071,7 @@ export function updateAt<K>(
 
 export function updateAt_<K>(
   E: Eq<K>
-): <A>(m: ReadonlyMap<K, A>, k: K, a: A) => Op.Option<ReadonlyMap<K, A>> {
+): <A>(m: Map<K, A>, k: K, a: A) => Op.Option<Map<K, A>> {
   const lookupWithKeyE = lookupWithKey_(E)
   return (m, k, a) => {
     const found = lookupWithKeyE(m, k)
@@ -1113,14 +1090,14 @@ export type URI = typeof URI
 
 declare module "../Base/HKT" {
   interface URItoKind2<E, A> {
-    readonly [URI]: ReadonlyMap<E, A>
+    readonly [URI]: Map<E, A>
   }
 }
 
 /**
  * Get a sorted array of the values contained in a map
  */
-export function values<A>(O: Ord<A>): <K>(m: ReadonlyMap<K, A>) => ReadonlyArray<A> {
+export function values<A>(O: Ord<A>): <K>(m: Map<K, A>) => Array<A> {
   return (m) => Array.from(m.values()).sort(O.compare)
 }
 

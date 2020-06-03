@@ -94,7 +94,7 @@ export class Read<
       pipe(
         fetchEvents,
         T.chainTap((events) =>
-          op(this.S.select(A.toArray(eventTypes)).matchWiden as any)(
+          op(this.S.select(A.toMutable(eventTypes)).matchWiden as any)(
             events.map((event) => ({
               ...event.event,
               [metaURI]: {

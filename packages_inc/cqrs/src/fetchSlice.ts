@@ -36,7 +36,7 @@ export class SliceFetcher<
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
-    const nS = S.select(A.toArray(eventTypes))
+    const nS = S.select(A.toMutable(eventTypes))
 
     this.inDomain = (
       a
@@ -127,7 +127,7 @@ export class AggregateFetcher<
     eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
-    const nS = S.select(A.toArray(eventTypes))
+    const nS = S.select(A.toMutable(eventTypes))
 
     this.inDomain = (
       a
@@ -214,7 +214,7 @@ export class DomainFetcher<
     private readonly eventTypes: Keys,
     private readonly db: DbT<Db>
   ) {
-    const nS = S.select(A.toArray(eventTypes))
+    const nS = S.select(A.toMutable(eventTypes))
 
     this.inDomain = (
       a

@@ -104,6 +104,7 @@ const modules: string[] = [
   "Support/Runtime",
   "Support/Driver",
   "Support/Utils",
+  "Support/Types",
   "Monocle/common",
   "Monocle/Fold",
   "Monocle/Getter",

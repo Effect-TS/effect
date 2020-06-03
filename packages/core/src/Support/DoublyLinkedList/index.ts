@@ -1,78 +1,120 @@
-export class DoublyLinkedListNode<T> {
-  constructor(
-    public value: T | null,
-    public next: DoublyLinkedListNode<T> | null = null,
-    public previous: DoublyLinkedListNode<T> | null = null
-  ) {}
+export class LinkedListNode<T> {
+  public removed = false
+  public left: LinkedListNode<T> | undefined
+  public right: LinkedListNode<T> | undefined
+
+  public constructor(public readonly value: T) {
+    this.right = undefined
+    this.left = undefined
+  }
 }
 
+type Node<T> = LinkedListNode<T> | undefined
+
 export class DoublyLinkedList<T> {
-  constructor(
-    public head: DoublyLinkedListNode<T> | null = null,
-    public tail: DoublyLinkedListNode<T> | null = null
-  ) {}
-
-  prepend(value: T) {
-    const newNode = new DoublyLinkedListNode(value, this.head)
-    if (this.head) {
-      this.head.previous = newNode
-    }
-    this.head = newNode
-    if (!this.tail) {
-      this.tail = newNode
-    }
-    return this
+  public get head(): T | undefined {
+    return this.headN === undefined ? undefined : this.headN.value
   }
 
-  append(value: T) {
-    const newNode = new DoublyLinkedListNode(value)
-    if (!this.head) {
-      this.head = newNode
-      this.tail = newNode
-
-      return this
-    }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this.tail!.next = newNode
-    newNode.previous = this.tail
-    this.tail = newNode
-    return this
+  public get isEmpty(): boolean {
+    return this.length === 0
   }
 
-  deleteTail() {
-    if (!this.tail) {
-      return null
-    }
-    if (this.head === this.tail) {
-      const deletedTail = this.tail
-      this.head = null
-      this.tail = null
-
-      return deletedTail
-    }
-    const deletedTail = this.tail
-    this.tail = this.tail.previous
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this.tail!.next = null
-    return deletedTail
+  public get tail(): T | undefined {
+    return this.tailN === undefined ? undefined : this.tailN.value
   }
 
-  deleteHead() {
-    if (!this.head) {
-      return null
+  public static of<A = never>(...t: A[]): DoublyLinkedList<A> {
+    return new DoublyLinkedList(t)
+  }
+
+  public length = 0
+
+  private headN: Node<T> = undefined
+  private tailN: Node<T> = undefined
+
+  private constructor(values: T[]) {
+    for (const i of values) {
+      this.add(i)
     }
-    const deletedHead = this.head
-    if (this.head.next) {
-      this.head = this.head.next
-      this.head.previous = null
+  }
+
+  public forEach(f: (_: T) => void) {
+    let current = this.headN
+
+    while (current !== undefined) {
+      f(current.value)
+      current = current.right
+    }
+  }
+
+  public add(val: T): LinkedListNode<T> {
+    const node = new LinkedListNode(val)
+    if (this.length === 0) {
+      this.headN = node
+    }
+    if (this.tailN === undefined) {
+      this.tailN = node
     } else {
-      this.head = null
-      this.tail = null
+      this.tailN.right = node
+      node.left = this.tailN
+      this.tailN = node
     }
-    return deletedHead
+    this.length += 1
+
+    return node
   }
 
-  empty() {
-    return this.head === null
+  public empty(): void {
+    this.length = 0
+    this.headN = this.tailN = undefined
+  }
+
+  public pop(): T | undefined {
+    const h = this.tailN
+    if (h !== undefined) {
+      this.remove(h)
+
+      return h.value
+    }
+
+    return undefined
+  }
+
+  public remove(n: LinkedListNode<T>): void {
+    if (n.removed) {
+      return
+    }
+
+    n.removed = true
+
+    if (n.left !== undefined && n.right !== undefined) {
+      n.left.right = n.right
+      n.right.left = n.left
+    } else if (n.left !== undefined) {
+      this.tailN = n.left
+      n.left.right = undefined
+    } else if (n.right !== undefined) {
+      this.headN = n.right
+      n.right.left = undefined
+    } else {
+      this.tailN = undefined
+      this.headN = undefined
+    }
+
+    if (this.length > 0) {
+      this.length -= 1
+    }
+  }
+
+  public shift(): T | undefined {
+    const h = this.headN
+    if (h !== undefined) {
+      this.remove(h)
+
+      return h.value
+    }
+
+    return undefined
   }
 }
