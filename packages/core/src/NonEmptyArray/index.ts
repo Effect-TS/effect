@@ -33,9 +33,10 @@ import type { Eq } from "../Eq"
 import type { Predicate, Refinement } from "../Function"
 import { none, Option, some } from "../Option"
 import type { Ord } from "../Ord"
-import type { ReadonlyRecord } from "../Record"
+import type { Record } from "../Record"
 import { getJoinSemigroup, getMeetSemigroup, Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
+import { MutableRecord } from "../Support/Types"
 
 export const URI = "@matechs/core/NonEmptyArray"
 
@@ -84,7 +85,7 @@ export function fromReadonlyArray<A>(as: ReadonlyArray<A>): Option<NonEmptyArray
 }
 
 export function fromArray<A>(as: Array<A>): Option<NonEmptyArray<A>> {
-  return fromReadonlyArray(RA.fromArray(as))
+  return fromReadonlyArray(RA.fromMutable(as))
 }
 
 export const getShow: <A>(S: Show<A>) => Show<NonEmptyArray<A>> = RA.getShow
@@ -259,9 +260,9 @@ export function groupSort_<A>(
  */
 export function groupBy<A>(
   f: (a: A) => string
-): (as: ReadonlyArray<A>) => ReadonlyRecord<string, NonEmptyArray<A>> {
+): (as: ReadonlyArray<A>) => Record<string, NonEmptyArray<A>> {
   return (as) => {
-    const r: Record<string, Array<A> & { 0: A }> = {}
+    const r: MutableRecord<string, Array<A> & { 0: A }> = {}
     for (const a of as) {
       const k = f(a)
       // eslint-disable-next-line no-prototype-builtins
@@ -278,8 +279,8 @@ export function groupBy<A>(
 export function groupBy_<A>(
   as: ReadonlyArray<A>,
   f: (a: A) => string
-): ReadonlyRecord<string, NonEmptyArray<A>> {
-  const r: Record<string, Array<A> & { 0: A }> = {}
+): Record<string, NonEmptyArray<A>> {
+  const r: MutableRecord<string, Array<A> & { 0: A }> = {}
   for (const a of as) {
     const k = f(a)
     // eslint-disable-next-line no-prototype-builtins

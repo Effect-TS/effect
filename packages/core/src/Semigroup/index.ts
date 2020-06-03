@@ -3,7 +3,7 @@
 import { identity } from "../Function"
 import { Magma } from "../Magma"
 import { max, min, Ord } from "../Ord"
-import { ReadonlyRecord } from "../Record"
+import { Record } from "../Record"
 
 /**
  * A `Semigroup` is a `Magma` where `concat` is associative, that is:
@@ -67,7 +67,7 @@ export function getFunctionSemigroup<S>(
   })
 }
 
-export function getStructSemigroup<O extends ReadonlyRecord<string, any>>(
+export function getStructSemigroup<O extends Record<string, any>>(
   semigroups: { [K in keyof O]: Semigroup<O[K]> }
 ): Semigroup<O> {
   return {

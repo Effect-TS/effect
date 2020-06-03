@@ -16,7 +16,7 @@ import { pipe } from "../../src/Pipe"
 import { showString } from "../../src/Show"
 
 describe("Array", () => {
-  const as: ReadonlyArray<number> = [1, 2, 3]
+  const as: _.Array<number> = [1, 2, 3]
 
   it("alt", () => {
     assert.deepStrictEqual(_.array.alt(() => [3, 4])([1, 2]), [1, 2, 3, 4])
@@ -73,11 +73,11 @@ describe("Array", () => {
   })
 
   it("traverse", () => {
-    const tfanone: ReadonlyArray<number> = [1, 2]
+    const tfanone: _.Array<number> = [1, 2]
     const f = (n: number): O.Option<number> => (n % 2 === 0 ? O.none : O.some(n))
     const fasnone = _.array.traverse(O.option)(f)(tfanone)
     assert.deepStrictEqual(O.isNone(fasnone), true)
-    const tfa: ReadonlyArray<number> = [1, 3]
+    const tfa: _.Array<number> = [1, 3]
     const fas = _.array.traverse(O.option)(f)(tfa)
     assert.deepStrictEqual(fas, O.some([1, 3]))
   })
@@ -151,7 +151,7 @@ describe("Array", () => {
     })
 
     // refinements
-    const xs: ReadonlyArray<string | number> = [1, "a", 3]
+    const xs: _.Array<string | number> = [1, "a", 3]
     const isNumber = (u: string | number): u is number => typeof u === "number"
     const actual = _.spanLeft(isNumber)(xs)
     assert.deepStrictEqual(actual, { init: [1], rest: ["a", 3] })
@@ -217,13 +217,9 @@ describe("Array", () => {
 
     type AOrB = A | B
     const isA = (x: AOrB): x is A => x.type === "A"
-    const xs1: ReadonlyArray<AOrB> = [
-      { type: "B" },
-      { type: "A", a: 1 },
-      { type: "A", a: 2 }
-    ]
+    const xs1: _.Array<AOrB> = [{ type: "B" }, { type: "A", a: 1 }, { type: "A", a: 2 }]
     assert.deepStrictEqual(_.findFirst(isA)(xs1), O.some({ type: "A", a: 1 }))
-    const xs2: ReadonlyArray<AOrB> = [{ type: "B" }]
+    const xs2: _.Array<AOrB> = [{ type: "B" }]
     assert.deepStrictEqual(_.findFirst(isA)(xs2), O.none)
     assert.deepStrictEqual(
       _.findFirst((x: string | null) => x === null)([null, "a"]),
@@ -285,7 +281,7 @@ describe("Array", () => {
       readonly a: number
       readonly b: number
     }
-    const xs: ReadonlyArray<X> = [
+    const xs: _.Array<X> = [
       { a: 1, b: 0 },
       { a: 1, b: 1 }
     ]
@@ -303,7 +299,7 @@ describe("Array", () => {
   it("unsafeUpdateAt", () => {
     // should return the same reference if nothing changed
     const x = { a: 1 }
-    const as: ReadonlyArray<{ readonly a: number }> = [x]
+    const as: _.Array<{ readonly a: number }> = [x]
     const result = _.unsafeUpdateAt_(as, 0, x)
     assert.deepStrictEqual(result, as)
   })
@@ -329,7 +325,7 @@ describe("Array", () => {
   })
 
   it("extend", () => {
-    const sum = (as: ReadonlyArray<number>) => M.fold(M.monoidSum)(as)
+    const sum = (as: _.Array<number>) => M.fold(M.monoidSum)(as)
     assert.deepStrictEqual(_.array.extend(sum)([1, 2, 3, 4]), [10, 9, 7, 4])
     assert.deepStrictEqual(_.array.extend(F.identity)([1, 2, 3, 4]), [
       [1, 2, 3, 4],
@@ -435,25 +431,25 @@ describe("Array", () => {
 
   it("foldMap", () => {
     const foldMap = _.array.foldMap(M.monoidString)
-    const x1: ReadonlyArray<string> = ["a", "b", "c"]
+    const x1: _.Array<string> = ["a", "b", "c"]
     const f1 = F.identity
     assert.deepStrictEqual(pipe(x1, foldMap(f1)), "abc")
-    const x2: ReadonlyArray<string> = []
+    const x2: _.Array<string> = []
     assert.deepStrictEqual(pipe(x2, foldMap(f1)), "")
   })
 
   it("reduceRight", () => {
     const { reduceRight } = _.array
-    const x1: ReadonlyArray<string> = ["a", "b", "c"]
+    const x1: _.Array<string> = ["a", "b", "c"]
     const init1 = ""
     const f1 = (a: string, acc: string) => acc + a
     assert.deepStrictEqual(pipe(x1, reduceRight(init1, f1)), "cba")
-    const x2: ReadonlyArray<string> = []
+    const x2: _.Array<string> = []
     assert.deepStrictEqual(pipe(x2, reduceRight(init1, f1)), "")
   })
 
   it("foldLeft", () => {
-    const len: <A>(as: ReadonlyArray<A>) => number = _.foldLeft(
+    const len: <A>(as: _.Array<A>) => number = _.foldLeft(
       () => 0,
       (_, tail) => 1 + len(tail)
     )
@@ -461,7 +457,7 @@ describe("Array", () => {
   })
 
   it("foldRight", () => {
-    const len: <A>(as: ReadonlyArray<A>) => number = _.foldRight(
+    const len: <A>(as: _.Array<A>) => number = _.foldRight(
       () => 0,
       (init, _) => 1 + len(init)
     )
@@ -493,7 +489,7 @@ describe("Array", () => {
     const arrB: A = { a: "b", b: 1 }
     const arrC: A = { a: "c", b: 2 }
     const arrD: A = { a: "d", b: 2 }
-    const arrUniq: ReadonlyArray<A> = [arrA, arrC]
+    const arrUniq: _.Array<A> = [arrA, arrC]
 
     assert.deepStrictEqual(_.uniq(eqA)(arrUniq), arrUniq, "Preserve original array")
     assert.deepStrictEqual(_.uniq(eqA)([arrA, arrB, arrC, arrD]), [arrA, arrC])
@@ -538,7 +534,7 @@ describe("Array", () => {
     const byName = Ord.ord.contramap((p: Person) => p.name)(Ord.ordString)
     const byAge = Ord.ord.contramap((p: Person) => p.age)(Ord.ordNumber)
     const sortByNameByAge = _.sortBy([byName, byAge])
-    const persons: ReadonlyArray<Person> = [
+    const persons: _.Array<Person> = [
       { name: "a", age: 1 },
       { name: "b", age: 3 },
       { name: "c", age: 2 },
@@ -623,7 +619,7 @@ describe("Array", () => {
       right: [3]
     })
     // refinements
-    const xs: ReadonlyArray<string | number> = ["a", "b", 1]
+    const xs: _.Array<string | number> = ["a", "b", 1]
     const isNumber = (x: string | number): x is number => typeof x === "number"
     const actual = pipe(xs, partition(isNumber))
     assert.deepStrictEqual(actual, { left: ["a", "b"], right: [1] })
@@ -647,9 +643,7 @@ describe("Array", () => {
   })
 
   it("chop", () => {
-    const group = <A>(
-      E: Eq.Eq<A>
-    ): ((as: ReadonlyArray<A>) => ReadonlyArray<ReadonlyArray<A>>) => {
+    const group = <A>(E: Eq.Eq<A>): ((as: _.Array<A>) => _.Array<_.Array<A>>) => {
       return _.chop((as) => {
         const { init, rest } = _.spanLeft((a: A) => E.equals(a, as[0]))(as)
         return [init, rest]
@@ -701,8 +695,8 @@ describe("Array", () => {
 
     // #897
     it("should respect the law: RA.chunksOf(n)(xs).concat(RA.chunksOf(n)(ys)) == RA.chunksOf(n)(xs.concat(ys)))", () => {
-      const xs: ReadonlyArray<number> = []
-      const ys: ReadonlyArray<number> = [1, 2]
+      const xs: _.Array<number> = []
+      const ys: _.Array<number> = [1, 2]
       assert.deepStrictEqual(
         _.chunksOf(2)(xs).concat(_.chunksOf(2)(ys)),
         _.chunksOf(2)(xs.concat(ys))
@@ -809,7 +803,7 @@ describe("Array", () => {
   })
 
   it("traverseWithIndex", () => {
-    const ta: ReadonlyArray<string> = ["a", "bb"]
+    const ta: _.Array<string> = ["a", "bb"]
     assert.deepStrictEqual(
       pipe(
         ta,
@@ -886,20 +880,20 @@ describe("Array", () => {
   })
 
   it("fromArray", () => {
-    assert.strictEqual(_.fromArray([]), _.empty)
+    assert.strictEqual(_.fromMutable([]), _.empty)
     // tslint:disable-next-line: readonly-array
     const as = [1, 2, 3]
-    const bs = _.fromArray(as)
+    const bs = _.fromMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })
 
   it("toArray", () => {
-    assert.deepStrictEqual(_.toArray(_.empty), [])
-    assert.notStrictEqual(_.toArray(_.empty), _.empty)
+    assert.deepStrictEqual(_.toMutable(_.empty), [])
+    assert.notStrictEqual(_.toMutable(_.empty), _.empty)
     // tslint:disable-next-line: readonly-array
     const as = [1, 2, 3]
-    const bs = _.toArray(as)
+    const bs = _.toMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })

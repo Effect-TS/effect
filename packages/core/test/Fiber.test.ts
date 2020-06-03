@@ -107,7 +107,7 @@ describe("Fiber", () => {
 
     expect(result).toStrictEqual(true)
     expect(interrupted).toStrictEqual(1)
-    expect(runs).toBeGreaterThan(8)
+    expect(runs).toBeGreaterThan(7)
     expect(runs).toBeLessThan(11)
   })
 })

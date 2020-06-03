@@ -50,7 +50,7 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this)
   }
 
-  private readonly narrowADT = this.S.selectMorph(A.toArray(this.eventTypes))
+  private readonly narrowADT = this.S.selectMorph(A.toMutable(this.eventTypes))
 
   adt = {
     ...this.narrowADT,
@@ -119,7 +119,7 @@ export class AggregateRoot<
   >,
   Env
 > {
-  private readonly narrowedS = this.aggregate.S.selectMorph(A.toArray(this.keys))
+  private readonly narrowedS = this.aggregate.S.selectMorph(A.toMutable(this.keys))
 
   constructor(
     public aggregate: Aggregate<Types, Tag, ProgURI, InterpURI, Keys, Db, Env>,
