@@ -142,7 +142,7 @@ describe("Record", () => {
     assert.deepStrictEqual(t1, none)
     const t2 = _.traverseWithIndex(option)((): Option<number> => none)(_.empty)
     assert.deepStrictEqual(
-      getOrElse((): _.ReadonlyRecord<string, number> => _.empty)(t2),
+      getOrElse((): _.Record<string, number> => _.empty)(t2),
       _.empty
     )
   })
@@ -197,7 +197,7 @@ describe("Record", () => {
 
     // refinements
     const isNumber = (u: string | number): u is number => typeof u === "number"
-    const y: _.ReadonlyRecord<string, string | number> = { a: 1, b: "foo" }
+    const y: _.Record<string, string | number> = { a: 1, b: "foo" }
     const actual = _.record.filter(isNumber)(y)
     assert.deepStrictEqual(actual, { a: 1 })
 
@@ -240,7 +240,7 @@ describe("Record", () => {
     const f = (n: number) => I.identity.of(p(n) ? some(n + 1) : none)
     assert.deepStrictEqual(
       witherIdentity(f)({}),
-      I.identity.of<_.ReadonlyRecord<string, number>>({})
+      I.identity.of<_.Record<string, number>>({})
     )
     assert.deepStrictEqual(witherIdentity(f)({ a: 1, b: 3 }), I.identity.of({ b: 4 }))
   })
@@ -279,15 +279,15 @@ describe("Record", () => {
   })
 
   it("every", () => {
-    const x: _.ReadonlyRecord<string, number> = { a: 1, b: 2 }
-    const y: _.ReadonlyRecord<string, number> = { a: 1, b: 2 }
+    const x: _.Record<string, number> = { a: 1, b: 2 }
+    const y: _.Record<string, number> = { a: 1, b: 2 }
     assert.deepStrictEqual(_.every((n: number) => n <= 2)(x), true)
     assert.deepStrictEqual(_.every((n: number) => n <= 1)(y), false)
   })
 
   it("some", () => {
-    const x: _.ReadonlyRecord<string, number> = { a: 1, b: 2 }
-    const y: _.ReadonlyRecord<string, number> = { a: 1, b: 2 }
+    const x: _.Record<string, number> = { a: 1, b: 2 }
+    const y: _.Record<string, number> = { a: 1, b: 2 }
     assert.deepStrictEqual(_.some((n: number) => n <= 1)(x), true)
     assert.deepStrictEqual(_.some((n: number) => n <= 0)(y), false)
   })
@@ -301,7 +301,7 @@ describe("Record", () => {
     const zipObject = <K extends string, A>(
       keys: ReadonlyArray<K>,
       values: ReadonlyArray<A>
-    ): _.ReadonlyRecord<K, A> =>
+    ): _.Record<K, A> =>
       pipe(
         zip_(keys, values),
         _.fromFoldableMap(getLastSemigroup<A>(), array)(identity)
@@ -344,7 +344,7 @@ describe("Record", () => {
   })
 
   it("hasOwnProperty", () => {
-    const x: _.ReadonlyRecord<string, number> = { a: 1 }
+    const x: _.Record<string, number> = { a: 1 }
     assert.deepStrictEqual(_.hasOwnProperty("a", x), true)
     assert.deepStrictEqual(_.hasOwnProperty("b", x), false)
   })
@@ -386,7 +386,7 @@ describe("Record", () => {
   })
 
   it("updateAt", () => {
-    const x: _.ReadonlyRecord<string, number> = { a: 1 }
+    const x: _.Record<string, number> = { a: 1 }
     assert.deepStrictEqual(_.updateAt("b", 2)(x), none)
     assert.deepStrictEqual(_.updateAt("a", 2)(x), some({ a: 2 }))
     const r = _.updateAt("a", 1)(x)
@@ -398,21 +398,21 @@ describe("Record", () => {
   })
 
   it("modifyAt", () => {
-    const x: _.ReadonlyRecord<string, number> = { a: 1 }
+    const x: _.Record<string, number> = { a: 1 }
     assert.deepStrictEqual(_.modifyAt("b", (n: number) => n * 2)(x), none)
     assert.deepStrictEqual(_.modifyAt("a", (n: number) => n * 2)(x), some({ a: 2 }))
   })
 
   it("fromRecord", () => {
     const as = { a: 1, b: 2 }
-    const bs = _.fromRecord(as)
+    const bs = _.fromMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })
 
   it("toRecord", () => {
-    const as: _.ReadonlyRecord<string, number> = { a: 1, b: 2 }
-    const bs = _.toRecord(as)
+    const as: _.Record<string, number> = { a: 1, b: 2 }
+    const bs = _.toMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })

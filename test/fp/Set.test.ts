@@ -332,16 +332,16 @@ describe("ReadonlySet", () => {
     assert.deepStrictEqual(S.show(s3), `new Set(["a", "b"])`)
   })
 
-  it("fromSet", () => {
+  it("fromMutable", () => {
     const as = new Set(["a"])
-    const bs = _.fromSet(as)
+    const bs = _.fromMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })
 
-  it("toSet", () => {
+  it("toMutable", () => {
     const as: ReadonlySet<string> = new Set(["a"])
-    const bs = _.toSet(as)
+    const bs = _.toMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })

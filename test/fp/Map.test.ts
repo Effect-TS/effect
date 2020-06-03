@@ -220,7 +220,7 @@ describe("Map", () => {
       [{ id: "b" }, 2],
       [{ id: "a" }, 1]
     ])
-    const toArrayO = _.toReadonlyArray(ordUser)
+    const toArrayO = _.toArray(ordUser)
     assert.deepStrictEqual(toArrayO(m1), [
       [{ id: "a" }, 1],
       [{ id: "b" }, 2]
@@ -230,7 +230,7 @@ describe("Map", () => {
       [{ id: "b" }, 2]
     ])
 
-    const toArray = _.toReadonlyArray(ordKey)
+    const toArray = _.toArray(ordKey)
     assert.deepStrictEqual(
       toArray(
         new Map([
@@ -1119,16 +1119,16 @@ describe("Map", () => {
     )
   })
 
-  it("fromMap", () => {
+  it("fromMutable", () => {
     const as = new Map([[1, "a"]])
-    const bs = _.fromMap(as)
+    const bs = _.fromMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })
 
-  it("toMap", () => {
+  it("toMutable", () => {
     const as: ReadonlyMap<number, string> = new Map([[1, "a"]])
-    const bs = _.toMap(as)
+    const bs = _.toMutable(as)
     assert.deepStrictEqual(bs, as)
     assert.notStrictEqual(bs, as)
   })

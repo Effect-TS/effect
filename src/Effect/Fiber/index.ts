@@ -192,8 +192,8 @@ export class FiberImpl<E, A> implements Fiber<E, A> {
   )
   result = chain_(
     sync(() => this.driver.completed),
-    (opt) => (opt === null ? pureNone : map_(completed(opt), O.some))
+    (opt) => (opt === undefined ? pureNone : map_(completed(opt), O.some))
   )
-  isComplete = sync(() => this.driver.completed !== null)
+  isComplete = sync(() => this.driver.completed !== undefined)
   constructor(readonly driver: Driver<E, A>, readonly n?: string) {}
 }

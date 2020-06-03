@@ -2,7 +2,7 @@
 
 import { Endomorphism, identity } from "../Function"
 import type { Bounded } from "../Ord"
-import type { ReadonlyRecord } from "../Record"
+import type { Record } from "../Record"
 import {
   fold as foldSemigroup,
   getDualSemigroup,
@@ -74,7 +74,7 @@ export function getMeetMonoid<A>(B: Bounded<A>): Monoid<A> {
   }
 }
 
-export function getStructMonoid<O extends ReadonlyRecord<string, any>>(
+export function getStructMonoid<O extends Record<string, any>>(
   monoids: {
     [K in keyof O]: Monoid<O[K]>
   }
