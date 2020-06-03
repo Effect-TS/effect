@@ -21,7 +21,7 @@ export interface HasCb<E, A> {
 }
 
 export function queueUtils<E, A>() {
-  const ops: DoublyLinkedList<Ops<E, A>> = new DoublyLinkedList()
+  const ops: DoublyLinkedList<Ops<E, A>> = DoublyLinkedList.of()
   const hasCB: HasCb<E, A> = {}
 
   function next(o: Ops<E, A>) {
@@ -30,7 +30,7 @@ export function queueUtils<E, A>() {
       hasCB.cb = undefined
       cb(o)
     } else {
-      ops.append(o)
+      ops.add(o)
     }
   }
 
@@ -65,16 +65,16 @@ export function emitter<E, A>(
 ): M.Sync<T.AsyncE<E, O.Option<A>>> {
   return M.pure(
     T.async<E, O.Option<A>>((callback) => {
-      const op = ops.deleteHead()
-      if (op !== null && op.value !== null) {
-        runFromQueue(op.value, callback)
+      const op = ops.shift()
+      if (op !== undefined) {
+        runFromQueue(op, callback)
       } else {
         hasCB.cb = (o) => {
-          if (!ops.empty()) {
-            ops.append(o)
-            const op = ops.deleteHead()
-            if (op !== null && op.value !== null) {
-              runFromQueue(op.value, callback)()
+          if (!ops.isEmpty) {
+            ops.add(o)
+            const op = ops.shift()
+            if (op !== undefined) {
+              runFromQueue(op, callback)()
             }
           } else {
             runFromQueue(o, callback)()

@@ -11,7 +11,7 @@
  */
 import type { CContravariant1, Contravariant1 } from "../Base"
 import type { Monoid } from "../Monoid"
-import type { ReadonlyRecord } from "../Record"
+import type { Record } from "../Record"
 
 export interface Eq<A> {
   readonly equals: (x: A, y: A) => boolean
@@ -38,7 +38,7 @@ export function getMonoid<A>(): Monoid<Eq<A>> {
   }
 }
 
-export function getStructEq<O extends ReadonlyRecord<string, any>>(
+export function getStructEq<O extends Record<string, any>>(
   eqs: {
     [K in keyof O]: Eq<O[K]>
   }

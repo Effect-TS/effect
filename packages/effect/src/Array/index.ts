@@ -61,6 +61,9 @@ import { NonEmptyArray } from "../NonEmptyArray"
 import { isSome, none, Option, some } from "../Option"
 import { fromCompare, getMonoid as getOrdMonoid, Ord, ordNumber } from "../Ord"
 import type { Show } from "../Show"
+import { MutableArray } from "../Support/Types"
+
+export type Array<A> = ReadonlyArray<A>
 
 export const alt: <A>(
   that: () => readonly A[]
@@ -161,7 +164,7 @@ export const chainTap_: <A, B>(
  * import { Eq, eqNumber } from '@matechs/core/Eq'
  * import { chop, spanLeft } from '@matechs/core/Array'
  *
- * const group = <A>(S: Eq<A>): ((as: ReadonlyArray<A>) => ReadonlyArray<ReadonlyArray<A>>) => {
+ * const group = <A>(S: Eq<A>): ((as: Array<A>) => Array<Array<A>>) => {
  *   return chop(as => {
  *     const { init, rest } = spanLeft((a: A) => S.equals(a, as[0]))(as)
  *     return [init, rest]
@@ -170,11 +173,11 @@ export const chainTap_: <A, B>(
  * assert.deepStrictEqual(group(eqNumber)([1, 1, 2, 3, 3, 4]), [[1, 1], [2], [3, 3], [4]])
  */
 export function chop<A, B>(
-  f: (as: NonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
-): (as: ReadonlyArray<A>) => ReadonlyArray<B> {
+  f: (as: NonEmptyArray<A>) => readonly [B, Array<A>]
+): (as: Array<A>) => Array<B> {
   return (as) => {
-    const result: Array<B> = []
-    let cs: ReadonlyArray<A> = as
+    const result: MutableArray<B> = []
+    let cs: Array<A> = as
     while (isNonEmpty(cs)) {
       const [b, c] = f(cs)
       result.push(b)
@@ -185,11 +188,11 @@ export function chop<A, B>(
 }
 
 export function chop_<A, B>(
-  as: ReadonlyArray<A>,
-  f: (as: NonEmptyArray<A>) => readonly [B, ReadonlyArray<A>]
-): ReadonlyArray<B> {
-  const result: Array<B> = []
-  let cs: ReadonlyArray<A> = as
+  as: Array<A>,
+  f: (as: NonEmptyArray<A>) => readonly [B, Array<A>]
+): Array<B> {
+  const result: MutableArray<B> = []
+  let cs: Array<A> = as
   while (isNonEmpty(cs)) {
     const [b, c] = f(cs)
     result.push(b)
@@ -214,17 +217,12 @@ export function chop_<A, B>(
  *
  * assert.deepStrictEqual(chunksOf(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4], [5]])
  */
-export function chunksOf(
-  n: number
-): <A>(as: ReadonlyArray<A>) => ReadonlyArray<ReadonlyArray<A>> {
+export function chunksOf(n: number): <A>(as: Array<A>) => Array<Array<A>> {
   const f = chop(splitAt(n))
   return (as) => (as.length === 0 ? empty : isOutOfBound(n - 1, as) ? [as] : f(as))
 }
 
-export function chunksOf_<A>(
-  as: ReadonlyArray<A>,
-  n: number
-): ReadonlyArray<ReadonlyArray<A>> {
+export function chunksOf_<A>(as: Array<A>, n: number): Array<Array<A>> {
   const f = chop(splitAt(n))
   return as.length === 0 ? empty : isOutOfBound(n - 1, as) ? [as] : f(as)
 }
@@ -251,44 +249,36 @@ export const compact = <A>(fa: readonly Option<A>[]): readonly A[] =>
  * ])
  */
 export function comprehension<A, B, C, D, R>(
-  input: readonly [
-    ReadonlyArray<A>,
-    ReadonlyArray<B>,
-    ReadonlyArray<C>,
-    ReadonlyArray<D>
-  ],
+  input: readonly [Array<A>, Array<B>, Array<C>, Array<D>],
   f: (a: A, b: B, c: C, d: D) => R,
   g?: (a: A, b: B, c: C, d: D) => boolean
-): ReadonlyArray<R>
+): Array<R>
 export function comprehension<A, B, C, R>(
-  input: readonly [ReadonlyArray<A>, ReadonlyArray<B>, ReadonlyArray<C>],
+  input: readonly [Array<A>, Array<B>, Array<C>],
   f: (a: A, b: B, c: C) => R,
   g?: (a: A, b: B, c: C) => boolean
-): ReadonlyArray<R>
+): Array<R>
 export function comprehension<A, R>(
-  input: readonly [ReadonlyArray<A>],
+  input: readonly [Array<A>],
   f: (a: A) => R,
   g?: (a: A) => boolean
-): ReadonlyArray<R>
+): Array<R>
 export function comprehension<A, B, R>(
-  input: readonly [ReadonlyArray<A>, ReadonlyArray<B>],
+  input: readonly [Array<A>, Array<B>],
   f: (a: A, b: B) => R,
   g?: (a: A, b: B) => boolean
-): ReadonlyArray<R>
+): Array<R>
 export function comprehension<A, R>(
-  input: readonly [ReadonlyArray<A>],
+  input: readonly [Array<A>],
   f: (a: A) => boolean,
   g?: (a: A) => R
-): ReadonlyArray<R>
+): Array<R>
 export function comprehension<R>(
-  input: ReadonlyArray<ReadonlyArray<any>>,
-  f: (...xs: ReadonlyArray<any>) => R,
-  g: (...xs: ReadonlyArray<any>) => boolean = () => true
-): ReadonlyArray<R> {
-  const go = (
-    scope: ReadonlyArray<any>,
-    input: ReadonlyArray<ReadonlyArray<any>>
-  ): ReadonlyArray<R> => {
+  input: Array<Array<any>>,
+  f: (...xs: Array<any>) => R,
+  g: (...xs: Array<any>) => boolean = () => true
+): Array<R> {
+  const go = (scope: Array<any>, input: Array<Array<any>>): Array<R> => {
     if (input.length === 0) {
       return g(...scope) ? [f(...scope)] : empty
     } else {
@@ -298,10 +288,7 @@ export function comprehension<R>(
   return go(empty, input)
 }
 
-export const concat_ = <A>(
-  x: ReadonlyArray<A>,
-  y: ReadonlyArray<A>
-): ReadonlyArray<A> => {
+export const concat_ = <A>(x: Array<A>, y: Array<A>): Array<A> => {
   const lenx = x.length
   if (lenx === 0) {
     return y
@@ -320,9 +307,7 @@ export const concat_ = <A>(
   return r
 }
 
-export const concat = <A>(
-  y: ReadonlyArray<A>
-): ((x: ReadonlyArray<A>) => ReadonlyArray<A>) => {
+export const concat = <A>(y: Array<A>): ((x: Array<A>) => Array<A>) => {
   return (x) => {
     const lenx = x.length
     if (lenx === 0) {
@@ -351,7 +336,7 @@ export const concat = <A>(
  *
  * assert.deepStrictEqual(cons(0, [1, 2, 3]), [0, 1, 2, 3])
  */
-export function cons_<A>(tail: ReadonlyArray<A>, head: A): NonEmptyArray<A> {
+export function cons_<A>(tail: Array<A>, head: A): NonEmptyArray<A> {
   const len = tail.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
@@ -361,7 +346,7 @@ export function cons_<A>(tail: ReadonlyArray<A>, head: A): NonEmptyArray<A> {
   return (r as unknown) as NonEmptyArray<A>
 }
 
-export function cons<A>(head: A): (tail: ReadonlyArray<A>) => NonEmptyArray<A> {
+export function cons<A>(head: A): (tail: Array<A>) => NonEmptyArray<A> {
   return (tail) => {
     const len = tail.length
     const r = Array(len + 1)
@@ -383,16 +368,11 @@ export function cons<A>(head: A): (tail: ReadonlyArray<A>) => NonEmptyArray<A> {
  * assert.deepStrictEqual(deleteAt(0)([1, 2, 3]), some([2, 3]))
  * assert.deepStrictEqual(deleteAt(1)([]), none)
  */
-export function deleteAt(
-  i: number
-): <A>(as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
+export function deleteAt(i: number): <A>(as: Array<A>) => Option<Array<A>> {
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeDeleteAt_(as, i)))
 }
 
-export function deleteAt_<A>(
-  as: ReadonlyArray<A>,
-  i: number
-): Option<ReadonlyArray<A>> {
+export function deleteAt_<A>(as: Array<A>, i: number): Option<Array<A>> {
   return isOutOfBound(i, as) ? none : some(unsafeDeleteAt_(as, i))
 }
 
@@ -406,9 +386,7 @@ export function deleteAt_<A>(
  *
  * assert.deepStrictEqual(difference(eqNumber)([1, 2], [2, 3]), [1])
  */
-export function difference<A>(
-  E: Eq<A>
-): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function difference<A>(E: Eq<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
   const elemE = elem_(E)
   return (xs, ys) => xs.filter((a) => !elemE(ys, a))
 }
@@ -420,11 +398,11 @@ export function difference<A>(
  *
  * assert.deepStrictEqual(dropLeft(2)([1, 2, 3]), [3])
  */
-export function dropLeft(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function dropLeft(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => as.slice(n, as.length)
 }
 
-export function dropLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+export function dropLeft_<A>(as: Array<A>, n: number): Array<A> {
   return as.slice(n, as.length)
 }
 
@@ -436,9 +414,7 @@ export function dropLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> 
  *
  * assert.deepStrictEqual(dropLeftWhile((n: number) => n % 2 === 1)([1, 3, 2, 4, 5]), [2, 4, 5])
  */
-export function dropLeftWhile<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function dropLeftWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A> {
   return (as) => {
     const i = spanIndex_(as, predicate)
     const l = as.length
@@ -450,10 +426,7 @@ export function dropLeftWhile<A>(
   }
 }
 
-export function dropLeftWhile_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): ReadonlyArray<A> {
+export function dropLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
   const i = spanIndex_(as, predicate)
   const l = as.length
   const rest = Array(l - i)
@@ -471,11 +444,11 @@ export function dropLeftWhile_<A>(
  *
  * assert.deepStrictEqual(dropRight(2)([1, 2, 3, 4, 5]), [1, 2, 3])
  */
-export function dropRight(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function dropRight(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => as.slice(0, as.length - n)
 }
 
-export function dropRight_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+export function dropRight_<A>(as: Array<A>, n: number): Array<A> {
   return as.slice(0, as.length - n)
 }
 
@@ -485,7 +458,7 @@ export const duplicate = <A>(ma: readonly A[]): readonly (readonly A[])[] =>
 /**
  * Test if a value is a member of an array. Takes a `Eq<A>` as a single
  * argument which returns the function to use to search for a value of type `A` in
- * an array of type `ReadonlyArray<A>`.
+ * an array of type `Array<A>`.
  *
  * @example
  * import { elem } from '@matechs/core/Array'
@@ -494,7 +467,7 @@ export const duplicate = <A>(ma: readonly A[]): readonly (readonly A[])[] =>
  * assert.strictEqual(elem(eqNumber)(1, [1, 2, 3]), true)
  * assert.strictEqual(elem(eqNumber)(4, [1, 2, 3]), false)
  */
-export function elem<A>(E: Eq<A>): (a: A) => (as: ReadonlyArray<A>) => boolean {
+export function elem<A>(E: Eq<A>): (a: A) => (as: Array<A>) => boolean {
   return (a) => (as) => {
     const predicate = (element: A) => E.equals(element, a)
     let i = 0
@@ -508,7 +481,7 @@ export function elem<A>(E: Eq<A>): (a: A) => (as: ReadonlyArray<A>) => boolean {
   }
 }
 
-export function elem_<A>(E: Eq<A>): (as: ReadonlyArray<A>, a: A) => boolean {
+export function elem_<A>(E: Eq<A>): (as: Array<A>, a: A) => boolean {
   return (as, a) => {
     const predicate = (element: A) => E.equals(element, a)
     let i = 0
@@ -525,7 +498,7 @@ export function elem_<A>(E: Eq<A>): (as: ReadonlyArray<A>, a: A) => boolean {
 /**
  * An empty array
  */
-export const empty: ReadonlyArray<never> = []
+export const empty: Array<never> = []
 
 export const extend: <A, B>(
   f: (fa: readonly A[]) => B
@@ -560,7 +533,7 @@ export const filterMap_: <A, B>(
 export const filterMapWithIndex = <A, B>(f: (i: number, a: A) => Option<B>) => (
   fa: readonly A[]
 ): readonly B[] => {
-  const result: Array<B> = []
+  const result: MutableArray<B> = []
   for (let i = 0; i < fa.length; i++) {
     const optionB = f(i, fa[i])
     if (isSome(optionB)) {
@@ -574,7 +547,7 @@ export const filterMapWithIndex_ = <A, B>(
   fa: readonly A[],
   f: (i: number, a: A) => Option<B>
 ): readonly B[] => {
-  const result: Array<B> = []
+  const result: MutableArray<B> = []
   for (let i = 0; i < fa.length; i++) {
     const optionB = f(i, fa[i])
     if (isSome(optionB)) {
@@ -617,13 +590,9 @@ export const filterWithIndex_: {
  */
 export function findFirst<A, B extends A>(
   refinement: Refinement<A, B>
-): (as: ReadonlyArray<A>) => Option<B>
-export function findFirst<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Option<A>
-export function findFirst<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Option<A> {
+): (as: Array<A>) => Option<B>
+export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A>
+export function findFirst<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A> {
   return (as) => {
     const len = as.length
     for (let i = 0; i < len; i++) {
@@ -636,14 +605,11 @@ export function findFirst<A>(
 }
 
 export function findFirst_<A, B extends A>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   refinement: Refinement<A, B>
 ): Option<B>
-export function findFirst_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Option<A>
-export function findFirst_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): Option<A> {
+export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
+export function findFirst_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
   const len = as.length
   for (let i = 0; i < len; i++) {
     if (predicate(as[i])) {
@@ -665,14 +631,14 @@ export function findFirst_<A>(
  *   age?: number
  * }
  *
- * const persons: ReadonlyArray<Person> = [{ name: 'John' }, { name: 'Mary', age: 45 }, { name: 'Joey', age: 28 }]
+ * const persons: Array<Person> = [{ name: 'John' }, { name: 'Mary', age: 45 }, { name: 'Joey', age: 28 }]
  *
  * // returns the name of the first person that has an age
  * assert.deepStrictEqual(findFirstMap((p: Person) => (p.age === undefined ? none : some(p.name)))(persons), some('Mary'))
  */
 export function findFirstMap<A, B>(
   f: (a: A) => Option<B>
-): (as: ReadonlyArray<A>) => Option<B> {
+): (as: Array<A>) => Option<B> {
   return (as) => {
     const len = as.length
     for (let i = 0; i < len; i++) {
@@ -685,10 +651,7 @@ export function findFirstMap<A, B>(
   }
 }
 
-export function findFirstMap_<A, B>(
-  as: ReadonlyArray<A>,
-  f: (a: A) => Option<B>
-): Option<B> {
+export function findFirstMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option<B> {
   const len = as.length
   for (let i = 0; i < len; i++) {
     const v = f(as[i])
@@ -711,7 +674,7 @@ export function findFirstMap_<A, B>(
  */
 export function findIndex<A>(
   predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Option<number> {
+): (as: Array<A>) => Option<number> {
   return (as) => {
     const len = as.length
     for (let i = 0; i < len; i++) {
@@ -723,10 +686,7 @@ export function findIndex<A>(
   }
 }
 
-export function findIndex_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): Option<number> {
+export function findIndex_<A>(as: Array<A>, predicate: Predicate<A>): Option<number> {
   const len = as.length
   for (let i = 0; i < len; i++) {
     if (predicate(as[i])) {
@@ -747,13 +707,9 @@ export function findIndex_<A>(
  */
 export function findLast<A, B extends A>(
   refinement: Refinement<A, B>
-): (as: ReadonlyArray<A>) => Option<B>
-export function findLast<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Option<A>
-export function findLast<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Option<A> {
+): (as: Array<A>) => Option<B>
+export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A>
+export function findLast<A>(predicate: Predicate<A>): (as: Array<A>) => Option<A> {
   return (as) => {
     const len = as.length
     for (let i = len - 1; i >= 0; i--) {
@@ -766,11 +722,11 @@ export function findLast<A>(
 }
 
 export function findLast_<A, B extends A>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   refinement: Refinement<A, B>
 ): Option<B>
-export function findLast_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Option<A>
-export function findLast_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Option<A> {
+export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A>
+export function findLast_<A>(as: Array<A>, predicate: Predicate<A>): Option<A> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
     if (predicate(as[i])) {
@@ -791,13 +747,13 @@ export function findLast_<A>(as: ReadonlyArray<A>, predicate: Predicate<A>): Opt
  *   a: number
  *   b: number
  * }
- * const xs: ReadonlyArray<X> = [{ a: 1, b: 0 }, { a: 1, b: 1 }]
+ * const xs: Array<X> = [{ a: 1, b: 0 }, { a: 1, b: 1 }]
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 1)(xs), some(1))
  * assert.deepStrictEqual(findLastIndex((x: { a: number }) => x.a === 4)(xs), none)
  */
 export function findLastIndex<A>(
   predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Option<number> {
+): (as: Array<A>) => Option<number> {
   return (as) => {
     const len = as.length
     for (let i = len - 1; i >= 0; i--) {
@@ -810,7 +766,7 @@ export function findLastIndex<A>(
 }
 
 export function findLastIndex_<A>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   predicate: Predicate<A>
 ): Option<number> {
   const len = as.length
@@ -834,14 +790,12 @@ export function findLastIndex_<A>(
  *   age?: number
  * }
  *
- * const persons: ReadonlyArray<Person> = [{ name: 'John' }, { name: 'Mary', age: 45 }, { name: 'Joey', age: 28 }]
+ * const persons: Array<Person> = [{ name: 'John' }, { name: 'Mary', age: 45 }, { name: 'Joey', age: 28 }]
  *
  * // returns the name of the last person that has an age
  * assert.deepStrictEqual(findLastMap((p: Person) => (p.age === undefined ? none : some(p.name)))(persons), some('Joey'))
  */
-export function findLastMap<A, B>(
-  f: (a: A) => Option<B>
-): (as: ReadonlyArray<A>) => Option<B> {
+export function findLastMap<A, B>(f: (a: A) => Option<B>): (as: Array<A>) => Option<B> {
   return (as) => {
     const len = as.length
     for (let i = len - 1; i >= 0; i--) {
@@ -854,10 +808,7 @@ export function findLastMap<A, B>(
   }
 }
 
-export function findLastMap_<A, B>(
-  as: ReadonlyArray<A>,
-  f: (a: A) => Option<B>
-): Option<B> {
+export function findLastMap_<A, B>(as: Array<A>, f: (a: A) => Option<B>): Option<B> {
   const len = as.length
   for (let i = len - 1; i >= 0; i--) {
     const v = f(as[i])
@@ -876,7 +827,7 @@ export function findLastMap_<A, B>(
  *
  * assert.deepStrictEqual(flatten([[1], [2], [3]]), [1, 2, 3])
  */
-export function flatten<A>(mma: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<A> {
+export function flatten<A>(mma: Array<Array<A>>): Array<A> {
   let rLen = 0
   const len = mma.length
   for (let i = 0; i < len; i++) {
@@ -901,20 +852,20 @@ export function flatten<A>(mma: ReadonlyArray<ReadonlyArray<A>>): ReadonlyArray<
  * @example
  * import { foldLeft } from '@matechs/core/Array'
  *
- * const len: <A>(as: ReadonlyArray<A>) => number = foldLeft(() => 0, (_, tail) => 1 + len(tail))
+ * const len: <A>(as: Array<A>) => number = foldLeft(() => 0, (_, tail) => 1 + len(tail))
  * assert.strictEqual(len([1, 2, 3]), 3)
  */
 export function foldLeft<A, B>(
   onNil: () => B,
-  onCons: (head: A, tail: ReadonlyArray<A>) => B
-): (as: ReadonlyArray<A>) => B {
+  onCons: (head: A, tail: Array<A>) => B
+): (as: Array<A>) => B {
   return (as) => (isEmpty(as) ? onNil() : onCons(as[0], as.slice(1)))
 }
 
 export function foldLeft_<A, B>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   onNil: () => B,
-  onCons: (head: A, tail: ReadonlyArray<A>) => B
+  onCons: (head: A, tail: Array<A>) => B
 ): B {
   return isEmpty(as) ? onNil() : onCons(as[0], as.slice(1))
 }
@@ -944,21 +895,21 @@ export const foldMapWithIndex_: <M>(
  */
 export function foldRight<A, B>(
   onNil: () => B,
-  onCons: (init: ReadonlyArray<A>, last: A) => B
-): (as: ReadonlyArray<A>) => B {
+  onCons: (init: Array<A>, last: A) => B
+): (as: Array<A>) => B {
   return (as) =>
     isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1])
 }
 
 export function foldRight_<A, B>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   onNil: () => B,
-  onCons: (init: ReadonlyArray<A>, last: A) => B
+  onCons: (init: Array<A>, last: A) => B
 ): B {
   return isEmpty(as) ? onNil() : onCons(as.slice(0, as.length - 1), as[as.length - 1])
 }
 
-export function fromArray<A>(as: Array<A>): ReadonlyArray<A> {
+export function fromMutable<A>(as: MutableArray<A>): Array<A> {
   const l = as.length
   if (l === 0) {
     return empty
@@ -971,7 +922,7 @@ export function fromArray<A>(as: Array<A>): ReadonlyArray<A> {
 }
 
 /**
- * Derives an `Eq` over the `ReadonlyArray` of a given element type from the `Eq` of that type. The derived `Eq` defines two
+ * Derives an `Eq` over the `Array` of a given element type from the `Eq` of that type. The derived `Eq` defines two
  * arrays as equal if all elements of both arrays are compared equal pairwise with the given `E`. In case of arrays of
  * different lengths, the result is non equality.
  *
@@ -983,7 +934,7 @@ export function fromArray<A>(as: Array<A>): ReadonlyArray<A> {
  * assert.strictEqual(E.equals(['a', 'b'], ['a', 'b']), true)
  * assert.strictEqual(E.equals(['a'], []), false)
  */
-export function getEq<A>(E: Eq<A>): Eq<ReadonlyArray<A>> {
+export function getEq<A>(E: Eq<A>): Eq<Array<A>> {
   return {
     equals: (xs, ys) =>
       xs === ys || (xs.length === ys.length && xs.every((x, i) => E.equals(x, ys[i])))
@@ -991,7 +942,7 @@ export function getEq<A>(E: Eq<A>): Eq<ReadonlyArray<A>> {
 }
 
 /**
- * Returns a `Monoid` for `ReadonlyArray<A>`
+ * Returns a `Monoid` for `Array<A>`
  *
  * @example
  * import { getMonoid } from '@matechs/core/Array'
@@ -999,7 +950,7 @@ export function getEq<A>(E: Eq<A>): Eq<ReadonlyArray<A>> {
  * const M = getMonoid<number>()
  * assert.deepStrictEqual(M.concat([1, 2], [3, 4]), [1, 2, 3, 4])
  */
-export function getMonoid<A = never>(): Monoid<ReadonlyArray<A>> {
+export function getMonoid<A = never>(): Monoid<Array<A>> {
   return {
     concat: concat_,
     empty
@@ -1007,7 +958,7 @@ export function getMonoid<A = never>(): Monoid<ReadonlyArray<A>> {
 }
 
 /**
- * Derives an `Ord` over the `ReadonlyArray` of a given element type from the `Ord` of that type. The ordering between two such
+ * Derives an `Ord` over the `Array` of a given element type from the `Ord` of that type. The ordering between two such
  * arrays is equal to: the first non equal comparison of each arrays elements taken pairwise in increasing order, in
  * case of equality over all the pairwise elements; the longest array is considered the greatest, if both arrays have
  * the same length, the result is equality.
@@ -1021,7 +972,7 @@ export function getMonoid<A = never>(): Monoid<ReadonlyArray<A>> {
  * assert.strictEqual(O.compare(['a'], ['a']), 0)
  * assert.strictEqual(O.compare(['a'], ['b']), -1)
  */
-export function getOrd<A>(O: Ord<A>): Ord<ReadonlyArray<A>> {
+export function getOrd<A>(O: Ord<A>): Ord<Array<A>> {
   return fromCompare((a, b) => {
     const aLen = a.length
     const bLen = b.length
@@ -1036,7 +987,7 @@ export function getOrd<A>(O: Ord<A>): Ord<ReadonlyArray<A>> {
   })
 }
 
-export function getShow<A>(S: Show<A>): Show<ReadonlyArray<A>> {
+export function getShow<A>(S: Show<A>): Show<Array<A>> {
   return {
     show: (as) => `[${as.map(S.show).join(", ")}]`
   }
@@ -1052,7 +1003,7 @@ export function getShow<A>(S: Show<A>): Show<ReadonlyArray<A>> {
  * assert.deepStrictEqual(head([1, 2, 3]), some(1))
  * assert.deepStrictEqual(head([]), none)
  */
-export function head<A>(as: ReadonlyArray<A>): Option<A> {
+export function head<A>(as: Array<A>): Option<A> {
   return isEmpty(as) ? none : some(as[0])
 }
 
@@ -1066,7 +1017,7 @@ export function head<A>(as: ReadonlyArray<A>): Option<A> {
  * assert.deepStrictEqual(init([1, 2, 3]), some([1, 2]))
  * assert.deepStrictEqual(init([]), none)
  */
-export function init<A>(as: ReadonlyArray<A>): Option<ReadonlyArray<A>> {
+export function init<A>(as: Array<A>): Option<Array<A>> {
   const len = as.length
   return len === 0 ? none : some(as.slice(0, len - 1))
 }
@@ -1080,18 +1031,11 @@ export function init<A>(as: ReadonlyArray<A>): Option<ReadonlyArray<A>> {
  *
  * assert.deepStrictEqual(insertAt(2, 5)([1, 2, 3, 4]), some([1, 2, 5, 3, 4]))
  */
-export function insertAt<A>(
-  i: number,
-  a: A
-): (as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
+export function insertAt<A>(i: number, a: A): (as: Array<A>) => Option<Array<A>> {
   return (as) => (i < 0 || i > as.length ? none : some(unsafeInsertAt_(as, i, a)))
 }
 
-export function insertAt_<A>(
-  as: ReadonlyArray<A>,
-  i: number,
-  a: A
-): Option<ReadonlyArray<A>> {
+export function insertAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
   return i < 0 || i > as.length ? none : some(unsafeInsertAt_(as, i, a))
 }
 
@@ -1105,9 +1049,7 @@ export function insertAt_<A>(
  *
  * assert.deepStrictEqual(intersection(eqNumber)([1, 2], [2, 3]), [2])
  */
-export function intersection<A>(
-  E: Eq<A>
-): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function intersection<A>(E: Eq<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
   const elemE = elem_(E)
   return (xs, ys) => xs.filter((a) => elemE(ys, a))
 }
@@ -1120,21 +1062,21 @@ export function intersection<A>(
  *
  * assert.strictEqual(isEmpty([]), true)
  */
-export function isEmpty<A>(as: ReadonlyArray<A>): boolean {
+export function isEmpty<A>(as: Array<A>): boolean {
   return as.length === 0
 }
 
 /**
- * Test whether an array is non empty narrowing down the type to `NonEmptyReadonlyArray<A>`
+ * Test whether an array is non empty narrowing down the type to `NonEmptyArray<A>`
  */
-export function isNonEmpty<A>(as: ReadonlyArray<A>): as is NonEmptyArray<A> {
+export function isNonEmpty<A>(as: Array<A>): as is NonEmptyArray<A> {
   return as.length > 0
 }
 
 /**
  * Test whether an array contains a particular index
  */
-export function isOutOfBound<A>(i: number, as: ReadonlyArray<A>): boolean {
+export function isOutOfBound<A>(i: number, as: Array<A>): boolean {
   return i < 0 || i >= as.length
 }
 
@@ -1148,7 +1090,7 @@ export function isOutOfBound<A>(i: number, as: ReadonlyArray<A>): boolean {
  * assert.deepStrictEqual(last([1, 2, 3]), some(3))
  * assert.deepStrictEqual(last([]), none)
  */
-export function last<A>(as: ReadonlyArray<A>): Option<A> {
+export function last<A>(as: Array<A>): Option<A> {
   return lookup_(as.length - 1, as)
 }
 
@@ -1161,8 +1103,8 @@ export function last<A>(as: ReadonlyArray<A>): Option<A> {
  *
  * assert.deepStrictEqual(lefts([right(1), left('foo'), right(2)]), ['foo'])
  */
-export function lefts<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<E> {
-  const r: Array<E> = []
+export function lefts<E, A>(as: Array<Either<E, A>>): Array<E> {
+  const r: MutableArray<E> = []
   const len = as.length
   for (let i = 0; i < len; i++) {
     const a = as[i]
@@ -1183,11 +1125,11 @@ export function lefts<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<E> {
  * assert.deepStrictEqual(lookup(1, [1, 2, 3]), some(2))
  * assert.deepStrictEqual(lookup(3, [1, 2, 3]), none)
  */
-export function lookup_<A>(i: number, as: ReadonlyArray<A>): Option<A> {
+export function lookup_<A>(i: number, as: Array<A>): Option<A> {
   return isOutOfBound(i, as) ? none : some(as[i])
 }
 
-export function lookup(i: number): <A>(as: ReadonlyArray<A>) => Option<A> {
+export function lookup(i: number): <A>(as: Array<A>) => Option<A> {
   return (as) => (isOutOfBound(i, as) ? none : some(as[i]))
 }
 
@@ -1200,8 +1142,8 @@ export function lookup(i: number): <A>(as: ReadonlyArray<A>) => Option<A> {
  * const double = (n: number): number => n * 2
  * assert.deepStrictEqual(makeBy(5, double), [0, 2, 4, 6, 8])
  */
-export function makeBy<A>(n: number, f: (i: number) => A): ReadonlyArray<A> {
-  const r: Array<A> = []
+export function makeBy<A>(n: number, f: (i: number) => A): Array<A> {
+  const r: MutableArray<A> = []
   for (let i = 0; i < n; i++) {
     r.push(f(i))
   }
@@ -1239,19 +1181,19 @@ export const mapWithIndex_: <A, B>(
 export function modifyAt<A>(
   i: number,
   f: (a: A) => A
-): (as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
+): (as: Array<A>) => Option<Array<A>> {
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i]))))
 }
 
 export function modifyAt_<A>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   i: number,
   f: (a: A) => A
-): Option<ReadonlyArray<A>> {
+): Option<Array<A>> {
   return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, f(as[i])))
 }
 
-export const of = <A>(a: A): ReadonlyArray<A> => [a]
+export const of = <A>(a: A): Array<A> => [a]
 
 export const partition: CPartition1<URI> = <A>(predicate: Predicate<A>) => (
   fa: readonly A[]
@@ -1278,8 +1220,8 @@ export const partitionMap_: <A, B, C>(
 export const partitionMapWithIndex = <A, B, C>(
   f: (i: number, a: A) => Either<B, C>
 ) => (fa: readonly A[]): Separated<readonly B[], readonly C[]> => {
-  const left: Array<B> = []
-  const right: Array<C> = []
+  const left: MutableArray<B> = []
+  const right: MutableArray<C> = []
   for (let i = 0; i < fa.length; i++) {
     const e = f(i, fa[i])
     if (e._tag === "Left") {
@@ -1298,8 +1240,8 @@ export const partitionMapWithIndex_ = <A, B, C>(
   fa: readonly A[],
   f: (i: number, a: A) => Either<B, C>
 ): Separated<readonly B[], readonly C[]> => {
-  const left: Array<B> = []
-  const right: Array<C> = []
+  const left: MutableArray<B> = []
+  const right: MutableArray<C> = []
   for (let i = 0; i < fa.length; i++) {
     const e = f(i, fa[i])
     if (e._tag === "Left") {
@@ -1317,8 +1259,8 @@ export const partitionMapWithIndex_ = <A, B, C>(
 export const partitionWithIndex: CPartitionWithIndex1<URI, number> = <A>(
   predicateWithIndex: PredicateWithIndex<number, A>
 ) => (fa: readonly A[]): Separated<readonly A[], readonly A[]> => {
-  const left: Array<A> = []
-  const right: Array<A> = []
+  const left: MutableArray<A> = []
+  const right: MutableArray<A> = []
   for (let i = 0; i < fa.length; i++) {
     const a = fa[i]
     if (predicateWithIndex(i, a)) {
@@ -1337,8 +1279,8 @@ export const partitionWithIndex_: PartitionWithIndex1<URI, number> = <A>(
   fa: readonly A[],
   predicateWithIndex: PredicateWithIndex<number, A>
 ): Separated<readonly A[], readonly A[]> => {
-  const left: Array<A> = []
-  const right: Array<A> = []
+  const left: MutableArray<A> = []
+  const right: MutableArray<A> = []
   for (let i = 0; i < fa.length; i++) {
     const a = fa[i]
     if (predicateWithIndex(i, a)) {
@@ -1361,7 +1303,7 @@ export const partitionWithIndex_: PartitionWithIndex1<URI, number> = <A>(
  *
  * assert.deepStrictEqual(range(1, 5), [1, 2, 3, 4, 5])
  */
-export function range(start: number, end: number): ReadonlyArray<number> {
+export function range(start: number, end: number): Array<number> {
   return makeBy(end - start + 1, (i) => start + i)
 }
 
@@ -1432,7 +1374,7 @@ export const reduceWithIndex_: <A, B>(
  *
  * assert.deepStrictEqual(replicate(3, 'a'), ['a', 'a', 'a'])
  */
-export function replicate<A>(n: number, a: A): ReadonlyArray<A> {
+export function replicate<A>(n: number, a: A): Array<A> {
   return makeBy(n, () => a)
 }
 /**
@@ -1443,7 +1385,7 @@ export function replicate<A>(n: number, a: A): ReadonlyArray<A> {
  *
  * assert.deepStrictEqual(reverse([1, 2, 3]), [3, 2, 1])
  */
-export function reverse<A>(as: ReadonlyArray<A>): ReadonlyArray<A> {
+export function reverse<A>(as: Array<A>): Array<A> {
   return [...as].reverse()
 }
 
@@ -1456,8 +1398,8 @@ export function reverse<A>(as: ReadonlyArray<A>): ReadonlyArray<A> {
  *
  * assert.deepStrictEqual(rights([right(1), left('foo'), right(2)]), [1, 2])
  */
-export function rights<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<A> {
-  const r: Array<A> = []
+export function rights<E, A>(as: Array<Either<E, A>>): Array<A> {
+  const r: MutableArray<A> = []
   const len = as.length
   for (let i = 0; i < len; i++) {
     const a = as[i]
@@ -1476,7 +1418,7 @@ export function rights<E, A>(as: ReadonlyArray<Either<E, A>>): ReadonlyArray<A> 
  *
  * assert.deepStrictEqual(rotate(2)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
  */
-export function rotate(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function rotate(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => {
     const len = as.length
     if (n === 0 || len <= 1 || len === Math.abs(n)) {
@@ -1489,7 +1431,7 @@ export function rotate(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A>
   }
 }
 
-export function rotate_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+export function rotate_<A>(as: Array<A>, n: number): Array<A> {
   const len = as.length
   if (n === 0 || len <= 1 || len === Math.abs(n)) {
     return as
@@ -1509,13 +1451,10 @@ export function rotate_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
  * assert.deepStrictEqual(scanLeft(10, (b, a: number) => b - a)([1, 2, 3]), [10, 9, 7, 4])
  * ```
  */
-export function scanLeft<A, B>(
-  b: B,
-  f: (b: B, a: A) => B
-): (as: ReadonlyArray<A>) => ReadonlyArray<B> {
+export function scanLeft<A, B>(b: B, f: (b: B, a: A) => B): (as: Array<A>) => Array<B> {
   return (as) => {
     const l = as.length
-    const r: Array<B> = new Array(l + 1)
+    const r: MutableArray<B> = new Array(l + 1)
     r[0] = b
     for (let i = 0; i < l; i++) {
       r[i + 1] = f(r[i], as[i])
@@ -1524,13 +1463,9 @@ export function scanLeft<A, B>(
   }
 }
 
-export function scanLeft_<A, B>(
-  as: ReadonlyArray<A>,
-  b: B,
-  f: (b: B, a: A) => B
-): ReadonlyArray<B> {
+export function scanLeft_<A, B>(as: Array<A>, b: B, f: (b: B, a: A) => B): Array<B> {
   const l = as.length
-  const r: Array<B> = new Array(l + 1)
+  const r: MutableArray<B> = new Array(l + 1)
   r[0] = b
   for (let i = 0; i < l; i++) {
     r[i + 1] = f(r[i], as[i])
@@ -1549,10 +1484,10 @@ export function scanLeft_<A, B>(
 export function scanRight<A, B>(
   b: B,
   f: (a: A, b: B) => B
-): (as: ReadonlyArray<A>) => ReadonlyArray<B> {
+): (as: Array<A>) => Array<B> {
   return (as) => {
     const l = as.length
-    const r: Array<B> = new Array(l + 1)
+    const r: MutableArray<B> = new Array(l + 1)
     r[l] = b
     for (let i = l - 1; i >= 0; i--) {
       r[i] = f(as[i], r[i + 1])
@@ -1561,13 +1496,9 @@ export function scanRight<A, B>(
   }
 }
 
-export function scanRight_<A, B>(
-  as: ReadonlyArray<A>,
-  b: B,
-  f: (a: A, b: B) => B
-): ReadonlyArray<B> {
+export function scanRight_<A, B>(as: Array<A>, b: B, f: (a: A, b: B) => B): Array<B> {
   const l = as.length
-  const r: Array<B> = new Array(l + 1)
+  const r: MutableArray<B> = new Array(l + 1)
   r[l] = b
   for (let i = l - 1; i >= 0; i--) {
     r[i] = f(as[i], r[i + 1])
@@ -1576,10 +1507,10 @@ export function scanRight_<A, B>(
 }
 
 export const separate = <B, C>(
-  fa: ReadonlyArray<Either<B, C>>
-): Separated<ReadonlyArray<B>, ReadonlyArray<C>> => {
-  const left: Array<B> = []
-  const right: Array<C> = []
+  fa: Array<Either<B, C>>
+): Separated<Array<B>, Array<C>> => {
+  const left: MutableArray<B> = []
+  const right: MutableArray<C> = []
   for (const e of fa) {
     if (e._tag === "Left") {
       left.push(e.left)
@@ -1594,8 +1525,8 @@ export const separate = <B, C>(
 }
 
 export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
-  ta: ReadonlyArray<HKT<F, A>>
-): HKT<F, ReadonlyArray<A>> => {
+  ta: Array<HKT<F, A>>
+): HKT<F, Array<A>> => {
   return reduce(F.of(zero<A>()), (fas, fa: HKT<F, A>) =>
     F.ap(fa)(F.map((as: readonly A[]) => (a: A) => snoc_(as, a))(fas))
   )(ta)
@@ -1609,7 +1540,7 @@ export const sequence: CSequence1<URI> = <F>(F: CApplicative<F>) => <A>(
  *
  * assert.deepStrictEqual(snoc([1, 2, 3], 4), [1, 2, 3, 4])
  */
-export function snoc_<A>(init: ReadonlyArray<A>, end: A): NonEmptyArray<A> {
+export function snoc_<A>(init: Array<A>, end: A): NonEmptyArray<A> {
   const len = init.length
   const r = Array(len + 1)
   for (let i = 0; i < len; i++) {
@@ -1619,7 +1550,7 @@ export function snoc_<A>(init: ReadonlyArray<A>, end: A): NonEmptyArray<A> {
   return (r as unknown) as NonEmptyArray<A>
 }
 
-export function snoc<A>(end: A): (init: ReadonlyArray<A>) => NonEmptyArray<A> {
+export function snoc<A>(end: A): (init: Array<A>) => NonEmptyArray<A> {
   return (init) => {
     const len = init.length
     const r = Array(len + 1)
@@ -1640,11 +1571,11 @@ export function snoc<A>(end: A): (init: ReadonlyArray<A>) => NonEmptyArray<A> {
  *
  * assert.deepStrictEqual(sort(ordNumber)([3, 2, 1]), [1, 2, 3])
  */
-export function sort<A>(O: Ord<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function sort<A>(O: Ord<A>): (as: Array<A>) => Array<A> {
   return (as) => [...as].sort(O.compare)
 }
 
-export function sort_<A>(as: ReadonlyArray<A>, O: Ord<A>): ReadonlyArray<A> {
+export function sort_<A>(as: Array<A>, O: Ord<A>): Array<A> {
   return [...as].sort(O.compare)
 }
 
@@ -1673,25 +1604,17 @@ export function sort_<A>(as: ReadonlyArray<A>, O: Ord<A>): ReadonlyArray<A> {
  *   { name: 'c', age: 2 }
  * ])
  */
-export function sortBy<A>(
-  ords: ReadonlyArray<Ord<A>>
-): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function sortBy<A>(ords: Array<Ord<A>>): (as: Array<A>) => Array<A> {
   const M = getOrdMonoid<A>()
   return sort(ords.reduce(M.concat, M.empty))
 }
 
-export function sortBy_<A>(
-  as: ReadonlyArray<A>,
-  ords: ReadonlyArray<Ord<A>>
-): ReadonlyArray<A> {
+export function sortBy_<A>(as: Array<A>, ords: Array<Ord<A>>): Array<A> {
   const M = getOrdMonoid<A>()
   return sort_(as, ords.reduce(M.concat, M.empty))
 }
 
-export const spanIndex_ = <A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): number => {
+export const spanIndex_ = <A>(as: Array<A>, predicate: Predicate<A>): number => {
   const l = as.length
   let i = 0
   for (; i < l; i++) {
@@ -1714,13 +1637,9 @@ export const spanIndex_ = <A>(
  */
 export function spanLeft<A, B extends A>(
   refinement: Refinement<A, B>
-): (as: ReadonlyArray<A>) => Spanned<B, A>
-export function spanLeft<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Spanned<A, A>
-export function spanLeft<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => Spanned<A, A> {
+): (as: Array<A>) => Spanned<B, A>
+export function spanLeft<A>(predicate: Predicate<A>): (as: Array<A>) => Spanned<A, A>
+export function spanLeft<A>(predicate: Predicate<A>): (as: Array<A>) => Spanned<A, A> {
   return (as) => {
     const i = spanIndex_(as, predicate)
     const init = Array(i)
@@ -1737,17 +1656,11 @@ export function spanLeft<A>(
 }
 
 export function spanLeft_<A, B extends A>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   refinement: Refinement<A, B>
 ): Spanned<B, A>
-export function spanLeft_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): Spanned<A, A>
-export function spanLeft_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): Spanned<A, A> {
+export function spanLeft_<A>(as: Array<A>, predicate: Predicate<A>): Spanned<A, A>
+export function spanLeft_<A>(as: Array<A>, predicate: Predicate<A>): Spanned<A, A> {
   const i = spanIndex_(as, predicate)
   const init = Array(i)
   for (let j = 0; j < i; j++) {
@@ -1762,8 +1675,8 @@ export function spanLeft_<A>(
 }
 
 export interface Spanned<I, R> {
-  readonly init: ReadonlyArray<I>
-  readonly rest: ReadonlyArray<R>
+  readonly init: Array<I>
+  readonly rest: Array<R>
 }
 
 /**
@@ -1774,16 +1687,11 @@ export interface Spanned<I, R> {
  *
  * assert.deepStrictEqual(splitAt(2)([1, 2, 3, 4, 5]), [[1, 2], [3, 4, 5]])
  */
-export function splitAt(
-  n: number
-): <A>(as: ReadonlyArray<A>) => readonly [ReadonlyArray<A>, ReadonlyArray<A>] {
+export function splitAt(n: number): <A>(as: Array<A>) => readonly [Array<A>, Array<A>] {
   return (as) => [as.slice(0, n), as.slice(n)]
 }
 
-export function splitAt_<A>(
-  as: ReadonlyArray<A>,
-  n: number
-): readonly [ReadonlyArray<A>, ReadonlyArray<A>] {
+export function splitAt_<A>(as: Array<A>, n: number): readonly [Array<A>, Array<A>] {
   return [as.slice(0, n), as.slice(n)]
 }
 
@@ -1797,7 +1705,7 @@ export function splitAt_<A>(
  * assert.deepStrictEqual(tail([1, 2, 3]), some([2, 3]))
  * assert.deepStrictEqual(tail([]), none)
  */
-export function tail<A>(as: ReadonlyArray<A>): Option<ReadonlyArray<A>> {
+export function tail<A>(as: Array<A>): Option<Array<A>> {
   return isEmpty(as) ? none : some(as.slice(1))
 }
 
@@ -1810,11 +1718,11 @@ export function tail<A>(as: ReadonlyArray<A>): Option<ReadonlyArray<A>> {
  *
  * assert.deepStrictEqual(takeLeft(2)([1, 2, 3]), [1, 2])
  */
-export function takeLeft(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function takeLeft(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => as.slice(0, n)
 }
 
-export function takeLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+export function takeLeft_<A>(as: Array<A>, n: number): Array<A> {
   return as.slice(0, n)
 }
 
@@ -1828,13 +1736,9 @@ export function takeLeft_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> 
  */
 export function takeLeftWhile<A, B extends A>(
   refinement: Refinement<A, B>
-): (as: ReadonlyArray<A>) => ReadonlyArray<B>
-export function takeLeftWhile<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => ReadonlyArray<A>
-export function takeLeftWhile<A>(
-  predicate: Predicate<A>
-): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+): (as: Array<A>) => Array<B>
+export function takeLeftWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A>
+export function takeLeftWhile<A>(predicate: Predicate<A>): (as: Array<A>) => Array<A> {
   return (as) => {
     const i = spanIndex_(as, predicate)
     const init = Array(i)
@@ -1846,17 +1750,11 @@ export function takeLeftWhile<A>(
 }
 
 export function takeLeftWhile_<A, B extends A>(
-  as: ReadonlyArray<A>,
+  as: Array<A>,
   refinement: Refinement<A, B>
-): ReadonlyArray<B>
-export function takeLeftWhile_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): ReadonlyArray<A>
-export function takeLeftWhile_<A>(
-  as: ReadonlyArray<A>,
-  predicate: Predicate<A>
-): ReadonlyArray<A> {
+): Array<B>
+export function takeLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<A>
+export function takeLeftWhile_<A>(as: Array<A>, predicate: Predicate<A>): Array<A> {
   const i = spanIndex_(as, predicate)
   const init = Array(i)
   for (let j = 0; j < i; j++) {
@@ -1874,15 +1772,15 @@ export function takeLeftWhile_<A>(
  *
  * assert.deepStrictEqual(takeRight(2)([1, 2, 3, 4, 5]), [4, 5])
  */
-export function takeRight(n: number): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function takeRight(n: number): <A>(as: Array<A>) => Array<A> {
   return (as) => (n === 0 ? empty : as.slice(-n))
 }
 
-export function takeRight_<A>(as: ReadonlyArray<A>, n: number): ReadonlyArray<A> {
+export function takeRight_<A>(as: Array<A>, n: number): Array<A> {
   return n === 0 ? empty : as.slice(-n)
 }
 
-export function toArray<A>(ras: ReadonlyArray<A>): Array<A> {
+export function toMutable<A>(ras: Array<A>): MutableArray<A> {
   const l = ras.length
   const as = Array(l)
   for (let i = 0; i < l; i++) {
@@ -1893,47 +1791,34 @@ export function toArray<A>(ras: ReadonlyArray<A>): Array<A> {
 
 export const traverse: CTraverse1<URI> = <F>(
   F: CApplicative<F>
-): (<A, B>(
-  f: (a: A) => HKT<F, B>
-) => (ta: ReadonlyArray<A>) => HKT<F, ReadonlyArray<B>>) => {
+): (<A, B>(f: (a: A) => HKT<F, B>) => (ta: Array<A>) => HKT<F, Array<B>>) => {
   return (f) => traverseWithIndex(F)((_, a) => f(a))
 }
 
 export const traverse_: Traverse1<URI> = <F>(
   F: CApplicative<F>
-): (<A, B>(
-  ta: ReadonlyArray<A>,
-  f: (a: A) => HKT<F, B>
-) => HKT<F, ReadonlyArray<B>>) => {
+): (<A, B>(ta: Array<A>, f: (a: A) => HKT<F, B>) => HKT<F, Array<B>>) => {
   return (ta, f) => traverseWithIndex_(F)(ta, (_, a) => f(a))
 }
 
 export const traverseWithIndex: CTraverseWithIndex1<URI, number> = <F>(
   F: CApplicative<F>
-) => <A, B>(f: (i: number, a: A) => HKT<F, B>) => (
-  ta: ReadonlyArray<A>
-): HKT<F, ReadonlyArray<B>> => {
-  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
+) => <A, B>(f: (i: number, a: A) => HKT<F, B>) => (ta: Array<A>): HKT<F, Array<B>> => {
+  return reduceWithIndex_(ta, F.of<Array<B>>(zero()), (i, fbs, a: A) =>
     F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc_(bs, b))(fbs))
   )
 }
 
 export const traverseWithIndex_: TraverseWithIndex1<URI, number> = <F>(
   F: CApplicative<F>
-) => <A, B>(
-  ta: ReadonlyArray<A>,
-  f: (i: number, a: A) => HKT<F, B>
-): HKT<F, ReadonlyArray<B>> => {
-  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
+) => <A, B>(ta: Array<A>, f: (i: number, a: A) => HKT<F, B>): HKT<F, Array<B>> => {
+  return reduceWithIndex_(ta, F.of<Array<B>>(zero()), (i, fbs, a: A) =>
     F.ap(f(i, a))(F.map((bs: readonly B[]) => (b: B) => snoc_(bs, b))(fbs))
   )
 }
 
-export const unfold = <A, B>(
-  b: B,
-  f: (b: B) => Option<readonly [A, B]>
-): ReadonlyArray<A> => {
-  const ret: Array<A> = []
+export const unfold = <A, B>(b: B, f: (b: B) => Option<readonly [A, B]>): Array<A> => {
+  const ret: MutableArray<A> = []
   let bb: B = b
   // eslint-disable-next-line no-constant-condition
   while (true) {
@@ -1958,9 +1843,7 @@ export const unfold = <A, B>(
  *
  * assert.deepStrictEqual(union(eqNumber)([1, 2], [2, 3]), [1, 2, 3])
  */
-export function union<A>(
-  E: Eq<A>
-): (xs: ReadonlyArray<A>, ys: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function union<A>(E: Eq<A>): (xs: Array<A>, ys: Array<A>) => Array<A> {
   const elemE = elem_(E)
   return (xs, ys) =>
     concat_(
@@ -1978,10 +1861,10 @@ export function union<A>(
  *
  * assert.deepStrictEqual(uniq(eqNumber)([1, 2, 1]), [1, 2])
  */
-export function uniq<A>(E: Eq<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function uniq<A>(E: Eq<A>): (as: Array<A>) => Array<A> {
   const elemS = elem_(E)
   return (as) => {
-    const r: Array<A> = []
+    const r: MutableArray<A> = []
     const len = as.length
     let i = 0
     for (; i < len; i++) {
@@ -1994,9 +1877,9 @@ export function uniq<A>(E: Eq<A>): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
   }
 }
 
-export function uniq_<A>(as: ReadonlyArray<A>, E: Eq<A>): ReadonlyArray<A> {
+export function uniq_<A>(as: Array<A>, E: Eq<A>): Array<A> {
   const elemS = elem_(E)
-  const r: Array<A> = []
+  const r: MutableArray<A> = []
   const len = as.length
   let i = 0
   for (; i < len; i++) {
@@ -2008,15 +1891,13 @@ export function uniq_<A>(as: ReadonlyArray<A>, E: Eq<A>): ReadonlyArray<A> {
   return len === r.length ? as : r
 }
 
-export function unsafeDeleteAt_<A>(as: ReadonlyArray<A>, i: number): ReadonlyArray<A> {
+export function unsafeDeleteAt_<A>(as: Array<A>, i: number): Array<A> {
   const xs = [...as]
   xs.splice(i, 1)
   return xs
 }
 
-export function unsafeDeleteAt(
-  i: number
-): <A>(as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function unsafeDeleteAt(i: number): <A>(as: Array<A>) => Array<A> {
   return (as) => {
     const xs = [...as]
     xs.splice(i, 1)
@@ -2024,20 +1905,13 @@ export function unsafeDeleteAt(
   }
 }
 
-export function unsafeInsertAt_<A>(
-  as: ReadonlyArray<A>,
-  i: number,
-  a: A
-): ReadonlyArray<A> {
+export function unsafeInsertAt_<A>(as: Array<A>, i: number, a: A): Array<A> {
   const xs = [...as]
   xs.splice(i, 0, a)
   return xs
 }
 
-export function unsafeInsertAt<A>(
-  i: number,
-  a: A
-): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function unsafeInsertAt<A>(i: number, a: A): (as: Array<A>) => Array<A> {
   return (as) => {
     const xs = [...as]
     xs.splice(i, 0, a)
@@ -2045,11 +1919,7 @@ export function unsafeInsertAt<A>(
   }
 }
 
-export function unsafeUpdateAt_<A>(
-  as: ReadonlyArray<A>,
-  i: number,
-  a: A
-): ReadonlyArray<A> {
+export function unsafeUpdateAt_<A>(as: Array<A>, i: number, a: A): Array<A> {
   if (as[i] === a) {
     return as
   } else {
@@ -2059,10 +1929,7 @@ export function unsafeUpdateAt_<A>(
   }
 }
 
-export function unsafeUpdateAt<A>(
-  i: number,
-  a: A
-): (as: ReadonlyArray<A>) => ReadonlyArray<A> {
+export function unsafeUpdateAt<A>(i: number, a: A): (as: Array<A>) => Array<A> {
   return (as) => {
     if (as[i] === a) {
       return as
@@ -2082,11 +1949,9 @@ export function unsafeUpdateAt<A>(
  *
  * assert.deepStrictEqual(unzip([[1, 'a'], [2, 'b'], [3, 'c']]), [[1, 2, 3], ['a', 'b', 'c']])
  */
-export function unzip<A, B>(
-  as: ReadonlyArray<readonly [A, B]>
-): readonly [ReadonlyArray<A>, ReadonlyArray<B>] {
-  const fa: Array<A> = []
-  const fb: Array<B> = []
+export function unzip<A, B>(as: Array<readonly [A, B]>): readonly [Array<A>, Array<B>] {
+  const fa: MutableArray<A> = []
+  const fb: MutableArray<B> = []
   for (let i = 0; i < as.length; i++) {
     fa[i] = as[i][0]
     fb[i] = as[i][1]
@@ -2104,18 +1969,11 @@ export function unzip<A, B>(
  * assert.deepStrictEqual(updateAt(1, 1)([1, 2, 3]), some([1, 1, 3]))
  * assert.deepStrictEqual(updateAt(1, 1)([]), none)
  */
-export function updateAt<A>(
-  i: number,
-  a: A
-): (as: ReadonlyArray<A>) => Option<ReadonlyArray<A>> {
+export function updateAt<A>(i: number, a: A): (as: Array<A>) => Option<Array<A>> {
   return (as) => (isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a)))
 }
 
-export function updateAt_<A>(
-  as: ReadonlyArray<A>,
-  i: number,
-  a: A
-): Option<ReadonlyArray<A>> {
+export function updateAt_<A>(as: Array<A>, i: number, a: A): Option<Array<A>> {
   return isOutOfBound(i, as) ? none : some(unsafeUpdateAt_(as, i, a))
 }
 
@@ -2125,7 +1983,7 @@ export type URI = typeof URI
 
 declare module "../Base/HKT" {
   interface URItoKind<A> {
-    readonly [URI]: ReadonlyArray<A>
+    readonly [URI]: Array<A>
   }
 }
 
@@ -2133,9 +1991,7 @@ export const wilt: CWilt1<URI> = <F>(
   F: CApplicative<F>
 ): (<A, B, C>(
   f: (a: A) => HKT<F, Either<B, C>>
-) => (
-  wa: ReadonlyArray<A>
-) => HKT<F, Separated<ReadonlyArray<B>, ReadonlyArray<C>>>) => {
+) => (wa: Array<A>) => HKT<F, Separated<Array<B>, Array<C>>>) => {
   const traverseF = traverse(F)
   return (f) => flow(traverseF(f), F.map(separate))
 }
@@ -2143,28 +1999,23 @@ export const wilt: CWilt1<URI> = <F>(
 export const wilt_: Wilt1<URI> = <F>(
   F: CApplicative<F>
 ): (<A, B, C>(
-  wa: ReadonlyArray<A>,
+  wa: Array<A>,
   f: (a: A) => HKT<F, Either<B, C>>
-) => HKT<F, Separated<ReadonlyArray<B>, ReadonlyArray<C>>>) => {
+) => HKT<F, Separated<Array<B>, Array<C>>>) => {
   const traverseF = traverse_(F)
   return (wa, f) => F.map(separate)(traverseF(wa, f))
 }
 
 export const wither: CWither1<URI> = <F>(
   F: CApplicative<F>
-): (<A, B>(
-  f: (a: A) => HKT<F, Option<B>>
-) => (ta: ReadonlyArray<A>) => HKT<F, ReadonlyArray<B>>) => {
+): (<A, B>(f: (a: A) => HKT<F, Option<B>>) => (ta: Array<A>) => HKT<F, Array<B>>) => {
   const traverseF = traverse(F)
   return (f) => flow(traverseF(f), F.map(compact))
 }
 
 export const wither_: Wither1<URI> = <F>(
   F: CApplicative<F>
-): (<A, B>(
-  ta: ReadonlyArray<A>,
-  f: (a: A) => HKT<F, Option<B>>
-) => HKT<F, ReadonlyArray<B>>) => {
+): (<A, B>(ta: Array<A>, f: (a: A) => HKT<F, Option<B>>) => HKT<F, Array<B>>) => {
   const traverseF = traverse(F)
   return (ta, f) => flow(traverseF(f), F.map(compact))(ta)
 }
@@ -2180,16 +2031,11 @@ export const zero: <A>() => readonly A[] = () => empty
  *
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  */
-export function zip<A, B>(
-  fb: ReadonlyArray<B>
-): (fa: ReadonlyArray<A>) => ReadonlyArray<readonly [A, B]> {
+export function zip<A, B>(fb: Array<B>): (fa: Array<A>) => Array<readonly [A, B]> {
   return zipWith(fb, (a, b) => [a, b])
 }
 
-export function zip_<A, B>(
-  fa: ReadonlyArray<A>,
-  fb: ReadonlyArray<B>
-): ReadonlyArray<readonly [A, B]> {
+export function zip_<A, B>(fa: Array<A>, fb: Array<B>): Array<readonly [A, B]> {
   return zipWith_(fa, fb, (a, b) => [a, b])
 }
 
@@ -2203,11 +2049,11 @@ export function zip_<A, B>(
  * assert.deepStrictEqual(zipWith([1, 2, 3], ['a', 'b', 'c', 'd'], (n, s) => s + n), ['a1', 'b2', 'c3'])
  */
 export function zipWith_<A, B, C>(
-  fa: ReadonlyArray<A>,
-  fb: ReadonlyArray<B>,
+  fa: Array<A>,
+  fb: Array<B>,
   f: (a: A, b: B) => C
-): ReadonlyArray<C> {
-  const fc: Array<C> = []
+): Array<C> {
+  const fc: MutableArray<C> = []
   const len = Math.min(fa.length, fb.length)
   for (let i = 0; i < len; i++) {
     fc[i] = f(fa[i], fb[i])
@@ -2216,11 +2062,11 @@ export function zipWith_<A, B, C>(
 }
 
 export function zipWith<A, B, C>(
-  fb: ReadonlyArray<B>,
+  fb: Array<B>,
   f: (a: A, b: B) => C
-): (fa: ReadonlyArray<A>) => ReadonlyArray<C> {
+): (fa: Array<A>) => Array<C> {
   return (fa) => {
-    const fc: Array<C> = []
+    const fc: MutableArray<C> = []
     const len = Math.min(fa.length, fb.length)
     for (let i = 0; i < len; i++) {
       fc[i] = f(fa[i], fb[i])
@@ -2319,10 +2165,10 @@ export const sequenceT =
 //
 
 const traverseWithIndex__ = <F>(F: Applicative<F>) => <A, B>(
-  ta: ReadonlyArray<A>,
+  ta: Array<A>,
   f: (i: number, a: A) => HKT<F, B>
-): HKT<F, ReadonlyArray<B>> => {
-  return reduceWithIndex_(ta, F.of<ReadonlyArray<B>>(zero()), (i, fbs, a: A) =>
+): HKT<F, Array<B>> => {
+  return reduceWithIndex_(ta, F.of<Array<B>>(zero()), (i, fbs, a: A) =>
     F.ap(
       F.map(fbs, (bs: readonly B[]) => (b: B) => snoc_(bs, b)),
       f(i, a)
@@ -2332,10 +2178,7 @@ const traverseWithIndex__ = <F>(F: Applicative<F>) => <A, B>(
 
 const traverse__ = <F>(
   F: Applicative<F>
-): (<A, B>(
-  ta: ReadonlyArray<A>,
-  f: (a: A) => HKT<F, B>
-) => HKT<F, ReadonlyArray<B>>) => {
+): (<A, B>(ta: Array<A>, f: (a: A) => HKT<F, B>) => HKT<F, Array<B>>) => {
   return (ta, f) => traverseWithIndex__(F)(ta, (_, a) => f(a))
 }
 
@@ -2370,9 +2213,7 @@ export const array_: Monad1<URI> &
   reduceRight: reduceRight_,
   unfold,
   traverse: traverse__,
-  sequence: <F>(F: Applicative<F>) => <A>(
-    ta: ReadonlyArray<HKT<F, A>>
-  ): HKT<F, ReadonlyArray<A>> => {
+  sequence: <F>(F: Applicative<F>) => <A>(ta: Array<HKT<F, A>>): HKT<F, Array<A>> => {
     return reduce(F.of(zero<A>()), (fas, fa: HKT<F, A>) =>
       F.ap(
         F.map(fas, (as: readonly A[]) => (a: A) => snoc_(as, a)),
@@ -2385,19 +2226,16 @@ export const array_: Monad1<URI> &
   extend: extend_,
   wither: <F>(
     F: Applicative<F>
-  ): (<A, B>(
-    ta: ReadonlyArray<A>,
-    f: (a: A) => HKT<F, Option<B>>
-  ) => HKT<F, ReadonlyArray<B>>) => {
+  ): (<A, B>(ta: Array<A>, f: (a: A) => HKT<F, Option<B>>) => HKT<F, Array<B>>) => {
     const traverseF = traverse__(F)
     return (ta, f) => F.map(traverseF(ta, f), compact)
   },
   wilt: <F>(
     F: Applicative<F>
   ): (<A, B, C>(
-    wa: ReadonlyArray<A>,
+    wa: Array<A>,
     f: (a: A) => HKT<F, Either<B, C>>
-  ) => HKT<F, Separated<ReadonlyArray<B>, ReadonlyArray<C>>>) => {
+  ) => HKT<F, Separated<Array<B>, Array<C>>>) => {
     const traverseF = traverse__(F)
     return (wa, f) => F.map(traverseF(wa, f), separate)
   },

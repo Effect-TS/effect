@@ -6,5 +6,5 @@ export interface Driver<E, A> {
   start(run: EffectTypes.AsyncE<E, A>): void
   interrupt(): void
   onExit(f: FunctionN<[Exit<E, A>], void>): Lazy<void>
-  completed: Exit<E, A> | null
+  completed: Exit<E, A> | undefined
 }
