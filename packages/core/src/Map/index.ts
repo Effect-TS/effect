@@ -296,7 +296,7 @@ export function fromFoldable<F, K, A>(
   })
 }
 
-export function fromMap<K, A>(m: Map<K, A>): Map<K, A> {
+export function fromMutable<K, A>(m: MutableMap<K, A>): Map<K, A> {
   return new Map(m)
 }
 
@@ -1020,7 +1020,7 @@ export function size<K, A>(d: Map<K, A>): number {
   return d.size
 }
 
-export function toMap<K, A>(m: Map<K, A>): Map<K, A> {
+export function toMutable<K, A>(m: Map<K, A>): MutableMap<K, A> {
   return new Map(m)
 }
 

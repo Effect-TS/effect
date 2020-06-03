@@ -65,11 +65,11 @@ export function intersection<A>(E: Eq<A>): (y: Set<A>) => (set: Set<A>) => Set<A
   }
 }
 
-export function fromSet<A>(s: Set<A>): Set<A> {
+export function fromMutable<A>(s: MutableSet<A>): Set<A> {
   return new Set(s)
 }
 
-export function toSet<A>(s: Set<A>): Set<A> {
+export function toMutable<A>(s: Set<A>): MutableSet<A> {
   return new Set(s)
 }
 
