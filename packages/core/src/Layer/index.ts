@@ -48,6 +48,10 @@ type AL<
 export class Layer<S, R, E, A> {
   constructor(readonly payload: LayerPayload<S, R, E, A>) {}
 
+  /**
+   * Merge vertically with the current layer, _ will provide environment to current
+   * @param _ layer
+   */
   with<S2, R2, E2, A2>(
     _: Layer<S2, R2, E2, A2>
   ): Layer<S | S2, T.Erase<R, A2> & R2, E | E2, A2 & A> {
@@ -63,6 +67,11 @@ export class Layer<S, R, E, A> {
     )
   }
 
+  /**
+   * Merge the current layer with a non empty array of layers,
+   * the layers are merged horizontally between each other and vertically with the current layer
+   * @param layers layers
+   */
   merge<Layers extends NonEmptyArray<Layer<any, any, any, any>>>(
     ...layers: Layers & { 0: Layer<any, any, any, any> }
   ): Layer<
@@ -81,7 +90,21 @@ export class Layer<S, R, E, A> {
     )
   }
 
+  /**
+   * Use the current layer to provide environment to an effect
+   * @param op effect
+   */
   use: T.Provider<R, A, E, S> = (op) => M.use(this.payload, (a) => T.provide(a)(op))
+
+  /**
+   * Sometimes TypeScript will infer R = never when using "use" in conditions where R = R2 and "use" appears in a right-side,
+   * i.e. in Do like .doL(() => Layer.use(program)) in those scenarios "erase" can be used in place of "use" to fix the inference
+   * @param _ effect
+   */
+  erase = <S2, R2, E2, A2>(
+    _: T.Effect<S2, R2, E2, A2>
+  ): T.Effect<S | S2, R & T.Erase<R2, A>, E | E2, A2> =>
+    M.use(this.payload, (a) => T.provide(a)(_))
 
   /**
    * Use a layer as a default provider that can be overwritten by subsequent ones
@@ -169,6 +192,10 @@ export function fromProviderWith<R2>(): <
     )
 }
 
+/**
+ * To be used like "class MyService implements Implementation<ServiceSpec>"
+ * where ServiceSpec is a URI -> ServiceDefinition interface
+ */
 export type Implementation<C> = C[keyof C]
 
 /**
@@ -204,6 +231,12 @@ export function fromConstructor<C>(uri: keyof C) {
     )
 }
 
+/**
+ * To be used like "class MyService implements ManagedImplementation<ServiceSpec>"
+ * where ServiceSpec is a URI -> ServiceDefinition interface
+ *
+ * Additionally defines a destroy mathod called on release
+ */
 export type ManagedImplementation<C> = C[keyof C] & {
   destroy(): T.Effect<any, any, any, any>
 }
@@ -259,16 +292,27 @@ export function fromManagedConstructor<C>(uri: keyof C) {
     )
 }
 
+/**
+ * Construct a layer dependent on a provided effect
+ * @param layer fn
+ */
 export function useEffect<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
   return <S, R, E>(effect: T.Effect<S, R, E, A>): Layer<S | S2, R & R2, E | E2, A2> =>
     new Layer(M.chain_(M.encaseEffect(effect), (a) => layer(a).payload))
 }
 
+/**
+ * Construct a layer dependent on a provided managed
+ * @param layer fn
+ */
 export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2, A2>) {
   return <S, R, E>(managed: M.Managed<S, R, E, A>): Layer<S | S2, R & R2, E | E2, A2> =>
     new Layer(M.chain_(managed, (a) => layer(a).payload))
 }
 
+/**
+ * Empty Layer, can be used as the root for composition
+ */
 export const Empty =
   /*#__PURE__*/
   (() => fromValue({}))()
