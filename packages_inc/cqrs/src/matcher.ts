@@ -14,4 +14,4 @@ export const matcher = <
   Env
 >(
   adt: MorphADT<Types, Tag, ProgURI, InterpURI, Env>
-): MatcherT<AOfMorhpADT<typeof adt>, Tag> => adt.matchWiden as any
+): MatcherT<AOfMorhpADT<typeof adt>, Tag> => adt.match as any
