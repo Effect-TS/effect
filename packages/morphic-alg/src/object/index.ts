@@ -27,14 +27,14 @@ export interface MatechsAlgebraObject<F, Env> {
       name: string,
       config?: ConfigsForType<
         Env,
-        { [k in keyof Props]: Props[k]["_E"] },
-        { [k in keyof Props]: Props[k]["_A"] }
+        Readonly<{ [k in keyof Props]: Props[k]["_E"] }>,
+        Readonly<{ [k in keyof Props]: Props[k]["_A"] }>
       >
     ): HKT2<
       F,
       Env,
-      { [k in keyof Props]: Props[k]["_E"] },
-      { [k in keyof Props]: Props[k]["_A"] }
+      Readonly<{ [k in keyof Props]: Props[k]["_E"] }>,
+      Readonly<{ [k in keyof Props]: Props[k]["_A"] }>
     >
   }
   partial: {
@@ -43,14 +43,14 @@ export interface MatechsAlgebraObject<F, Env> {
       name: string,
       config?: ConfigsForType<
         Env,
-        Partial<{ [k in keyof Props]: Props[k]["_E"] }>,
-        Partial<{ [k in keyof Props]: Props[k]["_A"] }>
+        Partial<Readonly<{ [k in keyof Props]: Props[k]["_E"] }>>,
+        Partial<Readonly<{ [k in keyof Props]: Props[k]["_A"] }>>
       >
     ): HKT2<
       F,
       Env,
-      Partial<{ [k in keyof Props]: Props[k]["_E"] }>,
-      Partial<{ [k in keyof Props]: Props[k]["_A"] }>
+      Partial<Readonly<{ [k in keyof Props]: Props[k]["_E"] }>>,
+      Partial<Readonly<{ [k in keyof Props]: Props[k]["_A"] }>>
     >
   }
 }
@@ -64,13 +64,13 @@ export interface MatechsAlgebraObject1<F extends URIS, Env extends AnyEnv> {
   interface: <Props>(
     props: PropsKind1<F, Props, Env>,
     name: string,
-    config?: ConfigsForType<Env, unknown, Props>
-  ) => Kind<F, Env, Props>
+    config?: ConfigsForType<Env, unknown, Readonly<Props>>
+  ) => Kind<F, Env, Readonly<Props>>
   partial: <Props>(
     props: PropsKind1<F, Props, Env>,
     name: string,
-    config?: ConfigsForType<Env, unknown, Props>
-  ) => Kind<F, Env, Partial<Props>>
+    config?: ConfigsForType<Env, unknown, Readonly<Props>>
+  ) => Kind<F, Env, Partial<Readonly<Props>>>
 }
 
 export type PropsKind2<F extends URIS2, PropsA, PropsE, R> = {
@@ -82,11 +82,11 @@ export interface MatechsAlgebraObject2<F extends URIS2, Env extends AnyEnv> {
   interface: <PropsE, PropsA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
     name: string,
-    config?: ConfigsForType<Env, PropsE, PropsA>
-  ) => Kind2<F, Env, PropsE, PropsA>
+    config?: ConfigsForType<Env, Readonly<PropsE>, Readonly<PropsA>>
+  ) => Kind2<F, Env, Readonly<PropsE>, Readonly<PropsA>>
   partial: <PropsE, PropsA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
     name: string,
-    config?: ConfigsForType<Env, PropsE, PropsA>
-  ) => Kind2<F, Env, Partial<PropsE>, Partial<PropsA>>
+    config?: ConfigsForType<Env, Readonly<PropsE>, Readonly<PropsA>>
+  ) => Kind2<F, Env, Partial<Readonly<PropsE>>, Partial<Readonly<PropsA>>>
 }
