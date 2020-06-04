@@ -145,7 +145,7 @@ export function elem<A>(E: Eq<A>): (a: A, ma: Option<A>) => boolean {
  *
  * @example
  * import { some, none, exists } from '@matechs/core/Option'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * assert.strictEqual(
  *   pipe(
@@ -205,7 +205,7 @@ export const flatten = <A>(fa: Option<Option<A>>): Option<A> => chain_(fa, ident
  *
  * @example
  * import { some, none, fold } from '@matechs/core/Option'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * assert.strictEqual(
  *   pipe(
@@ -505,7 +505,7 @@ export function getOrd<A>(O: Ord<A>): Ord<Option<A>> {
  *
  * @example
  * import { some, none, getOrElse } from '@matechs/core/Option'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * assert.strictEqual(
  *   pipe(
@@ -636,7 +636,7 @@ export const map: <A, B>(f: (a: A) => B) => (fa: Option<A>) => Option<B> = (f) =
  *
  * @example
  * import { some, none, fromNullable, mapNullable } from '@matechs/core/Option'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * interface Employee {
  *   company?: {
@@ -754,7 +754,7 @@ export const throwError = <E>(_: E) => none
  *
  * @example
  * import { some, none, toNullable } from '@matechs/core/Option'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * assert.strictEqual(
  *   pipe(
@@ -780,7 +780,7 @@ export function toNullable<A>(ma: Option<A>): A | null {
  *
  * @example
  * import { some, none, toUndefined } from '@matechs/core/Option'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * assert.strictEqual(
  *   pipe(

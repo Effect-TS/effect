@@ -4,7 +4,7 @@ import { print, Printer } from "./Printer"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 export const CounterState: unique symbol = Symbol()
 

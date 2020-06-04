@@ -16,7 +16,7 @@ import * as DB from "../src"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as F from "@matechs/core/Service"
 import * as U from "@matechs/core/Utils"
 

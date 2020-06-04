@@ -1,7 +1,7 @@
 import { patch, AspectR12 } from "../../Def"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 export const withProvider = <U, P, E, Op>(
   f: T.Provider<U, P, E, Op>

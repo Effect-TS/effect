@@ -5,9 +5,9 @@ import { sequenceT, sequenceS } from "../src/Apply"
 import { array, range } from "../src/Array"
 import { Do } from "../src/Do"
 import * as E from "../src/Either"
+import { pipe } from "../src/Function"
 import { monoidSum } from "../src/Monoid"
 import * as O from "../src/Option"
-import { pipe } from "../src/Pipe"
 import { semigroupString } from "../src/Semigroup"
 
 describe("EffectSafe", () => {

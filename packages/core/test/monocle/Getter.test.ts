@@ -1,10 +1,10 @@
 import * as assert from "assert"
 
+import { pipe } from "../../src/Function"
 import * as G from "../../src/Monocle/Getter"
 import * as I from "../../src/Monocle/Iso"
 import * as L from "../../src/Monocle/Lens"
 import * as P from "../../src/Monocle/Prism"
-import { pipe } from "../../src/Pipe"
 
 import { monoidSum } from "@matechs/core/Monoid"
 

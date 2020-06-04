@@ -3,7 +3,7 @@ import { ERROR } from "opentracing/lib/ext/tags"
 import Span from "opentracing/lib/span"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 export const TracerContext = "@matechs/tracing/tracerContextURI"
 

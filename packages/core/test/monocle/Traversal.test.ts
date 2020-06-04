@@ -2,10 +2,10 @@ import * as assert from "assert"
 
 import * as A from "../../src/Array"
 import * as T from "../../src/Effect"
+import { pipe } from "../../src/Function"
 import * as L from "../../src/Monocle/Lens"
 import * as P from "../../src/Monocle/Prism"
 import * as Tr from "../../src/Monocle/Traversal"
-import { pipe } from "../../src/Pipe"
 
 import { monoidSum } from "@matechs/core/Monoid"
 

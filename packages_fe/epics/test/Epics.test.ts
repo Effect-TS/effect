@@ -7,8 +7,8 @@ import * as Ep from "../src"
 
 import * as T from "@matechs/core/Effect"
 import { identity } from "@matechs/core/Function"
+import { pipe } from "@matechs/core/Function"
 import * as Op from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as S from "@matechs/core/Stream"
 
 interface User {

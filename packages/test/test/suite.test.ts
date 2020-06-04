@@ -4,8 +4,8 @@ import { limitRetries } from "retry-ts"
 import * as M from "../src"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import { combine } from "@matechs/core/Provider"
 
 interface Sum {

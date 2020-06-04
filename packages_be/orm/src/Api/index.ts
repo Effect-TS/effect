@@ -3,8 +3,8 @@ import { ObjectType, DeepPartial, SaveOptions, FindOneOptions } from "typeorm"
 import * as ORM from "../ORM"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 
 export type Target<O> = ObjectType<O>
 

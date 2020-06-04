@@ -1,7 +1,7 @@
 import type { ATypeOf, ETypeOf, RTypeOf, UnionToIntersection } from "../Base/Apply"
 import * as T from "../Effect"
 import type { Exit } from "../Exit"
-import { pipe } from "../Pipe"
+import { pipe } from "../Function"
 import { map_ as mapRecord, sequence } from "../Record"
 
 export function runAll<Procs extends Record<string, T.Effect<any, any, any, any>>>(

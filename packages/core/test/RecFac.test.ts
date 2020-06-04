@@ -2,7 +2,7 @@ import * as assert from "assert"
 
 import { effect as T, exit as EX, recursionSchemes as R } from "../src"
 import { sequenceS } from "../src/Apply"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 interface ConsF<A> {
   readonly _tag: "cons"

@@ -3,8 +3,8 @@ import { Entity, PrimaryColumn, Column } from "typeorm"
 import { offsetStore } from "./read"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import { DbT } from "@matechs/orm"
 
 @Entity({

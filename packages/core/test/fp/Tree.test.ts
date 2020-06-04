@@ -2,9 +2,9 @@ import * as assert from "assert"
 
 import { eq, Eq, eqNumber } from "../../src/Eq"
 import { identity } from "../../src/Function"
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Identity"
 import { monoidString } from "../../src/Monoid"
-import { pipe } from "../../src/Pipe"
 import { showString } from "../../src/Show"
 import {
   drawTree,

@@ -4,8 +4,8 @@ import { effect as T, exit as Ex, managed as M } from "../src"
 import * as Ar from "../src/Array"
 import { eqString } from "../src/Eq"
 import { constVoid } from "../src/Function"
+import { pipe } from "../src/Function"
 import { monoidSum } from "../src/Monoid"
-import { pipe } from "../src/Pipe"
 import { semigroupSum } from "../src/Semigroup"
 
 describe("Managed", () => {

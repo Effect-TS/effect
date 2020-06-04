@@ -7,8 +7,8 @@ import { Spec, Suite, Test, Runner } from "../Def"
 
 import * as T from "@matechs/core/Effect"
 import { identity } from "@matechs/core/Function"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as F from "@matechs/core/Service"
 
 export const testM = <S, R, E, A>(

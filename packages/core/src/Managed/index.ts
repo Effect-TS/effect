@@ -24,10 +24,10 @@ import {
   unsafeCoerce,
   tuple
 } from "../Function"
+import { pipe } from "../Function"
 import type { Monoid } from "../Monoid"
 import * as O from "../Option"
 import type { Option } from "../Option"
-import { pipe } from "../Pipe"
 import * as RE from "../Record"
 import type { Semigroup } from "../Semigroup"
 import { ManagedURI as URI, AsyncFn } from "../Support/Common"

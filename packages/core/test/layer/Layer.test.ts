@@ -1,6 +1,6 @@
 import * as T from "../../src/Effect"
+import { pipe } from "../../src/Function"
 import * as L from "../../src/Layer"
-import { pipe } from "../../src/Pipe"
 
 const ConsoleURI = "@matechs/core/test/layers/ConsoleURI"
 

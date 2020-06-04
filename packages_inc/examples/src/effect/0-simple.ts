@@ -2,7 +2,7 @@ import * as assert from "assert";
 
 import * as T from "@matechs/core/Effect";
 import * as Ex from "@matechs/core/Exit";
-import { pipe } from "@matechs/core/Pipe";
+import { pipe } from "@matechs/core/Function";
 
 const add = (x: number, y: number): T.Sync<number> => T.sync(() => x + y);
 const mul = (x: number, y: number): T.Sync<number> => T.sync(() => x * y);

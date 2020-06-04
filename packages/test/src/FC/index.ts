@@ -3,9 +3,9 @@ import prand from "pure-rand"
 
 import { UnionToIntersection, RTypeOf, ETypeOf } from "@matechs/core/Base/Apply"
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as S from "@matechs/core/Stream"
 
 declare type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R

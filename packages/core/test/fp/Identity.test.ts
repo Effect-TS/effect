@@ -3,10 +3,10 @@ import * as assert from "assert"
 import { left, right } from "../../src/Either"
 import { eqNumber } from "../../src/Eq"
 import { identity } from "../../src/Function"
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Identity"
 import { monoidString } from "../../src/Monoid"
 import { none, option, some } from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 import { showString } from "../../src/Show"
 
 describe("Identity", () => {

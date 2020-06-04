@@ -1,6 +1,6 @@
 import { stream as S, effect as T, managed as M } from "../src"
+import { pipe } from "../src/Function"
 import { some } from "../src/Option"
-import { pipe } from "../src/Pipe"
 
 describe("Subject", () => {
   it("use subscribe", async () => {

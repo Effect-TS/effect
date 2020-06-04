@@ -9,8 +9,8 @@ import { eventStoreTcpConnection, accessConfig, EventStoreError } from "./client
 
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
-import { pipe } from "@matechs/core/Pipe"
 
 export interface DecodeError<E> {
   type: "decode"

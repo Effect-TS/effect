@@ -1,7 +1,7 @@
 import { patch, AspectE, AspectR12 } from "../../Def"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 export const withInit = <S, R>(init: T.Effect<S, R, any, void>): AspectE<R> => (Spec) =>
   pipe(

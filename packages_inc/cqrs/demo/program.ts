@@ -11,7 +11,7 @@ import {
 } from "./db"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import { logger, console } from "@matechs/logger"
 import { liveFactory } from "@matechs/orm"
 

@@ -29,8 +29,8 @@ import type {
   ChainRec2C
 } from "../Base"
 import type { Either } from "../Either"
+import { pipe } from "../Function"
 import type { Monoid } from "../Monoid"
-import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 
 export const URI = "@matechs/core/Tuple"

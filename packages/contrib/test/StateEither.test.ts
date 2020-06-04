@@ -3,7 +3,7 @@ import * as assert from "assert"
 import * as _ from "../src/StateEither"
 
 import * as E from "@matechs/core/Either"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 describe("StateEither", () => {
   describe("Monad", () => {

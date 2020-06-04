@@ -11,7 +11,7 @@ import {
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import * as F from "@matechs/core/Function"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 export const configEnv = "@matechs/orm/configURI"
 export const poolEnv = "@matechs/orm/poolURI"

@@ -13,10 +13,10 @@ import { ormOffsetStore } from "./offset"
 import { readEvents } from "./read"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import { Aggregate, ReadSideConfig, EventMetaHidden } from "@matechs/cqrs"
 
 const aggregateRead = <

@@ -1,6 +1,6 @@
 import * as T from "@matechs/core/Effect"
 import { flow } from "@matechs/core/Function"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as R from "@matechs/core/Ref"
 import * as F from "@matechs/core/Service"
 

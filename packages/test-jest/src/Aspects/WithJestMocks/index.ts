@@ -1,6 +1,6 @@
 import * as T from "@matechs/core/Effect"
 import { Lazy } from "@matechs/core/Function"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/test"
 import { Spec } from "@matechs/test/Def"
 

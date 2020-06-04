@@ -1,6 +1,6 @@
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as F from "@matechs/core/Service"
 import * as EXP from "@matechs/express"
 import { RPCResponse } from "@matechs/rpc-client"

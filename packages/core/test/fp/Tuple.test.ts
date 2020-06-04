@@ -3,9 +3,9 @@ import * as assert from "assert"
 import { getMonoid } from "../../src/Array"
 import { left, right } from "../../src/Either"
 import { identity } from "../../src/Function"
+import { pipe } from "../../src/Function"
 import { monoidString } from "../../src/Monoid"
 import { none, option, some } from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 import * as RT from "../../src/Tuple"
 
 describe("Tuple", () => {

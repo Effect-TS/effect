@@ -1,7 +1,7 @@
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import * as F from "@matechs/core/Function"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 // alpha
 /* istanbul ignore file */

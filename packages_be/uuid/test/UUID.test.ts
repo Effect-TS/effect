@@ -3,8 +3,8 @@ import * as assert from "assert"
 import * as U from "../src"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import { unwrap } from "@matechs/core/Monocle/Iso"
-import { pipe } from "@matechs/core/Pipe"
 
 function run<E, A>(eff: T.SyncRE<U.UUIDEnv, E, A>): Promise<A> {
   return pipe(eff, U.provideUUID, T.runToPromise)
