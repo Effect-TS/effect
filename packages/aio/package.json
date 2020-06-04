@@ -19,7 +19,7 @@
   "sideEffects": false,
   "dependencies": {
     "@matechs/prelude": "^2.0.2",
-    "@morphic-ts/batteries": "^1.7.0",
+    "@morphic-ts/batteries": "^2.0.0-alpha.5",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",
     "fp-ts": "^2.6.2",

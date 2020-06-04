@@ -22,7 +22,7 @@
     "@matechs/logger": "^7.2.2",
     "@matechs/orm": "^7.2.2",
     "@matechs/prelude": "^2.0.2",
-    "@morphic-ts/batteries": "^1.7.0",
+    "@morphic-ts/batteries": "^2.0.0-alpha.5",
     "class-transformer": "^0.2.3",
     "fast-check": "^1.24.1",
     "fast-equals": "^2.0.0",

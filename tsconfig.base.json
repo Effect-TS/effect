@@ -81,7 +81,9 @@
       "@matechs/cqrs/*": ["packages_inc/cqrs/build/*"],
       "@matechs/cqrs": ["packages_inc/cqrs/build"],
       "@matechs/fancy/*": ["packages_inc/fancy/build/*"],
-      "@matechs/fancy": ["packages_inc/fancy/build"]
+      "@matechs/fancy": ["packages_inc/fancy/build"],
+      "@matechs/morphic-alg/*": ["packages/morphic-alg/build/*"],
+      "@matechs/morphic-alg": ["packages/morphic-alg/build"]
     }
   },
   "exclude": ["node_modules", "build", "lib"]
