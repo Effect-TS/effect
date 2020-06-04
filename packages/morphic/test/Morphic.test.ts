@@ -1,3 +1,4 @@
+import * as fc from "fast-check"
 import { pipe } from "fp-ts/lib/pipeable"
 
 import * as M from "../src"
@@ -13,6 +14,7 @@ import * as NT from "@matechs/core/Newtype"
 const { summon } = M.summonFor({})
 
 const deriveEq = M.eqFor(summon)({})
+const deriveArb = M.arbFor(summon)({})
 
 export function maxLength(length: number) {
   return (codec: Model.Type<string>) =>
@@ -60,6 +62,7 @@ interface PersonE extends M.EType<typeof Person_> {}
 const Person = M.AsOpaque<PersonE, Person>()(Person_)
 
 const PersonEQ = deriveEq(Person)
+const PersonArb = deriveArb(Person)
 
 describe("Morphic", () => {
   it("should use model interpreter", () => {
@@ -151,4 +154,6 @@ describe("Morphic", () => {
       )
     ).toStrictEqual(E.right("ok"))
   })
+  it("should use fast-check", () =>
+    fc.assert(fc.property(PersonArb, (p) => p.address.length > 0)))
 })
