@@ -4,7 +4,7 @@ import * as C from "./Counter"
 import * as P from "./Printer"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as U from "@matechs/core/Utils"
 
 export const program = withTracer(

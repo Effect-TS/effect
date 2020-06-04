@@ -1,11 +1,11 @@
 import * as assert from "assert"
 
 import * as T from "../../src/Effect"
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Monocle/Iso"
 import * as L from "../../src/Monocle/Lens"
 import { monoidSum } from "../../src/Monoid"
 import * as O from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 
 describe("Iso", () => {
   it("reverse", () => {

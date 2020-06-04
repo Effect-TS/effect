@@ -1,7 +1,7 @@
 import { Test } from "../Def"
 
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface TestConfig {}

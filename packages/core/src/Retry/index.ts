@@ -3,10 +3,10 @@
 import * as T from "../Effect"
 import { Exit } from "../Exit"
 import { flow } from "../Function"
+import { pipe } from "../Function"
 import { getFunctionMonoid, Monoid } from "../Monoid"
 import * as O from "../Option"
 import { ordNumber } from "../Ord"
-import { pipe } from "../Pipe"
 import { getJoinSemigroup } from "../Semigroup"
 
 export function applyAndDelay(

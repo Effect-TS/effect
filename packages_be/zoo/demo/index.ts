@@ -1,7 +1,7 @@
 import { election, provideClientFactory, provideClientConfig } from "../src"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 // work in progress
 /* istanbul ignore file */

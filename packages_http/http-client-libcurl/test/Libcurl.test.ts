@@ -6,8 +6,8 @@ import { libcurl } from "../src"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as H from "@matechs/http-client"
 
 function run<E, A>(eff: T.AsyncRE<H.RequestEnv, E, A>): Promise<Ex.Exit<E, A>> {

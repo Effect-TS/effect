@@ -10,7 +10,7 @@ import { Printer } from "./demo/Printer"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 
 class MockTracer extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {

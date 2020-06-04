@@ -4,9 +4,9 @@ import { apollo } from "../src"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import { combine } from "@matechs/core/Provider"
 import * as EX from "@matechs/express"
 

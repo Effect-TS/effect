@@ -5,7 +5,7 @@ import * as R from "../Rx"
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import * as Ex from "@matechs/core/Exit"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as SE from "@matechs/core/StreamEither"
 
 /**

@@ -241,7 +241,7 @@ export const flatten: <E, E2, A>(mma: Either<E, Either<E2, A>>) => Either<E | E2
  *
  * @example
  * import { fold, left, right } from '@matechs/core/Either'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * function onLeft(errors: Array<string>): string {
  *   return `Errors: ${errors.join(', ')}`
@@ -606,7 +606,7 @@ export const sequence: CSequence2<URI> = <F>(F: CApplicative<F>) => <E, A>(
  *
  * @example
  * import * as E from '@matechs/core/Either'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  *
  * assert.deepStrictEqual(E.stringifyJSON({ a: 1 }, E.toError), E.right('{"a":1}'))
  * const circular: any = { ref: null }

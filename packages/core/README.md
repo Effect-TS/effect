@@ -4,7 +4,7 @@ Exposes the core Effect System plus a handful of patched modules from fp-ts, usa
 
 ```ts
 import * as S from "@matechs/core/Stream"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as T from "@matechs/core/Effect"
 
 pipe(S.repeatedly(1), S.take(10), S.collectArray, T.runToPromiseExit).then(console.log)
@@ -46,7 +46,7 @@ import "@matechs/core/Monoid"
 import "@matechs/core/NonEmptyArray"
 import "@matechs/core/Option"
 import "@matechs/core/Ord"
-import "@matechs/core/Pipe"
+import "@matechs/core/Function"
 import "@matechs/core/Prelude" // this is not shakable with webpack <= 4
 import "@matechs/core/Process"
 import "@matechs/core/Provider"

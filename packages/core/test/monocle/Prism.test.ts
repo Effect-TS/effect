@@ -1,10 +1,10 @@
 import * as assert from "assert"
 
 import * as T from "../../src/Effect"
+import { pipe } from "../../src/Function"
 import * as P from "../../src/Monocle/Prism"
 import { monoidSum } from "../../src/Monoid"
 import * as O from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 
 type Num = { _tag: "number"; n: number }
 type Str = { _tag: "string"; s: string }

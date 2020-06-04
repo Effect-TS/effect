@@ -2,9 +2,9 @@ import U from "short-uuid"
 import { v4 } from "uuid"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as I from "@matechs/core/Monocle/Iso"
 import * as NT from "@matechs/core/Newtype"
-import { pipe } from "@matechs/core/Pipe"
 import * as F from "@matechs/core/Service"
 
 export interface UUID

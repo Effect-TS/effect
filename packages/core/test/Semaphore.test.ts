@@ -8,7 +8,7 @@ import { array } from "../src/Array"
 import { Do } from "../src/Do"
 import * as ex from "../src/Exit"
 import { FunctionN, identity } from "../src/Function"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 import { makeRef } from "../src/Ref"
 import { makeSemaphore } from "../src/Semaphore"
 

@@ -7,8 +7,8 @@ import * as ORM from "../src"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as U from "@matechs/core/Utils"
 
 @Entity()

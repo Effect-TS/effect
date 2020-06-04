@@ -4,8 +4,8 @@ import * as RM from "./randomMessage"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
-import { pipe } from "@matechs/core/Pipe"
 
 const routeA = KOA.route(
   "get",

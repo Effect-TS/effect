@@ -3,7 +3,7 @@ import * as Rxo from "redux-observable"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as F from "@matechs/core/Service"
 import * as S from "@matechs/core/Stream"
 import * as R from "@matechs/rxjs"

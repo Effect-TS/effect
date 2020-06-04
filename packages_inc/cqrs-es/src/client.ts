@@ -3,8 +3,8 @@ import client from "node-eventstore-client"
 
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
-import { pipe } from "@matechs/core/Pipe"
 import { EventMetaHidden, metaURI } from "@matechs/cqrs"
 
 export const eventStoreURI = "@matechs/cqrs-es/eventStoreURI"

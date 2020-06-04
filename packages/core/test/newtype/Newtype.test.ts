@@ -1,10 +1,10 @@
 import * as assert from "assert"
 
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Monocle/Iso"
 import * as P from "../../src/Monocle/Prism"
 import * as NT from "../../src/Newtype"
 import * as O from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 
 interface Name
   extends NT.Newtype<

@@ -1,8 +1,8 @@
 import { accessConfig } from "./config"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as NEA from "@matechs/core/NonEmptyArray"
-import { pipe } from "@matechs/core/Pipe"
 import { DbT } from "@matechs/orm"
 
 // experimental alpha

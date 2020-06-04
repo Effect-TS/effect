@@ -1,7 +1,7 @@
 import * as T from "../src/Effect"
 import * as E from "../src/Either"
 import * as Ex from "../src/Exit"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 describe("Fiber", () => {
   it("fork/join", async () => {

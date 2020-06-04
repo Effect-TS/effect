@@ -1,7 +1,7 @@
 import * as C from "../src"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/test-jest"
 
 const withConsoleTest = (method: jest.FunctionPropertyNames<Required<Console>>) =>

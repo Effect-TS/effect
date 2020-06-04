@@ -6,7 +6,7 @@ import { withTracer, withControllerSpan } from "../src"
 import * as TR from "../src"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as F from "@matechs/core/Service"
 
 const URI: unique symbol = Symbol()

@@ -1,8 +1,8 @@
 import { getConfigValue, setConfigValue } from "../../Config"
 import { Aspect, patch } from "../../Def"
 
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 
 export const SkipURI = "@matechs/test/SkipURI"
 

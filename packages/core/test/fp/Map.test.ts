@@ -4,12 +4,12 @@ import { array } from "../../src/Array"
 import { Either, left, right } from "../../src/Either"
 import { Eq, eqNumber, fromEquals } from "../../src/Eq"
 import { Refinement, identity } from "../../src/Function"
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Identity"
 import * as _ from "../../src/Map"
 import { monoidString } from "../../src/Monoid"
 import { option, some, none, Option } from "../../src/Option"
 import { ord, ordString, fromCompare, ordNumber } from "../../src/Ord"
-import { pipe } from "../../src/Pipe"
 import {
   semigroupSum,
   getStructSemigroup,

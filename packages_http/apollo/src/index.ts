@@ -24,8 +24,8 @@ import {
 } from "./Apollo"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as U from "@matechs/core/Utils"
 import * as EX from "@matechs/express"
 

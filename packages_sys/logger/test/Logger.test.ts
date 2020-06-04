@@ -3,7 +3,7 @@ import assert from "assert"
 import * as L from "../src"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/test-jest"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function

@@ -4,7 +4,7 @@ import * as P from "../src"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import * as F from "@matechs/core/Service"
 import * as L from "@matechs/logger"
 import * as M from "@matechs/test-jest"

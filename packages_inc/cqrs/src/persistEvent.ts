@@ -5,7 +5,7 @@ import { v4 } from "uuid"
 import { EventLog } from "./eventLog"
 
 import * as T from "@matechs/core/Effect"
-import { pipe } from "@matechs/core/Pipe"
+import { pipe } from "@matechs/core/Function"
 import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm"
 
 // experimental alpha

@@ -1,12 +1,12 @@
 import * as assert from "assert"
 
 import * as A from "../../src/Array"
+import { pipe } from "../../src/Function"
 import * as F from "../../src/Monocle/Fold"
 import * as L from "../../src/Monocle/Lens"
 import * as P from "../../src/Monocle/Prism"
 import { monoidSum } from "../../src/Monoid"
 import * as O from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 
 interface Nested {
   n: number

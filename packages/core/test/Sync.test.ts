@@ -1,6 +1,6 @@
 import { effect as T } from "../src"
 import { done } from "../src/Exit"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 describe("Sync", () => {
   it("should exec sync", () => {

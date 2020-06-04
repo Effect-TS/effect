@@ -2,8 +2,8 @@ import { getConfigValue, setConfigValue } from "../../Config"
 import { patch, Aspect } from "../../Def"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { pipe } from "@matechs/core/Pipe"
 import * as R from "@matechs/core/Retry"
 
 export const RetryURI = "@matechs/test/RetryURI"

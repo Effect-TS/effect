@@ -200,7 +200,7 @@ export const semigroupOrdering: Semigroup<Ordering> = {
  * @example
  * import { sort } from '@matechs/core/Array'
  * import { contramap, getDualOrd, getMonoid, ordBoolean, ordNumber, ordString } from '@matechs/core/Ord'
- * import { pipe } from '@matechs/core/Pipe'
+ * import { pipe } from '@matechs/core/Function'
  * import { fold } from '@matechs/core/Monoid'
  *
  * interface User {

@@ -8,8 +8,8 @@ import KoaRouter, { RouterContext } from "koa-router"
 
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
+import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/core/Managed"
-import { pipe } from "@matechs/core/Pipe"
 
 export const koaAppEnv = "@matechs/koa/koaAppURI"
 export interface HasKoa {

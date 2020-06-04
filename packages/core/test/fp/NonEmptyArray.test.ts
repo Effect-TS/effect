@@ -2,12 +2,12 @@ import * as assert from "assert"
 
 import * as C from "../../src/Const"
 import { eqNumber } from "../../src/Eq"
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Identity"
 import * as M from "../../src/Monoid"
 import * as _ from "../../src/NonEmptyArray"
 import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
-import { pipe } from "../../src/Pipe"
 import * as S from "../../src/Semigroup"
 import { showString } from "../../src/Show"
 

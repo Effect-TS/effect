@@ -1,6 +1,6 @@
 import { process as P, effect as T } from "../src"
 import { done, interrupt, raise } from "../src/Exit"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 describe("Process", () => {
   it("should interrupt on failures", async () => {

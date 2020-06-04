@@ -5,8 +5,8 @@ import type { CApplicative1, CMonad1, Monad1 } from "../Base"
 import { Do as DoG } from "../Do"
 import { flip } from "../Function"
 import type { FunctionN, Lazy, Predicate } from "../Function"
+import { pipe } from "../Function"
 import { none, Option, some } from "../Option"
-import { pipe } from "../Pipe"
 
 export function ap_<A, B>(fns: List<FunctionN<[A], B>>, list: List<A>): List<B> {
   return chain_(list, (a) => map_(fns, (f) => f(a)))
