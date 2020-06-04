@@ -1,12 +1,13 @@
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
+import { MorphADT, AOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
 
 import { Aggregate } from "./aggregate"
 import { ReadSideConfig } from "./config"
 import { createTable } from "./createTable"
 import { DomainFetcher, DomainFetcherAll } from "./fetchSlice"
 import { matcher } from "./matcher"
+import { MatcherT } from "./matchers"
 import { Read } from "./read"
 
 import * as T from "@matechs/core/Effect"
@@ -41,7 +42,12 @@ export class Domain<
     this.read = new Read(S, db)
   }
 
-  adt = {
+  adt: MorphADT<Types, Tag, ProgURI, InterpURI, Env> & {
+    matchEffect: MatcherT<
+      AOfMorhpADT<MorphADT<Types, Tag, ProgURI, InterpURI, Env>>,
+      Tag
+    >
+  } = {
     ...this.S,
     matchEffect: matcher(this.S)
   }
