@@ -24,7 +24,8 @@
     "@matechs/core": "^2.2.2",
     "@matechs/morphic-alg": "^0.0.0",
     "@morphic-ts/algebras": "^2.0.0-alpha.3",
-    "@morphic-ts/common": "^2.0.0-alpha.3"
+    "@morphic-ts/common": "^2.0.0-alpha.3",
+    "fast-check": "^1.24.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
