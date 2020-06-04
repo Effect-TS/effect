@@ -6,13 +6,28 @@ import {
   success,
   failure,
   identity,
-  OutputOf
+  OutputOf,
+  brand,
+  Branded,
+  string,
+  literal,
+  Mixed,
+  TypeOf,
+  union,
+  strict,
+  ArrayType,
+  array as mutableArray
 } from "io-ts"
 
-import { mapLeft, map_, chain_ } from "../Either"
+import * as A from "../Array"
+import { mapLeft, map_, chain_, Either, mapLeft_ } from "../Either"
 import { Refinement } from "../Function"
 import { wrap, unwrap } from "../Monocle/Iso"
 import { AnyNewtype, CarrierOf, iso } from "../Newtype"
+import * as NEA from "../NonEmptyArray"
+import * as O from "../Option"
+import type { Ord } from "../Ord"
+import * as S from "../Set"
 
 export {
   Any,
@@ -22,7 +37,6 @@ export {
   AnyProps,
   AnyType,
   Array,
-  ArrayC,
   ArrayType,
   BigIntC,
   BigIntType,
@@ -127,7 +141,6 @@ export {
   alias,
   any,
   appendContext,
-  array,
   bigint,
   boolean,
   brand,
@@ -176,10 +189,49 @@ export function clone<C extends Any>(t: C): C {
 }
 
 export function withMessage<C extends Any>(
+  message: (i: InputOf<C>) => string
+): (codec: C) => C {
+  return (codec) =>
+    withValidate_(codec, (i, c) =>
+      mapLeft(() => [
+        {
+          value: i,
+          context: c,
+          message: message(i),
+          actual: i
+        }
+      ])(codec.validate(i, c))
+    )
+}
+
+export function withFirstMessage<C extends Any>(
+  message: (i: InputOf<C>) => string
+): (codec: C) => C {
+  return (codec) =>
+    withValidate_(codec, (i, c) =>
+      mapLeft_(codec.validate(i, c), (e) => [
+        e.length > 0 && e[0].message
+          ? {
+              value: i,
+              context: c,
+              message: e[0].message,
+              actual: i
+            }
+          : {
+              value: i,
+              context: c,
+              message: message(i),
+              actual: i
+            }
+      ])
+    )
+}
+
+export function withMessage_<C extends Any>(
   codec: C,
   message: (i: InputOf<C>) => string
 ): C {
-  return withValidate(codec, (i, c) =>
+  return withValidate_(codec, (i, c) =>
     mapLeft(() => [
       {
         value: i,
@@ -192,6 +244,19 @@ export function withMessage<C extends Any>(
 }
 
 export function withValidate<C extends Any>(
+  validate: C["validate"],
+  name?: string
+): (codec: C) => C {
+  return (codec) => {
+    const r: any = clone(codec)
+    r.validate = validate
+    r.decode = (i: any) => validate(i, getDefaultContext(r))
+    r.name = name || codec.name
+    return r
+  }
+}
+
+export function withValidate_<C extends Any>(
   codec: C,
   validate: C["validate"],
   name: string = codec.name
@@ -252,3 +317,157 @@ export {
   failure as reportFailure,
   success as reportSuccess
 } from "io-ts/lib/PathReporter"
+
+const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export interface UUIDBrand {
+  readonly UUID: unique symbol
+}
+
+export type UUID = Branded<string, UUIDBrand>
+
+export const UUID = brand(string, (s): s is UUID => regex.test(s), "UUID")
+
+export interface DateFromISOStringC extends Type<Date, string, unknown> {}
+
+export const DateFromISOString: DateFromISOStringC = new Type<Date, string, unknown>(
+  "DateFromISOString",
+  (u): u is Date => u instanceof Date,
+  (u, c) =>
+    chain_(string.validate(u, c), (s) => {
+      const d = new Date(s)
+      return isNaN(d.getTime()) ? failure(u, c) : success(d)
+    }),
+  (a) => a.toISOString()
+)
+
+const leftLiteral = literal("Left")
+
+const rightLiteral = literal("Right")
+
+export interface EitherC<L extends Mixed, R extends Mixed>
+  extends Type<
+    Either<TypeOf<L>, TypeOf<R>>,
+    Either<OutputOf<L>, OutputOf<R>>,
+    unknown
+  > {}
+
+export function either<L extends Mixed, R extends Mixed>(
+  leftCodec: L,
+  rightCodec: R,
+  name = `Either<${leftCodec.name}, ${rightCodec.name}>`
+): EitherC<L, R> {
+  return union(
+    [
+      strict(
+        {
+          _tag: leftLiteral,
+          left: leftCodec
+        },
+        `Left<${leftCodec.name}>`
+      ),
+      strict(
+        {
+          _tag: rightLiteral,
+          right: rightCodec
+        },
+        `Right<${leftCodec.name}>`
+      )
+    ],
+    name
+  )
+}
+
+const None = strict({
+  _tag: literal("None")
+})
+
+const someLiteral = literal("Some")
+
+export interface OptionC<C extends Mixed>
+  extends Type<O.Option<TypeOf<C>>, O.Option<OutputOf<C>>, unknown> {}
+
+export function option<C extends Mixed>(
+  codec: C,
+  name = `Option<${codec.name}>`
+): OptionC<C> {
+  return union(
+    [
+      None,
+      strict(
+        {
+          _tag: someLiteral,
+          value: codec
+        },
+        `Some<${codec.name}>`
+      )
+    ],
+    name
+  )
+}
+
+export interface OptionFromNullableC<C extends Mixed>
+  extends Type<O.Option<TypeOf<C>>, OutputOf<C> | null, unknown> {}
+
+export function optionFromNullable<C extends Mixed>(
+  codec: C,
+  name = `Option<${codec.name}>`
+): OptionFromNullableC<C> {
+  return new Type(
+    name,
+    option(codec).is,
+    (u, c) => (u == null ? success(O.none) : map_(codec.validate(u, c), O.some)),
+    (a) => O.toNullable(O.map_(a, codec.encode))
+  )
+}
+
+export interface ArrayC<C extends Mixed>
+  extends ArrayType<C, A.Array<TypeOf<C>>, A.Array<OutputOf<C>>, unknown> {}
+
+export const array: <C extends Mixed>(
+  codec: C,
+  name?: string
+) => ArrayC<C> = mutableArray as any
+
+export interface NonEmptyArrayC<C extends Mixed>
+  extends Type<NEA.NonEmptyArray<TypeOf<C>>, A.Array<OutputOf<C>>, unknown> {}
+
+export function nonEmptyArray<C extends Mixed>(
+  codec: C,
+  name = `NonEmptyArray<${codec.name}>`
+): NonEmptyArrayC<C> {
+  const arr = array(codec)
+  return new Type(
+    name,
+    (u): u is NEA.NonEmptyArray<TypeOf<C>> => arr.is(u) && A.isNonEmpty(u),
+    (u, c) =>
+      chain_(arr.validate(u, c), (as) => {
+        const onea = NEA.fromArray(as)
+        return O.isNone(onea) ? failure(u, c) : success(onea.value)
+      }),
+    (nea) => arr.encode(nea)
+  )
+}
+
+export interface SetFromArrayC<C extends Mixed>
+  extends Type<S.Set<TypeOf<C>>, A.Array<OutputOf<C>>, unknown> {}
+
+export function setFromArray<C extends Mixed>(
+  codec: C,
+  O: Ord<TypeOf<C>>,
+  name = `Set<${codec.name}>`
+): SetFromArrayC<C> {
+  const arr = array(codec)
+  const toArrayO = S.toArray(O)
+  const fromArrayO = S.fromArray(O)
+  return new Type(
+    name,
+    (u): u is Set<TypeOf<C>> => u instanceof Set && S.every(codec.is)(u),
+    (u, c) =>
+      chain_(arr.validate(u, c), (as) => {
+        const set = fromArrayO(as)
+        return set.size !== as.length ? failure(u, c) : success(set)
+      }),
+    (set) => arr.encode(toArrayO(set))
+  )
+}
