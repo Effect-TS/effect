@@ -1,9 +1,13 @@
+import { pipe } from "fp-ts/lib/pipeable"
+
 import { summonFor, ModelURI, AType, EType, AsOpaque } from "../src"
 
 import * as A from "@matechs/core/Array"
 import * as E from "@matechs/core/Either"
 import { flow } from "@matechs/core/Function"
 import * as Model from "@matechs/core/Model"
+import * as Index from "@matechs/core/Monocle/Index"
+import * as Lens from "@matechs/core/Monocle/Lens"
 import * as NT from "@matechs/core/Newtype"
 
 const { summon } = summonFor({})
@@ -82,5 +86,42 @@ describe("Morphic", () => {
       name: "Michael",
       address: ["177 Finchley Road"]
     })
+  })
+  it("should use monocle", () => {
+    const addressIndex = Index.nonEmptyArray<Address>()
+    const addresses = Person.lensFromPath(["address"])
+
+    const addressN = (n: number) =>
+      pipe(addresses, Lens.composeOptional(addressIndex.index(n)))
+
+    expect(
+      pipe(
+        Person.type.decode({
+          name: "Michael",
+          address: ["177 Finchley Road"]
+        }),
+        E.chain(
+          flow(
+            addressN(1).getOption,
+            E.fromOption(() => "Second Address Not Found")
+          )
+        )
+      )
+    ).toStrictEqual(E.left("Second Address Not Found"))
+
+    expect(
+      pipe(
+        Person.type.decode({
+          name: "Michael",
+          address: ["177 Finchley Road", "ok"]
+        }),
+        E.chain(
+          flow(
+            addressN(1).getOption,
+            E.fromOption(() => "Second Address Not Found")
+          )
+        )
+      )
+    ).toStrictEqual(E.right("ok"))
   })
 })
