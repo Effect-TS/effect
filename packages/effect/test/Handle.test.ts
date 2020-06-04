@@ -1,5 +1,5 @@
 import { effect as T, exit as Ex } from "../src"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 export interface InputError {
   _tag: "InputError"

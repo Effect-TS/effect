@@ -2,7 +2,7 @@ import assert from "assert"
 
 import { service as F, effect as T, utils as U, managed as M } from "../src"
 import { done } from "../src/Exit"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 const fnEnv: unique symbol = Symbol()
 

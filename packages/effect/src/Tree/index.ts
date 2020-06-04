@@ -55,8 +55,8 @@ import type {
 } from "../Base"
 import { Eq, fromEquals } from "../Eq"
 import { identity } from "../Function"
+import { pipe } from "../Function"
 import type { Monoid } from "../Monoid"
-import { pipe } from "../Pipe"
 import type { Show } from "../Show"
 
 export const URI = "@matechs/core/Tree"

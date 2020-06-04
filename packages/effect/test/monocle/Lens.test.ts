@@ -1,5 +1,6 @@
 import * as assert from "assert"
 
+import { pipe } from "../../src/Function"
 import * as F from "../../src/Monocle/Fold"
 import * as G from "../../src/Monocle/Getter"
 import * as I from "../../src/Monocle/Iso"
@@ -10,7 +11,6 @@ import * as S from "../../src/Monocle/Setter"
 import * as Tr from "../../src/Monocle/Traversal"
 import * as M from "../../src/Monoid"
 import * as O from "../../src/Option"
-import { pipe } from "../../src/Pipe"
 
 interface Name {
   first: string

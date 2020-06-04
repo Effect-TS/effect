@@ -1,9 +1,9 @@
 import * as A from "../Array"
 import { UnionToIntersection } from "../Base/Apply"
 import * as T from "../Effect"
+import { pipe } from "../Function"
 import * as M from "../Managed"
 import { NonEmptyArray } from "../NonEmptyArray"
-import { pipe } from "../Pipe"
 
 type LayerPayload<S, R, E, A> = M.Managed<S, R, E, A>
 

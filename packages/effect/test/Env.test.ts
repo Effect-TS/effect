@@ -3,7 +3,7 @@ import * as assert from "assert"
 import { effect as T } from "../src"
 import { array } from "../src/Array"
 import { Do } from "../src/Do"
-import { pipe } from "../src/Pipe"
+import { pipe } from "../src/Function"
 
 const foo: unique symbol = Symbol()
 const bar: unique symbol = Symbol()
