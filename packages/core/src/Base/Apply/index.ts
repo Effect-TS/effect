@@ -154,7 +154,7 @@ export function sequenceT<F extends EitherURI>(
   }[number],
   {
     [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _A : never
-  }[number]
+  }
 >
 export function sequenceT<F extends MaURIS>(
   F: CApply4MAP<F>

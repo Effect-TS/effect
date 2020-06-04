@@ -115,7 +115,7 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
   ) => Kind<F, Env, keyof typeof keys>
   array: <A>(
     a: Kind<F, Env, A>,
-    config?: ConfigsForType<Env, unknown[], A[]>
+    config?: ConfigsForType<Env, Array<unknown>, Array<A>>
   ) => Kind<F, Env, Array<A>>
   nonEmptyArray: <A>(
     a: Kind<F, Env, A>,
