@@ -21,9 +21,9 @@ import type {
 } from "../Base"
 import * as E from "../Either"
 import * as Eq from "../Eq"
+import { pipe } from "../Function"
 import type { Monoid } from "../Monoid"
 import * as O from "../Option"
-import { pipe } from "../Pipe"
 import type { Semigroup } from "../Semigroup"
 import type { Show } from "../Show"
 

@@ -8,11 +8,11 @@ import * as C from "../../src/Const"
 import * as E from "../../src/Either"
 import * as Eq from "../../src/Eq"
 import * as F from "../../src/Function"
+import { pipe } from "../../src/Function"
 import * as I from "../../src/Identity"
 import * as M from "../../src/Monoid"
 import * as O from "../../src/Option"
 import * as Ord from "../../src/Ord"
-import { pipe } from "../../src/Pipe"
 import { showString } from "../../src/Show"
 
 describe("Array", () => {

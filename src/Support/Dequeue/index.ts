@@ -1,6 +1,7 @@
 /* adapted from https://github.com/rzeigler/waveguide */
 
 import { Predicate } from "../../Function"
+import { pipe } from "../../Function"
 import {
   cons,
   List,
@@ -15,7 +16,6 @@ import {
   of as listOf
 } from "../../List"
 import { Option, some, none, alt_ } from "../../Option"
-import { pipe } from "../../Pipe"
 
 export interface Dequeue<A> {
   take(): Option<readonly [A, Dequeue<A>]>

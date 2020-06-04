@@ -1,7 +1,7 @@
 import { CApplicative, HKT } from "../../Base"
 import { identity } from "../../Function"
+import { pipe } from "../../Function"
 import * as O from "../../Option"
-import { pipe } from "../../Pipe"
 import * as I from "../Iso"
 import * as L from "../Lens"
 import * as P from "../Prism"

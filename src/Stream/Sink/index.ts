@@ -2,8 +2,8 @@
 
 import * as T from "../../Effect"
 import * as F from "../../Function"
+import { pipe } from "../../Function"
 import * as O from "../../Option"
-import { pipe } from "../../Pipe"
 import * as Queue from "../../Queue"
 import * as Step from "../Step"
 

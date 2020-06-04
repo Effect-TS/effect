@@ -5,8 +5,8 @@ import { expect } from "chai"
 import { effect as T, streamEither as S } from "../src"
 import * as ex from "../src/Exit"
 import { FunctionN, identity } from "../src/Function"
+import { pipe } from "../src/Function"
 import { none, some } from "../src/Option"
-import { pipe } from "../src/Pipe"
 
 export async function expectExitIn<E, A, B>(
   ioa: T.AsyncRE<{}, E, A>,

@@ -1,7 +1,7 @@
 import * as T from "../Effect"
 import * as F from "../Function"
+import { pipe } from "../Function"
 import * as M from "../Managed"
-import { pipe } from "../Pipe"
 
 export type Patched<A, B> = B extends F.FunctionN<
   infer ARG,
