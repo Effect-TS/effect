@@ -4,11 +4,16 @@ import { Of } from "@morphic-ts/adt/lib/ctors"
 import { ElemType } from "@morphic-ts/adt/lib/utils"
 import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
 import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { MorphADT, AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union"
+import {
+  MorphADT,
+  AOfTypes,
+  AOfMorhpADT
+} from "@morphic-ts/batteries/lib/usage/tagged-union"
 
 import { ReadSideConfig } from "./config"
 import { SliceFetcher, AggregateFetcher } from "./fetchSlice"
 import { matcher } from "./matcher"
+import { MatcherT } from "./matchers"
 import { persistEvent } from "./persistEvent"
 import { Read } from "./read"
 
@@ -50,9 +55,34 @@ export class Aggregate<
     this.readAll = this.readAll.bind(this)
   }
 
-  private readonly narrowADT = this.S.selectMorph(A.toMutable(this.eventTypes))
+  private readonly narrowADT: MorphADT<
+    { [k in Extract<keyof Types, keyof Types>]: Types[k] },
+    Tag,
+    ProgURI,
+    InterpURI,
+    Env
+  > = this.S.selectMorph(A.toMutable(this.eventTypes))
 
-  adt = {
+  adt: MorphADT<
+    { [k in Extract<keyof Types, keyof Types>]: Types[k] },
+    Tag,
+    ProgURI,
+    InterpURI,
+    Env
+  > & {
+    matchEffect: MatcherT<
+      AOfMorhpADT<
+        MorphADT<
+          { [k in Extract<keyof Types, keyof Types>]: Types[k] },
+          Tag,
+          ProgURI,
+          InterpURI,
+          Env
+        >
+      >,
+      Tag
+    >
+  } = {
     ...this.narrowADT,
     matchEffect: matcher(this.narrowADT)
   }
