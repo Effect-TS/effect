@@ -4,6 +4,7 @@ import * as A from "@matechs/core/Array"
 import * as E from "@matechs/core/Either"
 import { flow } from "@matechs/core/Function"
 import * as Model from "@matechs/core/Model"
+import * as NT from "@matechs/core/Newtype"
 
 const { summon } = summonFor({})
 
@@ -16,13 +17,23 @@ export function maxLength(length: number) {
     )
 }
 
+interface Address
+  extends NT.Newtype<
+    {
+      readonly Address: unique symbol
+    },
+    string
+  > {}
+
 const Address = summon((F) =>
-  F.string({
-    [ModelURI]: flow(
-      maxLength(20),
-      Model.withMessage(() => "Invalid Address")
-    )
-  })
+  F.newtype<Address>("Address")(
+    F.string({
+      [ModelURI]: flow(
+        maxLength(20),
+        Model.withMessage(() => "Invalid Address")
+      )
+    })
+  )
 )
 
 const Person_ = summon((F) =>
