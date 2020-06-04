@@ -1,10 +1,10 @@
 import * as fc from "fast-check"
-import { pipe } from "fp-ts/lib/pipeable"
 
 import * as M from "../src"
 
 import * as A from "@matechs/core/Array"
 import * as E from "@matechs/core/Either"
+import { pipe } from "@matechs/core/Function"
 import { flow } from "@matechs/core/Function"
 import * as Model from "@matechs/core/Model"
 import * as Index from "@matechs/core/Monocle/Index"
