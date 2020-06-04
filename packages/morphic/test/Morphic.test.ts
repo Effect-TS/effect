@@ -18,6 +18,7 @@ const { summon } = M.summonFor({})
 
 const deriveEq = M.eqFor(summon)({})
 const deriveArb = M.arbFor(summon)({})
+const deriveShow = M.showFor(summon)({})
 
 export function maxLength(length: number) {
   return (codec: Model.Type<string>) =>
@@ -69,6 +70,7 @@ const Person = M.AsOpaque<PersonE, Person>()(Person_)
 
 const PersonEQ = deriveEq(Person)
 const PersonArb = deriveArb(Person)
+const PersonShow = deriveShow(Person)
 
 describe("Morphic", () => {
   it("should use model interpreter", () => {
@@ -188,6 +190,17 @@ describe("Morphic", () => {
 
     expect(T.runSync(invalidPerson)).toStrictEqual(
       Ex.raise(M.validationErrors(["Invalid Address"]))
+    )
+  })
+
+  it("use show", () => {
+    const result = Person.type.decode({
+      name: "Michael",
+      address: ["177 Finchley Road"]
+    })
+
+    expect(pipe(result, E.map(PersonShow.show))).toStrictEqual(
+      E.right('{ name: "Michael", address: [<Address>("177 Finchley Road")] }')
     )
   })
 })
