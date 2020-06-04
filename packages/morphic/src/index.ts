@@ -12,6 +12,7 @@ export { AsOpaque, AsUOpaque, M, Summoner, summonFor, UM } from "./batteries/sum
 export { AType, EType, RType } from "./batteries/usage/utils"
 export { EqURI } from "./eq/hkt"
 export { ModelURI } from "./model/hkt"
+export { FastCheckURI } from "./fc/hkt"
 
 export const eqFor = <S extends Summoner<any>>(S: S) => (
   _: { [k in EqURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }

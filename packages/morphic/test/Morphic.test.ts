@@ -39,7 +39,8 @@ const Address = summon((F) =>
       [M.ModelURI]: flow(
         maxLength(20),
         Model.withMessage(() => "Invalid Address")
-      )
+      ),
+      [M.FastCheckURI]: (_) => _.filter((s) => s.length <= 20)
     })
   )
 )
@@ -155,5 +156,5 @@ describe("Morphic", () => {
     ).toStrictEqual(E.right("ok"))
   })
   it("should use fast-check", () =>
-    fc.assert(fc.property(PersonArb, (p) => p.address.length > 0)))
+    fc.assert(fc.property(PersonArb, (p) => E.isRight(Person.create(p)))))
 })
