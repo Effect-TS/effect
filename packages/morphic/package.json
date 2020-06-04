@@ -1,0 +1,30 @@
+{
+  "name": "@matechs/morphic",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite-locals.ts && ts-node scripts/package.ts",
+    "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "build"
+  },
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "sideEffects": false,
+  "devDependencies": {
+    "@types/node": "^14.0.5"
+  },
+  "dependencies": {
+    "@matechs/core": "^2.2.2",
+    "@matechs/morphic-alg": "^0.0.0",
+    "@morphic-ts/algebras": "^2.0.0-alpha.3",
+    "@morphic-ts/common": "^2.0.0-alpha.3"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
+}

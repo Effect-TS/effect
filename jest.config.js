@@ -74,6 +74,8 @@ module.exports = {
     "@matechs/cqrs-es/(.*)$": "<rootDir>/packages_inc/cqrs-es/build/$1",
     "@matechs/cqrs-es$": "<rootDir>/packages_inc/cqrs-es/build",
     "@matechs/fancy/(.*)$": "<rootDir>/packages_inc/fancy/build/$1",
-    "@matechs/fancy$": "<rootDir>/packages_inc/fancy/build"
+    "@matechs/fancy$": "<rootDir>/packages_inc/fancy/build",
+    "@matechs/morphic-alg/(.*)$": "<rootDir>/packages/morphic-alg/build/$1",
+    "@matechs/morphic-alg$": "<rootDir>/packages/morphic-alg/build"
   }
 }

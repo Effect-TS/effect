@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "target": "ES5",
+    "module": "CommonJS",
+    "sourceMap": false,
+    "removeComments": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}

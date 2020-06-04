@@ -88,7 +88,7 @@ export function getShow<A>(S: Show<A>): Show<Set<A>> {
   }
 }
 
-export function toReadonlyArray<A>(O: Ord<A>): (set: Set<A>) => ReadonlyArray<A> {
+export function toArray<A>(O: Ord<A>): (set: Set<A>) => ReadonlyArray<A> {
   return (x) => {
     const r: Array<A> = []
     x.forEach((e) => r.push(e))
@@ -96,7 +96,7 @@ export function toReadonlyArray<A>(O: Ord<A>): (set: Set<A>) => ReadonlyArray<A>
   }
 }
 
-export function toReadonlyArray_<A>(x: Set<A>, O: Ord<A>): ReadonlyArray<A> {
+export function toArray_<A>(x: Set<A>, O: Ord<A>): ReadonlyArray<A> {
   const r: Array<A> = []
   x.forEach((e) => r.push(e))
   return r.sort(O.compare)
@@ -417,14 +417,14 @@ export function difference<A>(E: Eq<A>): (y: Set<A>) => (x: Set<A>) => Set<A> {
 export function reduce<A>(
   O: Ord<A>
 ): <B>(b: B, f: (b: B, a: A) => B) => (fa: Set<A>) => B {
-  const toArrayO = toReadonlyArray(O)
+  const toArrayO = toArray(O)
   return (b, f) => (fa) => toArrayO(fa).reduce(f, b)
 }
 
 export function reduce_<A>(
   O: Ord<A>
 ): <B>(fa: Set<A>, b: B, f: (b: B, a: A) => B) => B {
-  const toArrayO = toReadonlyArray(O)
+  const toArrayO = toArray(O)
   return (fa, b, f) => toArrayO(fa).reduce(f, b)
 }
 
@@ -432,7 +432,7 @@ export function foldMap<A, M>(
   O: Ord<A>,
   M: Monoid<M>
 ): (f: (a: A) => M) => (fa: Set<A>) => M {
-  const toArrayO = toReadonlyArray(O)
+  const toArrayO = toArray(O)
   return (f) => (fa) => toArrayO(fa).reduce((b, a) => M.concat(b, f(a)), M.empty)
 }
 
@@ -440,7 +440,7 @@ export function foldMap_<A, M>(
   O: Ord<A>,
   M: Monoid<M>
 ): (fa: Set<A>, f: (a: A) => M) => M {
-  const toArrayO = toReadonlyArray(O)
+  const toArrayO = toArray(O)
   return (fa, f) => toArrayO(fa).reduce((b, a) => M.concat(b, f(a)), M.empty)
 }
 

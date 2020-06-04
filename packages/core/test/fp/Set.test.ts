@@ -20,10 +20,10 @@ const fooEq: Eq<Foo> = {
 }
 
 describe("ReadonlySet", () => {
-  it("toReadonlyArray", () => {
-    assert.deepStrictEqual(_.toReadonlyArray(ordNumber)(new Set()), [])
-    assert.deepStrictEqual(_.toReadonlyArray(ordNumber)(new Set([1, 2, 3])), [1, 2, 3])
-    assert.deepStrictEqual(_.toReadonlyArray(ordNumber)(new Set([3, 2, 1])), [1, 2, 3])
+  it("toArray", () => {
+    assert.deepStrictEqual(_.toArray(ordNumber)(new Set()), [])
+    assert.deepStrictEqual(_.toArray(ordNumber)(new Set([1, 2, 3])), [1, 2, 3])
+    assert.deepStrictEqual(_.toArray(ordNumber)(new Set([3, 2, 1])), [1, 2, 3])
   })
 
   it("getEq", () => {
