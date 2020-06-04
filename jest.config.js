@@ -76,6 +76,8 @@ module.exports = {
     "@matechs/fancy/(.*)$": "<rootDir>/packages_inc/fancy/build/$1",
     "@matechs/fancy$": "<rootDir>/packages_inc/fancy/build",
     "@matechs/morphic-alg/(.*)$": "<rootDir>/packages/morphic-alg/build/$1",
-    "@matechs/morphic-alg$": "<rootDir>/packages/morphic-alg/build"
+    "@matechs/morphic-alg$": "<rootDir>/packages/morphic-alg/build",
+    "@matechs/morphic/(.*)$": "<rootDir>/packages/morphic/build/$1",
+    "@matechs/morphic$": "<rootDir>/packages/morphic/build"
   }
 }
