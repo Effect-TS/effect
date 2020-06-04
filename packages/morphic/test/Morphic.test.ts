@@ -1,6 +1,6 @@
 import { pipe } from "fp-ts/lib/pipeable"
 
-import { summonFor, ModelURI, AType, EType, AsOpaque } from "../src"
+import * as M from "../src"
 
 import * as A from "@matechs/core/Array"
 import * as E from "@matechs/core/Either"
@@ -10,7 +10,9 @@ import * as Index from "@matechs/core/Monocle/Index"
 import * as Lens from "@matechs/core/Monocle/Lens"
 import * as NT from "@matechs/core/Newtype"
 
-const { summon } = summonFor({})
+const { summon } = M.summonFor({})
+
+const deriveEq = M.eqFor(summon)({})
 
 export function maxLength(length: number) {
   return (codec: Model.Type<string>) =>
@@ -32,7 +34,7 @@ interface Address
 const Address = summon((F) =>
   F.newtype<Address>("Address")(
     F.string({
-      [ModelURI]: flow(
+      [M.ModelURI]: flow(
         maxLength(20),
         Model.withMessage(() => "Invalid Address")
       )
@@ -45,17 +47,19 @@ const Person_ = summon((F) =>
     {
       name: F.string(),
       address: F.nonEmptyArray(Address(F), {
-        [ModelURI]: Model.withFirstMessage(() => "Invalid Address Array")
+        [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array")
       })
     },
     "Person"
   )
 )
 
-interface Person extends AType<typeof Person_> {}
-interface PersonE extends EType<typeof Person_> {}
+interface Person extends M.AType<typeof Person_> {}
+interface PersonE extends M.EType<typeof Person_> {}
 
-const Person = AsOpaque<PersonE, Person>()(Person_)
+const Person = M.AsOpaque<PersonE, Person>()(Person_)
+
+const PersonEQ = deriveEq(Person)
 
 describe("Morphic", () => {
   it("should use model interpreter", () => {
@@ -86,6 +90,29 @@ describe("Morphic", () => {
       name: "Michael",
       address: ["177 Finchley Road"]
     })
+  })
+  it("should use eq", () => {
+    const result = Person.type.decode({
+      name: "Michael",
+      address: ["177 Finchley Road"]
+    })
+    const result2 = Person.type.decode({
+      name: "Michael",
+      address: ["178 Finchley Road"]
+    })
+
+    expect(
+      pipe(
+        E.sequenceT(result, result),
+        E.map(([a, b]) => PersonEQ.equals(a, b))
+      )
+    ).toStrictEqual(E.right(true))
+    expect(
+      pipe(
+        E.sequenceT(result, result2),
+        E.map(([a, b]) => PersonEQ.equals(a, b))
+      )
+    ).toStrictEqual(E.right(false))
   })
   it("should use monocle", () => {
     const addressIndex = Index.nonEmptyArray<Address>()

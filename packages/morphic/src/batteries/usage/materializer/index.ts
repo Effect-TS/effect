@@ -70,7 +70,7 @@ function interpreteWithProgram<
   )
 }
 
-interface Interpretable<R, E, A, ProgURI extends ProgramURI> {
+export interface Interpretable<R, E, A, ProgURI extends ProgramURI> {
   derive: Overloads<ProgramType<R, E, A>[ProgURI]>
 }
 
