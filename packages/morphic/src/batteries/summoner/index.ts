@@ -3,7 +3,7 @@ import { cacheUnaryFunction } from "@morphic-ts/common/lib/core"
 
 import { modelNonStrictInterpreter, modelStrictInterpreter } from "../../model"
 import { ModelURI } from "../../model/hkt"
-import type { InterpreterURI } from "../interpreter"
+import { InterpreterURI, validationErrors } from "../interpreter"
 import type { ProgramURI } from "../program"
 import type { Materialized } from "../usage/materializer"
 import { ProgramType } from "../usage/program-type"
@@ -14,6 +14,9 @@ import {
   SummonerOps,
   Summoners
 } from "../usage/summoner"
+
+import * as T from "@matechs/core/Effect"
+import { reportFailure } from "@matechs/core/Model"
 
 export interface M<R, L, A> extends Materialized<R, L, A, ProgramURI, InterpreterURI> {}
 
@@ -39,6 +42,13 @@ export const summonFor: <R extends AnyEnv = {}>(
       build: (a) => a,
       strictType: program(modelStrictInterpreter<NonNullable<R>>())(env).type,
       type,
-      create
+      create,
+      encode: (a) => T.sync(() => type.encode(a)),
+      decode: (i) =>
+        T.mapLeft_(T.encaseEither(type.decode(i)), (e) =>
+          validationErrors(reportFailure(e))
+        ),
+      validate: (i) =>
+        T.mapLeft_(T.encaseEither(create(i)), (e) => validationErrors(reportFailure(e)))
     }
   })

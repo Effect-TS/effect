@@ -25,3 +25,5 @@ export const arbFor = <S extends Summoner<any>>(S: S) => (
 ) => <L, A>(
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
+
+export { ValidationErrors, validationErrors } from "./batteries/interpreter"
