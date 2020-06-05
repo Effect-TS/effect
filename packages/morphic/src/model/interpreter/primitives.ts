@@ -43,7 +43,7 @@ export const modelPrimitiveInterpreter = memo(
     keysOf: (k, config) => (env) =>
       new ModelType(
         modelApplyConfig(config)(
-          M.keyof(k) as M.Type<keyof typeof k, string, unknown>,
+          M.keyof(k) as M.Type<keyof typeof k & string, string, unknown>,
           env,
           {}
         )
