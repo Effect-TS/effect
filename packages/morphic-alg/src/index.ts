@@ -8,7 +8,6 @@ import * as refined from "./refined"
 import * as set from "./set"
 import * as strMap from "./str-map"
 import * as taggedUnion from "./tagged-union"
-import * as unions from "./unions"
 import * as unknown from "./unknown"
 
 export {
@@ -22,6 +21,5 @@ export {
   set,
   strMap,
   taggedUnion,
-  unions,
   unknown
 }

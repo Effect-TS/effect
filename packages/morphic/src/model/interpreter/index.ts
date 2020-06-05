@@ -9,22 +9,9 @@ import { modelRefinedInterpreter } from "./refined"
 import { modelSetInterpreter } from "./set"
 import { modelStrMapInterpreter } from "./str-map"
 import { modelTaggedUnionInterpreter } from "./tagged-unions"
-import { modelUnionInterpreter } from "./unions"
 import { modelUnknownInterpreter } from "./unknown"
 
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-
-export { modelIntersectionInterpreter } from "./intersection"
-export { modelNewtypeInterpreter } from "./newtype"
-export { modelNonStrictObjectInterpreter, modelStrictObjectInterpreter } from "./object"
-export { modelPrimitiveInterpreter } from "./primitives"
-export { modelRecursiveInterpreter } from "./recursive"
-export { modelRefinedInterpreter } from "./refined"
-export { modelSetInterpreter } from "./set"
-export { modelStrMapInterpreter } from "./str-map"
-export { modelTaggedUnionInterpreter } from "./tagged-unions"
-export { modelUnionInterpreter } from "./unions"
-export { modelUnknownInterpreter } from "./unknown"
 
 export const allModelBase = <Env extends AnyEnv>() =>
   merge(
@@ -33,7 +20,6 @@ export const allModelBase = <Env extends AnyEnv>() =>
     modelUnknownInterpreter<Env>(),
     modelPrimitiveInterpreter<Env>(),
     modelIntersectionInterpreter<Env>(),
-    modelUnionInterpreter<Env>(),
     modelTaggedUnionInterpreter<Env>(),
     modelStrMapInterpreter<Env>(),
     modelSetInterpreter<Env>(),

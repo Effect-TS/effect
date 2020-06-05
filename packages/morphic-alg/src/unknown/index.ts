@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-interface */
 import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
 
 import type { ConfigsForType, AnyEnv } from "../config"
@@ -22,21 +23,30 @@ declare module "@morphic-ts/algebras/lib/hkt" {
   }
 }
 
+export interface UnknownConfig {}
+
 export interface MatechsAlgebraUnknown<F, Env> {
   _F: F
   unknown: {
-    (config?: ConfigsForType<Env, unknown, unknown>): HKT2<F, Env, unknown, unknown>
+    (config?: ConfigsForType<Env, unknown, unknown, UnknownConfig>): HKT2<
+      F,
+      Env,
+      unknown,
+      unknown
+    >
   }
 }
 
 export interface MatechsAlgebraUnknown1<F extends URIS, Env extends AnyEnv> {
   _F: F
-  unknown(config?: ConfigsForType<Env, unknown, unknown>): Kind<F, Env, unknown>
+  unknown(
+    config?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
+  ): Kind<F, Env, unknown>
 }
 
 export interface MatechsAlgebraUnknown2<F extends URIS2, Env extends AnyEnv> {
   _F: F
   unknown(
-    config?: ConfigsForType<Env, unknown, unknown>
+    config?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
   ): Kind2<F, Env, unknown, unknown>
 }
