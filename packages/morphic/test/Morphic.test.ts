@@ -58,7 +58,7 @@ const Person_ = summon((F) =>
       address: F.nonEmptyArray(Address(F), {
         [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array"),
         [M.ShowURI]: (_s, _e, _c) => ({
-          show: (a) => `<AddressArray>(${A.getShow(_c.show).show(a)})`
+          show: (a) => `<AddressArray>(${_c.showNea.show(a)})`
         })
       })
     },
