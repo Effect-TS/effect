@@ -4,7 +4,10 @@ import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraIntersection2 } from "@matechs/morphic-alg/intersection"
+import type {
+  MatechsAlgebraIntersection2,
+  IntersectionConfig
+} from "@matechs/morphic-alg/intersection"
 
 export const modelIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraIntersection2<ModelURI, Env> => ({
@@ -12,7 +15,7 @@ export const modelIntersectionInterpreter = memo(
     intersection: <L, A>(
       items: Array<(_: Env) => ModelType<L, A>>,
       name: string,
-      config?: ConfigsForType<Env, L, A>
+      config?: ConfigsForType<Env, L, A, IntersectionConfig<L[], A[]>>
     ) => (env: Env) =>
       new ModelType(
         modelApplyConfig(config)(

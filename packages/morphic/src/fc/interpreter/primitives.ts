@@ -47,7 +47,7 @@ export const fcPrimitiveInterpreter = memo(
     keysOf: (k, config) => (env) =>
       new FastCheckType(
         fcApplyConfig(config)(
-          oneof(...(Object.keys(k) as (keyof typeof k)[]).map(constant)),
+          oneof(...(Object.keys(k) as (keyof typeof k & string)[]).map(constant)),
           env,
           {}
         )

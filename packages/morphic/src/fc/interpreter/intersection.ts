@@ -5,7 +5,10 @@ import { fcApplyConfig } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraIntersection1 } from "@matechs/morphic-alg/intersection"
+import type {
+  MatechsAlgebraIntersection1,
+  IntersectionConfig
+} from "@matechs/morphic-alg/intersection"
 
 export const fcIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraIntersection1<FastCheckURI, Env> => ({
@@ -13,7 +16,7 @@ export const fcIntersectionInterpreter = memo(
     intersection: <A>(
       items: ((env: Env) => FastCheckType<A>)[],
       _name: string,
-      config?: ConfigsForType<Env, unknown, A>
+      config?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
     ) => (env: Env) =>
       new FastCheckType(
         fcApplyConfig(config)(

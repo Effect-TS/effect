@@ -29,7 +29,7 @@ export const eqPrimitiveInterpreter = memo(
     stringLiteral: (k, config) => (env) =>
       new EqType<typeof k>(eqApplyConfig(config)(eqString, env, {})),
     keysOf: (keys, config) => (env) =>
-      new EqType<keyof typeof keys>(eqApplyConfig(config)(eqStrict, env, {})),
+      new EqType<keyof typeof keys & string>(eqApplyConfig(config)(eqStrict, env, {})),
     nullable: (getType, config) => (env) =>
       new EqType(eqApplyConfig(config)(OgetEq(getType(env).eq), env, {})),
     array: (getType, config) => (env) =>
