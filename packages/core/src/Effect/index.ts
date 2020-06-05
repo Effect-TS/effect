@@ -34,9 +34,8 @@ import {
   interruptWithError,
   raise
 } from "../Exit"
-import { flow, identity } from "../Function"
+import { flow, identity, pipe } from "../Function"
 import type { FunctionN, Lazy, Predicate, Refinement } from "../Function"
-import { pipe } from "../Function"
 import * as Mon from "../Monoid"
 import * as O from "../Option"
 import * as RE from "../Record"
