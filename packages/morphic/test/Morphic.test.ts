@@ -6,7 +6,7 @@ import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import * as Ex from "@matechs/core/Exit"
-import { pipe } from "@matechs/core/Function"
+import { pipe, introduce } from "@matechs/core/Function"
 import { flow, constant } from "@matechs/core/Function"
 import * as Model from "@matechs/core/Model"
 import * as Index from "@matechs/core/Monocle/Index"
@@ -58,7 +58,7 @@ const Person_ = summon((F) =>
       address: F.nonEmptyArray(Address(F), {
         [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array"),
         [M.ShowURI]: (_s, _e, _c) => ({
-          show: (a) => `<AddressArray>(${_c.showNea.show(a)})`
+          show: (a) => `<AddressArray>(${A.getShow(_c.show).show(a)})`
         })
       })
     },
@@ -71,9 +71,39 @@ interface PersonE extends M.EType<typeof Person_> {}
 
 const Person = M.AsOpaque<PersonE, Person>()(Person_)
 
+const Age_ = summon((F) =>
+  F.interface(
+    {
+      age: F.number()
+    },
+    "Age"
+  )
+)
+
+interface Age extends M.AType<typeof Age_> {}
+interface AgeE extends M.EType<typeof Age_> {}
+
+const Age = M.AsOpaque<AgeE, Age>()(Age_)
+
 const PersonEQ = deriveEq(Person)
 const PersonArb = deriveArb(Person)
 const PersonShow = deriveShow(Person)
+
+const PersonWithAge_ = summon((F) =>
+  F.intersection([Person(F), Age(F)], "PersonWithAge", {
+    [M.ShowURI]: (_s, _e, _c) => ({
+      show: (pe) =>
+        introduce(_c.shows[0].show(pe))((a) => a.substring(0, a.length - 2)) +
+        "," +
+        introduce(_c.shows[1].show(pe))((b) => b.substring(1, b.length))
+    })
+  })
+)
+
+interface PersonWithAge extends M.AType<typeof PersonWithAge_> {}
+interface PersonWithAgeE extends M.EType<typeof PersonWithAge_> {}
+
+const PersonWithAge = M.AsOpaque<PersonWithAgeE, PersonWithAge>()(PersonWithAge_)
 
 describe("Morphic", () => {
   it("should use model interpreter", () => {
@@ -205,6 +235,19 @@ describe("Morphic", () => {
     expect(pipe(result, E.map(PersonShow.show))).toStrictEqual(
       E.right(
         '{ name: "Michael", address: <AddressArray>([<Address>("177 Finchley Road")]) }'
+      )
+    )
+  })
+  it("use intersection show", () => {
+    const result = PersonWithAge.type.decode({
+      name: "Michael",
+      address: ["177 Finchley Road"],
+      age: 29
+    })
+
+    expect(pipe(result, E.map(deriveShow(PersonWithAge).show))).toStrictEqual(
+      E.right(
+        '{ name: "Michael", address: <AddressArray>([<Address>("177 Finchley Road")]), age: 29 }'
       )
     )
   })

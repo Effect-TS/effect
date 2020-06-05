@@ -3,19 +3,18 @@ import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
-import { getShow as AgetShow, Array } from "@matechs/core/Array"
-import { getShow as EgetShow, Either } from "@matechs/core/Either"
+import { getShow as AgetShow } from "@matechs/core/Array"
+import { getShow as EgetShow } from "@matechs/core/Either"
 import { introduce } from "@matechs/core/Function"
 import { UUID } from "@matechs/core/Model"
-import { NonEmptyArray } from "@matechs/core/NonEmptyArray"
-import { getShow as OgetShow, Option } from "@matechs/core/Option"
+import { getShow as OgetShow } from "@matechs/core/Option"
+import { showBoolean, showNumber, showString } from "@matechs/core/Show"
 import type { Show } from "@matechs/core/Show"
-import { showNumber, showString, showBoolean } from "@matechs/core/Show"
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
-  MatechsAlgebraPrimitive1,
   Keys,
   KeysOfConfig,
+  MatechsAlgebraPrimitive1,
   StringLiteralConfig
 } from "@matechs/morphic-alg/primitives"
 
@@ -23,19 +22,16 @@ declare module "@matechs/morphic-alg/primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [ShowURI]: {
       show: Show<A>
-      showNea: Show<NonEmptyArray<A>>
     }
   }
   interface ArrayConfig<L, A> {
     [ShowURI]: {
       show: Show<A>
-      showArray: Show<Array<A>>
     }
   }
   interface NullableConfig<L, A> {
     [ShowURI]: {
       show: Show<A>
-      showOption: Show<Option<A>>
     }
   }
   interface StringLiteralConfig<T> {
@@ -52,13 +48,11 @@ declare module "@matechs/morphic-alg/primitives" {
     [ShowURI]: {
       left: Show<RL>
       right: Show<RA>
-      either: Show<Either<RL, RA>>
     }
   }
   interface OptionConfig<L, A> {
     [ShowURI]: {
       show: Show<A>
-      showOption: Show<Option<A>>
     }
   }
   interface BooleanConfig {
@@ -159,8 +153,7 @@ export const showPrimitiveInterpreter = memo(
         introduce(getShow(env).show)((show) =>
           introduce(OgetShow(show))((showOption) =>
             showApplyConfig(config)(showOption, env, {
-              show,
-              showOption
+              show
             })
           )
         )
@@ -170,8 +163,7 @@ export const showPrimitiveInterpreter = memo(
         introduce(getShow(env).show)((show) =>
           introduce(AgetShow(show))((showArray) =>
             showApplyConfig(config)(showArray, env, {
-              show,
-              showArray
+              show
             })
           )
         )
@@ -181,8 +173,7 @@ export const showPrimitiveInterpreter = memo(
         introduce(getShow(env).show)((show) =>
           introduce(AgetShow(getShow(env).show))((showNea) =>
             showApplyConfig(config)(showNea, env, {
-              show,
-              showNea
+              show
             })
           )
         )
@@ -203,8 +194,7 @@ export const showPrimitiveInterpreter = memo(
             introduce(EgetShow(left, right))((either) =>
               showApplyConfig(config)(either, env, {
                 left,
-                right,
-                either
+                right
               })
             )
           )
@@ -215,8 +205,7 @@ export const showPrimitiveInterpreter = memo(
         introduce(a(env).show)((show) =>
           introduce(OgetShow(show))((showOption) =>
             showApplyConfig(config)(showOption, env, {
-              show,
-              showOption
+              show
             })
           )
         )
