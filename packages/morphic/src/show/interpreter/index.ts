@@ -1,4 +1,3 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
 import { merge, memo } from "@morphic-ts/common/lib/utils"
 
 import { showIntersectionInterpreter } from "./intersection"
@@ -11,6 +10,8 @@ import { showSetInterpreter } from "./set"
 import { showStrMapInterpreter } from "./str-map"
 import { showTaggedUnionInterpreter } from "./tagged-union"
 import { showUnknownInterpreter } from "./unknown"
+
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 
 export const allModelShow = <Env extends AnyEnv>() =>
   merge(

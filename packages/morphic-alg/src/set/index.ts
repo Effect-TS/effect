@@ -1,5 +1,6 @@
 import type { Kind, URIS, Kind2, URIS2, HKT2 } from "@morphic-ts/common/lib/HKT"
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
+
+import type { AnyEnv, ConfigsForType } from "../config"
 
 import type { Array } from "@matechs/core/Array"
 import type { Ord } from "@matechs/core/Ord"

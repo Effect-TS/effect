@@ -1,4 +1,3 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
 import { circularDeepEqual } from "fast-equals"
 
 import { memo } from "../../utils"
@@ -6,6 +5,7 @@ import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
 import type { Eq } from "@matechs/core/Eq"
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraUnknown1 } from "@matechs/morphic-alg/unknown"
 
 export interface CustomizeUnknown<RC> {
@@ -20,7 +20,7 @@ export const eqUnknownInterpreter = memo(
       return new EqType(
         config === undefined
           ? { equals: circularDeepEqual }
-          : config({ equals: circularDeepEqual }, env)
+          : config({ equals: circularDeepEqual }, env, {})
       )
     }
   })

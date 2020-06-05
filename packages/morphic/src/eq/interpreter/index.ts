@@ -1,5 +1,3 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { merge, memo } from "../../utils"
 
 import { eqIntersectionInterpreter } from "./intersection"
@@ -12,6 +10,8 @@ import { eqSetInterpreter } from "./set"
 import { eqStrMapInterpreter } from "./str-map"
 import { eqTaggedUnionInterpreter } from "./tagged-union"
 import { eqUnknownInterpreter } from "./unknown"
+
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 
 export const allModelEq = <Env extends AnyEnv>() =>
   merge(

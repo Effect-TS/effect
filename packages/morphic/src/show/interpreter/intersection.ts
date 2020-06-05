@@ -1,9 +1,8 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraIntersection1 } from "@matechs/morphic-alg/intersection"
 
 export const showIntersectionInterpreter = memo(
@@ -20,7 +19,8 @@ export const showIntersectionInterpreter = memo(
           {
             show: (a: A) => shows.map((s) => s(a)).join(" & ")
           },
-          env
+          env,
+          {}
         )
       )
     }

@@ -1,10 +1,9 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraUnions2 } from "@matechs/morphic-alg/unions"
 
 export const modelUnionInterpreter = memo(
@@ -18,7 +17,8 @@ export const modelUnionInterpreter = memo(
       new ModelType(
         modelApplyConfig(config)(
           M.union(items.map((x) => x(env).type) as any, name),
-          env
+          env,
+          {}
         )
       )
   })

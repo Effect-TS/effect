@@ -4,7 +4,7 @@ export const FastCheckURI = "@matechs/morphic/FastCheckURI" as const
 
 export type FastCheckURI = typeof FastCheckURI
 
-declare module "@morphic-ts/common/lib/config" {
+declare module "@matechs/morphic-alg/config" {
   export interface ConfigType<E, A> {
     [FastCheckURI]: Arbitrary<A>
   }

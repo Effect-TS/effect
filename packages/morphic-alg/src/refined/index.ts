@@ -1,5 +1,6 @@
 import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
-import type { ConfigsForType, AnyEnv } from "@morphic-ts/common/lib/config"
+
+import type { ConfigsForType, AnyEnv } from "../config"
 
 import type { Refinement } from "@matechs/core/Function"
 

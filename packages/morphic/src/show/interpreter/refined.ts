@@ -1,9 +1,8 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraRefined1 } from "@matechs/morphic-alg/refined"
 
 export const showRefinedInterpreter = memo(
@@ -15,7 +14,8 @@ export const showRefinedInterpreter = memo(
           {
             show: (x) => `<${name}>(${getShow(env).show.show(x)})`
           },
-          env
+          env,
+          {}
         )
       )
   })

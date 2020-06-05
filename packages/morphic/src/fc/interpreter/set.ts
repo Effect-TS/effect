@@ -1,4 +1,3 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
 import { set } from "fast-check"
 
 import { memo } from "../../utils"
@@ -8,6 +7,7 @@ import { FastCheckType, FastCheckURI } from "../hkt"
 import { Array } from "@matechs/core/Array"
 import { Ord } from "@matechs/core/Ord"
 import { fromArray, Set } from "@matechs/core/Set"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraSet1 } from "@matechs/morphic-alg/set"
 
 export const fcSetInterpreter = memo(
@@ -18,6 +18,8 @@ export const fcSetInterpreter = memo(
       ord: Ord<A>,
       config?: ConfigsForType<Env, Array<unknown>, Set<A>>
     ) => (env) =>
-      new FastCheckType(fcApplyConfig(config)(set(a(env).arb).map(fromArray(ord)), env))
+      new FastCheckType(
+        fcApplyConfig(config)(set(a(env).arb).map(fromArray(ord)), env, {})
+      )
   })
 )
