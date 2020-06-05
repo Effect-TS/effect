@@ -380,3 +380,7 @@ export function pipe(
   }
   return
 }
+
+export function introduce<T>(x: T): <K>(_: (_: T) => K) => K {
+  return (_) => _(x)
+}
