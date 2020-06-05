@@ -30,11 +30,11 @@ import {
   done,
   Exit,
   interrupt,
+  Interrupt,
   interruptWithError,
-  raise,
-  Interrupt
+  raise
 } from "../Exit"
-import { flow, identity } from "../Function"
+import { flow, identity, pipe } from "../Function"
 import type { FunctionN, Lazy, Predicate, Refinement } from "../Function"
 import * as Mon from "../Monoid"
 import * as O from "../Option"
@@ -52,12 +52,9 @@ import {
   ICollapse,
   IInterruptibleRegion,
   IMap,
-  Instructions,
   IProvideEnv,
-  IPure,
   IPureEither,
   IPureOption,
-  IPureTag,
   IRaised,
   ISupervised
 } from "../Support/Common"
@@ -91,8 +88,8 @@ import {
   pure,
   pureNone,
   suspended,
-  zipWith_,
-  sync
+  sync,
+  zipWith_
 } from "./Fiber"
 
 export {
@@ -334,10 +331,7 @@ export const chain: <S1, R, E, A, B>(
   f: (a: A) => Effect<S1, R, E, B>
 ) => <S2, R2, E2>(ma: Effect<S2, R2, E2, A>) => Effect<S1 | S2, R & R2, E | E2, B> = (
   bind
-) => (inner) =>
-  (((inner as any) as Instructions).tag() === IPureTag
-    ? bind(((inner as any) as IPure<any>).a)
-    : new IChain(inner, bind)) as any
+) => (inner) => new IChain(inner, bind) as any
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(
   mma: Effect<S1, R, E, Effect<S2, R2, E2, A>>
@@ -999,9 +993,7 @@ export function makeFiber<S, R, E, A>(
 export const map: <A, B>(
   f: (a: A) => B
 ) => <S, R, E>(fa: Effect<S, R, E, A>) => Effect<S, R, E, B> = (f) => (base) =>
-  (((base as any) as Instructions).tag() === IPureTag
-    ? new IPure(f(((base as any) as IPure<any>).a))
-    : new IMap(base, f)) as any
+  new IMap(base, f) as any
 
 /**
  * Map the error produced by an IO

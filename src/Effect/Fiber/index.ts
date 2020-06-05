@@ -3,17 +3,15 @@ import { Exit } from "../../Exit"
 import { FunctionN, Lazy } from "../../Function"
 import * as O from "../../Option"
 import {
-  Instructions,
-  IPureTag,
-  IPure,
-  IMap,
-  ICompleted,
-  IChain,
   AsyncFn,
   IAsync,
+  IChain,
+  ICompleted,
+  IMap,
+  IPure,
   ISuspended
 } from "../../Support/Common"
-import { Async, AsyncE, Sync, SyncE, Effect } from "../../Support/Common/effect"
+import { Async, AsyncE, Effect, Sync, SyncE } from "../../Support/Common/effect"
 import { Driver } from "../../Support/Driver"
 import { setExit } from "../../Support/Driver/driver"
 import { snd } from "../../Support/Utils"
@@ -63,9 +61,7 @@ export function map_<S, R, E, A, B>(
   base: Effect<S, R, E, A>,
   f: FunctionN<[A], B>
 ): Effect<S, R, E, B> {
-  return (((base as any) as Instructions).tag() === IPureTag
-    ? new IPure(f(((base as any) as IPure<A>).a))
-    : new IMap(base, f)) as any
+  return new IMap(base, f) as any
 }
 
 export const pureNone =
@@ -89,9 +85,7 @@ export function chain_<S, R, E, A, S2, R2, E2, B>(
   inner: Effect<S, R, E, A>,
   bind: FunctionN<[A], Effect<S2, R2, E2, B>>
 ): Effect<S | S2, R & R2, E | E2, B> {
-  return (((inner as any) as Instructions).tag() === IPureTag
-    ? bind(((inner as any) as IPure<A>).a)
-    : new IChain(inner, bind)) as any
+  return new IChain(inner, bind) as any
 }
 
 /**
