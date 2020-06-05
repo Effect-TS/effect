@@ -52,7 +52,7 @@ export type ModuleShape<M> = {
     }
 }
 
-export const specURI = "@matechs/effect/freeEnv/specURI"
+export const specURI = "@matechs/core/Service/specURI"
 
 export interface ModuleSpec<M> {
   [specURI]: ModuleShape<M>
