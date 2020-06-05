@@ -1,9 +1,10 @@
 import * as assert from "assert"
 
-import { effect as T } from "@matechs/effect"
 import { pipe } from "fp-ts/lib/pipeable"
 
 import * as G from "../src"
+
+import * as T from "@matechs/core/Effect"
 
 describe("Graceful", () => {
   it("should record onExit and trigger", async () => {

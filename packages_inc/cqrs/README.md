@@ -1,4 +1,5 @@
 ## CQRS
+
 ![weekly-downloads](https://badgen.net/npm/v/@matechs/cqrs)
 ![weekly-downloads](https://badgen.net/npm/dw/@matechs/cqrs)
 ![weekly-downloads](https://badgen.net/npm/dm/@matechs/cqrs)
@@ -15,9 +16,9 @@ This library depends on [morphic-ts](https://github.com/sledorze/morphic-ts) for
 ### Definition of the domain of events
 
 ```ts
-import { summon, tagged } from "@morphic-ts/batteries/lib/summoner-ESBAST";
+import { summon, tagged } from "@morphic-ts/batteries/lib/summoner-ESBAST"
 
-export const TodoAdded = summon(F =>
+export const TodoAdded = summon((F) =>
   F.interface(
     {
       type: F.stringLiteral("TodoAdded"),
@@ -26,9 +27,9 @@ export const TodoAdded = summon(F =>
     },
     "TodoAdded"
   )
-);
+)
 
-export const TodoRemoved = summon(F =>
+export const TodoRemoved = summon((F) =>
   F.interface(
     {
       type: F.stringLiteral("TodoRemoved"),
@@ -36,39 +37,36 @@ export const TodoRemoved = summon(F =>
     },
     "TodoRemoved"
   )
-);
+)
 
 // define all events in your domain
-export const DomainEvent = tagged("type")({ TodoAdded, TodoRemoved });
+export const DomainEvent = tagged("type")({ TodoAdded, TodoRemoved })
 ```
 
 ### Derivation of utilities
 
 ```ts
-import { dbT, DbConfig, configEnv } from "@matechs/orm";
-import * as CQ from "@matechs/cqrs";
-import { DomainEvent } from "./events";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { ConnectionOptions } from "typeorm";
-import { effect as T } from "@matechs/effect";
+import { dbT, DbConfig, configEnv } from "@matechs/orm"
+import * as CQ from "@matechs/cqrs"
+import { DomainEvent } from "./events"
+import { Do } from "fp-ts-contrib/lib/Do"
+import { ConnectionOptions } from "typeorm"
+import * as T from "@matechs/core/Effect"
 
 // configure ORM db
-export const dbURI: unique symbol = Symbol();
+export const dbURI: unique symbol = Symbol()
 
 // get ORM utils for db
-export const { bracketPool, withTransaction } = dbT(dbURI);
+export const { bracketPool, withTransaction } = dbT(dbURI)
 
 // get CQRS utils for db and event domain
-export const domain = CQ.cqrs(DomainEvent, dbURI);
+export const domain = CQ.cqrs(DomainEvent, dbURI)
 
 // define the todo aggregate by identifiying specific domain events
-export const todosAggregate = domain.aggregate("todos", [
-  "TodoAdded",
-  "TodoRemoved"
-]);
+export const todosAggregate = domain.aggregate("todos", ["TodoAdded", "TodoRemoved"])
 
 // construct a utility to instanciate the aggregate root with a specific id
-export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`);
+export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`)
 
 // provide a configuration for your database connection
 export const dbConfigLive: DbConfig<typeof dbURI> = {
@@ -80,7 +78,7 @@ export const dbConfigLive: DbConfig<typeof dbURI> = {
       })
     }
   }
-};
+}
 ```
 
 ### Usage in your transactions
@@ -91,21 +89,21 @@ When you persist an even a lock is taken against the aggregate root to guarantee
 const program = withTransaction(
   pipe(
     // compose normally with rest of your logic
-    todoRoot("a").persistEvent(of => [
+    todoRoot("a").persistEvent((of) => [
       of.TodoAdded({ id: 1, todo: "todo" }),
       of.TodoAdded({ id: 2, todo: "todo-2" })
     ]),
     T.chain(([_event0, _event1]) =>
-      todoRoot("a").persistEvent(of => of.TodoRemoved({ id: 1 }))
+      todoRoot("a").persistEvent((of) => of.TodoRemoved({ id: 1 }))
     )
   )
-);
+)
 ```
 
 ### Define your read projectors
 
 ```ts
-import { logger, console } from "@matechs/logger";
+import { logger, console } from "@matechs/logger"
 import {
   withTransaction,
   todoRoot,
@@ -114,21 +112,21 @@ import {
   bracketPool,
   domain,
   dbConfigLive
-} from "./db";
-import { pipe } from "fp-ts/lib/pipeable";
-import { effect as T } from "@matechs/effect";
-import { array } from "fp-ts/lib/Array";
-import { Do } from "fp-ts-contrib/lib/Do";
-import { TaskError, DbConfig, liveFactory } from "@matechs/orm";
-import { InitError } from "@matechs/cqrs/lib/createIndex";
-import { DbFactory } from "@matechs/orm";
-import { ReadSideConfig } from "@matechs/cqrs/lib/config";
+} from "./db"
+import { pipe } from "fp-ts/lib/pipeable"
+import * as T from "@matechs/core/Effect"
+import { array } from "fp-ts/lib/Array"
+import { Do } from "fp-ts-contrib/lib/Do"
+import { TaskError, DbConfig, liveFactory } from "@matechs/orm"
+import { InitError } from "@matechs/cqrs/lib/createIndex"
+import { DbFactory } from "@matechs/orm"
+import { ReadSideConfig } from "@matechs/cqrs/lib/config"
 
 const defaultConfig = (id: string): ReadSideConfig => ({
   delay: 3000, // how long to wait after each poll
   id, // unique id for this read
   limit: 100 // how many events to fetch in each pool
-});
+})
 
 // ideal for dispatch to locations like event-store that support idempotent writes
 // process all events, events are guaranteed to be delivered in strong order
@@ -136,12 +134,12 @@ const defaultConfig = (id: string): ReadSideConfig => ({
 // events of different root may appear out of order (especially in replay)
 const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
   defaultConfig("read-todo-added")
-)(match =>
+)((match) =>
   match({
-    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+    TodoAdded: (todoAdded) => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
   })
-);
+)
 
 // ideal to process actions that need to happen on certain events
 // process only filtered events, events are guaranteed to be delivered in strong order
@@ -150,11 +148,11 @@ const readInAggregateTodosOnlyTodoAdded = todosAggregate.readAll(
 // note that because of filering the event sequence will have holes
 const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
   defaultConfig("read-todo-removed")
-)(["TodoRemoved"])(match =>
+)(["TodoRemoved"])((match) =>
   match({
-    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
+    TodoRemoved: (todoRemoved) => logger.info(JSON.stringify(todoRemoved))
   })
-);
+)
 
 // ideal for operations that care about all the events in the db
 // process all events, events are guaranteed to be delivered in strong order
@@ -162,12 +160,12 @@ const readInAggregateTodosOnlyTodoRemoved = todosAggregate.readOnly(
 // events of different root may appear out of order (especially in replay)
 const readAllDomainTodoAdded = domain.readAll(
   defaultConfig("read-todo-added-all-domain")
-)(match =>
+)((match) =>
   match({
-    TodoAdded: todoAdded => logger.info(JSON.stringify(todoAdded)),
+    TodoAdded: (todoAdded) => logger.info(JSON.stringify(todoAdded)),
     default: () => T.unit
   })
-);
+)
 
 // ideal to process actions that need to happen on certain events across different aggregates
 // process only filtered events, events are guaranteed to be delivered in strong order
@@ -177,11 +175,11 @@ const readAllDomainTodoAdded = domain.readAll(
 // NB: don't rely on order cross aggregate!!!
 const readAllDomainOnlyTodoRemoved = domain.readOnly(
   defaultConfig("read-todo-removed-all-domain")
-)(["TodoRemoved"])(match =>
+)(["TodoRemoved"])((match) =>
   match({
-    TodoRemoved: todoRemoved => logger.info(JSON.stringify(todoRemoved))
+    TodoRemoved: (todoRemoved) => logger.info(JSON.stringify(todoRemoved))
   })
-);
+)
 ```
 
 ### Wire up in your main flow
@@ -217,7 +215,7 @@ export const main: T.Effect<
       //fork fiber for readAllDomainOnlyTodoRemoved
       T.fork(readAllDomainOnlyTodoRemoved)
     )
-    .doL(s =>
+    .doL((s) =>
       // join the long running fibers
       array.sequence(T.parEffect)([
         s.readInAggregateTodosOnlyTodoAdded.join,
@@ -229,7 +227,7 @@ export const main: T.Effect<
     .return(() => {
       //
     })
-);
+)
 
 export const liveMain = pipe(
   main,
@@ -238,13 +236,13 @@ export const liveMain = pipe(
     ...liveFactory,
     ...console.consoleLogger()
   })
-);
+)
 
 // in a separate file (side effect)
-T.run(liveMain, exit => {
+T.run(liveMain, (exit) => {
   // the program shall not exit as reads should be polling
-  console.error(exit);
-});
+  console.error(exit)
+})
 ```
 
 ### Example

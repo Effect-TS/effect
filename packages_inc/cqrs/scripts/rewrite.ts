@@ -27,7 +27,6 @@ const packages = [
   "retry-ts",
   "hyper-ts",
   "fp—ts-local-storage",
-  "@matechs/effect",
   "@matechs/prelude",
   "@matechs/aio",
   "@matechs/apollo",
