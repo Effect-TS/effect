@@ -28,7 +28,6 @@ const modules: string[] = [
   "set",
   "str-map",
   "tagged-union",
-  "unions",
   "unknown",
   "config"
 ]
