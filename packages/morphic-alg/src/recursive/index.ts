@@ -1,5 +1,6 @@
 import type { URIS, Kind, URIS2, Kind2, HKT2 } from "@morphic-ts/common/lib/HKT"
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
+
+import type { AnyEnv, ConfigsForType } from "../config"
 
 export const RecursiveURI = "@matechs/core/RecursiveURI" as const
 

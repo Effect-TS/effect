@@ -1,5 +1,6 @@
 import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
-import type { ConfigsForType, AnyEnv } from "@morphic-ts/common/lib/config"
+
+import type { ConfigsForType, AnyEnv } from "../config"
 
 import type { Array } from "@matechs/core/Array"
 import type { Either } from "@matechs/core/Either"
@@ -25,6 +26,9 @@ declare module "@morphic-ts/algebras/lib/hkt" {
     [PrimitiveURI]: MatechsAlgebraPrimitive2<F, Env>
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface NonEmptyArrayConfig<L, A> {}
 
 export interface MatechsAlgebraPrimitive<F, Env> {
   _F: F
@@ -71,7 +75,12 @@ export interface MatechsAlgebraPrimitive<F, Env> {
   nonEmptyArray: {
     <L, A>(
       a: HKT2<F, Env, L, A>,
-      config?: ConfigsForType<Env, Array<L>, NonEmptyArray<A>>
+      config?: ConfigsForType<
+        Env,
+        Array<L>,
+        NonEmptyArray<A>,
+        NonEmptyArrayConfig<L, A>
+      >
     ): HKT2<F, Env, Array<L>, NonEmptyArray<A>>
   }
   date: {
@@ -119,7 +128,12 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
   ) => Kind<F, Env, Array<A>>
   nonEmptyArray: <A>(
     a: Kind<F, Env, A>,
-    config?: ConfigsForType<Env, Array<unknown>, NonEmptyArray<A>>
+    config?: ConfigsForType<
+      Env,
+      Array<unknown>,
+      NonEmptyArray<A>,
+      NonEmptyArrayConfig<unknown, A>
+    >
   ) => Kind<F, Env, NonEmptyArray<A>>
   date(config?: ConfigsForType<Env, string, Date>): Kind<F, Env, Date>
   uuid(config?: ConfigsForType<Env, string, UUID>): Kind<F, Env, UUID>
@@ -163,7 +177,7 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
   ) => Kind2<F, Env, Array<L>, Array<A>>
   nonEmptyArray: <L, A>(
     a: Kind2<F, Env, L, A>,
-    config?: ConfigsForType<Env, Array<L>, NonEmptyArray<A>>
+    config?: ConfigsForType<Env, Array<L>, NonEmptyArray<A>, NonEmptyArrayConfig<L, A>>
   ) => Kind2<F, Env, Array<L>, NonEmptyArray<A>>
   date(config?: ConfigsForType<Env, string, Date>): Kind2<F, Env, string, Date>
   uuid(config?: ConfigsForType<Env, string, UUID>): Kind2<F, Env, string, UUID>

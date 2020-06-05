@@ -7,7 +7,7 @@ export const ModelURI = "@matechs/morphic/ModelURI" as const
 
 export type ModelURI = typeof ModelURI
 
-declare module "@morphic-ts/common/lib/config" {
+declare module "@matechs/morphic-alg/config" {
   export interface ConfigType<E, A> {
     [ModelURI]: Type<A, E>
   }

@@ -1,9 +1,8 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowURI, ShowType } from "../hkt"
 
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
 
 export const showNewtypeInterpreter = memo(
@@ -13,7 +12,8 @@ export const showNewtypeInterpreter = memo(
       new ShowType(
         showApplyConfig(config)(
           { show: (x) => `<${name}>(${a(env).show.show(x as any)})` },
-          env
+          env,
+          {}
         )
       )
   })

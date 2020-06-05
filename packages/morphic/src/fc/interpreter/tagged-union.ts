@@ -1,10 +1,10 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
 import { oneof } from "fast-check"
 
 import { memo, collect } from "../../utils"
 import { fcApplyConfig } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraTaggedUnions1 } from "@matechs/morphic-alg/tagged-union"
 
 export const fcTaggedUnionInterpreter = memo(
@@ -14,7 +14,8 @@ export const fcTaggedUnionInterpreter = memo(
       new FastCheckType(
         fcApplyConfig(config)(
           oneof(...collect(dic, (_, getArb) => getArb(env).arb)),
-          env
+          env,
+          {}
         )
       )
   })

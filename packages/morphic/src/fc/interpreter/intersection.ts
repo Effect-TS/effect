@@ -1,10 +1,10 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
 import { genericTuple } from "fast-check"
 
 import { memo } from "../../utils"
 import { fcApplyConfig } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraIntersection1 } from "@matechs/morphic-alg/intersection"
 
 export const fcIntersectionInterpreter = memo(
@@ -20,7 +20,8 @@ export const fcIntersectionInterpreter = memo(
           genericTuple(items.map((getArb) => getArb(env).arb)).map((all) =>
             Object.assign({}, ...all)
           ),
-          env
+          env,
+          {}
         )
       )
   })

@@ -1,4 +1,3 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
 import { cacheUnaryFunction } from "@morphic-ts/common/lib/core"
 
 import { modelNonStrictInterpreter, modelStrictInterpreter } from "../../model"
@@ -17,6 +16,7 @@ import {
 
 import * as T from "@matechs/core/Effect"
 import { reportFailure } from "@matechs/core/Model"
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 
 export interface M<R, L, A> extends Materialized<R, L, A, ProgramURI, InterpreterURI> {}
 

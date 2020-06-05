@@ -1,10 +1,9 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraIntersection2 } from "@matechs/morphic-alg/intersection"
 
 export const modelIntersectionInterpreter = memo(
@@ -18,7 +17,8 @@ export const modelIntersectionInterpreter = memo(
       new ModelType(
         modelApplyConfig(config)(
           M.intersection(items.map((x) => x(env).type) as any, name),
-          env
+          env,
+          {}
         )
       )
   })

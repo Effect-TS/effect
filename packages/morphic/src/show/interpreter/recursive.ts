@@ -1,9 +1,8 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraRecursive1 } from "@matechs/morphic-alg/recursive"
 
 export const showRecursiveInterpreter = memo(
@@ -17,7 +16,7 @@ export const showRecursiveInterpreter = memo(
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>
         new ShowType(
-          showApplyConfig(config)({ show: (a) => get()(env).show.show(a) }, env)
+          showApplyConfig(config)({ show: (a) => get()(env).show.show(a) }, env, {})
         )
       return res
     }

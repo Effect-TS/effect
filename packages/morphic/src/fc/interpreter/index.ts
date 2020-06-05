@@ -1,5 +1,3 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { memo, merge } from "../../utils"
 
 import { fcIntersectionInterpreter } from "./intersection"
@@ -13,6 +11,8 @@ import { fcStrMapInterpreter } from "./str-map"
 import { fcTaggedUnionInterpreter } from "./tagged-union"
 import { fcUnionInterpreter } from "./unions"
 import { fcUnknownInterpreter } from "./unknown"
+
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 
 export const allModelFC = <Env extends AnyEnv>() =>
   merge(

@@ -56,7 +56,10 @@ const Person_ = summon((F) =>
     {
       name: F.string(),
       address: F.nonEmptyArray(Address(F), {
-        [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array")
+        [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array"),
+        [M.ShowURI]: (_s, _e, _c) => ({
+          show: (a) => `<AddressArray>(${A.getShow(_c.show).show(a)})`
+        })
       })
     },
     "Person"
@@ -200,7 +203,9 @@ describe("Morphic", () => {
     })
 
     expect(pipe(result, E.map(PersonShow.show))).toStrictEqual(
-      E.right('{ name: "Michael", address: [<Address>("177 Finchley Road")] }')
+      E.right(
+        '{ name: "Michael", address: <AddressArray>([<Address>("177 Finchley Road")]) }'
+      )
     )
   })
 })

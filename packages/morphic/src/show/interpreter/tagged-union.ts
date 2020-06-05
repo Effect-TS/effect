@@ -1,9 +1,8 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { memo, mapRecord } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraTaggedUnions1 } from "@matechs/morphic-alg/tagged-union"
 
 export const showTaggedUnionInterpreter = memo(
@@ -16,7 +15,8 @@ export const showTaggedUnionInterpreter = memo(
           {
             show: (a): string => (shows as any)[a[tag]](a)
           },
-          env
+          env,
+          {}
         )
       )
     }

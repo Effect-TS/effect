@@ -1,9 +1,8 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { mapRecord, memo } from "../../utils"
 import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraTaggedUnions1 } from "@matechs/morphic-alg/tagged-union"
 
 export const eqTaggedUnionInterpreter = memo(
@@ -23,7 +22,8 @@ export const eqTaggedUnionInterpreter = memo(
               }
             }
           },
-          env
+          env,
+          {}
         )
       )
     }

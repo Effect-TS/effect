@@ -1,10 +1,9 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
-
 import { memo } from "../../utils"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraRecursive2 } from "@matechs/morphic-alg/recursive"
 
 export const modelRecursiveInterpreter = memo(
@@ -18,7 +17,8 @@ export const modelRecursiveInterpreter = memo(
       new ModelType(
         modelApplyConfig(config)(
           M.recursion(name, (Self) => lazyA((_) => new ModelType(Self))(env).type),
-          env
+          env,
+          {}
         )
       )
   })

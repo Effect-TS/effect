@@ -1,10 +1,9 @@
-import type { ConfigsForType, AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { projectFieldWithEnv, memo } from "../../utils"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
+import type { ConfigsForType, AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraObject2, PropsKind2 } from "@matechs/morphic-alg/object"
 
 export const modelNonStrictObjectInterpreter = memo(
@@ -18,7 +17,8 @@ export const modelNonStrictObjectInterpreter = memo(
       new ModelType<PropsE, PropsA>(
         modelApplyConfig(config)(
           M.type(projectFieldWithEnv(props, env)("type"), name) as any,
-          env
+          env,
+          {}
         )
       ),
     partial: <PropsE, PropsA>(
@@ -29,7 +29,8 @@ export const modelNonStrictObjectInterpreter = memo(
       new ModelType<Partial<PropsE>, Partial<PropsA>>(
         modelApplyConfig(config)(
           M.partial(projectFieldWithEnv(props, env)("type"), name) as any,
-          env
+          env,
+          {}
         ) as any
       )
   })
@@ -46,7 +47,8 @@ export const modelStrictObjectInterpreter = memo(
       new ModelType<PropsE, PropsA>(
         modelApplyConfig(config)(
           M.strict(projectFieldWithEnv(props, env)("type"), name) as any,
-          env
+          env,
+          {}
         )
       ),
     partial: <PropsE, PropsA>(
@@ -57,7 +59,8 @@ export const modelStrictObjectInterpreter = memo(
       new ModelType<Partial<PropsE>, Partial<PropsA>>(
         modelApplyConfig(config)(
           M.exact(M.partial(projectFieldWithEnv(props, env)("type"), name)) as any,
-          env
+          env,
+          {}
         ) as any
       )
   })

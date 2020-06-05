@@ -1,10 +1,9 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { memo, projectFieldWithEnv } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
 import { getStructShow } from "@matechs/core/Show"
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraObject1 } from "@matechs/morphic-alg/object"
 
 const asPartial = <T>(x: ShowType<T>): ShowType<Partial<T>> => x as any
@@ -16,7 +15,8 @@ export const showObjectInterpreter = memo(
       new ShowType(
         showApplyConfig(config)(
           getStructShow(projectFieldWithEnv(props, env)("show")),
-          env
+          env,
+          {}
         )
       ),
     partial: (props, _name, config) => (env) =>
@@ -24,7 +24,8 @@ export const showObjectInterpreter = memo(
         new ShowType(
           showApplyConfig(config)(
             getStructShow(projectFieldWithEnv(props, env)("show")),
-            env
+            env,
+            {}
           )
         )
       )

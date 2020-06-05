@@ -4,7 +4,7 @@ export const EqURI = "@matechs/morphic/EqURI" as const
 
 export type EqURI = typeof EqURI
 
-declare module "@morphic-ts/common/lib/config" {
+declare module "@matechs/morphic-alg/config" {
   export interface ConfigType<E, A> {
     [EqURI]: Eq<A>
   }

@@ -4,7 +4,7 @@ export const ShowURI = "@matechs/morphic/ShowURI" as const
 
 export type ShowURI = typeof ShowURI
 
-declare module "@morphic-ts/common/lib/config" {
+declare module "@matechs/morphic-alg/config" {
   export interface ConfigType<E, A> {
     [ShowURI]: Show<A>
   }

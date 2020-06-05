@@ -1,10 +1,10 @@
-import type { AnyEnv, ConfigsForType } from "@morphic-ts/common/lib/config"
 import { constant } from "fast-check"
 
 import { memo } from "../../utils"
 import { fcApplyConfig } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraRecursive1 } from "@matechs/morphic-alg/recursive"
 
 export const fcRecursiveInterpreter = memo(
@@ -21,7 +21,8 @@ export const fcRecursiveInterpreter = memo(
         new FastCheckType(
           fcApplyConfig(config)(
             constant(null).chain((_) => get()(env).arb),
-            env
+            env,
+            {}
           )
         )
       return res

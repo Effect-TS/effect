@@ -1,5 +1,3 @@
-import type { AnyEnv } from "@morphic-ts/common/lib/config"
-
 import { merge } from "../../utils"
 
 import { modelIntersectionInterpreter } from "./intersection"
@@ -13,6 +11,8 @@ import { modelStrMapInterpreter } from "./str-map"
 import { modelTaggedUnionInterpreter } from "./tagged-unions"
 import { modelUnionInterpreter } from "./unions"
 import { modelUnknownInterpreter } from "./unknown"
+
+import type { AnyEnv } from "@matechs/morphic-alg/config"
 
 export { modelIntersectionInterpreter } from "./intersection"
 export { modelNewtypeInterpreter } from "./newtype"
