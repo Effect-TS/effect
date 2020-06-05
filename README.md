@@ -31,33 +31,6 @@ The library is released with an MIT license and the codebase is fully open-sourc
 
 As with any good library there is a commercial project that support the development and maintainance, if you want to know more find us at [https://www.matechs.com/](https://www.matechs.com/) we are a digital accelerator looking for smart founders!
 
-## Performance
-Currently we run only minor benchmarks in ci where we test against `@qio` and `waveguide` as they represent a similar feature-set, the benchmarks may be affected by environmental conditions and they are not necessarily a representation of the production performance where we can expect all those libraries to perform similarly. Additionally there is a radical difference on how we manage interruptability & resource safety, in `effect` we will always prefer safety over performance for this reason we support async interruption with error tracking and full bracketing semantics
-
-Running on cpu i9 @ 4ghz free of load:
-```
-ma@DESKTOP-EO3P07N:~/os/matechs-effect/packages/core$ node bench/index.js 
-qio x 36,729 ops/sec ±3.27% (71 runs sampled)
-wave x 21,732 ops/sec ±1.80% (75 runs sampled)
-promise x 8,890 ops/sec ±1.49% (74 runs sampled)
-native x 40,658 ops/sec ±1.52% (73 runs sampled)
-effect x 39,765 ops/sec ±1.84% (76 runs sampled)
-effectPipe x 40,289 ops/sec ±1.62% (76 runs sampled)
-Fastest is native
-
-ma@DESKTOP-EO3P07N:~/os/matechs-effect/packages/core$ node bench/nestedMap.js 
-wave x 5,618 ops/sec ±1.75% (73 runs sampled)
-qio x 20,387 ops/sec ±1.58% (76 runs sampled)
-effect x 21,385 ops/sec ±1.50% (75 runs sampled)
-Fastest is effect
-
-ma@DESKTOP-EO3P07N:~/os/matechs-effect/packages/core$ node bench/nestedChain.js 
-wave x 699 ops/sec ±1.38% (76 runs sampled)
-qio x 2,061 ops/sec ±2.08% (73 runs sampled)
-effect x 2,116 ops/sec ±1.87% (76 runs sampled)
-Fastest is effect
-```
-
 ## Thanks
 
 This library would have not been feasibly possible without the strong foundations of [fp-ts](https://github.com/gcanti/fp-ts) and [Waveguide](https://github.com/rzeigler/waveguide) from which we have forked the base bifunctor and execution runtime, huge thanks to the Authors.
