@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 module.exports = {
-  ignorePatterns: ["dtslint/", "lib/", "es6/", "build/", "bench/"],
+  ignorePatterns: ["dtslint/", "lib/", "es6/", "build/"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 2018,
