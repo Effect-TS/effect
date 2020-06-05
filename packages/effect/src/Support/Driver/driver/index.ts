@@ -247,122 +247,129 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     }
   }
 
-  ISupervised(_: Common.ISupervised<any, any, any, any>) {
-    const driver = new DriverImpl<E, A>(this.envStack?.current || {})
-    const fiber = new FiberImpl(driver, _.name)
-    if (!this.supervisor) {
-      this.supervisor = new Supervisor()
-    }
-    this.supervisor.add(driver)
-    driver.start(_.effect)
-    return this.next(fiber)
-  }
-
-  IAccessEnv(_: Common.IAccessEnv) {
-    const env = this.envStack?.current || {}
-    return this.next(env)
-  }
-
-  IProvideEnv(_: Common.IProvideEnv<any, any, any, any>) {
-    this.envStack = new EnvFrame(_.r as any, this.envStack)
-
-    return new Common.ICollapse(
-      _.e as any,
-      (e) => {
-        this.envStack = this.envStack?.previous
-        return new Common.ICompleted(e) as any
-      },
-      (r) => {
-        this.envStack = this.envStack?.previous
-        return new Common.ICompleted(Ex.done(r)) as any
-      }
-    )
-  }
-
-  IPure(_: Common.IPure<A>) {
-    return this.next(_.a)
-  }
-
-  IPureOption(_: Common.IPureOption<any, any>) {
-    if (_.a._tag === "Some") {
-      return this.next(_.a.value)
-    } else {
-      return this.handle(Ex.raise(_.onEmpty()))
-    }
-  }
-
-  IPureEither(_: Common.IPureEither<any, any>) {
-    if (_.a._tag === "Right") {
-      return this.next(_.a.right)
-    } else {
-      return this.handle(Ex.raise(_.a.left))
-    }
-  }
-
-  IRaised(_: Common.IRaised<any>) {
-    if (_.e._tag === "Interrupt") {
-      this.interrupted = true
-    }
-    return this.handle(_.e)
-  }
-
-  ICompleted(_: Common.ICompleted<any, any>) {
-    if (_.e._tag === "Done") {
-      return this.next(_.e.value)
-    } else {
-      return this.handle(_.e)
-    }
-  }
-
-  ISuspended(_: Common.ISuspended<any, any, any, any>) {
-    return _.e()
-  }
-
-  IAsync(_: Common.IAsync<any, any>) {
-    this.contextSwitch(_.e)
-    return undefined
-  }
-
-  IChain(_: Common.IChain<any, any, any, any, any, any, any, any>) {
-    this.frameStack = new Frame(_.f as any, this.frameStack)
-    return _.e as any
-  }
-
-  IMap(_: Common.IMap<any, any, any, any, any>) {
-    this.frameStack = new MapFrame(_.f, this.frameStack)
-    return _.e as any
-  }
-
-  ICollapse(
-    _: Common.ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>
-  ) {
-    this.frameStack = new FoldFrame(_.success as any, _.failure as any, this.frameStack)
-    return _.inner as any
-  }
-
-  IInterruptibleRegion(_: Common.IInterruptibleRegion<any, any, any, any>) {
-    this.interruptRegionStack.ref = new InterruptRegionFrame(
-      _.int,
-      this.interruptRegionStack.ref
-    )
-    this.frameStack = new InterruptFrame(this.interruptRegionStack, this.frameStack)
-    return _.e as any
-  }
-
-  IAccessRuntime(_: Common.IAccessRuntime<any>) {
-    return new Common.IPure(_.f(defaultRuntime))
-  }
-
-  IAccessInterruptible(_: Common.IAccessInterruptible<any>) {
-    return new Common.IPure(_.f(this.isInterruptible()))
-  }
-
   loop(go: Common.Instructions): void {
     let current: Common.Instructions | undefined = go
 
     while (current && (!this.interrupted || !this.isInterruptible())) {
       try {
-        current = this[current._tag](current as any)
+        switch (current._tag) {
+          case "IAccessEnv": {
+            const env = this.envStack?.current || {}
+            current = this.next(env)
+            break
+          }
+          case "IAccessInterruptible": {
+            current = new Common.IPure(current.f(this.isInterruptible()))
+            break
+          }
+          case "IAccessRuntime": {
+            current = new Common.IPure(current.f(defaultRuntime))
+            break
+          }
+          case "IAsync": {
+            this.contextSwitch(current.e)
+            current = undefined
+            break
+          }
+          case "IChain": {
+            this.frameStack = new Frame(current.f as any, this.frameStack)
+            current = current.e as any
+            break
+          }
+          case "ICollapse": {
+            this.frameStack = new FoldFrame(
+              current.success as any,
+              current.failure as any,
+              this.frameStack
+            )
+            current = current.inner as any
+            break
+          }
+          case "ICompleted": {
+            if (current.e._tag === "Done") {
+              current = this.next(current.e.value)
+            } else {
+              current = this.handle(current.e)
+            }
+            break
+          }
+          case "IInterruptibleRegion": {
+            this.interruptRegionStack.ref = new InterruptRegionFrame(
+              current.int,
+              this.interruptRegionStack.ref
+            )
+            this.frameStack = new InterruptFrame(
+              this.interruptRegionStack,
+              this.frameStack
+            )
+            current = current.e as any
+            break
+          }
+          case "IMap": {
+            this.frameStack = new MapFrame(current.f, this.frameStack)
+            current = current.e as any
+            break
+          }
+          case "IProvideEnv": {
+            this.envStack = new EnvFrame(current.r as any, this.envStack)
+
+            current = new Common.ICollapse(
+              current.e as any,
+              (e) => {
+                this.envStack = this.envStack?.previous
+                return new Common.ICompleted(e) as any
+              },
+              (r) => {
+                this.envStack = this.envStack?.previous
+                return new Common.ICompleted(Ex.done(r)) as any
+              }
+            )
+
+            break
+          }
+          case "IPure": {
+            current = this.next(current.a)
+            break
+          }
+          case "IPureEither": {
+            if (current.a._tag === "Right") {
+              current = this.next(current.a.right)
+            } else {
+              current = this.handle(Ex.raise(current.a.left))
+            }
+            break
+          }
+          case "IPureOption": {
+            if (current.a._tag === "Some") {
+              current = this.next(current.a.value)
+            } else {
+              current = this.handle(Ex.raise(current.onEmpty()))
+            }
+            break
+          }
+          case "IRaised": {
+            if (current.e._tag === "Interrupt") {
+              this.interrupted = true
+            }
+            current = this.handle(current.e)
+            break
+          }
+          case "ISupervised": {
+            const driver = new DriverImpl<E, A>(this.envStack?.current || {})
+            const fiber = new FiberImpl(driver, current.name)
+            if (!this.supervisor) {
+              this.supervisor = new Supervisor()
+            }
+            this.supervisor.add(driver)
+            driver.start(current.effect)
+            current = this.next(fiber)
+            break
+          }
+          case "ISuspended": {
+            current = current.e() as any
+            break
+          }
+        }
       } catch (e) {
         current = new Common.IRaised({
           _tag: "Abort",
