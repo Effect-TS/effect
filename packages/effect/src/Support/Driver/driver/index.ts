@@ -17,7 +17,9 @@ import {
   InterruptFrame,
   InterruptFrameTag,
   MapFrame,
-  MapFrameTag
+  MapFrameTag,
+  InterruptRegionFrame,
+  RefInterruptRegionFrame
 } from "./Frame"
 
 export const setExitSymbol = Symbol()
@@ -39,7 +41,7 @@ export function isSetExit(u: any): u is SetExit {
 }
 
 export class Supervisor {
-  fibers = DoublyLinkedList.of<Driver<any, any>>()
+  fibers = new DoublyLinkedList<Driver<any, any>>()
 
   add(driver: Driver<any, any>) {
     const node = this.fibers.add(driver)
@@ -88,21 +90,39 @@ export class Supervisor {
   }
 }
 
+export class EnvFrame {
+  constructor(readonly current: any, readonly previous: EnvFrame | undefined) {}
+}
+
+export class ListenersFrame<E, A> {
+  constructor(
+    readonly f: FunctionN<[Ex.Exit<E, A>], void>,
+    readonly next: ListenersFrame<E, A> | undefined
+  ) {}
+}
+
 export class DriverImpl<E, A> implements Driver<E, A> {
   completed: Ex.Exit<E, A> | undefined = undefined
-  listeners = DoublyLinkedList.of<FunctionN<[Ex.Exit<E, A>], void>>()
+  listeners = new DoublyLinkedList<FunctionN<[Ex.Exit<E, A>], void>>()
   interrupted = false
-  frameStack = DoublyLinkedList.of<FrameType>()
-  interruptRegionStack = DoublyLinkedList.of<boolean>()
+  frameStack: FrameType | undefined
+  interruptRegionStack: RefInterruptRegionFrame = new RefInterruptRegionFrame(undefined)
   cancelAsync: Common.AsyncCancelContFn | undefined
-  envStack = DoublyLinkedList.of<any>()
-  sync = false
-  supervisor = new Supervisor()
+  envStack: EnvFrame | undefined
+  supervisor: Supervisor | undefined
 
   constructor(initialEnv?: any) {
     if (initialEnv) {
-      this.envStack.add(initialEnv)
+      this.envStack = new EnvFrame(initialEnv, undefined)
     }
+  }
+
+  done(a: Ex.Exit<E, A>) {
+    if (this.supervisor) {
+      this.supervisor.complete(a, this)
+      return
+    }
+    this.complete(a)
   }
 
   isComplete(): boolean {
@@ -133,33 +153,35 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   isInterruptible(): boolean {
-    return this.interruptRegionStack.tail === false ? false : true
+    return this.interruptRegionStack.ref?.current === false ? false : true
   }
 
   handle(e: Ex.Cause<unknown>): Common.Instructions | undefined {
-    let frame = this.frameStack.pop()
+    let frame = this.frameStack
+    this.frameStack = this.frameStack?.p
 
     while (frame !== undefined) {
       if (
-        frame.tag === FoldFrameTag &&
+        frame._tag === FoldFrameTag &&
         (e._tag !== "Interrupt" || !this.isInterruptible())
       ) {
         return frame.recover(e)
       }
       // We need to make sure we leave an interrupt region or environment provision region while unwinding on errors
-      if (frame.tag === InterruptFrameTag) {
+      if (frame._tag === InterruptFrameTag) {
         frame.exitRegion()
       }
-      frame = this.frameStack.pop()
+      frame = this.frameStack
+      this.frameStack = this.frameStack?.p
     }
     // At the end... so we have failed
-    this.supervisor.complete(e as Ex.Cause<E>, this)
+    this.done(e as Ex.Cause<E>)
     return
   }
 
   dispatchResumeInterrupt({ errors }: { errors?: unknown[] }) {
     if (errors && errors.length === 1 && isSetExit(errors[0])) {
-      this.supervisor.complete(errors[0].exit, this)
+      this.done(errors[0].exit)
     } else {
       const go = this.handle(Ex.interruptWithError(...(errors || [])))
       if (go) {
@@ -174,20 +196,18 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   next(value: unknown): Common.Instructions | undefined {
-    const frame = this.frameStack.pop()
+    const frame = this.frameStack
+    this.frameStack = this.frameStack?.p
 
     if (frame !== undefined) {
-      if (frame.tag === MapFrameTag) {
-        if (this.frameStack.isEmpty) {
-          this.supervisor.complete(Ex.done(frame.apply(value)) as Ex.Done<A>, this)
-          return
-        }
-        return new Common.IPure(frame.apply(value))
-      } else {
-        return frame.apply(value) as any
+      if (frame._tag === MapFrameTag && !this.frameStack) {
+        this.done(Ex.done(frame.f(value)) as Ex.Done<A>)
+        return
       }
+      return frame.apply(value) as any
     }
-    this.supervisor.complete(Ex.done(value) as Ex.Done<A>, this)
+
+    this.done(Ex.done(value) as Ex.Done<A>)
     return
   }
 
@@ -228,29 +248,32 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   ISupervised(_: Common.ISupervised<any, any, any, any>) {
-    const driver = new DriverImpl<E, A>(this.envStack.tail || {})
+    const driver = new DriverImpl<E, A>(this.envStack?.current || {})
     const fiber = new FiberImpl(driver, _.name)
+    if (!this.supervisor) {
+      this.supervisor = new Supervisor()
+    }
     this.supervisor.add(driver)
     driver.start(_.effect)
     return this.next(fiber)
   }
 
-  IAccessEnv(_: Common.IAccessEnv<any>) {
-    const env = this.envStack.tail || {}
+  IAccessEnv(_: Common.IAccessEnv) {
+    const env = this.envStack?.current || {}
     return this.next(env)
   }
 
   IProvideEnv(_: Common.IProvideEnv<any, any, any, any>) {
-    this.envStack.add(_.r as any)
+    this.envStack = new EnvFrame(_.r as any, this.envStack)
 
     return new Common.ICollapse(
       _.e as any,
       (e) => {
-        this.envStack.pop()
+        this.envStack = this.envStack?.previous
         return new Common.ICompleted(e) as any
       },
       (r) => {
-        this.envStack.pop()
+        this.envStack = this.envStack?.previous
         return new Common.ICompleted(Ex.done(r)) as any
       }
     )
@@ -296,33 +319,33 @@ export class DriverImpl<E, A> implements Driver<E, A> {
   }
 
   IAsync(_: Common.IAsync<any, any>) {
-    if (this.sync) {
-      throw new Error("async operations not supported")
-    }
     this.contextSwitch(_.e)
     return undefined
   }
 
   IChain(_: Common.IChain<any, any, any, any, any, any, any, any>) {
-    this.frameStack.add(new Frame(_.f as any))
+    this.frameStack = new Frame(_.f as any, this.frameStack)
     return _.e as any
   }
 
   IMap(_: Common.IMap<any, any, any, any, any>) {
-    this.frameStack.add(new MapFrame(_.f))
+    this.frameStack = new MapFrame(_.f, this.frameStack)
     return _.e as any
   }
 
   ICollapse(
     _: Common.ICollapse<any, any, any, any, any, any, any, any, any, any, any, any>
   ) {
-    this.frameStack.add(new FoldFrame(_.success as any, _.failure as any))
+    this.frameStack = new FoldFrame(_.success as any, _.failure as any, this.frameStack)
     return _.inner as any
   }
 
   IInterruptibleRegion(_: Common.IInterruptibleRegion<any, any, any, any>) {
-    this.interruptRegionStack.add(_.int)
-    this.frameStack.add(new InterruptFrame(this.interruptRegionStack))
+    this.interruptRegionStack.ref = new InterruptRegionFrame(
+      _.int,
+      this.interruptRegionStack.ref
+    )
+    this.frameStack = new InterruptFrame(this.interruptRegionStack, this.frameStack)
     return _.e as any
   }
 
@@ -339,7 +362,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
 
     while (current && (!this.interrupted || !this.isInterruptible())) {
       try {
-        current = this[current.tag()](current as any)
+        current = this[current._tag](current as any)
       } catch (e) {
         current = new Common.IRaised({
           _tag: "Abort",
@@ -360,8 +383,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     defaultRuntime.dispatch(this.loop.bind(this), run as any)
   }
   startSync(run: Common.EffectTypes.SyncRE<{}, E, A>): Ex.Exit<E, A> {
-    this.sync = true
-
     this.loop(run as any)
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion

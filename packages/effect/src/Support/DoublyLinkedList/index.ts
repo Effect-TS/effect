@@ -24,20 +24,10 @@ export class DoublyLinkedList<T> {
     return this.tailN === undefined ? undefined : this.tailN.value
   }
 
-  public static of<A = never>(...t: A[]): DoublyLinkedList<A> {
-    return new DoublyLinkedList(t)
-  }
-
   public length = 0
 
   private headN: Node<T> = undefined
   private tailN: Node<T> = undefined
-
-  private constructor(values: T[]) {
-    for (const i of values) {
-      this.add(i)
-    }
-  }
 
   public forEach(f: (_: T) => void) {
     let current = this.headN

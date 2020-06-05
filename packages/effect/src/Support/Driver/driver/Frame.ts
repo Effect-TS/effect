@@ -1,40 +1,60 @@
 import { Cause } from "../../../Exit"
 import { Instructions, IPure } from "../../Common"
-import { DoublyLinkedList } from "../../DoublyLinkedList"
 
 export type RegionFrameType = InterruptFrame
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame
 
 export const FrameTag = "Frame" as const
 export class Frame implements Frame {
-  readonly tag = FrameTag
-  constructor(readonly apply: (u: unknown) => Instructions) {}
+  readonly _tag = FrameTag
+  constructor(
+    readonly apply: (u: unknown) => Instructions,
+    readonly p: FrameType | undefined
+  ) {}
 }
 
 export const FoldFrameTag = "FoldFrame" as const
 export class FoldFrame implements FoldFrame {
-  readonly tag = FoldFrameTag
+  readonly _tag = FoldFrameTag
   constructor(
     readonly apply: (u: unknown) => Instructions,
-    readonly recover: (cause: Cause<unknown>) => Instructions
+    readonly recover: (cause: Cause<unknown>) => Instructions,
+    readonly p: FrameType | undefined
   ) {}
 }
 
 export const MapFrameTag = "MapFrame" as const
 export class MapFrame implements MapFrame {
-  readonly tag = MapFrameTag
-  constructor(readonly apply: (u: unknown) => unknown) {}
+  readonly _tag = MapFrameTag
+  constructor(readonly f: (u: unknown) => unknown, readonly p: FrameType | undefined) {}
+  apply(u: unknown) {
+    return new IPure(this.f(u))
+  }
+}
+
+export class InterruptRegionFrame {
+  constructor(
+    readonly current: boolean,
+    readonly previous: InterruptRegionFrame | undefined
+  ) {}
+}
+
+export class RefInterruptRegionFrame {
+  constructor(public ref: InterruptRegionFrame | undefined) {}
 }
 
 export const InterruptFrameTag = "InterruptFrame" as const
 export class InterruptFrame {
-  readonly tag = InterruptFrameTag
-  constructor(readonly interruptStatus: DoublyLinkedList<boolean>) {}
+  readonly _tag = InterruptFrameTag
+  constructor(
+    readonly interruptStatus: RefInterruptRegionFrame,
+    readonly p: FrameType | undefined
+  ) {}
   apply(u: unknown) {
-    this.interruptStatus.pop()
+    this.interruptStatus.ref = this.interruptStatus.ref?.previous
     return new IPure(u)
   }
   exitRegion() {
-    this.interruptStatus.pop()
+    this.interruptStatus.ref = this.interruptStatus.ref?.previous
   }
 }
