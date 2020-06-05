@@ -21,7 +21,7 @@ export interface HasCb<E, A> {
 }
 
 export function queueUtils<E, A>() {
-  const ops: DoublyLinkedList<Ops<E, A>> = DoublyLinkedList.of()
+  const ops: DoublyLinkedList<Ops<E, A>> = new DoublyLinkedList()
   const hasCB: HasCb<E, A> = {}
 
   function next(o: Ops<E, A>) {
