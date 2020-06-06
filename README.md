@@ -10,6 +10,12 @@ import * as T from "@matechs/core/Effect"
 pipe(S.repeatedly(1), S.take(10), S.collectArray, T.runToPromiseExit).then(console.log)
 ```
 
+# Downloads
+![weekly-downloads](https://badgen.net/npm/v/@matechs/core)
+![weekly-downloads](https://badgen.net/npm/dw/@matechs/core)
+![weekly-downloads](https://badgen.net/npm/dm/@matechs/core)
+![weekly-downloads](https://badgen.net/npm/dy/@matechs/core)
+
 # Install
 
 ```bash
