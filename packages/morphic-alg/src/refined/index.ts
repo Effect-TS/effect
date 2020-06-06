@@ -20,6 +20,8 @@ declare module "@morphic-ts/algebras/lib/hkt" {
   }
 }
 
+export interface RefinedConfig<E, A, B> {}
+
 export interface MatechsAlgebraRefined<F, Env> {
   _F: F
   refined: {
@@ -27,7 +29,7 @@ export interface MatechsAlgebraRefined<F, Env> {
       a: HKT2<F, Env, E, A>,
       refinement: Refinement<A, B>,
       name: string,
-      config?: ConfigsForType<Env, E, B>
+      config?: ConfigsForType<Env, E, B, RefinedConfig<E, A, B>>
     ): HKT2<F, Env, E, B>
   }
 }
@@ -38,7 +40,7 @@ export interface MatechsAlgebraRefined1<F extends URIS, Env extends AnyEnv> {
     a: Kind<F, Env, A>,
     refinement: Refinement<A, B>,
     name: string,
-    config?: ConfigsForType<Env, unknown, B>
+    config?: ConfigsForType<Env, unknown, B, RefinedConfig<unknown, A, B>>
   ): Kind<F, Env, B>
 }
 
@@ -48,6 +50,6 @@ export interface MatechsAlgebraRefined2<F extends URIS2, Env extends AnyEnv> {
     a: Kind2<F, Env, E, A>,
     refinement: Refinement<A, B>,
     name: string,
-    config?: ConfigsForType<Env, E, B>
+    config?: ConfigsForType<Env, E, B, RefinedConfig<E, A, B>>
   ): Kind2<F, Env, E, B>
 }
