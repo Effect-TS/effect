@@ -21,3 +21,9 @@ declare module "@matechs/morphic-alg/utils/hkt" {
     [FastCheckURI]: (env: R) => FastCheckType<A>
   }
 }
+
+declare module "@matechs/core/Base/HKT" {
+  interface URItoKind<A> {
+    [FastCheckURI]: Arbitrary<A>
+  }
+}

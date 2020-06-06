@@ -11,6 +11,7 @@ declare module "@matechs/morphic-alg/refined" {
   interface RefinedConfig<E, A, B> {
     [EqURI]: {
       eq: Eq<A>
+      eqRefined: Eq<A>
     }
   }
 }
@@ -20,7 +21,7 @@ export const eqRefinedInterpreter = memo(
     _F: EqURI,
     refined: (getEq, _ref, _name, config) => (env) =>
       introduce(getEq(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq, eqRefined: eq }))
       )
   })
 )

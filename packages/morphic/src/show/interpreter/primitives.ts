@@ -34,16 +34,6 @@ declare module "@matechs/morphic-alg/primitives" {
       show: Show<A>
     }
   }
-  interface StringLiteralConfig<T> {
-    [ShowURI]: {
-      show: Show<T>
-    }
-  }
-  interface KeysOfConfig<K extends Keys> {
-    [ShowURI]: {
-      show: Show<keyof K & string>
-    }
-  }
   interface EitherConfig<LL, LA, RL, RA> {
     [ShowURI]: {
       left: Show<RL>
@@ -55,36 +45,6 @@ declare module "@matechs/morphic-alg/primitives" {
       show: Show<A>
     }
   }
-  interface BooleanConfig {
-    [ShowURI]: {
-      show: Show<boolean>
-    }
-  }
-  interface NumberConfig {
-    [ShowURI]: {
-      show: Show<number>
-    }
-  }
-  interface BigIntConfig {
-    [ShowURI]: {
-      show: Show<bigint>
-    }
-  }
-  interface StringConfig {
-    [ShowURI]: {
-      show: Show<string>
-    }
-  }
-  interface DateConfig {
-    [ShowURI]: {
-      show: Show<Date>
-    }
-  }
-  interface UUIDConfig {
-    [ShowURI]: {
-      show: Show<UUID>
-    }
-  }
 }
 
 export const showPrimitiveInterpreter = memo(
@@ -93,35 +53,19 @@ export const showPrimitiveInterpreter = memo(
     date: (config) => (env) =>
       new ShowType(
         introduce({ show: (date: Date) => date.toISOString() })((show) =>
-          showApplyConfig(config)(show, env, {
-            show
-          })
+          showApplyConfig(config)(show, env, {})
         )
       ),
     boolean: (config) => (env) =>
-      new ShowType(
-        showApplyConfig(config)(showBoolean, env, {
-          show: showBoolean
-        })
-      ),
+      new ShowType(showApplyConfig(config)(showBoolean, env, {})),
     string: (config) => (env) =>
-      new ShowType(
-        showApplyConfig(config)(showString, env, {
-          show: showString
-        })
-      ),
+      new ShowType(showApplyConfig(config)(showString, env, {})),
     number: (config) => (env) =>
-      new ShowType(
-        showApplyConfig(config)(showNumber, env, {
-          show: showNumber
-        })
-      ),
+      new ShowType(showApplyConfig(config)(showNumber, env, {})),
     bigint: (config) => (env) =>
       new ShowType(
         introduce<Show<bigint>>({ show: (a) => JSON.stringify(a) })((show) =>
-          showApplyConfig(config)(show, env, {
-            show
-          })
+          showApplyConfig(config)(show, env, {})
         )
       ),
     stringLiteral: <T extends string>(
@@ -131,11 +75,7 @@ export const showPrimitiveInterpreter = memo(
       new ShowType(
         introduce<Show<T>>({
           show: (t) => showString.show(t)
-        })((show) =>
-          showApplyConfig(config)(show, env, {
-            show
-          })
-        )
+        })((show) => showApplyConfig(config)(show, env, {}))
       ),
     keysOf: <K extends Keys>(
       _keys: K,
@@ -143,9 +83,7 @@ export const showPrimitiveInterpreter = memo(
     ) => (env) =>
       new ShowType(
         introduce({ show: (t: keyof K & string) => showString.show(t) })((show) =>
-          showApplyConfig(config)(show, env, {
-            show
-          })
+          showApplyConfig(config)(show, env, {})
         )
       ),
     nullable: (getShow, config) => (env) =>
@@ -180,12 +118,7 @@ export const showPrimitiveInterpreter = memo(
       ),
     uuid: (config) => (env) =>
       introduce<Show<UUID>>(showString)(
-        (show) =>
-          new ShowType(
-            showApplyConfig(config)(show, env, {
-              show
-            })
-          )
+        (show) => new ShowType(showApplyConfig(config)(show, env, {}))
       ),
     either: (e, a, config) => (env) =>
       new ShowType(

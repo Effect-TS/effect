@@ -18,21 +18,54 @@ import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { isNonEmpty } from "@matechs/core/Array"
 import { left, right } from "@matechs/core/Either"
+import { introduce } from "@matechs/core/Function"
 import type { UUID } from "@matechs/core/Model"
 import { fromNullable, none, some } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
 
+declare module "@matechs/morphic-alg/primitives" {
+  interface NonEmptyArrayConfig<L, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
+  interface ArrayConfig<L, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
+  interface NullableConfig<L, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
+  interface EitherConfig<LL, LA, RL, RA> {
+    [FastCheckURI]: {
+      left: Arbitrary<RL>
+      right: Arbitrary<RA>
+    }
+  }
+  interface OptionConfig<L, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
+}
+
 export const fcPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
     date: (configs) => (env) =>
-      new FastCheckType(
-        fcApplyConfig(configs)(
-          integer().map((n) => new Date(n)),
-          env,
-          {}
-        )
+      introduce(integer())(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(configs)(
+              arb.map((n) => new Date(n)),
+              env,
+              {}
+            )
+          )
       ),
     boolean: (configs) => (env) =>
       new FastCheckType(fcApplyConfig(configs)(boolean(), env, {})),
@@ -53,28 +86,43 @@ export const fcPrimitiveInterpreter = memo(
         )
       ),
     nullable: (T, config) => (env) =>
-      new FastCheckType(
-        fcApplyConfig(config)(option(T(env).arb).map(fromNullable), env, {})
+      introduce(T(env).arb)(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config)(option(arb).map(fromNullable), env, { arb })
+          )
       ),
     array: (T, config) => (env) =>
-      new FastCheckType(fcApplyConfig(config)(array(T(env).arb), env, {})),
+      introduce(T(env).arb)(
+        (arb) => new FastCheckType(fcApplyConfig(config)(array(arb), env, { arb }))
+      ),
     nonEmptyArray: (T, config) => (env) =>
-      new FastCheckType(
-        fcApplyConfig(config)(array(T(env).arb).filter(isNonEmpty) as any, env, {})
+      introduce(T(env).arb)(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config)(array(arb).filter(isNonEmpty) as any, env, { arb })
+          )
       ),
     uuid: (config) => (env) =>
       new FastCheckType(fcApplyConfig(config)(uuid() as Arbitrary<UUID>, env, {})),
     either: (e, a, config) => (env) =>
-      new FastCheckType(
-        fcApplyConfig(config)(
-          oneof(e(env).arb.map(left), a(env).arb.map(right)) as any,
-          env,
-          {}
+      introduce(e(env).arb)((l) =>
+        introduce(a(env).arb)(
+          (r) =>
+            new FastCheckType(
+              fcApplyConfig(config)(oneof(l.map(left), r.map(right)) as any, env, {
+                left: l,
+                right: r
+              })
+            )
         )
       ),
     option: (a, config) => (env) =>
-      new FastCheckType(
-        fcApplyConfig(config)(oneof(a(env).arb.map(some), constant(none)), env, {})
+      introduce(a(env).arb)(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config)(oneof(arb.map(some), constant(none)), env, { arb })
+          )
       )
   })
 )

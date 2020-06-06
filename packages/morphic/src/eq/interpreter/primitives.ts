@@ -29,16 +29,6 @@ declare module "@matechs/morphic-alg/primitives" {
       eq: Eq<A>
     }
   }
-  interface StringLiteralConfig<T> {
-    [EqURI]: {
-      eq: Eq<T>
-    }
-  }
-  interface KeysOfConfig<K extends Keys> {
-    [EqURI]: {
-      eq: Eq<keyof K & string>
-    }
-  }
   interface EitherConfig<LL, LA, RL, RA> {
     [EqURI]: {
       left: Eq<RL>
@@ -50,36 +40,6 @@ declare module "@matechs/morphic-alg/primitives" {
       eq: Eq<A>
     }
   }
-  interface BooleanConfig {
-    [EqURI]: {
-      eq: Eq<boolean>
-    }
-  }
-  interface NumberConfig {
-    [EqURI]: {
-      eq: Eq<number>
-    }
-  }
-  interface BigIntConfig {
-    [EqURI]: {
-      eq: Eq<bigint>
-    }
-  }
-  interface StringConfig {
-    [EqURI]: {
-      eq: Eq<string>
-    }
-  }
-  interface DateConfig {
-    [EqURI]: {
-      eq: Eq<Date>
-    }
-  }
-  interface UUIDConfig {
-    [EqURI]: {
-      eq: Eq<UUID>
-    }
-  }
 }
 
 export const eqPrimitiveInterpreter = memo(
@@ -87,22 +47,17 @@ export const eqPrimitiveInterpreter = memo(
     _F: EqURI,
     date: (config) => (env) =>
       introduce(contramap_(eqNumber, (date: Date) => date.getTime()))(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config)(eq, env, {}))
       ),
-    boolean: (config) => (env) =>
-      new EqType(eqApplyConfig(config)(eqBoolean, env, { eq: eqBoolean })),
-    string: (config) => (env) =>
-      new EqType(eqApplyConfig(config)(eqString, env, { eq: eqString })),
-    number: (config) => (env) =>
-      new EqType(eqApplyConfig(config)(eqNumber, env, { eq: eqNumber })),
+    boolean: (config) => (env) => new EqType(eqApplyConfig(config)(eqBoolean, env, {})),
+    string: (config) => (env) => new EqType(eqApplyConfig(config)(eqString, env, {})),
+    number: (config) => (env) => new EqType(eqApplyConfig(config)(eqNumber, env, {})),
     bigint: (config) => (env) =>
-      new EqType<bigint>(eqApplyConfig(config)(eqStrict, env, { eq: eqStrict })),
+      new EqType<bigint>(eqApplyConfig(config)(eqStrict, env, {})),
     stringLiteral: (k, config) => (env) =>
-      new EqType<typeof k>(eqApplyConfig(config)(eqString, env, { eq: eqString })),
+      new EqType<typeof k>(eqApplyConfig(config)(eqString, env, {})),
     keysOf: (keys, config) => (env) =>
-      new EqType<keyof typeof keys & string>(
-        eqApplyConfig(config)(eqStrict, env, { eq: eqStrict })
-      ),
+      new EqType<keyof typeof keys & string>(eqApplyConfig(config)(eqStrict, env, {})),
     nullable: (getType, config) => (env) =>
       introduce(getType(env).eq)(
         (eq) => new EqType(eqApplyConfig(config)(OgetEq(eq), env, { eq }))
@@ -116,7 +71,7 @@ export const eqPrimitiveInterpreter = memo(
         (eq) => new EqType(eqApplyConfig(config)(AgetEq(eq), env, { eq }))
       ),
     uuid: (config) => (env) =>
-      new EqType<UUID>(eqApplyConfig(config)(eqString, env, { eq: eqString })),
+      new EqType<UUID>(eqApplyConfig(config)(eqString, env, {})),
     either: (e, a, config) => (env) =>
       introduce(e(env).eq)((left) =>
         introduce(a(env).eq)(
