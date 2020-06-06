@@ -50,17 +50,7 @@ const packages = [
   "@matechs/uuid",
   "@matechs/zoo",
   "@matechs/test",
-  "@matechs/test-jest",
-  "@morphic-ts/adt",
-  "@morphic-ts/algebras",
-  "@morphic-ts/batteries",
-  "@morphic-ts/common",
-  "@morphic-ts/eq-interpreters",
-  "@morphic-ts/fastcheck-interpreters",
-  "@morphic-ts/io-ts-interpreters",
-  "@morphic-ts/json-schema-interpreters",
-  "@morphic-ts/ord-interpreters",
-  "@morphic-ts/show-interpreters"
+  "@matechs/test-jest"
 ]
 
 const regexp = new RegExp(

@@ -26,17 +26,7 @@ const packages = [
   "parser-ts",
   "retry-ts",
   "hyper-ts",
-  "fp—ts-local-storage",
-  "@morphic-ts/adt",
-  "@morphic-ts/algebras",
-  "@morphic-ts/batteries",
-  "@morphic-ts/common",
-  "@morphic-ts/eq-interpreters",
-  "@morphic-ts/fastcheck-interpreters",
-  "@morphic-ts/io-ts-interpreters",
-  "@morphic-ts/json-schema-interpreters",
-  "@morphic-ts/ord-interpreters",
-  "@morphic-ts/show-interpreters"
+  "fp—ts-local-storage"
 ]
 
 const regexp = new RegExp(
