@@ -12,6 +12,14 @@ export interface CustomizeUnknown<RC> {
   compare: "default-circular" | "default-non-circular" | ((env: RC) => Eq<unknown>)
 }
 
+declare module "@matechs/morphic-alg/unknown" {
+  interface UnknownConfig {
+    [EqURI]: {
+      eq: Eq<unknown>
+    }
+  }
+}
+
 export const eqUnknownInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraUnknown1<EqURI, Env> => ({
     _F: EqURI,
@@ -20,7 +28,9 @@ export const eqUnknownInterpreter = memo(
       return new EqType(
         config === undefined
           ? { equals: circularDeepEqual }
-          : config({ equals: circularDeepEqual }, env, {})
+          : config({ equals: circularDeepEqual }, env, {
+              eq: { equals: circularDeepEqual }
+            })
       )
     }
   })

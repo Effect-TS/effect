@@ -10,7 +10,7 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/aio": "^4.2.2"
+    "@matechs/core": "^2.2.2"
   },
   "devDependencies": {
     "@matechs/test-jest": "^4.2.2"

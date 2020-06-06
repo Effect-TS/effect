@@ -1,4 +1,5 @@
-import { Service as F, T } from "@matechs/prelude"
+import * as T from "@matechs/core/Effect"
+import * as F from "@matechs/core/Service"
 
 // alpha
 /* istanbul ignore file */

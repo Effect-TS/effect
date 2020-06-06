@@ -1,7 +1,3 @@
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { MorphADT, AOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
-
 import { Aggregate } from "./aggregate"
 import { ReadSideConfig } from "./config"
 import { createTable } from "./createTable"
@@ -12,6 +8,9 @@ import { Read } from "./read"
 
 import * as T from "@matechs/core/Effect"
 import * as NEA from "@matechs/core/NonEmptyArray"
+import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import { MorphADT, AOfMorhpADT } from "@matechs/morphic/batteries/usage/tagged-union"
 import { dbT } from "@matechs/orm"
 
 // experimental alpha

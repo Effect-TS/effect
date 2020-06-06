@@ -1,16 +1,14 @@
-import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
-import { ElemType } from "@morphic-ts/adt/lib/utils"
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { AOfTypes, MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
-import * as t from "io-ts"
-
 import { accessConfig } from "./config"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import * as t from "@matechs/core/Model"
 import * as NEA from "@matechs/core/NonEmptyArray"
+import { ElemType } from "@matechs/morphic/adt/utils"
+import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import { MorphADT, AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
 import { DbT } from "@matechs/orm"
 
 // experimental alpha

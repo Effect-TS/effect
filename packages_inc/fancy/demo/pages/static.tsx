@@ -1,5 +1,3 @@
-import { T, combineProviders } from "@matechs/prelude"
-import { pipe } from "fp-ts/lib/pipeable"
 import Link from "next/link"
 import React from "react"
 
@@ -11,10 +9,14 @@ import { ORG } from "../modules/orgs"
 import { orgsStateURI } from "../modules/orgs/state"
 import { Home } from "../view/Home"
 
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
+import { combine } from "@matechs/core/Provider"
+
 // alpha
 /* istanbul ignore file */
 
-const provider = combineProviders().with(ORG.provide).with(DT.provide).done()
+const provider = combine().with(ORG.provide).with(DT.provide).done()
 
 // tslint:disable-next-line: no-default-export
 export default R.page(

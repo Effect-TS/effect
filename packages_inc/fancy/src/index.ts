@@ -1,10 +1,14 @@
-import { T, pipe, F, O } from "@matechs/prelude"
 import * as MR from "mobx-react"
 import * as React from "react"
 
 import { ComponentProps, componentPropsURI } from "./componentProps"
 import { State, stateURI, runner } from "./fancy"
 import { NextContext, nextContextURI } from "./next-ctx"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
+import * as F from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
 
 // alpha
 /* istanbul ignore file */

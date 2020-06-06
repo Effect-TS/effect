@@ -3,7 +3,7 @@ import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
-import { Show } from "@matechs/core/Show"
+import type { Show } from "@matechs/core/Show"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraUnknown1 } from "@matechs/morphic-alg/unknown"
 

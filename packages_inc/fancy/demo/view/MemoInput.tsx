@@ -1,7 +1,8 @@
-import { T } from "@matechs/prelude"
 import React from "react"
 
 import { UI } from "../../src"
+
+import * as T from "@matechs/core/Effect"
 
 // alpha
 /* istanbul ignore file */

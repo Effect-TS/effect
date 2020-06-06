@@ -1,7 +1,6 @@
-import { summonFor, AsOpaque } from "@morphic-ts/batteries/lib/summoner-ESBAST"
-import { EType, AType } from "@morphic-ts/batteries/lib/usage/utils"
+import * as M from "@matechs/morphic"
 
-const { summon, tagged } = summonFor<{}>({})
+const { summon, tagged } = M.summonFor<{}>({})
 
 const TodoAdded_ = summon((F) =>
   F.interface(
@@ -14,10 +13,10 @@ const TodoAdded_ = summon((F) =>
   )
 )
 
-export interface TodoAddedRaw extends EType<typeof TodoAdded_> {}
-export interface TodoAdded extends AType<typeof TodoAdded_> {}
+export interface TodoAddedRaw extends M.EType<typeof TodoAdded_> {}
+export interface TodoAdded extends M.AType<typeof TodoAdded_> {}
 
-const TodoAdded = AsOpaque<TodoAddedRaw, TodoAdded>()(TodoAdded_)
+const TodoAdded = M.AsOpaque<TodoAddedRaw, TodoAdded>()(TodoAdded_)
 
 const TodoRemoved_ = summon((F) =>
   F.interface(
@@ -29,10 +28,10 @@ const TodoRemoved_ = summon((F) =>
   )
 )
 
-export interface TodoRemovedRaw extends EType<typeof TodoRemoved_> {}
-export interface TodoRemoved extends AType<typeof TodoRemoved_> {}
+export interface TodoRemovedRaw extends M.EType<typeof TodoRemoved_> {}
+export interface TodoRemoved extends M.AType<typeof TodoRemoved_> {}
 
-const TodoRemoved = AsOpaque<TodoRemovedRaw, TodoRemoved>()(TodoRemoved_)
+const TodoRemoved = M.AsOpaque<TodoRemovedRaw, TodoRemoved>()(TodoRemoved_)
 
 // define all events in your domain
 export const DomainEvent = tagged("type")({ TodoAdded, TodoRemoved })

@@ -1,8 +1,8 @@
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { MorphADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
-
 import { Domain } from "./domain"
+
+import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import { MorphADT } from "@matechs/morphic/batteries/usage/tagged-union"
 
 // experimental alpha
 /* istanbul ignore file */

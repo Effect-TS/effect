@@ -1,14 +1,6 @@
-import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
-
-import { Of } from "@morphic-ts/adt/lib/ctors"
-import { ElemType } from "@morphic-ts/adt/lib/utils"
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import {
-  MorphADT,
-  AOfTypes,
-  AOfMorhpADT
-} from "@morphic-ts/batteries/lib/usage/tagged-union"
+import {} from "@matechs/morphic/batteries/interpreter"
+import {} from "@matechs/morphic/model/interpreter"
+import {} from "@matechs/morphic/batteries/summoner"
 
 import { ReadSideConfig } from "./config"
 import { SliceFetcher, AggregateFetcher } from "./fetchSlice"
@@ -21,6 +13,15 @@ import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
 import * as NEA from "@matechs/core/NonEmptyArray"
+import { Of } from "@matechs/morphic/adt/ctors"
+import { ElemType } from "@matechs/morphic/adt/utils"
+import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import {
+  MorphADT,
+  AOfTypes,
+  AOfMorhpADT
+} from "@matechs/morphic/batteries/usage/tagged-union"
 import { DbT, DbTx, ORM, TaskError } from "@matechs/orm"
 
 // experimental alpha

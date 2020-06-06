@@ -1,9 +1,10 @@
-import { Service as F } from "@matechs/prelude"
-
 import * as R from "../../../src"
 
 import { dateOpsSpec, dateOpsURI } from "./def"
 import { DateStateEnv, dateStateURI } from "./state"
+
+import * as F from "@matechs/core/Service"
+import { mutable } from "@matechs/core/Utils"
 
 // alpha
 /* istanbul ignore file */
@@ -11,7 +12,7 @@ import { DateStateEnv, dateStateURI } from "./state"
 export const provideDateOps = F.implement(dateOpsSpec)({
   [dateOpsURI]: {
     updateDate: R.accessS<DateStateEnv>()(({ [dateStateURI]: date }) => {
-      date.current = new Date()
+      mutable(date).current = new Date()
       return date.current
     }),
     accessDate: R.accessS<DateStateEnv>()(({ [dateStateURI]: date }) => date.current)

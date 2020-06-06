@@ -1,11 +1,6 @@
-import {} from "@morphic-ts/batteries/lib/summoner-ESBAST"
-import {} from "@morphic-ts/batteries/lib/program"
-import {} from "@morphic-ts/batteries/lib/program-orderable"
-
-import { ElemType } from "@morphic-ts/adt/lib/utils"
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union"
+import {} from "@matechs/morphic/batteries/interpreter"
+import {} from "@matechs/morphic/model/interpreter"
+import {} from "@matechs/morphic/batteries/summoner"
 
 import { sendEvent, eventStoreTcpConnection } from "./client"
 import { adaptMeta } from "./meta"
@@ -18,6 +13,10 @@ import * as M from "@matechs/core/Managed"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import * as O from "@matechs/core/Option"
 import { Aggregate, ReadSideConfig, EventMetaHidden } from "@matechs/cqrs"
+import { ElemType } from "@matechs/morphic/adt/utils"
+import { InterpreterURI } from "@matechs/morphic/batteries/interpreter"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import { AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
 
 const aggregateRead = <
   Types extends {

@@ -1,4 +1,3 @@
-import { combineProviders, T, pipe } from "@matechs/prelude"
 import React from "react"
 
 import * as R from "../../src"
@@ -9,10 +8,14 @@ import { ORG } from "../modules/orgs"
 import { orgsStateURI } from "../modules/orgs/state"
 import { Home } from "../view/Home"
 
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
+import { combine } from "@matechs/core/Provider"
+
 // alpha
 /* istanbul ignore file */
 
-const provider = combineProviders().with(ORG.provide).with(DT.provide).done()
+const provider = combine().with(ORG.provide).with(DT.provide).done()
 
 const PlainComponent = R.reactAsync(pipe(Home, provider))({
   [dateStateURI]: DT.initial,

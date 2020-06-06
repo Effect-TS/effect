@@ -1,3 +1,5 @@
+import type { Eq } from "fp-ts/lib/Eq"
+
 import { memo } from "../../utils"
 import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
@@ -5,42 +7,136 @@ import { EqType, EqURI } from "../hkt"
 import { getEq as AgetEq } from "@matechs/core/Array"
 import { getEq as EgetEq } from "@matechs/core/Either"
 import { contramap_, eqNumber, eqString, eqBoolean, eqStrict } from "@matechs/core/Eq"
+import { introduce } from "@matechs/core/Function"
 import type { UUID } from "@matechs/core/Model"
 import { getEq as OgetEq } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
 
+declare module "@matechs/morphic-alg/primitives" {
+  interface NonEmptyArrayConfig<L, A> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
+  interface ArrayConfig<L, A> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
+  interface NullableConfig<L, A> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
+  interface StringLiteralConfig<T> {
+    [EqURI]: {
+      eq: Eq<T>
+    }
+  }
+  interface KeysOfConfig<K extends Keys> {
+    [EqURI]: {
+      eq: Eq<keyof K & string>
+    }
+  }
+  interface EitherConfig<LL, LA, RL, RA> {
+    [EqURI]: {
+      left: Eq<RL>
+      right: Eq<RA>
+    }
+  }
+  interface OptionConfig<L, A> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
+  interface BooleanConfig {
+    [EqURI]: {
+      eq: Eq<boolean>
+    }
+  }
+  interface NumberConfig {
+    [EqURI]: {
+      eq: Eq<number>
+    }
+  }
+  interface BigIntConfig {
+    [EqURI]: {
+      eq: Eq<bigint>
+    }
+  }
+  interface StringConfig {
+    [EqURI]: {
+      eq: Eq<string>
+    }
+  }
+  interface DateConfig {
+    [EqURI]: {
+      eq: Eq<Date>
+    }
+  }
+  interface UUIDConfig {
+    [EqURI]: {
+      eq: Eq<UUID>
+    }
+  }
+}
+
 export const eqPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<EqURI, Env> => ({
     _F: EqURI,
     date: (config) => (env) =>
-      new EqType(
-        eqApplyConfig(config)(
-          contramap_(eqNumber, (date: Date) => date.getTime()),
-          env,
-          {}
+      introduce(contramap_(eqNumber, (date: Date) => date.getTime()))(
+        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq }))
+      ),
+    boolean: (config) => (env) =>
+      new EqType(eqApplyConfig(config)(eqBoolean, env, { eq: eqBoolean })),
+    string: (config) => (env) =>
+      new EqType(eqApplyConfig(config)(eqString, env, { eq: eqString })),
+    number: (config) => (env) =>
+      new EqType(eqApplyConfig(config)(eqNumber, env, { eq: eqNumber })),
+    bigint: (config) => (env) =>
+      new EqType<bigint>(eqApplyConfig(config)(eqStrict, env, { eq: eqStrict })),
+    stringLiteral: (k, config) => (env) =>
+      new EqType<typeof k>(eqApplyConfig(config)(eqString, env, { eq: eqString })),
+    keysOf: (keys, config) => (env) =>
+      new EqType<keyof typeof keys & string>(
+        eqApplyConfig(config)(eqStrict, env, { eq: eqStrict })
+      ),
+    nullable: (getType, config) => (env) =>
+      introduce(getType(env).eq)(
+        (eq) => new EqType(eqApplyConfig(config)(OgetEq(eq), env, { eq }))
+      ),
+    array: (getType, config) => (env) =>
+      introduce(getType(env).eq)(
+        (eq) => new EqType(eqApplyConfig(config)(AgetEq(eq), env, { eq }))
+      ),
+    nonEmptyArray: (getType, config) => (env) =>
+      introduce(getType(env).eq)(
+        (eq) => new EqType(eqApplyConfig(config)(AgetEq(eq), env, { eq }))
+      ),
+    uuid: (config) => (env) =>
+      new EqType<UUID>(eqApplyConfig(config)(eqString, env, { eq: eqString })),
+    either: (e, a, config) => (env) =>
+      introduce(e(env).eq)((left) =>
+        introduce(a(env).eq)(
+          (right) =>
+            new EqType(
+              eqApplyConfig(config)(EgetEq(left, right), env, {
+                left,
+                right
+              })
+            )
         )
       ),
-    boolean: (config) => (env) => new EqType(eqApplyConfig(config)(eqBoolean, env, {})),
-    string: (config) => (env) => new EqType(eqApplyConfig(config)(eqString, env, {})),
-    number: (config) => (env) => new EqType(eqApplyConfig(config)(eqNumber, env, {})),
-    bigint: (config) => (env) =>
-      new EqType<bigint>(eqApplyConfig(config)(eqStrict, env, {})),
-    stringLiteral: (k, config) => (env) =>
-      new EqType<typeof k>(eqApplyConfig(config)(eqString, env, {})),
-    keysOf: (keys, config) => (env) =>
-      new EqType<keyof typeof keys & string>(eqApplyConfig(config)(eqStrict, env, {})),
-    nullable: (getType, config) => (env) =>
-      new EqType(eqApplyConfig(config)(OgetEq(getType(env).eq), env, {})),
-    array: (getType, config) => (env) =>
-      new EqType(eqApplyConfig(config)(AgetEq(getType(env).eq), env, {})),
-    nonEmptyArray: (getType, config) => (env) =>
-      new EqType(eqApplyConfig(config)(AgetEq(getType(env).eq), env, {})),
-    uuid: (config) => (env) =>
-      new EqType<UUID>(eqApplyConfig(config)(eqString, env, {})),
-    either: (e, a, config) => (env) =>
-      new EqType(eqApplyConfig(config)(EgetEq(e(env).eq, a(env).eq), env, {})),
     option: (a, config) => (env) =>
-      new EqType(eqApplyConfig(config)(OgetEq(a(env).eq), env, {}))
+      introduce(a(env).eq)(
+        (eq) =>
+          new EqType(
+            eqApplyConfig(config)(OgetEq(eq), env, {
+              eq
+            })
+          )
+      )
   })
 )
