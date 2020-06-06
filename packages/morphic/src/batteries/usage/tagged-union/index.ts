@@ -15,7 +15,11 @@ import {
   fromFoldable as RfromFoldable,
   mapWithIndex as RmapWithIndex
 } from "@matechs/core/Record"
-import type { TaggedUnionsURI } from "@matechs/morphic-alg/tagged-union"
+import { ConfigsForType } from "@matechs/morphic-alg/config"
+import type {
+  TaggedUnionsURI,
+  TaggedUnionConfig
+} from "@matechs/morphic-alg/tagged-union"
 
 export type IfStringLiteral<T, IfLiteral, IfString, IfNotString> = T extends string
   ? string extends T
@@ -82,7 +86,14 @@ export type TaggedBuilder<
 > = <Tag extends string>(
   tag: Tag
 ) => <Types extends UnionTypes<Types, Tag, ProgURI, InterpURI, R>>(
-  o: Types
+  o: Types,
+  name?: string,
+  config?: ConfigsForType<
+    R,
+    Types[keyof Types]["_E"],
+    Types[keyof Types]["_A"],
+    TaggedUnionConfig<Types>
+  >
 ) => MorphADT<
   {
     [k in keyof Types]: Types[k] extends InhabitedTypes<any, infer E, infer A>
@@ -112,7 +123,14 @@ export function makeTagged<
 ): <Tag extends string>(
   tag: Tag
 ) => <Types extends UnionTypes<Types, Tag, ProgURI, InterpURI, R>>(
-  o: Types
+  o: Types,
+  name?: string,
+  config?: ConfigsForType<
+    R,
+    Types[keyof Types]["_E"],
+    Types[keyof Types]["_A"],
+    TaggedUnionConfig<Types>
+  >
 ) => MorphADT<
   {
     [k in keyof Types]: Types[k] extends InhabitedTypes<any, infer E, infer A>
@@ -124,11 +142,13 @@ export function makeTagged<
   InterpURI,
   R
 > {
-  return (tag) => (o) => {
+  return (tag) => (o, name, config) => {
     const summoned = summ((F: any) =>
       F.taggedUnion(
         tag,
-        RmapWithIndex((_k, v: AnyM<ProgURI, InterpURI, R>) => (v as any)(F))(o)
+        RmapWithIndex((_k, v: AnyM<ProgURI, InterpURI, R>) => (v as any)(F))(o),
+        name,
+        config
       )
     ) as any
 
@@ -136,10 +156,10 @@ export function makeTagged<
 
     const preTagged = makeTagged(summ)(tag)
 
-    const selectMorph = (selectedKeys: string[]) =>
-      preTagged(keepKeys(o, selectedKeys as string[]))
-    const excludeMorph = (selectedKeys: string[]) =>
-      preTagged(excludeKeys(o, selectedKeys as string[]))
+    const selectMorph = (selectedKeys: string[], name?: string, c?: any) =>
+      preTagged(keepKeys(o, selectedKeys as string[]), name, { ...config, ...c })
+    const excludeMorph = (selectedKeys: string[], name?: string, c?: any) =>
+      preTagged(excludeKeys(o, selectedKeys as string[]), name, { ...config, ...c })
 
     const res = assignCallable(wrapFun(summoned as any), {
       ...summoned,
@@ -187,7 +207,22 @@ export interface Refinable<
   R
 > {
   selectMorph: <Keys extends (keyof Types)[]>(
-    keys: Keys
+    keys: Keys,
+    name?: string,
+    config?: ConfigsForType<
+      R,
+      {
+        [k in Extract<keyof Types, ElemType<Keys>>]: Types[k][0]
+      }[Extract<keyof Types, ElemType<Keys>>],
+      {
+        [k in Extract<keyof Types, ElemType<Keys>>]: Types[k][1]
+      }[Extract<keyof Types, ElemType<Keys>>],
+      TaggedUnionConfig<
+        {
+          [k in Extract<keyof Types, ElemType<Keys>>]: Types[k]
+        }
+      >
+    >
   ) => MorphADT<
     {
       [k in Extract<keyof Types, ElemType<Keys>>]: Types[k]
@@ -198,7 +233,22 @@ export interface Refinable<
     R
   >
   excludeMorph: <Keys extends (keyof Types)[]>(
-    keys: Keys
+    keys: Keys,
+    name?: string,
+    config?: ConfigsForType<
+      R,
+      {
+        [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k][0]
+      }[Exclude<keyof Types, ElemType<Keys>>],
+      {
+        [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k][1]
+      }[Exclude<keyof Types, ElemType<Keys>>],
+      TaggedUnionConfig<
+        {
+          [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k]
+        }
+      >
+    >
   ) => MorphADT<
     {
       [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k]

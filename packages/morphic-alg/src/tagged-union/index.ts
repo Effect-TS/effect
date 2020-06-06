@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-interface */
 import type { URIS, Kind, URIS2, Kind2, HKT2 } from "@morphic-ts/common/lib/HKT"
 
 import type { ConfigsForType, AnyEnv } from "../config"
@@ -34,6 +35,8 @@ type DecorateTag<
   ? HKT2<F, R, L, A & { [k in Tag]: VTag }>
   : never
 
+export interface TaggedUnionConfig<Types> {}
+
 export interface MatechsAlgebraTaggedUnions<F, Env> {
   _F: F
   taggedUnion: {
@@ -41,7 +44,12 @@ export interface MatechsAlgebraTaggedUnions<F, Env> {
       tag: Tag,
       types: Types & { [o in keyof Types]: DecorateTag<Types[o], Tag, o> },
       name: string,
-      config?: ConfigsForType<Env, Types[keyof Types]["_E"], Types[keyof Types]["_A"]>
+      config?: ConfigsForType<
+        Env,
+        Types[keyof Types]["_E"],
+        Types[keyof Types]["_A"],
+        TaggedUnionConfig<Types>
+      >
     ): HKT2<F, Env, Types[keyof Types]["_E"], Types[keyof Types]["_A"]>
   }
 }
@@ -56,7 +64,12 @@ export interface MatechsAlgebraTaggedUnions1<F extends URIS, Env extends AnyEnv>
     tag: Tag,
     types: TaggedTypes1<F, Tag, O, Env>,
     name: string,
-    config?: ConfigsForType<Env, unknown, TaggedValues<Tag, O>[keyof O]>
+    config?: ConfigsForType<
+      Env,
+      unknown,
+      TaggedValues<Tag, O>[keyof O],
+      TaggedUnionConfig<TaggedValues<Tag, O>>
+    >
   ): Kind<F, Env, TaggedValues<Tag, O>[keyof O]>
 }
 
@@ -78,7 +91,8 @@ export interface MatechsAlgebraTaggedUnions2<F extends URIS2, Env extends AnyEnv
     config?: ConfigsForType<
       Env,
       TaggedValues<Tag, L>[keyof L],
-      TaggedValues<Tag, A>[keyof A]
+      TaggedValues<Tag, A>[keyof A],
+      TaggedUnionConfig<TaggedValues<Tag, L>>
     >
   ): Kind2<F, Env, TaggedValues<Tag, L>[keyof L], TaggedValues<Tag, A>[keyof A]>
 }
