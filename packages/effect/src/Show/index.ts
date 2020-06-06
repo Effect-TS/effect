@@ -6,6 +6,15 @@ export interface Show<A> {
   readonly show: (a: A) => string
 }
 
+export const URI = "@matechs/core/ShowURI"
+export type URI = typeof URI
+
+declare module "../Base/HKT" {
+  interface URItoKind<A> {
+    [URI]: Show<A>
+  }
+}
+
 export function getStructShow<O extends Record<string, any>>(
   shows: {
     [K in keyof O]: Show<O[K]>
