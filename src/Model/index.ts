@@ -471,3 +471,20 @@ export function setFromArray<C extends Mixed>(
     (set) => arr.encode(toArrayO(set))
   )
 }
+
+export interface BigIntStringC extends Type<bigint, string, unknown> {}
+
+export const BigIntString: BigIntStringC = new Type<bigint, string, unknown>(
+  "BigIntString",
+  (u): u is bigint => u !== undefined && u !== null && typeof u === "bigint",
+  (u, c) =>
+    chain_(string.validate(u, c), (s) => {
+      try {
+        const d = BigInt(s)
+        return success(d)
+      } catch {
+        return failure(u, c)
+      }
+    }),
+  (a) => a.toString(10)
+)
