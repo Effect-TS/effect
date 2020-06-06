@@ -14,7 +14,7 @@ import * as I from "@matechs/core/Monocle/Iso"
 import * as Lens from "@matechs/core/Monocle/Lens"
 import * as NT from "@matechs/core/Newtype"
 
-const { summon } = M.summonFor({})
+const { summon, tagged } = M.summonFor({})
 
 const deriveEq = M.eqFor(summon)({})
 const deriveArb = M.arbFor(summon)({})
@@ -104,6 +104,95 @@ interface PersonWithAge extends M.AType<typeof PersonWithAge_> {}
 interface PersonWithAgeE extends M.EType<typeof PersonWithAge_> {}
 
 const PersonWithAge = M.AsOpaque<PersonWithAgeE, PersonWithAge>()(PersonWithAge_)
+
+const Tagged = summon((F) =>
+  F.taggedUnion(
+    "_tag",
+    {
+      left: F.interface(
+        {
+          _tag: F.stringLiteral("left"),
+          value: F.string()
+        },
+        "left"
+      ),
+      right: F.interface(
+        {
+          _tag: F.stringLiteral("right"),
+          value: F.string()
+        },
+        "right",
+        {
+          [M.ShowURI]: () => ({
+            show: (r) => r.value
+          })
+        }
+      )
+    },
+    "Tagged",
+    {
+      [M.ShowURI]: (_s, _e, _c) => ({
+        show: (a) =>
+          a._tag === "left"
+            ? `Left: ${_c.shows.left.show(a)}`
+            : `Right: ${_c.shows.right.show(a)}`
+      })
+    }
+  )
+)
+
+const TaggedADT = tagged("_tag")(
+  {
+    left: summon((F) =>
+      F.interface(
+        {
+          _tag: F.stringLiteral("left"),
+          value: F.string()
+        },
+        "left",
+        {
+          [M.ShowURI]: () => ({
+            show: (r) => r.value
+          })
+        }
+      )
+    ),
+    right: summon((F) =>
+      F.interface(
+        {
+          _tag: F.stringLiteral("right"),
+          value: F.string()
+        },
+        "right",
+        {
+          [M.ShowURI]: () => ({
+            show: (r) => r.value
+          })
+        }
+      )
+    )
+  },
+  "TaggedADT",
+  {
+    [M.ShowURI]: (_s, _e, _c) => ({
+      show: (a) =>
+        a._tag === "left"
+          ? `Left: ${_c.shows.left.show(a)}`
+          : `Right: ${_c.shows.right.show(a)}`
+    })
+  }
+)
+
+const SubADT = TaggedADT.selectMorph(["left"], "SubADT", {
+  [M.ShowURI]: (_s, _e, _c) => ({
+    show: (l) => `Shrink: ${_c.shows.left.show(l)}`
+  })
+})
+const ExcADT = TaggedADT.excludeMorph(["left"], "ExcADT", {
+  [M.ShowURI]: (_s, _e, _c) => ({
+    show: (l) => `Shrink: ${_c.shows.right.show(l)}`
+  })
+})
 
 describe("Morphic", () => {
   it("should use model interpreter", () => {
@@ -250,5 +339,42 @@ describe("Morphic", () => {
         '{ name: "Michael", address: <AddressArray>([<Address>("177 Finchley Road")]), age: 29 }'
       )
     )
+  })
+  it("use tagged union show", () => {
+    const right = Tagged.build({
+      _tag: "right",
+      value: "ok"
+    })
+
+    const showTagged = deriveShow(Tagged)
+
+    expect(showTagged.show(right)).toStrictEqual("Right: ok")
+  })
+  it("use makeTagged union show", () => {
+    const right = TaggedADT.of.right({
+      value: "ok"
+    })
+
+    const showTagged = deriveShow(TaggedADT)
+
+    expect(showTagged.show(right)).toStrictEqual("Right: ok")
+  })
+  it("use selectMorph union show", () => {
+    const left = SubADT.of.left({
+      value: "ok"
+    })
+
+    const showTagged = deriveShow(SubADT)
+
+    expect(showTagged.show(left)).toStrictEqual("Shrink: ok")
+  })
+  it("use excludeMorph union show", () => {
+    const right = ExcADT.of.right({
+      value: "ok"
+    })
+
+    const showTagged = deriveShow(ExcADT)
+
+    expect(showTagged.show(right)).toStrictEqual("Shrink: ok")
   })
 })
