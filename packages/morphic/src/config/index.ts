@@ -27,3 +27,9 @@ export type IntersectionA<A extends unknown[], URI extends H.URIS> = A extends [
   : A extends [infer X, infer Y, infer Z, infer W, infer K]
   ? [H.Kind<URI, X>, H.Kind<URI, Y>, H.Kind<URI, Z>, H.Kind<URI, W>, H.Kind<URI, K>]
   : H.Kind<URI, UnionToIntersection<A[number]>>[]
+
+export type InterfaceA<Props, URI extends H.URIS> = {
+  [k in keyof Props]: Props[k] extends HKT2<infer U, infer R, infer E, infer A>
+    ? H.Kind<URI, A>
+    : never
+}

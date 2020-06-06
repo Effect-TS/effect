@@ -67,7 +67,15 @@ const Person_ = summon((F) =>
         })
       })
     },
-    "Person"
+    "Person",
+    {
+      [M.ShowURI]: (_s, _e, _c) => ({
+        show: (p) =>
+          `{ name: (${_c.show.name.show(p.name)}), address: ${_c.show.address.show(
+            p.address
+          )} }`
+      })
+    }
   )
 )
 
@@ -328,7 +336,7 @@ describe("Morphic", () => {
 
     expect(pipe(result, E.map(PersonShow.show))).toStrictEqual(
       E.right(
-        '{ name: "Michael", address: <AddressArray>([~Address~("177 Finchley Road")]) }'
+        '{ name: ("Michael"), address: <AddressArray>([~Address~("177 Finchley Road")]) }'
       )
     )
   })
@@ -341,7 +349,7 @@ describe("Morphic", () => {
 
     expect(pipe(result, E.map(deriveShow(PersonWithAge).show))).toStrictEqual(
       E.right(
-        '{ name: "Michael", address: <AddressArray>([~Address~("177 Finchley Road")]), age: 29 }'
+        '{ name: ("Michael"), address: <AddressArray>([~Address~("177 Finchley Road")]), age: 29 }'
       )
     )
   })
