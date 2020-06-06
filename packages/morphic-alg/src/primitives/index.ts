@@ -31,7 +31,7 @@ export interface ArrayConfig<L, A> {}
 export interface NullableConfig<L, A> {}
 export interface StringLiteralConfig<T> {}
 export interface KeysOfConfig<K> {}
-export interface EitherConfig<LL, LA, RL, RA> {}
+export interface EitherConfig<EE, EA, AE, AA> {}
 export interface OptionConfig<L, A> {}
 export interface BooleanConfig {}
 export interface NumberConfig {}
@@ -123,7 +123,7 @@ export interface MatechsAlgebraPrimitive<F, Env> {
         Env,
         Either<EE, AE>,
         Either<EA, AA>,
-        EitherConfig<EE, AE, EA, AA>
+        EitherConfig<EE, EA, AE, AA>
       >
     ): HKT2<F, Env, Either<EE, AE>, Either<EA, AA>>
   }
@@ -183,7 +183,7 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
       Env,
       Either<unknown, unknown>,
       Either<EA, AA>,
-      EitherConfig<unknown, unknown, EA, AA>
+      EitherConfig<unknown, EA, unknown, AA>
     >
   ) => Kind<F, Env, Either<EA, AA>>
   option: {
@@ -241,7 +241,7 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
       Env,
       Either<EE, AE>,
       Either<EA, AA>,
-      EitherConfig<EE, AE, EA, AA>
+      EitherConfig<EE, EA, AE, AA>
     >
   ) => Kind2<F, Env, Either<EE, AE>, Either<EA, AA>>
   option: {

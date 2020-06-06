@@ -29,3 +29,9 @@ declare module "@matechs/morphic-alg/utils/hkt" {
     [ModelURI]: (env: R) => ModelType<E, A>
   }
 }
+
+declare module "@matechs/core/Base/HKT" {
+  interface URItoKind2<E, A> {
+    [ModelURI]: Type<A, E>
+  }
+}

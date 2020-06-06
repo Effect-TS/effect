@@ -1,7 +1,9 @@
+import type { InterfaceLA } from "../../config"
 import { projectFieldWithEnv, memo } from "../../utils"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
+import { introduce } from "@matechs/core/Function"
 import * as M from "@matechs/core/Model"
 import type { ConfigsForType, AnyEnv } from "@matechs/morphic-alg/config"
 import type {
@@ -10,6 +12,19 @@ import type {
   InterfaceConfig,
   PartialConfig
 } from "@matechs/morphic-alg/object"
+
+declare module "@matechs/morphic-alg/object" {
+  interface InterfaceConfig<Props> {
+    [ModelURI]: {
+      model: InterfaceLA<Props, ModelURI>
+    }
+  }
+  interface PartialConfig<Props> {
+    [ModelURI]: {
+      model: InterfaceLA<Props, ModelURI>
+    }
+  }
+}
 
 export const modelNonStrictObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject2<ModelURI, Env> => ({
@@ -24,12 +39,13 @@ export const modelNonStrictObjectInterpreter = memo(
         InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      new ModelType<PropsE, PropsA>(
-        modelApplyConfig(config)(
-          M.type(projectFieldWithEnv(props, env)("type"), name) as any,
-          env,
-          {}
-        )
+      introduce(projectFieldWithEnv(props, env)("type"))(
+        (model) =>
+          new ModelType<PropsE, PropsA>(
+            modelApplyConfig(config)(M.type(model, name) as any, env, {
+              model: model as any
+            })
+          )
       ),
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
@@ -41,12 +57,13 @@ export const modelNonStrictObjectInterpreter = memo(
         PartialConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      new ModelType<Partial<PropsE>, Partial<PropsA>>(
-        modelApplyConfig(config)(
-          M.partial(projectFieldWithEnv(props, env)("type"), name) as any,
-          env,
-          {}
-        ) as any
+      introduce(projectFieldWithEnv(props, env)("type"))(
+        (model) =>
+          new ModelType<Partial<PropsE>, Partial<PropsA>>(
+            modelApplyConfig(config)(M.partial(model, name) as any, env, {
+              model: model as any
+            }) as any
+          )
       )
   })
 )
@@ -64,12 +81,13 @@ export const modelStrictObjectInterpreter = memo(
         InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      new ModelType<PropsE, PropsA>(
-        modelApplyConfig(config)(
-          M.strict(projectFieldWithEnv(props, env)("type"), name) as any,
-          env,
-          {}
-        )
+      introduce(projectFieldWithEnv(props, env)("type"))(
+        (model) =>
+          new ModelType<PropsE, PropsA>(
+            modelApplyConfig(config)(M.strict(model, name) as any, env, {
+              model: model as any
+            })
+          )
       ),
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
@@ -81,12 +99,13 @@ export const modelStrictObjectInterpreter = memo(
         InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      new ModelType<Partial<PropsE>, Partial<PropsA>>(
-        modelApplyConfig(config)(
-          M.exact(M.partial(projectFieldWithEnv(props, env)("type"), name)) as any,
-          env,
-          {}
-        ) as any
+      introduce(projectFieldWithEnv(props, env)("type"))(
+        (model) =>
+          new ModelType<Partial<PropsE>, Partial<PropsA>>(
+            modelApplyConfig(config)(M.exact(M.partial(model, name)) as any, env, {
+              model: model as any
+            }) as any
+          )
       )
   })
 )
