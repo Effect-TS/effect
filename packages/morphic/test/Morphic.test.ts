@@ -47,7 +47,12 @@ const Address = summon((F) =>
         Model.withMessage(() => "Invalid Address")
       ),
       [M.FastCheckURI]: (_) => _.filter((s) => s.length <= 20)
-    })
+    }),
+    {
+      [M.ShowURI]: (_s, _e, _c) => ({
+        show: (a) => `~Address~(${_c.showNewtype.show(a)})`
+      })
+    }
   )
 )
 
@@ -323,7 +328,7 @@ describe("Morphic", () => {
 
     expect(pipe(result, E.map(PersonShow.show))).toStrictEqual(
       E.right(
-        '{ name: "Michael", address: <AddressArray>([<Address>("177 Finchley Road")]) }'
+        '{ name: "Michael", address: <AddressArray>([~Address~("177 Finchley Road")]) }'
       )
     )
   })
@@ -336,7 +341,7 @@ describe("Morphic", () => {
 
     expect(pipe(result, E.map(deriveShow(PersonWithAge).show))).toStrictEqual(
       E.right(
-        '{ name: "Michael", address: <AddressArray>([<Address>("177 Finchley Road")]), age: 29 }'
+        '{ name: "Michael", address: <AddressArray>([~Address~("177 Finchley Road")]), age: 29 }'
       )
     )
   })
