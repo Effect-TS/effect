@@ -1,8 +1,8 @@
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { MorphADT, AOfMorhpADT } from "@morphic-ts/batteries/lib/usage/tagged-union"
-
 import { MatcherT } from "./matchers"
+
+import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import { MorphADT, AOfMorhpADT } from "@matechs/morphic/batteries/usage/tagged-union"
 
 export const matcher = <
   Types extends {

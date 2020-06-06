@@ -1,10 +1,13 @@
-import { T, pipe, O } from "@matechs/prelude"
 import * as React from "react"
 
 import * as R from "../../../src"
 
 import { OrgsOps, updateOrgs } from "./def"
 import { OrgsStateEnv, orgsStateURI } from "./state"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
 
 // alpha
 /* istanbul ignore file */

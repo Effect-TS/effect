@@ -1,4 +1,3 @@
-import { T } from "@matechs/prelude"
 import * as M from "mobx"
 import React from "react"
 
@@ -7,6 +6,8 @@ import { useInterval } from "../../hooks/useInterval"
 
 import { DateOps, updateDate } from "./def"
 import { DateStateEnv, dateStateURI } from "./state"
+
+import * as T from "@matechs/core/Effect"
 
 // alpha
 /* istanbul ignore file */

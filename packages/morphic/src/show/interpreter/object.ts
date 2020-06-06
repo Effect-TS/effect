@@ -1,4 +1,4 @@
-import { InterfaceA } from "../../config"
+import type { InterfaceA } from "../../config"
 import { memo, projectFieldWithEnv } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"

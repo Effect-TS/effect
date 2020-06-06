@@ -22,8 +22,11 @@
   },
   "dependencies": {
     "@matechs/core": "^2.2.2",
-    "@matechs/morphic-alg": "^0.0.0",
-    "fast-check": "^1.24.2"
+    "@matechs/morphic-alg": "^0.0.0"
+  },
+  "peerDependencies": {
+    "fast-check": "^1.24.2",
+    "fast-equals": "^2.0.0"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

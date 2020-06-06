@@ -1,5 +1,3 @@
-import { T, Service as F, Ex, O, pipe } from "@matechs/prelude"
-
 import * as R from "../../../src"
 import { updateDate } from "../date/def"
 import { flashMessage } from "../flash/flash"
@@ -7,12 +5,20 @@ import { flashMessage } from "../flash/flash"
 import { orgsOpsSpec, orgsOpsURI } from "./def"
 import { OrgsStateEnv, orgsStateURI } from "./state"
 
+import * as T from "@matechs/core/Effect"
+import * as Ex from "@matechs/core/Exit"
+import { pipe } from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
+import * as F from "@matechs/core/Service"
+import { mutable } from "@matechs/core/Utils"
+
 // alpha
 /* istanbul ignore file */
 
 const updateOrgs_ = (res: any[]) =>
   R.accessS<OrgsStateEnv>()(({ [orgsStateURI]: orgs }) => {
-    orgs.found = O.some(`found ${res.length}`)
+    mutable(orgs).found = O.some(`found ${res.length}`)
+
     return orgs.found
   })
 
@@ -34,7 +40,7 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
               T.chainTap((_) => flashMessage("fetched!"))
             )
           : R.accessS<OrgsStateEnv>()(({ [orgsStateURI]: orgs }) => {
-              orgs.error = O.some("error while fetching")
+              mutable(orgs).error = O.some("error while fetching")
               return O.none
             })
       )

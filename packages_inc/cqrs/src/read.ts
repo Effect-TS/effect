@@ -1,8 +1,3 @@
-import { ElemType } from "@morphic-ts/adt/lib/utils"
-import { InterpreterURI } from "@morphic-ts/batteries/lib/usage/InterpreterResult"
-import { ProgramURI } from "@morphic-ts/batteries/lib/usage/ProgramType"
-import { MorphADT, AOfTypes } from "@morphic-ts/batteries/lib/usage/tagged-union"
-
 import {
   accessConfig,
   ReadSideConfigService,
@@ -18,6 +13,10 @@ import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import { logger } from "@matechs/logger"
+import { ElemType } from "@matechs/morphic/adt/utils"
+import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
+import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
+import { MorphADT, AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
 import { DbT, ORM, TaskError } from "@matechs/orm"
 
 // experimental alpha

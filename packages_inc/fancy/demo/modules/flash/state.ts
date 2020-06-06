@@ -1,8 +1,8 @@
-import { T } from "@matechs/prelude"
-import { AType, EType } from "@morphic-ts/batteries/lib/usage/utils"
-
 import { State } from "../../../src"
 import { summon, AsOpaque } from "../../morphic"
+
+import * as T from "@matechs/core/Effect"
+import * as M from "@matechs/morphic"
 
 const FlashState_ = summon((F) =>
   F.interface(
@@ -13,8 +13,8 @@ const FlashState_ = summon((F) =>
   )
 )
 
-export interface FlashState extends AType<typeof FlashState_> {}
-export interface FlashStateR extends EType<typeof FlashState_> {}
+export interface FlashState extends M.AType<typeof FlashState_> {}
+export interface FlashStateR extends M.EType<typeof FlashState_> {}
 export const FlashState = AsOpaque<FlashStateR, FlashState>()(FlashState_)
 
 export const flashInitialState = T.pure(

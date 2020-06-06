@@ -1,11 +1,11 @@
-import { ADT } from "@morphic-ts/adt/lib"
-import * as t from "io-ts"
 import { v4 } from "uuid"
 
 import { EventLog } from "./eventLog"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import * as t from "@matechs/core/Model"
+import { ADT } from "@matechs/morphic/adt"
 import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm"
 
 // experimental alpha

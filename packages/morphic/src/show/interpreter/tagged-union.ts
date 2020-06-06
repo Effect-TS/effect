@@ -1,4 +1,4 @@
-import { TaggedUnionA } from "../../config"
+import type { TaggedUnionA } from "../../config"
 import { mapRecord, memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"

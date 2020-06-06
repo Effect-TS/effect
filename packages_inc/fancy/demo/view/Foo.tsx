@@ -1,9 +1,11 @@
-import { T, pipe } from "@matechs/prelude"
 import Link from "next/link"
 import React from "react"
 
 import { UI } from "../../src"
 import { DT } from "../modules/date"
+
+import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
 
 // alpha
 /* istanbul ignore file */
