@@ -24,7 +24,7 @@ export class ModelType<O, A> {
   }
 }
 
-declare module "@morphic-ts/common/lib/HKT" {
+declare module "@matechs/morphic-alg/utils/hkt" {
   interface URItoKind2<R, E, A> {
     [ModelURI]: (env: R) => ModelType<E, A>
   }

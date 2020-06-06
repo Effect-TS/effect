@@ -1,14 +1,13 @@
-import type { Kind, URIS, Kind2, URIS2, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { Kind, URIS, Kind2, URIS2, HKT2 } from "../utils/hkt"
 
 import type { Record } from "@matechs/core/Record"
 
-export const StrMapURI = "@matechs/core/StrMapURI" as const
+export const StrMapURI = "@matechs/morphic-alg/StrMapURI" as const
 
 export type StrMapURI = typeof StrMapURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [StrMapURI]: MatechsAlgebraStrMap<F, Env>
   }

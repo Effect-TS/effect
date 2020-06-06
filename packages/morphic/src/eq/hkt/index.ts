@@ -16,7 +16,7 @@ export class EqType<A> {
   constructor(public eq: Eq<A>) {}
 }
 
-declare module "@morphic-ts/common/lib/HKT" {
+declare module "@matechs/morphic-alg/utils/hkt" {
   interface URItoKind<R, A> {
     [EqURI]: (env: R) => EqType<A>
   }

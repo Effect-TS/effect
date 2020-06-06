@@ -4,7 +4,10 @@ import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraRecursive2 } from "@matechs/morphic-alg/recursive"
+import type {
+  MatechsAlgebraRecursive2,
+  RecursiveConfig
+} from "@matechs/morphic-alg/recursive"
 
 export const modelRecursiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRecursive2<ModelURI, Env> => ({
@@ -12,7 +15,7 @@ export const modelRecursiveInterpreter = memo(
     recursive: <L, A>(
       lazyA: (x: (_: Env) => ModelType<L, A>) => (_: Env) => ModelType<L, A>,
       name: string,
-      config?: ConfigsForType<Env, L, A>
+      config?: ConfigsForType<Env, L, A, RecursiveConfig<L, A>>
     ) => (env: Env): ModelType<L, A> =>
       new ModelType(
         modelApplyConfig(config)(

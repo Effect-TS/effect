@@ -4,7 +4,12 @@ import { ModelType, ModelURI } from "../hkt"
 
 import * as M from "@matechs/core/Model"
 import type { ConfigsForType, AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraObject2, PropsKind2 } from "@matechs/morphic-alg/object"
+import type {
+  MatechsAlgebraObject2,
+  PropsKind2,
+  InterfaceConfig,
+  PartialConfig
+} from "@matechs/morphic-alg/object"
 
 export const modelNonStrictObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject2<ModelURI, Env> => ({
@@ -12,7 +17,12 @@ export const modelNonStrictObjectInterpreter = memo(
     interface: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       name: string,
-      config?: ConfigsForType<Env, PropsE, PropsA>
+      config?: ConfigsForType<
+        Env,
+        PropsE,
+        PropsA,
+        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+      >
     ) => (env: Env) =>
       new ModelType<PropsE, PropsA>(
         modelApplyConfig(config)(
@@ -24,7 +34,12 @@ export const modelNonStrictObjectInterpreter = memo(
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       name: string,
-      config?: ConfigsForType<Env, PropsE, PropsA>
+      config?: ConfigsForType<
+        Env,
+        PropsE,
+        PropsA,
+        PartialConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+      >
     ) => (env: Env) =>
       new ModelType<Partial<PropsE>, Partial<PropsA>>(
         modelApplyConfig(config)(
@@ -42,7 +57,12 @@ export const modelStrictObjectInterpreter = memo(
     interface: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       name: string,
-      config?: ConfigsForType<Env, PropsE, PropsA>
+      config?: ConfigsForType<
+        Env,
+        PropsE,
+        PropsA,
+        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+      >
     ) => (env: Env) =>
       new ModelType<PropsE, PropsA>(
         modelApplyConfig(config)(
@@ -54,7 +74,12 @@ export const modelStrictObjectInterpreter = memo(
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       name: string,
-      config?: ConfigsForType<Env, PropsE, PropsA>
+      config?: ConfigsForType<
+        Env,
+        PropsE,
+        PropsA,
+        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+      >
     ) => (env: Env) =>
       new ModelType<Partial<PropsE>, Partial<PropsA>>(
         modelApplyConfig(config)(

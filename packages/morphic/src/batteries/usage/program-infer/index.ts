@@ -1,6 +1,3 @@
-import type { Algebra1, Algebra2, Algebra } from "@morphic-ts/algebras/lib/core"
-import type { HKT2, Kind, Kind2, URIS, URIS2 } from "@morphic-ts/common/lib/HKT"
-
 import type {
   ProgramURI,
   ProgramAlgebra,
@@ -8,6 +5,9 @@ import type {
   ProgramType
 } from "../program-type"
 import type { AnyConfigEnv } from "../summoner"
+
+import type { Algebra1, Algebra2, Algebra } from "@matechs/morphic-alg/utils/core"
+import type { HKT2, Kind, Kind2, URIS, URIS2 } from "@matechs/morphic-alg/utils/hkt"
 
 export const overloadsSymb = Symbol()
 

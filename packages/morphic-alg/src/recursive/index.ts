@@ -1,12 +1,11 @@
-import type { URIS, Kind, URIS2, Kind2, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { AnyEnv, ConfigsForType } from "../config"
+import type { URIS, Kind, URIS2, Kind2, HKT2 } from "../utils/hkt"
 
-export const RecursiveURI = "@matechs/core/RecursiveURI" as const
+export const RecursiveURI = "@matechs/morphic-alg/RecursiveURI" as const
 
 export type RecursiveURI = typeof RecursiveURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [RecursiveURI]: MatechsAlgebraRecursive<F, Env>
   }

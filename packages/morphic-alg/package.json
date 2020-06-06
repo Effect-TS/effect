@@ -21,9 +21,7 @@
     "@types/node": "^14.0.5"
   },
   "dependencies": {
-    "@matechs/core": "^2.2.2",
-    "@morphic-ts/algebras": "^2.0.0-alpha.3",
-    "@morphic-ts/common": "^2.0.0-alpha.3"
+    "@matechs/core": "^2.2.2"
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

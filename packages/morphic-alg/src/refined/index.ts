@@ -1,14 +1,13 @@
-import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
 
 import type { Refinement } from "@matechs/core/Function"
 
-export const RefinedURI = "@matechs/core/RefinedURI" as const
+export const RefinedURI = "@matechs/morphic-alg/RefinedURI" as const
 
 export type RefinedURI = typeof RefinedURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [RefinedURI]: MatechsAlgebraRefined<F, Env>
   }

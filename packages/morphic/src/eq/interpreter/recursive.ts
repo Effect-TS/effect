@@ -3,15 +3,18 @@ import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraRecursive1 } from "@matechs/morphic-alg/recursive"
+import type {
+  MatechsAlgebraRecursive1,
+  RecursiveConfig
+} from "@matechs/morphic-alg/recursive"
 
 export const eqRecursiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRecursive1<EqURI, Env> => ({
     _F: EqURI,
     recursive: <A>(
       a: (x: (env: Env) => EqType<A>) => (env: Env) => EqType<A>,
-      name: string,
-      config?: ConfigsForType<Env, unknown, A>
+      _name: string,
+      config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
     ) => {
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>

@@ -1,4 +1,4 @@
-import type { URIS, URIS2 } from "@morphic-ts/common/lib/HKT"
+import type { URIS, URIS2 } from "../utils/hkt"
 
 export type URISIndexedAny = Record<URIS | URIS2, any>
 

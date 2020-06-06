@@ -29,7 +29,10 @@ const modules: string[] = [
   "str-map",
   "tagged-union",
   "unknown",
-  "config"
+  "config",
+  "utils",
+  "utils/hkt",
+  "utils/core"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)

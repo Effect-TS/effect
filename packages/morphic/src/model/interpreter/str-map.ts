@@ -1,5 +1,4 @@
-import { memo } from "@morphic-ts/common/lib/utils"
-
+import { memo } from "../../utils"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 

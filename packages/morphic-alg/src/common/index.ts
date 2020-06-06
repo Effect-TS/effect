@@ -1,1 +1,1 @@
-import type {} from "@morphic-ts/algebras/lib/hkt"
+import type {} from "../utils/hkt"

@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-empty-interface */
-import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
 
 import type { Array } from "@matechs/core/Array"
 import type { Either } from "@matechs/core/Either"
@@ -12,11 +10,11 @@ import type { Record } from "@matechs/core/Record"
 
 export type Keys = Record<string, null>
 
-export const PrimitiveURI = "@matechs/morphic/PrimitiveURI" as const
+export const PrimitiveURI = "@matechs/morphic-alg/PrimitiveURI" as const
 
 export type PrimitiveURI = typeof PrimitiveURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [PrimitiveURI]: MatechsAlgebraPrimitive<F, Env>
   }
