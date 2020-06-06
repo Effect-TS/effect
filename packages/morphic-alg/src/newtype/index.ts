@@ -1,14 +1,13 @@
-import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
 
 import type { Newtype } from "@matechs/core/Newtype"
 
-export const NewtypeURI = "@matechs/morphic/NewtypeURI" as const
+export const NewtypeURI = "@matechs/morphic-alg/NewtypeURI" as const
 
 export type NewtypeURI = typeof NewtypeURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [NewtypeURI]: MatechsAlgebraNewtype<F, Env>
   }

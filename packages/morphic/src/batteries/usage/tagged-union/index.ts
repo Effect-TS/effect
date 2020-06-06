@@ -1,6 +1,3 @@
-import type { Algebra } from "@morphic-ts/algebras/lib/hkt"
-import type { HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import { ADT, makeADT } from "../../../adt"
 import type { ElemType } from "../../../adt/utils"
 import type { InterpreterURI } from "../interpreter-result"
@@ -20,6 +17,7 @@ import type {
   TaggedUnionsURI,
   TaggedUnionConfig
 } from "@matechs/morphic-alg/tagged-union"
+import type { HKT2, Algebra } from "@matechs/morphic-alg/utils/hkt"
 
 export type IfStringLiteral<T, IfLiteral, IfString, IfNotString> = T extends string
   ? string extends T

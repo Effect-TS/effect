@@ -16,7 +16,7 @@ export class FastCheckType<A> {
   constructor(public arb: Arbitrary<A>) {}
 }
 
-declare module "@morphic-ts/common/lib/HKT" {
+declare module "@matechs/morphic-alg/utils/hkt" {
   interface URItoKind<R, A> {
     [FastCheckURI]: (env: R) => FastCheckType<A>
   }

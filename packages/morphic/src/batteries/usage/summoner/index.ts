@@ -1,6 +1,3 @@
-import type { URIS, URIS2 } from "@morphic-ts/common/lib/HKT"
-import type { CacheType } from "@morphic-ts/common/lib/core"
-
 import type { InterpreterURI, InterpreterResult } from "../interpreter-result"
 import { materialize, Materialized } from "../materializer"
 import { InferredProgram, Overloads, Define, defineFor } from "../program-infer"
@@ -8,6 +5,8 @@ import type { ProgramURI, ProgramType } from "../program-type"
 import { makeTagged, TaggedBuilder } from "../tagged-union"
 
 import type { AnyEnv } from "@matechs/morphic-alg/config"
+import type { CacheType } from "@matechs/morphic-alg/utils/core"
+import type { URIS, URIS2 } from "@matechs/morphic-alg/utils/hkt"
 
 export interface Summoners<
   ProgURI extends ProgramURI,

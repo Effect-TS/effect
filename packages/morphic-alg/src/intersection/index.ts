@@ -1,14 +1,12 @@
-/* eslint-disable @typescript-eslint/no-empty-interface */
-import type { URIS, Kind, URIS2, Kind2, HKT2 } from "@morphic-ts/common/lib/HKT"
-import type { OfType, OfType2 } from "@morphic-ts/common/lib/core"
-
 import type { AnyEnv, ConfigsForType } from "../config"
+import type { OfType, OfType2 } from "../utils/core"
+import type { URIS, URIS2, Kind, Kind2, HKT2 } from "../utils/hkt"
 
-export const IntersectionURI = "@matechs/morphic/IntersectionURI" as const
+export const IntersectionURI = "@matechs/morphic-alg/IntersectionURI" as const
 
 export type IntersectionURI = typeof IntersectionURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [IntersectionURI]: MatechsAlgebraIntersection<F, Env>
   }

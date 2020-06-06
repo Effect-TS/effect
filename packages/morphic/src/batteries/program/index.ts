@@ -1,5 +1,3 @@
-import type { GetAlgebra } from "@morphic-ts/algebras/lib/core"
-
 import type { InferredAlgebra, InferredProgram } from "../usage/program-infer"
 import type { AnyConfigEnv } from "../usage/summoner"
 
@@ -13,6 +11,7 @@ import type { SetURI } from "@matechs/morphic-alg/set"
 import type { StrMapURI } from "@matechs/morphic-alg/str-map"
 import type { TaggedUnionsURI } from "@matechs/morphic-alg/tagged-union"
 import type { UnknownURI } from "@matechs/morphic-alg/unknown"
+import type { GetAlgebra } from "@matechs/morphic-alg/utils/core"
 
 export const ProgramURI = "@matechs/morphic/ProgramURI" as const
 

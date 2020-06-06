@@ -1,13 +1,11 @@
-/* eslint-disable @typescript-eslint/no-empty-interface */
-import type { URIS, Kind, URIS2, Kind2, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { URIS, Kind, URIS2, Kind2, HKT2 } from "../utils/hkt"
 
-export const TaggedUnionsURI = "@matechs/core/TaggedUnionsURI" as const
+export const TaggedUnionsURI = "@matechs/morphic-alg/TaggedUnionsURI" as const
 
 export type TaggedUnionsURI = typeof TaggedUnionsURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [TaggedUnionsURI]: MatechsAlgebraTaggedUnions<F, Env>
   }

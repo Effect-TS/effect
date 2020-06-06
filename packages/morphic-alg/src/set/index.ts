@@ -1,16 +1,15 @@
-import type { Kind, URIS, Kind2, URIS2, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { AnyEnv, ConfigsForType } from "../config"
+import type { Kind, URIS, Kind2, URIS2, HKT2 } from "../utils/hkt"
 
 import type { Array } from "@matechs/core/Array"
 import type { Ord } from "@matechs/core/Ord"
 import type { Set } from "@matechs/core/Set"
 
-export const SetURI = "@matechs/core/SetURI" as const
+export const SetURI = "@matechs/morphic-alg/SetURI" as const
 
 export type SetURI = typeof SetURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [SetURI]: MatechsAlgebraSet<F, Env>
   }

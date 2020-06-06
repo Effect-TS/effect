@@ -1,9 +1,8 @@
-import type { HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { Materialized } from "../batteries/usage/materializer"
 
 import type { UnionToIntersection } from "@matechs/core/Base/Apply"
 import type * as H from "@matechs/core/Base/HKT"
+import type { HKT2 } from "@matechs/morphic-alg/utils/hkt"
 
 export type TaggedUnionA<Types, URI extends H.URIS> = {
   [k in keyof Types]: Types[k] extends HKT2<infer F, infer R, infer E, infer A>

@@ -1,17 +1,15 @@
-/* eslint-disable @typescript-eslint/no-empty-interface */
-import type { URIS2, Kind2, URIS, Kind, HKT2 } from "@morphic-ts/common/lib/HKT"
-
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
 
 import type { Record } from "@matechs/core/Record"
 
 export type Keys = Record<string, null>
 
-export const UnknownURI = "@matechs/core/UnknownURI" as const
+export const UnknownURI = "@matechs/morphic-alg/UnknownURI" as const
 
 export type UnknownURI = typeof UnknownURI
 
-declare module "@morphic-ts/algebras/lib/hkt" {
+declare module "../utils/hkt" {
   export interface Algebra<F, Env> {
     [UnknownURI]: MatechsAlgebraUnknown<F, Env>
   }

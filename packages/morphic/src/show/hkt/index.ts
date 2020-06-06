@@ -16,7 +16,7 @@ export class ShowType<A> {
   constructor(public show: Show<A>) {}
 }
 
-declare module "@morphic-ts/common/lib/HKT" {
+declare module "@matechs/morphic-alg/utils/hkt" {
   interface URItoKind<R, A> {
     [ShowURI]: (env: R) => ShowType<A>
   }
