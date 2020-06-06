@@ -34,10 +34,10 @@ declare module "@matechs/morphic-alg/primitives" {
       show: Show<A>
     }
   }
-  interface EitherConfig<LL, LA, RL, RA> {
+  interface EitherConfig<EE, EA, AE, AA> {
     [ShowURI]: {
-      left: Show<RL>
-      right: Show<RA>
+      left: Show<EA>
+      right: Show<AA>
     }
   }
   interface OptionConfig<L, A> {

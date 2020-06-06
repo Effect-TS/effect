@@ -40,10 +40,10 @@ declare module "@matechs/morphic-alg/primitives" {
       arb: Arbitrary<A>
     }
   }
-  interface EitherConfig<LL, LA, RL, RA> {
+  interface EitherConfig<EE, EA, AE, AA> {
     [FastCheckURI]: {
-      left: Arbitrary<RL>
-      right: Arbitrary<RA>
+      left: Arbitrary<EA>
+      right: Arbitrary<AA>
     }
   }
   interface OptionConfig<L, A> {

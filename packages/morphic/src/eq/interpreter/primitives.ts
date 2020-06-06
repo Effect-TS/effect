@@ -29,10 +29,10 @@ declare module "@matechs/morphic-alg/primitives" {
       eq: Eq<A>
     }
   }
-  interface EitherConfig<LL, LA, RL, RA> {
+  interface EitherConfig<EE, EA, AE, AA> {
     [EqURI]: {
-      left: Eq<RL>
-      right: Eq<RA>
+      left: Eq<EA>
+      right: Eq<AA>
     }
   }
   interface OptionConfig<L, A> {

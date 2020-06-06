@@ -77,6 +77,35 @@ const excludeKeys = (a: Record<string, any>, toExclude: Array<string>): object =
     difference(eqString)(Object.keys(a), toExclude).map((k: string) => tuple(k, a[k]))
   )
 
+/*
+export type TaggedBuilder<
+  ProgURI extends ProgramURI,
+  InterpURI extends InterpreterURI,
+  R
+> = <Tag extends string>(
+  tag: Tag
+) => <Types extends UnionTypes<Types, Tag, ProgURI, InterpURI, R>>(
+  o: Types,
+  name?: string,
+  config?: ConfigsForType<
+    Types[keyof Types]["_R"],
+    Types[keyof Types]["_E"],
+    Types[keyof Types]["_A"],
+    TaggedUnionConfig<Types>
+  >
+) => MorphADT<
+  {
+    [k in keyof Types]: Types[k] extends InhabitedTypes<any, infer E, infer A>
+      ? [E, A]
+      : never
+  },
+  Tag,
+  ProgURI,
+  InterpURI,
+  R
+>
+*/
+
 export type TaggedBuilder<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
@@ -124,7 +153,7 @@ export function makeTagged<
   o: Types,
   name?: string,
   config?: ConfigsForType<
-    R,
+    Types[keyof Types]["_R"],
     Types[keyof Types]["_E"],
     Types[keyof Types]["_A"],
     TaggedUnionConfig<Types>
