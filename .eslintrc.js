@@ -31,12 +31,7 @@ module.exports = {
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/interface-name-prefix": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-empty-interface": [
-      "error",
-      {
-        allowSingleExtends: true
-      }
-    ],
+    "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/camelcase": "off",
     "sort-destructure-keys/sort-destructure-keys": "error",
     "import/no-unresolved": "error",
