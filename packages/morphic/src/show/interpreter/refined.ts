@@ -11,6 +11,7 @@ declare module "@matechs/morphic-alg/refined" {
   interface RefinedConfig<E, A, B> {
     [ShowURI]: {
       show: Show<A>
+      showRefined: Show<B>
     }
   }
 }
@@ -28,7 +29,8 @@ export const showRefinedInterpreter = memo(
               },
               env,
               {
-                show
+                show,
+                showRefined: show
               }
             )
           )

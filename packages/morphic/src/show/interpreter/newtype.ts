@@ -28,7 +28,7 @@ export const showNewtypeInterpreter = memo(
               env,
               {
                 show,
-                showNewtype: show as any
+                showNewtype: show
               }
             )
           )

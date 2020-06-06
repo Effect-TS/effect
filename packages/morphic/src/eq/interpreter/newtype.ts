@@ -21,7 +21,7 @@ export const eqNewtypeInterpreter = memo(
     _F: EqURI,
     newtype: () => (getEq, config) => (env) =>
       introduce(getEq(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq, eqNewtype: eq as any }))
+        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq, eqNewtype: eq }))
       )
   })
 )
