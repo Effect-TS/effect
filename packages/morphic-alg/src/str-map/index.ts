@@ -20,12 +20,19 @@ declare module "@morphic-ts/algebras/lib/hkt" {
   }
 }
 
+export interface StrMapConfig<L, A> {}
+
 export interface MatechsAlgebraStrMap<F, Env> {
   _F: F
   strMap: {
     <L, A>(
       codomain: HKT2<F, Env, L, A>,
-      config?: ConfigsForType<Env, Record<string, L>, Record<string, A>>
+      config?: ConfigsForType<
+        Env,
+        Record<string, L>,
+        Record<string, A>,
+        StrMapConfig<L, A>
+      >
     ): HKT2<F, Env, Record<string, L>, Record<string, A>>
   }
 }
@@ -34,7 +41,7 @@ export interface MatechsAlgebraStrMap1<F extends URIS, Env extends AnyEnv> {
   _F: F
   strMap: <A>(
     codomain: Kind<F, Env, A>,
-    config?: ConfigsForType<Env, unknown, Record<string, A>>
+    config?: ConfigsForType<Env, unknown, Record<string, A>, StrMapConfig<unknown, A>>
   ) => Kind<F, Env, Record<string, A>>
 }
 
@@ -42,6 +49,11 @@ export interface MatechsAlgebraStrMap2<F extends URIS2, Env extends AnyEnv> {
   _F: F
   strMap: <L, A>(
     codomain: Kind2<F, Env, L, A>,
-    config?: ConfigsForType<Env, Record<string, L>, Record<string, A>>
+    config?: ConfigsForType<
+      Env,
+      Record<string, L>,
+      Record<string, A>,
+      StrMapConfig<L, A>
+    >
   ) => Kind2<F, Env, Record<string, L>, Record<string, A>>
 }
