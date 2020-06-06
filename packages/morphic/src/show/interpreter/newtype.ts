@@ -2,19 +2,36 @@ import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowURI, ShowType } from "../hkt"
 
+import { introduce } from "@matechs/core/Function"
+import type { Show } from "@matechs/core/Show"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
+
+declare module "@matechs/morphic-alg/newtype" {
+  interface NewtypeConfig<L, A, N> {
+    [ShowURI]: {
+      show: Show<A>
+      showNewtype: Show<N>
+    }
+  }
+}
 
 export const showNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraNewtype1<ShowURI, Env> => ({
     _F: ShowURI,
     newtype: (name) => (a, config) => (env) =>
-      new ShowType(
-        showApplyConfig(config)(
-          { show: (x) => `<${name}>(${a(env).show.show(x as any)})` },
-          env,
-          {}
-        )
+      introduce(a(env).show)(
+        (show) =>
+          new ShowType(
+            showApplyConfig(config)(
+              { show: (x) => `<${name}>(${show.show(x as any)})` },
+              env,
+              {
+                show,
+                showNewtype: show as any
+              }
+            )
+          )
       )
   })
 )

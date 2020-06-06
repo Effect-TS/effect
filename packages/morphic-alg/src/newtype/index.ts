@@ -24,17 +24,17 @@ export type AnyNewtype = Newtype<any, any>
 
 export type NewtypeA<N extends AnyNewtype> = N extends Newtype<any, infer A> ? A : never
 
+export interface NewtypeConfig<L, A, N> {}
+
 export interface MatechsAlgebraNewtype<F, Env> {
   _F: F
   newtype: <N extends AnyNewtype = never>(
     name: string
   ) => {
-    <E>(a: HKT2<F, Env, E, NewtypeA<N>>, config?: ConfigsForType<Env, E, N>): HKT2<
-      F,
-      Env,
-      E,
-      N
-    >
+    <E>(
+      a: HKT2<F, Env, E, NewtypeA<N>>,
+      config?: ConfigsForType<Env, E, N, NewtypeConfig<E, NewtypeA<N>, N>>
+    ): HKT2<F, Env, E, N>
   }
 }
 
@@ -42,7 +42,10 @@ export interface MatechsAlgebraNewtype1<F extends URIS, Env> {
   _F: F
   newtype<N extends AnyNewtype = never>(
     name: string
-  ): (a: Kind<F, Env, N>, config?: ConfigsForType<Env, unknown, N>) => Kind<F, Env, N>
+  ): (
+    a: Kind<F, Env, N>,
+    config?: ConfigsForType<Env, unknown, N, NewtypeConfig<unknown, NewtypeA<N>, N>>
+  ) => Kind<F, Env, N>
 }
 
 export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
@@ -51,6 +54,6 @@ export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
     name: string
   ): <E>(
     a: Kind2<F, Env, E, N>,
-    config?: ConfigsForType<Env, E, N>
+    config?: ConfigsForType<Env, E, N, NewtypeConfig<E, NewtypeA<N>, N>>
   ) => Kind2<F, Env, E, N>
 }
