@@ -47,7 +47,6 @@ import "@matechs/core/NonEmptyArray"
 import "@matechs/core/Option"
 import "@matechs/core/Ord"
 import "@matechs/core/Function"
-import "@matechs/core/Prelude" // this is not shakable with webpack <= 4
 import "@matechs/core/Process"
 import "@matechs/core/Provider"
 import "@matechs/core/Queue"
