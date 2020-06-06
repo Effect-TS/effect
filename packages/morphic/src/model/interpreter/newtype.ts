@@ -11,7 +11,11 @@ declare module "@matechs/morphic-alg/newtype" {
   interface NewtypeConfig<L, A, N> {
     [ModelURI]: {
       model: M.Type<A, L>
-      modelNewtype: M.Type<N, L>
+    }
+  }
+  interface CoerceConfig<L, A, N> {
+    [ModelURI]: {
+      model: M.Type<A, L>
     }
   }
 }
@@ -23,9 +27,17 @@ export const modelNewtypeInterpreter = memo(
       introduce(a(env).type)(
         (model) =>
           new ModelType(
-            modelApplyConfig(config)(model, env, {
-              model: model as any,
-              modelNewtype: model
+            modelApplyConfig(config)(model as any, env, {
+              model
+            })
+          )
+      ),
+    coerce: () => (a, config) => (env) =>
+      introduce(a(env).type)(
+        (model) =>
+          new ModelType(
+            modelApplyConfig(config)(model as any, env, {
+              model
             })
           )
       )

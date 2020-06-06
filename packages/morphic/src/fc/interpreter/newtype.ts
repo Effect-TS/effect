@@ -12,7 +12,6 @@ declare module "@matechs/morphic-alg/newtype" {
   interface NewtypeConfig<L, A, N> {
     [FastCheckURI]: {
       arb: Arbitrary<A>
-      arbNewtype: Arbitrary<N>
     }
   }
 }
@@ -22,10 +21,11 @@ export const fcNewtypeInterpreter = memo(
     _F: FastCheckURI,
     newtype: () => (getArb, config) => (env) =>
       introduce(getArb(env).arb)(
-        (arb) =>
-          new FastCheckType(
-            fcApplyConfig(config)(arb, env, { arb: arb as any, arbNewtype: arb })
-          )
+        (arb) => new FastCheckType(fcApplyConfig(config)(arb, env, { arb }))
+      ),
+    coerce: () => (getArb, config) => (env) =>
+      introduce(getArb(env).arb)(
+        (arb) => new FastCheckType(fcApplyConfig(config)(arb as any, env, { arb }))
       )
   })
 )
