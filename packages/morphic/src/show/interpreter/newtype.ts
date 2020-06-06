@@ -14,6 +14,12 @@ declare module "@matechs/morphic-alg/newtype" {
       showNewtype: Show<N>
     }
   }
+  interface CoerceConfig<L, A, N> {
+    [ShowURI]: {
+      show: Show<A>
+      showCoerce: Show<N>
+    }
+  }
 }
 
 export const showNewtypeInterpreter = memo(
@@ -28,7 +34,21 @@ export const showNewtypeInterpreter = memo(
               env,
               {
                 show,
-                showNewtype: show
+                showNewtype: show as any
+              }
+            )
+          )
+      ),
+    coerce: (name) => (a, config) => (env) =>
+      introduce(a(env).show)(
+        (show) =>
+          new ShowType(
+            showApplyConfig(config)(
+              { show: (x) => `<${name}>(${show.show(x as any)})` },
+              env,
+              {
+                show,
+                showCoerce: show as any
               }
             )
           )

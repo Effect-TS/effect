@@ -11,7 +11,6 @@ declare module "@matechs/morphic-alg/newtype" {
   interface NewtypeConfig<L, A, N> {
     [EqURI]: {
       eq: Eq<A>
-      eqNewtype: Eq<N>
     }
   }
 }
@@ -21,7 +20,11 @@ export const eqNewtypeInterpreter = memo(
     _F: EqURI,
     newtype: () => (getEq, config) => (env) =>
       introduce(getEq(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq, eqNewtype: eq }))
+        (eq) => new EqType(eqApplyConfig(config)(eq as any, env, { eq }))
+      ),
+    coerce: () => (getEq, config) => (env) =>
+      introduce(getEq(env).eq)(
+        (eq) => new EqType(eqApplyConfig(config)(eq as any, env, { eq }))
       )
   })
 )
