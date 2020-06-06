@@ -1,4 +1,4 @@
-import { merge, memo } from "@morphic-ts/common/lib/utils"
+import { merge, memo } from "../../utils"
 
 import { showIntersectionInterpreter } from "./intersection"
 import { showNewtypeInterpreter } from "./newtype"
