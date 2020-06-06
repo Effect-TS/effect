@@ -23,7 +23,6 @@ import * as newtype from "./Newtype"
 import * as nonEmptyArray from "./NonEmptyArray"
 import * as option from "./Option"
 import * as ord from "./Ord"
-import * as prelude from "./Prelude"
 import * as process from "./Process"
 import * as provider from "./Provider"
 import * as queue from "./Queue"
@@ -86,7 +85,6 @@ export {
   effectOption,
   list,
   recursionSchemes,
-  prelude,
   monoid,
   const_ as const,
   identity,
