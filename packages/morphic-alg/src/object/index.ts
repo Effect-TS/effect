@@ -20,6 +20,9 @@ declare module "@morphic-ts/algebras/lib/hkt" {
   }
 }
 
+export interface InterfaceConfig<Props> {}
+export interface PartialConfig<Props> {}
+
 export interface MatechsAlgebraObject<F, Env> {
   _F: F
   interface: {
@@ -29,7 +32,8 @@ export interface MatechsAlgebraObject<F, Env> {
       config?: ConfigsForType<
         Env,
         Readonly<{ [k in keyof Props]: Props[k]["_E"] }>,
-        Readonly<{ [k in keyof Props]: Props[k]["_A"] }>
+        Readonly<{ [k in keyof Props]: Props[k]["_A"] }>,
+        InterfaceConfig<Props>
       >
     ): HKT2<
       F,
@@ -45,7 +49,8 @@ export interface MatechsAlgebraObject<F, Env> {
       config?: ConfigsForType<
         Env,
         Partial<Readonly<{ [k in keyof Props]: Props[k]["_E"] }>>,
-        Partial<Readonly<{ [k in keyof Props]: Props[k]["_A"] }>>
+        Partial<Readonly<{ [k in keyof Props]: Props[k]["_A"] }>>,
+        PartialConfig<Props>
       >
     ): HKT2<
       F,
@@ -65,12 +70,22 @@ export interface MatechsAlgebraObject1<F extends URIS, Env extends AnyEnv> {
   interface: <Props>(
     props: PropsKind1<F, Props, Env>,
     name: string,
-    config?: ConfigsForType<Env, unknown, Readonly<Props>>
+    config?: ConfigsForType<
+      Env,
+      unknown,
+      Readonly<Props>,
+      InterfaceConfig<PropsKind1<F, Props, Env>>
+    >
   ) => Kind<F, Env, Readonly<Props>>
   partial: <Props>(
     props: PropsKind1<F, Props, Env>,
     name: string,
-    config?: ConfigsForType<Env, unknown, Readonly<Props>>
+    config?: ConfigsForType<
+      Env,
+      unknown,
+      Readonly<Props>,
+      PartialConfig<PropsKind1<F, Props, Env>>
+    >
   ) => Kind<F, Env, Partial<Readonly<Props>>>
 }
 
@@ -83,11 +98,21 @@ export interface MatechsAlgebraObject2<F extends URIS2, Env extends AnyEnv> {
   interface: <PropsE, PropsA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
     name: string,
-    config?: ConfigsForType<Env, Readonly<PropsE>, Readonly<PropsA>>
+    config?: ConfigsForType<
+      Env,
+      Readonly<PropsE>,
+      Readonly<PropsA>,
+      InterfaceConfig<PropsKind2<F, PropsE, PropsA, Env>>
+    >
   ) => Kind2<F, Env, Readonly<PropsE>, Readonly<PropsA>>
   partial: <PropsE, PropsA>(
     props: PropsKind2<F, PropsE, PropsA, Env>,
     name: string,
-    config?: ConfigsForType<Env, Readonly<PropsE>, Readonly<PropsA>>
+    config?: ConfigsForType<
+      Env,
+      Readonly<PropsE>,
+      Readonly<PropsA>,
+      PartialConfig<PropsKind2<F, PropsE, PropsA, Env>>
+    >
   ) => Kind2<F, Env, Partial<Readonly<PropsE>>, Partial<Readonly<PropsA>>>
 }
