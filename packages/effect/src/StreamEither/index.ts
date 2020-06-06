@@ -1,5 +1,3 @@
-/* adapted from https://github.com/gcanti/fp-ts-contrib */
-
 import * as A from "../Array"
 import type { CBifunctor4, CMonad4MA, CApplicative4MAP, Monad4EP } from "../Base"
 import * as AP from "../Base/Apply"
