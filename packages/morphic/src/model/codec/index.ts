@@ -1174,7 +1174,9 @@ export class AnyType extends Codec<any> {
 
 export interface AnyC extends AnyType {}
 
-export const any: AnyC = new AnyType()
+export const any: AnyC =
+  /*#__PURE__*/
+  (() => new AnyType())()
 
 export function refinement<A, O, B extends A>(
   codec: Codec<A, O>,
@@ -1475,16 +1477,19 @@ export function getIndex(
 
 export interface DateFromISOStringC extends Codec<Date, string> {}
 
-export const DateFromISOString: DateFromISOStringC = new Codec<Date, string>(
-  "DateFromISOString",
-  (u): u is Date => u instanceof Date,
-  (u, c) =>
-    E.chain_(string.validate(u, c), (s) => {
-      const d = new Date(s)
-      return isNaN(d.getTime()) ? failure(u, c) : success(d)
-    }),
-  (a) => a.toISOString()
-)
+export const DateFromISOString: DateFromISOStringC =
+  /*#__PURE__*/
+  (() =>
+    new Codec<Date, string>(
+      "DateFromISOString",
+      (u): u is Date => u instanceof Date,
+      (u, c) =>
+        E.chain_(string.validate(u, c), (s) => {
+          const d = new Date(s)
+          return isNaN(d.getTime()) ? failure(u, c) : success(d)
+        }),
+      (a) => a.toISOString()
+    ))()
 
 const leftLiteral =
   /*#__PURE__*/
@@ -1669,20 +1674,23 @@ export function setFromArray<C extends Any>(
 
 export interface BigIntStringC extends Codec<bigint, string> {}
 
-export const BigIntString: BigIntStringC = new Codec<bigint, string>(
-  "BigIntString",
-  (u): u is bigint => u !== undefined && u !== null && typeof u === "bigint",
-  (u, c) =>
-    E.chain_(string.validate(u, c), (s) => {
-      try {
-        const d = BigInt(s)
-        return success(d)
-      } catch {
-        return failure(u, c)
-      }
-    }),
-  (a) => a.toString(10)
-)
+export const BigIntString: BigIntStringC =
+  /*#__PURE__*/
+  (() =>
+    new Codec<bigint, string>(
+      "BigIntString",
+      (u): u is bigint => u !== undefined && u !== null && typeof u === "bigint",
+      (u, c) =>
+        E.chain_(string.validate(u, c), (s) => {
+          try {
+            const d = BigInt(s)
+            return success(d)
+          } catch {
+            return failure(u, c)
+          }
+        }),
+      (a) => a.toString(10)
+    ))()
 
 export function clone<C extends Any>(t: C): C {
   const r = Object.create(Object.getPrototypeOf(t))
