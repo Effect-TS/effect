@@ -1,5 +1,3 @@
-import type { Arbitrary } from "fast-check"
-
 import { memo } from "../../utils"
 import { fcApplyConfig } from "../config"
 import { FastCheckURI, FastCheckType } from "../hkt"
@@ -8,24 +6,6 @@ import { introduce } from "@matechs/core/Function"
 import type { Some } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
-
-declare module "@matechs/morphic-alg/newtype" {
-  interface NewtypeConfig<L, A, N> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-  interface CoerceConfig<L, A, N> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-  interface IsoConfig<L, A, N> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-}
 
 export const fcNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraNewtype1<FastCheckURI, Env> => ({

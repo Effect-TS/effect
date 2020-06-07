@@ -23,40 +23,6 @@ import { fromNullable, none, some } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraPrimitive1, UUID } from "@matechs/morphic-alg/primitives"
 
-declare module "@matechs/morphic-alg/primitives" {
-  interface NonEmptyArrayConfig<L, A> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-  interface ArrayConfig<L, A> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-  interface NullableConfig<L, A> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-  interface OptionalConfig<L, A> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-  interface EitherConfig<EE, EA, AE, AA> {
-    [FastCheckURI]: {
-      left: Arbitrary<EA>
-      right: Arbitrary<AA>
-    }
-  }
-  interface OptionConfig<L, A> {
-    [FastCheckURI]: {
-      arb: Arbitrary<A>
-    }
-  }
-}
-
 export const fcPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<FastCheckURI, Env> => ({
     _F: FastCheckURI,

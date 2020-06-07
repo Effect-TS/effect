@@ -1,6 +1,5 @@
 import { genericTuple } from "fast-check"
 
-import { IntersectionA } from "../../config"
 import { memo } from "../../utils"
 import { fcApplyConfig } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
@@ -11,14 +10,6 @@ import type {
   MatechsAlgebraIntersection1,
   IntersectionConfig
 } from "@matechs/morphic-alg/intersection"
-
-declare module "@matechs/morphic-alg/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
-    [FastCheckURI]: {
-      arbs: IntersectionA<A, FastCheckURI>
-    }
-  }
-}
 
 export const fcIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraIntersection1<FastCheckURI, Env> => ({

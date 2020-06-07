@@ -1,4 +1,4 @@
-import { constant, Arbitrary } from "fast-check"
+import { constant } from "fast-check"
 
 import { memo } from "../../utils"
 import { fcApplyConfig } from "../config"
@@ -10,14 +10,6 @@ import type {
   MatechsAlgebraRecursive1,
   RecursiveConfig
 } from "@matechs/morphic-alg/recursive"
-
-declare module "@matechs/morphic-alg/recursive" {
-  interface RecursiveConfig<L, A> {
-    [FastCheckURI]: {
-      getArb: () => Arbitrary<A>
-    }
-  }
-}
 
 export const fcRecursiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRecursive1<FastCheckURI, Env> => ({

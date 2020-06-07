@@ -1,6 +1,5 @@
 import { record } from "fast-check"
 
-import type { InterfaceA } from "../../config"
 import { memo, projectFieldWithEnv } from "../../utils"
 import { fcApplyConfig } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
@@ -8,25 +7,6 @@ import { FastCheckType, FastCheckURI } from "../hkt"
 import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraObject1 } from "@matechs/morphic-alg/object"
-
-declare module "@matechs/morphic-alg/object" {
-  interface InterfaceConfig<Props> {
-    [FastCheckURI]: {
-      arbs: InterfaceA<Props, FastCheckURI>
-    }
-  }
-  interface PartialConfig<Props> {
-    [FastCheckURI]: {
-      arbs: InterfaceA<Props, FastCheckURI>
-    }
-  }
-  interface BothConfig<Props, PropsPartial> {
-    [FastCheckURI]: {
-      arbs: InterfaceA<Props, FastCheckURI>
-      arbsPartial: InterfaceA<PropsPartial, FastCheckURI>
-    }
-  }
-}
 
 export const fcObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject1<FastCheckURI, Env> => ({

@@ -6,45 +6,41 @@ import type {
   SummonerProgURI
 } from "./batteries/usage/summoner"
 import { EqURI, modelEqInterpreter } from "./eq"
-import { FastCheckURI, modelFcInterpreter } from "./fc"
-import { ShowURI, modelShowInterpreter } from "./show"
+import { modelShowInterpreter, ShowURI } from "./show"
 
+export { ValidationErrors, validationErrors } from "./batteries/interpreter"
 export {
   AsOpaque as opaque,
   AsUOpaque as opaque_,
   M,
+  M_,
   Summoner,
-  summonFor as makeFor,
-  M_
+  summonFor as makeFor
 } from "./batteries/summoner"
-export { AType, EType, RType } from "./batteries/usage/utils"
+
+export { Errors, withFirstMessage, withMessage, withValidate } from "./model"
+
+export type { AType, EType, RType } from "./batteries/usage/utils"
+
 export { EqURI } from "./eq/hkt"
-export { ModelURI } from "./model/hkt"
 export { FastCheckURI } from "./fc/hkt"
+export { ModelURI } from "./model/hkt"
 export { ShowURI } from "./show/hkt"
 
-export const eqFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in EqURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
-
-export const arbFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in FastCheckURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
-
-export const showFor = <S extends Summoner<any>>(S: S) => (
-  _: { [k in ShowURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
-) => <L, A>(
-  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
-) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
-
-export { ValidationErrors, validationErrors } from "./batteries/interpreter"
-
-export { withFirstMessage, withMessage, withValidate, Errors } from "./model"
-
+//
+// Threading configs
+//
+export {} from "./fc/interpreter/configs"
+export {} from "./eq/interpreter/intersection"
+export {} from "./eq/interpreter/newtype"
+export {} from "./eq/interpreter/object"
+export {} from "./eq/interpreter/primitives"
+export {} from "./eq/interpreter/recursive"
+export {} from "./eq/interpreter/refined"
+export {} from "./eq/interpreter/set"
+export {} from "./eq/interpreter/str-map"
+export {} from "./eq/interpreter/tagged-union"
+export {} from "./eq/interpreter/unknown"
 export {} from "./model/interpreter/intersection"
 export {} from "./model/interpreter/newtype"
 export {} from "./model/interpreter/object"
@@ -55,7 +51,6 @@ export {} from "./model/interpreter/set"
 export {} from "./model/interpreter/str-map"
 export {} from "./model/interpreter/tagged-unions"
 export {} from "./model/interpreter/unknown"
-
 export {} from "./show/interpreter/intersection"
 export {} from "./show/interpreter/newtype"
 export {} from "./show/interpreter/object"
@@ -67,27 +62,21 @@ export {} from "./show/interpreter/str-map"
 export {} from "./show/interpreter/tagged-union"
 export {} from "./show/interpreter/unknown"
 
-export {} from "./eq/interpreter/intersection"
-export {} from "./eq/interpreter/newtype"
-export {} from "./eq/interpreter/object"
-export {} from "./eq/interpreter/primitives"
-export {} from "./eq/interpreter/recursive"
-export {} from "./eq/interpreter/refined"
-export {} from "./eq/interpreter/set"
-export {} from "./eq/interpreter/str-map"
-export {} from "./eq/interpreter/tagged-union"
-export {} from "./eq/interpreter/unknown"
+//
+// Derivation
+//
 
-export {} from "./fc/interpreter/intersection"
-export {} from "./fc/interpreter/newtype"
-export {} from "./fc/interpreter/object"
-export {} from "./fc/interpreter/primitives"
-export {} from "./fc/interpreter/recursive"
-export {} from "./fc/interpreter/refined"
-export {} from "./fc/interpreter/set"
-export {} from "./fc/interpreter/str-map"
-export {} from "./fc/interpreter/tagged-union"
-export {} from "./fc/interpreter/unknown"
+export const eqFor = <S extends Summoner<any>>(S: S) => (
+  _: { [k in EqURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
+) => <L, A>(
+  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+) => F.derive(modelEqInterpreter<SummonerEnv<S>>())(_).eq
+
+export const showFor = <S extends Summoner<any>>(S: S) => (
+  _: { [k in ShowURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
+) => <L, A>(
+  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
 
 //
 // Defaults
@@ -103,7 +92,3 @@ export const deriveEq =
 export const deriveShow =
   /*#__PURE__*/
   (() => showFor(make)({}))()
-
-export const deriveArb =
-  /*#__PURE__*/
-  (() => arbFor(make)({}))()
