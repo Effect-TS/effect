@@ -1,6 +1,6 @@
 {
   "name": "@matechs/logger",
-  "version": "7.3.0",
+  "version": "7.4.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -19,9 +19,9 @@
   "sideEffects": false,
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/test-jest": "^4.3.0"
+    "@matechs/test-jest": "^4.4.0"
   },
   "dependencies": {
-    "@matechs/core": "^2.3.0"
+    "@matechs/core": "^2.4.0"
   }
 }
