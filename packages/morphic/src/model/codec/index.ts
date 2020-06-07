@@ -8,8 +8,9 @@ import * as E from "@matechs/core/Either"
 import { Predicate, Refinement, identity } from "@matechs/core/Function"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import * as O from "@matechs/core/Option"
-import { Ord } from "@matechs/core/Ord"
+import type { Ord } from "@matechs/core/Ord"
 import * as S from "@matechs/core/Set"
+import type { UUID } from "@matechs/morphic-alg/primitives"
 
 export interface ContextEntry {
   readonly key: string
@@ -1795,3 +1796,11 @@ function getMessage(e: ValidationError): string {
 export function reportFailure(es: Array<ValidationError>): Array<string> {
   return es.map(getMessage)
 }
+
+const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export const uuid =
+  /*#__PURE__*/
+  (() => brand(string, (s): s is UUID => regex.test(s), "UUID"))()
+
+export type { UUID, Branded }

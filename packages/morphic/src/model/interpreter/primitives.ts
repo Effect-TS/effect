@@ -5,7 +5,7 @@ import { ModelType, ModelURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive2, UUID } from "@matechs/morphic-alg/primitives"
+import type { MatechsAlgebraPrimitive2 } from "@matechs/morphic-alg/primitives"
 
 declare module "@matechs/morphic-alg/primitives" {
   interface NonEmptyArrayConfig<L, A> {
@@ -35,8 +35,6 @@ declare module "@matechs/morphic-alg/primitives" {
     }
   }
 }
-
-const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
@@ -80,14 +78,7 @@ export const modelPrimitiveInterpreter = memo(
             modelApplyConfig(config)(M.nonEmptyArray(model), env, { model })
           )
       ),
-    uuid: (config) => (env) =>
-      new ModelType(
-        modelApplyConfig(config)(
-          M.brand(M.string, (s): s is UUID => regex.test(s), "UUID"),
-          env,
-          {}
-        )
-      ),
+    uuid: (config) => (env) => new ModelType(modelApplyConfig(config)(M.uuid, env, {})),
     either: (e, a, config) => (env) =>
       introduce(e(env).codec)((left) =>
         introduce(a(env).codec)(
