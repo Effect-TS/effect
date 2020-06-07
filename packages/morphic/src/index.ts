@@ -11,11 +11,11 @@ import { ShowURI, modelShowInterpreter } from "./show"
 
 export {
   AsOpaque as opaque,
-  AsUOpaque as opaqueU,
+  AsUOpaque as opaque_,
   M,
   Summoner,
   summonFor as makeFor,
-  UM
+  M_
 } from "./batteries/summoner"
 export { AType, EType, RType } from "./batteries/usage/utils"
 export { EqURI } from "./eq/hkt"
