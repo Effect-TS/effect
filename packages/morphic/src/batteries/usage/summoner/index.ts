@@ -37,9 +37,9 @@ export interface MakeSummonerResult<S extends Summoners<any, any, any>> {
 }
 
 export interface SummonerOps<S extends Summoners<any, any, any> = never> {
-  summon: S
-  tagged: TaggedBuilder<SummonerProgURI<S>, SummonerInterpURI<S>, SummonerEnv<S>>
-  define: Define<SummonerProgURI<S>, SummonerEnv<S>>
+  make: S
+  makeADT: TaggedBuilder<SummonerProgURI<S>, SummonerInterpURI<S>, SummonerEnv<S>>
+  makeProgram: Define<SummonerProgURI<S>, SummonerEnv<S>>
 }
 
 export function makeSummoner<S extends Summoners<any, any, any> = never>(
@@ -65,9 +65,9 @@ export function makeSummoner<S extends Summoners<any, any, any> = never>(
   const tagged: TaggedBuilder<PURI, InterpURI, SummonerEnv<S>> = makeTagged(summon)
   const define = defineFor<PURI>(undefined as PURI)<Env>()
   return {
-    summon,
-    tagged,
-    define
+    make: summon,
+    makeADT: tagged,
+    makeProgram: define
   }
 }
 

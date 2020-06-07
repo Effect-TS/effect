@@ -9,7 +9,14 @@ import { EqURI, modelEqInterpreter } from "./eq"
 import { FastCheckURI, modelFcInterpreter } from "./fc"
 import { ShowURI, modelShowInterpreter } from "./show"
 
-export { AsOpaque, AsUOpaque, M, Summoner, summonFor, UM } from "./batteries/summoner"
+export {
+  AsOpaque as opaque,
+  AsUOpaque as opaqueU,
+  M,
+  Summoner,
+  summonFor as makeFor,
+  UM
+} from "./batteries/summoner"
 export { AType, EType, RType } from "./batteries/usage/utils"
 export { EqURI } from "./eq/hkt"
 export { ModelURI } from "./model/hkt"
