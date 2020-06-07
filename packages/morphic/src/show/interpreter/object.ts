@@ -21,6 +21,12 @@ declare module "@matechs/morphic-alg/object" {
       show: InterfaceA<Props, S.URI>
     }
   }
+  interface BothConfig<Props, PropsPartial> {
+    [ShowURI]: {
+      show: InterfaceA<Props & PropsPartial, S.URI>
+      showPartial: InterfaceA<PropsPartial, S.URI>
+    }
+  }
 }
 
 export const showObjectInterpreter = memo(
@@ -38,11 +44,26 @@ export const showObjectInterpreter = memo(
       asPartial(
         new ShowType(
           introduce(projectFieldWithEnv(props, env)("show"))((show) =>
-            showApplyConfig(config)(S.getStructShow(show), env, {
+            showApplyConfig(config)(S.getStructShow(show) as any, env, {
               show: show as any
             })
           )
         )
-      )
+      ),
+    both: (props, partial, _name, config) => (env) =>
+      new ShowType(
+        introduce(projectFieldWithEnv(props, env)("show"))((show) =>
+          introduce(projectFieldWithEnv(partial, env)("show"))((showPartial) =>
+            showApplyConfig(config)(
+              S.getStructShow({ ...show, ...showPartial } as any),
+              env,
+              {
+                show: show as any,
+                showPartial: showPartial as any
+              }
+            )
+          )
+        )
+      ) as any
   })
 )

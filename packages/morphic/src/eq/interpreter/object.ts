@@ -21,6 +21,12 @@ declare module "@matechs/morphic-alg/object" {
       eq: InterfaceA<Props, E.URI>
     }
   }
+  interface BothConfig<Props, PropsPartial> {
+    [EqURI]: {
+      eq: InterfaceA<Props, E.URI>
+      eqPartial: InterfaceA<PropsPartial, E.URI>
+    }
+  }
 }
 
 export const eqObjectInterpreter = memo(
@@ -36,9 +42,20 @@ export const eqObjectInterpreter = memo(
       asPartial(
         new EqType(
           introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
-            eqApplyConfig(config)(E.getStructEq(eq), env, { eq: eq as any })
+            eqApplyConfig(config)(E.getStructEq(eq) as any, env, { eq: eq as any })
           )
         )
-      )
+      ),
+    both: (props, partial, _name, config) => (env) =>
+      new EqType(
+        introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
+          introduce(projectFieldWithEnv(partial, env)("eq"))((eqPartial) =>
+            eqApplyConfig(config)(E.getStructEq({ ...eq, ...eqPartial } as any), env, {
+              eq: eq as any,
+              eqPartial: eqPartial as any
+            })
+          )
+        )
+      ) as any
   })
 )
