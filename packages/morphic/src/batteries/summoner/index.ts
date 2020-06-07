@@ -52,15 +52,16 @@ export const summonFor: <R extends AnyEnv = {}>(
       build: (a) => a,
       decode: (i, s) => getCodec(s).decode(i),
       encode: (i, s) => getCodec(s).encode(i),
-      create: (a, s) => getCodec(s).decode(getCodec(s).encode(a)) as any,
+      create: (a, s) => getCodec(s).decode(getCodec("classic").encode(a)) as any,
       encodeT: (a, s) => T.sync(() => getCodec(s).encode(a)),
       decodeT: (i, s) =>
         T.mapLeft_(T.encaseEither(getCodec(s).decode(i)), (e) =>
           validationErrors(reportFailure(e))
         ),
       createT: (a, s) =>
-        T.mapLeft_(T.encaseEither(getCodec(s).decode(getCodec(s).encode(a))), (e) =>
-          validationErrors(reportFailure(e))
+        T.mapLeft_(
+          T.encaseEither(getCodec(s).decode(getCodec("classic").encode(a))),
+          (e) => validationErrors(reportFailure(e))
         ) as any
     }
   })
