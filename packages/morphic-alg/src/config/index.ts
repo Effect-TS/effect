@@ -11,7 +11,7 @@ export interface GenConfig<A, R, K> {
 export type NoEnv = unknown
 
 export type MapToGenConfig<R extends AnyEnv, T extends URISIndexedAny, K> = {
-  [k in URIS | URIS2]?: GenConfig<T[k], R[k], K[k]>
+  [k in URIS | URIS2]?: GenConfig<T[k], R[k], ThreadURI<K, k>>
 }
 
 export interface ConfigType<E, A> {
@@ -25,9 +25,15 @@ export type ConfigsForType<R extends AnyEnv, E, A, K = {}> = MapToGenConfig<
   K
 >
 
+export type ThreadURI<C, URI extends URIS | URIS2> = URI extends keyof C
+  ? C[URI]
+  : unknown
+
 export const getApplyConfig: <Uri extends URIS | URIS2>(
   uri: Uri
-) => <Config>(config?: Config) => NonNullable<Config[Uri]> = (uri) => (config) =>
+) => <Config>(config?: Config) => NonNullable<ThreadURI<Config, Uri>> = (uri) => (
+  config
+) =>
   ((a: any, r: any, k: any) =>
     ((config && config[uri] ? config[uri] : <A>(a: A) => a) as any)(
       a,

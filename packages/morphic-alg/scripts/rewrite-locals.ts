@@ -58,6 +58,7 @@ export const replace: Endomorphism<string> = (s) => {
         ),
         `@matechs/${p}`
       )
+      ns = ns.replace(new RegExp(`(\\.\\./)+${p}/build`, "gm"), `@matechs/${p}`)
     })
   )
 
