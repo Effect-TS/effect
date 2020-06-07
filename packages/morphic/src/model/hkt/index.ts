@@ -1,7 +1,4 @@
-import type { Errors, Codec } from "../codec"
-import type { Validated } from "../create"
-
-import { map_, Either } from "@matechs/core/Either"
+import type { Codec } from "../codec"
 
 export const ModelURI = "@matechs/morphic/ModelURI" as const
 
@@ -17,11 +14,8 @@ export class ModelType<O, A> {
   _A!: A
   _E!: O
   _URI!: ModelURI
-  create: (a: A) => Either<Errors, Validated<A>>
-  constructor(public codec: Codec<A, O>) {
-    this.create = (a) =>
-      map_(this.codec.decode(this.codec.encode(a)), (x: A) => x as Validated<A>)
-  }
+
+  constructor(public codec: Codec<A, O>) {}
 }
 
 declare module "@matechs/morphic-alg/utils/hkt" {

@@ -39,21 +39,24 @@ export const summonFor: <R extends AnyEnv = {}>(
   env: ExtractEnv<R, ModelURI>
 ) =>
   makeSummoner<Summoner<R>>(cacheUnaryFunction, (program) => {
-    const { codec, create } = program(modelNonStrictInterpreter<NonNullable<R>>())(env)
+    const { codec } = program(modelNonStrictInterpreter<NonNullable<R>>())(env)
     const strict = program(modelStrictInterpreter<NonNullable<R>>())(env).codec
+
+    const getCodec = (s?: "strict" | "classic") => (s === "strict" ? strict : codec)
 
     return {
       build: (a) => a,
-      decode: (i, s) => (s === "strict" ? strict.decode(i) : codec.decode(i)),
-      encode: codec.encode,
-      create,
-      encodeT: (a) => T.sync(() => codec.encode(a)),
+      decode: (i, s) => getCodec(s).decode(i),
+      encode: (i, s) => getCodec(s).encode(i),
+      create: (a, s) => getCodec(s).decode(getCodec(s).encode(a)) as any,
+      encodeT: (a, s) => T.sync(() => getCodec(s).encode(a)),
       decodeT: (i, s) =>
-        T.mapLeft_(
-          T.encaseEither(s === "strict" ? strict.decode(i) : codec.decode(i)),
-          (e) => validationErrors(reportFailure(e))
+        T.mapLeft_(T.encaseEither(getCodec(s).decode(i)), (e) =>
+          validationErrors(reportFailure(e))
         ),
-      createT: (i) =>
-        T.mapLeft_(T.encaseEither(create(i)), (e) => validationErrors(reportFailure(e)))
+      createT: (a, s) =>
+        T.mapLeft_(T.encaseEither(getCodec(s).decode(getCodec(s).encode(a))), (e) =>
+          validationErrors(reportFailure(e))
+        ) as any
     }
   })
