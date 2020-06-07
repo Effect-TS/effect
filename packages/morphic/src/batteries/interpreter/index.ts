@@ -23,13 +23,16 @@ interface Interpreter<E, A> {
   // dumb constructor
   build: (a: A) => A
   // classic
-  create: (a: A) => Either<Errors, Validated<A>>
-  encode: (a: A) => E
+  create: (a: A, strict?: "strict" | "classic") => Either<Errors, Validated<A>>
+  encode: (a: A, strict?: "strict" | "classic") => E
   decode: (i: unknown, strict?: "strict" | "classic") => Either<Errors, A>
   // monadic
-  encodeT: (a: A) => T.Sync<E>
+  encodeT: (a: A, strict?: "strict" | "classic") => T.Sync<E>
   decodeT: (i: unknown, strict?: "strict" | "classic") => T.SyncE<ValidationErrors, A>
-  createT: (a: A) => T.SyncE<ValidationErrors, Validated<A>>
+  createT: (
+    a: A,
+    strict?: "strict" | "classic"
+  ) => T.SyncE<ValidationErrors, Validated<A>>
 }
 
 declare module "../usage/interpreter-result" {
