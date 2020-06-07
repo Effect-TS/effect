@@ -5,8 +5,9 @@
 import * as A from "@matechs/core/Array"
 import type { Branded } from "@matechs/core/Branded"
 import * as E from "@matechs/core/Either"
-import { Predicate, Refinement, identity } from "@matechs/core/Function"
-import { Iso } from "@matechs/core/Monocle/Iso"
+import { Predicate, Refinement, identity, introduce } from "@matechs/core/Function"
+import type { Iso } from "@matechs/core/Monocle/Iso"
+import type { Prism } from "@matechs/core/Monocle/Prism"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import * as O from "@matechs/core/Option"
 import type { Ord } from "@matechs/core/Ord"
@@ -1152,6 +1153,23 @@ export function iso<A, O, B>(
   return new Codec(
     name,
     (u, c) => E.map_(codec.validate(u, c), iso.get),
+    (a) => codec.encode(iso.reverseGet(a))
+  )
+}
+
+export function prism<A, O, B>(
+  codec: Codec<A, O>,
+  iso: Prism<A, B>,
+  name = `prism(${codec.name})`
+): Codec<B, O> {
+  return new Codec(
+    name,
+    (u, c) =>
+      E.chain_(codec.validate(u, c), (x) =>
+        introduce(iso.getOption(x))((ob) =>
+          ob._tag === "None" ? failure(u, c) : success(ob.value)
+        )
+      ),
     (a) => codec.encode(iso.reverseGet(a))
   )
 }
