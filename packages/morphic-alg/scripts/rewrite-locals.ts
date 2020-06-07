@@ -41,6 +41,7 @@ const packages = [
   "logger-pino",
   "logger-winston",
   "logger",
+  "morphic-alg",
   "morphic"
 ]
 
