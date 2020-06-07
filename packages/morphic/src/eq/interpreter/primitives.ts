@@ -28,6 +28,11 @@ declare module "@matechs/morphic-alg/primitives" {
       eq: Eq<A>
     }
   }
+  interface OptionalConfig<L, A> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
   interface EitherConfig<EE, EA, AE, AA> {
     [EqURI]: {
       left: Eq<EA>
@@ -60,6 +65,26 @@ export const eqPrimitiveInterpreter = memo(
     nullable: (getType, config) => (env) =>
       introduce(getType(env).eq)(
         (eq) => new EqType(eqApplyConfig(config)(OgetEq(eq), env, { eq }))
+      ),
+    optional: (getType, config) => (env) =>
+      introduce(getType(env).eq)(
+        (eq) =>
+          new EqType(
+            eqApplyConfig(config)(
+              {
+                equals: (x, y) =>
+                  typeof x === "undefined" && typeof y === "undefined"
+                    ? true
+                    : typeof x === "undefined"
+                    ? false
+                    : typeof y === "undefined"
+                    ? false
+                    : eq.equals(x, y)
+              },
+              env,
+              { eq }
+            )
+          )
       ),
     array: (getType, config) => (env) =>
       introduce(getType(env).eq)(

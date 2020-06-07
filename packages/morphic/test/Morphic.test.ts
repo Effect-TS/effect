@@ -240,6 +240,16 @@ const strIso = I.create(
 
 const StrAsArray = make((F) => F.iso(F.string(), strIso, "StrAsArray"))
 
+const UsingOptional = make((F) =>
+  F.interface(
+    {
+      foo: F.optional(F.string()),
+      bar: F.string()
+    },
+    "UsingOptional"
+  )
+)
+
 describe("Morphic", () => {
   it("should use model interpreter", () => {
     const result_0 = Person.decodeT({
@@ -476,5 +486,18 @@ describe("Morphic", () => {
     expect(result).toStrictEqual(E.right(["h", "e", "l", "l", "o"]))
 
     expect(StrAsArray.encode(["h", "e", "l", "l", "o"])).toStrictEqual("hello")
+  })
+
+  it("using optional", () => {
+    const opt = UsingOptional.decode({
+      foo: "ok",
+      bar: "bar"
+    })
+    const opt2 = UsingOptional.decode({
+      bar: "bar"
+    })
+
+    expect(opt).toStrictEqual(E.right({ foo: "ok", bar: "bar" }))
+    expect(opt2).toStrictEqual(E.right({ foo: undefined, bar: "bar" }))
   })
 })

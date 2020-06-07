@@ -23,6 +23,11 @@ declare module "@matechs/morphic-alg/primitives" {
       model: M.Codec<A, L>
     }
   }
+  interface OptionalConfig<L, A> {
+    [ModelURI]: {
+      model: M.Codec<A, L>
+    }
+  }
   interface EitherConfig<EE, EA, AE, AA> {
     [ModelURI]: {
       left: M.Codec<EA, EE>
@@ -64,6 +69,15 @@ export const modelPrimitiveInterpreter = memo(
         (model) =>
           new ModelType(
             modelApplyConfig(config)(M.optionFromNullable(model), env, { model })
+          )
+      ),
+    optional: (T, config) => (env) =>
+      introduce(T(env).codec)(
+        (model) =>
+          new ModelType(
+            modelApplyConfig(config)(M.nonRequired(model), env, {
+              model
+            })
           )
       ),
     array: (T, config) => (env) =>

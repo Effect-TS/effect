@@ -35,6 +35,7 @@ declare module "../utils/hkt" {
 export interface NonEmptyArrayConfig<L, A> {}
 export interface ArrayConfig<L, A> {}
 export interface NullableConfig<L, A> {}
+export interface OptionalConfig<L, A> {}
 export interface StringLiteralConfig<T> {}
 export interface KeysOfConfig<K> {}
 export interface EitherConfig<EE, EA, AE, AA> {}
@@ -53,6 +54,12 @@ export interface MatechsAlgebraPrimitive<F, Env> {
       T: HKT2<F, Env, L, A>,
       config?: ConfigsForType<Env, L | null, Option<A>, NullableConfig<L, A>>
     ): HKT2<F, Env, null | L, Option<A>>
+  }
+  optional: {
+    <L, A>(
+      T: HKT2<F, Env, L, A>,
+      config?: ConfigsForType<Env, L | undefined, A | undefined, OptionalConfig<L, A>>
+    ): HKT2<F, Env, L | undefined, A | undefined>
   }
   boolean: {
     (config?: ConfigsForType<Env, boolean, boolean, BooleanConfig>): HKT2<
@@ -147,6 +154,17 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
     T: Kind<F, Env, A>,
     config?: ConfigsForType<Env, null | A, Option<A>, NullableConfig<unknown, A>>
   ) => Kind<F, Env, Option<A>>
+  optional: {
+    <A>(
+      T: Kind<F, Env, A>,
+      config?: ConfigsForType<
+        Env,
+        unknown | undefined,
+        A | undefined,
+        OptionalConfig<unknown, A>
+      >
+    ): Kind<F, Env, A | undefined>
+  }
   boolean(
     config?: ConfigsForType<Env, boolean, boolean, BooleanConfig>
   ): Kind<F, Env, boolean>
@@ -206,6 +224,12 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
     T: Kind2<F, Env, L, A>,
     config?: ConfigsForType<Env, null | L, Option<A>, NullableConfig<L, A>>
   ) => Kind2<F, Env, null | L, Option<A>>
+  optional: {
+    <L, A>(
+      T: Kind2<F, Env, L, A>,
+      config?: ConfigsForType<Env, L | undefined, A | undefined, OptionalConfig<L, A>>
+    ): Kind2<F, Env, L | undefined, A | undefined>
+  }
   boolean(
     config?: ConfigsForType<Env, boolean, boolean>
   ): Kind2<F, Env, boolean, boolean>
