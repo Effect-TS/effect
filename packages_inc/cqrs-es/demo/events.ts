@@ -1,8 +1,8 @@
 import * as M from "@matechs/morphic"
 
-const { summon, tagged } = M.summonFor<{}>({})
+const { make, makeADT } = M.makeFor({})
 
-const TodoAdded_ = summon((F) =>
+const TodoAdded_ = make((F) =>
   F.interface(
     {
       type: F.stringLiteral("TodoAdded"),
@@ -13,12 +13,11 @@ const TodoAdded_ = summon((F) =>
   )
 )
 
-export interface TodoAddedRaw extends M.EType<typeof TodoAdded_> {}
 export interface TodoAdded extends M.AType<typeof TodoAdded_> {}
 
-const TodoAdded = M.AsOpaque<TodoAddedRaw, TodoAdded>()(TodoAdded_)
+const TodoAdded = M.opaque_<TodoAdded>()(TodoAdded_)
 
-const TodoRemoved_ = summon((F) =>
+const TodoRemoved_ = make((F) =>
   F.interface(
     {
       type: F.stringLiteral("TodoRemoved"),
@@ -28,10 +27,9 @@ const TodoRemoved_ = summon((F) =>
   )
 )
 
-export interface TodoRemovedRaw extends M.EType<typeof TodoRemoved_> {}
 export interface TodoRemoved extends M.AType<typeof TodoRemoved_> {}
 
-const TodoRemoved = M.AsOpaque<TodoRemovedRaw, TodoRemoved>()(TodoRemoved_)
+const TodoRemoved = M.opaque_<TodoRemoved>()(TodoRemoved_)
 
 // define all events in your domain
-export const DomainEvent = tagged("type")({ TodoAdded, TodoRemoved })
+export const DomainEvent = makeADT("type")({ TodoAdded, TodoRemoved })
