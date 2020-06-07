@@ -1,10 +1,10 @@
 import type { InterfaceLA } from "../../config"
 import { projectFieldWithEnv, memo } from "../../utils"
+import * as M from "../codec"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
-import * as M from "@matechs/core/Model"
 import type { ConfigsForType, AnyEnv } from "@matechs/morphic-alg/config"
 import type {
   MatechsAlgebraObject2,
@@ -39,7 +39,7 @@ export const modelNonStrictObjectInterpreter = memo(
         InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      introduce(projectFieldWithEnv(props, env)("type"))(
+      introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<PropsE, PropsA>(
             modelApplyConfig(config)(M.type(model, name) as any, env, {
@@ -57,7 +57,7 @@ export const modelNonStrictObjectInterpreter = memo(
         PartialConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      introduce(projectFieldWithEnv(props, env)("type"))(
+      introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<Partial<PropsE>, Partial<PropsA>>(
             modelApplyConfig(config)(M.partial(model, name) as any, env, {
@@ -81,7 +81,7 @@ export const modelStrictObjectInterpreter = memo(
         InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      introduce(projectFieldWithEnv(props, env)("type"))(
+      introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<PropsE, PropsA>(
             modelApplyConfig(config)(M.strict(model, name) as any, env, {
@@ -99,7 +99,7 @@ export const modelStrictObjectInterpreter = memo(
         InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
       >
     ) => (env: Env) =>
-      introduce(projectFieldWithEnv(props, env)("type"))(
+      introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<Partial<PropsE>, Partial<PropsA>>(
             modelApplyConfig(config)(M.exact(M.partial(model, name)) as any, env, {

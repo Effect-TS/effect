@@ -14,14 +14,10 @@ const ES6_GLOB_PATTERN = "build/esm/**/*.@(ts|js)"
 
 const packages = [
   "fp-ts",
-  "monocle-ts",
-  "io-ts",
-  "io-ts-types",
   "elm-ts",
   "fp-ts-contrib",
   "fp-ts-rxjs",
   "fp-ts-routing",
-  "newtype-ts",
   "fp-ts-fluture",
   "parser-ts",
   "retry-ts",

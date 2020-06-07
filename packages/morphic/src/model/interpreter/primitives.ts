@@ -1,40 +1,42 @@
 import { memo } from "../../utils"
+import * as M from "../codec"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
-import * as M from "@matechs/core/Model"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive2 } from "@matechs/morphic-alg/primitives"
+import type { MatechsAlgebraPrimitive2, UUID } from "@matechs/morphic-alg/primitives"
 
 declare module "@matechs/morphic-alg/primitives" {
   interface NonEmptyArrayConfig<L, A> {
     [ModelURI]: {
-      model: M.Type<A, L>
+      model: M.Codec<A, L>
     }
   }
   interface ArrayConfig<L, A> {
     [ModelURI]: {
-      model: M.Type<A, L>
+      model: M.Codec<A, L>
     }
   }
   interface NullableConfig<L, A> {
     [ModelURI]: {
-      model: M.Type<A, L>
+      model: M.Codec<A, L>
     }
   }
   interface EitherConfig<EE, EA, AE, AA> {
     [ModelURI]: {
-      left: M.Type<EA, EE>
-      right: M.Type<AA, AE>
+      left: M.Codec<EA, EE>
+      right: M.Codec<AA, AE>
     }
   }
   interface OptionConfig<L, A> {
     [ModelURI]: {
-      model: M.Type<A, L>
+      model: M.Codec<A, L>
     }
   }
 }
+
+const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
@@ -54,34 +56,41 @@ export const modelPrimitiveInterpreter = memo(
     keysOf: (k, config) => (env) =>
       new ModelType(
         modelApplyConfig(config)(
-          M.keyof(k) as M.Type<keyof typeof k & string, string, unknown>,
+          M.keyof(k) as M.Codec<keyof typeof k & string, string>,
           env,
           {}
         )
       ),
     nullable: (T, config) => (env) =>
-      introduce(T(env).type)(
+      introduce(T(env).codec)(
         (model) =>
           new ModelType(
             modelApplyConfig(config)(M.optionFromNullable(model), env, { model })
           )
       ),
     array: (T, config) => (env) =>
-      introduce(T(env).type)(
+      introduce(T(env).codec)(
         (model) =>
           new ModelType(modelApplyConfig(config)(M.array(model), env, { model }))
       ),
     nonEmptyArray: (T, config) => (env) =>
-      introduce(T(env).type)(
+      introduce(T(env).codec)(
         (model) =>
           new ModelType(
             modelApplyConfig(config)(M.nonEmptyArray(model), env, { model })
           )
       ),
-    uuid: (config) => (env) => new ModelType(modelApplyConfig(config)(M.UUID, env, {})),
+    uuid: (config) => (env) =>
+      new ModelType(
+        modelApplyConfig(config)(
+          M.brand(M.string, (s): s is UUID => regex.test(s), "UUID"),
+          env,
+          {}
+        )
+      ),
     either: (e, a, config) => (env) =>
-      introduce(e(env).type)((left) =>
-        introduce(a(env).type)(
+      introduce(e(env).codec)((left) =>
+        introduce(a(env).codec)(
           (right) =>
             new ModelType(
               modelApplyConfig(config)(M.either(left, right), env, { left, right })
@@ -89,7 +98,7 @@ export const modelPrimitiveInterpreter = memo(
         )
       ),
     option: (a, config) => (env) =>
-      introduce(a(env).type)(
+      introduce(a(env).codec)(
         (model) =>
           new ModelType(modelApplyConfig(config)(M.option(model), env, { model }))
       )

@@ -1,8 +1,9 @@
-import { Create, Validated } from "../../model/create"
+import { Errors } from "../../model/codec"
+import { Validated } from "../../model/create"
 
 import { Array } from "@matechs/core/Array"
 import type * as T from "@matechs/core/Effect"
-import { Type } from "@matechs/core/Model"
+import { Either } from "@matechs/core/Either"
 
 export const InterpreterURI = "@matechs/morphic/InterpreterURI" as const
 
@@ -19,12 +20,16 @@ export const validationErrors = (errors: Array<string>): ValidationErrors => ({
 })
 
 interface Interpreter<E, A> {
+  // dumb constructor
   build: (a: A) => A
-  type: Type<A, E, unknown>
-  create: Create<A>
-  encode: (a: A) => T.Sync<E>
-  decode: (i: unknown) => T.SyncE<ValidationErrors, A>
-  validate: (a: A) => T.SyncE<ValidationErrors, Validated<A>>
+  // classic
+  create: (a: A) => Either<Errors, Validated<A>>
+  encode: (a: A) => E
+  decode: (i: unknown, strict?: "strict" | "classic") => Either<Errors, A>
+  // monadic
+  encodeT: (a: A) => T.Sync<E>
+  decodeT: (i: unknown, strict?: "strict" | "classic") => T.SyncE<ValidationErrors, A>
+  createT: (a: A) => T.SyncE<ValidationErrors, Validated<A>>
 }
 
 declare module "../usage/interpreter-result" {

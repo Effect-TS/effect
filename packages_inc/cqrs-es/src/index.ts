@@ -56,7 +56,7 @@ export const aggregate = <
     ) => T.Effect<S2, R2, E2, void>
   ) =>
     readEvents(readId)(`$ce-${agg.aggregate}`)(
-      T.liftEither((x) => agg.adt.type.decode(x))
+      T.liftEither((x) => agg.adt.decode(x))
     )((a) =>
       pipe(adaptMeta(a), (meta) =>
         O.isSome(meta)

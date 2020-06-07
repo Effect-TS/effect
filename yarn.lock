@@ -7415,16 +7415,6 @@ invariant@^2.2.2, invariant@^2.2.4:
   dependencies:
     loose-envify "^1.0.0"
 
-io-ts-types@^0.5.6:
-  version "0.5.7"
-  resolved "https://registry.yarnpkg.com/io-ts-types/-/io-ts-types-0.5.7.tgz#adf5621f5c1dabfa99f7a52c6424ff4ae4faebd5"
-  integrity sha512-3AN63MewxiYhJeQ+/RirPMbAM3DBn2tv2VOCHG2dc1DZOzM2JmH87TxJukfIbWICcJ0aYvncz0nAV7jverCkcQ==
-
-io-ts@2.2.4, io-ts@^2.2.4:
-  version "2.2.4"
-  resolved "https://registry.yarnpkg.com/io-ts/-/io-ts-2.2.4.tgz#c9b5390b8c60b9976ad03f670a6b976fe50d4083"
-  integrity sha512-a8A/3jekTgSPfQ+OG40sTiX2gohXZz89X1+TfKsWJ/vpA2dBilBkrGYPiDE8OaKMMG7xm5ma3SAZL5eNr4Bi2w==
-
 ip-regex@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/ip-regex/-/ip-regex-2.1.0.tgz#fa78bf5d2e6913c911ce9f819ee5146bb6d844e9"
@@ -9219,11 +9209,6 @@ module-lookup-amd@^6.1.0:
     requirejs "^2.3.5"
     requirejs-config-file "^3.1.1"
 
-monocle-ts@^2.0.1:
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/monocle-ts/-/monocle-ts-2.2.0.tgz#0837e9ab882e89ebf8fc2dd2514ec97c07baa0fa"
-  integrity sha512-ilfckgLMtfg+5ExxzdQxuEB2o7HcZjuevBkxwZ78d8p4Yo6QPwd8MRAfEgFXYBSyALgPV93RmRV7eHCfVP8jYw==
-
 move-concurrently@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/move-concurrently/-/move-concurrently-1.0.1.tgz#be2c005fda32e0b29af1f05d7c4b33214c701f92"
@@ -9342,11 +9327,6 @@ neo-async@2.6.1, neo-async@^2.5.0, neo-async@^2.6.0, neo-async@^2.6.1:
   version "2.6.1"
   resolved "https://registry.yarnpkg.com/neo-async/-/neo-async-2.6.1.tgz#ac27ada66167fa8849a6addd837f6b189ad2081c"
   integrity sha512-iyam8fBuCUpWeKPGpaNMetEocMt364qkCsfL9JuhjXX6dRnguRVOfk2GZaDpPjcOKiiXCPINZC1GczQ7iTq3Zw==
-
-newtype-ts@^0.3.4:
-  version "0.3.4"
-  resolved "https://registry.yarnpkg.com/newtype-ts/-/newtype-ts-0.3.4.tgz#65c74b7d5195edaa9abfcdba6549a33a5c0e298d"
-  integrity sha512-lFJnWAt0oXX1j1ErNy9RU5+FPNtVyzugHW2MchaaMiOeeS9LEmqAAOqyHPFQ0Uw895jStSYGSCslrByzYxFJYQ==
 
 next-tick@~1.0.0:
   version "1.0.0"

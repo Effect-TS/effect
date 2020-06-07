@@ -29,6 +29,7 @@ const modules: string[] = [
   "model/hkt",
   "model/config",
   "model/create",
+  "model/codec",
   "eq",
   "eq/interpreter",
   "eq/hkt",
