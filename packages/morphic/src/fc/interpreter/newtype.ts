@@ -5,6 +5,7 @@ import { fcApplyConfig } from "../config"
 import { FastCheckURI, FastCheckType } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
+import type { Some } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
 
@@ -41,6 +42,19 @@ export const fcNewtypeInterpreter = memo(
       introduce(getArb(env).arb)(
         (arb) =>
           new FastCheckType(fcApplyConfig(config)(arb.map(iso.get), env, { arb }))
+      ),
+    prism: (getArb, prism, _name, config) => (env) =>
+      introduce(getArb(env).arb)(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config)(
+              arb
+                .filter((a) => prism.getOption(a)._tag === "Some")
+                .map((a) => (prism.getOption(a) as Some<any>).value),
+              env,
+              { arb }
+            )
+          )
       )
   })
 )

@@ -23,6 +23,11 @@ declare module "@matechs/morphic-alg/newtype" {
       eq: Eq<A>
     }
   }
+  interface PrismConfig<L, A, N> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
 }
 
 export const eqNewtypeInterpreter = memo(
@@ -43,6 +48,19 @@ export const eqNewtypeInterpreter = memo(
             eqApplyConfig(config)(
               {
                 equals: (x, y) => eq.equals(iso.reverseGet(x), iso.reverseGet(y))
+              },
+              env,
+              { eq }
+            )
+          )
+      ),
+    prism: (getEq, prism, _name, config) => (env) =>
+      introduce(getEq(env).eq)(
+        (eq) =>
+          new EqType(
+            eqApplyConfig(config)(
+              {
+                equals: (x, y) => eq.equals(prism.reverseGet(x), prism.reverseGet(y))
               },
               env,
               { eq }

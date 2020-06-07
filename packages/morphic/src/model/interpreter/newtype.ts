@@ -23,6 +23,11 @@ declare module "@matechs/morphic-alg/newtype" {
       model: M.Codec<A, L>
     }
   }
+  interface PrismConfig<L, A, N> {
+    [ModelURI]: {
+      model: M.Codec<A, L>
+    }
+  }
 }
 
 export const modelNewtypeInterpreter = memo(
@@ -51,6 +56,15 @@ export const modelNewtypeInterpreter = memo(
         (model) =>
           new ModelType(
             modelApplyConfig(config)(M.iso(model, iso, name), env, {
+              model
+            })
+          )
+      ),
+    prism: (a, prism, name, config) => (env) =>
+      introduce(a(env).codec)(
+        (model) =>
+          new ModelType(
+            modelApplyConfig(config)(M.prism(model, prism, name), env, {
               model
             })
           )

@@ -25,6 +25,11 @@ declare module "@matechs/morphic-alg/newtype" {
       show: Show<A>
     }
   }
+  interface PrismConfig<L, A, N> {
+    [ShowURI]: {
+      show: Show<A>
+    }
+  }
 }
 
 export const showNewtypeInterpreter = memo(
@@ -64,6 +69,19 @@ export const showNewtypeInterpreter = memo(
           new ShowType(
             showApplyConfig(config)(
               { show: (x) => `<${name}>(${show.show(iso.reverseGet(x))})` },
+              env,
+              {
+                show
+              }
+            )
+          )
+      ),
+    prism: (a, prism, name, config) => (env) =>
+      introduce(a(env).show)(
+        (show) =>
+          new ShowType(
+            showApplyConfig(config)(
+              { show: (x) => `<${name}>(${show.show(prism.reverseGet(x))})` },
               env,
               {
                 show
