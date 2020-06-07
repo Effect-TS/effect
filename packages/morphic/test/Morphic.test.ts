@@ -12,6 +12,7 @@ import { flow, constant } from "@matechs/core/Function"
 import * as Index from "@matechs/core/Monocle/Index"
 import * as I from "@matechs/core/Monocle/Iso"
 import * as Lens from "@matechs/core/Monocle/Lens"
+import * as P from "@matechs/core/Monocle/Prism"
 import * as NT from "@matechs/core/Newtype"
 import * as O from "@matechs/core/Option"
 
@@ -238,7 +239,13 @@ const strIso = I.create(
   (a) => a.join("")
 )
 
+const nonEmptyStrPrism = P.create(
+  (s: string) => (s.length > 0 ? O.some(s) : O.none),
+  (s) => s
+)
+
 const StrAsArray = make((F) => F.iso(F.string(), strIso, "StrAsArray"))
+const NonEmptyStr = make((F) => F.prism(F.string(), nonEmptyStrPrism, "NonEmptyStr"))
 
 const UsingOptional = make((F) =>
   F.interface(
@@ -524,5 +531,13 @@ describe("Morphic", () => {
 
     expect(opt).toStrictEqual(E.right({ foo: "ok", bar: "bar" }))
     expect(opt2).toStrictEqual(E.right({ bar: "bar" }))
+  })
+
+  it("use prism", () => {
+    const fail = NonEmptyStr.decode("")
+    const succeed = NonEmptyStr.decode("ok")
+
+    expect(E.isLeft(fail)).toStrictEqual(true)
+    expect(E.isRight(succeed)).toStrictEqual(true)
   })
 })
