@@ -1,5 +1,5 @@
 import { InterfaceA } from "../../config"
-import { projectFieldWithEnv, memo } from "../../utils"
+import { projectFieldWithEnv, memo, mapRecord } from "../../utils"
 import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
@@ -29,6 +29,17 @@ declare module "@matechs/morphic-alg/object" {
   }
 }
 
+export const eqOrUndefined = <A>(eq: E.Eq<A>): E.Eq<A | undefined> => ({
+  equals: (x, y) =>
+    typeof x === "undefined" && typeof y === "undefined"
+      ? true
+      : typeof x === "undefined"
+      ? false
+      : typeof y === "undefined"
+      ? false
+      : eq.equals(x, y)
+})
+
 export const eqObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject1<EqURI, Env> => ({
     _F: EqURI,
@@ -42,7 +53,11 @@ export const eqObjectInterpreter = memo(
       asPartial(
         new EqType(
           introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
-            eqApplyConfig(config)(E.getStructEq(eq) as any, env, { eq: eq as any })
+            eqApplyConfig(config)(
+              E.getStructEq(mapRecord(eq, eqOrUndefined)) as any,
+              env,
+              { eq: eq as any }
+            )
           )
         )
       ),
@@ -50,10 +65,14 @@ export const eqObjectInterpreter = memo(
       new EqType(
         introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
           introduce(projectFieldWithEnv(partial, env)("eq"))((eqPartial) =>
-            eqApplyConfig(config)(E.getStructEq({ ...eq, ...eqPartial } as any), env, {
-              eq: eq as any,
-              eqPartial: eqPartial as any
-            })
+            eqApplyConfig(config)(
+              E.getStructEq({ ...eq, ...mapRecord(eqPartial, eqOrUndefined) } as any),
+              env,
+              {
+                eq: eq as any,
+                eqPartial: eqPartial as any
+              }
+            )
           )
         )
       ) as any
