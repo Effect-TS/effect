@@ -15,11 +15,11 @@ import * as Lens from "@matechs/core/Monocle/Lens"
 import * as NT from "@matechs/core/Newtype"
 import * as O from "@matechs/core/Option"
 
-const { summon, tagged } = M.summonFor({})
+const { make, makeADT } = M.makeFor({})
 
-const deriveEq = M.eqFor(summon)({})
-const deriveArb = M.arbFor(summon)({})
-const deriveShow = M.showFor(summon)({})
+const deriveEq = M.eqFor(make)({})
+const deriveArb = M.arbFor(make)({})
+const deriveShow = M.showFor(make)({})
 
 export function maxLength(length: number) {
   return (codec: Model.Codec<string>) =>
@@ -40,7 +40,7 @@ interface Address
 
 const AddressISO = NT.iso<Address>()
 
-const Address = summon((F) =>
+const Address = make((F) =>
   F.newtype<Address>("Address")(
     F.string({
       [M.ModelURI]: flow(
@@ -57,7 +57,7 @@ const Address = summon((F) =>
   )
 )
 
-const Person_ = summon((F) =>
+const Person_ = make((F) =>
   F.interface(
     {
       name: F.string(),
@@ -83,9 +83,9 @@ const Person_ = summon((F) =>
 interface Person extends M.AType<typeof Person_> {}
 interface PersonE extends M.EType<typeof Person_> {}
 
-const Person = M.AsOpaque<PersonE, Person>()(Person_)
+const Person = M.opaque<PersonE, Person>()(Person_)
 
-const Age_ = summon((F) =>
+const Age_ = make((F) =>
   F.interface(
     {
       age: F.number()
@@ -97,13 +97,13 @@ const Age_ = summon((F) =>
 interface Age extends M.AType<typeof Age_> {}
 interface AgeE extends M.EType<typeof Age_> {}
 
-const Age = M.AsOpaque<AgeE, Age>()(Age_)
+const Age = M.opaque<AgeE, Age>()(Age_)
 
 const PersonEQ = deriveEq(Person)
 const PersonArb = deriveArb(Person)
 const PersonShow = deriveShow(Person)
 
-const PersonWithAge_ = summon((F) =>
+const PersonWithAge_ = make((F) =>
   F.intersection([Person(F), Age(F)], "PersonWithAge", {
     [M.ShowURI]: (_s, _e, _c) => ({
       show: (pe) =>
@@ -117,9 +117,9 @@ const PersonWithAge_ = summon((F) =>
 interface PersonWithAge extends M.AType<typeof PersonWithAge_> {}
 interface PersonWithAgeE extends M.EType<typeof PersonWithAge_> {}
 
-const PersonWithAge = M.AsOpaque<PersonWithAgeE, PersonWithAge>()(PersonWithAge_)
+const PersonWithAge = M.opaque<PersonWithAgeE, PersonWithAge>()(PersonWithAge_)
 
-const Tagged = summon((F) =>
+const Tagged = make((F) =>
   F.taggedUnion(
     "_tag",
     {
@@ -155,9 +155,9 @@ const Tagged = summon((F) =>
   )
 )
 
-const TaggedADT = tagged("_tag")(
+const TaggedADT = makeADT("_tag")(
   {
-    left: summon((F) =>
+    left: make((F) =>
       F.interface(
         {
           _tag: F.stringLiteral("left"),
@@ -171,7 +171,7 @@ const TaggedADT = tagged("_tag")(
         }
       )
     ),
-    right: summon((F) =>
+    right: make((F) =>
       F.interface(
         {
           _tag: F.stringLiteral("right"),
@@ -219,7 +219,7 @@ interface Rec {
   readonly next: O.Option<Rec>
 }
 
-const Rec = summon((F) =>
+const Rec = make((F) =>
   F.recursive<RecE, Rec>(
     (_) =>
       F.interface(
