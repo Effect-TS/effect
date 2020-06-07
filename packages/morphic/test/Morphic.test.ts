@@ -86,7 +86,7 @@ interface PersonE extends M.EType<typeof Person_> {}
 const Person = M.opaque<PersonE, Person>()(Person_)
 
 const Age_ = make((F) =>
-  F.interface(
+  F.partial(
     {
       age: F.number()
     },
@@ -247,6 +247,18 @@ const UsingOptional = make((F) =>
       bar: F.string()
     },
     "UsingOptional"
+  )
+)
+
+const UsingBoth = make((F) =>
+  F.both(
+    {
+      bar: F.string()
+    },
+    {
+      foo: F.string()
+    },
+    "UsingBoth"
   )
 )
 
@@ -499,5 +511,18 @@ describe("Morphic", () => {
 
     expect(opt).toStrictEqual(E.right({ foo: "ok", bar: "bar" }))
     expect(opt2).toStrictEqual(E.right({ foo: undefined, bar: "bar" }))
+  })
+
+  it("using both", () => {
+    const opt = UsingBoth.decode({
+      foo: "ok",
+      bar: "bar"
+    })
+    const opt2 = UsingBoth.decode({
+      bar: "bar"
+    })
+
+    expect(opt).toStrictEqual(E.right({ foo: "ok", bar: "bar" }))
+    expect(opt2).toStrictEqual(E.right({ bar: "bar" }))
   })
 })

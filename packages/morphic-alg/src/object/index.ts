@@ -21,6 +21,7 @@ declare module "../utils/hkt" {
 
 export interface InterfaceConfig<Props> {}
 export interface PartialConfig<Props> {}
+export interface BothConfig<Props, PropsPartial> {}
 
 export interface MatechsAlgebraObject<F, Env> {
   _F: F
@@ -58,6 +59,28 @@ export interface MatechsAlgebraObject<F, Env> {
       Partial<Readonly<{ [k in keyof Props]: Props[k]["_A"] }>>
     >
   }
+  both: {
+    <Props extends AnyMProps<F>, PropsPartial extends AnyMProps<F>>(
+      props: Props,
+      partial: PropsPartial,
+      name: string,
+      config?: ConfigsForType<
+        Env,
+        Readonly<{ [k in keyof Props]: Props[k]["_E"] }> &
+          Partial<Readonly<{ [k in keyof PropsPartial]: PropsPartial[k]["_E"] }>>,
+        Readonly<{ [k in keyof Props]: Props[k]["_A"] }> &
+          Partial<Readonly<{ [k in keyof PropsPartial]: PropsPartial[k]["_A"] }>>,
+        BothConfig<Props, PropsPartial>
+      >
+    ): HKT2<
+      F,
+      Env,
+      Readonly<{ [k in keyof Props]: Props[k]["_E"] }> &
+        Partial<Readonly<{ [k in keyof PropsPartial]: PropsPartial[k]["_E"] }>>,
+      Readonly<{ [k in keyof Props]: Props[k]["_A"] }> &
+        Partial<Readonly<{ [k in keyof PropsPartial]: PropsPartial[k]["_A"] }>>
+    >
+  }
 }
 
 export type PropsKind1<F extends URIS, PropsA, R> = {
@@ -82,10 +105,21 @@ export interface MatechsAlgebraObject1<F extends URIS, Env extends AnyEnv> {
     config?: ConfigsForType<
       Env,
       unknown,
-      Readonly<Props>,
+      Partial<Readonly<Props>>,
       PartialConfig<PropsKind1<F, Props, Env>>
     >
   ) => Kind<F, Env, Partial<Readonly<Props>>>
+  both: <Props, PropsPartial>(
+    props: PropsKind1<F, Props, Env>,
+    partial: PropsKind1<F, PropsPartial, Env>,
+    name: string,
+    config?: ConfigsForType<
+      Env,
+      unknown,
+      Readonly<Props> & Partial<Readonly<PropsPartial>>,
+      BothConfig<PropsKind1<F, Props, Env>, PropsKind1<F, PropsPartial, Env>>
+    >
+  ) => Kind<F, Env, Partial<Readonly<Props>> & Partial<Readonly<PropsPartial>>>
 }
 
 export type PropsKind2<F extends URIS2, PropsA, PropsE, R> = {
@@ -109,9 +143,28 @@ export interface MatechsAlgebraObject2<F extends URIS2, Env extends AnyEnv> {
     name: string,
     config?: ConfigsForType<
       Env,
-      Readonly<PropsE>,
-      Readonly<PropsA>,
+      Partial<Readonly<PropsE>>,
+      Partial<Readonly<PropsA>>,
       PartialConfig<PropsKind2<F, PropsE, PropsA, Env>>
     >
   ) => Kind2<F, Env, Partial<Readonly<PropsE>>, Partial<Readonly<PropsA>>>
+  both: <PropsE, PropsA, PropsPartialE, PropsPartialA>(
+    props: PropsKind2<F, PropsE, PropsA, Env>,
+    partial: PropsKind2<F, PropsPartialE, PropsPartialA, Env>,
+    name: string,
+    config?: ConfigsForType<
+      Env,
+      Readonly<PropsE> & Partial<Readonly<PropsPartialE>>,
+      Readonly<PropsA> & Partial<Readonly<PropsPartialA>>,
+      BothConfig<
+        PropsKind2<F, PropsE, PropsA, Env>,
+        PropsKind2<F, PropsPartialE, PropsPartialA, Env>
+      >
+    >
+  ) => Kind2<
+    F,
+    Env,
+    Readonly<PropsE> & Partial<Readonly<PropsPartialE>>,
+    Readonly<PropsA> & Partial<Readonly<PropsPartialA>>
+  >
 }

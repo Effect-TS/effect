@@ -20,6 +20,12 @@ declare module "@matechs/morphic-alg/object" {
       arbs: InterfaceA<Props, FastCheckURI>
     }
   }
+  interface BothConfig<Props, PropsPartial> {
+    [FastCheckURI]: {
+      arbs: InterfaceA<Props, FastCheckURI>
+      arbsPartial: InterfaceA<PropsPartial, FastCheckURI>
+    }
+  }
 }
 
 export const fcObjectInterpreter = memo(
@@ -48,6 +54,26 @@ export const fcObjectInterpreter = memo(
               arbs: arbs as any
             })
           )
+      ),
+    both: (props, partial, _name, config) => (env) =>
+      introduce(projectFieldWithEnv(props, env)("arb"))((arbs) =>
+        introduce(projectFieldWithEnv(partial, env)("arb"))(
+          (arbsPartial) =>
+            new FastCheckType(
+              fcApplyConfig(config)(
+                record(arbs).chain((r) =>
+                  record(arbsPartial, {
+                    withDeletedKeys: true
+                  }).map((p) => ({ ...r, ...p }))
+                ),
+                env,
+                {
+                  arbs: arbs as any,
+                  arbsPartial: arbsPartial as any
+                }
+              )
+            )
+        )
       )
   })
 )
