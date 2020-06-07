@@ -1,4 +1,4 @@
-import type { Summoner } from "./batteries/summoner"
+import { Summoner, summonFor } from "./batteries/summoner"
 import type { Materialized } from "./batteries/usage/materializer"
 import type {
   SummonerEnv,
@@ -88,3 +88,22 @@ export {} from "./fc/interpreter/set"
 export {} from "./fc/interpreter/str-map"
 export {} from "./fc/interpreter/tagged-union"
 export {} from "./fc/interpreter/unknown"
+
+//
+// Defaults
+//
+export const { make, makeADT, makeProgram } =
+  /*#__PURE__*/
+  (() => summonFor({}))()
+
+export const deriveEq =
+  /*#__PURE__*/
+  (() => eqFor(make)({}))()
+
+export const deriveShow =
+  /*#__PURE__*/
+  (() => showFor(make)({}))()
+
+export const deriveArb =
+  /*#__PURE__*/
+  (() => arbFor(make)({}))()

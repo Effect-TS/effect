@@ -153,7 +153,7 @@ export function makeTagged<
   o: Types,
   name?: string,
   config?: ConfigsForType<
-    Types[keyof Types]["_R"],
+    Parameters<Types[keyof Types]["_R"]>[0],
     Types[keyof Types]["_E"],
     Types[keyof Types]["_A"],
     TaggedUnionConfig<Types>

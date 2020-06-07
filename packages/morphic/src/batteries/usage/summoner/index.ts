@@ -22,14 +22,16 @@ export interface Summoners<
   >
   _P: ProgURI
   _I: InterpURI
-  _R: R
+  _R: (_: R) => void
 }
 
 export type SummonerProgURI<X extends Summoners<any, any, any>> = NonNullable<X["_P"]>
 
 export type SummonerInterpURI<X extends Summoners<any, any, any>> = NonNullable<X["_I"]>
 
-export type SummonerEnv<X extends Summoners<any, any, any>> = NonNullable<X["_R"]>
+export type SummonerEnv<X extends Summoners<any, any, any>> = NonNullable<
+  Parameters<X["_R"]>[0]
+>
 
 export interface MakeSummonerResult<S extends Summoners<any, any, any>> {
   summon: S

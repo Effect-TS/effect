@@ -26,10 +26,13 @@ export interface M<R, L, A> extends Materialized<R, L, A, ProgramURI, Interprete
 // eslint-disable-next-line @typescript-eslint/class-name-casing
 export interface M_<R, A> extends M<R, {}, A> {}
 
-export const AsOpaque = <E, A>() => <X extends M<any, E, A>>(x: X): M<X["_R"], E, A> =>
-  x
+export const AsOpaque = <E, A>() => <X extends M<any, E, A>>(
+  x: X
+): M<Parameters<X["_R"]>[0], E, A> => x
 
-export const AsUOpaque = <A>() => <X extends M_<any, A>>(x: X): M_<X["_R"], A> => x
+export const AsUOpaque = <A>() => <X extends M_<any, A>>(
+  x: X
+): M_<Parameters<X["_R"]>[0], A> => x
 
 export interface Summoner<R> extends Summoners<ProgramURI, InterpreterURI, R> {
   <L, A>(F: ProgramType<R, L, A>[ProgramURI]): M<R, L, A>
