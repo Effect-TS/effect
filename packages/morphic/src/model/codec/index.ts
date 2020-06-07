@@ -6,6 +6,7 @@ import * as A from "@matechs/core/Array"
 import type { Branded } from "@matechs/core/Branded"
 import * as E from "@matechs/core/Either"
 import { Predicate, Refinement, identity } from "@matechs/core/Function"
+import { Iso } from "@matechs/core/Monocle/Iso"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import * as O from "@matechs/core/Option"
 import type { Ord } from "@matechs/core/Ord"
@@ -33,8 +34,6 @@ export interface ValidationError {
 export interface Errors extends Array<ValidationError> {}
 
 export type Validation<A> = E.Either<Errors, A>
-
-export type Is<A> = (u: unknown) => u is A
 
 export type Validate<A> = (i: unknown, context: Context) => Validation<A>
 
@@ -64,8 +63,6 @@ export class Codec<A, O = A> implements Decoder<A>, Encoder<A, O> {
   constructor(
     /** a unique name for this codec */
     readonly name: string,
-    /** a custom type guard */
-    readonly is: Is<A>,
     /** succeeds if a value of type I can be decoded to a value of type A */
     readonly validate: Validate<A>,
     /** converts a value of type A to a value of type O */
@@ -125,12 +122,7 @@ const pushAll = <A>(xs: Array<A>, ys: Array<A>): void => {
 export class UndefinedType extends Codec<undefined> {
   readonly _tag: "UndefinedType" = "UndefinedType"
   constructor() {
-    super(
-      "undefined",
-      (u): u is undefined => u === void 0,
-      (u, c) => (this.is(u) ? success(u) : failure(u, c)),
-      identity
-    )
+    super("undefined", (u, c) => (u === void 0 ? success(u) : failure(u, c)), identity)
   }
 }
 
@@ -143,7 +135,7 @@ const undefinedType: UndefinedC =
 export class VoidType extends Codec<void> {
   readonly _tag: "VoidType" = "VoidType"
   constructor() {
-    super("void", undefinedType.is, undefinedType.validate, identity)
+    super("void", undefinedType.validate, identity)
   }
 }
 
@@ -156,7 +148,7 @@ export const voidType: VoidC =
 export class UnknownType extends Codec<unknown> {
   readonly _tag: "UnknownType" = "UnknownType"
   constructor() {
-    super("unknown", (_): _ is unknown => true, success, identity)
+    super("unknown", success, identity)
   }
 }
 
@@ -171,12 +163,13 @@ export class StringType extends Codec<string> {
   constructor() {
     super(
       "string",
-      (u): u is string => typeof u === "string",
-      (u, c) => (this.is(u) ? success(u) : failure(u, c)),
+      (u, c) => (typeof u === "string" ? success(u) : failure(u, c)),
       identity
     )
   }
 }
+
+export const isString = (u: unknown): u is string => typeof u === "string"
 
 export interface StringC extends StringType {}
 
@@ -189,8 +182,7 @@ export class NumberType extends Codec<number> {
   constructor() {
     super(
       "number",
-      (u): u is number => typeof u === "number",
-      (u, c) => (this.is(u) ? success(u) : failure(u, c)),
+      (u, c) => (typeof u === "number" ? success(u) : failure(u, c)),
       identity
     )
   }
@@ -207,8 +199,7 @@ export class BooleanType extends Codec<boolean> {
   constructor() {
     super(
       "boolean",
-      (u): u is boolean => typeof u === "boolean",
-      (u, c) => (this.is(u) ? success(u) : failure(u, c)),
+      (u, c) => (typeof u === "boolean" ? success(u) : failure(u, c)),
       identity
     )
   }
@@ -225,8 +216,7 @@ export class AnyArrayType extends Codec<Array<unknown>> {
   constructor() {
     super(
       "UnknownArray",
-      Array.isArray,
-      (u, c) => (this.is(u) ? success(u) : failure(u, c)),
+      (u, c) => (Array.isArray(u) ? success(u) : failure(u, c)),
       identity
     )
   }
@@ -243,13 +233,14 @@ export class AnyDictionaryType extends Codec<{ [key: string]: unknown }> {
   constructor() {
     super(
       "UnknownRecord",
-      (u): u is { [key: string]: unknown } => {
-        const s = Object.prototype.toString.call(u)
-        return s === "[object Object]" || s === "[object Window]"
-      },
       (u, c) => (this.is(u) ? success(u) : failure(u, c)),
       identity
     )
+  }
+
+  is(u: unknown): u is { [key: string]: unknown } {
+    const s = Object.prototype.toString.call(u)
+    return s === "[object Object]" || s === "[object Window]"
   }
 }
 
@@ -266,13 +257,12 @@ export class RefinementType<C extends Any, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "RefinementType" = "RefinementType"
   constructor(
     name: string,
-    is: RefinementType<C, A, O>["is"],
     validate: RefinementType<C, A, O>["validate"],
     encode: RefinementType<C, A, O>["encode"],
     readonly type: C,
     readonly predicate: Predicate<A>
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -290,7 +280,6 @@ export const brand = <
 ): BrandC<C, B> => {
   return new RefinementType(
     name,
-    (u): u is TypeOf<C> => codec.is(u) && predicate(u),
     (i, c) => {
       const e = codec.validate(i, c)
       if (E.isLeft(e)) {
@@ -311,12 +300,11 @@ export class LiteralType<V extends LiteralValue> extends Codec<V> {
   readonly _tag: "LiteralType" = "LiteralType"
   constructor(
     name: string,
-    is: LiteralType<V>["is"],
     validate: LiteralType<V>["validate"],
     encode: LiteralType<V>["encode"],
     readonly value: V
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -329,7 +317,6 @@ export const literal = <V extends LiteralValue>(
   const is = (u: unknown): u is V => u === value
   return new LiteralType(
     name,
-    is,
     (u, c) => (is(u) ? success(value) : failure(u, c)),
     identity,
     value
@@ -340,12 +327,11 @@ export class KeyofType<D extends { [key: string]: unknown }> extends Codec<keyof
   readonly _tag: "KeyofType" = "KeyofType"
   constructor(
     name: string,
-    is: KeyofType<D>["is"],
     validate: KeyofType<D>["validate"],
     encode: KeyofType<D>["encode"],
     readonly keys: D
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -361,10 +347,9 @@ export const keyof = <D extends { [key: string]: unknown }>(
     .map((k) => JSON.stringify(k))
     .join(" | ")
 ): KeyofC<D> => {
-  const is = (u: unknown): u is keyof D => string.is(u) && hasOwnProperty.call(keys, u)
+  const is = (u: unknown): u is keyof D => isString(u) && hasOwnProperty.call(keys, u)
   return new KeyofType(
     name,
-    is,
     (u, c) => (is(u) ? success(u) : failure(u, c)),
     identity,
     keys
@@ -375,12 +360,11 @@ export class RecursiveType<C extends Any, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "RecursiveType" = "RecursiveType"
   constructor(
     name: string,
-    is: RecursiveType<C, A, O>["is"],
     validate: RecursiveType<C, A, O>["validate"],
     encode: RecursiveType<C, A, O>["encode"],
     public runDefinition: () => C
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 
   get type(): C {
@@ -402,7 +386,6 @@ export const recursion = <A, O = A, C extends Codec<A, O> = Codec<A, O>>(
   }
   const Self: any = new RecursiveType<C, A, O>(
     name,
-    (u): u is A => runDefinition().is(u),
     (u, c) => runDefinition().validate(u, c),
     (a) => runDefinition().encode(a),
     runDefinition
@@ -414,12 +397,11 @@ export class InterfaceType<P, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "InterfaceType" = "InterfaceType"
   constructor(
     name: string,
-    is: InterfaceType<P, A, O>["is"],
     validate: InterfaceType<P, A, O>["validate"],
     encode: InterfaceType<P, A, O>["encode"],
     readonly props: P
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -468,19 +450,6 @@ export const type = <P extends Props>(
   const len = keys.length
   return new InterfaceType(
     name,
-    (u): u is { [K in keyof P]: TypeOf<P[K]> } => {
-      if (UnknownRecord.is(u)) {
-        for (let i = 0; i < len; i++) {
-          const k = keys[i]
-          const uk = u[k]
-          if ((uk === undefined && !hasOwnProperty.call(u, k)) || !types[i].is(uk)) {
-            return false
-          }
-        }
-        return true
-      }
-      return false
-    },
     (u, c) => {
       const e = UnknownRecord.validate(u, c)
       if (E.isLeft(e)) {
@@ -530,12 +499,11 @@ export class PartialType<P, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "PartialType" = "PartialType"
   constructor(
     name: string,
-    is: PartialType<P, A, O>["is"],
     validate: PartialType<P, A, O>["validate"],
     encode: PartialType<P, A, O>["encode"],
     readonly props: P
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -565,19 +533,6 @@ export const partial = <P extends Props>(
   const len = keys.length
   return new PartialType(
     name,
-    (u): u is { [K in keyof P]?: TypeOf<P[K]> } => {
-      if (UnknownRecord.is(u)) {
-        for (let i = 0; i < len; i++) {
-          const k = keys[i]
-          const uk = u[k]
-          if (uk !== undefined && !props[k].is(uk)) {
-            return false
-          }
-        }
-        return true
-      }
-      return false
-    },
     (u, c) => {
       const e = UnknownRecord.validate(u, c)
       if (E.isLeft(e)) {
@@ -632,13 +587,12 @@ export class DictionaryType<D extends Any, C extends Any, A = any, O = A> extend
   readonly _tag: "DictionaryType" = "DictionaryType"
   constructor(
     name: string,
-    is: DictionaryType<D, C, A, O>["is"],
     validate: DictionaryType<D, C, A, O>["validate"],
     encode: DictionaryType<D, C, A, O>["encode"],
     readonly domain: D,
     readonly codomain: C
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -667,8 +621,6 @@ function enumerableRecord<D extends Any, C extends Any>(
   const len = keys.length
   return new DictionaryType(
     name,
-    (u): u is { [K in TypeOf<D>]: TypeOf<C> } =>
-      UnknownRecord.is(u) && keys.every((k) => codomain.is(u[k])),
     (u, c) => {
       const e = UnknownRecord.validate(u, c)
       if (E.isLeft(e)) {
@@ -717,14 +669,14 @@ export function getDomainKeys<D extends Any>(
 ): Record<string, unknown> | undefined {
   if (isLiteralC(domain)) {
     const literal = domain.value
-    if (string.is(literal)) {
+    if (isString(literal)) {
       return { [literal]: null }
     }
   } else if (isKeyofC(domain)) {
     return domain.keys
   } else if (isUnionC(domain)) {
     const keys = domain.types.map((type) => getDomainKeys(type))
-    return keys.some(undefinedType.is) ? undefined : Object.assign({}, ...keys)
+    return keys.some((u) => u === void 0) ? undefined : Object.assign({}, ...keys)
   }
   return undefined
 }
@@ -736,12 +688,6 @@ function nonEnumerableRecord<D extends Any, C extends Any>(
 ): RecordC<D, C> {
   return new DictionaryType(
     name,
-    (u): u is { [K in TypeOf<D>]: TypeOf<C> } => {
-      if (UnknownRecord.is(u)) {
-        return Object.keys(u).every((k) => domain.is(k) && codomain.is(u[k]))
-      }
-      return isAnyC(codomain) && Array.isArray(u)
-    },
     (u, c) => {
       if (UnknownRecord.is(u)) {
         const a: { [key: string]: any } = {}
@@ -811,12 +757,11 @@ export class UnionType<CS extends Array<Any>, A = any, O = A> extends Codec<A, O
   readonly _tag: "UnionType" = "UnionType"
   constructor(
     name: string,
-    is: UnionType<CS, A, O>["is"],
     validate: UnionType<CS, A, O>["validate"],
     encode: UnionType<CS, A, O>["encode"],
     readonly types: CS
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -845,13 +790,6 @@ export const union = <CS extends [Any, Any, ...Array<Any>]>(
     }
     return new TaggedUnionType(
       name,
-      (u): u is TypeOf<CS[number]> => {
-        if (UnknownRecord.is(u)) {
-          const i = find(u[tag])
-          return i !== undefined ? codecs[i].is(u) : false
-        }
-        return false
-      },
       (u, c) => {
         const e = UnknownRecord.validate(u, c)
         if (E.isLeft(e)) {
@@ -879,34 +817,7 @@ export const union = <CS extends [Any, Any, ...Array<Any>]>(
       tag
     )
   } else {
-    return new UnionType(
-      name,
-      (u): u is TypeOf<CS[number]> => codecs.some((type) => type.is(u)),
-      (u, c) => {
-        const errors: Errors = []
-        for (let i = 0; i < codecs.length; i++) {
-          const codec = codecs[i]
-          const result = codec.validate(u, appendContext(c, String(i), codec, u))
-          if (E.isLeft(result)) {
-            pushAll(errors, result.left)
-          } else {
-            return success(result.right)
-          }
-        }
-        return failures(errors)
-      },
-      useIdentity(codecs)
-        ? identity
-        : (a) => {
-            for (const codec of codecs) {
-              if (codec.is(a)) {
-                return codec.encode(a)
-              }
-            }
-            throw new Error(`no codec found to encode value in union type ${name}`)
-          },
-      codecs
-    )
+    throw new Error("Union only supports Tagged Unions")
   }
 }
 
@@ -917,12 +828,11 @@ export class IntersectionType<CS extends Array<Any>, A = any, O = A> extends Cod
   readonly _tag: "IntersectionType" = "IntersectionType"
   constructor(
     name: string,
-    is: IntersectionType<CS, A, O>["is"],
     validate: IntersectionType<CS, A, O>["validate"],
     encode: IntersectionType<CS, A, O>["encode"],
     readonly types: CS
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -1008,7 +918,6 @@ export function intersection<CS extends [Any, Any, ...Array<Any>]>(
   const len = codecs.length
   return new IntersectionType(
     name,
-    (u: unknown): u is any => codecs.every((type) => type.is(u)),
     codecs.length === 0
       ? success
       : (u, c) => {
@@ -1048,13 +957,12 @@ export class TaggedUnionType<
 > extends UnionType<CS, A, O> {
   constructor(
     name: string,
-    is: TaggedUnionType<Tag, CS, A, O>["is"],
     validate: TaggedUnionType<Tag, CS, A, O>["validate"],
     encode: TaggedUnionType<Tag, CS, A, O>["encode"],
     codecs: CS,
     readonly tag: Tag
   ) {
-    super(name, is, validate, encode, codecs)
+    super(name, validate, encode, codecs)
   }
 }
 
@@ -1065,12 +973,11 @@ export class ExactType<C extends Any, A = any, O = A, I = unknown> extends Codec
   readonly _tag: "ExactType" = "ExactType"
   constructor(
     name: string,
-    is: ExactType<C, A, O, I>["is"],
     validate: ExactType<C, A, O, I>["validate"],
     encode: ExactType<C, A, O, I>["encode"],
     readonly type: C
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -1120,6 +1027,21 @@ const stripKeys = (o: any, props: Props): unknown => {
   return shouldStrip ? r : o
 }
 
+const stripKeysP = (o: any, props: Props): [boolean, unknown] => {
+  const keys = Object.getOwnPropertyNames(o)
+  let shouldStrip = false
+  const r: any = {}
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
+    if (!hasOwnProperty.call(props, key)) {
+      shouldStrip = true
+    } else {
+      r[key] = o[key]
+    }
+  }
+  return [shouldStrip, shouldStrip ? r : o]
+}
+
 const getExactTypeName = (codec: Any): string => {
   if (isTypeC(codec)) {
     return `{| ${getNameFromProps(codec.props)} |}`
@@ -1136,7 +1058,6 @@ export const exact = <C extends HasProps>(
   const props: Props = getProps(codec)
   return new ExactType(
     name,
-    codec.is,
     (u, c) => {
       const e = UnknownRecord.validate(u, c)
       if (E.isLeft(e)) {
@@ -1147,6 +1068,36 @@ export const exact = <C extends HasProps>(
         return ce
       }
       return E.right(stripKeys(ce.right, props))
+    },
+    (a) => codec.encode(stripKeys(a, props)),
+    codec
+  )
+}
+
+export const precise = <C extends HasProps>(
+  codec: C,
+  name: string = getExactTypeName(codec)
+): ExactC<C> => {
+  const props: Props = getProps(codec)
+  return new ExactType(
+    name,
+    (u, c) => {
+      const e = UnknownRecord.validate(u, c)
+      if (E.isLeft(e)) {
+        return e
+      }
+      const ce = codec.validate(u, c)
+      if (E.isLeft(ce)) {
+        return ce
+      }
+
+      const [stripped, o] = stripKeysP(ce.right, props)
+
+      if (stripped) {
+        return failure(u, c)
+      }
+
+      return E.right(o)
     },
     (a) => codec.encode(stripKeys(a, props)),
     codec
@@ -1168,7 +1119,7 @@ export const getDefaultContext = (decoder: Decoder<any>): Context => [
 export class AnyType extends Codec<any> {
   readonly _tag: "AnyType" = "AnyType"
   constructor() {
-    super("any", (_): _ is any => true, success, identity)
+    super("any", success, identity)
   }
 }
 
@@ -1185,7 +1136,6 @@ export function refinement<A, O, B extends A>(
 ): Codec<B, O> {
   return new Codec(
     name,
-    (u): u is B => codec.is(u) && refinement(u),
     (u, c) =>
       E.chain_(codec.validate(u, c), (a) =>
         refinement(a) ? success(a) : failure(u, c)
@@ -1194,16 +1144,27 @@ export function refinement<A, O, B extends A>(
   )
 }
 
+export function iso<A, O, B>(
+  codec: Codec<A, O>,
+  iso: Iso<A, B>,
+  name = `iso(${codec.name})`
+): Codec<B, O> {
+  return new Codec(
+    name,
+    (u, c) => E.map_(codec.validate(u, c), iso.get),
+    (a) => codec.encode(iso.reverseGet(a))
+  )
+}
+
 export class StrictType<P, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "StrictType" = "StrictType"
   constructor(
     name: string,
-    is: StrictType<P, A, O>["is"],
     validate: StrictType<P, A, O>["validate"],
     encode: StrictType<P, A, O>["encode"],
     readonly props: P
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -1482,7 +1443,6 @@ export const DateFromISOString: DateFromISOStringC =
   (() =>
     new Codec<Date, string>(
       "DateFromISOString",
-      (u): u is Date => u instanceof Date,
       (u, c) =>
         E.chain_(string.validate(u, c), (s) => {
           const d = new Date(s)
@@ -1570,7 +1530,6 @@ export function optionFromNullable<C extends Any>(
 ): OptionFromNullableC<C> {
   return new Codec(
     name,
-    option(codec).is,
     (u, c) => (u == null ? success(O.none) : E.map_(codec.validate(u, c), O.some)),
     (a) => O.toNullable(O.map_(a, codec.encode))
   )
@@ -1580,12 +1539,11 @@ export class ArrayType<C extends Any, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "ArrayType" = "ArrayType"
   constructor(
     name: string,
-    is: ArrayType<C, A, O>["is"],
     validate: ArrayType<C, A, O>["validate"],
     encode: ArrayType<C, A, O>["encode"],
     readonly type: C
   ) {
-    super(name, is, validate, encode)
+    super(name, validate, encode)
   }
 }
 
@@ -1598,7 +1556,6 @@ export const array = <C extends Any>(
 ): ArrayC<C> =>
   new ArrayType(
     name,
-    (u): u is A.Array<TypeOf<C>> => UnknownArray.is(u) && u.every(codec.is),
     (u, c) => {
       const e = UnknownArray.validate(u, c)
       if (E.isLeft(e)) {
@@ -1639,7 +1596,6 @@ export function nonEmptyArray<C extends Any>(
   const arr = array(codec)
   return new Codec(
     name,
-    (u): u is NEA.NonEmptyArray<TypeOf<C>> => arr.is(u) && A.isNonEmpty(u),
     (u, c) =>
       E.chain_(arr.validate(u, c), (as) => {
         const onea = NEA.fromArray(as)
@@ -1662,7 +1618,6 @@ export function setFromArray<C extends Any>(
   const fromArrayO = S.fromArray(O)
   return new Codec(
     name,
-    (u): u is Set<TypeOf<C>> => u instanceof Set && S.every(codec.is)(u),
     (u, c) =>
       E.chain_(arr.validate(u, c), (as) => {
         const set = fromArrayO(as)
@@ -1679,7 +1634,6 @@ export const BigIntString: BigIntStringC =
   (() =>
     new Codec<bigint, string>(
       "BigIntString",
-      (u): u is bigint => u !== undefined && u !== null && typeof u === "bigint",
       (u, c) =>
         E.chain_(string.validate(u, c), (s) => {
           try {

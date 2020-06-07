@@ -20,6 +20,11 @@ declare module "@matechs/morphic-alg/newtype" {
       showCoerce: Show<N>
     }
   }
+  interface IsoConfig<L, A, N> {
+    [ShowURI]: {
+      show: Show<A>
+    }
+  }
 }
 
 export const showNewtypeInterpreter = memo(
@@ -49,6 +54,19 @@ export const showNewtypeInterpreter = memo(
               {
                 show,
                 showCoerce: show as any
+              }
+            )
+          )
+      ),
+    iso: (a, iso, name, config) => (env) =>
+      introduce(a(env).show)(
+        (show) =>
+          new ShowType(
+            showApplyConfig(config)(
+              { show: (x) => `<${name}>(${show.show(iso.reverseGet(x))})` },
+              env,
+              {
+                show
               }
             )
           )

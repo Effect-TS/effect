@@ -2,7 +2,11 @@ import { merge } from "../../utils"
 
 import { modelIntersectionInterpreter } from "./intersection"
 import { modelNewtypeInterpreter } from "./newtype"
-import { modelNonStrictObjectInterpreter, modelStrictObjectInterpreter } from "./object"
+import {
+  modelNonStrictObjectInterpreter,
+  modelStrictObjectInterpreter,
+  modelPreciseObjectInterpreter
+} from "./object"
 import { modelPrimitiveInterpreter } from "./primitives"
 import { modelRecursiveInterpreter } from "./recursive"
 import { modelRefinedInterpreter } from "./refined"
@@ -31,3 +35,6 @@ export const modelNonStrictInterpreter = <Env extends AnyEnv>() =>
 
 export const modelStrictInterpreter = <Env extends AnyEnv>() =>
   merge(allModelBase<Env>(), modelStrictObjectInterpreter<Env>())
+
+export const modelPreciseInterpreter = <Env extends AnyEnv>() =>
+  merge(allModelBase<Env>(), modelPreciseObjectInterpreter<Env>())

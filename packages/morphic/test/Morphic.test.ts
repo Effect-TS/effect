@@ -233,6 +233,13 @@ const Rec = make((F) =>
   )
 )
 
+const strIso = I.create(
+  (s: string) => s.split(""),
+  (a) => a.join("")
+)
+
+const StrAsArray = make((F) => F.iso(F.string(), strIso, "StrAsArray"))
+
 describe("Morphic", () => {
   it("should use model interpreter", () => {
     const result_0 = Person.decodeT({
@@ -440,5 +447,34 @@ describe("Morphic", () => {
         })
       })
     )
+  })
+  it("precise interpreter", () => {
+    const result = Person.decodeT(
+      {
+        name: "Michael",
+        address: ["177 Finchley Road"],
+        age: 29
+      },
+      "precise"
+    )
+
+    expect(T.runSync(result)).toStrictEqual({
+      _tag: "Raise",
+      error: {
+        _tag: "ValidationErrors",
+        errors: [
+          'Invalid value {"name":"Michael","address":["177 Finchley Road"],"age":29} supplied to : Person'
+        ]
+      },
+      next: { _tag: "None" }
+    })
+  })
+
+  it("use iso", () => {
+    const result = StrAsArray.decode("hello")
+
+    expect(result).toStrictEqual(E.right(["h", "e", "l", "l", "o"]))
+
+    expect(StrAsArray.encode(["h", "e", "l", "l", "o"])).toStrictEqual("hello")
   })
 })

@@ -18,6 +18,11 @@ declare module "@matechs/morphic-alg/newtype" {
       model: M.Codec<A, L>
     }
   }
+  interface IsoConfig<L, A, N> {
+    [ModelURI]: {
+      model: M.Codec<A, L>
+    }
+  }
 }
 
 export const modelNewtypeInterpreter = memo(
@@ -37,6 +42,15 @@ export const modelNewtypeInterpreter = memo(
         (model) =>
           new ModelType(
             modelApplyConfig(config)(model as any, env, {
+              model
+            })
+          )
+      ),
+    iso: (a, iso, name, config) => (env) =>
+      introduce(a(env).codec)(
+        (model) =>
+          new ModelType(
+            modelApplyConfig(config)(M.iso(model, iso, name), env, {
               model
             })
           )

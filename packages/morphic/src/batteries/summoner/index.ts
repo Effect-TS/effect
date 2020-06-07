@@ -2,7 +2,8 @@ import { reportFailure } from "../../model/codec"
 import { ModelURI } from "../../model/hkt"
 import {
   modelNonStrictInterpreter,
-  modelStrictInterpreter
+  modelStrictInterpreter,
+  modelPreciseInterpreter
 } from "../../model/interpreter"
 import { InterpreterURI, validationErrors } from "../interpreter"
 import type { ProgramURI } from "../program"
@@ -42,8 +43,10 @@ export const summonFor: <R extends AnyEnv = {}>(
   makeSummoner<Summoner<R>>(cacheUnaryFunction, (program) => {
     const { codec } = program(modelNonStrictInterpreter<NonNullable<R>>())(env)
     const strict = program(modelStrictInterpreter<NonNullable<R>>())(env).codec
+    const precise = program(modelPreciseInterpreter<NonNullable<R>>())(env).codec
 
-    const getCodec = (s?: "strict" | "classic") => (s === "strict" ? strict : codec)
+    const getCodec = (s?: "strict" | "classic" | "precise") =>
+      s === "strict" ? strict : s === "precise" ? precise : codec
 
     return {
       build: (a) => a,
