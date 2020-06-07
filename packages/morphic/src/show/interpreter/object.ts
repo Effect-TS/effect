@@ -1,5 +1,5 @@
 import type { InterfaceA } from "../../config"
-import { memo, projectFieldWithEnv } from "../../utils"
+import { memo, projectFieldWithEnv, mapRecord } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
 
@@ -29,6 +29,10 @@ declare module "@matechs/morphic-alg/object" {
   }
 }
 
+const showOrUndefined = <A>(s: S.Show<A>): S.Show<A | undefined> => ({
+  show: (x) => (x == null ? "undefined" : s.show(x))
+})
+
 export const showObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject1<ShowURI, Env> => ({
     _F: ShowURI,
@@ -44,9 +48,13 @@ export const showObjectInterpreter = memo(
       asPartial(
         new ShowType(
           introduce(projectFieldWithEnv(props, env)("show"))((show) =>
-            showApplyConfig(config)(S.getStructShow(show) as any, env, {
-              show: show as any
-            })
+            showApplyConfig(config)(
+              S.getStructShow(mapRecord(show, showOrUndefined)) as any,
+              env,
+              {
+                show: show as any
+              }
+            )
           )
         )
       ),
@@ -55,7 +63,10 @@ export const showObjectInterpreter = memo(
         introduce(projectFieldWithEnv(props, env)("show"))((show) =>
           introduce(projectFieldWithEnv(partial, env)("show"))((showPartial) =>
             showApplyConfig(config)(
-              S.getStructShow({ ...show, ...showPartial } as any),
+              S.getStructShow({
+                ...show,
+                ...mapRecord(showPartial, showOrUndefined)
+              } as any),
               env,
               {
                 show: show as any,
