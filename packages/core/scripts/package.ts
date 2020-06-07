@@ -46,7 +46,6 @@ const modules: string[] = [
   "Base/Alternative",
   "Base/Contravariant",
   "Base/Semigroupoid",
-  "Model",
   "Apply",
   "Identity",
   "Exit",
@@ -116,7 +115,8 @@ const modules: string[] = [
   "Monocle/Index",
   "Monocle/All",
   "Newtype",
-  "Layer"
+  "Layer",
+  "Branded"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)

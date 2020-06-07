@@ -1,5 +1,9 @@
-import { modelNonStrictInterpreter, modelStrictInterpreter } from "../../model"
+import { reportFailure } from "../../model/codec"
 import { ModelURI } from "../../model/hkt"
+import {
+  modelNonStrictInterpreter,
+  modelStrictInterpreter
+} from "../../model/interpreter"
 import { InterpreterURI, validationErrors } from "../interpreter"
 import type { ProgramURI } from "../program"
 import type { Materialized } from "../usage/materializer"
@@ -13,7 +17,6 @@ import {
 } from "../usage/summoner"
 
 import * as T from "@matechs/core/Effect"
-import { reportFailure } from "@matechs/core/Model"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import { cacheUnaryFunction } from "@matechs/morphic-alg/utils/core"
 
@@ -36,18 +39,21 @@ export const summonFor: <R extends AnyEnv = {}>(
   env: ExtractEnv<R, ModelURI>
 ) =>
   makeSummoner<Summoner<R>>(cacheUnaryFunction, (program) => {
-    const { create, type } = program(modelNonStrictInterpreter<NonNullable<R>>())(env)
+    const { codec, create } = program(modelNonStrictInterpreter<NonNullable<R>>())(env)
+    const strict = program(modelStrictInterpreter<NonNullable<R>>())(env).codec
+
     return {
       build: (a) => a,
-      strictType: program(modelStrictInterpreter<NonNullable<R>>())(env).type,
-      type,
+      decode: (i, s) => (s === "strict" ? strict.decode(i) : codec.decode(i)),
+      encode: codec.encode,
       create,
-      encode: (a) => T.sync(() => type.encode(a)),
-      decode: (i) =>
-        T.mapLeft_(T.encaseEither(type.decode(i)), (e) =>
-          validationErrors(reportFailure(e))
+      encodeT: (a) => T.sync(() => codec.encode(a)),
+      decodeT: (i, s) =>
+        T.mapLeft_(
+          T.encaseEither(s === "strict" ? strict.decode(i) : codec.decode(i)),
+          (e) => validationErrors(reportFailure(e))
         ),
-      validate: (i) =>
+      createT: (i) =>
         T.mapLeft_(T.encaseEither(create(i)), (e) => validationErrors(reportFailure(e)))
     }
   })

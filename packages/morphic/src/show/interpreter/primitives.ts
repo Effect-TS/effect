@@ -6,7 +6,6 @@ import { ShowType, ShowURI } from "../hkt"
 import { getShow as AgetShow } from "@matechs/core/Array"
 import { getShow as EgetShow } from "@matechs/core/Either"
 import { introduce } from "@matechs/core/Function"
-import { UUID } from "@matechs/core/Model"
 import { getShow as OgetShow } from "@matechs/core/Option"
 import { showBoolean, showNumber, showString } from "@matechs/core/Show"
 import type { Show } from "@matechs/core/Show"
@@ -15,7 +14,8 @@ import type {
   Keys,
   KeysOfConfig,
   MatechsAlgebraPrimitive1,
-  StringLiteralConfig
+  StringLiteralConfig,
+  UUID
 } from "@matechs/morphic-alg/primitives"
 
 declare module "@matechs/morphic-alg/primitives" {

@@ -1,8 +1,8 @@
 import { memo } from "../../utils"
+import * as M from "../codec"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
-import * as M from "@matechs/core/Model"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraUnknown2 } from "@matechs/morphic-alg/unknown"
 

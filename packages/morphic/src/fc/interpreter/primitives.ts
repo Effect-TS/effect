@@ -19,10 +19,9 @@ import { FastCheckType, FastCheckURI } from "../hkt"
 import { isNonEmpty } from "@matechs/core/Array"
 import { left, right } from "@matechs/core/Either"
 import { introduce } from "@matechs/core/Function"
-import type { UUID } from "@matechs/core/Model"
 import { fromNullable, none, some } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
+import type { MatechsAlgebraPrimitive1, UUID } from "@matechs/morphic-alg/primitives"
 
 declare module "@matechs/morphic-alg/primitives" {
   interface NonEmptyArrayConfig<L, A> {

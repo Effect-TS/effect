@@ -4,8 +4,8 @@ import { EventLog } from "./eventLog"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
-import * as t from "@matechs/core/Model"
 import { ADT } from "@matechs/morphic/adt"
+import * as t from "@matechs/morphic/model"
 import { DbT, ORM, TaskError, DbTx, dbTxURI } from "@matechs/orm"
 
 // experimental alpha
@@ -21,7 +21,7 @@ export const aggregateRootId = ({ aggregate, root }: AggregateRoot) =>
 
 export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
   return <E, A extends { [t in Tag]: A[Tag] }, Tag extends keyof A & string>(
-    S: ADT<A, Tag> & { type: t.Encoder<A, E> }
+    S: ADT<A, Tag> & t.Encoder<A, E>
   ) => (
     events: A[],
     aggregateRoot: AggregateRoot
@@ -42,7 +42,7 @@ export function persistEvent<Db extends symbol | string>(db: DbT<Db>, dbS: Db) {
                 kind: event[S.tag],
                 meta: {},
                 offsets: {},
-                event: S.type.encode(event),
+                event: S.encode(event),
                 sequenceId: aggregateRootId(aggregateRoot),
                 sequence: (seq + BigInt(1 + idx)).toString(),
                 aggregate: aggregateRoot.aggregate,

@@ -8,10 +8,9 @@ import { getEq as AgetEq } from "@matechs/core/Array"
 import { getEq as EgetEq } from "@matechs/core/Either"
 import { contramap_, eqNumber, eqString, eqBoolean, eqStrict } from "@matechs/core/Eq"
 import { introduce } from "@matechs/core/Function"
-import type { UUID } from "@matechs/core/Model"
 import { getEq as OgetEq } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
+import type { MatechsAlgebraPrimitive1, UUID } from "@matechs/morphic-alg/primitives"
 
 declare module "@matechs/morphic-alg/primitives" {
   interface NonEmptyArrayConfig<L, A> {

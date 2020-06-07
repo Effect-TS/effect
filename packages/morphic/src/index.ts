@@ -35,3 +35,5 @@ export const showFor = <S extends Summoner<any>>(S: S) => (
 ) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
 
 export { ValidationErrors, validationErrors } from "./batteries/interpreter"
+
+export { withFirstMessage, withMessage, withValidate } from "./model"

@@ -48,7 +48,7 @@ const processTodos = todosES.read("read_todos_from_es")(
 // note the above is equivalent to the following
 export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todos")(
   // this will be used to decode raw events
-  T.liftEither((x) => todosAggregate.adt.type.decode(x))
+  T.liftEither((x) => todosAggregate.adt.decode(x))
 )(
   todosAggregate.adt.matchEffect({
     TodoAdded: () => T.unit,

@@ -3,12 +3,12 @@ import { accessConfig } from "./config"
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
-import * as t from "@matechs/core/Model"
 import * as NEA from "@matechs/core/NonEmptyArray"
 import { ElemType } from "@matechs/morphic/adt/utils"
 import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
 import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
 import { MorphADT, AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
+import * as t from "@matechs/morphic/model"
 import { DbT } from "@matechs/orm"
 
 // experimental alpha
@@ -86,7 +86,7 @@ export class SliceFetcher<
             event: T.orAbort(
               pipe(
                 this.S.keys[kind]
-                  ? T.encaseEither(this.S.type.decode(event))
+                  ? T.encaseEither(this.S.decode(event))
                   : (T.raiseError(new Error("unknown event")) as T.SyncE<
                       Error | t.Errors,
                       AOfTypes<Types>
@@ -173,7 +173,7 @@ export class AggregateFetcher<
             event: T.orAbort(
               pipe(
                 this.S.keys[kind]
-                  ? T.encaseEither(this.S.type.decode(event))
+                  ? T.encaseEither(this.S.decode(event))
                   : (T.raiseError(new Error("unknown event")) as T.SyncE<
                       Error | t.Errors,
                       AOfTypes<Types>
@@ -264,7 +264,7 @@ export class DomainFetcher<
             event: T.orAbort(
               pipe(
                 this.S.keys[kind]
-                  ? T.encaseEither(this.S.type.decode(event))
+                  ? T.encaseEither(this.S.decode(event))
                   : (T.raiseError(new Error("unknown event")) as T.SyncE<
                       Error | t.Errors,
                       AOfTypes<Types>
@@ -333,7 +333,7 @@ export class DomainFetcherAll<
             kind: T.pure(kind),
             createdAt: T.pure(created_at),
             sequence: T.pure(BigInt(sequence)),
-            event: T.orAbort(T.encaseEither(this.S.type.decode(event)))
+            event: T.orAbort(T.encaseEither(this.S.decode(event)))
           })
         )
       )

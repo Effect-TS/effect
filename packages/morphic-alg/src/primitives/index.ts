@@ -2,11 +2,17 @@ import type { ConfigsForType, AnyEnv } from "../config"
 import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
 
 import type { Array } from "@matechs/core/Array"
+import type { Branded } from "@matechs/core/Branded"
 import type { Either } from "@matechs/core/Either"
-import type { UUID } from "@matechs/core/Model"
 import type { NonEmptyArray } from "@matechs/core/NonEmptyArray"
 import type { Option } from "@matechs/core/Option"
 import type { Record } from "@matechs/core/Record"
+
+export interface UUIDBrand {
+  readonly UUID: unique symbol
+}
+
+export type UUID = Branded<string, UUIDBrand>
 
 export type Keys = Record<string, null>
 

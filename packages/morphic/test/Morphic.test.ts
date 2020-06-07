@@ -1,6 +1,7 @@
 import * as fc from "fast-check"
 
 import * as M from "../src"
+import * as Model from "../src/model"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
@@ -8,11 +9,11 @@ import * as E from "@matechs/core/Either"
 import * as Ex from "@matechs/core/Exit"
 import { pipe, introduce } from "@matechs/core/Function"
 import { flow, constant } from "@matechs/core/Function"
-import * as Model from "@matechs/core/Model"
 import * as Index from "@matechs/core/Monocle/Index"
 import * as I from "@matechs/core/Monocle/Iso"
 import * as Lens from "@matechs/core/Monocle/Lens"
 import * as NT from "@matechs/core/Newtype"
+import * as O from "@matechs/core/Option"
 
 const { summon, tagged } = M.summonFor({})
 
@@ -21,7 +22,7 @@ const deriveArb = M.arbFor(summon)({})
 const deriveShow = M.showFor(summon)({})
 
 export function maxLength(length: number) {
-  return (codec: Model.Type<string>) =>
+  return (codec: Model.Codec<string>) =>
     Model.withValidate_(codec, (u, c) =>
       E.chain_(codec.validate(u, c), (x) =>
         x.length <= length ? Model.success(x) : Model.failure(u, c)
@@ -201,15 +202,40 @@ const SubADT = TaggedADT.selectMorph(["left"], "SubADT", {
     show: (l) => `Shrink: ${_c.shows.left.show(l)}`
   })
 })
+
 const ExcADT = TaggedADT.excludeMorph(["left"], "ExcADT", {
   [M.ShowURI]: (_s, _e, _c) => ({
     show: (l) => `Shrink: ${_c.shows.right.show(l)}`
   })
 })
 
+interface RecE {
+  readonly id: string
+  readonly next: RecE | null
+}
+
+interface Rec {
+  readonly id: string
+  readonly next: O.Option<Rec>
+}
+
+const Rec = summon((F) =>
+  F.recursive<RecE, Rec>(
+    (_) =>
+      F.interface(
+        {
+          id: F.string(),
+          next: F.nullable(_)
+        },
+        "RecInner"
+      ),
+    "Rec"
+  )
+)
+
 describe("Morphic", () => {
   it("should use model interpreter", () => {
-    const result_0 = Person.decode({
+    const result_0 = Person.decodeT({
       name: "Michael",
       address: [
         A.range(0, 25)
@@ -217,11 +243,11 @@ describe("Morphic", () => {
           .join("")
       ]
     })
-    const result_1 = Person.decode({
+    const result_1 = Person.decodeT({
       name: "Michael",
       address: []
     })
-    const result_2 = Person.decode({
+    const result_2 = Person.decodeT({
       name: "Michael",
       address: ["177 Finchley Road"]
     })
@@ -241,11 +267,11 @@ describe("Morphic", () => {
   })
 
   it("should use eq", () => {
-    const result = Person.type.decode({
+    const result = Person.decode({
       name: "Michael",
       address: ["177 Finchley Road"]
     })
-    const result2 = Person.type.decode({
+    const result2 = Person.decode({
       name: "Michael",
       address: ["178 Finchley Road"]
     })
@@ -273,7 +299,7 @@ describe("Morphic", () => {
 
     expect(
       pipe(
-        Person.type.decode({
+        Person.decode({
           name: "Michael",
           address: ["177 Finchley Road"]
         }),
@@ -288,7 +314,7 @@ describe("Morphic", () => {
 
     expect(
       pipe(
-        Person.type.decode({
+        Person.decode({
           name: "Michael",
           address: ["177 Finchley Road", "ok"]
         }),
@@ -306,12 +332,12 @@ describe("Morphic", () => {
     fc.assert(fc.property(PersonArb, (p) => E.isRight(Person.create(p)))))
 
   it("should use valudate", () => {
-    const validPerson = Person.validate({
+    const validPerson = Person.createT({
       name: "Michael",
       address: [I.wrap(AddressISO)("177 Finchley")]
     })
 
-    const invalidPerson = Person.validate({
+    const invalidPerson = Person.createT({
       name: "Michael",
       address: [I.wrap(AddressISO)(A.range(0, 25).map(constant("a")).join(""))]
     })
@@ -329,7 +355,7 @@ describe("Morphic", () => {
   })
 
   it("use show", () => {
-    const result = Person.type.decode({
+    const result = Person.decode({
       name: "Michael",
       address: ["177 Finchley Road"]
     })
@@ -341,7 +367,7 @@ describe("Morphic", () => {
     )
   })
   it("use intersection show", () => {
-    const result = PersonWithAge.type.decode({
+    const result = PersonWithAge.decode({
       name: "Michael",
       address: ["177 Finchley Road"],
       age: 29
@@ -389,5 +415,30 @@ describe("Morphic", () => {
     const showTagged = deriveShow(ExcADT)
 
     expect(showTagged.show(right)).toStrictEqual("Shrink: ok")
+  })
+  it("use recursion", () => {
+    const result = Rec.decode({
+      id: "a",
+      next: {
+        id: "b",
+        next: {
+          id: "c",
+          next: null
+        }
+      }
+    })
+
+    expect(result).toStrictEqual(
+      E.right({
+        id: "a",
+        next: O.some({
+          id: "b",
+          next: O.some({
+            id: "c",
+            next: O.none
+          })
+        })
+      })
+    )
   })
 })
