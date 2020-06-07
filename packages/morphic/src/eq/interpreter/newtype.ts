@@ -13,6 +13,16 @@ declare module "@matechs/morphic-alg/newtype" {
       eq: Eq<A>
     }
   }
+  interface CoerceConfig<L, A, N> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
+  interface IsoConfig<L, A, N> {
+    [EqURI]: {
+      eq: Eq<A>
+    }
+  }
 }
 
 export const eqNewtypeInterpreter = memo(
@@ -25,6 +35,19 @@ export const eqNewtypeInterpreter = memo(
     coerce: () => (getEq, config) => (env) =>
       introduce(getEq(env).eq)(
         (eq) => new EqType(eqApplyConfig(config)(eq as any, env, { eq }))
+      ),
+    iso: (getEq, iso, _name, config) => (env) =>
+      introduce(getEq(env).eq)(
+        (eq) =>
+          new EqType(
+            eqApplyConfig(config)(
+              {
+                equals: (x, y) => eq.equals(iso.reverseGet(x), iso.reverseGet(y))
+              },
+              env,
+              { eq }
+            )
+          )
       )
   })
 )

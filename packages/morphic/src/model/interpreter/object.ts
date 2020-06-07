@@ -109,3 +109,45 @@ export const modelStrictObjectInterpreter = memo(
       )
   })
 )
+
+export const modelPreciseObjectInterpreter = memo(
+  <Env extends AnyEnv>(): MatechsAlgebraObject2<ModelURI, Env> => ({
+    _F: ModelURI,
+    interface: <PropsE, PropsA>(
+      props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
+      name: string,
+      config?: ConfigsForType<
+        Env,
+        PropsE,
+        PropsA,
+        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+      >
+    ) => (env: Env) =>
+      introduce(projectFieldWithEnv(props, env)("codec"))(
+        (model) =>
+          new ModelType<PropsE, PropsA>(
+            modelApplyConfig(config)(M.precise(M.type(model), name) as any, env, {
+              model: model as any
+            })
+          )
+      ),
+    partial: <PropsE, PropsA>(
+      props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
+      name: string,
+      config?: ConfigsForType<
+        Env,
+        PropsE,
+        PropsA,
+        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+      >
+    ) => (env: Env) =>
+      introduce(projectFieldWithEnv(props, env)("codec"))(
+        (model) =>
+          new ModelType<Partial<PropsE>, Partial<PropsA>>(
+            modelApplyConfig(config)(M.precise(M.partial(model, name)) as any, env, {
+              model: model as any
+            }) as any
+          )
+      )
+  })
+)

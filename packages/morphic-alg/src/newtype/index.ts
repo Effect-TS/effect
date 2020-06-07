@@ -1,6 +1,7 @@
 import type { ConfigsForType, AnyEnv } from "../config"
 import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
 
+import type { Iso } from "@matechs/core/Monocle/Iso"
 import type { Newtype } from "@matechs/core/Newtype"
 
 export const NewtypeURI = "@matechs/morphic-alg/NewtypeURI" as const
@@ -25,6 +26,7 @@ export type NewtypeA<N extends AnyNewtype> = N extends Newtype<any, infer A> ? A
 
 export interface NewtypeConfig<L, A, N> {}
 export interface CoerceConfig<L, A, N> {}
+export interface IsoConfig<L, A, N> {}
 
 export interface MatechsAlgebraNewtype<F, Env> {
   _F: F
@@ -41,6 +43,14 @@ export interface MatechsAlgebraNewtype<F, Env> {
   ) => {
     <E, A>(
       a: HKT2<F, Env, E, A>,
+      config?: ConfigsForType<Env, E, N, CoerceConfig<E, A, N>>
+    ): HKT2<F, Env, E, N>
+  }
+  iso: {
+    <E, A, N>(
+      a: HKT2<F, Env, E, A>,
+      iso: Iso<A, N>,
+      name: string,
       config?: ConfigsForType<Env, E, N, CoerceConfig<E, A, N>>
     ): HKT2<F, Env, E, N>
   }
@@ -62,6 +72,14 @@ export interface MatechsAlgebraNewtype1<F extends URIS, Env> {
       config?: ConfigsForType<Env, unknown, N, CoerceConfig<unknown, A, N>>
     ): Kind<F, Env, N>
   }
+  iso: {
+    <A, N>(
+      a: Kind<F, Env, A>,
+      iso: Iso<A, N>,
+      name: string,
+      config?: ConfigsForType<Env, unknown, N, IsoConfig<unknown, A, N>>
+    ): Kind<F, Env, N>
+  }
 }
 
 export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
@@ -78,6 +96,14 @@ export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
     <E, A>(
       a: Kind2<F, Env, E, A>,
       config?: ConfigsForType<Env, E, N, CoerceConfig<E, A, N>>
+    ): Kind2<F, Env, E, N>
+  }
+  iso: {
+    <E, A, N>(
+      a: Kind2<F, Env, E, A>,
+      iso: Iso<A, N>,
+      name: string,
+      config?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
     ): Kind2<F, Env, E, N>
   }
 }

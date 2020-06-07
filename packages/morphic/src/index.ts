@@ -43,4 +43,4 @@ export const showFor = <S extends Summoner<any>>(S: S) => (
 
 export { ValidationErrors, validationErrors } from "./batteries/interpreter"
 
-export { withFirstMessage, withMessage, withValidate } from "./model"
+export { withFirstMessage, withMessage, withValidate, Errors } from "./model"

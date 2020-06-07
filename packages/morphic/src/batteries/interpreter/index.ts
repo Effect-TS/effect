@@ -23,15 +23,21 @@ interface Interpreter<E, A> {
   // dumb constructor
   build: (a: A) => A
   // classic
-  create: (a: A, strict?: "strict" | "classic") => Either<Errors, Validated<A>>
-  encode: (a: A, strict?: "strict" | "classic") => E
-  decode: (i: unknown, strict?: "strict" | "classic") => Either<Errors, A>
+  create: (
+    a: A,
+    strict?: "strict" | "classic" | "precise"
+  ) => Either<Errors, Validated<A>>
+  encode: (a: A, strict?: "strict" | "classic" | "precise") => E
+  decode: (i: unknown, strict?: "strict" | "classic" | "precise") => Either<Errors, A>
   // monadic
-  encodeT: (a: A, strict?: "strict" | "classic") => T.Sync<E>
-  decodeT: (i: unknown, strict?: "strict" | "classic") => T.SyncE<ValidationErrors, A>
+  encodeT: (a: A, strict?: "strict" | "classic" | "precise") => T.Sync<E>
+  decodeT: (
+    i: unknown,
+    strict?: "strict" | "classic" | "precise"
+  ) => T.SyncE<ValidationErrors, A>
   createT: (
     a: A,
-    strict?: "strict" | "classic"
+    strict?: "strict" | "classic" | "precise"
   ) => T.SyncE<ValidationErrors, Validated<A>>
 }
 
