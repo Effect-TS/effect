@@ -39,6 +39,11 @@ declare module "@matechs/morphic-alg/primitives" {
       arb: Arbitrary<A>
     }
   }
+  interface OptionalConfig<L, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
   interface EitherConfig<EE, EA, AE, AA> {
     [FastCheckURI]: {
       left: Arbitrary<EA>
@@ -89,6 +94,17 @@ export const fcPrimitiveInterpreter = memo(
         (arb) =>
           new FastCheckType(
             fcApplyConfig(config)(option(arb).map(fromNullable), env, { arb })
+          )
+      ),
+    optional: (T, config) => (env) =>
+      introduce(T(env).arb)(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config)(
+              option(arb).map((a) => (a == null ? undefined : a)),
+              env,
+              { arb }
+            )
           )
       ),
     array: (T, config) => (env) =>

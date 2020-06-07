@@ -1553,6 +1553,20 @@ export function optionFromNullable<C extends Any>(
   )
 }
 
+export interface NonRequiredC<C extends Any>
+  extends Codec<TypeOf<C> | undefined, OutputOf<C> | undefined> {}
+
+export function nonRequired<C extends Any>(
+  codec: C,
+  name = `NonRequired<${codec.name}>`
+): NonRequiredC<C> {
+  return new Codec(
+    name,
+    (u, c) => (typeof u === "undefined" ? success(undefined) : codec.validate(u, c)),
+    (a) => (typeof a === "undefined" ? undefined : codec.encode(a))
+  )
+}
+
 export class ArrayType<C extends Any, A = any, O = A> extends Codec<A, O> {
   readonly _tag: "ArrayType" = "ArrayType"
   constructor(

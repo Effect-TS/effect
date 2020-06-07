@@ -34,6 +34,11 @@ declare module "@matechs/morphic-alg/primitives" {
       show: Show<A>
     }
   }
+  interface OptionalConfig<L, A> {
+    [ShowURI]: {
+      show: Show<A>
+    }
+  }
   interface EitherConfig<EE, EA, AE, AA> {
     [ShowURI]: {
       left: Show<EA>
@@ -93,6 +98,20 @@ export const showPrimitiveInterpreter = memo(
             showApplyConfig(config)(showOption, env, {
               show
             })
+          )
+        )
+      ),
+    optional: (getShow, config) => (env) =>
+      new ShowType(
+        introduce(getShow(env).show)((show) =>
+          showApplyConfig(config)(
+            {
+              show: (x) => (typeof x === "undefined" ? `undefined` : show.show(x))
+            },
+            env,
+            {
+              show
+            }
           )
         )
       ),
