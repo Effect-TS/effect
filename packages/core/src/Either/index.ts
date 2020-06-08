@@ -1140,3 +1140,6 @@ export function getWitherable_<E>(M: Monoid<E>): Witherable2C<URI, E> {
     wilt
   }
 }
+
+export type Ret<H> = H extends Right<infer A> ? A : never
+export type Err<H> = H extends Left<infer A> ? A : never

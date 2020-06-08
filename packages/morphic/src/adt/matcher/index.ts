@@ -40,8 +40,6 @@ interface ReducerBuilder<S, A, Tag extends keyof A> {
 interface MatcherStrict<A, Tag extends keyof A>
   extends MatcherStrictInter<A, ValueByKeyByTag<A>[Tag]> {}
 
-declare type EmptyIfEmpty<R> = keyof R extends never ? {} : R
-
 interface MatcherStrictInter<A, Rec> {
   <R>(match: Cases<Rec, R>): (a: A) => R
 }

@@ -4,33 +4,32 @@ import * as AP from "../Apply"
 import * as A from "../Array"
 import {
   CApplicative4MA,
+  CApplicative4MAP,
   CMonad4MA,
   Monad4E,
-  CApplicative4MAP,
   Monad4EP
 } from "../Base"
-import { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { makeDeferred } from "../Deferred"
 import * as D from "../Do"
 import * as T from "../Effect"
 import * as E from "../Either"
 import type { Either } from "../Either"
-import { done, Exit, raise, combinedCause } from "../Exit"
+import { combinedCause, done, Exit, raise } from "../Exit"
 import {
   constant,
   FunctionN,
+  pipe,
   Predicate,
   Refinement,
-  unsafeCoerce,
-  tuple
+  tuple,
+  unsafeCoerce
 } from "../Function"
-import { pipe } from "../Function"
 import type { Monoid } from "../Monoid"
 import * as O from "../Option"
 import type { Option } from "../Option"
 import * as RE from "../Record"
 import type { Semigroup } from "../Semigroup"
-import { ManagedURI as URI, AsyncFn } from "../Support/Common"
+import { AsyncFn, ManagedURI as URI } from "../Support/Common"
 import * as TR from "../Tree"
 
 /**
@@ -745,13 +744,24 @@ export const parApSecond_ = <A, S2, R2, E2, S1, R, E, B>(
     fb
   )
 
+export type Ret<H> = T.Ret<H>
+export type Env<H> = T.Env<H>
+export type Err<H> = T.Err<H>
+export type Op<H> = T.Op<H>
+
 /**
  * Used to merge types of the form Managed<S, R, E, A> | Managed<S2, R2, E2, A2> into Managed<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
 export function compact<H extends Managed<any, any, any, any>>(
   _: H
-): Managed<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+): Managed<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
+  return _ as any
+}
+
+export function compactF<ARG extends unknown[], H extends Managed<any, any, any, any>>(
+  _: (..._: ARG) => H
+): (..._: ARG) => Managed<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
   return _ as any
 }
 

@@ -17,7 +17,6 @@ import type {
   Monad4ECP,
   Monad4EP
 } from "../Base"
-import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
 import { monad, validation } from "../Compatibility"
 import { Deferred, makeDeferred } from "../Deferred"
 import * as D from "../Do"
@@ -74,7 +73,7 @@ import { setExit } from "../Support/Driver/driver"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 import * as TR from "../Tree"
-import type { Erase } from "../Utils"
+import type { Env, Erase, Err, Op, Ret } from "../Utils"
 
 import {
   applySecond,
@@ -104,6 +103,7 @@ export {
   SyncRE
 } from "../Support/Common/effect"
 export { Env, Erase, Err, Op, Ret } from "../Utils"
+
 export {
   applySecond,
   async,
@@ -1938,7 +1938,13 @@ export function zipWith<S, A, R2, E2, B, C>(
  */
 export function compact<H extends Effect<any, any, any, any>>(
   _: H
-): Effect<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+): Effect<Op<H>, Env<H>, Err<H>, Ret<H>> {
+  return _ as any
+}
+
+export function compactF<ARG extends unknown[], H extends Effect<any, any, any, any>>(
+  _: (..._: ARG) => H
+): (..._: ARG) => Effect<Op<H>, Env<H>, Err<H>, Ret<H>> {
   return _ as any
 }
 
