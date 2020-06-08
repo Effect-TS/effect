@@ -6551,10 +6551,10 @@ fp-ts-contrib@^0.1.15:
   resolved "https://registry.yarnpkg.com/fp-ts-contrib/-/fp-ts-contrib-0.1.16.tgz#dc430628aa6694196e54f0f8c531127fb5c61d0b"
   integrity sha512-DXBROKVMnQoT22AOZnsMlJEz8FjIX0dWWMB3snPif4NB48XEZxc/dxwj17DtSbhORux0+NhSeumPQDS6FkIrzA==
 
-fp-ts@2.6.2, fp-ts@^2.6.2:
-  version "2.6.2"
-  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.6.2.tgz#0115221e223e0e4a1d08d93c0ebaee9241688cd1"
-  integrity sha512-RUm0iNcD7eMFZo6W1K10kqi0DyYX06lbbjyNgKwEWg1kPZw91ZXlkEx/9cII1x/jY4fHzh14+Hquk5sJnXBzQA==
+fp-ts@2.6.3, fp-ts@^2.6.3:
+  version "2.6.3"
+  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.6.3.tgz#f08e8b8b13d652ce7f1d4da875cb5d6246109d37"
+  integrity sha512-d/djF6VTApJB9DwD/yec2dlKd7h3oqiOv+6vtBnC1pKbHrhz7aEAGcKd4luraUQDJ3pt3C6W4Npd8s+l5xIquQ==
 
 fragment-cache@^0.2.1:
   version "0.2.1"
@@ -8738,10 +8738,10 @@ macos-release@^2.2.0:
   resolved "https://registry.yarnpkg.com/macos-release/-/macos-release-2.3.0.tgz#eb1930b036c0800adebccd5f17bc4c12de8bb71f"
   integrity sha512-OHhSbtcviqMPt7yfw5ef5aghS2jzFVKEFyCJndQt2YpSQ9qRVSEv2axSJI1paVThEu+FFGs584h/1YhxjVqajA==
 
-madge@^3.9.0:
-  version "3.9.0"
-  resolved "https://registry.yarnpkg.com/madge/-/madge-3.9.0.tgz#7bcc6d6265e88049685cb5bb075cd1b16b90fcf5"
-  integrity sha512-ABR2ZTFga+TPLzlu2u46lcv8WwOzoI6VMTMqe3DyaY0igzyGpXiOIH1vAtziSKC4UHuyTpwkfhjWN5qOYR/5OA==
+madge@^3.9.1:
+  version "3.9.1"
+  resolved "https://registry.yarnpkg.com/madge/-/madge-3.9.1.tgz#a9c96192cc42af59705ff43b1f06531072ee2f02"
+  integrity sha512-odgd7EhFNrr0Opl3QAzevAcql0KL430A/9BgwgN0IjYj830AboEK2QPTmuJHhSCrt4miEs19x38ToGMqYVzKiw==
   dependencies:
     chalk "^4.0.0"
     commander "^5.1.0"
@@ -8763,6 +8763,7 @@ madge@^3.9.0:
     pluralize "^8.0.0"
     pretty-ms "^7.0.0"
     rc "^1.2.7"
+    typescript "^3.7.5"
     walkdir "^0.4.1"
 
 make-dir@^1.0.0:
