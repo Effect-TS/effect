@@ -1,3 +1,5 @@
+import type { UnionToIntersection } from "../Base/Apply"
+
 export interface GE<S, R, E, A> {
   _E: () => E
   _A: () => A
@@ -5,14 +7,21 @@ export interface GE<S, R, E, A> {
   _R: (_: R) => void
 }
 
-export type Env<T, Q = unknown> = T extends GE<
-  infer _S,
-  infer _R & Q,
-  infer _E,
-  infer _A
->
-  ? _R
-  : never
+export type Env<T, Q = unknown> = UnionToIntersection<
+  T extends GE<infer _S, infer _R, infer _E, infer _A>
+    ? unknown extends _R
+      ? never
+      : _R
+    : never
+> extends infer K & Q
+  ? K
+  : UnionToIntersection<
+      T extends GE<infer _S, infer _R, infer _E, infer _A>
+        ? unknown extends _R
+          ? never
+          : _R
+        : never
+    >
 
 export type Err<T> = T extends GE<infer _S, infer _R, infer _E, infer _A> ? _E : never
 

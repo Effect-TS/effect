@@ -2,8 +2,7 @@
 
 import * as AP from "../Apply"
 import * as A from "../Array"
-import type { CMonad4MA, CApplicative4MAP, Monad4EP } from "../Base"
-import type { ATypeOf, ETypeOf, RTypeOf, STypeOf } from "../Base/Apply"
+import type { CApplicative4MAP, CMonad4MA, Monad4EP } from "../Base"
 import { Deferred, makeDeferred } from "../Deferred"
 import * as D from "../Do"
 import * as T from "../Effect"
@@ -25,8 +24,8 @@ import * as Sink from "./Sink"
 import * as sink from "./Sink"
 import * as Step from "./Step"
 import * as step from "./Step"
-import { emitter, Ops, queueUtils } from "./Support"
 import * as support from "./Support"
+import { emitter, Ops, queueUtils } from "./Support"
 
 export { sink, step, support }
 
@@ -1727,13 +1726,24 @@ export const stream: CMonad4MA<URI> & CApplicative4MAP<URI> = {
   chain
 }
 
+export type Ret<H> = T.Ret<H>
+export type Env<H> = T.Env<H>
+export type Err<H> = T.Err<H>
+export type Op<H> = T.Op<H>
+
 /**
  * Used to merge types of the form Stream<S, R, E, A> | Stream<S2, R2, E2, A2> into Stream<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
 export function compact<H extends Stream<any, any, any, any>>(
   _: H
-): Stream<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+): Stream<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
+  return _ as any
+}
+
+export function compactF<ARG extends unknown[], H extends Stream<any, any, any, any>>(
+  _: (..._: ARG) => H
+): (..._: ARG) => Stream<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
   return _ as any
 }
 
