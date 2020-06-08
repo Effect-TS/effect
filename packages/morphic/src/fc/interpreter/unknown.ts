@@ -1,7 +1,5 @@
-import { anything } from "fast-check"
-
 import { memo } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
@@ -12,7 +10,7 @@ export const fcUnknownInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraUnknown1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
     unknown: (configs) => (env) =>
-      introduce(anything())(
+      introduce(accessFC(env).anything())(
         (arb) => new FastCheckType(fcApplyConfig(configs)(arb, env, { arb }))
       )
   })

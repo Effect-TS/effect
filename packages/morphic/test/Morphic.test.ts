@@ -16,12 +16,6 @@ import * as P from "@matechs/core/Monocle/Prism"
 import * as NT from "@matechs/core/Newtype"
 import * as O from "@matechs/core/Option"
 
-const { make, makeADT } = M.makeFor({})
-
-const deriveEq = M.eqFor(make)({})
-const deriveArb = M.arbFor(make)({})
-const deriveShow = M.showFor(make)({})
-
 export function maxLength(length: number) {
   return (codec: Model.Codec<string>) =>
     Model.withValidate_(codec, (u, c) =>
@@ -41,7 +35,7 @@ interface Address
 
 const AddressISO = NT.iso<Address>()
 
-const Address = make((F) =>
+const Address = M.make((F) =>
   F.newtype<Address>("Address")(
     F.string({
       [M.ModelURI]: flow(
@@ -58,7 +52,7 @@ const Address = make((F) =>
   )
 )
 
-const Person_ = make((F) =>
+const Person_ = M.make((F) =>
   F.interface(
     {
       name: F.string(),
@@ -86,7 +80,7 @@ interface PersonE extends M.EType<typeof Person_> {}
 
 const Person = M.opaque<PersonE, Person>()(Person_)
 
-const Age_ = make((F) =>
+const Age_ = M.make((F) =>
   F.partial(
     {
       age: F.number()
@@ -100,11 +94,11 @@ interface AgeE extends M.EType<typeof Age_> {}
 
 const Age = M.opaque<AgeE, Age>()(Age_)
 
-const PersonEQ = deriveEq(Person)
-const PersonArb = deriveArb(Person)
-const PersonShow = deriveShow(Person)
+const PersonEQ = M.deriveEq(Person)
+const PersonArb = M.deriveArb(Person)
+const PersonShow = M.deriveShow(Person)
 
-const PersonWithAge_ = make((F) =>
+const PersonWithAge_ = M.make((F) =>
   F.intersection([Person(F), Age(F)], "PersonWithAge", {
     [M.ShowURI]: (_s, _e, _c) => ({
       show: (pe) =>
@@ -120,7 +114,7 @@ interface PersonWithAgeE extends M.EType<typeof PersonWithAge_> {}
 
 const PersonWithAge = M.opaque<PersonWithAgeE, PersonWithAge>()(PersonWithAge_)
 
-const Tagged = make((F) =>
+const Tagged = M.make((F) =>
   F.taggedUnion(
     "_tag",
     {
@@ -156,9 +150,9 @@ const Tagged = make((F) =>
   )
 )
 
-const TaggedADT = makeADT("_tag")(
+const TaggedADT = M.makeADT("_tag")(
   {
-    left: make((F) =>
+    left: M.make((F) =>
       F.interface(
         {
           _tag: F.stringLiteral("left"),
@@ -172,7 +166,7 @@ const TaggedADT = makeADT("_tag")(
         }
       )
     ),
-    right: make((F) =>
+    right: M.make((F) =>
       F.interface(
         {
           _tag: F.stringLiteral("right"),
@@ -220,7 +214,7 @@ interface Rec {
   readonly next: O.Option<Rec>
 }
 
-const Rec = make((F) =>
+const Rec = M.make((F) =>
   F.recursive<RecE, Rec>(
     (_) =>
       F.interface(
@@ -244,10 +238,10 @@ const nonEmptyStrPrism = P.create(
   (s) => s
 )
 
-const StrAsArray = make((F) => F.iso(F.string(), strIso, "StrAsArray"))
-const NonEmptyStr = make((F) => F.prism(F.string(), nonEmptyStrPrism, "NonEmptyStr"))
+const StrAsArray = M.make((F) => F.iso(F.string(), strIso, "StrAsArray"))
+const NonEmptyStr = M.make((F) => F.prism(F.string(), nonEmptyStrPrism, "NonEmptyStr"))
 
-const UsingOptional = make((F) =>
+const UsingOptional = M.make((F) =>
   F.interface(
     {
       foo: F.optional(F.string()),
@@ -257,7 +251,7 @@ const UsingOptional = make((F) =>
   )
 )
 
-const UsingBoth = make((F) =>
+const UsingBoth = M.make((F) =>
   F.both(
     {
       bar: F.string()
@@ -409,7 +403,7 @@ describe("Morphic", () => {
       age: 29
     })
 
-    expect(pipe(result, E.map(deriveShow(PersonWithAge).show))).toStrictEqual(
+    expect(pipe(result, E.map(M.deriveShow(PersonWithAge).show))).toStrictEqual(
       E.right(
         '{ name: ("Michael"), address: <AddressArray>([~Address~("177 Finchley Road")]), age: 29 }'
       )
@@ -421,16 +415,16 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = deriveShow(Tagged)
+    const showTagged = M.deriveShow(Tagged)
 
     expect(showTagged.show(right)).toStrictEqual("Right: ok")
   })
-  it("use makeTagged union show", () => {
+  it("use M.makeTagged union show", () => {
     const right = TaggedADT.of.right({
       value: "ok"
     })
 
-    const showTagged = deriveShow(TaggedADT)
+    const showTagged = M.deriveShow(TaggedADT)
 
     expect(showTagged.show(right)).toStrictEqual("Right: ok")
   })
@@ -439,7 +433,7 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = deriveShow(SubADT)
+    const showTagged = M.deriveShow(SubADT)
 
     expect(showTagged.show(left)).toStrictEqual("Shrink: ok")
   })
@@ -448,7 +442,7 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = deriveShow(ExcADT)
+    const showTagged = M.deriveShow(ExcADT)
 
     expect(showTagged.show(right)).toStrictEqual("Shrink: ok")
   })
@@ -539,5 +533,38 @@ describe("Morphic", () => {
 
     expect(E.isLeft(fail)).toStrictEqual(true)
     expect(E.isRight(succeed)).toStrictEqual(true)
+  })
+
+  it("use with wider env", () => {
+    const { make } = M.makeFor<{
+      [M.ShowURI]: {
+        prefix: string
+      }
+    }>({})
+
+    const PersonA = make((F) =>
+      F.array(Person(F), {
+        [M.ShowURI]: (_, { prefix }) => ({
+          show: (p) => `${prefix}:${_.show(p)}`
+        })
+      })
+    )
+
+    const ShowPersonA = M.showFor(make)({
+      [M.ShowURI]: {
+        prefix: "prefix"
+      }
+    })(PersonA)
+
+    const result = PersonA.decode([
+      { name: "Michael", address: ["177 Finchley Road"] },
+      { name: "John", address: ["178 Finchley Road"] }
+    ])
+
+    expect(pipe(result, E.map(ShowPersonA.show))).toStrictEqual(
+      E.right(
+        'prefix:[{ name: ("Michael"), address: <AddressArray>([~Address~("177 Finchley Road")]) }, { name: ("John"), address: <AddressArray>([~Address~("178 Finchley Road")]) }]'
+      )
+    )
   })
 })

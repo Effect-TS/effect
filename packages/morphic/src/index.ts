@@ -1,4 +1,4 @@
-import { Summoner, summonFor } from "./batteries/summoner"
+import { Summoner, summonFor, M } from "./batteries/summoner"
 import type { Materialized } from "./batteries/usage/materializer"
 import type {
   SummonerEnv,
@@ -6,6 +6,7 @@ import type {
   SummonerProgURI
 } from "./batteries/usage/summoner"
 import { EqURI, modelEqInterpreter } from "./eq"
+import { FastCheckURI, modelFcInterpreter, BaseFC } from "./fc"
 import { modelShowInterpreter, ShowURI } from "./show"
 
 export { ValidationErrors, validationErrors } from "./batteries/interpreter"
@@ -78,17 +79,27 @@ export const showFor = <S extends Summoner<any>>(S: S) => (
   F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
 ) => F.derive(modelShowInterpreter<SummonerEnv<S>>())(_).show
 
+export const arbFor = <S extends Summoner<any>>(S: S) => (
+  _: { [k in FastCheckURI & keyof SummonerEnv<S>]: SummonerEnv<S>[k] }
+) => <L, A>(
+  F: Materialized<SummonerEnv<S>, L, A, SummonerProgURI<S>, SummonerInterpURI<S>>
+) => F.derive(modelFcInterpreter<SummonerEnv<S>>())(_).arb
+
 //
 // Defaults
 //
+
 export const { make, makeADT, makeProgram } =
   /*#__PURE__*/
   (() => summonFor({}))()
 
-export const deriveEq =
-  /*#__PURE__*/
-  (() => eqFor(make)({}))()
+export const deriveEq = <E, A>(F: M<BaseFC, E, A>) => eqFor(make)({})(F)
 
-export const deriveShow =
-  /*#__PURE__*/
-  (() => showFor(make)({}))()
+export const deriveShow = <E, A>(F: M<BaseFC, E, A>) => showFor(make)({})(F)
+
+export const deriveArb = <E, A>(F: M<BaseFC, E, A>) =>
+  arbFor(summonFor({}).make)({
+    [FastCheckURI]: {
+      module: require("fast-check") as any
+    }
+  })(F)

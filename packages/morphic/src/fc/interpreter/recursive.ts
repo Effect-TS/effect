@@ -1,7 +1,5 @@
-import { constant } from "fast-check"
-
 import { memo } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
@@ -26,7 +24,9 @@ export const fcRecursiveInterpreter = memo(
           (getArb) =>
             new FastCheckType(
               fcApplyConfig(config)(
-                constant(null).chain((_) => getArb()),
+                accessFC(env)
+                  .constant(null)
+                  .chain((_) => getArb()),
                 env,
                 {
                   getArb

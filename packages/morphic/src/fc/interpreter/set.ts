@@ -1,7 +1,5 @@
-import { set } from "fast-check"
-
 import { memo } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { Array } from "@matechs/core/Array"
@@ -22,7 +20,7 @@ export const fcSetInterpreter = memo(
       introduce(a(env).arb)(
         (arb) =>
           new FastCheckType(
-            fcApplyConfig(config)(set(arb).map(fromArray(ord)), env, {
+            fcApplyConfig(config)(accessFC(env).set(arb).map(fromArray(ord)), env, {
               arb
             })
           )

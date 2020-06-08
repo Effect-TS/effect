@@ -1,7 +1,5 @@
-import { record } from "fast-check"
-
 import { memo, projectFieldWithEnv } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
@@ -16,7 +14,7 @@ export const fcObjectInterpreter = memo(
         (arbs) =>
           new FastCheckType(
             fcApplyConfig(config)(
-              record(arbs, {
+              accessFC(env).record(arbs, {
                 withDeletedKeys: true
               }) as any,
               env,
@@ -30,7 +28,7 @@ export const fcObjectInterpreter = memo(
       introduce(projectFieldWithEnv(props, env)("arb"))(
         (arbs) =>
           new FastCheckType(
-            fcApplyConfig(config)(record(arbs), env, {
+            fcApplyConfig(config)(accessFC(env).record(arbs), env, {
               arbs: arbs as any
             })
           )
@@ -41,11 +39,15 @@ export const fcObjectInterpreter = memo(
           (arbsPartial) =>
             new FastCheckType(
               fcApplyConfig(config)(
-                record(arbs).chain((r) =>
-                  record(arbsPartial, {
-                    withDeletedKeys: true
-                  }).map((p) => ({ ...r, ...p }))
-                ),
+                accessFC(env)
+                  .record(arbs)
+                  .chain((r) =>
+                    accessFC(env)
+                      .record(arbsPartial, {
+                        withDeletedKeys: true
+                      })
+                      .map((p) => ({ ...r, ...p }))
+                  ),
                 env,
                 {
                   arbs: arbs as any,

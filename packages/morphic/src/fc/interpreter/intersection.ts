@@ -1,7 +1,5 @@
-import { genericTuple } from "fast-check"
-
 import { memo } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
@@ -23,7 +21,9 @@ export const fcIntersectionInterpreter = memo(
         (arbs) =>
           new FastCheckType(
             fcApplyConfig(config)(
-              genericTuple(arbs).map((all) => Object.assign({}, ...all)),
+              accessFC(env)
+                .genericTuple(arbs)
+                .map((all) => Object.assign({}, ...all)),
               env,
               { arbs: arbs as any }
             )

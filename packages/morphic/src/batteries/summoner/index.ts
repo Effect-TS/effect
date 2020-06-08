@@ -1,3 +1,4 @@
+import type { BaseFC } from "../../fc/config"
 import { reportFailure } from "../../model/codec"
 import { ModelURI } from "../../model/hkt"
 import {
@@ -23,8 +24,7 @@ import { cacheUnaryFunction } from "@matechs/morphic-alg/utils/core"
 
 export interface M<R, L, A> extends Materialized<R, L, A, ProgramURI, InterpreterURI> {}
 
-// eslint-disable-next-line @typescript-eslint/class-name-casing
-export interface M_<R, A> extends M<R, {}, A> {}
+export type M_<R, A> = M<R, {}, A>
 
 export const AsOpaque = <E, A>() => <X extends M<any, E, A>>(
   x: X
@@ -40,13 +40,14 @@ export interface Summoner<R> extends Summoners<ProgramURI, InterpreterURI, R> {
 
 export const summonFor: <R extends AnyEnv = {}>(
   env: ExtractEnv<R, ModelURI>
-) => SummonerOps<Summoner<R>> = <R extends AnyConfigEnv = {}>(
+) => SummonerOps<Summoner<R & BaseFC>> = <R extends AnyConfigEnv = {}>(
   env: ExtractEnv<R, ModelURI>
 ) =>
-  makeSummoner<Summoner<R>>(cacheUnaryFunction, (program) => {
-    const { codec } = program(modelNonStrictInterpreter<NonNullable<R>>())(env)
-    const strict = program(modelStrictInterpreter<NonNullable<R>>())(env).codec
-    const precise = program(modelPreciseInterpreter<NonNullable<R>>())(env).codec
+  makeSummoner<Summoner<R & BaseFC>>(cacheUnaryFunction, (program) => {
+    const { codec } = program(modelNonStrictInterpreter<NonNullable<R & BaseFC>>())(env)
+    const strict = program(modelStrictInterpreter<NonNullable<R & BaseFC>>())(env).codec
+    const precise = program(modelPreciseInterpreter<NonNullable<R & BaseFC>>())(env)
+      .codec
 
     const getCodec = (s?: "strict" | "classic" | "precise") =>
       s === "strict" ? strict : s === "precise" ? precise : codec

@@ -54,8 +54,7 @@ const modules: string[] = [
   "batteries/usage/tagged-union",
   "batteries/usage/utils",
   "utils",
-  "config",
-  "test"
+  "config"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)

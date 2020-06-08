@@ -1,7 +1,5 @@
-import { oneof } from "fast-check"
-
 import { memo, collect } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
@@ -14,7 +12,7 @@ export const fcTaggedUnionInterpreter = memo(
     taggedUnion: (_tag, dic, _name, config) => (env) =>
       new FastCheckType(
         introduce(collect(dic, (_, getArb) => getArb(env).arb))((arbs) =>
-          fcApplyConfig(config)(oneof(...arbs), env, {
+          fcApplyConfig(config)(accessFC(env).oneof(...arbs), env, {
             arbs: arbs as any
           })
         )

@@ -1,7 +1,5 @@
-import { tuple, array as FCArray, string } from "fast-check"
-
 import { memo } from "../../utils"
-import { fcApplyConfig } from "../config"
+import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
 import { array } from "@matechs/core/Array"
@@ -21,7 +19,9 @@ export const fcStrMapInterpreter = memo(
         (arb) =>
           new FastCheckType(
             fcApplyConfig(config)(
-              FCArray(tuple(string(), arb)).map(strmapFromArray()),
+              accessFC(env)
+                .array(accessFC(env).tuple(accessFC(env).string(), arb))
+                .map(strmapFromArray()),
               env,
               {
                 arb
