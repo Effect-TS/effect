@@ -68,6 +68,11 @@ declare module "@matechs/morphic-alg/primitives" {
       model: M.Codec<A, L>
     }
   }
+  interface MutableConfig<L, A> {
+    [ModelURI]: {
+      model: M.Codec<A, L>
+    }
+  }
   interface OptionalConfig<L, A> {
     [ModelURI]: {
       model: M.Codec<A, L>

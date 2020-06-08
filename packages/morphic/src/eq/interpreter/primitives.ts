@@ -30,6 +30,10 @@ export const eqPrimitiveInterpreter = memo(
       introduce(getType(env).eq)(
         (eq) => new EqType(eqApplyConfig(config)(OgetEq(eq), env, { eq }))
       ),
+    mutable: (getType, config) => (env) =>
+      introduce(getType(env).eq)(
+        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq }))
+      ),
     optional: (getType, config) => (env) =>
       introduce(getType(env).eq)(
         (eq) =>

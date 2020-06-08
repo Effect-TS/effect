@@ -67,6 +67,14 @@ export const showPrimitiveInterpreter = memo(
           )
         )
       ),
+    mutable: (getShow, config) => (env) =>
+      new ShowType(
+        introduce(getShow(env).show)((show) =>
+          showApplyConfig(config)(show, env, {
+            show
+          })
+        )
+      ),
     optional: (getShow, config) => (env) =>
       new ShowType(
         introduce(getShow(env).show)((show) =>

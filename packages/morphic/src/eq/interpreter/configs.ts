@@ -69,6 +69,11 @@ declare module "@matechs/morphic-alg/primitives" {
       eq: E.Eq<A>
     }
   }
+  interface MutableConfig<L, A> {
+    [EqURI]: {
+      eq: E.Eq<A>
+    }
+  }
   interface OptionalConfig<L, A> {
     [EqURI]: {
       eq: E.Eq<A>

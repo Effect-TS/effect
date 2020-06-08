@@ -1,5 +1,4 @@
 import { State } from "../../../src"
-import { mutable } from "../../utils"
 
 import * as T from "@matechs/core/Effect"
 import * as O from "@matechs/core/Option"
@@ -8,8 +7,8 @@ import * as M from "@matechs/morphic"
 // alpha
 /* istanbul ignore file */
 
-export const OrgsState_ = mutable(
-  M.make((F) =>
+export const OrgsState_ = M.make((F) =>
+  F.mutable(
     F.interface(
       {
         found: F.nullable(F.string()),

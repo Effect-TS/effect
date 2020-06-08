@@ -64,6 +64,11 @@ declare module "@matechs/morphic-alg/primitives" {
       arb: Arbitrary<A>
     }
   }
+  interface MutableConfig<L, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
   interface OptionalConfig<L, A> {
     [FastCheckURI]: {
       arb: Arbitrary<A>

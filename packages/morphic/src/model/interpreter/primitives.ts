@@ -37,6 +37,10 @@ export const modelPrimitiveInterpreter = memo(
             modelApplyConfig(config)(M.optionFromNullable(model), env, { model })
           )
       ),
+    mutable: (T, config) => (env) =>
+      introduce(T(env).codec)(
+        (model) => new ModelType(modelApplyConfig(config)(model, env, { model }))
+      ),
     optional: (T, config) => (env) =>
       introduce(T(env).codec)(
         (model) =>

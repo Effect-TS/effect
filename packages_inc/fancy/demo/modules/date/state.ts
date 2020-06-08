@@ -1,5 +1,4 @@
 import { State } from "../../../src"
-import { mutable } from "../../utils"
 
 import * as T from "@matechs/core/Effect"
 import * as M from "@matechs/morphic"
@@ -7,8 +6,8 @@ import * as M from "@matechs/morphic"
 // alpha
 /* istanbul ignore file */
 
-export const DateState_ = mutable(
-  M.make((F) =>
+export const DateState_ = M.make((F) =>
+  F.mutable(
     F.interface(
       {
         current: F.date()

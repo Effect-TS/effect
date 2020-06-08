@@ -54,6 +54,15 @@ export const fcPrimitiveInterpreter = memo(
             })
           )
       ),
+    mutable: (T, config) => (env) =>
+      introduce(T(env).arb)(
+        (arb) =>
+          new FastCheckType(
+            fcApplyConfig(config)(arb, env, {
+              arb
+            })
+          )
+      ),
     optional: (T, config) => (env) =>
       introduce(T(env).arb)(
         (arb) =>

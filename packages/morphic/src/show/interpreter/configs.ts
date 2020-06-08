@@ -72,6 +72,11 @@ declare module "@matechs/morphic-alg/primitives" {
       show: Show<A>
     }
   }
+  interface MutableConfig<L, A> {
+    [ShowURI]: {
+      show: Show<A>
+    }
+  }
   interface OptionalConfig<L, A> {
     [ShowURI]: {
       show: Show<A>

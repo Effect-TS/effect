@@ -7,6 +7,7 @@ import type { Either } from "@matechs/core/Either"
 import type { NonEmptyArray } from "@matechs/core/NonEmptyArray"
 import type { Option } from "@matechs/core/Option"
 import type { Record } from "@matechs/core/Record"
+import type { Mutable } from "@matechs/core/Utils"
 
 export interface UUIDBrand {
   readonly UUID: unique symbol
@@ -35,6 +36,7 @@ declare module "../utils/hkt" {
 export interface NonEmptyArrayConfig<L, A> {}
 export interface ArrayConfig<L, A> {}
 export interface NullableConfig<L, A> {}
+export interface MutableConfig<L, A> {}
 export interface OptionalConfig<L, A> {}
 export interface StringLiteralConfig<T> {}
 export interface KeysOfConfig<K> {}
@@ -54,6 +56,12 @@ export interface MatechsAlgebraPrimitive<F, Env> {
       T: HKT2<F, Env, L, A>,
       config?: ConfigsForType<Env, L | null, Option<A>, NullableConfig<L, A>>
     ): HKT2<F, Env, null | L, Option<A>>
+  }
+  mutable: {
+    <L, A>(
+      T: HKT2<F, Env, L, A>,
+      config?: ConfigsForType<Env, Mutable<L>, Mutable<A>, MutableConfig<L, A>>
+    ): HKT2<F, Env, Mutable<L>, Mutable<A>>
   }
   optional: {
     <L, A>(
@@ -154,6 +162,12 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
     T: Kind<F, Env, A>,
     config?: ConfigsForType<Env, null | A, Option<A>, NullableConfig<unknown, A>>
   ) => Kind<F, Env, Option<A>>
+  mutable: {
+    <A>(
+      T: Kind<F, Env, A>,
+      config?: ConfigsForType<Env, unknown, Mutable<A>, MutableConfig<unknown, A>>
+    ): Kind<F, Env, Mutable<A>>
+  }
   optional: {
     <A>(
       T: Kind<F, Env, A>,
@@ -224,6 +238,12 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
     T: Kind2<F, Env, L, A>,
     config?: ConfigsForType<Env, null | L, Option<A>, NullableConfig<L, A>>
   ) => Kind2<F, Env, null | L, Option<A>>
+  mutable: {
+    <L, A>(
+      T: Kind2<F, Env, L, A>,
+      config?: ConfigsForType<Env, Mutable<L>, Mutable<A>, MutableConfig<L, A>>
+    ): Kind2<F, Env, Mutable<L>, Mutable<A>>
+  }
   optional: {
     <L, A>(
       T: Kind2<F, Env, L, A>,
