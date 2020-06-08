@@ -12,6 +12,8 @@ import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import * as F from "@matechs/core/Function"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
+import * as M from "@matechs/core/Managed"
 
 export const configEnv = "@matechs/orm/configURI"
 export const poolEnv = "@matechs/orm/poolURI"
@@ -130,15 +132,14 @@ export interface DbTx<A extends symbol | string> {
 }
 
 export interface DbT<Db extends symbol | string> {
+  readonly Pool: L.Layer<unknown, DbConfig<Db> & DbFactory, TaskError, ORM<Db>>
+
   readonly requireTx: <S, R, E, A>(
     op: T.Effect<S, R, E, A>
   ) => T.Effect<S, R & DbTx<Db>, E, A>
   readonly withNewRegion: <S, R extends ORM<Db>, E, A>(
     op: T.Effect<S, R, E, A>
   ) => T.Effect<S, R, E, A>
-  readonly bracketPool: <S, R, E, A>(
-    op: T.Effect<S, ORM<Db> & R, E, A>
-  ) => T.AsyncRE<DbConfig<Db> & DbFactory & R, TaskError | E, A>
   readonly withRepositoryTask: <Entity>(
     target: ObjectType<Entity> | EntitySchema<Entity> | string
   ) => <A>(
@@ -168,7 +169,6 @@ export interface DbT<Db extends symbol | string> {
 
 export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
   constructor(private readonly dbEnv: Db) {
-    this.bracketPool = this.bracketPool.bind(this)
     this.withRepositoryTask = this.withRepositoryTask.bind(this)
     this.withRepository = this.withRepository.bind(this)
     this.withTransaction = this.withTransaction.bind(this)
@@ -179,6 +179,55 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
     this.withNewRegion = this.withNewRegion.bind(this)
     this.requireTx = this.requireTx.bind(this)
   }
+
+  accessConfig = T.accessM(
+    ({
+      [configEnv]: {
+        [this.dbEnv]: { readConfig }
+      }
+    }: DbConfig<Db>) => readConfig
+  )
+
+  managedConnection = M.bracket(
+    pipe(
+      this.accessConfig,
+      T.chain((options) =>
+        T.accessM(({ [factoryEnv]: f }: DbFactory) =>
+          pipe(
+            T.fromPromiseMap(E.toError)(() => f.createConnection(options)),
+            T.mapError((x) => new TaskError(x, "bracketPoolOpen"))
+          )
+        )
+      )
+    ),
+    (db) =>
+      pipe(
+        T.fromPromiseMap(E.toError)(() => db.close()),
+        T.mapError((x) => new TaskError(x, "bracketPoolClose"))
+      )
+  )
+
+  Pool = L.fromManaged(
+    M.chain_(this.managedConnection, (db) =>
+      M.access(
+        (r: {}): ORM<Db> => ({
+          ...r,
+          [poolEnv]: {
+            ...r[poolEnv],
+            [this.dbEnv]: {
+              pool: db
+            }
+          },
+          [managerEnv]: {
+            ...r[managerEnv],
+            [this.dbEnv]: {
+              manager: db.manager
+            }
+          }
+        })
+      )
+    )
+  )
 
   // tslint:disable-next-line: prefer-function-over-method
   requireTx<S, R, E, A>(op: T.Effect<S, R, E, A>): T.Effect<S, R & DbTx<Db>, E, A> {
@@ -200,55 +249,6 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
           }
         })(op)
       )
-    )
-  }
-
-  bracketPool<S, R, E, A>(
-    op: T.Effect<S, ORM<Db> & R, E, A>
-  ): T.AsyncRE<DbConfig<Db> & DbFactory & R, TaskError | E, A> {
-    return T.accessM(
-      ({
-        [configEnv]: {
-          [this.dbEnv]: { readConfig }
-        },
-        [factoryEnv]: f
-      }: DbConfig<Db> & DbFactory) =>
-        T.chain_(readConfig, (options) =>
-          T.bracket(
-            pipe(
-              () => f.createConnection(options),
-              T.fromPromiseMap(E.toError),
-              T.mapError((x) => new TaskError(x, "bracketPoolOpen"))
-            ),
-            (db) =>
-              pipe(
-                () => db.close(),
-                T.fromPromiseMap(E.toError),
-                T.mapError((x) => new TaskError(x, "bracketPoolClose"))
-              ),
-            (db) =>
-              pipe(
-                op,
-                T.provideM(
-                  T.access((r: DbConfig<Db> & R): ORM<Db> & R => ({
-                    ...r,
-                    [poolEnv]: {
-                      ...r[poolEnv],
-                      [this.dbEnv]: {
-                        pool: db
-                      }
-                    },
-                    [managerEnv]: {
-                      ...r[managerEnv],
-                      [this.dbEnv]: {
-                        manager: db.manager
-                      }
-                    }
-                  }))
-                )
-              )
-          )
-        )
     )
   }
 

@@ -70,8 +70,7 @@ describe("Api", () => {
     const program = DB.repository(DemoEntity).save({ id: "ok" })
     const main = pipe(
       program,
-      DB.provideApi,
-      DB.bracketPool,
+      DB.Api.with(DB.Pool).use,
       T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
@@ -106,8 +105,7 @@ describe("Api", () => {
     })
     const main = pipe(
       program,
-      DB.provideApi,
-      DB.bracketPool,
+      DB.Api.with(DB.Pool).use,
       T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({
@@ -139,8 +137,7 @@ describe("Api", () => {
     const main = pipe(
       program,
       DB.withTransaction,
-      DB.provideApi,
-      DB.bracketPool,
+      DB.Api.with(DB.Pool).use,
       T.provide(
         ORM.mockFactory(() =>
           Promise.resolve({

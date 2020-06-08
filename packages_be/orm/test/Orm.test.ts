@@ -29,7 +29,7 @@ export class DemoEntity {
 const testDbEnv: unique symbol = Symbol()
 
 const {
-  bracketPool,
+  Pool,
   requireTx,
   withConnectionTask,
   withManagerTask,
@@ -69,7 +69,7 @@ describe("Orm", () => {
       withRepositoryTask(DemoEntity)((r) => () => r.findOne({ where: { id: "test" } }))
     )
 
-    const program = bracketPool(withTransaction(main))
+    const program = Pool.use(withTransaction(main))
 
     const env: U.Env<typeof program> = {
       ...DB.mockFactory(mockFactory),
@@ -111,7 +111,7 @@ describe("Orm", () => {
         }
       } as Connection)
 
-    const program = bracketPool(
+    const program = Pool.use(
       withTransaction(
         withManagerTask((m) => () =>
           m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
@@ -152,7 +152,7 @@ describe("Orm", () => {
         }
       } as Connection)
 
-    const program = bracketPool(
+    const program = Pool.use(
       withConnectionTask((c) => () =>
         c.getRepository(DemoEntity).findOne({ where: { id: "test" } })
       )
@@ -190,7 +190,7 @@ describe("Orm", () => {
       }
     })
 
-    const program = pipe(withTransaction(demo()), provider, bracketPool)
+    const program = pipe(withTransaction(demo()), provider, Pool.use)
 
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({

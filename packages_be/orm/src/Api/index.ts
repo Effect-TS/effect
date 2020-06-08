@@ -4,6 +4,7 @@ import * as ORM from "../ORM"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as O from "@matechs/core/Option"
 
 export type Target<O> = ObjectType<O>
@@ -43,41 +44,33 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
   const repository = repository_(DbURI)
   const orm = ORM.dbT(DbURI)
 
-  const provideApi = <S, R, E, A>(
-    eff: T.Effect<S, R & Database<DbURI>, E, A>
-  ): T.Effect<S, R & ORM.ORM<DbURI>, E, A> => {
-    const provideDb = T.provideM(
-      T.access(
-        (r: ORM.ORM<DbURI>): Database<DbURI> => ({
-          [DatabaseURI]: {
-            ...r[DatabaseURI],
-            [DbURI]: {
-              repository: (Target) => ({
-                save: (entity, options) =>
-                  pipe(
-                    orm.withRepositoryTask(Target)((_) => () =>
-                      _.save(entity, options)
-                    ),
-                    T.provide(r, "inverted")
-                  ),
-                findOne: (options) =>
-                  pipe(
-                    orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
-                    T.map(O.fromNullable),
-                    T.provide(r, "inverted")
-                  )
-              })
-            } as Database<DbURI>[typeof DatabaseURI][DbURI]
-          } as Database<DbURI>[typeof DatabaseURI]
-        })
-      )
+  const Api = L.fromEffect(
+    T.access(
+      (r: ORM.ORM<DbURI>): Database<DbURI> => ({
+        [DatabaseURI]: {
+          ...r[DatabaseURI],
+          [DbURI]: {
+            repository: (Target) => ({
+              save: (entity, options) =>
+                pipe(
+                  orm.withRepositoryTask(Target)((_) => () => _.save(entity, options)),
+                  T.provide(r, "inverted")
+                ),
+              findOne: (options) =>
+                pipe(
+                  orm.withRepositoryTask(Target)((_) => () => _.findOne(options)),
+                  T.map(O.fromNullable),
+                  T.provide(r, "inverted")
+                )
+            })
+          } as Database<DbURI>[typeof DatabaseURI][DbURI]
+        } as Database<DbURI>[typeof DatabaseURI]
+      })
     )
-
-    return pipe(eff, provideDb)
-  }
+  )
 
   const {
-    bracketPool,
+    Pool,
     requireTx,
     withConnection,
     withConnectionTask,
@@ -91,8 +84,8 @@ export const database = <DbURI extends symbol | string>(DbURI: DbURI) => {
 
   return {
     repository,
-    provideApi,
-    bracketPool,
+    Api,
+    Pool,
     requireTx,
     withConnection,
     withConnectionTask,
