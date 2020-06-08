@@ -10,14 +10,13 @@ import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
 import * as F from "@matechs/core/Service"
-import { mutable } from "@matechs/core/Utils"
 
 // alpha
 /* istanbul ignore file */
 
 const updateOrgs_ = (res: any[]) =>
   R.accessS<OrgsStateEnv>()(({ [orgsStateURI]: orgs }) => {
-    mutable(orgs).found = O.some(`found ${res.length}`)
+    orgs.found = O.some(`found ${res.length}`)
 
     return orgs.found
   })
@@ -40,7 +39,7 @@ export const provideOrgsOps = F.implement(orgsOpsSpec)({
               T.chainTap((_) => flashMessage("fetched!"))
             )
           : R.accessS<OrgsStateEnv>()(({ [orgsStateURI]: orgs }) => {
-              mutable(orgs).error = O.some("error while fetching")
+              orgs.error = O.some("error while fetching")
               return O.none
             })
       )

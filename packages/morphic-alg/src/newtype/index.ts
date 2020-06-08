@@ -52,7 +52,7 @@ export interface MatechsAlgebraNewtype<F, Env> {
     <E, A, N>(
       a: HKT2<F, Env, E, A>,
       iso: Iso<A, N>,
-      name: string,
+      name?: string,
       config?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
     ): HKT2<F, Env, E, N>
   }
@@ -60,7 +60,7 @@ export interface MatechsAlgebraNewtype<F, Env> {
     <E, A, N>(
       a: HKT2<F, Env, E, A>,
       prism: Prism<A, N>,
-      name: string,
+      name?: string,
       config?: ConfigsForType<Env, E, N, PrismConfig<E, A, N>>
     ): HKT2<F, Env, E, N>
   }
@@ -86,7 +86,7 @@ export interface MatechsAlgebraNewtype1<F extends URIS, Env> {
     <A, N>(
       a: Kind<F, Env, A>,
       iso: Iso<A, N>,
-      name: string,
+      name?: string,
       config?: ConfigsForType<Env, unknown, N, IsoConfig<unknown, A, N>>
     ): Kind<F, Env, N>
   }
@@ -94,7 +94,7 @@ export interface MatechsAlgebraNewtype1<F extends URIS, Env> {
     <A, N>(
       a: Kind<F, Env, A>,
       prism: Prism<A, N>,
-      name: string,
+      name?: string,
       config?: ConfigsForType<Env, unknown, N, PrismConfig<unknown, A, N>>
     ): Kind<F, Env, N>
   }
@@ -120,7 +120,7 @@ export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
     <E, A, N>(
       a: Kind2<F, Env, E, A>,
       iso: Iso<A, N>,
-      name: string,
+      name?: string,
       config?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
     ): Kind2<F, Env, E, N>
   }
@@ -128,7 +128,7 @@ export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
     <E, A, N>(
       a: Kind2<F, Env, E, A>,
       iso: Prism<A, N>,
-      name: string,
+      name?: string,
       config?: ConfigsForType<Env, E, N, PrismConfig<E, A, N>>
     ): Kind2<F, Env, E, N>
   }

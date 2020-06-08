@@ -1,15 +1,17 @@
 import { State } from "../../../src"
-import { make } from "../../morphic"
+import { mutable } from "../../utils"
 
 import * as T from "@matechs/core/Effect"
 import * as M from "@matechs/morphic"
 
-const FlashState_ = make((F) =>
-  F.interface(
-    {
-      messages: F.array(F.string())
-    },
-    "FlashMessage"
+const FlashState_ = mutable(
+  M.make((F) =>
+    F.interface(
+      {
+        messages: F.array(F.string())
+      },
+      "FlashMessage"
+    )
   )
 )
 

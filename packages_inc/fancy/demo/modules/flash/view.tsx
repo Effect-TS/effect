@@ -8,7 +8,6 @@ import { FlashStateEnv, flashStateURI } from "./state"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
-import { mutable } from "@matechs/core/Utils"
 
 export const DisplayFlash = UI.withRun()((run, dispose) =>
   UI.withState<FlashStateEnv>()<{
@@ -26,7 +25,7 @@ export const DisplayFlash = UI.withRun()((run, dispose) =>
           run(
             T.delay(
               T.sync(() => {
-                mutable(messages).shift()
+                messages.shift()
               }),
               3000
             )
@@ -37,7 +36,7 @@ export const DisplayFlash = UI.withRun()((run, dispose) =>
       return () => {
         disposeAutorun()
         dispose()
-        mutable(messages).splice(0, messages.length)
+        messages.splice(0, messages.length)
       }
     }, [])
 
