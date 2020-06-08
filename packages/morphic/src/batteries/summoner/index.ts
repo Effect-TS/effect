@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/class-name-casing */
+
 import type { BaseFC } from "../../fc/config"
 import { reportFailure } from "../../model/codec"
 import { ModelURI } from "../../model/hkt"
@@ -22,20 +24,25 @@ import * as T from "@matechs/core/Effect"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import { cacheUnaryFunction } from "@matechs/morphic-alg/utils/core"
 
-export interface M<R, L, A> extends Materialized<R, L, A, ProgramURI, InterpreterURI> {}
+export interface MM<R, L, A>
+  extends Materialized<R, L, A, ProgramURI, InterpreterURI> {}
 
-export type M_<R, A> = M<R, {}, A>
+export interface MM_<R, A> extends MM<R, {}, A> {}
 
-export const AsOpaque = <E, A>() => <X extends M<any, E, A>>(
-  x: X
-): M<Parameters<X["_R"]>[0], E, A> => x
+export interface M_<R, A> extends MM_<R & BaseFC, A> {}
 
-export const AsUOpaque = <A>() => <X extends M_<any, A>>(
-  x: X
-): M_<Parameters<X["_R"]>[0], A> => x
+export interface M<R, L, A> extends MM<R & BaseFC, L, A> {}
+
+export const opaque = <E, A>() => <R extends {}>(x: M<R, E, A>): M<R, E, A> => x
+
+export const opaque_ = <A>() => <R extends {}>(x: M_<R, A>): M_<R, A> => x
 
 export interface Summoner<R> extends Summoners<ProgramURI, InterpreterURI, R> {
-  <L, A>(F: ProgramType<R, L, A>[ProgramURI]): M<R, L, A>
+  <L, A>(F: ProgramType<R, L, A>[ProgramURI]): M<
+    unknown extends T.Erase<R, BaseFC> ? {} : T.Erase<R, BaseFC>,
+    L,
+    A
+  >
 }
 
 export const summonFor: <R extends AnyEnv = {}>(

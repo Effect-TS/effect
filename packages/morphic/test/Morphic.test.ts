@@ -263,6 +263,30 @@ const UsingBoth = M.make((F) =>
   )
 )
 
+const { make } = M.makeFor<{
+  [M.ShowURI]: {
+    prefix: string
+  }
+}>({})
+
+const PersonA_ = make((F) =>
+  F.array(Person(F), {
+    [M.ShowURI]: (_, { prefix }) => ({
+      show: (p) => `${prefix}:${_.show(p)}`
+    })
+  })
+)
+
+interface PersonA extends M.AType<typeof PersonA_> {}
+
+const PersonA = M.opaque_<PersonA>()(PersonA_)
+
+const ShowPersonA = M.showFor(make)({
+  [M.ShowURI]: {
+    prefix: "prefix"
+  }
+})(PersonA)
+
 describe("Morphic", () => {
   it("should use model interpreter", () => {
     const result_0 = Person.decodeT({
@@ -536,26 +560,6 @@ describe("Morphic", () => {
   })
 
   it("use with wider env", () => {
-    const { make } = M.makeFor<{
-      [M.ShowURI]: {
-        prefix: string
-      }
-    }>({})
-
-    const PersonA = make((F) =>
-      F.array(Person(F), {
-        [M.ShowURI]: (_, { prefix }) => ({
-          show: (p) => `${prefix}:${_.show(p)}`
-        })
-      })
-    )
-
-    const ShowPersonA = M.showFor(make)({
-      [M.ShowURI]: {
-        prefix: "prefix"
-      }
-    })(PersonA)
-
     const result = PersonA.decode([
       { name: "Michael", address: ["177 Finchley Road"] },
       { name: "John", address: ["178 Finchley Road"] }

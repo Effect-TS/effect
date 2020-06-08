@@ -1,4 +1,5 @@
-import { Summoner, summonFor, M } from "./batteries/summoner"
+import { Summoner, summonFor, opaque, opaque_ } from "./batteries/summoner"
+import type { M, M_ } from "./batteries/summoner"
 import type { Materialized } from "./batteries/usage/materializer"
 import type {
   SummonerEnv,
@@ -6,18 +7,11 @@ import type {
   SummonerProgURI
 } from "./batteries/usage/summoner"
 import { EqURI, modelEqInterpreter } from "./eq"
-import { FastCheckURI, modelFcInterpreter, BaseFC } from "./fc"
+import { FastCheckURI, modelFcInterpreter } from "./fc"
 import { modelShowInterpreter, ShowURI } from "./show"
 
 export { ValidationErrors, validationErrors } from "./batteries/interpreter"
-export {
-  AsOpaque as opaque,
-  AsUOpaque as opaque_,
-  M,
-  M_,
-  Summoner,
-  summonFor as makeFor
-} from "./batteries/summoner"
+export { Summoner, summonFor as makeFor } from "./batteries/summoner"
 
 export { Errors, withFirstMessage, withMessage, withValidate } from "./model"
 
@@ -93,13 +87,25 @@ export const { make, makeADT, makeProgram } =
   /*#__PURE__*/
   (() => summonFor({}))()
 
-export const deriveEq = <E, A>(F: M<BaseFC, E, A>) => eqFor(make)({})(F)
+export const deriveEq = <E, A>(F: M<{}, E, A>) => eqFor(make)({})(F)
 
-export const deriveShow = <E, A>(F: M<BaseFC, E, A>) => showFor(make)({})(F)
+export const deriveShow = <E, A>(F: M<{}, E, A>) => showFor(make)({})(F)
 
-export const deriveArb = <E, A>(F: M<BaseFC, E, A>) =>
+export const deriveArb = <E, A>(F: M<{}, E, A>) =>
   arbFor(summonFor({}).make)({
     [FastCheckURI]: {
       module: require("fast-check") as any
     }
   })(F)
+
+//
+// Generics
+//
+
+export type { M, M_ }
+
+//
+// Opaque
+//
+
+export { opaque, opaque_ }
