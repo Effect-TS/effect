@@ -281,7 +281,9 @@ export function bimap_<S, R, E1, E2, A, B>(
     (cause) =>
       cause._tag === "Raise" && cause.next._tag === "None"
         ? completed(raise(leftMap(cause.error)))
-        : completed(combinedCause(abort("bimap with multiple errors"))(cause)),
+        : cause._tag === "Raise"
+        ? completed(combinedCause(abort("bimap with multiple errors"))(cause))
+        : completed(cause),
     flow(rightMap, pure)
   )
 }
@@ -361,7 +363,9 @@ export function chainError_<S, R, E1, S2, R2, E2, A, A2>(
     (cause) =>
       cause._tag === "Raise" && cause.next._tag === "None"
         ? f(cause.error)
-        : completed(combinedCause(abort("chainError with multiple errors"))(cause)),
+        : cause._tag === "Raise"
+        ? completed(combinedCause(abort("chainError with multiple errors"))(cause))
+        : completed(cause),
     pure
   )
 }
