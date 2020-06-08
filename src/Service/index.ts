@@ -1,6 +1,7 @@
 import * as T from "../Effect"
 import * as F from "../Function"
 import { pipe } from "../Function"
+import * as L from "../Layer"
 import * as M from "../Managed"
 
 export type Patched<A, B> = B extends F.FunctionN<
@@ -172,6 +173,15 @@ export function implement<S extends ModuleSpec<any>>(
   ): T.Provider<ImplementationEnv<OnlyNew<TypeOf<S>, I>>, TypeOf<S>, never> => (eff) =>
     T.accessM((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) =>
       pipe(eff, T.provide(providing(s, i, e), inverted))
+    )
+}
+
+export function layer<S extends ModuleSpec<any>>(s: S) {
+  return <I extends Implementation<TypeOf<S>>>(
+    i: I
+  ): L.Layer<never, ImplementationEnv<OnlyNew<TypeOf<S>, I>>, never, TypeOf<S>> =>
+    L.fromEffect(
+      T.access((e: ImplementationEnv<OnlyNew<TypeOf<S>, I>>) => providing(s, i, e))
     )
 }
 
