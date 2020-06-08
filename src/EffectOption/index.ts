@@ -40,21 +40,21 @@ export type SyncRE<R, E, A> = EffectOption<never, R, E, A>
 export const URI = "@matechs/core/EffectOption"
 export type URI = typeof URI
 
-export type SOf<Effs extends EffectOption<any, any, any, any>[]> = {
+type SOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: STypeOf<Effs[k]>
 }[number]
 
-export type ROf<Effs extends EffectOption<any, any, any, any>[]> = UnionToIntersection<
+type ROf<Effs extends EffectOption<any, any, any, any>[]> = UnionToIntersection<
   {
     [k in keyof Effs]: unknown extends RTypeOf<Effs[k]> ? never : RTypeOf<Effs[k]>
   }[number]
 >
 
-export type EOf<Effs extends EffectOption<any, any, any, any>[]> = {
+type EOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: ETypeOf<Effs[k]>
 }[number]
 
-export type AOf<Effs extends EffectOption<any, any, any, any>[]> = {
+type AOf<Effs extends EffectOption<any, any, any, any>[]> = {
   [k in keyof Effs]: ATypeOf<Effs[k]> extends O.Option<infer A> ? A : never
 }[number]
 
@@ -278,13 +278,27 @@ export function par<I>(I: CApplicative4MA<URI> & I): CApplicative4MAP<URI> & I {
   }
 }
 
+export type Ret<H> = O.Ret<T.Ret<H>>
+export type Env<H> = T.Env<H>
+export type Err<H> = T.Err<H>
+export type Op<H> = T.Op<H>
+
 /**
  * Used to merge types of the form EffectOption<S, R, E, A> | EffectOption<S2, R2, E2, A2> into EffectOption<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
 export function compact<H extends EffectOption<any, any, any, any>>(
   _: H
-): EffectOption<STypeOf<H>, RTypeOf<H>, ETypeOf<H>, ATypeOf<H>> {
+): EffectOption<T.Op<H>, T.Env<H>, T.Err<H>, Ret<H>> {
+  return _ as any
+}
+
+export function compactF<
+  ARG extends unknown[],
+  H extends EffectOption<any, any, any, any>
+>(
+  _: (..._: ARG) => H
+): (..._: ARG) => EffectOption<T.Op<H>, T.Env<H>, T.Err<H>, Ret<H>> {
   return _ as any
 }
 

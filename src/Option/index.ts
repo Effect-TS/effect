@@ -1004,3 +1004,5 @@ export const option_: Monad1<URI> &
       : o.value
   }
 }
+
+export type Ret<H> = H extends Some<infer A> ? A : never
