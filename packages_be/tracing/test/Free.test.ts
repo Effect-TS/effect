@@ -47,9 +47,9 @@ describe("Trace Free", () => {
   it("trace access", async () => {
     const spans: any[] = []
     const mockT = new MockTracer(spans)
-    const tracer = TR.tracer(T.pure(mockT))
+    const tracer = TR.Tracer(T.pure(mockT))
 
-    await T.runToPromiseExit(pipe(program, T.provide(tracer)))
+    await T.runToPromiseExit(pipe(program, tracer.use))
 
     assert.deepStrictEqual(
       spans.map((s) => s.name),

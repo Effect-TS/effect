@@ -1,11 +1,10 @@
-import { withControllerSpan, withTracer, tracer } from "../../src"
+import { withControllerSpan, withTracer, Tracer } from "../../src"
 
 import * as C from "./Counter"
 import * as P from "./Printer"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
-import * as U from "@matechs/core/Utils"
 
 export const program = withTracer(
   withControllerSpan(
@@ -25,10 +24,4 @@ export const program = withTracer(
   )
 )
 
-export const env: U.Env<typeof program> = {
-  ...P.printer,
-  ...C.counter,
-  ...tracer()
-}
-
-export const main = pipe(program, T.provide(env))
+export const main = pipe(program, P.Printer.with(C.Counter).with(Tracer()).use)

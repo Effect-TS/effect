@@ -5,6 +5,7 @@ import { print, Printer } from "./Printer"
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 
 export const CounterState: unique symbol = Symbol()
 
@@ -36,16 +37,16 @@ export const counterState = T.provideM(
   )
 )
 
-export const Counter: unique symbol = Symbol()
+export const CounterURI: unique symbol = Symbol()
 
 export interface Counter {
-  [Counter]: {
+  [CounterURI]: {
     count(): T.SyncRE<Printer & CounterState, Error, ReadonlyArray<void>>
   }
 }
 
-export const counter: Counter = {
-  [Counter]: {
+export const Counter = L.fromValue<Counter>({
+  [CounterURI]: {
     count() {
       return pipe(
         A.range(1, 10),
@@ -54,13 +55,12 @@ export const counter: Counter = {
             .do(increment())
             .bind("count", withChildSpan("span-current-count")(currentCount()))
             .doL(({ count }) => print(`n: ${n} (${count})`))
-            // eslint-disable-next-line @typescript-eslint/no-empty-function
-            .return(() => {})
+            .unit()
         )
       )
     }
   }
-}
+})
 
 export function increment(): T.SyncR<CounterState, void> {
   return T.accessM(({ [CounterState]: counter }: CounterState) => counter.increment())
@@ -71,5 +71,5 @@ export function count(): T.SyncRE<
   Error,
   ReadonlyArray<void>
 > {
-  return T.accessM(({ [Counter]: counter }: Counter) => counter.count())
+  return T.accessM(({ [CounterURI]: counter }: Counter) => counter.count())
 }

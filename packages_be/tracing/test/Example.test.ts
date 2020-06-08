@@ -2,15 +2,16 @@ import * as assert from "assert"
 
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing"
 
-import { tracer, Tracer, withChildSpan, withControllerSpan, withTracer } from "../src"
+import { Tracer, withChildSpan, withControllerSpan, withTracer } from "../src"
 
-import { counter } from "./demo/Counter"
+import { Counter } from "./demo/Counter"
 import { program } from "./demo/Main"
-import { Printer } from "./demo/Printer"
+import { Printer, PrinterURI } from "./demo/Printer"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 
 class MockTracer extends OT {
   constructor(private readonly spans: Array<{ name: string; options: SpanOptions }>) {
@@ -55,17 +56,19 @@ describe("Example", () => {
     const result = await T.runToPromiseExit(
       pipe(
         program,
-        T.provide(tracer(T.sync(() => mockTracer))),
-        T.provide<Printer>({
-          printer: {
-            print(s) {
-              return T.sync(() => {
-                messages.push(s)
-              })
-            }
-          }
-        }),
-        T.provide(counter)
+        Tracer(T.sync(() => mockTracer))
+          .with(
+            L.fromValue<Printer>({
+              [PrinterURI]: {
+                print(s) {
+                  return T.sync(() => {
+                    messages.push(s)
+                  })
+                }
+              }
+            })
+          )
+          .with(Counter).use
       )
     )
 
@@ -106,14 +109,14 @@ describe("Example", () => {
 
     const mockTracer = new MockTracer2(spans)
 
-    const mockModule: Tracer = tracer(T.sync(() => mockTracer))
+    const mockModule = Tracer(T.sync(() => mockTracer))
 
     const program2 = withTracer(
       // eslint-disable-next-line @typescript-eslint/no-empty-function
       withControllerSpan("", "", {})(T.sync(() => {}))
     )
 
-    await T.runToPromise(pipe(program2, T.provide(mockModule)))
+    await T.runToPromise(pipe(program2, mockModule.use))
 
     assert.deepStrictEqual(
       // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
@@ -143,7 +146,7 @@ describe("Example", () => {
   it("skip tracing if out of context", async () => {
     const program2 = withChildSpan("noop")(T.raiseError(new Error("not implemented")))
 
-    const result = await T.runToPromiseExit(T.provide(tracer())(program2))
+    const result = await T.runToPromiseExit(Tracer().use(program2))
 
     assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")))
   })
