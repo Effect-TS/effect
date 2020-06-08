@@ -1,4 +1,3 @@
-import type { TaggedUnionLA } from "../../config"
 import { memo, collect } from "../../utils"
 import * as M from "../codec"
 import { modelApplyConfig } from "../config"
@@ -7,14 +6,6 @@ import { ModelType, ModelURI } from "../hkt"
 import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraTaggedUnions2 } from "@matechs/morphic-alg/tagged-union"
-
-declare module "@matechs/morphic-alg/tagged-union" {
-  export interface TaggedUnionConfig<Types> {
-    [ModelURI]: {
-      models: TaggedUnionLA<Types, ModelURI>
-    }
-  }
-}
 
 export const modelTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraTaggedUnions2<ModelURI, Env> => ({

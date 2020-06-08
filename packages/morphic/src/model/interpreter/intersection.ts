@@ -1,4 +1,3 @@
-import type { IntersectionLA } from "../../config"
 import { memo } from "../../utils"
 import * as M from "../codec"
 import { modelApplyConfig } from "../config"
@@ -7,17 +6,9 @@ import { ModelType, ModelURI } from "../hkt"
 import { introduce } from "@matechs/core/Function"
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
-  MatechsAlgebraIntersection2,
-  IntersectionConfig
+  IntersectionConfig,
+  MatechsAlgebraIntersection2
 } from "@matechs/morphic-alg/intersection"
-
-declare module "@matechs/morphic-alg/intersection" {
-  interface IntersectionConfig<L extends unknown[], A extends unknown[]> {
-    [ModelURI]: {
-      models: IntersectionLA<L, A, ModelURI>
-    }
-  }
-}
 
 export const modelIntersectionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraIntersection2<ModelURI, Env> => ({

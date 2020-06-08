@@ -1,36 +1,10 @@
 import { memo } from "../../utils"
 import { showApplyConfig } from "../config"
-import { ShowURI, ShowType } from "../hkt"
+import { ShowType, ShowURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
-import type { Show } from "@matechs/core/Show"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
-
-declare module "@matechs/morphic-alg/newtype" {
-  interface NewtypeConfig<L, A, N> {
-    [ShowURI]: {
-      show: Show<A>
-      showNewtype: Show<N>
-    }
-  }
-  interface CoerceConfig<L, A, N> {
-    [ShowURI]: {
-      show: Show<A>
-      showCoerce: Show<N>
-    }
-  }
-  interface IsoConfig<L, A, N> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-  interface PrismConfig<L, A, N> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-}
 
 export const showNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraNewtype1<ShowURI, Env> => ({

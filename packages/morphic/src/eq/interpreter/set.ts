@@ -3,20 +3,11 @@ import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
 import type { Array } from "@matechs/core/Array"
-import type { Eq } from "@matechs/core/Eq"
 import { introduce } from "@matechs/core/Function"
 import type { Ord } from "@matechs/core/Ord"
 import { getEq as SgetEq, Set } from "@matechs/core/Set"
 import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraSet1, SetConfig } from "@matechs/morphic-alg/set"
-
-declare module "@matechs/morphic-alg/set" {
-  interface SetConfig<L, A> {
-    [EqURI]: {
-      eq: Eq<A>
-    }
-  }
-}
 
 export const eqSetInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraSet1<EqURI, Env> => ({

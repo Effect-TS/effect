@@ -7,14 +7,6 @@ import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraStrMap2 } from "@matechs/morphic-alg/str-map"
 
-declare module "@matechs/morphic-alg/str-map" {
-  interface StrMapConfig<L, A> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-}
-
 export const modelStrMapInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraStrMap2<ModelURI, Env> => ({
     _F: ModelURI,

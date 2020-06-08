@@ -1,7 +1,10 @@
 import * as fc from "fast-check"
 
 import * as M from "../src"
+import * as EQ from "../src/eq"
+import * as FC from "../src/fc"
 import * as Model from "../src/model"
+import * as SHOW from "../src/show"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
@@ -94,9 +97,9 @@ interface AgeE extends M.EType<typeof Age_> {}
 
 const Age = M.opaque<AgeE, Age>()(Age_)
 
-const PersonEQ = M.deriveEq(Person)
-const PersonArb = M.deriveArb(Person)
-const PersonShow = M.deriveShow(Person)
+const PersonEQ = EQ.derive(Person)
+const PersonArb = FC.derive(Person)
+const PersonShow = SHOW.derive(Person)
 
 const PersonWithAge_ = M.make((F) =>
   F.intersection([Person(F), Age(F)], "PersonWithAge", {
@@ -281,7 +284,7 @@ interface PersonA extends M.AType<typeof PersonA_> {}
 
 const PersonA = M.opaque_<PersonA>()(PersonA_)
 
-const ShowPersonA = M.showFor(make)({
+const ShowPersonA = SHOW.deriveFor(make)({
   [M.ShowURI]: {
     prefix: "prefix"
   }
@@ -427,7 +430,7 @@ describe("Morphic", () => {
       age: 29
     })
 
-    expect(pipe(result, E.map(M.deriveShow(PersonWithAge).show))).toStrictEqual(
+    expect(pipe(result, E.map(SHOW.derive(PersonWithAge).show))).toStrictEqual(
       E.right(
         '{ name: ("Michael"), address: <AddressArray>([~Address~("177 Finchley Road")]), age: 29 }'
       )
@@ -439,7 +442,7 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = M.deriveShow(Tagged)
+    const showTagged = SHOW.derive(Tagged)
 
     expect(showTagged.show(right)).toStrictEqual("Right: ok")
   })
@@ -448,7 +451,7 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = M.deriveShow(TaggedADT)
+    const showTagged = SHOW.derive(TaggedADT)
 
     expect(showTagged.show(right)).toStrictEqual("Right: ok")
   })
@@ -457,7 +460,7 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = M.deriveShow(SubADT)
+    const showTagged = SHOW.derive(SubADT)
 
     expect(showTagged.show(left)).toStrictEqual("Shrink: ok")
   })
@@ -466,7 +469,7 @@ describe("Morphic", () => {
       value: "ok"
     })
 
-    const showTagged = M.deriveShow(ExcADT)
+    const showTagged = SHOW.derive(ExcADT)
 
     expect(showTagged.show(right)).toStrictEqual("Shrink: ok")
   })

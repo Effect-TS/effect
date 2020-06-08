@@ -1,4 +1,3 @@
-import type { InterfaceLA } from "../../config"
 import { projectFieldWithEnv, memo } from "../../utils"
 import * as M from "../codec"
 import { modelApplyConfig } from "../config"
@@ -13,25 +12,6 @@ import type {
   PartialConfig,
   BothConfig
 } from "@matechs/morphic-alg/object"
-
-declare module "@matechs/morphic-alg/object" {
-  interface InterfaceConfig<Props> {
-    [ModelURI]: {
-      model: InterfaceLA<Props, ModelURI>
-    }
-  }
-  interface PartialConfig<Props> {
-    [ModelURI]: {
-      model: InterfaceLA<Props, ModelURI>
-    }
-  }
-  interface BothConfig<Props, PropsPartial> {
-    [ModelURI]: {
-      model: InterfaceLA<Props, ModelURI>
-      modelPartial: InterfaceLA<PropsPartial, ModelURI>
-    }
-  }
-}
 
 export const modelNonStrictObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject2<ModelURI, Env> => ({

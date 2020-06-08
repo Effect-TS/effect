@@ -18,40 +18,6 @@ import type {
   UUID
 } from "@matechs/morphic-alg/primitives"
 
-declare module "@matechs/morphic-alg/primitives" {
-  interface NonEmptyArrayConfig<L, A> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-  interface ArrayConfig<L, A> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-  interface NullableConfig<L, A> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-  interface OptionalConfig<L, A> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-  interface EitherConfig<EE, EA, AE, AA> {
-    [ShowURI]: {
-      left: Show<EA>
-      right: Show<AA>
-    }
-  }
-  interface OptionConfig<L, A> {
-    [ShowURI]: {
-      show: Show<A>
-    }
-  }
-}
-
 export const showPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<ShowURI, Env> => ({
     _F: ShowURI,

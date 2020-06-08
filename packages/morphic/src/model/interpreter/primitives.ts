@@ -7,40 +7,6 @@ import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraPrimitive2 } from "@matechs/morphic-alg/primitives"
 
-declare module "@matechs/morphic-alg/primitives" {
-  interface NonEmptyArrayConfig<L, A> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-  interface ArrayConfig<L, A> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-  interface NullableConfig<L, A> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-  interface OptionalConfig<L, A> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-  interface EitherConfig<EE, EA, AE, AA> {
-    [ModelURI]: {
-      left: M.Codec<EA, EE>
-      right: M.Codec<AA, AE>
-    }
-  }
-  interface OptionConfig<L, A> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-}
-
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
     _F: ModelURI,

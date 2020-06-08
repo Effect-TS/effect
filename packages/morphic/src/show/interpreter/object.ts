@@ -1,4 +1,3 @@
-import type { InterfaceA } from "../../config"
 import { memo, projectFieldWithEnv, mapRecord } from "../../utils"
 import { showApplyConfig } from "../config"
 import { ShowType, ShowURI } from "../hkt"
@@ -9,25 +8,6 @@ import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraObject1 } from "@matechs/morphic-alg/object"
 
 const asPartial = <T>(x: ShowType<T>): ShowType<Partial<T>> => x as any
-
-declare module "@matechs/morphic-alg/object" {
-  interface InterfaceConfig<Props> {
-    [ShowURI]: {
-      show: InterfaceA<Props, S.URI>
-    }
-  }
-  interface PartialConfig<Props> {
-    [ShowURI]: {
-      show: InterfaceA<Props, S.URI>
-    }
-  }
-  interface BothConfig<Props, PropsPartial> {
-    [ShowURI]: {
-      show: InterfaceA<Props & PropsPartial, S.URI>
-      showPartial: InterfaceA<PropsPartial, S.URI>
-    }
-  }
-}
 
 const showOrUndefined = <A>(s: S.Show<A>): S.Show<A | undefined> => ({
   show: (x) => (x == null ? "undefined" : s.show(x))

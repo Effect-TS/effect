@@ -1,5 +1,4 @@
-import { InterfaceA } from "../../config"
-import { projectFieldWithEnv, memo, mapRecord } from "../../utils"
+import { mapRecord, memo, projectFieldWithEnv } from "../../utils"
 import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
@@ -9,25 +8,6 @@ import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraObject1 } from "@matechs/morphic-alg/object"
 
 const asPartial = <T>(x: EqType<T>): EqType<Partial<T>> => x as any
-
-declare module "@matechs/morphic-alg/object" {
-  interface InterfaceConfig<Props> {
-    [EqURI]: {
-      eq: InterfaceA<Props, E.URI>
-    }
-  }
-  interface PartialConfig<Props> {
-    [EqURI]: {
-      eq: InterfaceA<Props, E.URI>
-    }
-  }
-  interface BothConfig<Props, PropsPartial> {
-    [EqURI]: {
-      eq: InterfaceA<Props, E.URI>
-      eqPartial: InterfaceA<PropsPartial, E.URI>
-    }
-  }
-}
 
 export const eqOrUndefined = <A>(eq: E.Eq<A>): E.Eq<A | undefined> => ({
   equals: (x, y) =>

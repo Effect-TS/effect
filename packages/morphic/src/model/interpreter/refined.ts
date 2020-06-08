@@ -7,14 +7,6 @@ import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
 import type { MatechsAlgebraRefined2 } from "@matechs/morphic-alg/refined"
 
-declare module "@matechs/morphic-alg/refined" {
-  interface RefinedConfig<E, A, B> {
-    [ModelURI]: {
-      model: M.Codec<A, E>
-    }
-  }
-}
-
 export const modelRefinedInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRefined2<ModelURI, Env> => ({
     _F: ModelURI,
