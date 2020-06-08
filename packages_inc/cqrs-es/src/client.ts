@@ -4,6 +4,7 @@ import client from "node-eventstore-client"
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as M from "@matechs/core/Managed"
 import { EventMetaHidden, metaURI } from "@matechs/cqrs"
 
@@ -16,6 +17,11 @@ export interface EventStoreConfig {
     connectionName?: string | undefined
   }
 }
+
+export const EventStoreConfig = (_: EventStoreConfig[typeof eventStoreURI]) =>
+  L.fromValue({
+    [eventStoreURI]: _
+  })
 
 export const accessConfig = T.access((r: EventStoreConfig) => r[eventStoreURI])
 

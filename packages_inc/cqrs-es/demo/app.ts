@@ -18,7 +18,7 @@ export const appSpec = F.define<App>({
 
 export const { printTodo } = F.access(appSpec)[appURI]
 
-export const provideApp = F.implement(appSpec)({
+export const App = F.layer(appSpec)({
   [appURI]: {
     printTodo: (todo) => logger.info(`todo: ${JSON.stringify(todo)}`)
   }

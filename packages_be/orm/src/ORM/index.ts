@@ -28,64 +28,22 @@ export interface DbConfig<A extends symbol | string> {
   }
 }
 
-export function dbConfig<A extends symbol | string>(
-  env: A,
+export const Config = <Db extends symbol | string>(URI: Db) => (
   readConfig: T.Async<ConnectionOptions>
-) {
-  return {
-    [configEnv]: {
-      [env]: {
-        readConfig
-      }
-    }
-  } as DbConfig<A>
-}
-
-/* istanbul ignore next */
-export function mergeConfig<R>(a: R) {
-  return <B extends symbol | string>(b: DbConfig<B>): R & DbConfig<B> => ({
-    ...a,
-    [configEnv]: {
-      ...a[configEnv],
-      ...b[configEnv]
-    }
-  })
-}
-
-/* istanbul ignore next */
-export function dbConfigs<A extends symbol | string, B extends symbol | string>(
-  a: DbConfig<A>,
-  b: DbConfig<B>
-): DbConfig<A> & DbConfig<B>
-
-/* istanbul ignore next */
-export function dbConfigs<
-  A extends symbol | string,
-  B extends symbol | string,
-  C extends symbol | string
->(
-  a: DbConfig<A>,
-  b: DbConfig<B>,
-  c: DbConfig<C>
-): DbConfig<A> & DbConfig<B> & DbConfig<C>
-
-/* istanbul ignore next */
-export function dbConfigs<
-  A extends symbol | string,
-  B extends symbol | string,
-  C extends symbol | string,
-  D extends symbol | string
->(
-  a: DbConfig<A>,
-  b: DbConfig<B>,
-  c: DbConfig<C>,
-  d: DbConfig<D>
-): DbConfig<A> & DbConfig<B> & DbConfig<C> & DbConfig<D>
-
-/* istanbul ignore next */
-export function dbConfigs(...configs: DbConfig<any>[]) {
-  return configs.reduce((a, b) => mergeConfig(a)(b))
-}
+) =>
+  L.fromEffect(
+    T.access(
+      (r: {}): DbConfig<Db> => ({
+        ...r,
+        [configEnv]: {
+          ...r[configEnv],
+          [URI]: {
+            readConfig
+          }
+        }
+      })
+    )
+  )
 
 export interface Pool<A extends symbol | string> {
   [poolEnv]: {
@@ -109,17 +67,18 @@ export interface DbFactory {
   }
 }
 
-export const liveFactory: DbFactory = {
+export const liveFactory = L.fromValue<DbFactory>({
   [factoryEnv]: {
     createConnection
   }
-}
-
-export const mockFactory: (x: typeof createConnection) => DbFactory = (x) => ({
-  [factoryEnv]: {
-    createConnection: x
-  }
 })
+
+export const mockFactory = (x: typeof createConnection) =>
+  L.fromValue<DbFactory>({
+    [factoryEnv]: {
+      createConnection: x
+    }
+  })
 
 export const dbTxURI = "@matechs/orm/dbTxURI"
 

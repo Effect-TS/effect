@@ -21,6 +21,8 @@ const DbURI: unique symbol = Symbol()
 
 const DB = ORM.database(DbURI)
 
+const FakeConfig = ORM.Config(DbURI)(T.pure({} as any))
+
 describe("Api", () => {
   it("should use mock repository", async () => {
     const main = DB.repository(DemoEntity).save({ id: "ok" })
@@ -70,27 +72,27 @@ describe("Api", () => {
     const program = DB.repository(DemoEntity).save({ id: "ok" })
     const main = pipe(
       program,
-      DB.Api.with(DB.Pool).use,
-      T.provide(
-        ORM.mockFactory(() =>
-          Promise.resolve({
-            manager: {
-              getRepository<Entity>(
-                _: string | Function | (new () => Entity)
-              ): Repository<Entity> {
-                return {
-                  save: (o: any) =>
-                    deepEqual(o, { id: "ok" })
-                      ? Promise.resolve(o)
-                      : Promise.reject("error")
-                } as Repository<Entity>
-              }
-            } as EntityManager,
-            close: () => Promise.resolve()
-          } as Connection)
+      DB.Api.with(DB.Pool)
+        .with(
+          ORM.mockFactory(() =>
+            Promise.resolve({
+              manager: {
+                getRepository<Entity>(
+                  _: string | Function | (new () => Entity)
+                ): Repository<Entity> {
+                  return {
+                    save: (o: any) =>
+                      deepEqual(o, { id: "ok" })
+                        ? Promise.resolve(o)
+                        : Promise.reject("error")
+                  } as Repository<Entity>
+                }
+              } as EntityManager,
+              close: () => Promise.resolve()
+            } as Connection)
+          )
         )
-      ),
-      T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
+        .with(FakeConfig).use
     )
     const result = await T.runToPromiseExit(main)
 
@@ -105,27 +107,27 @@ describe("Api", () => {
     })
     const main = pipe(
       program,
-      DB.Api.with(DB.Pool).use,
-      T.provide(
-        ORM.mockFactory(() =>
-          Promise.resolve({
-            manager: {
-              getRepository<Entity>(
-                _: string | Function | (new () => Entity)
-              ): Repository<Entity> {
-                return {
-                  findOne: (o: any) =>
-                    deepEqual(o, { where: { id: "ok" } })
-                      ? Promise.resolve({ id: "ok" } as any)
-                      : Promise.reject("error")
-                } as Repository<Entity>
-              }
-            } as EntityManager,
-            close: () => Promise.resolve()
-          } as Connection)
+      DB.Api.with(DB.Pool)
+        .with(
+          ORM.mockFactory(() =>
+            Promise.resolve({
+              manager: {
+                getRepository<Entity>(
+                  _: string | Function | (new () => Entity)
+                ): Repository<Entity> {
+                  return {
+                    findOne: (o: any) =>
+                      deepEqual(o, { where: { id: "ok" } })
+                        ? Promise.resolve({ id: "ok" } as any)
+                        : Promise.reject("error")
+                  } as Repository<Entity>
+                }
+              } as EntityManager,
+              close: () => Promise.resolve()
+            } as Connection)
+          )
         )
-      ),
-      T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
+        .with(FakeConfig).use
     )
     const result = await T.runToPromiseExit(main)
 
@@ -137,28 +139,28 @@ describe("Api", () => {
     const main = pipe(
       program,
       DB.withTransaction,
-      DB.Api.with(DB.Pool).use,
-      T.provide(
-        ORM.mockFactory(() =>
-          Promise.resolve({
-            transaction: <T>(f: (_: EntityManager) => Promise<T>) =>
-              f({
-                getRepository<Entity>(
-                  _: string | Function | (new () => Entity)
-                ): Repository<Entity> {
-                  return {
-                    save: (o: any) =>
-                      deepEqual(o, { id: "ok" })
-                        ? Promise.resolve(o)
-                        : Promise.reject("error")
-                  } as Repository<Entity>
-                }
-              } as EntityManager),
-            close: () => Promise.resolve()
-          } as Connection)
+      DB.Api.with(DB.Pool)
+        .with(
+          ORM.mockFactory(() =>
+            Promise.resolve({
+              transaction: <T>(f: (_: EntityManager) => Promise<T>) =>
+                f({
+                  getRepository<Entity>(
+                    _: string | Function | (new () => Entity)
+                  ): Repository<Entity> {
+                    return {
+                      save: (o: any) =>
+                        deepEqual(o, { id: "ok" })
+                          ? Promise.resolve(o)
+                          : Promise.reject("error")
+                    } as Repository<Entity>
+                  }
+                } as EntityManager),
+              close: () => Promise.resolve()
+            } as Connection)
+          )
         )
-      ),
-      T.provide(ORM.dbConfig(DbURI, T.pure({} as any)))
+        .with(FakeConfig).use
     )
     const result = await T.runToPromiseExit(main)
 

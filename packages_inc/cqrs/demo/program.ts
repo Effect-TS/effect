@@ -1,11 +1,11 @@
 import { ReadSideConfig } from "../src/config"
 
-import { provideApp } from "./app"
+import { App } from "./app"
 import {
   withTransaction,
   todoRoot,
   todosAggregate,
-  bracketPool,
+  Pool,
   domain,
   dbConfigLive
 } from "./db"
@@ -98,29 +98,25 @@ const readAllDomainOnlyTodoRemoved = domain.readOnly(
 
 // provide env like you would normally do with ORM
 // keep in mind to include EventLog in your entities
-export const main = bracketPool(
-  T.Do()
-    .do(domain.init()) // creates tables for event log and index
-    .do(
-      // run all programs
-      T.parSequenceT(
-        program,
-        readInAggregateTodosOnlyTodoAdded,
-        readInAggregateTodosOnlyTodoRemoved,
-        readAllDomainTodoAdded,
-        readAllDomainOnlyTodoRemoved
-      )
+export const main = T.Do()
+  .do(domain.init()) // creates tables for event log and index
+  .do(
+    // run all programs
+    T.parSequenceT(
+      program,
+      readInAggregateTodosOnlyTodoAdded,
+      readInAggregateTodosOnlyTodoRemoved,
+      readAllDomainTodoAdded,
+      readAllDomainOnlyTodoRemoved
     )
-    .return(() => {
-      //
-    })
-)
+  )
+  .return(() => {
+    //
+  })
 
 export const liveMain = pipe(
   main,
-  provideApp,
+  Pool.with(dbConfigLive).with(liveFactory).with(App).use,
   console.provideConsoleLogger,
-  console.provideConsoleLoggerConfig(),
-  T.provide(dbConfigLive),
-  T.provide(liveFactory)
+  console.provideConsoleLoggerConfig()
 )

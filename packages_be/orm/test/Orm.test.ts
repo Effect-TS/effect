@@ -18,7 +18,6 @@ import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
 import * as F from "@matechs/core/Service"
-import * as U from "@matechs/core/Utils"
 
 @Entity()
 export class DemoEntity {
@@ -36,6 +35,8 @@ const {
   withRepositoryTask,
   withTransaction
 } = DB.dbT(testDbEnv)
+
+const FakeConfig = DB.Config(testDbEnv)(T.pure({} as any))
 
 describe("Orm", () => {
   it("should use db", async () => {
@@ -69,14 +70,11 @@ describe("Orm", () => {
       withRepositoryTask(DemoEntity)((r) => () => r.findOne({ where: { id: "test" } }))
     )
 
-    const program = Pool.use(withTransaction(main))
+    const program = Pool.with(DB.mockFactory(mockFactory))
+      .with(FakeConfig)
+      .use(withTransaction(main))
 
-    const env: U.Env<typeof program> = {
-      ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    }
-
-    const result = await T.runToPromiseExit(T.provide(env)(program))
+    const result = await T.runToPromiseExit(program)
 
     assert.deepStrictEqual(
       result,
@@ -111,20 +109,17 @@ describe("Orm", () => {
         }
       } as Connection)
 
-    const program = Pool.use(
-      withTransaction(
-        withManagerTask((m) => () =>
-          m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
+    const program = Pool.with(DB.mockFactory(mockFactory))
+      .with(FakeConfig)
+      .use(
+        withTransaction(
+          withManagerTask((m) => () =>
+            m.getRepository(DemoEntity).findOne({ where: { id: "test" } })
+          )
         )
       )
-    )
 
-    const env: U.Env<typeof program> = {
-      ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    }
-
-    const result = await T.runToPromiseExit(T.provide(env)(program))
+    const result = await T.runToPromiseExit(program)
 
     assert.deepStrictEqual(
       result,
@@ -152,18 +147,15 @@ describe("Orm", () => {
         }
       } as Connection)
 
-    const program = Pool.use(
-      withConnectionTask((c) => () =>
-        c.getRepository(DemoEntity).findOne({ where: { id: "test" } })
+    const program = Pool.with(DB.mockFactory(mockFactory))
+      .with(FakeConfig)
+      .use(
+        withConnectionTask((c) => () =>
+          c.getRepository(DemoEntity).findOne({ where: { id: "test" } })
+        )
       )
-    )
 
-    const env: U.Env<typeof program> = {
-      ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    }
-
-    const result = await T.runToPromiseExit(T.provide(env)(program))
+    const result = await T.runToPromiseExit(program)
 
     assert.deepStrictEqual(
       result,
@@ -184,13 +176,11 @@ describe("Orm", () => {
       [uri]: { demo }
     } = F.access(spec)
 
-    const provider = F.implement(spec)({
+    const provider = F.layer(spec)({
       [uri]: {
         demo: () => withManagerTask((r) => () => r.query(""))
       }
     })
-
-    const program = pipe(withTransaction(demo()), provider, Pool.use)
 
     const mockFactory: typeof createConnection = () =>
       Promise.resolve({
@@ -208,12 +198,14 @@ describe("Orm", () => {
         }
       } as Connection)
 
-    const env: U.Env<typeof program> = {
-      ...DB.mockFactory(mockFactory),
-      ...DB.dbConfig(testDbEnv, T.pure({} as any))
-    }
+    const factory = DB.mockFactory(mockFactory)
 
-    const res = await T.runToPromise(T.provide(env)(program))
+    const program = pipe(
+      withTransaction(demo()),
+      provider.with(Pool).with(factory).with(FakeConfig).use
+    )
+
+    const res = await T.runToPromise(program)
 
     assert.deepStrictEqual(res, "ok")
   })

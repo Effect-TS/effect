@@ -1,11 +1,11 @@
 import * as ES from "../src"
 
-import { provideApp } from "./app"
+import { App } from "./app"
 import {
   withTransaction,
   todoRoot,
   todosAggregate,
-  bracketPool,
+  Pool,
   domain,
   dbConfigLive,
   todosES
@@ -63,35 +63,33 @@ export const processTodosGeneric = ES.readEvents("read_todos_from_es")("$ce-todo
   (processEff) => todosAggregate.db.withTransaction(processEff)
 )
 
-export const main = bracketPool(
-  T.Do()
-    .do(domain.init())
-    .do(
-      T.parSequenceT(
-        // main program
-        program,
-        // diapatcher
-        todosES.dispatcher(defaultConfig("todos_es")),
-        // processor
-        processTodos
-      )
+export const main = T.Do()
+  .do(domain.init())
+  .do(
+    T.parSequenceT(
+      // main program
+      program,
+      // diapatcher
+      todosES.dispatcher(defaultConfig("todos_es")),
+      // processor
+      processTodos
     )
-    .return(() => {
-      //
-    })
-)
+  )
+  .return(() => {
+    //
+  })
 
 export const liveMain = pipe(
   main,
-  provideApp,
-  T.provide<ES.EventStoreConfig>({
-    [ES.eventStoreURI]: {
-      settings: {},
-      endPointOrGossipSeed: "discover://eventstore.discovery.url"
-    }
-  }),
+  Pool.with(dbConfigLive)
+    .with(liveFactory)
+    .with(App)
+    .with(
+      ES.EventStoreConfig({
+        settings: {},
+        endPointOrGossipSeed: "discover://eventstore.discovery.url"
+      })
+    ).use,
   console.provideConsoleLogger,
-  console.provideConsoleLoggerConfig(),
-  T.provide(dbConfigLive),
-  T.provide(liveFactory)
+  console.provideConsoleLoggerConfig()
 )

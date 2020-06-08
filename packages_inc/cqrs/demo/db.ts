@@ -6,13 +6,13 @@ import { printTodo } from "./app"
 import { DomainEvent } from "./events"
 
 import * as T from "@matechs/core/Effect"
-import { dbT, DbConfig, configEnv } from "@matechs/orm"
+import { dbT, Config } from "@matechs/orm"
 
 // configure ORM db
 export const dbURI = "@matechs/cqrs/demo/dbURI"
 
 // get ORM utils for db
-export const { bracketPool, withTransaction } = dbT(dbURI)
+export const { Pool, withTransaction } = dbT(dbURI)
 
 // get CQRS utils for db and event domain
 export const domain = CQ.cqrs(DomainEvent, dbURI)
@@ -28,28 +28,24 @@ export const onTodoAdded = todosAggregate.adt.matchEffect({
 // construct a utility to instanciate the aggregate root with a specific id
 export const todoRoot = (id: string) => todosAggregate.root(`todo-${id}`, [onTodoAdded])
 
-export const dbConfigLive: DbConfig<typeof dbURI> = {
-  [configEnv]: {
-    [dbURI]: {
-      readConfig: T.Do()
-        .bind("type", T.pure("postgres"))
-        .bind("name", T.pure("CONNECTION_NAME"))
-        .bind("username", T.pure("DB_USER"))
-        .bind("password", T.pure("DB_PASS"))
-        .bind("database", T.pure("DB_NAME"))
-        .bind("host", T.pure("DB_HOST"))
-        .bind("port", T.pure(5432))
-        .bind("synchronize", T.pure(true))
-        .bindL("entities", () =>
-          T.pure(
-            // need to add CQ.EventLog to your entities
-            // it has sync off and is created statically
-            // via CQ.init
-            [CQ.EventLog]
-          )
-        )
-        //.bind("namingStrategy", T.pure(new SnakeNamingStrategy()))
-        .return((s) => s as ConnectionOptions)
-    }
-  }
-}
+export const dbConfigLive = Config(dbURI)(
+  T.Do()
+    .bind("type", T.pure("postgres"))
+    .bind("name", T.pure("CONNECTION_NAME"))
+    .bind("username", T.pure("DB_USER"))
+    .bind("password", T.pure("DB_PASS"))
+    .bind("database", T.pure("DB_NAME"))
+    .bind("host", T.pure("DB_HOST"))
+    .bind("port", T.pure(5432))
+    .bind("synchronize", T.pure(true))
+    .bindL("entities", () =>
+      T.pure(
+        // need to add CQ.EventLog to your entities
+        // it has sync off and is created statically
+        // via CQ.init
+        [CQ.EventLog]
+      )
+    )
+    //.bind("namingStrategy", T.pure(new SnakeNamingStrategy()))
+    .return((s) => s as ConnectionOptions)
+)
