@@ -28,7 +28,7 @@ describe("Iso", () => {
       (a) => a.join("")
     )
 
-    const res = pipe("ab", I.unwrap(iso), I.wrap(iso))
+    const res = pipe("ab", I.wrap(iso), I.unwrap(iso))
 
     assert.deepStrictEqual(res, "ab")
   })
