@@ -9,13 +9,10 @@ import * as M from "@matechs/morphic"
 
 export const OrgsState_ = M.make((F) =>
   F.mutable(
-    F.interface(
-      {
-        found: F.nullable(F.string()),
-        error: F.nullable(F.string())
-      },
-      "OrgsState"
-    )
+    F.interface({
+      found: F.nullable(F.string()),
+      error: F.nullable(F.string())
+    })
   )
 )
 

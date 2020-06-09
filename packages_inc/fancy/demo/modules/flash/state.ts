@@ -4,12 +4,9 @@ import * as T from "@matechs/core/Effect"
 import * as M from "@matechs/morphic"
 
 const FlashState_ = M.make((F) =>
-  F.interface(
-    {
-      messages: F.mutable(F.array(F.string()))
-    },
-    "FlashMessage"
-  )
+  F.interface({
+    messages: F.mutable(F.array(F.string()))
+  })
 )
 
 export interface FlashState extends M.AType<typeof FlashState_> {}

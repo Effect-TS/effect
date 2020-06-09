@@ -8,12 +8,9 @@ import * as M from "@matechs/morphic"
 
 export const DateState_ = M.make((F) =>
   F.mutable(
-    F.interface(
-      {
-        current: F.date()
-      },
-      "DateState"
-    )
+    F.interface({
+      current: F.date()
+    })
   )
 )
 
