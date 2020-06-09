@@ -1,9 +1,15 @@
-import { Errors } from "../../model/codec"
-import { Validated } from "../../model/create"
+import type { Errors } from "../../model/codec"
 
-import { Array } from "@matechs/core/Array"
+import type { Array } from "@matechs/core/Array"
+import type { Branded } from "@matechs/core/Branded"
 import type * as T from "@matechs/core/Effect"
-import { Either } from "@matechs/core/Either"
+import type { Either } from "@matechs/core/Either"
+
+export interface ValidatedBrand {
+  readonly validated: unique symbol
+}
+
+export type Validated<A> = Branded<A, ValidatedBrand>
 
 export const InterpreterURI = "@matechs/morphic/InterpreterURI" as const
 
@@ -22,23 +28,24 @@ export const validationErrors = (errors: Array<string>): ValidationErrors => ({
 interface Interpreter<E, A> {
   // dumb constructor
   build: (a: A) => A
-  // classic
-  create: (
+  // smart constructors
+  validate: (
     a: A,
     strict?: "strict" | "classic" | "precise"
   ) => Either<Errors, Validated<A>>
-  encode: (a: A, strict?: "strict" | "classic") => E
-  decode: (i: unknown, strict?: "strict" | "classic" | "precise") => Either<Errors, A>
-  // monadic
-  encodeT: (a: A, strict?: "strict" | "classic") => T.Sync<E>
-  decodeT: (
-    i: unknown,
-    strict?: "strict" | "classic" | "precise"
-  ) => T.SyncE<ValidationErrors, A>
-  createT: (
+  validateM: (
     a: A,
     strict?: "strict" | "classic" | "precise"
   ) => T.SyncE<ValidationErrors, Validated<A>>
+  // encoders
+  encode: (a: A, strict?: "strict" | "classic") => E
+  encodeM: (a: A, strict?: "strict" | "classic") => T.Sync<E>
+  // decoders
+  decode: (i: unknown, strict?: "strict" | "classic" | "precise") => Either<Errors, A>
+  decodeM: (
+    i: unknown,
+    strict?: "strict" | "classic" | "precise"
+  ) => T.SyncE<ValidationErrors, A>
 }
 
 declare module "../usage/interpreter-result" {

@@ -329,8 +329,9 @@ describe("Morphic", () => {
 
     expect(result).toStrictEqual(E.left(["Invalid Address"]))
   })
+
   it("should use model interpreter", () => {
-    const result_0 = Person.decodeT({
+    const result_0 = Person.decodeM({
       name: "Michael",
       address: [
         A.range(0, 25)
@@ -338,11 +339,11 @@ describe("Morphic", () => {
           .join("")
       ]
     })
-    const result_1 = Person.decodeT({
+    const result_1 = Person.decodeM({
       name: "Michael",
       address: []
     })
-    const result_2 = Person.decodeT({
+    const result_2 = Person.decodeM({
       name: "Michael",
       address: ["177 Finchley Road"]
     })
@@ -441,7 +442,7 @@ describe("Morphic", () => {
   })
 
   it("should use fast-check", () =>
-    fc.assert(fc.property(PersonArb, (p) => E.isRight(Person.create(p)))))
+    fc.assert(fc.property(PersonArb, (p) => E.isRight(Person.validate(p)))))
 
   it("should generate non empty strings", () =>
     fc.assert(
@@ -451,13 +452,13 @@ describe("Morphic", () => {
       )
     ))
 
-  it("should use createT", () => {
-    const validPerson = Person.createT({
+  it("should use validateM", () => {
+    const validPerson = Person.validateM({
       name: "Michael",
       address: [I.wrap(NT.iso<Address>())("177 Finchley")]
     })
 
-    const invalidPerson = Person.createT({
+    const invalidPerson = Person.validateM({
       name: "Michael",
       address: [I.wrap(NT.iso<Address>())(A.range(0, 25).map(constant("a")).join(""))]
     })
@@ -486,6 +487,7 @@ describe("Morphic", () => {
       )
     )
   })
+
   it("use intersection show", () => {
     const result = PersonWithAge.decode({
       name: "Michael",
@@ -499,6 +501,7 @@ describe("Morphic", () => {
       )
     )
   })
+
   it("use tagged union show", () => {
     const right = Tagged.build({
       _tag: "right",
@@ -509,6 +512,7 @@ describe("Morphic", () => {
 
     expect(showTagged.show(right)).toStrictEqual("Right: ok")
   })
+
   it("use M.makeTagged union show", () => {
     const right = TaggedADT.of.right({
       value: "ok"
@@ -518,6 +522,7 @@ describe("Morphic", () => {
 
     expect(showTagged.show(right)).toStrictEqual("Right: ok")
   })
+
   it("use selectMorph union show", () => {
     const left = SubADT.of.left({
       value: "ok"
@@ -527,6 +532,7 @@ describe("Morphic", () => {
 
     expect(showTagged.show(left)).toStrictEqual("Shrink: ok")
   })
+
   it("use excludeMorph union show", () => {
     const right = ExcADT.of.right({
       value: "ok"
@@ -536,6 +542,7 @@ describe("Morphic", () => {
 
     expect(showTagged.show(right)).toStrictEqual("Shrink: ok")
   })
+
   it("use recursion", () => {
     const result = Rec.decode({
       id: "a",
@@ -561,8 +568,9 @@ describe("Morphic", () => {
       })
     )
   })
+
   it("precise interpreter", () => {
-    const result = Person.decodeT(
+    const result = Person.decodeM(
       {
         name: "Michael",
         address: ["177 Finchley Road"],
