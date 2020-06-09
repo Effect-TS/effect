@@ -1,5 +1,7 @@
 import { isIn, KeysDefinition } from "../utils"
 
+import { Compact } from "@matechs/core/Utils"
+
 type ValueByKeyByTag<
   Union extends Record<any, any>,
   Tags extends keyof Union = keyof Union
@@ -50,7 +52,7 @@ interface MatcherWiden<A, Tag extends keyof A>
 interface MatcherWidenIntern<A, Record> {
   <M extends Cases<Record, unknown>>(match: M): (
     a: A
-  ) => ReturnType<M[keyof M]> extends infer R ? R : never
+  ) => Compact<ReturnType<M[keyof M]> extends infer R ? R : never>
   <
     M extends Partial<Cases<Record, unknown>>,
     D extends (
@@ -61,9 +63,10 @@ interface MatcherWidenIntern<A, Record> {
     def: D
   ): (
     a: A
-  ) =>
+  ) => Compact<
     | (ReturnType<NonNullable<M[keyof M]>> extends infer R ? R : never)
     | (unknown extends ReturnType<D> ? never : ReturnType<D>)
+  >
 }
 
 export interface Reducer<S, A> {
