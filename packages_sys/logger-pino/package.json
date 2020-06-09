@@ -1,6 +1,6 @@
 {
   "name": "@matechs/logger-pino",
-  "version": "4.5.0",
+  "version": "4.5.1",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -18,14 +18,14 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@matechs/core": "^2.5.0",
-    "@matechs/logger": "^7.5.0"
+    "@matechs/core": "^2.5.1",
+    "@matechs/logger": "^7.5.1"
   },
   "peerDependencies": {
     "@types/pino": "^6.0.0",
     "pino": "^6.2.0"
   },
   "devDependencies": {
-    "@matechs/test-jest": "^4.5.0"
+    "@matechs/test-jest": "^4.5.1"
   }
 }
