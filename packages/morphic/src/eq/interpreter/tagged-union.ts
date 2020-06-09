@@ -9,7 +9,7 @@ export const eqTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraTaggedUnions1<EqURI, Env> => ({
     _F: EqURI,
     taggedUnion: (tag, types, config) => (env) => {
-      const equals = mapRecord(types, (a) => a(env).eq.equals)
+      const equals = mapRecord(types, (a) => a(env).eq)
       return new EqType(
         eqApplyConfig(config?.conf)(
           {
@@ -18,7 +18,7 @@ export const eqTaggedUnionInterpreter = memo(
                 return true
               } else {
                 const aTag = a[tag]
-                return aTag === b[tag] ? equals[aTag](a, b) : false
+                return aTag === b[tag] ? equals[aTag].equals(a, b) : false
               }
             }
           },

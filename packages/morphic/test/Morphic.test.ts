@@ -3,6 +3,7 @@ import * as fc from "fast-check"
 import * as M from "../src"
 import * as EQ from "../src/eq"
 import * as FC from "../src/fc"
+import * as GUARD from "../src/guard"
 import * as Model from "../src/model"
 import * as SHOW from "../src/show"
 
@@ -98,6 +99,7 @@ const Age = M.opaque<AgeE, Age>()(Age_)
 const PersonEQ = EQ.derive(Person)
 const PersonArb = FC.derive(Person)
 const PersonShow = SHOW.derive(Person)
+const PersonGuard = GUARD.derive(Person)
 
 const PersonWithAge_ = M.make((F) =>
   F.intersection([Person(F), Age(F)], {
@@ -381,6 +383,23 @@ describe("Morphic", () => {
         E.map(([a, b]) => PersonEQ.equals(a, b))
       )
     ).toStrictEqual(E.right(false))
+  })
+
+  it("should use guard", () => {
+    const result = Person.decode({
+      name: "Michael",
+      address: ["177 Finchley Road"]
+    })
+
+    expect(pipe(result, E.map(PersonGuard.is))).toStrictEqual(E.right(true))
+    expect(PersonGuard.is({})).toStrictEqual(false)
+
+    const adt = TaggedADT.of.left({
+      value: "ok"
+    })
+
+    expect(GUARD.derive(TaggedADT).is(adt)).toStrictEqual(true)
+    expect(GUARD.derive(TaggedADT).is({})).toStrictEqual(false)
   })
 
   it("should use monocle", () => {

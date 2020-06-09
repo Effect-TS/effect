@@ -1803,7 +1803,7 @@ export function reportFailure(es: Array<ValidationError>): Array<string> {
   return es.map(getMessage)
 }
 
-const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const regex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export const uuid =
   /*#__PURE__*/

@@ -28,6 +28,7 @@ export { FastCheckURI } from "./fc/hkt"
 export { ModelURI } from "./model/hkt"
 export { ShowURI } from "./show/hkt"
 export { EqURI } from "./eq/hkt"
+export { GuardURI } from "./guard/hkt"
 
 //
 // Threading configs
@@ -37,6 +38,7 @@ export {} from "./eq/interpreter/configs"
 export {} from "./fc/interpreter/configs"
 export {} from "./model/interpreter/configs"
 export {} from "./show/interpreter/configs"
+export {} from "./guard/interpreter/configs"
 
 //
 // Generics

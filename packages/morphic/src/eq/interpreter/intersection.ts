@@ -18,11 +18,11 @@ export const eqIntersectionInterpreter = memo(
         conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
       }
     ) => (env: Env) => {
-      const equals = types.map((getEq) => getEq(env).eq.equals)
+      const equals = types.map((getEq) => getEq(env).eq)
       return new EqType<A>(
         eqApplyConfig(config?.conf)(
           {
-            equals: (a: A, b: A) => fold(monoidAll)(equals.map((eq) => eq(a, b)))
+            equals: (a: A, b: A) => fold(monoidAll)(equals.map((eq) => eq.equals(a, b)))
           },
           env,
           {
