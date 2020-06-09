@@ -9,9 +9,15 @@ import type { MatechsAlgebraRefined1 } from "@matechs/morphic-alg/refined"
 export const fcRefinedInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRefined1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
-    refined: (getArb, ref, _name, config) => (env) =>
+    refined: (getArb, ref, config) => (env) =>
       introduce(getArb(env).arb)(
-        (arb) => new FastCheckType(fcApplyConfig(config)(arb.filter(ref), env, { arb }))
+        (arb) =>
+          new FastCheckType(fcApplyConfig(config?.conf)(arb.filter(ref), env, { arb }))
+      ),
+    constrained: (getArb, ref, config) => (env) =>
+      introduce(getArb(env).arb)(
+        (arb) =>
+          new FastCheckType(fcApplyConfig(config?.conf)(arb.filter(ref), env, { arb }))
       )
   })
 )

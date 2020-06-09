@@ -10,9 +10,9 @@ import type { MatechsAlgebraStrMap1 } from "@matechs/morphic-alg/str-map"
 export const eqStrMapInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraStrMap1<EqURI, Env> => ({
     _F: EqURI,
-    strMap: (getCodomain, config) => (env) =>
+    record: (getCodomain, config) => (env) =>
       introduce(getCodomain(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(RgetEq(eq), env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(RgetEq(eq), env, { eq }))
       )
   })
 )

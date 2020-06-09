@@ -10,6 +10,8 @@ export const modelUnknownInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraUnknown2<ModelURI, Env> => ({
     _F: ModelURI,
     unknown: (config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.unknown, env, {}))
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(M.unknown), env, {})
+      )
   })
 )

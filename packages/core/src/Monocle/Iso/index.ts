@@ -28,7 +28,7 @@ export function reverse<S, A>(iso: Iso<S, A>): Iso<A, S> {
 }
 
 export function wrap<S, A>(iso: Iso<S, A>) {
-  return iso.reverseGet
+  return iso.get
 }
 
 export function reverseGet<S, A>(iso: Iso<S, A>) {
@@ -36,7 +36,7 @@ export function reverseGet<S, A>(iso: Iso<S, A>) {
 }
 
 export function unwrap<S, A>(iso: Iso<S, A>) {
-  return iso.get
+  return iso.reverseGet
 }
 
 export function get<S, A>(iso: Iso<S, A>) {

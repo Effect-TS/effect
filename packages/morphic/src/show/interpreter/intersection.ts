@@ -15,15 +15,17 @@ export const showIntersectionInterpreter = memo(
     _F: ShowURI,
     intersection: <A>(
       types: Array<(_: Env) => ShowType<A>>,
-      _name: string,
-      config?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
+      }
     ) => (env: Env) => {
       const shows = types.map((getShow) => getShow(env).show)
       return new ShowType<A>(
         introduce<S.Show<A>>({
           show: (a: A) => shows.map((s) => s.show(a)).join(" & ")
         })((showIntersection) =>
-          showApplyConfig(config)(showIntersection, env, {
+          showApplyConfig(config?.conf)(showIntersection, env, {
             shows: shows as any
           })
         )

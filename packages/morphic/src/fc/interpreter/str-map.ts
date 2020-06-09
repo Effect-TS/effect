@@ -14,11 +14,11 @@ const strmapFromArray = <A>() => fromFoldable(getFirstSemigroup<A>(), array)
 export const fcStrMapInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraStrMap1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
-    strMap: (codomain, config) => (env) =>
+    record: (codomain, config) => (env) =>
       introduce(codomain(env).arb)(
         (arb) =>
           new FastCheckType(
-            fcApplyConfig(config)(
+            fcApplyConfig(config?.conf)(
               accessFC(env)
                 .array(accessFC(env).tuple(accessFC(env).string(), arb))
                 .map(strmapFromArray()),

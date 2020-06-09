@@ -34,7 +34,7 @@ const anyIso =
   /*#__PURE__*/
   (() => I.create<any, any>(unsafeCoerce, unsafeCoerce))()
 
-export function iso<S extends AnyNewtype>(): I.Iso<S, CarrierOf<S>> {
+export function iso<S extends AnyNewtype>(): I.Iso<CarrierOf<S>, S> {
   return anyIso
 }
 

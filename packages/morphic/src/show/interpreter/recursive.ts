@@ -14,15 +14,17 @@ export const showRecursiveInterpreter = memo(
     _F: ShowURI,
     recursive: <A>(
       a: (x: (env: Env) => ShowType<A>) => (env: Env) => ShowType<A>,
-      _name: string,
-      config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
+      }
     ) => {
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>
         introduce(() => get()(env).show)(
           (getShow) =>
             new ShowType(
-              showApplyConfig(config)({ show: (a) => getShow().show(a) }, env, {})
+              showApplyConfig(config?.conf)({ show: (a) => getShow().show(a) }, env, {})
             )
         )
       return res

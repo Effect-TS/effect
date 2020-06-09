@@ -18,36 +18,40 @@ export const modelNonStrictObjectInterpreter = memo(
     _F: ModelURI,
     interface: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        PropsE,
-        PropsA,
-        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          PropsE,
+          PropsA,
+          InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+        >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<PropsE, PropsA>(
-            modelApplyConfig(config)(M.type(model, name) as any, env, {
+            modelApplyConfig(config?.conf)(M.type(model, config?.name) as any, env, {
               model: model as any
             })
           )
       ),
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        Partial<PropsE>,
-        Partial<PropsA>,
-        PartialConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          Partial<PropsE>,
+          Partial<PropsA>,
+          PartialConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+        >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<Partial<PropsE>, Partial<PropsA>>(
-            modelApplyConfig(config)(M.partial(model, name) as any, env, {
+            modelApplyConfig(config?.conf)(M.partial(model, config?.name) as any, env, {
               model: model as any
             }) as any
           )
@@ -55,23 +59,33 @@ export const modelNonStrictObjectInterpreter = memo(
     both: <PropsE, PropsA, PropsPartialE, PropsPartialA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       partial: PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        PropsE & Partial<PropsPartialE>,
-        PropsA & Partial<PropsPartialA>,
-        BothConfig<
-          PropsKind2<ModelURI, PropsE, PropsA, Env>,
-          PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>
+      config?: {
+        name?: string
+        namePartial?: string
+        nameRequired?: string
+        conf?: ConfigsForType<
+          Env,
+          PropsE & Partial<PropsPartialE>,
+          PropsA & Partial<PropsPartialA>,
+          BothConfig<
+            PropsKind2<ModelURI, PropsE, PropsA, Env>,
+            PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>
+          >
         >
-      >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))((model) =>
         introduce(projectFieldWithEnv(partial, env)("codec"))(
           (modelP) =>
             new ModelType<PropsE, PropsA>(
-              modelApplyConfig(config)(
-                M.intersection([M.type(model), M.partial(modelP)], name) as any,
+              modelApplyConfig(config?.conf)(
+                M.intersection(
+                  [
+                    M.type(model, config?.nameRequired),
+                    M.partial(modelP, config?.namePartial)
+                  ],
+                  config?.name
+                ) as any,
                 env,
                 {
                   model: model as any,
@@ -89,61 +103,79 @@ export const modelStrictObjectInterpreter = memo(
     _F: ModelURI,
     interface: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        PropsE,
-        PropsA,
-        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          PropsE,
+          PropsA,
+          InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+        >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<PropsE, PropsA>(
-            modelApplyConfig(config)(M.strict(model, name) as any, env, {
+            modelApplyConfig(config?.conf)(M.strict(model, config?.name) as any, env, {
               model: model as any
             })
           )
       ),
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        Partial<PropsE>,
-        Partial<PropsA>,
-        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          Partial<PropsE>,
+          Partial<PropsA>,
+          InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+        >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<Partial<PropsE>, Partial<PropsA>>(
-            modelApplyConfig(config)(M.exact(M.partial(model, name)) as any, env, {
-              model: model as any
-            }) as any
+            modelApplyConfig(config?.conf)(
+              M.exact(M.partial(model), config?.name) as any,
+              env,
+              {
+                model: model as any
+              }
+            ) as any
           )
       ),
     both: <PropsE, PropsA, PropsPartialE, PropsPartialA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       partial: PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        PropsE & Partial<PropsPartialE>,
-        PropsA & Partial<PropsPartialA>,
-        BothConfig<
-          PropsKind2<ModelURI, PropsE, PropsA, Env>,
-          PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>
+      config?: {
+        name?: string
+        namePartial?: string
+        nameRequired?: string
+        conf?: ConfigsForType<
+          Env,
+          PropsE & Partial<PropsPartialE>,
+          PropsA & Partial<PropsPartialA>,
+          BothConfig<
+            PropsKind2<ModelURI, PropsE, PropsA, Env>,
+            PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>
+          >
         >
-      >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))((model) =>
         introduce(projectFieldWithEnv(partial, env)("codec"))(
           (modelP) =>
             new ModelType<PropsE, PropsA>(
-              modelApplyConfig(config)(
+              modelApplyConfig(config?.conf)(
                 M.exact(
-                  M.intersection([M.type(model), M.partial(modelP)], name)
+                  M.intersection(
+                    [
+                      M.type(model, config?.nameRequired),
+                      M.partial(modelP, config?.namePartial)
+                    ],
+                    config?.name
+                  )
                 ) as any,
                 env,
                 {
@@ -162,61 +194,83 @@ export const modelPreciseObjectInterpreter = memo(
     _F: ModelURI,
     interface: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        PropsE,
-        PropsA,
-        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          PropsE,
+          PropsA,
+          InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+        >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<PropsE, PropsA>(
-            modelApplyConfig(config)(M.precise(M.type(model), name) as any, env, {
-              model: model as any
-            })
+            modelApplyConfig(config?.conf)(
+              M.precise(M.type(model), config?.name) as any,
+              env,
+              {
+                model: model as any
+              }
+            )
           )
       ),
     partial: <PropsE, PropsA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        Partial<PropsE>,
-        Partial<PropsA>,
-        InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          Partial<PropsE>,
+          Partial<PropsA>,
+          InterfaceConfig<PropsKind2<ModelURI, PropsE, PropsA, Env>>
+        >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))(
         (model) =>
           new ModelType<Partial<PropsE>, Partial<PropsA>>(
-            modelApplyConfig(config)(M.precise(M.partial(model, name)) as any, env, {
-              model: model as any
-            }) as any
+            modelApplyConfig(config?.conf)(
+              M.precise(M.partial(model, config?.name)) as any,
+              env,
+              {
+                model: model as any
+              }
+            ) as any
           )
       ),
     both: <PropsE, PropsA, PropsPartialE, PropsPartialA>(
       props: PropsKind2<ModelURI, PropsE, PropsA, Env>,
       partial: PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>,
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        PropsE & Partial<PropsPartialE>,
-        PropsA & Partial<PropsPartialA>,
-        BothConfig<
-          PropsKind2<ModelURI, PropsE, PropsA, Env>,
-          PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>
+      config?: {
+        name?: string
+        namePartial?: string
+        nameRequired?: string
+        conf?: ConfigsForType<
+          Env,
+          PropsE & Partial<PropsPartialE>,
+          PropsA & Partial<PropsPartialA>,
+          BothConfig<
+            PropsKind2<ModelURI, PropsE, PropsA, Env>,
+            PropsKind2<ModelURI, PropsPartialE, PropsPartialA, Env>
+          >
         >
-      >
+      }
     ) => (env: Env) =>
       introduce(projectFieldWithEnv(props, env)("codec"))((model) =>
         introduce(projectFieldWithEnv(partial, env)("codec"))(
           (modelP) =>
             new ModelType<PropsE, PropsA>(
-              modelApplyConfig(config)(
+              modelApplyConfig(config?.conf)(
                 M.precise(
-                  M.intersection([M.type(model), M.partial(modelP)], name)
+                  M.intersection(
+                    [
+                      M.type(model, config?.nameRequired),
+                      M.partial(modelP, config?.namePartial)
+                    ],
+                    config?.name
+                  )
                 ) as any,
                 env,
                 {

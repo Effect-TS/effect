@@ -10,11 +10,11 @@ import type { MatechsAlgebraTaggedUnions2 } from "@matechs/morphic-alg/tagged-un
 export const modelTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraTaggedUnions2<ModelURI, Env> => ({
     _F: ModelURI,
-    taggedUnion: (_tag, dic, name, config) => (env) =>
+    taggedUnion: (_tag, dic, config) => (env) =>
       introduce(collect(dic, (_, getType) => getType(env).codec))(
         (models) =>
           new ModelType(
-            modelApplyConfig(config)(M.union(models as any, name), env, {
+            modelApplyConfig(config?.conf)(M.union(models as any, config?.name), env, {
               models: models as any
             })
           )

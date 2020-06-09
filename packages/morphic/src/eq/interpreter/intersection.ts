@@ -14,12 +14,13 @@ export const eqIntersectionInterpreter = memo(
     _F: EqURI,
     intersection: <A>(
       types: ((env: Env) => EqType<A>)[],
-      _name: string,
-      config?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
+      config?: {
+        conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
+      }
     ) => (env: Env) => {
       const equals = types.map((getEq) => getEq(env).eq.equals)
       return new EqType<A>(
-        eqApplyConfig(config)(
+        eqApplyConfig(config?.conf)(
           {
             equals: (a: A, b: A) => fold(monoidAll)(equals.map((eq) => eq(a, b)))
           },

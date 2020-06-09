@@ -9,10 +9,10 @@ import type { MatechsAlgebraTaggedUnions1 } from "@matechs/morphic-alg/tagged-un
 export const fcTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraTaggedUnions1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
-    taggedUnion: (_tag, dic, _name, config) => (env) =>
+    taggedUnion: (_tag, dic, config) => (env) =>
       new FastCheckType(
         introduce(collect(dic, (_, getArb) => getArb(env).arb))((arbs) =>
-          fcApplyConfig(config)(accessFC(env).oneof(...arbs), env, {
+          fcApplyConfig(config?.conf)(accessFC(env).oneof(...arbs), env, {
             arbs: arbs as any
           })
         )

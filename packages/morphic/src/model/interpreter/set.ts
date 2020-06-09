@@ -14,7 +14,11 @@ export const modelSetInterpreter = memo(
       introduce(a(env).codec)(
         (model) =>
           new ModelType(
-            modelApplyConfig(config)(M.setFromArray(model, ord), env, { model })
+            modelApplyConfig(config?.conf)(
+              M.setFromArray(model, ord, config?.name),
+              env,
+              { model }
+            )
           )
       )
   })

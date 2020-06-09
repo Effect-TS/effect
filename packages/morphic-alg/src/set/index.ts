@@ -28,7 +28,10 @@ export interface MatechsAlgebraSet<F, Env> {
   set: <L, A>(
     a: HKT2<F, Env, L, A>,
     ord: Ord<A>,
-    config?: ConfigsForType<Env, Array<L>, Set<A>, SetConfig<L, A>>
+    config?: {
+      name?: string
+      conf?: ConfigsForType<Env, Array<L>, Set<A>, SetConfig<L, A>>
+    }
   ) => HKT2<F, Env, Array<L>, Set<A>>
 }
 
@@ -37,7 +40,10 @@ export interface MatechsAlgebraSet1<F extends URIS, Env extends AnyEnv> {
   set: <A>(
     a: Kind<F, Env, A>,
     ord: Ord<A>,
-    config?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+    config?: {
+      name?: string
+      conf?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+    }
   ) => Kind<F, Env, Set<A>>
 }
 
@@ -46,6 +52,9 @@ export interface MatechsAlgebraSet2<F extends URIS2, Env extends AnyEnv> {
   set: <L, A>(
     a: Kind2<F, Env, L, A>,
     ord: Ord<A>,
-    config?: ConfigsForType<Env, Array<L>, Set<A>, SetConfig<L, A>>
+    config?: {
+      name?: string
+      conf?: ConfigsForType<Env, Array<L>, Set<A>, SetConfig<L, A>>
+    }
   ) => Kind2<F, Env, Array<L>, Set<A>>
 }

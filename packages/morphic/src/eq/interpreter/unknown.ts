@@ -10,13 +10,7 @@ import type { MatechsAlgebraUnknown1 } from "@matechs/morphic-alg/unknown"
 export const eqUnknownInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraUnknown1<EqURI, Env> => ({
     _F: EqURI,
-    unknown: (cfg) => (env) => {
-      const config = eqApplyConfig(cfg)
-      return new EqType(
-        config === undefined
-          ? { equals: circularDeepEqual }
-          : config({ equals: circularDeepEqual }, env, {})
-      )
-    }
+    unknown: (cfg) => (env) =>
+      new EqType(eqApplyConfig(cfg?.conf)({ equals: circularDeepEqual }, env, {}))
   })
 )

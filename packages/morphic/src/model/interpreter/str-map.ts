@@ -10,11 +10,15 @@ import type { MatechsAlgebraStrMap2 } from "@matechs/morphic-alg/str-map"
 export const modelStrMapInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraStrMap2<ModelURI, Env> => ({
     _F: ModelURI,
-    strMap: (codomain, config) => (env) =>
+    record: (codomain, config) => (env) =>
       introduce(codomain(env).codec)(
         (model) =>
           new ModelType(
-            modelApplyConfig(config)(M.record(M.string, model), env, { model })
+            modelApplyConfig(config?.conf)(
+              M.record(M.string, model, config?.name),
+              env,
+              { model }
+            )
           )
       )
   })

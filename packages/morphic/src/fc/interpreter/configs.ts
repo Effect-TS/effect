@@ -101,6 +101,11 @@ declare module "@matechs/morphic-alg/refined" {
       arb: Arbitrary<A>
     }
   }
+  interface PredicateConfig<E, A> {
+    [FastCheckURI]: {
+      arb: Arbitrary<A>
+    }
+  }
 }
 
 declare module "@matechs/morphic-alg/set" {

@@ -15,30 +15,35 @@ export const eqPrimitiveInterpreter = memo(
     _F: EqURI,
     date: (config) => (env) =>
       introduce(contramap_(eqNumber, (date: Date) => date.getTime()))(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, {}))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(eq, env, {}))
       ),
-    boolean: (config) => (env) => new EqType(eqApplyConfig(config)(eqBoolean, env, {})),
-    string: (config) => (env) => new EqType(eqApplyConfig(config)(eqString, env, {})),
-    number: (config) => (env) => new EqType(eqApplyConfig(config)(eqNumber, env, {})),
+    boolean: (config) => (env) =>
+      new EqType(eqApplyConfig(config?.conf)(eqBoolean, env, {})),
+    string: (config) => (env) =>
+      new EqType(eqApplyConfig(config?.conf)(eqString, env, {})),
+    number: (config) => (env) =>
+      new EqType(eqApplyConfig(config?.conf)(eqNumber, env, {})),
     bigint: (config) => (env) =>
-      new EqType<bigint>(eqApplyConfig(config)(eqStrict, env, {})),
+      new EqType<bigint>(eqApplyConfig(config?.conf)(eqStrict, env, {})),
     stringLiteral: (k, config) => (env) =>
-      new EqType<typeof k>(eqApplyConfig(config)(eqString, env, {})),
+      new EqType<typeof k>(eqApplyConfig(config?.conf)(eqString, env, {})),
     keysOf: (keys, config) => (env) =>
-      new EqType<keyof typeof keys & string>(eqApplyConfig(config)(eqStrict, env, {})),
+      new EqType<keyof typeof keys & string>(
+        eqApplyConfig(config?.conf)(eqStrict, env, {})
+      ),
     nullable: (getType, config) => (env) =>
       introduce(getType(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(OgetEq(eq), env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(OgetEq(eq), env, { eq }))
       ),
     mutable: (getType, config) => (env) =>
       introduce(getType(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(eq, env, { eq }))
       ),
     optional: (getType, config) => (env) =>
       introduce(getType(env).eq)(
         (eq) =>
           new EqType(
-            eqApplyConfig(config)(
+            eqApplyConfig(config?.conf)(
               {
                 equals: (x, y) =>
                   typeof x === "undefined" && typeof y === "undefined"
@@ -56,20 +61,20 @@ export const eqPrimitiveInterpreter = memo(
       ),
     array: (getType, config) => (env) =>
       introduce(getType(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(AgetEq(eq), env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(AgetEq(eq), env, { eq }))
       ),
     nonEmptyArray: (getType, config) => (env) =>
       introduce(getType(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(AgetEq(eq), env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(AgetEq(eq), env, { eq }))
       ),
     uuid: (config) => (env) =>
-      new EqType<UUID>(eqApplyConfig(config)(eqString, env, {})),
+      new EqType<UUID>(eqApplyConfig(config?.conf)(eqString, env, {})),
     either: (e, a, config) => (env) =>
       introduce(e(env).eq)((left) =>
         introduce(a(env).eq)(
           (right) =>
             new EqType(
-              eqApplyConfig(config)(EgetEq(left, right), env, {
+              eqApplyConfig(config?.conf)(EgetEq(left, right), env, {
                 left,
                 right
               })
@@ -80,7 +85,7 @@ export const eqPrimitiveInterpreter = memo(
       introduce(a(env).eq)(
         (eq) =>
           new EqType(
-            eqApplyConfig(config)(OgetEq(eq), env, {
+            eqApplyConfig(config?.conf)(OgetEq(eq), env, {
               eq
             })
           )

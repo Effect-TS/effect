@@ -12,9 +12,9 @@ export const showUnknownInterpreter = memo(
     _F: ShowURI,
     unknown: (config) => (env) =>
       new ShowType(
-        introduce<Show<unknown>>({ show: (_any: any) => "<unknown>" })((show) =>
-          showApplyConfig(config)(show, env, {})
-        )
+        introduce<Show<unknown>>({
+          show: (_any: any) => config?.name || "<unknown>"
+        })((show) => showApplyConfig(config?.conf)(show, env, {}))
       )
   })
 )

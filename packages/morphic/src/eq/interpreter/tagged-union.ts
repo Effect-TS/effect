@@ -8,10 +8,10 @@ import type { MatechsAlgebraTaggedUnions1 } from "@matechs/morphic-alg/tagged-un
 export const eqTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraTaggedUnions1<EqURI, Env> => ({
     _F: EqURI,
-    taggedUnion: (tag, types, _name, config) => (env) => {
+    taggedUnion: (tag, types, config) => (env) => {
       const equals = mapRecord(types, (a) => a(env).eq.equals)
       return new EqType(
-        eqApplyConfig(config)(
+        eqApplyConfig(config?.conf)(
           {
             equals: (a, b): boolean => {
               if (a === b) {

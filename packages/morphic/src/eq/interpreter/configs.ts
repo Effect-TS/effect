@@ -96,7 +96,12 @@ declare module "@matechs/morphic-alg/refined" {
   interface RefinedConfig<E, A, B> {
     [EqURI]: {
       eq: E.Eq<A>
-      eqRefined: E.Eq<A>
+      eqRefined: E.Eq<B>
+    }
+  }
+  interface PredicateConfig<E, A> {
+    [EqURI]: {
+      eq: E.Eq<A>
     }
   }
 }

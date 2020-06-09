@@ -14,12 +14,17 @@ export const modelRecursiveInterpreter = memo(
     _F: ModelURI,
     recursive: <L, A>(
       lazyA: (x: (_: Env) => ModelType<L, A>) => (_: Env) => ModelType<L, A>,
-      name: string,
-      config?: ConfigsForType<Env, L, A, RecursiveConfig<L, A>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, L, A, RecursiveConfig<L, A>>
+      }
     ) => (env: Env): ModelType<L, A> =>
       new ModelType(
-        modelApplyConfig(config)(
-          M.recursion(name, (Self) => lazyA((_) => new ModelType(Self))(env).codec),
+        modelApplyConfig(config?.conf)(
+          M.recursion(
+            config?.name || "Recursive",
+            (Self) => lazyA((_) => new ModelType(Self))(env).codec
+          ),
           env,
           {}
         )

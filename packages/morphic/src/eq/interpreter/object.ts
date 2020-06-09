@@ -23,17 +23,17 @@ export const eqOrUndefined = <A>(eq: E.Eq<A>): E.Eq<A | undefined> => ({
 export const eqObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject1<EqURI, Env> => ({
     _F: EqURI,
-    interface: (props, _name, config) => (env) =>
+    interface: (props, config) => (env) =>
       new EqType(
         introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
-          eqApplyConfig(config)(E.getStructEq(eq), env, { eq: eq as any })
+          eqApplyConfig(config?.conf)(E.getStructEq(eq), env, { eq: eq as any })
         )
       ),
-    partial: (props, _name, config) => (env) =>
+    partial: (props, config) => (env) =>
       asPartial(
         new EqType(
           introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
-            eqApplyConfig(config)(
+            eqApplyConfig(config?.conf)(
               E.getStructEq(mapRecord(eq, eqOrUndefined)) as any,
               env,
               { eq: eq as any }
@@ -41,11 +41,11 @@ export const eqObjectInterpreter = memo(
           )
         )
       ),
-    both: (props, partial, _name, config) => (env) =>
+    both: (props, partial, config) => (env) =>
       new EqType(
         introduce(projectFieldWithEnv(props, env)("eq"))((eq) =>
           introduce(projectFieldWithEnv(partial, env)("eq"))((eqPartial) =>
-            eqApplyConfig(config)(
+            eqApplyConfig(config?.conf)(
               E.getStructEq({ ...eq, ...mapRecord(eqPartial, eqOrUndefined) } as any),
               env,
               {

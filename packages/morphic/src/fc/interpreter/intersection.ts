@@ -14,13 +14,14 @@ export const fcIntersectionInterpreter = memo(
     _F: FastCheckURI,
     intersection: <A>(
       items: ((env: Env) => FastCheckType<A>)[],
-      _name: string,
-      config?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
+      config?: {
+        conf?: ConfigsForType<Env, unknown, A, IntersectionConfig<unknown[], A[]>>
+      }
     ) => (env: Env) =>
       introduce(items.map((getArb) => getArb(env).arb))(
         (arbs) =>
           new FastCheckType(
-            fcApplyConfig(config)(
+            fcApplyConfig(config?.conf)(
               accessFC(env)
                 .genericTuple(arbs)
                 .map((all) => Object.assign({}, ...all)),

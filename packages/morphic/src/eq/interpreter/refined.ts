@@ -9,9 +9,13 @@ import type { MatechsAlgebraRefined1 } from "@matechs/morphic-alg/refined"
 export const eqRefinedInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRefined1<EqURI, Env> => ({
     _F: EqURI,
-    refined: (getEq, _ref, _name, config) => (env) =>
+    refined: (getEq, _ref, config) => (env) =>
       introduce(getEq(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(eq, env, { eq, eqRefined: eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(eq, env, { eq, eqRefined: eq }))
+      ),
+    constrained: (getEq, _ref, config) => (env) =>
+      introduce(getEq(env).eq)(
+        (eq) => new EqType(eqApplyConfig(config?.conf)(eq, env, { eq }))
       )
   })
 )

@@ -15,14 +15,21 @@ export const fcSetInterpreter = memo(
     set: <A>(
       a: (env: Env) => FastCheckType<A>,
       ord: Ord<A>,
-      config?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+      }
     ) => (env) =>
       introduce(a(env).arb)(
         (arb) =>
           new FastCheckType(
-            fcApplyConfig(config)(accessFC(env).set(arb).map(fromArray(ord)), env, {
-              arb
-            })
+            fcApplyConfig(config?.conf)(
+              accessFC(env).set(arb).map(fromArray(ord)),
+              env,
+              {
+                arb
+              }
+            )
           )
       )
   })
