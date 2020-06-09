@@ -1,4 +1,6 @@
 import type { UnionToIntersection } from "../Base/Apply"
+import type { EffectOption } from "../EffectOption"
+import type { Effect, Managed, Stream, StreamEither } from "../Support/Common/types"
 
 export interface GE<S, R, E, A> {
   _E: () => E
@@ -38,3 +40,15 @@ export type Mutable<T> = {
 export function mutable<T>(_: T): Mutable<T> {
   return _
 }
+
+export type Compact<H> = [H] extends [Effect<infer S, infer R, infer E, infer A>]
+  ? Effect<S, R, E, A>
+  : [H] extends [Stream<infer S, infer R, infer E, infer A>]
+  ? Stream<S, R, E, A>
+  : [H] extends [StreamEither<infer S, infer R, infer E, infer A>]
+  ? StreamEither<S, R, E, A>
+  : [H] extends [Managed<infer S, infer R, infer E, infer A>]
+  ? Managed<S, R, E, A>
+  : [H] extends [EffectOption<infer S, infer R, infer E, infer A>]
+  ? EffectOption<S, R, E, A>
+  : H

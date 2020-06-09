@@ -414,23 +414,20 @@ export type Ret<H> = T.Ret<H>
 export type Env<H> = T.Env<H>
 export type Err<H> = T.Err<H>
 export type Op<H> = T.Op<H>
+export type Compact<H> = T.Compact<H>
 
 /**
  * Used to merge types of the form StreamEither<S, R, E, A> | StreamEither<S2, R2, E2, A2> into StreamEither<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
-export function compact<H extends StreamEither<any, any, any, any>>(
-  _: H
-): StreamEither<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
+export function compact<H extends StreamEither<any, any, any, any>>(_: H): Compact<H> {
   return _ as any
 }
 
 export function compactF<
   ARG extends unknown[],
   H extends StreamEither<any, any, any, any>
->(
-  _: (..._: ARG) => H
-): (..._: ARG) => StreamEither<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
+>(_: (..._: ARG) => H): (..._: ARG) => Compact<H> {
   return _ as any
 }
 

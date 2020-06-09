@@ -282,23 +282,20 @@ export type Ret<H> = O.Ret<T.Ret<H>>
 export type Env<H> = T.Env<H>
 export type Err<H> = T.Err<H>
 export type Op<H> = T.Op<H>
+export type Compact<H> = T.Compact<H>
 
 /**
  * Used to merge types of the form EffectOption<S, R, E, A> | EffectOption<S2, R2, E2, A2> into EffectOption<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
-export function compact<H extends EffectOption<any, any, any, any>>(
-  _: H
-): EffectOption<T.Op<H>, T.Env<H>, T.Err<H>, Ret<H>> {
+export function compact<H extends EffectOption<any, any, any, any>>(_: H): Compact<H> {
   return _ as any
 }
 
 export function compactF<
   ARG extends unknown[],
   H extends EffectOption<any, any, any, any>
->(
-  _: (..._: ARG) => H
-): (..._: ARG) => EffectOption<T.Op<H>, T.Env<H>, T.Err<H>, Ret<H>> {
+>(_: (..._: ARG) => H): (..._: ARG) => Compact<H> {
   return _ as any
 }
 
