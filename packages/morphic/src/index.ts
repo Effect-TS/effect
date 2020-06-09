@@ -5,13 +5,21 @@ import type { M, M_ } from "./batteries/summoner"
 // Model Tooling
 //
 
-export { ValidationErrors, validationErrors } from "./batteries/interpreter"
+export {
+  ValidationErrors,
+  validationErrors,
+  Validated,
+  ValidatedBrand
+} from "./batteries/interpreter"
 export {
   Errors,
   withFirstMessage,
   withMessage,
   withValidate,
-  reportFailure
+  reportFailure,
+  withMessage_,
+  withValidate_,
+  withName
 } from "./model"
 
 //
