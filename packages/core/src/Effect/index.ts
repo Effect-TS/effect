@@ -73,7 +73,7 @@ import { setExit } from "../Support/Driver/driver"
 import { Runtime } from "../Support/Runtime"
 import { fst, snd, tuple2 } from "../Support/Utils"
 import * as TR from "../Tree"
-import type { Env, Erase, Err, Op, Ret } from "../Utils"
+import type { Erase, Compact } from "../Utils"
 
 import {
   applySecond,
@@ -102,7 +102,7 @@ export {
   SyncR,
   SyncRE
 } from "../Support/Common/effect"
-export { Env, Erase, Err, Op, Ret } from "../Utils"
+export { Env, Erase, Err, Op, Ret, Compact } from "../Utils"
 
 export {
   applySecond,
@@ -1940,15 +1940,13 @@ export function zipWith<S, A, R2, E2, B, C>(
  * Used to merge types of the form Effect<S, R, E, A> | Effect<S2, R2, E2, A2> into Effect<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
-export function compact<H extends Effect<any, any, any, any>>(
-  _: H
-): Effect<Op<H>, Env<H>, Err<H>, Ret<H>> {
+export function compact<H extends Effect<any, any, any, any>>(_: H): Compact<H> {
   return _ as any
 }
 
 export function compactF<ARG extends unknown[], H extends Effect<any, any, any, any>>(
   _: (..._: ARG) => H
-): (..._: ARG) => Effect<Op<H>, Env<H>, Err<H>, Ret<H>> {
+): (..._: ARG) => Compact<H> {
   return _ as any
 }
 

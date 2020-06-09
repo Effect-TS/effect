@@ -1,7 +1,13 @@
+import { Compact } from "../Utils"
+
 export function and(a: boolean, b: boolean) {
   return a && b
 }
 
+export function fold<A, B>(
+  onFalse: () => A,
+  onTrue: () => B
+): (value: boolean) => Compact<A | B>
 export function fold<A, B>(
   onFalse: () => A,
   onTrue: () => B
