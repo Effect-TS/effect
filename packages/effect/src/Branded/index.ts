@@ -1,4 +1,4 @@
-declare const _brand: unique symbol
+export declare const _brand: unique symbol
 
 export interface Brand<B> {
   readonly [_brand]: B
