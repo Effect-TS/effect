@@ -1730,20 +1730,19 @@ export type Ret<H> = T.Ret<H>
 export type Env<H> = T.Env<H>
 export type Err<H> = T.Err<H>
 export type Op<H> = T.Op<H>
+export type Compact<H> = T.Compact<H>
 
 /**
  * Used to merge types of the form Stream<S, R, E, A> | Stream<S2, R2, E2, A2> into Stream<S | S2, R & R2, E | E2, A | A2>
  * @param _
  */
-export function compact<H extends Stream<any, any, any, any>>(
-  _: H
-): Stream<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
+export function compact<H extends Stream<any, any, any, any>>(_: H): T.Compact<H> {
   return _ as any
 }
 
 export function compactF<ARG extends unknown[], H extends Stream<any, any, any, any>>(
   _: (..._: ARG) => H
-): (..._: ARG) => Stream<T.Op<H>, T.Env<H>, T.Err<H>, T.Ret<H>> {
+): (..._: ARG) => T.Compact<H> {
   return _ as any
 }
 
