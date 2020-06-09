@@ -59,6 +59,7 @@ export interface Encoder<A, O> {
 }
 
 export class Codec<A, O = A> implements Decoder<A>, Encoder<A, O> {
+  readonly _tag!: string
   readonly _A!: A
   readonly _O!: O
   constructor(
@@ -67,9 +68,15 @@ export class Codec<A, O = A> implements Decoder<A>, Encoder<A, O> {
     /** succeeds if a value of type I can be decoded to a value of type A */
     readonly validate: Validate<A>,
     /** converts a value of type A to a value of type O */
-    readonly encode: Encode<A, O>
+    readonly encode: Encode<A, O>,
+    // tag
+    tag?: string
   ) {
     this.decode = this.decode.bind(this)
+
+    if (tag) {
+      this._tag = tag
+    }
   }
 
   /**
@@ -120,55 +127,34 @@ const pushAll = <A>(xs: Array<A>, ys: Array<A>): void => {
   }
 }
 
-export class UndefinedType extends Codec<undefined> {
-  readonly _tag: "UndefinedType" = "UndefinedType"
-  constructor() {
-    super("undefined", (u, c) => (u === void 0 ? success(u) : failure(u, c)), identity)
-  }
-}
-
-export interface UndefinedC extends UndefinedType {}
+export interface UndefinedC extends Codec<undefined> {}
 
 const undefinedType: UndefinedC =
   /*#__PURE__*/
-  (() => new UndefinedType())()
+  (() =>
+    new Codec<undefined>(
+      "undefined",
+      (u, c) => (u === void 0 ? success(u) : failure(u, c)),
+      identity
+    ))()
 
-export class VoidType extends Codec<void> {
-  readonly _tag: "VoidType" = "VoidType"
-  constructor() {
-    super("void", undefinedType.validate, identity)
-  }
-}
+export interface VoidType extends Codec<void> {}
 
 export interface VoidC extends VoidType {}
 
 export const voidType: VoidC =
   /*#__PURE__*/
-  (() => new VoidType())()
+  (() => new Codec<void>("void", undefinedType.validate, identity))()
 
-export class UnknownType extends Codec<unknown> {
-  readonly _tag: "UnknownType" = "UnknownType"
-  constructor() {
-    super("unknown", success, identity)
-  }
-}
+export interface UnknownType extends Codec<unknown> {}
 
 export interface UnknownC extends UnknownType {}
 
 export const unknown: UnknownC =
   /*#__PURE__*/
-  (() => new UnknownType())()
+  (() => new Codec<unknown>("unknown", success, identity))()
 
-export class StringType extends Codec<string> {
-  readonly _tag: "StringType" = "StringType"
-  constructor() {
-    super(
-      "string",
-      (u, c) => (typeof u === "string" ? success(u) : failure(u, c)),
-      identity
-    )
-  }
-}
+export interface StringType extends Codec<string> {}
 
 export const isString = (u: unknown): u is string => typeof u === "string"
 
@@ -176,78 +162,67 @@ export interface StringC extends StringType {}
 
 export const string: StringC =
   /*#__PURE__*/
-  (() => new StringType())()
-
-export class NumberType extends Codec<number> {
-  readonly _tag: "NumberType" = "NumberType"
-  constructor() {
-    super(
-      "number",
-      (u, c) => (typeof u === "number" ? success(u) : failure(u, c)),
+  (() =>
+    new Codec<string>(
+      "string",
+      (u, c) => (isString(u) ? success(u) : failure(u, c)),
       identity
-    )
-  }
-}
+    ))()
+
+export interface NumberType extends Codec<number> {}
 
 export interface NumberC extends NumberType {}
 
 export const number: NumberC =
   /*#__PURE__*/
-  (() => new NumberType())()
-
-export class BooleanType extends Codec<boolean> {
-  readonly _tag: "BooleanType" = "BooleanType"
-  constructor() {
-    super(
-      "boolean",
-      (u, c) => (typeof u === "boolean" ? success(u) : failure(u, c)),
+  (() =>
+    new Codec<number>(
+      "number",
+      (u, c) => (typeof u === "number" ? success(u) : failure(u, c)),
       identity
-    )
-  }
-}
+    ))()
+
+export interface BooleanType extends Codec<boolean> {}
 
 export interface BooleanC extends BooleanType {}
 
 export const boolean: BooleanC =
   /*#__PURE__*/
-  (() => new BooleanType())()
-
-export class AnyArrayType extends Codec<Array<unknown>> {
-  readonly _tag: "AnyArrayType" = "AnyArrayType"
-  constructor() {
-    super(
-      "UnknownArray",
-      (u, c) => (Array.isArray(u) ? success(u) : failure(u, c)),
+  (() =>
+    new Codec<boolean>(
+      "boolean",
+      (u, c) => (typeof u === "boolean" ? success(u) : failure(u, c)),
       identity
-    )
-  }
-}
+    ))()
+
+export interface AnyArrayType extends Codec<Array<unknown>> {}
 
 export interface UnknownArrayC extends AnyArrayType {}
 
 export const UnknownArray: UnknownArrayC =
   /*#__PURE__*/
-  (() => new AnyArrayType())()
-
-export class AnyDictionaryType extends Codec<{ [key: string]: unknown }> {
-  readonly _tag: "AnyDictionaryType" = "AnyDictionaryType"
-  constructor() {
-    super(
-      "UnknownRecord",
-      (u, c) => (this.is(u) ? success(u) : failure(u, c)),
+  (() =>
+    new Codec<Array<unknown>>(
+      "UnknownArray",
+      (u, c) => (Array.isArray(u) ? success(u) : failure(u, c)),
       identity
-    )
-  }
+    ))()
 
-  is(u: unknown): u is { [key: string]: unknown } {
-    const s = Object.prototype.toString.call(u)
-    return s === "[object Object]" || s === "[object Window]"
-  }
+export const isAnyDictionary = (u: unknown): u is { [key: string]: unknown } => {
+  const s = Object.prototype.toString.call(u)
+  return s === "[object Object]" || s === "[object Window]"
 }
+
+export interface AnyDictionaryType extends Codec<{ [key: string]: unknown }> {}
 
 export const UnknownRecord: UnknownRecordC =
   /*#__PURE__*/
-  (() => new AnyDictionaryType())()
+  (() =>
+    new Codec<{ [key: string]: unknown }>(
+      "UnknownRecord",
+      (u, c) => (isAnyDictionary(u) ? success(u) : failure(u, c)),
+      identity
+    ))()
 
 export interface UnknownRecordC extends AnyDictionaryType {}
 
@@ -690,7 +665,7 @@ function nonEnumerableRecord<D extends Any, C extends Any>(
   return new DictionaryType(
     name,
     (u, c) => {
-      if (UnknownRecord.is(u)) {
+      if (isAnyDictionary(u)) {
         const a: { [key: string]: any } = {}
         const errors: Errors = []
         const keys = Object.keys(u)
@@ -871,7 +846,7 @@ const mergeAll = (base: any, us: Array<any>): any => {
     if (u !== base) {
       equal = false
     }
-    if (UnknownRecord.is(u)) {
+    if (isAnyDictionary(u)) {
       primitive = false
     }
   }
@@ -1125,10 +1100,6 @@ export class AnyType extends Codec<any> {
 }
 
 export interface AnyC extends AnyType {}
-
-export const any: AnyC =
-  /*#__PURE__*/
-  (() => new AnyType())()
 
 export function refinement<A, O, B extends A>(
   codec: Codec<A, O>,
