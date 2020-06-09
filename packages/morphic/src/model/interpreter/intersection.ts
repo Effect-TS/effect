@@ -15,14 +15,20 @@ export const modelIntersectionInterpreter = memo(
     _F: ModelURI,
     intersection: <L, A>(
       items: Array<(_: Env) => ModelType<L, A>>,
-      name: string,
-      config?: ConfigsForType<Env, L, A, IntersectionConfig<L[], A[]>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, L, A, IntersectionConfig<L[], A[]>>
+      }
     ) => (env: Env) =>
       new ModelType(
         introduce(items.map((x) => x(env).codec))((models) =>
-          modelApplyConfig(config)(M.intersection(models as any, name), env, {
-            models: models as any
-          })
+          modelApplyConfig(config?.conf)(
+            M.intersection(models as any, config?.name),
+            env,
+            {
+              models: models as any
+            }
+          )
         )
       )
   })

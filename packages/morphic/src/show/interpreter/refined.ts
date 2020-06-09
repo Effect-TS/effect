@@ -9,18 +9,35 @@ import type { MatechsAlgebraRefined1 } from "@matechs/morphic-alg/refined"
 export const showRefinedInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraRefined1<ShowURI, Env> => ({
     _F: ShowURI,
-    refined: (getShow, _ref, name, config) => (env) =>
+    refined: (getShow, _ref, config) => (env) =>
       introduce(getShow(env).show)(
         (show) =>
           new ShowType(
-            showApplyConfig(config)(
+            showApplyConfig(config?.conf)(
               {
-                show: (x) => `<${name}>(${show.show(x)})`
+                show: (x) =>
+                  config?.name ? `<${config.name}>(${show.show(x)})` : show.show(x)
               },
               env,
               {
                 show,
                 showRefined: show
+              }
+            )
+          )
+      ),
+    constrained: (getShow, _ref, config) => (env) =>
+      introduce(getShow(env).show)(
+        (show) =>
+          new ShowType(
+            showApplyConfig(config?.conf)(
+              {
+                show: (x) =>
+                  config?.name ? `<${config.name}>(${show.show(x)})` : show.show(x)
+              },
+              env,
+              {
+                show
               }
             )
           )

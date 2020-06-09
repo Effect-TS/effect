@@ -1684,6 +1684,18 @@ export function clone<C extends Any>(t: C): C {
   return r
 }
 
+export function withName<C extends Any>(name?: string): (codec: C) => C {
+  return (c) => {
+    const n: any = clone(c)
+
+    if (name) {
+      n.name = name
+    }
+
+    return n
+  }
+}
+
 export function withMessage<C extends Any>(
   message: (i: unknown) => string
 ): (codec: C) => C {

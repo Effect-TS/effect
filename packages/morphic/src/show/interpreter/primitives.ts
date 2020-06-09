@@ -18,50 +18,66 @@ import type {
   UUID
 } from "@matechs/morphic-alg/primitives"
 
+export const named = (name?: string | undefined) => <A>(s: Show<A>): Show<A> => ({
+  show: (a) => (name ? `<${name}>(${s.show(a)})` : s.show(a))
+})
+
 export const showPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<ShowURI, Env> => ({
     _F: ShowURI,
     date: (config) => (env) =>
       new ShowType(
         introduce({ show: (date: Date) => date.toISOString() })((show) =>
-          showApplyConfig(config)(show, env, {})
+          showApplyConfig(config?.conf)(named(config?.name)(show), env, {})
         )
       ),
     boolean: (config) => (env) =>
-      new ShowType(showApplyConfig(config)(showBoolean, env, {})),
+      new ShowType(
+        showApplyConfig(config?.conf)(named(config?.name)(showBoolean), env, {})
+      ),
     string: (config) => (env) =>
-      new ShowType(showApplyConfig(config)(showString, env, {})),
+      new ShowType(
+        showApplyConfig(config?.conf)(named(config?.name)(showString), env, {})
+      ),
     number: (config) => (env) =>
-      new ShowType(showApplyConfig(config)(showNumber, env, {})),
+      new ShowType(
+        showApplyConfig(config?.conf)(named(config?.name)(showNumber), env, {})
+      ),
     bigint: (config) => (env) =>
       new ShowType(
         introduce<Show<bigint>>({ show: (a) => JSON.stringify(a) })((show) =>
-          showApplyConfig(config)(show, env, {})
+          showApplyConfig(config?.conf)(named(config?.name)(show), env, {})
         )
       ),
     stringLiteral: <T extends string>(
       _: T,
-      config?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
+      }
     ) => (env) =>
       new ShowType(
         introduce<Show<T>>({
           show: (t) => showString.show(t)
-        })((show) => showApplyConfig(config)(show, env, {}))
+        })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
       ),
     keysOf: <K extends Keys>(
       _keys: K,
-      config?: ConfigsForType<Env, string, keyof K & string, KeysOfConfig<K>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, string, keyof K & string, KeysOfConfig<K>>
+      }
     ) => (env) =>
       new ShowType(
         introduce({ show: (t: keyof K & string) => showString.show(t) })((show) =>
-          showApplyConfig(config)(show, env, {})
+          showApplyConfig(config?.conf)(named(config?.name)(show), env, {})
         )
       ),
     nullable: (getShow, config) => (env) =>
       new ShowType(
         introduce(getShow(env).show)((show) =>
           introduce(OgetShow(show))((showOption) =>
-            showApplyConfig(config)(showOption, env, {
+            showApplyConfig(config?.conf)(named(config?.name)(showOption), env, {
               show
             })
           )
@@ -70,7 +86,7 @@ export const showPrimitiveInterpreter = memo(
     mutable: (getShow, config) => (env) =>
       new ShowType(
         introduce(getShow(env).show)((show) =>
-          showApplyConfig(config)(show, env, {
+          showApplyConfig(config?.conf)(named(config?.name)(show), env, {
             show
           })
         )
@@ -78,10 +94,10 @@ export const showPrimitiveInterpreter = memo(
     optional: (getShow, config) => (env) =>
       new ShowType(
         introduce(getShow(env).show)((show) =>
-          showApplyConfig(config)(
-            {
+          showApplyConfig(config?.conf)(
+            named(config?.name)({
               show: (x) => (typeof x === "undefined" ? `undefined` : show.show(x))
-            },
+            }),
             env,
             {
               show
@@ -93,7 +109,7 @@ export const showPrimitiveInterpreter = memo(
       new ShowType(
         introduce(getShow(env).show)((show) =>
           introduce(AgetShow(show))((showArray) =>
-            showApplyConfig(config)(showArray, env, {
+            showApplyConfig(config?.conf)(named(config?.name)(showArray), env, {
               show
             })
           )
@@ -103,7 +119,7 @@ export const showPrimitiveInterpreter = memo(
       new ShowType(
         introduce(getShow(env).show)((show) =>
           introduce(AgetShow(getShow(env).show))((showNea) =>
-            showApplyConfig(config)(showNea, env, {
+            showApplyConfig(config?.conf)(named(config?.name)(showNea), env, {
               show
             })
           )
@@ -111,14 +127,17 @@ export const showPrimitiveInterpreter = memo(
       ),
     uuid: (config) => (env) =>
       introduce<Show<UUID>>(showString)(
-        (show) => new ShowType(showApplyConfig(config)(show, env, {}))
+        (show) =>
+          new ShowType(
+            showApplyConfig(config?.conf)(named(config?.name)(show), env, {})
+          )
       ),
     either: (e, a, config) => (env) =>
       new ShowType(
         introduce(e(env).show)((left) =>
           introduce(a(env).show)((right) =>
             introduce(EgetShow(left, right))((either) =>
-              showApplyConfig(config)(either, env, {
+              showApplyConfig(config?.conf)(named(config?.name)(either), env, {
                 left,
                 right
               })
@@ -130,7 +149,7 @@ export const showPrimitiveInterpreter = memo(
       new ShowType(
         introduce(a(env).show)((show) =>
           introduce(OgetShow(show))((showOption) =>
-            showApplyConfig(config)(showOption, env, {
+            showApplyConfig(config?.conf)(named(config?.name)(showOption), env, {
               show
             })
           )

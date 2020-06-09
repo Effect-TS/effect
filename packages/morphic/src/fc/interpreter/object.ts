@@ -9,11 +9,11 @@ import type { MatechsAlgebraObject1 } from "@matechs/morphic-alg/object"
 export const fcObjectInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraObject1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
-    partial: (props, _name, config) => (env) =>
+    partial: (props, config) => (env) =>
       introduce(projectFieldWithEnv(props, env)("arb"))(
         (arbs) =>
           new FastCheckType(
-            fcApplyConfig(config)(
+            fcApplyConfig(config?.conf)(
               accessFC(env).record(arbs, {
                 withDeletedKeys: true
               }) as any,
@@ -24,21 +24,21 @@ export const fcObjectInterpreter = memo(
             )
           )
       ),
-    interface: (props, _name, config) => (env) =>
+    interface: (props, config) => (env) =>
       introduce(projectFieldWithEnv(props, env)("arb"))(
         (arbs) =>
           new FastCheckType(
-            fcApplyConfig(config)(accessFC(env).record(arbs), env, {
+            fcApplyConfig(config?.conf)(accessFC(env).record(arbs), env, {
               arbs: arbs as any
             })
           )
       ),
-    both: (props, partial, _name, config) => (env) =>
+    both: (props, partial, config) => (env) =>
       introduce(projectFieldWithEnv(props, env)("arb"))((arbs) =>
         introduce(projectFieldWithEnv(partial, env)("arb"))(
           (arbsPartial) =>
             new FastCheckType(
-              fcApplyConfig(config)(
+              fcApplyConfig(config?.conf)(
                 accessFC(env)
                   .record(arbs)
                   .chain((r) =>

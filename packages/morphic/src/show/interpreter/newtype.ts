@@ -9,40 +9,17 @@ import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
 export const showNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraNewtype1<ShowURI, Env> => ({
     _F: ShowURI,
-    newtype: (name) => (a, config) => (env) =>
+    newtypeIso: (iso, a, config) => (env) =>
       introduce(a(env).show)(
         (show) =>
           new ShowType(
-            showApplyConfig(config)(
-              { show: (x) => `<${name}>(${show.show(x as any)})` },
-              env,
+            showApplyConfig(config?.conf)(
               {
-                show,
-                showNewtype: show as any
-              }
-            )
-          )
-      ),
-    coerce: (name) => (a, config) => (env) =>
-      introduce(a(env).show)(
-        (show) =>
-          new ShowType(
-            showApplyConfig(config)(
-              { show: (x) => `<${name}>(${show.show(x as any)})` },
-              env,
-              {
-                show,
-                showCoerce: show as any
-              }
-            )
-          )
-      ),
-    iso: (a, iso, name, config) => (env) =>
-      introduce(a(env).show)(
-        (show) =>
-          new ShowType(
-            showApplyConfig(config)(
-              { show: (x) => `<${name}>(${show.show(iso.reverseGet(x))})` },
+                show: (x) =>
+                  config?.name
+                    ? `<${config.name}>(${show.show(iso.reverseGet(x))})`
+                    : show.show(iso.reverseGet(x))
+              },
               env,
               {
                 show
@@ -50,12 +27,17 @@ export const showNewtypeInterpreter = memo(
             )
           )
       ),
-    prism: (a, prism, name, config) => (env) =>
+    newtypePrism: (prism, a, config) => (env) =>
       introduce(a(env).show)(
         (show) =>
           new ShowType(
-            showApplyConfig(config)(
-              { show: (x) => `<${name}>(${show.show(prism.reverseGet(x))})` },
+            showApplyConfig(config?.conf)(
+              {
+                show: (x) =>
+                  config?.name
+                    ? `<${config.name}>(${show.show(prism.reverseGet(x))})`
+                    : show.show(prism.reverseGet(x))
+              },
               env,
               {
                 show

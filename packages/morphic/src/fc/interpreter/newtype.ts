@@ -10,24 +10,16 @@ import type { MatechsAlgebraNewtype1 } from "@matechs/morphic-alg/newtype"
 export const fcNewtypeInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraNewtype1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
-    newtype: () => (getArb, config) => (env) =>
-      introduce(getArb(env).arb)(
-        (arb) => new FastCheckType(fcApplyConfig(config)(arb, env, { arb }))
-      ),
-    coerce: () => (getArb, config) => (env) =>
-      introduce(getArb(env).arb)(
-        (arb) => new FastCheckType(fcApplyConfig(config)(arb as any, env, { arb }))
-      ),
-    iso: (getArb, iso, _name, config) => (env) =>
+    newtypeIso: (iso, getArb, config) => (env) =>
       introduce(getArb(env).arb)(
         (arb) =>
-          new FastCheckType(fcApplyConfig(config)(arb.map(iso.get), env, { arb }))
+          new FastCheckType(fcApplyConfig(config?.conf)(arb.map(iso.get), env, { arb }))
       ),
-    prism: (getArb, prism, _name, config) => (env) =>
+    newtypePrism: (prism, getArb, config) => (env) =>
       introduce(getArb(env).arb)(
         (arb) =>
           new FastCheckType(
-            fcApplyConfig(config)(
+            fcApplyConfig(config?.conf)(
               arb
                 .filter((a) => prism.getOption(a)._tag === "Some")
                 .map((a) => (prism.getOption(a) as Some<any>).value),

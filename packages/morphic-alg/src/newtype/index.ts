@@ -21,115 +21,77 @@ declare module "../utils/hkt" {
   }
 }
 
-export type AnyNewtype = Newtype<any, any>
-
-export type NewtypeA<N extends AnyNewtype> = N extends Newtype<any, infer A> ? A : never
-
-export interface NewtypeConfig<L, A, N> {}
-export interface CoerceConfig<L, A, N> {}
 export interface IsoConfig<L, A, N> {}
 export interface PrismConfig<L, A, N> {}
 
 export interface MatechsAlgebraNewtype<F, Env> {
   _F: F
-  newtype: <N extends AnyNewtype = never>(
-    name: string
-  ) => {
-    <E>(
-      a: HKT2<F, Env, E, NewtypeA<N>>,
-      config?: ConfigsForType<Env, E, N, NewtypeConfig<E, NewtypeA<N>, N>>
-    ): HKT2<F, Env, E, N>
-  }
-  coerce: <N = never>(
-    name: string
-  ) => {
-    <E, A>(
-      a: HKT2<F, Env, E, A>,
-      config?: ConfigsForType<Env, E, N, CoerceConfig<E, A, N>>
-    ): HKT2<F, Env, E, N>
-  }
-  iso: {
-    <E, A, N>(
-      a: HKT2<F, Env, E, A>,
+  newtypeIso: {
+    <E, A, N extends Newtype<any, A>>(
       iso: Iso<A, N>,
-      name?: string,
-      config?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
+      a: HKT2<F, Env, E, A>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
+      }
     ): HKT2<F, Env, E, N>
   }
-  prism: {
-    <E, A, N>(
-      a: HKT2<F, Env, E, A>,
+  newtypePrism: {
+    <E, A, N extends Newtype<any, A>>(
       prism: Prism<A, N>,
-      name?: string,
-      config?: ConfigsForType<Env, E, N, PrismConfig<E, A, N>>
+      a: HKT2<F, Env, E, A>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, E, N, PrismConfig<E, A, N>>
+      }
     ): HKT2<F, Env, E, N>
   }
 }
 
 export interface MatechsAlgebraNewtype1<F extends URIS, Env> {
   _F: F
-  newtype<N extends AnyNewtype = never>(
-    name: string
-  ): (
-    a: Kind<F, Env, NewtypeA<N>>,
-    config?: ConfigsForType<Env, unknown, N, NewtypeConfig<unknown, NewtypeA<N>, N>>
-  ) => Kind<F, Env, N>
-  coerce: <N = never>(
-    name: string
-  ) => {
-    <A>(
-      a: Kind<F, Env, A>,
-      config?: ConfigsForType<Env, unknown, N, CoerceConfig<unknown, A, N>>
-    ): Kind<F, Env, N>
-  }
-  iso: {
-    <A, N>(
-      a: Kind<F, Env, A>,
+  newtypeIso: {
+    <A, N extends Newtype<any, A>>(
       iso: Iso<A, N>,
-      name?: string,
-      config?: ConfigsForType<Env, unknown, N, IsoConfig<unknown, A, N>>
+      a: Kind<F, Env, A>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, unknown, N, IsoConfig<unknown, A, N>>
+      }
     ): Kind<F, Env, N>
   }
-  prism: {
-    <A, N>(
-      a: Kind<F, Env, A>,
+  newtypePrism: {
+    <A, N extends Newtype<any, A>>(
       prism: Prism<A, N>,
-      name?: string,
-      config?: ConfigsForType<Env, unknown, N, PrismConfig<unknown, A, N>>
+      a: Kind<F, Env, A>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, unknown, N, PrismConfig<unknown, A, N>>
+      }
     ): Kind<F, Env, N>
   }
 }
 
 export interface MatechsAlgebraNewtype2<F extends URIS2, Env> {
   _F: F
-  newtype<N extends AnyNewtype = never>(
-    name: string
-  ): <E>(
-    a: Kind2<F, Env, E, NewtypeA<N>>,
-    config?: ConfigsForType<Env, E, N, NewtypeConfig<E, NewtypeA<N>, N>>
-  ) => Kind2<F, Env, E, N>
-  coerce: <N = never>(
-    name: string
-  ) => {
-    <E, A>(
-      a: Kind2<F, Env, E, A>,
-      config?: ConfigsForType<Env, E, N, CoerceConfig<E, A, N>>
-    ): Kind2<F, Env, E, N>
-  }
-  iso: {
-    <E, A, N>(
-      a: Kind2<F, Env, E, A>,
+  newtypeIso: {
+    <E, A, N extends Newtype<any, A>>(
       iso: Iso<A, N>,
-      name?: string,
-      config?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
+      a: Kind2<F, Env, E, A>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, E, N, IsoConfig<E, A, N>>
+      }
     ): Kind2<F, Env, E, N>
   }
-  prism: {
-    <E, A, N>(
+  newtypePrism: {
+    <E, A, N extends Newtype<any, A>>(
+      prism: Prism<A, N>,
       a: Kind2<F, Env, E, A>,
-      iso: Prism<A, N>,
-      name?: string,
-      config?: ConfigsForType<Env, E, N, PrismConfig<E, A, N>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, E, N, PrismConfig<E, A, N>>
+      }
     ): Kind2<F, Env, E, N>
   }
 }

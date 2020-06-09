@@ -14,8 +14,10 @@ export const fcRecursiveInterpreter = memo(
     _F: FastCheckURI,
     recursive: <A>(
       f: (x: (env: Env) => FastCheckType<A>) => (env: Env) => FastCheckType<A>,
-      _name: string,
-      config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
+      }
     ) => {
       type FA = ReturnType<typeof f>
       const get = memo(() => f(res))
@@ -23,7 +25,7 @@ export const fcRecursiveInterpreter = memo(
         introduce(() => get()(env).arb)(
           (getArb) =>
             new FastCheckType(
-              fcApplyConfig(config)(
+              fcApplyConfig(config?.conf)(
                 accessFC(env)
                   .constant(null)
                   .chain((_) => getArb()),

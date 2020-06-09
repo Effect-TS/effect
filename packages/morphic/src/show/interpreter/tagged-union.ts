@@ -8,10 +8,10 @@ import type { MatechsAlgebraTaggedUnions1 } from "@matechs/morphic-alg/tagged-un
 export const showTaggedUnionInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraTaggedUnions1<ShowURI, Env> => ({
     _F: ShowURI,
-    taggedUnion: (tag, types, _name, config) => (env) => {
+    taggedUnion: (tag, types, config) => (env) => {
       const shows = mapRecord(types, (a) => a(env).show)
       return new ShowType(
-        showApplyConfig(config)(
+        showApplyConfig(config?.conf)(
           {
             show: (a): string => (shows as any)[a[tag]].show(a)
           },

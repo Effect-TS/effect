@@ -26,25 +26,25 @@ export interface UnknownConfig {}
 export interface MatechsAlgebraUnknown<F, Env> {
   _F: F
   unknown: {
-    (config?: ConfigsForType<Env, unknown, unknown, UnknownConfig>): HKT2<
-      F,
-      Env,
-      unknown,
-      unknown
-    >
+    (config?: {
+      name?: string
+      conf?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
+    }): HKT2<F, Env, unknown, unknown>
   }
 }
 
 export interface MatechsAlgebraUnknown1<F extends URIS, Env extends AnyEnv> {
   _F: F
-  unknown(
-    config?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
-  ): Kind<F, Env, unknown>
+  unknown(config?: {
+    name?: string
+    conf?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
+  }): Kind<F, Env, unknown>
 }
 
 export interface MatechsAlgebraUnknown2<F extends URIS2, Env extends AnyEnv> {
   _F: F
-  unknown(
-    config?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
-  ): Kind2<F, Env, unknown, unknown>
+  unknown(config?: {
+    name?: string
+    conf?: ConfigsForType<Env, unknown, unknown, UnknownConfig>
+  }): Kind2<F, Env, unknown, unknown>
 }

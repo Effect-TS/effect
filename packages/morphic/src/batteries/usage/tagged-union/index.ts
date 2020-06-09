@@ -77,7 +77,6 @@ const excludeKeys = (a: Record<string, any>, toExclude: Array<string>): object =
     difference(eqString)(Object.keys(a), toExclude).map((k: string) => tuple(k, a[k]))
   )
 
-/*
 export type TaggedBuilder<
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
@@ -86,41 +85,15 @@ export type TaggedBuilder<
   tag: Tag
 ) => <Types extends UnionTypes<Types, Tag, ProgURI, InterpURI, R>>(
   o: Types,
-  name?: string,
-  config?: ConfigsForType<
-    Types[keyof Types]["_R"],
-    Types[keyof Types]["_E"],
-    Types[keyof Types]["_A"],
-    TaggedUnionConfig<Types>
-  >
-) => MorphADT<
-  {
-    [k in keyof Types]: Types[k] extends InhabitedTypes<any, infer E, infer A>
-      ? [E, A]
-      : never
-  },
-  Tag,
-  ProgURI,
-  InterpURI,
-  R
->
-*/
-
-export type TaggedBuilder<
-  ProgURI extends ProgramURI,
-  InterpURI extends InterpreterURI,
-  R
-> = <Tag extends string>(
-  tag: Tag
-) => <Types extends UnionTypes<Types, Tag, ProgURI, InterpURI, R>>(
-  o: Types,
-  name?: string,
-  config?: ConfigsForType<
-    R,
-    Types[keyof Types]["_E"],
-    Types[keyof Types]["_A"],
-    TaggedUnionConfig<Types>
-  >
+  config?: {
+    name?: string
+    conf?: ConfigsForType<
+      R,
+      Types[keyof Types]["_E"],
+      Types[keyof Types]["_A"],
+      TaggedUnionConfig<Types>
+    >
+  }
 ) => MorphADT<
   {
     [k in keyof Types]: Types[k] extends InhabitedTypes<any, infer E, infer A>
@@ -151,13 +124,15 @@ export function makeTagged<
   tag: Tag
 ) => <Types extends UnionTypes<Types, Tag, ProgURI, InterpURI, R>>(
   o: Types,
-  name?: string,
-  config?: ConfigsForType<
-    Parameters<Types[keyof Types]["_R"]>[0],
-    Types[keyof Types]["_E"],
-    Types[keyof Types]["_A"],
-    TaggedUnionConfig<Types>
-  >
+  config?: {
+    name?: string
+    conf?: ConfigsForType<
+      Parameters<Types[keyof Types]["_R"]>[0],
+      Types[keyof Types]["_E"],
+      Types[keyof Types]["_A"],
+      TaggedUnionConfig<Types>
+    >
+  }
 ) => MorphADT<
   {
     [k in keyof Types]: Types[k] extends InhabitedTypes<any, infer E, infer A>
@@ -169,12 +144,11 @@ export function makeTagged<
   InterpURI,
   R
 > {
-  return (tag) => (o, name, config) => {
+  return (tag) => (o, config) => {
     const summoned = summ((F: any) =>
       F.taggedUnion(
         tag,
         RmapWithIndex((_k, v: AnyM<ProgURI, InterpURI, R>) => (v as any)(F))(o),
-        name,
         config
       )
     ) as any
@@ -183,10 +157,16 @@ export function makeTagged<
 
     const preTagged = makeTagged(summ)(tag)
 
-    const selectMorph = (selectedKeys: string[], name?: string, c?: any) =>
-      preTagged(keepKeys(o, selectedKeys as string[]), name, { ...config, ...c })
-    const excludeMorph = (selectedKeys: string[], name?: string, c?: any) =>
-      preTagged(excludeKeys(o, selectedKeys as string[]), name, { ...config, ...c })
+    const selectMorph = (selectedKeys: string[], c?: { name?: string; conf?: any }) =>
+      preTagged(keepKeys(o, selectedKeys as string[]), {
+        name: c?.name || config?.name,
+        conf: { ...config?.conf, ...c?.conf }
+      })
+    const excludeMorph = (selectedKeys: string[], c?: { name?: string; conf?: any }) =>
+      preTagged(excludeKeys(o, selectedKeys as string[]), {
+        name: c?.name || config?.name,
+        conf: { ...config?.conf, ...c?.conf }
+      })
 
     const res = assignCallable(wrapFun(summoned as any), {
       ...summoned,
@@ -235,21 +215,23 @@ export interface Refinable<
 > {
   selectMorph: <Keys extends (keyof Types)[]>(
     keys: Keys,
-    name?: string,
-    config?: ConfigsForType<
-      R,
-      {
-        [k in Extract<keyof Types, ElemType<Keys>>]: Types[k][0]
-      }[Extract<keyof Types, ElemType<Keys>>],
-      {
-        [k in Extract<keyof Types, ElemType<Keys>>]: Types[k][1]
-      }[Extract<keyof Types, ElemType<Keys>>],
-      TaggedUnionConfig<
+    config?: {
+      name?: string
+      conf?: ConfigsForType<
+        R,
         {
-          [k in Extract<keyof Types, ElemType<Keys>>]: Types[k]
-        }
+          [k in Extract<keyof Types, ElemType<Keys>>]: Types[k][0]
+        }[Extract<keyof Types, ElemType<Keys>>],
+        {
+          [k in Extract<keyof Types, ElemType<Keys>>]: Types[k][1]
+        }[Extract<keyof Types, ElemType<Keys>>],
+        TaggedUnionConfig<
+          {
+            [k in Extract<keyof Types, ElemType<Keys>>]: Types[k]
+          }
+        >
       >
-    >
+    }
   ) => MorphADT<
     {
       [k in Extract<keyof Types, ElemType<Keys>>]: Types[k]
@@ -261,21 +243,23 @@ export interface Refinable<
   >
   excludeMorph: <Keys extends (keyof Types)[]>(
     keys: Keys,
-    name?: string,
-    config?: ConfigsForType<
-      R,
-      {
-        [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k][0]
-      }[Exclude<keyof Types, ElemType<Keys>>],
-      {
-        [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k][1]
-      }[Exclude<keyof Types, ElemType<Keys>>],
-      TaggedUnionConfig<
+    config?: {
+      name?: string
+      conf?: ConfigsForType<
+        R,
         {
-          [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k]
-        }
+          [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k][0]
+        }[Exclude<keyof Types, ElemType<Keys>>],
+        {
+          [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k][1]
+        }[Exclude<keyof Types, ElemType<Keys>>],
+        TaggedUnionConfig<
+          {
+            [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k]
+          }
+        >
       >
-    >
+    }
   ) => MorphADT<
     {
       [k in Exclude<keyof Types, ElemType<Keys>>]: Types[k]

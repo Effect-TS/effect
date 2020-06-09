@@ -11,7 +11,7 @@ export const fcUnknownInterpreter = memo(
     _F: FastCheckURI,
     unknown: (configs) => (env) =>
       introduce(accessFC(env).anything())(
-        (arb) => new FastCheckType(fcApplyConfig(configs)(arb, env, { arb }))
+        (arb) => new FastCheckType(fcApplyConfig(configs?.conf)(arb, env, { arb }))
       )
   })
 )

@@ -41,13 +41,15 @@ export interface MatechsAlgebraTaggedUnions<F, Env> {
     <Tag extends string, Types extends TaggedTypes<F, Tag, any, any, Env>>(
       tag: Tag,
       types: Types & { [o in keyof Types]: DecorateTag<Types[o], Tag, o> },
-      name: string,
-      config?: ConfigsForType<
-        Env,
-        Types[keyof Types]["_E"],
-        Types[keyof Types]["_A"],
-        TaggedUnionConfig<Types>
-      >
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          Types[keyof Types]["_E"],
+          Types[keyof Types]["_A"],
+          TaggedUnionConfig<Types>
+        >
+      }
     ): HKT2<F, Env, Types[keyof Types]["_E"], Types[keyof Types]["_A"]>
   }
 }
@@ -61,13 +63,15 @@ export interface MatechsAlgebraTaggedUnions1<F extends URIS, Env extends AnyEnv>
   taggedUnion<Tag extends string, O>(
     tag: Tag,
     types: TaggedTypes1<F, Tag, O, Env>,
-    name: string,
-    config?: ConfigsForType<
-      Env,
-      unknown,
-      TaggedValues<Tag, O>[keyof O],
-      TaggedUnionConfig<TaggedValues<Tag, O>>
-    >
+    config?: {
+      name?: string
+      conf?: ConfigsForType<
+        Env,
+        unknown,
+        TaggedValues<Tag, O>[keyof O],
+        TaggedUnionConfig<TaggedValues<Tag, O>>
+      >
+    }
   ): Kind<F, Env, TaggedValues<Tag, O>[keyof O]>
 }
 
@@ -85,12 +89,14 @@ export interface MatechsAlgebraTaggedUnions2<F extends URIS2, Env extends AnyEnv
   taggedUnion<Tag extends string, A, L>(
     tag: Tag,
     types: TaggedTypes2<F, Tag, A, L, Env>,
-    name: string,
-    config?: ConfigsForType<
-      Env,
-      TaggedValues<Tag, L>[keyof L],
-      TaggedValues<Tag, A>[keyof A],
-      TaggedUnionConfig<TaggedValues<Tag, L>>
-    >
+    config?: {
+      name?: string
+      conf?: ConfigsForType<
+        Env,
+        TaggedValues<Tag, L>[keyof L],
+        TaggedValues<Tag, A>[keyof A],
+        TaggedUnionConfig<TaggedValues<Tag, L>>
+      >
+    }
   ): Kind2<F, Env, TaggedValues<Tag, L>[keyof L], TaggedValues<Tag, A>[keyof A]>
 }

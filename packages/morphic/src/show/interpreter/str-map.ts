@@ -10,9 +10,10 @@ import type { MatechsAlgebraStrMap1 } from "@matechs/morphic-alg/str-map"
 export const showStrMapInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraStrMap1<ShowURI, Env> => ({
     _F: ShowURI,
-    strMap: (codomain, config) => (env) =>
+    record: (codomain, config) => (env) =>
       introduce(codomain(env).show)(
-        (show) => new ShowType(showApplyConfig(config)(RgetShow(show), env, { show }))
+        (show) =>
+          new ShowType(showApplyConfig(config?.conf)(RgetShow(show), env, { show }))
       )
   })
 )

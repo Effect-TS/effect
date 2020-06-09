@@ -6,7 +6,13 @@ import type { M, M_ } from "./batteries/summoner"
 //
 
 export { ValidationErrors, validationErrors } from "./batteries/interpreter"
-export { Errors, withFirstMessage, withMessage, withValidate } from "./model"
+export {
+  Errors,
+  withFirstMessage,
+  withMessage,
+  withValidate,
+  reportFailure
+} from "./model"
 
 //
 // Summoner

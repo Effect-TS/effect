@@ -14,14 +14,20 @@ export const eqRecursiveInterpreter = memo(
     _F: EqURI,
     recursive: <A>(
       a: (x: (env: Env) => EqType<A>) => (env: Env) => EqType<A>,
-      _name: string,
-      config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
+      config?: {
+        name?: string
+        config?: ConfigsForType<Env, unknown, A, RecursiveConfig<unknown, A>>
+      }
     ) => {
       const get = memo(() => a(res))
       const res: ReturnType<typeof a> = (env) =>
         new EqType(
           introduce(() => get()(env).eq)((getEq) =>
-            eqApplyConfig(config)({ equals: (a, b) => getEq().equals(a, b) }, env, {})
+            eqApplyConfig(config?.config)(
+              { equals: (a, b) => getEq().equals(a, b) },
+              env,
+              {}
+            )
           )
         )
       return res

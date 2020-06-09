@@ -15,10 +15,14 @@ export const showSetInterpreter = memo(
     set: <A>(
       getShow: (env: Env) => ShowType<A>,
       _ord: Ord<A>,
-      config?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+      }
     ) => (env) =>
       introduce(getShow(env).show)(
-        (show) => new ShowType(showApplyConfig(config)(SgetShow(show), env, { show }))
+        (show) =>
+          new ShowType(showApplyConfig(config?.conf)(SgetShow(show), env, { show }))
       )
   })
 )

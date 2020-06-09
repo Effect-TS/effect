@@ -11,21 +11,41 @@ export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
     _F: ModelURI,
     date: (config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.DateFromISOString, env, {})),
+      new ModelType(
+        modelApplyConfig(config?.conf)(
+          M.withName(config?.name)(M.DateFromISOString),
+          env,
+          {}
+        )
+      ),
     boolean: (config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.boolean, env, {})),
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(M.boolean), env, {})
+      ),
     string: (config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.string, env, {})),
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(M.string), env, {})
+      ),
     number: (config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.number, env, {})),
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(M.number), env, {})
+      ),
     bigint: (config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.BigIntString, env, {})),
+      new ModelType(
+        modelApplyConfig(config?.conf)(
+          M.withName(config?.name)(M.BigIntString),
+          env,
+          {}
+        )
+      ),
     stringLiteral: (l, config) => (env) =>
-      new ModelType(modelApplyConfig(config)(M.literal(l, l), env, {})),
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.literal(l, config?.name || l), env, {})
+      ),
     keysOf: (k, config) => (env) =>
       new ModelType(
-        modelApplyConfig(config)(
-          M.keyof(k) as M.Codec<keyof typeof k & string, string>,
+        modelApplyConfig(config?.conf)(
+          M.keyof(k, config?.name) as M.Codec<keyof typeof k & string, string>,
           env,
           {}
         )
@@ -34,18 +54,27 @@ export const modelPrimitiveInterpreter = memo(
       introduce(T(env).codec)(
         (model) =>
           new ModelType(
-            modelApplyConfig(config)(M.optionFromNullable(model), env, { model })
+            modelApplyConfig(config?.conf)(
+              M.optionFromNullable(model, config?.name),
+              env,
+              { model }
+            )
           )
       ),
     mutable: (T, config) => (env) =>
       introduce(T(env).codec)(
-        (model) => new ModelType(modelApplyConfig(config)(model, env, { model }))
+        (model) =>
+          new ModelType(
+            modelApplyConfig(config?.conf)(M.withName(config?.name)(model), env, {
+              model
+            })
+          )
       ),
     optional: (T, config) => (env) =>
       introduce(T(env).codec)(
         (model) =>
           new ModelType(
-            modelApplyConfig(config)(M.nonRequired(model), env, {
+            modelApplyConfig(config?.conf)(M.nonRequired(model, config?.name), env, {
               model
             })
           )
@@ -53,29 +82,43 @@ export const modelPrimitiveInterpreter = memo(
     array: (T, config) => (env) =>
       introduce(T(env).codec)(
         (model) =>
-          new ModelType(modelApplyConfig(config)(M.array(model), env, { model }))
+          new ModelType(
+            modelApplyConfig(config?.conf)(M.array(model, config?.name), env, { model })
+          )
       ),
     nonEmptyArray: (T, config) => (env) =>
       introduce(T(env).codec)(
         (model) =>
           new ModelType(
-            modelApplyConfig(config)(M.nonEmptyArray(model), env, { model })
+            modelApplyConfig(config?.conf)(M.nonEmptyArray(model, config?.name), env, {
+              model
+            })
           )
       ),
-    uuid: (config) => (env) => new ModelType(modelApplyConfig(config)(M.uuid, env, {})),
+    uuid: (config) => (env) =>
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(M.uuid), env, {})
+      ),
     either: (e, a, config) => (env) =>
       introduce(e(env).codec)((left) =>
         introduce(a(env).codec)(
           (right) =>
             new ModelType(
-              modelApplyConfig(config)(M.either(left, right), env, { left, right })
+              modelApplyConfig(config?.conf)(M.either(left, right, config?.name), env, {
+                left,
+                right
+              })
             )
         )
       ),
     option: (a, config) => (env) =>
       introduce(a(env).codec)(
         (model) =>
-          new ModelType(modelApplyConfig(config)(M.option(model), env, { model }))
+          new ModelType(
+            modelApplyConfig(config?.conf)(M.option(model, config?.name), env, {
+              model
+            })
+          )
       )
   })
 )

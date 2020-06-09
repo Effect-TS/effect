@@ -11,16 +11,6 @@ declare module "@matechs/morphic-alg/intersection" {
 }
 
 declare module "@matechs/morphic-alg/newtype" {
-  interface NewtypeConfig<L, A, N> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
-  interface CoerceConfig<L, A, N> {
-    [ModelURI]: {
-      model: M.Codec<A, L>
-    }
-  }
   interface IsoConfig<L, A, N> {
     [ModelURI]: {
       model: M.Codec<A, L>
@@ -93,6 +83,11 @@ declare module "@matechs/morphic-alg/primitives" {
 
 declare module "@matechs/morphic-alg/refined" {
   interface RefinedConfig<E, A, B> {
+    [ModelURI]: {
+      model: M.Codec<A, E>
+    }
+  }
+  interface PredicateConfig<E, A> {
     [ModelURI]: {
       model: M.Codec<A, E>
     }

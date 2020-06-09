@@ -15,10 +15,13 @@ export const eqSetInterpreter = memo(
     set: <A>(
       a: (env: Env) => EqType<A>,
       _ord: Ord<A>,
-      config?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, Array<unknown>, Set<A>, SetConfig<unknown, A>>
+      }
     ) => (env) =>
       introduce(a(env).eq)(
-        (eq) => new EqType(eqApplyConfig(config)(SgetEq(eq), env, { eq }))
+        (eq) => new EqType(eqApplyConfig(config?.conf)(SgetEq(eq), env, { eq }))
       )
   })
 )

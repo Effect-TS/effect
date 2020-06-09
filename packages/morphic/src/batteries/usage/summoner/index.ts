@@ -33,11 +33,6 @@ export type SummonerEnv<X extends Summoners<any, any, any>> = NonNullable<
   Parameters<X["_R"]>[0]
 >
 
-export interface MakeSummonerResult<S extends Summoners<any, any, any>> {
-  summon: S
-  tagged: TaggedBuilder<SummonerProgURI<S>, SummonerInterpURI<S>, SummonerEnv<S>>
-}
-
 export interface SummonerOps<S extends Summoners<any, any, any> = never> {
   make: S
   makeADT: TaggedBuilder<SummonerProgURI<S>, SummonerInterpURI<S>, SummonerEnv<S>>

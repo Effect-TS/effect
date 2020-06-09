@@ -14,7 +14,6 @@ import { constant, flow, introduce, pipe } from "@matechs/core/Function"
 import * as Index from "@matechs/core/Monocle/Index"
 import * as I from "@matechs/core/Monocle/Iso"
 import * as Lens from "@matechs/core/Monocle/Lens"
-import * as P from "@matechs/core/Monocle/Prism"
 import * as NT from "@matechs/core/Newtype"
 import * as O from "@matechs/core/Option"
 
@@ -35,23 +34,17 @@ interface Address
     string
   > {}
 
-const AddressISO = NT.iso<Address>()
+const AddressPrism = NT.prism<Address>((s) => s.length < 20)
 
 const Address = M.make((F) =>
-  F.newtype<Address>("Address")(
-    F.string({
-      [M.ModelURI]: flow(
-        maxLength(20),
-        Model.withMessage(() => "Invalid Address")
-      ),
-      [M.FastCheckURI]: (_) => _.filter((s) => s.length <= 20)
-    }),
-    {
+  F.newtypePrism(AddressPrism, F.string(), {
+    conf: {
       [M.ShowURI]: (_s, _e, _c) => ({
-        show: (a) => `~Address~(${_c.showNewtype.show(a)})`
-      })
+        show: (a) => `~Address~(${_c.show.show(AddressPrism.reverseGet(a))})`
+      }),
+      [M.ModelURI]: Model.withMessage(() => "Invalid Address")
     }
-  )
+  })
 )
 
 const Person_ = M.make((F) =>
@@ -59,20 +52,24 @@ const Person_ = M.make((F) =>
     {
       name: F.string(),
       address: F.nonEmptyArray(Address(F), {
-        [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array"),
-        [M.ShowURI]: (_s, _e, _c) => ({
-          show: (a) => `<AddressArray>(${A.getShow(_c.show).show(a)})`
-        })
+        conf: {
+          [M.ModelURI]: Model.withFirstMessage(() => "Invalid Address Array"),
+          [M.ShowURI]: (_s, _e, _c) => ({
+            show: (a) => `<AddressArray>(${A.getShow(_c.show).show(a)})`
+          })
+        }
       })
     },
-    "Person",
     {
-      [M.ShowURI]: (_s, _e, _c) => ({
-        show: (p) =>
-          `{ name: (${_c.show.name.show(p.name)}), address: ${_c.show.address.show(
-            p.address
-          )} }`
-      })
+      name: "Person",
+      conf: {
+        [M.ShowURI]: (_s, _e, _c) => ({
+          show: (p) =>
+            `{ name: (${_c.show.name.show(p.name)}), address: ${_c.show.address.show(
+              p.address
+            )} }`
+        })
+      }
     }
   )
 )
@@ -87,7 +84,9 @@ const Age_ = M.make((F) =>
     {
       age: F.number()
     },
-    "Age"
+    {
+      name: "Age"
+    }
   )
 )
 
@@ -101,13 +100,16 @@ const PersonArb = FC.derive(Person)
 const PersonShow = SHOW.derive(Person)
 
 const PersonWithAge_ = M.make((F) =>
-  F.intersection([Person(F), Age(F)], "PersonWithAge", {
-    [M.ShowURI]: (_s, _e, _c) => ({
-      show: (pe) =>
-        introduce(_c.shows[0].show(pe))((a) => a.substring(0, a.length - 2)) +
-        "," +
-        introduce(_c.shows[1].show(pe))((b) => b.substring(1, b.length))
-    })
+  F.intersection([Person(F), Age(F)], {
+    name: "PersonWithAge",
+    conf: {
+      [M.ShowURI]: (_s, _e, _c) => ({
+        show: (pe) =>
+          introduce(_c.shows[0].show(pe))((a) => a.substring(0, a.length - 2)) +
+          "," +
+          introduce(_c.shows[1].show(pe))((b) => b.substring(1, b.length))
+      })
+    }
   })
 )
 
@@ -125,29 +127,34 @@ const Tagged = M.make((F) =>
           _tag: F.stringLiteral("left"),
           value: F.string()
         },
-        "left"
+        {
+          name: "left"
+        }
       ),
       right: F.interface(
         {
           _tag: F.stringLiteral("right"),
           value: F.string()
         },
-        "right",
         {
-          [M.ShowURI]: () => ({
-            show: (r) => r.value
-          })
+          name: "right",
+          conf: {
+            [M.ShowURI]: () => ({
+              show: (r) => r.value
+            })
+          }
         }
       )
     },
-    "Tagged",
     {
-      [M.ShowURI]: (_s, _e, _c) => ({
-        show: (a) =>
-          a._tag === "left"
-            ? `Left: ${_c.shows.left.show(a)}`
-            : `Right: ${_c.shows.right.show(a)}`
-      })
+      conf: {
+        [M.ShowURI]: (_s, _e, _c) => ({
+          show: (a) =>
+            a._tag === "left"
+              ? `Left: ${_c.shows.left.show(a)}`
+              : `Right: ${_c.shows.right.show(a)}`
+        })
+      }
     }
   )
 )
@@ -160,11 +167,13 @@ const TaggedADT = M.makeADT("_tag")(
           _tag: F.stringLiteral("left"),
           value: F.string()
         },
-        "left",
         {
-          [M.ShowURI]: () => ({
-            show: (r) => r.value
-          })
+          name: "left",
+          conf: {
+            [M.ShowURI]: () => ({
+              show: (r) => r.value
+            })
+          }
         }
       )
     ),
@@ -174,36 +183,43 @@ const TaggedADT = M.makeADT("_tag")(
           _tag: F.stringLiteral("right"),
           value: F.string()
         },
-        "right",
         {
-          [M.ShowURI]: () => ({
-            show: (r) => r.value
-          })
+          name: "right",
+          conf: {
+            [M.ShowURI]: () => ({
+              show: (r) => r.value
+            })
+          }
         }
       )
     )
   },
-  "TaggedADT",
   {
-    [M.ShowURI]: (_s, _e, _c) => ({
-      show: (a) =>
-        a._tag === "left"
-          ? `Left: ${_c.shows.left.show(a)}`
-          : `Right: ${_c.shows.right.show(a)}`
-    })
+    conf: {
+      [M.ShowURI]: (_s, _e, _c) => ({
+        show: (a) =>
+          a._tag === "left"
+            ? `Left: ${_c.shows.left.show(a)}`
+            : `Right: ${_c.shows.right.show(a)}`
+      })
+    }
   }
 )
 
-const SubADT = TaggedADT.selectMorph(["left"], "SubADT", {
-  [M.ShowURI]: (_s, _e, _c) => ({
-    show: (l) => `Shrink: ${_c.shows.left.show(l)}`
-  })
+const SubADT = TaggedADT.selectMorph(["left"], {
+  conf: {
+    [M.ShowURI]: (_s, _e, _c) => ({
+      show: (l) => `Shrink: ${_c.shows.left.show(l)}`
+    })
+  }
 })
 
-const ExcADT = TaggedADT.excludeMorph(["left"], "ExcADT", {
-  [M.ShowURI]: (_s, _e, _c) => ({
-    show: (l) => `Shrink: ${_c.shows.right.show(l)}`
-  })
+const ExcADT = TaggedADT.excludeMorph(["left"], {
+  conf: {
+    [M.ShowURI]: (_s, _e, _c) => ({
+      show: (l) => `Shrink: ${_c.shows.right.show(l)}`
+    })
+  }
 })
 
 interface RecE {
@@ -219,29 +235,32 @@ interface Rec {
 const Rec = M.make((F) =>
   F.recursive<RecE, Rec>(
     (_) =>
-      F.interface(
-        {
-          id: F.string(),
-          next: F.nullable(_)
-        },
-        "RecInner"
-      ),
-    "Rec"
+      F.interface({
+        id: F.string(),
+        next: F.nullable(_)
+      }),
+    {
+      name: "Rec"
+    }
   )
 )
 
-const strIso = I.create(
-  (s: string) => s.split(""),
-  (a) => a.join("")
-)
+interface NonEmptyStr
+  extends NT.Newtype<
+    {
+      readonly NonEmptyStr: unique symbol
+    },
+    string
+  > {}
 
-const nonEmptyStrPrism = P.create(
-  (s: string) => (s.length > 0 ? O.some(s) : O.none),
-  (s) => s
-)
+const nonEmptyStrIso = NT.iso<NonEmptyStr>()
 
-const StrAsArray = M.make((F) => F.iso(F.string(), strIso, "StrAsArray"))
-const NonEmptyStr = M.make((F) => F.prism(F.string(), nonEmptyStrPrism, "NonEmptyStr"))
+const NonEmptyStr = M.make((F) =>
+  F.newtypeIso(
+    nonEmptyStrIso,
+    F.constrained(F.string(), (s) => s.length > 0)
+  )
+)
 
 const UsingOptional = M.make((F) =>
   F.interface(
@@ -249,7 +268,9 @@ const UsingOptional = M.make((F) =>
       foo: F.optional(F.string()),
       bar: F.string()
     },
-    "UsingOptional"
+    {
+      name: "UsingOptional"
+    }
   )
 )
 
@@ -261,7 +282,9 @@ const UsingBoth = M.make((F) =>
     {
       foo: F.string()
     },
-    "UsingBoth"
+    {
+      name: "UsingBoth"
+    }
   )
 )
 
@@ -273,9 +296,11 @@ const { make } = M.makeFor<{
 
 const PersonA_ = make((F) =>
   F.array(Person(F), {
-    [M.ShowURI]: (_, { prefix }) => ({
-      show: (p) => `${prefix}:${_.show(p)}`
-    })
+    conf: {
+      [M.ShowURI]: (_, { prefix }) => ({
+        show: (p) => `${prefix}:${_.show(p)}`
+      })
+    }
   })
 )
 
@@ -290,6 +315,18 @@ const ShowPersonA = SHOW.deriveFor(make)({
 })(PersonA)
 
 describe("Morphic", () => {
+  it("should validate address", () => {
+    const result = pipe(
+      Address.decode(
+        A.range(0, 25)
+          .map(() => "a")
+          .join("")
+      ),
+      E.mapLeft(M.reportFailure)
+    )
+
+    expect(result).toStrictEqual(E.left(["Invalid Address"]))
+  })
   it("should use model interpreter", () => {
     const result_0 = Person.decodeT({
       name: "Michael",
@@ -387,15 +424,23 @@ describe("Morphic", () => {
   it("should use fast-check", () =>
     fc.assert(fc.property(PersonArb, (p) => E.isRight(Person.create(p)))))
 
-  it("should use valudate", () => {
+  it("should generate non empty strings", () =>
+    fc.assert(
+      fc.property(
+        FC.derive(NonEmptyStr),
+        (s) => nonEmptyStrIso.reverseGet(s).length > 0
+      )
+    ))
+
+  it("should use createT", () => {
     const validPerson = Person.createT({
       name: "Michael",
-      address: [I.wrap(AddressISO)("177 Finchley")]
+      address: [I.wrap(NT.iso<Address>())("177 Finchley")]
     })
 
     const invalidPerson = Person.createT({
       name: "Michael",
-      address: [I.wrap(AddressISO)(A.range(0, 25).map(constant("a")).join(""))]
+      address: [I.wrap(NT.iso<Address>())(A.range(0, 25).map(constant("a")).join(""))]
     })
 
     expect(T.runSync(validPerson)).toStrictEqual(
@@ -517,14 +562,6 @@ describe("Morphic", () => {
       },
       next: { _tag: "None" }
     })
-  })
-
-  it("use iso", () => {
-    const result = StrAsArray.decode("hello")
-
-    expect(result).toStrictEqual(E.right(["h", "e", "l", "l", "o"]))
-
-    expect(StrAsArray.encode(["h", "e", "l", "l", "o"])).toStrictEqual("hello")
   })
 
   it("using optional", () => {
