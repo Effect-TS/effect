@@ -114,9 +114,10 @@ export const main = T.Do()
     //
   })
 
-export const liveMain = pipe(
-  main,
-  Pool.with(dbConfigLive).with(liveFactory).with(App).use,
-  console.provideConsoleLogger,
-  console.provideConsoleLoggerConfig()
-)
+const Deps = Pool.with(dbConfigLive)
+  .with(liveFactory)
+  .with(App)
+  .with(console.ConsoleLogger)
+  .with(console.ConsoleLoggerConfig())
+
+export const liveMain = pipe(main, Deps.use)

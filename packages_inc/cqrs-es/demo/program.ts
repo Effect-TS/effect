@@ -79,17 +79,16 @@ export const main = T.Do()
     //
   })
 
-export const liveMain = pipe(
-  main,
-  Pool.with(dbConfigLive)
-    .with(liveFactory)
-    .with(App)
-    .with(
-      ES.EventStoreConfig({
-        settings: {},
-        endPointOrGossipSeed: "discover://eventstore.discovery.url"
-      })
-    ).use,
-  console.provideConsoleLogger,
-  console.provideConsoleLoggerConfig()
-)
+const Deps = Pool.with(dbConfigLive)
+  .with(liveFactory)
+  .with(App)
+  .with(
+    ES.EventStoreConfig({
+      settings: {},
+      endPointOrGossipSeed: "discover://eventstore.discovery.url"
+    })
+  )
+  .with(console.ConsoleLogger)
+  .with(console.ConsoleLoggerConfig())
+
+export const liveMain = pipe(main, Deps.use)
