@@ -131,19 +131,27 @@ export class Layer<S, R, E, A> {
   }
 }
 
+export type Async<A> = Layer<unknown, unknown, never, A>
+export type AsyncE<E, A> = Layer<unknown, unknown, E, A>
+export type AsyncR<R, A> = Layer<unknown, R, never, A>
+export type AsyncRE<R, E, A> = Layer<unknown, R, E, A>
+
+export type Sync<A> = Layer<never, unknown, never, A>
+export type SyncE<E, A> = Layer<never, unknown, E, A>
+export type SyncR<R, A> = Layer<never, R, never, A>
+export type SyncRE<R, E, A> = Layer<never, R, E, A>
+
 /**
  * Construct a layer by using a value
  */
-export function fromValue<A>(_: A): Layer<never, unknown, never, A> {
+export function fromValue<A>(_: A): Sync<A> {
   return new Layer(M.pure(_))
 }
 
 /**
  * Construct a layer by using a value constructed by requiring an environment R2
  */
-export function fromValueWith<R2>(): <A>(
-  _: (_: R2) => A
-) => Layer<never, R2, never, A> {
+export function fromValueWith<R2>(): <A>(_: (_: R2) => A) => SyncR<R2, A> {
   return (_) =>
     new Layer(M.encaseEffect(T.chain_(T.accessEnvironment<R2>(), (r) => T.pure(_(r)))))
 }
@@ -223,12 +231,10 @@ export function fromConstructor<C>(uri: keyof C) {
     X extends { new (): K } | { new (deps: any): K }
   >(
     X: X
-  ): Layer<
-    never,
+  ): SyncR<
     UnionToIntersection<
       X extends { new (...args: infer args): K } ? args[number] : never
     >,
-    never,
     C
   > =>
     fromEffect(
@@ -328,6 +334,6 @@ export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2,
 /**
  * Empty Layer, can be used as the root for composition
  */
-export const Empty =
+export const Empty: Sync<{}> =
   /*#__PURE__*/
   (() => fromValue({}))()
