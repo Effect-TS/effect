@@ -4,6 +4,7 @@ import * as L from "../src"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import { Empty } from "@matechs/core/Layer"
 import * as M from "@matechs/test-jest"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -61,4 +62,4 @@ const loggerSpec = M.suite("Logger")(
   )
 )
 
-M.run(loggerSpec)()
+M.run(loggerSpec)(Empty.use)

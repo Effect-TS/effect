@@ -12,6 +12,7 @@ import {
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import { Empty } from "@matechs/core/Layer"
 import * as F from "@matechs/core/Service"
 
 const TestValue_ = F.define({
@@ -138,4 +139,4 @@ customRun({
       })
     )
   )
-)()
+)(Empty.use)

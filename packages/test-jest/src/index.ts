@@ -26,13 +26,7 @@ import { ROf, Provider } from "@matechs/test/Impl"
 export const run: <Specs extends Spec<any>[]>(
   ...specs: Specs
 ) => (
-  provider: unknown extends UnionToIntersection<
-    ROf<Exclude<Specs[number], Spec<unknown>>>
-  >
-    ? void
-    : {} extends UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>
-    ? void
-    : Provider<UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>>
+  provider: Provider<UnionToIntersection<ROf<Exclude<Specs[number], Spec<unknown>>>>>
 ) => void = customRun({
   describe,
   it: {

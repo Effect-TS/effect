@@ -1,6 +1,7 @@
 import { assert, testM, customRun } from "../src"
 
 import * as T from "@matechs/core/Effect"
+import { Empty } from "@matechs/core/Layer"
 
 customRun({
   describe,
@@ -11,4 +12,4 @@ customRun({
   }
 })(
   testM("simple root", T.sync(() => assert.deepStrictEqual(2, 2)) as T.SyncR<{}, void>)
-)()
+)(Empty.use)

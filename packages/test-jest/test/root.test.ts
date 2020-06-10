@@ -1,13 +1,14 @@
 import { testM, run, suite, mockedTestM, expect } from "../src"
 
 import * as T from "@matechs/core/Effect"
+import { Empty } from "@matechs/core/Layer"
 
 run(
   testM(
     "simple root",
     T.sync(() => expect(2).toBe(2))
   )
-)()
+)(Empty.use)
 
 run(
   suite("jest mock")(
@@ -31,4 +32,4 @@ run(
         .done()
     )
   )
-)()
+)(Empty.use)

@@ -55,13 +55,7 @@ export type Provider<R> = (_: T.Effect<any, R, any, any>) => T.Effect<any, {}, a
 
 export const customRun = (_: Runner) => <Specs extends Spec<any>[]>(
   ...specs: Specs
-) => (
-  provider: unknown extends SpecsEnv<Specs>
-    ? void
-    : {} extends SpecsEnv<Specs>
-    ? void
-    : Provider<SpecsEnv<Specs>>
-) => {
+) => (provider: Provider<SpecsEnv<Specs>>) => {
   specs.map((s) => {
     switch (s._tag) {
       case "suite": {
