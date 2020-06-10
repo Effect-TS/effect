@@ -113,19 +113,19 @@ export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) ex
   ? I
   : never
 
-export type STypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A>
+export type STypeOf<X> = [X] extends [GE<infer _S, infer _R, infer _E, infer _A>]
   ? _S
   : never
 
-export type ATypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A>
+export type ATypeOf<X> = [X] extends [GE<infer _S, infer _R, infer _E, infer _A>]
   ? _A
   : never
 
-export type ETypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A>
+export type ETypeOf<X> = [X] extends [GE<infer _S, infer _R, infer _E, infer _A>]
   ? _E
   : never
 
-export type RTypeOf<X> = X extends GE<infer _S, infer _R, infer _E, infer _A>
+export type RTypeOf<X> = [X] extends [GE<infer _S, infer _R, infer _E, infer _A>]
   ? _R
   : never
 
@@ -150,10 +150,10 @@ export function sequenceT<F extends EitherURI>(
 ) => Kind2<
   F,
   {
-    [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _E : never
+    [K in keyof Z]: [Z[K]] extends [Kind2<F, infer _E, infer _A>] ? _E : never
   }[number],
   {
-    [K in keyof Z]: Z[K] extends Kind2<F, infer _E, infer _A> ? _A : never
+    [K in keyof Z]: [Z[K]] extends [Kind2<F, infer _E, infer _A>] ? _A : never
   }
 >
 export function sequenceT<F extends MaURIS>(
