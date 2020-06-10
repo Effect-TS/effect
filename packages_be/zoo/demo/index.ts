@@ -15,22 +15,14 @@ const program = T.forever(
   )
 )
 
-const main = pipe(
+pipe(
   program,
   Z.Election("/election/bbbb").with(
     Z.Client({
       connectionString: "127.0.0.1:2181"
     })
-  ).use
+  ).use,
+  T.exitCode((ex) => {
+    console.error("Exit:", ex)
+  })
 )
-
-const can = T.run(main, (ex) => {
-  console.log(ex)
-})
-
-process.on("SIGTERM", () => {
-  can()
-})
-process.on("SIGINT", () => {
-  can()
-})

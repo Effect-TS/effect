@@ -2348,3 +2348,47 @@ export function getParValidationM_<E>(
 ): Monad4ECP<URI, E> & Alt4EC<URI, E> {
   return validation(par(getValidationM(S)))
 }
+
+export function exitCode<E, A>(f?: (_: Exit<E, A>) => void) {
+  return <S>(_: Effect<S, {}, E, A>) => {
+    const fiber = runUnsafeSync(
+      fork(
+        chain_(result(_), (ex) =>
+          chain_(
+            sync(() => complete(ex)),
+            () => completed(ex)
+          )
+        )
+      )
+    )
+
+    let triggered = false
+    let done = false
+
+    const listener = () => {
+      trigger()
+    }
+
+    process.on("SIGINT", listener)
+    process.on("SIGTERM", listener)
+
+    const complete = (ex: Exit<E, A>) => {
+      if (!done) {
+        process.removeListener("SIGINT", listener)
+        process.removeListener("SIGTERM", listener)
+
+        done = true
+
+        f?.(ex)
+      }
+    }
+
+    const trigger = () => {
+      if (!triggered) {
+        triggered = true
+
+        run(chain_(fiber.interrupt, (ex) => sync(() => complete(ex))))
+      }
+    }
+  }
+}
