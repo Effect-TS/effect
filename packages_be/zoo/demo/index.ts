@@ -1,4 +1,4 @@
-import { election, provideClientFactory, provideClientConfig } from "../src"
+import * as Z from "../src"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
@@ -16,11 +16,12 @@ const program = T.forever(
 )
 
 const main = pipe(
-  election("/election/bbbb")(program),
-  provideClientFactory,
-  provideClientConfig({
-    connectionString: "127.0.0.1:2181"
-  })
+  program,
+  Z.Election("/election/bbbb").with(
+    Z.Client({
+      connectionString: "127.0.0.1:2181"
+    })
+  ).use
 )
 
 const can = T.run(main, (ex) => {

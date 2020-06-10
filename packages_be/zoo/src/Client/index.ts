@@ -5,21 +5,12 @@ import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import * as F from "@matechs/core/Function"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as M from "@matechs/core/Managed"
 import * as O from "@matechs/core/Option"
-import * as Service from "@matechs/core/Service"
 
 // work in progress
 /* istanbul ignore file */
-
-export const clientConfigURI = "@matechs/zoo/clientConfigURI"
-
-export interface ClientConfig {
-  [clientConfigURI]: {
-    connectionString: string
-    options?: Partial<ZC.Option>
-  }
-}
 
 export interface ZooError {
   _tag:
@@ -30,11 +21,6 @@ export interface ZooError {
     | "WaitDeleteError"
     | "ConnectionDroppedError"
 }
-
-export const provideClientConfig = (_: ClientConfig[typeof clientConfigURI]) =>
-  T.provide<ClientConfig>({
-    [clientConfigURI]: _
-  })
 
 export interface ConnectError extends ZooError {
   _tag: "ConnectError"
@@ -98,8 +84,8 @@ type Out = Mkdirp | Createp | NodeId | Children | Deleted
 
 const out = <A extends Out>(a: A): A => a
 
-export interface Client {
-  connect(): T.AsyncE<ConnectError, Client>
+export interface ClientOps {
+  connect(): T.AsyncE<ConnectError, ClientOps>
   listen(f: F.FunctionN<[ZC.State], void>): F.Lazy<void>
   state(): T.AsyncE<never, O.Option<ZC.State>>
   mkdirp(path: string): T.AsyncE<MkdirpError, Mkdirp>
@@ -114,7 +100,7 @@ export interface Client {
   waitDelete(path: string): T.AsyncE<WaitDeleteError, Deleted>
 }
 
-export class ClientImpl implements Client {
+export class ClientImpl implements ClientOps {
   private _state: O.Option<ZC.State> = O.none
   private readonly listeners: Map<number, F.FunctionN<[ZC.State], void>> = new Map()
   private opc = 0
@@ -161,7 +147,7 @@ export class ClientImpl implements Client {
   }
 
   connect() {
-    return T.async<ConnectError, Client>((res) => {
+    return T.async<ConnectError, ClientOps>((res) => {
       this.client.connect()
 
       const l = this.listen((s) => {
@@ -354,38 +340,34 @@ export class ClientImpl implements Client {
   }
 }
 
-export const ClientFactoryURI = "@matechs/zoo/clientFactoryURI"
+export interface ClientConfig {
+  connectionString: string
+  options?: Partial<ZC.Option>
+}
 
-const ClientFactory_ = Service.define({
-  [ClientFactoryURI]: {
-    createClient: Service.cn<T.Async<Client>>()
-  }
-})
+export const managedClient = (_: ClientConfig) =>
+  M.bracket(
+    pipe(
+      T.sync(() => new ClientImpl(ZC.createClient(_.connectionString, _.options))),
+      T.chain((c) => c.connect())
+    ),
+    (client) => client.dispose()
+  )
 
-export interface ClientFactory extends Service.TypeOf<typeof ClientFactory_> {}
+export const ClientServiceURI = "@matechs/zoo/ClientServiceURI"
 
-export const ClientFactory = Service.opaque<ClientFactory>()(ClientFactory_)
+export interface Client {
+  [ClientServiceURI]: ClientOps
+}
 
-export const provideClientFactory = Service.implement(ClientFactory)({
-  [ClientFactoryURI]: {
-    createClient: T.access(
-      (_: ClientConfig) =>
-        new ClientImpl(
-          ZC.createClient(
-            _[clientConfigURI].connectionString,
-            _[clientConfigURI].options
-          )
-        )
+export const Client = (_: ClientConfig) =>
+  L.fromManaged(
+    M.map_(
+      managedClient(_),
+      (client): Client => ({
+        [ClientServiceURI]: client
+      })
     )
-  }
-})
+  )
 
-const { createClient } = Service.access(ClientFactory)[ClientFactoryURI]
-
-export const managedClient = M.bracket(
-  pipe(
-    createClient,
-    T.chain((c) => c.connect())
-  ),
-  (client) => client.dispose()
-)
+export const accessClient = T.access((_: Client) => _[ClientServiceURI])
