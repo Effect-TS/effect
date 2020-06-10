@@ -6,7 +6,7 @@ import { pipe } from "@matechs/core/Function"
 // work in progress
 /* istanbul ignore file */
 
-const program = T.forever(
+const program: T.Async<never> = T.forever(
   T.delay(
     T.sync(() => {
       console.log("process!!")
@@ -15,13 +15,17 @@ const program = T.forever(
   )
 )
 
+const ZooClient = Z.Client({
+  connectionString: "127.0.0.1:2181"
+})
+
+const ZooElection = Z.Election("/election/bbbb")
+
+const Live = ZooElection.with(ZooClient)
+
 pipe(
   program,
-  Z.Election("/election/bbbb").with(
-    Z.Client({
-      connectionString: "127.0.0.1:2181"
-    })
-  ).use,
+  Live.use,
   T.exitCode((ex) => {
     console.error("Exit:", ex)
   })

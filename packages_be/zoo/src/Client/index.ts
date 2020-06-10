@@ -345,7 +345,7 @@ export interface ClientConfig {
   options?: Partial<ZC.Option>
 }
 
-export const managedClient = (_: ClientConfig) =>
+const managedClientOps = (_: ClientConfig) =>
   M.bracket(
     pipe(
       T.sync(() => new ClientImpl(ZC.createClient(_.connectionString, _.options))),
@@ -360,10 +360,10 @@ export interface Client {
   [ClientServiceURI]: ClientOps
 }
 
-export const Client = (_: ClientConfig) =>
+export const Client = (_: ClientConfig): L.AsyncE<ConnectError, Client> =>
   L.fromManaged(
     M.map_(
-      managedClient(_),
+      managedClientOps(_),
       (client): Client => ({
         [ClientServiceURI]: client
       })
@@ -371,3 +371,6 @@ export const Client = (_: ClientConfig) =>
   )
 
 export const accessClient = T.access((_: Client) => _[ClientServiceURI])
+
+export const useClient = <S, R, E, A>(f: (_: ClientOps) => T.Effect<S, R, E, A>) =>
+  T.chain_(accessClient, f)

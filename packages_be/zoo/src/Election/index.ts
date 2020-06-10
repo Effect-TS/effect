@@ -14,28 +14,26 @@ import {
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
 import { pipe } from "@matechs/core/Function"
-import { fromProvider } from "@matechs/core/Layer"
+import * as L from "@matechs/core/Layer"
 import * as O from "@matechs/core/Option"
 
 // work in progress
 /* istanbul ignore file */
 
-export const loop = <S, R, E, A>(
-  _: T.Effect<S, R, E, O.Option<A>>
-): T.Effect<S, R, E, A> =>
+const loop = <S, R, E, A>(_: T.Effect<S, R, E, O.Option<A>>): T.Effect<S, R, E, A> =>
   T.chain_(_, (o) => (O.isSome(o) ? T.pure(o.value) : T.suspended(() => loop(_))))
 
-export const Election = (electionPath: string) =>
-  fromProvider<
-    unknown,
-    Client,
-    | MkdirpError
-    | CreateError
-    | GetChildrenError
-    | WaitDeleteError
-    | ConnectionDroppedError,
-    unknown
-  >((run) =>
+export type ElectionError =
+  | MkdirpError
+  | CreateError
+  | GetChildrenError
+  | WaitDeleteError
+  | ConnectionDroppedError
+
+export const Election = (
+  electionPath: string
+): L.AsyncRE<Client, ElectionError, unknown> =>
+  L.fromProvider((run) =>
     T.chain_(accessClient, (c) => {
       // run election
       const proc = pipe(
