@@ -12,11 +12,11 @@ import * as express from "express"
 
 import {
   ApolloConf,
-  ApolloEnv,
+  Apollo,
+  RequestContext,
   Context,
-  ContextEnv,
   ResolverSubF,
-  contextURI,
+  ContextURI,
   ResolverInput,
   Resolver,
   ResolverEnv,
@@ -43,11 +43,11 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
     typeDefs: ITypeDefinitions,
     additionalResolvers?: IResolvers
   ) => T.SyncR<
-    ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE,
+    ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & Apollo<C> & RE,
     void
   >
   binder: <K extends Resolver<any, K, U, Ctx>>(res: K) => K
-  accessContext: T.SyncR<ContextEnv<U, Ctx>, { [k in U]: Ctx }[U]>
+  accessContext: T.SyncR<Context<U, Ctx>, { [k in U]: Ctx }[U]>
   resolver: <ARGS, S = any>() => <
     R extends ResolverF<ARGS, U, Ctx, S, any, any, any, any>
   >(
@@ -56,8 +56,8 @@ export interface ApolloHelper<RE, U extends string, Ctx, C extends ApolloConf> {
   subscription: <ARGS, S = any>() => <B, C, D, E, F, G, S, S2>(
     subscribe: (
       _: ResolverInput<S, ARGS>
-    ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
-    resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>
+    ) => T.Effect<S, B & Context<U, Ctx>, C, AsyncIterable<D>>,
+    resolve?: (_: D) => T.Effect<S2, E & Context<U, Ctx>, F, G>
   ) => ResolverSubF<ARGS, U, Ctx, S, B, C, D, E, F, G, S, S2>
 }
 
@@ -78,13 +78,13 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
 ): ApolloHelper<RE, U, Ctx, C> {
   const config = configP as Omit<ApolloServerExpressConfig, "context" | "schema">
 
-  const accessContext = T.access((_: ContextEnv<U, Ctx>) => _[contextURI][uri])
+  const accessContext = T.access((_: Context<U, Ctx>) => _[ContextURI][uri])
 
   const subscription = <ARGS, A, B, C, D, E, F, G, S, S2>(
     subscribe: (
       _: ResolverInput<A, ARGS>
-    ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>,
-    resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>
+    ) => T.Effect<S, B & Context<U, Ctx>, C, AsyncIterable<D>>,
+    resolve?: (_: D) => T.Effect<S2, E & Context<U, Ctx>, F, G>
   ): ResolverSubF<ARGS, U, Ctx, A, B, C, D, E, F, G, S, S2> => ({
     subscribe,
     resolve
@@ -98,9 +98,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
     additionalResolvers: IResolvers = {}
   ) =>
     T.accessM(
-      (
-        _: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & ApolloEnv<C> & RE
-      ) => {
+      (_: ResolverEnv<R, U, Ctx> & EX.HasExpress & EX.HasServer & Apollo<C> & RE) => {
         const toBind = {}
 
         for (const k of Object.keys(res)) {
@@ -111,7 +109,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
           paths.forEach((p, i) => {
             if (i === paths.length - 1) {
               if (typeof res[k] === "function") {
-                ref[p] = (source: any, args: any, ctx: Context) =>
+                ref[p] = (source: any, args: any, ctx: RequestContext) =>
                   pipe(
                     res[k]({
                       source: O.fromNullable(source),
@@ -119,7 +117,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                     }),
                     T.provide({
                       ...(_ as any),
-                      [contextURI]: {
+                      [ContextURI]: {
                         [uri]: ctx
                       }
                     }),
@@ -127,7 +125,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                   )
               } else {
                 ref[p] = {
-                  subscribe: (source: any, args: any, ctx: Context) =>
+                  subscribe: (source: any, args: any, ctx: RequestContext) =>
                     pipe(
                       res[k].subscribe({
                         source: O.fromNullable(source),
@@ -135,7 +133,7 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                       }),
                       T.provide({
                         ...(_ as any),
-                        [contextURI]: {
+                        [ContextURI]: {
                           [uri]: ctx
                         }
                       }),
@@ -144,12 +142,12 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
                 }
 
                 if (res[k].resolve) {
-                  ref[p].resolve = (x: any, _: any, ctx: Context) =>
+                  ref[p].resolve = (x: any, _: any, ctx: RequestContext) =>
                     pipe(
                       res[k].resolve(x),
                       T.provide({
                         ...(_ as any),
-                        [contextURI]: {
+                        [ContextURI]: {
                           [uri]: ctx
                         }
                       }),

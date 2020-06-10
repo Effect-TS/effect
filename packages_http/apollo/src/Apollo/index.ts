@@ -15,27 +15,27 @@ export interface ResolverInput<S, ARGS> {
   args: ARGS
 }
 
-export interface Context {
+export interface RequestContext {
   req: O.Option<exp.Request>
 }
 
-export const contextURI = "@matechs/apollo/context"
+export const ContextURI = "@matechs/apollo/ContextURI"
 
-export interface ContextEnv<U extends string, Ctx> {
-  [contextURI]: {
+export interface Context<U extends string, Ctx> {
+  [ContextURI]: {
     [k in U]: Ctx
   }
 }
 
 export type ResolverF<ARGS, U extends string, Ctx, A, B, C, D, S> = (
   _: ResolverInput<A, ARGS>
-) => T.Effect<S, B & ContextEnv<U, Ctx>, C, D>
+) => T.Effect<S, B & Context<U, Ctx>, C, D>
 
 export interface ResolverSubF<ARGS, U extends string, Ctx, A, B, C, D, E, F, G, S, S2> {
   subscribe: (
     _: ResolverInput<A, ARGS>
-  ) => T.Effect<S, B & ContextEnv<U, Ctx>, C, AsyncIterable<D>>
-  resolve?: (_: D) => T.Effect<S2, E & ContextEnv<U, Ctx>, F, G>
+  ) => T.Effect<S, B & Context<U, Ctx>, C, AsyncIterable<D>>
+  resolve?: (_: D) => T.Effect<S2, E & Context<U, Ctx>, F, G>
 }
 
 export type Resolver<ARGS, K, U extends string, Ctx> = {
@@ -96,7 +96,7 @@ export type ApolloConf = Omit<
   }>
 }
 
-export type ApolloEnv<C extends ApolloConf> = C extends {
+export type Apollo<C extends ApolloConf> = C extends {
   subscriptions: {
     onConnect?: (
       connectionParams: unknown,

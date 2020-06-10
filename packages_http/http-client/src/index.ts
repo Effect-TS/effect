@@ -2,15 +2,16 @@ import { ParsedQuery } from "query-string"
 
 import * as T from "@matechs/core/Effect"
 import * as F from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as O from "@matechs/core/Option"
 
 /* tested in the implementation packages */
 /* istanbul ignore file */
 
-export const middlewareStackEnv = "@matechs/http-client/middlewareStackURI"
-export const httpEnv = "@matechs/http-client/httpURI"
-export const httpHeadersEnv = "@matechs/http-client/httpHeadersURI"
-export const httpDeserializerEnv = "@matechs/http-client/httpDeserializerURI"
+export const MiddlewareStackURI = "@matechs/http-client/MiddlewareStackURI"
+export const HttpURI = "@matechs/http-client/HttpURI"
+export const HttpHeadersURI = "@matechs/http-client/HttpHeadersURI"
+export const HttpDeserializerURI = "@matechs/http-client/HttpDeserializerURI"
 
 export const Method = {
   GET: null,
@@ -150,7 +151,7 @@ export function foldHttpError<A, B, ErrorBody>(
 }
 
 export interface HttpHeaders {
-  [httpHeadersEnv]: Record<string, string>
+  [HttpHeadersURI]: Record<string, string>
 }
 
 export interface HttpOps {
@@ -165,11 +166,11 @@ export interface HttpOps {
 }
 
 export interface Http {
-  [httpEnv]: HttpOps
+  [HttpURI]: HttpOps
 }
 
 function hasHeaders(r: object): r is HttpHeaders {
-  return typeof r[httpHeadersEnv] !== "undefined"
+  return typeof r[HttpHeadersURI] !== "undefined"
 }
 
 export type RequestF = <
@@ -188,24 +189,23 @@ export type RequestF = <
 export type RequestMiddleware = (request: RequestF) => RequestF
 
 export interface MiddlewareStack {
-  [middlewareStackEnv]?: {
+  [MiddlewareStackURI]?: {
     stack: RequestMiddleware[]
   }
 }
 
-export const middlewareStack: (stack?: RequestMiddleware[]) => MiddlewareStack = (
-  stack = []
-) => ({
-  [middlewareStackEnv]: {
-    stack
-  }
-})
+export const MiddlewareStack = (stack: RequestMiddleware[] = []) =>
+  L.fromValue<MiddlewareStack>({
+    [MiddlewareStackURI]: {
+      stack
+    }
+  })
 
 export type HttpEnv = Http & MiddlewareStack
 export type RequestEnv = HttpEnv
 
 function foldMiddlewareStack(
-  { [middlewareStackEnv]: env }: MiddlewareStack,
+  { [MiddlewareStackURI]: env }: MiddlewareStack,
   request: RequestF
 ): RequestF {
   if (env && env.stack.length > 0) {
@@ -234,12 +234,12 @@ export function requestInner<
   body: RequestBodyTypes[Req][M]
 ): T.AsyncRE<RequestEnv & R, HttpError<string>, Response<ResponseTypes[Resp][M]>> {
   return T.accessM((r: Http & R) =>
-    r[httpEnv].request<M, Req, Resp>(
+    r[HttpURI].request<M, Req, Resp>(
       method,
       url,
       requestType,
       responseType,
-      hasHeaders(r) ? r[httpHeadersEnv] : {},
+      hasHeaders(r) ? r[HttpHeadersURI] : {},
       body
     )
   )
@@ -381,9 +381,9 @@ export function withHeaders(
 ): <S, R, E, A>(eff: T.Effect<S, R, E, A>) => T.Effect<S, R, E, A> {
   return <S, R, E, A>(eff: T.Effect<S, R, E, A>) =>
     replace
-      ? T.accessM((r: R) => T.provide({ ...r, [httpHeadersEnv]: headers })(eff))
+      ? T.accessM((r: R) => T.provide({ ...r, [HttpHeadersURI]: headers })(eff))
       : T.accessM((r: R) =>
-          T.provide({ ...r, [httpHeadersEnv]: { ...r[httpHeadersEnv], ...headers } })(
+          T.provide({ ...r, [HttpHeadersURI]: { ...r[HttpHeadersURI], ...headers } })(
             eff
           )
         )

@@ -13,8 +13,6 @@ import { malformedSpec } from "./specs/malformedSpec"
 import { methodsSpec } from "./specs/methodsSpec"
 import { replaceHeadersSpec } from "./specs/replaceHeadersSpec"
 
-import * as T from "@matechs/core/Effect"
-import { flow } from "@matechs/core/Function"
 import * as H from "@matechs/http-client"
 import * as J from "@matechs/test-jest"
 
@@ -32,16 +30,13 @@ const fetchSuite = J.suite("Fetch")(
 )
 
 J.run(fetchSuite)(
-  flow(
-    T.provide(F.client(fetch)),
-    T.provide(
-      H.middlewareStack([
-        H.withPathHeaders(
-          { foo: "bar" },
-          (path) => path === "http://127.0.0.1:4015/middle",
-          true
-        )
-      ])
-    )
-  )
+  F.Client(fetch).with(
+    H.MiddlewareStack([
+      H.withPathHeaders(
+        { foo: "bar" },
+        (path) => path === "http://127.0.0.1:4015/middle",
+        true
+      )
+    ])
+  ).use
 )

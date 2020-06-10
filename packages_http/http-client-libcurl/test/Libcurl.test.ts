@@ -2,7 +2,7 @@ import assert from "assert"
 
 import express from "express"
 
-import { libcurl } from "../src"
+import { Client } from "../src"
 
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
@@ -14,23 +14,20 @@ function run<E, A>(eff: T.AsyncRE<H.RequestEnv, E, A>): Promise<Ex.Exit<E, A>> {
   return T.runToPromiseExit(
     pipe(
       eff,
-      T.provide(
-        libcurl({
+      H.MiddlewareStack([
+        H.withPathHeaders(
+          { foo: "bar" },
+          (path) => path === "http://127.0.0.1:4005/middle",
+          true
+        )
+      ]).with(
+        Client({
           requestTransformer: (_) => {
             _.setOpt("FORBID_REUSE", 1)
             return _
           }
         })
-      ),
-      T.provide(
-        H.middlewareStack([
-          H.withPathHeaders(
-            { foo: "bar" },
-            (path) => path === "http://127.0.0.1:4005/middle",
-            true
-          )
-        ])
-      )
+      ).use
     )
   )
 }
@@ -420,7 +417,7 @@ describe("Libcurl", () => {
     let res
 
     const cancel = T.run(
-      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), T.provide(libcurl())),
+      pipe(H.get("https://jsonplaceholder.typicode.com/todos/1"), Client().use),
       (r) => {
         res = r
       }
