@@ -20,10 +20,10 @@ export const isoUUID = NT.iso<UUID>()
 export const isoUUIDBase90 = NT.iso<UUIDBase90>()
 export const isoUUIDBase58 = NT.iso<UUIDBase58>()
 
-export const uuidURI = "@matechs/uuid/uuidURI"
+export const UUIDURI = "@matechs/uuid/UUIDURI"
 
-const uuidM_ = F.define({
-  [uuidURI]: {
+const UUIDService_ = F.define({
+  [UUIDURI]: {
     gen: F.cn<T.Sync<UUID>>(),
     toBase90: F.fn<(uuid: UUID) => T.Sync<UUIDBase90>>(),
     fromBase90: F.fn<(uuid: UUIDBase90) => T.Sync<UUID>>(),
@@ -32,12 +32,12 @@ const uuidM_ = F.define({
   }
 })
 
-export interface UUIDEnv extends F.TypeOf<typeof uuidM_> {}
+export interface UUIDService extends F.TypeOf<typeof UUIDService_> {}
 
-export const uuidM = F.opaque<UUIDEnv>()(uuidM_)
+export const UUIDService = F.opaque<UUIDService>()(UUIDService_)
 
-export const provideUUID = F.implement(uuidM)({
-  [uuidURI]: {
+export const UUID = F.layer(UUIDService)({
+  [UUIDURI]: {
     gen: T.sync(() => I.wrap(isoUUID)(v4())),
     toBase90: (uuid) =>
       T.sync(() =>
@@ -79,5 +79,5 @@ export const provideUUID = F.implement(uuidM)({
 })
 
 export const {
-  [uuidURI]: { fromBase58, fromBase90, gen, toBase58, toBase90 }
-} = F.access(uuidM)
+  [UUIDURI]: { fromBase58, fromBase90, gen, toBase58, toBase90 }
+} = F.access(UUIDService)

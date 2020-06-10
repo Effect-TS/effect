@@ -6,8 +6,8 @@ import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
 import { unwrap } from "@matechs/core/Monocle/Iso"
 
-function run<E, A>(eff: T.SyncRE<U.UUIDEnv, E, A>): Promise<A> {
-  return pipe(eff, U.provideUUID, T.runToPromise)
+function run<E, A>(eff: T.SyncRE<U.UUIDService, E, A>): Promise<A> {
+  return pipe(eff, U.UUID.use, T.runToPromise)
 }
 
 describe("UUID", () => {
