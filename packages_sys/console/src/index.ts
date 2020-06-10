@@ -31,9 +31,9 @@ const Console_ = F.define({
 
 export interface Console extends F.TypeOf<typeof Console_> {}
 
-export const Console = F.opaque<Console>()(Console_)
+export const ConsoleService = F.opaque<Console>()(Console_)
 
-export const provideConsole = F.implement(Console)({
+export const Console = F.layer(ConsoleService)({
   [consoleURI]: {
     assert: (v, m, ...o) => T.sync(() => console.assert(v, m, ...o)),
     clear: T.sync(() => console.clear()),
@@ -79,4 +79,4 @@ export const {
     trace,
     warn
   }
-} = F.access(Console)
+} = F.access(ConsoleService)

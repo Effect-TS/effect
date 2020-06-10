@@ -8,7 +8,7 @@ import { NonEmptyArray } from "../NonEmptyArray"
 type LayerPayload<S, R, E, A> = M.Managed<S, R, E, A>
 
 type SL<Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]> = {
-  [k in keyof Layers & number]: Layers[k]["payload"]["_S"] extends () => infer X
+  [k in keyof Layers & number]: [Layers[k]["payload"]["_S"]] extends [() => infer X]
     ? X
     : never
 }[number]
@@ -17,9 +17,9 @@ type RL<
   Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]
 > = UnionToIntersection<
   {
-    [k in keyof Layers & number]: Layers[k]["payload"]["_R"] extends (
-      _R: infer X
-    ) => void
+    [k in keyof Layers & number]: [Layers[k]["payload"]["_R"]] extends [
+      (_R: infer X) => void
+    ]
       ? unknown extends X
         ? never
         : X
@@ -28,7 +28,7 @@ type RL<
 >
 
 type EL<Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]> = {
-  [k in keyof Layers & number]: Layers[k]["payload"]["_E"] extends () => infer X
+  [k in keyof Layers & number]: [Layers[k]["payload"]["_E"]] extends [() => infer X]
     ? X
     : never
 }[number]
@@ -37,7 +37,7 @@ type AL<
   Layers extends readonly { payload: LayerPayload<any, any, any, any> }[]
 > = UnionToIntersection<
   {
-    [k in keyof Layers & number]: Layers[k]["payload"]["_A"] extends () => infer X
+    [k in keyof Layers & number]: [Layers[k]["payload"]["_A"]] extends [() => infer X]
       ? unknown extends X
         ? never
         : X

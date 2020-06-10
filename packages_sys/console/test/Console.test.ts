@@ -45,4 +45,4 @@ const consoleSpec = M.suite("Console")(
   pipe(M.testM("warn", C.warn()), withConsoleTest("warn"))
 )
 
-M.run(consoleSpec)(C.provideConsole)
+M.run(consoleSpec)(C.Console.use)
