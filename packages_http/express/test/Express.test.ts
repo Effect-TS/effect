@@ -107,7 +107,7 @@ describe("Express", () => {
       routes,
       T.chain((_) => program),
       M.provide(EX.managedExpress(3003, "127.0.0.1")),
-      T.provide(L.client(fetch)),
+      L.Client(fetch).use,
       T.provide(EX.express),
       T.runToPromise
     ).then(({ res1, res2, res3, res4, res5 }) => {

@@ -187,7 +187,7 @@ describe("Koa", () => {
       T.chain_(config, (_) => program),
       M.provide(KOA.managedKoa(3004, "127.0.0.1")),
       KOA.provideKoa,
-      T.provide(L.client(fetch)),
+      L.Client(fetch).use,
       T.runToPromise
     ).then(({ res, res2, res3, res4, res5, res6, res7, res8, res9 }) => {
       assert.deepStrictEqual(res, Ex.done({ res: 1 }))

@@ -80,7 +80,7 @@ describe("RPC", () => {
     const incResult = await T.runToPromiseExit(
       pipe(
         increment(1),
-        T.provide(L.client(fetch)),
+        L.Client(fetch).use,
         T.provide({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
@@ -94,7 +94,7 @@ describe("RPC", () => {
     const niResult = await T.runToPromiseExit(
       pipe(
         ni,
-        T.provide(L.client(fetch)),
+        L.Client(fetch).use,
         T.provide({
           [RPCCLI.clientConfigEnv]: {
             [counterEnv]: {
