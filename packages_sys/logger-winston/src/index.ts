@@ -1,6 +1,8 @@
 import * as W from "winston"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
+import * as Layer from "@matechs/core/Layer"
 import * as F from "@matechs/core/Service"
 import * as L from "@matechs/logger/Logger"
 
@@ -20,34 +22,22 @@ export const {
   [WinstonFactoryURI]: { logger }
 } = F.access(WinstonFactoryService)
 
-export function log(
-  level: L.Level,
-  message: string,
-  meta?: L.Meta
-): T.SyncR<WinstonFactory, void> {
-  return T.Do()
-    .bind("logger", logger)
-    .doL((s) =>
-      T.sync(() => {
-        s.logger.log(level, message, meta)
-      })
-    )
-    .return(() => {
-      //
+export const WinstonLogger = pipe(
+  logger,
+  Layer.useEffect(({ log }) =>
+    F.layer(L.LoggerService)({
+      [L.LoggerURI]: {
+        debug: (message, meta) => T.sync(() => log("debug", message, meta)),
+        http: (message, meta) => T.sync(() => log("http", message, meta)),
+        silly: (message, meta) => T.sync(() => log("silly", message, meta)),
+        error: (message, meta) => T.sync(() => log("error", message, meta)),
+        info: (message, meta) => T.sync(() => log("info", message, meta)),
+        verbose: (message, meta) => T.sync(() => log("verbose", message, meta)),
+        warn: (message, meta) => T.sync(() => log("warn", message, meta))
+      }
     })
-}
-
-export const WinstonLogger = F.layer(L.LoggerService)({
-  [L.LoggerURI]: {
-    debug: (message, meta) => log("debug", message, meta),
-    http: (message, meta) => log("http", message, meta),
-    silly: (message, meta) => log("silly", message, meta),
-    error: (message, meta) => log("error", message, meta),
-    info: (message, meta) => log("info", message, meta),
-    verbose: (message, meta) => log("verbose", message, meta),
-    warn: (message, meta) => log("warn", message, meta)
-  }
-})
+  )
+)
 
 /* istanbul ignore next */
 export const LoggerFactory = (loggerOpts: W.LoggerOptions) =>
