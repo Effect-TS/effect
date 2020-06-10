@@ -1,6 +1,8 @@
 import * as L from "../Logger"
 
 import * as T from "@matechs/core/Effect"
+import { pipe } from "@matechs/core/Function"
+import * as Layer from "@matechs/core/Layer"
 import * as F from "@matechs/core/Service"
 
 function format(level: L.Level, message: string, meta?: L.Meta) {
@@ -70,21 +72,24 @@ export interface ConsoleLoggerConfig {
   [ConsoleLoggerConfigURI]: Config
 }
 
-export const provideConsoleLoggerConfig = (config: Config = {}) =>
-  T.provide<ConsoleLoggerConfig>({
+export const ConsoleLoggerConfig = (config: Config = {}) =>
+  Layer.fromValue<ConsoleLoggerConfig>({
     [ConsoleLoggerConfigURI]: config
   })
 
-export const provideConsoleLogger = F.implementWith(
-  T.access((_: ConsoleLoggerConfig) => _[ConsoleLoggerConfigURI])
-)(L.Logger)((config) => ({
-  [L.LoggerURI]: {
-    debug: (message, meta) => log(config, "debug", message, meta),
-    http: (message, meta) => log(config, "http", message, meta),
-    silly: (message, meta) => log(config, "silly", message, meta),
-    error: (message, meta) => log(config, "error", message, meta),
-    info: (message, meta) => log(config, "info", message, meta),
-    verbose: (message, meta) => log(config, "verbose", message, meta),
-    warn: (message, meta) => log(config, "warn", message, meta)
-  }
-}))
+export const ConsoleLogger = pipe(
+  T.access((_: ConsoleLoggerConfig) => _[ConsoleLoggerConfigURI]),
+  Layer.useEffect((config) =>
+    F.layer(L.LoggerService)({
+      [L.LoggerURI]: {
+        debug: (message, meta) => log(config, "debug", message, meta),
+        http: (message, meta) => log(config, "http", message, meta),
+        silly: (message, meta) => log(config, "silly", message, meta),
+        error: (message, meta) => log(config, "error", message, meta),
+        info: (message, meta) => log(config, "info", message, meta),
+        verbose: (message, meta) => log(config, "verbose", message, meta),
+        warn: (message, meta) => log(config, "warn", message, meta)
+      }
+    })
+  )
+)

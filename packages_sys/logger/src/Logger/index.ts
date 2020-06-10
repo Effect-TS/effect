@@ -23,7 +23,7 @@ const loggerM_ = F.define({
 
 export interface Logger extends F.TypeOf<typeof loggerM_> {}
 
-export const Logger = F.opaque<Logger>()(loggerM_)
+export const LoggerService = F.opaque<Logger>()(loggerM_)
 
 export type Level = keyof Logger[typeof LoggerURI]
 
@@ -39,4 +39,4 @@ export const severity: Record<Level, number> = {
 
 export const {
   [LoggerURI]: { debug, error, http, info, silly, verbose, warn }
-} = F.access(Logger)
+} = F.access(LoggerService)

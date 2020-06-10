@@ -5,7 +5,7 @@ import * as P from "../src"
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
-import { Empty } from "@matechs/core/Layer"
+import * as Layer from "@matechs/core/Layer"
 import * as F from "@matechs/core/Service"
 import * as L from "@matechs/logger"
 import * as M from "@matechs/test-jest"
@@ -101,54 +101,53 @@ const pinoLoggerSpec = M.suite("Pino")(
   M.mockedTestM("use @matechs/logger instance")(() => ({
     write: jest.fn<void, [string]>(empty)
   }))(({ useMockM }) =>
-    pipe(
-      T.Do()
-        .do(L.logger.info("ok"))
-        .do(L.logger.http("ok"))
-        .do(L.logger.debug("ok"))
-        .do(L.logger.silly("ok"))
-        .do(L.logger.verbose("ok"))
-        .do(L.logger.warn("ok"))
-        .do(L.logger.error("ok"))
-        .do(L.logger.error("ok", { foo: "ok" }))
-        .bind(
-          "calls",
-          useMockM(({ write }) =>
-            pipe(
-              write.mock.calls,
-              A.map(([str]): PinoLoggedObject<{ foo?: string }> => JSON.parse(str)),
-              T.pure
-            )
+    T.Do()
+      .do(L.logger.info("ok"))
+      .do(L.logger.http("ok"))
+      .do(L.logger.debug("ok"))
+      .do(L.logger.silly("ok"))
+      .do(L.logger.verbose("ok"))
+      .do(L.logger.warn("ok"))
+      .do(L.logger.error("ok"))
+      .do(L.logger.error("ok", { foo: "ok" }))
+      .bind(
+        "calls",
+        useMockM(({ write }) =>
+          pipe(
+            write.mock.calls,
+            A.map(([str]): PinoLoggedObject<{ foo?: string }> => JSON.parse(str)),
+            T.pure
           )
         )
-        .sequenceSL(({ calls }) => ({
-          len: T.sync(() => {
-            M.assert.strictEqual(calls.length, 8)
-          }),
-          fatal: checkLevel(calls, "fatal", []),
-          error: checkLevel(calls, "error", [{ msg: "ok" }, { msg: "ok", foo: "ok" }]),
-          warn: checkLevel(calls, "warn", [{ msg: "ok" }]),
-          info: checkLevel(calls, "info", [
-            { msg: "ok" },
-            { msg: "ok" },
-            { msg: "ok" }
-          ]),
-          debug: checkLevel(calls, "debug", [{ msg: "ok" }]),
-          trace: checkLevel(calls, "trace", [{ msg: "ok" }])
-        }))
-        .done(),
-      P.providePinoLogger,
-      F.implementWith(
-        useMockM(({ write }) => T.sync(() => Pino({ level: "trace" }, { write })))
-      )(P.pinoInstanceM)((logger) => ({
-        [P.PinoInstanceURI]: { logger: T.pure(logger) }
+      )
+      .sequenceSL(({ calls }) => ({
+        len: T.sync(() => {
+          M.assert.strictEqual(calls.length, 8)
+        }),
+        fatal: checkLevel(calls, "fatal", []),
+        error: checkLevel(calls, "error", [{ msg: "ok" }, { msg: "ok", foo: "ok" }]),
+        warn: checkLevel(calls, "warn", [{ msg: "ok" }]),
+        info: checkLevel(calls, "info", [{ msg: "ok" }, { msg: "ok" }, { msg: "ok" }]),
+        debug: checkLevel(calls, "debug", [{ msg: "ok" }]),
+        trace: checkLevel(calls, "trace", [{ msg: "ok" }])
       }))
-    )
+      .pipe(
+        P.PinoLogger.with(
+          pipe(
+            useMockM(({ write }) => T.pure(write)),
+            Layer.useEffect((write) => P.Pino({ level: "trace" }, { write }))
+          )
+        ).use
+      )
+      .done()
   ),
-  pipe(
-    M.testM("provides instance", T.Do().do(P.info("ok")).done()),
-    M.withProvider(P.providePino({}, { write: empty }))
+  M.testM(
+    "provides instance",
+    T.Do()
+      .do(P.info("ok"))
+      .pipe(P.Pino({}, { write: empty }).use)
+      .done()
   )
 )
 
-M.run(pinoLoggerSpec)(Empty.use)
+M.run(pinoLoggerSpec)(Layer.Empty.use)

@@ -12,8 +12,8 @@ import * as L from "@matechs/logger"
 
 const messages: any[][] = []
 
-const factory = F.implement(W.winstonFactoryM)({
-  [W.winstonFactoryEnv]: {
+const factory = F.layer(W.WinstonFactoryService)({
+  [W.WinstonFactoryURI]: {
     logger: T.pure({
       log: (...args: any[]) => {
         messages.push(args)
@@ -27,8 +27,7 @@ function testLevel(level: L.logger.Level) {
 
   const res = pipe(
     L.logger[level]("msg", { foo: "bar" }),
-    W.provideWinstonLogger,
-    factory,
+    W.WinstonLogger.with(factory).use,
     T.runSync
   )
 

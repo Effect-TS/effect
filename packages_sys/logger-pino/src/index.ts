@@ -2,8 +2,9 @@ import P from "pino"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import * as Layer from "@matechs/core/Layer"
 import * as F from "@matechs/core/Service"
-import { logger as L } from "@matechs/logger"
+import * as L from "@matechs/logger/Logger"
 
 // region Pino instance
 export const PinoInstanceURI = "@matechs/logger-pino/instanceURI"
@@ -88,25 +89,26 @@ export function trace(...args: [any, ...unknown[]]): T.SyncR<PinoInstanceEnv, vo
 // endregion
 
 // region instances
-export function providePino(
+export function Pino(
   opts?: P.LoggerOptions | P.DestinationStream
-): T.Provider<unknown, PinoInstanceEnv>
-export function providePino(
+): Layer.Sync<PinoInstanceEnv>
+export function Pino(
   opts: P.LoggerOptions,
   stream: P.DestinationStream
-): T.Provider<unknown, PinoInstanceEnv>
-export function providePino(...args: any[]) {
-  return F.implementWith(
-    pipe(
-      T.trySync(() => P(...args)),
-      T.orAbort
+): Layer.Sync<PinoInstanceEnv>
+export function Pino(...args: any[]) {
+  return pipe(
+    T.trySync(() => P(...args)),
+    T.orAbort,
+    Layer.useEffect((logger) =>
+      F.layer(pinoInstanceM)({
+        [PinoInstanceURI]: { logger: T.pure(logger) }
+      })
     )
-  )(pinoInstanceM)((logger) => ({
-    [PinoInstanceURI]: { logger: T.pure(logger) }
-  }))
+  )
 }
 
-export const providePinoLogger = F.implement(L.Logger)({
+export const PinoLogger = F.layer(L.LoggerService)({
   [L.LoggerURI]: {
     error: (message, meta = {}) => error(meta, message),
     warn: (message, meta = {}) => warn(meta, message),
