@@ -24,16 +24,16 @@ export const {
 
 export const WinstonLogger = pipe(
   logger,
-  Layer.useEffect(({ log }) =>
+  Layer.useEffect((l) =>
     F.layer(L.LoggerService)({
       [L.LoggerURI]: {
-        debug: (message, meta) => T.sync(() => log("debug", message, meta)),
-        http: (message, meta) => T.sync(() => log("http", message, meta)),
-        silly: (message, meta) => T.sync(() => log("silly", message, meta)),
-        error: (message, meta) => T.sync(() => log("error", message, meta)),
-        info: (message, meta) => T.sync(() => log("info", message, meta)),
-        verbose: (message, meta) => T.sync(() => log("verbose", message, meta)),
-        warn: (message, meta) => T.sync(() => log("warn", message, meta))
+        debug: (message, meta) => T.sync(() => l.log("debug", message, meta)),
+        http: (message, meta) => T.sync(() => l.log("http", message, meta)),
+        silly: (message, meta) => T.sync(() => l.log("silly", message, meta)),
+        error: (message, meta) => T.sync(() => l.log("error", message, meta)),
+        info: (message, meta) => T.sync(() => l.log("info", message, meta)),
+        verbose: (message, meta) => T.sync(() => l.log("verbose", message, meta)),
+        warn: (message, meta) => T.sync(() => l.log("warn", message, meta))
       }
     })
   )
