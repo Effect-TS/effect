@@ -148,4 +148,82 @@ describe("Fiber", () => {
     expect(runs).toBeGreaterThan(7)
     expect(runs).toBeLessThan(11)
   })
+
+  it("interrupts on error", async () => {
+    const program = pipe(
+      T.sequenceT(
+        T.supervised(T.delay(T.pure(1), 100)),
+        T.supervised(T.delay(T.pure(2), 100)),
+        T.supervised(T.delay(T.raiseError("error"), 10)),
+        T.supervised(T.delay(T.pure(3), 100)),
+        T.supervised(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 50)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err0")
+            }
+          })
+        )
+      ),
+      T.chain(T.traverseArray((f) => f.join))
+    )
+
+    const result = await T.runToPromiseExit(program)
+
+    expect(result).toStrictEqual(
+      Ex.causedBy(Ex.raise("error"))(Ex.interruptWithError("err0"))
+    )
+  })
+
+  it("interrupts on interrupt", async () => {
+    const program = pipe(
+      T.sequenceT(
+        T.supervised(T.delay(T.pure(1), 100)),
+        T.supervised(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 50)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err0")
+            }
+          })
+        ),
+        T.supervised(T.delay(T.pure(3), 100)),
+        T.supervised(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 50)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err1")
+            }
+          })
+        )
+      ),
+      T.chain(T.traverseArray((f) => f.join))
+    )
+
+    let exit: any
+
+    const fiber = await T.runToPromise(
+      T.fork(
+        T.onInterruptedExit_(program, (ex) =>
+          T.sync(() => {
+            exit = ex
+          })
+        )
+      )
+    )
+
+    const result = await T.runToPromise(fiber.interrupt)
+
+    expect(result).toStrictEqual(Ex.interruptWithError("err0", "err1"))
+    expect(exit).toStrictEqual(Ex.interruptWithError("err0", "err1"))
+  })
 })
