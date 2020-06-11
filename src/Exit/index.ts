@@ -46,7 +46,7 @@ export interface Abort {
 
 export interface Interrupt {
   readonly _tag: "Interrupt"
-  readonly causedBy: O.Option<Cause<unknown>>
+  causedBy: O.Option<Cause<unknown>>
   errors: O.Option<NA.NonEmptyArray<unknown>>
   next: O.Option<Cause<unknown>>
 }
@@ -189,6 +189,7 @@ const append_ = <E>(root: Cause<E>, next: Cause<E>) => {
       )
 
       root.errors = A.isNonEmpty(combo) ? O.some(combo) : O.none
+      root.causedBy = O.getFirst(root.causedBy, next.causedBy)
     } else {
       root.next = some(next)
     }
