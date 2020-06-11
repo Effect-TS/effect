@@ -54,7 +54,8 @@ import {
   IPureEither,
   IPureOption,
   IRaised,
-  ISupervised
+  ISupervised,
+  AsyncContFn
 } from "../Support/Common"
 import type {
   Async,
@@ -263,6 +264,30 @@ export function asyncTotal<A>(
   op: FunctionN<[FunctionN<[A], void>], AsyncCancelContFn>
 ): Async<A> {
   return async((callback) => op((a) => callback({ _tag: "Right", right: a })))
+}
+
+export function uninterruptibleAsyncTotal<A>(
+  op: FunctionN<[FunctionN<[A], void>], void>
+): Async<A> {
+  return uninterruptible(
+    async((callback) => {
+      op((a) => callback({ _tag: "Right", right: a }))
+      return () => {
+        //
+      }
+    })
+  )
+}
+
+export function uninterruptibleAsync<E, A>(f: (_: AsyncContFn<E, A>) => void) {
+  return uninterruptible(
+    async<E, A>((resolve) => {
+      f(resolve)
+      return () => {
+        //
+      }
+    })
+  )
 }
 
 export const bimap: <E, G, A, B>(
@@ -2351,17 +2376,6 @@ export function getParValidationM_<E>(
 
 export function exitCode<E, A>(f?: (_: Exit<E, A>) => void) {
   return <S>(_: Effect<S, {}, E, A>) => {
-    const fiber = runUnsafeSync(
-      fork(
-        chain_(result(_), (ex) =>
-          chain_(
-            sync(() => complete(ex)),
-            () => completed(ex)
-          )
-        )
-      )
-    )
-
     let triggered = false
     let done = false
 
@@ -2382,6 +2396,17 @@ export function exitCode<E, A>(f?: (_: Exit<E, A>) => void) {
         f?.(ex)
       }
     }
+
+    const fiber = runUnsafeSync(
+      fork(
+        chain_(result(_), (ex) =>
+          chain_(
+            sync(() => complete(ex)),
+            () => completed(ex)
+          )
+        )
+      )
+    )
 
     const trigger = () => {
       if (!triggered) {
