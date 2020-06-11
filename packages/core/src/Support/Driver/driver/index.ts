@@ -43,20 +43,20 @@ export function isSetExit(u: any): u is SetExit {
 export class Supervisor {
   fibers = new DoublyLinkedList<Driver<any, any>>()
 
+  constructor(readonly root: DriverImpl<any, any>) {}
+
   add(driver: Driver<any, any>) {
     const node = this.fibers.add(driver)
 
     driver.onExit((fibExit) => {
-      if (fibExit._tag === "Done") {
-        this.fibers.remove(node)
-      } else if (
-        fibExit._tag === "Interrupt" &&
-        fibExit.errors._tag === "None" &&
-        fibExit.next._tag === "None"
-      ) {
-        this.fibers.remove(node)
-      } else if (fibExit._tag === "Raise" || fibExit._tag === "Abort") {
-        this.fibers.remove(node)
+      if (!node.removed) {
+        if (fibExit._tag === "Done") {
+          this.fibers.remove(node)
+        } else {
+          if (!this.root.interrupted && !this.root.isComplete()) {
+            this.root.interrupt(fibExit)
+          }
+        }
       }
     })
   }
@@ -179,20 +179,49 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return
   }
 
-  dispatchResumeInterrupt({ errors }: { errors?: unknown[] }) {
+  dispatchResumeInterrupt({
+    causedBy,
+    errors
+  }: {
+    errors?: unknown[]
+    causedBy?: Ex.Cause<unknown>
+  }) {
+    let comboCause = causedBy
+
     if (errors && errors.length === 1 && isSetExit(errors[0])) {
-      this.done(errors[0].exit)
-    } else {
-      const go = this.handle(Ex.interruptWithError(...(errors || [])))
-      if (go) {
-        // eslint-disable-next-line
-        this.loop(go)
+      if (
+        errors[0].exit._tag === "Interrupt" &&
+        errors[0].exit.causedBy._tag === "Some"
+      ) {
+        comboCause = errors[0].exit.causedBy.value
       }
+
+      if (
+        errors[0].exit._tag === "Interrupt" &&
+        errors[0].exit.errors._tag === "Some"
+      ) {
+        errors.push(...errors[0].exit.errors.value)
+      }
+
+      errors.shift()
+    }
+
+    const go = this.handle(
+      comboCause
+        ? Ex.causedBy(comboCause)(Ex.interruptWithError(...(errors || [])))
+        : Ex.interruptWithError(...(errors || []))
+    )
+    if (go) {
+      // eslint-disable-next-line
+      this.loop(go)
     }
   }
 
-  resumeInterrupt(errors?: unknown[]): void {
-    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), { errors })
+  resumeInterrupt(errors?: unknown[], causedBy?: Ex.Cause<unknown>): void {
+    defaultRuntime.dispatch(this.dispatchResumeInterrupt.bind(this), {
+      errors,
+      causedBy
+    })
   }
 
   next(value: unknown): Common.Instructions | undefined {
@@ -358,7 +387,7 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             const driver = new DriverImpl<E, A>(this.envStack?.current || {})
             const fiber = new FiberImpl(driver, current.name)
             if (!this.supervisor) {
-              this.supervisor = new Supervisor()
+              this.supervisor = new Supervisor(this)
             }
             this.supervisor.add(driver)
             driver.start(current.effect)
@@ -396,14 +425,14 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     return this.completed!
   }
 
-  interrupt(): void {
+  interrupt(causedBy?: Ex.Cause<unknown>): void {
     if (this.interrupted || this.isComplete()) {
       return
     }
     this.interrupted = true
     if (this.cancelAsync && this.isInterruptible()) {
       this.cancelAsync((...errors) => {
-        this.resumeInterrupt(errors)
+        this.resumeInterrupt(errors, causedBy)
       })
     }
   }
