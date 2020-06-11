@@ -58,7 +58,8 @@ export function fold_<E, A, B1, B2, B3, B4>(
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B3,
   onInterrupt: (
     errors: O.Option<NA.NonEmptyArray<unknown>>,
-    next: O.Option<Cause<unknown>>
+    next: O.Option<Cause<unknown>>,
+    causedBy: O.Option<Cause<unknown>>
   ) => B4
 ): Compact<B1 | B2 | B3 | B4>
 export function fold_<E, A, B>(
@@ -68,7 +69,8 @@ export function fold_<E, A, B>(
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B,
   onInterrupt: (
     errors: O.Option<NA.NonEmptyArray<unknown>>,
-    next: O.Option<Cause<unknown>>
+    next: O.Option<Cause<unknown>>,
+    causedBy: O.Option<Cause<unknown>>
   ) => B
 ): B {
   switch (e._tag) {
@@ -79,7 +81,7 @@ export function fold_<E, A, B>(
     case "Abort":
       return onAbort(e.abortedWith, e.next)
     case "Interrupt":
-      return onInterrupt(e.errors, e.next)
+      return onInterrupt(e.errors, e.next, e.causedBy)
   }
 }
 
@@ -89,7 +91,8 @@ export function fold<E, A, B1, B2, B3, B4>(
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B3,
   onInterrupt: (
     errors: O.Option<NA.NonEmptyArray<unknown>>,
-    next: O.Option<Cause<unknown>>
+    next: O.Option<Cause<unknown>>,
+    causedBy: O.Option<Cause<unknown>>
   ) => B4
 ): (e: Exit<E, A>) => Compact<B1 | B2 | B3 | B4>
 export function fold<E, A, B>(
@@ -98,7 +101,8 @@ export function fold<E, A, B>(
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B,
   onInterrupt: (
     errors: O.Option<NA.NonEmptyArray<unknown>>,
-    next: O.Option<Cause<unknown>>
+    next: O.Option<Cause<unknown>>,
+    causedBy: O.Option<Cause<unknown>>
   ) => B
 ): (e: Exit<E, A>) => Compact<B> {
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
@@ -109,7 +113,8 @@ export function foldCause<E, B1, B2, B3, B4>(
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B3,
   onInterrupt: (
     errors: O.Option<NA.NonEmptyArray<unknown>>,
-    next: O.Option<Cause<unknown>>
+    next: O.Option<Cause<unknown>>,
+    causedBy: O.Option<Cause<unknown>>
   ) => B4
 ): (e: Cause<E>) => Compact<B1 | B2 | B3 | B4>
 export function foldCause<E, B>(
@@ -117,7 +122,8 @@ export function foldCause<E, B>(
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B,
   onInterrupt: (
     errors: O.Option<NA.NonEmptyArray<unknown>>,
-    next: O.Option<Cause<unknown>>
+    next: O.Option<Cause<unknown>>,
+    causedBy: O.Option<Cause<unknown>>
   ) => B
 ): (e: Cause<E>) => B {
   return (e) =>
@@ -125,7 +131,7 @@ export function foldCause<E, B>(
       ? onRaise(e.error, e.next)
       : isAbort(e)
       ? onAbort(e.abortedWith, e.next)
-      : onInterrupt(e.errors, e.next)
+      : onInterrupt(e.errors, e.next, e.causedBy)
 }
 
 export function foldExit<E, A, B1, B2>(
