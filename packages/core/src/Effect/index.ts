@@ -2399,11 +2399,17 @@ export function exitCode<E, A>(f?: (_: Exit<E, A>) => void) {
 
     const fiber = runUnsafeSync(
       fork(
-        chain_(result(_), (ex) =>
-          chain_(
-            sync(() => complete(ex)),
-            () => completed(ex)
-          )
+        onInterruptedExit_(
+          chain_(result(_), (ex) =>
+            chain_(
+              sync(() => complete(ex)),
+              () => completed(ex)
+            )
+          ),
+          (i) =>
+            sync(() => {
+              complete(i)
+            })
         )
       )
     )
