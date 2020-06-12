@@ -355,7 +355,9 @@ export const Monitor = <S, R, E, A>(eff: T.Effect<S, R, E, A>) =>
 
           T.run(fiber.join, (ex) => {
             if (ex._tag !== "Done") {
-              driver.interrupt(ex)
+              if (!driver.isComplete() && !driver.interrupted) {
+                driver.interrupt(ex)
+              }
             }
           })
 
