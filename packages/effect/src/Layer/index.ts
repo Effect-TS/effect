@@ -4,6 +4,7 @@ import * as T from "../Effect"
 import { pipe } from "../Function"
 import * as M from "../Managed"
 import { NonEmptyArray } from "../NonEmptyArray"
+import { DriverImpl } from "../Support/Driver"
 
 type LayerPayload<S, R, E, A> = M.Managed<S, R, E, A>
 
@@ -337,3 +338,52 @@ export function useManaged<A, S2, R2, E2, A2>(layer: (_: A) => Layer<S2, R2, E2,
 export const Empty: Sync<{}> =
   /*#__PURE__*/
   (() => fromValue({}))()
+
+/**
+ * Monitor a fiber killing the process in case of failures
+ */
+export const Monitor = <S, R, E, A>(eff: T.Effect<S, R, E, A>) =>
+  pipe(
+    managedFiber(eff),
+    useManaged((fiber) =>
+      fromProvider<unknown, unknown, E, {}>((o) =>
+        T.accessM((r: any) => {
+          const driver = new DriverImpl<any, any>()
+          const fiberO = new T.FiberImpl(driver)
+
+          driver.start(T.provide(r)(o))
+
+          T.run(fiber.join, (ex) => {
+            if (ex._tag !== "Done") {
+              driver.interrupt(ex)
+            }
+          })
+
+          return fiberO.join
+        })
+      )
+    )
+  )
+
+function managedFiber<S, R, E, A>(
+  rio: T.Effect<S, R, E, A>
+): M.AsyncRE<R, never, T.Fiber<E, A>> {
+  return M.bracket(T.fork(rio), (fiber) =>
+    T.chain_(fiber.interrupt, (ex) => {
+      switch (ex._tag) {
+        case "Done":
+          return T.unit
+        case "Abort":
+          return T.unit
+        case "Raise":
+          return T.unit
+        case "Interrupt":
+          return ex.causedBy._tag === "None" &&
+            ex.errors._tag === "None" &&
+            ex.next._tag === "None"
+            ? T.unit
+            : T.completed(ex)
+      }
+    })
+  )
+}
