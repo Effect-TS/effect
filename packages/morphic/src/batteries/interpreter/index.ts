@@ -46,6 +46,12 @@ interface Interpreter<E, A> {
     i: unknown,
     strict?: "strict" | "classic" | "precise"
   ) => T.SyncE<ValidationErrors, A>
+  // parsers
+  parse: (i: E, strict?: "strict" | "classic" | "precise") => Either<Errors, A>
+  parseM: (
+    i: E,
+    strict?: "strict" | "classic" | "precise"
+  ) => T.SyncE<ValidationErrors, A>
 }
 
 declare module "../usage/interpreter-result" {
