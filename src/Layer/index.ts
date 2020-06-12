@@ -348,10 +348,10 @@ export const Monitor = <S, R, E, A>(eff: T.Effect<S, R, E, A>) =>
     useManaged((fiber) =>
       fromProvider<unknown, unknown, E, {}>((o) =>
         T.accessM((r: any) => {
-          const driver = new DriverImpl<any, any>()
+          const driver = new DriverImpl<any, any>(r)
           const fiberO = new T.FiberImpl(driver)
 
-          driver.start(T.provide(r)(o))
+          driver.start(o as any)
 
           T.run(fiber.join, (ex) => {
             if (ex._tag !== "Done") {
