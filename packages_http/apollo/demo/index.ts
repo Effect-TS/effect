@@ -5,15 +5,15 @@ import { apollo } from "../src"
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
-import * as M from "@matechs/core/Managed"
+import * as L from "@matechs/core/Layer"
 import * as O from "@matechs/core/Option"
-import { combine } from "@matechs/core/Provider"
 import * as EX from "@matechs/express"
 
 // EXPERIMENTAL
 /* istanbul ignore file */
 
 const apolloURI = "myapp/unique-uri"
+
 const Apollo = apollo(
   apolloURI,
   {
@@ -134,58 +134,36 @@ const resolvers = Apollo.binder({
   ...demo
 })
 
-const main = pipe(
-  // Bind apollo
-  Apollo.bindToSchema(resolvers, typeDefs),
-  // keep server waiting
-  T.chainTap(() => T.never)
-)
-
-const provider = combine()
-  .with(M.provide(EX.managedExpress(8080)))
-  .with(T.provide(EX.express))
-  .with(
-    T.provide({
+const App = Apollo.ServerInstance(resolvers, typeDefs)
+  .with(EX.Express(8080))
+  .withMany(
+    L.fromValue({
       foo: "foo"
-    })
-  )
-  .with(
-    T.provide({
+    }),
+    L.fromValue({
       bar: "bar"
-    })
-  )
-  .with(
-    T.provide({
+    }),
+    L.fromValue({
       subN: 10
-    })
-  )
-  .with(
-    T.provide({
+    }),
+    L.fromValue({
       prefix: "ok"
-    })
-  )
-  .with(
-    T.provide({
+    }),
+    L.fromValue({
       subOnDisconnect: "ok"
-    })
-  )
-  .with(
-    T.provide({
+    }),
+    L.fromValue({
       subOnConnect: "ok"
-    })
-  )
-  .with(
-    T.provide({
+    }),
+    L.fromValue({
       contextFnEnv: "ok"
     })
   )
-  .done()
+  .use(T.never)
 
-const cancel = pipe(main, provider, (x) =>
-  T.run(x, (ex) => {
-    console.log(ex)
-  })
-)
+const cancel = T.run(App, (ex) => {
+  console.log(ex)
+})
 
 process.on("SIGINT", () => {
   cancel()

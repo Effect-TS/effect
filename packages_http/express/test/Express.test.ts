@@ -6,7 +6,6 @@ import * as EX from "../src"
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
-import * as M from "@matechs/core/Managed"
 import * as O from "@matechs/core/Option"
 import * as H from "@matechs/http-client"
 import * as L from "@matechs/http-client-fetch"
@@ -103,14 +102,13 @@ describe("Express", () => {
       )
       .done()
 
-    await pipe(
+    const main = pipe(
       routes,
       T.chain((_) => program),
-      M.provide(EX.managedExpress(3003, "127.0.0.1")),
-      L.Client(fetch).use,
-      T.provide(EX.express),
-      T.runToPromise
-    ).then(({ res1, res2, res3, res4, res5 }) => {
+      EX.Express(3003, "127.0.0.1").with(L.Client(fetch)).use
+    )
+
+    await pipe(main, T.runToPromise).then(({ res1, res2, res3, res4, res5 }) => {
       assert.deepStrictEqual(res1, Ex.done({ res: 1 }))
       assert.deepStrictEqual(res2, Ex.raise(O.some(`{"res":1}`)))
       assert.deepStrictEqual(

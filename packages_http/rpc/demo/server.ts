@@ -1,15 +1,20 @@
 import "isomorphic-fetch"
 
+import { inspect } from "util"
+
 import * as RPC from "../src"
 
-import { placeholderJsonEnv, Todo, placeholderJsonM } from "./shared"
+import {
+  PlaceholderJsonURI,
+  Todo,
+  PlaceholderJsonService,
+  PlaceholderJson
+} from "./shared"
 
 import * as T from "@matechs/core/Effect"
-import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
 import * as F from "@matechs/core/Service"
-import * as U from "@matechs/core/Utils"
 import * as EX from "@matechs/express"
 
 const todos: Array<Todo> = [
@@ -24,7 +29,7 @@ const todos: Array<Todo> = [
 
 export function authenticated<S, R, E, A>(
   eff: T.Effect<S, R, E, A>
-): T.Effect<S, EX.ChildEnv & R, E | string, A> {
+): T.Effect<S, EX.RequestContext & R, E | string, A> {
   return T.chain_(
     EX.accessReqM((req) =>
       T.condWith(req.headers["token"] === "check")(T.unit)(T.raiseError("bad token"))
@@ -34,8 +39,8 @@ export function authenticated<S, R, E, A>(
 }
 
 // implement the service
-export const placeholderJsonLive = F.implement(placeholderJsonM)({
-  [placeholderJsonEnv]: {
+export const PlaceholderJsonLive = F.layer(PlaceholderJsonService)({
+  [PlaceholderJsonURI]: {
     getTodo: (n) =>
       pipe(
         T.trySync(() => todos[n]),
@@ -48,42 +53,27 @@ export const placeholderJsonLive = F.implement(placeholderJsonM)({
 
 // create a new express server
 const program = pipe(
-  RPC.server(placeholderJsonM, placeholderJsonLive),
-  T.chain(() => EX.bind(8081)),
-  EX.withApp
+  T.never,
+  RPC.Server(PlaceholderJsonService, PlaceholderJsonLive.use)
+    .with(EX.Express(8081))
+    .with(RPC.ServerConfig<PlaceholderJson>(PlaceholderJsonURI, "/placeholderJson")).use
 )
 
-// construct live environment
-const envLive: U.Env<typeof program> = {
-  ...EX.express,
-  [RPC.serverConfigEnv]: {
-    [placeholderJsonEnv]: {
-      scope: "/placeholderJson" // exposed at /placeholderJson
-    }
-  }
-}
-
-// run express server
-T.run(
-  T.provide(envLive)(program),
-  Ex.fold(
-    (server) => {
-      // listen for exit Ctrl+C
-      process.on("SIGINT", () => {
-        server.close((err) => {
-          process.exit(err ? 2 : 0)
-        })
-      })
-
-      // listen for SIGTERM
-      process.on("SIGTERM", () => {
-        server.close((err) => {
-          process.exit(err ? 2 : 0)
-        })
-      })
-    },
-    (e) => console.error(e),
-    (e) => console.error(e),
-    () => console.error("interrupted")
+pipe(
+  program,
+  T.exitCode(
+    T.foldExitCode(
+      () => {
+        console.log("Process correctly exited.")
+      },
+      (_) => {
+        console.error("Process completed with:")
+        console.error(_)
+      },
+      (_) => {
+        console.error("Process errored with:")
+        console.error(inspect(_, true, 10))
+      }
+    )
   )
 )

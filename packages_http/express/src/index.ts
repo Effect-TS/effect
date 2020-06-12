@@ -1,64 +1,75 @@
-import { Server } from "http"
+import * as http from "http"
 
-import { NextHandleFunction } from "connect"
-import newExpress, * as EX from "express"
+import * as connect from "connect"
+import * as Exp from "express"
 
 import * as T from "@matechs/core/Effect"
 import * as E from "@matechs/core/Either"
-import * as F from "@matechs/core/Function"
+import { pipe, identity } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as M from "@matechs/core/Managed"
 
-export const expressAppEnv = "@matechs/express/expressAppURI"
+//
+// @category definition
+//
 
-export interface HasExpress {
-  [expressAppEnv]: {
-    app: EX.Express
+export const ExpressURI = "@matechs/express/ExpressURI"
+
+export interface Express {
+  [ExpressURI]: {
+    accessServer: T.Sync<http.Server>
+    accessApp: T.Sync<Exp.Express>
   }
 }
 
-export const serverEnv = "@matechs/express/serverURI"
+export const RequestContextURI = "@matechs/express/RequestContextURI"
 
-export interface HasServer {
-  [serverEnv]: {
-    server: Server
-    onClose: Array<T.Async<void>>
+export interface RequestContext {
+  [RequestContextURI]: {
+    request: Exp.Request
   }
 }
 
 export type Method = "post" | "get" | "put" | "patch" | "delete"
-
-export const expressEnv = "@matechs/express/expressURI"
-
-export interface ExpressOps {
-  withApp<S, R, E, A>(op: T.Effect<S, R & HasExpress, E, A>): T.Effect<S, R, E, A>
-  route<S, R, E, A>(
-    method: Method,
-    path: string,
-    f: (req: EX.Request) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
-    ...rest: NextHandleFunction[]
-  ): T.SyncR<R & HasExpress, void>
-  bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server>
-}
-
-export interface Express {
-  [expressEnv]: ExpressOps
-}
 
 export interface RouteError<E> {
   status: number
   body: E
 }
 
+export interface RouteResponse<A> {
+  status: number
+  body: A
+}
+
+//
+// @category api
+//
+
+export const accessApp = <A>(f: (_: Exp.Express) => A) =>
+  T.accessM((_: Express) => T.map_(_[ExpressURI].accessApp, f))
+
+export const accessAppM = <S, R, E, A>(f: (app: Exp.Express) => T.Effect<S, R, E, A>) =>
+  T.chain_(accessApp(identity), f)
+
+export const accessServer = <A>(f: (_: http.Server) => A) =>
+  T.accessM((_: Express) => T.map_(_[ExpressURI].accessServer, f))
+
+export const accessServerM = <S, R, E, A>(
+  f: (_: http.Server) => T.Effect<S, R, E, A>
+) => T.accessM((_: Express) => T.chain_(accessServer(identity), f))
+
+export const accessReq = <A>(f: (req: Exp.Request) => A) =>
+  T.access(({ [RequestContextURI]: { request } }: RequestContext) => f(request))
+
+export const accessReqM = <S, R, E, A>(f: (req: Exp.Request) => T.Effect<S, R, E, A>) =>
+  T.chain_(accessReq(identity), f)
+
 export function routeError(status: number) {
   return <E>(body: E): RouteError<E> => ({
     status,
     body
   })
-}
-
-export interface RouteResponse<A> {
-  status: number
-  body: A
 }
 
 export function routeResponse(status: number) {
@@ -68,169 +79,127 @@ export function routeResponse(status: number) {
   })
 }
 
-export const express: Express = {
-  [expressEnv]: {
-    route<S, R, E, A>(
-      method: Method,
-      path: string,
-      f: (req: EX.Request) => T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
-      ...rest: NextHandleFunction[]
-    ): T.SyncR<R & HasExpress, void> {
-      return T.accessM((r: R & HasExpress) =>
-        T.sync(() => {
-          r[expressAppEnv].app[method](path, ...rest, (req, res) => {
-            T.runToPromiseExit(T.provide(r)(f(req))).then((o) => {
-              switch (o._tag) {
-                case "Done":
-                  res.status(o.value.status).send(o.value.body)
-                  return
-                case "Raise":
-                  res.status(o.error.status).send(o.error.body)
-                  return
-                case "Interrupt":
-                  res.status(500).send({
-                    status: "interrupted"
-                  })
-                  return
-                case "Abort":
-                  res.status(500).send({
-                    status: "aborted",
-                    with: o.abortedWith
-                  })
-                  return
-              }
-            })
-          })
-        })
-      )
-    },
-    withApp<S, R, E, A>(op: T.Effect<S, R & HasExpress, E, A>): T.Effect<S, R, E, A> {
-      return T.provide<HasExpress>({
-        [expressAppEnv]: { app: newExpress() }
-      })(op)
-    },
-    bind(port: number, hostname?: string): T.AsyncRE<HasExpress, Error, Server> {
-      return T.accessM(({ [expressAppEnv]: { app } }: HasExpress) =>
-        T.async<Error, Server>((res) => {
-          const s = app.listen(port, hostname || "0.0.0.0", (err) => {
-            if (err) {
-              res(E.left(err))
-            } else {
-              res(E.right(s))
-            }
-          })
-
-          return (cb) => {
-            s.close((e) => {
-              e ? cb(e) : cb()
-            })
-          }
-        })
-      )
-    }
-  }
-}
-
-export function withApp<S, R, E, A>(
-  op: T.Effect<S, R & HasExpress, E, A>
-): T.Effect<S, Express & R, E, A> {
-  return T.accessM(({ [expressEnv]: express }: Express) => express.withApp(op))
-}
-
-export const requestContextEnv = "@matechs/express/requestContextURI"
-
-export interface RequestContext {
-  [requestContextEnv]: {
-    request: EX.Request
-  }
-}
-
-export function route<S, R, E, A>(
+export const route = <S = never, R = unknown, E = never, A = unknown>(
   method: Method,
   path: string,
-  handler: T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
-  middle: NextHandleFunction[] = [EX.json()]
-): T.SyncR<T.Erase<R, RequestContext> & HasExpress & Express, void> {
-  return T.accessM(({ [expressEnv]: express }: Express) =>
-    express.route(
-      method,
-      path,
-      (x) =>
-        T.provide<RequestContext>({
-          [requestContextEnv]: {
-            request: x
-          }
-        })(handler),
-      ...middle
-    )
-  )
-}
-
-export function bind(
-  port: number,
-  hostname?: string
-): T.AsyncRE<HasExpress & Express, Error, Server> {
-  return T.accessM(({ [expressEnv]: express }: Express) => express.bind(port, hostname))
-}
-
-export function accessAppM<S, R, E, A>(
-  f: (app: EX.Express) => T.Effect<S, R, E, A>
-): T.Effect<S, HasExpress & R, E, A> {
-  return T.accessM(({ [expressAppEnv]: express }: HasExpress) => f(express.app))
-}
-
-export function accessReqM<S, R, E, A>(
-  f: (req: EX.Request) => T.Effect<S, R, E, A>
-): T.Effect<S, RequestContext & R, E, A> {
-  return T.accessM(({ [requestContextEnv]: { request } }: RequestContext) => f(request))
-}
-
-export function accessReq<A>(f: (req: EX.Request) => A): T.SyncR<RequestContext, A> {
-  return T.access(({ [requestContextEnv]: { request } }: RequestContext) => f(request))
-}
-
-export function accessApp<A>(f: (app: EX.Express) => A): T.SyncR<HasExpress, A> {
-  return T.access(({ [expressAppEnv]: express }: HasExpress) => f(express.app))
-}
-
-export type ExpressEnv = HasExpress & Express
-
-export type ChildEnv = ExpressEnv & RequestContext
-
-export const managedExpress = (
-  port: number,
-  hostname?: string
-): M.AsyncRE<Express, Error, HasServer & HasExpress> =>
-  M.bracket(
-    withApp(
-      T.map_(
-        T.sequenceT(bind(port, hostname), accessApp(F.identity)),
-        ([server, app]): HasServer & HasExpress => ({
-          [serverEnv]: {
-            server,
-            onClose: []
-          },
-          [expressAppEnv]: {
-            app
-          }
-        })
-      )
-    ),
-    (_) =>
-      T.uninterruptible(
-        T.chain_(T.result(T.sequenceArray(_[serverEnv].onClose)), () =>
-          T.async<Error, void>((res) => {
-            _[serverEnv].server.close((err) => {
-              if (err) {
-                res(E.left(err))
-              } else {
-                res(E.right(undefined))
+  f: T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
+  ...rest: connect.NextHandleFunction[]
+): T.SyncR<T.Erase<R, RequestContext> & Express, void> =>
+  accessAppM((app) =>
+    T.access((r: R) => {
+      app[method](path, ...(rest.length === 0 ? [Exp.json()] : rest), (req, res) => {
+        T.run(
+          pipe(
+            f,
+            T.provide({
+              ...r,
+              [RequestContextURI]: {
+                request: req
               }
             })
-            return () => {
-              //
+          ),
+          (o) => {
+            switch (o._tag) {
+              case "Done":
+                res.status(o.value.status).send(o.value.body)
+                return
+              case "Raise":
+                res.status(o.error.status).send(o.error.body)
+                return
+              case "Interrupt":
+                res.status(500).send({
+                  status: "interrupted"
+                })
+                return
+              case "Abort":
+                res.status(500).send({
+                  status: "aborted",
+                  with: o.abortedWith
+                })
+                return
             }
-          })
+          }
         )
-      )
+      })
+    })
+  )
+
+//
+// @category implementation
+//
+
+export interface ExpressConfig {
+  port: number
+  hostname?: string
+}
+
+export interface BindError {
+  _tag: "BindError"
+  error: Error
+}
+
+export interface CloseError {
+  _tag: "CloseError"
+  error: Error
+}
+
+const managedExpress = ({ hostname, port }: ExpressConfig) =>
+  M.bracket(
+    T.uninterruptibleAsync<BindError, { express: Exp.Express; server: http.Server }>(
+      (resolve) => {
+        const express = Exp.default()
+
+        const server = express.listen(port, hostname || "0.0.0.0", (err) => {
+          if (err) {
+            resolve(
+              E.left<BindError>({
+                _tag: "BindError",
+                error: err
+              })
+            )
+          } else {
+            resolve(
+              E.right({
+                server,
+                express
+              })
+            )
+          }
+        })
+      }
+    ),
+    ({ server }) =>
+      T.uninterruptibleAsync<CloseError, void>((resolve) => {
+        server.close((err) => {
+          if (err) {
+            resolve(
+              E.left({
+                _tag: "CloseError",
+                error: err
+              })
+            )
+          } else {
+            resolve(E.right(undefined))
+          }
+        })
+      })
+  )
+
+export type ExpressError = BindError | CloseError
+
+export const Express = (
+  port: number,
+  hostname?: string
+): L.AsyncE<ExpressError, Express> =>
+  pipe(
+    { port, hostname },
+    managedExpress,
+    L.useManaged(({ express, server }) =>
+      L.fromValue<Express>({
+        [ExpressURI]: {
+          accessApp: T.sync(() => express),
+          accessServer: T.sync(() => server)
+        }
+      })
+    )
   )

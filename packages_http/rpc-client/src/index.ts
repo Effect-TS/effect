@@ -2,6 +2,7 @@ import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import * as F from "@matechs/core/Function"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as O from "@matechs/core/Option"
 import * as Service from "@matechs/core/Service"
 import * as H from "@matechs/http-client"
@@ -9,15 +10,29 @@ import * as H from "@matechs/http-client"
 // tested in @matechs/rpc
 /* istanbul ignore file */
 
-export const clientConfigEnv = "@matechs/rpc-client/clientConfigURI"
+export const ClientConfigURI = "@matechs/rpc-client/ClientConfigURI"
 
 export interface ClientConfig<M> {
-  [clientConfigEnv]: {
+  [ClientConfigURI]: {
     [k in keyof M]: {
       baseUrl: string
     }
   }
 }
+
+export const ClientConfig = <M>(URI: keyof M, baseUrl: string) =>
+  L.fromEffect(
+    T.access(
+      (r: {}): ClientConfig<M> => ({
+        [ClientConfigURI]: {
+          ...r[ClientConfigURI],
+          [URI]: {
+            baseUrl
+          }
+        }
+      })
+    )
+  )
 
 type ClientEntry<M, X> = M extends F.FunctionN<
   infer A,
@@ -50,7 +65,7 @@ export function client<M extends Service.ModuleShape<M>>(
             .bindL("req", () => T.pure<RPCRequest>({ args }))
             .bindL("con", () => T.access((c: ClientConfig<M>) => c))
             .bindL("res", ({ con, req }) =>
-              H.post(`${con[clientConfigEnv][entry].baseUrl}/${z}`, req)
+              H.post(`${con[ClientConfigURI][entry].baseUrl}/${z}`, req)
             )
             .bindL("ret", ({ res }) =>
               pipe(
@@ -67,7 +82,7 @@ export function client<M extends Service.ModuleShape<M>>(
           .bindL("req", () => T.pure<RPCRequest>({ args: [] }))
           .bindL("con", () => T.access((c: ClientConfig<M>) => c))
           .bindL("res", ({ con, req }) =>
-            H.post(`${con[clientConfigEnv][entry].baseUrl}/${z}`, req)
+            H.post(`${con[ClientConfigURI][entry].baseUrl}/${z}`, req)
           )
           .bindL("ret", ({ res }) =>
             pipe(

@@ -3,7 +3,7 @@ import * as O from "@matechs/core/Option"
 import * as F from "@matechs/core/Service"
 
 // environment entries
-export const placeholderJsonEnv: unique symbol = Symbol()
+export const PlaceholderJsonURI: unique symbol = Symbol()
 
 // simple todo interface
 export interface Todo {
@@ -14,13 +14,13 @@ export interface Todo {
 }
 
 export interface PlaceholderJson extends F.ModuleShape<PlaceholderJson> {
-  [placeholderJsonEnv]: {
+  [PlaceholderJsonURI]: {
     getTodo: (n: number) => T.AsyncE<string, O.Option<Todo>>
   }
 }
 
-export const placeholderJsonM = F.define<PlaceholderJson>({
-  [placeholderJsonEnv]: {
+export const PlaceholderJsonService = F.define<PlaceholderJson>({
+  [PlaceholderJsonURI]: {
     getTodo: F.fn()
   }
 })

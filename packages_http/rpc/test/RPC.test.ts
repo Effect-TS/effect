@@ -6,9 +6,10 @@ import * as RPC from "../src"
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
+import * as L from "@matechs/core/Layer"
 import * as F from "@matechs/core/Service"
 import * as E from "@matechs/express"
-import * as L from "@matechs/http-client-fetch"
+import * as H from "@matechs/http-client-fetch"
 import * as RPCCLI from "@matechs/rpc-client"
 
 const configEnv: unique symbol = Symbol()
@@ -25,19 +26,23 @@ const appConfig: AppConfig = {
   }
 }
 
-const counterEnv: unique symbol = Symbol()
+const CounterURI: unique symbol = Symbol()
 
-const counterM = F.define({
-  [counterEnv]: {
+const Counter_ = F.define({
+  [CounterURI]: {
     increment: F.fn<(n: number) => T.Async<number>>(),
     ni: F.cn<T.AsyncE<string, void>>()
   }
 })
 
+interface CounterService extends F.TypeOf<typeof Counter_> {}
+
+const CounterService = F.opaque<CounterService>()(Counter_)
+
 let counter = 0
 
-const counterService = F.implement(counterM)({
-  [counterEnv]: {
+const Counter = F.layer(CounterService)({
+  [CounterURI]: {
     increment: (n) =>
       pipe(
         T.accessM(({ [configEnv]: c }: AppConfig) =>
@@ -51,63 +56,29 @@ const counterService = F.implement(counterM)({
   }
 })
 
-const { increment, ni } = RPCCLI.client(counterM)
+const { increment, ni } = RPCCLI.client(Counter_)
 
 describe("RPC", () => {
   it("should call remote service", async () => {
-    const program = E.withApp(
-      T.Do()
-        .do(RPC.server(counterM, counterService))
-        .bind("server", E.bind(9003))
-        .done()
+    const program = T.Do()
+      .bind("inc", T.result(increment(1)))
+      .bind("ni", T.result(ni))
+      .done()
+
+    const main = pipe(
+      program,
+      RPC.Server(Counter_, Counter.use).withMany(
+        E.Express(9003),
+        RPC.ServerConfig<CounterService>(CounterURI, "/counter"),
+        L.fromValue(appConfig),
+        H.Client(fetch),
+        RPCCLI.ClientConfig<CounterService>(CounterURI, "http://127.0.0.1:9003/counter")
+      ).use
     )
 
-    const result = await T.runToPromise(
-      pipe(
-        program,
-        T.provide(appConfig),
-        T.provide(E.express),
-        T.provide({
-          [RPC.serverConfigEnv]: {
-            [counterEnv]: {
-              scope: "/counter"
-            }
-          }
-        })
-      )
-    )
+    const result = await T.runToPromise(main)
 
-    const incResult = await T.runToPromiseExit(
-      pipe(
-        increment(1),
-        L.Client(fetch).use,
-        T.provide({
-          [RPCCLI.clientConfigEnv]: {
-            [counterEnv]: {
-              baseUrl: "http://127.0.0.1:9003/counter"
-            }
-          }
-        })
-      )
-    )
-
-    const niResult = await T.runToPromiseExit(
-      pipe(
-        ni,
-        L.Client(fetch).use,
-        T.provide({
-          [RPCCLI.clientConfigEnv]: {
-            [counterEnv]: {
-              baseUrl: "http://127.0.0.1:9003/counter"
-            }
-          }
-        })
-      )
-    )
-
-    result.server.close()
-
-    assert.deepStrictEqual(incResult, Ex.done(2))
-    assert.deepStrictEqual(niResult, Ex.raise("not implemented"))
+    assert.deepStrictEqual(result.inc, Ex.done(2))
+    assert.deepStrictEqual(result.ni, Ex.raise("not implemented"))
   })
 })
