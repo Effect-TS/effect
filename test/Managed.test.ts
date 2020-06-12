@@ -9,6 +9,23 @@ import { monoidSum } from "../src/Monoid"
 import { semigroupSum } from "../src/Semigroup"
 
 describe("Managed", () => {
+  it("should handle interrupt preserving exits", async () => {
+    const program = pipe(
+      M.bracket(T.pure(0), () => T.raiseError("a")),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("b"))),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.raiseError("c"))),
+      M.chain((n) => M.bracket(T.pure(n + 1), () => T.unit)),
+      M.consume(() => T.never)
+    )
+
+    const fiber = T.runUnsafeSync(T.fork(program))
+
+    const result = await T.runToPromise(fiber.interrupt)
+
+    expect(result).toStrictEqual(
+      Ex.combinedCause(Ex.interrupt)(Ex.raise("c"), Ex.raise("b"), Ex.raise("a"))
+    )
+  })
   it("should use resource encaseEffect", async () => {
     const resource = M.encaseEffect(T.pure(1))
 
