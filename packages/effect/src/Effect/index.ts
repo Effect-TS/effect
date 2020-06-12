@@ -1906,6 +1906,18 @@ export const until = (f: (res: () => void) => void) =>
     }
   })
 
+export const waitProcessExit =
+  /*#__PURE__*/
+  (() =>
+    until((res) => {
+      process.on("SIGINT", () => {
+        res()
+      })
+      process.on("SIGTERM", () => {
+        res()
+      })
+    }))()
+
 export function when(
   predicate: boolean
 ): <S, R, E, A>(ma: Effect<S, R, E, A>) => Effect<S, R, E, O.Option<A>> {
