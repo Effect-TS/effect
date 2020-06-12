@@ -1,4 +1,6 @@
 import * as T from "../../src/Effect"
+import * as E from "../../src/Either"
+import * as Ex from "../../src/Exit"
 import { pipe } from "../../src/Function"
 import * as L from "../../src/Layer"
 
@@ -164,5 +166,48 @@ describe("Layer", () => {
       ["prefix2:destroy"]
     ])
     expect(res[1]).toStrictEqual(13)
+  })
+  it("should monitor fibers", async () => {
+    const result = await pipe(
+      T.delay(T.pure(0), 500),
+      L.Monitor(T.delay(T.pure(1), 100)).use,
+      T.runToPromiseExit
+    )
+    const result_fail = await pipe(
+      T.delay(T.pure(0), 500),
+      L.Empty.withMany(
+        L.Monitor(T.delay(T.pure(1), 100)),
+        L.Monitor(T.delay(T.raiseError("err"), 100)),
+        L.Monitor(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 500)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err1")
+            }
+          })
+        ),
+        L.Monitor(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 500)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err2")
+            }
+          })
+        ),
+        L.Monitor(T.delay(T.pure(1), 100))
+      ).use,
+      T.runToPromiseExit
+    )
+
+    expect(result).toStrictEqual(Ex.done(0))
+    expect(result_fail).toStrictEqual(
+      Ex.causedBy(Ex.raise("err"))(Ex.interruptWithError("err2", "err1"))
+    )
   })
 })

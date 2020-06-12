@@ -362,7 +362,24 @@ export function consume<S, R, E, A, B>(
 export function fiber<S, R, E, A>(
   rio: T.Effect<S, R, E, A>
 ): AsyncRE<R, never, T.Fiber<E, A>> {
-  return bracket(T.fork(rio), (fiber) => fiber.interrupt)
+  return bracket(T.fork(rio), (fiber) =>
+    T.chain_(fiber.interrupt, (ex) => {
+      switch (ex._tag) {
+        case "Done":
+          return T.unit
+        case "Abort":
+          return T.unit
+        case "Raise":
+          return T.unit
+        case "Interrupt":
+          return ex.causedBy._tag === "None" &&
+            ex.errors._tag === "None" &&
+            ex.next._tag === "None"
+            ? T.unit
+            : T.completed(ex)
+      }
+    })
+  )
 }
 
 /**
