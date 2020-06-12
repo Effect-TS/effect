@@ -697,7 +697,7 @@ export function supervised<S, R, E, A>(
   return new ISupervised(io, name) as any
 }
 
-export function supervisedRegion<S, R, E, A>(io: Effect<S, R, E, A>) {
+export function scope<S, R, E, A>(io: Effect<S, R, E, A>) {
   return pipe(
     fork(io),
     chain((f) =>

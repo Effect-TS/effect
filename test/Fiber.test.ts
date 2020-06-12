@@ -95,7 +95,7 @@ describe("Fiber", () => {
         )
       ),
       T.chainTap(() => T.delay(T.unit, 100)),
-      T.supervisedRegion,
+      T.scope,
       T.chainTap(() => T.delay(T.unit, 200)),
       T.provide({
         n: 1
@@ -133,7 +133,7 @@ describe("Fiber", () => {
         )
       ),
       T.chainTap(() => T.delay(T.unit, 100)),
-      T.supervisedRegion,
+      T.scope,
       T.chainTap(() => T.delay(T.unit, 200)),
       T.provide({
         n: 1
@@ -160,10 +160,21 @@ describe("Fiber", () => {
           T.async<never, number>((r) => {
             const t = setTimeout(() => {
               r(E.right(2))
-            }, 50)
+            }, 500)
             return (cb) => {
               clearTimeout(t)
               cb("err0")
+            }
+          })
+        ),
+        T.supervised(
+          T.async<never, number>((r) => {
+            const t = setTimeout(() => {
+              r(E.right(2))
+            }, 500)
+            return (cb) => {
+              clearTimeout(t)
+              cb("err1")
             }
           })
         )
@@ -174,7 +185,7 @@ describe("Fiber", () => {
     const result = await T.runToPromiseExit(program)
 
     expect(result).toStrictEqual(
-      Ex.causedBy(Ex.raise("error"))(Ex.interruptWithError("err0"))
+      Ex.combinedCause(Ex.raise("error"))(Ex.interruptWithError("err0", "err1"))
     )
   })
 

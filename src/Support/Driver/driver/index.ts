@@ -41,22 +41,14 @@ export function isSetExit(u: any): u is SetExit {
 }
 
 export class Supervisor {
-  fibers = new DoublyLinkedList<Driver<any, any>>()
+  fibers = new DoublyLinkedList<{ name?: string; driver: Driver<any, any> }>()
 
-  constructor(readonly root: DriverImpl<any, any>) {}
+  add(driver: Driver<any, any>, name?: string) {
+    const node = this.fibers.add({ driver, name })
 
-  add(driver: Driver<any, any>) {
-    const node = this.fibers.add(driver)
-
-    driver.onExit((fibExit) => {
+    driver.onExit(() => {
       if (!node.removed) {
-        if (fibExit._tag === "Done") {
-          this.fibers.remove(node)
-        } else {
-          if (!this.root.interrupted && !this.root.isComplete()) {
-            this.root.interrupt(fibExit)
-          }
-        }
+        this.fibers.remove(node)
       }
     })
   }
@@ -69,7 +61,7 @@ export class Supervisor {
       return
     }
 
-    fiber.onExit((fibExit) => {
+    fiber.driver.onExit((fibExit) => {
       if (
         fibExit._tag === "Interrupt" &&
         (fibExit.errors._tag === "Some" || fibExit.next._tag === "Some")
@@ -84,8 +76,8 @@ export class Supervisor {
       }
     })
 
-    if (!fiber.completed) {
-      fiber.interrupt()
+    if (!fiber.driver.completed) {
+      fiber.driver.interrupt()
     }
   }
 }
@@ -387,9 +379,9 @@ export class DriverImpl<E, A> implements Driver<E, A> {
             const driver = new DriverImpl<E, A>(this.envStack?.current || {})
             const fiber = new FiberImpl(driver, current.name)
             if (!this.supervisor) {
-              this.supervisor = new Supervisor(this)
+              this.supervisor = new Supervisor()
             }
-            this.supervisor.add(driver)
+            this.supervisor.add(driver, current.name)
             driver.start(current.effect)
             current = this.next(fiber)
             break
