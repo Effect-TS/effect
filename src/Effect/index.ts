@@ -467,17 +467,6 @@ export function combineFinalizerExit<E, A>(
   }
 }
 
-export function inspect<S, R, E, A>(_: Effect<S, R, E, A>) {
-  return chain_(result(_), (x) =>
-    chain_(
-      sync(() => {
-        console.log(x)
-      }),
-      () => completed(x)
-    )
-  )
-}
-
 export function completeLatched<E1, E2, E3, A, B, C, R>(
   latch: Ref<boolean>,
   channel: Deferred<unknown, R, E3, C>,
@@ -2372,6 +2361,41 @@ export function getParValidationM_<E>(
   S: Semigroup<E>
 ): Monad4ECP<URI, E> & Alt4EC<URI, E> {
   return validation(par(getValidationM(S)))
+}
+
+export function foldExitCode<A, B, C, D, E>(
+  onClosed: () => void,
+  onDone: (_: A) => void,
+  onCause: (_: Cause<E>) => void
+): (_: Exit<E, A>) => void {
+  return (_) => {
+    switch (_._tag) {
+      case "Done": {
+        onDone(_.value)
+        break
+      }
+      case "Abort": {
+        onCause(_)
+        break
+      }
+      case "Raise": {
+        onCause(_)
+        break
+      }
+      case "Interrupt": {
+        if (
+          _.causedBy._tag === "None" &&
+          _.next._tag === "None" &&
+          _.errors._tag === "None"
+        ) {
+          onClosed()
+        } else {
+          onCause(_)
+        }
+        break
+      }
+    }
+  }
 }
 
 export function exitCode<E, A>(f?: (_: Exit<E, A>) => void) {
