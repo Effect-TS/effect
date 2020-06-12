@@ -4,9 +4,10 @@ import * as EX from "../src"
 
 import * as T from "@matechs/core/Effect"
 import { pipe } from "@matechs/core/Function"
+import { Empty } from "@matechs/core/Layer"
 
-const program = pipe(
-  EX.route(
+const App = Empty.withMany(
+  EX.Route(
     "get",
     "/",
     T.pure(
@@ -14,25 +15,14 @@ const program = pipe(
         message: "OK"
       })
     )
-  ),
-  T.chain(() => T.never)
-)
-
-pipe(
-  EX.Express(8081).use(program),
-  T.exitCode(
-    T.foldExitCode(
-      () => {
-        console.log("Process correctly exited.")
-      },
-      (_) => {
-        console.error("Process completed with:")
-        console.error(_)
-      },
-      (_) => {
-        console.error("Process errored with:")
-        console.error(inspect(_, true, 10))
-      }
-    )
   )
 )
+
+pipe(App.with(EX.Express(8081)).use(T.waitProcessExit), T.runToPromise)
+  .then(() => {
+    console.log("App exit completed")
+  })
+  .catch((error) => {
+    console.error(inspect(error, true, 10))
+    process.exit(2)
+  })

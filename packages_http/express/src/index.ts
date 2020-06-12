@@ -79,7 +79,7 @@ export function routeResponse(status: number) {
   })
 }
 
-export const route = <S = never, R = unknown, E = never, A = unknown>(
+export const on = <S = never, R = unknown, E = never, A = unknown>(
   method: Method,
   path: string,
   f: T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
@@ -123,6 +123,13 @@ export const route = <S = never, R = unknown, E = never, A = unknown>(
       })
     })
   )
+
+export const Route = <S = never, R = unknown, E = never, A = unknown>(
+  method: Method,
+  path: string,
+  f: T.Effect<S, R, RouteError<E>, RouteResponse<A>>,
+  ...rest: connect.NextHandleFunction[]
+) => L.fromEffect(T.map_(on(method, path, f, ...rest), () => ({})))
 
 //
 // @category implementation

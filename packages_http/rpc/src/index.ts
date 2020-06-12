@@ -63,7 +63,7 @@ export const Server = <M extends F.ModuleShape<M>, R>(
             const path = `${scope}/${key}`
 
             ops.push(
-              EXP.route(
+              EXP.on(
                 "post",
                 path,
                 EXP.accessReqM((req) =>

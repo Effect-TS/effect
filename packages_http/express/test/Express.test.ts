@@ -6,51 +6,32 @@ import * as EX from "../src"
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
+import { Empty } from "@matechs/core/Layer"
 import * as O from "@matechs/core/Option"
 import * as H from "@matechs/http-client"
 import * as L from "@matechs/http-client-fetch"
 
 describe("Express", () => {
   it("should use express", async () => {
-    const routes = T.Do()
-      .do(
-        EX.route(
-          "post",
-          "/",
-          EX.accessReqM((r) =>
-            T.pure(EX.routeResponse(r.path === "/" ? 200 : 500)({ res: 1 }))
-          )
+    const Routes = Empty.withMany(
+      EX.Route(
+        "post",
+        "/",
+        EX.accessReqM((r) =>
+          T.pure(EX.routeResponse(r.path === "/" ? 200 : 500)({ res: 1 }))
         )
-      )
-      .do(
-        EX.route(
-          "post",
-          "/access",
-          EX.accessReq((r) =>
-            EX.routeResponse(r.path === "/access" ? 200 : 500)({ res: 1 })
-          )
+      ),
+      EX.Route(
+        "post",
+        "/access",
+        EX.accessReq((r) =>
+          EX.routeResponse(r.path === "/access" ? 200 : 500)({ res: 1 })
         )
-      )
-      .do(EX.route("post", "/bad", T.raiseError(EX.routeError(500)({ res: 1 }))))
-      .do(EX.route("post", "/bad2", T.raiseAbort("abort")))
-      .do(EX.route("post", "/bad3", T.raiseInterrupt))
-      .do(
-        EX.accessApp((app) => {
-          if (!app) {
-            throw new Error("Aborted app not found")
-          }
-        })
-      )
-      .do(
-        EX.accessAppM((app) =>
-          T.trySync(() => {
-            if (!app) {
-              throw new Error("Aborted app not found")
-            }
-          })
-        )
-      )
-      .done()
+      ),
+      EX.Route("post", "/bad", T.raiseError(EX.routeError(500)({ res: 1 }))),
+      EX.Route("post", "/bad2", T.raiseAbort("abort")),
+      EX.Route("post", "/bad3", T.raiseInterrupt)
+    )
 
     const program = T.Do()
       .bindL("res1", () =>
@@ -103,9 +84,8 @@ describe("Express", () => {
       .done()
 
     const main = pipe(
-      routes,
-      T.chain((_) => program),
-      EX.Express(3003, "127.0.0.1").with(L.Client(fetch)).use
+      program,
+      Routes.with(EX.Express(3003, "127.0.0.1")).with(L.Client(fetch)).use
     )
 
     await pipe(main, T.runToPromise).then(({ res1, res2, res3, res4, res5 }) => {
