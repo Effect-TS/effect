@@ -220,21 +220,10 @@ describe("Fiber", () => {
       T.chain(T.traverseArray((f) => f.join))
     )
 
-    let exit: any
-
-    const fiber = await T.runToPromise(
-      T.fork(
-        T.onInterruptedExit_(program, (ex) =>
-          T.sync(() => {
-            exit = ex
-          })
-        )
-      )
-    )
+    const fiber = await T.runToPromise(T.fork(program))
 
     const result = await T.runToPromise(fiber.interrupt)
 
     expect(result).toStrictEqual(Ex.interruptWithError("err0", "err1"))
-    expect(exit).toStrictEqual(Ex.interruptWithError("err0", "err1"))
   })
 })
