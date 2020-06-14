@@ -186,7 +186,7 @@ export function raise<E>(e: E): Raise<E> {
   }
 }
 
-const append_ = <E>(root: Cause<E>, next: Cause<E>) => {
+const append = <E>(root: Cause<E>, next: Cause<E>): Cause<E> => {
   if (root.next._tag === "None") {
     if (root._tag === "Interrupt" && next._tag === "Interrupt") {
       const combo = A.concat_(
@@ -194,19 +194,24 @@ const append_ = <E>(root: Cause<E>, next: Cause<E>) => {
         O.getOrElse_(next.errors, (): unknown[] => [])
       )
 
-      root.errors = A.isNonEmpty(combo) ? O.some(combo) : O.none
-      root.causedBy = O.getFirst(root.causedBy, next.causedBy)
+      return {
+        _tag: "Interrupt",
+        errors: A.isNonEmpty(combo) ? O.some(combo) : O.none,
+        causedBy: O.getFirst(root.causedBy, next.causedBy),
+        next: next.next
+      }
     } else {
-      root.next = some(next)
+      return {
+        ...root,
+        next: some(next)
+      }
     }
   } else {
-    append_(root.next.value, next)
+    return {
+      ...root,
+      next: some(append(root.next.value, next))
+    }
   }
-}
-
-const append = <E>(root: Cause<E>, next: Cause<E>): Cause<E> => {
-  append_(root, next)
-  return root
 }
 
 const semigroupCause: Semigroup<Cause<any>> = {
