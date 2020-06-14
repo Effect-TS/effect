@@ -1,6 +1,6 @@
 {
   "name": "@matechs/http-client-fetch",
-  "version": "8.8.1",
+  "version": "8.8.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -18,8 +18,8 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@matechs/core": "^2.7.1",
-    "@matechs/http-client": "^8.8.1"
+    "@matechs/core": "^2.7.2",
+    "@matechs/http-client": "^8.8.2"
   },
   "peerDependencies": {
     "isomorphic-fetch": "^2.2.1",
