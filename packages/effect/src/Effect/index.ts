@@ -1656,13 +1656,9 @@ export function runToPromise<E, A>(io: AsyncRE<{}, E, A>): Promise<A> {
           resolve(exit.value)
           return
         case "Abort":
-          reject(exit.abortedWith)
-          return
         case "Raise":
-          reject(exit.error)
-          return
         case "Interrupt":
-          reject()
+          reject(exit)
           return
       }
     })
