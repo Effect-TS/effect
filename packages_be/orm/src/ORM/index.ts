@@ -310,8 +310,11 @@ export class DbTImpl<Db extends symbol | string> implements DbT<Db> {
               )
             ),
           T.fromPromiseMap((x) =>
-            typeof x === "object" && x !== null && x["_tag"] === "inner"
-              ? ((x["error"] as any) as E)
+            typeof x === "object" &&
+            x !== null &&
+            x["_tag"] === "Raise" &&
+            x["error"]["_tag"] === "inner"
+              ? ((x["error"]["error"] as any) as E)
               : new TaskError(E.toError(x), "withTransaction")
           )
         )
