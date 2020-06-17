@@ -14,6 +14,7 @@ import type {
   Keys,
   KeysOfConfig,
   MatechsAlgebraPrimitive1,
+  NumberLiteralConfig,
   StringLiteralConfig,
   UUID
 } from "@matechs/morphic-alg/primitives"
@@ -59,6 +60,18 @@ export const showPrimitiveInterpreter = memo(
       new ShowType(
         introduce<Show<T>>({
           show: (t) => showString.show(t)
+        })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
+      ),
+    numberLiteral: <T extends number>(
+      _: T,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+      }
+    ) => (env) =>
+      new ShowType(
+        introduce<Show<T>>({
+          show: (t) => showNumber.show(t)
         })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
       ),
     keysOf: <K extends Keys>(

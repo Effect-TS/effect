@@ -27,6 +27,8 @@ export const eqPrimitiveInterpreter = memo(
       new EqType<bigint>(eqApplyConfig(config?.conf)(eqStrict, env, {})),
     stringLiteral: (k, config) => (env) =>
       new EqType<typeof k>(eqApplyConfig(config?.conf)(eqString, env, {})),
+    numberLiteral: (k, config) => (env) =>
+      new EqType<typeof k>(eqApplyConfig(config?.conf)(eqNumber, env, {})),
     keysOf: (keys, config) => (env) =>
       new EqType<keyof typeof keys & string>(
         eqApplyConfig(config?.conf)(eqStrict, env, {})
