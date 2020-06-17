@@ -39,6 +39,7 @@ export interface NullableConfig<L, A> {}
 export interface MutableConfig<L, A> {}
 export interface OptionalConfig<L, A> {}
 export interface StringLiteralConfig<T> {}
+export interface NumberLiteralConfig<T> {}
 export interface KeysOfConfig<K> {}
 export interface EitherConfig<EE, EA, AE, AA> {}
 export interface OptionConfig<L, A> {}
@@ -110,6 +111,15 @@ export interface MatechsAlgebraPrimitive<F, Env> {
         conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
       }
     ): HKT2<F, Env, string, typeof value>
+  }
+  numberLiteral: {
+    <T extends number>(
+      value: T,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+      }
+    ): HKT2<F, Env, number, typeof value>
   }
   keysOf: {
     <K extends Keys>(
@@ -236,6 +246,13 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
       conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
     }
   ) => Kind<F, Env, typeof value>
+  numberLiteral: <T extends number>(
+    value: T,
+    config?: {
+      name?: string
+      conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+    }
+  ) => Kind<F, Env, typeof value>
   keysOf: <K extends Keys>(
     keys: K,
     config?: {
@@ -344,6 +361,13 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
       conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
     }
   ) => Kind2<F, Env, string, typeof value>
+  numberLiteral: <T extends number>(
+    value: T,
+    config?: {
+      name?: string
+      conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+    }
+  ) => Kind2<F, Env, number, typeof value>
   keysOf: <K extends Keys>(
     keys: K,
     config?: {

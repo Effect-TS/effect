@@ -7,4 +7,6 @@ export const isUnknownRecord = (u: unknown): u is { [key: string]: unknown } => 
 
 export const isString = (u: unknown): u is string => typeof u === "string"
 
+export const isNumber = (u: unknown): u is number => typeof u === "number"
+
 export type AOfGuard<X extends Guard<any>> = X extends Guard<infer A> ? A : never

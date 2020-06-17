@@ -42,6 +42,10 @@ export const modelPrimitiveInterpreter = memo(
       new ModelType(
         modelApplyConfig(config?.conf)(M.literal(l, config?.name || l), env, {})
       ),
+    numberLiteral: (l, config) => (env) =>
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.literal(l, config?.name || `${l}`), env, {})
+      ),
     keysOf: (k, config) => (env) =>
       new ModelType(
         modelApplyConfig(config?.conf)(

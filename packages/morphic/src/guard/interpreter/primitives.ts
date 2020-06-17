@@ -2,7 +2,7 @@ import { memo } from "../../utils"
 import { guardApplyConfig } from "../config"
 import { GuardType, GuardURI } from "../hkt"
 
-import { isString, AOfGuard } from "./common"
+import { isString, isNumber, AOfGuard } from "./common"
 
 import type { Array } from "@matechs/core/Array"
 import type { Either } from "@matechs/core/Either"
@@ -73,6 +73,14 @@ export const guardPrimitiveInterpreter = memo(
           {
             is: (u): u is typeof k => isString(u) && u === k
           },
+          env,
+          {}
+        )
+      ),
+    numberLiteral: (k, config) => (env) =>
+      new GuardType<typeof k>(
+        guardApplyConfig(config?.conf)(
+          { is: (u): u is typeof k => isNumber(u) && u === k },
           env,
           {}
         )

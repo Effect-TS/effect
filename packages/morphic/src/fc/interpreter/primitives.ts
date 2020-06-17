@@ -35,6 +35,10 @@ export const fcPrimitiveInterpreter = memo(
       new FastCheckType(
         fcApplyConfig(config?.conf)(accessFC(env).constant(l), env, {})
       ),
+    numberLiteral: (l, config) => (env) =>
+      new FastCheckType(
+        fcApplyConfig(config?.conf)(accessFC(env).constant(l), env, {})
+      ),
     keysOf: (k, config) => (env) =>
       new FastCheckType(
         fcApplyConfig(config?.conf)(
