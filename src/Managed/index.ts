@@ -481,8 +481,8 @@ export const filterOrElse: {
 ): Managed<S, R, E, A> =>
   chain_(ma, (a) =>
     predicate(a)
-      ? encaseEffect(T.completed(raise(onFalse(a))))
-      : encaseEffect(T.completed(done(a)))
+      ? encaseEffect(T.completed(done(a)))
+      : encaseEffect(T.completed(raise(onFalse(a))))
   )
 
 export const flatten: <S1, S2, R, E, R2, E2, A>(
