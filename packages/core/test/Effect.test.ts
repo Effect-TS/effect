@@ -1259,4 +1259,41 @@ describe("effectify", () => {
     const effFun = T.effectify(fun)
     assert.deepStrictEqual(await T.runToPromiseExit(effFun("x")), ex.raise("error"))
   })
+
+  it("should filterOrElse with predicate true", () => {
+    const gt10 = (n: number): boolean => n > 10
+    const subjectFunction: (
+      _: T.SyncE<string, number>
+    ) => T.SyncE<string, number> = T.filterOrElse(gt10, (n) => `invalid ${n}`)
+
+    const resource: T.SyncE<string, number> = T.pure(12)
+    const result = T.runSync(subjectFunction(resource))
+
+    assert.deepStrictEqual(result, ex.done(12))
+  })
+
+  it("should filterOrElse with predicate false", () => {
+    const gt10 = (n: number): boolean => n > 10
+    const subjectFunction: (
+      _: T.SyncE<string, number>
+    ) => T.SyncE<string, number> = T.filterOrElse(gt10, (n) => `invalid ${n}`)
+
+    const resource: T.SyncE<string, number> = T.pure(7)
+
+    const result = T.runSync(subjectFunction(resource))
+
+    assert.deepStrictEqual(result, ex.raise(`invalid 7`))
+  })
+
+  it("should filterOrElse propagate raised error", () => {
+    const gt10 = (n: number): boolean => n > 10
+    const subjectFunction: (
+      _: T.SyncE<string, number>
+    ) => T.SyncE<string, number> = T.filterOrElse(gt10, (n) => `invalid ${n}`)
+
+    const resource: T.SyncE<string, number> = T.raiseError(`Nope`)
+    const result = T.runSync(subjectFunction(resource))
+
+    assert.deepStrictEqual(result, ex.raise(`Nope`))
+  })
 })

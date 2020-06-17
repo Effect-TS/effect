@@ -3,8 +3,7 @@ import * as assert from "assert"
 import { effect as T, exit as Ex, managed as M } from "../src"
 import * as Ar from "../src/Array"
 import { eqString } from "../src/Eq"
-import { constVoid } from "../src/Function"
-import { pipe } from "../src/Function"
+import { constVoid, pipe } from "../src/Function"
 import { monoidSum } from "../src/Monoid"
 import { semigroupSum } from "../src/Semigroup"
 
@@ -522,5 +521,42 @@ describe("Managed", () => {
     )
 
     assert.deepStrictEqual(result, 3)
+  })
+
+  it("should filterOrElse with predicate true", () => {
+    const gt10 = (n: number): boolean => n > 10
+    const subjectFunction: (
+      _: M.SyncE<string, number>
+    ) => M.SyncE<string, number> = M.filterOrElse(gt10, (n) => `invalid ${n}`)
+
+    const resource: M.SyncE<string, number> = M.pure(12)
+    const result = T.runSync(M.use(subjectFunction(resource), (n) => T.pure(n)))
+
+    assert.deepStrictEqual(result, Ex.done(12))
+  })
+
+  it("should filterOrElse with predicate false", () => {
+    const gt10 = (n: number): boolean => n > 10
+    const subjectFunction: (
+      _: M.SyncE<string, number>
+    ) => M.SyncE<string, number> = M.filterOrElse(gt10, (n) => `invalid ${n}`)
+
+    const resource: M.SyncE<string, number> = M.pure(7)
+
+    const result = T.runSync(M.use(subjectFunction(resource), (n) => T.pure(n)))
+
+    assert.deepStrictEqual(result, Ex.raise(`invalid 7`))
+  })
+
+  it("should filterOrElse propagate raised error", () => {
+    const gt10 = (n: number): boolean => n > 10
+    const subjectFunction: (
+      _: M.SyncE<string, number>
+    ) => M.SyncE<string, number> = M.filterOrElse(gt10, (n) => `invalid ${n}`)
+
+    const resource: M.SyncE<string, number> = M.raiseError(`Nope`)
+    const result = T.runSync(M.use(subjectFunction(resource), (n) => T.pure(n)))
+
+    assert.deepStrictEqual(result, Ex.raise(`Nope`))
   })
 })
