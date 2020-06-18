@@ -2,15 +2,25 @@ import { memo } from "../../utils"
 import { eqApplyConfig } from "../config"
 import { EqType, EqURI } from "../hkt"
 
-import { getEq as AgetEq } from "@matechs/core/Array"
+import { foldMap_, getEq as AgetEq } from "@matechs/core/Array"
 import { getEq as EgetEq } from "@matechs/core/Either"
-import { contramap_, eqBoolean, eqNumber, eqStrict, eqString } from "@matechs/core/Eq"
+import {
+  contramap_,
+  eqBoolean,
+  eqNumber,
+  eqStrict,
+  eqString,
+  getOrMonoid
+} from "@matechs/core/Eq"
+import type { Eq } from "@matechs/core/Eq"
 import { introduce } from "@matechs/core/Function"
 import { getEq as OgetEq } from "@matechs/core/Option"
-import type { AnyEnv } from "@matechs/morphic-alg/config"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
   Literal,
+  LiteralT,
   MatechsAlgebraPrimitive1,
+  OneOfLiteralsConfig,
   UUID
 } from "@matechs/morphic-alg/primitives"
 
@@ -33,6 +43,24 @@ export const eqPrimitiveInterpreter = memo(
       new EqType<Literal<typeof k>>(eqApplyConfig(config?.conf)(eqString, env, {})),
     numberLiteral: (k, config) => (env) =>
       new EqType<Literal<typeof k>>(eqApplyConfig(config?.conf)(eqNumber, env, {})),
+    oneOfLiterals: <T extends readonly [LiteralT, ...LiteralT[]]>(
+      ls: { [k in keyof T]: (env: Env) => EqType<Literal<T[k]>> },
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          LiteralT,
+          Literal<T[number]>,
+          OneOfLiteralsConfig<Literal<T[number]>>
+        >
+      }
+    ) => (env) =>
+      introduce(
+        foldMap_(getOrMonoid<Literal<T[number]>>())(
+          ls,
+          (l) => l(env).eq as Eq<Literal<T[number]>>
+        )
+      )((eq) => new EqType(eqApplyConfig(config?.conf)(eq, env, { eq }))),
     keysOf: (keys, config) => (env) =>
       new EqType<keyof typeof keys & string>(
         eqApplyConfig(config?.conf)(eqStrict, env, {})

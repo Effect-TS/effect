@@ -2,7 +2,7 @@ import { memo } from "../../utils"
 import { fcApplyConfig, accessFC } from "../config"
 import { FastCheckType, FastCheckURI } from "../hkt"
 
-import { isNonEmpty } from "@matechs/core/Array"
+import { isNonEmpty, map_ } from "@matechs/core/Array"
 import { left, right } from "@matechs/core/Either"
 import { introduce } from "@matechs/core/Function"
 import { fromNullable, none, some } from "@matechs/core/Option"
@@ -43,6 +43,14 @@ export const fcPrimitiveInterpreter = memo(
       new FastCheckType(
         fcApplyConfig(config?.conf)(
           accessFC(env).constant(l as Literal<typeof l>),
+          env,
+          {}
+        )
+      ),
+    oneOfLiterals: (ls, config) => (env) =>
+      new FastCheckType(
+        fcApplyConfig(config?.conf)(
+          accessFC(env).oneof(...map_(ls, (l) => l(env).arb)),
           env,
           {}
         )

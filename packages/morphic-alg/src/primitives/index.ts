@@ -21,6 +21,7 @@ export interface LiteralBrand {
   readonly Literal: unique symbol
 }
 export type Literal<A> = Branded<A, LiteralBrand>
+export type LiteralT = string | number
 
 export const PrimitiveURI = "@matechs/morphic-alg/PrimitiveURI" as const
 
@@ -45,6 +46,7 @@ export interface MutableConfig<L, A> {}
 export interface OptionalConfig<L, A> {}
 export interface StringLiteralConfig<T> {}
 export interface NumberLiteralConfig<T> {}
+export interface OneOfLiteralsConfig<T> {}
 export interface KeysOfConfig<K> {}
 export interface EitherConfig<EE, EA, AE, AA> {}
 export interface OptionConfig<L, A> {}
@@ -125,6 +127,20 @@ export interface MatechsAlgebraPrimitive<F, Env> {
         conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
       }
     ): HKT2<F, Env, number, Literal<T>>
+  }
+  oneOfLiterals: {
+    <T extends readonly [LiteralT, ...LiteralT[]]>(
+      value: { [k in keyof T]: HKT2<F, Env, LiteralT, Literal<T[k]>> },
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          LiteralT,
+          Literal<T[number]>,
+          OneOfLiteralsConfig<Literal<T[number]>>
+        >
+      }
+    ): HKT2<F, Env, LiteralT, Literal<T[number]>>
   }
   keysOf: {
     <K extends Keys>(
@@ -258,6 +274,20 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
       conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
     }
   ) => Kind<F, Env, Literal<T>>
+  oneOfLiterals: {
+    <T extends readonly [LiteralT, ...LiteralT[]]>(
+      value: { [k in keyof T]: Kind<F, Env, Literal<T[k]>> },
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          LiteralT,
+          Literal<T[number]>,
+          OneOfLiteralsConfig<Literal<T[number]>>
+        >
+      }
+    ): Kind<F, Env, Literal<T[number]>>
+  }
   keysOf: <K extends Keys>(
     keys: K,
     config?: {
@@ -373,6 +403,20 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
       conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
     }
   ) => Kind2<F, Env, number, Literal<T>>
+  oneOfLiterals: {
+    <T extends readonly [LiteralT, ...LiteralT[]]>(
+      value: { [k in keyof T]: Kind2<F, Env, LiteralT, Literal<T[k]>> },
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          LiteralT,
+          Literal<T[number]>,
+          OneOfLiteralsConfig<Literal<T[number]>>
+        >
+      }
+    ): Kind2<F, Env, LiteralT, Literal<T[number]>>
+  }
   keysOf: <K extends Keys>(
     keys: K,
     config?: {

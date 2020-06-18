@@ -2,17 +2,20 @@ import { memo } from "../../utils"
 import { guardApplyConfig } from "../config"
 import { GuardType, GuardURI } from "../hkt"
 
-import { isString, isNumber, AOfGuard } from "./common"
+import { isString, isNumber, AOfGuard, getOrGuard } from "./common"
 
 import type { Array } from "@matechs/core/Array"
+import { foldMap_ } from "@matechs/core/Array"
 import type { Either } from "@matechs/core/Either"
 import { introduce } from "@matechs/core/Function"
 import type { NonEmptyArray } from "@matechs/core/NonEmptyArray"
 import type { Option } from "@matechs/core/Option"
-import type { AnyEnv } from "@matechs/morphic-alg/config"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
   Literal,
+  LiteralT,
   MatechsAlgebraPrimitive1,
+  OneOfLiteralsConfig,
   UUID
 } from "@matechs/morphic-alg/primitives"
 
@@ -87,6 +90,25 @@ export const guardPrimitiveInterpreter = memo(
           {
             is: (u): u is Literal<typeof k> => isNumber(u) && u === k
           },
+          env,
+          {}
+        )
+      ),
+    oneOfLiterals: <T extends readonly [LiteralT, ...LiteralT[]]>(
+      ls: { [k in keyof T]: (env: Env) => GuardType<Literal<T[k]>> },
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          LiteralT,
+          Literal<T[number]>,
+          OneOfLiteralsConfig<Literal<T[number]>>
+        >
+      }
+    ) => (env) =>
+      new GuardType(
+        guardApplyConfig(config?.conf)(
+          foldMap_(getOrGuard<Literal<T[number]>>())(ls, (l) => l(env).guard),
           env,
           {}
         )

@@ -3,9 +3,15 @@ import * as M from "../codec"
 import { modelApplyConfig } from "../config"
 import { ModelType, ModelURI } from "../hkt"
 
+import { map_ } from "@matechs/core/Array"
 import { introduce } from "@matechs/core/Function"
-import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { Literal, MatechsAlgebraPrimitive2 } from "@matechs/morphic-alg/primitives"
+import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
+import type {
+  Literal,
+  LiteralT,
+  MatechsAlgebraPrimitive2,
+  OneOfLiteralsConfig
+} from "@matechs/morphic-alg/primitives"
 
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
@@ -54,6 +60,27 @@ export const modelPrimitiveInterpreter = memo(
           {}
         )
       ),
+    oneOfLiterals: <T extends readonly [LiteralT, ...LiteralT[]]>(
+      ls: { [k in keyof T]: (env: Env) => ModelType<LiteralT, Literal<T[k]>> },
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          LiteralT,
+          Literal<T[number]>,
+          OneOfLiteralsConfig<Literal<T[number]>>
+        >
+      }
+    ) => (env) => {
+      type Created = M.Codec<Literal<T[number]>, LiteralT>
+      return new ModelType(
+        introduce<Created>(
+          ls.length === 1
+            ? (ls[0](env).codec as Created)
+            : M.union(map_(ls, (l) => l(env).codec) as [Created, Created, ...Created[]])
+        )((model) => modelApplyConfig(config?.conf)(model, env, {}))
+      )
+    },
     keysOf: (k, config) => (env) =>
       new ModelType(
         modelApplyConfig(config?.conf)(
