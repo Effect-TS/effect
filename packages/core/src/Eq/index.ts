@@ -38,6 +38,15 @@ export function getMonoid<A>(): Monoid<Eq<A>> {
   }
 }
 
+export function getOrMonoid<A>(): Monoid<Eq<A>> {
+  return {
+    concat: (x, y) => fromEquals((a, b) => x.equals(a, b) || y.equals(a, b)),
+    empty: {
+      equals: () => false
+    }
+  }
+}
+
 export function getStructEq<O extends Record<string, any>>(
   eqs: {
     [K in keyof O]: Eq<O[K]>
