@@ -8,7 +8,11 @@ import { contramap_, eqBoolean, eqNumber, eqStrict, eqString } from "@matechs/co
 import { introduce } from "@matechs/core/Function"
 import { getEq as OgetEq } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive1, UUID } from "@matechs/morphic-alg/primitives"
+import type {
+  Literal,
+  MatechsAlgebraPrimitive1,
+  UUID
+} from "@matechs/morphic-alg/primitives"
 
 export const eqPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<EqURI, Env> => ({
@@ -26,9 +30,9 @@ export const eqPrimitiveInterpreter = memo(
     bigint: (config) => (env) =>
       new EqType<bigint>(eqApplyConfig(config?.conf)(eqStrict, env, {})),
     stringLiteral: (k, config) => (env) =>
-      new EqType<typeof k>(eqApplyConfig(config?.conf)(eqString, env, {})),
+      new EqType<Literal<typeof k>>(eqApplyConfig(config?.conf)(eqString, env, {})),
     numberLiteral: (k, config) => (env) =>
-      new EqType<typeof k>(eqApplyConfig(config?.conf)(eqNumber, env, {})),
+      new EqType<Literal<typeof k>>(eqApplyConfig(config?.conf)(eqNumber, env, {})),
     keysOf: (keys, config) => (env) =>
       new EqType<keyof typeof keys & string>(
         eqApplyConfig(config?.conf)(eqStrict, env, {})

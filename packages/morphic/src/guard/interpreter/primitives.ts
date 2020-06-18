@@ -10,7 +10,11 @@ import { introduce } from "@matechs/core/Function"
 import type { NonEmptyArray } from "@matechs/core/NonEmptyArray"
 import type { Option } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive1, UUID } from "@matechs/morphic-alg/primitives"
+import type {
+  Literal,
+  MatechsAlgebraPrimitive1,
+  UUID
+} from "@matechs/morphic-alg/primitives"
 
 export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -68,19 +72,21 @@ export const guardPrimitiveInterpreter = memo(
         )
       ),
     stringLiteral: (k, config) => (env) =>
-      new GuardType<typeof k>(
+      new GuardType(
         guardApplyConfig(config?.conf)(
           {
-            is: (u): u is typeof k => isString(u) && u === k
+            is: (u): u is Literal<typeof k> => isString(u) && u === k
           },
           env,
           {}
         )
       ),
     numberLiteral: (k, config) => (env) =>
-      new GuardType<typeof k>(
+      new GuardType(
         guardApplyConfig(config?.conf)(
-          { is: (u): u is typeof k => isNumber(u) && u === k },
+          {
+            is: (u): u is Literal<typeof k> => isNumber(u) && u === k
+          },
           env,
           {}
         )

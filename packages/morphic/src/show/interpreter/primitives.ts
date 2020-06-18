@@ -13,6 +13,7 @@ import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
   Keys,
   KeysOfConfig,
+  Literal,
   MatechsAlgebraPrimitive1,
   NumberLiteralConfig,
   StringLiteralConfig,
@@ -54,11 +55,11 @@ export const showPrimitiveInterpreter = memo(
       _: T,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
+        conf?: ConfigsForType<Env, string, Literal<T>, StringLiteralConfig<Literal<T>>>
       }
     ) => (env) =>
       new ShowType(
-        introduce<Show<T>>({
+        introduce<Show<Literal<T>>>({
           show: (t) => showString.show(t)
         })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
       ),
@@ -66,11 +67,11 @@ export const showPrimitiveInterpreter = memo(
       _: T,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+        conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
       }
     ) => (env) =>
       new ShowType(
-        introduce<Show<T>>({
+        introduce<Show<Literal<T>>>({
           show: (t) => showNumber.show(t)
         })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
       ),

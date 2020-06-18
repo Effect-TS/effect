@@ -5,7 +5,7 @@ import { ModelType, ModelURI } from "../hkt"
 
 import { introduce } from "@matechs/core/Function"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive2 } from "@matechs/morphic-alg/primitives"
+import type { Literal, MatechsAlgebraPrimitive2 } from "@matechs/morphic-alg/primitives"
 
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
@@ -40,11 +40,19 @@ export const modelPrimitiveInterpreter = memo(
       ),
     stringLiteral: (l, config) => (env) =>
       new ModelType(
-        modelApplyConfig(config?.conf)(M.literal(l, config?.name || l), env, {})
+        modelApplyConfig(config?.conf)(
+          M.literal(l as Literal<typeof l>, config?.name || l),
+          env,
+          {}
+        )
       ),
     numberLiteral: (l, config) => (env) =>
       new ModelType(
-        modelApplyConfig(config?.conf)(M.literal(l, config?.name || `${l}`), env, {})
+        modelApplyConfig(config?.conf)(
+          M.literal(l as Literal<typeof l>, config?.name || `${l}`),
+          env,
+          {}
+        )
       ),
     keysOf: (k, config) => (env) =>
       new ModelType(

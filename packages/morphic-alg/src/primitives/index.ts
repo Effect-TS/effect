@@ -17,6 +17,11 @@ export type UUID = Branded<string, UUIDBrand>
 
 export type Keys = Record<string, null>
 
+export interface LiteralBrand {
+  readonly Literal: unique symbol
+}
+export type Literal<A> = Branded<A, LiteralBrand>
+
 export const PrimitiveURI = "@matechs/morphic-alg/PrimitiveURI" as const
 
 export type PrimitiveURI = typeof PrimitiveURI
@@ -108,18 +113,18 @@ export interface MatechsAlgebraPrimitive<F, Env> {
       value: T,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
+        conf?: ConfigsForType<Env, string, Literal<T>, StringLiteralConfig<Literal<T>>>
       }
-    ): HKT2<F, Env, string, typeof value>
+    ): HKT2<F, Env, string, Literal<T>>
   }
   numberLiteral: {
     <T extends number>(
       value: T,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+        conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
       }
-    ): HKT2<F, Env, number, typeof value>
+    ): HKT2<F, Env, number, Literal<T>>
   }
   keysOf: {
     <K extends Keys>(
@@ -243,16 +248,16 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
     value: T,
     config?: {
       name?: string
-      conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
+      conf?: ConfigsForType<Env, string, Literal<T>, StringLiteralConfig<Literal<T>>>
     }
-  ) => Kind<F, Env, typeof value>
+  ) => Kind<F, Env, Literal<T>>
   numberLiteral: <T extends number>(
     value: T,
     config?: {
       name?: string
-      conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+      conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
     }
-  ) => Kind<F, Env, typeof value>
+  ) => Kind<F, Env, Literal<T>>
   keysOf: <K extends Keys>(
     keys: K,
     config?: {
@@ -358,16 +363,16 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
     value: T,
     config?: {
       name?: string
-      conf?: ConfigsForType<Env, string, T, StringLiteralConfig<T>>
+      conf?: ConfigsForType<Env, string, Literal<T>, StringLiteralConfig<Literal<T>>>
     }
-  ) => Kind2<F, Env, string, typeof value>
+  ) => Kind2<F, Env, string, Literal<T>>
   numberLiteral: <T extends number>(
     value: T,
     config?: {
       name?: string
-      conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
+      conf?: ConfigsForType<Env, number, Literal<T>, NumberLiteralConfig<Literal<T>>>
     }
-  ) => Kind2<F, Env, number, typeof value>
+  ) => Kind2<F, Env, number, Literal<T>>
   keysOf: <K extends Keys>(
     keys: K,
     config?: {

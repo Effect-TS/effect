@@ -7,7 +7,7 @@ import { left, right } from "@matechs/core/Either"
 import { introduce } from "@matechs/core/Function"
 import { fromNullable, none, some } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
-import type { MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
+import type { Literal, MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
 
 export const fcPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<FastCheckURI, Env> => ({
@@ -33,11 +33,19 @@ export const fcPrimitiveInterpreter = memo(
       new FastCheckType(fcApplyConfig(config?.conf)(accessFC(env).bigInt(), env, {})),
     stringLiteral: (l, config) => (env) =>
       new FastCheckType(
-        fcApplyConfig(config?.conf)(accessFC(env).constant(l), env, {})
+        fcApplyConfig(config?.conf)(
+          accessFC(env).constant(l as Literal<typeof l>),
+          env,
+          {}
+        )
       ),
     numberLiteral: (l, config) => (env) =>
       new FastCheckType(
-        fcApplyConfig(config?.conf)(accessFC(env).constant(l), env, {})
+        fcApplyConfig(config?.conf)(
+          accessFC(env).constant(l as Literal<typeof l>),
+          env,
+          {}
+        )
       ),
     keysOf: (k, config) => (env) =>
       new FastCheckType(
