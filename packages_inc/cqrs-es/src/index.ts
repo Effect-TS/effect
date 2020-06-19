@@ -17,6 +17,7 @@ import { ElemType } from "@matechs/morphic/adt/utils"
 import { InterpreterURI } from "@matechs/morphic/batteries/interpreter"
 import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
 import { AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
+import { LiteralExtract } from "@matechs/morphic/utils"
 
 const aggregateRead = <
   Types extends {
@@ -25,7 +26,7 @@ const aggregateRead = <
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   Env
 >(
@@ -42,7 +43,7 @@ export const aggregate = <
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   Env
 >(

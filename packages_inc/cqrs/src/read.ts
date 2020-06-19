@@ -17,6 +17,7 @@ import { ElemType } from "@matechs/morphic/adt/utils"
 import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
 import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
 import { MorphADT, AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
+import type { LiteralExtract } from "@matechs/morphic/utils"
 import { DbT, ORM, TaskError } from "@matechs/orm"
 
 // experimental alpha
@@ -61,7 +62,7 @@ export class Read<
     )
 
   readSide(config: ReadSideConfig) {
-    return <Keys2 extends NEA.NonEmptyArray<keyof Types>>(
+    return <Keys2 extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>>(
       fetchEvents: T.AsyncRE<
         ORM<Db> & ReadSideConfigService,
         TaskError,

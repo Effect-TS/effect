@@ -11,6 +11,7 @@ import * as NEA from "@matechs/core/NonEmptyArray"
 import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-result"
 import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
 import { MorphADT, AOfMorhpADT } from "@matechs/morphic/batteries/usage/tagged-union"
+import { LiteralExtract } from "@matechs/morphic/utils"
 import { dbT } from "@matechs/orm"
 
 // experimental alpha
@@ -51,7 +52,7 @@ export class Domain<
     matchEffect: matcher(this.S)
   }
 
-  aggregate<Keys extends NEA.NonEmptyArray<keyof Types>>(
+  aggregate<Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>>(
     aggregate: string,
     eventTypes: Keys
   ) {
@@ -69,7 +70,9 @@ export class Domain<
   }
 
   readOnly(config: ReadSideConfig) {
-    return <Keys extends NEA.NonEmptyArray<keyof Types>>(eventTypes: Keys) =>
+    return <Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>>(
+      eventTypes: Keys
+    ) =>
       this.read.readSide(config)(
         new DomainFetcher(this.S, eventTypes, this.db).fetchSlice(),
         eventTypes

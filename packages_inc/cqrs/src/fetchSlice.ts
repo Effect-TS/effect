@@ -9,6 +9,7 @@ import { InterpreterURI } from "@matechs/morphic/batteries/usage/interpreter-res
 import { ProgramURI } from "@matechs/morphic/batteries/usage/program-type"
 import { MorphADT, AOfTypes } from "@matechs/morphic/batteries/usage/tagged-union"
 import * as t from "@matechs/morphic/model"
+import type { LiteralExtract } from "@matechs/morphic/utils"
 import { DbT } from "@matechs/orm"
 
 // experimental alpha
@@ -21,7 +22,7 @@ export class SliceFetcher<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   Env
 > {
@@ -112,7 +113,7 @@ export class AggregateFetcher<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   Env
 > {
@@ -199,7 +200,7 @@ export class DomainFetcher<
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   Env
 > {

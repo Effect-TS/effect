@@ -1,6 +1,8 @@
 import type { Array } from "@matechs/core/Array"
 import * as R from "@matechs/core/Record"
 
+export { LiteralExtract } from "@matechs/morphic-alg/primitives"
+
 export const mapRecord = <Dic extends { [k in keyof Dic]: any }, B>(
   d: Dic,
   f: (v: Dic[keyof Dic]) => B

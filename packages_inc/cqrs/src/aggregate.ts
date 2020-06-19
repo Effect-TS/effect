@@ -22,6 +22,7 @@ import {
   AOfTypes,
   AOfMorhpADT
 } from "@matechs/morphic/batteries/usage/tagged-union"
+import type { LiteralExtract } from "@matechs/morphic/utils"
 import { DbT, DbTx, ORM, TaskError } from "@matechs/orm"
 
 // experimental alpha
@@ -31,12 +32,12 @@ export type Handler<S, A, R, E, B> = (a: A) => T.Effect<S, R, E, B>
 
 export class Aggregate<
   Types extends {
-    [k in keyof Types]: [any, any]
+    [k in LiteralExtract<keyof Types>]: [any, any]
   },
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   Env
 > {
@@ -57,7 +58,7 @@ export class Aggregate<
   }
 
   private readonly narrowADT: MorphADT<
-    { [k in Extract<keyof Types, keyof Types>]: Types[k] },
+    { [k in Extract<keyof Types, LiteralExtract<keyof Types>>]: Types[k] },
     Tag,
     ProgURI,
     InterpURI,
@@ -65,7 +66,7 @@ export class Aggregate<
   > = this.S.selectMorph(A.toMutable(this.eventTypes))
 
   adt: MorphADT<
-    { [k in Extract<keyof Types, keyof Types>]: Types[k] },
+    { [k in Extract<keyof Types, LiteralExtract<keyof Types>>]: Types[k] },
     Tag,
     ProgURI,
     InterpURI,
@@ -106,7 +107,9 @@ export class Aggregate<
   }
 
   readOnly(config: ReadSideConfig) {
-    return <Keys2 extends NEA.NonEmptyArray<keyof Types>>(eventTypes: Keys2) =>
+    return <Keys2 extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>>(
+      eventTypes: Keys2
+    ) =>
       this.read.readSide(config)(
         new SliceFetcher(this.S, eventTypes, this.db).fetchSlice(this.aggregate),
         eventTypes
@@ -132,12 +135,12 @@ type InferR<
 
 export class AggregateRoot<
   Types extends {
-    [k in keyof Types]: [any, any]
+    [k in LiteralExtract<keyof Types>]: [any, any]
   },
   Tag extends string,
   ProgURI extends ProgramURI,
   InterpURI extends InterpreterURI,
-  Keys extends NEA.NonEmptyArray<keyof Types>,
+  Keys extends NEA.NonEmptyArray<LiteralExtract<keyof Types>>,
   Db extends symbol | string,
   H extends Array<
     Handler<
