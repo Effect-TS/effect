@@ -1,6 +1,7 @@
 import * as fc from "fast-check"
 
 import * as M from "../src"
+import { isIn } from "../src/adt/utils"
 import * as EQ from "../src/eq"
 import * as FC from "../src/fc"
 import * as GUARD from "../src/guard"
@@ -207,6 +208,63 @@ const TaggedADT = M.makeADT("_tag")(
     }
   }
 )
+
+function typeLevelTest() {
+  const zx = M.make((F) =>
+    F.oneOfLiterals([F.stringLiteral("hi"), F.stringLiteral("bye")], {
+      conf: {
+        [M.ShowURI]: (_s, _e, _c) => ({ show: (a) => _s.show(a) })
+      }
+    })
+  )
+
+  const zz00 = TaggedADT
+  const zz01 = TaggedADT._Types
+  const zz02 = TaggedADT.select(["left"])
+  const zz03 = TaggedADT.exclude(["left"])
+  const zz11 = TaggedADT.tag
+  const zz12 = TaggedADT.of.left({ value: "hi" })
+  const zz13 = TaggedADT.as.left({ value: "hi" })
+  const zz14 = TaggedADT.make({ _tag: "left", value: "hi" })
+  const zz15 = TaggedADT.keys
+  type T = keyof typeof TaggedADT["keys"]
+  const xzx2 = isIn(zz15)("left")
+  const xzx = zz15.left
+  const zz21 = TaggedADT.transform({ left: (v) => v })
+  const zz22 = TaggedADT.fold((v) => (v._tag === "left" ? T.pure(v.value) : T.never))
+  const zz23 = TaggedADT.match({ left: (v) => T.unit, right: (v) => T.unit })
+  const zz24 = TaggedADT.matchStrict({ left: (v) => T.unit, right: (v) => T.unit })
+  const zz25 = TaggedADT.createReducer("")({
+    left: (v) => (s) => s,
+    right: (v) => (s) => s
+  })("hi", TaggedADT.of.left({ value: "hi" }))
+  const zz26 = TaggedADT.strict((v) => (v._tag === "left" ? v._tag : v.value))
+  if (TaggedADT.is.left(zz12)) {
+    const zz30 = zz12._tag
+  }
+  const zz31 = TaggedADT.verified(zz12)
+  if (TaggedADT.isAnyOf(["left"])(zz12)) {
+    const zz32 = zz12._tag
+  }
+
+  const zz40 = TaggedADT.lensFromProp("_tag")
+  const zz50 = TaggedADT.build({ _tag: "left", value: "hi" })
+  const zz60 = M.make((F) => F.array(TaggedADT(F)))
+  const zz61 = EQ.derive(TaggedADT)
+  const zz62 = TaggedADT.selectMorph(["left"], {
+    conf: {
+      [M.EqURI]: (_s, _e, _c) => _s
+    }
+  })
+
+  const x = TaggedADT.match({ left: (v) => T.unit, right: (v) => T.unit })
+  type y = { _tag: "left"; value: number } | { _tag: "right"; right: boolean }
+  declare const z: y
+  if (z._tag === "left") {
+    const xxx = z.value
+  } else {
+  }
+}
 
 const SubADT = TaggedADT.selectMorph(["left"], {
   conf: {

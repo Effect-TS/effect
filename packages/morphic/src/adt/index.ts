@@ -14,16 +14,17 @@ import {
 import { eqString } from "@matechs/core/Eq"
 import { tuple, identity } from "@matechs/core/Function"
 import { fromFoldable } from "@matechs/core/Record"
+import { LiteralExtract } from "@matechs/morphic-alg/primitives"
 
 export interface ADT<A, Tag extends keyof A & string>
   extends Ma.Matchers<A, Tag>,
     PU.Predicates<A, Tag>,
     CtorsWithKeys<A, Tag>,
     M.MonocleFor<A> {
-  select: <Keys extends A[Tag][]>(
+  select: <Keys extends LiteralExtract<A[Tag]>[]>(
     keys: Keys
   ) => ADT<ExtractUnion<A, Tag, ElemType<Keys>>, Tag>
-  exclude: <Keys extends A[Tag][]>(
+  exclude: <Keys extends LiteralExtract<A[Tag]>[]>(
     keys: Keys
   ) => ADT<ExcludeUnion<A, Tag, ElemType<Keys>>, Tag>
 }
@@ -106,7 +107,7 @@ export const makeADT = <Tag extends string>(tag: Tag) => <
   type Tag = typeof tag
   type A = TypeOfDef<R[keyof R]>
   type B = A & Tagged<Tag>
-  const keys = _keys as KeysDefinition<Tagged<Tag>, Tag> // any
+  const keys = (_keys as unknown) as KeysDefinition<Tagged<Tag>, Tag> // any
 
   const ctors = CU.Ctors(tag)(keys)
   const predicates = PU.Predicates<A, Tag>(tag)(keys)

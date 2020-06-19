@@ -1,13 +1,14 @@
 import type { ExtractUnion, ElemType, KeysDefinition } from "../utils"
 
 import { mapWithIndex } from "@matechs/core/Record"
+import { LiteralExtract } from "@matechs/morphic-alg/primitives"
 
 export type Is<A, Tag extends keyof A> = {
-  [key in A[Tag] & string]: (a: A) => a is ExtractUnion<A, Tag, key>
+  [key in LiteralExtract<A[Tag]> & string]: (a: A) => a is ExtractUnion<A, Tag, key>
 }
 
 export interface IsAny<A, Tag extends keyof A> {
-  <Keys extends A[Tag][]>(keys: Keys): (
+  <Keys extends LiteralExtract<A[Tag]>[]>(keys: Keys): (
     a: A
   ) => a is ExtractUnion<A, Tag, ElemType<Keys>>
 }

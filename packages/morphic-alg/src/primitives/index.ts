@@ -17,10 +17,23 @@ export type UUID = Branded<string, UUIDBrand>
 
 export type Keys = Record<string, null>
 
+// Flexible Branded types. Alternative to Const from fp-ts.
+// Found here: https://spin.atomicobject.com/2018/01/15/typescript-flexible-nominal-typing/
+interface Flavoring<B> {
+  _flavourType?: B
+}
+export type Flavor<A, B> = A & Flavoring<B>
+
 export interface LiteralBrand {
   readonly Literal: unique symbol
 }
-export type Literal<A> = Branded<A, LiteralBrand>
+export type Literal<A> = Flavor<A, LiteralBrand>
+export interface NonLiteralBrand {
+  readonly NonLiteral: unique symbol
+}
+export type NonLiteral<A> = Flavor<A, NonLiteralBrand>
+export type LiteralExtract<T> = T extends Literal<infer R> ? R : T
+
 export type LiteralT = string | number
 
 export const PrimitiveURI = "@matechs/morphic-alg/PrimitiveURI" as const
@@ -95,8 +108,8 @@ export interface MatechsAlgebraPrimitive<F, Env> {
   number: {
     (config?: {
       name?: string
-      conf?: ConfigsForType<Env, number, number, NumberConfig>
-    }): HKT2<F, Env, number, number>
+      conf?: ConfigsForType<Env, number, NonLiteral<number>, NumberConfig>
+    }): HKT2<F, Env, number, NonLiteral<number>>
   }
   bigint: {
     (config?: {
@@ -107,8 +120,8 @@ export interface MatechsAlgebraPrimitive<F, Env> {
   string: {
     (config?: {
       name?: string
-      conf?: ConfigsForType<Env, string, string, StringConfig>
-    }): HKT2<F, Env, string, string>
+      conf?: ConfigsForType<Env, string, NonLiteral<string>, StringConfig>
+    }): HKT2<F, Env, string, NonLiteral<string>>
   }
   stringLiteral: {
     <T extends string>(
@@ -250,16 +263,16 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
   }): Kind<F, Env, boolean>
   number(config?: {
     name?: string
-    conf?: ConfigsForType<Env, number, number, NumberConfig>
-  }): Kind<F, Env, number>
+    conf?: ConfigsForType<Env, number, NonLiteral<number>, NumberConfig>
+  }): Kind<F, Env, NonLiteral<number>>
   bigint(config?: {
     name?: string
     conf?: ConfigsForType<Env, string, bigint, BigIntConfig>
   }): Kind<F, Env, bigint>
   string(config?: {
     name?: string
-    conf?: ConfigsForType<Env, string, string, StringConfig>
-  }): Kind<F, Env, string>
+    conf?: ConfigsForType<Env, string, NonLiteral<string>, StringConfig>
+  }): Kind<F, Env, NonLiteral<string>>
   stringLiteral: <T extends string>(
     value: T,
     config?: {
@@ -379,16 +392,16 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
   }): Kind2<F, Env, boolean, boolean>
   number(config?: {
     name?: string
-    conf?: ConfigsForType<Env, number, number, NumberConfig>
-  }): Kind2<F, Env, number, number>
+    conf?: ConfigsForType<Env, number, NonLiteral<number>, NumberConfig>
+  }): Kind2<F, Env, number, NonLiteral<number>>
   bigint(config?: {
     name?: string
     conf?: ConfigsForType<Env, string, bigint, BigIntConfig>
   }): Kind2<F, Env, string, bigint>
   string(config?: {
     name?: string
-    conf?: ConfigsForType<Env, string, string, StringConfig>
-  }): Kind2<F, Env, string, string>
+    conf?: ConfigsForType<Env, string, NonLiteral<string>, StringConfig>
+  }): Kind2<F, Env, string, NonLiteral<string>>
   stringLiteral: <T extends string>(
     value: T,
     config?: {

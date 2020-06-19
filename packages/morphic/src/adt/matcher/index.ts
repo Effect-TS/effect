@@ -1,20 +1,31 @@
 import { isIn, KeysDefinition } from "../utils"
 
 import { Compact } from "@matechs/core/Utils"
+import { LiteralExtract } from "@matechs/morphic-alg/primitives"
 
 type ValueByKeyByTag<
   Union extends Record<any, any>,
   Tags extends keyof Union = keyof Union
 > = {
   [Tag in Tags]: {
-    [Key in Union[Tag]]: Union extends { [r in Tag]: Key } ? Union : never
+    [Key in LiteralExtract<Union[Tag]>]: Union extends { [r in Tag]: Key }
+      ? Union
+      : never
   }
 }
 
 type Cases<Record, R> = { [key in keyof Record]: (v: Record[key]) => R }
 
-interface Folder<A> {
-  <R>(f: (a: A) => R): (a: A) => R
+interface Folder<A, Tag> {
+  <R>(f: (a: { [k in keyof A]: k extends Tag ? LiteralExtract<A[k]> : A[k] }) => R): (
+    a: A
+  ) => R
+}
+
+interface Strict<A, Tag> {
+  <R>(f: (_: { [k in keyof A]: k extends Tag ? LiteralExtract<A[k]> : A[k] }) => R): (
+    _: A
+  ) => R
 }
 
 interface Transform<A, Tag extends keyof A>
@@ -74,12 +85,12 @@ export interface Reducer<S, A> {
 }
 
 export interface Matchers<A, Tag extends keyof A> {
-  fold: Folder<A>
+  fold: Folder<A, Tag>
   transform: Transform<A, Tag>
   match: MatcherWiden<A, Tag>
   matchStrict: MatcherStrict<A, Tag>
   createReducer: <S>(initialState: S) => ReducerBuilder<S, A, Tag>
-  strict: <R>(f: (_: A) => R) => (_: A) => R
+  strict: Strict<A, Tag>
 }
 
 export const Matchers = <A, Tag extends keyof A>(tag: Tag) => (
@@ -91,7 +102,8 @@ export const Matchers = <A, Tag extends keyof A>(tag: Tag) => (
     const c = match[a[tag]]
     return c ? c(a) : a
   }
-  const fold = <A>(a: A) => a
+  const fold = (<A>(a: A) => a) as Folder<A, Tag>
+  const strict = (<A>(a: A) => a) as Strict<A, Tag>
   const createReducer = <S>(initialState: S): ReducerBuilder<S, A, Tag> => (
     m: any,
     def?: any
@@ -108,6 +120,6 @@ export const Matchers = <A, Tag extends keyof A>(tag: Tag) => (
     transform,
     fold,
     createReducer,
-    strict: <A>(a: A) => a
+    strict
   }
 }

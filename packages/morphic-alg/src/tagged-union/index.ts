@@ -1,4 +1,5 @@
 import type { ConfigsForType, AnyEnv } from "../config"
+import type { LiteralExtract } from "../primitives"
 import type { URIS, Kind, URIS2, Kind2, HKT2 } from "../utils/hkt"
 
 export const TaggedUnionsURI = "@matechs/morphic-alg/TaggedUnionsURI" as const
@@ -35,6 +36,10 @@ type DecorateTag<
 
 export interface TaggedUnionConfig<Types> {}
 
+export type ExtractTagLiteral<A, Tag> = {
+  [k in keyof A]: k extends Tag ? LiteralExtract<A[k]> : A[k]
+}
+
 export interface MatechsAlgebraTaggedUnions<F, Env> {
   _F: F
   taggedUnion: {
@@ -46,7 +51,7 @@ export interface MatechsAlgebraTaggedUnions<F, Env> {
         conf?: ConfigsForType<
           Env,
           Types[keyof Types]["_E"],
-          Types[keyof Types]["_A"],
+          ExtractTagLiteral<Types[keyof Types]["_A"], Tag>,
           TaggedUnionConfig<Types>
         >
       }

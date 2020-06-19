@@ -1,3 +1,5 @@
+import { LiteralExtract } from "@matechs/morphic-alg/primitives"
+
 export type Remove<A, Tag> = { [k in Exclude<keyof A, Tag>]: A[k] }
 
 export type ElemType<A> = A extends Array<infer E> ? E : never
@@ -13,7 +15,7 @@ export type ExcludeUnion<A, Tag extends keyof A, Tags extends A[Tag]> = Exclude<
 >
 
 export type KeysDefinition<A, Tag extends keyof A> = {
-  [k in A[Tag] & string]: any
+  [k in LiteralExtract<A[Tag]> & string]: any
 }
 
 export type Tagged<Tag extends string> = { [t in Tag]: string }

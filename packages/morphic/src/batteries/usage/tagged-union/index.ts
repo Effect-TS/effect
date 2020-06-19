@@ -15,7 +15,8 @@ import {
 import { ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
   TaggedUnionsURI,
-  TaggedUnionConfig
+  TaggedUnionConfig,
+  ExtractTagLiteral
 } from "@matechs/morphic-alg/tagged-union"
 import type { HKT2, Algebra } from "@matechs/morphic-alg/utils/hkt"
 
@@ -90,7 +91,7 @@ export type TaggedBuilder<
     conf?: ConfigsForType<
       R,
       Types[keyof Types]["_E"],
-      Types[keyof Types]["_A"],
+      ExtractTagLiteral<Types[keyof Types]["_A"], Tag>,
       TaggedUnionConfig<Types>
     >
   }
