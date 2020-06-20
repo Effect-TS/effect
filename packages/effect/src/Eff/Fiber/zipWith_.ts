@@ -6,7 +6,6 @@ import { result as effectResult } from "../Effect/result"
 import { zipWithPar_ as effectZipWithPar_ } from "../Effect/zipWithPar_"
 import { zipWith_ as effectZipWith_ } from "../Effect/zipWith_"
 import { zipWith_ as exitZipWith } from "../Exit/zipWith_"
-import * as IT from "../Iterable"
 
 import { Fiber, Syntetic } from "./fiber"
 
@@ -21,7 +20,6 @@ export const zipWith_ = <E, A, E1, A1, B>(
   f: (a: A, b: A1) => B
 ): Syntetic<E | E1, B> => ({
   _tag: "SynteticFiber",
-  children: effectZipWith_(fiberA.children, fiberB.children, IT.concat),
   getRef: (ref) =>
     effectZipWith_(fiberA.getRef(ref), fiberB.getRef(ref), (a, b) => ref.join(a, b)),
   inheritRefs: effectChain_(fiberA.inheritRefs, () => fiberB.inheritRefs),

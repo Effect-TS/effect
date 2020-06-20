@@ -11,7 +11,6 @@ import { Syntetic } from "./fiber"
 export const done = <E, A>(exit: Exit<E, A>): Syntetic<E, A> => ({
   _tag: "SynteticFiber",
   wait: succeedNow(exit),
-  children: succeedNow([]),
   getRef: (ref) => succeedNow(ref.initial),
   inheritRefs: unit,
   interruptAs: () => succeedNow(exit),

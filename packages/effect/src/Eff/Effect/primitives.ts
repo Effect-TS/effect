@@ -6,6 +6,8 @@ import { Runtime, Fiber } from "../Fiber/fiber"
 import { FiberID } from "../Fiber/id"
 import { InterruptStatus } from "../Fiber/interruptStatus"
 import { FiberRef } from "../FiberRef/fiberRef"
+import { Scope } from "../Scope"
+import { Supervisor } from "../Supervisor"
 
 import { Effect, AsyncRE } from "./effect"
 
@@ -49,8 +51,9 @@ export type Instruction =
       any,
       any
     >
-  | IDisown
-  | IAdopt
+  | ISupervise<any, any, any, any>
+  | IGetForkScope<any, any, any, any>
+  | IOverrideForkScope<any, any, any, any>
 
 abstract class Base<S, R, E, A> implements Effect<S, R, E, A> {
   _S(): S {
@@ -66,9 +69,6 @@ abstract class Base<S, R, E, A> implements Effect<S, R, E, A> {
     return undefined as any
   }
   get asInstruction() {
-    return this as any
-  }
-  widen() {
     return this as any
   }
 }
@@ -150,7 +150,10 @@ export class IFold<S, R, E, A, S2, R2, E2, A2, S3, R3, E3, A3> extends Base<
 export class IFork<S, R, E, A> extends Base<unknown, R, never, Runtime<E, A>> {
   readonly _tag = "Fork"
 
-  constructor(readonly value: Effect<S, R, E, A>) {
+  constructor(
+    readonly value: Effect<S, R, E, A>,
+    readonly scope: O.Option<Scope<Exit<any, any>>>
+  ) {
     super()
   }
 }
@@ -280,24 +283,39 @@ export class IRaceWith<
     readonly rightWins: (
       exit: Exit<E1, A1>,
       fiber: Fiber<E, A>
-    ) => Effect<S3, R3, E3, A3>
+    ) => Effect<S3, R3, E3, A3>,
+    readonly scope: O.Option<Scope<Exit<any, any>>>
   ) {
     super()
   }
 }
 
-export class IDisown extends Base<never, unknown, never, boolean> {
-  readonly _tag = "Disown"
+export class ISupervise<S, R, E, A> extends Base<unknown, R, E, A> {
+  readonly _tag = "Supervise"
 
-  constructor(readonly fiber: Fiber<any, any>) {
+  constructor(
+    readonly effect: Effect<S, R, E, A>,
+    readonly supervisor: Supervisor<any>
+  ) {
     super()
   }
 }
 
-export class IAdopt extends Base<never, unknown, never, boolean> {
-  readonly _tag = "Adopt"
+export class IGetForkScope<S, R, E, A> extends Base<unknown, R, E, A> {
+  readonly _tag = "GetForkScope"
 
-  constructor(readonly fiber: Fiber<any, any>) {
+  constructor(readonly f: (_: Scope<Exit<any, any>>) => Effect<S, R, E, A>) {
+    super()
+  }
+}
+
+export class IOverrideForkScope<S, R, E, A> extends Base<S, R, E, A> {
+  readonly _tag = "OverrideForkScope"
+
+  constructor(
+    readonly effect: Effect<S, R, E, A>,
+    readonly forkScope: O.Option<Scope<Exit<any, any>>>
+  ) {
     super()
   }
 }

@@ -1,4 +1,6 @@
 import * as S from "../../Set"
+import { Exit } from "../Exit/exit"
+import { Scope } from "../Scope"
 
 import { FiberID } from "./id"
 import { InterruptStatus } from "./interruptStatus"
@@ -16,6 +18,7 @@ export class Descriptor {
     readonly id: FiberID,
     readonly status: Status,
     readonly interruptors: S.Set<FiberID>,
-    readonly interruptStatus: InterruptStatus
+    readonly interruptStatus: InterruptStatus,
+    readonly scope: Scope<Exit<any, any>>
   ) {}
 }
