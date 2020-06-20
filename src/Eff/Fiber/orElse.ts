@@ -1,7 +1,6 @@
 import * as O from "../../Option"
 import { chain_ as effectChain_ } from "../Effect/chain_"
 import { zipWith_ as effectZipWith_ } from "../Effect/zipWith_"
-import * as IT from "../Iterable"
 
 import { Fiber, Syntetic } from "./fiber"
 
@@ -15,7 +14,6 @@ export const orElse = <E1, A1>(that: Fiber<E1, A1>) => <E, A>(
 ): Syntetic<E | E1, A | A1> => ({
   _tag: "SynteticFiber",
   wait: effectZipWith_(fiber.wait, that.wait, (a, b) => (a._tag === "Success" ? a : b)),
-  children: effectZipWith_(fiber.children, that.children, IT.concat),
   getRef: (ref) =>
     effectZipWith_(fiber.getRef(ref), that.getRef(ref), (a, b) =>
       a === ref.initial ? b : a

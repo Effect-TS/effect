@@ -1,5 +1,7 @@
 import * as O from "../../Option"
+import { Exit } from "../Exit/exit"
 import { Runtime } from "../Fiber/fiber"
+import { Scope } from "../Scope"
 
 import { Effect, AsyncR } from "./effect"
 import { IFork } from "./primitives"
@@ -15,5 +17,6 @@ import { IFork } from "./primitives"
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  */
-export const fork = <S, R, E, A>(value: Effect<S, R, E, A>): AsyncR<R, Runtime<E, A>> =>
-  new IFork(value, O.none)
+export const forkIn = (scope: Scope<Exit<any, any>>) => <S, R, E, A>(
+  value: Effect<S, R, E, A>
+): AsyncR<R, Runtime<E, A>> => new IFork(value, O.some(scope))

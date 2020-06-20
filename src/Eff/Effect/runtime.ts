@@ -10,10 +10,10 @@ import { FiberContext } from "../Fiber/context"
 import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
 import { Callback } from "../Fiber/state"
-import { track } from "../Fiber/tracker"
-// support
-
 // effect
+import * as Scope from "../Scope"
+import * as Supervisor from "../Supervisor"
+
 import { Effect, Async } from "./effect"
 
 // empty function
@@ -30,9 +30,16 @@ export const unsafeRunAsync = <S, E, A>(
 ) => {
   const initialIS = interruptible
   const fiberId = newFiberId()
-  const context = new FiberContext<E, A>(fiberId, {}, initialIS, new Map())
-
-  track(context)
+  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
+  const supervisor = Supervisor.none
+  const context = new FiberContext<E, A>(
+    fiberId,
+    {},
+    initialIS,
+    new Map(),
+    supervisor,
+    scope
+  )
 
   context.evaluateNow(_.asInstruction)
   context.runAsync(cb || empty)
@@ -52,9 +59,16 @@ export interface CancelMain {
 export const unsafeRunMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain => {
   const initialIS = interruptible
   const fiberId = newFiberId()
-  const context = new FiberContext<E, void>(fiberId, {}, initialIS, new Map())
-
-  track(context)
+  const scope = Scope.unsafeMakeScope<Exit<E, void>>()
+  const supervisor = Supervisor.none
+  const context = new FiberContext<E, void>(
+    fiberId,
+    {},
+    initialIS,
+    new Map(),
+    supervisor,
+    scope
+  )
 
   context.evaluateNow(effect.asInstruction)
   context.runAsync((exit) => {
@@ -95,9 +109,17 @@ export const unsafeRunAsyncCancelable = <S, E, A>(
 ): AsyncCancel<E, A> => {
   const initialIS = interruptible
   const fiberId = newFiberId()
-  const context = new FiberContext<E, A>(fiberId, {}, initialIS, new Map())
+  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
+  const supervisor = Supervisor.none
 
-  track(context)
+  const context = new FiberContext<E, A>(
+    fiberId,
+    {},
+    initialIS,
+    new Map(),
+    supervisor,
+    scope
+  )
 
   context.evaluateNow(_.asInstruction)
   context.runAsync(cb || empty)
@@ -112,9 +134,17 @@ export const unsafeRunAsyncCancelable = <S, E, A>(
 export const unsafeRunPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
   const initialIS = interruptible
   const fiberId = newFiberId()
-  const context = new FiberContext<E, A>(fiberId, {}, initialIS, new Map())
+  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
+  const supervisor = Supervisor.none
 
-  track(context)
+  const context = new FiberContext<E, A>(
+    fiberId,
+    {},
+    initialIS,
+    new Map(),
+    supervisor,
+    scope
+  )
 
   context.evaluateNow(_.asInstruction)
 

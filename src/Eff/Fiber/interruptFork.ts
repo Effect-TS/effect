@@ -1,5 +1,5 @@
 import { asUnit as effectAsUnit } from "../Effect/asUnit"
-import { forkDaemon as effectForkDaemon } from "../Effect/uninterruptibleMask"
+import { forkDaemon as effectForkDaemon } from "../Effect/forkDaemon"
 
 import { Fiber } from "./fiber"
 import { interrupt } from "./interrupt"
