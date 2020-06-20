@@ -15,6 +15,7 @@ export interface Ref<A> {
   readonly updateAndGet: (f: (a: A) => A) => Sync<A>
   readonly updateSome: (f: (a: A) => O.Option<A>) => Sync<void>
   readonly updateSomeAndGet: (f: (a: A) => O.Option<A>) => Sync<A>
+  readonly unsafeUpdate: (f: (a: A) => A) => void
 }
 
 class RefImpl<A> implements Ref<A> {
@@ -29,6 +30,7 @@ class RefImpl<A> implements Ref<A> {
     this.updateAndGet = this.updateAndGet.bind(this)
     this.updateSome = this.updateSome.bind(this)
     this.updateSomeAndGet = this.updateSomeAndGet.bind(this)
+    this.unsafeUpdate = this.unsafeUpdate.bind(this)
   }
 
   get get(): Sync<A> {
@@ -124,6 +126,10 @@ class RefImpl<A> implements Ref<A> {
 
       return this.value.get
     })
+  }
+
+  unsafeUpdate(f: (a: A) => A) {
+    this.value.set(f(this.value.get))
   }
 }
 

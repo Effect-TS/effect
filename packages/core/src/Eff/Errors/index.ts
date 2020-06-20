@@ -86,3 +86,23 @@ export class InterruptedException extends Error {
 
 export const isInterruptedException = (u: unknown): u is InterruptedException =>
   u instanceof Error && u[InterruptedSymbol] === "InterruptedException"
+
+//
+// @category IllegalState
+//
+
+export const IllegalStateSymbol: unique symbol = Symbol.for(
+  "@matechs/core/symbols/errors/IllegalState"
+)
+
+export class IllegalStateException extends Error {
+  readonly [IllegalStateSymbol] = "IllegalStateException"
+
+  constructor(message?: string) {
+    super(message)
+    this.name = this[IllegalStateSymbol]
+  }
+}
+
+export const isIllegalStateException = (u: unknown): u is IllegalStateException =>
+  u instanceof Error && u[IllegalStateSymbol] === "IllegalStateException"

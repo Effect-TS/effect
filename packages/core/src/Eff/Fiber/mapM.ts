@@ -16,7 +16,6 @@ export const mapM = <E2, A, B>(f: (a: A) => AsyncE<E2, B>) => <E>(
 ): Syntetic<E | E2, B> => ({
   _tag: "SynteticFiber",
   wait: chain_(fiber.wait, foreach(f)),
-  children: fiber.children,
   getRef: (ref) => fiber.getRef(ref),
   inheritRefs: fiber.inheritRefs,
   interruptAs: (id) => chain_(fiber.interruptAs(id), foreach(f)),
