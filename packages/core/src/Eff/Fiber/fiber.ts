@@ -7,7 +7,7 @@ import { FiberID } from "./id"
 
 export interface CommonFiber<E, A> {
   wait: Async<Exit<E, A>>
-  children: Sync<Iterable<Runtime<any, any>>>
+  //children: Sync<Iterable<Runtime<any, any>>>
   getRef: <K>(fiberRef: FiberRef<K>) => Sync<K>
   inheritRefs: Async<void>
   interruptAs(fiberId: FiberID): Async<Exit<E, A>>
