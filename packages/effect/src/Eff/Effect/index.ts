@@ -103,3 +103,11 @@ export { uncause } from "./uncause"
 export { zip_ } from "./zip_"
 export { forkScopeWith } from "./forkScopeWith"
 export { transplant } from "./transplant"
+export {
+  bracketFiber,
+  catchAll,
+  joinAll,
+  foreachPar_,
+  foreachParUnit_,
+  waitAll
+} from "./foreachPar_"
