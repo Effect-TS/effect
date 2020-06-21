@@ -8,6 +8,7 @@ import { stripFailures } from "../Cause/stripFailures"
 // effect
 import * as bracket from "../Effect/bracket_"
 import * as chain from "../Effect/chain"
+import * as chain_ from "../Effect/chain_"
 import * as die from "../Effect/die"
 import * as done from "../Effect/done"
 import { Effect, Sync, Async } from "../Effect/effect"
@@ -370,7 +371,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             )
           )
 
-          return chain.chain(() => done.done(v))(this.openScope.close(v)).asInstruction
+          this.setInterrupting(true)
+
+          return chain_.chain_(this.openScope.close(v), () => done.done(v))
+            .asInstruction
         }
       }
     }
@@ -499,9 +503,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     if (currentSup !== Sup.none) {
       currentSup.unsafeOnStart(currentEnv, i0, O.some(this), childContext)
-      childContext.onDone((exit) =>
+      childContext.onDone((exit) => {
         currentSup.unsafeOnEnd(flattenExit(exit), childContext)
-      )
+      })
     }
 
     if (parentScope !== Scope.globalScope) {
