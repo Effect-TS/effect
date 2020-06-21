@@ -349,19 +349,17 @@ export const unsafeMakeScope = <A>() => {
     finalizers
   )
 
-  return new Open<A>(
-    (a) =>
-      suspend(() => {
-        const result = scope.unsafeClose(a)
+  return new Open<A>((a) => {
+    return suspend(() => {
+      const result = scope.unsafeClose(a)
 
-        if (result == null) {
-          return succeedNow(false)
-        } else {
-          return map_(result, () => true)
-        }
-      }),
-    scope
-  )
+      if (result != null) {
+        return map_(result, () => true)
+      } else {
+        return succeedNow(false)
+      }
+    })
+  }, scope)
 }
 
 export const makeScope = <A>() => effectTotal(() => unsafeMakeScope<A>())
