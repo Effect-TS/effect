@@ -1,25 +1,23 @@
+import * as A from "../Array"
 import { pipe } from "../Function"
 
 import * as T from "./Effect"
 
-let k = 0
-
 pipe(
-  T.foreachParN_(3)([0, 1, 2, 3, 4, 5], (n) =>
-    T.effectAsync<unknown, never, number>((cb) => {
-      k += 1
+  T.foreachParN_(5)(A.range(0, 100), (n) =>
+    T.effectAsync<unknown, string, number>((cb) => {
       setTimeout(() => {
-        if (k <= 3) {
-          k -= 1
+        if (n > 2) {
+          cb(T.fail(`err: ${n}`))
+        } else {
+          cb(T.succeedNow(n + 1))
         }
-        cb(T.succeedNow(n + 1))
-      }, 100)
+      }, 200)
     })
   ),
   T.chain((n) =>
     T.effectTotal(() => {
-      console.log("k", k)
-      console.log("n", n)
+      console.log(n)
     })
   ),
   T.unsafeRunMain

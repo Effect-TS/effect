@@ -1,6 +1,7 @@
 import * as C from "../../src/Eff/Cause"
 import * as T from "../../src/Eff/Effect"
 import * as E from "../../src/Eff/Exit"
+import { pipe } from "../../src/Function"
 
 describe("Core Implementation", () => {
   it("should interrupt async", async () => {
@@ -42,5 +43,15 @@ describe("Core Implementation", () => {
 
     expect(k).toBe(0)
     expect(res).toStrictEqual([1, 2, 3, 4, 5, 6])
+  })
+
+  it("provideAll", async () => {
+    const res = await pipe(
+      T.accessM((n: number) => T.succeedNow(n + 1)),
+      T.provideAll(1),
+      T.unsafeRunPromise
+    )
+
+    expect(res).toStrictEqual(2)
   })
 })

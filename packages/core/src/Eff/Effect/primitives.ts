@@ -1,8 +1,9 @@
 import * as O from "../../Option"
 import { Cause } from "../Cause/cause"
 import { Exit } from "../Exit/exit"
+import { FiberContext } from "../Fiber/context"
 import { Descriptor } from "../Fiber/descriptor"
-import { Runtime, Fiber } from "../Fiber/fiber"
+import { Fiber } from "../Fiber/fiber"
 import { FiberID } from "../Fiber/id"
 import { InterruptStatus } from "../Fiber/interruptStatus"
 import { FiberRef } from "../FiberRef/fiberRef"
@@ -147,7 +148,7 @@ export class IFold<S, R, E, A, S2, R2, E2, A2, S3, R3, E3, A3> extends Base<
   }
 }
 
-export class IFork<S, R, E, A> extends Base<unknown, R, never, Runtime<E, A>> {
+export class IFork<S, R, E, A> extends Base<unknown, R, never, FiberContext<E, A>> {
   readonly _tag = "Fork"
 
   constructor(

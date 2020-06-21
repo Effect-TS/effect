@@ -6,6 +6,10 @@ import { foreachParN_ } from "./foreachParN_"
  * and returns the results in a new `readonly B[]`.
  *
  * Unlike `foreachPar`, this method will use at most up to `n` fibers.
+ *
+ * Note: effects are never interrupted when started, if a failure is detected
+ * no new effects will start and the fiber will complete as soon as the running
+ * effects complete
  */
 export const foreachParN = (n: number) => <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
