@@ -11,9 +11,9 @@ import { AsyncRE, Sync } from "./effect"
 import { effectAsyncOption } from "./effectAsyncOption"
 import { effectTotal } from "./effectTotal"
 import { flatten } from "./flatten"
+import { onInterrupt_ } from "./onInterrupt_"
 import { succeedNow } from "./succeedNow"
 import { suspend } from "./suspend"
-import { onInterrupt_ } from "./uninterruptibleMask"
 import { unit } from "./unit"
 
 /**

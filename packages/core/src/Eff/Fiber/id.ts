@@ -1,5 +1,5 @@
 import { Eq } from "../../Eq"
-import { AtomicLong } from "../Support/AtomicLong"
+import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
  * The identity of a Fiber, described by the time it began life, and a
@@ -29,7 +29,7 @@ export const EqFiberID: Eq<FiberID> = {
     x.seqNumber === y.seqNumber && x.startTimeMillis === y.startTimeMillis
 }
 
-const _fiberCounter = new AtomicLong()
+const _fiberCounter = new AtomicNumber(0)
 
 export const newFiberId = () =>
   FiberID(new Date().getTime(), _fiberCounter.getAndIncrement())
