@@ -2,7 +2,7 @@ import * as S from "../../Set"
 import { FiberID } from "../Fiber/id"
 
 import { Effect } from "./effect"
-import { onInterrupt_ } from "./uninterruptibleMask"
+import { onInterrupt_ } from "./onInterrupt_"
 
 /**
  * Calls the specified function, and runs the effect it returns, if this
