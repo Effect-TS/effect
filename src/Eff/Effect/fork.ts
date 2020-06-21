@@ -1,5 +1,5 @@
 import * as O from "../../Option"
-import { Runtime } from "../Fiber/fiber"
+import { FiberContext } from "../Fiber/context"
 
 import { Effect, AsyncR } from "./effect"
 import { IFork } from "./primitives"
@@ -15,5 +15,6 @@ import { IFork } from "./primitives"
  * The fiber is forked with interrupt supervision mode, meaning that when the
  * fiber that forks the child exits, the child will be interrupted.
  */
-export const fork = <S, R, E, A>(value: Effect<S, R, E, A>): AsyncR<R, Runtime<E, A>> =>
-  new IFork(value, O.none)
+export const fork = <S, R, E, A>(
+  value: Effect<S, R, E, A>
+): AsyncR<R, FiberContext<E, A>> => new IFork(value, O.none)
