@@ -1,3 +1,4 @@
+import * as A from "../../Array"
 import { CMonad2, CApplicative2 } from "../../Base"
 
 import { ap } from "./ap"
@@ -29,3 +30,7 @@ export const applicativeExit: CApplicative2<URI> = {
   of: succeed,
   ap
 }
+
+export const sequenceArray =
+  /*#__PURE__*/
+  A.sequence(applicativeExit)
