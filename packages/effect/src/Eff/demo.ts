@@ -1,19 +1,25 @@
 import { pipe } from "../Function"
 
 import * as T from "./Effect"
-import { makeUnbounded } from "./Queue"
+
+let k = 0
 
 pipe(
-  makeUnbounded<number>(),
-  T.tap((q) => q.offer(0)),
-  T.tap((q) => q.offer(1)),
-  T.tap((q) => q.offer(2)),
-  T.tap((q) => q.offer(3)),
-  T.tap((q) => q.offer(4)),
-  T.chain((q) => q.takeAll),
+  T.foreachParN_(3)([0, 1, 2, 3, 4, 5], (n) =>
+    T.effectAsync<unknown, never, number>((cb) => {
+      k += 1
+      setTimeout(() => {
+        if (k <= 3) {
+          k -= 1
+        }
+        cb(T.succeedNow(n + 1))
+      }, 100)
+    })
+  ),
   T.chain((n) =>
     T.effectTotal(() => {
-      console.log(n)
+      console.log("k", k)
+      console.log("n", n)
     })
   ),
   T.unsafeRunMain
