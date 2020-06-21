@@ -1,5 +1,5 @@
 import { AsyncE } from "../Effect/effect"
-import { to } from "../Effect/to"
+import { toPromise } from "../Effect/toPromise"
 
 import { Promise } from "./promise"
 
@@ -11,4 +11,4 @@ import { Promise } from "./promise"
  * that if you do not need to memoize the result of the specified effect.
  */
 export const complete = <E, A>(e: AsyncE<E, A>) => (promise: Promise<E, A>) =>
-  to(promise)(e)
+  toPromise(promise)(e)

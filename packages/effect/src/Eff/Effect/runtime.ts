@@ -4,7 +4,9 @@ import { failed } from "../Cause/failed"
 import { pretty } from "../Cause/pretty"
 // exit
 import { FiberFailure } from "../Errors"
+import { die } from "../Exit/die"
 import { Exit } from "../Exit/exit"
+import { flatten } from "../Exit/flatten"
 // fiber
 import { FiberContext } from "../Fiber/context"
 import { newFiberId } from "../Fiber/id"
@@ -162,4 +164,40 @@ export const unsafeRunPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> =>
       }
     })
   })
+}
+
+/**
+ * Run effect as a Promise, throwing a FiberFailure containing the cause of exit
+ * in case of error.
+ */
+export const unsafeRunSync = <E, A>(_: Effect<never, {}, E, A>): Exit<E, A> => {
+  const initialIS = interruptible
+  const fiberId = newFiberId()
+  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
+  const supervisor = Supervisor.none
+
+  const context = new FiberContext<E, A>(
+    fiberId,
+    {},
+    initialIS,
+    new Map(),
+    supervisor,
+    scope
+  )
+
+  context.evaluateNow(_.asInstruction)
+
+  const state = context.state.get
+
+  if (state._tag === "Done") {
+    return state.value
+  } else {
+    unsafeRunAsync(context.interruptAs(fiberId), (e) => {
+      console.error(
+        "Bug: unsafeRunSync did not complete, interrupted with:",
+        flatten(e)
+      )
+    })
+    return die("Bug: unsafeRunSync did not complete")
+  }
 }
