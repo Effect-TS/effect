@@ -1,5 +1,5 @@
 import * as O from "../../Option"
-import { Runtime } from "../Fiber/fiber"
+import { FiberContext } from "../Fiber/context"
 import { globalScope } from "../Scope"
 
 import { AsyncR, Effect } from "./effect"
@@ -12,4 +12,4 @@ import { IFork } from "./primitives"
  */
 export const forkDaemon = <S, R, E, A>(
   value: Effect<S, R, E, A>
-): AsyncR<R, Runtime<E, A>> => new IFork(value, O.some(globalScope))
+): AsyncR<R, FiberContext<E, A>> => new IFork(value, O.some(globalScope))

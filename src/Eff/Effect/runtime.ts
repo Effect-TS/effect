@@ -78,15 +78,16 @@ export const unsafeRunMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain 
       case "Failure": {
         if (died(exit.cause) || failed(exit.cause)) {
           console.error(pretty(exit.cause))
-          process.exit(2)
+          //process.exit(2)
         } else {
           console.log(pretty(exit.cause))
-          process.exit(0)
+          //process.exit(0)
         }
+        break
       }
       // eslint-disable-next-line no-fallthrough
       case "Success": {
-        process.exit(0)
+        //process.exit(0)
       }
     }
   })
