@@ -22,4 +22,25 @@ describe("Core Implementation", () => {
 
     expect(E.interrupted(status) && C.interruptors(status.cause).size).toStrictEqual(1)
   })
+
+  it("foreachParN_", async () => {
+    let k = 0
+
+    const res = await T.unsafeRunPromise(
+      T.foreachParN_(3)([0, 1, 2, 3, 4, 5], (n) =>
+        T.effectAsync<unknown, never, number>((cb) => {
+          k += 1
+          setTimeout(() => {
+            if (k <= 3) {
+              k -= 1
+            }
+            cb(T.succeedNow(n + 1))
+          }, 100)
+        })
+      )
+    )
+
+    expect(k).toBe(0)
+    expect(res).toStrictEqual([1, 2, 3, 4, 5, 6])
+  })
 })
