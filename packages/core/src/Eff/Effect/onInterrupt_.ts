@@ -28,3 +28,22 @@ export const onInterrupt_ = <S, R, E, A, S2, R2>(
       succeedNow
     )
   )
+
+/**
+ * Calls the specified function, and runs the effect it returns, if this
+ * effect is interrupted (allows for expanding error).
+ */
+export const onInterruptE_ = <S, R, E, A, S2, R2, E2>(
+  self: Effect<S, R, E, A>,
+  cleanup: (interruptors: S.Set<FiberID>) => Effect<S2, R2, E2, any>
+) =>
+  uninterruptibleMask(({ restore }) =>
+    foldCauseM_(
+      restore(self),
+      (cause) =>
+        interrupted(cause)
+          ? chain_(cleanup(interruptors(cause)), () => halt(cause))
+          : halt(cause),
+      succeedNow
+    )
+  )
