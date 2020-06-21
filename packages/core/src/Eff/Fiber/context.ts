@@ -6,7 +6,7 @@ import { interruptors } from "../Cause/interruptors"
 import { isEmpty } from "../Cause/isEmpty"
 import { stripFailures } from "../Cause/stripFailures"
 // effect
-import * as bracket from "../Effect/bracket"
+import * as bracket from "../Effect/bracket_"
 import * as chain from "../Effect/chain"
 import * as die from "../Effect/die"
 import * as done from "../Effect/done"
@@ -838,7 +838,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                 case "Provide": {
                   const c = current
-                  current = bracket.bracket(
+                  current = bracket.bracket_(
                     effectTotal.effectTotal(() => {
                       this.pushEnv(c.r)
                     }),
@@ -909,7 +909,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                     this.supervisors = this.supervisors.previous!
                   })
-                  current = bracket.bracket(
+                  current = bracket.bracket_(
                     push,
                     () => pop,
                     () => c.effect
@@ -942,7 +942,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     this.forkScopeOverride = this.forkScopeOverride?.previous
                   })
 
-                  current = bracket.bracket(
+                  current = bracket.bracket_(
                     push,
                     () => pop,
                     () => c.effect

@@ -9,6 +9,6 @@ import { IProvide } from "./primitives"
  * This is similar to dependency injection, and the `provide` function can be
  * thought of as `inject`.
  */
-export const provide = <R>(r: R) => <S, E, A>(
+export const provideAll = <R>(r: R) => <S, E, A>(
   next: Effect<S, R, E, A>
 ): Effect<S, unknown, E, A> => new IProvide(r, next)

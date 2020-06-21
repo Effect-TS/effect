@@ -1,7 +1,3 @@
-// cause
-// exit
-// support
-
 export {
   Effect,
   Async,
@@ -13,14 +9,16 @@ export {
   SyncR,
   SyncRE
 } from "./effect"
-
 export { monadEff, Do, URI } from "./instances"
 export { ap } from "./ap"
+export { ap_ } from "./ap_"
 export { absolve } from "./absolve"
 export { accessM } from "./accessM"
 export { asUnit } from "./asUnit"
 export { bracket } from "./bracket"
+export { bracket_ } from "./bracket_"
 export { bracketExit } from "./bracketExit"
+export { bracketExit_ } from "./bracketExit_"
 export { chain } from "./chain"
 export { chain_ } from "./chain_"
 export { tap } from "./tap"
@@ -28,6 +26,7 @@ export { tap_ } from "./tap_"
 export { checkInterrupt } from "./checkInterrupt"
 export { checkDescriptor } from "./checkDescriptor"
 export { delay } from "./delay"
+export { delay_ } from "./delay_"
 export { die } from "./die"
 export { done } from "./done"
 export { effectAsyncOption } from "./effectAsyncOption"
@@ -55,6 +54,7 @@ export { forkIn } from "./forkIn"
 export { fromEither } from "./fromEither"
 export { halt } from "./halt"
 export { interruptAs } from "./interruptAs"
+export { interrupt } from "./interrupt"
 export { interruptible } from "./interruptible"
 export { interruptStatus } from "./interruptStatus"
 export { interruptStatus_ } from "./interruptStatus_"
@@ -62,36 +62,39 @@ export { map } from "./map"
 export { map_ } from "./map_"
 export { never } from "./never"
 export { onInterrupt } from "./onInterrupt"
-export { provide } from "./provide"
+export { onInterrupt_ } from "./onInterrupt_"
+export { provideAll } from "./provideAll"
+export { provideAll_ } from "./provideAll_"
 export { raceWith } from "./raceWith"
 export { result } from "./result"
 export { succeedNow } from "./succeedNow"
 export { suspend } from "./suspend"
 export { suspendPartial } from "./suspendPartial"
 export { uninterruptible } from "./uninterruptible"
-export {
-  InterruptStatusRestore,
-  disconnect,
-  onInterrupt_,
-  uninterruptibleMask
-} from "./uninterruptibleMask"
+export { InterruptStatusRestore, uninterruptibleMask } from "./uninterruptibleMask"
+export { disconnect } from "./disconnect"
 export { unit } from "./unit"
 export { yieldNow } from "./yieldNow"
 export { zipWith_ } from "./zipWith_"
+export { zipWith } from "./zipWith"
 export { zipWithPar_ } from "./zipWithPar_"
+export { zipWithPar } from "./zipWithPar"
 export {
   unsafeRunAsync,
   unsafeRunAsyncCancelable,
   unsafeRunMain,
   unsafeRunPromise,
+  unsafeRunSync,
   AsyncCancel,
   CancelMain
 } from "./runtime"
 export { orDie } from "./orDie"
 export { orDieWith } from "./orDieWith"
+export { orDieWith_ } from "./orDieWith_"
 export { orDieKeep } from "./orDieKeep"
-export { to } from "./to"
+export { toPromise } from "./toPromise"
 export { whenM } from "./whenM"
+export { whenM_ } from "./whenM_"
 export { ensuring } from "./ensuring"
 export { tapCause } from "./tapCause"
 export { cause } from "./cause"
@@ -101,13 +104,18 @@ export { fold } from "./fold"
 export { fold_ } from "./fold_"
 export { uncause } from "./uncause"
 export { zip_ } from "./zip_"
+export { zip } from "./zip"
+export { zipFirst } from "./zipFirst"
+export { zipFirst_ } from "./zipFirst_"
+export { zipSecond } from "./zipSecond"
+export { zipSecond_ } from "./zipSecond_"
 export { forkScopeWith } from "./forkScopeWith"
 export { transplant } from "./transplant"
-export {
-  bracketFiber,
-  catchAll,
-  joinAll,
-  foreachPar_,
-  foreachParUnit_,
-  waitAll
-} from "./foreachPar_"
+export { foreachPar_ } from "./foreachPar_"
+export { foreachParUnit_ } from "./foreachParUnit_"
+export { foreachPar } from "./foreachPar"
+export { catchAll } from "./catchAll"
+export { catchAll_ } from "./catchAll_"
+export { foreachParUnit } from "./foreachParUnit"
+export { bracketFiber } from "./bracketFiber"
+export { bracketFiber_ } from "./bracketFiber_"

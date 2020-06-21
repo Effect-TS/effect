@@ -9,6 +9,7 @@ import { succeedNow } from "../Effect/succeedNow"
 import { suspend } from "../Effect/suspend"
 import { uncause } from "../Effect/uncause"
 import { zipWith_ } from "../Effect/zipWith_"
+import { AtomicNumber } from "../Support/AtomicNumber"
 import { AtomicReference } from "../Support/AtomicReference"
 
 /**
@@ -175,15 +176,6 @@ export class OrderedFinalizer {
   constructor(readonly order: number, readonly finalizer: (_: any) => Async<any>) {}
 }
 
-const decrementAndGet = (_: AtomicReference<number>) => {
-  _.set(_.get - 1)
-  return _.get
-}
-const incrementAndGet = (_: AtomicReference<number>) => {
-  _.set(_.get + 1)
-  return _.get
-}
-
 const noCause = Empty
 const noCauseEffect: Async<Cause<never>> = succeedNow(noCause)
 
@@ -191,9 +183,9 @@ export class Local<A> implements CommonScope<A> {
   readonly _tag = "Local"
 
   constructor(
-    readonly finalizerCount: AtomicReference<number>,
+    readonly finalizerCount: AtomicNumber,
     readonly exitValue: AtomicReference<A | null>,
-    readonly references: AtomicReference<number>,
+    readonly references: AtomicNumber,
     readonly finalizers: Map<Key, OrderedFinalizer>
   ) {}
 
@@ -270,7 +262,7 @@ export class Local<A> implements CommonScope<A> {
 
     this.finalizers.set(
       key,
-      new OrderedFinalizer(incrementAndGet(this.finalizerCount), finalizer)
+      new OrderedFinalizer(this.finalizerCount.incrementAndGet(), finalizer)
     )
 
     return O.some(key)
@@ -280,7 +272,7 @@ export class Local<A> implements CommonScope<A> {
     if (this.unsafeClosed) {
       return false
     }
-    incrementAndGet(this.references)
+    this.references.incrementAndGet()
     return true
   }
 
@@ -303,7 +295,7 @@ export class Local<A> implements CommonScope<A> {
   }
 
   unsafeRelease(): Async<any> | null {
-    if (decrementAndGet(this.references) === 0) {
+    if (this.references.decrementAndGet() === 0) {
       const totalSize = this.finalizers.size
 
       if (totalSize === 0) {
@@ -351,9 +343,9 @@ export const unsafeMakeScope = <A>() => {
   const exitValue = new AtomicReference<A | null>(null)
   const finalizers = new Map<Key, OrderedFinalizer>()
   const scope = new Local(
-    new AtomicReference(Number.MIN_VALUE),
+    new AtomicNumber(Number.MIN_SAFE_INTEGER),
     exitValue,
-    new AtomicReference(1),
+    new AtomicNumber(1),
     finalizers
   )
 

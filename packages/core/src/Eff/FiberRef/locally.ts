@@ -1,5 +1,5 @@
 import { pipe } from "../../Function"
-import { bracket } from "../Effect/bracket"
+import { bracket_ } from "../Effect/bracket_"
 import { chain } from "../Effect/chain"
 import { Effect } from "../Effect/effect"
 
@@ -18,7 +18,7 @@ export const locally = <A>(value: A) => <S, R, E, B>(use: Effect<S, R, E, B>) =>
   pipe(
     get(fiberRef),
     chain((oldValue) =>
-      bracket(
+      bracket_(
         set(value)(fiberRef),
         () => set(oldValue)(fiberRef),
         () => use
