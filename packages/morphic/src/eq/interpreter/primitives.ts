@@ -4,7 +4,14 @@ import { EqType, EqURI } from "../hkt"
 
 import { getEq as AgetEq } from "@matechs/core/Array"
 import { getEq as EgetEq } from "@matechs/core/Either"
-import { contramap_, eqBoolean, eqNumber, eqStrict, eqString } from "@matechs/core/Eq"
+import {
+  contramap_,
+  Eq,
+  eqBoolean,
+  eqNumber,
+  eqStrict,
+  eqString
+} from "@matechs/core/Eq"
 import { introduce } from "@matechs/core/Function"
 import { getEq as OgetEq } from "@matechs/core/Option"
 import type { AnyEnv } from "@matechs/morphic-alg/config"
@@ -29,6 +36,10 @@ export const eqPrimitiveInterpreter = memo(
       new EqType<typeof k>(eqApplyConfig(config?.conf)(eqString, env, {})),
     numberLiteral: (k, config) => (env) =>
       new EqType<typeof k>(eqApplyConfig(config?.conf)(eqNumber, env, {})),
+    oneOfLiterals: (ls, config) => (env) =>
+      introduce<Eq<typeof ls[number]>>(eqStrict)(
+        (eq) => new EqType(eqApplyConfig(config?.conf)(eq, env, { eq }))
+      ),
     keysOf: (keys, config) => (env) =>
       new EqType<keyof typeof keys & string>(
         eqApplyConfig(config?.conf)(eqStrict, env, {})

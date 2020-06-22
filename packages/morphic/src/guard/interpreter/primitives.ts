@@ -85,6 +85,17 @@ export const guardPrimitiveInterpreter = memo(
           {}
         )
       ),
+    oneOfLiterals: (ls, config) => (env) =>
+      new GuardType(
+        guardApplyConfig(config?.conf)(
+          {
+            is: (u: unknown): u is typeof ls[number] =>
+              (typeof u === "string" || typeof u === "number") && ls.includes(u)
+          },
+          env,
+          {}
+        )
+      ),
     keysOf: (keys, config) => (env) =>
       new GuardType<keyof typeof keys & string>(
         guardApplyConfig(config?.conf)(
