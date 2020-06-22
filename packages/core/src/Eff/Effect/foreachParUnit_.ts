@@ -1,5 +1,7 @@
 import { pipe } from "../../Function"
-import { Empty, Cause, Both } from "../Cause/cause"
+import { Empty, Cause, Both, Then, Interrupt } from "../Cause/cause"
+import { isEmpty } from "../Cause/isEmpty"
+import { FiberID } from "../Fiber/id"
 import { joinAll } from "../Fiber/joinAll"
 import { complete as promiseComplete } from "../Promise/complete"
 import { fail as promiseFailure } from "../Promise/fail"
@@ -11,6 +13,7 @@ import { makeRef } from "../Ref"
 import { bracketFiber } from "./bracketFiber"
 import { catchAll } from "./catchAll"
 import { chain_ } from "./chain_"
+import { checkDescriptor } from "./checkDescriptor"
 import { Effect, AsyncRE } from "./effect"
 import { ensuring } from "./ensuring"
 import { fiberId } from "./fiberId"
@@ -20,6 +23,7 @@ import { halt } from "./halt"
 import { Do } from "./instances"
 import { interruptible } from "./interruptible"
 import { map_ } from "./map_"
+import { onInterruptExtended_ } from "./onInterrupt_"
 import { tapCause } from "./tapCause"
 import { tap_ } from "./tap_"
 import { uninterruptible } from "./uninterruptible"
@@ -55,6 +59,7 @@ export const foreachParUnit_ = <S, R, E, A>(
     .bind("result", promiseMake<never, boolean>())
     .bind("failureTrigger", promiseMake<void, void>())
     .bind("status", makeRef([0, 0, false] as [number, number, boolean]))
+    .bind("rootCause", makeRef<[FiberID, Cause<E>] | undefined>(undefined))
     .letL("startTask", (s) =>
       s.status.modify(([started, done, failing]) =>
         failing
@@ -74,10 +79,18 @@ export const foreachParUnit_ = <S, R, E, A>(
           pipe(
             f(a),
             interruptible,
-            tapCause((_) =>
+            tapCause((c) =>
               chain_(
-                s.causes.update((l) => Both(l, _)),
-                () => s.startFailure
+                checkDescriptor((d) =>
+                  s.rootCause.modify((_) => (_ != null ? [_[1], _] : [c, [d.id, c]]))
+                ),
+                (rc) =>
+                  rc === c
+                    ? s.startFailure
+                    : chain_(
+                        s.causes.update((l) => Both(c, l)),
+                        () => s.startFailure
+                      )
               )
             ),
             ensuring(
@@ -97,6 +110,7 @@ export const foreachParUnit_ = <S, R, E, A>(
       )
     )
     .bindL("fibers", (s) => foreach_(arr, (a) => fork(s.task(a))))
+    .bind("hasCompleted", makeRef(false))
     .doL((s) =>
       pipe(
         s.failureTrigger,
@@ -108,7 +122,29 @@ export const foreachParUnit_ = <S, R, E, A>(
           )
         ),
         bracketFiber(() =>
-          whenM(map_(promiseWait(s.result), (b) => !b))(chain_(s.causes.get, halt))
+          onInterruptExtended_(
+            whenM(map_(promiseWait(s.result), (b) => !b))(
+              chain_(s.causes.get, (x) =>
+                chain_(s.rootCause.get, (rc) =>
+                  chain_(s.hasCompleted.set(true), () =>
+                    halt(rc == null ? x : Then(Then(rc[1], Interrupt(rc[0])), x))
+                  )
+                )
+              )
+            ),
+            () =>
+              chain_(s.hasCompleted.get, (hasCompleted) =>
+                hasCompleted
+                  ? unit
+                  : chain_(
+                      chain_(
+                        chain_(s.startFailure, () => promiseWait(s.result)),
+                        () => s.causes.get
+                      ),
+                      (c) => (isEmpty(c) ? unit : halt(c))
+                    )
+              )
+          )
         )
       )
     )
