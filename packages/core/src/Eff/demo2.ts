@@ -1,3 +1,11 @@
-import * as C from "./Cause"
+import * as T from "./Effect"
 
-console.log(C.pretty(C.Both(C.Die("l"), C.Die("r"))))
+const cancel = T.unsafeRunMain(
+  T.bracket_(
+    T.succeedNow(1),
+    () => T.die("error"),
+    () => T.delay(100)(T.unit)
+  )
+)
+
+cancel()

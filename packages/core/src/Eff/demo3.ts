@@ -4,7 +4,7 @@ import { pipe } from "../Function"
 import * as T from "./Effect"
 
 export const cancel = pipe(
-  T.foreachParN_(5)(A.range(0, 10), (n) =>
+  T.foreachPar_(A.range(0, 10), (n) =>
     T.effectAsyncInterrupt<unknown, string, number>((cb) => {
       const t = setTimeout(
         () => {
@@ -14,14 +14,14 @@ export const cancel = pipe(
             cb(T.succeedNow(n + 1))
           }
         },
-        n < 3 ? 1000 : 200
+        n < 5 ? 1000 : 200
       )
 
       return T.chain_(
         T.effectTotal(() => {
           clearTimeout(t)
         }),
-        () => T.die(`n: ${n}`)
+        () => T.die(`err-int: ${n}`)
       )
     })
   ),
