@@ -17,6 +17,8 @@ export type UUID = Branded<string, UUIDBrand>
 
 export type Keys = Record<string, null>
 
+export type LiteralT = string | number
+
 export const PrimitiveURI = "@matechs/morphic-alg/PrimitiveURI" as const
 
 export type PrimitiveURI = typeof PrimitiveURI
@@ -40,6 +42,7 @@ export interface MutableConfig<L, A> {}
 export interface OptionalConfig<L, A> {}
 export interface StringLiteralConfig<T> {}
 export interface NumberLiteralConfig<T> {}
+export interface OneOfLiteralsConfig<T> {}
 export interface KeysOfConfig<K> {}
 export interface EitherConfig<EE, EA, AE, AA> {}
 export interface OptionConfig<L, A> {}
@@ -120,6 +123,19 @@ export interface MatechsAlgebraPrimitive<F, Env> {
         conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
       }
     ): HKT2<F, Env, number, typeof value>
+  }
+  oneOfLiterals: {
+    /**
+     * The value array has to be created with `as const` assertion for this
+     * combinator to work correctly
+     */
+    <T extends readonly [LiteralT, ...LiteralT[]]>(
+      value: T,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, LiteralT, T[number], OneOfLiteralsConfig<T[number]>>
+      }
+    ): HKT2<F, Env, LiteralT, T[number]>
   }
   keysOf: {
     <K extends Keys>(
@@ -253,6 +269,15 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
       conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
     }
   ) => Kind<F, Env, typeof value>
+  oneOfLiterals: {
+    <T extends readonly [LiteralT, ...LiteralT[]]>(
+      value: T,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, LiteralT, T[number], OneOfLiteralsConfig<T[number]>>
+      }
+    ): Kind<F, Env, T[number]>
+  }
   keysOf: <K extends Keys>(
     keys: K,
     config?: {
@@ -368,6 +393,15 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
       conf?: ConfigsForType<Env, number, T, NumberLiteralConfig<T>>
     }
   ) => Kind2<F, Env, number, typeof value>
+  oneOfLiterals: {
+    <T extends readonly [LiteralT, ...LiteralT[]]>(
+      value: T,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<Env, LiteralT, T[number], OneOfLiteralsConfig<T[number]>>
+      }
+    ): Kind2<F, Env, LiteralT, T[number]>
+  }
   keysOf: <K extends Keys>(
     keys: K,
     config?: {

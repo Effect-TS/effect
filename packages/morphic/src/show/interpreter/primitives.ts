@@ -5,7 +5,7 @@ import { ShowType, ShowURI } from "../hkt"
 
 import { getShow as AgetShow } from "@matechs/core/Array"
 import { getShow as EgetShow } from "@matechs/core/Either"
-import { introduce } from "@matechs/core/Function"
+import { absurd, introduce } from "@matechs/core/Function"
 import { getShow as OgetShow } from "@matechs/core/Option"
 import { showBoolean, showNumber, showString } from "@matechs/core/Show"
 import type { Show } from "@matechs/core/Show"
@@ -13,6 +13,7 @@ import type { AnyEnv, ConfigsForType } from "@matechs/morphic-alg/config"
 import type {
   Keys,
   KeysOfConfig,
+  LiteralT,
   MatechsAlgebraPrimitive1,
   NumberLiteralConfig,
   StringLiteralConfig,
@@ -72,6 +73,17 @@ export const showPrimitiveInterpreter = memo(
       new ShowType(
         introduce<Show<T>>({
           show: (t) => showNumber.show(t)
+        })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
+      ),
+    oneOfLiterals: (_, config) => (env) =>
+      new ShowType(
+        introduce<Show<LiteralT>>({
+          show: (t) =>
+            typeof t === "string"
+              ? showString.show(t)
+              : typeof t === "number"
+              ? showNumber.show(t)
+              : absurd(t)
         })((show) => showApplyConfig(config?.conf)(named(config?.name)(show), env, {}))
       ),
     keysOf: <K extends Keys>(
