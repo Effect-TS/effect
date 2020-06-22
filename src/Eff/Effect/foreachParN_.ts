@@ -1,11 +1,12 @@
 import * as A from "../../Array"
-import { Both, Cause, Empty } from "../Cause/cause"
-import { interruptedOnly as causeInterruptedOnly } from "../Cause/interruptedOnly"
-import { isEmpty as causeIsEmpty } from "../Cause/isEmpty"
-import { stripInterrupts } from "../Cause/stripInterrupts"
+import { Both, Cause, Empty, Interrupt, Then } from "../Cause/cause"
+import { interrupted } from "../Cause/interrupted"
+import { interruptedOnly } from "../Cause/interruptedOnly"
 import { sequenceArray as sequenceExitArray } from "../Exit/instances"
+import { FiberID } from "../Fiber"
 import { FiberContext } from "../Fiber/context"
 import { join } from "../Fiber/join"
+import { joinAll } from "../Fiber/joinAll"
 import { halt as promiseHalt } from "../Promise/halt"
 import { make as promiseMake } from "../Promise/make"
 import { Promise } from "../Promise/promise"
@@ -31,12 +32,15 @@ import { halt } from "./halt"
 import { Do } from "./instances"
 import { interrupt } from "./interrupt"
 import { map_ } from "./map_"
-import { onInterruptE_ } from "./onInterrupt_"
+import { onInterruptExtended_ } from "./onInterrupt_"
 import { result } from "./result"
 import { unit } from "./unit"
 
 class Tracker<E, A> {
   private fibers: Set<FiberContext<E, A>> = new Set()
+  interrupted = false
+  interruptedBy: FiberID | undefined
+  cause: Cause<any> | undefined
 
   track<S, R>(effect: Effect<S, R, E, A>) {
     return Do()
@@ -54,32 +58,21 @@ class Tracker<E, A> {
       .return((s) => s.res)
   }
 
-  andInterrupt<S, R, E, A>(effect: Effect<S, R, E, A>) {
-    return Do()
-      .bind("res", effect)
-      .do(checkDescriptor((d) => foreachUnit_(this.fibers, (f) => f.interruptAs(d.id))))
-      .return((s) => s.res)
-  }
+  interrupt(id: FiberID, cause?: Cause<any>) {
+    if (!this.interrupted) {
+      this.interrupted = true
+      this.interruptedBy = id
+      this.cause = cause
+    }
 
-  interrupt() {
-    return Do()
-      .bind("cause", makeRef<Cause<E>>(Empty))
-      .doL((s) =>
-        checkDescriptor((d) =>
-          foreachUnit_(this.fibers, (f) =>
-            chain_(f.interruptAs(d.id), (e) => {
-              if (e._tag === "Failure" && !causeInterruptedOnly(e.cause)) {
-                return s.cause.update((_) => Both(_, stripInterrupts(e.cause)))
-              } else {
-                return unit
-              }
-            })
-          )
-        )
-      )
-      .bindL("finalCause", (s) => s.cause.get)
-      .bindL("res", (s) => (causeIsEmpty(s.finalCause) ? unit : halt(s.finalCause)))
-      .return((s) => s.res)
+    const fibers = Array.from(this.fibers)
+    this.fibers.clear()
+
+    return chain_(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      foreach_(fibers, (f) => fork(f.interruptAs(this.interruptedBy!))),
+      joinAll
+    )
   }
 }
 
@@ -103,7 +96,6 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
           foreach_(as, (a) => map_(promiseMake<E, B>(), (p) => [p, a] as const))
         )
         .doL((s) => fork(foreachUnit_(s.pairs, (pair) => q.offer(pair))))
-        .bind("shouldContinue", makeRef(true))
         .bind("causes", makeRef<Cause<E>>(Empty))
         .bind(
           "tracker",
@@ -115,26 +107,28 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
               fork(
                 forever(
                   chain_(q.take, ([p, a]) =>
-                    chain_(s.shouldContinue.get, (cnt) =>
-                      foldCauseM_(
-                        cnt ? s.tracker.track(f(a)) : interrupt,
-                        (c) =>
-                          chain_(
-                            s.tracker.andInterrupt(s.shouldContinue.set(false)),
-                            () =>
-                              cnt
-                                ? chain_(
-                                    s.causes.update((_) =>
-                                      causeInterruptedOnly(c)
-                                        ? _
-                                        : Both(_, stripInterrupts(c))
-                                    ),
-                                    () => promiseHalt(c)(p)
-                                  )
-                                : promiseHalt(c)(p)
-                          ),
-                        (b) => promiseSucceed(b)(p)
-                      )
+                    foldCauseM_(
+                      !s.tracker.interrupted ? s.tracker.track(f(a)) : interrupt,
+                      (c) =>
+                        chain_(
+                          !s.tracker.interrupted
+                            ? checkDescriptor((d) => s.tracker.interrupt(d.id, c))
+                            : unit,
+                          () =>
+                            chain_(
+                              s.causes.update((_) =>
+                                c === s.tracker.cause
+                                  ? _
+                                  : interruptedOnly(c)
+                                  ? _
+                                  : c._tag === "Then" && interrupted(c)
+                                  ? Both(_, c.left)
+                                  : Both(_, c)
+                              ),
+                              () => promiseHalt(c)(p)
+                            )
+                        ),
+                      (b) => promiseSucceed(b)(p)
                     )
                   )
                 )
@@ -143,12 +137,22 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
           )
         )
         .bindL("res", (s) =>
-          onInterruptE_(
+          onInterruptExtended_(
             foreach_(s.pairs, ([_]) => result(promiseWait(_))),
-            () => s.tracker.interrupt()
+            () =>
+              chain_(
+                checkDescriptor((d) => s.tracker.interrupt(d.id)),
+                () => chain_(s.causes.get, (c) => halt(c))
+              )
           )
         )
-        .doL((s) => chain_(s.causes.get, (c) => (causeIsEmpty(c) ? unit : halt(c))))
+        .doL((s) =>
+          chain_(s.causes.get, (c) =>
+            s.tracker.cause && s.tracker.interruptedBy
+              ? halt(Then(s.tracker.cause, Then(Interrupt(s.tracker.interruptedBy), c)))
+              : unit
+          )
+        )
         .bindL("end", (s) => done(sequenceExitArray(s.res)))
         .return((s) => s.end)
   )
