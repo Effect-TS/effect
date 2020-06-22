@@ -30,7 +30,7 @@ export const cancel = pipe(
       console.log(n)
     })
   ),
-  T.unsafeRunMain
+  T.runMain
 )
 
 setTimeout(() => {

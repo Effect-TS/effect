@@ -80,11 +80,13 @@ export { zipWith } from "./zipWith"
 export { zipWithPar_ } from "./zipWithPar_"
 export { zipWithPar } from "./zipWithPar"
 export {
-  unsafeRunAsync,
-  unsafeRunAsyncCancelable,
-  unsafeRunMain,
-  unsafeRunPromise,
-  unsafeRunSync,
+  runAsync,
+  runAsyncCancel,
+  runMain,
+  runPromise,
+  runPromiseExit,
+  runSync,
+  runSyncExit,
   AsyncCancel,
   CancelMain
 } from "./runtime"

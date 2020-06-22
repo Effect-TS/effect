@@ -17,9 +17,9 @@ describe("Core Implementation", () => {
       })
     })
 
-    const cancel = T.unsafeRunAsyncCancelable(effect)
+    const cancel = T.runAsyncCancel(effect)
 
-    const status = await T.unsafeRunPromise(cancel)
+    const status = await T.runPromise(cancel)
 
     expect(E.interrupted(status) && C.interruptors(status.cause).size).toStrictEqual(1)
   })
@@ -27,7 +27,7 @@ describe("Core Implementation", () => {
   it("foreachParN_", async () => {
     let k = 0
 
-    const res = await T.unsafeRunPromise(
+    const res = await T.runPromise(
       T.foreachParN_(3)([0, 1, 2, 3, 4, 5], (n) =>
         T.effectAsync<unknown, never, number>((cb) => {
           k += 1
@@ -49,7 +49,7 @@ describe("Core Implementation", () => {
     const res = await pipe(
       T.accessM((n: number) => T.succeedNow(n + 1)),
       T.provideAll(1),
-      T.unsafeRunPromise
+      T.runPromise
     )
 
     expect(res).toStrictEqual(2)
