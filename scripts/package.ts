@@ -116,7 +116,23 @@ const modules: string[] = [
   "Monocle/All",
   "Newtype",
   "Layer",
-  "Branded"
+  "Branded",
+  "Eff",
+  "Eff/Cause",
+  "Eff/Effect",
+  "Eff/Errors",
+  "Eff/Exit",
+  "Eff/Fiber",
+  "Eff/FiberRef",
+  "Eff/Iterable",
+  "Eff/Promise",
+  "Eff/Queue",
+  "Eff/Random",
+  "Eff/Ref",
+  "Eff/Schedule",
+  "Eff/Scope",
+  "Eff/Supervisor",
+  "Eff/Support"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)

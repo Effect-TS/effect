@@ -10,8 +10,9 @@ import { FiberContext } from "../Fiber/context"
 import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
 import { Callback } from "../Fiber/state"
-// effect
+// scope
 import * as Scope from "../Scope"
+// supervisor
 import * as Supervisor from "../Supervisor"
 
 import { Async, Effect, _I } from "./effect"
