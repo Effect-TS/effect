@@ -10,7 +10,7 @@ import { FiberRef } from "../FiberRef/fiberRef"
 import { Scope } from "../Scope"
 import { Supervisor } from "../Supervisor"
 
-import { Effect, AsyncRE } from "./effect"
+import { Effect, AsyncRE, _A, _I, _S, _R, _E, _U } from "./effect"
 
 //
 // @category Primitives
@@ -57,19 +57,22 @@ export type Instruction =
   | IOverrideForkScope<any, any, any, any>
 
 abstract class Base<S, R, E, A> implements Effect<S, R, E, A> {
-  _S(): S {
+  [_S](): S {
     return undefined as any
   }
-  _E(): E {
+  [_E](): E {
     return undefined as any
   }
-  _A(): A {
+  [_A](): A {
     return undefined as any
   }
-  _R(_: R): void {
+  [_R](_: R): void {
     return undefined as any
   }
-  get asInstruction() {
+  get [_I]() {
+    return this as any
+  }
+  get [_U]() {
     return this as any
   }
 }

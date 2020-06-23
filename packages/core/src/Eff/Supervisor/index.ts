@@ -1,6 +1,4 @@
-import { eqStrict } from "../../Eq"
 import * as O from "../../Option"
-import * as S from "../../Set"
 import { Async, Effect } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
 import { unit } from "../Effect/unit"
@@ -10,7 +8,7 @@ import { Runtime } from "../Fiber/fiber"
 import { Ref } from "../Ref"
 
 /**
- * A `Supervisor[A]` is allowed to supervise the launching and termination of
+ * A `Supervisor<A>` is allowed to supervise the launching and termination of
  * fibers, producing some visible value of type `A` from the supervision.
  */
 export class Supervisor<A> {
@@ -121,23 +119,24 @@ export const track = effectTotal(() => {
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export const fibersIn = (ref: Ref<S.Set<Runtime<any, any>>>) =>
-  effectTotal(() => {
-    const insert = S.insert<Runtime<any, any>>(eqStrict)
-    const remove = S.remove<Runtime<any, any>>(eqStrict)
-
-    return new Supervisor(
-      ref.get,
-      (_, __, ___, fiber) => {
-        ref.unsafeUpdate(insert(fiber))
-        return _continue
-      },
-      (_, fiber) => {
-        ref.unsafeUpdate(remove(fiber))
-        return _continue
-      }
-    )
-  })
+export const fibersIn = (ref: Ref<Set<Runtime<any, any>>>) =>
+  effectTotal(
+    () =>
+      new Supervisor(
+        ref.get,
+        (_, __, ___, fiber) => {
+          ref.unsafeUpdate((s) => s.add(fiber))
+          return _continue
+        },
+        (_, fiber) => {
+          ref.unsafeUpdate((s) => {
+            s.delete(fiber)
+            return s
+          })
+          return _continue
+        }
+      )
+  )
 
 /**
  * A supervisor that doesn't do anything in response to supervision events.

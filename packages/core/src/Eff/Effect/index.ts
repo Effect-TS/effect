@@ -7,13 +7,20 @@ export {
   Sync,
   SyncE,
   SyncR,
-  SyncRE
+  SyncRE,
+  SOf,
+  ROf,
+  EOf,
+  AOf,
+  KOf,
+  EffectURI
 } from "./effect"
-export { monadEff, Do, URI } from "./instances"
+export { monadEff, Do } from "./instances"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
 export { absolve } from "./absolve"
 export { accessM } from "./accessM"
+export { access } from "./access"
 export { asUnit } from "./asUnit"
 export { bracket } from "./bracket"
 export { bracket_ } from "./bracket_"
@@ -99,7 +106,8 @@ export { whenM } from "./whenM"
 export { whenM_ } from "./whenM_"
 export { ensuring } from "./ensuring"
 export { tapCause } from "./tapCause"
-export { cause } from "./cause"
+export { tapCause_ } from "./tapCause_"
+export { cause, causeAsError, errorFromCause } from "./cause"
 export { foldCause } from "./foldCause"
 export { foldCause_ } from "./foldCause_"
 export { fold } from "./fold"
@@ -125,3 +133,6 @@ export { foreachParN_ } from "./foreachParN_"
 export { foreachParN } from "./foreachParN"
 export { forever } from "./forever"
 export { collectAllUnit } from "./collectAllUnit"
+export { tryOrElse_ } from "./tryOrElse_"
+export { orElse_ } from "./orElse_"
+export { retry, retryOrElseEither_, retryOrElse_, retry_ } from "./retry"
