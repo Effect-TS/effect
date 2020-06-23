@@ -129,7 +129,7 @@ export interface MatechsAlgebraPrimitive<F, Env> {
      * The value array has to be created with `as const` assertion for this
      * combinator to work correctly
      */
-    <T extends readonly [LiteralT, ...LiteralT[]]>(
+    <T extends readonly [LiteralT, LiteralT, ...LiteralT[]]>(
       value: T,
       config?: {
         name?: string
