@@ -1,6 +1,7 @@
 import * as C from "../../src/Eff/Cause"
 import * as T from "../../src/Eff/Effect"
 import * as E from "../../src/Eff/Exit"
+import * as R from "../../src/Eff/Random"
 import { pipe } from "../../src/Function"
 
 describe("Core Implementation", () => {
@@ -53,5 +54,33 @@ describe("Core Implementation", () => {
     )
 
     expect(res).toStrictEqual(2)
+  })
+
+  it("uses random", async () => {
+    const res = await pipe(
+      T.sequenceT(
+        R.next,
+        R.nextBoolean,
+        R.nextDouble,
+        R.nextDouble,
+        R.nextInt,
+        R.nextIntBetween(10, 20),
+        R.nextRange(10, 100),
+        R.nextBoolean
+      ),
+      R.withSeed("hello"),
+      T.runPromise
+    )
+
+    expect(res).toStrictEqual([
+      0.8750656815245748,
+      false,
+      0.6642807485785496,
+      0.11958776775761337,
+      -453701189,
+      16,
+      57.41249173413962,
+      true
+    ])
   })
 })

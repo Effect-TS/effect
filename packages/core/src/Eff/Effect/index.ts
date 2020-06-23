@@ -15,7 +15,7 @@ export {
   KOf,
   EffectURI
 } from "./effect"
-export { monadEff, Do } from "./instances"
+export { monadEff, Do, sequenceT } from "./instances"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
 export { absolve } from "./absolve"
