@@ -52,15 +52,13 @@ export const modelPrimitiveInterpreter = memo(
     oneOfLiterals: (ls, config) => (env) =>
       new ModelType(
         introduce(
-          ls.length === 1
-            ? M.literal(ls[0])
-            : M.union(
-                ls.map((l) => M.literal(l)) as [
-                  M.LiteralC<LiteralT>,
-                  M.LiteralC<LiteralT>,
-                  ...M.LiteralC<LiteralT>[]
-                ]
-              )
+          M.union(
+            ls.map((l) => M.literal(l)) as [
+              M.LiteralC<LiteralT>,
+              M.LiteralC<LiteralT>,
+              ...M.LiteralC<LiteralT>[]
+            ]
+          )
         )((model) => modelApplyConfig(config?.conf)(model, env, {}))
       ),
     keysOf: (k, config) => (env) =>
