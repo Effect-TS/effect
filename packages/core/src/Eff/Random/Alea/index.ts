@@ -10,23 +10,38 @@ export interface State {
 }
 
 export class Alea {
-  private readonly mash = Mash()
-  public s0 = this.mash(" ")
-  public s1 = this.mash(" ")
-  public s2 = this.mash(" ")
-  public c = 1
+  private mash: (data: string) => number = undefined as any
+  public s0: number = undefined as any
+  public s1: number = undefined as any
+  public s2: number = undefined as any
+  public c: number = undefined as any
 
   constructor(seed: string) {
+    this.setSeed(seed)
+  }
+
+  setSeed(seed: string) {
+    this.mash = Mash()
+
+    this.s0 = this.mash(" ")
+    this.s1 = this.mash(" ")
+    this.s2 = this.mash(" ")
+    this.c = 1
+
     this.s0 -= this.mash(seed)
 
     if (this.s0 < 0) {
       this.s0 += 1
     }
+
     this.s1 -= this.mash(seed)
+
     if (this.s1 < 0) {
       this.s1 += 1
     }
+
     this.s2 -= this.mash(seed)
+
     if (this.s2 < 0) {
       this.s2 += 1
     }
@@ -40,23 +55,15 @@ export class Alea {
   }
 }
 
-export function copy(f: Alea, t: {}): State {
-  t["c"] = f.c
-  t["s0"] = f.s0
-  t["s1"] = f.s1
-  t["s2"] = f.s2
-  return t as State
-}
-
 export class PRNG {
   readonly xg: Alea
 
-  constructor(seed: string, state?: Alea) {
+  constructor(seed: string) {
     this.xg = new Alea(seed)
+  }
 
-    if (state) {
-      copy(state, this.xg)
-    }
+  setSeed(seed: string) {
+    this.xg.setSeed(seed)
   }
 
   next() {
@@ -69,10 +76,6 @@ export class PRNG {
 
   double() {
     return this.next() + ((this.next() * 0x200000) | 0) * 1.1102230246251565e-16
-  }
-
-  state() {
-    return copy(this.xg, {})
   }
 }
 
