@@ -1,4 +1,4 @@
-import * as T from "./Effect"
+import * as T from "../Effect"
 
 const cancel = T.runMain(
   T.bracket_(

@@ -47,8 +47,8 @@ describe("Core Implementation", () => {
 
   it("provideAll", async () => {
     const res = await pipe(
-      T.accessM((n: number) => T.succeedNow(n + 1)),
-      T.provideAll(1),
+      T.accessM(({ n }: { n: number }) => T.succeedNow(n + 1)),
+      T.provideAll({ n: 1 }),
       T.runPromise
     )
 
