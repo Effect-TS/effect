@@ -1,7 +1,6 @@
-import * as A from "../Array"
-import { pipe } from "../Function"
-
-import * as T from "./Effect"
+import * as A from "../../Array"
+import { pipe } from "../../Function"
+import * as T from "../Effect"
 
 export const cancel = pipe(
   T.foreachPar_(A.range(0, 10), (n) =>
