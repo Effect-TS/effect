@@ -1,3 +1,4 @@
+import * as AP from "../../Apply"
 import { CApplicative4MA, CMonad4MA } from "../../Base"
 import * as D from "../../Do"
 
@@ -26,3 +27,7 @@ export const monadEff: CMonad4MA<EffectURI> & CApplicative4MA<EffectURI> = {
 export function Do() {
   return D.Do(monadEff)
 }
+
+export const sequenceT =
+  /*#__PURE__*/
+  AP.sequenceT(monadEff)

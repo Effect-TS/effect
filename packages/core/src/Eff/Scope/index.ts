@@ -65,7 +65,7 @@ export interface CommonScope<A> {
 
   /**
    * Determines if the scope has been released at the moment the effect is
-   * executed executed. A scope can be closed yet unreleased, if it has been
+   * executed. A scope can be closed yet unreleased, if it has been
    * extended by another scope which is not yet released.
    */
   readonly released: Sync<boolean>
@@ -176,8 +176,13 @@ export class OrderedFinalizer {
   constructor(readonly order: number, readonly finalizer: (_: any) => Async<any>) {}
 }
 
-const noCause = Empty
-const noCauseEffect: Async<Cause<never>> = succeedNow(noCause)
+const noCause =
+  /*#__PURE__*/
+  Empty
+
+const noCauseEffect: Async<Cause<never>> =
+  /*#__PURE__*/
+  succeedNow(noCause)
 
 export class Local<A> implements CommonScope<A> {
   readonly _tag = "Local"
@@ -329,7 +334,9 @@ export class Local<A> implements CommonScope<A> {
  * The global scope, which is entirely stateless. Finalizers added to the
  * global scope will never be executed (nor kept in memory).
  */
-export const globalScope = new Global()
+export const globalScope =
+  /*#__PURE__*/
+  new Global()
 
 /**
  * A tuple that contains an open scope, together with a function that closes
