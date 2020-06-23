@@ -1,7 +1,6 @@
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import * as S from "../../Set"
-import { FiberID, EqFiberID } from "../Fiber/id"
+import { FiberID } from "../Fiber/id"
 
 import { Cause } from "./cause"
 import { foldLeft } from "./foldLeft"
@@ -13,7 +12,7 @@ import { foldLeft } from "./foldLeft"
 export const interruptors = <E>(cause: Cause<E>) =>
   pipe(
     cause,
-    foldLeft<S.Set<FiberID>>(S.empty)((s, c) =>
-      c._tag === "Interrupt" ? O.some(S.insert_(EqFiberID)(s, c.fiberId)) : O.none
+    foldLeft<Set<FiberID>>(new Set())((s, c) =>
+      c._tag === "Interrupt" ? O.some(s.add(c.fiberId)) : O.none
     )
   )

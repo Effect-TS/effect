@@ -14,7 +14,7 @@ import { Callback } from "../Fiber/state"
 import * as Scope from "../Scope"
 import * as Supervisor from "../Supervisor"
 
-import { Async, Effect } from "./effect"
+import { Async, Effect, _I } from "./effect"
 
 // empty function
 const empty = () => {
@@ -38,7 +38,7 @@ export const runAsync = <S, E, A>(_: Effect<S, {}, E, A>, cb?: Callback<E, A>) =
     scope
   )
 
-  context.evaluateNow(_.asInstruction)
+  context.evaluateNow(_._I)
   context.runAsync(cb || empty)
 }
 
@@ -69,7 +69,7 @@ export const runMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain => {
     scope
   )
 
-  context.evaluateNow(effect.asInstruction)
+  context.evaluateNow(effect._I)
   context.runAsync((exit) => {
     switch (exit._tag) {
       case "Failure": {
@@ -121,7 +121,7 @@ export const runAsyncCancel = <S, E, A>(
     scope
   )
 
-  context.evaluateNow(_.asInstruction)
+  context.evaluateNow(_._I)
   context.runAsync(cb || empty)
 
   return context.interruptAs(fiberId)
@@ -146,7 +146,7 @@ export const runPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
     scope
   )
 
-  context.evaluateNow(_.asInstruction)
+  context.evaluateNow(_._I)
 
   return new Promise((res, rej) => {
     context.runAsync((exit) => {
@@ -185,7 +185,7 @@ export const runPromiseExit = <S, E, A>(
     scope
   )
 
-  context.evaluateNow(_.asInstruction)
+  context.evaluateNow(_._I)
 
   return new Promise((res) => {
     context.runAsync((exit) => {
@@ -212,7 +212,7 @@ export const runSyncExit = <E, A>(_: Effect<never, {}, E, A>): Exit<E, A> => {
     scope
   )
 
-  context.evaluateNow(_.asInstruction)
+  context.evaluateNow(_._I)
 
   const state = context.state.get
 
@@ -242,7 +242,7 @@ export const runSync = <E, A>(_: Effect<never, {}, E, A>): A => {
     scope
   )
 
-  context.evaluateNow(_.asInstruction)
+  context.evaluateNow(_._I)
 
   const state = context.state.get
 

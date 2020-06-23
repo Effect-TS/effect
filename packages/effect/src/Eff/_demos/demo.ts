@@ -1,7 +1,6 @@
-import * as A from "../Array"
-import { pipe } from "../Function"
-
-import * as T from "./Effect"
+import * as A from "../../Array"
+import { pipe } from "../../Function"
+import * as T from "../Effect"
 
 export const cancel = pipe(
   T.foreachParN_(5)(A.range(0, 10), (n) =>
@@ -9,7 +8,7 @@ export const cancel = pipe(
       const t = setTimeout(
         () => {
           if (n > 3) {
-            cb(T.fail(`err: ${n}`))
+            cb(T.fail(`failure: ${n}`))
           } else {
             cb(T.succeedNow(n + 1))
           }
@@ -21,13 +20,8 @@ export const cancel = pipe(
         T.effectTotal(() => {
           clearTimeout(t)
         }),
-        () => T.die(`n: ${n}`)
+        () => T.die(`interruption error: ${n}`)
       )
-    })
-  ),
-  T.chain((n) =>
-    T.effectTotal(() => {
-      console.log(n)
     })
   ),
   T.runMain
