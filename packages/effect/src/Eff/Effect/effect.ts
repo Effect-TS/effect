@@ -38,5 +38,5 @@ export type AOf<T> = [T] extends [{ [_A]: () => infer A }] ? A : never
 export type KOf<T> = [T] extends [{ [_U]: infer URI }]
   ? URI extends MaURIS
     ? Kind4<URI, SOf<T>, ROf<T>, EOf<T>, AOf<T>>
-    : never
-  : never
+    : T
+  : T
