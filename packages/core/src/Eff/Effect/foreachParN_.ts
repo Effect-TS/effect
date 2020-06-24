@@ -88,7 +88,6 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
 ): AsyncRE<R, E, readonly B[]> =>
   bracket_(
     makeBounded<readonly [Promise<E, B>, A]>(n),
-    (q) => q.shutdown,
     (q) =>
       Do()
         .bind(
@@ -154,5 +153,6 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
           )
         )
         .bindL("end", (s) => done(sequenceExitArray(s.res)))
-        .return((s) => s.end)
+        .return((s) => s.end),
+    (q) => q.shutdown
   )
