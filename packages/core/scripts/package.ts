@@ -134,7 +134,8 @@ const modules: string[] = [
   "Eff/Supervisor",
   "Eff/Support",
   "Eff/Managed",
-  "Eff/Utils"
+  "Eff/Utils",
+  "Eff/Clock"
 ]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
