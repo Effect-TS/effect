@@ -3,6 +3,7 @@
 import { Effect } from "../Effect/effect"
 
 export { access } from "../Effect/access"
+export { environment } from "../Effect/environment"
 export { accessM } from "../Effect/accessM"
 export {
   Async,
@@ -25,7 +26,10 @@ export { Do } from "../Effect/instances"
 export { map_ } from "../Effect/map_"
 export { chain_ } from "../Effect/chain_"
 export { provideAll_ } from "../Effect/provideAll_"
+export { provideSome_ } from "../Effect/provideSome"
 export { uninterruptible } from "../Effect/uninterruptible"
+export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
+export { zipWith_ } from "../Effect/zipWith_"
 export { unit } from "../Effect/unit"
 export { succeedNow } from "../Effect/succeedNow"
 export { flatten } from "../Effect/flatten"
@@ -40,6 +44,8 @@ export { unit as exitUnit } from "../Exit/unit"
 export { succeed as exitSucceed } from "../Exit/succeed"
 export { collectAll as exitCollectAll } from "../Exit/collectAll"
 export { collectAllPar as exitCollectAllPar } from "../Exit/collectAllPar"
+export { zipRight_ as exitZipRight_ } from "../Exit/zipRight"
+export { foreach as exitForeach } from "../Exit/foreach"
 
 export const coerceSE = <S1, E1>() => <S, R, E, A>(
   effect: Effect<S, R, E, A>
