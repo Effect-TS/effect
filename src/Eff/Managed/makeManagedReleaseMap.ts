@@ -9,7 +9,14 @@ import { makeReleaseMap, ReleaseMap } from "./releaseMap"
  * be released with the specified `ExecutionStrategy` as the release action
  * for the resulting `Managed`.
  */
-export const makeManagedReleaseMap = <E extends ExecutionStrategy>(
-  es: E
-): Managed<E extends Sequential ? never : unknown, unknown, never, ReleaseMap> =>
-  makeExit_(makeReleaseMap, (rm, e) => rm.releaseAll(e, es)) as any
+export function makeManagedReleaseMap(
+  es: Sequential
+): Managed<never, unknown, never, ReleaseMap>
+export function makeManagedReleaseMap(
+  es: ExecutionStrategy
+): Managed<unknown, unknown, never, ReleaseMap>
+export function makeManagedReleaseMap(
+  es: ExecutionStrategy
+): Managed<unknown, unknown, any, ReleaseMap> {
+  return makeExit_(makeReleaseMap, (rm, e) => rm.releaseAll(e, es))
+}
