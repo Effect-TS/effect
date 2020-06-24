@@ -26,10 +26,10 @@ export class Scheduler {
     }
   }
 
-  dispatchLater(thunk: () => void, ms: number): () => void {
-    const handle = setTimeout(() => this.dispatch(thunk), ms)
+  dispatchLater(thunk: () => void): () => void {
+    const handle = setImmediate(() => this.dispatch(thunk))
     return () => {
-      clearTimeout(handle)
+      clearImmediate(handle)
     }
   }
 }
