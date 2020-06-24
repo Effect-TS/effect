@@ -28,7 +28,7 @@ const empty = () => {
 export const runAsync = <S, E, A>(_: Effect<S, {}, E, A>, cb?: Callback<E, A>) => {
   const context = fiberContext<E, A>()
 
-  context.evaluateNow(_[_I])
+  context.evaluateLater(_[_I])
   context.runAsync(cb || empty)
 }
 
@@ -48,7 +48,7 @@ export interface CancelMain {
 export const runMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain => {
   const context = fiberContext<E, void>()
 
-  context.evaluateNow(effect[_I])
+  context.evaluateLater(effect[_I])
   context.runAsync((exit) => {
     switch (exit._tag) {
       case "Failure": {
@@ -88,7 +88,7 @@ export const runAsyncCancel = <S, E, A>(
 ): AsyncCancel<E, A> => {
   const context = fiberContext<E, A>()
 
-  context.evaluateNow(_[_I])
+  context.evaluateLater(_[_I])
   context.runAsync(cb || empty)
 
   return context.interruptAs(context.id)
@@ -101,7 +101,7 @@ export const runAsyncCancel = <S, E, A>(
 export const runPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
   const context = fiberContext<E, A>()
 
-  context.evaluateNow(_[_I])
+  context.evaluateLater(_[_I])
 
   return new Promise((res, rej) => {
     context.runAsync((exit) => {
@@ -128,7 +128,7 @@ export const runPromiseExit = <S, E, A>(
 ): Promise<Exit<E, A>> => {
   const context = fiberContext<E, A>()
 
-  context.evaluateNow(_[_I])
+  context.evaluateLater(_[_I])
 
   return new Promise((res) => {
     context.runAsync((exit) => {
