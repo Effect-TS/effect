@@ -40,6 +40,7 @@ export { result } from "../Effect/result"
 export { done } from "../Effect/done"
 export { bracketExit_ } from "../Effect/bracketExit_"
 export { zipWithPar_ } from "../Effect/zipWithPar_"
+export { interrupt } from "../Effect/interrupt"
 export { Exit } from "../Exit/exit"
 export { unit as exitUnit } from "../Exit/unit"
 export { succeed as exitSucceed } from "../Exit/succeed"
@@ -47,6 +48,7 @@ export { collectAll as exitCollectAll } from "../Exit/collectAll"
 export { collectAllPar as exitCollectAllPar } from "../Exit/collectAllPar"
 export { zipRight_ as exitZipRight_ } from "../Exit/zipRight"
 export { foreach as exitForeach } from "../Exit/foreach"
+export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 
 export const coerceSE = <S1, E1>() => <S, R, E, A>(
   effect: Effect<S, R, E, A>
