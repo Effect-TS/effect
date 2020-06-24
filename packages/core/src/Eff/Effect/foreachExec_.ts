@@ -14,7 +14,7 @@ export function foreachExec_<S, R, E, A, B>(
   es: Sequential,
   as: Iterable<A>,
   f: (a: A) => Effect<S, R, E, B>
-): Effect<never, R, E, readonly B[]>
+): Effect<S, R, E, readonly B[]>
 export function foreachExec_<S, R, E, A, B>(
   es: Parallel,
   as: Iterable<A>,
