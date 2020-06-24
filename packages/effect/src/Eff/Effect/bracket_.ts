@@ -23,7 +23,7 @@ import { Effect } from "./effect"
  */
 export const bracket_ = <S, R, E, A, S1, E1, R1, A1, S2, R2, E2, A2>(
   acquire: Effect<S, R, E, A>,
-  release: (a: A) => Effect<S2, R2, E2, A2>,
-  use: (a: A) => Effect<S1, R1, E1, A1>
+  use: (a: A) => Effect<S1, R1, E1, A1>,
+  release: (a: A) => Effect<S2, R2, E2, A2>
 ): Effect<S | S1 | S2, R & R1 & R2, E | E1 | E2, A1> =>
-  bracketExit_(acquire, release, use)
+  bracketExit_(acquire, use, release)
