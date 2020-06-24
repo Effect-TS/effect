@@ -14,3 +14,15 @@ export const zipRight = <E1, B>(that: Exit<E1, B>) => <E, A>(
     exit,
     zipWith(that, (_, b) => b, C.Then)
   )
+
+/**
+ * Sequentially zips the this result with the specified result discarding the first element of the tuple or else returns the failed `Cause[E1]`
+ */
+export const zipRight_ = <E, A, E1, B>(
+  exit: Exit<E, A>,
+  that: Exit<E1, B>
+): Exit<E | E1, B> =>
+  pipe(
+    exit,
+    zipWith(that, (_, b) => b, C.Then)
+  )
