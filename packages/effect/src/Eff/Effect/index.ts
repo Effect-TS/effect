@@ -133,3 +133,14 @@ export { orElse_ } from "./orElse_"
 export { retry, retryOrElseEither_, retryOrElse_, retry_ } from "./retry"
 export { provideSome, provideSome_ } from "./provideSome"
 export { environment } from "./environment"
+export {
+  parallel,
+  sequential,
+  parallelN,
+  ExecutionStrategy,
+  Parallel,
+  ParallelN,
+  Sequential
+} from "./ExecutionStrategy"
+export { foreachExec_ } from "./foreachExec_"
+export { foreachExec } from "./foreachExec"
