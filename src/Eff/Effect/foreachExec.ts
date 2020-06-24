@@ -1,5 +1,5 @@
 import { ExecutionStrategy, Parallel, ParallelN, Sequential } from "./ExecutionStrategy"
-import { Effect } from "./effect"
+import { Effect, AsyncRE } from "./effect"
 import { foreachExec_ } from "./foreachExec_"
 
 /**
@@ -12,18 +12,18 @@ export function foreachExec(
   es: Sequential
 ): <S, R, E, A, B>(
   f: (a: A) => Effect<S, R, E, B>
-) => (as: Iterable<A>) => Effect<never, R, E, readonly B[]>
-export function foreachExec<S, R, E, A, B>(
+) => (as: Iterable<A>) => Effect<S, R, E, readonly B[]>
+export function foreachExec(
   es: Parallel
 ): <S, R, E, A, B>(
   f: (a: A) => Effect<S, R, E, B>
-) => (as: Iterable<A>) => Effect<unknown, R, E, readonly B[]>
-export function foreachExec<S, R, E, A, B>(
+) => (as: Iterable<A>) => AsyncRE<R, E, readonly B[]>
+export function foreachExec(
   es: ParallelN
 ): <S, R, E, A, B>(
   f: (a: A) => Effect<S, R, E, B>
-) => (as: Iterable<A>) => Effect<unknown, R, E, readonly B[]>
-export function foreachExec<S, R, E, A, B>(
+) => (as: Iterable<A>) => AsyncRE<R, E, readonly B[]>
+export function foreachExec(
   es: ExecutionStrategy
 ): <S, R, E, A, B>(
   f: (a: A) => Effect<S, R, E, B>
