@@ -3,7 +3,7 @@ import { LinkedList } from "../LinkedList"
 export class Scheduler {
   running = false
 
-  array = new LinkedList<[(a: any) => void, any]>()
+  array = new LinkedList<() => void>()
 
   isRunning = (): boolean => this.running
 
@@ -12,22 +12,22 @@ export class Scheduler {
     let next = this.array.deleteHead()?.value
 
     while (next) {
-      next[0](next[1])
+      next()
       next = this.array.deleteHead()?.value
     }
     this.running = false
   }
 
-  dispatch<A>(thunk: (a: A) => void, a: A): void {
-    this.array.append([thunk, a])
+  dispatch(thunk: () => void): void {
+    this.array.append(thunk)
 
     if (!this.running) {
       this.run()
     }
   }
 
-  dispatchLater<A>(thunk: (a: A) => void, a: A, ms: number): () => void {
-    const handle = setTimeout(() => this.dispatch(thunk, a), ms)
+  dispatchLater(thunk: () => void, ms: number): () => void {
+    const handle = setTimeout(() => this.dispatch(thunk), ms)
     return () => {
       clearTimeout(handle)
     }

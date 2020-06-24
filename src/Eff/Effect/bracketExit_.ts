@@ -19,8 +19,8 @@ import { uninterruptibleMask } from "./uninterruptibleMask"
  */
 export const bracketExit_ = <S, R, E, A, S1, E1, R1, A1, S2, R2, E2, A2>(
   acquire: Effect<S, R, E, A>,
-  release: (a: A, e: Exit<E1, A1>) => Effect<S2, R2, E2, A2>,
-  use: (a: A) => Effect<S1, R1, E1, A1>
+  use: (a: A) => Effect<S1, R1, E1, A1>,
+  release: (a: A, e: Exit<E1, A1>) => Effect<S2, R2, E2, A2>
 ): Effect<S | S1 | S2, R & R1 & R2, E | E1 | E2, A1> =>
   uninterruptibleMask(({ restore }) =>
     chain_(acquire, (a) =>
