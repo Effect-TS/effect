@@ -8,11 +8,6 @@ export {
   SyncE,
   SyncR,
   SyncRE,
-  SOf,
-  ROf,
-  EOf,
-  AOf,
-  KOf,
   EffectURI
 } from "./effect"
 export { monadEff, Do, sequenceT } from "./instances"
