@@ -1,6 +1,7 @@
 import { eqNumber } from "../../Eq"
 import * as M from "../../Map"
 import * as O from "../../Option"
+import { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { Ref, makeRef } from "../Ref"
 
 import * as T from "./deps"
@@ -23,18 +24,6 @@ export class Running {
     readonly finalizers: M.Map<number, Finalizer>
   ) {}
 }
-
-export class Sequential {
-  readonly _tag = "Sequential"
-}
-export class Parallel {
-  readonly _tag = "Parallel"
-}
-export class ParallelN {
-  readonly _tag = "ParallelN"
-  constructor(readonly n: number) {}
-}
-export type ExecutionStrategy = Sequential | Parallel | ParallelN
 
 const insert =
   /*#__PURE__*/
