@@ -1,5 +1,3 @@
-import { MaURIS, Kind4 } from "../../Base"
-
 import { Instruction } from "./primitives"
 
 export const _S = "_S"
@@ -30,13 +28,3 @@ export type Async<A> = Effect<unknown, unknown, never, A>
 export type AsyncR<R, A> = Effect<unknown, R, never, A>
 export type AsyncE<E, A> = Effect<unknown, unknown, E, A>
 export type AsyncRE<R, E, A> = Effect<unknown, R, E, A>
-
-export type SOf<T> = [T] extends [{ [_S]: () => infer S }] ? S : never
-export type ROf<T> = [T] extends [{ [_R]: (_: infer R) => void }] ? R : unknown
-export type EOf<T> = [T] extends [{ [_E]: () => infer E }] ? E : never
-export type AOf<T> = [T] extends [{ [_A]: () => infer A }] ? A : never
-export type KOf<T> = [T] extends [{ [_U]: infer URI }]
-  ? URI extends MaURIS
-    ? Kind4<URI, SOf<T>, ROf<T>, EOf<T>, AOf<T>>
-    : T
-  : T
