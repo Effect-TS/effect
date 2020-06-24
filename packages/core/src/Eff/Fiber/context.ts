@@ -466,7 +466,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   evaluateLater(i0: Instruction) {
     this.scheduler.dispatchLater(() => {
       this.evaluateNow(i0)
-    }, 0)
+    })
   }
 
   get scope(): Scope.Scope<Exit<E, A>> {
@@ -543,7 +543,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
     this.scheduler.dispatchLater(() => {
       childContext.evaluateNow(i0)
-    }, 0)
+    })
 
     return childContext
   }
