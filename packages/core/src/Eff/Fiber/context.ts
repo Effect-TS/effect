@@ -464,7 +464,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   evaluateLater(i0: Instruction) {
-    this.scheduler.dispatchLater(this.evaluateNow.bind(this), i0, 0)
+    this.scheduler.dispatchLater(() => {
+      this.evaluateNow(i0)
+    }, 0)
   }
 
   get scope(): Scope.Scope<Exit<E, A>> {
@@ -539,13 +541,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       })
     }
 
-    this.scheduler.dispatchLater(
-      () => {
-        childContext.evaluateNow(i0)
-      },
-      undefined,
-      0
-    )
+    this.scheduler.dispatchLater(() => {
+      childContext.evaluateNow(i0)
+    }, 0)
 
     return childContext
   }
@@ -672,7 +670,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     )
   }
 
-  evaluateNow(i0: Instruction): void {
+  evaluateNow(i0: Instruction, isSync = false): void {
     try {
       // eslint-disable-next-line prefer-const
       let current: Instruction | undefined = i0
@@ -789,6 +787,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 }
 
                 case "EffectAsync": {
+                  if (isSync) {
+                    current = die.die(
+                      new Error("Fatal(Bug): runSync called with async instructions")
+                    )[_I]
+                    break
+                  }
                   const epoch = this.asyncEpoch
                   this.asyncEpoch = epoch + 1
                   const c = current
@@ -817,6 +821,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 }
 
                 case "Fork": {
+                  if (isSync) {
+                    current = die.die(
+                      new Error("Fatal(Bug): runSync called with fork instructions")
+                    )[_I]
+                    break
+                  }
                   current = this.nextInstr(this.fork(current.value[_I], current.scope))
                   break
                 }
@@ -827,6 +837,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 }
 
                 case "Yield": {
+                  if (isSync) {
+                    current = die.die(
+                      new Error("Fatal(Bug): runSync called with yield instructions")
+                    )[_I]
+                    break
+                  }
                   this.evaluateLater(unit.unit[_I])
                   break
                 }
@@ -842,11 +858,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     effectTotal.effectTotal(() => {
                       this.pushEnv(c.r)
                     }),
+                    () => c.next,
                     () =>
                       effectTotal.effectTotal(() => {
                         this.popEnv()
-                      }),
-                    () => c.next
+                      })
                   )[_I]
                   break
                 }
@@ -894,6 +910,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 }
 
                 case "RaceWith": {
+                  if (isSync) {
+                    current = die.die(
+                      new Error("Fatal(Bug): runSync called with raceWith instructions")
+                    )[_I]
+                    break
+                  }
                   current = this.raceWithImpl(current)[_I]
                   break
                 }
@@ -911,8 +933,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   })
                   current = bracket.bracket_(
                     push,
-                    () => pop,
-                    () => c.effect
+                    () => c.effect,
+                    () => pop
                   )[_I]
                   break
                 }
@@ -944,8 +966,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                   current = bracket.bracket_(
                     push,
-                    () => pop,
-                    () => c.effect
+                    () => c.effect,
+                    () => pop
                   )[_I]
 
                   break

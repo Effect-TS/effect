@@ -9,7 +9,7 @@ export const _A = "_A"
 export const _I = "_I"
 export const _U = "_U"
 
-export const EffectURI = "@matechs/core/Eff"
+export const EffectURI = "@matechs/core/Eff/EffectURI"
 export type EffectURI = typeof EffectURI
 
 export interface Effect<S, R, E, A> {

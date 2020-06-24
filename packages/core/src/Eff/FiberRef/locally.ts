@@ -20,8 +20,8 @@ export const locally = <A>(value: A) => <S, R, E, B>(use: Effect<S, R, E, B>) =>
     chain((oldValue) =>
       bracket_(
         set(value)(fiberRef),
-        () => set(oldValue)(fiberRef),
-        () => use
+        () => use,
+        () => set(oldValue)(fiberRef)
       )
     )
   )

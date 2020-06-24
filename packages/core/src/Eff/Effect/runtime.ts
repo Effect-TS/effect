@@ -9,7 +9,7 @@ import { Exit } from "../Exit/exit"
 import { FiberContext } from "../Fiber/context"
 import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
-import { Callback } from "../Fiber/state"
+import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
 import * as Scope from "../Scope"
 // supervisor
@@ -26,20 +26,9 @@ const empty = () => {
  * Runs effect until completion, calling cb with the eventual exit state
  */
 export const runAsync = <S, E, A>(_: Effect<S, {}, E, A>, cb?: Callback<E, A>) => {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
-  const supervisor = Supervisor.none
-  const context = new FiberContext<E, A>(
-    fiberId,
-    {},
-    initialIS,
-    new Map(),
-    supervisor,
-    scope
-  )
+  const context = fiberContext<E, A>()
 
-  context.evaluateNow(_._I)
+  context.evaluateNow(_[_I])
   context.runAsync(cb || empty)
 }
 
@@ -57,20 +46,9 @@ export interface CancelMain {
  * Note: this should be used only in node.js as it depends on process.exit
  */
 export const runMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain => {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, void>>()
-  const supervisor = Supervisor.none
-  const context = new FiberContext<E, void>(
-    fiberId,
-    {},
-    initialIS,
-    new Map(),
-    supervisor,
-    scope
-  )
+  const context = fiberContext<E, void>()
 
-  context.evaluateNow(effect._I)
+  context.evaluateNow(effect[_I])
   context.runAsync((exit) => {
     switch (exit._tag) {
       case "Failure": {
@@ -91,7 +69,7 @@ export const runMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain => {
   })
 
   return () => {
-    runAsync(context.interruptAs(fiberId))
+    runAsync(context.interruptAs(context.id))
   }
 }
 
@@ -108,24 +86,12 @@ export const runAsyncCancel = <S, E, A>(
   _: Effect<S, {}, E, A>,
   cb?: Callback<E, A>
 ): AsyncCancel<E, A> => {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
-  const supervisor = Supervisor.none
+  const context = fiberContext<E, A>()
 
-  const context = new FiberContext<E, A>(
-    fiberId,
-    {},
-    initialIS,
-    new Map(),
-    supervisor,
-    scope
-  )
-
-  context.evaluateNow(_._I)
+  context.evaluateNow(_[_I])
   context.runAsync(cb || empty)
 
-  return context.interruptAs(fiberId)
+  return context.interruptAs(context.id)
 }
 
 /**
@@ -133,21 +99,9 @@ export const runAsyncCancel = <S, E, A>(
  * in case of error.
  */
 export const runPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
-  const supervisor = Supervisor.none
+  const context = fiberContext<E, A>()
 
-  const context = new FiberContext<E, A>(
-    fiberId,
-    {},
-    initialIS,
-    new Map(),
-    supervisor,
-    scope
-  )
-
-  context.evaluateNow(_._I)
+  context.evaluateNow(_[_I])
 
   return new Promise((res, rej) => {
     context.runAsync((exit) => {
@@ -172,21 +126,9 @@ export const runPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
 export const runPromiseExit = <S, E, A>(
   _: Effect<S, {}, E, A>
 ): Promise<Exit<E, A>> => {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
-  const supervisor = Supervisor.none
+  const context = fiberContext<E, A>()
 
-  const context = new FiberContext<E, A>(
-    fiberId,
-    {},
-    initialIS,
-    new Map(),
-    supervisor,
-    scope
-  )
-
-  context.evaluateNow(_._I)
+  context.evaluateNow(_[_I])
 
   return new Promise((res) => {
     context.runAsync((exit) => {
@@ -199,29 +141,13 @@ export const runPromiseExit = <S, E, A>(
  * Run effect as a synchronously, returning the full exit state
  */
 export const runSyncExit = <E, A>(_: Effect<never, {}, E, A>): Exit<E, A> => {
-  const initialIS = interruptible
-  const fiberId = newFiberId()
-  const scope = Scope.unsafeMakeScope<Exit<E, A>>()
-  const supervisor = Supervisor.none
+  const context = fiberContext<E, A>()
 
-  const context = new FiberContext<E, A>(
-    fiberId,
-    {},
-    initialIS,
-    new Map(),
-    supervisor,
-    scope
-  )
+  context.evaluateNow(_[_I], true)
 
-  context.evaluateNow(_._I)
+  const state = context.state.get as FiberStateDone<E, A>
 
-  const state = context.state.get
-
-  if (state._tag === "Done") {
-    return state.value
-  } else {
-    throw new Error("Fatal(Bug): runSyncExit called with async")
-  }
+  return state.value
 }
 
 /**
@@ -229,6 +155,23 @@ export const runSyncExit = <E, A>(_: Effect<never, {}, E, A>): Exit<E, A> => {
  * in case of error.
  */
 export const runSync = <E, A>(_: Effect<never, {}, E, A>): A => {
+  const context = fiberContext<E, A>()
+
+  context.evaluateNow(_[_I], true)
+
+  const state = context.state.get as FiberStateDone<E, A>
+
+  switch (state.value._tag) {
+    case "Success": {
+      return state.value.value
+    }
+    case "Failure": {
+      throw new FiberFailure(state.value.cause)
+    }
+  }
+}
+
+function fiberContext<E, A>() {
   const initialIS = interruptible
   const fiberId = newFiberId()
   const scope = Scope.unsafeMakeScope<Exit<E, A>>()
@@ -242,21 +185,5 @@ export const runSync = <E, A>(_: Effect<never, {}, E, A>): A => {
     supervisor,
     scope
   )
-
-  context.evaluateNow(_._I)
-
-  const state = context.state.get
-
-  if (state._tag === "Done") {
-    switch (state.value._tag) {
-      case "Success": {
-        return state.value.value
-      }
-      case "Failure": {
-        throw new FiberFailure(state.value.cause)
-      }
-    }
-  } else {
-    throw new Error("Fatal(Bug): runSyncExit called with async")
-  }
+  return context
 }
