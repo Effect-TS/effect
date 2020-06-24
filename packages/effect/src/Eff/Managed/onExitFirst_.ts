@@ -1,6 +1,8 @@
+import { sequential } from "../Effect/ExecutionStrategy"
+
 import * as T from "./deps"
 import { Managed } from "./managed"
-import { ReleaseMap, makeReleaseMap, Sequential } from "./releaseMap"
+import { ReleaseMap, makeReleaseMap } from "./releaseMap"
 
 /**
  * Ensures that a cleanup function runs when this ZManaged is finalized, before
@@ -30,7 +32,7 @@ export const onExitFirst_ = <S, R, E, A, S2, R2, E2>(
             T.flatten(
               T.zipWith_(
                 T.result(T.provideAll_(cleanup(s.exitEA), s.r)),
-                s.innerReleaseMap.releaseAll(e, new Sequential()),
+                s.innerReleaseMap.releaseAll(e, sequential),
                 (l, r) => T.done(T.exitZipRight_(l, r))
               )
             )

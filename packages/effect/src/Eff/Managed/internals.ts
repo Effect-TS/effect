@@ -1,6 +1,8 @@
+import { sequential } from "../Effect/ExecutionStrategy"
+
 import * as T from "./deps"
 import { Managed } from "./managed"
-import { ReleaseMap, FinalizerT, Sequential } from "./releaseMap"
+import { ReleaseMap, FinalizerT } from "./releaseMap"
 
 export function internalEffect<S, R, E, A>(
   self: Managed<S, R, E, A>
@@ -12,5 +14,5 @@ export function releaseAll<S, E>(
   rm: ReleaseMap,
   ex: T.Exit<any, any>
 ): T.Effect<S, unknown, E, any> {
-  return T.coerceSE<S, E>()(rm.releaseAll(ex, new Sequential()))
+  return T.coerceSE<S, E>()(rm.releaseAll(ex, sequential))
 }
