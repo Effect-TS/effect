@@ -25,6 +25,7 @@ pipe(
       return `used: ${s}`
     })
   ),
-  T.provideAll({ foo: "foo", bar: "bar" }),
+  T.provide({ foo: "foo" }),
+  T.provide({ bar: "bar" }),
   T.runMain
 )
