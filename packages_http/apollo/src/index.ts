@@ -162,7 +162,9 @@ export function apollo<RE, U extends string, Ctx, C extends ApolloConf>(
       )
     )
 
-    const managedServer = M.bracket(acquire, (s) => T.orAbort(T.fromPromise(s.stop)))
+    const managedServer = M.bracket(acquire, (s) =>
+      T.orAbort(T.fromPromise(() => s.stop()))
+    )
 
     return L.fromManaged(
       M.map_(
