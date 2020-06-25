@@ -144,3 +144,5 @@ export {
 } from "./ExecutionStrategy"
 export { foreachExec_ } from "./foreachExec_"
 export { foreachExec } from "./foreachExec"
+export { sleep } from "./sleep"
+export { provide, provide_ } from "./provide"

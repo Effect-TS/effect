@@ -1,24 +1,11 @@
-import { chain_ } from "./chain_"
-import { Effect, AsyncRE } from "./effect"
-import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
-import { effectTotal } from "./effectTotal"
-import { unit } from "./unit"
+import { Clock } from "../Clock"
+
+import { delay_ } from "./delay_"
+import { AsyncRE, Effect } from "./effect"
 
 /**
  * Delay the effect of n milliseconds
  */
-export const delay = (n: number) => <S, R, E, A>(
+export const delay = (ms: number) => <S, R, E, A>(
   effect: Effect<S, R, E, A>
-): AsyncRE<R, E, A> =>
-  chain_(
-    effectAsyncInterrupt<unknown, never, void>((cb) => {
-      const timer = setTimeout(() => {
-        cb(unit)
-      }, n)
-
-      return effectTotal(() => {
-        clearTimeout(timer)
-      })
-    }),
-    () => effect
-  )
+): AsyncRE<R & Clock, E, A> => delay_(effect, ms)
