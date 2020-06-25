@@ -3,6 +3,7 @@ import { died } from "../Cause/died"
 import { failed } from "../Cause/failed"
 import { pretty } from "../Cause/pretty"
 // exit
+import { Clock, liveClock } from "../Clock"
 import { FiberFailure } from "../Errors"
 import { Exit } from "../Exit/exit"
 // fiber
@@ -11,6 +12,7 @@ import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
 import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
+import { Random, defaultRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
@@ -22,10 +24,20 @@ const empty = () => {
   //
 }
 
+export type DefaultEnv = Clock & Random
+
+export const defaultEnv: Clock & Random = {
+  ...liveClock,
+  ...defaultRandom
+}
+
 /**
  * Runs effect until completion, calling cb with the eventual exit state
  */
-export const runAsync = <S, E, A>(_: Effect<S, {}, E, A>, cb?: Callback<E, A>) => {
+export const runAsync = <S, E, A>(
+  _: Effect<S, DefaultEnv, E, A>,
+  cb?: Callback<E, A>
+) => {
   const context = fiberContext<E, A>()
 
   context.evaluateLater(_[_I])
@@ -45,7 +57,7 @@ export interface CancelMain {
  *
  * Note: this should be used only in node.js as it depends on process.exit
  */
-export const runMain = <S, E>(effect: Effect<S, {}, E, void>): CancelMain => {
+export const runMain = <S, E>(effect: Effect<S, DefaultEnv, E, void>): CancelMain => {
   const context = fiberContext<E, void>()
 
   context.evaluateLater(effect[_I])
@@ -83,7 +95,7 @@ export type AsyncCancel<E, A> = Async<Exit<E, A>>
  * triggers cancellation of the process
  */
 export const runAsyncCancel = <S, E, A>(
-  _: Effect<S, {}, E, A>,
+  _: Effect<S, DefaultEnv, E, A>,
   cb?: Callback<E, A>
 ): AsyncCancel<E, A> => {
   const context = fiberContext<E, A>()
@@ -98,7 +110,7 @@ export const runAsyncCancel = <S, E, A>(
  * Run effect as a Promise, throwing a FiberFailure containing the cause of exit
  * in case of error.
  */
-export const runPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
+export const runPromise = <S, E, A>(_: Effect<S, DefaultEnv, E, A>): Promise<A> => {
   const context = fiberContext<E, A>()
 
   context.evaluateLater(_[_I])
@@ -124,7 +136,7 @@ export const runPromise = <S, E, A>(_: Effect<S, {}, E, A>): Promise<A> => {
  * in case of error.
  */
 export const runPromiseExit = <S, E, A>(
-  _: Effect<S, {}, E, A>
+  _: Effect<S, DefaultEnv, E, A>
 ): Promise<Exit<E, A>> => {
   const context = fiberContext<E, A>()
 
@@ -140,7 +152,7 @@ export const runPromiseExit = <S, E, A>(
 /**
  * Run effect as a synchronously, returning the full exit state
  */
-export const runSyncExit = <E, A>(_: Effect<never, {}, E, A>): Exit<E, A> => {
+export const runSyncExit = <E, A>(_: Effect<never, DefaultEnv, E, A>): Exit<E, A> => {
   const context = fiberContext<E, A>()
 
   context.evaluateNow(_[_I], true)
@@ -154,7 +166,7 @@ export const runSyncExit = <E, A>(_: Effect<never, {}, E, A>): Exit<E, A> => {
  * Run effect synchronously, throwing a FiberFailure containing the cause of exit
  * in case of error.
  */
-export const runSync = <E, A>(_: Effect<never, {}, E, A>): A => {
+export const runSync = <E, A>(_: Effect<never, DefaultEnv, E, A>): A => {
   const context = fiberContext<E, A>()
 
   context.evaluateNow(_[_I], true)
@@ -179,7 +191,7 @@ function fiberContext<E, A>() {
 
   const context = new FiberContext<E, A>(
     fiberId,
-    {},
+    defaultEnv,
     initialIS,
     new Map(),
     supervisor,
