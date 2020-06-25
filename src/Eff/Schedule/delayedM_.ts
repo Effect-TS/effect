@@ -16,8 +16,6 @@ export const delayedM_ = <S, ST, A, B, R = unknown, R0 = unknown>(
   self: Schedule<S, R & Clock, ST, A, B>,
   f: (ms: number) => AsyncR<R0, number>
 ) => {
-  type State = [ST, R0 & R & Clock]
-
   return new Schedule(
     Do()
       .bind("oldEnv", environment<R0 & R & Clock>())
@@ -33,9 +31,12 @@ export const delayedM_ = <S, ST, A, B, R = unknown, R0 = unknown>(
         }
       }))
       .bindL("initial", (s) => provideAll_(self.initial, s.env))
-      .return((s): State => [s.initial, s.env]),
-    (a: A, s: State) =>
-      map_(provideAll_(self.update(a, s[0]), s[1]), (_): State => [_, s[1]]),
-    (a: A, s: State) => self.extract(a, s[0])
+      .return((s): [ST, R0 & R & Clock] => [s.initial, s.env]),
+    (a: A, s: [ST, R0 & R & Clock]) =>
+      map_(provideAll_(self.update(a, s[0]), s[1]), (_): [ST, R0 & R & Clock] => [
+        _,
+        s[1]
+      ]),
+    (a: A, s: [ST, R0 & R & Clock]) => self.extract(a, s[0])
   )
 }
