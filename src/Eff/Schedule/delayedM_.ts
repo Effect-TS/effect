@@ -1,10 +1,10 @@
 import { Clock, ClockURI } from "../Clock"
-import { provideAll_ } from "../Effect"
 import { chain_ } from "../Effect/chain_"
 import { AsyncR } from "../Effect/effect"
 import { environment } from "../Effect/environment"
 import { Do } from "../Effect/instances"
 import { map_ } from "../Effect/map_"
+import { provideAll_ } from "../Effect/provideAll_"
 
 import { Schedule } from "./schedule"
 
