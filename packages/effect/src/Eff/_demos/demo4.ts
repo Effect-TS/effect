@@ -5,7 +5,7 @@ import * as S from "../Schedule"
 let i = 0
 
 const policy = pipe(
-  S.fixed(200),
+  S.fixed(0),
   S.delayedM((ms) => T.succeedNow(ms * 2))
 )
 
