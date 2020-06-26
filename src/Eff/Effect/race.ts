@@ -1,6 +1,7 @@
 import * as E from "../../Either"
 import { Both } from "../Cause/cause"
 import { interruptedOnly } from "../Cause/interruptedOnly"
+import { Exit } from "../Exit/exit"
 import { foldM_ } from "../Exit/foldM_"
 import { join } from "../Fiber/join"
 
@@ -12,10 +13,21 @@ import { mapErrorCause_ } from "./mapErrorCause"
 import { map_ } from "./map_"
 import { raceWith } from "./raceWith"
 import { succeedNow } from "./succeedNow"
-import { uninterruptibleMask } from "./uninterruptibleMask"
 
-export const maybeDisconnect = <S, R, E, A>(effect: Effect<S, R, E, A>) =>
-  uninterruptibleMask((i) => i.force(effect))
+function mergeInterruption<A, E2, A2>(
+  a: A
+): (a: Exit<E2, A2>) => Effect<never, unknown, E2, A> {
+  return (x) => {
+    switch (x._tag) {
+      case "Success": {
+        return succeedNow(a)
+      }
+      case "Failure": {
+        return interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
+      }
+    }
+  }
+}
 
 /**
  * Returns an effect that races this effect with the specified effect,
@@ -26,10 +38,6 @@ export const maybeDisconnect = <S, R, E, A>(effect: Effect<S, R, E, A>) =>
  * WARNING: The raced effect will safely interrupt the "loser", but will not
  * resume until the loser has been cleanly terminated. If early return is
  * desired
- *
- * Note that if the `race` is embedded into an uninterruptible region, then
- * because the loser cannot be interrupted, it will be allowed to continue
- * executing in the background, without delaying the return of the race.
  */
 export const race_ = <S, R, E, A, S2, R2, E2, A2>(
   self: Effect<S, R, E, A>,
@@ -37,39 +45,19 @@ export const race_ = <S, R, E, A, S2, R2, E2, A2>(
 ): Effect<unknown, R & R2, E | E2, A | A2> =>
   checkDescriptor((d) =>
     raceWith(
-      maybeDisconnect(self),
-      maybeDisconnect(that),
+      self,
+      that,
       (exit, right) =>
         foldM_(
           exit,
           (cause) => mapErrorCause_(join(right), (_) => Both(cause, _)),
-          (a) =>
-            chain_(right.interruptAs(d.id), (x) => {
-              switch (x._tag) {
-                case "Success": {
-                  return succeedNow(a)
-                }
-                case "Failure": {
-                  return interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
-                }
-              }
-            })
+          (a) => chain_(right.interruptAs(d.id), mergeInterruption(a))
         ),
       (exit, left) =>
         foldM_(
           exit,
           (cause) => mapErrorCause_(join(left), (_) => Both(_, cause)),
-          (a) =>
-            chain_(left.interruptAs(d.id), (x) => {
-              switch (x._tag) {
-                case "Success": {
-                  return succeedNow(a)
-                }
-                case "Failure": {
-                  return interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
-                }
-              }
-            })
+          (a) => chain_(left.interruptAs(d.id), mergeInterruption(a))
         )
     )
   )
@@ -81,12 +69,7 @@ export const race_ = <S, R, E, A, S2, R2, E2, A2>(
  * effect will fail with some error.
  *
  * WARNING: The raced effect will safely interrupt the "loser", but will not
- * resume until the loser has been cleanly terminated. If early return is
- * desired
- *
- * Note that if the `race` is embedded into an uninterruptible region, then
- * because the loser cannot be interrupted, it will be allowed to continue
- * executing in the background, without delaying the return of the race.
+ * resume until the loser has been cleanly terminated.
  */
 export const race = <S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) => <S, R, E, A>(
   self: Effect<S, R, E, A>
