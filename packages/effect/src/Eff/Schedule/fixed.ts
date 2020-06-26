@@ -4,21 +4,13 @@ import { map_ } from "../Effect/map_"
 import { sleep } from "../Effect/sleep"
 
 import { forever } from "./forever"
-import { Schedule } from "./schedule"
+import { Schedule, ScheduleClass } from "./schedule"
 
-export function fixed(ms: 0): Schedule<unknown, Clock, number, unknown, number>
-export function fixed(
-  ms: number
-): Schedule<unknown, Clock, [number, number, number], unknown, number>
-export function fixed(
-  ms: number
-):
-  | Schedule<unknown, Clock, [number, number, number], unknown, number>
-  | Schedule<unknown, Clock, number, unknown, number> {
+export function fixed(ms: number): Schedule<unknown, Clock, unknown, number> {
   if (ms === 0) {
     return forever
   }
-  return new Schedule<unknown, Clock, [number, number, number], unknown, number>(
+  return new ScheduleClass<unknown, Clock, [number, number, number], unknown, number>(
     map_(currentTime, (t) => [t, 1, 0]),
     (_, [start, t0, i]) =>
       chain_(currentTime, (now) => {

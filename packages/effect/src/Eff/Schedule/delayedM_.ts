@@ -6,17 +6,17 @@ import { Do } from "../Effect/instances"
 import { map_ } from "../Effect/map_"
 import { provideAll_ } from "../Effect/provideAll_"
 
-import { Schedule } from "./schedule"
+import { Schedule, ScheduleClass } from "./schedule"
 
 /**
  * Returns a new schedule with the specified effectful modification
  * applied to each delay produced by this schedule.
  */
-export const delayedM_ = <S, ST, A, B, R = unknown, R0 = unknown>(
-  self: Schedule<S, R & Clock, ST, A, B>,
+export const delayedM_ = <S, A, B, R = unknown, R0 = unknown>(
+  self: Schedule<S, R & Clock, A, B>,
   f: (ms: number) => AsyncR<R0, number>
-) => {
-  return new Schedule(
+): Schedule<S, R & R0 & Clock, A, B> => {
+  return new ScheduleClass(
     Do()
       .bind("oldEnv", environment<R0 & R & Clock>())
       .letL("env", (s): R0 & R & Clock => ({
@@ -31,12 +31,12 @@ export const delayedM_ = <S, ST, A, B, R = unknown, R0 = unknown>(
         }
       }))
       .bindL("initial", (s) => provideAll_(self.initial, s.env))
-      .return((s): [ST, R0 & R & Clock] => [s.initial, s.env]),
-    (a: A, s: [ST, R0 & R & Clock]) =>
-      map_(provideAll_(self.update(a, s[0]), s[1]), (_): [ST, R0 & R & Clock] => [
+      .return((s): [any, R0 & R & Clock] => [s.initial, s.env]),
+    (a: A, s: [any, R0 & R & Clock]) =>
+      map_(provideAll_(self.update(a, s[0]), s[1]), (_): [any, R0 & R & Clock] => [
         _,
         s[1]
       ]),
-    (a: A, s: [ST, R0 & R & Clock]) => self.extract(a, s[0])
+    (a: A, s: [any, R0 & R & Clock]) => self.extract(a, s[0])
   )
 }
