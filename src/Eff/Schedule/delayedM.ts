@@ -10,10 +10,9 @@ import { Schedule } from "./schedule"
  */
 export const delayedM = <R0 = unknown>(f: (ms: number) => AsyncR<R0, number>) => <
   S,
-  ST,
   A,
   B,
   R = unknown
 >(
-  self: Schedule<S, R & Clock, ST, A, B>
+  self: Schedule<S, R & Clock, A, B>
 ) => delayedM_(self, f)
