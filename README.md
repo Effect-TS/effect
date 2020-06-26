@@ -4,8 +4,6 @@
 
 Matechs Effect is a Fully-fledged functional effect system for typescript with a rich standard library including modules for http server & client, logger, orm, cqrs+es, zookeeper leader election, next.js, apollo, rxjs, redux-observables and more.
 
-Docs at [https://arnaldimichael.gitbook.io/matechs-effect/](https://arnaldimichael.gitbook.io/matechs-effect/)
-
 ## Folders
 * packages : core packages
 * packages_inc : projects in incubation stage
@@ -24,6 +22,7 @@ This package is a work in progress syntax and functions might change, feedback a
 ## Videos
 26-03-2020 Introduction call, basic explaination of the effect library and showcase of examples:
 [https://vimeo.com/401143293](https://vimeo.com/401143293)
+28-08-2020 Scala in The City COnference: Functional Effect Systems to the Rescue https://www.youtube.com/watch?v=Ol1VTFt2FTQ
 
 ## License
 The library is released with an MIT license and the codebase is fully open-source please read: 
