@@ -1,16 +1,20 @@
 import * as E from "../../Either"
 import { Both } from "../Cause/cause"
+import { interruptedOnly } from "../Cause/interruptedOnly"
 import { foldM_ } from "../Exit/foldM_"
 import { join } from "../Fiber/join"
 
+import { chain_ } from "./chain_"
 import { checkDescriptor } from "./checkDescriptor"
 import { Effect } from "./effect"
+import { halt } from "./halt"
 import { mapErrorCause_ } from "./mapErrorCause"
 import { map_ } from "./map_"
 import { raceWith } from "./raceWith"
+import { succeedNow } from "./succeedNow"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
-const maybeDisconnect = <S, R, E, A>(effect: Effect<S, R, E, A>) =>
+export const maybeDisconnect = <S, R, E, A>(effect: Effect<S, R, E, A>) =>
   uninterruptibleMask((i) => i.force(effect))
 
 /**
@@ -39,13 +43,33 @@ export const race_ = <S, R, E, A, S2, R2, E2, A2>(
         foldM_(
           exit,
           (cause) => mapErrorCause_(join(right), (_) => Both(cause, _)),
-          (a) => map_(right.interruptAs(d.id), () => a)
+          (a) =>
+            chain_(right.interruptAs(d.id), (x) => {
+              switch (x._tag) {
+                case "Success": {
+                  return succeedNow(a)
+                }
+                case "Failure": {
+                  return interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
+                }
+              }
+            })
         ),
       (exit, left) =>
         foldM_(
           exit,
           (cause) => mapErrorCause_(join(left), (_) => Both(_, cause)),
-          (a) => map_(left.interruptAs(d.id), () => a)
+          (a) =>
+            chain_(left.interruptAs(d.id), (x) => {
+              switch (x._tag) {
+                case "Success": {
+                  return succeedNow(a)
+                }
+                case "Failure": {
+                  return interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
+                }
+              }
+            })
         )
     )
   )
