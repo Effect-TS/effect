@@ -58,6 +58,10 @@ export type { M, M_ }
 // Opaque
 //
 export type { AType, EType, RType } from "./batteries/usage/utils"
+export type {
+  AOfMorhpADT as ATypeADT,
+  EOfMorhpADT as ETypeADT
+} from "./batteries/usage/tagged-union"
 
 export { opaque, opaque_ }
 
