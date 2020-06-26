@@ -22,6 +22,7 @@ This package is a work in progress syntax and functions might change, feedback a
 ## Videos
 26-03-2020 Introduction call, basic explaination of the effect library and showcase of examples:
 [https://vimeo.com/401143293](https://vimeo.com/401143293)
+
 28-08-2020 Scala in The City COnference: Functional Effect Systems to the Rescue https://www.youtube.com/watch?v=Ol1VTFt2FTQ
 
 ## License
