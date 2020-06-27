@@ -371,8 +371,6 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             )
           )
 
-          this.setInterrupting(true)
-
           return chain_.chain_(this.openScope.close(v), () => done.done(v))[_I]
         }
       }
@@ -510,25 +508,18 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
 
     if (parentScope !== Scope.globalScope) {
-      const childContextRef = () => childContext
       const key = parentScope.unsafeEnsure((exit) =>
         suspend.suspend(
           (): Async<any> => {
-            const childContext = childContextRef()
+            const _interruptors =
+              exit._tag === "Failure" ? interruptors(exit.cause) : new Set<FiberID>()
 
-            if (childContext != null) {
-              const _interruptors =
-                exit._tag === "Failure" ? interruptors(exit.cause) : new Set<FiberID>()
+            const head = _interruptors.values().next()
 
-              const head = _interruptors.values().next()
-
-              if (head.done) {
-                return childContext.interruptAs(this.fiberId)
-              } else {
-                return childContext.interruptAs(head.value)
-              }
+            if (head.done) {
+              return childContext.interruptAs(this.fiberId)
             } else {
-              return unit.unit
+              return childContext.interruptAs(head.value)
             }
           }
         )
@@ -538,6 +529,14 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         throw new IllegalStateException(
           "Defect: The fiber's scope has ended before the fiber itself has ended"
         )
+      })
+
+      // Remove the finalizer key from the parent scope when the child fiber
+      // terminates:
+      childContext.onDone(() => {
+        if (key._tag === "Some") {
+          parentScope.unsafeDeny(key.value)
+        }
       })
     }
 
@@ -745,6 +744,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         return causeAndInterrupt
                       }
                     }
+
+                    this.setInterrupting(true)
 
                     current = this.done(haltExit(cause()))
                   } else {

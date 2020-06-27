@@ -72,6 +72,7 @@ export interface CommonScope<A> {
 
   readonly unsafeEnsure: (finalizer: (_: A) => Async<any>) => O.Option<Key>
   readonly unsafeExtend: (that: Scope<any>) => boolean
+  readonly unsafeDeny: (key: Key) => boolean
 }
 
 /**
@@ -169,6 +170,10 @@ export class Global implements CommonScope<never> {
       case "Local":
         return that.unsafeAddRef()
     }
+  }
+
+  unsafeDeny() {
+    return true
   }
 }
 
