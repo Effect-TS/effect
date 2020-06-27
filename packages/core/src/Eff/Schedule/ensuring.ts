@@ -6,7 +6,7 @@ import { unit } from "../Effect/unit"
 import { zip_ } from "../Effect/zip_"
 import { makeRef, Ref } from "../Ref"
 
-import { Schedule, ScheduleClass } from "./schedule"
+import { Schedule } from "./schedule"
 
 /**
  * Runs the specified finalizer as soon as the schedule is complete. Note
@@ -15,18 +15,18 @@ import { Schedule, ScheduleClass } from "./schedule"
  * schedule may not run to completion. However, if the `Schedule` ever
  * decides not to continue, then the finalizer will be run.
  */
-export const ensuring_ = <S, R, A, B, S2, R2>(
-  self: Schedule<S, R, A, B>,
+export const ensuring_ = <S, R, ST, A, B, S2, R2>(
+  self: Schedule<S, R, ST, A, B>,
   finalizer: Effect<S2, R2, never, any>
-): Schedule<S | S2, R & R2, A, B> =>
-  new ScheduleClass(
+): Schedule<S | S2, R & R2, [ST, Ref<Effect<S2, R2, never, any>>], A, B> =>
+  new Schedule(
     zip_(self.initial, makeRef(finalizer)),
-    (a: A, s: [any, Ref<Effect<S2, R2, never, any>>]) =>
+    (a: A, s: [ST, Ref<Effect<S2, R2, never, any>>]) =>
       map_(
         tapError_(self.update(a, s[0]), (_) =>
           flatten(s[1].modify((fin) => [fin, unit]))
         ),
-        (_): [any, Ref<Effect<S2, R2, never, any>>] => [_, s[1]]
+        (_): [ST, Ref<Effect<S2, R2, never, any>>] => [_, s[1]]
       ),
     (a, [s]) => self.extract(a, s)
   )
@@ -38,6 +38,13 @@ export const ensuring_ = <S, R, A, B, S2, R2>(
  * schedule may not run to completion. However, if the `Schedule` ever
  * decides not to continue, then the finalizer will be run.
  */
-export const ensuring = <S2, R2>(finalizer: Effect<S2, R2, never, any>) => <S, R, A, B>(
-  self: Schedule<S, R, A, B>
-): Schedule<S | S2, R & R2, A, B> => ensuring_(self, finalizer)
+export const ensuring = <S2, R2>(finalizer: Effect<S2, R2, never, any>) => <
+  S,
+  R,
+  ST,
+  A,
+  B
+>(
+  self: Schedule<S, R, ST, A, B>
+): Schedule<S | S2, R & R2, [ST, Ref<Effect<S2, R2, never, any>>], A, B> =>
+  ensuring_(self, finalizer)

@@ -4,6 +4,6 @@ import { Schedule } from "./schedule"
 /**
  * The same as `andThenEither`, but merges the output.
  */
-export const andThen = <S, R, B, A, R1, S1, C, A1 extends A = A>(
-  that: Schedule<S1, R1, A1, C>
-) => (self: Schedule<S, R, A, B>) => andThen_(self, that)
+export const andThen = <ST1, A, R1, S1, C, A1 extends A = A>(
+  that: Schedule<S1, R1, ST1, A1, C>
+) => <S, R, ST, B>(self: Schedule<S, R, ST, A, B>) => andThen_(self, that)

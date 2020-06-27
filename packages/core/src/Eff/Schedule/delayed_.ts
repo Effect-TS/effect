@@ -8,7 +8,7 @@ import { Schedule } from "./schedule"
  * Returns a new schedule with the specified pure modification
  * applied to each delay produced by this schedule.
  */
-export const delayed_ = <S, A, B, R = unknown>(
-  self: Schedule<S, R & Clock, A, B>,
+export const delayed_ = <S, A, B, ST, R = unknown>(
+  self: Schedule<S, R & Clock, ST, A, B>,
   f: (ms: number) => number
 ) => delayedM_(self, (x) => succeedNow(f(x)))
