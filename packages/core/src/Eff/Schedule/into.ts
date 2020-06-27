@@ -1,18 +1,18 @@
 import { Do } from "../Effect/instances"
 import { zip_ } from "../Effect/zip_"
 
-import { Schedule, ScheduleClass } from "./schedule"
+import { Schedule } from "./schedule"
 
 /**
  * Returns the composition of this schedule and the specified schedule,
  * by piping the output of this one into the input of the other.
  * Effects described by this schedule will always be executed before the effects described by the second schedule.
  */
-export const into_ = <S, R, A, B, S2, R2, C>(
-  self: Schedule<S, R, A, B>,
-  that: Schedule<S2, R2, B, C>
+export const into_ = <S, R, ST, A, B, S2, R2, ST2, C>(
+  self: Schedule<S, R, ST, A, B>,
+  that: Schedule<S2, R2, ST2, B, C>
 ) =>
-  new ScheduleClass<S | S2, R & R2, [any, any], A, C>(
+  new Schedule<S | S2, R & R2, [ST, ST2], A, C>(
     zip_(self.initial, that.initial),
     (a, s) =>
       Do()
@@ -27,6 +27,11 @@ export const into_ = <S, R, A, B, S2, R2, C>(
  * by piping the output of this one into the input of the other.
  * Effects described by this schedule will always be executed before the effects described by the second schedule.
  */
-export const into = <S2, R2, B, C>(that: Schedule<S2, R2, B, C>) => <S, R, A>(
-  self: Schedule<S, R, A, B>
+export const into = <S2, R2, ST2, B, C>(that: Schedule<S2, R2, ST2, B, C>) => <
+  S,
+  R,
+  ST,
+  A
+>(
+  self: Schedule<S, R, ST, A, B>
 ) => into_(self, that)
