@@ -34,11 +34,11 @@ export const foldM = <Z>(z: Z) => <B, S1, R1>(
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
-export const fold_ = <S, R, A, B, Z, S1, R1>(
+export const fold_ = <S, R, A, B, Z>(
   self: Schedule<S, R, A, B>,
   z: Z,
   f: (z: Z, b: B) => Z
-): Schedule<S | S1, R & R1, A, Z> => foldM_(self, z, (z, b) => succeedNow(f(z, b)))
+): Schedule<S, R, A, Z> => foldM_(self, z, (z, b) => succeedNow(f(z, b)))
 
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
