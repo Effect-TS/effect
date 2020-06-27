@@ -12,9 +12,10 @@ import { updated_ } from "./updated_"
 export const addDelayM = <B, S1, R1>(f: (b: B) => Effect<S1, R1, never, number>) => <
   S,
   R,
+  ST,
   A
 >(
-  self: Schedule<S, R, A, B>
+  self: Schedule<S, R, ST, A, B>
 ) =>
   updated_(self, (update) => (a, s) =>
     chain_(f(self.extract(a, s)), (d) =>
