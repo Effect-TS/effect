@@ -316,7 +316,48 @@ const ShowPersonA = SHOW.deriveFor(make)({
   }
 })(PersonA)
 
+const PersonString = make((F) =>
+  F.unknownE(Person(F), {
+    conf: {
+      [M.ModelURI]: (a) =>
+        new Model.Codec(
+          "PersonStr",
+          (i, c) => {
+            if (Model.isString(i)) {
+              const split = i.split("|||")
+
+              if (split.length === 2) {
+                const address = AddressPrism.getOption(split[0])
+
+                if (address._tag === "None") {
+                  return Model.failure(i, c)
+                }
+
+                return Model.success<Person>({
+                  address: [address.value],
+                  name: split[1]
+                })
+              }
+
+              return Model.failure(i, c)
+            } else {
+              return Model.failure(i, c)
+            }
+          },
+          (a) => `${a.address}|||${a.name}`
+        )
+    }
+  })
+)
+
 describe("Morphic", () => {
+  it("person string", () => {
+    const person = PersonString.decode("177 Finchley Road|||Mike")
+
+    expect(person).toStrictEqual(
+      E.right({ name: "Mike", address: ["177 Finchley Road"] })
+    )
+  })
   it("should validate address", () => {
     const result = pipe(
       Address.decode(

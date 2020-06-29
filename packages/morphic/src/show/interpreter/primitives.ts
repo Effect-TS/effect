@@ -27,6 +27,8 @@ export const named = (name?: string | undefined) => <A>(s: Show<A>): Show<A> => 
 export const showPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<ShowURI, Env> => ({
     _F: ShowURI,
+    unknownE: (k, config) => (env) =>
+      new ShowType(showApplyConfig(config?.conf)(k(env).show, env, {})),
     date: (config) => (env) =>
       new ShowType(
         introduce({ show: (date: Date) => date.toISOString() })((show) =>

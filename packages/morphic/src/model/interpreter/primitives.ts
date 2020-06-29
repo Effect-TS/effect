@@ -13,6 +13,10 @@ import type {
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
     _F: ModelURI,
+    unknownE: (k, config) => (env) =>
+      new ModelType(
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(k(env).codec), env, {})
+      ),
     date: (config) => (env) =>
       new ModelType(
         modelApplyConfig(config?.conf)(
