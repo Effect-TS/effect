@@ -17,6 +17,16 @@ export const regexUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 export const guardPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<GuardURI, Env> => ({
     _F: GuardURI,
+    function: (_, __, config) => (env) =>
+      new GuardType(
+        guardApplyConfig(config?.conf)(
+          {
+            is: (u): u is any => false
+          },
+          env,
+          {}
+        )
+      ),
     unknownE: (k, config) => (env) =>
       new GuardType(guardApplyConfig(config?.conf)(k(env).guard, env, {})),
     date: (config) => (env) =>

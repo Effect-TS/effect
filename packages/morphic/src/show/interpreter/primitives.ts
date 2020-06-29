@@ -27,6 +27,16 @@ export const named = (name?: string | undefined) => <A>(s: Show<A>): Show<A> => 
 export const showPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<ShowURI, Env> => ({
     _F: ShowURI,
+    function: (_, __, config) => (env) =>
+      new ShowType(
+        showApplyConfig(config?.conf)(
+          {
+            show: (_) => (config?.name ? `function(${config?.name})` : `function`)
+          },
+          env,
+          {}
+        )
+      ),
     unknownE: (k, config) => (env) =>
       new ShowType(showApplyConfig(config?.conf)(k(env).show, env, {})),
     date: (config) => (env) =>

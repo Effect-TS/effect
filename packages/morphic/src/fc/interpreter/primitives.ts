@@ -12,6 +12,14 @@ import type { MatechsAlgebraPrimitive1 } from "@matechs/morphic-alg/primitives"
 export const fcPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<FastCheckURI, Env> => ({
     _F: FastCheckURI,
+    function: (i, o, config) => (env) =>
+      new FastCheckType(
+        fcApplyConfig(config?.conf)(
+          o(env).arb.map((r) => () => r),
+          env,
+          {}
+        )
+      ),
     unknownE: (k, config) => (env) =>
       new FastCheckType(fcApplyConfig(config?.conf)(k(env).arb, env, {})),
     date: (config) => (env) =>

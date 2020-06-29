@@ -20,6 +20,16 @@ import type { MatechsAlgebraPrimitive1, UUID } from "@matechs/morphic-alg/primit
 export const eqPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive1<EqURI, Env> => ({
     _F: EqURI,
+    function: (_, __, config) => (env) =>
+      new EqType(
+        eqApplyConfig(config?.conf)(
+          {
+            equals: (x, y) => x === y
+          },
+          env,
+          {}
+        )
+      ),
     unknownE: (k, config) => (env) =>
       new EqType(eqApplyConfig(config?.conf)(k(env).eq, env, {})),
     date: (config) => (env) =>

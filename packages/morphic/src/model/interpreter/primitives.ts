@@ -13,6 +13,18 @@ import type {
 export const modelPrimitiveInterpreter = memo(
   <Env extends AnyEnv>(): MatechsAlgebraPrimitive2<ModelURI, Env> => ({
     _F: ModelURI,
+    function: (_, __, config) => (env) =>
+      new ModelType(
+        modelApplyConfig(config?.conf)(
+          new M.Codec(
+            config?.name || "function",
+            (c, i) => M.failure(c, i, "decoder not available for function type"),
+            () => undefined
+          ),
+          env,
+          {}
+        )
+      ),
     unknownE: (k, config) => (env) =>
       new ModelType(
         modelApplyConfig(config?.conf)(M.withName(config?.name)(k(env).codec), env, {

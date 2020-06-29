@@ -1,9 +1,10 @@
-import type { ConfigsForType, AnyEnv } from "../config"
-import type { URIS2, Kind2, URIS, Kind, HKT2 } from "../utils/hkt"
+import type { AnyEnv, ConfigsForType } from "../config"
+import type { HKT2, Kind, Kind2, URIS, URIS2 } from "../utils/hkt"
 
 import type { Array } from "@matechs/core/Array"
 import type { Branded } from "@matechs/core/Branded"
 import type { Either } from "@matechs/core/Either"
+import { FunctionN } from "@matechs/core/Function"
 import type { NonEmptyArray } from "@matechs/core/NonEmptyArray"
 import type { Option } from "@matechs/core/Option"
 import type { Record } from "@matechs/core/Record"
@@ -53,9 +54,25 @@ export interface BigIntConfig {}
 export interface StringConfig {}
 export interface DateConfig {}
 export interface UUIDConfig {}
+export interface FunctionConfig<I, IE, O, OE> {}
 
 export interface MatechsAlgebraPrimitive<F, Env> {
   _F: F
+  function: {
+    <I, IE, O, OE>(
+      I: HKT2<F, Env, IE, I>,
+      O: HKT2<F, Env, OE, O>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          unknown,
+          FunctionN<[I], O>,
+          FunctionConfig<I, IE, O, OE>
+        >
+      }
+    ): HKT2<F, Env, unknown, FunctionN<[I], O>>
+  }
   unknownE: {
     <L, A>(
       T: HKT2<F, Env, L, A>,
@@ -219,6 +236,21 @@ export interface MatechsAlgebraPrimitive<F, Env> {
 
 export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
   _F: F
+  function: {
+    <I, O>(
+      I: Kind<F, Env, I>,
+      O: Kind<F, Env, O>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          FunctionN<[unknown], unknown>,
+          FunctionN<[I], O>,
+          FunctionConfig<I, unknown, O, unknown>
+        >
+      }
+    ): Kind<F, Env, FunctionN<[I], O>>
+  }
   unknownE: {
     <A>(
       T: Kind<F, Env, A>,
@@ -357,6 +389,21 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
 
 export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
   _F: F
+  function: {
+    <I, IE, O, OE>(
+      I: Kind2<F, Env, IE, I>,
+      O: Kind2<F, Env, OE, O>,
+      config?: {
+        name?: string
+        conf?: ConfigsForType<
+          Env,
+          unknown,
+          FunctionN<[I], O>,
+          FunctionConfig<I, IE, O, OE>
+        >
+      }
+    ): Kind2<F, Env, unknown, FunctionN<[I], O>>
+  }
   unknownE: {
     <L, A>(
       T: Kind2<F, Env, L, A>,

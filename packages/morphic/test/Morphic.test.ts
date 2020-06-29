@@ -351,7 +351,24 @@ const PersonString = make((F) =>
   })
 )
 
+const WithF = M.make((F) =>
+  F.interface({
+    numberAsString: F.function(F.number(), F.string())
+  })
+)
+
 describe("Morphic", () => {
+  it("withF", () => {
+    const withF = WithF.build({
+      numberAsString: (n) => `n: ${n}`
+    })
+
+    expect(withF.numberAsString(1)).toStrictEqual("n: 1")
+
+    const eq = EQ.derive(WithF)
+
+    expect(eq.equals(withF, withF)).toStrictEqual(true)
+  })
   it("person string", () => {
     const person = PersonString.decode("177 Finchley Road|||Mike")
 
