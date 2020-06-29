@@ -43,6 +43,11 @@ declare module "@matechs/morphic-alg/object" {
 }
 
 declare module "@matechs/morphic-alg/primitives" {
+  interface UnknownEConfig<L, A> {
+    [ModelURI]: {
+      model: M.Codec<A, L>
+    }
+  }
   interface NonEmptyArrayConfig<L, A> {
     [ModelURI]: {
       model: M.Codec<A, L>

@@ -15,7 +15,9 @@ export const modelPrimitiveInterpreter = memo(
     _F: ModelURI,
     unknownE: (k, config) => (env) =>
       new ModelType(
-        modelApplyConfig(config?.conf)(M.withName(config?.name)(k(env).codec), env, {})
+        modelApplyConfig(config?.conf)(M.withName(config?.name)(k(env).codec), env, {
+          model: k(env).codec
+        })
       ),
     date: (config) => (env) =>
       new ModelType(

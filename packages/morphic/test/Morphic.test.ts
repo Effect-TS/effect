@@ -319,7 +319,7 @@ const ShowPersonA = SHOW.deriveFor(make)({
 const PersonString = make((F) =>
   F.unknownE(Person(F), {
     conf: {
-      [M.ModelURI]: (a) =>
+      [M.ModelURI]: (_, __, { model }) =>
         new Model.Codec(
           "PersonStr",
           (i, c) => {
@@ -327,16 +327,13 @@ const PersonString = make((F) =>
               const split = i.split("|||")
 
               if (split.length === 2) {
-                const address = AddressPrism.getOption(split[0])
-
-                if (address._tag === "None") {
-                  return Model.failure(i, c)
-                }
-
-                return Model.success<Person>({
-                  address: [address.value],
-                  name: split[1]
-                })
+                return model.validate(
+                  {
+                    name: split[1],
+                    address: [split[0]]
+                  } as PersonE,
+                  c
+                )
               }
 
               return Model.failure(i, c)
@@ -344,7 +341,11 @@ const PersonString = make((F) =>
               return Model.failure(i, c)
             }
           },
-          (a) => `${a.address}|||${a.name}`
+          (a) => {
+            const e = model.encode(a)
+
+            return `${e.address}|||${e.name}`
+          }
         )
     }
   })

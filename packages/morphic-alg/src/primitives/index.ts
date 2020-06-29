@@ -46,7 +46,7 @@ export interface OneOfLiteralsConfig<T> {}
 export interface KeysOfConfig<K> {}
 export interface EitherConfig<EE, EA, AE, AA> {}
 export interface OptionConfig<L, A> {}
-export interface UnknownEConfig<A> {}
+export interface UnknownEConfig<L, A> {}
 export interface BooleanConfig {}
 export interface NumberConfig {}
 export interface BigIntConfig {}
@@ -61,7 +61,7 @@ export interface MatechsAlgebraPrimitive<F, Env> {
       T: HKT2<F, Env, L, A>,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, unknown, A, UnknownEConfig<A>>
+        conf?: ConfigsForType<Env, unknown, A, UnknownEConfig<L, A>>
       }
     ): HKT2<F, Env, unknown, A>
   }
@@ -224,7 +224,7 @@ export interface MatechsAlgebraPrimitive1<F extends URIS, Env extends AnyEnv> {
       T: Kind<F, Env, A>,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, unknown, A, UnknownEConfig<A>>
+        conf?: ConfigsForType<Env, unknown, A, UnknownEConfig<unknown, A>>
       }
     ): Kind<F, Env, A>
   }
@@ -362,7 +362,7 @@ export interface MatechsAlgebraPrimitive2<F extends URIS2, Env extends AnyEnv> {
       T: Kind2<F, Env, L, A>,
       config?: {
         name?: string
-        conf?: ConfigsForType<Env, unknown, A, UnknownEConfig<A>>
+        conf?: ConfigsForType<Env, unknown, A, UnknownEConfig<L, A>>
       }
     ): Kind2<F, Env, unknown, A>
   }
