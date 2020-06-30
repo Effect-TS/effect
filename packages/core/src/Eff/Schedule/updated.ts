@@ -6,7 +6,7 @@ import { Schedule } from "./schedule"
  * Returns a new schedule with the update function transformed by the
  * specified update transformer.
  */
-export const updated = <S, R, ST, A, A1 extends A, S2, R2>(
+export const updated = <S, R, ST, A, S2, R2, A1 extends A = A>(
   f: (
     update: (a: A, s: ST) => Effect<S, R, void, any>
   ) => (a: A1, s: ST) => Effect<S2, R2, void, any>
