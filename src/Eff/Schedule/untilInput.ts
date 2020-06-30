@@ -15,7 +15,7 @@ export const untilInputM_ = <S, R, ST, A, B, S1, R1, A1 extends A>(
   f: (a: A1) => Effect<S1, R1, never, boolean>
 ) =>
   updated_(self, (update) => (a: A1, s) =>
-    chain_(f(a), (b) => (b ? update(a, s) : fail(undefined)))
+    chain_(f(a), (b) => (b ? fail(undefined) : update(a, s)))
   )
 
 /**

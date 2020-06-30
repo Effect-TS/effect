@@ -11,7 +11,7 @@ export const choose_ = <S, R, ST, A, B, S2, R2, ST2, A2, B2>(
   self: Schedule<S, R, ST, A, B>,
   that: Schedule<S2, R2, ST2, A2, B2>
 ): Schedule<S | S2, R & R2, [ST, ST2], E.Either<A, A2>, E.Either<B, B2>> =>
-  new Schedule<S | S2, R & R2, [any, any], E.Either<A, A2>, E.Either<B, B2>>(
+  new Schedule<S | S2, R & R2, [ST, ST2], E.Either<A, A2>, E.Either<B, B2>>(
     zip_(self.initial, that.initial),
     (a, s) =>
       E.fold_(
