@@ -56,3 +56,4 @@ export { untilOutput, untilOutput_, untilOutputM, untilOutputM_ } from "./untilO
 export { elapsed } from "./elapsed"
 export { duration } from "./duration"
 export { exponential } from "./exponential"
+export { fibonacci } from "./fibonacci"
