@@ -158,7 +158,7 @@ export { timed, timedWith_, timedWith } from "./timed"
 export { as, as_ } from "./as"
 export {
   Has,
-  hasURI,
+  has,
   provideServiceM,
   accessServicesM,
   accessServiceM,
@@ -166,5 +166,6 @@ export {
   accessServices,
   HasRegistry,
   hasClass,
-  hasScoped
+  hasScoped,
+  hasAs
 } from "../Has"
