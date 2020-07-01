@@ -1,8 +1,9 @@
-import { Clock, ClockURI } from "../Clock"
+import { HasClock, ProxyClock } from "../Clock"
 import { provideAll_ } from "../Effect"
 import { chain_ } from "../Effect/chain_"
 import { Effect } from "../Effect/effect"
 import { provideSome_ } from "../Effect/provideSome"
+import { replaceServiceIn_ } from "../Has"
 
 import { Schedule } from "./schedule"
 
@@ -17,20 +18,20 @@ import { Schedule } from "./schedule"
 export const modifyDelay_ = <S, R, ST, A, B, S2, R2>(
   self: Schedule<S, R, ST, A, B>,
   f: (b: B, ms: number) => Effect<S2, R2, never, number>
-): Schedule<S, R & R2 & Clock, ST, A, B> =>
+): Schedule<S, R & R2 & HasClock, ST, A, B> =>
   new Schedule(
     self.initial,
     (a, s) =>
-      provideSome_(self.update(a, s), (r: R & R2 & Clock): R & Clock => ({
-        ...r,
-        [ClockURI]: {
-          ...r[ClockURI],
-          sleep: (ms) =>
-            chain_(provideAll_(f(self.extract(a, s), ms), r), (ms) =>
-              r[ClockURI].sleep(ms)
+      provideSome_(self.update(a, s), (r: R & R2 & HasClock): R & HasClock =>
+        replaceServiceIn_(
+          r,
+          HasClock,
+          (c) =>
+            new ProxyClock(c.currentTime, (ms) =>
+              chain_(provideAll_(f(self.extract(a, s), ms), r), (ms) => c.sleep(ms))
             )
-        }
-      })),
+        )
+      ),
     self.extract
   )
 
@@ -46,4 +47,4 @@ export const modifyDelay = <B, S2, R2>(
   f: (b: B, ms: number) => Effect<S2, R2, never, number>
 ) => <S, R, ST, A>(
   self: Schedule<S, R, ST, A, B>
-): Schedule<S, R & R2 & Clock, ST, A, B> => modifyDelay_(self, f)
+): Schedule<S, R & R2 & HasClock, ST, A, B> => modifyDelay_(self, f)

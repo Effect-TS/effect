@@ -1,4 +1,4 @@
-import { Clock } from "../Clock"
+import { HasClock } from "../Clock"
 import { AsyncR } from "../Effect/effect"
 
 import { delayedM_ } from "./delayedM_"
@@ -15,5 +15,5 @@ export const delayedM = <R0 = unknown>(f: (ms: number) => AsyncR<R0, number>) =>
   ST,
   R = unknown
 >(
-  self: Schedule<S, R & Clock, ST, A, B>
+  self: Schedule<S, R & HasClock, ST, A, B>
 ) => delayedM_(self, f)

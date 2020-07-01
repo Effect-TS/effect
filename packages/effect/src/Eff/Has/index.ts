@@ -16,6 +16,7 @@ export type ServiceMap = Map<any, any>
  * Identifies the Service Map in the effect environment
  */
 export const HasURI = "@matechs/core/Eff/Has/HasURI"
+export const DescURI = "@matechs/core/Eff/Has/DescURI"
 export interface HasRegistry {
   [HasURI]: {
     serviceMap: ServiceMap
@@ -35,20 +36,24 @@ export const empty = (): HasRegistry => ({
  * Encodes a Service Entry
  */
 export interface Has<K, T> {
-  _K: () => K
-  _T: T
-  get: (sm: ServiceMap) => T
-  set: (sm: ServiceMap, _: T) => ServiceMap
+  [DescURI]: {
+    _K: () => K
+    _T: T
+    get: (sm: ServiceMap) => T
+    set: (sm: ServiceMap, _: T) => ServiceMap
+  }
 }
 
 /**
  * Create a service entry from a type and a URI
  */
 export const has = <K>(k: K): (<T>() => Has<K, T>) => () => ({
-  _K: undefined as any,
-  _T: undefined as any,
-  get: (sm) => sm.get(k),
-  set: (sm, t) => new Map(sm).set(k, t)
+  [DescURI]: {
+    _K: undefined as any,
+    _T: undefined as any,
+    get: (sm) => sm.get(k),
+    set: (sm, t) => new Map(sm).set(k, t)
+  }
 })
 
 /**
@@ -69,10 +74,12 @@ export const hasClass = <K extends Constructor<any>, U = unknown>(
   k: K,
   u?: U
 ): Has<unknown extends U ? K : U, TypeOf<K>> => ({
-  _K: undefined as any,
-  _T: undefined as any,
-  get: (sm) => sm.get(k),
-  set: (sm, t) => new Map(sm).set(k, t)
+  [DescURI]: {
+    _K: undefined as any,
+    _T: undefined as any,
+    get: (sm) => sm.get(k),
+    set: (sm, t) => new Map(sm).set(k, t)
+  }
 })
 
 /**
@@ -84,13 +91,15 @@ export const hasAs = <T>() => <K>(_: Has<K, T>): Has<K, T> => _
  * Create a service entry from a scope and a service entry
  */
 export const hasScoped = <K>(k: K) => <T>(_: Has<any, T>): Has<K, T> => ({
-  _K: undefined as any,
-  _T: undefined as any,
-  get: (sm) => _.get(sm.get(k)),
-  set: (sm, t) =>
-    sm.get(k)
-      ? new Map(sm).set(k, _.set(sm.get(k), t))
-      : new Map(sm).set(k, _.set(new Map(), t))
+  [DescURI]: {
+    _K: undefined as any,
+    _T: undefined as any,
+    get: (sm) => _[DescURI].get(sm.get(k)),
+    set: (sm, t) =>
+      sm.get(k)
+        ? new Map(sm).set(k, _[DescURI].set(sm.get(k), t))
+        : new Map(sm).set(k, _[DescURI].set(new Map(), t))
+  }
 })
 
 /**
@@ -109,7 +118,7 @@ export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS)
   ) => Effect<S, R, E, B>
 ) =>
   accessM((r: UnionToIntersection<SS[keyof SS]>) =>
-    f(R.map_(s, (v) => v.get(r[HasURI].serviceMap)) as any)
+    f(R.map_(s, (v) => v[DescURI].get(r[HasURI].serviceMap)) as any)
   )
 
 /**
@@ -123,7 +132,7 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
   ) => B
 ) =>
   access((r: UnionToIntersection<SS[keyof SS]>) =>
-    f(R.map_(s, (v) => v.get(r[HasURI].serviceMap)) as any)
+    f(R.map_(s, (v) => v[DescURI].get(r[HasURI].serviceMap)) as any)
   )
 
 /**
@@ -131,7 +140,7 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
  */
 export const accessServiceM = <K, T>(s: Has<K, T>) => <S, R, E, B>(
   f: (a: T) => Effect<S, R, E, B>
-) => accessM((r: Has<K, T>) => f(s.get(r[HasURI].serviceMap)))
+) => accessM((r: Has<K, T>) => f(s[DescURI].get(r[HasURI].serviceMap)))
 
 /**
  * Access a service with the required Service Entry
@@ -152,7 +161,7 @@ export const provideServiceM = <K, T>(_: Has<K, T>) => <S, R, E>(
       provideAll_(ma, {
         ...r,
         [HasURI]: {
-          serviceMap: _.set(r[HasURI].serviceMap, t)
+          serviceMap: _[DescURI].set(r[HasURI].serviceMap, t)
         }
       } as any)
     )
@@ -164,3 +173,74 @@ export const provideServiceM = <K, T>(_: Has<K, T>) => <S, R, E>(
 export const provideService = <K, T>(_: Has<K, T>) => (f: T) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<K, T>, E1, A1>
 ): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeedNow(f))(ma)
+
+/**
+ * Replaces the service with the required Service Entry, depends on global HasRegistry
+ */
+export const replaceServiceM = <S, R, E, K, T>(
+  _: Has<K, T>,
+  f: (_: T) => Effect<S, R, E, T>
+) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
+): Effect<S | S1, R & R1 & Has<K, T>, E | E1, A1> =>
+  accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
+
+/**
+ * Replaces the service with the required Service Entry, depends on global HasRegistry
+ */
+export const replaceServiceM_ = <S, R, E, K, T, S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<K, T>, E1, A1>,
+  _: Has<K, T>,
+  f: (_: T) => Effect<S, R, E, T>
+): Effect<S | S1, R & R1 & Has<K, T>, E | E1, A1> =>
+  accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
+
+/**
+ * Replaces the service with the required Service Entry, depends on global HasRegistry
+ */
+export const replaceService = <K, T>(_: Has<K, T>, f: (_: T) => T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
+): Effect<S1, R1 & Has<K, T>, E1, A1> =>
+  accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
+
+/**
+ * Replaces the service with the required Service Entry, depends on global HasRegistry
+ */
+export const replaceService_ = <S1, R1, E1, A1, K, T>(
+  ma: Effect<S1, R1 & Has<K, T>, E1, A1>,
+  _: Has<K, T>,
+  f: (_: T) => T
+): Effect<S1, R1 & Has<K, T>, E1, A1> =>
+  accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
+
+/**
+ * Replaces the service with the required Service Entry, in the specified environment
+ */
+export const replaceServiceIn = <K, T>(_: Has<K, T>, f: (t: T) => T) => <R>(
+  r: R & Has<K, T>
+): R & Has<K, T> => ({
+  ...r,
+  [HasURI]: {
+    serviceMap: _[DescURI].set(
+      r[HasURI].serviceMap,
+      f(_[DescURI].get(r[HasURI].serviceMap))
+    )
+  }
+})
+
+/**
+ * Replaces the service with the required Service Entry, in the specified environment
+ */
+export const replaceServiceIn_ = <R, K, T>(
+  r: R & Has<K, T>,
+  _: Has<K, T>,
+  f: (t: T) => T
+): R & Has<K, T> => ({
+  ...r,
+  [HasURI]: {
+    serviceMap: _[DescURI].set(
+      r[HasURI].serviceMap,
+      f(_[DescURI].get(r[HasURI].serviceMap))
+    )
+  }
+})
