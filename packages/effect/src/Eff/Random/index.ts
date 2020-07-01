@@ -1,7 +1,7 @@
 import { chain_ } from "../Effect/chain_"
-import { Effect, Sync } from "../Effect/effect"
+import { Sync } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
-import { accessServiceM, hasClass, replaceService_ } from "../Has"
+import { accessServiceM, hasClass, replaceService } from "../Has"
 
 import { PRNG } from "./Alea"
 
@@ -82,6 +82,5 @@ export const nextRange = (low: number, high: number) =>
 export const setSeed = (seed: string) =>
   accessServiceM(HasRandom)((_) => _.setSeed(seed))
 
-export const withSeed = (seed: string) => <S, R, E, A>(
-  effect: Effect<S, R & HasRandom, E, A>
-) => replaceService_(effect, HasRandom, () => new LiveRandom(seed))
+export const withSeed = (seed: string) =>
+  replaceService(HasRandom, () => new LiveRandom(seed))
