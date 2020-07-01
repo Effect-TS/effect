@@ -6,6 +6,18 @@ import { sleep } from "../Effect/sleep"
 import { forever } from "./forever"
 import { Schedule } from "./schedule"
 
+/**
+ * A schedule that recurs on a fixed interval. Returns the number of
+ * repetitions of the schedule so far.
+ *
+ * If the action run between updates takes longer than the interval, then the
+ * action will be run immediately, but re-runs will not "pile up".
+ *
+ * <pre>
+ * |---------interval---------|---------interval---------|
+ * |action|                   |action|
+ * </pre>
+ */
 export function fixed(
   ms: number
 ): Schedule<unknown, Clock, [number, number, number], unknown, number> {
