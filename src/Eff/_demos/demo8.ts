@@ -15,7 +15,7 @@ export const exponentialCapped = (o?: {
     factor: o?.factor || 2,
     cap: o?.cap || 5000
   })(({ base, cap, factor }) =>
-    pipe(S.exponential(base, factor), S.both(S.duration(cap)))
+    pipe(S.exponential(base, factor), S.zip(S.duration(cap)))
   )
 
 export const fibonacciCapped = (o?: { base?: number; cap?: number }) =>
@@ -25,7 +25,7 @@ export const fibonacciCapped = (o?: { base?: number; cap?: number }) =>
   })(({ base, cap }) =>
     pipe(
       S.fibonacci(base),
-      S.both(S.duration(cap)),
+      S.zip(S.duration(cap)),
       S.tapOutput((n) =>
         T.effectTotal(() => {
           console.log(n)
