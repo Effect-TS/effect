@@ -12,6 +12,7 @@ import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
 import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
+import { HasRegistry, empty as emptyRegistry } from "../Has"
 import { Random, defaultRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
@@ -24,11 +25,12 @@ const empty = () => {
   //
 }
 
-export type DefaultEnv = Clock & Random
+export type DefaultEnv = Clock & Random & HasRegistry
 
 export const defaultEnv: Clock & Random = {
   ...liveClock,
-  ...defaultRandom
+  ...defaultRandom,
+  ...emptyRegistry()
 }
 
 /**
