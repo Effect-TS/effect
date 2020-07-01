@@ -156,3 +156,15 @@ export { tapBoth_ } from "./tapBoth_"
 export { summarized, summarized_ } from "./summarized"
 export { timed, timedWith_, timedWith } from "./timed"
 export { as, as_ } from "./as"
+export {
+  Has,
+  hasURI,
+  provideServiceM,
+  accessServicesM,
+  accessServiceM,
+  accessService,
+  accessServices,
+  HasRegistry,
+  hasClass,
+  hasScoped
+} from "../Has"
