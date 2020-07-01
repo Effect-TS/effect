@@ -35,7 +35,7 @@ export const empty = (): HasRegistry => ({
  * Encodes a Service Entry
  */
 export interface Has<K, T> {
-  _K: K
+  _K: () => K
   _T: T
   get: (sm: ServiceMap) => T
   set: (sm: ServiceMap, _: T) => ServiceMap
@@ -44,8 +44,8 @@ export interface Has<K, T> {
 /**
  * Create a service entry from a type and a URI
  */
-export const hasURI = <T>() => <K>(k: K): Has<K, T> => ({
-  _K: k,
+export const has = <K>(k: K): (<T>() => Has<K, T>) => () => ({
+  _K: undefined as any,
   _T: undefined as any,
   get: (sm) => sm.get(k),
   set: (sm, t) => new Map(sm).set(k, t)
@@ -54,35 +54,43 @@ export const hasURI = <T>() => <K>(k: K): Has<K, T> => ({
 /**
  * Extract the type of a class constructor
  */
-export type TypeOf<K extends { new (...args: any[]): any }> = K extends {
-  new (...args: any[]): infer T
+export type TypeOf<K extends Constructor<any>> = K extends {
+  prototype: infer T
 }
   ? T
   : never
 
+export type Constructor<T> = Function & { prototype: T }
+
 /**
  * Create a service entry from a class
  */
-export const hasClass = <K extends { new (...args: any[]): any }>(
-  k: K
-): Has<K, TypeOf<K>> => ({
-  _K: k,
+export const hasClass = <K extends Constructor<any>, U = unknown>(
+  k: K,
+  u?: U
+): Has<unknown extends U ? K : U, TypeOf<K>> => ({
+  _K: undefined as any,
   _T: undefined as any,
   get: (sm) => sm.get(k),
   set: (sm, t) => new Map(sm).set(k, t)
 })
 
 /**
+ * Refine a service entry output
+ */
+export const hasAs = <T>() => <K>(_: Has<K, T>): Has<K, T> => _
+
+/**
  * Create a service entry from a scope and a service entry
  */
 export const hasScoped = <K>(k: K) => <T>(_: Has<any, T>): Has<K, T> => ({
-  _K: k,
+  _K: undefined as any,
   _T: undefined as any,
-  get: (sm) => sm.get(k).get(_._K),
+  get: (sm) => _.get(sm.get(k)),
   set: (sm, t) =>
     sm.get(k)
-      ? new Map(sm).set(k, new Map(sm.get(k)).set(_._K, t))
-      : new Map(sm).set(k, new Map().set(_._K, t))
+      ? new Map(sm).set(k, _.set(sm.get(k), t))
+      : new Map(sm).set(k, _.set(new Map(), t))
 })
 
 /**
@@ -90,9 +98,9 @@ export const hasScoped = <K>(k: K) => <T>(_: Has<any, T>): Has<K, T> => ({
  */
 export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS) => <
   S,
-  R,
-  E,
-  B
+  R = unknown,
+  E = never,
+  B = unknown
 >(
   f: (
     a: {
