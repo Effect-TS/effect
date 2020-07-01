@@ -67,7 +67,7 @@ export class Semaphore {
     )
   }
 
-  private restore(p: T.Promise<never, void>, n: number): T.Async<void> {
+  private restore(p: T.Promise<never, void>, n: number): T.Sync<void> {
     return T.flatten(
       this.state.modify(
         E.fold(
