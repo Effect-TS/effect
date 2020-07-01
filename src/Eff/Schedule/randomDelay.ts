@@ -1,8 +1,8 @@
-import { sleep, Clock } from "../Clock"
+import { HasClock, sleep } from "../Clock"
 import { as_ } from "../Effect/as"
 import { chain_ } from "../Effect/chain_"
 import { succeedNow } from "../Effect/succeedNow"
-import { nextIntBetween, Random } from "../Random"
+import { HasRandom, nextIntBetween } from "../Random"
 
 import { Schedule } from "./schedule"
 
@@ -13,7 +13,7 @@ import { Schedule } from "./schedule"
 export const randomDelay = (
   min: number,
   max: number
-): Schedule<unknown, Random & Clock, number, unknown, number> =>
+): Schedule<unknown, HasRandom & HasClock, number, unknown, number> =>
   new Schedule(
     succeedNow(0),
     () => chain_(nextIntBetween(min, max), (s) => as_(sleep(s), s)),
