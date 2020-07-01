@@ -160,6 +160,7 @@ export {
   Has,
   has,
   provideServiceM,
+  provideService,
   accessServicesM,
   accessServiceM,
   accessService,
