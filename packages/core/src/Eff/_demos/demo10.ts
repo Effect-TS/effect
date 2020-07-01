@@ -15,13 +15,13 @@ abstract class AppConfig<S> {
 
 export const HasConsole = T.hasClass(Console)
 
-export const HasFormatURI = "@matechs/core/Eff/_demos/HasFormatURI" as const
+export const HasFormatURI: unique symbol = Symbol()
 export const HasFormat = T.hasClass(Format, HasFormatURI)
 
-export const HasAppConfigURI = "@matechs/core/Eff/_demos/HasAppConfigURI" as const
+export const HasAppConfigURI: unique symbol = Symbol()
 export const HasAppConfig = T.has(HasAppConfigURI)<AppConfig<string>>()
 
-export const ScopedAppConfigURI = "@matechs/core/Eff/_demos/ScopedAppConfigURI" as const
+export const ScopedAppConfigURI: unique symbol = Symbol()
 export const HasScopedAppConfig = T.hasScoped(ScopedAppConfigURI)(HasAppConfig)
 
 export const putStrLn = (s: string) =>
