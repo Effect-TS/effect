@@ -157,3 +157,10 @@ export const provideServiceM = <K, T>(_: Has<K, T>) => <S, R, E>(
       } as any)
     )
   )
+
+/**
+ * Provides the service with the required Service Entry, depends on global HasRegistry
+ */
+export const provideService = <K, T>(_: Has<K, T>) => (f: T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
+): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeedNow(f))(ma)
