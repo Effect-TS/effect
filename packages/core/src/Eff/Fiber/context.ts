@@ -1,6 +1,8 @@
+import * as A from "../../Array"
+import * as E from "../../Either"
 import * as O from "../../Option"
 // cause
-import { Interrupt, Then, Cause } from "../Cause/cause"
+import { Cause, Interrupt, Then } from "../Cause/cause"
 import { contains } from "../Cause/contains"
 import { interruptors } from "../Cause/interruptors"
 import { isEmpty } from "../Cause/isEmpty"
@@ -11,7 +13,7 @@ import * as chain from "../Effect/chain"
 import * as chain_ from "../Effect/chain_"
 import * as die from "../Effect/die"
 import * as done from "../Effect/done"
-import { Effect, Sync, Async, _I } from "../Effect/effect"
+import { Async, Effect, Sync, _I } from "../Effect/effect"
 import * as effectAsync from "../Effect/effectAsync"
 import * as effectAsyncOption from "../Effect/effectAsyncOption"
 import * as effectTotal from "../Effect/effectTotal"
@@ -24,7 +26,7 @@ import * as succeedNow from "../Effect/succeedNow"
 import * as suspend from "../Effect/suspend"
 import * as unit from "../Effect/unit"
 // exit
-import { RuntimeError, IllegalStateException } from "../Errors"
+import { RuntimeError } from "../Errors"
 import { Exit } from "../Exit/exit"
 import { flatten as flattenExit } from "../Exit/flatten"
 import { halt as haltExit } from "../Exit/halt"
@@ -46,12 +48,12 @@ import * as Fiber from "./fiber"
 import { FiberID, newFiberId } from "./id"
 import * as IS from "./interruptStatus"
 import {
-  initial,
-  FiberRefLocals,
-  interrupting,
   Callback,
+  FiberRefLocals,
+  FiberStateDone,
   FiberStateExecuting,
-  FiberStateDone
+  initial,
+  interrupting
 } from "./state"
 import * as Status from "./status"
 
@@ -507,8 +509,22 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       })
     }
 
+    const toExecute = this.parentScopeOp(parentScope, childContext, i0)
+
+    this.scheduler.dispatchLater(() => {
+      childContext.evaluateNow(toExecute)
+    })
+
+    return childContext
+  }
+
+  private parentScopeOp(
+    parentScope: Scope.Scope<Exit<any, any>>,
+    childContext: FiberContext<E, A>,
+    i0: Instruction
+  ): Instruction {
     if (parentScope !== Scope.globalScope) {
-      const key = parentScope.unsafeEnsure((exit) =>
+      const exitOrKey = parentScope.unsafeEnsure((exit) =>
         suspend.suspend(
           (): Async<any> => {
             const _interruptors =
@@ -525,26 +541,37 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         )
       )
 
-      childContext.scopeKey = O.getOrElse_(key, () => {
-        throw new IllegalStateException(
-          "Defect: The fiber's scope has ended before the fiber itself has ended"
-        )
-      })
+      return E.fold_(
+        exitOrKey,
+        (exit) => {
+          switch (exit._tag) {
+            case "Failure": {
+              return interruptAs.interruptAs(
+                O.getOrElse_(
+                  A.head(Array.from(interruptors(exit.cause))),
+                  () => this.fiberId
+                )
+              )[_I]
+            }
+            case "Success": {
+              return interruptAs.interruptAs(this.fiberId)[_I]
+            }
+          }
+        },
+        (key) => {
+          childContext.scopeKey = key
+          // Remove the finalizer key from the parent scope when the child fiber
+          // terminates:
+          childContext.onDone(() => {
+            parentScope.unsafeDeny(key)
+          })
 
-      // Remove the finalizer key from the parent scope when the child fiber
-      // terminates:
-      childContext.onDone(() => {
-        if (key._tag === "Some") {
-          parentScope.unsafeDeny(key.value)
+          return i0
         }
-      })
+      )
+    } else {
+      return i0
     }
-
-    this.scheduler.dispatchLater(() => {
-      childContext.evaluateNow(i0)
-    })
-
-    return childContext
   }
 
   onDone(k: Callback<never, Exit<E, A>>): void {
