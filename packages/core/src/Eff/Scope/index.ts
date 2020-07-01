@@ -1,8 +1,8 @@
 import * as A from "../../Array"
-import * as O from "../../Option"
-import { Empty, Then, Cause } from "../Cause/cause"
+import * as E from "../../Either"
+import { Cause, Empty, Then } from "../Cause/cause"
 import { cause } from "../Effect/cause"
-import { Sync, Async } from "../Effect/effect"
+import { Async, Sync } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
 import { map_ } from "../Effect/map_"
 import { succeedNow } from "../Effect/succeedNow"
@@ -44,7 +44,7 @@ export interface CommonScope<A> {
    * The returned effect will succeed with a key if the finalizer was added
    * to the scope, and `None` if the scope is already closed.
    */
-  readonly ensure: (finalizer: (a: A) => Async<any>) => Sync<O.Option<Key>>
+  readonly ensure: (finalizer: (a: A) => Async<any>) => Sync<E.Either<A, Key>>
 
   /**
    * Extends the specified scope so that it will not be closed until this
@@ -70,7 +70,7 @@ export interface CommonScope<A> {
    */
   readonly released: Sync<boolean>
 
-  readonly unsafeEnsure: (finalizer: (_: A) => Async<any>) => O.Option<Key>
+  readonly unsafeEnsure: (finalizer: (_: A) => Async<any>) => E.Either<A, Key>
   readonly unsafeExtend: (that: Scope<any>) => boolean
   readonly unsafeDeny: (key: Key) => boolean
 }
@@ -127,7 +127,7 @@ export class Global implements CommonScope<never> {
     this.unsafeExtend = this.unsafeExtend.bind(this)
   }
 
-  private unsafeEnsureResult = O.some(new Key(effectTotal(() => true)))
+  private unsafeEnsureResult = E.right(new Key(effectTotal(() => true)))
 
   private ensureResult = effectTotal(() => this.unsafeEnsureResult)
 
@@ -143,7 +143,7 @@ export class Global implements CommonScope<never> {
     return succeedNow(false)
   }
 
-  ensure(_finalizer: (a: never) => Async<any>): Sync<O.Option<Key>> {
+  ensure(_finalizer: (a: never) => Async<any>): Sync<E.Either<never, Key>> {
     return this.ensureResult
   }
 
@@ -159,7 +159,7 @@ export class Global implements CommonScope<never> {
     return succeedNow(false)
   }
 
-  unsafeEnsure(_finalizer: (_: never) => Async<any>): O.Option<Key> {
+  unsafeEnsure(_finalizer: (_: never) => Async<any>): E.Either<never, Key> {
     return this.unsafeEnsureResult
   }
 
@@ -215,7 +215,7 @@ export class Local<A> implements CommonScope<A> {
     return effectTotal(() => this.finalizers.size === 0)
   }
 
-  ensure(finalizer: (a: A) => Async<any>): Sync<O.Option<Key>> {
+  ensure(finalizer: (a: A) => Async<any>): Sync<E.Either<A, Key>> {
     return effectTotal(() => this.unsafeEnsure(finalizer))
   }
 
@@ -262,9 +262,10 @@ export class Local<A> implements CommonScope<A> {
     return this.references.get <= 0
   }
 
-  unsafeEnsure(finalizer: (_: A) => Async<any>): O.Option<Key> {
+  unsafeEnsure(finalizer: (_: A) => Async<any>): E.Either<A, Key> {
     if (this.unsafeClosed) {
-      return O.none
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return E.left(this.exitValue.get!)
     }
 
     const key = new Key()
@@ -275,7 +276,7 @@ export class Local<A> implements CommonScope<A> {
       new OrderedFinalizer(this.finalizerCount.incrementAndGet(), finalizer)
     )
 
-    return O.some(key)
+    return E.right(key)
   }
 
   unsafeAddRef(): boolean {
