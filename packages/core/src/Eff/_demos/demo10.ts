@@ -34,9 +34,11 @@ export class LiveConsole extends Console {
 
   putStrLn: (s: string) => T.Sync<void> = (s) =>
     T.chain_(this.format.formatString(s), (f) =>
-      T.effectTotal(() => {
-        console.log(f)
-      })
+      T.provideServiceM(HasFormat)(T.succeedNow(this.format))(
+        T.effectTotal(() => {
+          console.log(f)
+        })
+      )
     )
 }
 
