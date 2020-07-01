@@ -1,4 +1,4 @@
-import { Clock } from "../Clock"
+import { HasClock } from "../Clock"
 
 import { delay_ } from "./delay_"
 import { AsyncRE, Effect } from "./effect"
@@ -8,4 +8,4 @@ import { AsyncRE, Effect } from "./effect"
  */
 export const delay = (ms: number) => <S, R, E, A>(
   effect: Effect<S, R, E, A>
-): AsyncRE<R & Clock, E, A> => delay_(effect, ms)
+): AsyncRE<R & HasClock, E, A> => delay_(effect, ms)
