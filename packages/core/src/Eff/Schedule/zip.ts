@@ -6,15 +6,15 @@ import { Schedule } from "./schedule"
  * Returns a new schedule that continues only as long as both schedules
  * continue, using the maximum of the delays of the two schedules.
  */
-export const both = <A, S2, R2, ST2, A2 extends A, B2>(
+export const zip = <A, S2, R2, ST2, A2 extends A, B2>(
   that: Schedule<S2, R2, ST2, A2, B2>
-) => <S, R, ST, B>(self: Schedule<S, R, ST, A, B>) => both_(self, that)
+) => <S, R, ST, B>(self: Schedule<S, R, ST, A, B>) => zip_(self, that)
 
 /**
  * Returns a new schedule that continues only as long as both schedules
  * continue, using the maximum of the delays of the two schedules.
  */
-export const both_ = <S, R, ST, A, B, S2, R2, ST2, A2 extends A, B2>(
+export const zip_ = <S, R, ST, A, B, S2, R2, ST2, A2 extends A, B2>(
   self: Schedule<S, R, ST, A, B>,
   that: Schedule<S2, R2, ST2, A2, B2>
 ): Schedule<unknown, R & R2, [ST, ST2], A2, [B, B2]> =>
