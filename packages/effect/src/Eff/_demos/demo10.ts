@@ -3,19 +3,23 @@ import { pipe } from "../../Function"
 import * as T from "../Effect"
 import * as S from "../Semaphore"
 
-class Console {
-  constructor(readonly putStrLn: (s: string) => T.Sync<void>) {}
+abstract class Console {
+  abstract readonly putStrLn: (s: string) => T.Sync<void>
 }
-class Format {
-  constructor(readonly formatString: (s: string) => T.Sync<string>) {}
+abstract class Format {
+  abstract readonly formatString: (s: string) => T.Sync<string>
 }
-class AppConfig {
-  constructor(readonly config: string) {}
+abstract class AppConfig<S> {
+  abstract readonly config: S
 }
 
 export const HasConsole = T.hasClass(Console)
-export const HasFormat = T.hasClass(Format)
-export const HasAppConfig = T.hasClass(AppConfig)
+
+export const HasFormatURI = "@matechs/core/Eff/_demos/HasFormatURI" as const
+export const HasFormat = T.hasClass(Format, HasFormatURI)
+
+export const HasAppConfigURI = "@matechs/core/Eff/_demos/HasAppConfigURI" as const
+export const HasAppConfig = T.has(HasAppConfigURI)<AppConfig<string>>()
 
 export const ScopedAppConfigURI = "@matechs/core/Eff/_demos/ScopedAppConfigURI" as const
 export const HasScopedAppConfig = T.hasScoped(ScopedAppConfigURI)(HasAppConfig)
@@ -23,17 +27,21 @@ export const HasScopedAppConfig = T.hasScoped(ScopedAppConfigURI)(HasAppConfig)
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
 
+export class LiveConsole extends Console {
+  constructor(private readonly format: Format) {
+    super()
+  }
+
+  putStrLn: (s: string) => T.Sync<void> = (s) =>
+    T.chain_(this.format.formatString(s), (f) =>
+      T.effectTotal(() => {
+        console.log(f)
+      })
+    )
+}
+
 export const provideConsole = T.provideServiceM(HasConsole)(
-  T.accessService(HasFormat)(
-    (format) =>
-      new Console((s) =>
-        T.chain_(format.formatString(s), (f) =>
-          T.effectTotal(() => {
-            console.log(f)
-          })
-        )
-      )
-  )
+  T.accessService(HasFormat)((format) => new LiveConsole(format))
 )
 
 export const complexAccess = T.accessServicesM({
@@ -43,7 +51,13 @@ export const complexAccess = T.accessServicesM({
 })(({ app, console, scoped }) => console.putStrLn(`${app.config} - (${scoped.config})`))
 
 export const provideFormat = T.provideServiceM(HasFormat)(
-  T.effectTotal(() => new Format((s) => T.effectTotal(() => `running: ${s}`)))
+  T.effectTotal(
+    () =>
+      new (class extends Format {
+        formatString: (s: string) => T.Sync<string> = (s) =>
+          T.effectTotal(() => `running: ${s}`)
+      })()
+  )
 )
 
 const program = pipe(
@@ -57,10 +71,18 @@ const program = pipe(
 )
 
 export const provideAppConfig = T.provideServiceM(HasAppConfig)(
-  T.succeedNow(new AppConfig("ok"))
+  T.succeedNow(
+    new (class extends AppConfig<string> {
+      config = "ok"
+    })()
+  )
 )
 export const provideScopedAppConfig = T.provideServiceM(HasScopedAppConfig)(
-  T.succeedNow(new AppConfig("ok-scoped"))
+  T.succeedNow(
+    new (class extends AppConfig<string> {
+      config = "ok - scoped"
+    })()
+  )
 )
 
 const main = pipe(
