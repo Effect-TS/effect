@@ -7,6 +7,13 @@ import { ImmutableQueue } from "../Support/ImmutableQueue"
 import * as T from "./deps"
 import { State, Entry, assertNonNegative, Acquisition } from "./state"
 
+/**
+ * An asynchronous semaphore, which is a generalization of a mutex. Semaphores
+ * have a certain number of permits, which can be held and released
+ * concurrently by different parties. Attempts to acquire more permits than
+ * available result in the acquiring fiber being suspended until the specified
+ * number of permits become available.
+ **/
 export class Semaphore {
   constructor(private readonly state: Ref<State>) {
     this.loop = this.loop.bind(this)
