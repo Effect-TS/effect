@@ -8,3 +8,9 @@ import { Promise } from "./promise"
  */
 export const succeed = <A>(a: A) => <E>(promise: Promise<E, A>) =>
   completeWith<E, A>(succeedNow(a))(promise)
+
+/**
+ * Completes the promise with the specified value.
+ */
+export const succeed_ = <A, E>(promise: Promise<E, A>, a: A) =>
+  completeWith<E, A>(succeedNow(a))(promise)
