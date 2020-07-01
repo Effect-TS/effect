@@ -6,8 +6,8 @@ import { provideSome_ } from "./provideSome"
  * leaving the remainder `R0` and combining it automatically using spread.
  */
 export const provide_ = <S, E, A, R = unknown, R0 = unknown>(
-  r: R,
-  next: Effect<S, R & R0, E, A>
+  next: Effect<S, R & R0, E, A>,
+  r: R
 ): Effect<S, R0, E, A> => provideSome_(next, (r0: R0) => ({ ...r, ...r0 }))
 
 /**

@@ -108,7 +108,7 @@ export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS)
     }
   ) => Effect<S, R, E, B>
 ) =>
-  accessM((r: UnionToIntersection<SS[keyof SS]> & HasRegistry) =>
+  accessM((r: UnionToIntersection<SS[keyof SS]>) =>
     f(R.map_(s, (v) => v.get(r[HasURI].serviceMap)) as any)
   )
 
@@ -122,7 +122,7 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
     }
   ) => B
 ) =>
-  access((r: UnionToIntersection<SS[keyof SS]> & HasRegistry) =>
+  access((r: UnionToIntersection<SS[keyof SS]>) =>
     f(R.map_(s, (v) => v.get(r[HasURI].serviceMap)) as any)
   )
 
@@ -131,7 +131,7 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
  */
 export const accessServiceM = <K, T>(s: Has<K, T>) => <S, R, E, B>(
   f: (a: T) => Effect<S, R, E, B>
-) => accessM((r: Has<K, T> & HasRegistry) => f(s.get(r[HasURI].serviceMap)))
+) => accessM((r: Has<K, T>) => f(s.get(r[HasURI].serviceMap)))
 
 /**
  * Access a service with the required Service Entry
@@ -146,8 +146,8 @@ export const provideServiceM = <K, T>(_: Has<K, T>) => <S, R, E>(
   f: Effect<S, R, E, T>
 ) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<K, T>, E1, A1>
-): Effect<S | S1, R & R1 & HasRegistry, E | E1, A1> =>
-  accessM((r: HasRegistry & R & R1) =>
+): Effect<S | S1, R & R1, E | E1, A1> =>
+  accessM((r: R & R1) =>
     chain_(f, (t) =>
       provideAll_(ma, {
         ...r,
