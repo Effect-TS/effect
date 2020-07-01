@@ -21,6 +21,9 @@ export const HasFormat = T.hasClass(Format, HasFormatURI)
 export const HasAppConfigURI: unique symbol = Symbol()
 export const HasAppConfig = T.has(HasAppConfigURI)<AppConfig<string>>()
 
+export const HasNumberConfigURI: unique symbol = Symbol()
+export const HasNumberConfig = T.has(HasNumberConfigURI)<AppConfig<number>>()
+
 export const ScopedAppConfigURI: unique symbol = Symbol()
 export const HasScopedAppConfig = T.hasScoped(ScopedAppConfigURI)(HasAppConfig)
 
@@ -49,8 +52,11 @@ export const provideConsole = T.provideServiceM(HasConsole)(
 export const complexAccess = T.accessServicesM({
   console: HasConsole,
   app: HasAppConfig,
-  scoped: HasScopedAppConfig
-})(({ app, console, scoped }) => console.putStrLn(`${app.config} - (${scoped.config})`))
+  scoped: HasScopedAppConfig,
+  numberConfig: HasNumberConfig
+})(({ app, console, numberConfig, scoped }) =>
+  console.putStrLn(`${app.config} - (${scoped.config}) - (${numberConfig.config})`)
+)
 
 export const provideFormat = T.provideServiceM(HasFormat)(
   T.effectTotal(
@@ -79,6 +85,15 @@ export const provideAppConfig = T.provideServiceM(HasAppConfig)(
     })()
   )
 )
+
+export const provideNumberConfig = T.provideServiceM(HasNumberConfig)(
+  T.succeedNow(
+    new (class extends AppConfig<number> {
+      config = 1
+    })()
+  )
+)
+
 export const provideScopedAppConfig = T.provideServiceM(HasScopedAppConfig)(
   T.succeedNow(
     new (class extends AppConfig<string> {
@@ -92,7 +107,8 @@ const main = pipe(
   provideConsole,
   provideFormat,
   provideAppConfig,
-  provideScopedAppConfig
+  provideScopedAppConfig,
+  provideNumberConfig
 )
 
 T.runMain(main)
