@@ -6,6 +6,7 @@ import { chain_ } from "../Effect/chain_"
 import { Effect } from "../Effect/effect"
 import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
+import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
  * Encodes a Map of services
@@ -16,26 +17,49 @@ export type ServiceMap = {}
  * Encodes a Service Entry
  */
 export const HasURI = "@matechs/core/Eff/Has/HasURI"
-export interface Has<T, K extends string | symbol> {
+export interface Has<T, K> {
   [HasURI]: {
     _T: () => T
-    _K: () => K
-    key: string | symbol
+    _K: (_: K) => void
+    key: string
     def: boolean
   }
+}
+
+export const _symbols = new Map<any, number>()
+export const _current = new AtomicNumber(0)
+
+export const format = (n: number) => `services-${n}`
+
+export const progressiveFor = (a: any) => {
+  const maybeIndex = _symbols.get(a)
+
+  if (maybeIndex) {
+    return format(maybeIndex)
+  }
+
+  const current = _current.incrementAndGet()
+
+  _symbols.set(a, current)
+
+  return format(current)
 }
 
 /**
  * Create a service entry from a type and a URI
  */
-export const has = <K extends string | symbol>(k: K) => <T>(): Has<T, K> => ({
-  [HasURI]: {
-    _T: undefined as any,
-    _K: undefined as any,
-    key: k,
-    def: false
-  }
-})
+export function has<K extends string | symbol>(k: K): <T>() => Has<T, K>
+export function has<K>(k: K): <T>() => Has<T, K>
+export function has<K>(k: K): <T>() => Has<T, K> {
+  return () => ({
+    [HasURI]: {
+      _T: undefined as any,
+      _K: undefined as any,
+      key: progressiveFor(k),
+      def: false
+    }
+  })
+}
 
 /**
  * Extract the type of a class constructor
@@ -51,17 +75,25 @@ export type Constructor<T> = Function & { prototype: T }
 /**
  * Create a service entry from a class
  */
-export const hasClass = <T extends Constructor<any>, K extends string | symbol>(
+export function hasClass<T extends Constructor<any>>(_: T): Has<TypeOf<T>, T>
+export function hasClass<T extends Constructor<any>, K extends string | symbol>(
   _: T,
   k: K
-): Has<TypeOf<T>, K> => ({
-  [HasURI]: {
-    _T: undefined as any,
-    _K: undefined as any,
-    key: k,
-    def: false
+): Has<TypeOf<T>, K>
+export function hasClass<T extends Constructor<any>, K>(_: T, k: K): Has<TypeOf<T>, K>
+export function hasClass<T extends Constructor<any>>(
+  _: T,
+  k?: any
+): Has<TypeOf<T>, unknown> {
+  return {
+    [HasURI]: {
+      _T: undefined as any,
+      _K: undefined as any,
+      key: k ? progressiveFor(k) : progressiveFor(_),
+      def: false
+    }
   }
-})
+}
 
 /**
  * Access a record of services with the required Service Entries
@@ -99,30 +131,20 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
 /**
  * Access a service with the required Service Entry
  */
-export const accessServiceM = <T, K extends string | symbol>(s: Has<T, K>) => <
-  S,
-  R,
-  E,
-  B
->(
+export const accessServiceM = <T, K>(s: Has<T, K>) => <S, R, E, B>(
   f: (a: T) => Effect<S, R, E, B>
 ) => accessM((r: Has<T, K>) => f(r[s[HasURI].key as any]))
 
 /**
  * Access a service with the required Service Entry
  */
-export const accessService = <T, K extends string | symbol>(s: Has<T, K>) => <B>(
-  f: (a: T) => B
-) => accessServiceM(s)((a) => succeedNow(f(a)))
+export const accessService = <T, K>(s: Has<T, K>) => <B>(f: (a: T) => B) =>
+  accessServiceM(s)((a) => succeedNow(f(a)))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
  */
-export const provideServiceM = <T, K extends string | symbol>(_: Has<T, K>) => <
-  S,
-  R,
-  E
->(
+export const provideServiceM = <T, K>(_: Has<T, K>) => <S, R, E>(
   f: Effect<S, R, E, T>
 ) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<T, K>, E1, A1>
@@ -144,15 +166,14 @@ export const provideServiceM = <T, K extends string | symbol>(_: Has<T, K>) => <
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
  */
-export const provideService = <T, K extends string | symbol>(_: Has<T, K>) => (
-  f: T
-) => <S1, R1, E1, A1>(ma: Effect<S1, R1 & Has<T, K>, E1, A1>): Effect<S1, R1, E1, A1> =>
-  provideServiceM(_)(succeedNow(f))(ma)
+export const provideService = <T, K>(_: Has<T, K>) => (f: T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T, K>, E1, A1>
+): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeedNow(f))(ma)
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceServiceM = <S, R, E, T, K extends string | symbol>(
+export const replaceServiceM = <S, R, E, T, K>(
   _: Has<T, K>,
   f: (_: T) => Effect<S, R, E, T>
 ) => <S1, R1, E1, A1>(
@@ -163,7 +184,7 @@ export const replaceServiceM = <S, R, E, T, K extends string | symbol>(
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceServiceM_ = <S, R, E, T, S1, R1, E1, A1, K extends string | symbol>(
+export const replaceServiceM_ = <S, R, E, T, S1, R1, E1, A1, K>(
   ma: Effect<S1, R1 & Has<T, K>, E1, A1>,
   _: Has<T, K>,
   f: (_: T) => Effect<S, R, E, T>
@@ -173,10 +194,7 @@ export const replaceServiceM_ = <S, R, E, T, S1, R1, E1, A1, K extends string | 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceService = <T, K extends string | symbol>(
-  _: Has<T, K>,
-  f: (_: T) => T
-) => <S1, R1, E1, A1>(
+export const replaceService = <T, K>(_: Has<T, K>, f: (_: T) => T) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<T, K>, E1, A1>
 ): Effect<S1, R1 & Has<T, K>, E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
@@ -184,7 +202,7 @@ export const replaceService = <T, K extends string | symbol>(
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceService_ = <S1, R1, E1, A1, T, K extends string | symbol>(
+export const replaceService_ = <S1, R1, E1, A1, T, K>(
   ma: Effect<S1, R1 & Has<T, K>, E1, A1>,
   _: Has<T, K>,
   f: (_: T) => T
@@ -194,10 +212,9 @@ export const replaceService_ = <S1, R1, E1, A1, T, K extends string | symbol>(
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn = <T, K extends string | symbol>(
-  _: Has<T, K>,
-  f: (t: T) => T
-) => <R>(r: R & Has<T, K>): R & Has<T, K> =>
+export const replaceServiceIn = <T, K>(_: Has<T, K>, f: (t: T) => T) => <R>(
+  r: R & Has<T, K>
+): R & Has<T, K> =>
   ({
     ...r,
     [_[HasURI].key]: f(r[_[HasURI].key as any])
@@ -206,7 +223,7 @@ export const replaceServiceIn = <T, K extends string | symbol>(
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn_ = <R, T, K extends string | symbol>(
+export const replaceServiceIn_ = <R, T, K>(
   r: R & Has<T, K>,
   _: Has<T, K>,
   f: (t: T) => T
@@ -220,7 +237,7 @@ export const replaceServiceIn_ = <R, T, K extends string | symbol>(
  * Flags the current Has to be overridable, when this is used subsequently provided
  * environments will override pre-existing. Useful to provide defaults.
  */
-export const overridable = <T, K extends string | symbol>(h: Has<T, K>): Has<T, K> => ({
+export const overridable = <T, K>(h: Has<T, K>): Has<T, K> => ({
   [HasURI]: {
     ...h[HasURI],
     def: true

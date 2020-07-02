@@ -29,12 +29,7 @@ export class Layer<S, R, E, A> {
   }
 }
 
-export const managedService = <K extends string | symbol, A>(has: Has<A, K>) => <
-  S,
-  R,
-  E,
-  B extends A
->(
+export const managedService = <K, A>(has: Has<A, K>) => <S, R, E, B extends A>(
   resource: Managed<S, R, E, B>
 ) =>
   new Layer<S, R, E, Has<A, K>>(map_(resource, (a) => (e) => provideService(has)(a)(e)))

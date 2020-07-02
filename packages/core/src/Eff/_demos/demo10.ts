@@ -12,16 +12,18 @@ abstract class Format {
 abstract class AppConfig<S> {
   abstract readonly config: S
 }
-export const HasConsoleURI: unique symbol = Symbol()
-export const HasConsole = T.hasClass(Console, HasConsoleURI)
-export const HasFormatURI: unique symbol = Symbol()
-export const HasFormat = T.hasClass(Format, HasFormatURI)
-export const HasAppConfigURI: unique symbol = Symbol()
+
+export const HasConsole = T.hasClass(Console)
+export const HasFormat = T.hasClass(Format)
+
+export const HasAppConfigURI = Symbol()
 export const HasAppConfig = T.has(HasAppConfigURI)<AppConfig<string>>()
-export const HasScopedAppConfigURI: unique symbol = Symbol()
+
+export const HasScopedAppConfigURI = Symbol()
 export const HasScopedAppConfig = T.has(HasScopedAppConfigURI)<AppConfig<string>>()
-export const HasNumberAppConfigURI: unique symbol = Symbol()
-export const HasNumberConfig = T.has(HasNumberAppConfigURI)<AppConfig<number>>()
+
+export const HasNumberConfigURI = Symbol()
+export const HasNumberConfig = T.has(HasNumberConfigURI)<AppConfig<number>>()
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
@@ -59,6 +61,7 @@ export class AugumentedConsole extends Console {
 export const provideConsole = T.provideServiceM(T.overridable(HasConsole))(
   T.accessService(HasFormat)((format) => new LiveConsole(format))
 )
+
 export const provideAugumentedConsole = T.provideServiceM(T.overridable(HasConsole))(
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
