@@ -1,4 +1,5 @@
 import { pipe } from "../../Function"
+import { withClock } from "../Clock"
 import * as T from "../Effect"
 import * as L from "../Layer"
 
@@ -64,9 +65,14 @@ export const CalculatorLayer2 = L.managedService(HasCalculator)(
 const layer = pipe(CalculatorLayer, L.zipPar(ConsoleLayer))
 
 const program = layer.use(
-  pipe(
-    withCalculator((c) => c.add(0, 1)),
-    T.tap((n) => withConsole((c) => c.putStrLn(`got: ${n}`)))
+  withClock((clock) =>
+    pipe(
+      withCalculator((c) => c.add(0, 1)),
+      T.tap(() => clock.sleep(200)),
+      T.tap((n) => withConsole((c) => c.putStrLn(`got: ${n}`))),
+      T.tap(() => clock.sleep(2000)),
+      T.tap((n) => withConsole((c) => c.putStrLn(`got: ${n}`)))
+    )
   )
 )
 
