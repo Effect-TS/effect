@@ -41,6 +41,8 @@ export interface Has<K, T> {
     _T: T
     get: (sm: ServiceMap) => T
     set: (sm: ServiceMap, _: T) => ServiceMap
+    has: (sm: ServiceMap) => boolean
+    def: boolean
   }
 }
 
@@ -52,7 +54,9 @@ export const has = <K>(k: K): (<T>() => Has<K, T>) => () => ({
     _K: undefined as any,
     _T: undefined as any,
     get: (sm) => sm.get(k),
-    set: (sm, t) => new Map(sm).set(k, t)
+    set: (sm, t) => new Map(sm).set(k, t),
+    has: (sm) => sm.has(k),
+    def: false
   }
 })
 
@@ -78,7 +82,9 @@ export const hasClass = <K extends Constructor<any>, U = unknown>(
     _K: undefined as any,
     _T: undefined as any,
     get: (sm) => sm.get(k),
-    set: (sm, t) => new Map(sm).set(k, t)
+    set: (sm, t) => new Map(sm).set(k, t),
+    has: (sm) => sm.has(k),
+    def: false
   }
 })
 
@@ -98,7 +104,9 @@ export const hasScoped = <K>(k: K) => <T>(_: Has<any, T>): Has<K, T> => ({
     set: (sm, t) =>
       sm.get(k)
         ? new Map(sm).set(k, _[DescURI].set(sm.get(k), t))
-        : new Map(sm).set(k, _[DescURI].set(new Map(), t))
+        : new Map(sm).set(k, _[DescURI].set(new Map(), t)),
+    has: (sm) => sm.has(k) && _[DescURI].has(sm.get(k)),
+    def: false
   }
 })
 
@@ -161,7 +169,10 @@ export const provideServiceM = <K, T>(_: Has<K, T>) => <S, R, E>(
       provideAll_(ma, {
         ...r,
         [HasURI]: {
-          serviceMap: _[DescURI].set(r[HasURI].serviceMap, t)
+          serviceMap:
+            _[DescURI].def && _[DescURI].has(r[HasURI].serviceMap)
+              ? r[HasURI].serviceMap
+              : _[DescURI].set(r[HasURI].serviceMap, t)
         }
       } as any)
     )
@@ -242,5 +253,16 @@ export const replaceServiceIn_ = <R, K, T>(
       r[HasURI].serviceMap,
       f(_[DescURI].get(r[HasURI].serviceMap))
     )
+  }
+})
+
+/**
+ * Flags the current Has to be overridable, when this is used subsequently provided
+ * environments will override pre-existing. Useful to provide defaults.
+ */
+export const overridable = <K, T>(h: Has<K, T>): Has<K, T> => ({
+  [DescURI]: {
+    ...h[DescURI],
+    def: true
   }
 })
