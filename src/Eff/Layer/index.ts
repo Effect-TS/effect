@@ -30,14 +30,9 @@ export class Layer<S, R, E, A> {
 }
 
 export const managedService = <K, A>(has: Has<K, A>) => <S, R, E, B extends A>(
-  acquire: Effect<S, R, E, B>
-) => <S2, R2, E2>(release: (a: B) => Effect<S2, R2, E2, any>) =>
-  new Layer<S | S2, R & R2, E | E2, Has<K, A>>(
-    map_(
-      makeExit_(acquire, (a) => release(a)),
-      (a) => (e) => provideService(has)(a)(e)
-    )
-  )
+  resource: Managed<S, R, E, B>
+) =>
+  new Layer<S, R, E, Has<K, A>>(map_(resource, (a) => (e) => provideService(has)(a)(e)))
 
 export const managedEnv = <S, R, E, A>(
   acquire: Effect<S, R, E, A>,
