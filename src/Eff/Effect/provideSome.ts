@@ -1,17 +1,22 @@
-import { HasURI } from "../Has"
+import { RegistryURI } from "../Has"
 
 import { accessM } from "./accessM"
 import { Effect } from "./effect"
 import { provideAll_ } from "./provideAll_"
 
 const withMergedMaps = <R0, R1>(r0: R0, r1: R1) => {
-  if (r1[HasURI] && r1[HasURI].serviceMap && r0[HasURI] && r0[HasURI].serviceMap) {
-    const r0m = r0[HasURI].serviceMap as Map<any, any>
-    const r1m = r1[HasURI].serviceMap as Map<any, any>
+  if (
+    r1[RegistryURI] &&
+    r1[RegistryURI].serviceMap &&
+    r0[RegistryURI] &&
+    r0[RegistryURI].serviceMap
+  ) {
+    const r0m = r0[RegistryURI].serviceMap as Map<any, any>
+    const r1m = r1[RegistryURI].serviceMap as Map<any, any>
 
     return {
       ...r1,
-      [HasURI]: {
+      [RegistryURI]: {
         serviceMap: new Map([...Array.from(r0m), ...Array.from(r1m)])
       }
     }

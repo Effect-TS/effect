@@ -2,12 +2,7 @@ import { Async, Sync } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { effectTotal } from "../Effect/effectTotal"
 import { unit } from "../Effect/unit"
-import { accessServiceM, hasClass } from "../Has"
-
-//
-// Clock URI
-//
-export const ClockURI = "@matechs/core/Eff/ClockURI"
+import { accessServiceM, hasClass, accessService } from "../Has"
 
 //
 // Clock Definition
@@ -71,6 +66,13 @@ export const sleep = (ms: number) => accessServiceM(HasClock)((_) => _.sleep(ms)
 /**
  * Access clock from environment
  */
-export const withClock =
+export const withClockM =
   /*#__PURE__*/
   accessServiceM(HasClock)
+
+/**
+ * Access clock from environment
+ */
+export const withClock =
+  /*#__PURE__*/
+  accessService(HasClock)

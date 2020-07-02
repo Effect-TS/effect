@@ -12,7 +12,7 @@ import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
 import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
-import { HasRegistry, HasURI } from "../Has"
+import { HasRegistry, RegistryURI } from "../Has"
 import { defaultRandom, Random, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
@@ -28,7 +28,7 @@ const empty = () => {
 export type DefaultEnv = HasClock & HasRandom & HasRegistry
 
 export const defaultEnv: HasRegistry = {
-  [HasURI]: {
+  [RegistryURI]: {
     serviceMap: new Map<any, any>([
       [Clock, new LiveClock()],
       [Random, defaultRandom]
@@ -76,7 +76,6 @@ export const runMain = <S, E>(effect: Effect<S, DefaultEnv, E, void>): CancelMai
           console.log(pretty(exit.cause))
           process.exit(0)
         }
-        break
       }
       // eslint-disable-next-line no-fallthrough
       case "Success": {

@@ -5,14 +5,6 @@ import { accessServiceM, hasClass, replaceService } from "../Has"
 
 import { PRNG } from "./Alea"
 
-export const RandomURI = "@matechs/core/Eff/RandomURI"
-
-export interface Random {
-  [RandomURI]: {
-    prng: PRNG
-  }
-}
-
 export abstract class Random {
   abstract readonly next: Sync<number>
   abstract readonly nextBoolean: Sync<boolean>
