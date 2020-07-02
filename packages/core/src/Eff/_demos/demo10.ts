@@ -13,17 +13,17 @@ abstract class AppConfig<S> {
   abstract readonly config: S
 }
 
-export const HasConsole = T.hasClass(Console)
-export const HasFormat = T.hasClass(Format)
+export const HasConsole = T.has(Console)()
+export const HasFormat = T.has(Format)()
 
 export const HasAppConfigURI = Symbol()
-export const HasAppConfig = T.has(HasAppConfigURI)<AppConfig<string>>()
+export const HasAppConfig = T.has<AppConfig<string>>()(HasAppConfigURI)
 
 export const HasScopedAppConfigURI = Symbol()
-export const HasScopedAppConfig = T.has(HasScopedAppConfigURI)<AppConfig<string>>()
+export const HasScopedAppConfig = T.has<AppConfig<string>>()(HasScopedAppConfigURI)
 
 export const HasNumberConfigURI = Symbol()
-export const HasNumberConfig = T.has(HasNumberConfigURI)<AppConfig<number>>()
+export const HasNumberConfig = T.has<AppConfig<number>>()(HasNumberConfigURI)
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))

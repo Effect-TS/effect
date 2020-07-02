@@ -42,22 +42,6 @@ export const progressiveFor = (a: any) => {
 }
 
 /**
- * Create a service entry from a type and a URI
- */
-export function has<K extends string | symbol>(k: K): <T>() => Has<T, K>
-export function has<K>(k: K): <T>() => Has<T, K>
-export function has<K>(k: K): <T>() => Has<T, K> {
-  return () => ({
-    [HasURI]: {
-      _T: undefined as any,
-      _K: undefined as any,
-      key: progressiveFor(k),
-      def: false
-    }
-  })
-}
-
-/**
  * Extract the type of a class constructor
  */
 export type TypeOf<K extends Constructor<any>> = K extends {
@@ -69,26 +53,28 @@ export type TypeOf<K extends Constructor<any>> = K extends {
 export type Constructor<T> = Function & { prototype: T }
 
 /**
- * Create a service entry from a class
+ * Create a service entry from a type and a URI
  */
-export function hasClass<T extends Constructor<any>>(_: T): Has<TypeOf<T>, T>
-export function hasClass<T extends Constructor<any>, K extends string | symbol>(
-  _: T,
-  k: K
-): Has<TypeOf<T>, K>
-export function hasClass<T extends Constructor<any>, K>(_: T, k: K): Has<TypeOf<T>, K>
-export function hasClass<T extends Constructor<any>>(
-  _: T,
-  k?: any
-): Has<TypeOf<T>, unknown> {
-  return {
+export function has<T extends Constructor<any>>(
+  _: T
+): {
+  <K extends string | symbol>(k: K): Has<TypeOf<T>, K>
+  <K>(k: K): Has<TypeOf<T>, K>
+  (): Has<TypeOf<T>, T>
+}
+export function has<T>(): {
+  <K extends string | symbol>(k: K): Has<T, K>
+  <K>(k: K): Has<T, K>
+}
+export function has<T>(_?: T): <K>(k?: K) => Has<T, K> {
+  return (k) => ({
     [HasURI]: {
       _T: undefined as any,
       _K: undefined as any,
       key: k ? progressiveFor(k) : progressiveFor(_),
       def: false
     }
-  }
+  })
 }
 
 /**
