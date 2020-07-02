@@ -171,6 +171,7 @@ export {
   accessServiceM,
   accessService,
   accessServices,
+  overridable,
   HasRegistry,
   hasClass,
   hasScoped,
