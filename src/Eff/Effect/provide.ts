@@ -8,7 +8,7 @@ import { provideSome_ } from "./provideSome"
 export const provide_ = <S, E, A, R = unknown, R0 = unknown>(
   next: Effect<S, R & R0, E, A>,
   r: R
-): Effect<S, R0, E, A> => provideSome_(next, (r0: R0) => ({ ...r, ...r0 }))
+): Effect<S, R0, E, A> => provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
 
 /**
  * Provides some of the environment required to run this effect,
@@ -16,4 +16,4 @@ export const provide_ = <S, E, A, R = unknown, R0 = unknown>(
  */
 export const provide = <R = unknown>(r: R) => <S, E, A, R0 = unknown>(
   next: Effect<S, R & R0, E, A>
-): Effect<S, R0, E, A> => provideSome_(next, (r0: R0) => ({ ...r, ...r0 }))
+): Effect<S, R0, E, A> => provideSome_(next, (r0: R0) => ({ ...r0, ...r }))
