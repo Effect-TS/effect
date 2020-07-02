@@ -14,8 +14,9 @@ export abstract class Calculator {
 export const HasConsole = T.hasClass(Console)
 export const HasCalculator = T.hasClass(Calculator)
 
-export const withCalculator = T.accessServiceM(HasCalculator)
-export const withConsole = T.accessServiceM(HasConsole)
+export const withCalculatorM = T.accessServiceM(HasCalculator)
+export const withConsoleM = T.accessServiceM(HasConsole)
+export const withConsole = T.accessService(HasConsole)
 
 class LiveConsole extends Console {
   putStrLn(s: string): T.Sync<void> {
@@ -65,7 +66,7 @@ class DebugCalculator extends Calculator {
 }
 
 export const DebugCalculatorLayer = pipe(
-  withConsole((console) => T.effectTotal(() => new DebugCalculator(console))),
+  withConsole((console) => new DebugCalculator(console)),
   M.makeExit((c) => c.dispose()),
   L.managedService(HasCalculator)
 )
@@ -83,7 +84,7 @@ const program = layer.use(
       T.tap(() => clock.sleep(200)),
       T.tap((n) => console.putStrLn(`got: ${n}`)),
       T.tap(() => clock.sleep(2000)),
-      T.tap((n) => withConsole((c) => c.putStrLn(`got: ${n}`)))
+      T.tap((n) => withConsoleM((c) => c.putStrLn(`got: ${n}`)))
     )
   )
 )
