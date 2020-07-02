@@ -15,11 +15,9 @@ export abstract class Clock {
 //
 // Has Clock
 //
-export const HasClockURI: unique symbol = Symbol()
-
 export const HasClock =
   /*#__PURE__*/
-  hasClass(Clock, HasClockURI)
+  hasClass(Clock)
 
 export type HasClock = typeof HasClock
 

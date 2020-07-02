@@ -46,8 +46,7 @@ export const defaultRandom =
   /*#__PURE__*/
   new LiveRandom(String(Math.random()))
 
-export const HasRandomURI: unique symbol = Symbol()
-export const HasRandom = hasClass(Random, HasRandomURI)
+export const HasRandom = hasClass(Random)
 export type HasRandom = typeof HasRandom
 
 export const next =
