@@ -3,7 +3,7 @@ import { died } from "../Cause/died"
 import { failed } from "../Cause/failed"
 import { pretty } from "../Cause/pretty"
 // exit
-import { HasClock, LiveClock, Clock } from "../Clock"
+import { HasClock, LiveClock } from "../Clock"
 import { FiberFailure } from "../Errors"
 import { Exit } from "../Exit/exit"
 // fiber
@@ -12,8 +12,8 @@ import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
 import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
-import { HasRegistry, RegistryURI } from "../Has"
-import { defaultRandom, Random, HasRandom } from "../Random"
+import { HasURI } from "../Has"
+import { defaultRandom, HasRandom } from "../Random"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
@@ -25,15 +25,11 @@ const empty = () => {
   //
 }
 
-export type DefaultEnv = HasClock & HasRandom & HasRegistry
+export type DefaultEnv = HasClock & HasRandom
 
-export const defaultEnv: HasRegistry = {
-  [RegistryURI]: {
-    serviceMap: new Map<any, any>([
-      [Clock, new LiveClock()],
-      [Random, defaultRandom]
-    ])
-  }
+export const defaultEnv = {
+  [HasClock[HasURI].key]: new LiveClock(),
+  [HasRandom[HasURI].key]: defaultRandom
 }
 
 /**
