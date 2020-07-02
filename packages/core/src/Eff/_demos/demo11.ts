@@ -11,8 +11,10 @@ export abstract class Calculator {
   abstract add(a: number, b: number): T.Sync<number>
 }
 
-export const HasConsole = T.hasClass(Console)
-export const HasCalculator = T.hasClass(Calculator)
+export const HasConsoleURI: unique symbol = Symbol()
+export const HasConsole = T.hasClass(Console, HasConsoleURI)
+export const HasCalculatorURI: unique symbol = Symbol()
+export const HasCalculator = T.hasClass(Calculator, HasCalculatorURI)
 
 export const withCalculatorM = T.accessServiceM(HasCalculator)
 export const withConsoleM = T.accessServiceM(HasConsole)
