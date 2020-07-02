@@ -1,75 +1,87 @@
 import { pipe } from "../../Function"
-import { withClock } from "../Clock"
+import { HasClock } from "../Clock"
 import * as T from "../Effect"
 import * as L from "../Layer"
+import * as M from "../Managed"
 
-abstract class Console {
+export abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>
 }
-abstract class Calculator {
+export abstract class Calculator {
   abstract add(a: number, b: number): T.Sync<number>
 }
 
-const HasConsole = T.hasClass(Console)
-const HasCalculator = T.hasClass(Calculator)
+export const HasConsole = T.hasClass(Console)
+export const HasCalculator = T.hasClass(Calculator)
 
-const withCalculator = T.accessServiceM(HasCalculator)
-const withConsole = T.accessServiceM(HasConsole)
+export const withCalculator = T.accessServiceM(HasCalculator)
+export const withConsole = T.accessServiceM(HasConsole)
 
-export const ConsoleLayer = L.managedService(HasConsole)(
-  T.effectTotal(
-    () =>
-      new (class extends Console {
-        putStrLn(s: string): T.Sync<void> {
-          return T.effectTotal(() => {
-            console.log(s)
-          })
-        }
+class LiveConsole extends Console {
+  putStrLn(s: string): T.Sync<void> {
+    return T.effectTotal(() => {
+      console.log(s)
+    })
+  }
 
-        dispose() {
-          return T.effectTotal(() => {
-            console.log("disposed")
-          })
-        }
-      })()
-  )
-)((s) => s.dispose())
+  dispose() {
+    return T.effectTotal(() => {
+      console.log("disposed")
+    })
+  }
+}
 
-export const CalculatorLayer = L.managedService(HasCalculator)(
-  T.effectTotal(
-    () =>
-      new (class extends Calculator {
-        add(a: number, b: number): T.Sync<number> {
-          return T.effectTotal(() => a + b)
-        }
-      })()
-  )
-)(() => T.unit)
+export const ConsoleLayer = pipe(
+  T.effectTotal(() => new LiveConsole()),
+  M.makeExit((c) => c.dispose()),
+  L.managedService(HasConsole)
+)
 
-export const CalculatorLayer2 = L.managedService(HasCalculator)(
-  withConsole((console) =>
-    T.effectTotal(
-      () =>
-        new (class extends Calculator {
-          add(a: number, b: number): T.Sync<number> {
-            return pipe(
-              T.effectTotal(() => a + b),
-              T.tap((n) => console.putStrLn(`(debug): ${n}`))
-            )
-          }
-        })()
+class LiveCalculator extends Calculator {
+  add(a: number, b: number): T.Sync<number> {
+    return T.effectTotal(() => a + b)
+  }
+}
+
+export const CalculatorLayer = pipe(
+  T.effectTotal(() => new LiveCalculator()),
+  M.fromEffect,
+  L.managedService(HasCalculator)
+)
+
+class DebugCalculator extends Calculator {
+  constructor(private console: Console) {
+    super()
+  }
+  add(a: number, b: number): T.Sync<number> {
+    return pipe(
+      T.effectTotal(() => a + b),
+      T.tap((n) => this.console.putStrLn(`(debug): ${n}`))
     )
-  )
-)(() => T.unit)
+  }
+  dispose() {
+    return this.console.putStrLn("close-debug-calc")
+  }
+}
 
-const layer = pipe(CalculatorLayer, L.zipPar(ConsoleLayer))
+export const DebugCalculatorLayer = pipe(
+  withConsole((console) => T.effectTotal(() => new DebugCalculator(console))),
+  M.makeExit((c) => c.dispose()),
+  L.managedService(HasCalculator)
+)
+
+const layer = pipe(DebugCalculatorLayer, L.using(ConsoleLayer))
 
 const program = layer.use(
-  withClock((clock) =>
+  T.accessServicesM({
+    clock: HasClock,
+    calc: HasCalculator,
+    console: HasConsole
+  })(({ calc, clock, console }) =>
     pipe(
-      withCalculator((c) => c.add(0, 1)),
+      calc.add(0, 1),
       T.tap(() => clock.sleep(200)),
-      T.tap((n) => withConsole((c) => c.putStrLn(`got: ${n}`))),
+      T.tap((n) => console.putStrLn(`got: ${n}`)),
       T.tap(() => clock.sleep(2000)),
       T.tap((n) => withConsole((c) => c.putStrLn(`got: ${n}`)))
     )
