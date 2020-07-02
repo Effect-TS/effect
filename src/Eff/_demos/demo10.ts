@@ -45,8 +45,26 @@ export class LiveConsole extends Console {
     )
 }
 
-export const provideConsole = T.provideServiceM(HasConsole)(
+export class AugumentedConsole extends Console {
+  constructor(private readonly format: Format) {
+    super()
+  }
+
+  putStrLn: (s: string) => T.Sync<void> = (s) =>
+    T.chain_(this.format.formatString(s), (f) =>
+      T.provideService(HasFormat)(this.format)(
+        T.effectTotal(() => {
+          console.log("(augumented) ", f)
+        })
+      )
+    )
+}
+
+export const provideConsole = T.provideServiceM(T.overridable(HasConsole))(
   T.accessService(HasFormat)((format) => new LiveConsole(format))
+)
+export const provideAugumentedConsole = T.provideServiceM(T.overridable(HasConsole))(
+  T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
 export const complexAccess = T.accessServicesM({
@@ -105,10 +123,11 @@ export const provideScopedAppConfig = T.provideServiceM(HasScopedAppConfig)(
 const main = pipe(
   program,
   provideConsole,
-  provideFormat,
   provideAppConfig,
   provideScopedAppConfig,
-  provideNumberConfig
+  provideNumberConfig,
+  provideAugumentedConsole,
+  provideFormat
 )
 
 T.runMain(main)

@@ -7,7 +7,7 @@ import { ReleaseMap } from "./releaseMap"
  * effect will be performed interruptibly.
  */
 export const fromEffect = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
-  new Managed(
+  new Managed<S, R, E, A>(
     T.map_(
       T.accessM((_: [R, ReleaseMap]) => T.provideAll_(effect, _[0])),
       (a) => [noop, a]
