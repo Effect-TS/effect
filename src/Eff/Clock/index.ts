@@ -1,8 +1,8 @@
-import { Sync, Async } from "../Effect/effect"
+import { Async, Sync } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { effectTotal } from "../Effect/effectTotal"
 import { unit } from "../Effect/unit"
-import { hasClass, accessServiceM } from "../Has"
+import { accessServiceM, hasClass } from "../Has"
 
 //
 // Clock URI
@@ -67,3 +67,10 @@ export const currentTime =
  * Sleeps for the provided amount of ms
  */
 export const sleep = (ms: number) => accessServiceM(HasClock)((_) => _.sleep(ms))
+
+/**
+ * Access clock from environment
+ */
+export const withClock =
+  /*#__PURE__*/
+  accessServiceM(HasClock)
