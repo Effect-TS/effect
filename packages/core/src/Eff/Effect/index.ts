@@ -172,8 +172,5 @@ export {
   accessService,
   accessServices,
   overridable,
-  HasRegistry,
-  hasClass,
-  hasScoped,
-  hasAs
+  hasClass
 } from "../Has"

@@ -6,43 +6,23 @@ import { chain_ } from "../Effect/chain_"
 import { Effect } from "../Effect/effect"
 import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
+import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
  * Encodes a Map of services
  */
-export type ServiceMap = Map<any, any>
+export type ServiceMap = {}
 
-/**
- * Identifies the Service Map in the effect environment
- */
-export const RegistryURI = "@matechs/core/Eff/Has/RegistryURI"
-
-export interface HasRegistry {
-  [RegistryURI]: {
-    serviceMap: ServiceMap
-  }
-}
-
-/**
- * An empty registry to begin environment
- */
-export const empty = (): HasRegistry => ({
-  [RegistryURI]: {
-    serviceMap: new Map()
-  }
-})
+export const _current = new AtomicNumber(0)
 
 /**
  * Encodes a Service Entry
  */
 export const HasURI = "@matechs/core/Eff/Has/HasURI"
-export interface Has<K, T> {
+export interface Has<T> {
   [HasURI]: {
-    _K: () => K
     _T: T
-    get: (sm: ServiceMap) => T
-    set: (sm: ServiceMap, _: T) => ServiceMap
-    has: (sm: ServiceMap) => boolean
+    key: string | symbol
     def: boolean
   }
 }
@@ -50,13 +30,10 @@ export interface Has<K, T> {
 /**
  * Create a service entry from a type and a URI
  */
-export const has = <K>(k: K): (<T>() => Has<K, T>) => () => ({
+export const has = <T>(): Has<T> => ({
   [HasURI]: {
-    _K: undefined as any,
     _T: undefined as any,
-    get: (sm) => sm.get(k),
-    set: (sm, t) => new Map(sm).set(k, t),
-    has: (sm) => sm.has(k),
+    key: `@services/${_current.incrementAndGet()}`,
     def: false
   }
 })
@@ -75,38 +52,10 @@ export type Constructor<T> = Function & { prototype: T }
 /**
  * Create a service entry from a class
  */
-export const hasClass = <K extends Constructor<any>, U = unknown>(
-  k: K,
-  u?: U
-): Has<unknown extends U ? K : U, TypeOf<K>> => ({
+export const hasClass = <K extends Constructor<any>>(_: K): Has<TypeOf<K>> => ({
   [HasURI]: {
-    _K: undefined as any,
     _T: undefined as any,
-    get: (sm) => sm.get(k),
-    set: (sm, t) => new Map(sm).set(k, t),
-    has: (sm) => sm.has(k),
-    def: false
-  }
-})
-
-/**
- * Refine a service entry output
- */
-export const hasAs = <T>() => <K>(_: Has<K, T>): Has<K, T> => _
-
-/**
- * Create a service entry from a scope and a service entry
- */
-export const hasScoped = <K>(k: K) => <T>(_: Has<any, T>): Has<K, T> => ({
-  [HasURI]: {
-    _K: undefined as any,
-    _T: undefined as any,
-    get: (sm) => _[HasURI].get(sm.get(k)),
-    set: (sm, t) =>
-      sm.get(k)
-        ? new Map(sm).set(k, _[HasURI].set(sm.get(k), t))
-        : new Map(sm).set(k, _[HasURI].set(new Map(), t)),
-    has: (sm) => sm.has(k) && _[HasURI].has(sm.get(k)),
+    key: `@services/${_current.incrementAndGet()}`,
     def: false
   }
 })
@@ -114,7 +63,7 @@ export const hasScoped = <K>(k: K) => <T>(_: Has<any, T>): Has<K, T> => ({
 /**
  * Access a record of services with the required Service Entries
  */
-export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS) => <
+export const accessServicesM = <SS extends Record<string, Has<any>>>(s: SS) => <
   S,
   R = unknown,
   E = never,
@@ -122,146 +71,141 @@ export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS)
 >(
   f: (
     a: {
-      [k in keyof SS]: SS[k] extends Has<any, infer T> ? T : unknown
+      [k in keyof SS]: SS[k] extends Has<infer T> ? T : unknown
     }
   ) => Effect<S, R, E, B>
 ) =>
   accessM((r: UnionToIntersection<SS[keyof SS]>) =>
-    f(R.map_(s, (v) => v[HasURI].get(r[RegistryURI].serviceMap)) as any)
+    f(R.map_(s, (v) => r[v[HasURI].key]) as any)
   )
 
 /**
  * Access a record of services with the required Service Entries
  */
-export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) => <B>(
+export const accessServices = <SS extends Record<string, Has<any>>>(s: SS) => <B>(
   f: (
     a: {
-      [k in keyof SS]: SS[k] extends Has<any, infer T> ? T : unknown
+      [k in keyof SS]: SS[k] extends Has<infer T> ? T : unknown
     }
   ) => B
 ) =>
   access((r: UnionToIntersection<SS[keyof SS]>) =>
-    f(R.map_(s, (v) => v[HasURI].get(r[RegistryURI].serviceMap)) as any)
+    f(R.map_(s, (v) => r[v[HasURI].key]) as any)
   )
 
 /**
  * Access a service with the required Service Entry
  */
-export const accessServiceM = <K, T>(s: Has<K, T>) => <S, R, E, B>(
+export const accessServiceM = <T>(s: Has<T>) => <S, R, E, B>(
   f: (a: T) => Effect<S, R, E, B>
-) => accessM((r: Has<K, T>) => f(s[HasURI].get(r[RegistryURI].serviceMap)))
+) => accessM((r: Has<T>) => f(r[s[HasURI].key]))
 
 /**
  * Access a service with the required Service Entry
  */
-export const accessService = <K, T>(s: Has<K, T>) => <B>(f: (a: T) => B) =>
+export const accessService = <T>(s: Has<T>) => <B>(f: (a: T) => B) =>
   accessServiceM(s)((a) => succeedNow(f(a)))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
  */
-export const provideServiceM = <K, T>(_: Has<K, T>) => <S, R, E>(
-  f: Effect<S, R, E, T>
-) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
+export const provideServiceM = <T>(_: Has<T>) => <S, R, E>(f: Effect<S, R, E, T>) => <
+  S1,
+  R1,
+  E1,
+  A1
+>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
 ): Effect<S | S1, R & R1, E | E1, A1> =>
   accessM((r: R & R1) =>
     chain_(f, (t) =>
-      provideAll_(ma, {
-        ...r,
-        [RegistryURI]: {
-          serviceMap:
-            _[HasURI].def && _[HasURI].has(r[RegistryURI].serviceMap)
-              ? r[RegistryURI].serviceMap
-              : _[HasURI].set(r[RegistryURI].serviceMap, t)
-        }
-      } as any)
+      provideAll_(
+        ma,
+        _[HasURI].def && r[_[HasURI].key]
+          ? r
+          : ({
+              ...r,
+              [_[HasURI].key]: t
+            } as any)
+      )
     )
   )
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
  */
-export const provideService = <K, T>(_: Has<K, T>) => (f: T) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
+export const provideService = <T>(_: Has<T>) => (f: T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
 ): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeedNow(f))(ma)
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceServiceM = <S, R, E, K, T>(
-  _: Has<K, T>,
+export const replaceServiceM = <S, R, E, T>(
+  _: Has<T>,
   f: (_: T) => Effect<S, R, E, T>
 ) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
-): Effect<S | S1, R & R1 & Has<K, T>, E | E1, A1> =>
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
+): Effect<S | S1, R & R1 & Has<T>, E | E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceServiceM_ = <S, R, E, K, T, S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<K, T>, E1, A1>,
-  _: Has<K, T>,
+export const replaceServiceM_ = <S, R, E, T, S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>,
+  _: Has<T>,
   f: (_: T) => Effect<S, R, E, T>
-): Effect<S | S1, R & R1 & Has<K, T>, E | E1, A1> =>
+): Effect<S | S1, R & R1 & Has<T>, E | E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceService = <K, T>(_: Has<K, T>, f: (_: T) => T) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<K, T>, E1, A1>
-): Effect<S1, R1 & Has<K, T>, E1, A1> =>
+export const replaceService = <T>(_: Has<T>, f: (_: T) => T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
+): Effect<S1, R1 & Has<T>, E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceService_ = <S1, R1, E1, A1, K, T>(
-  ma: Effect<S1, R1 & Has<K, T>, E1, A1>,
-  _: Has<K, T>,
+export const replaceService_ = <S1, R1, E1, A1, T>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>,
+  _: Has<T>,
   f: (_: T) => T
-): Effect<S1, R1 & Has<K, T>, E1, A1> =>
+): Effect<S1, R1 & Has<T>, E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn = <K, T>(_: Has<K, T>, f: (t: T) => T) => <R>(
-  r: R & Has<K, T>
-): R & Has<K, T> => ({
-  ...r,
-  [RegistryURI]: {
-    serviceMap: _[HasURI].set(
-      r[RegistryURI].serviceMap,
-      f(_[HasURI].get(r[RegistryURI].serviceMap))
-    )
-  }
-})
+export const replaceServiceIn = <T>(_: Has<T>, f: (t: T) => T) => <R>(
+  r: R & Has<T>
+): R & Has<T> =>
+  ({
+    ...r,
+    [_[HasURI].key]: f(r[_[HasURI].key])
+  } as any)
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn_ = <R, K, T>(
-  r: R & Has<K, T>,
-  _: Has<K, T>,
+export const replaceServiceIn_ = <R, T>(
+  r: R & Has<T>,
+  _: Has<T>,
   f: (t: T) => T
-): R & Has<K, T> => ({
-  ...r,
-  [RegistryURI]: {
-    serviceMap: _[HasURI].set(
-      r[RegistryURI].serviceMap,
-      f(_[HasURI].get(r[RegistryURI].serviceMap))
-    )
-  }
-})
+): R & Has<T> =>
+  ({
+    ...r,
+    [_[HasURI].key]: f(r[_[HasURI].key])
+  } as any)
 
 /**
  * Flags the current Has to be overridable, when this is used subsequently provided
  * environments will override pre-existing. Useful to provide defaults.
  */
-export const overridable = <K, T>(h: Has<K, T>): Has<K, T> => ({
+export const overridable = <T>(h: Has<T>): Has<T> => ({
   [HasURI]: {
     ...h[HasURI],
     def: true
