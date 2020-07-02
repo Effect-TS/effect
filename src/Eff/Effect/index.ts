@@ -171,6 +171,5 @@ export {
   accessServiceM,
   accessService,
   accessServices,
-  overridable,
-  hasClass
+  overridable
 } from "../Has"
