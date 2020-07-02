@@ -1,7 +1,7 @@
 import { chain_ } from "../Effect/chain_"
 import { Sync } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
-import { accessServiceM, hasClass, replaceService } from "../Has"
+import { accessServiceM, has, replaceService } from "../Has"
 
 import { PRNG } from "./Alea"
 
@@ -46,7 +46,7 @@ export const defaultRandom =
   /*#__PURE__*/
   new LiveRandom(String(Math.random()))
 
-export const HasRandom = hasClass(Random)
+export const HasRandom = has(Random)()
 export type HasRandom = typeof HasRandom
 
 export const next =
