@@ -6,7 +6,6 @@ import { chain_ } from "../Effect/chain_"
 import { Effect } from "../Effect/effect"
 import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
-import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
  * Encodes a Map of services
@@ -21,28 +20,25 @@ export interface Has<T, K> {
   [HasURI]: {
     _T: () => T
     _K: (_: K) => void
-    key: string
+    key: symbol
     def: boolean
   }
 }
 
-export const _symbols = new Map<any, number>()
-export const _current = new AtomicNumber(0)
-
-export const format = (n: number) => `services-${n}`
+export const _symbols = new Map<any, symbol>()
 
 export const progressiveFor = (a: any) => {
   const maybeIndex = _symbols.get(a)
 
   if (maybeIndex) {
-    return format(maybeIndex)
+    return maybeIndex
   }
 
-  const current = _current.incrementAndGet()
+  const current = Symbol()
 
   _symbols.set(a, current)
 
-  return format(current)
+  return current
 }
 
 /**
