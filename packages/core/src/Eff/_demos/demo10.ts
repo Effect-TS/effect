@@ -12,15 +12,16 @@ abstract class Format {
 abstract class AppConfig<S> {
   abstract readonly config: S
 }
-abstract class ScopedAppConfig<S> extends AppConfig<S> {
-  readonly _tag!: "ScopedAppConfig"
-}
-
-export const HasConsole = T.hasClass(Console)
-export const HasFormat = T.hasClass(Format)
-export const HasAppConfig = T.has<AppConfig<string>>()
-export const HasScopedAppConfig = T.has<ScopedAppConfig<string>>()
-export const HasNumberConfig = T.has<AppConfig<number>>()
+export const HasConsoleURI: unique symbol = Symbol()
+export const HasConsole = T.hasClass(Console, HasConsoleURI)
+export const HasFormatURI: unique symbol = Symbol()
+export const HasFormat = T.hasClass(Format, HasFormatURI)
+export const HasAppConfigURI: unique symbol = Symbol()
+export const HasAppConfig = T.has(HasAppConfigURI)<AppConfig<string>>()
+export const HasScopedAppConfigURI: unique symbol = Symbol()
+export const HasScopedAppConfig = T.has(HasScopedAppConfigURI)<AppConfig<string>>()
+export const HasNumberAppConfigURI: unique symbol = Symbol()
+export const HasNumberConfig = T.has(HasNumberAppConfigURI)<AppConfig<number>>()
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
@@ -109,7 +110,7 @@ export const provideNumberConfig = T.provideServiceM(HasNumberConfig)(
 
 export const provideScopedAppConfig = T.provideServiceM(HasScopedAppConfig)(
   T.succeedNow(
-    new (class extends ScopedAppConfig<string> {
+    new (class extends AppConfig<string> {
       config = "ok - scoped"
     })()
   )
