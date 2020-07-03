@@ -30,6 +30,11 @@ export const pure = <T>(has: T.Has<T>) => <E>(resource: T.Unbrand<T>) =>
     )
   )
 
+export const service = <T>(has: T.Has<T>) => ({
+  fromEffect: fromEffect(has),
+  fromManaged: fromManaged(has)
+})
+
 export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
   resource: T.Effect<S, R, E, T.Unbrand<T>>
 ) =>

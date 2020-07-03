@@ -14,19 +14,19 @@ abstract class AppConfig<S> {
 }
 
 export const HasConsole = T.has(Console)()
-export type HasConsole = typeof HasConsole
+export type HasConsole = T.HasType<typeof HasConsole>
 
 export const HasFormat = T.has(Format)()
-export type HasFormat = typeof HasFormat
+export type HasFormat = T.HasType<typeof HasFormat>
 
 export const HasAppConfig = T.has<AppConfig<string>>()()
-export type HasAppConfig = typeof HasAppConfig
+export type HasAppConfig = T.HasType<typeof HasAppConfig>
 
 export const HasScopedAppConfig = T.has<AppConfig<string>>()("Scoped")
-export type HasScopedAppConfig = typeof HasScopedAppConfig
+export type HasScopedAppConfig = T.HasType<typeof HasScopedAppConfig>
 
 export const HasNumberConfig = T.has<AppConfig<number>>()("Number")
-export type HasNumberConfig = typeof HasNumberConfig
+export type HasNumberConfig = T.HasType<typeof HasNumberConfig>
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
@@ -61,11 +61,11 @@ export class AugumentedConsole extends Console {
     )
 }
 
-export const provideConsole = T.provideServiceM(T.overridable(HasConsole))(
+export const provideConsole = T.provideServiceM(HasConsole.overridble())(
   T.accessService(HasFormat)((format) => new LiveConsole(format))
 )
 
-export const provideAugumentedConsole = T.provideServiceM(T.overridable(HasConsole))(
+export const provideAugumentedConsole = T.provideServiceM(HasConsole.overridble())(
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
