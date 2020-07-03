@@ -5,7 +5,11 @@ import { accessServiceM, has, replaceService } from "../Has"
 
 import { PRNG } from "./Alea"
 
+export const RandomURI = Symbol()
+
 export abstract class Random {
+  readonly _tag!: typeof RandomURI
+
   abstract readonly next: Sync<number>
   abstract readonly nextBoolean: Sync<boolean>
   abstract readonly nextInt: Sync<number>

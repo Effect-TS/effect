@@ -7,7 +7,11 @@ import { accessServiceM, has, accessService } from "../Has"
 //
 // Clock Definition
 //
+export const ClockURI = Symbol()
+
 export abstract class Clock {
+  readonly _tag!: typeof ClockURI
+
   abstract readonly currentTime: Sync<number>
   abstract readonly sleep: (ms: number) => Async<void>
 }

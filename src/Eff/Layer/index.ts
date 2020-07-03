@@ -1,7 +1,8 @@
+import { _brand } from "../../Branded"
 import { provideSome_ } from "../Effect"
 import { Effect } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
-import { Has, provideService } from "../Has"
+import { Has, provideService, Unbrand } from "../Has"
 import { chain_ as managedChain_ } from "../Managed/chain_"
 import { fromEffect } from "../Managed/fromEffect"
 import { makeExit_ } from "../Managed/makeExit_"
@@ -29,10 +30,9 @@ export class Layer<S, R, E, A> {
   }
 }
 
-export const managedService = <K, A>(has: Has<A, K>) => <S, R, E, B extends A>(
-  resource: Managed<S, R, E, B>
-) =>
-  new Layer<S, R, E, Has<A, K>>(map_(resource, (a) => (e) => provideService(has)(a)(e)))
+export const managedService = <T>(has: Has<T>) => <S, R, E>(
+  resource: Managed<S, R, E, Unbrand<T>>
+) => new Layer<S, R, E, Has<T>>(map_(resource, (a) => (e) => provideService(has)(a)(e)))
 
 export const managedEnv = <S, R, E, A>(
   acquire: Effect<S, R, E, A>,
