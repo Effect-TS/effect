@@ -18,7 +18,10 @@ import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
 
+import { accessM } from "./accessM"
 import { Async, Effect, _I } from "./effect"
+import { effectTotal } from "./effectTotal"
+import { provideSome_ } from "./provideSome"
 
 // empty function
 const empty = () => {
@@ -199,3 +202,29 @@ export function fiberContext<E, A>(env: {} = defaultEnv) {
   )
   return context
 }
+
+/**
+ * Represent an environment providing function
+ */
+export interface Runtime<R0> {
+  in: <S, R, E, A>(effect: Effect<S, R & R0, E, A>) => Effect<S, R, E, A>
+}
+
+/**
+ * Use current environment to build a runtime that is capable of
+ * providing its content to other effects.
+ *
+ * NOTE: in should be used in a region where current environment
+ * is valid (i.e. keep attention to closed resources)
+ */
+export const runtime = <R0>() =>
+  accessM((r0: R0) =>
+    effectTotal(
+      (): Runtime<R0> => {
+        return {
+          in: <S, R, E, A>(effect: Effect<S, R & R0, E, A>) =>
+            provideSome_(effect, (r: R) => ({ ...r0, ...r }))
+        }
+      }
+    )
+  )

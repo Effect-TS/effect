@@ -174,3 +174,4 @@ export {
   HasType
 } from "../Has"
 export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
+export { runtime, Runtime } from "./runtime"
