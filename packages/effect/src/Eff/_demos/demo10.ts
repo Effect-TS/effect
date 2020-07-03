@@ -61,11 +61,11 @@ export class AugumentedConsole extends Console {
     )
 }
 
-export const provideConsole = T.provideServiceM(HasConsole.overridble())(
+export const provideConsole = T.provideServiceM(HasConsole.overridable())(
   T.accessService(HasFormat)((format) => new LiveConsole(format))
 )
 
-export const provideAugumentedConsole = T.provideServiceM(HasConsole.overridble())(
+export const provideAugumentedConsole = T.provideServiceM(HasConsole.overridable())(
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
