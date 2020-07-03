@@ -59,17 +59,18 @@ class DebugCalculator extends Calculator {
       T.tap((n) => this.console.putStrLn(`(debug): ${n}`))
     )
   }
+  open() {
+    return this.console.putStrLn("open-debug-calc")
+  }
   dispose() {
     return this.console.putStrLn("close-debug-calc")
   }
 }
 
-export const DebugCalculatorLayer = L.service(HasCalculator).fromManaged(
-  M.makeExit_(
-    withConsole((console) => new DebugCalculator(console)),
-    (c) => c.dispose()
-  )
-)
+export const DebugCalculatorLayer = L.service(HasCalculator)
+  .prepare(withConsole((console) => new DebugCalculator(console)))
+  .open((c) => c.open())
+  .release((c) => c.dispose())
 
 const layer = pipe(DebugCalculatorLayer, L.using(ConsoleLayer))
 

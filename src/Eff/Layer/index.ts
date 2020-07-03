@@ -30,10 +30,25 @@ export const pure = <T>(has: T.Has<T>) => <E>(resource: T.Unbrand<T>) =>
     )
   )
 
+export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T.Unbrand<T>>(
+  acquire: T.Effect<S, R, E, A>
+) => ({
+  open: <S1, R1, E1>(open: (_: A) => T.Effect<S1, R1, E1, any>) => ({
+    release: <S2, R2, E2>(release: (_: A) => T.Effect<S2, R2, E2, any>) =>
+      fromManaged(has)(
+        T.managedChain_(
+          T.makeExit_(acquire, (a) => release(a)),
+          (a) => T.fromEffect(T.map_(open(a), () => a))
+        )
+      )
+  })
+})
+
 export const service = <T>(has: T.Has<T>) => ({
   fromEffect: fromEffect(has),
   fromManaged: fromManaged(has),
-  pure: pure(has)
+  pure: pure(has),
+  prepare: prepare(has)
 })
 
 export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
