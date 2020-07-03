@@ -1,50 +1,70 @@
-import { _brand } from "../../Branded"
-import { provideSome_ } from "../Effect"
-import { Effect } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
-import { Has, provideService, Unbrand } from "../Has"
-import { chain_ as managedChain_ } from "../Managed/chain_"
-import { fromEffect } from "../Managed/fromEffect"
-import { makeExit_ } from "../Managed/makeExit_"
-import { Managed } from "../Managed/managed"
-import { map_ } from "../Managed/map_"
-import { use_ } from "../Managed/use_"
-import { zipWithPar_ as managedZipWithPar_ } from "../Managed/zipWithPar_"
+import { reduce_ } from "../../Array"
+import { UnionToIntersection } from "../../Base/Apply"
+import { identity } from "../../Function"
+
+import * as T from "./deps"
 
 export class Layer<S, R, E, A> {
   readonly _A!: A
 
   constructor(
-    readonly build: Managed<
+    readonly build: T.Managed<
       S,
       R,
       E,
-      (_: Effect<any, any, any, any>) => Effect<any, any, any, any>
+      (_: T.Effect<any, any, any, any>) => T.Effect<any, any, any, any>
     >
   ) {}
 
   use<S1, R1, E1, A1>(
-    effect: Effect<S1, R1 & A, E1, A1>
-  ): Effect<S | S1, R & R1, E | E1, A1> {
-    return use_(this.build, (p) => p(effect))
+    effect: T.Effect<S1, R1 & A, E1, A1>
+  ): T.Effect<S | S1, R & R1, E | E1, A1> {
+    return T.managedUse_(this.build, (p) => p(effect))
   }
 }
 
-export const managedService = <T>(has: Has<T>) => <S, R, E>(
-  resource: Managed<S, R, E, Unbrand<T>>
-) => new Layer<S, R, E, Has<T>>(map_(resource, (a) => (e) => provideService(has)(a)(e)))
+export const pure = <T>(has: T.Has<T>) => <E>(resource: T.Unbrand<T>) =>
+  new Layer<never, unknown, E, T.Has<T>>(
+    T.managedMap_(T.fromEffect(T.succeedNow(resource)), (a) => (e) =>
+      T.provideService(has)(a)(e)
+    )
+  )
 
-export const managedEnv = <S, R, E, A>(
-  acquire: Effect<S, R, E, A>,
+export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
+  resource: T.Effect<S, R, E, T.Unbrand<T>>
+) =>
+  new Layer<S, R, E, T.Has<T>>(
+    T.managedMap_(T.fromEffect(resource), (a) => (e) => T.provideService(has)(a)(e))
+  )
+
+export const fromManaged = <T>(has: T.Has<T>) => <S, R, E>(
+  resource: T.Managed<S, R, E, T.Unbrand<T>>
+) =>
+  new Layer<S, R, E, T.Has<T>>(
+    T.managedMap_(resource, (a) => (e) => T.provideService(has)(a)(e))
+  )
+
+export const fromManagedEnv = <S, R, E, A>(
+  resource: T.Managed<S, R, E, A>,
   overridable: "overridable" | "final" = "final"
-) => <S2, R2, E2>(release: (a: A) => Effect<S2, R2, E2, any>) =>
-  new Layer<S | S2, R & R2, E | E2, A>(
-    map_(
-      makeExit_(acquire, (a) => release(a)),
-      (a) => (e) =>
-        provideSome_(e, (r) =>
-          overridable === "final" ? { ...r, ...a } : { ...a, ...r }
-        )
+) =>
+  new Layer<S, R, E, A>(
+    T.managedMap_(resource, (a) => (e) =>
+      T.provideSome_(e, (r) =>
+        overridable === "final" ? { ...r, ...a } : { ...a, ...r }
+      )
+    )
+  )
+
+export const fromEffectEnv = <S, R, E, A>(
+  resource: T.Effect<S, R, E, A>,
+  overridable: "overridable" | "final" = "final"
+) =>
+  new Layer<S, R, E, A>(
+    T.managedMap_(T.fromEffect(resource), (a) => (e) =>
+      T.provideSome_(e, (r) =>
+        overridable === "final" ? { ...r, ...a } : { ...a, ...r }
+      )
     )
   )
 
@@ -53,9 +73,9 @@ export const zip_ = <S, R, E, A, S2, R2, E2, A2>(
   right: Layer<S2, R2, E2, A2>
 ) =>
   new Layer<S | S2, R & R2, E | E2, A & A2>(
-    managedChain_(left.build, (l) =>
-      managedChain_(right.build, (r) =>
-        fromEffect(effectTotal(() => (effect) => l(r(effect))))
+    T.managedChain_(left.build, (l) =>
+      T.managedChain_(right.build, (r) =>
+        T.fromEffect(T.effectTotal(() => (effect) => l(r(effect))))
       )
     )
   )
@@ -69,8 +89,8 @@ export const using_ = <S, R, E, A, S2, R2, E2, A2>(
   right: Layer<S2, R2, E2, A2>
 ) =>
   new Layer<S | S2, R & R2, E | E2, A & A2>(
-    managedChain_(right.build, (r) =>
-      fromEffect(effectTotal(() => (effect) => r(left.use(effect))))
+    T.managedChain_(right.build, (r) =>
+      T.fromEffect(T.effectTotal(() => (effect) => r(left.use(effect))))
     )
   )
 
@@ -83,8 +103,66 @@ export const zipPar_ = <S, R, E, A, S2, R2, E2, A2>(
   right: Layer<S2, R2, E2, A2>
 ) =>
   new Layer<unknown, R & R2, E | E2, A & A2>(
-    managedChain_(
-      managedZipWithPar_(left.build, right.build, (a, b) => [a, b] as const),
-      ([l, r]) => fromEffect(effectTotal(() => (effect) => l(r(effect))))
+    T.managedChain_(
+      T.managedZipWithPar_(left.build, right.build, (a, b) => [a, b] as const),
+      ([l, r]) => T.fromEffect(T.effectTotal(() => (effect) => l(r(effect))))
+    )
+  )
+
+export type MergeS<Ls extends Layer<any, any, any, any>[]> = {
+  [k in keyof Ls]: [Ls[k]] extends [Layer<infer X, any, any, any>] ? X : never
+}[number]
+
+export type MergeR<Ls extends Layer<any, any, any, any>[]> = UnionToIntersection<
+  {
+    [k in keyof Ls]: [Ls[k]] extends [Layer<any, infer X, any, any>]
+      ? unknown extends X
+        ? never
+        : X
+      : never
+  }[number]
+>
+
+export type MergeE<Ls extends Layer<any, any, any, any>[]> = {
+  [k in keyof Ls]: [Ls[k]] extends [Layer<any, any, infer X, any>] ? X : never
+}[number]
+
+export type MergeA<Ls extends Layer<any, any, any, any>[]> = UnionToIntersection<
+  {
+    [k in keyof Ls]: [Ls[k]] extends [Layer<any, any, any, infer X>]
+      ? unknown extends X
+        ? never
+        : X
+      : never
+  }[number]
+>
+
+export const all = <Ls extends Layer<any, any, any, any>[]>(
+  ...ls: Ls & { 0: Layer<any, any, any, any> }
+): Layer<MergeS<Ls>, MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> =>
+  new Layer(
+    T.managedMap_(
+      T.foreach_(ls, (l) => l.build),
+      (ps) => reduce_(ps, identity, (b, a) => (x) => a(b(x)))
+    )
+  )
+
+export const allPar = <Ls extends Layer<any, any, any, any>[]>(
+  ...ls: Ls & { 0: Layer<any, any, any, any> }
+): Layer<unknown, MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> =>
+  new Layer(
+    T.managedMap_(
+      T.foreachPar_(ls, (l) => l.build),
+      (ps) => reduce_(ps, identity, (b, a) => (x) => a(b(x)))
+    )
+  )
+
+export const allParN = (n: number) => <Ls extends Layer<any, any, any, any>[]>(
+  ...ls: Ls & { 0: Layer<any, any, any, any> }
+): Layer<unknown, MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> =>
+  new Layer(
+    T.managedMap_(
+      T.foreachParN_(n)(ls, (l) => l.build),
+      (ps) => reduce_(ps, identity, (b, a) => (x) => a(b(x)))
     )
   )
