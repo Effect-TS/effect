@@ -62,11 +62,11 @@ export class AugumentedConsole extends Console {
     )
 }
 
-export const provideConsole = L.service(HasConsole.overridble()).fromEffect(
+export const provideConsole = L.service(HasConsole.overridable()).fromEffect(
   T.accessService(HasFormat)((format) => new LiveConsole(format))
 )
 
-export const provideAugumentedConsole = L.service(HasConsole.overridble()).fromEffect(
+export const provideAugumentedConsole = L.service(HasConsole.overridable()).fromEffect(
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
