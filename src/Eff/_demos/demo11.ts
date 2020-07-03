@@ -35,7 +35,7 @@ class LiveConsole extends Console {
 export const ConsoleLayer = pipe(
   T.effectTotal(() => new LiveConsole()),
   M.makeExit((c) => c.dispose()),
-  L.managedService(HasConsole)
+  L.fromManaged(HasConsole)
 )
 
 class LiveCalculator extends Calculator {
@@ -47,7 +47,7 @@ class LiveCalculator extends Calculator {
 export const CalculatorLayer = pipe(
   T.effectTotal(() => new LiveCalculator()),
   M.fromEffect,
-  L.managedService(HasCalculator)
+  L.fromManaged(HasCalculator)
 )
 
 class DebugCalculator extends Calculator {
@@ -68,7 +68,7 @@ class DebugCalculator extends Calculator {
 export const DebugCalculatorLayer = pipe(
   withConsole((console) => new DebugCalculator(console)),
   M.makeExit((c) => c.dispose()),
-  L.managedService(HasCalculator)
+  L.fromManaged(HasCalculator)
 )
 
 const layer = pipe(DebugCalculatorLayer, L.using(ConsoleLayer))
