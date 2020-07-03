@@ -83,7 +83,7 @@ const program = T.accessServicesM({
     T.tap(() => clock.sleep(200)),
     T.tap((n) => console.putStrLn(`got: ${n}`)),
     T.tap(() => clock.sleep(2000)),
-    T.tap((n) => withConsoleM((c) => c.putStrLn(`got: ${n}`)))
+    T.tap((n) => console.putStrLn(`got: ${n}`))
   )
 )
 
