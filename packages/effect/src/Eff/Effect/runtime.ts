@@ -19,9 +19,11 @@ import * as Scope from "../Scope"
 import * as Supervisor from "../Supervisor"
 
 import { accessM } from "./accessM"
+import { chain_ } from "./chain_"
 import { Async, Effect, _I } from "./effect"
 import { effectTotal } from "./effectTotal"
 import { provideSome_ } from "./provideSome"
+import { succeedNow } from "./succeedNow"
 
 // empty function
 const empty = () => {
@@ -228,3 +230,10 @@ export const runtime = <R0>() =>
       }
     )
   )
+
+export const withRuntimeM = <R0, S, R, E, A>(
+  f: (r: Runtime<R0>) => Effect<S, R, E, A>
+) => chain_(runtime<R0>(), f)
+
+export const withRuntime = <R0, A>(f: (r: Runtime<R0>) => A) =>
+  chain_(runtime<R0>(), (r) => succeedNow(f(r)))
