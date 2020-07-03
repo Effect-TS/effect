@@ -183,7 +183,7 @@ export const runSync = <E, A>(_: Effect<never, DefaultEnv, E, A>): A => {
   }
 }
 
-function fiberContext<E, A>() {
+export function fiberContext<E, A>(env: {} = defaultEnv) {
   const initialIS = interruptible
   const fiberId = newFiberId()
   const scope = Scope.unsafeMakeScope<Exit<E, A>>()
@@ -191,7 +191,7 @@ function fiberContext<E, A>() {
 
   const context = new FiberContext<E, A>(
     fiberId,
-    defaultEnv,
+    env,
     initialIS,
     new Map(),
     supervisor,

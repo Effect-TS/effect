@@ -23,8 +23,8 @@ export class Layer<S, R, E, A> {
   }
 }
 
-export const pure = <T>(has: T.Has<T>) => <E>(resource: T.Unbrand<T>) =>
-  new Layer<never, unknown, E, T.Has<T>>(
+export const pure = <T>(has: T.Has<T>) => (resource: T.Unbrand<T>) =>
+  new Layer<never, unknown, never, T.Has<T>>(
     T.managedMap_(T.fromEffect(T.succeedNow(resource)), (a) => (e) =>
       T.provideService(has)(a)(e)
     )

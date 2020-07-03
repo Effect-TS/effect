@@ -7,6 +7,24 @@ export class Scheduler {
 
   isRunning = (): boolean => this.running
 
+  setImmediate(thunk: () => void) {
+    const handle = setImmediate(() => this.dispatch(thunk))
+    return () => {
+      clearImmediate(handle)
+    }
+  }
+  setTimeout(thunk: () => void) {
+    const handle = setTimeout(() => this.dispatch(thunk), 0)
+    return () => {
+      clearTimeout(handle)
+    }
+  }
+
+  dispatchFn =
+    typeof setImmediate === "function"
+      ? (thunk: () => void) => this.setImmediate(thunk)
+      : (thunk: () => void) => this.setTimeout(thunk)
+
   run(): void {
     this.running = true
     let next = this.array.deleteHead()?.value
@@ -27,10 +45,7 @@ export class Scheduler {
   }
 
   dispatchLater(thunk: () => void): () => void {
-    const handle = setImmediate(() => this.dispatch(thunk))
-    return () => {
-      clearImmediate(handle)
-    }
+    return this.dispatchFn(thunk)
   }
 }
 
