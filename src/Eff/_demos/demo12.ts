@@ -82,14 +82,11 @@ export const complexAccess: T.SyncR<
   console.putStrLn(`${app.config} - (${scoped.config}) - (${numberConfig.config})`)
 )
 
-export const provideFormat = L.service(HasFormat).fromEffect(
-  T.effectTotal(
-    () =>
-      new (class extends Format {
-        formatString: (s: string) => T.Sync<string> = (s) =>
-          T.effectTotal(() => `running: ${s}`)
-      })()
-  )
+export const provideFormat = L.service(HasFormat).pure(
+  new (class extends Format {
+    formatString: (s: string) => T.Sync<string> = (s) =>
+      T.effectTotal(() => `running: ${s}`)
+  })()
 )
 
 const program = pipe(
@@ -102,28 +99,22 @@ const program = pipe(
   T.chain(() => complexAccess)
 )
 
-export const provideAppConfig = L.service(HasAppConfig).fromEffect(
-  T.succeedNow(
-    new (class extends AppConfig<string> {
-      config = "ok"
-    })()
-  )
+export const provideAppConfig = L.service(HasAppConfig).pure(
+  new (class extends AppConfig<string> {
+    config = "ok"
+  })()
 )
 
-export const provideNumberConfig = L.service(HasNumberConfig).fromEffect(
-  T.succeedNow(
-    new (class extends AppConfig<number> {
-      config = 1
-    })()
-  )
+export const provideNumberConfig = L.service(HasNumberConfig).pure(
+  new (class extends AppConfig<number> {
+    config = 1
+  })()
 )
 
-export const provideScopedAppConfig = L.service(HasScopedAppConfig).fromEffect(
-  T.succeedNow(
-    new (class extends AppConfig<string> {
-      config = "ok - scoped"
-    })()
-  )
+export const provideScopedAppConfig = L.service(HasScopedAppConfig).pure(
+  new (class extends AppConfig<string> {
+    config = "ok - scoped"
+  })()
 )
 
 export const mainLayer = pipe(
@@ -137,6 +128,4 @@ export const mainLayer = pipe(
   L.using(provideFormat)
 )
 
-const main = mainLayer.use(program)
-
-T.runMain(main)
+pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
