@@ -9,14 +9,10 @@ import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
 
 /**
- * Encodes a Map of services
- */
-export type ServiceMap = {}
-
-/**
  * Encodes a Service Entry
  */
-export const HasURI = "@matechs/core/Eff/Has/HasURI"
+export const HasURI = Symbol()
+
 export interface Has<T> {
   [HasURI]: {
     _T: () => T
