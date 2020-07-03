@@ -2,7 +2,7 @@ import { Async, Sync } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
 import { effectTotal } from "../Effect/effectTotal"
 import { unit } from "../Effect/unit"
-import { accessServiceM, has, accessService } from "../Has"
+import { accessServiceM, has, accessService, HasType } from "../Has"
 
 //
 // Clock Definition
@@ -23,7 +23,7 @@ export const HasClock =
   /*#__PURE__*/
   has(Clock)()
 
-export type HasClock = typeof HasClock
+export type HasClock = HasType<typeof HasClock>
 
 //
 // Live Clock Implementation
