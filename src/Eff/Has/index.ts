@@ -179,19 +179,7 @@ export const provideServiceM = <T>(_: Has<T>) => <S, R, E>(
 ) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<T>, E1, A1>
 ): Effect<S | S1, R & R1, E | E1, A1> =>
-  accessM((r: R & R1) =>
-    chain_(f, (t) =>
-      provideAll_(
-        ma,
-        _[HasURI].def && r[_[HasURI].key as any]
-          ? r
-          : ({
-              ...r,
-              [_[HasURI].key]: t
-            } as any)
-      )
-    )
-  )
+  accessM((r: R & R1) => chain_(f, (t) => provideAll_(ma, mergeEnvironments(_, r, t))))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
@@ -278,3 +266,12 @@ export const overridable = <T>(h: Has<T>): Has<T> => ({
     def: true
   }
 })
+
+export function mergeEnvironments<T, R1>(_: Has<T>, r: R1, t: Unbrand<T>): R1 & Has<T> {
+  return _[HasURI].def && r[_[HasURI].key as any]
+    ? r
+    : ({
+        ...r,
+        [_[HasURI].key]: t
+      } as any)
+}
