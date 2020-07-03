@@ -32,10 +32,11 @@ class LiveConsole extends Console {
   }
 }
 
-export const ConsoleLayer = pipe(
-  T.effectTotal(() => new LiveConsole()),
-  M.makeExit((c) => c.dispose()),
-  L.service(HasConsole).fromManaged
+export const ConsoleLayer = L.service(HasConsole).fromManaged(
+  M.makeExit_(
+    T.effectTotal(() => new LiveConsole()),
+    (c) => c.dispose()
+  )
 )
 
 class LiveCalculator extends Calculator {
@@ -44,9 +45,8 @@ class LiveCalculator extends Calculator {
   }
 }
 
-export const CalculatorLayer = pipe(
-  T.effectTotal(() => new LiveCalculator()),
-  L.service(HasCalculator).fromEffect
+export const CalculatorLayer = L.service(HasCalculator).fromEffect(
+  T.effectTotal(() => new LiveCalculator())
 )
 
 class DebugCalculator extends Calculator {
@@ -64,28 +64,27 @@ class DebugCalculator extends Calculator {
   }
 }
 
-export const DebugCalculatorLayer = pipe(
-  withConsole((console) => new DebugCalculator(console)),
-  M.makeExit((c) => c.dispose()),
-  L.fromManaged(HasCalculator)
+export const DebugCalculatorLayer = L.service(HasCalculator).fromManaged(
+  M.makeExit_(
+    withConsole((console) => new DebugCalculator(console)),
+    (c) => c.dispose()
+  )
 )
 
 const layer = pipe(DebugCalculatorLayer, L.using(ConsoleLayer))
 
-const program = layer.use(
-  T.accessServicesM({
-    clock: HasClock,
-    calc: HasCalculator,
-    console: HasConsole
-  })(({ calc, clock, console }) =>
-    pipe(
-      calc.add(0, 1),
-      T.tap(() => clock.sleep(200)),
-      T.tap((n) => console.putStrLn(`got: ${n}`)),
-      T.tap(() => clock.sleep(2000)),
-      T.tap((n) => withConsoleM((c) => c.putStrLn(`got: ${n}`)))
-    )
+const program = T.accessServicesM({
+  clock: HasClock,
+  calc: HasCalculator,
+  console: HasConsole
+})(({ calc, clock, console }) =>
+  pipe(
+    calc.add(0, 1),
+    T.tap(() => clock.sleep(200)),
+    T.tap((n) => console.putStrLn(`got: ${n}`)),
+    T.tap(() => clock.sleep(2000)),
+    T.tap((n) => withConsoleM((c) => c.putStrLn(`got: ${n}`)))
   )
 )
 
-T.runMain(program)
+pipe(program, T.provideSomeLayer(layer), T.runMain)
