@@ -173,3 +173,4 @@ export {
   accessServices,
   HasType
 } from "../Has"
+export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
