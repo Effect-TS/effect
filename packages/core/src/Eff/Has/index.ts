@@ -70,32 +70,46 @@ export const symbolFor = (t: any | undefined, k: any | undefined) => {
   }
 }
 
+export type Augumented<T> = Has<T> & { overridble: () => Has<T> }
+export type HasType<T> = T extends Augumented<infer A> ? Has<A> : never
+
 /**
  * Create a service entry from a type and a URI
  */
 export function has<T extends Constructor<any>>(
   _: T
 ): {
-  <K extends string | symbol>(k: K): Has<Branded<TypeOf<T>, K>>
-  <K>(k: K): Has<Branded<TypeOf<T>, K>>
-  (): Has<TypeOf<T>>
+  <K extends string | symbol>(k: K): Augumented<Branded<TypeOf<T>, K>>
+  <K>(k: K): Augumented<Branded<TypeOf<T>, K>>
+  (): Augumented<TypeOf<T>>
 }
 export function has<T>(
   _?: any
 ): {
-  <K extends string | symbol>(k: K): Has<Branded<T, K>>
-  <K>(k: K): Has<Branded<T, K>>
-  (): Has<T>
+  <K extends string | symbol>(k: K): Augumented<Branded<T, K>>
+  <K>(k: K): Augumented<Branded<T, K>>
+  (): Augumented<T>
 }
-export function has(t?: unknown): (k?: unknown) => Has<unknown> {
-  return (k) => ({
-    [HasURI]: {
-      _T: undefined as any,
-      _K: undefined as any,
-      key: symbolFor(t, k),
-      def: false
+export function has(t?: unknown): (k?: unknown) => Augumented<unknown> {
+  return (k) => {
+    const h = {
+      [HasURI]: {
+        _T: undefined as any,
+        _K: undefined as any,
+        key: symbolFor(t, k),
+        def: false
+      }
     }
-  })
+    return {
+      ...h,
+      overridble: () => ({
+        [HasURI]: {
+          ...h[HasURI],
+          def: true
+        }
+      })
+    }
+  }
 }
 
 /**
@@ -118,8 +132,12 @@ export const accessServicesM = <SS extends Record<string, Has<any>>>(s: SS) => <
     }
   ) => Effect<S, R, E, B>
 ) =>
-  accessM((r: UnionToIntersection<SS[keyof SS]>) =>
-    f(R.map_(s, (v) => r[v[HasURI].key]) as any)
+  accessM(
+    (
+      r: UnionToIntersection<
+        { [k in keyof SS]: SS[k] extends Has<infer T> ? Has<T> : unknown }[keyof SS]
+      >
+    ) => f(R.map_(s, (v) => r[v[HasURI].key]) as any)
   )
 
 /**
@@ -132,8 +150,12 @@ export const accessServices = <SS extends Record<string, Has<any>>>(s: SS) => <B
     }
   ) => B
 ) =>
-  access((r: UnionToIntersection<SS[keyof SS]>) =>
-    f(R.map_(s, (v) => r[v[HasURI].key]) as any)
+  access(
+    (
+      r: UnionToIntersection<
+        { [k in keyof SS]: SS[k] extends Has<infer T> ? Has<T> : unknown }[keyof SS]
+      >
+    ) => f(R.map_(s, (v) => r[v[HasURI].key]) as any)
   )
 
 /**

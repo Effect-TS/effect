@@ -15,19 +15,19 @@ abstract class AppConfig<S> {
 }
 
 export const HasConsole = T.has(Console)()
-export type HasConsole = typeof HasConsole
+export type HasConsole = T.HasType<typeof HasConsole>
 
 export const HasFormat = T.has(Format)()
-export type HasFormat = typeof HasFormat
+export type HasFormat = T.HasType<typeof HasFormat>
 
 export const HasAppConfig = T.has<AppConfig<string>>()()
-export type HasAppConfig = typeof HasAppConfig
+export type HasAppConfig = T.HasType<typeof HasAppConfig>
 
 export const HasScopedAppConfig = T.has<AppConfig<string>>()("Scoped")
-export type HasScopedAppConfig = typeof HasScopedAppConfig
+export type HasScopedAppConfig = T.HasType<typeof HasScopedAppConfig>
 
 export const HasNumberConfig = T.has<AppConfig<number>>()("Number")
-export type HasNumberConfig = typeof HasNumberConfig
+export type HasNumberConfig = T.HasType<typeof HasNumberConfig>
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
@@ -62,11 +62,11 @@ export class AugumentedConsole extends Console {
     )
 }
 
-export const provideConsole = L.fromEffect(T.overridable(HasConsole))(
+export const provideConsole = L.service(HasConsole.overridble()).fromEffect(
   T.accessService(HasFormat)((format) => new LiveConsole(format))
 )
 
-export const provideAugumentedConsole = L.fromEffect(T.overridable(HasConsole))(
+export const provideAugumentedConsole = L.service(HasConsole.overridble()).fromEffect(
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
@@ -82,7 +82,7 @@ export const complexAccess: T.SyncR<
   console.putStrLn(`${app.config} - (${scoped.config}) - (${numberConfig.config})`)
 )
 
-export const provideFormat = L.fromEffect(HasFormat)(
+export const provideFormat = L.service(HasFormat).fromEffect(
   T.effectTotal(
     () =>
       new (class extends Format {
@@ -102,7 +102,7 @@ const program = pipe(
   T.chain(() => complexAccess)
 )
 
-export const provideAppConfig = L.fromEffect(HasAppConfig)(
+export const provideAppConfig = L.service(HasAppConfig).fromEffect(
   T.succeedNow(
     new (class extends AppConfig<string> {
       config = "ok"
@@ -110,7 +110,7 @@ export const provideAppConfig = L.fromEffect(HasAppConfig)(
   )
 )
 
-export const provideNumberConfig = L.fromEffect(HasNumberConfig)(
+export const provideNumberConfig = L.service(HasNumberConfig).fromEffect(
   T.succeedNow(
     new (class extends AppConfig<number> {
       config = 1
@@ -118,7 +118,7 @@ export const provideNumberConfig = L.fromEffect(HasNumberConfig)(
   )
 )
 
-export const provideScopedAppConfig = L.fromEffect(HasScopedAppConfig)(
+export const provideScopedAppConfig = L.service(HasScopedAppConfig).fromEffect(
   T.succeedNow(
     new (class extends AppConfig<string> {
       config = "ok - scoped"
@@ -133,6 +133,7 @@ export const mainLayer = pipe(
     provideScopedAppConfig,
     provideNumberConfig
   ),
+  L.using(provideAugumentedConsole),
   L.using(provideFormat)
 )
 
