@@ -14,16 +14,19 @@ abstract class AppConfig<S> {
 }
 
 export const HasConsole = T.has(Console)()
+export type HasConsole = typeof HasConsole
+
 export const HasFormat = T.has(Format)()
+export type HasFormat = typeof HasFormat
 
-export const HasAppConfigURI = Symbol()
-export const HasAppConfig = T.has<AppConfig<string>>()(HasAppConfigURI)
+export const HasAppConfig = T.has<AppConfig<string>>()()
+export type HasAppConfig = typeof HasAppConfig
 
-export const HasScopedAppConfigURI = Symbol()
-export const HasScopedAppConfig = T.has<AppConfig<string>>()(HasScopedAppConfigURI)
+export const HasScopedAppConfig = T.has<AppConfig<string>>()("Scoped")
+export type HasScopedAppConfig = typeof HasScopedAppConfig
 
-export const HasNumberConfigURI = Symbol()
-export const HasNumberConfig = T.has<AppConfig<number>>()(HasNumberConfigURI)
+export const HasNumberConfig = T.has<AppConfig<number>>()("Number")
+export type HasNumberConfig = typeof HasNumberConfig
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
@@ -66,7 +69,10 @@ export const provideAugumentedConsole = T.provideServiceM(T.overridable(HasConso
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
-export const complexAccess = T.accessServicesM({
+export const complexAccess: T.SyncR<
+  HasConsole & HasAppConfig & HasScopedAppConfig & HasNumberConfig,
+  void
+> = T.accessServicesM({
   console: HasConsole,
   app: HasAppConfig,
   scoped: HasScopedAppConfig,
