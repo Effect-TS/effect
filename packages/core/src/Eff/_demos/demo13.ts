@@ -32,6 +32,9 @@ export type HasNumberConfig = T.HasType<typeof HasNumberConfig>
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
 
+export const formatString = (s: string) =>
+  T.accessServiceM(HasFormat)((f) => f.formatString(s))
+
 export class LiveConsole extends Console {
   constructor(private readonly format: Format) {
     super()
@@ -49,13 +52,13 @@ export class LiveConsole extends Console {
 }
 
 export class AugumentedConsole extends Console {
-  constructor(private readonly format: Format) {
+  constructor(private readonly runtime: T.Runtime<HasFormat>) {
     super()
   }
 
   putStrLn(s: string): T.Sync<void> {
-    return T.chain_(this.format.formatString(s), (f) =>
-      T.provideService(HasFormat)(this.format)(
+    return this.runtime.in(
+      T.chain_(formatString(s), (f) =>
         T.effectTotal(() => {
           console.log("(augumented) ", f)
         })
@@ -69,7 +72,7 @@ export const provideConsole = L.service(HasConsole.overridable()).fromEffect(
 )
 
 export const provideAugumentedConsole = L.service(HasConsole.overridable()).fromEffect(
-  T.accessService(HasFormat)((format) => new AugumentedConsole(format))
+  T.withRuntime((runtime: T.Runtime<HasFormat>) => new AugumentedConsole(runtime))
 )
 
 export const complexAccess: T.SyncR<
