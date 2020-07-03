@@ -9,10 +9,15 @@ import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
 
 /**
- * Encodes a Service Entry
+ * URI used in Has
  */
 export const HasURI = Symbol()
 
+/**
+ * Has encodes a capability to read and write a service to the
+ * environment, additionally encodes if the service should be
+ * overridable or not
+ */
 export interface Has<T> {
   [HasURI]: {
     _T: () => T
