@@ -5,10 +5,10 @@ import * as L from "../Layer"
 import * as S from "../Semaphore"
 
 abstract class Console {
-  abstract readonly putStrLn: (s: string) => T.Sync<void>
+  abstract putStrLn(s: string): T.Sync<void>
 }
 abstract class Format {
-  abstract readonly formatString: (s: string) => T.Sync<string>
+  abstract formatString(s: string): T.Sync<string>
 }
 abstract class AppConfig<S> {
   abstract readonly config: S
@@ -37,14 +37,15 @@ export class LiveConsole extends Console {
     super()
   }
 
-  putStrLn: (s: string) => T.Sync<void> = (s) =>
-    T.chain_(this.format.formatString(s), (f) =>
+  putStrLn(s: string): T.Sync<void> {
+    return T.chain_(this.format.formatString(s), (f) =>
       T.provideService(HasFormat)(this.format)(
         T.effectTotal(() => {
           console.log(f)
         })
       )
     )
+  }
 }
 
 export class AugumentedConsole extends Console {
@@ -52,14 +53,15 @@ export class AugumentedConsole extends Console {
     super()
   }
 
-  putStrLn: (s: string) => T.Sync<void> = (s) =>
-    T.chain_(this.format.formatString(s), (f) =>
+  putStrLn(s: string): T.Sync<void> {
+    return T.chain_(this.format.formatString(s), (f) =>
       T.provideService(HasFormat)(this.format)(
         T.effectTotal(() => {
           console.log("(augumented) ", f)
         })
       )
     )
+  }
 }
 
 export const provideConsole = L.service(HasConsole.overridable()).fromEffect(
@@ -84,8 +86,9 @@ export const complexAccess: T.SyncR<
 
 export const provideFormat = L.service(HasFormat).pure(
   new (class extends Format {
-    formatString: (s: string) => T.Sync<string> = (s) =>
-      T.effectTotal(() => `running: ${s}`)
+    formatString(s: string): T.Sync<string> {
+      return T.effectTotal(() => `running: ${s}`)
+    }
   })()
 )
 
