@@ -6,8 +6,8 @@ import * as L from "../Layer"
 abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>
 }
-abstract class Format {
-  abstract formatString(s: string): T.Sync<string>
+abstract class Format<F> {
+  abstract formatString(s: F): T.Sync<F>
 }
 abstract class AppConfig<S> {
   abstract readonly config: S
@@ -16,7 +16,7 @@ abstract class AppConfig<S> {
 export const HasConsole = T.has(Console)()
 export type HasConsole = T.HasType<typeof HasConsole>
 
-export const HasFormat = T.has(Format)()
+export const HasFormat = T.has(Format)().refine<Format<string>>()
 export type HasFormat = T.HasType<typeof HasFormat>
 
 export const HasAppConfig = T.has<AppConfig<string>>()()
@@ -35,7 +35,7 @@ export const formatString = (s: string) =>
   T.accessServiceM(HasFormat)((f) => f.formatString(s))
 
 export class LiveConsole extends Console {
-  constructor(private readonly format: Format) {
+  constructor(private readonly format: Format<string>) {
     super()
   }
 
@@ -87,7 +87,7 @@ export const complexAccess: T.SyncR<
 )
 
 export const provideFormat = L.service(HasFormat).pure(
-  new (class extends Format {
+  new (class extends Format<string> {
     formatString(s: string): T.Sync<string> {
       return T.effectTotal(() => `running: ${s}`)
     }
