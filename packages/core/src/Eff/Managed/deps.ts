@@ -2,6 +2,7 @@
 
 import { Effect } from "../Effect/effect"
 
+export { effectTotal } from "../Effect/effectTotal"
 export { access } from "../Effect/access"
 export { environment } from "../Effect/environment"
 export { accessM } from "../Effect/accessM"
