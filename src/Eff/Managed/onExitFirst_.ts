@@ -32,7 +32,7 @@ export const onExitFirst_ = <S, R, E, A, S2, R2, E2>(
             T.flatten(
               T.zipWith_(
                 T.result(T.provideAll_(cleanup(s.exitEA), s.r)),
-                s.innerReleaseMap.releaseAll(e, sequential),
+                T.result(s.innerReleaseMap.releaseAll(e, sequential)),
                 (l, r) => T.done(T.exitZipRight_(l, r))
               )
             )

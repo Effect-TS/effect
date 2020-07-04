@@ -2,7 +2,6 @@ import * as A from "../../Array"
 import { pipe } from "../../Function"
 import * as T from "../Effect"
 import * as L from "../Layer"
-import * as S from "../Semaphore"
 
 abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>
@@ -96,12 +95,7 @@ export const provideFormat = L.service(HasFormat).pure(
 )
 
 export const program = pipe(
-  S.makeSemaphore(2),
-  T.chain((s) =>
-    T.foreachPar_(A.range(0, 10), (n) =>
-      S.withPermit(s)(T.delay(1000)(putStrLn(String(n))))
-    )
-  ),
+  T.foreachParN_(2)(A.range(0, 10), (n) => T.delay(1000)(putStrLn(String(n)))),
   T.chain(() => complexAccess)
 )
 
@@ -123,10 +117,30 @@ export const provideScopedAppConfig = L.service(HasScopedAppConfig).pure(
   })()
 )
 
+let k = 0
+export const printer = L.monitor(
+  T.forever(
+    T.delay(1000)(
+      T.suspend(() => {
+        console.log("running")
+        if (k > 1) {
+          return T.die("error")
+        } else {
+          return T.effectTotal(() => {
+            console.log("alive")
+            k += 1
+          })
+        }
+      })
+    )
+  )
+)
+
 export const mainLayer = pipe(
   L.all(provideAppConfig, provideConsole, provideScopedAppConfig, provideNumberConfig),
   L.using(provideAugumentedConsole),
-  L.using(provideFormat)
+  L.using(provideFormat),
+  L.using(printer)
 )
 
 pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
