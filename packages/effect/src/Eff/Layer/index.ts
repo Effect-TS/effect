@@ -1,22 +1,152 @@
 import { reduce_ } from "../../Array"
 import { UnionToIntersection } from "../../Base/Apply"
+import { Then } from "../Cause"
+import { contains } from "../Cause/contains"
+import { runAsync } from "../Effect/runtime"
+import { Failure } from "../Exit"
+import { FiberID } from "../Fiber"
+import { FiberContext } from "../Fiber/context"
 import { mergeEnvironments } from "../Has"
+import { coerceSE } from "../Managed/deps"
+import { AtomicReference } from "../Support/AtomicReference"
 
 import * as T from "./deps"
 
-export class Layer<S, R, E, A> {
-  readonly _A!: A
+class ProcessMap {
+  readonly fibers: Set<FiberContext<any, any>> = new Set()
+  readonly interruptedBy = new AtomicReference<FiberID | null>(null)
+  readonly causeBy = new AtomicReference<Failure<any> | null>(null)
+  readonly subscribers = new Set<(fiberId: FiberID) => void>()
 
-  constructor(readonly build: T.Managed<S, R, E, A>) {}
+  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>) {
+    if (this.interruptedBy.get) {
+      return T.interrupt
+    }
+    return T.chain_(T.forkDaemon(effect), (f) =>
+      T.effectTotal(() => {
+        this.fibers.add(f)
+        f.onDone(() => {
+          this.fibers.delete(f)
+        })
+        f.onDone((e) => {
+          const exit = T.exitFlatten(e)
+
+          if (this.interruptedBy.get) {
+            return
+          }
+
+          if (exit._tag === "Failure" && !T.interruptedOnly(exit.cause)) {
+            this.notify(f.id, exit)
+          }
+        })
+        return f
+      })
+    )
+  }
+
+  notify(fiberId: FiberID, exit: Failure<any>) {
+    if (this.interruptedBy.get) {
+      return
+    }
+    this.interruptedBy.set(fiberId)
+    this.causeBy.set(exit)
+    this.subscribers.forEach((s) => {
+      s(fiberId)
+    })
+  }
+
+  subscribe(cb: (fiberId: FiberID) => void) {
+    const subscription = (fiberId: FiberID) => {
+      cb(fiberId)
+      this.subscribers.delete(subscription)
+    }
+    this.subscribers.add(subscription)
+  }
+
+  monitored<S, R, E, A>(effect: T.Effect<S, R, E, A>) {
+    if (this.fibers.size === 0) {
+      return effect
+    }
+    return T.chain_(T.forkDaemon(effect), (f) =>
+      T.chain_(
+        T.effectTotal(() => {
+          this.subscribe((id) => {
+            runAsync(f.interruptAs(id))
+          })
+        }),
+        () =>
+          T.chain_(T.result(T.join(f)), (a) => {
+            if (a._tag === "Failure") {
+              const root = this.causeBy.get
+
+              if (root) {
+                return T.halt(Then(root.cause, a.cause))
+              }
+            }
+            return T.done(a)
+          })
+      )
+    )
+  }
+}
+
+export const makeProcessMap = T.effectTotal(() => new ProcessMap())
+
+export class Layer<S, R, E, A> {
+  constructor(readonly build: T.Managed<S, [R, ProcessMap], E, A>) {}
 
   use<S1, R1, E1, A1>(
     effect: T.Effect<S1, R1 & A, E1, A1>
   ): T.Effect<S | S1, R & R1, E | E1, A1> {
-    return T.managedUse_(this.build, (p) =>
-      T.provideSome_(effect, (r: R1) => ({ ...p, ...r }))
+    return T.chain_(makeProcessMap, (pm) =>
+      T.provideSome_(
+        T.managedUse_(this.build, (p) =>
+          T.accessM(([r, pm]: [R & R1, ProcessMap]) =>
+            coerceSE<S | S1, E | E1>()(
+              pm.monitored(T.provideAll_(effect, { ...p, ...r }))
+            )
+          )
+        ),
+        (r: R & R1): [R & R1, ProcessMap] => [r, pm]
+      )
     )
   }
 }
+
+export const monitor = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
+  new Layer<unknown, R, E, {}>(
+    T.managedMap_(
+      T.makeExit_(
+        T.interruptible(
+          T.accessM(([r, pm]: [R, ProcessMap]) => {
+            return T.provideAll_(
+              T.map_(pm.fork(effect), (x) => [pm, x] as const),
+              r
+            )
+          })
+        ),
+        ([pm, f]) =>
+          T.checkDescriptor((d) => {
+            return T.chain_(f.interruptAs(d.id), (e) => {
+              if (e._tag === "Success") {
+                return T.unit
+              }
+              if (T.interruptedOnly(e.cause)) {
+                return T.unit
+              }
+              const pmCause = pm.causeBy.get
+              if (pmCause) {
+                if (contains(pmCause.cause)(e.cause)) {
+                  return T.unit
+                }
+              }
+              return T.done(e)
+            })
+          })
+      ),
+      () => ({})
+    )
+  )
 
 export const pure = <T>(has: T.Has<T>) => (resource: T.Unbrand<T>) =>
   new Layer<never, unknown, never, T.Has<T>>(
@@ -50,8 +180,11 @@ export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
   resource: T.Effect<S, R, E, T.Unbrand<T>>
 ) =>
   new Layer<S, R, E, T.Has<T>>(
-    T.managedChain_(T.fromEffect(resource), (a) =>
-      T.fromEffect(T.access((r) => mergeEnvironments(has, r, a)))
+    T.managedProvideSome_(
+      T.managedChain_(T.fromEffect(resource), (a) =>
+        T.fromEffect(T.access((r) => mergeEnvironments(has, r, a)))
+      ),
+      ([r]) => r
     )
   )
 
@@ -59,8 +192,11 @@ export const fromManaged = <T>(has: T.Has<T>) => <S, R, E>(
   resource: T.Managed<S, R, E, T.Unbrand<T>>
 ) =>
   new Layer<S, R, E, T.Has<T>>(
-    T.managedChain_(resource, (a) =>
-      T.fromEffect(T.access((r) => mergeEnvironments(has, r, a)))
+    T.managedProvideSome_(
+      T.managedChain_(resource, (a) =>
+        T.fromEffect(T.access((r) => mergeEnvironments(has, r, a)))
+      ),
+      ([r]) => r
     )
   )
 
@@ -69,10 +205,15 @@ export const fromManagedEnv = <S, R, E, A>(
   overridable: "overridable" | "final" = "final"
 ) =>
   new Layer<S, R, E, A>(
-    T.managedChain_(resource, (a) =>
-      T.fromEffect(
-        T.access((r: R) => (overridable === "final" ? { ...r, ...a } : { ...a, ...r }))
-      )
+    T.managedProvideSome_(
+      T.managedChain_(resource, (a) =>
+        T.fromEffect(
+          T.access((r: R) =>
+            overridable === "final" ? { ...r, ...a } : { ...a, ...r }
+          )
+        )
+      ),
+      ([r]) => r
     )
   )
 
@@ -81,10 +222,15 @@ export const fromEffectEnv = <S, R, E, A>(
   overridable: "overridable" | "final" = "final"
 ) =>
   new Layer<S, R, E, A>(
-    T.managedChain_(T.fromEffect(resource), (a) =>
-      T.fromEffect(
-        T.access((r: R) => (overridable === "final" ? { ...r, ...a } : { ...a, ...r }))
-      )
+    T.managedProvideSome_(
+      T.managedChain_(T.fromEffect(resource), (a) =>
+        T.fromEffect(
+          T.access((r: R) =>
+            overridable === "final" ? { ...r, ...a } : { ...a, ...r }
+          )
+        )
+      ),
+      ([r]) => r
     )
   )
 
@@ -111,7 +257,16 @@ export const using_ = <S, R, E, A, S2, R2, E2, A2>(
   new Layer<S | S2, R & R2, E | E2, A & A2>(
     T.managedChain_(right.build, (a2) =>
       T.managedMap_(
-        T.managedProvideSome_(left.build, (r0: R & R2) => ({ ...a2, ...r0 })),
+        T.managedProvideSome_(left.build, ([r0, pm]: [R & R2, ProcessMap]): [
+          R & R2 & A2,
+          ProcessMap
+        ] => [
+          {
+            ...a2,
+            ...r0
+          },
+          pm
+        ]),
         (a) => ({ ...a2, ...a })
       )
     )
