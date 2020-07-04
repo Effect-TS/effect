@@ -147,7 +147,7 @@ export const mainLayer = pipe(
   L.all(provideAppConfig, provideConsole, provideScopedAppConfig, provideNumberConfig),
   L.using(provideAugumentedConsole),
   L.using(provideFormat),
-  L.using(L.allPar(printer(2), printer(20), printer(20), printer(20)))
+  L.using(L.allPar(printer(4), printer(10), printer(20), printer(20)))
 )
 
 pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
