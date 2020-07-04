@@ -134,7 +134,7 @@ export const printer = (n: number) =>
           })
         ),
         () =>
-          n > 5
+          n > 15
             ? T.die("interruption error")
             : T.effectTotal(() => {
                 console.log("interrupted")
