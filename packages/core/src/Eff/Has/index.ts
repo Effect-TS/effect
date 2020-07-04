@@ -1,5 +1,6 @@
 import { UnionToIntersection } from "../../Base/Overloads"
 import { Branded, _brand } from "../../Branded"
+import { identity } from "../../Function"
 import * as R from "../../Record"
 import { access } from "../Effect/access"
 import { accessM } from "../Effect/accessM"
@@ -70,8 +71,11 @@ export const symbolFor = (t: any | undefined, k: any | undefined) => {
   }
 }
 
-export type Augumented<T> = Has<T> & { overridable: () => Has<T> }
-export type HasType<T> = T extends Augumented<infer A> ? Has<A> : never
+export type Augumented<T> = Has<T> & {
+  overridable: () => Has<T>
+  refine: <K extends T>() => Has<K>
+}
+export type HasType<T> = T extends Has<infer A> ? Has<A> : never
 
 /**
  * Create a service entry from a type and a URI
@@ -98,7 +102,8 @@ export function has(t?: unknown): (k?: unknown) => Augumented<unknown> {
         _K: undefined as any,
         key: symbolFor(t, k),
         def: false
-      }
+      },
+      refine: identity as any
     }
     return {
       ...h,
@@ -107,7 +112,8 @@ export function has(t?: unknown): (k?: unknown) => Augumented<unknown> {
           ...h[HasURI],
           def: true
         }
-      })
+      }),
+      refine: identity as any
     }
   }
 }
