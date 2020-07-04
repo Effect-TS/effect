@@ -92,6 +92,22 @@ class ProcessMap {
 
 export const makeProcessMap = T.effectTotal(() => new ProcessMap())
 
+export const forkTag = <ID extends string>(id: ID) =>
+  `@matechs/core/Eff/Layer/Fork/${id}`
+
+export const provideForkId = <S, R, E, A, ID extends string>(
+  effect: T.Effect<S, R, E, A>,
+  fork: Process<ID>
+) =>
+  T.provideSome_(
+    effect,
+    (r: R): R & T.Has<Process<ID>> =>
+      ({
+        ...r,
+        [forkTag(fork._ID)]: fork
+      } as any)
+  )
+
 export class Layer<S, R, E, A> {
   constructor(readonly build: T.Managed<S, [R, ProcessMap], E, A>) {}
 
@@ -113,7 +129,7 @@ export class Layer<S, R, E, A> {
   }
 }
 
-export const monitor = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
+export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
   new Layer<unknown, R, E, {}>(
     T.managedMap_(
       T.makeExit_(
@@ -145,6 +161,53 @@ export const monitor = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
           })
       ),
       () => ({})
+    )
+  )
+
+export class Process<ID extends string> {
+  readonly _TAG = "@matechs/core/Eff/Layer/Fork"
+
+  constructor(readonly _ID: ID, readonly _FIBER: FiberContext<any, any>) {}
+}
+
+export const accessProcessM = <ID extends string>(id: ID) => <S, R, E, A>(
+  f: (fork: Process<ID>) => T.Effect<S, R, E, A>
+) => T.accessM((r: T.Has<Process<ID>>) => f(r[forkTag(id)]))
+
+export const makeProcess = <ID extends string>(id: ID) => <S, R, E, A>(
+  effect: T.Effect<S, R, E, A>
+) =>
+  new Layer<unknown, R, E, T.Has<Process<ID>>>(
+    T.managedMap_(
+      T.makeExit_(
+        T.interruptible(
+          T.accessM(([r, pm]: [R, ProcessMap]) =>
+            T.provideAll_(
+              T.map_(pm.fork(effect), (x) => [pm, x] as const),
+              r
+            )
+          )
+        ),
+        ([pm, f]) =>
+          T.checkDescriptor((d) => {
+            return T.chain_(f.interruptAs(d.id), (e) => {
+              if (e._tag === "Success") {
+                return T.unit
+              }
+              if (T.interruptedOnly(e.cause)) {
+                return T.unit
+              }
+              const pmCause = pm.causeBy.get
+              if (pmCause) {
+                if (contains(pmCause.cause)(e.cause)) {
+                  return T.unit
+                }
+              }
+              return T.done(e)
+            })
+          })
+      ),
+      ([_, f]) => (({ [forkTag(id)]: new Process(id, f) } as any) as T.Has<Process<ID>>)
     )
   )
 
