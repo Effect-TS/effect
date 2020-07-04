@@ -73,7 +73,7 @@ export const symbolFor = (t: any | undefined, k: any | undefined) => {
 
 export type Augumented<T> = Has<T> & {
   overridable: () => Has<T>
-  refine: <K extends T>() => Has<K>
+  refine: <K extends T>() => Augumented<K>
 }
 export type HasType<T> = T extends Has<infer A> ? Has<A> : never
 
@@ -96,25 +96,29 @@ export function has<T>(
 }
 export function has(t?: unknown): (k?: unknown) => Augumented<unknown> {
   return (k) => {
-    const h = {
-      [HasURI]: {
-        _T: undefined as any,
-        _K: undefined as any,
-        key: symbolFor(t, k),
-        def: false
-      },
-      refine: identity as any
-    }
-    return {
-      ...h,
-      overridable: () => ({
+    const inner = () => {
+      const h = {
         [HasURI]: {
-          ...h[HasURI],
-          def: true
-        }
-      }),
-      refine: identity as any
+          _T: undefined as any,
+          _K: undefined as any,
+          key: symbolFor(t, k),
+          def: false
+        },
+        refine: identity as any
+      }
+      return {
+        ...h,
+        overridable: () => ({
+          [HasURI]: {
+            ...h[HasURI],
+            def: true
+          }
+        }),
+        refine: () => inner()
+      }
     }
+
+    return inner()
   }
 }
 
