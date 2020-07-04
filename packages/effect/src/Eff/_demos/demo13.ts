@@ -118,29 +118,36 @@ export const provideScopedAppConfig = L.service(HasScopedAppConfig).pure(
 )
 
 let k = 0
-export const printer = L.monitor(
-  T.forever(
-    T.delay(1000)(
-      T.suspend(() => {
-        console.log("running")
-        if (k > 1) {
-          return T.die("error")
-        } else {
-          return T.effectTotal(() => {
-            console.log("alive")
-            k += 1
+export const printer = (n: number) =>
+  L.monitor(
+    T.forever(
+      T.onInterrupt_(
+        T.delay(1000)(
+          T.suspend(() => {
+            if (k > n) {
+              return T.die("error")
+            } else {
+              return T.effectTotal(() => {
+                k += 1
+              })
+            }
           })
-        }
-      })
+        ),
+        () =>
+          n > 5
+            ? T.die("interruption error")
+            : T.effectTotal(() => {
+                console.log("interrupted")
+              })
+      )
     )
   )
-)
 
 export const mainLayer = pipe(
   L.all(provideAppConfig, provideConsole, provideScopedAppConfig, provideNumberConfig),
   L.using(provideAugumentedConsole),
   L.using(provideFormat),
-  L.using(printer)
+  L.using(L.allPar(printer(2), printer(20), printer(20), printer(20)))
 )
 
 pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
