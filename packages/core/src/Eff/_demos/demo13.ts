@@ -95,7 +95,13 @@ export const provideFormat = L.service(HasFormat).pure(
 )
 
 export const program = pipe(
-  T.foreachParN_(2)(A.range(0, 10), (n) => T.delay(1000)(putStrLn(String(n)))),
+  T.foreachParN_(2)(A.range(0, 10), (n) =>
+    T.delay(1000)(
+      L.accessProcessM("printer-0")((f) =>
+        putStrLn(`${n} - ${f._ID} - ${f._FIBER.state.get._tag}`)
+      )
+    )
+  ),
   T.chain(() => complexAccess)
 )
 
@@ -118,8 +124,8 @@ export const provideScopedAppConfig = L.service(HasScopedAppConfig).pure(
 )
 
 let k = 0
-export const printer = (n: number) =>
-  L.monitor(
+export const printer = <ID extends string>(id: ID, n: number) =>
+  L.makeProcess(id)(
     T.forever(
       T.onInterrupt_(
         T.delay(1000)(
@@ -147,7 +153,14 @@ export const mainLayer = pipe(
   L.all(provideAppConfig, provideConsole, provideScopedAppConfig, provideNumberConfig),
   L.using(provideAugumentedConsole),
   L.using(provideFormat),
-  L.using(L.allPar(printer(4), printer(10), printer(20), printer(20)))
+  L.using(
+    L.allPar(
+      printer("printer-0", 4),
+      printer("printer-1", 10),
+      printer("printer-2", 20),
+      printer("printer-3", 20)
+    )
+  )
 )
 
 pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
