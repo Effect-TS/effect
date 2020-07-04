@@ -118,12 +118,12 @@ export const monitor = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
     T.managedMap_(
       T.makeExit_(
         T.interruptible(
-          T.accessM(([r, pm]: [R, ProcessMap]) => {
-            return T.provideAll_(
+          T.accessM(([r, pm]: [R, ProcessMap]) =>
+            T.provideAll_(
               T.map_(pm.fork(effect), (x) => [pm, x] as const),
               r
             )
-          })
+          )
         ),
         ([pm, f]) =>
           T.checkDescriptor((d) => {
