@@ -119,8 +119,6 @@ export class Server {
     }
   }
 
-  readonly processFiber = new AtomicReference<F.FiberContext<never, void> | null>(null)
-
   constructor(readonly executor: Executor) {}
 
   open(port: number, host: string) {
