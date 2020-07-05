@@ -12,7 +12,7 @@ import * as E from "../Exit"
 import { FiberContext } from "../Fiber/context"
 import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
-import { DerivationContext, Augumented, HasURI } from "../Has"
+import { DerivationContext, Augumented, HasURI, _default } from "../Has"
 import * as L from "../Layer"
 import * as M from "../Managed"
 import { _I } from "../Managed/deps"
@@ -199,14 +199,25 @@ export function serverLayer<S>(
     .release((s) => s.release())
 }
 
+export type HttpMethod =
+  | "GET"
+  | "HEAD"
+  | "POST"
+  | "PUT"
+  | "DELETE"
+  | "CONNECT"
+  | "OPTIONS"
+  | "TRACE"
+  | "PATCH"
+
 export function route<K>(has: T.Has<Server, K>) {
-  return <R>(pattern: string, f: (_: unknown) => HandlerR<R>) => {
+  return <R>(method: HttpMethod, pattern: string, f: (_: unknown) => HandlerR<R>) => {
     const matcher = match(pattern)
 
     const acquire = T.accessServiceM(has)((server) =>
       T.access((r: R & DefaultEnv) => {
         const handler: Handler = (req, res, next) => {
-          if (req.url) {
+          if (req.url && req.method && req.method === method) {
             const matchResult = matcher(req.url)
 
             if (matchResult === false) {
@@ -252,12 +263,48 @@ const serverConfig = L.service(config(HasServer)).pure(
   new ServerConfig(8080, "0.0.0.0")
 )
 
+export const getBody = <R>(f: (body: Buffer) => HandlerR<R>) => (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  next: FinalHandler
+) =>
+  pipe(
+    T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
+      const body: Uint8Array[] = []
+
+      const onData: (chunk: any) => void = (chunk) => {
+        body.push(chunk)
+      }
+
+      const onEnd = () => {
+        cb(T.succeedNow(Buffer.concat(body)))
+      }
+
+      req.on("data", onData)
+      req.on("end", onEnd)
+
+      return T.effectTotal(() => {
+        req.removeListener("data", onData)
+        req.removeListener("end", onEnd)
+      })
+    }),
+    T.chain((body) => f(body)(req, res, next))
+  )
+
 const appLayer = pipe(
   L.all(
-    route(HasServer)("/home", () => (_, res) =>
+    route(HasServer)("GET", "/home", () => (_, res) =>
       T.accessServiceM(config(HasServer))((c) =>
         T.effectTotal(() => {
           res.write(`good: ${c.host}:${c.port}`)
+          res.end()
+        })
+      )
+    ),
+    route(HasServer)("POST", "/home", () =>
+      getBody((b) => (_, res) =>
+        T.effectTotal(() => {
+          res.write(b.toString())
           res.end()
         })
       )
