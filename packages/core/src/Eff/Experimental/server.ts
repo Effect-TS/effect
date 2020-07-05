@@ -185,7 +185,7 @@ export class ServerConfig {
   constructor(readonly port: number, readonly host: string) {}
 }
 
-export function serverLayer<S>(
+export function server<S>(
   has: Augumented<Server, S>
 ): L.AsyncR<T.Has<ServerConfig, S> & DefaultEnv, T.Has<Server, S>> {
   return L.service(has)
@@ -257,13 +257,7 @@ export const configDerivationContext = new DerivationContext()
 export const config = <K>(has: Augumented<Server, K>) =>
   configDerivationContext.derive(has, () => T.has<ServerConfig>()<K>(has[HasURI].brand))
 
-export const HasServer = T.has<Server>()()
-
-const serverConfig = L.service(config(HasServer)).pure(
-  new ServerConfig(8080, "0.0.0.0")
-)
-
-export const getBody = <R>(f: (body: Buffer) => HandlerR<R>) => (
+export const getBody = <R>(f: (body: Buffer) => HandlerR<R>): HandlerR<R> => (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   next: FinalHandler
@@ -290,32 +284,3 @@ export const getBody = <R>(f: (body: Buffer) => HandlerR<R>) => (
     }),
     T.chain((body) => f(body)(req, res, next))
   )
-
-const appLayer = pipe(
-  L.all(
-    route(HasServer)("GET", "/home", () => (_, res) =>
-      T.accessServiceM(config(HasServer))((c) =>
-        T.effectTotal(() => {
-          res.write(`good: ${c.host}:${c.port}`)
-          res.end()
-        })
-      )
-    ),
-    route(HasServer)("POST", "/home", () =>
-      getBody((b) => (_, res) =>
-        T.effectTotal(() => {
-          res.write(b.toString())
-          res.end()
-        })
-      )
-    )
-  ),
-  L.using(serverLayer(HasServer)),
-  L.using(serverConfig)
-)
-
-const cancel = pipe(T.never, T.provideSomeLayer(appLayer), T.runMain)
-
-process.on("SIGINT", () => {
-  cancel()
-})
