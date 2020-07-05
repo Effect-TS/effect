@@ -2,39 +2,35 @@ import * as http from "http"
 
 import { match } from "path-to-regexp"
 
-import * as A from "../../Array"
-import { constVoid, pipe } from "../../Function"
-import * as NA from "../../NonEmptyArray"
-import * as C from "../Cause"
-import * as T from "../Effect"
-import { DefaultEnv } from "../Effect/runtime"
-import * as E from "../Exit"
-import { FiberContext } from "../Fiber/context"
-import { newFiberId } from "../Fiber/id"
-import { interruptible } from "../Fiber/interruptStatus"
-import { DerivationContext, Augumented, HasURI, _default } from "../Has"
-import * as L from "../Layer"
-import * as M from "../Managed"
-import { _I } from "../Managed/deps"
-import { unsafeMakeScope } from "../Scope"
-import { none } from "../Supervisor"
-import { AtomicReference } from "../Support/AtomicReference"
+import * as A from "@matechs/core/Array"
+import * as C from "@matechs/core/Eff/Cause"
+import * as T from "@matechs/core/Eff/Effect"
+import * as E from "@matechs/core/Eff/Exit"
+import * as F from "@matechs/core/Eff/Fiber"
+import * as Has from "@matechs/core/Eff/Has"
+import * as L from "@matechs/core/Eff/Layer"
+import * as M from "@matechs/core/Eff/Managed"
+import * as Scope from "@matechs/core/Eff/Scope"
+import * as Supervisor from "@matechs/core/Eff/Supervisor"
+import { AtomicReference } from "@matechs/core/Eff/Support/AtomicReference"
+import { constVoid, pipe } from "@matechs/core/Function"
+import * as NA from "@matechs/core/NonEmptyArray"
 
 export class Executor {
-  readonly running = new Set<FiberContext<never, void>>()
+  readonly running = new Set<F.FiberContext<never, void>>()
 
-  constructor(readonly env: DefaultEnv) {
+  constructor(readonly env: T.DefaultEnv) {
     this.fiberContext = this.fiberContext.bind(this)
     this.runAsync = this.runAsync.bind(this)
   }
 
   fiberContext() {
-    const initialIS = interruptible
-    const fiberId = newFiberId()
-    const scope = unsafeMakeScope<E.Exit<never, void>>()
-    const supervisor = none
+    const initialIS = F.interruptible
+    const fiberId = F.newFiberId()
+    const scope = Scope.unsafeMakeScope<E.Exit<never, void>>()
+    const supervisor = Supervisor.none
 
-    const context = new FiberContext<never, void>(
+    const context = new F.FiberContext<never, void>(
       fiberId,
       this.env,
       initialIS,
@@ -46,12 +42,12 @@ export class Executor {
     return context
   }
 
-  runAsync(effect: T.Effect<unknown, DefaultEnv, never, void>) {
+  runAsync(effect: T.Effect<unknown, T.DefaultEnv, never, void>) {
     const context = this.fiberContext()
 
     this.running.add(context)
 
-    context.evaluateLater(effect[_I])
+    context.evaluateLater(effect._I)
 
     context.onDone(() => {
       this.running.delete(context)
@@ -61,24 +57,24 @@ export class Executor {
   }
 }
 
-export const makeExecutor = () => T.access((_: DefaultEnv) => new Executor(_))
+export const makeExecutor = () => T.access((_: T.DefaultEnv) => new Executor(_))
 
 export type Handler = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   next: FinalHandler
-) => T.Effect<unknown, DefaultEnv, never, void>
+) => T.Effect<unknown, T.DefaultEnv, never, void>
 
 export type HandlerR<R> = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   next: FinalHandler
-) => T.Effect<unknown, DefaultEnv & R, never, void>
+) => T.Effect<unknown, T.DefaultEnv & R, never, void>
 
 export type FinalHandler = (
   req: http.IncomingMessage,
   res: http.ServerResponse
-) => T.Effect<unknown, DefaultEnv, never, void>
+) => T.Effect<unknown, T.DefaultEnv, never, void>
 
 export class Server {
   readonly interrupted = new AtomicReference(false)
@@ -113,7 +109,7 @@ export class Server {
     req: http.IncomingMessage,
     res: http.ServerResponse,
     rest: readonly Handler[] = this.handlers
-  ): T.Effect<unknown, DefaultEnv, never, void> {
+  ): T.Effect<unknown, T.DefaultEnv, never, void> {
     if (A.isNonEmpty(rest)) {
       return NA.head(rest)(req, res, (reqR, resN) =>
         this.finalHandler(reqR, resN, NA.tail(rest))
@@ -123,7 +119,7 @@ export class Server {
     }
   }
 
-  readonly processFiber = new AtomicReference<FiberContext<never, void> | null>(null)
+  readonly processFiber = new AtomicReference<F.FiberContext<never, void> | null>(null)
 
   constructor(readonly executor: Executor) {}
 
@@ -186,8 +182,8 @@ export class ServerConfig {
 }
 
 export function server<S>(
-  has: Augumented<Server, S>
-): L.AsyncR<T.Has<ServerConfig, S> & DefaultEnv, T.Has<Server, S>> {
+  has: Has.Augumented<Server, S>
+): L.AsyncR<T.Has<ServerConfig, S> & T.DefaultEnv, T.Has<Server, S>> {
   return L.service(has)
     .prepare(
       pipe(
@@ -210,12 +206,14 @@ export type HttpMethod =
   | "TRACE"
   | "PATCH"
 
+export type RouteHandler<R> = (params: unknown) => HandlerR<R>
+
 export function route<K>(has: T.Has<Server, K>) {
-  return <R>(method: HttpMethod, pattern: string, f: (_: unknown) => HandlerR<R>) => {
+  return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
     const matcher = match(pattern)
 
     const acquire = T.accessServiceM(has)((server) =>
-      T.access((r: R & DefaultEnv) => {
+      T.access((r: R & T.DefaultEnv) => {
         const handler: Handler = (req, res, next) => {
           if (req.url && req.method && req.method === method) {
             const matchResult = matcher(req.url)
@@ -252,10 +250,12 @@ export function route<K>(has: T.Has<Server, K>) {
   }
 }
 
-export const configDerivationContext = new DerivationContext()
+export const configDerivationContext = new Has.DerivationContext()
 
-export const config = <K>(has: Augumented<Server, K>) =>
-  configDerivationContext.derive(has, () => T.has<ServerConfig>()<K>(has[HasURI].brand))
+export const config = <K>(has: Has.Augumented<Server, K>) =>
+  configDerivationContext.derive(has, () =>
+    T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
+  )
 
 export const getBody = <R>(f: (body: Buffer) => HandlerR<R>): HandlerR<R> => (
   req: http.IncomingMessage,
