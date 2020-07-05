@@ -13,17 +13,23 @@ export class Scheduler {
       clearImmediate(handle)
     }
   }
-  setTimeout(thunk: () => void) {
-    const handle = setTimeout(() => this.dispatch(thunk), 0)
+
+  setImmediatePromise(thunk: () => void) {
+    let cancelled = false
+    Promise.resolve(thunk).then((t) => {
+      if (!cancelled) {
+        t()
+      }
+    })
     return () => {
-      clearTimeout(handle)
+      cancelled = true
     }
   }
 
   dispatchFn =
     typeof setImmediate === "function"
       ? (thunk: () => void) => this.setImmediate(thunk)
-      : (thunk: () => void) => this.setTimeout(thunk)
+      : (thunk: () => void) => this.setImmediatePromise(thunk)
 
   run(): void {
     this.running = true
