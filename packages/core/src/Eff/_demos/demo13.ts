@@ -111,12 +111,14 @@ export const printMetrics = <E, A>(f: L.Process<E, A>) =>
   )
 
 const printAllMetrics = T.sequenceTParN(2)(
-  T.accessServiceM(hasPrinter0)(printMetrics),
-  T.accessServiceM(hasPrinter1)(printMetrics),
-  T.accessServiceM(hasPrinter2)(printMetrics),
-  T.accessServiceM(hasPrinter3)(printMetrics),
-  T.chain_(L.globalRef(metrics), ({ counter }) =>
-    putStrLn(`Across all processes: ${counter}`)
+  T.delay(1000)(T.accessServiceM(hasPrinter0)(printMetrics)),
+  T.delay(1000)(T.accessServiceM(hasPrinter1)(printMetrics)),
+  T.delay(1000)(T.accessServiceM(hasPrinter2)(printMetrics)),
+  T.delay(1000)(T.accessServiceM(hasPrinter3)(printMetrics)),
+  T.delay(1000)(
+    T.chain_(L.globalRef(metrics), ({ counter }) =>
+      putStrLn(`Across all processes: ${counter}`)
+    )
   )
 )
 
