@@ -30,6 +30,9 @@ export type SequenceA<T extends Array<Effect<any, any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<any, any, any, infer A>] ? A : never
 }
 
+/**
+ * Like `foreach` + identity with a tuple type
+ */
 export function sequenceT<T extends Array<Effect<any, any, any, any>>>(
   ...t: T & {
     0: Effect<any, any, any, any>
@@ -38,6 +41,9 @@ export function sequenceT<T extends Array<Effect<any, any, any, any>>>(
   return foreach_(t, identity) as any
 }
 
+/**
+ * Like sequenceT but parallel, same as `foreachPar` + identity with a tuple type
+ */
 export function sequenceTPar<T extends Array<Effect<any, any, any, any>>>(
   ...t: T & {
     0: Effect<any, any, any, any>
@@ -46,6 +52,10 @@ export function sequenceTPar<T extends Array<Effect<any, any, any, any>>>(
   return foreachPar_(t, identity) as any
 }
 
+/**
+ * Like sequenceTPar but uses at most n fibers concurrently,
+ * same as `foreachParN` + identity with a tuple type
+ */
 export function sequenceTParN(
   n: number
 ): <T extends Array<Effect<any, any, any, any>>>(
