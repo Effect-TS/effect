@@ -7,7 +7,8 @@ import { runAsync } from "../Effect/runtime"
 import { Failure } from "../Exit"
 import { FiberID } from "../Fiber"
 import { FiberContext } from "../Fiber/context"
-import { has, HasURI, mergeEnvironments, AnyRef } from "../Has"
+import { FiberRef } from "../FiberRef"
+import { has, HasURI, mergeEnvironments, AnyRef, HasType, accessServiceM } from "../Has"
 import { coerceSE } from "../Managed/deps"
 import { AtomicReference } from "../Support/AtomicReference"
 
@@ -18,7 +19,7 @@ export class ProcessMap {
   readonly interruptedBy = new AtomicReference<FiberID | null>(null)
   readonly causeBy = new AtomicReference<Failure<any> | null>(null)
   readonly subscribers = new Set<(fiberId: FiberID) => void>()
-  readonly identified = new Map<symbol, FiberID>()
+  readonly identified = new Map<symbol, FiberContext<any, any>>()
 
   fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: T.Has<any>) {
     if (has && this.identified.has(has[HasURI].key)) {
@@ -26,7 +27,7 @@ export class ProcessMap {
         `Fiber (${
           has[HasURI].brand && typeof has[HasURI].brand === "string"
             ? `${has[HasURI].brand}`
-            : `#${this.identified.get(has[HasURI].key)?.seqNumber}`
+            : `#${this.identified.get(has[HasURI].key)?.id.seqNumber}`
         }) already forked`
       )
     }
@@ -37,14 +38,14 @@ export class ProcessMap {
       T.effectTotal(() => {
         this.fibers.add(f)
         if (has) {
-          this.identified.set(has[HasURI].key, f.id)
+          this.identified.set(has[HasURI].key, f)
         }
 
         f.onDone((e) => {
           this.fibers.delete(f)
 
           if (has) {
-            this.identified.set(has[HasURI].key, f.id)
+            this.identified.set(has[HasURI].key, f)
           }
 
           if (this.interruptedBy.get) {
@@ -113,6 +114,25 @@ export const makeProcessMap = T.effectTotal(() => new ProcessMap())
 export const forkTag = <ID extends string>(id: ID) =>
   `@matechs/core/Eff/Layer/Fork/${id}`
 
+export class ProcessRegistry {
+  constructor(readonly processMap: ProcessMap) {}
+
+  getRef<A>(ref: FiberRef<A>) {
+    return T.map_(
+      T.effectForeach_(this.processMap.fibers, (f) => f.getRef(ref)),
+      (a) => reduce_(a, ref.initial, (a, b) => ref.join(a, b))
+    )
+  }
+}
+
+export const HasProcessRegistry = has<ProcessRegistry>()()
+export type HasProcessRegistry = HasType<typeof HasProcessRegistry>
+
+export const accessProcessRegistryM = accessServiceM(HasProcessRegistry)
+
+export const globalRef = <A>(ref: FiberRef<A>) =>
+  accessProcessRegistryM((p) => p.getRef(ref))
+
 export class Layer<S, R, E, A> {
   constructor(readonly build: T.Managed<S, [R, ProcessMap], E, A>) {}
 
@@ -139,7 +159,7 @@ export class Layer<S, R, E, A> {
  * in background and will trigger interruption if any failure happens
  */
 export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
-  new Layer<unknown, R, E, {}>(
+  new Layer<unknown, R, E, HasProcessRegistry>(
     T.managedMap_(
       T.makeInterruptible_(
         T.accessM(([r, pm]: [R, ProcessMap]) =>
@@ -167,7 +187,10 @@ export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
             })
           })
       ),
-      () => ({})
+      ([pm]): HasProcessRegistry =>
+        ({
+          [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
+        } as any)
     )
   )
 
@@ -201,7 +224,7 @@ export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) 
 >(
   effect: T.Effect<S, R, E, A>
 ) =>
-  new Layer<unknown, R, E, HasProcess<ID, E, A>>(
+  new Layer<unknown, R, E, HasProcess<ID, E, A> & HasProcessRegistry>(
     T.managedChain_(
       T.managedMap_(
         T.makeInterruptible_(
@@ -230,9 +253,17 @@ export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) 
               })
             })
         ),
-        ([_, f]) => new Process(has, f)
+        ([pm, f]) => [new Process(has, f), pm] as const
       ),
-      (a) => environmentFor(has, a)
+      ([a, pm]) =>
+        T.managedMap_(
+          environmentFor(has, a),
+          (e): HasProcess<ID, E, A> & HasProcessRegistry =>
+            ({
+              ...e,
+              [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
+            } as any)
+        )
     )
   )
 
@@ -374,7 +405,7 @@ export const all = <Ls extends Layer<any, any, any, any>[]>(
 ): Layer<MergeS<Ls>, MergeR<Ls>, MergeE<Ls>, MergeA<Ls>> =>
   new Layer(
     T.managedMap_(
-      T.foreach_(ls, (l) => l.build),
+      T.managedForeach_(ls, (l) => l.build),
       (ps) => reduce_(ps, {} as any, (b, a) => ({ ...b, ...a }))
     )
   )
