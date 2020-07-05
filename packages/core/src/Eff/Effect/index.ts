@@ -171,7 +171,8 @@ export {
   accessServiceM,
   accessService,
   accessServices,
-  HasType
+  HasType,
+  InnerHasType
 } from "../Has"
 export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
 export { runtime, Runtime, withRuntimeM, withRuntime } from "./runtime"
