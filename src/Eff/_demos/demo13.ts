@@ -105,6 +105,11 @@ const metrics = F.unsafeMake(
   (a, b) => ({ counter: a.counter + b.counter })
 )
 
+export const printMetrics = <E, A>(f: L.Process<E, A>) =>
+  T.chain_(f._FIBER.getRef(metrics), (c) =>
+    putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag} (${c.counter})`)
+  )
+
 export const program = pipe(
   T.forever(
     T.delay(1000)(
@@ -181,10 +186,3 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   cancel()
 })
-function printMetrics(
-  f: L.Process<never, void>
-): T.Effect<never, T.Has<Console>, never, void> {
-  return T.chain_(f._FIBER.getRef(metrics), (c) =>
-    putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag} (${c.counter})`)
-  )
-}
