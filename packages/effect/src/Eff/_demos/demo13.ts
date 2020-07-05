@@ -109,22 +109,10 @@ export const program = pipe(
   T.forever(
     T.delay(1000)(
       T.sequenceT(
-        T.accessServiceM(hasPrinter0)((f) =>
-          T.chain_(f._FIBER.getRef(metrics), (c) =>
-            putStrLn(
-              `#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag} (${c.counter})`
-            )
-          )
-        ),
-        T.accessServiceM(hasPrinter1)((f) =>
-          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
-        ),
-        T.accessServiceM(hasPrinter2)((f) =>
-          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
-        ),
-        T.accessServiceM(hasPrinter3)((f) =>
-          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
-        )
+        T.accessServiceM(hasPrinter0)((f) => printMetrics(f)),
+        T.accessServiceM(hasPrinter1)((f) => printMetrics(f)),
+        T.accessServiceM(hasPrinter2)((f) => printMetrics(f)),
+        T.accessServiceM(hasPrinter3)((f) => printMetrics(f))
       )
     )
   ),
@@ -193,3 +181,10 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   cancel()
 })
+function printMetrics(
+  f: L.Process<never, void>
+): T.Effect<never, T.Has<Console>, never, void> {
+  return T.chain_(f._FIBER.getRef(metrics), (c) =>
+    putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag} (${c.counter})`)
+  )
+}
