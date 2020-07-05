@@ -24,7 +24,7 @@ export interface Has<T, K> {
     key: symbol
     def: boolean
     name?: string
-    brand?: unknown
+    brand?: any
   }
 }
 
@@ -86,7 +86,7 @@ export type HasType<T> = T extends Has<infer A, infer K> ? Has<A, K> : never
 /**
  * Anything that can be used as key in a map
  */
-export type AnyRef = string | symbol | number | object
+export type AnyRef = any
 
 /**
  * Default brand
@@ -296,4 +296,25 @@ export function mergeEnvironments<T, K, R1>(_: Has<T, K>, r: R1, t: T): R1 & Has
         ...r,
         [_[HasURI].key]: t
       } as any)
+}
+
+export class DerivationContext {
+  readonly hasMap = new Map<Augumented<any, any>, Augumented<any, any>>()
+
+  derive<T, K, T2, K2>(
+    has: Augumented<T, K>,
+    f: () => Augumented<T2, K2>
+  ): Augumented<T2, K2> {
+    const inMap = this.hasMap.get(has)
+
+    if (inMap) {
+      return inMap
+    }
+
+    const computed = f()
+
+    this.hasMap.set(has, computed)
+
+    return computed
+  }
 }

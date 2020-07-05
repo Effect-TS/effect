@@ -12,6 +12,7 @@ import * as E from "../Exit"
 import { FiberContext } from "../Fiber/context"
 import { newFiberId } from "../Fiber/id"
 import { interruptible } from "../Fiber/interruptStatus"
+import { DerivationContext, Augumented, HasURI } from "../Has"
 import * as L from "../Layer"
 import * as M from "../Managed"
 import { _I } from "../Managed/deps"
@@ -184,10 +185,9 @@ export class ServerConfig {
   constructor(readonly port: number, readonly host: string) {}
 }
 
-export function serverLayer<S, C>(
-  has: T.Has<Server, S>,
-  hasConfig: T.Has<ServerConfig, C>
-): L.AsyncR<T.Has<ServerConfig, C> & DefaultEnv, T.Has<Server, S>> {
+export function serverLayer<S>(
+  has: Augumented<Server, S>
+): L.AsyncR<T.Has<ServerConfig, S> & DefaultEnv, T.Has<Server, S>> {
   return L.service(has)
     .prepare(
       pipe(
@@ -195,7 +195,7 @@ export function serverLayer<S, C>(
         T.map((e) => new Server(e))
       )
     )
-    .open((s) => T.accessServiceM(hasConfig)((sc) => s.open(sc.port, sc.host)))
+    .open((s) => T.accessServiceM(config(has))((sc) => s.open(sc.port, sc.host)))
     .release((s) => s.release())
 }
 
@@ -241,15 +241,21 @@ export function route<K>(has: T.Has<Server, K>) {
   }
 }
 
-export const HasServerConfig = T.has<ServerConfig>()()
+export const configDerivationContext = new DerivationContext()
+
+export const config = <K>(has: Augumented<Server, K>) =>
+  configDerivationContext.derive(has, () => T.has<ServerConfig>()<K>(has[HasURI].brand))
+
 export const HasServer = T.has<Server>()()
 
-const serverConfig = L.service(HasServerConfig).pure(new ServerConfig(8080, "0.0.0.0"))
+const serverConfig = L.service(config(HasServer)).pure(
+  new ServerConfig(8080, "0.0.0.0")
+)
 
 const appLayer = pipe(
   L.all(
     route(HasServer)("/home", () => (_, res) =>
-      T.accessServiceM(HasServerConfig)((c) =>
+      T.accessServiceM(config(HasServer))((c) =>
         T.effectTotal(() => {
           res.write(`good: ${c.host}:${c.port}`)
           res.end()
@@ -257,7 +263,7 @@ const appLayer = pipe(
       )
     )
   ),
-  L.using(serverLayer(HasServer, HasServerConfig)),
+  L.using(serverLayer(HasServer)),
   L.using(serverConfig)
 )
 
