@@ -81,17 +81,6 @@ export { zipWith_ } from "./zipWith_"
 export { zipWith } from "./zipWith"
 export { zipWithPar_ } from "./zipWithPar_"
 export { zipWithPar } from "./zipWithPar"
-export {
-  runAsync,
-  runAsyncCancel,
-  runMain,
-  runPromise,
-  runPromiseExit,
-  runSync,
-  runSyncExit,
-  AsyncCancel,
-  CancelMain
-} from "./runtime"
 export { orDie } from "./orDie"
 export { orDieWith } from "./orDieWith"
 export { orDieWith_ } from "./orDieWith_"
@@ -175,5 +164,22 @@ export {
   InnerHasType
 } from "../Has"
 export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
-export { runtime, Runtime, withRuntimeM, withRuntime } from "./runtime"
+export {
+  runtime,
+  CancelMain,
+  AsyncCancel,
+  DefaultEnv,
+  defaultEnv,
+  fiberContext,
+  runAsync,
+  runAsyncCancel,
+  runMain,
+  runPromise,
+  runPromiseExit,
+  runSync,
+  runSyncExit,
+  Runtime,
+  withRuntimeM,
+  withRuntime
+} from "./runtime"
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"

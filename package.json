@@ -20,8 +20,7 @@
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "sideEffects": false,
   "devDependencies": {
-    "@types/node": "^14.0.5",
-    "path-to-regexp": "^6.1.0"
+    "@types/node": "^14.0.5"
   },
   "dependencies": {
     "fp-ts": "2.6.3",

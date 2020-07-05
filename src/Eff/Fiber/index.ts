@@ -25,3 +25,10 @@ export { zipRight_ } from "./zipRight_"
 export { waitAll } from "./waitAll"
 export { joinAll } from "./joinAll"
 export { EqFiberID, FiberID, None, newFiberId } from "./id"
+export { FiberContext } from "./context"
+export {
+  interruptible,
+  InterruptStatus,
+  fromBoolean,
+  uninterruptible
+} from "./interruptStatus"
