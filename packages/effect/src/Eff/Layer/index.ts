@@ -141,11 +141,13 @@ export class Layer<S, R, E, A> {
 export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
   new Layer<unknown, R, E, {}>(
     T.managedMap_(
-      T.makeInterruptible_(
-        T.accessM(([r, pm]: [R, ProcessMap]) =>
-          T.provideAll_(
-            T.map_(pm.fork(effect), (x) => [pm, x] as const),
-            r
+      T.makeExit_(
+        T.interruptible(
+          T.accessM(([r, pm]: [R, ProcessMap]) =>
+            T.provideAll_(
+              T.map_(pm.fork(effect), (x) => [pm, x] as const),
+              r
+            )
           )
         ),
         ([pm, f]) =>
@@ -159,7 +161,7 @@ export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
               }
               const pmCause = pm.causeBy.get
               if (pmCause) {
-                if (contains(pmCause.cause)(e.cause)) {
+                if (contains(e.cause)(pmCause.cause)) {
                   return T.unit
                 }
               }
@@ -174,34 +176,43 @@ export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
 /**
  * Identifies a process in environment
  */
-export const hasProcess = <ID extends string>(id: ID, k?: AnyRef) => has<Process>(k)(id)
+export const hasProcess = <ID extends string>(id: ID) => <E, A>(k?: AnyRef) =>
+  has<Process<E, A>>(k)(id)
 
-export type HasProcess<ID extends string> = T.Has<Branded<Process, ID>>
+export type HasProcess<ID extends string, E, A> = T.Has<Branded<Process<E, A>, ID>>
 
 /**
  * Access a forked process
  */
-export class Process {
+export class Process<E, A> {
   readonly _TAG = "@matechs/core/Eff/Layer/Fork"
 
-  constructor(readonly _HAS: T.Has<Process>, readonly _FIBER: FiberContext<any, any>) {}
+  constructor(
+    readonly _HAS: T.Has<Process<E, A>>,
+    readonly _FIBER: FiberContext<E, A>
+  ) {}
 }
 
 /**
  * Fork a new managed process, a managed process runs in background and
  * will trigger interruption if any failure happens
  */
-export const makeProcess = <ID extends string>(has: HasProcess<ID>) => <S, R, E, A>(
+export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) => <
+  S,
+  R
+>(
   effect: T.Effect<S, R, E, A>
 ) =>
-  new Layer<unknown, R, E, HasProcess<ID>>(
+  new Layer<unknown, R, E, HasProcess<ID, E, A>>(
     T.managedChain_(
       T.managedMap_(
-        T.makeInterruptible_(
-          T.accessM(([r, pm]: [R, ProcessMap]) =>
-            T.provideAll_(
-              T.map_(pm.fork(effect, has), (x) => [pm, x] as const),
-              r
+        T.makeExit_(
+          T.interruptible(
+            T.accessM(([r, pm]: [R, ProcessMap]) =>
+              T.provideAll_(
+                T.map_(pm.fork(effect, has), (x) => [pm, x] as const),
+                r
+              )
             )
           ),
           ([pm, f]) =>
@@ -215,7 +226,7 @@ export const makeProcess = <ID extends string>(has: HasProcess<ID>) => <S, R, E,
                 }
                 const pmCause = pm.causeBy.get
                 if (pmCause) {
-                  if (contains(pmCause.cause)(e.cause)) {
+                  if (contains(e.cause)(pmCause.cause)) {
                     return T.unit
                   }
                 }
