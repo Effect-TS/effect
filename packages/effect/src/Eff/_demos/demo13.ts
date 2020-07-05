@@ -147,7 +147,7 @@ export const printer = <ID extends string>(
         pipe(
           metrics,
           F.update(({ counter }) => ({ counter: counter + 1 })),
-          T.delay(200)
+          T.delay(100 * n)
         ),
         () =>
           n > 1
