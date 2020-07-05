@@ -1,8 +1,8 @@
-import { pipe } from "../../Function"
-import * as T from "../Effect"
-import * as L from "../Layer"
-
 import * as S from "./server"
+
+import * as T from "@matechs/core/Eff/Effect"
+import * as L from "@matechs/core/Eff/Layer"
+import { pipe } from "@matechs/core/Function"
 
 export const HasServer = T.has<S.Server>()()
 
@@ -23,7 +23,7 @@ const appLayer = pipe(
     S.route(HasServer)("POST", "/home", () =>
       S.getBody((b) => (_, res) =>
         T.effectTotal(() => {
-          res.write(b.toString())
+          res.write(b)
           res.end()
         })
       )
