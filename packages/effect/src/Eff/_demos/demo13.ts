@@ -109,10 +109,10 @@ export const program = pipe(
   T.forever(
     T.delay(1000)(
       T.sequenceT(
-        T.accessServiceM(hasPrinter0)((f) => printMetrics(f)),
-        T.accessServiceM(hasPrinter1)((f) => printMetrics(f)),
-        T.accessServiceM(hasPrinter2)((f) => printMetrics(f)),
-        T.accessServiceM(hasPrinter3)((f) => printMetrics(f))
+        T.accessServiceM(hasPrinter0)(printMetrics),
+        T.accessServiceM(hasPrinter1)(printMetrics),
+        T.accessServiceM(hasPrinter2)(printMetrics),
+        T.accessServiceM(hasPrinter3)(printMetrics)
       )
     )
   ),
