@@ -141,13 +141,11 @@ export class Layer<S, R, E, A> {
 export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
   new Layer<unknown, R, E, {}>(
     T.managedMap_(
-      T.makeExit_(
-        T.interruptible(
-          T.accessM(([r, pm]: [R, ProcessMap]) =>
-            T.provideAll_(
-              T.map_(pm.fork(effect), (x) => [pm, x] as const),
-              r
-            )
+      T.makeInterruptible_(
+        T.accessM(([r, pm]: [R, ProcessMap]) =>
+          T.provideAll_(
+            T.map_(pm.fork(effect), (x) => [pm, x] as const),
+            r
           )
         ),
         ([pm, f]) =>
@@ -206,13 +204,11 @@ export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) 
   new Layer<unknown, R, E, HasProcess<ID, E, A>>(
     T.managedChain_(
       T.managedMap_(
-        T.makeExit_(
-          T.interruptible(
-            T.accessM(([r, pm]: [R, ProcessMap]) =>
-              T.provideAll_(
-                T.map_(pm.fork(effect, has), (x) => [pm, x] as const),
-                r
-              )
+        T.makeInterruptible_(
+          T.accessM(([r, pm]: [R, ProcessMap]) =>
+            T.provideAll_(
+              T.map_(pm.fork(effect, has), (x) => [pm, x] as const),
+              r
             )
           ),
           ([pm, f]) =>
