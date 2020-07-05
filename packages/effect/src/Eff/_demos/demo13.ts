@@ -117,7 +117,10 @@ export const program = pipe(
         T.accessServiceM(hasPrinter0)(printMetrics),
         T.accessServiceM(hasPrinter1)(printMetrics),
         T.accessServiceM(hasPrinter2)(printMetrics),
-        T.accessServiceM(hasPrinter3)(printMetrics)
+        T.accessServiceM(hasPrinter3)(printMetrics),
+        T.chain_(L.globalRef(metrics), ({ counter }) =>
+          putStrLn(`Across all processes: ${counter}`)
+        )
       )
     )
   ),
