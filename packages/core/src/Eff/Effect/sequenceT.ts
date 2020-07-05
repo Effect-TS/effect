@@ -31,7 +31,7 @@ export type SequenceA<T extends Array<Effect<any, any, any, any>>> = {
 }
 
 /**
- * Like `foreach` + identity with a tuple type
+ * Like `foreach` + `identity` with a tuple type
  */
 export function sequenceT<T extends Array<Effect<any, any, any, any>>>(
   ...t: T & {
@@ -42,7 +42,7 @@ export function sequenceT<T extends Array<Effect<any, any, any, any>>>(
 }
 
 /**
- * Like sequenceT but parallel, same as `foreachPar` + identity with a tuple type
+ * Like sequenceT but parallel, same as `foreachPar` + `identity` with a tuple type
  */
 export function sequenceTPar<T extends Array<Effect<any, any, any, any>>>(
   ...t: T & {
@@ -54,7 +54,7 @@ export function sequenceTPar<T extends Array<Effect<any, any, any, any>>>(
 
 /**
  * Like sequenceTPar but uses at most n fibers concurrently,
- * same as `foreachParN` + identity with a tuple type
+ * same as `foreachParN` + `identity` with a tuple type
  */
 export function sequenceTParN(
   n: number
