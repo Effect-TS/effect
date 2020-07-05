@@ -101,7 +101,7 @@ const hasPrinter3 = L.hasProcess("printer-3")<never, void>()
 
 const metrics = F.unsafeMake(
   { counter: 0 },
-  (a) => a,
+  (_) => ({ counter: 0 }),
   (a, b) => ({ counter: a.counter + b.counter })
 )
 
