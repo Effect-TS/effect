@@ -1,4 +1,3 @@
-import * as A from "../../Array"
 import { pipe } from "../../Function"
 import * as T from "../Effect"
 import * as L from "../Layer"
@@ -94,11 +93,27 @@ export const provideFormat = L.service(HasFormat).pure(
   })()
 )
 
+const hasPrinter0 = L.hasProcess("printer-0")
+const hasPrinter1 = L.hasProcess("printer-1")
+const hasPrinter2 = L.hasProcess("printer-2")
+const hasPrinter3 = L.hasProcess("printer-3")
+
 export const program = pipe(
-  T.foreachParN_(2)(A.range(0, 10), (n) =>
+  T.forever(
     T.delay(1000)(
-      L.accessProcessM("printer-0")((f) =>
-        putStrLn(`${n} - ${f._ID} - ${f._FIBER.state.get._tag}`)
+      T.sequenceT(
+        T.accessServiceM(hasPrinter0)((f) =>
+          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
+        ),
+        T.accessServiceM(hasPrinter1)((f) =>
+          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
+        ),
+        T.accessServiceM(hasPrinter2)((f) =>
+          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
+        ),
+        T.accessServiceM(hasPrinter3)((f) =>
+          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
+        )
       )
     )
   ),
@@ -124,8 +139,8 @@ export const provideScopedAppConfig = L.service(HasScopedAppConfig).pure(
 )
 
 let k = 0
-export const printer = <ID extends string>(id: ID, n: number) =>
-  L.makeProcess(id)(
+export const printer = <ID extends string>(has: L.HasProcess<ID>, n: number) =>
+  L.makeProcess(has)(
     T.forever(
       T.onInterrupt_(
         T.delay(1000)(
@@ -155,10 +170,10 @@ export const mainLayer = pipe(
   L.using(provideFormat),
   L.using(
     L.allPar(
-      printer("printer-0", 4),
-      printer("printer-1", 10),
-      printer("printer-2", 20),
-      printer("printer-3", 20)
+      printer(hasPrinter0, 4),
+      printer(hasPrinter1, 10),
+      printer(hasPrinter2, 20),
+      printer(hasPrinter3, 20)
     )
   )
 )
