@@ -15,16 +15,9 @@ import { interruptible } from "../Fiber/interruptStatus"
 import * as L from "../Layer"
 import * as M from "../Managed"
 import { _I } from "../Managed/deps"
-import * as Q from "../Queue"
 import { unsafeMakeScope } from "../Scope"
 import { none } from "../Supervisor"
 import { AtomicReference } from "../Support/AtomicReference"
-
-export class ProcessRequest {
-  readonly _tag = "ProcessRequest"
-
-  constructor(readonly req: http.IncomingMessage, readonly res: http.ServerResponse) {}
-}
 
 export class Executor {
   readonly running = new Set<FiberContext<never, void>>()
@@ -68,7 +61,6 @@ export class Executor {
 }
 
 export const makeExecutor = () => T.access((_: DefaultEnv) => new Executor(_))
-export const makeCommandQueue = () => Q.makeUnbounded<ProcessRequest>()
 
 export type Handler = (
   req: http.IncomingMessage,
@@ -88,9 +80,13 @@ export type FinalHandler = (
 ) => T.Effect<unknown, DefaultEnv, never, void>
 
 export class Server {
+  readonly interrupted = new AtomicReference(false)
+
   readonly server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
-      this.executor.runAsync(this.requests.offer(new ProcessRequest(req, res)))
+      if (!this.interrupted.get) {
+        this.executor.runAsync(this.finalHandler(req, res))
+      }
     }
   )
 
@@ -128,39 +124,30 @@ export class Server {
 
   readonly processFiber = new AtomicReference<FiberContext<never, void> | null>(null)
 
-  constructor(
-    readonly requests: Q.Queue<ProcessRequest>,
-    readonly executor: Executor
-  ) {}
+  constructor(readonly executor: Executor) {}
 
   open(port: number, host: string) {
-    return pipe(
-      T.effectAsync<unknown, never, void>((cb) => {
-        const onErr = (e: any) => {
-          cb(T.die(e))
-        }
-        this.server.listen(port, host, () => {
-          this.server.removeListener("error", onErr)
-          cb(T.unit)
-        })
-        this.server.once("error", onErr)
-      }),
-      T.chain(() =>
-        T.effectTotal(() => {
-          pipe(
-            this.process(),
-            (x) => this.executor.runAsync(x),
-            (x) => this.processFiber.set(x)
-          )
-        })
-      )
-    )
+    return T.effectAsync<unknown, never, void>((cb) => {
+      const onErr = (e: any) => {
+        cb(T.die(e))
+      }
+      this.server.listen(port, host, () => {
+        this.server.removeListener("error", onErr)
+        cb(T.unit)
+      })
+      this.server.once("error", onErr)
+    })
   }
 
   release() {
     return pipe(
-      T.checkDescriptor((d) =>
-        T.foreachPar_(this.executor.running, (f) => f.interruptAs(d.id))
+      T.effectTotal(() => {
+        this.interrupted.set(true)
+      }),
+      T.chain(() =>
+        T.checkDescriptor((d) =>
+          T.foreachPar_(this.executor.running, (f) => f.interruptAs(d.id))
+        )
       ),
       T.chain((es) =>
         pipe(
@@ -191,18 +178,6 @@ export class Server {
       )
     )
   }
-
-  process(): T.Effect<unknown, unknown, never, void> {
-    return pipe(
-      this.requests.take,
-      T.chain((request) =>
-        T.effectTotal(() => {
-          pipe(this.finalHandler(request.req, request.res), this.executor.runAsync)
-        })
-      ),
-      T.forever
-    )
-  }
 }
 
 export class ServerConfig {
@@ -216,8 +191,8 @@ export function serverLayer<S, C>(
   return L.service(has)
     .prepare(
       pipe(
-        T.sequenceT(makeCommandQueue(), makeExecutor()),
-        T.map(([q, e]) => new Server(q, e))
+        makeExecutor(),
+        T.map((e) => new Server(e))
       )
     )
     .open((s) => T.accessServiceM(hasConfig)((sc) => s.open(sc.port, sc.host)))
