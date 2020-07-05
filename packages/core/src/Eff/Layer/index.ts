@@ -212,6 +212,18 @@ export class Process<E, A> {
     readonly _HAS: T.Has<Process<E, A>>,
     readonly _FIBER: FiberContext<E, A>
   ) {}
+
+  getRef<A>(ref: FiberRef<A>) {
+    return this._FIBER.getRef(ref)
+  }
+
+  get id() {
+    return this._FIBER.id
+  }
+
+  get state() {
+    return this._FIBER.state.get
+  }
 }
 
 /**

@@ -106,8 +106,8 @@ const metrics = F.unsafeMake(
 )
 
 export const printMetrics = <E, A>(f: L.Process<E, A>) =>
-  T.chain_(f._FIBER.getRef(metrics), (c) =>
-    putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag} (${c.counter})`)
+  T.chain_(f.getRef(metrics), (c) =>
+    putStrLn(`#${f.id.seqNumber} - ${f.state._tag} (${c.counter})`)
   )
 
 export const program = pipe(
