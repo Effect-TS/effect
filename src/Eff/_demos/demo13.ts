@@ -93,10 +93,10 @@ export const provideFormat = L.service(HasFormat).pure(
   })()
 )
 
-const hasPrinter0 = L.hasProcess("printer-0")
-const hasPrinter1 = L.hasProcess("printer-1")
-const hasPrinter2 = L.hasProcess("printer-2")
-const hasPrinter3 = L.hasProcess("printer-3")
+const hasPrinter0 = L.hasProcess("printer-0")<never, void>()
+const hasPrinter1 = L.hasProcess("printer-1")<never, void>()
+const hasPrinter2 = L.hasProcess("printer-2")<never, void>()
+const hasPrinter3 = L.hasProcess("printer-3")<never, void>()
 
 export const program = pipe(
   T.forever(
@@ -138,25 +138,25 @@ export const provideScopedAppConfig = L.service(HasScopedAppConfig).pure(
   })()
 )
 
-let k = 0
-export const printer = <ID extends string>(has: L.HasProcess<ID>, n: number) =>
+export const printer = <ID extends string>(
+  has: L.HasProcess<ID, never, void>,
+  n: number
+) =>
   L.makeProcess(has)(
     T.forever(
       T.onInterrupt_(
-        T.delay(1000)(
+        T.delay(n > 1 ? 2000 : 1000)(
           T.suspend(() => {
-            if (k > n) {
+            if (n === 1) {
               return T.die("error")
             } else {
-              return T.effectTotal(() => {
-                k += 1
-              })
+              return T.unit
             }
           })
         ),
         () =>
-          n > 15
-            ? T.die("interruption error")
+          n > 1
+            ? T.die(`interruption error: ${n}`)
             : T.effectTotal(() => {
                 console.log("interrupted")
               })
@@ -170,10 +170,10 @@ export const mainLayer = pipe(
   L.using(provideFormat),
   L.using(
     L.allPar(
-      printer(hasPrinter0, 4),
-      printer(hasPrinter1, 10),
-      printer(hasPrinter2, 20),
-      printer(hasPrinter3, 20)
+      printer(hasPrinter0, 1),
+      printer(hasPrinter1, 2),
+      printer(hasPrinter2, 3),
+      printer(hasPrinter3, 4)
     )
   )
 )
