@@ -10,7 +10,7 @@ export {
   SyncRE,
   EffectURI
 } from "./effect"
-export { monadEff, Do, sequenceT } from "./instances"
+export { monadEff, Do } from "./instances"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
 export { absolve } from "./absolve"
@@ -176,3 +176,4 @@ export {
 } from "../Has"
 export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
 export { runtime, Runtime, withRuntimeM, withRuntime } from "./runtime"
+export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"

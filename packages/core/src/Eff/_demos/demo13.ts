@@ -110,20 +110,18 @@ export const printMetrics = <E, A>(f: L.Process<E, A>) =>
     putStrLn(`#${f.id.seqNumber} - ${f.state._tag} (${c.counter})`)
   )
 
+const printAllMetrics = T.sequenceTParN(2)(
+  T.accessServiceM(hasPrinter0)(printMetrics),
+  T.accessServiceM(hasPrinter1)(printMetrics),
+  T.accessServiceM(hasPrinter2)(printMetrics),
+  T.accessServiceM(hasPrinter3)(printMetrics),
+  T.chain_(L.globalRef(metrics), ({ counter }) =>
+    putStrLn(`Across all processes: ${counter}`)
+  )
+)
+
 export const program = pipe(
-  T.forever(
-    T.delay(1000)(
-      T.sequenceT(
-        T.accessServiceM(hasPrinter0)(printMetrics),
-        T.accessServiceM(hasPrinter1)(printMetrics),
-        T.accessServiceM(hasPrinter2)(printMetrics),
-        T.accessServiceM(hasPrinter3)(printMetrics),
-        T.chain_(L.globalRef(metrics), ({ counter }) =>
-          putStrLn(`Across all processes: ${counter}`)
-        )
-      )
-    )
-  ),
+  T.forever(T.delay(1000)(printAllMetrics)),
   T.chain(() => complexAccess)
 )
 
