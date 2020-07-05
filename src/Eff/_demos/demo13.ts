@@ -3,13 +3,15 @@ import * as T from "../Effect"
 import * as F from "../FiberRef"
 import * as L from "../Layer"
 
-abstract class Console {
+export abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>
 }
-abstract class Format<F> {
+
+export abstract class Format<F> {
   abstract formatString(s: F): T.Sync<F>
 }
-abstract class AppConfig<S> {
+
+export abstract class AppConfig<S> {
   abstract readonly config: S
 }
 
@@ -94,27 +96,33 @@ export const provideFormat = L.service(HasFormat).pure(
   })()
 )
 
-const hasPrinter0 = L.hasProcess("printer-0")<never, void>()
-const hasPrinter1 = L.hasProcess("printer-1")<never, void>()
-const hasPrinter2 = L.hasProcess("printer-2")<never, void>()
-const hasPrinter3 = L.hasProcess("printer-3")<never, void>()
+export const hasPrinter0 = L.hasProcess("printer-0")<never, void>()
+export const hasPrinter1 = L.hasProcess("printer-1")<never, void>()
+export const hasPrinter2 = L.hasProcess("printer-2")<never, void>()
+export const hasPrinter3 = L.hasProcess("printer-3")<never, void>()
 
-const metrics = F.unsafeMake(
+export interface Metrics {
+  counter: number
+}
+
+export const metrics = F.unsafeMake<Metrics>(
   { counter: 0 },
   (_) => ({ counter: 0 }),
   (a, b) => ({ counter: a.counter + b.counter })
 )
 
-export const printMetrics = <E, A>(f: L.Process<E, A>) =>
-  T.chain_(f.getRef(metrics), (c) =>
-    putStrLn(`#${f.id.seqNumber} - ${f.state._tag} (${c.counter})`)
+export const printMetrics = <ID extends string>(has: L.HasProcess<ID, never, void>) =>
+  T.accessServiceM(has)((f) =>
+    T.chain_(f.getRef(metrics), ({ counter }) =>
+      putStrLn(`#${f.id.seqNumber} - ${f.state._tag} (${counter})`)
+    )
   )
 
-const printAllMetrics = T.sequenceTParN(2)(
-  T.delay(1000)(T.accessServiceM(hasPrinter0)(printMetrics)),
-  T.delay(1000)(T.accessServiceM(hasPrinter1)(printMetrics)),
-  T.delay(1000)(T.accessServiceM(hasPrinter2)(printMetrics)),
-  T.delay(1000)(T.accessServiceM(hasPrinter3)(printMetrics)),
+export const printAllMetrics = T.sequenceTParN(2)(
+  T.delay(1000)(printMetrics(hasPrinter0)),
+  T.delay(1000)(printMetrics(hasPrinter1)),
+  T.delay(1000)(printMetrics(hasPrinter2)),
+  T.delay(1000)(printMetrics(hasPrinter3)),
   T.delay(1000)(
     T.chain_(L.globalRef(metrics), ({ counter }) =>
       putStrLn(`Across all processes: ${counter}`)
@@ -123,7 +131,7 @@ const printAllMetrics = T.sequenceTParN(2)(
 )
 
 export const program = pipe(
-  T.forever(T.delay(1000)(printAllMetrics)),
+  T.forever(printAllMetrics),
   T.chain(() => complexAccess)
 )
 
