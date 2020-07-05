@@ -10,4 +10,14 @@ import { onExitFirst_ } from "./onExitFirst_"
 export const makeInterruptible_ = <S, R, E, A, S1, R1, E1>(
   acquire: T.Effect<S, R, E, A>,
   release: (a: A) => T.Effect<S1, R1, E1, any>
-) => onExitFirst_(fromEffect(acquire), T.exitForeach(release))
+) =>
+  onExitFirst_(fromEffect(acquire), (e) => {
+    switch (e._tag) {
+      case "Failure": {
+        return T.unit
+      }
+      case "Success": {
+        return release(e.value)
+      }
+    }
+  })
