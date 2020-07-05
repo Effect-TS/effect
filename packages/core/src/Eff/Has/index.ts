@@ -1,6 +1,5 @@
 import { UnionToIntersection } from "../../Base/Overloads"
-import { Branded, _brand } from "../../Branded"
-import { identity } from "../../Function"
+import { Branded } from "../../Branded"
 import * as R from "../../Record"
 import { access } from "../Effect/access"
 import { accessM } from "../Effect/accessM"
@@ -24,6 +23,8 @@ export interface Has<T> {
     _T: () => T
     key: symbol
     def: boolean
+    name?: string
+    brand?: unknown
   }
 }
 
@@ -72,10 +73,20 @@ export const symbolFor = (t: any | undefined, k: any | undefined) => {
 }
 
 export type Augumented<T> = Has<T> & {
-  overridable: () => Has<T>
+  overridable: () => Augumented<T>
+  fixed: () => Augumented<T>
   refine: <K extends T>() => Augumented<K>
 }
+
+/**
+ * Extract Has the type from any augumented variant
+ */
 export type HasType<T> = T extends Has<infer A> ? Has<A> : never
+
+/**
+ * Anything that can be used as key in a map
+ */
+export type AnyRef = string | symbol | number | object
 
 /**
  * Create a service entry from a type and a URI
@@ -84,37 +95,33 @@ export function has<T extends Constructor<any>>(
   _: T
 ): {
   <K extends string | symbol>(k: K): Augumented<Branded<TypeOf<T>, K>>
-  <K>(k: K): Augumented<Branded<TypeOf<T>, K>>
+  <K extends AnyRef>(k: K): Augumented<Branded<TypeOf<T>, K>>
   (): Augumented<TypeOf<T>>
 }
 export function has<T>(
-  _?: any
+  _?: AnyRef
 ): {
   <K extends string | symbol>(k: K): Augumented<Branded<T, K>>
-  <K>(k: K): Augumented<Branded<T, K>>
+  <K extends AnyRef>(k: K): Augumented<Branded<T, K>>
   (): Augumented<T>
 }
 export function has(t?: unknown): (k?: unknown) => Augumented<unknown> {
   return (k) => {
-    const inner = () => {
+    const inner = (def = false) => {
       const h = {
         [HasURI]: {
           _T: undefined as any,
           _K: undefined as any,
           key: symbolFor(t, k),
-          def: false
-        },
-        refine: identity as any
+          def,
+          brand: k
+        }
       }
       return {
         ...h,
-        overridable: () => ({
-          [HasURI]: {
-            ...h[HasURI],
-            def: true
-          }
-        }),
-        refine: () => inner()
+        overridable: () => inner(true),
+        fixed: () => inner(false),
+        refine: () => inner(def)
       }
     }
 
@@ -126,6 +133,11 @@ export function has(t?: unknown): (k?: unknown) => Augumented<unknown> {
  * Remove the brand from the type if present
  */
 export type Unbrand<T> = T extends Branded<infer A, any> ? A : T
+
+/**
+ * Get the type of a Has
+ */
+export type InnerHasType<T> = T extends Has<infer A> ? A : never
 
 /**
  * Access a record of services with the required Service Entries
