@@ -110,7 +110,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return effectTotal.effectTotal(() => this.poll0())
   }
 
-  getRef<K>(fiberRef: FiberRef<K>) {
+  getRef<K>(fiberRef: FiberRef<K>): Sync<K> {
     return effectTotal.effectTotal(
       () => this.fiberRefLocals.get(fiberRef) || fiberRef.initial
     )

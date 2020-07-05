@@ -1,5 +1,6 @@
 import { pipe } from "../../Function"
 import * as T from "../Effect"
+import * as F from "../FiberRef"
 import * as L from "../Layer"
 
 abstract class Console {
@@ -98,12 +99,22 @@ const hasPrinter1 = L.hasProcess("printer-1")<never, void>()
 const hasPrinter2 = L.hasProcess("printer-2")<never, void>()
 const hasPrinter3 = L.hasProcess("printer-3")<never, void>()
 
+const metrics = F.unsafeMake(
+  { counter: 0 },
+  (a) => a,
+  (a, b) => ({ counter: a.counter + b.counter })
+)
+
 export const program = pipe(
   T.forever(
     T.delay(1000)(
       T.sequenceT(
         T.accessServiceM(hasPrinter0)((f) =>
-          putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
+          T.chain_(f._FIBER.getRef(metrics), (c) =>
+            putStrLn(
+              `#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag} (${c.counter})`
+            )
+          )
         ),
         T.accessServiceM(hasPrinter1)((f) =>
           putStrLn(`#${f._FIBER.id.seqNumber} - ${f._FIBER.state.get._tag}`)
@@ -145,14 +156,10 @@ export const printer = <ID extends string>(
   L.makeProcess(has)(
     T.forever(
       T.onInterrupt_(
-        T.delay(n > 1 ? 2000 : 1000)(
-          T.suspend(() => {
-            if (n === 1) {
-              return T.die("error")
-            } else {
-              return T.unit
-            }
-          })
+        pipe(
+          metrics,
+          F.update(({ counter }) => ({ counter: counter + 1 })),
+          T.delay(200)
         ),
         () =>
           n > 1
@@ -178,4 +185,11 @@ export const mainLayer = pipe(
   )
 )
 
-pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
+const cancel = pipe(program, T.provideSomeLayer(mainLayer), T.runMain)
+
+process.on("SIGINT", () => {
+  cancel()
+})
+process.on("SIGTERM", () => {
+  cancel()
+})
