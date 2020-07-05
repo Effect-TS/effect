@@ -248,6 +248,48 @@ export function route<K>(has: T.Has<Server, K>) {
   }
 }
 
+export function use<K>(has: T.Has<Server, K>) {
+  return <R>(pattern: string, f: RouteHandler<R>) => {
+    const matcher = match(pattern)
+
+    const acquire = T.accessServiceM(has)((server) =>
+      T.access((r: R & T.DefaultEnv) => {
+        const handler: Handler = (req, res, next) => {
+          if (req.url && req.method) {
+            const matchResult = matcher(req.url)
+
+            if (matchResult === false) {
+              return next(req, res)
+            } else {
+              return T.provideAll_(f(matchResult.params)(req, res, next), r)
+            }
+          } else {
+            return next(req, res)
+          }
+        }
+
+        server.addHandler(handler)
+
+        return {
+          handler
+        }
+      })
+    )
+
+    return pipe(
+      M.makeExit_(acquire, ({ handler }) =>
+        T.accessServiceM(has)((s) =>
+          T.effectTotal(() => {
+            s.removeHandler(handler)
+          })
+        )
+      ),
+      M.map(() => ({})),
+      L.fromManagedEnv
+    )
+  }
+}
+
 export const configDerivationContext = new Has.DerivationContext()
 
 export const config = <K>(has: Has.Augumented<Server, K>) =>

@@ -12,6 +12,16 @@ const serverConfig = L.service(S.config(HasServer)).pure(
 
 const appLayer = pipe(
   L.all(
+    S.use(HasServer)("/home", () => (req, res, next) =>
+      pipe(
+        T.timed(next(req, res)),
+        T.chain(([ms]) =>
+          T.effectTotal(() => {
+            console.log(`request took: ${ms} ms`)
+          })
+        )
+      )
+    ),
     S.route(HasServer)("GET", "/home", () => (_, res) =>
       T.accessServiceM(S.config(HasServer))((c) =>
         T.effectTotal(() => {
