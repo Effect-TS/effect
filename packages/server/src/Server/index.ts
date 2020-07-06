@@ -294,23 +294,14 @@ export const bodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
   )
 )
 
-export const params_ = <R1, E, A>(
-  morph: {
-    decode: (i: unknown) => Ei.Either<MO.Errors, A>
-  },
-  f: (a: A) => HandlerRE<R1, E>
-) => params(f)(morph)
-
-export const params = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
-  decode: (i: unknown) => Ei.Either<MO.Errors, A>
-}) =>
+export const params = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
   accessRouteInputM(
-    (i): HandlerRE<R1, E | ParametersDecoding> => {
+    (i): T.AsyncE<ParametersDecoding, A> => {
       const decoded = morph.decode(i.params)
 
       switch (decoded._tag) {
         case "Right": {
-          return f(decoded.right)
+          return T.succeedNow(decoded.right)
         }
         case "Left": {
           return T.fail(new ParametersDecoding(decoded.left))
