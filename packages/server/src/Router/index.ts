@@ -131,7 +131,9 @@ export function route<K>(has: Augumented<Server, K>) {
       T.access((r: R & T.DefaultEnv) => {
         const handler: Handler = (req, res, next) => {
           if (req.url && req.method && req.method === method) {
-            const matchResult = matcher(req.url)
+            const [url, query = ""] = req.url.split("?")
+
+            const matchResult = matcher(url)
 
             if (matchResult === false) {
               return next(req, res)
@@ -140,7 +142,7 @@ export function route<K>(has: Augumented<Server, K>) {
                 f,
                 defaultErrorHandler,
                 T.provideService(HasRouteInput)(
-                  new RouteInput(matchResult.params, req, res, next)
+                  new RouteInput(matchResult.params, query, req, res, next)
                 ),
                 T.provideAll(r)
               )
@@ -180,7 +182,9 @@ export function use<K>(has: Augumented<Server, K>) {
       T.access((r: R & T.DefaultEnv) => {
         const handler: Handler = (req, res, next) => {
           if (req.url && req.method) {
-            const matchResult = matcher(req.url)
+            const [url, query = ""] = req.url.split("?")
+
+            const matchResult = matcher(url)
 
             if (matchResult === false) {
               return next(req, res)
@@ -189,7 +193,7 @@ export function use<K>(has: Augumented<Server, K>) {
                 f,
                 defaultErrorHandler,
                 T.provideService(HasRouteInput)(
-                  new RouteInput(matchResult.params, req, res, next)
+                  new RouteInput(matchResult.params, query, req, res, next)
                 ),
                 T.provideAll(r)
               )

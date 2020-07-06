@@ -13,7 +13,9 @@ import {
   params_,
   response,
   response_,
-  status
+  status,
+  query,
+  query_
 } from "../Server"
 
 import * as T from "@matechs/core/Eff/Effect"
@@ -32,6 +34,8 @@ export const makeServer = <K>(has: Has.Augumented<Server, K>) => {
     response,
     response_,
     status,
+    query,
+    query_,
     has,
     child: R.child(has),
     accessConfigM: accessConfigM(has),
