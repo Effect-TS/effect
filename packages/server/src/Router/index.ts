@@ -10,7 +10,8 @@ import {
   HttpError,
   defaultErrorHandler,
   HasRouteInput,
-  RouteInput
+  RouteInput,
+  HasRequestState
 } from "../Server"
 
 import * as A from "@matechs/core/Array"
@@ -40,12 +41,13 @@ export class Router<K> {
     res: http.ServerResponse,
     next: FinalHandler,
     rest: readonly Handler[] = this.handlers
-  ): T.Effect<unknown, T.DefaultEnv, never, void> {
+  ): T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void> {
     if (A.isNonEmpty(rest)) {
       return NA.head(rest)(req, res, (reqR, resN) =>
         this.finalHandler(reqR, resN, next, NA.tail(rest))
       )
     } else {
+      console.log("HH")
       return next(req, res)
     }
   }
@@ -121,7 +123,11 @@ export type HttpMethod =
   | "TRACE"
   | "PATCH"
 
-export type RouteHandler<R> = T.AsyncRE<R & HasRouteInput, HttpError, void>
+export type RouteHandler<R> = T.AsyncRE<
+  R & HasRouteInput & HasRequestState,
+  HttpError,
+  void
+>
 
 export function route<K>(has: Augumented<Server, K>) {
   return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
@@ -144,7 +150,7 @@ export function route<K>(has: Augumented<Server, K>) {
                 T.provideService(HasRouteInput)(
                   new RouteInput(matchResult.params, query, req, res, next)
                 ),
-                T.provideAll(r)
+                T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
               )
             }
           } else {
@@ -195,7 +201,7 @@ export function use<K>(has: Augumented<Server, K>) {
                 T.provideService(HasRouteInput)(
                   new RouteInput(matchResult.params, query, req, res, next)
                 ),
-                T.provideAll(r)
+                T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
               )
             }
           } else {
