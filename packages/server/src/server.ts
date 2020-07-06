@@ -13,8 +13,10 @@ import * as M from "@matechs/core/Eff/Managed"
 import * as Scope from "@matechs/core/Eff/Scope"
 import * as Supervisor from "@matechs/core/Eff/Supervisor"
 import { AtomicReference } from "@matechs/core/Eff/Support/AtomicReference"
+import * as Ei from "@matechs/core/Either"
 import { constVoid, pipe } from "@matechs/core/Function"
 import * as NA from "@matechs/core/NonEmptyArray"
+import * as MO from "@matechs/morphic"
 
 export class Executor {
   readonly running = new Set<F.FiberContext<never, void>>()
@@ -324,3 +326,29 @@ export const getBody = <R>(f: (body: Buffer) => HandlerR<R>): HandlerR<R> => (
     }),
     T.chain((body) => f(body)(req, res, next))
   )
+
+export const params = <A>(morph: {
+  decode: (i: unknown) => Ei.Either<MO.Errors, A>
+}) => <R1>(f: (a: A) => HandlerR<R1>) => {
+  return (u: unknown) => (
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    next: FinalHandler
+  ) => {
+    const decoded = morph.decode(u)
+
+    switch (decoded._tag) {
+      case "Right": {
+        return f(decoded.right)(req, res, next)
+      }
+      case "Left": {
+        return T.effectTotal(() => {
+          res.statusCode = 422
+          res.setHeader("Content-Type", "application/json")
+          res.write(JSON.stringify({ error: MO.reportFailure(decoded.left) }))
+          res.end()
+        })
+      }
+    }
+  }
+}

@@ -3,6 +3,7 @@ import * as S from "./server"
 import * as T from "@matechs/core/Eff/Effect"
 import * as L from "@matechs/core/Eff/Layer"
 import { pipe } from "@matechs/core/Function"
+import * as MO from "@matechs/morphic"
 
 export const HasServer = T.has<S.Server>()()
 
@@ -20,6 +21,16 @@ const appLayer = pipe(
             console.log(`request took: ${ms} ms`)
           })
         )
+      )
+    ),
+    S.route(HasServer)(
+      "GET",
+      "/person/:id",
+      S.params(MO.make((F) => F.interface({ id: F.string() })))((p) => (_, res) =>
+        T.effectTotal(() => {
+          res.write(`id: ${p.id}`)
+          res.end()
+        })
       )
     ),
     S.route(HasServer)("GET", "/home", () => (_, res) =>
