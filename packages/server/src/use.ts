@@ -88,7 +88,7 @@ export const homeGet = S.route(
   )
 )
 
-export const getHomePostQuery = S.params(
+export const getHomePostQuery = S.query(
   MO.make((F) =>
     F.partial({
       q: numberString(F)
