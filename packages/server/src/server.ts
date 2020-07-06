@@ -357,9 +357,16 @@ export const getBody = <R, E>(
     T.chain((body) => f(body))
   )
 
-export const params = <A>(morph: {
+export const params_ = <R1, E, A>(
+  morph: {
+    decode: (i: unknown) => Ei.Either<MO.Errors, A>
+  },
+  f: (a: A) => HandlerRE<R1, E>
+) => params(f)(morph)
+
+export const params = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
   decode: (i: unknown) => Ei.Either<MO.Errors, A>
-}) => <R1, E>(f: (a: A) => HandlerRE<R1, E>) =>
+}) =>
   accessRouteInputM(
     (i): HandlerRE<R1, E | ParametersDecoding> => {
       const decoded = morph.decode(i.params)
@@ -375,12 +382,16 @@ export const params = <A>(morph: {
     }
   )
 
-export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) => <
-  R1,
-  E
->(
+export const body_ = <R1, E, A>(
+  morph: {
+    decode: (i: unknown) => Ei.Either<MO.Errors, A>
+  },
   f: (a: A) => HandlerRE<R1, E>
-) =>
+) => body(f)(morph)
+
+export const body = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
+  decode: (i: unknown) => Ei.Either<MO.Errors, A>
+}) =>
   getBody((b) =>
     pipe(
       T.effectPartial(identity)(() => JSON.parse(b.toString())),
@@ -402,7 +413,10 @@ export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A>
     )
   )
 
-export const response = <A>(morph: { encode: (i: A) => unknown }) => (a: A) =>
+export const response_ = <A>(morph: { encode: (i: A) => unknown }, a: A) =>
+  response(a)(morph)
+
+export const response = <A>(a: A) => (morph: { encode: (i: A) => unknown }) =>
   T.accessServiceM(HasRouteInput)((i) =>
     T.effectTotal(() => {
       i.res.setHeader("Content-Type", "application/json")

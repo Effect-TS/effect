@@ -27,8 +27,12 @@ const personPost = S.route(HasServer)(
   "POST",
   "/person/:id",
   pipe(
-    S.params(personPostParams)(({ id }) =>
-      S.body(personPostBody)(({ name }) => S.response(personPostResponse)({ id, name }))
+    personPostParams,
+    S.params(({ id }) =>
+      pipe(
+        personPostBody,
+        S.body(({ name }) => S.response_(personPostResponse, { id, name }))
+      )
     ),
     T.catchAll((e) => {
       switch (e._tag) {
