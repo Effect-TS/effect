@@ -1,5 +1,8 @@
+import { pipe } from "../../Function"
+
+import * as D from "./do"
 import { Effect } from "./effect"
-import { Do } from "./instances"
+import { map } from "./map"
 
 /**
  * Summarizes a effect by computing some value before and after execution, and
@@ -11,11 +14,13 @@ export const summarized_ = <S, R, E, A, S2, R2, E2, B, C>(
   summary: Effect<S2, R2, E2, B>,
   f: (start: B, end: B) => C
 ): Effect<S | S2, R & R2, E | E2, [C, A]> =>
-  Do()
-    .bind("start", summary)
-    .bind("value", self)
-    .bind("end", summary)
-    .return((s) => [f(s.start, s.end), s.value])
+  pipe(
+    D.of,
+    D.bind("start", () => summary),
+    D.bind("value", () => self),
+    D.bind("end", () => summary),
+    map((s) => [f(s.start, s.end), s.value])
+  )
 
 /**
  * Summarizes a effect by computing some value before and after execution, and
