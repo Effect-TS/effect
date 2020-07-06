@@ -1,20 +1,20 @@
 import * as R from "../Router"
 import {
   accessConfigM,
-  config,
-  server,
-  Server,
-  getRouteInput,
   body,
+  config,
   getBodyBuffer,
+  getRequestState,
+  getRouteInput,
   next,
   params,
-  response,
-  status,
   query,
   requestState,
-  getRequestState,
-  setRequestState
+  response,
+  server,
+  Server,
+  setRequestState,
+  status
 } from "../Server"
 
 import * as T from "@matechs/core/Eff/Effect"
@@ -39,8 +39,12 @@ export const makeServer = <K>(has: Has.Augumented<Server, K>) => {
     use: R.use(has),
     hasConfig: config(has),
     server: L.using_(R.root(has), server(has)),
-    makeState: requestState,
-    getState: getRequestState,
-    setState: setRequestState
+    makeState: <V>(initial: V) => {
+      const v = requestState(initial)
+      return {
+        get: getRequestState(v),
+        set: setRequestState(v)
+      }
+    }
   }
 }

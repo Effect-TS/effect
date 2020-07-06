@@ -15,16 +15,13 @@ const serverConfig = L.service(S.hasConfig).pure(new ServerConfig(8080, "0.0.0.0
 
 export const currentUser = S.makeState<O.Option<string>>(O.none)
 
-const setCurrentUser = S.setState(currentUser)
-const getCurrentUser = S.getState(currentUser)
-
 //
 // Person Post Endpoint
 //
 
-const personPostParams = MO.make((F) => F.interface({ id: F.string() }))
+const getPersonPostParams = S.params(MO.make((F) => F.interface({ id: F.string() })))
 
-const personPostBody = MO.make((F) => F.interface({ name: F.string() }))
+const getPersonPostBody = S.body(MO.make((F) => F.interface({ name: F.string() })))
 
 const personPostResponse = S.response(
   MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
@@ -53,8 +50,8 @@ export const personPost = S.route(
   "/person/:id",
   pipe(
     T.of,
-    T.bind("params", () => S.params(personPostParams)),
-    T.bind("body", () => S.body(personPostBody)),
+    T.bind("params", () => getPersonPostParams),
+    T.bind("body", () => getPersonPostBody),
     T.chain(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
     customErrorHandler
   )
@@ -64,7 +61,7 @@ export const auth = S.use(
   "(.*)",
   pipe(
     T.of,
-    T.tap(() => setCurrentUser(O.some("test"))),
+    T.tap(() => currentUser.set(O.some("test"))),
     T.bind("next", () => T.timed(S.next)),
     T.bind("routeInput", () => S.getRouteInput),
     T.chain(({ next: [ms], routeInput: { query } }) =>
@@ -106,7 +103,7 @@ export const homePost = S.route(
     T.of,
     T.bind("body", () => S.getBodyBuffer),
     T.bind("query", () => getHomePostQuery),
-    T.bind("user", () => getCurrentUser),
+    T.bind("user", () => currentUser.get),
     T.bind("input", () => S.getRouteInput),
     T.tap(({ body, input: { res }, query, user }) =>
       T.effectTotal(() => {
