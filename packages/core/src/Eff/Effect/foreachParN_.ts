@@ -1,4 +1,5 @@
 import * as A from "../../Array"
+import { pipe } from "../../Function"
 import { Both, Cause, Empty, Interrupt, Then } from "../Cause/cause"
 import { interrupted } from "../Cause/interrupted"
 import { interruptedOnly } from "../Cause/interruptedOnly"
@@ -16,9 +17,11 @@ import { makeBounded } from "../Queue"
 import { makeRef } from "../Ref"
 
 import { bracket_ } from "./bracket_"
+import { chain } from "./chain"
 import { chain_ } from "./chain_"
 import { checkDescriptor } from "./checkDescriptor"
 import { collectAllUnit } from "./collectAllUnit"
+import { bind, of } from "./do"
 import { done } from "./done"
 import { AsyncRE, Effect } from "./effect"
 import { effectTotal } from "./effectTotal"
@@ -29,11 +32,12 @@ import { forever } from "./forever"
 import { fork } from "./fork"
 import { forkDaemon } from "./forkDaemon"
 import { halt } from "./halt"
-import { Do } from "./instances"
 import { interrupt } from "./interrupt"
+import { map } from "./map"
 import { map_ } from "./map_"
 import { onInterruptExtended_ } from "./onInterrupt_"
 import { result } from "./result"
+import { tap } from "./tap"
 import { unit } from "./unit"
 
 class Tracker<E, A> {
@@ -43,9 +47,10 @@ class Tracker<E, A> {
   cause: Cause<any> | undefined
 
   track<S, R>(effect: Effect<S, R, E, A>) {
-    return Do()
-      .bind("fiber", forkDaemon(effect))
-      .doL((s) =>
+    return pipe(
+      of,
+      bind("fiber", () => forkDaemon(effect)),
+      tap((s) =>
         effectTotal(() => {
           this.fibers.add(s.fiber)
 
@@ -53,9 +58,9 @@ class Tracker<E, A> {
             this.fibers.delete(s.fiber)
           })
         })
-      )
-      .bindL("res", (s) => join(s.fiber))
-      .return((s) => s.res)
+      ),
+      chain((s) => join(s.fiber))
+    )
   }
 
   interrupt(id: FiberID, cause?: Cause<any>) {
@@ -89,18 +94,15 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
   bracket_(
     makeBounded<readonly [Promise<E, B>, A]>(n),
     (q) =>
-      Do()
-        .bind(
-          "pairs",
+      pipe(
+        of,
+        bind("pairs", () =>
           foreach_(as, (a) => map_(promiseMake<E, B>(), (p) => [p, a] as const))
-        )
-        .doL((s) => fork(foreachUnit_(s.pairs, (pair) => q.offer(pair))))
-        .bind("causes", makeRef<Cause<E>>(Empty))
-        .bind(
-          "tracker",
-          effectTotal(() => new Tracker<E, B>())
-        )
-        .doL((s) =>
+        ),
+        tap((s) => fork(foreachUnit_(s.pairs, (pair) => q.offer(pair)))),
+        bind("causes", () => makeRef<Cause<E>>(Empty)),
+        bind("tracker", () => effectTotal(() => new Tracker<E, B>())),
+        tap((s) =>
           collectAllUnit(
             A.makeBy(n, () =>
               fork(
@@ -134,8 +136,8 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
               )
             )
           )
-        )
-        .bindL("res", (s) =>
+        ),
+        bind("res", (s) =>
           onInterruptExtended_(
             foreach_(s.pairs, ([_]) => result(promiseWait(_))),
             () =>
@@ -144,15 +146,16 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
                 () => chain_(s.causes.get, (c) => halt(c))
               )
           )
-        )
-        .doL((s) =>
+        ),
+        tap((s) =>
           chain_(s.causes.get, (c) =>
             s.tracker.cause && s.tracker.interruptedBy
               ? halt(Then(s.tracker.cause, Then(Interrupt(s.tracker.interruptedBy), c)))
               : unit
           )
-        )
-        .bindL("end", (s) => done(sequenceExitArray(s.res)))
-        .return((s) => s.end),
+        ),
+        bind("end", (s) => done(sequenceExitArray(s.res))),
+        map((s) => s.end)
+      ),
     (q) => q.shutdown
   )
