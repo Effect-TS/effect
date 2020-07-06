@@ -49,13 +49,10 @@ export const personPost = S.route(
   "POST",
   "/person/:id",
   pipe(
-    personPostParams,
-    S.params(({ id }) =>
-      pipe(
-        S.body(personPostBody),
-        T.chain(({ name }) => personPostResponse({ id, name }))
-      )
-    ),
+    T.of,
+    T.bind("params", () => S.params(personPostParams)),
+    T.bind("body", () => S.body(personPostBody)),
+    T.tap(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
     customErrorHandler
   )
 )
