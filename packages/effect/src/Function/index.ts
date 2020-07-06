@@ -344,6 +344,181 @@ export function pipe<A, B, C, D, E, F, G, H, I, J>(
   hi: (h: H) => I,
   ij: (i: I) => J
 ): J
+export function pipe<A, B, C, D, E, F, G, H, I, J, K>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K
+): K
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L
+): L
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M
+): M
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N
+): N
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N,
+  no: (n: N) => O
+): O
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N,
+  no: (n: N) => O,
+  op: (o: O) => P
+): P
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N,
+  no: (n: N) => O,
+  op: (o: O) => P,
+  pq: (p: P) => Q
+): Q
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N,
+  no: (n: N) => O,
+  op: (o: O) => P,
+  pq: (p: P) => Q,
+  qr: (q: Q) => R
+): R
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N,
+  no: (n: N) => O,
+  op: (o: O) => P,
+  pq: (p: P) => Q,
+  qr: (q: Q) => R,
+  rs: (r: R) => S
+): S
+export function pipe<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>(
+  a: A,
+  ab: (a: A) => B,
+  bc: (b: B) => C,
+  cd: (c: C) => D,
+  de: (d: D) => E,
+  ef: (e: E) => F,
+  fg: (f: F) => G,
+  gh: (g: G) => H,
+  hi: (h: H) => I,
+  ij: (i: I) => J,
+  jk: (j: J) => K,
+  kl: (k: K) => L,
+  lm: (l: L) => M,
+  mn: (m: M) => N,
+  no: (n: N) => O,
+  op: (o: O) => P,
+  pq: (p: P) => Q,
+  qr: (q: Q) => R,
+  rs: (r: R) => S,
+  st: (s: S) => T
+): T
 export function pipe(
   a: unknown,
   ab?: Function,
@@ -354,7 +529,8 @@ export function pipe(
   fg?: Function,
   gh?: Function,
   hi?: Function,
-  ij?: Function
+  ij?: Function,
+  ...rest: Function[]
 ): unknown {
   switch (arguments.length) {
     case 1:
@@ -377,8 +553,10 @@ export function pipe(
       return hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))
     case 10:
       return ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a)))))))))
+    default:
+      // @ts-expect-error
+      return pipe(ij!(hi!(gh!(fg!(ef!(de!(cd!(bc!(ab!(a))))))))), ...(rest as any))
   }
-  return
 }
 
 export function introduce<T>(x: T): <K>(_: (_: T) => K) => K {
