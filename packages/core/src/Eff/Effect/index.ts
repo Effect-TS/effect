@@ -185,4 +185,5 @@ export {
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"
 export { first } from "./first"
 export { AOf, Erase, EOf, KOf, ROf, SOf } from "../Utils"
-export { bind, let, of } from "./do"
+export { bind, let, of, merge } from "./do"
+export { sequenceS, sequenceSPar, sequenceSParN } from "./sequenceS"
