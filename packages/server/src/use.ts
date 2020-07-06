@@ -60,7 +60,7 @@ export const personPost = S.route(
 )
 
 export const auth = S.use(
-  "/(.*)",
+  "(.*)",
   pipe(
     S.requestState.set(currentUser)(O.some("test")),
     T.chain(() => S.next),
@@ -118,23 +118,8 @@ export const homePost = S.route(
 )
 
 //
-// App Layer with all the routes & the server
+// Custom morphic codec for numbers encoded as strings
 //
-
-const home = L.using(S.child("/home/(.*)"))(L.all(homeGet, homePost))
-
-const appLayer = pipe(
-  L.all(home, personPost),
-  L.using(auth),
-  L.using(S.server),
-  L.using(serverConfig)
-)
-
-const cancel = pipe(T.never, T.provideSomeLayer(appLayer), T.runMain)
-
-process.on("SIGINT", () => {
-  cancel()
-})
 
 function numberString<G, Env>(F: AlgebraNoUnion<G, Env>): HKT2<G, Env, string, number> {
   return F.unknownE(F.number(), {
@@ -164,3 +149,22 @@ function numberString<G, Env>(F: AlgebraNoUnion<G, Env>): HKT2<G, Env, string, n
     }
   }) as HKT2<G, Env, string, number>
 }
+
+//
+// App Layer with all the routes & the server
+//
+
+const home = L.using(S.child("/home/(.*)"))(L.all(homeGet, homePost))
+
+const appLayer = pipe(
+  L.all(home, personPost),
+  L.using(auth),
+  L.using(S.server),
+  L.using(serverConfig)
+)
+
+const cancel = pipe(T.never, T.provideSomeLayer(appLayer), T.runMain)
+
+process.on("SIGINT", () => {
+  cancel()
+})
