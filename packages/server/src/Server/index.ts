@@ -267,9 +267,9 @@ export class RouteInput {
 export const HasRouteInput = T.has<RouteInput>()()
 export type HasRouteInput = T.HasType<typeof HasRouteInput>
 
-export const accessRouteInputM = T.accessServiceM(HasRouteInput)
+export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeedNow)
 
-export const bodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
+export const getBodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
   T.accessService(HasRouteInput)((i) => i.req),
   T.chain((req) =>
     T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
@@ -295,24 +295,27 @@ export const bodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
 )
 
 export const params = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
-  accessRouteInputM(
-    (i): T.AsyncE<ParametersDecoding, A> => {
-      const decoded = morph.decode(i.params)
+  pipe(
+    getRouteInput,
+    T.chain(
+      (i): T.AsyncE<ParametersDecoding, A> => {
+        const decoded = morph.decode(i.params)
 
-      switch (decoded._tag) {
-        case "Right": {
-          return T.succeedNow(decoded.right)
-        }
-        case "Left": {
-          return T.fail(new ParametersDecoding(decoded.left))
+        switch (decoded._tag) {
+          case "Right": {
+            return T.succeedNow(decoded.right)
+          }
+          case "Left": {
+            return T.fail(new ParametersDecoding(decoded.left))
+          }
         }
       }
-    }
+    )
   )
 
 export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
   pipe(
-    bodyBuffer,
+    getBodyBuffer,
     T.chain((b) =>
       pipe(
         T.effectPartial(identity)(() => JSON.parse(b.toString())),
@@ -336,23 +339,26 @@ export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A>
   )
 
 export const query = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
-  accessRouteInputM((i) =>
-    pipe(
-      T.effectPartial(identity)(() => qs.parse(`?${i.query}`)),
-      T.catchAll(() => T.fail(new QueryParsing())),
-      T.chain(
-        (u: unknown): T.AsyncRE<T.DefaultEnv, QueryDecoding, A> => {
-          const decoded = morph.decode(u)
+  pipe(
+    getRouteInput,
+    T.chain((i) =>
+      pipe(
+        T.effectPartial(identity)(() => qs.parse(`?${i.query}`)),
+        T.catchAll(() => T.fail(new QueryParsing())),
+        T.chain(
+          (u: unknown): T.AsyncRE<T.DefaultEnv, QueryDecoding, A> => {
+            const decoded = morph.decode(u)
 
-          switch (decoded._tag) {
-            case "Right": {
-              return T.succeedNow(decoded.right)
-            }
-            case "Left": {
-              return T.fail(new QueryDecoding(decoded.left))
+            switch (decoded._tag) {
+              case "Right": {
+                return T.succeedNow(decoded.right)
+              }
+              case "Left": {
+                return T.fail(new QueryDecoding(decoded.left))
+              }
             }
           }
-        }
+        )
       )
     )
   )
@@ -366,13 +372,19 @@ export const response = <A>(morph: { encode: (i: A) => unknown }) => (a: A) =>
     })
   )
 
-export const next = accessRouteInputM((i) => i.next(i.req, i.res))
+export const next = pipe(
+  getRouteInput,
+  T.chain((i) => i.next(i.req, i.res))
+)
 
 export const status = (code: number) =>
-  accessRouteInputM((i) =>
-    T.effectTotal(() => {
-      i.res.statusCode = code
-    })
+  pipe(
+    getRouteInput,
+    T.chain((i) =>
+      T.effectTotal(() => {
+        i.res.statusCode = code
+      })
+    )
   )
 
 export abstract class HttpError {
