@@ -67,23 +67,9 @@ export type Handler = (
   next: FinalHandler
 ) => T.Effect<unknown, T.DefaultEnv, never, void>
 
-export type HandlerE<E> = (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  next: FinalHandler
-) => T.Effect<unknown, T.DefaultEnv, E, void>
-
-export type HandlerR<R> = (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  next: FinalHandler
-) => T.Effect<unknown, T.DefaultEnv & R, never, void>
-
-export type HandlerRE<R, E> = (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  next: FinalHandler
-) => T.Effect<unknown, T.DefaultEnv & R, E, void>
+export type HandlerE<E> = T.AsyncRE<T.DefaultEnv & HasRouteInput, E, void>
+export type HandlerR<R> = T.AsyncRE<R, HttpError, void>
+export type HandlerRE<R, E> = T.AsyncRE<R, E, void>
 
 export type FinalHandler = (
   req: http.IncomingMessage,
@@ -218,7 +204,21 @@ export type HttpMethod =
   | "TRACE"
   | "PATCH"
 
-export type RouteHandler<R> = (params: unknown) => HandlerRE<R, HttpError>
+export class RouteInput {
+  constructor(
+    readonly params: unknown,
+    readonly req: http.IncomingMessage,
+    readonly res: http.ServerResponse,
+    readonly next: FinalHandler
+  ) {}
+}
+
+export const HasRouteInput = T.has<RouteInput>()()
+export type HasRouteInput = T.HasType<typeof HasRouteInput>
+
+export const accessRouteInputM = T.accessServiceM(HasRouteInput)
+
+export type RouteHandler<R> = T.AsyncRE<R & HasRouteInput, HttpError, void>
 
 export function route<K>(has: T.Has<Server, K>) {
   return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
@@ -233,9 +233,13 @@ export function route<K>(has: T.Has<Server, K>) {
             if (matchResult === false) {
               return next(req, res)
             } else {
-              return T.provideAll_(
-                defaultErrorHandler(f)(matchResult.params)(req, res, next),
-                r
+              return pipe(
+                f,
+                defaultErrorHandler,
+                T.provideService(HasRouteInput)(
+                  new RouteInput(matchResult.params, req, res, next)
+                ),
+                T.provideAll(r)
               )
             }
           } else {
@@ -278,9 +282,13 @@ export function use<K>(has: T.Has<Server, K>) {
             if (matchResult === false) {
               return next(req, res)
             } else {
-              return T.provideAll_(
-                defaultErrorHandler(f)(matchResult.params)(req, res, next),
-                r
+              return pipe(
+                f,
+                defaultErrorHandler,
+                T.provideService(HasRouteInput)(
+                  new RouteInput(matchResult.params, req, res, next)
+                ),
+                T.provideAll(r)
               )
             }
           } else {
@@ -317,116 +325,94 @@ export const config = <K>(has: Has.Augumented<Server, K>) =>
     T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
   )
 
-export const defaultErrorHandler = <U, R, E extends HttpError>(
-  f: (u: U) => HandlerRE<R, E>
-): ((u: U) => HandlerR<R>) => (u: U) => (req, res, next) =>
-  pipe(
-    f(u)(req, res, next),
-    T.foldM((e) => e.render(req, res), T.succeedNow)
-  )
-
-export const handleError = <E, R2, E2>(g: (e: E) => HandlerRE<R2, E2>) => <U, R>(
-  f: (u: U) => HandlerRE<R, E>
-) => (u: U) => (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  next: FinalHandler
-) =>
-  pipe(
-    f(u)(req, res, next),
-    T.foldM((e) => g(e)(req, res, next), T.succeedNow)
-  )
+export const defaultErrorHandler = <U, R, E extends HttpError>(f: HandlerRE<R, E>) =>
+  T.foldM_(f, (e) => e.render(), T.succeedNow)
 
 export const getBody = <R, E>(
   f: (body: Buffer) => HandlerRE<R, E>
-): HandlerRE<R, E> => (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  next: FinalHandler
-) =>
+): HandlerRE<R & HasRouteInput, E> =>
   pipe(
-    T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
-      const body: Uint8Array[] = []
+    T.accessService(HasRouteInput)((i) => i.req),
+    T.chain((req) =>
+      T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
+        const body: Uint8Array[] = []
 
-      const onData: (chunk: any) => void = (chunk) => {
-        body.push(chunk)
-      }
+        const onData: (chunk: any) => void = (chunk) => {
+          body.push(chunk)
+        }
 
-      const onEnd = () => {
-        cb(T.succeedNow(Buffer.concat(body)))
-      }
+        const onEnd = () => {
+          cb(T.succeedNow(Buffer.concat(body)))
+        }
 
-      req.on("data", onData)
-      req.on("end", onEnd)
+        req.on("data", onData)
+        req.on("end", onEnd)
 
-      return T.effectTotal(() => {
-        req.removeListener("data", onData)
-        req.removeListener("end", onEnd)
+        return T.effectTotal(() => {
+          req.removeListener("data", onData)
+          req.removeListener("end", onEnd)
+        })
       })
-    }),
-    T.chain((body) => f(body)(req, res, next))
+    ),
+    T.chain((body) => f(body))
   )
 
 export const params = <A>(morph: {
   decode: (i: unknown) => Ei.Either<MO.Errors, A>
-}) => <R1, E>(f: (a: A) => HandlerRE<R1, E>) => {
-  return (u: unknown): HandlerRE<R1, E | ParametersDecoding> => (
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-    next: FinalHandler
-  ) => {
-    const decoded = morph.decode(u)
+}) => <R1, E>(f: (a: A) => HandlerRE<R1, E>) =>
+  accessRouteInputM(
+    (i): HandlerRE<R1, E | ParametersDecoding> => {
+      const decoded = morph.decode(i.params)
 
-    switch (decoded._tag) {
-      case "Right": {
-        return f(decoded.right)(req, res, next)
-      }
-      case "Left": {
-        return T.fail(new ParametersDecoding(decoded.left))
+      switch (decoded._tag) {
+        case "Right": {
+          return f(decoded.right)
+        }
+        case "Left": {
+          return T.fail(new ParametersDecoding(decoded.left))
+        }
       }
     }
-  }
-}
+  )
 
 export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) => <
   R1,
   E
 >(
   f: (a: A) => HandlerRE<R1, E>
-) => {
-  return getBody(
-    (b) => (
-      req: http.IncomingMessage,
-      res: http.ServerResponse,
-      next: FinalHandler
-    ) => {
-      return pipe(
-        T.effectPartial(identity)(() => JSON.parse(b.toString())),
-        T.catchAll(() => T.fail(new JsonDecoding(b.toString()))),
-        T.chain(
-          (u: unknown): T.AsyncRE<R1 & T.DefaultEnv, E | BodyDecoding, void> => {
-            const decoded = morph.decode(u)
+) =>
+  getBody((b) =>
+    pipe(
+      T.effectPartial(identity)(() => JSON.parse(b.toString())),
+      T.catchAll(() => T.fail(new JsonDecoding(b.toString()))),
+      T.chain(
+        (u: unknown): T.AsyncRE<R1 & T.DefaultEnv, E | BodyDecoding, void> => {
+          const decoded = morph.decode(u)
 
-            switch (decoded._tag) {
-              case "Right": {
-                return f(decoded.right)(req, res, next)
-              }
-              case "Left": {
-                return T.fail(new BodyDecoding(decoded.left))
-              }
+          switch (decoded._tag) {
+            case "Right": {
+              return f(decoded.right)
+            }
+            case "Left": {
+              return T.fail(new BodyDecoding(decoded.left))
             }
           }
-        )
+        }
       )
-    }
+    )
   )
-}
+
+export const response = <A>(morph: { encode: (i: A) => unknown }) => (a: A) =>
+  T.accessServiceM(HasRouteInput)((i) =>
+    T.effectTotal(() => {
+      i.res.setHeader("Content-Type", "application/json")
+      i.res.write(JSON.stringify(morph.encode(a)))
+      i.res.end()
+    })
+  )
 
 export abstract class HttpError {
-  abstract render(
-    req: http.IncomingMessage,
-    res: http.ServerResponse
-  ): T.Effect<unknown, unknown, never, void>
+  abstract render(): T.Effect<unknown, HasRouteInput, never, void>
 }
 
 export class JsonDecoding extends HttpError {
@@ -436,20 +422,19 @@ export class JsonDecoding extends HttpError {
     super()
   }
 
-  render(
-    _: http.IncomingMessage,
-    res: http.ServerResponse
-  ): T.Effect<unknown, unknown, never, void> {
-    return T.effectTotal(() => {
-      res.statusCode = 422
-      res.setHeader("Content-Type", "application/json")
-      res.write(
-        JSON.stringify({
-          _tag: "JsonDecodingFailed"
-        })
-      )
-      res.end()
-    })
+  render(): T.Effect<unknown, HasRouteInput, never, void> {
+    return T.accessServiceM(HasRouteInput)((i) =>
+      T.effectTotal(() => {
+        i.res.statusCode = 422
+        i.res.setHeader("Content-Type", "application/json")
+        i.res.write(
+          JSON.stringify({
+            _tag: "JsonDecodingFailed"
+          })
+        )
+        i.res.end()
+      })
+    )
   }
 }
 
@@ -460,16 +445,15 @@ export class BodyDecoding extends HttpError {
     super()
   }
 
-  render(
-    _: http.IncomingMessage,
-    res: http.ServerResponse
-  ): T.Effect<unknown, unknown, never, void> {
-    return T.effectTotal(() => {
-      res.statusCode = 422
-      res.setHeader("Content-Type", "application/json")
-      res.write(JSON.stringify({ error: MO.reportFailure(this.errors) }))
-      res.end()
-    })
+  render(): T.Effect<unknown, HasRouteInput, never, void> {
+    return T.accessServiceM(HasRouteInput)((i) =>
+      T.effectTotal(() => {
+        i.res.statusCode = 422
+        i.res.setHeader("Content-Type", "application/json")
+        i.res.write(JSON.stringify({ error: MO.reportFailure(this.errors) }))
+        i.res.end()
+      })
+    )
   }
 }
 
@@ -480,15 +464,14 @@ export class ParametersDecoding extends HttpError {
     super()
   }
 
-  render(
-    _: http.IncomingMessage,
-    res: http.ServerResponse
-  ): T.Effect<unknown, unknown, never, void> {
-    return T.effectTotal(() => {
-      res.statusCode = 422
-      res.setHeader("Content-Type", "application/json")
-      res.write(JSON.stringify({ error: MO.reportFailure(this.errors) }))
-      res.end()
-    })
+  render(): T.Effect<unknown, HasRouteInput, never, void> {
+    return T.accessServiceM(HasRouteInput)((i) =>
+      T.effectTotal(() => {
+        i.res.statusCode = 422
+        i.res.setHeader("Content-Type", "application/json")
+        i.res.write(JSON.stringify({ error: MO.reportFailure(this.errors) }))
+        i.res.end()
+      })
+    )
   }
 }
