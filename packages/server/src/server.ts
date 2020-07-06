@@ -325,6 +325,9 @@ export const config = <K>(has: Has.Augumented<Server, K>) =>
     T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
   )
 
+export const accessConfigM = <K>(has: Has.Augumented<Server, K>) =>
+  T.accessServiceM(config(has))
+
 export const defaultErrorHandler = <U, R, E extends HttpError>(f: HandlerRE<R, E>) =>
   T.foldM_(f, (e) => e.render(), T.succeedNow)
 
@@ -425,9 +428,20 @@ export const response = <A>(a: A) => (morph: { encode: (i: A) => unknown }) =>
     })
   )
 
+export const next = accessRouteInputM((i) => i.next(i.req, i.res))
+
+export const status = (code: number) =>
+  accessRouteInputM((i) =>
+    T.effectTotal(() => {
+      i.res.statusCode = code
+    })
+  )
+
 export abstract class HttpError {
   abstract render(): T.Effect<unknown, HasRouteInput, never, void>
 }
+
+export type RequestError = ParametersDecoding | JsonDecoding | BodyDecoding
 
 export class JsonDecoding extends HttpError {
   readonly _tag = "JsonDecoding"
