@@ -183,3 +183,4 @@ export {
   withRuntime
 } from "./runtime"
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"
+export { first } from "./first"
