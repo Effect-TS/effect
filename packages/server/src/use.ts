@@ -88,16 +88,18 @@ export const homeGet = S.route(
   )
 )
 
+export const homePostQueryParams = MO.make((F) =>
+  F.partial({
+    q: numberString(F)
+  })
+)
+
 export const homePost = S.route(
   "POST",
   "/home/b",
   S.getBody((b) =>
     pipe(
-      MO.make((F) =>
-        F.partial({
-          q: numberString(F)
-        })
-      ),
+      homePostQueryParams,
       S.query((q) =>
         pipe(
           S.requestState.get(currentUser),
