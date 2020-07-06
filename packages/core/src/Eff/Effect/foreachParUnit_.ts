@@ -10,10 +10,12 @@ import { succeed as promiseSucceed } from "../Promise/succeed"
 import { wait as promiseWait } from "../Promise/wait"
 import { makeRef } from "../Ref"
 
+import { asUnit } from "./asUnit"
 import { bracketFiber } from "./bracketFiber"
 import { catchAll } from "./catchAll"
 import { chain_ } from "./chain_"
 import { checkDescriptor } from "./checkDescriptor"
+import * as D from "./do"
 import { Effect, AsyncRE } from "./effect"
 import { ensuring } from "./ensuring"
 import { fiberId } from "./fiberId"
@@ -24,6 +26,7 @@ import { Do } from "./instances"
 import { interruptible } from "./interruptible"
 import { map_ } from "./map_"
 import { onInterruptExtended_ } from "./onInterrupt_"
+import { tap } from "./tap"
 import { tapCause } from "./tapCause"
 import { tap_ } from "./tap_"
 import { uninterruptible } from "./uninterruptible"
@@ -53,27 +56,28 @@ export const foreachParUnit_ = <S, R, E, A>(
     return unit
   }
 
-  return Do()
-    .bind("parentId", fiberId())
-    .bind("causes", makeRef<Cause<E>>(Empty))
-    .bind("result", promiseMake<never, boolean>())
-    .bind("failureTrigger", promiseMake<void, void>())
-    .bind("status", makeRef([0, 0, false] as [number, number, boolean]))
-    .bind("rootCause", makeRef<[FiberID, Cause<E>] | undefined>(undefined))
-    .letL("startTask", (s) =>
+  return pipe(
+    D.of,
+    D.bind("parentId", () => fiberId()),
+    D.bind("causes", () => makeRef<Cause<E>>(Empty)),
+    D.bind("result", () => promiseMake<never, boolean>()),
+    D.bind("failureTrigger", () => promiseMake<void, void>()),
+    D.bind("status", () => makeRef([0, 0, false] as [number, number, boolean])),
+    D.bind("rootCause", () => makeRef<[FiberID, Cause<E>] | undefined>(undefined)),
+    D.let("startTask", (s) =>
       s.status.modify(([started, done, failing]) =>
         failing
           ? [false, [started, done, failing]]
           : [true, [started + 1, done, failing]]
       )
-    )
-    .letL("startFailure", (s) =>
+    ),
+    D.let("startFailure", (s) =>
       tap_(
         s.status.update(([started, done, _]) => [started, done, true]),
         () => promiseFailure<void>(undefined)(s.failureTrigger)
       )
-    )
-    .letL("task", (s) => (a: A) =>
+    ),
+    D.let("task", (s) => (a: A) =>
       uninterruptible(
         whenM(s.startTask)(
           pipe(
@@ -108,10 +112,10 @@ export const foreachParUnit_ = <S, R, E, A>(
           )
         )
       )
-    )
-    .bindL("fibers", (s) => foreach_(arr, (a) => fork(s.task(a))))
-    .bind("hasCompleted", makeRef(false))
-    .doL((s) =>
+    ),
+    D.bind("fibers", (s) => foreach_(arr, (a) => fork(s.task(a)))),
+    D.bind("hasCompleted", () => makeRef(false)),
+    tap((s) =>
       pipe(
         s.failureTrigger,
         promiseWait,
@@ -147,6 +151,7 @@ export const foreachParUnit_ = <S, R, E, A>(
           )
         )
       )
-    )
-    .unit()
+    ),
+    asUnit
+  )
 }

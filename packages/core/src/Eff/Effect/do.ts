@@ -36,12 +36,13 @@ const merge = <S, R, E, A, K>(
     )
   )
 
-const let_ = <S, R, E, A, K, N extends string>(
-  tag: Exclude<N, keyof K>,
-  f: (_: K) => A
-) => <S2, R2, E2>(
+const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) => <
+  S2,
+  R2,
+  E2
+>(
   mk: Effect<S2, R2, E2, K>
-): Effect<S | S2, R & R2, E | E2, K & { [k in N]: A }> =>
+): Effect<S2, R2, E2, K & { [k in N]: A }> =>
   pipe(
     mk,
     map((k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
