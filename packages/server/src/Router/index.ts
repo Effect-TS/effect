@@ -47,7 +47,6 @@ export class Router<K> {
         this.finalHandler(reqR, resN, next, NA.tail(rest))
       )
     } else {
-      console.log("HH")
       return next(req, res)
     }
   }

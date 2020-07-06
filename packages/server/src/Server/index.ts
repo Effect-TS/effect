@@ -119,7 +119,6 @@ export class Server {
   readonly interrupted = new AtomicReference(false)
 
   readonly requestId = new AtomicNumber(0)
-  readonly state = new Map<number, RequestState>()
 
   readonly server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -127,15 +126,8 @@ export class Server {
         const rid = this.requestId.incrementAndGet()
         const rst = new RequestState(rid)
 
-        this.state.set(rid, rst)
-
         pipe(
           this.finalHandler(req, res),
-          T.chain(() =>
-            T.effectTotal(() => {
-              this.state.delete(rid)
-            })
-          ),
           T.provideService(HasRequestState)(rst),
           this.executor.runAsync
         )
