@@ -10,6 +10,7 @@ import { FiberRef } from "../FiberRef"
 import { accessServiceM, AnyRef, has, HasType, HasURI, mergeEnvironments } from "../Has"
 import { coerceSE } from "../Managed/deps"
 import { AtomicReference } from "../Support/AtomicReference"
+import { Erase } from "../Utils"
 
 import * as T from "./deps"
 
@@ -350,14 +351,14 @@ export const zip_ = <S, R, E, A, S2, R2, E2, A2>(
   )
 
 export const using = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
-  left: Layer<S, R & A2, E, A>
+  left: Layer<S, R, E, A>
 ) => using_<S, R, E, A, S2, R2, E2, A2>(left, right)
 
 export const using_ = <S, R, E, A, S2, R2, E2, A2>(
-  left: Layer<S, R & A2, E, A>,
+  left: Layer<S, R, E, A>,
   right: Layer<S2, R2, E2, A2>
 ) =>
-  new Layer<S | S2, R & R2, E | E2, A & A2>(
+  new Layer<S | S2, Erase<R, A2> & R2, E | E2, A & A2>(
     T.managedChain_(right.build, (a2) =>
       T.managedMap_(
         T.managedProvideSome_(left.build, ([r0, pm]: [R & R2, ProcessMap]): [
