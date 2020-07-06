@@ -11,9 +11,12 @@ import { Codec, failure, success } from "@matechs/morphic/model"
 
 export const S = makeServer(T.has<Server>()())
 
-const serverConfig = L.service(S.config).pure(new ServerConfig(8080, "0.0.0.0"))
+const serverConfig = L.service(S.hasConfig).pure(new ServerConfig(8080, "0.0.0.0"))
 
 export const currentUser = S.makeState<O.Option<string>>(O.none)
+
+const setCurrentUser = S.setState(currentUser)
+const getCurrentUser = S.getState(currentUser)
 
 //
 // Person Post Endpoint
@@ -60,15 +63,14 @@ export const personPost = S.route(
 export const auth = S.use(
   "(.*)",
   pipe(
-    S.setState(currentUser)(O.some("test")),
-    T.chain(() => S.next),
-    T.timed,
-    T.chain(([ms]) =>
-      S.accessRouteInputM((i) =>
-        T.effectTotal(() => {
-          console.log(`request took: ${ms} ms (${i.query})`)
-        })
-      )
+    T.of,
+    T.tap(() => setCurrentUser(O.some("test"))),
+    T.bind("next", () => T.timed(S.next)),
+    T.bind("routeInput", () => S.getRouteInput),
+    T.chain(({ next: [ms], routeInput: { query } }) =>
+      T.effectTotal(() => {
+        console.log(`request took: ${ms} ms (${query})`)
+      })
     )
   )
 )
@@ -76,20 +78,25 @@ export const auth = S.use(
 export const homeGet = S.route(
   "GET",
   "/home/a",
-  S.accessConfigM((config) =>
-    S.accessRouteInputM((input) =>
+  pipe(
+    T.of,
+    T.bind("config", () => S.getServerConfig),
+    T.bind("routeInput", () => S.getRouteInput),
+    T.chain(({ config, routeInput: { res } }) =>
       T.effectTotal(() => {
-        input.res.write(`good: ${config.host}:${config.port}`)
-        input.res.end()
+        res.write(`good: ${config.host}:${config.port}`)
+        res.end()
       })
     )
   )
 )
 
-export const homePostQueryParams = MO.make((F) =>
-  F.partial({
-    q: numberString(F)
-  })
+export const getHomePostQuery = S.params(
+  MO.make((F) =>
+    F.partial({
+      q: numberString(F)
+    })
+  )
 )
 
 export const homePost = S.route(
@@ -97,11 +104,11 @@ export const homePost = S.route(
   "/home/b",
   pipe(
     T.of,
-    T.bind("body", () => S.bodyBuffer),
-    T.bind("query", () => S.query(homePostQueryParams)),
-    T.bind("user", () => S.getState(currentUser)),
-    T.bind("res", () => S.accessRouteInputM((a) => T.succeedNow(a.res))),
-    T.tap(({ body, query, res, user }) =>
+    T.bind("body", () => S.getBodyBuffer),
+    T.bind("query", () => getHomePostQuery),
+    T.bind("user", () => getCurrentUser),
+    T.bind("input", () => S.getRouteInput),
+    T.tap(({ body, input: { res }, query, user }) =>
       T.effectTotal(() => {
         res.write(body)
         res.write(JSON.stringify(query))
