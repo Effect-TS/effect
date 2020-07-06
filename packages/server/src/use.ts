@@ -52,7 +52,7 @@ export const personPost = S.route(
     T.of,
     T.bind("params", () => S.params(personPostParams)),
     T.bind("body", () => S.body(personPostBody)),
-    T.tap(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
+    T.chain(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
     customErrorHandler
   )
 )
