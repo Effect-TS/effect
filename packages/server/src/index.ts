@@ -24,12 +24,33 @@ const appLayer = pipe(
       )
     ),
     S.route(HasServer)(
-      "GET",
+      "POST",
       "/person/:id",
-      S.params(MO.make((F) => F.interface({ id: F.string() })))((p) => (_, res) =>
-        T.effectTotal(() => {
-          res.write(`id: ${p.id}`)
-          res.end()
+      pipe(
+        S.params(MO.make((F) => F.interface({ id: F.string() })))(({ id }) =>
+          S.body(MO.make((F) => F.interface({ name: F.string() })))(
+            ({ name }) => (_, res) =>
+              T.effectTotal(() => {
+                res.write(`id: ${id}\n`)
+                res.write(`name: ${name}\n`)
+                res.end()
+              })
+          )
+        ),
+        S.handleError((e) => (req, res) => {
+          switch (e._tag) {
+            case "JsonDecoding": {
+              return T.effectTotal(() => {
+                res.statusCode = 400
+                res.setHeader("Content-Type", "application/json")
+                res.write(JSON.stringify({ error: "invalid json body" }))
+                res.end()
+              })
+            }
+            default: {
+              return e.render(req, res)
+            }
+          }
         })
       )
     ),

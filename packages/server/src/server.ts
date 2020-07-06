@@ -14,7 +14,7 @@ import * as Scope from "@matechs/core/Eff/Scope"
 import * as Supervisor from "@matechs/core/Eff/Supervisor"
 import { AtomicReference } from "@matechs/core/Eff/Support/AtomicReference"
 import * as Ei from "@matechs/core/Either"
-import { constVoid, pipe } from "@matechs/core/Function"
+import { constVoid, pipe, identity } from "@matechs/core/Function"
 import * as NA from "@matechs/core/NonEmptyArray"
 import * as MO from "@matechs/morphic"
 
@@ -67,11 +67,23 @@ export type Handler = (
   next: FinalHandler
 ) => T.Effect<unknown, T.DefaultEnv, never, void>
 
+export type HandlerE<E> = (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  next: FinalHandler
+) => T.Effect<unknown, T.DefaultEnv, E, void>
+
 export type HandlerR<R> = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   next: FinalHandler
 ) => T.Effect<unknown, T.DefaultEnv & R, never, void>
+
+export type HandlerRE<R, E> = (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  next: FinalHandler
+) => T.Effect<unknown, T.DefaultEnv & R, E, void>
 
 export type FinalHandler = (
   req: http.IncomingMessage,
@@ -206,7 +218,7 @@ export type HttpMethod =
   | "TRACE"
   | "PATCH"
 
-export type RouteHandler<R> = (params: unknown) => HandlerR<R>
+export type RouteHandler<R> = (params: unknown) => HandlerRE<R, HttpError>
 
 export function route<K>(has: T.Has<Server, K>) {
   return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
@@ -221,7 +233,10 @@ export function route<K>(has: T.Has<Server, K>) {
             if (matchResult === false) {
               return next(req, res)
             } else {
-              return T.provideAll_(f(matchResult.params)(req, res, next), r)
+              return T.provideAll_(
+                defaultErrorHandler(f)(matchResult.params)(req, res, next),
+                r
+              )
             }
           } else {
             return next(req, res)
@@ -263,7 +278,10 @@ export function use<K>(has: T.Has<Server, K>) {
             if (matchResult === false) {
               return next(req, res)
             } else {
-              return T.provideAll_(f(matchResult.params)(req, res, next), r)
+              return T.provideAll_(
+                defaultErrorHandler(f)(matchResult.params)(req, res, next),
+                r
+              )
             }
           } else {
             return next(req, res)
@@ -299,7 +317,29 @@ export const config = <K>(has: Has.Augumented<Server, K>) =>
     T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
   )
 
-export const getBody = <R>(f: (body: Buffer) => HandlerR<R>): HandlerR<R> => (
+export const defaultErrorHandler = <U, R, E extends HttpError>(
+  f: (u: U) => HandlerRE<R, E>
+): ((u: U) => HandlerR<R>) => (u: U) => (req, res, next) =>
+  pipe(
+    f(u)(req, res, next),
+    T.foldM((e) => e.render(req, res), T.succeedNow)
+  )
+
+export const handleError = <E, R2, E2>(g: (e: E) => HandlerRE<R2, E2>) => <U, R>(
+  f: (u: U) => HandlerRE<R, E>
+) => (u: U) => (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  next: FinalHandler
+) =>
+  pipe(
+    f(u)(req, res, next),
+    T.foldM((e) => g(e)(req, res, next), T.succeedNow)
+  )
+
+export const getBody = <R, E>(
+  f: (body: Buffer) => HandlerRE<R, E>
+): HandlerRE<R, E> => (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   next: FinalHandler
@@ -329,8 +369,8 @@ export const getBody = <R>(f: (body: Buffer) => HandlerR<R>): HandlerR<R> => (
 
 export const params = <A>(morph: {
   decode: (i: unknown) => Ei.Either<MO.Errors, A>
-}) => <R1>(f: (a: A) => HandlerR<R1>) => {
-  return (u: unknown) => (
+}) => <R1, E>(f: (a: A) => HandlerRE<R1, E>) => {
+  return (u: unknown): HandlerRE<R1, E | ParametersDecoding> => (
     req: http.IncomingMessage,
     res: http.ServerResponse,
     next: FinalHandler
@@ -342,13 +382,113 @@ export const params = <A>(morph: {
         return f(decoded.right)(req, res, next)
       }
       case "Left": {
-        return T.effectTotal(() => {
-          res.statusCode = 422
-          res.setHeader("Content-Type", "application/json")
-          res.write(JSON.stringify({ error: MO.reportFailure(decoded.left) }))
-          res.end()
-        })
+        return T.fail(new ParametersDecoding(decoded.left))
       }
     }
+  }
+}
+
+export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) => <
+  R1,
+  E
+>(
+  f: (a: A) => HandlerRE<R1, E>
+) => {
+  return getBody(
+    (b) => (
+      req: http.IncomingMessage,
+      res: http.ServerResponse,
+      next: FinalHandler
+    ) => {
+      return pipe(
+        T.effectPartial(identity)(() => JSON.parse(b.toString())),
+        T.catchAll(() => T.fail(new JsonDecoding(b.toString()))),
+        T.chain(
+          (u: unknown): T.AsyncRE<R1 & T.DefaultEnv, E | BodyDecoding, void> => {
+            const decoded = morph.decode(u)
+
+            switch (decoded._tag) {
+              case "Right": {
+                return f(decoded.right)(req, res, next)
+              }
+              case "Left": {
+                return T.fail(new BodyDecoding(decoded.left))
+              }
+            }
+          }
+        )
+      )
+    }
+  )
+}
+
+export abstract class HttpError {
+  abstract render(
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ): T.Effect<unknown, unknown, never, void>
+}
+
+export class JsonDecoding extends HttpError {
+  readonly _tag = "JsonDecoding"
+
+  constructor(readonly original: unknown) {
+    super()
+  }
+
+  render(
+    _: http.IncomingMessage,
+    res: http.ServerResponse
+  ): T.Effect<unknown, unknown, never, void> {
+    return T.effectTotal(() => {
+      res.statusCode = 422
+      res.setHeader("Content-Type", "application/json")
+      res.write(
+        JSON.stringify({
+          _tag: "JsonDecodingFailed"
+        })
+      )
+      res.end()
+    })
+  }
+}
+
+export class BodyDecoding extends HttpError {
+  readonly _tag = "BodyDecoding"
+
+  constructor(readonly errors: MO.Errors) {
+    super()
+  }
+
+  render(
+    _: http.IncomingMessage,
+    res: http.ServerResponse
+  ): T.Effect<unknown, unknown, never, void> {
+    return T.effectTotal(() => {
+      res.statusCode = 422
+      res.setHeader("Content-Type", "application/json")
+      res.write(JSON.stringify({ error: MO.reportFailure(this.errors) }))
+      res.end()
+    })
+  }
+}
+
+export class ParametersDecoding extends HttpError {
+  readonly _tag = "ParametersDecoding"
+
+  constructor(readonly errors: MO.Errors) {
+    super()
+  }
+
+  render(
+    _: http.IncomingMessage,
+    res: http.ServerResponse
+  ): T.Effect<unknown, unknown, never, void> {
+    return T.effectTotal(() => {
+      res.statusCode = 422
+      res.setHeader("Content-Type", "application/json")
+      res.write(JSON.stringify({ error: MO.reportFailure(this.errors) }))
+      res.end()
+    })
   }
 }
