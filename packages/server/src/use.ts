@@ -1,15 +1,13 @@
-import * as S from "./"
+import { makeServer, Server, RequestError, ServerConfig } from "./"
 
 import * as T from "@matechs/core/Eff/Effect"
 import * as L from "@matechs/core/Eff/Layer"
 import { pipe } from "@matechs/core/Function"
 import * as MO from "@matechs/morphic"
 
-export const HasServer = T.has<S.Server>()()
+export const S = makeServer(T.has<Server>()())
 
-const serverConfig = L.service(S.config(HasServer)).pure(
-  new S.ServerConfig(8080, "0.0.0.0")
-)
+const serverConfig = L.service(S.config).pure(new ServerConfig(8080, "0.0.0.0"))
 
 //
 // Person Post Endpoint
@@ -25,7 +23,7 @@ const personPostResponse = MO.make((F) =>
 
 const customErrorMessage = MO.make((F) => F.interface({ error: F.string() }))
 
-const customErrorHandler = T.catchAll((e: S.RequestError) => {
+const customErrorHandler = T.catchAll((e: RequestError) => {
   switch (e._tag) {
     case "JsonDecoding": {
       return pipe(
@@ -40,7 +38,7 @@ const customErrorHandler = T.catchAll((e: S.RequestError) => {
   }
 })
 
-export const personPost = S.route(HasServer)(
+export const personPost = S.route(
   "POST",
   "/person/:id",
   pipe(
@@ -55,7 +53,7 @@ export const personPost = S.route(HasServer)(
   )
 )
 
-export const middle = S.use(HasServer)(
+export const middle = S.use(
   "/home/(.*)",
   pipe(
     S.next,
@@ -68,10 +66,10 @@ export const middle = S.use(HasServer)(
   )
 )
 
-export const homeGet = S.route(HasServer)(
+export const homeGet = S.route(
   "GET",
   "/home/a",
-  S.accessConfigM(HasServer)((config) =>
+  S.accessConfigM((config) =>
     S.accessRouteInputM((input) =>
       T.effectTotal(() => {
         input.res.write(`good: ${config.host}:${config.port}`)
@@ -81,7 +79,7 @@ export const homeGet = S.route(HasServer)(
   )
 )
 
-export const homePost = S.route(HasServer)(
+export const homePost = S.route(
   "POST",
   "/home/b",
   S.getBody((b) =>
@@ -98,15 +96,11 @@ export const homePost = S.route(HasServer)(
 // App Layer with all the routes & the server
 //
 
-const home = pipe(
-  L.all(homeGet, homePost),
-  L.using(S.childRouter("/home/(.*)")(HasServer))
-)
+const home = pipe(L.all(homeGet, homePost), L.using(S.child("/home/(.*)")))
 
 const appLayer = pipe(
   L.all(home, middle, personPost),
-  L.using(S.rootRouter(HasServer)),
-  L.using(S.server(HasServer)),
+  L.using(S.server),
   L.using(serverConfig)
 )
 

@@ -11,7 +11,7 @@ import {
   defaultErrorHandler,
   HasRouteInput,
   RouteInput
-} from "./server"
+} from "../Server"
 
 import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Eff/Effect"
@@ -58,7 +58,7 @@ export const derivationContext = new DerivationContext()
 export const HasRouter = <K>(has: Augumented<Server, K>) =>
   derivationContext.derive(has, () => T.has<Router<K>>()<K>(has[HasURI].brand))
 
-export const rootRouter = <K>(has: Augumented<Server, K>) =>
+export const root = <K>(has: Augumented<Server, K>) =>
   L.service(HasRouter(has)).fromManaged(
     pipe(
       M.makeExit_(
@@ -81,7 +81,7 @@ export const rootRouter = <K>(has: Augumented<Server, K>) =>
     )
   )
 
-export const childRouter = (base: string) => <K>(has: Augumented<Server, K>) =>
+export const child = <K>(has: Augumented<Server, K>) => (base: string) =>
   L.service(HasRouter(has)).fromManaged(
     pipe(
       M.makeExit_(

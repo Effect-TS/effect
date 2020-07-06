@@ -199,7 +199,7 @@ export const config = <K>(has: Has.Augumented<Server, K>) =>
 export const accessConfigM = <K>(has: Has.Augumented<Server, K>) =>
   T.accessServiceM(config(has))
 
-export const defaultErrorHandler = <U, R, E extends HttpError>(f: HandlerRE<R, E>) =>
+export const defaultErrorHandler = <R, E extends HttpError>(f: HandlerRE<R, E>) =>
   T.foldM_(f, (e) => e.render(), T.succeedNow)
 
 export class RouteInput {

@@ -17,7 +17,7 @@ const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
   fs.writeFile
 )
 
-const modules: string[] = []
+const modules: string[] = ["Api", "Server", "Router"]
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
 
