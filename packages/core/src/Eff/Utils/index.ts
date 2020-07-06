@@ -10,3 +10,5 @@ export type KOf<T> = [T] extends [{ [_U]: infer URI }]
     ? Kind4<URI, SOf<T>, ROf<T>, EOf<T>, AOf<T>>
     : T
   : T
+
+export type Erase<R, K> = R & K extends K & infer R1 ? R1 : R

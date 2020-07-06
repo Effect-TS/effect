@@ -68,7 +68,7 @@ export const middle = S.use(HasServer)(
   )
 )
 
-const homeGet = S.route(HasServer)(
+export const homeGet = S.route(HasServer)(
   "GET",
   "/home/a",
   S.accessConfigM(HasServer)((config) =>
@@ -81,7 +81,7 @@ const homeGet = S.route(HasServer)(
   )
 )
 
-const homePost = S.route(HasServer)(
+export const homePost = S.route(HasServer)(
   "POST",
   "/home/b",
   S.getBody((b) =>
@@ -98,10 +98,13 @@ const homePost = S.route(HasServer)(
 // App Layer with all the routes & the server
 //
 
-const appLayer = pipe(
+const home = pipe(
   L.all(homeGet, homePost),
-  L.using(S.childRouter("/home/(.*)")(HasServer)),
-  L.using(L.all(middle, personPost)),
+  L.using(S.childRouter("/home/(.*)")(HasServer))
+)
+
+const appLayer = pipe(
+  L.all(home, middle, personPost),
   L.using(S.rootRouter(HasServer)),
   L.using(S.server(HasServer)),
   L.using(serverConfig)
