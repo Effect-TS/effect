@@ -11,66 +11,85 @@ const serverConfig = L.service(S.config(HasServer)).pure(
   new S.ServerConfig(8080, "0.0.0.0")
 )
 
-const appLayer = pipe(
-  L.all(
-    S.use(HasServer)("/home", () => (req, res, next) =>
-      pipe(
-        T.timed(next(req, res)),
-        T.chain(([ms]) =>
-          T.effectTotal(() => {
-            console.log(`request took: ${ms} ms`)
-          })
-        )
-      )
+//
+// Person Post Endpoint
+//
+
+const personPostParams = MO.make((F) => F.interface({ id: F.string() }))
+
+const personPostBody = MO.make((F) => F.interface({ name: F.string() }))
+
+const personPostResponse = MO.make((F) =>
+  F.interface({ id: F.string(), name: F.string() })
+)
+
+const personPost = S.route(HasServer)(
+  "POST",
+  "/person/:id",
+  pipe(
+    S.params(personPostParams)(({ id }) =>
+      S.body(personPostBody)(({ name }) => S.response(personPostResponse)({ id, name }))
     ),
-    S.route(HasServer)(
-      "POST",
-      "/person/:id",
-      pipe(
-        S.params(MO.make((F) => F.interface({ id: F.string() })))(({ id }) =>
-          S.body(MO.make((F) => F.interface({ name: F.string() })))(
-            ({ name }) => (_, res) =>
-              T.effectTotal(() => {
-                res.write(`id: ${id}\n`)
-                res.write(`name: ${name}\n`)
-                res.end()
-              })
+    T.catchAll((e) => {
+      switch (e._tag) {
+        case "JsonDecoding": {
+          return S.accessRouteInputM((i) =>
+            T.effectTotal(() => {
+              i.res.statusCode = 400
+              i.res.setHeader("Content-Type", "application/json")
+              i.res.write(JSON.stringify({ error: "invalid json body" }))
+              i.res.end()
+            })
           )
-        ),
-        S.handleError((e) => (req, res) => {
-          switch (e._tag) {
-            case "JsonDecoding": {
-              return T.effectTotal(() => {
-                res.statusCode = 400
-                res.setHeader("Content-Type", "application/json")
-                res.write(JSON.stringify({ error: "invalid json body" }))
-                res.end()
-              })
-            }
-            default: {
-              return e.render(req, res)
-            }
-          }
-        })
-      )
-    ),
-    S.route(HasServer)("GET", "/home", () => (_, res) =>
-      T.accessServiceM(S.config(HasServer))((c) =>
-        T.effectTotal(() => {
-          res.write(`good: ${c.host}:${c.port}`)
-          res.end()
-        })
-      )
-    ),
-    S.route(HasServer)("POST", "/home", () =>
-      S.getBody((b) => (_, res) =>
-        T.effectTotal(() => {
-          res.write(b)
-          res.end()
-        })
-      )
+        }
+        default: {
+          return e.render()
+        }
+      }
+    })
+  )
+)
+
+const middle = S.use(HasServer)(
+  "/home",
+  pipe(
+    T.timed(S.accessRouteInputM((i) => i.next(i.req, i.res))),
+    T.chain(([ms]) =>
+      T.effectTotal(() => {
+        console.log(`request took: ${ms} ms`)
+      })
     )
-  ),
+  )
+)
+
+const homeGet = S.route(HasServer)(
+  "GET",
+  "/home",
+  T.accessServiceM(S.config(HasServer))((config) =>
+    S.accessRouteInputM((input) =>
+      T.effectTotal(() => {
+        input.res.write(`good: ${config.host}:${config.port}`)
+        input.res.end()
+      })
+    )
+  )
+)
+
+const homePost = S.route(HasServer)(
+  "POST",
+  "/home",
+  S.getBody((b) =>
+    S.accessRouteInputM((input) =>
+      T.effectTotal(() => {
+        input.res.write(b)
+        input.res.end()
+      })
+    )
+  )
+)
+
+const appLayer = pipe(
+  L.all(middle, personPost, homeGet, homePost),
   L.using(S.server(HasServer)),
   L.using(serverConfig)
 )
