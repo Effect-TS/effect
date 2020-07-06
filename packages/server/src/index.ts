@@ -23,6 +23,23 @@ const personPostResponse = MO.make((F) =>
   F.interface({ id: F.string(), name: F.string() })
 )
 
+const customErrorMessage = MO.make((F) => F.interface({ error: F.string() }))
+
+const customErrorHandler = T.catchAll((e: S.RequestError) => {
+  switch (e._tag) {
+    case "JsonDecoding": {
+      return pipe(
+        customErrorMessage,
+        S.response({ error: "invalid json body" }),
+        T.first(S.status(400))
+      )
+    }
+    default: {
+      return e.render()
+    }
+  }
+})
+
 const personPost = S.route(HasServer)(
   "POST",
   "/person/:id",
@@ -34,30 +51,15 @@ const personPost = S.route(HasServer)(
         S.body(({ name }) => S.response_(personPostResponse, { id, name }))
       )
     ),
-    T.catchAll((e) => {
-      switch (e._tag) {
-        case "JsonDecoding": {
-          return S.accessRouteInputM((i) =>
-            T.effectTotal(() => {
-              i.res.statusCode = 400
-              i.res.setHeader("Content-Type", "application/json")
-              i.res.write(JSON.stringify({ error: "invalid json body" }))
-              i.res.end()
-            })
-          )
-        }
-        default: {
-          return e.render()
-        }
-      }
-    })
+    customErrorHandler
   )
 )
 
 const middle = S.use(HasServer)(
   "/home",
   pipe(
-    T.timed(S.accessRouteInputM((i) => i.next(i.req, i.res))),
+    S.next,
+    T.timed,
     T.chain(([ms]) =>
       T.effectTotal(() => {
         console.log(`request took: ${ms} ms`)
@@ -69,7 +71,7 @@ const middle = S.use(HasServer)(
 const homeGet = S.route(HasServer)(
   "GET",
   "/home",
-  T.accessServiceM(S.config(HasServer))((config) =>
+  S.accessConfigM(HasServer)((config) =>
     S.accessRouteInputM((input) =>
       T.effectTotal(() => {
         input.res.write(`good: ${config.host}:${config.port}`)
