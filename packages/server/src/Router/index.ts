@@ -21,12 +21,12 @@ import * as L from "@matechs/core/Eff/Layer"
 import * as M from "@matechs/core/Eff/Managed"
 import * as NA from "@matechs/core/NonEmptyArray"
 
-export class Router<K> {
+export class Router {
   readonly _tag = "Router"
 
   private handlers = new Array<Handler>()
 
-  constructor(readonly has: Augumented<Server, K>, readonly parent?: Router<K>) {}
+  constructor(readonly parent?: Router) {}
 
   addHandler(h: Handler) {
     this.handlers.push(h)
@@ -57,7 +57,7 @@ export class Router<K> {
 export const derivationContext = new DerivationContext()
 
 export const HasRouter = <K>(has: Augumented<Server, K>) =>
-  derivationContext.derive(has, () => T.has<Router<K>>()<K>(has[HasURI].brand))
+  derivationContext.derive(has, () => T.has<Router>()<K>(has[HasURI].brand))
 
 export const root = <K>(has: Augumented<Server, K>) =>
   L.service(HasRouter(has)).fromManaged(
@@ -65,7 +65,7 @@ export const root = <K>(has: Augumented<Server, K>) =>
       M.makeExit_(
         T.accessServiceM(has)((s) =>
           T.effectTotal(() => {
-            const router = new Router(has)
+            const router = new Router()
             const handler = router.handler
             s.addHandler(handler)
             return [router, handler] as const
@@ -88,7 +88,7 @@ export const child = <K>(has: Augumented<Server, K>) => (base: string) =>
       M.makeExit_(
         T.accessServiceM(HasRouter(has))((s) =>
           T.effectTotal(() => {
-            const router = new Router(has, s)
+            const router = new Router(s)
             const handler: Handler = (req, res, next) => {
               if (req.url && match(base)(req.url) !== false) {
                 return router.handler(req, res, next)
