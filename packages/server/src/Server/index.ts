@@ -1,5 +1,7 @@
 import * as http from "http"
 
+import * as qs from "query-string"
+
 import * as A from "@matechs/core/Array"
 import * as C from "@matechs/core/Eff/Cause"
 import * as T from "@matechs/core/Eff/Effect"
@@ -205,6 +207,7 @@ export const defaultErrorHandler = <R, E extends HttpError>(f: HandlerRE<R, E>) 
 export class RouteInput {
   constructor(
     readonly params: unknown,
+    readonly query: string,
     readonly req: http.IncomingMessage,
     readonly res: http.ServerResponse,
     readonly next: FinalHandler
@@ -301,6 +304,37 @@ export const body = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
     )
   )
 
+export const query_ = <R1, E, A>(
+  morph: {
+    decode: (i: unknown) => Ei.Either<MO.Errors, A>
+  },
+  f: (a: A) => HandlerRE<R1, E>
+) => query(f)(morph)
+
+export const query = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
+  decode: (i: unknown) => Ei.Either<MO.Errors, A>
+}) =>
+  accessRouteInputM((i) =>
+    pipe(
+      T.effectPartial(identity)(() => qs.parse(`?${i.query}`)),
+      T.catchAll(() => T.fail(new QueryParsing())),
+      T.chain(
+        (u: unknown): T.AsyncRE<R1 & T.DefaultEnv, E | QueryDecoding, void> => {
+          const decoded = morph.decode(u)
+
+          switch (decoded._tag) {
+            case "Right": {
+              return f(decoded.right)
+            }
+            case "Left": {
+              return T.fail(new QueryDecoding(decoded.left))
+            }
+          }
+        }
+      )
+    )
+  )
+
 export const response_ = <A>(morph: { encode: (i: A) => unknown }, a: A) =>
   response(a)(morph)
 
@@ -326,7 +360,12 @@ export abstract class HttpError {
   abstract render(): T.Effect<unknown, HasRouteInput, never, void>
 }
 
-export type RequestError = ParametersDecoding | JsonDecoding | BodyDecoding
+export type RequestError =
+  | ParametersDecoding
+  | JsonDecoding
+  | BodyDecoding
+  | QueryParsing
+  | QueryDecoding
 
 export class JsonDecoding extends HttpError {
   readonly _tag = "JsonDecoding"
@@ -372,6 +411,44 @@ export class BodyDecoding extends HttpError {
 
 export class ParametersDecoding extends HttpError {
   readonly _tag = "ParametersDecoding"
+
+  constructor(readonly errors: MO.Errors) {
+    super()
+  }
+
+  render(): T.Effect<unknown, HasRouteInput, never, void> {
+    return T.accessServiceM(HasRouteInput)((i) =>
+      T.effectTotal(() => {
+        i.res.statusCode = 422
+        i.res.setHeader("Content-Type", "application/json")
+        i.res.write(JSON.stringify({ errors: MO.reportFailure(this.errors) }))
+        i.res.end()
+      })
+    )
+  }
+}
+
+export class QueryParsing extends HttpError {
+  readonly _tag = "QueryParsing"
+
+  constructor() {
+    super()
+  }
+
+  render(): T.Effect<unknown, HasRouteInput, never, void> {
+    return T.accessServiceM(HasRouteInput)((i) =>
+      T.effectTotal(() => {
+        i.res.statusCode = 422
+        i.res.setHeader("Content-Type", "application/json")
+        i.res.write(JSON.stringify({ error: "Invalid query params" }))
+        i.res.end()
+      })
+    )
+  }
+}
+
+export class QueryDecoding extends HttpError {
+  readonly _tag = "QueryDecoding"
 
   constructor(readonly errors: MO.Errors) {
     super()
