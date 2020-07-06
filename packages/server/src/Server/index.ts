@@ -269,34 +269,30 @@ export type HasRouteInput = T.HasType<typeof HasRouteInput>
 
 export const accessRouteInputM = T.accessServiceM(HasRouteInput)
 
-export const getBody = <R, E>(
-  f: (body: Buffer) => HandlerRE<R, E>
-): HandlerRE<R & HasRouteInput, E> =>
-  pipe(
-    T.accessService(HasRouteInput)((i) => i.req),
-    T.chain((req) =>
-      T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
-        const body: Uint8Array[] = []
+export const bodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
+  T.accessService(HasRouteInput)((i) => i.req),
+  T.chain((req) =>
+    T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
+      const body: Uint8Array[] = []
 
-        const onData: (chunk: any) => void = (chunk) => {
-          body.push(chunk)
-        }
+      const onData: (chunk: any) => void = (chunk) => {
+        body.push(chunk)
+      }
 
-        const onEnd = () => {
-          cb(T.succeedNow(Buffer.concat(body)))
-        }
+      const onEnd = () => {
+        cb(T.succeedNow(Buffer.concat(body)))
+      }
 
-        req.on("data", onData)
-        req.on("end", onEnd)
+      req.on("data", onData)
+      req.on("end", onEnd)
 
-        return T.effectTotal(() => {
-          req.removeListener("data", onData)
-          req.removeListener("end", onEnd)
-        })
+      return T.effectTotal(() => {
+        req.removeListener("data", onData)
+        req.removeListener("end", onEnd)
       })
-    ),
-    T.chain((body) => f(body))
+    })
   )
+)
 
 export const params_ = <R1, E, A>(
   morph: {
@@ -323,58 +319,43 @@ export const params = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
     }
   )
 
-export const body_ = <R1, E, A>(
-  morph: {
-    decode: (i: unknown) => Ei.Either<MO.Errors, A>
-  },
-  f: (a: A) => HandlerRE<R1, E>
-) => body(f)(morph)
+export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
+  pipe(
+    bodyBuffer,
+    T.chain((b) =>
+      pipe(
+        T.effectPartial(identity)(() => JSON.parse(b.toString())),
+        T.catchAll(() => T.fail(new JsonDecoding(b.toString()))),
+        T.chain(
+          (u: unknown): T.AsyncRE<T.DefaultEnv, BodyDecoding, A> => {
+            const decoded = morph.decode(u)
 
-export const body = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
-  decode: (i: unknown) => Ei.Either<MO.Errors, A>
-}) =>
-  getBody((b) =>
-    pipe(
-      T.effectPartial(identity)(() => JSON.parse(b.toString())),
-      T.catchAll(() => T.fail(new JsonDecoding(b.toString()))),
-      T.chain(
-        (u: unknown): T.AsyncRE<R1 & T.DefaultEnv, E | BodyDecoding, void> => {
-          const decoded = morph.decode(u)
-
-          switch (decoded._tag) {
-            case "Right": {
-              return f(decoded.right)
-            }
-            case "Left": {
-              return T.fail(new BodyDecoding(decoded.left))
+            switch (decoded._tag) {
+              case "Right": {
+                return T.succeedNow(decoded.right)
+              }
+              case "Left": {
+                return T.fail(new BodyDecoding(decoded.left))
+              }
             }
           }
-        }
+        )
       )
     )
   )
 
-export const query_ = <R1, E, A>(
-  morph: {
-    decode: (i: unknown) => Ei.Either<MO.Errors, A>
-  },
-  f: (a: A) => HandlerRE<R1, E>
-) => query(f)(morph)
-
-export const query = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
-  decode: (i: unknown) => Ei.Either<MO.Errors, A>
-}) =>
+export const query = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
   accessRouteInputM((i) =>
     pipe(
       T.effectPartial(identity)(() => qs.parse(`?${i.query}`)),
       T.catchAll(() => T.fail(new QueryParsing())),
       T.chain(
-        (u: unknown): T.AsyncRE<R1 & T.DefaultEnv, E | QueryDecoding, void> => {
+        (u: unknown): T.AsyncRE<T.DefaultEnv, QueryDecoding, A> => {
           const decoded = morph.decode(u)
 
           switch (decoded._tag) {
             case "Right": {
-              return f(decoded.right)
+              return T.succeedNow(decoded.right)
             }
             case "Left": {
               return T.fail(new QueryDecoding(decoded.left))
@@ -385,10 +366,7 @@ export const query = <R1, E, A>(f: (a: A) => HandlerRE<R1, E>) => (morph: {
     )
   )
 
-export const response_ = <A>(morph: { encode: (i: A) => unknown }, a: A) =>
-  response(a)(morph)
-
-export const response = <A>(a: A) => (morph: { encode: (i: A) => unknown }) =>
+export const response = <A>(morph: { encode: (i: A) => unknown }) => (a: A) =>
   T.accessServiceM(HasRouteInput)((i) =>
     T.effectTotal(() => {
       i.res.setHeader("Content-Type", "application/json")
