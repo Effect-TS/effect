@@ -13,7 +13,7 @@ export const S = makeServer(T.has<Server>()())
 
 const serverConfig = L.service(S.config).pure(new ServerConfig(8080, "0.0.0.0"))
 
-export const currentUser = S.requestState.make<O.Option<string>>(O.none)
+export const currentUser = S.makeState<O.Option<string>>(O.none)
 
 //
 // Person Post Endpoint
@@ -23,18 +23,19 @@ const personPostParams = MO.make((F) => F.interface({ id: F.string() }))
 
 const personPostBody = MO.make((F) => F.interface({ name: F.string() }))
 
-const personPostResponse = MO.make((F) =>
-  F.interface({ id: F.string(), name: F.string() })
+const personPostResponse = S.response(
+  MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
 )
 
-const customErrorMessage = MO.make((F) => F.interface({ error: F.string() }))
+const customErrorResponse = S.response(
+  MO.make((F) => F.interface({ error: F.string() }))
+)
 
 const customErrorHandler = T.catchAll((e: RequestError) => {
   switch (e._tag) {
     case "JsonDecoding": {
       return pipe(
-        customErrorMessage,
-        S.response({ error: "invalid json body" }),
+        customErrorResponse({ error: "invalid json body" }),
         T.first(S.status(400))
       )
     }
@@ -51,8 +52,8 @@ export const personPost = S.route(
     personPostParams,
     S.params(({ id }) =>
       pipe(
-        personPostBody,
-        S.body(({ name }) => S.response_(personPostResponse, { id, name }))
+        S.body(personPostBody),
+        T.chain(({ name }) => personPostResponse({ id, name }))
       )
     ),
     customErrorHandler
@@ -62,7 +63,7 @@ export const personPost = S.route(
 export const auth = S.use(
   "(.*)",
   pipe(
-    S.requestState.set(currentUser)(O.some("test")),
+    S.setState(currentUser)(O.some("test")),
     T.chain(() => S.next),
     T.timed,
     T.chain(([ms]) =>
@@ -97,24 +98,19 @@ export const homePostQueryParams = MO.make((F) =>
 export const homePost = S.route(
   "POST",
   "/home/b",
-  S.getBody((b) =>
-    pipe(
-      homePostQueryParams,
-      S.query((q) =>
-        pipe(
-          S.requestState.get(currentUser),
-          T.chain((s) =>
-            S.accessRouteInputM((input) =>
-              T.effectTotal(() => {
-                input.res.write(b)
-                input.res.write(JSON.stringify(q))
-                input.res.write(JSON.stringify(s))
-                input.res.end()
-              })
-            )
-          )
-        )
-      )
+  pipe(
+    T.of,
+    T.bind("body", () => S.bodyBuffer),
+    T.bind("query", () => S.query(homePostQueryParams)),
+    T.bind("user", () => S.getState(currentUser)),
+    T.bind("res", () => S.accessRouteInputM((a) => T.succeedNow(a.res))),
+    T.tap(({ body, query, res, user }) =>
+      T.effectTotal(() => {
+        res.write(body)
+        res.write(JSON.stringify(query))
+        res.write(JSON.stringify(user))
+        res.end()
+      })
     )
   )
 )
