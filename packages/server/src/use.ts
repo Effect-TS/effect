@@ -3,6 +3,7 @@ import { makeServer, RequestError, Server, ServerConfig } from "./"
 import * as T from "@matechs/core/Eff/Effect"
 import * as L from "@matechs/core/Eff/Layer"
 import { pipe } from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
 import * as MO from "@matechs/morphic"
 import { HKT2 } from "@matechs/morphic-alg/utils/hkt"
 import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"
@@ -11,6 +12,8 @@ import { Codec, failure, success } from "@matechs/morphic/model"
 export const S = makeServer(T.has<Server>()())
 
 const serverConfig = L.service(S.config).pure(new ServerConfig(8080, "0.0.0.0"))
+
+export const currentUser = S.requestState.make<O.Option<string>>(O.none)
 
 //
 // Person Post Endpoint
@@ -56,10 +59,11 @@ export const personPost = S.route(
   )
 )
 
-export const middle = S.use(
+export const auth = S.use(
   "/(.*)",
   pipe(
-    S.next,
+    S.requestState.set(currentUser)(O.some("test")),
+    T.chain(() => S.next),
     T.timed,
     T.chain(([ms]) =>
       S.accessRouteInputM((i) =>
@@ -95,12 +99,18 @@ export const homePost = S.route(
         })
       ),
       S.query((q) =>
-        S.accessRouteInputM((input) =>
-          T.effectTotal(() => {
-            input.res.write(b)
-            input.res.write(JSON.stringify(q))
-            input.res.end()
-          })
+        pipe(
+          S.requestState.get(currentUser),
+          T.chain((s) =>
+            S.accessRouteInputM((input) =>
+              T.effectTotal(() => {
+                input.res.write(b)
+                input.res.write(JSON.stringify(q))
+                input.res.write(JSON.stringify(s))
+                input.res.end()
+              })
+            )
+          )
         )
       )
     )
@@ -111,10 +121,11 @@ export const homePost = S.route(
 // App Layer with all the routes & the server
 //
 
-const home = pipe(L.all(homeGet, homePost), L.using(S.child("/home/(.*)")))
+const home = L.using(S.child("/home/(.*)"))(L.all(homeGet, homePost))
 
 const appLayer = pipe(
-  L.all(home, middle, personPost),
+  L.all(home, personPost),
+  L.using(auth),
   L.using(S.server),
   L.using(serverConfig)
 )

@@ -11,6 +11,7 @@ import * as Has from "@matechs/core/Eff/Has"
 import * as L from "@matechs/core/Eff/Layer"
 import * as Scope from "@matechs/core/Eff/Scope"
 import * as Supervisor from "@matechs/core/Eff/Supervisor"
+import { AtomicNumber } from "@matechs/core/Eff/Support/AtomicNumber"
 import { AtomicReference } from "@matechs/core/Eff/Support/AtomicReference"
 import * as Ei from "@matechs/core/Either"
 import { constVoid, identity, pipe } from "@matechs/core/Function"
@@ -64,7 +65,7 @@ export type Handler = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   next: FinalHandler
-) => T.Effect<unknown, T.DefaultEnv, never, void>
+) => T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void>
 
 export type HandlerR<R> = T.AsyncRE<R, HttpError, void>
 export type HandlerRE<R, E> = T.AsyncRE<R, E, void>
@@ -72,15 +73,72 @@ export type HandlerRE<R, E> = T.AsyncRE<R, E, void>
 export type FinalHandler = (
   req: http.IncomingMessage,
   res: http.ServerResponse
-) => T.Effect<unknown, T.DefaultEnv, never, void>
+) => T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void>
+
+export class RequestState {
+  private stateMap = new Map<unknown, unknown>()
+
+  constructor(readonly requestId: number) {}
+
+  put<V>(_: Value<V>) {
+    return (v: V) =>
+      T.effectTotal(() => {
+        this.stateMap.set(_, v)
+      })
+  }
+
+  get<V>(_: Value<V>) {
+    return T.effectTotal(() => {
+      const v = this.stateMap.get(_)
+      if (v) {
+        return v as V
+      }
+      return _.initial
+    })
+  }
+}
+
+export class Value<V> {
+  readonly _V!: V
+
+  constructor(readonly initial: V) {}
+}
+
+export const requestState = <V>(initial: V) => new Value(initial)
+
+export const HasRequestState = T.has<RequestState>()()
+export type HasRequestState = T.HasType<typeof HasRequestState>
+
+export const getRequestState = <V>(v: Value<V>) =>
+  T.accessServiceM(HasRequestState)((s) => s.get(v))
+
+export const setRequestState = <V>(v: Value<V>) => (value: V) =>
+  T.accessServiceM(HasRequestState)((s) => s.put(v)(value))
 
 export class Server {
   readonly interrupted = new AtomicReference(false)
 
+  readonly requestId = new AtomicNumber(0)
+  readonly state = new Map<number, RequestState>()
+
   readonly server = http.createServer(
     (req: http.IncomingMessage, res: http.ServerResponse) => {
       if (!this.interrupted.get) {
-        this.executor.runAsync(this.finalHandler(req, res))
+        const rid = this.requestId.incrementAndGet()
+        const rst = new RequestState(rid)
+
+        this.state.set(rid, rst)
+
+        pipe(
+          this.finalHandler(req, res),
+          T.chain(() =>
+            T.effectTotal(() => {
+              this.state.delete(rid)
+            })
+          ),
+          T.provideService(HasRequestState)(rst),
+          this.executor.runAsync
+        )
       }
     }
   )
@@ -107,7 +165,7 @@ export class Server {
     req: http.IncomingMessage,
     res: http.ServerResponse,
     rest: readonly Handler[] = this.handlers
-  ): T.Effect<unknown, T.DefaultEnv, never, void> {
+  ): T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void> {
     if (A.isNonEmpty(rest)) {
       return NA.head(rest)(req, res, (reqR, resN) =>
         this.finalHandler(reqR, resN, NA.tail(rest))

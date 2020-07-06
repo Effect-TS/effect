@@ -15,7 +15,10 @@ import {
   response_,
   status,
   query,
-  query_
+  query_,
+  requestState,
+  getRequestState,
+  setRequestState
 } from "../Server"
 
 import * as T from "@matechs/core/Eff/Effect"
@@ -43,6 +46,11 @@ export const makeServer = <K>(has: Has.Augumented<Server, K>) => {
     route: R.route(has),
     use: R.use(has),
     config: config(has),
-    server: L.using_(R.root(has), server(has))
+    server: L.using_(R.root(has), server(has)),
+    requestState: {
+      make: requestState,
+      get: getRequestState,
+      set: setRequestState
+    }
   }
 }
