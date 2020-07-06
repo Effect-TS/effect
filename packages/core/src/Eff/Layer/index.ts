@@ -143,7 +143,7 @@ export class Layer<S, R, E, A> {
         T.managedUse_(this.build, (p) =>
           T.accessM(([r, pm]: [R & R1, ProcessMap]) =>
             coerceSE<S | S1, E | E1>()(
-              pm.monitored(T.provideAll_(effect, { ...p, ...r }))
+              pm.monitored(T.provideAll_(effect, { ...r, ...p }))
             )
           )
         ),
@@ -365,8 +365,8 @@ export const using_ = <S, R, E, A, S2, R2, E2, A2>(
           ProcessMap
         ] => [
           {
-            ...a2,
-            ...r0
+            ...r0,
+            ...a2
           },
           pm
         ]),

@@ -1,7 +1,5 @@
 import * as http from "http"
 
-import { match } from "path-to-regexp"
-
 import * as A from "@matechs/core/Array"
 import * as C from "@matechs/core/Eff/Cause"
 import * as T from "@matechs/core/Eff/Effect"
@@ -9,12 +7,11 @@ import * as E from "@matechs/core/Eff/Exit"
 import * as F from "@matechs/core/Eff/Fiber"
 import * as Has from "@matechs/core/Eff/Has"
 import * as L from "@matechs/core/Eff/Layer"
-import * as M from "@matechs/core/Eff/Managed"
 import * as Scope from "@matechs/core/Eff/Scope"
 import * as Supervisor from "@matechs/core/Eff/Supervisor"
 import { AtomicReference } from "@matechs/core/Eff/Support/AtomicReference"
 import * as Ei from "@matechs/core/Either"
-import { constVoid, pipe, identity } from "@matechs/core/Function"
+import { constVoid, identity, pipe } from "@matechs/core/Function"
 import * as NA from "@matechs/core/NonEmptyArray"
 import * as MO from "@matechs/morphic"
 
@@ -67,7 +64,6 @@ export type Handler = (
   next: FinalHandler
 ) => T.Effect<unknown, T.DefaultEnv, never, void>
 
-export type HandlerE<E> = T.AsyncRE<T.DefaultEnv & HasRouteInput, E, void>
 export type HandlerR<R> = T.AsyncRE<R, HttpError, void>
 export type HandlerRE<R, E> = T.AsyncRE<R, E, void>
 
@@ -193,16 +189,18 @@ export function server<S>(
     .release((s) => s.release())
 }
 
-export type HttpMethod =
-  | "GET"
-  | "HEAD"
-  | "POST"
-  | "PUT"
-  | "DELETE"
-  | "CONNECT"
-  | "OPTIONS"
-  | "TRACE"
-  | "PATCH"
+export const configDerivationContext = new Has.DerivationContext()
+
+export const config = <K>(has: Has.Augumented<Server, K>) =>
+  configDerivationContext.derive(has, () =>
+    T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
+  )
+
+export const accessConfigM = <K>(has: Has.Augumented<Server, K>) =>
+  T.accessServiceM(config(has))
+
+export const defaultErrorHandler = <U, R, E extends HttpError>(f: HandlerRE<R, E>) =>
+  T.foldM_(f, (e) => e.render(), T.succeedNow)
 
 export class RouteInput {
   constructor(
@@ -217,119 +215,6 @@ export const HasRouteInput = T.has<RouteInput>()()
 export type HasRouteInput = T.HasType<typeof HasRouteInput>
 
 export const accessRouteInputM = T.accessServiceM(HasRouteInput)
-
-export type RouteHandler<R> = T.AsyncRE<R & HasRouteInput, HttpError, void>
-
-export function route<K>(has: T.Has<Server, K>) {
-  return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
-    const matcher = match(pattern)
-
-    const acquire = T.accessServiceM(has)((server) =>
-      T.access((r: R & T.DefaultEnv) => {
-        const handler: Handler = (req, res, next) => {
-          if (req.url && req.method && req.method === method) {
-            const matchResult = matcher(req.url)
-
-            if (matchResult === false) {
-              return next(req, res)
-            } else {
-              return pipe(
-                f,
-                defaultErrorHandler,
-                T.provideService(HasRouteInput)(
-                  new RouteInput(matchResult.params, req, res, next)
-                ),
-                T.provideAll(r)
-              )
-            }
-          } else {
-            return next(req, res)
-          }
-        }
-
-        server.addHandler(handler)
-
-        return {
-          handler
-        }
-      })
-    )
-
-    return pipe(
-      M.makeExit_(acquire, ({ handler }) =>
-        T.accessServiceM(has)((s) =>
-          T.effectTotal(() => {
-            s.removeHandler(handler)
-          })
-        )
-      ),
-      M.map(() => ({})),
-      L.fromManagedEnv
-    )
-  }
-}
-
-export function use<K>(has: T.Has<Server, K>) {
-  return <R>(pattern: string, f: RouteHandler<R>) => {
-    const matcher = match(pattern)
-
-    const acquire = T.accessServiceM(has)((server) =>
-      T.access((r: R & T.DefaultEnv) => {
-        const handler: Handler = (req, res, next) => {
-          if (req.url && req.method) {
-            const matchResult = matcher(req.url)
-
-            if (matchResult === false) {
-              return next(req, res)
-            } else {
-              return pipe(
-                f,
-                defaultErrorHandler,
-                T.provideService(HasRouteInput)(
-                  new RouteInput(matchResult.params, req, res, next)
-                ),
-                T.provideAll(r)
-              )
-            }
-          } else {
-            return next(req, res)
-          }
-        }
-
-        server.addHandler(handler)
-
-        return {
-          handler
-        }
-      })
-    )
-
-    return pipe(
-      M.makeExit_(acquire, ({ handler }) =>
-        T.accessServiceM(has)((s) =>
-          T.effectTotal(() => {
-            s.removeHandler(handler)
-          })
-        )
-      ),
-      M.map(() => ({})),
-      L.fromManagedEnv
-    )
-  }
-}
-
-export const configDerivationContext = new Has.DerivationContext()
-
-export const config = <K>(has: Has.Augumented<Server, K>) =>
-  configDerivationContext.derive(has, () =>
-    T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
-  )
-
-export const accessConfigM = <K>(has: Has.Augumented<Server, K>) =>
-  T.accessServiceM(config(has))
-
-export const defaultErrorHandler = <U, R, E extends HttpError>(f: HandlerRE<R, E>) =>
-  T.foldM_(f, (e) => e.render(), T.succeedNow)
 
 export const getBody = <R, E>(
   f: (body: Buffer) => HandlerRE<R, E>
