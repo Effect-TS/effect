@@ -58,10 +58,6 @@ export function provider<A>(layer: L.Layer<never, T.DefaultEnv, never, A>) {
       )
     )
 
-    if (typeof window === "undefined" && typeof setImmediate === "function") {
-      T.runAsync(f(unit))
-    }
-
     const runtime = new ReactRuntime(env)
 
     return class extends React.Component {
@@ -71,6 +67,9 @@ export function provider<A>(layer: L.Layer<never, T.DefaultEnv, never, A>) {
         }
       }
       render() {
+        if (typeof window === "undefined" && typeof setImmediate === "function") {
+          T.runAsync(f(unit))
+        }
         return <Cmp runtime={runtime} />
       }
     }
