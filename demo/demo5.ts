@@ -1,6 +1,6 @@
-import { pipe } from "../../Function"
-import * as T from "../Effect"
-import * as M from "../Managed"
+import { pipe } from "../src/Function"
+import * as T from "../src/next/Effect"
+import * as M from "../src/next/Managed"
 
 const managedExample = pipe(
   T.accessM(({ foo }: { foo: string }) => T.delay(1000)(T.succeedNow(foo))),
