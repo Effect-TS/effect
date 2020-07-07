@@ -1,6 +1,8 @@
 import * as React from "react"
 
+import { UnionToIntersection } from "@matechs/core/Base/Apply"
 import { pipe } from "@matechs/core/Function"
+import * as RE from "@matechs/core/Record"
 import * as T from "@matechs/core/next/Effect"
 import { unit } from "@matechs/core/next/Exit"
 import { Exit, flatten } from "@matechs/core/next/Exit"
@@ -48,6 +50,23 @@ export function component<R>(): <P>(
   F: (runtime: ReactRuntime<R>) => React.ComponentType<P>
 ) => React.ComponentType<RuntimeProps<R> & P> {
   return (F) => (p) => React.createElement(F(p.runtime), p)
+}
+
+export function componentWith<S extends { [k in keyof S]: T.Has<any, any> }>(s: S) {
+  return <P>(
+    f: (
+      _: { [k in keyof S]: S[k] extends T.Has<infer A, any> ? A : never }
+    ) => React.ComponentType<P>
+  ) =>
+    component<
+      UnionToIntersection<
+        {
+          [k in keyof S]: S[k] extends T.Has<infer A, infer B> ? T.Has<A, B> : never
+        }[keyof S]
+      >
+    >()((r) => {
+      return f(RE.map_(s, (h) => read(h)(r as any)) as any)
+    })
 }
 
 export function render<K>(Cmp: React.ComponentType<RuntimeProps<K>>) {
