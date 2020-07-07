@@ -1,9 +1,9 @@
-import * as C from "../../src/Eff/Cause"
-import { Untraced } from "../../src/Eff/Errors"
-import { None } from "../../src/Eff/Fiber"
 import * as E from "../../src/Either"
 import { pipe } from "../../src/Function"
 import * as O from "../../src/Option"
+import * as C from "../../src/next/Cause"
+import { Untraced } from "../../src/next/Errors"
+import { None } from "../../src/next/Fiber"
 
 describe("Cause", () => {
   it("defects", () => {
