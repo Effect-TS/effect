@@ -2156,30 +2156,6 @@
     npmlog "^4.1.2"
     write-file-atomic "^2.3.0"
 
-"@matechs/core@^2.8.0":
-  version "2.8.0"
-  resolved "https://registry.yarnpkg.com/@matechs/core/-/core-2.8.0.tgz#a6353e8aaeaef2980b432233b0753cb1da95cd73"
-  integrity sha512-jQ7Z4GwrEUEY9IaC4oDNi45vlTXOZTRJpYHuLVkdJdG1+qp5Vq1iSvdiH6gR/P1TRAvpT8Ag2BXxEA4imtGg+A==
-  dependencies:
-    fp-ts "2.6.3"
-    fp-ts-contrib "^0.1.15"
-
-"@matechs/morphic-alg@^0.11.0":
-  version "0.11.0"
-  resolved "https://registry.yarnpkg.com/@matechs/morphic-alg/-/morphic-alg-0.11.0.tgz#e35230a1d13e728fded93b82cb94fc12c06e06ec"
-  integrity sha512-D9jtUH8D5mGA77tiX8ph3kdC/GdmsDd7D8BETUzaz4EfrkwDZBIlDVxyUWe79+/MxZO16RjyByUo7rjGVDYYhg==
-  dependencies:
-    "@matechs/core" "^2.8.0"
-
-"@matechs/morphic@^0.12.0":
-  version "0.12.0"
-  resolved "https://registry.yarnpkg.com/@matechs/morphic/-/morphic-0.12.0.tgz#97204b1399cbbd47c4f1b529c30a72b62a7340c3"
-  integrity sha512-Ekz4nF3qbEL01MivMvInI9tXsF938rjMs1L7RIsqWVSgmVAyrWd5zAQ8eMprmN4acwHE9sMEbee/x6DyJy3Nhg==
-  dependencies:
-    "@matechs/core" "^2.8.0"
-    "@matechs/morphic-alg" "^0.11.0"
-    fast-equals "^2.0.0"
-
 "@mrmlnc/readdir-enhanced@^2.2.1":
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/@mrmlnc/readdir-enhanced/-/readdir-enhanced-2.2.1.tgz#524af240d1a360527b730475ecfa1344aa540dde"
