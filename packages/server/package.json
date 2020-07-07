@@ -10,7 +10,7 @@
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "tsc --noEmit",
-    "demo": "ts-node -r tsconfig-paths/register src/use.ts"
+    "demo": "ts-node -r tsconfig-paths/register demo/use.ts"
   },
   "publishConfig": {
     "access": "public",

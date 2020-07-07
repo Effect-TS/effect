@@ -1,5 +1,5 @@
-import { pipe } from "../../Function"
-import * as T from "../Effect"
+import { pipe } from "../src/Function"
+import * as T from "../src/next/Effect"
 
 pipe(
   T.delay(100)(T.succeedNow(1)),
