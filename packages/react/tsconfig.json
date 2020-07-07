@@ -5,6 +5,7 @@
     "target": "ES5",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "noImplicitAny": true,
     "jsx": "react"
   },
   "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]

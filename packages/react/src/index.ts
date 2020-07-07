@@ -10,35 +10,38 @@ import { coerceSE } from "@matechs/core/next/Managed/deps"
 import { makeReleaseMap, ReleaseMap } from "@matechs/core/next/Managed/releaseMap"
 
 export class ReactRuntime<R> {
-  readonly _R!: () => R
+  constructor(readonly env: R) {}
+}
 
-  constructor(readonly env: any) {}
+export const read = <T, K>(has: T.Has<T, K>) => (runtime: ReactRuntime<T.Has<T, K>>) =>
+  runtime.env[has[HasURI].key] as T
 
-  read = <T, K>(has: T.Has<T, K>): T => {
-    return this.env[has[HasURI].key]
+export const runAsync = <R>(runtime: ReactRuntime<R>) => <S, E, A>(
+  effect: T.Effect<S, R & T.DefaultEnv, E, A>
+) => {
+  const cancel = T.runAsyncCancel(
+    T.provideSome_(effect, (r) => ({ ...r, ...runtime.env }))
+  )
+
+  return (cb?: (exit: Exit<E, A>) => void) => {
+    T.runAsync(cancel, (ex) => {
+      if (cb) {
+        cb(flatten(ex))
+      }
+    })
   }
+}
 
-  runAsync = <S, E, A>(effect: T.Effect<S, R & T.DefaultEnv, E, A>) => {
-    const cancel = T.runAsyncCancel(
-      T.provideSome_(effect, (r) => ({ ...r, ...this.env }))
-    )
+export const run = <R>(runtime: ReactRuntime<R>) => <E, A>(
+  effect: T.Effect<never, R & T.DefaultEnv, E, A>
+) => {
+  return T.runSync(T.provideSome_(effect, (r0) => ({ ...r0, ...runtime.env })))
+}
 
-    return (cb?: (exit: Exit<E, A>) => void) => {
-      T.runAsync(cancel, (ex) => {
-        if (cb) {
-          cb(flatten(ex))
-        }
-      })
-    }
-  }
-
-  runPromise = <S, E, A>(effect: T.Effect<S, R & T.DefaultEnv, E, A>) => {
-    return T.runPromise(T.provideSome_(effect, (r) => ({ ...r, ...this.env })))
-  }
-
-  run = <E, A>(effect: T.Effect<never, R & T.DefaultEnv, E, A>) => {
-    return T.runSync(T.provideSome_(effect, (r0) => ({ ...r0, ...this.env })))
-  }
+export const runPromise = <R>(runtime: ReactRuntime<R>) => <S, E, A>(
+  effect: T.Effect<S, R & T.DefaultEnv, E, A>
+) => {
+  return T.runPromise(T.provideSome_(effect, (r) => ({ ...r, ...runtime.env })))
 }
 
 export function component<R>(): <P>(
@@ -47,8 +50,8 @@ export function component<R>(): <P>(
   return (F) => (p) => React.createElement(F(p.runtime), p)
 }
 
-export function provider<A>(layer: L.Layer<never, T.DefaultEnv, never, A>) {
-  return function (Cmp: React.ComponentType<RuntimeProps<A>>) {
+export function render<K>(Cmp: React.ComponentType<RuntimeProps<K>>) {
+  return function (layer: L.Layer<never, T.DefaultEnv, never, K>) {
     const rm = T.runSync(makeReleaseMap)
     const pm = T.runSync(L.makeProcessMap)
     const [f, env] = T.runSync(
