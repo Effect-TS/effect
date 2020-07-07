@@ -21,9 +21,11 @@
   "devDependencies": {
     "@types/node": "^14.0.5"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@matechs/core": "^2.10.0",
-    "@matechs/morphic": "^0.14.0",
+    "@matechs/morphic": "^0.14.0"
+  },
+  "dependencies": {
     "path-to-regexp": "^6.1.0",
     "query-string": "^6.13.1"
   },
