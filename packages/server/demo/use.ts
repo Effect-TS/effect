@@ -10,9 +10,14 @@ import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"
 import { Codec, failure, success } from "@matechs/morphic/model"
 
 export const S = makeServer(T.has<Server>()())
+export const S2 = makeServer(T.has<Server>()("second"))
 
 export const serverConfig = L.service(S.hasConfig).pure(
   new ServerConfig(8080, "0.0.0.0")
+)
+
+export const secondServerConfig = L.service(S2.hasConfig).pure(
+  new ServerConfig(8081, "0.0.0.0")
 )
 
 export const currentUser = S.makeState<O.Option<string>>(O.none)
@@ -188,6 +193,6 @@ export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 export const appLayer = pipe(
   L.all(home, personPost),
   L.using(authMiddleware),
-  L.using(S.server),
-  L.using(serverConfig)
+  L.using(L.all(S.server, S2.server)),
+  L.using(L.all(serverConfig, secondServerConfig))
 )
