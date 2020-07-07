@@ -16,16 +16,8 @@ const serverConfig = L.service(S.hasConfig).pure(new ServerConfig(8080, "0.0.0.0
 export const currentUser = S.makeState<O.Option<string>>(O.none)
 
 //
-// Person Post Endpoint
+// Custom Error Handler
 //
-
-const getPersonPostParams = S.params(MO.make((F) => F.interface({ id: F.string() })))
-
-const getPersonPostBody = S.body(MO.make((F) => F.interface({ name: F.string() })))
-
-const personPostResponse = S.response(
-  MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
-)
 
 const customErrorResponse = S.response(
   MO.make((F) => F.interface({ error: F.string() }))
@@ -45,19 +37,11 @@ const customErrorHandler = T.catchAll((e: RequestError) => {
   }
 })
 
-export const personPost = S.route(
-  "POST",
-  "/person/:id",
-  pipe(
-    T.of,
-    T.bind("params", () => getPersonPostParams),
-    T.bind("body", () => getPersonPostBody),
-    T.chain(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
-    customErrorHandler
-  )
-)
+//
+// Auth Middleware
+//
 
-export const auth = S.use(
+export const authMiddleware = S.use(
   "(.*)",
   pipe(
     T.of,
@@ -71,6 +55,40 @@ export const auth = S.use(
     )
   )
 )
+
+//
+// Person Post Endpoint
+//
+
+const getPersonPostParams = S.params(MO.make((F) => F.interface({ id: F.string() })))
+
+const getPersonPostBody = S.body(MO.make((F) => F.interface({ name: F.string() })))
+
+const personPostResponse = S.response(
+  MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
+)
+
+export const personPost = S.route(
+  "POST",
+  "/person/:id",
+  pipe(
+    T.of,
+    T.bind("params", () => getPersonPostParams),
+    T.bind("body", () => getPersonPostBody),
+    T.chain(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
+    customErrorHandler
+  )
+)
+
+//
+// Home Child Router
+//
+
+export const homeChildRouter = S.child("/home/(.*)")
+
+//
+// Home /a GET
+//
 
 export const homeGet = S.route(
   "GET",
@@ -87,6 +105,10 @@ export const homeGet = S.route(
     )
   )
 )
+
+//
+// Home /b POST
+//
 
 export const getHomePostQuery = S.query(
   MO.make((F) =>
@@ -150,20 +172,25 @@ function numberString<G, Env>(F: AlgebraNoUnion<G, Env>): HKT2<G, Env, string, n
 }
 
 //
-// App Layer with all the routes & the server
+// App Layer with all the routes, middlewared, the server & the server config
 //
 
-const home = L.using(S.child("/home/(.*)"))(L.all(homeGet, homePost))
+const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 
 const appLayer = pipe(
   L.all(home, personPost),
-  L.using(auth),
+  L.using(authMiddleware),
   L.using(S.server),
   L.using(serverConfig)
 )
 
+// run the app
 const cancel = pipe(T.never, T.provideSomeLayer(appLayer), T.runMain)
 
+// cancel on SIGINT & SIGTERM
 process.on("SIGINT", () => {
+  cancel()
+})
+process.on("SIGTERM", () => {
   cancel()
 })
