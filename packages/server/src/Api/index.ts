@@ -17,9 +17,9 @@ import {
   status
 } from "../Server"
 
-import * as T from "@matechs/core/Eff/Effect"
-import * as Has from "@matechs/core/Eff/Has"
-import * as L from "@matechs/core/Eff/Layer"
+import * as T from "@matechs/core/next/Effect"
+import * as Has from "@matechs/core/next/Has"
+import * as L from "@matechs/core/next/Layer"
 
 export const makeServer = <K>(has: Has.Augumented<Server, K>) => {
   return {

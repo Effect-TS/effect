@@ -1,9 +1,9 @@
 import { makeServer, RequestError, Server, ServerConfig } from "./"
 
-import * as T from "@matechs/core/Eff/Effect"
-import * as L from "@matechs/core/Eff/Layer"
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
+import * as T from "@matechs/core/next/Effect"
+import * as L from "@matechs/core/next/Layer"
 import * as MO from "@matechs/morphic"
 import { HKT2 } from "@matechs/morphic-alg/utils/hkt"
 import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"

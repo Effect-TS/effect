@@ -15,11 +15,11 @@ import {
 } from "../Server"
 
 import * as A from "@matechs/core/Array"
-import * as T from "@matechs/core/Eff/Effect"
-import { DerivationContext, Augumented, HasURI } from "@matechs/core/Eff/Has"
-import * as L from "@matechs/core/Eff/Layer"
-import * as M from "@matechs/core/Eff/Managed"
 import * as NA from "@matechs/core/NonEmptyArray"
+import * as T from "@matechs/core/next/Effect"
+import { DerivationContext, Augumented, HasURI } from "@matechs/core/next/Has"
+import * as L from "@matechs/core/next/Layer"
+import * as M from "@matechs/core/next/Managed"
 
 export class Router {
   readonly _tag = "Router"
