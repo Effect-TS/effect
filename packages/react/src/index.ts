@@ -10,7 +10,9 @@ import { coerceSE } from "@matechs/core/next/Managed/deps"
 import { makeReleaseMap, ReleaseMap } from "@matechs/core/next/Managed/releaseMap"
 
 export class ReactRuntime<R> {
-  constructor(readonly env: R) {}
+  readonly _R!: () => R
+
+  constructor(readonly env: any) {}
 
   read = <T, K>(has: T.Has<T, K>): T => {
     return this.env[has[HasURI].key]
@@ -70,7 +72,7 @@ export function provider<A>(layer: L.Layer<never, T.DefaultEnv, never, A>) {
         if (typeof window === "undefined" && typeof setImmediate === "function") {
           T.runAsync(f(unit))
         }
-        return React.createElement(Cmp, { runtime })
+        return React.createElement(Cmp, { runtime: runtime as any })
       }
     }
   }
