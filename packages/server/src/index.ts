@@ -12,7 +12,16 @@ export {
   RouteInput,
   Server,
   ServerConfig,
-  defaultErrorHandler
+  defaultErrorHandler,
+  body,
+  config,
+  getBodyBuffer,
+  next,
+  params,
+  getRouteInput,
+  query,
+  response,
+  status
 } from "./Server"
 
 export {
@@ -26,4 +35,4 @@ export {
   child
 } from "./Router"
 
-export { makeServer } from "./Api"
+export { makeServer, makeState } from "./Api"

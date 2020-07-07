@@ -1,4 +1,4 @@
-import { makeServer, RequestError, Server, ServerConfig } from "../src"
+import * as http from "../src"
 
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
@@ -9,33 +9,33 @@ import { HKT2 } from "@matechs/morphic-alg/utils/hkt"
 import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"
 import { Codec, failure, success } from "@matechs/morphic/model"
 
-export const S = makeServer(T.has<Server>()())
-export const S2 = makeServer(T.has<Server>()("second"))
+export const S = http.makeServer(T.has<http.Server>()())
+export const S2 = http.makeServer(T.has<http.Server>()("second"))
 
 export const serverConfig = L.service(S.hasConfig).pure(
-  new ServerConfig(8080, "0.0.0.0")
+  new http.ServerConfig(8080, "0.0.0.0")
 )
 
 export const secondServerConfig = L.service(S2.hasConfig).pure(
-  new ServerConfig(8081, "0.0.0.0")
+  new http.ServerConfig(8081, "0.0.0.0")
 )
 
-export const currentUser = S.makeState<O.Option<string>>(O.none)
+export const currentUser = http.makeState<O.Option<string>>(O.none)
 
 //
 // Custom Error Handler
 //
 
-export const customErrorResponse = S.response(
+export const customErrorResponse = http.response(
   MO.make((F) => F.interface({ error: F.string() }))
 )
 
-export const customErrorHandler = T.catchAll((e: RequestError) => {
+export const customErrorHandler = T.catchAll((e: http.RequestError) => {
   switch (e._tag) {
     case "JsonDecoding": {
       return pipe(
         customErrorResponse({ error: "invalid json body" }),
-        T.first(S.status(400))
+        T.first(http.status(400))
       )
     }
     default: {
@@ -53,8 +53,8 @@ export const authMiddleware = S.use(
   pipe(
     T.of,
     T.tap(() => currentUser.set(O.some("test"))),
-    T.bind("next", () => T.timed(S.next)),
-    T.bind("routeInput", () => S.getRouteInput),
+    T.bind("next", () => T.timed(http.next)),
+    T.bind("routeInput", () => http.getRouteInput),
     T.chain(({ next: [ms], routeInput: { query } }) =>
       T.effectTotal(() => {
         console.log(`request took: ${ms} ms (${query})`)
@@ -67,15 +67,15 @@ export const authMiddleware = S.use(
 // Person Post Endpoint
 //
 
-export const getPersonPostParams = S.params(
+export const getPersonPostParams = http.params(
   MO.make((F) => F.interface({ id: F.string() }))
 )
 
-export const getPersonPostBody = S.body(
+export const getPersonPostBody = http.body(
   MO.make((F) => F.interface({ name: F.string() }))
 )
 
-export const personPostResponse = S.response(
+export const personPostResponse = http.response(
   MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
 )
 
@@ -107,7 +107,7 @@ export const homeGet = S.route(
   pipe(
     T.of,
     T.bind("config", () => S.getServerConfig),
-    T.bind("routeInput", () => S.getRouteInput),
+    T.bind("routeInput", () => http.getRouteInput),
     T.chain(({ config, routeInput: { res } }) =>
       T.effectTotal(() => {
         res.write(`good: ${config.host}:${config.port}`)
@@ -121,7 +121,7 @@ export const homeGet = S.route(
 // Home /b POST
 //
 
-export const getHomePostQuery = S.query(
+export const getHomePostQuery = http.query(
   MO.make((F) =>
     F.partial({
       q: numberString(F)
@@ -134,10 +134,10 @@ export const homePost = S.route(
   "/home/b",
   pipe(
     T.of,
-    T.bind("body", () => S.getBodyBuffer),
+    T.bind("body", () => http.getBodyBuffer),
     T.bind("query", () => getHomePostQuery),
     T.bind("user", () => currentUser.get),
-    T.bind("input", () => S.getRouteInput),
+    T.bind("input", () => http.getRouteInput),
     T.tap(({ body, input: { res }, query, user }) =>
       T.effectTotal(() => {
         res.write(body)
