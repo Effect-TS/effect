@@ -1,0 +1,28 @@
+{
+  "name": "@matechs/react",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node scripts/rewrite.ts && ts-node scripts/rewrite-locals.ts && ts-node scripts/package.ts",
+    "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "build"
+  },
+  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "sideEffects": false,
+  "dependencies": {
+    "@matechs/core": "^2.9.0"
+  },
+  "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
+  "devDependencies": {
+    "@types/react": "^16.9.41",
+    "react": "^16.13.1"
+  }
+}

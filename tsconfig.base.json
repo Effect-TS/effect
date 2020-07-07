@@ -85,7 +85,8 @@
       "@matechs/morphic-alg/*": ["packages/morphic-alg/build/*"],
       "@matechs/morphic-alg": ["packages/morphic-alg/build"],
       "@matechs/morphic/*": ["packages/morphic/build/*"],
-      "@matechs/morphic": ["packages/morphic/build"]
+      "@matechs/morphic": ["packages/morphic/build"],
+      "@matechs/react": ["packages/react/build"]
     }
   },
   "exclude": ["node_modules", "build", "lib"]
