@@ -11,7 +11,9 @@ import { Codec, failure, success } from "@matechs/morphic/model"
 
 export const S = makeServer(T.has<Server>()())
 
-const serverConfig = L.service(S.hasConfig).pure(new ServerConfig(8080, "0.0.0.0"))
+export const serverConfig = L.service(S.hasConfig).pure(
+  new ServerConfig(8080, "0.0.0.0")
+)
 
 export const currentUser = S.makeState<O.Option<string>>(O.none)
 
@@ -19,11 +21,11 @@ export const currentUser = S.makeState<O.Option<string>>(O.none)
 // Custom Error Handler
 //
 
-const customErrorResponse = S.response(
+export const customErrorResponse = S.response(
   MO.make((F) => F.interface({ error: F.string() }))
 )
 
-const customErrorHandler = T.catchAll((e: RequestError) => {
+export const customErrorHandler = T.catchAll((e: RequestError) => {
   switch (e._tag) {
     case "JsonDecoding": {
       return pipe(
@@ -60,11 +62,15 @@ export const authMiddleware = S.use(
 // Person Post Endpoint
 //
 
-const getPersonPostParams = S.params(MO.make((F) => F.interface({ id: F.string() })))
+export const getPersonPostParams = S.params(
+  MO.make((F) => F.interface({ id: F.string() }))
+)
 
-const getPersonPostBody = S.body(MO.make((F) => F.interface({ name: F.string() })))
+export const getPersonPostBody = S.body(
+  MO.make((F) => F.interface({ name: F.string() }))
+)
 
-const personPostResponse = S.response(
+export const personPostResponse = S.response(
   MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
 )
 
@@ -142,7 +148,9 @@ export const homePost = S.route(
 // Custom morphic codec for numbers encoded as strings
 //
 
-function numberString<G, Env>(F: AlgebraNoUnion<G, Env>): HKT2<G, Env, string, number> {
+export function numberString<G, Env>(
+  F: AlgebraNoUnion<G, Env>
+): HKT2<G, Env, string, number> {
   return F.unknownE(F.number(), {
     conf: {
       [MO.ModelURI]: () =>
@@ -175,22 +183,11 @@ function numberString<G, Env>(F: AlgebraNoUnion<G, Env>): HKT2<G, Env, string, n
 // App Layer with all the routes, middlewared, the server & the server config
 //
 
-const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
+export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 
-const appLayer = pipe(
+export const appLayer = pipe(
   L.all(home, personPost),
   L.using(authMiddleware),
   L.using(S.server),
   L.using(serverConfig)
 )
-
-// run the app
-const cancel = pipe(T.never, T.provideSomeLayer(appLayer), T.runMain)
-
-// cancel on SIGINT & SIGTERM
-process.on("SIGINT", () => {
-  cancel()
-})
-process.on("SIGTERM", () => {
-  cancel()
-})
