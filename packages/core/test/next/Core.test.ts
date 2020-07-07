@@ -1,8 +1,8 @@
-import * as C from "../../src/Eff/Cause"
-import * as T from "../../src/Eff/Effect"
-import * as E from "../../src/Eff/Exit"
-import * as R from "../../src/Eff/Random"
 import { pipe } from "../../src/Function"
+import * as C from "../../src/next/Cause"
+import * as T from "../../src/next/Effect"
+import * as E from "../../src/next/Exit"
+import * as R from "../../src/next/Random"
 
 describe("Core Implementation", () => {
   it("should interrupt async", async () => {
