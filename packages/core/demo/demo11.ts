@@ -1,8 +1,8 @@
-import { pipe } from "../../Function"
-import { HasClock } from "../Clock"
-import * as T from "../Effect"
-import * as L from "../Layer"
-import * as M from "../Managed"
+import { pipe } from "../src/Function"
+import { HasClock } from "../src/next/Clock"
+import * as T from "../src/next/Effect"
+import * as L from "../src/next/Layer"
+import * as M from "../src/next/Managed"
 
 export abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>

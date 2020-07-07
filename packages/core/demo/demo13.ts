@@ -1,7 +1,7 @@
-import { pipe } from "../../Function"
-import * as T from "../Effect"
-import * as F from "../FiberRef"
-import * as L from "../Layer"
+import { pipe } from "../src/Function"
+import * as T from "../src/next/Effect"
+import * as F from "../src/next/FiberRef"
+import * as L from "../src/next/Layer"
 
 export abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>

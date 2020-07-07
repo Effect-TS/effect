@@ -1,8 +1,8 @@
-import * as A from "../../Array"
-import { pipe } from "../../Function"
-import * as T from "../Effect"
-import * as L from "../Layer"
-import * as S from "../Semaphore"
+import * as A from "../src/Array"
+import { pipe } from "../src/Function"
+import * as T from "../src/next/Effect"
+import * as L from "../src/next/Layer"
+import * as S from "../src/next/Semaphore"
 
 abstract class Console {
   abstract putStrLn(s: string): T.Sync<void>

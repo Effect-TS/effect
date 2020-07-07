@@ -1,6 +1,6 @@
-import { pipe, introduce } from "../../Function"
-import * as T from "../Effect"
-import * as S from "../Schedule"
+import { pipe, introduce } from "../src/Function"
+import * as T from "../src/next/Effect"
+import * as S from "../src/next/Schedule"
 
 let i = 0
 

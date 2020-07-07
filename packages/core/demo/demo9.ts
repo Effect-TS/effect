@@ -1,7 +1,7 @@
-import * as A from "../../Array"
-import { pipe } from "../../Function"
-import * as T from "../Effect"
-import * as S from "../Semaphore"
+import * as A from "../src/Array"
+import { pipe } from "../src/Function"
+import * as T from "../src/next/Effect"
+import * as S from "../src/next/Semaphore"
 
 const program = pipe(
   S.makeSemaphore(2),

@@ -1,4 +1,4 @@
-import { makeServer, RequestError, Server, ServerConfig } from "./"
+import { makeServer, RequestError, Server, ServerConfig } from "../src"
 
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"

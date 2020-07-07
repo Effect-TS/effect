@@ -1,7 +1,7 @@
-import { pipe } from "../../Function"
-import * as T from "../Effect"
-import * as L from "../Layer"
-import * as M from "../Managed"
+import { pipe } from "../src/Function"
+import * as T from "../src/next/Effect"
+import * as L from "../src/next/Layer"
+import * as M from "../src/next/Managed"
 
 class Show {
   constructor(readonly message: string) {}
