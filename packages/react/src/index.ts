@@ -70,7 +70,7 @@ export function provider<A>(layer: L.Layer<never, T.DefaultEnv, never, A>) {
         if (typeof window === "undefined" && typeof setImmediate === "function") {
           T.runAsync(f(unit))
         }
-        return <Cmp runtime={runtime} />
+        return React.createElement(Cmp, { runtime })
       }
     }
   }
