@@ -523,7 +523,7 @@ export const partial = <P extends Props>(
         const type = props[k]
         const result = type.validate(ak, appendContext(c, k, type, ak))
         if (E.isLeft(result)) {
-          if (ak !== undefined) {
+          if (ak != null) {
             pushAll(errors, result.left)
           }
         } else {
