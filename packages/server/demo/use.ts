@@ -1,11 +1,11 @@
-import { pipe, constant } from "@matechs/core/Function"
-import * as T from "@matechs/core/next/Effect"
-import * as L from "@matechs/core/next/Layer"
-import * as O from "@matechs/core/Option"
-import * as MO from "@matechs/morphic"
-import { Codec, failure, success } from "@matechs/morphic/model"
 import * as http from "../src"
 
+import { pipe } from "@matechs/core/Function"
+import * as O from "@matechs/core/Option"
+import * as T from "@matechs/core/next/Effect"
+import * as L from "@matechs/core/next/Layer"
+import * as MO from "@matechs/morphic"
+import { Codec, failure, success } from "@matechs/morphic/model"
 
 //
 // Custom codec
@@ -59,10 +59,10 @@ export const currentUser = http.makeState<O.Option<string>>(O.none)
 // Cors Middleware
 //
 
-export const cors = <R>(next: http.RouteHandler<R>) => 
+export const cors = <R>(next: http.RouteHandler<R>) =>
   pipe(
     http.getRequestContext,
-    T.tap(({res, req}) =>
+    T.tap(({ req, res }) =>
       T.effectTotal(() => {
         res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
       })
@@ -96,9 +96,8 @@ export const customErrorHandler = T.catchAll((e: http.RequestError) => {
 // Auth Middleware
 //
 
-export const authMiddleware = S.use(
-  "(.*)",
-  (next) => pipe(
+export const authMiddleware = S.use("(.*)", (next) =>
+  pipe(
     T.of,
     T.tap(() => currentUser.set(O.some("test"))),
     T.bind("next", () => T.timed(next)),
@@ -127,16 +126,13 @@ export const personPostResponse = http.response(
   MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
 )
 
-export const personPost = S.route(
-  "POST",
-  "/person/:id",
+export const personPost = S.route("POST", "/person/:id", () =>
   pipe(
     T.of,
     T.bind("params", () => getPersonPostParams),
     T.bind("body", () => getPersonPostBody),
     T.chain(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
-    customErrorHandler,
-    constant
+    customErrorHandler
   )
 )
 
@@ -150,9 +146,7 @@ export const homeChildRouter = S.child("/home/(.*)")
 // Home /a GET
 //
 
-export const homeGet = S.route(
-  "GET",
-  "/home/a",
+export const homeGet = S.route("GET", "/home/a", () =>
   pipe(
     T.of,
     T.bind("config", () => S.getServerConfig),
@@ -162,8 +156,7 @@ export const homeGet = S.route(
         res.write(`good: ${config.host}:${config.port}`)
         res.end()
       })
-    ),
-    constant
+    )
   )
 )
 
@@ -179,9 +172,7 @@ export const getHomePostQuery = http.query(
   )
 )
 
-export const homePost = S.route(
-  "POST",
-  "/home/b",
+export const homePost = S.route("POST", "/home/b", () =>
   pipe(
     T.of,
     T.bind("body", () => http.getBodyBuffer),
@@ -195,8 +186,7 @@ export const homePost = S.route(
         res.write(JSON.stringify(user))
         res.end()
       })
-    ),
-    constant
+    )
   )
 )
 
