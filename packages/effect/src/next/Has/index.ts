@@ -24,7 +24,7 @@ export interface Has<T, K> {
     key: symbol
     def: boolean
     name?: string
-    brand?: any
+    brand?: string
   }
 }
 
@@ -53,11 +53,6 @@ export type Augumented<T, K> = Has<T, K> & {
 export type HasType<T> = T extends Has<infer A, infer K> ? Has<A, K> : never
 
 /**
- * Anything that can be used as key in a map
- */
-export type AnyRef = any
-
-/**
  * Default brand
  */
 export declare const _default: unique symbol
@@ -76,15 +71,16 @@ export function has<T>(): {
   <K extends string>(k: K): Augumented<T, K>
   (): Augumented<T, "core">
 }
-export function has(_?: any): (_: any) => Augumented<unknown, unknown> {
-  return () => {
+export function has(_?: any): (k?: string) => Augumented<unknown, unknown> {
+  return (k) => {
     const inner = (def = false, key = Symbol()) => {
       const h = {
         [HasURI]: {
           _T: undefined as any,
           _K: undefined as any,
           key,
-          def
+          def,
+          brand: k
         }
       }
       return {
