@@ -1,6 +1,6 @@
 {
   "name": "@matechs/orm",
-  "version": "7.10.1",
+  "version": "7.10.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -19,7 +19,7 @@
   "sideEffects": false,
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/core": "^2.10.1"
+    "@matechs/core": "^2.10.2"
   },
   "peerDependencies": {
     "reflect-metadata": "^0.1.13",
