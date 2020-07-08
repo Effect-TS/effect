@@ -1,14 +1,11 @@
-import * as http from "../src"
-
 import { pipe } from "@matechs/core/Function"
-import * as O from "@matechs/core/Option"
 import * as T from "@matechs/core/next/Effect"
 import * as L from "@matechs/core/next/Layer"
+import * as O from "@matechs/core/Option"
 import * as MO from "@matechs/morphic"
-import { ThreadURI } from "@matechs/morphic-alg/config"
-import { HKT2 } from "@matechs/morphic-alg/utils/hkt"
-import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"
 import { Codec, failure, success } from "@matechs/morphic/model"
+import * as http from "../src"
+
 
 //
 // Custom codec
@@ -201,27 +198,6 @@ export const homePost = S.route(
     )
   )
 )
-
-//
-// Custom morphic codec for numbers encoded as strings
-//
-
-export function customCodec<G, Env, E, A>(T: HKT2<G, Env, E, A>) {
-  return <E2>(
-    f: (
-      codec: Codec<A, E>,
-      env: ThreadURI<Env, "@matechs/morphic/ModelURI">,
-      config: {
-        model: Codec<A, E>
-      }
-    ) => Codec<A, E2>
-  ) => (F: AlgebraNoUnion<G, Env>) =>
-    F.unknownE(T, {
-      conf: {
-        [MO.ModelURI]: (a, b, c) => f(a as Codec<A, E>, b as any, c)
-      }
-    }) as HKT2<G, Env, E2, A>
-}
 
 //
 // App Layer with all the routes, middlewared, the server & the server config
