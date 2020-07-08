@@ -44,6 +44,7 @@ export type Augumented<T, K> = Has<T, K> & {
   fixed: () => Augumented<T, K>
   refine: <T1 extends T>() => Augumented<T1, K>
   read: (r: Has<T, K>) => T
+  at: (s: symbol) => Augumented<T, K>
 }
 
 /**
@@ -68,21 +69,16 @@ export type _default = typeof _default
 export function has<T extends Constructor<any>>(
   _: T
 ): {
-  <K extends string | symbol>(k: K): Augumented<TypeOf<T>, K>
-  <K extends AnyRef>(k: K): Augumented<TypeOf<T>, K>
-  (): Augumented<TypeOf<T>, _default>
+  <K extends string>(k: K): Augumented<TypeOf<T>, K>
+  (): Augumented<TypeOf<T>, "core">
 }
-export function has<T>(
-  _?: AnyRef
-): {
-  <K extends string | symbol>(k: K): Augumented<T, K>
-  <K extends AnyRef>(k: K): Augumented<T, K>
-  (): Augumented<T, _default>
+export function has<T>(): {
+  <K extends string>(k: K): Augumented<T, K>
+  (): Augumented<T, "core">
 }
-export function has(_: any): (_: any) => Augumented<unknown, unknown> {
+export function has(_?: any): (_: any) => Augumented<unknown, unknown> {
   return () => {
-    const inner = (def = false) => {
-      const key = Symbol()
+    const inner = (def = false, key = Symbol()) => {
       const h = {
         [HasURI]: {
           _T: undefined as any,
@@ -96,7 +92,8 @@ export function has(_: any): (_: any) => Augumented<unknown, unknown> {
         overridable: () => inner(true),
         fixed: () => inner(false),
         refine: () => inner(def),
-        read: (r: any) => r[key]
+        read: (r: any) => r[key],
+        at: (s: symbol) => inner(def, s)
       }
     }
 
