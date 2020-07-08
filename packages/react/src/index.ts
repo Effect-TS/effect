@@ -69,6 +69,26 @@ export function componentWith<S extends { [k in keyof S]: T.Has<any, any> }>(s: 
     })
 }
 
+export function testRuntime<K>(layer: L.Layer<never, T.DefaultEnv, never, K>) {
+  const rm = T.runSync(makeReleaseMap)
+  const pm = T.runSync(L.makeProcessMap)
+  const [f, env] = T.runSync(
+    pipe(
+      T.provideSome_(coerceSE<never, never>()(layer.build.effect), (r0): [
+        [T.DefaultEnv, L.ProcessMap],
+        ReleaseMap
+      ] => [[r0, pm], rm])
+    )
+  )
+
+  const runtime = new ReactRuntime(env)
+
+  return {
+    runtime,
+    cleanup: () => T.runPromise(f(unit))
+  }
+}
+
 export function render<K>(Cmp: React.ComponentType<RuntimeProps<K>>) {
   return function (layer: L.Layer<never, T.DefaultEnv, never, K>) {
     const rm = T.runSync(makeReleaseMap)
