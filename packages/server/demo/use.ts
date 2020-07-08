@@ -5,8 +5,6 @@ import * as O from "@matechs/core/Option"
 import * as T from "@matechs/core/next/Effect"
 import * as L from "@matechs/core/next/Layer"
 import * as MO from "@matechs/morphic"
-import { HKT2 } from "@matechs/morphic-alg/utils/hkt"
-import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"
 import { Codec, failure, success } from "@matechs/morphic/model"
 
 export const S = http.makeServer(T.has<http.Server>()())
@@ -153,36 +151,32 @@ export const homePost = S.route(
 // Custom morphic codec for numbers encoded as strings
 //
 
-export function numberString<G, Env>(
-  F: AlgebraNoUnion<G, Env>
-): HKT2<G, Env, string, number> {
-  return F.unknownE(F.number(), {
-    conf: {
-      [MO.ModelURI]: () =>
-        new Codec(
-          "numberString",
-          (i, c) => {
-            if (typeof i === "string") {
-              try {
-                const n = parseFloat(i)
+export const numberString = MO.make((F) =>
+  MO.customCodec(F.number())(
+    () =>
+      new Codec(
+        "numberString",
+        (i, c) => {
+          if (typeof i === "string") {
+            try {
+              const n = parseFloat(i)
 
-                if (isNaN(n)) {
-                  return failure(i, c)
-                }
-
-                return success(n)
-              } catch {
+              if (isNaN(n)) {
                 return failure(i, c)
               }
-            } else {
+
+              return success(n)
+            } catch {
               return failure(i, c)
             }
-          },
-          (u) => (u as number).toString()
-        )
-    }
-  }) as HKT2<G, Env, string, number>
-}
+          } else {
+            return failure(i, c)
+          }
+        },
+        (u) => (u as number).toString()
+      )
+  )(F)
+)
 
 //
 // App Layer with all the routes, middlewared, the server & the server config

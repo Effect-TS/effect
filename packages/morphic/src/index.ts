@@ -1,5 +1,11 @@
+import type { AlgebraNoUnion } from "./batteries/program"
 import { opaque, opaque_, summonFor } from "./batteries/summoner"
 import type { M, M_ } from "./batteries/summoner"
+import { Codec } from "./model"
+import { ModelURI } from "./model/hkt"
+
+import type { ThreadURI } from "@matechs/morphic-alg/config"
+import type { HKT2 } from "@matechs/morphic-alg/utils/hkt"
 
 //
 // Model Tooling
@@ -71,3 +77,20 @@ export { opaque, opaque_ }
 export const { make, makeADT, makeProgram } =
   /*#__PURE__*/
   (() => summonFor({}))()
+
+export function customCodec<G, Env, E, A>(T: HKT2<G, Env, E, A>) {
+  return <E2>(
+    f: (
+      codec: Codec<A, E>,
+      env: ThreadURI<Env, "@matechs/morphic/ModelURI">,
+      config: {
+        model: Codec<A, E>
+      }
+    ) => Codec<A, E2>
+  ) => (F: AlgebraNoUnion<G, Env>) =>
+    F.unknownE(T, {
+      conf: {
+        [ModelURI]: (a, b, c) => f(a as Codec<A, E>, b as any, c)
+      }
+    }) as HKT2<G, Env, E2, A>
+}
