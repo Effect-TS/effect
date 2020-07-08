@@ -1,4 +1,4 @@
-import { pipe } from "@matechs/core/Function"
+import { pipe, constant } from "@matechs/core/Function"
 import * as T from "@matechs/core/next/Effect"
 import * as L from "@matechs/core/next/Layer"
 import * as O from "@matechs/core/Option"
@@ -59,7 +59,7 @@ export const currentUser = http.makeState<O.Option<string>>(O.none)
 // Cors Middleware
 //
 
-export const cors = <R>(self: http.RouteHandler<R>) => 
+export const cors = <R>(next: http.RouteHandler<R>) => 
   pipe(
     http.getRequestContext,
     T.tap(({res, req}) =>
@@ -67,7 +67,7 @@ export const cors = <R>(self: http.RouteHandler<R>) =>
         res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
       })
     ),
-    T.chain(() => self)
+    T.chain(() => next)
   )
 
 //
@@ -130,12 +130,13 @@ export const personPostResponse = http.response(
 export const personPost = S.route(
   "POST",
   "/person/:id",
-  () => pipe(
+  pipe(
     T.of,
     T.bind("params", () => getPersonPostParams),
     T.bind("body", () => getPersonPostBody),
     T.chain(({ body: { name }, params: { id } }) => personPostResponse({ id, name })),
-    customErrorHandler
+    customErrorHandler,
+    constant
   )
 )
 
@@ -152,7 +153,7 @@ export const homeChildRouter = S.child("/home/(.*)")
 export const homeGet = S.route(
   "GET",
   "/home/a",
-  () => pipe(
+  pipe(
     T.of,
     T.bind("config", () => S.getServerConfig),
     T.bind("routeInput", () => http.getRequestContext),
@@ -161,7 +162,8 @@ export const homeGet = S.route(
         res.write(`good: ${config.host}:${config.port}`)
         res.end()
       })
-    )
+    ),
+    constant
   )
 )
 
@@ -180,7 +182,7 @@ export const getHomePostQuery = http.query(
 export const homePost = S.route(
   "POST",
   "/home/b",
-  () => pipe(
+  pipe(
     T.of,
     T.bind("body", () => http.getBodyBuffer),
     T.bind("query", () => getHomePostQuery),
@@ -193,7 +195,8 @@ export const homePost = S.route(
         res.write(JSON.stringify(user))
         res.end()
       })
-    )
+    ),
+    constant
   )
 )
 
