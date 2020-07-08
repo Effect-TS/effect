@@ -2,7 +2,7 @@ import { reduce_ } from "../../Array"
 import { UnionToIntersection } from "../../Base/Apply"
 import { Then } from "../Cause"
 import { contains } from "../Cause/contains"
-import { runAsync } from "../Effect/runtime"
+import { runAsync, DefaultEnv } from "../Effect/runtime"
 import { Failure } from "../Exit"
 import { FiberID } from "../Fiber"
 import { FiberContext } from "../Fiber/context"
@@ -465,3 +465,8 @@ function environmentFor<T, K>(
     }))
   )
 }
+
+/**
+ * Type level bound to make sure a layer is complete
+ */
+export const main = <S, E, A>(layer: Layer<S, DefaultEnv, E, A>) => layer
