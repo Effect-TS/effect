@@ -59,6 +59,23 @@ export const secondServerConfig = L.service(S2.hasConfig).pure(
 export const currentUser = http.makeState<O.Option<string>>(O.none)
 
 //
+// Cors Middleware
+//
+
+export const cors = <R>(self: http.RouteHandler<R>) => 
+  pipe(
+    http.getRouteInput,
+    T.tap(({res, req}) =>
+      T.effectTotal(() => {
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
+      })
+    ),
+    T.chain(() => self)
+  )
+
+export const corsMiddleware = S.use("(.*)", cors(http.next))
+
+//
 // Custom Error Handler
 //
 
@@ -165,18 +182,6 @@ export const getHomePostQuery = http.query(
   )
 )
 
-export const cors = <R>(self: http.RouteHandler<R>) => 
-  pipe(
-    http.getRouteInput,
-    T.tap(({res, req}) =>
-      T.effectTotal(() => {
-        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
-      })
-    ),
-    T.chain(() => self)
-  )
-
-
 export const homePost = S.route(
   "POST",
   "/home/b",
@@ -193,8 +198,7 @@ export const homePost = S.route(
         res.write(JSON.stringify(user))
         res.end()
       })
-    ),
-    cors
+    )
   )
 )
 
@@ -228,6 +232,7 @@ export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 export const appLayer = pipe(
   L.all(home, personPost),
   L.using(authMiddleware),
+  L.using(corsMiddleware),
   L.using(L.all(S.server, S2.server)),
   L.using(L.all(serverConfig, secondServerConfig)),
   L.main
