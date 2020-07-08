@@ -8,5 +8,5 @@
     "noImplicitAny": true,
     "jsx": "react"
   },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
+  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*"]
 }
