@@ -13,7 +13,7 @@ module.exports = {
     "packages_sys/**/src/**/*.ts"
   ],
   setupFiles: ["./jest-setup.ts"],
-  modulePathIgnorePatterns: ["dtslint", "build"],
+  modulePathIgnorePatterns: ["dtslint", "build", "demo"],
   verbose: false,
   moduleNameMapper: {
     "@matechs/core/(.*)$": "<rootDir>/packages/core/build/$1",
