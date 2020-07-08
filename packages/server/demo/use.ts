@@ -165,6 +165,18 @@ export const getHomePostQuery = http.query(
   )
 )
 
+export const cors = <R>(self: http.RouteHandler<R>) => 
+  pipe(
+    http.getRouteInput,
+    T.tap(({res, req}) =>
+      T.effectTotal(() => {
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
+      })
+    ),
+    T.chain(() => self)
+  )
+
+
 export const homePost = S.route(
   "POST",
   "/home/b",
@@ -181,7 +193,8 @@ export const homePost = S.route(
         res.write(JSON.stringify(user))
         res.end()
       })
-    )
+    ),
+    cors
   )
 )
 
