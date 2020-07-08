@@ -7,6 +7,41 @@ import * as L from "@matechs/core/next/Layer"
 import * as MO from "@matechs/morphic"
 import { Codec, failure, success } from "@matechs/morphic/model"
 
+//
+// Custom codec
+//
+
+export const numberString = MO.make((F) =>
+  MO.customCodec(F.number())(
+    () =>
+      new Codec(
+        "numberString",
+        (i, c) => {
+          if (typeof i === "string") {
+            try {
+              const n = parseFloat(i)
+
+              if (isNaN(n)) {
+                return failure(i, c)
+              }
+
+              return success(n)
+            } catch {
+              return failure(i, c)
+            }
+          } else {
+            return failure(i, c)
+          }
+        },
+        (n) => n.toString()
+      )
+  )(F)
+)
+
+//
+// Server config
+//
+
 export const S = http.makeServer(T.has<http.Server>()())
 export const S2 = http.makeServer(T.has<http.Server>()("second"))
 
@@ -127,6 +162,17 @@ export const getHomePostQuery = http.query(
   )
 )
 
+export const withCors: http.Handler = (req, res, next) =>
+  pipe(
+    T.of,
+    T.tap(() =>
+      T.effectTotal(() => {
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
+      })
+    ),
+    T.chain(() => next(req, res))
+  )
+
 export const homePost = S.route(
   "POST",
   "/home/b",
@@ -144,38 +190,8 @@ export const homePost = S.route(
         res.end()
       })
     )
-  )
-)
-
-//
-// Custom morphic codec for numbers encoded as strings
-//
-
-export const numberString = MO.make((F) =>
-  MO.customCodec(F.number())(
-    () =>
-      new Codec(
-        "numberString",
-        (i, c) => {
-          if (typeof i === "string") {
-            try {
-              const n = parseFloat(i)
-
-              if (isNaN(n)) {
-                return failure(i, c)
-              }
-
-              return success(n)
-            } catch {
-              return failure(i, c)
-            }
-          } else {
-            return failure(i, c)
-          }
-        },
-        (n) => n.toString()
-      )
-  )(F)
+  ),
+  withCors
 )
 
 //
