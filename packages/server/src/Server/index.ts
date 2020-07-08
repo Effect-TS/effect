@@ -227,7 +227,7 @@ export class ServerConfig {
   constructor(readonly port: number, readonly host: string) {}
 }
 
-export function server<S>(
+export function server<S extends string>(
   has: Has.Augumented<Server, S>
 ): L.AsyncR<T.Has<ServerConfig, S> & T.DefaultEnv, T.Has<Server, S>> {
   return L.service(has)
@@ -243,12 +243,10 @@ export function server<S>(
 
 export const configDerivationContext = new Has.DerivationContext()
 
-export const config = <K>(has: Has.Augumented<Server, K>) =>
-  configDerivationContext.derive(has, () =>
-    T.has<ServerConfig>()<K>(has[Has.HasURI].brand)
-  )
+export const config = <K extends string>(has: Has.Augumented<Server, K>) =>
+  configDerivationContext.derive(has, (k) => T.has<ServerConfig>()<K>(k))
 
-export const accessConfigM = <K>(has: Has.Augumented<Server, K>) =>
+export const accessConfigM = <K extends string>(has: Has.Augumented<Server, K>) =>
   T.accessServiceM(config(has))
 
 export const defaultErrorHandler = <R, E extends HttpError>(f: HandlerRE<R, E>) =>

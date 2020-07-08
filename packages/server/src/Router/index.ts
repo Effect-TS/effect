@@ -17,7 +17,7 @@ import {
 import * as A from "@matechs/core/Array"
 import * as NA from "@matechs/core/NonEmptyArray"
 import * as T from "@matechs/core/next/Effect"
-import { DerivationContext, Augumented, HasURI } from "@matechs/core/next/Has"
+import { DerivationContext, Augumented } from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 import * as M from "@matechs/core/next/Managed"
 
@@ -56,10 +56,10 @@ export class Router {
 
 export const derivationContext = new DerivationContext()
 
-export const HasRouter = <K>(has: Augumented<Server, K>) =>
-  derivationContext.derive(has, () => T.has<Router>()<K>(has[HasURI].brand))
+export const HasRouter = <K extends string>(has: Augumented<Server, K>) =>
+  derivationContext.derive(has, (k) => T.has<Router>()<K>(k))
 
-export const root = <K>(has: Augumented<Server, K>) =>
+export const root = <K extends string>(has: Augumented<Server, K>) =>
   L.service(HasRouter(has)).fromManaged(
     pipe(
       M.makeExit_(
@@ -82,7 +82,7 @@ export const root = <K>(has: Augumented<Server, K>) =>
     )
   )
 
-export const child = <K>(has: Augumented<Server, K>) => (base: string) =>
+export const child = <K extends string>(has: Augumented<Server, K>) => (base: string) =>
   L.service(HasRouter(has)).fromManaged(
     pipe(
       M.makeExit_(
@@ -128,7 +128,7 @@ export type RouteHandler<R> = T.AsyncRE<
   void
 >
 
-export function route<K>(has: Augumented<Server, K>) {
+export function route<K extends string>(has: Augumented<Server, K>) {
   return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
     const matcher = match(pattern)
 
@@ -179,7 +179,7 @@ export function route<K>(has: Augumented<Server, K>) {
   }
 }
 
-export function use<K>(has: Augumented<Server, K>) {
+export function use<K extends string>(has: Augumented<Server, K>) {
   return <R>(pattern: string, f: RouteHandler<R>) => {
     const matcher = match(pattern)
 

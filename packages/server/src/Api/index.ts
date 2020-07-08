@@ -13,7 +13,7 @@ import * as T from "@matechs/core/next/Effect"
 import * as Has from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 
-export const makeServer = <K>(has: Has.Augumented<Server, K>) => {
+export const makeServer = <K extends string>(has: Has.Augumented<Server, K>) => {
   return {
     child: R.child(has),
     getServerConfig: accessConfigM(has)(T.succeedNow),
