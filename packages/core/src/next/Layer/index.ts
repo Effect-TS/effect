@@ -134,7 +134,9 @@ export const globalRef = <A>(ref: FiberRef<A>) =>
   accessProcessRegistryM((p) => p.getRef(ref))
 
 export class Layer<S, R, E, A> {
-  constructor(readonly build: T.Managed<S, [R, ProcessMap], E, A>) {}
+  constructor(readonly build: T.Managed<S, [R, ProcessMap], E, A>) {
+    this.use = this.use.bind(this)
+  }
 
   use<S1, R1, E1, A1>(
     effect: T.Effect<S1, R1 & A, E1, A1>
