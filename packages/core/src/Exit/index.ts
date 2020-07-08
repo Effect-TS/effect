@@ -108,7 +108,7 @@ export function fold<E, A, B>(
   return (e) => fold_(e, onDone, onRaise, onAbort, onInterrupt)
 }
 
-export function foldCause<E, B1, B2, B3, B4>(
+export function foldCause<E, B2, B3, B4>(
   onRaise: (v: E, next: O.Option<Cause<unknown>>) => B2,
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B3,
   onInterrupt: (
@@ -116,7 +116,7 @@ export function foldCause<E, B1, B2, B3, B4>(
     next: O.Option<Cause<unknown>>,
     causedBy: O.Option<Cause<unknown>>
   ) => B4
-): (e: Cause<E>) => Compact<B1 | B2 | B3 | B4>
+): (e: Cause<E>) => Compact<B2 | B3 | B4>
 export function foldCause<E, B>(
   onRaise: (v: E, next: O.Option<Cause<unknown>>) => B,
   onAbort: (v: unknown, next: O.Option<Cause<unknown>>) => B,
