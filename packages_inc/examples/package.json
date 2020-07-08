@@ -1,6 +1,6 @@
 {
   "name": "@matechs/examples",
-  "version": "3.10.3",
+  "version": "3.10.4",
   "license": "MIT",
   "private": true,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -10,9 +10,9 @@
     "es6"
   ],
   "dependencies": {
-    "@matechs/core": "^2.10.3"
+    "@matechs/core": "^2.10.4"
   },
   "devDependencies": {
-    "@matechs/test-jest": "^4.10.3"
+    "@matechs/test-jest": "^4.10.4"
   }
 }
