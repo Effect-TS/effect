@@ -194,5 +194,6 @@ export const appLayer = pipe(
   L.all(home, personPost),
   L.using(authMiddleware),
   L.using(L.all(S.server, S2.server)),
-  L.using(L.all(serverConfig, secondServerConfig))
+  L.using(L.all(serverConfig, secondServerConfig)),
+  L.main
 )

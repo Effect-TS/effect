@@ -39,43 +39,11 @@ export type TypeOf<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
-export const symbolMap = new Map<any, symbol>()
-export const brandedMap = new Map<any, Map<any, symbol>>()
-
-export const symbolForInMap = (t: any | undefined, map: Map<any, symbol>) => {
-  if (t) {
-    const x = map.get(t)
-
-    if (x) {
-      return x
-    }
-
-    const s = Symbol()
-
-    map.set(t, s)
-
-    return s
-  } else {
-    return Symbol()
-  }
-}
-
-export const symbolFor = (t: any | undefined, k: any | undefined) => {
-  if (k) {
-    if (!brandedMap.has(k)) {
-      brandedMap.set(k, new Map())
-    }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return symbolForInMap(t, brandedMap.get(k)!)
-  } else {
-    return symbolForInMap(t, symbolMap)
-  }
-}
-
 export type Augumented<T, K> = Has<T, K> & {
   overridable: () => Augumented<T, K>
   fixed: () => Augumented<T, K>
   refine: <T1 extends T>() => Augumented<T1, K>
+  read: (r: Has<T, K>) => T
 }
 
 /**
@@ -111,23 +79,24 @@ export function has<T>(
   <K extends AnyRef>(k: K): Augumented<T, K>
   (): Augumented<T, _default>
 }
-export function has(t?: unknown): (k?: unknown) => Augumented<unknown, unknown> {
-  return (k) => {
+export function has(_: any): (_: any) => Augumented<unknown, unknown> {
+  return () => {
     const inner = (def = false) => {
+      const key = Symbol()
       const h = {
         [HasURI]: {
           _T: undefined as any,
           _K: undefined as any,
-          key: symbolFor(t, k),
-          def,
-          brand: k
+          key,
+          def
         }
       }
       return {
         ...h,
         overridable: () => inner(true),
         fixed: () => inner(false),
-        refine: () => inner(def)
+        refine: () => inner(def),
+        read: (r: any) => r[key]
       }
     }
 
