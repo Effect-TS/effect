@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && ts-node ../../scripts/rewrite-locals.ts && ts-node scripts/package.ts",
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && ts-node ../../scripts/rewrite-locals.ts && ts-node ../../scripts/package.ts",
     "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
@@ -30,6 +30,9 @@
   "dependencies": {
     "path-to-regexp": "^6.1.0",
     "query-string": "^6.13.1"
+  },
+  "config": {
+    "modules": ["Api", "Server", "Router"]
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }

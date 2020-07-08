@@ -5,7 +5,7 @@
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "scripts": {
-    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-locals.ts && ts-node scripts/package.ts",
+    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-locals.ts && ts-node ../../scripts/package.ts",
     "postbuild": "yarn prettier --write \"./build/**/*.ts\"",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
@@ -26,5 +26,8 @@
     "@types/jest": "^25.2.1",
     "fast-check": "^1.24.1",
     "jest": "^26.0.1"
+  },
+  "config": {
+    "modules": ["Aspects", "Aspects/WithJestMocks"]
   }
 }
