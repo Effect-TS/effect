@@ -129,12 +129,7 @@ export type RouteHandler<R> = T.AsyncRE<
 >
 
 export function route<K extends string>(has: Augumented<Server, K>) {
-  return <R>(
-    method: HttpMethod,
-    pattern: string,
-    f: RouteHandler<R>,
-    apply?: Handler
-  ) => {
+  return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
     const matcher = match(pattern)
 
     const acquire = T.accessServiceM(HasRouter(has))((router) =>
@@ -162,11 +157,7 @@ export function route<K extends string>(has: Augumented<Server, K>) {
           }
         }
 
-        router.addHandler(
-          apply
-            ? (req, res, next) => apply(req, res, (req, res) => handler(req, res, next))
-            : handler
-        )
+        router.addHandler(handler)
 
         return {
           handler

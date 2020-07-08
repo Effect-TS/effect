@@ -5,6 +5,9 @@ import * as O from "@matechs/core/Option"
 import * as T from "@matechs/core/next/Effect"
 import * as L from "@matechs/core/next/Layer"
 import * as MO from "@matechs/morphic"
+import { ThreadURI } from "@matechs/morphic-alg/config"
+import { HKT2 } from "@matechs/morphic-alg/utils/hkt"
+import { AlgebraNoUnion } from "@matechs/morphic/batteries/program"
 import { Codec, failure, success } from "@matechs/morphic/model"
 
 //
@@ -162,17 +165,6 @@ export const getHomePostQuery = http.query(
   )
 )
 
-export const withCors: http.Handler = (req, res, next) =>
-  pipe(
-    T.of,
-    T.tap(() =>
-      T.effectTotal(() => {
-        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
-      })
-    ),
-    T.chain(() => next(req, res))
-  )
-
 export const homePost = S.route(
   "POST",
   "/home/b",
@@ -190,9 +182,29 @@ export const homePost = S.route(
         res.end()
       })
     )
-  ),
-  withCors
+  )
 )
+
+//
+// Custom morphic codec for numbers encoded as strings
+//
+
+export function customCodec<G, Env, E, A>(T: HKT2<G, Env, E, A>) {
+  return <E2>(
+    f: (
+      codec: Codec<A, E>,
+      env: ThreadURI<Env, "@matechs/morphic/ModelURI">,
+      config: {
+        model: Codec<A, E>
+      }
+    ) => Codec<A, E2>
+  ) => (F: AlgebraNoUnion<G, Env>) =>
+    F.unknownE(T, {
+      conf: {
+        [MO.ModelURI]: (a, b, c) => f(a as Codec<A, E>, b as any, c)
+      }
+    }) as HKT2<G, Env, E2, A>
+}
 
 //
 // App Layer with all the routes, middlewared, the server & the server config
