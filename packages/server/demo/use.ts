@@ -173,7 +173,7 @@ export const numberString = MO.make((F) =>
             return failure(i, c)
           }
         },
-        (u) => (u as number).toString()
+        (n) => n.toString()
       )
   )(F)
 )
