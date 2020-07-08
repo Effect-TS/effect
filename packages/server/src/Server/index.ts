@@ -62,18 +62,18 @@ export class Executor {
 export const makeExecutor = () => T.access((_: T.DefaultEnv) => new Executor(_))
 
 export type Handler = (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
   next: FinalHandler
-) => T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void>
+) => T.Effect<unknown, T.DefaultEnv & HasRequestState & HasRequestContext, never, void>
 
 export type HandlerR<R> = T.AsyncRE<R, HttpError, void>
 export type HandlerRE<R, E> = T.AsyncRE<R, E, void>
 
-export type FinalHandler = (
-  req: http.IncomingMessage,
-  res: http.ServerResponse
-) => T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void>
+export type FinalHandler = T.Effect<
+  unknown,
+  T.DefaultEnv & HasRequestState & HasRequestContext,
+  never,
+  void
+>
 
 export class RequestState {
   private stateMap = new Map<unknown, unknown>()
@@ -126,8 +126,18 @@ export class Server {
         const rid = this.requestId.incrementAndGet()
         const rst = new RequestState(rid)
 
+        const up = req?.url?.split("?")
+
         pipe(
-          this.finalHandler(req, res),
+          this.finalHandler(),
+          T.provideService(HasRequestContext)(
+            new RequestContext(
+              up && up.length > 1 ? up[1] : "",
+              up && up.length > 0 ? up[0] : "",
+              req,
+              res
+            )
+          ),
           T.provideService(HasRequestState)(rst),
           this.executor.runAsync
         )
@@ -135,13 +145,14 @@ export class Server {
     }
   )
 
-  readonly defaultHandler: FinalHandler = (_, res) =>
-    T.effectTotal(() => {
+  readonly defaultHandler: FinalHandler = T.accessService(HasRequestContext)(
+    ({ res }) => {
       if (!res.writableEnded) {
         res.statusCode = 404
         res.end()
       }
-    })
+    }
+  )
 
   handlers = new Array<Handler>()
 
@@ -154,16 +165,17 @@ export class Server {
   }
 
   finalHandler(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
     rest: readonly Handler[] = this.handlers
-  ): T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void> {
+  ): T.Effect<
+    unknown,
+    T.DefaultEnv & HasRequestState & HasRequestContext,
+    never,
+    void
+  > {
     if (A.isNonEmpty(rest)) {
-      return NA.head(rest)(req, res, (reqR, resN) =>
-        this.finalHandler(reqR, resN, NA.tail(rest))
-      )
+      return NA.head(rest)(this.finalHandler(NA.tail(rest)))
     } else {
-      return this.defaultHandler(req, res)
+      return this.defaultHandler
     }
   }
 
@@ -252,23 +264,22 @@ export const accessConfigM = <K extends string>(has: Has.Augumented<Server, K>) 
 export const defaultErrorHandler = <R, E extends HttpError>(f: HandlerRE<R, E>) =>
   T.foldM_(f, (e) => e.render(), T.succeedNow)
 
-export class RouteInput {
+export class RequestContext {
   constructor(
-    readonly params: unknown,
     readonly query: string,
+    readonly url: string,
     readonly req: http.IncomingMessage,
-    readonly res: http.ServerResponse,
-    readonly next: FinalHandler
+    readonly res: http.ServerResponse
   ) {}
 }
 
-export const HasRouteInput = T.has<RouteInput>()()
-export type HasRouteInput = T.HasType<typeof HasRouteInput>
+export const HasRequestContext = T.has<RequestContext>()()
+export type HasRequestContext = T.HasType<typeof HasRequestContext>
 
-export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeedNow)
+export const getRequestContext = T.accessServiceM(HasRequestContext)(T.succeedNow)
 
-export const getBodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
-  T.accessService(HasRouteInput)((i) => i.req),
+export const getBodyBuffer: T.AsyncRE<HasRequestContext, never, Buffer> = pipe(
+  T.accessService(HasRequestContext)((i) => i.req),
   T.chain((req) =>
     T.effectAsyncInterrupt<unknown, never, Buffer>((cb) => {
       const body: Uint8Array[] = []
@@ -291,25 +302,6 @@ export const getBodyBuffer: T.AsyncRE<HasRouteInput, never, Buffer> = pipe(
     })
   )
 )
-
-export const params = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
-  pipe(
-    getRouteInput,
-    T.chain(
-      (i): T.AsyncE<ParametersDecoding, A> => {
-        const decoded = morph.decode(i.params)
-
-        switch (decoded._tag) {
-          case "Right": {
-            return T.succeedNow(decoded.right)
-          }
-          case "Left": {
-            return T.fail(new ParametersDecoding(decoded.left))
-          }
-        }
-      }
-    )
-  )
 
 export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
   pipe(
@@ -338,7 +330,7 @@ export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A>
 
 export const query = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
   pipe(
-    getRouteInput,
+    getRequestContext,
     T.chain((i) =>
       pipe(
         T.effectPartial(identity)(() => qs.parse(`?${i.query}`)),
@@ -362,7 +354,7 @@ export const query = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A
   )
 
 export const response = <A>(morph: { encode: (i: A) => unknown }) => (a: A) =>
-  T.accessServiceM(HasRouteInput)((i) =>
+  T.accessServiceM(HasRequestContext)((i) =>
     T.effectTotal(() => {
       i.res.setHeader("Content-Type", "application/json")
       i.res.write(JSON.stringify(morph.encode(a)))
@@ -370,14 +362,9 @@ export const response = <A>(morph: { encode: (i: A) => unknown }) => (a: A) =>
     })
   )
 
-export const next = pipe(
-  getRouteInput,
-  T.chain((i) => i.next(i.req, i.res))
-)
-
 export const status = (code: number) =>
   pipe(
-    getRouteInput,
+    getRequestContext,
     T.chain((i) =>
       T.effectTotal(() => {
         i.res.statusCode = code
@@ -386,7 +373,7 @@ export const status = (code: number) =>
   )
 
 export abstract class HttpError {
-  abstract render(): T.Effect<unknown, HasRouteInput, never, void>
+  abstract render(): T.Effect<unknown, HasRequestContext, never, void>
 }
 
 export type RequestError =
@@ -403,8 +390,8 @@ export class JsonDecoding extends HttpError {
     super()
   }
 
-  render(): T.Effect<unknown, HasRouteInput, never, void> {
-    return T.accessServiceM(HasRouteInput)((i) =>
+  render(): T.Effect<unknown, HasRequestContext, never, void> {
+    return T.accessServiceM(HasRequestContext)((i) =>
       T.effectTotal(() => {
         i.res.statusCode = 422
         i.res.setHeader("Content-Type", "application/json")
@@ -426,8 +413,8 @@ export class BodyDecoding extends HttpError {
     super()
   }
 
-  render(): T.Effect<unknown, HasRouteInput, never, void> {
-    return T.accessServiceM(HasRouteInput)((i) =>
+  render(): T.Effect<unknown, HasRequestContext, never, void> {
+    return T.accessServiceM(HasRequestContext)((i) =>
       T.effectTotal(() => {
         i.res.statusCode = 422
         i.res.setHeader("Content-Type", "application/json")
@@ -445,8 +432,8 @@ export class ParametersDecoding extends HttpError {
     super()
   }
 
-  render(): T.Effect<unknown, HasRouteInput, never, void> {
-    return T.accessServiceM(HasRouteInput)((i) =>
+  render(): T.Effect<unknown, HasRequestContext, never, void> {
+    return T.accessServiceM(HasRequestContext)((i) =>
       T.effectTotal(() => {
         i.res.statusCode = 422
         i.res.setHeader("Content-Type", "application/json")
@@ -464,8 +451,8 @@ export class QueryParsing extends HttpError {
     super()
   }
 
-  render(): T.Effect<unknown, HasRouteInput, never, void> {
-    return T.accessServiceM(HasRouteInput)((i) =>
+  render(): T.Effect<unknown, HasRequestContext, never, void> {
+    return T.accessServiceM(HasRequestContext)((i) =>
       T.effectTotal(() => {
         i.res.statusCode = 422
         i.res.setHeader("Content-Type", "application/json")
@@ -483,8 +470,8 @@ export class QueryDecoding extends HttpError {
     super()
   }
 
-  render(): T.Effect<unknown, HasRouteInput, never, void> {
-    return T.accessServiceM(HasRouteInput)((i) =>
+  render(): T.Effect<unknown, HasRequestContext, never, void> {
+    return T.accessServiceM(HasRequestContext)((i) =>
       T.effectTotal(() => {
         i.res.statusCode = 422
         i.res.setHeader("Content-Type", "application/json")

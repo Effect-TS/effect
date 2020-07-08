@@ -1,25 +1,25 @@
-import * as http from "http"
-
 import { pipe } from "fp-ts/lib/pipeable"
 import { match } from "path-to-regexp"
 
 import {
-  Server,
-  Handler,
-  FinalHandler,
-  HttpError,
   defaultErrorHandler,
-  HasRouteInput,
-  RouteInput,
-  HasRequestState
+  FinalHandler,
+  Handler,
+  HasRequestContext,
+  HasRequestState,
+  HttpError,
+  ParametersDecoding,
+  Server
 } from "../Server"
 
 import * as A from "@matechs/core/Array"
+import * as Ei from "@matechs/core/Either"
 import * as NA from "@matechs/core/NonEmptyArray"
 import * as T from "@matechs/core/next/Effect"
-import { DerivationContext, Augumented } from "@matechs/core/next/Has"
+import { Augumented, DerivationContext } from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 import * as M from "@matechs/core/next/Managed"
+import * as MO from "@matechs/morphic"
 
 export class Router {
   readonly _tag = "Router"
@@ -37,21 +37,22 @@ export class Router {
   }
 
   finalHandler(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
     next: FinalHandler,
     rest: readonly Handler[] = this.handlers
-  ): T.Effect<unknown, T.DefaultEnv & HasRequestState, never, void> {
+  ): T.Effect<
+    unknown,
+    T.DefaultEnv & HasRequestState & HasRequestContext,
+    never,
+    void
+  > {
     if (A.isNonEmpty(rest)) {
-      return NA.head(rest)(req, res, (reqR, resN) =>
-        this.finalHandler(reqR, resN, next, NA.tail(rest))
-      )
+      return NA.head(rest)(this.finalHandler(next, NA.tail(rest)))
     } else {
-      return next(req, res)
+      return next
     }
   }
 
-  handler: Handler = (req, res, next) => this.finalHandler(req, res, next)
+  handler: Handler = (next) => this.finalHandler(next)
 }
 
 export const derivationContext = new DerivationContext()
@@ -89,13 +90,14 @@ export const child = <K extends string>(has: Augumented<Server, K>) => (base: st
         T.accessServiceM(HasRouter(has))((s) =>
           T.effectTotal(() => {
             const router = new Router(s)
-            const handler: Handler = (req, res, next) => {
-              if (req.url && match(base)(req.url) !== false) {
-                return router.handler(req, res, next)
-              } else {
-                return next(req, res)
-              }
-            }
+            const handler: Handler = (next) =>
+              T.accessServiceM(HasRequestContext)((rc) => {
+                if (rc.url && match(base)(rc.url) !== false) {
+                  return router.handler(next)
+                } else {
+                  return next
+                }
+              })
             s.addHandler(handler)
             return [router, handler] as const
           })
@@ -111,6 +113,34 @@ export const child = <K extends string>(has: Augumented<Server, K>) => (base: st
     )
   )
 
+export class RouteInput {
+  constructor(readonly params: unknown) {}
+}
+
+export const HasRouteInput = T.has<RouteInput>()()
+export type HasRouteInput = T.HasType<typeof HasRouteInput>
+
+export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeedNow)
+
+export const params = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
+  pipe(
+    getRouteInput,
+    T.chain(
+      (i): T.AsyncE<ParametersDecoding, A> => {
+        const decoded = morph.decode(i.params)
+
+        switch (decoded._tag) {
+          case "Right": {
+            return T.succeedNow(decoded.right)
+          }
+          case "Left": {
+            return T.fail(new ParametersDecoding(decoded.left))
+          }
+        }
+      }
+    )
+  )
+
 export type HttpMethod =
   | "GET"
   | "HEAD"
@@ -123,39 +153,43 @@ export type HttpMethod =
   | "PATCH"
 
 export type RouteHandler<R> = T.AsyncRE<
-  R & HasRouteInput & HasRequestState,
+  R & HasRouteInput & HasRequestState & HasRequestContext,
   HttpError,
   void
 >
 
 export function route<K extends string>(has: Augumented<Server, K>) {
-  return <R>(method: HttpMethod, pattern: string, f: RouteHandler<R>) => {
+  return <R>(
+    method: HttpMethod,
+    pattern: string,
+    f: (next: FinalHandler) => RouteHandler<R>
+  ) => {
     const matcher = match(pattern)
 
     const acquire = T.accessServiceM(HasRouter(has))((router) =>
-      T.access((r: R & T.DefaultEnv) => {
-        const handler: Handler = (req, res, next) => {
-          if (req.url && req.method && req.method === method) {
-            const [url, query = ""] = req.url.split("?")
+      T.access((r: R) => {
+        const handler: Handler = (next) =>
+          T.accessServiceM(HasRequestContext)((rc) =>
+            T.suspend(() => {
+              if (rc.url && rc.req.method && rc.req.method === method) {
+                const matchResult = matcher(rc.url)
 
-            const matchResult = matcher(url)
-
-            if (matchResult === false) {
-              return next(req, res)
-            } else {
-              return pipe(
-                f,
-                defaultErrorHandler,
-                T.provideService(HasRouteInput)(
-                  new RouteInput(matchResult.params, query, req, res, next)
-                ),
-                T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
-              )
-            }
-          } else {
-            return next(req, res)
-          }
-        }
+                if (matchResult === false) {
+                  return next
+                } else {
+                  return pipe(
+                    f(next),
+                    defaultErrorHandler,
+                    T.provideService(HasRouteInput)(new RouteInput(matchResult.params)),
+                    T.provideService(HasRequestContext)(rc),
+                    T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
+                  )
+                }
+              } else {
+                return next
+              }
+            })
+          )
 
         router.addHandler(handler)
 
@@ -180,33 +214,33 @@ export function route<K extends string>(has: Augumented<Server, K>) {
 }
 
 export function use<K extends string>(has: Augumented<Server, K>) {
-  return <R>(pattern: string, f: RouteHandler<R>) => {
+  return <R>(pattern: string, f: (next: FinalHandler) => RouteHandler<R>) => {
     const matcher = match(pattern)
 
     const acquire = T.accessServiceM(HasRouter(has))((router) =>
-      T.access((r: R & T.DefaultEnv) => {
-        const handler: Handler = (req, res, next) => {
-          if (req.url && req.method) {
-            const [url, query = ""] = req.url.split("?")
+      T.access((r: R) => {
+        const handler: Handler = (next) =>
+          T.accessServiceM(HasRequestContext)((rc) =>
+            T.suspend(() => {
+              if (rc.url && rc.req.method) {
+                const matchResult = matcher(rc.url)
 
-            const matchResult = matcher(url)
-
-            if (matchResult === false) {
-              return next(req, res)
-            } else {
-              return pipe(
-                f,
-                defaultErrorHandler,
-                T.provideService(HasRouteInput)(
-                  new RouteInput(matchResult.params, query, req, res, next)
-                ),
-                T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
-              )
-            }
-          } else {
-            return next(req, res)
-          }
-        }
+                if (matchResult === false) {
+                  return next
+                } else {
+                  return pipe(
+                    f(next),
+                    defaultErrorHandler,
+                    T.provideService(HasRouteInput)(new RouteInput(matchResult.params)),
+                    T.provideService(HasRequestContext)(rc),
+                    T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
+                  )
+                }
+              } else {
+                return next
+              }
+            })
+          )
 
         router.addHandler(handler)
 

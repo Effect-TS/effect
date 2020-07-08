@@ -61,7 +61,7 @@ export const currentUser = http.makeState<O.Option<string>>(O.none)
 
 export const cors = <R>(self: http.RouteHandler<R>) => 
   pipe(
-    http.getRouteInput,
+    http.getRequestContext,
     T.tap(({res, req}) =>
       T.effectTotal(() => {
         res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
@@ -69,8 +69,6 @@ export const cors = <R>(self: http.RouteHandler<R>) =>
     ),
     T.chain(() => self)
   )
-
-export const corsMiddleware = S.use("(.*)", cors(http.next))
 
 //
 // Custom Error Handler
@@ -100,11 +98,11 @@ export const customErrorHandler = T.catchAll((e: http.RequestError) => {
 
 export const authMiddleware = S.use(
   "(.*)",
-  pipe(
+  (next) => pipe(
     T.of,
     T.tap(() => currentUser.set(O.some("test"))),
-    T.bind("next", () => T.timed(http.next)),
-    T.bind("routeInput", () => http.getRouteInput),
+    T.bind("next", () => T.timed(next)),
+    T.bind("routeInput", () => http.getRequestContext),
     T.chain(({ next: [ms], routeInput: { query } }) =>
       T.effectTotal(() => {
         console.log(`request took: ${ms} ms (${query})`)
@@ -132,7 +130,7 @@ export const personPostResponse = http.response(
 export const personPost = S.route(
   "POST",
   "/person/:id",
-  pipe(
+  () => pipe(
     T.of,
     T.bind("params", () => getPersonPostParams),
     T.bind("body", () => getPersonPostBody),
@@ -154,10 +152,10 @@ export const homeChildRouter = S.child("/home/(.*)")
 export const homeGet = S.route(
   "GET",
   "/home/a",
-  pipe(
+  () => pipe(
     T.of,
     T.bind("config", () => S.getServerConfig),
-    T.bind("routeInput", () => http.getRouteInput),
+    T.bind("routeInput", () => http.getRequestContext),
     T.chain(({ config, routeInput: { res } }) =>
       T.effectTotal(() => {
         res.write(`good: ${config.host}:${config.port}`)
@@ -182,12 +180,12 @@ export const getHomePostQuery = http.query(
 export const homePost = S.route(
   "POST",
   "/home/b",
-  pipe(
+  () => pipe(
     T.of,
     T.bind("body", () => http.getBodyBuffer),
     T.bind("query", () => getHomePostQuery),
     T.bind("user", () => currentUser.get),
-    T.bind("input", () => http.getRouteInput),
+    T.bind("input", () => http.getRequestContext),
     T.tap(({ body, input: { res }, query, user }) =>
       T.effectTotal(() => {
         res.write(body)
@@ -195,7 +193,8 @@ export const homePost = S.route(
         res.write(JSON.stringify(user))
         res.end()
       })
-    )
+    ),
+    cors
   )
 )
 
@@ -208,7 +207,7 @@ export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 export const appLayer = pipe(
   L.all(home, personPost),
   L.using(authMiddleware),
-  L.using(corsMiddleware),
+  L.using(S.use("(.*)", cors)),
   L.using(L.all(S.server, S2.server)),
   L.using(L.all(serverConfig, secondServerConfig)),
   L.main
