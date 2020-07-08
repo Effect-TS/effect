@@ -6,14 +6,14 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "start": "next start -p 8080",
-    "dev": "next -p 8080",
-    "pretty": "prettier --write .",
-    "type-check": "tsc --pretty --noEmit"
+    "d-build": "next build",
+    "d-test": "jest",
+    "d-test:watch": "jest --watch",
+    "d-test:coverage": "jest --coverage",
+    "d-start": "next start -p 8080",
+    "d-dev": "next -p 8080",
+    "d-pretty": "prettier --write .",
+    "d-type-check": "tsc --pretty --noEmit"
   },
   "dependencies": {
     "@matechs/morphic": "file:../../morphic/build",
