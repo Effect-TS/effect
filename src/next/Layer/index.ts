@@ -7,7 +7,7 @@ import { Failure } from "../Exit"
 import { FiberID } from "../Fiber"
 import { FiberContext } from "../Fiber/context"
 import { FiberRef } from "../FiberRef"
-import { accessServiceM, AnyRef, has, HasType, HasURI, mergeEnvironments } from "../Has"
+import { accessServiceM, has, HasType, HasURI, mergeEnvironments } from "../Has"
 import { coerceSE } from "../Managed/deps"
 import { AtomicReference } from "../Support/AtomicReference"
 import { Erase } from "../Utils"
@@ -201,8 +201,8 @@ export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
 /**
  * Identifies a process in environment
  */
-export const hasProcess = <ID extends string>(id: ID) => <E, A>(k?: AnyRef) =>
-  has<Process<E, A>>(k)(id)
+export const hasProcess = <ID extends string>(id: ID) => <E, A>() =>
+  has<Process<E, A>>()<ID>(id)
 
 export type HasProcess<ID extends string, E, A> = T.Has<Process<E, A>, ID>
 
