@@ -193,8 +193,7 @@ export const homePost = S.route(
         res.write(JSON.stringify(user))
         res.end()
       })
-    ),
-    cors
+    )
   )
 )
 
