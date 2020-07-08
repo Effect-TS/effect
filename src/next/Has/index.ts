@@ -24,7 +24,7 @@ export interface Has<T, K> {
     key: symbol
     def: boolean
     name?: string
-    brand?: string
+    brand: string
   }
 }
 
@@ -80,7 +80,7 @@ export function has(_?: any): (k?: string) => Augumented<unknown, unknown> {
           _K: undefined as any,
           key,
           def,
-          brand: k
+          brand: k || "core"
         }
       }
       return {
@@ -265,7 +265,7 @@ export class DerivationContext {
 
   derive<T, K, T2, K2>(
     has: Augumented<T, K>,
-    f: () => Augumented<T2, K2>
+    f: (k: K) => Augumented<T2, K2>
   ): Augumented<T2, K2> {
     const inMap = this.hasMap.get(has)
 
@@ -273,7 +273,7 @@ export class DerivationContext {
       return inMap
     }
 
-    const computed = f()
+    const computed = f(has[HasURI].brand as any)
 
     this.hasMap.set(has, computed)
 
