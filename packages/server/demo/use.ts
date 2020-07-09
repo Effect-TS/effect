@@ -46,11 +46,17 @@ export const S = http.makeServer(T.has<http.Server>()())
 export const S2 = http.makeServer(T.has<http.Server>()("second"))
 
 export const serverConfig = L.service(S.hasConfig).pure(
-  new http.ServerConfig(8080, "0.0.0.0")
+  http.serverConfig({
+    host: "0.0.0.0",
+    port: 8080
+  })
 )
 
 export const secondServerConfig = L.service(S2.hasConfig).pure(
-  new http.ServerConfig(8081, "0.0.0.0")
+  http.serverConfig({
+    host: "0.0.0.0",
+    port: 8081
+  })
 )
 
 export const currentUser = http.makeState<O.Option<string>>(O.none)

@@ -179,7 +179,7 @@ export class Server {
     }
   }
 
-  constructor(readonly executor: Executor) {}
+  constructor(readonly executor: Executor, readonly es: T.ExecutionStrategy) {}
 
   open(port: number, host: string) {
     return T.effectAsync<unknown, never, void>((cb) => {
@@ -201,7 +201,7 @@ export class Server {
       }),
       T.chain(() =>
         T.checkDescriptor((d) =>
-          T.foreachPar_(this.executor.running, (f) => f.interruptAs(d.id))
+          T.foreachExec_(this.es, this.executor.running, (f) => f.interruptAs(d.id))
         )
       ),
       T.chain((es) =>
@@ -235,18 +235,32 @@ export class Server {
   }
 }
 
-export class ServerConfig {
-  constructor(readonly port: number, readonly host: string) {}
+export interface ServerConfig {
+  readonly port: number
+  readonly host: string
+  readonly interruptionStrategy: T.ExecutionStrategy
 }
+
+export const serverConfig = ({
+  host,
+  interruptionStrategy = T.parallelN(100),
+  port
+}: {
+  port: number
+  host: string
+  interruptionStrategy?: T.ExecutionStrategy
+}): ServerConfig => ({ host, port, interruptionStrategy })
 
 export function server<S extends string>(
   has: Has.Augumented<Server, S>
 ): L.AsyncR<T.Has<ServerConfig, S> & T.DefaultEnv, T.Has<Server, S>> {
   return L.service(has)
     .prepare(
-      pipe(
-        makeExecutor(),
-        T.map((e) => new Server(e))
+      T.accessServiceM(config(has))((sc) =>
+        pipe(
+          makeExecutor(),
+          T.map((e) => new Server(e, sc.interruptionStrategy))
+        )
       )
     )
     .open((s) => T.accessServiceM(config(has))((sc) => s.open(sc.port, sc.host)))

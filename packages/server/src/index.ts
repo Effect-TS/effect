@@ -18,7 +18,8 @@ export {
   response,
   status,
   HasRequestContext,
-  getRequestContext
+  getRequestContext,
+  serverConfig
 } from "./Server"
 
 export {
