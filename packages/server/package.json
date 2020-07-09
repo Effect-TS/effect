@@ -1,6 +1,6 @@
 {
   "name": "@matechs/server",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -21,8 +21,8 @@
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "sideEffects": false,
   "devDependencies": {
-    "@matechs/core": "^2.10.4",
-    "@matechs/morphic": "^0.14.5",
+    "@matechs/core": "^2.10.5",
+    "@matechs/morphic": "^0.14.6",
     "@types/node": "^14.0.5"
   },
   "peerDependencies": {
@@ -34,7 +34,11 @@
     "query-string": "^6.13.1"
   },
   "config": {
-    "modules": ["Api", "Server", "Router"]
+    "modules": [
+      "Api",
+      "Server",
+      "Router"
+    ]
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
 }
