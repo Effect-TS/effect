@@ -4,7 +4,8 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "build": "rimraf build && tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && ts-node ../../scripts/rewrite-locals.ts && ts-node ../../scripts/package.ts",
+    "clean": "rimraf build",
+    "build": "tsc --build tsconfig.build.json && tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && ts-node ../../scripts/rewrite-locals.ts && ts-node ../../scripts/package.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
