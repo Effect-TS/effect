@@ -4,38 +4,12 @@ import { UnionToIntersection } from "@matechs/core/Base/Apply"
 import { pipe } from "@matechs/core/Function"
 import * as RE from "@matechs/core/Record"
 import * as T from "@matechs/core/next/Effect"
-import { Exit, flatten, unit } from "@matechs/core/next/Exit"
+import { Exit, unit } from "@matechs/core/next/Exit"
 import { HasURI } from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 import { coerceSE } from "@matechs/core/next/Managed/deps"
 import { releaseAll } from "@matechs/core/next/Managed/internals"
 import { makeReleaseMap, ReleaseMap } from "@matechs/core/next/Managed/releaseMap"
-
-export const runAsync = <R>(runtime: R) => <S, E, A>(
-  effect: T.Effect<S, R & T.DefaultEnv, E, A>
-) => {
-  const cancel = T.runAsyncCancel(T.provideSome_(effect, (r) => ({ ...r, ...runtime })))
-
-  return (cb?: (exit: Exit<E, A>) => void) => {
-    T.runAsync(cancel, (ex) => {
-      if (cb) {
-        cb(flatten(ex))
-      }
-    })
-  }
-}
-
-export const run = <R>(runtime: R) => <E, A>(
-  effect: T.Effect<never, R & T.DefaultEnv, E, A>
-) => {
-  return T.runSync(T.provideSome_(effect, (r0) => ({ ...r0, ...runtime })))
-}
-
-export const runPromise = <R>(runtime: R) => <S, E, A>(
-  effect: T.Effect<S, R & T.DefaultEnv, E, A>
-) => {
-  return T.runPromise(T.provideSome_(effect, (r) => ({ ...r, ...runtime })))
-}
 
 export function component<R>(): <P>(
   F: (runtime: R) => React.ComponentType<P>
