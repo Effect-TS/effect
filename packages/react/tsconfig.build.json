@@ -4,6 +4,8 @@
     "outDir": "build",
     "target": "ES5",
     "module": "CommonJS",
+    "incremental": true,
+    "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
     "sourceMap": false,
     "removeComments": false,
     "jsx": "react",

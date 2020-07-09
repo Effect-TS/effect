@@ -9,3 +9,4 @@ yarn-error.log
 .ionide/
 .metals/
 .ultra.cache.json
+tsbuildinfo/
