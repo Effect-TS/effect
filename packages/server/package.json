@@ -4,7 +4,7 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "clean": "rimraf build",
+    "clean": "rimraf build tsbuildinfo",
     "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
     "build:es6": "tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts",
     "build": "yarn run build:lib && yarn run build:es6 && ts-node ../../scripts/rewrite-locals.ts",
