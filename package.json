@@ -12,7 +12,10 @@
   ],
   "scripts": {
     "prepublishOnly": "yarn prettier --write \"./packages*/*/build/**/*.ts\"",
+    "ci": "yarn run clean && yarn run build && yarn run tc && yarn run lint && yarn run test",
+    "clean": "ultra -r clean",
     "build": "ultra -r build",
+    "test": "jest --detectOpenHandles",
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc"
