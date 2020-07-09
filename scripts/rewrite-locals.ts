@@ -53,12 +53,11 @@ export const replace: Endomorphism<string> = (s) => {
     A.map((p) => {
       ns = ns.replace(
         new RegExp(
-          `(\\.\\./)+(packages|packages_be|packages_fe|packages_http|packages_sys|packages_inc)/${p}/build`,
+          `(\\.\\./)+(?:packages(?:|_be|_fe|_http|_sys|_inc)/)?${p}/build`,
           "gm"
         ),
         `@matechs/${p}`
       )
-      ns = ns.replace(new RegExp(`(\\.\\./)+${p}/build`, "gm"), `@matechs/${p}`)
     })
   )
 
@@ -79,8 +78,10 @@ function modifyFile(
   return (path) =>
     pipe(
       readFile(path, "utf8"),
-      TE.map(f),
-      TE.chain((content) => writeFile(path, content))
+      TE.map((original) => ({ original, updated: f(original) })),
+      TE.chain(({ original, updated }) =>
+        original === updated ? TE.of(undefined) : writeFile(path, updated)
+      )
     )
 }
 
