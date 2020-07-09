@@ -42,19 +42,19 @@ export const numberString = MO.make((F) =>
 // Server config
 //
 
-export const S = http.makeServer(T.has<http.Server>()())
-export const S2 = http.makeServer(T.has<http.Server>()("second"))
+export const mainServer = http.makeServer(T.has<http.Server>()("main"))
+export const internalServer = http.makeServer(T.has<http.Server>()("internal"))
 
-export const serverConfig = L.service(S.hasConfig).pure(
+export const serverConfig = L.service(mainServer.hasConfig).pure(
   http.serverConfig({
     host: "0.0.0.0",
     port: 8080
   })
 )
 
-export const secondServerConfig = L.service(S2.hasConfig).pure(
+export const internalServerConfig = L.service(internalServer.hasConfig).pure(
   http.serverConfig({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 8081
   })
 )
@@ -102,7 +102,7 @@ export const customErrorHandler = T.catchAll((e: http.RequestError) => {
 // Auth Middleware
 //
 
-export const authMiddleware = S.use("(.*)", (next) =>
+export const authMiddleware = mainServer.use("(.*)", (next) =>
   pipe(
     T.of,
     T.tap(() => currentUser.set(O.some("test"))),
@@ -132,7 +132,7 @@ export const personPostResponse = http.response(
   MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
 )
 
-export const personPost = S.route("POST", "/person/:id", () =>
+export const personPost = mainServer.route("POST", "/person/:id", () =>
   pipe(
     T.of,
     T.bind("params", () => getPersonPostParams),
@@ -146,16 +146,16 @@ export const personPost = S.route("POST", "/person/:id", () =>
 // Home Child Router
 //
 
-export const homeChildRouter = S.child("/home/(.*)")
+export const homeChildRouter = mainServer.child("/home/(.*)")
 
 //
 // Home /a GET
 //
 
-export const homeGet = S.route("GET", "/home/a", () =>
+export const homeGet = mainServer.route("GET", "/home/a", () =>
   pipe(
     T.of,
-    T.bind("config", () => S.getServerConfig),
+    T.bind("config", () => mainServer.getServerConfig),
     T.bind("routeInput", () => http.getRequestContext),
     T.chain(({ config, routeInput: { res } }) =>
       T.effectTotal(() => {
@@ -178,7 +178,7 @@ export const getHomePostQuery = http.query(
   )
 )
 
-export const homePost = S.route("POST", "/home/b", () =>
+export const homePost = mainServer.route("POST", "/home/b", () =>
   pipe(
     T.of,
     T.bind("body", () => http.getBodyBuffer),
@@ -197,16 +197,33 @@ export const homePost = S.route("POST", "/home/b", () =>
 )
 
 //
+// Internal server route
+//
+
+export const internalRoute = internalServer.route("GET", "/", () =>
+  pipe(
+    http.getRequestContext,
+    T.chain((rc) =>
+      T.effectTotal(() => {
+        rc.res.statusCode = 200
+        rc.res.write(JSON.stringify({ internal: true }))
+        rc.res.end()
+      })
+    )
+  )
+)
+
+//
 // App Layer with all the routes, middlewared, the server & the server config
 //
 
 export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 
 export const appLayer = pipe(
-  L.all(home, personPost),
+  L.all(home, personPost, internalRoute),
   L.using(authMiddleware),
-  L.using(S.use("(.*)", cors)),
-  L.using(L.all(S.server, S2.server)),
-  L.using(L.all(serverConfig, secondServerConfig)),
+  L.using(mainServer.use("(.*)", cors)),
+  L.using(L.all(mainServer.server, internalServer.server)),
+  L.using(L.all(serverConfig, internalServerConfig)),
   L.main
 )
