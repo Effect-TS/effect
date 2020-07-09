@@ -20,11 +20,7 @@ jobs:
         run: |
           npm install -g yarn
           yarn
-          yarn ultra -r clean
-          yarn ultra -r build
-          yarn ultra -r tc
-          yarn ultra -r lint
-          yarn jest --detectOpenHandles
+          yarn run ci
           cp .ci.npmrc .npmrc
           yarn lerna publish from-package --yes
         env:
