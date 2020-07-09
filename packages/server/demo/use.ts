@@ -42,7 +42,7 @@ export const numberString = MO.make((F) =>
 // Server config
 //
 
-export const mainServer = http.makeServer(T.has<http.Server>()("main"))
+export const mainServer = http.makeServer(T.has<http.Server>()("api"))
 export const internalServer = http.makeServer(T.has<http.Server>()("internal"))
 
 export const serverConfig = L.service(mainServer.hasConfig).pure(
