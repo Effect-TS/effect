@@ -72,8 +72,10 @@ function modifyFile(
   return (path) =>
     pipe(
       readFile(path, "utf8"),
-      TE.map(f),
-      TE.chain((content) => writeFile(path, content))
+      TE.map((original) => ({ original, updated: f(original) })),
+      TE.chain(({ original, updated }) =>
+        original === updated ? TE.of(undefined) : writeFile(path, updated)
+      )
     )
 }
 
