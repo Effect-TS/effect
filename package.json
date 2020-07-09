@@ -12,10 +12,10 @@
   ],
   "scripts": {
     "prepublishOnly": "yarn prettier --write \"./packages*/*/build/**/*.ts\"",
-    "build": "lerna run build",
-    "autofix": "lerna run --parallel autofix",
-    "lint": "lerna run lint",
-    "tc": "lerna run tc"
+    "build": "ultra -r build",
+    "autofix": "ultra -r autofix",
+    "lint": "ultra -r lint",
+    "tc": "ultra -r tc"
   },
   "devDependencies": {
     "@babel/core": "^7.10.0",
