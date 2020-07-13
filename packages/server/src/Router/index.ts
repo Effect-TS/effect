@@ -263,3 +263,9 @@ export function use<K extends string>(has: Augumented<Server, K>) {
     )
   }
 }
+
+export type Middleware<R> = <R1>(_: RouteHandler<R1>) => RouteHandler<R & R1>
+
+export const middleware = <R>(
+  f: (_: RouteHandler<unknown>) => RouteHandler<R>
+): Middleware<R> => (next) => f(next as any)

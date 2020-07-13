@@ -65,7 +65,7 @@ export const currentUser = http.makeState<O.Option<string>>(O.none)
 // Cors Middleware
 //
 
-export const cors = <R>(next: http.RouteHandler<R>) =>
+export const cors = http.middleware((next) =>
   pipe(
     http.getRequestContext,
     T.tap(({ req, res }) =>
@@ -75,6 +75,7 @@ export const cors = <R>(next: http.RouteHandler<R>) =>
     ),
     T.chain(() => next)
   )
+)
 
 //
 // Custom Error Handler

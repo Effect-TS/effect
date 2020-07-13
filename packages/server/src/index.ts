@@ -34,7 +34,9 @@ export {
   root,
   route,
   use,
-  child
+  child,
+  Middleware,
+  middleware
 } from "./Router"
 
 export { makeServer, makeState } from "./Api"
