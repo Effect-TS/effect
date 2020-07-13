@@ -53,23 +53,17 @@ export type Augumented<T, K> = Has<T, K> & {
 export type HasType<T> = T extends Has<infer A, infer K> ? Has<A, K> : never
 
 /**
- * Default brand
- */
-export declare const _default: unique symbol
-export type _default = typeof _default
-
-/**
  * Create a service entry from a type and a URI
  */
 export function has<T extends Constructor<any>>(
   _: T
 ): {
   <K extends string>(k: K): Augumented<TypeOf<T>, K>
-  (): Augumented<TypeOf<T>, "core">
+  (): Augumented<TypeOf<T>, {}>
 }
 export function has<T>(): {
   <K extends string>(k: K): Augumented<T, K>
-  (): Augumented<T, "core">
+  (): Augumented<T, {}>
 }
 export function has(_?: any): (k?: string) => Augumented<unknown, unknown> {
   return (k) => {
@@ -80,7 +74,7 @@ export function has(_?: any): (k?: string) => Augumented<unknown, unknown> {
           _K: undefined as any,
           key,
           def,
-          brand: k || "core"
+          brand: k || "n/a"
         }
       }
       return {
