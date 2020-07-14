@@ -4,26 +4,23 @@ import {
   config,
   getRequestState,
   requestState,
-  server,
+  server as is,
   Server,
   setRequestState
 } from "../Server"
 
 import * as T from "@matechs/core/next/Effect"
-import * as Has from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 
-export const makeServer = <K extends string>(has: Has.Augumented<Server, K>) => {
-  return {
-    child: R.child(has),
-    getServerConfig: accessConfigM(has)(T.succeedNow),
-    getServer: T.accessServiceM(has)(T.succeedNow),
-    route: R.route(has),
-    use: R.use(has),
-    hasConfig: config(has),
-    server: L.using_(R.root(has), server(has))
-  }
-}
+export const HasServer = T.has<Server>()
+
+export const child = R.child(HasServer)
+export const getServerConfig = accessConfigM(HasServer)(T.succeedNow)
+export const getServer = T.accessServiceM(HasServer)(T.succeedNow)
+export const route = R.route(HasServer)
+export const use = R.use(HasServer)
+export const hasConfig = config(HasServer)
+export const server = L.using_(R.root(HasServer), is(HasServer))
 
 export const makeState = <V>(initial: V) => {
   const v = requestState(initial)
