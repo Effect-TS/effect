@@ -1,5 +1,7 @@
 import { reduce_ } from "../../Array"
 import { UnionToIntersection } from "../../Base/Apply"
+import { Branded } from "../../Branded"
+import { pipe } from "../../Function"
 import { Then } from "../Cause"
 import { contains } from "../Cause/contains"
 import { runAsync, DefaultEnv } from "../Effect/runtime"
@@ -21,14 +23,10 @@ export class ProcessMap {
   readonly subscribers = new Set<(fiberId: FiberID) => void>()
   readonly identified = new Map<symbol, FiberContext<any, any>>()
 
-  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: T.Has<any, any>) {
+  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: T.Has<any>) {
     if (has && this.identified.has(has[HasURI].key)) {
       return T.die(
-        `Fiber (${
-          has[HasURI].brand && typeof has[HasURI].brand === "string"
-            ? `${has[HasURI].brand}`
-            : `#${this.identified.get(has[HasURI].key)?.id.seqNumber}`
-        }) already forked`
+        `Fiber (#${this.identified.get(has[HasURI].key)?.id.seqNumber} already forked`
       )
     }
     if (this.interruptedBy.get) {
@@ -125,7 +123,7 @@ export class ProcessRegistry {
   }
 }
 
-export const HasProcessRegistry = has<ProcessRegistry>()()
+export const HasProcessRegistry = has<ProcessRegistry>()
 export type HasProcessRegistry = HasType<typeof HasProcessRegistry>
 
 export const accessProcessRegistryM = accessServiceM(HasProcessRegistry)
@@ -201,15 +199,16 @@ export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
 /**
  * Identifies a process in environment
  */
-export const hasProcess = <ID extends string>(id: ID) => <E, A>() =>
-  has<Process<E, A>>()<ID>(id)
+export const hasProcess = <ID extends string>(_: ID) => <E, A>() =>
+  has<Process<E, A, ID>>()
 
-export type HasProcess<ID extends string, E, A> = T.Has<Process<E, A>, ID>
+export type HasProcess<ID extends string, E, A> = T.Has<Process<E, A, ID>>
 
 /**
  * Access a forked process
  */
-export class Process<E, A> {
+export class Process<E, A, ID> {
+  readonly _ID!: ID
   readonly _TAG = "@matechs/core/Eff/Layer/Fork"
 
   constructor(readonly _FIBER: FiberContext<E, A>) {}
@@ -280,12 +279,12 @@ export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) 
     )
   )
 
-export const pure = <T, K>(has: T.Has<T, K>) => (resource: T) =>
-  new Layer<never, unknown, never, T.Has<T, K>>(
+export const pure = <T>(has: T.Has<T>) => (resource: T) =>
+  new Layer<never, unknown, never, T.Has<T>>(
     T.managedChain_(T.fromEffect(T.succeedNow(resource)), (a) => environmentFor(has, a))
   )
 
-export const prepare = <T, K>(has: T.Has<T, K>) => <S, R, E, A extends T>(
+export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
   acquire: T.Effect<S, R & HasProcessRegistry, E, A>
 ) => ({
   open: <S1, R1, E1>(
@@ -303,27 +302,27 @@ export const prepare = <T, K>(has: T.Has<T, K>) => <S, R, E, A extends T>(
   })
 })
 
-export const service = <T, K>(has: T.Has<T, K>) => ({
+export const service = <T>(has: T.Has<T>) => ({
   fromEffect: fromEffect(has),
   fromManaged: fromManaged(has),
   pure: pure(has),
   prepare: prepare(has)
 })
 
-export const fromEffect = <T, K>(has: T.Has<T, K>) => <S, R, E>(
+export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
   resource: T.Effect<S, R, E, T>
 ) =>
-  new Layer<S, R, E, T.Has<T, K>>(
+  new Layer<S, R, E, T.Has<T>>(
     T.managedProvideSome_(
       T.managedChain_(T.fromEffect(resource), (a) => environmentFor(has, a)),
       ([r]) => r
     )
   )
 
-export const fromManaged = <T, K>(has: T.Has<T, K>) => <S, R, E>(
+export const fromManaged = <T>(has: T.Has<T>) => <S, R, E>(
   resource: T.Managed<S, R & HasProcessRegistry, E, T>
 ) =>
-  new Layer<S, R, E, T.Has<T, K>>(
+  new Layer<S, R, E, T.Has<T>>(
     T.managedProvideSome_(
       T.managedChain_(resource, (a) => environmentFor(has, a)),
       ([r, pm]) =>
@@ -361,6 +360,32 @@ export const using_ = <S, R, E, A, S2, R2, E2, A2>(
   right: Layer<S2, R2, E2, A2>
 ) =>
   new Layer<S | S2, Erase<R, A2> & R2, E | E2, A & A2>(
+    T.managedChain_(right.build, (a2) =>
+      T.managedMap_(
+        T.managedProvideSome_(left.build, ([r0, pm]: [R & R2, ProcessMap]): [
+          R & R2 & A2,
+          ProcessMap
+        ] => [
+          {
+            ...r0,
+            ...a2
+          },
+          pm
+        ]),
+        (a) => ({ ...a2, ...a })
+      )
+    )
+  )
+
+export const consuming = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
+  left: Layer<S, R & A2, E, A>
+) => consuming_<S, R, E, A, S2, R2, E2, A2>(left, right)
+
+export const consuming_ = <S, R, E, A, S2, R2, E2, A2>(
+  left: Layer<S, R & A2, E, A>,
+  right: Layer<S2, R2, E2, A2>
+) =>
+  new Layer<S | S2, R & R2, E | E2, A & A2>(
     T.managedChain_(right.build, (a2) =>
       T.managedMap_(
         T.managedProvideSome_(left.build, ([r0, pm]: [R & R2, ProcessMap]): [
@@ -451,14 +476,11 @@ export const allParN = (n: number) => <Ls extends Layer<any, any, any, any>[]>(
     )
   )
 
-function environmentFor<T, K>(
-  has: T.Has<T, K>,
+function environmentFor<T>(
+  has: T.Has<T>,
   a: T
-): T.Managed<never, unknown, never, T.Has<T, K>>
-function environmentFor<T, K>(
-  has: T.Has<T, K>,
-  a: T
-): T.Managed<never, unknown, never, any> {
+): T.Managed<never, unknown, never, T.Has<T>>
+function environmentFor<T>(has: T.Has<T>, a: T): T.Managed<never, unknown, never, any> {
   return T.fromEffect(
     T.access((r) => ({
       [has[HasURI].key]: mergeEnvironments(has, r, a as any)[has[HasURI].key]
@@ -470,3 +492,22 @@ function environmentFor<T, K>(
  * Type level bound to make sure a layer is complete
  */
 export const main = <S, E, A>(layer: Layer<S, DefaultEnv, E, A>) => layer
+
+/**
+ * Branding sub-environments
+ */
+export const scoped = <T, K>() => has<Branded<T, K>>()
+
+export const provideScope = <K, T>(h: T.Has<Branded<T, K>>) => <S, R, E, T>(
+  _: Layer<S, R, E, T>
+): Layer<S, R, E, T.Has<Branded<T, K>>> =>
+  pipe(
+    fromEffectEnv(
+      T.access((r: T): T.Has<Branded<T, K>> => ({ [h[HasURI].key]: r } as any))
+    ),
+    consuming(_)
+  )
+
+export const useScope = <K, T>(h: T.Has<Branded<T, K>>) => <S, R, E, A>(
+  e: T.Effect<S, R & T, E, A>
+) => accessServiceM(h)((a) => pipe(e, T.provide(a as T)))

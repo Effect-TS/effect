@@ -13,7 +13,7 @@ class Show {
   }
 }
 
-const HasShow = T.has(Show)()
+const HasShow = T.has(Show)
 
 const appLayer = pipe(
   L.service(HasShow).fromManaged(M.fromEffect(T.effectTotal(() => new Show("a")))),

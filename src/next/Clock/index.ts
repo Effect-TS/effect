@@ -21,7 +21,7 @@ export abstract class Clock {
 //
 export const HasClock =
   /*#__PURE__*/
-  has(Clock)()
+  has(Clock)
 
 export type HasClock = HasType<typeof HasClock>
 
