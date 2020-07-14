@@ -17,14 +17,12 @@ export const HasURI = Symbol()
  * environment, additionally encodes if the service should be
  * overridable or not
  */
-export interface Has<T, K> {
+export interface Has<T> {
   [HasURI]: {
     _T: () => T
-    _K: () => K
     key: symbol
     def: boolean
     name?: string
-    brand: string
   }
 }
 
@@ -39,67 +37,56 @@ export type TypeOf<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
-export type Augumented<T, K> = Has<T, K> & {
-  overridable: () => Augumented<T, K>
-  fixed: () => Augumented<T, K>
-  refine: <T1 extends T>() => Augumented<T1, K>
-  read: (r: Has<T, K>) => T
-  at: (s: symbol) => Augumented<T, K>
+export type Augumented<T> = Has<T> & {
+  overridable: () => Augumented<T>
+  fixed: () => Augumented<T>
+  refine: <T1 extends T>() => Augumented<T1>
+  read: (r: Has<T>) => T
+  at: (s: symbol) => Augumented<T>
 }
 
 /**
  * Extract Has the type from any augumented variant
  */
-export type HasType<T> = T extends Has<infer A, infer K> ? Has<A, K> : never
+export type HasType<T> = T extends Has<infer A> ? Has<A> : never
 
 /**
  * Create a service entry from a type and a URI
  */
-export function has<T extends Constructor<any>>(
-  _: T
-): {
-  <K extends string>(k: K): Augumented<TypeOf<T>, K>
-  (): Augumented<TypeOf<T>, {}>
-}
-export function has<T>(): {
-  <K extends string>(k: K): Augumented<T, K>
-  (): Augumented<T, {}>
-}
-export function has(_?: any): (k?: string) => Augumented<unknown, unknown> {
-  return (k) => {
-    const inner = (def = false, key = Symbol()) => {
-      const h = {
-        [HasURI]: {
-          _T: undefined as any,
-          _K: undefined as any,
-          key,
-          def,
-          brand: k || "n/a"
-        }
-      }
-      return {
-        ...h,
-        overridable: () => inner(true),
-        fixed: () => inner(false),
-        refine: () => inner(def),
-        read: (r: any) => r[key],
-        at: (s: symbol) => inner(def, s)
+export function has<T extends Constructor<any>>(_: T): Augumented<TypeOf<T>>
+export function has<T>(): Augumented<T>
+export function has(_?: any): Augumented<unknown> {
+  const inner = (def = false, key = Symbol()) => {
+    const h = {
+      [HasURI]: {
+        _T: undefined as any,
+        _K: undefined as any,
+        key,
+        def
       }
     }
-
-    return inner()
+    return {
+      ...h,
+      overridable: () => inner(true),
+      fixed: () => inner(false),
+      refine: () => inner(def),
+      read: (r: any) => r[key],
+      at: (s: symbol) => inner(def, s)
+    }
   }
+
+  return inner()
 }
 
 /**
  * Get the type of a Has
  */
-export type InnerHasType<T> = T extends Has<infer A, any> ? A : never
+export type InnerHasType<T> = T extends Has<infer A> ? A : never
 
 /**
  * Access a record of services with the required Service Entries
  */
-export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS) => <
+export const accessServicesM = <SS extends Record<string, Has<any>>>(s: SS) => <
   S,
   R = unknown,
   E = never,
@@ -107,7 +94,7 @@ export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS)
 >(
   f: (
     a: {
-      [k in keyof SS]: SS[k] extends Has<infer T, any> ? T : unknown
+      [k in keyof SS]: SS[k] extends Has<infer T> ? T : unknown
     }
   ) => Effect<S, R, E, B>
 ) =>
@@ -115,7 +102,7 @@ export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS)
     (
       r: UnionToIntersection<
         {
-          [k in keyof SS]: SS[k] extends Has<infer T, infer K> ? Has<T, K> : unknown
+          [k in keyof SS]: SS[k] extends Has<infer T> ? Has<T> : unknown
         }[keyof SS]
       >
     ) => f(R.map_(s, (v) => r[v[HasURI].key]) as any)
@@ -124,10 +111,10 @@ export const accessServicesM = <SS extends Record<string, Has<any, any>>>(s: SS)
 /**
  * Access a record of services with the required Service Entries
  */
-export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) => <B>(
+export const accessServices = <SS extends Record<string, Has<any>>>(s: SS) => <B>(
   f: (
     a: {
-      [k in keyof SS]: SS[k] extends Has<infer T, any> ? T : unknown
+      [k in keyof SS]: SS[k] extends Has<infer T> ? T : unknown
     }
   ) => B
 ) =>
@@ -135,7 +122,7 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
     (
       r: UnionToIntersection<
         {
-          [k in keyof SS]: SS[k] extends Has<infer T, infer K> ? Has<T, K> : unknown
+          [k in keyof SS]: SS[k] extends Has<infer T> ? Has<T> : unknown
         }[keyof SS]
       >
     ) => f(R.map_(s, (v) => r[v[HasURI].key]) as any)
@@ -144,78 +131,81 @@ export const accessServices = <SS extends Record<string, Has<any, any>>>(s: SS) 
 /**
  * Access a service with the required Service Entry
  */
-export const accessServiceM = <T, K>(s: Has<T, K>) => <S, R, E, B>(
+export const accessServiceM = <T>(s: Has<T>) => <S, R, E, B>(
   f: (a: T) => Effect<S, R, E, B>
-) => accessM((r: Has<T, K>) => f(r[s[HasURI].key as any]))
+) => accessM((r: Has<T>) => f(r[s[HasURI].key as any]))
 
 /**
  * Access a service with the required Service Entry
  */
-export const accessService = <T, K>(s: Has<T, K>) => <B>(f: (a: T) => B) =>
+export const accessService = <T>(s: Has<T>) => <B>(f: (a: T) => B) =>
   accessServiceM(s)((a) => succeedNow(f(a)))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
  */
-export const provideServiceM = <T, K>(_: Has<T, K>) => <S, R, E>(
-  f: Effect<S, R, E, T>
-) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<T, K>, E1, A1>
+export const provideServiceM = <T>(_: Has<T>) => <S, R, E>(f: Effect<S, R, E, T>) => <
+  S1,
+  R1,
+  E1,
+  A1
+>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
 ): Effect<S | S1, R & R1, E | E1, A1> =>
   accessM((r: R & R1) => chain_(f, (t) => provideAll_(ma, mergeEnvironments(_, r, t))))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
  */
-export const provideService = <T, K>(_: Has<T, K>) => (f: T) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<T, K>, E1, A1>
+export const provideService = <T>(_: Has<T>) => (f: T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
 ): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeedNow(f))(ma)
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceServiceM = <S, R, E, T, K>(
-  _: Has<T, K>,
+export const replaceServiceM = <S, R, E, T>(
+  _: Has<T>,
   f: (_: T) => Effect<S, R, E, T>
 ) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<T, K>, E1, A1>
-): Effect<S | S1, R & R1 & Has<T, K>, E | E1, A1> =>
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
+): Effect<S | S1, R & R1 & Has<T>, E | E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceServiceM_ = <S, R, E, T, K, S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<T, K>, E1, A1>,
-  _: Has<T, K>,
+export const replaceServiceM_ = <S, R, E, T, S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>,
+  _: Has<T>,
   f: (_: T) => Effect<S, R, E, T>
-): Effect<S | S1, R & R1 & Has<T, K>, E | E1, A1> =>
+): Effect<S | S1, R & R1 & Has<T>, E | E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(f(t))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceService = <T, K>(_: Has<T, K>, f: (_: T) => T) => <S1, R1, E1, A1>(
-  ma: Effect<S1, R1 & Has<T, K>, E1, A1>
-): Effect<S1, R1 & Has<T, K>, E1, A1> =>
+export const replaceService = <T>(_: Has<T>, f: (_: T) => T) => <S1, R1, E1, A1>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>
+): Effect<S1, R1 & Has<T>, E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
  */
-export const replaceService_ = <S1, R1, E1, A1, T, K>(
-  ma: Effect<S1, R1 & Has<T, K>, E1, A1>,
-  _: Has<T, K>,
+export const replaceService_ = <S1, R1, E1, A1, T>(
+  ma: Effect<S1, R1 & Has<T>, E1, A1>,
+  _: Has<T>,
   f: (_: T) => T
-): Effect<S1, R1 & Has<T, K>, E1, A1> =>
+): Effect<S1, R1 & Has<T>, E1, A1> =>
   accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn = <T, K>(_: Has<T, K>, f: (t: T) => T) => <R>(
-  r: R & Has<T, K>
-): R & Has<T, K> =>
+export const replaceServiceIn = <T>(_: Has<T>, f: (t: T) => T) => <R>(
+  r: R & Has<T>
+): R & Has<T> =>
   ({
     ...r,
     [_[HasURI].key]: f(r[_[HasURI].key as any])
@@ -224,11 +214,11 @@ export const replaceServiceIn = <T, K>(_: Has<T, K>, f: (t: T) => T) => <R>(
 /**
  * Replaces the service with the required Service Entry, in the specified environment
  */
-export const replaceServiceIn_ = <R, T, K>(
-  r: R & Has<T, K>,
-  _: Has<T, K>,
+export const replaceServiceIn_ = <R, T>(
+  r: R & Has<T>,
+  _: Has<T>,
   f: (t: T) => T
-): R & Has<T, K> =>
+): R & Has<T> =>
   ({
     ...r,
     [_[HasURI].key]: f(r[_[HasURI].key as any])
@@ -238,14 +228,14 @@ export const replaceServiceIn_ = <R, T, K>(
  * Flags the current Has to be overridable, when this is used subsequently provided
  * environments will override pre-existing. Useful to provide defaults.
  */
-export const overridable = <T, K>(h: Has<T, K>): Has<T, K> => ({
+export const overridable = <T>(h: Has<T>): Has<T> => ({
   [HasURI]: {
     ...h[HasURI],
     def: true
   }
 })
 
-export function mergeEnvironments<T, K, R1>(_: Has<T, K>, r: R1, t: T): R1 & Has<T, K> {
+export function mergeEnvironments<T, R1>(_: Has<T>, r: R1, t: T): R1 & Has<T> {
   return _[HasURI].def && r[_[HasURI].key as any]
     ? r
     : ({
@@ -255,19 +245,16 @@ export function mergeEnvironments<T, K, R1>(_: Has<T, K>, r: R1, t: T): R1 & Has
 }
 
 export class DerivationContext {
-  readonly hasMap = new Map<Augumented<any, any>, Augumented<any, any>>()
+  readonly hasMap = new Map<Augumented<any>, Augumented<any>>()
 
-  derive<T, K, T2, K2>(
-    has: Augumented<T, K>,
-    f: (k: K) => Augumented<T2, K2>
-  ): Augumented<T2, K2> {
+  derive<T, T2>(has: Augumented<T>, f: () => Augumented<T2>): Augumented<T2> {
     const inMap = this.hasMap.get(has)
 
     if (inMap) {
       return inMap
     }
 
-    const computed = f(has[HasURI].brand as any)
+    const computed = f()
 
     this.hasMap.set(has, computed)
 
