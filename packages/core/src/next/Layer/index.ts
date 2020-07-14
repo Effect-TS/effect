@@ -1,10 +1,9 @@
 import { reduce_ } from "../../Array"
 import { UnionToIntersection } from "../../Base/Apply"
-import { Branded } from "../../Branded"
 import { pipe } from "../../Function"
 import { Then } from "../Cause"
 import { contains } from "../Cause/contains"
-import { runAsync, DefaultEnv } from "../Effect/runtime"
+import { DefaultEnv, runAsync } from "../Effect/runtime"
 import { Failure } from "../Exit"
 import { FiberID } from "../Fiber"
 import { FiberContext } from "../Fiber/context"
@@ -496,18 +495,26 @@ export const main = <S, E, A>(layer: Layer<S, DefaultEnv, E, A>) => layer
 /**
  * Branding sub-environments
  */
-export const scoped = <T, K>() => has<Branded<T, K>>()
+export const ScopeURI = Symbol()
+export interface Scoped<T, K> {
+  [ScopeURI]: {
+    _K: () => K
+    _T: () => T
+  }
+}
 
-export const provideScope = <K, T>(h: T.Has<Branded<T, K>>) => <S, R, E, T>(
-  _: Layer<S, R, E, T>
-): Layer<S, R, E, T.Has<Branded<T, K>>> =>
+export const scoped = <T, K>() => has<Scoped<T, K>>()
+
+export const provideScope = <K, T>(h: T.Has<Scoped<T, K>>) => <S, R, E, Z>(
+  _: Layer<S, R, E, T & Z>
+): Layer<S, R, E, T.Has<Scoped<T, K>> & Z> =>
   pipe(
     fromEffectEnv(
-      T.access((r: T): T.Has<Branded<T, K>> => ({ [h[HasURI].key]: r } as any))
+      T.access((r: T): T.Has<Scoped<T, K>> => ({ ...r, [h[HasURI].key]: r } as any))
     ),
     consuming(_)
   )
 
-export const useScope = <K, T>(h: T.Has<Branded<T, K>>) => <S, R, E, A>(
+export const useScope = <K, T>(h: T.Has<Scoped<T, K>>) => <S, R, E, A>(
   e: T.Effect<S, R & T, E, A>
-) => accessServiceM(h)((a) => pipe(e, T.provide(a as T)))
+) => accessServiceM(h)((a) => pipe(e, T.provide((a as any) as T)))

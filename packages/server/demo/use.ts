@@ -220,12 +220,19 @@ export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 export const apiEnv = L.scoped<H.ServerEnv, "api">()
 export const internalEnv = L.scoped<H.ServerEnv, "internal">()
 
+export class Foo {
+  readonly _tag = "Foo"
+}
+
+export const HasFoo = T.has(Foo)
+
 export const appServerLayer = pipe(
   L.all(home, personPost),
   L.using(authMiddleware),
   L.using(H.use("(.*)", cors)),
   L.using(H.server),
   L.using(serverConfig),
+  L.using(L.service(HasFoo).pure(new Foo())),
   L.provideScope(apiEnv)
 )
 
