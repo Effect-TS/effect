@@ -1,3 +1,8 @@
+import { Router } from "./Router"
+import { Server, ServerConfig } from "./Server"
+
+import { Has } from "@matechs/core/next/Has"
+
 export {
   BodyDecoding,
   FinalHandler,
@@ -32,11 +37,20 @@ export {
   HasRouteInput,
   Router,
   root,
-  route,
-  use,
-  child,
   Middleware,
   middleware
 } from "./Router"
 
-export { makeServer, makeState } from "./Api"
+export {
+  makeState,
+  HasServer,
+  child,
+  getServer,
+  getServerConfig,
+  hasConfig,
+  route,
+  server,
+  use
+} from "./Api"
+
+export type ServerEnv = Has<Router> & Has<Server> & Has<ServerConfig>

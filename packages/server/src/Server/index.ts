@@ -106,7 +106,7 @@ export class Value<V> {
 
 export const requestState = <V>(initial: V) => new Value(initial)
 
-export const HasRequestState = T.has<RequestState>()()
+export const HasRequestState = T.has<RequestState>()
 export type HasRequestState = T.HasType<typeof HasRequestState>
 
 export const getRequestState = <V>(v: Value<V>) =>
@@ -251,9 +251,9 @@ export const serverConfig = ({
   interruptionStrategy?: T.ExecutionStrategy
 }): ServerConfig => ({ host, port, interruptionStrategy })
 
-export function server<S extends string>(
-  has: Has.Augumented<Server, S>
-): L.AsyncR<T.Has<ServerConfig, S> & T.DefaultEnv, T.Has<Server, S>> {
+export function server(
+  has: Has.Augumented<Server>
+): L.AsyncR<T.Has<ServerConfig> & T.DefaultEnv, T.Has<Server>> {
   return L.service(has)
     .prepare(
       T.accessServiceM(config(has))((sc) =>
@@ -269,10 +269,10 @@ export function server<S extends string>(
 
 export const configDerivationContext = new Has.DerivationContext()
 
-export const config = <K extends string>(has: Has.Augumented<Server, K>) =>
-  configDerivationContext.derive(has, (k) => T.has<ServerConfig>()<K>(k))
+export const config = (has: Has.Augumented<Server>) =>
+  configDerivationContext.derive(has, () => T.has<ServerConfig>())
 
-export const accessConfigM = <K extends string>(has: Has.Augumented<Server, K>) =>
+export const accessConfigM = (has: Has.Augumented<Server>) =>
   T.accessServiceM(config(has))
 
 export const defaultErrorHandler = <R, E extends HttpError>(f: HandlerRE<R, E>) =>
@@ -287,7 +287,7 @@ export class RequestContext {
   ) {}
 }
 
-export const HasRequestContext = T.has<RequestContext>()()
+export const HasRequestContext = T.has<RequestContext>()
 export type HasRequestContext = T.HasType<typeof HasRequestContext>
 
 export const getRequestContext = T.accessServiceM(HasRequestContext)(T.succeedNow)

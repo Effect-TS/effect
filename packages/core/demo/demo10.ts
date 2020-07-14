@@ -9,23 +9,24 @@ abstract class Console {
 abstract class Format {
   abstract readonly formatString: (s: string) => T.Sync<string>
 }
-abstract class AppConfig<S> {
+abstract class AppConfig<S, K> {
+  readonly _K!: K
   abstract readonly config: S
 }
 
-export const HasConsole = T.has(Console)()
+export const HasConsole = T.has(Console)
 export type HasConsole = T.HasType<typeof HasConsole>
 
-export const HasFormat = T.has(Format)()
+export const HasFormat = T.has(Format)
 export type HasFormat = T.HasType<typeof HasFormat>
 
-export const HasAppConfig = T.has<AppConfig<string>>()()
+export const HasAppConfig = T.has<AppConfig<string, "core">>()
 export type HasAppConfig = T.HasType<typeof HasAppConfig>
 
-export const HasScopedAppConfig = T.has<AppConfig<string>>()("Scoped")
+export const HasScopedAppConfig = T.has<AppConfig<string, "scoped">>()
 export type HasScopedAppConfig = T.HasType<typeof HasScopedAppConfig>
 
-export const HasNumberConfig = T.has<AppConfig<number>>()("Number")
+export const HasNumberConfig = T.has<AppConfig<number, "number">>()
 export type HasNumberConfig = T.HasType<typeof HasNumberConfig>
 
 export const putStrLn = (s: string) =>
@@ -103,7 +104,7 @@ const program = pipe(
 
 export const provideAppConfig = T.provideServiceM(HasAppConfig)(
   T.succeedNow(
-    new (class extends AppConfig<string> {
+    new (class extends AppConfig<string, "core"> {
       config = "ok"
     })()
   )
@@ -111,7 +112,7 @@ export const provideAppConfig = T.provideServiceM(HasAppConfig)(
 
 export const provideNumberConfig = T.provideServiceM(HasNumberConfig)(
   T.succeedNow(
-    new (class extends AppConfig<number> {
+    new (class extends AppConfig<number, "number"> {
       config = 1
     })()
   )
@@ -119,7 +120,7 @@ export const provideNumberConfig = T.provideServiceM(HasNumberConfig)(
 
 export const provideScopedAppConfig = T.provideServiceM(HasScopedAppConfig)(
   T.succeedNow(
-    new (class extends AppConfig<string> {
+    new (class extends AppConfig<string, "scoped"> {
       config = "ok - scoped"
     })()
   )

@@ -50,7 +50,7 @@ export const defaultRandom =
   /*#__PURE__*/
   new LiveRandom(String(Math.random()))
 
-export const HasRandom = has(Random)()
+export const HasRandom = has(Random)
 export type HasRandom = HasType<typeof HasRandom>
 
 export const next =

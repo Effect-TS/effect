@@ -57,10 +57,10 @@ export class Router {
 
 export const derivationContext = new DerivationContext()
 
-export const HasRouter = <K extends string>(has: Augumented<Server, K>) =>
-  derivationContext.derive(has, (k) => T.has<Router>()<K>(k))
+export const HasRouter = <K extends string>(has: Augumented<Server>) =>
+  derivationContext.derive(has, () => T.has<Router>())
 
-export const root = <K extends string>(has: Augumented<Server, K>) =>
+export const root = (has: Augumented<Server>) =>
   L.service(HasRouter(has)).fromManaged(
     pipe(
       M.makeExit_(
@@ -83,7 +83,7 @@ export const root = <K extends string>(has: Augumented<Server, K>) =>
     )
   )
 
-export const child = <K extends string>(has: Augumented<Server, K>) => (base: string) =>
+export const child = (has: Augumented<Server>) => (base: string) =>
   L.service(HasRouter(has)).fromManaged(
     pipe(
       M.makeExit_(
@@ -117,7 +117,7 @@ export class RouteInput {
   constructor(readonly params: unknown) {}
 }
 
-export const HasRouteInput = T.has<RouteInput>()()
+export const HasRouteInput = T.has<RouteInput>()
 export type HasRouteInput = T.HasType<typeof HasRouteInput>
 
 export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeedNow)
@@ -158,7 +158,7 @@ export type RouteHandler<R> = T.AsyncRE<
   void
 >
 
-export function route<K extends string>(has: Augumented<Server, K>) {
+export function route(has: Augumented<Server>) {
   return <R>(
     method: HttpMethod,
     pattern: string,
@@ -213,7 +213,7 @@ export function route<K extends string>(has: Augumented<Server, K>) {
   }
 }
 
-export function use<K extends string>(has: Augumented<Server, K>) {
+export function use(has: Augumented<Server>) {
   return <R>(pattern: string, f: (next: FinalHandler) => RouteHandler<R>) => {
     const matcher = match(pattern)
 

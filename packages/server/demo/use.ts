@@ -1,4 +1,4 @@
-import * as http from "../src"
+import * as H from "../src"
 
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
@@ -42,32 +42,29 @@ export const numberString = MO.make((F) =>
 // Server config
 //
 
-export const mainServer = http.makeServer(T.has<http.Server>()("api"))
-export const internalServer = http.makeServer(T.has<http.Server>()("internal"))
-
-export const serverConfig = L.service(mainServer.hasConfig).pure(
-  http.serverConfig({
+export const serverConfig = L.service(H.hasConfig).pure(
+  H.serverConfig({
     host: "0.0.0.0",
     port: 8080
   })
 )
 
-export const internalServerConfig = L.service(internalServer.hasConfig).pure(
-  http.serverConfig({
+export const internalServerConfig = L.service(H.hasConfig).pure(
+  H.serverConfig({
     host: "127.0.0.1",
     port: 8081
   })
 )
 
-export const currentUser = http.makeState<O.Option<string>>(O.none)
+export const currentUser = H.makeState<O.Option<string>>(O.none)
 
 //
 // Cors Middleware
 //
 
-export const cors = http.middleware((next) =>
+export const cors = H.middleware((next) =>
   pipe(
-    http.getRequestContext,
+    H.getRequestContext,
     T.tap(({ req, res }) =>
       T.effectTotal(() => {
         res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*")
@@ -81,16 +78,16 @@ export const cors = http.middleware((next) =>
 // Custom Error Handler
 //
 
-export const customErrorResponse = http.response(
+export const customErrorResponse = H.response(
   MO.make((F) => F.interface({ error: F.string() }))
 )
 
-export const customErrorHandler = T.catchAll((e: http.RequestError) => {
+export const customErrorHandler = T.catchAll((e: H.RequestError) => {
   switch (e._tag) {
     case "JsonDecoding": {
       return pipe(
         customErrorResponse({ error: "invalid json body" }),
-        T.first(http.status(400))
+        T.first(H.status(400))
       )
     }
     default: {
@@ -103,12 +100,12 @@ export const customErrorHandler = T.catchAll((e: http.RequestError) => {
 // Auth Middleware
 //
 
-export const authMiddleware = mainServer.use("(.*)", (next) =>
+export const authMiddleware = H.use("(.*)", (next) =>
   pipe(
     T.of,
     T.tap(() => currentUser.set(O.some("test"))),
     T.bind("next", () => T.timed(next)),
-    T.bind("routeInput", () => http.getRequestContext),
+    T.bind("routeInput", () => H.getRequestContext),
     T.chain(({ next: [ms], routeInput: { query } }) =>
       T.effectTotal(() => {
         console.log(`request took: ${ms} ms (${query})`)
@@ -121,19 +118,19 @@ export const authMiddleware = mainServer.use("(.*)", (next) =>
 // Person Post Endpoint
 //
 
-export const getPersonPostParams = http.params(
+export const getPersonPostParams = H.params(
   MO.make((F) => F.interface({ id: F.string() }))
 )
 
-export const getPersonPostBody = http.body(
+export const getPersonPostBody = H.body(
   MO.make((F) => F.interface({ name: F.string() }))
 )
 
-export const personPostResponse = http.response(
+export const personPostResponse = H.response(
   MO.make((F) => F.interface({ id: F.string(), name: F.string() }))
 )
 
-export const personPost = mainServer.route("POST", "/person/:id", () =>
+export const personPost = H.route("POST", "/person/:id", () =>
   pipe(
     T.of,
     T.bind("params", () => getPersonPostParams),
@@ -147,17 +144,17 @@ export const personPost = mainServer.route("POST", "/person/:id", () =>
 // Home Child Router
 //
 
-export const homeChildRouter = mainServer.child("/home/(.*)")
+export const homeChildRouter = H.child("/home/(.*)")
 
 //
 // Home /a GET
 //
 
-export const homeGet = mainServer.route("GET", "/home/a", () =>
+export const homeGet = H.route("GET", "/home/a", () =>
   pipe(
     T.of,
-    T.bind("config", () => mainServer.getServerConfig),
-    T.bind("routeInput", () => http.getRequestContext),
+    T.bind("config", () => H.getServerConfig),
+    T.bind("routeInput", () => H.getRequestContext),
     T.chain(({ config, routeInput: { res } }) =>
       T.effectTotal(() => {
         res.write(`good: ${config.host}:${config.port}`)
@@ -171,7 +168,7 @@ export const homeGet = mainServer.route("GET", "/home/a", () =>
 // Home /b POST
 //
 
-export const getHomePostQuery = http.query(
+export const getHomePostQuery = H.query(
   MO.make((F) =>
     F.partial({
       q: numberString(F)
@@ -179,13 +176,13 @@ export const getHomePostQuery = http.query(
   )
 )
 
-export const homePost = mainServer.route("POST", "/home/b", () =>
+export const homePost = H.route("POST", "/home/b", () =>
   pipe(
     T.of,
-    T.bind("body", () => http.getBodyBuffer),
+    T.bind("body", () => H.getBodyBuffer),
     T.bind("query", () => getHomePostQuery),
     T.bind("user", () => currentUser.get),
-    T.bind("input", () => http.getRequestContext),
+    T.bind("input", () => H.getRequestContext),
     T.tap(({ body, input: { res }, query, user }) =>
       T.effectTotal(() => {
         res.write(body)
@@ -201,9 +198,9 @@ export const homePost = mainServer.route("POST", "/home/b", () =>
 // Internal server route
 //
 
-export const internalRoute = internalServer.route("GET", "/", () =>
+export const internalRoute = H.route("GET", "/", () =>
   pipe(
-    http.getRequestContext,
+    H.getRequestContext,
     T.chain((rc) =>
       T.effectTotal(() => {
         rc.res.statusCode = 200
@@ -220,11 +217,23 @@ export const internalRoute = internalServer.route("GET", "/", () =>
 
 export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 
-export const appLayer = pipe(
-  L.all(home, personPost, internalRoute),
+export const apiEnv = L.scoped<H.ServerEnv, "api">()
+export const internalEnv = L.scoped<H.ServerEnv, "internal">()
+
+export const appServerLayer = pipe(
+  L.all(home, personPost),
   L.using(authMiddleware),
-  L.using(mainServer.use("(.*)", cors)),
-  L.using(L.all(mainServer.server, internalServer.server)),
-  L.using(L.all(serverConfig, internalServerConfig)),
-  L.main
+  L.using(H.use("(.*)", cors)),
+  L.using(H.server),
+  L.using(serverConfig),
+  L.provideScope(apiEnv)
 )
+
+export const internalServerLayer = pipe(
+  internalRoute,
+  L.using(H.server),
+  L.using(internalServerConfig),
+  L.provideScope(internalEnv)
+)
+
+export const appLayer = pipe(L.all(appServerLayer, internalServerLayer), L.main)
