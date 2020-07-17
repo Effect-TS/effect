@@ -9,7 +9,7 @@ import * as T from "fp-ts/lib/Task"
 import * as TE from "fp-ts/lib/TaskEither"
 import { Endomorphism, FunctionN } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
-import * as glob from "glob"
+import glob_ from "glob"
 
 export const readFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, string>(
   fs.readFile
@@ -20,6 +20,20 @@ export const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, 
 )
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
+
+const glob = (
+  glob: string,
+  opts: glob_.IOptions = {}
+): TE.TaskEither<Error, string[]> =>
+  TE.tryCatch(
+    () =>
+      new Promise<string[]>((resolve, reject) => {
+        glob_(glob, opts, (err, result) =>
+          err == null ? resolve(result) : reject(err)
+        )
+      }),
+    (err) => (err instanceof Error ? err : new Error("could not run glob"))
+  )
 
 export function onLeft(e: NodeJS.ErrnoException): T.Task<void> {
   return T.fromIO(
@@ -60,7 +74,7 @@ function modifyFiles(
 export function modifyGlob(
   f: Endomorphism<string>
 ): (pattern: string) => TE.TaskEither<NodeJS.ErrnoException, void> {
-  return (pattern) => pipe(glob.sync(pattern), TE.right, TE.chain(modifyFiles(f)))
+  return (pattern) => pipe(glob(pattern), TE.chain(modifyFiles(f)))
 }
 
 export function runMain(t: T.Task<void>): Promise<void> {
