@@ -1242,6 +1242,45 @@ describe("EffectSafe", () => {
       assert.deepStrictEqual(res, ex.raise("(error: 0)(error: 1)"))
     })
   })
+
+  describe("TypeError does not escape runtime", () => {
+    it("in immediate async action", async () => {
+      const program = pipe(
+        T.async((next) => {
+          next(E.right(undefined))
+          return (cb) => cb()
+        }),
+        T.map(() => ([] as string[])[0].length)
+      )
+
+      await assert.doesNotReject(() => T.runToPromiseExit(program))
+      assert.ok(ex.isAbort(await T.runToPromiseExit(program)))
+    })
+
+    it("in delayed async action", async () => {
+      const program = pipe(
+        T.async((next) => {
+          const t = setTimeout(() => next(E.right(undefined)), 100)
+          return (cb) => {
+            clearTimeout(t)
+            cb()
+          }
+        }),
+        T.map(() => ([] as string[])[0].length)
+      )
+
+      assert.strictEqual(2, 2)
+
+      await assert.doesNotReject(() => T.runToPromiseExit(program))
+      assert.ok(ex.isAbort(await T.runToPromiseExit(program)))
+    })
+
+    it("and does not hang the program", async () => {
+      const program = T.map_(T.unit, () => ([] as string[])[0].length)
+      await assert.doesNotReject(() => T.runToPromiseExit(program))
+      assert.ok(ex.isAbort(await T.runToPromiseExit(program)))
+    })
+  })
 })
 
 describe("effectify", () => {
