@@ -6,9 +6,9 @@
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
     "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
-    "build:es6": "tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts",
-    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:pure && ts-node ../../scripts/rewrite-locals.ts",
-    "build:pure": "babel build/esm/ -d build/esm/ --plugins annotate-pure-calls",
+    "build:es6": "tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
+    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts",
+    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
     "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src",
     "bench": "node bench/index.js && node bench/nestedMap.js && node bench/nestedChain.js",
     "lint": "eslint . --ext .ts,.tsx",
