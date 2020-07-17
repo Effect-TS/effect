@@ -11,6 +11,7 @@
     "noEmit": false,
     "lib": ["es2018"],
     "sourceMap": true,
+    "declarationMap": true,
     "strict": true,
     "noImplicitReturns": false,
     "noUnusedLocals": true,
