@@ -1,12 +1,13 @@
 import fs from "fs"
 
 import chalk from "chalk"
+import { copy as copy_, AsyncOptions } from "cpx"
 import * as A from "fp-ts/lib/Array"
 import { log } from "fp-ts/lib/Console"
 import * as IO from "fp-ts/lib/IO"
 import * as T from "fp-ts/lib/Task"
 import * as TE from "fp-ts/lib/TaskEither"
-import { Endomorphism } from "fp-ts/lib/function"
+import { Endomorphism, FunctionN } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
 import * as glob from "glob"
 
@@ -65,3 +66,8 @@ export function modifyGlob(
 export function runMain(t: T.Task<void>): Promise<void> {
   return t().catch((e) => console.log(chalk.bold.red(`Unexpected error: ${e}`)))
 }
+
+export const copy: FunctionN<
+  [string, string, AsyncOptions?],
+  TE.TaskEither<Error, void>
+> = TE.taskify<string, string, AsyncOptions | undefined, Error, void>(copy_)
