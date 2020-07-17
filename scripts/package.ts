@@ -1,37 +1,10 @@
-import * as fs from "fs"
-
-import chalk from "chalk"
 import * as A from "fp-ts/lib/Array"
-import { log } from "fp-ts/lib/Console"
-import { parseJSON, fromPredicate } from "fp-ts/lib/Either"
-import * as IO from "fp-ts/lib/IO"
-import * as T from "fp-ts/lib/Task"
+import { fromPredicate, parseJSON } from "fp-ts/lib/Either"
 import * as TE from "fp-ts/lib/TaskEither"
 import { flow } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
 
-const readFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, string>(
-  fs.readFile
-)
-
-const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, void>(
-  fs.writeFile
-)
-
-const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
-
-function onLeft(e: NodeJS.ErrnoException): T.Task<void> {
-  return T.fromIO(
-    pipe(
-      log(e),
-      IO.chain(() => exit(1))
-    )
-  )
-}
-
-function onRight(): T.Task<void> {
-  return T.fromIO(log(chalk.bold.green("package copy succeeded!")))
-}
+import { onLeft, onRight, readFile, runMain, writeFile } from "./_common"
 
 pipe(
   readFile("./package.json", "utf8"),
@@ -99,5 +72,6 @@ pipe(
       )
     )
   ),
-  TE.fold(onLeft, onRight)
-)().catch((e) => console.log(chalk.bold.red(`Unexpected error: ${e}`)))
+  TE.fold(onLeft, onRight("package copy succeeded!")),
+  runMain
+)
