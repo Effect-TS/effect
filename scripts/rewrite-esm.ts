@@ -51,6 +51,9 @@ const regexp = new RegExp(
 )
 export const replace: Endomorphism<string> = (s) => s.replace(regexp, "$1/es6/$2")
 
-const replaceFiles = modifyGlob(replace)(ES6_GLOB_PATTERN)
-
-pipe(replaceFiles, TE.fold(onLeft, onRight("import rewrite succeeded!")), runMain)
+pipe(
+  ES6_GLOB_PATTERN,
+  modifyGlob(replace),
+  TE.fold(onLeft, onRight("import rewrite succeeded!")),
+  runMain
+)
