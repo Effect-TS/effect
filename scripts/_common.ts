@@ -7,7 +7,7 @@ import { log } from "fp-ts/lib/Console"
 import * as IO from "fp-ts/lib/IO"
 import * as T from "fp-ts/lib/Task"
 import * as TE from "fp-ts/lib/TaskEither"
-import { Endomorphism, FunctionN } from "fp-ts/lib/function"
+import { FunctionN } from "fp-ts/lib/function"
 import { pipe } from "fp-ts/lib/pipeable"
 import glob_ from "glob"
 
@@ -21,7 +21,7 @@ export const writeFile = TE.taskify<fs.PathLike, string, NodeJS.ErrnoException, 
 
 const exit = (code: 0 | 1): IO.IO<void> => () => process.exit(code)
 
-const glob = (
+export const glob = (
   glob: string,
   opts: glob_.IOptions = {}
 ): TE.TaskEither<Error, string[]> =>
@@ -49,12 +49,12 @@ export function onRight(msg: string) {
 }
 
 function modifyFile(
-  f: Endomorphism<string>
+  f: (content: string, path: string) => string
 ): (path: string) => TE.TaskEither<NodeJS.ErrnoException, void> {
   return (path) =>
     pipe(
       readFile(path, "utf8"),
-      TE.map((original) => ({ original, updated: f(original) })),
+      TE.map((original) => ({ original, updated: f(original, path) })),
       TE.chain(({ original, updated }) =>
         original === updated ? TE.of(undefined) : writeFile(path, updated)
       )
@@ -62,7 +62,7 @@ function modifyFile(
 }
 
 function modifyFiles(
-  f: Endomorphism<string>
+  f: (content: string, path: string) => string
 ): (paths: Array<string>) => TE.TaskEither<NodeJS.ErrnoException, void> {
   return (paths) =>
     pipe(
@@ -72,7 +72,7 @@ function modifyFiles(
 }
 
 export function modifyGlob(
-  f: Endomorphism<string>
+  f: (content: string, path: string) => string
 ): (pattern: string) => TE.TaskEither<NodeJS.ErrnoException, void> {
   return (pattern) => pipe(glob(pattern), TE.chain(modifyFiles(f)))
 }
