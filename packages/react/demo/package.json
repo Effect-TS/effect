@@ -16,8 +16,8 @@
     "d-type-check": "tsc --pretty --noEmit"
   },
   "dependencies": {
-    "@matechs/morphic": "file:../../morphic/build",
     "@matechs/core": "file:../../core/build",
+    "@matechs/morphic": "file:../../morphic/build",
     "@matechs/react": "file:../build",
     "isomorphic-fetch": "^2.2.1",
     "next": "^9.4.4",

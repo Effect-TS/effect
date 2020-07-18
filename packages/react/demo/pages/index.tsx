@@ -104,7 +104,7 @@ export class LiveHttp extends Http {
     )
 }
 
-export const HasHttp = T.has(Http)()
+export const HasHttp = T.has(Http)
 
 export const provideHttp = L.service(HasHttp).fromEffect(
   T.effectTotal(() => new LiveHttp())
@@ -179,7 +179,7 @@ export class LiveGithubOrganizations extends GithubOrganizations {
     )
 }
 
-export const HasGithubOrganizations = T.has(GithubOrganizations)()
+export const HasGithubOrganizations = T.has(GithubOrganizations)
 export type HasGithubOrganizations = T.HasType<typeof HasGithubOrganizations>
 
 export const provideGithubOrganizations = L.service(HasGithubOrganizations).fromEffect(

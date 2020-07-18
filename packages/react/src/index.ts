@@ -17,16 +17,16 @@ export function component<R>(): <P>(
   return (F) => (p) => React.createElement(F(p.runtime), p)
 }
 
-export function componentWith<S extends { [k in keyof S]: T.Has<any, any> }>(s: S) {
+export function componentWith<S extends { [k in keyof S]: T.Has<any> }>(s: S) {
   return function <P>(
     f: (
-      _: { [k in keyof S]: S[k] extends T.Has<infer A, any> ? A : never }
+      _: { [k in keyof S]: S[k] extends T.Has<infer A> ? A : never }
     ) => React.ComponentType<P>
   ) {
     return component<
       UnionToIntersection<
         {
-          [k in keyof S]: S[k] extends T.Has<infer A, infer B> ? T.Has<A, B> : never
+          [k in keyof S]: S[k] extends T.Has<infer A> ? T.Has<A> : never
         }[keyof S]
       >
     >()((r) => {
