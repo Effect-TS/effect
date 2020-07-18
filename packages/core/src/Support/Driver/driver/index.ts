@@ -16,9 +16,8 @@ import {
   FrameType,
   InterruptFrame,
   InterruptFrameTag,
-  MapFrame,
-  MapFrameTag,
   InterruptRegionFrame,
+  MapFrame,
   RefInterruptRegionFrame
 } from "./Frame"
 
@@ -221,10 +220,6 @@ export class DriverImpl<E, A> implements Driver<E, A> {
     this.frameStack = this.frameStack?.p
 
     if (frame !== undefined) {
-      if (frame._tag === MapFrameTag && !this.frameStack) {
-        this.done(Ex.done(frame.f(value)) as Ex.Done<A>)
-        return
-      }
       return frame.apply(value) as any
     }
 

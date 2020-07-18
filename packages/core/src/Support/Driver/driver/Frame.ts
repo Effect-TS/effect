@@ -1,5 +1,5 @@
 import { Cause } from "../../../Exit"
-import { Instructions, IPure } from "../../Common"
+import { Instructions, IPure, ISuspended } from "../../Common"
 
 export type RegionFrameType = InterruptFrame
 export type FrameType = Frame | FoldFrame | RegionFrameType | MapFrame
@@ -28,7 +28,7 @@ export class MapFrame implements MapFrame {
   readonly _tag = MapFrameTag
   constructor(readonly f: (u: unknown) => unknown, readonly p: FrameType | undefined) {}
   apply(u: unknown) {
-    return new IPure(this.f(u))
+    return new ISuspended(() => new IPure(this.f(u)) as any)
   }
 }
 
