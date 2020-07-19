@@ -1,9 +1,11 @@
 import { UnionToIntersection } from "../../Base/Overloads"
+import { pipe } from "../../Function"
 import * as R from "../../Record"
 import { access } from "../Effect/access"
 import { accessM } from "../Effect/accessM"
 import { chain_ } from "../Effect/chain_"
 import { Effect } from "../Effect/effect"
+import { provide } from "../Effect/provide"
 import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
 
@@ -29,7 +31,7 @@ export interface Has<T> {
 /**
  * Extract the type of a class constructor
  */
-export type TypeOf<K extends Constructor<any>> = K extends {
+export type ConstructorType<K extends Constructor<any>> = K extends {
   prototype: infer T
 }
   ? T
@@ -37,13 +39,15 @@ export type TypeOf<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
-export type Augumented<T> = Has<T> & {
+export interface Augumentation<T> {
   overridable: () => Augumented<T>
   fixed: () => Augumented<T>
   refine: <T1 extends T>() => Augumented<T1>
   read: (r: Has<T>) => T
   at: (s: symbol) => Augumented<T>
 }
+
+export interface Augumented<T> extends Has<T>, Augumentation<T> {}
 
 /**
  * Extract the Has type from any augumented variant
@@ -66,7 +70,7 @@ const makeAugumented = <T>(def = false, key = Symbol()): Augumented<T> => ({
 /**
  * Create a service entry from a type and a URI
  */
-export function has<T extends Constructor<any>>(_: T): Augumented<TypeOf<T>>
+export function has<T extends Constructor<any>>(_: T): Augumented<ConstructorType<T>>
 export function has<T>(): Augumented<T>
 export function has(_?: any): Augumented<unknown> {
   return makeAugumented()
@@ -134,6 +138,11 @@ export const accessServiceM = <T>(s: Has<T>) => <S, R, E, B>(
  */
 export const accessService = <T>(s: Has<T>) => <B>(f: (a: T) => B) =>
   accessServiceM(s)((a) => succeedNow(f(a)))
+
+/**
+ * Access a service with the required Service Entry
+ */
+export const readService = <T>(s: Has<T>) => accessServiceM(s)((a) => succeedNow(a))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
@@ -255,3 +264,69 @@ export class DerivationContext {
     return computed
   }
 }
+
+/**
+ * Branding sub-environments
+ */
+export const RegionURI = Symbol()
+export interface Region<T, K> {
+  [RegionURI]: {
+    _K: () => K
+    _T: () => T
+  }
+}
+
+export const region = <K, T>(): Augumented<Region<T, K>> => has<Region<T, K>>()
+
+export const useRegion = <K, T>(h: Has<Region<T, K>>) => <S, R, E, A>(
+  e: Effect<S, R & T, E, A>
+) => accessServiceM(h)((a) => pipe(e, provide((a as any) as T)))
+
+export const accessRegionM = <K, T>(h: Has<Region<T, K>>) => <S, R, E, A>(
+  e: (_: T) => Effect<S, R & T, E, A>
+) => accessServiceM(h)((a) => pipe(accessM(e), provide((a as any) as T)))
+
+export const accessRegion = <K, T>(h: Has<Region<T, K>>) => <A>(e: (_: T) => A) =>
+  accessServiceM(h)((a) => pipe(access(e), provide((a as any) as T)))
+
+export const readRegion = <K, T>(h: Has<Region<T, K>>) =>
+  accessServiceM(h)((a) =>
+    pipe(
+      access((r: T) => r),
+      provide((a as any) as T)
+    )
+  )
+
+export const readServiceIn = <A>(_: Has<A>) => <K, T>(h: Has<Region<Has<A> & T, K>>) =>
+  useRegion(h)(
+    accessServiceM(_)((a) =>
+      pipe(
+        access((r: A) => r),
+        provide((a as any) as A)
+      )
+    )
+  )
+
+export const accessServiceIn = <A>(_: Has<A>) => <K, T>(
+  h: Has<Region<Has<A> & T, K>>
+) => <B>(f: (_: A) => B) =>
+  useRegion(h)(
+    accessServiceM(_)((a) =>
+      pipe(
+        access((r: A) => f(r)),
+        provide((a as any) as A)
+      )
+    )
+  )
+
+export const accessServiceInM = <A>(_: Has<A>) => <K, T>(
+  h: Has<Region<Has<A> & T, K>>
+) => <S, R, E, B>(f: (_: A) => Effect<S, R, E, B>) =>
+  useRegion(h)(
+    accessServiceM(_)((a) =>
+      pipe(
+        accessM((r: A) => f(r)),
+        provide((a as any) as A)
+      )
+    )
+  )

@@ -161,7 +161,25 @@ export {
   accessService,
   accessServices,
   HasType,
-  InnerHasType
+  InnerHasType,
+  readService,
+  Augumented,
+  Constructor,
+  DerivationContext,
+  HasURI,
+  Region,
+  RegionURI,
+  ConstructorType,
+  accessRegion,
+  accessRegionM,
+  accessServiceIn,
+  accessServiceInM,
+  mergeEnvironments,
+  overridable,
+  readRegion,
+  readServiceIn,
+  region,
+  useRegion
 } from "../Has"
 export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
 export {
