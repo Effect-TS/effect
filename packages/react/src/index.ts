@@ -38,13 +38,12 @@ export function componentWith<S extends { [k in keyof S]: T.Has<any> }>(s: S) {
 
 export function testRuntime<K>(layer: L.Layer<never, T.DefaultEnv, never, K>) {
   const rm = T.runSync(makeReleaseMap)
-  const pm = T.runSync(L.makeProcessMap)
   const [, env] = T.runSync(
     pipe(
       T.provideSome_(coerceSE<never, never>()(layer.build.effect), (r0): [
-        [T.DefaultEnv, L.ProcessMap],
+        T.DefaultEnv,
         ReleaseMap
-      ] => [[r0, pm], rm])
+      ] => [r0, rm])
     )
   )
 
@@ -59,13 +58,12 @@ export function testRuntime<K>(layer: L.Layer<never, T.DefaultEnv, never, K>) {
 export function render<K>(Cmp: React.ComponentType<RuntimeProps<K>>) {
   return function (layer: L.Layer<never, T.DefaultEnv, never, K>) {
     const rm = T.runSync(makeReleaseMap)
-    const pm = T.runSync(L.makeProcessMap)
     const [, env] = T.runSync(
       pipe(
         T.provideSome_(coerceSE<never, never>()(layer.build.effect), (r0): [
-          [T.DefaultEnv, L.ProcessMap],
+          T.DefaultEnv,
           ReleaseMap
-        ] => [[r0, pm], rm])
+        ] => [r0, rm])
       )
     )
 
