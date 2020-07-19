@@ -84,6 +84,39 @@ export type Frame =
   | HandlerFrame
   | ApplyFrame
 
+export class TracingContext {
+  readonly running = new Set<FiberContext<any, any>>()
+  readonly interval = new AtomicReference<NodeJS.Timeout | undefined>(undefined)
+
+  readonly trace = (fiber: FiberContext<any, any>) => {
+    if (!this.running.has(fiber)) {
+      if (typeof this.interval.get === "undefined") {
+        this.interval.set(
+          setInterval(() => {
+            // this keeps the process alive if there is something running
+          }, 60000)
+        )
+      }
+
+      this.running.add(fiber)
+
+      fiber.onDone(() => {
+        this.running.delete(fiber)
+
+        if (this.running.size === 0) {
+          const ci = this.interval.get
+
+          if (ci) {
+            clearInterval(ci)
+          }
+        }
+      })
+    }
+  }
+}
+
+export const _tracing = new TracingContext()
+
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -104,7 +137,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     readonly fiberRefLocals: FiberRefLocals,
     readonly supervisor0: Sup.Supervisor<any>,
     readonly openScope: Scope.Open<Exit<E, A>>
-  ) {}
+  ) {
+    _tracing.trace(this)
+  }
 
   get poll() {
     return effectTotal.effectTotal(() => this.poll0())
