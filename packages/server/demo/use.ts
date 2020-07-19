@@ -207,7 +207,8 @@ export const internalRoute = H.route("GET", "/", () =>
         rc.res.write(JSON.stringify({ internal: true }))
         rc.res.end()
       })
-    )
+    ),
+    cors
   )
 )
 

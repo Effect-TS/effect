@@ -34,6 +34,7 @@ export {
   RouteInput,
   HttpMethod,
   RouteHandler,
+  RouteHandlerE,
   HasRouteInput,
   Router,
   root,

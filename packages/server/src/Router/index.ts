@@ -9,7 +9,9 @@ import {
   HasRequestState,
   HttpError,
   ParametersDecoding,
-  Server
+  Server,
+  RequestState,
+  RequestContext
 } from "../Server"
 
 import * as A from "@matechs/core/Array"
@@ -158,6 +160,12 @@ export type RouteHandler<R> = T.AsyncRE<
   void
 >
 
+export type RouteHandlerE<R, E> = T.AsyncRE<
+  R & HasRouteInput & HasRequestState & HasRequestContext,
+  E,
+  void
+>
+
 export function route(has: Augumented<Server>) {
   return <R>(
     method: HttpMethod,
@@ -264,8 +272,17 @@ export function use(has: Augumented<Server>) {
   }
 }
 
-export type Middleware<R> = <R1>(_: RouteHandler<R1>) => RouteHandler<R & R1>
+export type Middleware<R, E> = <R1, E1>(
+  _: RouteHandlerE<R1, E1>
+) => RouteHandlerE<R & R1, E | E1>
 
-export const middleware = <R>(
-  f: (_: RouteHandler<unknown>) => RouteHandler<R>
-): Middleware<R> => (next) => f(next as any)
+export const middleware = <R, E = never>(
+  f: <R1, E1>(
+    _: RouteHandlerE<R1, E1>
+  ) => T.Effect<
+    unknown,
+    R & T.Has<RouteInput> & T.Has<RequestState> & T.Has<RequestContext> & R1,
+    E1 | E,
+    void
+  >
+): Middleware<R, E> => f
