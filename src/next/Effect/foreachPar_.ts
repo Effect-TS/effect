@@ -2,6 +2,7 @@ import { chain_ } from "./chain_"
 import { Effect, AsyncRE } from "./effect"
 import { effectTotal } from "./effectTotal"
 import { foreachParUnit_ } from "./foreachParUnit_"
+import { suspend } from "./suspend"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -19,10 +20,12 @@ export const foreachPar_ = <S, R, E, A, B>(
     effectTotal<B[]>(() => []),
     (array) => {
       const fn = ([a, n]: [A, number]) =>
-        chain_(f(a), (b) =>
-          effectTotal(() => {
-            array[n] = b
-          })
+        chain_(
+          suspend(() => f(a)),
+          (b) =>
+            effectTotal(() => {
+              array[n] = b
+            })
         )
       return chain_(
         foreachParUnit_(
