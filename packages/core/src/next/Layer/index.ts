@@ -1,282 +1,28 @@
 import { reduce_ } from "../../Array"
 import { UnionToIntersection } from "../../Base/Apply"
 import { pipe } from "../../Function"
-import { Then } from "../Cause"
-import { contains } from "../Cause/contains"
-import { DefaultEnv, runAsync } from "../Effect/runtime"
-import { Failure } from "../Exit"
-import { FiberID } from "../Fiber"
-import { FiberContext } from "../Fiber/context"
-import { FiberRef } from "../FiberRef"
-import { accessServiceM, has, HasType, HasURI, mergeEnvironments } from "../Has"
-import { coerceSE } from "../Managed/deps"
-import { AtomicReference } from "../Support/AtomicReference"
+import { DefaultEnv, makeRuntime, Runtime } from "../Effect/runtime"
+import { HasURI, mergeEnvironments } from "../Has"
+import { Managed } from "../Managed"
 import { Erase } from "../Utils"
 
 import * as T from "./deps"
 
-export class ProcessMap {
-  readonly fibers: Set<FiberContext<any, any>> = new Set()
-  readonly interruptedBy = new AtomicReference<FiberID | null>(null)
-  readonly causeBy = new AtomicReference<Failure<any> | null>(null)
-  readonly subscribers = new Set<(fiberId: FiberID) => void>()
-  readonly identified = new Map<symbol, FiberContext<any, any>>()
-
-  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: T.Has<any>) {
-    if (has && this.identified.has(has[HasURI].key)) {
-      return T.die(
-        `Fiber (#${this.identified.get(has[HasURI].key)?.id.seqNumber} already forked`
-      )
-    }
-    if (this.interruptedBy.get) {
-      return T.interrupt
-    }
-    return T.chain_(T.forkDaemon(effect), (f) =>
-      T.effectTotal(() => {
-        this.fibers.add(f)
-        if (has) {
-          this.identified.set(has[HasURI].key, f)
-        }
-
-        f.onDone((e) => {
-          this.fibers.delete(f)
-
-          if (has) {
-            this.identified.set(has[HasURI].key, f)
-          }
-
-          if (this.interruptedBy.get) {
-            return
-          }
-
-          const exit = T.exitFlatten(e)
-
-          if (exit._tag === "Failure" && !T.interruptedOnly(exit.cause)) {
-            this.notify(f.id, exit)
-          }
-        })
-        return f
-      })
-    )
-  }
-
-  notify(fiberId: FiberID, exit: Failure<any>) {
-    if (this.interruptedBy.get) {
-      return
-    }
-    this.interruptedBy.set(fiberId)
-    this.causeBy.set(exit)
-    this.subscribers.forEach((s) => {
-      s(fiberId)
-    })
-  }
-
-  subscribe(cb: (fiberId: FiberID) => void) {
-    const subscription = (fiberId: FiberID) => {
-      cb(fiberId)
-      this.subscribers.delete(subscription)
-    }
-    this.subscribers.add(subscription)
-  }
-
-  monitored<S, R, E, A>(effect: T.Effect<S, R, E, A>) {
-    if (this.fibers.size === 0) {
-      return effect
-    }
-    return T.chain_(T.forkDaemon(effect), (f) =>
-      T.chain_(
-        T.effectTotal(() => {
-          this.subscribe((id) => {
-            runAsync(f.interruptAs(id))
-          })
-        }),
-        () =>
-          T.chain_(T.result(T.join(f)), (a) => {
-            if (a._tag === "Failure") {
-              const root = this.causeBy.get
-
-              if (root) {
-                return T.halt(Then(root.cause, a.cause))
-              }
-            }
-            return T.done(a)
-          })
-      )
-    )
-  }
-}
-
-export const makeProcessMap = T.effectTotal(() => new ProcessMap())
-
-export const forkTag = <ID extends string>(id: ID) =>
-  `@matechs/core/Eff/Layer/Fork/${id}`
-
-export class ProcessRegistry {
-  constructor(readonly processMap: ProcessMap) {}
-
-  getRef<A>(ref: FiberRef<A>) {
-    return T.map_(
-      T.effectForeach_(this.processMap.fibers, (f) => f.getRef(ref)),
-      (a) => reduce_(a, ref.initial, (a, b) => ref.join(a, b))
-    )
-  }
-}
-
-export const HasProcessRegistry = has<ProcessRegistry>()
-export type HasProcessRegistry = HasType<typeof HasProcessRegistry>
-
-export const accessProcessRegistryM = accessServiceM(HasProcessRegistry)
-
-export const globalRef = <A>(ref: FiberRef<A>) =>
-  accessProcessRegistryM((p) => p.getRef(ref))
-
 export class Layer<S, R, E, A> {
-  constructor(readonly build: T.Managed<S, [R, ProcessMap], E, A>) {
+  constructor(readonly build: T.Managed<S, R, E, A>) {
     this.use = this.use.bind(this)
   }
 
   use<S1, R1, E1, A1>(
     effect: T.Effect<S1, R1 & A, E1, A1>
   ): T.Effect<S | S1, R & R1, E | E1, A1> {
-    return T.chain_(makeProcessMap, (pm) =>
-      T.provideSome_(
-        T.managedUse_(this.build, (p) =>
-          T.accessM(([r, pm]: [R & R1, ProcessMap]) =>
-            coerceSE<S | S1, E | E1>()(
-              pm.monitored(T.provideAll_(effect, { ...r, ...p }))
-            )
-          )
-        ),
-        (r: R & R1): [R & R1, ProcessMap] => [r, pm]
-      )
+    return T.managedUse_(this.build, (p) =>
+      T.provideSome_(effect, (r: R & R1) => ({ ...r, ...p }))
     )
   }
 }
 
 export type AsyncR<R, A> = Layer<unknown, R, never, A>
-
-/**
- * Fork a new managed process without any identifier, a managed process runs
- * in background and will trigger interruption if any failure happens
- */
-export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
-  new Layer<unknown, R, E, HasProcessRegistry>(
-    T.managedMap_(
-      T.makeInterruptible_(
-        T.accessM(([r, pm]: [R, ProcessMap]) =>
-          T.provideAll_(
-            T.map_(pm.fork(effect), (x) => [pm, x] as const),
-            r
-          )
-        ),
-        ([pm, f]) =>
-          T.checkDescriptor((d) => {
-            return T.chain_(f.interruptAs(d.id), (e) => {
-              if (e._tag === "Success") {
-                return T.unit
-              }
-              if (T.interruptedOnly(e.cause)) {
-                return T.unit
-              }
-              const pmCause = pm.causeBy.get
-              if (pmCause) {
-                if (contains(e.cause)(pmCause.cause)) {
-                  return T.unit
-                }
-              }
-              return T.done(e)
-            })
-          })
-      ),
-      ([pm]): HasProcessRegistry =>
-        ({
-          [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
-        } as any)
-    )
-  )
-
-/**
- * Identifies a process in environment
- */
-export const hasProcess = <ID extends string>(_: ID) => <E, A>() =>
-  has<Process<E, A, ID>>()
-
-export type HasProcess<ID extends string, E, A> = T.Has<Process<E, A, ID>>
-
-/**
- * Access a forked process
- */
-export class Process<E, A, ID> {
-  readonly _ID!: ID
-  readonly _TAG = "@matechs/core/Eff/Layer/Fork"
-
-  constructor(readonly _FIBER: FiberContext<E, A>) {}
-
-  getRef<A>(ref: FiberRef<A>) {
-    return this._FIBER.getRef(ref)
-  }
-
-  get id() {
-    return this._FIBER.id
-  }
-
-  get state() {
-    return this._FIBER.state.get
-  }
-}
-
-/**
- * Fork a new managed process, a managed process runs in background and
- * will trigger interruption if any failure happens
- */
-export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) => <
-  S,
-  R
->(
-  effect: T.Effect<S, R, E, A>
-) =>
-  new Layer<unknown, R, E, HasProcess<ID, E, A> & HasProcessRegistry>(
-    T.managedChain_(
-      T.managedMap_(
-        T.makeInterruptible_(
-          T.accessM(([r, pm]: [R, ProcessMap]) =>
-            T.provideAll_(
-              T.map_(pm.fork(effect, has), (x) => [pm, x] as const),
-              r
-            )
-          ),
-          ([pm, f]) =>
-            T.checkDescriptor((d) => {
-              return T.chain_(f.interruptAs(d.id), (e) => {
-                if (e._tag === "Success") {
-                  return T.unit
-                }
-                if (T.interruptedOnly(e.cause)) {
-                  return T.unit
-                }
-                const pmCause = pm.causeBy.get
-                if (pmCause) {
-                  if (contains(e.cause)(pmCause.cause)) {
-                    return T.unit
-                  }
-                }
-                return T.done(e)
-              })
-            })
-        ),
-        ([pm, f]) => [new Process(f), pm] as const
-      ),
-      ([a, pm]) =>
-        T.managedMap_(
-          environmentFor(has, a),
-          (e): HasProcess<ID, E, A> & HasProcessRegistry =>
-            ({
-              ...e,
-              [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
-            } as any)
-        )
-    )
-  )
 
 export const pure = <T>(has: T.Has<T>) => (resource: T) =>
   new Layer<never, unknown, never, T.Has<T>>(
@@ -284,14 +30,10 @@ export const pure = <T>(has: T.Has<T>) => (resource: T) =>
   )
 
 export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
-  acquire: T.Effect<S, R & HasProcessRegistry, E, A>
+  acquire: T.Effect<S, R, E, A>
 ) => ({
-  open: <S1, R1, E1>(
-    open: (_: A) => T.Effect<S1, R1 & HasProcessRegistry, E1, any>
-  ) => ({
-    release: <S2, R2, E2>(
-      release: (_: A) => T.Effect<S2, R2 & HasProcessRegistry, E2, any>
-    ) =>
+  open: <S1, R1, E1>(open: (_: A) => T.Effect<S1, R1, E1, any>) => ({
+    release: <S2, R2, E2>(release: (_: A) => T.Effect<S2, R2, E2, any>) =>
       fromManaged(has)(
         T.managedChain_(
           T.makeExit_(acquire, (a) => release(a)),
@@ -312,31 +54,19 @@ export const fromEffect = <T>(has: T.Has<T>) => <S, R, E>(
   resource: T.Effect<S, R, E, T>
 ) =>
   new Layer<S, R, E, T.Has<T>>(
-    T.managedProvideSome_(
-      T.managedChain_(T.fromEffect(resource), (a) => environmentFor(has, a)),
-      ([r]) => r
-    )
+    T.managedChain_(T.fromEffect(resource), (a) => environmentFor(has, a))
   )
 
 export const fromManaged = <T>(has: T.Has<T>) => <S, R, E>(
-  resource: T.Managed<S, R & HasProcessRegistry, E, T>
+  resource: T.Managed<S, R, E, T>
 ) =>
-  new Layer<S, R, E, T.Has<T>>(
-    T.managedProvideSome_(
-      T.managedChain_(resource, (a) => environmentFor(has, a)),
-      ([r, pm]) =>
-        ({
-          ...r,
-          [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
-        } as any)
-    )
-  )
+  new Layer<S, R, E, T.Has<T>>(T.managedChain_(resource, (a) => environmentFor(has, a)))
 
 export const fromManagedEnv = <S, R, E, A>(resource: T.Managed<S, R, E, A>) =>
-  new Layer<S, R, E, A>(T.managedProvideSome_(resource, ([r]) => r))
+  new Layer<S, R, E, A>(resource)
 
 export const fromEffectEnv = <S, R, E, A>(resource: T.Effect<S, R, E, A>) =>
-  new Layer<S, R, E, A>(T.managedProvideSome_(T.fromEffect(resource), ([r]) => r))
+  new Layer<S, R, E, A>(T.fromEffect(resource))
 
 export const zip_ = <S, R, E, A, S2, R2, E2, A2>(
   left: Layer<S, R, E, A>,
@@ -361,16 +91,10 @@ export const using_ = <S, R, E, A, S2, R2, E2, A2>(
   new Layer<S | S2, Erase<R, A2> & R2, E | E2, A & A2>(
     T.managedChain_(right.build, (a2) =>
       T.managedMap_(
-        T.managedProvideSome_(left.build, ([r0, pm]: [R & R2, ProcessMap]): [
-          R & R2 & A2,
-          ProcessMap
-        ] => [
-          {
-            ...r0,
-            ...a2
-          },
-          pm
-        ]),
+        T.managedProvideSome_(left.build, (r0: R) => ({
+          ...r0,
+          ...a2
+        })),
         (a) => ({ ...a2, ...a })
       )
     )
@@ -387,16 +111,10 @@ export const consuming_ = <S, R, E, A, S2, R2, E2, A2>(
   new Layer<S | S2, R & R2, E | E2, A & A2>(
     T.managedChain_(right.build, (a2) =>
       T.managedMap_(
-        T.managedProvideSome_(left.build, ([r0, pm]: [R & R2, ProcessMap]): [
-          R & R2 & A2,
-          ProcessMap
-        ] => [
-          {
-            ...r0,
-            ...a2
-          },
-          pm
-        ]),
+        T.managedProvideSome_(left.build, (r0: R & R2) => ({
+          ...r0,
+          ...a2
+        })),
         (a) => ({ ...a2, ...a })
       )
     )
@@ -504,3 +222,10 @@ export const region = <K, T>(h: T.Has<T.Region<T, K>>) => <S, R, E>(
     ),
     consuming(_)
   )
+
+/**
+ * Converts a layer to a managed runtime
+ */
+export const toRuntime = <S, R, E, A>(
+  _: Layer<S, R, E, A>
+): Managed<S, R, E, Runtime<A>> => T.managedMap_(_.build, makeRuntime)

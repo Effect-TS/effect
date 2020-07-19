@@ -210,6 +210,18 @@ export function fiberContext<E, A>(env: {} = defaultEnv) {
  */
 export interface Runtime<R0> {
   in: <S, R, E, A>(effect: Effect<S, R & R0, E, A>) => Effect<S, R, E, A>
+  runAsync: <S, E, A>(
+    _: Effect<S, DefaultEnv & R0, E, A>,
+    cb?: Callback<E, A> | undefined
+  ) => void
+  runAsyncCancel: <S, E, A>(
+    _: Effect<S, DefaultEnv & R0, E, A>,
+    cb?: Callback<E, A> | undefined
+  ) => Async<Exit<E, A>>
+  runPromise: <S, E, A>(_: Effect<S, DefaultEnv & R0, E, A>) => Promise<A>
+  runPromiseExit: <S, E, A>(_: Effect<S, DefaultEnv & R0, E, A>) => Promise<Exit<E, A>>
+  runSyncExit: <E, A>(_: Effect<never, DefaultEnv & R0, E, A>) => Exit<E, A>
+  runSync: <E, A>(_: Effect<never, DefaultEnv & R0, E, A>) => A
 }
 
 /**
@@ -223,10 +235,7 @@ export const runtime = <R0>() =>
   accessM((r0: R0) =>
     effectTotal(
       (): Runtime<R0> => {
-        return {
-          in: <S, R, E, A>(effect: Effect<S, R & R0, E, A>) =>
-            provideSome_(effect, (r: R) => ({ ...r0, ...r }))
-        }
+        return makeRuntime<R0>(r0)
       }
     )
   )
@@ -237,3 +246,24 @@ export const withRuntimeM = <R0, S, R, E, A>(
 
 export const withRuntime = <R0, A>(f: (r: Runtime<R0>) => A) =>
   chain_(runtime<R0>(), (r) => succeedNow(f(r)))
+
+export function makeRuntime<R0>(r0: R0): Runtime<R0> {
+  return {
+    in: <S, R, E, A>(effect: Effect<S, R & R0, E, A>) =>
+      provideSome_(effect, (r: R) => ({ ...r0, ...r })),
+    runAsync: (_, cb) =>
+      runAsync(
+        provideSome_(_, (r) => ({ ...r0, ...r })),
+        cb
+      ),
+    runAsyncCancel: (_, cb) =>
+      runAsyncCancel(
+        provideSome_(_, (r) => ({ ...r0, ...r })),
+        cb
+      ),
+    runPromise: (_) => runPromise(provideSome_(_, (r) => ({ ...r0, ...r }))),
+    runPromiseExit: (_) => runPromiseExit(provideSome_(_, (r) => ({ ...r0, ...r }))),
+    runSyncExit: (_) => runSyncExit(provideSome_(_, (r) => ({ ...r0, ...r }))),
+    runSync: (_) => runSync(provideSome_(_, (r) => ({ ...r0, ...r })))
+  }
+}
