@@ -2,6 +2,7 @@ import * as IT from "../Iterable"
 
 import { Effect } from "./effect"
 import { succeedNow } from "./succeedNow"
+import { suspend } from "./suspend"
 import { zipWith_ } from "./zipWith_"
 
 /**
@@ -16,5 +17,9 @@ export const foreach_ = <A, S, R, E, B>(
   f: (a: A) => Effect<S, R, E, B>
 ) =>
   IT.reduce_(as, succeedNow([]) as Effect<S, R, E, readonly B[]>, (b, a) =>
-    zipWith_(b, f(a), (acc, r) => [...acc, r])
+    zipWith_(
+      b,
+      suspend(() => f(a)),
+      (acc, r) => [...acc, r]
+    )
   )
