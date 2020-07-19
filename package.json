@@ -149,7 +149,8 @@
       "next/Utils",
       "next/Clock",
       "next/Has",
-      "next/Layer"
+      "next/Layer",
+      "next/ProcessManager"
     ]
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
