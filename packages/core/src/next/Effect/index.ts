@@ -212,3 +212,6 @@ export {
   bindAllPar,
   bindAllParN
 } from "./sequenceS"
+export { either } from "./either"
+export { validateExec_, validateParN_, validatePar_, validate_ } from "./validate_"
+export { validate, validateExec, validatePar, validateParN } from "./validate"
