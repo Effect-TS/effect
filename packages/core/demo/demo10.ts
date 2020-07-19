@@ -1,6 +1,7 @@
 import * as A from "../src/Array"
 import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
+import * as L from "../src/next/Layer"
 import * as S from "../src/next/Semaphore"
 
 abstract class Console {
@@ -9,8 +10,7 @@ abstract class Console {
 abstract class Format {
   abstract readonly formatString: (s: string) => T.Sync<string>
 }
-abstract class AppConfig<S, K> {
-  readonly _K!: K
+abstract class AppConfig<S> {
   abstract readonly config: S
 }
 
@@ -20,14 +20,20 @@ export type HasConsole = T.HasType<typeof HasConsole>
 export const HasFormat = T.has(Format)
 export type HasFormat = T.HasType<typeof HasFormat>
 
-export const HasAppConfig = T.has<AppConfig<string, "core">>()
-export type HasAppConfig = T.HasType<typeof HasAppConfig>
+export const HasStringConfig = T.has<AppConfig<string>>()
+export type HasStringConfig = T.HasType<typeof HasStringConfig>
 
-export const HasScopedAppConfig = T.has<AppConfig<string, "scoped">>()
-export type HasScopedAppConfig = T.HasType<typeof HasScopedAppConfig>
-
-export const HasNumberConfig = T.has<AppConfig<number, "number">>()
+export const HasNumberConfig = T.has<AppConfig<number>>()
 export type HasNumberConfig = T.HasType<typeof HasNumberConfig>
+
+export const Core = T.region<"core", HasStringConfig>()
+export type HasCoreConfig = T.HasType<typeof Core>
+
+export const Second = T.region<"second", HasStringConfig>()
+export type HasSecondAppConfig = T.HasType<typeof Second>
+
+export const Third = T.region<"third", HasNumberConfig>()
+export type HasThirdConfig = T.HasType<typeof Third>
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
@@ -70,16 +76,15 @@ export const provideAugumentedConsole = T.provideServiceM(HasConsole.overridable
   T.accessService(HasFormat)((format) => new AugumentedConsole(format))
 )
 
-export const complexAccess: T.SyncR<
-  HasConsole & HasAppConfig & HasScopedAppConfig & HasNumberConfig,
-  void
-> = T.accessServicesM({
-  console: HasConsole,
-  app: HasAppConfig,
-  scoped: HasScopedAppConfig,
-  numberConfig: HasNumberConfig
-})(({ app, console, numberConfig, scoped }) =>
-  console.putStrLn(`${app.config} - (${scoped.config}) - (${numberConfig.config})`)
+export const complexAccess = pipe(
+  T.of,
+  T.bind("console", () => T.readService(HasConsole)),
+  T.bind("app", () => T.readServiceIn(HasStringConfig)(Core)),
+  T.bind("scoped", () => T.readServiceIn(HasStringConfig)(Second)),
+  T.bind("number", () => T.readServiceIn(HasNumberConfig)(Third)),
+  T.chain(({ app, console, number, scoped }) =>
+    console.putStrLn(`${app.config} - (${scoped.config}) - (${number.config})`)
+  )
 )
 
 export const provideFormat = T.provideServiceM(HasFormat)(
@@ -102,38 +107,50 @@ const program = pipe(
   T.chain(() => complexAccess)
 )
 
-export const provideAppConfig = T.provideServiceM(HasAppConfig)(
-  T.succeedNow(
-    new (class extends AppConfig<string, "core"> {
-      config = "ok"
-    })()
-  )
+export const provideAppConfig = pipe(
+  L.service(HasStringConfig).fromEffect(
+    T.effectTotal(
+      () =>
+        new (class extends AppConfig<string> {
+          config = "ok"
+        })()
+    )
+  ),
+  L.region(Core)
 )
 
-export const provideNumberConfig = T.provideServiceM(HasNumberConfig)(
-  T.succeedNow(
-    new (class extends AppConfig<number, "number"> {
-      config = 1
-    })()
-  )
+export const provideNumberConfig = pipe(
+  L.service(HasNumberConfig).fromEffect(
+    T.effectTotal(
+      () =>
+        new (class extends AppConfig<number> {
+          config = 1
+        })()
+    )
+  ),
+  L.region(Third)
 )
 
-export const provideScopedAppConfig = T.provideServiceM(HasScopedAppConfig)(
-  T.succeedNow(
-    new (class extends AppConfig<string, "scoped"> {
-      config = "ok - scoped"
-    })()
-  )
+export const provideScopedAppConfig = pipe(
+  L.service(HasStringConfig).fromEffect(
+    T.effectTotal(
+      () =>
+        new (class extends AppConfig<string> {
+          config = "ok - scoped"
+        })()
+    )
+  ),
+  L.region(Second)
 )
+
+const appLayer = L.all(provideAppConfig, provideScopedAppConfig, provideNumberConfig)
 
 const main = pipe(
   program,
   provideConsole,
-  provideAppConfig,
-  provideScopedAppConfig,
-  provideNumberConfig,
   provideAugumentedConsole,
-  provideFormat
+  provideFormat,
+  T.provideSomeLayer(appLayer)
 )
 
 T.runMain(main)

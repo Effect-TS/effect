@@ -217,8 +217,8 @@ export const internalRoute = H.route("GET", "/", () =>
 
 export const home = L.using(homeChildRouter)(L.all(homeGet, homePost))
 
-export const apiEnv = L.scoped<H.ServerEnv, "api">()
-export const internalEnv = L.scoped<H.ServerEnv, "internal">()
+export const apiEnv = T.region<"api", H.ServerEnv>()
+export const internalEnv = T.region<"internal", H.ServerEnv>()
 
 export class Foo {
   readonly _tag = "Foo"
@@ -232,15 +232,14 @@ export const appServerLayer = pipe(
   L.using(H.use("(.*)", cors)),
   L.using(H.server),
   L.using(serverConfig),
-  L.using(L.service(HasFoo).pure(new Foo())),
-  L.provideScope(apiEnv)
+  L.region(apiEnv)
 )
 
 export const internalServerLayer = pipe(
   internalRoute,
   L.using(H.server),
   L.using(internalServerConfig),
-  L.provideScope(internalEnv)
+  L.region(internalEnv)
 )
 
 export const appLayer = pipe(L.all(appServerLayer, internalServerLayer), L.main)

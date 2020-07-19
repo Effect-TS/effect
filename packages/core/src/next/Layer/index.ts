@@ -493,28 +493,14 @@ function environmentFor<T>(has: T.Has<T>, a: T): T.Managed<never, unknown, never
 export const main = <S, E, A>(layer: Layer<S, DefaultEnv, E, A>) => layer
 
 /**
- * Branding sub-environments
+ * Embed the requird environment in a region
  */
-export const ScopeURI = Symbol()
-export interface Scoped<T, K> {
-  [ScopeURI]: {
-    _K: () => K
-    _T: () => T
-  }
-}
-
-export const scoped = <T, K>() => has<Scoped<T, K>>()
-
-export const provideScope = <K, T>(h: T.Has<Scoped<T, K>>) => <S, R, E, Z>(
-  _: Layer<S, R, E, T & Z>
-): Layer<S, R, E, T.Has<Scoped<T, K>> & Z> =>
+export const region = <K, T>(h: T.Has<T.Region<T, K>>) => <S, R, E>(
+  _: Layer<S, R, E, T>
+): Layer<S, R, E, T.Has<T.Region<T, K>>> =>
   pipe(
     fromEffectEnv(
-      T.access((r: T): T.Has<Scoped<T, K>> => ({ ...r, [h[HasURI].key]: r } as any))
+      T.access((r: T): T.Has<T.Region<T, K>> => ({ [h[HasURI].key]: r } as any))
     ),
     consuming(_)
   )
-
-export const useScope = <K, T>(h: T.Has<Scoped<T, K>>) => <S, R, E, A>(
-  e: T.Effect<S, R & T, E, A>
-) => accessServiceM(h)((a) => pipe(e, T.provide((a as any) as T)))
