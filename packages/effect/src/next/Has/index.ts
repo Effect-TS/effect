@@ -46,9 +46,22 @@ export type Augumented<T> = Has<T> & {
 }
 
 /**
- * Extract Has the type from any augumented variant
+ * Extract the Has type from any augumented variant
  */
 export type HasType<T> = T extends Has<infer A> ? Has<A> : never
+
+const makeAugumented = <T>(def = false, key = Symbol()): Augumented<T> => ({
+  [HasURI]: {
+    _T: undefined as any,
+    key,
+    def
+  },
+  overridable: () => makeAugumented(true, key),
+  fixed: () => makeAugumented(false, key),
+  refine: () => makeAugumented(def, key),
+  read: (r: any) => r[key],
+  at: (s: symbol) => makeAugumented(def, s)
+})
 
 /**
  * Create a service entry from a type and a URI
@@ -56,26 +69,7 @@ export type HasType<T> = T extends Has<infer A> ? Has<A> : never
 export function has<T extends Constructor<any>>(_: T): Augumented<TypeOf<T>>
 export function has<T>(): Augumented<T>
 export function has(_?: any): Augumented<unknown> {
-  const inner = (def = false, key = Symbol()) => {
-    const h = {
-      [HasURI]: {
-        _T: undefined as any,
-        _K: undefined as any,
-        key,
-        def
-      }
-    }
-    return {
-      ...h,
-      overridable: () => inner(true),
-      fixed: () => inner(false),
-      refine: () => inner(def),
-      read: (r: any) => r[key],
-      at: (s: symbol) => inner(def, s)
-    }
-  }
-
-  return inner()
+  return makeAugumented()
 }
 
 /**
