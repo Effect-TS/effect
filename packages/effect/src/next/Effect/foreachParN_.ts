@@ -14,7 +14,7 @@ import { Promise } from "../Promise/promise"
 import { succeed as promiseSucceed } from "../Promise/succeed"
 import { wait as promiseWait } from "../Promise/wait"
 import { makeBounded } from "../Queue"
-import { makeRef } from "../Ref"
+import * as R from "../Ref"
 
 import { bracket_ } from "./bracket_"
 import { chain } from "./chain"
@@ -100,7 +100,7 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
           foreach_(as, (a) => map_(promiseMake<E, B>(), (p) => [p, a] as const))
         ),
         tap((s) => fork(foreachUnit_(s.pairs, (pair) => q.offer(pair)))),
-        bind("causes", () => makeRef<Cause<E>>(Empty)),
+        bind("causes", () => R.makeRef<Cause<E>>(Empty)),
         bind("tracker", () => effectTotal(() => new Tracker<E, B>())),
         tap((s) =>
           collectAllUnit(
@@ -116,8 +116,9 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
                             ? checkDescriptor((d) => s.tracker.interrupt(d.id, c))
                             : unit,
                           () =>
-                            chain_(
-                              s.causes.update((_) =>
+                            pipe(
+                              s.causes,
+                              R.update((_) =>
                                 c === s.tracker.cause
                                   ? _
                                   : interruptedOnly(c)
@@ -126,7 +127,7 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
                                   ? Both(_, c.left)
                                   : Both(_, c)
                               ),
-                              () => promiseHalt(c)(p)
+                              chain(() => promiseHalt(c)(p))
                             )
                         ),
                       (b) => promiseSucceed(b)(p)
