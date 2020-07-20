@@ -4,16 +4,10 @@ import * as R from "../src/next/Ref"
 
 pipe(
   T.of,
-  T.bind("a", () => R.makeRef(1)),
-  T.let("b", ({ a }) =>
+  T.bind("ref", () => pipe(R.makeRef(1), T.map(R.contramap((n: number) => n + 1)))),
+  T.bind("n", ({ ref }) =>
     pipe(
-      a,
-      R.contramap((n: number) => n + 1)
-    )
-  ),
-  T.bind("n", ({ b }) =>
-    pipe(
-      b,
+      ref,
       R.updateAndGet((n) => n + 1)
     )
   ),
