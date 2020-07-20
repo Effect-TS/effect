@@ -1,3 +1,4 @@
+import { pipe } from "../../Function"
 import * as O from "../../Option"
 import { Async, Effect } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
@@ -5,7 +6,7 @@ import { unit } from "../Effect/unit"
 import { zip_ } from "../Effect/zip_"
 import { Exit } from "../Exit/exit"
 import { Runtime } from "../Fiber/fiber"
-import { Ref } from "../Ref"
+import * as R from "../Ref"
 
 /**
  * A `Supervisor<A>` is allowed to supervise the launching and termination of
@@ -124,20 +125,26 @@ export const track = effectTotal(() => {
 /**
  * Creates a new supervisor that tracks children in a set.
  */
-export const fibersIn = (ref: Ref<Set<Runtime<any, any>>>) =>
+export const fibersIn = (ref: R.Ref<Set<Runtime<any, any>>>) =>
   effectTotal(
     () =>
       new Supervisor(
         ref.get,
         (_, __, ___, fiber) => {
-          ref.unsafeUpdate((s) => s.add(fiber))
+          pipe(
+            ref,
+            R.unsafeUpdate((s) => s.add(fiber))
+          )
           return _continue
         },
         (_, fiber) => {
-          ref.unsafeUpdate((s) => {
-            s.delete(fiber)
-            return s
-          })
+          pipe(
+            ref,
+            R.unsafeUpdate((s) => {
+              s.delete(fiber)
+              return s
+            })
+          )
           return _continue
         }
       )

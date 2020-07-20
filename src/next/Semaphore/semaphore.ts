@@ -1,7 +1,7 @@
 import * as E from "../../Either"
-import { identity } from "../../Function"
+import { identity, pipe } from "../../Function"
 import * as O from "../../Option"
-import { Ref, makeRef } from "../Ref"
+import * as R from "../Ref"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
 
 import * as T from "./deps"
@@ -15,7 +15,7 @@ import { State, Entry, assertNonNegative, Acquisition } from "./state"
  * number of permits become available.
  **/
 export class Semaphore {
-  constructor(private readonly state: Ref<State>) {
+  constructor(private readonly state: R.Ref<State>) {
     this.loop = this.loop.bind(this)
     this.restore = this.restore.bind(this)
     this.releaseN = this.releaseN.bind(this)
@@ -62,31 +62,37 @@ export class Semaphore {
   private releaseN(toRelease: number): T.Sync<void> {
     return T.flatten(
       T.chain_(assertNonNegative(toRelease), () =>
-        this.state.modify((s) => this.loop(toRelease, s, T.unit))
+        pipe(
+          this.state,
+          R.modify((s) => this.loop(toRelease, s, T.unit))
+        )
       )
     )
   }
 
   private restore(p: T.Promise<never, void>, n: number): T.Sync<void> {
     return T.flatten(
-      this.state.modify(
-        E.fold(
-          (q) =>
-            O.fold_(
-              q.find(([a]) => a === p),
-              (): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-                this.releaseN(n),
-                E.left(q)
-              ],
-              (x): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-                this.releaseN(n - x[1]),
-                E.left(q.filter(([a]) => a != p))
-              ]
-            ),
-          (m): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
-            T.unit,
-            E.right(n + m)
-          ]
+      pipe(
+        this.state,
+        R.modify(
+          E.fold(
+            (q) =>
+              O.fold_(
+                q.find(([a]) => a === p),
+                (): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+                  this.releaseN(n),
+                  E.left(q)
+                ],
+                (x): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+                  this.releaseN(n - x[1]),
+                  E.left(q.filter(([a]) => a != p))
+                ]
+              ),
+            (m): [T.Sync<void>, E.Either<T.ImmutableQueue<Entry>, number>] => [
+              T.unit,
+              E.right(n + m)
+            ]
+          )
         )
       )
     )
@@ -97,21 +103,24 @@ export class Semaphore {
       return T.succeedNow(new Acquisition(T.unit, T.unit))
     } else {
       return T.chain_(T.promiseMake<never, void>(), (p) =>
-        this.state.modify(
-          E.fold(
-            (q): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => [
-              new Acquisition(T.promiseWait(p), this.restore(p, n)),
-              E.left(q.push([p, n]))
-            ],
-            (m): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => {
-              if (m >= n) {
-                return [new Acquisition(T.unit, this.releaseN(n)), E.right(m - n)]
-              }
-              return [
+        pipe(
+          this.state,
+          R.modify(
+            E.fold(
+              (q): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => [
                 new Acquisition(T.promiseWait(p), this.restore(p, n)),
-                E.left(new ImmutableQueue([[p, n - m]]))
-              ]
-            }
+                E.left(q.push([p, n]))
+              ],
+              (m): [Acquisition, E.Either<T.ImmutableQueue<Entry>, number>] => {
+                if (m >= n) {
+                  return [new Acquisition(T.unit, this.releaseN(n)), E.right(m - n)]
+                }
+                return [
+                  new Acquisition(T.promiseWait(p), this.restore(p, n)),
+                  E.left(new ImmutableQueue([[p, n - m]]))
+                ]
+              }
+            )
           )
         )
       )
@@ -158,4 +167,4 @@ export const available = (s: Semaphore) => s.available
  * Creates a new `Sempahore` with the specified number of permits.
  */
 export const makeSemaphore = (permits: number) =>
-  T.map_(makeRef<State>(E.right(permits)), (state) => new Semaphore(state))
+  T.map_(R.makeRef<State>(E.right(permits)), (state) => new Semaphore(state))
