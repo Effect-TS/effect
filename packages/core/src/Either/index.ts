@@ -1143,3 +1143,10 @@ export function getWitherable_<E>(M: Monoid<E>): Witherable2C<URI, E> {
 
 export type Ret<H> = H extends Right<infer A> ? A : never
 export type Err<H> = H extends Left<infer A> ? A : never
+
+export const merge = <E, A>(self: Either<E, A>): E | A =>
+  fold_(
+    self,
+    (x) => x,
+    (x) => x
+  )

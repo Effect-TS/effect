@@ -1,8 +1,10 @@
+import { pipe } from "fp-ts/lib/pipeable"
+
 import { eqNumber } from "../../Eq"
 import * as M from "../../Map"
 import * as O from "../../Option"
 import { ExecutionStrategy } from "../Effect/ExecutionStrategy"
-import { Ref, makeRef } from "../Ref"
+import * as R from "../Ref"
 
 import * as T from "./deps"
 
@@ -40,7 +42,7 @@ const lookup =
 export type State = Exited | Running
 
 export class ReleaseMap {
-  constructor(readonly ref: Ref<State>) {}
+  constructor(readonly ref: R.Ref<State>) {}
 
   next(l: number) {
     return l + 1
@@ -57,31 +59,35 @@ export class ReleaseMap {
   }
 
   release(key: number, exit: T.Exit<any, any>): T.Async<any> {
-    return this.ref.modify((s) => {
-      switch (s._tag) {
-        case "Exited": {
-          return [T.unit, s]
+    return pipe(
+      this.ref,
+      R.modify((s) => {
+        switch (s._tag) {
+          case "Exited": {
+            return [T.unit, s]
+          }
+          case "Running": {
+            return [
+              O.fold_(
+                lookup(key)(s.finalizers),
+                () => T.unit,
+                (f) => f(exit)
+              ),
+              new Running(s.nextKey, remove(key)(s.finalizers))
+            ]
+          }
         }
-        case "Running": {
-          return [
-            O.fold_(
-              lookup(key)(s.finalizers),
-              () => T.unit,
-              (f) => f(exit)
-            ),
-            new Running(s.nextKey, remove(key)(s.finalizers))
-          ]
-        }
-      }
-    })
+      })
+    )
   }
 
   releaseAll(
     exit: T.Exit<any, any>,
     execStrategy: ExecutionStrategy
   ): T.AsyncE<any, any> {
-    return T.flatten(
-      this.ref.modify((s): [T.AsyncE<any, any>, State] => {
+    return pipe(
+      this.ref,
+      R.modify((s): [T.AsyncE<any, any>, State] => {
         switch (s._tag) {
           case "Exited": {
             return [T.unit, s]
@@ -134,13 +140,15 @@ export class ReleaseMap {
             }
           }
         }
-      })
+      }),
+      T.flatten
     )
   }
 
   addIfOpen<E>(finalizer: FinalizerT<E>) {
-    return T.flatten(
-      this.ref.modify<T.AsyncE<E, O.Option<number>>>((s) => {
+    return pipe(
+      this.ref,
+      R.modify<T.AsyncE<E, O.Option<number>>, State>((s) => {
         switch (s._tag) {
           case "Exited": {
             return [
@@ -158,11 +166,12 @@ export class ReleaseMap {
             ]
           }
         }
-      })
+      }),
+      T.flatten
     )
   }
 }
 
 export const makeReleaseMap =
   /*#__PURE__*/
-  T.map_(makeRef<State>(new Running(0, new Map())), (s) => new ReleaseMap(s))
+  T.map_(R.makeRef<State>(new Running(0, new Map())), (s) => new ReleaseMap(s))
