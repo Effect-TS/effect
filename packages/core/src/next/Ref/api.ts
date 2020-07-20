@@ -1,17 +1,20 @@
 import * as E from "../../Either"
 import { identity, pipe } from "../../Function"
 import * as O from "../../Option"
-import * as T from "../Effect"
+import { absolve } from "../Effect/absolve"
+import { chain } from "../Effect/chain"
+import { Sync, SyncE } from "../Effect/effect"
+import { effectTotal } from "../Effect/effectTotal"
 import { AtomicReference } from "../Support/AtomicReference"
 
-import { Ref, Atomic, XRef, ERef } from "./XRef"
+import { Ref, Atomic, XRef, ERef, concrete } from "./XRef"
 import * as A from "./atomic"
 
 /**
  * Creates a new `XRef` with the specified value.
  */
-export const makeRef = <A>(a: A): T.Sync<Ref<A>> =>
-  T.effectTotal(() => new Atomic(new AtomicReference(a)))
+export const makeRef = <A>(a: A): Sync<Ref<A>> =>
+  effectTotal(() => new Atomic(new AtomicReference(a)))
 
 /**
  * Maps and filters the `get` value of the `XRef` with the specified partial
@@ -150,51 +153,52 @@ export const writeOnly: <EA, EB, A, B>(
  */
 export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
   self: ERef<E, A>
-): T.SyncE<E, B> => {
-  switch (self._tag) {
+): SyncE<E, B> => {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.modify(f)(self)
+      return A.modify(f)(_self)
     }
     case "Derived": {
       return pipe(
-        self.value,
+        _self.value,
         A.modify((s) => {
           return E.fold_(
-            self.getEither(s),
+            _self.getEither(s),
             (e) => [E.left(e), s] as [E.Either<E, never>, A],
             (a1) => {
               const [b, a2] = f(a1)
 
               return E.fold_(
-                self.setEither(a2),
+                _self.setEither(a2),
                 (e) => [E.left(e), s] as [E.Either<E, never>, A],
                 (s) => [E.right(b), s] as [E.Either<E, never>, A]
               )
             }
           )
         }),
-        T.absolve
+        absolve
       )
     }
     case "DerivedAll": {
       return pipe(
-        self.value,
+        _self.value,
         A.modify((s) => {
           return E.fold_(
-            self.getEither(s),
+            _self.getEither(s),
             (e) => [E.left(e), s] as [E.Either<E, never>, A],
             (a1) => {
               const [b, a2] = f(a1)
 
               return E.fold_(
-                self.setEither(a2)(s),
+                _self.setEither(a2)(s),
                 (e) => [E.left(e), s] as [E.Either<E, never>, A],
                 (s) => [E.right(b), s] as [E.Either<E, never>, A]
               )
             }
           )
         }),
-        T.absolve
+        absolve
       )
     }
   }
@@ -208,14 +212,15 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
  */
 export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <E>(
   self: ERef<E, A>
-): T.SyncE<E, B> => {
-  switch (self._tag) {
+): SyncE<E, B> => {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.modifySome(def)(f)(self)
+      return A.modifySome(def)(f)(_self)
     }
     default: {
       return pipe(
-        self,
+        _self,
         modify((a) => O.getOrElse_(f(a), () => [def, a] as [B, A]))
       )
     }
@@ -227,9 +232,10 @@ export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <
  * immediately before modification.
  */
 export const getAndSet = <A>(a: A) => <E>(self: ERef<E, A>) => {
-  switch (self._tag) {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.getAndSet(a)(self)
+      return A.getAndSet(a)(_self)
     }
     default: {
       return pipe(
@@ -245,13 +251,14 @@ export const getAndSet = <A>(a: A) => <E>(self: ERef<E, A>) => {
  * the value immediately before modification.
  */
 export const getAndUpdate = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>) => {
-  switch (self._tag) {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.getAndUpdate(f)(self)
+      return A.getAndUpdate(f)(_self)
     }
     default: {
       return pipe(
-        self,
+        _self,
         modify((v) => [v, f(v)])
       )
     }
@@ -266,13 +273,14 @@ export const getAndUpdate = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>) => {
 export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
   self: ERef<E, A>
 ) => {
-  switch (self._tag) {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.getAndUpdateSome(f)(self)
+      return A.getAndUpdateSome(f)(_self)
     }
     default: {
       return pipe(
-        self,
+        _self,
         modify((v) => [v, O.getOrElse_(f(v), () => v)])
       )
     }
@@ -282,16 +290,15 @@ export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
 /**
  * Atomically modifies the `XRef` with the specified function.
  */
-export const update = <A>(f: (a: A) => A) => <E>(
-  self: ERef<E, A>
-): T.SyncE<E, void> => {
-  switch (self._tag) {
+export const update = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<E, void> => {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.update(f)(self)
+      return A.update(f)(_self)
     }
     default: {
       return pipe(
-        self,
+        _self,
         modify((v) => [undefined, f(v)])
       )
     }
@@ -304,15 +311,17 @@ export const update = <A>(f: (a: A) => A) => <E>(
  */
 export const updateAndGet = <A>(f: (a: A) => A) => <E>(
   self: ERef<E, A>
-): T.SyncE<E, A> => {
-  switch (self._tag) {
+): SyncE<E, A> => {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.updateAndGet(f)(self)
+      return A.updateAndGet(f)(_self)
     }
     default: {
       return pipe(
-        self,
-        modify((v) => pipe(f(v), (result) => [result, result]))
+        _self,
+        modify((v) => pipe(f(v), (result) => [result, result])),
+        chain(() => self.get)
       )
     }
   }
@@ -324,14 +333,15 @@ export const updateAndGet = <A>(f: (a: A) => A) => <E>(
  */
 export const updateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
   self: ERef<E, A>
-): T.SyncE<E, void> => {
-  switch (self._tag) {
+): SyncE<E, void> => {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.updateSome(f)(self)
+      return A.updateSome(f)(_self)
     }
     default: {
       return pipe(
-        self,
+        _self,
         modify((v) => [undefined, O.getOrElse_(f(v), () => v)])
       )
     }
@@ -345,14 +355,15 @@ export const updateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
  */
 export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <E>(
   self: ERef<E, A>
-): T.SyncE<E, A> => {
-  switch (self._tag) {
+): SyncE<E, A> => {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.updateSomeAndGet(f)(self)
+      return A.updateSomeAndGet(f)(_self)
     }
     default: {
       return pipe(
-        self,
+        _self,
         modify((v) =>
           pipe(
             f(v),
@@ -369,23 +380,24 @@ export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <E>(
  * Unsafe update value in a Ref<A>
  */
 export const unsafeUpdate = <A>(f: (a: A) => A) => (self: Ref<A>) => {
-  switch (self._tag) {
+  const _self = concrete(self)
+  switch (_self._tag) {
     case "Atomic": {
-      return A.unsafeUpdate(f)(self)
+      return A.unsafeUpdate(f)(_self)
     }
     case "Derived": {
       return pipe(
-        self.value,
+        _self.value,
         A.unsafeUpdate((s) =>
-          pipe(self.setEither(f(E.merge(self.getEither(s)))), E.merge)
+          pipe(_self.setEither(f(E.merge(_self.getEither(s)))), E.merge)
         )
       )
     }
     case "DerivedAll": {
       return pipe(
-        self.value,
+        _self.value,
         A.unsafeUpdate((s) =>
-          pipe(self.setEither(f(E.merge(self.getEither(s))))(s), E.merge)
+          pipe(_self.setEither(f(E.merge(_self.getEither(s))))(s), E.merge)
         )
       )
     }

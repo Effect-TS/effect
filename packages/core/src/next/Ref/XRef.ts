@@ -211,13 +211,19 @@ export class DerivedAll<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
       absolve
     )
 }
+
 /**
  * A Ref that can fail with error E
  */
+export interface ERef<E, A> extends XRef<E, E, A, A> {}
 
-export type ERef<E, A> = Atomic<A> | DerivedAll<E, E, A, A, A> | Derived<E, E, A, A, A>
 /**
  * A Ref that cannot fail
  */
+export interface Ref<A> extends ERef<never, A> {}
 
-export type Ref<A> = ERef<never, A>
+/**
+ * Cast to a sealed union
+ */
+export const concrete = <EA, EB, A, B>(self: XRef<EA, EB, A, B>) =>
+  self as Atomic<A | B> | DerivedAll<EA, EB, A, B, A | B> | Derived<EA, EB, A, B, A | B>
