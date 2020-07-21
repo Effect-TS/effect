@@ -217,19 +217,12 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
 export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <E>(
   self: ERef<E, A>
 ): SyncE<E, B> =>
-  pipe(self, concrete, (self) => {
-    switch (self._tag) {
-      case "Atomic": {
-        return A.modifySome(def)(f)(self)
-      }
-      default: {
-        return pipe(
-          self,
-          modify((a) => O.getOrElse_(f(a), () => [def, a] as [B, A]))
-        )
-      }
-    }
-  })
+  matchTag(concrete(self))(
+    {
+      Atomic: A.modifySome(def)(f)
+    },
+    modify((a) => O.getOrElse_(f(a), () => [def, a] as [B, A]))
+  )
 
 /**
  * Atomically writes the specified value to the `XRef`, returning the value

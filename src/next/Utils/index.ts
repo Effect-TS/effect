@@ -21,11 +21,7 @@ export const pattern: <N extends string>(
   <K extends { [k in X[N]]: (_: Extract<X, { _tag: k }>) => any }>(_: K): ReturnType<
     K[keyof K]
   >
-  <
-    X extends { [k in N]: string },
-    K extends { [k in X[N]]?: (_: Extract<X, { _tag: k }>) => any },
-    H
-  >(
+  <K extends { [k in X[N]]?: (_: Extract<X, { _tag: k }>) => any }, H>(
     _: K,
     __: (_: Exclude<X, { _tag: keyof K }>) => H
   ): { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
