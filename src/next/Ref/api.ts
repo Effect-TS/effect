@@ -225,9 +225,7 @@ export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <
     self,
     concrete,
     matchTag(
-      {
-        Atomic: A.modifySome(def)(f)
-      },
+      { Atomic: A.modifySome(def)(f) },
       modify((a) => O.getOrElse_(f(a), () => [def, a] as [B, A]))
     )
   )
@@ -241,9 +239,7 @@ export const getAndSet = <A>(a: A) => <E>(self: ERef<E, A>) =>
     self,
     concrete,
     matchTag(
-      {
-        Atomic: A.getAndSet(a)
-      },
+      { Atomic: A.getAndSet(a) },
       modify((v) => [v, a])
     )
   )
