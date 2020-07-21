@@ -16,5 +16,10 @@ export {
   offer_,
   takeAllUpTo_,
   takeBetween_,
-  bothWithM
+  bothWithM,
+  both,
+  bothWith,
+  bothWithM_,
+  bothWith_,
+  both_
 } from "./api"
