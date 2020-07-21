@@ -50,6 +50,7 @@ pipe(
           repository: content["repository"],
           sideEffects: content["sideEffects"],
           dependencies: content["dependencies"],
+          peerDependencies: content["peerDependencies"],
           gitHead: content["gitHead"],
           main: "./index.js",
           module: "./esm/index.js",
