@@ -226,7 +226,12 @@ export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <
     concrete,
     matchTag(
       { Atomic: A.modifySome(def)(f) },
-      modify((a) => O.getOrElse_(f(a), () => [def, a] as [B, A]))
+      modify((a) =>
+        pipe(
+          f(a),
+          O.getOrElse(() => tuple(def, a))
+        )
+      )
     )
   )
 
@@ -240,7 +245,7 @@ export const getAndSet = <A>(a: A) => <E>(self: ERef<E, A>) =>
     concrete,
     matchTag(
       { Atomic: A.getAndSet(a) },
-      modify((v) => [v, a])
+      modify((v) => tuple(v, a))
     )
   )
 
@@ -254,7 +259,7 @@ export const getAndUpdate = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>) =>
     concrete,
     matchTag(
       { Atomic: A.getAndUpdate(f) },
-      modify((v) => [v, f(v)])
+      modify((v) => tuple(v, f(v)))
     )
   )
 
@@ -271,7 +276,13 @@ export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
     concrete,
     matchTag(
       { Atomic: A.getAndUpdateSome(f) },
-      modify((v) => [v, O.getOrElse_(f(v), () => v)])
+      modify((v) =>
+        pipe(
+          f(v),
+          O.getOrElse(() => v),
+          (a) => tuple(v, a)
+        )
+      )
     )
   )
 
@@ -284,7 +295,7 @@ export const update = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<E, voi
     concrete,
     matchTag(
       { Atomic: A.update(f) },
-      modify((v) => [undefined, f(v)])
+      modify((v) => tuple(undefined, f(v)))
     )
   )
 
@@ -299,7 +310,7 @@ export const updateAndGet = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<
     matchTag({ Atomic: A.updateAndGet(f) }, (self) =>
       pipe(
         self,
-        modify((v) => pipe(f(v), (result) => [result, result])),
+        modify((v) => pipe(f(v), (result) => tuple(result, result))),
         chain(() => self.get)
       )
     )
@@ -317,7 +328,13 @@ export const updateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
     concrete,
     matchTag(
       { Atomic: A.updateSome(f) },
-      modify((v) => [undefined, O.getOrElse_(f(v), () => v)])
+      modify((v) =>
+        pipe(
+          f(v),
+          O.getOrElse(() => v),
+          (a) => tuple(undefined, a)
+        )
+      )
     )
   )
 
@@ -338,7 +355,7 @@ export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <E>(
         pipe(
           f(v),
           O.getOrElse(() => v),
-          (result) => [result, result]
+          (result) => tuple(result, result)
         )
       )
     )
@@ -357,14 +374,14 @@ export const unsafeUpdate = <A>(f: (a: A) => A) => (self: Ref<A>) =>
         pipe(
           self.value,
           A.unsafeUpdate((s) =>
-            pipe(self.setEither(f(E.merge(self.getEither(s)))), E.merge)
+            pipe(s, self.getEither, E.merge, f, self.setEither, E.merge)
           )
         ),
       DerivedAll: (self) =>
         pipe(
           self.value,
           A.unsafeUpdate((s) =>
-            pipe(self.setEither(f(E.merge(self.getEither(s))))(s), E.merge)
+            pipe(s, self.getEither, E.merge, f, (a) => self.setEither(a)(s), E.merge)
           )
         )
     })
