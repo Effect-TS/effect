@@ -54,7 +54,7 @@ export const takeBetween_ = <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   min: number,
   max: number
-): AsyncRE<RA & RB, unknown, readonly B[]> => takeBetween(min, max)(self)
+): AsyncRE<RA & RB, EB, readonly B[]> => takeBetween(min, max)(self)
 
 /**
  * Waits until the queue is shutdown.
