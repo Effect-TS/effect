@@ -1,15 +1,7 @@
 import * as A from "../../Array"
 import { pipe, tuple } from "../../Function"
-import { chain } from "../Effect/chain"
-import { chain_ } from "../Effect/chain_"
-import { AsyncRE, Async, Sync } from "../Effect/effect"
-import { foreach_ } from "../Effect/foreach_"
-import { map_ } from "../Effect/map_"
-import { repeat_ } from "../Effect/repeat"
-import { succeedNow } from "../Effect/succeedNow"
-import { zipPar_ } from "../Effect/zipPar_"
-import { zipWithPar_ } from "../Effect/zipWithPar_"
 
+import * as T from "./effect"
 import * as S from "./schedule"
 import { XQueue } from "./xqueue"
 
@@ -20,25 +12,27 @@ import { XQueue } from "./xqueue"
  */
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
-): AsyncRE<RA & RB, EB, readonly B[]> => {
+): T.AsyncRE<RA & RB, EB, readonly B[]> => {
   if (max < min) {
-    return succeedNow([])
+    return T.succeedNow([])
   } else {
     return pipe(
       self.takeUpTo(max),
-      chain((bs) => {
+      T.chain((bs) => {
         const remaining = min - bs.length
 
         if (remaining === 1) {
-          return map_(self.take, (b) => [...bs, b])
+          return T.map_(self.take, (b) => [...bs, b])
         } else if (remaining > 1) {
           return pipe(
-            S.both_(S.collectAll<B>(), S.recurs(remaining - 1)),
+            S.collectAll<B>(),
+            S.both(S.recurs(remaining - 1)),
             S.map(([_]) => _),
-            (s) => map_(repeat_(self.take, s), (a) => [...bs, ...a])
+            S.repeat(self.take),
+            T.map((a) => [...bs, ...a])
           )
         } else {
-          return succeedNow(bs)
+          return T.succeedNow(bs)
         }
       })
     )
@@ -54,7 +48,7 @@ export const takeBetween_ = <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>,
   min: number,
   max: number
-): AsyncRE<RA & RB, EB, readonly B[]> => takeBetween(min, max)(self)
+): T.AsyncRE<RA & RB, EB, readonly B[]> => takeBetween(min, max)(self)
 
 /**
  * Waits until the queue is shutdown.
@@ -190,7 +184,7 @@ export const takeAllUpTo_ = <RA, RB, EA, EB, A, B>(
  */
 export const bothWithM = <RA1, RB1, EA1, EB1, A1 extends A, C, B, R3, E3, D, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
-  f: (b: B, c: C) => AsyncRE<R3, E3, D>
+  f: (b: B, c: C) => T.AsyncRE<R3, E3, D>
 ) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) => bothWithM_(self, that, f)
 
 /**
@@ -221,50 +215,59 @@ export const bothWithM_ = <
 >(
   self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
-  f: (b: B, c: C) => AsyncRE<R3, E3, D>
+  f: (b: B, c: C) => T.AsyncRE<R3, E3, D>
 ): XQueue<RA & RA1, RB & RB1 & R3, EA | EA1, E3 | EB | EB1, A1, D> =>
   new (class extends XQueue<RA & RA1, RB & RB1 & R3, EA | EA1, E3 | EB | EB1, A1, D> {
-    awaitShutdown: Async<void> = chain_(self.awaitShutdown, () => that.awaitShutdown)
+    awaitShutdown: T.Async<void> = T.chain_(
+      self.awaitShutdown,
+      () => that.awaitShutdown
+    )
 
     capacity: number = Math.min(self.capacity, that.capacity)
 
-    isShutdown: Sync<boolean> = self.isShutdown
+    isShutdown: T.Sync<boolean> = self.isShutdown
 
-    offer: (a: A1) => AsyncRE<RA & RA1, EA1 | EA, boolean> = (a) =>
-      zipWithPar_(self.offer(a), that.offer(a), (x, y) => x && y)
+    offer: (a: A1) => T.AsyncRE<RA & RA1, EA1 | EA, boolean> = (a) =>
+      T.zipWithPar_(self.offer(a), that.offer(a), (x, y) => x && y)
 
-    offerAll: (as: Iterable<A1>) => AsyncRE<RA & RA1, EA1 | EA, boolean> = (as) =>
-      zipWithPar_(self.offerAll(as), that.offerAll(as), (x, y) => x && y)
+    offerAll: (as: Iterable<A1>) => T.AsyncRE<RA & RA1, EA1 | EA, boolean> = (as) =>
+      T.zipWithPar_(self.offerAll(as), that.offerAll(as), (x, y) => x && y)
 
-    shutdown: Async<void> = zipWithPar_(self.shutdown, that.shutdown, () => undefined)
+    shutdown: T.Async<void> = T.zipWithPar_(
+      self.shutdown,
+      that.shutdown,
+      () => undefined
+    )
 
-    size: Async<number> = zipWithPar_(self.size, that.size, (x, y) => Math.max(x, y))
+    size: T.Async<number> = T.zipWithPar_(self.size, that.size, (x, y) =>
+      Math.max(x, y)
+    )
 
-    take: AsyncRE<RB & RB1 & R3, E3 | EB | EB1, D> = chain_(
-      zipPar_(self.take, that.take),
+    take: T.AsyncRE<RB & RB1 & R3, E3 | EB | EB1, D> = T.chain_(
+      T.zipPar_(self.take, that.take),
       ([b, c]) => f(b, c)
     )
 
-    takeAll: AsyncRE<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = chain_(
-      zipPar_(self.takeAll, that.takeAll),
+    takeAll: T.AsyncRE<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = T.chain_(
+      T.zipPar_(self.takeAll, that.takeAll),
       ([bs, cs]) => {
         const abs = Array.from(bs)
         const acs = Array.from(cs)
         const all = A.zip_(abs, acs)
 
-        return foreach_(all, ([b, c]) => f(b, c))
+        return T.foreach_(all, ([b, c]) => f(b, c))
       }
     )
 
-    takeUpTo: (n: number) => AsyncRE<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = (
+    takeUpTo: (n: number) => T.AsyncRE<RB & RB1 & R3, E3 | EB | EB1, readonly D[]> = (
       max
     ) =>
-      chain_(zipPar_(self.takeUpTo(max), that.takeUpTo(max)), ([bs, cs]) => {
+      T.chain_(T.zipPar_(self.takeUpTo(max), that.takeUpTo(max)), ([bs, cs]) => {
         const abs = Array.from(bs)
         const acs = Array.from(cs)
         const all = A.zip_(abs, acs)
 
-        return foreach_(all, ([b, c]) => f(b, c))
+        return T.foreach_(all, ([b, c]) => f(b, c))
       })
   })()
 
@@ -275,7 +278,7 @@ export const bothWith = <RA1, RB1, EA1, EB1, A1 extends A, C, B, D, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
   f: (b: B, c: C) => D
 ) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) =>
-  bothWithM_(self, that, (b, c) => succeedNow(f(b, c)))
+  bothWithM_(self, that, (b, c) => T.succeedNow(f(b, c)))
 
 /**
  * Like `bothWithM`, but uses a pure function.
@@ -284,7 +287,7 @@ export const bothWith_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B
   self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
   f: (b: B, c: C) => D
-) => bothWithM_(self, that, (b, c) => succeedNow(f(b, c)))
+) => bothWithM_(self, that, (b, c) => T.succeedNow(f(b, c)))
 
 /**
  * Like `bothWith`, but tuples the elements instead of applying a function.
@@ -307,8 +310,8 @@ export const both_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, A>
  * specified effectual functions.
  */
 export const dimapM = <A, B, C, RC, EC, RD, ED, D>(
-  f: (c: C) => AsyncRE<RC, EC, A>,
-  g: (b: B) => AsyncRE<RD, ED, D>
+  f: (c: C) => T.AsyncRE<RC, EC, A>,
+  g: (b: B) => T.AsyncRE<RD, ED, D>
 ) => <RA, RB, EA, EB>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ): XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> => dimapM_(self, f, g)
@@ -319,32 +322,32 @@ export const dimapM = <A, B, C, RC, EC, RD, ED, D>(
  */
 export const dimapM_ = <RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D>(
   self: XQueue<RA, RB, EA, EB, A, B>,
-  f: (c: C) => AsyncRE<RC, EC, A>,
-  g: (b: B) => AsyncRE<RD, ED, D>
+  f: (c: C) => T.AsyncRE<RC, EC, A>,
+  g: (b: B) => T.AsyncRE<RD, ED, D>
 ): XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> =>
   new (class extends XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> {
-    awaitShutdown: Async<void> = self.awaitShutdown
+    awaitShutdown: T.Async<void> = self.awaitShutdown
 
     capacity: number = self.capacity
 
-    isShutdown: Sync<boolean> = self.isShutdown
+    isShutdown: T.Sync<boolean> = self.isShutdown
 
-    offer: (a: C) => AsyncRE<RC & RA, EA | EC, boolean> = (c) =>
-      chain_(f(c), self.offer)
+    offer: (a: C) => T.AsyncRE<RC & RA, EA | EC, boolean> = (c) =>
+      T.chain_(f(c), self.offer)
 
-    offerAll: (as: Iterable<C>) => AsyncRE<RC & RA, EC | EA, boolean> = (cs) =>
-      chain_(foreach_(cs, f), self.offerAll)
+    offerAll: (as: Iterable<C>) => T.AsyncRE<RC & RA, EC | EA, boolean> = (cs) =>
+      T.chain_(T.foreach_(cs, f), self.offerAll)
 
-    shutdown: Async<void> = self.shutdown
+    shutdown: T.Async<void> = self.shutdown
 
-    size: Async<number> = self.size
+    size: T.Async<number> = self.size
 
-    take: AsyncRE<RD & RB, ED | EB, D> = chain_(self.take, g)
+    take: T.AsyncRE<RD & RB, ED | EB, D> = T.chain_(self.take, g)
 
-    takeAll: AsyncRE<RD & RB, ED | EB, readonly D[]> = chain_(self.takeAll, (a) =>
-      foreach_(a, g)
+    takeAll: T.AsyncRE<RD & RB, ED | EB, readonly D[]> = T.chain_(self.takeAll, (a) =>
+      T.foreach_(a, g)
     )
 
-    takeUpTo: (n: number) => AsyncRE<RD & RB, ED | EB, readonly D[]> = (max) =>
-      chain_(self.takeUpTo(max), (bs) => foreach_(bs, g))
+    takeUpTo: (n: number) => T.AsyncRE<RD & RB, ED | EB, readonly D[]> = (max) =>
+      T.chain_(self.takeUpTo(max), (bs) => T.foreach_(bs, g))
   })()
