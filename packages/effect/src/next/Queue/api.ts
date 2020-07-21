@@ -1,5 +1,5 @@
 import * as A from "../../Array"
-import { pipe } from "../../Function"
+import { pipe, tuple } from "../../Function"
 import { chain } from "../Effect/chain"
 import { chain_ } from "../Effect/chain_"
 import { AsyncRE, Async, Sync } from "../Effect/effect"
@@ -222,7 +222,7 @@ export const bothWithM_ = <
   self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
   f: (b: B, c: C) => AsyncRE<R3, E3, D>
-) =>
+): XQueue<RA & RA1, RB & RB1 & R3, EA | EA1, E3 | EB | EB1, A1, D> =>
   new (class extends XQueue<RA & RA1, RB & RB1 & R3, EA | EA1, E3 | EB | EB1, A1, D> {
     awaitShutdown: Async<void> = chain_(self.awaitShutdown, () => that.awaitShutdown)
 
@@ -291,13 +291,13 @@ export const bothWith_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B
  */
 export const both = <RA1, RB1, EA1, EB1, A1 extends A, C, B, A>(
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>
-) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, [B, C]>) =>
-  bothWith_(self, that, (b, c) => [b, c])
+) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) =>
+  bothWith_(self, that, (b, c) => tuple(b, c))
 
 /**
  * Like `bothWith`, but tuples the elements instead of applying a function.
  */
 export const both_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, A>(
-  self: XQueue<RA, RB, EA, EB, A, [B, C]>,
+  self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>
-) => bothWith_(self, that, (b, c) => [b, c])
+) => bothWith_(self, that, (b, c) => tuple(b, c))
