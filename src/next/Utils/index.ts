@@ -15,13 +15,12 @@ export type Erase<R, K> = R & K extends K & infer R1 ? R1 : R
 
 export const pattern: <N extends string>(
   n: N
+) => <X extends { [k in N]: string }>(
+  m: X
 ) => {
-  <
-    X extends { [k in N]: string },
-    K extends { [k in X[N]]: (_: Extract<X, { _tag: k }>) => any }
-  >(
-    _: K
-  ): (m: X) => ReturnType<K[keyof K]>
+  <K extends { [k in X[N]]: (_: Extract<X, { _tag: k }>) => any }>(_: K): ReturnType<
+    K[keyof K]
+  >
   <
     X extends { [k in N]: string },
     K extends { [k in X[N]]?: (_: Extract<X, { _tag: k }>) => any },
@@ -29,9 +28,9 @@ export const pattern: <N extends string>(
   >(
     _: K,
     __: (_: Exclude<X, { _tag: keyof K }>) => H
-  ): (m: X) => { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
+  ): { [k in keyof K]: ReturnType<NonNullable<K[k]>> }[keyof K] | H
 } = (n) =>
-  ((_: any, d: any) => (m: any) => {
+  ((m: any) => (_: any, d: any) => {
     return (_[m[n]] ? _[m[n]](m) : d(m)) as any
   }) as any
 
