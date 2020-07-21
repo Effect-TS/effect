@@ -5,10 +5,10 @@ import * as Q from "../src/next/Queue"
 pipe(
   T.of,
   T.bind("queue", () => Q.makeUnbounded<number>()),
-  T.tap(({ queue }) => pipe(queue, Q.offer(1))),
-  T.tap(({ queue }) => pipe(queue, Q.offer(2))),
-  T.tap(({ queue }) => pipe(queue, Q.offer(3))),
-  T.bind("ns", ({ queue }) => pipe(queue, Q.takeAll)),
+  T.tap(({ queue }) => queue.offer(1)),
+  T.tap(({ queue }) => queue.offer(2)),
+  T.tap(({ queue }) => queue.offer(3)),
+  T.bind("ns", ({ queue }) => queue.takeAll),
   T.chain(({ ns }) =>
     T.effectTotal(() => {
       console.log(ns)
