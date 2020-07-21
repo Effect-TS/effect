@@ -9,11 +9,8 @@ import { repeat_ } from "../Effect/repeat"
 import { succeedNow } from "../Effect/succeedNow"
 import { zipPar_ } from "../Effect/zipPar_"
 import { zipWithPar_ } from "../Effect/zipWithPar_"
-import { both_ } from "../Schedule/both"
-import { collectAll } from "../Schedule/collectAll"
-import { map } from "../Schedule/map"
-import { recurs } from "../Schedule/recurs"
 
+import * as S from "./schedule"
 import { XQueue } from "./xqueue"
 
 /**
@@ -36,8 +33,8 @@ export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
           return map_(self.take, (b) => [...bs, b])
         } else if (remaining > 1) {
           return pipe(
-            both_(collectAll<B>(), recurs(remaining - 1)),
-            map(([_]) => _),
+            S.both_(S.collectAll<B>(), S.recurs(remaining - 1)),
+            S.map(([_]) => _),
             (s) => map_(repeat_(self.take, s), (a) => [...bs, ...a])
           )
         } else {
@@ -270,3 +267,37 @@ export const bothWithM_ = <
         return foreach_(all, ([b, c]) => f(b, c))
       })
   })()
+
+/**
+ * Like `bothWithM`, but uses a pure function.
+ */
+export const bothWith = <RA1, RB1, EA1, EB1, A1 extends A, C, B, D, A>(
+  that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
+  f: (b: B, c: C) => D
+) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, B>) =>
+  bothWithM_(self, that, (b, c) => succeedNow(f(b, c)))
+
+/**
+ * Like `bothWithM`, but uses a pure function.
+ */
+export const bothWith_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, D, A>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  that: XQueue<RA1, RB1, EA1, EB1, A1, C>,
+  f: (b: B, c: C) => D
+) => bothWithM_(self, that, (b, c) => succeedNow(f(b, c)))
+
+/**
+ * Like `bothWith`, but tuples the elements instead of applying a function.
+ */
+export const both = <RA1, RB1, EA1, EB1, A1 extends A, C, B, A>(
+  that: XQueue<RA1, RB1, EA1, EB1, A1, C>
+) => <RA, RB, EA, EB>(self: XQueue<RA, RB, EA, EB, A, [B, C]>) =>
+  bothWith_(self, that, (b, c) => [b, c])
+
+/**
+ * Like `bothWith`, but tuples the elements instead of applying a function.
+ */
+export const both_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, A>(
+  self: XQueue<RA, RB, EA, EB, A, [B, C]>,
+  that: XQueue<RA1, RB1, EA1, EB1, A1, C>
+) => bothWith_(self, that, (b, c) => [b, c])
