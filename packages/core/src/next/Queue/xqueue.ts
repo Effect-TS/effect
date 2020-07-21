@@ -51,7 +51,7 @@ export abstract class XQueue<RA, RB, EA, EB, A, B> {
    * in the queue. This may be negative if fibers are suspended waiting for
    * elements to be added to the queue.
    */
-  abstract readonly size: Sync<number>
+  abstract readonly size: Async<number>
   /**
    * Removes the oldest value in the queue. If the queue is empty, this will
    * return a computation that resumes when an item has been added to the queue.
