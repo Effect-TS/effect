@@ -160,22 +160,22 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
     concrete,
     matchTag({
       Atomic: A.modify(f),
-      Derived: (derived) =>
+      Derived: (self) =>
         pipe(
-          derived.value,
+          self.value,
           A.modify((s) =>
             pipe(
               s,
-              derived.setEither,
+              self.getEither,
               E.fold(
-                (e) => tuple(E.leftW<E, B>(e), s),
+                (e) => tuple(E.left(e), s),
                 (a1) =>
-                  pipe(a1, f, ([b, a2]) =>
+                  pipe(f(a1), ([b, a2]) =>
                     pipe(
                       a2,
-                      derived.setEither,
+                      self.setEither,
                       E.fold(
-                        (e) => tuple(E.leftW<E, B>(e), s),
+                        (e) => tuple(E.left(e), s),
                         (s) => tuple(E.rightW<E, B>(b), s)
                       )
                     )
@@ -185,22 +185,21 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
           ),
           absolve
         ),
-      DerivedAll: (derivedAll) =>
+      DerivedAll: (self) =>
         pipe(
-          derivedAll.value,
+          self.value,
           A.modify((s) =>
             pipe(
               s,
-              derivedAll.getEither,
+              self.getEither,
               E.fold(
-                (e) => tuple(E.leftW<E, B>(e), s),
+                (e) => tuple(E.left(e), s),
                 (a1) =>
                   pipe(f(a1), ([b, a2]) =>
                     pipe(
-                      s,
-                      derivedAll.setEither(a2),
+                      self.setEither(a2)(s),
                       E.fold(
-                        (e) => tuple(E.leftW<E, B>(e), s),
+                        (e) => tuple(E.left(e), s),
                         (s) => tuple(E.rightW<E, B>(b), s)
                       )
                     )
