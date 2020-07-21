@@ -20,7 +20,7 @@ import { XQueue } from "./xqueue"
  */
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
-): AsyncRE<RA & RB, unknown, readonly B[]> => {
+): AsyncRE<RA & RB, EB, readonly B[]> => {
   if (max < min) {
     return succeedNow([])
   } else {
