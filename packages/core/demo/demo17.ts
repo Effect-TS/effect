@@ -1,4 +1,5 @@
 import { pipe } from "../src/Function"
+import { some } from "../src/Option"
 import * as T from "../src/next/Effect"
 import * as R from "../src/next/Ref"
 
@@ -14,7 +15,7 @@ pipe(
   T.bind("s", ({ ref }) =>
     pipe(
       ref,
-      R.modify((n) => [`${n + 1}`, n + 1])
+      R.modifySome("")((n) => some([`${n + 1}`, n + 1] as [string, number]))
     )
   ),
   T.chain(({ n, s }) =>
