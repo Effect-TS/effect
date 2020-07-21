@@ -11,9 +11,16 @@ pipe(
       R.updateAndGet((n) => n + 1)
     )
   ),
-  T.chain(({ n }) =>
+  T.bind("s", ({ ref }) =>
+    pipe(
+      ref,
+      R.modify((n) => [`${n + 1}`, n + 1])
+    )
+  ),
+  T.chain(({ n, s }) =>
     T.effectTotal(() => {
       console.log(n)
+      console.log(s)
     })
   ),
   T.runMain
