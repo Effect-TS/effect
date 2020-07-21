@@ -11,6 +11,11 @@ import { recurs } from "../Schedule/recurs"
 
 import { XQueue } from "./xqueue"
 
+/**
+ * Takes between min and max number of values from the queue. If there
+ * is less than min items available, it'll block until the items are
+ * collected.
+ */
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ): AsyncRE<RA & RB, unknown, readonly B[]> => {
