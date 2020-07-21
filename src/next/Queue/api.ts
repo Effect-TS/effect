@@ -44,6 +44,17 @@ export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
 }
 
 /**
+ * Takes between min and max number of values from the queue. If there
+ * is less than min items available, it'll block until the items are
+ * collected.
+ */
+export const takeBetween_ = <RA, RB, EA, EB, A, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  min: number,
+  max: number
+): AsyncRE<RA & RB, unknown, readonly B[]> => takeBetween(min, max)(self)
+
+/**
  * Waits until the queue is shutdown.
  * The `IO` returned by this method will not resume until the queue has been shutdown.
  * If the queue is already shutdown, the `IO` will resume right away.
@@ -72,6 +83,14 @@ export const offer = <A>(a: A) => <RA, RB, EA, EB, B>(
 ) => self.offer(a)
 
 /**
+ * Places one value in the queue.
+ */
+export const offer_ = <RA, RB, EA, EB, A, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  a: A
+) => self.offer(a)
+
+/**
  * For Bounded Queue: uses the `BackPressure` Strategy, places the values in the queue and always returns true.
  * If the queue has reached capacity, then
  * the fiber performing the `offerAll` will be suspended until there is room in
@@ -90,6 +109,28 @@ export const offer = <A>(a: A) => <RA, RB, EA, EB, B>(
  */
 export const offerAll = <A>(as: Iterable<A>) => <RA, RB, EA, EB, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
+) => self.offerAll(as)
+
+/**
+ * For Bounded Queue: uses the `BackPressure` Strategy, places the values in the queue and always returns true.
+ * If the queue has reached capacity, then
+ * the fiber performing the `offerAll` will be suspended until there is room in
+ * the queue.
+ *
+ * For Unbounded Queue:
+ * Places all values in the queue and returns true.
+ *
+ * For Sliding Queue: uses `Sliding` Strategy
+ * If there is room in the queue, it places the values otherwise it removes the old elements and
+ * enqueues the new ones. Always returns true.
+ *
+ * For Dropping Queue: uses `Dropping` Strategy,
+ * It places the values in the queue but if there is no room it will not enqueue them and return false.
+ *
+ */
+export const offerAll_ = <RA, RB, EA, EB, A, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  as: Iterable<A>
 ) => self.offerAll(as)
 
 /**
@@ -126,4 +167,12 @@ export const takeAll = <RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>
  */
 export const takeAllUpTo = (n: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
+) => self.takeUpTo(n)
+
+/**
+ * Takes up to max number of values in the queue.
+ */
+export const takeAllUpTo_ = <RA, RB, EA, EB, A, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  n: number
 ) => self.takeUpTo(n)
