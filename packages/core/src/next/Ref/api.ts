@@ -155,62 +155,58 @@ export const writeOnly: <EA, EB, A, B>(
 export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
   self: ERef<E, A>
 ): SyncE<E, B> =>
-  pipe(
-    self,
-    concrete,
-    matchTag({
-      Atomic: A.modify(f),
-      Derived: (self) =>
-        pipe(
-          self.value,
-          A.modify((s) =>
-            pipe(
-              s,
-              self.getEither,
-              E.fold(
-                (e) => tuple(E.left(e), s),
-                (a1) =>
-                  pipe(f(a1), ([b, a2]) =>
-                    pipe(
-                      a2,
-                      self.setEither,
-                      E.fold(
-                        (e) => tuple(E.left(e), s),
-                        (s) => tuple(E.rightW<E, B>(b), s)
-                      )
+  matchTag(concrete(self))({
+    Atomic: A.modify(f),
+    Derived: (self) =>
+      pipe(
+        self.value,
+        A.modify((s) =>
+          pipe(
+            s,
+            self.getEither,
+            E.fold(
+              (e) => tuple(E.left(e), s),
+              (a1) =>
+                pipe(f(a1), ([b, a2]) =>
+                  pipe(
+                    a2,
+                    self.setEither,
+                    E.fold(
+                      (e) => tuple(E.left(e), s),
+                      (s) => tuple(E.rightW<E, B>(b), s)
                     )
                   )
-              )
+                )
             )
-          ),
-          absolve
+          )
         ),
-      DerivedAll: (self) =>
-        pipe(
-          self.value,
-          A.modify((s) =>
-            pipe(
-              s,
-              self.getEither,
-              E.fold(
-                (e) => tuple(E.left(e), s),
-                (a1) =>
-                  pipe(f(a1), ([b, a2]) =>
-                    pipe(
-                      self.setEither(a2)(s),
-                      E.fold(
-                        (e) => tuple(E.left(e), s),
-                        (s) => tuple(E.rightW<E, B>(b), s)
-                      )
+        absolve
+      ),
+    DerivedAll: (self) =>
+      pipe(
+        self.value,
+        A.modify((s) =>
+          pipe(
+            s,
+            self.getEither,
+            E.fold(
+              (e) => tuple(E.left(e), s),
+              (a1) =>
+                pipe(f(a1), ([b, a2]) =>
+                  pipe(
+                    self.setEither(a2)(s),
+                    E.fold(
+                      (e) => tuple(E.left(e), s),
+                      (s) => tuple(E.rightW<E, B>(b), s)
                     )
                   )
-              )
+                )
             )
-          ),
-          absolve
-        )
-    })
-  )
+          )
+        ),
+        absolve
+      )
+  })
 
 /**
  * Atomically modifies the `XRef` with the specified partial function,
