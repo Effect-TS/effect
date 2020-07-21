@@ -215,3 +215,4 @@ export {
 export { either } from "./either"
 export { validateExec_, validateParN_, validatePar_, validate_ } from "./validate_"
 export { validate, validateExec, validatePar, validateParN } from "./validate"
+export { repeatOrElseEither_, repeatOrElse_, repeat_ } from "./repeat"
