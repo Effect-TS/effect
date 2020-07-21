@@ -11,5 +11,9 @@ export {
   size,
   take,
   takeAll,
-  takeAllUpTo
+  takeAllUpTo,
+  offerAll_,
+  offer_,
+  takeAllUpTo_,
+  takeBetween_
 } from "./api"
