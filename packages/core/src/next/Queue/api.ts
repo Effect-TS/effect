@@ -301,3 +301,50 @@ export const both_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, A>
   self: XQueue<RA, RB, EA, EB, A, B>,
   that: XQueue<RA1, RB1, EA1, EB1, A1, C>
 ) => bothWith_(self, that, (b, c) => tuple(b, c))
+
+/**
+ * Transforms elements enqueued into and dequeued from this queue with the
+ * specified effectual functions.
+ */
+export const dimapM = <A, B, C, RC, EC, RD, ED, D>(
+  f: (c: C) => AsyncRE<RC, EC, A>,
+  g: (b: B) => AsyncRE<RD, ED, D>
+) => <RA, RB, EA, EB>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+): XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> => dimapM_(self, f, g)
+
+/**
+ * Transforms elements enqueued into and dequeued from this queue with the
+ * specified effectual functions.
+ */
+export const dimapM_ = <RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (c: C) => AsyncRE<RC, EC, A>,
+  g: (b: B) => AsyncRE<RD, ED, D>
+): XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> =>
+  new (class extends XQueue<RC & RA, RD & RB, EC | EA, ED | EB, C, D> {
+    awaitShutdown: Async<void> = self.awaitShutdown
+
+    capacity: number = self.capacity
+
+    isShutdown: Sync<boolean> = self.isShutdown
+
+    offer: (a: C) => AsyncRE<RC & RA, EA | EC, boolean> = (c) =>
+      chain_(f(c), self.offer)
+
+    offerAll: (as: Iterable<C>) => AsyncRE<RC & RA, EC | EA, boolean> = (cs) =>
+      chain_(foreach_(cs, f), self.offerAll)
+
+    shutdown: Async<void> = self.shutdown
+
+    size: Async<number> = self.size
+
+    take: AsyncRE<RD & RB, ED | EB, D> = chain_(self.take, g)
+
+    takeAll: AsyncRE<RD & RB, ED | EB, readonly D[]> = chain_(self.takeAll, (a) =>
+      foreach_(a, g)
+    )
+
+    takeUpTo: (n: number) => AsyncRE<RD & RB, ED | EB, readonly D[]> = (max) =>
+      chain_(self.takeUpTo(max), (bs) => foreach_(bs, g))
+  })()
