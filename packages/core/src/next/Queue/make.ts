@@ -6,8 +6,8 @@ import { Bounded, Unbounded } from "../Support/MutableQueue"
 import { BackPressureStrategy } from "./backPressureStrategy"
 import { createQueue } from "./createQueue"
 import { DroppingStrategy } from "./droppingStrategy"
-import { Queue } from "./queue"
 import { SlidingStrategy } from "./slidingStrategy"
+import { Queue } from "./xqueue"
 
 export const makeSliding = <A>(capacity: number): Sync<Queue<A>> =>
   chain_(
