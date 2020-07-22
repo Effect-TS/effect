@@ -1,4 +1,4 @@
-export { Atomic, Derived, DerivedAll, ERef, Ref, XRef } from "./XRef"
+export { ERef, Ref, XRef } from "./XRef"
 
 export {
   collect,
