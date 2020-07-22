@@ -20,5 +20,9 @@ export {
   updateSome,
   updateAndGet,
   update,
-  modifySome
+  modifySome,
+  foldAllM,
+  foldM,
+  collect,
+  collectM
 } from "./api"

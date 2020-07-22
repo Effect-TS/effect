@@ -1,4 +1,5 @@
 import { pipe } from "../../Function"
+import * as O from "../../Option"
 import { map } from "../Cause/map"
 
 import { Effect } from "./effect"
@@ -17,3 +18,9 @@ export const mapError_ = <S, R, E, E2, A>(self: Effect<S, R, E, A>, f: (e: E) =>
     (c) => pipe(c, map(f), halt),
     (a) => succeedNow(a)
   )
+
+/**
+ * Maps the error value of this effect to an optional value.
+ */
+export const asSomeError = <S, R, E, E2, A>(self: Effect<S, R, E, A>) =>
+  mapError_(self, (e) => O.some(e))
