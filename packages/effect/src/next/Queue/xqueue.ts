@@ -1,8 +1,11 @@
 import { Async, AsyncRE, Sync } from "../Effect/effect"
 
 /**
- * A `Queue<A> is a lightweight, asynchronous queue into which
- * values of type `A` can be enqueued and dequeued.
+ * A `XQueue<RA, RB, EA, EB, A, B>` is a lightweight, asynchronous queue into which values of
+ * type `A` can be enqueued and of which elements of type `B` can be dequeued. The queue's
+ * enqueueing operations may utilize an environment of type `RA` and may fail with errors of
+ * type `EA`. The dequeueing operations may utilize an environment of type `RB` and may fail
+ * with errors of type `EB`.
  */
 export abstract class XQueue<RA, RB, EA, EB, A, B> {
   /**
@@ -68,4 +71,8 @@ export abstract class XQueue<RA, RB, EA, EB, A, B> {
   abstract readonly takeUpTo: (n: number) => AsyncRE<RB, EB, readonly B[]>
 }
 
+/**
+ * A `Queue<A>` is a lightweight, asynchronous queue into which
+ * values of type `A` can be enqueued and dequeued.
+ */
 export interface Queue<A> extends XQueue<unknown, unknown, never, never, A, A> {}

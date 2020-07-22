@@ -1,5 +1,6 @@
 import * as A from "../../Array"
-import { pipe, tuple } from "../../Function"
+import { pipe, tuple, identity } from "../../Function"
+import * as O from "../../Option"
 import { succeedNow } from "../Effect"
 
 import * as T from "./effect"
@@ -400,3 +401,111 @@ export const contramapM = <C, RA2, EA2, A>(f: (c: C) => T.AsyncRE<RA2, EA2, A>) 
 export const contramap = <C, A>(f: (c: C) => A) => <RA, RB, EA, EB, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ) => dimapM_(self, (c: C) => succeedNow(f(c)), succeedNow)
+
+/**
+ * Like `filterInput`, but uses an effectful function to filter the elements.
+ */
+export const filterInputM = <A, A1 extends A, R2, E2>(
+  f: (_: A1) => T.AsyncRE<R2, E2, boolean>
+) => <RA, RB, EA, EB, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+): XQueue<RA & R2, RB, EA | E2, EB, A1, B> => filterInputM_(self, f)
+
+/**
+ * Like `filterInput`, but uses an effectful function to filter the elements.
+ */
+export const filterInputM_ = <RA, RB, EA, EB, B, A, A1 extends A, R2, E2>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (_: A1) => T.AsyncRE<R2, E2, boolean>
+): XQueue<RA & R2, RB, EA | E2, EB, A1, B> =>
+  new (class extends XQueue<RA & R2, RB, EA | E2, EB, A1, B> {
+    awaitShutdown: T.Async<void> = self.awaitShutdown
+
+    capacity: number = self.capacity
+
+    isShutdown: T.Sync<boolean> = self.isShutdown
+
+    offer: (a: A1) => T.AsyncRE<RA & R2, EA | E2, boolean> = (a) =>
+      T.chain_(f(a), (b) => (b ? self.offer(a) : T.succeedNow(false)))
+
+    offerAll: (as: Iterable<A1>) => T.AsyncRE<RA & R2, EA | E2, boolean> = (as) =>
+      pipe(
+        as,
+        T.foreach((a) =>
+          pipe(
+            f(a),
+            T.map((b) => (b ? O.some(a) : O.none))
+          )
+        ),
+        T.chain((maybeAs) => {
+          const filtered = A.filterMap_(maybeAs, identity)
+
+          if (A.isEmpty(filtered)) {
+            return T.succeedNow(false)
+          } else {
+            return self.offerAll(filtered)
+          }
+        })
+      )
+
+    shutdown: T.Async<void> = self.shutdown
+
+    size: T.Async<number> = self.size
+
+    take: T.AsyncRE<RB, EB, B> = self.take
+
+    takeAll: T.AsyncRE<RB, EB, readonly B[]> = self.takeAll
+
+    takeUpTo: (n: number) => T.AsyncRE<RB, EB, readonly B[]> = (max) =>
+      self.takeUpTo(max)
+  })()
+
+/**
+ * Applies a filter to elements enqueued into this queue. Elements that do not
+ * pass the filter will be immediately dropped.
+ */
+export const filterInput = <A, A1 extends A>(f: (_: A1) => boolean) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  B
+>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeedNow(f(a)))
+
+/**
+ * Applies a filter to elements enqueued into this queue. Elements that do not
+ * pass the filter will be immediately dropped.
+ */
+export const filterInput_ = <RA, RB, EA, EB, B, A, A1 extends A>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (_: A1) => boolean
+): XQueue<RA, RB, EA, EB, A1, B> => filterInputM_(self, (a) => T.succeedNow(f(a)))
+
+/**
+ * Transforms elements dequeued from this queue with an effectful function.
+ */
+export const mapM = <B, R2, E2, C>(f: (b: B) => T.AsyncRE<R2, E2, C>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  A
+>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+) => dimapM_(self, (a: A) => T.succeedNow(a), f)
+
+/**
+ * Transforms elements dequeued from this queue with an effectful function.
+ */
+export const mapM_ = <RA, RB, EA, EB, A, B, R2, E2, C>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (b: B) => T.AsyncRE<R2, E2, C>
+) => dimapM_(self, (a: A) => T.succeedNow(a), f)
+
+/**
+ * Take the head option of values in the queue.
+ */
+export const poll = <RA, RB, EA, EB, A, B>(self: XQueue<RA, RB, EA, EB, A, B>) =>
+  T.map_(self.takeUpTo(1), A.head)
