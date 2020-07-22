@@ -17,5 +17,7 @@ export {
   collectM,
   dimapM,
   dimapError,
-  fold
+  fold,
+  filterInputM,
+  filterInput
 } from "./api"

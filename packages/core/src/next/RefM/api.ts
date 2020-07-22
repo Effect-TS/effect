@@ -360,3 +360,45 @@ export const dimapError = <EA, EB, EC, ED>(f: (ea: EA) => EC, g: (eb: EB) => ED)
       (b) => E.right(b)
     )
   )
+
+/**
+ * Filters the `set` value of the `XRefM` with the specified effectual
+ * predicate, returning a `XRefM` with a `set` value that succeeds if the
+ * predicate is satisfied or else fails with `None`.
+ */
+export const filterInputM = <A, RC, EC, A1 extends A = A>(
+  f: (a: A1) => T.AsyncRE<RC, EC, boolean>
+) => <RA, RB, EA, EB, B>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA & RC, RB, O.Option<EC | EA>, EB, A1, B> =>
+  pipe(
+    self,
+    foldM(
+      (ea) => O.some<EA | EC>(ea),
+      identity,
+      (a: A1) =>
+        T.ifM(T.asSomeError(f(a)))(() => T.succeedNow(a))(() =>
+          T.fail<O.Option<EA | EC>>(O.none)
+        ),
+      T.succeedNow
+    )
+  )
+
+/**
+ * Filters the `set` value of the `XRefM` with the specified effectual
+ * predicate, returning a `XRefM` with a `set` value that succeeds if the
+ * predicate is satisfied or else fails with `None`.
+ */
+export const filterInput = <A, A1 extends A = A>(f: (a: A1) => boolean) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  B
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, O.Option<EA>, EB, A1, B> =>
+  pipe(
+    self,
+    filterInputM((a) => T.succeedNow(f(a)))
+  )
