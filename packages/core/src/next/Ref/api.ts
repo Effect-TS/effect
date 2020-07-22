@@ -57,9 +57,9 @@ export const contramap_: <EA, EB, B, A, C>(
  * Transforms the `set` value of the `XRef` with the specified fallible
  * function.
  */
-export const contramapEither = <A, EC, C, EA extends EC>(
-  f: (_: C) => E.Either<EC, A>
-) => <EB, B>(_: XRef<EA, EB, A, B>): XRef<EC, EB, C, B> =>
+export const contramapEither = <A, EC, C>(f: (_: C) => E.Either<EC, A>) => <EA, EB, B>(
+  _: XRef<EA, EB, A, B>
+): XRef<EC | EA, EB, C, B> =>
   pipe(
     _,
     dimapEither(f, (x) => E.rightW<EB, B>(x))
@@ -69,10 +69,10 @@ export const contramapEither = <A, EC, C, EA extends EC>(
  * Transforms the `set` value of the `XRef` with the specified fallible
  * function.
  */
-export const contramapEither_ = <A, EC, C, EA extends EC, EB, B>(
+export const contramapEither_ = <A, EC, C, EA, EB, B>(
   _: XRef<EA, EB, A, B>,
   f: (_: C) => E.Either<EC, A>
-): XRef<EC, EB, C, B> => contramapEither(f)(_)
+): XRef<EC | EA, EB, C, B> => contramapEither(f)(_)
 
 /**
  * Transforms both the `set` and `get` values of the `XRef` with the
@@ -103,23 +103,26 @@ export const dimap_ = <EA, EB, A, B, C, D>(
  * Transforms both the `set` and `get` values of the `XRef` with the
  * specified fallible functions.
  */
-export const dimapEither: <A, B, C, EC, D, ED>(
+export const dimapEither = <A, B, C, EC, D, ED>(
   f: (_: C) => E.Either<EC, A>,
   g: (_: B) => E.Either<ED, D>
-) => <EA extends EC, EB extends ED>(_: XRef<EA, EB, A, B>) => XRef<EC, ED, C, D> = (
-  f,
-  g
-) => (_) => _.fold(identity, identity, f, g)
+) => <EA, EB>(_: XRef<EA, EB, A, B>): XRef<EC | EA, EB | ED, C, D> =>
+  _.fold(
+    (ea: EA | EC) => ea,
+    (eb: EB | ED) => eb,
+    f,
+    g
+  )
 
 /**
  * Transforms both the `set` and `get` values of the `XRef` with the
  * specified fallible functions.
  */
-export const dimapEither_: <EA extends EC, EB extends ED, A, B, C, EC, D, ED>(
+export const dimapEither_: <EA, EB, A, B, C, EC, D, ED>(
   _: XRef<EA, EB, A, B>,
   f: (_: C) => E.Either<EC, A>,
   g: (_: B) => E.Either<ED, D>
-) => XRef<EC, ED, C, D> = (_, f, g) => dimapEither(f, g)(_)
+) => XRef<EC | EA, ED | EB, C, D> = (_, f, g) => dimapEither(f, g)(_)
 
 /**
  * Transforms both the `set` and `get` errors of the `XRef` with the
@@ -205,17 +208,17 @@ export const map_: <EA, EB, A, B, C>(
  */
 export const mapEither: <B, EC, C>(
   f: (_: B) => E.Either<EC, C>
-) => <EA, EB extends EC, A>(_: XRef<EA, EB, A, B>) => XRef<EA, EC, A, C> = (f) =>
+) => <EA, EB, A>(_: XRef<EA, EB, A, B>) => XRef<EA, EC | EB, A, C> = (f) =>
   dimapEither((a) => E.rightW(a), f)
 
 /**
  * Transforms the `get` value of the `XRef` with the specified fallible
  * function.
  */
-export const mapEither_: <EA, EB extends EC, A, B, EC, C>(
+export const mapEither_: <EA, EB, A, B, EC, C>(
   _: XRef<EA, EB, A, B>,
   f: (_: B) => E.Either<EC, C>
-) => XRef<EA, EC, A, C> = (_, f) => dimapEither_(_, (a) => E.rightW(a), f)
+) => XRef<EA, EC | EB, A, C> = (_, f) => dimapEither_(_, (a) => E.rightW(a), f)
 
 /**
  * Returns a read only view of the `XRef`.
