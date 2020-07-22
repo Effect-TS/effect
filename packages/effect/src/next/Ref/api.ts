@@ -8,7 +8,7 @@ import { effectTotal } from "../Effect/effectTotal"
 import { AtomicReference } from "../Support/AtomicReference"
 import { matchTag } from "../Utils"
 
-import { Ref, Atomic, XRef, ERef, concrete } from "./XRef"
+import { Atomic, concrete, Ref, XRef } from "./XRef"
 import * as A from "./atomic"
 
 /**
@@ -245,9 +245,9 @@ export const writeOnly: <EA, EB, A, B>(
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
  */
-export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
-  self: ERef<E, A>
-): SyncE<E, B> =>
+export const modify = <B, A>(f: (a: A) => [B, A]) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): SyncE<EA | EB, B> =>
   pipe(
     self,
     concrete,
@@ -269,7 +269,7 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
                       self.setEither,
                       E.fold(
                         (e) => tuple(E.left(e), s),
-                        (s) => tuple(E.rightW<E, B>(b), s)
+                        (s) => tuple(E.rightW<EA | EB, B>(b), s)
                       )
                     )
                   )
@@ -293,7 +293,7 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
                       self.setEither(a2)(s),
                       E.fold(
                         (e) => tuple(E.left(e), s),
-                        (s) => tuple(E.rightW<E, B>(b), s)
+                        (s) => tuple(E.rightW<EA | EB, B>(b), s)
                       )
                     )
                   )
@@ -310,8 +310,10 @@ export const modify = <B, A>(f: (a: A) => [B, A]) => <E>(
  * computes a return value for the modification. This is a more powerful
  * version of `update`.
  */
-export const modify_ = <E, B, A>(self: ERef<E, A>, f: (a: A) => [B, A]): SyncE<E, B> =>
-  modify(f)(self)
+export const modify_ = <EA, EB, B, A>(
+  self: XRef<EA, EB, A, A>,
+  f: (a: A) => [B, A]
+): SyncE<EA | EB, B> => modify(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified partial function,
@@ -319,9 +321,9 @@ export const modify_ = <E, B, A>(self: ERef<E, A>, f: (a: A) => [B, A]): SyncE<E
  * defined on the current value otherwise it returns a default value. This
  * is a more powerful version of `updateSome`.
  */
-export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <E>(
-  self: ERef<E, A>
-): SyncE<E, B> =>
+export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): SyncE<EA | EB, B> =>
   pipe(
     self,
     concrete,
@@ -342,17 +344,17 @@ export const modifySome = <B>(def: B) => <A>(f: (a: A) => O.Option<[B, A]>) => <
  * defined on the current value otherwise it returns a default value. This
  * is a more powerful version of `updateSome`.
  */
-export const modifySome_ = <E, A, B>(
-  self: ERef<E, A>,
+export const modifySome_ = <EA, EB, A, B>(
+  self: XRef<EA, EB, A, A>,
   def: B,
   f: (a: A) => O.Option<[B, A]>
-): SyncE<E, B> => modifySome(def)(f)(self)
+): SyncE<EA | EB, B> => modifySome(def)(f)(self)
 
 /**
  * Atomically writes the specified value to the `XRef`, returning the value
  * immediately before modification.
  */
-export const getAndSet = <A>(a: A) => <E>(self: ERef<E, A>) =>
+export const getAndSet = <A>(a: A) => <EA, EB>(self: XRef<EA, EB, A, A>) =>
   pipe(
     self,
     concrete,
@@ -366,13 +368,14 @@ export const getAndSet = <A>(a: A) => <E>(self: ERef<E, A>) =>
  * Atomically writes the specified value to the `XRef`, returning the value
  * immediately before modification.
  */
-export const getAndSet_ = <E, A>(self: ERef<E, A>, a: A) => getAndSet(a)(self)
+export const getAndSet_ = <EA, EB, A>(self: XRef<EA, EB, A, A>, a: A) =>
+  getAndSet(a)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified function, returning
  * the value immediately before modification.
  */
-export const getAndUpdate = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>) =>
+export const getAndUpdate = <A>(f: (a: A) => A) => <EA, EB>(self: XRef<EA, EB, A, A>) =>
   pipe(
     self,
     concrete,
@@ -386,7 +389,7 @@ export const getAndUpdate = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>) =>
  * Atomically modifies the `XRef` with the specified function, returning
  * the value immediately before modification.
  */
-export const getAndUpdate_ = <E, A>(self: ERef<E, A>, f: (a: A) => A) =>
+export const getAndUpdate_ = <EA, EB, A>(self: XRef<EA, EB, A, A>, f: (a: A) => A) =>
   getAndUpdate(f)(self)
 
 /**
@@ -394,8 +397,8 @@ export const getAndUpdate_ = <E, A>(self: ERef<E, A>, f: (a: A) => A) =>
  * returning the value immediately before modification. If the function is
  * undefined on the current value it doesn't change it.
  */
-export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
-  self: ERef<E, A>
+export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
 ) =>
   pipe(
     self,
@@ -417,13 +420,17 @@ export const getAndUpdateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
  * returning the value immediately before modification. If the function is
  * undefined on the current value it doesn't change it.
  */
-export const getAndUpdateSome_ = <E, A>(self: ERef<E, A>, f: (a: A) => O.Option<A>) =>
-  getAndUpdateSome(f)(self)
+export const getAndUpdateSome_ = <EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
+  f: (a: A) => O.Option<A>
+) => getAndUpdateSome(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified function.
  */
-export const update = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<E, void> =>
+export const update = <A>(f: (a: A) => A) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): SyncE<EA | EB, void> =>
   pipe(
     self,
     concrete,
@@ -436,14 +443,18 @@ export const update = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<E, voi
 /**
  * Atomically modifies the `XRef` with the specified function.
  */
-export const update_ = <E, A>(self: ERef<E, A>, f: (a: A) => A): SyncE<E, void> =>
-  update(f)(self)
+export const update_ = <EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
+  f: (a: A) => A
+): SyncE<EA | EB, void> => update(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified function and returns
  * the updated value.
  */
-export const updateAndGet = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<E, A> =>
+export const updateAndGet = <A>(f: (a: A) => A) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): SyncE<EA | EB, A> =>
   pipe(
     self,
     concrete,
@@ -460,16 +471,18 @@ export const updateAndGet = <A>(f: (a: A) => A) => <E>(self: ERef<E, A>): SyncE<
  * Atomically modifies the `XRef` with the specified function and returns
  * the updated value.
  */
-export const updateAndGet_ = <E, A>(self: ERef<E, A>, f: (a: A) => A): SyncE<E, A> =>
-  updateAndGet(f)(self)
+export const updateAndGet_ = <EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
+  f: (a: A) => A
+): SyncE<EA | EB, A> => updateAndGet(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified partial function. If
  * the function is undefined on the current value it doesn't change it.
  */
-export const updateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
-  self: ERef<E, A>
-): SyncE<E, void> =>
+export const updateSome = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): SyncE<EA | EB, void> =>
   pipe(
     self,
     concrete,
@@ -489,19 +502,19 @@ export const updateSome = <A>(f: (a: A) => O.Option<A>) => <E>(
  * Atomically modifies the `XRef` with the specified partial function. If
  * the function is undefined on the current value it doesn't change it.
  */
-export const updateSome_ = <E, A>(
-  self: ERef<E, A>,
+export const updateSome_ = <EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-): SyncE<E, void> => updateSome(f)(self)
+): SyncE<EA | EB, void> => updateSome(f)(self)
 
 /**
  * Atomically modifies the `XRef` with the specified partial function. If
  * the function is undefined on the current value it returns the old value
  * without changing it.
  */
-export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <E>(
-  self: ERef<E, A>
-): SyncE<E, A> =>
+export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <EA, EB>(
+  self: XRef<EA, EB, A, A>
+): SyncE<EA | EB, A> =>
   pipe(
     self,
     concrete,
@@ -522,10 +535,10 @@ export const updateSomeAndGet = <A>(f: (a: A) => O.Option<A>) => <E>(
  * the function is undefined on the current value it returns the old value
  * without changing it.
  */
-export const updateSomeAndGet_ = <E, A>(
-  self: ERef<E, A>,
+export const updateSomeAndGet_ = <EA, EB, A>(
+  self: XRef<EA, EB, A, A>,
   f: (a: A) => O.Option<A>
-): SyncE<E, A> => updateSomeAndGet(f)(self)
+): SyncE<EA | EB, A> => updateSomeAndGet(f)(self)
 
 /**
  * Unsafe update value in a Ref<A>
