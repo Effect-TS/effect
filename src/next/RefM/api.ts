@@ -314,5 +314,10 @@ export const collect = <B, C>(f: (b: B) => O.Option<C>) => <RA, RB, EA, EB, A>(
 export const dimapM = <C, B, RC, EC, A, RD, ED, D>(
   f: (c: C) => T.AsyncRE<RC, EC, A>,
   g: (b: B) => T.AsyncRE<RD, ED, D>
-) => <RA, RB, EA extends EC, EB extends ED>(self: XRefM<RA, RB, EA, EB, A, B>) =>
-  self.foldM(identity, identity, f, g)
+) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, B>) =>
+  self.foldM(
+    (ea: EA | EC) => ea,
+    (eb: EB | ED) => eb,
+    f,
+    g
+  )
