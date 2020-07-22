@@ -24,5 +24,6 @@ export {
   foldAllM,
   foldM,
   collect,
-  collectM
+  collectM,
+  dimapM
 } from "./api"

@@ -306,3 +306,13 @@ export const collect = <B, C>(f: (b: B) => O.Option<C>) => <RA, RB, EA, EB, A>(
     self,
     collectM((b) => pipe(f(b), O.map(T.succeedNow)))
   )
+
+/**
+ * Transforms both the `set` and `get` values of the `XRefM` with the
+ * specified effectual functions.
+ */
+export const dimapM = <C, B, RC, EC, A, RD, ED, D>(
+  f: (c: C) => T.AsyncRE<RC, EC, A>,
+  g: (b: B) => T.AsyncRE<RD, ED, D>
+) => <RA, RB, EA extends EC, EB extends ED>(self: XRefM<RA, RB, EA, EB, A, B>) =>
+  self.foldM(identity, identity, f, g)
