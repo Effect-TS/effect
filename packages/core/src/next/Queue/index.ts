@@ -27,5 +27,12 @@ export {
   contramap,
   contramapM,
   dimap,
-  dimap_
+  dimap_,
+  filterInput,
+  filterInputM,
+  filterInputM_,
+  filterInput_,
+  mapM,
+  mapM_,
+  poll
 } from "./api"
