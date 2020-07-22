@@ -1,5 +1,6 @@
 import * as A from "../../Array"
 import { pipe, tuple } from "../../Function"
+import { succeedNow } from "../Effect"
 
 import * as T from "./effect"
 import * as S from "./schedule"
@@ -309,6 +310,34 @@ export const both_ = <RA, RB, EA, EB, RA1, RB1, EA1, EB1, A1 extends A, C, B, A>
  * Transforms elements enqueued into and dequeued from this queue with the
  * specified effectual functions.
  */
+export const dimap = <A, B, C, D>(f: (c: C) => A, g: (b: B) => D) => <RA, RB, EA, EB>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+) =>
+  dimapM_(
+    self,
+    (c: C) => succeedNow(f(c)),
+    (b) => succeedNow(g(b))
+  )
+
+/**
+ * Transforms elements enqueued into and dequeued from this queue with the
+ * specified effectual functions.
+ */
+export const dimap_ = <RA, RB, EA, EB, A, B, C, D>(
+  self: XQueue<RA, RB, EA, EB, A, B>,
+  f: (c: C) => A,
+  g: (b: B) => D
+) =>
+  dimapM_(
+    self,
+    (c: C) => succeedNow(f(c)),
+    (b) => succeedNow(g(b))
+  )
+
+/**
+ * Transforms elements enqueued into and dequeued from this queue with the
+ * specified effectual functions.
+ */
 export const dimapM = <A, B, C, RC, EC, RD, ED, D>(
   f: (c: C) => T.AsyncRE<RC, EC, A>,
   g: (b: B) => T.AsyncRE<RD, ED, D>
@@ -351,3 +380,23 @@ export const dimapM_ = <RA, RB, EA, EB, A, B, C, RC, EC, RD, ED, D>(
     takeUpTo: (n: number) => T.AsyncRE<RD & RB, ED | EB, readonly D[]> = (max) =>
       T.chain_(self.takeUpTo(max), (bs) => T.foreach_(bs, g))
   })()
+
+/**
+ * Transforms elements enqueued into this queue with an effectful function.
+ */
+export const contramapM = <C, RA2, EA2, A>(f: (c: C) => T.AsyncRE<RA2, EA2, A>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  B
+>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+) => dimapM_(self, f, succeedNow)
+
+/**
+ * Transforms elements enqueued into this queue with a pure function.
+ */
+export const contramap = <C, A>(f: (c: C) => A) => <RA, RB, EA, EB, B>(
+  self: XQueue<RA, RB, EA, EB, A, B>
+) => dimapM_(self, (c: C) => succeedNow(f(c)), succeedNow)
