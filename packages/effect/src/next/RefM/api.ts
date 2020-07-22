@@ -37,42 +37,40 @@ export const modify = <R1, E1, B, A>(f: (a: A) => T.AsyncRE<R1, E1, [B, A]>) => 
           S.withPermit(atomic.semaphore)
         ),
       Derived: (derived) =>
-        S.withPermit(derived.value.semaphore)(
-          pipe(
-            derived.value.ref.get,
-            T.chain((a) =>
-              pipe(
-                derived.getEither(a),
-                T.chain(f),
-                T.chain(([b, a]) =>
-                  pipe(
-                    derived.setEither(a),
-                    T.chain((a) => derived.value.ref.set(a)),
-                    T.as(b)
-                  )
+        pipe(
+          derived.value.ref.get,
+          T.chain((a) =>
+            pipe(
+              derived.getEither(a),
+              T.chain(f),
+              T.chain(([b, a]) =>
+                pipe(
+                  derived.setEither(a),
+                  T.chain((a) => derived.value.ref.set(a)),
+                  T.as(b)
                 )
               )
             )
-          )
+          ),
+          S.withPermit(derived.value.semaphore)
         ),
       DerivedAll: (derivedAll) =>
-        S.withPermit(derivedAll.value.semaphore)(
-          pipe(
-            derivedAll.value.ref.get,
-            T.chain((s) =>
-              pipe(
-                derivedAll.getEither(s),
-                T.chain(f),
-                T.chain(([b, a]) =>
-                  pipe(
-                    derivedAll.setEither(a)(s),
-                    T.chain((a) => derivedAll.value.ref.set(a)),
-                    T.as(b)
-                  )
+        pipe(
+          derivedAll.value.ref.get,
+          T.chain((s) =>
+            pipe(
+              derivedAll.getEither(s),
+              T.chain(f),
+              T.chain(([b, a]) =>
+                pipe(
+                  derivedAll.setEither(a)(s),
+                  T.chain((a) => derivedAll.value.ref.set(a)),
+                  T.as(b)
                 )
               )
             )
-          )
+          ),
+          S.withPermit(derivedAll.value.semaphore)
         )
     })
   )
