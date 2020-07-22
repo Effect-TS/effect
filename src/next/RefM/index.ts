@@ -1,14 +1,4 @@
-export {
-  RefM,
-  Atomic,
-  RefMRE,
-  Derived,
-  DerivedAll,
-  RefME,
-  RefMR,
-  XRefM,
-  concrete
-} from "./XRefM"
+export { RefM, RefMRE, RefME, RefMR, XRefM } from "./XRefM"
 
 export {
   modify,
