@@ -84,8 +84,8 @@ export const dimap = <A, B, C, D>(f: (_: C) => A, g: (_: B) => D) => <EA, EB>(
   pipe(
     _,
     dimapEither(
-      (c: C) => E.rightW<EA, A>(f(c)),
-      (b: B) => E.rightW<EB, D>(g(b))
+      (c) => E.rightW<EA, A>(f(c)),
+      (b) => E.rightW<EB, D>(g(b))
     )
   )
 
@@ -578,7 +578,7 @@ export const unsafeUpdate_ = <A>(self: Ref<A>, f: (a: A) => A) => unsafeUpdate(f
  * combinators implemented in terms of `fold` will be more ergonomic but this
  * method is extremely useful for implementing new combinators.
  */
-export const fold = <EA, EB, A, B, EC, ED, C, D>(
+export const fold = <EA, EB, A, B, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => E.Either<EC, A>,
@@ -592,7 +592,7 @@ export const fold = <EA, EB, A, B, EC, ED, C, D>(
  * combinators implemented in terms of `fold` will be more ergonomic but this
  * method is extremely useful for implementing new combinators.
  */
-export const fold_ = <EA, EB, A, B, EC, ED, C, D>(
+export const fold_ = <EA, EB, A, B, EC, ED, C = A, D = B>(
   self: XRef<EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
@@ -605,7 +605,7 @@ export const fold_ = <EA, EB, A, B, EC, ED, C, D>(
  * the state in transforming the `set` value. This is a more powerful version
  * of `fold` but requires unifying the error types.
  */
-export const foldAll = <EA, EB, A, B, EC, ED, C, D>(
+export const foldAll = <EA, EB, A, B, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
@@ -618,7 +618,7 @@ export const foldAll = <EA, EB, A, B, EC, ED, C, D>(
  * the state in transforming the `set` value. This is a more powerful version
  * of `fold` but requires unifying the error types.
  */
-export const foldAll_ = <EA, EB, A, B, EC, ED, C, D>(
+export const foldAll_ = <EA, EB, A, B, EC, ED, C = A, D = B>(
   self: XRef<EA, EB, A, B>,
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
