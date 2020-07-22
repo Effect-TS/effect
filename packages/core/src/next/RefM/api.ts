@@ -1,4 +1,5 @@
-import { pipe } from "../../Function"
+import { pipe, tuple } from "../../Function"
+import * as O from "../../Option"
 import * as R from "../Ref"
 import * as S from "../Semaphore"
 import { matchTag } from "../Utils"
@@ -73,4 +74,137 @@ export const modify = <R1, E1, B, A>(f: (a: A) => T.AsyncRE<R1, E1, [B, A]>) => 
           S.withPermit(derivedAll.value.semaphore)
         )
     })
+  )
+
+/**
+ * Writes a new value to the `RefM`, returning the value immediately before
+ * modification.
+ */
+export const getAndSet = <A>(a: A) => <R, E>(self: RefMRE<R, E, A>) =>
+  pipe(
+    self,
+    modify((v) => T.succeedNow([v, a]))
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function, returning the
+ * value immediately before modification.
+ */
+export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
+  self: RefMRE<R, E, A>
+) =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        T.map((r) => [v, r])
+      )
+    )
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function, returning the
+ * value immediately before modification.
+ */
+export const getAndUpdateSome = <R1, E1, A>(
+  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
+) => <R, E>(self: RefMRE<R, E, A>) =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        O.getOrElse(() => T.succeedNow(v)),
+        T.map((r) => [v, r])
+      )
+    )
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function, which computes
+ * a return value for the modification if the function is defined in the current value
+ * otherwise it returns a default value.
+ * This is a more powerful version of `updateSome`.
+ */
+export const modifySome = <B>(def: B) => <R1, E1, A>(
+  f: (a: A) => O.Option<T.AsyncRE<R1, E1, [B, A]>>
+) => <R, E>(self: RefMRE<R, E, A>) =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        O.getOrElse(() => T.succeedNow(tuple(def, v)))
+      )
+    )
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function.
+ */
+export const update = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
+  self: RefMRE<R, E, A>
+): T.AsyncRE<R & R1, E1 | E, void> =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        T.map((r) => [undefined, r])
+      )
+    )
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function.
+ */
+export const updateAndGet = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
+  self: RefMRE<R, E, A>
+): T.AsyncRE<R & R1, E1 | E, void> =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        T.map((r) => [r, r])
+      )
+    )
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function.
+ */
+export const updateSome = <R1, E1, A>(f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>) => <
+  R,
+  E
+>(
+  self: RefMRE<R, E, A>
+): T.AsyncRE<R & R1, E1 | E, void> =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        O.getOrElse(() => T.succeedNow(v)),
+        T.map((r) => [undefined, r])
+      )
+    )
+  )
+
+/**
+ * Atomically modifies the `RefM` with the specified function.
+ */
+export const updateSomeAndGet = <R1, E1, A>(
+  f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
+) => <R, E>(self: RefMRE<R, E, A>): T.AsyncRE<R & R1, E1 | E, A> =>
+  pipe(
+    self,
+    modify((v) =>
+      pipe(
+        f(v),
+        O.getOrElse(() => T.succeedNow(v)),
+        T.map((r) => [r, r])
+      )
+    )
   )

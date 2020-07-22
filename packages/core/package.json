@@ -141,6 +141,7 @@
       "next/Queue",
       "next/Random",
       "next/Ref",
+      "next/RefM",
       "next/Schedule",
       "next/Scope",
       "next/Supervisor",
