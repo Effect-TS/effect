@@ -222,5 +222,5 @@ export interface Ref<A> extends ERef<never, A> {}
 /**
  * Cast to a sealed union in case of ERef (where it make sense)
  */
-export const concrete = <E, A>(self: ERef<E, A>) =>
-  self as Atomic<A> | DerivedAll<E, E, A, A, A> | Derived<E, E, A, A, A>
+export const concrete = <EA, EB, A>(self: XRef<EA, EB, A, A>) =>
+  self as Atomic<A> | DerivedAll<EA, EB, A, A, A> | Derived<EA, EB, A, A, A>
