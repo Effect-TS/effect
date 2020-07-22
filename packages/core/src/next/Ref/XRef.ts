@@ -30,7 +30,6 @@ export interface XRef<EA, EB, A, B> {
    * the state in transforming the `set` value. This is a more powerful version
    * of `fold` but requires unifying the error types.
    */
-
   readonly foldAll: <EC, ED, C, D>(
     ea: (_: EA) => EC,
     eb: (_: EB) => ED,
@@ -42,14 +41,12 @@ export interface XRef<EA, EB, A, B> {
   /**
    * Reads the value from the `XRef`.
    */
-
   readonly get: SyncE<EB, B>
 
   /**
    * Writes a new value to the `XRef`, with a guarantee of immediate
    * consistency (at some cost to performance).
    */
-
   readonly set: (a: A) => SyncE<EA, void>
 }
 
