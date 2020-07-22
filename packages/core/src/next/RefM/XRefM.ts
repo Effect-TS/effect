@@ -215,5 +215,8 @@ export interface RefME<E, A> extends XRefM<unknown, unknown, E, E, A, A> {}
 export interface RefMR<R, A> extends XRefM<R, R, never, never, A, A> {}
 export interface RefM<A> extends XRefM<unknown, unknown, never, never, A, A> {}
 
-export const concrete = <R, E, A>(_: RefMRE<R, E, A>) =>
-  _ as Atomic<A> | Derived<R, R, E, E, A, A, A> | DerivedAll<R, R, E, E, A, A, A>
+export const concrete = <RA, RB, EA, EB, A>(_: XRefM<RA, RB, EA, EB, A, A>) =>
+  _ as
+    | Atomic<A>
+    | Derived<RA, RB, EA, EB, A, A, A>
+    | DerivedAll<RA, RB, EA, EB, A, A, A>

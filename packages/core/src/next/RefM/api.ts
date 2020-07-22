@@ -1,10 +1,10 @@
-import { pipe, tuple } from "../../Function"
+import { identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as R from "../Ref"
 import * as S from "../Semaphore"
 import { matchTag } from "../Utils"
 
-import { RefMRE, concrete, Atomic, RefM } from "./XRefM"
+import { Atomic, concrete, RefM, XRefM } from "./XRefM"
 import * as T from "./effect"
 
 /**
@@ -23,9 +23,14 @@ export const makeRefM = <A>(a: A): T.Sync<RefM<A>> =>
  * a return value for the modification. This is a more powerful version of
  * `update`.
  */
-export const modify = <R1, E1, B, A>(f: (a: A) => T.AsyncRE<R1, E1, [B, A]>) => <R, E>(
-  self: RefMRE<R, E, A>
-): T.AsyncRE<R & R1, E | E1, B> =>
+export const modify = <R1, E1, B, A>(f: (a: A) => T.AsyncRE<R1, E1, [B, A]>) => <
+  RA,
+  RB,
+  EA,
+  EB
+>(
+  self: XRefM<RA, RB, EA, EB, A, A>
+): T.AsyncRE<RA & RB & R1, EA | EB | E1, B> =>
   pipe(
     self,
     concrete,
@@ -80,7 +85,9 @@ export const modify = <R1, E1, B, A>(f: (a: A) => T.AsyncRE<R1, E1, [B, A]>) => 
  * Writes a new value to the `RefM`, returning the value immediately before
  * modification.
  */
-export const getAndSet = <A>(a: A) => <R, E>(self: RefMRE<R, E, A>) =>
+export const getAndSet = <A>(a: A) => <RA, RB, EA, EB>(
+  self: XRefM<RA, RB, EA, EB, A, A>
+) =>
   pipe(
     self,
     modify((v) => T.succeedNow([v, a]))
@@ -90,8 +97,13 @@ export const getAndSet = <A>(a: A) => <R, E>(self: RefMRE<R, E, A>) =>
  * Atomically modifies the `RefM` with the specified function, returning the
  * value immediately before modification.
  */
-export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
-  self: RefMRE<R, E, A>
+export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
+  RA,
+  RB,
+  EA,
+  EB
+>(
+  self: XRefM<RA, RB, EA, EB, A, A>
 ) =>
   pipe(
     self,
@@ -109,7 +121,7 @@ export const getAndUpdate = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R
  */
 export const getAndUpdateSome = <R1, E1, A>(
   f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
-) => <R, E>(self: RefMRE<R, E, A>) =>
+) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) =>
   pipe(
     self,
     modify((v) =>
@@ -129,7 +141,7 @@ export const getAndUpdateSome = <R1, E1, A>(
  */
 export const modifySome = <B>(def: B) => <R1, E1, A>(
   f: (a: A) => O.Option<T.AsyncRE<R1, E1, [B, A]>>
-) => <R, E>(self: RefMRE<R, E, A>) =>
+) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, A>) =>
   pipe(
     self,
     modify((v) =>
@@ -143,9 +155,14 @@ export const modifySome = <B>(def: B) => <R1, E1, A>(
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const update = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
-  self: RefMRE<R, E, A>
-): T.AsyncRE<R & R1, E1 | E, void> =>
+export const update = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
+  RA,
+  RB,
+  EA,
+  EB
+>(
+  self: XRefM<RA, RB, EA, EB, A, A>
+): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> =>
   pipe(
     self,
     modify((v) =>
@@ -159,9 +176,14 @@ export const update = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
 /**
  * Atomically modifies the `RefM` with the specified function.
  */
-export const updateAndGet = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R, E>(
-  self: RefMRE<R, E, A>
-): T.AsyncRE<R & R1, E1 | E, void> =>
+export const updateAndGet = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <
+  RA,
+  RB,
+  EA,
+  EB
+>(
+  self: XRefM<RA, RB, EA, EB, A, A>
+): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> =>
   pipe(
     self,
     modify((v) =>
@@ -176,11 +198,13 @@ export const updateAndGet = <R1, E1, A>(f: (a: A) => T.AsyncRE<R1, E1, A>) => <R
  * Atomically modifies the `RefM` with the specified function.
  */
 export const updateSome = <R1, E1, A>(f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>) => <
-  R,
-  E
+  RA,
+  RB,
+  EA,
+  EB
 >(
-  self: RefMRE<R, E, A>
-): T.AsyncRE<R & R1, E1 | E, void> =>
+  self: XRefM<RA, RB, EA, EB, A, A>
+): T.AsyncRE<RA & RB & R1, E1 | EA | EB, void> =>
   pipe(
     self,
     modify((v) =>
@@ -197,7 +221,9 @@ export const updateSome = <R1, E1, A>(f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>
  */
 export const updateSomeAndGet = <R1, E1, A>(
   f: (a: A) => O.Option<T.AsyncRE<R1, E1, A>>
-) => <R, E>(self: RefMRE<R, E, A>): T.AsyncRE<R & R1, E1 | E, A> =>
+) => <RA, RB, EA, EB>(
+  self: XRefM<RA, RB, EA, EB, A, A>
+): T.AsyncRE<RA & RB & R1, E1 | EA | EB, A> =>
   pipe(
     self,
     modify((v) =>
@@ -207,4 +233,76 @@ export const updateSomeAndGet = <R1, E1, A>(
         T.map((r) => [r, r])
       )
     )
+  )
+
+/**
+ * Folds over the error and value types of the `XRefM`. This is a highly
+ * polymorphic method that is capable of arbitrarily transforming the error
+ * and value types of the `XRefM`. For most use cases one of the more
+ * specific combinators implemented in terms of `foldM` will be more
+ * ergonomic but this method is extremely useful for implementing new
+ * combinators.
+ */
+export const foldM = <EA, EB, A, B, RC, RD, EC, ED, C, D>(
+  ea: (_: EA) => EC,
+  eb: (_: EB) => ED,
+  ca: (_: C) => T.AsyncRE<RC, EC, A>,
+  bd: (_: B) => T.AsyncRE<RD, ED, D>
+) => <RA, RB>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA & RC, RB & RD, EC, ED, C, D> => self.foldM(ea, eb, ca, bd)
+
+/**
+ * Folds over the error and value types of the `XRefM`, allowing access to
+ * the state in transforming the `set` value. This is a more powerful version
+ * of `foldM` but requires unifying the environment and error types.
+ */
+export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C, D>(
+  ea: (_: EA) => EC,
+  eb: (_: EB) => ED,
+  ec: (_: EB) => EC,
+  ca: (_: C) => (_: B) => T.AsyncRE<RC, EC, A>,
+  bd: (_: B) => T.AsyncRE<RD, ED, D>
+) => <RA, RB>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RB & RA & RC, RB & RD, EC, ED, C, D> => self.foldAllM(ea, eb, ec, ca, bd)
+
+/**
+ * Maps and filters the `get` value of the `XRefM` with the specified
+ * effectual partial function, returning a `XRefM` with a `get` value that
+ * succeeds with the result of the partial function if it is defined or else
+ * fails with `None`.
+ */
+export const collectM = <B, RC, EC, C>(f: (b: B) => O.Option<T.AsyncRE<RC, EC, C>>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  A
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> =>
+  self.foldM(
+    identity,
+    (_) => O.some(_ as EB | EC),
+    (_: A) => T.succeedNow(_),
+    (b) =>
+      pipe(
+        f(b),
+        O.map((a) => T.asSomeError(a)),
+        O.getOrElse(() => T.fail(O.none))
+      )
+  )
+
+/**
+ * Maps and filters the `get` value of the `XRefM` with the specified partial
+ * function, returning a `XRefM` with a `get` value that succeeds with the
+ * result of the partial function if it is defined or else fails with `None`.
+ */
+export const collect = <B, C>(f: (b: B) => O.Option<C>) => <RA, RB, EA, EB, A>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, EA, O.Option<EB>, A, C> =>
+  pipe(
+    self,
+    collectM((b) => pipe(f(b), O.map(T.succeedNow)))
   )
