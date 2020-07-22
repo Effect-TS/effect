@@ -1,3 +1,4 @@
+import * as E from "../../Either"
 import { identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as R from "../Ref"
@@ -8,7 +9,7 @@ import { Atomic, concrete, RefM, XRefM } from "./XRefM"
 import * as T from "./effect"
 
 /**
- * Creates a new `ZRefM` with the specified value.
+ * Creates a new `XRefM` with the specified value.
  */
 export const makeRefM = <A>(a: A): T.Sync<RefM<A>> =>
   pipe(
@@ -236,6 +237,22 @@ export const updateSomeAndGet = <R1, E1, A>(
   )
 
 /**
+ * Folds over the error and value types of the `XRefM`.
+ */
+export const fold = <EA, EB, A, B, EC, ED, C, D>(
+  ea: (_: EA) => EC,
+  eb: (_: EB) => ED,
+  ca: (_: C) => E.Either<EC, A>,
+  bd: (_: B) => E.Either<ED, D>
+) => <RA, RB>(self: XRefM<RA, RB, EA, EB, A, B>): XRefM<RA, RB, EC, ED, C, D> =>
+  self.foldM(
+    ea,
+    eb,
+    (c) => T.fromEither(() => ca(c)),
+    (b) => T.fromEither(() => bd(b))
+  )
+
+/**
  * Folds over the error and value types of the `XRefM`. This is a highly
  * polymorphic method that is capable of arbitrarily transforming the error
  * and value types of the `XRefM`. For most use cases one of the more
@@ -320,4 +337,26 @@ export const dimapM = <C, B, RC, EC, A, RD, ED, D>(
     (eb: EB | ED) => eb,
     f,
     g
+  )
+
+/**
+ * Transforms both the `set` and `get` errors of the `XRefM` with the
+ * specified functions.
+ */
+export const dimapError = <EA, EB, EC, ED>(f: (ea: EA) => EC, g: (eb: EB) => ED) => <
+  RA,
+  RB,
+  A,
+  B
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, EC, ED, A, B> =>
+  pipe(
+    self,
+    fold(
+      (ea) => f(ea),
+      (eb) => g(eb),
+      (a: A) => E.right(a),
+      (b) => E.right(b)
+    )
   )
