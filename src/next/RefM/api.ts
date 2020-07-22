@@ -239,7 +239,7 @@ export const updateSomeAndGet = <R1, E1, A>(
 /**
  * Folds over the error and value types of the `XRefM`.
  */
-export const fold = <EA, EB, A, B, EC, ED, C, D>(
+export const fold = <EA, EB, A, B, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => E.Either<EC, A>,
@@ -260,7 +260,7 @@ export const fold = <EA, EB, A, B, EC, ED, C, D>(
  * ergonomic but this method is extremely useful for implementing new
  * combinators.
  */
-export const foldM = <EA, EB, A, B, RC, RD, EC, ED, C, D>(
+export const foldM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ca: (_: C) => T.AsyncRE<RC, EC, A>,
@@ -274,7 +274,7 @@ export const foldM = <EA, EB, A, B, RC, RD, EC, ED, C, D>(
  * the state in transforming the `set` value. This is a more powerful version
  * of `foldM` but requires unifying the environment and error types.
  */
-export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C, D>(
+export const foldAllM = <EA, EB, A, B, RC, RD, EC, ED, C = A, D = B>(
   ea: (_: EA) => EC,
   eb: (_: EB) => ED,
   ec: (_: EB) => EC,
@@ -301,8 +301,8 @@ export const collectM = <B, RC, EC, C>(f: (b: B) => O.Option<T.AsyncRE<RC, EC, C
 ): XRefM<RA, RB & RC, EA, O.Option<EB | EC>, A, C> =>
   self.foldM(
     identity,
-    (_) => O.some(_ as EB | EC),
-    (_: A) => T.succeedNow(_),
+    (_) => O.some<EB | EC>(_),
+    (_) => T.succeedNow(_),
     (b) =>
       pipe(
         f(b),
@@ -328,7 +328,7 @@ export const collect = <B, C>(f: (b: B) => O.Option<C>) => <RA, RB, EA, EB, A>(
  * Transforms both the `set` and `get` values of the `XRefM` with the
  * specified effectual functions.
  */
-export const dimapM = <C, B, RC, EC, A, RD, ED, D>(
+export const dimapM = <B, RC, EC, A, RD, ED, C = A, D = B>(
   f: (c: C) => T.AsyncRE<RC, EC, A>,
   g: (b: B) => T.AsyncRE<RD, ED, D>
 ) => <RA, RB, EA, EB>(self: XRefM<RA, RB, EA, EB, A, B>) =>
@@ -356,7 +356,7 @@ export const dimapError = <EA, EB, EC, ED>(f: (ea: EA) => EC, g: (eb: EB) => ED)
     fold(
       (ea) => f(ea),
       (eb) => g(eb),
-      (a: A) => E.right(a),
+      (a) => E.right(a),
       (b) => E.right(b)
     )
   )
