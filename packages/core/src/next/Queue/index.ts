@@ -23,5 +23,9 @@ export {
   bothWith_,
   both_,
   dimapM,
-  dimapM_
+  dimapM_,
+  contramap,
+  contramapM,
+  dimap,
+  dimap_
 } from "./api"
