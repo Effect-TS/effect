@@ -217,3 +217,4 @@ export { validateExec_, validateParN_, validatePar_, validate_ } from "./validat
 export { validate, validateExec, validatePar, validateParN } from "./validate"
 export { repeatOrElseEither_, repeatOrElse_, repeat_, repeat } from "./repeat"
 export { mapError_, asSomeError } from "./mapError_"
+export { ifM } from "./ifM"
