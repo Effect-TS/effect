@@ -455,7 +455,32 @@ export const mapM = <B, RC, EC, C>(f: (b: B) => T.AsyncRE<RC, EC, C>) => <
 ) => pipe(self, dimapM(T.succeedNow, f))
 
 /**
- * Transforms the `get` value of the `ZRefM` with the specified function.
+ * Transforms the `set` value of the `XRefM` with the specified effectual
+ * function.
+ */
+export const contramapM = <A, RC, EC, C>(f: (c: C) => T.AsyncRE<RC, EC, A>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  B
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA & RC, RB, EC | EA, EB, C, B> => pipe(self, dimapM(f, T.succeedNow))
+
+/**
+ * Transforms the `set` value of the `XRefM` with the specified function.
+ */
+export const contramap = <C, A>(f: (c: C) => A) => <RA, RB, EA, EB, B>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, EA, EB, C, B> =>
+  pipe(
+    self,
+    contramapM((c) => T.succeedNow(f(c)))
+  )
+
+/**
+ * Transforms the `get` value of the `XRefM` with the specified function.
  */
 export const map = <B, C>(f: (b: B) => C) => <RA, RB, EA, EB, A>(
   self: XRefM<RA, RB, EA, EB, A, B>
@@ -466,8 +491,54 @@ export const map = <B, C>(f: (b: B) => C) => <RA, RB, EA, EB, A>(
   )
 
 /**
- * Returns a read only view of the `ZRefM`.
+ * Returns a read only view of the `XRefM`.
  */
 export const readOnly = <RA, RB, EA, EB, A, B>(
   self: XRefM<RA, RB, EA, EB, A, B>
 ): XRefM<RA, RB, EA, EB, never, B> => self
+
+/**
+ * Returns a read only view of the `XRefM`.
+ */
+export const writeOnly = <RA, RB, EA, EB, A, B>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, EA, void, A, never> =>
+  pipe(
+    self,
+    fold(
+      identity,
+      (): void => undefined,
+      E.right,
+      () => E.left<void>(undefined)
+    )
+  )
+
+/**
+ * Performs the specified effect every time a value is written to this
+ * `XRefM`.
+ */
+export const tapInput = <A, RC, EC, A1 extends A = A>(
+  f: (a: A1) => T.AsyncRE<RC, EC, any>
+) => <RA, RB, EA, EB, B>(self: XRefM<RA, RB, EA, EB, A, B>) =>
+  pipe(
+    self,
+    contramapM((c: A1) => pipe(f(c), T.as(c)))
+  )
+
+/**
+ * Performs the specified effect every time a value is written to this
+ * `XRefM`.
+ */
+export const tapOutput = <B, RC, EC>(f: (b: B) => T.AsyncRE<RC, EC, any>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  A
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+) =>
+  pipe(
+    self,
+    mapM((b) => pipe(f(b), T.as(b)))
+  )
