@@ -24,5 +24,10 @@ export {
   filterOutputM,
   map,
   mapM,
-  readOnly
+  readOnly,
+  contramap,
+  contramapM,
+  tapInput,
+  tapOutput,
+  writeOnly
 } from "./api"
