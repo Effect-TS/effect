@@ -402,3 +402,40 @@ export const filterInput = <A, A1 extends A = A>(f: (a: A1) => boolean) => <
     self,
     filterInputM((a) => T.succeedNow(f(a)))
   )
+
+/**
+ * Filters the `get` value of the `XRefM` with the specified effectual predicate,
+ * returning a `XRefM` with a `get` value that succeeds if the predicate is
+ * satisfied or else fails with `None`.
+ */
+export const filterOutputM = <B, RC, EC>(f: (b: B) => T.AsyncRE<RC, EC, boolean>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  A
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB & RC, EA, O.Option<EC | EB>, A, B> =>
+  pipe(
+    self,
+    foldM(
+      (ea) => ea,
+      (eb) => O.some<EB | EC>(eb),
+      (a) => T.succeedNow(a),
+      (b) => T.ifM(T.asSomeError(f(b)))(() => T.succeedNow(b))(() => T.fail(O.none))
+    )
+  )
+
+/**
+ * Filters the `get` value of the `XRefM` with the specified predicate,
+ * returning a `XRefM` with a `get` value that succeeds if the predicate is
+ * satisfied or else fails with `None`.
+ */
+export const filterOutput = <B>(f: (b: B) => boolean) => <RA, RB, EA, EB, A>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, EA, O.Option<EB>, A, B> =>
+  pipe(
+    self,
+    filterOutputM((b) => T.succeedNow(f(b)))
+  )

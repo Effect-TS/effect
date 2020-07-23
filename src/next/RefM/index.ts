@@ -19,5 +19,7 @@ export {
   dimapError,
   fold,
   filterInputM,
-  filterInput
+  filterInput,
+  filterOutput,
+  filterOutputM
 } from "./api"
