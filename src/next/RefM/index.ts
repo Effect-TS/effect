@@ -21,5 +21,7 @@ export {
   filterInputM,
   filterInput,
   filterOutput,
-  filterOutputM
+  filterOutputM,
+  map,
+  mapM
 } from "./api"
