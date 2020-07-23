@@ -29,5 +29,7 @@ export {
   contramapM,
   tapInput,
   tapOutput,
-  writeOnly
+  writeOnly,
+  dequeueRef,
+  makeManagedRefM
 } from "./api"

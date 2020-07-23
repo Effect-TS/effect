@@ -1,12 +1,15 @@
 import * as E from "../../Either"
 import { identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
+import { makeUnbounded } from "../Queue/make"
+import { Dequeue } from "../Queue/xqueue"
 import * as R from "../Ref"
 import * as S from "../Semaphore"
 import { matchTag } from "../Utils"
 
 import { Atomic, concrete, RefM, XRefM } from "./XRefM"
 import * as T from "./effect"
+import * as M from "./managed"
 
 /**
  * Creates a new `XRefM` with the specified value.
@@ -17,6 +20,31 @@ export const makeRefM = <A>(a: A): T.Sync<RefM<A>> =>
     T.bind("ref", () => R.makeRef(a)),
     T.bind("semaphore", () => S.makeSemaphore(1)),
     T.map(({ ref, semaphore }) => new Atomic(ref, semaphore))
+  )
+
+/**
+ * Creates a new `RefM` with the specified value in the context of a
+ * `Managed.`
+ */
+export const makeManagedRefM = <A>(a: A): M.Sync<RefM<A>> =>
+  pipe(makeRefM(a), T.toManaged)
+
+/**
+ * Creates a new `RefM` and a `Dequeue` that will emit every change to the
+ * `RefM`.
+ */
+export const dequeueRef = <A>(a: A): T.Sync<[RefM<A>, Dequeue<A>]> =>
+  pipe(
+    T.of,
+    T.bind("ref", () => makeRefM(a)),
+    T.bind("queue", () => makeUnbounded<A>()),
+    T.map(({ queue, ref }) => [
+      pipe(
+        ref,
+        tapInput((a) => queue.offer(a))
+      ),
+      queue
+    ])
   )
 
 /**
