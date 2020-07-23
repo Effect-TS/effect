@@ -76,3 +76,8 @@ export abstract class XQueue<RA, RB, EA, EB, A, B> {
  * values of type `A` can be enqueued and dequeued.
  */
 export interface Queue<A> extends XQueue<unknown, unknown, never, never, A, A> {}
+
+/**
+ * A queue that can only be dequeued.
+ */
+export interface Dequeue<A> extends XQueue<never, unknown, unknown, never, never, A> {}
