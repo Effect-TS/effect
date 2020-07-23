@@ -23,5 +23,6 @@ export {
   filterOutput,
   filterOutputM,
   map,
-  mapM
+  mapM,
+  readOnly
 } from "./api"

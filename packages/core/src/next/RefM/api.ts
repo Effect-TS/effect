@@ -455,7 +455,7 @@ export const mapM = <B, RC, EC, C>(f: (b: B) => T.AsyncRE<RC, EC, C>) => <
 ) => pipe(self, dimapM(T.succeedNow, f))
 
 /**
- * Returns a read only view of the `XRefM`.
+ * Transforms the `get` value of the `ZRefM` with the specified function.
  */
 export const map = <B, C>(f: (b: B) => C) => <RA, RB, EA, EB, A>(
   self: XRefM<RA, RB, EA, EB, A, B>
@@ -464,3 +464,10 @@ export const map = <B, C>(f: (b: B) => C) => <RA, RB, EA, EB, A>(
     self,
     mapM((b) => T.succeedNow(f(b)))
   )
+
+/**
+ * Returns a read only view of the `ZRefM`.
+ */
+export const readOnly = <RA, RB, EA, EB, A, B>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+): XRefM<RA, RB, EA, EB, never, B> => self
