@@ -439,3 +439,28 @@ export const filterOutput = <B>(f: (b: B) => boolean) => <RA, RB, EA, EB, A>(
     self,
     filterOutputM((b) => T.succeedNow(f(b)))
   )
+
+/**
+ * Transforms the `get` value of the `XRefM` with the specified effectual
+ * function.
+ */
+export const mapM = <B, RC, EC, C>(f: (b: B) => T.AsyncRE<RC, EC, C>) => <
+  RA,
+  RB,
+  EA,
+  EB,
+  A
+>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+) => pipe(self, dimapM(T.succeedNow, f))
+
+/**
+ * Returns a read only view of the `XRefM`.
+ */
+export const map = <B, C>(f: (b: B) => C) => <RA, RB, EA, EB, A>(
+  self: XRefM<RA, RB, EA, EB, A, B>
+) =>
+  pipe(
+    self,
+    mapM((b) => T.succeedNow(f(b)))
+  )
