@@ -4,6 +4,7 @@ import { Effect } from "../Effect/effect"
 
 export { effectTotal } from "../Effect/effectTotal"
 export { access } from "../Effect/access"
+export { fail } from "../Effect/fail"
 export { environment } from "../Effect/environment"
 export { accessM } from "../Effect/accessM"
 export {
