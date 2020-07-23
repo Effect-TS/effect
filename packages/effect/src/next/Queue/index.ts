@@ -1,4 +1,4 @@
-export { Queue, XQueue } from "./xqueue"
+export { Queue, XQueue, Dequeue } from "./xqueue"
 export { makeSliding, makeDropping, makeUnbounded, makeBounded } from "./make"
 export {
   takeBetween,
