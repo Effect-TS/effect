@@ -408,6 +408,21 @@ export class MemoMap {
 export const HasMemoMap = has(MemoMap)
 export type HasMemoMap = HasType<typeof HasMemoMap>
 
+/**
+ * A default memoMap is included in DefaultEnv,
+ * this can be used to "scope" a portion of layers to use a different memo map
+ */
+export const memoMap =
+  /*#__PURE__*/
+  service(HasMemoMap).fromEffect(
+    pipe(
+      RM.makeRefM<M.Map<Layer<any, any, any, any>, [T.AsyncE<any, any>, Finalizer]>>(
+        new Map()
+      ),
+      T.map((ref) => new MemoMap(ref))
+    )
+  )
+
 export const memo = <S, R, E, A>(
   layer: Layer<S, R, E, A>
 ): Layer<unknown, T.Has<MemoMap> & R, E, A> =>
@@ -416,3 +431,6 @@ export const memo = <S, R, E, A>(
     T.managedChain((m) => m.getOrElseMemoize(layer)),
     fromManagedEnv
   )
+
+export const fresh = <S, R, E, A>(layer: Layer<S, R, E, A>): Layer<unknown, R, E, A> =>
+  pipe(layer, consuming(memoMap))
