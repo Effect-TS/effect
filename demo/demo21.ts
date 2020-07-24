@@ -6,20 +6,20 @@ export class MyService {
   readonly open = pipe(
     T.effectTotal(() => {
       console.log("open")
-    })
-    //T.delay(200)
+    }),
+    T.delay(200)
   )
   readonly close = pipe(
     T.effectTotal(() => {
       console.log("close")
-    })
-    //T.delay(200)
+    }),
+    T.delay(200)
   )
   readonly hi = pipe(
     T.effectTotal(() => {
       console.log("hi")
-    })
-    //T.delay(200)
+    }),
+    T.delay(200)
   )
 }
 
