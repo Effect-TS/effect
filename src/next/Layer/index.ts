@@ -17,16 +17,10 @@ import { Erase } from "../Utils"
 import * as T from "./deps"
 
 export class Layer<S, R, E, A> {
-  constructor(readonly build: T.Managed<S, R, E, A>) {
-    this.use = this.use.bind(this)
-  }
+  constructor(readonly build: T.Managed<S, R, E, A>) {}
 
-  use<S1, R1, E1, A1>(
-    effect: T.Effect<S1, R1 & A, E1, A1>
-  ): T.Effect<S | S1, R & R1, E | E1, A1> {
-    return T.managedUse_(this.build, (p) =>
-      T.provideSome_(effect, (r: R & R1) => ({ ...r, ...p }))
-    )
+  memo(): Layer<unknown, R & HasMemoMap, E, A> {
+    return memo(this)
   }
 }
 
