@@ -18,6 +18,11 @@ export const makeRef = <A>(a: A): Sync<Ref<A>> =>
   effectTotal(() => new Atomic(new AtomicReference(a)))
 
 /**
+ * Creates a new `XRef` with the specified value.
+ */
+export const unsafeMakeRef = <A>(a: A): Ref<A> => new Atomic(new AtomicReference(a))
+
+/**
  * Maps and filters the `get` value of the `XRef` with the specified partial
  * function, returning a `XRef` with a `get` value that succeeds with the
  * result of the partial function if it is defined or else fails with `None`.

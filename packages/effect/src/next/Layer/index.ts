@@ -6,7 +6,7 @@ import * as M from "../../Map"
 import { sequential } from "../Effect"
 import { DefaultEnv, makeRuntime, Runtime } from "../Effect/runtime"
 import { Exit } from "../Exit"
-import { HasURI, mergeEnvironments, has, readService } from "../Has"
+import { HasURI, mergeEnvironments, has, readService, HasType } from "../Has"
 import { Managed, noop } from "../Managed/managed"
 import { Finalizer, ReleaseMap, makeReleaseMap } from "../Managed/releaseMap"
 import * as P from "../Promise"
@@ -406,17 +406,7 @@ export class MemoMap {
 }
 
 export const HasMemoMap = has(MemoMap)
-
-export const memoMap =
-  /*#__PURE__*/
-  service(HasMemoMap).fromEffect(
-    pipe(
-      RM.makeRefM<M.Map<Layer<any, any, any, any>, [T.AsyncE<any, any>, Finalizer]>>(
-        new Map()
-      ),
-      T.map((ref) => new MemoMap(ref))
-    )
-  )
+export type HasMemoMap = HasType<typeof HasMemoMap>
 
 export const memo = <S, R, E, A>(
   layer: Layer<S, R, E, A>

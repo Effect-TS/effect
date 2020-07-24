@@ -23,6 +23,15 @@ export const makeRefM = <A>(a: A): T.Sync<RefM<A>> =>
   )
 
 /**
+ * Creates a new `XRefM` with the specified value.
+ */
+export const unsafeMakeRefM = <A>(a: A): RefM<A> => {
+  const ref = R.unsafeMakeRef(a)
+  const semaphore = S.unsafeMakeSemaphore(1)
+  return new Atomic(ref, semaphore)
+}
+
+/**
  * Creates a new `RefM` with the specified value in the context of a
  * `Managed.`
  */
