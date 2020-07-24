@@ -25,7 +25,7 @@
     "@types/node": "^14.0.5"
   },
   "dependencies": {
-    "fp-ts": "2.6.3",
+    "fp-ts": "^2.6.3",
     "fp-ts-contrib": "^0.1.15"
   },
   "config": {

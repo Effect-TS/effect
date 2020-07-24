@@ -6667,11 +6667,6 @@ fp-ts-contrib@^0.1.15:
   resolved "https://registry.yarnpkg.com/fp-ts-contrib/-/fp-ts-contrib-0.1.17.tgz#208ff83b2b457c61f458016e324ff95a5671c0c1"
   integrity sha512-UBQ7AdGp0GktLkIn3e6npVIfLm1ZM+racizgVqL88j6HBLBoBjRtVjIxRIS6YbNypuP94ngaZpy2SEib9lnZ9A==
 
-fp-ts@2.6.3:
-  version "2.6.3"
-  resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.6.3.tgz#f08e8b8b13d652ce7f1d4da875cb5d6246109d37"
-  integrity sha512-d/djF6VTApJB9DwD/yec2dlKd7h3oqiOv+6vtBnC1pKbHrhz7aEAGcKd4luraUQDJ3pt3C6W4Npd8s+l5xIquQ==
-
 fp-ts@^2.6.3:
   version "2.7.0"
   resolved "https://registry.yarnpkg.com/fp-ts/-/fp-ts-2.7.0.tgz#41de65a846715ca4df6889b91c6b3aa953165198"
