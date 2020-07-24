@@ -124,15 +124,7 @@ function runWithSpan<S, R, E, A>(
         T.chain(() => T.completed(e))
       )
     ),
-    T.chain((r) =>
-      T.Do()
-        .do(
-          T.sync(() => {
-            span.finish()
-          })
-        )
-        .return(() => r)
-    ),
+    T.apFirst(T.sync(() => span.finish())),
     T.provide<SpanContext>({
       [SpanContext]: { spanInstance: span, component }
     })
@@ -186,17 +178,15 @@ export const Tracer = (factory: T.Sync<OT> = T.sync(() => new OT())) =>
             return <S, R, E, A>(ma: T.Effect<S, R, E, A>) =>
               T.accessM((r: R) =>
                 hasTracerContext(r)
-                  ? T.Do()
-                      .bindL("span", () =>
-                        createControllerSpan(
-                          r[TracerContext].instance,
-                          component,
-                          operation,
-                          headers
-                        )
-                      )
-                      .bindL("res", ({ span }) => runWithSpan(ma, span, component))
-                      .return((s) => s.res)
+                  ? T.chain_(
+                      createControllerSpan(
+                        r[TracerContext].instance,
+                        component,
+                        operation,
+                        headers
+                      ),
+                      (span) => runWithSpan(ma, span, component)
+                    )
                   : ma
               )
           },
@@ -206,18 +196,14 @@ export const Tracer = (factory: T.Sync<OT> = T.sync(() => new OT())) =>
             return <S, R, E, A>(ma: T.Effect<S, R, E, A>) =>
               T.accessM((r: R) =>
                 hasChildContext(r)
-                  ? T.Do()
-                      .bindL("span", () =>
-                        T.sync(() =>
-                          r[TracerContext].instance.startSpan(operation, {
-                            childOf: r[SpanContext].spanInstance
-                          })
-                        )
-                      )
-                      .bindL("res", ({ span }) =>
-                        runWithSpan(ma, span, r[SpanContext].component)
-                      )
-                      .return((s) => s.res)
+                  ? pipe(
+                      T.sync(() =>
+                        r[TracerContext].instance.startSpan(operation, {
+                          childOf: r[SpanContext].spanInstance
+                        })
+                      ),
+                      T.chain((span) => runWithSpan(ma, span, r[SpanContext].component))
+                    )
                   : ma
               )
           }
