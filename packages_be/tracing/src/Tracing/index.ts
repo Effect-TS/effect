@@ -78,7 +78,14 @@ function runWithSpan<S, R, E, A>(
             span.setTag(EXTRA_TAGS.ERROR_NAME, e.abortedWith.constructor.name)
             span.setTag(EXTRA_TAGS.ERROR_MESSAGE, e.abortedWith.message)
           } else {
-            span.setTag(EXTRA_TAGS.ERROR_MESSAGE, JSON.stringify(e))
+            span.setTag(
+              EXTRA_TAGS.ERROR_MESSAGE,
+              JSON.stringify(e, (_, value) =>
+                typeof value.toJSON !== "function" && value instanceof Error
+                  ? value.toString()
+                  : value
+              )
+            )
           }
 
           span.finish()
