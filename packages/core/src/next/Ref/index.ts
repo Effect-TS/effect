@@ -16,6 +16,7 @@ export {
   getAndUpdate,
   getAndUpdateSome,
   makeRef,
+  unsafeMakeRef,
   map,
   mapEither,
   modify,

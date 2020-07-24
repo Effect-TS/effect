@@ -1,4 +1,5 @@
 // cause
+import * as M from "../../Map"
 import { died } from "../Cause/died"
 import { failed } from "../Cause/failed"
 import { pretty } from "../Cause/pretty"
@@ -13,14 +14,17 @@ import { interruptible } from "../Fiber/interruptStatus"
 import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
 import { HasURI } from "../Has"
+import { HasMemoMap, MemoMap, Layer } from "../Layer"
+import { Finalizer } from "../Managed/releaseMap"
 import { defaultRandom, HasRandom } from "../Random"
+import { unsafeMakeRefM } from "../RefM"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
 
 import { accessM } from "./accessM"
 import { chain_ } from "./chain_"
-import { Async, Effect, _I } from "./effect"
+import { Async, Effect, _I, AsyncE } from "./effect"
 import { effectTotal } from "./effectTotal"
 import { provideSome_ } from "./provideSome"
 import { succeedNow } from "./succeedNow"
@@ -30,11 +34,18 @@ const empty = () => {
   //
 }
 
-export type DefaultEnv = HasClock & HasRandom
+export type DefaultEnv = HasClock & HasRandom & HasMemoMap
+
+export const memoMap = new MemoMap(
+  unsafeMakeRefM<M.Map<Layer<any, any, any, any>, [AsyncE<any, any>, Finalizer]>>(
+    new Map()
+  )
+)
 
 export const defaultEnv = {
   [HasClock[HasURI].key]: new LiveClock(),
-  [HasRandom[HasURI].key]: defaultRandom
+  [HasRandom[HasURI].key]: defaultRandom,
+  [HasMemoMap[HasURI].key]: memoMap
 }
 
 /**

@@ -25,7 +25,6 @@ export const myService = L.service(HasMyService)
 
 export const env = pipe(
   L.allPar(L.memo(myService), L.memo(myService), L.memo(myService)),
-  L.using(L.memoMap),
   L.main
 )
 

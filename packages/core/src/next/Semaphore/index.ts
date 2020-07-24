@@ -2,6 +2,7 @@ export {
   Semaphore,
   available,
   makeSemaphore,
+  unsafeMakeSemaphore,
   withPermit,
   withPermitManaged,
   withPermits,
