@@ -7,14 +7,22 @@ import { pipe } from "@matechs/core/Function"
 import * as L from "@matechs/core/Layer"
 
 export const TracerContext = "@matechs/tracing/tracerContextURI"
+export const SpanContext = "@matechs/tracing/spanContextURI"
+export const TracerURI = "@matechs/tracing/tracerURI"
+const CauseURI = "@matechs/core/Cause"
+
+export const EXTRA_TAGS = {
+  ERROR_TYPE: "error.type",
+  ERROR_CAUSE_TYPE: "error.causeType",
+  ERROR_NAME: "error.name",
+  ERROR_MESSAGE: "error.message"
+}
 
 export interface TracerContext {
   [TracerContext]: {
     instance: OT
   }
 }
-
-export const SpanContext = "@matechs/tracing/spanContextURI"
 
 export interface SpanContext {
   [SpanContext]: {
@@ -23,7 +31,7 @@ export interface SpanContext {
   }
 }
 
-export const TracerURI = "@matechs/tracing/tracerURI"
+export type ChildContext = SpanContext & TracerContext
 
 export interface TracerOps {
   withTracer<S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A>
@@ -41,12 +49,35 @@ export interface Tracer {
   [TracerURI]: TracerOps
 }
 
-const CauseURI = "@matechs/core/Cause"
-export const EXTRA_TAGS = {
-  ERROR_TYPE: "error.type",
-  ERROR_CAUSE_TYPE: "error.causeType",
-  ERROR_NAME: "error.name",
-  ERROR_MESSAGE: "error.message"
+export function hasTracerContext(u: unknown): u is TracerContext {
+  return (
+    typeof u === "object" &&
+    u !== null &&
+    typeof u[TracerContext] !== "undefined" &&
+    u[TracerContext] !== null
+  )
+}
+
+export function hasTracer(u: unknown): u is Tracer {
+  return (
+    typeof u === "object" &&
+    u !== null &&
+    typeof u[TracerURI] !== "undefined" &&
+    u[TracerURI] !== null
+  )
+}
+
+export function hasSpanContext(u: unknown): u is SpanContext {
+  return (
+    typeof u === "object" &&
+    u !== null &&
+    typeof u[SpanContext] !== "undefined" &&
+    u[SpanContext] !== null
+  )
+}
+
+export function hasChildContext(u: unknown): u is ChildContext {
+  return hasTracerContext(u) && hasSpanContext(u)
 }
 
 function runWithSpan<S, R, E, A>(
@@ -134,24 +165,6 @@ export function createControllerSpan(
   })
 }
 
-export function hasTracerContext(u: unknown): u is TracerContext {
-  return (
-    typeof u === "object" &&
-    u !== null &&
-    typeof u[TracerContext] !== "undefined" &&
-    u[TracerContext] !== null
-  )
-}
-
-export function hasTracer(u: unknown): u is Tracer {
-  return (
-    typeof u === "object" &&
-    u !== null &&
-    typeof u[TracerURI] !== "undefined" &&
-    u[TracerURI] !== null
-  )
-}
-
 export const Tracer = (factory: T.Sync<OT> = T.sync(() => new OT())) =>
   pipe(
     factory,
@@ -233,19 +246,4 @@ export function withControllerSpan(
 export function withChildSpan(operation: string) {
   return <S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> =>
     T.accessM((r: R) => (hasTracer(r) ? r[TracerURI].withChildSpan(operation)(ma) : ma))
-}
-
-export type ChildContext = SpanContext & TracerContext
-
-export function hasSpanContext(u: unknown): u is SpanContext {
-  return (
-    typeof u === "object" &&
-    u !== null &&
-    typeof u[SpanContext] !== "undefined" &&
-    u[SpanContext] !== null
-  )
-}
-
-export function hasChildContext(u: unknown): u is ChildContext {
-  return hasTracerContext(u) && hasSpanContext(u)
 }
