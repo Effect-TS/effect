@@ -57,5 +57,6 @@ export {
   updateAndGet_,
   updateSomeAndGet_,
   updateSome_,
-  update_
+  update_,
+  unsafeMakeRefM
 } from "./api"

@@ -168,3 +168,12 @@ export const available = (s: Semaphore) => s.available
  */
 export const makeSemaphore = (permits: number) =>
   T.map_(R.makeRef<State>(E.right(permits)), (state) => new Semaphore(state))
+
+/**
+ * Creates a new `Sempahore` with the specified number of permits.
+ */
+export const unsafeMakeSemaphore = (permits: number) => {
+  const state = R.unsafeMakeRef<State>(E.right(permits))
+
+  return new Semaphore(state)
+}
