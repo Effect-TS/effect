@@ -115,31 +115,22 @@ export function createControllerSpan(
   headers: any
 ): T.Sync<Span> {
   return T.sync(() => {
-    let traceSpan: Span
     const parentSpanContext = tracer.extract(FORMAT_HTTP_HEADERS, headers)
 
-    if (
+    const childData =
       parentSpanContext &&
       parentSpanContext.toSpanId &&
       parentSpanContext.toSpanId().length > 0
-    ) {
-      traceSpan = tracer.startSpan(operation, {
-        childOf: parentSpanContext,
-        tags: {
-          [Tags.SPAN_KIND]: Tags.SPAN_KIND_RPC_SERVER,
-          [Tags.COMPONENT]: component
-        }
-      })
-    } else {
-      traceSpan = tracer.startSpan(operation, {
-        tags: {
-          [Tags.SPAN_KIND]: Tags.SPAN_KIND_RPC_SERVER,
-          [Tags.COMPONENT]: component
-        }
-      })
-    }
+        ? { childOf: parentSpanContext }
+        : {}
 
-    return traceSpan
+    return tracer.startSpan(operation, {
+      ...childData,
+      tags: {
+        [Tags.SPAN_KIND]: Tags.SPAN_KIND_RPC_SERVER,
+        [Tags.COMPONENT]: component
+      }
+    })
   })
 }
 
