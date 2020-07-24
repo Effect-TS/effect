@@ -40,7 +40,9 @@ export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
           (a) => T.fromEffect(T.map_(open(a), () => a))
         )
       )
-  })
+  }),
+  release: <S2, R2, E2>(release: (_: A) => T.Effect<S2, R2, E2, any>) =>
+    fromManaged(has)(T.makeExit_(acquire, (a) => release(a)))
 })
 
 export const service = <T>(has: T.Has<T>) => ({

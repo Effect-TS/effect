@@ -190,6 +190,7 @@ export {
   defaultEnv,
   fiberContext,
   runAsync,
+  runAsyncAsap,
   runAsyncCancel,
   runMain,
   runPromise,
