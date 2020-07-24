@@ -6,7 +6,6 @@
     "module": "ES6",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/es6.tsbuildinfo",
-    "sourceMap": false,
     "removeComments": false
   },
   "include": ["src/**/*"],
