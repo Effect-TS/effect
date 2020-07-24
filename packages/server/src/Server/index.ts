@@ -347,8 +347,7 @@ export const query = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A
     getRequestContext,
     T.chain((i) =>
       pipe(
-        T.effectPartial(identity)(() => qs.parse(`?${i.query}`)),
-        T.catchAll(() => T.fail(new QueryParsing())),
+        T.effectPartial(() => new QueryParsing())(() => qs.parse(`?${i.query}`)),
         T.chain(
           (u: unknown): T.AsyncRE<T.DefaultEnv, QueryDecoding, A> => {
             const decoded = morph.decode(u)

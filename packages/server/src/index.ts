@@ -39,19 +39,19 @@ export {
   Router,
   root,
   Middleware,
-  middleware
+  middleware,
+  child,
+  route,
+  use
 } from "./Router"
 
 export {
   makeState,
   HasServer,
-  child,
   getServer,
   getServerConfig,
   hasConfig,
-  route,
-  server,
-  use
+  server
 } from "./Api"
 
 export type ServerEnv = Has<Router> & Has<Server> & Has<ServerConfig>

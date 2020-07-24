@@ -18,7 +18,7 @@ import * as A from "@matechs/core/Array"
 import * as Ei from "@matechs/core/Either"
 import * as NA from "@matechs/core/NonEmptyArray"
 import * as T from "@matechs/core/next/Effect"
-import { Augumented, DerivationContext } from "@matechs/core/next/Has"
+import { Augumented } from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 import * as M from "@matechs/core/next/Managed"
 import * as MO from "@matechs/morphic"
@@ -57,13 +57,10 @@ export class Router {
   handler: Handler = (next) => this.finalHandler(next)
 }
 
-export const derivationContext = new DerivationContext()
-
-export const HasRouter = <K extends string>(has: Augumented<Server>) =>
-  derivationContext.derive(has, () => T.has<Router>())
+export const HasRouter = T.has<Router>()
 
 export const root = (has: Augumented<Server>) =>
-  L.service(HasRouter(has)).fromManaged(
+  L.service(HasRouter).fromManaged(
     pipe(
       M.makeExit_(
         T.accessServiceM(has)((s) =>
@@ -85,11 +82,11 @@ export const root = (has: Augumented<Server>) =>
     )
   )
 
-export const child = (has: Augumented<Server>) => (base: string) =>
-  L.service(HasRouter(has)).fromManaged(
+export const child = (base: string) =>
+  L.service(HasRouter).fromManaged(
     pipe(
       M.makeExit_(
-        T.accessServiceM(HasRouter(has))((s) =>
+        T.accessServiceM(HasRouter)((s) =>
           T.effectTotal(() => {
             const router = new Router(s)
             const handler: Handler = (next) =>
@@ -105,7 +102,7 @@ export const child = (has: Augumented<Server>) => (base: string) =>
           })
         ),
         (r) =>
-          T.accessServiceM(has)((s) =>
+          T.accessServiceM(HasRouter)((s) =>
             T.effectTotal(() => {
               s.removeHandler(r[1])
             })
@@ -166,110 +163,106 @@ export type RouteHandlerE<R, E> = T.AsyncRE<
   void
 >
 
-export function route(has: Augumented<Server>) {
-  return <R>(
-    method: HttpMethod,
-    pattern: string,
-    f: (next: FinalHandler) => RouteHandler<R>
-  ) => {
-    const matcher = match(pattern)
+export function route<R>(
+  method: HttpMethod,
+  pattern: string,
+  f: (next: FinalHandler) => RouteHandler<R>
+) {
+  const matcher = match(pattern)
 
-    const acquire = T.accessServiceM(HasRouter(has))((router) =>
-      T.access((r: R) => {
-        const handler: Handler = (next) =>
-          T.accessServiceM(HasRequestContext)((rc) =>
-            T.suspend(() => {
-              if (rc.url && rc.req.method && rc.req.method === method) {
-                const matchResult = matcher(rc.url)
+  const acquire = T.accessServiceM(HasRouter)((router) =>
+    T.access((r: R) => {
+      const handler: Handler = (next) =>
+        T.accessServiceM(HasRequestContext)((rc) =>
+          T.suspend(() => {
+            if (rc.url && rc.req.method && rc.req.method === method) {
+              const matchResult = matcher(rc.url)
 
-                if (matchResult === false) {
-                  return next
-                } else {
-                  return pipe(
-                    f(next),
-                    defaultErrorHandler,
-                    T.provideService(HasRouteInput)(new RouteInput(matchResult.params)),
-                    T.provideService(HasRequestContext)(rc),
-                    T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
-                  )
-                }
-              } else {
+              if (matchResult === false) {
                 return next
+              } else {
+                return pipe(
+                  f(next),
+                  defaultErrorHandler,
+                  T.provideService(HasRouteInput)(new RouteInput(matchResult.params)),
+                  T.provideService(HasRequestContext)(rc),
+                  T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
+                )
               }
-            })
-          )
-
-        router.addHandler(handler)
-
-        return {
-          handler
-        }
-      })
-    )
-
-    return pipe(
-      M.makeExit_(acquire, ({ handler }) =>
-        T.accessServiceM(has)((s) =>
-          T.effectTotal(() => {
-            s.removeHandler(handler)
+            } else {
+              return next
+            }
           })
         )
-      ),
-      M.map(() => ({})),
-      L.fromManagedEnv
-    )
-  }
+
+      router.addHandler(handler)
+
+      return {
+        handler
+      }
+    })
+  )
+
+  return pipe(
+    M.makeExit_(acquire, ({ handler }) =>
+      T.accessServiceM(HasRouter)((s) =>
+        T.effectTotal(() => {
+          s.removeHandler(handler)
+        })
+      )
+    ),
+    M.map(() => ({})),
+    L.fromManagedEnv
+  )
 }
 
-export function use(has: Augumented<Server>) {
-  return <R>(pattern: string, f: (next: FinalHandler) => RouteHandler<R>) => {
-    const matcher = match(pattern)
+export function use<R>(pattern: string, f: (next: FinalHandler) => RouteHandler<R>) {
+  const matcher = match(pattern)
 
-    const acquire = T.accessServiceM(HasRouter(has))((router) =>
-      T.access((r: R) => {
-        const handler: Handler = (next) =>
-          T.accessServiceM(HasRequestContext)((rc) =>
-            T.suspend(() => {
-              if (rc.url && rc.req.method) {
-                const matchResult = matcher(rc.url)
+  const acquire = T.accessServiceM(HasRouter)((router) =>
+    T.access((r: R) => {
+      const handler: Handler = (next) =>
+        T.accessServiceM(HasRequestContext)((rc) =>
+          T.suspend(() => {
+            if (rc.url && rc.req.method) {
+              const matchResult = matcher(rc.url)
 
-                if (matchResult === false) {
-                  return next
-                } else {
-                  return pipe(
-                    f(next),
-                    defaultErrorHandler,
-                    T.provideService(HasRouteInput)(new RouteInput(matchResult.params)),
-                    T.provideService(HasRequestContext)(rc),
-                    T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
-                  )
-                }
-              } else {
+              if (matchResult === false) {
                 return next
+              } else {
+                return pipe(
+                  f(next),
+                  defaultErrorHandler,
+                  T.provideService(HasRouteInput)(new RouteInput(matchResult.params)),
+                  T.provideService(HasRequestContext)(rc),
+                  T.provideSome((h: HasRequestState) => ({ ...r, ...h }))
+                )
               }
-            })
-          )
-
-        router.addHandler(handler)
-
-        return {
-          handler
-        }
-      })
-    )
-
-    return pipe(
-      M.makeExit_(acquire, ({ handler }) =>
-        T.accessServiceM(has)((s) =>
-          T.effectTotal(() => {
-            s.removeHandler(handler)
+            } else {
+              return next
+            }
           })
         )
-      ),
-      M.map(() => ({})),
-      L.fromManagedEnv
-    )
-  }
+
+      router.addHandler(handler)
+
+      return {
+        handler
+      }
+    })
+  )
+
+  return pipe(
+    M.makeExit_(acquire, ({ handler }) =>
+      T.accessServiceM(HasRouter)((s) =>
+        T.effectTotal(() => {
+          s.removeHandler(handler)
+        })
+      )
+    ),
+    M.map(() => ({})),
+    L.fromManagedEnv
+  )
 }
 
 export type Middleware<R, E> = <R1, E1>(
