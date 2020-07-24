@@ -41,6 +41,14 @@ export interface Tracer {
   [TracerURI]: TracerOps
 }
 
+const CauseURI = "@matechs/core/Cause"
+export const EXTRA_TAGS = {
+  ERROR_TYPE: "error.type",
+  ERROR_CAUSE_TYPE: "error.causeType",
+  ERROR_NAME: "error.name",
+  ERROR_MESSAGE: "error.message"
+}
+
 function runWithSpan<S, R, E, A>(
   ma: T.Effect<S, SpanContext & R, E, A>,
   span: Span,
@@ -51,20 +59,26 @@ function runWithSpan<S, R, E, A>(
     T.chainCause((e) =>
       pipe(
         T.sync(() => {
+          span.setTag(ERROR, true)
+          span.setTag(EXTRA_TAGS.ERROR_TYPE, CauseURI)
+          span.setTag(EXTRA_TAGS.ERROR_CAUSE_TYPE, e._tag)
+
           if (
             e._tag === "Raise" &&
             e.next._tag === "None" &&
             e.error instanceof Error
           ) {
-            span.setTag(ERROR, e.error.message)
+            span.setTag(EXTRA_TAGS.ERROR_NAME, e.error.constructor.name)
+            span.setTag(EXTRA_TAGS.ERROR_MESSAGE, e.error.message)
           } else if (
             e._tag === "Abort" &&
             e.next._tag === "None" &&
             e.abortedWith instanceof Error
           ) {
-            span.setTag(ERROR, e.abortedWith.message)
+            span.setTag(EXTRA_TAGS.ERROR_NAME, e.abortedWith.constructor.name)
+            span.setTag(EXTRA_TAGS.ERROR_MESSAGE, e.abortedWith.message)
           } else {
-            span.setTag(ERROR, JSON.stringify(e))
+            span.setTag(EXTRA_TAGS.ERROR_MESSAGE, JSON.stringify(e))
           }
 
           span.finish()
