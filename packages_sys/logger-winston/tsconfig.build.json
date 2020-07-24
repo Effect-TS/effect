@@ -6,7 +6,6 @@
     "module": "CommonJS",
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
-    "sourceMap": false,
     "removeComments": false
   },
   "include": ["src/**/*"],
