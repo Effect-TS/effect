@@ -43,6 +43,9 @@ export interface TracerOps {
   withChildSpan(
     operation: string
   ): <S, R, E, A>(ma: T.Effect<S, R, E, A>) => T.Effect<S, R, E, A>
+  addSpanTags(
+    extraTags: Record<string, unknown>
+  ): <S, R, E, A>(ma: T.Effect<S, R, E, A>) => T.Effect<S, R, E, A>
 }
 
 export interface Tracer {
@@ -206,6 +209,17 @@ export const Tracer = (factory: T.Sync<OT> = T.sync(() => new OT())) =>
                     )
                   : ma
               )
+          },
+          addSpanTags(extraTags: Record<string, unknown>) {
+            return <S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> =>
+              T.accessM((r: R) =>
+                hasSpanContext(r)
+                  ? T.applySecond(
+                      T.sync(() => r[SpanContext].spanInstance.addTags(extraTags)),
+                      ma
+                    )
+                  : ma
+              )
           }
         }
       })
@@ -232,4 +246,9 @@ export function withControllerSpan(
 export function withChildSpan(operation: string) {
   return <S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> =>
     T.accessM((r: R) => (hasTracer(r) ? r[TracerURI].withChildSpan(operation)(ma) : ma))
+}
+
+export function addSpanTags(extraTags: Record<string, unknown>) {
+  return <S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> =>
+    T.accessM((r: R) => (hasTracer(r) ? r[TracerURI].addSpanTags(extraTags)(ma) : ma))
 }
