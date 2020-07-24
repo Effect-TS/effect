@@ -51,15 +51,13 @@ export const globalRuntime = <S, E, ROut>(
       envS.set(envFailed)
       T.runAsyncAsap(P.complete(envFailed)(envP))
     } else {
-      if (typeof window === "undefined" && typeof setImmediate === "function") {
-        const released = new AtomicReference(false)
-        process.on("beforeExit", () => {
-          if (!released.get) {
-            released.set(true)
-            T.runPromiseExit(releaseAll(rm, E.succeed(undefined)))
-          }
-        })
-      }
+      const released = new AtomicReference(false)
+      process.on("beforeExit", () => {
+        if (!released.get) {
+          released.set(true)
+          T.runPromiseExit(releaseAll(rm, E.succeed(undefined)))
+        }
+      })
 
       envS.set(T.done(ex))
       T.runAsyncAsap(P.complete(T.done(ex))(envP))
