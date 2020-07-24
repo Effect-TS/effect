@@ -22,6 +22,10 @@ export class Layer<S, R, E, A> {
   memo(): Layer<unknown, R & HasMemoMap, E, A> {
     return memo(this)
   }
+
+  fresh(): Layer<S, R, E, A> {
+    return fresh(this)
+  }
 }
 
 export type AsyncR<R, A> = Layer<unknown, R, never, A>
@@ -433,5 +437,5 @@ export const memo = <S, R, E, A>(
  * Returns a fresh version of a potentially memoized layer,
  * note that this will override the memoMap for the layer and its children
  */
-export const fresh = <S, R, E, A>(layer: Layer<S, R, E, A>): Layer<unknown, R, E, A> =>
+export const fresh = <S, R, E, A>(layer: Layer<S, R, E, A>): Layer<S, R, E, A> =>
   pipe(layer, consuming(memoMap))
