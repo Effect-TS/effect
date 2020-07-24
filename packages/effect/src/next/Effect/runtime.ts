@@ -50,6 +50,19 @@ export const runAsync = <S, E, A>(
   context.runAsync(cb || empty)
 }
 
+/**
+ * Runs effect until completion, calling cb with the eventual exit state
+ */
+export const runAsyncAsap = <S, E, A>(
+  _: Effect<S, DefaultEnv, E, A>,
+  cb?: Callback<E, A>
+) => {
+  const context = fiberContext<E, A>()
+
+  context.evaluateNow(_[_I])
+  context.runAsync(cb || empty)
+}
+
 export interface CancelMain {
   (): void
 }

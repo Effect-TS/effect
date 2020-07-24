@@ -7,7 +7,7 @@ import { suspend } from "./suspend"
 /**
  * Returns an effect from a `Exit` value.
  */
-export const done = <E, A>(exit: Exit<E, A>) =>
+export const done = <E = never, A = unknown>(exit: Exit<E, A>) =>
   suspend(() => {
     switch (exit._tag) {
       case "Success": {
