@@ -423,6 +423,9 @@ export const memoMap =
     )
   )
 
+/**
+ * Memoize the current layer using a MemoMap
+ */
 export const memo = <S, R, E, A>(
   layer: Layer<S, R, E, A>
 ): Layer<unknown, T.Has<MemoMap> & R, E, A> =>
@@ -432,5 +435,9 @@ export const memo = <S, R, E, A>(
     fromManagedEnv
   )
 
+/**
+ * Returns a fresh version of a potentially memoized layer,
+ * note that this will override the memoMap for the layer and its children
+ */
 export const fresh = <S, R, E, A>(layer: Layer<S, R, E, A>): Layer<unknown, R, E, A> =>
   pipe(layer, consuming(memoMap))
