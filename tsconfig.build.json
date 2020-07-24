@@ -7,7 +7,8 @@
     "incremental": true,
     "tsBuildInfoFile": "tsbuildinfo/build.tsbuildinfo",
     "sourceMap": false,
-    "removeComments": false
+    "removeComments": false,
+    "lib": ["DOM"]
   },
   "include": ["src/**/*"],
   "exclude": ["test", "node_modules"]
