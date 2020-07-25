@@ -34,18 +34,22 @@ export const Prefix = L.service(HasPrefix).pure({
   hi: "hi"
 })
 
-export const Hello = L.service(HasHello).fromEffect(
-  T.accessServicesT(
-    HasConsole,
-    HasPrefix
-  )(
-    (console, prefix) =>
-      new (class implements Hello {
-        hello = (name: string): T.UIO<void> =>
-          T.delay_(console.log(`${prefix.hi} ${name}!`), 200)
-      })()
+export const Hello = L.service(HasHello)
+  .prepare(
+    T.accessServicesT(
+      HasConsole,
+      HasPrefix
+    )(
+      (console, prefix) =>
+        new (class implements Hello {
+          hello = (name: string): T.UIO<void> =>
+            T.delay_(console.log(`${prefix.hi} ${name}!`), 200)
+
+          close = T.suspend(() => console.log("close"))
+        })()
+    )
   )
-)
+  .release((h) => h.close)
 
 export const hello = T.accessServiceF(HasHello)("hello")
 
