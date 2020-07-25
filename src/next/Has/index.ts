@@ -136,6 +136,26 @@ export const accessServiceM = <T>(s: Has<T>) => <S, R, E, B>(
 /**
  * Access a service with the required Service Entry
  */
+export const accessServiceF = <T>(s: Has<T>) => <
+  K extends keyof T &
+    {
+      [k in keyof T]: T[k] extends (...args: any[]) => Effect<any, any, any, any>
+        ? k
+        : never
+    }[keyof T]
+>(
+  k: K
+) => (
+  ...args: T[K] extends (...args: infer ARGS) => Effect<any, any, any, any>
+    ? ARGS
+    : unknown[]
+): T[K] extends (...args: any[]) => Effect<infer S, infer R, infer E, infer A>
+  ? Effect<S, R & Has<T>, E, A>
+  : unknown[] => accessServiceM(s)((t) => (t[k] as any)(...args)) as any
+
+/**
+ * Access a service with the required Service Entry
+ */
 export const accessService = <T>(s: Has<T>) => <B>(f: (a: T) => B) =>
   accessServiceM(s)((a) => succeedNow(f(a)))
 
