@@ -5,10 +5,8 @@ import { Schedule } from "./schedule"
 /**
  * A schedule that waits forever when updating or initializing.
  */
-export const never =
-  
-  new Schedule(
-    effectNever,
-    () => effectNever,
-    (_, n) => n
-  )
+export const never = new Schedule(
+  effectNever,
+  () => effectNever,
+  (_, n) => n
+)

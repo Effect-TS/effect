@@ -4,6 +4,4 @@ import { succeed } from "./succeed"
 /**
  * Discards the value.
  */
-export const unit: Exit<never, void> =
-  
-  succeed(undefined)
+export const unit: Exit<never, void> = succeed(undefined)

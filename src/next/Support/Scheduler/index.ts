@@ -55,6 +55,4 @@ export class Scheduler {
   }
 }
 
-export const defaultScheduler: Scheduler =
-  
-  (() => new Scheduler())()
+export const defaultScheduler: Scheduler = (() => new Scheduler())()

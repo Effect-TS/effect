@@ -95,13 +95,9 @@ export const propagationAnd = (self: Propagation, that: Propagation) =>
 export const propagationOr = (self: Propagation, that: Propagation) =>
   self._tag === "Continue" || that._tag === "Continue" ? _continue : _stop
 
-export const _stop =
-  
-  new Stop()
+export const _stop = new Stop()
 
-export const _continue =
-  
-  new Continue()
+export const _continue = new Continue()
 
 /**
  * Creates a new supervisor that tracks children in a set.
@@ -153,10 +149,8 @@ export const fibersIn = (ref: R.Ref<Set<Runtime<any, any>>>) =>
 /**
  * A supervisor that doesn't do anything in response to supervision events.
  */
-export const none =
-  
-  new Supervisor<void>(
-    unit,
-    () => _continue,
-    () => _continue
-  )
+export const none = new Supervisor<void>(
+  unit,
+  () => _continue,
+  () => _continue
+)

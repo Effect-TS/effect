@@ -13,12 +13,8 @@ export class ParallelN {
   constructor(readonly n: number) {}
 }
 
-export const sequential =
-  
-  new Sequential()
+export const sequential = new Sequential()
 
-export const parallel =
-  
-  new Parallel()
+export const parallel = new Parallel()
 
 export const parallelN = (n: number) => new ParallelN(n)
