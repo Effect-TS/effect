@@ -29,11 +29,12 @@ export const Hello = L.service(HasHello).fromEffect(
     (console) =>
       new (class implements Hello {
         hello = (name: string) => T.delay_(console.log(`hi ${name}!`), 200)
+        gen = <K>(k: K) => () => T.succeedNow(k)
       })()
   )
 )
 
-export const hello = (name: string) => T.accessServiceM(HasHello)((h) => h.hello(name))
+export const hello = T.accessServiceF(HasHello)("hello")
 
 export const env = pipe(Hello, L.using(Console))
 
