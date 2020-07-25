@@ -157,6 +157,7 @@ export {
   replaceServiceIn,
   replaceServiceIn_,
   accessServicesM,
+  accessServiceF,
   accessServiceM,
   accessService,
   accessServices,
