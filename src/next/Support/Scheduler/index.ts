@@ -56,5 +56,5 @@ export class Scheduler {
 }
 
 export const defaultScheduler: Scheduler =
-  /*#__PURE__*/
+  
   (() => new Scheduler())()

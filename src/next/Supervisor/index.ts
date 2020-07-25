@@ -96,11 +96,11 @@ export const propagationOr = (self: Propagation, that: Propagation) =>
   self._tag === "Continue" || that._tag === "Continue" ? _continue : _stop
 
 export const _stop =
-  /*#__PURE__*/
+  
   new Stop()
 
 export const _continue =
-  /*#__PURE__*/
+  
   new Continue()
 
 /**
@@ -154,7 +154,7 @@ export const fibersIn = (ref: R.Ref<Set<Runtime<any, any>>>) =>
  * A supervisor that doesn't do anything in response to supervision events.
  */
 export const none =
-  /*#__PURE__*/
+  
   new Supervisor<void>(
     unit,
     () => _continue,

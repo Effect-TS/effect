@@ -6,7 +6,7 @@ import { effectTotal } from "./effectTotal"
  * `while(true) {}`, only without the wasted CPU cycles.
  */
 export const never =
-  /*#__PURE__*/
+  
   effectAsyncInterrupt<unknown, never, never>(() => {
     const interval = setInterval(() => {
       //

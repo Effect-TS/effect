@@ -7,7 +7,8 @@
     "clean": "rimraf build tsbuildinfo",
     "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
     "build:es6": "tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts",
-    "build": "yarn run build:lib && yarn run build:es6 && ts-node ../../scripts/rewrite-locals.ts",
+    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:pure && ts-node ../../scripts/rewrite-locals.ts",
+    "build:pure": "babel build/esm/ -d build/esm/ --plugins annotate-pure-calls",
     "madge": "madge --circular --extensions ts -x \".*\\.d\\.ts\" ./src",
     "bench": "node bench/index.js && node bench/nestedMap.js && node bench/nestedChain.js",
     "lint": "eslint . --ext .ts,.tsx",
@@ -22,7 +23,10 @@
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "sideEffects": false,
   "devDependencies": {
-    "@types/node": "^14.0.5"
+    "@babel/cli": "^7.10.5",
+    "@types/node": "^14.0.5",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "babel-plugin-pure-calls-annotation": "^0.3.1"
   },
   "dependencies": {
     "fp-ts": "^2.6.3",

@@ -11,11 +11,11 @@ export class InterruptStatus {
 }
 
 export const interruptible =
-  /*#__PURE__*/
+  
   new InterruptStatus(true)
 
 export const uninterruptible =
-  /*#__PURE__*/
+  
   new InterruptStatus(false)
 
 export const fromBoolean = (b: boolean) => (b ? interruptible : uninterruptible)

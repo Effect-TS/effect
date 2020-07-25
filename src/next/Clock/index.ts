@@ -20,7 +20,7 @@ export abstract class Clock {
 // Has Clock
 //
 export const HasClock =
-  /*#__PURE__*/
+  
   has(Clock)
 
 export type HasClock = HasType<typeof HasClock>
@@ -59,7 +59,7 @@ export class ProxyClock extends Clock {
  * Get the current time in ms since epoch
  */
 export const currentTime =
-  /*#__PURE__*/
+  
   accessServiceM(HasClock)((_) => _.currentTime)
 
 /**
@@ -71,12 +71,12 @@ export const sleep = (ms: number) => accessServiceM(HasClock)((_) => _.sleep(ms)
  * Access clock from environment
  */
 export const withClockM =
-  /*#__PURE__*/
+  
   accessServiceM(HasClock)
 
 /**
  * Access clock from environment
  */
 export const withClock =
-  /*#__PURE__*/
+  
   accessService(HasClock)

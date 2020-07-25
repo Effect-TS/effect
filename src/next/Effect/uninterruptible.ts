@@ -11,5 +11,5 @@ import { interruptStatus } from "./interruptStatus"
  * interruption of an inner effect that has been made interruptible).
  */
 export const uninterruptible =
-  /*#__PURE__*/
+  
   interruptStatus(statusUninterruptible)
