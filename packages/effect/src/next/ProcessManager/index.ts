@@ -7,6 +7,7 @@ import * as F from "../Fiber"
 import * as FR from "../FiberRef"
 import { HasURI } from "../Has"
 import * as L from "../Layer"
+import * as Layer from "../Layer"
 import * as M from "../Managed"
 import { AtomicReference } from "../Support/AtomicReference"
 
@@ -120,7 +121,7 @@ export const processMapLayer = L.service(HasProcessMap).fromEffect(
  * in background and will trigger interruption if any failure happens
  */
 export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
-  new L.Layer<unknown, R & HasProcessMap, E, HasProcessRegistry>(
+  new Layer.Layer<unknown, R & HasProcessMap, E, HasProcessRegistry>(
     pipe(
       M.fromEffect(T.readService(HasProcessMap)),
       M.chain((pm) =>
@@ -199,7 +200,12 @@ export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) 
 >(
   effect: T.Effect<S, R, E, A>
 ) =>
-  new L.Layer<unknown, R & HasProcessMap, E, HasProcess<ID, E, A> & HasProcessRegistry>(
+  new Layer.Layer<
+    unknown,
+    R & HasProcessMap,
+    E,
+    HasProcess<ID, E, A> & HasProcessRegistry
+  >(
     pipe(
       M.fromEffect(T.readService(HasProcessMap)),
       M.chain((pm) =>
