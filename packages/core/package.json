@@ -25,8 +25,7 @@
   "devDependencies": {
     "@babel/cli": "^7.10.5",
     "@types/node": "^14.0.5",
-    "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "babel-plugin-pure-calls-annotation": "^0.3.1"
+    "babel-plugin-annotate-pure-calls": "^0.4.0"
   },
   "dependencies": {
     "fp-ts": "^2.6.3",
