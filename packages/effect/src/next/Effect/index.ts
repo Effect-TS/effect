@@ -161,6 +161,8 @@ export {
   accessServiceM,
   accessService,
   accessServices,
+  accessServicesTM,
+  accessServicesT,
   HasType,
   InnerHasType,
   readService,
