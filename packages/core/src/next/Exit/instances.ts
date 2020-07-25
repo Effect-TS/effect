@@ -31,6 +31,4 @@ export const applicativeExit: CApplicative2<URI> = {
   ap
 }
 
-export const sequenceArray =
-  
-  A.sequence(applicativeExit)
+export const sequenceArray = A.sequence(applicativeExit)

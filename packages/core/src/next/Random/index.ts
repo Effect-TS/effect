@@ -46,31 +46,21 @@ export class LiveRandom extends Random {
     })
 }
 
-export const defaultRandom =
-  
-  new LiveRandom(String(Math.random()))
+export const defaultRandom = new LiveRandom(String(Math.random()))
 
 export const HasRandom = has(Random)
 export type HasRandom = HasType<typeof HasRandom>
 
-export const next =
-  
-  accessServiceM(HasRandom)((_) => _.next)
+export const next = accessServiceM(HasRandom)((_) => _.next)
 
-export const nextBoolean =
-  
-  accessServiceM(HasRandom)((_) => _.nextBoolean)
+export const nextBoolean = accessServiceM(HasRandom)((_) => _.nextBoolean)
 
 export const nextIntBetween = (low: number, high: number) =>
   accessServiceM(HasRandom)((_) => _.nextIntBetween(low, high))
 
-export const nextInt =
-  
-  accessServiceM(HasRandom)((_) => _.nextInt)
+export const nextInt = accessServiceM(HasRandom)((_) => _.nextInt)
 
-export const nextDouble =
-  
-  accessServiceM(HasRandom)((_) => _.nextDouble)
+export const nextDouble = accessServiceM(HasRandom)((_) => _.nextDouble)
 
 export const nextRange = (low: number, high: number) =>
   accessServiceM(HasRandom)((_) => _.nextRange(low, high))

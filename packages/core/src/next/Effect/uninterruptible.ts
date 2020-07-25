@@ -10,6 +10,4 @@ import { interruptStatus } from "./interruptStatus"
  * Uninterruptible effects may recover from all failure causes (including
  * interruption of an inner effect that has been made interruptible).
  */
-export const uninterruptible =
-  
-  interruptStatus(statusUninterruptible)
+export const uninterruptible = interruptStatus(statusUninterruptible)

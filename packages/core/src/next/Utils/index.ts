@@ -35,6 +35,4 @@ export const pattern: <N extends string>(
     return (_[m[n]] ? _[m[n]](m) : d(m)) as any
   }) as any
 
-export const matchTag =
-  
-  pattern("_tag")
+export const matchTag = pattern("_tag")

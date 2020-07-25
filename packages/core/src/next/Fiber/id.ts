@@ -20,9 +20,7 @@ export const FiberID = (startTimeMillis: number, seqNumber: number): FiberID => 
 /**
  * A sentinel value to indicate a fiber without identity.
  */
-export const None =
-  
-  FiberID(0, 0)
+export const None = FiberID(0, 0)
 
 export const EqFiberID: Eq<FiberID> = {
   equals: (x, y) =>
