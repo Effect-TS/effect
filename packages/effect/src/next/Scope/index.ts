@@ -182,11 +182,11 @@ export class OrderedFinalizer {
 }
 
 const noCause =
-  /*#__PURE__*/
+  
   Empty
 
 const noCauseEffect: Async<Cause<never>> =
-  /*#__PURE__*/
+  
   succeedNow(noCause)
 
 export class Local<A> implements CommonScope<A> {
@@ -341,7 +341,7 @@ export class Local<A> implements CommonScope<A> {
  * global scope will never be executed (nor kept in memory).
  */
 export const globalScope =
-  /*#__PURE__*/
+  
   new Global()
 
 /**

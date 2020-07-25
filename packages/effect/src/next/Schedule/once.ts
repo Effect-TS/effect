@@ -4,6 +4,4 @@ import { unit } from "./unit"
 /**
  * A schedule that executes once.
  */
-export const once =
-  /*#__PURE__*/
-  unit(recurs(1))
+export const once = unit(recurs(1))

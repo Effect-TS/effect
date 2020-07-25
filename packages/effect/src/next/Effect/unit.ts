@@ -5,5 +5,5 @@ import { succeedNow } from "./succeedNow"
  * Returns the effect resulting from mapping the success of this effect to unit.
  */
 export const unit: Sync<void> =
-  /*#__PURE__*/
+  
   succeedNow(undefined)
