@@ -29,7 +29,6 @@ export const Hello = L.service(HasHello).fromEffect(
     (console) =>
       new (class implements Hello {
         hello = (name: string) => T.delay_(console.log(`hi ${name}!`), 200)
-        gen = <K>(k: K) => () => T.succeedNow(k)
       })()
   )
 )
