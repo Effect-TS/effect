@@ -1,3 +1,4 @@
+import * as A from "../../Array"
 import { UnionToIntersection } from "../../Base/Overloads"
 import { pipe } from "../../Function"
 import * as R from "../../Record"
@@ -104,6 +105,50 @@ export const accessServicesM = <SS extends Record<string, Has<any>>>(s: SS) => <
         }[keyof SS]
       >
     ) => f(R.map_(s, (v) => r[v[HasURI].key]) as any)
+  )
+
+export const accessServicesTM = <SS extends Has<any>[]>(...s: SS) => <
+  S,
+  R = unknown,
+  E = never,
+  B = unknown
+>(
+  f: (
+    ...a: {
+      [k in keyof SS]: SS[k] extends Has<infer T> ? T : unknown
+    }
+  ) => Effect<S, R, E, B>
+) =>
+  accessM(
+    (
+      r: UnionToIntersection<
+        {
+          [k in keyof SS]: SS[k] extends Has<infer T> ? Has<T> : never
+        }[keyof SS & number]
+      >
+    ) => f(...(A.map_(s, (v) => r[v[HasURI].key]) as any))
+  )
+
+export const accessServicesT = <SS extends Has<any>[]>(...s: SS) => <
+  S,
+  R = unknown,
+  E = never,
+  B = unknown
+>(
+  f: (
+    ...a: {
+      [k in keyof SS]: SS[k] extends Has<infer T> ? T : unknown
+    }
+  ) => B
+) =>
+  access(
+    (
+      r: UnionToIntersection<
+        {
+          [k in keyof SS]: SS[k] extends Has<infer T> ? Has<T> : never
+        }[keyof SS & number]
+      >
+    ) => f(...(A.map_(s, (v) => r[v[HasURI].key]) as any))
   )
 
 /**

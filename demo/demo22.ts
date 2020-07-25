@@ -3,6 +3,12 @@ import { pipe } from "fp-ts/lib/pipeable"
 import * as T from "../src/next/Effect"
 import * as L from "../src/next/Layer"
 
+export interface Prefix {
+  readonly hi: string
+}
+
+export const HasPrefix = T.has<Prefix>()
+
 export interface Console {
   readonly log: (message: string) => T.UIO<void>
 }
@@ -24,17 +30,25 @@ export const Console = L.service(HasConsole).pure(
   })()
 )
 
+export const Prefix = L.service(HasPrefix).pure({
+  hi: "hi"
+})
+
 export const Hello = L.service(HasHello).fromEffect(
-  T.accessService(HasConsole)(
-    (console) =>
+  T.accessServicesT(
+    HasConsole,
+    HasPrefix
+  )(
+    (console, prefix) =>
       new (class implements Hello {
-        hello = (name: string) => T.delay_(console.log(`hi ${name}!`), 200)
+        hello = (name: string): T.UIO<void> =>
+          T.delay_(console.log(`${prefix.hi} ${name}!`), 200)
       })()
   )
 )
 
 export const hello = T.accessServiceF(HasHello)("hello")
 
-export const env = pipe(Hello, L.using(Console))
+export const env = pipe(Hello, L.using(L.allPar(Console, Prefix)))
 
 pipe(hello("mike"), T.provideSomeLayer(env), T.runMain)
