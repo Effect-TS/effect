@@ -10,12 +10,8 @@ export class InterruptStatus {
   }
 }
 
-export const interruptible =
-  
-  new InterruptStatus(true)
+export const interruptible = new InterruptStatus(true)
 
-export const uninterruptible =
-  
-  new InterruptStatus(false)
+export const uninterruptible = new InterruptStatus(false)
 
 export const fromBoolean = (b: boolean) => (b ? interruptible : uninterruptible)

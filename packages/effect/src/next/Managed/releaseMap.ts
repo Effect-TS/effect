@@ -27,17 +27,11 @@ export class Running {
   ) {}
 }
 
-const insert =
-  
-  M.insertAt(eqNumber)
+const insert = M.insertAt(eqNumber)
 
-const remove =
-  
-  M.deleteAt(eqNumber)
+const remove = M.deleteAt(eqNumber)
 
-const lookup =
-  
-  M.lookup(eqNumber)
+const lookup = M.lookup(eqNumber)
 
 export type State = Exited | Running
 
@@ -172,6 +166,7 @@ export class ReleaseMap {
   }
 }
 
-export const makeReleaseMap =
-  
-  T.map_(R.makeRef<State>(new Running(0, new Map())), (s) => new ReleaseMap(s))
+export const makeReleaseMap = T.map_(
+  R.makeRef<State>(new Running(0, new Map())),
+  (s) => new ReleaseMap(s)
+)

@@ -5,6 +5,4 @@ import { interruptAs } from "./interruptAs"
 /**
  * Returns an effect that is interrupted by the current fiber
  */
-export const interrupt =
-  
-  chain_(fiberId(), interruptAs)
+export const interrupt = chain_(fiberId(), interruptAs)

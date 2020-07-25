@@ -181,13 +181,9 @@ export class OrderedFinalizer {
   constructor(readonly order: number, readonly finalizer: (_: any) => Async<any>) {}
 }
 
-const noCause =
-  
-  Empty
+const noCause = Empty
 
-const noCauseEffect: Async<Cause<never>> =
-  
-  succeedNow(noCause)
+const noCauseEffect: Async<Cause<never>> = succeedNow(noCause)
 
 export class Local<A> implements CommonScope<A> {
   readonly _tag = "Local"
@@ -340,9 +336,7 @@ export class Local<A> implements CommonScope<A> {
  * The global scope, which is entirely stateless. Finalizers added to the
  * global scope will never be executed (nor kept in memory).
  */
-export const globalScope =
-  
-  new Global()
+export const globalScope = new Global()
 
 /**
  * A tuple that contains an open scope, together with a function that closes

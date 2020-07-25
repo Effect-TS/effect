@@ -25,8 +25,6 @@ const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 ): Effect<S2, R2, E2, K & { [k in N]: A }> =>
   map_(mk, (k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
 
-const of =
-  
-  succeedNow({})
+const of = succeedNow({})
 
 export { let_ as let, bind, of, merge }
