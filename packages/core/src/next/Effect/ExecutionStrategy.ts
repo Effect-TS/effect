@@ -14,11 +14,11 @@ export class ParallelN {
 }
 
 export const sequential =
-  /*#__PURE__*/
+  
   new Sequential()
 
 export const parallel =
-  /*#__PURE__*/
+  
   new Parallel()
 
 export const parallelN = (n: number) => new ParallelN(n)

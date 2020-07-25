@@ -41,7 +41,6 @@ pipe(
       console.log(r.foo, r.bar)
     })
   ),
-  layA.use,
-  layB.use,
+  T.provideSomeLayer(L.all(layA, layB)),
   T.runMain
 )

@@ -36,5 +36,5 @@ export const pattern: <N extends string>(
   }) as any
 
 export const matchTag =
-  /*#__PURE__*/
+  
   pattern("_tag")

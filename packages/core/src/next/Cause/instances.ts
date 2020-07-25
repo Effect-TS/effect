@@ -42,24 +42,14 @@ export const applicativeCause: CApplicative1<URI> = {
 // @category Derivations
 //
 
-export const sequenceOption =
-  /*#__PURE__*/
-  O.sequence(applicativeCause)
+export const sequenceOption = O.sequence(applicativeCause)
 
-export const sequenceEither =
-  /*#__PURE__*/
-  E.sequence(applicativeCause)
+export const sequenceEither = E.sequence(applicativeCause)
 
-export const sequenceArray =
-  /*#__PURE__*/
-  A.sequence(applicativeCause)
+export const sequenceArray = A.sequence(applicativeCause)
 
-export const sequenceT =
-  /*#__PURE__*/
-  AP.sequenceT(applicativeCause)
+export const sequenceT = AP.sequenceT(applicativeCause)
 
-export const sequenceS =
-  /*#__PURE__*/
-  AP.sequenceS(applicativeCause)
+export const sequenceS = AP.sequenceS(applicativeCause)
 
 export const Do = () => D.Do(monadCause)
