@@ -42,16 +42,38 @@ import * as Sink from "../sink"
  * Instead, recursive operators must be defined explicitly. See the definition of
  * `forever` for an example. This limitation will be lifted in the future.
  */
-export class Stream<S, R, E, O> {
+export class Stream<S, R, E, A> {
+  readonly [T._U]: StreamURI;
+  readonly [T._S]: () => S;
+  readonly [T._E]: () => E;
+  readonly [T._A]: () => A;
+  readonly [T._R]: (_: R) => void
+
   constructor(
-    readonly proc: M.Managed<S, R, never, T.Effect<S, R, O.Option<E>, O[]>>
+    readonly proc: M.Managed<S, R, never, T.Effect<S, R, O.Option<E>, A[]>>
   ) {}
+}
+
+export const StreamURI = "@matechs/core/Eff/StreamURI"
+export type StreamURI = typeof StreamURI
+
+declare module "../../../Base/HKT" {
+  interface MaToKind<S, R, E, A> {
+    [StreamURI]: Stream<S, R, E, A>
+  }
 }
 
 /**
  * Type aliases
  */
-export type Sync<O> = Stream<never, unknown, never, O>
+export type Sync<A> = Stream<never, unknown, never, A>
+export type SyncE<E, A> = Stream<never, unknown, E, A>
+export type SyncR<R, A> = Stream<never, R, never, A>
+export type SyncRE<R, E, A> = Stream<never, R, E, A>
+export type Async<A> = Stream<unknown, unknown, never, A>
+export type AsyncR<R, A> = Stream<unknown, R, never, A>
+export type AsyncE<E, A> = Stream<unknown, unknown, E, A>
+export type AsyncRE<R, E, A> = Stream<unknown, R, E, A>
 
 /**
  * The default chunk size used by the various combinators and constructors of [[Stream]].
