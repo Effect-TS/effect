@@ -1,10 +1,15 @@
+import * as A from "../../../Array"
 import * as E from "../../../Either"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
+import { coerceSE } from "../../Managed/deps"
+import { noop } from "../../Managed/managed"
+import { Finalizer, makeReleaseMap, ReleaseMap } from "../../Managed/releaseMap"
 import * as R from "../../Ref"
 import * as BPull from "../bufferedPull"
 import * as C from "../internal/cause"
 import * as T from "../internal/effect"
+import * as Exit from "../internal/exit"
 import * as M from "../internal/managed"
 import * as Pull from "../pull"
 import * as Sink from "../sink"
@@ -16,7 +21,7 @@ import * as Sink from "../sink"
  * One way to think of `Stream` is as a `Effect` program that could emit multiple values.
  *
  * This data type can emit multiple `A` values through multiple calls to `next`.
- * Similarly, embedded inside every `Stream` is an Effect program: `Effect<S, R, Option<E>, O[]>`.
+ * Similarly, embedded inside every `Stream` is an Effect program: `Effect<S, R, Option<E>, A.Array<O>>`.
  * This program will be repeatedly evaluated as part of the stream execution. For
  * every evaluation, it will emit a chunk of values or end with an optional failure.
  * A failure of type `None` signals the end of the stream.
@@ -50,7 +55,7 @@ export class Stream<S, R, E, A> {
   readonly [T._R]: (_: R) => void
 
   constructor(
-    readonly proc: M.Managed<S, R, never, T.Effect<S, R, O.Option<E>, A[]>>
+    readonly proc: M.Managed<S, R, never, T.Effect<S, R, O.Option<E>, A.Array<A>>>
   ) {}
 }
 
@@ -120,14 +125,14 @@ export const fromEffect = <S, R, E, A>(fa: T.Effect<S, R, E, A>): Stream<S, R, E
 /**
  * Creates a stream from an array of values
  */
-export const fromArray = <O>(c: O[]): Sync<O> =>
+export const fromArray = <O>(c: A.Array<O>): Sync<O> =>
   new Stream(
     pipe(
       R.makeRef(false),
       T.map((doneRef) =>
         pipe(
           doneRef,
-          R.modify((done): [T.SyncE<O.Option<never>, O[]>, boolean] =>
+          R.modify((done): [T.SyncE<O.Option<never>, A.Array<O>>, boolean] =>
             done || c.length === 0 ? [Pull.end, true] : [T.succeedNow(c), true]
           ),
           T.flatten
@@ -200,7 +205,7 @@ export const run = <S1, R1, E1, O, B>(sink: Sink.Sink<S1, R1, E1, O, any, B>) =>
  */
 export const runCollect = <S, R, E, O>(
   self: Stream<S, R, E, O>
-): T.Effect<S, R, E, O[]> => pipe(self, run(Sink.collectAll<O>()))
+): T.Effect<S, R, E, A.Array<O>> => pipe(self, run(Sink.collectAll<O>()))
 
 /**
  * Maps over elements of the stream with the specified effectful function.
@@ -230,3 +235,128 @@ export const mapM = <O, S1, R1, E1, O1>(f: (o: O) => T.Effect<S1, R1, E1, O1>) =
       )
     )
   )
+
+const pullNonEmpty = <S, R, E, O>(
+  pull: T.Effect<S, R, O.Option<E>, A.Array<O>>
+): T.Effect<S, R, O.Option<E>, A.Array<O>> =>
+  pipe(
+    pull,
+    T.chain((os) => (os.length > 0 ? T.succeedNow(os) : pullNonEmpty(pull)))
+  )
+
+export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) => <
+  S,
+  R,
+  E
+>(
+  self: Stream<S, R, E, O>
+) => {
+  type S_ = S | S1
+  type R_ = R & R1
+  type E_ = E | E1
+
+  const go = (
+    outerStream: T.Effect<S_, R_, O.Option<E_>, A.Array<O>>,
+    currOuterChunk: R.Ref<[A.Array<O>, number]>,
+    currInnerStream: R.Ref<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>,
+    innerFinalizer: R.Ref<Finalizer>
+  ): T.Effect<S_, R_, O.Option<E_>, A.Array<O2>> => {
+    const closeInner = pipe(
+      innerFinalizer,
+      R.getAndSet(noop),
+      T.chain((f) => f(Exit.unit)),
+      coerceSE<S_, O.Option<E_>>()
+    )
+
+    const pullOuter = pipe(
+      currOuterChunk,
+      R.modify(([chunk, nextIdx]): [
+        T.Effect<S_, R_, O.Option<E_>, O>,
+        [A.Array<O>, number]
+      ] => {
+        if (nextIdx < chunk.length) {
+          return [T.succeedNow(chunk[nextIdx]), [chunk, nextIdx + 1]]
+        } else {
+          return [
+            pipe(
+              pullNonEmpty(outerStream),
+              T.tap((os) => currOuterChunk.set([os, 1])),
+              T.map((os) => os[0])
+            ),
+            [chunk, nextIdx]
+          ]
+        }
+      }),
+      T.flatten,
+      T.chain((o) =>
+        T.uninterruptibleMask(({ restore }) =>
+          pipe(
+            T.of,
+            T.bind("releaseMap", () => makeReleaseMap),
+            T.bind("pull", ({ releaseMap }) =>
+              restore(
+                pipe(
+                  f0(o).proc.effect,
+                  T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap]),
+                  T.map(([_, x]) => x)
+                )
+              )
+            ),
+            T.tap(({ pull }) => currInnerStream.set(pull)),
+            T.tap(({ releaseMap }) =>
+              innerFinalizer.set((e) => releaseMap.releaseAll(e, T.sequential))
+            ),
+            T.asUnit,
+            coerceSE<S_, O.Option<E_>>()
+          )
+        )
+      )
+    )
+
+    return pipe(
+      currInnerStream.get,
+      T.flatten,
+      T.catchAllCause((c) =>
+        pipe(
+          c,
+          C.sequenceCauseOption,
+          O.fold(
+            // The additional switch is needed to eagerly run the finalizer
+            // *before* pulling another element from the outer stream.
+            () =>
+              pipe(
+                closeInner,
+                T.chain(() => pullOuter),
+                T.chain(() =>
+                  go(outerStream, currOuterChunk, currInnerStream, innerFinalizer)
+                )
+              ),
+            Pull.halt
+          )
+        )
+      )
+    )
+  }
+
+  return new Stream<S_, R_, E_, O2>(
+    pipe(
+      M.of,
+      M.bind("outerStream", () => self.proc),
+      M.bind("currOuterChunk", () =>
+        T.toManaged(
+          R.makeRef<[A.Array<O>, number]>([[], 0])
+        )
+      ),
+      M.bind("currInnerStream", () =>
+        T.toManaged(R.makeRef<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>(Pull.end))
+      ),
+      M.bind(
+        "innerFinalizer",
+        () => M.finalizerRef(noop) as M.Managed<S_, R_, never, R.Ref<Finalizer>>
+      ),
+      M.map(({ currInnerStream, currOuterChunk, innerFinalizer, outerStream }) =>
+        go(outerStream, currOuterChunk, currInnerStream, innerFinalizer)
+      )
+    )
+  )
+}
