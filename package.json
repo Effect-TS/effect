@@ -156,7 +156,14 @@
       "next/Has",
       "next/Layer",
       "next/ProcessManager",
-      "next/Runtime"
+      "next/Runtime",
+      "next/Stream",
+      "next/Stream/stream",
+      "next/Stream/sink",
+      "next/Stream/take",
+      "next/Stream/pull",
+      "next/Stream/internal",
+      "next/Stream/bufferedPull"
     ]
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"
