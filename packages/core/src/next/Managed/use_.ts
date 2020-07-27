@@ -22,3 +22,11 @@ export const use_ = <S, R, E, A, S2, R2, E2, B>(
     (rm, ex) => releaseAll<S, E>(rm, ex)
   )
 }
+
+/**
+ * Runs the acquire and release actions and returns the result of this
+ * managed effect. Note that this is only safe if the result of this managed
+ * effect is valid outside its scope.
+ */
+export const useNow = <S, R, E, A>(self: Managed<S, R, E, A>) =>
+  use_(self, T.succeedNow)
