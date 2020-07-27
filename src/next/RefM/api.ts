@@ -36,7 +36,7 @@ export const unsafeMakeRefM = <A>(a: A): RefM<A> => {
  * `Managed.`
  */
 export const makeManagedRefM = <A>(a: A): M.Sync<RefM<A>> =>
-  pipe(makeRefM(a), T.toManaged)
+  pipe(makeRefM(a), T.toManaged())
 
 /**
  * Creates a new `RefM` and a `Dequeue` that will emit every change to the
