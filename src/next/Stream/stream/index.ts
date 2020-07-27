@@ -236,40 +236,41 @@ export const mapM = <O, S1, R1, E1, O1>(f: (o: O) => T.Effect<S1, R1, E1, O1>) =
     )
   )
 
-const pullNonEmpty = <S, R, E, O>(
-  pull: T.Effect<S, R, O.Option<E>, A.Array<O>>
-): T.Effect<S, R, O.Option<E>, A.Array<O>> =>
-  pipe(
-    pull,
-    T.chain((os) => (os.length > 0 ? T.succeedNow(os) : pullNonEmpty(pull)))
-  )
+class Chain<S_, R_, E_, O, O2> {
+  constructor(
+    readonly f0: (a: O) => Stream<S_, R_, E_, O2>,
+    readonly outerStream: T.Effect<S_, R_, O.Option<E_>, A.Array<O>>,
+    readonly currOuterChunk: R.Ref<[A.Array<O>, number]>,
+    readonly currInnerStream: R.Ref<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>,
+    readonly innerFinalizer: R.Ref<Finalizer>
+  ) {
+    this.apply = this.apply.bind(this)
+    this.closeInner = this.closeInner.bind(this)
+    this.pullNonEmpty = this.pullNonEmpty.bind(this)
+    this.pullOuter = this.pullOuter.bind(this)
+  }
 
-export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) => <
-  S,
-  R,
-  E
->(
-  self: Stream<S, R, E, O>
-) => {
-  type S_ = S | S1
-  type R_ = R & R1
-  type E_ = E | E1
-
-  const go = (
-    outerStream: T.Effect<S_, R_, O.Option<E_>, A.Array<O>>,
-    currOuterChunk: R.Ref<[A.Array<O>, number]>,
-    currInnerStream: R.Ref<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>,
-    innerFinalizer: R.Ref<Finalizer>
-  ): T.Effect<S_, R_, O.Option<E_>, A.Array<O2>> => {
-    const closeInner = pipe(
-      innerFinalizer,
+  closeInner() {
+    return pipe(
+      this.innerFinalizer,
       R.getAndSet(noop),
       T.chain((f) => f(Exit.unit)),
       coerceSE<S_, O.Option<E_>>()
     )
+  }
 
-    const pullOuter = pipe(
-      currOuterChunk,
+  pullNonEmpty<S, R, E, O>(
+    pull: T.Effect<S, R, O.Option<E>, A.Array<O>>
+  ): T.Effect<S, R, O.Option<E>, A.Array<O>> {
+    return pipe(
+      pull,
+      T.chain((os) => (os.length > 0 ? T.succeedNow(os) : this.pullNonEmpty(pull)))
+    )
+  }
+
+  pullOuter() {
+    return pipe(
+      this.currOuterChunk,
       R.modify(([chunk, nextIdx]): [
         T.Effect<S_, R_, O.Option<E_>, O>,
         [A.Array<O>, number]
@@ -279,8 +280,8 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
         } else {
           return [
             pipe(
-              pullNonEmpty(outerStream),
-              T.tap((os) => currOuterChunk.set([os, 1])),
+              this.pullNonEmpty(this.outerStream),
+              T.tap((os) => this.currOuterChunk.set([os, 1])),
               T.map((os) => os[0])
             ),
             [chunk, nextIdx]
@@ -296,15 +297,15 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
             T.bind("pull", ({ releaseMap }) =>
               restore(
                 pipe(
-                  f0(o).proc.effect,
+                  this.f0(o).proc.effect,
                   T.provideSome((_: R_) => [_, releaseMap] as [R_, ReleaseMap]),
                   T.map(([_, x]) => x)
                 )
               )
             ),
-            T.tap(({ pull }) => currInnerStream.set(pull)),
+            T.tap(({ pull }) => this.currInnerStream.set(pull)),
             T.tap(({ releaseMap }) =>
-              innerFinalizer.set((e) => releaseMap.releaseAll(e, T.sequential))
+              this.innerFinalizer.set((e) => releaseMap.releaseAll(e, T.sequential))
             ),
             T.asUnit,
             coerceSE<S_, O.Option<E_>>()
@@ -312,9 +313,11 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
         )
       )
     )
+  }
 
+  apply(): T.Effect<S_, R_, O.Option<E_>, A.Array<O2>> {
     return pipe(
-      currInnerStream.get,
+      this.currInnerStream.get,
       T.flatten,
       T.catchAllCause((c) =>
         pipe(
@@ -325,10 +328,16 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
             // *before* pulling another element from the outer stream.
             () =>
               pipe(
-                closeInner,
-                T.chain(() => pullOuter),
+                this.closeInner(),
+                T.chain(() => this.pullOuter()),
                 T.chain(() =>
-                  go(outerStream, currOuterChunk, currInnerStream, innerFinalizer)
+                  new Chain(
+                    this.f0,
+                    this.outerStream,
+                    this.currOuterChunk,
+                    this.currInnerStream,
+                    this.innerFinalizer
+                  ).apply()
                 )
               ),
             Pull.halt
@@ -337,6 +346,18 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
       )
     )
   }
+}
+
+export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) => <
+  S,
+  R,
+  E
+>(
+  self: Stream<S, R, E, O>
+) => {
+  type S_ = S | S1
+  type R_ = R & R1
+  type E_ = E | E1
 
   return new Stream<S_, R_, E_, O2>(
     pipe(
@@ -355,7 +376,13 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
         () => M.finalizerRef(noop) as M.Managed<S_, R_, never, R.Ref<Finalizer>>
       ),
       M.map(({ currInnerStream, currOuterChunk, innerFinalizer, outerStream }) =>
-        go(outerStream, currOuterChunk, currInnerStream, innerFinalizer)
+        new Chain(
+          f0,
+          outerStream,
+          currOuterChunk,
+          currInnerStream,
+          innerFinalizer
+        ).apply()
       )
     )
   )
