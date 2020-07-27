@@ -17,5 +17,6 @@ export {
   SyncE,
   SyncR,
   SyncRE,
-  chain
+  chain,
+  catchAllCause
 } from "./stream"

@@ -1,10 +1,11 @@
 import { pipe } from "fp-ts/lib/pipeable"
 
+import * as A from "../../../Array"
 import * as O from "../../../Option"
 import { Cause } from "../../Cause/cause"
 import * as T from "../internal/effect"
 
-export type Pull<S, R, E, O> = T.Effect<S, R, O.Option<E>, O[]>
+export type Pull<S, R, E, O> = T.Effect<S, R, O.Option<E>, A.Array<O>>
 
 export const end = T.fail(O.none)
 

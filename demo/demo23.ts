@@ -11,9 +11,11 @@ pipe(
       T.effectTotal(() => {
         console.log(`process: ${n}`)
       }),
-      T.chain(() => T.effectTotal(() => n + 1))
+      T.chain(() => T.effectTotal(() => n + 1)),
+      T.tap(() => T.fail("error"))
     )
   ),
+  S.catchAllCause(() => S.fromArray(A.range(10, 15))),
   S.runCollect,
   T.chain((ns) =>
     T.effectTotal(() => {
