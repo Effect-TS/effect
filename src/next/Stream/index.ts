@@ -8,5 +8,14 @@ export {
   Sync,
   run,
   runCollect,
-  mapM
+  mapM,
+  Async,
+  AsyncE,
+  AsyncR,
+  AsyncRE,
+  StreamURI,
+  SyncE,
+  SyncR,
+  SyncRE,
+  chain
 } from "./stream"

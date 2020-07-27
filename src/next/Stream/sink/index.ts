@@ -1,3 +1,4 @@
+import * as A from "../../../Array"
 import * as E from "../../../Either"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
@@ -21,13 +22,13 @@ export class Sink<S, R, E, I, L, Z> {
 }
 
 export type Push<S, R, E, I, L, Z> = (
-  _: O.Option<I[]>
-) => T.Effect<S, R, [E.Either<E, Z>, L[]], void>
+  _: O.Option<A.Array<I>>
+) => T.Effect<S, R, [E.Either<E, Z>, A.Array<L>], void>
 
 export const emit = <I, Z>(
   z: Z,
-  leftover: I[]
-): T.SyncE<[E.Either<never, Z>, I[]], never> => T.fail([E.right(z), leftover])
+  leftover: A.Array<I>
+): T.SyncE<[E.Either<never, Z>, A.Array<I>], never> => T.fail([E.right(z), leftover])
 
 export const fromPush = <S, R, E, I, L, Z>(push: Push<S, R, E, I, L, Z>) =>
   new Sink(M.succeedNow(push))
@@ -36,7 +37,7 @@ export const succeed = <Z, I>(z: Z): Sink<never, unknown, never, I, I, Z> =>
   fromPush<never, unknown, never, I, I, Z>((c) => {
     const leftover = O.fold_(
       c,
-      () => [] as I[],
+      () => [] as A.Array<I>,
       (x) => x
     )
 
@@ -51,14 +52,14 @@ export const more = T.unit
  * `f` and `contFn` must preserve chunking-invariance.
  */
 export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, S, R, E>(
-  f: (s: Z, i: I[]) => T.Effect<S, R, E, Z>
+  f: (s: Z, i: A.Array<I>) => T.Effect<S, R, E, Z>
 ): Sink<S, R, E, I, I, Z> => {
   if (contFn(z)) {
     return new Sink(
       pipe(
         M.of,
         M.bind("state", () => pipe(R.makeRef(z), T.toManaged)),
-        M.let("push", ({ state }) => (is: O.Option<I[]>) => {
+        M.let("push", ({ state }) => (is: O.Option<A.Array<I>>) => {
           switch (is._tag) {
             case "None": {
               return pipe(
@@ -72,7 +73,9 @@ export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, S, R,
                 T.chain((s) =>
                   pipe(
                     f(s, is.value),
-                    T.mapError((e) => [E.left(e), []] as [E.Either<E, never>, I[]]),
+                    T.mapError(
+                      (e) => [E.left(e), []] as [E.Either<E, never>, A.Array<I>]
+                    ),
                     T.chain((s) =>
                       contFn(s)
                         ? pipe(
@@ -101,19 +104,19 @@ export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, S, R,
  * `f` and `contFn` must preserve chunking-invariance.
  */
 export const foldArrays = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I>(
-  f: (s: Z, i: I[]) => Z
+  f: (s: Z, i: A.Array<I>) => Z
 ): Sink<never, unknown, never, I, I, Z> =>
-  foldArraysM(z)(contFn)((z, i: I[]) => T.succeedNow(f(z, i)))
+  foldArraysM(z)(contFn)((z, i: A.Array<I>) => T.succeedNow(f(z, i)))
 
 /**
  * A sink that folds its input chunks with the provided function and initial state.
  * `f` must preserve chunking-invariance.
  */
-export const foldLeftArrays = <Z>(z: Z) => <I>(f: (s: Z, i: I[]) => Z) =>
+export const foldLeftArrays = <Z>(z: Z) => <I>(f: (s: Z, i: A.Array<I>) => Z) =>
   foldArrays(z)(() => true)(f)
 
 /**
  * A sink that collects all of its inputs into an array.
  */
-export const collectAll = <A>(): Sink<never, unknown, never, A, A, A[]> =>
-  foldLeftArrays([] as A[])((s, i: A[]) => [...s, ...i])
+export const collectAll = <A>(): Sink<never, unknown, never, A, A, A.Array<A>> =>
+  foldLeftArrays([] as A.Array<A>)((s, i: A.Array<A>) => [...s, ...i])
