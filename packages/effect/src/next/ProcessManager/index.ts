@@ -120,8 +120,8 @@ export const processMapLayer = L.service(HasProcessMap).fromEffect(
  * Fork a new managed process without any identifier, a managed process runs
  * in background and will trigger interruption if any failure happens
  */
-export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
-  new Layer.Layer<unknown, R & HasProcessMap, E, HasProcessRegistry>(
+export const makeGenericProcess = <S, R, A>(effect: T.Effect<S, R, never, A>) =>
+  new Layer.Layer<unknown, R & HasProcessMap, never, HasProcessRegistry>(
     pipe(
       M.fromEffect(T.readService(HasProcessMap)),
       M.chain((pm) =>
@@ -163,19 +163,18 @@ export const makeGenericProcess = <S, R, E, A>(effect: T.Effect<S, R, E, A>) =>
 /**
  * Identifies a process in environment
  */
-export const hasProcess = <ID extends string>(_: ID) => <E, A>() =>
-  T.has<Process<E, A, ID>>()
+export const hasProcess = <ID extends string>(_: ID) => <A>() => T.has<Process<A, ID>>()
 
-export type HasProcess<ID extends string, E, A> = T.Has<Process<E, A, ID>>
+export type HasProcess<ID extends string, A> = T.Has<Process<A, ID>>
 
 /**
  * Access a forked process
  */
-export class Process<E, A, ID> {
+export class Process<A, ID> {
   readonly _ID!: ID
   readonly _TAG = "@matechs/core/Eff/Layer/Fork"
 
-  constructor(readonly _FIBER: F.FiberContext<E, A>) {}
+  constructor(readonly _FIBER: F.FiberContext<never, A>) {}
 
   getRef<A>(ref: FR.FiberRef<A>) {
     return this._FIBER.getRef(ref)
@@ -194,17 +193,14 @@ export class Process<E, A, ID> {
  * Fork a new managed process, a managed process runs in background and
  * will trigger interruption if any failure happens
  */
-export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) => <
-  S,
-  R
->(
-  effect: T.Effect<S, R, E, A>
+export const makeProcess = <ID extends string, A>(has: HasProcess<ID, A>) => <S, R>(
+  effect: T.Effect<S, R, never, A>
 ) =>
   new Layer.Layer<
     unknown,
     R & HasProcessMap,
-    E,
-    HasProcess<ID, E, A> & HasProcessRegistry
+    never,
+    HasProcess<ID, A> & HasProcessRegistry
   >(
     pipe(
       M.fromEffect(T.readService(HasProcessMap)),
@@ -237,7 +233,7 @@ export const makeProcess = <ID extends string, E, A>(has: HasProcess<ID, E, A>) 
           M.chain((a) =>
             M.map_(
               environmentFor(has, a),
-              (e): HasProcess<ID, E, A> & HasProcessRegistry =>
+              (e): HasProcess<ID, A> & HasProcessRegistry =>
                 ({
                   ...e,
                   [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)

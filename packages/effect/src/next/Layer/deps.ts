@@ -1,7 +1,7 @@
 export { _brand } from "../../Branded"
 export { provideSome_ } from "../Effect/provideSome"
 export { provideAll_ } from "../Effect/provideAll_"
-export { Effect, Sync, SyncE, AsyncE, AsyncRE } from "../Effect/effect"
+export { Effect, Sync, SyncE, AsyncE, Async, AsyncRE } from "../Effect/effect"
 export { effectTotal } from "../Effect/effectTotal"
 export { checkDescriptor } from "../Effect/checkDescriptor"
 export { succeedNow } from "../Effect/succeedNow"

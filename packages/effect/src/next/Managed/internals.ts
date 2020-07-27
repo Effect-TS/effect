@@ -2,11 +2,11 @@ import { sequential } from "../Effect/ExecutionStrategy"
 
 import * as T from "./deps"
 import { Managed } from "./managed"
-import { ReleaseMap, FinalizerT } from "./releaseMap"
+import { ReleaseMap, Finalizer } from "./releaseMap"
 
 export function internalEffect<S, R, E, A>(
   self: Managed<S, R, E, A>
-): T.Effect<S, [R, ReleaseMap], E, [FinalizerT<E>, A]> {
+): T.Effect<S, [R, ReleaseMap], E, [Finalizer, A]> {
   return T.coerceSE<S, E>()(self.effect)
 }
 

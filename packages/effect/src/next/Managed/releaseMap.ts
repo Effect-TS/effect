@@ -8,11 +8,9 @@ import * as R from "../Ref"
 
 import * as T from "./deps"
 
-export type Finalizer = (exit: T.Exit<any, any>) => T.Effect<unknown, unknown, any, any>
-
-export type FinalizerT<E> = (
+export type Finalizer = (
   exit: T.Exit<any, any>
-) => T.Effect<unknown, unknown, E, any>
+) => T.Effect<unknown, unknown, never, any>
 
 export class Exited {
   readonly _tag = "Exited"
@@ -42,7 +40,7 @@ export class ReleaseMap {
     return l + 1
   }
 
-  add<E>(finalizer: FinalizerT<E>): T.AsyncE<E, Finalizer> {
+  add(finalizer: Finalizer): T.Async<Finalizer> {
     return T.map_(
       this.addIfOpen(finalizer),
       O.fold(
@@ -75,13 +73,10 @@ export class ReleaseMap {
     )
   }
 
-  releaseAll(
-    exit: T.Exit<any, any>,
-    execStrategy: ExecutionStrategy
-  ): T.AsyncE<any, any> {
+  releaseAll(exit: T.Exit<any, any>, execStrategy: ExecutionStrategy): T.Async<any> {
     return pipe(
       this.ref,
-      R.modify((s): [T.AsyncE<any, any>, State] => {
+      R.modify((s): [T.Async<any>, State] => {
         switch (s._tag) {
           case "Exited": {
             return [T.unit, s]
@@ -139,10 +134,10 @@ export class ReleaseMap {
     )
   }
 
-  addIfOpen<E>(finalizer: FinalizerT<E>) {
+  addIfOpen(finalizer: Finalizer) {
     return pipe(
       this.ref,
-      R.modify<T.AsyncE<E, O.Option<number>>, State>((s) => {
+      R.modify<T.Async<O.Option<number>>, State>((s) => {
         switch (s._tag) {
           case "Exited": {
             return [

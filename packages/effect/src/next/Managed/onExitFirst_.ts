@@ -8,11 +8,11 @@ import { ReleaseMap, makeReleaseMap } from "./releaseMap"
  * Ensures that a cleanup function runs when this ZManaged is finalized, before
  * the existing finalizers.
  */
-export const onExitFirst_ = <S, R, E, A, S2, R2, E2>(
+export const onExitFirst_ = <S, R, E, A, S2, R2>(
   self: Managed<S, R, E, A>,
-  cleanup: (exit: T.Exit<E, A>) => T.Effect<S2, R2, E2, any>
+  cleanup: (exit: T.Exit<E, A>) => T.Effect<S2, R2, never, any>
 ) =>
-  new Managed<S | S2, R & R2, E | E2, A>(
+  new Managed<S | S2, R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
       T.Do()
         .bind("tp", T.environment<[R & R2, ReleaseMap]>())
