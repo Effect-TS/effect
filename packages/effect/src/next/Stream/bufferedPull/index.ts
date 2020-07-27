@@ -1,3 +1,4 @@
+import * as A from "../../../Array"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as R from "../../Ref"
@@ -6,9 +7,9 @@ import * as Pull from "../pull"
 
 export class BufferedPull<S, R, E, A> {
   constructor(
-    readonly upstream: T.Effect<S, R, O.Option<E>, A[]>,
+    readonly upstream: T.Effect<S, R, O.Option<E>, A.Array<A>>,
     readonly done: R.Ref<boolean>,
-    readonly cursor: R.Ref<[A[], number]>
+    readonly cursor: R.Ref<[A.Array<A>, number]>
   ) {}
 }
 
@@ -54,7 +55,7 @@ export const pullElements = <S, R, E, A>(
     ifNotDone(
       pipe(
         self.cursor,
-        R.modify(([c, i]): [T.Effect<S, R, O.Option<E>, A>, [A[], number]] => {
+        R.modify(([c, i]): [T.Effect<S, R, O.Option<E>, A>, [A.Array<A>, number]] => {
           if (i >= c.length) {
             return [
               pipe(
@@ -72,10 +73,10 @@ export const pullElements = <S, R, E, A>(
     )
   )
 
-export const make = <S, R, E, A>(pull: T.Effect<S, R, O.Option<E>, A[]>) =>
+export const make = <S, R, E, A>(pull: T.Effect<S, R, O.Option<E>, A.Array<A>>) =>
   pipe(
     T.of,
     T.bind("done", () => R.makeRef(false)),
-    T.bind("cursor", () => R.makeRef<[A[], number]>([[], 0])),
+    T.bind("cursor", () => R.makeRef<[A.Array<A>, number]>([[], 0])),
     T.map(({ cursor, done }) => new BufferedPull(pull, done, cursor))
   )
