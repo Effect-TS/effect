@@ -158,13 +158,14 @@
       "next/ProcessManager",
       "next/Runtime",
       "next/Stream",
-      "next/Stream/stream",
-      "next/Stream/sink",
-      "next/Stream/take",
-      "next/Stream/pull",
-      "next/Stream/internal",
-      "next/Stream/bufferedPull",
-      "next/Stream/transducer"
+      "next/Stream/_internal",
+      "next/Stream/BufferedPull",
+      "next/Stream/Pull",
+      "next/Stream/Push",
+      "next/Stream/Sink",
+      "next/Stream/Stream",
+      "next/Stream/Take",
+      "next/Stream/Transducer"
     ]
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"

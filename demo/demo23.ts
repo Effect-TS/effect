@@ -3,7 +3,7 @@ import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
 import * as M from "../src/next/Managed"
 import * as S from "../src/next/Stream"
-import * as TR from "../src/next/Stream/transducer"
+import * as TR from "../src/next/Stream/Transducer"
 
 pipe(
   S.fromArray(A.range(0, 3)),
