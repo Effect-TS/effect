@@ -20,4 +20,4 @@ export {
   chain,
   catchAllCause,
   aggregate
-} from "./stream"
+} from "./Stream"
