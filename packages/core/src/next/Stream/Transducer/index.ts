@@ -1,7 +1,7 @@
 import * as A from "../../../Array"
 import * as O from "../../../Option"
-import * as T from "../internal/effect"
-import * as M from "../internal/managed"
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 
 // Contract notes for transducers:
 // - When a None is received, the transducer must flush all of its internal state
