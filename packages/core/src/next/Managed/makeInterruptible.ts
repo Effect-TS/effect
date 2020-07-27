@@ -7,7 +7,7 @@ import { onExitFirst_ } from "./onExitFirst_"
  * The acquire action will be performed interruptibly, while release
  * will be performed uninterruptibly.
  */
-export const makeInterruptible = <A, S1, R1, E1>(
-  release: (a: A) => T.Effect<S1, R1, E1, any>
+export const makeInterruptible = <A, S1, R1>(
+  release: (a: A) => T.Effect<S1, R1, never, unknown>
 ) => <S, R, E>(acquire: T.Effect<S, R, E, A>) =>
   onExitFirst_(fromEffect(acquire), T.exitForeach(release))
