@@ -3,8 +3,8 @@ import * as T from "../src/next/Effect"
 import * as L from "../src/next/Layer"
 import * as PM from "../src/next/ProcessManager"
 
-const HasProcessA = PM.hasProcess("processA")<never, void>()
-const HasProcessB = PM.hasProcess("processB")<never, void>()
+const HasProcessA = PM.hasProcess("processA")()
+const HasProcessB = PM.hasProcess("processB")()
 
 const processA = pipe(
   T.effectTotal(() => {

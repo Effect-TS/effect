@@ -7,9 +7,9 @@ import { onExitFirst_ } from "./onExitFirst_"
  * The acquire action will be performed interruptibly, while release
  * will be performed uninterruptibly.
  */
-export const makeInterruptible_ = <S, R, E, A, S1, R1, E1>(
+export const makeInterruptible_ = <S, R, E, A, S1, R1>(
   acquire: T.Effect<S, R, E, A>,
-  release: (a: A) => T.Effect<S1, R1, E1, any>
+  release: (a: A) => T.Effect<S1, R1, never, unknown>
 ) =>
   onExitFirst_(fromEffect(acquire), (e) => {
     switch (e._tag) {

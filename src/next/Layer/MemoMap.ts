@@ -109,7 +109,7 @@ export class MemoMap {
                                         innerReleaseMap.releaseAll(
                                           e,
                                           sequential
-                                        ) as T.AsyncE<E, any>
+                                        ) as T.Async<any>
                                       )
                                     )
                                   ),

@@ -6,11 +6,11 @@ import { ReleaseMap } from "./releaseMap"
  * Lifts a `Effect<S, R, E, A>` into `Managed<S, R, E, A>` with a release action
  * that handles `Exit`. The acquire and release actions will be performed uninterruptibly.
  */
-export const makeExit_ = <S, R, E, A, S1, R1, E1>(
+export const makeExit_ = <S, R, E, A, S1, R1>(
   acquire: T.Effect<S, R, E, A>,
-  release: (a: A, exit: T.Exit<any, any>) => T.Effect<S1, R1, E1, any>
+  release: (a: A, exit: T.Exit<any, any>) => T.Effect<S1, R1, never, unknown>
 ) =>
-  new Managed<S | S1, R & R1, E | E1, A>(
+  new Managed<S | S1, R & R1, E, A>(
     T.uninterruptible(
       T.Do()
         .bind("r", T.environment<[R & R1, ReleaseMap]>())

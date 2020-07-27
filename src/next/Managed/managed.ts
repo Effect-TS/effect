@@ -1,5 +1,5 @@
 import * as T from "./deps"
-import { ReleaseMap, Finalizer, FinalizerT } from "./releaseMap"
+import { ReleaseMap, Finalizer } from "./releaseMap"
 
 export const noop: Finalizer = () => T.unit
 
@@ -13,7 +13,7 @@ export class Managed<S, R, E, A> {
   readonly [T._A]: () => A;
   readonly [T._R]: (_: R) => void
 
-  constructor(readonly effect: T.AsyncRE<[R, ReleaseMap], E, [FinalizerT<E>, A]>) {}
+  constructor(readonly effect: T.AsyncRE<[R, ReleaseMap], E, [Finalizer, A]>) {}
 }
 
 declare module "../../Base/HKT" {

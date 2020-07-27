@@ -26,7 +26,7 @@ export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
   acquire: T.Effect<S, R, E, A>
 ) => ({
   open: <S1, R1, E1>(open: (_: A) => T.Effect<S1, R1, E1, any>) => ({
-    release: <S2, R2, E2>(release: (_: A) => T.Effect<S2, R2, E2, any>) =>
+    release: <S2, R2>(release: (_: A) => T.Effect<S2, R2, never, any>) =>
       fromManaged(has)(
         T.managedChain_(
           T.makeExit_(acquire, (a) => release(a)),
@@ -34,7 +34,7 @@ export const prepare = <T>(has: T.Has<T>) => <S, R, E, A extends T>(
         )
       )
   }),
-  release: <S2, R2, E2>(release: (_: A) => T.Effect<S2, R2, E2, any>) =>
+  release: <S2, R2>(release: (_: A) => T.Effect<S2, R2, never, any>) =>
     fromManaged(has)(T.makeExit_(acquire, (a) => release(a)))
 })
 
