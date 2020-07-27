@@ -96,7 +96,7 @@ export const fromEffectOption = <S, R, E, A>(
   new Stream(
     pipe(
       M.of,
-      M.bind("doneRef", () => pipe(R.makeRef(false), T.toManaged)),
+      M.bind("doneRef", () => pipe(R.makeRef(false), T.toManaged())),
       M.let("pull", ({ doneRef }) =>
         pipe(
           doneRef,
@@ -140,7 +140,7 @@ export const fromArray = <O>(c: A.Array<O>): Sync<O> =>
           T.flatten
         )
       ),
-      T.toManaged
+      T.toManaged()
     )
   )
 
@@ -366,12 +366,12 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
       M.of,
       M.bind("outerStream", () => self.proc),
       M.bind("currOuterChunk", () =>
-        T.toManaged(
+        T.toManaged()(
           R.makeRef<[A.Array<O>, number]>([[], 0])
         )
       ),
       M.bind("currInnerStream", () =>
-        T.toManaged(R.makeRef<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>(Pull.end))
+        T.toManaged()(R.makeRef<T.Effect<S_, R_, O.Option<E_>, A.Array<O2>>>(Pull.end))
       ),
       M.bind(
         "innerFinalizer",
@@ -413,7 +413,7 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
       M.bind("ref", () =>
         pipe(
           R.makeRef<State<E>>({ _tag: "NotStarted" }),
-          T.toManaged
+          T.toManaged()
         )
       ),
       M.let("pull", ({ finalizerRef, ref }) => {

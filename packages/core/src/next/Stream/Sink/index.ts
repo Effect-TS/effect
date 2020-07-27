@@ -57,7 +57,7 @@ export const foldArraysM = <Z>(z: Z) => (contFn: (s: Z) => boolean) => <I, S, R,
     return new Sink(
       pipe(
         M.of,
-        M.bind("state", () => pipe(R.makeRef(z), T.toManaged)),
+        M.bind("state", () => pipe(R.makeRef(z), T.toManaged())),
         M.let("push", ({ state }) => (is: O.Option<A.Array<I>>) => {
           switch (is._tag) {
             case "None": {
