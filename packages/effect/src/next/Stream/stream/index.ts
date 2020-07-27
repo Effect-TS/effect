@@ -6,6 +6,7 @@ import { coerceSE } from "../../Managed/deps"
 import { noop } from "../../Managed/managed"
 import { Finalizer, makeReleaseMap, ReleaseMap } from "../../Managed/releaseMap"
 import * as R from "../../Ref"
+import { makeManagedRef } from "../../Ref/makeManagedRef"
 import * as BPull from "../bufferedPull"
 import * as C from "../internal/cause"
 import * as T from "../internal/effect"
@@ -13,6 +14,7 @@ import * as Exit from "../internal/exit"
 import * as M from "../internal/managed"
 import * as Pull from "../pull"
 import * as Sink from "../sink"
+import { Transducer } from "../transducer"
 
 /**
  * A `Stream<S, R, E, O>` is a description of a program that, when evaluated,
@@ -486,3 +488,40 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
     )
   )
 }
+
+export const aggregate = <S1, R1, E1, O, P>(
+  transducer: Transducer<S1, R1, E1, O, P>
+) => <S, R, E>(self: Stream<S, R, E, O>) =>
+  new Stream<S | S1, R & R1, E | E1, P>(
+    pipe(
+      M.of,
+      M.bind("pull", () => self.proc),
+      M.bind("push", () => transducer.push),
+      M.bind("done", () => makeManagedRef(false)),
+      M.let("run", ({ done, pull, push }) => {
+        const go: T.Effect<S | S1, R & R1, O.Option<E | E1>, A.Array<P>> = pipe(
+          done.get,
+          T.chain((b) =>
+            b
+              ? Pull.end
+              : pipe(
+                  pull,
+                  T.foldM(
+                    O.fold(
+                      () =>
+                        pipe(
+                          done.set(true),
+                          T.chain(() => pipe(push(O.none), T.asSomeError))
+                        ),
+                      (e) => Pull.fail<E | E1>(e)
+                    ),
+                    (os) => pipe(push(O.some(os)), T.asSomeError)
+                  )
+                )
+          )
+        )
+        return go
+      }),
+      M.map(({ run }) => run)
+    )
+  )

@@ -163,7 +163,8 @@
       "next/Stream/take",
       "next/Stream/pull",
       "next/Stream/internal",
-      "next/Stream/bufferedPull"
+      "next/Stream/bufferedPull",
+      "next/Stream/transducer"
     ]
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2"

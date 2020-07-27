@@ -53,3 +53,5 @@ export {
   updateSome_,
   update_
 } from "./api"
+
+export { makeManagedRef } from "./makeManagedRef"
