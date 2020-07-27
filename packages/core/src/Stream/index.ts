@@ -1639,6 +1639,12 @@ export const ap = <S2, R2, E2, A>(sa: Stream<S2, R2, E2, A>) => <S1, R, E, B>(
   sfab: Stream<S1, R, E, F.FunctionN<[A], B>>
 ) => zipWith_(sfab, sa, (f, a) => f(a))
 
+export const accessM = <A, S, R, E, B>(f: (a: A) => Stream<S, R, E, B>) =>
+  pipe(encaseEffect(T.accessEnvironment<A>()), chain(f))
+
+export const access = <A, B>(f: (a: A) => B) =>
+  pipe(encaseEffect(T.accessEnvironment<A>()), map(f))
+
 export function subject<S, R, E, A>(_: Stream<S, R, E, A>) {
   const listeners: Map<any, (_: Ops<E, A>) => void> = new Map()
 
