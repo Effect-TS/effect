@@ -1,4 +1,6 @@
 export { Exit } from "../../Exit/exit"
 export { unit } from "../../Exit/unit"
+export { fail } from "../../Exit/fail"
 export { halt } from "../../Exit/halt"
+export { succeed } from "../../Exit/succeed"
 export { foldM } from "../../Exit/foldM"
