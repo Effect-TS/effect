@@ -23,12 +23,7 @@ const cancel = pipe(
       })
     )
   ),
-  S.runCollect,
-  T.chain((ns) =>
-    T.effectTotal(() => {
-      console.log(`result: ${JSON.stringify(ns)}`)
-    })
-  ),
+  S.runDrain,
   T.runMain
 )
 
