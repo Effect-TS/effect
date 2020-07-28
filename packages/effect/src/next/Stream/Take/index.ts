@@ -17,7 +17,9 @@ export const end: Take<never, never> = E.fail(O.none)
 
 export const done = <E, A>(take: Take<E, A>) => T.done(take)
 
-export const fromPull = <S, R, E, O>(pull: Pull<S, R, E, O>) =>
+export const fromPull = <S, R, E, O>(
+  pull: Pull<S, R, E, O>
+): T.Effect<S, R, never, Take<E, O>> =>
   pipe(
     pull,
     T.foldCause(
