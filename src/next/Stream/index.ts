@@ -26,5 +26,16 @@ export {
   effectAsyncInterruptEither,
   effectAsyncM,
   managed,
-  repeatEffectChunkOption
+  repeatEffectChunkOption,
+  map,
+  mapChunks,
+  mapChunksM,
+  mapConcat,
+  mapConcatChunk,
+  mapAccum,
+  mapAccumM,
+  mapConcatChunkM,
+  mapConcatM,
+  mapError,
+  mapErrorCause
 } from "./Stream"

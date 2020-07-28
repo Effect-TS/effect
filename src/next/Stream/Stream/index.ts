@@ -1,6 +1,6 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
-import { pipe } from "../../../Function"
+import { pipe, identity } from "../../../Function"
 import * as O from "../../../Option"
 import { Canceler } from "../../Effect/Canceler"
 import { coerceSE } from "../../Managed/deps"
@@ -817,4 +817,167 @@ export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
     M.map(({ pull }) => pull),
     managed,
     chain(repeatEffectChunkOption)
+  )
+
+/**
+ * Effectfully transforms the chunks emitted by this stream.
+ */
+export const mapChunksM = <O, S2, R2, E2, O2>(
+  f: (_: A.Array<O>) => T.Effect<S2, R2, E2, A.Array<O2>>
+) => <S, R, E>(self: Stream<S, R, E, O>): Stream<S2 | S, R & R2, E2 | E, O2> =>
+  new Stream(
+    pipe(
+      self.proc,
+      M.map((e) =>
+        pipe(
+          e,
+          T.chain((x) => pipe(f(x), T.mapError<E2, O.Option<E | E2>>(O.some)))
+        )
+      )
+    )
+  )
+
+/**
+ * Transforms the chunks emitted by this stream.
+ */
+export const mapChunks = <O, O2>(f: (_: A.Array<O>) => A.Array<O2>) => <S, R, E>(
+  self: Stream<S, R, E, O>
+): Stream<S, R, E, O2> =>
+  pipe(
+    self,
+    mapChunksM((o) => T.succeedNow(f(o)))
+  )
+
+/**
+ * Maps each element to a chunk, and flattens the chunks into the output of
+ * this stream.
+ */
+export const mapConcatChunk = <O, O2>(f: (_: O) => A.Array<O2>) => <S, R, E>(
+  self: Stream<S, R, E, O>
+): Stream<S, R, E, O2> =>
+  pipe(
+    self,
+    mapChunks((o) => A.chain_(o, f))
+  )
+
+/**
+ * Effectfully maps each element to a chunk, and flattens the chunks into
+ * the output of this stream.
+ */
+export const mapConcatChunkM = <S2, R2, E2, O, O2>(
+  f: (_: O) => T.Effect<S2, R2, E2, A.Array<O2>>
+) => <S, R, E>(self: Stream<S, R, E, O>) =>
+  pipe(self, mapM(f), mapConcatChunk(identity))
+
+/**
+ * Maps each element to an iterable, and flattens the iterables into the
+ * output of this stream.
+ */
+export const mapConcat = <O, O2>(f: (_: O) => Iterable<O2>) => <S, R, E>(
+  self: Stream<S, R, E, O>
+): Stream<S, R, E, O2> =>
+  pipe(
+    self,
+    mapChunks((o) => A.chain_(o, (o) => Array.from(f(o))))
+  )
+
+/**
+ * Effectfully maps each element to an iterable, and flattens the iterables into
+ * the output of this stream.
+ */
+export const mapConcatM = <S2, R2, E2, O, O2>(
+  f: (_: O) => T.Effect<S2, R2, E2, Iterable<O2>>
+) => <S, R, E>(self: Stream<S, R, E, O>): Stream<S2 | S, R & R2, E2 | E, O2> =>
+  pipe(
+    self,
+    mapConcatChunkM((o) =>
+      pipe(
+        f(o),
+        T.map((o) => Array.from(o))
+      )
+    )
+  )
+
+/**
+ * Transforms the chunks emitted by this stream.
+ */
+export const map = <O, O2>(f: (_: O) => O2) => <S, R, E>(
+  self: Stream<S, R, E, O>
+): Stream<S, R, E, O2> =>
+  pipe(
+    self,
+    mapChunks((o) => o.map(f))
+  )
+
+/**
+ * Statefully and effectfully maps over the elements of this stream to produce
+ * new elements.
+ */
+export const mapAccumM = <Z>(z: Z) => <O, S1, R1, E1, O1>(
+  f: (z: Z, o: O) => T.Effect<S1, R1, E1, [Z, O1]>
+) => <S, R, E>(self: Stream<S, R, E, O>) =>
+  new Stream<S | S1, R & R1, E | E1, O1>(
+    pipe(
+      M.of,
+      M.bind("state", () => R.makeManagedRef(z)),
+      M.bind("pull", () => pipe(self.proc, M.mapM(BPull.make))),
+      M.map(({ pull, state }) =>
+        pipe(
+          pull,
+          BPull.pullElements,
+          T.chain((o) =>
+            pipe(
+              T.of,
+              T.bind("s", () => state.get),
+              T.bind("t", ({ s }) => f(s, o)),
+              T.tap(({ t }) => state.set(t[0])),
+              T.map(({ t }) => [t[1]]),
+              T.mapError(O.some)
+            )
+          )
+        )
+      )
+    )
+  )
+
+/**
+ * Statefully maps over the elements of this stream to produce new elements.
+ */
+export const mapAccum = <Z>(z: Z) => <O, O1>(f: (z: Z, o: O) => [Z, O1]) => <S, R, E>(
+  self: Stream<S, R, E, O>
+) =>
+  pipe(
+    self,
+    mapAccumM(z)((z, o) => T.succeedNow(f(z, o)))
+  )
+
+/**
+ * Transforms the errors emitted by this stream using `f`.
+ */
+export const mapError = <E, E2>(f: (e: E) => E2) => <S, R, O>(
+  self: Stream<S, R, E, O>
+): Stream<S, R, E2, O> => new Stream(pipe(self.proc, M.map(T.mapError(O.map(f)))))
+
+/**
+ * Transforms the full causes of failures emitted by this stream.
+ */
+
+export const mapErrorCause = <E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) => <S, R, O>(
+  self: Stream<S, R, E, O>
+): Stream<S, R, E2, O> =>
+  new Stream(
+    pipe(
+      self.proc,
+      M.map(
+        T.mapErrorCause((x) =>
+          pipe(
+            C.sequenceCauseOption(x),
+            O.fold(
+              () => C.Fail(O.none),
+              (c) => pipe(f(c), C.map(O.some))
+            )
+          )
+        )
+      )
+    )
   )
