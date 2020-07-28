@@ -1,3 +1,4 @@
+import * as A from "../src/Array"
 import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
 import * as S from "../src/next/Stream"
@@ -6,19 +7,21 @@ const cancel = pipe(
   S.effectAsyncInterrupt<unknown, never, number>((cb) => {
     let i = 0
     const timer = setInterval(() => {
-      cb(T.succeedNow([i]))
+      cb(T.succeedNow(A.range(0, i)))
       i++
-    }, 100)
+    }, 500)
     return T.effectTotal(() => {
       clearInterval(timer)
       console.log("cleared")
     })
   }),
-  S.mapM((n) =>
-    T.effectTotal(() => {
-      console.log(`process: ${n}`)
-      return n
-    })
+  S.mapMPar(3)((n) =>
+    T.delay(250)(
+      T.effectTotal(() => {
+        console.log(`process: ${n}`)
+        return n
+      })
+    )
   ),
   S.runCollect,
   T.chain((ns) =>
@@ -31,4 +34,4 @@ const cancel = pipe(
 
 setTimeout(() => {
   cancel()
-}, 2000)
+}, 10000)
