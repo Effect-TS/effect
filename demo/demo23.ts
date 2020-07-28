@@ -1,19 +1,17 @@
 import { pipe } from "../src/Function"
-import * as O from "../src/Option"
 import * as T from "../src/next/Effect"
 import * as S from "../src/next/Stream"
 
-pipe(
-  S.effectAsync<unknown, never, number>((cb) => {
+const cancel = pipe(
+  S.effectAsyncInterrupt<unknown, never, number>((cb) => {
     let i = 0
     const timer = setInterval(() => {
-      if (i > 10) {
-        clearInterval(timer)
-        cb(T.fail(O.none))
-      } else {
-        cb(T.succeedNow([i]))
-      }
+      cb(T.succeedNow([i]))
       i++
+    }, 100)
+    return T.effectTotal(() => {
+      clearInterval(timer)
+      console.log("cleared")
     })
   }),
   S.mapM((n) =>
@@ -30,3 +28,7 @@ pipe(
   ),
   T.runMain
 )
+
+setTimeout(() => {
+  cancel()
+}, 2000)
