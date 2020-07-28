@@ -23,5 +23,8 @@ export {
   effectAsyncMaybe,
   effectAsync,
   effectAsyncInterrupt,
-  effectAsyncInterruptEither
+  effectAsyncInterruptEither,
+  effectAsyncM,
+  managed,
+  repeatEffectChunkOption
 } from "./Stream"
