@@ -8,7 +8,9 @@ import { Managed } from "./managed"
 import { makeReleaseMap, ReleaseMap } from "./releaseMap"
 
 /**
- * A more powerful version of `foldM` that allows recovering from any kind of failure except interruptions.
+ * Creates a `Managed` value that acquires the original resource in a fiber,
+ * and provides that fiber. The finalizer for this value will interrupt the fiber
+ * and run the original finalizer.
  */
 export const fork = <S, R, E, A>(
   self: Managed<S, R, E, A>
