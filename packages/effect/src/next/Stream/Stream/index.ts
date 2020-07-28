@@ -504,8 +504,8 @@ export const aggregate = <S1, R1, E1, O, P>(
       M.bind("pull", () => self.proc),
       M.bind("push", () => transducer.push),
       M.bind("done", () => makeManagedRef(false)),
-      M.let("run", ({ done, pull, push }) => {
-        const go: T.Effect<S | S1, R & R1, O.Option<E | E1>, A.Array<P>> = pipe(
+      M.let("run", ({ done, pull, push }) =>
+        pipe(
           done.get,
           T.chain((b) =>
             b
@@ -526,8 +526,7 @@ export const aggregate = <S1, R1, E1, O, P>(
                 )
           )
         )
-        return go
-      }),
+      ),
       M.map(({ run }) => run)
     )
   )
