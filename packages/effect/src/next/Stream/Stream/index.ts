@@ -7,9 +7,11 @@ import { coerceSE } from "../../Managed/deps"
 import { makeManagedReleaseMap } from "../../Managed/makeManagedReleaseMap"
 import { noop } from "../../Managed/managed"
 import { Finalizer, makeReleaseMap, ReleaseMap } from "../../Managed/releaseMap"
+import * as P from "../../Promise"
 import { makeBounded } from "../../Queue"
 import * as R from "../../Ref"
 import { makeManagedRef } from "../../Ref/makeManagedRef"
+import * as Semaphore from "../../Semaphore"
 import * as BPull from "../BufferedPull"
 import * as Pull from "../Pull"
 import * as Sink from "../Sink"
@@ -196,6 +198,15 @@ export const runManaged = <S1, R1, E1, O, B>(
   )
 
 /**
+ * Like `foreach`, but returns a `Managed` so the finalization order
+ * can be controlled.
+ */
+export const foreachManaged = <A, S1, R1, E1>(
+  f: (i: A) => T.Effect<S1, R1, E1, any>
+) => <S, R, E>(self: Stream<S, R, E, A>): M.Managed<S1 | S, R & R1, E1 | E, void> =>
+  pipe(self, runManaged(Sink.foreach(f)))
+
+/**
  * Runs the sink on the stream to produce either the sink's result or an error.
  */
 export const run = <S1, R1, E1, O, B>(sink: Sink.Sink<S1, R1, E1, O, any, B>) => <
@@ -239,6 +250,76 @@ export const mapM = <O, S1, R1, E1, O1>(f: (o: O) => T.Effect<S1, R1, E1, O1>) =
           )
         )
       )
+    )
+  )
+
+/**
+ * Maps over elements of the stream with the specified effectful function,
+ * executing up to `n` invocations of `f` concurrently. Transformed elements
+ * will be emitted in the original order.
+ */
+export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
+  f: (o: O) => T.Effect<S1, R1, E1, O1>
+) => <S, R, E>(self: Stream<S, R, E, O>): Stream<unknown, R & R1, E | E1, O1> =>
+  new Stream(
+    pipe(
+      M.of,
+      M.bind("out", () =>
+        pipe(makeBounded<T.Effect<unknown, R1, O.Option<E1 | E>, O1>>(n), T.toManaged())
+      ),
+      M.bind("errorSignal", () => pipe(P.make<E1, never>(), T.toManaged())),
+      M.bind("permits", () => pipe(Semaphore.makeSemaphore(n), T.toManaged())),
+      M.tap(({ errorSignal, out, permits }) =>
+        pipe(
+          self,
+          foreachManaged((a) =>
+            pipe(
+              T.of,
+              T.bind("p", () => P.make<E1, O1>()),
+              T.bind("latch", () => P.make<never, void>()),
+              T.tap(({ p }) => out.offer(pipe(p, P.wait, T.mapError(O.some)))),
+              T.tap(({ latch, p }) =>
+                pipe(
+                  latch,
+                  P.succeed<void>(undefined),
+                  T.chain(() =>
+                    pipe(
+                      errorSignal,
+                      P.wait,
+                      T.raceFirst(f(a)),
+                      T.tapCause((e) => pipe(errorSignal, P.halt(e))),
+                      T.toPromise(p)
+                    )
+                  ),
+                  Semaphore.withPermit(permits),
+                  T.fork
+                )
+              ),
+              T.tap(({ latch }) => P.wait(latch)),
+              T.asUnit
+            )
+          ),
+          M.foldCauseM(
+            (c) => T.toManaged()(out.offer(Pull.halt(c))),
+            () =>
+              T.toManaged()(
+                pipe(
+                  Semaphore.withPermits(n)(permits)(T.unit),
+                  T.chain(() => out.offer(Pull.end))
+                )
+              )
+          ),
+          M.fork
+        )
+      ),
+      M.let("consumer", ({ out }) =>
+        pipe(
+          out.take,
+          T.flatten,
+          T.map((o) => [o])
+        )
+      ),
+      M.map(({ consumer }) => consumer)
     )
   )
 
