@@ -1,4 +1,4 @@
-export { Cause } from "../../Cause/cause"
+export { Cause, Fail } from "../../Cause/cause"
 export { fold } from "../../Cause/fold"
 export { map } from "../../Cause/map"
 export { sequenceCauseOption } from "../../Cause/sequenceCauseOption"
