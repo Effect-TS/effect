@@ -207,6 +207,17 @@ export const foreachManaged = <A, S1, R1, E1>(
   pipe(self, runManaged(Sink.foreach(f)))
 
 /**
+ * Consumes all elements of the stream, passing them to the specified callback.
+ */
+export const foreach = <A, S1, R1, E1>(f: (i: A) => T.Effect<S1, R1, E1, any>) => <
+  S,
+  R,
+  E
+>(
+  self: Stream<S, R, E, A>
+): T.Effect<S1 | S, R & R1, E1 | E, void> => pipe(self, run(Sink.foreach(f)))
+
+/**
  * Runs the sink on the stream to produce either the sink's result or an error.
  */
 export const run = <S1, R1, E1, O, B>(sink: Sink.Sink<S1, R1, E1, O, any, B>) => <
@@ -216,6 +227,17 @@ export const run = <S1, R1, E1, O, B>(sink: Sink.Sink<S1, R1, E1, O, any, B>) =>
 >(
   self: Stream<S, R, E, O>
 ): T.Effect<S1 | S, R & R1, E1 | E, B> => pipe(self, runManaged(sink), M.useNow)
+
+/**
+ * Runs the stream and collects all of its elements to an array.
+ */
+export const runDrain = <S, R, E, O>(
+  self: Stream<S, R, E, O>
+): T.Effect<S, R, E, void> =>
+  pipe(
+    self,
+    foreach((_) => T.unit)
+  )
 
 /**
  * Runs the stream and collects all of its elements to an array.

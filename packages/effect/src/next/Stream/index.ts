@@ -8,6 +8,7 @@ export {
   Sync,
   run,
   runCollect,
+  runDrain,
   mapM,
   Async,
   AsyncE,
@@ -39,5 +40,6 @@ export {
   mapError,
   mapErrorCause,
   foreachManaged,
+  foreach,
   mapMPar
 } from "./Stream"
