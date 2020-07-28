@@ -19,5 +19,7 @@ export {
   SyncRE,
   chain,
   catchAllCause,
-  aggregate
+  aggregate,
+  effectAsyncMaybe,
+  effectAsync
 } from "./Stream"
