@@ -1,34 +1,38 @@
+import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
 import * as L from "../src/next/Layer"
-import * as R from "../src/next/Runtime"
 
-export class Config {
-  readonly foo: string = "bar"
+export class MyService {
+  readonly open = pipe(
+    T.effectTotal(() => {
+      console.log("open")
+    }),
+    T.delay(200)
+  )
+  readonly close = pipe(
+    T.effectTotal(() => {
+      console.log("close")
+    }),
+    T.delay(200)
+  )
+  readonly hi = pipe(
+    T.effectTotal(() => {
+      console.log("hi")
+    }),
+    T.delay(200)
+  )
 }
 
-export const HasConfig = T.has(Config)
+export const HasMyService = T.has(MyService)
 
-export const printFoo = T.accessServiceM(HasConfig)((c) =>
-  T.effectTotal(() => {
-    console.log(c.foo)
-  })
-)
+export const hi = T.accessServiceM(HasMyService)((c) => c.hi)
 
-export const layer = L.service(HasConfig)
-  .prepare(
-    T.delay_(
-      T.effectTotal(() => new Config()),
-      100
-    )
-  )
-  .release(() =>
-    T.effectTotal(() => {
-      console.log("release")
-    })
-  )
+export const myService = L.service(HasMyService)
+  .prepare(T.effectTotal(() => new MyService()))
+  .open((c) => c.open)
+  .release((c) => c.close)
+  .memo()
 
-export const { runPromise } = R.globalRuntime(layer)
+export const env = pipe(L.allPar(myService, myService, myService), L.main)
 
-runPromise(printFoo)
-runPromise(printFoo)
-runPromise(printFoo)
+pipe(hi, T.provideSomeLayer(env), T.runMain)
