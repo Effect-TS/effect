@@ -508,7 +508,7 @@ export const aggregate = <S1, R1, E1, O, P>(
     pipe(
       M.of,
       M.bind("pull", () => self.proc),
-      M.bind("push", () => transducer.push),
+      M.bind("push", () => transducer),
       M.bind("done", () => makeManagedRef(false)),
       M.let("run", ({ done, pull, push }) =>
         pipe(

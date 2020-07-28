@@ -19,7 +19,7 @@ pipe(
   ),
   S.catchAllCause(() => S.fromArray(A.range(10, 15))),
   S.aggregate(
-    TR.makeTransducer(
+    TR.transducer(
       M.fromEffect(
         T.succeedNow((c) =>
           T.succeedNow(c._tag === "Some" ? A.chunksOf(2)(c.value) : [])
