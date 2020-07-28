@@ -37,5 +37,7 @@ export {
   mapConcatChunkM,
   mapConcatM,
   mapError,
-  mapErrorCause
+  mapErrorCause,
+  foreachManaged,
+  mapMPar
 } from "./Stream"

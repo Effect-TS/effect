@@ -1,3 +1,5 @@
+import { pipe } from "fp-ts/lib/pipeable"
+
 import * as E from "../../Either"
 import { Both } from "../Cause/cause"
 import { interruptedOnly } from "../Cause/interruptedOnly"
@@ -5,13 +7,16 @@ import { Exit } from "../Exit/exit"
 import { foldM_ } from "../Exit/foldM_"
 import { join } from "../Fiber/join"
 
+import { chain } from "./chain"
 import { chain_ } from "./chain_"
 import { checkDescriptor } from "./checkDescriptor"
+import { done } from "./done"
 import { Effect } from "./effect"
 import { halt } from "./halt"
 import { mapErrorCause_ } from "./mapErrorCause"
 import { map_ } from "./map_"
 import { raceWith } from "./raceWith"
+import { result } from "./result"
 import { succeedNow } from "./succeedNow"
 
 function mergeInterruption<A, E2, A2>(
@@ -105,3 +110,23 @@ export const raceEither = <S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) => <
 >(
   self: Effect<S, R, E, A>
 ): Effect<unknown, R & R2, E | E2, E.Either<A, A2>> => raceEither_(self, that)
+
+/**
+ * Returns an effect that races this effect with the specified effect,
+ * yielding the first result to complete, whether by success or failure. If
+ * neither effect completes, then the composed effect will not complete.
+ *
+ * WARNING: The raced effect will safely interrupt the "loser", but will not
+ * resume until the loser has been cleanly terminated. If early return is
+ * desired, then instead of performing `l raceFirst r`, perform
+ * `l.disconnect raceFirst r.disconnect`, which disconnects left and right
+ * interrupt signal, allowing a fast return, with interruption performed
+ * in the background.
+ */
+export const raceFirst = <S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) => <S, R, E, A>(
+  self: Effect<S, R, E, A>
+): Effect<unknown, R & R2, E2 | E, A2 | A> =>
+  pipe(
+    race_(result(self), result(that)),
+    chain((a) => done(a as Exit<E | E2, A | A2>))
+  )
