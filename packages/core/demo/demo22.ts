@@ -1,58 +1,37 @@
-import { pipe } from "fp-ts/lib/pipeable"
-
+import * as A from "../src/Array"
+import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
-import * as L from "../src/next/Layer"
+import * as M from "../src/next/Managed"
+import * as S from "../src/next/Stream"
+import * as TR from "../src/next/Stream/Transducer"
 
-export interface Prefix {
-  readonly hi: string
-}
-
-export const HasPrefix = T.has<Prefix>()
-
-export interface Console {
-  readonly log: (message: string) => T.UIO<void>
-}
-
-export const HasConsole = T.has<Console>()
-
-export interface Hello {
-  readonly hello: (name: string) => T.UIO<void>
-}
-
-export const HasHello = T.has<Hello>()
-
-export const Console = L.service(HasConsole).pure(
-  new (class implements Console {
-    log = (message: string) =>
+pipe(
+  S.fromArray(A.range(0, 3)),
+  S.chain((n) => S.fromArray(A.range(0, n))),
+  S.mapM((n) =>
+    pipe(
       T.effectTotal(() => {
-        console.log(message)
-      })
-  })()
-)
-
-export const Prefix = L.service(HasPrefix).pure({
-  hi: "hi"
-})
-
-export const Hello = L.service(HasHello)
-  .prepare(
-    T.accessServicesT(
-      HasConsole,
-      HasPrefix
-    )(
-      (console, prefix) =>
-        new (class implements Hello {
-          hello = (name: string): T.UIO<void> =>
-            T.delay_(console.log(`${prefix.hi} ${name}!`), 200)
-
-          close = T.suspend(() => console.log("close"))
-        })()
+        console.log(`process: ${n}`)
+      }),
+      T.chain(() => T.effectTotal(() => n + 1)),
+      T.tap(() => T.fail("error"))
     )
-  )
-  .release((h) => h.close)
-
-export const hello = T.accessServiceF(HasHello)("hello")
-
-export const env = pipe(Hello, L.using(L.allPar(Console, Prefix)))
-
-pipe(hello("mike"), T.provideSomeLayer(env), T.runMain)
+  ),
+  S.catchAllCause(() => S.fromArray(A.range(10, 15))),
+  S.aggregate(
+    TR.makeTransducer(
+      M.fromEffect(
+        T.succeedNow((c) =>
+          T.succeedNow(c._tag === "Some" ? A.chunksOf(2)(c.value) : [])
+        )
+      )
+    )
+  ),
+  S.runCollect,
+  T.chain((ns) =>
+    T.effectTotal(() => {
+      console.log(`final: ${JSON.stringify(ns)}`)
+    })
+  ),
+  T.runMain
+)

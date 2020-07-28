@@ -1,38 +1,58 @@
-import { pipe } from "../src/Function"
+import { pipe } from "fp-ts/lib/pipeable"
+
 import * as T from "../src/next/Effect"
 import * as L from "../src/next/Layer"
 
-export class MyService {
-  readonly open = pipe(
-    T.effectTotal(() => {
-      console.log("open")
-    }),
-    T.delay(200)
-  )
-  readonly close = pipe(
-    T.effectTotal(() => {
-      console.log("close")
-    }),
-    T.delay(200)
-  )
-  readonly hi = pipe(
-    T.effectTotal(() => {
-      console.log("hi")
-    }),
-    T.delay(200)
-  )
+export interface Prefix {
+  readonly hi: string
 }
 
-export const HasMyService = T.has(MyService)
+export const HasPrefix = T.has<Prefix>()
 
-export const hi = T.accessServiceM(HasMyService)((c) => c.hi)
+export interface Console {
+  readonly log: (message: string) => T.UIO<void>
+}
 
-export const myService = L.service(HasMyService)
-  .prepare(T.effectTotal(() => new MyService()))
-  .open((c) => c.open)
-  .release((c) => c.close)
-  .memo()
+export const HasConsole = T.has<Console>()
 
-export const env = pipe(L.allPar(myService, myService, myService), L.main)
+export interface Hello {
+  readonly hello: (name: string) => T.UIO<void>
+}
 
-pipe(hi, T.provideSomeLayer(env), T.runMain)
+export const HasHello = T.has<Hello>()
+
+export const Console = L.service(HasConsole).pure(
+  new (class implements Console {
+    log = (message: string) =>
+      T.effectTotal(() => {
+        console.log(message)
+      })
+  })()
+)
+
+export const Prefix = L.service(HasPrefix).pure({
+  hi: "hi"
+})
+
+export const Hello = L.service(HasHello)
+  .prepare(
+    T.accessServicesT(
+      HasConsole,
+      HasPrefix
+    )(
+      (console, prefix) =>
+        new (class implements Hello {
+          hello = (name: string): T.UIO<void> =>
+            T.delay_(console.log(`${prefix.hi} ${name}!`), 200)
+
+          close = T.suspend(() => console.log("close"))
+        })()
+    )
+  )
+  .release((h) => h.close)
+
+export const hello = T.accessServiceF(HasHello)("hello")
+
+export const env = pipe(Hello, L.using(L.allPar(Console, Prefix)))
+
+pipe(hello("mike"), T.provideSomeLayer(env), T.runMain)
