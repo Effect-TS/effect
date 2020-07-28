@@ -220,3 +220,33 @@ export const raceBoth = <S1, R1, E1, I1 extends I, L1, Z1, I>(
       M.map(({ push }) => push)
     )
   )
+
+/**
+ * A sink that executes the provided effectful function for every element fed to it.
+ */
+export const foreach = <I, S1, R1, E1>(f: (i: I) => T.Effect<S1, R1, E1, any>) => {
+  const go = (
+    chunk: A.Array<I>,
+    idx: number,
+    len: number
+  ): T.Effect<S1, R1, [E.Either<E1, never>, A.Array<I>], void> => {
+    if (idx === len) {
+      return Push.more
+    } else {
+      return pipe(
+        f(chunk[idx]),
+        T.foldM(
+          (e) => Push.fail(e, A.dropLeft_(chunk, idx + 1)),
+          () => go(chunk, idx + 1, len)
+        )
+      )
+    }
+  }
+
+  return fromPush(
+    O.fold(
+      () => Push.emit<never, void>(undefined, []),
+      (is: A.Array<I>) => go(is, 0, is.length)
+    )
+  )
+}
