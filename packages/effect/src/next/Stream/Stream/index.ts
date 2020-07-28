@@ -265,10 +265,10 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
     pipe(
       M.of,
       M.bind("out", () =>
-        pipe(makeBounded<T.Effect<unknown, R1, O.Option<E1 | E>, O1>>(n), T.toManaged())
+        T.toManaged()(makeBounded<T.Effect<unknown, R1, O.Option<E1 | E>, O1>>(n))
       ),
-      M.bind("errorSignal", () => pipe(P.make<E1, never>(), T.toManaged())),
-      M.bind("permits", () => pipe(Semaphore.makeSemaphore(n), T.toManaged())),
+      M.bind("errorSignal", () => T.toManaged()(P.make<E1, never>())),
+      M.bind("permits", () => T.toManaged()(Semaphore.makeSemaphore(n))),
       M.tap(({ errorSignal, out, permits }) =>
         pipe(
           self,
@@ -302,24 +302,22 @@ export const mapMPar = (n: number) => <O, S1, R1, E1, O1>(
           M.foldCauseM(
             (c) => T.toManaged()(out.offer(Pull.halt(c))),
             () =>
-              T.toManaged()(
-                pipe(
-                  Semaphore.withPermits(n)(permits)(T.unit),
-                  T.chain(() => out.offer(Pull.end))
-                )
+              pipe(
+                Semaphore.withPermits(n)(permits)(T.unit),
+                T.chain(() => out.offer(Pull.end)),
+                T.toManaged()
               )
           ),
           M.fork
         )
       ),
-      M.let("consumer", ({ out }) =>
+      M.map(({ out }) =>
         pipe(
           out.take,
           T.flatten,
           T.map((o) => [o])
         )
-      ),
-      M.map(({ consumer }) => consumer)
+      )
     )
   )
 
