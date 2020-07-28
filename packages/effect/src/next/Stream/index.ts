@@ -21,5 +21,7 @@ export {
   catchAllCause,
   aggregate,
   effectAsyncMaybe,
-  effectAsync
+  effectAsync,
+  effectAsyncInterrupt,
+  effectAsyncInterruptEither
 } from "./Stream"
