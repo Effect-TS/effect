@@ -4,6 +4,7 @@ import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import { Canceler } from "../../Effect/Canceler"
 import { coerceSE } from "../../Managed/deps"
+import { makeManagedReleaseMap } from "../../Managed/makeManagedReleaseMap"
 import { noop } from "../../Managed/managed"
 import { Finalizer, makeReleaseMap, ReleaseMap } from "../../Managed/releaseMap"
 import { makeBounded } from "../../Queue"
@@ -359,7 +360,7 @@ export const chain = <O, O2, S1, R1, E1>(f0: (a: O) => Stream<S1, R1, E1, O2>) =
   E
 >(
   self: Stream<S, R, E, O>
-) => {
+): Stream<S | S1, R & R1, E | E1, O2> => {
   type S_ = S | S1
   type R_ = R & R1
   type E_ = E | E1
@@ -692,3 +693,124 @@ export const effectAsyncInterrupt = <R, E, A>(
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
   effectAsyncInterruptEither((cb) => E.left(register(cb)), outputBuffer)
+
+/**
+ * Creates a stream from an effect producing chunks of `A` values until it fails with None.
+ */
+export const repeatEffectChunkOption = <S, R, E, A>(
+  fa: T.Effect<S, R, O.Option<E>, A.Array<A>>
+): Stream<S, R, E, A> =>
+  new Stream(
+    pipe(
+      M.of,
+      M.bind("done", () => R.makeManagedRef(false)),
+      M.let("pull", ({ done }) =>
+        pipe(
+          done.get,
+          T.chain((b) =>
+            b
+              ? Pull.end
+              : pipe(
+                  fa,
+                  T.tapError(
+                    O.fold(
+                      () => done.set(true),
+                      () => T.unit
+                    )
+                  )
+                )
+          )
+        )
+      ),
+      M.map(({ pull }) => pull)
+    )
+  )
+
+/**
+ * Creates a single-valued stream from a managed resource
+ */
+export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E, A> =>
+  new Stream(
+    pipe(
+      M.of,
+      M.bind("doneRef", () => R.makeManagedRef(false)),
+      M.bind("finalizer", () => makeManagedReleaseMap(T.sequential)),
+      M.let("pull", ({ doneRef, finalizer }) =>
+        T.uninterruptibleMask(({ restore }) =>
+          pipe(
+            doneRef.get,
+            T.chain((done) =>
+              done
+                ? Pull.end
+                : pipe(
+                    T.of,
+                    T.bind("a", () =>
+                      pipe(
+                        self.effect,
+                        coerceSE<S, E>(),
+                        T.map(([_, __]) => __),
+                        T.provideSome((r: R) => [r, finalizer] as [R, ReleaseMap]),
+                        restore,
+                        T.onError(() => doneRef.set(true))
+                      )
+                    ),
+                    T.tap(() => doneRef.set(true)),
+                    T.map(({ a }) => [a]),
+                    T.mapError(O.some)
+                  )
+            )
+          )
+        )
+      ),
+      M.map(({ pull }) => pull)
+    )
+  )
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times
+ * The registration of the callback itself returns an effect. The optionality of the
+ * error type `E` can be used to signal the end of the stream, by setting it to `None`.
+ */
+export const effectAsyncM = <R, E, A>(
+  register: (
+    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
+  ) => T.Effect<unknown, R, E, unknown>,
+  outputBuffer = 16
+): Stream<unknown, R, E, A> =>
+  pipe(
+    M.of,
+    M.bind("output", () =>
+      pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
+    ),
+    M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
+    M.tap(({ output, runtime }) =>
+      T.toManaged()(
+        register((k) =>
+          pipe(Take.fromPull(k), T.chain(output.offer), runtime.runPromise)
+        )
+      )
+    ),
+    M.bind("done", () => R.makeManagedRef(false)),
+    M.let("pull", ({ done, output }) =>
+      pipe(
+        done.get,
+        T.chain((b) =>
+          b
+            ? Pull.end
+            : pipe(
+                output.take,
+                T.chain(Take.done),
+                T.onError(() =>
+                  pipe(
+                    done.set(true),
+                    T.chain(() => output.shutdown)
+                  )
+                )
+              )
+        )
+      )
+    ),
+    M.map(({ pull }) => pull),
+    managed,
+    chain(repeatEffectChunkOption)
+  )

@@ -13,6 +13,11 @@ export class Managed<S, R, E, A> {
   readonly [T._A]: () => A;
   readonly [T._R]: (_: R) => void
 
+  /**
+   * @note effect is always considered async becuse of ReleaseMap design, when you
+   * construct managed using this low level constructor you need explicitely set S
+   * at the type level because it will otherwise always infer to unknown = async
+   */
   constructor(readonly effect: T.AsyncRE<[R, ReleaseMap], E, [Finalizer, A]>) {}
 }
 
