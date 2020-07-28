@@ -5,11 +5,13 @@ import * as O from "../../../Option"
 import { coerceSE } from "../../Managed/deps"
 import { noop } from "../../Managed/managed"
 import { Finalizer, makeReleaseMap, ReleaseMap } from "../../Managed/releaseMap"
+import { makeBounded } from "../../Queue"
 import * as R from "../../Ref"
 import { makeManagedRef } from "../../Ref/makeManagedRef"
 import * as BPull from "../BufferedPull"
 import * as Pull from "../Pull"
 import * as Sink from "../Sink"
+import * as Take from "../Take"
 import { Transducer } from "../Transducer"
 import * as C from "../_internal/cause"
 import * as T from "../_internal/effect"
@@ -489,6 +491,10 @@ export const catchAllCause = <E, S1, R1, E2, O1>(
   )
 }
 
+/**
+ * Applies an aggregator to the stream, which converts one or more elements
+ * of type `A` into elements of type `B`.
+ */
 export const aggregate = <S1, R1, E1, O, P>(
   transducer: Transducer<S1, R1, E1, O, P>
 ) => <S, R, E>(self: Stream<S, R, E, O>) =>
@@ -525,3 +531,84 @@ export const aggregate = <S1, R1, E1, O, P>(
       M.map(({ run }) => run)
     )
   )
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The registration of the callback can possibly return the stream synchronously.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export const effectAsyncMaybe = <R, E, A>(
+  register: (
+    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
+  ) => O.Option<Stream<unknown, R, E, A>>,
+  outputBuffer = 16
+): Stream<unknown, R, E, A> =>
+  new Stream(
+    pipe(
+      M.of,
+      M.bind("output", () =>
+        pipe(makeBounded<Take.Take<E, A>>(outputBuffer), T.toManaged())
+      ),
+      M.bind("runtime", () => pipe(T.runtime<R>(), T.toManaged())),
+      M.bind("maybeStream", ({ output, runtime }) =>
+        M.effectTotal(() =>
+          register((k) =>
+            pipe(Take.fromPull(k), T.chain(output.offer), runtime.runPromise)
+          )
+        )
+      ),
+      M.bind("pull", ({ maybeStream, output }) =>
+        O.fold_(
+          maybeStream,
+          () =>
+            pipe(
+              M.of,
+              M.bind("done", () => R.makeManagedRef(false)),
+              M.map(({ done }) =>
+                pipe(
+                  done.get,
+                  T.chain((b) =>
+                    b
+                      ? Pull.end
+                      : pipe(
+                          output.take,
+                          T.chain(Take.done),
+                          T.onError(() =>
+                            pipe(
+                              done.set(true),
+                              T.chain(() => output.shutdown)
+                            )
+                          )
+                        )
+                  )
+                )
+              )
+            ),
+          (s) =>
+            pipe(
+              output.shutdown,
+              T.toManaged(),
+              M.chain(() => s.proc)
+            )
+        )
+      ),
+      M.map(({ pull }) => pull)
+    )
+  )
+
+/**
+ * Creates a stream from an asynchronous callback that can be called multiple times.
+ * The optionality of the error type `E` can be used to signal the end of the stream,
+ * by setting it to `None`.
+ */
+export const effectAsync = <R, E, A>(
+  register: (
+    cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
+  ) => void,
+  outputBuffer = 16
+): Stream<unknown, R, E, A> =>
+  effectAsyncMaybe((cb) => {
+    register(cb)
+    return O.none
+  }, outputBuffer)
