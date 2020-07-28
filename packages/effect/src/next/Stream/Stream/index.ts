@@ -508,7 +508,7 @@ export const aggregate = <S1, R1, E1, O, P>(
     pipe(
       M.of,
       M.bind("pull", () => self.proc),
-      M.bind("push", () => transducer),
+      M.bind("push", () => transducer.push),
       M.bind("done", () => makeManagedRef(false)),
       M.let("run", ({ done, pull, push }) =>
         pipe(
@@ -775,12 +775,12 @@ export const managed = <S, R, E, A>(self: M.Managed<S, R, E, A>): Stream<S, R, E
  * The registration of the callback itself returns an effect. The optionality of the
  * error type `E` can be used to signal the end of the stream, by setting it to `None`.
  */
-export const effectAsyncM = <R, E, A>(
+export const effectAsyncM = <R, E, A, R1 = R, E1 = E>(
   register: (
     cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
-  ) => T.Effect<unknown, R, E, unknown>,
+  ) => T.Effect<unknown, R1, E1, unknown>,
   outputBuffer = 16
-): Stream<unknown, R, E, A> =>
+): Stream<unknown, R & R1, E | E1, A> =>
   pipe(
     M.of,
     M.bind("output", () =>
