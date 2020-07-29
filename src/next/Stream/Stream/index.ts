@@ -72,12 +72,6 @@ export class Stream<S, R, E, A> {
 export const StreamURI = "@matechs/core/Eff/StreamURI"
 export type StreamURI = typeof StreamURI
 
-declare module "../../../Base/HKT" {
-  interface MaToKind<S, R, E, A> {
-    [StreamURI]: Stream<S, R, E, A>
-  }
-}
-
 /**
  * Type aliases
  */

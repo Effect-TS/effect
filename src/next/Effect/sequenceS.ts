@@ -1,5 +1,5 @@
-import { SOf, EnvOf } from "../../Base/Apply"
 import * as R from "../../Record"
+import { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
 
 import { chain_ } from "./chain_"
 import { Effect } from "./effect"
@@ -8,13 +8,21 @@ import { foreachPar_ } from "./foreachPar_"
 import { foreach_ } from "./foreach_"
 import { map_ } from "./map_"
 
-type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
-
 export function sequenceS<NER extends Record<string, Effect<any, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any, any>>
 ): Effect<
-  SOf<NER>,
-  EnvOf<NER>,
+  {
+    [K in keyof NER]: [NER[K]] extends [Effect<infer S, any, any, any>] ? S : never
+  }[keyof NER],
+  UnionToIntersection<
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, infer R, any, any>]
+        ? unknown extends R
+          ? never
+          : R
+        : never
+    }[keyof NER]
+  >,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer E, any>] ? E : never
   }[keyof NER],
@@ -46,8 +54,18 @@ export function bindAll<
 ): <S, R, E>(
   s: Effect<S, R, E, K>
 ) => Effect<
-  SOf<NER>,
-  EnvOf<NER>,
+  {
+    [K in keyof NER]: [NER[K]] extends [Effect<infer S, any, any, any>] ? S : never
+  }[keyof NER],
+  UnionToIntersection<
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, infer R, any, any>]
+        ? unknown extends R
+          ? never
+          : R
+        : never
+    }[keyof NER]
+  >,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer E, any>] ? E : never
   }[keyof NER],
@@ -82,8 +100,18 @@ export function bindAllPar<
 ): <S, R, E>(
   s: Effect<S, R, E, K>
 ) => Effect<
-  SOf<NER>,
-  EnvOf<NER>,
+  {
+    [K in keyof NER]: [NER[K]] extends [Effect<infer S, any, any, any>] ? S : never
+  }[keyof NER],
+  UnionToIntersection<
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, infer R, any, any>]
+        ? unknown extends R
+          ? never
+          : R
+        : never
+    }[keyof NER]
+  >,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer E, any>] ? E : never
   }[keyof NER],
@@ -120,8 +148,18 @@ export function bindAllParN(
 ) => <S, R, E>(
   s: Effect<S, R, E, K>
 ) => Effect<
-  SOf<NER>,
-  EnvOf<NER>,
+  {
+    [K in keyof NER]: [NER[K]] extends [Effect<infer S, any, any, any>] ? S : never
+  }[keyof NER],
+  UnionToIntersection<
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, infer R, any, any>]
+        ? unknown extends R
+          ? never
+          : R
+        : never
+    }[keyof NER]
+  >,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer E, any>] ? E : never
   }[keyof NER],
@@ -151,7 +189,15 @@ export function sequenceSPar<NER extends Record<string, Effect<any, any, any, an
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any, any>>
 ): Effect<
   unknown,
-  EnvOf<NER>,
+  UnionToIntersection<
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, infer R, any, any>]
+        ? unknown extends R
+          ? never
+          : R
+        : never
+    }[keyof NER]
+  >,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer E, any>] ? E : never
   }[keyof NER],
@@ -180,7 +226,15 @@ export function sequenceSParN(
   r: EnforceNonEmptyRecord<NER> & Record<string, Effect<any, any, any, any>>
 ) => Effect<
   unknown,
-  EnvOf<NER>,
+  UnionToIntersection<
+    {
+      [K in keyof NER]: [NER[K]] extends [Effect<any, infer R, any, any>]
+        ? unknown extends R
+          ? never
+          : R
+        : never
+    }[keyof NER]
+  >,
   {
     [K in keyof NER]: [NER[K]] extends [Effect<any, any, infer E, any>] ? E : never
   }[keyof NER],

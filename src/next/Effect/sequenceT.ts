@@ -1,5 +1,5 @@
-import { UnionToIntersection } from "../../Base/Apply"
 import { identity } from "../../Function"
+import { UnionToIntersection } from "../Utils"
 
 import { Effect } from "./effect"
 import { foreachParN_ } from "./foreachParN_"

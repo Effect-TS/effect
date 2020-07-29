@@ -47,3 +47,5 @@ export {
   zipWith,
   zipWithSeq
 } from "./Stream"
+
+export { bind, let, merge, of } from "./Stream/do"

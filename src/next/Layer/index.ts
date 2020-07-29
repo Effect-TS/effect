@@ -1,5 +1,4 @@
 import { reduce_ } from "../../Array"
-import { UnionToIntersection } from "../../Base/Apply"
 import { pipe } from "../../Function"
 import * as M from "../../Map"
 import { DefaultEnv, makeRuntime, Runtime } from "../Effect/runtime"
@@ -7,6 +6,7 @@ import { HasURI, mergeEnvironments, readService } from "../Has"
 import { Managed } from "../Managed/managed"
 import { Finalizer } from "../Managed/releaseMap"
 import * as RM from "../RefM"
+import { UnionToIntersection } from "../Utils"
 import { Erase } from "../Utils"
 
 import { Layer } from "./Layer"
