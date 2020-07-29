@@ -7,6 +7,14 @@ export type AOf<T> = [T] extends [{ [_A]: () => infer A }] ? A : never
 
 export type Erase<R, K> = R & K extends K & infer R1 ? R1 : R
 
+export type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
+
+export type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I
+) => void
+  ? I
+  : never
+
 export const pattern: <N extends string>(
   n: N
 ) => {
