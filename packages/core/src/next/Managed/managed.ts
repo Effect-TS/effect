@@ -21,12 +21,6 @@ export class Managed<S, R, E, A> {
   constructor(readonly effect: T.AsyncRE<[R, ReleaseMap], E, [Finalizer, A]>) {}
 }
 
-declare module "../../Base/HKT" {
-  interface MaToKind<S, R, E, A> {
-    [ManagedURI]: Managed<S, R, E, A>
-  }
-}
-
 export type Sync<A> = Managed<never, unknown, never, A>
 export type SyncE<E, A> = Managed<never, unknown, E, A>
 export type SyncR<R, A> = Managed<never, R, never, A>

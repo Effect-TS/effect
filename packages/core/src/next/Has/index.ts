@@ -1,5 +1,4 @@
 import * as A from "../../Array"
-import { UnionToIntersection } from "../../Base/Overloads"
 import { pipe } from "../../Function"
 import * as R from "../../Record"
 import { access } from "../Effect/access"
@@ -9,6 +8,7 @@ import { Effect } from "../Effect/effect"
 import { provide } from "../Effect/provide"
 import { provideAll_ } from "../Effect/provideAll_"
 import { succeedNow } from "../Effect/succeedNow"
+import { UnionToIntersection } from "../Utils"
 
 /**
  * URI used in Has

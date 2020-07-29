@@ -1,9 +1,10 @@
 import * as A from "../../Array"
 import { pipe } from "../../Function"
+import { getOrElse_ } from "../../Option"
 import { Both, Cause, Empty, Interrupt, Then } from "../Cause/cause"
 import { interrupted } from "../Cause/interrupted"
 import { interruptedOnly } from "../Cause/interruptedOnly"
-import { sequenceArray as sequenceExitArray } from "../Exit/instances"
+import * as Exit from "../Exit"
 import { FiberID } from "../Fiber"
 import { FiberContext } from "../Fiber/context"
 import { join } from "../Fiber/join"
@@ -155,7 +156,9 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
               : unit
           )
         ),
-        bind("end", (s) => done(sequenceExitArray(s.res))),
+        bind("end", (s) =>
+          done(getOrElse_(Exit.collectAll(...s.res), () => Exit.succeed([])))
+        ),
         map((s) => s.end)
       ),
     (q) => q.shutdown

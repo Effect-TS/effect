@@ -1,16 +1,6 @@
 import * as A from "../../Array"
-import { CMonad1, CApplicative1, CFoldable1, CFoldableWithIndex1 } from "../../Base"
 import { identity } from "../../Function"
 import { Monoid } from "../../Monoid"
-
-export const URI = "@matechs/core/Eff/IterableURI"
-export type URI = typeof URI
-
-declare module "../../Base/HKT" {
-  interface URItoKind<A> {
-    [URI]: Iterable<A>
-  }
-}
 
 function* genOf<A>(a: A) {
   yield a
@@ -155,31 +145,3 @@ export const concat = <A>(a: Iterable<A>, b: Iterable<A>): Iterable<A> => ({
 })
 
 export const flatten = <A>(a: Iterable<Iterable<A>>) => chain_(a, identity)
-
-export const monadIterable: CMonad1<URI> = {
-  URI,
-  of,
-  map,
-  chain
-}
-
-export const applicativeIterable: CApplicative1<URI> = {
-  URI,
-  of,
-  map,
-  ap
-}
-
-export const foldableIterable: CFoldable1<URI> = {
-  URI,
-  foldMap,
-  reduce,
-  reduceRight
-}
-
-export const foldableWithIndexIterable: CFoldableWithIndex1<URI, number> = {
-  URI,
-  foldMapWithIndex: (M) => (f) => foldMap(M)((a, k) => f(k, a)),
-  reduceWithIndex: (b, f) => reduce(b, (b, a, i) => f(i, b, a)),
-  reduceRightWithIndex: (b, f) => reduceRight(b, (a, b, i) => f(i, a, b))
-}
