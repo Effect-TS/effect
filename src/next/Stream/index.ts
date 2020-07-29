@@ -41,5 +41,9 @@ export {
   mapErrorCause,
   foreachManaged,
   foreach,
-  mapMPar
+  mapMPar,
+  combineChunks,
+  unfoldChunkM,
+  zipWith,
+  zipWithSeq
 } from "./Stream"
