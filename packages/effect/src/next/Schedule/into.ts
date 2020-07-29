@@ -1,6 +1,6 @@
-import { Do } from "../Effect/instances"
-import { zip_ } from "../Effect/zip_"
+import { pipe } from "../../Function"
 
+import * as T from "./effect"
 import { Schedule } from "./schedule"
 
 /**
@@ -13,12 +13,14 @@ export const into_ = <S, R, ST, A, B, S2, R2, ST2, C>(
   that: Schedule<S2, R2, ST2, B, C>
 ) =>
   new Schedule<S | S2, R & R2, [ST, ST2], A, C>(
-    zip_(self.initial, that.initial),
+    T.zip_(self.initial, that.initial),
     (a, s) =>
-      Do()
-        .bind("s1", self.update(a, s[0]))
-        .bind("s2", that.update(self.extract(a, s[0]), s[1]))
-        .return((s) => [s.s1, s.s2]),
+      pipe(
+        T.of,
+        T.bind("s1", () => self.update(a, s[0])),
+        T.bind("s2", () => that.update(self.extract(a, s[0]), s[1])),
+        T.map((s) => [s.s1, s.s2])
+      ),
     (a, s) => that.extract(self.extract(a, s[0]), s[1])
   )
 
