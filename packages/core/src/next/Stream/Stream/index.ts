@@ -1174,46 +1174,42 @@ export function zipWith<O, O2, O3, S1, R1, E1>(
     }
   }
 
-  return (self) =>
-    pipe(
-      self,
-      combineChunks(that)<State<O, O2>>({
-        _tag: "Running",
-        excess: E.left([])
-      })((st, p1, p2) => {
-        switch (st._tag) {
-          case "End": {
-            return T.succeedNow(Exit.fail(O.none))
-          }
-          case "Running": {
-            return pipe(
-              p1,
-              T.optional,
-              ps === "par"
-                ? T.zipWithPar(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess))
-                : T.zipWith(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess)),
-              T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
-            )
-          }
-          case "LeftDone": {
-            return pipe(
-              p2,
-              T.optional,
-              T.map((r) => handleSuccess(O.none, r, E.left(st.excessL))),
-              T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
-            )
-          }
-          case "RightDone": {
-            return pipe(
-              p1,
-              T.optional,
-              T.map((l) => handleSuccess(l, O.none, E.right(st.excessR))),
-              T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
-            )
-          }
-        }
-      })
-    )
+  return combineChunks(that)<State<O, O2>>({
+    _tag: "Running",
+    excess: E.left([])
+  })((st, p1, p2) => {
+    switch (st._tag) {
+      case "End": {
+        return T.succeedNow(Exit.fail(O.none))
+      }
+      case "Running": {
+        return pipe(
+          p1,
+          T.optional,
+          ps === "par"
+            ? T.zipWithPar(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess))
+            : T.zipWith(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess)),
+          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+        )
+      }
+      case "LeftDone": {
+        return pipe(
+          p2,
+          T.optional,
+          T.map((r) => handleSuccess(O.none, r, E.left(st.excessL))),
+          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+        )
+      }
+      case "RightDone": {
+        return pipe(
+          p1,
+          T.optional,
+          T.map((l) => handleSuccess(l, O.none, E.right(st.excessR))),
+          T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+        )
+      }
+    }
+  })
 }
 
 /**
