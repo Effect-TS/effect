@@ -1,3 +1,5 @@
+import { pipe } from "../../Function"
+
 import * as T from "./deps"
 import { Managed } from "./managed"
 import { ReleaseMap } from "./releaseMap"
@@ -12,10 +14,14 @@ export const makeExit_ = <S, R, E, A, S1, R1>(
 ) =>
   new Managed<S | S1, R & R1, E, A>(
     T.uninterruptible(
-      T.Do()
-        .bind("r", T.environment<[R & R1, ReleaseMap]>())
-        .bindL("a", (s) => T.provideAll_(acquire, s.r[0]))
-        .bindL("rm", (s) => s.r[1].add((ex) => T.provideAll_(release(s.a, ex), s.r[0])))
-        .return((s) => [s.rm, s.a])
+      pipe(
+        T.of,
+        T.bind("r", () => T.environment<[R & R1, ReleaseMap]>()),
+        T.bind("a", (s) => T.provideAll_(acquire, s.r[0])),
+        T.bind("rm", (s) =>
+          s.r[1].add((ex) => T.provideAll_(release(s.a, ex), s.r[0]))
+        ),
+        T.map((s) => [s.rm, s.a])
+      )
     )
   )

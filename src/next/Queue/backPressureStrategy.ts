@@ -1,13 +1,4 @@
-import { checkDescriptor } from "../Effect/checkDescriptor"
-import { Async } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
-import { fiberId } from "../Effect/fiberId"
-import { foreachPar_ } from "../Effect/foreachPar_"
-import { Do } from "../Effect/instances"
-import { interrupt } from "../Effect/interrupt"
-import { onInterrupt_ } from "../Effect/onInterrupt_"
-import { suspend } from "../Effect/suspend"
-import { unit } from "../Effect/unit"
+import { pipe } from "../../Function"
 import { interruptAs as promiseInterruptAs } from "../Promise/interruptAs"
 import { Promise } from "../Promise/promise"
 import { unsafeMake as promiseUnsafeMake } from "../Promise/unsafeMake"
@@ -15,6 +6,7 @@ import { wait as promiseWait } from "../Promise/wait"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
 import { MutableQueue, Unbounded } from "../Support/MutableQueue"
 
+import * as T from "./effect"
 import { Strategy } from "./strategy"
 import { unsafeCompletePromise } from "./unsafeCompletePromise"
 import { unsafeCompleteTakers } from "./unsafeCompleteTakers"
@@ -29,23 +21,23 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     queue: MutableQueue<A>,
     takers: MutableQueue<Promise<never, A>>,
     isShutdown: AtomicBoolean
-  ): Async<boolean> {
-    return checkDescriptor((d) =>
-      suspend(() => {
+  ): T.Async<boolean> {
+    return T.checkDescriptor((d) =>
+      T.suspend(() => {
         const p = promiseUnsafeMake<never, boolean>(d.id)
 
-        return onInterrupt_(
-          suspend(() => {
+        return T.onInterrupt_(
+          T.suspend(() => {
             this.unsafeOffer(as, p)
             this.unsafeOnQueueEmptySpace(queue)
             unsafeCompleteTakers(this, queue, takers)
             if (isShutdown.get) {
-              return interrupt
+              return T.interrupt
             } else {
               return promiseWait(p)
             }
           }),
-          () => effectTotal(() => this.unsafeRemove(p))
+          () => T.effectTotal(() => this.unsafeRemove(p))
         )
       })
     )
@@ -93,19 +85,18 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     }
   }
 
-  get shutdown(): Async<void> {
-    return Do()
-      .bind("fiberId", fiberId())
-      .bind(
-        "putters",
-        effectTotal(() => unsafePollAll(this.putters))
-      )
-      .doL((s) =>
-        foreachPar_(s.putters, ([_, p, lastItem]) =>
-          lastItem ? promiseInterruptAs(s.fiberId)(p) : unit
+  get shutdown(): T.Async<void> {
+    return pipe(
+      T.of,
+      T.bind("fiberId", () => T.fiberId()),
+      T.bind("putters", () => T.effectTotal(() => unsafePollAll(this.putters))),
+      T.tap((s) =>
+        T.foreachPar_(s.putters, ([_, p, lastItem]) =>
+          lastItem ? promiseInterruptAs(s.fiberId)(p) : T.unit
         )
-      )
-      .unit()
+      ),
+      T.asUnit
+    )
   }
 
   get surplusSize(): number {

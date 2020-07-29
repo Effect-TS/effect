@@ -1,3 +1,5 @@
+import { pipe } from "../../Function"
+
 import * as T from "./deps"
 import { Managed } from "./managed"
 import { ReleaseMap, Finalizer } from "./releaseMap"
@@ -17,15 +19,16 @@ export const makeReserve = <S, R, E, S2, R2, E2, A>(
 ) =>
   new Managed<S | S2, R & R2, E | E2, A>(
     T.uninterruptibleMask(({ restore }) =>
-      T.Do()
-        .bind("tp", T.environment<[R & R2, ReleaseMap]>())
-        .letL("r", (s) => s.tp[0])
-        .letL("releaseMap", (s) => s.tp[1])
-        .bindL("reserved", (s) => T.provideAll_(reservation, s.r))
-        .bindL("releaseKey", (s) =>
+      pipe(
+        T.of,
+        T.bind("tp", () => T.environment<[R & R2, ReleaseMap]>()),
+        T.let("r", (s) => s.tp[0]),
+        T.let("releaseMap", (s) => s.tp[1]),
+        T.bind("reserved", (s) => T.provideAll_(reservation, s.r)),
+        T.bind("releaseKey", (s) =>
           s.releaseMap.addIfOpen((x) => T.provideAll_(s.reserved.release(x), s.r))
-        )
-        .bindL("finalizerAndA", (s) => {
+        ),
+        T.bind("finalizerAndA", (s) => {
           const k = s.releaseKey
           switch (k._tag) {
             case "None": {
@@ -40,7 +43,8 @@ export const makeReserve = <S, R, E, S2, R2, E2, A>(
               )
             }
           }
-        })
-        .return((s) => s.finalizerAndA)
+        }),
+        T.map((s) => s.finalizerAndA)
+      )
     )
   )
