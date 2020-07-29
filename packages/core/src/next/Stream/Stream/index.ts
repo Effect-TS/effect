@@ -1,6 +1,7 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
-import { pipe, identity } from "../../../Function"
+import { pipe, identity, tuple } from "../../../Function"
+import * as NA from "../../../NonEmptyArray"
 import * as O from "../../../Option"
 import { Canceler } from "../../Effect/Canceler"
 import { coerceSE } from "../../Managed/deps"
@@ -21,6 +22,7 @@ import * as C from "../_internal/cause"
 import * as T from "../_internal/effect"
 import * as Exit from "../_internal/exit"
 import * as M from "../_internal/managed"
+import { zipChunks_ } from "../_internal/utils"
 
 /**
  * A `Stream<S, R, E, O>` is a description of a program that, when evaluated,
@@ -1084,5 +1086,222 @@ export const mapErrorCause = <E, E2>(f: (e: C.Cause<E>) => C.Cause<E2>) => <S, R
           )
         )
       )
+    )
+  )
+
+/**
+ * Zips this stream with another point-wise and applies the function to the paired elements.
+ *
+ * The new stream will end when one of the sides ends.
+ *
+ * By default pull is executed in parallel to preserve async semanthics, see `zipWithSeq` for
+ * a sequential alternative
+ */
+export function zipWith<O, O2, O3, S1, R1, E1>(
+  that: Stream<S1, R1, E1, O2>,
+  f: (a: O, a1: O2) => O3,
+  ps: "seq"
+): <S, R, E>(self: Stream<S, R, E, O>) => Stream<S | S1, R & R1, E1 | E, O3>
+export function zipWith<O, O2, O3, S1, R1, E1>(
+  that: Stream<S1, R1, E1, O2>,
+  f: (a: O, a1: O2) => O3,
+  ps?: "par" | "seq"
+): <S, R, E>(self: Stream<S, R, E, O>) => Stream<unknown, R & R1, E1 | E, O3>
+export function zipWith<O, O2, O3, S1, R1, E1>(
+  that: Stream<S1, R1, E1, O2>,
+  f: (a: O, a1: O2) => O3,
+  ps: "par" | "seq" = "par"
+): <S, R, E>(self: Stream<S, R, E, O>) => Stream<unknown, R & R1, E1 | E, O3> {
+  type End = { _tag: "End" }
+  type RightDone<W2> = { _tag: "RightDone"; excessR: NA.NonEmptyArray<W2> }
+  type LeftDone<W1> = { _tag: "LeftDone"; excessL: NA.NonEmptyArray<W1> }
+  type Running<W1, W2> = { _tag: "Running"; excess: E.Either<A.Array<W1>, A.Array<W2>> }
+  type State<W1, W2> = End | Running<W1, W2> | LeftDone<W1> | RightDone<W2>
+
+  const handleSuccess = (
+    leftUpd: O.Option<A.Array<O>>,
+    rightUpd: O.Option<A.Array<O2>>,
+    excess: E.Either<A.Array<O>, A.Array<O2>>
+  ): Exit.Exit<O.Option<never>, [A.Array<O3>, State<O, O2>]> => {
+    const [leftExcess, rightExcess] = pipe(
+      excess,
+      E.fold(
+        (l) => tuple<[A.Array<O>, A.Array<O2>]>(l, []),
+        (r) => tuple<[A.Array<O>, A.Array<O2>]>([], r)
+      )
+    )
+
+    const [left, right] = [
+      pipe(
+        leftUpd,
+        O.fold(
+          () => leftExcess,
+          (upd) => [...leftExcess, ...upd] as A.Array<O>
+        )
+      ),
+      pipe(
+        rightUpd,
+        O.fold(
+          () => rightExcess,
+          (upd) => [...rightExcess, ...upd] as A.Array<O2>
+        )
+      )
+    ]
+
+    const [emit, newExcess] = zipChunks_(left, right, f)
+
+    if (O.isSome(leftUpd) && O.isSome(rightUpd)) {
+      return Exit.succeed(
+        tuple<[A.Array<O3>, State<O, O2>]>(emit, { _tag: "Running", excess: newExcess })
+      )
+    } else if (O.isNone(leftUpd) && O.isNone(rightUpd)) {
+      return Exit.fail(O.none)
+    } else {
+      return Exit.succeed(
+        tuple(
+          emit,
+          pipe(
+            newExcess,
+            E.fold(
+              (l): State<O, O2> =>
+                A.isNonEmpty(l) ? { _tag: "LeftDone", excessL: l } : { _tag: "End" },
+              (r): State<O, O2> =>
+                A.isNonEmpty(r) ? { _tag: "RightDone", excessR: r } : { _tag: "End" }
+            )
+          )
+        )
+      )
+    }
+  }
+
+  return (self) =>
+    pipe(
+      self,
+      combineChunks(that)<State<O, O2>>({
+        _tag: "Running",
+        excess: E.left([])
+      })((st, p1, p2) => {
+        switch (st._tag) {
+          case "End": {
+            return T.succeedNow(Exit.fail(O.none))
+          }
+          case "Running": {
+            return pipe(
+              p1,
+              T.optional,
+              ps === "par"
+                ? T.zipWithPar(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess))
+                : T.zipWith(T.optional(p2), (l, r) => handleSuccess(l, r, st.excess)),
+              T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+            )
+          }
+          case "LeftDone": {
+            return pipe(
+              p2,
+              T.optional,
+              T.map((r) => handleSuccess(O.none, r, E.left(st.excessL))),
+              T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+            )
+          }
+          case "RightDone": {
+            return pipe(
+              p1,
+              T.optional,
+              T.map((l) => handleSuccess(l, O.none, E.right(st.excessR))),
+              T.catchAllCause((e) => T.succeedNow(Exit.halt(pipe(e, C.map(O.some)))))
+            )
+          }
+        }
+      })
+    )
+}
+
+/**
+ * Zips this stream with another point-wise and applies the function to the paired elements.
+ *
+ * The new stream will end when one of the sides ends.
+ *
+ * Pull will be executed sequentially
+ */
+export const zipWithSeq = <O, O2, O3, S1, R1, E1>(
+  that: Stream<S1, R1, E1, O2>,
+  f: (a: O, a1: O2) => O3
+) => <S, R, E>(self: Stream<S, R, E, O>): Stream<S | S1, R & R1, E1 | E, O3> =>
+  pipe(self, zipWith(that, f, "seq"))
+
+/**
+ * Creates a stream by effectfully peeling off the "layers" of a value of type `S`
+ */
+export const unfoldChunkM = <Z>(z: Z) => <S, R, E, A>(
+  f: (z: Z) => T.Effect<S, R, E, O.Option<[A.Array<A>, Z]>>
+): Stream<S, R, E, A> =>
+  new Stream(
+    pipe(
+      M.of,
+      M.bind("done", () => R.makeManagedRef(false)),
+      M.bind("ref", () => R.makeManagedRef(z)),
+      M.let("pull", ({ done, ref }) =>
+        pipe(
+          done.get,
+          T.chain((isDone) =>
+            isDone
+              ? Pull.end
+              : pipe(
+                  ref.get,
+                  T.chain(f),
+                  T.foldM(
+                    Pull.fail,
+                    O.fold(
+                      () =>
+                        pipe(
+                          done.set(true),
+                          T.chain(() => Pull.end)
+                        ),
+                      ([a, z]) =>
+                        pipe(
+                          ref.set(z),
+                          T.map(() => a)
+                        )
+                    )
+                  )
+                )
+          )
+        )
+      ),
+      M.map(({ pull }) => pull)
+    )
+  )
+
+/**
+ * Combines the chunks from this stream and the specified stream by repeatedly applying the
+ * function `f` to extract a chunk using both sides and conceptually "offer"
+ * it to the destination stream. `f` can maintain some internal state to control
+ * the combining process, with the initial state being specified by `s`.
+ */
+export const combineChunks = <S1, R1, E1, O2>(that: Stream<S1, R1, E1, O2>) => <Z>(
+  z: Z
+) => <S, S2, R, E, O, O3>(
+  f: (
+    z: Z,
+    s: T.Effect<S, R, O.Option<E>, A.Array<O>>,
+    t: T.Effect<S1, R1, O.Option<E1>, A.Array<O2>>
+  ) => T.Effect<S2, R & R1, never, Exit.Exit<O.Option<E | E1>, [A.Array<O3>, Z]>>
+) => (self: Stream<S, R, E, O>): Stream<S1 | S | S2, R & R1, E1 | E, O3> =>
+  new Stream(
+    pipe(
+      M.of,
+      M.bind("left", () => self.proc),
+      M.bind("right", () => that.proc),
+      M.bind(
+        "pull",
+        ({ left, right }) =>
+          unfoldChunkM(z)((z) =>
+            pipe(
+              f(z, left, right),
+              T.chain((ex) => T.optional(T.done(ex)))
+            )
+          ).proc
+      ),
+      M.map(({ pull }) => pull)
     )
   )
