@@ -1,7 +1,3 @@
-// minimize circularity by importing only a subset
-
-import { Effect } from "../Effect/effect"
-
 export { effectTotal } from "../Effect/effectTotal"
 export { access } from "../Effect/access"
 export { fail } from "../Effect/fail"
@@ -34,6 +30,7 @@ export { provideSome_ } from "../Effect/provideSome"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
 export { zipWith_ } from "../Effect/zipWith_"
+export { zip_ } from "../Effect/zip_"
 export { unit } from "../Effect/unit"
 export { succeedNow } from "../Effect/succeedNow"
 export { flatten } from "../Effect/flatten"
@@ -48,16 +45,5 @@ export { bracketExit_ } from "../Effect/bracketExit_"
 export { zipWithPar_ } from "../Effect/zipWithPar_"
 export { zipWith } from "../Effect/zipWith"
 export { interrupt } from "../Effect/interrupt"
-export { Exit } from "../Exit/exit"
-export { unit as exitUnit } from "../Exit/unit"
-export { succeed as exitSucceed } from "../Exit/succeed"
-export { collectAll as exitCollectAll } from "../Exit/collectAll"
-export { collectAllPar as exitCollectAllPar } from "../Exit/collectAllPar"
-export { zipRight_ as exitZipRight_ } from "../Exit/zipRight"
-export { foreach as exitForeach } from "../Exit/foreach"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 export { bind, let, of } from "../Effect/do"
-
-export const coerceSE = <S1, E1>() => <S, R, E, A>(
-  effect: Effect<S, R, E, A>
-): Effect<S1, R, E1, A> => effect as any

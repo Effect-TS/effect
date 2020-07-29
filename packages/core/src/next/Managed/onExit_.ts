@@ -15,20 +15,21 @@ export const onExit_ = <S, R, E, A, S2, R2>(
 ) =>
   new Managed<S | S2, R & R2, E, A>(
     T.uninterruptibleMask(({ restore }) =>
-      T.Do()
-        .bind("tp", T.environment<[R & R2, ReleaseMap]>())
-        .letL("r", (s) => s.tp[0])
-        .letL("outerReleaseMap", (s) => s.tp[1])
-        .bind("innerReleaseMap", makeReleaseMap)
-        .bindL("exitEA", (s) =>
+      pipe(
+        T.of,
+        T.bind("tp", () => T.environment<[R & R2, ReleaseMap]>()),
+        T.let("r", (s) => s.tp[0]),
+        T.let("outerReleaseMap", (s) => s.tp[1]),
+        T.bind("innerReleaseMap", () => makeReleaseMap),
+        T.bind("exitEA", (s) =>
           restore(
             T.provideAll_(T.result(T.map_(self.effect, ([_, a]) => a)), [
               s.r,
               s.innerReleaseMap
             ])
           )
-        )
-        .bindL("releaseMapEntry", (s) =>
+        ),
+        T.bind("releaseMapEntry", (s) =>
           s.outerReleaseMap.add((e) =>
             pipe(
               s.innerReleaseMap.releaseAll(e, sequential),
@@ -38,9 +39,10 @@ export const onExit_ = <S, R, E, A, S2, R2>(
               )
             )
           )
-        )
-        .bindL("a", (s) => T.done(s.exitEA))
-        .return((s) => [s.releaseMapEntry, s.a])
+        ),
+        T.bind("a", (s) => T.done(s.exitEA)),
+        T.map((s) => [s.releaseMapEntry, s.a])
+      )
     )
   )
 

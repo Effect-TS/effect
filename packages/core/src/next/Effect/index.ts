@@ -10,7 +10,6 @@ export {
   SyncRE,
   EffectURI
 } from "./effect"
-export { monadEff, Do } from "./instances"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
 export { absolve } from "./absolve"
@@ -206,7 +205,7 @@ export {
 } from "./runtime"
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"
 export { first } from "./first"
-export { AOf, Erase, EOf, KOf, ROf, SOf } from "../Utils"
+export { AOf, Erase, EOf, ROf, SOf } from "../Utils"
 export { bind, let, of, merge } from "./do"
 export {
   sequenceS,
