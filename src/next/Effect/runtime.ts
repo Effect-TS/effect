@@ -42,11 +42,11 @@ export const memoMap = new MemoMap(
   )
 )
 
-export const defaultEnv = {
+export const defaultEnv = () => ({
   [HasClock[HasURI].key]: new LiveClock(),
   [HasRandom[HasURI].key]: defaultRandom,
   [HasMemoMap[HasURI].key]: memoMap
-}
+})
 
 /**
  * Runs effect until completion, calling cb with the eventual exit state
@@ -212,7 +212,7 @@ export const runSync = <E, A>(_: Effect<never, DefaultEnv, E, A>): A => {
   }
 }
 
-export function fiberContext<E, A>(env: {} = defaultEnv) {
+export function fiberContext<E, A>() {
   const initialIS = interruptible
   const fiberId = newFiberId()
   const scope = Scope.unsafeMakeScope<Exit<E, A>>()
@@ -220,7 +220,7 @@ export function fiberContext<E, A>(env: {} = defaultEnv) {
 
   const context = new FiberContext<E, A>(
     fiberId,
-    env,
+    defaultEnv(),
     initialIS,
     new Map(),
     supervisor,
