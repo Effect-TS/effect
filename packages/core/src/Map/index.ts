@@ -52,6 +52,10 @@ import { MutableArray, MutableMap } from "../Support/Types"
 
 export type Map<K, T> = ReadonlyMap<K, T>
 
+export function make<K, V>(values: readonly (readonly [K, V])[]): Map<K, V> {
+  return new Map(values)
+}
+
 export function collect<K>(
   O: Ord<K>
 ): <A, B>(f: (k: K, a: A) => B) => (m: Map<K, A>) => Array<B> {
