@@ -29,8 +29,8 @@
     "babel-plugin-pure-calls-annotation": "^0.3.1"
   },
   "dependencies": {
-    "fp-ts": "^2.6.3",
-    "fp-ts-contrib": "^0.1.15"
+    "fp-ts": "^2.7.1",
+    "fp-ts-contrib": "^0.1.17"
   },
   "config": {
     "modules": [
