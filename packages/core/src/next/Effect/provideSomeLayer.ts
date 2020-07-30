@@ -1,5 +1,5 @@
 import { Layer } from "../Layer"
-import { use_ } from "../Managed/use_"
+import { use_ } from "../Managed/core"
 
 import { Effect } from "./effect"
 import { provideSome_ } from "./provideSome"
