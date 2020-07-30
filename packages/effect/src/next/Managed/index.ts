@@ -8,47 +8,60 @@ export {
   Sync,
   SyncE,
   SyncR,
-  SyncRE
+  SyncRE,
+  noop
 } from "./managed"
 
-export { fromEffect } from "./fromEffect"
-export { makeExit } from "./makeExit"
-export { makeExit_ } from "./makeExit_"
-export { makeInterruptible_ } from "./makeInterruptible_"
-export { makeInterruptible } from "./makeInterruptible"
-export { use } from "./use"
-export { use_, useNow } from "./use_"
-export { onExitFirst } from "./onExitFirst"
-export { onExitFirst_ } from "./onExitFirst_"
-export { chain_ } from "./chain_"
-export { chain } from "./chain"
-export { map_ } from "./map_"
-export { mapM, mapM_ } from "./mapM_"
-export { map } from "./map"
-export { zipWith_ } from "./zipWith_"
-export { zipWith } from "./zipWith"
-export { zipWithPar_ } from "./zipWithPar_"
-export { zipWithPar } from "./zipWithPar"
-export { makeReserve } from "./makeReserve"
-export { reserve } from "./reserve"
-export { foreach } from "./foreach"
-export { foreach_ } from "./foreach_"
-export { foreachPar } from "./foreachPar"
-export { foreachPar_ } from "./foreachPar_"
-export { foreachParN } from "./foreachParN"
-export { foreachParN_ } from "./foreachParN_"
-export { provideSome_ } from "./provideSome"
-export { fail } from "./fail"
-export { succeedNow } from "./succeedNow"
-export { bind, of, let, merge } from "./do"
-export { zip, zip_ } from "./zip"
-export { finalizerRef } from "./finalizerRef"
-export { effectTotal } from "./effectTotal"
-export { onExit, onExit_ } from "./onExit_"
-export { ensuring, ensuring_ } from "./ensuring"
-export { tap } from "./tap"
-export { fork } from "./fork"
-export { foldCauseM, foldCauseM_ } from "./foldCauseM"
+export {
+  Reservation,
+  chain,
+  chain_,
+  effectTotal,
+  ensuring,
+  ensuring_,
+  fail,
+  finalizerRef,
+  foldCauseM,
+  foldCauseM_,
+  foreach,
+  foreachPar,
+  foreachParN,
+  foreachParN_,
+  foreachPar_,
+  foreach_,
+  fork,
+  fromEffect,
+  makeExit,
+  makeExit_,
+  makeInterruptible,
+  makeInterruptible_,
+  makeManagedReleaseMap,
+  makeReservation,
+  makeReservation_,
+  makeReserve,
+  map,
+  mapM,
+  mapM_,
+  map_,
+  onExit,
+  onExitFirst,
+  onExitFirst_,
+  onExit_,
+  provideSome_,
+  reserve,
+  succeedNow,
+  tap,
+  use,
+  useNow,
+  use_,
+  zip,
+  zipWith,
+  zipWithPar,
+  zipWithPar_,
+  zipWith_,
+  zip_
+} from "./core"
+
 export {
   bindAll,
   bindAllPar,
@@ -57,4 +70,5 @@ export {
   sequenceSPar,
   sequenceSParN
 } from "./sequenceS"
+
 export { sequenceT, sequenceTParN, sequenceTPar } from "./sequenceT"

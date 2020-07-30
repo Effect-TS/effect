@@ -1,9 +1,7 @@
 import { identity } from "../../Function"
 import { UnionToIntersection } from "../Utils"
 
-import { foreachParN_ } from "./foreachParN_"
-import { foreachPar_ } from "./foreachPar_"
-import { foreach_ } from "./foreach_"
+import { foreachParN_, foreachPar_, foreach_ } from "./core"
 import { Managed } from "./managed"
 
 export type SequenceS<T extends Array<Managed<any, any, any, any>>> = {
