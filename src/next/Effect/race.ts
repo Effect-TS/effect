@@ -1,11 +1,8 @@
-import { pipe } from "fp-ts/lib/pipeable"
-
 import * as E from "../../Either"
-import { Both } from "../Cause/cause"
-import { interruptedOnly } from "../Cause/interruptedOnly"
-import { Exit } from "../Exit/exit"
-import { foldM_ } from "../Exit/foldM_"
-import { join } from "../Fiber/join"
+import { pipe } from "../../Function"
+import * as Cause from "../Cause/core"
+import * as Exit from "../Exit/api"
+import * as Fiber from "../Fiber/api"
 
 import { chain } from "./chain"
 import { chain_ } from "./chain_"
@@ -21,14 +18,14 @@ import { succeedNow } from "./succeedNow"
 
 function mergeInterruption<A, E2, A2>(
   a: A
-): (a: Exit<E2, A2>) => Effect<never, unknown, E2, A> {
+): (a: Exit.Exit<E2, A2>) => Effect<never, unknown, E2, A> {
   return (x) => {
     switch (x._tag) {
       case "Success": {
         return succeedNow(a)
       }
       case "Failure": {
-        return interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
+        return Cause.interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
       }
     }
   }
@@ -53,15 +50,15 @@ export const race_ = <S, R, E, A, S2, R2, E2, A2>(
       self,
       that,
       (exit, right) =>
-        foldM_(
+        Exit.foldM_(
           exit,
-          (cause) => mapErrorCause_(join(right), (_) => Both(cause, _)),
+          (cause) => mapErrorCause_(Fiber.join(right), (_) => Cause.Both(cause, _)),
           (a) => chain_(right.interruptAs(d.id), mergeInterruption(a))
         ),
       (exit, left) =>
-        foldM_(
+        Exit.foldM_(
           exit,
-          (cause) => mapErrorCause_(join(left), (_) => Both(_, cause)),
+          (cause) => mapErrorCause_(Fiber.join(left), (_) => Cause.Both(_, cause)),
           (a) => chain_(left.interruptAs(d.id), mergeInterruption(a))
         )
     )
@@ -128,5 +125,5 @@ export const raceFirst = <S2, R2, E2, A2>(that: Effect<S2, R2, E2, A2>) => <S, R
 ): Effect<unknown, R & R2, E2 | E, A2 | A> =>
   pipe(
     race_(result(self), result(that)),
-    chain((a) => done(a as Exit<E | E2, A | A2>))
+    chain((a) => done(a as Exit.Exit<E | E2, A | A2>))
   )

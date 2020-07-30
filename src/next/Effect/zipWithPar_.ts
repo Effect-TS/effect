@@ -1,8 +1,8 @@
 import { Both } from "../Cause/cause"
 import { Exit } from "../Exit/exit"
-import { Fiber } from "../Fiber/fiber"
+import { join } from "../Fiber/api"
+import { Fiber } from "../Fiber/core"
 import { FiberID } from "../Fiber/id"
-import { join } from "../Fiber/join"
 
 import { chain_ } from "./chain_"
 import { checkDescriptor } from "./checkDescriptor"

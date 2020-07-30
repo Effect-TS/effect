@@ -1,5 +1,5 @@
 import * as O from "../../Option"
-import { FiberContext } from "../Fiber/context"
+import * as Fiber from "../Fiber"
 
 import { Effect, AsyncR } from "./effect"
 import { IFork } from "./primitives"
@@ -17,4 +17,4 @@ import { IFork } from "./primitives"
  */
 export const fork = <S, R, E, A>(
   value: Effect<S, R, E, A>
-): AsyncR<R, FiberContext<E, A>> => new IFork(value, O.none)
+): AsyncR<R, Fiber.FiberContext<E, A>> => new IFork(value, O.none)

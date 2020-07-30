@@ -1,11 +1,9 @@
 import * as O from "../../Option"
-import { Cause } from "../Cause/cause"
-import { Exit } from "../Exit/exit"
+import * as Cause from "../Cause/core"
+import * as Exit from "../Exit/exit"
 import { FiberContext } from "../Fiber/context"
-import { Descriptor } from "../Fiber/descriptor"
-import { Fiber } from "../Fiber/fiber"
+import * as Fiber from "../Fiber/core"
 import { FiberID } from "../Fiber/id"
-import { InterruptStatus } from "../Fiber/interruptStatus"
 import { FiberRef } from "../FiberRef/fiberRef"
 import { Scope } from "../Scope"
 import { Supervisor } from "../Supervisor"
@@ -131,7 +129,7 @@ export class IFold<S, R, E, A, S2, R2, E2, A2, S3, R3, E3, A3> extends Base<
 
   constructor(
     readonly value: Effect<S, R, E, A>,
-    readonly failure: (cause: Cause<E>) => Effect<S2, R2, E2, A2>,
+    readonly failure: (cause: Cause.Cause<E>) => Effect<S2, R2, E2, A2>,
     readonly success: (a: A) => Effect<S3, R3, E3, A3>
   ) {
     super()
@@ -147,7 +145,7 @@ export class IFork<S, R, E, A> extends Base<unknown, R, never, FiberContext<E, A
 
   constructor(
     readonly value: Effect<S, R, E, A>,
-    readonly scope: O.Option<Scope<Exit<any, any>>>
+    readonly scope: O.Option<Scope<Exit.Exit<any, any>>>
   ) {
     super()
   }
@@ -156,7 +154,10 @@ export class IFork<S, R, E, A> extends Base<unknown, R, never, FiberContext<E, A
 export class IInterruptStatus<S, R, E, A> extends Base<S, R, E, A> {
   readonly _tag = "InterruptStatus"
 
-  constructor(readonly effect: Effect<S, R, E, A>, readonly flag: InterruptStatus) {
+  constructor(
+    readonly effect: Effect<S, R, E, A>,
+    readonly flag: Fiber.InterruptStatus
+  ) {
     super()
   }
 }
@@ -164,7 +165,7 @@ export class IInterruptStatus<S, R, E, A> extends Base<S, R, E, A> {
 export class ICheckInterrupt<S, R, E, A> extends Base<S, R, E, A> {
   readonly _tag = "CheckInterrupt"
 
-  constructor(readonly f: (_: InterruptStatus) => Effect<S, R, E, A>) {
+  constructor(readonly f: (_: Fiber.InterruptStatus) => Effect<S, R, E, A>) {
     super()
   }
 }
@@ -172,7 +173,7 @@ export class ICheckInterrupt<S, R, E, A> extends Base<S, R, E, A> {
 export class IFail<E> extends Base<never, unknown, E, never> {
   readonly _tag = "Fail"
 
-  constructor(readonly cause: Cause<E>) {
+  constructor(readonly cause: Cause.Cause<E>) {
     super()
   }
 }
@@ -180,7 +181,7 @@ export class IFail<E> extends Base<never, unknown, E, never> {
 export class IDescriptor<S, R, E, A> extends Base<S, R, E, A> {
   readonly _tag = "Descriptor"
 
-  constructor(readonly f: (_: Descriptor) => Effect<S, R, E, A>) {
+  constructor(readonly f: (_: Fiber.Descriptor) => Effect<S, R, E, A>) {
     super()
   }
 }
@@ -272,14 +273,14 @@ export class IRaceWith<
     readonly left: Effect<S, R, E, A>,
     readonly right: Effect<S1, R1, E1, A1>,
     readonly leftWins: (
-      exit: Exit<E, A>,
-      fiber: Fiber<E1, A1>
+      exit: Exit.Exit<E, A>,
+      fiber: Fiber.Fiber<E1, A1>
     ) => Effect<S2, R2, E2, A2>,
     readonly rightWins: (
-      exit: Exit<E1, A1>,
-      fiber: Fiber<E, A>
+      exit: Exit.Exit<E1, A1>,
+      fiber: Fiber.Fiber<E, A>
     ) => Effect<S3, R3, E3, A3>,
-    readonly scope: O.Option<Scope<Exit<any, any>>>
+    readonly scope: O.Option<Scope<Exit.Exit<any, any>>>
   ) {
     super()
   }
@@ -299,7 +300,7 @@ export class ISupervise<S, R, E, A> extends Base<unknown, R, E, A> {
 export class IGetForkScope<S, R, E, A> extends Base<unknown, R, E, A> {
   readonly _tag = "GetForkScope"
 
-  constructor(readonly f: (_: Scope<Exit<any, any>>) => Effect<S, R, E, A>) {
+  constructor(readonly f: (_: Scope<Exit.Exit<any, any>>) => Effect<S, R, E, A>) {
     super()
   }
 }
@@ -309,7 +310,7 @@ export class IOverrideForkScope<S, R, E, A> extends Base<S, R, E, A> {
 
   constructor(
     readonly effect: Effect<S, R, E, A>,
-    readonly forkScope: O.Option<Scope<Exit<any, any>>>
+    readonly forkScope: O.Option<Scope<Exit.Exit<any, any>>>
   ) {
     super()
   }

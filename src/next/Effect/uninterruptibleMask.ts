@@ -1,4 +1,4 @@
-import { InterruptStatus } from "../Fiber/interruptStatus"
+import { InterruptStatus } from "../Fiber/core"
 
 import { checkInterrupt } from "./checkInterrupt"
 import { disconnect } from "./disconnect"

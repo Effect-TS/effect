@@ -1,14 +1,9 @@
 import * as A from "../../Array"
 import { pipe } from "../../Function"
 import { getOrElse_ } from "../../Option"
-import { Both, Cause, Empty, Interrupt, Then } from "../Cause/cause"
-import { interrupted } from "../Cause/interrupted"
-import { interruptedOnly } from "../Cause/interruptedOnly"
-import * as Exit from "../Exit"
-import { FiberID } from "../Fiber"
-import { FiberContext } from "../Fiber/context"
-import { join } from "../Fiber/join"
-import { joinAll } from "../Fiber/joinAll"
+import * as Cause from "../Cause/core"
+import * as Exit from "../Exit/core"
+import * as Fiber from "../Fiber"
 import { halt as promiseHalt } from "../Promise/halt"
 import { make as promiseMake } from "../Promise/make"
 import { Promise } from "../Promise/promise"
@@ -42,10 +37,10 @@ import { tap } from "./tap"
 import { unit } from "./unit"
 
 class Tracker<E, A> {
-  private fibers: Set<FiberContext<E, A>> = new Set()
+  private fibers: Set<Fiber.FiberContext<E, A>> = new Set()
   interrupted = false
-  interruptedBy: FiberID | undefined
-  cause: Cause<any> | undefined
+  interruptedBy: Fiber.FiberID | undefined
+  cause: Cause.Cause<any> | undefined
 
   track<S, R>(effect: Effect<S, R, E, A>) {
     return pipe(
@@ -60,11 +55,11 @@ class Tracker<E, A> {
           })
         })
       ),
-      chain((s) => join(s.fiber))
+      chain((s) => Fiber.join(s.fiber))
     )
   }
 
-  interrupt(id: FiberID, cause?: Cause<any>) {
+  interrupt(id: Fiber.FiberID, cause?: Cause.Cause<any>) {
     if (!this.interrupted) {
       this.interrupted = true
       this.interruptedBy = id
@@ -77,7 +72,7 @@ class Tracker<E, A> {
     return chain_(
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       foreach_(fibers, (f) => fork(f.interruptAs(this.interruptedBy!))),
-      joinAll
+      Fiber.joinAll
     )
   }
 }
@@ -101,7 +96,7 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
           foreach_(as, (a) => map_(promiseMake<E, B>(), (p) => [p, a] as const))
         ),
         tap((s) => fork(foreachUnit_(s.pairs, (pair) => q.offer(pair)))),
-        bind("causes", () => R.makeRef<Cause<E>>(Empty)),
+        bind("causes", () => R.makeRef<Cause.Cause<E>>(Cause.Empty)),
         bind("tracker", () => effectTotal(() => new Tracker<E, B>())),
         tap((s) =>
           collectAllUnit(
@@ -122,11 +117,11 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
                               R.update((_) =>
                                 c === s.tracker.cause
                                   ? _
-                                  : interruptedOnly(c)
+                                  : Cause.interruptedOnly(c)
                                   ? _
-                                  : c._tag === "Then" && interrupted(c)
-                                  ? Both(_, c.left)
-                                  : Both(_, c)
+                                  : c._tag === "Then" && Cause.interrupted(c)
+                                  ? Cause.Both(_, c.left)
+                                  : Cause.Both(_, c)
                               ),
                               chain(() => promiseHalt(c)(p))
                             )
@@ -152,7 +147,12 @@ export const foreachParN_ = (n: number) => <A, S, R, E, B>(
         tap((s) =>
           chain_(s.causes.get, (c) =>
             s.tracker.cause && s.tracker.interruptedBy
-              ? halt(Then(s.tracker.cause, Then(Interrupt(s.tracker.interruptedBy), c)))
+              ? halt(
+                  Cause.Then(
+                    s.tracker.cause,
+                    Cause.Then(Cause.Interrupt(s.tracker.interruptedBy), c)
+                  )
+                )
               : unit
           )
         ),

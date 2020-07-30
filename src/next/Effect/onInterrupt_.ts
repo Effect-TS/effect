@@ -1,7 +1,5 @@
 import * as S from "../../Set"
-import { Then } from "../Cause/cause"
-import { interrupted } from "../Cause/interrupted"
-import { interruptors } from "../Cause/interruptors"
+import * as Cause from "../Cause/core"
 import { FiberID } from "../Fiber/id"
 
 import { chain_ } from "./chain_"
@@ -23,8 +21,8 @@ export const onInterrupt_ = <S, R, E, A, S2, R2>(
     foldCauseM_(
       restore(self),
       (cause) =>
-        interrupted(cause)
-          ? chain_(cleanup(interruptors(cause)), () => halt(cause))
+        Cause.interrupted(cause)
+          ? chain_(cleanup(Cause.interruptors(cause)), () => halt(cause))
           : halt(cause),
       succeedNow
     )
@@ -42,10 +40,10 @@ export const onInterruptExtended_ = <S, R, E, A, S2, R2, E2>(
     foldCauseM_(
       restore(self),
       (cause) =>
-        interrupted(cause)
+        Cause.interrupted(cause)
           ? foldCauseM_(
               cleanup(),
-              (_) => halt(Then(cause, _)),
+              (_) => halt(Cause.Then(cause, _)),
               () => halt(cause)
             )
           : halt(cause),

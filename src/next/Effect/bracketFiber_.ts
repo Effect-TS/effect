@@ -1,4 +1,4 @@
-import { Runtime } from "../Fiber/fiber"
+import { Runtime } from "../Fiber/core"
 
 import { bracket_ } from "./bracket_"
 import { chain_ } from "./chain_"

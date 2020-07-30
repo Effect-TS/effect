@@ -1,5 +1,5 @@
 import * as E from "../../Either"
-import { failureOrCause } from "../Cause/failureOrCause"
+import { failureOrCause } from "../Cause/core"
 
 import { Effect } from "./effect"
 import { foldCauseM_ } from "./foldCauseM_"

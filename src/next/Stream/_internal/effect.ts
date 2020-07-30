@@ -1,3 +1,4 @@
+export { Canceler } from "../../Effect/Canceler"
 export { Effect, SyncE, _A, _E, _I, _R, _S, _U } from "../../Effect/effect"
 export { toManaged } from "../../Effect/toManaged"
 export { fail } from "../../Effect/fail"

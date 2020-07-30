@@ -2,11 +2,7 @@ import * as A from "../../Array"
 import * as E from "../../Either"
 import * as O from "../../Option"
 // cause
-import { Cause, Interrupt, Then } from "../Cause/cause"
-import { contains } from "../Cause/contains"
-import { interruptors } from "../Cause/interruptors"
-import { isEmpty } from "../Cause/isEmpty"
-import { stripFailures } from "../Cause/stripFailures"
+import * as Cause from "../Cause/core"
 // effect
 import * as bracket from "../Effect/bracket_"
 import * as chain from "../Effect/chain"
@@ -27,10 +23,7 @@ import * as suspend from "../Effect/suspend"
 import * as unit from "../Effect/unit"
 // exit
 import { RuntimeError } from "../Errors"
-import { Exit } from "../Exit/exit"
-import { flatten as flattenExit } from "../Exit/flatten"
-import { halt as haltExit } from "../Exit/halt"
-import { succeed as succeedExit } from "../Exit/succeed"
+import * as Exit from "../Exit/api"
 // fiberRef
 import { FiberRef } from "../FiberRef/fiberRef"
 import * as update from "../FiberRef/update"
@@ -42,11 +35,7 @@ import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
 
 // fiber
-import { currentFiber } from "./currentFiber"
-import { Descriptor } from "./descriptor"
-import * as Fiber from "./fiber"
-import { FiberID, newFiberId } from "./id"
-import * as IS from "./interruptStatus"
+import * as Fiber from "./core"
 import {
   Callback,
   FiberRefLocals,
@@ -117,6 +106,8 @@ export class TracingContext {
 
 export const _tracing = new TracingContext()
 
+export const currentFiber = new AtomicReference<FiberContext<any, any> | null>(null)
+
 export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   readonly _tag = "RuntimeFiber"
   readonly state = new AtomicReference(initial<E, A>())
@@ -127,16 +118,16 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   environments?: Stack<any> = new Stack(this.startEnv)
   interruptStatus?: Stack<boolean> = new Stack(this.startIStatus.toBoolean)
   supervisors: Stack<Sup.Supervisor<any>> = new Stack(this.supervisor0)
-  forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit<any, any>>>> = undefined
+  forkScopeOverride?: Stack<O.Option<Scope.Scope<Exit.Exit<any, any>>>> = undefined
   scopeKey: Scope.Key | undefined = undefined
 
   constructor(
-    readonly fiberId: FiberID,
+    readonly fiberId: Fiber.FiberID,
     readonly startEnv: any,
-    readonly startIStatus: IS.InterruptStatus,
+    readonly startIStatus: Fiber.InterruptStatus,
     readonly fiberRefLocals: FiberRefLocals,
     readonly supervisor0: Sup.Supervisor<any>,
-    readonly openScope: Scope.Open<Exit<E, A>>
+    readonly openScope: Scope.Open<Exit.Exit<E, A>>
   ) {
     _tracing.trace(this)
   }
@@ -181,7 +172,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   get isInterrupted() {
-    return !isEmpty(this.state.get.interrupted)
+    return !Cause.isEmpty(this.state.get.interrupted)
   }
 
   get isInterrupting() {
@@ -231,7 +222,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   runAsync(k: Callback<E, A>) {
-    const v = this.register0((xx) => k(flattenExit(xx)))
+    const v = this.register0((xx) => k(Exit.flatten(xx)))
 
     if (v) {
       k(v)
@@ -272,7 +263,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return discardedFolds
   }
 
-  register0(k: Callback<never, Exit<E, A>>): Exit<E, A> | null {
+  register0(k: Callback<never, Exit.Exit<E, A>>): Exit.Exit<E, A> | null {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -298,17 +289,17 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
       return k.apply(value)[_I]
     } else {
-      return this.done(succeedExit(value))?.[_I]
+      return this.done(Exit.succeed(value))?.[_I]
     }
   }
 
-  notifyObservers(v: Exit<E, A>, observers: Callback<never, Exit<E, A>>[]) {
-    const result = succeedExit(v)
+  notifyObservers(v: Exit.Exit<E, A>, observers: Callback<never, Exit.Exit<E, A>>[]) {
+    const result = Exit.succeed(v)
 
     observers.forEach((k) => k(result))
   }
 
-  observe0(k: Callback<never, Exit<E, A>>): O.Option<Sync<Exit<E, A>>> {
+  observe0(k: Callback<never, Exit.Exit<E, A>>): O.Option<Sync<Exit.Exit<E, A>>> {
     const x = this.register0(k)
 
     if (x != null) {
@@ -318,23 +309,23 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     return O.none
   }
 
-  get wait(): Async<Exit<E, A>> {
+  get wait(): Async<Exit.Exit<E, A>> {
     return effectAsyncOption.effectAsyncOption(
       (k) => this.observe0((x) => k(done.done(x))),
       [this.fiberId]
     )
   }
 
-  kill0(fiberId: FiberID): Async<Exit<E, A>> {
-    const interruptedCause = Interrupt(fiberId)
+  kill0(fiberId: Fiber.FiberID): Async<Exit.Exit<E, A>> {
+    const interruptedCause = Cause.Interrupt(fiberId)
 
-    const setInterruptedLoop = (): Cause<never> => {
+    const setInterruptedLoop = (): Cause.Cause<never> => {
       const oldState = this.state.get
 
       switch (oldState._tag) {
         case "Executing": {
           if (oldState.status._tag === "Suspended" && oldState.status.interruptible) {
-            const newCause = Then(oldState.interrupted, interruptedCause)
+            const newCause = Cause.Then(oldState.interrupted, interruptedCause)
 
             this.state.set(
               new FiberStateExecuting(
@@ -348,7 +339,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
             return newCause
           } else {
-            const newCause = Then(oldState.interrupted, interruptedCause)
+            const newCause = Cause.Then(oldState.interrupted, interruptedCause)
 
             this.state.set(
               new FiberStateExecuting(oldState.status, oldState.observers, newCause)
@@ -370,11 +361,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
-  interruptAs(fiberId: FiberID): Async<Exit<E, A>> {
+  interruptAs(fiberId: Fiber.FiberID): Async<Exit.Exit<E, A>> {
     return this.kill0(fiberId)
   }
 
-  done(v: Exit<E, A>): Instruction | undefined {
+  done(v: Exit.Exit<E, A>): Instruction | undefined {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -434,7 +425,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  enterAsync(epoch: number, blockingOn: readonly FiberID[]): Instruction | undefined {
+  enterAsync(
+    epoch: number,
+    blockingOn: readonly Fiber.FiberID[]
+  ): Instruction | undefined {
     const oldState = this.state.get
 
     switch (oldState._tag) {
@@ -504,13 +498,13 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     })
   }
 
-  get scope(): Scope.Scope<Exit<E, A>> {
+  get scope(): Scope.Scope<Exit.Exit<E, A>> {
     return this.openScope.scope
   }
 
   fork(
     i0: Instruction,
-    forkScope: O.Option<Scope.Scope<Exit<any, any>>>
+    forkScope: O.Option<Scope.Scope<Exit.Exit<any, any>>>
   ): FiberContext<any, any> {
     const childFiberRefLocals: FiberRefLocals = new Map()
 
@@ -518,20 +512,20 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
       childFiberRefLocals.set(k, k.fork(v))
     })
 
-    const parentScope: Scope.Scope<Exit<any, any>> = O.getOrElse_(
+    const parentScope: Scope.Scope<Exit.Exit<any, any>> = O.getOrElse_(
       O.alt_(forkScope, () => this.forkScopeOverride?.value || O.none),
       () => this.scope
     )
 
     const currentEnv = this.environments?.value || {}
     const currentSup = this.supervisors.value
-    const childId = newFiberId()
-    const childScope = Scope.unsafeMakeScope<Exit<E, A>>()
+    const childId = Fiber.newFiberId()
+    const childScope = Scope.unsafeMakeScope<Exit.Exit<E, A>>()
 
     const childContext = new FiberContext(
       childId,
       currentEnv,
-      IS.fromBoolean(this.isInterruptible),
+      Fiber.interruptStatus(this.isInterruptible),
       childFiberRefLocals,
       currentSup,
       childScope
@@ -540,7 +534,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (currentSup !== Sup.none) {
       currentSup.unsafeOnStart(currentEnv, i0, O.some(this), childContext)
       childContext.onDone((exit) => {
-        currentSup.unsafeOnEnd(flattenExit(exit), childContext)
+        currentSup.unsafeOnEnd(Exit.flatten(exit), childContext)
       })
     }
 
@@ -554,7 +548,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   private parentScopeOp(
-    parentScope: Scope.Scope<Exit<any, any>>,
+    parentScope: Scope.Scope<Exit.Exit<any, any>>,
     childContext: FiberContext<E, A>,
     i0: Instruction
   ): Instruction {
@@ -563,7 +557,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         suspend.suspend(
           (): Async<any> => {
             const _interruptors =
-              exit._tag === "Failure" ? interruptors(exit.cause) : new Set<FiberID>()
+              exit._tag === "Failure"
+                ? Cause.interruptors(exit.cause)
+                : new Set<Fiber.FiberID>()
 
             const head = _interruptors.values().next()
 
@@ -583,7 +579,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
             case "Failure": {
               return interruptAs.interruptAs(
                 O.getOrElse_(
-                  A.head(Array.from(interruptors(exit.cause))),
+                  A.head(Array.from(Cause.interruptors(exit.cause))),
                   () => this.fiberId
                 )
               )[_I]
@@ -609,12 +605,12 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     }
   }
 
-  onDone(k: Callback<never, Exit<E, A>>): void {
+  onDone(k: Callback<never, Exit.Exit<E, A>>): void {
     const oldState = this.state.get
 
     switch (oldState._tag) {
       case "Done": {
-        k(succeedExit(oldState.value))
+        k(Exit.succeed(oldState.value))
         return
       }
       case "Executing": {
@@ -630,11 +626,11 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   getDescriptor() {
-    return new Descriptor(
+    return new Fiber.Descriptor(
       this.fiberId,
       this.state.get.status,
-      interruptors(this.state.get.interrupted),
-      IS.fromBoolean(this.isInterruptible),
+      Cause.interruptors(this.state.get.interrupted),
+      Fiber.interruptStatus(this.isInterruptible),
       this.scope
     )
   }
@@ -643,10 +639,10 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     winner: Fiber.Fiber<any, any>,
     loser: Fiber.Fiber<any, any>,
     cont: (
-      exit: Exit<any, any>,
+      exit: Exit.Exit<any, any>,
       fiber: Fiber.Fiber<any, any>
     ) => Effect<any, any, any, any>,
-    winnerExit: Exit<any, any>,
+    winnerExit: Exit.Exit<any, any>,
     ab: AtomicReference<boolean>,
     cb: (_: Effect<unknown, R & R1 & R2 & R3, E2 | E3, A2 | A3>) => void
   ): void {
@@ -791,9 +787,9 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     // Error not caught, stack is empty:
                     const cause = () => {
                       const interrupted = this.state.get.interrupted
-                      const causeAndInterrupt = contains(interrupted)(cause0)
+                      const causeAndInterrupt = Cause.contains(interrupted)(cause0)
                         ? cause0
-                        : Then(cause0, interrupted)
+                        : Cause.Then(cause0, interrupted)
 
                       if (discardedFolds) {
                         // We threw away some error handlers while unwinding the stack because
@@ -801,7 +797,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                         // typed failures from cause0, because they might not be typed correctly.
                         // Instead, we strip the typed failures, and return the remainders and
                         // the interruption.
-                        return stripFailures(causeAndInterrupt)
+                        return Cause.stripFailures(causeAndInterrupt)
                       } else {
                         return causeAndInterrupt
                       }
@@ -809,7 +805,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     this.setInterrupting(true)
 
-                    current = this.done(haltExit(cause()))
+                    current = this.done(Exit.halt(cause()))
                   } else {
                     this.setInterrupting(false)
 
@@ -835,7 +831,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 }
 
                 case "CheckInterrupt": {
-                  current = current.f(IS.fromBoolean(this.isInterruptible))[_I]
+                  current = current.f(Fiber.interruptStatus(this.isInterruptible))[_I]
                   break
                 }
 

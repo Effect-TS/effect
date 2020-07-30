@@ -1,4 +1,3 @@
-import { Eq } from "../../Eq"
 import { AtomicNumber } from "../Support/AtomicNumber"
 
 /**
@@ -22,10 +21,8 @@ export const FiberID = (startTimeMillis: number, seqNumber: number): FiberID => 
  */
 export const None = FiberID(0, 0)
 
-export const EqFiberID: Eq<FiberID> = {
-  equals: (x, y) =>
-    x.seqNumber === y.seqNumber && x.startTimeMillis === y.startTimeMillis
-}
+export const equalsFiberID = (x: FiberID, y: FiberID) =>
+  x.seqNumber === y.seqNumber && x.startTimeMillis === y.startTimeMillis
 
 const _fiberCounter = new AtomicNumber(0)
 

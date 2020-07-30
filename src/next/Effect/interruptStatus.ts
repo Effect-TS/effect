@@ -1,4 +1,4 @@
-import { InterruptStatus } from "../Fiber/interruptStatus"
+import { InterruptStatus } from "../Fiber/core"
 
 import { Effect } from "./effect"
 import { IInterruptStatus } from "./primitives"

@@ -1,7 +1,6 @@
 // cause
 import * as M from "../../Map"
-import { died } from "../Cause/died"
-import { failed } from "../Cause/failed"
+import * as Cause from "../Cause/core"
 import { pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
@@ -9,8 +8,8 @@ import { FiberFailure } from "../Errors"
 import { Exit } from "../Exit/exit"
 // fiber
 import { FiberContext } from "../Fiber/context"
+import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
-import { interruptible } from "../Fiber/interruptStatus"
 import { Callback, FiberStateDone } from "../Fiber/state"
 // scope
 import { HasURI } from "../Has"
@@ -95,7 +94,7 @@ export const runMain = <S, E>(effect: Effect<S, DefaultEnv, E, void>): CancelMai
   context.runAsync((exit) => {
     switch (exit._tag) {
       case "Failure": {
-        if (died(exit.cause) || failed(exit.cause)) {
+        if (Cause.died(exit.cause) || Cause.failed(exit.cause)) {
           console.error(pretty(exit.cause))
           process.exit(2)
         } else {

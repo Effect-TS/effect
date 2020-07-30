@@ -1,6 +1,4 @@
-import { Exit } from "../Exit/exit"
-import { halt as haltExit } from "../Exit/halt"
-import { succeed as succeedExit } from "../Exit/succeed"
+import * as Exit from "../Exit/api"
 
 import { Effect } from "./effect"
 import { IFold } from "./primitives"
@@ -12,9 +10,9 @@ import { succeedNow } from "./succeedNow"
  */
 export const result = <S, R, E, A>(
   value: Effect<S, R, E, A>
-): Effect<S, R, never, Exit<E, A>> =>
+): Effect<S, R, never, Exit.Exit<E, A>> =>
   new IFold(
     value,
-    (cause) => succeedNow(haltExit(cause)),
-    (succ) => succeedNow(succeedExit(succ))
+    (cause) => succeedNow(Exit.halt(cause)),
+    (succ) => succeedNow(Exit.succeed(succ))
   )

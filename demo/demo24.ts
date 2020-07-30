@@ -3,7 +3,7 @@ import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
 import * as S from "../src/next/Stream"
 
-const cancel = pipe(
+pipe(
   S.fromArray(A.range(0, 10)),
   S.zipWithSeq(S.fromArray(A.range(10, 20)), (x, y) => x + y),
   S.mapM((n) =>
@@ -15,7 +15,3 @@ const cancel = pipe(
   S.runDrain,
   T.runMain
 )
-
-setTimeout(() => {
-  cancel()
-}, 10000)

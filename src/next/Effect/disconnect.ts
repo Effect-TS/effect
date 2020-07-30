@@ -1,4 +1,4 @@
-import { join } from "../Fiber/join"
+import { join } from "../Fiber/api"
 
 import { chain_ } from "./chain_"
 import { Effect } from "./effect"

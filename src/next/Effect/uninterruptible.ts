@@ -1,4 +1,4 @@
-import { uninterruptible as statusUninterruptible } from "../Fiber/interruptStatus"
+import { uninterruptible as statusUninterruptible } from "../Fiber/core"
 
 import { interruptStatus } from "./interruptStatus"
 
