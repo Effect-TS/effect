@@ -1,16 +1,8 @@
-import { Eq } from "../../Eq"
-import { EqFiberID } from "../Fiber/id"
+import { equalsFiberID } from "../Fiber/id"
 
 import { Cause } from "./cause"
 
-/**
- * Checks Equality for a Cause
- */
-export const EqCause = <E>(): Eq<Cause<E>> => ({
-  equals: causeEq
-})
-
-function causeEq<E>(x: Cause<E>, y: Cause<E>): boolean {
+export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
   switch (x._tag) {
     case "Fail": {
       return y._tag === "Fail" && x.value === y.value
@@ -29,13 +21,21 @@ function causeEq<E>(x: Cause<E>, y: Cause<E>): boolean {
       )
     }
     case "Interrupt": {
-      return y._tag === "Interrupt" && EqFiberID.equals(x.fiberId, y.fiberId)
+      return y._tag === "Interrupt" && equalsFiberID(x.fiberId, y.fiberId)
     }
     case "Both": {
-      return y._tag === "Both" && causeEq(x.left, y.left) && causeEq(x.right, y.right)
+      return (
+        y._tag === "Both" &&
+        equalsCause(x.left, y.left) &&
+        equalsCause(x.right, y.right)
+      )
     }
     case "Then": {
-      return y._tag === "Then" && causeEq(x.left, y.left) && causeEq(x.right, y.right)
+      return (
+        y._tag === "Then" &&
+        equalsCause(x.left, y.left) &&
+        equalsCause(x.right, y.right)
+      )
     }
   }
 }

@@ -1,8 +1,7 @@
 import { pipe } from "../../Function"
 
 import { Cause, Fail } from "./cause"
-import { chain } from "./chain"
-import { map } from "./map"
+import { chain, map } from "./core"
 
 const bind = <A, K, N extends string>(
   tag: Exclude<N, keyof K>,

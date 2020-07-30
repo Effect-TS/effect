@@ -1,4 +1,4 @@
-import { Descriptor } from "../Fiber/descriptor"
+import { Descriptor } from "../Fiber/core"
 
 import { Effect } from "./effect"
 import { IDescriptor } from "./primitives"

@@ -1,5 +1,5 @@
 import { Cause } from "../Cause/cause"
-import { isEmpty } from "../Cause/isEmpty"
+import { isEmpty } from "../Cause/core"
 
 import { chain_ } from "./chain_"
 import { Effect } from "./effect"

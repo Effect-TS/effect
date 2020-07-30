@@ -1,5 +1,5 @@
 import { pipe } from "../../Function"
-import { interruptible as statusInterruptible } from "../Fiber/interruptStatus"
+import { interruptible as statusInterruptible } from "../Fiber/core"
 
 import { Effect } from "./effect"
 import { interruptStatus } from "./interruptStatus"

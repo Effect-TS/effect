@@ -1,5 +1,5 @@
 import * as O from "../../Option"
-import { keepDefects } from "../Cause/keepDefects"
+import { keepDefects } from "../Cause/core"
 
 import { Effect } from "./effect"
 import { halt } from "./halt"

@@ -3,7 +3,8 @@ import * as E from "../../../Either"
 import { pipe, identity, tuple } from "../../../Function"
 import * as NA from "../../../NonEmptyArray"
 import * as O from "../../../Option"
-import { Canceler } from "../../Effect/Canceler"
+import * as C from "../../Cause/core"
+import * as Exit from "../../Exit/api"
 import { coerceSE } from "../../Managed/deps"
 import { makeManagedReleaseMap } from "../../Managed/makeManagedReleaseMap"
 import { noop } from "../../Managed/managed"
@@ -18,9 +19,7 @@ import * as Pull from "../Pull"
 import * as Sink from "../Sink"
 import * as Take from "../Take"
 import { Transducer } from "../Transducer"
-import * as C from "../_internal/cause"
 import * as T from "../_internal/effect"
-import * as Exit from "../_internal/exit"
 import * as M from "../_internal/managed"
 import { zipChunks_ } from "../_internal/utils"
 
@@ -728,7 +727,7 @@ export const effectAsync = <R, E, A>(
 export const effectAsyncInterruptEither = <R, E, A>(
   register: (
     cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
-  ) => E.Either<Canceler<R>, Stream<unknown, R, E, A>>,
+  ) => E.Either<T.Canceler<R>, Stream<unknown, R, E, A>>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
   new Stream(
@@ -794,7 +793,7 @@ export const effectAsyncInterruptEither = <R, E, A>(
 export const effectAsyncInterrupt = <R, E, A>(
   register: (
     cb: (next: T.Effect<unknown, R, O.Option<E>, A.Array<A>>) => Promise<boolean>
-  ) => Canceler<R>,
+  ) => T.Canceler<R>,
   outputBuffer = 16
 ): Stream<unknown, R, E, A> =>
   effectAsyncInterruptEither((cb) => E.left(register(cb)), outputBuffer)

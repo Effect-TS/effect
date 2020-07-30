@@ -1,32 +1,33 @@
 export { Cause, Empty, Then, Both, Fail, Die, Interrupt } from "./cause"
-export { EqCause } from "./eq"
-export { foldLeft } from "./foldLeft"
-export { find } from "./find"
-export { defects } from "./defects"
-export { contains } from "./contains"
-export { dieOption } from "./dieOption"
-export { died } from "./died"
-export { failureOption } from "./failureOption"
-export { failed } from "./failed"
-export { failureOrCause } from "./failureOrCause"
-export { failures } from "./failures"
-export { chain } from "./chain"
-export { as } from "./as"
-export { ap } from "./ap"
-export { flatten } from "./flatten"
-export { map } from "./map"
-export { interruptedOnly } from "./interruptedOnly"
-export { interruptOption } from "./interruptOption"
-export { interrupted } from "./interrupted"
-export { interruptors } from "./interruptors"
-export { isEmpty } from "./isEmpty"
-export { fold } from "./fold"
-export { keepDefects } from "./keepDefects"
-export { squash } from "./squash"
-export { stripFailures } from "./stripFailures"
-export { stripInterrupts } from "./stripInterrupts"
-export { filterSomeDefects } from "./filterSomeDefects"
+export {
+  ap,
+  as,
+  failed,
+  map,
+  chain,
+  contains,
+  defects,
+  dieOption,
+  died,
+  failureOption,
+  failureOrCause,
+  failures,
+  filterSomeDefects,
+  find,
+  flatten,
+  fold,
+  foldLeft,
+  interruptOption,
+  interrupted,
+  interruptedOnly,
+  interruptors,
+  isEmpty,
+  keepDefects,
+  sequenceCauseEither,
+  sequenceCauseOption,
+  squash,
+  stripFailures,
+  stripInterrupts
+} from "./core"
 export { pretty } from "./pretty"
-export { sequenceCauseOption } from "./sequenceCauseOption"
-export { sequenceCauseEither } from "./sequenceCauseEither"
 export { bind, merge, let, of } from "./do"
