@@ -49,3 +49,12 @@ export { ensuring, ensuring_ } from "./ensuring"
 export { tap } from "./tap"
 export { fork } from "./fork"
 export { foldCauseM, foldCauseM_ } from "./foldCauseM"
+export {
+  bindAll,
+  bindAllPar,
+  bindAllParN,
+  sequenceS,
+  sequenceSPar,
+  sequenceSParN
+} from "./sequenceS"
+export { sequenceT, sequenceTParN, sequenceTPar } from "./sequenceT"
