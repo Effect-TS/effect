@@ -1,6 +1,6 @@
 {
   "name": "@matechs/zoo",
-  "version": "6.10.8",
+  "version": "6.11.0",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -21,7 +21,7 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@matechs/core": "^2.10.8",
+    "@matechs/core": "^2.11.0",
     "@types/node-zookeeper-client": "^0.2.7",
     "node-zookeeper-client": "^1.1.0"
   },
