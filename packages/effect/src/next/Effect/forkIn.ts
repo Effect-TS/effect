@@ -1,6 +1,6 @@
 import * as O from "../../Option"
 import { Exit } from "../Exit/exit"
-import { Runtime } from "../Fiber/fiber"
+import { Runtime } from "../Fiber/core"
 import { Scope } from "../Scope"
 
 import { Effect, AsyncR } from "./effect"

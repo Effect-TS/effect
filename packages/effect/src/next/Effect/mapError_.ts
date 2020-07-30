@@ -1,6 +1,6 @@
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import { map } from "../Cause/map"
+import { map } from "../Cause/core"
 
 import { Effect } from "./effect"
 import { foldCauseM_ } from "./foldCauseM_"

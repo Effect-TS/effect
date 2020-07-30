@@ -1,8 +1,7 @@
 import { pipe } from "../../Function"
 import { Empty, Cause, Both, Then, Interrupt } from "../Cause/cause"
-import { isEmpty } from "../Cause/isEmpty"
-import { FiberID } from "../Fiber/id"
-import { joinAll } from "../Fiber/joinAll"
+import { isEmpty } from "../Cause/core"
+import * as Fiber from "../Fiber"
 import { complete as promiseComplete } from "../Promise/complete"
 import { fail as promiseFailure } from "../Promise/fail"
 import { make as promiseMake } from "../Promise/make"
@@ -62,7 +61,9 @@ export const foreachParUnit_ = <S, R, E, A>(
     D.bind("result", () => promiseMake<never, boolean>()),
     D.bind("failureTrigger", () => promiseMake<void, void>()),
     D.bind("status", () => R.makeRef([0, 0, false] as [number, number, boolean])),
-    D.bind("rootCause", () => R.makeRef<[FiberID, Cause<E>] | undefined>(undefined)),
+    D.bind("rootCause", () =>
+      R.makeRef<[Fiber.FiberID, Cause<E>] | undefined>(undefined)
+    ),
     D.let("startTask", (s) =>
       pipe(
         s.status,
@@ -97,7 +98,7 @@ export const foreachParUnit_ = <S, R, E, A>(
                 checkDescriptor((d) =>
                   pipe(
                     s.rootCause,
-                    R.modify((_): [Cause<E>, [FiberID, Cause<E>]] =>
+                    R.modify((_): [Cause<E>, [Fiber.FiberID, Cause<E>]] =>
                       _ != null ? [_[1], _] : [c, [d.id, c]]
                     )
                   )
@@ -142,7 +143,7 @@ export const foreachParUnit_ = <S, R, E, A>(
         catchAll(() =>
           chain_(
             foreach_(s.fibers, (f) => fork(f.interruptAs(s.parentId))),
-            joinAll
+            Fiber.joinAll
           )
         ),
         bracketFiber(() =>

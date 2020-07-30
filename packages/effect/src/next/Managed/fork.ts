@@ -1,7 +1,6 @@
 import { pipe } from "../../Function"
 import { sequential } from "../Effect"
-import { FiberContext } from "../Fiber"
-import { interrupt } from "../Fiber/interrupt"
+import { FiberContext, interrupt } from "../Fiber"
 
 import * as T from "./deps"
 import { Managed } from "./managed"

@@ -5,7 +5,7 @@ import { effectTotal } from "../Effect/effectTotal"
 import { unit } from "../Effect/unit"
 import { zip_ } from "../Effect/zip_"
 import { Exit } from "../Exit/exit"
-import { Runtime } from "../Fiber/fiber"
+import { Runtime } from "../Fiber/core"
 import * as R from "../Ref"
 
 /**

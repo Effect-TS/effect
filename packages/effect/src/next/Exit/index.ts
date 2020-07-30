@@ -1,41 +1,48 @@
-export { Failure, Exit, Success } from "./exit"
-export { halt } from "./halt"
-export { die } from "./die"
-export { fail } from "./fail"
-export { interrupt } from "./interrupt"
-export { succeed } from "./succeed"
-export { unit } from "./unit"
-export { chain } from "./chain"
-export { flatten } from "./flatten"
-export { map } from "./map"
-export { mapError } from "./mapError"
-export { mapErrorCause } from "./mapErrorCause"
-export { zipWith } from "./zipWith"
-export { zipWith_ } from "./zipWith_"
-export { as } from "./as"
-export { zip } from "./zip"
-export { zipLeft } from "./zipLeft"
-export { zipRight, zipRight_ } from "./zipRight"
-export { zipPar } from "./zipPar"
-export { zipParLeft } from "./zipParLeft"
-export { zipParRight } from "./zipParRight"
-export { toEither } from "./toEither"
-export { fromEither } from "./fromEither"
-export { succeeded } from "./succeeded"
-export { orElseFail } from "./orElseFail"
-export { fold } from "./fold"
-export { fold_ } from "./fold_"
-export { bimap } from "./bimap"
-export { exists } from "./exists"
-export { getOrElse } from "./getOrElse"
-export { interrupted } from "./interrupted"
-export { collectAll } from "./collectAll"
-export { collectAllPar } from "./collectAllPar"
-export { foreach_ } from "./foreach_"
-export { foreach } from "./foreach"
-export { ap } from "./ap"
-export { map_ } from "./map_"
-export { chain_ } from "./chain_"
-export { foldM_ } from "./foldM_"
-export { foldM } from "./foldM"
 export { of, bind, let, merge } from "./do"
+
+export {
+  foldM_,
+  foldM,
+  foreach,
+  foreach_,
+  Exit,
+  succeed,
+  Success,
+  Failure,
+  halt,
+  ap,
+  as,
+  chain,
+  collectAll,
+  flatten,
+  fold,
+  interrupt,
+  interrupted,
+  map,
+  mapErrorCause,
+  zipWith,
+  bimap,
+  chain_,
+  collectAllPar,
+  die,
+  exists,
+  fail,
+  fold_,
+  fromEither,
+  fromOption,
+  getOrElse,
+  mapError,
+  map_,
+  orElseFail,
+  succeeded,
+  toEither,
+  unit,
+  zip,
+  zipLeft,
+  zipPar,
+  zipParLeft,
+  zipParRight,
+  zipRight,
+  zipRight_,
+  zipWith_
+} from "./api"

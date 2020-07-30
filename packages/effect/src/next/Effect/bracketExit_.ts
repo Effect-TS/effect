@@ -1,6 +1,6 @@
 import { Then } from "../Cause/cause"
+import { fold_ } from "../Exit/api"
 import { Exit } from "../Exit/exit"
-import { fold_ } from "../Exit/fold_"
 
 import { chain_ } from "./chain_"
 import { done } from "./done"
