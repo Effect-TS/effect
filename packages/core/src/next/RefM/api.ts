@@ -1,8 +1,7 @@
 import * as E from "../../Either"
 import { identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
-import { makeUnbounded } from "../Queue/make"
-import { Dequeue } from "../Queue/xqueue"
+import * as Q from "../Queue/core"
 import * as R from "../Ref"
 import * as S from "../Semaphore"
 import { matchTag } from "../Utils"
@@ -42,11 +41,11 @@ export const makeManagedRefM = <A>(a: A): M.Sync<RefM<A>> =>
  * Creates a new `RefM` and a `Dequeue` that will emit every change to the
  * `RefM`.
  */
-export const dequeueRef = <A>(a: A): T.Sync<[RefM<A>, Dequeue<A>]> =>
+export const dequeueRef = <A>(a: A): T.Sync<[RefM<A>, Q.Dequeue<A>]> =>
   pipe(
     T.of,
     T.bind("ref", () => makeRefM(a)),
-    T.bind("queue", () => makeUnbounded<A>()),
+    T.bind("queue", () => Q.makeUnbounded<A>()),
     T.map(({ queue, ref }) => [
       pipe(
         ref,

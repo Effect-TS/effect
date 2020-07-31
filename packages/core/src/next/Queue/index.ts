@@ -1,5 +1,13 @@
-export { Queue, XQueue, Dequeue } from "./xqueue"
-export { makeSliding, makeDropping, makeUnbounded, makeBounded } from "./make"
+export {
+  makeSliding,
+  makeDropping,
+  makeUnbounded,
+  makeBounded,
+  Queue,
+  Dequeue,
+  XQueue
+} from "./core"
+
 export {
   takeBetween,
   awaitShutdown,
