@@ -1,6 +1,6 @@
 {
   "name": "@matechs/morphic-alg",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -24,7 +24,7 @@
     "@types/node": "^14.0.5"
   },
   "dependencies": {
-    "@matechs/core": "^2.11.1"
+    "@matechs/core": "^2.11.2"
   },
   "config": {
     "modules": [

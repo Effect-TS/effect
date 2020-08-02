@@ -1,6 +1,6 @@
 {
   "name": "@matechs/koa",
-  "version": "4.11.1",
+  "version": "4.11.2",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -22,7 +22,7 @@
   "sideEffects": false,
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/core": "^2.11.1"
+    "@matechs/core": "^2.11.2"
   },
   "peerDependencies": {
     "koa": "^2.11.0",
