@@ -36,30 +36,30 @@ import type {
   MaURIS,
   CMonad4MA,
   CApply4MA,
-  Monad4E,
+  Monad4MA,
   CApply4MAP,
-  Monad4EP,
+  Monad4MAP,
   CMonad4MAC,
   CApply4MAPC,
-  Monad4ECP,
+  Monad4MAPC,
   CApply4MAC,
-  Monad4EC,
-  Apply4E,
-  Apply4EP,
-  Apply4ECP,
-  Apply4EC,
+  Monad4MAC,
+  Apply4MA,
+  Apply4MAP,
+  Apply4MAPC,
+  Apply4MAC,
   CApply2C,
   CMonad2C,
   CMonad3C,
   CApply3C,
   CApplicative4MAPC,
-  Applicative4ECP,
+  Applicative4MAPC,
   CApplicative4MAC,
-  Applicative4EC,
+  Applicative4MAC,
   CApplicative4MAP,
-  Applicative4EP,
+  Applicative4MAP,
   CApplicative4MA,
-  Applicative4E,
+  Applicative4MA,
   CApplicative4,
   Applicative4,
   CApplicative3C,
@@ -83,22 +83,22 @@ import type {
   CAlt2,
   CAlt1,
   CAlt,
-  Alt4EC,
-  Alt4E
+  Alt4MAC,
+  Alt4MA
 } from "../Base"
 
 export function monad<URI extends MaURIS, E>(
   F: CMonad4MAC<URI, E> & CApply4MAC<URI, E>
-): Monad4EC<URI, E>
+): Monad4MAC<URI, E>
 export function monad<URI extends MaURIS, E>(
   F: CMonad4MAC<URI, E> & CApply4MAPC<URI, E>
-): Monad4ECP<URI, E>
+): Monad4MAPC<URI, E>
 export function monad<URI extends MaURIS>(
   F: CMonad4MA<URI> & CApply4MAP<URI>
-): Monad4EP<URI>
+): Monad4MAP<URI>
 export function monad<URI extends MaURIS>(
   F: CMonad4MA<URI> & CApply4MA<URI>
-): Monad4E<URI>
+): Monad4MA<URI>
 export function monad<URI extends URIS4>(F: CMonad4<URI> & CApply4<URI>): Monad4<URI>
 export function monad<URI extends URIS3>(F: CMonad3<URI> & CApply3<URI>): Monad3<URI>
 export function monad<URI extends URIS3, E>(
@@ -121,16 +121,16 @@ export function monad<URI>(F: CMonad<URI> & CApply<URI>): Monad<URI> {
 
 export function validation<URI extends MaURIS, E>(
   F: CMonad4MAC<URI, E> & CApply4MAC<URI, E> & CAlt4MAC<URI, E>
-): Monad4EC<URI, E> & Alt4EC<URI, E>
+): Monad4MAC<URI, E> & Alt4MAC<URI, E>
 export function validation<URI extends MaURIS, E>(
   F: CMonad4MAC<URI, E> & CApply4MAPC<URI, E> & CAlt4MAC<URI, E>
-): Monad4ECP<URI, E> & Alt4EC<URI, E>
+): Monad4MAPC<URI, E> & Alt4MAC<URI, E>
 export function validation<URI extends MaURIS>(
   F: CMonad4MA<URI> & CApply4MAP<URI> & CAlt4MA<URI>
-): Monad4EP<URI> & Alt4E<URI>
+): Monad4MAP<URI> & Alt4MA<URI>
 export function validation<URI extends MaURIS>(
   F: CMonad4MA<URI> & CApply4MA<URI> & CAlt4<URI>
-): Monad4E<URI> & Alt4E<URI>
+): Monad4MA<URI> & Alt4MA<URI>
 export function validation<URI extends URIS4>(
   F: CMonad4<URI> & CApply4<URI> & CAlt4<URI>
 ): Monad4<URI> & Alt4<URI>
@@ -162,10 +162,10 @@ export function validation<URI>(
   }
 }
 
-export function apply<URI extends MaURIS, E>(F: CApply4MAC<URI, E>): Apply4EC<URI, E>
-export function apply<URI extends MaURIS, E>(F: CApply4MAPC<URI, E>): Apply4ECP<URI, E>
-export function apply<URI extends MaURIS>(F: CApply4MAP<URI>): Apply4EP<URI>
-export function apply<URI extends MaURIS>(F: CApply4MA<URI>): Apply4E<URI>
+export function apply<URI extends MaURIS, E>(F: CApply4MAC<URI, E>): Apply4MAC<URI, E>
+export function apply<URI extends MaURIS, E>(F: CApply4MAPC<URI, E>): Apply4MAPC<URI, E>
+export function apply<URI extends MaURIS>(F: CApply4MAP<URI>): Apply4MAP<URI>
+export function apply<URI extends MaURIS>(F: CApply4MA<URI>): Apply4MA<URI>
 export function apply<URI extends URIS4>(F: CApply4<URI>): Apply4<URI>
 export function apply<URI extends URIS3, E>(F: CApply3C<URI, E>): Apply3C<URI, E>
 export function apply<URI extends URIS3>(F: CApply3<URI>): Apply3<URI>
@@ -182,16 +182,16 @@ export function apply<URI>(F: CApply<URI>): Apply<URI> {
 
 export function applicative<URI extends MaURIS, E>(
   F: CApplicative4MAPC<URI, E>
-): Applicative4ECP<URI, E>
+): Applicative4MAPC<URI, E>
 export function applicative<URI extends MaURIS, E>(
   F: CApplicative4MAC<URI, E>
-): Applicative4EC<URI, E>
+): Applicative4MAC<URI, E>
 export function applicative<URI extends MaURIS>(
   F: CApplicative4MAP<URI>
-): Applicative4EP<URI>
+): Applicative4MAP<URI>
 export function applicative<URI extends MaURIS>(
   F: CApplicative4MA<URI>
-): Applicative4E<URI>
+): Applicative4MA<URI>
 export function applicative<URI extends URIS4>(F: CApplicative4<URI>): Applicative4<URI>
 export function applicative<URI extends URIS3, E>(
   F: CApplicative3C<URI, E>

@@ -6,8 +6,8 @@ import type {
   CMonad4MA,
   CApplicative4MA,
   CApplicative4MAP,
-  Monad4E,
-  Monad4EP
+  Monad4MA,
+  Monad4MAP
 } from "../Base"
 import type {
   STypeOf,
@@ -481,7 +481,7 @@ export const parWiltRecord_ =
 // Compatibility with fp-ts ecosystem
 //
 
-export const effectOption_: Monad4E<URI> = {
+export const effectOption_: Monad4MA<URI> = {
   URI,
   ap: ap_,
   chain: chain_,
@@ -489,7 +489,7 @@ export const effectOption_: Monad4E<URI> = {
   of
 }
 
-export const effectOptionPar_: Monad4EP<URI> = {
+export const effectOptionPar_: Monad4MAP<URI> = {
   URI,
   _CTX: "async",
   ap: parAp_,

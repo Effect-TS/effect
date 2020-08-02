@@ -1,5 +1,5 @@
 import * as A from "../Array"
-import type { CBifunctor4, CMonad4MA, CApplicative4MAP, Monad4EP } from "../Base"
+import type { CBifunctor4, CMonad4MA, CApplicative4MAP, Monad4MAP } from "../Base"
 import * as AP from "../Base/Apply"
 import * as D from "../Do"
 import * as T from "../Effect"
@@ -538,7 +538,7 @@ export const wiltOption_ =
 // Compatibility with fp-ts ecosystem
 //
 
-export const streamEither_: Monad4EP<URI> = {
+export const streamEither_: Monad4MAP<URI> = {
   URI,
   _CTX: "async",
   map: map_,
