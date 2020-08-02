@@ -4,7 +4,7 @@ import * as AP from "../Apply"
 import * as A from "../Array"
 import { filter as filterArray, flatten as flattenArray } from "../Array"
 import type {
-  Alt4EC,
+  Alt4MAC,
   CAlt4MAC,
   CApplicative4MA,
   CApplicative4MAC,
@@ -12,10 +12,10 @@ import type {
   CApplicative4MAPC,
   CMonad4MA,
   CMonad4MAC,
-  Monad4E,
-  Monad4EC,
-  Monad4ECP,
-  Monad4EP
+  Monad4MA,
+  Monad4MAC,
+  Monad4MAPC,
+  Monad4MAP
 } from "../Base"
 import { monad, validation } from "../Compatibility"
 import { Deferred, makeDeferred } from "../Deferred"
@@ -2335,38 +2335,40 @@ export const parFastTraverseRecordWI_ =
 // Compatibility with fp-ts ecosystem
 //
 
-export const effect_: Monad4E<URI> =
+export const effect_: Monad4MA<URI> =
   /*#__PURE__*/
 
   (() => monad(effect))()
 
-export const effectPar_: Monad4EP<URI> =
+export const effectPar_: Monad4MAP<URI> =
   /*#__PURE__*/
   (() => monad(par(effect)))()
 
-export const effectParFast_: Monad4EP<URI> =
+export const effectParFast_: Monad4MAP<URI> =
   /*#__PURE__*/
   (() => monad(parFast(effect)))()
 
 export function getCauseValidationM_<E>(
   S: Semigroup<Cause<E>>
-): Monad4EC<URI, E> & Alt4EC<URI, E> {
+): Monad4MAC<URI, E> & Alt4MAC<URI, E> {
   return validation(getCauseValidationM(S))
 }
 
-export function getValidationM_<E>(S: Semigroup<E>): Monad4EC<URI, E> & Alt4EC<URI, E> {
+export function getValidationM_<E>(
+  S: Semigroup<E>
+): Monad4MAC<URI, E> & Alt4MAC<URI, E> {
   return validation(getValidationM(S))
 }
 
 export function getParCauseValidationM_<E>(
   S: Semigroup<Cause<E>>
-): Monad4ECP<URI, E> & Alt4EC<URI, E> {
+): Monad4MAPC<URI, E> & Alt4MAC<URI, E> {
   return validation(par(getCauseValidationM(S)))
 }
 
 export function getParValidationM_<E>(
   S: Semigroup<E>
-): Monad4ECP<URI, E> & Alt4EC<URI, E> {
+): Monad4MAPC<URI, E> & Alt4MAC<URI, E> {
   return validation(par(getValidationM(S)))
 }
 

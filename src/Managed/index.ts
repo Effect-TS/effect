@@ -6,8 +6,8 @@ import {
   CApplicative4MA,
   CApplicative4MAP,
   CMonad4MA,
-  Monad4E,
-  Monad4EP
+  Monad4MA,
+  Monad4MAP
 } from "../Base"
 import { makeDeferred } from "../Deferred"
 import * as D from "../Do"
@@ -986,7 +986,7 @@ export const parWiltRecord_ =
 // Compatibility with fp-ts ecosystem
 //
 
-export const managed_: Monad4E<URI> = {
+export const managed_: Monad4MA<URI> = {
   URI,
   ap: ap_,
   chain: chain_,
@@ -994,7 +994,7 @@ export const managed_: Monad4E<URI> = {
   of: pure
 }
 
-export const managedPar_: Monad4EP<URI> = {
+export const managedPar_: Monad4MAP<URI> = {
   URI,
   _CTX: "async",
   ap: parAp_,
