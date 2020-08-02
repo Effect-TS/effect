@@ -1,6 +1,6 @@
 {
   "name": "@matechs/server",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -21,8 +21,8 @@
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
   "sideEffects": false,
   "devDependencies": {
-    "@matechs/core": "^2.11.0",
-    "@matechs/morphic": "^0.15.0",
+    "@matechs/core": "^2.11.1",
+    "@matechs/morphic": "^0.15.1",
     "@types/node": "^14.0.5"
   },
   "peerDependencies": {
