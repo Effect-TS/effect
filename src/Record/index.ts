@@ -579,22 +579,22 @@ export function singleton<K extends string, A>(k: K, a: A): Record<K, A> {
   return { [k]: a } as any
 }
 
-export function traverseWithIndex<F extends URIS4>(
+export function traverseWithIndex<F extends MaURIS>(
   F: CApplicative4MAP<F>
 ): <K extends string, S, R, E, A, B>(
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => (ta: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
-export function traverseWithIndex<F extends URIS4, E>(
+export function traverseWithIndex<F extends MaURIS, E>(
   F: CApplicative4MAPC<F, E>
 ): <K extends string, S, R, A, B>(
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => (ta: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
-export function traverseWithIndex<F extends URIS4>(
+export function traverseWithIndex<F extends MaURIS>(
   F: CApplicative4MA<F>
 ): <K extends string, S, R, E, A, B>(
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => (ta: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
-export function traverseWithIndex<F extends URIS4, E>(
+export function traverseWithIndex<F extends MaURIS, E>(
   F: CApplicative4MAC<F, E>
 ): <K extends string, S, R, A, B>(
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
@@ -661,25 +661,25 @@ export function traverseWithIndex<F>(
   }
 }
 
-export function traverseWithIndex_<F extends URIS4>(
+export function traverseWithIndex_<F extends MaURIS>(
   F: CApplicative4MAP<F>
 ): <K extends string, S, R, E, A, B>(
   ta: Record<K, A>,
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function traverseWithIndex_<F extends URIS4, E>(
+export function traverseWithIndex_<F extends MaURIS, E>(
   F: CApplicative4MAPC<F, E>
 ): <K extends string, S, R, A, B>(
   ta: Record<K, A>,
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function traverseWithIndex_<F extends URIS4>(
+export function traverseWithIndex_<F extends MaURIS>(
   F: CApplicative4MA<F>
 ): <K extends string, S, R, E, A, B>(
   ta: Record<K, A>,
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => Kind4<F, S, R, E, Record<K, B>>
-export function traverseWithIndex_<F extends URIS4, E>(
+export function traverseWithIndex_<F extends MaURIS, E>(
   F: CApplicative4MAC<F, E>
 ): <K extends string, S, R, A, B>(
   ta: Record<K, A>,
@@ -893,22 +893,22 @@ export function traverse_<F>(
   return (fa, f) => traverseWithIndexF(fa, (_, a) => f(a))
 }
 
-export function sequence<F extends URIS4, E>(
+export function sequence<F extends MaURIS, E>(
   F: CApplicative4MAC<F, E>
 ): <K extends string, S, R, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, S, R, E, Record<K, A>>
-export function sequence<F extends URIS4, E>(
+export function sequence<F extends MaURIS, E>(
   F: CApplicative4MAPC<F, E>
 ): <K extends string, S, R, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, unknown, R, E, Record<K, A>>
-export function sequence<F extends URIS4>(
+export function sequence<F extends MaURIS>(
   F: CApplicative4MA<F>
 ): <K extends string, S, R, E, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, S, R, E, Record<K, A>>
-export function sequence<F extends URIS4>(
+export function sequence<F extends MaURIS>(
   F: CApplicative4MAP<F>
 ): <K extends string, S, R, E, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
@@ -1384,22 +1384,22 @@ export const separate = <A, B>(
   }
 }
 
-export function wither<F extends URIS4>(
+export function wither<F extends MaURIS>(
   F: CApplicative4MAP<F>
 ): <A, S, R, E, B>(
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => <K extends string>(wa: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
-export function wither<F extends URIS4, E>(
+export function wither<F extends MaURIS, E>(
   F: CApplicative4MAPC<F, E>
 ): <A, S, R, B>(
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => <K extends string>(wa: Record<K, A>) => Kind4<F, unknown, R, E, Record<K, B>>
-export function wither<F extends URIS4, E>(
+export function wither<F extends MaURIS, E>(
   F: CApplicative4MAC<F, E>
 ): <A, S, R, B>(
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => <K extends string>(wa: Record<K, A>) => Kind4<F, S, R, E, Record<K, B>>
-export function wither<F extends URIS4>(
+export function wither<F extends MaURIS>(
   F: CApplicative4MA<F>
 ): <A, S, R, E, B>(
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
@@ -1433,25 +1433,25 @@ export function wither<F>(
   return (f) => flow(traverseF(f), F.map(compact))
 }
 
-export function wither_<F extends URIS4>(
+export function wither_<F extends MaURIS>(
   F: CApplicative4MAP<F>
 ): <K extends string, A, S, R, E, B>(
   wa: Record<K, A>,
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function wither_<F extends URIS4, E>(
+export function wither_<F extends MaURIS, E>(
   F: CApplicative4MAPC<F, E>
 ): <K extends string, A, S, R, B>(
   wa: Record<K, A>,
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function wither_<F extends URIS4, E>(
+export function wither_<F extends MaURIS, E>(
   F: CApplicative4MAC<F, E>
 ): <K extends string, A, S, R, B>(
   wa: Record<K, A>,
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => Kind4<F, S, R, E, Record<K, B>>
-export function wither_<F extends URIS4>(
+export function wither_<F extends MaURIS>(
   F: CApplicative4MA<F>
 ): <K extends string, A, S, R, E, B>(
   wa: Record<K, A>,
@@ -1845,25 +1845,25 @@ export const record: CFunctorWithIndex1<URI, string> &
 // Compatibility with fp-ts ecosystem
 //
 
-export function traverseWithIndex__<F extends URIS4>(
+export function traverseWithIndex__<F extends MaURIS>(
   F: Applicative4EP<F>
 ): <K extends string, S, R, E, A, B>(
   ta: Record<K, A>,
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function traverseWithIndex__<F extends URIS4, E>(
+export function traverseWithIndex__<F extends MaURIS, E>(
   F: Applicative4ECP<F, E>
 ): <K extends string, S, R, A, B>(
   ta: Record<K, A>,
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function traverseWithIndex__<F extends URIS4>(
+export function traverseWithIndex__<F extends MaURIS>(
   F: Applicative4E<F>
 ): <K extends string, S, R, E, A, B>(
   ta: Record<K, A>,
   f: (k: K, a: A) => Kind4<F, S, R, E, B>
 ) => Kind4<F, S, R, E, Record<K, B>>
-export function traverseWithIndex__<F extends URIS4, E>(
+export function traverseWithIndex__<F extends MaURIS, E>(
   F: Applicative4EC<F, E>
 ): <K extends string, S, R, A, B>(
   ta: Record<K, A>,
@@ -2067,28 +2067,28 @@ export const wilt__: {
   return (wa, f) => F.map(traverseF(wa, f), separate)
 }
 
-export function sequence_<F extends URIS4, E>(
+export function sequence_<F extends MaURIS, E>(
   F: Applicative4EC<F, E>
 ): <K extends string, S, R, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, S, R, E, Record<K, A>>
-export function sequence_<F extends URIS4, E>(
+export function sequence_<F extends MaURIS, E>(
   F: Applicative4ECP<F, E>
 ): <K extends string, S, R, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, unknown, R, E, Record<K, A>>
-export function sequence_<F extends URIS4>(
+export function sequence_<F extends MaURIS>(
   F: Applicative4E<F>
 ): <K extends string, S, R, E, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, S, R, E, Record<K, A>>
-export function sequence_<F extends URIS4>(
+export function sequence_<F extends MaURIS>(
   F: Applicative4EP<F>
 ): <K extends string, S, R, E, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, unknown, R, E, Record<K, A>>
 export function sequence_<F extends URIS4>(
-  F: Applicative4E<F>
+  F: Applicative4<F>
 ): <K extends string, S, R, E, A>(
   ta: Record<K, Kind4<F, S, R, E, A>>
 ) => Kind4<F, S, R, E, Record<K, A>>
@@ -2120,25 +2120,25 @@ export function sequence_<F>(
   return (ta) => traverseWithIndex__(F)(ta, (_, a) => a)
 }
 
-export function wither__<F extends URIS4>(
+export function wither__<F extends MaURIS>(
   F: Applicative4EP<F>
 ): <K extends string, A, S, R, E, B>(
   wa: Record<K, A>,
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function wither__<F extends URIS4, E>(
+export function wither__<F extends MaURIS, E>(
   F: Applicative4ECP<F, E>
 ): <K extends string, A, S, R, B>(
   wa: Record<K, A>,
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => Kind4<F, unknown, R, E, Record<K, B>>
-export function wither__<F extends URIS4, E>(
+export function wither__<F extends MaURIS, E>(
   F: Applicative4EC<F, E>
 ): <K extends string, A, S, R, B>(
   wa: Record<K, A>,
   f: (a: A) => Kind4<F, S, R, E, Option<B>>
 ) => Kind4<F, S, R, E, Record<K, B>>
-export function wither__<F extends URIS4>(
+export function wither__<F extends MaURIS>(
   F: Applicative4E<F>
 ): <K extends string, A, S, R, E, B>(
   wa: Record<K, A>,
