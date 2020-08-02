@@ -10,18 +10,7 @@ import type {
   CFunctor4,
   CFunctor4C
 } from "../Functor"
-import type {
-  HKT,
-  URIS,
-  Kind,
-  URIS2,
-  Kind2,
-  URIS3,
-  Kind3,
-  URIS4,
-  Kind4,
-  MaURIS
-} from "../HKT"
+import type { HKT, URIS, Kind, URIS2, Kind2, URIS3, Kind3, URIS4, Kind4 } from "../HKT"
 
 export interface COf<F> extends CFunctor<F> {
   readonly of: <A>(a: A) => HKT<F, A>
@@ -44,6 +33,6 @@ export interface COf3C<F extends URIS3, E> extends CFunctor3C<F, E> {
 export interface COf4<F extends URIS4> extends CFunctor4<F> {
   readonly of: <S, R, E, A>(a: A) => Kind4<F, S, R, E, A>
 }
-export interface COf4C<F extends MaURIS, E> extends CFunctor4C<F, E> {
+export interface COf4C<F extends URIS4, E> extends CFunctor4C<F, E> {
   readonly of: <S, R, A>(a: A) => Kind4<F, S, R, E, A>
 }
