@@ -1393,6 +1393,10 @@ export const provideR = <R2, R>(f: (r2: R2) => R) => <S, E, A>(
   ma: Effect<S, R, E, A>
 ): Effect<S, R2, E, A> => accessM((r2: R2) => new IProvideEnv(ma, f(r2)) as any)
 
+export const provideAll = <R>(_: R) => <S, E, A>(
+  ma: Effect<S, R, E, A>
+): Effect<S, unknown, E, A> => provideR(() => _)(ma)
+
 export const provideWith = <R, A>(
   f: (_: R) => A,
   _: "regular" | "inverted" = "regular"
