@@ -1,75 +1,135 @@
+export {
+  addDelay,
+  addDelayM,
+  addDelayM_,
+  addDelay_,
+  andThen,
+  andThenEither,
+  andThenEither_,
+  andThen_,
+  as,
+  as_,
+  both,
+  both_,
+  check,
+  check_,
+  choose,
+  choose_,
+  collectAll,
+  collectFrom,
+  collectUntil,
+  collectUntilM,
+  collectWhile,
+  collectWhileM,
+  contramap,
+  contramap_,
+  delayed,
+  delayedM,
+  delayedM_,
+  delayed_,
+  dimap,
+  dimap_,
+  doUntil,
+  doUntilEquals,
+  doUntilM,
+  doWhile,
+  doWhileEquals,
+  doWhileM,
+  duration,
+  either,
+  eitherWith,
+  eitherWith_,
+  either_,
+  elapsed,
+  ensuring,
+  ensuring_,
+  exponential,
+  fibonacci,
+  first,
+  fixed,
+  fold,
+  foldM,
+  foldM_,
+  fold_,
+  forever,
+  fromDelays,
+  fromDuration,
+  fromDurations,
+  fromFunction,
+  id,
+  initialized,
+  initialized_,
+  into,
+  into_,
+  jittered,
+  jittered_,
+  left,
+  linear,
+  map,
+  map_,
+  modifyDelay,
+  modifyDelay_,
+  never,
+  noDelay,
+  once,
+  onDecision,
+  onDecision_,
+  provideAll,
+  provideAll_,
+  provideSome,
+  provideSome_,
+  randomDelay,
+  reconsider,
+  reconsider_,
+  recurs,
+  repeat,
+  repeat_,
+  repetitions,
+  right,
+  run,
+  run_,
+  second,
+  spaced,
+  split,
+  split_,
+  stop,
+  succeed,
+  tapInput,
+  tapInput_,
+  tapOutput,
+  tapOutput_,
+  unfold,
+  unfoldM,
+  unfoldM_,
+  unfold_,
+  unit,
+  untilInput,
+  untilInputM,
+  untilInputM_,
+  untilInput_,
+  untilOutput,
+  untilOutputM,
+  untilOutputM_,
+  untilOutput_,
+  updated,
+  updated_,
+  updateService,
+  updateService_,
+  whileInput,
+  whileInputM,
+  whileInputM_,
+  whileInput_,
+  whileOutput,
+  whileOutputM,
+  whileOutputM_,
+  whileOutput_,
+  zip,
+  zipLeft,
+  zipLeft_,
+  zipRight,
+  zipRight_,
+  zipWith,
+  zipWith_,
+  zip_
+} from "./core"
 export { Schedule } from "./schedule"
-export { andThenEither } from "./andThenEither"
-export { andThenEither_ } from "./andThenEither_"
-export { id } from "./id"
-export { map } from "./map"
-export { map_ } from "./map_"
-export { updated } from "./updated"
-export { updated_ } from "./updated_"
-export { addDelay } from "./addDelay"
-export { addDelayM } from "./addDelayM"
-export { addDelayM_ } from "./addDelayM_"
-export { addDelay_ } from "./addDelay_"
-export { fromDelays } from "./fromDelays"
-export { unfoldM } from "./unfoldM"
-export { unfold } from "./unfold"
-export { unfold_ } from "./unfold_"
-export { unfoldM_ } from "./unfoldM_"
-export { delayedM } from "./delayedM"
-export { delayed } from "./delayed"
-export { delayedM_ } from "./delayedM_"
-export { delayed_ } from "./delayed_"
-export { forever } from "./forever"
-export { fixed } from "./fixed"
-export { zip, zip_ } from "./zip"
-export { zipRight, zipRight_ } from "./zipRight"
-export { zipLeft, zipLeft_ } from "./zipLeft"
-export { zipWith, zipWith_ } from "./zipWith"
-export { split, split_ } from "./split"
-export { andThen_ } from "./andThen_"
-export { andThen } from "./andThen"
-export { check, check_ } from "./check"
-export { fold, foldM_, foldM, fold_ } from "./fold"
-export { choose, choose_ } from "./choose"
-export { either, either_, eitherWith_, eitherWith } from "./either"
-export { as, as_ } from "./as"
-export { collectFrom, collectAll } from "./collectAll"
-export { contramap, contramap_ } from "./contramap"
-export { ensuring, ensuring_ } from "./ensuring"
-export { jittered, jittered_ } from "./jittered"
-export { left } from "./left"
-export { modifyDelay, modifyDelay_ } from "./modifyDelay"
-export { noDelay } from "./noDelay"
-export { provideSome } from "./provideSome"
-export { provideSome_ } from "./provideSome_"
-export { provideAll_ } from "./provideAll_"
-export { provideAll } from "./provideAll"
-export { onDecision, onDecision_ } from "./onDecision"
-export { reconsider, reconsider_ } from "./reconsider"
-export { repetitions } from "./repetitions"
-export { second } from "./second"
-export { tapInput, tapInput_ } from "./tapInput"
-export { tapOutput, tapOutput_ } from "./tapOutput"
-export { doUntil, doUntilM, doUntilEquals } from "./doUntil"
-export { doWhile, doWhileEquals, doWhileM } from "./doWhile"
-export { untilInput, untilInputM, untilInputM_, untilInput_ } from "./untilInput"
-export { untilOutput, untilOutput_, untilOutputM, untilOutputM_ } from "./untilOutput"
-export { elapsed } from "./elapsed"
-export { duration } from "./duration"
-export { exponential } from "./exponential"
-export { fibonacci } from "./fibonacci"
-export { recurs } from "./recurs"
-export { whileOutput, whileOutputM, whileOutputM_, whileOutput_ } from "./whileOutput"
-export { whileInput, whileInput_, whileInputM, whileInputM_ } from "./whileInput"
-export { spaced } from "./spaced"
-export { stop } from "./stop"
-export { succeed } from "./succeed"
-export { updateService, updateService_ } from "./updateService"
-export { fromDuration, fromDurations } from "./fromDuration"
-export { fromFunction } from "./fromFunction"
-export { linear } from "./linear"
-export { never } from "./never"
-export { once } from "./once"
-export { randomDelay } from "./randomDelay"
-export { both_, both } from "./both"
-export { repeat, repeat_ } from "./repeat"
