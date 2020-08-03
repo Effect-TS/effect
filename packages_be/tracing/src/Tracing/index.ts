@@ -263,11 +263,19 @@ export function withChildSpan(operation: string) {
     T.accessM((r: R) => (hasTracer(r) ? r[TracerURI].withChildSpan(operation)(ma) : ma))
 }
 
+/**
+ * Add tags into a current span. Note: tags have to be added before wrapping an
+ * effect with `withControllerSpan` or `withChildSpan` calls.
+ */
 export function addSpanTags(extraTags: Record<string, unknown>) {
   return <S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> =>
     T.accessM((r: R) => (hasTracer(r) ? r[TracerURI].addSpanTags(extraTags)(ma) : ma))
 }
 
+/**
+ * Set tag with key into a current span. Note: the tag has to be added before
+ * wrapping an effect with `withControllerSpan` or `withChildSpan` calls.
+ */
 export function setSpanTag(key: string, value: unknown) {
   return <S, R, E, A>(ma: T.Effect<S, R, E, A>): T.Effect<S, R, E, A> =>
     T.accessM((r: R) => (hasTracer(r) ? r[TracerURI].setSpanTag(key, value)(ma) : ma))
