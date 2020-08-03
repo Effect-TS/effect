@@ -1,6 +1,6 @@
 {
   "name": "@matechs/morphic",
-  "version": "0.15.2",
+  "version": "0.15.3",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -24,8 +24,8 @@
     "@types/node": "^14.0.5"
   },
   "dependencies": {
-    "@matechs/core": "^2.11.2",
-    "@matechs/morphic-alg": "^0.14.2",
+    "@matechs/core": "^2.11.3",
+    "@matechs/morphic-alg": "^0.14.3",
     "fast-equals": "^2.0.0"
   },
   "peerDependencies": {
