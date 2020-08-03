@@ -1,4 +1,4 @@
-import { withChildSpan } from "../../src"
+import { withChildSpan, addSpanTags } from "../../src"
 
 import { print, Printer } from "./Printer"
 
@@ -53,7 +53,14 @@ export const Counter = L.fromValue<Counter>({
         T.traverseArray((n) =>
           T.Do()
             .do(increment())
-            .bind("count", withChildSpan("span-current-count")(currentCount()))
+            .bind(
+              "count",
+              pipe(
+                currentCount(),
+                addSpanTags({ "some.tag": "tag value" }),
+                withChildSpan("span-current-count")
+              )
+            )
             .doL(({ count }) => print(`n: ${n} (${count})`))
             .unit()
         )

@@ -46,6 +46,36 @@ class MockTracer2 extends OT {
   }
 }
 
+class MockSpan extends Span {
+  constructor(
+    public readonly name: string,
+    public readonly tags: Record<string, unknown>
+  ) {
+    super()
+  }
+
+  protected _addTags(keyValuePairs: { [p: string]: unknown }) {
+    for (const [k, v] of Object.entries(keyValuePairs)) {
+      this.tags[k] = v
+    }
+  }
+}
+
+class MockTracer3 extends OT {
+  constructor(private readonly spans: Array<Span>) {
+    super()
+  }
+  startSpan(name: string, options?: SpanOptions): Span {
+    const span = super.startSpan(name, options)
+    this.spans.push(span)
+    return span
+  }
+
+  protected _startSpan(name: string, fields: SpanOptions): Span {
+    return new MockSpan(name, fields.tags || {})
+  }
+}
+
 describe("Example", () => {
   it("should collect messages from log", async () => {
     const messages: Array<string> = []
@@ -149,5 +179,23 @@ describe("Example", () => {
     const result = await T.runToPromiseExit(Tracer().use(program2))
 
     assert.deepStrictEqual(result, Ex.raise(new Error("not implemented")))
+  })
+
+  it("adds tags to correct child", async () => {
+    const spans: Array<MockSpan> = []
+    const mockTracer = new MockTracer3(spans)
+    const result = await T.runToPromiseExit(
+      pipe(
+        program,
+        Tracer(T.sync(() => mockTracer))
+          .with(
+            L.fromValue<Printer>({ [PrinterURI]: { print: () => T.unit } })
+          )
+          .with(Counter).use
+      )
+    )
+
+    assert.deepStrictEqual(spans.filter((s) => !!s.tags["some.tag"]).length, 20)
+    assert.deepStrictEqual(result, Ex.done({ start: 0, end: 20 }))
   })
 })
