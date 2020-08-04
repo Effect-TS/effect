@@ -8,10 +8,10 @@ pipe(
   }),
   M.chain(() =>
     M.sequenceTParN(2)(
-      M.fromEffect(T.delay(500)(T.succeedNow(0))),
-      M.fromEffect(T.delay(500)(T.succeedNow(1))),
-      M.fromEffect(T.delay(500)(T.succeedNow(2))),
-      M.fromEffect(T.delay(500)(T.succeedNow(4)))
+      M.fromEffect(T.delay(500)(T.succeed(0))),
+      M.fromEffect(T.delay(500)(T.succeed(1))),
+      M.fromEffect(T.delay(500)(T.succeed(2))),
+      M.fromEffect(T.delay(500)(T.succeed(4)))
     )
   ),
   M.onExitFirst(() =>

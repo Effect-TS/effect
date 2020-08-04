@@ -5,7 +5,7 @@ import { chain_ } from "./chain_"
 import { Effect } from "./effect"
 import { foldCauseM_ } from "./foldCauseM_"
 import { halt } from "./halt"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 /**
  * Returns an effect that effectfully "peeks" at the failure of this effect.
@@ -22,7 +22,7 @@ export const tapError_ = <S, R, E, A, S2, R2, E2>(
         (e) => chain_(f(e), () => halt(c)),
         (_) => halt(c)
       ),
-    succeedNow
+    succeed
   )
 
 /**

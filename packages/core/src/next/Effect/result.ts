@@ -2,7 +2,7 @@ import * as Exit from "../Exit/api"
 
 import { Effect } from "./effect"
 import { IFold } from "./primitives"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 /**
  * Returns an effect that semantically runs the effect on a fiber,
@@ -13,6 +13,6 @@ export const result = <S, R, E, A>(
 ): Effect<S, R, never, Exit.Exit<E, A>> =>
   new IFold(
     value,
-    (cause) => succeedNow(Exit.halt(cause)),
-    (succ) => succeedNow(Exit.succeed(succ))
+    (cause) => succeed(Exit.halt(cause)),
+    (succ) => succeed(Exit.succeed(succ))
   )

@@ -1,7 +1,7 @@
 import { chain_ } from "./chain_"
 import { Effect } from "./effect"
 import { map_ } from "./map_"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 const bind = <S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -25,6 +25,6 @@ const let_ = <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => A) 
 ): Effect<S2, R2, E2, K & { [k in N]: A }> =>
   map_(mk, (k): K & { [k in N]: A } => ({ ...k, [tag]: f(k) } as any))
 
-const of = succeedNow({})
+const of = succeed({})
 
 export { let_ as let, bind, of, merge }

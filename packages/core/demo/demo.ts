@@ -10,7 +10,7 @@ export const cancel = pipe(
           if (n > 3) {
             cb(T.fail(`failure: ${n}`))
           } else {
-            cb(T.succeedNow(n + 1))
+            cb(T.succeed(n + 1))
           }
         },
         n < 3 ? 1000 : 200

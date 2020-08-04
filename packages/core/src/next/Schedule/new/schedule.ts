@@ -1,3 +1,4 @@
+import * as E from "../../../Either"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as Clock from "../../Clock"
@@ -97,16 +98,19 @@ function coerceS<S1>() {
 }
 
 function repeatLoop<S, Env, Inp, Out>(
-  self: Decision.StepFunction<S, Env, Inp, Out>
+  init: Decision.StepFunction<S, Env, Inp, Out>,
+  self: Decision.StepFunction<S, Env, Inp, Out> = init
 ): Decision.StepFunction<S, Env, Inp, Out> {
   return (now, i) =>
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
         case "Done": {
-          return repeatLoop(self)(now, i)
+          return repeatLoop(init, self)(now, i)
         }
         case "Continue": {
-          return T.succeedNow(new Decision.Continue(d.out, d.interval, d.next))
+          return T.succeedNow(
+            new Decision.Continue(d.out, d.interval, repeatLoop(init, d.next))
+          )
         }
       }
     })
@@ -120,4 +124,329 @@ export function repeat<S, Env, Inp, Out>(self: Schedule<S, Env, Inp, Out>) {
   return new Schedule(repeatLoop(self.step))
 }
 
-export const modifyDelayM = (f: () => ) =>
+/**
+ * Returns a new schedule with the given delay added to every update.
+ */
+export function addDelay<S, Env, Inp, Out>(f: (b: Out) => number) {
+  return (self: Schedule<S, Env, Inp, Out>) =>
+    addDelayM_(self, (b) => T.succeedNow(f(b)))
+}
+
+/**
+ * Returns a new schedule with the given delay added to every update.
+ */
+export function addDelay_<S, Env, Inp, Out>(
+  self: Schedule<S, Env, Inp, Out>,
+  f: (b: Out) => number
+) {
+  return addDelayM_(self, (b) => T.succeedNow(f(b)))
+}
+
+/**
+ * Returns a new schedule with the effectfully calculated delay added to every update.
+ */
+export function addDelayM<Out, S1, Env1>(
+  f: (b: Out) => T.Effect<S1, Env1, never, number>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => addDelayM_(self, f)
+}
+
+/**
+ * Returns a new schedule with the effectfully calculated delay added to every update.
+ */
+export function addDelayM_<S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (b: Out) => T.Effect<S1, Env1, never, number>
+) {
+  return modifyDelayM_(self, (o, d) => T.map_(f(o), (i) => i + d))
+}
+
+/**
+ * The same as `andThenEither`, but merges the output.
+ */
+export function andThen<In, Env1, S1, Out2, In1 extends In = In>(
+  that: Schedule<S1, Env1, In1, Out2>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => andThen_(self, that)
+}
+
+/**
+ * The same as `andThenEither`, but merges the output.
+ */
+export function andThen_<S, R, B, A, R1, S1, C, A1 extends A = A>(
+  self: Schedule<S, R, A, B>,
+  that: Schedule<S1, R1, A1, C>
+) {
+  return map_(andThenEither_(self, that), (a) => (a._tag === "Left" ? a.left : a.right))
+}
+
+/**
+ * Returns a new schedule that maps this schedule to a constant output.
+ */
+export const as = <Out2>(o: Out2) => <S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>
+) => map_(self, () => o)
+
+function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
+  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>,
+  self: Decision.StepFunction<S, Env, In, Out>
+): Decision.StepFunction<S | S1, Env & Env1, In1, Out> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.succeedNow(new Decision.Done(d.out))
+        }
+        case "Continue": {
+          return T.map_(test(i, d.out), (b) =>
+            b
+              ? new Decision.Continue(d.out, d.interval, checkMLoop(test, d.next))
+              : new Decision.Done(d.out)
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that passes each input and output of this schedule to the spefcified
+ * function, and then determines whether or not to continue based on the return value of the
+ * function.
+ */
+export const check = <In, In1 extends In, Out>(f: (i: In1, o: Out) => boolean) => <
+  S,
+  Env
+>(
+  self: Schedule<S, Env, In, Out>
+) => check_(self, f)
+
+/**
+ * Returns a new schedule that passes each input and output of this schedule to the spefcified
+ * function, and then determines whether or not to continue based on the return value of the
+ * function.
+ */
+export const check_ = <S, Env, In, In1 extends In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In1, o: Out) => boolean
+) => checkM_(self, (i: In1, o) => T.succeedNow(f(i, o)))
+
+/**
+ * Returns a new schedule that passes each input and output of this schedule to the specified
+ * function, and then determines whether or not to continue based on the return value of the
+ * function.
+ */
+export const checkM = <S1, Env1, In, In1 extends In, Out>(
+  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>
+) => <S, Env>(self: Schedule<S, Env, In, Out>) =>
+  new Schedule(checkMLoop(test, self.step))
+
+/**
+ * Returns a new schedule that passes each input and output of this schedule to the specified
+ * function, and then determines whether or not to continue based on the return value of the
+ * function.
+ */
+export const checkM_ = <S, Env, S1, Env1, In, In1 extends In, Out>(
+  self: Schedule<S, Env, In1, Out>,
+  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>
+) => new Schedule(checkMLoop(test, self.step))
+
+/**
+ * Returns a new schedule that first executes this schedule to completion, and then executes the
+ * specified schedule to completion.
+ */
+export function andThenEither<S2, Env2, In2 extends In, Out2, In>(
+  that: Schedule<S2, Env2, In2, Out2>
+) {
+  return <S, Env, Out>(
+    self: Schedule<S, Env, In, Out>
+  ): Schedule<S2 | S, Env & Env2, In2, E.Either<Out, Out2>> =>
+    andThenEither_(self, that)
+}
+
+function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2 extends In, Out2>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  that: Decision.StepFunction<S2, Env2, In2, Out2>,
+  onLeft: boolean
+): Decision.StepFunction<S | S2, Env & Env2, In2, E.Either<Out, Out2>> {
+  return (now, i) => {
+    if (onLeft) {
+      return T.chain_(self(now, i), (d) => {
+        switch (d._tag) {
+          case "Continue": {
+            return T.succeedNow(
+              new Decision.Continue(
+                E.left(d.out),
+                d.interval,
+                andThenEitherLoop(d.next, that, true)
+              )
+            )
+          }
+          case "Done": {
+            return andThenEitherLoop(self, that, false)(now, i)
+          }
+        }
+      })
+    } else {
+      return T.map_(that(now, i), (d) => {
+        switch (d._tag) {
+          case "Done": {
+            return new Decision.Done(E.right(d.out))
+          }
+          case "Continue": {
+            return new Decision.Continue(
+              E.right(d.out),
+              d.interval,
+              andThenEitherLoop(self, d.next, false)
+            )
+          }
+        }
+      })
+    }
+  }
+}
+
+/**
+ * Returns a new schedule that first executes this schedule to completion, and then executes the
+ * specified schedule to completion.
+ */
+export function andThenEither_<S2, Env2, In2 extends In, Out2, S, Env, Out, In>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S2, Env2, In2, Out2>
+): Schedule<S2 | S, Env & Env2, In2, E.Either<Out, Out2>> {
+  return new Schedule(andThenEitherLoop(self.step, that.step, true))
+}
+
+/**
+ * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
+ */
+export const forever = unfold_(0, (n) => n + 1)
+
+function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
+  f: (o: Out, d: number) => T.Effect<S1, Env1, never, number>,
+  self: Decision.StepFunction<S, Env, Inp, Out>
+): Decision.StepFunction<S | S1, Env & Env1, Inp, Out> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.succeedNow<Decision.Decision<S | S1, Env & Env1, Inp, Out>>(
+            new Decision.Done(d.out)
+          )
+        }
+        case "Continue": {
+          const delay = d.interval - now
+
+          return T.map_(
+            f(d.out, delay),
+            (n) =>
+              new Decision.Continue(d.out, d.interval + n, modifyDelayMLoop(f, d.next))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that modifies the delay using the specified
+ * effectual function.
+ */
+export function modifyDelayM<Out, S1, R1>(
+  f: (o: Out, d: number) => T.Effect<S1, R1, never, number>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => modifyDelayM_(self, f)
+}
+
+/**
+ * Returns a new schedule that modifies the delay using the specified
+ * effectual function.
+ */
+export function modifyDelayM_<S, Env, In, Out, S1, R1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out, d: number) => T.Effect<S1, R1, never, number>
+) {
+  return new Schedule(modifyDelayMLoop(f, self.step))
+}
+
+function mapMLoop<S, Env1, Out2, S1, Env, Inp1, Out>(
+  f: (o: Out) => T.Effect<S, Env1, never, Out2>,
+  self: Decision.StepFunction<S1, Env, Inp1, Out>
+): Decision.StepFunction<S | S1, Env & Env1, Inp1, Out2> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.map_(
+            f(d.out),
+            (o): Decision.Decision<S | S1, Env & Env1, Inp1, Out2> =>
+              new Decision.Done(o)
+          )
+        }
+        case "Continue": {
+          return T.map_(
+            f(d.out),
+            (o) => new Decision.Continue(o, d.interval, mapMLoop(f, d.next))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified
+ * effectful function.
+ */
+export function map<Out, Out2>(f: (o: Out) => Out2) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => map_(self, f)
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified
+ * effectful function.
+ */
+export function map_<S, Env, In, Out, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => Out2
+) {
+  return mapM_(self, (o) => T.succeedNow(f(o)))
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified function.
+ */
+export function mapM<Out, S1, Env1, Out2>(
+  f: (o: Out) => T.Effect<S1, Env1, never, Out2>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) =>
+    new Schedule(mapMLoop(f, self.step))
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified function.
+ */
+export function mapM_<S, Env, In, Out, S1, Env1, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => T.Effect<S1, Env1, never, Out2>
+) {
+  return new Schedule(mapMLoop(f, self.step))
+}
+
+function unfoldLoop<A>(
+  a: A,
+  f: (a: A) => A
+): Decision.StepFunction<never, unknown, unknown, A> {
+  return (now, _) => T.succeedNow(new Decision.Continue(a, now, unfoldLoop(f(a), f)))
+}
+
+/**
+ * Unfolds a schedule that repeats one time from the specified state and iterator.
+ */
+export function unfold<A>(f: (a: A) => A) {
+  return (a: A) => new Schedule(unfoldLoop(a, f))
+}
+
+/**
+ * Unfolds a schedule that repeats one time from the specified state and iterator.
+ */
+export function unfold_<A>(a: A, f: (a: A) => A) {
+  return new Schedule(unfoldLoop(a, f))
+}

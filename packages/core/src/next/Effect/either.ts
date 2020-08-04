@@ -2,7 +2,7 @@ import * as E from "../../Either"
 
 import { Effect } from "./effect"
 import { foldM_ } from "./foldM_"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 /**
  * Returns an effect whose failure and success have been lifted into an
@@ -19,6 +19,6 @@ export const either = <S, R, E, A>(
 ): Effect<S, R, never, E.Either<E, A>> =>
   foldM_(
     self,
-    (e) => succeedNow(E.left(e)),
-    (a) => succeedNow(E.right(a))
+    (e) => succeed(E.left(e)),
+    (a) => succeed(E.right(a))
   )
