@@ -31,5 +31,7 @@ export {
   repeat,
   Schedule,
   unfold,
-  unfold_
+  unfold_,
+  unfoldM,
+  unfoldM_
 } from "./schedule"
