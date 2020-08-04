@@ -2,7 +2,7 @@ import * as O from "../../Option"
 import * as S from "../../Set"
 import * as Cause from "../Cause/core"
 import { Sync, Async } from "../Effect/effect"
-import { succeedNow } from "../Effect/succeedNow"
+import { succeed } from "../Effect/succeed"
 import { unit } from "../Effect/unit"
 import * as Exit from "../Exit/core"
 import { FiberRef } from "../FiberRef/fiberRef"
@@ -80,11 +80,11 @@ export const fold = <E, A, Z>(
  */
 export const done = <E, A>(exit: Exit.Exit<E, A>): Syntetic<E, A> => ({
   _tag: "SynteticFiber",
-  wait: succeedNow(exit),
-  getRef: (ref) => succeedNow(ref.initial),
+  wait: succeed(exit),
+  getRef: (ref) => succeed(ref.initial),
   inheritRefs: unit,
-  interruptAs: () => succeedNow(exit),
-  poll: succeedNow(O.some(exit))
+  interruptAs: () => succeed(exit),
+  poll: succeed(O.some(exit))
 })
 
 /**

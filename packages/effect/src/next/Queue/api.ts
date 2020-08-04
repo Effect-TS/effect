@@ -1,7 +1,7 @@
 import * as A from "../../Array"
 import { pipe, tuple, identity } from "../../Function"
 import * as O from "../../Option"
-import { succeedNow } from "../Effect"
+import { succeed } from "../Effect"
 
 import * as T from "./effect"
 import * as S from "./schedule"
@@ -316,8 +316,8 @@ export const dimap = <A, B, C, D>(f: (c: C) => A, g: (b: B) => D) => <RA, RB, EA
 ) =>
   dimapM_(
     self,
-    (c: C) => succeedNow(f(c)),
-    (b) => succeedNow(g(b))
+    (c: C) => succeed(f(c)),
+    (b) => succeed(g(b))
   )
 
 /**
@@ -331,8 +331,8 @@ export const dimap_ = <RA, RB, EA, EB, A, B, C, D>(
 ) =>
   dimapM_(
     self,
-    (c: C) => succeedNow(f(c)),
-    (b) => succeedNow(g(b))
+    (c: C) => succeed(f(c)),
+    (b) => succeed(g(b))
   )
 
 /**
@@ -393,14 +393,14 @@ export const contramapM = <C, RA2, EA2, A>(f: (c: C) => T.AsyncRE<RA2, EA2, A>) 
   B
 >(
   self: XQueue<RA, RB, EA, EB, A, B>
-) => dimapM_(self, f, succeedNow)
+) => dimapM_(self, f, succeed)
 
 /**
  * Transforms elements enqueued into this queue with a pure function.
  */
 export const contramap = <C, A>(f: (c: C) => A) => <RA, RB, EA, EB, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
-) => dimapM_(self, (c: C) => succeedNow(f(c)), succeedNow)
+) => dimapM_(self, (c: C) => succeed(f(c)), succeed)
 
 /**
  * Like `filterInput`, but uses an effectful function to filter the elements.

@@ -7,7 +7,7 @@ import { chain_ } from "../Effect/chain_"
 import { Effect } from "../Effect/effect"
 import { provide } from "../Effect/provide"
 import { provideAll_ } from "../Effect/provideAll_"
-import { succeedNow } from "../Effect/succeedNow"
+import { succeed } from "../Effect/succeed"
 import { UnionToIntersection } from "../Utils"
 
 /**
@@ -202,12 +202,12 @@ export const accessServiceF = <T>(s: Has<T>) => <
  * Access a service with the required Service Entry
  */
 export const accessService = <T>(s: Has<T>) => <B>(f: (a: T) => B) =>
-  accessServiceM(s)((a) => succeedNow(f(a)))
+  accessServiceM(s)((a) => succeed(f(a)))
 
 /**
  * Access a service with the required Service Entry
  */
-export const readService = <T>(s: Has<T>) => accessServiceM(s)((a) => succeedNow(a))
+export const readService = <T>(s: Has<T>) => accessServiceM(s)((a) => succeed(a))
 
 /**
  * Provides the service with the required Service Entry, depends on global HasRegistry
@@ -227,7 +227,7 @@ export const provideServiceM = <T>(_: Has<T>) => <S, R, E>(f: Effect<S, R, E, T>
  */
 export const provideService = <T>(_: Has<T>) => (f: T) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<T>, E1, A1>
-): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeedNow(f))(ma)
+): Effect<S1, R1, E1, A1> => provideServiceM(_)(succeed(f))(ma)
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
@@ -256,7 +256,7 @@ export const replaceServiceM_ = <S, R, E, T, S1, R1, E1, A1>(
 export const replaceService = <T>(_: Has<T>, f: (_: T) => T) => <S1, R1, E1, A1>(
   ma: Effect<S1, R1 & Has<T>, E1, A1>
 ): Effect<S1, R1 & Has<T>, E1, A1> =>
-  accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
+  accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
 
 /**
  * Replaces the service with the required Service Entry, depends on global HasRegistry
@@ -266,7 +266,7 @@ export const replaceService_ = <S1, R1, E1, A1, T>(
   _: Has<T>,
   f: (_: T) => T
 ): Effect<S1, R1 & Has<T>, E1, A1> =>
-  accessServiceM(_)((t) => provideServiceM(_)(succeedNow(f(t)))(ma))
+  accessServiceM(_)((t) => provideServiceM(_)(succeed(f(t)))(ma))
 
 /**
  * Replaces the service with the required Service Entry, in the specified environment

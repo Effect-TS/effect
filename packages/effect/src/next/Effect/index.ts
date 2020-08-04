@@ -164,6 +164,12 @@ export { repeat, repeatOrElseEither_, repeatOrElse_, repeat_ } from "./repeat"
 export { result } from "./result"
 export { retry, retryOrElseEither_, retryOrElse_, retry_ } from "./retry"
 export {
+  retry as _retry,
+  retryOrElseEither_ as _retryOrElseEither_,
+  retryOrElse_ as _retryOrElse_,
+  retry_ as _retry_
+} from "./retry2"
+export {
   AsyncCancel,
   CancelMain,
   DefaultEnv,
@@ -192,7 +198,7 @@ export {
 } from "./sequenceS"
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"
 export { sleep } from "./sleep"
-export { succeedNow } from "./succeedNow"
+export { succeed } from "./succeed"
 export { summarized, summarized_ } from "./summarized"
 export { suspend } from "./suspend"
 export { suspendPartial } from "./suspendPartial"

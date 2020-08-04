@@ -7,7 +7,7 @@ import { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM_ } from "./foldM_"
 import { map_ } from "./map_"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 import { suspend } from "./suspend"
 
 export const retryOrElseEither_ = <S, R, E, A, S1, R1, ST, O, S2, R2, E2, A2>(
@@ -24,7 +24,7 @@ export const retryOrElseEither_ = <S, R, E, A, S1, R1, ST, O, S2, R2, E2, A2>(
           (_) => map_(orElse(err, policy.extract(err, state)), E.left),
           (s) => suspend(() => loop(s))
         ),
-      (x) => succeedNow(E.right(x))
+      (x) => succeed(E.right(x))
     )
 
   return chain_(policy.initial, loop)

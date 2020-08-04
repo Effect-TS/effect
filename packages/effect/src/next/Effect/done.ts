@@ -1,7 +1,7 @@
 import { Exit } from "../Exit/exit"
 
 import { halt } from "./halt"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 import { suspend } from "./suspend"
 
 /**
@@ -11,7 +11,7 @@ export const done = <E = never, A = unknown>(exit: Exit<E, A>) =>
   suspend(() => {
     switch (exit._tag) {
       case "Success": {
-        return succeedNow(exit.value)
+        return succeed(exit.value)
       }
       case "Failure": {
         return halt(exit.cause)

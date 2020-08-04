@@ -10,7 +10,7 @@ describe("Core Implementation", () => {
 
     const effect = T.effectAsyncInterrupt((cb: T.Cb<T.Async<number>>) => {
       const timer = setTimeout(() => {
-        cb(T.succeedNow(1))
+        cb(T.succeed(1))
       }, 5000)
       return T.effectTotal(() => {
         clearTimeout(timer)
@@ -36,7 +36,7 @@ describe("Core Implementation", () => {
             if (k <= 3) {
               k -= 1
             }
-            cb(T.succeedNow(n + 1))
+            cb(T.succeed(n + 1))
           }, 100)
         })
       )
@@ -48,7 +48,7 @@ describe("Core Implementation", () => {
 
   it("provideAll", async () => {
     const res = await pipe(
-      T.accessM(({ n }: { n: number }) => T.succeedNow(n + 1)),
+      T.accessM(({ n }: { n: number }) => T.succeed(n + 1)),
       T.provideAll({ n: 1 }),
       T.runPromise
     )
