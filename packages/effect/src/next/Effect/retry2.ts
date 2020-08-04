@@ -12,40 +12,46 @@ import { map } from "./map"
 import { map_ } from "./map_"
 import { orDie } from "./orDie"
 
+function loop<S, R, E, A, S1, R1, O, S2, R2, E2, A2>(
+  self: Effect<S, R, E, A>,
+  orElse: (e: E, o: O) => Effect<S2, R2, E2, A2>,
+  driver: Driver<S1, R1 & HasClock, E, O>
+): Effect<S | S1 | S2, R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
+  return pipe(
+    self,
+    map((a) => E.right(a)),
+    catchAll((e) =>
+      pipe(
+        driver.next(e),
+        foldM(
+          () =>
+            pipe(
+              driver.last,
+              orDie,
+              chain((o) =>
+                pipe(
+                  orElse(e, o),
+                  map((a) => E.left(a))
+                )
+              )
+            ),
+          () => loop(self, orElse, driver)
+        )
+      )
+    )
+  )
+}
+
 export const retryOrElseEither_ = <S, R, E, A, S1, R1, O, S2, R2, E2, A2>(
   self: Effect<S, R, E, A>,
   policy: Schedule<S1, R1, E, O>,
   orElse: (e: E, o: O) => Effect<S2, R2, E2, A2>
 ): Effect<S | S1 | S2, R & R1 & R2 & HasClock, E2, E.Either<A2, A>> => {
-  function loop(
-    driver: Driver<S1, R1 & HasClock, E, O>
-  ): Effect<S | S1 | S2, R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
-    return pipe(
-      self,
-      map((a) => E.right(a)),
-      catchAll((e) =>
-        pipe(
-          driver.next(e),
-          foldM(
-            () =>
-              pipe(
-                driver.last,
-                orDie,
-                chain((o) =>
-                  pipe(
-                    orElse(e, o),
-                    map((a) => E.left(a))
-                  )
-                )
-              ),
-            () => loop(driver)
-          )
-        )
-      )
-    )
-  }
-
-  return pipe(policy, driver, chain(loop))
+  return pipe(
+    policy,
+    driver,
+    chain((a) => loop(self, orElse, a))
+  )
 }
 
 export const retryOrElse_ = <S, R, E, A, S1, R1, O, S2, R2, E2, A2>(

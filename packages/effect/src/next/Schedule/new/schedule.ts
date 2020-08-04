@@ -54,7 +54,7 @@ export function driver<S, Env, Inp, Out>(
           O.fold_(
             o,
             () => T.fail(new Driver.NoSuchElementException()),
-            (b) => T.succeedNow(b)
+            (b) => T.succeed(b)
           )
         )
       )
@@ -108,7 +108,7 @@ function repeatLoop<S, Env, Inp, Out>(
           return repeatLoop(init, self)(now, i)
         }
         case "Continue": {
-          return T.succeedNow(
+          return T.succeed(
             new Decision.Continue(d.out, d.interval, repeatLoop(init, d.next))
           )
         }
@@ -128,8 +128,7 @@ export function repeat<S, Env, Inp, Out>(self: Schedule<S, Env, Inp, Out>) {
  * Returns a new schedule with the given delay added to every update.
  */
 export function addDelay<S, Env, Inp, Out>(f: (b: Out) => number) {
-  return (self: Schedule<S, Env, Inp, Out>) =>
-    addDelayM_(self, (b) => T.succeedNow(f(b)))
+  return (self: Schedule<S, Env, Inp, Out>) => addDelayM_(self, (b) => T.succeed(f(b)))
 }
 
 /**
@@ -139,7 +138,7 @@ export function addDelay_<S, Env, Inp, Out>(
   self: Schedule<S, Env, Inp, Out>,
   f: (b: Out) => number
 ) {
-  return addDelayM_(self, (b) => T.succeedNow(f(b)))
+  return addDelayM_(self, (b) => T.succeed(f(b)))
 }
 
 /**
@@ -195,7 +194,7 @@ function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
         case "Done": {
-          return T.succeedNow(new Decision.Done(d.out))
+          return T.succeed(new Decision.Done(d.out))
         }
         case "Continue": {
           return T.map_(test(i, d.out), (b) =>
@@ -228,7 +227,7 @@ export const check = <In, In1 extends In, Out>(f: (i: In1, o: Out) => boolean) =
 export const check_ = <S, Env, In, In1 extends In, Out>(
   self: Schedule<S, Env, In, Out>,
   f: (i: In1, o: Out) => boolean
-) => checkM_(self, (i: In1, o) => T.succeedNow(f(i, o)))
+) => checkM_(self, (i: In1, o) => T.succeed(f(i, o)))
 
 /**
  * Returns a new schedule that passes each input and output of this schedule to the specified
@@ -273,7 +272,7 @@ function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2 extends In, Out2>(
       return T.chain_(self(now, i), (d) => {
         switch (d._tag) {
           case "Continue": {
-            return T.succeedNow(
+            return T.succeed(
               new Decision.Continue(
                 E.left(d.out),
                 d.interval,
@@ -321,6 +320,61 @@ export function andThenEither_<S2, Env2, In2 extends In, Out2, S, Env, Out, In>(
  */
 export const forever = unfold_(0, (n) => n + 1)
 
+function foldMLoop<Z, S, Env, In, Out, S1, Env1>(
+  z: Z,
+  f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>,
+  self: Decision.StepFunction<S, Env, In, Out>
+): Decision.StepFunction<S | S1, Env & Env1, In, Z> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.succeed<Decision.Decision<S | S1, Env & Env1, In, Z>>(
+            new Decision.Done(z)
+          )
+        }
+        case "Continue": {
+          return T.map_(
+            f(z, d.out),
+            (z2) => new Decision.Continue(z2, d.interval, foldMLoop(z2, f, d.next))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that effectfully folds over the outputs of this one.
+ */
+export const fold = <Z>(z: Z) => <Out>(f: (z: Z, o: Out) => Z) => <S, Env, In>(
+  self: Schedule<S, Env, In, Out>
+) => fold_(self, z, f)
+
+/**
+ * Returns a new schedule that effectfully folds over the outputs of this one.
+ */
+export const fold_ = <S, Env, In, Out, Z>(
+  self: Schedule<S, Env, In, Out>,
+  z: Z,
+  f: (z: Z, o: Out) => Z
+) => foldM_(self, z, (z, o) => T.succeed(f(z, o)))
+
+/**
+ * Returns a new schedule that effectfully folds over the outputs of this one.
+ */
+export const foldM = <Z>(z: Z) => <S1, Env1, Out>(
+  f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>
+) => <S, Env, In>(self: Schedule<S, Env, In, Out>) => foldM_(self, z, f)
+
+/**
+ * Returns a new schedule that effectfully folds over the outputs of this one.
+ */
+export const foldM_ = <S, Env, In, Out, Z, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  z: Z,
+  f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>
+) => new Schedule(foldMLoop(z, f, self.step))
+
 function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
   f: (o: Out, d: number) => T.Effect<S1, Env1, never, number>,
   self: Decision.StepFunction<S, Env, Inp, Out>
@@ -329,7 +383,7 @@ function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
         case "Done": {
-          return T.succeedNow<Decision.Decision<S | S1, Env & Env1, Inp, Out>>(
+          return T.succeed<Decision.Decision<S | S1, Env & Env1, Inp, Out>>(
             new Decision.Done(d.out)
           )
         }
@@ -407,7 +461,7 @@ export function map_<S, Env, In, Out, Out2>(
   self: Schedule<S, Env, In, Out>,
   f: (o: Out) => Out2
 ) {
-  return mapM_(self, (o) => T.succeedNow(f(o)))
+  return mapM_(self, (o) => T.succeed(f(o)))
 }
 
 /**
@@ -434,7 +488,7 @@ function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
 ): Decision.StepFunction<never, unknown, unknown, A> {
-  return (now, _) => T.succeedNow(new Decision.Continue(a, now, unfoldLoop(f(a), f)))
+  return (now, _) => T.succeed(new Decision.Continue(a, now, unfoldLoop(f(a), f)))
 }
 
 /**
