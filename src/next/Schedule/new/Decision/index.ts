@@ -77,5 +77,5 @@ export function as<Out1>(o: Out1) {
 }
 
 export function done<A>(a: A): StepFunction<never, unknown, unknown, A> {
-  return () => T.succeedNow(new Done(a))
+  return () => T.succeed(new Done(a))
 }

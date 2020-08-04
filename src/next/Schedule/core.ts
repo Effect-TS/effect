@@ -18,7 +18,7 @@ import { Schedule } from "./schedule"
  * Returns a new schedule with the given delay added to every update.
  */
 export function addDelay<S, R, ST, A, B>(f: (b: B) => number) {
-  return (self: Schedule<S, R, ST, A, B>) => addDelayM_(self, (b) => T.succeedNow(f(b)))
+  return (self: Schedule<S, R, ST, A, B>) => addDelayM_(self, (b) => T.succeed(f(b)))
 }
 
 /**
@@ -28,7 +28,7 @@ export function addDelay_<S, R, ST, A, B>(
   self: Schedule<S, R, ST, A, B>,
   f: (b: B) => number
 ) {
-  return addDelayM_(self, (b) => T.succeedNow(f(b)))
+  return addDelayM_(self, (b) => T.succeed(f(b)))
 }
 
 /**
@@ -38,7 +38,7 @@ export function addDelayM<B, S1, R1>(f: (b: B) => T.Effect<S1, R1, never, number
   return <S, R, ST, A>(self: Schedule<S, R, ST, A, B>) =>
     updated_(self, (update) => (a, s) =>
       T.chain_(f(self.extract(a, s)), (d) =>
-        T.chain_(update(a, s), (r) => T.delay(d)(T.succeedNow(r)))
+        T.chain_(update(a, s), (r) => T.delay(d)(T.succeed(r)))
       )
     )
 }
@@ -52,7 +52,7 @@ export function addDelayM_<S, R, ST, A, B, S1, R1>(
 ) {
   return updated_(self, (update) => (a, s) =>
     T.chain_(f(self.extract(a, s)), (d) =>
-      T.chain_(update(a, s), (r) => T.delay(d)(T.succeedNow(r)))
+      T.chain_(update(a, s), (r) => T.delay(d)(T.succeed(r)))
     )
   )
 }
@@ -298,7 +298,7 @@ export function contramap<A, A1>(f: (_: A1) => A) {
  */
 export function delayed(f: (ms: number) => number) {
   return <S, A, B, ST, R = unknown>(self: Schedule<S, R & HasClock, ST, A, B>) =>
-    delayedM_(self, (x) => T.succeedNow(f(x)))
+    delayedM_(self, (x) => T.succeed(f(x)))
 }
 
 /**
@@ -309,7 +309,7 @@ export function delayed_<S, A, B, ST, R = unknown>(
   self: Schedule<S, R & HasClock, ST, A, B>,
   f: (ms: number) => number
 ) {
-  return delayedM_(self, (x) => T.succeedNow(f(x)))
+  return delayedM_(self, (x) => T.succeed(f(x)))
 }
 
 /**
@@ -649,7 +649,7 @@ export function fold_<S, R, ST, A, B, Z>(
   z: Z,
   f: (z: Z, b: B) => Z
 ): Schedule<S, R, [ST, Z], A, Z> {
-  return foldM_(self, z, (z, b) => T.succeedNow(f(z, b)))
+  return foldM_(self, z, (z, b) => T.succeed(f(z, b)))
 }
 
 /**
@@ -658,7 +658,7 @@ export function fold_<S, R, ST, A, B, Z>(
 export function fold<Z>(z: Z) {
   return <B>(f: (z: Z, b: B) => Z) => <S, R, ST, A>(
     self: Schedule<S, R, ST, A, B>
-  ): Schedule<S, R, [ST, Z], A, Z> => foldM_(self, z, (z, b) => T.succeedNow(f(z, b)))
+  ): Schedule<S, R, [ST, Z], A, Z> => foldM_(self, z, (z, b) => T.succeed(f(z, b)))
 }
 
 /**
@@ -1013,7 +1013,7 @@ export function randomDelay(
   max: number
 ): Schedule<unknown, HasRandom & HasClock, number, unknown, number> {
   return new Schedule(
-    T.succeedNow(0),
+    T.succeed(0),
     () => T.chain_(nextIntBetween(min, max), (s) => T.as_(T.sleep(s), s)),
     (_, s) => s
   )
@@ -1120,11 +1120,11 @@ export function run_<S, R, ST, A, B>(
       const [x, t] = [NA.head(xs), NA.tail(xs)]
       return T.foldM_(
         self.update(x, state),
-        () => T.succeedNow([self.extract(x, state), ...acc]),
+        () => T.succeed([self.extract(x, state), ...acc]),
         (s) => loop(t, s, [self.extract(x, state), ...acc])
       )
     } else {
-      return T.succeedNow(acc)
+      return T.succeed(acc)
     }
   }
 
@@ -1243,7 +1243,7 @@ export function tapOutput<B, S1, R1>(f: (a: B) => T.Effect<S1, R1, never, any>) 
  * through recured application of a function to a base value.
  */
 export function unfold<A>(f: (a: A) => A) {
-  return (a: A) => unfoldM_(T.succeedNow(a), (a) => T.succeedNow(f(a)))
+  return (a: A) => unfoldM_(T.succeed(a), (a) => T.succeed(f(a)))
 }
 
 /**
@@ -1251,7 +1251,7 @@ export function unfold<A>(f: (a: A) => A) {
  * through recured application of a function to a base value.
  */
 export function unfold_<A>(a: A, f: (a: A) => A) {
-  return unfoldM_(T.succeedNow(a), (a) => T.succeedNow(f(a)))
+  return unfoldM_(T.succeed(a), (a) => T.succeed(f(a)))
 }
 
 /**
@@ -1317,7 +1317,7 @@ export function untilInput_<S, R, ST, A, B, A1 extends A>(
   self: Schedule<S, R, ST, A, B>,
   f: (a: A1) => boolean
 ) {
-  return untilInputM_(self, (a: A1) => T.succeedNow(f(a)))
+  return untilInputM_(self, (a: A1) => T.succeed(f(a)))
 }
 
 /**
@@ -1357,7 +1357,7 @@ export function untilOutput_<S, R, ST, A, B>(
   self: Schedule<S, R, ST, A, B>,
   f: (a: B) => boolean
 ) {
-  return untilOutputM_(self, (a) => T.succeedNow(f(a)))
+  return untilOutputM_(self, (a) => T.succeed(f(a)))
 }
 
 /**
@@ -1447,7 +1447,7 @@ export function whileInput_<S, R, ST, A, B, A1 extends A>(
   self: Schedule<S, R, ST, A, B>,
   f: (a: A1) => boolean
 ) {
-  return whileInputM_(self, (a: A1) => T.succeedNow(f(a)))
+  return whileInputM_(self, (a: A1) => T.succeed(f(a)))
 }
 
 /**
@@ -1487,7 +1487,7 @@ export function whileOutput_<S, R, ST, A, B>(
   self: Schedule<S, R, ST, A, B>,
   f: (a: B) => boolean
 ) {
-  return whileOutputM_(self, (a) => T.succeedNow(f(a)))
+  return whileOutputM_(self, (a) => T.succeed(f(a)))
 }
 
 /**

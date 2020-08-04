@@ -13,7 +13,7 @@ const program = pipe(
   T.suspend(() => {
     console.log(`called ${i}`)
     i++
-    return T.fail("error")
+    return i === 5 ? T.succeed(1) : T.fail("error")
   }),
   T._retry(policy),
   T.chain((n) =>
