@@ -6,7 +6,7 @@ import { chain_ } from "./chain_"
 import { Effect } from "./effect"
 import { foldM_ } from "./foldM_"
 import { map_ } from "./map_"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 /**
  * Returns a new effect that repeats this effect according to the specified
@@ -28,7 +28,7 @@ export const repeatOrElseEither_ = <S, R, E, A, SS, SR, SST, B, S2, R2, E2, C>(
   ): Effect<S | SS | S2, R & SR & R2, E2, E.Either<C, B>> => {
     return foldM_(
       schedule.update(last, state),
-      () => succeedNow(E.right(schedule.extract(last, state))),
+      () => succeed(E.right(schedule.extract(last, state))),
       (s) =>
         foldM_(
           self,

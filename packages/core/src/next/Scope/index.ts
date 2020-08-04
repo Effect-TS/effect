@@ -5,7 +5,7 @@ import { cause } from "../Effect/cause"
 import { Async, Sync } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
 import { map_ } from "../Effect/map_"
-import { succeedNow } from "../Effect/succeedNow"
+import { succeed } from "../Effect/succeed"
 import { suspend } from "../Effect/suspend"
 import { uncause } from "../Effect/uncause"
 import { zipWith_ } from "../Effect/zipWith_"
@@ -88,7 +88,7 @@ export class Key {
    *
    * @return
    */
-  remove: Sync<boolean> = succeedNow(false)
+  remove: Sync<boolean> = succeed(false)
   constructor(remove?: Sync<boolean>) {
     if (remove) {
       this.remove = remove
@@ -132,15 +132,15 @@ export class Global implements CommonScope<never> {
   private ensureResult = effectTotal(() => this.unsafeEnsureResult)
 
   get closed(): Sync<boolean> {
-    return succeedNow(false)
+    return succeed(false)
   }
 
   deny(_key: Key): Sync<boolean> {
-    return succeedNow(true)
+    return succeed(true)
   }
 
   get empty(): Sync<boolean> {
-    return succeedNow(false)
+    return succeed(false)
   }
 
   ensure(_finalizer: (a: never) => Async<any>): Sync<E.Either<never, Key>> {
@@ -156,7 +156,7 @@ export class Global implements CommonScope<never> {
   }
 
   get released(): Sync<boolean> {
-    return succeedNow(false)
+    return succeed(false)
   }
 
   unsafeEnsure(_finalizer: (_: never) => Async<any>): E.Either<never, Key> {
@@ -183,7 +183,7 @@ export class OrderedFinalizer {
 
 const noCause = Empty
 
-const noCauseEffect: Async<Cause<never>> = succeedNow(noCause)
+const noCauseEffect: Async<Cause<never>> = succeed(noCause)
 
 export class Local<A> implements CommonScope<A> {
   readonly _tag = "Local"
@@ -249,7 +249,7 @@ export class Local<A> implements CommonScope<A> {
       if (result != null) {
         return result
       } else {
-        return succeedNow(false)
+        return succeed(false)
       }
     })
   }
@@ -363,7 +363,7 @@ export const unsafeMakeScope = <A>() => {
       if (result != null) {
         return map_(result, () => true)
       } else {
-        return succeedNow(false)
+        return succeed(false)
       }
     })
   }, scope)

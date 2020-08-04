@@ -1,21 +1,21 @@
 import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
-import * as S from "../src/next/Schedule"
+import * as S from "../src/next/Schedule/new"
 
 let i = 0
 
 const policy = pipe(
-  S.fixed(0),
-  S.delayedM((ms) => T.succeed(ms * 2))
+  S.forever,
+  S.check((_, o) => o < 5)
 )
 
 const program = pipe(
   T.suspend(() => {
-    i += 1
-    const r = Math.random()
-    return r > 0.1 ? T.fail(r) : T.succeed(i)
+    console.log(`called ${i}`)
+    i++
+    return T.fail("error")
   }),
-  T.retry(policy),
+  T._retry(policy),
   T.chain((n) =>
     T.effectTotal(() => {
       console.log(n)

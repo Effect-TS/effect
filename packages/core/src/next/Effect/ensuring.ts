@@ -3,7 +3,7 @@ import { Then } from "../Cause/cause"
 import { Effect } from "./effect"
 import { foldCauseM_ } from "./foldCauseM_"
 import { halt } from "./halt"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
@@ -33,7 +33,7 @@ export const ensuring = <S, R>(finalizer: Effect<S, R, never, any>) => <S1, R1, 
         foldCauseM_(
           finalizer,
           (cause1) => halt(cause1),
-          (_) => succeedNow(value)
+          (_) => succeed(value)
         )
     )
   )

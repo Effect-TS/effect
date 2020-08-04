@@ -27,7 +27,7 @@ import { chain_ } from "./chain_"
 import { Async, Effect, _I, AsyncE } from "./effect"
 import { effectTotal } from "./effectTotal"
 import { provideSome_ } from "./provideSome"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 // empty function
 const empty = () => {
@@ -269,7 +269,7 @@ export const withRuntimeM = <R0, S, R, E, A>(
 ) => chain_(runtime<R0>(), f)
 
 export const withRuntime = <R0, A>(f: (r: Runtime<R0>) => A) =>
-  chain_(runtime<R0>(), (r) => succeedNow(f(r)))
+  chain_(runtime<R0>(), (r) => succeed(f(r)))
 
 export function makeRuntime<R0>(r0: R0): Runtime<R0> {
   return {

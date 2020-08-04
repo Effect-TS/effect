@@ -1,6 +1,6 @@
 import { Effect } from "./effect"
 import { foldM_ } from "./foldM_"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 /**
  * Folds over the failure value or the success value to yield an effect that
@@ -14,6 +14,6 @@ export const fold_ = <S, R, E, A, A2, A3>(
 ): Effect<S, R, never, A2 | A3> =>
   foldM_(
     value,
-    (e) => succeedNow(failure(e)),
-    (a) => succeedNow(success(a))
+    (e) => succeed(failure(e)),
+    (a) => succeed(success(a))
   )

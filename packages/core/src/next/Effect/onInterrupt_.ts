@@ -6,7 +6,7 @@ import { chain_ } from "./chain_"
 import { Effect } from "./effect"
 import { foldCauseM_ } from "./foldCauseM_"
 import { halt } from "./halt"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**
@@ -24,7 +24,7 @@ export const onInterrupt_ = <S, R, E, A, S2, R2>(
         Cause.interrupted(cause)
           ? chain_(cleanup(Cause.interruptors(cause)), () => halt(cause))
           : halt(cause),
-      succeedNow
+      succeed
     )
   )
 
@@ -47,6 +47,6 @@ export const onInterruptExtended_ = <S, R, E, A, S2, R2, E2>(
               () => halt(cause)
             )
           : halt(cause),
-      succeedNow
+      succeed
     )
   )

@@ -21,9 +21,7 @@ pipe(
   S.aggregate(
     TR.transducer(
       M.fromEffect(
-        T.succeedNow((c) =>
-          T.succeedNow(c._tag === "Some" ? A.chunksOf(2)(c.value) : [])
-        )
+        T.succeed((c) => T.succeed(c._tag === "Some" ? A.chunksOf(2)(c.value) : []))
       )
     )
   ),

@@ -18,7 +18,7 @@ import * as foreachUnit_ from "../Effect/foreachUnit_"
 import * as halt from "../Effect/halt"
 import * as interruptAs from "../Effect/interruptAs"
 import { IFold, Instruction, IRaceWith } from "../Effect/primitives"
-import * as succeedNow from "../Effect/succeedNow"
+import * as succeedNow from "../Effect/succeed"
 import * as suspend from "../Effect/suspend"
 import * as unit from "../Effect/unit"
 // exit
@@ -158,7 +158,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   interruptExit = new InterruptExit((v: any) => {
     if (this.isInterruptible) {
       this.popInterruptStatus()
-      return succeedNow.succeedNow(v)[_I]
+      return succeedNow.succeed(v)[_I]
     } else {
       return effectTotal.effectTotal(() => {
         this.popInterruptStatus()
@@ -303,7 +303,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     const x = this.register0(k)
 
     if (x != null) {
-      return O.some(succeedNow.succeedNow(x))
+      return O.some(succeedNow.succeed(x))
     }
 
     return O.none

@@ -3,7 +3,7 @@ import * as T from "../src/next/Effect"
 import * as M from "../src/next/Managed"
 
 const managedExample = pipe(
-  T.accessM(({ foo }: { foo: string }) => T.delay(1000)(T.succeedNow(foo))),
+  T.accessM(({ foo }: { foo: string }) => T.delay(1000)(T.succeed(foo))),
   M.makeExit((s, e) =>
     T.accessM((_: { bar: string }) =>
       T.delay(1000)(

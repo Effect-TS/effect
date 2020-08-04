@@ -6,7 +6,7 @@ import * as M from "../src/next/Managed"
 const layA = pipe(
   T.effectAsync<unknown, never, { foo: string }>((cb) => {
     setTimeout(() => {
-      cb(T.succeedNow({ foo: "foo" }))
+      cb(T.succeed({ foo: "foo" }))
     }, 1000)
   }),
   M.makeExit(() =>
@@ -22,7 +22,7 @@ const layA = pipe(
 const layB = pipe(
   T.effectAsync<unknown, never, { bar: string }>((cb) => {
     setTimeout(() => {
-      cb(T.succeedNow({ bar: "bar" }))
+      cb(T.succeed({ bar: "bar" }))
     }, 1000)
   }),
   M.makeExit(() =>
