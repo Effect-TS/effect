@@ -7,7 +7,7 @@ const cancel = pipe(
   S.effectAsyncInterrupt<unknown, never, number>((cb) => {
     let i = 0
     const timer = setInterval(() => {
-      cb(T.succeedNow(A.range(0, i)))
+      cb(T.succeed(A.range(0, i)))
       i++
     }, 500)
     return T.effectTotal(() => {

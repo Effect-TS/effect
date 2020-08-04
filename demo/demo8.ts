@@ -48,7 +48,7 @@ const program = pipe(
   T.suspend(() => {
     i += 1
     const r = Math.random()
-    return r > 0.1 ? T.fail(`err: ${r}`) : T.succeedNow(i)
+    return r > 0.1 ? T.fail(`err: ${r}`) : T.succeed(i)
   }),
   T.retry(exponentialCapped({ base: 100, cap: 4000 })),
   T.chain((n) =>

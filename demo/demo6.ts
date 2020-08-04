@@ -3,7 +3,7 @@ import * as T from "../src/next/Effect"
 
 const prog = pipe(
   [0, 1, 2],
-  T.foreachExec(T.sequential)((n) => T.succeedNow(n + 1))
+  T.foreachExec(T.sequential)((n) => T.succeed(n + 1))
 )
 
 pipe(

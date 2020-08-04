@@ -12,7 +12,7 @@ import { effectAsyncOption } from "./effectAsyncOption"
 import { effectTotal } from "./effectTotal"
 import { flatten } from "./flatten"
 import { onInterrupt_ } from "./onInterrupt_"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 import { suspend } from "./suspend"
 import { unit } from "./unit"
 
@@ -49,11 +49,11 @@ export const effectMaybeAsyncInterrupt = <R, E, A>(
             const ret = new AtomicReference<O.Option<Sync<AsyncRE<R, E, A>>>>(O.none)
 
             try {
-              const res = register((io) => k(succeedNow(io)))
+              const res = register((io) => k(succeed(io)))
 
               switch (res._tag) {
                 case "Right": {
-                  ret.set(O.some(succeedNow(res.right)))
+                  ret.set(O.some(succeed(res.right)))
                   break
                 }
                 case "Left": {

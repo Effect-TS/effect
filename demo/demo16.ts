@@ -8,7 +8,7 @@ pipe(
   log("before main"),
   T.zipSecond(
     T.effectAsync((next) => {
-      const t = setTimeout(() => next(T.succeedNow(undefined)), 0)
+      const t = setTimeout(() => next(T.succeed(undefined)), 0)
       t.unref()
     })
   ),

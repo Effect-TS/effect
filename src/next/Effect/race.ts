@@ -14,7 +14,7 @@ import { mapErrorCause_ } from "./mapErrorCause"
 import { map_ } from "./map_"
 import { raceWith } from "./raceWith"
 import { result } from "./result"
-import { succeedNow } from "./succeedNow"
+import { succeed } from "./succeed"
 
 function mergeInterruption<A, E2, A2>(
   a: A
@@ -22,10 +22,10 @@ function mergeInterruption<A, E2, A2>(
   return (x) => {
     switch (x._tag) {
       case "Success": {
-        return succeedNow(a)
+        return succeed(a)
       }
       case "Failure": {
-        return Cause.interruptedOnly(x.cause) ? succeedNow(a) : halt(x.cause)
+        return Cause.interruptedOnly(x.cause) ? succeed(a) : halt(x.cause)
       }
     }
   }

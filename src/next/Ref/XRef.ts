@@ -5,7 +5,7 @@ import { chain } from "../Effect/chain"
 import { Sync, SyncE } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
 import { fail } from "../Effect/fail"
-import { succeedNow } from "../Effect/succeedNow"
+import { succeed } from "../Effect/succeed"
 import { AtomicReference } from "../Support/AtomicReference"
 
 import { modify } from "./atomic"
@@ -141,7 +141,7 @@ export class Derived<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
 
   readonly get: SyncE<EB, B> = pipe(
     this.value.get,
-    chain((s) => E.fold_(this.getEither(s), fail, succeedNow))
+    chain((s) => E.fold_(this.getEither(s), fail, succeed))
   )
 
   readonly set: (a: A) => SyncE<EA, void> = (a) =>
@@ -192,7 +192,7 @@ export class DerivedAll<EA, EB, A, B, S> implements XRef<EA, EB, A, B> {
 
   readonly get: SyncE<EB, B> = pipe(
     this.value.get,
-    chain((a) => E.fold_(this.getEither(a), fail, succeedNow))
+    chain((a) => E.fold_(this.getEither(a), fail, succeed))
   )
 
   readonly set: (a: A) => SyncE<EA, void> = (a) =>

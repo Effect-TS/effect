@@ -8,7 +8,7 @@ pipe(
   T.bind("n", ({ ref }) =>
     pipe(
       ref,
-      R.getAndUpdate((n) => T.succeedNow(n + 1))
+      R.getAndUpdate((n) => T.succeed(n + 1))
     )
   ),
   T.chain(({ n }) =>
