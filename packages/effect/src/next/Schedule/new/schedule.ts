@@ -1,3 +1,4 @@
+import * as A from "../../../Array"
 import * as E from "../../../Either"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
@@ -316,6 +317,67 @@ export function andThenEither_<S2, Env2, In2 extends In, Out2, S, Env, Out, In>(
 }
 
 /**
+ * Returns a new schedule that collects the outputs of this one into an array.
+ */
+export const collectAll = <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+  fold_(self, A.empty as A.Array<Out>, (xs, x) => [...xs, x])
+
+function composeLoop<S1, Env1, Out1, S, Env, In, Out>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  that: Decision.StepFunction<S1, Env1, Out, Out1>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out1> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.map_(that(now, d.out), Decision.toDone)
+        }
+        case "Continue": {
+          return T.map_(that(now, d.out), (d2) => {
+            switch (d2._tag) {
+              case "Done": {
+                return new Decision.Done(d2.out)
+              }
+              case "Continue": {
+                return new Decision.Continue(
+                  d2.out,
+                  Math.max(d.interval, d2.interval),
+                  composeLoop(d.next, d2.next)
+                )
+              }
+            }
+          })
+        }
+      }
+    })
+}
+
+/**
+ * Returns the composition of this schedule and the specified schedule, by piping the output of
+ * this one into the input of the other. Effects described by this schedule will always be
+ * executed before the effects described by the second schedule.
+ */
+export const compose = <S1, Env1, Out, Out1>(that: Schedule<S1, Env1, Out, Out1>) => <
+  S,
+  Env,
+  In
+>(
+  self: Schedule<S, Env, In, Out>
+) => compose_(self, that)
+
+/**
+ * Returns the composition of this schedule and the specified schedule, by piping the output of
+ * this one into the input of the other. Effects described by this schedule will always be
+ * executed before the effects described by the second schedule.
+ */
+export function compose_<S1, Env1, Out1, S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, Out, Out1>
+) {
+  return new Schedule(composeLoop(self.step, that.step))
+}
+
+/**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
 export const forever = unfold_(0, (n) => n + 1)
@@ -346,34 +408,46 @@ function foldMLoop<Z, S, Env, In, Out, S1, Env1>(
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
-export const fold = <Z>(z: Z) => <Out>(f: (z: Z, o: Out) => Z) => <S, Env, In>(
-  self: Schedule<S, Env, In, Out>
-) => fold_(self, z, f)
+export function fold<Z>(z: Z) {
+  return <Out>(f: (z: Z, o: Out) => Z) => <S, Env, In>(
+    self: Schedule<S, Env, In, Out>
+  ) => fold_(self, z, f)
+}
 
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
-export const fold_ = <S, Env, In, Out, Z>(
+export function fold_<S, Env, In, Out, Z>(
   self: Schedule<S, Env, In, Out>,
   z: Z,
   f: (z: Z, o: Out) => Z
-) => foldM_(self, z, (z, o) => T.succeed(f(z, o)))
+) {
+  return foldM_(self, z, (z, o) => T.succeed(f(z, o)))
+}
 
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
-export const foldM = <Z>(z: Z) => <S1, Env1, Out>(
-  f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>
-) => <S, Env, In>(self: Schedule<S, Env, In, Out>) => foldM_(self, z, f)
+export function foldM<Z>(z: Z) {
+  return <S1, Env1, Out>(f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>) => <
+    S,
+    Env,
+    In
+  >(
+    self: Schedule<S, Env, In, Out>
+  ) => foldM_(self, z, f)
+}
 
 /**
  * Returns a new schedule that effectfully folds over the outputs of this one.
  */
-export const foldM_ = <S, Env, In, Out, Z, S1, Env1>(
+export function foldM_<S, Env, In, Out, Z, S1, Env1>(
   self: Schedule<S, Env, In, Out>,
   z: Z,
   f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>
-) => new Schedule(foldMLoop(z, f, self.step))
+) {
+  return new Schedule(foldMLoop(z, f, self.step))
+}
 
 function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
   f: (o: Out, d: number) => T.Effect<S1, Env1, never, number>,
