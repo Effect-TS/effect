@@ -578,3 +578,29 @@ export function unfold<A>(f: (a: A) => A) {
 export function unfold_<A>(a: A, f: (a: A) => A) {
   return new Schedule(unfoldLoop(a, f))
 }
+
+function unfoldMLoop<S, Env, A>(
+  a: A,
+  f: (a: A) => T.Effect<S, Env, never, A>
+): Decision.StepFunction<S, Env, unknown, A> {
+  return (now, _) =>
+    T.succeed(
+      new Decision.Continue(a, now, (n, i) =>
+        T.chain_(f(a), (x) => unfoldMLoop(x, f)(n, i))
+      )
+    )
+}
+
+/**
+ * Unfolds a schedule that repeats one time from the specified state and iterator.
+ */
+export function unfoldM<S, Env, A>(f: (a: A) => T.Effect<S, Env, never, A>) {
+  return (a: A) => unfoldM_(a, f)
+}
+
+/**
+ * Unfolds a schedule that repeats one time from the specified state and iterator.
+ */
+export function unfoldM_<S, Env, A>(a: A, f: (a: A) => T.Effect<S, Env, never, A>) {
+  return new Schedule(unfoldMLoop(a, f))
+}

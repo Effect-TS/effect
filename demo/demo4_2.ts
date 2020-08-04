@@ -6,14 +6,15 @@ let i = 0
 
 const policy = pipe(
   S.forever,
-  S.check((_, o) => o < 5)
+  S.collectAll,
+  S.check((_, o) => o.length < 5)
 )
 
 const program = pipe(
   T.suspend(() => {
     console.log(`called ${i}`)
     i++
-    return i === 5 ? T.succeed(1) : T.fail("error")
+    return i === 6 ? T.succeed(1) : T.fail("error")
   }),
   T._retry(policy),
   T.chain((n) =>
