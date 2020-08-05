@@ -2,6 +2,7 @@ import * as A from "../../../Array"
 import * as E from "../../../Either"
 import { tuple } from "../../../Function"
 import { pipe } from "../../../Function"
+import * as NA from "../../../NonEmptyArray"
 import * as O from "../../../Option"
 import * as Clock from "../../Clock"
 import { nextDouble } from "../../Random"
@@ -1216,15 +1217,6 @@ export function reconsiderM_<S, Env, In, Out, S1, Env1, Out2>(
 }
 
 /**
- * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
- * input, allowing propagating some type `X` through this channel on demand.
- */
-export function right<X>() {
-  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
-    choose_(identity<X>(), self)
-}
-
-/**
  * Returns a new schedule that outputs the number of repetitions of this one.
  */
 export function repetitions<S, Env, In, Out>(self: Schedule<S, Env, In, Out>) {
@@ -1280,6 +1272,103 @@ export function resetWhen_<S, Env, In, Out>(
   f: (o: Out) => boolean
 ) {
   return new Schedule(resetWhenLoop(self, self.step, f))
+}
+
+/**
+ * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
+ * input, allowing propagating some type `X` through this channel on demand.
+ */
+export function right<X>() {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    choose_(identity<X>(), self)
+}
+
+function runLoop<S, Env, In, Out>(
+  now: number,
+  xs: readonly In[],
+  self: Decision.StepFunction<S, Env, In, Out>,
+  acc: readonly Out[]
+): T.Effect<S, Env, never, readonly Out[]> {
+  if (A.isNonEmpty(xs)) {
+    return T.chain_(self(now, NA.head(xs)), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.succeed([...acc, d.out])
+        }
+        case "Continue": {
+          return runLoop(d.interval, xs, d.next, [...acc, d.out])
+        }
+      }
+    })
+  } else {
+    return T.succeed(acc)
+  }
+}
+
+/**
+ * Runs a schedule using the provided inputs, and collects all outputs.
+ */
+export function run<In>(now: number, i: Iterable<In>) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => run_(self, now, i)
+}
+
+/**
+ * Runs a schedule using the provided inputs, and collects all outputs.
+ */
+export function run_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  now: number,
+  i: Iterable<In>
+) {
+  return runLoop(now, Array.from(i), self.step, [])
+}
+
+/**
+ * Returns a new schedule that packs the input and output of this schedule into the second
+ * element of a tuple. This allows carrying information through this schedule.
+ */
+export function second<X>() {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    both_(identity<X>(), self)
+}
+
+function tapInputLoop<S, Env, In, Out, In1 extends In, S1, Env1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  f: (i: In1) => T.Effect<S1, Env1, never, any>
+): Decision.StepFunction<S | S1, Env & Env1, In1, Out> {
+  return (now, i) =>
+    T.chain_(f(i), () =>
+      T.map_(self(now, i), (d) => {
+        switch (d._tag) {
+          case "Done": {
+            return Decision.makeDone(d.out)
+          }
+          case "Continue": {
+            return Decision.makeContinue(d.out, d.interval, tapInputLoop(d.next, f))
+          }
+        }
+      })
+    )
+}
+
+/**
+ * Returns a new schedule that effectfully processes every input to this schedule.
+ */
+export function tapInput_<S, Env, In, Out, S1, Env1, In1 extends In = In>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In1) => T.Effect<S1, Env1, never, any>
+): Schedule<S | S1, Env & Env1, In1, Out> {
+  return new Schedule(tapInputLoop(self.step, f))
+}
+
+/**
+ * Returns a new schedule that effectfully processes every input to this schedule.
+ */
+export function tapInput<In, S1, Env1, In1 extends In = In>(
+  f: (i: In1) => T.Effect<S1, Env1, never, any>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
+    new Schedule(tapInputLoop(self.step, f))
 }
 
 function unfoldLoop<A>(
