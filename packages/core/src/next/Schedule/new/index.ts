@@ -37,6 +37,7 @@ export {
   eitherWith,
   eitherWith_,
   either_,
+  elapsed,
   ensuring,
   ensuring_,
   first,
@@ -68,10 +69,16 @@ export {
   reconsiderM_,
   reconsider_,
   repeat,
+  repetitions,
+  resetAfter,
+  resetWhen,
+  resetWhen_,
   right,
   Schedule,
   unfold,
   unfoldM,
   unfoldM_,
-  unfold_
+  unfold_,
+  zip,
+  zip_
 } from "./schedule"

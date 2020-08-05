@@ -704,6 +704,25 @@ export function eitherWith_<S, Env, S1, Env1, In, In1 extends In, Out, Out1, Out
   return map_(either_(self, that), ([o, o1]) => f(o, o1))
 }
 
+function elapsedLoop(
+  o: O.Option<number>
+): Decision.StepFunction<never, unknown, unknown, number> {
+  return (now, _) =>
+    T.succeed(
+      O.fold_(
+        o,
+        () => Decision.makeContinue(0, now, elapsedLoop(O.some(now))),
+        (start) => Decision.makeContinue(now - start, now, elapsedLoop(O.some(start)))
+      )
+    )
+}
+
+/**
+ * A schedule that occurs everywhere, which returns the total elapsed duration since the
+ * first step.
+ */
+export const elapsed = new Schedule(elapsedLoop(O.none))
+
 function ensuringLoop<S1, Env1, S, Env, In, Out>(
   finalizer: T.Effect<S1, Env1, never, any>,
   self: Decision.StepFunction<S, Env, In, Out>
@@ -1205,6 +1224,64 @@ export function right<X>() {
     choose_(identity<X>(), self)
 }
 
+/**
+ * Returns a new schedule that outputs the number of repetitions of this one.
+ */
+export function repetitions<S, Env, In, Out>(self: Schedule<S, Env, In, Out>) {
+  return fold_(self, 0, (n) => n + 1)
+}
+
+/**
+ * Return a new schedule that automatically resets the schedule to its initial state
+ * after some time of inactivity defined by `duration`.
+ */
+export function resetAfter(duration: number) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    map_(
+      resetWhen_(zip_(self, elapsed), ([_, d]) => d >= duration),
+      ([o]) => o
+    )
+}
+
+function resetWhenLoop<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  step: Decision.StepFunction<S, Env, In, Out>,
+  f: (o: Out) => boolean
+): Decision.StepFunction<S, Env, In, Out> {
+  return (now, i) =>
+    T.chain_(step(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return f(d.out) ? self.step(now, i) : T.succeed(Decision.makeDone(d.out))
+        }
+        case "Continue": {
+          return f(d.out)
+            ? self.step(now, i)
+            : T.succeed(
+                Decision.makeContinue(d.out, d.interval, resetWhenLoop(self, d.next, f))
+              )
+        }
+      }
+    })
+}
+
+/**
+ * Resets the schedule when the specified predicate on the schedule output evaluates to true.
+ */
+export function resetWhen<Out>(f: (o: Out) => boolean) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => resetWhen_(self, f)
+}
+
+/**
+ * Resets the schedule when the specified predicate on the schedule output evaluates to true.
+ */
+export function resetWhen_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => boolean
+) {
+  return new Schedule(resetWhenLoop(self, self.step, f))
+}
+
 function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
@@ -1250,4 +1327,26 @@ function unfoldMLoop<S, Env, A>(
  */
 export function unfoldM_<S, Env, A>(a: A, f: (a: A) => T.Effect<S, Env, never, A>) {
   return new Schedule(unfoldMLoop(a, f))
+}
+
+/**
+ * Returns a new schedule that performs a geometric intersection on the intervals defined
+ * by both schedules.
+ */
+export function zip_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return combineWith_(self, that, (d, d2) => Math.max(d, d2))
+}
+
+/**
+ * Returns a new schedule that performs a geometric intersection on the intervals defined
+ * by both schedules.
+ */
+export function zip<In, S1, Env1, In1 extends In, Out1>(
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
+    combineWith_(self, that, (d, d2) => Math.max(d, d2))
 }
