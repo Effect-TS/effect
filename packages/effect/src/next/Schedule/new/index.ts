@@ -14,6 +14,8 @@ export {
   checkM_,
   check_,
   collectAll,
+  combineWith,
+  combineWith_,
   compose,
   compose_,
   driver,
@@ -31,7 +33,7 @@ export {
   repeat,
   Schedule,
   unfold,
-  unfold_,
   unfoldM,
-  unfoldM_
+  unfoldM_,
+  unfold_
 } from "./schedule"
