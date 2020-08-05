@@ -1120,6 +1120,83 @@ export function provideSome_<Env1, S, Env, In, Out>(
 }
 
 /**
+ * Returns a new schedule that effectfully reconsiders every decision made by this schedule,
+ * possibly modifying the next interval and the output type in the process.
+ */
+export function reconsider<S, Env, In, Out, Out2>(
+  f: (_: Decision.Decision<S, Env, In, Out>) => E.Either<Out2, [Out2, number]>
+) {
+  return (self: Schedule<S, Env, In, Out>) => reconsider_(self, f)
+}
+
+/**
+ * Returns a new schedule that effectfully reconsiders every decision made by this schedule,
+ * possibly modifying the next interval and the output type in the process.
+ */
+export function reconsider_<S, Env, In, Out, S1, Env1, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (_: Decision.Decision<S, Env, In, Out>) => E.Either<Out2, [Out2, number]>
+) {
+  return reconsiderM_(self, (d) => T.succeed(f(d)))
+}
+
+function reconsiderMLoop<S, Env, In, Out, S1, Env1, Out2>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  f: (
+    _: Decision.Decision<S, Env, In, Out>
+  ) => T.Effect<S1, Env1, never, E.Either<Out2, [Out2, number]>>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out2> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.map_(
+            f(d),
+            E.fold(
+              (o2) => Decision.makeDone(o2),
+              ([o2]) => Decision.makeDone(o2)
+            )
+          )
+        }
+        case "Continue": {
+          return T.map_(
+            f(d),
+            E.fold(
+              (o2) => Decision.makeDone(o2),
+              ([o2, int]) => Decision.makeContinue(o2, int, reconsiderMLoop(d.next, f))
+            )
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that effectfully reconsiders every decision made by this schedule,
+ * possibly modifying the next interval and the output type in the process.
+ */
+export function reconsiderM<S, Env, In, Out, S1, Env1, Out2>(
+  f: (
+    _: Decision.Decision<S, Env, In, Out>
+  ) => T.Effect<S1, Env1, never, E.Either<Out2, [Out2, number]>>
+) {
+  return (self: Schedule<S, Env, In, Out>) => reconsiderM_(self, f)
+}
+
+/**
+ * Returns a new schedule that effectfully reconsiders every decision made by this schedule,
+ * possibly modifying the next interval and the output type in the process.
+ */
+export function reconsiderM_<S, Env, In, Out, S1, Env1, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (
+    _: Decision.Decision<S, Env, In, Out>
+  ) => T.Effect<S1, Env1, never, E.Either<Out2, [Out2, number]>>
+): Schedule<S | S1, Env & Env1, In, Out2> {
+  return new Schedule(reconsiderMLoop(self.step, f))
+}
+
+/**
  * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
  * input, allowing propagating some type `X` through this channel on demand.
  */
