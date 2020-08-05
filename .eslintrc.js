@@ -48,6 +48,7 @@ module.exports = {
       }
     ],
     "object-shorthand": "error",
-    "prefer-destructuring": "off"
+    "prefer-destructuring": "off",
+    "no-fallthrough": "off"
   }
 }
