@@ -41,5 +41,7 @@ export {
   unfold,
   unfoldM,
   unfoldM_,
-  unfold_
+  unfold_,
+  delayed,
+  delayed_
 } from "./schedule"
