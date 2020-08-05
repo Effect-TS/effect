@@ -25,6 +25,18 @@ export class Continue<S, Env, Inp, Out> {
   ) {}
 }
 
+export function makeDone<Out>(o: Out): Decision<never, unknown, unknown, Out> {
+  return new Done(o)
+}
+
+export function makeContinue<S, Env, Inp, Out>(
+  out: Out,
+  interval: Interval,
+  next: StepFunction<S, Env, Inp, Out>
+): Decision<S, Env, Inp, Out> {
+  return new Continue(out, interval, next)
+}
+
 export function toDone<S, Env, Inp, Out>(self: Decision<S, Env, Inp, Out>): Done<Out> {
   switch (self._tag) {
     case "Done": {

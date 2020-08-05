@@ -112,7 +112,7 @@ function repeatLoop<S, Env, Inp, Out>(
         }
         case "Continue": {
           return T.succeed(
-            new Decision.Continue(d.out, d.interval, repeatLoop(init, d.next))
+            Decision.makeContinue(d.out, d.interval, repeatLoop(init, d.next))
           )
         }
       }
@@ -197,13 +197,13 @@ function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
         case "Done": {
-          return T.succeed(new Decision.Done(d.out))
+          return T.succeed(Decision.makeDone(d.out))
         }
         case "Continue": {
           return T.map_(test(i, d.out), (b) =>
             b
-              ? new Decision.Continue(d.out, d.interval, checkMLoop(test, d.next))
-              : new Decision.Done(d.out)
+              ? Decision.makeContinue(d.out, d.interval, checkMLoop(test, d.next))
+              : Decision.makeDone(d.out)
           )
         }
       }
@@ -222,20 +222,20 @@ function bothLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
         case "Done": {
           switch (d2._tag) {
             case "Done": {
-              return new Decision.Done(tuple(d1.out, d2.out))
+              return Decision.makeDone(tuple(d1.out, d2.out))
             }
             case "Continue": {
-              return new Decision.Done(tuple(d1.out, d2.out))
+              return Decision.makeDone(tuple(d1.out, d2.out))
             }
           }
         }
         case "Continue": {
           switch (d2._tag) {
             case "Done": {
-              return new Decision.Done(tuple(d1.out, d2.out))
+              return Decision.makeDone(tuple(d1.out, d2.out))
             }
             case "Continue": {
-              return new Decision.Continue(
+              return Decision.makeContinue(
                 tuple(d1.out, d2.out),
                 Math.min(d1.interval, d2.interval),
                 bothLoop(d1.next, d2.next)
@@ -339,7 +339,7 @@ function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2 extends In, Out2>(
         switch (d._tag) {
           case "Continue": {
             return T.succeed(
-              new Decision.Continue(
+              Decision.makeContinue(
                 E.left(d.out),
                 d.interval,
                 andThenEitherLoop(d.next, that, true)
@@ -355,10 +355,10 @@ function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2 extends In, Out2>(
       return T.map_(that(now, i), (d) => {
         switch (d._tag) {
           case "Done": {
-            return new Decision.Done(E.right(d.out))
+            return Decision.makeDone(E.right(d.out))
           }
           case "Continue": {
-            return new Decision.Continue(
+            return Decision.makeContinue(
               E.right(d.out),
               d.interval,
               andThenEitherLoop(self, d.next, false)
@@ -402,10 +402,10 @@ function composeLoop<S1, Env1, Out1, S, Env, In, Out>(
           return T.map_(that(now, d.out), (d2) => {
             switch (d2._tag) {
               case "Done": {
-                return new Decision.Done(d2.out)
+                return Decision.makeDone(d2.out)
               }
               case "Continue": {
-                return new Decision.Continue(
+                return Decision.makeContinue(
                   d2.out,
                   Math.max(d.interval, d2.interval),
                   composeLoop(d.next, d2.next)
@@ -453,20 +453,20 @@ function combineWithLoop<S, Env, In, Out, S1, Env1, Out1>(
         case "Done": {
           switch (r._tag) {
             case "Done": {
-              return new Decision.Done<[Out, Out1]>([l.out, r.out])
+              return Decision.makeDone<[Out, Out1]>([l.out, r.out])
             }
             case "Continue": {
-              return new Decision.Done<[Out, Out1]>([l.out, r.out])
+              return Decision.makeDone<[Out, Out1]>([l.out, r.out])
             }
           }
         }
         case "Continue": {
           switch (r._tag) {
             case "Done": {
-              return new Decision.Done<[Out, Out1]>([l.out, r.out])
+              return Decision.makeDone<[Out, Out1]>([l.out, r.out])
             }
             case "Continue": {
-              return new Decision.Continue(
+              return Decision.makeContinue(
                 [l.out, r.out],
                 f(l.interval, r.interval),
                 combineWithLoop(l.next, r.next, f)
@@ -634,14 +634,11 @@ function ensuringLoop<S1, Env1, S, Env, In, Out>(
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
         case "Done": {
-          return T.as_(
-            finalizer,
-            new Decision.Done(d.out) as Decision.Decision<S1 | S, Env & Env1, In, Out>
-          )
+          return T.as_(finalizer, Decision.makeDone(d.out))
         }
         case "Continue": {
           return T.succeed(
-            new Decision.Continue(d.out, d.interval, ensuringLoop(finalizer, d.next))
+            Decision.makeContinue(d.out, d.interval, ensuringLoop(finalizer, d.next))
           )
         }
       }
@@ -693,13 +690,12 @@ function foldMLoop<Z, S, Env, In, Out, S1, Env1>(
       switch (d._tag) {
         case "Done": {
           return T.succeed<Decision.Decision<S | S1, Env & Env1, In, Z>>(
-            new Decision.Done(z)
+            Decision.makeDone(z)
           )
         }
         case "Continue": {
-          return T.map_(
-            f(z, d.out),
-            (z2) => new Decision.Continue(z2, d.interval, foldMLoop(z2, f, d.next))
+          return T.map_(f(z, d.out), (z2) =>
+            Decision.makeContinue(z2, d.interval, foldMLoop(z2, f, d.next))
           )
         }
       }
@@ -756,7 +752,7 @@ export function foldM_<S, Env, In, Out, Z, S1, Env1>(
 export const forever = unfold_(0, (n) => n + 1)
 
 function identityLoop<A>(): Decision.StepFunction<never, unknown, A, A> {
-  return (now, i) => T.succeed(new Decision.Continue(i, now, identityLoop()))
+  return (now, i) => T.succeed(Decision.makeContinue(i, now, identityLoop()))
 }
 
 /**
@@ -797,13 +793,12 @@ function mapMLoop<S, Env1, Out2, S1, Env, Inp1, Out>(
           return T.map_(
             f(d.out),
             (o): Decision.Decision<S | S1, Env & Env1, Inp1, Out2> =>
-              new Decision.Done(o)
+              Decision.makeDone(o)
           )
         }
         case "Continue": {
-          return T.map_(
-            f(d.out),
-            (o) => new Decision.Continue(o, d.interval, mapMLoop(f, d.next))
+          return T.map_(f(d.out), (o) =>
+            Decision.makeContinue(o, d.interval, mapMLoop(f, d.next))
           )
         }
       }
@@ -865,16 +860,14 @@ function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
       switch (d._tag) {
         case "Done": {
           return T.succeed<Decision.Decision<S | S1, Env & Env1, Inp, Out>>(
-            new Decision.Done(d.out)
+            Decision.makeDone(d.out)
           )
         }
         case "Continue": {
           const delay = d.interval - now
 
-          return T.map_(
-            f(d.out, delay),
-            (n) =>
-              new Decision.Continue(d.out, d.interval + n, modifyDelayMLoop(f, d.next))
+          return T.map_(f(d.out, delay), (n) =>
+            Decision.makeContinue(d.out, d.interval + n, modifyDelayMLoop(f, d.next))
           )
         }
       }
@@ -903,6 +896,64 @@ export function modifyDelayM_<S, Env, In, Out, S1, R1>(
 }
 
 /**
+ * Returns a new schedule that modifies the delay using the specified
+ * function.
+ */
+export function modifyDelay<Out>(f: (o: Out, d: number) => number) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => modifyDelay_(self, f)
+}
+
+/**
+ * Returns a new schedule that modifies the delay using the specified
+ * function.
+ */
+export function modifyDelay_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out, d: number) => number
+) {
+  return modifyDelayM_(self, (o, d) => T.succeed(f(o, d)))
+}
+
+function onDecisionLoop<S, Env, In, Out, S1, Env1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  f: (d: Decision.Decision<S, Env, In, Out>) => T.Effect<S1, Env1, never, any>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.as_(f(d), Decision.makeDone(d.out))
+        }
+        case "Continue": {
+          return T.as_(
+            f(d),
+            Decision.makeContinue(d.out, d.interval, onDecisionLoop(d.next, f))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that applies the current one but runs the specified effect
+ * for every decision of this schedule. This can be used to create schedules
+ * that log failures, decisions, or computed values.
+ */
+export const onDecision_ = <S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (d: Decision.Decision<S, Env, In, Out>) => T.Effect<S1, Env1, never, any>
+) => new Schedule(onDecisionLoop(self.step, f))
+
+/**
+ * Returns a new schedule that applies the current one but runs the specified effect
+ * for every decision of this schedule. This can be used to create schedules
+ * that log failures, decisions, or computed values.
+ */
+export const onDecision = <S, Env, In, Out, S1, Env1>(
+  f: (d: Decision.Decision<S, Env, In, Out>) => T.Effect<S1, Env1, never, any>
+) => (self: Schedule<S, Env, In, Out>) => new Schedule(onDecisionLoop(self.step, f))
+
+/**
  * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
  * input, allowing propagating some type `X` through this channel on demand.
  */
@@ -913,7 +964,7 @@ function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
 ): Decision.StepFunction<never, unknown, unknown, A> {
-  return (now, _) => T.succeed(new Decision.Continue(a, now, unfoldLoop(f(a), f)))
+  return (now, _) => T.succeed(Decision.makeContinue(a, now, unfoldLoop(f(a), f)))
 }
 
 /**
@@ -943,7 +994,7 @@ function unfoldMLoop<S, Env, A>(
 ): Decision.StepFunction<S, Env, unknown, A> {
   return (now, _) =>
     T.succeed(
-      new Decision.Continue(a, now, (n, i) =>
+      Decision.makeContinue(a, now, (n, i) =>
         T.chain_(f(a), (x) => unfoldMLoop(x, f)(n, i))
       )
     )
@@ -967,10 +1018,10 @@ function chooseLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
         T.map_(self(now, i), (d) => {
           switch (d._tag) {
             case "Done": {
-              return new Decision.Done(E.left(d.out))
+              return Decision.makeDone(E.left(d.out))
             }
             case "Continue": {
-              return new Decision.Continue(
+              return Decision.makeContinue(
                 E.left(d.out),
                 d.interval,
                 chooseLoop(d.next, that)
@@ -982,10 +1033,10 @@ function chooseLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
         T.map_(that(now, i2), (d) => {
           switch (d._tag) {
             case "Done": {
-              return new Decision.Done(E.right(d.out))
+              return Decision.makeDone(E.right(d.out))
             }
             case "Continue": {
-              return new Decision.Continue(
+              return Decision.makeContinue(
                 E.right(d.out),
                 d.interval,
                 chooseLoop(self, d.next)
