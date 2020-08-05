@@ -508,6 +508,42 @@ export const dimap_ = <In2, S, Env, In, Out, Out2>(
 ) => map_(contramap_(self, f), g)
 
 /**
+ * Returns a new schedule that performs a geometric union on the intervals defined
+ * by both schedules.
+ */
+export const either = <S1, Env1, In, In1 extends In, Out1>(
+  that: Schedule<S1, Env1, In1, Out1>
+) => <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
+  combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+
+/**
+ * Returns a new schedule that performs a geometric union on the intervals defined
+ * by both schedules.
+ */
+export const either_ = <S, Env, Out, S1, Env1, In, In1 extends In, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+) => combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+
+/**
+ * The same as `either` followed by `map`.
+ */
+export const eitherWith = <S1, Env1, In, In1 extends In, Out1>(
+  that: Schedule<S1, Env1, In1, Out1>
+) => <Out, Out2>(f: (o: Out, o1: Out1) => Out2) => <S, Env>(
+  self: Schedule<S, Env, In, Out>
+) => eitherWith_(self, that, f)
+
+/**
+ * The same as `either` followed by `map`.
+ */
+export const eitherWith_ = <S, Env, S1, Env1, In, In1 extends In, Out, Out1, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>,
+  f: (o: Out, o1: Out1) => Out2
+) => map_(either_(self, that), ([o, o1]) => f(o, o1))
+
+/**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
 export const forever = unfold_(0, (n) => n + 1)
