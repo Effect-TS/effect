@@ -1499,6 +1499,86 @@ export function untilOutputM_<S, Env, In, Out, S1, Env1>(
   return checkM_(self, (_, o) => T.map_(f(o), (b) => !b))
 }
 
+/**
+ * Returns a new schedule that continues for as long the specified predicate on the input
+ * evaluates to true.
+ */
+export function whileInput<In, In1 extends In = In>(f: (i: In1) => boolean) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => whileInput_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified predicate on the input
+ * evaluates to true.
+ */
+export function whileInput_<S, Env, In, Out, In1 extends In = In>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In1) => boolean
+) {
+  return check_(self, (i: In1) => f(i))
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified effectful predicate on the
+ * input evaluates to true.
+ */
+export function whileInputM<S1, Env1, In, In1 extends In = In>(
+  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => whileInputM_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified effectful predicate on the
+ * input evaluates to true.
+ */
+export function whileInputM_<S1, Env1, S, Env, In, Out, In1 extends In = In>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+) {
+  return checkM_(self, (i: In1) => f(i))
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified predicate on the output
+ * evaluates to true.
+ */
+export function whileOutput<Out>(f: (o: Out) => boolean) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => whileOutput_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified predicate on the output
+ * evaluates to true.
+ */
+export function whileOutput_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => boolean
+) {
+  return check_(self, (_, o) => f(o))
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified effectful predicate on the
+ * output evaluates to true.
+ */
+export function whileOutputM<Out, S1, Env1>(
+  f: (o: Out) => T.Effect<S1, Env1, never, boolean>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => whileOutputM_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues for as long the specified effectful predicate on the
+ * output evaluates to true.
+ */
+export function whileOutputM_<S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => T.Effect<S1, Env1, never, boolean>
+) {
+  return checkM_(self, (_, o) => T.map_(f(o), (b) => !b))
+}
+
 function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
@@ -1550,7 +1630,7 @@ export function unfoldM_<S, Env, A>(a: A, f: (a: A) => T.Effect<S, Env, never, A
  * Returns a new schedule that performs a geometric intersection on the intervals defined
  * by both schedules.
  */
-export function zip_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
+export function zip_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
@@ -1561,9 +1641,47 @@ export function zip_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
  * Returns a new schedule that performs a geometric intersection on the intervals defined
  * by both schedules.
  */
-export function zip<In, S1, Env1, In1 extends In, Out1>(
+export function zip<In, S1, Env1, Out1, In1 extends In = In>(
   that: Schedule<S1, Env1, In1, Out1>
 ) {
   return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
     combineWith_(self, that, (d, d2) => Math.max(d, d2))
+}
+
+/**
+ * Same as zip but ignores the right output.
+ */
+export function zipLeft<In, S1, Env1, Out1, In1 extends In = In>(
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => zipLeft_(self, that)
+}
+
+/**
+ * Same as zip but ignores the right output.
+ */
+export function zipLeft_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return map_(zip_(self, that), ([_]) => _)
+}
+
+/**
+ * Same as zip but ignores the right output.
+ */
+export function zipRight<In, S1, Env1, Out1, In1 extends In = In>(
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => zipRight_(self, that)
+}
+
+/**
+ * Same as zip but ignores the right output.
+ */
+export function zipRight_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return map_(zip_(self, that), ([_, __]) => __)
 }

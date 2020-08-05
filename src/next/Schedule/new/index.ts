@@ -95,6 +95,18 @@ export {
   untilOutputM,
   untilOutputM_,
   untilOutput_,
+  whileInput,
+  whileInputM,
+  whileInputM_,
+  whileInput_,
+  whileOutput,
+  whileOutputM,
+  whileOutputM_,
+  whileOutput_,
   zip,
+  zipLeft,
+  zipLeft_,
+  zipRight,
+  zipRight_,
   zip_
 } from "./schedule"
