@@ -86,6 +86,9 @@ export {
   unfoldM,
   unfoldM_,
   unfold_,
+  unit,
+  untilInput,
+  untilInput_,
   zip,
   zip_
 } from "./schedule"
