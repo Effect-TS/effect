@@ -439,6 +439,58 @@ export const combineWith_ = <S, Env, Out, In, S1, Env1, In1 extends In, Out1>(
 ) => new Schedule(combineWithLoop(self.step, that.step, f))
 
 /**
+ * Returns a new schedule that deals with a narrower class of inputs than this schedule.
+ */
+export function contramap<In, In1>(f: (_: In1) => In) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => contramap_(self, f)
+}
+
+/**
+ * Returns a new schedule that deals with a narrower class of inputs than this schedule.
+ */
+export function contramap_<S, Env, In, Out, In1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (_: In1) => In
+) {
+  return new Schedule((now, i: In1) =>
+    T.map_(self.step(now, f(i)), Decision.contramap(f))
+  )
+}
+
+/**
+ * Returns a new schedule with the specified effectfully computed delay added before the start
+ * of each interval produced by this schedule.
+ */
+export const delayedM = <S1, Env1>(
+  f: (d: number) => T.Effect<S1, Env1, never, number>
+) => <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => delayedM_(self, f)
+
+/**
+ * Returns a new schedule with the specified effectfully computed delay added before the start
+ * of each interval produced by this schedule.
+ */
+export const delayedM_ = <S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (d: number) => T.Effect<S1, Env1, never, number>
+) => modifyDelayM_(self, (o, d) => f(d))
+
+/**
+ * Returns a new schedule that contramaps the input and maps the output.
+ */
+export const dimap = <In2, In>(f: (i: In2) => In) => <Out, Out2>(
+  g: (o: Out) => Out2
+) => <S, Env>(self: Schedule<S, Env, In, Out>) => dimap_(self, f, g)
+
+/**
+ * Returns a new schedule that contramaps the input and maps the output.
+ */
+export const dimap_ = <In2, S, Env, In, Out, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In2) => In,
+  g: (o: Out) => Out2
+) => map_(contramap_(self, f), g)
+
+/**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
 export const forever = unfold_(0, (n) => n + 1)
