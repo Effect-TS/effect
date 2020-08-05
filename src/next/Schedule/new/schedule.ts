@@ -1685,3 +1685,24 @@ export function zipRight_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
 ) {
   return map_(zip_(self, that), ([_, __]) => __)
 }
+
+/**
+ * Equivalent to `zip` followed by `map`.
+ */
+export function zipWith<In, Out, S1, Env1, Out1, Out2, In1 extends In = In>(
+  that: Schedule<S1, Env1, In1, Out1>,
+  f: (o: Out, o1: Out1) => Out2
+) {
+  return <S, Env>(self: Schedule<S, Env, In, Out>) => zipWith_(self, that, f)
+}
+
+/**
+ * Equivalent to `zip` followed by `map`.
+ */
+export function zipWith_<S, Env, In, Out, S1, Env1, Out1, Out2, In1 extends In = In>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>,
+  f: (o: Out, o1: Out1) => Out2
+) {
+  return map_(zip_(self, that), ([o, o1]) => f(o, o1))
+}
