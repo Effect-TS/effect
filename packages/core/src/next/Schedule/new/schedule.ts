@@ -1439,6 +1439,27 @@ export function untilInput_<S, Env, In, Out, In1 extends In = In>(
 }
 
 /**
+ * Returns a new schedule that continues until the specified effectful predicate on the input
+ * evaluates to true.
+ */
+export function untilInputM<S1, Env1, In, In1 extends In = In>(
+  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => untilInputM_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues until the specified effectful predicate on the input
+ * evaluates to true.
+ */
+export function untilInputM_<S1, Env1, S, Env, In, Out, In1 extends In = In>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+) {
+  return checkM_(self, (i: In1) => T.map_(f(i), (b) => !b))
+}
+
+/**
  * Returns a new schedule that continues until the specified predicate on the input evaluates
  * to true.
  */
@@ -1455,6 +1476,27 @@ export function untilOutput_<S, Env, In, Out>(
   f: (o: Out) => boolean
 ) {
   return check_(self, (_, o) => !f(o))
+}
+
+/**
+ * Returns a new schedule that continues until the specified predicate on the input evaluates
+ * to true.
+ */
+export function untilOutputM<Out, S1, Env1>(
+  f: (o: Out) => T.Effect<S1, Env1, never, boolean>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => untilOutputM_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues until the specified predicate on the input evaluates
+ * to true.
+ */
+export function untilOutputM_<S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => T.Effect<S1, Env1, never, boolean>
+) {
+  return checkM_(self, (_, o) => T.map_(f(o), (b) => !b))
 }
 
 function unfoldLoop<A>(
