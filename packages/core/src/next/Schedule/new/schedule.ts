@@ -422,21 +422,25 @@ function combineWithLoop<S, Env, In, Out, S1, Env1, Out1>(
  * Returns a new schedule that combines this schedule with the specified schedule, merging the next
  * intervals according to the specified merge function.
  */
-export const combineWith = <S1, Env1, In, In1 extends In, Out1>(
+export function combineWith<S1, Env1, In, In1 extends In, Out1>(
   that: Schedule<S1, Env1, In1, Out1>
-) => (f: (d1: number, d2: number) => number) => <S, Env, Out>(
-  self: Schedule<S, Env, In, Out>
-) => new Schedule(combineWithLoop(self.step, that.step, f))
+) {
+  return (f: (d1: number, d2: number) => number) => <S, Env, Out>(
+    self: Schedule<S, Env, In, Out>
+  ) => new Schedule(combineWithLoop(self.step, that.step, f))
+}
 
 /**
  * Returns a new schedule that combines this schedule with the specified schedule, merging the next
  * intervals according to the specified merge function.
  */
-export const combineWith_ = <S, Env, Out, In, S1, Env1, In1 extends In, Out1>(
+export function combineWith_<S, Env, Out, In, S1, Env1, In1 extends In, Out1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
-) => new Schedule(combineWithLoop(self.step, that.step, f))
+) {
+  return new Schedule(combineWithLoop(self.step, that.step, f))
+}
 
 /**
  * Returns a new schedule that deals with a narrower class of inputs than this schedule.
@@ -461,87 +465,105 @@ export function contramap_<S, Env, In, Out, In1>(
  * Returns a new schedule with the specified computed delay added before the start
  * of each interval produced by this schedule.
  */
-export const delayed = (f: (d: number) => number) => <S, Env, In, Out>(
-  self: Schedule<S, Env, In, Out>
-) => delayed_(self, f)
+export function delayed(f: (d: number) => number) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => delayed_(self, f)
+}
 
 /**
  * Returns a new schedule with the specified computed delay added before the start
  * of each interval produced by this schedule.
  */
-export const delayed_ = <S, Env, In, Out>(
+export function delayed_<S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
   f: (d: number) => number
-) => delayedM_(self, (d) => T.succeed(f(d)))
+) {
+  return delayedM_(self, (d) => T.succeed(f(d)))
+}
 
 /**
  * Returns a new schedule with the specified effectfully computed delay added before the start
  * of each interval produced by this schedule.
  */
-export const delayedM = <S1, Env1>(
+export function delayedM<S1, Env1>(
   f: (d: number) => T.Effect<S1, Env1, never, number>
-) => <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => delayedM_(self, f)
+) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => delayedM_(self, f)
+}
 
 /**
  * Returns a new schedule with the specified effectfully computed delay added before the start
  * of each interval produced by this schedule.
  */
-export const delayedM_ = <S, Env, In, Out, S1, Env1>(
+export function delayedM_<S, Env, In, Out, S1, Env1>(
   self: Schedule<S, Env, In, Out>,
   f: (d: number) => T.Effect<S1, Env1, never, number>
-) => modifyDelayM_(self, (o, d) => f(d))
+) {
+  return modifyDelayM_(self, (o, d) => f(d))
+}
 
 /**
  * Returns a new schedule that contramaps the input and maps the output.
  */
-export const dimap = <In2, In>(f: (i: In2) => In) => <Out, Out2>(
-  g: (o: Out) => Out2
-) => <S, Env>(self: Schedule<S, Env, In, Out>) => dimap_(self, f, g)
+export function dimap<In2, In>(f: (i: In2) => In) {
+  return <Out, Out2>(g: (o: Out) => Out2) => <S, Env>(
+    self: Schedule<S, Env, In, Out>
+  ) => dimap_(self, f, g)
+}
 
 /**
  * Returns a new schedule that contramaps the input and maps the output.
  */
-export const dimap_ = <In2, S, Env, In, Out, Out2>(
+export function dimap_<In2, S, Env, In, Out, Out2>(
   self: Schedule<S, Env, In, Out>,
   f: (i: In2) => In,
   g: (o: Out) => Out2
-) => map_(contramap_(self, f), g)
+) {
+  return map_(contramap_(self, f), g)
+}
 
 /**
  * Returns a new schedule that performs a geometric union on the intervals defined
  * by both schedules.
  */
-export const either = <S1, Env1, In, In1 extends In, Out1>(
+export function either<S1, Env1, In, In1 extends In, Out1>(
   that: Schedule<S1, Env1, In1, Out1>
-) => <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
-  combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
+    combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+}
 
 /**
  * Returns a new schedule that performs a geometric union on the intervals defined
  * by both schedules.
  */
-export const either_ = <S, Env, Out, S1, Env1, In, In1 extends In, Out1>(
+export function either_<S, Env, Out, S1, Env1, In, In1 extends In, Out1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
-) => combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+) {
+  return combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
+}
 
 /**
  * The same as `either` followed by `map`.
  */
-export const eitherWith = <S1, Env1, In, In1 extends In, Out1>(
+export function eitherWith<S1, Env1, In, In1 extends In, Out1>(
   that: Schedule<S1, Env1, In1, Out1>
-) => <Out, Out2>(f: (o: Out, o1: Out1) => Out2) => <S, Env>(
-  self: Schedule<S, Env, In, Out>
-) => eitherWith_(self, that, f)
+) {
+  return <Out, Out2>(f: (o: Out, o1: Out1) => Out2) => <S, Env>(
+    self: Schedule<S, Env, In, Out>
+  ) => eitherWith_(self, that, f)
+}
 
 /**
  * The same as `either` followed by `map`.
  */
-export const eitherWith_ = <S, Env, S1, Env1, In, In1 extends In, Out, Out1, Out2>(
+export function eitherWith_<S, Env, S1, Env1, In, In1 extends In, Out, Out1, Out2>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>,
   f: (o: Out, o1: Out1) => Out2
-) => map_(either_(self, that), ([o, o1]) => f(o, o1))
+) {
+  return map_(either_(self, that), ([o, o1]) => f(o, o1))
+}
 
 /**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
