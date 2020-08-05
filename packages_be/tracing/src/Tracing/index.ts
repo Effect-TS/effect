@@ -112,7 +112,9 @@ function runWithSpan<S, R, E, A>(
             span.setTag(
               EXTRA_TAGS.ERROR_MESSAGE,
               JSON.stringify(e, (_, value) =>
-                typeof value.toJSON !== "function" && value instanceof Error
+                value != null &&
+                typeof value.toJSON !== "function" &&
+                value instanceof Error
                   ? value.toString()
                   : value
               )
