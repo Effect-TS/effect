@@ -1,7 +1,7 @@
 import { chain_ } from "./chain_"
 import { Effect, AsyncRE } from "./effect"
 import { effectTotal } from "./effectTotal"
-import { foreachParUnit_ } from "./foreachParUnit_"
+import { foreachUnitPar_ } from "./foreachUnitPar_"
 import { suspend } from "./suspend"
 
 /**
@@ -28,7 +28,7 @@ export const foreachPar_ = <S, R, E, A, B>(
             })
         )
       return chain_(
-        foreachParUnit_(
+        foreachUnitPar_(
           arr.map((a, n) => [a, n] as [A, number]),
           fn
         ),

@@ -1,5 +1,5 @@
 import { Effect, AsyncRE } from "./effect"
-import { foreachParUnit_ } from "./foreachParUnit_"
+import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and runs
@@ -13,6 +13,6 @@ import { foreachParUnit_ } from "./foreachParUnit_"
  *
  * Additionally, interrupts all effects on any failure.
  */
-export const foreachParUnit = <S, R, E, A>(f: (a: A) => Effect<S, R, E, any>) => (
+export const foreachUnitPar = <S, R, E, A>(f: (a: A) => Effect<S, R, E, any>) => (
   as: Iterable<A>
-): AsyncRE<R, E, void> => foreachParUnit_(as, f)
+): AsyncRE<R, E, void> => foreachUnitPar_(as, f)
