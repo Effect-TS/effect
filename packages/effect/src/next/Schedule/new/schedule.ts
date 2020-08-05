@@ -1660,7 +1660,7 @@ export function zipLeft<In, S1, Env1, Out1, In1 extends In = In>(
 /**
  * Same as zip but ignores the right output.
  */
-export function zipLeft_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
+export function zipLeft_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
@@ -1679,7 +1679,7 @@ export function zipRight<In, S1, Env1, Out1, In1 extends In = In>(
 /**
  * Same as zip but ignores the right output.
  */
-export function zipRight_<S, Env, In, Out, S1, Env1, In1 extends In, Out1>(
+export function zipRight_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
