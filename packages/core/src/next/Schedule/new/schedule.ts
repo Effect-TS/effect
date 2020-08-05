@@ -1410,6 +1410,34 @@ export function tapOutput_<S, Env, In, Out, S1, Env1>(
   return new Schedule(tapOutputLoop(self.step, f))
 }
 
+/**
+ * Returns a new schedule that maps the output of this schedule to unit.
+ */
+export function unit<S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>
+): Schedule<S | S1, Env & Env1, In, void> {
+  return as<void>(undefined)(self)
+}
+
+/**
+ * Returns a new schedule that continues until the specified predicate on the input evaluates
+ * to true.
+ */
+export function untilInput<In, In1 extends In = In>(f: (i: In1) => boolean) {
+  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => untilInput_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues until the specified predicate on the input evaluates
+ * to true.
+ */
+export function untilInput_<S, Env, In, Out, In1 extends In = In>(
+  self: Schedule<S, Env, In, Out>,
+  f: (i: In1) => boolean
+) {
+  return check_(self, (i: In1) => !f(i))
+}
+
 function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
