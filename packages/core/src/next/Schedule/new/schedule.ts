@@ -1,5 +1,6 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
+import { tuple } from "../../../Function"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as Clock from "../../Clock"
@@ -208,47 +209,110 @@ function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
     })
 }
 
+function bothLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  that: Decision.StepFunction<S1, Env1, In1, Out1>
+): Decision.StepFunction<S | S1, Env & Env1, [In, In1], [Out, Out1]> {
+  return (now, t) => {
+    const [in1, in2] = t
+
+    return T.map_(T.zip_(self(now, in1), that(now, in2)), ([d1, d2]) => {
+      switch (d1._tag) {
+        case "Done": {
+          switch (d2._tag) {
+            case "Done": {
+              return new Decision.Done(tuple(d1.out, d2.out))
+            }
+            case "Continue": {
+              return new Decision.Done(tuple(d1.out, d2.out))
+            }
+          }
+        }
+        case "Continue": {
+          switch (d2._tag) {
+            case "Done": {
+              return new Decision.Done(tuple(d1.out, d2.out))
+            }
+            case "Continue": {
+              return new Decision.Continue(
+                tuple(d1.out, d2.out),
+                Math.min(d1.interval, d2.interval),
+                bothLoop(d1.next, d2.next)
+              )
+            }
+          }
+        }
+      }
+    })
+  }
+}
+
 /**
- * Returns a new schedule that passes each input and output of this schedule to the spefcified
- * function, and then determines whether or not to continue based on the return value of the
- * function.
+ * Returns a new schedule that has both the inputs and outputs of this and the specified
+ * schedule.
  */
-export const check = <In, In1 extends In, Out>(f: (i: In1, o: Out) => boolean) => <
-  S,
-  Env
->(
-  self: Schedule<S, Env, In, Out>
-) => check_(self, f)
+export function both<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(
+    self: Schedule<S, Env, In, Out>
+  ): Schedule<S | S1, Env & Env1, [In, In1], [Out, Out1]> =>
+    new Schedule(bothLoop(self.step, that.step))
+}
+
+/**
+ * Returns a new schedule that has both the inputs and outputs of this and the specified
+ * schedule.
+ */
+export function both_<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+): Schedule<S | S1, Env & Env1, [In, In1], [Out, Out1]> {
+  return new Schedule(bothLoop(self.step, that.step))
+}
 
 /**
  * Returns a new schedule that passes each input and output of this schedule to the spefcified
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export const check_ = <S, Env, In, In1 extends In, Out>(
+export function check<In, In1 extends In, Out>(f: (i: In1, o: Out) => boolean) {
+  return <S, Env>(self: Schedule<S, Env, In, Out>) => check_(self, f)
+}
+
+/**
+ * Returns a new schedule that passes each input and output of this schedule to the spefcified
+ * function, and then determines whether or not to continue based on the return value of the
+ * function.
+ */
+export function check_<S, Env, In, In1 extends In, Out>(
   self: Schedule<S, Env, In, Out>,
   f: (i: In1, o: Out) => boolean
-) => checkM_(self, (i: In1, o) => T.succeed(f(i, o)))
+) {
+  return checkM_(self, (i: In1, o) => T.succeed(f(i, o)))
+}
 
 /**
  * Returns a new schedule that passes each input and output of this schedule to the specified
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export const checkM = <S1, Env1, In, In1 extends In, Out>(
+export function checkM<S1, Env1, In, In1 extends In, Out>(
   test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>
-) => <S, Env>(self: Schedule<S, Env, In, Out>) =>
-  new Schedule(checkMLoop(test, self.step))
+) {
+  return <S, Env>(self: Schedule<S, Env, In, Out>) =>
+    new Schedule(checkMLoop(test, self.step))
+}
 
 /**
  * Returns a new schedule that passes each input and output of this schedule to the specified
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export const checkM_ = <S, Env, S1, Env1, In, In1 extends In, Out>(
+export function checkM_<S, Env, S1, Env1, In, In1 extends In, Out>(
   self: Schedule<S, Env, In1, Out>,
   test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>
-) => new Schedule(checkMLoop(test, self.step))
+) {
+  return new Schedule(checkMLoop(test, self.step))
+}
 
 /**
  * Returns a new schedule that first executes this schedule to completion, and then executes the
@@ -319,8 +383,9 @@ export function andThenEither_<S2, Env2, In2 extends In, Out2, S, Env, Out, In>(
 /**
  * Returns a new schedule that collects the outputs of this one into an array.
  */
-export const collectAll = <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
-  fold_(self, A.empty as A.Array<Out>, (xs, x) => [...xs, x])
+export function collectAll<S, Env, In, Out>(self: Schedule<S, Env, In, Out>) {
+  return fold_(self, A.empty as A.Array<Out>, (xs, x) => [...xs, x])
+}
 
 function composeLoop<S1, Env1, Out1, S, Env, In, Out>(
   self: Decision.StepFunction<S, Env, In, Out>,
@@ -357,13 +422,9 @@ function composeLoop<S1, Env1, Out1, S, Env, In, Out>(
  * this one into the input of the other. Effects described by this schedule will always be
  * executed before the effects described by the second schedule.
  */
-export const compose = <S1, Env1, Out, Out1>(that: Schedule<S1, Env1, Out, Out1>) => <
-  S,
-  Env,
-  In
->(
-  self: Schedule<S, Env, In, Out>
-) => compose_(self, that)
+export function compose<S1, Env1, Out, Out1>(that: Schedule<S1, Env1, Out, Out1>) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => compose_(self, that)
+}
 
 /**
  * Returns the composition of this schedule and the specified schedule, by piping the output of
@@ -562,6 +623,54 @@ export function eitherWith_<S, Env, S1, Env1, In, In1 extends In, Out, Out1, Out
   f: (o: Out, o1: Out1) => Out2
 ) {
   return map_(either_(self, that), ([o, o1]) => f(o, o1))
+}
+
+function ensuringLoop<S1, Env1, S, Env, In, Out>(
+  finalizer: T.Effect<S1, Env1, never, any>,
+  self: Decision.StepFunction<S, Env, In, Out>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.as_(
+            finalizer,
+            new Decision.Done(d.out) as Decision.Decision<S1 | S, Env & Env1, In, Out>
+          )
+        }
+        case "Continue": {
+          return T.succeed(
+            new Decision.Continue(d.out, d.interval, ensuringLoop(finalizer, d.next))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that will run the specified finalizer as soon as the schedule is
+ * complete. Note that unlike `Effect#ensuring`, this method does not guarantee the finalizer
+ * will be run. The `Schedule` may not initialize or the driver of the schedule may not run
+ * to completion. However, if the `Schedule` ever decides not to continue, then the
+ * finalizer will be run.
+ */
+export function ensuring<S1, Env1>(finalizer: T.Effect<S1, Env1, never, any>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    new Schedule(ensuringLoop(finalizer, self.step))
+}
+
+/**
+ * Returns a new schedule that will run the specified finalizer as soon as the schedule is
+ * complete. Note that unlike `Effect#ensuring`, this method does not guarantee the finalizer
+ * will be run. The `Schedule` may not initialize or the driver of the schedule may not run
+ * to completion. However, if the `Schedule` ever decides not to continue, then the
+ * finalizer will be run.
+ */
+export function ensuring_<S1, Env1, S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  finalizer: T.Effect<S1, Env1, never, any>
+) {
+  return new Schedule(ensuringLoop(finalizer, self.step))
 }
 
 /**
