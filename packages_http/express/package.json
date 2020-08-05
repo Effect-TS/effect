@@ -1,6 +1,6 @@
 {
   "name": "@matechs/express",
-  "version": "8.11.5",
+  "version": "8.11.6",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -22,7 +22,7 @@
   "sideEffects": false,
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "dependencies": {
-    "@matechs/core": "^2.11.5"
+    "@matechs/core": "^2.11.6"
   },
   "peerDependencies": {
     "express": "^4.17.1"

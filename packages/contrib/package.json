@@ -1,6 +1,6 @@
 {
   "name": "@matechs/contrib",
-  "version": "2.11.5",
+  "version": "2.11.6",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -24,7 +24,7 @@
     "@types/node": "^14.0.5"
   },
   "dependencies": {
-    "@matechs/core": "^2.11.5"
+    "@matechs/core": "^2.11.6"
   },
   "config": {
     "modules": [

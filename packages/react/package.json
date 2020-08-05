@@ -1,6 +1,6 @@
 {
   "name": "@matechs/react",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "license": "MIT",
   "private": false,
   "scripts": {
@@ -29,7 +29,7 @@
   },
   "gitHead": "2ff0a2daa194950901aba13f3431b2470889f9c2",
   "devDependencies": {
-    "@matechs/core": "^2.11.5",
+    "@matechs/core": "^2.11.6",
     "@types/react": "^16.9.41",
     "react": "^16.13.1"
   }
