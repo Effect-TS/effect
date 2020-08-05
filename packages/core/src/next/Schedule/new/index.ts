@@ -59,6 +59,8 @@ export {
   modifyDelay_,
   onDecision,
   onDecision_,
+  provideAll,
+  provideAll_,
   repeat,
   right,
   Schedule,
