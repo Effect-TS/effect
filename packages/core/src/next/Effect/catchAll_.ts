@@ -7,5 +7,5 @@ import { succeedNow } from "./succeedNow"
  */
 export const catchAll_ = <S2, R2, E2, A2, S, R, E, A>(
   effect: Effect<S2, R2, E2, A2>,
-  f: () => Effect<S, R, E, A>
+  f: (e: E2) => Effect<S, R, E, A>
 ) => foldM_(effect, f, (x) => succeedNow(x))
