@@ -458,6 +458,23 @@ export function contramap_<S, Env, In, Out, In1>(
 }
 
 /**
+ * Returns a new schedule with the specified computed delay added before the start
+ * of each interval produced by this schedule.
+ */
+export const delayed = (f: (d: number) => number) => <S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>
+) => delayed_(self, f)
+
+/**
+ * Returns a new schedule with the specified computed delay added before the start
+ * of each interval produced by this schedule.
+ */
+export const delayed_ = <S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  f: (d: number) => number
+) => delayedM_(self, (d) => T.succeed(f(d)))
+
+/**
  * Returns a new schedule with the specified effectfully computed delay added before the start
  * of each interval produced by this schedule.
  */
