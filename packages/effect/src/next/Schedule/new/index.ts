@@ -80,6 +80,8 @@ export {
   second,
   tapInput,
   tapInput_,
+  tapOutput,
+  tapOutput_,
   unfold,
   unfoldM,
   unfoldM_,

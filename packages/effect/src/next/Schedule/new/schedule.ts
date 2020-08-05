@@ -1371,6 +1371,45 @@ export function tapInput<In, S1, Env1, In1 extends In = In>(
     new Schedule(tapInputLoop(self.step, f))
 }
 
+function tapOutputLoop<S, Env, In, Out, S1, Env1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  f: (o: Out) => T.Effect<S1, Env1, never, any>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.as_(f(d.out), Decision.makeDone(d.out))
+        }
+        case "Continue": {
+          return T.as_(
+            f(d.out),
+            Decision.makeContinue(d.out, d.interval, tapOutputLoop(d.next, f))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that effectfully processes every output from this schedule.
+ */
+export function tapOutput<S1, Env1, Out>(
+  f: (o: Out) => T.Effect<S1, Env1, never, any>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => tapOutput_(self, f)
+}
+
+/**
+ * Returns a new schedule that effectfully processes every output from this schedule.
+ */
+export function tapOutput_<S, Env, In, Out, S1, Env1>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => T.Effect<S1, Env1, never, any>
+): Schedule<S | S1, Env & Env1, In, Out> {
+  return new Schedule(tapOutputLoop(self.step, f))
+}
+
 function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
