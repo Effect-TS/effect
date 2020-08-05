@@ -1,5 +1,4 @@
-import { pipe } from "fp-ts/lib/pipeable"
-
+import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
 import * as L from "../src/next/Layer"
 
