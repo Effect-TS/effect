@@ -1075,6 +1075,50 @@ export function provideAll_<S, Env, In, Out>(
   return new Schedule(provideAllLoop(env, self.step))
 }
 
+function provideSomeLoop<Env1, S, Env, In, Out>(
+  env: (_: Env1) => Env,
+  self: Decision.StepFunction<S, Env, In, Out>
+): Decision.StepFunction<S, Env1, In, Out> {
+  return (now, i) =>
+    T.provideSome_(
+      T.map_(self(now, i), (d) => {
+        switch (d._tag) {
+          case "Done": {
+            return Decision.makeDone(d.out)
+          }
+          case "Continue": {
+            return Decision.makeContinue(
+              d.out,
+              d.interval,
+              provideSomeLoop(env, d.next)
+            )
+          }
+        }
+      }),
+      env
+    )
+}
+
+/**
+ * Returns a new schedule with part of its environment provided to it, so the
+ * resulting schedule does not require any environment.
+ */
+export function provideSome<Env1, Env>(env: (e: Env1) => Env) {
+  return <S, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    new Schedule(provideSomeLoop(env, self.step))
+}
+
+/**
+ * Returns a new schedule with part of its environment provided to it, so the
+ * resulting schedule does not require any environment.
+ */
+export function provideSome_<Env1, S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  env: (e: Env1) => Env
+): Schedule<S, Env1, In, Out> {
+  return new Schedule(provideSomeLoop(env, self.step))
+}
+
 /**
  * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
  * input, allowing propagating some type `X` through this channel on demand.
