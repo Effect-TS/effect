@@ -20,11 +20,17 @@ export {
   compose_,
   contramap,
   contramap_,
+  delayed,
   delayedM,
   delayedM_,
+  delayed_,
   dimap,
   dimap_,
   driver,
+  either,
+  eitherWith,
+  eitherWith_,
+  either_,
   fold,
   foldM,
   foldM_,
@@ -41,7 +47,5 @@ export {
   unfold,
   unfoldM,
   unfoldM_,
-  unfold_,
-  delayed,
-  delayed_
+  unfold_
 } from "./schedule"
