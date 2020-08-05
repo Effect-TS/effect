@@ -2,21 +2,23 @@
 
 import { Effect } from "../Effect/effect"
 
-export { effectTotal } from "../Effect/effectTotal"
 export { access } from "../Effect/access"
-export { fail } from "../Effect/fail"
-export { environment } from "../Effect/environment"
 export { accessM } from "../Effect/accessM"
+export { bracketExit_ } from "../Effect/bracketExit_"
+export { chain } from "../Effect/chain"
+export { chain_ } from "../Effect/chain_"
+export { bind, let, of } from "../Effect/do"
+export { done } from "../Effect/done"
 export {
   Async,
   AsyncE,
   AsyncR,
   AsyncRE,
+  Effect,
   Sync,
   SyncE,
   SyncR,
   SyncRE,
-  Effect,
   _A,
   _E,
   _I,
@@ -24,39 +26,40 @@ export {
   _S,
   _U
 } from "../Effect/effect"
-export { map_ } from "../Effect/map_"
+export { effectTotal } from "../Effect/effectTotal"
+export { environment } from "../Effect/environment"
+export { parallel, parallelN } from "../Effect/ExecutionStrategy"
+export { fail } from "../Effect/fail"
+export { flatten } from "../Effect/flatten"
+export { foldCauseM } from "../Effect/foldCauseM"
+export { foreachParN_ } from "../Effect/foreachParN_"
+export { foreachPar_ } from "../Effect/foreachPar_"
+export { foreach_ } from "../Effect/foreach_"
+export { forkDaemon } from "../Effect/forkDaemon"
+export { interrupt } from "../Effect/interrupt"
 export { map } from "../Effect/map"
-export { chain_ } from "../Effect/chain_"
-export { chain } from "../Effect/chain"
-export { provideAll_ } from "../Effect/provideAll_"
+export { map_ } from "../Effect/map_"
 export { provideAll } from "../Effect/provideAll"
+export { provideAll_ } from "../Effect/provideAll_"
 export { provideSome_ } from "../Effect/provideSome"
+export { result } from "../Effect/result"
+export { succeed as succeedNow } from "../Effect/succeed"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
-export { zipWith_ } from "../Effect/zipWith_"
 export { unit } from "../Effect/unit"
-export { succeed as succeedNow } from "../Effect/succeed"
-export { flatten } from "../Effect/flatten"
-export { forkDaemon } from "../Effect/forkDaemon"
-export { foreach_ } from "../Effect/foreach_"
-export { foldCauseM } from "../Effect/foldCauseM"
-export { foreachPar_ } from "../Effect/foreachPar_"
-export { foreachParN_ } from "../Effect/foreachParN_"
-export { result } from "../Effect/result"
-export { done } from "../Effect/done"
-export { bracketExit_ } from "../Effect/bracketExit_"
-export { zipWithPar_ } from "../Effect/zipWithPar_"
 export { zipWith } from "../Effect/zipWith"
-export { interrupt } from "../Effect/interrupt"
-export { Exit } from "../Exit/exit"
-export { unit as exitUnit } from "../Exit/core"
-export { succeed as exitSucceed } from "../Exit/core"
-export { collectAll as exitCollectAll } from "../Exit/core"
-export { collectAllPar as exitCollectAllPar } from "../Exit/core"
-export { zipRight_ as exitZipRight_ } from "../Exit/core"
+export { zipWithPar_ } from "../Effect/zipWithPar_"
+export { zipWith_ } from "../Effect/zipWith_"
+export { zip_ } from "../Effect/zip_"
 export { foreach as exitForeach } from "../Exit/api"
-export { parallel, parallelN } from "../Effect/ExecutionStrategy"
-export { bind, let, of } from "../Effect/do"
+export {
+  collectAll as exitCollectAll,
+  collectAllPar as exitCollectAllPar,
+  succeed as exitSucceed,
+  unit as exitUnit,
+  zipRight_ as exitZipRight_
+} from "../Exit/core"
+export { Exit } from "../Exit/exit"
 
 export const coerceSE = <S1, E1>() => <S, R, E, A>(
   effect: Effect<S, R, E, A>
