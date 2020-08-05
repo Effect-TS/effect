@@ -61,6 +61,8 @@ export {
   onDecision_,
   provideAll,
   provideAll_,
+  provideSome,
+  provideSome_,
   repeat,
   right,
   Schedule,
