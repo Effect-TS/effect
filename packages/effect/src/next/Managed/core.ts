@@ -163,12 +163,21 @@ export const foreachPar_ = <S, R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<S, R, E, B>
 ): Managed<unknown, R, E, readonly B[]> =>
-  mapM_(makeManagedReleaseMap(T.parallel), (rm) =>
-    T.provideSome_(
-      T.foreachPar_(as, (a) => T.map_(f(a).effect, ([_, b]) => b)),
-      (r: R) => tuple(r, rm)
+  mapM_(makeManagedReleaseMap(T.parallel), (parallelReleaseMap) => {
+    const makeInnerMap = T.provideSome_(
+      T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
+      (x: unknown) => tuple(x, parallelReleaseMap)
     )
-  )
+
+    return T.foreachPar_(as, (a) =>
+      T.map_(
+        T.chain_(makeInnerMap, (innerMap) =>
+          T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
+        ),
+        ([_, b]) => b
+      )
+    )
+  })
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,
@@ -190,12 +199,21 @@ export const foreachParN_ = (n: number) => <S, R, E, A, B>(
   as: Iterable<A>,
   f: (a: A) => Managed<S, R, E, B>
 ): Managed<unknown, R, E, readonly B[]> =>
-  mapM_(makeManagedReleaseMap(T.parallelN(n)), (rm) =>
-    T.provideSome_(
-      T.foreachParN_(n)(as, (a) => T.map_(f(a).effect, ([_, b]) => b)),
-      (r: R) => tuple(r, rm)
+  mapM_(makeManagedReleaseMap(T.parallelN(n)), (parallelReleaseMap) => {
+    const makeInnerMap = T.provideSome_(
+      T.map_(makeManagedReleaseMap(sequential).effect, ([_, x]) => x),
+      (x: unknown) => tuple(x, parallelReleaseMap)
     )
-  )
+
+    return T.foreachParN_(n)(as, (a) =>
+      T.map_(
+        T.chain_(makeInnerMap, (innerMap) =>
+          T.provideSome_(f(a).effect, (u: R) => tuple(u, innerMap))
+        ),
+        ([_, b]) => b
+      )
+    )
+  })
 
 /**
  * Creates a `Managed` value that acquires the original resource in a fiber,
@@ -670,14 +688,17 @@ export const zipWithPar_ = <S, R, E, A, S2, R2, E2, A2, B>(
   that: Managed<S2, R2, E2, A2>,
   f: (a: A, a2: A2) => B
 ): Managed<unknown, R & R2, E | E2, B> =>
-  mapM_(makeManagedReleaseMap(parallel), (rm) =>
-    T.provideSome_(
-      T.zipWithPar_(self.effect, that.effect, ([_, a], [__, a2]) =>
-        // We can safely discard the finalizers here because the resulting Managed's early
-        // release will trigger the ReleaseMap, which would release both finalizers in
-        // parallel.
-        f(a, a2)
-      ),
-      (r: R & R2): [R & R2, ReleaseMap] => [r, rm]
+  mapM_(makeManagedReleaseMap(parallel), (parallelReleaseMap) => {
+    const innerMap = T.provideSome_(
+      makeManagedReleaseMap(sequential).effect,
+      (r: R & R2) => tuple(r, parallelReleaseMap)
     )
-  )
+
+    return T.chain_(T.zip_(innerMap, innerMap), ([[_, l], [__, r]]) =>
+      T.zipWithPar_(
+        T.provideSome_(self.effect, (_: R & R2) => tuple(_, l)),
+        T.provideSome_(that.effect, (_: R & R2) => tuple(_, r)),
+        ([_, a], [__, a2]) => f(a, a2)
+      )
+    )
+  })
