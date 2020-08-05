@@ -108,5 +108,7 @@ export {
   zipLeft_,
   zipRight,
   zipRight_,
+  zipWith,
+  zipWith_,
   zip_
 } from "./schedule"
