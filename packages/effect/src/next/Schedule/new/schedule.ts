@@ -1438,6 +1438,25 @@ export function untilInput_<S, Env, In, Out, In1 extends In = In>(
   return check_(self, (i: In1) => !f(i))
 }
 
+/**
+ * Returns a new schedule that continues until the specified predicate on the input evaluates
+ * to true.
+ */
+export function untilOutput<Out>(f: (o: Out) => boolean) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => untilOutput_(self, f)
+}
+
+/**
+ * Returns a new schedule that continues until the specified predicate on the input evaluates
+ * to true.
+ */
+export function untilOutput_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => boolean
+) {
+  return check_(self, (_, o) => !f(o))
+}
+
 function unfoldLoop<A>(
   a: A,
   f: (a: A) => A
