@@ -88,8 +88,12 @@ export {
   unfold_,
   unit,
   untilInput,
+  untilInputM,
+  untilInputM_,
   untilInput_,
   untilOutput,
+  untilOutputM,
+  untilOutputM_,
   untilOutput_,
   zip,
   zip_
