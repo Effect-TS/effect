@@ -184,9 +184,9 @@ export function andThen_<S, R, B, A, R1, S1, C, A1 extends A = A>(
 /**
  * Returns a new schedule that maps this schedule to a constant output.
  */
-export const as = <Out2>(o: Out2) => <S, Env, In, Out>(
-  self: Schedule<S, Env, In, Out>
-) => map_(self, () => o)
+export function as<Out2>(o: Out2) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => map_(self, () => o)
+}
 
 function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
   test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>,
@@ -674,6 +674,15 @@ export function ensuring_<S1, Env1, S, Env, In, Out>(
 }
 
 /**
+ * Returns a new schedule that packs the input and output of this schedule into the first
+ * element of a tuple. This allows carrying information through this schedule.
+ */
+export function first<X>() {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    both_(self, identity<X>())
+}
+
+/**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
 export const forever = unfold_(0, (n) => n + 1)
@@ -743,6 +752,17 @@ export function foldM_<S, Env, In, Out, Z, S1, Env1>(
   f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>
 ) {
   return new Schedule(foldMLoop(z, f, self.step))
+}
+
+function identityLoop<A>(): Decision.StepFunction<never, unknown, A, A> {
+  return (now, i) => T.succeed(new Decision.Continue(i, now, identityLoop()))
+}
+
+/**
+ * A schedule that always recurs, which returns inputs as outputs.
+ */
+export function identity<A>() {
+  return new Schedule(identityLoop<A>())
 }
 
 function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
