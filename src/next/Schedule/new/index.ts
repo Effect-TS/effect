@@ -89,6 +89,8 @@ export {
   unit,
   untilInput,
   untilInput_,
+  untilOutput,
+  untilOutput_,
   zip,
   zip_
 } from "./schedule"
