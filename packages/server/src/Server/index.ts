@@ -276,7 +276,7 @@ export const accessConfigM = (has: Has.Augumented<Server>) =>
   T.accessServiceM(config(has))
 
 export const defaultErrorHandler = <R, E extends HttpError>(f: HandlerRE<R, E>) =>
-  T.foldM_(f, (e) => e.render(), T.succeedNow)
+  T.foldM_(f, (e) => e.render(), T.succeed)
 
 export class RequestContext {
   constructor(
@@ -290,7 +290,7 @@ export class RequestContext {
 export const HasRequestContext = T.has<RequestContext>()
 export type HasRequestContext = T.HasType<typeof HasRequestContext>
 
-export const getRequestContext = T.accessServiceM(HasRequestContext)(T.succeedNow)
+export const getRequestContext = T.accessServiceM(HasRequestContext)(T.succeed)
 
 export const getBodyBuffer: T.AsyncRE<HasRequestContext, never, Buffer> = pipe(
   T.accessService(HasRequestContext)((i) => i.req),
@@ -303,7 +303,7 @@ export const getBodyBuffer: T.AsyncRE<HasRequestContext, never, Buffer> = pipe(
       }
 
       const onEnd = () => {
-        cb(T.succeedNow(Buffer.concat(body)))
+        cb(T.succeed(Buffer.concat(body)))
       }
 
       req.on("data", onData)
@@ -330,7 +330,7 @@ export const body = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A>
 
             switch (decoded._tag) {
               case "Right": {
-                return T.succeedNow(decoded.right)
+                return T.succeed(decoded.right)
               }
               case "Left": {
                 return T.fail(new BodyDecoding(decoded.left))
@@ -354,7 +354,7 @@ export const query = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A
 
             switch (decoded._tag) {
               case "Right": {
-                return T.succeedNow(decoded.right)
+                return T.succeed(decoded.right)
               }
               case "Left": {
                 return T.fail(new QueryDecoding(decoded.left))
