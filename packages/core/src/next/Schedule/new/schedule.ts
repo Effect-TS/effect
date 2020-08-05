@@ -1,3 +1,4 @@
+/* eslint-disable no-fallthrough */
 import * as A from "../../../Array"
 import * as E from "../../../Either"
 import { pipe } from "../../../Function"
@@ -377,6 +378,66 @@ export function compose_<S1, Env1, Out1, S, Env, In, Out>(
   return new Schedule(composeLoop(self.step, that.step))
 }
 
+function combineWithLoop<S, Env, In, Out, S1, Env1, Out1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  that: Decision.StepFunction<S1, Env1, In, Out1>,
+  f: (d1: number, d2: number) => number
+): Decision.StepFunction<S | S1, Env & Env1, In, [Out, Out1]> {
+  return (now, i) => {
+    const left = self(now, i)
+    const right = that(now, i)
+
+    return T.map_(T.zip_(left, right), ([l, r]) => {
+      switch (l._tag) {
+        case "Done": {
+          switch (r._tag) {
+            case "Done": {
+              return new Decision.Done<[Out, Out1]>([l.out, r.out])
+            }
+            case "Continue": {
+              return new Decision.Done<[Out, Out1]>([l.out, r.out])
+            }
+          }
+        }
+        case "Continue": {
+          switch (r._tag) {
+            case "Done": {
+              return new Decision.Done<[Out, Out1]>([l.out, r.out])
+            }
+            case "Continue": {
+              return new Decision.Continue(
+                [l.out, r.out],
+                f(l.interval, r.interval),
+                combineWithLoop(l.next, r.next, f)
+              )
+            }
+          }
+        }
+      }
+    })
+  }
+}
+
+/**
+ * Returns a new schedule that combines this schedule with the specified schedule, merging the next
+ * intervals according to the specified merge function.
+ */
+export const combineWith = <S1, Env1, In, In1 extends In, Out1>(
+  that: Schedule<S1, Env1, In1, Out1>
+) => (f: (d1: number, d2: number) => number) => <S, Env, Out>(
+  self: Schedule<S, Env, In, Out>
+) => new Schedule(combineWithLoop(self.step, that.step, f))
+
+/**
+ * Returns a new schedule that combines this schedule with the specified schedule, merging the next
+ * intervals according to the specified merge function.
+ */
+export const combineWith_ = <S, Env, Out, In, S1, Env1, In1 extends In, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>,
+  f: (d1: number, d2: number) => number
+) => new Schedule(combineWithLoop(self.step, that.step, f))
+
 /**
  * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
  */
@@ -579,6 +640,13 @@ export function unfold_<A>(a: A, f: (a: A) => A) {
   return new Schedule(unfoldLoop(a, f))
 }
 
+/**
+ * Unfolds a schedule that repeats one time from the specified state and iterator.
+ */
+export function unfoldM<S, Env, A>(f: (a: A) => T.Effect<S, Env, never, A>) {
+  return (a: A) => unfoldM_(a, f)
+}
+
 function unfoldMLoop<S, Env, A>(
   a: A,
   f: (a: A) => T.Effect<S, Env, never, A>
@@ -589,13 +657,6 @@ function unfoldMLoop<S, Env, A>(
         T.chain_(f(a), (x) => unfoldMLoop(x, f)(n, i))
       )
     )
-}
-
-/**
- * Unfolds a schedule that repeats one time from the specified state and iterator.
- */
-export function unfoldM<S, Env, A>(f: (a: A) => T.Effect<S, Env, never, A>) {
-  return (a: A) => unfoldM_(a, f)
 }
 
 /**
