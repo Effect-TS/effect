@@ -14,8 +14,8 @@ import * as L from "@matechs/core/next/Layer"
 
 export const HasServer = T.has<Server>()
 
-export const getServerConfig = accessConfigM(HasServer)(T.succeedNow)
-export const getServer = T.accessServiceM(HasServer)(T.succeedNow)
+export const getServerConfig = accessConfigM(HasServer)(T.succeed)
+export const getServer = T.accessServiceM(HasServer)(T.succeed)
 export const hasConfig = config(HasServer)
 export const server = L.using_(R.root(HasServer), is(HasServer))
 

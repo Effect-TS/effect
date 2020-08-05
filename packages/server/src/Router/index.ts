@@ -119,7 +119,7 @@ export class RouteInput {
 export const HasRouteInput = T.has<RouteInput>()
 export type HasRouteInput = T.HasType<typeof HasRouteInput>
 
-export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeedNow)
+export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeed)
 
 export const params = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, A> }) =>
   pipe(
@@ -130,7 +130,7 @@ export const params = <A>(morph: { decode: (i: unknown) => Ei.Either<MO.Errors, 
 
         switch (decoded._tag) {
           case "Right": {
-            return T.succeedNow(decoded.right)
+            return T.succeed(decoded.right)
           }
           case "Left": {
             return T.fail(new ParametersDecoding(decoded.left))
