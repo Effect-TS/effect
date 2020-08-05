@@ -381,6 +381,84 @@ export function andThenEither_<S2, Env2, In2 extends In, Out2, S, Env, Out, In>(
   return new Schedule(andThenEitherLoop(self.step, that.step, true))
 }
 
+function chooseLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  that: Decision.StepFunction<S1, Env1, In1, Out1>
+): Decision.StepFunction<S | S1, Env & Env1, E.Either<In, In1>, E.Either<Out, Out1>> {
+  return (now, either) =>
+    E.fold_(
+      either,
+      (i) =>
+        T.map_(self(now, i), (d) => {
+          switch (d._tag) {
+            case "Done": {
+              return Decision.makeDone(E.left(d.out))
+            }
+            case "Continue": {
+              return Decision.makeContinue(
+                E.left(d.out),
+                d.interval,
+                chooseLoop(d.next, that)
+              )
+            }
+          }
+        }),
+      (i2) =>
+        T.map_(that(now, i2), (d) => {
+          switch (d._tag) {
+            case "Done": {
+              return Decision.makeDone(E.right(d.out))
+            }
+            case "Continue": {
+              return Decision.makeContinue(
+                E.right(d.out),
+                d.interval,
+                chooseLoop(self, d.next)
+              )
+            }
+          }
+        })
+    )
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function choose<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => choose_(self, that)
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function choose_<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+): Schedule<S | S1, Env & Env1, E.Either<In, In1>, E.Either<Out, Out1>> {
+  return new Schedule(chooseLoop(self.step, that.step))
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function chooseMerge<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => chooseMerge_(self, that)
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function chooseMerge_<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return map_(choose_(self, that), E.merge)
+}
+
 /**
  * Returns a new schedule that collects the outputs of this one into an array.
  */
@@ -809,8 +887,10 @@ function mapMLoop<S, Env1, Out2, S1, Env, Inp1, Out>(
  * Returns a new schedule that makes this schedule available on the `Left` side of an `Either`
  * input, allowing propagating some type `X` through this channel on demand.
  */
-export const left = <X>() => <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
-  choose_(self, identity<X>())
+export function left<X>() {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    choose_(self, identity<X>())
+}
 
 /**
  * Returns a new schedule that maps the output of this schedule through the specified
@@ -939,26 +1019,70 @@ function onDecisionLoop<S, Env, In, Out, S1, Env1>(
  * for every decision of this schedule. This can be used to create schedules
  * that log failures, decisions, or computed values.
  */
-export const onDecision_ = <S, Env, In, Out, S1, Env1>(
+export function onDecision_<S, Env, In, Out, S1, Env1>(
   self: Schedule<S, Env, In, Out>,
   f: (d: Decision.Decision<S, Env, In, Out>) => T.Effect<S1, Env1, never, any>
-) => new Schedule(onDecisionLoop(self.step, f))
+) {
+  return new Schedule(onDecisionLoop(self.step, f))
+}
 
 /**
  * Returns a new schedule that applies the current one but runs the specified effect
  * for every decision of this schedule. This can be used to create schedules
  * that log failures, decisions, or computed values.
  */
-export const onDecision = <S, Env, In, Out, S1, Env1>(
+export function onDecision<S, Env, In, Out, S1, Env1>(
   f: (d: Decision.Decision<S, Env, In, Out>) => T.Effect<S1, Env1, never, any>
-) => (self: Schedule<S, Env, In, Out>) => new Schedule(onDecisionLoop(self.step, f))
+) {
+  return (self: Schedule<S, Env, In, Out>) => new Schedule(onDecisionLoop(self.step, f))
+}
+
+function provideAllLoop<S, Env, In, Out>(
+  env: Env,
+  self: Decision.StepFunction<S, Env, In, Out>
+): Decision.StepFunction<S, unknown, In, Out> {
+  return (now, i) =>
+    T.provideAll(env)(
+      T.map_(self(now, i), (d) => {
+        switch (d._tag) {
+          case "Done": {
+            return Decision.makeDone(d.out)
+          }
+          case "Continue": {
+            return Decision.makeContinue(d.out, d.interval, provideAllLoop(env, d.next))
+          }
+        }
+      })
+    )
+}
+
+/**
+ * Returns a new schedule with its environment provided to it, so the resulting
+ * schedule does not require any environment.
+ */
+export function provideAll<Env>(env: Env) {
+  return <S, In, Out>(self: Schedule<S, Env, In, Out>) => provideAll_(self, env)
+}
+
+/**
+ * Returns a new schedule with its environment provided to it, so the resulting
+ * schedule does not require any environment.
+ */
+export function provideAll_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  env: Env
+): Schedule<S, unknown, In, Out> {
+  return new Schedule(provideAllLoop(env, self.step))
+}
 
 /**
  * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
  * input, allowing propagating some type `X` through this channel on demand.
  */
-export const right = <X>() => <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
-  choose_(identity<X>(), self)
+export function right<X>() {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    choose_(identity<X>(), self)
+}
 
 function unfoldLoop<A>(
   a: A,
@@ -1005,82 +1129,4 @@ function unfoldMLoop<S, Env, A>(
  */
 export function unfoldM_<S, Env, A>(a: A, f: (a: A) => T.Effect<S, Env, never, A>) {
   return new Schedule(unfoldMLoop(a, f))
-}
-
-function chooseLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
-  self: Decision.StepFunction<S, Env, In, Out>,
-  that: Decision.StepFunction<S1, Env1, In1, Out1>
-): Decision.StepFunction<S | S1, Env & Env1, E.Either<In, In1>, E.Either<Out, Out1>> {
-  return (now, either) =>
-    E.fold_(
-      either,
-      (i) =>
-        T.map_(self(now, i), (d) => {
-          switch (d._tag) {
-            case "Done": {
-              return Decision.makeDone(E.left(d.out))
-            }
-            case "Continue": {
-              return Decision.makeContinue(
-                E.left(d.out),
-                d.interval,
-                chooseLoop(d.next, that)
-              )
-            }
-          }
-        }),
-      (i2) =>
-        T.map_(that(now, i2), (d) => {
-          switch (d._tag) {
-            case "Done": {
-              return Decision.makeDone(E.right(d.out))
-            }
-            case "Continue": {
-              return Decision.makeContinue(
-                E.right(d.out),
-                d.interval,
-                chooseLoop(self, d.next)
-              )
-            }
-          }
-        })
-    )
-}
-
-/**
- * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
- * feeding inputs to the specified schedule.
- */
-export function choose<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
-  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => choose_(self, that)
-}
-
-/**
- * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
- * feeding inputs to the specified schedule.
- */
-export function choose_<S, Env, In, Out, S1, Env1, In1, Out1>(
-  self: Schedule<S, Env, In, Out>,
-  that: Schedule<S1, Env1, In1, Out1>
-): Schedule<S | S1, Env & Env1, E.Either<In, In1>, E.Either<Out, Out1>> {
-  return new Schedule(chooseLoop(self.step, that.step))
-}
-
-/**
- * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
- * feeding inputs to the specified schedule.
- */
-export function chooseMerge<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
-  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => chooseMerge_(self, that)
-}
-
-/**
- * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
- * feeding inputs to the specified schedule.
- */
-export function chooseMerge_<S, Env, In, Out, S1, Env1, In1, Out1>(
-  self: Schedule<S, Env, In, Out>,
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return map_(choose_(self, that), E.merge)
 }
