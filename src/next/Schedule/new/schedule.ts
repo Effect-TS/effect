@@ -4,6 +4,7 @@ import { tuple } from "../../../Function"
 import { pipe } from "../../../Function"
 import * as O from "../../../Option"
 import * as Clock from "../../Clock"
+import { nextDouble } from "../../Random"
 import * as R from "../../Ref"
 import * as T from "../effect"
 
@@ -682,11 +683,6 @@ export function first<X>() {
     both_(self, identity<X>())
 }
 
-/**
- * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
- */
-export const forever = unfold_(0, (n) => n + 1)
-
 function foldMLoop<Z, S, Env, In, Out, S1, Env1>(
   z: Z,
   f: (z: Z, o: Out) => T.Effect<S1, Env1, never, Z>,
@@ -754,6 +750,11 @@ export function foldM_<S, Env, In, Out, Z, S1, Env1>(
   return new Schedule(foldMLoop(z, f, self.step))
 }
 
+/**
+ * A schedule that recurs forever, producing a count of repeats: 0, 1, 2, ...
+ */
+export const forever = unfold_(0, (n) => n + 1)
+
 function identityLoop<A>(): Decision.StepFunction<never, unknown, A, A> {
   return (now, i) => T.succeed(new Decision.Continue(i, now, identityLoop()))
 }
@@ -763,6 +764,96 @@ function identityLoop<A>(): Decision.StepFunction<never, unknown, A, A> {
  */
 export function identity<A>() {
   return new Schedule(identityLoop<A>())
+}
+
+/**
+ * Returns a new schedule that randomly modifies the size of the intervals of this schedule.
+ */
+export function jittered({ max = 0.1, min = 0 }: { min?: number; max?: number } = {}) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+    jittered_(self, { min, max })
+}
+
+/**
+ * Returns a new schedule that randomly modifies the size of the intervals of this schedule.
+ */
+export function jittered_<S, Env, In, Out>(
+  self: Schedule<S, Env, In, Out>,
+  { max = 0.1, min = 0 }: { min?: number; max?: number } = {}
+) {
+  return delayedM_(self, (d) =>
+    T.map_(nextDouble, (random) => d * min * (1 - random) + d * max * random)
+  )
+}
+
+function mapMLoop<S, Env1, Out2, S1, Env, Inp1, Out>(
+  f: (o: Out) => T.Effect<S, Env1, never, Out2>,
+  self: Decision.StepFunction<S1, Env, Inp1, Out>
+): Decision.StepFunction<S | S1, Env & Env1, Inp1, Out2> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.map_(
+            f(d.out),
+            (o): Decision.Decision<S | S1, Env & Env1, Inp1, Out2> =>
+              new Decision.Done(o)
+          )
+        }
+        case "Continue": {
+          return T.map_(
+            f(d.out),
+            (o) => new Decision.Continue(o, d.interval, mapMLoop(f, d.next))
+          )
+        }
+      }
+    })
+}
+
+/**
+ * Returns a new schedule that makes this schedule available on the `Left` side of an `Either`
+ * input, allowing propagating some type `X` through this channel on demand.
+ */
+export const left = <X>() => <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+  choose_(self, identity<X>())
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified
+ * effectful function.
+ */
+export function map<Out, Out2>(f: (o: Out) => Out2) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => map_(self, f)
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified
+ * effectful function.
+ */
+export function map_<S, Env, In, Out, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => Out2
+) {
+  return mapM_(self, (o) => T.succeed(f(o)))
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified function.
+ */
+export function mapM<Out, S1, Env1, Out2>(
+  f: (o: Out) => T.Effect<S1, Env1, never, Out2>
+) {
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) =>
+    new Schedule(mapMLoop(f, self.step))
+}
+
+/**
+ * Returns a new schedule that maps the output of this schedule through the specified function.
+ */
+export function mapM_<S, Env, In, Out, S1, Env1, Out2>(
+  self: Schedule<S, Env, In, Out>,
+  f: (o: Out) => T.Effect<S1, Env1, never, Out2>
+) {
+  return new Schedule(mapMLoop(f, self.step))
 }
 
 function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
@@ -811,68 +902,12 @@ export function modifyDelayM_<S, Env, In, Out, S1, R1>(
   return new Schedule(modifyDelayMLoop(f, self.step))
 }
 
-function mapMLoop<S, Env1, Out2, S1, Env, Inp1, Out>(
-  f: (o: Out) => T.Effect<S, Env1, never, Out2>,
-  self: Decision.StepFunction<S1, Env, Inp1, Out>
-): Decision.StepFunction<S | S1, Env & Env1, Inp1, Out2> {
-  return (now, i) =>
-    T.chain_(self(now, i), (d) => {
-      switch (d._tag) {
-        case "Done": {
-          return T.map_(
-            f(d.out),
-            (o): Decision.Decision<S | S1, Env & Env1, Inp1, Out2> =>
-              new Decision.Done(o)
-          )
-        }
-        case "Continue": {
-          return T.map_(
-            f(d.out),
-            (o) => new Decision.Continue(o, d.interval, mapMLoop(f, d.next))
-          )
-        }
-      }
-    })
-}
-
 /**
- * Returns a new schedule that maps the output of this schedule through the specified
- * effectful function.
+ * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
+ * input, allowing propagating some type `X` through this channel on demand.
  */
-export function map<Out, Out2>(f: (o: Out) => Out2) {
-  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => map_(self, f)
-}
-
-/**
- * Returns a new schedule that maps the output of this schedule through the specified
- * effectful function.
- */
-export function map_<S, Env, In, Out, Out2>(
-  self: Schedule<S, Env, In, Out>,
-  f: (o: Out) => Out2
-) {
-  return mapM_(self, (o) => T.succeed(f(o)))
-}
-
-/**
- * Returns a new schedule that maps the output of this schedule through the specified function.
- */
-export function mapM<Out, S1, Env1, Out2>(
-  f: (o: Out) => T.Effect<S1, Env1, never, Out2>
-) {
-  return <S, Env, In>(self: Schedule<S, Env, In, Out>) =>
-    new Schedule(mapMLoop(f, self.step))
-}
-
-/**
- * Returns a new schedule that maps the output of this schedule through the specified function.
- */
-export function mapM_<S, Env, In, Out, S1, Env1, Out2>(
-  self: Schedule<S, Env, In, Out>,
-  f: (o: Out) => T.Effect<S1, Env1, never, Out2>
-) {
-  return new Schedule(mapMLoop(f, self.step))
-}
+export const right = <X>() => <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
+  choose_(identity<X>(), self)
 
 function unfoldLoop<A>(
   a: A,
@@ -919,4 +954,82 @@ function unfoldMLoop<S, Env, A>(
  */
 export function unfoldM_<S, Env, A>(a: A, f: (a: A) => T.Effect<S, Env, never, A>) {
   return new Schedule(unfoldMLoop(a, f))
+}
+
+function chooseLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  that: Decision.StepFunction<S1, Env1, In1, Out1>
+): Decision.StepFunction<S | S1, Env & Env1, E.Either<In, In1>, E.Either<Out, Out1>> {
+  return (now, either) =>
+    E.fold_(
+      either,
+      (i) =>
+        T.map_(self(now, i), (d) => {
+          switch (d._tag) {
+            case "Done": {
+              return new Decision.Done(E.left(d.out))
+            }
+            case "Continue": {
+              return new Decision.Continue(
+                E.left(d.out),
+                d.interval,
+                chooseLoop(d.next, that)
+              )
+            }
+          }
+        }),
+      (i2) =>
+        T.map_(that(now, i2), (d) => {
+          switch (d._tag) {
+            case "Done": {
+              return new Decision.Done(E.right(d.out))
+            }
+            case "Continue": {
+              return new Decision.Continue(
+                E.right(d.out),
+                d.interval,
+                chooseLoop(self, d.next)
+              )
+            }
+          }
+        })
+    )
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function choose<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => choose_(self, that)
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function choose_<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+): Schedule<S | S1, Env & Env1, E.Either<In, In1>, E.Either<Out, Out1>> {
+  return new Schedule(chooseLoop(self.step, that.step))
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function chooseMerge<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => chooseMerge_(self, that)
+}
+
+/**
+ * Returns a new schedule that allows choosing between feeding inputs to this schedule, or
+ * feeding inputs to the specified schedule.
+ */
+export function chooseMerge_<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+) {
+  return map_(choose_(self, that), E.merge)
 }
