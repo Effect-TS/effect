@@ -1,7 +1,9 @@
 import * as S from "../../Effect"
 import { Applicative3 } from "../Applicative"
+import { AssociativeEither3 } from "../AssociativeEither"
 import { Contravariant3 } from "../Contravariant"
 import { Covariant3 } from "../Covariant"
+import { Foreachable3 } from "../Foreachable"
 
 export const AsyncEnvURI = "AsyncEnv"
 export type AsyncEnvURI = typeof AsyncEnvURI
@@ -38,6 +40,31 @@ export const ApplicativePar: Applicative3<AsyncURI> = {
   any: () => S.of,
   both: (fb) => (fa) => S.zipPar_(fa, fb),
   map: S.map
+}
+
+export const AssociativeEither: AssociativeEither3<AsyncURI> = {
+  URI: AsyncURI,
+  either: S.orElseEither
+}
+
+export const Foreachable: Foreachable3<AsyncURI> = {
+  URI: AsyncURI,
+  map: S.map,
+  foreach: S.foreach
+}
+
+export const ForeachablePar: Foreachable3<AsyncURI> = {
+  URI: AsyncURI,
+  map: S.map,
+  foreach: S.foreachPar
+}
+
+export function ForeachableParN(n: number) {
+  return {
+    URI: AsyncURI,
+    map: S.map,
+    foreach: S.foreachParN(n)
+  }
 }
 
 export const succeed: <A>(a: A) => S.AsyncRE<unknown, never, A> = S.succeed
