@@ -119,13 +119,7 @@ export const Traversable: Traversable1<URI> = {
  * The `Derive<Array, Equal>` instance for `Equal<Array<A>>`.
  */
 export const Equal: Derive11<URI, Eq.URI> = {
-  derive: (eq) => ({
-    equals: (y) => (x) =>
-      x.length === y.length &&
-      (x.length > 0
-        ? x.map((a, i) => eq.equals(y[i])(a)).reduce((x, y) => x && y)
-        : true)
-  })
+  derive: (eq) => Eq.array(eq)
 }
 
 /**

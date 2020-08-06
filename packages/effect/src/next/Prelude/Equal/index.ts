@@ -156,13 +156,30 @@ export function strict<A>() {
 export const number = strict<number>()
 
 /**
+ * Equality for `string` values.
+ */
+export const string = strict<string>()
+
+/**
+ * Equality for `symbol` values.
+ */
+export const symbol = strict<symbol>()
+
+/**
  * Derives an `Equal[Array[A]]` given an `Equal[A]`.
  */
 export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
   return {
-    equals: (y) => (x) =>
-      x.length === y.length &&
-      (x.length === 0 ||
-        x.map((a, i) => EqA.equals(y[i])(a)).reduce((b, b1) => b && b1))
+    equals: (y) => (x) => {
+      if (x.length === y.length) {
+        for (let i = 0; i < x.length; i++) {
+          if (!EqA.equals(y[i])(x[i])) {
+            return false
+          }
+        }
+        return true
+      }
+      return false
+    }
   }
 }
