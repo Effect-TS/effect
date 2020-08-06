@@ -20,7 +20,7 @@ declare module "../HKT" {
   }
 }
 
-export const Contravariant: Contravariant4<ContravariantURI> = {
+export const ContravariantEnv: Contravariant4<ContravariantURI> = {
   URI: ContravariantURI,
   contramap: S.provideSome
 }
