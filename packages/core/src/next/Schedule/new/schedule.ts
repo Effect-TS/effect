@@ -190,27 +190,6 @@ export function as<Out2>(o: Out2) {
   return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => map_(self, () => o)
 }
 
-function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
-  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>,
-  self: Decision.StepFunction<S, Env, In, Out>
-): Decision.StepFunction<S | S1, Env & Env1, In1, Out> {
-  return (now, i) =>
-    T.chain_(self(now, i), (d) => {
-      switch (d._tag) {
-        case "Done": {
-          return T.succeed(Decision.makeDone(d.out))
-        }
-        case "Continue": {
-          return T.map_(test(i, d.out), (b) =>
-            b
-              ? Decision.makeContinue(d.out, d.interval, checkMLoop(test, d.next))
-              : Decision.makeDone(d.out)
-          )
-        }
-      }
-    })
-}
-
 function bothLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
   self: Decision.StepFunction<S, Env, In, Out>,
   that: Decision.StepFunction<S1, Env1, In1, Out1>
@@ -290,6 +269,27 @@ export function check_<S, Env, In, In1 extends In, Out>(
   f: (i: In1, o: Out) => boolean
 ) {
   return checkM_(self, (i: In1, o) => T.succeed(f(i, o)))
+}
+
+function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
+  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>,
+  self: Decision.StepFunction<S, Env, In, Out>
+): Decision.StepFunction<S | S1, Env & Env1, In1, Out> {
+  return (now, i) =>
+    T.chain_(self(now, i), (d) => {
+      switch (d._tag) {
+        case "Done": {
+          return T.succeed(Decision.makeDone(d.out))
+        }
+        case "Continue": {
+          return T.map_(test(i, d.out), (b) =>
+            b
+              ? Decision.makeContinue(d.out, d.interval, checkMLoop(test, d.next))
+              : Decision.makeDone(d.out)
+          )
+        }
+      }
+    })
 }
 
 /**
