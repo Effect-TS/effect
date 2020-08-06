@@ -163,6 +163,7 @@ export { orDie } from "./orDie"
 export { orDieKeep } from "./orDieKeep"
 export { orDieWith } from "./orDieWith"
 export { orDieWith_ } from "./orDieWith_"
+export { orElseEither, orElseEither_ } from "./orElseEither_"
 export { orElse_ } from "./orElse_"
 export { provide, provide_ } from "./provide"
 export { provideSome, provideSome_ } from "./provideSome"
@@ -190,6 +191,7 @@ export {
   withRuntime,
   withRuntimeM
 } from "./runtime"
+export { forkDaemon, forkIn, forkScopeWith, raceWith } from "./scope"
 export {
   bindAll,
   bindAllPar,
@@ -232,4 +234,3 @@ export { zipWithPar } from "./zipWithPar"
 export { zipWithPar_ } from "./zipWithPar_"
 export { zipWith_ } from "./zipWith_"
 export { zip_ } from "./zip_"
-export { forkDaemon, forkIn, forkScopeWith, raceWith } from "./scope"
