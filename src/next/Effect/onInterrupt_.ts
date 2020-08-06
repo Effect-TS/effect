@@ -43,7 +43,7 @@ export const onInterruptExtended_ = <S, R, E, A, S2, R2, E2>(
         Cause.interrupted(cause)
           ? foldCauseM_(
               cleanup(),
-              (_) => halt(Cause.Then(cause, _)),
+              (_) => halt(_),
               () => halt(cause)
             )
           : halt(cause),

@@ -1,8 +1,8 @@
+import * as A from "../../Array"
 import { pipe } from "../../Function"
-import { Empty, Cause, Both, Then, Interrupt } from "../Cause/cause"
-import { isEmpty } from "../Cause/core"
+import { Both, Cause, Empty } from "../Cause/cause"
 import * as Fiber from "../Fiber"
-import { complete as promiseComplete } from "../Promise/complete"
+import { fork as managedFork, use_ as managedUse_ } from "../Managed/core"
 import { fail as promiseFailure } from "../Promise/fail"
 import { make as promiseMake } from "../Promise/make"
 import { succeed as promiseSucceed } from "../Promise/succeed"
@@ -10,12 +10,11 @@ import { wait as promiseWait } from "../Promise/wait"
 import * as R from "../Ref"
 
 import { asUnit } from "./asUnit"
-import { bracketFiber } from "./bracketFiber"
 import { catchAll } from "./catchAll"
+import { chain } from "./chain"
 import { chain_ } from "./chain_"
-import { checkDescriptor } from "./checkDescriptor"
 import * as D from "./do"
-import { Effect, AsyncRE } from "./effect"
+import { AsyncRE, Effect } from "./effect"
 import { ensuring } from "./ensuring"
 import { fiberId } from "./fiberId"
 import { foreach_ } from "./foreach_"
@@ -24,9 +23,10 @@ import { halt } from "./halt"
 import { interruptible } from "./interruptible"
 import { map_ } from "./map_"
 import { onInterruptExtended_ } from "./onInterrupt_"
+import { suspend } from "./suspend"
 import { tap } from "./tap"
 import { tapCause } from "./tapCause"
-import { tap_ } from "./tap_"
+import { toManaged } from "./toManaged"
 import { uninterruptible } from "./uninterruptible"
 import { unit } from "./unit"
 import { whenM } from "./whenM"
@@ -58,12 +58,8 @@ export const foreachUnitPar_ = <S, R, E, A>(
     D.of,
     D.bind("parentId", () => fiberId()),
     D.bind("causes", () => R.makeRef<Cause<E>>(Empty)),
-    D.bind("result", () => promiseMake<never, boolean>()),
-    D.bind("failureTrigger", () => promiseMake<void, void>()),
+    D.bind("result", () => promiseMake<void, void>()),
     D.bind("status", () => R.makeRef([0, 0, false] as [number, number, boolean])),
-    D.bind("rootCause", () =>
-      R.makeRef<[Fiber.FiberID, Cause<E>] | undefined>(undefined)
-    ),
     D.let("startTask", (s) =>
       pipe(
         s.status,
@@ -75,44 +71,27 @@ export const foreachUnitPar_ = <S, R, E, A>(
       )
     ),
     D.let("startFailure", (s) =>
-      tap_(
-        pipe(
-          s.status,
-          R.update(([started, done, _]): [number, number, boolean] => [
-            started,
-            done,
-            true
-          ])
-        ),
-        () => promiseFailure<void>(undefined)(s.failureTrigger)
+      pipe(
+        s.status,
+        R.update(([started, done, _]): [number, number, boolean] => [
+          started,
+          done,
+          true
+        ]),
+        tap(() => promiseFailure<void>(undefined)(s.result))
       )
     ),
     D.let("task", (s) => (a: A) =>
       uninterruptible(
         whenM(s.startTask)(
           pipe(
-            f(a),
+            suspend(() => f(a)),
             interruptible,
             tapCause((c) =>
-              chain_(
-                checkDescriptor((d) =>
-                  pipe(
-                    s.rootCause,
-                    R.modify((_): [Cause<E>, [Fiber.FiberID, Cause<E>]] =>
-                      _ != null ? [_[1], _] : [c, [d.id, c]]
-                    )
-                  )
-                ),
-                (rc) =>
-                  rc === c
-                    ? s.startFailure
-                    : chain_(
-                        pipe(
-                          s.causes,
-                          R.update((l) => Both(c, l))
-                        ),
-                        () => s.startFailure
-                      )
+              pipe(
+                s.causes,
+                R.update((l) => Both(l, c)),
+                chain(() => s.startFailure)
               )
             ),
             ensuring(
@@ -124,21 +103,16 @@ export const foreachUnitPar_ = <S, R, E, A>(
                     [started, done + 1, failing] as [number, number, boolean]
                   ])
                 )
-              )(
-                promiseComplete(promiseSucceed<void>(undefined)(s.failureTrigger))(
-                  s.result
-                )
-              )
+              )(promiseSucceed<void>(undefined)(s.result))
             )
           )
         )
       )
     ),
     D.bind("fibers", (s) => foreach_(arr, (a) => fork(s.task(a)))),
-    D.bind("hasCompleted", () => R.makeRef(false)),
-    tap((s) =>
+    D.let("interruptor", (s) =>
       pipe(
-        s.failureTrigger,
+        s.result,
         promiseWait,
         catchAll(() =>
           chain_(
@@ -146,30 +120,30 @@ export const foreachUnitPar_ = <S, R, E, A>(
             Fiber.joinAll
           )
         ),
-        bracketFiber(() =>
-          onInterruptExtended_(
-            whenM(map_(promiseWait(s.result), (b) => !b))(
-              chain_(s.causes.get, (x) =>
-                chain_(s.rootCause.get, (rc) =>
-                  chain_(s.hasCompleted.set(true), () =>
-                    halt(rc == null ? x : Then(Then(rc[1], Interrupt(rc[0])), x))
-                  )
-                )
+        toManaged(),
+        managedFork
+      )
+    ),
+    tap((s) =>
+      managedUse_(s.interruptor, () =>
+        onInterruptExtended_(
+          whenM(
+            map_(
+              foreach_(s.fibers, (f) => f.wait),
+              (fs) => A.findFirst_(fs, (e) => e._tag === "Failure")._tag === "Some"
+            )
+          )(
+            chain_(promiseFailure<void>(undefined)(s.result), () =>
+              chain_(s.causes.get, (x) => halt(x))
+            )
+          ),
+          () =>
+            chain_(promiseFailure<void>(undefined)(s.result), () =>
+              chain_(
+                foreach_(s.fibers, (f) => f.wait),
+                () => chain_(s.causes.get, (x) => halt(x))
               )
-            ),
-            () =>
-              chain_(s.hasCompleted.get, (hasCompleted) =>
-                hasCompleted
-                  ? unit
-                  : chain_(
-                      chain_(
-                        chain_(s.startFailure, () => promiseWait(s.result)),
-                        () => s.causes.get
-                      ),
-                      (c) => (isEmpty(c) ? unit : halt(c))
-                    )
-              )
-          )
+            )
         )
       )
     ),
