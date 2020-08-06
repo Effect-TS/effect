@@ -24,9 +24,9 @@ export const cancel = pipe(
       )
     })
   ),
-  T.chain((n) =>
+  T.tap((ns) =>
     T.effectTotal(() => {
-      console.log(n)
+      console.log(ns)
     })
   ),
   T.runMain

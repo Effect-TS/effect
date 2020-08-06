@@ -24,9 +24,14 @@ export const cancel = pipe(
       )
     })
   ),
+  T.tap((ns) =>
+    T.effectTotal(() => {
+      console.log(ns)
+    })
+  ),
   T.runMain
 )
 
 setTimeout(() => {
-  //cancel()
+  cancel()
 }, 10)
