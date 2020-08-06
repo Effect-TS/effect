@@ -6,7 +6,7 @@ export interface Equal<A> {
   (x: A, b: A): boolean
 }
 
-export const URI = "EqualAssociative"
+export const URI = "Equal"
 export type URI = typeof URI
 
 declare module "../HKT" {
