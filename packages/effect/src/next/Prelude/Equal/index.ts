@@ -3,6 +3,10 @@ import { AssociativeEither1 } from "../AssociativeEither"
 import { Contravariant1 } from "../Contravariant"
 import { IdentityBoth1 } from "../IdentityBoth"
 
+/**
+ * @category definitions
+ */
+
 export interface Equal<A> {
   (x: A, b: A): boolean
 }
@@ -16,9 +20,19 @@ declare module "../HKT" {
   }
 }
 
+/**
+ * @category constructors
+ */
+
 export function make<A>(f: (x: A, y: A) => boolean): Equal<A> {
   return f
 }
+
+export const AnyEqual: Equal<unknown> = make(() => true)
+
+/**
+ * @category instances
+ */
 
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
@@ -42,10 +56,18 @@ export const Contravariant: Contravariant1<URI> = {
   contramap: (f) => (fa) => make((x, y) => fa(f(x), f(y)))
 }
 
-export const AnyEqual: Equal<unknown> = make(() => true)
-
 export const IdentityBoth: IdentityBoth1<URI> = {
   URI,
   any: () => AnyEqual,
   both: AssociativeBoth.both
 }
+
+/**
+ * @category api
+ */
+
+export const both = AssociativeBoth.both
+
+export const contramap = Contravariant.contramap
+
+export const either = AssociativeEither.either
