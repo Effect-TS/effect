@@ -123,8 +123,8 @@ export const AssociativeFlatten: AssociativeFlatten2<URI> = {
  */
 export const Applicative: Applicative2<URI> = {
   ...Any,
-  ...AssociativeBoth,
-  ...Covariant
+  ...Covariant,
+  ...AssociativeBoth
 }
 
 /**
