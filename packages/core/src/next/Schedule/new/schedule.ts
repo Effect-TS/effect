@@ -467,6 +467,13 @@ export function collectAll<S, Env, In, Out>(self: Schedule<S, Env, In, Out>) {
   return fold_(self, A.empty as A.Array<Out>, (xs, x) => [...xs, x])
 }
 
+/**
+ * A schedule that recurs anywhere, collecting all inputs into a list.
+ */
+export function collectAllIdentity<A>() {
+  return collectAll(identity<A>())
+}
+
 function composeLoop<S1, Env1, Out1, S, Env, In, Out>(
   self: Decision.StepFunction<S, Env, In, Out>,
   that: Decision.StepFunction<S1, Env1, Out, Out1>
@@ -613,6 +620,14 @@ export function delayed(f: (d: number) => number) {
  * Returns a new schedule with the specified computed delay added before the start
  * of each interval produced by this schedule.
  */
+export function delayedFrom<S, Env, In>(schedule: Schedule<S, Env, In, number>) {
+  return addDelay_(schedule, (x) => x)
+}
+
+/**
+ * Returns a new schedule with the specified computed delay added before the start
+ * of each interval produced by this schedule.
+ */
 export function delayed_<S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
   f: (d: number) => number
@@ -659,6 +674,26 @@ export function dimap_<In2, S, Env, In, Out, Out2>(
   g: (o: Out) => Out2
 ) {
   return map_(contramap_(self, f), g)
+}
+
+/**
+ * A schedule that can recur one time, the specified amount of time into the future.
+ */
+export function duration(n: number) {
+  return new Schedule((now, _: unknown) =>
+    coerceS<unknown>()(
+      T.succeed(
+        Decision.makeContinue(0, now + n, () => T.succeed(Decision.makeDone(n)))
+      )
+    )
+  )
+}
+
+/**
+ * A schedule that can recur one time, the specified amount of time into the future.
+ */
+export function durations(n: number, ...rest: number[]) {
+  return A.reduce_(rest, duration(n), (acc, d) => andThen_(acc, duration(d)))
 }
 
 /**
@@ -723,6 +758,95 @@ function elapsedLoop(
  * first step.
  */
 export const elapsed = new Schedule(elapsedLoop(O.none))
+
+/**
+ * A schedule that always recurs, but will wait a certain amount between
+ * repetitions, given by `base * factor.pow(n)`, where `n` is the number of
+ * repetitions so far. Returns the current duration between recurrences.
+ */
+export function exponential(base: number, factor = 2.0) {
+  return delayedFrom(map_(forever, (i) => base * Math.pow(factor, i)))
+}
+
+/**
+ * A schedule that always recurs, increasing delays by summing the
+ * preceding two delays (similar to the fibonacci sequence). Returns the
+ * current duration between recurrences.
+ */
+export function fibonacci(one: number) {
+  return delayedFrom(
+    map_(
+      unfold_(tuple(one, one), ([a1, a2]) => tuple(a1, a1 + a2)),
+      ([_]) => _
+    )
+  )
+}
+
+/**
+ * A schedule that recurs on a fixed interval. Returns the number of
+ * repetitions of the schedule so far.
+ *
+ * If the action run between updates takes longer than the interval, then the
+ * action will be run immediately, but re-runs will not "pile up".
+ *
+ * <pre>
+ * |-----interval-----|-----interval-----|-----interval-----|
+ * |---------action--------||action|-----|action|-----------|
+ * </pre>
+ */
+export function fixed(interval: number): Schedule<unknown, unknown, unknown, number> {
+  type State = { startMillis: number; lastRun: number }
+
+  function loop(
+    startMillis: O.Option<State>,
+    n: number
+  ): Decision.StepFunction<unknown, unknown, unknown, number> {
+    return (now, _) =>
+      coerceS<unknown>()(
+        T.succeed(
+          O.fold_(
+            startMillis,
+            () =>
+              Decision.makeContinue(
+                n + 1,
+                now + interval,
+                loop(O.some({ startMillis: now, lastRun: now }), n + 1)
+              ),
+            ({ lastRun, startMillis }) => {
+              const runningBehind = now > lastRun + interval
+              const boundary = (now - startMillis) % interval
+              const sleepTime = boundary === 0 ? now : boundary
+              const nextRun = runningBehind ? now : now + sleepTime
+
+              return Decision.makeContinue(
+                n + 1,
+                nextRun,
+                loop(
+                  O.some<State>({ startMillis, lastRun: nextRun }),
+                  n + 1
+                )
+              )
+            }
+          )
+        )
+      )
+  }
+
+  return new Schedule(loop(O.none, 0))
+}
+
+/**
+ * A schedule that always recurs, mapping input values through the
+ * specified function.
+ */
+export function fromFunction<A, B>(f: (a: A) => B) {
+  return map_(identity<A>(), f)
+}
+
+/**
+ * A schedule that always recurs, which counts the number of recurrances.
+ */
+export const count = unfold_(0, (n) => n + 1)
 
 function ensuringLoop<S1, Env1, S, Env, In, Out>(
   finalizer: T.Effect<S1, Env1, never, any>,
@@ -880,6 +1004,20 @@ export function jittered_<S, Env, In, Out>(
   )
 }
 
+/**
+ * A schedule that always recurs, but will repeat on a linear time
+ * interval, given by `base * n` where `n` is the number of
+ * repetitions so far. Returns the current duration between recurrences.
+ */
+export function linear(base: number) {
+  return delayedFrom(map_(forever, (i) => base * (i + 1)))
+}
+
+/**
+ * A schedule that recurs one time.
+ */
+export const once = unit(recurs(1))
+
 function mapMLoop<S, Env1, Out2, S1, Env, Inp1, Out>(
   f: (o: Out) => T.Effect<S, Env1, never, Out2>,
   self: Decision.StepFunction<S1, Env, Inp1, Out>
@@ -954,7 +1092,7 @@ export function mapM_<S, Env, In, Out, S1, Env1, Out2>(
 function modifyDelayMLoop<S1, Env1, S, Env, Inp, Out>(
   f: (o: Out, d: number) => T.Effect<S1, Env1, never, number>,
   self: Decision.StepFunction<S, Env, Inp, Out>
-): Decision.StepFunction<S | S1, Env & Env1, Inp, Out> {
+): Decision.StepFunction<unknown, Env & Env1, Inp, Out> {
   return (now, i) =>
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
@@ -1275,6 +1413,56 @@ export function resetWhen_<S, Env, In, Out>(
 }
 
 /**
+ * A schedule that recurs for as long as the predicate evaluates to true.
+ */
+export function recurWhile<A>(f: (a: A) => boolean) {
+  return whileInput_(identity<A>(), f)
+}
+
+/**
+ * A schedule that recurs for as long as the effectful predicate evaluates to true.
+ */
+export function recurWhileM<S, Env, A>(f: (a: A) => T.Effect<S, Env, never, boolean>) {
+  return whileInputM_(identity<A>(), f)
+}
+
+/**
+ * A schedule that recurs for as long as the predicate evaluates to true.
+ */
+export function recurWhileEquals<A>(a: A) {
+  return whileInput_(identity<A>(), (x) => a === x)
+}
+
+/**
+ * A schedule that recurs for as long as the predicate evaluates to true.
+ */
+export function recurUntil<A>(f: (a: A) => boolean) {
+  return untilInput_(identity<A>(), f)
+}
+
+/**
+ * A schedule that recurs for as long as the effectful predicate evaluates to true.
+ */
+export function recurUntilM<S, Env, A>(f: (a: A) => T.Effect<S, Env, never, boolean>) {
+  return untilInputM_(identity<A>(), f)
+}
+
+/**
+ * A schedule that recurs for as long as the predicate evaluates to true.
+ */
+export function recurUntilEquals<A>(a: A) {
+  return untilInput_(identity<A>(), (x) => x === a)
+}
+
+/**
+ * A schedule spanning all time, which can be stepped only the specified number of times before
+ * it terminates.
+ */
+export function recurs(n: number) {
+  return whileOutput_(forever, (x) => x < n)
+}
+
+/**
  * Returns a new schedule that makes this schedule available on the `Right` side of an `Either`
  * input, allowing propagating some type `X` through this channel on demand.
  */
@@ -1349,6 +1537,26 @@ function tapInputLoop<S, Env, In, Out, In1 extends In, S1, Env1>(
         }
       })
     )
+}
+
+/**
+ * Returns a schedule that recurs continuously, each repetition spaced the specified duration
+ * from the last run.
+ */
+export function spaced(duration: number) {
+  return addDelay_(forever, () => duration)
+}
+
+/**
+ * A schedule that does not recur, it just stops.
+ */
+export const stop = unit(recurs(0))
+
+/**
+ * Returns a schedule that repeats one time, producing the specified constant value.
+ */
+export function succeed<A>(a: A) {
+  return as(a)(forever)
 }
 
 /**
@@ -1577,6 +1785,40 @@ export function whileOutputM_<S, Env, In, Out, S1, Env1>(
   f: (o: Out) => T.Effect<S1, Env1, never, boolean>
 ) {
   return checkM_(self, (_, o) => T.map_(f(o), (b) => !b))
+}
+
+/**
+ * A schedule that divides the timeline to `interval`-long windows, and sleeps
+ * until the nearest window boundary every time it recurs.
+ *
+ * For example, `windowed(10_000)` would produce a schedule as follows:
+ * <pre>
+ *      10s        10s        10s       10s
+ * |----------|----------|----------|----------|
+ * |action------|sleep---|act|-sleep|action----|
+ * </pre>
+ */
+export function windowed(interval: number) {
+  function loop(
+    startMillis: O.Option<number>,
+    n: number
+  ): Decision.StepFunction<unknown, unknown, unknown, number> {
+    return (now, _) =>
+      T.succeed(
+        O.fold_(
+          startMillis,
+          () => Decision.makeContinue(n + 1, now + interval, loop(O.some(now), n + 1)),
+          (startMillis) =>
+            Decision.makeContinue(
+              n + 1,
+              now + ((now - startMillis) % interval),
+              loop(O.some(startMillis), n + 1)
+            )
+        )
+      )
+  }
+
+  return new Schedule(loop(O.none, 0))
 }
 
 function unfoldLoop<A>(
