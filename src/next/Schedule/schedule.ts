@@ -1786,6 +1786,31 @@ export function whileOutputM_<S, Env, In, Out, S1, Env1>(
   return checkM_(self, (_, o) => T.map_(f(o), (b) => !b))
 }
 
+function windowedLoop(
+  interval: number,
+  startMillis: O.Option<number>,
+  n: number
+): Decision.StepFunction<unknown, unknown, unknown, number> {
+  return (now, _) =>
+    T.succeed(
+      O.fold_(
+        startMillis,
+        () =>
+          Decision.makeContinue(
+            n + 1,
+            now + interval,
+            windowedLoop(interval, O.some(now), n + 1)
+          ),
+        (startMillis) =>
+          Decision.makeContinue(
+            n + 1,
+            now + ((now - startMillis) % interval),
+            windowedLoop(interval, O.some(startMillis), n + 1)
+          )
+      )
+    )
+}
+
 /**
  * A schedule that divides the timeline to `interval`-long windows, and sleeps
  * until the nearest window boundary every time it recurs.
@@ -1798,26 +1823,7 @@ export function whileOutputM_<S, Env, In, Out, S1, Env1>(
  * </pre>
  */
 export function windowed(interval: number) {
-  function loop(
-    startMillis: O.Option<number>,
-    n: number
-  ): Decision.StepFunction<unknown, unknown, unknown, number> {
-    return (now, _) =>
-      T.succeed(
-        O.fold_(
-          startMillis,
-          () => Decision.makeContinue(n + 1, now + interval, loop(O.some(now), n + 1)),
-          (startMillis) =>
-            Decision.makeContinue(
-              n + 1,
-              now + ((now - startMillis) % interval),
-              loop(O.some(startMillis), n + 1)
-            )
-        )
-      )
-  }
-
-  return new Schedule(loop(O.none, 0))
+  return new Schedule(windowedLoop(interval, O.none, 0))
 }
 
 function unfoldLoop<A>(
