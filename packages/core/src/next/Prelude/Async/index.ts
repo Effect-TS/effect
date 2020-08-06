@@ -66,15 +66,3 @@ export function ForeachableParN(n: number) {
     foreach: S.foreachParN(n)
   }
 }
-
-export const succeed: <A>(a: A) => S.AsyncRE<unknown, never, A> = S.succeed
-
-export const chain: <R1, E1, A1, A>(
-  f: (a: A) => S.AsyncRE<R1, E1, A1>
-) => <R, E>(val: S.AsyncRE<R, E, A>) => S.AsyncRE<R & R1, E1 | E, A1> = S.chain
-
-export const effectTotal: <A>(effect: () => A) => S.AsyncRE<unknown, never, A> =
-  S.effectTotal
-
-export const runMain: <E>(effect: S.AsyncRE<S.DefaultEnv, E, void>) => S.CancelMain =
-  S.runMain

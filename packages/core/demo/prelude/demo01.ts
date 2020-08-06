@@ -1,14 +1,14 @@
 import { pipe } from "../../src/Function"
-import * as Array from "../../src/next/Prelude/Array"
-import * as Effect from "../../src/next/Prelude/Effect"
+import * as A from "../../src/next/Prelude/Array"
+import * as T from "../../src/next/Prelude/Effect"
 
 pipe(
-  Array.range(0, 10),
-  Array.Traversable.foreach(Effect.Applicative)((n) => Effect.succeed(n + 1)),
-  Effect.chain((ns) =>
-    Effect.effectTotal(() => {
+  A.range(0, 10),
+  A.Traversable.foreach(T.Applicative)((n) => T.succeed(n + 1)),
+  T.chain((ns) =>
+    T.effectTotal(() => {
       console.log(ns)
     })
   ),
-  Effect.runMain
+  T.runMain
 )

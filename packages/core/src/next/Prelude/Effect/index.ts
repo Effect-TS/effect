@@ -6,6 +6,10 @@ import { Contravariant4 } from "../Contravariant"
 import { Covariant4 } from "../Covariant"
 import { Foreachable4 } from "../Foreachable"
 
+/**
+ * @category definitions
+ */
+
 export const EffectEnvURI = "EffectEnv"
 export type EffectEnvURI = typeof EffectEnvURI
 
@@ -15,6 +19,10 @@ declare module "../HKT" {
     [EffectURI]: S.Effect<S, R, E, A>
   }
 }
+
+/**
+ * @category instances
+ */
 
 export const ContravariantEnv: Contravariant4<EffectEnvURI> = {
   URI: EffectEnvURI,
@@ -43,6 +51,10 @@ export const Foreachable: Foreachable4<EffectURI> = {
   map: S.map,
   foreach: S.foreach
 }
+
+/**
+ * @category api
+ */
 
 export {
   absolve,
