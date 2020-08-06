@@ -1,8 +1,10 @@
 import * as S from "../../Effect"
 import { EffectURI } from "../../Effect"
+import { Any4 } from "../Any"
 import { Applicative4 } from "../Applicative"
 import { AssociativeBoth4 } from "../AssociativeBoth"
 import { AssociativeEither4 } from "../AssociativeEither"
+import { AssociativeFlatten4 } from "../AssociativeFlatten"
 import { Contravariant4 } from "../Contravariant"
 import { Covariant4 } from "../Covariant"
 import { Foreachable4 } from "../Foreachable"
@@ -15,55 +17,87 @@ import { Monad4 } from "../Monad"
 export const EffectEnvURI = "EffectEnv"
 export type EffectEnvURI = typeof EffectEnvURI
 
+export type EffectEnv<S, R, E, A> = S.Effect<S, A, E, R>
+
 declare module "../HKT" {
   interface URItoKind4<S, R, E, A> {
-    [EffectEnvURI]: S.Effect<S, A, E, R>
+    [EffectEnvURI]: EffectEnv<S, R, E, A>
     [EffectURI]: S.Effect<S, R, E, A>
   }
 }
 
 /**
- * @category instances
+ * The `Contravariant` instance for `EffectEnv`.
  */
-
 export const ContravariantEnv: Contravariant4<EffectEnvURI> = {
   URI: EffectEnvURI,
   contramap: S.provideSome
 }
 
+/**
+ * The `Covariant` instance for `Effect`.
+ */
 export const Covariant: Covariant4<EffectURI> = {
   URI: EffectURI,
   map: S.map
 }
 
-export const Applicative: Applicative4<EffectURI> = {
+/**
+ * The `Any` instance for `Effect`.
+ */
+export const Any: Any4<EffectURI> = {
   URI: EffectURI,
-  any: () => S.of,
-  both: S.zip,
-  map: S.map
+  any: () => S.of
 }
 
-export const AssociativeEither: AssociativeEither4<EffectURI> = {
-  URI: EffectURI,
-  either: S.orElseEither
-}
-
+/**
+ * The `AssociativeBoth` instance for `Effect`.
+ */
 export const AssociativeBoth: AssociativeBoth4<EffectURI> = {
   URI: EffectURI,
   both: (fb) => (fa) => S.zip_(fa, fb)
 }
 
-export const Foreachable: Foreachable4<EffectURI> = {
+/**
+ * The `Applicative` instance for `Effect`.
+ */
+export const Applicative: Applicative4<EffectURI> = {
+  ...Any,
+  ...Covariant,
+  ...AssociativeBoth
+}
+
+/**
+ * The `AssociativeEither` instance for `Effect`.
+ */
+export const AssociativeEither: AssociativeEither4<EffectURI> = {
   URI: EffectURI,
-  map: S.map,
+  either: S.orElseEither
+}
+
+/**
+ * The `AssociativeFlatten` instance for `Effect`.
+ */
+export const AssociativeFlatten: AssociativeFlatten4<EffectURI> = {
+  URI: EffectURI,
+  flatten: S.flatten
+}
+
+/**
+ * The `Foreachable` instance for `Effect`.
+ */
+export const Foreachable: Foreachable4<EffectURI> = {
+  ...Covariant,
   foreach: S.foreach
 }
 
+/**
+ * The `Monad` instance for `Effect`.
+ */
 export const Monad: Monad4<EffectURI> = {
-  URI: EffectURI,
-  any: () => S.of,
-  flatten: S.flatten,
-  map: S.map
+  ...Any,
+  ...Covariant,
+  ...AssociativeFlatten
 }
 
 /**
