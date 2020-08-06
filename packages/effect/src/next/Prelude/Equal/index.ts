@@ -1,3 +1,5 @@
+import * as A from "../../../Array"
+import * as E from "../../../Either"
 import { Any1 } from "../Any"
 import { AssociativeBoth1 } from "../AssociativeBoth"
 import { AssociativeEither1 } from "../AssociativeEither"
@@ -7,10 +9,13 @@ import { IdentityEither1 } from "../IdentityEither"
 import { None1 } from "../None"
 
 /**
- * @category definitions
+ * `Equal[A]` provides implicit evidence that two values of type `A` can be
+ * compared for equality.
  */
-
 export interface Equal<A> {
+  /**
+   * Returns whether two values of type `A` are equal.
+   */
   equals: (y: A) => (x: A) => boolean
 }
 
@@ -23,31 +28,55 @@ declare module "../HKT" {
   }
 }
 
+/**
+ * Constructs an `Equal[A]` from a function. The instance will be optimized
+ * to first compare the values for reference equality and then compare the
+ * values for value equality.
+ */
 export function make<A>(f: (x: A, y: A) => boolean): Equal<A> {
   return {
     equals: (y) => (x) => f(x, y)
   }
 }
 
+/**
+ * Equality for `Any` values. Note that since values of type `Any` contain
+ * no information, all values of type `Any` can be treated as equal to each
+ * other.
+ */
 export const AnyEqual: Equal<unknown> = make(() => true)
 
+/**
+ * Equality for `Nothing` values. Note that since there are not values of
+ * type `Nothing` the `equals` method of this instance can never be called
+ * but it can be useful in deriving instances for more complex types.
+ */
 export const NothingEqual: Equal<never> = make(() => false)
+
+/**
+ * Constructs an `Equal[(A, B)]` given an `Equal[A]` and `Equal[B]` by first
+ * comparing the `A` values for equality and then comparing the `B` values
+ * for equality, if necessary.
+ */
+export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B]> {
+  return (fa) => make(([x0, x1], [y0, y1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
+}
 
 /**
  * The `AssociativeBoth` instance for `Equal`.
  */
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
-  both: (fb) => (fa) =>
-    make(([x0, x1], [y0, y1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
+  both
 }
 
 /**
- * The `AssociativeEither` instance for `Equal`.
+ * Constructs an `Equal[Either[A, B]]` given an `Equal[A]` and an
+ * `Equal[B]`. The instance will compare the `Either[A, B]` values and if
+ * both are `Right` or `Left` compare them for equality.
  */
-export const AssociativeEither: AssociativeEither1<URI> = {
-  URI,
-  either: (fb) => (fa) =>
+export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, B>> {
+  return (fa) =>
     make((ex, ey) =>
       ex._tag === "Left" && ey._tag === "Left"
         ? fa.equals(ey.left)(ex.left)
@@ -56,13 +85,29 @@ export const AssociativeEither: AssociativeEither1<URI> = {
         : false
     )
 }
+/**
+ * The `AssociativeEither` instance for `Equal`.
+ */
+export const AssociativeEither: AssociativeEither1<URI> = {
+  URI,
+  either
+}
+
+/**
+ * Constructs an `Equal[B]` given an `Equal[A]` and a function `f` to
+ * transform a `B` value into an `A` value. The instance will convert each
+ * `B` value into an `A` and the compare the `A` values for equality.
+ */
+export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
+  return (fa) => make((x, y) => fa.equals(f(y))(f(x)))
+}
 
 /**
  * The `Contravariant` instance for `Equal`.
  */
 export const Contravariant: Contravariant1<URI> = {
   URI,
-  contramap: (f) => (fa) => make((x, y) => fa.equals(f(y))(f(x)))
+  contramap
 }
 
 /**
@@ -98,15 +143,37 @@ export const IdentityEither: IdentityEither1<URI> = {
 }
 
 /**
- * @category api
+ * Constructs an `Equal[A]` that uses the default notion of equality
+ * embodied in the implementation of `equals` for values of type `A`.
  */
-
-export const both = AssociativeBoth.both
-
-export const contramap = Contravariant.contramap
-
-export const either = AssociativeEither.either
-
 export function strict<A>() {
   return make<A>((x, y) => x === y)
+}
+
+/**
+ * Derives an `Equal[Either[A, B]]` given an `Equal[A]` and an `Equal[B]`.
+ */
+export function Either<A, B>(EqA: Equal<A>, EqB: Equal<B>): Equal<E.Either<A, B>> {
+  return {
+    equals: (y) => (x) =>
+      (x._tag === "Left" && y._tag === "Left" && EqA.equals(y.left)(x.left)) ||
+      (x._tag === "Right" && y._tag === "Right" && EqB.equals(y.right)(x.right))
+  }
+}
+
+/**
+ * Equality for `number` values.
+ */
+export const Number = strict<number>()
+
+/**
+ * Derives an `Equal[Array[A]]` given an `Equal[A]`.
+ */
+export function Array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
+  return {
+    equals: (y) => (x) =>
+      x.length === y.length &&
+      (x.length === 0 ||
+        x.map((a, i) => EqA.equals(y[i])(a)).reduce((b, b1) => b && b1))
+  }
 }
