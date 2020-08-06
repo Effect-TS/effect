@@ -44,14 +44,14 @@ export function make<A>(f: (x: A, y: A) => boolean): Equal<A> {
  * no information, all values of type `Any` can be treated as equal to each
  * other.
  */
-export const AnyEqual: Equal<unknown> = make(() => true)
+export const anyEqual: Equal<unknown> = make(() => true)
 
 /**
  * Equality for `Nothing` values. Note that since there are not values of
  * type `Nothing` the `equals` method of this instance can never be called
  * but it can be useful in deriving instances for more complex types.
  */
-export const NothingEqual: Equal<never> = make(() => false)
+export const nothingEqual: Equal<never> = make(() => false)
 
 /**
  * Constructs an `Equal[(A, B)]` given an `Equal[A]` and `Equal[B]` by first
@@ -115,7 +115,7 @@ export const Contravariant: Contravariant1<URI> = {
  */
 export const Any: Any1<URI> = {
   URI,
-  any: () => AnyEqual
+  any: () => anyEqual
 }
 
 /**
@@ -131,7 +131,7 @@ export const IdentityBoth: IdentityBoth1<URI> = {
  */
 export const None: None1<URI> = {
   URI,
-  none: () => NothingEqual
+  none: () => nothingEqual
 }
 
 /**
@@ -151,25 +151,14 @@ export function strict<A>() {
 }
 
 /**
- * Derives an `Equal[Either[A, B]]` given an `Equal[A]` and an `Equal[B]`.
- */
-export function Either<A, B>(EqA: Equal<A>, EqB: Equal<B>): Equal<E.Either<A, B>> {
-  return {
-    equals: (y) => (x) =>
-      (x._tag === "Left" && y._tag === "Left" && EqA.equals(y.left)(x.left)) ||
-      (x._tag === "Right" && y._tag === "Right" && EqB.equals(y.right)(x.right))
-  }
-}
-
-/**
  * Equality for `number` values.
  */
-export const Number = strict<number>()
+export const number = strict<number>()
 
 /**
  * Derives an `Equal[Array[A]]` given an `Equal[A]`.
  */
-export function Array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
+export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
   return {
     equals: (y) => (x) =>
       x.length === y.length &&
