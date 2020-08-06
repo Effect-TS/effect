@@ -1,40 +1,36 @@
 import * as S from "../../Effect"
+import { Applicative4 } from "../Applicative"
 import { Contravariant4 } from "../Contravariant"
 import { Covariant4 } from "../Covariant"
-import { IdentityBoth4 } from "../IdentityBoth"
 
-export const ContravariantURI = "ContravariantEffect"
-export type ContravariantURI = typeof ContravariantURI
+export const EffectEnvURI = "EffectEnv"
+export type EffectEnvURI = typeof EffectEnvURI
 
-export const CovariantURI = "CovariantEffect"
-export type CovariantURI = typeof CovariantURI
-
-export const ApplicativeURI = "ApplicativeEffect"
-export type ApplicativeURI = typeof ApplicativeURI
+export const EffectURI = "Effect"
+export type EffectURI = typeof EffectURI
 
 declare module "../HKT" {
   interface URItoKind4<S, R, E, A> {
-    [ContravariantURI]: S.Effect<S, A, E, R>
-    [CovariantURI]: S.Effect<S, R, E, A>
-    [ApplicativeURI]: S.Effect<S, R, E, A>
+    [EffectEnvURI]: S.Effect<S, A, E, R>
+    [EffectURI]: S.Effect<S, R, E, A>
   }
 }
 
-export const ContravariantEnv: Contravariant4<ContravariantURI> = {
-  URI: ContravariantURI,
+export const ContravariantEnv: Contravariant4<EffectEnvURI> = {
+  URI: EffectEnvURI,
   contramap: S.provideSome
 }
 
-export const Covariant: Covariant4<CovariantURI> = {
-  URI: CovariantURI,
+export const Covariant: Covariant4<EffectURI> = {
+  URI: EffectURI,
   map: S.map
 }
 
-export const Applicative: IdentityBoth4<ApplicativeURI> & Covariant4<ApplicativeURI> = {
-  URI: ApplicativeURI,
+export const Applicative: Applicative4<EffectURI> = {
+  URI: EffectURI,
   any: () => S.of,
   both: S.zip,
   map: S.map
 }
 
-export { succeed, effectTotal, chain, runMain } from "../../Effect"
+export { chain, effectTotal, runMain, succeed } from "../../Effect"
