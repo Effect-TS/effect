@@ -1,10 +1,12 @@
 import * as S from "../../Effect"
 import { EffectURI } from "../../Effect"
 import { Applicative4 } from "../Applicative"
+import { AssociativeBoth4 } from "../AssociativeBoth"
 import { AssociativeEither4 } from "../AssociativeEither"
 import { Contravariant4 } from "../Contravariant"
 import { Covariant4 } from "../Covariant"
 import { Foreachable4 } from "../Foreachable"
+import { Monad4 } from "../Monad"
 
 /**
  * @category definitions
@@ -46,10 +48,22 @@ export const AssociativeEither: AssociativeEither4<EffectURI> = {
   either: S.orElseEither
 }
 
+export const AssociativeBoth: AssociativeBoth4<EffectURI> = {
+  URI: EffectURI,
+  both: (fb) => (fa) => S.zip_(fa, fb)
+}
+
 export const Foreachable: Foreachable4<EffectURI> = {
   URI: EffectURI,
   map: S.map,
   foreach: S.foreach
+}
+
+export const Monad: Monad4<EffectURI> = {
+  URI: EffectURI,
+  any: () => S.of,
+  flatten: S.flatten,
+  map: S.map
 }
 
 /**

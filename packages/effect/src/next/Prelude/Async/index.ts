@@ -1,9 +1,11 @@
 import * as S from "../../Effect"
 import { Applicative3 } from "../Applicative"
+import { AssociativeBoth3 } from "../AssociativeBoth"
 import { AssociativeEither3 } from "../AssociativeEither"
 import { Contravariant3 } from "../Contravariant"
 import { Covariant3 } from "../Covariant"
 import { Foreachable3 } from "../Foreachable"
+import { Monad3 } from "../Monad"
 
 export const AsyncEnvURI = "AsyncEnv"
 export type AsyncEnvURI = typeof AsyncEnvURI
@@ -28,17 +30,27 @@ export const Covariant: Covariant3<AsyncURI> = {
   map: S.map
 }
 
+export const AssociativeBoth: AssociativeBoth3<AsyncURI> = {
+  URI: AsyncURI,
+  both: (fb) => (fa) => S.zip_(fa, fb)
+}
+
+export const AssociativeBothPar: AssociativeBoth3<AsyncURI> = {
+  URI: AsyncURI,
+  both: (fb) => (fa) => S.zipPar_(fa, fb)
+}
+
 export const Applicative: Applicative3<AsyncURI> = {
   URI: AsyncURI,
   any: () => S.of,
-  both: S.zip,
+  both: AssociativeBoth.both,
   map: S.map
 }
 
 export const ApplicativePar: Applicative3<AsyncURI> = {
   URI: AsyncURI,
   any: () => S.of,
-  both: (fb) => (fa) => S.zipPar_(fa, fb),
+  both: AssociativeBothPar.both,
   map: S.map
 }
 
@@ -59,10 +71,25 @@ export const ForeachablePar: Foreachable3<AsyncURI> = {
   foreach: S.foreachPar
 }
 
-export function ForeachableParN(n: number) {
+export function ForeachableParN(n: number): Foreachable3<AsyncURI> {
   return {
     URI: AsyncURI,
     map: S.map,
     foreach: S.foreachParN(n)
   }
+}
+
+export const Monad: Monad3<AsyncURI> = {
+  URI: AsyncURI,
+  any: () => S.of,
+  flatten: S.flatten,
+  map: S.map
+}
+
+/**
+ * @category api
+ */
+
+export function cast<S, R, E, A>(effect: S.Effect<S, R, E, A>): S.AsyncRE<R, E, A> {
+  return effect
 }
