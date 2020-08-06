@@ -10,7 +10,6 @@ export {
   chain_,
   effectTotal,
   foldCauseM,
-  forkDaemon,
   provideAll,
   provideAll_,
   succeed as succeedNow,
@@ -18,6 +17,7 @@ export {
 } from "../Effect/core"
 export { bind, let, of } from "../Effect/do"
 export { done } from "../Effect/done"
+export { forkDaemon } from "../Effect/scope"
 export {
   Async,
   AsyncE,

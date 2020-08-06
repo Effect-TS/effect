@@ -8,11 +8,11 @@ export {
   foldCauseM_,
   fork,
   halt,
-  raceWith,
   succeed as succeedNow,
   unit
 } from "../../Effect/core"
 export { die } from "../../Effect/die"
+export { raceWith } from "../../Effect/scope"
 export { bind, let, merge, of } from "../../Effect/do"
 export { done } from "../../Effect/done"
 export { Effect, SyncE, _A, _E, _I, _R, _S, _U } from "../../Effect/effect"

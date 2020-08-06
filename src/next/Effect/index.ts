@@ -77,15 +77,11 @@ export {
   foldCauseM,
   foldCauseM_,
   fork,
-  forkDaemon,
-  forkIn,
-  forkScopeWith,
   halt,
   interruptStatus,
   interruptStatus_,
   provideAll,
   provideAll_,
-  raceWith,
   succeed,
   suspend,
   suspendPartial,
@@ -236,3 +232,4 @@ export { zipWithPar } from "./zipWithPar"
 export { zipWithPar_ } from "./zipWithPar_"
 export { zipWith_ } from "./zipWith_"
 export { zip_ } from "./zip_"
+export { forkDaemon, forkIn, forkScopeWith, raceWith } from "./scope"

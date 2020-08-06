@@ -1,9 +1,10 @@
 import { Runtime } from "../Fiber/core"
 
 import { bracket_ } from "./bracket_"
-import { chain_, forkDaemon } from "./core"
+import { chain_ } from "./core"
 import { Effect } from "./effect"
 import { fiberId } from "./fiberId"
+import { forkDaemon } from "./scope"
 
 /**
  * Fork the effect into a separate fiber wrapping it in a bracket.
