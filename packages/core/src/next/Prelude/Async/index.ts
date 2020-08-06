@@ -18,7 +18,7 @@ declare module "../HKT" {
   }
 }
 
-export const Contravariant: Contravariant3<AsyncEnvURI> = {
+export const ContravariantEnv: Contravariant3<AsyncEnvURI> = {
   URI: AsyncEnvURI,
   contramap: S.provideSome
 }
