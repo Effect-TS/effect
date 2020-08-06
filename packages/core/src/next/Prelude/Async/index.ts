@@ -32,14 +32,14 @@ export const Covariant: Covariant3<CovariantURI> = {
 
 export const Applicative: Applicative3<ApplicativeURI> = {
   URI: ApplicativeURI,
-  any: <R, E, A>() => S.succeed<unknown>(undefined) as S.AsyncRE<R, E, A>,
+  any: <R, E>() => S.of as S.AsyncRE<R, E, {}>,
   both: S.zip,
   map: S.map
 }
 
 export const ApplicativePar: Applicative3<ApplicativeURI> = {
   URI: ApplicativeURI,
-  any: <R, E, A>() => S.succeed<unknown>(undefined) as S.AsyncRE<R, E, A>,
+  any: <R, E>() => S.of as S.AsyncRE<R, E, {}>,
   both: (fb) => (fa) => S.zipPar_(fa, fb),
   map: S.map
 }
@@ -53,5 +53,5 @@ export const chain: <R1, E1, A1, A>(
 export const effectTotal: <A>(effect: () => A) => S.AsyncRE<unknown, never, A> =
   S.effectTotal
 
-export const runMain: <S, E>(effect: S.AsyncRE<S.DefaultEnv, E, void>) => S.CancelMain =
+export const runMain: <E>(effect: S.AsyncRE<S.DefaultEnv, E, void>) => S.CancelMain =
   S.runMain

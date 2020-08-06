@@ -38,31 +38,31 @@ import {
  * produce an `F[(A, B)]` with an identity.
  */
 export interface IdentityBoth<F> extends AssociativeBoth<F> {
-  readonly any: <A>() => HKT<F, A>
+  readonly any: () => HKT<F, {}>
 }
 
 export interface IdentityBoth1<F extends URIS> extends AssociativeBoth1<F> {
-  readonly any: <A>() => Kind<F, A>
+  readonly any: () => Kind<F, {}>
 }
 
 export interface IdentityBoth2<F extends URIS2> extends AssociativeBoth2<F> {
-  readonly any: <E, A>() => Kind2<F, E, A>
+  readonly any: <E>() => Kind2<F, E, {}>
 }
 
 export interface IdentityBoth3<F extends URIS3> extends AssociativeBoth3<F> {
-  readonly any: <R, E, A>() => Kind3<F, R, E, A>
+  readonly any: <R, E>() => Kind3<F, R, E, {}>
 }
 
 export interface IdentityBoth4<F extends URIS4> extends AssociativeBoth4<F> {
-  readonly any: <S, R, E, A>() => Kind4<F, S, R, E, A>
+  readonly any: <S, R, E>() => Kind4<F, S, R, E, {}>
 }
 
 export interface IdentityBoth5<F extends URIS5> extends AssociativeBoth5<F> {
-  readonly any: <X, S, R, E, A>() => Kind5<F, X, S, R, E, A>
+  readonly any: <X, S, R, E>() => Kind5<F, X, S, R, E, {}>
 }
 
 export interface IdentityBoth6<F extends URIS6> extends AssociativeBoth6<F> {
-  readonly any: <Y, X, S, R, E, A>() => Kind6<F, Y, X, S, R, E, A>
+  readonly any: <Y, X, S, R, E>() => Kind6<F, Y, X, S, R, E, {}>
 }
 
 export function succeed<F extends URIS>(
