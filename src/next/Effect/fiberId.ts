@@ -1,8 +1,8 @@
 import { FiberID } from "../Fiber/id"
 
-import { checkDescriptor } from "./checkDescriptor"
+import { checkDescriptor } from "./core"
+import { succeed } from "./core"
 import { Sync } from "./effect"
-import { succeed } from "./succeed"
 
 /**
  * Returns the `FiberID` of the fiber executing the effect that calls this method.

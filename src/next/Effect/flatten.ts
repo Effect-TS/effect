@@ -1,6 +1,6 @@
 import { identity, pipe } from "../../Function"
 
-import { chain } from "./chain"
+import { chain } from "./core"
 import { Effect } from "./effect"
 
 /**

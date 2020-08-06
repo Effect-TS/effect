@@ -1,8 +1,8 @@
 import { Cause } from "../Cause/cause"
 
+import { foldCauseM_ } from "./core"
+import { succeed } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { succeed } from "./succeed"
 
 /**
  * A more powerful version of `fold` that allows recovering from any kind of failure except interruptions.

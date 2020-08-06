@@ -47,7 +47,7 @@ export const foreach_ = <E2, A2, S, R, E, A>(
 ): T.Effect<S, R, never, Exit.Exit<E | E2, A>> => {
   switch (exit._tag) {
     case "Failure": {
-      return T.succeedNow(Exit.halt(exit.cause))
+      return T.succeed(Exit.halt(exit.cause))
     }
     case "Success": {
       return T.result(f(exit.value))

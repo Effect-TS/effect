@@ -4,7 +4,7 @@ import * as O from "../../Option"
 import { HasClock } from "../Clock"
 import * as S from "../Schedule"
 
-import { chain } from "./chain"
+import { chain } from "./core"
 import { Effect } from "./effect"
 import { foldM } from "./foldM"
 import { map } from "./map"

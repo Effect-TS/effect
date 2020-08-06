@@ -2,11 +2,20 @@
 
 import { Effect } from "../Effect/effect"
 
-export { access } from "../Effect/access"
-export { accessM } from "../Effect/accessM"
 export { bracketExit_ } from "../Effect/bracketExit_"
-export { chain } from "../Effect/chain"
-export { chain_ } from "../Effect/chain_"
+export {
+  access,
+  accessM,
+  chain,
+  chain_,
+  effectTotal,
+  foldCauseM,
+  forkDaemon,
+  provideAll,
+  provideAll_,
+  succeed as succeedNow,
+  unit
+} from "../Effect/core"
 export { bind, let, of } from "../Effect/do"
 export { done } from "../Effect/done"
 export {
@@ -26,27 +35,20 @@ export {
   _S,
   _U
 } from "../Effect/effect"
-export { effectTotal } from "../Effect/effectTotal"
 export { environment } from "../Effect/environment"
 export { parallel, parallelN } from "../Effect/ExecutionStrategy"
 export { fail } from "../Effect/fail"
 export { flatten } from "../Effect/flatten"
-export { foldCauseM } from "../Effect/foldCauseM"
 export { foreachParN_ } from "../Effect/foreachParN_"
 export { foreachPar_ } from "../Effect/foreachPar_"
 export { foreach_ } from "../Effect/foreach_"
-export { forkDaemon } from "../Effect/forkDaemon"
 export { interrupt } from "../Effect/interrupt"
 export { map } from "../Effect/map"
 export { map_ } from "../Effect/map_"
-export { provideAll } from "../Effect/provideAll"
-export { provideAll_ } from "../Effect/provideAll_"
 export { provideSome_ } from "../Effect/provideSome"
 export { result } from "../Effect/result"
-export { succeed as succeedNow } from "../Effect/succeed"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
-export { unit } from "../Effect/unit"
 export { zipWith } from "../Effect/zipWith"
 export { zipWithPar_ } from "../Effect/zipWithPar_"
 export { zipWith_ } from "../Effect/zipWith_"

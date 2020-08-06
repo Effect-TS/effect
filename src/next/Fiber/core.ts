@@ -1,9 +1,8 @@
 import * as O from "../../Option"
 import * as S from "../../Set"
 import * as Cause from "../Cause/core"
-import { Sync, Async } from "../Effect/effect"
-import { succeed } from "../Effect/succeed"
-import { unit } from "../Effect/unit"
+import { succeed, unit } from "../Effect/core"
+import { Async, Sync } from "../Effect/effect"
 import * as Exit from "../Exit/core"
 import { FiberRef } from "../FiberRef/fiberRef"
 import { Scope } from "../Scope"
@@ -11,7 +10,7 @@ import { Scope } from "../Scope"
 import { FiberID } from "./id"
 import { Status } from "./status"
 
-export { FiberID, None, equalsFiberID, newFiberId } from "./id"
+export { equalsFiberID, FiberID, newFiberId, None } from "./id"
 
 /**
  * A record containing information about a `Fiber`.

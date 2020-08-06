@@ -3,10 +3,9 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import { chain_ } from "../Effect/chain_"
+import { chain_, effectTotal } from "../Effect/core"
 import { Sync } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
-import { accessServiceM, has, replaceService, HasType } from "../Has"
+import { accessServiceM, has, HasType, replaceService } from "../Has"
 
 import { PRNG } from "./Alea"
 

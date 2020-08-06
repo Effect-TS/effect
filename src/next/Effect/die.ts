@@ -1,6 +1,6 @@
 import { Die } from "../Cause/cause"
 
-import { halt } from "./halt"
+import { halt } from "./core"
 
 /**
  * Returns an effect that dies with the specified `unknown`.

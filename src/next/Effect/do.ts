@@ -1,7 +1,6 @@
-import { chain_ } from "./chain_"
+import { chain_, succeed } from "./core"
 import { Effect } from "./effect"
 import { map_ } from "./map_"
-import { succeed } from "./succeed"
 
 const bind = <S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

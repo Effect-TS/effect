@@ -6,13 +6,9 @@
 import * as A from "../../Array"
 import { pipe } from "../../Function"
 import * as R from "../../Record"
-import { access } from "../Effect/access"
-import { accessM } from "../Effect/accessM"
-import { chain_ } from "../Effect/chain_"
+import { access, accessM, chain_, provideAll_, succeed } from "../Effect/core"
 import { Effect } from "../Effect/effect"
 import { provide } from "../Effect/provide"
-import { provideAll_ } from "../Effect/provideAll_"
-import { succeed } from "../Effect/succeed"
 import { UnionToIntersection } from "../Utils"
 
 /**

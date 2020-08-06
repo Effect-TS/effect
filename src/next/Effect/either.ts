@@ -1,8 +1,8 @@
 import * as E from "../../Either"
 
+import { succeed } from "./core"
 import { Effect } from "./effect"
 import { foldM_ } from "./foldM_"
-import { succeed } from "./succeed"
 
 /**
  * Returns an effect whose failure and success have been lifted into an

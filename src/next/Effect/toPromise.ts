@@ -1,7 +1,7 @@
 import { done } from "../Promise/done"
 import { Promise } from "../Promise/promise"
 
-import { chain_ } from "./chain_"
+import { chain_ } from "./core"
 import { Effect } from "./effect"
 import { result } from "./result"
 import { uninterruptibleMask } from "./uninterruptibleMask"

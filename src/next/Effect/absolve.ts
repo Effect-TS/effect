@@ -1,6 +1,6 @@
 import * as E from "../../Either"
 
-import { chain_ } from "./chain_"
+import { chain_ } from "./core"
 import { Effect } from "./effect"
 import { fromEither } from "./fromEither"
 

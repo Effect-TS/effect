@@ -1,6 +1,5 @@
-import { accessM } from "./accessM"
+import { accessM, provideAll_ } from "./core"
 import { Effect } from "./effect"
-import { provideAll_ } from "./provideAll_"
 
 /**
  * Provides some of the environment required to run this effect,

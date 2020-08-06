@@ -1,8 +1,6 @@
-import { chain_ } from "./chain_"
-import { Effect, AsyncRE } from "./effect"
-import { effectTotal } from "./effectTotal"
+import { chain_, effectTotal, suspend } from "./core"
+import { AsyncRE, Effect } from "./effect"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
-import { suspend } from "./suspend"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,

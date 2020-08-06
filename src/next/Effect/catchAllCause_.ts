@@ -1,8 +1,7 @@
 import { Cause } from "../Cause/cause"
 
+import { foldCauseM_, succeed } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { succeed } from "./succeed"
 
 /**
  * Recovers from all errors with provided cause.

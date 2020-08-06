@@ -2,10 +2,8 @@ import { pipe } from "../../Function"
 import * as O from "../../Option"
 import { map } from "../Cause/core"
 
+import { foldCauseM_, halt, succeed } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { halt } from "./halt"
-import { succeed } from "./succeed"
 
 /**
  * Returns an effect with its error channel mapped using the specified

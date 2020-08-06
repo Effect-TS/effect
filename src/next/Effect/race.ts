@@ -4,17 +4,12 @@ import * as Cause from "../Cause/core"
 import * as Exit from "../Exit/api"
 import * as Fiber from "../Fiber/api"
 
-import { chain } from "./chain"
-import { chain_ } from "./chain_"
-import { checkDescriptor } from "./checkDescriptor"
+import { chain, chain_, checkDescriptor, halt, raceWith, succeed } from "./core"
 import { done } from "./done"
 import { Effect } from "./effect"
-import { halt } from "./halt"
 import { mapErrorCause_ } from "./mapErrorCause"
 import { map_ } from "./map_"
-import { raceWith } from "./raceWith"
 import { result } from "./result"
-import { succeed } from "./succeed"
 
 function mergeInterruption<A, E2, A2>(
   a: A

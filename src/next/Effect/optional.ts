@@ -1,9 +1,9 @@
 import * as O from "../../Option"
 
+import { succeed } from "./core"
 import { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM_ } from "./foldM_"
-import { succeed } from "./succeed"
 
 /**
  * Converts an option on errors into an option on values.

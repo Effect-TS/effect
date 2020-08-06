@@ -1,8 +1,7 @@
 import * as IT from "../Iterable"
 
+import { succeed, suspend } from "./core"
 import { Effect } from "./effect"
-import { succeed } from "./succeed"
-import { suspend } from "./suspend"
 import { zipWith_ } from "./zipWith_"
 
 /**

@@ -1,4 +1,4 @@
-import { chain } from "./chain"
+import { chain } from "./core"
 import { Effect } from "./effect"
 import { map } from "./map"
 

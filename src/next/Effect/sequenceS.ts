@@ -1,7 +1,7 @@
 import * as R from "../../Record"
 import { EnforceNonEmptyRecord, UnionToIntersection } from "../Utils"
 
-import { chain_ } from "./chain_"
+import { chain_ } from "./core"
 import { Effect } from "./effect"
 import { foreachParN_ } from "./foreachParN_"
 import { foreachPar_ } from "./foreachPar_"

@@ -2,11 +2,8 @@ import * as S from "../../Set"
 import * as Cause from "../Cause/core"
 import { FiberID } from "../Fiber/id"
 
-import { chain_ } from "./chain_"
+import { chain_, foldCauseM_, halt, succeed } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { halt } from "./halt"
-import { succeed } from "./succeed"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**

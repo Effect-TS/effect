@@ -1,9 +1,7 @@
 import { Then } from "../Cause/cause"
 
+import { foldCauseM_, halt, succeed } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { halt } from "./halt"
-import { succeed } from "./succeed"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**

@@ -1,4 +1,4 @@
-import { succeed as effectSucceed } from "../Effect/succeed"
+import { succeed as effectSucceed } from "../Effect/core"
 
 import { completeWith } from "./completeWith"
 import { Promise } from "./promise"

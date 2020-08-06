@@ -6,15 +6,10 @@ import { OneShot } from "../Support/OneShot"
 
 import { Canceler } from "./Canceler"
 import { Cb } from "./Cb"
-import { chain_ } from "./chain_"
+import { chain_, effectAsyncOption, effectTotal, succeed, suspend, unit } from "./core"
 import { AsyncRE, Sync } from "./effect"
-import { effectAsyncOption } from "./effectAsyncOption"
-import { effectTotal } from "./effectTotal"
 import { flatten } from "./flatten"
 import { onInterrupt_ } from "./onInterrupt_"
-import { succeed } from "./succeed"
-import { suspend } from "./suspend"
-import { unit } from "./unit"
 
 /**
  * Imports an asynchronous side-effect into an effect. The side-effect
