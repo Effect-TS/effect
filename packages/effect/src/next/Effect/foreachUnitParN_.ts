@@ -3,7 +3,7 @@ import { makeSemaphore, withPermit } from "../Semaphore"
 
 import { chain } from "./chain"
 import { AsyncRE, Effect } from "./effect"
-import { foreachPar_ } from "./foreachPar_"
+import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**
  * Applies the function `f` to each element of the `Iterable[A]` and runs
@@ -17,7 +17,7 @@ export const foreachUnitParN_ = (n: number) => <A, S, R, E, B>(
 ): AsyncRE<R, E, void> =>
   pipe(
     makeSemaphore(n),
-    chain((s) => foreachPar_(as, (a) => withPermit(s)(f(a))))
+    chain((s) => foreachUnitPar_(as, (a) => withPermit(s)(f(a))))
   )
 
 /**
