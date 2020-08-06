@@ -32,7 +32,7 @@ export const Covariant: Covariant4<CovariantURI> = {
 
 export const Applicative: IdentityBoth4<ApplicativeURI> & Covariant4<ApplicativeURI> = {
   URI: ApplicativeURI,
-  any: <S, R, E>() => S.of as S.Effect<S, R, E, {}>,
+  any: () => S.of,
   both: S.zip,
   map: S.map
 }

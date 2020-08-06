@@ -32,14 +32,14 @@ export const Covariant: Covariant3<CovariantURI> = {
 
 export const Applicative: Applicative3<ApplicativeURI> = {
   URI: ApplicativeURI,
-  any: <R, E>() => S.of as S.AsyncRE<R, E, {}>,
+  any: () => S.of,
   both: S.zip,
   map: S.map
 }
 
 export const ApplicativePar: Applicative3<ApplicativeURI> = {
   URI: ApplicativeURI,
-  any: <R, E>() => S.of as S.AsyncRE<R, E, {}>,
+  any: () => S.of,
   both: (fb) => (fa) => S.zipPar_(fa, fb),
   map: S.map
 }
