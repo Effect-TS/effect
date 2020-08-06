@@ -1,9 +1,7 @@
 import * as Cause from "../Cause/core"
 
+import { foldCauseM_, halt, succeed } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { halt } from "./halt"
-import { succeed } from "./succeed"
 
 /**
  * Converts all failures to unchecked exceptions

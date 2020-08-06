@@ -1,8 +1,8 @@
 import { pipe } from "../../Function"
 import { interruptible as statusInterruptible } from "../Fiber/core"
 
+import { interruptStatus } from "./core"
 import { Effect } from "./effect"
-import { interruptStatus } from "./interruptStatus"
 
 /**
  * Returns a new effect that performs the same operations as this effect, but

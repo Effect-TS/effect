@@ -1,6 +1,5 @@
+import { effectTotal, suspend } from "./core"
 import { effectAsyncInterrupt } from "./effectAsyncInterrupt"
-import { effectTotal } from "./effectTotal"
-import { suspend } from "./suspend"
 
 /**
  * Returns a effect that will never produce anything. The moral equivalent of

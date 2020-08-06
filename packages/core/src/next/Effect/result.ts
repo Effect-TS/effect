@@ -1,8 +1,8 @@
 import * as Exit from "../Exit/api"
 
+import { succeed } from "./core"
 import { Effect } from "./effect"
 import { IFold } from "./primitives"
-import { succeed } from "./succeed"
 
 /**
  * Returns an effect that semantically runs the effect on a fiber,

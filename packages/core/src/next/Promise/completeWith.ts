@@ -1,5 +1,5 @@
+import { effectTotal } from "../Effect/core"
 import { AsyncE, Sync } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
 
 import { Promise } from "./promise"
 import { Done } from "./state"

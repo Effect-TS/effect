@@ -1,7 +1,7 @@
 import { pipe } from "../../Function"
 import { makeSemaphore, withPermit } from "../Semaphore/semaphore"
 
-import { chain } from "./chain"
+import { chain } from "./core"
 import { AsyncRE, Effect } from "./effect"
 import { foreachPar_ } from "./foreachPar_"
 

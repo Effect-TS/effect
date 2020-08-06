@@ -1,5 +1,5 @@
 import { Cause } from "../Cause/cause"
-import { halt as effectHalt } from "../Effect/halt"
+import { halt as effectHalt } from "../Effect/core"
 
 import { completeWith } from "./completeWith"
 import { Promise } from "./promise"

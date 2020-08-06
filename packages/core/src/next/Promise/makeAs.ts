@@ -1,4 +1,4 @@
-import { effectTotal } from "../Effect/effectTotal"
+import { effectTotal } from "../Effect/core"
 import { FiberID } from "../Fiber/id"
 
 import { unsafeMake } from "./unsafeMake"

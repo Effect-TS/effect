@@ -1,7 +1,7 @@
 import * as O from "../../Option"
 
+import { forkScopeWith } from "./core"
 import { Effect } from "./effect"
-import { forkScopeWith } from "./forkScopeWith"
 import { IOverrideForkScope } from "./primitives"
 
 export type Grafter = <S, R, E, A>(effect: Effect<S, R, E, A>) => Effect<S, R, E, A>

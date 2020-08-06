@@ -1,36 +1,38 @@
 export { _brand } from "../../Branded"
 export { interruptedOnly } from "../Cause/core"
-export { access } from "../Effect/access"
-export { accessM } from "../Effect/accessM"
-export { chain } from "../Effect/chain"
-export { chain_ } from "../Effect/chain_"
-export { checkDescriptor } from "../Effect/checkDescriptor"
+export {
+  access,
+  accessM,
+  chain,
+  chain_,
+  checkDescriptor,
+  effectTotal,
+  forkDaemon,
+  halt,
+  provideAll_,
+  succeed as succeedNow,
+  suspend,
+  unit
+} from "../Effect/core"
 export { die } from "../Effect/die"
 export { bind, let, of } from "../Effect/do"
 export { done } from "../Effect/done"
 export { Async, AsyncE, AsyncRE, Effect, Sync, SyncE } from "../Effect/effect"
-export { effectTotal } from "../Effect/effectTotal"
 export { environment } from "../Effect/environment"
 export { flatten } from "../Effect/flatten"
 export { foreach_ as effectForeach_ } from "../Effect/foreach_"
-export { forkDaemon } from "../Effect/forkDaemon"
-export { halt } from "../Effect/halt"
 export { interrupt } from "../Effect/interrupt"
 export { interruptible } from "../Effect/interruptible"
 export { map } from "../Effect/map"
 export { map_ } from "../Effect/map_"
 export { onExit, onExit_ } from "../Effect/onExit"
 export { provide } from "../Effect/provide"
-export { provideAll_ } from "../Effect/provideAll_"
 export { provideSome_ } from "../Effect/provideSome"
 export { result } from "../Effect/result"
 export { runAsyncCancel, runSync } from "../Effect/runtime"
-export { succeed as succeedNow } from "../Effect/succeed"
-export { suspend } from "../Effect/suspend"
 export { tap } from "../Effect/tap"
 export { uninterruptible } from "../Effect/uninterruptible"
 export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
-export { unit } from "../Effect/unit"
 export { whenM } from "../Effect/whenM"
 export { flatten as exitFlatten } from "../Exit/core"
 export { join } from "../Fiber/api"

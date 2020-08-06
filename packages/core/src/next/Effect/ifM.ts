@@ -1,4 +1,4 @@
-import { chain_ } from "./chain_"
+import { chain_ } from "./core"
 import { Effect } from "./effect"
 
 export const ifM = <S, R, E>(b: Effect<S, R, E, boolean>) => <S1, R1, E1, A1>(

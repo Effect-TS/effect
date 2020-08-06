@@ -1,9 +1,7 @@
 import * as E from "../../Either"
 
-import { chain_ } from "./chain_"
-import { effectTotal } from "./effectTotal"
+import { chain_, effectTotal, succeed } from "./core"
 import { fail } from "./fail"
-import { succeed } from "./succeed"
 
 /**
  * Lifts an `Either` into a `Effect` value.

@@ -1,4 +1,4 @@
-import { chain_ } from "../Effect/chain_"
+import { chain_ } from "../Effect/core"
 import { fiberId } from "../Effect/fiberId"
 import { interruptAs as effectInterruptAs } from "../Effect/interruptAs"
 

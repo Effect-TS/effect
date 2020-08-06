@@ -1,10 +1,8 @@
 import { Cause } from "../Cause/cause"
 import { isEmpty } from "../Cause/core"
 
-import { chain_ } from "./chain_"
+import { chain_, halt, unit } from "./core"
 import { Effect } from "./effect"
-import { halt } from "./halt"
-import { unit } from "./unit"
 
 export const uncause = <S, R, E, A>(
   effect: Effect<S, R, never, Cause<E>>

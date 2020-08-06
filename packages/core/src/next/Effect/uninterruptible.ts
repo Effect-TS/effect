@@ -1,6 +1,6 @@
 import { uninterruptible as statusUninterruptible } from "../Fiber/core"
 
-import { interruptStatus } from "./interruptStatus"
+import { interruptStatus } from "./core"
 
 /**
  * Performs this effect uninterruptibly. This will prevent the effect from

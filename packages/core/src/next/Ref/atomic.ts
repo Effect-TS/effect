@@ -1,6 +1,6 @@
 import * as O from "../../Option"
+import { effectTotal } from "../Effect/core"
 import { Sync } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
 
 import { Atomic } from "./XRef"
 
