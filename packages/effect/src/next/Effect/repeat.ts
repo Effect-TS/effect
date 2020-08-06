@@ -1,12 +1,15 @@
 import * as E from "../../Either"
+import { pipe } from "../../Function"
 import * as O from "../../Option"
+import { HasClock } from "../Clock"
 import * as S from "../Schedule"
 
-import { chain_ } from "./chain_"
+import { chain } from "./chain"
 import { Effect } from "./effect"
-import { foldM_ } from "./foldM_"
+import { foldM } from "./foldM"
+import { map } from "./map"
 import { map_ } from "./map_"
-import { succeed } from "./succeed"
+import { orDie } from "./orDie"
 
 /**
  * Returns a new effect that repeats this effect according to the specified
@@ -17,31 +20,41 @@ import { succeed } from "./succeed"
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  */
-export const repeatOrElseEither_ = <S, R, E, A, SS, SR, SST, B, S2, R2, E2, C>(
+export const repeatOrElseEither_ = <S, R, E, S1, Env1, A, B, S2, R2, E2, C>(
   self: Effect<S, R, E, A>,
-  schedule: S.Schedule<SS, SR, SST, A, B>,
+  schedule: S.Schedule<S1, Env1, A, B>,
   orElse: (_: E, __: O.Option<B>) => Effect<S2, R2, E2, C>
-): Effect<S | SS | S2, R & SR & R2, E2, E.Either<C, B>> => {
-  const loop = (
-    last: A,
-    state: SST
-  ): Effect<S | SS | S2, R & SR & R2, E2, E.Either<C, B>> => {
-    return foldM_(
-      schedule.update(last, state),
-      () => succeed(E.right(schedule.extract(last, state))),
-      (s) =>
-        foldM_(
-          self,
-          (e) => map_(orElse(e, O.some(schedule.extract(last, state))), E.left),
-          (a) => loop(a, s)
+): Effect<S | S1 | S2, R & Env1 & R2 & HasClock, E2, E.Either<C, B>> => {
+  return pipe(
+    S.driver(schedule),
+    chain((driver) => {
+      function loop(
+        a: A
+      ): Effect<S | S1 | S2, Env1 & HasClock & R & R2, E2, E.Either<C, B>> {
+        return pipe(
+          driver.next(a),
+          foldM(
+            () => pipe(orDie(driver.last), map(E.right)),
+            (b) =>
+              pipe(
+                self,
+                foldM(
+                  (e) => pipe(orElse(e, O.some(b)), map(E.left)),
+                  (a) => loop(a)
+                )
+              )
+          )
         )
-    )
-  }
+      }
 
-  return foldM_(
-    self,
-    (e) => map_(orElse(e, O.none), E.left),
-    (a) => chain_(schedule.initial, (sst) => loop(a, sst))
+      return pipe(
+        self,
+        foldM(
+          (e) => pipe(orElse(e, O.none), map(E.left)),
+          (a) => loop(a)
+        )
+      )
+    })
   )
 }
 
@@ -54,11 +67,11 @@ export const repeatOrElseEither_ = <S, R, E, A, SS, SR, SST, B, S2, R2, E2, C>(
  * `io.repeat(Schedule.once)` yields an effect that executes `io`, and then
  * if that succeeds, executes `io` an additional time.
  */
-export const repeatOrElse_ = <S, R, E, A, SS, SR, SST, B, S2, R2, E2, C>(
+export const repeatOrElse_ = <S, R, E, A, SS, SR, B, S2, R2, E2, C>(
   self: Effect<S, R, E, A>,
-  schedule: S.Schedule<SS, SR, SST, A, B>,
+  schedule: S.Schedule<SS, SR, A, B>,
   orElse: (_: E, __: O.Option<B>) => Effect<S2, R2, E2, C>
-): Effect<S | SS | S2, R & SR & R2, E2, C | B> =>
+): Effect<S | SS | S2, R & SR & R2 & HasClock, E2, C | B> =>
   map_(repeatOrElseEither_(self, schedule, orElse), E.merge)
 
 /**
@@ -68,10 +81,11 @@ export const repeatOrElse_ = <S, R, E, A, SS, SR, SST, B, S2, R2, E2, C>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  */
-export const repeat_ = <S, R, E, A, SS, SR, SST, B>(
+export const repeat_ = <S, R, E, A, SS, SR, B>(
   self: Effect<S, R, E, A>,
-  schedule: S.Schedule<SS, SR, SST, A, B>
-): Effect<S | SS, R & SR, E, B> => repeatOrElse_(self, schedule, (e) => fail(e))
+  schedule: S.Schedule<SS, SR, A, B>
+): Effect<S | SS, R & SR & HasClock, E, B> =>
+  repeatOrElse_(self, schedule, (e) => fail(e))
 
 /**
  * Returns a new effect that repeats this effect according to the specified
@@ -80,10 +94,7 @@ export const repeat_ = <S, R, E, A, SS, SR, SST, B>(
  * effect that executes `io`, and then if that succeeds, executes `io` an
  * additional time.
  */
-export const repeat = <A, SS, SR, SST, B>(schedule: S.Schedule<SS, SR, SST, A, B>) => <
-  S,
-  R,
-  E
->(
+export const repeat = <A, SS, SR, B>(schedule: S.Schedule<SS, SR, A, B>) => <S, R, E>(
   self: Effect<S, R, E, A>
-): Effect<S | SS, R & SR, E, B> => repeatOrElse_(self, schedule, (e) => fail(e))
+): Effect<S | SS, R & SR & HasClock, E, B> =>
+  repeatOrElse_(self, schedule, (e) => fail(e))

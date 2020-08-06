@@ -146,6 +146,8 @@
       "next/Ref",
       "next/RefM",
       "next/Schedule",
+      "next/Schedule/Driver",
+      "next/Schedule/Decision",
       "next/Scope",
       "next/Supervisor",
       "next/Support",

@@ -1,51 +1,72 @@
 import * as E from "../../Either"
-import { identity } from "../../Function"
-import { Schedule } from "../Schedule/schedule"
+import { identity, pipe } from "../../Function"
+import { HasClock } from "../Clock"
+import { Driver, driver, Schedule } from "../Schedule"
 
-import { chain_ } from "./chain_"
+import { catchAll } from "./catchAll"
+import { chain } from "./chain"
 import { Effect } from "./effect"
 import { fail } from "./fail"
-import { foldM_ } from "./foldM_"
+import { foldM } from "./foldM"
+import { map } from "./map"
 import { map_ } from "./map_"
-import { succeed } from "./succeed"
-import { suspend } from "./suspend"
+import { orDie } from "./orDie"
 
-export const retryOrElseEither_ = <S, R, E, A, S1, R1, ST, O, S2, R2, E2, A2>(
+function loop<S, R, E, A, S1, R1, O, S2, R2, E2, A2>(
   self: Effect<S, R, E, A>,
-  policy: Schedule<S1, R1, ST, E, O>,
-  orElse: (e: E, o: O) => Effect<S2, R2, E2, A2>
-): Effect<S | S1 | S2, R & R1 & R2, E2, E.Either<A2, A>> => {
-  const loop = (state: any): Effect<S | S1 | S2, R & R1 & R2, E2, E.Either<A2, A>> =>
-    foldM_(
-      self,
-      (err) =>
-        foldM_(
-          policy.update(err, state),
-          (_) => map_(orElse(err, policy.extract(err, state)), E.left),
-          (s) => suspend(() => loop(s))
-        ),
-      (x) => succeed(E.right(x))
+  orElse: (e: E, o: O) => Effect<S2, R2, E2, A2>,
+  driver: Driver<S1, R1 & HasClock, E, O>
+): Effect<S | S1 | S2, R & R1 & R2 & HasClock, E2, E.Either<A2, A>> {
+  return pipe(
+    self,
+    map((a) => E.right(a)),
+    catchAll((e) =>
+      pipe(
+        driver.next(e),
+        foldM(
+          () =>
+            pipe(
+              driver.last,
+              orDie,
+              chain((o) =>
+                pipe(
+                  orElse(e, o),
+                  map((a) => E.left(a))
+                )
+              )
+            ),
+          () => loop(self, orElse, driver)
+        )
+      )
     )
-
-  return chain_(policy.initial, loop)
+  )
 }
 
-export const retryOrElse_ = <S, R, E, A, S1, R1, ST, O, S2, R2, E2, A2>(
+export const retryOrElseEither_ = <S, R, E, A, S1, R1, O, S2, R2, E2, A2>(
   self: Effect<S, R, E, A>,
-  policy: Schedule<S1, R1, ST, E, O>,
+  policy: Schedule<S1, R1, E, O>,
   orElse: (e: E, o: O) => Effect<S2, R2, E2, A2>
-): Effect<S | S1 | S2, R & R1 & R2, E2, A | A2> =>
+): Effect<S | S1 | S2, R & R1 & R2 & HasClock, E2, E.Either<A2, A>> => {
+  return pipe(
+    policy,
+    driver,
+    chain((a) => loop(self, orElse, a))
+  )
+}
+
+export const retryOrElse_ = <S, R, E, A, S1, R1, O, S2, R2, E2, A2>(
+  self: Effect<S, R, E, A>,
+  policy: Schedule<S1, R1, E, O>,
+  orElse: (e: E, o: O) => Effect<S2, R2, E2, A2>
+): Effect<S | S1 | S2, R & R1 & R2 & HasClock, E2, A | A2> =>
   map_(retryOrElseEither_(self, policy, orElse), E.fold(identity, identity))
 
-export const retry_ = <S, R, E, A, S1, R1, ST, O>(
+export const retry_ = <S, R, E, A, S1, R1, O>(
   self: Effect<S, R, E, A>,
-  policy: Schedule<S1, R1, ST, E, O>
-): Effect<S | S1, R & R1, E, A> => retryOrElse_(self, policy, (e, _) => fail(e))
+  policy: Schedule<S1, R1, E, O>
+): Effect<S | S1, R & R1 & HasClock, E, A> =>
+  retryOrElse_(self, policy, (e, _) => fail(e))
 
-export const retry = <S1, R1, E, ST, O>(policy: Schedule<S1, R1, ST, E, O>) => <
-  S,
-  R,
-  A
->(
+export const retry = <S1, R1, E, O>(policy: Schedule<S1, R1, E, O>) => <S, R, A>(
   self: Effect<S, R, E, A>
-): Effect<S | S1, R & R1, E, A> => retry_(self, policy)
+): Effect<S | S1, R & R1 & HasClock, E, A> => retry_(self, policy)

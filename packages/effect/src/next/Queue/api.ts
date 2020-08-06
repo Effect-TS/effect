@@ -1,10 +1,9 @@
 import * as A from "../../Array"
-import { pipe, tuple, identity } from "../../Function"
+import { identity, pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import { succeed } from "../Effect"
 
 import * as T from "./effect"
-import * as S from "./schedule"
 import { XQueue } from "./xqueue"
 
 /**
@@ -15,6 +14,14 @@ import { XQueue } from "./xqueue"
 export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
   self: XQueue<RA, RB, EA, EB, A, B>
 ): T.AsyncRE<RA & RB, EB, readonly B[]> => {
+  function takeRemaining(n: number): T.AsyncRE<RB, EB, A.Array<B>> {
+    if (n <= 0) {
+      return T.succeedNow([])
+    } else {
+      return T.chain_(self.take, (a) => T.map_(takeRemaining(n - 1), (_) => [a, ..._]))
+    }
+  }
+
   if (max < min) {
     return T.succeedNow([])
   } else {
@@ -26,13 +33,10 @@ export const takeBetween = (min: number, max: number) => <RA, RB, EA, EB, A, B>(
         if (remaining === 1) {
           return T.map_(self.take, (b) => [...bs, b])
         } else if (remaining > 1) {
-          return pipe(
-            S.collectAll<B>(),
-            S.both(S.recurs(remaining - 1)),
-            S.map(([_]) => _),
-            S.repeat(self.take),
-            T.map((a) => [...bs, ...a])
-          )
+          return T.map_(takeRemaining(remaining - 1), (list) => [
+            ...bs,
+            ...A.reverse(list)
+          ])
         } else {
           return T.succeedNow(bs)
         }
