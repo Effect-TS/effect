@@ -58,18 +58,18 @@ export const AssociativeFailureBoth: AssociativeBoth2<FailureEitherURI> = {
   ): FailureEither<E, [A, B]> =>
     pipe(
       fa,
-      Failure<E.Either<A, E>>().unwrap,
+      Failure.unwrap,
       E.swap,
       E.chain((a) =>
         pipe(
           fb,
-          Failure<E.Either<B, E>>().unwrap,
+          Failure.unwrap,
           E.swap,
           E.map((b) => tuple(a, b))
         )
       ),
       E.swap,
-      Failure<E.Either<[A, B], E>>().wrap
+      Failure.wrap
     )
 }
 
@@ -106,12 +106,12 @@ export const AssociativeFailureEither: AssociativeEither2<FailureEitherURI> = {
   ): Failure<E.Either<E.Either<A, B>, E>> =>
     pipe(
       fa,
-      Failure<E.Either<A, E>>().unwrap,
+      Failure.unwrap,
       E.swap,
       E.map(E.left),
-      E.chain(() => pipe(fb, Failure<E.Either<B, E>>().unwrap, E.swap, E.map(E.right))),
+      E.chain(() => pipe(fb, Failure.unwrap, E.swap, E.map(E.right))),
       E.swap,
-      Failure<E.Either<E.Either<A, B>, E>>().wrap
+      Failure.wrap
     )
 }
 
