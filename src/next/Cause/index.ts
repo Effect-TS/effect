@@ -1,3 +1,8 @@
+/**
+ * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Cause.scala
+ *
+ * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
+ */
 export { Cause, Empty, Then, Both, Fail, Die, Interrupt } from "./cause"
 export {
   ap,

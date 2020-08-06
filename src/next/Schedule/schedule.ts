@@ -1,7 +1,6 @@
 import * as A from "../../Array"
 import * as E from "../../Either"
-import { tuple } from "../../Function"
-import { pipe } from "../../Function"
+import { pipe, tuple } from "../../Function"
 import * as NA from "../../NonEmptyArray"
 import * as O from "../../Option"
 import * as Clock from "../Clock"
@@ -13,7 +12,7 @@ import * as Driver from "./Driver"
 import * as T from "./effect"
 
 /**
- * A `Schedule<S, Env, Inp, Out>` defines a recurring schedule, which consumes values of type `Inp`, and
+ * A `Schedule<S, Env, In, Out>` defines a recurring schedule, which consumes values of type `In`, and
  * which returns values of type `Out`.
  *
  * Schedules are defined as a possibly infinite set of intervals spread out over time. Each
@@ -35,8 +34,8 @@ import * as T from "./effect"
  * object for `Schedule` contains all common types of schedules, both for performing retrying, as
  * well as performing repetition.
  */
-export class Schedule<S, Env, Inp, Out> {
-  constructor(readonly step: Decision.StepFunction<S, Env, Inp, Out>) {}
+export class Schedule<S, Env, In, Out> {
+  constructor(readonly step: Decision.StepFunction<S, Env, In, Out>) {}
 }
 
 /**

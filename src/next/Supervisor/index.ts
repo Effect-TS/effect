@@ -1,3 +1,8 @@
+/**
+ * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Supervisor.scala
+ *
+ * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
+ */
 import { pipe } from "../../Function"
 import * as O from "../../Option"
 import { Async, Effect } from "../Effect/effect"
