@@ -1,3 +1,8 @@
+/**
+ * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Random.scala
+ *
+ * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
+ */
 import { chain_ } from "../Effect/chain_"
 import { Sync } from "../Effect/effect"
 import { effectTotal } from "../Effect/effectTotal"
