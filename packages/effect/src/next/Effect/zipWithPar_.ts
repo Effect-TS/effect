@@ -4,9 +4,10 @@ import { join } from "../Fiber/api"
 import { Fiber } from "../Fiber/core"
 import { FiberID } from "../Fiber/id"
 
-import { chain_, checkDescriptor, halt, raceWith } from "./core"
+import { chain_, checkDescriptor, halt } from "./core"
 import { Effect } from "./effect"
 import { map_ } from "./map_"
+import { raceWith } from "./scope"
 import { transplant } from "./transplant"
 
 /**
