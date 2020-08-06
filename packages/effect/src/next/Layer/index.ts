@@ -1,3 +1,8 @@
+/**
+ * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/ZLayer.scala
+ *
+ * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
+ */
 import { reduce_ } from "../../Array"
 import { pipe } from "../../Function"
 import * as M from "../../Map"

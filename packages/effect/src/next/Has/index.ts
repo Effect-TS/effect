@@ -1,3 +1,8 @@
+/**
+ * Ported from https://github.com/zio/zio/blob/master/core/shared/src/main/scala/zio/Has.scala
+ *
+ * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
+ */
 import * as A from "../../Array"
 import { pipe } from "../../Function"
 import * as R from "../../Record"
