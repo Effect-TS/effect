@@ -1,5 +1,6 @@
 import * as A from "../../../Array"
 import { pipe } from "../../../Function"
+import { succeed } from "../Any"
 import * as C from "../Closure"
 import { Covariant } from "../Covariant"
 import { Derive11 } from "../Derive"
@@ -7,6 +8,7 @@ import * as Eq from "../Equal"
 import { HKT } from "../HKT"
 import * as I from "../Identity"
 import * as IB from "../IdentityBoth"
+import * as M from "../Monad"
 import { Sum } from "../Newtype"
 import { Traversable1 } from "../Traversable"
 
@@ -33,7 +35,7 @@ export const Traversable: Traversable1<URI> = {
   foreach: <G>(G: IB.IdentityBoth<G> & Covariant<G>) => <A, B>(
     f: (a: A) => HKT<G, B>
   ) => (fa: readonly A[]): HKT<G, readonly B[]> =>
-    A.reduce_(fa, IB.succeed(G)([] as readonly B[]), (b, a) =>
+    A.reduce_(fa, succeed(G)([] as readonly B[]), (b, a) =>
       pipe(
         b,
         G.both(f(a)),
@@ -62,6 +64,17 @@ export function Closure<A>(): C.Closure<readonly A[]> {
 
 export function Identity<A>(): I.Identity<readonly A[]> {
   return I.make<readonly A[]>([], Closure<A>().combine)
+}
+
+/**
+ * @category monad
+ */
+
+export const Monad: M.Monad1<URI> = {
+  URI,
+  any: () => [],
+  map: (f) => (fa) => fa.map(f),
+  flatten: (ffa) => A.flatten(ffa)
 }
 
 /**
