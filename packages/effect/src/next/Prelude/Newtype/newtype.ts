@@ -11,8 +11,9 @@ export interface Constructor<T, URI> {
 }
 
 export interface GenericConstructor<URI> {
-  <T, H extends Newtype<any, T>>(_: ConstructorK<T, any, H>): Constructor<H, URI>
-  <H>(): Constructor<H, URI>
+  wrap: <T>(_: T) => Newtype<URI, T>
+  unwrap: <T>(_: Newtype<URI, T>) => T
+  of: <T>() => Constructor<T, URI>
 }
 
 export interface ConstructorK<T, URI, K extends Newtype<URI, T>> {
@@ -34,11 +35,13 @@ export function typeDef<T>(): <URI>(_?: URI) => Constructor<T, URI> {
 export function genericDef<URI extends string>(_?: URI): GenericConstructor<URI>
 export function genericDef<URI>(_?: URI): GenericConstructor<URI>
 export function genericDef<URI>(_?: URI): GenericConstructor<URI> {
-  return () => {
-    return {
-      wrap: (_: any) => _ as any,
-      unwrap: (_: any) => _ as any
-    }
+  return {
+    wrap: (_: any) => _ as any,
+    unwrap: (_: any) => _ as any,
+    of: () => ({
+      wrap: (_) => _ as any,
+      unwrap: (_) => _ as any
+    })
   }
 }
 

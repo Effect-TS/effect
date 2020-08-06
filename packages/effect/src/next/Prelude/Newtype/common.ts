@@ -98,14 +98,14 @@ export interface FailureOut<A> extends Generic<A, typeof FailureOut> {}
 /**
  * A newtype representing a Boolean Product
  */
-export const BooleanProd = Prod<boolean>()
+export const BooleanProd = Prod.of<boolean>()
 
 /**
  * A newtype representing a Boolean Sum
  */
-export const BooleanSum = Sum<boolean>()
+export const BooleanSum = Sum.of<boolean>()
 
 /**
  * A newtype representing a String Sum
  */
-export const StringSum = Sum<string>()
+export const StringSum = Sum.of<string>()
