@@ -2,13 +2,14 @@ import { AssociativeBoth1 } from "../AssociativeBoth"
 import { AssociativeEither1 } from "../AssociativeEither"
 import { Contravariant1 } from "../Contravariant"
 import { IdentityBoth1 } from "../IdentityBoth"
+import { IdentityEither1 } from "../IdentityEither"
 
 /**
  * @category definitions
  */
 
 export interface Equal<A> {
-  (x: A, b: A): boolean
+  (y: A): (x: A) => boolean
 }
 
 export const URI = "Equal"
@@ -25,10 +26,12 @@ declare module "../HKT" {
  */
 
 export function make<A>(f: (x: A, y: A) => boolean): Equal<A> {
-  return f
+  return (y) => (x) => f(x, y)
 }
 
 export const AnyEqual: Equal<unknown> = make(() => true)
+
+export const NothingEqual: Equal<never> = make(() => false)
 
 /**
  * @category instances
@@ -36,7 +39,7 @@ export const AnyEqual: Equal<unknown> = make(() => true)
 
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
-  both: (fb) => (fa) => make(([x0, x1], [y0, y1]) => fa(x0, y0) && fb(x1, y1))
+  both: (fb) => (fa) => make(([x0, x1], [y0, y1]) => fa(y0)(x0) && fb(y1)(x1))
 }
 
 export const AssociativeEither: AssociativeEither1<URI> = {
@@ -44,22 +47,28 @@ export const AssociativeEither: AssociativeEither1<URI> = {
   either: (fb) => (fa) =>
     make((ex, ey) =>
       ex._tag === "Left" && ey._tag === "Left"
-        ? fa(ex.left, ey.left)
+        ? fa(ey.left)(ex.left)
         : ex._tag === "Right" && ey._tag === "Right"
-        ? fb(ex.right, ey.right)
+        ? fb(ey.right)(ex.right)
         : false
     )
 }
 
 export const Contravariant: Contravariant1<URI> = {
   URI,
-  contramap: (f) => (fa) => make((x, y) => fa(f(x), f(y)))
+  contramap: (f) => (fa) => make((x, y) => fa(f(y))(f(x)))
 }
 
 export const IdentityBoth: IdentityBoth1<URI> = {
   URI,
   any: () => AnyEqual,
   both: AssociativeBoth.both
+}
+
+export const IdentityEither: IdentityEither1<URI> = {
+  URI,
+  none: () => NothingEqual,
+  either: AssociativeEither.either
 }
 
 /**
@@ -71,3 +80,7 @@ export const both = AssociativeBoth.both
 export const contramap = Contravariant.contramap
 
 export const either = AssociativeEither.either
+
+export function strict<A>() {
+  return make<A>((x, y) => x === y)
+}
