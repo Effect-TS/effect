@@ -1,5 +1,5 @@
-import * as O from "../../../../Option"
-import * as T from "../../effect"
+import * as O from "../../../Option"
+import * as T from "../effect"
 
 export class NoSuchElementException extends Error {
   constructor() {
