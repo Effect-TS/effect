@@ -781,26 +781,28 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                 case "Fail": {
                   const discardedFolds = this.unwindStack()
-                  const cause0 = current.cause
+                  const fullCause = current.cause
+
+                  const maybeRedactedCause = discardedFolds
+                    ? // We threw away some error handlers while unwinding the stack because
+                      // we got interrupted during this instruction. So it's not safe to return
+                      // typed failures from cause0, because they might not be typed correctly.
+                      // Instead, we strip the typed failures, and return the remainders and
+                      // the interruption.
+                      Cause.stripFailures(fullCause)
+                    : fullCause
 
                   if (this.isStackEmpty) {
                     // Error not caught, stack is empty:
                     const cause = () => {
                       const interrupted = this.state.get.interrupted
-                      const causeAndInterrupt = Cause.contains(interrupted)(cause0)
-                        ? cause0
-                        : Cause.Then(cause0, interrupted)
+                      const causeAndInterrupt = Cause.contains(interrupted)(
+                        maybeRedactedCause
+                      )
+                        ? maybeRedactedCause
+                        : Cause.Then(maybeRedactedCause, interrupted)
 
-                      if (discardedFolds) {
-                        // We threw away some error handlers while unwinding the stack because
-                        // we got interrupted during this instruction. So it's not safe to return
-                        // typed failures from cause0, because they might not be typed correctly.
-                        // Instead, we strip the typed failures, and return the remainders and
-                        // the interruption.
-                        return Cause.stripFailures(causeAndInterrupt)
-                      } else {
-                        return causeAndInterrupt
-                      }
+                      return causeAndInterrupt
                     }
 
                     this.setInterrupting(true)
@@ -811,7 +813,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
                     // Error caught, next continuation on the stack will deal
                     // with it, so we just have to compute it here:
-                    current = this.nextInstr(cause0)
+                    current = this.nextInstr(maybeRedactedCause)
                   }
 
                   break
