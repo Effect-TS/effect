@@ -4,6 +4,6 @@ import * as Equal from "../../src/next/Prelude/Equal"
 
 const EqNumberArray = A.Equal.derive(Equal.strict<number>())
 
-pipe(A.range(0, 10), EqNumberArray(A.range(0, 10)), (b) => {
+pipe(A.range(0, 10), EqNumberArray.equals(A.range(0, 10)), (b) => {
   console.log("done", b)
 })

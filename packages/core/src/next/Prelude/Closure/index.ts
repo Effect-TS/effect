@@ -3,7 +3,9 @@
  */
 
 export interface Closure<A> {
-  combine(l: A, r: A): A
+  combine(r: A): (l: A) => A
 }
 
-export const make = <A>(f: (l: A, r: A) => A): Closure<A> => ({ combine: f })
+export const make = <A>(f: (l: A, r: A) => A): Closure<A> => ({
+  combine: (r) => (l) => f(l, r)
+})
