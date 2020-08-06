@@ -32,7 +32,7 @@ declare module "../HKT" {
  * The `Closure` for `Sum<Array<A>>`.
  */
 export function SumClosure<A>(): C.Closure<Sum<readonly A[]>> {
-  return pipe(Sum<readonly A[]>(), (SumArray) =>
+  return pipe(Sum.of<readonly A[]>(), (SumArray) =>
     C.make((l, r) => SumArray.wrap([...SumArray.unwrap(l), ...SumArray.unwrap(r)]))
   )
 }
