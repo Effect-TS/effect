@@ -4,6 +4,10 @@ import { Applicative4 } from "../Applicative"
 import { Contravariant4 } from "../Contravariant"
 import { Covariant4 } from "../Covariant"
 
+/**
+ * @category definitions
+ */
+
 export const ContravariantURI = "ContravariantSchedule"
 export type ContravariantURI = typeof ContravariantURI
 
@@ -21,6 +25,10 @@ declare module "../HKT" {
   }
 }
 
+/**
+ * @category instances
+ */
+
 export const Contravariant: Contravariant4<ContravariantURI> = {
   URI: ContravariantURI,
   contramap: S.contramap
@@ -37,5 +45,9 @@ export const Applicative: Applicative4<ApplicativeURI> = {
   any: () => S.succeed({}),
   both: (fb) => (fa) => S.contramap_(S.both_(fa, fb), (e) => tuple(e, e))
 }
+
+/**
+ * @category api
+ */
 
 export { succeed, tapOutput, run, delayed } from "../../Schedule"
