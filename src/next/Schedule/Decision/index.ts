@@ -1,4 +1,4 @@
-import * as T from "../../effect"
+import * as T from "../effect"
 
 export type Decision<S, Env, Inp, Out> = Done<Out> | Continue<S, Env, Inp, Out>
 
