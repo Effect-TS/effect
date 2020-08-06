@@ -15,10 +15,12 @@ export type URI = typeof URI
 export const FailureEitherURI = "FailureEither"
 export type FailureEitherURI = typeof FailureEitherURI
 
+export type FailureEither<E, A> = Failure<E.Either<A, E>>
+
 declare module "../HKT" {
   interface URItoKind2<E, A> {
     [URI]: E.Either<E, A>
-    [FailureEitherURI]: Failure<E.Either<A, E>>
+    [FailureEitherURI]: FailureEither<E, A>
   }
 }
 
@@ -51,9 +53,9 @@ export const AssociativeBoth: AssociativeBoth2<URI> = {
  */
 export const AssociativeFailureBoth: AssociativeBoth2<FailureEitherURI> = {
   URI: FailureEitherURI,
-  both: <E, B>(fb: Failure<E.Either<B, E>>) => <A>(
-    fa: Failure<E.Either<A, E>>
-  ): Failure<E.Either<[A, B], E>> =>
+  both: <E, B>(fb: FailureEither<E, B>) => <A>(
+    fa: FailureEither<E, A>
+  ): FailureEither<E, [A, B]> =>
     pipe(
       fa,
       Failure<E.Either<A, E>>().unwrap,
