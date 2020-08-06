@@ -4,7 +4,7 @@ import { HasClock } from "../Clock"
 import { Driver, driver, Schedule } from "../Schedule"
 
 import { catchAll } from "./catchAll"
-import { chain } from "./chain"
+import { chain } from "./core"
 import { Effect } from "./effect"
 import { fail } from "./fail"
 import { foldM } from "./foldM"

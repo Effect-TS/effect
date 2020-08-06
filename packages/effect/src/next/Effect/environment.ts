@@ -1,4 +1,4 @@
-import { access } from "./access"
+import { access } from "./core"
 
 /**
  * Access environment

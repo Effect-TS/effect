@@ -1,6 +1,6 @@
 import { Canceler } from "../Effect/Canceler"
+import { effectTotal } from "../Effect/core"
 import { AsyncE } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
 
 import { Promise } from "./promise"
 import { Pending } from "./state"

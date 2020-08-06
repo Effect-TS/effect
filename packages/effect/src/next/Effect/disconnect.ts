@@ -1,9 +1,8 @@
 import { join } from "../Fiber/api"
 
-import { chain_ } from "./chain_"
+import { chain_, forkDaemon } from "./core"
 import { Effect } from "./effect"
 import { fiberId } from "./fiberId"
-import { forkDaemon } from "./forkDaemon"
 import { onInterrupt_ } from "./onInterrupt_"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 

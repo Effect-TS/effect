@@ -1,8 +1,6 @@
 import { Exit } from "../Exit/exit"
 
-import { halt } from "./halt"
-import { succeed } from "./succeed"
-import { suspend } from "./suspend"
+import { halt, succeed, suspend } from "./core"
 
 /**
  * Returns an effect from a `Exit` value.

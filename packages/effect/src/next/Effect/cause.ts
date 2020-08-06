@@ -1,11 +1,9 @@
-import { Empty, Cause } from "../Cause/cause"
+import { Cause, Empty } from "../Cause/cause"
 
+import { foldCauseM_, halt, succeed } from "./core"
 import { Effect } from "./effect"
 import { fail } from "./fail"
-import { foldCauseM_ } from "./foldCauseM_"
 import { foldM_ } from "./foldM_"
-import { halt } from "./halt"
-import { succeed } from "./succeed"
 
 /**
  * Returns an effect that succeeds with the cause of failure of this effect,

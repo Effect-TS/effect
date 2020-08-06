@@ -5,9 +5,8 @@
  */
 import { pipe } from "../../Function"
 import * as O from "../../Option"
+import { effectTotal, unit } from "../Effect/core"
 import { Async, Effect } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
-import { unit } from "../Effect/unit"
 import { zip_ } from "../Effect/zip_"
 import { Exit } from "../Exit/exit"
 import { Runtime } from "../Fiber/core"

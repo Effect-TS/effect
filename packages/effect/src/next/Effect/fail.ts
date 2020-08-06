@@ -1,6 +1,6 @@
 import { Fail } from "../Cause/cause"
 
-import { halt } from "./halt"
+import { halt } from "./core"
 
 /**
  * Returns an effect that models failure with the specified error.

@@ -1,9 +1,8 @@
 import * as E from "../../Either"
 import { failureOrCause } from "../Cause/core"
 
+import { foldCauseM_, halt } from "./core"
 import { Effect } from "./effect"
-import { foldCauseM_ } from "./foldCauseM_"
-import { halt } from "./halt"
 
 /**
  * Recovers from errors by accepting one effect to execute for the case of an

@@ -1,3 +1,3 @@
 export { Effect } from "../../Effect/effect"
-export { succeed as succeedNow } from "../../Effect/succeed"
+export { succeed } from "../../Effect/core"
 export { result } from "../../Effect/result"

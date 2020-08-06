@@ -44,8 +44,6 @@ export {
 } from "../Has"
 export { AOf, EOf, Erase, ROf, SOf } from "../Utils"
 export { absolve } from "./absolve"
-export { access } from "./access"
-export { accessM } from "./accessM"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
 export { as, as_ } from "./as"
@@ -63,12 +61,37 @@ export { catchAllCause, catchAllCause_ } from "./catchAllCause_"
 export { catchAll_ } from "./catchAll_"
 export { cause, causeAsError, errorFromCause } from "./cause"
 export { Cb } from "./Cb"
-export { chain } from "./chain"
-export { chain_ } from "./chain_"
-export { checkDescriptor } from "./checkDescriptor"
-export { checkInterrupt } from "./checkInterrupt"
 export { collectAll, collectAllPar, collectAllParN } from "./collectAll"
 export { collectAllUnit, collectAllUnitPar, collectAllUnitParN } from "./collectAllUnit"
+export {
+  access,
+  accessM,
+  chain,
+  chain_,
+  checkDescriptor,
+  checkInterrupt,
+  effectAsync,
+  effectAsyncOption,
+  effectPartial,
+  effectTotal,
+  foldCauseM,
+  foldCauseM_,
+  fork,
+  forkDaemon,
+  forkIn,
+  forkScopeWith,
+  halt,
+  interruptStatus,
+  interruptStatus_,
+  provideAll,
+  provideAll_,
+  raceWith,
+  succeed,
+  suspend,
+  suspendPartial,
+  unit,
+  yieldNow
+} from "./core"
 export { IO, RIO, RUIO, SIO, SRIO, SRUIO, SUIO, UIO } from "./defaults"
 export { delay } from "./delay"
 export { delay_ } from "./delay_"
@@ -88,12 +111,8 @@ export {
   SyncR,
   SyncRE
 } from "./effect"
-export { effectAsync } from "./effectAsync"
 export { effectAsyncInterrupt } from "./effectAsyncInterrupt"
-export { effectAsyncOption } from "./effectAsyncOption"
 export { effectMaybeAsyncInterrupt } from "./effectMaybeAsyncInterrupt"
-export { effectPartial } from "./effectPartial"
-export { effectTotal } from "./effectTotal"
 export { either } from "./either"
 export { ensuring } from "./ensuring"
 export { environment } from "./environment"
@@ -112,8 +131,6 @@ export { first } from "./first"
 export { flatten } from "./flatten"
 export { fold } from "./fold"
 export { foldCause } from "./foldCause"
-export { foldCauseM } from "./foldCauseM"
-export { foldCauseM_ } from "./foldCauseM_"
 export { foldCause_ } from "./foldCause_"
 export { foldM } from "./foldM"
 export { foldM_ } from "./foldM_"
@@ -132,18 +149,11 @@ export { foreachUnitPar_ } from "./foreachUnitPar_"
 export { foreachUnit_ } from "./foreachUnit_"
 export { foreach_ } from "./foreach_"
 export { forever } from "./forever"
-export { fork } from "./fork"
-export { forkDaemon } from "./forkDaemon"
-export { forkIn } from "./forkIn"
-export { forkScopeWith } from "./forkScopeWith"
 export { fromEither } from "./fromEither"
-export { halt } from "./halt"
 export { ifM } from "./ifM"
 export { interrupt } from "./interrupt"
 export { interruptAs } from "./interruptAs"
 export { interruptible } from "./interruptible"
-export { interruptStatus } from "./interruptStatus"
-export { interruptStatus_ } from "./interruptStatus_"
 export { map } from "./map"
 export { mapErrorCause, mapErrorCause_ } from "./mapErrorCause"
 export { asSomeError, mapError, mapError_ } from "./mapError_"
@@ -159,12 +169,9 @@ export { orDieWith } from "./orDieWith"
 export { orDieWith_ } from "./orDieWith_"
 export { orElse_ } from "./orElse_"
 export { provide, provide_ } from "./provide"
-export { provideAll } from "./provideAll"
-export { provideAll_ } from "./provideAll_"
 export { provideSome, provideSome_ } from "./provideSome"
 export { provideSomeLayer, provideSomeLayer_ } from "./provideSomeLayer"
 export { race, raceEither, raceEither_, raceFirst, race_ } from "./race"
-export { raceWith } from "./raceWith"
 export { repeat, repeatOrElseEither_, repeatOrElse_, repeat_ } from "./repeat"
 export { result } from "./result"
 export { retry, retryOrElseEither_, retryOrElse_, retry_ } from "./retry"
@@ -197,10 +204,7 @@ export {
 } from "./sequenceS"
 export { sequenceT, sequenceTPar, sequenceTParN } from "./sequenceT"
 export { sleep } from "./sleep"
-export { succeed } from "./succeed"
 export { summarized, summarized_ } from "./summarized"
-export { suspend } from "./suspend"
-export { suspendPartial } from "./suspendPartial"
 export { tap } from "./tap"
 export { tapBoth } from "./tapBoth"
 export { tapBoth_ } from "./tapBoth_"
@@ -216,12 +220,10 @@ export { tryOrElse_ } from "./tryOrElse_"
 export { uncause } from "./uncause"
 export { uninterruptible } from "./uninterruptible"
 export { InterruptStatusRestore, uninterruptibleMask } from "./uninterruptibleMask"
-export { unit } from "./unit"
 export { validate, validateExec, validatePar, validateParN } from "./validate"
 export { validateExec_, validateParN_, validatePar_, validate_ } from "./validate_"
 export { whenM } from "./whenM"
 export { whenM_ } from "./whenM_"
-export { yieldNow } from "./yieldNow"
 export { zip } from "./zip"
 export { zipFirst } from "./zipFirst"
 export { zipFirst_ } from "./zipFirst_"

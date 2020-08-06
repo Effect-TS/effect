@@ -22,12 +22,9 @@ import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
 
-import { accessM } from "./accessM"
-import { chain_ } from "./chain_"
-import { Async, Effect, _I, AsyncE } from "./effect"
-import { effectTotal } from "./effectTotal"
+import { accessM, chain_, effectTotal, succeed } from "./core"
+import { Async, AsyncE, Effect, _I } from "./effect"
 import { provideSome_ } from "./provideSome"
-import { succeed } from "./succeed"
 
 // empty function
 const empty = () => {

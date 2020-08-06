@@ -1,11 +1,9 @@
 import * as E from "../../Either"
 import { pipe } from "../../Function"
 import { absolve } from "../Effect/absolve"
-import { chain } from "../Effect/chain"
+import { chain, effectTotal, succeed } from "../Effect/core"
 import { Sync, SyncE } from "../Effect/effect"
-import { effectTotal } from "../Effect/effectTotal"
 import { fail } from "../Effect/fail"
-import { succeed } from "../Effect/succeed"
 import { AtomicReference } from "../Support/AtomicReference"
 
 import { modify } from "./atomic"

@@ -1,4 +1,4 @@
-import { chain_ } from "./chain_"
+import { chain_ } from "./core"
 import { fiberId } from "./fiberId"
 import { interruptAs } from "./interruptAs"
 
