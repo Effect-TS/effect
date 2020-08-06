@@ -7,13 +7,13 @@ export {
   chain_,
   checkDescriptor,
   effectTotal,
-  forkDaemon,
   halt,
   provideAll_,
   succeed as succeedNow,
   suspend,
   unit
 } from "../Effect/core"
+export { forkDaemon } from "../Effect/scope"
 export { die } from "../Effect/die"
 export { bind, let, of } from "../Effect/do"
 export { done } from "../Effect/done"

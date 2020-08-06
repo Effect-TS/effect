@@ -1,6 +1,5 @@
+import { pipe } from "../../../Function"
 import { And, BooleanProd, BooleanSum, Or, Prod, StringSum, Sum } from "../Newtype"
-
-import { pipe } from "@matechs/core/Function"
 
 export interface Closure<A> {
   combine(l: A, r: A): A

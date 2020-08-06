@@ -1,11 +1,6 @@
 export { asUnit } from "../../Effect/asUnit"
-export {
-  chain_,
-  forkDaemon,
-  halt,
-  succeed as succeedNow,
-  unit
-} from "../../Effect/core"
+export { chain_, halt, succeed as succeedNow, unit } from "../../Effect/core"
+export { forkDaemon } from "../../Effect/scope"
 export { done } from "../../Effect/done"
 export { Async, AsyncE } from "../../Effect/effect"
 export { fiberId } from "../../Effect/fiberId"
