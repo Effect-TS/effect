@@ -29,6 +29,7 @@ declare module "../abstract/HKT" {
  */
 export const Covariant: Covariant2<URI> = {
   URI,
+  Covariant: "Covariant",
   map: E.map
 }
 
@@ -37,6 +38,7 @@ export const Covariant: Covariant2<URI> = {
  */
 export const Any: Any2<URI> = {
   URI,
+  Any: "Any",
   any: () => E.right({})
 }
 
@@ -45,6 +47,7 @@ export const Any: Any2<URI> = {
  */
 export const AssociativeBoth: AssociativeBoth2<URI> = {
   URI,
+  AssociativeBoth: "AssociativeBoth",
   both: (fb) => (fa) => E.chain_(fa, (a) => E.map_(fb, (b) => tuple(a, b)))
 }
 
@@ -53,6 +56,7 @@ export const AssociativeBoth: AssociativeBoth2<URI> = {
  */
 export const AssociativeFailureBoth: AssociativeBoth2<FailureEitherURI> = {
   URI: FailureEitherURI,
+  AssociativeBoth: "AssociativeBoth",
   both: <E, B>(fb: FailureEither<E, B>) => <A>(
     fa: FailureEither<E, A>
   ): FailureEither<E, [A, B]> =>
@@ -78,6 +82,7 @@ export const AssociativeFailureBoth: AssociativeBoth2<FailureEitherURI> = {
  */
 export const AssociativeEither: AssociativeEither2<URI> = {
   URI,
+  AssociativeEither: "AssociativeEither",
   either: <E, B>(fb: E.Either<E, B>) => <A>(
     fa: E.Either<E, A>
   ): E.Either<E, E.Either<A, B>> =>
@@ -101,6 +106,7 @@ export const AssociativeEither: AssociativeEither2<URI> = {
  */
 export const AssociativeFailureEither: AssociativeEither2<FailureEitherURI> = {
   URI: FailureEitherURI,
+  AssociativeEither: "AssociativeEither",
   either: <E, B>(fb: Failure<E.Either<B, E>>) => <A>(
     fa: Failure<E.Either<A, E>>
   ): Failure<E.Either<E.Either<A, B>, E>> =>
@@ -117,6 +123,7 @@ export const AssociativeFailureEither: AssociativeEither2<FailureEitherURI> = {
 
 export const AssociativeFlatten: AssociativeFlatten2<URI> = {
   URI,
+  AssociativeFlatten: "AssociativeFlatten",
   flatten: E.flatten
 }
 

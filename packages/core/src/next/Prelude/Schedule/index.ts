@@ -1,6 +1,8 @@
 import { tuple } from "../../../Function"
 import * as S from "../../Schedule"
+import { Any4 } from "../abstract/Any"
 import { Applicative4 } from "../abstract/Applicative"
+import { AssociativeBoth4 } from "../abstract/AssociativeBoth"
 import { Contravariant4 } from "../abstract/Contravariant"
 import { Covariant4 } from "../abstract/Covariant"
 
@@ -27,19 +29,32 @@ declare module "../abstract/HKT" {
 
 export const ContravariantIn: Contravariant4<ScheduleInURI> = {
   URI: ScheduleInURI,
+  Contravariant: "Contravariant",
   contramap: S.contramap
 }
 
 export const Covariant: Covariant4<ScheduleURI> = {
   URI: ScheduleURI,
+  Covariant: "Covariant",
   map: S.map
 }
 
-export const Applicative: Applicative4<ScheduleURI> = {
+export const Any: Any4<ScheduleURI> = {
   URI: ScheduleURI,
-  map: S.map,
-  any: () => S.succeed({}),
+  Any: "Any",
+  any: () => S.succeed({})
+}
+
+export const AssociativeBoth: AssociativeBoth4<ScheduleURI> = {
+  URI: ScheduleURI,
+  AssociativeBoth: "AssociativeBoth",
   both: (fb) => (fa) => S.contramap_(S.both_(fa, fb), (e) => tuple(e, e))
+}
+
+export const Applicative: Applicative4<ScheduleURI> = {
+  ...Covariant,
+  ...Any,
+  ...AssociativeBoth
 }
 
 /**
