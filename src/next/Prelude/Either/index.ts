@@ -3,7 +3,7 @@ import { pipe, tuple } from "../../../Function"
 import { Failure } from "../Newtype"
 import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
-import { makeApplicative } from "../abstract/Applicative"
+import { makeApplicative, sequenceSF } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
@@ -39,7 +39,7 @@ export const Any = makeAny(EitherURI)({
   any: () => E.right({})
 })
 
-export const associativeBoth: <E, B>(
+export const zip: <E, B>(
   fb: E.Either<E, B>
 ) => <E1, A>(fa: E.Either<E1, A>) => E.Either<E | E1, readonly [A, B]> = (fb) => (fa) =>
   E.chain_(fa, (a) => E.map_(fb, (b) => tuple(a, b)))
@@ -48,10 +48,10 @@ export const associativeBoth: <E, B>(
  * The `AssociativeBoth` instance for `Either`.
  */
 export const AssociativeBoth = makeAssociativeBoth(EitherURI)({
-  both: associativeBoth
+  both: zip
 })
 
-export const associativeFailureBoth = <E, B>(fb: FailureEither<E, B>) => <E1, A>(
+export const zipFailure = <E, B>(fb: FailureEither<E, B>) => <E1, A>(
   fa: FailureEither<E1, A>
 ): FailureEither<E | E1, [A, B]> =>
   pipe(
@@ -74,10 +74,10 @@ export const associativeFailureBoth = <E, B>(fb: FailureEither<E, B>) => <E1, A>
  * The `AssociativeBoth` instance for a failed `Either`
  */
 export const AssociativeFailureBoth = makeAssociativeBoth(FailureEitherURI)({
-  both: associativeFailureBoth
+  both: zipFailure
 })
 
-export const associativeEither = <E, B>(fb: E.Either<E, B>) => <E1, A>(
+export const either = <E, B>(fb: E.Either<E, B>) => <E1, A>(
   fa: E.Either<E1, A>
 ): E.Either<E | E1, E.Either<A, B>> =>
   pipe(
@@ -97,10 +97,10 @@ export const associativeEither = <E, B>(fb: E.Either<E, B>) => <E1, A>(
  * The `AssociativeEither` instance for `Either`.
  */
 export const AssociativeEither = makeAssociativeEither(EitherURI)({
-  either: associativeEither
+  either
 })
 
-export const associativeFailureEither = <E, B>(fb: FailureEither<E, B>) => <E1, A>(
+export const eitherFailure = <E, B>(fb: FailureEither<E, B>) => <E1, A>(
   fa: FailureEither<E1, A>
 ): FailureEither<E | E1, E.Either<A, B>> =>
   pipe(
@@ -117,7 +117,7 @@ export const associativeFailureEither = <E, B>(fb: FailureEither<E, B>) => <E1, 
  * The `AssociativeEither` instance for a failed `Either`
  */
 export const AssociativeFailureEither = makeAssociativeEither(FailureEitherURI)({
-  either: associativeFailureEither
+  either: eitherFailure
 })
 
 export const AssociativeFlatten = makeAssociativeFlatten(EitherURI)({
@@ -135,6 +135,11 @@ export const Applicative = makeApplicative(EitherURI)(
  * The `Monad` instance for `Either`.
  */
 export const Monad = makeMonad(EitherURI)(intersect(Covariant, Any, AssociativeFlatten))
+
+/**
+ * Struct based applicative
+ */
+export const sequenceS = sequenceSF(Applicative)
 
 /**
  * API
