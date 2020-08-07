@@ -5,6 +5,7 @@ import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
+import { makeEnvironmental } from "../abstract/Environmental"
 import { makeMonad } from "../abstract/Monad"
 
 //
@@ -80,6 +81,13 @@ export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R,
  */
 export const ContravariantEnv = makeContravariant(ReaderEnvURI)({
   contramap: contramapEnv
+})
+
+/**
+ * The `Environmental` instance for `Reader<R, A>`.
+ */
+export const Environmental = makeEnvironmental(ReaderURI)({
+  access: F.access
 })
 
 /**
