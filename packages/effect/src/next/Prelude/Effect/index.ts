@@ -9,6 +9,7 @@ import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
+import { makeFail } from "../abstract/Fail"
 import { makeForeachable } from "../abstract/Foreachable"
 import { makeMonad } from "../abstract/Monad"
 
@@ -96,6 +97,13 @@ export const Environmental = makeEnvironmental(EffectURI)(
  * The `Monad` instance for `Effect`.
  */
 export const Monad = makeMonad(EffectURI)(intersect(Any, Covariant, AssociativeFlatten))
+
+/**
+ * The `Fail` instance for `Effect`.
+ */
+export const Fail = makeFail(EffectURI)({
+  fail: S.fail
+})
 
 /**
  * @category api
