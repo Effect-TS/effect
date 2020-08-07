@@ -1,6 +1,7 @@
 import {
   HasURI,
   HKT,
+  HKT2,
   Kind,
   Kind2,
   Kind3,
@@ -22,6 +23,11 @@ import {
 export interface AssociativeFlattenF<F> extends HasURI<F> {
   readonly AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <A>(fb: HKT<F, HKT<F, A>>) => HKT<F, A>
+}
+
+export interface AssociativeFlattenF2<F> extends HasURI<F> {
+  readonly AssociativeFlatten: "AssociativeFlatten"
+  readonly flatten: <E, A>(fb: HKT2<F, E, HKT2<F, E, A>>) => HKT2<F, E, A>
 }
 
 export interface AssociativeFlatten1<F extends URIS> extends HasURI<F> {
