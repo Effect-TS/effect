@@ -15,7 +15,7 @@ declare module "../abstract/HKT" {
   }
 }
 
-export function make<A>(identity: A, op: (y: A) => (x: A) => A): Identity<A> {
+export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identity<A> {
   return {
     combine: op,
     identity

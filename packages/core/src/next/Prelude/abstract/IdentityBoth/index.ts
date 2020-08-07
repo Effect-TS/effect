@@ -1,6 +1,6 @@
-import { Any, Any1, Any2, Any3, Any4, Any5, Any6 } from "../Any"
+import { AnyH, Any1, Any2, Any3, Any4, Any5, Any6 } from "../Any"
 import {
-  AssociativeBoth,
+  AssociativeBothH,
   AssociativeBoth1,
   AssociativeBoth2,
   AssociativeBoth3,
@@ -14,7 +14,7 @@ import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export type IdentityBoth<F> = AssociativeBoth<F> & Any<F>
+export type IdentityBothH<F> = AssociativeBothH<F> & AnyH<F>
 
 export type IdentityBoth1<F extends URIS> = AssociativeBoth1<F> & Any1<F>
 
@@ -48,7 +48,7 @@ export function makeIdentityBoth<URI extends URIS6>(
 ): (_: Omit<IdentityBoth6<URI>, "URI">) => IdentityBoth6<URI>
 export function makeIdentityBoth<URI>(
   URI: URI
-): (_: Omit<IdentityBoth<URI>, "URI">) => IdentityBoth<URI> {
+): (_: Omit<IdentityBothH<URI>, "URI">) => IdentityBothH<URI> {
   return (_) => ({
     URI,
     ..._

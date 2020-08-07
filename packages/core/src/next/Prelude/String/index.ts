@@ -6,14 +6,14 @@ import { StringSum, Sum } from "../Newtype"
 /**
  * @category closure
  */
-export const SumClosure = C.make<Sum<string>>((l, r) =>
+export const SumClosure = C.makeClosure<Sum<string>>((l, r) =>
   StringSum.wrap(`${StringSum.unwrap(l)}${StringSum.unwrap(r)}`)
 )
 
 /**
  * @category identity
  */
-export const SumIdentity = I.make(StringSum.wrap(""), SumClosure.combine)
+export const SumIdentity = I.makeIdentity(StringSum.wrap(""), SumClosure.combine)
 
 /**
  * @category equal

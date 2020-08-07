@@ -38,7 +38,7 @@ import {
  * compares strings by computing their lengths with the provided function and
  * comparing those.
  */
-export interface Contravariant<F> extends HasURI<F> {
+export interface ContravariantH<F> extends HasURI<F> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(f: (a: B) => A) => (fa: HKT<F, A>) => HKT<F, B>
 }
@@ -103,7 +103,7 @@ export function makeContravariant<URI extends URIS6>(
 ): (_: Omit<Contravariant6<URI>, "URI" | "Contravariant">) => Contravariant6<URI>
 export function makeContravariant<URI>(
   URI: URI
-): (_: Omit<Contravariant<URI>, "URI" | "Contravariant">) => Contravariant<URI> {
+): (_: Omit<ContravariantH<URI>, "URI" | "Contravariant">) => ContravariantH<URI> {
   return (_) => ({
     URI,
     Contravariant: "Contravariant",
