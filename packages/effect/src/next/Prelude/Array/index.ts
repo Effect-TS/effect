@@ -5,7 +5,7 @@ import { EqualURI, eqArray } from "../Equal"
 import { makeIdentity } from "../Identity"
 import { Sum } from "../Newtype"
 import { makeAny, succeedF } from "../abstract/Any"
-import { ApplicativeH, makeApplicative } from "../abstract/Applicative"
+import { ApplicativeF, makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
@@ -99,7 +99,7 @@ export const Monad = makeMonad(ArrayURI)({
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreach: <G>(G: ApplicativeH<G>) => <A, B>(f: (a: A) => HKT<G, B>) => (
+  foreach: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => (
     fa: readonly A[]
   ): HKT<G, readonly B[]> =>
     A.reduce_(fa, succeedF(G)([] as readonly B[]), (b, a) =>

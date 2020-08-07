@@ -1,5 +1,5 @@
 import {
-  CovariantH,
+  CovariantF,
   Covariant1,
   Covariant2,
   Covariant3,
@@ -27,7 +27,7 @@ import {
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export interface ForeachableH<F> extends CovariantH<F> {
+export interface ForeachableF<F> extends CovariantF<F> {
   readonly Foreachable: "Foreachable"
   readonly foreach: <A, B>(
     f: (a: A) => HKT<F, B>
@@ -96,7 +96,7 @@ export function makeForeachable<URI extends URIS6>(
 ): (_: Omit<Foreachable6<URI>, "URI" | "Foreachable">) => Foreachable6<URI>
 export function makeForeachable<URI>(
   URI: URI
-): (_: Omit<ForeachableH<URI>, "URI" | "Foreachable">) => ForeachableH<URI> {
+): (_: Omit<ForeachableF<URI>, "URI" | "Foreachable">) => ForeachableF<URI> {
   return (_) => ({
     URI,
     Foreachable: "Foreachable",
