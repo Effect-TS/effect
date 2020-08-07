@@ -252,8 +252,7 @@ export function runEitherState<S1>(
 }
 
 /**
- * Runs this computation with the specified initial state, returning either a
- * failure or the updated state and the result
+ * Runs this computation, returning either a failure or the result
  */
 export function runEither<E, A>(
   self: XPure<unknown, unknown, unknown, E, A>
