@@ -10,102 +10,102 @@ import { Foreachable3 } from "../abstract/Foreachable"
 import { HasURI } from "../abstract/HKT"
 import { Monad3 } from "../abstract/Monad"
 
-export const AsyncEnvURI = "AsyncEnv"
-export type AsyncEnvURI = typeof AsyncEnvURI
+export const EffectAsyncEnvURI = "EffectAsyncEnv"
+export type EffectAsyncEnvURI = typeof EffectAsyncEnvURI
 
-export const AsyncURI = "Async"
-export type AsyncURI = typeof AsyncURI
+export const EffectAsyncURI = "EffectAsync"
+export type EffectAsyncURI = typeof EffectAsyncURI
 
 declare module "../abstract/HKT" {
   interface URItoKind3<R, E, A> {
-    [AsyncEnvURI]: S.AsyncRE<A, E, R>
-    [AsyncURI]: S.AsyncRE<R, E, A>
+    [EffectAsyncEnvURI]: S.AsyncRE<A, E, R>
+    [EffectAsyncURI]: S.AsyncRE<R, E, A>
   }
 }
 
-export const HasAsyncURI: HasURI<AsyncURI> = {
-  URI: AsyncURI
+export const HasEffectAsyncURI: HasURI<EffectAsyncURI> = {
+  URI: EffectAsyncURI
 }
 
-export const HasContravariantURI: HasURI<AsyncEnvURI> = {
-  URI: AsyncEnvURI
+export const HasEffectContravariantURI: HasURI<EffectAsyncEnvURI> = {
+  URI: EffectAsyncEnvURI
 }
 
-export const ContravariantEnv: Contravariant3<AsyncEnvURI> = {
-  ...HasContravariantURI,
+export const ContravariantEnv: Contravariant3<EffectAsyncEnvURI> = {
   Contravariant: "Contravariant",
-  contramap: S.provideSome
+  contramap: S.provideSome,
+  ...HasEffectContravariantURI
 }
 
-export const Covariant: Covariant3<AsyncURI> = {
-  ...HasAsyncURI,
+export const Covariant: Covariant3<EffectAsyncURI> = {
   Covariant: "Covariant",
-  map: S.map
+  map: S.map,
+  ...HasEffectAsyncURI
 }
 
-export const AssociativeBoth: AssociativeBoth3<AsyncURI> = {
-  ...HasAsyncURI,
+export const AssociativeBoth: AssociativeBoth3<EffectAsyncURI> = {
   AssociativeBoth: "AssociativeBoth",
-  both: (fb) => (fa) => S.zip_(fa, fb)
+  both: (fb) => (fa) => S.zip_(fa, fb),
+  ...HasEffectAsyncURI
 }
 
-export const AssociativeBothPar: AssociativeBoth3<AsyncURI> = {
-  ...HasAsyncURI,
+export const AssociativeBothPar: AssociativeBoth3<EffectAsyncURI> = {
   AssociativeBoth: "AssociativeBoth",
-  both: (fb) => (fa) => S.zipPar_(fa, fb)
+  both: (fb) => (fa) => S.zipPar_(fa, fb),
+  ...HasEffectAsyncURI
 }
 
-export const Any: Any3<AsyncURI> = {
-  ...HasAsyncURI,
+export const Any: Any3<EffectAsyncURI> = {
   Any: "Any",
-  any: () => S.of
+  any: () => S.of,
+  ...HasEffectAsyncURI
 }
 
-export const Applicative: Applicative3<AsyncURI> = {
+export const Applicative: Applicative3<EffectAsyncURI> = {
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 }
 
-export const ApplicativePar: Applicative3<AsyncURI> = {
+export const ApplicativePar: Applicative3<EffectAsyncURI> = {
   ...Any,
   ...Covariant,
   ...AssociativeBothPar
 }
 
-export const AssociativeEither: AssociativeEither3<AsyncURI> = {
-  ...HasAsyncURI,
+export const AssociativeEither: AssociativeEither3<EffectAsyncURI> = {
   AssociativeEither: "AssociativeEither",
-  either: S.orElseEither
+  either: S.orElseEither,
+  ...HasEffectAsyncURI
 }
 
-export const Foreachable: Foreachable3<AsyncURI> = {
-  ...Covariant,
+export const Foreachable: Foreachable3<EffectAsyncURI> = {
   Foreachable: "Foreachable",
-  foreach: S.foreach
+  foreach: S.foreach,
+  ...Covariant
 }
 
-export const ForeachablePar: Foreachable3<AsyncURI> = {
-  ...Covariant,
+export const ForeachablePar: Foreachable3<EffectAsyncURI> = {
   Foreachable: "Foreachable",
-  foreach: S.foreachPar
+  foreach: S.foreachPar,
+  ...Covariant
 }
 
-export function ForeachableParN(n: number): Foreachable3<AsyncURI> {
+export function ForeachableParN(n: number): Foreachable3<EffectAsyncURI> {
   return {
-    ...Covariant,
     Foreachable: "Foreachable",
-    foreach: S.foreachParN(n)
+    foreach: S.foreachParN(n),
+    ...Covariant
   }
 }
 
-export const AssociativeFlatten: AssociativeFlatten3<AsyncURI> = {
-  URI: AsyncURI,
+export const AssociativeFlatten: AssociativeFlatten3<EffectAsyncURI> = {
   AssociativeFlatten: "AssociativeFlatten",
-  flatten: S.flatten
+  flatten: S.flatten,
+  ...HasEffectAsyncURI
 }
 
-export const Monad: Monad3<AsyncURI> = {
+export const Monad: Monad3<EffectAsyncURI> = {
   ...Any,
   ...Covariant,
   ...AssociativeFlatten

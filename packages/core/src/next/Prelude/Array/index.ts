@@ -10,7 +10,7 @@ import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
 import { AssociativeFlatten1 } from "../abstract/AssociativeFlatten"
 import * as COVA from "../abstract/Covariant"
 import { Derive11 } from "../abstract/Derive"
-import { HKT } from "../abstract/HKT"
+import { HasURI, HKT } from "../abstract/HKT"
 import * as IB from "../abstract/IdentityBoth"
 import * as M from "../abstract/Monad"
 import { Traversable1 } from "../abstract/Traversable"
@@ -51,37 +51,41 @@ export function Identity<A>(): I.Identity<readonly A[]> {
   return I.make<readonly A[]>([], Closure<A>().combine)
 }
 
+export const HasArrayURI: HasURI<URI> = {
+  URI
+}
+
 /**
  * The `Any` instance for `Array<A>`.
  */
 export const Any: Any1<URI> = {
-  URI,
   Any: "Any",
-  any: () => []
+  any: () => [],
+  ...HasArrayURI
 }
 
 /**
  * The `Covariant` instance for `Array<A>`.
  */
 export const Covariant: COVA.Covariant1<URI> = {
-  URI,
   Covariant: "Covariant",
-  map: A.map
+  map: A.map,
+  ...HasArrayURI
 }
 
 /**
  * The `Covariant` instance for `Array<A>`.
  */
 export const AssociativeFlatten: AssociativeFlatten1<URI> = {
-  URI,
   AssociativeFlatten: "AssociativeFlatten",
-  flatten: A.flatten
+  flatten: A.flatten,
+  ...HasArrayURI
 }
 
 export const AssociativeBoth: AssociativeBoth1<URI> = {
-  URI,
   AssociativeBoth: "AssociativeBoth",
-  both: (fb) => (fa) => A.zip_(fa, fb)
+  both: (fb) => (fa) => A.zip_(fa, fb),
+  ...HasArrayURI
 }
 
 /**

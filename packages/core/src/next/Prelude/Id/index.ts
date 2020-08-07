@@ -4,6 +4,7 @@ import { Any1 } from "../abstract/Any"
 import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
 import { AssociativeFlatten1 } from "../abstract/AssociativeFlatten"
 import { Covariant1 } from "../abstract/Covariant"
+import { HasURI } from "../abstract/HKT"
 import { IdentityFlatten1 } from "../abstract/IdentityFlatten"
 import { Monad1 } from "../abstract/Monad"
 
@@ -27,13 +28,17 @@ export function both<B>(fb: Id<B>) {
   return <A>(fa: Id<A>): Id<[A, B]> => Id.wrap(tuple(Id.unwrap(fa), Id.unwrap(fb)))
 }
 
+export const HasIdURI: HasURI<URI> = {
+  URI
+}
+
 /**
  * The `AssociativeBoth` instance for `Id`.
  */
 export const AssociativeBoth: AssociativeBoth1<URI> = {
-  URI,
   AssociativeBoth: "AssociativeBoth",
-  both
+  both,
+  ...HasIdURI
 }
 
 /**
@@ -47,18 +52,18 @@ export function flatten<A>(ffa: Id<Id<A>>) {
  * The `AssociativeFlatten` instance for `Id`.
  */
 export const AssociativeFlatten: AssociativeFlatten1<URI> = {
-  URI,
   AssociativeFlatten: "AssociativeFlatten",
-  flatten
+  flatten,
+  ...HasIdURI
 }
 
 /**
  * The `Any` instance for `Id`.
  */
 export const Any: Any1<URI> = {
-  URI,
   Any: "Any",
-  any: () => Id.wrap({})
+  any: () => Id.wrap({}),
+  ...HasIdURI
 }
 
 /**
@@ -72,9 +77,9 @@ export function map<A, B>(f: (a: A) => B): (fa: Id<A>) => Id<B> {
  * The `Covariant` instance for `Id`.
  */
 export const Covariant: Covariant1<URI> = {
-  URI,
   Covariant: "Covariant",
-  map
+  map,
+  ...HasIdURI
 }
 
 /**

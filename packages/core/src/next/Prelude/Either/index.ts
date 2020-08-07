@@ -7,6 +7,7 @@ import { AssociativeBoth2 } from "../abstract/AssociativeBoth"
 import { AssociativeEither2 } from "../abstract/AssociativeEither"
 import { AssociativeFlatten2 } from "../abstract/AssociativeFlatten"
 import { Covariant2 } from "../abstract/Covariant"
+import { HasURI } from "../abstract/HKT"
 import { Monad2 } from "../abstract/Monad"
 
 export const URI = "Either"
@@ -24,107 +25,125 @@ declare module "../abstract/HKT" {
   }
 }
 
+export const HasEitherURI: HasURI<URI> = {
+  URI
+}
+
+export const HasFailureEitherURI: HasURI<FailureEitherURI> = {
+  URI: FailureEitherURI
+}
+
 /**
  * The `Covariant` instance for `Either`.
  */
 export const Covariant: Covariant2<URI> = {
-  URI,
   Covariant: "Covariant",
-  map: E.map
+  map: E.map,
+  ...HasEitherURI
 }
 
 /**
  * The `Any` instance for `Either`.
  */
 export const Any: Any2<URI> = {
-  URI,
   Any: "Any",
-  any: () => E.right({})
+  any: () => E.right({}),
+  ...HasEitherURI
 }
+
+export const associativeBoth: <E, B>(
+  fb: E.Either<E, B>
+) => <A>(fa: E.Either<E, A>) => E.Either<E, readonly [A, B]> = (fb) => (fa) =>
+  E.chain_(fa, (a) => E.map_(fb, (b) => tuple(a, b)))
 
 /**
  * The `AssociativeBoth` instance for `Either`.
  */
 export const AssociativeBoth: AssociativeBoth2<URI> = {
-  URI,
   AssociativeBoth: "AssociativeBoth",
-  both: (fb) => (fa) => E.chain_(fa, (a) => E.map_(fb, (b) => tuple(a, b)))
+  both: associativeBoth,
+  ...HasEitherURI
 }
+
+export const associativeFailureBoth = <E, B>(fb: FailureEither<E, B>) => <A>(
+  fa: FailureEither<E, A>
+): FailureEither<E, [A, B]> =>
+  pipe(
+    fa,
+    Failure.unwrap,
+    E.swap,
+    E.chain((a) =>
+      pipe(
+        fb,
+        Failure.unwrap,
+        E.swap,
+        E.map((b) => tuple(a, b))
+      )
+    ),
+    E.swap,
+    Failure.wrap
+  )
 
 /**
  * The `AssociativeBoth` instance for a failed `Either`
  */
 export const AssociativeFailureBoth: AssociativeBoth2<FailureEitherURI> = {
-  URI: FailureEitherURI,
   AssociativeBoth: "AssociativeBoth",
-  both: <E, B>(fb: FailureEither<E, B>) => <A>(
-    fa: FailureEither<E, A>
-  ): FailureEither<E, [A, B]> =>
-    pipe(
-      fa,
-      Failure.unwrap,
-      E.swap,
-      E.chain((a) =>
-        pipe(
-          fb,
-          Failure.unwrap,
-          E.swap,
-          E.map((b) => tuple(a, b))
-        )
-      ),
-      E.swap,
-      Failure.wrap
-    )
+  both: associativeFailureBoth,
+  ...HasFailureEitherURI
 }
 
+export const associativeEither = <E, B>(fb: E.Either<E, B>) => <A>(
+  fa: E.Either<E, A>
+): E.Either<E, E.Either<A, B>> =>
+  pipe(
+    fa,
+    E.map((a) => E.left(a)),
+    E.swap,
+    E.chain(() =>
+      pipe(
+        fb,
+        E.map((a) => E.right(a)),
+        E.swap
+      )
+    ),
+    E.swap
+  )
 /**
  * The `AssociativeEither` instance for `Either`.
  */
 export const AssociativeEither: AssociativeEither2<URI> = {
-  URI,
   AssociativeEither: "AssociativeEither",
-  either: <E, B>(fb: E.Either<E, B>) => <A>(
-    fa: E.Either<E, A>
-  ): E.Either<E, E.Either<A, B>> =>
-    pipe(
-      fa,
-      E.map((a) => E.left(a)),
-      E.swap,
-      E.chain(() =>
-        pipe(
-          fb,
-          E.map((a) => E.right(a)),
-          E.swap
-        )
-      ),
-      E.swap
-    )
+  either: associativeEither,
+  ...HasEitherURI
 }
+
+export const associativeFailureEither = <E, B>(fb: FailureEither<E, B>) => <A>(
+  fa: FailureEither<E, A>
+): FailureEither<E, E.Either<A, B>> =>
+  pipe(
+    fa,
+    Failure.unwrap,
+    E.swap,
+    E.map(E.left),
+    E.chain(() => pipe(fb, Failure.unwrap, E.swap, E.map(E.right))),
+    E.swap,
+    Failure.wrap
+  )
 
 /**
  * The `AssociativeEither` instance for a failed `Either`
  */
 export const AssociativeFailureEither: AssociativeEither2<FailureEitherURI> = {
-  URI: FailureEitherURI,
   AssociativeEither: "AssociativeEither",
-  either: <E, B>(fb: Failure<E.Either<B, E>>) => <A>(
-    fa: Failure<E.Either<A, E>>
-  ): Failure<E.Either<E.Either<A, B>, E>> =>
-    pipe(
-      fa,
-      Failure.unwrap,
-      E.swap,
-      E.map(E.left),
-      E.chain(() => pipe(fb, Failure.unwrap, E.swap, E.map(E.right))),
-      E.swap,
-      Failure.wrap
-    )
+  either: associativeFailureEither,
+  ...HasFailureEitherURI
 }
 
 export const AssociativeFlatten: AssociativeFlatten2<URI> = {
-  URI,
   AssociativeFlatten: "AssociativeFlatten",
-  flatten: E.flatten
+  flatten: E.flatten,
+  ...HasEitherURI
 }
 
 /**
