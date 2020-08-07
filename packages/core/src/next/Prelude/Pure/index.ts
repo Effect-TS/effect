@@ -62,10 +62,18 @@ export const AssociativeFlatten = makeAssociativeFlatten(StateReaderErrorURI)({
  * Core exports
  */
 export {
+  bimap,
+  bimap_,
+  catchAll,
+  catchAll_,
   chain,
   chain_,
   fail,
+  foldM,
+  foldM_,
   map,
+  mapError,
+  mapError_,
   map_,
   runEither,
   runEitherState,
