@@ -1,6 +1,7 @@
 import { pipe } from "../src/Function"
 import { HasClock } from "../src/next/Clock"
 import * as T from "../src/next/Effect"
+import * as Has from "../src/next/Has"
 import * as L from "../src/next/Layer"
 import * as M from "../src/next/Managed"
 
@@ -11,8 +12,8 @@ export abstract class Calculator {
   abstract add(a: number, b: number): T.Sync<number>
 }
 
-export const HasConsole = T.has(Console)
-export const HasCalculator = T.has(Calculator)
+export const HasConsole = Has.has(Console)
+export const HasCalculator = Has.has(Calculator)
 
 export const withCalculatorM = T.accessServiceM(HasCalculator)
 export const withConsoleM = T.accessServiceM(HasConsole)

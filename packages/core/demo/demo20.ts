@@ -1,5 +1,6 @@
 import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
+import * as Has from "../src/next/Has"
 import * as L from "../src/next/Layer"
 
 export class MyService {
@@ -23,7 +24,7 @@ export class MyService {
   )
 }
 
-export const HasMyService = T.has(MyService)
+export const HasMyService = Has.has(MyService)
 
 export const hi = T.accessServiceM(HasMyService)((c) => c.hi)
 
