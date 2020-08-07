@@ -1,6 +1,6 @@
 import { HKT, Kind, URIS } from "../HKT"
 
-export interface Derive<F, Typeclass> {
+export interface DeriveH<F, Typeclass> {
   readonly Derive: "Derive"
   readonly derive: <A>(fa: HKT<Typeclass, A>) => HKT<Typeclass, HKT<F, A>>
 }
@@ -17,7 +17,7 @@ export function makeDerive<F extends URIS, Typeclass extends URIS>(
 export function makeDerive<F, Typeclass>(
   _: F,
   __: Typeclass
-): (_: Omit<Derive<F, Typeclass>, "Derive">) => Derive<F, Typeclass> {
+): (_: Omit<DeriveH<F, Typeclass>, "Derive">) => DeriveH<F, Typeclass> {
   return (_) => ({
     Derive: "Derive",
     ..._

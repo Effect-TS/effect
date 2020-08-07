@@ -15,7 +15,7 @@ import {
   Kind6
 } from "../HKT"
 
-export interface Invariant<F> extends HasURI<F> {
+export interface InvariantH<F> extends HasURI<F> {
   readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
@@ -112,7 +112,7 @@ export function makeInvariant<URI extends URIS6>(
 ): (_: Omit<Invariant6<URI>, "URI" | "Invariant">) => Invariant6<URI>
 export function makeInvariant<URI>(
   URI: URI
-): (_: Omit<Invariant<URI>, "URI" | "Invariant">) => Invariant<URI> {
+): (_: Omit<InvariantH<URI>, "URI" | "Invariant">) => InvariantH<URI> {
   return (_) => ({
     URI,
     Invariant: "Invariant",

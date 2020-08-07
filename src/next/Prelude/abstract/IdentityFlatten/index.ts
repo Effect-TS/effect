@@ -1,6 +1,6 @@
-import { Any, Any1, Any2, Any3, Any4, Any5, Any6 } from "../Any"
+import { AnyH, Any1, Any2, Any3, Any4, Any5, Any6 } from "../Any"
 import {
-  AssociativeFlatten,
+  AssociativeFlattenH,
   AssociativeFlatten1,
   AssociativeFlatten2,
   AssociativeFlatten3,
@@ -14,7 +14,7 @@ import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export type IdentityFlatten<F> = AssociativeFlatten<F> & Any<F>
+export type IdentityFlattenH<F> = AssociativeFlattenH<F> & AnyH<F>
 
 export type IdentityFlatten1<F extends URIS> = AssociativeFlatten1<F> & Any1<F>
 
@@ -48,7 +48,7 @@ export function makeIdentityFlatten<URI extends URIS6>(
 ): (_: Omit<IdentityFlatten6<URI>, "URI">) => IdentityFlatten6<URI>
 export function makeIdentityFlatten<URI>(
   URI: URI
-): (_: Omit<IdentityFlatten<URI>, "URI">) => IdentityFlatten<URI> {
+): (_: Omit<IdentityFlattenH<URI>, "URI">) => IdentityFlattenH<URI> {
   return (_) => ({
     URI,
     ..._

@@ -1,5 +1,5 @@
 import {
-  Covariant,
+  CovariantH,
   Covariant1,
   Covariant2,
   Covariant3,
@@ -9,7 +9,7 @@ import {
 } from "../Covariant"
 import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
 import {
-  IdentityFlatten,
+  IdentityFlattenH,
   IdentityFlatten1,
   IdentityFlatten2,
   IdentityFlatten3,
@@ -18,7 +18,7 @@ import {
   IdentityFlatten6
 } from "../IdentityFlatten"
 
-export type Monad<F> = IdentityFlatten<F> & Covariant<F>
+export type MonadH<F> = IdentityFlattenH<F> & CovariantH<F>
 
 export type Monad1<F extends URIS> = IdentityFlatten1<F> & Covariant1<F>
 
@@ -50,7 +50,7 @@ export function makeMonad<URI extends URIS5>(
 export function makeMonad<URI extends URIS6>(
   _: URI
 ): (_: Omit<Monad6<URI>, "URI">) => Monad6<URI>
-export function makeMonad<URI>(URI: URI): (_: Omit<Monad<URI>, "URI">) => Monad<URI> {
+export function makeMonad<URI>(URI: URI): (_: Omit<MonadH<URI>, "URI">) => MonadH<URI> {
   return (_) => ({
     URI,
     ..._

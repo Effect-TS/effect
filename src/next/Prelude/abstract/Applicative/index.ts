@@ -1,5 +1,5 @@
 import {
-  Covariant,
+  CovariantH,
   Covariant1,
   Covariant2,
   Covariant3,
@@ -9,7 +9,7 @@ import {
 } from "../Covariant"
 import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
 import {
-  IdentityBoth,
+  IdentityBothH,
   IdentityBoth1,
   IdentityBoth2,
   IdentityBoth3,
@@ -18,7 +18,7 @@ import {
   IdentityBoth6
 } from "../IdentityBoth"
 
-export type Applicative<F> = IdentityBoth<F> & Covariant<F>
+export type ApplicativeH<F> = IdentityBothH<F> & CovariantH<F>
 
 export type Applicative1<F extends URIS> = IdentityBoth1<F> & Covariant1<F>
 
@@ -52,7 +52,7 @@ export function makeApplicative<URI extends URIS6>(
 ): (_: Omit<Applicative6<URI>, "URI">) => Applicative6<URI>
 export function makeApplicative<URI>(
   URI: URI
-): (_: Omit<Applicative<URI>, "URI">) => Applicative<URI> {
+): (_: Omit<ApplicativeH<URI>, "URI">) => ApplicativeH<URI> {
   return (_) => ({
     URI,
     ..._

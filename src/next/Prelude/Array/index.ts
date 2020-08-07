@@ -1,17 +1,16 @@
 import * as A from "../../../Array"
 import { pipe } from "../../../Function"
-import * as C from "../Closure"
-import * as Eq from "../Equal"
-import * as I from "../Identity"
+import { makeClosure } from "../Closure"
+import { EqualURI, eqArray } from "../Equal"
+import { makeIdentity } from "../Identity"
 import { Sum } from "../Newtype"
-import { makeAny, succeed } from "../abstract/Any"
-import { makeApplicative } from "../abstract/Applicative"
+import { makeAny, succeedF } from "../abstract/Any"
+import { ApplicativeH, makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import * as COVA from "../abstract/Covariant"
+import { makeCovariant } from "../abstract/Covariant"
 import { makeDerive } from "../abstract/Derive"
 import { HKT } from "../abstract/HKT"
-import * as IB from "../abstract/IdentityBoth"
 import { makeMonad } from "../abstract/Monad"
 import { makeTraversable } from "../abstract/Traversable"
 
@@ -31,24 +30,26 @@ declare module "../abstract/HKT" {
 /**
  * The `Closure` for `Sum<Array<A>>`.
  */
-export function SumClosure<A>(): C.Closure<Sum<readonly A[]>> {
+export function SumClosure<A>() {
   return pipe(Sum.of<readonly A[]>(), (SumArray) =>
-    C.make((l, r) => SumArray.wrap([...SumArray.unwrap(l), ...SumArray.unwrap(r)]))
+    makeClosure<Sum<readonly A[]>>((l, r) =>
+      SumArray.wrap([...SumArray.unwrap(l), ...SumArray.unwrap(r)])
+    )
   )
 }
 
 /**
  * The `Closure` for `Array<A>`.
  */
-export function Closure<A>(): C.Closure<readonly A[]> {
-  return C.make((x, y) => [...x, ...y])
+export function Closure<A>() {
+  return makeClosure<A.Array<A>>((x, y) => [...x, ...y])
 }
 
 /**
  * The `Identity` for `Array<A>`.
  */
-export function Identity<A>(): I.Identity<readonly A[]> {
-  return I.make<readonly A[]>([], Closure<A>().combine)
+export function Identity<A>() {
+  return makeIdentity<A.Array<A>>([], Closure<A>().combine)
 }
 
 /**
@@ -61,7 +62,7 @@ export const Any = makeAny(ArrayURI)({
 /**
  * The `Covariant` instance for `Array<A>`.
  */
-export const Covariant = COVA.makeCovariant(ArrayURI)({
+export const Covariant = makeCovariant(ArrayURI)({
   map: A.map
 })
 
@@ -98,10 +99,10 @@ export const Monad = makeMonad(ArrayURI)({
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreach: <G>(G: IB.IdentityBoth<G> & COVA.Covariant<G>) => <A, B>(
-    f: (a: A) => HKT<G, B>
-  ) => (fa: readonly A[]): HKT<G, readonly B[]> =>
-    A.reduce_(fa, succeed(G)([] as readonly B[]), (b, a) =>
+  foreach: <G>(G: ApplicativeH<G>) => <A, B>(f: (a: A) => HKT<G, B>) => (
+    fa: readonly A[]
+  ): HKT<G, readonly B[]> =>
+    A.reduce_(fa, succeedF(G)([] as readonly B[]), (b, a) =>
       pipe(
         b,
         G.both(f(a)),
@@ -116,9 +117,9 @@ export const Traversable = makeTraversable(ArrayURI)({
  */
 export const Equal = makeDerive(
   ArrayURI,
-  Eq.EqualURI
+  EqualURI
 )({
-  derive: (eq) => Eq.array(eq)
+  derive: (eq) => eqArray(eq)
 })
 
 /**

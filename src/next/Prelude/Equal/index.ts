@@ -33,7 +33,7 @@ declare module "../abstract/HKT" {
  * to first compare the values for reference equality and then compare the
  * values for value equality.
  */
-export function make<A>(f: (x: A, y: A) => boolean): Equal<A> {
+export function makeEqual<A>(f: (x: A, y: A) => boolean): Equal<A> {
   return {
     equals: (y) => (x) => f(x, y)
   }
@@ -44,14 +44,14 @@ export function make<A>(f: (x: A, y: A) => boolean): Equal<A> {
  * no information, all values of type `Any` can be treated as equal to each
  * other.
  */
-export const anyEqual: Equal<unknown> = make(() => true)
+export const anyEqual: Equal<unknown> = makeEqual(() => true)
 
 /**
  * Equality for `Nothing` values. Note that since there are not values of
  * type `Nothing` the `equals` method of this instance can never be called
  * but it can be useful in deriving instances for more complex types.
  */
-export const nothingEqual: Equal<never> = make(() => false)
+export const nothingEqual: Equal<never> = makeEqual(() => false)
 
 /**
  * Constructs an `Equal[(A, B)]` given an `Equal[A]` and `Equal[B]` by first
@@ -59,7 +59,8 @@ export const nothingEqual: Equal<never> = make(() => false)
  * for equality, if necessary.
  */
 export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B]> {
-  return (fa) => make(([x0, x1], [y0, y1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
+  return (fa) =>
+    makeEqual(([x0, x1], [y0, y1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
 }
 
 /**
@@ -76,7 +77,7 @@ export const AssociativeBoth = makeAssociativeBoth(EqualURI)({
  */
 export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, B>> {
   return (fa) =>
-    make((ex, ey) =>
+    makeEqual((ex, ey) =>
       ex._tag === "Left" && ey._tag === "Left"
         ? fa.equals(ey.left)(ex.left)
         : ex._tag === "Right" && ey._tag === "Right"
@@ -97,7 +98,7 @@ export const AssociativeEither = makeAssociativeEither(EqualURI)({
  * `B` value into an `A` and the compare the `A` values for equality.
  */
 export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
-  return (fa) => make((x, y) => fa.equals(f(y))(f(x)))
+  return (fa) => makeEqual((x, y) => fa.equals(f(y))(f(x)))
 }
 
 /**
@@ -142,7 +143,7 @@ export const IdentityEither = makeIdentityEither(EqualURI)({
  * embodied in the implementation of `equals` for values of type `A`.
  */
 export function strict<A>() {
-  return make<A>((x, y) => x === y)
+  return makeEqual<A>((x, y) => x === y)
 }
 
 /**
@@ -163,7 +164,7 @@ export const symbol = strict<symbol>()
 /**
  * Derives an `Equal[Array[A]]` given an `Equal[A]`.
  */
-export function array<A>(EqA: Equal<A>): Equal<A.Array<A>> {
+export function eqArray<A>(EqA: Equal<A>): Equal<A.Array<A>> {
   return {
     equals: (y) => (x) => {
       if (x.length === y.length) {
