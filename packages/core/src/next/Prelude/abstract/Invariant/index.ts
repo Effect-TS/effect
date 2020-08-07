@@ -91,3 +91,31 @@ export interface Invariant6<F extends URIS6> extends HasURI<F> {
     g: <Y, X, S, R, E>(mb: Kind6<F, S, X, S, R, E, B>) => Kind6<F, Y, X, S, R, E, A>
   }
 }
+
+export function makeInvariant<URI extends URIS>(
+  _: URI
+): (_: Omit<Invariant1<URI>, "URI" | "Invariant">) => Invariant1<URI>
+export function makeInvariant<URI extends URIS2>(
+  _: URI
+): (_: Omit<Invariant2<URI>, "URI" | "Invariant">) => Invariant2<URI>
+export function makeInvariant<URI extends URIS3>(
+  _: URI
+): (_: Omit<Invariant3<URI>, "URI" | "Invariant">) => Invariant3<URI>
+export function makeInvariant<URI extends URIS4>(
+  _: URI
+): (_: Omit<Invariant4<URI>, "URI" | "Invariant">) => Invariant4<URI>
+export function makeInvariant<URI extends URIS5>(
+  _: URI
+): (_: Omit<Invariant5<URI>, "URI" | "Invariant">) => Invariant5<URI>
+export function makeInvariant<URI extends URIS6>(
+  _: URI
+): (_: Omit<Invariant6<URI>, "URI" | "Invariant">) => Invariant6<URI>
+export function makeInvariant<URI>(
+  URI: URI
+): (_: Omit<Invariant<URI>, "URI" | "Invariant">) => Invariant<URI> {
+  return (_) => ({
+    URI,
+    Invariant: "Invariant",
+    ..._
+  })
+}

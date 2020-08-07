@@ -89,3 +89,31 @@ export interface Traversable1<F extends URIS> extends Covariant1<F> {
   readonly Traversable: "Traversable"
   readonly foreach: Foreach1<F>
 }
+
+export function makeTraversable<URI extends URIS>(
+  _: URI
+): (_: Omit<Traversable1<URI>, "URI" | "Traversable">) => Traversable1<URI>
+// export function makeTraversable<URI extends URIS2>(
+//   _: URI
+// ): (_: Omit<Traversable2<URI>, "URI" | "Traversable">) => Traversable2<URI>
+// export function makeTraversable<URI extends URIS3>(
+//   _: URI
+// ): (_: Omit<Traversable3<URI>, "URI" | "Traversable">) => Traversable3<URI>
+// export function makeTraversable<URI extends URIS4>(
+//   _: URI
+// ): (_: Omit<Traversable4<URI>, "URI" | "Traversable">) => Traversable4<URI>
+// export function makeTraversable<URI extends URIS5>(
+//   _: URI
+// ): (_: Omit<Traversable5<URI>, "URI" | "Traversable">) => Traversable5<URI>
+// export function makeTraversable<URI extends URIS6>(
+//   _: URI
+// ): (_: Omit<Traversable6<URI>, "URI" | "Traversable">) => Traversable6<URI>
+export function makeTraversable<URI>(
+  URI: URI
+): (_: Omit<Traversable<URI>, "URI" | "Traversable">) => Traversable<URI> {
+  return (_) => ({
+    URI,
+    Traversable: "Traversable",
+    ..._
+  })
+}

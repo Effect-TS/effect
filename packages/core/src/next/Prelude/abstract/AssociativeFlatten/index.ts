@@ -61,3 +61,45 @@ export interface AssociativeFlatten6<F extends URIS6> extends HasURI<F> {
     fb: Kind6<F, Y, X, S, R, E, Kind6<F, Y, X, S, R, E, A>>
   ) => Kind6<F, Y, X, S, R, E, A>
 }
+
+export function makeAssociativeFlatten<URI extends URIS>(
+  _: URI
+): (
+  _: Omit<AssociativeFlatten1<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten1<URI>
+export function makeAssociativeFlatten<URI extends URIS2>(
+  _: URI
+): (
+  _: Omit<AssociativeFlatten2<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten2<URI>
+export function makeAssociativeFlatten<URI extends URIS3>(
+  _: URI
+): (
+  _: Omit<AssociativeFlatten3<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten3<URI>
+export function makeAssociativeFlatten<URI extends URIS4>(
+  _: URI
+): (
+  _: Omit<AssociativeFlatten4<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten4<URI>
+export function makeAssociativeFlatten<URI extends URIS5>(
+  _: URI
+): (
+  _: Omit<AssociativeFlatten5<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten5<URI>
+export function makeAssociativeFlatten<URI extends URIS6>(
+  _: URI
+): (
+  _: Omit<AssociativeFlatten6<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten6<URI>
+export function makeAssociativeFlatten<URI>(
+  URI: URI
+): (
+  _: Omit<AssociativeFlatten<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlatten<URI> {
+  return (_) => ({
+    URI,
+    AssociativeFlatten: "AssociativeFlatten",
+    ..._
+  })
+}

@@ -1,15 +1,15 @@
 import * as S from "../../Effect"
 import { EffectURI } from "../../Effect"
-import { Any4 } from "../abstract/Any"
-import { Applicative4 } from "../abstract/Applicative"
-import { AssociativeBoth4 } from "../abstract/AssociativeBoth"
-import { AssociativeEither4 } from "../abstract/AssociativeEither"
-import { AssociativeFlatten4 } from "../abstract/AssociativeFlatten"
-import { Contravariant4 } from "../abstract/Contravariant"
-import { Covariant4 } from "../abstract/Covariant"
-import { Foreachable4 } from "../abstract/Foreachable"
+import { makeAny } from "../abstract/Any"
+import { makeApplicative } from "../abstract/Applicative"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeEither } from "../abstract/AssociativeEither"
+import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
+import { Contravariant4, makeContravariant } from "../abstract/Contravariant"
+import { makeCovariant } from "../abstract/Covariant"
+import { makeForeachable } from "../abstract/Foreachable"
 import { HasURI } from "../abstract/HKT"
-import { Monad4 } from "../abstract/Monad"
+import { makeMonad } from "../abstract/Monad"
 
 /**
  * @category definitions
@@ -27,10 +27,6 @@ declare module "../abstract/HKT" {
   }
 }
 
-export const HasEffectEnvURI: HasURI<EffectEnvURI> = {
-  URI: EffectEnvURI
-}
-
 export const HasEffectURI: HasURI<EffectURI> = {
   URI: EffectURI
 }
@@ -38,84 +34,72 @@ export const HasEffectURI: HasURI<EffectURI> = {
 /**
  * The `Contravariant` instance for `EffectEnv`.
  */
-export const ContravariantEnv: Contravariant4<EffectEnvURI> = {
-  Contravariant: "Contravariant",
-  contramap: S.provideSome,
-  ...HasEffectEnvURI
-}
+export const ContravariantEnv: Contravariant4<EffectEnvURI> = makeContravariant(
+  EffectEnvURI
+)({
+  contramap: S.provideSome
+})
 
 /**
  * The `Covariant` instance for `Effect`.
  */
-export const Covariant: Covariant4<EffectURI> = {
-  Covariant: "Covariant",
-  map: S.map,
-  ...HasEffectURI
-}
+export const Covariant = makeCovariant(EffectURI)({
+  map: S.map
+})
 
 /**
  * The `Any` instance for `Effect`.
  */
-export const Any: Any4<EffectURI> = {
-  Any: "Any",
-  any: () => S.of,
-  ...HasEffectURI
-}
+export const Any = makeAny(EffectURI)({
+  any: () => S.of
+})
 
 /**
  * The `AssociativeBoth` instance for `Effect`.
  */
-export const AssociativeBoth: AssociativeBoth4<EffectURI> = {
-  AssociativeBoth: "AssociativeBoth",
-  both: (fb) => (fa) => S.zip_(fa, fb),
-  ...HasEffectURI
-}
+export const AssociativeBoth = makeAssociativeBoth(EffectURI)({
+  both: (fb) => (fa) => S.zip_(fa, fb)
+})
 
 /**
  * The `Applicative` instance for `Effect`.
  */
-export const Applicative: Applicative4<EffectURI> = {
+export const Applicative = makeApplicative(EffectURI)({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
-}
+})
 
 /**
  * The `AssociativeEither` instance for `Effect`.
  */
-export const AssociativeEither: AssociativeEither4<EffectURI> = {
-  AssociativeEither: "AssociativeEither",
-  either: S.orElseEither,
-  ...HasEffectURI
-}
+export const AssociativeEither = makeAssociativeEither(EffectURI)({
+  either: S.orElseEither
+})
 
 /**
  * The `AssociativeFlatten` instance for `Effect`.
  */
-export const AssociativeFlatten: AssociativeFlatten4<EffectURI> = {
-  AssociativeFlatten: "AssociativeFlatten",
-  flatten: S.flatten,
-  ...HasEffectURI
-}
+export const AssociativeFlatten = makeAssociativeFlatten(EffectURI)({
+  flatten: S.flatten
+})
 
 /**
  * The `Foreachable` instance for `Effect`.
  */
-export const Foreachable: Foreachable4<EffectURI> = {
-  Foreachable: "Foreachable",
+export const Foreachable = makeForeachable(EffectURI)({
   foreach: S.foreach,
-  ...HasEffectURI,
   ...Covariant
-}
+})
 
 /**
  * The `Monad` instance for `Effect`.
  */
-export const Monad: Monad4<EffectURI> = {
+export const Monad = makeMonad(EffectURI)({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
-}
+})
 
 /**
  * @category api

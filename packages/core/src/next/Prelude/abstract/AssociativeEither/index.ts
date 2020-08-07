@@ -64,3 +64,45 @@ export interface AssociativeEither6<F extends URIS6> extends HasURI<F> {
     fb: Kind6<F, Y, X, S, R, E, B>
   ) => <A>(fa: Kind6<F, Y, X, S, R, E, A>) => Kind6<F, Y, X, S, R, E, E.Either<A, B>>
 }
+
+export function makeAssociativeEither<URI extends URIS>(
+  _: URI
+): (
+  _: Omit<AssociativeEither1<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither1<URI>
+export function makeAssociativeEither<URI extends URIS2>(
+  _: URI
+): (
+  _: Omit<AssociativeEither2<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither2<URI>
+export function makeAssociativeEither<URI extends URIS3>(
+  _: URI
+): (
+  _: Omit<AssociativeEither3<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither3<URI>
+export function makeAssociativeEither<URI extends URIS4>(
+  _: URI
+): (
+  _: Omit<AssociativeEither4<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither4<URI>
+export function makeAssociativeEither<URI extends URIS5>(
+  _: URI
+): (
+  _: Omit<AssociativeEither5<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither5<URI>
+export function makeAssociativeEither<URI extends URIS6>(
+  _: URI
+): (
+  _: Omit<AssociativeEither6<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither6<URI>
+export function makeAssociativeEither<URI>(
+  URI: URI
+): (
+  _: Omit<AssociativeEither<URI>, "URI" | "AssociativeEither">
+) => AssociativeEither<URI> {
+  return (_) => ({
+    URI,
+    AssociativeEither: "AssociativeEither",
+    ..._
+  })
+}

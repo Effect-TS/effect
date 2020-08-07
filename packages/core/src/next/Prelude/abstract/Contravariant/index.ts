@@ -82,3 +82,31 @@ export interface Contravariant6<F extends URIS6> extends HasURI<F> {
     f: (a: B) => A
   ) => <Y, X, S, R, E>(fa: Kind6<F, Y, X, S, R, E, A>) => Kind6<F, Y, X, S, R, E, B>
 }
+
+export function makeContravariant<URI extends URIS>(
+  _: URI
+): (_: Omit<Contravariant1<URI>, "URI" | "Contravariant">) => Contravariant1<URI>
+export function makeContravariant<URI extends URIS2>(
+  _: URI
+): (_: Omit<Contravariant2<URI>, "URI" | "Contravariant">) => Contravariant2<URI>
+export function makeContravariant<URI extends URIS3>(
+  _: URI
+): (_: Omit<Contravariant3<URI>, "URI" | "Contravariant">) => Contravariant3<URI>
+export function makeContravariant<URI extends URIS4>(
+  _: URI
+): (_: Omit<Contravariant4<URI>, "URI" | "Contravariant">) => Contravariant4<URI>
+export function makeContravariant<URI extends URIS5>(
+  _: URI
+): (_: Omit<Contravariant5<URI>, "URI" | "Contravariant">) => Contravariant5<URI>
+export function makeContravariant<URI extends URIS6>(
+  _: URI
+): (_: Omit<Contravariant6<URI>, "URI" | "Contravariant">) => Contravariant6<URI>
+export function makeContravariant<URI>(
+  URI: URI
+): (_: Omit<Contravariant<URI>, "URI" | "Contravariant">) => Contravariant<URI> {
+  return (_) => ({
+    URI,
+    Contravariant: "Contravariant",
+    ..._
+  })
+}

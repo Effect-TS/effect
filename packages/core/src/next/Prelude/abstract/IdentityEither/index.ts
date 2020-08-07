@@ -27,3 +27,30 @@ export type IdentityEither4<F extends URIS4> = AssociativeEither4<F> & None4<F>
 export type IdentityEither5<F extends URIS5> = AssociativeEither5<F> & None5<F>
 
 export type IdentityEither6<F extends URIS6> = AssociativeEither6<F> & None6<F>
+
+export function makeIdentityEither<URI extends URIS>(
+  _: URI
+): (_: Omit<IdentityEither1<URI>, "URI">) => IdentityEither1<URI>
+export function makeIdentityEither<URI extends URIS2>(
+  _: URI
+): (_: Omit<IdentityEither2<URI>, "URI">) => IdentityEither2<URI>
+export function makeIdentityEither<URI extends URIS3>(
+  _: URI
+): (_: Omit<IdentityEither3<URI>, "URI">) => IdentityEither3<URI>
+export function makeIdentityEither<URI extends URIS4>(
+  _: URI
+): (_: Omit<IdentityEither4<URI>, "URI">) => IdentityEither4<URI>
+export function makeIdentityEither<URI extends URIS5>(
+  _: URI
+): (_: Omit<IdentityEither5<URI>, "URI">) => IdentityEither5<URI>
+export function makeIdentityEither<URI extends URIS6>(
+  _: URI
+): (_: Omit<IdentityEither6<URI>, "URI">) => IdentityEither6<URI>
+export function makeIdentityEither<URI>(
+  URI: URI
+): (_: Omit<IdentityEither<URI>, "URI">) => IdentityEither<URI> {
+  return (_) => ({
+    URI,
+    ..._
+  })
+}

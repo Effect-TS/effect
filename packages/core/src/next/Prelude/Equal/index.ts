@@ -1,13 +1,12 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
-import { Any1 } from "../abstract/Any"
-import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
-import { AssociativeEither1 } from "../abstract/AssociativeEither"
-import { Contravariant1 } from "../abstract/Contravariant"
-import { HasURI } from "../abstract/HKT"
-import { IdentityBoth1 } from "../abstract/IdentityBoth"
-import { IdentityEither1 } from "../abstract/IdentityEither"
-import { None1 } from "../abstract/None"
+import { Any1, makeAny } from "../abstract/Any"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeEither } from "../abstract/AssociativeEither"
+import { makeContravariant } from "../abstract/Contravariant"
+import { makeIdentityBoth } from "../abstract/IdentityBoth"
+import { makeIdentityEither } from "../abstract/IdentityEither"
+import { makeNone } from "../abstract/None"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be
@@ -20,12 +19,12 @@ export interface Equal<A> {
   readonly equals: (y: A) => (x: A) => boolean
 }
 
-export const URI = "Equal"
-export type URI = typeof URI
+export const EqualURI = "Equal"
+export type EqualURI = typeof EqualURI
 
 declare module "../abstract/HKT" {
   interface URItoKind<A> {
-    [URI]: Equal<A>
+    [EqualURI]: Equal<A>
   }
 }
 
@@ -63,18 +62,12 @@ export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B
   return (fa) => make(([x0, x1], [y0, y1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
 }
 
-export const HasEqualURI: HasURI<URI> = {
-  URI
-}
-
 /**
  * The `AssociativeBoth` instance for `Equal`.
  */
-export const AssociativeBoth: AssociativeBoth1<URI> = {
-  AssociativeBoth: "AssociativeBoth",
-  both,
-  ...HasEqualURI
-}
+export const AssociativeBoth = makeAssociativeBoth(EqualURI)({
+  both
+})
 
 /**
  * Constructs an `Equal[Either[A, B]]` given an `Equal[A]` and an
@@ -94,11 +87,9 @@ export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, 
 /**
  * The `AssociativeEither` instance for `Equal`.
  */
-export const AssociativeEither: AssociativeEither1<URI> = {
-  AssociativeEither: "AssociativeEither",
-  either,
-  ...HasEqualURI
-}
+export const AssociativeEither = makeAssociativeEither(EqualURI)({
+  either
+})
 
 /**
  * Constructs an `Equal[B]` given an `Equal[A]` and a function `f` to
@@ -112,45 +103,39 @@ export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
 /**
  * The `Contravariant` instance for `Equal`.
  */
-export const Contravariant: Contravariant1<URI> = {
-  Contravariant: "Contravariant",
-  contramap,
-  ...HasEqualURI
-}
+export const Contravariant = makeContravariant(EqualURI)({
+  contramap
+})
 
 /**
  * The `Any` instance for `Equal`.
  */
-export const Any: Any1<URI> = {
-  Any: "Any",
-  any: () => anyEqual,
-  ...HasEqualURI
-}
+export const Any: Any1<EqualURI> = makeAny(EqualURI)({
+  any: () => anyEqual
+})
 
 /**
  * The `IdentityBoth` instance for `Equal`.
  */
-export const IdentityBoth: IdentityBoth1<URI> = {
+export const IdentityBoth = makeIdentityBoth(EqualURI)({
   ...Any,
   ...AssociativeBoth
-}
+})
 
 /**
  * The `None` instance for `Equal`.
  */
-export const None: None1<URI> = {
-  None: "None",
-  none: () => nothingEqual,
-  ...HasEqualURI
-}
+export const None = makeNone(EqualURI)({
+  none: () => nothingEqual
+})
 
 /**
  * The `IdentityEither` instance for `Equal`.
  */
-export const IdentityEither: IdentityEither1<URI> = {
+export const IdentityEither = makeIdentityEither(EqualURI)({
   ...None,
   ...AssociativeEither
-}
+})
 
 /**
  * Constructs an `Equal[A]` that uses the default notion of equality

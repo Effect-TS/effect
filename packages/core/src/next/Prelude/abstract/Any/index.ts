@@ -90,3 +90,29 @@ export function succeed<F>(F: Any<F> & Covariant<F>): <A>(a: A) => HKT<F, A> {
       F.map(() => a)
     )
 }
+
+export function makeAny<URI extends URIS>(
+  _: URI
+): (_: Omit<Any1<URI>, "URI" | "Any">) => Any1<URI>
+export function makeAny<URI extends URIS2>(
+  _: URI
+): (_: Omit<Any2<URI>, "URI" | "Any">) => Any2<URI>
+export function makeAny<URI extends URIS3>(
+  _: URI
+): (_: Omit<Any3<URI>, "URI" | "Any">) => Any3<URI>
+export function makeAny<URI extends URIS4>(
+  _: URI
+): (_: Omit<Any4<URI>, "URI" | "Any">) => Any4<URI>
+export function makeAny<URI extends URIS5>(
+  _: URI
+): (_: Omit<Any5<URI>, "URI" | "Any">) => Any5<URI>
+export function makeAny<URI extends URIS6>(
+  _: URI
+): (_: Omit<Any6<URI>, "URI" | "Any">) => Any6<URI>
+export function makeAny<URI>(URI: URI): (_: Omit<Any<URI>, "URI" | "Any">) => Any<URI> {
+  return (_) => ({
+    URI,
+    Any: "Any",
+    ..._
+  })
+}

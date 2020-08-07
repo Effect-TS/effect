@@ -27,3 +27,30 @@ export type IdentityBoth4<F extends URIS4> = AssociativeBoth4<F> & Any4<F>
 export type IdentityBoth5<F extends URIS5> = AssociativeBoth5<F> & Any5<F>
 
 export type IdentityBoth6<F extends URIS6> = AssociativeBoth6<F> & Any6<F>
+
+export function makeIdentityBoth<URI extends URIS>(
+  _: URI
+): (_: Omit<IdentityBoth1<URI>, "URI">) => IdentityBoth1<URI>
+export function makeIdentityBoth<URI extends URIS2>(
+  _: URI
+): (_: Omit<IdentityBoth2<URI>, "URI">) => IdentityBoth2<URI>
+export function makeIdentityBoth<URI extends URIS3>(
+  _: URI
+): (_: Omit<IdentityBoth3<URI>, "URI">) => IdentityBoth3<URI>
+export function makeIdentityBoth<URI extends URIS4>(
+  _: URI
+): (_: Omit<IdentityBoth4<URI>, "URI">) => IdentityBoth4<URI>
+export function makeIdentityBoth<URI extends URIS5>(
+  _: URI
+): (_: Omit<IdentityBoth5<URI>, "URI">) => IdentityBoth5<URI>
+export function makeIdentityBoth<URI extends URIS6>(
+  _: URI
+): (_: Omit<IdentityBoth6<URI>, "URI">) => IdentityBoth6<URI>
+export function makeIdentityBoth<URI>(
+  URI: URI
+): (_: Omit<IdentityBoth<URI>, "URI">) => IdentityBoth<URI> {
+  return (_) => ({
+    URI,
+    ..._
+  })
+}
