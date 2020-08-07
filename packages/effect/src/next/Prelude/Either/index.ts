@@ -1,13 +1,13 @@
 import * as E from "../../../Either"
 import { tuple, pipe } from "../../../Function"
-import { Any2 } from "../Any"
-import { Applicative2 } from "../Applicative"
-import { AssociativeBoth2 } from "../AssociativeBoth"
-import { AssociativeEither2 } from "../AssociativeEither"
-import { AssociativeFlatten2 } from "../AssociativeFlatten"
-import { Covariant2 } from "../Covariant"
-import { Monad2 } from "../Monad"
 import { Failure } from "../Newtype"
+import { Any2 } from "../abstract/Any"
+import { Applicative2 } from "../abstract/Applicative"
+import { AssociativeBoth2 } from "../abstract/AssociativeBoth"
+import { AssociativeEither2 } from "../abstract/AssociativeEither"
+import { AssociativeFlatten2 } from "../abstract/AssociativeFlatten"
+import { Covariant2 } from "../abstract/Covariant"
+import { Monad2 } from "../abstract/Monad"
 
 export const URI = "Either"
 export type URI = typeof URI
@@ -17,7 +17,7 @@ export type FailureEitherURI = typeof FailureEitherURI
 
 export type FailureEither<E, A> = Failure<E.Either<A, E>>
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind2<E, A> {
     [URI]: E.Either<E, A>
     [FailureEitherURI]: FailureEither<E, A>
