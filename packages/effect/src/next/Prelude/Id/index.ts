@@ -1,3 +1,4 @@
+import { tuple } from "../../../Function"
 import { Generic, genericDef } from "../Newtype"
 import { Any1 } from "../abstract/Any"
 import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
@@ -10,7 +11,7 @@ export const Id = genericDef("@newtype/Id")
 
 export interface Id<A> extends Generic<A, typeof Id> {}
 
-export const URI = "Id"
+export const URI = Id.URI
 export type URI = typeof URI
 
 declare module "../abstract/HKT" {
@@ -20,11 +21,25 @@ declare module "../abstract/HKT" {
 }
 
 /**
+ * Zips A & B into [A, B]
+ */
+export function both<B>(fb: Id<B>) {
+  return <A>(fa: Id<A>): Id<[A, B]> => Id.wrap(tuple(Id.unwrap(fa), Id.unwrap(fb)))
+}
+
+/**
  * The `AssociativeBoth` instance for `Id`.
  */
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
-  both: <B>(fb: Id<B>) => <A>(fa: Id<A>) => Id.wrap([Id.unwrap(fa), Id.unwrap(fb)])
+  both
+}
+
+/**
+ * Flatten Id<Id<A>> => Id<A>
+ */
+export function flatten<A>(ffa: Id<Id<A>>) {
+  return Id.unwrap(ffa)
 }
 
 /**
@@ -32,7 +47,7 @@ export const AssociativeBoth: AssociativeBoth1<URI> = {
  */
 export const AssociativeFlatten: AssociativeFlatten1<URI> = {
   URI,
-  flatten: (ffa) => Id.unwrap(ffa)
+  flatten
 }
 
 /**
@@ -44,11 +59,18 @@ export const Any: Any1<URI> = {
 }
 
 /**
+ * Apply f: A => B to Id<A> getting Id<B>
+ */
+export function map<A, B>(f: (a: A) => B): (fa: Id<A>) => Id<B> {
+  return (fa) => Id.wrap(f(Id.unwrap(fa)))
+}
+
+/**
  * The `Covariant` instance for `Id`.
  */
 export const Covariant: Covariant1<URI> = {
   URI,
-  map: (f) => (fa) => Id.wrap(f(Id.unwrap(fa)))
+  map
 }
 
 /**
