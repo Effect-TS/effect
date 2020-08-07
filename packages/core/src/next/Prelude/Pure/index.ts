@@ -1,3 +1,4 @@
+import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
@@ -82,26 +83,23 @@ export const AssociativeFlatten = makeAssociativeFlatten(StateReaderErrorURI)({
  * The `Environmental` instance for `XPure`.
  */
 export const Environmental = makeEnvironmental(XPureURI)({
-  access: F.access
+  access: F.access,
+  provide: F.provideAll
 })
 
 /**
  * The `Monad` instance for `StateReaderError`.
  */
-export const Monad = makeMonad(StateReaderErrorURI)({
-  ...Any,
-  ...AssociativeFlatten,
-  ...Covariant
-})
+export const Monad = makeMonad(StateReaderErrorURI)(
+  intersect(Any, Covariant, AssociativeFlatten)
+)
 
 /**
  * The `Applicative` instance for `StateReaderError`.
  */
-export const Applicative = makeApplicative(StateReaderErrorURI)({
-  ...Any,
-  ...AssociativeBoth,
-  ...Covariant
-})
+export const Applicative = makeApplicative(StateReaderErrorURI)(
+  intersect(Any, AssociativeBoth, Covariant)
+)
 
 /**
  * Core exports
