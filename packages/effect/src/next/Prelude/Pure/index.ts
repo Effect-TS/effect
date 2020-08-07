@@ -3,6 +3,7 @@ import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
+import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeMonad } from "../abstract/Monad"
 
@@ -11,12 +12,18 @@ import * as F from "./core"
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
+export const XPureStateInURI = "XPureIn"
+export type XPureStateInURI = typeof XPureStateInURI
+
 export const StateReaderErrorURI = "StateReaderError"
 export type StateReaderErrorURI = typeof StateReaderErrorURI
 
 declare module "../abstract/HKT" {
   interface URItoKind5<X, S, R, E, A> {
     [XPureURI]: F.XPure<X, S, R, E, A>
+  }
+  interface URItoKind5<X, S, R, E, A> {
+    [XPureStateInURI]: F.XPure<A, S, R, E, X>
   }
   interface URItoKind4<S, R, E, A> {
     [StateReaderErrorURI]: F.XPure<S, S, R, E, A>
@@ -35,6 +42,13 @@ export const Any = makeAny(XPureURI)({
  */
 export const Covariant = makeCovariant(XPureURI)({
   map: F.map
+})
+
+/**
+ * The `Contravariant` instance for `XPure[x, S2, R, E, A]`
+ */
+export const ContravariantStateIn = makeContravariant(XPureStateInURI)({
+  contramap: (f) => (fa) => pipe(fa, F.contramapState(f))
 })
 
 /**
@@ -88,6 +102,7 @@ export {
   catchAll_,
   chain,
   chain_,
+  contramapState,
   fail,
   foldM,
   foldM_,
@@ -95,6 +110,7 @@ export {
   mapError,
   mapError_,
   map_,
+  modify,
   run,
   runEither,
   runIO,
@@ -106,5 +122,7 @@ export {
   runState_,
   run_,
   succeed,
+  unit,
+  update,
   XPure
 } from "./core"
