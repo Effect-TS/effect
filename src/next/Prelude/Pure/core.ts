@@ -493,3 +493,34 @@ export const unit = <S, S1 = S>() => succeed<void, S, S1>(undefined)
 export function contramapState<S0, S1>(f: (s: S0) => S1) {
   return <S2, R, E, A>(self: XPure<S1, S2, R, E, A>) => chain_(update(f), () => self)
 }
+
+/**
+ * Provides this computation with its required environment.
+ */
+export function provideAll<R>(r: R) {
+  return <S1, S2, E, A>(self: XPure<S1, S2, R, E, A>): XPure<S1, S2, unknown, E, A> =>
+    new Provide(r, self)
+}
+
+/**
+ * Access the environment monadically
+ */
+export function accessM<R, S1, S2, R1, E, A>(
+  f: (_: R) => XPure<S1, S2, R1, E, A>
+): XPure<S1, S2, R1 & R, E, A> {
+  return new Access<S1, S2, R1 & R, E, A>(f)
+}
+
+/**
+ * Access the environment with the function f
+ */
+export function access<R, A, S, S1 = S>(f: (_: R) => A): XPure<S, S1, R, never, A> {
+  return accessM((r: R) => succeed(f(r)))
+}
+
+/**
+ * Access the environment
+ */
+export function environment<R>(): <S, S1 = S>() => XPure<S, S1, R, never, R> {
+  return () => accessM((r: R) => succeed(r))
+}

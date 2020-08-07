@@ -96,6 +96,8 @@ export const Applicative = makeApplicative(StateReaderErrorURI)({
  * Core exports
  */
 export {
+  access,
+  accessM,
   bimap,
   bimap_,
   catchAll,
@@ -103,6 +105,7 @@ export {
   chain,
   chain_,
   contramapState,
+  environment,
   fail,
   foldM,
   foldM_,
@@ -111,6 +114,7 @@ export {
   mapError_,
   map_,
   modify,
+  provideAll,
   run,
   runEither,
   runIO,
