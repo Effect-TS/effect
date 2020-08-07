@@ -463,3 +463,33 @@ export function mapError_<S1, S2, R, E, A, E1>(
 ) {
   return catchAll_(self, (e) => fail(f(e)))
 }
+
+/**
+ * Constructs a computation from the specified modify function.
+ */
+export function modify<S1, S2, A>(
+  f: (s: S1) => readonly [S2, A]
+): XPure<S1, S2, unknown, never, A> {
+  return new Modify(f)
+}
+
+/**
+ * Constructs a computation from the specified update function.
+ */
+export function update<S1, S2>(f: (s: S1) => S2): XPure<S1, S2, unknown, never, void> {
+  return modify((s) => [f(s), undefined])
+}
+
+/**
+ * Constructs a computation that always returns the `Unit` value, passing the
+ * state through unchanged.
+ */
+export const unit = <S, S1 = S>() => succeed<void, S, S1>(undefined)
+
+/**
+ * Transforms the initial state of this computation` with the specified
+ * function.
+ */
+export function contramapState<S0, S1>(f: (s: S0) => S1) {
+  return <S2, R, E, A>(self: XPure<S1, S2, R, E, A>) => chain_(update(f), () => self)
+}
