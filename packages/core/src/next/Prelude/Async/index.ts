@@ -1,11 +1,11 @@
 import * as S from "../../Effect"
-import { Applicative3 } from "../Applicative"
-import { AssociativeBoth3 } from "../AssociativeBoth"
-import { AssociativeEither3 } from "../AssociativeEither"
-import { Contravariant3 } from "../Contravariant"
-import { Covariant3 } from "../Covariant"
-import { Foreachable3 } from "../Foreachable"
-import { Monad3 } from "../Monad"
+import { Applicative3 } from "../abstract/Applicative"
+import { AssociativeBoth3 } from "../abstract/AssociativeBoth"
+import { AssociativeEither3 } from "../abstract/AssociativeEither"
+import { Contravariant3 } from "../abstract/Contravariant"
+import { Covariant3 } from "../abstract/Covariant"
+import { Foreachable3 } from "../abstract/Foreachable"
+import { Monad3 } from "../abstract/Monad"
 
 export const AsyncEnvURI = "AsyncEnv"
 export type AsyncEnvURI = typeof AsyncEnvURI
@@ -13,7 +13,7 @@ export type AsyncEnvURI = typeof AsyncEnvURI
 export const AsyncURI = "Async"
 export type AsyncURI = typeof AsyncURI
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind3<R, E, A> {
     [AsyncEnvURI]: S.AsyncRE<A, E, R>
     [AsyncURI]: S.AsyncRE<R, E, A>

@@ -1,8 +1,8 @@
 import { tuple } from "../../../Function"
 import * as S from "../../Schedule"
-import { Applicative4 } from "../Applicative"
-import { Contravariant4 } from "../Contravariant"
-import { Covariant4 } from "../Covariant"
+import { Applicative4 } from "../abstract/Applicative"
+import { Contravariant4 } from "../abstract/Contravariant"
+import { Covariant4 } from "../abstract/Covariant"
 
 /**
  * @category definitions
@@ -17,7 +17,7 @@ export type CovariantURI = typeof CovariantURI
 export const ApplicativeURI = "ApplicativeSchedule"
 export type ApplicativeURI = typeof ApplicativeURI
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind4<S, R, E, A> {
     [ContravariantURI]: S.Schedule<S, R, A, E>
     [CovariantURI]: S.Schedule<S, R, E, A>

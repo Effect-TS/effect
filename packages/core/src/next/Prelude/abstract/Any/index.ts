@@ -1,4 +1,4 @@
-import { pipe } from "../../../Function"
+import { pipe } from "../../../../Function"
 import {
   Covariant1,
   Covariant2,

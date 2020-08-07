@@ -1,19 +1,19 @@
 import * as A from "../../../Array"
 import { pipe } from "../../../Function"
-import { Any1, succeed } from "../Any"
-import { Applicative1 } from "../Applicative"
-import { AssociativeBoth1 } from "../AssociativeBoth"
-import { AssociativeFlatten1 } from "../AssociativeFlatten"
-import * as C from "../Closure"
-import * as COVA from "../Covariant"
-import { Derive11 } from "../Derive"
 import * as Eq from "../Equal"
-import { HKT } from "../HKT"
-import * as I from "../Identity"
-import * as IB from "../IdentityBoth"
-import * as M from "../Monad"
 import { Sum } from "../Newtype"
-import { Traversable1 } from "../Traversable"
+import { Any1, succeed } from "../abstract/Any"
+import { Applicative1 } from "../abstract/Applicative"
+import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
+import { AssociativeFlatten1 } from "../abstract/AssociativeFlatten"
+import * as C from "../abstract/Closure"
+import * as COVA from "../abstract/Covariant"
+import { Derive11 } from "../abstract/Derive"
+import { HKT } from "../abstract/HKT"
+import * as I from "../abstract/Identity"
+import * as IB from "../abstract/IdentityBoth"
+import * as M from "../abstract/Monad"
+import { Traversable1 } from "../abstract/Traversable"
 
 /**
  * @category definitions
@@ -22,7 +22,7 @@ import { Traversable1 } from "../Traversable"
 export const URI = "Array"
 export type URI = typeof URI
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind<A> {
     [URI]: A.Array<A>
   }
