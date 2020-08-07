@@ -1,4 +1,3 @@
-import { pipe, tuple } from "../../../Function"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
@@ -12,8 +11,11 @@ import * as F from "./core"
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
-export const XPureStateInURI = "XPureIn"
-export type XPureStateInURI = typeof XPureStateInURI
+export const XPureInputURI = "XPureInput"
+export type XPureInputURI = typeof XPureInputURI
+
+export const XPureEnvURI = "XPureEnv"
+export type XPureEnvURI = typeof XPureEnvURI
 
 export const StateReaderErrorURI = "StateReaderError"
 export type StateReaderErrorURI = typeof StateReaderErrorURI
@@ -23,7 +25,10 @@ declare module "../abstract/HKT" {
     [XPureURI]: F.XPure<X, S, R, E, A>
   }
   interface URItoKind5<X, S, R, E, A> {
-    [XPureStateInURI]: F.XPure<A, S, R, E, X>
+    [XPureEnvURI]: F.XPure<X, S, A, E, R>
+  }
+  interface URItoKind5<X, S, R, E, A> {
+    [XPureInputURI]: F.XPure<A, S, R, E, X>
   }
   interface URItoKind4<S, R, E, A> {
     [StateReaderErrorURI]: F.XPure<S, S, R, E, A>
@@ -47,24 +52,22 @@ export const Covariant = makeCovariant(XPureURI)({
 /**
  * The `Contravariant` instance for `XPure[x, S2, R, E, A]`
  */
-export const ContravariantStateIn = makeContravariant(XPureStateInURI)({
-  contramap: (f) => (fa) => pipe(fa, F.contramapState(f))
+export const ContravariantInput = makeContravariant(XPureInputURI)({
+  contramap: F.contramapState
+})
+
+/**
+ * The `Contravariant` instance for `XPure[S1, S2, x, E, A]`
+ */
+export const ContravariantEnv = makeContravariant(XPureEnvURI)({
+  contramap: F.contramapEnv
 })
 
 /**
  * The `AssociativeBoth` instance for `StateReaderError`.
  */
 export const AssociativeBoth = makeAssociativeBoth(StateReaderErrorURI)({
-  both: (fb) => (fa) =>
-    pipe(
-      fa,
-      F.chain((a) =>
-        pipe(
-          fb,
-          F.map((b) => tuple(a, b))
-        )
-      )
-    )
+  both: F.zip
 })
 
 /**
@@ -104,6 +107,7 @@ export {
   catchAll_,
   chain,
   chain_,
+  contramapEnv,
   contramapState,
   environment,
   fail,
@@ -128,5 +132,9 @@ export {
   succeed,
   unit,
   update,
-  XPure
+  XPure,
+  zip,
+  zipWith,
+  zipWith_,
+  zip_
 } from "./core"

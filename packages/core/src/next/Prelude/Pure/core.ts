@@ -495,6 +495,15 @@ export function contramapState<S0, S1>(f: (s: S0) => S1) {
 }
 
 /**
+ * Transforms the initial state of this computation` with the specified
+ * function.
+ */
+export function contramapEnv<R0, R1>(f: (s: R0) => R1) {
+  return <S1, S2, E, A>(self: XPure<S1, S2, R1, E, A>) =>
+    accessM((r: R0) => provideAll(f(r))(self))
+}
+
+/**
  * Provides this computation with its required environment.
  */
 export function provideAll<R>(r: R) {
@@ -523,4 +532,51 @@ export function access<R, A, S, S1 = S>(f: (_: R) => A): XPure<S, S1, R, never, 
  */
 export function environment<R>(): <S, S1 = S>() => XPure<S, S1, R, never, R> {
   return () => accessM((r: R) => succeed(r))
+}
+
+/**
+ * Combines this computation with the specified computation, passing the
+ * updated state from this computation to that computation and combining the
+ * results of both using the specified function.
+ */
+export function zipWith<S2, S3, R1, E1, A, B, C>(
+  that: XPure<S2, S3, R1, E1, B>,
+  f: (a: A, b: B) => C
+) {
+  return <S1, R, E>(self: XPure<S1, S2, R, E, A>): XPure<S1, S3, R & R1, E1 | E, C> =>
+    zipWith_(self, that, f)
+}
+
+/**
+ * Combines this computation with the specified computation, passing the
+ * updated state from this computation to that computation and combining the
+ * results of both using the specified function.
+ */
+export function zipWith_<S1, S2, R, E, A, S3, R1, E1, B, C>(
+  self: XPure<S1, S2, R, E, A>,
+  that: XPure<S2, S3, R1, E1, B>,
+  f: (a: A, b: B) => C
+) {
+  return chain_(self, (a) => map_(that, (b) => f(a, b)))
+}
+
+/**
+ * Combines this computation with the specified computation, passing the
+ * updated state from this computation to that computation and combining the
+ * results of both into a tuple.
+ */
+export function zip<S2, S3, R1, E1, B>(that: XPure<S2, S3, R1, E1, B>) {
+  return <S1, R, E, A>(self: XPure<S1, S2, R, E, A>) => zip_(self, that)
+}
+
+/**
+ * Combines this computation with the specified computation, passing the
+ * updated state from this computation to that computation and combining the
+ * results of both into a tuple.
+ */
+export function zip_<S1, S2, R, E, A, S3, R1, E1, B>(
+  self: XPure<S1, S2, R, E, A>,
+  that: XPure<S2, S3, R1, E1, B>
+) {
+  return zipWith_(self, that, (a, b) => [a, b] as const)
 }
