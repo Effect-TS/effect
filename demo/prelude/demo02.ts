@@ -1,7 +1,7 @@
 import { pipe } from "../../src/Function"
 import * as A from "../../src/next/Prelude/Array"
-import * as Async from "../../src/next/Prelude/Async"
 import * as T from "../../src/next/Prelude/Effect"
+import * as Async from "../../src/next/Prelude/EffectAsync"
 
 pipe(
   A.range(0, 10),
