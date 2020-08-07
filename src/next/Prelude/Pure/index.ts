@@ -1,13 +1,9 @@
-import { intersect } from "../Utils"
 import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
-import { makeApplicative } from "../abstract/Applicative"
-import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
-import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeContravariantInput } from "../abstract/ContravariantInput"
 import { makeCovariant } from "../abstract/Covariant"
-import { makeMonad } from "../abstract/Monad"
+import { makeFail } from "../abstract/Fail"
 
 import * as F from "./core"
 
@@ -55,20 +51,6 @@ export const ContravariantEnv = makeContravariantEnv(XPureURI)({
 })
 
 /**
- * The `AssociativeBoth` instance for `StateReaderError`.
- */
-export const AssociativeBoth = makeAssociativeBoth(StateReaderErrorURI)({
-  both: F.zip
-})
-
-/**
- * The `AssociativeBoth` instance for `StateReaderError`.
- */
-export const AssociativeFlatten = makeAssociativeFlatten(StateReaderErrorURI)({
-  flatten: (ffa) => F.chain_(ffa, (x) => x)
-})
-
-/**
  * The `Access` instance for `XPure`.
  */
 export const Access = makeAccess(XPureURI)({
@@ -77,18 +59,11 @@ export const Access = makeAccess(XPureURI)({
 })
 
 /**
- * The `Monad` instance for `StateReaderError`.
+ * The `Fail` instance for `XPure`.
  */
-export const Monad = makeMonad(StateReaderErrorURI)(
-  intersect(Any, Covariant, AssociativeFlatten)
-)
-
-/**
- * The `Applicative` instance for `StateReaderError`.
- */
-export const Applicative = makeApplicative(StateReaderErrorURI)(
-  intersect(Any, AssociativeBoth, Covariant)
-)
+export const Fail = makeFail(XPureURI)({
+  fail: F.fail
+})
 
 /**
  * Core exports
