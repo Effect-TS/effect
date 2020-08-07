@@ -64,7 +64,7 @@ class Fold<S1, S2, S3, R, E1, E2, A, B> extends XPure<S1, S3, R, E2, B> {
   constructor(
     readonly value: XPure<S1, S2, R, E1, A>,
     readonly failure: (e: E1) => XPure<S1, S3, R, E2, B>,
-    readonly success: (a: A) => XPure<S1, S3, R, E2, B>
+    readonly success: (a: A) => XPure<S2, S3, R, E2, B>
   ) {
     super()
   }
@@ -294,7 +294,7 @@ export function succeed<A, S, S1 = S>(a: A): XPure<S, S1, unknown, never, A> {
  * Constructs a computation that always succeeds with the specified value,
  * passing the state through unchanged.
  */
-export function fail<E, S, S1 = S>(a: E): XPure<S, S1, unknown, E, never> {
+export function fail<E>(a: E): XPure<unknown, never, unknown, E, never> {
   return new Fail(a)
 }
 
@@ -315,4 +315,93 @@ export function map_<S1, R, E, A, S2, B>(self: XPure<S1, S2, R, E, A>, f: (a: A)
 export function map<A, B>(f: (a: A) => B) {
   return <S1, S2, R, E>(self: XPure<S1, S2, R, E, A>) =>
     chain_(self, (a) => succeed(f(a)))
+}
+
+/**
+ * Recovers from errors by accepting one computation to execute for the case
+ * of an error, and one computation to execute for the case of success.
+ */
+export function foldM_<S1, S2, R, E, A, S3, R1, E1, B, S4, R2, E2, C>(
+  self: XPure<S1, S2, R, E, A>,
+  failure: (e: E) => XPure<S1, S3, R1, E1, B>,
+  success: (a: A) => XPure<S2, S4, R2, E2, C>
+): XPure<S1, S3 | S4, R & R1 & R2, E1 | E2, B | C> {
+  return new Fold(
+    self as XPure<S1, S2, R & R1 & R2, E, A>,
+    failure as (e: E) => XPure<S1, S3 | S4, R1 & R2, E1 | E2, B | C>,
+    success
+  )
+}
+
+/**
+ * Recovers from errors by accepting one computation to execute for the case
+ * of an error, and one computation to execute for the case of success.
+ */
+export function foldM<S1, S2, E, A, S3, R1, E1, B, S4, R2, E2, C>(
+  failure: (e: E) => XPure<S1, S3, R1, E1, B>,
+  success: (a: A) => XPure<S2, S4, R2, E2, C>
+) {
+  return <R>(self: XPure<S1, S2, R, E, A>) => foldM_(self, failure, success)
+}
+
+/**
+ * Recovers from all errors.
+ */
+export function catchAll<S1, E, S3, R1, E1, B>(
+  failure: (e: E) => XPure<S1, S3, R1, E1, B>
+) {
+  return <S2, R, A>(self: XPure<S1, S2, R, E, A>) => catchAll_(self, failure)
+}
+
+/**
+ * Recovers from all errors.
+ */
+export function catchAll_<S1, S2, R, E, A, S3, R1, E1, B>(
+  self: XPure<S1, S2, R, E, A>,
+  failure: (e: E) => XPure<S1, S3, R1, E1, B>
+) {
+  return foldM_(self, failure, (a) => succeed(a))
+}
+
+/**
+ * Returns a computation whose error and success channels have been mapped
+ * by the specified functions, `f` and `g`.
+ */
+export function bimap<E, A, E1, A1>(f: (e: E) => E1, g: (a: A) => A1) {
+  return <S1, S2, R>(self: XPure<S1, S2, R, E, A>) => bimap_(self, f, g)
+}
+
+/**
+ * Returns a computation whose error and success channels have been mapped
+ * by the specified functions, `f` and `g`.
+ */
+export function bimap_<S1, S2, R, E, A, E1, A1>(
+  self: XPure<S1, S2, R, E, A>,
+  f: (e: E) => E1,
+  g: (a: A) => A1
+) {
+  return foldM_(
+    self,
+    (e) => fail(f(e)),
+    (a) => succeed(g(a))
+  )
+}
+
+/**
+ * Transforms the error type of this computation with the specified
+ * function.
+ */
+export function mapError<E, E1>(f: (e: E) => E1) {
+  return <S1, S2, R, A>(self: XPure<S1, S2, R, E, A>) => mapError_(self, f)
+}
+
+/**
+ * Transforms the error type of this computation with the specified
+ * function.
+ */
+export function mapError_<S1, S2, R, E, A, E1>(
+  self: XPure<S1, S2, R, E, A>,
+  f: (e: E) => E1
+) {
+  return catchAll_(self, (e) => fail(f(e)))
 }
