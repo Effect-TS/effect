@@ -6,10 +6,10 @@ import * as I from "../Identity"
 import { Sum } from "../Newtype"
 import { makeAny, succeed } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
-import { AssociativeBoth1, makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import * as COVA from "../abstract/Covariant"
-import { Derive11 } from "../abstract/Derive"
+import { makeDerive } from "../abstract/Derive"
 import { HKT } from "../abstract/HKT"
 import * as IB from "../abstract/IdentityBoth"
 import { makeMonad } from "../abstract/Monad"
@@ -72,9 +72,7 @@ export const AssociativeFlatten = makeAssociativeFlatten(ArrayURI)({
   flatten: A.flatten
 })
 
-export const AssociativeBoth: AssociativeBoth1<ArrayURI> = makeAssociativeBoth(
-  ArrayURI
-)({
+export const AssociativeBoth = makeAssociativeBoth(ArrayURI)({
   both: (fb) => (fa) => A.zip_(fa, fb)
 })
 
@@ -116,10 +114,12 @@ export const Traversable = makeTraversable(ArrayURI)({
 /**
  * The `Derive<Array, Equal>` instance for `Equal<Array<A>>`.
  */
-export const Equal: Derive11<ArrayURI, Eq.EqualURI> = {
-  Derive: "Derive",
+export const Equal = makeDerive(
+  ArrayURI,
+  Eq.EqualURI
+)({
   derive: (eq) => Eq.array(eq)
-}
+})
 
 /**
  * @category api
