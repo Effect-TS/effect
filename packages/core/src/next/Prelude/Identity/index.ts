@@ -10,8 +10,8 @@ export interface Identity<A> extends Associative<A> {
 }
 
 declare module "../abstract/HKT" {
-  interface URItoKind<A> {
-    [URI]: Identity<A>
+  interface URItoKind<Out> {
+    [URI]: Identity<Out>
   }
 }
 

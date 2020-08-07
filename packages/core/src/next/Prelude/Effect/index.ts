@@ -1,12 +1,14 @@
 import * as S from "../../Effect"
 import { EffectURI } from "../../Effect"
+import { intersect } from "../Utils"
+import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { Contravariant4, makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
+import { makeEnvironmental } from "../abstract/Environmental"
 import { makeForeachable } from "../abstract/Foreachable"
 import { HasURI } from "../abstract/HKT"
 import { makeMonad } from "../abstract/Monad"
@@ -18,27 +20,15 @@ import { makeMonad } from "../abstract/Monad"
 export const EffectEnvURI = "EffectEnv"
 export type EffectEnvURI = typeof EffectEnvURI
 
-export type EffectEnv<S, R, E, A> = S.Effect<S, A, E, R>
-
 declare module "../abstract/HKT" {
-  interface URItoKind4<S, R, E, A> {
-    [EffectEnvURI]: EffectEnv<S, R, E, A>
-    [EffectURI]: S.Effect<S, R, E, A>
+  interface URItoKind4<St, Env, Err, Out> {
+    [EffectURI]: S.Effect<St, Env, Err, Out>
   }
 }
 
 export const HasEffectURI: HasURI<EffectURI> = {
   URI: EffectURI
 }
-
-/**
- * The `Contravariant` instance for `EffectEnv`.
- */
-export const ContravariantEnv: Contravariant4<EffectEnvURI> = makeContravariant(
-  EffectEnvURI
-)({
-  contramap: S.provideSome
-})
 
 /**
  * The `Covariant` instance for `Effect`.
@@ -91,6 +81,21 @@ export const Foreachable = makeForeachable(EffectURI)({
   foreach: S.foreach,
   ...Covariant
 })
+
+/**
+ * The `Access` instance for `Effect`.
+ */
+export const Access = makeAccess(EffectURI)({
+  access: S.access,
+  provide: S.provideAll
+})
+
+/**
+ * The `Environmental` instance for `Effect`.
+ */
+export const Environmental = makeEnvironmental(EffectURI)(
+  intersect(Access, AssociativeFlatten)
+)
 
 /**
  * The `Monad` instance for `Effect`.

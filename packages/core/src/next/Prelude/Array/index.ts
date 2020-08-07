@@ -22,8 +22,8 @@ export const ArrayURI = "Array"
 export type ArrayURI = typeof ArrayURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind<A> {
-    [ArrayURI]: A.Array<A>
+  interface URItoKind<Out> {
+    [ArrayURI]: A.Array<Out>
   }
 }
 
