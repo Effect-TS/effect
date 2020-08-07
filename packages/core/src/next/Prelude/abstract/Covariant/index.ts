@@ -37,7 +37,7 @@ import {
  * `string => number` that returns the length of a string, then we can construct
  * a `Array<number>` with the length of each string.
  */
-export interface CovariantH<F> extends HasURI<F> {
+export interface CovariantF<F> extends HasURI<F> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(f: (a: A) => B) => { (fa: HKT<F, A>): HKT<F, B> }
 }
@@ -100,7 +100,7 @@ export function makeCovariant<URI extends URIS6>(
 ): (_: Omit<Covariant6<URI>, "URI" | "Covariant">) => Covariant6<URI>
 export function makeCovariant<URI>(
   URI: URI
-): (_: Omit<CovariantH<URI>, "URI" | "Covariant">) => CovariantH<URI> {
+): (_: Omit<CovariantF<URI>, "URI" | "Covariant">) => CovariantF<URI> {
   return (_) => ({
     URI,
     Covariant: "Covariant",

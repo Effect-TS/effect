@@ -1,5 +1,5 @@
 import {
-  AssociativeEitherH,
+  AssociativeEitherF,
   AssociativeEither1,
   AssociativeEither2,
   AssociativeEither3,
@@ -8,13 +8,13 @@ import {
   AssociativeEither6
 } from "../AssociativeEither"
 import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
-import { NoneH, None1, None2, None3, None4, None5, None6 } from "../None"
+import { NoneF, None1, None2, None3, None4, None5, None6 } from "../None"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[Either[A, B]]` with an identity value.
  */
-export type IdentityEitherH<F> = AssociativeEitherH<F> & NoneH<F>
+export type IdentityEitherF<F> = AssociativeEitherF<F> & NoneF<F>
 
 export type IdentityEither1<F extends URIS> = AssociativeEither1<F> & None1<F>
 
@@ -48,7 +48,7 @@ export function makeIdentityEither<URI extends URIS6>(
 ): (_: Omit<IdentityEither6<URI>, "URI">) => IdentityEither6<URI>
 export function makeIdentityEither<URI>(
   URI: URI
-): (_: Omit<IdentityEitherH<URI>, "URI">) => IdentityEitherH<URI> {
+): (_: Omit<IdentityEitherF<URI>, "URI">) => IdentityEitherF<URI> {
   return (_) => ({
     URI,
     ..._
