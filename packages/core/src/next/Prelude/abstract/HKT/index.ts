@@ -154,7 +154,7 @@ export type Kind3<URI extends URIS3, Env, Err, Out> = URI extends URIS3
 
 /**
  * `* -> * -> * -> * -> *` constructors
- * F[+_, -_, +_, +_]
+ * F[_, -_, +_, +_]
  */
 export type Kind4<URI extends URIS4, St, Env, Err, Out> = URI extends URIS4
   ? URItoKind4<St, Env, Err, Out>[URI]
@@ -162,7 +162,7 @@ export type Kind4<URI extends URIS4, St, Env, Err, Out> = URI extends URIS4
 
 /**
  * `* -> * -> * -> * -> * -> *` constructors
- * F[-_, +_, -_, +_, +_]
+ * F[-_, _, -_, +_, +_]
  */
 export type Kind5<URI extends URIS5, In, St, Env, Err, Out> = URI extends URIS5
   ? URItoKind5<In, St, Env, Err, Out>[URI]
@@ -170,7 +170,7 @@ export type Kind5<URI extends URIS5, In, St, Env, Err, Out> = URI extends URIS5
 
 /**
  * `* -> * -> * -> * -> * -> *` constructors
- * F[_, -_, +_, -_, +_, +_]
+ * F[+_, -_, _, -_, +_, +_]
  */
 export type Kind6<URI extends URIS6, X, In, St, Env, Err, Out> = URI extends URIS6
   ? URItoKind6<X, In, St, Env, Err, Out>[URI]
