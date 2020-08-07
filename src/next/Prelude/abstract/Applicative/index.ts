@@ -12,6 +12,15 @@ import {
   Covariant6
 } from "../Covariant"
 import {
+  Foreachable1,
+  Foreachable2,
+  Foreachable3,
+  Foreachable4,
+  Foreachable5,
+  Foreachable6,
+  ForeachableF
+} from "../Foreachable"
+import {
   HKT,
   Kind,
   Kind2,
@@ -80,7 +89,7 @@ export function makeApplicative<URI>(
 type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
 export function sequenceSF<F extends URIS6>(
-  F: Applicative6<F>
+  F: Applicative6<F> | (Applicative6<F> & Foreachable6<F>)
 ): <S, NER extends Record<string, Kind6<F, any, any, S, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind6<
@@ -131,7 +140,7 @@ export function sequenceSF<F extends URIS6>(
   }
 >
 export function sequenceSF<F extends URIS5>(
-  F: Applicative5<F>
+  F: Applicative5<F> | (Applicative5<F> & Foreachable5<F>)
 ): <S, NER extends Record<string, Kind5<F, any, S, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind5<
@@ -175,7 +184,7 @@ export function sequenceSF<F extends URIS5>(
   }
 >
 export function sequenceSF<F extends URIS4>(
-  F: Applicative4<F>
+  F: Applicative4<F> | (Applicative4<F> & Foreachable4<F>)
 ): <S, NER extends Record<string, Kind4<F, S, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind4<
@@ -202,7 +211,7 @@ export function sequenceSF<F extends URIS4>(
   }
 >
 export function sequenceSF<F extends URIS3>(
-  F: Applicative3<F>
+  F: Applicative3<F> | (Applicative3<F> & Foreachable3<F>)
 ): <NER extends Record<string, Kind3<F, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind3<
@@ -224,7 +233,7 @@ export function sequenceSF<F extends URIS3>(
   }
 >
 export function sequenceSF<F extends URIS2>(
-  F: Applicative2<F>
+  F: Applicative2<F> | (Applicative2<F> & Foreachable2<F>)
 ): <NER extends Record<string, Kind2<F, any, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind2<
@@ -235,30 +244,37 @@ export function sequenceSF<F extends URIS2>(
   { [K in keyof NER]: [NER[K]] extends [Kind2<F, infer E, infer A>] ? A : never }
 >
 export function sequenceSF<F extends URIS>(
-  F: Applicative1<F>
+  F: Applicative1<F> | (Applicative1<F> & Foreachable1<F>)
 ): <NER extends Record<string, Kind<F, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind<F, { [K in keyof NER]: [NER[K]] extends [Kind<F, infer A>] ? A : never }>
 export function sequenceSF<F>(
-  F: ApplicativeF<F>
+  F: ApplicativeF<F> | (ApplicativeF<F> & ForeachableF<F>)
 ): <NER extends Record<string, HKT<F, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => HKT<F, { [K in keyof NER]: [NER[K]] extends [HKT<F, infer A>] ? A : never }>
 export function sequenceSF<F>(
-  F: ApplicativeF<F>
+  F: ApplicativeF<F> | (ForeachableF<F> & ApplicativeF<F>)
 ): (r: Record<string, HKT<F, any>>) => HKT<F, Record<string, any>> {
   return (r) =>
     pipe(
-      A.reduce_(
-        Object.keys(r).map((k) => tuple(k, r[k])),
-        succeedF(F)([] as readonly [string, any][]),
-        (b, a) =>
-          pipe(
-            b,
-            F.both(a[1]),
-            F.map(([x, y]) => [...x, tuple(a[0], y)])
+      Object.keys(r).map((k) => tuple(k, r[k])),
+      (x) => {
+        if (F["Foreachable"]) {
+          return pipe(
+            x,
+            (F as ForeachableF<F>).foreach(([k, v]) => F.map((a) => tuple(k, a))(v))
           )
-      ),
+        } else {
+          return A.reduce_(x, succeedF(F)([] as readonly [string, any][]), (b, a) =>
+            pipe(
+              b,
+              F.both(a[1]),
+              F.map(([x, y]) => [...x, tuple(a[0], y)])
+            )
+          )
+        }
+      },
       F.map((a) => {
         const res = {}
         a.forEach(([k, v]) => {
