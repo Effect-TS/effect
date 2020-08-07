@@ -1,14 +1,14 @@
 import * as S from "../../Effect"
 import { EffectURI } from "../../Effect"
-import { Any4 } from "../Any"
-import { Applicative4 } from "../Applicative"
-import { AssociativeBoth4 } from "../AssociativeBoth"
-import { AssociativeEither4 } from "../AssociativeEither"
-import { AssociativeFlatten4 } from "../AssociativeFlatten"
-import { Contravariant4 } from "../Contravariant"
-import { Covariant4 } from "../Covariant"
-import { Foreachable4 } from "../Foreachable"
-import { Monad4 } from "../Monad"
+import { Any4 } from "../abstract/Any"
+import { Applicative4 } from "../abstract/Applicative"
+import { AssociativeBoth4 } from "../abstract/AssociativeBoth"
+import { AssociativeEither4 } from "../abstract/AssociativeEither"
+import { AssociativeFlatten4 } from "../abstract/AssociativeFlatten"
+import { Contravariant4 } from "../abstract/Contravariant"
+import { Covariant4 } from "../abstract/Covariant"
+import { Foreachable4 } from "../abstract/Foreachable"
+import { Monad4 } from "../abstract/Monad"
 
 /**
  * @category definitions
@@ -19,7 +19,7 @@ export type EffectEnvURI = typeof EffectEnvURI
 
 export type EffectEnv<S, R, E, A> = S.Effect<S, A, E, R>
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind4<S, R, E, A> {
     [EffectEnvURI]: EffectEnv<S, R, E, A>
     [EffectURI]: S.Effect<S, R, E, A>

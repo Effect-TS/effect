@@ -1,12 +1,12 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
-import { Any1 } from "../Any"
-import { AssociativeBoth1 } from "../AssociativeBoth"
-import { AssociativeEither1 } from "../AssociativeEither"
-import { Contravariant1 } from "../Contravariant"
-import { IdentityBoth1 } from "../IdentityBoth"
-import { IdentityEither1 } from "../IdentityEither"
-import { None1 } from "../None"
+import { Any1 } from "../abstract/Any"
+import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
+import { AssociativeEither1 } from "../abstract/AssociativeEither"
+import { Contravariant1 } from "../abstract/Contravariant"
+import { IdentityBoth1 } from "../abstract/IdentityBoth"
+import { IdentityEither1 } from "../abstract/IdentityEither"
+import { None1 } from "../abstract/None"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be
@@ -22,7 +22,7 @@ export interface Equal<A> {
 export const URI = "Equal"
 export type URI = typeof URI
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind<A> {
     [URI]: Equal<A>
   }
