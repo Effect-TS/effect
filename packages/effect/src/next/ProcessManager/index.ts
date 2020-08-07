@@ -5,7 +5,7 @@ import * as T from "../Effect"
 import * as E from "../Exit"
 import * as F from "../Fiber"
 import * as FR from "../FiberRef"
-import { HasURI } from "../Has"
+import * as Has from "../Has"
 import * as L from "../Layer"
 import * as Layer from "../Layer"
 import * as M from "../Managed"
@@ -25,10 +25,12 @@ export class ProcessMap {
     this.subscribe = this.subscribe.bind(this)
   }
 
-  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: T.Has<any>) {
-    if (has && this.identified.has(has[HasURI].key)) {
+  fork<S, R, E, A>(effect: T.Effect<S, R, E, A>, has?: Has.Has<any>) {
+    if (has && this.identified.has(has[Has.HasURI].key)) {
       return T.die(
-        `Fiber (#${this.identified.get(has[HasURI].key)?.id.seqNumber} already forked`
+        `Fiber (#${
+          this.identified.get(has[Has.HasURI].key)?.id.seqNumber
+        } already forked`
       )
     }
     if (this.interruptedBy.get) {
@@ -38,14 +40,14 @@ export class ProcessMap {
       T.effectTotal(() => {
         this.fibers.add(f)
         if (has) {
-          this.identified.set(has[HasURI].key, f)
+          this.identified.set(has[Has.HasURI].key, f)
         }
 
         f.onDone((e) => {
           this.fibers.delete(f)
 
           if (has) {
-            this.identified.set(has[HasURI].key, f)
+            this.identified.set(has[Has.HasURI].key, f)
           }
 
           if (this.interruptedBy.get) {
@@ -109,8 +111,8 @@ export class ProcessMap {
   }
 }
 
-export const HasProcessMap = T.has(ProcessMap)
-export type HasProcessMap = T.HasType<typeof HasProcessMap>
+export const HasProcessMap = Has.has(ProcessMap)
+export type HasProcessMap = Has.HasType<typeof HasProcessMap>
 
 export const processMapLayer = L.service(HasProcessMap).fromEffect(
   T.effectTotal(() => new ProcessMap())
@@ -152,7 +154,7 @@ export const makeGenericProcess = <S, R, A>(effect: T.Effect<S, R, never, A>) =>
           M.map(
             (): HasProcessRegistry =>
               ({
-                [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
+                [HasProcessRegistry[Has.HasURI].key]: new ProcessRegistry(pm)
               } as any)
           )
         )
@@ -163,9 +165,10 @@ export const makeGenericProcess = <S, R, A>(effect: T.Effect<S, R, never, A>) =>
 /**
  * Identifies a process in environment
  */
-export const hasProcess = <ID extends string>(_: ID) => <A>() => T.has<Process<A, ID>>()
+export const hasProcess = <ID extends string>(_: ID) => <A>() =>
+  Has.has<Process<A, ID>>()
 
-export type HasProcess<ID extends string, A> = T.Has<Process<A, ID>>
+export type HasProcess<ID extends string, A> = Has.Has<Process<A, ID>>
 
 /**
  * Access a forked process
@@ -236,7 +239,7 @@ export const makeProcess = <ID extends string, A>(has: HasProcess<ID, A>) => <S,
               (e): HasProcess<ID, A> & HasProcessRegistry =>
                 ({
                   ...e,
-                  [HasProcessRegistry[HasURI].key]: new ProcessRegistry(pm)
+                  [HasProcessRegistry[Has.HasURI].key]: new ProcessRegistry(pm)
                 } as any)
             )
           )
@@ -246,13 +249,18 @@ export const makeProcess = <ID extends string, A>(has: HasProcess<ID, A>) => <S,
   )
 
 function environmentFor<T>(
-  has: T.Has<T>,
+  has: Has.Has<T>,
   a: T
-): M.Managed<never, unknown, never, T.Has<T>>
-function environmentFor<T>(has: T.Has<T>, a: T): M.Managed<never, unknown, never, any> {
+): M.Managed<never, unknown, never, Has.Has<T>>
+function environmentFor<T>(
+  has: Has.Has<T>,
+  a: T
+): M.Managed<never, unknown, never, any> {
   return M.fromEffect(
     T.access((r) => ({
-      [has[HasURI].key]: T.mergeEnvironments(has, r, a as any)[has[HasURI].key]
+      [has[Has.HasURI].key]: Has.mergeEnvironments(has, r, a as any)[
+        has[Has.HasURI].key
+      ]
     }))
   )
 }
@@ -273,8 +281,8 @@ export class ProcessRegistry {
   }
 }
 
-export const HasProcessRegistry = T.has<ProcessRegistry>()
-export type HasProcessRegistry = T.HasType<typeof HasProcessRegistry>
+export const HasProcessRegistry = Has.has<ProcessRegistry>()
+export type HasProcessRegistry = Has.HasType<typeof HasProcessRegistry>
 
 export const accessProcessRegistryM = T.accessServiceM(HasProcessRegistry)
 
