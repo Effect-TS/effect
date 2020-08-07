@@ -1,10 +1,10 @@
 import * as F from "../Pure"
 import { intersect } from "../Utils"
+import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { makeContextual } from "../abstract/Contextual"
 import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
@@ -102,9 +102,9 @@ export const ContravariantEnv = makeContravariant(ReaderEnvURI)({
 })
 
 /**
- * The `Environmental` instance for `Reader<R, A>`.
+ * The `Access` instance for `Reader<R, A>`.
  */
-export const Environmental = makeEnvironmental(ReaderURI)({
+export const Access = makeAccess(ReaderURI)({
   access: F.access,
   provide: F.provideAll
 })
@@ -143,15 +143,15 @@ export const AssociativeFlatten = makeAssociativeFlatten(ReaderURI)({
 export const Monad = makeMonad(ReaderURI)(intersect(Any, Covariant, AssociativeFlatten))
 
 /**
- * The `Monad` instance for `Reader<R, x>`.
+ * The `Applicative` instance for `Reader<R, x>`.
  */
 export const Applicative = makeApplicative(ReaderURI)(
   intersect(Any, Covariant, AssociativeBoth)
 )
 
 /**
- * The `Contextual` instance for `Reader<R, A>`.
+ * The `Environmental` instance for `Reader<R, A>`.
  */
-export const Contextual = makeContextual(ReaderURI)(
-  intersect(Environmental, AssociativeFlatten)
+export const Environmental = makeEnvironmental(ReaderURI)(
+  intersect(Access, AssociativeFlatten)
 )
