@@ -114,7 +114,7 @@ type Frame = FoldFrame | ApplyFrame
  * Runs this computation with the specified initial state, returning either a
  * failure or the updated state and the result
  */
-export function runEitherState_<S1, S2, E, A>(
+export function runStateEither_<S1, S2, E, A>(
   self: XPure<S1, S2, unknown, E, A>,
   s: S1
 ): E.Either<E, readonly [S2, A]> {
@@ -245,19 +245,77 @@ export function runEitherState_<S1, S2, E, A>(
  * Runs this computation with the specified initial state, returning either a
  * failure or the updated state and the result
  */
-export function runEitherState<S1>(
+export function runStateEither<S1>(
   s: S1
 ): <S2, E, A>(self: XPure<S1, S2, unknown, E, A>) => E.Either<E, readonly [S2, A]> {
-  return (self) => runEitherState_(self, s)
+  return (self) => runStateEither_(self, s)
 }
 
 /**
- * Runs this computation, returning either a failure or the result
+ * Runs this computation with the specified initial state, returning either a
+ * failure or the updated state and the result
+ */
+export function run<S1>(s: S1) {
+  return <S2, A>(self: XPure<S1, S2, unknown, never, A>): readonly [S2, A] =>
+    run_(self, s)
+}
+
+/**
+ * Runs this computation with the specified initial state, returning both
+ * the updated state and the result.
+ */
+export function run_<S1, S2, A>(self: XPure<S1, S2, unknown, never, A>, s: S1) {
+  return (runStateEither_(self, s) as E.Right<readonly [S2, A]>).right
+}
+
+/**
+ * Runs this computation with the specified initial state, returning both
+ * the updated state and the result.
+ */
+export function runIO<A>(self: XPure<unknown, unknown, unknown, never, A>) {
+  return run_(self, {})[1]
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
+ * updated state and discarding the result.
+ */
+export function runState<S1>(s: S1) {
+  return <S2, A>(self: XPure<S1, S2, unknown, never, A>) => runState_(self, s)
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
+ * updated state and discarding the result.
+ */
+export function runState_<S1, S2, A>(self: XPure<S1, S2, unknown, never, A>, s: S1) {
+  return (runStateEither_(self, s) as E.Right<readonly [S2, A]>).right[0]
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
+ * result and discarding the updated state.
+ */
+export function runResult<S1>(s: S1) {
+  return <S2, A>(self: XPure<S1, S2, unknown, never, A>) => runResult_(self, s)
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
+ * result and discarding the updated state.
+ */
+export function runResult_<S1, S2, A>(self: XPure<S1, S2, unknown, never, A>, s: S1) {
+  return (runStateEither_(self, s) as E.Right<readonly [S2, A]>).right[1]
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
+ * updated state and discarding the result.
  */
 export function runEither<E, A>(
   self: XPure<unknown, unknown, unknown, E, A>
 ): E.Either<E, A> {
-  return E.map_(runEitherState_(self, {}), ([_, x]) => x)
+  return E.map_(runStateEither_(self, {}), ([_, x]) => x)
 }
 
 /**

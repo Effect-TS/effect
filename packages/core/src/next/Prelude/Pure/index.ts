@@ -95,9 +95,16 @@ export {
   mapError,
   mapError_,
   map_,
+  run,
   runEither,
-  runEitherState,
-  runEitherState_,
+  runIO,
+  runResult,
+  runResult_,
+  runState,
+  runStateEither,
+  runStateEither_,
+  runState_,
+  run_,
   succeed,
   XPure
 } from "./core"
