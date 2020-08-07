@@ -52,3 +52,31 @@ export interface None6<F extends URIS6> extends HasURI<F> {
   readonly None: "None"
   readonly none: <Y, X, S, R, E>() => Kind6<F, Y, X, S, R, E, never>
 }
+
+export function makeNone<URI extends URIS>(
+  _: URI
+): (_: Omit<None1<URI>, "URI" | "None">) => None1<URI>
+export function makeNone<URI extends URIS2>(
+  _: URI
+): (_: Omit<None2<URI>, "URI" | "None">) => None2<URI>
+export function makeNone<URI extends URIS3>(
+  _: URI
+): (_: Omit<None3<URI>, "URI" | "None">) => None3<URI>
+export function makeNone<URI extends URIS4>(
+  _: URI
+): (_: Omit<None4<URI>, "URI" | "None">) => None4<URI>
+export function makeNone<URI extends URIS5>(
+  _: URI
+): (_: Omit<None5<URI>, "URI" | "None">) => None5<URI>
+export function makeNone<URI extends URIS6>(
+  _: URI
+): (_: Omit<None6<URI>, "URI" | "None">) => None6<URI>
+export function makeNone<URI>(
+  URI: URI
+): (_: Omit<None<URI>, "URI" | "None">) => None<URI> {
+  return (_) => ({
+    URI,
+    None: "None",
+    ..._
+  })
+}

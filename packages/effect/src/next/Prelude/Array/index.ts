@@ -4,27 +4,27 @@ import * as C from "../Closure"
 import * as Eq from "../Equal"
 import * as I from "../Identity"
 import { Sum } from "../Newtype"
-import { Any1, succeed } from "../abstract/Any"
-import { Applicative1 } from "../abstract/Applicative"
-import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
-import { AssociativeFlatten1 } from "../abstract/AssociativeFlatten"
+import { makeAny, succeed } from "../abstract/Any"
+import { makeApplicative } from "../abstract/Applicative"
+import { AssociativeBoth1, makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import * as COVA from "../abstract/Covariant"
 import { Derive11 } from "../abstract/Derive"
-import { HasURI, HKT } from "../abstract/HKT"
+import { HKT } from "../abstract/HKT"
 import * as IB from "../abstract/IdentityBoth"
-import * as M from "../abstract/Monad"
-import { Traversable1 } from "../abstract/Traversable"
+import { makeMonad } from "../abstract/Monad"
+import { makeTraversable } from "../abstract/Traversable"
 
 /**
  * @category definitions
  */
 
-export const URI = "Array"
-export type URI = typeof URI
+export const ArrayURI = "Array"
+export type ArrayURI = typeof ArrayURI
 
 declare module "../abstract/HKT" {
   interface URItoKind<A> {
-    [URI]: A.Array<A>
+    [ArrayURI]: A.Array<A>
   }
 }
 
@@ -51,66 +51,55 @@ export function Identity<A>(): I.Identity<readonly A[]> {
   return I.make<readonly A[]>([], Closure<A>().combine)
 }
 
-export const HasArrayURI: HasURI<URI> = {
-  URI
-}
-
 /**
  * The `Any` instance for `Array<A>`.
  */
-export const Any: Any1<URI> = {
-  Any: "Any",
-  any: () => [],
-  ...HasArrayURI
-}
+export const Any = makeAny(ArrayURI)({
+  any: () => []
+})
 
 /**
  * The `Covariant` instance for `Array<A>`.
  */
-export const Covariant: COVA.Covariant1<URI> = {
-  Covariant: "Covariant",
-  map: A.map,
-  ...HasArrayURI
-}
+export const Covariant = COVA.makeCovariant(ArrayURI)({
+  map: A.map
+})
 
 /**
  * The `Covariant` instance for `Array<A>`.
  */
-export const AssociativeFlatten: AssociativeFlatten1<URI> = {
-  AssociativeFlatten: "AssociativeFlatten",
-  flatten: A.flatten,
-  ...HasArrayURI
-}
+export const AssociativeFlatten = makeAssociativeFlatten(ArrayURI)({
+  flatten: A.flatten
+})
 
-export const AssociativeBoth: AssociativeBoth1<URI> = {
-  AssociativeBoth: "AssociativeBoth",
-  both: (fb) => (fa) => A.zip_(fa, fb),
-  ...HasArrayURI
-}
+export const AssociativeBoth: AssociativeBoth1<ArrayURI> = makeAssociativeBoth(
+  ArrayURI
+)({
+  both: (fb) => (fa) => A.zip_(fa, fb)
+})
 
 /**
  * The `Monad` instance for `Array<A>`.
  */
-export const Applicative: Applicative1<URI> = {
+export const Applicative = makeApplicative(ArrayURI)({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
-}
+})
 
 /**
  * The `Monad` instance for `Array<A>`.
  */
-export const Monad: M.Monad1<URI> = {
+export const Monad = makeMonad(ArrayURI)({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
-}
+})
 
 /**
  * The `Traversable` instance for `Array`.
  */
-export const Traversable: Traversable1<URI> = {
-  Traversable: "Traversable",
+export const Traversable = makeTraversable(ArrayURI)({
   foreach: <G>(G: IB.IdentityBoth<G> & COVA.Covariant<G>) => <A, B>(
     f: (a: A) => HKT<G, B>
   ) => (fa: readonly A[]): HKT<G, readonly B[]> =>
@@ -122,12 +111,12 @@ export const Traversable: Traversable1<URI> = {
       )
     ),
   ...Covariant
-}
+})
 
 /**
  * The `Derive<Array, Equal>` instance for `Equal<Array<A>>`.
  */
-export const Equal: Derive11<URI, Eq.URI> = {
+export const Equal: Derive11<ArrayURI, Eq.EqualURI> = {
   Derive: "Derive",
   derive: (eq) => Eq.array(eq)
 }

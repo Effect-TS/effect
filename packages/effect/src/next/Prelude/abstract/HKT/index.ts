@@ -149,3 +149,9 @@ export type Kind6<URI extends URIS6, Y, X, S, R, E, A> = URI extends URIS6
 export interface HasURI<F> {
   readonly URI: F
 }
+
+export function hasURI<URI extends string>(_: URI): HasURI<URI> {
+  return {
+    URI: _
+  }
+}

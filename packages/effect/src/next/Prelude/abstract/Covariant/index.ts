@@ -79,3 +79,31 @@ export interface Covariant6<F extends URIS6> extends HasURI<F> {
     f: (a: A) => B
   ) => { <Y, X, S, R, E>(fa: Kind6<F, Y, X, S, R, E, A>): Kind6<F, Y, X, S, R, E, B> }
 }
+
+export function makeCovariant<URI extends URIS>(
+  _: URI
+): (_: Omit<Covariant1<URI>, "URI" | "Covariant">) => Covariant1<URI>
+export function makeCovariant<URI extends URIS2>(
+  _: URI
+): (_: Omit<Covariant2<URI>, "URI" | "Covariant">) => Covariant2<URI>
+export function makeCovariant<URI extends URIS3>(
+  _: URI
+): (_: Omit<Covariant3<URI>, "URI" | "Covariant">) => Covariant3<URI>
+export function makeCovariant<URI extends URIS4>(
+  _: URI
+): (_: Omit<Covariant4<URI>, "URI" | "Covariant">) => Covariant4<URI>
+export function makeCovariant<URI extends URIS5>(
+  _: URI
+): (_: Omit<Covariant5<URI>, "URI" | "Covariant">) => Covariant5<URI>
+export function makeCovariant<URI extends URIS6>(
+  _: URI
+): (_: Omit<Covariant6<URI>, "URI" | "Covariant">) => Covariant6<URI>
+export function makeCovariant<URI>(
+  URI: URI
+): (_: Omit<Covariant<URI>, "URI" | "Covariant">) => Covariant<URI> {
+  return (_) => ({
+    URI,
+    Covariant: "Covariant",
+    ..._
+  })
+}
