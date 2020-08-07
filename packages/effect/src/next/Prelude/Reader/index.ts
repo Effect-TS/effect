@@ -48,17 +48,25 @@ export const contramapEnv: <Q, R>(
 ) => <A>(ma: Reader<R, A>) => Reader<Q, A> = F.contramapEnv
 
 /**
- * Combines this computation with the specified computation, passing the
- * updated state from this computation to that computation and combining the
- * results of both into a tuple.
+ * Combines this computation with the specified computation.
  */
-export const zip: <E, B>(
-  fb: Reader<E, B>
-) => <A>(fa: Reader<E, A>) => Reader<E, readonly [A, B]> = F.zip
+export const zip: <R1, B>(
+  fb: Reader<R1, B>
+) => <R, A>(fa: Reader<R, A>) => Reader<R & R1, readonly [A, B]> = F.zip
 
 /**
- * `map` can be used to turn functions `(a: A) => B` into functions `(fa: F<A>) => F<B>` whose argument and return types
- * use the type constructor `F` to represent some computational context.
+ * Extends this computation with another computation that depends on the
+ * result of this computation by running the first computation, using its
+ * result to generate a second computation, and running that computation.
+ */
+export const chain: <A, R1, B>(
+  f: (a: A) => Reader<R1, B>
+) => <R>(self: Reader<R, A>) => Reader<R & R1, B> = F.chain
+
+/**
+ * `map` can be used to turn functions `(a: A) => B` into functions `(fa: F<A>) => F<B>`
+ *  whose argument and return types use the type constructor `F` to represent
+ *  some computational context.
  */
 export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R, B> =
   F.map
