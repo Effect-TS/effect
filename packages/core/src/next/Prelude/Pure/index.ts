@@ -1,11 +1,11 @@
 import { intersect } from "../Utils"
+import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
-import { makeEnvironmental } from "../abstract/Environmental"
 import { makeMonad } from "../abstract/Monad"
 
 import * as F from "./core"
@@ -80,9 +80,9 @@ export const AssociativeFlatten = makeAssociativeFlatten(StateReaderErrorURI)({
 })
 
 /**
- * The `Environmental` instance for `XPure`.
+ * The `Access` instance for `XPure`.
  */
-export const Environmental = makeEnvironmental(XPureURI)({
+export const Access = makeAccess(XPureURI)({
   access: F.access,
   provide: F.provideAll
 })
