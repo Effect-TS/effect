@@ -8,6 +8,7 @@ import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
+import { makeFail } from "../abstract/Fail"
 import { makeMonad } from "../abstract/Monad"
 
 export const EitherURI = "Either"
@@ -120,6 +121,9 @@ export const AssociativeFailureEither = makeAssociativeEither(FailureEitherURI)(
   either: eitherFailure
 })
 
+/**
+ * The `AssociativeFlatten` instance for `Either`.
+ */
 export const AssociativeFlatten = makeAssociativeFlatten(EitherURI)({
   flatten: E.flatten
 })
@@ -130,6 +134,13 @@ export const AssociativeFlatten = makeAssociativeFlatten(EitherURI)({
 export const Applicative = makeApplicative(EitherURI)(
   intersect(Any, AssociativeBoth, Covariant)
 )
+
+/**
+ * The `Fail` instance for `Either`.
+ */
+export const Fail = makeFail(EitherURI)({
+  fail: E.left
+})
 
 /**
  * The `Monad` instance for `Either`.
