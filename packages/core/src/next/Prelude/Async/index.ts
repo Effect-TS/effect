@@ -6,6 +6,7 @@ import { AssociativeEither3 } from "../abstract/AssociativeEither"
 import { Contravariant3 } from "../abstract/Contravariant"
 import { Covariant3 } from "../abstract/Covariant"
 import { Foreachable3 } from "../abstract/Foreachable"
+import { HasURI } from "../abstract/HKT"
 import { Monad3 } from "../abstract/Monad"
 
 export const AsyncEnvURI = "AsyncEnv"
@@ -21,28 +22,36 @@ declare module "../abstract/HKT" {
   }
 }
 
+export const HasAsyncURI: HasURI<AsyncURI> = {
+  URI: AsyncURI
+}
+
+export const HasContravariantURI: HasURI<AsyncEnvURI> = {
+  URI: AsyncEnvURI
+}
+
 export const ContravariantEnv: Contravariant3<AsyncEnvURI> = {
-  URI: AsyncEnvURI,
+  ...HasContravariantURI,
   contramap: S.provideSome
 }
 
 export const Covariant: Covariant3<AsyncURI> = {
-  URI: AsyncURI,
+  ...HasAsyncURI,
   map: S.map
 }
 
 export const AssociativeBoth: AssociativeBoth3<AsyncURI> = {
-  URI: AsyncURI,
+  ...HasAsyncURI,
   both: (fb) => (fa) => S.zip_(fa, fb)
 }
 
 export const AssociativeBothPar: AssociativeBoth3<AsyncURI> = {
-  URI: AsyncURI,
+  ...HasAsyncURI,
   both: (fb) => (fa) => S.zipPar_(fa, fb)
 }
 
 export const Any: Any3<AsyncURI> = {
-  URI: AsyncURI,
+  ...HasAsyncURI,
   any: () => S.of
 }
 
@@ -59,7 +68,7 @@ export const ApplicativePar: Applicative3<AsyncURI> = {
 }
 
 export const AssociativeEither: AssociativeEither3<AsyncURI> = {
-  URI: AsyncURI,
+  ...HasAsyncURI,
   either: S.orElseEither
 }
 
@@ -90,7 +99,19 @@ export const Monad: Monad3<AsyncURI> = {
  * @category api
  */
 
-export function cast<S, R, E, A>(effect: S.Effect<S, R, E, A>): S.AsyncRE<R, E, A> {
+export function cast<S, A>(effect: S.Effect<S, unknown, never, A>): S.Async<A> {
+  return effect
+}
+
+export function castR<S, R, A>(effect: S.Effect<S, R, never, A>): S.AsyncR<R, A> {
+  return effect
+}
+
+export function castE<S, E, A>(effect: S.Effect<S, unknown, E, A>): S.AsyncE<E, A> {
+  return effect
+}
+
+export function castRE<S, R, E, A>(effect: S.Effect<S, R, E, A>): S.AsyncRE<R, E, A> {
   return effect
 }
 
@@ -335,5 +356,10 @@ export {
   zipWithPar,
   zipWithPar_,
   zipWith_,
-  zip_
+  zip_,
+  Async,
+  AsyncE,
+  AsyncR,
+  AsyncRE,
+  AsyncCancel
 } from "../../Effect"
