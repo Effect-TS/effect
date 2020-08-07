@@ -8,20 +8,16 @@ import { Covariant4 } from "../abstract/Covariant"
  * @category definitions
  */
 
-export const ContravariantURI = "ContravariantSchedule"
-export type ContravariantURI = typeof ContravariantURI
+export const ScheduleInURI = "ScheduleIn"
+export type ScheduleInURI = typeof ScheduleInURI
 
-export const CovariantURI = "CovariantSchedule"
-export type CovariantURI = typeof CovariantURI
-
-export const ApplicativeURI = "ApplicativeSchedule"
-export type ApplicativeURI = typeof ApplicativeURI
+export const ScheduleURI = "Schedule"
+export type ScheduleURI = typeof ScheduleURI
 
 declare module "../abstract/HKT" {
   interface URItoKind4<S, R, E, A> {
-    [ContravariantURI]: S.Schedule<S, R, A, E>
-    [CovariantURI]: S.Schedule<S, R, E, A>
-    [ApplicativeURI]: S.Schedule<S, R, E, A>
+    [ScheduleInURI]: S.Schedule<S, R, A, E>
+    [ScheduleURI]: S.Schedule<S, R, E, A>
   }
 }
 
@@ -29,18 +25,18 @@ declare module "../abstract/HKT" {
  * @category instances
  */
 
-export const Contravariant: Contravariant4<ContravariantURI> = {
-  URI: ContravariantURI,
+export const ContravariantIn: Contravariant4<ScheduleInURI> = {
+  URI: ScheduleInURI,
   contramap: S.contramap
 }
 
-export const Covariant: Covariant4<CovariantURI> = {
-  URI: CovariantURI,
+export const Covariant: Covariant4<ScheduleURI> = {
+  URI: ScheduleURI,
   map: S.map
 }
 
-export const Applicative: Applicative4<ApplicativeURI> = {
-  URI: ApplicativeURI,
+export const Applicative: Applicative4<ScheduleURI> = {
+  URI: ScheduleURI,
   map: S.map,
   any: () => S.succeed({}),
   both: (fb) => (fa) => S.contramap_(S.both_(fa, fb), (e) => tuple(e, e))
