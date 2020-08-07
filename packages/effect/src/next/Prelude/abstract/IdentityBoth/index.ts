@@ -14,16 +14,16 @@ import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export interface IdentityBoth<F> extends AssociativeBoth<F>, Any<F> {}
+export type IdentityBoth<F> = AssociativeBoth<F> & Any<F>
 
-export interface IdentityBoth1<F extends URIS> extends AssociativeBoth1<F>, Any1<F> {}
+export type IdentityBoth1<F extends URIS> = AssociativeBoth1<F> & Any1<F>
 
-export interface IdentityBoth2<F extends URIS2> extends AssociativeBoth2<F>, Any2<F> {}
+export type IdentityBoth2<F extends URIS2> = AssociativeBoth2<F> & Any2<F>
 
-export interface IdentityBoth3<F extends URIS3> extends AssociativeBoth3<F>, Any3<F> {}
+export type IdentityBoth3<F extends URIS3> = AssociativeBoth3<F> & Any3<F>
 
-export interface IdentityBoth4<F extends URIS4> extends AssociativeBoth4<F>, Any4<F> {}
+export type IdentityBoth4<F extends URIS4> = AssociativeBoth4<F> & Any4<F>
 
-export interface IdentityBoth5<F extends URIS5> extends AssociativeBoth5<F>, Any5<F> {}
+export type IdentityBoth5<F extends URIS5> = AssociativeBoth5<F> & Any5<F>
 
-export interface IdentityBoth6<F extends URIS6> extends AssociativeBoth6<F>, Any6<F> {}
+export type IdentityBoth6<F extends URIS6> = AssociativeBoth6<F> & Any6<F>
