@@ -16,7 +16,7 @@ export interface Equal<A> {
   /**
    * Returns whether two values of type `A` are equal.
    */
-  equals: (y: A) => (x: A) => boolean
+  readonly equals: (y: A) => (x: A) => boolean
 }
 
 export const URI = "Equal"
