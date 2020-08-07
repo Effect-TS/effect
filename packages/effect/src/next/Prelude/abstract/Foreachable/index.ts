@@ -28,42 +28,49 @@ import {
  * produce an `F[(A, B)]` with an identity.
  */
 export interface Foreachable<F> extends Covariant<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <A, B>(
     f: (a: A) => HKT<F, B>
   ) => (as: Iterable<A>) => HKT<F, readonly B[]>
 }
 
 export interface Foreachable1<F extends URIS> extends Covariant1<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <A, B>(
     f: (a: A) => Kind<F, B>
   ) => (as: Iterable<A>) => HKT<F, readonly B[]>
 }
 
 export interface Foreachable2<F extends URIS2> extends Covariant2<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <E, A, B>(
     f: (a: A) => Kind2<F, E, B>
   ) => (as: Iterable<A>) => Kind2<F, E, readonly B[]>
 }
 
 export interface Foreachable3<F extends URIS3> extends Covariant3<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <R, E, A, B>(
     f: (a: A) => Kind3<F, R, E, B>
   ) => (as: Iterable<A>) => Kind3<F, R, E, readonly B[]>
 }
 
 export interface Foreachable4<F extends URIS4> extends Covariant4<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <S, R, E, A, B>(
     f: (a: A) => Kind4<F, S, R, E, B>
   ) => (as: Iterable<A>) => Kind4<F, S, R, E, readonly B[]>
 }
 
 export interface Foreachable5<F extends URIS5> extends Covariant5<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <X, S, R, E, A, B>(
     f: (a: A) => Kind5<F, X, S, R, E, B>
   ) => (as: Iterable<A>) => Kind5<F, X, S, R, E, readonly B[]>
 }
 
 export interface Foreachable6<F extends URIS6> extends Covariant6<F> {
+  readonly Foreachable: "Foreachable"
   readonly foreach: <Y, X, S, R, E, A, B>(
     f: (a: A) => Kind6<F, Y, X, S, R, E, B>
   ) => (as: Iterable<A>) => Kind6<F, Y, X, S, R, E, readonly B[]>

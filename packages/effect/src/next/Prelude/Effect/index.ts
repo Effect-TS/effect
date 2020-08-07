@@ -31,6 +31,7 @@ declare module "../abstract/HKT" {
  */
 export const ContravariantEnv: Contravariant4<EffectEnvURI> = {
   URI: EffectEnvURI,
+  Contravariant: "Contravariant",
   contramap: S.provideSome
 }
 
@@ -39,6 +40,7 @@ export const ContravariantEnv: Contravariant4<EffectEnvURI> = {
  */
 export const Covariant: Covariant4<EffectURI> = {
   URI: EffectURI,
+  Covariant: "Covariant",
   map: S.map
 }
 
@@ -47,6 +49,7 @@ export const Covariant: Covariant4<EffectURI> = {
  */
 export const Any: Any4<EffectURI> = {
   URI: EffectURI,
+  Any: "Any",
   any: () => S.of
 }
 
@@ -55,6 +58,7 @@ export const Any: Any4<EffectURI> = {
  */
 export const AssociativeBoth: AssociativeBoth4<EffectURI> = {
   URI: EffectURI,
+  AssociativeBoth: "AssociativeBoth",
   both: (fb) => (fa) => S.zip_(fa, fb)
 }
 
@@ -72,6 +76,7 @@ export const Applicative: Applicative4<EffectURI> = {
  */
 export const AssociativeEither: AssociativeEither4<EffectURI> = {
   URI: EffectURI,
+  AssociativeEither: "AssociativeEither",
   either: S.orElseEither
 }
 
@@ -80,6 +85,7 @@ export const AssociativeEither: AssociativeEither4<EffectURI> = {
  */
 export const AssociativeFlatten: AssociativeFlatten4<EffectURI> = {
   URI: EffectURI,
+  AssociativeFlatten: "AssociativeFlatten",
   flatten: S.flatten
 }
 
@@ -88,6 +94,7 @@ export const AssociativeFlatten: AssociativeFlatten4<EffectURI> = {
  */
 export const Foreachable: Foreachable4<EffectURI> = {
   ...Covariant,
+  Foreachable: "Foreachable",
   foreach: S.foreach
 }
 

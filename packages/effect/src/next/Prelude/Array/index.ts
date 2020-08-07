@@ -56,6 +56,7 @@ export function Identity<A>(): I.Identity<readonly A[]> {
  */
 export const Any: Any1<URI> = {
   URI,
+  Any: "Any",
   any: () => []
 }
 
@@ -64,6 +65,7 @@ export const Any: Any1<URI> = {
  */
 export const Covariant: COVA.Covariant1<URI> = {
   URI,
+  Covariant: "Covariant",
   map: A.map
 }
 
@@ -72,11 +74,13 @@ export const Covariant: COVA.Covariant1<URI> = {
  */
 export const AssociativeFlatten: AssociativeFlatten1<URI> = {
   URI,
+  AssociativeFlatten: "AssociativeFlatten",
   flatten: A.flatten
 }
 
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
+  AssociativeBoth: "AssociativeBoth",
   both: (fb) => (fa) => A.zip_(fa, fb)
 }
 
@@ -102,7 +106,7 @@ export const Monad: M.Monad1<URI> = {
  * The `Traversable` instance for `Array`.
  */
 export const Traversable: Traversable1<URI> = {
-  ...Covariant,
+  Traversable: "Traversable",
   foreach: <G>(G: IB.IdentityBoth<G> & COVA.Covariant<G>) => <A, B>(
     f: (a: A) => HKT<G, B>
   ) => (fa: readonly A[]): HKT<G, readonly B[]> =>
@@ -112,13 +116,15 @@ export const Traversable: Traversable1<URI> = {
         G.both(f(a)),
         G.map(([x, y]) => [...x, y])
       )
-    )
+    ),
+  ...Covariant
 }
 
 /**
  * The `Derive<Array, Equal>` instance for `Equal<Array<A>>`.
  */
 export const Equal: Derive11<URI, Eq.URI> = {
+  Derive: "Derive",
   derive: (eq) => Eq.array(eq)
 }
 

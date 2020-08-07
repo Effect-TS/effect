@@ -3,6 +3,7 @@ import { Any3 } from "../abstract/Any"
 import { Applicative3 } from "../abstract/Applicative"
 import { AssociativeBoth3 } from "../abstract/AssociativeBoth"
 import { AssociativeEither3 } from "../abstract/AssociativeEither"
+import { AssociativeFlatten3 } from "../abstract/AssociativeFlatten"
 import { Contravariant3 } from "../abstract/Contravariant"
 import { Covariant3 } from "../abstract/Covariant"
 import { Foreachable3 } from "../abstract/Foreachable"
@@ -32,26 +33,31 @@ export const HasContravariantURI: HasURI<AsyncEnvURI> = {
 
 export const ContravariantEnv: Contravariant3<AsyncEnvURI> = {
   ...HasContravariantURI,
+  Contravariant: "Contravariant",
   contramap: S.provideSome
 }
 
 export const Covariant: Covariant3<AsyncURI> = {
   ...HasAsyncURI,
+  Covariant: "Covariant",
   map: S.map
 }
 
 export const AssociativeBoth: AssociativeBoth3<AsyncURI> = {
   ...HasAsyncURI,
+  AssociativeBoth: "AssociativeBoth",
   both: (fb) => (fa) => S.zip_(fa, fb)
 }
 
 export const AssociativeBothPar: AssociativeBoth3<AsyncURI> = {
   ...HasAsyncURI,
+  AssociativeBoth: "AssociativeBoth",
   both: (fb) => (fa) => S.zipPar_(fa, fb)
 }
 
 export const Any: Any3<AsyncURI> = {
   ...HasAsyncURI,
+  Any: "Any",
   any: () => S.of
 }
 
@@ -69,30 +75,40 @@ export const ApplicativePar: Applicative3<AsyncURI> = {
 
 export const AssociativeEither: AssociativeEither3<AsyncURI> = {
   ...HasAsyncURI,
+  AssociativeEither: "AssociativeEither",
   either: S.orElseEither
 }
 
 export const Foreachable: Foreachable3<AsyncURI> = {
   ...Covariant,
+  Foreachable: "Foreachable",
   foreach: S.foreach
 }
 
 export const ForeachablePar: Foreachable3<AsyncURI> = {
   ...Covariant,
+  Foreachable: "Foreachable",
   foreach: S.foreachPar
 }
 
 export function ForeachableParN(n: number): Foreachable3<AsyncURI> {
   return {
     ...Covariant,
+    Foreachable: "Foreachable",
     foreach: S.foreachParN(n)
   }
+}
+
+export const AssociativeFlatten: AssociativeFlatten3<AsyncURI> = {
+  URI: AsyncURI,
+  AssociativeFlatten: "AssociativeFlatten",
+  flatten: S.flatten
 }
 
 export const Monad: Monad3<AsyncURI> = {
   ...Any,
   ...Covariant,
-  flatten: S.flatten
+  ...AssociativeFlatten
 }
 
 /**

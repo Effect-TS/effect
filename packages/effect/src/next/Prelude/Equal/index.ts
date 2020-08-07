@@ -67,6 +67,7 @@ export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B
  */
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
+  AssociativeBoth: "AssociativeBoth",
   both
 }
 
@@ -90,6 +91,7 @@ export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, 
  */
 export const AssociativeEither: AssociativeEither1<URI> = {
   URI,
+  AssociativeEither: "AssociativeEither",
   either
 }
 
@@ -107,6 +109,7 @@ export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
  */
 export const Contravariant: Contravariant1<URI> = {
   URI,
+  Contravariant: "Contravariant",
   contramap
 }
 
@@ -115,6 +118,7 @@ export const Contravariant: Contravariant1<URI> = {
  */
 export const Any: Any1<URI> = {
   URI,
+  Any: "Any",
   any: () => anyEqual
 }
 
@@ -131,6 +135,7 @@ export const IdentityBoth: IdentityBoth1<URI> = {
  */
 export const None: None1<URI> = {
   URI,
+  None: "None",
   none: () => nothingEqual
 }
 
