@@ -1,4 +1,4 @@
-import * as E from "../../../Either"
+import * as E from "../../../../Either"
 import {
   HasURI,
   HKT,

@@ -1,10 +1,10 @@
-import { Any1 } from "../Any"
-import { AssociativeBoth1 } from "../AssociativeBoth"
-import { AssociativeFlatten1 } from "../AssociativeFlatten"
-import { Covariant1 } from "../Covariant"
-import { IdentityFlatten1 } from "../IdentityFlatten"
-import { Monad1 } from "../Monad"
 import { Generic, genericDef } from "../Newtype"
+import { Any1 } from "../abstract/Any"
+import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
+import { AssociativeFlatten1 } from "../abstract/AssociativeFlatten"
+import { Covariant1 } from "../abstract/Covariant"
+import { IdentityFlatten1 } from "../abstract/IdentityFlatten"
+import { Monad1 } from "../abstract/Monad"
 
 export const Id = genericDef("@newtype/Id")
 
@@ -13,7 +13,7 @@ export interface Id<A> extends Generic<A, typeof Id> {}
 export const URI = "Id"
 export type URI = typeof URI
 
-declare module "../HKT" {
+declare module "../abstract/HKT" {
   interface URItoKind<A> {
     [URI]: Id<A>
   }
