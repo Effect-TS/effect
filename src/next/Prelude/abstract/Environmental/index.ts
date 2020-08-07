@@ -1,30 +1,15 @@
 import { pipe } from "../../../../Function"
-import { Access2, Access3, Access4, Access5, Access6, AccessF } from "../Access"
+import { Access3, Access4, Access5, Access6, AccessF } from "../Access"
 import {
-  AssociativeFlatten2,
   AssociativeFlatten3,
   AssociativeFlatten4,
   AssociativeFlatten5,
   AssociativeFlatten6,
-  AssociativeFlattenF2
+  AssociativeFlattenF3
 } from "../AssociativeFlatten"
-import {
-  HKT2,
-  Kind2,
-  Kind3,
-  Kind4,
-  Kind5,
-  Kind6,
-  URIS2,
-  URIS3,
-  URIS4,
-  URIS5,
-  URIS6
-} from "../HKT"
+import { HKT3, Kind3, Kind4, Kind5, Kind6, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
 
-export type EnvironmentalF<F> = AssociativeFlattenF2<F> & AccessF<F>
-
-export type Environmental2<F extends URIS2> = AssociativeFlatten2<F> & Access2<F>
+export type EnvironmentalF<F> = AssociativeFlattenF3<F> & AccessF<F>
 
 export type Environmental3<F extends URIS3> = AssociativeFlatten3<F> & Access3<F>
 
@@ -34,9 +19,6 @@ export type Environmental5<F extends URIS5> = AssociativeFlatten5<F> & Access5<F
 
 export type Environmental6<F extends URIS6> = AssociativeFlatten6<F> & Access6<F>
 
-export function makeEnvironmental<URI extends URIS2>(
-  _: URI
-): (_: Omit<Environmental2<URI>, "URI" | "Environmental">) => Environmental2<URI>
 export function makeEnvironmental<URI extends URIS3>(
   _: URI
 ): (_: Omit<Environmental3<URI>, "URI" | "Environmental">) => Environmental3<URI>
@@ -75,15 +57,12 @@ export function accessMF<F extends URIS4>(
 export function accessMF<F extends URIS3>(
   F: Environmental3<F>
 ): <R, R1, E, A>(f: (r: R) => Kind3<F, R1, E, A>) => Kind3<F, R & R1, E, A>
-export function accessMF<F extends URIS2>(
-  F: Environmental2<F>
-): <R, R1, A>(f: (r: R) => Kind2<F, R1, A>) => Kind2<F, R & R1, A>
 export function accessMF<F>(
   F: EnvironmentalF<F>
-): <R, R1, A>(f: (r: R) => HKT2<F, R1, A>) => HKT2<F, R & R1, A> {
-  return <R, R1, A>(f: (r: R) => HKT2<F, R1, A>): HKT2<F, R & R1, A> =>
+): <E, R, R1, A>(f: (r: R) => HKT3<F, R1, E, A>) => HKT3<F, R & R1, E, A> {
+  return <R, R1, E, A>(f: (r: R) => HKT3<F, R1, E, A>): HKT3<F, R & R1, E, A> =>
     pipe(
-      F.access((r: R & R1) => f(r) as HKT2<F, R & R1, A>),
+      F.access((r: R) => f(r)),
       F.flatten
     )
 }
