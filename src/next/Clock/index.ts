@@ -6,7 +6,8 @@
 import { effectTotal, unit } from "../Effect/core"
 import { Async, Sync } from "../Effect/effect"
 import { effectAsyncInterrupt } from "../Effect/effectAsyncInterrupt"
-import { accessService, accessServiceM, has, HasType } from "../Has"
+import { accessService, accessServiceM } from "../Effect/has"
+import { has, HasType } from "../Has"
 
 //
 // Clock Definition

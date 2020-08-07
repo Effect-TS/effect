@@ -5,7 +5,8 @@
  */
 import { chain_, effectTotal } from "../Effect/core"
 import { Sync } from "../Effect/effect"
-import { accessServiceM, has, HasType, replaceService } from "../Has"
+import { accessServiceM, replaceService } from "../Effect/has"
+import { has, HasType } from "../Has"
 
 import { PRNG } from "./Alea"
 

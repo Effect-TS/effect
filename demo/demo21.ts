@@ -1,24 +1,25 @@
 import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
+import * as Has from "../src/next/Has"
 import * as L from "../src/next/Layer"
 
 export interface Prefix {
   readonly hi: string
 }
 
-export const HasPrefix = T.has<Prefix>()
+export const HasPrefix = Has.has<Prefix>()
 
 export interface Console {
-  readonly log: (message: string) => T.UIO<void>
+  readonly log: (message: string) => T.SyncR<T.DefaultEnv, void>
 }
 
-export const HasConsole = T.has<Console>()
+export const HasConsole = Has.has<Console>()
 
 export interface Hello {
-  readonly hello: (name: string) => T.UIO<void>
+  readonly hello: (name: string) => T.AsyncR<T.DefaultEnv, void>
 }
 
-export const HasHello = T.has<Hello>()
+export const HasHello = Has.has<Hello>()
 
 export const Console = L.service(HasConsole).pure(
   new (class implements Console {
@@ -41,7 +42,7 @@ export const Hello = L.service(HasHello)
     )(
       (console, prefix) =>
         new (class implements Hello {
-          hello = (name: string): T.UIO<void> =>
+          hello = (name: string): T.AsyncR<T.DefaultEnv, void> =>
             T.delay_(console.log(`${prefix.hi} ${name}!`), 200)
 
           close = T.suspend(() => console.log("close"))

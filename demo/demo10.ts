@@ -1,6 +1,7 @@
 import * as A from "../src/Array"
 import { pipe } from "../src/Function"
 import * as T from "../src/next/Effect"
+import * as Has from "../src/next/Has"
 import * as L from "../src/next/Layer"
 import * as S from "../src/next/Semaphore"
 
@@ -14,26 +15,26 @@ abstract class AppConfig<S> {
   abstract readonly config: S
 }
 
-export const HasConsole = T.has(Console)
-export type HasConsole = T.HasType<typeof HasConsole>
+export const HasConsole = Has.has(Console)
+export type HasConsole = Has.HasType<typeof HasConsole>
 
-export const HasFormat = T.has(Format)
-export type HasFormat = T.HasType<typeof HasFormat>
+export const HasFormat = Has.has(Format)
+export type HasFormat = Has.HasType<typeof HasFormat>
 
-export const HasStringConfig = T.has<AppConfig<string>>()
-export type HasStringConfig = T.HasType<typeof HasStringConfig>
+export const HasStringConfig = Has.has<AppConfig<string>>()
+export type HasStringConfig = Has.HasType<typeof HasStringConfig>
 
-export const HasNumberConfig = T.has<AppConfig<number>>()
-export type HasNumberConfig = T.HasType<typeof HasNumberConfig>
+export const HasNumberConfig = Has.has<AppConfig<number>>()
+export type HasNumberConfig = Has.HasType<typeof HasNumberConfig>
 
 export const Core = T.region<"core", HasStringConfig>()
-export type HasCoreConfig = T.HasType<typeof Core>
+export type HasCoreConfig = Has.HasType<typeof Core>
 
 export const Second = T.region<"second", HasStringConfig>()
-export type HasSecondAppConfig = T.HasType<typeof Second>
+export type HasSecondAppConfig = Has.HasType<typeof Second>
 
 export const Third = T.region<"third", HasNumberConfig>()
-export type HasThirdConfig = T.HasType<typeof Third>
+export type HasThirdConfig = Has.HasType<typeof Third>
 
 export const putStrLn = (s: string) =>
   T.accessServiceM(HasConsole)((console) => console.putStrLn(s))
