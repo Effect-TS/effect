@@ -33,35 +33,41 @@ export interface AssociativeBoth2<F extends URIS2> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <E, B>(
     fb: Kind2<F, E, B>
-  ) => <A>(fa: Kind2<F, E, A>) => Kind2<F, E, readonly [A, B]>
+  ) => <E1, A>(fa: Kind2<F, E1, A>) => Kind2<F, E | E1, readonly [A, B]>
 }
 
 export interface AssociativeBoth3<F extends URIS3> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <R, E, B>(
     fb: Kind3<F, R, E, B>
-  ) => <A>(fa: Kind3<F, R, E, A>) => Kind3<F, R, E, readonly [A, B]>
+  ) => <R1, E1, A>(fa: Kind3<F, R1, E1, A>) => Kind3<F, R & R1, E | E1, readonly [A, B]>
 }
 
 export interface AssociativeBoth4<F extends URIS4> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <S, R, E, B>(
     fb: Kind4<F, S, R, E, B>
-  ) => <A>(fa: Kind4<F, S, R, E, A>) => Kind4<F, S, R, E, readonly [A, B]>
+  ) => <R1, E1, A>(
+    fa: Kind4<F, S, R1, E1, A>
+  ) => Kind4<F, S, R & R1, E | E1, readonly [A, B]>
 }
 
 export interface AssociativeBoth5<F extends URIS5> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <X, S, R, E, B>(
-    fb: Kind5<F, X, S, R, E, B>
-  ) => <A>(fa: Kind5<F, X, S, R, E, A>) => Kind5<F, X, S, R, E, readonly [A, B]>
+  readonly both: <I, S, R, E, B>(
+    fb: Kind5<F, I, S, R, E, B>
+  ) => <I1, R1, E1, A>(
+    fa: Kind5<F, I1, S, R1, E1, A>
+  ) => Kind5<F, I & I1, S, R & R1, E | E1, readonly [A, B]>
 }
 
 export interface AssociativeBoth6<F extends URIS6> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <Y, X, S, R, E, B>(
-    fb: Kind6<F, Y, X, S, R, E, B>
-  ) => <A>(fa: Kind6<F, Y, X, S, R, E, A>) => Kind6<F, Y, X, S, R, E, readonly [A, B]>
+  readonly both: <X, I, S, R, E, B>(
+    fb: Kind6<F, X, I, S, R, E, B>
+  ) => <X1, I1, R1, E1, A>(
+    fa: Kind6<F, X1, I1, S, R1, E1, A>
+  ) => Kind6<F, X | X1, I & I1, S | S, R & R1, E | E1, readonly [A, B]>
 }
 
 export function makeAssociativeBoth<URI extends URIS>(

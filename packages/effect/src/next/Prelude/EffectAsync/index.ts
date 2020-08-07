@@ -1,30 +1,24 @@
 import * as S from "../../Effect"
+import { intersect } from "../Utils"
+import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
+import { makeEnvironmental } from "../abstract/Environmental"
 import { Foreachable3, makeForeachable } from "../abstract/Foreachable"
 import { makeMonad } from "../abstract/Monad"
-
-export const EffectAsyncEnvURI = "EffectAsyncEnv"
-export type EffectAsyncEnvURI = typeof EffectAsyncEnvURI
 
 export const EffectAsyncURI = "EffectAsync"
 export type EffectAsyncURI = typeof EffectAsyncURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind3<R, E, A> {
-    [EffectAsyncEnvURI]: S.AsyncRE<A, E, R>
-    [EffectAsyncURI]: S.AsyncRE<R, E, A>
+  interface URItoKind3<Env, Err, Out> {
+    [EffectAsyncURI]: S.AsyncRE<Env, Err, Out>
   }
 }
-
-export const ContravariantEnv = makeContravariant(EffectAsyncEnvURI)({
-  contramap: S.provideSome
-})
 
 export const Covariant = makeCovariant(EffectAsyncURI)({
   map: S.map
@@ -79,11 +73,18 @@ export const AssociativeFlatten = makeAssociativeFlatten(EffectAsyncURI)({
   flatten: S.flatten
 })
 
-export const Monad = makeMonad(EffectAsyncURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeFlatten
+export const Monad = makeMonad(EffectAsyncURI)(
+  intersect(Covariant, AssociativeFlatten, Any)
+)
+
+export const Access = makeAccess(EffectAsyncURI)({
+  access: S.access,
+  provide: S.provideAll
 })
+
+export const Environmental = makeEnvironmental(EffectAsyncURI)(
+  intersect(Access, AssociativeFlatten)
+)
 
 /**
  * @category api

@@ -5,7 +5,7 @@ import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { makeContravariant } from "../abstract/Contravariant"
+import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
 import { makeMonad } from "../abstract/Monad"
@@ -19,13 +19,9 @@ export interface Reader<R, A> extends F.XPure<unknown, unknown, R, never, A> {}
 export const ReaderURI = "Reader"
 export type ReaderURI = typeof ReaderURI
 
-export const ReaderEnvURI = "ReaderEnv"
-export type ReaderEnvURI = typeof ReaderEnvURI
-
 declare module "../abstract/HKT" {
-  interface URItoKind2<E, A> {
-    [ReaderURI]: Reader<E, A>
-    [ReaderEnvURI]: Reader<A, E>
+  interface URItoKind3<Env, Err, Out> {
+    [ReaderURI]: Reader<Env, Out>
   }
 }
 
@@ -97,8 +93,8 @@ export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
 /**
  * The `Contravariant` instance for `Reader<x, A>`.
  */
-export const ContravariantEnv = makeContravariant(ReaderEnvURI)({
-  contramap: contramapEnv
+export const ContravariantEnv = makeContravariantEnv(ReaderURI)({
+  contramapEnv
 })
 
 /**

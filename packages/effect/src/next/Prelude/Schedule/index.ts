@@ -1,9 +1,10 @@
 import { tuple } from "../../../Function"
 import * as S from "../../Schedule"
+import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
-import { AssociativeBoth4, makeAssociativeBoth } from "../abstract/AssociativeBoth"
-import { makeContravariant } from "../abstract/Contravariant"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeContravariantInput } from "../abstract/ContravariantInput"
 import { makeCovariant } from "../abstract/Covariant"
 
 /**
@@ -17,9 +18,8 @@ export const ScheduleURI = "Schedule"
 export type ScheduleURI = typeof ScheduleURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind4<S, R, E, A> {
-    [ScheduleInURI]: S.Schedule<S, R, A, E>
-    [ScheduleURI]: S.Schedule<S, R, E, A>
+  interface URItoKind6<X, In, St, Env, Err, Out> {
+    [ScheduleURI]: S.Schedule<X, Env, In, Out>
   }
 }
 
@@ -27,8 +27,8 @@ declare module "../abstract/HKT" {
  * @category instances
  */
 
-export const ContravariantIn = makeContravariant(ScheduleInURI)({
-  contramap: S.contramap
+export const ContravariantInput = makeContravariantInput(ScheduleURI)({
+  contramapInput: S.contramap
 })
 
 export const Covariant = makeCovariant(ScheduleURI)({
@@ -39,17 +39,13 @@ export const Any = makeAny(ScheduleURI)({
   any: () => S.succeed({})
 })
 
-export const AssociativeBoth: AssociativeBoth4<ScheduleURI> = makeAssociativeBoth(
-  ScheduleURI
-)({
+export const AssociativeBoth = makeAssociativeBoth(ScheduleURI)({
   both: (fb) => (fa) => S.contramap_(S.both_(fa, fb), (e) => tuple(e, e))
 })
 
-export const Applicative = makeApplicative(ScheduleURI)({
-  ...Covariant,
-  ...Any,
-  ...AssociativeBoth
-})
+export const Applicative = makeApplicative(ScheduleURI)(
+  intersect(Covariant, Any, AssociativeBoth)
+)
 
 /**
  * @category api

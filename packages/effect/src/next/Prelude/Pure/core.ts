@@ -490,7 +490,7 @@ export const unit = <S, S1 = S>() => succeed<void, S, S1>(undefined)
  * Transforms the initial state of this computation` with the specified
  * function.
  */
-export function contramapState<S0, S1>(f: (s: S0) => S1) {
+export function contramapInput<S0, S1>(f: (s: S0) => S1) {
   return <S2, R, E, A>(self: XPure<S1, S2, R, E, A>) => chain_(update(f), () => self)
 }
 
