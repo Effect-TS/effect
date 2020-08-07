@@ -4,6 +4,7 @@ import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
+import { makeEnvironmental } from "../abstract/Environmental"
 import { makeMonad } from "../abstract/Monad"
 
 import * as F from "./core"
@@ -75,6 +76,13 @@ export const AssociativeBoth = makeAssociativeBoth(StateReaderErrorURI)({
  */
 export const AssociativeFlatten = makeAssociativeFlatten(StateReaderErrorURI)({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
+})
+
+/**
+ * The `Environmental` instance for `XPure`.
+ */
+export const Environmental = makeEnvironmental(XPureURI)({
+  access: F.access
 })
 
 /**
