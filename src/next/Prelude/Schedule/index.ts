@@ -1,10 +1,10 @@
 import { tuple } from "../../../Function"
 import * as S from "../../Schedule"
-import { Any4 } from "../abstract/Any"
-import { Applicative4 } from "../abstract/Applicative"
-import { AssociativeBoth4 } from "../abstract/AssociativeBoth"
-import { Contravariant4 } from "../abstract/Contravariant"
-import { Covariant4 } from "../abstract/Covariant"
+import { makeAny } from "../abstract/Any"
+import { makeApplicative } from "../abstract/Applicative"
+import { AssociativeBoth4, makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeContravariant } from "../abstract/Contravariant"
+import { makeCovariant } from "../abstract/Covariant"
 
 /**
  * @category definitions
@@ -27,38 +27,32 @@ declare module "../abstract/HKT" {
  * @category instances
  */
 
-export const ContravariantIn: Contravariant4<ScheduleInURI> = {
-  URI: ScheduleInURI,
-  Contravariant: "Contravariant",
+export const ContravariantIn = makeContravariant(ScheduleInURI)({
   contramap: S.contramap
-}
+})
 
-export const Covariant: Covariant4<ScheduleURI> = {
-  URI: ScheduleURI,
-  Covariant: "Covariant",
+export const Covariant = makeCovariant(ScheduleURI)({
   map: S.map
-}
+})
 
-export const Any: Any4<ScheduleURI> = {
-  URI: ScheduleURI,
-  Any: "Any",
+export const Any = makeAny(ScheduleURI)({
   any: () => S.succeed({})
-}
+})
 
-export const AssociativeBoth: AssociativeBoth4<ScheduleURI> = {
-  URI: ScheduleURI,
-  AssociativeBoth: "AssociativeBoth",
+export const AssociativeBoth: AssociativeBoth4<ScheduleURI> = makeAssociativeBoth(
+  ScheduleURI
+)({
   both: (fb) => (fa) => S.contramap_(S.both_(fa, fb), (e) => tuple(e, e))
-}
+})
 
-export const Applicative: Applicative4<ScheduleURI> = {
+export const Applicative = makeApplicative(ScheduleURI)({
   ...Covariant,
   ...Any,
   ...AssociativeBoth
-}
+})
 
 /**
  * @category api
  */
 
-export { succeed, tapOutput, run, delayed } from "../../Schedule"
+export { delayed, run, succeed, tapOutput } from "../../Schedule"

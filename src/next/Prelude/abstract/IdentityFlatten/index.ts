@@ -27,3 +27,30 @@ export type IdentityFlatten4<F extends URIS4> = AssociativeFlatten4<F> & Any4<F>
 export type IdentityFlatten5<F extends URIS5> = AssociativeFlatten5<F> & Any5<F>
 
 export type IdentityFlatten6<F extends URIS6> = AssociativeFlatten6<F> & Any6<F>
+
+export function makeIdentityFlatten<URI extends URIS>(
+  _: URI
+): (_: Omit<IdentityFlatten1<URI>, "URI">) => IdentityFlatten1<URI>
+export function makeIdentityFlatten<URI extends URIS2>(
+  _: URI
+): (_: Omit<IdentityFlatten2<URI>, "URI">) => IdentityFlatten2<URI>
+export function makeIdentityFlatten<URI extends URIS3>(
+  _: URI
+): (_: Omit<IdentityFlatten3<URI>, "URI">) => IdentityFlatten3<URI>
+export function makeIdentityFlatten<URI extends URIS4>(
+  _: URI
+): (_: Omit<IdentityFlatten4<URI>, "URI">) => IdentityFlatten4<URI>
+export function makeIdentityFlatten<URI extends URIS5>(
+  _: URI
+): (_: Omit<IdentityFlatten5<URI>, "URI">) => IdentityFlatten5<URI>
+export function makeIdentityFlatten<URI extends URIS6>(
+  _: URI
+): (_: Omit<IdentityFlatten6<URI>, "URI">) => IdentityFlatten6<URI>
+export function makeIdentityFlatten<URI>(
+  URI: URI
+): (_: Omit<IdentityFlatten<URI>, "URI">) => IdentityFlatten<URI> {
+  return (_) => ({
+    URI,
+    ..._
+  })
+}

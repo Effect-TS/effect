@@ -1,17 +1,16 @@
 import * as E from "../../../Either"
-import { tuple, pipe } from "../../../Function"
+import { pipe, tuple } from "../../../Function"
 import { Failure } from "../Newtype"
-import { Any2 } from "../abstract/Any"
-import { Applicative2 } from "../abstract/Applicative"
-import { AssociativeBoth2 } from "../abstract/AssociativeBoth"
-import { AssociativeEither2 } from "../abstract/AssociativeEither"
-import { AssociativeFlatten2 } from "../abstract/AssociativeFlatten"
-import { Covariant2 } from "../abstract/Covariant"
-import { HasURI } from "../abstract/HKT"
-import { Monad2 } from "../abstract/Monad"
+import { makeAny } from "../abstract/Any"
+import { makeApplicative } from "../abstract/Applicative"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeEither } from "../abstract/AssociativeEither"
+import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
+import { makeCovariant } from "../abstract/Covariant"
+import { makeMonad } from "../abstract/Monad"
 
-export const URI = "Either"
-export type URI = typeof URI
+export const EitherURI = "Either"
+export type EitherURI = typeof EitherURI
 
 export const FailureEitherURI = "FailureEither"
 export type FailureEitherURI = typeof FailureEitherURI
@@ -20,36 +19,24 @@ export type FailureEither<E, A> = Failure<E.Either<A, E>>
 
 declare module "../abstract/HKT" {
   interface URItoKind2<E, A> {
-    [URI]: E.Either<E, A>
+    [EitherURI]: E.Either<E, A>
     [FailureEitherURI]: FailureEither<E, A>
   }
-}
-
-export const HasEitherURI: HasURI<URI> = {
-  URI
-}
-
-export const HasFailureEitherURI: HasURI<FailureEitherURI> = {
-  URI: FailureEitherURI
 }
 
 /**
  * The `Covariant` instance for `Either`.
  */
-export const Covariant: Covariant2<URI> = {
-  Covariant: "Covariant",
-  map: E.map,
-  ...HasEitherURI
-}
+export const Covariant = makeCovariant(EitherURI)({
+  map: E.map
+})
 
 /**
  * The `Any` instance for `Either`.
  */
-export const Any: Any2<URI> = {
-  Any: "Any",
-  any: () => E.right({}),
-  ...HasEitherURI
-}
+export const Any = makeAny(EitherURI)({
+  any: () => E.right({})
+})
 
 export const associativeBoth: <E, B>(
   fb: E.Either<E, B>
@@ -59,11 +46,9 @@ export const associativeBoth: <E, B>(
 /**
  * The `AssociativeBoth` instance for `Either`.
  */
-export const AssociativeBoth: AssociativeBoth2<URI> = {
-  AssociativeBoth: "AssociativeBoth",
-  both: associativeBoth,
-  ...HasEitherURI
-}
+export const AssociativeBoth = makeAssociativeBoth(EitherURI)({
+  both: associativeBoth
+})
 
 export const associativeFailureBoth = <E, B>(fb: FailureEither<E, B>) => <A>(
   fa: FailureEither<E, A>
@@ -87,11 +72,9 @@ export const associativeFailureBoth = <E, B>(fb: FailureEither<E, B>) => <A>(
 /**
  * The `AssociativeBoth` instance for a failed `Either`
  */
-export const AssociativeFailureBoth: AssociativeBoth2<FailureEitherURI> = {
-  AssociativeBoth: "AssociativeBoth",
-  both: associativeFailureBoth,
-  ...HasFailureEitherURI
-}
+export const AssociativeFailureBoth = makeAssociativeBoth(FailureEitherURI)({
+  both: associativeFailureBoth
+})
 
 export const associativeEither = <E, B>(fb: E.Either<E, B>) => <A>(
   fa: E.Either<E, A>
@@ -112,11 +95,9 @@ export const associativeEither = <E, B>(fb: E.Either<E, B>) => <A>(
 /**
  * The `AssociativeEither` instance for `Either`.
  */
-export const AssociativeEither: AssociativeEither2<URI> = {
-  AssociativeEither: "AssociativeEither",
-  either: associativeEither,
-  ...HasEitherURI
-}
+export const AssociativeEither = makeAssociativeEither(EitherURI)({
+  either: associativeEither
+})
 
 export const associativeFailureEither = <E, B>(fb: FailureEither<E, B>) => <A>(
   fa: FailureEither<E, A>
@@ -134,32 +115,28 @@ export const associativeFailureEither = <E, B>(fb: FailureEither<E, B>) => <A>(
 /**
  * The `AssociativeEither` instance for a failed `Either`
  */
-export const AssociativeFailureEither: AssociativeEither2<FailureEitherURI> = {
-  AssociativeEither: "AssociativeEither",
-  either: associativeFailureEither,
-  ...HasFailureEitherURI
-}
+export const AssociativeFailureEither = makeAssociativeEither(FailureEitherURI)({
+  either: associativeFailureEither
+})
 
-export const AssociativeFlatten: AssociativeFlatten2<URI> = {
-  AssociativeFlatten: "AssociativeFlatten",
-  flatten: E.flatten,
-  ...HasEitherURI
-}
+export const AssociativeFlatten = makeAssociativeFlatten(EitherURI)({
+  flatten: E.flatten
+})
 
 /**
  * The `Applicative` instance for `Either`.
  */
-export const Applicative: Applicative2<URI> = {
+export const Applicative = makeApplicative(EitherURI)({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
-}
+})
 
 /**
  * The `Monad` instance for `Either`.
  */
-export const Monad: Monad2<URI> = {
+export const Monad = makeMonad(EitherURI)({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
-}
+})

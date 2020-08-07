@@ -63,3 +63,31 @@ export interface AssociativeBoth6<F extends URIS6> extends HasURI<F> {
     fb: Kind6<F, Y, X, S, R, E, B>
   ) => <A>(fa: Kind6<F, Y, X, S, R, E, A>) => Kind6<F, Y, X, S, R, E, readonly [A, B]>
 }
+
+export function makeAssociativeBoth<URI extends URIS>(
+  _: URI
+): (_: Omit<AssociativeBoth1<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth1<URI>
+export function makeAssociativeBoth<URI extends URIS2>(
+  _: URI
+): (_: Omit<AssociativeBoth2<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth2<URI>
+export function makeAssociativeBoth<URI extends URIS3>(
+  _: URI
+): (_: Omit<AssociativeBoth3<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth3<URI>
+export function makeAssociativeBoth<URI extends URIS4>(
+  _: URI
+): (_: Omit<AssociativeBoth4<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth4<URI>
+export function makeAssociativeBoth<URI extends URIS5>(
+  _: URI
+): (_: Omit<AssociativeBoth5<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth5<URI>
+export function makeAssociativeBoth<URI extends URIS6>(
+  _: URI
+): (_: Omit<AssociativeBoth6<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth6<URI>
+export function makeAssociativeBoth<URI>(
+  URI: URI
+): (_: Omit<AssociativeBoth<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth<URI> {
+  return (_) => ({
+    URI,
+    AssociativeBoth: "AssociativeBoth",
+    ..._
+  })
+}

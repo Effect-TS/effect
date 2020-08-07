@@ -40,3 +40,45 @@ export interface CommutativeEither5<F extends URIS5> extends AssociativeEither5<
 export interface CommutativeEither6<F extends URIS6> extends AssociativeEither6<F> {
   readonly CommutativeEither: "CommutativeEither"
 }
+
+export function makeCommutativeEither<URI extends URIS>(
+  _: URI
+): (
+  _: Omit<CommutativeEither1<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither1<URI>
+export function makeCommutativeEither<URI extends URIS2>(
+  _: URI
+): (
+  _: Omit<CommutativeEither2<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither2<URI>
+export function makeCommutativeEither<URI extends URIS3>(
+  _: URI
+): (
+  _: Omit<CommutativeEither3<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither3<URI>
+export function makeCommutativeEither<URI extends URIS4>(
+  _: URI
+): (
+  _: Omit<CommutativeEither4<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither4<URI>
+export function makeCommutativeEither<URI extends URIS5>(
+  _: URI
+): (
+  _: Omit<CommutativeEither5<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither5<URI>
+export function makeCommutativeEither<URI extends URIS6>(
+  _: URI
+): (
+  _: Omit<CommutativeEither6<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither6<URI>
+export function makeCommutativeEither<URI>(
+  URI: URI
+): (
+  _: Omit<CommutativeEither<URI>, "URI" | "CommutativeEither">
+) => CommutativeEither<URI> {
+  return (_) => ({
+    URI,
+    CommutativeEither: "CommutativeEither",
+    ..._
+  })
+}
