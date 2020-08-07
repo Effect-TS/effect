@@ -3,6 +3,7 @@ import * as H from "../src"
 import { pipe } from "@matechs/core/Function"
 import * as O from "@matechs/core/Option"
 import * as T from "@matechs/core/next/Effect"
+import * as Has from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 import * as MO from "@matechs/morphic"
 import { Codec, failure, success } from "@matechs/morphic/model"
@@ -225,7 +226,7 @@ export class Foo {
   readonly _tag = "Foo"
 }
 
-export const HasFoo = T.has(Foo)
+export const HasFoo = Has.has(Foo)
 
 export const appServerLayer = pipe(
   L.all(home, personPost),

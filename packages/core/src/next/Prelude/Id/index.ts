@@ -32,6 +32,7 @@ export function both<B>(fb: Id<B>) {
  */
 export const AssociativeBoth: AssociativeBoth1<URI> = {
   URI,
+  AssociativeBoth: "AssociativeBoth",
   both
 }
 
@@ -47,6 +48,7 @@ export function flatten<A>(ffa: Id<Id<A>>) {
  */
 export const AssociativeFlatten: AssociativeFlatten1<URI> = {
   URI,
+  AssociativeFlatten: "AssociativeFlatten",
   flatten
 }
 
@@ -55,6 +57,7 @@ export const AssociativeFlatten: AssociativeFlatten1<URI> = {
  */
 export const Any: Any1<URI> = {
   URI,
+  Any: "Any",
   any: () => Id.wrap({})
 }
 
@@ -70,6 +73,7 @@ export function map<A, B>(f: (a: A) => B): (fa: Id<A>) => Id<B> {
  */
 export const Covariant: Covariant1<URI> = {
   URI,
+  Covariant: "Covariant",
   map
 }
 
