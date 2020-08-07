@@ -1,8 +1,10 @@
 import { pipe, tuple } from "../../../Function"
 import { makeAny } from "../abstract/Any"
+import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
+import { makeMonad } from "../abstract/Monad"
 
 import * as F from "./core"
 
@@ -56,6 +58,24 @@ export const AssociativeBoth = makeAssociativeBoth(StateReaderErrorURI)({
  */
 export const AssociativeFlatten = makeAssociativeFlatten(StateReaderErrorURI)({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
+})
+
+/**
+ * The `Monad` instance for `StateReaderError`.
+ */
+export const Monad = makeMonad(StateReaderErrorURI)({
+  ...Any,
+  ...AssociativeFlatten,
+  ...Covariant
+})
+
+/**
+ * The `Applicative` instance for `StateReaderError`.
+ */
+export const Applicative = makeApplicative(StateReaderErrorURI)({
+  ...Any,
+  ...AssociativeBoth,
+  ...Covariant
 })
 
 /**
