@@ -4,6 +4,7 @@ import { Any1 } from "../abstract/Any"
 import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
 import { AssociativeEither1 } from "../abstract/AssociativeEither"
 import { Contravariant1 } from "../abstract/Contravariant"
+import { HasURI } from "../abstract/HKT"
 import { IdentityBoth1 } from "../abstract/IdentityBoth"
 import { IdentityEither1 } from "../abstract/IdentityEither"
 import { None1 } from "../abstract/None"
@@ -62,13 +63,17 @@ export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B
   return (fa) => make(([x0, x1], [y0, y1]) => fa.equals(y0)(x0) && fb.equals(y1)(x1))
 }
 
+export const HasEqualURI: HasURI<URI> = {
+  URI
+}
+
 /**
  * The `AssociativeBoth` instance for `Equal`.
  */
 export const AssociativeBoth: AssociativeBoth1<URI> = {
-  URI,
   AssociativeBoth: "AssociativeBoth",
-  both
+  both,
+  ...HasEqualURI
 }
 
 /**
@@ -90,9 +95,9 @@ export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, 
  * The `AssociativeEither` instance for `Equal`.
  */
 export const AssociativeEither: AssociativeEither1<URI> = {
-  URI,
   AssociativeEither: "AssociativeEither",
-  either
+  either,
+  ...HasEqualURI
 }
 
 /**
@@ -108,18 +113,18 @@ export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
  * The `Contravariant` instance for `Equal`.
  */
 export const Contravariant: Contravariant1<URI> = {
-  URI,
   Contravariant: "Contravariant",
-  contramap
+  contramap,
+  ...HasEqualURI
 }
 
 /**
  * The `Any` instance for `Equal`.
  */
 export const Any: Any1<URI> = {
-  URI,
   Any: "Any",
-  any: () => anyEqual
+  any: () => anyEqual,
+  ...HasEqualURI
 }
 
 /**
@@ -134,9 +139,9 @@ export const IdentityBoth: IdentityBoth1<URI> = {
  * The `None` instance for `Equal`.
  */
 export const None: None1<URI> = {
-  URI,
   None: "None",
-  none: () => nothingEqual
+  none: () => nothingEqual,
+  ...HasEqualURI
 }
 
 /**
