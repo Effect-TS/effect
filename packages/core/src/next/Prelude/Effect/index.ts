@@ -10,7 +10,6 @@ import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
 import { makeForeachable } from "../abstract/Foreachable"
-import { HasURI } from "../abstract/HKT"
 import { makeMonad } from "../abstract/Monad"
 
 /**
@@ -21,13 +20,9 @@ export const EffectEnvURI = "EffectEnv"
 export type EffectEnvURI = typeof EffectEnvURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind4<St, Env, Err, Out> {
-    [EffectURI]: S.Effect<St, Env, Err, Out>
+  interface URItoKind6<X, In, St, Env, Err, Out> {
+    [EffectURI]: S.Effect<X, Env, Err, Out>
   }
-}
-
-export const HasEffectURI: HasURI<EffectURI> = {
-  URI: EffectURI
 }
 
 /**
@@ -100,11 +95,7 @@ export const Environmental = makeEnvironmental(EffectURI)(
 /**
  * The `Monad` instance for `Effect`.
  */
-export const Monad = makeMonad(EffectURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeFlatten
-})
+export const Monad = makeMonad(EffectURI)(intersect(Any, Covariant, AssociativeFlatten))
 
 /**
  * @category api
