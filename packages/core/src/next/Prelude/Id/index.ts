@@ -1,23 +1,22 @@
 import { tuple } from "../../../Function"
 import { Generic, genericDef } from "../Newtype"
-import { Any1 } from "../abstract/Any"
-import { AssociativeBoth1 } from "../abstract/AssociativeBoth"
-import { AssociativeFlatten1 } from "../abstract/AssociativeFlatten"
-import { Covariant1 } from "../abstract/Covariant"
-import { HasURI } from "../abstract/HKT"
-import { IdentityFlatten1 } from "../abstract/IdentityFlatten"
-import { Monad1 } from "../abstract/Monad"
+import { Any1, makeAny } from "../abstract/Any"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
+import { makeCovariant } from "../abstract/Covariant"
+import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
+import { makeMonad } from "../abstract/Monad"
 
 export const Id = genericDef("@newtype/Id")
 
 export interface Id<A> extends Generic<A, typeof Id> {}
 
-export const URI = Id.URI
-export type URI = typeof URI
+export const IdURI = Id.URI
+export type IdURI = typeof IdURI
 
 declare module "../abstract/HKT" {
   interface URItoKind<A> {
-    [URI]: Id<A>
+    [IdURI]: Id<A>
   }
 }
 
@@ -28,18 +27,12 @@ export function both<B>(fb: Id<B>) {
   return <A>(fa: Id<A>): Id<[A, B]> => Id.wrap(tuple(Id.unwrap(fa), Id.unwrap(fb)))
 }
 
-export const HasIdURI: HasURI<URI> = {
-  URI
-}
-
 /**
  * The `AssociativeBoth` instance for `Id`.
  */
-export const AssociativeBoth: AssociativeBoth1<URI> = {
-  AssociativeBoth: "AssociativeBoth",
-  both,
-  ...HasIdURI
-}
+export const AssociativeBoth = makeAssociativeBoth(IdURI)({
+  both
+})
 
 /**
  * Flatten Id<Id<A>> => Id<A>
@@ -51,20 +44,16 @@ export function flatten<A>(ffa: Id<Id<A>>) {
 /**
  * The `AssociativeFlatten` instance for `Id`.
  */
-export const AssociativeFlatten: AssociativeFlatten1<URI> = {
-  AssociativeFlatten: "AssociativeFlatten",
-  flatten,
-  ...HasIdURI
-}
+export const AssociativeFlatten = makeAssociativeFlatten(IdURI)({
+  flatten
+})
 
 /**
  * The `Any` instance for `Id`.
  */
-export const Any: Any1<URI> = {
-  Any: "Any",
-  any: () => Id.wrap({}),
-  ...HasIdURI
-}
+export const Any: Any1<IdURI> = makeAny(IdURI)({
+  any: () => Id.wrap({})
+})
 
 /**
  * Apply f: A => B to Id<A> getting Id<B>
@@ -76,25 +65,23 @@ export function map<A, B>(f: (a: A) => B): (fa: Id<A>) => Id<B> {
 /**
  * The `Covariant` instance for `Id`.
  */
-export const Covariant: Covariant1<URI> = {
-  Covariant: "Covariant",
-  map,
-  ...HasIdURI
-}
+export const Covariant = makeCovariant(IdURI)({
+  map
+})
 
 /**
  * The `IdentityFlatten` instance for `Id`.
  */
-export const IdentityFlatten: IdentityFlatten1<URI> = {
+export const IdentityFlatten = makeIdentityFlatten(IdURI)({
   ...Any,
   ...AssociativeFlatten
-}
+})
 
 /**
  * The `Monad` instance for `Id`.
  */
-export const Monad: Monad1<URI> = {
+export const Monad = makeMonad(IdURI)({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
-}
+})

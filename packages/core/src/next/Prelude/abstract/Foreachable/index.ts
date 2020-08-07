@@ -75,3 +75,31 @@ export interface Foreachable6<F extends URIS6> extends Covariant6<F> {
     f: (a: A) => Kind6<F, Y, X, S, R, E, B>
   ) => (as: Iterable<A>) => Kind6<F, Y, X, S, R, E, readonly B[]>
 }
+
+export function makeForeachable<URI extends URIS>(
+  _: URI
+): (_: Omit<Foreachable1<URI>, "URI" | "Foreachable">) => Foreachable1<URI>
+export function makeForeachable<URI extends URIS2>(
+  _: URI
+): (_: Omit<Foreachable2<URI>, "URI" | "Foreachable">) => Foreachable2<URI>
+export function makeForeachable<URI extends URIS3>(
+  _: URI
+): (_: Omit<Foreachable3<URI>, "URI" | "Foreachable">) => Foreachable3<URI>
+export function makeForeachable<URI extends URIS4>(
+  _: URI
+): (_: Omit<Foreachable4<URI>, "URI" | "Foreachable">) => Foreachable4<URI>
+export function makeForeachable<URI extends URIS5>(
+  _: URI
+): (_: Omit<Foreachable5<URI>, "URI" | "Foreachable">) => Foreachable5<URI>
+export function makeForeachable<URI extends URIS6>(
+  _: URI
+): (_: Omit<Foreachable6<URI>, "URI" | "Foreachable">) => Foreachable6<URI>
+export function makeForeachable<URI>(
+  URI: URI
+): (_: Omit<Foreachable<URI>, "URI" | "Foreachable">) => Foreachable<URI> {
+  return (_) => ({
+    URI,
+    Foreachable: "Foreachable",
+    ..._
+  })
+}

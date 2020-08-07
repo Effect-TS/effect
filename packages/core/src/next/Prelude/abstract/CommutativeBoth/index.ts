@@ -40,3 +40,31 @@ export interface CommutativeBoth5<F extends URIS5> extends AssociativeBoth5<F> {
 export interface CommutativeBoth6<F extends URIS6> extends AssociativeBoth6<F> {
   readonly CommutativeBoth: "CommutativeBoth"
 }
+
+export function makeCommutativeBoth<URI extends URIS>(
+  _: URI
+): (_: Omit<CommutativeBoth1<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth1<URI>
+export function makeCommutativeBoth<URI extends URIS2>(
+  _: URI
+): (_: Omit<CommutativeBoth2<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth2<URI>
+export function makeCommutativeBoth<URI extends URIS3>(
+  _: URI
+): (_: Omit<CommutativeBoth3<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth3<URI>
+export function makeCommutativeBoth<URI extends URIS4>(
+  _: URI
+): (_: Omit<CommutativeBoth4<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth4<URI>
+export function makeCommutativeBoth<URI extends URIS5>(
+  _: URI
+): (_: Omit<CommutativeBoth5<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth5<URI>
+export function makeCommutativeBoth<URI extends URIS6>(
+  _: URI
+): (_: Omit<CommutativeBoth6<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth6<URI>
+export function makeCommutativeBoth<URI>(
+  URI: URI
+): (_: Omit<CommutativeBoth<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth<URI> {
+  return (_) => ({
+    URI,
+    CommutativeBoth: "CommutativeBoth",
+    ..._
+  })
+}
