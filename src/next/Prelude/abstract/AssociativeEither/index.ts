@@ -20,7 +20,7 @@ import {
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface AssociativeEitherH<F> extends HasURI<F> {
+export interface AssociativeEitherF<F> extends HasURI<F> {
   readonly AssociativeEither: "AssociativeEither"
   readonly either: <B>(fb: HKT<F, B>) => <A>(fa: HKT<F, A>) => HKT<F, E.Either<A, B>>
 }
@@ -98,8 +98,8 @@ export function makeAssociativeEither<URI extends URIS6>(
 export function makeAssociativeEither<URI>(
   URI: URI
 ): (
-  _: Omit<AssociativeEitherH<URI>, "URI" | "AssociativeEither">
-) => AssociativeEitherH<URI> {
+  _: Omit<AssociativeEitherF<URI>, "URI" | "AssociativeEither">
+) => AssociativeEitherF<URI> {
   return (_) => ({
     URI,
     AssociativeEither: "AssociativeEither",

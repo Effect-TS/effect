@@ -19,7 +19,7 @@ import {
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface AssociativeFlattenH<F> extends HasURI<F> {
+export interface AssociativeFlattenF<F> extends HasURI<F> {
   readonly AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <A>(fb: HKT<F, HKT<F, A>>) => HKT<F, A>
 }
@@ -95,8 +95,8 @@ export function makeAssociativeFlatten<URI extends URIS6>(
 export function makeAssociativeFlatten<URI>(
   URI: URI
 ): (
-  _: Omit<AssociativeFlattenH<URI>, "URI" | "AssociativeFlatten">
-) => AssociativeFlattenH<URI> {
+  _: Omit<AssociativeFlattenF<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlattenF<URI> {
   return (_) => ({
     URI,
     AssociativeFlatten: "AssociativeFlatten",

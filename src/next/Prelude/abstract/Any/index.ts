@@ -6,7 +6,7 @@ import {
   Covariant4,
   Covariant5,
   Covariant6,
-  CovariantH
+  CovariantF
 } from "../Covariant"
 import {
   HasURI,
@@ -29,7 +29,7 @@ import {
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export interface AnyH<F> extends HasURI<F> {
+export interface AnyF<F> extends HasURI<F> {
   readonly Any: "Any"
   readonly any: () => HKT<F, unknown>
 }
@@ -82,8 +82,8 @@ export function succeedF<F extends URIS5>(
 export function succeedF<F extends URIS6>(
   F: Any6<F> & Covariant6<F>
 ): <Y, X, S, R, E, A>(a: A) => Kind6<F, Y, X, S, R, E, A>
-export function succeedF<F>(F: AnyH<F> & CovariantH<F>): <A>(a: A) => HKT<F, A>
-export function succeedF<F>(F: AnyH<F> & CovariantH<F>): <A>(a: A) => HKT<F, A> {
+export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A>
+export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
       F.any(),
@@ -111,7 +111,7 @@ export function makeAny<URI extends URIS6>(
 ): (_: Omit<Any6<URI>, "URI" | "Any">) => Any6<URI>
 export function makeAny<URI>(
   URI: URI
-): (_: Omit<AnyH<URI>, "URI" | "Any">) => AnyH<URI> {
+): (_: Omit<AnyF<URI>, "URI" | "Any">) => AnyF<URI> {
   return (_) => ({
     URI,
     Any: "Any",
