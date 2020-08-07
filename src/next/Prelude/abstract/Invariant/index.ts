@@ -16,6 +16,7 @@ import {
 } from "../HKT"
 
 export interface Invariant<F> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -26,6 +27,7 @@ export interface Invariant<F> extends HasURI<F> {
 }
 
 export interface Invariant1<F extends URIS> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -36,6 +38,7 @@ export interface Invariant1<F extends URIS> extends HasURI<F> {
 }
 
 export interface Invariant2<F extends URIS2> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -46,6 +49,7 @@ export interface Invariant2<F extends URIS2> extends HasURI<F> {
 }
 
 export interface Invariant3<F extends URIS3> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -56,6 +60,7 @@ export interface Invariant3<F extends URIS3> extends HasURI<F> {
 }
 
 export interface Invariant4<F extends URIS4> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -66,6 +71,7 @@ export interface Invariant4<F extends URIS4> extends HasURI<F> {
 }
 
 export interface Invariant5<F extends URIS5> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -76,6 +82,7 @@ export interface Invariant5<F extends URIS5> extends HasURI<F> {
 }
 
 export interface Invariant6<F extends URIS6> extends HasURI<F> {
+  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A

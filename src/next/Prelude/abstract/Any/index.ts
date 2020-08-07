@@ -30,30 +30,37 @@ import {
  * produce an `F[(A, B)]` with an identity.
  */
 export interface Any<F> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: () => HKT<F, unknown>
 }
 
 export interface Any1<F extends URIS> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: () => Kind<F, unknown>
 }
 
 export interface Any2<F extends URIS2> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: <E>() => Kind2<F, E, unknown>
 }
 
 export interface Any3<F extends URIS3> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: <R, E>() => Kind3<F, R, E, unknown>
 }
 
 export interface Any4<F extends URIS4> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: <S, R, E>() => Kind4<F, S, R, E, unknown>
 }
 
 export interface Any5<F extends URIS5> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: <X, S, R, E>() => Kind5<F, X, S, R, E, unknown>
 }
 
 export interface Any6<F extends URIS6> extends HasURI<F> {
+  readonly Any: "Any"
   readonly any: <Y, X, S, R, E>() => Kind6<F, Y, X, S, R, E, unknown>
 }
 
