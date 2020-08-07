@@ -1,8 +1,10 @@
 import * as F from "../Pure"
+import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
+import { makeContextual } from "../abstract/Contextual"
 import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
@@ -72,6 +74,22 @@ export const chain: <A, R1, B>(
 export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R, B> =
   F.map
 
+/**
+ * Succeed with a value A
+ */
+export const succeed: <A>(a: A) => Reader<unknown, A> = F.succeed
+
+/**
+ * Run the computation
+ */
+export const run = <A>(self: Reader<unknown, A>): A => F.runIO(self)
+
+/**
+ * Run the computation with environment R
+ */
+export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
+  F.runIO(F.provideAll(r)(self))
+
 //
 // Instances
 //
@@ -87,7 +105,8 @@ export const ContravariantEnv = makeContravariant(ReaderEnvURI)({
  * The `Environmental` instance for `Reader<R, A>`.
  */
 export const Environmental = makeEnvironmental(ReaderURI)({
-  access: F.access
+  access: F.access,
+  provide: F.provideAll
 })
 
 /**
@@ -121,17 +140,18 @@ export const AssociativeFlatten = makeAssociativeFlatten(ReaderURI)({
 /**
  * The `Monad` instance for `Reader<R, x>`.
  */
-export const Monad = makeMonad(ReaderURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeFlatten
-})
+export const Monad = makeMonad(ReaderURI)(intersect(Any, Covariant, AssociativeFlatten))
 
 /**
  * The `Monad` instance for `Reader<R, x>`.
  */
-export const Applicative = makeApplicative(ReaderURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBoth
-})
+export const Applicative = makeApplicative(ReaderURI)(
+  intersect(Any, Covariant, AssociativeBoth)
+)
+
+/**
+ * The `Contextual` instance for `Reader<R, A>`.
+ */
+export const Contextual = makeContextual(ReaderURI)(
+  intersect(Environmental, AssociativeFlatten)
+)

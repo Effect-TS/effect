@@ -15,31 +15,47 @@ import {
 export interface EnvironmentalF<F> {
   readonly Environmental: "Environmental"
   readonly access: <E, A>(f: (r: E) => A) => HKT2<F, E, A>
+  readonly provide: <E>(r: E) => <A>(fa: HKT2<F, E, A>) => HKT2<F, unknown, A>
 }
 
 export interface Environmental2<F extends URIS2> {
   readonly Environmental: "Environmental"
   readonly access: <E, A>(f: (r: E) => A) => Kind2<F, E, A>
+  readonly provide: <E>(r: E) => <A>(fa: Kind2<F, E, A>) => Kind2<F, unknown, A>
 }
 
 export interface Environmental3<F extends URIS3> {
   readonly Environmental: "Environmental"
   readonly access: <R, E, A>(f: (r: R) => A) => Kind3<F, R, E, A>
+  readonly provide: <R>(
+    r: R
+  ) => <E, A>(fa: Kind3<F, R, E, A>) => Kind3<F, unknown, E, A>
 }
 
 export interface Environmental4<F extends URIS4> {
   readonly Environmental: "Environmental"
   readonly access: <S, R, E, A>(f: (r: R) => A) => Kind4<F, S, R, E, A>
+  readonly provide: <R>(
+    r: R
+  ) => <S, E, A>(fa: Kind4<F, S, R, E, A>) => Kind4<F, S, unknown, E, A>
 }
 
 export interface Environmental5<F extends URIS5> {
   readonly Environmental: "Environmental"
   readonly access: <X, S, R, E, A>(f: (r: R) => A) => Kind5<F, X, S, R, E, A>
+  readonly provide: <R>(
+    r: R
+  ) => <X, S, E, A>(fa: Kind5<F, X, S, R, E, A>) => Kind5<F, X, S, unknown, E, A>
 }
 
 export interface Environmental6<F extends URIS6> {
   readonly Environmental: "Environmental"
   readonly access: <Y, X, S, R, E, A>(f: (r: R) => A) => Kind6<F, Y, X, S, R, E, A>
+  readonly provide: <R>(
+    r: R
+  ) => <Y, X, S, E, A>(
+    fa: Kind6<F, Y, X, S, R, E, A>
+  ) => Kind6<F, Y, X, S, unknown, E, A>
 }
 
 export function makeEnvironmental<URI extends URIS2>(
