@@ -36,7 +36,8 @@ export { uninterruptibleMask } from "../Effect/uninterruptibleMask"
 export { whenM } from "../Effect/whenM"
 export { flatten as exitFlatten } from "../Exit/core"
 export { join } from "../Fiber/api"
-export { Has, provideService, Region } from "../Has"
+export { Has } from "../Has"
+export { provideService, Region } from "../Effect/has"
 export {
   chain as managedChain,
   chain_ as managedChain_,

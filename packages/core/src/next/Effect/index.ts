@@ -15,17 +15,6 @@ export {
   accessServicesM,
   accessServicesT,
   accessServicesTM,
-  Augumented,
-  Constructor,
-  ConstructorType,
-  DerivationContext,
-  Has,
-  has,
-  HasType,
-  HasURI,
-  InnerHasType,
-  mergeEnvironments,
-  overridable,
   provideService,
   provideServiceM,
   readRegion,
@@ -35,14 +24,11 @@ export {
   region,
   RegionURI,
   replaceService,
-  replaceServiceIn,
-  replaceServiceIn_,
   replaceServiceM,
   replaceServiceM_,
   replaceService_,
   useRegion
-} from "../Has"
-export { AOf, EOf, Erase, ROf, SOf } from "../Utils"
+} from "./has"
 export { absolve } from "./absolve"
 export { ap } from "./ap"
 export { ap_ } from "./ap_"
@@ -88,7 +74,6 @@ export {
   unit,
   yieldNow
 } from "./core"
-export { IO, RIO, RUIO, SIO, SRIO, SRUIO, SUIO, UIO } from "./defaults"
 export { delay } from "./delay"
 export { delay_ } from "./delay_"
 export { die } from "./die"

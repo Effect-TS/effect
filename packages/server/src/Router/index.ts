@@ -18,7 +18,7 @@ import * as A from "@matechs/core/Array"
 import * as Ei from "@matechs/core/Either"
 import * as NA from "@matechs/core/NonEmptyArray"
 import * as T from "@matechs/core/next/Effect"
-import { Augumented } from "@matechs/core/next/Has"
+import * as Has from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 import * as M from "@matechs/core/next/Managed"
 import * as MO from "@matechs/morphic"
@@ -57,9 +57,9 @@ export class Router {
   handler: Handler = (next) => this.finalHandler(next)
 }
 
-export const HasRouter = T.has<Router>()
+export const HasRouter = Has.has<Router>()
 
-export const root = (has: Augumented<Server>) =>
+export const root = (has: Has.Augumented<Server>) =>
   L.service(HasRouter).fromManaged(
     pipe(
       M.makeExit_(
@@ -116,8 +116,8 @@ export class RouteInput {
   constructor(readonly params: unknown) {}
 }
 
-export const HasRouteInput = T.has<RouteInput>()
-export type HasRouteInput = T.HasType<typeof HasRouteInput>
+export const HasRouteInput = Has.has<RouteInput>()
+export type HasRouteInput = Has.HasType<typeof HasRouteInput>
 
 export const getRouteInput = T.accessServiceM(HasRouteInput)(T.succeed)
 
@@ -274,7 +274,7 @@ export const middleware = <R, E = never>(
     _: RouteHandlerE<R1, E1>
   ) => T.Effect<
     unknown,
-    R & T.Has<RouteInput> & T.Has<RequestState> & T.Has<RequestContext> & R1,
+    R & Has.Has<RouteInput> & Has.Has<RequestState> & Has.Has<RequestContext> & R1,
     E1 | E,
     void
   >

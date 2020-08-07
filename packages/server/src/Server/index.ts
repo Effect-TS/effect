@@ -106,8 +106,8 @@ export class Value<V> {
 
 export const requestState = <V>(initial: V) => new Value(initial)
 
-export const HasRequestState = T.has<RequestState>()
-export type HasRequestState = T.HasType<typeof HasRequestState>
+export const HasRequestState = Has.has<RequestState>()
+export type HasRequestState = Has.HasType<typeof HasRequestState>
 
 export const getRequestState = <V>(v: Value<V>) =>
   T.accessServiceM(HasRequestState)((s) => s.get(v))
@@ -253,7 +253,7 @@ export const serverConfig = ({
 
 export function server(
   has: Has.Augumented<Server>
-): L.AsyncR<T.Has<ServerConfig> & T.DefaultEnv, T.Has<Server>> {
+): L.AsyncR<Has.Has<ServerConfig> & T.DefaultEnv, Has.Has<Server>> {
   return L.service(has)
     .prepare(
       T.accessServiceM(config(has))((sc) =>
@@ -270,7 +270,7 @@ export function server(
 export const configDerivationContext = new Has.DerivationContext()
 
 export const config = (has: Has.Augumented<Server>) =>
-  configDerivationContext.derive(has, () => T.has<ServerConfig>())
+  configDerivationContext.derive(has, () => Has.has<ServerConfig>())
 
 export const accessConfigM = (has: Has.Augumented<Server>) =>
   T.accessServiceM(config(has))
@@ -287,8 +287,8 @@ export class RequestContext {
   ) {}
 }
 
-export const HasRequestContext = T.has<RequestContext>()
-export type HasRequestContext = T.HasType<typeof HasRequestContext>
+export const HasRequestContext = Has.has<RequestContext>()
+export type HasRequestContext = Has.HasType<typeof HasRequestContext>
 
 export const getRequestContext = T.accessServiceM(HasRequestContext)(T.succeed)
 

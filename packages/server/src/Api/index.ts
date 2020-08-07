@@ -10,9 +10,10 @@ import {
 } from "../Server"
 
 import * as T from "@matechs/core/next/Effect"
+import * as Has from "@matechs/core/next/Has"
 import * as L from "@matechs/core/next/Layer"
 
-export const HasServer = T.has<Server>()
+export const HasServer = Has.has<Server>()
 
 export const getServerConfig = accessConfigM(HasServer)(T.succeed)
 export const getServer = T.accessServiceM(HasServer)(T.succeed)
