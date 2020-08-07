@@ -6,7 +6,7 @@ import {
   Covariant4,
   Covariant5,
   Covariant6,
-  Covariant
+  CovariantH
 } from "../Covariant"
 import {
   HasURI,
@@ -29,7 +29,7 @@ import {
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export interface Any<F> extends HasURI<F> {
+export interface AnyH<F> extends HasURI<F> {
   readonly Any: "Any"
   readonly any: () => HKT<F, unknown>
 }
@@ -64,26 +64,26 @@ export interface Any6<F extends URIS6> extends HasURI<F> {
   readonly any: <Y, X, S, R, E>() => Kind6<F, Y, X, S, R, E, unknown>
 }
 
-export function succeed<F extends URIS>(
+export function succeedF<F extends URIS>(
   F: Any1<F> & Covariant1<F>
 ): <A>(a: A) => Kind<F, A>
-export function succeed<F extends URIS2>(
+export function succeedF<F extends URIS2>(
   F: Any2<F> & Covariant2<F>
 ): <E, A>(a: A) => Kind2<F, E, A>
-export function succeed<F extends URIS3>(
+export function succeedF<F extends URIS3>(
   F: Any3<F> & Covariant3<F>
 ): <R, E, A>(a: A) => Kind3<F, R, E, A>
-export function succeed<F extends URIS4>(
+export function succeedF<F extends URIS4>(
   F: Any4<F> & Covariant4<F>
 ): <S, R, E, A>(a: A) => Kind4<F, S, R, E, A>
-export function succeed<F extends URIS5>(
+export function succeedF<F extends URIS5>(
   F: Any5<F> & Covariant5<F>
 ): <X, S, R, E, A>(a: A) => Kind5<F, X, S, R, E, A>
-export function succeed<F extends URIS6>(
+export function succeedF<F extends URIS6>(
   F: Any6<F> & Covariant6<F>
 ): <Y, X, S, R, E, A>(a: A) => Kind6<F, Y, X, S, R, E, A>
-export function succeed<F>(F: Any<F> & Covariant<F>): <A>(a: A) => HKT<F, A>
-export function succeed<F>(F: Any<F> & Covariant<F>): <A>(a: A) => HKT<F, A> {
+export function succeedF<F>(F: AnyH<F> & CovariantH<F>): <A>(a: A) => HKT<F, A>
+export function succeedF<F>(F: AnyH<F> & CovariantH<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
       F.any(),
@@ -109,7 +109,9 @@ export function makeAny<URI extends URIS5>(
 export function makeAny<URI extends URIS6>(
   _: URI
 ): (_: Omit<Any6<URI>, "URI" | "Any">) => Any6<URI>
-export function makeAny<URI>(URI: URI): (_: Omit<Any<URI>, "URI" | "Any">) => Any<URI> {
+export function makeAny<URI>(
+  URI: URI
+): (_: Omit<AnyH<URI>, "URI" | "Any">) => AnyH<URI> {
   return (_) => ({
     URI,
     Any: "Any",

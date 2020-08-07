@@ -19,7 +19,7 @@ import {
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface AssociativeBoth<F> extends HasURI<F> {
+export interface AssociativeBothH<F> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <B>(fb: HKT<F, B>) => <A>(fa: HKT<F, A>) => HKT<F, readonly [A, B]>
 }
@@ -84,7 +84,9 @@ export function makeAssociativeBoth<URI extends URIS6>(
 ): (_: Omit<AssociativeBoth6<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth6<URI>
 export function makeAssociativeBoth<URI>(
   URI: URI
-): (_: Omit<AssociativeBoth<URI>, "URI" | "AssociativeBoth">) => AssociativeBoth<URI> {
+): (
+  _: Omit<AssociativeBothH<URI>, "URI" | "AssociativeBoth">
+) => AssociativeBothH<URI> {
   return (_) => ({
     URI,
     AssociativeBoth: "AssociativeBoth",

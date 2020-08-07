@@ -1,5 +1,5 @@
 import {
-  Covariant,
+  CovariantH,
   Covariant1,
   Covariant2,
   Covariant3,
@@ -23,7 +23,7 @@ import {
   URIS6
 } from "../HKT"
 import {
-  IdentityBoth,
+  IdentityBothH,
   IdentityBoth1,
   IdentityBoth2,
   IdentityBoth3,
@@ -33,7 +33,7 @@ import {
 } from "../IdentityBoth"
 
 export interface Foreach<F> {
-  <G>(G: IdentityBoth<G> & Covariant<G>): <A, B>(
+  <G>(G: IdentityBothH<G> & CovariantH<G>): <A, B>(
     f: (a: A) => HKT<G, B>
   ) => (fa: HKT<F, A>) => HKT<G, HKT<F, B>>
   <G extends URIS>(G: IdentityBoth1<G> & Covariant1<G>): <A, B>(
@@ -56,13 +56,13 @@ export interface Foreach<F> {
   ) => (fa: HKT<F, A>) => Kind6<G, Y, X, S, R, E, HKT<F, B>>
 }
 
-export interface Traversable<F> extends Covariant<F> {
+export interface TraversableH<F> extends CovariantH<F> {
   readonly Traversable: "Traversable"
   readonly foreach: Foreach<F>
 }
 
 export interface Foreach1<F extends URIS> {
-  <G>(G: IdentityBoth<G> & Covariant<G>): <A, B>(
+  <G>(G: IdentityBothH<G> & CovariantH<G>): <A, B>(
     f: (a: A) => HKT<G, B>
   ) => (fa: Kind<F, A>) => HKT<G, Kind<F, B>>
   <G extends URIS>(G: IdentityBoth1<G> & Covariant1<G>): <A, B>(
@@ -110,7 +110,7 @@ export function makeTraversable<URI extends URIS>(
 // ): (_: Omit<Traversable6<URI>, "URI" | "Traversable">) => Traversable6<URI>
 export function makeTraversable<URI>(
   URI: URI
-): (_: Omit<Traversable<URI>, "URI" | "Traversable">) => Traversable<URI> {
+): (_: Omit<TraversableH<URI>, "URI" | "Traversable">) => TraversableH<URI> {
   return (_) => ({
     URI,
     Traversable: "Traversable",
