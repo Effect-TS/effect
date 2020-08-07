@@ -6,8 +6,10 @@ import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
+import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
+import { makeFail } from "../abstract/Fail"
 import { Foreachable3, makeForeachable } from "../abstract/Foreachable"
 import { makeMonad } from "../abstract/Monad"
 
@@ -20,48 +22,76 @@ declare module "../abstract/HKT" {
   }
 }
 
+/**
+ * The `Covariant` instance for `EffectAsync`.
+ */
 export const Covariant = makeCovariant(EffectAsyncURI)({
   map: S.map
 })
 
+/**
+ * The `AssociativeBoth` instance for `EffectAsync`.
+ */
 export const AssociativeBoth = makeAssociativeBoth(EffectAsyncURI)({
   both: (fb) => (fa) => S.zip_(fa, fb)
 })
 
+/**
+ * The Parallel `AssociativeBoth` instance for `EffectAsync`.
+ */
 export const AssociativeBothPar = makeAssociativeBoth(EffectAsyncURI)({
   both: (fb) => (fa) => S.zipPar_(fa, fb)
 })
 
+/**
+ * The `Any` instance for `EffectAsync`.
+ */
 export const Any = makeAny(EffectAsyncURI)({
   any: () => S.of
 })
 
-export const Applicative = makeApplicative(EffectAsyncURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBoth
-})
+/**
+ * The `Applicative` instance for `EffectAsync`.
+ */
+export const Applicative = makeApplicative(EffectAsyncURI)(
+  intersect(Any, Covariant, AssociativeBoth)
+)
 
-export const ApplicativePar = makeApplicative(EffectAsyncURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBothPar
-})
+/**
+ * The Parallel `Applicative` instance for `EffectAsync`.
+ */
+export const ApplicativePar = makeApplicative(EffectAsyncURI)(
+  intersect(Any, Covariant, AssociativeBothPar)
+)
 
+/**
+ * The `AssociativeEither` instance for `EffectAsync`.
+ */
 export const AssociativeEither = makeAssociativeEither(EffectAsyncURI)({
   either: S.orElseEither
 })
 
+/**
+ * The `Foreachable` instance for `EffectAsync`.
+ */
 export const Foreachable = makeForeachable(EffectAsyncURI)({
   foreach: S.foreach,
   ...Covariant
 })
 
+/**
+ * The Parallel `Foreachable` instance for `EffectAsync`.
+ */
 export const ForeachablePar = makeForeachable(EffectAsyncURI)({
   foreach: S.foreachPar,
   ...Covariant
 })
 
+/**
+ * The Parallel `AssociativeBoth` instance for `EffectAsync`.
+ *
+ * this will use up to N fibers
+ */
 export function ForeachableParN(n: number): Foreachable3<EffectAsyncURI> {
   return makeForeachable(EffectAsyncURI)({
     foreach: S.foreachParN(n),
@@ -69,22 +99,48 @@ export function ForeachableParN(n: number): Foreachable3<EffectAsyncURI> {
   })
 }
 
+/**
+ * The `AssociativeFlatten` instance for `EffectAsync`.
+ */
 export const AssociativeFlatten = makeAssociativeFlatten(EffectAsyncURI)({
   flatten: S.flatten
 })
 
+/**
+ * The `Monad` instance for `EffectAsync`.
+ */
 export const Monad = makeMonad(EffectAsyncURI)(
   intersect(Covariant, AssociativeFlatten, Any)
 )
 
+/**
+ * The `Access` instance for `EffectAsync`.
+ */
 export const Access = makeAccess(EffectAsyncURI)({
   access: S.access,
   provide: S.provideAll
 })
 
+/**
+ * The `Environmental` instance for `EffectAsync`.
+ */
 export const Environmental = makeEnvironmental(EffectAsyncURI)(
   intersect(Access, AssociativeFlatten)
 )
+
+/**
+ * The `Fail` instance for `EffectAsync`.
+ */
+export const Fail = makeFail(EffectAsyncURI)({
+  fail: S.fail
+})
+
+/**
+ * The `ContravariantEnv` instance for `EffectAsync`.
+ */
+export const ContravariantEnv = makeContravariantEnv(EffectAsyncURI)({
+  contramapEnv: S.provideSome
+})
 
 /**
  * @category api
