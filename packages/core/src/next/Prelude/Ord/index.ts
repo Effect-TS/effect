@@ -9,6 +9,15 @@ export interface Ord<A> extends Equal<A> {
   readonly compare: (y: A) => (x: A) => Ordering
 }
 
+export const OrdURI = "Ord"
+export type OrdURI = typeof OrdURI
+
+declare module "../abstract/HKT" {
+  interface URItoKind<Out> {
+    [OrdURI]: Ord<Out>
+  }
+}
+
 /**
  * Creates Ord[A] from a compare function
  */

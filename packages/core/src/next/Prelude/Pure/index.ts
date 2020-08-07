@@ -4,7 +4,8 @@ import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { makeContravariant } from "../abstract/Contravariant"
+import { makeContravariantEnv } from "../abstract/ContravariantEnv"
+import { makeContravariantInput } from "../abstract/ContravariantInput"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeMonad } from "../abstract/Monad"
 
@@ -13,27 +14,15 @@ import * as F from "./core"
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
-export const XPureInputURI = "XPureInput"
-export type XPureInputURI = typeof XPureInputURI
-
-export const XPureEnvURI = "XPureEnv"
-export type XPureEnvURI = typeof XPureEnvURI
-
 export const StateReaderErrorURI = "StateReaderError"
 export type StateReaderErrorURI = typeof StateReaderErrorURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind5<X, S, R, E, A> {
-    [XPureURI]: F.XPure<X, S, R, E, A>
+  interface URItoKind5<In, St, Env, Err, Out> {
+    [XPureURI]: F.XPure<In, St, Env, Err, Out>
   }
-  interface URItoKind5<X, S, R, E, A> {
-    [XPureEnvURI]: F.XPure<X, S, A, E, R>
-  }
-  interface URItoKind5<X, S, R, E, A> {
-    [XPureInputURI]: F.XPure<A, S, R, E, X>
-  }
-  interface URItoKind4<S, R, E, A> {
-    [StateReaderErrorURI]: F.XPure<S, S, R, E, A>
+  interface URItoKind4<St, Env, Err, Out> {
+    [StateReaderErrorURI]: F.XPure<St, St, Env, Err, Out>
   }
 }
 
@@ -54,15 +43,15 @@ export const Covariant = makeCovariant(XPureURI)({
 /**
  * The `Contravariant` instance for `XPure[x, S2, R, E, A]`
  */
-export const ContravariantInput = makeContravariant(XPureInputURI)({
-  contramap: F.contramapState
+export const ContravariantInput = makeContravariantInput(XPureURI)({
+  contramapInput: F.contramapInput
 })
 
 /**
  * The `Contravariant` instance for `XPure[S1, S2, x, E, A]`
  */
-export const ContravariantEnv = makeContravariant(XPureEnvURI)({
-  contramap: F.contramapEnv
+export const ContravariantEnv = makeContravariantEnv(XPureURI)({
+  contramapEnv: F.contramapEnv
 })
 
 /**
@@ -114,7 +103,7 @@ export {
   chain,
   chain_,
   contramapEnv,
-  contramapState,
+  contramapInput as contramapState,
   environment,
   fail,
   foldM,
