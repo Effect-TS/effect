@@ -1,5 +1,5 @@
 import {
-  AssociativeBoth,
+  AssociativeBothH,
   AssociativeBoth1,
   AssociativeBoth2,
   AssociativeBoth3,
@@ -13,7 +13,7 @@ import { URIS, URIS2, URIS3, URIS4, URIS5, URIS6 } from "../HKT"
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface CommutativeBoth<F> extends AssociativeBoth<F> {
+export interface CommutativeBothH<F> extends AssociativeBothH<F> {
   readonly CommutativeBoth: "CommutativeBoth"
 }
 
@@ -61,7 +61,9 @@ export function makeCommutativeBoth<URI extends URIS6>(
 ): (_: Omit<CommutativeBoth6<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth6<URI>
 export function makeCommutativeBoth<URI>(
   URI: URI
-): (_: Omit<CommutativeBoth<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth<URI> {
+): (
+  _: Omit<CommutativeBothH<URI>, "URI" | "CommutativeBoth">
+) => CommutativeBothH<URI> {
   return (_) => ({
     URI,
     CommutativeBoth: "CommutativeBoth",
