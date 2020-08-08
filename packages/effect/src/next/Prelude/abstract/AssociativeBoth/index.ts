@@ -1,4 +1,4 @@
-import { HasURI, HKT, Kind, URIS } from "../HKT"
+import { HasURI, HKT6, Kind, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -6,7 +6,11 @@ import { HasURI, HKT, Kind, URIS } from "../HKT"
  */
 export interface AssociativeBothF<F> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <B>(fb: HKT<F, B>) => <A>(fa: HKT<F, A>) => HKT<F, readonly [A, B]>
+  readonly both: <X, I, S, R, E, B>(
+    fb: HKT6<F, X, I, S, R, E, B>
+  ) => <X1, I1, R1, E1, A>(
+    fa: HKT6<F, X1, I1, S, R1, E1, A>
+  ) => HKT6<F, X | X1, I & I1, S | S, R & R1, E | E1, readonly [A, B]>
 }
 
 export interface AssociativeBothK<F extends URIS> extends HasURI<F> {

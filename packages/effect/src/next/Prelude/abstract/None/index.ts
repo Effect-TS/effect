@@ -1,11 +1,11 @@
-import { HasURI, HKT, Kind, URIS } from "../HKT"
+import { HasURI, HKT6, Kind, URIS } from "../HKT"
 
 /**
  * The identity for combining two values of types `F[A]` and `F[B]`
  */
 export interface NoneF<F> extends HasURI<F> {
   readonly None: "None"
-  readonly none: () => HKT<F, never>
+  readonly none: <In, S = In>() => HKT6<F, never, In, S, unknown, never, never>
 }
 
 export interface NoneK<F extends URIS> extends HasURI<F> {
