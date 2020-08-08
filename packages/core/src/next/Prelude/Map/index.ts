@@ -81,3 +81,8 @@ export const Traversable = makeTraversable(MapURI)({
     ),
   ...Covariant
 })
+
+/**
+ * Traversable's `foreach` for `Map`.
+ */
+export const foreach = Traversable.foreach
