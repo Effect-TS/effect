@@ -1,4 +1,4 @@
-import { HasURI, HKT6, Kind, URIS } from "../HKT"
+import { HasURI, HKT8, KindEx, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -6,20 +6,20 @@ import { HasURI, HKT6, Kind, URIS } from "../HKT"
  */
 export interface AssociativeBothF<F> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <X, I, S, R, E, B>(
-    fb: HKT6<F, X, I, S, R, E, B>
-  ) => <X1, I1, R1, E1, A>(
-    fa: HKT6<F, X1, I1, S, R1, E1, A>
-  ) => HKT6<F, X | X1, I & I1, S, R & R1, E | E1, readonly [A, B]>
+  readonly both: <O, O2, X2, In2, St, Env2, Err2, B>(
+    fb: HKT8<F, O, O2, X2, In2, St, Env2, Err2, B>
+  ) => <I, X, In, Env, Err, A>(
+    fa: HKT8<F, I, O, X, In, St, Env, Err, A>
+  ) => HKT8<F, I, O2, X2 | X, In2 & In, St, Env2 & Env, Err2 | Err, readonly [A, B]>
 }
 
 export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <X, I, S, R, E, B>(
-    fb: Kind<F, X, I, S, R, E, B>
-  ) => <X1, I1, R1, E1, A>(
-    fa: Kind<F, X1, I1, S, R1, E1, A>
-  ) => Kind<F, X | X1, I & I1, S, R & R1, E | E1, readonly [A, B]>
+  readonly both: <O, O2, X2, In2, St, Env2, Err2, B>(
+    fb: KindEx<F, O, O2, X2, In2, St, Env2, Err2, B>
+  ) => <I, X, In, Env, Err, A>(
+    fa: KindEx<F, I, O, X, In, St, Env, Err, A>
+  ) => KindEx<F, I, O2, X2 | X, In2 & In, St, Env2 & Env, Err2 | Err, readonly [A, B]>
 }
 
 export function makeAssociativeBoth<URI extends URIS>(

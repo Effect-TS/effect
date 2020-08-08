@@ -1,9 +1,12 @@
+import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
-import { makeContravariantEnv } from "../abstract/ContravariantEnv"
-import { makeContravariantInput } from "../abstract/ContravariantInput"
+import { makeApplicative, sequenceSF } from "../abstract/Applicative"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
+import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeFail } from "../abstract/Fx/Fail"
+import { makeIdentityBoth } from "../abstract/IdentityBoth"
 
 import * as F from "./core"
 
@@ -11,8 +14,8 @@ export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind<X, In, St, Env, Err, Out> {
-    [XPureURI]: F.XPure<In, St, Env, Err, Out>
+  interface URItoKindEx<I, O, X, In, St, Env, Err, Out> {
+    [XPureURI]: F.XPure<I, O, Env, Err, Out>
   }
 }
 
@@ -24,24 +27,24 @@ export const Any = makeAny(XPureURI)({
 })
 
 /**
+ * The `AssociativeBoth` instance for `XPure`.
+ */
+export const AssociativeBoth = makeAssociativeBoth(XPureURI)({
+  both: F.zip
+})
+
+/**
+ * The `AssociativeEither` instance for `XPure`.
+ */
+export const AssociativeEither = makeAssociativeEither(XPureURI)({
+  either: F.orElseEither
+})
+
+/**
  * The `Covariant` instance for `XPure`.
  */
 export const Covariant = makeCovariant(XPureURI)({
   map: F.map
-})
-
-/**
- * The `Contravariant` instance for `XPure[x, S2, R, E, A]`
- */
-export const ContravariantInput = makeContravariantInput(XPureURI)({
-  contramapInput: F.contramapInput
-})
-
-/**
- * The `Contravariant` instance for `XPure[S1, S2, x, E, A]`
- */
-export const ContravariantEnv = makeContravariantEnv(XPureURI)({
-  contramapEnv: F.contramapEnv
 })
 
 /**
@@ -60,6 +63,21 @@ export const Fail = makeFail(XPureURI)({
 })
 
 /**
+ * The `IdentityBoth` instance for `XPure`.
+ */
+export const IdentityBoth = makeIdentityBoth(XPureURI)(intersect(Any, AssociativeBoth))
+
+/**
+ * The `Applicative` instance for `XPure`.
+ */
+export const Applicative = makeApplicative(XPureURI)(intersect(IdentityBoth, Covariant))
+
+/**
+ * Struct based `Applicative`
+ */
+export const sequenceS = sequenceSF(Applicative)
+
+/**
  * Core exports
  */
 export {
@@ -71,7 +89,7 @@ export {
   catchAll_,
   chain,
   chain_,
-  contramapEnv,
+  provideSome,
   contramapInput,
   environment,
   fail,
@@ -104,5 +122,8 @@ export {
   zip,
   zipWith,
   zipWith_,
-  zip_
+  zip_,
+  either,
+  fold,
+  fold_
 } from "./core"
