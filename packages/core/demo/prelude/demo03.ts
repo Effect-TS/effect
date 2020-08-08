@@ -1,7 +1,7 @@
 import { pipe } from "../../src/Function"
 import * as A from "../../src/next/Prelude/Array"
 import * as T from "../../src/next/Prelude/Effect"
-import { provideSomeF } from "../../src/next/Prelude/abstract/Environmental"
+import { provideSomeF } from "../../src/next/Prelude/abstract/Fx/Environmental"
 
 interface Env {
   foo: string
