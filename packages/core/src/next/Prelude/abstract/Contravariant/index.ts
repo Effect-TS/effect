@@ -1,4 +1,4 @@
-import { HasURI, HKT, Kind6, URIS6 } from "../HKT"
+import { HasURI, HKT, Kind, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -28,16 +28,16 @@ export interface ContravariantF<F> extends HasURI<F> {
   readonly contramap: <A, B>(f: (a: B) => A) => (fa: HKT<F, A>) => HKT<F, B>
 }
 
-export interface Contravariant6<F extends URIS6> extends HasURI<F> {
+export interface ContravariantK<F extends URIS> extends HasURI<F> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
-  ) => <Y, X, S, R, E>(fa: Kind6<F, Y, X, S, R, E, A>) => Kind6<F, Y, X, S, R, E, B>
+  ) => <Y, X, S, R, E>(fa: Kind<F, Y, X, S, R, E, A>) => Kind<F, Y, X, S, R, E, B>
 }
 
-export function makeContravariant<URI extends URIS6>(
+export function makeContravariant<URI extends URIS>(
   _: URI
-): (_: Omit<Contravariant6<URI>, "URI" | "Contravariant">) => Contravariant6<URI>
+): (_: Omit<ContravariantK<URI>, "URI" | "Contravariant">) => ContravariantK<URI>
 export function makeContravariant<URI>(
   URI: URI
 ): (_: Omit<ContravariantF<URI>, "URI" | "Contravariant">) => ContravariantF<URI> {

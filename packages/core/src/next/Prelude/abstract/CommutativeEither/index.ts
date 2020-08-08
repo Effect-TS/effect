@@ -1,5 +1,5 @@
-import { AssociativeEither6, AssociativeEitherF } from "../AssociativeEither"
-import { URIS6 } from "../HKT"
+import { AssociativeEitherK, AssociativeEitherF } from "../AssociativeEither"
+import { URIS } from "../HKT"
 
 /**
  * A commutative binary operator that combines two values of types `F[A]` and
@@ -9,15 +9,15 @@ export interface CommutativeEitherF<F> extends AssociativeEitherF<F> {
   readonly CommutativeEither: "CommutativeEither"
 }
 
-export interface CommutativeEither6<F extends URIS6> extends AssociativeEither6<F> {
+export interface CommutativeEitherK<F extends URIS> extends AssociativeEitherK<F> {
   readonly CommutativeEither: "CommutativeEither"
 }
 
-export function makeCommutativeEither<URI extends URIS6>(
+export function makeCommutativeEither<URI extends URIS>(
   _: URI
 ): (
-  _: Omit<CommutativeEither6<URI>, "URI" | "CommutativeEither">
-) => CommutativeEither6<URI>
+  _: Omit<CommutativeEitherK<URI>, "URI" | "CommutativeEither">
+) => CommutativeEitherK<URI>
 export function makeCommutativeEither<URI>(
   URI: URI
 ): (

@@ -1,4 +1,4 @@
-import { HasURI, HKT, Kind6, URIS6 } from "../HKT"
+import { HasURI, HKT, Kind, URIS } from "../HKT"
 
 export interface InvariantF<F> extends HasURI<F> {
   readonly Invariant: "Invariant"
@@ -11,20 +11,20 @@ export interface InvariantF<F> extends HasURI<F> {
   }
 }
 
-export interface Invariant6<F extends URIS6> extends HasURI<F> {
+export interface InvariantK<F extends URIS> extends HasURI<F> {
   readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
   }) => {
-    f: <Y, X, S, R, E>(ma: Kind6<F, S, X, S, R, E, A>) => Kind6<F, Y, X, S, R, E, B>
-    g: <Y, X, S, R, E>(mb: Kind6<F, S, X, S, R, E, B>) => Kind6<F, Y, X, S, R, E, A>
+    f: <Y, X, S, R, E>(ma: Kind<F, S, X, S, R, E, A>) => Kind<F, Y, X, S, R, E, B>
+    g: <Y, X, S, R, E>(mb: Kind<F, S, X, S, R, E, B>) => Kind<F, Y, X, S, R, E, A>
   }
 }
 
-export function makeInvariant<URI extends URIS6>(
+export function makeInvariant<URI extends URIS>(
   _: URI
-): (_: Omit<Invariant6<URI>, "URI" | "Invariant">) => Invariant6<URI>
+): (_: Omit<InvariantK<URI>, "URI" | "Invariant">) => InvariantK<URI>
 export function makeInvariant<URI>(
   URI: URI
 ): (_: Omit<InvariantF<URI>, "URI" | "Invariant">) => InvariantF<URI> {

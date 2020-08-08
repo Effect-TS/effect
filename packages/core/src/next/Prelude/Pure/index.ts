@@ -11,7 +11,7 @@ export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind6<X, In, St, Env, Err, Out> {
+  interface URItoKind<X, In, St, Env, Err, Out> {
     [XPureURI]: F.XPure<In, St, Env, Err, Out>
   }
 }
