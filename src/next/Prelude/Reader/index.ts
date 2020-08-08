@@ -2,7 +2,7 @@ import * as F from "../Pure"
 import { intersect } from "../Utils"
 import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
-import { makeApplicative } from "../abstract/Applicative"
+import { makeApplicative, sequenceSF } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeContravariantEnv } from "../abstract/ContravariantEnv"
@@ -91,14 +91,14 @@ export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
 //
 
 /**
- * The `Contravariant` instance for `Reader<x, A>`.
+ * The `Contravariant` instance for `Reader[-_, +_]`.
  */
 export const ContravariantEnv = makeContravariantEnv(ReaderURI)({
   contramapEnv
 })
 
 /**
- * The `Access` instance for `Reader<R, A>`.
+ * The `Access` instance for `Reader[-_, +_]`.
  */
 export const Access = makeAccess(ReaderURI)({
   access: F.access,
@@ -106,48 +106,53 @@ export const Access = makeAccess(ReaderURI)({
 })
 
 /**
- * The `Any` instance for `Reader<R, x>`.
+ * The `Any` instance for `Reader[-_, +_]`.
  */
 export const Any = makeAny(ReaderURI)({
   any: () => F.succeed({})
 })
 
 /**
- * The `Covariant` instance for `Reader<R, x>`.
+ * The `Covariant` instance for `Reader[-_, +_]`.
  */
 export const Covariant = makeCovariant(ReaderURI)({
   map
 })
 
 /**
- * The `AssociativeBoth` instance for `Reader<R, x>`.
+ * The `AssociativeBoth` instance for `Reader[-_, +_]`.
  */
 export const AssociativeBoth = makeAssociativeBoth(ReaderURI)({
   both: zip
 })
 
 /**
- * The `AssociativeFlatten` instance for `Reader<R, x>`.
+ * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
 export const AssociativeFlatten = makeAssociativeFlatten(ReaderURI)({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
 })
 
 /**
- * The `Monad` instance for `Reader<R, x>`.
+ * The `Monad` instance for `Reader[-_, +_]`.
  */
 export const Monad = makeMonad(ReaderURI)(intersect(Any, Covariant, AssociativeFlatten))
 
 /**
- * The `Applicative` instance for `Reader<R, x>`.
+ * The `Applicative` instance for `Reader[-_, +_]`.
  */
 export const Applicative = makeApplicative(ReaderURI)(
   intersect(Any, Covariant, AssociativeBoth)
 )
 
 /**
- * The `Environmental` instance for `Reader<R, A>`.
+ * The `Environmental` instance for `Reader[-_, +_]`.
  */
 export const Environmental = makeEnvironmental(ReaderURI)(
   intersect(Access, AssociativeFlatten)
 )
+
+/**
+ * Struct based applicative for Reader[-_, +_]
+ */
+export const sequenceS = sequenceSF(Applicative)
