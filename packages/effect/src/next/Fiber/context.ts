@@ -904,6 +904,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                     )[_I]
                     break
                   }
+                  current = undefined
                   this.evaluateLater(unit.unit[_I])
                   break
                 }
