@@ -5,12 +5,28 @@ import { HasURI, HKT6, Kind, URIS } from "../HKT"
  */
 export interface NoneF<F> extends HasURI<F> {
   readonly None: "None"
-  readonly none: <In, S = In>() => HKT6<F, never, In, S, unknown, never, never>
+  readonly none: <In, S = In, X = never, R = unknown, E = never>() => HKT6<
+    F,
+    X,
+    In,
+    S,
+    R,
+    E,
+    never
+  >
 }
 
 export interface NoneK<F extends URIS> extends HasURI<F> {
   readonly None: "None"
-  readonly none: <In, S = In>() => Kind<F, never, In, S, unknown, never, never>
+  readonly none: <In, S = In, X = never, R = unknown, E = never>() => Kind<
+    F,
+    X,
+    In,
+    S,
+    R,
+    E,
+    never
+  >
 }
 
 export function makeNone<URI extends URIS>(
