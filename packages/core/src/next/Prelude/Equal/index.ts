@@ -1,6 +1,6 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
-import { Any1, makeAny } from "../abstract/Any"
+import { makeAny } from "../abstract/Any"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeContravariant } from "../abstract/Contravariant"
@@ -23,7 +23,7 @@ export const EqualURI = "Equal"
 export type EqualURI = typeof EqualURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind<Out> {
+  interface URItoKind6<X, In, St, Env, Err, Out> {
     [EqualURI]: Equal<Out>
   }
 }
@@ -111,7 +111,7 @@ export const Contravariant = makeContravariant(EqualURI)({
 /**
  * The `Any` instance for `Equal`.
  */
-export const Any: Any1<EqualURI> = makeAny(EqualURI)({
+export const Any = makeAny(EqualURI)({
   any: () => anyEqual
 })
 
