@@ -98,18 +98,23 @@ export const Monad = makeMonad(ArrayURI)({
 })
 
 /**
+ * Traversable's `foreachF` for `Array`.
+ */
+export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
+  A.reduce_(fa, succeedF(G)([] as typeof _._b[]), (b, a) =>
+    pipe(
+      b,
+      G.both(f(a)),
+      G.map(([x, y]) => [...x, y])
+    )
+  )
+)
+
+/**
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreachF: implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
-    A.reduce_(fa, succeedF(G)([] as typeof _._b[]), (b, a) =>
-      pipe(
-        b,
-        G.both(f(a)),
-        G.map(([x, y]) => [...x, y])
-      )
-    )
-  ),
+  foreachF,
   ...Covariant
 })
 
