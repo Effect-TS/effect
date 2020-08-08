@@ -1,7 +1,7 @@
-import { pipe } from "../../../../Function"
+import { pipe } from "../../../../../Function"
+import { AssociativeFlattenK, AssociativeFlattenF } from "../../AssociativeFlatten"
+import { HKT3, HKT6, Kind, URIS } from "../../HKT"
 import { AccessK, AccessF } from "../Access"
-import { AssociativeFlattenK, AssociativeFlattenF } from "../AssociativeFlatten"
-import { HKT3, HKT6, Kind, URIS } from "../HKT"
 
 export type EnvironmentalF<F> = AssociativeFlattenF<F> & AccessF<F>
 
