@@ -1,4 +1,4 @@
-import { HasURI, HKT, Kind, URIS } from "../HKT"
+import { HasURI, HKT6, Kind, URIS } from "../HKT"
 
 export interface InvariantF<F> extends HasURI<F> {
   readonly Invariant: "Invariant"
@@ -6,8 +6,8 @@ export interface InvariantF<F> extends HasURI<F> {
     f: (a: A) => B
     g: (b: B) => A
   }) => {
-    f: (ma: HKT<F, A>) => HKT<F, B>
-    g: (mb: HKT<F, B>) => HKT<F, A>
+    f: <Y, X, S, R, E>(ma: HKT6<F, S, X, S, R, E, A>) => HKT6<F, Y, X, S, R, E, B>
+    g: <Y, X, S, R, E>(mb: HKT6<F, S, X, S, R, E, B>) => HKT6<F, Y, X, S, R, E, A>
   }
 }
 

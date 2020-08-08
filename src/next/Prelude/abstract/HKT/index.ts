@@ -1,5 +1,5 @@
 /**
- * Copied from https://github.com/gcanti/fp-ts/blob/master/src/HKT.ts
+ * Inspired by https://github.com/gcanti/fp-ts/blob/master/src/HKT.ts
  */
 
 /**
@@ -7,54 +7,48 @@
  *
  * Out is covariant
  */
-export interface HKT<URI, Out> {
-  readonly _URI: URI
-  readonly _Out: () => Out
-}
+export type HKT<URI, Out> = HKT6<URI, never, unknown, unknown, unknown, never, Out>
 
 /**
  * `* -> * -> *` constructors
  *
  * Err is covariant
  */
-export interface HKT2<URI, Err, Out> extends HKT<URI, Out> {
-  readonly _Err: () => Err
-}
+export type HKT2<URI, Err, Out> = HKT6<URI, never, unknown, unknown, unknown, Err, Out>
 
 /**
  * `* -> * -> * -> *` constructors
  *
  * Env is contravariant
  */
-export interface HKT3<URI, Env, Err, Out> extends HKT2<URI, Err, Out> {
-  readonly _Env: (_: Env) => void
-}
+export type HKT3<URI, Env, Err, Out> = HKT6<URI, never, unknown, unknown, Env, Err, Out>
 
 /**
  * `* -> * -> * -> * -> *` constructors
  *
  * St is invariant
  */
-export interface HKT4<URI, St, Env, Err, Out> extends HKT3<URI, Env, Err, Out> {
-  readonly _St: St
-}
+export type HKT4<URI, St, Env, Err, Out> = HKT6<URI, never, unknown, St, Env, Err, Out>
 
 /**
  * `* -> * -> * -> * -> * -> *` constructors
  *
  * In is contravariant
  */
-export interface HKT5<URI, In, St, Env, Err, Out> extends HKT4<URI, St, Env, Err, Out> {
-  readonly _In: (_: In) => void
-}
+export type HKT5<URI, In, St, Env, Err, Out> = HKT6<URI, never, In, St, Env, Err, Out>
 
 /**
  * `* -> * -> * -> * -> * -> * -> *` constructors
  *
  * X is covariant
  */
-export interface HKT6<URI, X, In, St, Env, Err, Out>
-  extends HKT5<URI, In, St, Env, Err, Out> {
+export interface HKT6<URI, X, In, St, Env, Err, Out> {
+  readonly _URI: URI
+  readonly _Out: () => Out
+  readonly _Err: () => Err
+  readonly _Env: (_: Env) => void
+  readonly _St: St
+  readonly _In: (_: In) => void
   readonly _X: () => X
 }
 

@@ -1,4 +1,4 @@
-import { HasURI, HKT, Kind, URIS } from "../HKT"
+import { HasURI, HKT6, Kind, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -24,14 +24,16 @@ import { HasURI, HKT, Kind, URIS } from "../HKT"
  */
 export interface CovariantF<F> extends HasURI<F> {
   readonly Covariant: "Covariant"
-  readonly map: <A, B>(f: (a: A) => B) => (fa: HKT<F, A>) => HKT<F, B>
+  readonly map: <A, B>(
+    f: (a: A) => B
+  ) => <Y, X, S, R, E>(fa: HKT6<F, Y, X, S, R, E, A>) => HKT6<F, Y, X, S, R, E, B>
 }
 
 export interface CovariantK<F extends URIS> extends HasURI<F> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => { <Y, X, S, R, E>(fa: Kind<F, Y, X, S, R, E, A>): Kind<F, Y, X, S, R, E, B> }
+  ) => <Y, X, S, R, E>(fa: Kind<F, Y, X, S, R, E, A>) => Kind<F, Y, X, S, R, E, B>
 }
 
 export function makeCovariant<URI extends URIS>(
