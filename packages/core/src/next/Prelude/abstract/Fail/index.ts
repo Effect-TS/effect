@@ -19,6 +19,9 @@ export function makeFail<URI extends URIS>(
 ): (_: Omit<FailK<URI>, "URI" | "Fail">) => FailK<URI>
 export function makeFail<URI>(
   URI: URI
+): (_: Omit<FailF<URI>, "URI" | "Fail">) => FailF<URI>
+export function makeFail<URI>(
+  URI: URI
 ): (_: Omit<FailF<URI>, "URI" | "Fail">) => FailF<URI> {
   return (_) => ({
     URI,

@@ -27,6 +27,9 @@ export function makeInvariant<URI extends URIS>(
 ): (_: Omit<InvariantK<URI>, "URI" | "Invariant">) => InvariantK<URI>
 export function makeInvariant<URI>(
   URI: URI
+): (_: Omit<InvariantF<URI>, "URI" | "Invariant">) => InvariantF<URI>
+export function makeInvariant<URI>(
+  URI: URI
 ): (_: Omit<InvariantF<URI>, "URI" | "Invariant">) => InvariantF<URI> {
   return (_) => ({
     URI,

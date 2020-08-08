@@ -34,6 +34,9 @@ export function makeNone<URI extends URIS>(
 ): (_: Omit<NoneK<URI>, "URI" | "None">) => NoneK<URI>
 export function makeNone<URI>(
   URI: URI
+): (_: Omit<NoneF<URI>, "URI" | "None">) => NoneF<URI>
+export function makeNone<URI>(
+  URI: URI
 ): (_: Omit<NoneF<URI>, "URI" | "None">) => NoneF<URI> {
   return (_) => ({
     URI,
