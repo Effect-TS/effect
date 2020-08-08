@@ -2,7 +2,7 @@ import * as S from "../../Effect"
 import { intersect } from "../Utils"
 import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
-import { makeApplicative, sequenceSF } from "../abstract/Applicative"
+import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
@@ -162,13 +162,6 @@ export function castE<S, E, A>(effect: S.Effect<S, unknown, E, A>): S.AsyncE<E, 
 export function castRE<S, R, E, A>(effect: S.Effect<S, R, E, A>): S.AsyncRE<R, E, A> {
   return effect
 }
-
-export const sequenceS = sequenceSF(intersect(Applicative, Foreachable))
-
-export const sequenceSPar = sequenceSF(intersect(Applicative, ForeachablePar))
-
-export const sequenceSParN = (n: number) =>
-  sequenceSF(intersect(Applicative, ForeachableParN(n)))
 
 export {
   absolve,
@@ -358,6 +351,9 @@ export {
   runPromiseExit,
   Runtime,
   runtime,
+  sequenceS,
+  sequenceSPar,
+  sequenceSParN,
   sequenceT,
   sequenceTPar,
   sequenceTParN,
