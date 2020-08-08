@@ -4,12 +4,10 @@ import * as M from "../../../Map"
 import * as pA from "../Array"
 import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
-import { ApplicativeF } from "../abstract/Applicative"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
-import { HKT6 } from "../abstract/HKT"
 import { makeMonad } from "../abstract/Monad"
-import { makeTraversable } from "../abstract/Traversable"
+import { foreachImpl, makeTraversable } from "../abstract/Traversable"
 
 export const MapURI = "MapK"
 export type MapURI = typeof MapURI
@@ -65,19 +63,18 @@ export const Monad = makeMonad(MapURI)(intersect(Any, Covariant, AssociativeFlat
  * The `Traversable` instance for `Map`.
  */
 export const Traversable = makeTraversable(MapURI)({
-  foreachF: <G>(G: ApplicativeF<G>) => <X, In, S, R, E, A, B>(
-    f: (a: A) => HKT6<G, X, In, S, R, E, B>
-  ) => <FErr>(fa: M.Map<FErr, A>): HKT6<G, X, In, S, R, E, M.Map<FErr, B>> =>
+  foreachF: foreachImpl<MapURI>()((G) => (f) => (fa) =>
     pipe(
       Array.from(fa),
-      pA.Traversable.foreachF(G)(([k, a]: [FErr, A]) =>
+      pA.Traversable.foreachF(G)(([k, a]) =>
         pipe(
           f(a),
           G.map((b) => tuple(k, b))
         )
       ),
       G.map((as) => new Map(as))
-    ),
+    )
+  ),
   ...Covariant
 })
 

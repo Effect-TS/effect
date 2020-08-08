@@ -5,14 +5,13 @@ import { eqArray, EqualURI } from "../Equal"
 import { makeIdentity } from "../Identity"
 import { Sum } from "../Newtype"
 import { makeAny, succeedF } from "../abstract/Any"
-import { ApplicativeF, makeApplicative } from "../abstract/Applicative"
+import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeDerive } from "../abstract/Derive"
-import { HKT6 } from "../abstract/HKT"
 import { makeMonad } from "../abstract/Monad"
-import { makeTraversable } from "../abstract/Traversable"
+import { foreachImpl, makeTraversable } from "../abstract/Traversable"
 
 /**
  * @category definitions
@@ -102,19 +101,15 @@ export const Monad = makeMonad(ArrayURI)({
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreachF: <G>(G: ApplicativeF<G>) => <X, In, S, R, E, A, B>(
-    f: (a: A) => HKT6<G, X, In, S, R, E, B>
-  ) => (fa: readonly A[]): HKT6<G, X, In, S, R, E, readonly B[]> =>
-    A.reduce_(
-      fa,
-      succeedF(G)([] as readonly B[]) as HKT6<G, X, In, S, R, E, readonly B[]>,
-      (b, a) =>
-        pipe(
-          b,
-          G.both(f(a)),
-          G.map(([x, y]) => [...x, y])
-        )
-    ),
+  foreachF: foreachImpl<ArrayURI>()((G) => (f) => (fa) =>
+    A.reduce_(fa, succeedF(G)([] as any[]), (b, a) =>
+      pipe(
+        b,
+        G.both(f(a)),
+        G.map(([x, y]) => [...x, y])
+      )
+    )
+  ),
   ...Covariant
 })
 
