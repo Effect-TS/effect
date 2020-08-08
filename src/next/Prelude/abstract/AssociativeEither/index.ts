@@ -7,17 +7,17 @@ import { HasURI, HKT8, KindEx, URIS } from "../HKT"
  */
 export interface AssociativeEitherF<F> extends HasURI<F> {
   readonly AssociativeEither: "AssociativeEither"
-  readonly either: <I2, O2, X2, In2, St, Env2, Err2, B>(
-    fb: HKT8<F, I2, O2, X2, In2, St, Env2, Err2, B>
-  ) => <I, O, X, In, Env, Err, A>(
-    fa: HKT8<F, I, O, X, In, St, Env, Err, A>
+  readonly either: <SI2, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: HKT8<F, SI2, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <SI, SO, X, In, Env, Err, A>(
+    fa: HKT8<F, SI, SO, X, In, S, Env, Err, A>
   ) => HKT8<
     F,
-    I & I2,
-    O | O2,
+    SI & SI2,
+    SO | SO2,
     X2 | X,
     In2 & In,
-    St,
+    S,
     Env2 & Env,
     Err2 | Err,
     E.Either<A, B>
@@ -26,17 +26,17 @@ export interface AssociativeEitherF<F> extends HasURI<F> {
 
 export interface AssociativeEitherK<F extends URIS> extends HasURI<F> {
   readonly AssociativeEither: "AssociativeEither"
-  readonly either: <I2, O2, X2, In2, St, Env2, Err2, B>(
-    fb: KindEx<F, I2, O2, X2, In2, St, Env2, Err2, B>
+  readonly either: <SI2, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: KindEx<F, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <I, O, X, In, Env, Err, A>(
-    fa: KindEx<F, I, O, X, In, St, Env, Err, A>
+    fa: KindEx<F, I, O, X, In, S, Env, Err, A>
   ) => KindEx<
     F,
-    I & I2,
-    O | O2,
+    I & SI2,
+    O | SO2,
     X2 | X,
     In2 & In,
-    St,
+    S,
     Env2 & Env,
     Err2 | Err,
     E.Either<A, B>
