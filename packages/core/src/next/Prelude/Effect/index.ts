@@ -20,7 +20,7 @@ export const EffectEnvURI = "EffectEnv"
 export type EffectEnvURI = typeof EffectEnvURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind6<X, In, St, Env, Err, Out> {
+  interface URItoKind<X, In, St, Env, Err, Out> {
     [EffectURI]: S.Effect<X, Env, Err, Out>
   }
 }
