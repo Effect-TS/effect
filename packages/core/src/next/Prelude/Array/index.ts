@@ -102,7 +102,7 @@ export const Monad = makeMonad(ArrayURI)({
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreach: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => (
+  foreachF: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => (
     fa: readonly A[]
   ): HKT<G, readonly B[]> =>
     A.reduce_(fa, succeedF(G)([] as readonly B[]), (b, a) =>
