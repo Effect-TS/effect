@@ -32,14 +32,14 @@ export const Covariant = makeCovariant(EffectAsyncURI)({
  * The `AssociativeBoth` instance for `EffectAsync`.
  */
 export const AssociativeBoth = makeAssociativeBoth(EffectAsyncURI)({
-  both: (fb) => (fa) => S.zip_(fa, fb)
+  both: S.zip
 })
 
 /**
  * The Parallel `AssociativeBoth` instance for `EffectAsync`.
  */
 export const AssociativeBothPar = makeAssociativeBoth(EffectAsyncURI)({
-  both: (fb) => (fa) => S.zipPar_(fa, fb)
+  both: S.zipPar
 })
 
 /**
