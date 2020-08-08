@@ -9,6 +9,8 @@ import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeFail } from "../abstract/Fail"
+import { makeIdentityBoth } from "../abstract/IdentityBoth"
+import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
 import { makeMonad } from "../abstract/Monad"
 
 export const EitherURI = "Either"
@@ -40,6 +42,9 @@ export const Any = makeAny(EitherURI)({
   any: () => E.right({})
 })
 
+/**
+ * Zips two `Either[E, A]` with `Either[E1, B]` to `Either[E | E1, (A, B)]`.
+ */
 export const zip: <E, B>(
   fb: E.Either<E, B>
 ) => <E1, A>(fa: E.Either<E1, A>) => E.Either<E | E1, readonly [A, B]> = (fb) => (fa) =>
@@ -78,8 +83,11 @@ export const AssociativeFailureBoth = makeAssociativeBoth(FailureEitherURI)({
   both: zipFailure
 })
 
-export const either = <E, B>(fb: E.Either<E, B>) => <E1, A>(
-  fa: E.Either<E1, A>
+/**
+ * Alternatively `E.Either<E, A>` or, `E.Either<E, B>`
+ */
+export const either = <E1, B>(fb: E.Either<E1, B>) => <E, A>(
+  fa: E.Either<E, A>
 ): E.Either<E | E1, E.Either<A, B>> =>
   pipe(
     fa,
@@ -94,6 +102,7 @@ export const either = <E, B>(fb: E.Either<E, B>) => <E1, A>(
     ),
     E.swap
   )
+
 /**
  * The `AssociativeEither` instance for `Either`.
  */
@@ -101,8 +110,11 @@ export const AssociativeEither = makeAssociativeEither(EitherURI)({
   either
 })
 
-export const eitherFailure = <E, B>(fb: FailureEither<E, B>) => <E1, A>(
-  fa: FailureEither<E1, A>
+/**
+ * AssociativeEither's either for Failure<Either<x, A>>
+ */
+export const eitherFailure = <E1, B>(fb: FailureEither<E1, B>) => <E, A>(
+  fa: FailureEither<E, A>
 ): FailureEither<E | E1, E.Either<A, B>> =>
   pipe(
     fa,
@@ -129,10 +141,15 @@ export const AssociativeFlatten = makeAssociativeFlatten(EitherURI)({
 })
 
 /**
+ * The `IdentityBoth` instance for `Either`.
+ */
+export const IdentityBoth = makeIdentityBoth(EitherURI)(intersect(Any, AssociativeBoth))
+
+/**
  * The `Applicative` instance for `Either`.
  */
 export const Applicative = makeApplicative(EitherURI)(
-  intersect(Any, AssociativeBoth, Covariant)
+  intersect(Covariant, IdentityBoth)
 )
 
 /**
@@ -143,9 +160,16 @@ export const Fail = makeFail(EitherURI)({
 })
 
 /**
+ * The `IdentityFlatten` instance for `Either`.
+ */
+export const IdentityFlatten = makeIdentityFlatten(EitherURI)(
+  intersect(Any, AssociativeFlatten)
+)
+
+/**
  * The `Monad` instance for `Either`.
  */
-export const Monad = makeMonad(EitherURI)(intersect(Covariant, Any, AssociativeFlatten))
+export const Monad = makeMonad(EitherURI)(intersect(Covariant, IdentityFlatten))
 
 /**
  * Struct based applicative
