@@ -1,6 +1,6 @@
 import { pipe } from "../../../../Function"
-import { Covariant6, CovariantF } from "../Covariant"
-import { HasURI, HKT, Kind6, URIS6 } from "../HKT"
+import { CovariantK, CovariantF } from "../Covariant"
+import { HasURI, HKT, Kind, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
@@ -10,14 +10,14 @@ export interface AnyF<F> extends HasURI<F> {
   readonly any: () => HKT<F, unknown>
 }
 
-export interface Any6<F extends URIS6> extends HasURI<F> {
+export interface AnyK<F extends URIS> extends HasURI<F> {
   readonly Any: "Any"
-  readonly any: <In, S = In>() => Kind6<F, never, In, S, unknown, never, unknown>
+  readonly any: <In, S = In>() => Kind<F, never, In, S, unknown, never, unknown>
 }
 
-export function succeedF<F extends URIS6>(
-  F: Any6<F> & Covariant6<F>
-): <A, In, S = In>(a: A) => Kind6<F, never, In, S, unknown, never, A>
+export function succeedF<F extends URIS>(
+  F: AnyK<F> & CovariantK<F>
+): <A, In, S = In>(a: A) => Kind<F, never, In, S, unknown, never, A>
 export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A>
 export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
@@ -27,9 +27,9 @@ export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> 
     )
 }
 
-export function makeAny<URI extends URIS6>(
+export function makeAny<URI extends URIS>(
   _: URI
-): (_: Omit<Any6<URI>, "URI" | "Any">) => Any6<URI>
+): (_: Omit<AnyK<URI>, "URI" | "Any">) => AnyK<URI>
 export function makeAny<URI>(
   URI: URI
 ): (_: Omit<AnyF<URI>, "URI" | "Any">) => AnyF<URI> {

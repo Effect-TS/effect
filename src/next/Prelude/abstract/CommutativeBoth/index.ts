@@ -1,5 +1,5 @@
-import { AssociativeBoth6, AssociativeBothF } from "../AssociativeBoth"
-import { URIS6 } from "../HKT"
+import { AssociativeBothK, AssociativeBothF } from "../AssociativeBoth"
+import { URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -9,13 +9,13 @@ export interface CommutativeBothF<F> extends AssociativeBothF<F> {
   readonly CommutativeBoth: "CommutativeBoth"
 }
 
-export interface CommutativeBoth6<F extends URIS6> extends AssociativeBoth6<F> {
+export interface CommutativeBothK<F extends URIS> extends AssociativeBothK<F> {
   readonly CommutativeBoth: "CommutativeBoth"
 }
 
-export function makeCommutativeBoth<URI extends URIS6>(
+export function makeCommutativeBoth<URI extends URIS>(
   _: URI
-): (_: Omit<CommutativeBoth6<URI>, "URI" | "CommutativeBoth">) => CommutativeBoth6<URI>
+): (_: Omit<CommutativeBothK<URI>, "URI" | "CommutativeBoth">) => CommutativeBothK<URI>
 export function makeCommutativeBoth<URI>(
   URI: URI
 ): (

@@ -65,7 +65,7 @@ export interface HKT6<URI, X, In, St, Env, Err, Out>
 /**
  * `* -> * -> * -> * -> * -> * ->` constructors
  */
-export interface URItoKind6<X, In, St, Env, Err, Out> {}
+export interface URItoKind<X, In, St, Env, Err, Out> {}
 
 //
 // unions of URIs
@@ -74,7 +74,7 @@ export interface URItoKind6<X, In, St, Env, Err, Out> {}
 /**
  * `* -> * -> * -> * -> * -> * -> *` constructors
  */
-export type URIS6 = keyof URItoKind6<any, any, any, any, any, any>
+export type URIS = keyof URItoKind<any, any, any, any, any, any>
 
 //
 // prj
@@ -84,8 +84,8 @@ export type URIS6 = keyof URItoKind6<any, any, any, any, any, any>
  * `* -> * -> * -> * -> * -> *` constructors
  * F[+_, -_, _, -_, +_, +_]
  */
-export type Kind6<URI extends URIS6, X, In, St, Env, Err, Out> = URI extends URIS6
-  ? URItoKind6<X, In, St, Env, Err, Out>[URI]
+export type Kind<URI extends URIS, X, In, St, Env, Err, Out> = URI extends URIS
+  ? URItoKind<X, In, St, Env, Err, Out>[URI]
   : any
 
 /**

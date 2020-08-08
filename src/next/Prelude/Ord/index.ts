@@ -13,7 +13,7 @@ export const OrdURI = "Ord"
 export type OrdURI = typeof OrdURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind6<X, In, St, Env, Err, Out> {
+  interface URItoKind<X, In, St, Env, Err, Out> {
     [OrdURI]: Ord<Out>
   }
 }
