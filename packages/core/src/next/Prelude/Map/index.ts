@@ -66,12 +66,12 @@ export const Monad = makeMonad(MapURI)(intersect(Any, Covariant, AssociativeFlat
  * The `Traversable` instance for `Map`.
  */
 export const Traversable = makeTraversable(MapURI)({
-  foreach: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => <FErr>(
+  foreachF: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => <FErr>(
     fa: M.Map<FErr, A>
   ): HKT<G, M.Map<FErr, B>> =>
     pipe(
       Array.from(fa),
-      pA.Traversable.foreach(G)(([k, a]: [FErr, A]) =>
+      pA.Traversable.foreachF(G)(([k, a]: [FErr, A]) =>
         pipe(
           f(a),
           G.map((b) => tuple(k, b))
@@ -83,6 +83,6 @@ export const Traversable = makeTraversable(MapURI)({
 })
 
 /**
- * Traversable's `foreach` for `Map`.
+ * Traversable's `foreachF` for `Map`.
  */
-export const foreach = Traversable.foreach
+export const foreachF = Traversable.foreachF

@@ -17,7 +17,7 @@ export interface ForeachF<F> {
 
 export interface TraversableF<F> extends CovariantF<F> {
   readonly Traversable: "Traversable"
-  readonly foreach: ForeachF<F>
+  readonly foreachF: ForeachF<F>
 }
 
 export interface ForeachK<F extends URIS> {
@@ -35,7 +35,7 @@ export interface ForeachK<F extends URIS> {
 
 export interface TraversableK<F extends URIS> extends CovariantK<F> {
   readonly Traversable: "Traversable"
-  readonly foreach: ForeachK<F>
+  readonly foreachF: ForeachK<F>
 }
 
 export function makeTraversable<URI extends URIS>(

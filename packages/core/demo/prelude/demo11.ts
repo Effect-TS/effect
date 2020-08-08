@@ -8,7 +8,7 @@ pipe(
     ["1", 1],
     ["2", 2]
   ]),
-  M.foreach(R.Applicative)((n: number) => R.access((s: string) => `s: ${s} (${n})`)),
+  M.foreachF(R.Applicative)((n: number) => R.access((s: string) => `s: ${s} (${n})`)),
   R.runEnv("str"),
   (out) => {
     console.log(out)
