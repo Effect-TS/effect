@@ -1,4 +1,4 @@
-import { HKT6, Kind, URIS } from "../HKT"
+import { HKT6, Kind, URIS } from "../../HKT"
 
 export interface AccessF<F> {
   readonly Access: "Access"

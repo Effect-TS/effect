@@ -1,13 +1,13 @@
 import * as F from "../Pure"
 import { intersect } from "../Utils"
-import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative, sequenceSF } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
-import { makeEnvironmental } from "../abstract/Environmental"
+import { makeAccess } from "../abstract/Fx/Access"
+import { makeEnvironmental } from "../abstract/Fx/Environmental"
 import { makeMonad } from "../abstract/Monad"
 
 //

@@ -1,9 +1,9 @@
-import { makeAccess } from "../abstract/Access"
 import { makeAny } from "../abstract/Any"
 import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeContravariantInput } from "../abstract/ContravariantInput"
 import { makeCovariant } from "../abstract/Covariant"
-import { makeFail } from "../abstract/Fail"
+import { makeAccess } from "../abstract/Fx/Access"
+import { makeFail } from "../abstract/Fx/Fail"
 
 import * as F from "./core"
 
