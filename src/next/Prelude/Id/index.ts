@@ -1,6 +1,6 @@
 import { tuple } from "../../../Function"
 import { Generic, genericDef } from "../Newtype"
-import { Any1, makeAny } from "../abstract/Any"
+import { makeAny } from "../abstract/Any"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
@@ -15,7 +15,7 @@ export const IdURI = Id.URI
 export type IdURI = typeof IdURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind<Out> {
+  interface URItoKind6<X, In, St, Env, Err, Out> {
     [IdURI]: Id<Out>
   }
 }
@@ -51,7 +51,7 @@ export const AssociativeFlatten = makeAssociativeFlatten(IdURI)({
 /**
  * The `Any` instance for `Id`.
  */
-export const Any: Any1<IdURI> = makeAny(IdURI)({
+export const Any = makeAny(IdURI)({
   any: () => Id.wrap({})
 })
 

@@ -1,7 +1,7 @@
 import * as A from "../../../Array"
 import { pipe } from "../../../Function"
 import { makeClosure } from "../Closure"
-import { EqualURI, eqArray } from "../Equal"
+import { eqArray, EqualURI } from "../Equal"
 import { makeIdentity } from "../Identity"
 import { Sum } from "../Newtype"
 import { makeAny, succeedF } from "../abstract/Any"
@@ -22,7 +22,7 @@ export const ArrayURI = "Array"
 export type ArrayURI = typeof ArrayURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind<Out> {
+  interface URItoKind6<X, In, St, Env, Err, Out> {
     [ArrayURI]: A.Array<Out>
   }
 }

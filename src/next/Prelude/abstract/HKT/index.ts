@@ -63,31 +63,6 @@ export interface HKT6<URI, X, In, St, Env, Err, Out>
 //
 
 /**
- * `* -> *` constructors
- */
-export interface URItoKind<Out> {}
-
-/**
- * `* -> * -> *` constructors
- */
-export interface URItoKind2<Err, Out> {}
-
-/**
- * `* -> * -> * -> *` constructors
- */
-export interface URItoKind3<Env, Err, Out> {}
-
-/**
- * `* -> * -> * -> * -> *` constructors
- */
-export interface URItoKind4<St, Env, Err, Out> {}
-
-/**
- * `* -> * -> * -> * -> * -> *` constructors
- */
-export interface URItoKind5<In, St, Env, Err, Out> {}
-
-/**
  * `* -> * -> * -> * -> * -> * ->` constructors
  */
 export interface URItoKind6<X, In, St, Env, Err, Out> {}
@@ -97,31 +72,6 @@ export interface URItoKind6<X, In, St, Env, Err, Out> {}
 //
 
 /**
- * `* -> *` constructors
- */
-export type URIS = keyof URItoKind<any>
-
-/**
- * `* -> * -> *` constructors
- */
-export type URIS2 = keyof URItoKind2<any, any>
-
-/**
- * `* -> * -> * -> *` constructors
- */
-export type URIS3 = keyof URItoKind3<any, any, any>
-
-/**
- * `* -> * -> * -> * -> *` constructors
- */
-export type URIS4 = keyof URItoKind4<any, any, any, any>
-
-/**
- * `* -> * -> * -> * -> * -> *` constructors
- */
-export type URIS5 = keyof URItoKind5<any, any, any, any, any>
-
-/**
  * `* -> * -> * -> * -> * -> * -> *` constructors
  */
 export type URIS6 = keyof URItoKind6<any, any, any, any, any, any>
@@ -129,44 +79,6 @@ export type URIS6 = keyof URItoKind6<any, any, any, any, any, any>
 //
 // prj
 //
-
-/**
- * `* -> *` constructors
- * F[+_]
- */
-export type Kind<URI extends URIS, Out> = URI extends URIS ? URItoKind<Out>[URI] : any
-
-/**
- * `* -> * -> *` constructors
- * F[+_, +_]
- */
-export type Kind2<URI extends URIS2, Err, Out> = URI extends URIS2
-  ? URItoKind2<Err, Out>[URI]
-  : any
-
-/**
- * `* -> * -> * -> *` constructors
- * F[-_, +_, +_]
- */
-export type Kind3<URI extends URIS3, Env, Err, Out> = URI extends URIS3
-  ? URItoKind3<Env, Err, Out>[URI]
-  : any
-
-/**
- * `* -> * -> * -> * -> *` constructors
- * F[_, -_, +_, +_]
- */
-export type Kind4<URI extends URIS4, St, Env, Err, Out> = URI extends URIS4
-  ? URItoKind4<St, Env, Err, Out>[URI]
-  : any
-
-/**
- * `* -> * -> * -> * -> * -> *` constructors
- * F[-_, _, -_, +_, +_]
- */
-export type Kind5<URI extends URIS5, In, St, Env, Err, Out> = URI extends URIS5
-  ? URItoKind5<In, St, Env, Err, Out>[URI]
-  : any
 
 /**
  * `* -> * -> * -> * -> * -> *` constructors
