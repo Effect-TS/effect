@@ -10,15 +10,9 @@ import * as F from "./core"
 export const XPureURI = "XPure"
 export type XPureURI = typeof XPureURI
 
-export const StateReaderErrorURI = "StateReaderError"
-export type StateReaderErrorURI = typeof StateReaderErrorURI
-
 declare module "../abstract/HKT" {
   interface URItoKind5<In, St, Env, Err, Out> {
     [XPureURI]: F.XPure<In, St, Env, Err, Out>
-  }
-  interface URItoKind4<St, Env, Err, Out> {
-    [StateReaderErrorURI]: F.XPure<St, St, Env, Err, Out>
   }
 }
 
