@@ -10,7 +10,7 @@ import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeDerive } from "../abstract/Derive"
-import { HKT } from "../abstract/HKT"
+import { HKT6 } from "../abstract/HKT"
 import { makeMonad } from "../abstract/Monad"
 import { makeTraversable } from "../abstract/Traversable"
 
@@ -102,15 +102,18 @@ export const Monad = makeMonad(ArrayURI)({
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreachF: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => (
-    fa: readonly A[]
-  ): HKT<G, readonly B[]> =>
-    A.reduce_(fa, succeedF(G)([] as readonly B[]), (b, a) =>
-      pipe(
-        b,
-        G.both(f(a)),
-        G.map(([x, y]) => [...x, y])
-      )
+  foreachF: <G>(G: ApplicativeF<G>) => <X, In, S, R, E, A, B>(
+    f: (a: A) => HKT6<G, X, In, S, R, E, B>
+  ) => (fa: readonly A[]): HKT6<G, X, In, S, R, E, readonly B[]> =>
+    A.reduce_(
+      fa,
+      succeedF(G)([] as readonly B[]) as HKT6<G, X, In, S, R, E, readonly B[]>,
+      (b, a) =>
+        pipe(
+          b,
+          G.both(f(a)),
+          G.map(([x, y]) => [...x, y])
+        )
     ),
   ...Covariant
 })
