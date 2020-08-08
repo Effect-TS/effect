@@ -27,7 +27,7 @@ export interface HKT2<URI, Err, Out> extends HKT<URI, Out> {
  * Env is contravariant
  */
 export interface HKT3<URI, Env, Err, Out> extends HKT2<URI, Err, Out> {
-  readonly _R: (_: Env) => void
+  readonly _Env: (_: Env) => void
 }
 
 /**
