@@ -10,7 +10,7 @@ export interface AssociativeBothF<F> extends HasURI<F> {
     fb: HKT6<F, X, I, S, R, E, B>
   ) => <X1, I1, R1, E1, A>(
     fa: HKT6<F, X1, I1, S, R1, E1, A>
-  ) => HKT6<F, X | X1, I & I1, S | S, R & R1, E | E1, readonly [A, B]>
+  ) => HKT6<F, X | X1, I & I1, S, R & R1, E | E1, readonly [A, B]>
 }
 
 export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
@@ -19,7 +19,7 @@ export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
     fb: Kind<F, X, I, S, R, E, B>
   ) => <X1, I1, R1, E1, A>(
     fa: Kind<F, X1, I1, S, R1, E1, A>
-  ) => Kind<F, X | X1, I & I1, S | S, R & R1, E | E1, readonly [A, B]>
+  ) => Kind<F, X | X1, I & I1, S, R & R1, E | E1, readonly [A, B]>
 }
 
 export function makeAssociativeBoth<URI extends URIS>(
