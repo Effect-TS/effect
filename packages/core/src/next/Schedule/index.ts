@@ -15,6 +15,8 @@ export {
   andThen_,
   as,
   both,
+  bothInOut,
+  bothInOut_,
   both_,
   check,
   checkM,

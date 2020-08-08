@@ -1,4 +1,3 @@
-import { tuple } from "../../../Function"
 import * as S from "../../Schedule"
 import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
@@ -40,7 +39,7 @@ export const Any = makeAny(ScheduleURI)({
 })
 
 export const AssociativeBoth = makeAssociativeBoth(ScheduleURI)({
-  both: (fb) => (fa) => S.contramap_(S.both_(fa, fb), (e) => tuple(e, e))
+  both: S.both
 })
 
 export const Applicative = makeApplicative(ScheduleURI)(

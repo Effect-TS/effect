@@ -166,16 +166,14 @@ export function addDelayM_<S, Env, In, Out, S1, Env1>(
 /**
  * The same as `andThenEither`, but merges the output.
  */
-export function andThen<In, Env1, S1, Out2, In1 extends In = In>(
-  that: Schedule<S1, Env1, In1, Out2>
-) {
-  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => andThen_(self, that)
+export function andThen<Env1, S1, Out2, In1>(that: Schedule<S1, Env1, In1, Out2>) {
+  return <In, S, Env, Out>(self: Schedule<S, Env, In, Out>) => andThen_(self, that)
 }
 
 /**
  * The same as `andThenEither`, but merges the output.
  */
-export function andThen_<S, R, B, A, R1, S1, C, A1 extends A = A>(
+export function andThen_<S, R, B, A, R1, S1, C, A1>(
   self: Schedule<S, R, A, B>,
   that: Schedule<S1, R1, A1, C>
 ) {
@@ -231,7 +229,7 @@ function bothLoop<S, Env, In, Out, S1, Env1, In1, Out1>(
  * Returns a new schedule that has both the inputs and outputs of this and the specified
  * schedule.
  */
-export function both<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+export function bothInOut<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
   return <S, Env, In, Out>(
     self: Schedule<S, Env, In, Out>
   ): Schedule<S | S1, Env & Env1, [In, In1], [Out, Out1]> =>
@@ -242,7 +240,7 @@ export function both<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
  * Returns a new schedule that has both the inputs and outputs of this and the specified
  * schedule.
  */
-export function both_<S, Env, In, Out, S1, Env1, In1, Out1>(
+export function bothInOut_<S, Env, In, Out, S1, Env1, In1, Out1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ): Schedule<S | S1, Env & Env1, [In, In1], [Out, Out1]> {
@@ -250,11 +248,32 @@ export function both_<S, Env, In, Out, S1, Env1, In1, Out1>(
 }
 
 /**
+ * Returns a new schedule that has both the inputs and outputs of this and the specified
+ * schedule.
+ */
+export function both<S1, Env1, Out1, In1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(
+    self: Schedule<S, Env, In, Out>
+  ): Schedule<S | S1, Env & Env1, In & In1, [Out, Out1]> => both_(self, that)
+}
+
+/**
+ * Returns a new schedule that performs a geometric intersection on the intervals defined
+ * by both schedules.
+ */
+export function both_<S, Env, In, Out, S1, Env1, In1, Out1>(
+  self: Schedule<S, Env, In, Out>,
+  that: Schedule<S1, Env1, In1, Out1>
+): Schedule<S | S1, Env & Env1, In1 & In, [Out, Out1]> {
+  return combineWith_(self, that, (l, r) => Math.max(l, r))
+}
+
+/**
  * Returns a new schedule that passes each input and output of this schedule to the spefcified
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export function check<In, In1 extends In, Out>(f: (i: In1, o: Out) => boolean) {
+export function check<In, Out>(f: (i: In, o: Out) => boolean) {
   return <S, Env>(self: Schedule<S, Env, In, Out>) => check_(self, f)
 }
 
@@ -263,17 +282,17 @@ export function check<In, In1 extends In, Out>(f: (i: In1, o: Out) => boolean) {
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export function check_<S, Env, In, In1 extends In, Out>(
+export function check_<S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
-  f: (i: In1, o: Out) => boolean
+  f: (i: In, o: Out) => boolean
 ) {
-  return checkM_(self, (i: In1, o) => T.succeed(f(i, o)))
+  return checkM_(self, (i: In, o) => T.succeed(f(i, o)))
 }
 
-function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
-  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>,
-  self: Decision.StepFunction<S, Env, In, Out>
-): Decision.StepFunction<S | S1, Env & Env1, In1, Out> {
+function checkMLoop<S1, Env1, In, Out, S, Env>(
+  self: Decision.StepFunction<S, Env, In, Out>,
+  test: (i: In, o: Out) => T.Effect<S1, Env1, never, boolean>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out> {
   return (now, i) =>
     T.chain_(self(now, i), (d) => {
       switch (d._tag) {
@@ -283,7 +302,7 @@ function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
         case "Continue": {
           return T.map_(test(i, d.out), (b) =>
             b
-              ? Decision.makeContinue(d.out, d.interval, checkMLoop(test, d.next))
+              ? Decision.makeContinue(d.out, d.interval, checkMLoop(d.next, test))
               : Decision.makeDone(d.out)
           )
         }
@@ -296,11 +315,11 @@ function checkMLoop<S1, Env1, In, In1 extends In, Out, S, Env>(
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export function checkM<S1, Env1, In, In1 extends In, Out>(
-  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>
+export function checkM<S1, Env1, In, Out>(
+  test: (i: In, o: Out) => T.Effect<S1, Env1, never, boolean>
 ) {
   return <S, Env>(self: Schedule<S, Env, In, Out>) =>
-    new Schedule(checkMLoop(test, self.step))
+    new Schedule(checkMLoop(self.step, test))
 }
 
 /**
@@ -308,31 +327,31 @@ export function checkM<S1, Env1, In, In1 extends In, Out>(
  * function, and then determines whether or not to continue based on the return value of the
  * function.
  */
-export function checkM_<S, Env, S1, Env1, In, In1 extends In, Out>(
-  self: Schedule<S, Env, In1, Out>,
-  test: (i: In1, o: Out) => T.Effect<S1, Env1, never, boolean>
+export function checkM_<In, S, Env, S1, Env1, Out>(
+  self: Schedule<S, Env, In, Out>,
+  test: (i: In, o: Out) => T.Effect<S1, Env1, never, boolean>
 ) {
-  return new Schedule(checkMLoop(test, self.step))
+  return new Schedule(checkMLoop(self.step, test))
 }
 
 /**
  * Returns a new schedule that first executes this schedule to completion, and then executes the
  * specified schedule to completion.
  */
-export function andThenEither<S2, Env2, In2 extends In, Out2, In>(
+export function andThenEither<S2, Env2, In2, Out2>(
   that: Schedule<S2, Env2, In2, Out2>
 ) {
-  return <S, Env, Out>(
+  return <S, Env, In, Out>(
     self: Schedule<S, Env, In, Out>
-  ): Schedule<S2 | S, Env & Env2, In2, E.Either<Out, Out2>> =>
+  ): Schedule<S2 | S, Env & Env2, In & In2, E.Either<Out, Out2>> =>
     andThenEither_(self, that)
 }
 
-function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2 extends In, Out2>(
+function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2, Out2>(
   self: Decision.StepFunction<S, Env, In, Out>,
   that: Decision.StepFunction<S2, Env2, In2, Out2>,
   onLeft: boolean
-): Decision.StepFunction<S | S2, Env & Env2, In2, E.Either<Out, Out2>> {
+): Decision.StepFunction<S | S2, Env & Env2, In & In2, E.Either<Out, Out2>> {
   return (now, i) => {
     if (onLeft) {
       return T.chain_(self(now, i), (d) => {
@@ -374,10 +393,10 @@ function andThenEitherLoop<S, Env, In, Out, S2, Env2, In2 extends In, Out2>(
  * Returns a new schedule that first executes this schedule to completion, and then executes the
  * specified schedule to completion.
  */
-export function andThenEither_<S2, Env2, In2 extends In, Out2, S, Env, Out, In>(
+export function andThenEither_<S2, Env2, In2, Out2, S, Env, Out, In>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S2, Env2, In2, Out2>
-): Schedule<S2 | S, Env & Env2, In2, E.Either<Out, Out2>> {
+): Schedule<S2 | S, Env & Env2, In & In2, E.Either<Out, Out2>> {
   return new Schedule(andThenEitherLoop(self.step, that.step, true))
 }
 
@@ -524,11 +543,11 @@ export function compose_<S1, Env1, Out1, S, Env, In, Out>(
   return new Schedule(composeLoop(self.step, that.step))
 }
 
-function combineWithLoop<S, Env, In, Out, S1, Env1, Out1>(
+function combineWithLoop<S, Env, In, Out, In1, S1, Env1, Out1>(
   self: Decision.StepFunction<S, Env, In, Out>,
-  that: Decision.StepFunction<S1, Env1, In, Out1>,
+  that: Decision.StepFunction<S1, Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
-): Decision.StepFunction<S | S1, Env & Env1, In, [Out, Out1]> {
+): Decision.StepFunction<S | S1, Env & Env1, In & In1, [Out, Out1]> {
   return (now, i) => {
     const left = self(now, i)
     const right = that(now, i)
@@ -568,10 +587,8 @@ function combineWithLoop<S, Env, In, Out, S1, Env1, Out1>(
  * Returns a new schedule that combines this schedule with the specified schedule, merging the next
  * intervals according to the specified merge function.
  */
-export function combineWith<S1, Env1, In, In1 extends In, Out1>(
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return (f: (d1: number, d2: number) => number) => <S, Env, Out>(
+export function combineWith<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return (f: (d1: number, d2: number) => number) => <S, Env, In, Out>(
     self: Schedule<S, Env, In, Out>
   ) => new Schedule(combineWithLoop(self.step, that.step, f))
 }
@@ -580,7 +597,7 @@ export function combineWith<S1, Env1, In, In1 extends In, Out1>(
  * Returns a new schedule that combines this schedule with the specified schedule, merging the next
  * intervals according to the specified merge function.
  */
-export function combineWith_<S, Env, Out, In, S1, Env1, In1 extends In, Out1>(
+export function combineWith_<S, Env, Out, In, S1, Env1, In1, Out1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>,
   f: (d1: number, d2: number) => number
@@ -699,10 +716,8 @@ export function durations(n: number, ...rest: number[]) {
  * Returns a new schedule that performs a geometric union on the intervals defined
  * by both schedules.
  */
-export function either<S1, Env1, In, In1 extends In, Out1>(
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
+export function either<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
     combineWith_(self, that, (d1, d2) => Math.min(d1, d2))
 }
 
@@ -710,7 +725,7 @@ export function either<S1, Env1, In, In1 extends In, Out1>(
  * Returns a new schedule that performs a geometric union on the intervals defined
  * by both schedules.
  */
-export function either_<S, Env, Out, S1, Env1, In, In1 extends In, Out1>(
+export function either_<S, Env, Out, S1, Env1, In, In1, Out1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
@@ -720,10 +735,8 @@ export function either_<S, Env, Out, S1, Env1, In, In1 extends In, Out1>(
 /**
  * The same as `either` followed by `map`.
  */
-export function eitherWith<S1, Env1, In, In1 extends In, Out1>(
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return <Out, Out2>(f: (o: Out, o1: Out1) => Out2) => <S, Env>(
+export function eitherWith<S1, Env1, In1, Out1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <Out, Out2>(f: (o: Out, o1: Out1) => Out2) => <S, Env, In>(
     self: Schedule<S, Env, In, Out>
   ) => eitherWith_(self, that, f)
 }
@@ -731,7 +744,7 @@ export function eitherWith<S1, Env1, In, In1 extends In, Out1>(
 /**
  * The same as `either` followed by `map`.
  */
-export function eitherWith_<S, Env, S1, Env1, In, In1 extends In, Out, Out1, Out2>(
+export function eitherWith_<S, Env, S1, Env1, In, In1, Out, Out1, Out2>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>,
   f: (o: Out, o1: Out1) => Out2
@@ -898,7 +911,7 @@ export function ensuring_<S1, Env1, S, Env, In, Out>(
  */
 export function first<X>() {
   return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
-    both_(self, identity<X>())
+    bothInOut_(self, identity<X>())
 }
 
 function foldMLoop<Z, S, Env, In, Out, S1, Env1>(
@@ -1516,13 +1529,13 @@ export function run_<S, Env, In, Out>(
  */
 export function second<X>() {
   return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
-    both_(identity<X>(), self)
+    bothInOut_(identity<X>(), self)
 }
 
-function tapInputLoop<S, Env, In, Out, In1 extends In, S1, Env1>(
+function tapInputLoop<S, Env, In, Out, S1, Env1>(
   self: Decision.StepFunction<S, Env, In, Out>,
-  f: (i: In1) => T.Effect<S1, Env1, never, any>
-): Decision.StepFunction<S | S1, Env & Env1, In1, Out> {
+  f: (i: In) => T.Effect<S1, Env1, never, any>
+): Decision.StepFunction<S | S1, Env & Env1, In, Out> {
   return (now, i) =>
     T.chain_(f(i), () =>
       T.map_(self(now, i), (d) => {
@@ -1561,19 +1574,17 @@ export function succeed<A>(a: A) {
 /**
  * Returns a new schedule that effectfully processes every input to this schedule.
  */
-export function tapInput_<S, Env, In, Out, S1, Env1, In1 extends In = In>(
+export function tapInput_<S, Env, In, Out, S1, Env1>(
   self: Schedule<S, Env, In, Out>,
-  f: (i: In1) => T.Effect<S1, Env1, never, any>
-): Schedule<S | S1, Env & Env1, In1, Out> {
+  f: (i: In) => T.Effect<S1, Env1, never, any>
+): Schedule<S | S1, Env & Env1, In, Out> {
   return new Schedule(tapInputLoop(self.step, f))
 }
 
 /**
  * Returns a new schedule that effectfully processes every input to this schedule.
  */
-export function tapInput<In, S1, Env1, In1 extends In = In>(
-  f: (i: In1) => T.Effect<S1, Env1, never, any>
-) {
+export function tapInput<In, S1, Env1>(f: (i: In) => T.Effect<S1, Env1, never, any>) {
   return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
     new Schedule(tapInputLoop(self.step, f))
 }
@@ -1630,7 +1641,7 @@ export function unit<S, Env, In, Out, S1, Env1>(
  * Returns a new schedule that continues until the specified predicate on the input evaluates
  * to true.
  */
-export function untilInput<In, In1 extends In = In>(f: (i: In1) => boolean) {
+export function untilInput<In>(f: (i: In) => boolean) {
   return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => untilInput_(self, f)
 }
 
@@ -1638,19 +1649,19 @@ export function untilInput<In, In1 extends In = In>(f: (i: In1) => boolean) {
  * Returns a new schedule that continues until the specified predicate on the input evaluates
  * to true.
  */
-export function untilInput_<S, Env, In, Out, In1 extends In = In>(
+export function untilInput_<S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
-  f: (i: In1) => boolean
+  f: (i: In) => boolean
 ) {
-  return check_(self, (i: In1) => !f(i))
+  return check_(self, (i) => !f(i))
 }
 
 /**
  * Returns a new schedule that continues until the specified effectful predicate on the input
  * evaluates to true.
  */
-export function untilInputM<S1, Env1, In, In1 extends In = In>(
-  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+export function untilInputM<S1, Env1, In>(
+  f: (i: In) => T.Effect<S1, Env1, never, boolean>
 ) {
   return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => untilInputM_(self, f)
 }
@@ -1659,11 +1670,11 @@ export function untilInputM<S1, Env1, In, In1 extends In = In>(
  * Returns a new schedule that continues until the specified effectful predicate on the input
  * evaluates to true.
  */
-export function untilInputM_<S1, Env1, S, Env, In, Out, In1 extends In = In>(
+export function untilInputM_<S1, Env1, S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
-  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+  f: (i: In) => T.Effect<S1, Env1, never, boolean>
 ) {
-  return checkM_(self, (i: In1) => T.map_(f(i), (b) => !b))
+  return checkM_(self, (i) => T.map_(f(i), (b) => !b))
 }
 
 /**
@@ -1710,7 +1721,7 @@ export function untilOutputM_<S, Env, In, Out, S1, Env1>(
  * Returns a new schedule that continues for as long the specified predicate on the input
  * evaluates to true.
  */
-export function whileInput<In, In1 extends In = In>(f: (i: In1) => boolean) {
+export function whileInput<In>(f: (i: In) => boolean) {
   return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => whileInput_(self, f)
 }
 
@@ -1718,19 +1729,19 @@ export function whileInput<In, In1 extends In = In>(f: (i: In1) => boolean) {
  * Returns a new schedule that continues for as long the specified predicate on the input
  * evaluates to true.
  */
-export function whileInput_<S, Env, In, Out, In1 extends In = In>(
+export function whileInput_<S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
-  f: (i: In1) => boolean
+  f: (i: In) => boolean
 ) {
-  return check_(self, (i: In1) => f(i))
+  return check_(self, (i) => f(i))
 }
 
 /**
  * Returns a new schedule that continues for as long the specified effectful predicate on the
  * input evaluates to true.
  */
-export function whileInputM<S1, Env1, In, In1 extends In = In>(
-  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+export function whileInputM<S1, Env1, In>(
+  f: (i: In) => T.Effect<S1, Env1, never, boolean>
 ) {
   return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => whileInputM_(self, f)
 }
@@ -1739,11 +1750,11 @@ export function whileInputM<S1, Env1, In, In1 extends In = In>(
  * Returns a new schedule that continues for as long the specified effectful predicate on the
  * input evaluates to true.
  */
-export function whileInputM_<S1, Env1, S, Env, In, Out, In1 extends In = In>(
+export function whileInputM_<S1, Env1, S, Env, In, Out>(
   self: Schedule<S, Env, In, Out>,
-  f: (i: In1) => T.Effect<S1, Env1, never, boolean>
+  f: (i: In) => T.Effect<S1, Env1, never, boolean>
 ) {
-  return checkM_(self, (i: In1) => f(i))
+  return checkM_(self, (i) => f(i))
 }
 
 /**
@@ -1877,7 +1888,7 @@ export function unfoldM_<S, Env, A>(a: A, f: (a: A) => T.Effect<S, Env, never, A
  * Returns a new schedule that performs a geometric intersection on the intervals defined
  * by both schedules.
  */
-export function zip_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
+export function zip_<S, Env, In, Out, S1, Env1, Out1, In1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
@@ -1888,26 +1899,22 @@ export function zip_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
  * Returns a new schedule that performs a geometric intersection on the intervals defined
  * by both schedules.
  */
-export function zip<In, S1, Env1, Out1, In1 extends In = In>(
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) =>
+export function zip<S1, Env1, Out1, In1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) =>
     combineWith_(self, that, (d, d2) => Math.max(d, d2))
 }
 
 /**
  * Same as zip but ignores the right output.
  */
-export function zipLeft<In, S1, Env1, Out1, In1 extends In = In>(
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => zipLeft_(self, that)
+export function zipLeft<S1, Env1, Out1, In1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => zipLeft_(self, that)
 }
 
 /**
  * Same as zip but ignores the right output.
  */
-export function zipLeft_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
+export function zipLeft_<S, Env, In, Out, S1, Env1, Out1, In1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
@@ -1917,16 +1924,14 @@ export function zipLeft_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
 /**
  * Same as zip but ignores the right output.
  */
-export function zipRight<In, S1, Env1, Out1, In1 extends In = In>(
-  that: Schedule<S1, Env1, In1, Out1>
-) {
-  return <S, Env, Out>(self: Schedule<S, Env, In, Out>) => zipRight_(self, that)
+export function zipRight<S1, Env1, Out1, In1>(that: Schedule<S1, Env1, In1, Out1>) {
+  return <S, Env, In, Out>(self: Schedule<S, Env, In, Out>) => zipRight_(self, that)
 }
 
 /**
  * Same as zip but ignores the right output.
  */
-export function zipRight_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
+export function zipRight_<S, Env, In, Out, S1, Env1, Out1, In1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>
 ) {
@@ -1936,17 +1941,17 @@ export function zipRight_<S, Env, In, Out, S1, Env1, Out1, In1 extends In = In>(
 /**
  * Equivalent to `zip` followed by `map`.
  */
-export function zipWith<In, Out, S1, Env1, Out1, Out2, In1 extends In = In>(
+export function zipWith<Out, S1, Env1, Out1, Out2, In1>(
   that: Schedule<S1, Env1, In1, Out1>,
   f: (o: Out, o1: Out1) => Out2
 ) {
-  return <S, Env>(self: Schedule<S, Env, In, Out>) => zipWith_(self, that, f)
+  return <S, Env, In>(self: Schedule<S, Env, In, Out>) => zipWith_(self, that, f)
 }
 
 /**
  * Equivalent to `zip` followed by `map`.
  */
-export function zipWith_<S, Env, In, Out, S1, Env1, Out1, Out2, In1 extends In = In>(
+export function zipWith_<S, Env, In, Out, S1, Env1, Out1, Out2, In1>(
   self: Schedule<S, Env, In, Out>,
   that: Schedule<S1, Env1, In1, Out1>,
   f: (o: Out, o1: Out1) => Out2
