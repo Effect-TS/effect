@@ -1,6 +1,5 @@
 import * as A from "../../../Array"
-import { tuple } from "../../../Function"
-import { pipe } from "../../../Function"
+import { pipe, tuple } from "../../../Function"
 import * as M from "../../../Map"
 import * as pA from "../Array"
 import { intersect } from "../Utils"
@@ -8,7 +7,7 @@ import { makeAny } from "../abstract/Any"
 import { ApplicativeF } from "../abstract/Applicative"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
-import { HKT } from "../abstract/HKT"
+import { HKT6 } from "../abstract/HKT"
 import { makeMonad } from "../abstract/Monad"
 import { makeTraversable } from "../abstract/Traversable"
 
@@ -66,9 +65,9 @@ export const Monad = makeMonad(MapURI)(intersect(Any, Covariant, AssociativeFlat
  * The `Traversable` instance for `Map`.
  */
 export const Traversable = makeTraversable(MapURI)({
-  foreachF: <G>(G: ApplicativeF<G>) => <A, B>(f: (a: A) => HKT<G, B>) => <FErr>(
-    fa: M.Map<FErr, A>
-  ): HKT<G, M.Map<FErr, B>> =>
+  foreachF: <G>(G: ApplicativeF<G>) => <X, In, S, R, E, A, B>(
+    f: (a: A) => HKT6<G, X, In, S, R, E, B>
+  ) => <FErr>(fa: M.Map<FErr, A>): HKT6<G, X, In, S, R, E, M.Map<FErr, B>> =>
     pipe(
       Array.from(fa),
       pA.Traversable.foreachF(G)(([k, a]: [FErr, A]) =>
