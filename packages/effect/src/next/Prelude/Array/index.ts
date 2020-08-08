@@ -4,12 +4,15 @@ import { makeClosure } from "../Closure"
 import { eqArray, EqualURI } from "../Equal"
 import { makeIdentity } from "../Identity"
 import { Sum } from "../Newtype"
+import { intersect } from "../Utils"
 import { makeAny, succeedF } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeDerive } from "../abstract/Derive"
+import { makeIdentityBoth } from "../abstract/IdentityBoth"
+import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
 import { makeMonad } from "../abstract/Monad"
 import { implementForeachF, makeTraversable } from "../abstract/Traversable"
 
@@ -80,22 +83,26 @@ export const AssociativeBoth = makeAssociativeBoth(ArrayURI)({
 })
 
 /**
- * The `Monad` instance for `Array<A>`.
+ * The `IdentityBoth` instance for `Array<A>`.
  */
-export const Applicative = makeApplicative(ArrayURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeBoth
-})
+export const IdentityBoth = makeIdentityBoth(ArrayURI)(intersect(Any, AssociativeBoth))
+
+/**
+ * The `Applicative` instance for `Array<A>`.
+ */
+export const Applicative = makeApplicative(ArrayURI)(intersect(Covariant, IdentityBoth))
+
+/**
+ * The `IdentityFlatten` instance for `Array<A>`.
+ */
+export const IdentityFlatten = makeIdentityFlatten(ArrayURI)(
+  intersect(Any, AssociativeFlatten)
+)
 
 /**
  * The `Monad` instance for `Array<A>`.
  */
-export const Monad = makeMonad(ArrayURI)({
-  ...Any,
-  ...Covariant,
-  ...AssociativeFlatten
-})
+export const Monad = makeMonad(ArrayURI)(intersect(Covariant, IdentityFlatten))
 
 /**
  * Traversable's `foreachF` for `Array`.
@@ -113,9 +120,8 @@ export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
 /**
  * The `Traversable` instance for `Array`.
  */
-export const Traversable = makeTraversable(ArrayURI)({
-  foreachF,
-  ...Covariant
+export const Traversable = makeTraversable(Covariant)({
+  foreachF
 })
 
 /**
