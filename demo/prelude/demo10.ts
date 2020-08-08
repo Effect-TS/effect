@@ -1,9 +1,12 @@
-import * as E from "../../src/next/Prelude/EffectAsync"
+import { pipe } from "../..//src/Function"
+import * as P from "../../src/next/Prelude/Pure"
 
-const result = E.sequenceSPar({
-  a: E.fail("ok" as const),
-  b: E.succeed(0),
-  c: E.fail("no" as const)
-})
-
-E.runPromiseExit(result).then(console.log)
+pipe(
+  P.modify((n: number) => [`${n + 1}`, `(${n})`]),
+  P.chain((n) => P.Access.access((s: string) => `${s}: ${n}`)),
+  P.provideAll("sss"),
+  P.runStateEither(111),
+  (res) => {
+    console.log(res)
+  }
+)
