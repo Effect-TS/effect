@@ -1,4 +1,4 @@
-import * as E from "../../src/next/Effect"
+import * as E from "../../src/next/Prelude/EffectAsync"
 
 const result = E.sequenceSPar({
   a: E.fail("ok" as const),
