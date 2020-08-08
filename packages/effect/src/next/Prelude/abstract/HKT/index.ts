@@ -23,10 +23,10 @@ export type HKT6<URI, X, In, St, Env, Err, Out> = HKT7<
   Out
 >
 
-export type HKT7<URI, O, X, In, St, Env, Err, Out> = HKT8<
+export type HKT7<URI, SO, X, In, St, Env, Err, Out> = HKT8<
   URI,
   any,
-  O,
+  SO,
   X,
   In,
   St,
@@ -35,7 +35,7 @@ export type HKT7<URI, O, X, In, St, Env, Err, Out> = HKT8<
   Out
 >
 
-export interface HKT8<URI, I, O, X, In, St, Env, Err, Out> {
+export interface HKT8<URI, SI, SO, X, In, St, Env, Err, Out> {
   readonly _URI: URI
   readonly _Out: () => Out
   readonly _Err: () => Err
@@ -43,8 +43,8 @@ export interface HKT8<URI, I, O, X, In, St, Env, Err, Out> {
   readonly _St: St
   readonly _In: (_: In) => void
   readonly _X: () => X
-  readonly _O: () => O
-  readonly _I: (_: I) => void
+  readonly _O: () => SO
+  readonly _I: (_: SI) => void
 }
 
 //
@@ -56,8 +56,8 @@ export interface HKT8<URI, I, O, X, In, St, Env, Err, Out> {
  */
 export interface URItoKind<X, In, St, Env, Err, Out> {}
 
-export interface URItoKindEx<I, O, X, In, St, Env, Err, Out>
-  extends URItoKind<X, In, St, Env, Err, Out> {}
+export interface URItoKindEx<SI, SO, X, I, S, Env, Err, Out>
+  extends URItoKind<X, I, S, Env, Err, Out> {}
 
 //
 // unions of URIs
