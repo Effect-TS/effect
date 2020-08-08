@@ -10,7 +10,7 @@ export interface AccessF<F> {
 
 export interface Access3<F extends URIS3> {
   readonly Access: "Access"
-  readonly access: <R, E, A>(f: (r: R) => A) => Kind3<F, R, E, A>
+  readonly access: <R, A>(f: (r: R) => A) => Kind3<F, R, never, A>
   readonly provide: <R>(
     r: R
   ) => <E, A>(fa: Kind3<F, R, E, A>) => Kind3<F, unknown, E, A>
@@ -18,7 +18,7 @@ export interface Access3<F extends URIS3> {
 
 export interface Access4<F extends URIS4> {
   readonly Access: "Access"
-  readonly access: <R, A>(f: (r: R) => A) => Kind4<F, never, R, never, A>
+  readonly access: <R, A, S>(f: (r: R) => A) => Kind4<F, S, R, never, A>
   readonly provide: <R>(
     r: R
   ) => <S, E, A>(fa: Kind4<F, S, R, E, A>) => Kind4<F, S, unknown, E, A>
@@ -26,7 +26,7 @@ export interface Access4<F extends URIS4> {
 
 export interface Access5<F extends URIS5> {
   readonly Access: "Access"
-  readonly access: <R, A>(f: (r: R) => A) => Kind5<F, unknown, never, R, never, A>
+  readonly access: <R, A, In, S = In>(f: (r: R) => A) => Kind5<F, In, S, R, never, A>
   readonly provide: <R>(
     r: R
   ) => <X, S, E, A>(fa: Kind5<F, X, S, R, E, A>) => Kind5<F, X, S, unknown, E, A>
@@ -34,9 +34,9 @@ export interface Access5<F extends URIS5> {
 
 export interface Access6<F extends URIS6> {
   readonly Access: "Access"
-  readonly access: <R, A>(
+  readonly access: <R, A, In, S = In>(
     f: (r: R) => A
-  ) => Kind6<F, unknown, unknown, never, R, unknown, A>
+  ) => Kind6<F, never, In, S, R, unknown, A>
   readonly provide: <R>(
     r: R
   ) => <Y, X, S, E, A>(
