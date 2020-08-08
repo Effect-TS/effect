@@ -162,3 +162,10 @@ export const Environmental = makeEnvironmental(ReaderURI)(intersect(Access, Mona
  * Struct based applicative for Reader[-_, +_]
  */
 export const sequenceS = sequenceSF(Applicative)
+
+/**
+ * Returns a computation that effectfully "peeks" at the success of this one.
+ */
+export const tap: <A, R1>(
+  f: (a: A) => Reader<R1, any>
+) => <R>(self: Reader<R, A>) => Reader<R & R1, A> = F.tap
