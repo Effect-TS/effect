@@ -1,6 +1,7 @@
 import { pipe } from "../../src/Function"
 import * as A from "../../src/next/Prelude/Array"
 import * as T from "../../src/next/Prelude/Effect"
+import { provideSomeF } from "../../src/next/Prelude/abstract/Environmental"
 
 interface Env {
   foo: string
@@ -15,6 +16,6 @@ pipe(
       console.log(ns)
     })
   ),
-  T.ContravariantEnv.contramap((): Env => ({ foo: "ok" })),
+  provideSomeF(T.Environmental)((): Env => ({ foo: "ok" })),
   T.runMain
 )

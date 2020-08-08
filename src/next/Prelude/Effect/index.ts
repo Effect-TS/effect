@@ -10,7 +10,6 @@ import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
 import { makeFail } from "../abstract/Fail"
-import { makeForeachable } from "../abstract/Foreachable"
 import { makeMonad } from "../abstract/Monad"
 
 /**
@@ -68,14 +67,6 @@ export const AssociativeEither = makeAssociativeEither(EffectURI)({
  */
 export const AssociativeFlatten = makeAssociativeFlatten(EffectURI)({
   flatten: S.flatten
-})
-
-/**
- * The `Foreachable` instance for `Effect`.
- */
-export const Foreachable = makeForeachable(EffectURI)({
-  foreach: S.foreach,
-  ...Covariant
 })
 
 /**
