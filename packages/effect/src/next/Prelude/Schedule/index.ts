@@ -18,7 +18,7 @@ export const ScheduleURI = "Schedule"
 export type ScheduleURI = typeof ScheduleURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind6<X, In, St, Env, Err, Out> {
+  interface URItoKind<X, In, St, Env, Err, Out> {
     [ScheduleURI]: S.Schedule<X, Env, In, Out>
   }
 }

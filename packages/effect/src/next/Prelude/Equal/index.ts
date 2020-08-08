@@ -23,7 +23,7 @@ export const EqualURI = "Equal"
 export type EqualURI = typeof EqualURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind6<X, In, St, Env, Err, Out> {
+  interface URItoKind<X, In, St, Env, Err, Out> {
     [EqualURI]: Equal<Out>
   }
 }

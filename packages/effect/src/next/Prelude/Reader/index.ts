@@ -20,7 +20,7 @@ export const ReaderURI = "Reader"
 export type ReaderURI = typeof ReaderURI
 
 declare module "../abstract/HKT" {
-  interface URItoKind6<X, In, St, Env, Err, Out> {
+  interface URItoKind<X, In, St, Env, Err, Out> {
     [ReaderURI]: Reader<Env, Out>
   }
 }

@@ -2,17 +2,17 @@ import * as A from "../../../../Array"
 import { pipe, tuple } from "../../../../Function"
 import { UnionToIntersection } from "../../../Utils"
 import { succeedF } from "../Any"
-import { Covariant6, CovariantF } from "../Covariant"
-import { HKT, Kind6, URIS6 } from "../HKT"
-import { IdentityBoth6, IdentityBothF } from "../IdentityBoth"
+import { CovariantK, CovariantF } from "../Covariant"
+import { HKT, Kind, URIS } from "../HKT"
+import { IdentityBothK, IdentityBothF } from "../IdentityBoth"
 
 export type ApplicativeF<F> = IdentityBothF<F> & CovariantF<F>
 
-export type Applicative6<F extends URIS6> = IdentityBoth6<F> & Covariant6<F>
+export type ApplicativeK<F extends URIS> = IdentityBothK<F> & CovariantK<F>
 
-export function makeApplicative<URI extends URIS6>(
+export function makeApplicative<URI extends URIS>(
   _: URI
-): (_: Omit<Applicative6<URI>, "URI">) => Applicative6<URI>
+): (_: Omit<ApplicativeK<URI>, "URI">) => ApplicativeK<URI>
 export function makeApplicative<URI>(
   URI: URI
 ): (_: Omit<ApplicativeF<URI>, "URI">) => ApplicativeF<URI> {
@@ -24,15 +24,15 @@ export function makeApplicative<URI>(
 
 type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
-export function sequenceSF<F extends URIS6>(
-  F: Applicative6<F>
-): <S, NER extends Record<string, Kind6<F, any, any, S, any, any, any>>>(
+export function sequenceSF<F extends URIS>(
+  F: ApplicativeK<F>
+): <S, NER extends Record<string, Kind<F, any, any, S, any, any, any>>>(
   r: EnforceNonEmptyRecord<NER>
-) => Kind6<
+) => Kind<
   F,
   {
     [K in keyof NER]: [NER[K]] extends [
-      Kind6<F, infer X, infer In, infer S, infer S, infer E, infer A>
+      Kind<F, infer X, infer In, infer S, infer S, infer E, infer A>
     ]
       ? X
       : never
@@ -40,7 +40,7 @@ export function sequenceSF<F extends URIS6>(
   UnionToIntersection<
     {
       [K in keyof NER]: [NER[K]] extends [
-        Kind6<F, infer X, infer In, infer S, infer R, infer E, infer A>
+        Kind<F, infer X, infer In, infer S, infer R, infer E, infer A>
       ]
         ? unknown extends In
           ? never
@@ -52,7 +52,7 @@ export function sequenceSF<F extends URIS6>(
   UnionToIntersection<
     {
       [K in keyof NER]: [NER[K]] extends [
-        Kind6<F, infer X, infer In, infer S, infer R, infer E, infer A>
+        Kind<F, infer X, infer In, infer S, infer R, infer E, infer A>
       ]
         ? unknown extends R
           ? never
@@ -62,14 +62,14 @@ export function sequenceSF<F extends URIS6>(
   >,
   {
     [K in keyof NER]: [NER[K]] extends [
-      Kind6<F, infer X, infer In, infer S, infer S, infer E, infer A>
+      Kind<F, infer X, infer In, infer S, infer S, infer E, infer A>
     ]
       ? E
       : never
   }[keyof NER],
   {
     [K in keyof NER]: [NER[K]] extends [
-      Kind6<F, infer X, infer In, infer S, infer S, infer E, infer A>
+      Kind<F, infer X, infer In, infer S, infer S, infer E, infer A>
     ]
       ? A
       : never
