@@ -7,7 +7,7 @@ import { makeAny } from "../abstract/Any"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeMonad } from "../abstract/Monad"
-import { foreachImpl, makeTraversable } from "../abstract/Traversable"
+import { implementForeachF, makeTraversable } from "../abstract/Traversable"
 
 export const MapURI = "MapK"
 export type MapURI = typeof MapURI
@@ -63,7 +63,7 @@ export const Monad = makeMonad(MapURI)(intersect(Any, Covariant, AssociativeFlat
  * The `Traversable` instance for `Map`.
  */
 export const Traversable = makeTraversable(MapURI)({
-  foreachF: foreachImpl<MapURI>()((G) => (f) => (fa) =>
+  foreachF: implementForeachF(MapURI)(() => (G) => (f) => (fa) =>
     pipe(
       Array.from(fa),
       pA.Traversable.foreachF(G)(([k, a]) =>

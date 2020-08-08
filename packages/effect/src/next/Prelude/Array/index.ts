@@ -11,7 +11,7 @@ import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeDerive } from "../abstract/Derive"
 import { makeMonad } from "../abstract/Monad"
-import { foreachImpl, makeTraversable } from "../abstract/Traversable"
+import { implementForeachF, makeTraversable } from "../abstract/Traversable"
 
 /**
  * @category definitions
@@ -101,8 +101,8 @@ export const Monad = makeMonad(ArrayURI)({
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(ArrayURI)({
-  foreachF: foreachImpl<ArrayURI>()((G) => (f) => (fa) =>
-    A.reduce_(fa, succeedF(G)([] as any[]), (b, a) =>
+  foreachF: implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
+    A.reduce_(fa, succeedF(G)([] as typeof _._b[]), (b, a) =>
       pipe(
         b,
         G.both(f(a)),
