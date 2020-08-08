@@ -1,4 +1,4 @@
-import { HasURI, HKT, Kind, URIS } from "../HKT"
+import { HasURI, HKT6, Kind, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -25,7 +25,9 @@ import { HasURI, HKT, Kind, URIS } from "../HKT"
  */
 export interface ContravariantF<F> extends HasURI<F> {
   readonly Contravariant: "Contravariant"
-  readonly contramap: <A, B>(f: (a: B) => A) => (fa: HKT<F, A>) => HKT<F, B>
+  readonly contramap: <A, B>(
+    f: (a: B) => A
+  ) => <Y, X, S, R, E>(fa: HKT6<F, Y, X, S, R, E, A>) => HKT6<F, Y, X, S, R, E, B>
 }
 
 export interface ContravariantK<F extends URIS> extends HasURI<F> {

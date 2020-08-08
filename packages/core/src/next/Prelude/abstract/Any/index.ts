@@ -1,13 +1,13 @@
 import { pipe } from "../../../../Function"
 import { CovariantK, CovariantF } from "../Covariant"
-import { HasURI, HKT, Kind, URIS } from "../HKT"
+import { HasURI, HKT, HKT6, Kind, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
  */
 export interface AnyF<F> extends HasURI<F> {
   readonly Any: "Any"
-  readonly any: () => HKT<F, unknown>
+  readonly any: <In, S = In>() => HKT6<F, never, In, S, unknown, never, unknown>
 }
 
 export interface AnyK<F extends URIS> extends HasURI<F> {

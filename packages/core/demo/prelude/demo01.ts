@@ -10,5 +10,5 @@ pipe(
       console.log(ns)
     })
   ),
-  T.runMain
+  (x) => T.runMain(x)
 )
