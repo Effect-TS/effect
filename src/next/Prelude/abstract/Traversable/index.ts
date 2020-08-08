@@ -50,3 +50,15 @@ export function makeTraversable<URI>(
     ..._
   })
 }
+
+export function foreachImpl<F extends URIS>() {
+  return (
+    i: <G>(
+      G: IdentityBothF<G> & CovariantF<G>
+    ) => <GX, GI, GS, GR, GE, A, B>(
+      f: (a: A) => HKT6<G, GX, GI, GS, GR, GE, B>
+    ) => <FX, FIn, FSt, FEnv, FErr>(
+      fa: Kind<F, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKT6<G, GX, GI, GS, GR, GE, Kind<F, FX, FIn, FSt, FEnv, FErr, B>>
+  ): ForeachK<F> => i
+}
