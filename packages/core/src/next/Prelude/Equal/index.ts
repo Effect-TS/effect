@@ -1,5 +1,6 @@
 import * as A from "../../../Array"
 import * as E from "../../../Either"
+import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
@@ -118,10 +119,7 @@ export const Any = makeAny(EqualURI)({
 /**
  * The `IdentityBoth` instance for `Equal`.
  */
-export const IdentityBoth = makeIdentityBoth(EqualURI)({
-  ...Any,
-  ...AssociativeBoth
-})
+export const IdentityBoth = makeIdentityBoth(EqualURI)(intersect(Any, AssociativeBoth))
 
 /**
  * The `None` instance for `Equal`.
@@ -133,10 +131,9 @@ export const None = makeNone(EqualURI)({
 /**
  * The `IdentityEither` instance for `Equal`.
  */
-export const IdentityEither = makeIdentityEither(EqualURI)({
-  ...None,
-  ...AssociativeEither
-})
+export const IdentityEither = makeIdentityEither(EqualURI)(
+  intersect(None, AssociativeEither)
+)
 
 /**
  * Constructs an `Equal[A]` that uses the default notion of equality
