@@ -59,10 +59,41 @@ export function accessMF<F extends URIS3>(
 ): <R, R1, E, A>(f: (r: R) => Kind3<F, R1, E, A>) => Kind3<F, R & R1, E, A>
 export function accessMF<F>(
   F: EnvironmentalF<F>
+): <E, R, R1, A>(f: (r: R) => HKT3<F, R1, E, A>) => HKT3<F, R & R1, E, A>
+export function accessMF<F>(
+  F: EnvironmentalF<F>
 ): <E, R, R1, A>(f: (r: R) => HKT3<F, R1, E, A>) => HKT3<F, R & R1, E, A> {
   return <R, R1, E, A>(f: (r: R) => HKT3<F, R1, E, A>): HKT3<F, R & R1, E, A> =>
     pipe(
       F.access((r: R) => f(r)),
       F.flatten
     )
+}
+
+export function provideSomeF<F extends URIS6>(
+  F: Environmental6<F>
+): <R0, R>(
+  f: (r: R0) => R
+) => <X, I, S, E, A>(fa: Kind6<F, X, I, S, R, E, A>) => Kind6<F, X, I, S, R0, E, A>
+export function provideSomeF<F extends URIS5>(
+  F: Environmental5<F>
+): <R0, R>(
+  f: (r: R0) => R
+) => <I, S, E, A>(fa: Kind5<F, I, S, R, E, A>) => Kind5<F, I, S, R0, E, A>
+export function provideSomeF<F extends URIS4>(
+  F: Environmental3<F>
+): <R0, R>(
+  f: (r: R0) => R
+) => <S, E, A>(fa: Kind4<F, S, R, E, A>) => Kind4<F, S, R0, E, A>
+export function provideSomeF<F extends URIS3>(
+  F: Environmental3<F>
+): <R0, R>(f: (r: R0) => R) => <E, A>(fa: Kind3<F, R, E, A>) => Kind3<F, R0, E, A>
+export function provideSomeF<F>(
+  F: EnvironmentalF<F>
+): <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, R0, E, A>
+export function provideSomeF<F>(
+  F: EnvironmentalF<F>
+): <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, R0, E, A> {
+  return <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) =>
+    accessMF(F)((r: R0) => F.provide(f(r))(fa))
 }
