@@ -25,6 +25,9 @@ export function makeAccess<URI extends URIS>(
 ): (_: Omit<AccessK<URI>, "URI" | "Access">) => AccessK<URI>
 export function makeAccess<URI>(
   URI: URI
+): (_: Omit<AccessF<URI>, "URI" | "Access">) => AccessF<URI>
+export function makeAccess<URI>(
+  URI: URI
 ): (_: Omit<AccessF<URI>, "URI" | "Access">) => AccessF<URI> {
   return (_) => ({
     URI,

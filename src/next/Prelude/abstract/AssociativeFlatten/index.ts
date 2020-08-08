@@ -27,6 +27,11 @@ export function makeAssociativeFlatten<URI>(
   URI: URI
 ): (
   _: Omit<AssociativeFlattenF<URI>, "URI" | "AssociativeFlatten">
+) => AssociativeFlattenF<URI>
+export function makeAssociativeFlatten<URI>(
+  URI: URI
+): (
+  _: Omit<AssociativeFlattenF<URI>, "URI" | "AssociativeFlatten">
 ) => AssociativeFlattenF<URI> {
   return (_) => ({
     URI,

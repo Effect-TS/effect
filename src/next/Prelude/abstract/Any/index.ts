@@ -52,6 +52,7 @@ export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> 
 export function makeAny<URI extends URIS>(
   _: URI
 ): (_: Omit<AnyK<URI>, "URI" | "Any">) => AnyK<URI>
+export function makeAny<URI>(URI: URI): (_: Omit<AnyF<URI>, "URI" | "Any">) => AnyF<URI>
 export function makeAny<URI>(
   URI: URI
 ): (_: Omit<AnyF<URI>, "URI" | "Any">) => AnyF<URI> {

@@ -32,6 +32,11 @@ export function makeAssociativeEither<URI>(
   URI: URI
 ): (
   _: Omit<AssociativeEitherF<URI>, "URI" | "AssociativeEither">
+) => AssociativeEitherF<URI>
+export function makeAssociativeEither<URI>(
+  URI: URI
+): (
+  _: Omit<AssociativeEitherF<URI>, "URI" | "AssociativeEither">
 ) => AssociativeEitherF<URI> {
   return (_) => ({
     URI,

@@ -22,6 +22,11 @@ export function makeCommutativeEither<URI>(
   URI: URI
 ): (
   _: Omit<CommutativeEitherF<URI>, "URI" | "CommutativeEither">
+) => CommutativeEitherF<URI>
+export function makeCommutativeEither<URI>(
+  URI: URI
+): (
+  _: Omit<CommutativeEitherF<URI>, "URI" | "CommutativeEither">
 ) => CommutativeEitherF<URI> {
   return (_) => ({
     URI,
