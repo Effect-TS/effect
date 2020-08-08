@@ -10,6 +10,7 @@ import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeEnvironmental } from "../abstract/Fx/Environmental"
 import { makeFail } from "../abstract/Fx/Fail"
+import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
 import { makeMonad } from "../abstract/Monad"
 
 /**
@@ -78,10 +79,17 @@ export const Access = makeAccess(EffectURI)({
 })
 
 /**
+ * The `IdentityFlatten` instance for `Effect`.
+ */
+export const IdentityFlatten = makeIdentityFlatten(EffectURI)(
+  intersect(Any, AssociativeFlatten)
+)
+
+/**
  * The `Environmental` instance for `Effect`.
  */
 export const Environmental = makeEnvironmental(EffectURI)(
-  intersect(Access, AssociativeFlatten)
+  intersect(Access, IdentityFlatten, Covariant)
 )
 
 /**

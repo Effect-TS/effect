@@ -8,6 +8,7 @@ import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeEnvironmental } from "../abstract/Fx/Environmental"
+import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
 import { makeMonad } from "../abstract/Monad"
 
 //
@@ -134,6 +135,13 @@ export const AssociativeFlatten = makeAssociativeFlatten(ReaderURI)({
 })
 
 /**
+ * The `IdentityFlatten` instance for `Reader[-_, +_]`.
+ */
+export const IdentityFlatten = makeIdentityFlatten(ReaderURI)(
+  intersect(Any, AssociativeFlatten)
+)
+
+/**
  * The `Monad` instance for `Reader[-_, +_]`.
  */
 export const Monad = makeMonad(ReaderURI)(intersect(Any, Covariant, AssociativeFlatten))
@@ -148,9 +156,7 @@ export const Applicative = makeApplicative(ReaderURI)(
 /**
  * The `Environmental` instance for `Reader[-_, +_]`.
  */
-export const Environmental = makeEnvironmental(ReaderURI)(
-  intersect(Access, AssociativeFlatten)
-)
+export const Environmental = makeEnvironmental(ReaderURI)(intersect(Access, Monad))
 
 /**
  * Struct based applicative for Reader[-_, +_]
