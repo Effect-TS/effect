@@ -3,9 +3,7 @@ import { HKT3, Kind3, Kind4, Kind5, Kind6, URIS3, URIS4, URIS5, URIS6 } from "..
 export interface AccessF<F> {
   readonly Access: "Access"
   readonly access: <R, A>(f: (r: R) => A) => HKT3<F, R, never, A>
-  readonly provide: <R>(
-    r: R
-  ) => <E, A>(fa: HKT3<F, R, never, A>) => HKT3<F, unknown, E, A>
+  readonly provide: <R>(r: R) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, unknown, E, A>
 }
 
 export interface Access3<F extends URIS3> {
