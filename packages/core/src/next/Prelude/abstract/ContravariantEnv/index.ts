@@ -1,10 +1,10 @@
-import { HKT3, Kind, URIS } from "../HKT"
+import { HKT6, Kind, URIS } from "../HKT"
 
 export interface ContravariantEnvF<F> {
   readonly ContravariantEnv: "ContravariantEnv"
   readonly contramapEnv: <R0, R>(
     f: (r: R0) => R
-  ) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, R0, E, A>
+  ) => <X, In, S, E, A>(fa: HKT6<F, X, In, S, R, E, A>) => HKT6<F, X, In, S, R0, E, A>
 }
 
 export interface ContravariantEnvK<F extends URIS> {
