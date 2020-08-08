@@ -2031,7 +2031,7 @@ export const zero: <A>() => readonly A[] = () => empty
  *
  * assert.deepStrictEqual(zip([1, 2, 3], ['a', 'b', 'c', 'd']), [[1, 'a'], [2, 'b'], [3, 'c']])
  */
-export function zip<A, B>(fb: Array<B>): (fa: Array<A>) => Array<readonly [A, B]> {
+export function zip<B>(fb: Array<B>): <A>(fa: Array<A>) => Array<readonly [A, B]> {
   return zipWith(fb, (a, b) => [a, b])
 }
 
