@@ -427,7 +427,6 @@ export function sequenceSF<F>(
       Object.keys(r).map((k) => tuple(k, r[k])),
       (x) => {
         if (F["ForeachablePar"]) {
-          console.log("F-PAR")
           return pipe(
             x,
             (F as ForeachableParF<F>).foreachPar(([k, v]) =>
@@ -435,7 +434,6 @@ export function sequenceSF<F>(
             )
           )
         } else if (F["Foreachable"]) {
-          console.log("F-seq")
           return pipe(
             x,
             (F as ForeachableF<F>).foreach(([k, v]) => F.map((a) => tuple(k, a))(v))
