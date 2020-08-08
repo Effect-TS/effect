@@ -6,20 +6,20 @@ import { HasURI, HKT8, KindEx, URIS } from "../HKT"
  */
 export interface AssociativeBothF<F> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <O, O2, X2, In2, St, Env2, Err2, B>(
-    fb: HKT8<F, O, O2, X2, In2, St, Env2, Err2, B>
-  ) => <I, X, In, Env, Err, A>(
-    fa: HKT8<F, I, O, X, In, St, Env, Err, A>
-  ) => HKT8<F, I, O2, X2 | X, In2 & In, St, Env2 & Env, Err2 | Err, readonly [A, B]>
+  readonly both: <SO, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: HKT8<F, SO, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <SI, X, In, Env, Err, A>(
+    fa: HKT8<F, SI, SO, X, In, S, Env, Err, A>
+  ) => HKT8<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, Err2 | Err, readonly [A, B]>
 }
 
 export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <O, O2, X2, In2, St, Env2, Err2, B>(
-    fb: KindEx<F, O, O2, X2, In2, St, Env2, Err2, B>
-  ) => <I, X, In, Env, Err, A>(
-    fa: KindEx<F, I, O, X, In, St, Env, Err, A>
-  ) => KindEx<F, I, O2, X2 | X, In2 & In, St, Env2 & Env, Err2 | Err, readonly [A, B]>
+  readonly both: <SO, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: KindEx<F, SO, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <SI, X, In, Env, Err, A>(
+    fa: KindEx<F, SI, SO, X, In, S, Env, Err, A>
+  ) => KindEx<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, Err2 | Err, readonly [A, B]>
 }
 
 export function makeAssociativeBoth<URI extends URIS>(

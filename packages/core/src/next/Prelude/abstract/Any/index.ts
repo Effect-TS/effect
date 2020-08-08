@@ -7,10 +7,10 @@ import { HasURI, HKT, HKT8, KindEx, URIS } from "../HKT"
  */
 export interface AnyF<F> extends HasURI<F> {
   readonly Any: "Any"
-  readonly any: <S, I, O = I>() => HKT8<
+  readonly any: <S, SI, SO = SI>() => HKT8<
     F,
-    I,
-    O,
+    SI,
+    SO,
     never,
     unknown,
     S,
@@ -22,10 +22,10 @@ export interface AnyF<F> extends HasURI<F> {
 
 export interface AnyK<F extends URIS> extends HasURI<F> {
   readonly Any: "Any"
-  readonly any: <S, I, O = I>() => KindEx<
+  readonly any: <S, SI, SO = SI>() => KindEx<
     F,
-    I,
-    O,
+    SI,
+    SO,
     never,
     unknown,
     S,
@@ -37,12 +37,14 @@ export interface AnyK<F extends URIS> extends HasURI<F> {
 
 export function succeedF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
-): <A, S, I, O = I, X = never>(
+): <A, S, SI, SO = SI, X = never>(
   a: A
-) => KindEx<F, I, O, X, unknown, S, unknown, never, A>
+) => KindEx<F, SI, SO, X, unknown, S, unknown, never, A>
 export function succeedF<F>(
   F: AnyF<F> & CovariantF<F>
-): <A, S, I, O = I, X = never>(a: A) => HKT8<F, I, O, X, unknown, S, unknown, never, A>
+): <A, S, SI, SO = SI, X = never>(
+  a: A
+) => HKT8<F, SI, SO, X, unknown, S, unknown, never, A>
 export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
@@ -53,10 +55,10 @@ export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> 
 
 export function anyF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
-): <I, O, X, In, S, R, E, A>(a: A) => KindEx<F, I, O, X, In, S, R, E, A>
+): <SI, SO, X, In, S, R, E, A>(a: A) => KindEx<F, SI, SO, X, In, S, R, E, A>
 export function anyF<F>(
   F: AnyF<F> & CovariantF<F>
-): <I, O, X, In, S, R, E, A>(a: A) => HKT8<F, I, O, X, In, S, R, E, A>
+): <SI, SO, X, In, S, R, E, A>(a: A) => HKT8<F, SI, SO, X, In, S, R, E, A>
 export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
