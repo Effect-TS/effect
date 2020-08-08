@@ -27,6 +27,9 @@ export function makeAssociativeBoth<URI extends URIS>(
 ): (_: Omit<AssociativeBothK<URI>, "URI" | "AssociativeBoth">) => AssociativeBothK<URI>
 export function makeAssociativeBoth<URI>(
   URI: URI
+): (_: Omit<AssociativeBothF<URI>, "URI" | "AssociativeBoth">) => AssociativeBothF<URI>
+export function makeAssociativeBoth<URI>(
+  URI: URI
 ): (
   _: Omit<AssociativeBothF<URI>, "URI" | "AssociativeBoth">
 ) => AssociativeBothF<URI> {

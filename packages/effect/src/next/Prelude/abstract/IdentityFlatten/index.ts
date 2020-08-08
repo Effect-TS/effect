@@ -15,6 +15,9 @@ export function makeIdentityFlatten<URI extends URIS>(
 ): (_: Omit<IdentityFlattenK<URI>, "URI">) => IdentityFlattenK<URI>
 export function makeIdentityFlatten<URI>(
   URI: URI
+): (_: Omit<IdentityFlattenF<URI>, "URI">) => IdentityFlattenF<URI>
+export function makeIdentityFlatten<URI>(
+  URI: URI
 ): (_: Omit<IdentityFlattenF<URI>, "URI">) => IdentityFlattenF<URI> {
   return (_) => ({
     URI,

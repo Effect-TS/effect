@@ -18,6 +18,9 @@ export function makeCommutativeBoth<URI extends URIS>(
 ): (_: Omit<CommutativeBothK<URI>, "URI" | "CommutativeBoth">) => CommutativeBothK<URI>
 export function makeCommutativeBoth<URI>(
   URI: URI
+): (_: Omit<CommutativeBothF<URI>, "URI" | "CommutativeBoth">) => CommutativeBothF<URI>
+export function makeCommutativeBoth<URI>(
+  URI: URI
 ): (
   _: Omit<CommutativeBothF<URI>, "URI" | "CommutativeBoth">
 ) => CommutativeBothF<URI> {

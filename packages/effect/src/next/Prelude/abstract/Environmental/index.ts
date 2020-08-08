@@ -12,6 +12,9 @@ export function makeEnvironmental<URI extends URIS>(
 ): (_: Omit<EnvironmentalK<URI>, "URI" | "Environmental">) => EnvironmentalK<URI>
 export function makeEnvironmental<URI>(
   URI: URI
+): (_: Omit<EnvironmentalF<URI>, "URI" | "Environmental">) => EnvironmentalF<URI>
+export function makeEnvironmental<URI>(
+  URI: URI
 ): (_: Omit<EnvironmentalF<URI>, "URI" | "Environmental">) => EnvironmentalF<URI> {
   return (_) => ({
     URI,

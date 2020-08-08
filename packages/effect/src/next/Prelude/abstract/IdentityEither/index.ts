@@ -15,6 +15,9 @@ export function makeIdentityEither<URI extends URIS>(
 ): (_: Omit<IdentityEitherK<URI>, "URI">) => IdentityEitherK<URI>
 export function makeIdentityEither<URI>(
   URI: URI
+): (_: Omit<IdentityEitherF<URI>, "URI">) => IdentityEitherF<URI>
+export function makeIdentityEither<URI>(
+  URI: URI
 ): (_: Omit<IdentityEitherF<URI>, "URI">) => IdentityEitherF<URI> {
   return (_) => ({
     URI,
