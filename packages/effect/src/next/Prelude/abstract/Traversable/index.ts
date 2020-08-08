@@ -1,18 +1,18 @@
-import { CovariantK, CovariantF } from "../Covariant"
-import { HKT, HKT6, Kind, URIS } from "../HKT"
-import { IdentityBothK, IdentityBothF } from "../IdentityBoth"
+import { CovariantF, CovariantK } from "../Covariant"
+import { HKT6, Kind, URIS } from "../HKT"
+import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
 export interface ForeachF<F> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <A, B>(
-    f: (a: A) => HKT<G, B>
+  <G>(G: IdentityBothF<G> & CovariantF<G>): <GX, GI, GS, GR, GE, A, B>(
+    f: (a: A) => HKT6<G, GX, GI, GS, GR, GE, B>
   ) => <FX, FIn, FSt, FEnv, FErr>(
     fa: HKT6<F, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT<G, HKT6<F, FX, FIn, FSt, FEnv, FErr, B>>
+  ) => HKT6<G, GX, GI, GS, GR, GE, HKT6<F, FX, FIn, FSt, FEnv, FErr, B>>
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <Y, X, S, R, E, A, B>(
     f: (a: A) => Kind<G, Y, X, S, R, E, B>
   ) => <FX, FIn, FSt, FEnv, FErr>(
     fa: HKT6<F, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT6<G, Y, X, S, R, E, HKT6<F, FX, FIn, FSt, FEnv, FErr, B>>
+  ) => Kind<G, Y, X, S, R, E, HKT6<F, FX, FIn, FSt, FEnv, FErr, B>>
 }
 
 export interface TraversableF<F> extends CovariantF<F> {
@@ -21,11 +21,11 @@ export interface TraversableF<F> extends CovariantF<F> {
 }
 
 export interface ForeachK<F extends URIS> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <A, B>(
-    f: (a: A) => HKT<G, B>
+  <G>(G: IdentityBothF<G> & CovariantF<G>): <GX, GI, GS, GR, GE, A, B>(
+    f: (a: A) => HKT6<G, GX, GI, GS, GR, GE, B>
   ) => <FX, FIn, FSt, FEnv, FErr>(
     fa: Kind<F, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT<G, Kind<F, FX, FIn, FSt, FEnv, FErr, B>>
+  ) => HKT6<G, GX, GI, GS, GR, GE, Kind<F, FX, FIn, FSt, FEnv, FErr, B>>
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <Y, X, S, R, E, A, B>(
     f: (a: A) => Kind<G, Y, X, S, R, E, B>
   ) => <FX, FIn, FSt, FEnv, FErr>(
