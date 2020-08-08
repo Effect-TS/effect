@@ -39,18 +39,22 @@ export interface TraversableK<F extends URIS> extends CovariantK<F> {
 }
 
 export function makeTraversable<URI extends URIS>(
-  _: URI
-): (_: Omit<TraversableK<URI>, "URI" | "Traversable">) => TraversableK<URI>
+  C: CovariantK<URI>
+): (
+  _: Omit<TraversableK<URI>, "URI" | "Traversable" | keyof CovariantK<URI>>
+) => TraversableK<URI>
 export function makeTraversable<URI>(
-  URI: URI
-): (_: Omit<TraversableF<URI>, "URI" | "Traversable">) => TraversableF<URI>
+  C: CovariantF<URI>
+): (
+  _: Omit<TraversableF<URI>, "URI" | "Traversable" | keyof CovariantF<URI>>
+) => TraversableF<URI>
 export function makeTraversable<URI>(
-  URI: URI
+  C: CovariantF<URI>
 ): (_: Omit<TraversableF<URI>, "URI" | "Traversable">) => TraversableF<URI> {
   return (_) => ({
-    URI,
     Traversable: "Traversable",
-    ..._
+    ..._,
+    ...C
   })
 }
 
