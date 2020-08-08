@@ -294,6 +294,25 @@ export function runState_<S1, S2, A>(self: XPure<S1, S2, unknown, never, A>, s: 
 
 /**
  * Runs this computation with the specified initial state, returning the
+ * updated state and the result.
+ */
+export function runStateResult<S1>(s: S1) {
+  return <S2, A>(self: XPure<S1, S2, unknown, never, A>) => runStateResult_(self, s)
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
+ * updated state and the result.
+ */
+export function runStateResult_<S1, S2, A>(
+  self: XPure<S1, S2, unknown, never, A>,
+  s: S1
+) {
+  return (runStateEither_(self, s) as E.Right<readonly [S2, A]>).right
+}
+
+/**
+ * Runs this computation with the specified initial state, returning the
  * result and discarding the updated state.
  */
 export function runResult<S1>(s: S1) {
@@ -338,6 +357,24 @@ export function chain_<S1, R, E, A, S2, S3, R1, E1, B>(
   f: (a: A) => XPure<S2, S3, R1, E1, B>
 ): XPure<S1, S3, R & R1, E | E1, B> {
   return new FlatMap(self, f)
+}
+
+/**
+ * Returns a computation that effectfully "peeks" at the success of this one.
+ */
+export function tap<A, S2, S3, R1, E1>(f: (a: A) => XPure<S2, S3, R1, E1, any>) {
+  return <S1, R, E>(self: XPure<S1, S2, R, E, A>): XPure<S1, S3, R & R1, E | E1, A> =>
+    tap_(self, f)
+}
+
+/**
+ * Returns a computation that effectfully "peeks" at the success of this one.
+ */
+export function tap_<S1, R, E, A, S2, S3, R1, E1>(
+  self: XPure<S1, S2, R, E, A>,
+  f: (a: A) => XPure<S2, S3, R1, E1, any>
+): XPure<S1, S3, R & R1, E | E1, A> {
+  return chain_(self, (a) => map_(f(a), () => a))
 }
 
 /**
