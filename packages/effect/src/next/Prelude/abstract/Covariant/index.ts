@@ -1,19 +1,4 @@
-import {
-  HKT,
-  HasURI,
-  URIS,
-  Kind,
-  Kind2,
-  URIS2,
-  Kind3,
-  URIS3,
-  Kind4,
-  URIS4,
-  URIS5,
-  Kind5,
-  URIS6,
-  Kind6
-} from "../HKT"
+import { HasURI, HKT, Kind6, URIS6 } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -42,37 +27,6 @@ export interface CovariantF<F> extends HasURI<F> {
   readonly map: <A, B>(f: (a: A) => B) => { (fa: HKT<F, A>): HKT<F, B> }
 }
 
-export interface Covariant1<F extends URIS> extends HasURI<F> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(f: (a: A) => B) => { (fa: Kind<F, A>): Kind<F, B> }
-}
-
-export interface Covariant2<F extends URIS2> extends HasURI<F> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(f: (a: A) => B) => { <E>(fa: Kind2<F, E, A>): Kind2<F, E, B> }
-}
-
-export interface Covariant3<F extends URIS3> extends HasURI<F> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(
-    f: (a: A) => B
-  ) => { <R, E>(fa: Kind3<F, R, E, A>): Kind3<F, R, E, B> }
-}
-
-export interface Covariant4<F extends URIS4> extends HasURI<F> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(
-    f: (a: A) => B
-  ) => { <S, R, E>(fa: Kind4<F, S, R, E, A>): Kind4<F, S, R, E, B> }
-}
-
-export interface Covariant5<F extends URIS5> extends HasURI<F> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(
-    f: (a: A) => B
-  ) => { <X, S, R, E>(fa: Kind5<F, X, S, R, E, A>): Kind5<F, X, S, R, E, B> }
-}
-
 export interface Covariant6<F extends URIS6> extends HasURI<F> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
@@ -80,21 +34,6 @@ export interface Covariant6<F extends URIS6> extends HasURI<F> {
   ) => { <Y, X, S, R, E>(fa: Kind6<F, Y, X, S, R, E, A>): Kind6<F, Y, X, S, R, E, B> }
 }
 
-export function makeCovariant<URI extends URIS>(
-  _: URI
-): (_: Omit<Covariant1<URI>, "URI" | "Covariant">) => Covariant1<URI>
-export function makeCovariant<URI extends URIS2>(
-  _: URI
-): (_: Omit<Covariant2<URI>, "URI" | "Covariant">) => Covariant2<URI>
-export function makeCovariant<URI extends URIS3>(
-  _: URI
-): (_: Omit<Covariant3<URI>, "URI" | "Covariant">) => Covariant3<URI>
-export function makeCovariant<URI extends URIS4>(
-  _: URI
-): (_: Omit<Covariant4<URI>, "URI" | "Covariant">) => Covariant4<URI>
-export function makeCovariant<URI extends URIS5>(
-  _: URI
-): (_: Omit<Covariant5<URI>, "URI" | "Covariant">) => Covariant5<URI>
 export function makeCovariant<URI extends URIS6>(
   _: URI
 ): (_: Omit<Covariant6<URI>, "URI" | "Covariant">) => Covariant6<URI>

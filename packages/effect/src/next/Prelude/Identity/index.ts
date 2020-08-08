@@ -1,6 +1,6 @@
 import { Associative } from "../Associative"
-import { Derive11 } from "../abstract/Derive"
-import { Kind, URIS } from "../abstract/HKT"
+import { Derive66 } from "../abstract/Derive"
+import { URIS6 } from "../abstract/HKT"
 
 export const URI = "Identity"
 export type URI = typeof URI
@@ -10,7 +10,7 @@ export interface Identity<A> extends Associative<A> {
 }
 
 declare module "../abstract/HKT" {
-  interface URItoKind<Out> {
+  interface URItoKind6<X, In, St, Env, Err, Out> {
     [URI]: Identity<Out>
   }
 }
@@ -22,9 +22,9 @@ export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identit
   }
 }
 
-export function deriveIdentity<F extends URIS, A>(
-  D: Derive11<F, URI>,
+export function deriveIdentity<F extends URIS6, A>(
+  D: Derive66<F, URI>,
   I: Identity<A>
-): Identity<Kind<F, A>> {
+) {
   return D.derive(I)
 }
