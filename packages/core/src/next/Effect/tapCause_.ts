@@ -1,6 +1,6 @@
 import { Cause } from "../Cause/cause"
 
-import { foldCauseM_, succeed } from "./core"
+import { chain_, foldCauseM_, halt, succeed } from "./core"
 import { Effect } from "./effect"
 
 /**
@@ -10,4 +10,4 @@ import { Effect } from "./effect"
 export const tapCause_ = <S2, R2, A2, S, R, E, E2>(
   effect: Effect<S2, R2, E2, A2>,
   f: (e: Cause<E2>) => Effect<S, R, E, any>
-) => foldCauseM_(effect, f, succeed)
+) => foldCauseM_(effect, (c) => chain_(f(c), () => halt(c)), succeed)
