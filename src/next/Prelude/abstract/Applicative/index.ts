@@ -1,10 +1,10 @@
 import * as A from "../../../../Array"
 import { pipe, tuple } from "../../../../Function"
 import { UnionToIntersection } from "../../../Utils"
-import { succeedF } from "../Any"
-import { CovariantK, CovariantF } from "../Covariant"
-import { HKT, Kind, URIS } from "../HKT"
-import { IdentityBothK, IdentityBothF } from "../IdentityBoth"
+import { anyF } from "../Any"
+import { CovariantF, CovariantK } from "../Covariant"
+import { HKT, Kind, KindEx, URIS } from "../HKT"
+import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
 export type ApplicativeF<F> = IdentityBothF<F> & CovariantF<F>
 
@@ -29,10 +29,15 @@ type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
 export function sequenceSF<F extends URIS>(
   F: ApplicativeK<F>
-): <S, NER extends Record<string, Kind<F, any, any, S, any, any, any>>>(
+): <
+  S,
+  NER extends Record<string, KindEx<F, unknown, unknown, any, any, S, any, any, any>>
+>(
   r: EnforceNonEmptyRecord<NER>
-) => Kind<
+) => KindEx<
   F,
+  unknown,
+  unknown,
   {
     [K in keyof NER]: [NER[K]] extends [
       Kind<F, infer X, infer In, infer S, infer S, infer E, infer A>
@@ -89,7 +94,7 @@ export function sequenceSF<F>(
   return (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
-      A.reduce(succeedF(F)([] as readonly [string, any][]), (b, a) =>
+      A.reduce(anyF(F)([] as readonly [string, any][]), (b, a) =>
         pipe(
           b,
           F.both(a[1]),

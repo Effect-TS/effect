@@ -1,23 +1,27 @@
-import { HKT6, Kind, URIS } from "../../HKT"
+import { HKT8, KindEx, URIS } from "../../HKT"
 
 export interface AccessF<F> {
   readonly Access: "Access"
-  readonly access: <R, A, In, S = In>(
+  readonly access: <R, A, In, I = In, O = In, S = In>(
     f: (r: R) => A
-  ) => HKT6<F, never, In, S, R, never, A>
+  ) => HKT8<F, I, O, never, In, S, R, never, A>
   readonly provide: <R>(
     r: R
-  ) => <Y, X, S, E, A>(fa: HKT6<F, Y, X, S, R, E, A>) => HKT6<F, Y, X, S, unknown, E, A>
+  ) => <I, O, X, In, St, Err, A>(
+    fa: HKT8<F, I, O, X, In, St, R, Err, A>
+  ) => HKT8<F, I, O, X, In, St, unknown, Err, A>
 }
 
 export interface AccessK<F extends URIS> {
   readonly Access: "Access"
-  readonly access: <R, A, In, S = In>(
+  readonly access: <R, A, In, I = In, O = In, S = In>(
     f: (r: R) => A
-  ) => Kind<F, never, In, S, R, never, A>
+  ) => KindEx<F, I, O, never, In, S, R, never, A>
   readonly provide: <R>(
     r: R
-  ) => <Y, X, S, E, A>(fa: Kind<F, Y, X, S, R, E, A>) => Kind<F, Y, X, S, unknown, E, A>
+  ) => <I, O, X, In, St, Err, A>(
+    fa: KindEx<F, I, O, X, In, St, R, Err, A>
+  ) => KindEx<F, I, O, X, In, St, unknown, Err, A>
 }
 
 export function makeAccess<URI extends URIS>(

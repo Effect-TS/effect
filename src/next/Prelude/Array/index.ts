@@ -5,7 +5,7 @@ import { eqArray, EqualURI } from "../Equal"
 import { makeIdentity } from "../Identity"
 import { Sum } from "../Newtype"
 import { intersect } from "../Utils"
-import { makeAny, succeedF } from "../abstract/Any"
+import { anyF, makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
@@ -108,7 +108,7 @@ export const Monad = makeMonad(ArrayURI)(intersect(Covariant, IdentityFlatten))
  * Traversable's `foreachF` for `Array`.
  */
 export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
-  A.reduce_(fa, succeedF(G)([] as typeof _._b[]), (b, a) =>
+  A.reduce_(fa, anyF(G)([] as typeof _._b[]), (b, a) =>
     pipe(
       b,
       G.both(f(a)),
