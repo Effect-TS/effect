@@ -20,7 +20,7 @@ export type FailureEitherURI = typeof FailureEitherURI
 export type FailureEither<E, A> = Failure<E.Either<A, E>>
 
 declare module "../abstract/HKT" {
-  interface URItoKind2<Err, Out> {
+  interface URItoKind6<X, In, St, Env, Err, Out> {
     [EitherURI]: E.Either<Err, Out>
     [FailureEitherURI]: FailureEither<Err, Out>
   }
