@@ -10,7 +10,8 @@ import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeEnvironmental } from "../abstract/Environmental"
 import { makeFail } from "../abstract/Fail"
-import { Foreachable3, makeForeachable } from "../abstract/Foreachable"
+import { makeForeachable } from "../abstract/Foreachable"
+import { makeForeachablePar } from "../abstract/ForeachablePar"
 import { makeMonad } from "../abstract/Monad"
 
 export const EffectAsyncURI = "EffectAsync"
@@ -82,8 +83,8 @@ export const Foreachable = makeForeachable(EffectAsyncURI)({
 /**
  * The Parallel `Foreachable` instance for `EffectAsync`.
  */
-export const ForeachablePar = makeForeachable(EffectAsyncURI)({
-  foreach: S.foreachPar,
+export const ForeachablePar = makeForeachablePar(EffectAsyncURI)({
+  foreachPar: S.foreachPar,
   ...Covariant
 })
 
@@ -92,9 +93,9 @@ export const ForeachablePar = makeForeachable(EffectAsyncURI)({
  *
  * this will use up to N fibers
  */
-export function ForeachableParN(n: number): Foreachable3<EffectAsyncURI> {
-  return makeForeachable(EffectAsyncURI)({
-    foreach: S.foreachParN(n),
+export function ForeachableParN(n: number) {
+  return makeForeachablePar(EffectAsyncURI)({
+    foreachPar: S.foreachParN(n),
     ...Covariant
   })
 }
