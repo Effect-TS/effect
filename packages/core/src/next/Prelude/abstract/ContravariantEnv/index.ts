@@ -23,6 +23,11 @@ export function makeContravariantEnv<URI>(
   URI: URI
 ): (
   _: Omit<ContravariantEnvF<URI>, "URI" | "ContravariantEnv">
+) => ContravariantEnvF<URI>
+export function makeContravariantEnv<URI>(
+  URI: URI
+): (
+  _: Omit<ContravariantEnvF<URI>, "URI" | "ContravariantEnv">
 ) => ContravariantEnvF<URI> {
   return (_) => ({
     URI,

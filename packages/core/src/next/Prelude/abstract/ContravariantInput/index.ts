@@ -23,6 +23,11 @@ export function makeContravariantInput<URI>(
   URI: URI
 ): (
   _: Omit<ContravariantInputF<URI>, "URI" | "ContravariantInput">
+) => ContravariantInputF<URI>
+export function makeContravariantInput<URI>(
+  URI: URI
+): (
+  _: Omit<ContravariantInputF<URI>, "URI" | "ContravariantInput">
 ) => ContravariantInputF<URI> {
   return (_) => ({
     URI,

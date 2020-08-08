@@ -43,6 +43,9 @@ export function makeTraversable<URI extends URIS>(
 ): (_: Omit<TraversableK<URI>, "URI" | "Traversable">) => TraversableK<URI>
 export function makeTraversable<URI>(
   URI: URI
+): (_: Omit<TraversableF<URI>, "URI" | "Traversable">) => TraversableF<URI>
+export function makeTraversable<URI>(
+  URI: URI
 ): (_: Omit<TraversableF<URI>, "URI" | "Traversable">) => TraversableF<URI> {
   return (_) => ({
     URI,

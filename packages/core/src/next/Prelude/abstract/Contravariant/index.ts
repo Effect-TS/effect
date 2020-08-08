@@ -42,6 +42,9 @@ export function makeContravariant<URI extends URIS>(
 ): (_: Omit<ContravariantK<URI>, "URI" | "Contravariant">) => ContravariantK<URI>
 export function makeContravariant<URI>(
   URI: URI
+): (_: Omit<ContravariantF<URI>, "URI" | "Contravariant">) => ContravariantF<URI>
+export function makeContravariant<URI>(
+  URI: URI
 ): (_: Omit<ContravariantF<URI>, "URI" | "Contravariant">) => ContravariantF<URI> {
   return (_) => ({
     URI,

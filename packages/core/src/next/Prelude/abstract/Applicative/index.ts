@@ -15,6 +15,9 @@ export function makeApplicative<URI extends URIS>(
 ): (_: Omit<ApplicativeK<URI>, "URI">) => ApplicativeK<URI>
 export function makeApplicative<URI>(
   URI: URI
+): (_: Omit<ApplicativeF<URI>, "URI">) => ApplicativeF<URI>
+export function makeApplicative<URI>(
+  URI: URI
 ): (_: Omit<ApplicativeF<URI>, "URI">) => ApplicativeF<URI> {
   return (_) => ({
     URI,

@@ -41,6 +41,9 @@ export function makeCovariant<URI extends URIS>(
 ): (_: Omit<CovariantK<URI>, "URI" | "Covariant">) => CovariantK<URI>
 export function makeCovariant<URI>(
   URI: URI
+): (_: Omit<CovariantF<URI>, "URI" | "Covariant">) => CovariantF<URI>
+export function makeCovariant<URI>(
+  URI: URI
 ): (_: Omit<CovariantF<URI>, "URI" | "Covariant">) => CovariantF<URI> {
   return (_) => ({
     URI,

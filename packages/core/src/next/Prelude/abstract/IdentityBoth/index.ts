@@ -15,6 +15,9 @@ export function makeIdentityBoth<URI extends URIS>(
 ): (_: Omit<IdentityBothK<URI>, "URI">) => IdentityBothK<URI>
 export function makeIdentityBoth<URI>(
   URI: URI
+): (_: Omit<IdentityBothF<URI>, "URI">) => IdentityBothF<URI>
+export function makeIdentityBoth<URI>(
+  URI: URI
 ): (_: Omit<IdentityBothF<URI>, "URI">) => IdentityBothF<URI> {
   return (_) => ({
     URI,

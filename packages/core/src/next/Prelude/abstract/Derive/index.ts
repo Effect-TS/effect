@@ -21,6 +21,10 @@ export function makeDerive<F extends URIS, Typeclass extends URIS>(
 export function makeDerive<F, Typeclass>(
   _: F,
   __: Typeclass
+): (_: Omit<DeriveF<F, Typeclass>, "Derive">) => DeriveF<F, Typeclass>
+export function makeDerive<F, Typeclass>(
+  _: F,
+  __: Typeclass
 ): (_: Omit<DeriveF<F, Typeclass>, "Derive">) => DeriveF<F, Typeclass> {
   return (_) => ({
     Derive: "Derive",
