@@ -10,6 +10,7 @@ import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeEnvironmental } from "../abstract/Fx/Environmental"
 import { makeFail } from "../abstract/Fx/Fail"
+import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
 import { makeMonad } from "../abstract/Monad"
 
 export const EffectAsyncURI = "EffectAsync"
@@ -78,13 +79,6 @@ export const AssociativeFlatten = makeAssociativeFlatten(EffectAsyncURI)({
 })
 
 /**
- * The `Monad` instance for `EffectAsync`.
- */
-export const Monad = makeMonad(EffectAsyncURI)(
-  intersect(Covariant, AssociativeFlatten, Any)
-)
-
-/**
  * The `Access` instance for `EffectAsync`.
  */
 export const Access = makeAccess(EffectAsyncURI)({
@@ -93,11 +87,21 @@ export const Access = makeAccess(EffectAsyncURI)({
 })
 
 /**
+ * The `IdentityFlatten` instance for `EffectAsync`.
+ */
+export const IdentityFlatten = makeIdentityFlatten(EffectAsyncURI)(
+  intersect(Any, AssociativeFlatten)
+)
+
+/**
+ * The `Monad` instance for `EffectAsync`.
+ */
+export const Monad = makeMonad(EffectAsyncURI)(intersect(Covariant, IdentityFlatten))
+
+/**
  * The `Environmental` instance for `EffectAsync`.
  */
-export const Environmental = makeEnvironmental(EffectAsyncURI)(
-  intersect(Access, AssociativeFlatten)
-)
+export const Environmental = makeEnvironmental(EffectAsyncURI)(intersect(Access, Monad))
 
 /**
  * The `Fail` instance for `EffectAsync`.

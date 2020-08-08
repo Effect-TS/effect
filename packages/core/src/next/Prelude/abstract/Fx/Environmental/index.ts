@@ -1,11 +1,14 @@
 import { pipe } from "../../../../../Function"
-import { AssociativeFlattenK, AssociativeFlattenF } from "../../AssociativeFlatten"
+import { CovariantF, CovariantK } from "../../Covariant"
 import { HKT3, HKT6, Kind, URIS } from "../../HKT"
-import { AccessK, AccessF } from "../Access"
+import { IdentityFlattenF, IdentityFlattenK } from "../../IdentityFlatten"
+import { AccessF, AccessK } from "../Access"
 
-export type EnvironmentalF<F> = AssociativeFlattenF<F> & AccessF<F>
+export type EnvironmentalF<F> = IdentityFlattenF<F> & AccessF<F> & CovariantF<F>
 
-export type EnvironmentalK<F extends URIS> = AssociativeFlattenK<F> & AccessK<F>
+export type EnvironmentalK<F extends URIS> = IdentityFlattenK<F> &
+  AccessK<F> &
+  CovariantK<F>
 
 export function makeEnvironmental<URI extends URIS>(
   _: URI
