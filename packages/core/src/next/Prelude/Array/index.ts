@@ -73,8 +73,11 @@ export const AssociativeFlatten = makeAssociativeFlatten(ArrayURI)({
   flatten: A.flatten
 })
 
+/**
+ * The `AssociativeBoth` instance for `Array<A>`.
+ */
 export const AssociativeBoth = makeAssociativeBoth(ArrayURI)({
-  both: (fb) => (fa) => A.zip_(fa, fb)
+  both: A.zip
 })
 
 /**
