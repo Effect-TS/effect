@@ -78,7 +78,6 @@ export const foreachF = implementForeachF(MapURI)(() => (G) => (f) => (fa) =>
 /**
  * The `Traversable` instance for `Map`.
  */
-export const Traversable = makeTraversable(MapURI)({
-  foreachF,
-  ...Covariant
+export const Traversable = makeTraversable(Covariant)({
+  foreachF
 })
