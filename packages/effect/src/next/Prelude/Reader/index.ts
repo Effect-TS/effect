@@ -9,7 +9,7 @@ import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeEnvironmental } from "../abstract/Fx/Environmental"
 import { makeIdentityFlatten } from "../abstract/IdentityFlatten"
-import { makeMonad } from "../abstract/Monad"
+import { bindF, doF, makeMonad } from "../abstract/Monad"
 
 //
 // Module
@@ -169,3 +169,13 @@ export const sequenceS = sequenceSF(Applicative)
 export const tap: <A, R1>(
   f: (a: A) => Reader<R1, any>
 ) => <R>(self: Reader<R, A>) => Reader<R & R1, A> = F.tap
+
+/**
+ * Begin `do` pipe: pipe(of(), bind("a", () => ...))
+ */
+export const of = doF(Monad)
+
+/**
+ * Monadically bind a variable in a pipeable `do` context
+ */
+export const bind = bindF(Monad)
