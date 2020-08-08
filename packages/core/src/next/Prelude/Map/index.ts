@@ -60,25 +60,25 @@ export const Covariant = makeCovariant(MapURI)({
 export const Monad = makeMonad(MapURI)(intersect(Any, Covariant, AssociativeFlatten))
 
 /**
+ * Traversable's `foreachF` for `Map`.
+ */
+export const foreachF = implementForeachF(MapURI)(() => (G) => (f) => (fa) =>
+  pipe(
+    Array.from(fa),
+    pA.Traversable.foreachF(G)(([k, a]) =>
+      pipe(
+        f(a),
+        G.map((b) => tuple(k, b))
+      )
+    ),
+    G.map((as) => new Map(as))
+  )
+)
+
+/**
  * The `Traversable` instance for `Map`.
  */
 export const Traversable = makeTraversable(MapURI)({
-  foreachF: implementForeachF(MapURI)(() => (G) => (f) => (fa) =>
-    pipe(
-      Array.from(fa),
-      pA.Traversable.foreachF(G)(([k, a]) =>
-        pipe(
-          f(a),
-          G.map((b) => tuple(k, b))
-        )
-      ),
-      G.map((as) => new Map(as))
-    )
-  ),
+  foreachF,
   ...Covariant
 })
-
-/**
- * Traversable's `foreachF` for `Map`.
- */
-export const foreachF = Traversable.foreachF
