@@ -1,4 +1,4 @@
-import { HasURI, HKT6, Kind, URIS } from "../../HKT"
+import { HasURI, HKT8, KindEx, URIS } from "../../HKT"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
@@ -6,12 +6,16 @@ import { HasURI, HKT6, Kind, URIS } from "../../HKT"
  */
 export interface FailF<F> extends HasURI<F> {
   readonly Fail: "Fail"
-  readonly fail: <S, E>(e: E) => HKT6<F, never, unknown, S, unknown, E, never>
+  readonly fail: <S, E>(
+    e: E
+  ) => HKT8<F, unknown, never, never, unknown, S, unknown, E, never>
 }
 
 export interface FailK<F extends URIS> extends HasURI<F> {
   readonly Fail: "Fail"
-  readonly fail: <S, E>(e: E) => Kind<F, never, unknown, S, unknown, E, never>
+  readonly fail: <S, E>(
+    e: E
+  ) => KindEx<F, unknown, never, never, unknown, S, unknown, E, never>
 }
 
 export function makeFail<URI extends URIS>(
