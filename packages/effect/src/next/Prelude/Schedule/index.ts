@@ -3,15 +3,15 @@ import { intersect } from "../Utils"
 import { makeAny } from "../abstract/Any"
 import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
-import { makeContravariantInput } from "../abstract/ContravariantInput"
+import { makeContravariant } from "../abstract/Contravariant"
 import { makeCovariant } from "../abstract/Covariant"
 
 /**
  * @category definitions
  */
 
-export const ScheduleInURI = "ScheduleIn"
-export type ScheduleInURI = typeof ScheduleInURI
+export const ScheduleInputURI = "ScheduleInput"
+export type ScheduleInputURI = typeof ScheduleInputURI
 
 export const ScheduleURI = "Schedule"
 export type ScheduleURI = typeof ScheduleURI
@@ -19,6 +19,7 @@ export type ScheduleURI = typeof ScheduleURI
 declare module "../abstract/HKT" {
   interface URItoKind<X, In, St, Env, Err, Out> {
     [ScheduleURI]: S.Schedule<X, Env, In, Out>
+    [ScheduleInputURI]: S.Schedule<X, Env, Out, In>
   }
 }
 
@@ -26,8 +27,8 @@ declare module "../abstract/HKT" {
  * @category instances
  */
 
-export const ContravariantInput = makeContravariantInput(ScheduleURI)({
-  contramapInput: S.contramap
+export const Contravariant = makeContravariant(ScheduleInputURI)({
+  contramap: S.contramap
 })
 
 export const Covariant = makeCovariant(ScheduleURI)({

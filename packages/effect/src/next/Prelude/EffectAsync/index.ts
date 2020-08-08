@@ -5,7 +5,6 @@ import { makeApplicative } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeEnvironmental } from "../abstract/Fx/Environmental"
@@ -108,13 +107,6 @@ export const Environmental = makeEnvironmental(EffectAsyncURI)(intersect(Access,
  */
 export const Fail = makeFail(EffectAsyncURI)({
   fail: S.fail
-})
-
-/**
- * The `ContravariantEnv` instance for `EffectAsync`.
- */
-export const ContravariantEnv = makeContravariantEnv(EffectAsyncURI)({
-  contramapEnv: S.provideSome
 })
 
 /**

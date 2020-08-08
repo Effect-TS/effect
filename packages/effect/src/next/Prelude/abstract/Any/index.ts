@@ -1,47 +1,63 @@
 import { pipe } from "../../../../Function"
-import { CovariantK, CovariantF } from "../Covariant"
-import { HasURI, HKT, HKT6, Kind, URIS } from "../HKT"
+import { CovariantF, CovariantK } from "../Covariant"
+import { HasURI, HKT, HKT8, KindEx, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
  */
 export interface AnyF<F> extends HasURI<F> {
   readonly Any: "Any"
-  readonly any: <In, S = In, X = never, R = unknown, E = never>() => HKT6<
+  readonly any: <S, I, O = I>() => HKT8<
     F,
-    X,
-    In,
+    I,
+    O,
+    never,
+    unknown,
     S,
-    R,
-    E,
+    unknown,
+    never,
     unknown
   >
 }
 
 export interface AnyK<F extends URIS> extends HasURI<F> {
   readonly Any: "Any"
-  readonly any: <In, S = In, X = never, R = unknown, E = never>() => Kind<
+  readonly any: <S, I, O = I>() => KindEx<
     F,
-    X,
-    In,
+    I,
+    O,
+    never,
+    unknown,
     S,
-    R,
-    E,
+    unknown,
+    never,
     unknown
   >
 }
 
 export function succeedF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
-): <A, In, S = In, X = never, R = unknown, E = never>(
+): <A, S, I, O = I, X = never>(
   a: A
-) => Kind<F, X, In, S, R, E, A>
+) => KindEx<F, I, O, X, unknown, S, unknown, never, A>
 export function succeedF<F>(
   F: AnyF<F> & CovariantF<F>
-): <A, In, S = In, X = never, R = unknown, E = never>(
-  a: A
-) => HKT6<F, X, In, S, R, E, A>
+): <A, S, I, O = I, X = never>(a: A) => HKT8<F, I, O, X, unknown, S, unknown, never, A>
 export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
+  return (a) =>
+    pipe(
+      F.any(),
+      F.map(() => a)
+    )
+}
+
+export function anyF<F extends URIS>(
+  F: AnyK<F> & CovariantK<F>
+): <I, O, X, In, S, R, E, A>(a: A) => KindEx<F, I, O, X, In, S, R, E, A>
+export function anyF<F>(
+  F: AnyF<F> & CovariantF<F>
+): <I, O, X, In, S, R, E, A>(a: A) => HKT8<F, I, O, X, In, S, R, E, A>
+export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
       F.any(),

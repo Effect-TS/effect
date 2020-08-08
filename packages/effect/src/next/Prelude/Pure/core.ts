@@ -416,14 +416,14 @@ export function map<A, B>(f: (a: A) => B) {
  * Recovers from errors by accepting one computation to execute for the case
  * of an error, and one computation to execute for the case of success.
  */
-export function foldM_<S1, S2, R, E, A, S3, R1, E1, B, S4, R2, E2, C>(
+export function foldM_<S1, S2, S5, R, E, A, S3, R1, E1, B, S4, R2, E2, C>(
   self: XPure<S1, S2, R, E, A>,
-  failure: (e: E) => XPure<S1, S3, R1, E1, B>,
+  failure: (e: E) => XPure<S5, S3, R1, E1, B>,
   success: (a: A) => XPure<S2, S4, R2, E2, C>
-): XPure<S1, S3 | S4, R & R1 & R2, E1 | E2, B | C> {
+): XPure<S1 & S5, S3 | S4, R & R1 & R2, E1 | E2, B | C> {
   return new Fold(
-    self as XPure<S1, S2, R & R1 & R2, E, A>,
-    failure as (e: E) => XPure<S1, S3 | S4, R1 & R2, E1 | E2, B | C>,
+    self as XPure<S1 & S5, S2, R & R1 & R2, E, A>,
+    failure as (e: E) => XPure<S1 & S5, S3 | S4, R1 & R2, E1 | E2, B | C>,
     success
   )
 }
@@ -432,11 +432,37 @@ export function foldM_<S1, S2, R, E, A, S3, R1, E1, B, S4, R2, E2, C>(
  * Recovers from errors by accepting one computation to execute for the case
  * of an error, and one computation to execute for the case of success.
  */
-export function foldM<S1, S2, E, A, S3, R1, E1, B, S4, R2, E2, C>(
-  failure: (e: E) => XPure<S1, S3, R1, E1, B>,
+export function foldM<S5, S2, E, A, S3, R1, E1, B, S4, R2, E2, C>(
+  failure: (e: E) => XPure<S5, S3, R1, E1, B>,
   success: (a: A) => XPure<S2, S4, R2, E2, C>
 ) {
-  return <R>(self: XPure<S1, S2, R, E, A>) => foldM_(self, failure, success)
+  return <S1, R>(self: XPure<S1, S2, R, E, A>) => foldM_(self, failure, success)
+}
+
+/**
+ * Folds over the failed or successful results of this computation to yield
+ * a computation that does not fail, but succeeds with the value of the left
+ * or righr function passed to `fold`.
+ */
+export function fold<E, A, B, C>(failure: (e: E) => B, success: (a: A) => C) {
+  return <S1, S2, R>(self: XPure<S1, S2, R, E, A>) => fold_(self, failure, success)
+}
+
+/**
+ * Folds over the failed or successful results of this computation to yield
+ * a computation that does not fail, but succeeds with the value of the left
+ * or righr function passed to `fold`.
+ */
+export function fold_<S1, S2, R, E, A, B, C>(
+  self: XPure<S1, S2, R, E, A>,
+  failure: (e: E) => B,
+  success: (a: A) => C
+): XPure<S1, S2, R, never, B | C> {
+  return foldM_(
+    self,
+    (e) => succeed(failure(e)),
+    (a) => succeed(success(a))
+  )
 }
 
 /**
@@ -535,7 +561,7 @@ export function contramapInput<S0, S1>(f: (s: S0) => S1) {
  * Transforms the initial state of this computation` with the specified
  * function.
  */
-export function contramapEnv<R0, R1>(f: (s: R0) => R1) {
+export function provideSome<R0, R1>(f: (s: R0) => R1) {
   return <S1, S2, E, A>(self: XPure<S1, S2, R1, E, A>) =>
     accessM((r: R0) => provideAll(f(r))(self))
 }
@@ -569,6 +595,42 @@ export function access<R, A, S, S1 = S>(f: (_: R) => A): XPure<S, S1, R, never, 
  */
 export function environment<R>(): <S, S1 = S>() => XPure<S, S1, R, never, R> {
   return () => accessM((r: R) => succeed(r))
+}
+
+/**
+ * Returns a computation whose failure and success have been lifted into an
+ * `Either`. The resulting computation cannot fail, because the failure case
+ * has been exposed as part of the `Either` success case.
+ */
+export function either<S1, S2, R, E, A>(
+  self: XPure<S1, S2, R, E, A>
+): XPure<S1, S2, R, never, E.Either<E, A>> {
+  return fold_(self, E.left, E.right)
+}
+
+/**
+ * Executes this computation and returns its value, if it succeeds, but
+ * otherwise executes the specified computation.
+ */
+export function orElseEither<S3, S4, R2, E2, A2>(that: XPure<S3, S4, R2, E2, A2>) {
+  return <S1, S2, R, E, A>(
+    self: XPure<S1, S2, R, E, A>
+  ): XPure<S3 & S1, S4 | S2, R & R2, E2, E.Either<A, A2>> => orElseEither_(self, that)
+}
+
+/**
+ * Executes this computation and returns its value, if it succeeds, but
+ * otherwise executes the specified computation.
+ */
+export function orElseEither_<S1, S2, R, E, A, S3, S4, R2, E2, A2>(
+  self: XPure<S1, S2, R, E, A>,
+  that: XPure<S3, S4, R2, E2, A2>
+) {
+  return foldM_(
+    self,
+    () => map_(that, (a) => E.right(a)),
+    (a) => succeed(E.left(a))
+  )
 }
 
 /**

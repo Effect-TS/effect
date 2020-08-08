@@ -4,7 +4,6 @@ import { makeAny } from "../abstract/Any"
 import { makeApplicative, sequenceSF } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
-import { makeContravariantEnv } from "../abstract/ContravariantEnv"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeEnvironmental } from "../abstract/Fx/Environmental"
@@ -43,9 +42,9 @@ export const access: <R, A>(f: (r: R) => A) => Reader<R, A> = F.access
 /**
  * Changes the value of the local context during the execution of the action `ma`
  */
-export const contramapEnv: <Q, R>(
+export const provideSome: <Q, R>(
   f: (d: Q) => R
-) => <A>(ma: Reader<R, A>) => Reader<Q, A> = F.contramapEnv
+) => <A>(ma: Reader<R, A>) => Reader<Q, A> = F.provideSome
 
 /**
  * Combines this computation with the specified computation.
@@ -90,13 +89,6 @@ export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
 //
 // Instances
 //
-
-/**
- * The `Contravariant` instance for `Reader[-_, +_]`.
- */
-export const ContravariantEnv = makeContravariantEnv(ReaderURI)({
-  contramapEnv
-})
 
 /**
  * The `Access` instance for `Reader[-_, +_]`.

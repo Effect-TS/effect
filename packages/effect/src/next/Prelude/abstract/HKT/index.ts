@@ -2,47 +2,40 @@
  * Inspired by https://github.com/gcanti/fp-ts/blob/master/src/HKT.ts
  */
 
-/**
- * `* -> *` constructors
- *
- * Out is covariant
- */
-export type HKT<URI, Out> = HKT6<URI, never, unknown, unknown, unknown, never, Out>
+export type HKT<URI, Out> = HKT2<URI, any, Out>
 
-/**
- * `* -> * -> *` constructors
- *
- * Err is covariant
- */
-export type HKT2<URI, Err, Out> = HKT6<URI, never, unknown, unknown, unknown, Err, Out>
+export type HKT2<URI, Err, Out> = HKT3<URI, any, Err, Out>
 
-/**
- * `* -> * -> * -> *` constructors
- *
- * Env is contravariant
- */
-export type HKT3<URI, Env, Err, Out> = HKT6<URI, never, unknown, unknown, Env, Err, Out>
+export type HKT3<URI, Env, Err, Out> = HKT4<URI, any, Env, Err, Out>
 
-/**
- * `* -> * -> * -> * -> *` constructors
- *
- * St is invariant
- */
-export type HKT4<URI, St, Env, Err, Out> = HKT6<URI, never, unknown, St, Env, Err, Out>
+export type HKT4<URI, St, Env, Err, Out> = HKT5<URI, any, St, Env, Err, Out>
 
-/**
- * `* -> * -> * -> * -> * -> *` constructors
- *
- * In is contravariant
- */
-export type HKT5<URI, In, St, Env, Err, Out> = HKT6<URI, never, In, St, Env, Err, Out>
+export type HKT5<URI, In, St, Env, Err, Out> = HKT6<URI, any, In, St, Env, Err, Out>
 
-/**
- * `* -> * -> * -> * -> * -> * -> *` constructors
- *
- * X is covariant
- */
-export interface HKT6<URI, X, In, St, Env, Err, Out> {
+export type HKT6<URI, X, In, St, Env, Err, Out> = HKT7<
+  URI,
+  any,
+  X,
+  In,
+  St,
+  Env,
+  Err,
+  Out
+>
+
+export type HKT7<URI, O, X, In, St, Env, Err, Out> = HKT8<
+  URI,
+  any,
+  O,
+  X,
+  In,
+  St,
+  Env,
+  Err,
+  Out
+>
+
+export interface HKT8<URI, I, O, X, In, St, Env, Err, Out> {
   readonly _URI: URI
   readonly _Out: () => Out
   readonly _Err: () => Err
@@ -50,6 +43,8 @@ export interface HKT6<URI, X, In, St, Env, Err, Out> {
   readonly _St: St
   readonly _In: (_: In) => void
   readonly _X: () => X
+  readonly _O: () => O
+  readonly _I: (_: I) => void
 }
 
 //
@@ -61,6 +56,9 @@ export interface HKT6<URI, X, In, St, Env, Err, Out> {
  */
 export interface URItoKind<X, In, St, Env, Err, Out> {}
 
+export interface URItoKindEx<I, O, X, In, St, Env, Err, Out>
+  extends URItoKind<X, In, St, Env, Err, Out> {}
+
 //
 // unions of URIs
 //
@@ -68,7 +66,7 @@ export interface URItoKind<X, In, St, Env, Err, Out> {}
 /**
  * `* -> * -> * -> * -> * -> * -> *` constructors
  */
-export type URIS = keyof URItoKind<any, any, any, any, any, any>
+export type URIS = keyof URItoKindEx<any, any, any, any, any, any, any, any>
 
 //
 // prj
@@ -79,7 +77,15 @@ export type URIS = keyof URItoKind<any, any, any, any, any, any>
  * F[+_, -_, _, -_, +_, +_]
  */
 export type Kind<URI extends URIS, X, In, St, Env, Err, Out> = URI extends URIS
-  ? URItoKind<X, In, St, Env, Err, Out>[URI]
+  ? URItoKindEx<X, any, any, In, St, Env, Err, Out>[URI]
+  : any
+
+/**
+ * `* -> * -> * -> * -> * -> *` constructors
+ * F[+_, -_, _, -_, +_, +_]
+ */
+export type KindEx<URI extends URIS, I, O, X, In, St, Env, Err, Out> = URI extends URIS
+  ? URItoKindEx<I, O, X, In, St, Env, Err, Out>[URI]
   : any
 
 /**
