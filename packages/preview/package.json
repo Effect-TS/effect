@@ -34,15 +34,23 @@
       "_abstract/DSL",
       "_abstract/HKT",
       "_system",
+      "_system/Array",
       "_system/Either",
       "_system/Function",
+      "_system/Mutable",
+      "_system/NonEmptyArray",
       "_system/Option",
       "_system/Stack",
+      "_system/Utils",
       "_system/XPure",
+      "Array",
       "Either",
       "Function",
+      "Mutable",
       "Newtype",
+      "NonEmptyArray",
       "Option",
+      "Utils",
       "XPure"
     ]
   }
