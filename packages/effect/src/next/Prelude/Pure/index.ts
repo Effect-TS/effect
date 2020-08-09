@@ -24,7 +24,7 @@ declare module "../abstract/HKT" {
  * The `Any` instance for `XPure`.
  */
 export const Any = makeAny(XPureURI)({
-  any: F.succeed({})
+  any: () => F.succeed(() => ({}))
 })
 
 /**
