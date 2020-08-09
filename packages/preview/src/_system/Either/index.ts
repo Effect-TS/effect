@@ -34,6 +34,7 @@ export {
   mapLeft,
   mapLeft_,
   map_,
+  merge,
   orElse,
   orElseEither,
   orElseEither_,

@@ -479,6 +479,16 @@ export const mapLeft: <E, G>(
 ) => <A>(fa: Either<E, A>) => Either<G, A> = (f) => (fa) => mapLeft_(fa, f)
 
 /**
+ * Merges Left<E> | Right<B> into A | B
+ */
+export const merge = <E, A>(self: Either<E, A>): E | A =>
+  fold_(
+    self,
+    (x) => x,
+    (x) => x
+  )
+
+/**
  * Alternatively run onLeft
  */
 export function orElse<E, A, M>(
