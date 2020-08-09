@@ -9,12 +9,12 @@ import { makeCovariant } from "../abstract/Covariant"
 import { makeMonad } from "../abstract/Monad"
 import { implementForeachF, makeTraversable } from "../abstract/Traversable"
 
-export const MapURI = "MapK"
-export type MapURI = typeof MapURI
+export const MapValueURI = "MapValue"
+export type MapValueURI = typeof MapValueURI
 
 declare module "../abstract/HKT" {
   interface URItoKind<X, In, St, Env, Err, Out> {
-    [MapURI]: M.Map<Err, Out>
+    [MapValueURI]: M.Map<Err, Out>
   }
 }
 
@@ -29,14 +29,14 @@ export const flatten: <E, E1, A>(fb: M.Map<E, M.Map<E1, A>>) => M.Map<E1, A> = (
 /**
  * The `AssociativeFlatten` instance for `Map`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(MapURI)({
+export const AssociativeFlatten = makeAssociativeFlatten(MapValueURI)({
   flatten
 })
 
 /**
  * The `Any` instance for `Map`.
  */
-export const Any = makeAny(MapURI)({
+export const Any = makeAny(MapValueURI)({
   any: () => new Map<never, any>()
 })
 
@@ -50,19 +50,21 @@ export const map: <A, B>(f: (a: A) => B) => <E>(fa: M.Map<E, A>) => M.Map<E, B> 
 /**
  * The `Covariant` instance for `Map`.
  */
-export const Covariant = makeCovariant(MapURI)({
+export const Covariant = makeCovariant(MapValueURI)({
   map
 })
 
 /**
  * The `Monad` instance for `Map`.
  */
-export const Monad = makeMonad(MapURI)(intersect(Any, Covariant, AssociativeFlatten))
+export const Monad = makeMonad(MapValueURI)(
+  intersect(Any, Covariant, AssociativeFlatten)
+)
 
 /**
  * Traversable's `foreachF` for `Map`.
  */
-export const foreachF = implementForeachF(MapURI)(() => (G) => (f) => (fa) =>
+export const foreachF = implementForeachF(MapValueURI)(() => (G) => (f) => (fa) =>
   pipe(
     Array.from(fa),
     pA.Traversable.foreachF(G)(([k, a]) =>
