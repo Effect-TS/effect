@@ -381,8 +381,8 @@ export function tap_<S1, R, E, A, S2, S3, R1, E1>(
  * Constructs a computation that always succeeds with the specified value,
  * passing the state through unchanged.
  */
-export function succeed<A, S, S1 = S>(a: A): XPure<S, S1, unknown, never, A> {
-  return new Succeed(a)
+export function succeed<A>(a: A): <S, S1 = S>() => XPure<S, S1, unknown, never, A> {
+  return () => new Succeed(a)
 }
 
 /**
@@ -399,7 +399,7 @@ export function fail<E>(a: E): XPure<unknown, never, unknown, E, never> {
  * result to generate a second computation, and running that computation.
  */
 export function map_<S1, R, E, A, S2, B>(self: XPure<S1, S2, R, E, A>, f: (a: A) => B) {
-  return chain_(self, (a) => succeed(f(a)))
+  return chain_(self, (a) => succeed(f(a))())
 }
 
 /**
@@ -409,7 +409,7 @@ export function map_<S1, R, E, A, S2, B>(self: XPure<S1, S2, R, E, A>, f: (a: A)
  */
 export function map<A, B>(f: (a: A) => B) {
   return <S1, S2, R, E>(self: XPure<S1, S2, R, E, A>) =>
-    chain_(self, (a) => succeed(f(a)))
+    chain_(self, (a) => succeed(f(a))())
 }
 
 /**
@@ -460,8 +460,8 @@ export function fold_<S1, S2, R, E, A, B, C>(
 ): XPure<S1, S2, R, never, B | C> {
   return foldM_(
     self,
-    (e) => succeed(failure(e)),
-    (a) => succeed(success(a))
+    (e) => succeed(failure(e))(),
+    (a) => succeed(success(a))()
   )
 }
 
@@ -481,7 +481,7 @@ export function catchAll_<S1, S2, R, E, A, S3, R1, E1, B>(
   self: XPure<S1, S2, R, E, A>,
   failure: (e: E) => XPure<S1, S3, R1, E1, B>
 ) {
-  return foldM_(self, failure, (a) => succeed(a))
+  return foldM_(self, failure, (a) => succeed(a)())
 }
 
 /**
@@ -504,7 +504,7 @@ export function bimap_<S1, S2, R, E, A, E1, A1>(
   return foldM_(
     self,
     (e) => fail(f(e)),
-    (a) => succeed(g(a))
+    (a) => succeed(g(a))()
   )
 }
 
@@ -547,7 +547,7 @@ export function update<S1, S2>(f: (s: S1) => S2): XPure<S1, S2, unknown, never, 
  * Constructs a computation that always returns the `Unit` value, passing the
  * state through unchanged.
  */
-export const unit = <S, S1 = S>() => succeed<void, S, S1>(undefined)
+export const unit = succeed<void>(undefined)
 
 /**
  * Transforms the initial state of this computation` with the specified
@@ -587,14 +587,14 @@ export function accessM<R, S1, S2, R1, E, A>(
  * Access the environment with the function f
  */
 export function access<R, A, S, S1 = S>(f: (_: R) => A): XPure<S, S1, R, never, A> {
-  return accessM((r: R) => succeed(f(r)))
+  return accessM((r: R) => succeed(f(r))())
 }
 
 /**
  * Access the environment
  */
 export function environment<R>(): <S, S1 = S>() => XPure<S, S1, R, never, R> {
-  return () => accessM((r: R) => succeed(r))
+  return () => accessM((r: R) => succeed(r)())
 }
 
 /**
@@ -629,7 +629,7 @@ export function orElseEither_<S1, S2, R, E, A, S3, S4, R2, E2, A2>(
   return foldM_(
     self,
     () => map_(that, (a) => E.right(a)),
-    (a) => succeed(E.left(a))
+    (a) => succeed(E.left(a))()
   )
 }
 

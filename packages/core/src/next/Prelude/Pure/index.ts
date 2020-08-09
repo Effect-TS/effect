@@ -3,6 +3,7 @@ import { makeAny } from "../abstract/Any"
 import { makeApplicative, sequenceSF } from "../abstract/Applicative"
 import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../abstract/AssociativeEither"
+import { makeAssociativeFlatten } from "../abstract/AssociativeFlatten"
 import { makeCovariant } from "../abstract/Covariant"
 import { makeAccess } from "../abstract/Fx/Access"
 import { makeFail } from "../abstract/Fx/Fail"
@@ -23,7 +24,7 @@ declare module "../abstract/HKT" {
  * The `Any` instance for `XPure`.
  */
 export const Any = makeAny(XPureURI)({
-  any: () => F.succeed({})
+  any: F.succeed({})
 })
 
 /**
@@ -71,6 +72,13 @@ export const IdentityBoth = makeIdentityBoth(XPureURI)(intersect(Any, Associativ
  * The `Applicative` instance for `XPure`.
  */
 export const Applicative = makeApplicative(XPureURI)(intersect(IdentityBoth, Covariant))
+
+/**
+ * The `AssociativeFlatten` instance for `XPure`
+ */
+export const AssociativeFlatten = makeAssociativeFlatten(XPureURI)({
+  flatten: (fa) => F.chain_(fa, (x) => x)
+})
 
 /**
  * Struct based `Applicative`
