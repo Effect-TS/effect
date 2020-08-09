@@ -26,6 +26,20 @@
     "babel-plugin-annotate-pure-calls": "^0.4.0"
   },
   "config": {
-    "modules": []
+    "modules": [
+      "abstract",
+      "abstract/Any",
+      "abstract/Covariant",
+      "abstract/DSL",
+      "abstract/HKT",
+      "Either",
+      "Function",
+      "Newtype",
+      "Option",
+      "system",
+      "system/Either",
+      "system/Option",
+      "system/Function"
+    ]
   }
 }
