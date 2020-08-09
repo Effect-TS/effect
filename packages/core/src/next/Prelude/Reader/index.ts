@@ -73,7 +73,7 @@ export const map: <A, B>(f: (a: A) => B) => <R>(self: Reader<R, A>) => Reader<R,
 /**
  * Succeed with a value A
  */
-export const succeed: <A>(a: A) => Reader<unknown, A> = F.succeed
+export const succeed: <A>(a: A) => Reader<unknown, A> = (a) => F.succeed(() => a)
 
 /**
  * Run the computation
@@ -102,7 +102,7 @@ export const Access = makeAccess(ReaderURI)({
  * The `Any` instance for `Reader[-_, +_]`.
  */
 export const Any = makeAny(ReaderURI)({
-  any: () => F.succeed({})
+  any: () => F.succeed(() => ({}))
 })
 
 /**

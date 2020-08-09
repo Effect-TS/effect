@@ -54,7 +54,7 @@ export const map: <A, B>(f: (a: A) => B) => <S>(self: State<S, A>) => State<S, B
 /**
  * Succeed with a value A
  */
-export const succeed: <S, A>(a: A) => State<S, A> = F.succeed
+export const succeed: <S, A>(a: A) => State<S, A> = (a) => F.succeed(() => a)
 
 /**
  * Run the computation with input S returning updated state and output
@@ -80,7 +80,7 @@ export const runResult = <S>(r: S) => <A>(self: State<S, A>): A => F.runResult(r
  * The `Any` instance for `State[_, +_]`.
  */
 export const Any = makeAny(StateURI)({
-  any: () => F.succeed({})
+  any: () => F.succeed(() => ({}))
 })
 
 /**
