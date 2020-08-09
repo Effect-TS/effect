@@ -1,5 +1,5 @@
-import { pipe } from "../Function"
 import { toManaged } from "../Effect/toManaged"
+import { pipe } from "../Function"
 
 import { makeRef } from "./api"
 

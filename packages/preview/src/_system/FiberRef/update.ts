@@ -1,5 +1,5 @@
-import { pipe } from "../Function"
 import { Sync } from "../Effect/effect"
+import { pipe } from "../Function"
 
 import { FiberRef } from "./fiberRef"
 import { modify } from "./modify"

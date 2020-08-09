@@ -1,6 +1,6 @@
-import { pipe, tuple } from "../Function"
 import { sequential } from "../Effect/ExecutionStrategy"
 import { Exit } from "../Exit"
+import { pipe, tuple } from "../Function"
 import { has, HasType } from "../Has"
 import { Managed, noop } from "../Managed/managed"
 import { Finalizer, ReleaseMap, makeReleaseMap } from "../Managed/releaseMap"

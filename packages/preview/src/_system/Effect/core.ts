@@ -1,8 +1,8 @@
-import * as O from "../Option"
 import { Cause } from "../Cause/cause"
 import * as Fiber from "../Fiber"
 import { Descriptor, InterruptStatus } from "../Fiber/core"
 import { FiberID } from "../Fiber/id"
+import * as O from "../Option"
 
 import { Cb } from "./Cb"
 import { AsyncR, AsyncRE, Effect, Sync, SyncE, SyncR } from "./effect"

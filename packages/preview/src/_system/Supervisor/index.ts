@@ -3,13 +3,13 @@
  *
  * Copyright 2020 Michael Arnaldi and the Matechs Garage Contributors.
  */
-import { pipe } from "../Function"
-import * as O from "../Option"
 import { effectTotal, unit } from "../Effect/core"
 import { Async, Effect } from "../Effect/effect"
 import { zip_ } from "../Effect/zip_"
 import { Exit } from "../Exit/exit"
 import { Runtime } from "../Fiber/core"
+import { pipe } from "../Function"
+import * as O from "../Option"
 import * as R from "../Ref"
 
 /**

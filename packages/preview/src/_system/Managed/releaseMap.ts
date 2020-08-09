@@ -1,7 +1,7 @@
 import { pipe } from "fp-ts/lib/pipeable"
 
-import * as O from "../Option"
 import { ExecutionStrategy } from "../Effect/ExecutionStrategy"
+import * as O from "../Option"
 import * as R from "../Ref"
 
 import * as T from "./deps"

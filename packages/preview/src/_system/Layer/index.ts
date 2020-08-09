@@ -6,7 +6,7 @@
 import { reduce_ } from "../Array"
 import { readService } from "../Effect/has"
 import { DefaultEnv, makeRuntime, Runtime } from "../Effect/runtime"
-import { pipe } from "../Function"
+import { pipe, tuple } from "../Function"
 import { HasURI, mergeEnvironments } from "../Has"
 import { Managed } from "../Managed/managed"
 import { Finalizer } from "../Managed/releaseMap"
@@ -72,6 +72,22 @@ export const zip_ = <S, R, E, A, S2, R2, E2, A2>(
   left: Layer<S, R, E, A>,
   right: Layer<S2, R2, E2, A2>
 ) =>
+  new Layer<S | S2, R & R2, E | E2, readonly [A, A2]>(
+    T.managedChain_(left.build, (l) =>
+      T.managedChain_(right.build, (r) =>
+        T.fromEffect(T.effectTotal(() => tuple(l, r)))
+      )
+    )
+  )
+
+export const zip = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
+  left: Layer<S, R, E, A>
+) => zip_(left, right)
+
+export const merge_ = <S, R, E, A, S2, R2, E2, A2>(
+  left: Layer<S, R, E, A>,
+  right: Layer<S2, R2, E2, A2>
+) =>
   new Layer<S | S2, R & R2, E | E2, A & A2>(
     T.managedChain_(left.build, (l) =>
       T.managedChain_(right.build, (r) =>
@@ -79,6 +95,10 @@ export const zip_ = <S, R, E, A, S2, R2, E2, A2>(
       )
     )
   )
+
+export const merge = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
+  left: Layer<S, R, E, A>
+) => merge_(left, right)
 
 export const using = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
   left: Layer<S, R, E, A>
@@ -120,11 +140,11 @@ export const consuming_ = <S, R, E, A, S2, R2, E2, A2>(
     )
   )
 
-export const zipPar = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
+export const mergePar = <S2, R2, E2, A2>(right: Layer<S2, R2, E2, A2>) => <S, R, E, A>(
   left: Layer<S, R, E, A>
-) => zipPar_(left, right)
+) => mergePar_(left, right)
 
-export const zipPar_ = <S, R, E, A, S2, R2, E2, A2>(
+export const mergePar_ = <S, R, E, A, S2, R2, E2, A2>(
   left: Layer<S, R, E, A>,
   right: Layer<S2, R2, E2, A2>
 ) =>

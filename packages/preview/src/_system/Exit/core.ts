@@ -1,10 +1,10 @@
 import * as A from "../Array"
-import * as E from "../Either"
-import { identity, pipe } from "../Function"
-import * as O from "../Option"
 import * as C from "../Cause/core"
 import { FiberFailure } from "../Cause/errors"
+import * as E from "../Either"
 import { FiberID } from "../Fiber/id"
+import { identity, pipe } from "../Function"
+import * as O from "../Option"
 
 import { Exit, Failure, Success } from "./exit"
 

@@ -1,5 +1,5 @@
-import * as O from "../Option"
 import { effectTotal } from "../Effect/core"
+import * as O from "../Option"
 
 import { Promise } from "./promise"
 

@@ -1,5 +1,5 @@
-import * as A from "../../Array"
 import * as NA from "../../../NonEmptyArray"
+import * as A from "../../Array"
 import * as O from "../../Option"
 
 export class ImmutableQueue<A> {

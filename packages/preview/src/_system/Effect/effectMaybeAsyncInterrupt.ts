@@ -1,6 +1,6 @@
 import * as E from "../Either"
-import * as O from "../Option"
 import { FiberID } from "../Fiber/id"
+import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 import { OneShot } from "../Support/OneShot"
 

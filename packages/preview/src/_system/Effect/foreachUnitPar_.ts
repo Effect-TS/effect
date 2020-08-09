@@ -1,7 +1,7 @@
 import * as A from "../Array"
-import { pipe } from "../Function"
 import { Both, Cause, Empty } from "../Cause/cause"
 import * as Fiber from "../Fiber"
+import { pipe } from "../Function"
 import { fork as managedFork, use_ as managedUse_ } from "../Managed/core"
 import { fail as promiseFailure } from "../Promise/fail"
 import { make as promiseMake } from "../Promise/make"

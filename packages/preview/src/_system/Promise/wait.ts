@@ -1,5 +1,5 @@
-import * as E from "../Either"
 import { effectMaybeAsyncInterrupt } from "../Effect/effectMaybeAsyncInterrupt"
+import * as E from "../Either"
 
 import { interruptJoiner } from "./interruptJoiner"
 import { Promise } from "./promise"

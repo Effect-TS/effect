@@ -1,6 +1,6 @@
-import { identity, pipe } from "../Function"
 import { HasClock } from "../Clock"
 import * as E from "../Either"
+import { identity, pipe } from "../Function"
 import { Driver, driver, Schedule } from "../Schedule"
 
 import { catchAll } from "./catchAll"

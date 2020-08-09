@@ -1,9 +1,9 @@
-import { identity, pipe, tuple } from "../Function"
-import * as O from "../Option"
 import { absolve } from "../Effect/absolve"
 import { chain, effectTotal } from "../Effect/core"
 import { Sync, SyncE } from "../Effect/effect"
 import * as E from "../Either"
+import { identity, pipe, tuple } from "../Function"
+import * as O from "../Option"
 import { AtomicReference } from "../Support/AtomicReference"
 import { matchTag } from "../Utils"
 

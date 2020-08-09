@@ -1,8 +1,8 @@
-import { pipe, tuple } from "../Function"
 import { Cause } from "../Cause/cause"
 import { sequential } from "../Effect"
 import { ExecutionStrategy, parallel, Sequential } from "../Effect/ExecutionStrategy"
 import { FiberContext, interrupt } from "../Fiber"
+import { pipe, tuple } from "../Function"
 import { makeRef } from "../Ref"
 
 import * as T from "./deps"

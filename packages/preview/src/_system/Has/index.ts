@@ -34,22 +34,22 @@ export type ConstructorType<K extends Constructor<any>> = K extends {
 
 export type Constructor<T> = Function & { prototype: T }
 
-export interface Augumentation<T> {
-  overridable: () => Augumented<T>
-  fixed: () => Augumented<T>
-  refine: <T1 extends T>() => Augumented<T1>
+export interface Agumentation<T> {
+  overridable: () => Agumented<T>
+  fixed: () => Agumented<T>
+  refine: <T1 extends T>() => Agumented<T1>
   read: (r: Has<T>) => T
-  at: (s: symbol) => Augumented<T>
+  at: (s: symbol) => Agumented<T>
 }
 
-export interface Augumented<T> extends Has<T>, Augumentation<T> {}
+export interface Agumented<T> extends Has<T>, Agumentation<T> {}
 
 /**
  * Extract the Has type from any augumented variant
  */
 export type HasType<T> = T extends Has<infer A> ? Has<A> : never
 
-const makeAugumented = <T>(def = false, key = Symbol()): Augumented<T> => ({
+const makeAugumented = <T>(def = false, key = Symbol()): Agumented<T> => ({
   [HasURI]: {
     _T: undefined as any,
     key,
@@ -65,9 +65,9 @@ const makeAugumented = <T>(def = false, key = Symbol()): Augumented<T> => ({
 /**
  * Create a service entry from a type and a URI
  */
-export function has<T extends Constructor<any>>(_: T): Augumented<ConstructorType<T>>
-export function has<T>(): Augumented<T>
-export function has(_?: any): Augumented<unknown> {
+export function has<T extends Constructor<any>>(_: T): Agumented<ConstructorType<T>>
+export function has<T>(): Agumented<T>
+export function has(_?: any): Agumented<unknown> {
   return makeAugumented()
 }
 
@@ -121,9 +121,9 @@ export function mergeEnvironments<T, R1>(_: Has<T>, r: R1, t: T): R1 & Has<T> {
 }
 
 export class DerivationContext {
-  readonly hasMap = new Map<Augumented<any>, Augumented<any>>()
+  readonly hasMap = new Map<Agumented<any>, Agumented<any>>()
 
-  derive<T, T2>(has: Augumented<T>, f: () => Augumented<T2>): Augumented<T2> {
+  derive<T, T2>(has: Agumented<T>, f: () => Agumented<T2>): Agumented<T2> {
     const inMap = this.hasMap.get(has)
 
     if (inMap) {

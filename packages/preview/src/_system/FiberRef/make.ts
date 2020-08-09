@@ -1,6 +1,6 @@
-import { identity } from "../Function"
 import { Sync } from "../Effect/effect"
 import { IFiberRefNew } from "../Effect/primitives"
+import { identity } from "../Function"
 
 import { FiberRef } from "./fiberRef"
 

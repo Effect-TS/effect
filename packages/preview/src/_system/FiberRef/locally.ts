@@ -1,7 +1,7 @@
-import { pipe } from "../Function"
 import { bracket_ } from "../Effect/bracket_"
 import { chain } from "../Effect/core"
 import { Effect } from "../Effect/effect"
+import { pipe } from "../Function"
 
 import { FiberRef } from "./fiberRef"
 import { get } from "./get"
