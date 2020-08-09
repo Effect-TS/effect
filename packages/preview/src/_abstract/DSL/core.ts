@@ -1,4 +1,4 @@
-import { pipe } from "../../system/Function"
+import { pipe } from "../../_system/Function"
 import { AnyK, AnyF } from "../Any"
 import { CovariantK, CovariantF } from "../Covariant"
 import { URIS, HKT8, HKT, Kind } from "../HKT"

@@ -57,5 +57,5 @@ export {
   zipSecond,
   zipSecond_,
   zip_
-} from "../system/Either"
+} from "../_system/Either"
 export { Any, Covariant, EitherSuccessURI } from "./core"

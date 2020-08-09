@@ -1,7 +1,7 @@
-import { makeAny } from "../abstract/Any"
-import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
-import { makeCovariant } from "../abstract/Covariant"
-import * as E from "../system/Either"
+import { makeAny } from "../_abstract/Any"
+import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
+import { makeCovariant } from "../_abstract/Covariant"
+import * as E from "../_system/Either"
 
 /**
  * Typelevel map entries
@@ -9,7 +9,7 @@ import * as E from "../system/Either"
 export const EitherSuccessURI = "EitherSuccess"
 export type EitherSuccessURI = typeof EitherSuccessURI
 
-declare module "../abstract/HKT" {
+declare module "../_abstract/HKT" {
   interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
     [EitherSuccessURI]: E.Either<Err, Out>
   }

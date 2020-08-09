@@ -20,4 +20,4 @@ export {
   tupled,
   unsafeCoerce,
   untupled
-} from "../system/Function"
+} from "../_system/Function"

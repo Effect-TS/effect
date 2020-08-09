@@ -27,20 +27,23 @@
   },
   "config": {
     "modules": [
-      "abstract",
-      "abstract/Any",
-      "abstract/AssociativeBoth",
-      "abstract/Covariant",
-      "abstract/DSL",
-      "abstract/HKT",
+      "_abstract",
+      "_abstract/Any",
+      "_abstract/AssociativeBoth",
+      "_abstract/Covariant",
+      "_abstract/DSL",
+      "_abstract/HKT",
+      "_system",
+      "_system/Either",
+      "_system/Function",
+      "_system/Option",
+      "_system/Stack",
+      "_system/XPure",
       "Either",
       "Function",
       "Newtype",
       "Option",
-      "system",
-      "system/Either",
-      "system/Option",
-      "system/Function"
+      "XPure"
     ]
   }
 }

@@ -37,5 +37,5 @@ export {
   tryCatch,
   zipFirst,
   zipSecond
-} from "../system/Option"
+} from "../_system/Option"
 export { Any, AssociativeBoth, Covariant, OptionURI } from "./core"

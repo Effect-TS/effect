@@ -1,7 +1,7 @@
-import { makeAny } from "../abstract/Any"
-import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
-import { makeCovariant } from "../abstract/Covariant"
-import * as O from "../system/Option"
+import { makeAny } from "../_abstract/Any"
+import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
+import { makeCovariant } from "../_abstract/Covariant"
+import * as O from "../_system/Option"
 
 /**
  * Typelevel map entries
@@ -9,7 +9,7 @@ import * as O from "../system/Option"
 export const OptionURI = "Option"
 export type OptionURI = typeof OptionURI
 
-declare module "../abstract/HKT" {
+declare module "../_abstract/HKT" {
   interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
     [OptionURI]: O.Option<Out>
   }

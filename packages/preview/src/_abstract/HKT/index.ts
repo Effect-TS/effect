@@ -61,7 +61,7 @@ export type URIS = keyof URItoKind<any, any, any, any, any, any, any, any>
  * Kind<F, A> = URItoKind[F][A]
  */
 export type Kind<URI extends URIS, SI, SO, X, In, St, Env, Err, Out> = URI extends URIS
-  ? URItoKind<X, SI, SO, In, St, Env, Err, Out>[URI]
+  ? URItoKind<SI, SO, X, In, St, Env, Err, Out>[URI]
   : any
 
 /**
