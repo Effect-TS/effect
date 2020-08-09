@@ -19,7 +19,7 @@ export interface AssociativeEitherF<F> extends HasURI<F> {
     In2 & In,
     S,
     Env2 & Env,
-    Err2 | Err,
+    Err2,
     E.Either<A, B>
   >
 }
@@ -38,7 +38,7 @@ export interface AssociativeEitherK<F extends URIS> extends HasURI<F> {
     In2 & In,
     S,
     Env2 & Env,
-    Err2 | Err,
+    Err2,
     E.Either<A, B>
   >
 }
