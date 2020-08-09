@@ -88,7 +88,7 @@ export const AssociativeFailureBoth = makeAssociativeBoth(FailureEitherURI)({
  */
 export const either = <E1, B>(fb: E.Either<E1, B>) => <E, A>(
   fa: E.Either<E, A>
-): E.Either<E | E1, E.Either<A, B>> =>
+): E.Either<E1, E.Either<A, B>> =>
   pipe(
     fa,
     E.map((a) => E.left(a)),
@@ -115,14 +115,14 @@ export const AssociativeEither = makeAssociativeEither(EitherURI)({
  */
 export const eitherFailure = <E1, B>(fb: FailureEither<E1, B>) => <E, A>(
   fa: FailureEither<E, A>
-): FailureEither<E | E1, E.Either<A, B>> =>
+): FailureEither<E1, E.Either<A, B>> =>
   pipe(
     fa,
     Failure.unwrap,
     E.swap,
     E.map(E.left),
-    E.chain(() => pipe(fb, Failure.unwrap, E.swap, E.map(E.right))),
     E.swap,
+    E.chain(() => pipe(fb, Failure.unwrap, E.swap, E.map(E.right), E.swap)),
     Failure.wrap
   )
 
