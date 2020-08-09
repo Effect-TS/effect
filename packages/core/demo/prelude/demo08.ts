@@ -1,7 +1,7 @@
 import { pipe } from "../../src/Function"
 import * as R from "../../src/next/Prelude/Reader"
 
-const program = R.sequenceS({
+const program = R.sequenceS()({
   a: R.access((r: { foo: string }) => r.foo),
   b: R.access((r: { bar: number }) => r.bar)
 })
