@@ -1,21 +1,45 @@
-import { HasURI, HKT6, Kind, URIS } from "../HKT"
+import { HasURI, HKT8, KindEx, URIS } from "../HKT"
 
 /**
- * An associative binary operator that combines two values of types `F[A]`
- * and `F[B]` to produce an `F[(A, B)]`.
+ * `AssociativeFlatten` describes a type that can be "flattened" in an
+ * associative way. For example, if we have a list of lists of lists, we can
+ * flatten it by either flattening the two inner lists and then flattening the
+ * resulting lists, or flattening the two outer lists and then flattening that
+ * resulting list. Because the operation is associative, the resulting list is
+ * the same either way.
  */
 export interface AssociativeFlattenF<F> extends HasURI<F> {
   readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <X, I, S, R, E, X1, I1, R1, E1, A>(
-    fb: HKT6<F, X, I, S, R, E, HKT6<F, X1, I1, S, R1, E1, A>>
-  ) => HKT6<F, X | X1, I & I1, S, R & R1, E | E1, A>
+  readonly flatten: <SI, SO, X, In, S, REnv, Err, SO1, X1, In1, Env1, Err1, A>(
+    fb: HKT8<
+      F,
+      SI,
+      SO,
+      X,
+      In,
+      S,
+      REnv,
+      Err,
+      HKT8<F, SO, SO1, X1, In1, S, Env1, Err1, A>
+    >
+  ) => HKT8<F, SI, SO1, X | X1, In & In1, S, REnv & Env1, Err | Err1, A>
 }
 
 export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
   readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <X, I, S, R, E, X1, I1, R1, E1, A>(
-    fb: Kind<F, X, I, S, R, E, Kind<F, X1, I1, S, R1, E1, A>>
-  ) => Kind<F, X | X1, I & I1, S, R & R1, E | E1, A>
+  readonly flatten: <SI, SO, X, In, S, REnv, Err, SO1, X1, In1, Env1, Err1, A>(
+    fb: KindEx<
+      F,
+      SI,
+      SO,
+      X,
+      In,
+      S,
+      REnv,
+      Err,
+      KindEx<F, SO, SO1, X1, In1, S, Env1, Err1, A>
+    >
+  ) => KindEx<F, SI, SO1, X | X1, In & In1, S, REnv & Env1, Err | Err1, A>
 }
 
 export function makeAssociativeFlatten<URI extends URIS>(

@@ -37,16 +37,16 @@ export interface AnyK<F extends URIS> extends HasURI<F> {
 
 export function succeedF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
-): <A, S, SI, SO = SI, X = never>(
+): <A>(
   a: A
-) => KindEx<F, SI, SO, X, unknown, S, unknown, never, A>
+) => <S, SI, SO = SI>() => KindEx<F, SI, SO, never, unknown, S, unknown, never, A>
 export function succeedF<F>(
   F: AnyF<F> & CovariantF<F>
-): <A, S, SI, SO = SI, X = never>(
+): <A>(
   a: A
-) => HKT8<F, SI, SO, X, unknown, S, unknown, never, A>
-export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
-  return (a) =>
+) => <S, SI, SO = SI>() => HKT8<F, SI, SO, never, unknown, S, unknown, never, A>
+export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => () => HKT<F, A> {
+  return (a) => () =>
     pipe(
       F.any(),
       F.map(() => a)
