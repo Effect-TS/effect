@@ -29,15 +29,15 @@ type EnforceNonEmptyRecord<R> = keyof R extends never ? never : R
 
 export function sequenceSF<F extends URIS>(
   F: ApplicativeK<F>
-): <
+): <SIO>() => <
   S,
-  NER extends Record<string, KindEx<F, unknown, unknown, any, any, S, any, any, any>>
+  NER extends Record<string, KindEx<F, SIO, SIO, any, any, S, any, any, any>>
 >(
   r: EnforceNonEmptyRecord<NER>
 ) => KindEx<
   F,
-  unknown,
-  unknown,
+  SIO,
+  SIO,
   {
     [K in keyof NER]: [NER[K]] extends [
       Kind<F, infer X, infer In, infer S, infer S, infer E, infer A>
@@ -85,13 +85,13 @@ export function sequenceSF<F extends URIS>(
 >
 export function sequenceSF<F>(
   F: ApplicativeF<F>
-): <NER extends Record<string, HKT<F, any>>>(
+): () => <NER extends Record<string, HKT<F, any>>>(
   r: EnforceNonEmptyRecord<NER>
 ) => HKT<F, { [K in keyof NER]: [NER[K]] extends [HKT<F, infer A>] ? A : never }>
 export function sequenceSF<F>(
   F: ApplicativeF<F>
-): (r: Record<string, HKT<F, any>>) => HKT<F, Record<string, any>> {
-  return (r) =>
+): () => (r: Record<string, HKT<F, any>>) => HKT<F, Record<string, any>> {
+  return () => (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
       A.reduce(anyF(F)([] as readonly [string, any][]), (b, a) =>
