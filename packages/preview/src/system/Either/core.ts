@@ -1,5 +1,5 @@
 /* adapted from https://github.com/gcanti/fp-ts */
-import { Lazy, Predicate, Refinement } from "../Function/core"
+import { Lazy, Predicate, Refinement, tuple } from "../Function/core"
 import { isNone, Option } from "../Option/core"
 
 /**
@@ -79,6 +79,23 @@ export const ap: <E, A>(
   fa: Either<E, A>
 ) => <E2, B>(fab: Either<E2, (a: A) => B>) => Either<E | E2, B> = (fa) => (fab) =>
   ap_(fab, fa)
+
+/**
+ * Apply both and return both
+ */
+export const zip_: <E2, A, E, B>(
+  fa: Either<E2, A>,
+  fb: Either<E, B>
+) => Either<E | E2, readonly [A, B]> = (fa, fb) =>
+  chain_(fa, (a) => map_(fb, (b) => tuple(a, b)))
+
+/**
+ * Apply both and return both
+ */
+export const zip: <E, B>(
+  fb: Either<E, B>
+) => <E2, A>(fa: Either<E2, A>) => Either<E | E2, readonly [A, B]> = (fb) => (fa) =>
+  zip_(fa, fb)
 
 /**
  * Apply both and return first

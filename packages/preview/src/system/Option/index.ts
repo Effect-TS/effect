@@ -35,6 +35,8 @@ export {
   toNullable,
   toUndefined,
   tryCatch,
+  zip,
   zipFirst,
-  zipSecond
+  zipSecond,
+  zip_
 } from "./core"

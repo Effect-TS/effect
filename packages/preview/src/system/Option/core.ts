@@ -1,7 +1,7 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import type { Either } from "../Either/core"
-import { identity, Lazy, Predicate, Refinement } from "../Function/core"
+import { identity, Lazy, Predicate, Refinement, tuple } from "../Function/core"
 
 /**
  * Definitions
@@ -56,6 +56,21 @@ export const ap_: <A, B>(fab: Option<(a: A) => B>, fa: Option<A>) => Option<B> =
 export const ap: <A>(fa: Option<A>) => <B>(fab: Option<(a: A) => B>) => Option<B> = (
   fa
 ) => (fab) => ap_(fab, fa)
+
+/**
+ * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
+ */
+export const zip_: <A, B>(fa: Option<A>, fb: Option<B>) => Option<readonly [A, B]> = (
+  fa,
+  fb
+) => chain_(fa, (a) => map_(fb, (b) => tuple(a, b)))
+
+/**
+ * Zips `Option[A]` and `Option[B]` into `Option[(A, B)]
+ */
+export const zip: <B>(
+  fb: Option<B>
+) => <A>(fa: Option<A>) => Option<readonly [A, B]> = (fb) => (fa) => zip_(fa, fb)
 
 /**
  * Apply both and return first

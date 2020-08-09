@@ -38,4 +38,4 @@ export {
   zipFirst,
   zipSecond
 } from "../system/Option"
-export { Any, Covariant, OptionURI } from "./core"
+export { Any, AssociativeBoth, Covariant, OptionURI } from "./core"

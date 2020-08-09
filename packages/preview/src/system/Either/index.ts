@@ -51,8 +51,10 @@ export {
   tryCatch_,
   widenA,
   widenE,
+  zip,
   zipFirst,
   zipFirst_,
   zipSecond,
-  zipSecond_
+  zipSecond_,
+  zip_
 } from "./core"

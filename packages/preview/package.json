@@ -29,6 +29,7 @@
     "modules": [
       "abstract",
       "abstract/Any",
+      "abstract/AssociativeBoth",
       "abstract/Covariant",
       "abstract/DSL",
       "abstract/HKT",

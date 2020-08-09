@@ -111,7 +111,7 @@ export function not<A>(predicate: Predicate<A>): Predicate<A> {
 /**
  * Construct tuples
  */
-export function tuple<T extends ReadonlyArray<any>>(...t: T): T {
+export function tuple<T extends ReadonlyArray<any>>(...t: T): Readonly<T> {
   return t
 }
 

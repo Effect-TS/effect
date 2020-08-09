@@ -1,4 +1,5 @@
 import { makeAny } from "../abstract/Any"
+import { makeAssociativeBoth } from "../abstract/AssociativeBoth"
 import { makeCovariant } from "../abstract/Covariant"
 import * as E from "../system/Either"
 
@@ -26,4 +27,11 @@ export const Any = makeAny(EitherSuccessURI)({
  */
 export const Covariant = makeCovariant(EitherSuccessURI)({
   map: E.map
+})
+
+/**
+ * The `AssociativeBoth` instance for `Either[+_, +_]`
+ */
+export const AssociativeBoth = makeAssociativeBoth(EitherSuccessURI)({
+  both: E.zip
 })
