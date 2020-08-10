@@ -135,13 +135,13 @@ export const DeriveEqual = makeDerive(
   ArrayURI,
   Eq.EqualURI
 )({
-  derive: (eq) => getEq(eq)
+  derive: (eq) => getEqual(eq)
 })
 
 /**
  * Derives an `Equal[Array[A]]` given an `Equal[A]`.
  */
-export function getEq<A>(EqA: Eq.Equal<A>): Eq.Equal<A.Array<A>> {
+export function getEqual<A>(EqA: Eq.Equal<A>): Eq.Equal<A.Array<A>> {
   return {
     equals: (y) => (x) => {
       if (x.length === y.length) {

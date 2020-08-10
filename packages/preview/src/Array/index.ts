@@ -141,7 +141,7 @@ export {
   foldMapWithIndex_,
   foldMap_,
   foreachF,
-  getEq as eqArray,
+  getEqual,
   Identity,
   IdentityBoth,
   IdentityFlatten,
