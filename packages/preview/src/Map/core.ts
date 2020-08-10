@@ -386,3 +386,70 @@ export const partitionMap_: <E, A, B, C>(
   f: (a: A) => Either<B, C>
 ) => Separated<Map<E, B>, Map<E, C>> = (fa, f) =>
   partitionMapWithIndex_(fa, (_, a) => f(a))
+
+/**
+ * Delete a key and value from a map, returning the value as well as the subsequent map
+ */
+export function getPop<K>(
+  E: Equal<K>
+): (k: K) => <A>(m: Map<K, A>) => O.Option<readonly [A, Map<K, A>]> {
+  return (k) => <A>(m: Map<K, A>) => getPop_(E)(m, k)
+}
+
+/**
+ * Delete a key and value from a map, returning the value as well as the subsequent map
+ */
+export function getPop_<K>(
+  E: Equal<K>
+): <A>(m: Map<K, A>, k: K) => O.Option<readonly [A, Map<K, A>]> {
+  const lookupE = getLookup_(E)
+  const deleteAtE = getDeleteAt(E)
+  return (m, k) => {
+    const deleteAtEk = deleteAtE(k)
+    return O.map_(lookupE(m, k), (a) => [a, deleteAtEk(m)])
+  }
+}
+
+/**
+ * Delete a key and value from a map
+ */
+export function getDeleteAt<K>(E: Equal<K>): (k: K) => <A>(m: Map<K, A>) => Map<K, A> {
+  const da = getDeleteAt_(E)
+  return (k) => (m) => da(m, k)
+}
+
+/**
+ * Delete a key and value from a map
+ */
+export function getDeleteAt_<K>(E: Equal<K>): <A>(m: Map<K, A>, k: K) => Map<K, A> {
+  const lookupWithKeyE = getLookupWithKey_(E)
+  return (m, k) => {
+    const found = lookupWithKeyE(m, k)
+    if (O.isSome(found)) {
+      const r = new Map(m)
+      r.delete(found.value[0])
+      return r
+    }
+    return m
+  }
+}
+
+/**
+ * Delete a key and value from a map
+ */
+export function deleteAt<K>(k: K): <A>(m: Map<K, A>) => Map<K, A> {
+  return (m) => deleteAt_(m, k)
+}
+
+/**
+ * Delete a key and value from a map
+ */
+export function deleteAt_<K, A>(m: Map<K, A>, k: K): Map<K, A> {
+  const found = lookup_(m, k)
+  if (O.isSome(found)) {
+    const r = new Map(m)
+    r.delete(found.value[0])
+    return r
+  }
+  return m
+}
