@@ -1,8 +1,8 @@
 import { pipe } from "../../_system/Function"
 import { AnyF, AnyK, AnyKE } from "../Any"
 import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
-import { EnvironmentalK, EnvironmentalF, EnvironmentalKE } from "../FX/Environmental"
-import { HKT, HKT3, HKT8, Kind, URIS } from "../HKT"
+import { EnvironmentalF, EnvironmentalK, EnvironmentalKE } from "../FX/Environmental"
+import { HKT, HKT3, HKT9, Kind, URIS } from "../HKT"
 import { MonadF, MonadK, MonadKE } from "../Monad"
 
 /**
@@ -10,17 +10,19 @@ import { MonadF, MonadK, MonadKE } from "../Monad"
  */
 export function succeedF<F extends URIS, E>(
   F: AnyKE<F, E> & CovariantKE<F, E>
-): <A, S, SI, SO = SI>(a: () => A) => Kind<F, SI, SO, never, unknown, S, unknown, E, A>
+): <A, S, SI, SO = SI>(
+  a: () => A
+) => Kind<F, never, SI, SO, never, unknown, S, unknown, E, A>
 export function succeedF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
 ): <A, S, SI, SO = SI>(
   a: () => A
-) => Kind<F, SI, SO, never, unknown, S, unknown, never, A>
+) => Kind<F, never, SI, SO, never, unknown, S, unknown, never, A>
 export function succeedF<F>(
   F: AnyF<F> & CovariantF<F>
 ): <A, S, SI, SO = SI>(
   a: () => A
-) => HKT8<F, SI, SO, never, unknown, S, unknown, never, A>
+) => HKT9<F, never, SI, SO, never, unknown, S, unknown, never, A>
 export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: () => A) => HKT<F, A> {
   return (a) =>
     pipe(
@@ -34,13 +36,13 @@ export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: () => A) => HKT<
  */
 export function anyF<F extends URIS, E>(
   F: AnyKE<F, E> & CovariantKE<F, E>
-): <A>(a: A) => Kind<F, any, any, any, any, any, any, any, A>
+): <A>(a: A) => Kind<F, any, any, any, any, any, any, any, any, A>
 export function anyF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
-): <A>(a: A) => Kind<F, any, any, any, any, any, any, any, A>
+): <A>(a: A) => Kind<F, any, any, any, any, any, any, any, any, A>
 export function anyF<F>(
   F: AnyF<F> & CovariantF<F>
-): <A>(a: A) => HKT8<F, any, any, any, any, any, any, any, A>
+): <A>(a: A) => HKT9<F, any, any, any, any, any, any, any, any, A>
 export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
@@ -54,13 +56,13 @@ export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
  */
 export function doF<F extends URIS, E>(
   F: MonadKE<F, E>
-): <S, I, O = I>() => Kind<F, I, O, never, unknown, S, unknown, E, {}>
+): <S, I, O = I>() => Kind<F, never, I, O, never, unknown, S, unknown, E, {}>
 export function doF<F extends URIS>(
   F: MonadK<F>
-): <S, I, O = I>() => Kind<F, I, O, never, unknown, S, unknown, never, {}>
+): <S, I, O = I>() => Kind<F, never, I, O, never, unknown, S, unknown, never, {}>
 export function doF<F>(
   F: MonadF<F>
-): <S, I, O = I>() => HKT8<F, I, O, never, unknown, S, unknown, never, {}>
+): <S, I, O = I>() => HKT9<F, never, I, O, never, unknown, S, unknown, never, {}>
 export function doF<F>(F: MonadF<F>): () => HKT<F, {}> {
   return () =>
     pipe(
@@ -74,28 +76,28 @@ export function doF<F>(F: MonadF<F>): () => HKT<F, {}> {
  */
 export function bindF<F extends URIS, E>(
   F: MonadKE<F, E>
-): <SO, SO2, X, I, S, R, A, K, N extends string>(
+): <TK extends string, SO, SO2, X, I, S, R, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Kind<F, SO, SO2, X, I, S, R, E, A>
-) => <SI, X2, I2, R2, E2>(
-  mk: Kind<F, SI, SO, X2, I2, S, R2, E2, K>
-) => Kind<F, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
+  f: (_: K) => Kind<F, TK, SO, SO2, X, I, S, R, E, A>
+) => <SK extends string, SI, X2, I2, R2, E2>(
+  mk: Kind<F, SK, SI, SO, X2, I2, S, R2, E2, K>
+) => Kind<F, TK, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
 export function bindF<F extends URIS>(
   F: MonadK<F>
-): <SO, SO2, X, I, S, R, E, A, K, N extends string>(
+): <TK extends string, SO, SO2, X, I, S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => Kind<F, SO, SO2, X, I, S, R, E, A>
-) => <SI, X2, I2, R2, E2>(
-  mk: Kind<F, SI, SO, X2, I2, S, R2, E2, K>
-) => Kind<F, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
+  f: (_: K) => Kind<F, TK, SO, SO2, X, I, S, R, E, A>
+) => <SK extends string, SI, X2, I2, R2, E2>(
+  mk: Kind<F, SK, SI, SO, X2, I2, S, R2, E2, K>
+) => Kind<F, TK, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
 export function bindF<F>(
   F: MonadF<F>
-): <SO, SO2, X, I, S, R, E, A, K, N extends string>(
+): <TK extends string, SO, SO2, X, I, S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => HKT8<F, SO, SO2, X, I, S, R, E, A>
-) => <SI, X2, I2, R2, E2>(
-  mk: HKT8<F, SI, SO, X2, I2, S, R2, E2, K>
-) => HKT8<F, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
+  f: (_: K) => HKT9<F, TK, SO, SO2, X, I, S, R, E, A>
+) => <SK extends string, SI, X2, I2, R2, E2>(
+  mk: HKT9<F, SK, SI, SO, X2, I2, S, R2, E2, K>
+) => HKT9<F, TK, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
 export function bindF<F>(F: MonadF<F>) {
   return <A, K, N extends string>(tag: Exclude<N, keyof K>, f: (_: K) => HKT<F, A>) => (
     mk: HKT<F, K>
@@ -120,25 +122,25 @@ export function bindF<F>(F: MonadF<F>) {
  */
 export function chainF<F extends URIS, E>(
   F: MonadKE<F, E>
-): <SO, SO2, X, I, S, R, A, B>(
-  f: (_: A) => Kind<F, SO, SO2, X, I, S, R, E, B>
-) => <SI, X2, I2, R2>(
-  mk: Kind<F, SI, SO, X2, I2, S, R2, E, A>
-) => Kind<F, SI, SO2, X2 | X, I & I2, S, R & R2, E, B>
+): <K extends string, SO, SO2, X, I, S, R, A, B>(
+  f: (_: A) => Kind<F, K, SO, SO2, X, I, S, R, E, B>
+) => <SK extends string, SI, X2, I2, R2>(
+  mk: Kind<F, SK, SI, SO, X2, I2, S, R2, E, A>
+) => Kind<F, K, SI, SO2, X2 | X, I & I2, S, R & R2, E, B>
 export function chainF<F extends URIS>(
   F: MonadK<F>
-): <SO, SO2, X, I, S, R, E, A, B>(
-  f: (_: A) => Kind<F, SO, SO2, X, I, S, R, E, B>
-) => <SI, X2, I2, R2, E2>(
-  mk: Kind<F, SI, SO, X2, I2, S, R2, E2, A>
-) => Kind<F, SI, SO2, X2 | X, I & I2, S, R & R2, E2 | E, B>
+): <K extends string, SO, SO2, X, I, S, R, E, A, B>(
+  f: (_: A) => Kind<F, K, SO, SO2, X, I, S, R, E, B>
+) => <SK extends string, SI, X2, I2, R2, E2>(
+  mk: Kind<F, SK, SI, SO, X2, I2, S, R2, E2, A>
+) => Kind<F, K, SI, SO2, X2 | X, I & I2, S, R & R2, E2 | E, B>
 export function chainF<F>(
   F: MonadF<F>
-): <SO, SO2, X, I, S, R, E, A, B>(
-  f: (_: A) => HKT8<F, SO, SO2, X, I, S, R, E, B>
-) => <SI, X2, I2, R2, E2>(
-  mk: HKT8<F, SI, SO, X2, I2, S, R2, E2, A>
-) => HKT8<F, SI, SO2, X2 | X, I & I2, S, R & R2, E2 | E, B>
+): <K extends string, SO, SO2, X, I, S, R, E, A, B>(
+  f: (_: A) => HKT9<F, K, SO, SO2, X, I, S, R, E, B>
+) => <SK extends string, SI, X2, I2, R2, E2>(
+  mk: HKT9<F, SK, SI, SO, X2, I2, S, R2, E2, A>
+) => HKT9<F, K, SI, SO2, X2 | X, I & I2, S, R & R2, E2 | E, B>
 export function chainF<F>(F: MonadF<F>) {
   return <A, B>(f: (_: A) => HKT<F, B>) => (mk: HKT<F, A>): HKT<F, B> =>
     pipe(mk, F.map(f), F.flatten)
@@ -149,19 +151,19 @@ export function chainF<F>(F: MonadF<F>) {
  */
 export function accessMF<F extends URIS, E>(
   F: EnvironmentalKE<F, E>
-): <SI, SO, Y, X, S, R, R1, A>(
-  f: (r: R) => Kind<F, SI, SO, Y, X, S, R1, E, A>
-) => Kind<F, SI, SO, Y, X, S, R & R1, E, A>
+): <K extends string, SI, SO, Y, X, S, R, R1, A>(
+  f: (r: R) => Kind<F, K, SI, SO, Y, X, S, R1, E, A>
+) => Kind<F, K, SI, SO, Y, X, S, R & R1, E, A>
 export function accessMF<F extends URIS>(
   F: EnvironmentalK<F>
-): <SI, SO, Y, X, S, R, R1, E, A>(
-  f: (r: R) => Kind<F, SI, SO, Y, X, S, R1, E, A>
-) => Kind<F, SI, SO, Y, X, S, R & R1, E, A>
+): <K extends string, SI, SO, Y, X, S, R, R1, E, A>(
+  f: (r: R) => Kind<F, K, SI, SO, Y, X, S, R1, E, A>
+) => Kind<F, K, SI, SO, Y, X, S, R & R1, E, A>
 export function accessMF<F>(
   F: EnvironmentalF<F>
-): <SI, SO, X, I, S, R, E, R0, A>(
-  f: (r: R0) => HKT8<F, SI, SO, X, I, S, R, E, A>
-) => HKT8<F, SI, SO, X, I, S, R & R0, E, A>
+): <K extends string, SI, SO, X, I, S, R, E, R0, A>(
+  f: (r: R0) => HKT9<F, K, SI, SO, X, I, S, R, E, A>
+) => HKT9<F, K, SI, SO, X, I, S, R & R0, E, A>
 export function accessMF<F>(
   F: EnvironmentalF<F>
 ): <E, R, R1, A>(f: (r: R) => HKT3<F, R1, E, A>) => HKT3<F, R & R1, E, A> {
@@ -179,23 +181,23 @@ export function provideSomeF<F extends URIS, E>(
   F: EnvironmentalKE<F, E>
 ): <R0, R>(
   f: (r: R0) => R
-) => <SI, SO, X, I, S, A>(
-  fa: Kind<F, SI, SO, X, I, S, R, E, A>
-) => Kind<F, SI, SO, X, I, S, R0, E, A>
+) => <K extends string, SI, SO, X, I, S, A>(
+  fa: Kind<F, K, SI, SO, X, I, S, R, E, A>
+) => Kind<F, K, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<F extends URIS>(
   F: EnvironmentalK<F>
 ): <R0, R>(
   f: (r: R0) => R
-) => <SI, SO, X, I, S, E, A>(
-  fa: Kind<F, SI, SO, X, I, S, R, E, A>
-) => Kind<F, SI, SO, X, I, S, R0, E, A>
+) => <K extends string, SI, SO, X, I, S, E, A>(
+  fa: Kind<F, K, SI, SO, X, I, S, R, E, A>
+) => Kind<F, K, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<F>(
   F: EnvironmentalF<F>
 ): <R0, R>(
   f: (r: R0) => R
-) => <SI, SO, X, I, S, E, A>(
-  fa: HKT8<F, SI, SO, X, I, S, R, E, A>
-) => HKT8<F, SI, SO, X, I, S, R0, E, A>
+) => <K extends string, SI, SO, X, I, S, E, A>(
+  fa: HKT9<F, K, SI, SO, X, I, S, R, E, A>
+) => HKT9<F, K, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<F>(
   F: EnvironmentalF<F>
 ): <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, R0, E, A> {

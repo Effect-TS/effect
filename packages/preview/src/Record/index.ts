@@ -58,3 +58,4 @@ export {
   updateAt,
   updateAt_
 } from "../_system/Record"
+export { Covariant, RecordURI, Any } from "./core"

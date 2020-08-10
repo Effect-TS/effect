@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -9,7 +9,9 @@ export interface ReduceF<F> extends HasURI<F> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
-  ) => <SI, SO, X, In, S, Env, Err>(fa: HKT8<F, SI, SO, X, In, S, Env, Err, A>) => B
+  ) => <K extends string, SI, SO, X, In, S, Env, Err>(
+    fa: HKT9<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => B
 }
 
 export interface ReduceK<F extends URIS> extends HasURI<F> {
@@ -17,7 +19,9 @@ export interface ReduceK<F extends URIS> extends HasURI<F> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
-  ) => <SI, SO, X, In, S, Env, Err>(fa: Kind<F, SI, SO, X, In, S, Env, Err, A>) => B
+  ) => <K extends string, SI, SO, X, In, S, Env, Err>(
+    fa: Kind<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => B
 }
 
 export interface ReduceFE<F, E> extends HasConstrainedE<F, E> {
@@ -25,7 +29,9 @@ export interface ReduceFE<F, E> extends HasConstrainedE<F, E> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
-  ) => <SI, SO, X, In, S, Env>(fa: HKT8<F, SI, SO, X, In, S, Env, E, A>) => B
+  ) => <K extends string, SI, SO, X, In, S, Env>(
+    fa: HKT9<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => B
 }
 
 export interface ReduceKE<F extends URIS, E> extends HasConstrainedE<F, E> {
@@ -33,7 +39,9 @@ export interface ReduceKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
-  ) => <SI, SO, X, In, S, Env>(fa: Kind<F, SI, SO, X, In, S, Env, E, A>) => B
+  ) => <K extends string, SI, SO, X, In, S, Env>(
+    fa: Kind<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => B
 }
 
 export function makeReduce<URI extends URIS>(

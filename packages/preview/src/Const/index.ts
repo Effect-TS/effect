@@ -30,7 +30,7 @@ export const ConstURI = "Const"
 export type ConstURI = typeof ConstURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     readonly [ConstURI]: Const<Err, Out>
   }
 }

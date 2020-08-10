@@ -10,7 +10,7 @@ export const NonEmptyArrayURI = "NonEmptyArray"
 export type NonEmptyArrayURI = typeof NonEmptyArrayURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [NonEmptyArrayURI]: A.NonEmptyArray<Out>
   }
 }

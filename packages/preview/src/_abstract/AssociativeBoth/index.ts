@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -6,38 +6,60 @@ import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
  */
 export interface AssociativeBothF<F> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <SO, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: HKT8<F, SO, SO2, X2, In2, S, Env2, Err2, B>
-  ) => <SI, X, In, Env, Err, A>(
-    fa: HKT8<F, SI, SO, X, In, S, Env, Err, A>
-  ) => HKT8<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, Err2 | Err, readonly [A, B]>
+  readonly both: <K2 extends string, SO, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: HKT9<F, K2, SO, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <K extends string, SI, X, In, Env, Err, A>(
+    fa: HKT9<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => HKT9<
+    F,
+    K2 | K,
+    SI,
+    SO2,
+    X2 | X,
+    In2 & In,
+    S,
+    Env2 & Env,
+    Err2 | Err,
+    readonly [A, B]
+  >
 }
 
 export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <SO, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: Kind<F, SO, SO2, X2, In2, S, Env2, Err2, B>
-  ) => <SI, X, In, Env, Err, A>(
-    fa: Kind<F, SI, SO, X, In, S, Env, Err, A>
-  ) => Kind<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, Err2 | Err, readonly [A, B]>
+  readonly both: <K2 extends string, SO, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: Kind<F, K2, SO, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <K extends string, SI, X, In, Env, Err, A>(
+    fa: Kind<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => Kind<
+    F,
+    K2 | K,
+    SI,
+    SO2,
+    X2 | X,
+    In2 & In,
+    S,
+    Env2 & Env,
+    Err2 | Err,
+    readonly [A, B]
+  >
 }
 
 export interface AssociativeBothFE<F, E> extends HasConstrainedE<F, E> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <SO, SO2, X2, In2, S, Env2, B>(
-    fb: HKT8<F, SO, SO2, X2, In2, S, Env2, E, B>
-  ) => <SI, X, In, Env, A>(
-    fa: HKT8<F, SI, SO, X, In, S, Env, E, A>
-  ) => HKT8<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, E, readonly [A, B]>
+  readonly both: <K2 extends string, SO, SO2, X2, In2, S, Env2, B>(
+    fb: HKT9<F, K2, SO, SO2, X2, In2, S, Env2, E, B>
+  ) => <K extends string, SI, X, In, Env, A>(
+    fa: HKT9<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => HKT9<F, K2 | K, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, E, readonly [A, B]>
 }
 
 export interface AssociativeBothKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <SO, SO2, X2, In2, S, Env2, B>(
-    fb: Kind<F, SO, SO2, X2, In2, S, Env2, E, B>
-  ) => <SI, X, In, Env, A>(
-    fa: Kind<F, SI, SO, X, In, S, Env, E, A>
-  ) => Kind<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, E, readonly [A, B]>
+  readonly both: <K2 extends string, SO, SO2, X2, In2, S, Env2, B>(
+    fb: Kind<F, K2, SO, SO2, X2, In2, S, Env2, E, B>
+  ) => <K extends string, SI, X, In, Env, A>(
+    fa: Kind<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => Kind<F, K2 | K, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, E, readonly [A, B]>
 }
 
 export function makeAssociativeBoth<URI extends URIS>(

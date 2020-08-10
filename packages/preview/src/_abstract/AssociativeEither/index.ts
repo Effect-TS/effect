@@ -1,5 +1,5 @@
 import * as E from "../../Either"
-import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -7,12 +7,13 @@ import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
  */
 export interface AssociativeEitherF<F> extends HasURI<F> {
   readonly AssociativeEither: "AssociativeEither"
-  readonly either: <SI2, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: HKT8<F, SI2, SO2, X2, In2, S, Env2, Err2, B>
-  ) => <SI, SO, X, In, Env, Err, A>(
-    fa: HKT8<F, SI, SO, X, In, S, Env, Err, A>
-  ) => HKT8<
+  readonly either: <K2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: HKT9<F, K2, SI2, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <K extends string, SI, SO, X, In, Env, Err, A>(
+    fa: HKT9<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => HKT9<
     F,
+    K | K2,
     SI & SI2,
     SO | SO2,
     X2 | X,
@@ -26,29 +27,62 @@ export interface AssociativeEitherF<F> extends HasURI<F> {
 
 export interface AssociativeEitherK<F extends URIS> extends HasURI<F> {
   readonly AssociativeEither: "AssociativeEither"
-  readonly either: <SI2, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: Kind<F, SI2, SO2, X2, In2, S, Env2, Err2, B>
-  ) => <I, O, X, In, Env, Err, A>(
-    fa: Kind<F, I, O, X, In, S, Env, Err, A>
-  ) => Kind<F, I & SI2, O | SO2, X2 | X, In2 & In, S, Env2 & Env, Err2, E.Either<A, B>>
+  readonly either: <K2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
+    fb: Kind<F, K2, SI2, SO2, X2, In2, S, Env2, Err2, B>
+  ) => <K extends string, SI, SO, X, In, Env, Err, A>(
+    fa: Kind<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => Kind<
+    F,
+    K | K2,
+    SI & SI2,
+    SO | SO2,
+    X2 | X,
+    In2 & In,
+    S,
+    Env2 & Env,
+    Err2,
+    E.Either<A, B>
+  >
 }
 
 export interface AssociativeEitherFE<F, E> extends HasConstrainedE<F, E> {
   readonly AssociativeEither: "AssociativeEither"
-  readonly either: <SI2, SO2, X2, In2, S, Env2, B>(
-    fb: HKT8<F, SI2, SO2, X2, In2, S, Env2, E, B>
-  ) => <SI, SO, X, In, Env, A>(
-    fa: HKT8<F, SI, SO, X, In, S, Env, E, A>
-  ) => HKT8<F, SI & SI2, SO | SO2, X2 | X, In2 & In, S, Env2 & Env, E, E.Either<A, B>>
+  readonly either: <K2 extends string, SI2, SO2, X2, In2, S, Env2, B>(
+    fb: HKT9<F, K2, SI2, SO2, X2, In2, S, Env2, E, B>
+  ) => <K extends string, SI, SO, X, In, Env, A>(
+    fa: HKT9<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => HKT9<
+    F,
+    K | K2,
+    SI & SI2,
+    SO | SO2,
+    X2 | X,
+    In2 & In,
+    S,
+    Env2 & Env,
+    E,
+    E.Either<A, B>
+  >
 }
 
 export interface AssociativeEitherKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly AssociativeEither: "AssociativeEither"
-  readonly either: <SI2, SO2, X2, In2, S, Env2, B>(
-    fb: Kind<F, SI2, SO2, X2, In2, S, Env2, E, B>
-  ) => <I, O, X, In, Env, A>(
-    fa: Kind<F, I, O, X, In, S, Env, E, A>
-  ) => Kind<F, I & SI2, O | SO2, X2 | X, In2 & In, S, Env2 & Env, E, E.Either<A, B>>
+  readonly either: <K2 extends string, SI2, SO2, X2, In2, S, Env2, B>(
+    fb: Kind<F, K2, SI2, SO2, X2, In2, S, Env2, E, B>
+  ) => <K extends string, SI, SO, X, In, Env, A>(
+    fa: Kind<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => Kind<
+    F,
+    K | K2,
+    SI & SI2,
+    SO | SO2,
+    X2 | X,
+    In2 & In,
+    S,
+    Env2 & Env,
+    E,
+    E.Either<A, B>
+  >
 }
 
 export function makeAssociativeEither<URI extends URIS>(

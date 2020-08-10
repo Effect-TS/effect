@@ -18,7 +18,7 @@ export const MapValueURI = "MapValue"
 export type MapValueURI = typeof MapValueURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [MapValueURI]: M.Map<Err, Out>
   }
 }

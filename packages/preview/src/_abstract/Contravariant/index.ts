@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -27,36 +27,36 @@ export interface ContravariantF<F> extends HasURI<F> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
-  ) => <SI, SO, X, I, S, Env, Err>(
-    fa: HKT8<F, SI, SO, X, I, S, Env, Err, A>
-  ) => HKT8<F, SI, SO, X, I, S, Env, Err, B>
+  ) => <K extends string, SI, SO, X, I, S, Env, Err>(
+    fa: HKT9<F, K, SI, SO, X, I, S, Env, Err, A>
+  ) => HKT9<F, K, SI, SO, X, I, S, Env, Err, B>
 }
 
 export interface ContravariantK<F extends URIS> extends HasURI<F> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
-  ) => <SI, SO, X, I, S, Env, Err>(
-    fa: Kind<F, SI, SO, X, I, S, Env, Err, A>
-  ) => Kind<F, SI, SO, X, I, S, Env, Err, B>
+  ) => <K extends string, SI, SO, X, I, S, Env, Err>(
+    fa: Kind<F, K, SI, SO, X, I, S, Env, Err, A>
+  ) => Kind<F, K, SI, SO, X, I, S, Env, Err, B>
 }
 
 export interface ContravariantFE<F, E> extends HasConstrainedE<F, E> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
-  ) => <SI, SO, X, I, S, Env>(
-    fa: HKT8<F, SI, SO, X, I, S, Env, E, A>
-  ) => HKT8<F, SI, SO, X, I, S, Env, E, B>
+  ) => <K extends string, SI, SO, X, I, S, Env>(
+    fa: HKT9<F, K, SI, SO, X, I, S, Env, E, A>
+  ) => HKT9<F, K, SI, SO, X, I, S, Env, E, B>
 }
 
 export interface ContravariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
-  ) => <SI, SO, X, I, S, Env>(
-    fa: Kind<F, SI, SO, X, I, S, Env, E, A>
-  ) => Kind<F, SI, SO, X, I, S, Env, E, B>
+  ) => <K extends string, SI, SO, X, I, S, Env>(
+    fa: Kind<F, K, SI, SO, X, I, S, Env, E, A>
+  ) => Kind<F, K, SI, SO, X, I, S, Env, E, B>
 }
 
 export function makeContravariant<URI extends URIS>(

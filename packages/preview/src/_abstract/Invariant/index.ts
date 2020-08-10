@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT8, HKT9, Kind, URIS } from "../HKT"
 
 export interface InvariantF<F> extends HasURI<F> {
   readonly Invariant: "Invariant"
@@ -6,12 +6,12 @@ export interface InvariantF<F> extends HasURI<F> {
     f: (a: A) => B
     g: (b: B) => A
   }) => {
-    f: <SI, SO, X, In, S, Env, Err>(
-      ma: HKT8<F, SI, SO, X, In, S, Env, Err, A>
-    ) => HKT8<F, SI, SO, X, In, S, Env, Err, B>
-    g: <SI, SO, X, In, S, Env, Err>(
-      mb: HKT8<F, SI, SO, X, In, S, Env, Err, B>
-    ) => HKT8<F, SI, SO, X, In, S, Env, Err, A>
+    f: <SK extends string, SI, SO, X, In, S, Env, Err>(
+      ma: HKT9<F, SK, SI, SO, X, In, S, Env, Err, A>
+    ) => HKT9<F, SK, SI, SO, X, In, S, Env, Err, B>
+    g: <SK extends string, SI, SO, X, In, S, Env, Err>(
+      mb: HKT9<F, SK, SI, SO, X, In, S, Env, Err, B>
+    ) => HKT9<F, SK, SI, SO, X, In, S, Env, Err, A>
   }
 }
 
@@ -21,12 +21,12 @@ export interface InvariantK<F extends URIS> extends HasURI<F> {
     f: (a: A) => B
     g: (b: B) => A
   }) => {
-    f: <SI, SO, X, In, S, Env, Err>(
-      ma: Kind<F, SI, SO, X, In, S, Env, Err, A>
-    ) => Kind<F, SI, SO, X, In, S, Env, Err, B>
-    g: <SI, SO, X, In, S, Env, Err>(
-      mb: Kind<F, SI, SO, X, In, S, Env, Err, B>
-    ) => Kind<F, SI, SO, X, In, S, Env, Err, A>
+    f: <SK extends string, SI, SO, X, In, S, Env, Err>(
+      ma: Kind<F, SK, SI, SO, X, In, S, Env, Err, A>
+    ) => Kind<F, SK, SI, SO, X, In, S, Env, Err, B>
+    g: <SK extends string, SI, SO, X, In, S, Env, Err>(
+      mb: Kind<F, SK, SI, SO, X, In, S, Env, Err, B>
+    ) => Kind<F, SK, SI, SO, X, In, S, Env, Err, A>
   }
 }
 
@@ -51,12 +51,12 @@ export interface InvariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
     f: (a: A) => B
     g: (b: B) => A
   }) => {
-    f: <SI, SO, X, In, S, Env>(
-      ma: Kind<F, SI, SO, X, In, S, Env, E, A>
-    ) => Kind<F, SI, SO, X, In, S, Env, E, B>
-    g: <SI, SO, X, In, S, Env>(
-      mb: Kind<F, SI, SO, X, In, S, Env, E, B>
-    ) => Kind<F, SI, SO, X, In, S, Env, E, A>
+    f: <SK extends string, SI, SO, X, In, S, Env>(
+      ma: Kind<F, SK, SI, SO, X, In, S, Env, E, A>
+    ) => Kind<F, SK, SI, SO, X, In, S, Env, E, B>
+    g: <SK extends string, SI, SO, X, In, S, Env>(
+      mb: Kind<F, SK, SI, SO, X, In, S, Env, E, B>
+    ) => Kind<F, SK, SI, SO, X, In, S, Env, E, A>
   }
 }
 

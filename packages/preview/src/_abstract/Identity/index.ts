@@ -13,7 +13,7 @@ export interface Identity<A> extends Associative<A> {
 }
 
 declare module "../HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [IdentityURI]: Identity<Out>
   }
 }

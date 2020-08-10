@@ -10,7 +10,7 @@ export const BoundedURI = "Bounded"
 export type BoundedURI = typeof BoundedURI
 
 declare module "../HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [BoundedURI]: Bounded<Out>
   }
 }

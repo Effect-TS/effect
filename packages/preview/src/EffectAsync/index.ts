@@ -16,7 +16,7 @@ export const EffectAsyncURI = "EffectAsync"
 export type EffectAsyncURI = typeof EffectAsyncURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [EffectAsyncURI]: S.AsyncRE<Env, Err, Out>
   }
 }

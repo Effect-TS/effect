@@ -15,7 +15,7 @@ export const IdURI = Id.URI
 export type IdURI = typeof IdURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [IdURI]: Id<Out>
   }
 }

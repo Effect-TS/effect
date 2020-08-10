@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
 
 /**
  * `AssociativeFlatten` describes a type that can be "flattened" in an
@@ -10,30 +10,134 @@ import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
  */
 export interface AssociativeFlattenF<F> extends HasURI<F> {
   readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <SI, SO, X, In, S, Env, Err, SO1, X1, In1, Env1, Err1, A>(
-    fb: HKT8<F, SI, SO, X, In, S, Env, Err, HKT8<F, SO, SO1, X1, In1, S, Env1, Err1, A>>
-  ) => HKT8<F, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
+  readonly flatten: <
+    K extends string,
+    SI,
+    SO,
+    X,
+    In,
+    S,
+    Env,
+    Err,
+    K1 extends string,
+    SO1,
+    X1,
+    In1,
+    Env1,
+    Err1,
+    A
+  >(
+    fb: HKT9<
+      F,
+      K,
+      SI,
+      SO,
+      X,
+      In,
+      S,
+      Env,
+      Err,
+      HKT9<F, K1, SO, SO1, X1, In1, S, Env1, Err1, A>
+    >
+  ) => HKT9<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
 export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
   readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <SI, SO, X, In, S, Env, Err, SO1, X1, In1, Env1, Err1, A>(
-    fb: Kind<F, SI, SO, X, In, S, Env, Err, Kind<F, SO, SO1, X1, In1, S, Env1, Err1, A>>
-  ) => Kind<F, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
+  readonly flatten: <
+    K extends string,
+    SI,
+    SO,
+    X,
+    In,
+    S,
+    Env,
+    Err,
+    K1 extends string,
+    SO1,
+    X1,
+    In1,
+    Env1,
+    Err1,
+    A
+  >(
+    fb: Kind<
+      F,
+      K,
+      SI,
+      SO,
+      X,
+      In,
+      S,
+      Env,
+      Err,
+      Kind<F, K1, SO, SO1, X1, In1, S, Env1, Err1, A>
+    >
+  ) => Kind<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
 export interface AssociativeFlattenFE<F, E> extends HasConstrainedE<F, E> {
   readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <SI, SO, X, In, S, Env, SO1, X1, In1, Env1, A>(
-    fb: HKT8<F, SI, SO, X, In, S, Env, E, HKT8<F, SO, SO1, X1, In1, S, Env1, E, A>>
-  ) => HKT8<F, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
+  readonly flatten: <
+    K extends string,
+    SI,
+    SO,
+    X,
+    In,
+    S,
+    Env,
+    K1 extends string,
+    SO1,
+    X1,
+    In1,
+    Env1,
+    A
+  >(
+    fb: HKT9<
+      F,
+      K,
+      SI,
+      SO,
+      X,
+      In,
+      S,
+      Env,
+      E,
+      HKT9<F, K1, SO, SO1, X1, In1, S, Env1, E, A>
+    >
+  ) => HKT9<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
 }
 
 export interface AssociativeFlattenKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <SI, SO, X, In, S, Env, SO1, X1, In1, Env1, A>(
-    fb: Kind<F, SI, SO, X, In, S, Env, E, Kind<F, SO, SO1, X1, In1, S, Env1, E, A>>
-  ) => Kind<F, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
+  readonly flatten: <
+    K extends string,
+    SI,
+    SO,
+    X,
+    In,
+    S,
+    Env,
+    K1 extends string,
+    SO1,
+    X1,
+    In1,
+    Env1,
+    A
+  >(
+    fb: Kind<
+      F,
+      K,
+      SI,
+      SO,
+      X,
+      In,
+      S,
+      Env,
+      E,
+      Kind<F, K1, SO, SO1, X1, In1, S, Env1, E, A>
+    >
+  ) => Kind<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
 }
 
 export function makeAssociativeFlatten<URI extends URIS>(
