@@ -1,6 +1,6 @@
 import { Associative } from "../Associative"
-import { DeriveK } from "../_abstract/Derive"
-import { URIS } from "../_abstract/HKT"
+import { DeriveK } from "../Derive"
+import { URIS } from "../HKT"
 
 export const URI = "Identity"
 export type URI = typeof URI
@@ -12,7 +12,7 @@ export interface Identity<A> extends Associative<A> {
   readonly identity: A
 }
 
-declare module "../_abstract/HKT" {
+declare module "../HKT" {
   interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
     [URI]: Identity<Out>
   }

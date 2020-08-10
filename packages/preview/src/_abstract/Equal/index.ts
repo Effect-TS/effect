@@ -1,13 +1,13 @@
-import { intersect } from "../Utils"
-import { makeAny } from "../_abstract/Any"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeAssociativeEither } from "../_abstract/AssociativeEither"
-import { makeContravariant } from "../_abstract/Contravariant"
-import { makeIdentityBoth } from "../_abstract/IdentityBoth"
-import { makeIdentityEither } from "../_abstract/IdentityEither"
-import { makeNone } from "../_abstract/None"
-import * as A from "../_system/Array"
-import * as E from "../_system/Either"
+import { intersect } from "../../Utils"
+import * as A from "../../_system/Array"
+import * as E from "../../_system/Either"
+import { makeAny } from "../Any"
+import { makeAssociativeBoth } from "../AssociativeBoth"
+import { makeAssociativeEither } from "../AssociativeEither"
+import { makeContravariant } from "../Contravariant"
+import { makeIdentityBoth } from "../IdentityBoth"
+import { makeIdentityEither } from "../IdentityEither"
+import { makeNone } from "../None"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be
@@ -23,7 +23,7 @@ export interface Equal<A> {
 export const EqualURI = "Equal"
 export type EqualURI = typeof EqualURI
 
-declare module "../_abstract/HKT" {
+declare module "../HKT" {
   interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
     [EqualURI]: Equal<Out>
   }

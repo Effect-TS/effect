@@ -1,10 +1,10 @@
-import { Generic, genericDef } from "../Newtype"
 import { makeAny } from "../_abstract/Any"
 import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
 import { makeCovariant } from "../_abstract/Covariant"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
 import { makeMonad } from "../_abstract/Monad"
+import { Generic, genericDef } from "../_abstract/Newtype"
 import { tuple } from "../_system/Function"
 
 export const Id = genericDef("@newtype/Id")

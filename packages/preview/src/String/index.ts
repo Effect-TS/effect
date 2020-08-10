@@ -1,7 +1,7 @@
-import * as C from "../Closure"
-import * as Eq from "../Equal"
-import * as I from "../Identity"
-import { StringSum, Sum } from "../Newtype"
+import * as C from "../_abstract/Closure"
+import * as Eq from "../_abstract/Equal"
+import * as I from "../_abstract/Identity"
+import { StringSum, Sum } from "../_abstract/Newtype"
 
 /**
  * @category closure

@@ -1,7 +1,7 @@
-import * as C from "../Closure"
-import * as Eq from "../Equal"
-import * as I from "../Identity"
-import { And, BooleanProd, BooleanSum, Or, Prod, Sum } from "../Newtype"
+import * as C from "../_abstract/Closure"
+import * as Eq from "../_abstract/Equal"
+import * as I from "../_abstract/Identity"
+import { And, BooleanProd, BooleanSum, Or, Prod, Sum } from "../_abstract/Newtype"
 
 /**
  * @category closure
@@ -46,3 +46,26 @@ export const SumIdentity = I.makeIdentity(BooleanSum.wrap(false), SumClosure.com
  */
 
 export const Equal = Eq.strict<boolean>()
+
+/**
+ * @category combinators
+ */
+
+export function and(a: boolean, b: boolean) {
+  return a && b
+}
+
+export function fold<A, B>(
+  onFalse: () => A,
+  onTrue: () => B
+): (value: boolean) => A | B {
+  return (value) => (value ? onTrue() : onFalse())
+}
+
+export function not(a: boolean) {
+  return !a
+}
+
+export function or(a: boolean, b: boolean) {
+  return a || b
+}

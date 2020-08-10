@@ -12,7 +12,7 @@ export interface Ord<A> extends Equal<A> {
 export const OrdURI = "Ord"
 export type OrdURI = typeof OrdURI
 
-declare module "../_abstract/HKT" {
+declare module "../HKT" {
   interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
     [OrdURI]: Ord<Out>
   }
