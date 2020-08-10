@@ -1,6 +1,4 @@
 export {
-  Map,
-  Next,
   compact,
   empty,
   filterMap,
@@ -12,29 +10,37 @@ export {
   fromMutable,
   isEmpty,
   make,
+  Map,
   map,
   mapWithIndex,
   mapWithIndex_,
   map_,
+  Next,
   singleton,
   size,
   toMutable
 } from "../_system/Map"
-
 export {
-  getInsertAt,
-  getInsertAt_,
-  getLookupWithKey,
-  getLookupWithKey_,
-  insertAt,
-  lookupWithKey,
-  lookupWithKey_,
   collect,
   collect_,
   getCollect,
   getCollect_,
+  getInsertAt,
+  getInsertAt_,
   getKeys,
-  keys
+  getLookup,
+  getLookupWithKey,
+  getLookupWithKey_,
+  getLookup_,
+  getMember,
+  getMember_,
+  insertAt,
+  keys,
+  lookup,
+  lookupWithKey,
+  lookupWithKey_,
+  lookup_,
+  member,
+  member_
 } from "./core"
-
 export { Any, Covariant, MapValueURI } from "./instances"

@@ -154,3 +154,63 @@ export function collect_<K, A, B>(m: M.Map<K, A>, f: (k: K, a: A) => B): Array<B
 export function collect<K, A, B>(f: (k: K, a: A) => B) {
   return (m: M.Map<K, A>) => collect_(m, f)
 }
+
+/**
+ * Lookup the value for a key in a `Map` using `Equal[K]`.
+ */
+export function getLookup<K>(E: Equal<K>): (k: K) => <A>(m: Map<K, A>) => O.Option<A> {
+  const le = getLookup_(E)
+  return (k) => (m) => le(m, k)
+}
+
+/**
+ * Lookup the value for a key in a `Map` using `Equal[K]`.
+ */
+export function getLookup_<K>(E: Equal<K>): <A>(m: Map<K, A>, k: K) => O.Option<A> {
+  const lookupWithKeyE = getLookupWithKey_(E)
+  return (m, k) => O.map_(lookupWithKeyE(m, k), ([_, a]) => a)
+}
+
+/**
+ * Lookup the value for a key in a `Map` using strict equalty.
+ */
+export function lookup_<K, A>(m: Map<K, A>, k: K): O.Option<A> {
+  return O.fromNullable(m.get(k))
+}
+
+/**
+ * Lookup the value for a key in a `Map` using strict equalty.
+ */
+export function lookup<K>(k: K) {
+  return <A>(m: Map<K, A>) => lookup_(m, k)
+}
+
+/**
+ * Test whether or not a key exists in a map using `Equal[K]`
+ */
+export function getMember<K>(E: Equal<K>): (k: K) => <A>(m: Map<K, A>) => boolean {
+  const gm = getMember_(E)
+  return (k) => (m) => gm(m, k)
+}
+
+/**
+ * Test whether or not a key exists in a map using `Equal[K]`
+ */
+export function getMember_<K>(E: Equal<K>): <A>(m: Map<K, A>, k: K) => boolean {
+  const lookupE = getLookup_(E)
+  return (m, k) => O.isSome(lookupE(m, k))
+}
+
+/**
+ * Test whether or not a key exists in a map using strict equality
+ */
+export function member<K>(k: K): <A>(m: Map<K, A>) => boolean {
+  return (m) => m.has(k)
+}
+
+/**
+ * Test whether or not a key exists in a map using strict equality
+ */
+export function member_<K, A>(m: Map<K, A>, k: K): boolean {
+  return m.has(k)
+}
