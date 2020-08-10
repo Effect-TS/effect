@@ -1,41 +1,73 @@
 import { CovariantF, CovariantFE, CovariantK, CovariantKE } from "../Covariant"
 import { HKT8, Kind, URIS } from "../HKT"
-import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
+import {
+  IdentityBothF,
+  IdentityBothFE,
+  IdentityBothK,
+  IdentityBothKE
+} from "../IdentityBoth"
 
 export interface ForeachF<F> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <GSI, GSO, GX, GI, GS, GR, GE, A, B>(
-    f: (a: A) => HKT8<G, GSI, GSO, GX, GI, GS, GR, GE, B>
+  <G>(G: IdentityBothF<G> & CovariantF<G>): <GX, GI, GS, GR, GE, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => HKT8<
     G,
-    GSI,
-    GSO,
+    unknown,
+    unknown,
     GX,
     GI,
     GS,
     GR,
     GE,
-    HKT8<F, GSI, GSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    SI,
-    SO,
+  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <GX, GI, GS, GR, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+    fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKT8<
+    G,
+    unknown,
+    unknown,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+  >
+  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <X, In, S, Env, Err, A, B>(
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+    fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => Kind<
+    G,
+    unknown,
+    unknown,
     X,
     In,
     S,
     Env,
     Err,
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+  >
+  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
+    X,
+    In,
+    S,
+    Env,
     A,
     B
   >(
-    f: (a: A) => Kind<G, SI, SO, X, In, S, Env, Err, B>
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => Kind<
     G,
-    SI,
-    SO,
+    unknown,
+    unknown,
     X,
     In,
     S,
@@ -51,39 +83,66 @@ export interface TraversableF<F> extends CovariantF<F> {
 }
 
 export interface ForeachK<F extends URIS> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <GSI, GSO, GX, GI, GS, GR, GE, A, B>(
-    f: (a: A) => HKT8<G, GSI, GSO, GX, GI, GS, GR, GE, B>
+  <G>(G: IdentityBothF<G> & CovariantF<G>): <GX, GI, GS, GR, GE, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => HKT8<
     G,
-    GSI,
-    GSO,
+    unknown,
+    unknown,
     GX,
     GI,
     GS,
     GR,
     GE,
-    Kind<F, GSI, GSO, FX, FIn, FSt, FEnv, FErr, B>
+    Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    SI,
-    SO,
+  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <GX, GI, GS, GR, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+    fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKT8<
+    G,
+    unknown,
+    unknown,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+  >
+  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <X, In, S, Env, Err, A, B>(
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+    fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => Kind<
+    G,
+    unknown,
+    unknown,
     X,
     In,
     S,
     Env,
     Err,
+    Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+  >
+  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
+    X,
+    In,
+    S,
+    Env,
     A,
     B
   >(
-    f: (a: A) => Kind<G, SI, SO, X, In, S, Env, Err, B>
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => Kind<
     G,
-    SI,
-    SO,
+    unknown,
+    unknown,
     X,
     In,
     S,
@@ -99,36 +158,73 @@ export interface TraversableK<F extends URIS> extends CovariantK<F> {
 }
 
 export interface ForeachFE<F, E> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <GSI, GSO, GX, GI, GS, GR, GE, A, B>(
-    f: (a: A) => HKT8<G, GSI, GSO, GX, GI, GS, GR, GE, B>
+  <G>(G: IdentityBothF<G> & CovariantF<G>): <GX, GI, GS, GR, GE, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
     fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
   ) => HKT8<
     G,
-    GSI,
-    GSO,
+    unknown,
+    unknown,
     GX,
     GI,
     GS,
     GR,
     GE,
-    HKT8<F, GSI, GSO, FX, FIn, FSt, FEnv, E, B>
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    SI,
-    SO,
+  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <GX, GI, GS, GR, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
+    fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKT8<
+    G,
+    unknown,
+    unknown,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+  >
+  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <X, In, S, Env, Err, A, B>(
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
+    fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => Kind<
+    G,
+    unknown,
+    unknown,
     X,
     In,
     S,
     Env,
     Err,
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+  >
+  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
+    X,
+    In,
+    S,
+    Env,
     A,
     B
   >(
-    f: (a: A) => Kind<G, SI, SO, X, In, S, Env, Err, B>
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
     fa: HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => Kind<G, SI, SO, X, In, S, Env, Err, HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>>
+  ) => Kind<
+    G,
+    unknown,
+    unknown,
+    X,
+    In,
+    S,
+    Env,
+    Err,
+    HKT8<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+  >
 }
 
 export interface TraversableFE<F, E> extends CovariantFE<F, E> {
@@ -150,9 +246,46 @@ export interface ForeachKE<F extends URIS, E> {
     GS,
     GR,
     GE,
-    Kind<F, unknown, unknown, FX, FIn, FSt, FEnv, E, B>
+    Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+  >
+  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <GX, GI, GS, GR, A, B>(
+    f: (a: A) => HKT8<G, unknown, unknown, GX, GI, GS, GR, GE, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
+    fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKT8<
+    G,
+    unknown,
+    unknown,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE,
+    Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <X, In, S, Env, Err, A, B>(
+    f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
+  ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
+    fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => Kind<
+    G,
+    unknown,
+    unknown,
+    X,
+    In,
+    S,
+    Env,
+    Err,
+    Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+  >
+  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
+    X,
+    In,
+    S,
+    Env,
+    A,
+    B
+  >(
     f: (a: A) => Kind<G, unknown, unknown, X, In, S, Env, Err, B>
   ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
     fa: Kind<F, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
