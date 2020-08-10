@@ -20,3 +20,13 @@ export {
   size,
   toMutable
 } from "../_system/Map"
+
+export {
+  getInsertAt,
+  getInsertAt_,
+  getLookupWithKey,
+  getLookupWithKey_,
+  insertAt,
+  lookupWithKey,
+  lookupWithKey_
+} from "./core"
