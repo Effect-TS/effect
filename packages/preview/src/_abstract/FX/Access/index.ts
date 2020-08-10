@@ -1,6 +1,6 @@
-import { HKT8, Kind, URIS } from "../../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../../HKT"
 
-export interface AccessF<F> {
+export interface AccessF<F> extends HasURI<F> {
   readonly Access: "Access"
   readonly access: <R, A, In, I = In, O = In, S = In>(
     f: (r: R) => A
@@ -12,7 +12,7 @@ export interface AccessF<F> {
   ) => HKT8<F, I, O, X, In, St, unknown, Err, A>
 }
 
-export interface AccessK<F extends URIS> {
+export interface AccessK<F extends URIS> extends HasURI<F> {
   readonly Access: "Access"
   readonly access: <R, A, In, I = In, O = In, S = In>(
     f: (r: R) => A
@@ -22,6 +22,30 @@ export interface AccessK<F extends URIS> {
   ) => <I, O, X, In, St, Err, A>(
     fa: Kind<F, I, O, X, In, St, R, Err, A>
   ) => Kind<F, I, O, X, In, St, unknown, Err, A>
+}
+
+export interface AccessFE<F, E> extends HasConstrainedE<F, E> {
+  readonly Access: "Access"
+  readonly access: <R, A, In, I = In, O = In, S = In>(
+    f: (r: R) => A
+  ) => HKT8<F, I, O, never, In, S, R, E, A>
+  readonly provide: <R>(
+    r: R
+  ) => <I, O, X, In, St, A>(
+    fa: HKT8<F, I, O, X, In, St, R, E, A>
+  ) => HKT8<F, I, O, X, In, St, unknown, E, A>
+}
+
+export interface AccessKE<F extends URIS, E> extends HasConstrainedE<F, E> {
+  readonly Access: "Access"
+  readonly access: <R, A, In, I = In, O = In, S = In>(
+    f: (r: R) => A
+  ) => Kind<F, I, O, never, In, S, R, E, A>
+  readonly provide: <R>(
+    r: R
+  ) => <I, O, X, In, St, A>(
+    fa: Kind<F, I, O, X, In, St, R, E, A>
+  ) => Kind<F, I, O, X, In, St, unknown, E, A>
 }
 
 export function makeAccess<URI extends URIS>(
@@ -36,6 +60,23 @@ export function makeAccess<URI>(
   return (_) => ({
     URI,
     Access: "Access",
+    ..._
+  })
+}
+
+export function makeAccessE<URI extends URIS>(
+  _: URI
+): <E>() => (_: Omit<AccessKE<URI, E>, "URI" | "Access" | "E">) => AccessKE<URI, E>
+export function makeAccessE<URI>(
+  URI: URI
+): <E>() => (_: Omit<AccessFE<URI, E>, "URI" | "Access" | "E">) => AccessFE<URI, E>
+export function makeAccessE<URI>(
+  URI: URI
+): <E>() => (_: Omit<AccessFE<URI, E>, "URI" | "Access" | "E">) => AccessFE<URI, E> {
+  return () => (_) => ({
+    URI,
+    Access: "Access",
+    E: undefined as any,
     ..._
   })
 }

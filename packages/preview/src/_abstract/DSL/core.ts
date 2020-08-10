@@ -1,13 +1,16 @@
 import { pipe } from "../../_system/Function"
-import { AnyF, AnyK } from "../Any"
-import { CovariantF, CovariantK } from "../Covariant"
-import { EnvironmentalK, EnvironmentalF } from "../FX/Environmental"
+import { AnyF, AnyK, AnyKE } from "../Any"
+import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
+import { EnvironmentalK, EnvironmentalF, EnvironmentalKE } from "../FX/Environmental"
 import { HKT, HKT3, HKT8, Kind, URIS } from "../HKT"
-import { MonadF, MonadK } from "../Monad"
+import { MonadF, MonadK, MonadKE } from "../Monad"
 
 /**
  * Model (F: F[_]) => (a: A) => F[A] with default params
  */
+export function succeedF<F extends URIS, E>(
+  F: AnyKE<F, E> & CovariantKE<F, E>
+): <A, S, SI, SO = SI>(a: () => A) => Kind<F, SI, SO, never, unknown, S, unknown, E, A>
 export function succeedF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
 ): <A, S, SI, SO = SI>(
@@ -29,6 +32,9 @@ export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: () => A) => HKT<
 /**
  * Model (F: F[_]) => (a: A) => F[A] with generic params
  */
+export function anyF<F extends URIS, E>(
+  F: AnyKE<F, E> & CovariantKE<F, E>
+): <SI, SO, X, In, S, R, A>(a: A) => Kind<F, SI, SO, X, In, S, R, E, A>
 export function anyF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
 ): <SI, SO, X, In, S, R, E, A>(a: A) => Kind<F, SI, SO, X, In, S, R, E, A>
@@ -46,6 +52,9 @@ export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
 /**
  * Generic pipeable "do" (used to begin do-like pipe)
  */
+export function doF<F extends URIS, E>(
+  F: MonadKE<F, E>
+): <S, I, O = I>() => Kind<F, I, O, never, unknown, S, unknown, E, {}>
 export function doF<F extends URIS>(
   F: MonadK<F>
 ): <S, I, O = I>() => Kind<F, I, O, never, unknown, S, unknown, never, {}>
@@ -63,6 +72,14 @@ export function doF<F>(F: MonadF<F>): () => HKT<F, {}> {
 /**
  * Generic pipeable "bind"
  */
+export function bindF<F extends URIS, E>(
+  F: MonadKE<F, E>
+): <SO, SO2, X, I, S, R, A, K, N extends string>(
+  tag: Exclude<N, keyof K>,
+  f: (_: K) => Kind<F, SO, SO2, X, I, S, R, E, A>
+) => <SI, X2, I2, R2, E2>(
+  mk: Kind<F, SI, SO, X2, I2, S, R2, E2, K>
+) => Kind<F, SI, SO2, X | X2, I & I2, S, R & R2, E | E2, K & { [k in N]: A }>
 export function bindF<F extends URIS>(
   F: MonadK<F>
 ): <SO, SO2, X, I, S, R, E, A, K, N extends string>(
@@ -101,6 +118,13 @@ export function bindF<F>(F: MonadF<F>) {
 /**
  * Generic pipeable chain
  */
+export function chainF<F extends URIS, E>(
+  F: MonadKE<F, E>
+): <SO, SO2, X, I, S, R, A, B>(
+  f: (_: A) => Kind<F, SO, SO2, X, I, S, R, E, B>
+) => <SI, X2, I2, R2>(
+  mk: Kind<F, SI, SO, X2, I2, S, R2, E, A>
+) => Kind<F, SI, SO2, X2 | X, I & I2, S, R & R2, E, B>
 export function chainF<F extends URIS>(
   F: MonadK<F>
 ): <SO, SO2, X, I, S, R, E, A, B>(
@@ -123,6 +147,11 @@ export function chainF<F>(F: MonadF<F>) {
 /**
  * Generic accessM
  */
+export function accessMF<F extends URIS, E>(
+  F: EnvironmentalKE<F, E>
+): <SI, SO, Y, X, S, R, R1, A>(
+  f: (r: R) => Kind<F, SI, SO, Y, X, S, R1, E, A>
+) => Kind<F, SI, SO, Y, X, S, R & R1, E, A>
 export function accessMF<F extends URIS>(
   F: EnvironmentalK<F>
 ): <SI, SO, Y, X, S, R, R1, E, A>(
@@ -146,6 +175,13 @@ export function accessMF<F>(
 /**
  * Generic provideSome
  */
+export function provideSomeF<F extends URIS, E>(
+  F: EnvironmentalKE<F, E>
+): <R0, R>(
+  f: (r: R0) => R
+) => <SI, SO, X, I, S, A>(
+  fa: Kind<F, SI, SO, X, I, S, R, E, A>
+) => Kind<F, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<F extends URIS>(
   F: EnvironmentalK<F>
 ): <R0, R>(

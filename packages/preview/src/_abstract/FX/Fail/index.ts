@@ -1,4 +1,4 @@
-import { HasURI, HKT8, Kind, URIS } from "../../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../../HKT"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
@@ -18,6 +18,20 @@ export interface FailK<F extends URIS> extends HasURI<F> {
   ) => Kind<F, SI, SO, never, unknown, S, unknown, E, never>
 }
 
+export interface FailFE<F, E> extends HasConstrainedE<F, E> {
+  readonly Fail: "Fail"
+  readonly fail: <S, SI, SO = SI>(
+    e: E
+  ) => HKT8<F, SI, SO, never, unknown, S, unknown, E, never>
+}
+
+export interface FailKE<F extends URIS, E> extends HasConstrainedE<F, E> {
+  readonly Fail: "Fail"
+  readonly fail: <S, SI, SO = SI>(
+    e: E
+  ) => Kind<F, SI, SO, never, unknown, S, unknown, E, never>
+}
+
 export function makeFail<URI extends URIS>(
   _: URI
 ): (_: Omit<FailK<URI>, "URI" | "Fail">) => FailK<URI>
@@ -30,6 +44,23 @@ export function makeFail<URI>(
   return (_) => ({
     URI,
     Fail: "Fail",
+    ..._
+  })
+}
+
+export function makeFailE<URI extends URIS>(
+  _: URI
+): <E>() => (_: Omit<FailKE<URI, E>, "URI" | "Fail" | "E">) => FailKE<URI, E>
+export function makeFailE<URI>(
+  URI: URI
+): <E>() => (_: Omit<FailFE<URI, E>, "URI" | "Fail" | "E">) => FailFE<URI, E>
+export function makeFailE<URI>(
+  URI: URI
+): <E>() => (_: Omit<FailFE<URI, E>, "URI" | "Fail" | "E">) => FailFE<URI, E> {
+  return () => (_) => ({
+    URI,
+    Fail: "Fail",
+    E: undefined as any,
     ..._
   })
 }
