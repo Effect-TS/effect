@@ -5,6 +5,7 @@ import * as Eq from "../_abstract/Equal"
 import { Identity, makeIdentity } from "../_abstract/Identity"
 import { Ord } from "../_abstract/Ord"
 import * as Ordering from "../_abstract/Ordering"
+import { makeShow, Show } from "../_abstract/Show"
 import { Either, isLeft } from "../_system/Either/core"
 import * as M from "../_system/Map/core"
 import { Map } from "../_system/Map/core"
@@ -652,4 +653,20 @@ export function getIdentityStrict<A>(SA: Associative<A>): <K>() => Identity<Map<
       }
       return r
     })
+}
+
+/**
+ * Gets `Show` instance for Maps given `Show` instance for their keys & values
+ */
+export function getShow<K, A>(SK: Show<K>, SA: Show<A>): Show<Map<K, A>> {
+  return makeShow((m) => {
+    let elements = ""
+    m.forEach((a, k) => {
+      elements += `[${SK.show(k)}, ${SA.show(a)}], `
+    })
+    if (elements !== "") {
+      elements = elements.substring(0, elements.length - 2)
+    }
+    return `new Map([${elements}])`
+  })
 }

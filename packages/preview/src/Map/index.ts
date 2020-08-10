@@ -72,6 +72,15 @@ export {
   partitionMap_,
   partitionWithIndex,
   partitionWithIndex_,
-  partition_
+  partition_,
+  getShow
 } from "./core"
-export { Any, Covariant, MapValueURI } from "./instances"
+export {
+  Any,
+  Covariant,
+  MapValueURI,
+  foreachF,
+  Traversable,
+  getForeachF,
+  getTraversable
+} from "./instances"

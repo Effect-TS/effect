@@ -125,4 +125,21 @@ export {
   zipWith_,
   zip_
 } from "../_system/Array"
-export { Any, ArrayURI, AssociativeBoth, Covariant } from "./core"
+export {
+  Any,
+  Applicative,
+  ArrayURI,
+  AssociativeBoth,
+  AssociativeFlatten,
+  Closure,
+  Covariant,
+  DeriveEqual,
+  foreachF,
+  getEq as eqArray,
+  Identity,
+  IdentityBoth,
+  IdentityFlatten,
+  Monad,
+  SumClosure,
+  Traversable
+} from "./core"

@@ -34,13 +34,13 @@ export function succeedF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: () => A) => HKT<
  */
 export function anyF<F extends URIS, E>(
   F: AnyKE<F, E> & CovariantKE<F, E>
-): <SI, SO, X, In, S, R, A>(a: A) => Kind<F, SI, SO, X, In, S, R, E, A>
+): <A>(a: A) => Kind<F, any, any, any, any, any, any, any, A>
 export function anyF<F extends URIS>(
   F: AnyK<F> & CovariantK<F>
-): <SI, SO, X, In, S, R, E, A>(a: A) => Kind<F, SI, SO, X, In, S, R, E, A>
+): <A>(a: A) => Kind<F, any, any, any, any, any, any, any, A>
 export function anyF<F>(
   F: AnyF<F> & CovariantF<F>
-): <SI, SO, X, In, S, R, E, A>(a: A) => HKT8<F, SI, SO, X, In, S, R, E, A>
+): <A>(a: A) => HKT8<F, any, any, any, any, any, any, any, A>
 export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
