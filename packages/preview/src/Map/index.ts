@@ -34,6 +34,8 @@ export {
   getLookup_,
   getMember,
   getMember_,
+  getModifyAt,
+  getModifyAt_,
   insertAt,
   keys,
   lookup,
@@ -41,6 +43,16 @@ export {
   lookupWithKey_,
   lookup_,
   member,
-  member_
+  member_,
+  modifyAt,
+  modifyAt_,
+  partition,
+  partitionMap,
+  partitionMapWithIndex,
+  partitionMapWithIndex_,
+  partitionMap_,
+  partitionWithIndex,
+  partitionWithIndex_,
+  partition_
 } from "./core"
 export { Any, Covariant, MapValueURI } from "./instances"
