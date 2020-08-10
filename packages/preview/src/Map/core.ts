@@ -1,6 +1,8 @@
 import { pipe, Predicate, Refinement, tuple, tupled } from "../Function"
 import * as O from "../Option"
+import { Associative } from "../_abstract/Associative"
 import * as Eq from "../_abstract/Equal"
+import { Identity, makeIdentity } from "../_abstract/Identity"
 import { Ord } from "../_abstract/Ord"
 import * as Ordering from "../_abstract/Ordering"
 import { Either, isLeft } from "../_system/Either/core"
@@ -588,4 +590,67 @@ export function isSubmap<K, A>(d2: Map<K, A>) {
 export function getEqual<K, A>(SK: Eq.Equal<K>, SA: Eq.Equal<A>): Eq.Equal<Map<K, A>> {
   const isSubmap_ = getIsSubmap_(SK, SA)
   return Eq.makeEqual((x, y) => isSubmap_(x, y) && isSubmap_(y, x))
+}
+
+/**
+ * Gets `Identity` instance for Maps given `Associative` instance for their values
+ * and equality for keys
+ */
+export function getIdentity<K, A>(
+  SK: Eq.Equal<K>,
+  SA: Associative<A>
+): Identity<Map<K, A>> {
+  const lookupWithKeyS = getLookupWithKey_(SK)
+  return makeIdentity(M.empty as Map<K, A>, (my) => (mx) => {
+    if (mx === M.empty) {
+      return my
+    }
+    if (my === M.empty) {
+      return mx
+    }
+    const r = new Map(mx)
+    const entries = my.entries()
+    let e: M.Next<readonly [K, A]>
+    // tslint:disable-next-line: strict-boolean-expressions
+    while (!(e = entries.next()).done) {
+      const [k, a] = e.value
+      const mxOptA = lookupWithKeyS(mx, k)
+      if (O.isSome(mxOptA)) {
+        r.set(mxOptA.value[0], SA.combine(a)(mxOptA.value[1]))
+      } else {
+        r.set(k, a)
+      }
+    }
+    return r
+  })
+}
+
+/**
+ * Gets `Identity` instance for Maps given `Associative` instance for their values
+ * and equality for keys
+ */
+export function getIdentityStrict<A>(SA: Associative<A>): <K>() => Identity<Map<K, A>> {
+  return <K>() =>
+    makeIdentity(M.empty as Map<K, A>, (my) => (mx) => {
+      if (mx === M.empty) {
+        return my
+      }
+      if (my === M.empty) {
+        return mx
+      }
+      const r = new Map(mx)
+      const entries = my.entries()
+      let e: M.Next<readonly [K, A]>
+      // tslint:disable-next-line: strict-boolean-expressions
+      while (!(e = entries.next()).done) {
+        const [k, a] = e.value
+        const mxOptA = lookupWithKey_(mx, k)
+        if (O.isSome(mxOptA)) {
+          r.set(mxOptA.value[0], SA.combine(a)(mxOptA.value[1]))
+        } else {
+          r.set(k, a)
+        }
+      }
+      return r
+    })
 }
