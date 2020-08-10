@@ -28,5 +28,13 @@ export {
   getLookupWithKey_,
   insertAt,
   lookupWithKey,
-  lookupWithKey_
+  lookupWithKey_,
+  collect,
+  collect_,
+  getCollect,
+  getCollect_,
+  getKeys,
+  keys
 } from "./core"
+
+export { Any, Covariant, MapValueURI } from "./instances"
