@@ -9,7 +9,16 @@ export interface Inverse<A> extends Identity<A> {
   readonly inverse: (r: A) => (l: A) => A
 }
 
-export function make<A>(
+export const InverseURI = "Inverse"
+export type InverseURI = typeof InverseURI
+
+declare module "../HKT" {
+  interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
+    [InverseURI]: Inverse<Out>
+  }
+}
+
+export function makeInverse<A>(
   identity: A,
   combine: (y: A) => (x: A) => A,
   inverse: (r: A) => (l: A) => A

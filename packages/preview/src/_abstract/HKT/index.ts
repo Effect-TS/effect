@@ -70,3 +70,7 @@ export type Kind<URI extends URIS, SI, SO, X, In, St, Env, Err, Out> = URI exten
 export interface HasURI<F> {
   readonly URI: F
 }
+
+export interface HasE<F, X> extends HasURI<F> {
+  readonly E: X
+}

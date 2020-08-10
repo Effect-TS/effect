@@ -41,7 +41,7 @@ export function fromCompare_<A>(compare: (x: A, y: A) => Ordering): Ord<A> {
 /**
  * Creates Ord[A] from equals & compare functions
  */
-export function make<A>(
+export function makeOrd<A>(
   equals: (y: A) => (x: A) => boolean,
   compare: (y: A) => (x: A) => Ordering
 ): Ord<A> {

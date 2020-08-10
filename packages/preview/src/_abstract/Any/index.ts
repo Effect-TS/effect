@@ -1,4 +1,4 @@
-import { HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
@@ -33,6 +33,36 @@ export interface AnyK<F extends URIS> extends HasURI<F> {
   >
 }
 
+export interface AnyFE<F, E> extends HasE<F, E> {
+  readonly Any: "Any"
+  readonly any: <S, SI, SO = SI>() => HKT8<
+    F,
+    SI,
+    SO,
+    never,
+    unknown,
+    S,
+    unknown,
+    E,
+    unknown
+  >
+}
+
+export interface AnyKE<F extends URIS, E> extends HasE<F, E> {
+  readonly Any: "Any"
+  readonly any: <S, SI, SO = SI>() => Kind<
+    F,
+    SI,
+    SO,
+    never,
+    unknown,
+    S,
+    unknown,
+    E,
+    unknown
+  >
+}
+
 export function makeAny<URI extends URIS>(
   _: URI
 ): (_: Omit<AnyK<URI>, "URI" | "Any">) => AnyK<URI>
@@ -43,6 +73,20 @@ export function makeAny<URI>(
   return (_) => ({
     URI,
     Any: "Any",
+    ..._
+  })
+}
+
+export function makeAnyE<URI extends URIS>(
+  _: URI
+): <E>() => (_: Omit<AnyKE<URI, E>, "URI" | "Any" | "E">) => AnyKE<URI, E>
+export function makeAnyE<URI>(
+  URI: URI
+): <E>() => (_: Omit<AnyFE<URI, E>, "URI" | "Any" | "E">) => AnyFE<URI, E> {
+  return () => (_) => ({
+    URI,
+    Any: "Any",
+    E: undefined as any,
     ..._
   })
 }

@@ -1,4 +1,4 @@
-import { HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -40,6 +40,24 @@ export interface CovariantK<F extends URIS> extends HasURI<F> {
   ) => Kind<F, SI, SO, X, In, St, Env, Err, B>
 }
 
+export interface CovariantFE<F, E> extends HasE<F, E> {
+  readonly Covariant: "Covariant"
+  readonly map: <A, B>(
+    f: (a: A) => B
+  ) => <SI, SO, X, In, St, Env>(
+    fa: HKT8<F, SI, SO, X, In, St, Env, E, A>
+  ) => HKT8<F, SI, SO, X, In, St, Env, E, B>
+}
+
+export interface CovariantKE<F extends URIS, E> extends HasE<F, E> {
+  readonly Covariant: "Covariant"
+  readonly map: <A, B>(
+    f: (a: A) => B
+  ) => <SI, SO, X, In, St, Env>(
+    fa: Kind<F, SI, SO, X, In, St, Env, E, A>
+  ) => Kind<F, SI, SO, X, In, St, Env, E, B>
+}
+
 export function makeCovariant<URI extends URIS>(
   _: URI
 ): (_: Omit<CovariantK<URI>, "URI" | "Covariant">) => CovariantK<URI>
@@ -52,6 +70,29 @@ export function makeCovariant<URI>(
   return (_) => ({
     URI,
     Covariant: "Covariant",
+    ..._
+  })
+}
+
+export function makeCovariantE<URI extends URIS>(
+  _: URI
+): <E>() => (
+  _: Omit<CovariantKE<URI, E>, "URI" | "Covariant" | "E">
+) => CovariantKE<URI, E>
+export function makeCovariantE<URI>(
+  URI: URI
+): <E>() => (
+  _: Omit<CovariantFE<URI, E>, "URI" | "Covariant" | "E">
+) => CovariantFE<URI, E>
+export function makeCovariantE<URI>(
+  URI: URI
+): <E>() => (
+  _: Omit<CovariantFE<URI, E>, "URI" | "Covariant" | "E">
+) => CovariantFE<URI, E> {
+  return () => (_) => ({
+    URI,
+    Covariant: "Covariant",
+    E: undefined as any,
     ..._
   })
 }

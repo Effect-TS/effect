@@ -2,8 +2,8 @@ import { Associative } from "../Associative"
 import { DeriveK } from "../Derive"
 import { URIS } from "../HKT"
 
-export const URI = "Identity"
-export type URI = typeof URI
+export const IdentityURI = "Identity"
+export type IdentityURI = typeof IdentityURI
 
 /**
  * Equivalent to a Monoid
@@ -14,7 +14,7 @@ export interface Identity<A> extends Associative<A> {
 
 declare module "../HKT" {
   interface URItoKind<SI, SO, X, I, S, Env, Err, Out> {
-    [URI]: Identity<Out>
+    [IdentityURI]: Identity<Out>
   }
 }
 
@@ -25,6 +25,9 @@ export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identit
   }
 }
 
-export function deriveIdentity<F extends URIS, A>(D: DeriveK<F, URI>, I: Identity<A>) {
+export function deriveIdentity<F extends URIS, A>(
+  D: DeriveK<F, IdentityURI>,
+  I: Identity<A>
+) {
   return D.derive(I)
 }
