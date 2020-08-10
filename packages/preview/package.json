@@ -42,6 +42,7 @@
       "_abstract/Contravariant",
       "_abstract/Covariant",
       "_abstract/Derive",
+      "_abstract/FoldMap",
       "_abstract/FX",
       "_abstract/FX/Access",
       "_abstract/FX/Environmental",

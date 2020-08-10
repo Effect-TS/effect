@@ -9,7 +9,8 @@ import { makeCovariant } from "../_abstract/Covariant"
 import { anyF } from "../_abstract/DSL"
 import { makeDerive } from "../_abstract/Derive"
 import * as Eq from "../_abstract/Equal"
-import { makeIdentity } from "../_abstract/Identity"
+import { makeFoldMap } from "../_abstract/FoldMap"
+import { Identity, makeIdentity } from "../_abstract/Identity"
 import { makeIdentityBoth } from "../_abstract/IdentityBoth"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
 import { makeMonad } from "../_abstract/Monad"
@@ -152,3 +153,42 @@ export function getEq<A>(EqA: Eq.Equal<A>): Eq.Equal<A.Array<A>> {
     }
   }
 }
+
+/**
+ * FoldMap using `Identity<A>`
+ */
+export const foldMap: <I>(
+  I: Identity<I>
+) => <A>(f: (a: A) => I) => (fa: readonly A[]) => I = (I) => (f) =>
+  foldMapWithIndex(I)((_, a) => f(a))
+
+/**
+ * FoldMap using `Identity<A>`
+ */
+export const foldMap_: <I>(
+  I: Identity<I>
+) => <A>(fa: readonly A[], f: (a: A) => I) => I = (I) => (fa, f) =>
+  foldMapWithIndex_(I)(fa, (_, a) => f(a))
+
+/**
+ * FoldMap using `Identity<A>`
+ */
+export const foldMapWithIndex: <I>(
+  I: Identity<I>
+) => <A>(f: (i: number, a: A) => I) => (fa: readonly A[]) => I = (I) => (f) => (fa) =>
+  fa.reduce((b, a, i) => I.combine(f(i, a))(b), I.identity)
+
+/**
+ * FoldMap using `Identity<A>`
+ */
+export const foldMapWithIndex_: <I>(
+  I: Identity<I>
+) => <A>(fa: readonly A[], f: (i: number, a: A) => I) => I = (I) => (fa, f) =>
+  fa.reduce((b, a, i) => I.combine(f(i, a))(b), I.identity)
+
+/**
+ * The `FoldMap<Array>` instance for `Array<A>`.
+ */
+export const FoldMap = makeFoldMap(ArrayURI)({
+  foldMap
+})
