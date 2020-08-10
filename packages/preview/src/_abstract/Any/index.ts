@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
@@ -33,7 +33,7 @@ export interface AnyK<F extends URIS> extends HasURI<F> {
   >
 }
 
-export interface AnyFE<F, E> extends HasE<F, E> {
+export interface AnyFE<F, E> extends HasConstrainedE<F, E> {
   readonly Any: "Any"
   readonly any: <S, SI, SO = SI>() => HKT8<
     F,
@@ -48,7 +48,7 @@ export interface AnyFE<F, E> extends HasE<F, E> {
   >
 }
 
-export interface AnyKE<F extends URIS, E> extends HasE<F, E> {
+export interface AnyKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly Any: "Any"
   readonly any: <S, SI, SO = SI>() => Kind<
     F,

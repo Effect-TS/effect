@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -22,7 +22,7 @@ export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
   ) => Kind<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, Err2 | Err, readonly [A, B]>
 }
 
-export interface AssociativeBothFE<F, E> extends HasE<F, E> {
+export interface AssociativeBothFE<F, E> extends HasConstrainedE<F, E> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <SO, SO2, X2, In2, S, Env2, B>(
     fb: HKT8<F, SO, SO2, X2, In2, S, Env2, E, B>
@@ -31,7 +31,7 @@ export interface AssociativeBothFE<F, E> extends HasE<F, E> {
   ) => HKT8<F, SI, SO2, X2 | X, In2 & In, S, Env2 & Env, E, readonly [A, B]>
 }
 
-export interface AssociativeBothKE<F extends URIS, E> extends HasE<F, E> {
+export interface AssociativeBothKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <SO, SO2, X2, In2, S, Env2, B>(
     fb: Kind<F, SO, SO2, X2, In2, S, Env2, E, B>

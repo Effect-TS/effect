@@ -1,4 +1,4 @@
-import { HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -41,6 +41,24 @@ export interface ContravariantK<F extends URIS> extends HasURI<F> {
   ) => Kind<F, SI, SO, X, I, S, Env, Err, B>
 }
 
+export interface ContravariantFE<F, E> extends HasConstrainedE<F, E> {
+  readonly Contravariant: "Contravariant"
+  readonly contramap: <A, B>(
+    f: (a: B) => A
+  ) => <SI, SO, X, I, S, Env>(
+    fa: HKT8<F, SI, SO, X, I, S, Env, E, A>
+  ) => HKT8<F, SI, SO, X, I, S, Env, E, B>
+}
+
+export interface ContravariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
+  readonly Contravariant: "Contravariant"
+  readonly contramap: <A, B>(
+    f: (a: B) => A
+  ) => <SI, SO, X, I, S, Env>(
+    fa: Kind<F, SI, SO, X, I, S, Env, E, A>
+  ) => Kind<F, SI, SO, X, I, S, Env, E, B>
+}
+
 export function makeContravariant<URI extends URIS>(
   _: URI
 ): (_: Omit<ContravariantK<URI>, "URI" | "Contravariant">) => ContravariantK<URI>
@@ -53,6 +71,29 @@ export function makeContravariant<URI>(
   return (_) => ({
     URI,
     Contravariant: "Contravariant",
+    ..._
+  })
+}
+
+export function makeContravariantE<URI extends URIS>(
+  _: URI
+): <E>() => (
+  _: Omit<ContravariantKE<URI, E>, "URI" | "Contravariant" | "E">
+) => ContravariantKE<URI, E>
+export function makeContravariantE<URI>(
+  URI: URI
+): <E>() => (
+  _: Omit<ContravariantFE<URI, E>, "URI" | "Contravariant" | "E">
+) => ContravariantFE<URI, E>
+export function makeContravariantE<URI>(
+  URI: URI
+): <E>() => (
+  _: Omit<ContravariantFE<URI, E>, "URI" | "Contravariant" | "E">
+) => ContravariantFE<URI, E> {
+  return <E>() => (_) => ({
+    URI,
+    Contravariant: "Contravariant",
+    E: undefined as any,
     ..._
   })
 }

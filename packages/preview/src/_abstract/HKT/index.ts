@@ -71,6 +71,6 @@ export interface HasURI<F> {
   readonly URI: F
 }
 
-export interface HasE<F, X> extends HasURI<F> {
+export interface HasConstrainedE<F, X> extends HasURI<F> {
   readonly E: X
 }

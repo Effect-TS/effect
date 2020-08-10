@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -40,7 +40,7 @@ export interface CovariantK<F extends URIS> extends HasURI<F> {
   ) => Kind<F, SI, SO, X, In, St, Env, Err, B>
 }
 
-export interface CovariantFE<F, E> extends HasE<F, E> {
+export interface CovariantFE<F, E> extends HasConstrainedE<F, E> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
@@ -49,7 +49,7 @@ export interface CovariantFE<F, E> extends HasE<F, E> {
   ) => HKT8<F, SI, SO, X, In, St, Env, E, B>
 }
 
-export interface CovariantKE<F extends URIS, E> extends HasE<F, E> {
+export interface CovariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B

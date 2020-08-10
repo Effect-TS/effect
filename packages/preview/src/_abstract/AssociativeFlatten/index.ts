@@ -1,4 +1,4 @@
-import { HasURI, HKT8, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT8, Kind, URIS } from "../HKT"
 
 /**
  * `AssociativeFlatten` describes a type that can be "flattened" in an
@@ -22,6 +22,20 @@ export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
   ) => Kind<F, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
+export interface AssociativeFlattenFE<F, E> extends HasConstrainedE<F, E> {
+  readonly AssociativeFlatten: "AssociativeFlatten"
+  readonly flatten: <SI, SO, X, In, S, Env, SO1, X1, In1, Env1, A>(
+    fb: HKT8<F, SI, SO, X, In, S, Env, E, HKT8<F, SO, SO1, X1, In1, S, Env1, E, A>>
+  ) => HKT8<F, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
+}
+
+export interface AssociativeFlattenKE<F extends URIS, E> extends HasConstrainedE<F, E> {
+  readonly AssociativeFlatten: "AssociativeFlatten"
+  readonly flatten: <SI, SO, X, In, S, Env, SO1, X1, In1, Env1, A>(
+    fb: Kind<F, SI, SO, X, In, S, Env, E, Kind<F, SO, SO1, X1, In1, S, Env1, E, A>>
+  ) => Kind<F, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
+}
+
 export function makeAssociativeFlatten<URI extends URIS>(
   _: URI
 ): (
@@ -40,6 +54,29 @@ export function makeAssociativeFlatten<URI>(
   return (_) => ({
     URI,
     AssociativeFlatten: "AssociativeFlatten",
+    ..._
+  })
+}
+
+export function makeAssociativeFlattenE<URI extends URIS>(
+  _: URI
+): <E>() => (
+  _: Omit<AssociativeFlattenKE<URI, E>, "URI" | "AssociativeFlatten" | "E">
+) => AssociativeFlattenKE<URI, E>
+export function makeAssociativeFlattenE<URI>(
+  URI: URI
+): <E>() => (
+  _: Omit<AssociativeFlattenFE<URI, E>, "URI" | "AssociativeFlatten" | "E">
+) => AssociativeFlattenFE<URI, E>
+export function makeAssociativeFlattenE<URI>(
+  URI: URI
+): <E>() => (
+  _: Omit<AssociativeFlattenFE<URI, E>, "URI" | "AssociativeFlatten" | "E">
+) => AssociativeFlattenFE<URI, E> {
+  return () => (_) => ({
+    URI,
+    AssociativeFlatten: "AssociativeFlatten",
+    E: undefined as any,
     ..._
   })
 }
