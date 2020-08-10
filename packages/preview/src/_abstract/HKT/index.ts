@@ -66,7 +66,26 @@ export interface HKT9<URI, K extends string, SI, SO, X, In, St, Env, Err, Out> {
 /**
  * Typelevel Map: URI => Type
  */
-export interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {}
+export interface URItoKind<
+  // Encode nominal (string based) keys
+  K extends string,
+  // Encode state input
+  SI,
+  // Encode state output
+  SO,
+  // Encode generic contravariant (used to encode async/sync)
+  X,
+  // Encode contravariant input
+  I,
+  // Encode invariant state
+  S,
+  // Encode contravariant input
+  Env,
+  // Encode covariant error
+  Err,
+  // Encode covariant output
+  Out
+> {}
 
 /**
  * URI of the Typelevel Map
