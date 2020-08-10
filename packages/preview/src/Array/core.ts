@@ -10,11 +10,14 @@ import { anyF } from "../_abstract/DSL"
 import { makeDerive } from "../_abstract/Derive"
 import * as Eq from "../_abstract/Equal"
 import { makeFoldMap } from "../_abstract/FoldMap"
+import { makeFoldable } from "../_abstract/Foldable"
 import { Identity, makeIdentity } from "../_abstract/Identity"
 import { makeIdentityBoth } from "../_abstract/IdentityBoth"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
 import { makeMonad } from "../_abstract/Monad"
 import { Sum } from "../_abstract/Newtype"
+import { makeReduce } from "../_abstract/Reduce"
+import { makeReduceRight } from "../_abstract/ReduceRight"
 import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
 import * as A from "../_system/Array"
 
@@ -187,8 +190,27 @@ export const foldMapWithIndex_: <I>(
   fa.reduce((b, a, i) => I.combine(f(i, a))(b), I.identity)
 
 /**
- * The `FoldMap<Array>` instance for `Array<A>`.
+ * The `FoldMap` instance for `Array<A>`.
  */
 export const FoldMap = makeFoldMap(ArrayURI)({
   foldMap
 })
+
+/**
+ * The `Reduce` instance for `Array<A>`.
+ */
+export const Reduce = makeReduce(ArrayURI)({
+  reduce: A.reduce
+})
+
+/**
+ * The `ReduceRight` instance for `Array<A>`.
+ */
+export const ReduceRight = makeReduceRight(ArrayURI)({
+  reduce: A.reduceRight
+})
+
+/**
+ * The `Foldable` instance for `Array<A>`.
+ */
+export const Foldable = makeFoldable(ArrayURI)(intersect(FoldMap, Reduce, ReduceRight))
