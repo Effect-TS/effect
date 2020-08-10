@@ -58,4 +58,24 @@ export {
   zipSecond_,
   zip_
 } from "../_system/Either"
-export { Any, Covariant, EitherSuccessURI } from "./core"
+export {
+  Any,
+  Applicative,
+  AssociativeBoth,
+  AssociativeEither,
+  AssociativeFailureBoth,
+  AssociativeFailureEither,
+  AssociativeFlatten,
+  Covariant,
+  either,
+  eitherFailure,
+  EitherURI,
+  Fail,
+  FailureEither,
+  FailureEitherURI,
+  IdentityBoth,
+  IdentityFlatten,
+  Monad,
+  sequenceS,
+  zipFailure
+} from "./core"

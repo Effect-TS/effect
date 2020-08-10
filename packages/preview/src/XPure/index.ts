@@ -47,4 +47,16 @@ export {
   zipWith_,
   zip_
 } from "../_system/XPure"
-export { Any, AssociativeBoth, Covariant, XPureSuccessURI } from "./core"
+export {
+  Access,
+  Any,
+  Applicative,
+  AssociativeBoth,
+  AssociativeEither,
+  AssociativeFlatten,
+  Covariant,
+  Fail,
+  IdentityBoth,
+  sequenceS,
+  XPureSuccessURI
+} from "./core"

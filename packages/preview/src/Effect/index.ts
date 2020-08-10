@@ -252,3 +252,16 @@ export {
   zipWith_,
   zip_
 } from "../_system/Effect"
+export {
+  Access,
+  Any,
+  Applicative,
+  AssociativeBoth,
+  AssociativeEither,
+  AssociativeFlatten,
+  Covariant,
+  Environmental,
+  Fail,
+  IdentityFlatten,
+  Monad
+} from "./core"

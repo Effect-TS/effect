@@ -154,7 +154,7 @@ export const Environmental = makeEnvironmental(ReaderURI)(intersect(Access, Mona
 /**
  * Struct based applicative for Reader[-_, +_]
  */
-export const sequenceS = sequenceSF(Applicative)
+export const sequenceS = sequenceSF(Applicative)()
 
 /**
  * Returns a computation that effectfully "peeks" at the success of this one.

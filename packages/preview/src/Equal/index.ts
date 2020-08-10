@@ -1,0 +1,22 @@
+export {
+  Any,
+  AssociativeBoth,
+  AssociativeEither,
+  Contravariant,
+  Equal,
+  EqualURI,
+  IdentityBoth,
+  IdentityEither,
+  None,
+  anyEqual,
+  both,
+  contramap,
+  either,
+  eqArray,
+  makeEqual,
+  nothingEqual,
+  number,
+  strict,
+  string,
+  symbol
+} from "../_abstract/Equal"

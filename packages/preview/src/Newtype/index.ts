@@ -1,0 +1,23 @@
+export {
+  And,
+  AndF,
+  BooleanProd,
+  BooleanSum,
+  Failure,
+  FailureIn,
+  FailureOut,
+  First,
+  Generic,
+  Last,
+  Max,
+  Min,
+  Or,
+  OrF,
+  Prod,
+  StringSum,
+  Sum,
+  TypeOf,
+  genericDef,
+  newtype,
+  typeDef
+} from "../_abstract/Newtype"
