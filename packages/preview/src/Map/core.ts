@@ -530,34 +530,36 @@ export const filter_: {
 /**
  * Checks if d2 is a submap of d1 using `Equal[K]` and `Equal[A]`
  */
-export function getIsSubmap<K, A>(SK: Eq.Equal<K>, SA: Eq.Equal<A>) {
-  return (d2: Map<K, A>) => (d1: Map<K, A>) => getIsSubmap_(SK, SA)(d1, d2)
+export function getIsSubmap<K>(SK: Eq.Equal<K>) {
+  return <A>(SA: Eq.Equal<A>) => (d2: Map<K, A>) => (d1: Map<K, A>) =>
+    getIsSubmap_(SK)(SA)(d1, d2)
 }
 
 /**
  * Checks if d2 is a submap of d1 using `Equal[K]` and `Equal[A]`
  */
-export function getIsSubmap_<K, A>(
-  SK: Eq.Equal<K>,
-  SA: Eq.Equal<A>
-): (d1: Map<K, A>, d2: Map<K, A>) => boolean {
-  const lookupWithKeyS = getLookupWithKey_(SK)
-  return (d1: Map<K, A>, d2: Map<K, A>): boolean => {
-    const entries = d1.entries()
-    let e: M.Next<readonly [K, A]>
-    // tslint:disable-next-line: strict-boolean-expressions
-    while (!(e = entries.next()).done) {
-      const [k, a] = e.value
-      const d2OptA = lookupWithKeyS(d2, k)
-      if (
-        O.isNone(d2OptA) ||
-        !SK.equals(d2OptA.value[0])(k) ||
-        !SA.equals(d2OptA.value[1])(a)
-      ) {
-        return false
+export function getIsSubmap_<K>(
+  SK: Eq.Equal<K>
+): <A>(SA: Eq.Equal<A>) => (d1: Map<K, A>, d2: Map<K, A>) => boolean {
+  return <A>(SA: Eq.Equal<A>) => {
+    const lookupWithKeyS = getLookupWithKey_(SK)
+    return (d1: Map<K, A>, d2: Map<K, A>): boolean => {
+      const entries = d1.entries()
+      let e: M.Next<readonly [K, A]>
+      // tslint:disable-next-line: strict-boolean-expressions
+      while (!(e = entries.next()).done) {
+        const [k, a] = e.value
+        const d2OptA = lookupWithKeyS(d2, k)
+        if (
+          O.isNone(d2OptA) ||
+          !SK.equals(d2OptA.value[0])(k) ||
+          !SA.equals(d2OptA.value[1])(a)
+        ) {
+          return false
+        }
       }
+      return true
     }
-    return true
   }
 }
 
@@ -588,42 +590,47 @@ export function isSubmap<K, A>(d2: Map<K, A>) {
 /**
  * The `Equal` instance for Map given equality of keys and values
  */
-export function getEqual<K, A>(SK: Eq.Equal<K>, SA: Eq.Equal<A>): Eq.Equal<Map<K, A>> {
-  const isSubmap_ = getIsSubmap_(SK, SA)
-  return Eq.makeEqual((x, y) => isSubmap_(x, y) && isSubmap_(y, x))
+export function getEqual<K>(
+  SK: Eq.Equal<K>
+): <A>(SA: Eq.Equal<A>) => Eq.Equal<Map<K, A>> {
+  return (SA) => {
+    const isSubmap_ = getIsSubmap_(SK)(SA)
+    return Eq.makeEqual((y) => (x) => isSubmap_(x, y) && isSubmap_(y, x))
+  }
 }
 
 /**
  * Gets `Identity` instance for Maps given `Associative` instance for their values
  * and equality for keys
  */
-export function getIdentity<K, A>(
-  SK: Eq.Equal<K>,
-  SA: Associative<A>
-): Identity<Map<K, A>> {
-  const lookupWithKeyS = getLookupWithKey_(SK)
-  return makeIdentity(M.empty as Map<K, A>, (my) => (mx) => {
-    if (mx === M.empty) {
-      return my
-    }
-    if (my === M.empty) {
-      return mx
-    }
-    const r = new Map(mx)
-    const entries = my.entries()
-    let e: M.Next<readonly [K, A]>
-    // tslint:disable-next-line: strict-boolean-expressions
-    while (!(e = entries.next()).done) {
-      const [k, a] = e.value
-      const mxOptA = lookupWithKeyS(mx, k)
-      if (O.isSome(mxOptA)) {
-        r.set(mxOptA.value[0], SA.combine(a)(mxOptA.value[1]))
-      } else {
-        r.set(k, a)
+export function getIdentity<K>(
+  SK: Eq.Equal<K>
+): <A>(SA: Associative<A>) => Identity<Map<K, A>> {
+  return <A>(SA: Associative<A>) => {
+    const lookupWithKeyS = getLookupWithKey_(SK)
+    return makeIdentity(M.empty as Map<K, A>, (my) => (mx) => {
+      if (mx === M.empty) {
+        return my
       }
-    }
-    return r
-  })
+      if (my === M.empty) {
+        return mx
+      }
+      const r = new Map(mx)
+      const entries = my.entries()
+      let e: M.Next<readonly [K, A]>
+      // tslint:disable-next-line: strict-boolean-expressions
+      while (!(e = entries.next()).done) {
+        const [k, a] = e.value
+        const mxOptA = lookupWithKeyS(mx, k)
+        if (O.isSome(mxOptA)) {
+          r.set(mxOptA.value[0], SA.combine(a)(mxOptA.value[1]))
+        } else {
+          r.set(k, a)
+        }
+      }
+      return r
+    })
+  }
 }
 
 /**
@@ -658,15 +665,16 @@ export function getIdentityStrict<A>(SA: Associative<A>): <K>() => Identity<Map<
 /**
  * Gets `Show` instance for Maps given `Show` instance for their keys & values
  */
-export function getShow<K, A>(SK: Show<K>, SA: Show<A>): Show<Map<K, A>> {
-  return makeShow((m) => {
-    let elements = ""
-    m.forEach((a, k) => {
-      elements += `[${SK.show(k)}, ${SA.show(a)}], `
+export function getShow<K>(SK: Show<K>): <A>(SA: Show<A>) => Show<Map<K, A>> {
+  return (SA) =>
+    makeShow((m) => {
+      let elements = ""
+      m.forEach((a, k) => {
+        elements += `[${SK.show(k)}, ${SA.show(a)}], `
+      })
+      if (elements !== "") {
+        elements = elements.substring(0, elements.length - 2)
+      }
+      return `new Map([${elements}])`
     })
-    if (elements !== "") {
-      elements = elements.substring(0, elements.length - 2)
-    }
-    return `new Map([${elements}])`
-  })
 }

@@ -1,3 +1,4 @@
+import * as Equal from "../Equal"
 import { pipe, tuple } from "../Function"
 import { Failure } from "../Newtype"
 import { intersect } from "../Utils"
@@ -168,3 +169,8 @@ export const Monad = makeMonad(EitherURI)(intersect(Covariant, IdentityFlatten))
  * Struct based applicative
  */
 export const sequenceS = sequenceSF(Applicative)()
+
+/**
+ * The `Equal` instance for `Either`
+ */
+export const getEqual = Equal.either
