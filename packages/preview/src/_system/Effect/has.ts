@@ -6,7 +6,7 @@ import { access, accessM, chain_, provideAll_, succeed } from "../Effect/core"
 import { Effect } from "../Effect/effect"
 import { provide } from "../Effect/provide"
 import { pipe } from "../Function"
-import { Agumented, has, Has, HasURI, mergeEnvironments } from "../Has"
+import { Augmented, has, Has, HasURI, mergeEnvironments } from "../Has"
 import * as R from "../Record"
 import { UnionToIntersection } from "../Utils"
 
@@ -202,7 +202,7 @@ export interface Region<T, K> {
   }
 }
 
-export const region = <K, T>(): Agumented<Region<T, K>> => has<Region<T, K>>()
+export const region = <K, T>(): Augmented<Region<T, K>> => has<Region<T, K>>()
 
 export const useRegion = <K, T>(h: Has<Region<T, K>>) => <S, R, E, A>(
   e: Effect<S, R & T, E, A>

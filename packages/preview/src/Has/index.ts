@@ -1,6 +1,6 @@
 export {
-  Agumentation,
-  Agumented,
+  Augmentation,
+  Augmented,
   Constructor,
   ConstructorType,
   DerivationContext,
