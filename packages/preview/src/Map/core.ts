@@ -627,7 +627,6 @@ export function getIdentity<K, A>(
 
 /**
  * Gets `Identity` instance for Maps given `Associative` instance for their values
- * and equality for keys
  */
 export function getIdentityStrict<A>(SA: Associative<A>): <K>() => Identity<Map<K, A>> {
   return <K>() =>
