@@ -33,8 +33,9 @@ export const Covariant = makeCovariant(RecordURI)({
 /**
  * Traversable's `foreachF` for `Record[+_: String, +_]`.
  */
-export const foreachF = implementForeachF(RecordURI)(
-  ({ _b, _fk }) => (G) => (f) => (fa) =>
+export const foreachF = implementForeachF(RecordURI)(({ _b, _fk }) => {
+  const I = getIdentitySpread<typeof _b>()<typeof _fk>()
+  return (G) => (f) => (fa) =>
     pipe(
       R.collect_(fa, (k, a) => tuple(k, a)),
       A.foreachF(G)(([k, a]) =>
@@ -44,7 +45,7 @@ export const foreachF = implementForeachF(RecordURI)(
         )
       ),
       G.map(
-        A.foldMap(getIdentitySpread<typeof _b>()<typeof _fk>())(
+        A.foldMap(I)(
           ([k, v]) =>
             ({
               [k]: v
@@ -52,7 +53,7 @@ export const foreachF = implementForeachF(RecordURI)(
         )
       )
     )
-)
+})
 
 /**
  * The `Traversable` instance for `Record[+_: String, +_]`
