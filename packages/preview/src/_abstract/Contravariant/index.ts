@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -23,77 +23,43 @@ import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
  * compares strings by computing their lengths with the provided function and
  * comparing those.
  */
-export interface ContravariantF<F> extends HasURI<F> {
+export interface ContravariantF<F, Fix = any> extends HasURI<F, Fix> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: HKT10<F, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => HKT10<F, K, NK, SI, SO, X, I, S, Env, Err, B>
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => HKTFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
-export interface ContravariantK<F extends URIS> extends HasURI<F> {
+export interface ContravariantK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: Kind<F, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => Kind<F, K, NK, SI, SO, X, I, S, Env, Err, B>
-}
-
-export interface ContravariantFE<F, E> extends HasConstrainedE<F, E> {
-  readonly Contravariant: "Contravariant"
-  readonly contramap: <A, B>(
-    f: (a: B) => A
-  ) => <K, NK extends string, SI, SO, X, I, S, Env>(
-    fa: HKT10<F, K, NK, SI, SO, X, I, S, Env, E, A>
-  ) => HKT10<F, K, NK, SI, SO, X, I, S, Env, E, B>
-}
-
-export interface ContravariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly Contravariant: "Contravariant"
-  readonly contramap: <A, B>(
-    f: (a: B) => A
-  ) => <K, NK extends string, SI, SO, X, I, S, Env>(
-    fa: Kind<F, K, NK, SI, SO, X, I, S, Env, E, A>
-  ) => Kind<F, K, NK, SI, SO, X, I, S, Env, E, B>
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => KindFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
 export function makeContravariant<URI extends URIS>(
   _: URI
-): (_: Omit<ContravariantK<URI>, "URI" | "Contravariant">) => ContravariantK<URI>
+): (
+  _: Omit<ContravariantK<URI>, "URI" | "Fix" | "Contravariant">
+) => ContravariantK<URI>
 export function makeContravariant<URI>(
   URI: URI
-): (_: Omit<ContravariantF<URI>, "URI" | "Contravariant">) => ContravariantF<URI>
+): (
+  _: Omit<ContravariantF<URI>, "URI" | "Fix" | "Contravariant">
+) => ContravariantF<URI>
 export function makeContravariant<URI>(
   URI: URI
-): (_: Omit<ContravariantF<URI>, "URI" | "Contravariant">) => ContravariantF<URI> {
+): (
+  _: Omit<ContravariantF<URI>, "URI" | "Fix" | "Contravariant">
+) => ContravariantF<URI> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     Contravariant: "Contravariant",
-    ..._
-  })
-}
-
-export function makeContravariantE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<ContravariantKE<URI, E>, "URI" | "Contravariant" | "E">
-) => ContravariantKE<URI, E>
-export function makeContravariantE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<ContravariantFE<URI, E>, "URI" | "Contravariant" | "E">
-) => ContravariantFE<URI, E>
-export function makeContravariantE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<ContravariantFE<URI, E>, "URI" | "Contravariant" | "E">
-) => ContravariantFE<URI, E> {
-  return <E>() => (_) => ({
-    URI,
-    Contravariant: "Contravariant",
-    E: undefined as any,
     ..._
   })
 }

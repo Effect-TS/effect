@@ -1,84 +1,48 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface ReduceRightF<F> extends HasURI<F> {
+export interface ReduceRightF<F, Fix = any> extends HasURI<F, Fix> {
   readonly ReduceRight: "ReduceRight"
   readonly reduce: <A, B>(
     b: B,
     f: (a: A, b: B) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
-export interface ReduceRightK<F extends URIS> extends HasURI<F> {
+export interface ReduceRightK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly ReduceRight: "ReduceRight"
   readonly reduce: <A, B>(
     b: B,
     f: (a: A, b: B) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
-export interface ReduceRightFE<F, E> extends HasConstrainedE<F, E> {
-  readonly ReduceRight: "ReduceRight"
-  readonly reduce: <A, B>(
-    b: B,
-    f: (a: A, b: B) => B
-  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => B
-}
-
-export interface ReduceRightKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly ReduceRight: "ReduceRight"
-  readonly reduce: <A, B>(
-    b: B,
-    f: (a: A, b: B) => B
-  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => B
-}
-
-export function makeReduceRight<URI extends URIS>(
+export function makeReduceRight<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<ReduceRightK<URI>, "URI" | "ReduceRight">) => ReduceRightK<URI>
-export function makeReduceRight<URI>(
+): (
+  _: Omit<ReduceRightK<URI, Fix>, "URI" | "Fix" | "ReduceRight">
+) => ReduceRightK<URI, Fix>
+export function makeReduceRight<URI, Fix = any>(
   URI: URI
-): (_: Omit<ReduceRightF<URI>, "URI" | "ReduceRight">) => ReduceRightF<URI>
-export function makeReduceRight<URI>(
+): (
+  _: Omit<ReduceRightF<URI, Fix>, "URI" | "Fix" | "ReduceRight">
+) => ReduceRightF<URI, Fix>
+export function makeReduceRight<URI, Fix = any>(
   URI: URI
-): (_: Omit<ReduceRightF<URI>, "URI" | "ReduceRight">) => ReduceRightF<URI> {
+): (
+  _: Omit<ReduceRightF<URI, Fix>, "URI" | "Fix" | "ReduceRight">
+) => ReduceRightF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     ReduceRight: "ReduceRight",
-    ..._
-  })
-}
-
-export function makeReduceRightE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<ReduceRightKE<URI, E>, "URI" | "ReduceRight" | "E">
-) => ReduceRightKE<URI, E>
-export function makeReduceRightE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<ReduceRightFE<URI, E>, "URI" | "ReduceRight" | "E">
-) => ReduceRightFE<URI, E>
-export function makeReduceRightE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<ReduceRightFE<URI, E>, "URI" | "ReduceRight" | "E">
-) => ReduceRightFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    ReduceRight: "ReduceRight",
-    E: undefined as any,
     ..._
   })
 }

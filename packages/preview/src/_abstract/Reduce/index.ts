@@ -1,78 +1,42 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface ReduceF<F> extends HasURI<F> {
+export interface ReduceF<F, Fix = any> extends HasURI<F, Fix> {
   readonly Reduce: "Reduce"
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
-export interface ReduceK<F extends URIS> extends HasURI<F> {
+export interface ReduceK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly Reduce: "Reduce"
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
-export interface ReduceFE<F, E> extends HasConstrainedE<F, E> {
-  readonly Reduce: "Reduce"
-  readonly reduce: <A, B>(
-    b: B,
-    f: (b: B, a: A) => B
-  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => B
-}
-
-export interface ReduceKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly Reduce: "Reduce"
-  readonly reduce: <A, B>(
-    b: B,
-    f: (b: B, a: A) => B
-  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => B
-}
-
-export function makeReduce<URI extends URIS>(
+export function makeReduce<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<ReduceK<URI>, "URI" | "Reduce">) => ReduceK<URI>
-export function makeReduce<URI>(
+): (_: Omit<ReduceK<URI, Fix>, "URI" | "Fix" | "Reduce">) => ReduceK<URI, Fix>
+export function makeReduce<URI, Fix = any>(
   URI: URI
-): (_: Omit<ReduceF<URI>, "URI" | "Reduce">) => ReduceF<URI>
-export function makeReduce<URI>(
+): (_: Omit<ReduceF<URI, Fix>, "URI" | "Fix" | "Reduce">) => ReduceF<URI, Fix>
+export function makeReduce<URI, Fix = any>(
   URI: URI
-): (_: Omit<ReduceF<URI>, "URI" | "Reduce">) => ReduceF<URI> {
+): (_: Omit<ReduceF<URI, Fix>, "URI" | "Fix" | "Reduce">) => ReduceF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     Reduce: "Reduce",
-    ..._
-  })
-}
-
-export function makeReduceE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<ReduceKE<URI, E>, "URI" | "Reduce" | "E">) => ReduceKE<URI, E>
-export function makeReduceE<URI>(
-  URI: URI
-): <E>() => (_: Omit<ReduceFE<URI, E>, "URI" | "Reduce" | "E">) => ReduceFE<URI, E>
-export function makeReduceE<URI>(
-  URI: URI
-): <E>() => (_: Omit<ReduceFE<URI, E>, "URI" | "Reduce" | "E">) => ReduceFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    Reduce: "Reduce",
-    E: undefined as any,
     ..._
   })
 }

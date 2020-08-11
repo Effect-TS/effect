@@ -1,12 +1,13 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * The identity for combining two values of types `F[A]` and `F[B]`
  */
-export interface NoneF<F> extends HasURI<F> {
+export interface NoneF<F, Fix = any> extends HasURI<F, Fix> {
   readonly None: "None"
-  readonly none: <S, SI, SO = SI>() => HKT10<
+  readonly none: <S, SI, SO = SI>() => HKTFix<
     F,
+    Fix,
     never,
     never,
     SI,
@@ -20,10 +21,11 @@ export interface NoneF<F> extends HasURI<F> {
   >
 }
 
-export interface NoneK<F extends URIS> extends HasURI<F> {
+export interface NoneK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly None: "None"
-  readonly none: <S, SI, SO = SI>() => Kind<
+  readonly none: <S, SI, SO = SI>() => KindFix<
     F,
+    Fix,
     never,
     never,
     SI,
@@ -37,69 +39,19 @@ export interface NoneK<F extends URIS> extends HasURI<F> {
   >
 }
 
-export interface NoneFE<F, E> extends HasConstrainedE<F, E> {
-  readonly None: "None"
-  readonly none: <S, SI, SO = SI>() => HKT10<
-    F,
-    never,
-    never,
-    SI,
-    SO,
-    never,
-    unknown,
-    S,
-    unknown,
-    E,
-    never
-  >
-}
-
-export interface NoneKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly None: "None"
-  readonly none: <S, SI, SO = SI>() => Kind<
-    F,
-    never,
-    never,
-    SI,
-    SO,
-    never,
-    unknown,
-    S,
-    unknown,
-    E,
-    never
-  >
-}
-
-export function makeNone<URI extends URIS>(
+export function makeNone<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<NoneK<URI>, "URI" | "None">) => NoneK<URI>
-export function makeNone<URI>(
+): (_: Omit<NoneK<URI, Fix>, "URI" | "Fix" | "None">) => NoneK<URI, Fix>
+export function makeNone<URI, Fix = any>(
   URI: URI
-): (_: Omit<NoneF<URI>, "URI" | "None">) => NoneF<URI>
-export function makeNone<URI>(
+): (_: Omit<NoneF<URI, Fix>, "URI" | "Fix" | "None">) => NoneF<URI, Fix>
+export function makeNone<URI, Fix = any>(
   URI: URI
-): (_: Omit<NoneF<URI>, "URI" | "None">) => NoneF<URI> {
+): (_: Omit<NoneF<URI, Fix>, "URI" | "Fix" | "None">) => NoneF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     None: "None",
-    ..._
-  })
-}
-
-export function makeNoneE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<NoneKE<URI, E>, "URI" | "None" | "E">) => NoneKE<URI, E>
-export function makeNoneE<URI, E>(
-  URI: URI
-): <E>() => (_: Omit<NoneFE<URI, E>, "URI" | "None" | "E">) => NoneFE<URI, E>
-export function makeNoneE<URI, E>(
-  URI: URI
-): <E>() => (_: Omit<NoneFE<URI, E>, "URI" | "None" | "E">) => NoneFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    None: "None",
-    E: undefined as any,
     ..._
   })
 }

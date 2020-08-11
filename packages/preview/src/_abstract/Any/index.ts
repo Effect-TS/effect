@@ -1,12 +1,13 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT10, HKTFix, Kind, KindFix, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
  */
-export interface AnyF<F> extends HasURI<F> {
+export interface AnyF<F, Fix = any> extends HasURI<F, Fix> {
   readonly Any: "Any"
-  readonly any: <S, SI, SO = SI>() => HKT10<
+  readonly any: <S, SI, SO = SI>() => HKTFix<
     F,
+    Fix,
     never,
     never,
     SI,
@@ -20,10 +21,11 @@ export interface AnyF<F> extends HasURI<F> {
   >
 }
 
-export interface AnyK<F extends URIS> extends HasURI<F> {
+export interface AnyK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly Any: "Any"
-  readonly any: <S, SI, SO = SI>() => Kind<
+  readonly any: <S, SI, SO = SI>() => KindFix<
     F,
+    Fix,
     never,
     never,
     SI,
@@ -71,30 +73,19 @@ export interface AnyKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   >
 }
 
-export function makeAny<URI extends URIS>(
+export function makeAny<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<AnyK<URI>, "URI" | "Any">) => AnyK<URI>
-export function makeAny<URI>(URI: URI): (_: Omit<AnyF<URI>, "URI" | "Any">) => AnyF<URI>
-export function makeAny<URI>(
+): (_: Omit<AnyK<URI, Fix>, "URI" | "Fix" | "Any">) => AnyK<URI, Fix>
+export function makeAny<URI, Fix>(
   URI: URI
-): (_: Omit<AnyF<URI>, "URI" | "Any">) => AnyF<URI> {
+): (_: Omit<AnyF<URI, Fix>, "URI" | "Fix" | "Any">) => AnyF<URI, Fix>
+export function makeAny<URI, Fix>(
+  URI: URI
+): (_: Omit<AnyF<URI, Fix>, "URI" | "Fix" | "Any">) => AnyF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     Any: "Any",
-    ..._
-  })
-}
-
-export function makeAnyE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<AnyKE<URI, E>, "URI" | "Any" | "E">) => AnyKE<URI, E>
-export function makeAnyE<URI>(
-  URI: URI
-): <E>() => (_: Omit<AnyFE<URI, E>, "URI" | "Any" | "E">) => AnyFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    Any: "Any",
-    E: undefined as any,
     ..._
   })
 }

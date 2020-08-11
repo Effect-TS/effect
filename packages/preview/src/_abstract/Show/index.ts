@@ -10,7 +10,7 @@ export const ShowURI = "Show"
 export type ShowURI = typeof ShowURI
 
 declare module "../HKT" {
-  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [ShowURI]: Show<Out>
   }
 }

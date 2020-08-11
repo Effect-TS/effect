@@ -1,73 +1,38 @@
-import {
-  AssociativeEitherK,
-  AssociativeEitherF,
-  AssociativeEitherFE,
-  AssociativeEitherKE
-} from "../AssociativeEither"
+import { AssociativeEitherK, AssociativeEitherF } from "../AssociativeEither"
 import { URIS } from "../HKT"
 
 /**
  * A commutative binary operator that combines two values of types `F[A]` and
  * `F[B]` to produce an `F[Either[A, B]]`.
  */
-export interface CommutativeEitherF<F> extends AssociativeEitherF<F> {
+export interface CommutativeEitherF<F, Fix = any> extends AssociativeEitherF<F, Fix> {
   readonly CommutativeEither: "CommutativeEither"
 }
 
-export interface CommutativeEitherK<F extends URIS> extends AssociativeEitherK<F> {
+export interface CommutativeEitherK<F extends URIS, Fix = any>
+  extends AssociativeEitherK<F, Fix> {
   readonly CommutativeEither: "CommutativeEither"
 }
 
-export interface CommutativeEitherFE<F, E> extends AssociativeEitherFE<F, E> {
-  readonly CommutativeEither: "CommutativeEither"
-}
-
-export interface CommutativeEitherKE<F extends URIS, E>
-  extends AssociativeEitherKE<F, E> {
-  readonly CommutativeEither: "CommutativeEither"
-}
-
-export function makeCommutativeEither<URI extends URIS>(
+export function makeCommutativeEither<URI extends URIS, Fix = any>(
   _: URI
 ): (
-  _: Omit<CommutativeEitherK<URI>, "URI" | "CommutativeEither">
-) => CommutativeEitherK<URI>
-export function makeCommutativeEither<URI>(
+  _: Omit<CommutativeEitherK<URI, Fix>, "URI" | "Fix" | "CommutativeEither">
+) => CommutativeEitherK<URI, Fix>
+export function makeCommutativeEither<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<CommutativeEitherF<URI>, "URI" | "CommutativeEither">
-) => CommutativeEitherF<URI>
-export function makeCommutativeEither<URI>(
+  _: Omit<CommutativeEitherF<URI, Fix>, "URI" | "Fix" | "CommutativeEither">
+) => CommutativeEitherF<URI, Fix>
+export function makeCommutativeEither<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<CommutativeEitherF<URI>, "URI" | "CommutativeEither">
-) => CommutativeEitherF<URI> {
+  _: Omit<CommutativeEitherF<URI, Fix>, "URI" | "Fix" | "CommutativeEither">
+) => CommutativeEitherF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     CommutativeEither: "CommutativeEither",
-    ..._
-  })
-}
-
-export function makeCommutativeEitherE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<CommutativeEitherKE<URI, E>, "URI" | "CommutativeEither" | "E">
-) => CommutativeEitherKE<URI, E>
-export function makeCommutativeEitherE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<CommutativeEitherFE<URI, E>, "URI" | "CommutativeEither" | "E">
-) => CommutativeEitherFE<URI, E>
-export function makeCommutativeEitherE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<CommutativeEitherFE<URI, E>, "URI" | "CommutativeEither" | "E">
-) => CommutativeEitherFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    CommutativeEither: "CommutativeEither",
-    E: undefined as any,
     ..._
   })
 }

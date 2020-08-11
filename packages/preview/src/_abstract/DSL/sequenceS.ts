@@ -1,108 +1,24 @@
 import { pipe, tuple } from "../../Function"
 import { EnforceNonEmptyRecord, UnionToIntersection } from "../../Utils"
 import * as A from "../../_system/Array"
-import { ApplicativeF, ApplicativeK, ApplicativeKE } from "../Applicative"
-import { HKT, HKT10, Kind, URIS } from "../HKT"
+import { ApplicativeF, ApplicativeK } from "../Applicative"
+import { HKT, HKT10, HKTFix, Kind, KindFix, URIS } from "../HKT"
 
 import { anyF } from "./core"
 
-export function sequenceSF<F extends URIS, E>(
-  F: ApplicativeKE<F, E>
+export function sequenceSF<F extends URIS, Fix = any>(
+  F: ApplicativeK<F, Fix>
 ): <SIO>() => <
   S,
-  NER extends Record<string, Kind<F, any, any, SIO, SIO, any, any, S, any, E, any>>
+  NER extends Record<
+    string,
+    KindFix<F, Fix, any, any, SIO, SIO, any, any, S, any, any, any>
+  >
 >(
   r: EnforceNonEmptyRecord<NER>
-) => Kind<
+) => KindFix<
   F,
-  {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, infer X, any, any, any, any, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? X
-      : never
-  }[keyof NER],
-  {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, infer X, any, any, any, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? X
-      : never
-  }[keyof NER],
-  SIO,
-  SIO,
-  {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, any, any, any, infer X, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? X
-      : never
-  }[keyof NER],
-  UnionToIntersection<
-    {
-      [K in keyof NER]: [NER[K]] extends [
-        Kind<
-          F,
-          any,
-          any,
-          any,
-          any,
-          infer X,
-          infer In,
-          infer S,
-          infer R,
-          infer E,
-          infer A
-        >
-      ]
-        ? unknown extends In
-          ? never
-          : In
-        : never
-    }[keyof NER]
-  >,
-  S,
-  UnionToIntersection<
-    {
-      [K in keyof NER]: [NER[K]] extends [
-        Kind<
-          F,
-          any,
-          any,
-          any,
-          any,
-          infer X,
-          infer In,
-          infer S,
-          infer R,
-          infer E,
-          infer A
-        >
-      ]
-        ? unknown extends R
-          ? never
-          : R
-        : never
-    }[keyof NER]
-  >,
-  E,
-  {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, any, any, any, infer X, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? A
-      : never
-  }
->
-export function sequenceSF<F extends URIS>(
-  F: ApplicativeK<F>
-): <SIO>() => <
-  S,
-  NER extends Record<string, Kind<F, any, any, SIO, SIO, any, any, S, any, any, any>>
->(
-  r: EnforceNonEmptyRecord<NER>
-) => Kind<
-  F,
+  Fix,
   {
     [K in keyof NER]: [NER[K]] extends [
       Kind<F, infer X, any, any, any, any, infer In, infer S, infer S, infer E, infer A>
@@ -188,19 +104,23 @@ export function sequenceSF<F extends URIS>(
       : never
   }
 >
-export function sequenceSF<F>(
-  F: ApplicativeF<F>
+export function sequenceSF<F, Fix = any>(
+  F: ApplicativeF<F, Fix>
 ): <SIO>() => <
   S,
-  NER extends Record<string, HKT10<F, any, any, SIO, SIO, any, any, S, any, any, any>>
+  NER extends Record<
+    string,
+    HKTFix<F, Fix, any, any, SIO, SIO, any, any, S, any, any, any>
+  >
 >(
   r: EnforceNonEmptyRecord<NER>
 ) => HKT10<
   F,
   {
     [K in keyof NER]: [NER[K]] extends [
-      HKT10<
+      HKTFix<
         F,
+        Fix,
         infer X,
         any,
         any,
@@ -218,8 +138,9 @@ export function sequenceSF<F>(
   }[keyof NER],
   {
     [K in keyof NER]: [NER[K]] extends [
-      HKT10<
+      HKTFix<
         F,
+        Fix,
         any,
         infer X,
         any,
@@ -239,8 +160,9 @@ export function sequenceSF<F>(
   SIO,
   {
     [K in keyof NER]: [NER[K]] extends [
-      HKT10<
+      HKTFix<
         F,
+        Fix,
         any,
         any,
         any,
@@ -259,8 +181,9 @@ export function sequenceSF<F>(
   UnionToIntersection<
     {
       [K in keyof NER]: [NER[K]] extends [
-        HKT10<
+        HKTFix<
           F,
+          Fix,
           any,
           any,
           any,
@@ -283,8 +206,9 @@ export function sequenceSF<F>(
   UnionToIntersection<
     {
       [K in keyof NER]: [NER[K]] extends [
-        HKT10<
+        HKTFix<
           F,
+          Fix,
           any,
           any,
           any,
@@ -305,8 +229,9 @@ export function sequenceSF<F>(
   >,
   {
     [K in keyof NER]: [NER[K]] extends [
-      HKT10<
+      HKTFix<
         F,
+        Fix,
         any,
         any,
         any,
@@ -324,8 +249,9 @@ export function sequenceSF<F>(
   }[keyof NER],
   {
     [K in keyof NER]: [NER[K]] extends [
-      HKT10<
+      HKTFix<
         F,
+        Fix,
         any,
         any,
         any,

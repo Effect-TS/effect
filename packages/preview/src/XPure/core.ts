@@ -19,7 +19,7 @@ export const XPureSuccessURI = "XPureSuccess"
 export type XPureSuccessURI = typeof XPureSuccessURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [XPureSuccessURI]: X.XPure<SI, SO, Env, Err, Out>
   }
 }

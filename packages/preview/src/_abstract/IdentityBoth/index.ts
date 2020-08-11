@@ -1,51 +1,28 @@
-import { AnyK, AnyF, AnyFE, AnyKE } from "../Any"
-import {
-  AssociativeBothK,
-  AssociativeBothF,
-  AssociativeBothFE,
-  AssociativeBothKE
-} from "../AssociativeBoth"
+import { AnyF, AnyK } from "../Any"
+import { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
 import { URIS } from "../HKT"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export type IdentityBothF<F> = AssociativeBothF<F> & AnyF<F>
+export type IdentityBothF<F, Fix = any> = AssociativeBothF<F, Fix> & AnyF<F, Fix>
 
-export type IdentityBothFE<F, E> = AssociativeBothFE<F, E> & AnyFE<F, E>
+export type IdentityBothK<F extends URIS, Fix = any> = AssociativeBothK<F, Fix> &
+  AnyK<F, Fix>
 
-export type IdentityBothK<F extends URIS> = AssociativeBothK<F> & AnyK<F>
-
-export type IdentityBothKE<F extends URIS, E> = AssociativeBothKE<F, E> & AnyKE<F, E>
-
-export function makeIdentityBoth<URI extends URIS>(
+export function makeIdentityBoth<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<IdentityBothK<URI>, "URI">) => IdentityBothK<URI>
-export function makeIdentityBoth<URI>(
+): (_: Omit<IdentityBothK<URI, Fix>, "URI" | "Fix">) => IdentityBothK<URI, Fix>
+export function makeIdentityBoth<URI, Fix = any>(
   URI: URI
-): (_: Omit<IdentityBothF<URI>, "URI">) => IdentityBothF<URI>
-export function makeIdentityBoth<URI>(
+): (_: Omit<IdentityBothF<URI, Fix>, "URI" | "Fix">) => IdentityBothF<URI, Fix>
+export function makeIdentityBoth<URI, Fix = any>(
   URI: URI
-): (_: Omit<IdentityBothF<URI>, "URI">) => IdentityBothF<URI> {
+): (_: Omit<IdentityBothF<URI, Fix>, "URI" | "Fix">) => IdentityBothF<URI, Fix> {
   return (_) => ({
     URI,
-    ..._
-  })
-}
-
-export function makeIdentityBothE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<IdentityBothKE<URI, E>, "URI" | "E">) => IdentityBothKE<URI, E>
-export function makeIdentityBothE<URI>(
-  URI: URI
-): <E>() => (_: Omit<IdentityBothFE<URI, E>, "URI" | "E">) => IdentityBothFE<URI, E>
-export function makeIdentityBothE<URI>(
-  URI: URI
-): <E>() => (_: Omit<IdentityBothFE<URI, E>, "URI" | "E">) => IdentityBothFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    E: undefined as any,
+    Fix: undefined as any,
     ..._
   })
 }

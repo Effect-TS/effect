@@ -1,14 +1,9 @@
-import { CovariantF, CovariantFE, CovariantK, CovariantKE } from "../Covariant"
-import { HKT10, KeyFor, Kind, URIS } from "../HKT"
-import {
-  IdentityBothF,
-  IdentityBothFE,
-  IdentityBothK,
-  IdentityBothKE
-} from "../IdentityBoth"
+import { CovariantF, CovariantK } from "../Covariant"
+import { HKTFix, KeyFor, KindFix, URIS } from "../HKT"
+import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
-export interface ForeachWithKeysF<F> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <
+export interface ForeachWithKeysF<F, Fix = any> {
+  <G, GFix = any>(G: IdentityBothF<G, GFix> & CovariantF<G, GFix>): <
     GK,
     GKN extends string,
     GX,
@@ -30,12 +25,13 @@ export interface ForeachWithKeysF<F> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKTFix<G, GFix, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT10<
+    fa: HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFix<
     G,
+    GFix,
     GK,
     GKN,
     unknown,
@@ -45,47 +41,9 @@ export interface ForeachWithKeysF<F> {
     GS,
     GR,
     GE,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
-  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    FErr
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-  ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT10<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
-  >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
+  <G extends URIS, GFix = any>(G: IdentityBothK<G, GFix> & CovariantK<G, GFix>): <
     GK,
     GKN extends string,
     X,
@@ -107,12 +65,13 @@ export interface ForeachWithKeysF<F> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => KindFix<G, GFix, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => Kind<
+    fa: HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFix<
     G,
+    GFix,
     GK,
     GKN,
     unknown,
@@ -122,55 +81,17 @@ export interface ForeachWithKeysF<F> {
     S,
     Env,
     Err,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
-  >
-  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    FErr
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
-  ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => Kind<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
-export interface TraversableWithKeysF<F> extends CovariantF<F> {
+export interface TraversableWithKeysF<F, Fix = any> extends CovariantF<F, Fix> {
   readonly TraversableWithKeys: "TraversableWithKeys"
-  readonly foreachWithKeysF: ForeachWithKeysF<F>
+  readonly foreachWithKeysF: ForeachWithKeysF<F, Fix>
 }
 
-export interface ForeachWithKeysK<F extends URIS> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <
+export interface ForeachWithKeysK<F extends URIS, Fix = any> {
+  <G, GFix = any>(G: IdentityBothF<G, GFix> & CovariantF<G, GFix>): <
     GK,
     GKN extends string,
     GX,
@@ -192,12 +113,13 @@ export interface ForeachWithKeysK<F extends URIS> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKTFix<G, GFix, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT10<
+    fa: KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFix<
     G,
+    GFix,
     GK,
     GKN,
     unknown,
@@ -207,47 +129,9 @@ export interface ForeachWithKeysK<F extends URIS> {
     GS,
     GR,
     GE,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
-  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    FErr
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-  ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT10<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
-  >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
+  <G extends URIS, GFix = any>(G: IdentityBothK<G, GFix> & CovariantK<G, GFix>): <
     GK,
     GKN extends string,
     X,
@@ -269,12 +153,13 @@ export interface ForeachWithKeysK<F extends URIS> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => KindFix<G, GFix, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => Kind<
+    fa: KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFix<
     G,
+    GFix,
     GK,
     GKN,
     unknown,
@@ -284,394 +169,37 @@ export interface ForeachWithKeysK<F extends URIS> {
     S,
     Env,
     Err,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
-  >
-  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    FErr
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
-  ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => Kind<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
-export interface TraversableWithKeysK<F extends URIS> extends CovariantK<F> {
+export interface TraversableWithKeysK<F extends URIS, Fix = any>
+  extends CovariantK<F, Fix> {
   readonly TraversableWithKeys: "TraversableWithKeys"
-  readonly foreachWithKeysF: ForeachWithKeysK<F>
+  readonly foreachWithKeysF: ForeachWithKeysK<F, Fix>
 }
 
-export interface ForeachWithKeysFE<F, E> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-  ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT10<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-  ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT10<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
-  ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => Kind<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
-  ) => (
-    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => Kind<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-}
-
-export interface TraversableWithKeysFE<F, E> extends CovariantFE<F, E> {
-  readonly TraversableWithKeys: "TraversableWithKeys"
-  readonly foreachWithKeysF: ForeachWithKeysFE<F, E>
-}
-
-export interface ForeachWithKeysKE<F extends URIS, E> {
-  <G>(G: IdentityBothF<G> & CovariantF<G>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    E
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-  ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT10<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-  <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    E
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-  ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT10<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-  <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    E
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
-  ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => Kind<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-  <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    A,
-    B,
-    FK,
-    FKN extends string,
-    FSI,
-    FSO,
-    FX,
-    FIn,
-    FSt,
-    FEnv,
-    E
-  >(
-    f: (
-      a: A,
-      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
-  ) => (
-    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => Kind<
-    G,
-    GK,
-    GKN,
-    unknown,
-    unknown,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-  >
-}
-
-export interface TraversableWithKeysKE<F extends URIS, E> extends CovariantKE<F, E> {
-  readonly TraversableWithKeys: "TraversableWithKeys"
-  readonly foreachWithKeysF: ForeachWithKeysKE<F, E>
-}
-
-export function makeTraversableWithKeys<URI extends URIS>(
-  C: CovariantK<URI>
+export function makeTraversableWithKeys<URI extends URIS, Fix = any>(
+  C: CovariantK<URI, Fix>
 ): (
   _: Omit<
-    TraversableWithKeysK<URI>,
-    "URI" | "TraversableWithKeys" | keyof CovariantK<URI>
+    TraversableWithKeysK<URI, Fix>,
+    "URI" | "Fix" | "TraversableWithKeys" | keyof CovariantK<URI, Fix>
   >
-) => TraversableWithKeysK<URI>
-export function makeTraversableWithKeys<URI>(
-  C: CovariantF<URI>
+) => TraversableWithKeysK<URI, Fix>
+export function makeTraversableWithKeys<URI, Fix = any>(
+  C: CovariantF<URI, Fix>
 ): (
   _: Omit<
-    TraversableWithKeysF<URI>,
-    "URI" | "TraversableWithKeys" | keyof CovariantF<URI>
+    TraversableWithKeysF<URI, Fix>,
+    "URI" | "Fix" | "TraversableWithKeys" | keyof CovariantF<URI, Fix>
   >
-) => TraversableWithKeysF<URI>
-export function makeTraversableWithKeys<URI>(
-  C: CovariantF<URI>
+) => TraversableWithKeysF<URI, Fix>
+export function makeTraversableWithKeys<URI, Fix = any>(
+  C: CovariantF<URI, Fix>
 ): (
-  _: Omit<TraversableWithKeysF<URI>, "URI" | "TraversableWithKeys">
-) => TraversableWithKeysF<URI> {
+  _: Omit<TraversableWithKeysF<URI, Fix>, "URI" | "Fix" | "TraversableWithKeys">
+) => TraversableWithKeysF<URI, Fix> {
   return (_) => ({
     TraversableWithKeys: "TraversableWithKeys",
     ..._,
@@ -679,39 +207,7 @@ export function makeTraversableWithKeys<URI>(
   })
 }
 
-export function makeTraversableWithKeysE<URI extends URIS>(
-  C: CovariantK<URI>
-): <E>() => (
-  _: Omit<
-    TraversableWithKeysKE<URI, E>,
-    "URI" | "TraversableWithKeys" | keyof CovariantKE<URI, E>
-  >
-) => TraversableWithKeysKE<URI, E>
-export function makeTraversableWithKeysE<URI>(
-  C: CovariantF<URI>
-): <E>() => (
-  _: Omit<
-    TraversableWithKeysFE<URI, E>,
-    "URI" | "TraversableWithKeys" | keyof CovariantFE<URI, E>
-  >
-) => TraversableWithKeysFE<URI, E>
-export function makeTraversableWithKeysE<URI>(
-  C: CovariantF<URI>
-): <E>() => (
-  _: Omit<
-    TraversableWithKeysFE<URI, E>,
-    "URI" | "TraversableWithKeys" | keyof CovariantFE<URI, E>
-  >
-) => TraversableWithKeysFE<URI, E> {
-  return () => (_) => ({
-    TraversableWithKeys: "TraversableWithKeys",
-    E: undefined as any,
-    ..._,
-    ...C
-  })
-}
-
-export function implementForeachWithKeysF<F extends URIS>(F: F) {
+export function implementForeachWithKeysF<F extends URIS, Fix = any>(F: F) {
   return (
     i: <
       FErr,
@@ -719,6 +215,7 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
       FKN extends string,
       A,
       G,
+      GFix,
       GK,
       GKN extends string,
       GX,
@@ -750,12 +247,13 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
     ) => (
       f: (
         a: A,
-        k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-      ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
+        k: KeyFor<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+      ) => HKTFix<G, GFix, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
     ) => (
-      fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT10<
+      fa: KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKTFix<
       G,
+      GFix,
       GK,
       GKN,
       unknown,
@@ -765,9 +263,9 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
       GS,
       GR,
       GE,
-      Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+      KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
     >
-  ): ForeachWithKeysK<F> =>
+  ): ForeachWithKeysK<F, Fix> =>
     i({
       _b: {},
       _ge: {},
@@ -781,60 +279,4 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
       _fkn: undefined as any,
       _fk: {}
     }) as any
-}
-
-export function implementForeachWithKeysFE<F extends URIS>(F: F) {
-  return <E>() => (
-    i: <
-      FK,
-      FKN extends string,
-      GK,
-      GKN extends string,
-      G,
-      GX,
-      GI,
-      GS,
-      GR,
-      GE,
-      A,
-      B,
-      FSI,
-      FSO,
-      FX,
-      FIn,
-      FSt,
-      FEnv
-    >(_: {
-      _g: G
-      _b: B
-      _ge: GE
-      _gi: GI
-      _gs: GS
-      _gr: GR
-      _gx: GX
-      _a: A
-    }) => (
-      G: IdentityBothF<G> & CovariantF<G>
-    ) => (
-      f: (
-        a: A,
-        k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-      ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
-    ) => (
-      fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT10<
-      G,
-      GK,
-      GKN,
-      unknown,
-      unknown,
-      GX,
-      GI,
-      GS,
-      GR,
-      GE,
-      Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
-    >
-  ): ForeachWithKeysK<F> =>
-    i({ _b: {}, _ge: {}, _gi: {}, _gr: {}, _gs: {}, _gx: {}, _g: {}, _a: {} }) as any
 }

@@ -1,17 +1,18 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface AssociativeBothF<F> extends HasURI<F> {
+export interface AssociativeBothF<F, Fix = any> extends HasURI<F, Fix> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <K2, NK2 extends string, SO, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: HKT10<F, K2, NK2, SO, SO2, X2, In2, S, Env2, Err2, B>
+    fb: HKTFix<F, Fix, K2, NK2, SO, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, X, In, Env, Err, A>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => HKT10<
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => HKTFix<
     F,
+    Fix,
     K | K2,
     NK2 | NK,
     SI,
@@ -25,14 +26,15 @@ export interface AssociativeBothF<F> extends HasURI<F> {
   >
 }
 
-export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
+export interface AssociativeBothK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <K2, NK2 extends string, SO, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: Kind<F, K2, NK2, SO, SO2, X2, In2, S, Env2, Err2, B>
+    fb: KindFix<F, Fix, K2, NK2, SO, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, X, In, Env, Err, A>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => Kind<
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => KindFix<
     F,
+    Fix,
     K | K2,
     NK2 | NK,
     SI,
@@ -46,85 +48,25 @@ export interface AssociativeBothK<F extends URIS> extends HasURI<F> {
   >
 }
 
-export interface AssociativeBothFE<F, E> extends HasConstrainedE<F, E> {
-  readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <K2, NK2 extends string, SO, SO2, X2, In2, S, Env2, B>(
-    fb: HKT10<F, K2, NK2, SO, SO2, X2, In2, S, Env2, E, B>
-  ) => <K, NK extends string, SI, X, In, Env, A>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => HKT10<
-    F,
-    K | K2,
-    NK2 | NK,
-    SI,
-    SO2,
-    X2 | X,
-    In2 & In,
-    S,
-    Env2 & Env,
-    E,
-    readonly [A, B]
-  >
-}
-
-export interface AssociativeBothKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly AssociativeBoth: "AssociativeBoth"
-  readonly both: <K2, NK2 extends string, SO, SO2, X2, In2, S, Env2, B>(
-    fb: Kind<F, K2, NK2, SO, SO2, X2, In2, S, Env2, E, B>
-  ) => <K, NK extends string, SI, X, In, Env, A>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => Kind<
-    F,
-    K | K2,
-    NK2 | NK,
-    SI,
-    SO2,
-    X2 | X,
-    In2 & In,
-    S,
-    Env2 & Env,
-    E,
-    readonly [A, B]
-  >
-}
-
-export function makeAssociativeBoth<URI extends URIS>(
+export function makeAssociativeBoth<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<AssociativeBothK<URI>, "URI" | "AssociativeBoth">) => AssociativeBothK<URI>
-export function makeAssociativeBoth<URI>(
-  URI: URI
-): (_: Omit<AssociativeBothF<URI>, "URI" | "AssociativeBoth">) => AssociativeBothF<URI>
-export function makeAssociativeBoth<URI>(
+): (
+  _: Omit<AssociativeBothK<URI, Fix>, "URI" | "Fix" | "AssociativeBoth">
+) => AssociativeBothK<URI, Fix>
+export function makeAssociativeBoth<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<AssociativeBothF<URI>, "URI" | "AssociativeBoth">
-) => AssociativeBothF<URI> {
+  _: Omit<AssociativeBothF<URI, Fix>, "URI" | "Fix" | "AssociativeBoth">
+) => AssociativeBothF<URI, Fix>
+export function makeAssociativeBoth<URI, Fix = any>(
+  URI: URI
+): (
+  _: Omit<AssociativeBothF<URI, Fix>, "URI" | "Fix" | "AssociativeBoth">
+) => AssociativeBothF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     AssociativeBoth: "AssociativeBoth",
-    ..._
-  })
-}
-
-export function makeAssociativeBothE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<AssociativeBothKE<URI, E>, "URI" | "AssociativeBoth" | "E">
-) => AssociativeBothKE<URI, E>
-export function makeAssociativeBothE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<AssociativeBothFE<URI, E>, "URI" | "AssociativeBoth" | "E">
-) => AssociativeBothFE<URI, E>
-export function makeAssociativeBothE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<AssociativeBothFE<URI, E>, "URI" | "AssociativeBoth" | "E">
-) => AssociativeBothFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    AssociativeBoth: "AssociativeBoth",
-    E: undefined as any,
     ..._
   })
 }

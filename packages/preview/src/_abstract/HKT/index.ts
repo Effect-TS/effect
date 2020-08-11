@@ -64,8 +64,37 @@ export type HKT9<URI, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKT
   Out
 >
 
-export interface HKT10<URI, K, NK extends string, SI, SO, X, In, St, Env, Err, Out> {
+export type HKT10<URI, K, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKTFix<
+  URI,
+  any,
+  K,
+  NK,
+  SI,
+  SO,
+  X,
+  In,
+  St,
+  Env,
+  Err,
+  Out
+>
+
+export interface HKTFix<
+  URI,
+  Fix,
+  K,
+  NK extends string,
+  SI,
+  SO,
+  X,
+  In,
+  St,
+  Env,
+  Err,
+  Out
+> {
   readonly _URI: URI
+  readonly _Fix: Fix
   readonly _Out: () => Out
   readonly _Err: () => Err
   readonly _Env: (_: Env) => void
@@ -82,6 +111,8 @@ export interface HKT10<URI, K, NK extends string, SI, SO, X, In, St, Env, Err, O
  * Typelevel Map: URI => Type
  */
 export interface URItoKind<
+  // Encode fixed parameters for derived instances (eg: Validation<E, *> given Identity<E>)
+  Fix,
   // Encode generic keys
   K,
   // Encode nominal (string based) keys
@@ -107,7 +138,19 @@ export interface URItoKind<
 /**
  * URI of the Typelevel Map
  */
-export type URIS = keyof URItoKind<any, any, any, any, any, any, any, any, any, any>
+export type URIS = keyof URItoKind<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
 /**
  * Kind<F, A> = URItoKind[F][A]
@@ -124,13 +167,33 @@ export type Kind<
   Env,
   Err,
   Out
-> = URI extends URIS ? URItoKind<K, NK, SI, SO, X, In, St, Env, Err, Out>[URI] : any
+> = URI extends URIS
+  ? URItoKind<any, K, NK, SI, SO, X, In, St, Env, Err, Out>[URI]
+  : any
+
+export type KindFix<
+  URI extends URIS,
+  Fix,
+  K,
+  NK extends string,
+  SI,
+  SO,
+  X,
+  In,
+  St,
+  Env,
+  Err,
+  Out
+> = URI extends URIS
+  ? URItoKind<Fix, K, NK, SI, SO, X, In, St, Env, Err, Out>[URI]
+  : any
 
 /**
  * Used to require URI in typeclasses
  */
-export interface HasURI<F> {
+export interface HasURI<F, Fix = any> {
   readonly URI: F
+  readonly Fix: Fix
 }
 
 export interface HasConstrainedE<F, X> extends HasURI<F> {
@@ -233,10 +296,11 @@ export function castK() {
   return () => identity as any
 }
 
-export interface URItoKeys<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {}
+export interface URItoKeys<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {}
 
 export type KeyFor<
   F,
+  Fix,
   K,
   NK extends string,
   SI,
@@ -247,6 +311,6 @@ export type KeyFor<
   Env,
   Err,
   Out
-> = F extends keyof URItoKeys<any, any, any, any, any, any, any, any, any, any>
-  ? URItoKeys<K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
+> = F extends keyof URItoKeys<any, any, any, any, any, any, any, any, any, any, any>
+  ? URItoKeys<Fix, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
   : never

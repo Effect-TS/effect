@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * `AssociativeFlatten` describes a type that can be "flattened" in an
@@ -8,7 +8,7 @@ import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
  * resulting list. Because the operation is associative, the resulting list is
  * the same either way.
  */
-export interface AssociativeFlattenF<F> extends HasURI<F> {
+export interface AssociativeFlattenF<F, Fix = any> extends HasURI<F, Fix> {
   readonly AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <
     K,
@@ -29,8 +29,9 @@ export interface AssociativeFlattenF<F> extends HasURI<F> {
     Err1,
     A
   >(
-    fb: HKT10<
+    fb: HKTFix<
       F,
+      Fix,
       K,
       NK,
       SI,
@@ -40,12 +41,12 @@ export interface AssociativeFlattenF<F> extends HasURI<F> {
       S,
       Env,
       Err,
-      HKT10<F, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
+      HKTFix<F, Fix, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => HKT10<F, K1, NK1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
+  ) => HKTFix<F, Fix, K1, NK1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
-export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
+export interface AssociativeFlattenK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <
     K,
@@ -66,8 +67,9 @@ export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
     Err1,
     A
   >(
-    fb: Kind<
+    fb: KindFix<
       F,
+      Fix,
       K,
       NK,
       SI,
@@ -77,122 +79,30 @@ export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
       S,
       Env,
       Err,
-      Kind<F, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
+      KindFix<F, Fix, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => Kind<F, K1, NK1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
+  ) => KindFix<F, Fix, K1, NK1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
-export interface AssociativeFlattenFE<F, E> extends HasConstrainedE<F, E> {
-  readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <
-    K,
-    NK extends string,
-    SI,
-    SO,
-    X,
-    In,
-    S,
-    Env,
-    K1,
-    NK1 extends string,
-    SO1,
-    X1,
-    In1,
-    Env1,
-    A
-  >(
-    fb: HKT10<
-      F,
-      K,
-      NK,
-      SI,
-      SO,
-      X,
-      In,
-      S,
-      Env,
-      E,
-      HKT10<F, K1, NK1, SO, SO1, X1, In1, S, Env1, E, A>
-    >
-  ) => HKT10<F, K1, NK1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
-}
-
-export interface AssociativeFlattenKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly AssociativeFlatten: "AssociativeFlatten"
-  readonly flatten: <
-    K,
-    NK extends string,
-    SI,
-    SO,
-    X,
-    In,
-    S,
-    Env,
-    K1,
-    NK1 extends string,
-    SO1,
-    X1,
-    In1,
-    Env1,
-    A
-  >(
-    fb: Kind<
-      F,
-      K,
-      NK,
-      SI,
-      SO,
-      X,
-      In,
-      S,
-      Env,
-      E,
-      Kind<F, K1, NK1, SO, SO1, X1, In1, S, Env1, E, A>
-    >
-  ) => Kind<F, K1, NK1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
-}
-
-export function makeAssociativeFlatten<URI extends URIS>(
+export function makeAssociativeFlatten<URI extends URIS, Fix = any>(
   _: URI
 ): (
-  _: Omit<AssociativeFlattenK<URI>, "URI" | "AssociativeFlatten">
-) => AssociativeFlattenK<URI>
-export function makeAssociativeFlatten<URI>(
+  _: Omit<AssociativeFlattenK<URI, Fix>, "URI" | "Fix" | "AssociativeFlatten">
+) => AssociativeFlattenK<URI, Fix>
+export function makeAssociativeFlatten<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<AssociativeFlattenF<URI>, "URI" | "AssociativeFlatten">
-) => AssociativeFlattenF<URI>
-export function makeAssociativeFlatten<URI>(
+  _: Omit<AssociativeFlattenF<URI, Fix>, "URI" | "Fix" | "AssociativeFlatten">
+) => AssociativeFlattenF<URI, Fix>
+export function makeAssociativeFlatten<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<AssociativeFlattenF<URI>, "URI" | "AssociativeFlatten">
-) => AssociativeFlattenF<URI> {
+  _: Omit<AssociativeFlattenF<URI, Fix>, "URI" | "Fix" | "AssociativeFlatten">
+) => AssociativeFlattenF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     AssociativeFlatten: "AssociativeFlatten",
-    ..._
-  })
-}
-
-export function makeAssociativeFlattenE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<AssociativeFlattenKE<URI, E>, "URI" | "AssociativeFlatten" | "E">
-) => AssociativeFlattenKE<URI, E>
-export function makeAssociativeFlattenE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<AssociativeFlattenFE<URI, E>, "URI" | "AssociativeFlatten" | "E">
-) => AssociativeFlattenFE<URI, E>
-export function makeAssociativeFlattenE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<AssociativeFlattenFE<URI, E>, "URI" | "AssociativeFlatten" | "E">
-) => AssociativeFlattenFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    AssociativeFlatten: "AssociativeFlatten",
-    E: undefined as any,
     ..._
   })
 }

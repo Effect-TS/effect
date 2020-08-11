@@ -1,47 +1,24 @@
-import { CovariantF, CovariantFE, CovariantK, CovariantKE } from "../Covariant"
+import { CovariantF, CovariantK } from "../Covariant"
 import { URIS } from "../HKT"
-import {
-  IdentityBothF,
-  IdentityBothFE,
-  IdentityBothK,
-  IdentityBothKE
-} from "../IdentityBoth"
+import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
-export type ApplicativeF<F> = IdentityBothF<F> & CovariantF<F>
+export type ApplicativeF<F, Fix = any> = IdentityBothF<F, Fix> & CovariantF<F, Fix>
 
-export type ApplicativeFE<F, E> = IdentityBothFE<F, E> & CovariantFE<F, E>
+export type ApplicativeK<F extends URIS, Fix = any> = IdentityBothK<F, Fix> &
+  CovariantK<F, Fix>
 
-export type ApplicativeK<F extends URIS> = IdentityBothK<F> & CovariantK<F>
-
-export type ApplicativeKE<F extends URIS, E> = IdentityBothKE<F, E> & CovariantKE<F, E>
-
-export function makeApplicative<URI extends URIS>(
+export function makeApplicative<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<ApplicativeK<URI>, "URI">) => ApplicativeK<URI>
-export function makeApplicative<URI>(
+): (_: Omit<ApplicativeK<URI, Fix>, "URI" | "Fix">) => ApplicativeK<URI, Fix>
+export function makeApplicative<URI, Fix = any>(
   URI: URI
-): (_: Omit<ApplicativeF<URI>, "URI">) => ApplicativeF<URI>
-export function makeApplicative<URI>(
+): (_: Omit<ApplicativeF<URI, Fix>, "URI" | "Fix">) => ApplicativeF<URI, Fix>
+export function makeApplicative<URI, Fix = any>(
   URI: URI
-): (_: Omit<ApplicativeF<URI>, "URI">) => ApplicativeF<URI> {
+): (_: Omit<ApplicativeF<URI, Fix>, "URI" | "Fix">) => ApplicativeF<URI, Fix> {
   return (_) => ({
     URI,
-    ..._
-  })
-}
-
-export function makeApplicativeE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<ApplicativeKE<URI, E>, "URI" | "E">) => ApplicativeKE<URI, E>
-export function makeApplicativeE<URI>(
-  URI: URI
-): <E>() => (_: Omit<ApplicativeFE<URI, E>, "URI" | "E">) => ApplicativeFE<URI, E>
-export function makeApplicativeE<URI>(
-  URI: URI
-): <E>() => (_: Omit<ApplicativeFE<URI, E>, "URI" | "E">) => ApplicativeFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    E: undefined as any,
+    Fix: undefined as any,
     ..._
   })
 }

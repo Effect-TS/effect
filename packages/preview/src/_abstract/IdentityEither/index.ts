@@ -1,54 +1,28 @@
-import {
-  AssociativeEitherK,
-  AssociativeEitherF,
-  AssociativeEitherKE,
-  AssociativeEitherFE
-} from "../AssociativeEither"
+import { AssociativeEitherF, AssociativeEitherK } from "../AssociativeEither"
 import { URIS } from "../HKT"
-import { NoneK, NoneF, NoneKE, NoneFE } from "../None"
+import { NoneF, NoneK } from "../None"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[Either[A, B]]` with an identity value.
  */
-export type IdentityEitherF<F> = AssociativeEitherF<F> & NoneF<F>
+export type IdentityEitherF<F, Fix = any> = AssociativeEitherF<F, Fix> & NoneF<F, Fix>
 
-export type IdentityEitherK<F extends URIS> = AssociativeEitherK<F> & NoneK<F>
+export type IdentityEitherK<F extends URIS, Fix = any> = AssociativeEitherK<F, Fix> &
+  NoneK<F, Fix>
 
-export type IdentityEitherFE<F, E> = AssociativeEitherFE<F, E> & NoneFE<F, E>
-
-export type IdentityEitherKE<F extends URIS, E> = AssociativeEitherKE<F, E> &
-  NoneKE<F, E>
-
-export function makeIdentityEither<URI extends URIS>(
+export function makeIdentityEither<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<IdentityEitherK<URI>, "URI">) => IdentityEitherK<URI>
-export function makeIdentityEither<URI>(
+): (_: Omit<IdentityEitherK<URI, Fix>, "URI" | "Fix">) => IdentityEitherK<URI, Fix>
+export function makeIdentityEither<URI, Fix = any>(
   URI: URI
-): (_: Omit<IdentityEitherF<URI>, "URI">) => IdentityEitherF<URI>
-export function makeIdentityEither<URI>(
+): (_: Omit<IdentityEitherF<URI, Fix>, "URI" | "Fix">) => IdentityEitherF<URI, Fix>
+export function makeIdentityEither<URI, Fix = any>(
   URI: URI
-): (_: Omit<IdentityEitherF<URI>, "URI">) => IdentityEitherF<URI> {
+): (_: Omit<IdentityEitherF<URI, Fix>, "URI" | "Fix">) => IdentityEitherF<URI, Fix> {
   return (_) => ({
     URI,
-    ..._
-  })
-}
-
-export function makeIdentityEitherE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<IdentityEitherKE<URI, E>, "URI" | "E">) => IdentityEitherKE<URI, E>
-export function makeIdentityEitherE<URI, E>(
-  URI: URI
-): <E>() => (_: Omit<IdentityEitherFE<URI, E>, "URI" | "E">) => IdentityEitherFE<URI, E>
-export function makeIdentityEitherE<URI, E>(
-  URI: URI
-): <E>() => (
-  _: Omit<IdentityEitherFE<URI, E>, "URI" | "E">
-) => IdentityEitherFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    E: undefined as any,
+    Fix: undefined as any,
     ..._
   })
 }

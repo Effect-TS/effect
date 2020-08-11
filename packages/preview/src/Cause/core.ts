@@ -11,7 +11,7 @@ export const CauseURI = "Cause"
 export type CauseURI = typeof CauseURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [CauseURI]: C.Cause<Out>
   }
 }

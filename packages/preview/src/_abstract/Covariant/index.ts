@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -22,77 +22,39 @@ import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
  * `string => number` that returns the length of a string, then we can construct
  * a `Array<number>` with the length of each string.
  */
-export interface CovariantF<F> extends HasURI<F> {
+export interface CovariantF<F, Fix = any> extends HasURI<F, Fix> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, A>
-  ) => HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, B>
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => HKTFix<F, Fix, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
-export interface CovariantK<F extends URIS> extends HasURI<F> {
+export interface CovariantK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
-    fa: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, A>
-  ) => Kind<F, K, NK, SI, SO, X, In, St, Env, Err, B>
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => KindFix<F, Fix, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
-export interface CovariantFE<F, E> extends HasConstrainedE<F, E> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(
-    f: (a: A) => B
-  ) => <K, NK extends string, SI, SO, X, In, St, Env>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, St, Env, E, A>
-  ) => HKT10<F, K, NK, SI, SO, X, In, St, Env, E, B>
-}
-
-export interface CovariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly Covariant: "Covariant"
-  readonly map: <A, B>(
-    f: (a: A) => B
-  ) => <K, NK extends string, SI, SO, X, In, St, Env>(
-    fa: Kind<F, K, NK, SI, SO, X, In, St, Env, E, A>
-  ) => Kind<F, K, NK, SI, SO, X, In, St, Env, E, B>
-}
-
-export function makeCovariant<URI extends URIS>(
+export function makeCovariant<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<CovariantK<URI>, "URI" | "Covariant">) => CovariantK<URI>
-export function makeCovariant<URI>(
+): (_: Omit<CovariantK<URI, Fix>, "URI" | "Fix" | "Covariant">) => CovariantK<URI, Fix>
+export function makeCovariant<URI, Fix = any>(
   URI: URI
-): (_: Omit<CovariantF<URI>, "URI" | "Covariant">) => CovariantF<URI>
-export function makeCovariant<URI>(
+): (_: Omit<CovariantF<URI, Fix>, "URI" | "Fix" | "Covariant">) => CovariantF<URI, Fix>
+export function makeCovariant<URI, Fix = any>(
   URI: URI
-): (_: Omit<CovariantF<URI>, "URI" | "Covariant">) => CovariantF<URI> {
+): (
+  _: Omit<CovariantF<URI, Fix>, "URI" | "Fix" | "Covariant">
+) => CovariantF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     Covariant: "Covariant",
-    ..._
-  })
-}
-
-export function makeCovariantE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<CovariantKE<URI, E>, "URI" | "Covariant" | "E">
-) => CovariantKE<URI, E>
-export function makeCovariantE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<CovariantFE<URI, E>, "URI" | "Covariant" | "E">
-) => CovariantFE<URI, E>
-export function makeCovariantE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<CovariantFE<URI, E>, "URI" | "Covariant" | "E">
-) => CovariantFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    Covariant: "Covariant",
-    E: undefined as any,
     ..._
   })
 }

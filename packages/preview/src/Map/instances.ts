@@ -1,14 +1,9 @@
 import { pipe } from "../Function"
 import { makeAny } from "../_abstract/Any"
-import { makeCovariant, makeCovariantE } from "../_abstract/Covariant"
+import { makeCovariant } from "../_abstract/Covariant"
 import { anyF } from "../_abstract/DSL"
 import { Ord } from "../_abstract/Ord"
-import {
-  implementForeachF,
-  implementForeachFE,
-  makeTraversable,
-  makeTraversableE
-} from "../_abstract/Traversable"
+import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
 import {
   implementForeachWithKeysF,
   makeTraversableWithKeys
@@ -21,16 +16,16 @@ export const MapURI = "Map"
 export type MapURI = typeof MapURI
 
 export const MapFixedURI = "MapFixed"
-export type MapFixedURI = typeof MapURI
+export type MapFixedURI = typeof MapFixedURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [MapURI]: M.Map<K, Out>
-    [MapFixedURI]: M.Map<Err, Out>
+    [MapFixedURI]: M.Map<Fix, Out>
   }
-  interface URItoKeys<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKeys<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [MapURI]: K
-    [MapFixedURI]: Err
+    [MapFixedURI]: Fix
   }
 }
 
@@ -52,7 +47,7 @@ export const Covariant = makeCovariant(MapURI)({
  * The `Covariant` instance for `Map[K, +_]`
  */
 export const getCovariant = <K>() =>
-  makeCovariantE(MapFixedURI)<K>()({
+  makeCovariant<MapFixedURI, K>(MapFixedURI)({
     map: M.map
   })
 
@@ -120,7 +115,7 @@ export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
  * The `Traversable` instance for `Map[+_, +_]` with order enstablished via `Ord[K]`
  */
 export const getTraversable = <K>(O: Ord<K>) =>
-  makeTraversableE(getCovariant<K>())({
+  makeTraversable(getCovariant<K>())({
     foreachF: getForeachF<K>(O)
   })
 
@@ -128,20 +123,22 @@ export const getTraversable = <K>(O: Ord<K>) =>
  * Traversable's foreachF for Map[K, _+] given Ord[K].
  */
 export function getForeachF<K>(O: Ord<K>) {
-  return implementForeachFE(MapFixedURI)<K>()(({ _b }) => (G) => (f) => (fa) => {
-    let fm = anyF(G)<M.Map<K, typeof _b>>(M.empty)
-    const ks = getKeys(O)(fa)
-    for (const key of ks) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const a = fa.get(key)!
-      fm = pipe(
-        fm,
-        G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
-        G.both(f(a)),
-        G.map(([g, b]) => g(b))
-      )
-    }
+  return implementForeachF<MapFixedURI, K>(MapFixedURI)(
+    ({ _b }) => (G) => (f) => (fa) => {
+      let fm = anyF(G)<M.Map<K, typeof _b>>(M.empty)
+      const ks = getKeys(O)(fa)
+      for (const key of ks) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const a = fa.get(key)!
+        fm = pipe(
+          fm,
+          G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
+          G.both(f(a)),
+          G.map(([g, b]) => g(b))
+        )
+      }
 
-    return fm
-  })
+      return fm
+    }
+  )
 }

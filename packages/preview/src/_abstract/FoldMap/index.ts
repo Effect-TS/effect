@@ -1,83 +1,45 @@
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 import { Identity } from "../Identity"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface FoldMapF<F> extends HasURI<F> {
+export interface FoldMapF<F, Fix = any> extends HasURI<F, Fix> {
   readonly FoldMap: "FoldMap"
   readonly foldMap: <M>(
     I: Identity<M>
   ) => <A>(
     f: (a: A) => M
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => M
 }
 
-export interface FoldMapK<F extends URIS> extends HasURI<F> {
+export interface FoldMapK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly FoldMap: "FoldMap"
   readonly foldMap: <M>(
     I: Identity<M>
   ) => <A>(
     f: (a: A) => M
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => M
 }
 
-export interface FoldMapFE<F, E> extends HasConstrainedE<F, E> {
-  readonly FoldMap: "FoldMap"
-  readonly foldMap: <M>(
-    I: Identity<M>
-  ) => <A>(
-    f: (a: A) => M
-  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => M
-}
-
-export interface FoldMapKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly FoldMap: "FoldMap"
-  readonly foldMap: <M>(
-    I: Identity<M>
-  ) => <A>(
-    f: (a: A) => M
-  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => M
-}
-
-export function makeFoldMap<URI extends URIS>(
+export function makeFoldMap<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<FoldMapK<URI>, "URI" | "FoldMap">) => FoldMapK<URI>
-export function makeFoldMap<URI>(
+): (_: Omit<FoldMapK<URI, Fix>, "URI" | "Fix" | "FoldMap">) => FoldMapK<URI, Fix>
+export function makeFoldMap<URI, Fix = any>(
   URI: URI
-): (_: Omit<FoldMapF<URI>, "URI" | "FoldMap">) => FoldMapF<URI>
-export function makeFoldMap<URI>(
+): (_: Omit<FoldMapF<URI, Fix>, "URI" | "Fix" | "FoldMap">) => FoldMapF<URI, Fix>
+export function makeFoldMap<URI, Fix = any>(
   URI: URI
-): (_: Omit<FoldMapF<URI>, "URI" | "FoldMap">) => FoldMapF<URI> {
+): (_: Omit<FoldMapF<URI, Fix>, "URI" | "Fix" | "FoldMap">) => FoldMapF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     FoldMap: "FoldMap",
-    ..._
-  })
-}
-
-export function makeFoldMapE<URI extends URIS>(
-  _: URI
-): <E>() => (_: Omit<FoldMapKE<URI, E>, "URI" | "FoldMap" | "E">) => FoldMapKE<URI, E>
-export function makeFoldMapE<URI>(
-  URI: URI
-): <E>() => (_: Omit<FoldMapFE<URI, E>, "URI" | "FoldMap" | "E">) => FoldMapFE<URI, E>
-export function makeFoldMapE<URI>(
-  URI: URI
-): <E>() => (_: Omit<FoldMapFE<URI, E>, "URI" | "FoldMap" | "E">) => FoldMapFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    FoldMap: "FoldMap",
-    E: undefined as any,
     ..._
   })
 }

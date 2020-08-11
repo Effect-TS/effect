@@ -1,18 +1,19 @@
 import * as E from "../../Either"
-import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
+import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[Either[A, B]]`.
  */
-export interface AssociativeEitherF<F> extends HasURI<F> {
+export interface AssociativeEitherF<F, Fix = any> extends HasURI<F, Fix> {
   readonly AssociativeEither: "AssociativeEither"
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: HKT10<F, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
+    fb: HKTFix<F, Fix, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, Err, A>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => HKT10<
+    fa: HKTFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => HKTFix<
     F,
+    Fix,
     K | K2,
     NK | NK2,
     SI & SI2,
@@ -26,14 +27,15 @@ export interface AssociativeEitherF<F> extends HasURI<F> {
   >
 }
 
-export interface AssociativeEitherK<F extends URIS> extends HasURI<F> {
+export interface AssociativeEitherK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   readonly AssociativeEither: "AssociativeEither"
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: Kind<F, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
+    fb: KindFix<F, Fix, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, Err, A>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => Kind<
+    fa: KindFix<F, Fix, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => KindFix<
     F,
+    Fix,
     K | K2,
     NK | NK2,
     SI & SI2,
@@ -47,89 +49,25 @@ export interface AssociativeEitherK<F extends URIS> extends HasURI<F> {
   >
 }
 
-export interface AssociativeEitherFE<F, E> extends HasConstrainedE<F, E> {
-  readonly AssociativeEither: "AssociativeEither"
-  readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, B>(
-    fb: HKT10<F, K2, NK2, SI2, SO2, X2, In2, S, Env2, E, B>
-  ) => <K, NK extends string, SI, SO, X, In, Env, A>(
-    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => HKT10<
-    F,
-    K | K2,
-    NK | NK2,
-    SI & SI2,
-    SO | SO2,
-    X2 | X,
-    In2 & In,
-    S,
-    Env2 & Env,
-    E,
-    E.Either<A, B>
-  >
-}
-
-export interface AssociativeEitherKE<F extends URIS, E> extends HasConstrainedE<F, E> {
-  readonly AssociativeEither: "AssociativeEither"
-  readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, B>(
-    fb: Kind<F, K2, NK2, SI2, SO2, X2, In2, S, Env2, E, B>
-  ) => <K, NK extends string, SI, SO, X, In, Env, A>(
-    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => Kind<
-    F,
-    K | K2,
-    NK | NK2,
-    SI & SI2,
-    SO | SO2,
-    X2 | X,
-    In2 & In,
-    S,
-    Env2 & Env,
-    E,
-    E.Either<A, B>
-  >
-}
-
-export function makeAssociativeEither<URI extends URIS>(
+export function makeAssociativeEither<URI extends URIS, Fix = any>(
   _: URI
 ): (
-  _: Omit<AssociativeEitherK<URI>, "URI" | "AssociativeEither">
-) => AssociativeEitherK<URI>
-export function makeAssociativeEither<URI>(
+  _: Omit<AssociativeEitherK<URI, Fix>, "URI" | "Fix" | "AssociativeEither">
+) => AssociativeEitherK<URI, Fix>
+export function makeAssociativeEither<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<AssociativeEitherF<URI>, "URI" | "AssociativeEither">
-) => AssociativeEitherF<URI>
-export function makeAssociativeEither<URI>(
+  _: Omit<AssociativeEitherF<URI, Fix>, "URI" | "Fix" | "AssociativeEither">
+) => AssociativeEitherF<URI, Fix>
+export function makeAssociativeEither<URI, Fix = any>(
   URI: URI
 ): (
-  _: Omit<AssociativeEitherF<URI>, "URI" | "AssociativeEither">
-) => AssociativeEitherF<URI> {
+  _: Omit<AssociativeEitherF<URI, Fix>, "URI" | "Fix" | "AssociativeEither">
+) => AssociativeEitherF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     AssociativeEither: "AssociativeEither",
-    ..._
-  })
-}
-
-export function makeAssociativeEitherE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<AssociativeEitherKE<URI, E>, "URI" | "AssociativeEither" | "E">
-) => AssociativeEitherKE<URI, E>
-export function makeAssociativeEitherE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<AssociativeEitherFE<URI, E>, "URI" | "AssociativeEither" | "E">
-) => AssociativeEitherFE<URI, E>
-export function makeAssociativeEitherE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<AssociativeEitherFE<URI, E>, "URI" | "AssociativeEither" | "E">
-) => AssociativeEitherFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    AssociativeEither: "AssociativeEither",
-    E: undefined as any,
     ..._
   })
 }

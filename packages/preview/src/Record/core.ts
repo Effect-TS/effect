@@ -15,10 +15,10 @@ export const RecordURI = "Record"
 export type RecordURI = typeof RecordURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [RecordURI]: R.Record<NK, Out>
   }
-  interface URItoKeys<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKeys<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [RecordURI]: NK
   }
 }

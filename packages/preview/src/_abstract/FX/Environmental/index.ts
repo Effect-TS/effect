@@ -1,62 +1,35 @@
-import { CovariantF, CovariantFE, CovariantK, CovariantKE } from "../../Covariant"
+import { CovariantF, CovariantK } from "../../Covariant"
 import { URIS } from "../../HKT"
-import {
-  IdentityFlattenF,
-  IdentityFlattenFE,
-  IdentityFlattenK,
-  IdentityFlattenKE
-} from "../../IdentityFlatten"
-import { AccessF, AccessFE, AccessK, AccessKE } from "../Access"
+import { IdentityFlattenF, IdentityFlattenK } from "../../IdentityFlatten"
+import { AccessF, AccessK } from "../Access"
 
-export type EnvironmentalF<F> = IdentityFlattenF<F> & AccessF<F> & CovariantF<F>
+export type EnvironmentalF<F, Fix = any> = IdentityFlattenF<F, Fix> &
+  AccessF<F, Fix> &
+  CovariantF<F, Fix>
 
-export type EnvironmentalK<F extends URIS> = IdentityFlattenK<F> &
-  AccessK<F> &
-  CovariantK<F>
+export type EnvironmentalK<F extends URIS, Fix = any> = IdentityFlattenK<F, Fix> &
+  AccessK<F, Fix> &
+  CovariantK<F, Fix>
 
-export type EnvironmentalFE<F, E> = IdentityFlattenFE<F, E> &
-  AccessFE<F, E> &
-  CovariantFE<F, E>
-
-export type EnvironmentalKE<F extends URIS, E> = IdentityFlattenKE<F, E> &
-  AccessKE<F, E> &
-  CovariantKE<F, E>
-
-export function makeEnvironmental<URI extends URIS>(
+export function makeEnvironmental<URI extends URIS, Fix = any>(
   _: URI
-): (_: Omit<EnvironmentalK<URI>, "URI" | "Environmental">) => EnvironmentalK<URI>
-export function makeEnvironmental<URI>(
+): (
+  _: Omit<EnvironmentalK<URI, Fix>, "URI" | "Fix" | "Environmental">
+) => EnvironmentalK<URI, Fix>
+export function makeEnvironmental<URI, Fix = any>(
   URI: URI
-): (_: Omit<EnvironmentalF<URI>, "URI" | "Environmental">) => EnvironmentalF<URI>
-export function makeEnvironmental<URI>(
+): (
+  _: Omit<EnvironmentalF<URI, Fix>, "URI" | "Fix" | "Environmental">
+) => EnvironmentalF<URI, Fix>
+export function makeEnvironmental<URI, Fix = any>(
   URI: URI
-): (_: Omit<EnvironmentalF<URI>, "URI" | "Environmental">) => EnvironmentalF<URI> {
+): (
+  _: Omit<EnvironmentalF<URI, Fix>, "URI" | "Fix" | "Environmental">
+) => EnvironmentalF<URI, Fix> {
   return (_) => ({
     URI,
+    Fix: undefined as any,
     Environmental: "Environmental",
-    ..._
-  })
-}
-
-export function makeEnvironmentalE<URI extends URIS>(
-  _: URI
-): <E>() => (
-  _: Omit<EnvironmentalKE<URI, E>, "URI" | "Environmental" | "E">
-) => EnvironmentalKE<URI, E>
-export function makeEnvironmentalE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<EnvironmentalFE<URI, E>, "URI" | "Environmental" | "E">
-) => EnvironmentalFE<URI, E>
-export function makeEnvironmentalE<URI>(
-  URI: URI
-): <E>() => (
-  _: Omit<EnvironmentalFE<URI, E>, "URI" | "Environmental" | "E">
-) => EnvironmentalFE<URI, E> {
-  return () => (_) => ({
-    URI,
-    Environmental: "Environmental",
-    E: undefined as any,
     ..._
   })
 }

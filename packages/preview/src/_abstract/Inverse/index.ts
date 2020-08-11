@@ -13,7 +13,7 @@ export const InverseURI = "Inverse"
 export type InverseURI = typeof InverseURI
 
 declare module "../HKT" {
-  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [InverseURI]: Inverse<Out>
   }
 }
