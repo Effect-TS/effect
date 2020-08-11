@@ -234,3 +234,39 @@ export function getValidationZip<E>(
     }
   }
 }
+
+/**
+ * The `Any` instance for `Validation<E, *>`
+ */
+export function getValidationAny<E>(A: Associative<E>) {
+  return makeAny<ValidationURI, E>(ValidationURI)({
+    any: () => E.right({})
+  })
+}
+
+/**
+ * The `Covariant` instance for `Validation<E, *>`
+ */
+export function getValidationCovariant<E>() {
+  return makeCovariant<ValidationURI, E>(ValidationURI)({
+    map: E.map
+  })
+}
+
+/**
+ * The `Applicative` instance for `Validation<E, *>`
+ */
+export function getValidationIdentityBoth<E>(A: Associative<E>) {
+  return makeIdentityBoth<ValidationURI, E>(ValidationURI)(
+    intersect(getValidationAny(A), getValidationAssociativeBoth(A))
+  )
+}
+
+/**
+ * The `Applicative` instance for `Validation<E, *>`
+ */
+export function getValidationApplicative<E>(A: Associative<E>) {
+  return makeApplicative<ValidationURI, E>(ValidationURI)(
+    intersect(getValidationCovariant<E>(), getValidationIdentityBoth(A))
+  )
+}
