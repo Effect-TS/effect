@@ -4,7 +4,7 @@ import * as R from "../src/Record"
 
 pipe(
   { a: "a", b: "b" },
-  R.foreachF(T.ApplicativePar)((s) => T.effectTotal(() => `(${s})`)),
+  R.foreachWithKeysF(T.ApplicativePar)((s, k) => T.effectTotal(() => `[${k}]: (${s})`)),
   T.chain((r) =>
     T.effectTotal(() => {
       console.log(r)

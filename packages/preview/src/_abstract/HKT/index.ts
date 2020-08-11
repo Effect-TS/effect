@@ -214,3 +214,20 @@ export function castK<T extends string>(): {
 export function castK() {
   return () => identity as any
 }
+
+export interface URItoKeys<K extends string, SI, SO, X, I, S, Env, Err, Out> {}
+
+export type KeyFor<
+  F,
+  K extends string,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  Env,
+  Err,
+  Out
+> = F extends keyof URItoKeys<any, any, any, any, any, any, any, any, any>
+  ? URItoKeys<K, SI, SO, X, I, S, Env, Err, Out>[F]
+  : never

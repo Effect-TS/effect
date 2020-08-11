@@ -5,6 +5,10 @@ import { Identity, makeIdentity } from "../Identity"
 import { makeAny } from "../_abstract/Any"
 import { makeCovariant } from "../_abstract/Covariant"
 import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
+import {
+  implementForeachWithKeysF,
+  makeTraversableWithKeys
+} from "../_abstract/TraversableWithKeys"
 import * as R from "../_system/Record"
 
 export const RecordURI = "Record"
@@ -13,6 +17,9 @@ export type RecordURI = typeof RecordURI
 declare module "../_abstract/HKT" {
   interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
     [RecordURI]: R.Record<K, Out>
+  }
+  interface URItoKeys<K extends string, SI, SO, X, I, S, Env, Err, Out> {
+    [RecordURI]: K
   }
 }
 
@@ -31,16 +38,16 @@ export const Covariant = makeCovariant(RecordURI)({
 })
 
 /**
- * Traversable's `foreachF` for `Record[+_: String, +_]`.
+ * TraversableWithKeys's `foreachWithKeysF` for `Record[+_: String, +_]`.
  */
-export const foreachF = implementForeachF(RecordURI)(({ _b, _fk }) => {
+export const foreachWithKeysF = implementForeachWithKeysF(RecordURI)(({ _b, _fk }) => {
   const I = getIdentitySpread<typeof _b>()<typeof _fk>()
   return (G) => (f) => (fa) =>
     pipe(
       R.collect_(fa, (k, a) => tuple(k, a)),
       A.foreachF(G)(([k, a]) =>
         pipe(
-          f(a),
+          f(a, k),
           G.map((b) => tuple(k, b))
         )
       ),
@@ -56,10 +63,28 @@ export const foreachF = implementForeachF(RecordURI)(({ _b, _fk }) => {
 })
 
 /**
+ * Traversable's `foreachF` for `Record[+_: String, +_]`.
+ */
+export const foreachF = implementForeachF(RecordURI)(({ _b, _fk }) => {
+  return (G) => (f) => (fa) =>
+    pipe(
+      fa,
+      foreachWithKeysF(G)((a) => f(a))
+    )
+})
+
+/**
  * The `Traversable` instance for `Record[+_: String, +_]`
  */
 export const Traversable = makeTraversable(Covariant)({
   foreachF
+})
+
+/**
+ * The `TraversableWithKeys` instance for `Record[+_: String, +_]`
+ */
+export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
+  foreachWithKeysF
 })
 
 /**

@@ -62,8 +62,10 @@ export {
   Any,
   Covariant,
   foreachF,
-  getIdentitySpread,
+  foreachWithKeysF,
   getIdentity,
+  getIdentitySpread,
   RecordURI,
-  Traversable
+  Traversable,
+  TraversableWithKeys
 } from "./core"

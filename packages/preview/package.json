@@ -66,6 +66,7 @@
       "_abstract/ReduceRight",
       "_abstract/Show",
       "_abstract/Traversable",
+      "_abstract/TraversableWithKeys",
       "_system",
       "_system/Array",
       "_system/Cause",
