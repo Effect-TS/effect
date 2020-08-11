@@ -1,4 +1,5 @@
 import * as A from "../Array/core"
+import { Associative } from "../Associative"
 import { pipe, tuple } from "../Function"
 import { Identity, makeIdentity } from "../Identity"
 import { makeAny } from "../_abstract/Any"
@@ -43,7 +44,7 @@ export const foreachF = implementForeachF(RecordURI)(
         )
       ),
       G.map(
-        A.foldMap(getIdentity<typeof _fk, typeof _b>())(
+        A.foldMap(getIdentitySpread<typeof _b>()<typeof _fk>())(
           ([k, v]) =>
             ({
               [k]: v
@@ -61,11 +62,42 @@ export const Traversable = makeTraversable(Covariant)({
 })
 
 /**
+ * The `Identity` instance for `Record`, uses object spread
+ */
+export function getIdentitySpread<B>(): <FK extends string>() => Identity<
+  Readonly<Record<FK, B>>
+> {
+  return <FK extends string>() =>
+    makeIdentity({} as R.Record<FK, B>, (y) => (x) => ({
+      ...x,
+      ...y
+    }))
+}
+
+/**
  * The `Identity` instance for `Record`
  */
-export function getIdentity<FK extends string, B>(): Identity<Readonly<Record<FK, B>>> {
-  return makeIdentity({} as R.Record<FK, B>, (y) => (x) => ({
-    ...x,
-    ...y
-  }))
+export function getIdentity<A>(
+  S: Associative<A>
+): <K extends string>() => Identity<Record<K, A>> {
+  return <K extends string>() =>
+    makeIdentity(R.empty as R.Record<K, A>, (y) => (x) => {
+      if (x === R.empty) {
+        return y
+      }
+      if (y === R.empty) {
+        return x
+      }
+      const keys = Object.keys(y)
+      const len = keys.length
+      if (len === 0) {
+        return x
+      }
+      const r: Record<K, A> = { ...x }
+      for (let i = 0; i < len; i++) {
+        const k = keys[i]
+        r[k] = Object.prototype.hasOwnProperty.call(x, k) ? S.combine(y[k])(x[k]) : y[k]
+      }
+      return r
+    })
 }
