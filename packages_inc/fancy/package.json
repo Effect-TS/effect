@@ -1,6 +1,6 @@
 {
   "name": "@matechs/fancy",
-  "version": "7.17.6",
+  "version": "7.17.7",
   "license": "MIT",
   "private": false,
   "repository": "https://github.com/mikearnaldi/matechs-effect.git",
@@ -21,8 +21,8 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@matechs/core": "^2.11.6",
-    "@matechs/morphic": "^0.15.6",
+    "@matechs/core": "^2.11.7",
+    "@matechs/morphic": "^0.15.7",
     "@types/react": "^16.9.32",
     "@types/react-dom": "^16.9.7",
     "fast-check": "^1.24.1",
