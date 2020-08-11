@@ -2,12 +2,19 @@ import * as assert from "assert"
 
 import { Span, SpanOptions, Tracer as OT, SpanContext } from "opentracing"
 
-import { Tracer, withChildSpan, withControllerSpan, withTracer } from "../src"
+import {
+  addSpanTags,
+  Tracer,
+  withChildSpan,
+  withControllerSpan,
+  withTracer
+} from "../src"
 
-import { Counter } from "./demo/Counter"
+import { Counter, CounterURI, currentCount, increment } from "./demo/Counter"
 import { program } from "./demo/Main"
-import { Printer, PrinterURI } from "./demo/Printer"
+import { print, Printer, PrinterURI } from "./demo/Printer"
 
+import * as A from "@matechs/core/Array"
 import * as T from "@matechs/core/Effect"
 import * as Ex from "@matechs/core/Exit"
 import { pipe } from "@matechs/core/Function"
@@ -196,6 +203,56 @@ describe("Example", () => {
     )
 
     assert.deepStrictEqual(spans.filter((s) => !!s.tags["some.tag"]).length, 20)
+    assert.deepStrictEqual(result, Ex.done({ start: 0, end: 20 }))
+  })
+
+  it("adds tags even if effect fails", async () => {
+    const failableCounter = L.fromValue<Counter>({
+      [CounterURI]: {
+        count() {
+          return pipe(
+            A.range(1, 10),
+            T.traverseArray((n) =>
+              T.Do()
+                .do(increment())
+                .bind(
+                  "count",
+                  pipe(
+                    currentCount(),
+                    addSpanTags({ "some.tag": "tag value" }),
+                    withChildSpan("span-current-count")
+                  )
+                )
+                .doL(({ count }) => print(`n: ${n} (${count})`))
+                .unit()
+            ),
+            T.chain((vals) =>
+              pipe(
+                T.raiseError(new Error("sample error")),
+                addSpanTags({ "another.tag": "tag value" }),
+                withChildSpan("span-with-failed-effect"),
+                T.chainError(() => T.pure(vals))
+              )
+            )
+          )
+        }
+      }
+    })
+
+    const spans: Array<MockSpan> = []
+    const mockTracer = new MockTracer3(spans)
+    const result = await T.runToPromiseExit(
+      pipe(
+        program,
+        Tracer(T.sync(() => mockTracer))
+          .with(
+            L.fromValue<Printer>({ [PrinterURI]: { print: () => T.unit } })
+          )
+          .with(failableCounter).use
+      )
+    )
+
+    assert.deepStrictEqual(spans.filter((s) => !!s.tags["another.tag"]).length, 2)
     assert.deepStrictEqual(result, Ex.done({ start: 0, end: 20 }))
   })
 })
