@@ -1,3 +1,4 @@
+import { Associative } from "../Associative"
 import * as Equal from "../Equal"
 import { pipe, tuple } from "../Function"
 import { Failure } from "../Newtype"
@@ -23,6 +24,9 @@ export type FailureEitherURI = typeof FailureEitherURI
 
 export type FailureEither<E, A> = Failure<E.Either<A, E>>
 
+export const ValidationURI = "EitherValidation"
+export type ValidationURI = typeof ValidationURI
+
 declare module "../_abstract/HKT" {
   interface URItoKind<
     Fix0,
@@ -42,6 +46,7 @@ declare module "../_abstract/HKT" {
   > {
     [EitherURI]: E.Either<Err, Out>
     [FailureEitherURI]: FailureEither<Err, Out>
+    [ValidationURI]: E.Either<Fix0, Out>
   }
 }
 
@@ -189,3 +194,43 @@ export const sequenceS = sequenceSF(Applicative)()
  * The `Equal` instance for `Either`
  */
 export const getEqual = Equal.either
+
+/**
+ * The `AssociativeBoth` instance for `Validation<E, *>`
+ */
+export const getValidationAssociativeBoth = <E>(A: Associative<E>) =>
+  makeAssociativeBoth<ValidationURI, E>(ValidationURI)({
+    both: getValidationZip<E>(A)
+  })
+
+/**
+ * Zips two eithers, merges lefts with `Associative<E>`
+ */
+export function getValidationZip<E>(
+  A: Associative<E>
+): <B>(fb: E.Either<E, B>) => <A>(fa: E.Either<E, A>) => E.Either<E, readonly [A, B]> {
+  return (fb) => (fa) => {
+    switch (fa._tag) {
+      case "Left": {
+        switch (fb._tag) {
+          case "Right": {
+            return fa
+          }
+          case "Left": {
+            return E.left(A.combine(fb.left)(fa.left))
+          }
+        }
+      }
+      case "Right": {
+        switch (fb._tag) {
+          case "Right": {
+            return E.right(tuple(fa.right, fb.right))
+          }
+          case "Left": {
+            return fb
+          }
+        }
+      }
+    }
+  }
+}

@@ -73,9 +73,13 @@ export {
   Fail,
   FailureEither,
   FailureEitherURI,
+  getEqual,
+  getValidationAssociativeBoth,
+  getValidationZip,
   IdentityBoth,
   IdentityFlatten,
   Monad,
   sequenceS,
+  ValidationURI,
   zipFailure
 } from "./core"
