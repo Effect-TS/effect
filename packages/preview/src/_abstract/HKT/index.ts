@@ -364,3 +364,55 @@ export type KeyFor<
 >
   ? URItoKeys<Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
   : never
+
+export interface URItoErr<
+  Fix0,
+  Fix1,
+  Fix2,
+  Fix3,
+  K,
+  NK extends string,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  Env,
+  Err,
+  Out
+> {}
+
+export type ErrFor<
+  F,
+  Fix0,
+  Fix1,
+  Fix2,
+  Fix3,
+  K,
+  NK extends string,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  Env,
+  Err,
+  Out
+> = F extends keyof URItoErr<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
+  ? URItoErr<Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
+  : Err

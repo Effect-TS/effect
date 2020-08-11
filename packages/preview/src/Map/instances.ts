@@ -146,7 +146,7 @@ export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
  */
 export const getTraversable = <K>(O: Ord<K>) =>
   makeTraversable(getCovariant<K>())({
-    foreachF: getForeachF<K>(O)
+    foreachF: makeForeachF<K>(O)
   })
 
 /**
@@ -154,22 +154,22 @@ export const getTraversable = <K>(O: Ord<K>) =>
  */
 export const getTraversableWithKeys = <K>(O: Ord<K>) =>
   makeTraversableWithKeys(getCovariant<K>())({
-    foreachWithKeysF: getForeachWithKeysF<K>(O)
+    foreachWithKeysF: makeForeachWithKeysF<K>(O)
   })
 
 /**
  * Traversable's foreachF for Map[K, _+] given Ord[K].
  */
-export function getForeachF<K>(O: Ord<K>) {
+export function makeForeachF<K>(O: Ord<K>) {
   return implementForeachF<MapFixedURI, K>(MapFixedURI)(() => (G) => (f) =>
-    getForeachWithKeysF(O)(G)((a) => f(a))
+    makeForeachWithKeysF(O)(G)((a) => f(a))
   )
 }
 
 /**
  * TraversableWithKeys's foreachWithKeysF for Map[K, _+] given Ord[K].
  */
-export function getForeachWithKeysF<K>(O: Ord<K>) {
+export function makeForeachWithKeysF<K>(O: Ord<K>) {
   return implementForeachWithKeysF<MapFixedURI, K>(MapFixedURI)(
     ({ _b }) => (G) => (f) => (fa) => {
       let fm = anyF(G)<M.Map<K, typeof _b>>(M.empty)

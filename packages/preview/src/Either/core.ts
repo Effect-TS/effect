@@ -11,6 +11,7 @@ import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
 import { makeCovariant } from "../_abstract/Covariant"
 import { sequenceSF } from "../_abstract/DSL"
 import { makeFail } from "../_abstract/FX/Fail"
+import { makeRecover } from "../_abstract/FX/Recover"
 import { makeIdentityBoth } from "../_abstract/IdentityBoth"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
 import { makeMonad } from "../_abstract/Monad"
@@ -47,6 +48,24 @@ declare module "../_abstract/HKT" {
     [EitherURI]: E.Either<Err, Out>
     [FailureEitherURI]: FailureEither<Err, Out>
     [ValidationURI]: E.Either<Fix0, Out>
+  }
+  interface URItoErr<
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    I,
+    S,
+    Env,
+    Err,
+    Out
+  > {
+    [ValidationURI]: Fix0
   }
 }
 
@@ -200,13 +219,13 @@ export const getEqual = Equal.either
  */
 export const getValidationAssociativeBoth = <E>(A: Associative<E>) =>
   makeAssociativeBoth<ValidationURI, E>(ValidationURI)({
-    both: getValidationZip<E>(A)
+    both: makeValidationZip<E>(A)
   })
 
 /**
  * Zips two eithers, merges lefts with `Associative<E>`
  */
-export function getValidationZip<E>(
+export function makeValidationZip<E>(
   A: Associative<E>
 ): <B>(fb: E.Either<E, B>) => <A>(fa: E.Either<E, A>) => E.Either<E, readonly [A, B]> {
   return (fb) => (fa) => {
@@ -254,7 +273,7 @@ export function getValidationCovariant<E>() {
 }
 
 /**
- * The `Applicative` instance for `Validation<E, *>`
+ * The `IdentityBoth` instance for `Validation<E, *>`
  */
 export function getValidationIdentityBoth<E>(A: Associative<E>) {
   return makeIdentityBoth<ValidationURI, E>(ValidationURI)(
@@ -269,4 +288,47 @@ export function getValidationApplicative<E>(A: Associative<E>) {
   return makeApplicative<ValidationURI, E>(ValidationURI)(
     intersect(getValidationCovariant<E>(), getValidationIdentityBoth(A))
   )
+}
+
+/**
+ * The `Fail` instance for `Validation<E, *>`
+ */
+export function getValidationFail<E>() {
+  return makeFail<ValidationURI, E>(ValidationURI)({
+    fail: makeValidationFail<E>()
+  })
+}
+
+/**
+ * Fail's fail for `Validation<E, *>`
+ */
+export function makeValidationFail<E>(): (e: E) => E.Either<E, never> {
+  return E.left
+}
+
+/**
+ * The `Recover` instance for `Validation<E, *>`
+ */
+export function getValidationRecover<E>() {
+  return makeRecover<ValidationURI, E>(ValidationURI)({
+    recover: makeValidationRecover<E>()
+  })
+}
+
+/**
+ * Recover's recover for `Validation<E, *>`
+ */
+export function makeValidationRecover<E>(): <A, A2>(
+  f: (e: E) => E.Either<E, A2>
+) => (fa: E.Either<E, A>) => E.Either<E, A | A2> {
+  return (f) => (fa) => {
+    switch (fa._tag) {
+      case "Left": {
+        return f(fa.left)
+      }
+      case "Right": {
+        return fa
+      }
+    }
+  }
 }

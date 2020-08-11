@@ -50,7 +50,22 @@ declare module "../_abstract/HKT" {
   > {
     [ArrayURI]: A.Array<Out>
   }
-  interface URItoKeys<Fix0, Fix1, Fix2, Fix3, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKeys<
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    I,
+    S,
+    Env,
+    Err,
+    Out
+  > {
     [ArrayURI]: number
   }
 }
