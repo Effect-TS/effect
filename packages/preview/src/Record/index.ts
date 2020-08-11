@@ -58,4 +58,4 @@ export {
   updateAt,
   updateAt_
 } from "../_system/Record"
-export { Any, Covariant, foreachF, RecordURI, Traversable } from "./core"
+export { Any, Covariant, foreachF, getIdentity, RecordURI, Traversable } from "./core"

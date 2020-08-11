@@ -1,6 +1,6 @@
 import * as A from "../Array/core"
 import { pipe, tuple } from "../Function"
-import { makeIdentity } from "../Identity"
+import { Identity, makeIdentity } from "../Identity"
 import { makeAny } from "../_abstract/Any"
 import { makeCovariant } from "../_abstract/Covariant"
 import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
@@ -43,12 +43,7 @@ export const foreachF = implementForeachF(RecordURI)(
         )
       ),
       G.map(
-        A.foldMap(
-          makeIdentity({} as R.Record<typeof _fk, typeof _b>, (y) => (x) => ({
-            ...x,
-            ...y
-          }))
-        )(
+        A.foldMap(getIdentity<typeof _fk, typeof _b>())(
           ([k, v]) =>
             ({
               [k]: v
@@ -64,3 +59,13 @@ export const foreachF = implementForeachF(RecordURI)(
 export const Traversable = makeTraversable(Covariant)({
   foreachF
 })
+
+/**
+ * The `Identity` instance for `Record`
+ */
+export function getIdentity<FK extends string, B>(): Identity<Readonly<Record<FK, B>>> {
+  return makeIdentity({} as R.Record<FK, B>, (y) => (x) => ({
+    ...x,
+    ...y
+  }))
+}
