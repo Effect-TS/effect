@@ -1,12 +1,13 @@
-import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
 
 /**
  * The identity for combining two values of types `F[A]` and `F[B]`
  */
 export interface NoneF<F> extends HasURI<F> {
   readonly None: "None"
-  readonly none: <S, SI, SO = SI>() => HKT9<
+  readonly none: <S, SI, SO = SI>() => HKT10<
     F,
+    never,
     never,
     SI,
     SO,
@@ -24,6 +25,7 @@ export interface NoneK<F extends URIS> extends HasURI<F> {
   readonly none: <S, SI, SO = SI>() => Kind<
     F,
     never,
+    never,
     SI,
     SO,
     never,
@@ -37,8 +39,9 @@ export interface NoneK<F extends URIS> extends HasURI<F> {
 
 export interface NoneFE<F, E> extends HasConstrainedE<F, E> {
   readonly None: "None"
-  readonly none: <S, SI, SO = SI>() => HKT9<
+  readonly none: <S, SI, SO = SI>() => HKT10<
     F,
+    never,
     never,
     SI,
     SO,
@@ -55,6 +58,7 @@ export interface NoneKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly None: "None"
   readonly none: <S, SI, SO = SI>() => Kind<
     F,
+    never,
     never,
     SI,
     SO,

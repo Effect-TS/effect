@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../../HKT"
+import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../../HKT"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
@@ -8,28 +8,28 @@ export interface FailF<F> extends HasURI<F> {
   readonly Fail: "Fail"
   readonly fail: <E, S, SI, SO = SI>(
     e: E
-  ) => HKT9<F, never, SI, SO, never, unknown, S, unknown, E, never>
+  ) => HKT10<F, never, never, SI, SO, never, unknown, S, unknown, E, never>
 }
 
 export interface FailK<F extends URIS> extends HasURI<F> {
   readonly Fail: "Fail"
   readonly fail: <E, S, SI, SO = SI>(
     e: E
-  ) => Kind<F, never, SI, SO, never, unknown, S, unknown, E, never>
+  ) => Kind<F, never, never, SI, SO, never, unknown, S, unknown, E, never>
 }
 
 export interface FailFE<F, E> extends HasConstrainedE<F, E> {
   readonly Fail: "Fail"
   readonly fail: <S, SI, SO = SI>(
     e: E
-  ) => HKT9<F, never, SI, SO, never, unknown, S, unknown, E, never>
+  ) => HKT10<F, never, never, SI, SO, never, unknown, S, unknown, E, never>
 }
 
 export interface FailKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly Fail: "Fail"
   readonly fail: <S, SI, SO = SI>(
     e: E
-  ) => Kind<F, never, SI, SO, never, unknown, S, unknown, E, never>
+  ) => Kind<F, never, never, SI, SO, never, unknown, S, unknown, E, never>
 }
 
 export function makeFail<URI extends URIS>(

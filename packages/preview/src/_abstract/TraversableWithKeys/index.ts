@@ -1,5 +1,5 @@
 import { CovariantF, CovariantFE, CovariantK, CovariantKE } from "../Covariant"
-import { HKT9, KeyFor, Kind, URIS } from "../HKT"
+import { HKT10, KeyFor, Kind, URIS } from "../HKT"
 import {
   IdentityBothF,
   IdentityBothFE,
@@ -9,7 +9,8 @@ import {
 
 export interface ForeachWithKeysF<F> {
   <G>(G: IdentityBothF<G> & CovariantF<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
@@ -17,7 +18,8 @@ export interface ForeachWithKeysF<F> {
     GE,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -28,13 +30,14 @@ export interface ForeachWithKeysF<F> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT9<
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -42,17 +45,19 @@ export interface ForeachWithKeysF<F> {
     GS,
     GR,
     GE,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
     GR,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -63,13 +68,14 @@ export interface ForeachWithKeysF<F> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT9<
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -77,10 +83,11 @@ export interface ForeachWithKeysF<F> {
     GS,
     GR,
     GE,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
@@ -88,7 +95,8 @@ export interface ForeachWithKeysF<F> {
     Err,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -99,13 +107,14 @@ export interface ForeachWithKeysF<F> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -113,17 +122,19 @@ export interface ForeachWithKeysF<F> {
     S,
     Env,
     Err,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
     Env,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -134,13 +145,14 @@ export interface ForeachWithKeysF<F> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -148,7 +160,7 @@ export interface ForeachWithKeysF<F> {
     S,
     Env,
     Err,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -159,7 +171,8 @@ export interface TraversableWithKeysF<F> extends CovariantF<F> {
 
 export interface ForeachWithKeysK<F extends URIS> {
   <G>(G: IdentityBothF<G> & CovariantF<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
@@ -167,7 +180,8 @@ export interface ForeachWithKeysK<F extends URIS> {
     GE,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -178,13 +192,14 @@ export interface ForeachWithKeysK<F extends URIS> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT9<
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -192,17 +207,19 @@ export interface ForeachWithKeysK<F extends URIS> {
     GS,
     GR,
     GE,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
     GR,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -213,13 +230,14 @@ export interface ForeachWithKeysK<F extends URIS> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKT9<
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -227,10 +245,11 @@ export interface ForeachWithKeysK<F extends URIS> {
     GS,
     GR,
     GE,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
@@ -238,7 +257,8 @@ export interface ForeachWithKeysK<F extends URIS> {
     Err,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -249,13 +269,14 @@ export interface ForeachWithKeysK<F extends URIS> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -263,17 +284,19 @@ export interface ForeachWithKeysK<F extends URIS> {
     S,
     Env,
     Err,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
     Env,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -284,13 +307,14 @@ export interface ForeachWithKeysK<F extends URIS> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -298,7 +322,7 @@ export interface ForeachWithKeysK<F extends URIS> {
     S,
     Env,
     Err,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -309,7 +333,8 @@ export interface TraversableWithKeysK<F extends URIS> extends CovariantK<F> {
 
 export interface ForeachWithKeysFE<F, E> {
   <G>(G: IdentityBothF<G> & CovariantF<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
@@ -317,7 +342,8 @@ export interface ForeachWithKeysFE<F, E> {
     GE,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -327,13 +353,14 @@ export interface ForeachWithKeysFE<F, E> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT9<
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -341,17 +368,19 @@ export interface ForeachWithKeysFE<F, E> {
     GS,
     GR,
     GE,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
     GR,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -361,13 +390,14 @@ export interface ForeachWithKeysFE<F, E> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT9<
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -375,10 +405,11 @@ export interface ForeachWithKeysFE<F, E> {
     GS,
     GR,
     GE,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
@@ -386,7 +417,8 @@ export interface ForeachWithKeysFE<F, E> {
     Err,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -396,13 +428,14 @@ export interface ForeachWithKeysFE<F, E> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -410,17 +443,19 @@ export interface ForeachWithKeysFE<F, E> {
     S,
     Env,
     Err,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
     Env,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
@@ -430,13 +465,14 @@ export interface ForeachWithKeysFE<F, E> {
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
-  ) => <FK extends string, FSI, FSO, FX, FIn, FSt, FEnv>(
-    fa: HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
+  ) => (
+    fa: HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -444,7 +480,7 @@ export interface ForeachWithKeysFE<F, E> {
     S,
     Env,
     Err,
-    HKT9<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    HKT10<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
 }
 
@@ -455,7 +491,8 @@ export interface TraversableWithKeysFE<F, E> extends CovariantFE<F, E> {
 
 export interface ForeachWithKeysKE<F extends URIS, E> {
   <G>(G: IdentityBothF<G> & CovariantF<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
@@ -463,23 +500,26 @@ export interface ForeachWithKeysKE<F extends URIS, E> {
     GE,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
     FIn,
     FSt,
-    FEnv
+    FEnv,
+    E
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT9<
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -487,33 +527,37 @@ export interface ForeachWithKeysKE<F extends URIS, E> {
     GS,
     GR,
     GE,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G, GE>(G: IdentityBothFE<G, GE> & CovariantFE<G, GE>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     GX,
     GI,
     GS,
     GR,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
     FIn,
     FSt,
-    FEnv
+    FEnv,
+    E
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKT9<
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKT10<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     GX,
@@ -521,10 +565,11 @@ export interface ForeachWithKeysKE<F extends URIS, E> {
     GS,
     GR,
     GE,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS>(G: IdentityBothK<G> & CovariantK<G>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
@@ -532,23 +577,26 @@ export interface ForeachWithKeysKE<F extends URIS, E> {
     Err,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
     FIn,
     FSt,
-    FEnv
+    FEnv,
+    E
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
-  ) => <FK extends string, FSI, FSO, FX, FIn, FSt, FEnv>(
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
+  ) => (
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -556,33 +604,37 @@ export interface ForeachWithKeysKE<F extends URIS, E> {
     S,
     Env,
     Err,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS, Err>(G: IdentityBothKE<G, Err> & CovariantKE<G, Err>): <
-    GK extends string,
+    GK,
+    GKN extends string,
     X,
     In,
     S,
     Env,
     A,
     B,
-    FK extends string,
+    FK,
+    FKN extends string,
     FSI,
     FSO,
     FX,
     FIn,
     FSt,
-    FEnv
+    FEnv,
+    E
   >(
     f: (
       a: A,
-      k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => Kind<G, GK, unknown, unknown, X, In, S, Env, Err, B>
+      k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => Kind<G, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
   ) => (
-    fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
   ) => Kind<
     G,
     GK,
+    GKN,
     unknown,
     unknown,
     X,
@@ -590,7 +642,7 @@ export interface ForeachWithKeysKE<F extends URIS, E> {
     S,
     Env,
     Err,
-    Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
 }
 
@@ -663,10 +715,12 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
   return (
     i: <
       FErr,
-      FK extends string,
+      FK,
+      FKN extends string,
       A,
       G,
-      GK extends string,
+      GK,
+      GKN extends string,
       GX,
       GI,
       GS,
@@ -689,19 +743,21 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
       _gx: GX
       _ferr: FErr
       _a: A
+      _fkn: FKN
       _fk: FK
     }) => (
       G: IdentityBothF<G> & CovariantF<G>
     ) => (
       f: (
         a: A,
-        k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-      ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+        k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+      ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
     ) => (
-      fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKT9<
+      fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    ) => HKT10<
       G,
       GK,
+      GKN,
       unknown,
       unknown,
       GX,
@@ -709,7 +765,7 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
       GS,
       GR,
       GE,
-      Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+      Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
     >
   ): ForeachWithKeysK<F> =>
     i({
@@ -722,15 +778,18 @@ export function implementForeachWithKeysF<F extends URIS>(F: F) {
       _g: {},
       _a: {},
       _ferr: {},
-      _fk: undefined as any
+      _fkn: undefined as any,
+      _fk: {}
     }) as any
 }
 
 export function implementForeachWithKeysFE<F extends URIS>(F: F) {
   return <E>() => (
     i: <
-      FK extends string,
-      GK extends string,
+      FK,
+      FKN extends string,
+      GK,
+      GKN extends string,
       G,
       GX,
       GI,
@@ -759,13 +818,14 @@ export function implementForeachWithKeysFE<F extends URIS>(F: F) {
     ) => (
       f: (
         a: A,
-        k: KeyFor<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-      ) => HKT9<G, GK, unknown, unknown, GX, GI, GS, GR, GE, B>
+        k: KeyFor<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+      ) => HKT10<G, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
     ) => (
-      fa: Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKT9<
+      fa: Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+    ) => HKT10<
       G,
       GK,
+      GKN,
       unknown,
       unknown,
       GX,
@@ -773,7 +833,7 @@ export function implementForeachWithKeysFE<F extends URIS>(F: F) {
       GS,
       GR,
       GE,
-      Kind<F, FK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+      Kind<F, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
     >
   ): ForeachWithKeysK<F> =>
     i({ _b: {}, _ge: {}, _gi: {}, _gr: {}, _gs: {}, _gx: {}, _g: {}, _a: {} }) as any

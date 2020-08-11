@@ -1,12 +1,13 @@
-import { HKT8, HKT9, Kind, URIS } from "../HKT"
+import { HKT10, Kind, URIS } from "../HKT"
 
 export interface DeriveF<F, Typeclass> {
   readonly Derive: "Derive"
-  readonly derive: <K extends string, SI, SO, X, In, S, Env, Err, A>(
-    fa: HKT9<Typeclass, K, SI, SO, X, In, S, Env, Err, A>
-  ) => HKT9<
+  readonly derive: <K, NK extends string, SI, SO, X, In, S, Env, Err, A>(
+    fa: HKT10<Typeclass, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => HKT10<
     Typeclass,
     K,
+    NK,
     SI,
     SO,
     X,
@@ -14,17 +15,18 @@ export interface DeriveF<F, Typeclass> {
     S,
     Env,
     Err,
-    HKT8<F, SI, SO, X, In, S, Env, Err, A>
+    HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
   >
 }
 
 export interface DeriveK<F extends URIS, Typeclass extends URIS> {
   readonly Derive: "Derive"
-  readonly derive: <K extends string, SI, SO, X, In, S, Env, Err, A>(
-    fa: Kind<Typeclass, K, SI, SO, X, In, S, Env, Err, A>
+  readonly derive: <K, NK extends string, SI, SO, X, In, S, Env, Err, A>(
+    fa: Kind<Typeclass, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => Kind<
     Typeclass,
     K,
+    NK,
     SI,
     SO,
     X,
@@ -32,7 +34,7 @@ export interface DeriveK<F extends URIS, Typeclass extends URIS> {
     S,
     Env,
     Err,
-    Kind<F, K, SI, SO, X, In, S, Env, Err, A>
+    Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
   >
 }
 

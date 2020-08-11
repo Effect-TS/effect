@@ -53,6 +53,7 @@ export {
   getModifyAt_,
   getPop,
   getPop_,
+  getShow,
   insertAt,
   isSubmap,
   isSubmap_,
@@ -72,15 +73,18 @@ export {
   partitionMap_,
   partitionWithIndex,
   partitionWithIndex_,
-  partition_,
-  getShow
+  partition_
 } from "./core"
 export {
   Any,
   Covariant,
-  MapValueURI,
   foreachF,
-  Traversable,
+  foreachWithKeysF,
+  getCovariant,
   getForeachF,
-  getTraversable
+  getTraversable,
+  MapFixedURI,
+  MapURI,
+  Traversable,
+  TraversableWithKeys
 } from "./instances"

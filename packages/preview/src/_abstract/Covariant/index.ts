@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -26,36 +26,36 @@ export interface CovariantF<F> extends HasURI<F> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <K extends string, SI, SO, X, In, St, Env, Err>(
-    fa: HKT9<F, K, SI, SO, X, In, St, Env, Err, A>
-  ) => HKT9<F, K, SI, SO, X, In, St, Env, Err, B>
+  ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
+    fa: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
 export interface CovariantK<F extends URIS> extends HasURI<F> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <K extends string, SI, SO, X, In, St, Env, Err>(
-    fa: Kind<F, K, SI, SO, X, In, St, Env, Err, A>
-  ) => Kind<F, K, SI, SO, X, In, St, Env, Err, B>
+  ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
+    fa: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => Kind<F, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
 export interface CovariantFE<F, E> extends HasConstrainedE<F, E> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <K extends string, SI, SO, X, In, St, Env>(
-    fa: HKT9<F, K, SI, SO, X, In, St, Env, E, A>
-  ) => HKT9<F, K, SI, SO, X, In, St, Env, E, B>
+  ) => <K, NK extends string, SI, SO, X, In, St, Env>(
+    fa: HKT10<F, K, NK, SI, SO, X, In, St, Env, E, A>
+  ) => HKT10<F, K, NK, SI, SO, X, In, St, Env, E, B>
 }
 
 export interface CovariantKE<F extends URIS, E> extends HasConstrainedE<F, E> {
   readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <K extends string, SI, SO, X, In, St, Env>(
-    fa: Kind<F, K, SI, SO, X, In, St, Env, E, A>
-  ) => Kind<F, K, SI, SO, X, In, St, Env, E, B>
+  ) => <K, NK extends string, SI, SO, X, In, St, Env>(
+    fa: Kind<F, K, NK, SI, SO, X, In, St, Env, E, A>
+  ) => Kind<F, K, NK, SI, SO, X, In, St, Env, E, B>
 }
 
 export function makeCovariant<URI extends URIS>(

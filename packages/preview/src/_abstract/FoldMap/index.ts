@@ -1,4 +1,4 @@
-import { HasConstrainedE, HasURI, HKT9, Kind, URIS } from "../HKT"
+import { HasConstrainedE, HasURI, HKT10, Kind, URIS } from "../HKT"
 import { Identity } from "../Identity"
 
 /**
@@ -11,8 +11,8 @@ export interface FoldMapF<F> extends HasURI<F> {
     I: Identity<M>
   ) => <A>(
     f: (a: A) => M
-  ) => <K extends string, SI, SO, X, In, S, Env, Err>(
-    fa: HKT9<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
+    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => M
 }
 
@@ -22,8 +22,8 @@ export interface FoldMapK<F extends URIS> extends HasURI<F> {
     I: Identity<M>
   ) => <A>(
     f: (a: A) => M
-  ) => <K extends string, SI, SO, X, In, S, Env, Err>(
-    fa: Kind<F, K, SI, SO, X, In, S, Env, Err, A>
+  ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
+    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => M
 }
 
@@ -33,8 +33,8 @@ export interface FoldMapFE<F, E> extends HasConstrainedE<F, E> {
     I: Identity<M>
   ) => <A>(
     f: (a: A) => M
-  ) => <K extends string, SI, SO, X, In, S, Env>(
-    fa: HKT9<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
+    fa: HKT10<F, K, NK, SI, SO, X, In, S, Env, E, A>
   ) => M
 }
 
@@ -44,8 +44,8 @@ export interface FoldMapKE<F extends URIS, E> extends HasConstrainedE<F, E> {
     I: Identity<M>
   ) => <A>(
     f: (a: A) => M
-  ) => <K extends string, SI, SO, X, In, S, Env>(
-    fa: Kind<F, K, SI, SO, X, In, S, Env, E, A>
+  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
+    fa: Kind<F, K, NK, SI, SO, X, In, S, Env, E, A>
   ) => M
 }
 

@@ -15,11 +15,11 @@ export const RecordURI = "Record"
 export type RecordURI = typeof RecordURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
-    [RecordURI]: R.Record<K, Out>
+  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+    [RecordURI]: R.Record<NK, Out>
   }
-  interface URItoKeys<K extends string, SI, SO, X, I, S, Env, Err, Out> {
-    [RecordURI]: K
+  interface URItoKeys<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+    [RecordURI]: NK
   }
 }
 
@@ -40,27 +40,29 @@ export const Covariant = makeCovariant(RecordURI)({
 /**
  * TraversableWithKeys's `foreachWithKeysF` for `Record[+_: String, +_]`.
  */
-export const foreachWithKeysF = implementForeachWithKeysF(RecordURI)(({ _b, _fk }) => {
-  const I = getIdentitySpread<typeof _b>()<typeof _fk>()
-  return (G) => (f) => (fa) =>
-    pipe(
-      R.collect_(fa, (k, a) => tuple(k, a)),
-      A.foreachF(G)(([k, a]) =>
-        pipe(
-          f(a, k),
-          G.map((b) => tuple(k, b))
-        )
-      ),
-      G.map(
-        A.foldMap(I)(
-          ([k, v]) =>
-            ({
-              [k]: v
-            } as R.Record<typeof _fk, typeof _b>)
+export const foreachWithKeysF = implementForeachWithKeysF(RecordURI)(
+  ({ _b, _fkn: _fk }) => {
+    const I = getIdentitySpread<typeof _b>()<typeof _fk>()
+    return (G) => (f) => (fa) =>
+      pipe(
+        R.collect_(fa, (k, a) => tuple(k, a)),
+        A.foreachF(G)(([k, a]) =>
+          pipe(
+            f(a, k),
+            G.map((b) => tuple(k, b))
+          )
+        ),
+        G.map(
+          A.foldMap(I)(
+            ([k, v]) =>
+              ({
+                [k]: v
+              } as R.Record<typeof _fk, typeof _b>)
+          )
         )
       )
-    )
-})
+  }
+)
 
 /**
  * Traversable's `foreachF` for `Record[+_: String, +_]`.

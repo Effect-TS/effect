@@ -1,57 +1,99 @@
 import { pipe } from "../Function"
 import { makeAny } from "../_abstract/Any"
-import { makeCovariant } from "../_abstract/Covariant"
+import { makeCovariant, makeCovariantE } from "../_abstract/Covariant"
 import { anyF } from "../_abstract/DSL"
 import { Ord } from "../_abstract/Ord"
 import {
-  ForeachKE,
   implementForeachF,
   implementForeachFE,
   makeTraversable,
   makeTraversableE
 } from "../_abstract/Traversable"
+import {
+  implementForeachWithKeysF,
+  makeTraversableWithKeys
+} from "../_abstract/TraversableWithKeys"
 import * as M from "../_system/Map/core"
 
 import { getKeys } from "./core"
 
-export const MapValueURI = "MapValue"
-export type MapValueURI = typeof MapValueURI
+export const MapURI = "Map"
+export type MapURI = typeof MapURI
+
+export const MapFixedURI = "MapFixed"
+export type MapFixedURI = typeof MapURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<K extends string, SI, SO, X, I, S, Env, Err, Out> {
-    [MapValueURI]: M.Map<Err, Out>
+  interface URItoKind<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+    [MapURI]: M.Map<K, Out>
+    [MapFixedURI]: M.Map<Err, Out>
+  }
+  interface URItoKeys<K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+    [MapURI]: K
+    [MapFixedURI]: Err
   }
 }
 
 /**
  * The `Any` instance for `Map[+_, +_]`
  */
-export const Any = makeAny(MapValueURI)({
+export const Any = makeAny(MapURI)({
   any: () => M.empty
 })
 
 /**
  * The `Covariant` instance for `Map[+_, +_]`
  */
-export const Covariant = makeCovariant(MapValueURI)({
+export const Covariant = makeCovariant(MapURI)({
   map: M.map
 })
 
 /**
+ * The `Covariant` instance for `Map[K, +_]`
+ */
+export const getCovariant = <K>() =>
+  makeCovariantE(MapFixedURI)<K>()({
+    map: M.map
+  })
+
+/**
  * Traversable's foreachF for Map[+_, _+].
  */
-export const foreachF = implementForeachF(MapValueURI)(
-  ({ _a, _b, _ferr }) => (G) => (f) => (fa) => {
-    let fm = anyF(G)<M.Map<typeof _ferr, typeof _b>>(M.empty)
+export const foreachF = implementForeachF(MapURI)(
+  ({ _a, _b, _fk }) => (G) => (f) => (fa) => {
+    let fm = anyF(G)<M.Map<typeof _fk, typeof _b>>(M.empty)
 
     const entries = fa.entries()
-    let e: M.Next<readonly [typeof _ferr, typeof _a]>
+    let e: M.Next<readonly [typeof _fk, typeof _a]>
     while (!(e = entries.next()).done) {
       const [key, a] = e.value
       fm = pipe(
         fm,
         G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
         G.both(f(a)),
+        G.map(([g, b]) => g(b))
+      )
+    }
+
+    return fm
+  }
+)
+
+/**
+ * TraversableWithKeys's foreachF for Map[+_, _+].
+ */
+export const foreachWithKeysF = implementForeachWithKeysF(MapURI)(
+  ({ _a, _b, _fk }) => (G) => (f) => (fa) => {
+    let fm = anyF(G)<M.Map<typeof _fk, typeof _b>>(M.empty)
+
+    const entries = fa.entries()
+    let e: M.Next<readonly [typeof _fk, typeof _a]>
+    while (!(e = entries.next()).done) {
+      const [key, a] = e.value
+      fm = pipe(
+        fm,
+        G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
+        G.both(f(a, key)),
         G.map(([g, b]) => g(b))
       )
     }
@@ -68,18 +110,25 @@ export const Traversable = makeTraversable(Covariant)({
 })
 
 /**
+ * The `TraversableWithKeys` instance for `Map[+_, +_]` in insertion order
+ */
+export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
+  foreachWithKeysF
+})
+
+/**
  * The `Traversable` instance for `Map[+_, +_]` with order enstablished via `Ord[K]`
  */
 export const getTraversable = <K>(O: Ord<K>) =>
-  makeTraversableE(Covariant)<K>()({
+  makeTraversableE(getCovariant<K>())({
     foreachF: getForeachF<K>(O)
   })
 
 /**
  * Traversable's foreachF for Map[K, _+] given Ord[K].
  */
-export function getForeachF<K>(O: Ord<K>): ForeachKE<MapValueURI, K> {
-  return implementForeachFE(MapValueURI)<K>()(({ _b }) => (G) => (f) => (fa) => {
+export function getForeachF<K>(O: Ord<K>) {
+  return implementForeachFE(MapFixedURI)<K>()(({ _b }) => (G) => (f) => (fa) => {
     let fm = anyF(G)<M.Map<K, typeof _b>>(M.empty)
     const ks = getKeys(O)(fa)
     for (const key of ks) {
