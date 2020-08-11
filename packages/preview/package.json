@@ -50,6 +50,8 @@
       "_abstract/FX/Access",
       "_abstract/FX/Environmental",
       "_abstract/FX/Fail",
+      "_abstract/FX/IdentityErr",
+      "_abstract/FX/Recover",
       "_abstract/HKT",
       "_abstract/Identity",
       "_abstract/IdentityBoth",

@@ -168,7 +168,7 @@ export type URIS = keyof URItoKind<
 >
 
 /**
- * Kind<F, A> = URItoKind[F][A]
+ * KindFix<F, Fix0, Fix1, Fix2, Fix3,A> = URItoKind[F][A]
  */
 export type Kind<
   URI extends URIS,
@@ -218,96 +218,378 @@ export interface HasURI<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
 }
 
 export function castErr<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, SI, SO, X, In, St, Env, T, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, SI, SO, X, In, St, Env, T, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, T, Out>
+  <F>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, T, Out>
 }
 export function castErr() {
   return () => identity as any
 }
 
 export function castEnv<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, SI, SO, X, In, St, T, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, SI, SO, X, In, St, T, Err, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, T, Err, Out>
+  <F>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, T, Err, Out>
 }
 export function castEnv() {
   return () => identity as any
 }
 
 export function castSt<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, SI, SO, X, In, T, Env, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, SI, SO, X, In, T, Env, Err, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+  <F>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
 }
 export function castSt() {
   return () => identity as any
 }
 
 export function castIn<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, SI, SO, X, T, St, Env, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, SI, SO, X, T, St, Env, Err, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, T, St, Env, Err, Out>
+  <F>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, T, St, Env, Err, Out>
 }
 export function castIn() {
   return () => identity as any
 }
 
 export function castX<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, SI, SO, T, In, St, Env, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, SI, SO, T, In, St, Env, Err, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, T, In, St, Env, Err, Out>
+  <F>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, T, In, St, Env, Err, Out>
 }
 export function castX() {
   return () => identity as any
 }
 
 export function castSO<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, SI, T, X, In, St, Env, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, SI, T, X, In, St, Env, Err, Out>
+  <F extends URIS>(_?: F): <
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, T, X, In, St, Env, Err, Out>
+  <F>(_?: F): <
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, T, X, In, St, Env, Err, Out>
 }
 export function castSO() {
   return () => identity as any
 }
 
 export function castSI<T>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, NK, T, SO, X, In, St, Env, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, NK, T, SO, X, In, St, Env, Err, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, T, SO, X, In, St, Env, Err, Out>
+  <F>(_?: F): <
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, T, SO, X, In, St, Env, Err, Out>
 }
 export function castSI() {
   return () => identity as any
 }
 
+export function castS<T>(): {
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+  <F>(_?: F): <
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+}
+export function castS() {
+  return () => identity as any
+}
+
 export function castK<T extends string>(): {
-  <F extends URIS>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: Kind<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => Kind<F, K, T, SI, SO, X, In, St, Env, Err, Out>
-  <F>(_?: F): <K, NK extends string, SI, SO, X, In, St, Env, Err, Out>(
-    self: HKT10<F, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKT10<F, K, T, SI, SO, X, In, St, Env, Err, Out>
+  <F extends URIS>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, T, SI, SO, X, In, St, Env, Err, Out>
+  <F>(_?: F): <
+    K,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    In,
+    St,
+    Env,
+    Err,
+    Out
+  >(
+    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, T, SI, SO, X, In, St, Env, Err, Out>
 }
 export function castK() {
   return () => identity as any
@@ -365,54 +647,74 @@ export type KeyFor<
   ? URItoKeys<Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
   : never
 
-export interface URItoErr<
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
-  K,
-  NK extends string,
-  SI,
-  SO,
-  X,
-  I,
-  S,
-  Env,
-  Err,
-  Out
-> {}
+export interface URItoErr<Fix0, Fix1, Fix2, Fix3, Err> {}
 
-export type ErrFor<
-  F,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
-  K,
-  NK extends string,
-  SI,
-  SO,
-  X,
-  I,
-  S,
-  Env,
-  Err,
-  Out
-> = F extends keyof URItoErr<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
+export type ErrFor<F, Fix0, Fix1, Fix2, Fix3, Err> = F extends keyof URItoErr<
   any,
   any,
   any,
   any,
   any
 >
-  ? URItoErr<Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
+  ? URItoErr<Fix0, Fix1, Fix2, Fix3, Err>[F]
   : Err
+
+export type HKTTypeS<
+  H extends HKTFix<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  >
+> = H["_St"]
+
+export type HKTTypeSO<
+  H extends HKTFix<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  >
+> = ReturnType<H["_O"]>
+
+export type HKTTypeSI<
+  H extends HKTFix<
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any
+  >
+> = Parameters<H["_I"]>[0]

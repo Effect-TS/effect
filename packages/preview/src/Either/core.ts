@@ -4,13 +4,14 @@ import { pipe, tuple } from "../Function"
 import { Failure } from "../Newtype"
 import { intersect } from "../Utils"
 import { makeAny } from "../_abstract/Any"
-import { makeApplicative } from "../_abstract/Applicative"
+import { ApplicativeK, makeApplicative } from "../_abstract/Applicative"
 import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
 import { makeAssociativeEither } from "../_abstract/AssociativeEither"
 import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
 import { makeCovariant } from "../_abstract/Covariant"
-import { sequenceSF } from "../_abstract/DSL"
+import { sequenceSF, validationAssociativeBothF } from "../_abstract/DSL"
 import { makeFail } from "../_abstract/FX/Fail"
+import { makeIdentityErr } from "../_abstract/FX/IdentityErr"
 import { makeRecover } from "../_abstract/FX/Recover"
 import { makeIdentityBoth } from "../_abstract/IdentityBoth"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
@@ -49,22 +50,7 @@ declare module "../_abstract/HKT" {
     [FailureEitherURI]: FailureEither<Err, Out>
     [ValidationURI]: E.Either<Fix0, Out>
   }
-  interface URItoErr<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
-    K,
-    NK extends string,
-    SI,
-    SO,
-    X,
-    I,
-    S,
-    Env,
-    Err,
-    Out
-  > {
+  interface URItoErr<Fix0, Fix1, Fix2, Fix3, Err> {
     [ValidationURI]: Fix0
   }
 }
@@ -215,43 +201,13 @@ export const sequenceS = sequenceSF(Applicative)()
 export const getEqual = Equal.either
 
 /**
- * The `AssociativeBoth` instance for `Validation<E, *>`
- */
-export const getValidationAssociativeBoth = <E>(A: Associative<E>) =>
-  makeAssociativeBoth<ValidationURI, E>(ValidationURI)({
-    both: makeValidationZip<E>(A)
-  })
-
-/**
  * Zips two eithers, merges lefts with `Associative<E>`
  */
 export function makeValidationZip<E>(
   A: Associative<E>
 ): <B>(fb: E.Either<E, B>) => <A>(fa: E.Either<E, A>) => E.Either<E, readonly [A, B]> {
-  return (fb) => (fa) => {
-    switch (fa._tag) {
-      case "Left": {
-        switch (fb._tag) {
-          case "Right": {
-            return fa
-          }
-          case "Left": {
-            return E.left(A.combine(fb.left)(fa.left))
-          }
-        }
-      }
-      case "Right": {
-        switch (fb._tag) {
-          case "Right": {
-            return E.right(tuple(fa.right, fb.right))
-          }
-          case "Left": {
-            return fb
-          }
-        }
-      }
-    }
-  }
+  const F = getValidationAssociativeBoth(A)
+  return F.both
 }
 
 /**
@@ -309,18 +265,18 @@ export function makeValidationFail<E>(): (e: E) => E.Either<E, never> {
 /**
  * The `Recover` instance for `Validation<E, *>`
  */
-export function getValidationRecover<E>() {
-  return makeRecover<ValidationURI, E>(ValidationURI)({
-    recover: makeValidationRecover<E>()
+export function getValidationRecover<Z>() {
+  return makeRecover<ValidationURI, Z>(ValidationURI)({
+    recover: makeValidationRecover<Z>()
   })
 }
 
 /**
  * Recover's recover for `Validation<E, *>`
  */
-export function makeValidationRecover<E>(): <A, A2>(
+export function makeValidationRecover<E>(): <A2>(
   f: (e: E) => E.Either<E, A2>
-) => (fa: E.Either<E, A>) => E.Either<E, A | A2> {
+) => <A>(fa: E.Either<E, A>) => E.Either<E, A2 | A> {
   return (f) => (fa) => {
     switch (fa._tag) {
       case "Left": {
@@ -331,4 +287,52 @@ export function makeValidationRecover<E>(): <A, A2>(
       }
     }
   }
+}
+
+/**
+ * The `IdentityErr` instance for `Validation<E, *>`
+ */
+export function getValidationIdentityErr<E>(A: Associative<E>) {
+  return makeIdentityErr<ValidationURI, E>(ValidationURI)({
+    combineErr: A.combine
+  })
+}
+
+/**
+ * The `AssociativeFlatten` instance for `Validation<E, *>`
+ */
+export function getValidationAssociativeFlatten<E>() {
+  return makeAssociativeFlatten<ValidationURI, E>(ValidationURI)({
+    flatten: E.flatten
+  })
+}
+
+/**
+ * The `IdentityFlatten` instance for `Validation<E, *>`
+ */
+export function getValidationIdentityFlatten<E>(A: Associative<E>) {
+  return makeIdentityFlatten<ValidationURI, E>(ValidationURI)(
+    intersect(getValidationAssociativeFlatten<E>(), getValidationAny(A))
+  )
+}
+
+/**
+ * The `AssociativeBoth` instance for `Validation<E, *>`
+ */
+export function getValidationAssociativeBoth<E>(
+  A: Associative<E>
+): ApplicativeK<ValidationURI, E> {
+  const F = intersect(
+    getValidationAny(A),
+    getValidationRecover<E>(),
+    getValidationFail<E>(),
+    getValidationAssociativeFlatten<E>(),
+    getValidationCovariant<E>(),
+    getValidationIdentityErr(A),
+    makeAssociativeBoth<ValidationURI, E>(ValidationURI)({
+      both: E.zip
+    })
+  )
+
+  return intersect(F, validationAssociativeBothF<ValidationURI, E>(F))
 }
