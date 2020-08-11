@@ -19,6 +19,10 @@ import { Sum } from "../_abstract/Newtype"
 import { makeReduce } from "../_abstract/Reduce"
 import { makeReduceRight } from "../_abstract/ReduceRight"
 import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
+import {
+  implementForeachWithKeysF,
+  makeTraversableWithKeys
+} from "../_abstract/TraversableWithKeys"
 import * as A from "../_system/Array"
 
 /**
@@ -30,6 +34,9 @@ export type ArrayURI = typeof ArrayURI
 declare module "../_abstract/HKT" {
   interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
     [ArrayURI]: A.Array<Out>
+  }
+  interface URItoKeys<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+    [ArrayURI]: number
   }
 }
 
@@ -122,10 +129,31 @@ export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
 )
 
 /**
+ * TraversableWithKeys's `foreachF` for `Array`.
+ */
+export const foreachWithKeysF = implementForeachWithKeysF(ArrayURI)(
+  (_) => (G) => (f) => (fa) =>
+    A.reduceWithIndex_(fa, anyF(G)([] as typeof _._b[]), (i, b, a) =>
+      pipe(
+        b,
+        G.both(f(a, i)),
+        G.map(([x, y]) => [...x, y])
+      )
+    )
+)
+
+/**
  * The `Traversable` instance for `Array`.
  */
 export const Traversable = makeTraversable(Covariant)({
   foreachF
+})
+
+/**
+ * The `TraversableWithKeys` instance for `Array`.
+ */
+export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
+  foreachWithKeysF
 })
 
 /**

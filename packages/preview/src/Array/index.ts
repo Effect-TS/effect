@@ -141,6 +141,7 @@ export {
   foldMapWithIndex_,
   foldMap_,
   foreachF,
+  foreachWithKeysF,
   getEqual,
   Identity,
   IdentityBoth,
@@ -149,5 +150,6 @@ export {
   Reduce,
   ReduceRight,
   SumClosure,
-  Traversable
+  Traversable,
+  TraversableWithKeys
 } from "./core"
