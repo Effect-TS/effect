@@ -213,7 +213,7 @@ export function makeValidationZip<E>(
 /**
  * The `Any` instance for `Validation<E, *>`
  */
-export function getValidationAny<E>(A: Associative<E>) {
+export function getValidationAny<E>() {
   return makeAny<ValidationURI, E>(ValidationURI)({
     any: () => E.right({})
   })
@@ -233,7 +233,7 @@ export function getValidationCovariant<E>() {
  */
 export function getValidationIdentityBoth<E>(A: Associative<E>) {
   return makeIdentityBoth<ValidationURI, E>(ValidationURI)(
-    intersect(getValidationAny(A), getValidationAssociativeBoth(A))
+    intersect(getValidationAny<E>(), getValidationAssociativeBoth(A))
   )
 }
 
@@ -312,7 +312,7 @@ export function getValidationAssociativeFlatten<E>() {
  */
 export function getValidationIdentityFlatten<E>(A: Associative<E>) {
   return makeIdentityFlatten<ValidationURI, E>(ValidationURI)(
-    intersect(getValidationAssociativeFlatten<E>(), getValidationAny(A))
+    intersect(getValidationAssociativeFlatten<E>(), getValidationAny<E>())
   )
 }
 
@@ -323,7 +323,7 @@ export function getValidationAssociativeBoth<E>(
   A: Associative<E>
 ): ApplicativeK<ValidationURI, E> {
   const F = intersect(
-    getValidationAny(A),
+    getValidationAny<E>(),
     getValidationRecover<E>(),
     getValidationFail<E>(),
     getValidationAssociativeFlatten<E>(),
