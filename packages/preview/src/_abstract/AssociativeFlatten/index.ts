@@ -39,7 +39,7 @@ export interface AssociativeFlattenF<F> extends HasURI<F> {
       Err,
       HKT9<F, K1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => HKT9<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
+  ) => HKT9<F, K1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
 export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
@@ -73,7 +73,7 @@ export interface AssociativeFlattenK<F extends URIS> extends HasURI<F> {
       Err,
       Kind<F, K1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => Kind<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
+  ) => Kind<F, K1, SI, SO1, X | X1, In & In1, S, Env & Env1, Err | Err1, A>
 }
 
 export interface AssociativeFlattenFE<F, E> extends HasConstrainedE<F, E> {
@@ -105,7 +105,7 @@ export interface AssociativeFlattenFE<F, E> extends HasConstrainedE<F, E> {
       E,
       HKT9<F, K1, SO, SO1, X1, In1, S, Env1, E, A>
     >
-  ) => HKT9<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
+  ) => HKT9<F, K1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
 }
 
 export interface AssociativeFlattenKE<F extends URIS, E> extends HasConstrainedE<F, E> {
@@ -137,7 +137,7 @@ export interface AssociativeFlattenKE<F extends URIS, E> extends HasConstrainedE
       E,
       Kind<F, K1, SO, SO1, X1, In1, S, Env1, E, A>
     >
-  ) => Kind<F, K | K1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
+  ) => Kind<F, K1, SI, SO1, X | X1, In & In1, S, Env & Env1, E, A>
 }
 
 export function makeAssociativeFlatten<URI extends URIS>(
