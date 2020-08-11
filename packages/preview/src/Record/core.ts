@@ -65,13 +65,9 @@ export const foreachWithKeysF = implementForeachWithKeysF(RecordURI)(({ _b, _fk 
 /**
  * Traversable's `foreachF` for `Record[+_: String, +_]`.
  */
-export const foreachF = implementForeachF(RecordURI)(({ _b, _fk }) => {
-  return (G) => (f) => (fa) =>
-    pipe(
-      fa,
-      foreachWithKeysF(G)((a) => f(a))
-    )
-})
+export const foreachF = implementForeachF(RecordURI)(() => (G) => (f) =>
+  foreachWithKeysF(G)((a) => f(a))
+)
 
 /**
  * The `Traversable` instance for `Record[+_: String, +_]`
