@@ -8,19 +8,20 @@ type Failure = Sum<string>
 
 const Applicative = E.getValidationApplicative<Failure>(S.SumIdentity)
 const validateS = DSL.sequenceSF(Applicative)()
-const fail = E.makeValidationFail<Failure>()
 const recover = E.makeValidationRecover<Failure>()
 const succed = flow(constant, DSL.succeedF(Applicative))
+const failure = StringSum.wrap
+const fail = flow(failure, E.makeValidationFail<Failure>())
 
 pipe(
   validateS({
-    a: fail(StringSum.wrap("(error A)")),
-    b: fail(StringSum.wrap("(error B)")),
-    c: fail(StringSum.wrap("(error C)")),
+    a: fail("(error A)"),
+    b: fail("(error B)"),
+    c: fail("(error C)"),
     d: succed("success")
   }),
   E.map(({ d }) => d),
-  recover((e) => succed(`error: ${StringSum.unwrap(e)}`)),
+  recover((e) => succed(`error: ${e}`)),
   (x) => {
     console.log(x)
   }
