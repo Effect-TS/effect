@@ -150,10 +150,27 @@ export const getTraversable = <K>(O: Ord<K>) =>
   })
 
 /**
+ * The `TraversableWithKeys` instance for `Map[+_, +_]` with order enstablished via `Ord[K]`
+ */
+export const getTraversableWithKeys = <K>(O: Ord<K>) =>
+  makeTraversableWithKeys(getCovariant<K>())({
+    foreachWithKeysF: getForeachWithKeysF<K>(O)
+  })
+
+/**
  * Traversable's foreachF for Map[K, _+] given Ord[K].
  */
 export function getForeachF<K>(O: Ord<K>) {
-  return implementForeachF<MapFixedURI, K>(MapFixedURI)(
+  return implementForeachF<MapFixedURI, K>(MapFixedURI)(() => (G) => (f) =>
+    getForeachWithKeysF(O)(G)((a) => f(a))
+  )
+}
+
+/**
+ * TraversableWithKeys's foreachWithKeysF for Map[K, _+] given Ord[K].
+ */
+export function getForeachWithKeysF<K>(O: Ord<K>) {
+  return implementForeachWithKeysF<MapFixedURI, K>(MapFixedURI)(
     ({ _b }) => (G) => (f) => (fa) => {
       let fm = anyF(G)<M.Map<K, typeof _b>>(M.empty)
       const ks = getKeys(O)(fa)
@@ -163,7 +180,7 @@ export function getForeachF<K>(O: Ord<K>) {
         fm = pipe(
           fm,
           G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
-          G.both(f(a)),
+          G.both(f(a, key)),
           G.map(([g, b]) => g(b))
         )
       }
