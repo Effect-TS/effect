@@ -64,11 +64,13 @@ export function validationAssociativeBothF<
         fa,
         F.map(E.right),
         F.recover((e) => succeedF(F)(constant(E.left(e)))),
+        F.map(E.compact),
         F.both(
           pipe(
             fb,
             F.map(E.right),
-            F.recover((e) => succeedF(F)(constant(E.left(e))))
+            F.recover((e) => succeedF(F)(constant(E.left(e)))),
+            F.map(E.compact)
           )
         ),
         F.map(([l, r]) => {

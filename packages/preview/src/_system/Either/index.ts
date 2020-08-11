@@ -57,5 +57,6 @@ export {
   zipFirst_,
   zipSecond,
   zipSecond_,
-  zip_
+  zip_,
+  compact
 } from "./core"
