@@ -486,6 +486,7 @@ export function implementForeachF<F extends URIS>(F: F) {
       _gx: GX
       _ferr: FErr
       _a: A
+      _fk: FK
     }) => (
       G: IdentityBothF<G> & CovariantF<G>
     ) => (
@@ -514,7 +515,8 @@ export function implementForeachF<F extends URIS>(F: F) {
       _gx: {},
       _g: {},
       _a: {},
-      _ferr: {}
+      _ferr: {},
+      _fk: undefined as any
     }) as any
 }
 
