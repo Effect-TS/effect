@@ -3,11 +3,15 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 /**
  * The identity for combining two values of types `F[A]` and `F[B]`
  */
-export interface NoneF<F, Fix = any> extends HasURI<F, Fix> {
+export interface NoneF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly None: "None"
   readonly none: <S, SI, SO = SI>() => HKTFix<
     F,
-    Fix,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
     never,
     never,
     SI,
@@ -21,11 +25,15 @@ export interface NoneF<F, Fix = any> extends HasURI<F, Fix> {
   >
 }
 
-export interface NoneK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
+export interface NoneK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly None: "None"
   readonly none: <S, SI, SO = SI>() => KindFix<
     F,
-    Fix,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
     never,
     never,
     SI,
@@ -39,18 +47,42 @@ export interface NoneK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
   >
 }
 
-export function makeNone<URI extends URIS, Fix = any>(
+export function makeNone<
+  URI extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(
   _: URI
-): (_: Omit<NoneK<URI, Fix>, "URI" | "Fix" | "None">) => NoneK<URI, Fix>
-export function makeNone<URI, Fix = any>(
+): (
+  _: Omit<
+    NoneK<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "None"
+  >
+) => NoneK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
-): (_: Omit<NoneF<URI, Fix>, "URI" | "Fix" | "None">) => NoneF<URI, Fix>
-export function makeNone<URI, Fix = any>(
+): (
+  _: Omit<
+    NoneF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "None"
+  >
+) => NoneF<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
-): (_: Omit<NoneF<URI, Fix>, "URI" | "Fix" | "None">) => NoneF<URI, Fix> {
+): (
+  _: Omit<
+    NoneF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "None"
+  >
+) => NoneF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
-    Fix: undefined as any,
+    Fix0: undefined as any,
+    Fix1: undefined as any,
+    Fix2: undefined as any,
+    Fix3: undefined as any,
     None: "None",
     ..._
   })

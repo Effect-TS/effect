@@ -3,32 +3,62 @@ import { URIS } from "../../HKT"
 import { IdentityFlattenF, IdentityFlattenK } from "../../IdentityFlatten"
 import { AccessF, AccessK } from "../Access"
 
-export type EnvironmentalF<F, Fix = any> = IdentityFlattenF<F, Fix> &
-  AccessF<F, Fix> &
-  CovariantF<F, Fix>
+export type EnvironmentalF<
+  F,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> = IdentityFlattenF<F, Fix0, Fix1, Fix2, Fix3> &
+  AccessF<F, Fix0, Fix1, Fix2, Fix3> &
+  CovariantF<F, Fix0, Fix1, Fix2, Fix3>
 
-export type EnvironmentalK<F extends URIS, Fix = any> = IdentityFlattenK<F, Fix> &
-  AccessK<F, Fix> &
-  CovariantK<F, Fix>
+export type EnvironmentalK<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> = IdentityFlattenK<F, Fix0, Fix1, Fix2, Fix3> &
+  AccessK<F, Fix0, Fix1, Fix2, Fix3> &
+  CovariantK<F, Fix0, Fix1, Fix2, Fix3>
 
-export function makeEnvironmental<URI extends URIS, Fix = any>(
+export function makeEnvironmental<
+  URI extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(
   _: URI
 ): (
-  _: Omit<EnvironmentalK<URI, Fix>, "URI" | "Fix" | "Environmental">
-) => EnvironmentalK<URI, Fix>
-export function makeEnvironmental<URI, Fix = any>(
+  _: Omit<
+    EnvironmentalK<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Environmental"
+  >
+) => EnvironmentalK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
 ): (
-  _: Omit<EnvironmentalF<URI, Fix>, "URI" | "Fix" | "Environmental">
-) => EnvironmentalF<URI, Fix>
-export function makeEnvironmental<URI, Fix = any>(
+  _: Omit<
+    EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Environmental"
+  >
+) => EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
 ): (
-  _: Omit<EnvironmentalF<URI, Fix>, "URI" | "Fix" | "Environmental">
-) => EnvironmentalF<URI, Fix> {
+  _: Omit<
+    EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Environmental"
+  >
+) => EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
-    Fix: undefined as any,
+    Fix0: undefined as any,
+    Fix1: undefined as any,
+    Fix2: undefined as any,
+    Fix3: undefined as any,
     Environmental: "Environmental",
     ..._
   })

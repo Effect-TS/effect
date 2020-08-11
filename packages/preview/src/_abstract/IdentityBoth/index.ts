@@ -6,23 +6,58 @@ import { URIS } from "../HKT"
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export type IdentityBothF<F, Fix = any> = AssociativeBothF<F, Fix> & AnyF<F, Fix>
+export type IdentityBothF<
+  F,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> = AssociativeBothF<F, Fix0, Fix1, Fix2, Fix3> & AnyF<F, Fix0, Fix1, Fix2, Fix3>
 
-export type IdentityBothK<F extends URIS, Fix = any> = AssociativeBothK<F, Fix> &
-  AnyK<F, Fix>
+export type IdentityBothK<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> = AssociativeBothK<F, Fix0, Fix1, Fix2, Fix3> & AnyK<F, Fix0, Fix1, Fix2, Fix3>
 
-export function makeIdentityBoth<URI extends URIS, Fix = any>(
+export function makeIdentityBoth<
+  URI extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(
   _: URI
-): (_: Omit<IdentityBothK<URI, Fix>, "URI" | "Fix">) => IdentityBothK<URI, Fix>
-export function makeIdentityBoth<URI, Fix = any>(
+): (
+  _: Omit<
+    IdentityBothK<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+  >
+) => IdentityBothK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeIdentityBoth<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
-): (_: Omit<IdentityBothF<URI, Fix>, "URI" | "Fix">) => IdentityBothF<URI, Fix>
-export function makeIdentityBoth<URI, Fix = any>(
+): (
+  _: Omit<
+    IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+  >
+) => IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeIdentityBoth<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
-): (_: Omit<IdentityBothF<URI, Fix>, "URI" | "Fix">) => IdentityBothF<URI, Fix> {
+): (
+  _: Omit<
+    IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+  >
+) => IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
-    Fix: undefined as any,
+    Fix0: undefined as any,
+    Fix1: undefined as any,
+    Fix2: undefined as any,
+    Fix3: undefined as any,
     ..._
   })
 }

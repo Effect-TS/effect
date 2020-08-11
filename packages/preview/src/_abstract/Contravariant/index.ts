@@ -23,42 +23,61 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  * compares strings by computing their lengths with the provided function and
  * comparing those.
  */
-export interface ContravariantF<F, Fix = any> extends HasURI<F, Fix> {
+export interface ContravariantF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: HKTFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => HKTFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, B>
+    fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
-export interface ContravariantK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
+export interface ContravariantK<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: KindFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => KindFix<F, Fix, K, NK, SI, SO, X, I, S, Env, Err, B>
+    fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
 export function makeContravariant<URI extends URIS>(
   _: URI
 ): (
-  _: Omit<ContravariantK<URI>, "URI" | "Fix" | "Contravariant">
+  _: Omit<
+    ContravariantK<URI>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Contravariant"
+  >
 ) => ContravariantK<URI>
 export function makeContravariant<URI>(
   URI: URI
 ): (
-  _: Omit<ContravariantF<URI>, "URI" | "Fix" | "Contravariant">
+  _: Omit<
+    ContravariantF<URI>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Contravariant"
+  >
 ) => ContravariantF<URI>
 export function makeContravariant<URI>(
   URI: URI
 ): (
-  _: Omit<ContravariantF<URI>, "URI" | "Fix" | "Contravariant">
+  _: Omit<
+    ContravariantF<URI>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Contravariant"
+  >
 ) => ContravariantF<URI> {
   return (_) => ({
     URI,
-    Fix: undefined as any,
+    Fix0: undefined as any,
+    Fix1: undefined as any,
+    Fix2: undefined as any,
+    Fix3: undefined as any,
     Contravariant: "Contravariant",
     ..._
   })

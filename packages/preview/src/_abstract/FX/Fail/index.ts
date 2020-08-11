@@ -4,32 +4,90 @@ import { HasURI, HKTFix, KindFix, URIS } from "../../HKT"
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
  * produce an `F[(A, B)]` with an identity.
  */
-export interface FailF<F, Fix = any> extends HasURI<F, Fix> {
+export interface FailF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly Fail: "Fail"
   readonly fail: <E, S, SI, SO = SI>(
     e: E
-  ) => HKTFix<F, Fix, never, never, SI, SO, never, unknown, S, unknown, E, never>
+  ) => HKTFix<
+    F,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    never,
+    never,
+    SI,
+    SO,
+    never,
+    unknown,
+    S,
+    unknown,
+    E,
+    never
+  >
 }
 
-export interface FailK<F extends URIS, Fix = any> extends HasURI<F, Fix> {
+export interface FailK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly Fail: "Fail"
   readonly fail: <E, S, SI, SO = SI>(
     e: E
-  ) => KindFix<F, Fix, never, never, SI, SO, never, unknown, S, unknown, E, never>
+  ) => KindFix<
+    F,
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    never,
+    never,
+    SI,
+    SO,
+    never,
+    unknown,
+    S,
+    unknown,
+    E,
+    never
+  >
 }
 
-export function makeFail<URI extends URIS, Fix = any>(
+export function makeFail<
+  URI extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(
   _: URI
-): (_: Omit<FailK<URI, Fix>, "URI" | "Fix" | "Fail">) => FailK<URI, Fix>
-export function makeFail<URI, Fix = any>(
+): (
+  _: Omit<
+    FailK<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Fail"
+  >
+) => FailK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeFail<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
-): (_: Omit<FailF<URI, Fix>, "URI" | "Fix" | "Fail">) => FailF<URI, Fix>
-export function makeFail<URI, Fix = any>(
+): (
+  _: Omit<
+    FailF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Fail"
+  >
+) => FailF<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeFail<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
-): (_: Omit<FailF<URI, Fix>, "URI" | "Fix" | "Fail">) => FailF<URI, Fix> {
+): (
+  _: Omit<
+    FailF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Fail"
+  >
+) => FailF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
-    Fix: undefined as any,
+    Fix0: undefined as any,
+    Fix1: undefined as any,
+    Fix2: undefined as any,
+    Fix3: undefined as any,
     Fail: "Fail",
     ..._
   })

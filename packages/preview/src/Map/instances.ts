@@ -19,13 +19,43 @@ export const MapFixedURI = "MapFixed"
 export type MapFixedURI = typeof MapFixedURI
 
 declare module "../_abstract/HKT" {
-  interface URItoKind<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKind<
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    I,
+    S,
+    Env,
+    Err,
+    Out
+  > {
     [MapURI]: M.Map<K, Out>
-    [MapFixedURI]: M.Map<Fix, Out>
+    [MapFixedURI]: M.Map<Fix0, Out>
   }
-  interface URItoKeys<Fix, K, NK extends string, SI, SO, X, I, S, Env, Err, Out> {
+  interface URItoKeys<
+    Fix0,
+    Fix1,
+    Fix2,
+    Fix3,
+    K,
+    NK extends string,
+    SI,
+    SO,
+    X,
+    I,
+    S,
+    Env,
+    Err,
+    Out
+  > {
     [MapURI]: K
-    [MapFixedURI]: Fix
+    [MapFixedURI]: Fix0
   }
 }
 

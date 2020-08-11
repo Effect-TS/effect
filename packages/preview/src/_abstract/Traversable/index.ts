@@ -2,24 +2,54 @@ import { CovariantF, CovariantK } from "../Covariant"
 import { HKTFix, KindFix, URIS } from "../HKT"
 import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
 
-export interface ForeachF<F, Fix = any> {
-  <G, GFix = any>(G: IdentityBothF<G, GFix> & CovariantF<G, GFix>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    A,
-    B
-  >(
-    f: (a: A) => HKTFix<G, GFix, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
+export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
+  <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
+    G: IdentityBothF<G, GFix0, GFix1, GFix2, GFix3> &
+      CovariantF<G, GFix0, GFix1, GFix2, GFix3>
+  ): <GK, GKN extends string, GX, GI, GS, GR, GE, A, B>(
+    f: (
+      a: A
+    ) => HKTFix<
+      G,
+      GFix0,
+      GFix1,
+      GFix2,
+      GFix3,
+      GK,
+      GKN,
+      unknown,
+      unknown,
+      GX,
+      GI,
+      GS,
+      GR,
+      GE,
+      B
+    >
   ) => <FK, FKN extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    fa: HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: HKTFix<
+      F,
+      Fix0,
+      Fix1,
+      Fix2,
+      Fix3,
+      FK,
+      FKN,
+      FSI,
+      FSO,
+      FX,
+      FIn,
+      FSt,
+      FEnv,
+      FErr,
+      A
+    >
   ) => HKTFix<
     G,
-    GFix,
+    GFix0,
+    GFix1,
+    GFix2,
+    GFix3,
     GK,
     GKN,
     unknown,
@@ -29,25 +59,55 @@ export interface ForeachF<F, Fix = any> {
     GS,
     GR,
     GE,
-    HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
-  <G extends URIS, GFix = any>(G: IdentityBothK<G, GFix> & CovariantK<G, GFix>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    A,
-    B
-  >(
-    f: (a: A) => KindFix<G, GFix, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
+  <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
+    G: IdentityBothK<G, GFix0, GFix1, GFix2, GFix3> &
+      CovariantK<G, GFix0, GFix1, GFix2, GFix3>
+  ): <GK, GKN extends string, X, In, S, Env, Err, A, B>(
+    f: (
+      a: A
+    ) => KindFix<
+      G,
+      GFix0,
+      GFix1,
+      GFix2,
+      GFix3,
+      GK,
+      GKN,
+      unknown,
+      unknown,
+      X,
+      In,
+      S,
+      Env,
+      Err,
+      B
+    >
   ) => <FK, FKN extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    fa: HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: HKTFix<
+      F,
+      Fix0,
+      Fix1,
+      Fix2,
+      Fix3,
+      FK,
+      FKN,
+      FSI,
+      FSO,
+      FX,
+      FIn,
+      FSt,
+      FEnv,
+      FErr,
+      A
+    >
   ) => KindFix<
     G,
-    GFix,
+    GFix0,
+    GFix1,
+    GFix2,
+    GFix3,
     GK,
     GKN,
     unknown,
@@ -57,33 +117,70 @@ export interface ForeachF<F, Fix = any> {
     S,
     Env,
     Err,
-    HKTFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
-export interface TraversableF<F, Fix = any> extends CovariantF<F, Fix> {
+export interface TraversableF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+  extends CovariantF<F, Fix0, Fix1, Fix2, Fix3> {
   readonly Traversable: "Traversable"
-  readonly foreachF: ForeachF<F, Fix>
+  readonly foreachF: ForeachF<F, Fix0, Fix1, Fix2, Fix3>
 }
 
-export interface ForeachK<F extends URIS, Fix = any> {
-  <G, GFix = any>(G: IdentityBothF<G, GFix> & CovariantF<G, GFix>): <
-    GK,
-    GKN extends string,
-    GX,
-    GI,
-    GS,
-    GR,
-    GE,
-    A,
-    B
-  >(
-    f: (a: A) => HKTFix<G, GFix, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
+export interface ForeachK<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> {
+  <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
+    G: IdentityBothF<G, GFix0, GFix1, GFix2, GFix3> &
+      CovariantF<G, GFix0, GFix1, GFix2, GFix3>
+  ): <GK, GKN extends string, GX, GI, GS, GR, GE, A, B>(
+    f: (
+      a: A
+    ) => HKTFix<
+      G,
+      GFix0,
+      GFix1,
+      GFix2,
+      GFix3,
+      GK,
+      GKN,
+      unknown,
+      unknown,
+      GX,
+      GI,
+      GS,
+      GR,
+      GE,
+      B
+    >
   ) => <FK, FKN extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    fa: KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: KindFix<
+      F,
+      Fix0,
+      Fix1,
+      Fix2,
+      Fix3,
+      FK,
+      FKN,
+      FSI,
+      FSO,
+      FX,
+      FIn,
+      FSt,
+      FEnv,
+      FErr,
+      A
+    >
   ) => HKTFix<
     G,
-    GFix,
+    GFix0,
+    GFix1,
+    GFix2,
+    GFix3,
     GK,
     GKN,
     unknown,
@@ -93,25 +190,55 @@ export interface ForeachK<F extends URIS, Fix = any> {
     GS,
     GR,
     GE,
-    KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
-  <G extends URIS, GFix = any>(G: IdentityBothK<G, GFix> & CovariantK<G, GFix>): <
-    GK,
-    GKN extends string,
-    X,
-    In,
-    S,
-    Env,
-    Err,
-    A,
-    B
-  >(
-    f: (a: A) => KindFix<G, GFix, GK, GKN, unknown, unknown, X, In, S, Env, Err, B>
+  <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
+    G: IdentityBothK<G, GFix0, GFix1, GFix2, GFix3> &
+      CovariantK<G, GFix0, GFix1, GFix2, GFix3>
+  ): <GK, GKN extends string, X, In, S, Env, Err, A, B>(
+    f: (
+      a: A
+    ) => KindFix<
+      G,
+      GFix0,
+      GFix1,
+      GFix2,
+      GFix3,
+      GK,
+      GKN,
+      unknown,
+      unknown,
+      X,
+      In,
+      S,
+      Env,
+      Err,
+      B
+    >
   ) => <FK, FKN extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    fa: KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+    fa: KindFix<
+      F,
+      Fix0,
+      Fix1,
+      Fix2,
+      Fix3,
+      FK,
+      FKN,
+      FSI,
+      FSO,
+      FX,
+      FIn,
+      FSt,
+      FEnv,
+      FErr,
+      A
+    >
   ) => KindFix<
     G,
-    GFix,
+    GFix0,
+    GFix1,
+    GFix2,
+    GFix3,
     GK,
     GKN,
     unknown,
@@ -121,34 +248,60 @@ export interface ForeachK<F extends URIS, Fix = any> {
     S,
     Env,
     Err,
-    KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
-export interface TraversableK<F extends URIS, Fix = any> extends CovariantK<F, Fix> {
+export interface TraversableK<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> extends CovariantK<F, Fix0, Fix1, Fix2, Fix3> {
   readonly Traversable: "Traversable"
-  readonly foreachF: ForeachK<F, Fix>
+  readonly foreachF: ForeachK<F, Fix0, Fix1, Fix2, Fix3>
 }
 
-export function makeTraversable<URI extends URIS, Fix = any>(
-  C: CovariantK<URI, Fix>
+export function makeTraversable<
+  URI extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(
+  C: CovariantK<URI, Fix0, Fix1, Fix2, Fix3>
 ): (
   _: Omit<
-    TraversableK<URI, Fix>,
-    "URI" | "Fix" | "Traversable" | keyof CovariantK<URI, Fix>
+    TraversableK<URI, Fix0, Fix1, Fix2, Fix3>,
+    | "URI"
+    | "Fix0"
+    | "Fix1"
+    | "Fix2"
+    | "Fix3"
+    | "Traversable"
+    | keyof CovariantK<URI, Fix0, Fix1, Fix2, Fix3>
   >
-) => TraversableK<URI, Fix>
-export function makeTraversable<URI, Fix = any>(
-  C: CovariantF<URI, Fix>
+) => TraversableK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeTraversable<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
+  C: CovariantF<URI, Fix0, Fix1, Fix2, Fix3>
 ): (
   _: Omit<
-    TraversableF<URI, Fix>,
-    "URI" | "Fix" | "Traversable" | keyof CovariantF<URI, Fix>
+    TraversableF<URI, Fix0, Fix1, Fix2, Fix3>,
+    | "URI"
+    | "Fix0"
+    | "Fix1"
+    | "Fix2"
+    | "Fix3"
+    | "Traversable"
+    | keyof CovariantF<URI, Fix0, Fix1, Fix2, Fix3>
   >
-) => TraversableF<URI, Fix>
+) => TraversableF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeTraversable<URI>(
   C: CovariantF<URI>
-): (_: Omit<TraversableF<URI>, "URI" | "Fix" | "Traversable">) => TraversableF<URI> {
+): (
+  _: Omit<TraversableF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Traversable">
+) => TraversableF<URI> {
   return (_) => ({
     Traversable: "Traversable",
     ..._,
@@ -156,7 +309,13 @@ export function makeTraversable<URI>(
   })
 }
 
-export function implementForeachF<F extends URIS, Fix = any>(F: F) {
+export function implementForeachF<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(F: F) {
   return (
     i: <
       FErr,
@@ -164,7 +323,10 @@ export function implementForeachF<F extends URIS, Fix = any>(F: F) {
       FKN extends string,
       A,
       G,
-      GFix,
+      GFix0,
+      GFix1,
+      GFix2,
+      GFix3,
       GK,
       GKN extends string,
       GX,
@@ -188,12 +350,49 @@ export function implementForeachF<F extends URIS, Fix = any>(F: F) {
     }) => (
       G: IdentityBothF<G> & CovariantF<G>
     ) => (
-      f: (a: A) => HKTFix<G, GFix, GK, GKN, unknown, unknown, GX, GI, GS, GR, GE, B>
+      f: (
+        a: A
+      ) => HKTFix<
+        G,
+        GFix0,
+        GFix1,
+        GFix2,
+        GFix3,
+        GK,
+        GKN,
+        unknown,
+        unknown,
+        GX,
+        GI,
+        GS,
+        GR,
+        GE,
+        B
+      >
     ) => <FSI, FSO, FX, FIn, FSt, FEnv>(
-      fa: KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+      fa: KindFix<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FKN,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        A
+      >
     ) => HKTFix<
       G,
-      GFix,
+      GFix0,
+      GFix1,
+      GFix2,
+      GFix3,
       GK,
       GKN,
       unknown,
@@ -203,9 +402,9 @@ export function implementForeachF<F extends URIS, Fix = any>(F: F) {
       GS,
       GR,
       GE,
-      KindFix<F, Fix, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+      KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
     >
-  ): ForeachK<F, Fix> =>
+  ): ForeachK<F, Fix0, Fix1, Fix2, Fix3> =>
     i({
       _b: {},
       _ge: {},
