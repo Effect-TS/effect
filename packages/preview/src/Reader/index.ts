@@ -5,6 +5,7 @@ import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
 import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
 import { makeCovariant } from "../_abstract/Covariant"
 import { bindF, doF, sequenceSF } from "../_abstract/DSL"
+import { accessServiceMF, provideServiceF } from "../_abstract/DSL/core"
 import { makeAccess } from "../_abstract/FX/Access"
 import { makeEnvironmental } from "../_abstract/FX/Environmental"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
@@ -172,3 +173,13 @@ export const of = doF(Monad)
  * Monadically bind a variable in a pipeable `do` context
  */
 export const bind = bindF(Monad)
+
+/**
+ * Provides a service in environment
+ */
+export const provideService = provideServiceF(Environmental)
+
+/**
+ * Access a service in environment monadically
+ */
+export const accessServiceM = accessServiceMF(Environmental)

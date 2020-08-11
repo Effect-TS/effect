@@ -1,3 +1,4 @@
+import { Augmented, Has, HasURI } from "../../Has"
 import { pipe } from "../../_system/Function"
 import { AnyF, AnyK } from "../Any"
 import { CovariantF, CovariantK } from "../Covariant"
@@ -217,4 +218,65 @@ export function provideSomeF<F>(
 ): <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, R0, E, A> {
   return <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) =>
     accessMF(F)((r: R0) => F.provide(f(r))(fa))
+}
+
+/**
+ * Generic provideSome
+ */
+export function provideServiceF<F extends URIS, Fix = any>(
+  F: EnvironmentalK<F, Fix>
+): <SR>(
+  Has: Augmented<SR>
+) => (
+  Service: SR
+) => <TK, TKN extends string, SI, SO, X, I, S, R, E, A>(
+  fa: KindFix<F, Fix, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
+) => KindFix<F, Fix, TK, TKN, SI, SO, X, I, S, R, E, A>
+export function provideServiceF<F, Fix = any>(
+  F: EnvironmentalF<F, Fix>
+): <SR>(
+  Has: Augmented<SR>
+) => (
+  Service: SR
+) => <TK, TKN extends string, SI, SO, X, I, S, R, E, A>(
+  fa: HKTFix<F, Fix, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
+) => HKTFix<F, Fix, TK, TKN, SI, SO, X, I, S, R, E, A>
+export function provideServiceF<F>(
+  F: EnvironmentalF<F>
+): <SR>(
+  Has: Augmented<SR>
+) => (Service: SR) => <R, E, A>(fa: HKT3<F, R & Has<SR>, E, A>) => HKT3<F, R, E, A> {
+  return (Has) => (Service) =>
+    provideSomeF(F)((r) => ({ ...r, [Has[HasURI].key]: Service } as any))
+}
+
+/**
+ * Generic accessServiceM
+ */
+export function accessServiceMF<F extends URIS, Fix = any>(
+  F: EnvironmentalK<F, Fix>
+): <SR>(
+  Has: Augmented<SR>
+) => <TK, TKN extends string, SI, SO, Y, X, S, R1, E, A>(
+  f: (r: SR) => KindFix<F, Fix, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => KindFix<F, Fix, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+export function accessServiceMF<F, Fix = any>(
+  F: EnvironmentalF<F, Fix>
+): <SR>(
+  Has: Augmented<SR>
+) => <TK, TKN extends string, SI, SO, Y, X, S, R1, E, A>(
+  f: (r: SR) => HKTFix<F, Fix, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => HKTFix<F, Fix, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+export function accessServiceMF<F, Fix = any>(
+  F: EnvironmentalF<F, Fix>
+): <SR>(
+  Has: Augmented<SR>
+) => <E, R1, A>(f: (r: SR) => HKT3<F, R1, E, A>) => HKT3<F, R1 & Has<SR>, E, A> {
+  return <SR>(Has: Augmented<SR>) => <R1, E, A>(
+    f: (r: SR) => HKT3<F, R1, E, A>
+  ): HKT3<F, R1 & Has<SR>, E, A> =>
+    pipe(
+      F.access((r: Has<SR>) => f(r[Has[HasURI].key as any])),
+      F.flatten
+    )
 }
