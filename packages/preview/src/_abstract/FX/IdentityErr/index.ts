@@ -2,7 +2,6 @@ import { ErrFor, HasURI, URIS } from "../../HKT"
 
 export interface IdentityErrF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly IdentityErr: "IdentityErr"
   readonly combineErr: <E>(
     y: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
   ) => <E2>(
@@ -17,7 +16,6 @@ export interface IdentityErrK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly IdentityErr: "IdentityErr"
   readonly combineErr: <E>(
     y: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
   ) => <E2>(
@@ -36,7 +34,7 @@ export function makeIdentityErr<
 ): (
   _: Omit<
     IdentityErrK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "IdentityErr"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => IdentityErrK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeIdentityErr<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -44,7 +42,7 @@ export function makeIdentityErr<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = 
 ): (
   _: Omit<
     IdentityErrF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "IdentityErr"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => IdentityErrF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeIdentityErr<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -52,7 +50,7 @@ export function makeIdentityErr<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = 
 ): (
   _: Omit<
     IdentityErrF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "IdentityErr"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => IdentityErrF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -61,7 +59,6 @@ export function makeIdentityErr<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = 
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    IdentityErr: "IdentityErr",
     ..._
   })
 }

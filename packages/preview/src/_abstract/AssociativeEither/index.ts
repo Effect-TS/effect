@@ -7,7 +7,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface AssociativeEitherF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly AssociativeEither: "AssociativeEither"
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
     fb: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, Err, A>(
@@ -38,7 +37,6 @@ export interface AssociativeEitherK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly AssociativeEither: "AssociativeEither"
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
     fb: KindFix<F, Fix0, Fix1, Fix2, Fix3, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, Err, A>(
@@ -73,7 +71,7 @@ export function makeAssociativeEither<
 ): (
   _: Omit<
     AssociativeEitherK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeEither"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeEitherK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAssociativeEither<
@@ -87,7 +85,7 @@ export function makeAssociativeEither<
 ): (
   _: Omit<
     AssociativeEitherF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeEither"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeEitherF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAssociativeEither<
@@ -101,7 +99,7 @@ export function makeAssociativeEither<
 ): (
   _: Omit<
     AssociativeEitherF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeEither"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeEitherF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -110,7 +108,6 @@ export function makeAssociativeEither<
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    AssociativeEither: "AssociativeEither",
     ..._
   })
 }

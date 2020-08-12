@@ -5,7 +5,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface NoneF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly None: "None"
   readonly none: <S, SI, SO = SI>() => HKTFix<
     F,
     Fix0,
@@ -27,7 +26,6 @@ export interface NoneF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
 
 export interface NoneK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly None: "None"
   readonly none: <S, SI, SO = SI>() => KindFix<
     F,
     Fix0,
@@ -56,26 +54,17 @@ export function makeNone<
 >(
   _: URI
 ): (
-  _: Omit<
-    NoneK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "None"
-  >
+  _: Omit<NoneK<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => NoneK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
 ): (
-  _: Omit<
-    NoneF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "None"
-  >
+  _: Omit<NoneF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => NoneF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
 ): (
-  _: Omit<
-    NoneF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "None"
-  >
+  _: Omit<NoneF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => NoneF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
@@ -83,7 +72,6 @@ export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    None: "None",
     ..._
   })
 }

@@ -7,7 +7,6 @@ import { Identity } from "../Identity"
  */
 export interface FoldMapF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly FoldMap: "FoldMap"
   readonly foldMap: <M>(
     I: Identity<M>
   ) => <A>(
@@ -24,7 +23,6 @@ export interface FoldMapK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly FoldMap: "FoldMap"
   readonly foldMap: <M>(
     I: Identity<M>
   ) => <A>(
@@ -45,7 +43,7 @@ export function makeFoldMap<
 ): (
   _: Omit<
     FoldMapK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "FoldMap"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => FoldMapK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeFoldMap<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -53,7 +51,7 @@ export function makeFoldMap<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
 ): (
   _: Omit<
     FoldMapF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "FoldMap"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => FoldMapF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeFoldMap<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -61,7 +59,7 @@ export function makeFoldMap<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
 ): (
   _: Omit<
     FoldMapF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "FoldMap"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => FoldMapF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({

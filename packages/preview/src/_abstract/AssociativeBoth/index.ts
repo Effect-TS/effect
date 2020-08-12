@@ -6,7 +6,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface AssociativeBothF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <K2, NK2 extends string, SO, SO2, X2, In2, S, Env2, Err2, B>(
     fb: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K2, NK2, SO, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, X, In, Env, Err, A>(
@@ -37,7 +36,6 @@ export interface AssociativeBothK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly AssociativeBoth: "AssociativeBoth"
   readonly both: <K2, NK2 extends string, SO, SO2, X2, In2, S, Env2, Err2, B>(
     fb: KindFix<F, Fix0, Fix1, Fix2, Fix3, K2, NK2, SO, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, X, In, Env, Err, A>(
@@ -72,7 +70,7 @@ export function makeAssociativeBoth<
 ): (
   _: Omit<
     AssociativeBothK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeBoth"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeBothK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAssociativeBoth<
@@ -86,7 +84,7 @@ export function makeAssociativeBoth<
 ): (
   _: Omit<
     AssociativeBothF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeBoth"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeBothF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAssociativeBoth<
@@ -100,7 +98,7 @@ export function makeAssociativeBoth<
 ): (
   _: Omit<
     AssociativeBothF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeBoth"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeBothF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -109,7 +107,6 @@ export function makeAssociativeBoth<
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    AssociativeBoth: "AssociativeBoth",
     ..._
   })
 }

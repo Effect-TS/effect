@@ -10,7 +10,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface AssociativeFlattenF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <
     K,
     NK extends string,
@@ -73,7 +72,6 @@ export interface AssociativeFlattenK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly AssociativeFlatten: "AssociativeFlatten"
   readonly flatten: <
     K,
     NK extends string,
@@ -140,7 +138,7 @@ export function makeAssociativeFlatten<
 ): (
   _: Omit<
     AssociativeFlattenK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeFlatten"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeFlattenK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAssociativeFlatten<
@@ -154,7 +152,7 @@ export function makeAssociativeFlatten<
 ): (
   _: Omit<
     AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeFlatten"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAssociativeFlatten<
@@ -168,7 +166,7 @@ export function makeAssociativeFlatten<
 ): (
   _: Omit<
     AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "AssociativeFlatten"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -177,7 +175,6 @@ export function makeAssociativeFlatten<
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    AssociativeFlatten: "AssociativeFlatten",
     ..._
   })
 }

@@ -34,7 +34,7 @@ export function makeEnvironmental<
 ): (
   _: Omit<
     EnvironmentalK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Environmental"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => EnvironmentalK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -42,7 +42,7 @@ export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
 ): (
   _: Omit<
     EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Environmental"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -50,7 +50,7 @@ export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
 ): (
   _: Omit<
     EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Environmental"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => EnvironmentalF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -59,7 +59,6 @@ export function makeEnvironmental<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Environmental: "Environmental",
     ..._
   })
 }

@@ -2,7 +2,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../../HKT"
 
 export interface AccessF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Access: "Access"
   readonly access: <R, A, In, I = In, O = In, S = In>(
     f: (r: R) => A
   ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, never, never, I, O, never, In, S, R, never, A>
@@ -20,7 +19,6 @@ export interface AccessK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Access: "Access"
   readonly access: <R, A, In, I = In, O = In, S = In>(
     f: (r: R) => A
   ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, never, never, I, O, never, In, S, R, never, A>
@@ -42,7 +40,7 @@ export function makeAccess<
 ): (
   _: Omit<
     AccessK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Access"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AccessK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAccess<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -50,7 +48,7 @@ export function makeAccess<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
 ): (
   _: Omit<
     AccessF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Access"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AccessF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeAccess<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -58,7 +56,7 @@ export function makeAccess<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
 ): (
   _: Omit<
     AccessF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Access"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => AccessF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -67,7 +65,6 @@ export function makeAccess<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Access: "Access",
     ..._
   })
 }

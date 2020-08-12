@@ -2,7 +2,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
 export interface InvariantF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -23,7 +22,6 @@ export interface InvariantK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Invariant: "Invariant"
   readonly invmap: <A, B>(fg: {
     f: (a: A) => B
     g: (b: B) => A
@@ -48,7 +46,7 @@ export function makeInvariant<
 ): (
   _: Omit<
     InvariantK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Invariant"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => InvariantK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeInvariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -56,7 +54,7 @@ export function makeInvariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
 ): (
   _: Omit<
     InvariantF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Invariant"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => InvariantF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeInvariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -64,7 +62,7 @@ export function makeInvariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
 ): (
   _: Omit<
     InvariantF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Invariant"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => InvariantF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -73,7 +71,6 @@ export function makeInvariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Invariant: "Invariant",
     ..._
   })
 }

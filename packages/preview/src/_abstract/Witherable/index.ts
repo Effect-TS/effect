@@ -270,7 +270,7 @@ export function makeWitherable<
 ): (
   _: Omit<
     WitherableK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Witherable"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => WitherableK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
@@ -278,7 +278,7 @@ export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
 ): (
   _: Omit<
     WitherableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Witherable"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => WitherableF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
@@ -286,7 +286,7 @@ export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
 ): (
   _: Omit<
     WitherableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Witherable"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => WitherableF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -295,7 +295,6 @@ export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Witherable: "Witherable",
     ..._
   })
 }

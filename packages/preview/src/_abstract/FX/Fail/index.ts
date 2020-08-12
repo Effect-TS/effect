@@ -2,7 +2,6 @@ import { ErrFor, HasURI, HKTFix, KindFix, URIS } from "../../HKT"
 
 export interface FailF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Fail: "Fail"
   readonly fail: <E, S, SI, SO = SI>(
     e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
   ) => HKTFix<
@@ -26,7 +25,6 @@ export interface FailF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
 
 export interface FailK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Fail: "Fail"
   readonly fail: <E, S, SI, SO = SI>(
     e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
   ) => KindFix<
@@ -57,26 +55,17 @@ export function makeFail<
 >(
   _: URI
 ): (
-  _: Omit<
-    FailK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Fail"
-  >
+  _: Omit<FailK<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => FailK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeFail<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
 ): (
-  _: Omit<
-    FailF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Fail"
-  >
+  _: Omit<FailF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => FailF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeFail<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   URI: URI
 ): (
-  _: Omit<
-    FailF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Fail"
-  >
+  _: Omit<FailF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => FailF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,

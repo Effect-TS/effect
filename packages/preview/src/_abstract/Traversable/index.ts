@@ -123,7 +123,6 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
 
 export interface TraversableF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends CovariantF<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Traversable: "Traversable"
   readonly foreachF: ForeachF<F, Fix0, Fix1, Fix2, Fix3>
 }
 
@@ -259,7 +258,6 @@ export interface TraversableK<
   Fix2 = any,
   Fix3 = any
 > extends CovariantK<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Traversable: "Traversable"
   readonly foreachF: ForeachK<F, Fix0, Fix1, Fix2, Fix3>
 }
 
@@ -279,7 +277,6 @@ export function makeTraversable<
     | "Fix1"
     | "Fix2"
     | "Fix3"
-    | "Traversable"
     | keyof CovariantK<URI, Fix0, Fix1, Fix2, Fix3>
   >
 ) => TraversableK<URI, Fix0, Fix1, Fix2, Fix3>
@@ -293,17 +290,15 @@ export function makeTraversable<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = 
     | "Fix1"
     | "Fix2"
     | "Fix3"
-    | "Traversable"
     | keyof CovariantF<URI, Fix0, Fix1, Fix2, Fix3>
   >
 ) => TraversableF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeTraversable<URI>(
   C: CovariantF<URI>
 ): (
-  _: Omit<TraversableF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Traversable">
+  _: Omit<TraversableF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => TraversableF<URI> {
   return (_) => ({
-    Traversable: "Traversable",
     ..._,
     ...C
   })

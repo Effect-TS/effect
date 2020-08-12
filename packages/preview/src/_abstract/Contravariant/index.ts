@@ -25,7 +25,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface ContravariantF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
@@ -40,7 +39,6 @@ export interface ContravariantK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Contravariant: "Contravariant"
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
@@ -51,26 +49,17 @@ export interface ContravariantK<
 export function makeContravariant<URI extends URIS>(
   _: URI
 ): (
-  _: Omit<
-    ContravariantK<URI>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Contravariant"
-  >
+  _: Omit<ContravariantK<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => ContravariantK<URI>
 export function makeContravariant<URI>(
   URI: URI
 ): (
-  _: Omit<
-    ContravariantF<URI>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Contravariant"
-  >
+  _: Omit<ContravariantF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => ContravariantF<URI>
 export function makeContravariant<URI>(
   URI: URI
 ): (
-  _: Omit<
-    ContravariantF<URI>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Contravariant"
-  >
+  _: Omit<ContravariantF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
 ) => ContravariantF<URI> {
   return (_) => ({
     URI,
@@ -78,7 +67,6 @@ export function makeContravariant<URI>(
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Contravariant: "Contravariant",
     ..._
   })
 }

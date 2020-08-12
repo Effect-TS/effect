@@ -2,7 +2,6 @@ import { ErrFor, HasURI, HKTFix, KindFix, URIS } from "../../HKT"
 
 export interface RecoverF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Recover: "Recover"
   readonly recover: <K2, KN2 extends string, X2, SO, I2, R2, E2, A2, E, S, SI>(
     f: (
       e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
@@ -35,7 +34,6 @@ export interface RecoverK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Recover: "Recover"
   readonly recover: <K2, KN2 extends string, X2, SO, I2, R2, E2, A2, E, S, SI>(
     f: (
       e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
@@ -72,7 +70,7 @@ export function makeRecover<
 ): (
   _: Omit<
     RecoverK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Recover"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => RecoverK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeRecover<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -80,7 +78,7 @@ export function makeRecover<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
 ): (
   _: Omit<
     RecoverF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Recover"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => RecoverF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeRecover<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -88,7 +86,7 @@ export function makeRecover<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
 ): (
   _: Omit<
     RecoverF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Recover"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => RecoverF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({

@@ -309,7 +309,7 @@ export function makeWiltable<
 ): (
   _: Omit<
     WiltableK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => WiltableK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
@@ -317,7 +317,7 @@ export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
 ): (
   _: Omit<
     WiltableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => WiltableF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
@@ -325,7 +325,7 @@ export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
 ): (
   _: Omit<
     WiltableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => WiltableF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -334,7 +334,6 @@ export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Wiltable: "Wiltable",
     ..._
   })
 }

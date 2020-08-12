@@ -24,7 +24,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface CovariantF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
@@ -39,7 +38,6 @@ export interface CovariantK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Covariant: "Covariant"
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
@@ -58,7 +56,7 @@ export function makeCovariant<
 ): (
   _: Omit<
     CovariantK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Covariant"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => CovariantK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -66,7 +64,7 @@ export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
 ): (
   _: Omit<
     CovariantF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Covariant"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => CovariantF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -74,7 +72,7 @@ export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
 ): (
   _: Omit<
     CovariantF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Covariant"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => CovariantF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
@@ -83,7 +81,6 @@ export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Covariant: "Covariant",
     ..._
   })
 }

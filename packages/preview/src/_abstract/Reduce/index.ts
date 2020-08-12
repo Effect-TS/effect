@@ -6,7 +6,6 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  */
 export interface ReduceF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Reduce: "Reduce"
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
@@ -22,7 +21,6 @@ export interface ReduceK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly Reduce: "Reduce"
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
@@ -42,7 +40,7 @@ export function makeReduce<
 ): (
   _: Omit<
     ReduceK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Reduce"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => ReduceK<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeReduce<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -50,7 +48,7 @@ export function makeReduce<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
 ): (
   _: Omit<
     ReduceF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Reduce"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => ReduceF<URI, Fix0, Fix1, Fix2, Fix3>
 export function makeReduce<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
@@ -58,7 +56,7 @@ export function makeReduce<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
 ): (
   _: Omit<
     ReduceF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Reduce"
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
   >
 ) => ReduceF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
