@@ -4,7 +4,7 @@ export interface RecoverF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly recover: <K2, KN2 extends string, X2, SO, I2, R2, E2, A2, E, S, SI>(
     f: (
-      e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
+      e: E
     ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K2, KN2, SI, SO, X2, I2, S, R2, E2, A2>
   ) => <K, KN extends string, X, SO, I, S, R, A>(
     fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, KN, SI, SO, X, I, S, R, E, A>

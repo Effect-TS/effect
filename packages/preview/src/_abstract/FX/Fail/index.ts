@@ -3,7 +3,7 @@ import { ErrFor, HasURI, HKTFix, KindFix, URIS } from "../../HKT"
 export interface FailF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
   readonly fail: <E, S, SI, SO = SI>(
-    e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
+    e: E
   ) => HKTFix<
     F,
     Fix0,

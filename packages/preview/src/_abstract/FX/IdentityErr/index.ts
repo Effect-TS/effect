@@ -2,11 +2,7 @@ import { ErrFor, HasURI, URIS } from "../../HKT"
 
 export interface IdentityErrF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly combineErr: <E>(
-    y: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
-  ) => <E2>(
-    x: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E2>
-  ) => ErrFor<F, Fix0, Fix1, Fix2, Fix3, E | E2>
+  readonly combineErr: <E>(y: E) => <E2>(x: E2) => E | E2
 }
 
 export interface IdentityErrK<
