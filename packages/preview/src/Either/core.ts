@@ -1,6 +1,6 @@
 import { Associative } from "../Associative"
 import * as Equal from "../Equal"
-import { pipe, tuple } from "../Function"
+import { flow, pipe, tuple } from "../Function"
 import { Failure } from "../Newtype"
 import { intersect } from "../Utils"
 import { makeAny } from "../_abstract/Any"
@@ -24,8 +24,6 @@ export type EitherURI = typeof EitherURI
 export const FailureEitherURI = "FailureEither"
 export type FailureEitherURI = typeof FailureEitherURI
 
-export type FailureEither<E, A> = Failure<E.Either<A, E>>
-
 export const ValidationURI = "EitherValidation"
 export type ValidationURI = typeof ValidationURI
 
@@ -47,7 +45,7 @@ declare module "../_abstract/HKT" {
     Out
   > {
     [EitherURI]: E.Either<Err, Out>
-    [FailureEitherURI]: FailureEither<Err, Out>
+    [FailureEitherURI]: Failure<E.Either<Out, Err>>
     [ValidationURI]: E.Either<Fix0, Out>
   }
   interface URItoErr<Fix0, Fix1, Fix2, Fix3, Err> {
@@ -76,24 +74,32 @@ export const AssociativeBoth = makeAssociativeBoth(EitherURI)({
   both: E.zip
 })
 
-export const zipFailure = <E, B>(fb: FailureEither<E, B>) => <E1, A>(
-  fa: FailureEither<E1, A>
-): FailureEither<E | E1, readonly [A, B]> =>
-  pipe(
-    fa,
-    Failure.unwrap,
-    E.swap,
-    E.chain((a) =>
-      pipe(
-        fb,
-        Failure.unwrap,
-        E.swap,
-        E.map((b) => tuple(a, b))
-      )
-    ),
-    E.swap,
-    Failure.wrap
+export const zipFailure = <B, EB>(fb: Failure<E.Either<EB, B>>) => <A, EA>(
+  fa: Failure<E.Either<EA, A>>
+): Failure<E.Either<readonly [EA, EB], B | A>> => {
+  const ea = Failure.unwrap(fa)
+  const eb = Failure.unwrap(fb)
+
+  return pipe(
+    ea,
+    E.fold(
+      (la) =>
+        pipe(
+          eb,
+          E.fold(
+            (lb) => pipe(E.left(tuple(la, lb)), E.widenA<B | A>(), Failure.wrap),
+            flow(
+              E.right,
+              E.widenE<readonly [EA, EB]>(),
+              E.widenA<B | A>(),
+              Failure.wrap
+            )
+          )
+        ),
+      flow(E.right, E.widenE<readonly [EA, EB]>(), E.widenA<B | A>(), Failure.wrap)
+    )
   )
+}
 
 /**
  * The `AssociativeBoth` instance for a failed `Either`
@@ -132,9 +138,9 @@ export const AssociativeEither = makeAssociativeEither(EitherURI)({
 /**
  * AssociativeEither's either for Failure<Either<x, A>>
  */
-export const eitherFailure = <E1, B>(fb: FailureEither<E1, B>) => <E, A>(
-  fa: FailureEither<E, A>
-): FailureEither<E1, E.Either<A, B>> =>
+export const eitherFailure = <B, EB>(fb: Failure<E.Either<EB, B>>) => <A, EA>(
+  fa: Failure<E.Either<EA, A>>
+): Failure<E.Either<E.Either<EA, EB>, B>> =>
   pipe(
     fa,
     Failure.unwrap,

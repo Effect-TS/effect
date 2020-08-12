@@ -73,7 +73,6 @@ export {
   eitherFailure,
   EitherURI,
   Fail,
-  FailureEither,
   FailureEitherURI,
   getEqual,
   getValidationAny,
