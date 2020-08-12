@@ -1,14 +1,52 @@
 import { Either } from "../../Either"
 import { Separated } from "../../_system/Utils"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasURI, HKTFix, KeyFor, KindFix, URIS } from "../HKT"
 
-export interface WiltF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
+export interface WiltWithKeysF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeF<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
+  ): <
+    GK,
+    GNK extends string,
+    GSIO,
+    GX,
+    GIn,
+    GSt,
+    GEnv,
+    GErr,
+    FK,
+    FNK extends string,
+    FSI,
+    FSO,
+    FX,
+    FIn,
+    FSt,
+    FEnv,
+    FErr,
+    A,
+    B,
+    C
+  >(
     f: (
-      a: A
+      a: A,
+      k: KeyFor<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FNK,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        A
+      >
     ) => HKTFix<
       G,
       GFix0,
@@ -26,7 +64,7 @@ export interface WiltF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
       GErr,
       Either<B, C>
     >
-  ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+  ) => (
     ta: HKTFix<
       F,
       Fix0,
@@ -67,9 +105,47 @@ export interface WiltF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
 
   <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeK<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
+  ): <
+    GK,
+    GNK extends string,
+    GSIO,
+    GX,
+    GIn,
+    GSt,
+    GEnv,
+    GErr,
+    FK,
+    FNK extends string,
+    FSI,
+    FSO,
+    FX,
+    FIn,
+    FSt,
+    FEnv,
+    FErr,
+    A,
+    B,
+    C
+  >(
     f: (
-      a: A
+      a: A,
+      k: KeyFor<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FNK,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        A
+      >
     ) => KindFix<
       G,
       GFix0,
@@ -87,7 +163,7 @@ export interface WiltF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
       GErr,
       Either<B, C>
     >
-  ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+  ) => (
     ta: HKTFix<
       F,
       Fix0,
@@ -127,17 +203,61 @@ export interface WiltF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   >
 }
 
-export interface WiltableF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+export interface WiltableWithKeysF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly separateF: WiltF<F, Fix0, Fix1, Fix2, Fix3>
+  readonly separateWithKeysF: WiltWithKeysF<F, Fix0, Fix1, Fix2, Fix3>
 }
 
-export interface WiltK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
+export interface WiltWithKeysK<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+> {
   <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeF<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
+  ): <
+    GK,
+    GNK extends string,
+    GSIO,
+    GX,
+    GIn,
+    GSt,
+    GEnv,
+    GErr,
+    FK,
+    FNK extends string,
+    FSI,
+    FSO,
+    FX,
+    FIn,
+    FSt,
+    FEnv,
+    FErr,
+    A,
+    B,
+    C
+  >(
     f: (
-      a: A
+      a: A,
+      k: KeyFor<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FNK,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        A
+      >
     ) => HKTFix<
       G,
       GFix0,
@@ -155,7 +275,7 @@ export interface WiltK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
       GErr,
       Either<B, C>
     >
-  ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+  ) => (
     ta: KindFix<
       F,
       Fix0,
@@ -212,9 +332,47 @@ export interface WiltK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
 
   <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeK<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
+  ): <
+    GK,
+    GNK extends string,
+    GSIO,
+    GX,
+    GIn,
+    GSt,
+    GEnv,
+    GErr,
+    FK,
+    FNK extends string,
+    FSI,
+    FSO,
+    FX,
+    FIn,
+    FSt,
+    FEnv,
+    FErr,
+    A,
+    B,
+    C
+  >(
     f: (
-      a: A
+      a: A,
+      k: KeyFor<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FNK,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        A
+      >
     ) => KindFix<
       G,
       GFix0,
@@ -232,7 +390,7 @@ export interface WiltK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
       GErr,
       Either<B, C>
     >
-  ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
+  ) => (
     ta: KindFix<
       F,
       Fix0,
@@ -288,17 +446,17 @@ export interface WiltK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
   >
 }
 
-export interface WiltableK<
+export interface WiltableWithKeysK<
   F extends URIS,
   Fix0 = any,
   Fix1 = any,
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly separateF: WiltK<F, Fix0, Fix1, Fix2, Fix3>
+  readonly separateWithKeysF: WiltWithKeysK<F, Fix0, Fix1, Fix2, Fix3>
 }
 
-export function makeWiltable<
+export function makeWiltableWithKeys<
   URI extends URIS,
   Fix0 = any,
   Fix1 = any,
@@ -308,38 +466,38 @@ export function makeWiltable<
   _: URI
 ): (
   _: Omit<
-    WiltableK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
+    WiltableWithKeysK<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "WiltableWithKeys"
   >
-) => WiltableK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
+) => WiltableWithKeysK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeWiltableWithKeys<URI, Fix0, Fix1, Fix2, Fix3>(
   URI: URI
 ): (
   _: Omit<
-    WiltableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
+    WiltableWithKeysF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "WiltableWithKeys"
   >
-) => WiltableF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
+) => WiltableWithKeysF<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeWiltableWithKeys<URI, Fix0, Fix1, Fix2, Fix3>(
   URI: URI
 ): (
   _: Omit<
-    WiltableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
+    WiltableWithKeysF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "WiltableWithKeys"
   >
-) => WiltableF<URI, Fix0, Fix1, Fix2, Fix3> {
+) => WiltableWithKeysF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
     Fix0: undefined as any,
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Wiltable: "Wiltable",
+    WiltableWithKeys: "WiltableWithKeys",
     ..._
   })
 }
 
-export function implementSeparateF<
+export function implementSeparateWithKeysF<
   F extends URIS,
   Fix0 = any,
   Fix1 = any,
@@ -399,7 +557,24 @@ export function implementSeparateF<
       G: ApplicativeF<G, GFix0, GFix1, GFix2, GFix3>
     ) => (
       f: (
-        a: A
+        a: A,
+        k: KeyFor<
+          F,
+          Fix0,
+          Fix1,
+          Fix2,
+          Fix3,
+          FK,
+          FNK,
+          FSI,
+          FSO,
+          FX,
+          FIn,
+          FSt,
+          FEnv,
+          FErr,
+          A
+        >
       ) => HKTFix<
         G,
         GFix0,
@@ -487,7 +662,7 @@ export function implementSeparateF<
         >
       >
     >
-  ): WiltK<F, Fix0, Fix1, Fix2, Fix3> =>
+  ): WiltWithKeysK<F, Fix0, Fix1, Fix2, Fix3> =>
     i({
       A: undefined as any,
       B: undefined as any,

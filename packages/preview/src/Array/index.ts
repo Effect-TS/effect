@@ -133,6 +133,8 @@ export {
   AssociativeBoth,
   AssociativeFlatten,
   Closure,
+  compactF,
+  compactWithKeysF,
   Covariant,
   DeriveEqual,
   Foldable,
@@ -150,11 +152,12 @@ export {
   Monad,
   Reduce,
   ReduceRight,
+  separateF,
+  separateWithKeysF,
   SumClosure,
   Traversable,
   TraversableWithKeys,
   Wiltable,
-  separateF,
-  Witherable,
-  compactF
+  WiltableWithKeys,
+  Witherable
 } from "./core"

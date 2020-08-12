@@ -84,25 +84,23 @@ export const getCovariant = <K>() =>
 /**
  * Traversable's foreachF for Map[+_, _+].
  */
-export const foreachF = implementForeachF(MapURI)(
-  ({ _a, _b, _fk }) => (G) => (f) => (fa) => {
-    let fm = anyF(G)<M.Map<typeof _fk, typeof _b>>(M.empty)
+export const foreachF = implementForeachF(MapURI)((_) => (G) => (f) => (fa) => {
+  let fm = anyF(G)<M.Map<typeof _.FK, typeof _.B>>(M.empty)
 
-    const entries = fa.entries()
-    let e: M.Next<readonly [typeof _fk, typeof _a]>
-    while (!(e = entries.next()).done) {
-      const [key, a] = e.value
-      fm = pipe(
-        fm,
-        G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
-        G.both(f(a)),
-        G.map(([g, b]) => g(b))
-      )
-    }
-
-    return fm
+  const entries = fa.entries()
+  let e: M.Next<readonly [typeof _.FK, typeof _.A]>
+  while (!(e = entries.next()).done) {
+    const [key, a] = e.value
+    fm = pipe(
+      fm,
+      G.map((m) => (b: typeof _.B) => new Map(m).set(key, b)),
+      G.both(f(a)),
+      G.map(([g, b]) => g(b))
+    )
   }
-)
+
+  return fm
+})
 
 /**
  * TraversableWithKeys's foreachF for Map[+_, _+].

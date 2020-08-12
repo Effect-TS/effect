@@ -300,7 +300,7 @@ export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
   })
 }
 
-export function implementWitherF<
+export function implementCompactF<
   F extends URIS,
   Fix0 = any,
   Fix1 = any,

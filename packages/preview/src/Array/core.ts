@@ -23,8 +23,13 @@ import {
   implementForeachWithKeysF,
   makeTraversableWithKeys
 } from "../_abstract/TraversableWithKeys"
-import { implementWiltF, makeWiltable } from "../_abstract/Wiltable"
-import { implementWitherF, makeWitherable } from "../_abstract/Witherable"
+import { implementSeparateF, makeWiltable } from "../_abstract/Wiltable"
+import {
+  implementSeparateWithKeysF,
+  makeWiltableWithKeys
+} from "../_abstract/WiltableWithKeys"
+import { implementCompactF, makeWitherable } from "../_abstract/Witherable"
+import { implemenCompactWithKeysF } from "../_abstract/WitherableWithKeys"
 import * as A from "../_system/Array"
 
 /**
@@ -276,10 +281,17 @@ export const ReduceRight = makeReduceRight(ArrayURI)({
 export const Foldable = makeFoldable(ArrayURI)(intersect(FoldMap, Reduce, ReduceRight))
 
 /**
- * Witherable's wither for `Array<A>`.
+ * Witherable's compactF for `Array<A>`.
  */
-export const compactF = implementWitherF(ArrayURI)((_) => (G) => (f) =>
+export const compactF = implementCompactF(ArrayURI)((_) => (G) => (f) =>
   flow(foreachF(G)(f), G.map(A.compact))
+)
+
+/**
+ * WitherableWithKeys's compactWithKeysF for `Array<A>`.
+ */
+export const compactWithKeysF = implemenCompactWithKeysF(ArrayURI)((_) => (G) => (f) =>
+  flow(foreachWithKeysF(G)(f), G.map(A.compact))
 )
 
 /**
@@ -292,13 +304,27 @@ export const Witherable = makeWitherable(ArrayURI)({
 /**
  * Wiltable's separateF for `Array<A>`.
  */
-export const separateF = implementWiltF(ArrayURI)((_) => (G) => (f) =>
+export const separateF = implementSeparateF(ArrayURI)((_) => (G) => (f) =>
   flow(foreachF(G)(f), G.map(A.separate))
 )
 
 /**
- * The `Witherable` instance for `Array<A>`.
+ * The `Wiltable` instance for `Array<A>`.
  */
 export const Wiltable = makeWiltable(ArrayURI)({
   separateF
+})
+
+/**
+ * WiltableWithKeys's separateWithKeysF for `Array<A>`.
+ */
+export const separateWithKeysF = implementSeparateWithKeysF(
+  ArrayURI
+)((_) => (G) => (f) => flow(foreachWithKeysF(G)(f), G.map(A.separate)))
+
+/**
+ * The `WiltableWithKeys` instance for `Array<A>`.
+ */
+export const WiltableWithKeys = makeWiltableWithKeys(ArrayURI)({
+  separateWithKeysF
 })
