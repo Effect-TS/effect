@@ -92,6 +92,7 @@ export {
   makeValidationRecover,
   makeValidationZip,
   Monad,
+  Recover,
   sequenceS,
   ValidationURI,
   zipFailure

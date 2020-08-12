@@ -23,7 +23,7 @@ export interface RecoverF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
     I & I2,
     S,
     R & R2,
-    E | E2,
+    E2,
     A | A2
   >
 }
@@ -56,7 +56,7 @@ export interface RecoverK<
     I & I2,
     S,
     R & R2,
-    E | E2,
+    E2,
     A | A2
   >
 }

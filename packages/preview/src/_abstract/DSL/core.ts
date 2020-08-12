@@ -3,7 +3,9 @@ import { pipe } from "../../_system/Function"
 import { AnyF, AnyK } from "../Any"
 import { CovariantF, CovariantK } from "../Covariant"
 import { EnvironmentalF, EnvironmentalK } from "../FX/Environmental"
-import { HKT, HKT3, HKTFix, KindFix, URIS } from "../HKT"
+import { FailF, FailK } from "../FX/Fail"
+import { RecoverF, RecoverK } from "../FX/Recover"
+import { ErrFor, HKT, HKT3, HKTFix, KindFix, URIS } from "../HKT"
 import { MonadF, MonadK } from "../Monad"
 
 /**
@@ -388,5 +390,38 @@ export function accessServiceMF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
     pipe(
       F.access((r: Has<SR>) => f(r[Has[HasURI].key as any])),
       F.flatten
+    )
+}
+export function mapErrorF<
+  F extends URIS,
+  Fix0 = any,
+  Fix1 = any,
+  Fix2 = any,
+  Fix3 = any
+>(
+  F: FailK<F, Fix0, Fix1, Fix2, Fix3> & RecoverK<F, Fix0, Fix1, Fix2, Fix3>
+): <E, E1>(
+  f: (e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>) => ErrFor<F, Fix0, Fix1, Fix2, Fix3, E1>
+) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
+  fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E1, A>
+export function mapErrorF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
+  F: FailF<F, Fix0, Fix1, Fix2, Fix3> & RecoverF<F, Fix0, Fix1, Fix2, Fix3>
+): <E, E1>(
+  f: (e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>) => ErrFor<F, Fix0, Fix1, Fix2, Fix3, E1>
+) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
+  fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E1, A>
+export function mapErrorF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
+  F: FailF<F, Fix0, Fix1, Fix2, Fix3> & RecoverF<F, Fix0, Fix1, Fix2, Fix3>
+): <E, E1>(
+  f: (e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>) => ErrFor<F, Fix0, Fix1, Fix2, Fix3, E1>
+) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
+  fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E1, A> {
+  return (f) => (fa) =>
+    pipe(
+      fa,
+      F.recover((e) => F.fail(f(e)))
     )
 }

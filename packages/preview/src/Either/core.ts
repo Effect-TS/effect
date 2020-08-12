@@ -179,6 +179,13 @@ export const Fail = makeFail(EitherURI)({
 })
 
 /**
+ * The `Recover` instance for `Either`.
+ */
+export const Recover = makeRecover(EitherURI)({
+  recover: (f) => (e) => (e._tag === "Right" ? e : f(e.left))
+})
+
+/**
  * The `IdentityFlatten` instance for `Either`.
  */
 export const IdentityFlatten = makeIdentityFlatten(EitherURI)(
