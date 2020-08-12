@@ -1,4 +1,4 @@
-import { pipe } from "../Function"
+import { flow, pipe } from "../Function"
 import { intersect } from "../Utils"
 import { makeAny } from "../_abstract/Any"
 import { makeApplicative } from "../_abstract/Applicative"
@@ -23,6 +23,7 @@ import {
   implementForeachWithKeysF,
   makeTraversableWithKeys
 } from "../_abstract/TraversableWithKeys"
+import { implementWiltF, makeWiltable } from "../_abstract/Wiltable"
 import { implementWitherF, makeWitherable } from "../_abstract/Witherable"
 import * as A from "../_system/Array"
 
@@ -277,13 +278,27 @@ export const Foldable = makeFoldable(ArrayURI)(intersect(FoldMap, Reduce, Reduce
 /**
  * Witherable's wither for `Array<A>`.
  */
-export const witherF = implementWitherF(ArrayURI)((_) => (G) => (f) => (ta) =>
-  pipe(ta, foreachF(G)(f), G.map(A.compact))
+export const compactF = implementWitherF(ArrayURI)((_) => (G) => (f) =>
+  flow(foreachF(G)(f), G.map(A.compact))
 )
 
 /**
  * The `Witherable` instance for `Array<A>`.
  */
 export const Witherable = makeWitherable(ArrayURI)({
-  witherF
+  compactF
+})
+
+/**
+ * Wiltable's separateF for `Array<A>`.
+ */
+export const separateF = implementWiltF(ArrayURI)((_) => (G) => (f) =>
+  flow(foreachF(G)(f), G.map(A.separate))
+)
+
+/**
+ * The `Witherable` instance for `Array<A>`.
+ */
+export const Wiltable = makeWiltable(ArrayURI)({
+  separateF
 })

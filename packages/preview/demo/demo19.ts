@@ -1,12 +1,12 @@
 import * as A from "../src/Array"
+import * as E from "../src/Either"
 import { pipe } from "../src/Function"
-import * as O from "../src/Option"
 import * as R from "../src/Reader"
 
 pipe(
   A.range(0, 10),
-  A.compactF(R.Applicative)((n) =>
-    R.access((r: number) => (n > 5 ? O.some(n + r) : O.none))
+  A.separateF(R.Applicative)((n) =>
+    R.access((r: number) => (n > 5 ? E.left(n + r) : E.right(n - r)))
   ),
   R.runEnv(100),
   (x) => {

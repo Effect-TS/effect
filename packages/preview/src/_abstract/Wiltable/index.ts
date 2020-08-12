@@ -1,11 +1,12 @@
-import { Option } from "../../Option"
+import { Either } from "../../Either"
+import { Separated } from "../../_system/Utils"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
 import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
 
-export interface WitherF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
+export interface WiltF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeF<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B>(
+  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
     ) => HKTFix<
@@ -23,7 +24,7 @@ export interface WitherF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
       GSt,
       GEnv,
       GErr,
-      Option<B>
+      Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     ta: HKTFix<
@@ -58,12 +59,15 @@ export interface WitherF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
     GSt,
     GEnv,
     GErr,
-    HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Separated<
+      HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+    >
   >
 
   <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeK<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B>(
+  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
     ) => KindFix<
@@ -81,7 +85,7 @@ export interface WitherF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
       GSt,
       GEnv,
       GErr,
-      Option<B>
+      Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     ta: HKTFix<
@@ -116,25 +120,22 @@ export interface WitherF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
     GSt,
     GEnv,
     GErr,
-    HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Separated<
+      HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      HKTFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+    >
   >
 }
 
-export interface WitherableF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
+export interface WiltableF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly compactF: WitherF<F, Fix0, Fix1, Fix2, Fix3>
+  readonly separateF: WiltF<F, Fix0, Fix1, Fix2, Fix3>
 }
 
-export interface WitherK<
-  F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> {
+export interface WiltK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeF<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B>(
+  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
     ) => HKTFix<
@@ -152,7 +153,7 @@ export interface WitherK<
       GSt,
       GEnv,
       GErr,
-      Option<B>
+      Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     ta: KindFix<
@@ -187,12 +188,31 @@ export interface WitherK<
     GSt,
     GEnv,
     GErr,
-    KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Separated<
+      KindFix<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FNK,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        B
+      >,
+      KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+    >
   >
 
   <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     F: ApplicativeK<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B>(
+  ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
     ) => KindFix<
@@ -210,7 +230,7 @@ export interface WitherK<
       GSt,
       GEnv,
       GErr,
-      Option<B>
+      Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
     ta: KindFix<
@@ -245,21 +265,40 @@ export interface WitherK<
     GSt,
     GEnv,
     GErr,
-    KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    Separated<
+      KindFix<
+        F,
+        Fix0,
+        Fix1,
+        Fix2,
+        Fix3,
+        FK,
+        FNK,
+        FSI,
+        FSO,
+        FX,
+        FIn,
+        FSt,
+        FEnv,
+        FErr,
+        B
+      >,
+      KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+    >
   >
 }
 
-export interface WitherableK<
+export interface WiltableK<
   F extends URIS,
   Fix0 = any,
   Fix1 = any,
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly compactF: WitherK<F, Fix0, Fix1, Fix2, Fix3>
+  readonly separateF: WiltK<F, Fix0, Fix1, Fix2, Fix3>
 }
 
-export function makeWitherable<
+export function makeWiltable<
   URI extends URIS,
   Fix0 = any,
   Fix1 = any,
@@ -269,38 +308,38 @@ export function makeWitherable<
   _: URI
 ): (
   _: Omit<
-    WitherableK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Witherable"
+    WiltableK<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
   >
-) => WitherableK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
+) => WiltableK<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
   URI: URI
 ): (
   _: Omit<
-    WitherableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Witherable"
+    WiltableF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
   >
-) => WitherableF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeWitherable<URI, Fix0, Fix1, Fix2, Fix3>(
+) => WiltableF<URI, Fix0, Fix1, Fix2, Fix3>
+export function makeWiltable<URI, Fix0, Fix1, Fix2, Fix3>(
   URI: URI
 ): (
   _: Omit<
-    WitherableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Witherable"
+    WiltableF<URI, Fix0, Fix1, Fix2, Fix3>,
+    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "Wiltable"
   >
-) => WitherableF<URI, Fix0, Fix1, Fix2, Fix3> {
+) => WiltableF<URI, Fix0, Fix1, Fix2, Fix3> {
   return (_) => ({
     URI,
     Fix0: undefined as any,
     Fix1: undefined as any,
     Fix2: undefined as any,
     Fix3: undefined as any,
-    Witherable: "Witherable",
+    Wiltable: "Wiltable",
     ..._
   })
 }
 
-export function implementWitherF<
+export function implementWiltF<
   F extends URIS,
   Fix0 = any,
   Fix1 = any,
@@ -319,6 +358,7 @@ export function implementWitherF<
       GErr,
       A,
       B,
+      C,
       FK,
       FNK extends string,
       FSI,
@@ -345,6 +385,7 @@ export function implementWitherF<
       GErr: GErr
       A: A
       B: B
+      C: C
       FK: FK
       FNK: FNK
       FSI: FSI
@@ -374,7 +415,7 @@ export function implementWitherF<
         GSt,
         GEnv,
         GErr,
-        Option<B>
+        Either<B, C>
       >
     ) => (
       ta: KindFix<
@@ -409,12 +450,48 @@ export function implementWitherF<
       GSt,
       GEnv,
       GErr,
-      KindFix<F, Fix0, Fix1, Fix2, Fix3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+      Separated<
+        KindFix<
+          F,
+          Fix0,
+          Fix1,
+          Fix2,
+          Fix3,
+          FK,
+          FNK,
+          FSI,
+          FSO,
+          FX,
+          FIn,
+          FSt,
+          FEnv,
+          FErr,
+          B
+        >,
+        KindFix<
+          F,
+          Fix0,
+          Fix1,
+          Fix2,
+          Fix3,
+          FK,
+          FNK,
+          FSI,
+          FSO,
+          FX,
+          FIn,
+          FSt,
+          FEnv,
+          FErr,
+          C
+        >
+      >
     >
-  ): WitherK<F, Fix0, Fix1, Fix2, Fix3> =>
+  ): WiltK<F, Fix0, Fix1, Fix2, Fix3> =>
     i({
       A: undefined as any,
       B: undefined as any,
+      C: undefined as any,
       FEnv: undefined as any,
       FErr: undefined as any,
       FIn: undefined as any,

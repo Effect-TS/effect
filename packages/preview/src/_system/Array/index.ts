@@ -5,6 +5,7 @@ import type { Predicate, Refinement } from "../Function/core"
 import { MutableArray } from "../Mutable"
 import { NonEmptyArray } from "../NonEmptyArray"
 import { isSome, none, Option, some } from "../Option"
+import { Separated } from "../Utils"
 
 export type Array<A> = ReadonlyArray<A>
 
@@ -1498,4 +1499,25 @@ export function zipWith<A, B, C>(
   f: (a: A, b: B) => C
 ): (fa: Array<A>) => Array<C> {
   return (fa) => zipWith_(fa, fb, f)
+}
+
+/**
+ * Separate Array
+ */
+export const separate = <B, C>(
+  fa: Array<Either<B, C>>
+): Separated<Array<B>, Array<C>> => {
+  const left: MutableArray<B> = []
+  const right: MutableArray<C> = []
+  for (const e of fa) {
+    if (e._tag === "Left") {
+      left.push(e.left)
+    } else {
+      right.push(e.right)
+    }
+  }
+  return {
+    left,
+    right
+  }
 }

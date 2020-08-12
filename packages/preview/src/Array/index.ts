@@ -90,6 +90,7 @@ export {
   scanLeft_,
   scanRight,
   scanRight_,
+  separate,
   single,
   snoc,
   snoc_,
@@ -152,6 +153,8 @@ export {
   SumClosure,
   Traversable,
   TraversableWithKeys,
-  witherF,
-  Witherable
+  Wiltable,
+  separateF,
+  Witherable,
+  compactF
 } from "./core"
