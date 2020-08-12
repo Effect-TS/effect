@@ -69,6 +69,7 @@
       "_abstract/Show",
       "_abstract/Traversable",
       "_abstract/TraversableWithKeys",
+      "_abstract/Witherable",
       "_system",
       "_system/Array",
       "_system/Cause",

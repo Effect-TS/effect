@@ -23,6 +23,7 @@ import {
   implementForeachWithKeysF,
   makeTraversableWithKeys
 } from "../_abstract/TraversableWithKeys"
+import { implementWitherF, makeWitherable } from "../_abstract/Witherable"
 import * as A from "../_system/Array"
 
 /**
@@ -149,7 +150,7 @@ export const Monad = makeMonad(ArrayURI)(intersect(Covariant, IdentityFlatten))
  * Traversable's `foreachF` for `Array`.
  */
 export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
-  A.reduce_(fa, anyF(G)([] as typeof _._b[]), (b, a) =>
+  A.reduce_(fa, anyF(G)([] as typeof _.B[]), (b, a) =>
     pipe(
       b,
       G.both(f(a)),
@@ -272,3 +273,17 @@ export const ReduceRight = makeReduceRight(ArrayURI)({
  * The `Foldable` instance for `Array<A>`.
  */
 export const Foldable = makeFoldable(ArrayURI)(intersect(FoldMap, Reduce, ReduceRight))
+
+/**
+ * Witherable's wither for `Array<A>`.
+ */
+export const witherF = implementWitherF(ArrayURI)((_) => (G) => (f) => (ta) =>
+  pipe(ta, foreachF(G)(f), G.map(A.compact))
+)
+
+/**
+ * The `Witherable` instance for `Array<A>`.
+ */
+export const Witherable = makeWitherable(ArrayURI)({
+  witherF
+})

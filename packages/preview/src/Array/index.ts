@@ -151,5 +151,7 @@ export {
   ReduceRight,
   SumClosure,
   Traversable,
-  TraversableWithKeys
+  TraversableWithKeys,
+  witherF,
+  Witherable
 } from "./core"

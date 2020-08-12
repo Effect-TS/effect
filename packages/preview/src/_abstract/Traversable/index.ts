@@ -6,7 +6,7 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     G: IdentityBothF<G, GFix0, GFix1, GFix2, GFix3> &
       CovariantF<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GKN extends string, GX, GI, GS, GR, GE, A, B>(
+  ): <GSIO, GK, GKN extends string, GX, GI, GS, GR, GE, A, B>(
     f: (
       a: A
     ) => HKTFix<
@@ -17,8 +17,8 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
       GFix3,
       GK,
       GKN,
-      unknown,
-      unknown,
+      GSIO,
+      GSIO,
       GX,
       GI,
       GS,
@@ -52,8 +52,8 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
     GFix3,
     GK,
     GKN,
-    unknown,
-    unknown,
+    GSIO,
+    GSIO,
     GX,
     GI,
     GS,
@@ -64,7 +64,7 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     G: IdentityBothK<G, GFix0, GFix1, GFix2, GFix3> &
       CovariantK<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GKN extends string, X, In, S, Env, Err, A, B>(
+  ): <GSIO, GK, GKN extends string, X, In, S, Env, Err, A, B>(
     f: (
       a: A
     ) => KindFix<
@@ -75,8 +75,8 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
       GFix3,
       GK,
       GKN,
-      unknown,
-      unknown,
+      GSIO,
+      GSIO,
       X,
       In,
       S,
@@ -110,8 +110,8 @@ export interface ForeachF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
     GFix3,
     GK,
     GKN,
-    unknown,
-    unknown,
+    GSIO,
+    GSIO,
     X,
     In,
     S,
@@ -137,7 +137,7 @@ export interface ForeachK<
   <G, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     G: IdentityBothF<G, GFix0, GFix1, GFix2, GFix3> &
       CovariantF<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GKN extends string, GX, GI, GS, GR, GE, A, B>(
+  ): <GSIO, GK, GKN extends string, GX, GI, GS, GR, GE, A, B>(
     f: (
       a: A
     ) => HKTFix<
@@ -148,8 +148,8 @@ export interface ForeachK<
       GFix3,
       GK,
       GKN,
-      unknown,
-      unknown,
+      GSIO,
+      GSIO,
       GX,
       GI,
       GS,
@@ -183,8 +183,8 @@ export interface ForeachK<
     GFix3,
     GK,
     GKN,
-    unknown,
-    unknown,
+    GSIO,
+    GSIO,
     GX,
     GI,
     GS,
@@ -195,7 +195,7 @@ export interface ForeachK<
   <G extends URIS, GFix0 = any, GFix1 = any, GFix2 = any, GFix3 = any>(
     G: IdentityBothK<G, GFix0, GFix1, GFix2, GFix3> &
       CovariantK<G, GFix0, GFix1, GFix2, GFix3>
-  ): <GK, GKN extends string, X, In, S, Env, Err, A, B>(
+  ): <GSIO, GK, GKN extends string, X, In, S, Env, Err, A, B>(
     f: (
       a: A
     ) => KindFix<
@@ -206,8 +206,8 @@ export interface ForeachK<
       GFix3,
       GK,
       GKN,
-      unknown,
-      unknown,
+      GSIO,
+      GSIO,
       X,
       In,
       S,
@@ -241,8 +241,8 @@ export interface ForeachK<
     GFix3,
     GK,
     GKN,
-    unknown,
-    unknown,
+    GSIO,
+    GSIO,
     X,
     In,
     S,
@@ -323,6 +323,7 @@ export function implementForeachF<
       FKN extends string,
       A,
       G,
+      GSIO,
       GFix0,
       GFix1,
       GFix2,
@@ -336,19 +337,27 @@ export function implementForeachF<
       GE,
       B
     >(_: {
-      _g: G
-      _b: B
-      _ge: GE
-      _gi: GI
-      _gs: GS
-      _gr: GR
-      _gx: GX
-      _ferr: FErr
-      _a: A
-      _fkn: FKN
-      _fk: FK
+      FErr: FErr
+      FK: FK
+      FKN: FKN
+      A: A
+      G: G
+      GSIO: GSIO
+      GFix0: GFix0
+      GFix1: GFix1
+      GFix2: GFix2
+      GFix3: GFix3
+      GK: GK
+      GKN: GKN
+      GX: GX
+      GI: GI
+      GS: GS
+      GR: GR
+      GE: GE
+      B: B
     }) => (
-      G: IdentityBothF<G> & CovariantF<G>
+      G: IdentityBothF<G, GFix0, GFix1, GFix2, GFix3> &
+        CovariantF<G, GFix0, GFix1, GFix2, GFix3>
     ) => (
       f: (
         a: A
@@ -360,8 +369,8 @@ export function implementForeachF<
         GFix3,
         GK,
         GKN,
-        unknown,
-        unknown,
+        GSIO,
+        GSIO,
         GX,
         GI,
         GS,
@@ -395,8 +404,8 @@ export function implementForeachF<
       GFix3,
       GK,
       GKN,
-      unknown,
-      unknown,
+      GSIO,
+      GSIO,
       GX,
       GI,
       GS,
@@ -406,16 +415,23 @@ export function implementForeachF<
     >
   ): ForeachK<F, Fix0, Fix1, Fix2, Fix3> =>
     i({
-      _b: {},
-      _ge: {},
-      _gi: {},
-      _gr: {},
-      _gs: {},
-      _gx: {},
-      _g: {},
-      _a: {},
-      _ferr: {},
-      _fkn: undefined as any,
-      _fk: {}
+      FErr: undefined as any,
+      FK: undefined as any,
+      FKN: undefined as any,
+      A: undefined as any,
+      G: undefined as any,
+      GSIO: undefined as any,
+      GFix0: undefined as any,
+      GFix1: undefined as any,
+      GFix2: undefined as any,
+      GFix3: undefined as any,
+      GK: undefined as any,
+      GKN: undefined as any,
+      GX: undefined as any,
+      GI: undefined as any,
+      GS: undefined as any,
+      GR: undefined as any,
+      GE: undefined as any,
+      B: undefined as any
     }) as any
 }

@@ -504,7 +504,9 @@ export function implementForeachWithKeysF<
       FX,
       FIn,
       FSt,
-      FEnv
+      FEnv,
+      GSI,
+      GSO
     >(_: {
       _g: G
       _b: B
@@ -548,8 +550,8 @@ export function implementForeachWithKeysF<
         GFix3,
         GK,
         GKN,
-        unknown,
-        unknown,
+        GSI,
+        GSO,
         GX,
         GI,
         GS,
