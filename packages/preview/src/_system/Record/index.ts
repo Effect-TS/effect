@@ -1,12 +1,10 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
-import { PredicateWithIndex, RefinementWithIndex } from "fp-ts/lib/FilterableWithIndex"
-
 import type { Either } from "../Either"
 import { Predicate, Refinement } from "../Function"
 import { MutableRecord } from "../Mutable"
 import { isNone, isSome, none, Option, some as some_1 } from "../Option"
-import { Separated } from "../Utils"
+import { PredicateWithIndex, RefinementWithIndex, Separated } from "../Utils"
 
 export type Record<K extends string, T> = Readonly<MutableRecord<K, T>>
 
