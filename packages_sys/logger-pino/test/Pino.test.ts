@@ -38,9 +38,11 @@ const checkLevel = <O extends object>(
   )
 
 const pinoLoggerSpec = M.suite("Pino")(
-  M.mockedTestM("use pino logger instance")(() => ({
-    write: jest.fn<void, [string]>(empty)
-  }))(({ useMockM }) =>
+  M.mockedTestM("use pino logger instance")(
+    T.sync(() => ({
+      write: jest.fn<void, [string]>(empty)
+    }))
+  )(({ useMockM }) =>
     pipe(
       T.Do()
         .do(P.fatal({ foo: "bar" }, "msg"))
@@ -98,9 +100,11 @@ const pinoLoggerSpec = M.suite("Pino")(
       }))
     )
   ),
-  M.mockedTestM("use @matechs/logger instance")(() => ({
-    write: jest.fn<void, [string]>(empty)
-  }))(({ useMockM }) =>
+  M.mockedTestM("use @matechs/logger instance")(
+    T.sync(() => ({
+      write: jest.fn<void, [string]>(empty)
+    }))
+  )(({ useMockM }) =>
     T.Do()
       .do(L.logger.info("ok"))
       .do(L.logger.http("ok"))

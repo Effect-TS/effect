@@ -12,12 +12,14 @@ const empty = () => {}
 const Logger = ConsoleLogger.with(ConsoleLoggerConfig())
 
 const loggerSpec = M.suite("Logger")(
-  M.mockedTestM("use logger")(() => ({
-    info: jest.spyOn(console, "info").mockImplementation(empty),
-    warn: jest.spyOn(console, "warn").mockImplementation(empty),
-    debug: jest.spyOn(console, "debug").mockImplementation(empty),
-    error: jest.spyOn(console, "error").mockImplementation(empty)
-  }))(({ useMockM }) =>
+  M.mockedTestM("use logger")(
+    T.sync(() => ({
+      info: jest.spyOn(console, "info").mockImplementation(empty),
+      warn: jest.spyOn(console, "warn").mockImplementation(empty),
+      debug: jest.spyOn(console, "debug").mockImplementation(empty),
+      error: jest.spyOn(console, "error").mockImplementation(empty)
+    }))
+  )(({ useMockM }) =>
     T.Do()
       .do(L.info("ok"))
       .do(L.http("ok"))
@@ -39,9 +41,11 @@ const loggerSpec = M.suite("Logger")(
       )
       .done()
   ),
-  M.mockedTestM("use logger with level")(() => ({
-    debug: jest.spyOn(console, "debug").mockImplementation(empty)
-  }))(({ useMockM }) =>
+  M.mockedTestM("use logger with level")(
+    T.sync(() => ({
+      debug: jest.spyOn(console, "debug").mockImplementation(empty)
+    }))
+  )(({ useMockM }) =>
     T.Do()
       .do(L.debug("ok"))
       .do(

@@ -12,10 +12,12 @@ run(
 
 run(
   suite("jest mock")(
-    mockedTestM("test using mocked console")(() => ({
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      info: jest.spyOn(console, "info").mockImplementation(() => {})
-    }))(({ useMockM }) =>
+    mockedTestM("test using mocked console")(
+      T.sync(() => ({
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        info: jest.spyOn(console, "info").mockImplementation(() => {})
+      }))
+    )(({ useMockM }) =>
       T.Do()
         .do(
           T.sync(() => {
