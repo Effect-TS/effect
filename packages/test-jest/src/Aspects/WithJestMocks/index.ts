@@ -1,5 +1,4 @@
 import * as T from "@matechs/core/Effect"
-import { Lazy } from "@matechs/core/Function"
 import { pipe } from "@matechs/core/Function"
 import * as M from "@matechs/test"
 import { Spec } from "@matechs/test/Def"
@@ -22,15 +21,15 @@ export const useMockM = <Mocks extends MockT<Mocks>>() => <S, R, E, A>(
   op: (_: Mocks) => T.Effect<S, R, E, A>
 ) => T.accessM((_: JestMocks<Mocks>) => _[JestMocksURI].useMockM(op))
 
-export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(
-  acquire: Lazy<Mocks>
+export const mockedTestM = (name: string) => <S1, R1, E1, Mocks extends MockT<Mocks>>(
+  acquire: T.Effect<S1, R1, E1, Mocks>
 ) => <R, E, A>(
   eff: (_: {
     useMockM: <S, R, E, A>(
       op: (_: Mocks) => T.Effect<S, R, E, A>
     ) => T.Effect<S, R & JestMocks<Mocks>, E, A>
   }) => T.Effect<unknown, R & JestMocks<Mocks>, E, A>
-): Spec<R> =>
+): Spec<R1 & R> =>
   pipe(
     M.testM(
       name,
@@ -40,7 +39,7 @@ export const mockedTestM = (name: string) => <Mocks extends MockT<Mocks>>(
     ),
     M.withHookP(
       pipe(
-        T.sync(acquire),
+        acquire,
         T.map(
           (_): JestMocks<Mocks> => ({
             [JestMocksURI]: {
