@@ -1,6 +1,5 @@
+import { AsyncStackURI } from "./uris"
 import { AnyStackF, AsyncStackF, BaseStackF, foldStack, SyncStackF } from "./utils"
-
-import { AsyncStackURI } from "."
 
 import { constant, pipe } from "@matechs/preview/Function"
 import { succeedF } from "@matechs/preview/_abstract/DSL/core"

@@ -100,7 +100,7 @@
     "ts-jest": "^26.0.0",
     "ts-node": "^8.10.2",
     "typeorm": "^0.2.24",
-    "typescript": "rc",
+    "typescript": "^3.9.7",
     "ultra-runner": "^3.3.0",
     "uuid": "^8.0.0",
     "winston": "^3.2.1",

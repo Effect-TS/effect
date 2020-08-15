@@ -7,8 +7,7 @@ import {
   InterpreterKindF,
   InterpreterURIS
 } from "./registry"
-
-import { AsyncStackURI } from "."
+import { AsyncStackURI } from "./uris"
 
 import { UnionToIntersection } from "@matechs/preview/Utils"
 import { URIS } from "@matechs/preview/_abstract/HKT"

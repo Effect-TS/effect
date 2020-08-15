@@ -1,5 +1,6 @@
 import { DecoderURI, primitivesDecoder } from "./decoder"
 import { PrimitivesURI } from "./primitives"
+import { SyncStackURI, AsyncStackURI } from "./uris"
 import {
   AsyncStackK,
   finalize,
@@ -11,12 +12,6 @@ import {
 import * as T from "@matechs/preview/EffectAsync"
 import { identity } from "@matechs/preview/Function"
 import * as X from "@matechs/preview/XPure"
-
-export const SyncStackURI = "morphic/SyncStack"
-export type SyncStackURI = typeof SyncStackURI
-
-export const AsyncStackURI = "morphic/AsyncStack"
-export type AsyncStackURI = typeof AsyncStackURI
 
 declare module "@matechs/preview/_abstract/HKT" {
   interface URItoKind<

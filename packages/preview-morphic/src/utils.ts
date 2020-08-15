@@ -1,4 +1,5 @@
 import {} from "@matechs/preview/Effect"
+
 import {
   AlgebraURIS,
   InterpretedF,
@@ -9,8 +10,7 @@ import {
 } from "./registry"
 import { FromEffectF, FromEffectK } from "./stack/effect"
 import { FromXPureF, FromXPureK } from "./stack/pure"
-
-import { AsyncStackURI } from "."
+import { AsyncStackURI } from "./uris"
 
 import { identity } from "@matechs/preview/Function"
 import { ApplicativeF, ApplicativeK } from "@matechs/preview/_abstract/Applicative"
