@@ -11,7 +11,9 @@ import { mapErrorF } from "../src/_abstract/DSL"
 const F = intersect(
   E.getValidationApplicative(S.SumIdentity),
   E.getValidationFail<Sum<string>>(),
-  E.getValidationRecover<Sum<string>>()
+  E.getValidationRecover<Sum<string>>(),
+  E.getValidationRun<Sum<string>>(),
+  E.getValidationAssociativeFlatten<Sum<string>>()
 )
 
 const traverse = M.makeForeachWithKeysF(Ord.ordNumber)(F)

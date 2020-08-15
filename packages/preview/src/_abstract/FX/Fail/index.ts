@@ -76,8 +76,11 @@ export function makeFail<URI extends URIS, E>(): <
   TL2 = any,
   TL3 = any
 >() => (
-  _: Omit<FailKE<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E">
-) => FailKE<URI, TL0, TL1, TL2, TL3>
+  _: Omit<
+    FailKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
+  >
+) => FailKE<URI, E, TL0, TL1, TL2, TL3>
 export function makeFail<URI extends URIS>(): <
   TL0 = any,
   TL1 = any,

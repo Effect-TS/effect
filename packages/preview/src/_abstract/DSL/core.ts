@@ -514,9 +514,9 @@ export function mapErrorF<
   TL2 = any,
   TL3 = any
 >(
-  F: FailKE<F, TL0, TL1, TL2, TL3> &
-    RunKE<F, TL0, TL1, TL2, TL3> &
-    MonadKE<F, TL0, TL1, TL2, TL3>
+  F: FailKE<F, E, TL0, TL1, TL2, TL3> &
+    RunKE<F, E, TL0, TL1, TL2, TL3> &
+    MonadKE<F, E, TL0, TL1, TL2, TL3>
 ): (
   f: (e: E) => E
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
