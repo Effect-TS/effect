@@ -26,24 +26,24 @@ export interface DecoderF<F, R, O> {
 }
 
 declare module "./registry" {
-  export interface URItoInterpreter<F extends URIS, R, O, E> {
-    [DecoderURI]: Decoder<F, R, O>
+  export interface URItoInterpreter<F extends URIS, RDec, REnc, O, E> {
+    [DecoderURI]: Decoder<F, RDec, O>
   }
 
-  export interface URItoInterpreterF<F, R, O, E> {
-    [DecoderURI]: DecoderF<F, R, O>
+  export interface URItoInterpreterF<F, RDec, REnc, O, E> {
+    [DecoderURI]: DecoderF<F, RDec, O>
   }
 }
 
 export function primitivesDecoder<F extends URIS>(
   F: AnyStackK<F>
-): PrimitivesKF<DecoderURI, F, unknown>
+): PrimitivesKF<DecoderURI, F, unknown, unknown>
 export function primitivesDecoder<F>(
   F: AnyStackF<F>
-): PrimitivesKF<DecoderURI, F, unknown>
+): PrimitivesKF<DecoderURI, F, unknown, unknown>
 export function primitivesDecoder<F>(
   F: BaseStackF<F>
-): PrimitivesKF<DecoderURI, F, unknown> {
+): PrimitivesKF<DecoderURI, F, unknown, unknown> {
   return makeInterpreter<PrimitivesURI, DecoderURI, F>()({
     array: (D, c) => {
       if (c) {

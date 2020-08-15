@@ -1,86 +1,102 @@
 import { UnionToIntersection } from "@matechs/preview/Utils"
 import { URIS } from "@matechs/preview/_abstract/HKT"
 
-export interface InterpreterHKT<URI, F, R, O, E> {
+export interface InterpreterHKT<URI, F, RDec, REnc, O, E> {
   readonly _URI: URI
   readonly _F: F
-  readonly _R: (_: R) => void
+  readonly _RDec: (_: RDec) => void
+  readonly _REnc: (_: REnc) => void
   readonly _O: () => O
   readonly _E: () => E
 }
 
-export interface URItoInterpreter<F extends URIS, R, O, E> {
+export interface URItoInterpreter<F extends URIS, RDec, REnc, O, E> {
   _O: O
   _E: E
   _F: F
+  _RDec: (_: RDec) => void
+  _REnc: (_: REnc) => void
 }
 
-export interface URItoInterpreterF<F, R, O, E> {
+export interface URItoInterpreterF<F, RDec, REnc, O, E> {
   _O: O
   _E: E
   _F: F
+  _RDec: (_: RDec) => void
+  _REnc: (_: REnc) => void
 }
 
 export type ITypes = "_O" | "_E" | "_IF" | "_A" | "_F"
 
 export type InterpreterURIS = Exclude<
-  keyof URItoInterpreter<any, any, any, any>,
+  keyof URItoInterpreter<any, any, any, any, any>,
   ITypes
 >
 
 export type InterpreterKind<
   URI extends InterpreterURIS,
   F extends URIS,
-  R,
+  RDec,
+  REnc,
   O,
   E
-> = URI extends InterpreterURIS ? URItoInterpreter<F, R, O, E>[URI] : any
+> = URI extends InterpreterURIS ? URItoInterpreter<F, RDec, REnc, O, E>[URI] : any
 
 export type InterpreterKindF<
   URI extends InterpreterURIS,
   F,
-  R,
+  RDec,
+  REnc,
   O,
   E
-> = URI extends InterpreterURIS ? URItoInterpreterF<F, R, O, E>[URI] : any
+> = URI extends InterpreterURIS ? URItoInterpreterF<F, RDec, REnc, O, E>[URI] : any
 
-export interface AlgebraF<IF, F, R> {
+export interface AlgebraF<IF, F, RDec, REnc> {
   _IF: IF
   _F: F
-  _R: (_: R) => void
+  _RDec: (_: RDec) => void
+  _REnc: (_: REnc) => void
 }
 
-export interface AlgebraK<IF extends InterpreterURIS, F extends URIS, R> {
+export interface AlgebraK<IF extends InterpreterURIS, F extends URIS, RDec, REnc> {
   _IF: IF
   _F: F
-  _R: (_: R) => void
+  _RDec: (_: RDec) => void
+  _REnc: (_: REnc) => void
 }
 
-export interface AlgebraKF<IF extends InterpreterURIS, F, R> {
+export interface AlgebraKF<IF extends InterpreterURIS, F, RDec, REnc> {
   _IF: IF
   _F: F
-  _R: (_: R) => void
+  _RDec: (_: RDec) => void
+  _REnc: (_: REnc) => void
 }
 
-export type AlgebraURIS = Exclude<keyof AlgebraF<never, never, unknown>, ITypes>
+export type AlgebraURIS = Exclude<
+  keyof AlgebraF<never, never, unknown, unknown>,
+  ITypes
+>
 
 export type InterpretedK<
   AllAlgebra extends AlgebraURIS,
   Interp extends InterpreterURIS,
   F extends URIS,
-  R
-> = UnionToIntersection<AlgebraK<Interp, F, R>[AllAlgebra]>
+  RDec,
+  REnc
+> = UnionToIntersection<AlgebraK<Interp, F, RDec, REnc>[AllAlgebra]>
 
 export type InterpretedKF<
   AllAlgebra extends AlgebraURIS,
   Interp extends InterpreterURIS,
   F,
-  R
-> = UnionToIntersection<AlgebraKF<Interp, F, R>[AllAlgebra]>
+  RDec,
+  REnc
+> = UnionToIntersection<AlgebraKF<Interp, F, RDec, REnc>[AllAlgebra]>
 
 export type InterpretedF<
   AllAlgebra extends AlgebraURIS,
   Interp,
   F extends URIS,
-  R
-> = UnionToIntersection<AlgebraF<Interp, F, R>[AllAlgebra]>
+  RDec,
+  REnc
+> = UnionToIntersection<AlgebraF<Interp, F, RDec, REnc>[AllAlgebra]>

@@ -62,8 +62,7 @@ pipe(
   pureArray,
   X.provideAll({
     foo: "(foo-p)",
-    bar: "(bar-p)",
-    baz: "(baz-p)"
+    bar: "(bar-p)"
   }),
   X.runEither,
   console.log
@@ -71,8 +70,6 @@ pipe(
 
 pipe(asyncArray, T.runPromiseExit).then(console.log)
 
-pipe(
-  mixArray,
-  T.provideAll({ foo: "(foo-e)", bar: "(bar-e)", baz: "(baz-e" }),
-  T.runPromiseExit
-).then(console.log)
+pipe(mixArray, T.provideAll({ foo: "(foo-e)", bar: "(bar-e)" }), T.runPromiseExit).then(
+  console.log
+)
