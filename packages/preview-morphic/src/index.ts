@@ -1,7 +1,5 @@
 import { DecoderURI, primitivesDecoder } from "./decoder"
-import { primitivesAsyncDecoder } from "./decoderAsync"
 import { PrimitivesURI } from "./primitives"
-import { PrimitivesAsyncURI } from "./primitivesAsync"
 import {
   AsyncStackK,
   finalize,
@@ -37,8 +35,8 @@ declare module "@matechs/preview/_abstract/HKT" {
     Err,
     Out
   > {
-    [SyncStackURI]: X.XPure<unknown, unknown, unknown, Err, Out>
-    [AsyncStackURI]: T.AsyncRE<T.DefaultEnv, Err, Out>
+    [SyncStackURI]: X.XPure<unknown, unknown, Env, Err, Out>
+    [AsyncStackURI]: T.AsyncRE<Env, Err, Out>
   }
 }
 
@@ -74,21 +72,17 @@ const AsyncF: AsyncStackK<AsyncStackURI> = {
   both: T.AssociativeBoth.both,
   fail: T.Fail.fail,
   flatten: T.Monad.flatten,
-  fromXPure: (xp) => T.fromEither(() => X.runEither(xp)),
+  fromXPure: <R, E, A>(xp: X.XPure<unknown, unknown, R, E, A>) =>
+    T.accessM((r: R) => T.fromEither(() => X.runEither(X.provideAll(r)(xp)))),
   map: T.map,
   fromEffect: identity
 }
 
-export const decodeAsync = finalize<
-  PrimitivesURI | PrimitivesAsyncURI,
-  DecoderURI,
-  AsyncStackURI
->()({
-  ...primitivesDecoder(AsyncF),
-  ...primitivesAsyncDecoder(AsyncF)
+export const decodeAsync = finalize<PrimitivesURI, DecoderURI, AsyncStackURI>()({
+  ...primitivesDecoder(AsyncF)
 })
 
 export const make = makeProgram<PrimitivesURI>()
-export const makeAsync = makeProgramAsync<PrimitivesURI | PrimitivesAsyncURI>()
+export const makeAsync = makeProgramAsync<PrimitivesURI>()
 
 export { makeInterpreter, makeProgram } from "./utils"

@@ -19,7 +19,7 @@ import { RunF, RunK } from "@matechs/preview/_abstract/FX/Run"
 import { HKTTL, KindTL, URIS } from "@matechs/preview/_abstract/HKT"
 import { MonadF, MonadK } from "@matechs/preview/_abstract/Monad"
 
-export type MoKind<F extends URIS, E, A> = KindTL<
+export type MoKind<F extends URIS, R, E, A> = KindTL<
   F,
   any,
   any,
@@ -32,12 +32,12 @@ export type MoKind<F extends URIS, E, A> = KindTL<
   any,
   any,
   any,
-  any,
+  R,
   E,
   A
 >
 
-export type MoHKT<F, E, A> = HKTTL<
+export type MoHKT<F, R, E, A> = HKTTL<
   F,
   any,
   any,
@@ -50,33 +50,40 @@ export type MoHKT<F, E, A> = HKTTL<
   any,
   any,
   any,
-  any,
+  R,
   E,
   A
 >
 
-export type Program<P extends AlgebraURIS, O, E> = {
+export type Program<P extends AlgebraURIS, O, E, R> = {
   P: P
-  <IF, F extends URIS>(I: InterpretedF<P, IF, F>): InterpreterHKT<IF, F, O, E>
+  <IF, F extends URIS>(I: InterpretedF<P, IF, F, R>): InterpreterHKT<IF, F, R, O, E>
 }
 
-export type ProgramAsync<P extends AlgebraURIS, O, E> = {
+export type ProgramAsync<P extends AlgebraURIS, O, E, R> = {
   P: P
-  <IF>(I: InterpretedF<P, IF, AsyncStackURI>): InterpreterHKT<IF, AsyncStackURI, O, E>
+  <IF>(I: InterpretedF<P, IF, AsyncStackURI, R>): InterpreterHKT<
+    IF,
+    AsyncStackURI,
+    R,
+    O,
+    E
+  >
 }
 
-export function makeProgram<P extends AlgebraURIS>(): <O, E>(
+export function makeProgram<P extends AlgebraURIS>(): <R, R2, O, E>(
   program: <IF, F extends URIS>(
-    I: InterpretedF<P, IF, F>
-  ) => InterpreterHKT<IF, F, O, E>
-) => Program<P, O, E> {
+    I: InterpretedF<P, IF, F, R>
+  ) => InterpreterHKT<IF, F, R2, O, E>
+) => Program<P, O, E, R & R2> {
   return (f) => f as any
 }
-export function makeProgramAsync<P extends AlgebraURIS>(): <O, E>(
+
+export function makeProgramAsync<P extends AlgebraURIS>(): <R, O, E>(
   program: <IF>(
-    I: InterpretedF<P, IF, AsyncStackURI>
-  ) => InterpreterHKT<IF, AsyncStackURI, O, E>
-) => ProgramAsync<P, O, E> {
+    I: InterpretedF<P, IF, AsyncStackURI, R>
+  ) => InterpreterHKT<IF, AsyncStackURI, R, O, E>
+) => ProgramAsync<P, O, E, R> {
   return (f) => f as any
 }
 
@@ -84,7 +91,7 @@ export function makeInterpreter<
   P extends AlgebraURIS,
   IF extends InterpreterURIS,
   F
->(): (_: InterpretedKF<P, IF, F>) => InterpretedKF<P, IF, F> {
+>(): <R>(_: InterpretedKF<P, IF, F, R>) => InterpretedKF<P, IF, F, R> {
   return identity
 }
 
@@ -92,20 +99,22 @@ export function finalize<
   P extends AlgebraURIS,
   IF extends InterpreterURIS,
   F extends AsyncStackURI
->(): (
-  _: InterpretedKF<P, IF, F>
-) => <O, E>(program: ProgramAsync<P, O, E>) => InterpreterKind<IF, F, O, E>
+>(): <R>(
+  _: InterpretedKF<P, IF, F, R>
+) => <R2, O, E>(
+  program: ProgramAsync<P, O, E, R2>
+) => InterpreterKind<IF, F, R & R2, O, E>
 export function finalize<
   P extends AlgebraURIS,
   IF extends InterpreterURIS,
   F extends URIS
->(): (
-  _: InterpretedKF<P, IF, F>
-) => <O, E>(program: Program<P, O, E>) => InterpreterKind<IF, F, O, E>
-export function finalize<P extends AlgebraURIS, IF, F extends URIS>(): (
-  _: InterpretedF<P, IF, F>
-) => <O, E>(program: Program<P, O, E>) => InterpreterHKT<IF, F, O, E> {
-  return (_) => (program) => program(_)
+>(): <R>(
+  _: InterpretedKF<P, IF, F, R>
+) => <R2, O, E>(program: Program<P, O, E, R2>) => InterpreterKind<IF, F, R & R2, O, E>
+export function finalize<P extends AlgebraURIS, IF, F extends URIS>(): <R>(
+  _: InterpretedF<P, IF, F, R>
+) => <R2, O, E>(program: Program<P, O, E, R2>) => InterpreterHKT<IF, F, R & R2, O, E> {
+  return (_) => (program) => program(_ as any)
 }
 
 export type BaseStackF<F> = MonadF<F> &
