@@ -1,70 +1,76 @@
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
  * and `F[B]` to produce an `F[(A, B)]`.
  */
-export interface ReduceF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+export interface ReduceF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
-export interface ReduceK<
+export interface ReduceK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
+  readonly reduce: <A, B>(
+    b: B,
+    f: (b: B, a: A) => B
+  ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
+    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => B
+}
+
+export interface ReduceKE<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> extends HasURI<F, TL0, TL1, TL2, TL3>, HasE<E> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B
-  ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => <K, NK extends string, SI, SO, X, In, S, Env>(
+    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
   ) => B
 }
 
-export function makeReduce<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export function makeReduce<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    ReduceK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    ReduceKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => ReduceK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeReduce<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    ReduceF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => ReduceF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeReduce<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    ReduceF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => ReduceF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => ReduceKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeReduce<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<ReduceK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => ReduceK<URI, TL0, TL1, TL2, TL3>
+export function makeReduce<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<ReduceF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => ReduceF<URI, TL0, TL1, TL2, TL3>
+export function makeReduce<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<ReduceF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => ReduceF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     Reduce: "Reduce",
     ..._
   })

@@ -16,10 +16,10 @@ export type IdURI = typeof IdURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -46,7 +46,7 @@ export function both<B>(fb: Id<B>) {
 /**
  * The `AssociativeBoth` instance for `Id`.
  */
-export const AssociativeBoth = makeAssociativeBoth(IdURI)({
+export const AssociativeBoth = makeAssociativeBoth<IdURI>()()({
   both
 })
 
@@ -60,14 +60,14 @@ export function flatten<A>(ffa: Id<Id<A>>) {
 /**
  * The `AssociativeFlatten` instance for `Id`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(IdURI)({
+export const AssociativeFlatten = makeAssociativeFlatten<IdURI>()()({
   flatten
 })
 
 /**
  * The `Any` instance for `Id`.
  */
-export const Any = makeAny(IdURI)({
+export const Any = makeAny<IdURI>()()({
   any: () => Id.wrap({})
 })
 
@@ -81,14 +81,14 @@ export function map<A, B>(f: (a: A) => B): (fa: Id<A>) => Id<B> {
 /**
  * The `Covariant` instance for `Id`.
  */
-export const Covariant = makeCovariant(IdURI)({
+export const Covariant = makeCovariant<IdURI>()()({
   map
 })
 
 /**
  * The `IdentityFlatten` instance for `Id`.
  */
-export const IdentityFlatten = makeIdentityFlatten(IdURI)({
+export const IdentityFlatten = makeIdentityFlatten<IdURI>()()({
   ...Any,
   ...AssociativeFlatten
 })
@@ -96,7 +96,7 @@ export const IdentityFlatten = makeIdentityFlatten(IdURI)({
 /**
  * The `Monad` instance for `Id`.
  */
-export const Monad = makeMonad(IdURI)({
+export const Monad = makeMonad<IdURI>()()({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten

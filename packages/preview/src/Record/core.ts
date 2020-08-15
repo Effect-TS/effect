@@ -16,10 +16,10 @@ export type RecordURI = typeof RecordURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -34,10 +34,10 @@ declare module "../_abstract/HKT" {
     [RecordURI]: R.Record<NK, Out>
   }
   interface URItoKeys<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -56,21 +56,21 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `Record[+_: String, +_]`
  */
-export const Any = makeAny(RecordURI)({
+export const Any = makeAny<RecordURI>()()({
   any: () => ({})
 })
 
 /**
  * The `Covariant` instance for `Record[+_: String, +_]`
  */
-export const Covariant = makeCovariant(RecordURI)({
+export const Covariant = makeCovariant<RecordURI>()()({
   map: R.map
 })
 
 /**
  * TraversableWithKeys's `foreachWithKeysF` for `Record[+_: String, +_]`.
  */
-export const foreachWithKeysF = implementForeachWithKeysF(RecordURI)(
+export const foreachWithKeysF = implementForeachWithKeysF<RecordURI>()()(
   ({ _b, _fkn: _fk }) => {
     const I = getIdentitySpread<typeof _b>()<typeof _fk>()
     return (G) => (f) => (fa) =>
@@ -97,7 +97,7 @@ export const foreachWithKeysF = implementForeachWithKeysF(RecordURI)(
 /**
  * Traversable's `foreachF` for `Record[+_: String, +_]`.
  */
-export const foreachF = implementForeachF(RecordURI)(() => (G) => (f) =>
+export const foreachF = implementForeachF<RecordURI>()()(() => (G) => (f) =>
   foreachWithKeysF(G)((a) => f(a))
 )
 

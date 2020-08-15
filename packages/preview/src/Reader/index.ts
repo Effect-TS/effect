@@ -23,10 +23,10 @@ export type ReaderURI = typeof ReaderURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -110,7 +110,7 @@ export const runEnv = <R>(r: R) => <A>(self: Reader<R, A>): A =>
 /**
  * The `Access` instance for `Reader[-_, +_]`.
  */
-export const Access = makeAccess(ReaderURI)({
+export const Access = makeAccess<ReaderURI>()()({
   access: F.access,
   provide: F.provideAll
 })
@@ -118,54 +118,56 @@ export const Access = makeAccess(ReaderURI)({
 /**
  * The `Any` instance for `Reader[-_, +_]`.
  */
-export const Any = makeAny(ReaderURI)({
+export const Any = makeAny<ReaderURI>()()({
   any: () => F.succeed(() => ({}))
 })
 
 /**
  * The `Covariant` instance for `Reader[-_, +_]`.
  */
-export const Covariant = makeCovariant(ReaderURI)({
+export const Covariant = makeCovariant<ReaderURI>()()({
   map
 })
 
 /**
  * The `AssociativeBoth` instance for `Reader[-_, +_]`.
  */
-export const AssociativeBoth = makeAssociativeBoth(ReaderURI)({
+export const AssociativeBoth = makeAssociativeBoth<ReaderURI>()()({
   both: zip
 })
 
 /**
  * The `AssociativeFlatten` instance for `Reader[-_, +_]`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(ReaderURI)({
+export const AssociativeFlatten = makeAssociativeFlatten<ReaderURI>()()({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
 })
 
 /**
  * The `IdentityFlatten` instance for `Reader[-_, +_]`.
  */
-export const IdentityFlatten = makeIdentityFlatten(ReaderURI)(
+export const IdentityFlatten = makeIdentityFlatten<ReaderURI>()()(
   intersect(Any, AssociativeFlatten)
 )
 
 /**
  * The `Monad` instance for `Reader[-_, +_]`.
  */
-export const Monad = makeMonad(ReaderURI)(intersect(Any, Covariant, AssociativeFlatten))
+export const Monad = makeMonad<ReaderURI>()()(
+  intersect(Any, Covariant, AssociativeFlatten)
+)
 
 /**
  * The `Applicative` instance for `Reader[-_, +_]`.
  */
-export const Applicative = makeApplicative(ReaderURI)(
+export const Applicative = makeApplicative<ReaderURI>()()(
   intersect(Any, Covariant, AssociativeBoth)
 )
 
 /**
  * The `Environmental` instance for `Reader[-_, +_]`.
  */
-export const Environmental = makeEnvironmental(ReaderURI)(intersect(Access, Monad))
+export const Environmental = makeEnvironmental<ReaderURI>()()(intersect(Access, Monad))
 
 /**
  * Struct based applicative for Reader[-_, +_]

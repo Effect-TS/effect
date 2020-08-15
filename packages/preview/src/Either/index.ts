@@ -82,7 +82,6 @@ export {
   getValidationCovariant,
   getValidationFail,
   getValidationIdentityBoth,
-  getValidationIdentityErr,
   getValidationIdentityFlatten,
   getValidationRecover,
   IdentityBoth,

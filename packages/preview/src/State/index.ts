@@ -20,10 +20,10 @@ export type StateURI = typeof StateURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -95,47 +95,49 @@ export const runResult = <S>(r: S) => <A>(self: State<S, A>): A => F.runResult(r
 /**
  * The `Any` instance for `State[_, +_]`.
  */
-export const Any = makeAny(StateURI)({
+export const Any = makeAny<StateURI>()()({
   any: () => F.succeed(() => ({}))
 })
 
 /**
  * The `Covariant` instance for `State[_, +_]`.
  */
-export const Covariant = makeCovariant(StateURI)({
+export const Covariant = makeCovariant<StateURI>()()({
   map
 })
 
 /**
  * The `AssociativeBoth` instance for `State[_, +_]`.
  */
-export const AssociativeBoth = makeAssociativeBoth(StateURI)({
+export const AssociativeBoth = makeAssociativeBoth<StateURI>()()({
   both: zip
 })
 
 /**
  * The `AssociativeFlatten` instance for `State[_, +_]`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(StateURI)({
+export const AssociativeFlatten = makeAssociativeFlatten<StateURI>()()({
   flatten: (ffa) => F.chain_(ffa, (x) => x)
 })
 
 /**
  * The `IdentityFlatten` instance for `State[_, +_]`.
  */
-export const IdentityFlatten = makeIdentityFlatten(StateURI)(
+export const IdentityFlatten = makeIdentityFlatten<StateURI>()()(
   intersect(Any, AssociativeFlatten)
 )
 
 /**
  * The `Monad` instance for `State[_, +_]`.
  */
-export const Monad = makeMonad(StateURI)(intersect(Any, Covariant, AssociativeFlatten))
+export const Monad = makeMonad<StateURI>()()(
+  intersect(Any, Covariant, AssociativeFlatten)
+)
 
 /**
  * The `Applicative` instance for `State[_, +_]`.
  */
-export const Applicative = makeApplicative(StateURI)(
+export const Applicative = makeApplicative<StateURI>()()(
   intersect(Any, Covariant, AssociativeBoth)
 )
 /**

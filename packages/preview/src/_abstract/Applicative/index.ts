@@ -1,59 +1,74 @@
-import { CovariantF, CovariantK } from "../Covariant"
+import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
 import { URIS } from "../HKT"
-import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
+import { IdentityBothF, IdentityBothK, IdentityBothKE } from "../IdentityBoth"
 
-export type ApplicativeF<
+export type ApplicativeF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> = IdentityBothF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = IdentityBothF<F, Fix0, Fix1, Fix2, Fix3> & CovariantF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0,
+  TL1,
+  TL2,
+  TL3
+> &
+  CovariantF<F, TL0, TL1, TL2, TL3>
 
 export type ApplicativeK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = IdentityBothK<F, Fix0, Fix1, Fix2, Fix3> & CovariantK<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = IdentityBothK<F, TL0, TL1, TL2, TL3> & CovariantK<F, TL0, TL1, TL2, TL3>
 
-export function makeApplicative<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export type ApplicativeKE<
+  F extends URIS,
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = IdentityBothKE<F, E, TL0, TL1, TL2, TL3> & CovariantKE<F, E, TL0, TL1, TL2, TL3>
+
+export function makeApplicative<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    ApplicativeK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    ApplicativeKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => ApplicativeK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeApplicative<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    ApplicativeF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => ApplicativeF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeApplicative<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    ApplicativeF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => ApplicativeF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => ApplicativeKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeApplicative<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<ApplicativeK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => ApplicativeK<URI, TL0, TL1, TL2, TL3>
+export function makeApplicative<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<ApplicativeF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => ApplicativeF<URI, TL0, TL1, TL2, TL3>
+export function makeApplicative<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<ApplicativeF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => ApplicativeF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

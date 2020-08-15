@@ -12,10 +12,10 @@ export type CauseURI = typeof CauseURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -34,21 +34,21 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `Cause[+_]`
  */
-export const Any = makeAny(CauseURI)({
+export const Any = makeAny<CauseURI>()()({
   any: () => C.Empty
 })
 
 /**
  * The `Covariant` instance for `Cause[+_]`
  */
-export const Covariant = makeCovariant(CauseURI)({
+export const Covariant = makeCovariant<CauseURI>()()({
   map: C.map
 })
 
 /**
  * The `AssociativeBoth` instance for `Cause[+_]`
  */
-export const AssociativeBoth = makeAssociativeBoth(CauseURI)({
+export const AssociativeBoth = makeAssociativeBoth<CauseURI>()()({
   both: (fb) => (fa) =>
     pipe(
       fa,

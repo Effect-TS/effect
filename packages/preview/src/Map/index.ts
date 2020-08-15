@@ -85,7 +85,7 @@ export {
   getTraversableWithKeys,
   makeForeachF,
   makeForeachWithKeysF,
-  MapFixedURI,
+  KeyedMapURI,
   MapURI,
   Traversable,
   TraversableWithKeys

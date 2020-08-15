@@ -1,64 +1,70 @@
-import { FoldMapF, FoldMapK } from "../FoldMap"
+import { FoldMapF, FoldMapK, FoldMapKE } from "../FoldMap"
 import { URIS } from "../HKT"
-import { ReduceF, ReduceK } from "../Reduce"
-import { ReduceRightF, ReduceRightK } from "../ReduceRight"
+import { ReduceF, ReduceK, ReduceKE } from "../Reduce"
+import { ReduceRightF, ReduceRightK, ReduceRightKE } from "../ReduceRight"
 
-export type FoldableF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> = FoldMapF<
+export type FoldableF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> = FoldMapF<
   F,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3
+  TL0,
+  TL1,
+  TL2,
+  TL3
 > &
-  ReduceF<F, Fix0, Fix1, Fix2, Fix3> &
-  ReduceRightF<F, Fix0, Fix1, Fix2, Fix3>
+  ReduceF<F, TL0, TL1, TL2, TL3> &
+  ReduceRightF<F, TL0, TL1, TL2, TL3>
 
 export type FoldableK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = FoldMapK<F, Fix0, Fix1, Fix2, Fix3> &
-  ReduceK<F, Fix0, Fix1, Fix2, Fix3> &
-  ReduceRightK<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = FoldMapK<F, TL0, TL1, TL2, TL3> &
+  ReduceK<F, TL0, TL1, TL2, TL3> &
+  ReduceRightK<F, TL0, TL1, TL2, TL3>
 
-export function makeFoldable<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export type FoldableKE<
+  F extends URIS,
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = FoldMapKE<F, E, TL0, TL1, TL2, TL3> &
+  ReduceKE<F, E, TL0, TL1, TL2, TL3> &
+  ReduceRightKE<F, E, TL0, TL1, TL2, TL3>
+
+export function makeFoldable<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    FoldableK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    FoldableKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => FoldableK<URI>
-export function makeFoldable<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    FoldableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => FoldableF<URI>
-export function makeFoldable<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    FoldableF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => FoldableF<URI> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => FoldableKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeFoldable<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<FoldableK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => FoldableK<URI, TL0, TL1, TL2, TL3>
+export function makeFoldable<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<FoldableF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => FoldableF<URI, TL0, TL1, TL2, TL3>
+export function makeFoldable<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<FoldableF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => FoldableF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

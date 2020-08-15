@@ -1,59 +1,68 @@
-import { CovariantF, CovariantK } from "../Covariant"
+import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
 import { URIS } from "../HKT"
-import { IdentityFlattenF, IdentityFlattenK } from "../IdentityFlatten"
+import {
+  IdentityFlattenF,
+  IdentityFlattenK,
+  IdentityFlattenKE
+} from "../IdentityFlatten"
 
-export type MonadF<
+export type MonadF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> = IdentityFlattenF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = IdentityFlattenF<F, Fix0, Fix1, Fix2, Fix3> & CovariantF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0,
+  TL1,
+  TL2,
+  TL3
+> &
+  CovariantF<F, TL0, TL1, TL2, TL3>
 
 export type MonadK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = IdentityFlattenK<F, Fix0, Fix1, Fix2, Fix3> & CovariantK<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = IdentityFlattenK<F, TL0, TL1, TL2, TL3> & CovariantK<F, TL0, TL1, TL2, TL3>
 
-export function makeMonad<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export type MonadKE<
+  F extends URIS,
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = IdentityFlattenKE<F, E, TL0, TL1, TL2, TL3> & CovariantKE<F, E, TL0, TL1, TL2, TL3>
+
+export function makeMonad<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    MonadK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    MonadKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => MonadK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeMonad<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    MonadF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => MonadF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeMonad<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    MonadF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => MonadF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => MonadKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeMonad<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<MonadK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => MonadK<URI, TL0, TL1, TL2, TL3>
+export function makeMonad<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<MonadF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => MonadF<URI, TL0, TL1, TL2, TL3>
+export function makeMonad<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<MonadF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => MonadF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

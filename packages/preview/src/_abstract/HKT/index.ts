@@ -64,7 +64,7 @@ export type HKT9<URI, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKT
   Out
 >
 
-export type HKT10<URI, K, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKTFix<
+export type HKT10<URI, K, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKTTL<
   URI,
   any,
   any,
@@ -82,12 +82,12 @@ export type HKT10<URI, K, NK extends string, SI, SO, X, In, St, Env, Err, Out> =
   Out
 >
 
-export interface HKTFix<
+export interface HKTTL<
   URI,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   K,
   NK extends string,
   SI,
@@ -100,10 +100,10 @@ export interface HKTFix<
   Out
 > {
   readonly _URI: URI
-  readonly _Fix0: Fix0
-  readonly _Fix1: Fix1
-  readonly _Fix2: Fix2
-  readonly _Fix3: Fix3
+  readonly _TL0: TL0
+  readonly _TL1: TL1
+  readonly _TL2: TL2
+  readonly _TL3: TL3
   readonly _Out: () => Out
   readonly _Err: () => Err
   readonly _Env: (_: Env) => void
@@ -121,10 +121,10 @@ export interface HKTFix<
  */
 export interface URItoKind<
   // Encode fixed parameters for derived instances (eg: Validation<E, *> given Identity<E>)
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   // Encode generic keys
   K,
   // Encode nominal (string based) keys
@@ -168,7 +168,7 @@ export type URIS = keyof URItoKind<
 >
 
 /**
- * KindFix<F, Fix0, Fix1, Fix2, Fix3,A> = URItoKind[F][A]
+ * KindTL<F, TL0, TL1, TL2, TL3,A> = URItoKind[F][A]
  */
 export type Kind<
   URI extends URIS,
@@ -186,12 +186,12 @@ export type Kind<
   ? URItoKind<any, any, any, any, K, NK, SI, SO, X, In, St, Env, Err, Out>[URI]
   : any
 
-export type KindFix<
+export type KindTL<
   URI extends URIS,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   K,
   NK extends string,
   SI,
@@ -203,18 +203,18 @@ export type KindFix<
   Err,
   Out
 > = URI extends URIS
-  ? URItoKind<Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>[URI]
+  ? URItoKind<TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>[URI]
   : any
 
 /**
  * Used to require URI in typeclasses
  */
-export interface HasURI<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
+export interface HasURI<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   readonly URI: F
-  readonly Fix0: Fix0
-  readonly Fix1: Fix1
-  readonly Fix2: Fix2
-  readonly Fix3: Fix3
+  readonly TL0: TL0
+  readonly TL1: TL1
+  readonly TL2: TL2
+  readonly TL3: TL3
 }
 
 export interface HasE<E> {
@@ -224,10 +224,10 @@ export interface HasE<E> {
 export function castErr<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -238,14 +238,14 @@ export function castErr<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, T, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, T, Out>
   <F>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -256,8 +256,8 @@ export function castErr<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, T, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, T, Out>
 }
 export function castErr() {
   return () => identity as any
@@ -266,10 +266,10 @@ export function castErr() {
 export function castEnv<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -280,14 +280,14 @@ export function castEnv<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, T, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, T, Err, Out>
   <F>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -298,8 +298,8 @@ export function castEnv<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, T, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, T, Err, Out>
 }
 export function castEnv() {
   return () => identity as any
@@ -308,10 +308,10 @@ export function castEnv() {
 export function castSt<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -322,14 +322,14 @@ export function castSt<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, T, Env, Err, Out>
   <F>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -340,8 +340,8 @@ export function castSt<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, T, Env, Err, Out>
 }
 export function castSt() {
   return () => identity as any
@@ -350,10 +350,10 @@ export function castSt() {
 export function castIn<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -364,14 +364,14 @@ export function castIn<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, T, St, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, T, St, Env, Err, Out>
   <F>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -382,8 +382,8 @@ export function castIn<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, T, St, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, T, St, Env, Err, Out>
 }
 export function castIn() {
   return () => identity as any
@@ -392,10 +392,10 @@ export function castIn() {
 export function castX<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -406,14 +406,14 @@ export function castX<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, T, In, St, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, T, In, St, Env, Err, Out>
   <F>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -424,8 +424,8 @@ export function castX<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, T, In, St, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, T, In, St, Env, Err, Out>
 }
 export function castX() {
   return () => identity as any
@@ -433,10 +433,10 @@ export function castX() {
 
 export function castSO<T>(): {
   <F extends URIS>(_?: F): <
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -448,13 +448,13 @@ export function castSO<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, T, X, In, St, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, T, X, In, St, Env, Err, Out>
   <F>(_?: F): <
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -466,8 +466,8 @@ export function castSO<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, T, X, In, St, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, T, X, In, St, Env, Err, Out>
 }
 export function castSO() {
   return () => identity as any
@@ -476,10 +476,10 @@ export function castSO() {
 export function castSI<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -490,13 +490,13 @@ export function castSI<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, T, SO, X, In, St, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, T, SO, X, In, St, Env, Err, Out>
   <F>(_?: F): <
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -508,8 +508,8 @@ export function castSI<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, T, SO, X, In, St, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, T, SO, X, In, St, Env, Err, Out>
 }
 export function castSI() {
   return () => identity as any
@@ -518,10 +518,10 @@ export function castSI() {
 export function castS<T>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -532,13 +532,13 @@ export function castS<T>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, T, Env, Err, Out>
   <F>(_?: F): <
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -550,8 +550,8 @@ export function castS<T>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, T, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, T, Env, Err, Out>
 }
 export function castS() {
   return () => identity as any
@@ -560,10 +560,10 @@ export function castS() {
 export function castK<T extends string>(): {
   <F extends URIS>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -574,14 +574,14 @@ export function castK<T extends string>(): {
     Err,
     Out
   >(
-    self: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, T, SI, SO, X, In, St, Env, Err, Out>
+    self: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, T, SI, SO, X, In, St, Env, Err, Out>
   <F>(_?: F): <
     K,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     NK extends string,
     SI,
     SO,
@@ -592,18 +592,18 @@ export function castK<T extends string>(): {
     Err,
     Out
   >(
-    self: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, T, SI, SO, X, In, St, Env, Err, Out>
+    self: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, T, SI, SO, X, In, St, Env, Err, Out>
 }
 export function castK() {
   return () => identity as any
 }
 
 export interface URItoKeys<
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   K,
   NK extends string,
   SI,
@@ -618,10 +618,10 @@ export interface URItoKeys<
 
 export type KeyFor<
   F,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   K,
   NK extends string,
   SI,
@@ -648,23 +648,23 @@ export type KeyFor<
   any,
   any
 >
-  ? URItoKeys<Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
+  ? URItoKeys<TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, Out>[F]
   : never
 
-export interface URItoErr<Fix0, Fix1, Fix2, Fix3, Err> {}
+export interface URItoErr<TL0, TL1, TL2, TL3, Err> {}
 
-export type ErrFor<F, Fix0, Fix1, Fix2, Fix3, Err> = F extends keyof URItoErr<
+export type ErrFor<F, TL0, TL1, TL2, TL3, Err> = F extends keyof URItoErr<
   any,
   any,
   any,
   any,
   any
 >
-  ? URItoErr<Fix0, Fix1, Fix2, Fix3, Err>[F]
+  ? URItoErr<TL0, TL1, TL2, TL3, Err>[F]
   : Err
 
 export type HKTTypeS<
-  H extends HKTFix<
+  H extends HKTTL<
     any,
     any,
     any,
@@ -684,7 +684,7 @@ export type HKTTypeS<
 > = H["_St"]
 
 export type HKTTypeSO<
-  H extends HKTFix<
+  H extends HKTTL<
     any,
     any,
     any,
@@ -704,7 +704,7 @@ export type HKTTypeSO<
 > = ReturnType<H["_O"]>
 
 export type HKTTypeSI<
-  H extends HKTFix<
+  H extends HKTTL<
     any,
     any,
     any,

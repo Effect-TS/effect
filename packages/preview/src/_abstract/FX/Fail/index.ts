@@ -1,15 +1,15 @@
-import { HasE, HasURI, HKTFix, KindFix, URIS } from "../../HKT"
+import { HasE, HasURI, HKTTL, KindTL, URIS } from "../../HKT"
 
-export interface FailF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+export interface FailF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly fail: <E, S, SI>(
     e: E
-  ) => HKTFix<
+  ) => HKTTL<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -23,16 +23,16 @@ export interface FailF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   >
 }
 
-export interface FailK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+export interface FailK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly fail: <E, S, SI>(
     e: E
-  ) => KindFix<
+  ) => KindTL<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -46,22 +46,17 @@ export interface FailK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
   >
 }
 
-export interface FailKE<
-  F extends URIS,
-  E,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> extends HasURI<F, Fix0, Fix1, Fix2, Fix3>, HasE<E> {
-  readonly fail: <E, S, SI>(
+export interface FailKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3>,
+    HasE<E> {
+  readonly fail: <S, SI>(
     e: E
-  ) => KindFix<
+  ) => KindTL<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -75,48 +70,34 @@ export interface FailKE<
   >
 }
 
-export function makeFail<
-  URI extends URIS,
-  E,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<
-    FailKE<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3" | "_E"
-  >
-) => FailKE<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeFail<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<FailK<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => FailK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeFail<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<FailF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => FailF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeFail<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<FailF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => FailF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+export function makeFail<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<FailKE<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E">
+) => FailKE<URI, TL0, TL1, TL2, TL3>
+export function makeFail<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<FailK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => FailK<URI, TL0, TL1, TL2, TL3>
+export function makeFail<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<FailF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => FailF<URI, TL0, TL1, TL2, TL3>
+export function makeFail<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<FailF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => FailF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     Fail: "Fail",
     ..._
   })

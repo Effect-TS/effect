@@ -1,6 +1,10 @@
-import { AssociativeEitherF, AssociativeEitherK } from "../AssociativeEither"
+import {
+  AssociativeEitherF,
+  AssociativeEitherK,
+  AssociativeEitherKE
+} from "../AssociativeEither"
 import { URIS } from "../HKT"
-import { NoneF, NoneK } from "../None"
+import { NoneF, NoneK, NoneKE } from "../None"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to
@@ -8,56 +12,79 @@ import { NoneF, NoneK } from "../None"
  */
 export type IdentityEitherF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeEitherF<F, Fix0, Fix1, Fix2, Fix3> & NoneF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeEitherF<F, TL0, TL1, TL2, TL3> & NoneF<F, TL0, TL1, TL2, TL3>
 
 export type IdentityEitherK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeEitherK<F, Fix0, Fix1, Fix2, Fix3> & NoneK<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeEitherK<F, TL0, TL1, TL2, TL3> & NoneK<F, TL0, TL1, TL2, TL3>
 
-export function makeIdentityEither<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export type IdentityEitherKE<
+  F extends URIS,
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeEitherKE<F, E, TL0, TL1, TL2, TL3> & NoneKE<F, E, TL0, TL1, TL2, TL3>
+
+export function makeIdentityEither<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    IdentityEitherK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    IdentityEitherKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => IdentityEitherK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityEither<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
+) => IdentityEitherKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeIdentityEither<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    IdentityEitherK<URI, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3"
   >
-) => IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityEither<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
+) => IdentityEitherK<URI, TL0, TL1, TL2, TL3>
+export function makeIdentityEither<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    IdentityEitherF<URI, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3"
   >
-) => IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => IdentityEitherF<URI, TL0, TL1, TL2, TL3>
+export function makeIdentityEither<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<
+    IdentityEitherF<URI, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3"
+  >
+) => IdentityEitherF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

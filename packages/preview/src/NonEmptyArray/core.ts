@@ -11,10 +11,10 @@ export type NonEmptyArrayURI = typeof NonEmptyArrayURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -33,20 +33,20 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `NonEmptyArray[+_]`
  */
-export const Any = makeAny(NonEmptyArrayURI)({
+export const Any = makeAny<NonEmptyArrayURI>()()({
   any: () => A.single({})
 })
 
 /**
  * The `Covariant` instance for `NonEmptyArray[+_]`
  */
-export const Covariant = makeCovariant(NonEmptyArrayURI)({
+export const Covariant = makeCovariant<NonEmptyArrayURI>()()({
   map: A.map
 })
 
 /**
  * The `AssociativeBoth` instance for `NonEmptyArray[+_]`
  */
-export const AssociativeBoth = makeAssociativeBoth(NonEmptyArrayURI)({
+export const AssociativeBoth = makeAssociativeBoth<NonEmptyArrayURI>()()({
   both: A.zip
 })

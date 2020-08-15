@@ -1,4 +1,4 @@
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -22,65 +22,80 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  * `string => number` that returns the length of a string, then we can construct
  * a `Array<number>` with the length of each string.
  */
-export interface CovariantF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+export interface CovariantF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
-    fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, A>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, B>
+    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
-export interface CovariantK<
+export interface CovariantK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
+  readonly map: <A, B>(
+    f: (a: A) => B
+  ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
+    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, B>
+}
+
+export interface CovariantKE<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> extends HasURI<F, TL0, TL1, TL2, TL3>, HasE<E> {
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
-    fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, A>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, Err, B>
+  ) => <K, NK extends string, SI, SO, X, In, St, Env>(
+    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, B>
 }
 
-export function makeCovariant<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export function makeCovariant<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    CovariantK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    CovariantKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => CovariantK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    CovariantF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => CovariantF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeCovariant<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    CovariantF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => CovariantF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => CovariantKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeCovariant<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<CovariantK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => CovariantK<URI, TL0, TL1, TL2, TL3>
+export function makeCovariant<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<CovariantF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => CovariantF<URI, TL0, TL1, TL2, TL3>
+export function makeCovariant<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<CovariantF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => CovariantF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

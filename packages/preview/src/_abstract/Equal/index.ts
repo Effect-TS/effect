@@ -25,10 +25,10 @@ export type EqualURI = typeof EqualURI
 
 declare module "../HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -82,7 +82,7 @@ export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B
 /**
  * The `AssociativeBoth` instance for `Equal`.
  */
-export const AssociativeBoth = makeAssociativeBoth(EqualURI)({
+export const AssociativeBoth = makeAssociativeBoth<EqualURI>()()({
   both
 })
 
@@ -104,7 +104,7 @@ export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, 
 /**
  * The `AssociativeEither` instance for `Equal`.
  */
-export const AssociativeEither = makeAssociativeEither(EqualURI)({
+export const AssociativeEither = makeAssociativeEither<EqualURI>()()({
   either
 })
 
@@ -120,33 +120,35 @@ export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
 /**
  * The `Contravariant` instance for `Equal`.
  */
-export const Contravariant = makeContravariant(EqualURI)({
+export const Contravariant = makeContravariant<EqualURI>()()({
   contramap
 })
 
 /**
  * The `Any` instance for `Equal`.
  */
-export const Any = makeAny(EqualURI)({
+export const Any = makeAny<EqualURI>()()({
   any: () => anyEqual
 })
 
 /**
  * The `IdentityBoth` instance for `Equal`.
  */
-export const IdentityBoth = makeIdentityBoth(EqualURI)(intersect(Any, AssociativeBoth))
+export const IdentityBoth = makeIdentityBoth<EqualURI>()()(
+  intersect(Any, AssociativeBoth)
+)
 
 /**
  * The `None` instance for `Equal`.
  */
-export const None = makeNone(EqualURI)({
+export const None = makeNone<EqualURI>()()({
   none: () => nothingEqual
 })
 
 /**
  * The `IdentityEither` instance for `Equal`.
  */
-export const IdentityEither = makeIdentityEither(EqualURI)(
+export const IdentityEither = makeIdentityEither<EqualURI>()()(
   intersect(None, AssociativeEither)
 )
 

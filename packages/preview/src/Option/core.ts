@@ -11,10 +11,10 @@ export type OptionURI = typeof OptionURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -33,20 +33,20 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `Option[+_]`
  */
-export const Any = makeAny(OptionURI)({
+export const Any = makeAny<OptionURI>()()({
   any: () => O.some({})
 })
 
 /**
  * The `Covariant` instance for `Option[+_]`
  */
-export const Covariant = makeCovariant(OptionURI)({
+export const Covariant = makeCovariant<OptionURI>()()({
   map: O.map
 })
 
 /**
  * The `AssociativeBoth` instance for `Option[+_]`
  */
-export const AssociativeBoth = makeAssociativeBoth(OptionURI)({
+export const AssociativeBoth = makeAssociativeBoth<OptionURI>()()({
   both: O.zip
 })

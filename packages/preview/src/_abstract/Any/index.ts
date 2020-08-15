@@ -1,16 +1,16 @@
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
 
 /**
  * Model () => F[Any]
  */
-export interface AnyF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly any: <S, SI, SO = SI>() => HKTFix<
+export interface AnyF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
+  readonly any: <S, SI, SO = SI>() => HKTTL<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -24,14 +24,14 @@ export interface AnyF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   >
 }
 
-export interface AnyK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly any: <S, SI, SO = SI>() => KindFix<
+export interface AnyK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
+  readonly any: <S, SI, SO = SI>() => KindTL<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -45,33 +45,59 @@ export interface AnyK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 =
   >
 }
 
-export function makeAny<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<AnyK<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => AnyK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeAny<URI, Fix0, Fix1, Fix2, Fix3>(
-  URI: URI
-): (
-  _: Omit<AnyF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => AnyF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeAny<URI, Fix0, Fix1, Fix2, Fix3>(
-  URI: URI
-): (
-  _: Omit<AnyF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => AnyF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+export interface AnyKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3>,
+    HasE<E> {
+  readonly any: <S, SI, SO = SI>() => KindTL<
+    F,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
+    never,
+    never,
+    SI,
+    SO,
+    never,
+    unknown,
+    S,
+    unknown,
+    E,
+    unknown
+  >
+}
+
+export function makeAny<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<
+    AnyKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
+  >
+) => AnyKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeAny<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<AnyK<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => AnyK<URI, TL0, TL1, TL2, TL3>
+export function makeAny<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<AnyF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => AnyF<URI, TL0, TL1, TL2, TL3>
+export function makeAny<URI>(): <TL0 = any, TL1 = any, TL2 = any, TL3 = any>() => (
+  _: Omit<AnyF<URI, TL0, TL1, TL2, TL3>, "URI" | "TL0" | "TL1" | "TL2" | "TL3">
+) => AnyF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

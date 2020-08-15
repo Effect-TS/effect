@@ -13,10 +13,10 @@ export type CommutativeURI = typeof CommutativeURI
 
 declare module "../HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,

@@ -18,10 +18,10 @@ export type EffectAsyncURI = typeof EffectAsyncURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -40,63 +40,63 @@ declare module "../_abstract/HKT" {
 /**
  * The `Covariant` instance for `EffectAsync`.
  */
-export const Covariant = makeCovariant(EffectAsyncURI)({
+export const Covariant = makeCovariant<EffectAsyncURI>()()({
   map: S.map
 })
 
 /**
  * The `AssociativeBoth` instance for `EffectAsync`.
  */
-export const AssociativeBoth = makeAssociativeBoth(EffectAsyncURI)({
+export const AssociativeBoth = makeAssociativeBoth<EffectAsyncURI>()()({
   both: S.zip
 })
 
 /**
  * The Parallel `AssociativeBoth` instance for `EffectAsync`.
  */
-export const AssociativeBothPar = makeAssociativeBoth(EffectAsyncURI)({
+export const AssociativeBothPar = makeAssociativeBoth<EffectAsyncURI>()()({
   both: S.zipPar
 })
 
 /**
  * The `Any` instance for `EffectAsync`.
  */
-export const Any = makeAny(EffectAsyncURI)({
+export const Any = makeAny<EffectAsyncURI>()()({
   any: () => S.of
 })
 
 /**
  * The `Applicative` instance for `EffectAsync`.
  */
-export const Applicative = makeApplicative(EffectAsyncURI)(
+export const Applicative = makeApplicative<EffectAsyncURI>()()(
   intersect(Any, Covariant, AssociativeBoth)
 )
 
 /**
  * The Parallel `Applicative` instance for `EffectAsync`.
  */
-export const ApplicativePar = makeApplicative(EffectAsyncURI)(
+export const ApplicativePar = makeApplicative<EffectAsyncURI>()()(
   intersect(Any, Covariant, AssociativeBothPar)
 )
 
 /**
  * The `AssociativeEither` instance for `EffectAsync`.
  */
-export const AssociativeEither = makeAssociativeEither(EffectAsyncURI)({
+export const AssociativeEither = makeAssociativeEither<EffectAsyncURI>()()({
   either: S.orElseEither
 })
 
 /**
  * The `AssociativeFlatten` instance for `EffectAsync`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(EffectAsyncURI)({
+export const AssociativeFlatten = makeAssociativeFlatten<EffectAsyncURI>()()({
   flatten: S.flatten
 })
 
 /**
  * The `Access` instance for `EffectAsync`.
  */
-export const Access = makeAccess(EffectAsyncURI)({
+export const Access = makeAccess<EffectAsyncURI>()()({
   access: S.access,
   provide: S.provideAll
 })
@@ -104,31 +104,35 @@ export const Access = makeAccess(EffectAsyncURI)({
 /**
  * The `IdentityFlatten` instance for `EffectAsync`.
  */
-export const IdentityFlatten = makeIdentityFlatten(EffectAsyncURI)(
+export const IdentityFlatten = makeIdentityFlatten<EffectAsyncURI>()()(
   intersect(Any, AssociativeFlatten)
 )
 
 /**
  * The `Monad` instance for `EffectAsync`.
  */
-export const Monad = makeMonad(EffectAsyncURI)(intersect(Covariant, IdentityFlatten))
+export const Monad = makeMonad<EffectAsyncURI>()()(
+  intersect(Covariant, IdentityFlatten)
+)
 
 /**
  * The `Environmental` instance for `EffectAsync`.
  */
-export const Environmental = makeEnvironmental(EffectAsyncURI)(intersect(Access, Monad))
+export const Environmental = makeEnvironmental<EffectAsyncURI>()()(
+  intersect(Access, Monad)
+)
 
 /**
  * The `Fail` instance for `EffectAsync`.
  */
-export const Fail = makeFail(EffectAsyncURI)({
+export const Fail = makeFail<EffectAsyncURI>()()({
   fail: S.fail
 })
 
 /**
  * The `Recover` instance for `EffectAsync`.
  */
-export const Recover = makeRecover(EffectAsyncURI)({
+export const Recover = makeRecover<EffectAsyncURI>()()({
   recover: S.catchAll
 })
 

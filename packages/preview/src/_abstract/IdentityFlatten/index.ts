@@ -1,5 +1,9 @@
-import { AnyF, AnyK } from "../Any"
-import { AssociativeFlattenF, AssociativeFlattenK } from "../AssociativeFlatten"
+import { AnyF, AnyK, AnyKE } from "../Any"
+import {
+  AssociativeFlattenF,
+  AssociativeFlattenK,
+  AssociativeFlattenKE
+} from "../AssociativeFlatten"
 import { URIS } from "../HKT"
 
 /**
@@ -8,68 +12,79 @@ import { URIS } from "../HKT"
  */
 export type IdentityFlattenF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeFlattenF<F, Fix0, Fix1, Fix2, Fix3> & AnyF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeFlattenF<F, TL0, TL1, TL2, TL3> & AnyF<F, TL0, TL1, TL2, TL3>
 
 export type IdentityFlattenK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeFlattenK<F, Fix0, Fix1, Fix2, Fix3> & AnyK<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeFlattenK<F, TL0, TL1, TL2, TL3> & AnyK<F, TL0, TL1, TL2, TL3>
 
-export function makeIdentityFlatten<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
+export type IdentityFlattenKE<
+  F extends URIS,
+  E,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeFlattenKE<F, E, TL0, TL1, TL2, TL3> & AnyKE<F, E, TL0, TL1, TL2, TL3>
+
+export function makeIdentityFlatten<URI extends URIS, E>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    IdentityFlattenK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    IdentityFlattenKE<URI, E, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3" | "_E"
   >
-) => IdentityFlattenK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityFlatten<
-  URI,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  URI: URI
-): (
+) => IdentityFlattenKE<URI, E, TL0, TL1, TL2, TL3>
+export function makeIdentityFlatten<URI extends URIS>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    IdentityFlattenK<URI, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3"
   >
-) => IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityFlatten<
-  URI,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  URI: URI
-): (
+) => IdentityFlattenK<URI, TL0, TL1, TL2, TL3>
+export function makeIdentityFlatten<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
   _: Omit<
-    IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
+    IdentityFlattenF<URI, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3"
   >
-) => IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
+) => IdentityFlattenF<URI, TL0, TL1, TL2, TL3>
+export function makeIdentityFlatten<URI>(): <
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>() => (
+  _: Omit<
+    IdentityFlattenF<URI, TL0, TL1, TL2, TL3>,
+    "URI" | "TL0" | "TL1" | "TL2" | "TL3"
+  >
+) => IdentityFlattenF<URI, TL0, TL1, TL2, TL3> {
+  return () => (_) => ({
+    URI: undefined as any,
+    TL0: undefined as any,
+    TL1: undefined as any,
+    TL2: undefined as any,
+    TL3: undefined as any,
     ..._
   })
 }

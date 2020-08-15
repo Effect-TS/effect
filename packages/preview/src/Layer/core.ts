@@ -6,10 +6,10 @@ export type LayerURI = typeof LayerURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -25,6 +25,6 @@ declare module "../_abstract/HKT" {
   }
 }
 
-export const AssociativeBoth = makeAssociativeBoth(LayerURI)({
+export const AssociativeBoth = makeAssociativeBoth<LayerURI>()()({
   both: (fb) => (fa) => L.zip_(fa, fb)
 })
