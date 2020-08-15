@@ -6,5 +6,12 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true
   },
-  "include": ["src/**/*", "scripts/**/*", "bench/**/*", "test/**/*", "demo/**/*"]
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "bench/**/*",
+    "test/**/*",
+    "demo/**/*",
+    "demo/*"
+  ]
 }

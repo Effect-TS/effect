@@ -13602,7 +13602,7 @@ typeorm@^0.2.24:
     yargonaut "^1.1.2"
     yargs "^13.2.1"
 
-typescript@^3.0.3, typescript@^3.7.5, typescript@^3.8.3, typescript@^3.9.3, typescript@^3.9.5:
+typescript@^3.0.3, typescript@^3.7.5, typescript@^3.8.3, typescript@^3.9.5:
   version "3.9.7"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.7.tgz#98d600a5ebdc38f40cb277522f12dc800e9e25fa"
   integrity sha512-BLbiRkiBzAwsjut4x/dsibSTB6yWpwT5qWmC2OfuCg3GgVQCSgMs4vEctYPhsaGtd0AeuuHMkjZ2h2WG8MSzRw==
@@ -13611,6 +13611,11 @@ typescript@next:
   version "4.0.0-dev.20200802"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.0.0-dev.20200802.tgz#86fffba0179b9b92056b7d8071595817e1028a09"
   integrity sha512-f3bIybKgfROeHxnprAh+Za3R9uO2uCSkfbEGY69v6ZmZvxNCLy8OOQYNZNJQYRFyMwfhzngW6iK+VUgxmZZrsA==
+
+typescript@rc:
+  version "4.0.1-rc"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-4.0.1-rc.tgz#8adc78223eae56fe71d906a5fa90c3543b07a677"
+  integrity sha512-TCkspT3dSKOykbzS3/WSK7pqU2h1d/lEO6i45Afm5Y3XNAEAo8YXTG3kHOQk/wFq/5uPyO1+X8rb/Q+g7UsxJw==
 
 uglify-js@^3.1.4:
   version "3.10.1"
