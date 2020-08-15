@@ -1,6 +1,6 @@
 import { DecoderURI, primitivesDecoder } from "./decoder"
 import { PrimitivesURI } from "./primitives"
-import { SyncStackURI, AsyncStackURI } from "./uris"
+import { PureStackURI, AsyncStackURI, SyncStackURI } from "./uris"
 import {
   AsyncStackK,
   finalize,
@@ -9,7 +9,8 @@ import {
   SyncStackK
 } from "./utils"
 
-import * as T from "@matechs/preview/EffectAsync"
+import * as T from "@matechs/preview/Effect"
+import * as TA from "@matechs/preview/EffectAsync"
 import { identity } from "@matechs/preview/Function"
 import * as X from "@matechs/preview/XPure"
 
@@ -30,14 +31,15 @@ declare module "@matechs/preview/_abstract/HKT" {
     Err,
     Out
   > {
-    [SyncStackURI]: X.XPure<unknown, unknown, Env, Err, Out>
-    [AsyncStackURI]: T.AsyncRE<Env, Err, Out>
+    [PureStackURI]: X.XPure<unknown, unknown, Env, Err, Out>
+    [SyncStackURI]: T.SyncRE<Env, Err, Out>
+    [AsyncStackURI]: TA.AsyncRE<Env, Err, Out>
   }
 }
 
-const SyncF: SyncStackK<SyncStackURI> = {
+const PureF: SyncStackK<PureStackURI> = {
   _stack: "SyncStack",
-  URI: SyncStackURI,
+  URI: PureStackURI,
   run: X.either,
   TL0: undefined as any,
   TL1: undefined as any,
@@ -53,28 +55,51 @@ const SyncF: SyncStackK<SyncStackURI> = {
   provide: X.provideAll
 }
 
-export const decodePure = finalize<PrimitivesURI, DecoderURI, SyncStackURI>()(
-  primitivesDecoder(SyncF)
+export const decodePure = finalize<PrimitivesURI, DecoderURI, PureStackURI>()(
+  primitivesDecoder(PureF)
 )
 
-const AsyncF: AsyncStackK<AsyncStackURI> = {
-  _stack: "AsyncStack",
-  URI: AsyncStackURI,
+const SyncF: SyncStackK<SyncStackURI> = {
+  _stack: "SyncStack",
+  URI: SyncStackURI,
   run: T.either,
   TL0: undefined as any,
   TL1: undefined as any,
   TL2: undefined as any,
   TL3: undefined as any,
   any: T.Any.any,
-  both: T.AssociativeBoth.both,
+  both: T.zip,
   fail: T.Fail.fail,
-  flatten: T.Monad.flatten,
+  flatten: T.flatten,
   fromXPure: <R, E, A>(xp: X.XPure<unknown, unknown, R, E, A>) =>
     T.accessM((r: R) => T.fromEither(() => X.runEither(X.provideAll(r)(xp)))),
   map: T.map,
-  fromEffect: identity,
   access: T.access,
   provide: T.provideAll
+}
+
+export const decodeSync = finalize<PrimitivesURI, DecoderURI, SyncStackURI>()(
+  primitivesDecoder(SyncF)
+)
+
+const AsyncF: AsyncStackK<AsyncStackURI> = {
+  _stack: "AsyncStack",
+  URI: AsyncStackURI,
+  run: TA.either,
+  TL0: undefined as any,
+  TL1: undefined as any,
+  TL2: undefined as any,
+  TL3: undefined as any,
+  any: TA.Any.any,
+  both: TA.AssociativeBoth.both,
+  fail: TA.Fail.fail,
+  flatten: TA.Monad.flatten,
+  fromXPure: <R, E, A>(xp: X.XPure<unknown, unknown, R, E, A>) =>
+    TA.accessM((r: R) => TA.fromEither(() => X.runEither(X.provideAll(r)(xp)))),
+  map: TA.map,
+  fromEffect: identity,
+  access: TA.access,
+  provide: TA.provideAll
 }
 
 export const decodeAsync = finalize<PrimitivesURI, DecoderURI, AsyncStackURI>()({

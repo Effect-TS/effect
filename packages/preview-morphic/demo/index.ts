@@ -66,12 +66,15 @@ export const mixArray = pipe(["a", "b"], M.decodeAsync(stringArray))
 export const asyncArray = pipe(["a", "b"], M.decodeAsync(stringArrayAsync))
 
 pipe(
-  M.decodePure(Person)({
+  M.decodeSync(Person)({
     first: "a",
     last: "b"
   }),
-  X.runEither,
-  (e) => {
-    console.log(e)
-  }
+  T.either,
+  T.chain((e) =>
+    T.effectTotal(() => {
+      console.log(e)
+    })
+  ),
+  T.runSync
 )
