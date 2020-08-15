@@ -10,6 +10,8 @@ import {
 import { FromEffectF, FromEffectK } from "./stack/effect"
 import { FromXPureF, FromXPureK } from "./stack/pure"
 
+import { AsyncStackURI } from "."
+
 import { identity } from "@matechs/preview/Function"
 import { ApplicativeF, ApplicativeK } from "@matechs/preview/_abstract/Applicative"
 import { FailF, FailK } from "@matechs/preview/_abstract/FX/Fail"
@@ -58,11 +60,23 @@ export type Program<P extends AlgebraURIS, O, E> = {
   <IF, F extends URIS>(I: InterpretedF<P, IF, F>): InterpreterHKT<IF, F, O, E>
 }
 
+export type ProgramAsync<P extends AlgebraURIS, O, E> = {
+  P: P
+  <IF>(I: InterpretedF<P, IF, AsyncStackURI>): InterpreterHKT<IF, AsyncStackURI, O, E>
+}
+
 export function makeProgram<P extends AlgebraURIS>(): <O, E>(
   program: <IF, F extends URIS>(
     I: InterpretedF<P, IF, F>
   ) => InterpreterHKT<IF, F, O, E>
 ) => Program<P, O, E> {
+  return (f) => f as any
+}
+export function makeProgramAsync<P extends AlgebraURIS>(): <O, E>(
+  program: <IF>(
+    I: InterpretedF<P, IF, AsyncStackURI>
+  ) => InterpreterHKT<IF, AsyncStackURI, O, E>
+) => ProgramAsync<P, O, E> {
   return (f) => f as any
 }
 
@@ -74,6 +88,13 @@ export function makeInterpreter<
   return identity
 }
 
+export function finalize<
+  P extends AlgebraURIS,
+  IF extends InterpreterURIS,
+  F extends AsyncStackURI
+>(): (
+  _: InterpretedKF<P, IF, F>
+) => <O, E>(program: ProgramAsync<P, O, E>) => InterpreterKind<IF, F, O, E>
 export function finalize<
   P extends AlgebraURIS,
   IF extends InterpreterURIS,

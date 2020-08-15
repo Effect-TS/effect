@@ -25,7 +25,7 @@ export const stringArray = M.make((F) =>
 
 export const stringArrayAsync = M.makeAsync((F) =>
   F.array(
-    F.asyncString({
+    F.string({
       DecoderURI: ({ fail }) => () => fail(["my bad"])
     }),
     {

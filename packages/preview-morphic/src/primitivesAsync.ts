@@ -1,12 +1,7 @@
 import { DecoderURI } from "./decoder"
 import { EncoderURI } from "./encoder"
 import { DSLFor } from "./primitives"
-import {
-  InterpreterHKT,
-  InterpreterKind,
-  InterpreterKindF,
-  InterpreterURIS
-} from "./registry"
+import { InterpreterHKT, InterpreterKindF, InterpreterURIS } from "./registry"
 
 import { AsyncStackURI } from "."
 
@@ -58,19 +53,19 @@ export type AsyncArrayConfig<F, O, E> = {
 }
 
 export interface PrimitivesAsyncF<IF, F extends URIS> {
-  asyncString: (
-    _?: AsyncStringConfig<AsyncStackURI>
-  ) => InterpreterHKT<IF, F, string, string>
+  async: (
+    _: InterpreterHKT<IF, F, string, string>
+  ) => InterpreterHKT<IF, AsyncStackURI, string, string>
 }
 
 export interface PrimitivesAsyncK<IF extends InterpreterURIS, F extends URIS> {
-  asyncString: (
-    _?: AsyncStringConfig<AsyncStackURI>
-  ) => InterpreterKind<IF, F, string, string>
+  async: (
+    _: InterpreterHKT<IF, F, string, string>
+  ) => InterpreterHKT<IF, AsyncStackURI, string, string>
 }
 
 export interface PrimitivesAsyncKF<IF extends InterpreterURIS, F> {
-  asyncString: (
-    _?: AsyncStringConfig<AsyncStackURI>
+  async: (
+    _: InterpreterHKT<IF, F, string, string>
   ) => InterpreterKindF<IF, F, string, string>
 }

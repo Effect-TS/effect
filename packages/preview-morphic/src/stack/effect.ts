@@ -1,11 +1,11 @@
-import { Effect } from "@matechs/preview/Effect"
+import { DefaultEnv, Effect } from "@matechs/preview/Effect"
 import { HasE, HasURI, HKTTL, KindTL, URIS } from "@matechs/preview/_abstract/HKT"
 
 export interface FromEffectF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly fromEffect: <E, A>(
-    fa: Effect<unknown, unknown, E, A>
-  ) => HKTTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, E, A>
+    fa: Effect<unknown, DefaultEnv, E, A>
+  ) => HKTTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, DefaultEnv, E, A>
 }
 
 export interface FromEffectK<
@@ -16,8 +16,24 @@ export interface FromEffectK<
   TL3 = any
 > extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly fromEffect: <E, A>(
-    fa: Effect<unknown, unknown, E, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, E, A>
+    fa: Effect<unknown, DefaultEnv, E, A>
+  ) => KindTL<
+    F,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    DefaultEnv,
+    E,
+    A
+  >
 }
 
 export interface FromEffectKE<
@@ -29,8 +45,24 @@ export interface FromEffectKE<
   TL3 = any
 > extends HasURI<F, TL0, TL1, TL2, TL3>, HasE<E> {
   readonly fromEffect: <E, A>(
-    fa: Effect<unknown, unknown, E, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, E, A>
+    fa: Effect<unknown, DefaultEnv, E, A>
+  ) => KindTL<
+    F,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    any,
+    DefaultEnv,
+    E,
+    A
+  >
 }
 
 export function makeFromEffect<URI extends URIS, E>(): <

@@ -2,7 +2,13 @@ import { DecoderURI, primitivesDecoder } from "./decoder"
 import { primitivesAsyncDecoder } from "./decoderAsync"
 import { PrimitivesURI } from "./primitives"
 import { PrimitivesAsyncURI } from "./primitivesAsync"
-import { AsyncStackK, finalize, makeProgram, SyncStackK } from "./utils"
+import {
+  AsyncStackK,
+  finalize,
+  makeProgram,
+  makeProgramAsync,
+  SyncStackK
+} from "./utils"
 
 import * as T from "@matechs/preview/EffectAsync"
 import { identity } from "@matechs/preview/Function"
@@ -32,7 +38,7 @@ declare module "@matechs/preview/_abstract/HKT" {
     Out
   > {
     [SyncStackURI]: X.XPure<unknown, unknown, unknown, Err, Out>
-    [AsyncStackURI]: T.AsyncE<Err, Out>
+    [AsyncStackURI]: T.AsyncRE<T.DefaultEnv, Err, Out>
   }
 }
 
@@ -83,6 +89,6 @@ export const decodeAsync = finalize<
 })
 
 export const make = makeProgram<PrimitivesURI>()
-export const makeAsync = makeProgram<PrimitivesURI | PrimitivesAsyncURI>()
+export const makeAsync = makeProgramAsync<PrimitivesURI | PrimitivesAsyncURI>()
 
 export { makeInterpreter, makeProgram } from "./utils"
