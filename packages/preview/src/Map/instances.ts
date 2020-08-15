@@ -168,22 +168,20 @@ export function makeForeachF<K>(O: Ord<K>) {
  * TraversableWithKeys's foreachWithKeysF for Map[K, _+] given Ord[K].
  */
 export function makeForeachWithKeysF<K>(O: Ord<K>) {
-  return implementForeachWithKeysF<KeyedMapURI>()<K>()(
-    ({ _b }) => (G) => (f) => (fa) => {
-      let fm = anyF(G)<M.Map<K, typeof _b>>(M.empty)
-      const ks = getKeys(O)(fa)
-      for (const key of ks) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        const a = fa.get(key)!
-        fm = pipe(
-          fm,
-          G.map((m) => (b: typeof _b) => new Map(m).set(key, b)),
-          G.both(f(a, key)),
-          G.map(([g, b]) => g(b))
-        )
-      }
-
-      return fm
+  return implementForeachWithKeysF<KeyedMapURI>()<K>()((_) => (G) => (f) => (fa) => {
+    let fm = anyF(G)<M.Map<K, typeof _._b>>(M.empty)
+    const ks = getKeys(O)(fa)
+    for (const key of ks) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const a = fa.get(key)!
+      fm = pipe(
+        fm,
+        G.map((m) => (b: typeof _._b) => new Map(m).set(key, b)),
+        G.both(f(a, key)),
+        G.map(([g, b]) => g(b))
+      )
     }
-  )
+
+    return fm
+  })
 }

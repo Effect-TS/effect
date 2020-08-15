@@ -54,22 +54,24 @@ export const stringArrayAsync = M.makeAsync((F) =>
   )
 )
 
+export const Person = M.make((F) =>
+  F.required({
+    first: F.string(),
+    last: F.string()
+  })
+)
+
 export const pureArray = pipe(["a", "b"], M.decodePure(stringArray))
 export const mixArray = pipe(["a", "b"], M.decodeAsync(stringArray))
 export const asyncArray = pipe(["a", "b"], M.decodeAsync(stringArrayAsync))
 
 pipe(
-  pureArray,
-  X.provideAll({
-    foo: "(foo-p)",
-    bar: "(bar-p)"
+  M.decodePure(Person)({
+    first: "a",
+    last: "b"
   }),
   X.runEither,
-  console.log
-)
-
-pipe(asyncArray, T.runPromiseExit).then(console.log)
-
-pipe(mixArray, T.provideAll({ foo: "(foo-e)", bar: "(bar-e)" }), T.runPromiseExit).then(
-  console.log
+  (e) => {
+    console.log(e)
+  }
 )

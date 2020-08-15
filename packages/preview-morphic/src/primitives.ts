@@ -9,6 +9,7 @@ import {
 } from "./registry"
 import { AsyncStackURI } from "./uris"
 
+import { UnionToIntersection } from "@matechs/preview/Utils"
 import { URIS } from "@matechs/preview/_abstract/HKT"
 
 export const PrimitivesURI = "PrimitivesURI"
@@ -73,6 +74,38 @@ export interface PrimitivesF<IF, F extends URIS, CRDec, CREnc> {
     readonly O[],
     readonly E[]
   >
+  required: <
+    Types extends {
+      [k in keyof Types]: InterpreterHKT<IF, F, any, any, any, any>
+    }
+  >(
+    _: Types
+  ) => InterpreterHKT<
+    IF,
+    F,
+    CRDec &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: unknown extends Parameters<Types[k]["_RDec"]>[0]
+            ? never
+            : Parameters<Types[k]["_RDec"]>[0]
+        }[keyof Types]
+      >,
+    CREnc &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: unknown extends Parameters<Types[k]["_REnc"]>[0]
+            ? never
+            : Parameters<Types[k]["_REnc"]>[0]
+        }[keyof Types]
+      >,
+    {
+      [k in keyof Types]: ReturnType<Types[k]["_O"]>
+    },
+    {
+      [k in keyof Types]: ReturnType<Types[k]["_E"]>
+    }
+  >
 }
 
 export interface PrimitivesK<IF extends InterpreterURIS, F extends URIS, CRDec, CREnc> {
@@ -90,6 +123,54 @@ export interface PrimitivesK<IF extends InterpreterURIS, F extends URIS, CRDec, 
     readonly O[],
     readonly E[]
   >
+  required: <
+    Types extends {
+      [k in keyof Types]: InterpreterKind<IF, F, any, any, any, any>
+    }
+  >(
+    _: Types
+  ) => InterpreterKind<
+    IF,
+    F,
+    CRDec &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: Types[k] extends [
+            InterpreterKind<IF, F, infer X, any, any, any>
+          ]
+            ? unknown extends X
+              ? never
+              : X
+            : never
+        }[keyof Types]
+      >,
+    CREnc &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: Types[k] extends [
+            InterpreterKind<IF, F, any, infer X, any, any>
+          ]
+            ? unknown extends X
+              ? never
+              : X
+            : never
+        }[keyof Types]
+      >,
+    {
+      [k in keyof Types]: [Types[k]] extends [
+        InterpreterKind<IF, F, any, any, infer O, any>
+      ]
+        ? O
+        : never
+    },
+    {
+      [k in keyof Types]: [Types[k]] extends [
+        InterpreterKind<IF, F, any, any, any, infer E>
+      ]
+        ? E
+        : never
+    }
+  >
 }
 
 export interface PrimitivesKF<IF extends InterpreterURIS, F, CRDec, CREnc> {
@@ -106,5 +187,53 @@ export interface PrimitivesKF<IF extends InterpreterURIS, F, CRDec, CREnc> {
     CREnc & REncChild & REnc,
     readonly O[],
     readonly E[]
+  >
+  required: <
+    Types extends {
+      [k in keyof Types]: InterpreterKindF<IF, F, any, any, any, any>
+    }
+  >(
+    _: Types
+  ) => InterpreterKindF<
+    IF,
+    F,
+    CRDec &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: Types[k] extends [
+            InterpreterKindF<IF, F, infer X, any, any, any>
+          ]
+            ? unknown extends X
+              ? never
+              : X
+            : never
+        }[keyof Types]
+      >,
+    CREnc &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: Types[k] extends [
+            InterpreterKindF<IF, F, any, infer X, any, any>
+          ]
+            ? unknown extends X
+              ? never
+              : X
+            : never
+        }[keyof Types]
+      >,
+    {
+      [k in keyof Types]: [Types[k]] extends [
+        InterpreterKindF<IF, F, any, any, infer O, any>
+      ]
+        ? O
+        : never
+    },
+    {
+      [k in keyof Types]: [Types[k]] extends [
+        InterpreterKindF<IF, F, any, any, any, infer E>
+      ]
+        ? E
+        : never
+    }
   >
 }
