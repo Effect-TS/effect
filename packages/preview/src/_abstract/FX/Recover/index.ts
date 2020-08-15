@@ -2,11 +2,11 @@ import { ErrFor, HasURI, HKTFix, KindFix, URIS } from "../../HKT"
 
 export interface RecoverF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly recover: <K2, KN2 extends string, X2, SO, I2, R2, E2, A2, E, S, SI>(
+  readonly recover: <K2, KN2 extends string, X2, SO2, I2, R2, E2, A2, E, S, SI>(
     f: (
-      e: E
-    ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K2, KN2, SI, SO, X2, I2, S, R2, E2, A2>
-  ) => <K, KN extends string, X, SO, I, S, R, A>(
+      e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
+    ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K2, KN2, SI, SO2, X2, I2, S, R2, E2, A2>
+  ) => <K, KN extends string, X, SO, I, R, A>(
     fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, KN, SI, SO, X, I, S, R, E, A>
   ) => HKTFix<
     F,
@@ -17,7 +17,7 @@ export interface RecoverF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
     K | K2,
     KN | KN2,
     SI,
-    SO,
+    SO | SO2,
     X | X2,
     I & I2,
     S,
@@ -34,12 +34,12 @@ export interface RecoverK<
   Fix2 = any,
   Fix3 = any
 > extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly recover: <K2, KN2 extends string, X2, SO, I2, R2, E2, A2, E, S, SI>(
+  readonly recover: <K2, KN2 extends string, X2, SO2, I2, R2, E2, A2, E, S, SI>(
     f: (
       e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>
-    ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K2, KN2, X2, SI, SO, I2, S, R2, E2, A2>
-  ) => <K, KN extends string, X, SO, I, S, R, A>(
-    fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, KN, X, SI, SO, I, S, R, E, A>
+    ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K2, KN2, SI, SO2, X2, I2, S, R2, E2, A2>
+  ) => <K, KN extends string, X, SO, I, R, A>(
+    fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, KN, SI, SO, X, I, S, R, E, A>
   ) => KindFix<
     F,
     Fix0,
@@ -48,9 +48,9 @@ export interface RecoverK<
     Fix3,
     K | K2,
     KN | KN2,
-    X | X2,
     SI,
-    SO,
+    SO | SO2,
+    X | X2,
     I & I2,
     S,
     R & R2,

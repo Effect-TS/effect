@@ -8,6 +8,7 @@ import { makeCovariant } from "../_abstract/Covariant"
 import { makeAccess } from "../_abstract/FX/Access"
 import { makeEnvironmental } from "../_abstract/FX/Environmental"
 import { makeFail } from "../_abstract/FX/Fail"
+import { makeRecover } from "../_abstract/FX/Recover"
 import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
 import { makeMonad } from "../_abstract/Monad"
 import * as S from "../_system/Effect"
@@ -122,6 +123,13 @@ export const Environmental = makeEnvironmental(EffectAsyncURI)(intersect(Access,
  */
 export const Fail = makeFail(EffectAsyncURI)({
   fail: S.fail
+})
+
+/**
+ * The `Recover` instance for `EffectAsync`.
+ */
+export const Recover = makeRecover(EffectAsyncURI)({
+  recover: S.catchAll
 })
 
 /**

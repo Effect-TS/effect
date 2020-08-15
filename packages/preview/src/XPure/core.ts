@@ -9,7 +9,9 @@ import { makeCovariant } from "../_abstract/Covariant"
 import { sequenceSF } from "../_abstract/DSL"
 import { makeAccess } from "../_abstract/FX/Access"
 import { makeFail } from "../_abstract/FX/Fail"
+import { makeRecover } from "../_abstract/FX/Recover"
 import { makeIdentityBoth } from "../_abstract/IdentityBoth"
+import { makeMonad } from "../_abstract/Monad"
 import * as X from "../_system/XPure"
 
 /**
@@ -83,6 +85,13 @@ export const Fail = makeFail(XPureSuccessURI)({
 })
 
 /**
+ * The `Recover` instance for `XPure[-_, +_, -_, +_, +_]`.
+ */
+export const Recover = makeRecover(XPureSuccessURI)({
+  recover: X.catchAll
+})
+
+/**
  * The `IdentityBoth` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
 export const IdentityBoth = makeIdentityBoth(XPureSuccessURI)(
@@ -107,3 +116,12 @@ export const AssociativeFlatten = makeAssociativeFlatten(XPureSuccessURI)({
  * Struct based `Applicative`
  */
 export const sequenceS = sequenceSF(Applicative)
+
+/**
+ * The `Monad` instance for `XPure[-_, +_, -_, +_, +_]`
+ */
+export const Monad = makeMonad(XPureSuccessURI)({
+  ...Any,
+  ...AssociativeFlatten,
+  ...Covariant
+})

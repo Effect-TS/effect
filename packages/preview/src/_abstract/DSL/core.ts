@@ -392,6 +392,7 @@ export function accessServiceMF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = an
       F.flatten
     )
 }
+
 export function mapErrorF<
   F extends URIS,
   Fix0 = any,
@@ -408,14 +409,14 @@ export function mapErrorF<
 export function mapErrorF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   F: FailF<F, Fix0, Fix1, Fix2, Fix3> & RecoverF<F, Fix0, Fix1, Fix2, Fix3>
 ): <E, E1>(
-  f: (e: E) => E1
+  f: (e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>) => ErrFor<F, Fix0, Fix1, Fix2, Fix3, E1>
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
   fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E, A>
 ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E1, A>
 export function mapErrorF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
   F: FailF<F, Fix0, Fix1, Fix2, Fix3> & RecoverF<F, Fix0, Fix1, Fix2, Fix3>
 ): <E, E1>(
-  f: (e: E) => E1
+  f: (e: ErrFor<F, Fix0, Fix1, Fix2, Fix3, E>) => ErrFor<F, Fix0, Fix1, Fix2, Fix3, E1>
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
   fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E, A>
 ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, In, St, Env, E1, A> {

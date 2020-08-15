@@ -94,5 +94,7 @@ export {
   Recover,
   sequenceS,
   ValidationURI,
-  zipFailure
+  zipFailure,
+  getValidationRun,
+  Run
 } from "./core"

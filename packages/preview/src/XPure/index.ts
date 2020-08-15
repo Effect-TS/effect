@@ -57,6 +57,8 @@ export {
   Covariant,
   Fail,
   IdentityBoth,
+  Monad,
+  Recover,
   sequenceS,
   XPureSuccessURI
 } from "./core"

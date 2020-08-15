@@ -1,5 +1,4 @@
 import { constant, flow, pipe, tuple } from "../../Function"
-import * as E from "../../_system/Either"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
 import {
   AssociativeBothF,
@@ -9,7 +8,7 @@ import {
 import { AssociativeFlattenF, AssociativeFlattenK } from "../AssociativeFlatten"
 import { FailF, FailK } from "../FX/Fail"
 import { IdentityErrF, IdentityErrK } from "../FX/IdentityErr"
-import { RecoverF, RecoverK } from "../FX/Recover"
+import { RunF, RunK } from "../FX/Run"
 import { castS, castSO, HKTTypeS, HKTTypeSO, URIS } from "../HKT"
 
 import { succeedF } from "./core"
@@ -22,7 +21,7 @@ export function validationAssociativeBothF<
   Fix3 = any
 >(
   F: ApplicativeK<F, Fix0, Fix1, Fix2, Fix3> &
-    RecoverK<F, Fix0, Fix1, Fix2, Fix3> &
+    RunK<F, Fix0, Fix1, Fix2, Fix3> &
     FailK<F, Fix0, Fix1, Fix2, Fix3> &
     IdentityErrK<F, Fix0, Fix1, Fix2, Fix3> &
     AssociativeFlattenK<F, Fix0, Fix1, Fix2, Fix3>
@@ -35,7 +34,7 @@ export function validationAssociativeBothF<
   Fix3 = any
 >(
   F: ApplicativeF<F, Fix0, Fix1, Fix2, Fix3> &
-    RecoverF<F, Fix0, Fix1, Fix2, Fix3> &
+    RunF<F, Fix0, Fix1, Fix2, Fix3> &
     FailF<F, Fix0, Fix1, Fix2, Fix3> &
     IdentityErrF<F, Fix0, Fix1, Fix2, Fix3> &
     AssociativeFlattenF<F, Fix0, Fix1, Fix2, Fix3>
@@ -48,7 +47,7 @@ export function validationAssociativeBothF<
   Fix3 = any
 >(
   F: ApplicativeF<F, Fix0, Fix1, Fix2, Fix3> &
-    RecoverF<F, Fix0, Fix1, Fix2, Fix3> &
+    RunF<F, Fix0, Fix1, Fix2, Fix3> &
     FailF<F, Fix0, Fix1, Fix2, Fix3> &
     IdentityErrF<F, Fix0, Fix1, Fix2, Fix3> &
     AssociativeFlattenF<F, Fix0, Fix1, Fix2, Fix3>
@@ -61,18 +60,8 @@ export function validationAssociativeBothF<
       )
 
       return pipe(
-        fa,
-        F.map(E.right),
-        F.recover((e) => succeedF(F)(constant(E.left(e)))),
-        F.map(E.compact),
-        F.both(
-          pipe(
-            fb,
-            F.map(E.right),
-            F.recover((e) => succeedF(F)(constant(E.left(e)))),
-            F.map(E.compact)
-          )
-        ),
+        F.run(fa),
+        F.both(F.run(fb)),
         F.map(([l, r]) => {
           switch (l._tag) {
             case "Left": {

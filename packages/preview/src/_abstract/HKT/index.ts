@@ -217,6 +217,10 @@ export interface HasURI<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any> {
   readonly Fix3: Fix3
 }
 
+export interface HasE<E> {
+  readonly _E: E
+}
+
 export function castErr<T>(): {
   <F extends URIS>(_?: F): <
     K,
@@ -649,14 +653,13 @@ export type KeyFor<
 
 export interface URItoErr<Fix0, Fix1, Fix2, Fix3, Err> {}
 
-export type ErrFor<
-  F extends URIS,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
-  Err
-> = F extends keyof URItoErr<any, any, any, any, any>
+export type ErrFor<F, Fix0, Fix1, Fix2, Fix3, Err> = F extends keyof URItoErr<
+  any,
+  any,
+  any,
+  any,
+  any
+>
   ? URItoErr<Fix0, Fix1, Fix2, Fix3, Err>[F]
   : Err
 
