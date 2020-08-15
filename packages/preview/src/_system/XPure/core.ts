@@ -1,5 +1,6 @@
 /* eslint-disable prefer-const */
 import * as E from "../Either"
+import { constant } from "../Function"
 import { Stack } from "../Stack"
 
 /**
@@ -27,6 +28,14 @@ class Succeed<A> extends XPure<unknown, never, unknown, never, A> {
   readonly _tag = "Succeed"
 
   constructor(readonly a: A) {
+    super()
+  }
+}
+
+class Suspend<S1, S2, R, E, A> extends XPure<S1, S2, R, E, A> {
+  readonly _tag = "Suspend"
+
+  constructor(readonly f: () => XPure<S1, S2, R, E, A>) {
     super()
   }
 }
@@ -94,6 +103,7 @@ type Concrete<S1, S2, R, E, A> =
   | Fold<S1, unknown, S2, R, unknown, E, unknown, A>
   | Access<S1, S2, R, E, A>
   | Provide<S1, S2, R, E, A>
+  | Suspend<S1, S2, R, E, A>
 
 class FoldFrame {
   readonly _tag = "FoldFrame"
@@ -181,6 +191,10 @@ export function runStateEither_<S1, S2, E, A>(
           }
         }
 
+        break
+      }
+      case "Suspend": {
+        curXPure = xp.f()
         break
       }
       case "Succeed": {
@@ -678,4 +692,34 @@ export function zip_<S1, S2, R, E, A, S3, R1, E1, B>(
   that: XPure<S2, S3, R1, E1, B>
 ) {
   return zipWith_(self, that, (a, b) => [a, b] as const)
+}
+
+/**
+ * Suspend a computation, useful in recursion
+ */
+export function suspend<S1, S2, R, E, A>(
+  f: () => XPure<S1, S2, R, E, A>
+): XPure<S1, S2, R, E, A> {
+  return new Suspend(f)
+}
+
+/**
+ * Lift a sync (non failable) computation
+ */
+export function sync<A>(f: () => A) {
+  return suspend(() => succeed(() => f()))
+}
+
+/**
+ * Lift a sync (non failable) computation
+ */
+export function tryCatch<E>(onThrow: (u: unknown) => E) {
+  return <A>(f: () => A) =>
+    suspend(() => {
+      try {
+        return succeed(constant(f()))
+      } catch (u) {
+        return fail(onThrow(u))
+      }
+    })
 }

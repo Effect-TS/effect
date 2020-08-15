@@ -14,6 +14,10 @@ import { AsyncStackURI } from "./uris"
 
 import { identity } from "@matechs/preview/Function"
 import { ApplicativeF, ApplicativeK } from "@matechs/preview/_abstract/Applicative"
+import {
+  EnvironmentalF,
+  EnvironmentalK
+} from "@matechs/preview/_abstract/FX/Environmental"
 import { FailF, FailK } from "@matechs/preview/_abstract/FX/Fail"
 import { RunF, RunK } from "@matechs/preview/_abstract/FX/Run"
 import { HKTTL, KindTL, URIS } from "@matechs/preview/_abstract/HKT"
@@ -121,13 +125,15 @@ export type BaseStackF<F> = MonadF<F> &
   FailF<F> &
   RunF<F> &
   ApplicativeF<F> &
-  FromXPureF<F>
+  FromXPureF<F> &
+  EnvironmentalF<F>
 
 export type BaseStackK<F extends URIS> = MonadK<F> &
   FailK<F> &
   RunK<F> &
   ApplicativeK<F> &
-  FromXPureK<F>
+  FromXPureK<F> &
+  EnvironmentalK<F>
 
 export interface SyncStackF<F> extends BaseStackF<F> {
   _stack: "SyncStack"
