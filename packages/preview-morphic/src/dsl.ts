@@ -4,10 +4,11 @@ import { AnyStackF, AsyncStackF, BaseStackF, foldStack, SyncStackF } from "./uti
 import { constant, pipe } from "@matechs/preview/Function"
 import { Augmented, Has } from "@matechs/preview/Has"
 import {
-  succeedF,
-  chainF,
   accessMF,
-  accessServiceMF
+  accessServiceMF,
+  chainF,
+  mapErrorF,
+  succeedF
 } from "@matechs/preview/_abstract/DSL/core"
 import { HKTTL } from "@matechs/preview/_abstract/HKT"
 
@@ -93,6 +94,12 @@ export interface DSL<F> {
   ) => <TK, TKN extends string, SI, SO, Y, X, S, R1, E, A>(
     f: (r: SR) => HKTTL<F, any, any, any, any, TK, TKN, SI, SO, Y, X, S, R1, E, A>
   ) => HKTTL<F, any, any, any, any, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+
+  mapError: <E, E1>(
+    f: (e: E) => E1
+  ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
+    fa: HKTTL<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E, A>
+  ) => HKTTL<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E1, A>
 }
 
 export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
@@ -135,6 +142,7 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
   const chain = chainF(_.K)
   const accessM = accessMF(_.K)
   const accessServiceM = accessServiceMF(_.K)
+  const mapError = mapErrorF(_.K)
 
   return {
     succeed,
@@ -142,18 +150,16 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
     foldStack: (f, g) => foldStack(_.K as AnyStackF<F>)(f, g),
     chain,
     accessM,
-    accessServiceM
+    accessServiceM,
+    mapError
   }
 }
 
 export function commonDSL<F>(_: {
   K: BaseStackF<F>
 }): AsyncStackURI extends F ? AsyncDSL<F> : SyncDSL<F> {
-  const d = dsl(_)
   return {
-    ..._.K,
-    recover: d.recover,
-    succeed: d.succeed,
-    foldStack: d.foldStack
+    ...dsl(_),
+    ..._.K
   } as any
 }

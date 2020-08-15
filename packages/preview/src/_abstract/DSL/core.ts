@@ -4,7 +4,7 @@ import { AnyF, AnyK, AnyKE } from "../Any"
 import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
 import { EnvironmentalF, EnvironmentalK, EnvironmentalKE } from "../FX/Environmental"
 import { FailF, FailK, FailKE } from "../FX/Fail"
-import { RecoverF, RecoverK, RecoverKE } from "../FX/Recover"
+import { RunF, RunK, RunKE } from "../FX/Run"
 import { HKT, HKT3, HKTTL, KindTL, URIS } from "../HKT"
 import { MonadF, MonadK, MonadKE } from "../Monad"
 
@@ -514,28 +514,36 @@ export function mapErrorF<
   TL2 = any,
   TL3 = any
 >(
-  F: FailKE<F, E, TL0, TL1, TL2, TL3> & RecoverKE<F, E, TL0, TL1, TL2, TL3>
+  F: FailKE<F, TL0, TL1, TL2, TL3> &
+    RunKE<F, TL0, TL1, TL2, TL3> &
+    MonadKE<F, TL0, TL1, TL2, TL3>
 ): (
   f: (e: E) => E
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
   fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
 ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
 export function mapErrorF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
-  F: FailK<F, TL0, TL1, TL2, TL3> & RecoverK<F, TL0, TL1, TL2, TL3>
+  F: FailK<F, TL0, TL1, TL2, TL3> &
+    RunK<F, TL0, TL1, TL2, TL3> &
+    MonadK<F, TL0, TL1, TL2, TL3>
 ): <E, E1>(
   f: (e: E) => E1
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
   fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
 ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A>
 export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
-  F: FailF<F, TL0, TL1, TL2, TL3> & RecoverF<F, TL0, TL1, TL2, TL3>
+  F: FailF<F, TL0, TL1, TL2, TL3> &
+    RunF<F, TL0, TL1, TL2, TL3> &
+    MonadF<F, TL0, TL1, TL2, TL3>
 ): <E, E1>(
   f: (e: E) => E1
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
   fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
 ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A>
 export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
-  F: FailF<F, TL0, TL1, TL2, TL3> & RecoverF<F, TL0, TL1, TL2, TL3>
+  F: FailF<F, TL0, TL1, TL2, TL3> &
+    RunF<F, TL0, TL1, TL2, TL3> &
+    MonadF<F, TL0, TL1, TL2, TL3>
 ): <E, E1>(
   f: (e: E) => E1
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
@@ -544,6 +552,9 @@ export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   return (f) => (fa) =>
     pipe(
       fa,
-      F.recover((e) => F.fail(f(e)))
+      F.run,
+      chainF(F)((e) =>
+        e._tag === "Left" ? F.fail(f(e.left)) : succeedF(F)(() => e.right)
+      )
     )
 }

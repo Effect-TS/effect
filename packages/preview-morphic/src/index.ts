@@ -48,7 +48,9 @@ const SyncF: SyncStackK<SyncStackURI> = {
   fail: X.Fail.fail,
   flatten: X.Monad.flatten,
   fromXPure: identity,
-  map: X.map
+  map: X.map,
+  access: X.access,
+  provide: X.provideAll
 }
 
 export const decodePure = finalize<PrimitivesURI, DecoderURI, SyncStackURI>()(
@@ -70,7 +72,9 @@ const AsyncF: AsyncStackK<AsyncStackURI> = {
   fromXPure: <R, E, A>(xp: X.XPure<unknown, unknown, R, E, A>) =>
     T.accessM((r: R) => T.fromEither(() => X.runEither(X.provideAll(r)(xp)))),
   map: T.map,
-  fromEffect: identity
+  fromEffect: identity,
+  access: T.access,
+  provide: T.provideAll
 }
 
 export const decodeAsync = finalize<PrimitivesURI, DecoderURI, AsyncStackURI>()({

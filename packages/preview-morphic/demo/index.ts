@@ -3,7 +3,6 @@ import * as M from "../src"
 import * as T from "@matechs/preview/Effect"
 import { flow, pipe } from "@matechs/preview/Function"
 import * as X from "@matechs/preview/XPure"
-import { chainF } from "@matechs/preview/_abstract/DSL/core"
 
 interface Req {
   foo: string
@@ -31,8 +30,8 @@ export const stringArray = M.make((F) =>
       DecoderURI: (D) =>
         flow(
           D.current,
-          D.recover((e) => D.fail(["add err", ...e])),
-          chainF(D)(() =>
+          D.mapError((e) => ["add err", ...e]),
+          D.chain(() =>
             D.fromXPure(X.accessM((_: Req2) => X.fail([`running on pure: ${_.bar}`])))
           )
         )
@@ -46,10 +45,10 @@ export const stringArrayAsync = M.makeAsync((F) =>
       DecoderURI: ({ fail }) => () => fail(["my bad"])
     }),
     {
-      DecoderURI: ({ current, fail, recover }) =>
+      DecoderURI: ({ current, mapError }) =>
         flow(
           current,
-          recover((e) => fail(["add err", ...e]))
+          mapError((e) => ["add err", ...e])
         )
     }
   )
