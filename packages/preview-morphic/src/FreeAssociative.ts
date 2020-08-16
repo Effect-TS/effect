@@ -1,3 +1,4 @@
+// ported from https://github.com/gcanti/io-ts/blob/master/src/FreeSemigroup.ts
 import { makeAssociative } from "@matechs/preview/Associative"
 
 export class Of<A> {
@@ -20,9 +21,9 @@ export const combine = <A>(y: FreeAssociative<A>) => (
 
 export const getAssociative = <A>() => makeAssociative<FreeAssociative<A>>(combine)
 
-export const fold = <A, B, C>(
+export const fold = <A, B>(
   onOf: (a: A) => B,
-  onConcat: (right: FreeAssociative<A>) => (left: FreeAssociative<A>) => C
+  onConcat: (right: FreeAssociative<A>) => (left: FreeAssociative<A>) => B
 ) => (a: FreeAssociative<A>) => {
   switch (a._tag) {
     case "Of": {

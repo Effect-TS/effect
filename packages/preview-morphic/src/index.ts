@@ -110,3 +110,4 @@ export const make = makeProgram<PrimitivesURI>()
 export const makeAsync = makeProgramAsync<PrimitivesURI>()
 
 export { makeInterpreter, makeProgram } from "./utils"
+export { drawDecodeError } from "./decoder"

@@ -1,5 +1,4 @@
 import * as M from "../src"
-import * as DE from "../src/decodeError"
 
 import * as T from "@matechs/preview/Effect"
 import * as E from "@matechs/preview/Either"
@@ -41,7 +40,7 @@ pipe(
       E.fold_(
         e,
         (err) => {
-          console.log(DE.prettyStr(err))
+          console.log(M.drawDecodeError(err))
         },
         (res) => {
           console.log(res)

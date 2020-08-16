@@ -1,77 +1,86 @@
-import { FreeAssociative } from "./FreeAssociative"
+// ported from https://github.com/gcanti/io-ts/blob/master/src/DecodeError.ts
+import * as FS from "./FreeAssociative"
+import * as DE from "./decodeErrorE"
 
-import { identity } from "@matechs/preview/Function"
-import { Show } from "@matechs/preview/_abstract/Show"
+import * as E from "@matechs/preview/Either"
+import { pipe } from "@matechs/preview/Function"
 
-export class Message<E> {
-  readonly _tag = "Message"
+export type DecodeError = FS.FreeAssociative<DE.DecodeErrorE<string>>
 
-  constructor(readonly value: E) {}
+interface Tree<A> {
+  readonly value: A
+  readonly forest: ReadonlyArray<Tree<A>>
 }
 
-export class Constant<E> {
-  readonly _tag = "Constant"
+const empty: Array<never> = []
 
-  constructor(readonly value: E, readonly actual: unknown) {}
-}
+const make = <A>(value: A, forest: ReadonlyArray<Tree<A>> = empty): Tree<A> => ({
+  value,
+  forest
+})
 
-export class Key<E> {
-  readonly _tag = "Key"
+const drawTree = (tree: Tree<string>): string =>
+  tree.value + drawForest("\n", tree.forest)
 
-  constructor(readonly key: string, readonly value: FreeAssociative<DecodeError<E>>) {}
-}
-
-export type DecodeError<E> = Constant<E> | Key<E> | Message<E>
-
-export function prettyDE<E>(e: DecodeError<E>, S: Show<E>): string {
-  switch (e._tag) {
-    case "Constant": {
-      let current: string
-      try {
-        current = `(actual: ${JSON.stringify(e.actual)})`
-      } catch {
-        current = "(unknown)"
-      }
-      return `${S.show(e.value)} ${current}`
-    }
-    case "Key": {
-      return `${e.key}: ${pretty(e.value, S)}`
-    }
-    case "Message": {
-      return S.show(e.value)
-    }
+const drawForest = (
+  indentation: string,
+  forest: ReadonlyArray<Tree<string>>
+): string => {
+  let r = ""
+  const len = forest.length
+  let tree: Tree<string>
+  for (let i = 0; i < len; i++) {
+    tree = forest[i]
+    const isLast = i === len - 1
+    r += indentation + (isLast ? "└" : "├") + "─ " + tree.value
+    r += drawForest(indentation + (len > 1 && !isLast ? "│  " : "   "), tree.forest)
   }
+  return r
 }
 
-export function pretty<E>(
-  e: FreeAssociative<DecodeError<E>>,
-  S: Show<E>,
-  ind = 0
-): string {
-  switch (e._tag) {
-    case "Of": {
-      return `${prettyDE(e.value, S)}`
-    }
-    case "Concat": {
-      return `${pretty(e.left, S, ind + 2)}\r\n${pretty(e.right, S, ind + 2)}`
-    }
-  }
-}
+const toTree: (e: DE.DecodeErrorE<string>) => Tree<string> = DE.fold({
+  Leaf: (input, error) =>
+    make(`cannot decode ${JSON.stringify(input)}, should be ${error}`),
+  Key: (key, kind, errors) =>
+    make(`${kind} property ${JSON.stringify(key)}`, toForest(errors)),
+  Index: (index, kind, errors) => make(`${kind} index ${index}`, toForest(errors)),
+  Member: (index, errors) => make(`member ${index}`, toForest(errors)),
+  Lazy: (id, errors) => make(`lazy type ${id}`, toForest(errors)),
+  Wrap: (error, errors) => make(error, toForest(errors))
+})
 
-export function prettyStr(e: FreeAssociative<DecodeError<string>>): string {
-  return pretty(e, { show: identity })
-}
+const toForest = (e: DecodeError): ReadonlyArray<Tree<string>> =>
+  pipe(
+    e,
+    FS.fold(
+      (value) => [toTree(value)],
+      (right) => (left) => toForest(left).concat(toForest(right))
+    )
+  )
 
-export function constant<E>(e: E, actual: unknown): DecodeError<E> {
-  return new Constant(e, actual)
-}
+export const draw = (e: DecodeError): string => toForest(e).map(drawTree).join("\n")
 
-export function message<E>(e: E): DecodeError<E> {
-  return new Message(e)
-}
+export const stringify: <A>(e: E.Either<DecodeError, A>) => string = E.fold(draw, (a) =>
+  JSON.stringify(a, null, 2)
+)
 
-export function key(
-  key: string
-): <E>(e: FreeAssociative<DecodeError<E>>) => DecodeError<E> {
-  return (e) => new Key(key, e)
-}
+export {
+  leaf,
+  DecodeErrorE,
+  fold,
+  Index,
+  Key,
+  Kind,
+  Lazy,
+  Leaf,
+  Member,
+  Wrap,
+  getAssociative,
+  index,
+  key,
+  lazy,
+  member,
+  optional,
+  required,
+  wrap
+} from "./decodeErrorE"

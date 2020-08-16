@@ -13,7 +13,7 @@ import {
 
 import * as A from "@matechs/preview/Array"
 import * as E from "@matechs/preview/Either"
-import { constant, flow, pipe, tuple } from "@matechs/preview/Function"
+import { constant, pipe, tuple } from "@matechs/preview/Function"
 import * as R from "@matechs/preview/Record"
 import { succeedF } from "@matechs/preview/_abstract/DSL/core"
 import { HKTTL, URIS } from "@matechs/preview/_abstract/HKT"
@@ -21,14 +21,12 @@ import { HKTTL, URIS } from "@matechs/preview/_abstract/HKT"
 export const DecoderURI = "DecoderURI"
 export type DecoderURI = typeof DecoderURI
 
-export type DecodeError = FA.FreeAssociative<DE.DecodeError<string>>
-
 export interface Decoder<F extends URIS, R, O> {
-  (i: unknown): MoKind<F, R, DecodeError, O>
+  (i: unknown): MoKind<F, R, DE.DecodeError, O>
 }
 
 export interface DecoderF<F, R, O> {
-  (i: unknown): MoHKT<F, R, DecodeError, O>
+  (i: unknown): MoHKT<F, R, DE.DecodeError, O>
 }
 
 declare module "./registry" {
@@ -39,6 +37,10 @@ declare module "./registry" {
   export interface URItoInterpreterF<F, RDec, REnc, O, E> {
     [DecoderURI]: DecoderF<F, RDec, O>
   }
+}
+
+export function error(actual: unknown, message: string) {
+  return FA.of(DE.leaf(actual, message))
 }
 
 export function primitivesDecoder<F extends URIS>(
@@ -80,20 +82,17 @@ export function primitivesDecoder<F>(
     },
     required: (D) => (i) => {
       if (typeof i !== "object" || i == null) {
-        return F.fail(FA.of(DE.message("not an object")))
+        return F.fail(error(i, "not an object"))
       }
-
-      const keys = Object.keys(i)
 
       return pipe(
         D as R.Record<string, DecoderF<F, any, any>>,
         R.foreachWithKeysF(F)((v, k) => {
-          if (!keys.includes(k)) {
-            return F.run(
-              F.fail(FA.of(DE.key(k)(FA.of(DE.message("object doesn't contain key")))))
-            )
-          }
-          return pipe(v((i as any)[k]), F.run, F.map(E.mapLeft(flow(DE.key(k), FA.of))))
+          return pipe(
+            v((i as any)[k]),
+            F.run,
+            F.map(E.mapLeft((e) => FA.of(DE.key(k, DE.required, e))))
+          )
         }),
         F.map(R.collect((k, v) => E.map_(v, (a) => tuple(k, a)))),
         packEither(F),
@@ -117,7 +116,7 @@ function arrayDecoder<F, R, O>(
         F.flatten
       )
     } else {
-      return F.fail(FA.of(DE.constant("not an array", i)))
+      return F.fail(error(i, "not an array"))
     }
   }
 }
@@ -140,7 +139,7 @@ function packEither<F, R, O>(
     any,
     R,
     never,
-    A.Array<E.Either<DecodeError, O>>
+    A.Array<E.Either<DE.DecodeError, O>>
   >
 ) => HKTTL<
   F,
@@ -171,12 +170,12 @@ function packEither<F, R, O>(
     unknown,
     unknown,
     unknown,
-    DecodeError,
+    DE.DecodeError,
     any[]
   >
 > {
   return F.map((ae) => {
-    let error: DecodeError | undefined = undefined
+    let error: DE.DecodeError | undefined = undefined
     const decoded = [] as any[]
 
     for (let k = 0; k < ae.length; k++) {
@@ -199,7 +198,7 @@ function packEither<F, R, O>(
 
 function stringDecoder<F>(F: BaseStackF<F>): DecoderF<F, unknown, string> {
   return (i) =>
-    typeof i === "string"
-      ? succeedF(F)(constant(i))
-      : F.fail(FA.of(DE.constant("not a string", i)))
+    typeof i === "string" ? succeedF(F)(constant(i)) : F.fail(error(i, "string"))
 }
+
+export const drawDecodeError = DE.draw
