@@ -1,11 +1,12 @@
 // ported from https://github.com/gcanti/io-ts/blob/master/src/DecodeError.ts
-import * as FS from "./FreeAssociative"
-import * as DE from "./decodeErrorE"
+import * as FA from "../../FreeAssociative"
+
+import * as DE from "./errorNode"
 
 import * as E from "@matechs/preview/Either"
 import { pipe } from "@matechs/preview/Function"
 
-export type DecodeError = FS.FreeAssociative<DE.DecodeErrorE<string>>
+export type DecodeError = FA.FreeAssociative<DE.ErrorNode<string>>
 
 interface Tree<A> {
   readonly value: A
@@ -38,7 +39,7 @@ const drawForest = (
   return r
 }
 
-const toTree: (e: DE.DecodeErrorE<string>) => Tree<string> = DE.fold({
+const toTree: (e: DE.ErrorNode<string>) => Tree<string> = DE.fold({
   Leaf: (input, error) =>
     make(`cannot decode ${JSON.stringify(input)}, should be ${error}`),
   Key: (key, kind, errors) =>
@@ -52,7 +53,7 @@ const toTree: (e: DE.DecodeErrorE<string>) => Tree<string> = DE.fold({
 const toForest = (e: DecodeError): ReadonlyArray<Tree<string>> =>
   pipe(
     e,
-    FS.fold(
+    FA.fold(
       (value) => [toTree(value)],
       (right) => (left) => toForest(left).concat(toForest(right))
     )
@@ -64,23 +65,6 @@ export const stringify: <A>(e: E.Either<DecodeError, A>) => string = E.fold(draw
   JSON.stringify(a, null, 2)
 )
 
-export {
-  leaf,
-  DecodeErrorE,
-  fold,
-  Index,
-  Key,
-  Kind,
-  Lazy,
-  Leaf,
-  Member,
-  Wrap,
-  getAssociative,
-  index,
-  key,
-  lazy,
-  member,
-  optional,
-  required,
-  wrap
-} from "./decodeErrorE"
+export function error(actual: unknown, message: string) {
+  return FA.of(DE.leaf(actual, message))
+}

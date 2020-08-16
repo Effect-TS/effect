@@ -1,13 +1,12 @@
-import { DecoderURI } from "./decoder"
-import { AsyncDSL, SyncDSL } from "./dsl"
-import { EncoderURI } from "./encoder"
+import { DecoderURI } from "../decoder"
+import { DSLFor } from "../dsl"
+import { EncoderURI } from "../encoder"
 import {
   InterpreterHKT,
   InterpreterKind,
   InterpreterKindF,
   InterpreterURIS
-} from "./registry"
-import { AsyncStackURI } from "./uris"
+} from "../registry"
 
 import { UnionToIntersection } from "@matechs/preview/Utils"
 import { URIS } from "@matechs/preview/_abstract/HKT"
@@ -15,7 +14,7 @@ import { URIS } from "@matechs/preview/_abstract/HKT"
 export const PrimitivesURI = "PrimitivesURI"
 export type PrimitivesURI = typeof PrimitivesURI
 
-declare module "./registry" {
+declare module "../registry" {
   export interface AlgebraF<IF, F extends URIS, RDec, REnc> {
     [PrimitivesURI]: PrimitivesF<IF, F, RDec, REnc>
   }
@@ -28,8 +27,6 @@ declare module "./registry" {
     [PrimitivesURI]: PrimitivesKF<IF, F, RDec, REnc>
   }
 }
-
-export type DSLFor<F> = AsyncStackURI extends F ? AsyncDSL<F> : SyncDSL<F>
 
 export type StringConfig<F, CRDec, CREnc, RDec, REnc> = {
   [DecoderURI]?: (

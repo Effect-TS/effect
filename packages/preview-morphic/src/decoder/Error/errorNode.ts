@@ -1,5 +1,5 @@
 // ported from https://github.com/gcanti/io-ts/blob/master/src/DecodeError.ts
-import * as FS from "./FreeAssociative"
+import * as FS from "../../FreeAssociative"
 
 import { Associative } from "@matechs/preview/Associative"
 
@@ -19,43 +19,37 @@ export interface Key<E> {
   readonly _tag: "Key"
   readonly key: string
   readonly kind: Kind
-  readonly errors: FS.FreeAssociative<DecodeErrorE<E>>
+  readonly errors: FS.FreeAssociative<ErrorNode<E>>
 }
 
 export interface Index<E> {
   readonly _tag: "Index"
   readonly index: number
   readonly kind: Kind
-  readonly errors: FS.FreeAssociative<DecodeErrorE<E>>
+  readonly errors: FS.FreeAssociative<ErrorNode<E>>
 }
 
 export interface Member<E> {
   readonly _tag: "Member"
   readonly index: number
-  readonly errors: FS.FreeAssociative<DecodeErrorE<E>>
+  readonly errors: FS.FreeAssociative<ErrorNode<E>>
 }
 
 export interface Lazy<E> {
   readonly _tag: "Lazy"
   readonly id: string
-  readonly errors: FS.FreeAssociative<DecodeErrorE<E>>
+  readonly errors: FS.FreeAssociative<ErrorNode<E>>
 }
 
 export interface Wrap<E> {
   readonly _tag: "Wrap"
   readonly error: E
-  readonly errors: FS.FreeAssociative<DecodeErrorE<E>>
+  readonly errors: FS.FreeAssociative<ErrorNode<E>>
 }
 
-export type DecodeErrorE<E> =
-  | Leaf<E>
-  | Key<E>
-  | Index<E>
-  | Member<E>
-  | Lazy<E>
-  | Wrap<E>
+export type ErrorNode<E> = Leaf<E> | Key<E> | Index<E> | Member<E> | Lazy<E> | Wrap<E>
 
-export const leaf = <E>(actual: unknown, error: E): DecodeErrorE<E> => ({
+export const leaf = <E>(actual: unknown, error: E): ErrorNode<E> => ({
   _tag: "Leaf",
   actual,
   error
@@ -64,8 +58,8 @@ export const leaf = <E>(actual: unknown, error: E): DecodeErrorE<E> => ({
 export const key = <E>(
   key: string,
   kind: Kind,
-  errors: FS.FreeAssociative<DecodeErrorE<E>>
-): DecodeErrorE<E> => ({
+  errors: FS.FreeAssociative<ErrorNode<E>>
+): ErrorNode<E> => ({
   _tag: "Key",
   key,
   kind,
@@ -75,8 +69,8 @@ export const key = <E>(
 export const index = <E>(
   index: number,
   kind: Kind,
-  errors: FS.FreeAssociative<DecodeErrorE<E>>
-): DecodeErrorE<E> => ({
+  errors: FS.FreeAssociative<ErrorNode<E>>
+): ErrorNode<E> => ({
   _tag: "Index",
   index,
   kind,
@@ -85,8 +79,8 @@ export const index = <E>(
 
 export const member = <E>(
   index: number,
-  errors: FS.FreeAssociative<DecodeErrorE<E>>
-): DecodeErrorE<E> => ({
+  errors: FS.FreeAssociative<ErrorNode<E>>
+): ErrorNode<E> => ({
   _tag: "Member",
   index,
   errors
@@ -94,8 +88,8 @@ export const member = <E>(
 
 export const lazy = <E>(
   id: string,
-  errors: FS.FreeAssociative<DecodeErrorE<E>>
-): DecodeErrorE<E> => ({
+  errors: FS.FreeAssociative<ErrorNode<E>>
+): ErrorNode<E> => ({
   _tag: "Lazy",
   id,
   errors
@@ -103,8 +97,8 @@ export const lazy = <E>(
 
 export const wrap = <E>(
   error: E,
-  errors: FS.FreeAssociative<DecodeErrorE<E>>
-): DecodeErrorE<E> => ({
+  errors: FS.FreeAssociative<ErrorNode<E>>
+): ErrorNode<E> => ({
   _tag: "Wrap",
   error,
   errors
@@ -112,13 +106,13 @@ export const wrap = <E>(
 
 export const fold = <E, R>(patterns: {
   Leaf: (input: unknown, error: E) => R
-  Key: (key: string, kind: Kind, errors: FS.FreeAssociative<DecodeErrorE<E>>) => R
-  Index: (index: number, kind: Kind, errors: FS.FreeAssociative<DecodeErrorE<E>>) => R
-  Member: (index: number, errors: FS.FreeAssociative<DecodeErrorE<E>>) => R
-  Lazy: (id: string, errors: FS.FreeAssociative<DecodeErrorE<E>>) => R
-  Wrap: (error: E, errors: FS.FreeAssociative<DecodeErrorE<E>>) => R
-}): ((e: DecodeErrorE<E>) => R) => {
-  const f = (e: DecodeErrorE<E>): R => {
+  Key: (key: string, kind: Kind, errors: FS.FreeAssociative<ErrorNode<E>>) => R
+  Index: (index: number, kind: Kind, errors: FS.FreeAssociative<ErrorNode<E>>) => R
+  Member: (index: number, errors: FS.FreeAssociative<ErrorNode<E>>) => R
+  Lazy: (id: string, errors: FS.FreeAssociative<ErrorNode<E>>) => R
+  Wrap: (error: E, errors: FS.FreeAssociative<ErrorNode<E>>) => R
+}): ((e: ErrorNode<E>) => R) => {
+  const f = (e: ErrorNode<E>): R => {
     switch (e._tag) {
       case "Leaf":
         return patterns.Leaf(e.actual, e.error)
@@ -138,7 +132,7 @@ export const fold = <E, R>(patterns: {
 }
 
 export function getAssociative<E = never>(): Associative<
-  FS.FreeAssociative<DecodeErrorE<E>>
+  FS.FreeAssociative<ErrorNode<E>>
 > {
   return FS.getAssociative()
 }

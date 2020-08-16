@@ -1,4 +1,4 @@
-import { HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 export interface InvariantF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {
@@ -7,11 +7,11 @@ export interface InvariantF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     g: (b: B) => A
   }) => {
     f: <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-      ma: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
-    ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
+      ma: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    ) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
     g: <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-      mb: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
-    ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+      mb: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
+    ) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   }
 }
 
@@ -22,11 +22,11 @@ export interface InvariantK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3
     g: (b: B) => A
   }) => {
     f: <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-      ma: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
-    ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
+      ma: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
     g: <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-      mb: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
-    ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+      mb: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, B>
+    ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   }
 }
 
@@ -43,11 +43,11 @@ export interface InvariantKE<
     g: (b: B) => A
   }) => {
     f: <K, NK extends string, SI, SO, X, In, S, Env>(
-      ma: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
-    ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, B>
+      ma: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
+    ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, B>
     g: <K, NK extends string, SI, SO, X, In, S, Env>(
-      mb: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, B>
-    ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
+      mb: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, B>
+    ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
   }
 }
 

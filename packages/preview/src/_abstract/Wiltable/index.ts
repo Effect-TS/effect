@@ -1,7 +1,7 @@
 import { Either } from "../../Either"
 import { Separated } from "../../_system/Utils"
 import { ApplicativeF, ApplicativeK, ApplicativeKE } from "../Applicative"
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   <G, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -9,7 +9,7 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -27,8 +27,8 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    ta: HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -44,8 +44,8 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
     GEnv,
     GErr,
     Separated<
-      HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 
@@ -54,7 +54,7 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -72,8 +72,8 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    ta: HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -89,8 +89,8 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
     GEnv,
     GErr,
     Separated<
-      HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 
@@ -99,7 +99,7 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, A, B, C>(
     f: (
       a: A
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -117,8 +117,8 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    ta: HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -134,8 +134,8 @@ export interface WiltF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
     GEnv,
     GE,
     Separated<
-      HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      HKTTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      HKTFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 }
@@ -151,7 +151,7 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -169,8 +169,8 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -186,8 +186,8 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
     GEnv,
     GErr,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 
@@ -196,7 +196,7 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -214,8 +214,8 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -231,8 +231,8 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
     GEnv,
     GErr,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 
@@ -241,7 +241,7 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, A, B, C>(
     f: (
       a: A
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -259,8 +259,8 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv, FErr>(
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -276,8 +276,8 @@ export interface WiltK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
     GEnv,
     GE,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 }
@@ -293,7 +293,7 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -311,8 +311,8 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv>(
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -328,8 +328,8 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
     GEnv,
     GErr,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
     >
   >
 
@@ -338,7 +338,7 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, GErr, A, B, C>(
     f: (
       a: A
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -356,8 +356,8 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv>(
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -373,8 +373,8 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
     GEnv,
     GErr,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
     >
   >
 
@@ -383,7 +383,7 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
   ): <GK, GNK extends string, GSIO, GX, GIn, GSt, GEnv, A, B, C>(
     f: (
       a: A
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -401,8 +401,8 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
       Either<B, C>
     >
   ) => <FK, FNK extends string, FSI, FSO, FX, FIn, FSt, FEnv>(
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -418,8 +418,8 @@ export interface WiltKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
     GEnv,
     GE,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
     >
   >
 }
@@ -532,7 +532,7 @@ export function implementSeparateF<F extends URIS, E>(): <
   ) => (
     f: (
       a: A
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -550,8 +550,8 @@ export function implementSeparateF<F extends URIS, E>(): <
       Either<B, C>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -567,8 +567,8 @@ export function implementSeparateF<F extends URIS, E>(): <
     GEnv,
     GErr,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, E, C>
     >
   >
 ) => WiltKE<F, E, TL0, TL1, TL2, TL3>
@@ -631,7 +631,7 @@ export function implementSeparateF<F extends URIS>(): <
   ) => (
     f: (
       a: A
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -649,8 +649,8 @@ export function implementSeparateF<F extends URIS>(): <
       Either<B, C>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -666,8 +666,8 @@ export function implementSeparateF<F extends URIS>(): <
     GEnv,
     GErr,
     Separated<
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
-      KindTL<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>,
+      KindFull<F, TL0, TL1, TL2, TL3, FK, FNK, FSI, FSO, FX, FIn, FSt, FEnv, FErr, C>
     >
   >
 ) => WiltK<F, TL0, TL1, TL2, TL3>

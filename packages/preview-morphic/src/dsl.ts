@@ -1,4 +1,4 @@
-import { AsyncStackURI } from "./uris"
+import { AsyncStackURI } from "./stack"
 import { AnyStackF, AsyncStackF, BaseStackF, foldStack, SyncStackF } from "./utils"
 
 import { constant, pipe } from "@matechs/preview/Function"
@@ -10,7 +10,7 @@ import {
   mapErrorF,
   succeedF
 } from "@matechs/preview/_abstract/DSL/core"
-import { HKTTL } from "@matechs/preview/_abstract/HKT"
+import { HKTFull } from "@matechs/preview/_abstract/HKT"
 
 export interface SyncDSL<F> extends DSL<F>, SyncStackF<F> {}
 
@@ -21,7 +21,7 @@ export interface DSL<F> {
 
   succeed: <A>(
     a: A
-  ) => HKTTL<
+  ) => HKTFull<
     F,
     any,
     any,
@@ -40,10 +40,10 @@ export interface DSL<F> {
   >
 
   recover: <S, SO, K2, KN2 extends string, X2, I2, R2, E, E2, A2>(
-    f: (e: E) => HKTTL<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
+    f: (e: E) => HKTFull<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
   ) => <K, KN extends string, SI, X, I, R, A>(
-    fa: HKTTL<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, E, A>
-  ) => HKTTL<
+    fa: HKTFull<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, E, A>
+  ) => HKTFull<
     F,
     any,
     any,
@@ -62,10 +62,10 @@ export interface DSL<F> {
   >
 
   chain: <TK, TKN extends string, SO, SO2, X, I, S, R, E, A, B>(
-    f: (_: A) => HKTTL<F, any, any, any, any, TK, TKN, SO, SO2, X, I, S, R, E, B>
+    f: (_: A) => HKTFull<F, any, any, any, any, TK, TKN, SO, SO2, X, I, S, R, E, B>
   ) => <SK, SKN extends string, SI, X2, I2, R2, E2>(
-    mk: HKTTL<F, any, any, any, any, SK, SKN, SI, SO, X2, I2, S, R2, E2, A>
-  ) => HKTTL<
+    mk: HKTFull<F, any, any, any, any, SK, SKN, SI, SO, X2, I2, S, R2, E2, A>
+  ) => HKTFull<
     F,
     any,
     any,
@@ -84,20 +84,20 @@ export interface DSL<F> {
   >
 
   accessM: <TK, TKN extends string, SI, SO, X, I, S, R, E, R0, A>(
-    f: (r: R0) => HKTTL<F, any, any, any, any, TK, TKN, SI, SO, X, I, S, R, E, A>
-  ) => HKTTL<F, any, any, any, any, TK, TKN, SI, SO, X, I, S, R & R0, E, A>
+    f: (r: R0) => HKTFull<F, any, any, any, any, TK, TKN, SI, SO, X, I, S, R, E, A>
+  ) => HKTFull<F, any, any, any, any, TK, TKN, SI, SO, X, I, S, R & R0, E, A>
 
   accessServiceM: <SR>(
     Has: Augmented<SR>
   ) => <TK, TKN extends string, SI, SO, Y, X, S, R1, E, A>(
-    f: (r: SR) => HKTTL<F, any, any, any, any, TK, TKN, SI, SO, Y, X, S, R1, E, A>
-  ) => HKTTL<F, any, any, any, any, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+    f: (r: SR) => HKTFull<F, any, any, any, any, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+  ) => HKTFull<F, any, any, any, any, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
 
   mapError: <E, E1>(
     f: (e: E) => E1
   ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
-    fa: HKTTL<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E, A>
-  ) => HKTTL<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E1, A>
+    fa: HKTFull<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E, A>
+  ) => HKTFull<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E1, A>
 }
 
 export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
@@ -122,8 +122,8 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
     E2,
     A2
   >(
-    fa: HKTTL<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, E, A>,
-    f: (e: E) => HKTTL<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
+    fa: HKTFull<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, E, A>,
+    f: (e: E) => HKTFull<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
   ) =>
     pipe(
       fa,
@@ -160,3 +160,5 @@ export function commonDSL<F>(_: {
     ..._.K
   } as any
 }
+
+export type DSLFor<F> = AsyncStackURI extends F ? AsyncDSL<F> : SyncDSL<F>

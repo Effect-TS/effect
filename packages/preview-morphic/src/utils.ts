@@ -1,5 +1,5 @@
-import {} from "@matechs/preview/Effect"
-
+import { FromEffectF, FromEffectK } from "./fx/effect"
+import { FromXPureF, FromXPureK } from "./fx/pure"
 import {
   AlgebraURIS,
   InterpretedF,
@@ -8,9 +8,7 @@ import {
   InterpreterKind,
   InterpreterURIS
 } from "./registry"
-import { FromEffectF, FromEffectK } from "./stack/effect"
-import { FromXPureF, FromXPureK } from "./stack/pure"
-import { AsyncStackURI } from "./uris"
+import { AsyncStackURI } from "./stack"
 
 import { identity } from "@matechs/preview/Function"
 import { ApplicativeF, ApplicativeK } from "@matechs/preview/_abstract/Applicative"
@@ -20,10 +18,10 @@ import {
 } from "@matechs/preview/_abstract/FX/Environmental"
 import { FailF, FailK } from "@matechs/preview/_abstract/FX/Fail"
 import { RunF, RunK } from "@matechs/preview/_abstract/FX/Run"
-import { HKTTL, KindTL, URIS } from "@matechs/preview/_abstract/HKT"
+import { HKTFull, KindFull, URIS } from "@matechs/preview/_abstract/HKT"
 import { MonadF, MonadK } from "@matechs/preview/_abstract/Monad"
 
-export type MoKind<F extends URIS, R, E, A> = KindTL<
+export type MoKind<F extends URIS, R, E, A> = KindFull<
   F,
   any,
   any,
@@ -41,7 +39,7 @@ export type MoKind<F extends URIS, R, E, A> = KindTL<
   A
 >
 
-export type MoHKT<F, R, E, A> = HKTTL<
+export type MoHKT<F, R, E, A> = HKTFull<
   F,
   any,
   any,

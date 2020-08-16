@@ -1,4 +1,4 @@
-import { HKTTL, KindTL, URIS } from "../HKT"
+import { HKTFull, KindFull, URIS } from "../HKT"
 
 export interface DeriveF<F, Typeclass, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   readonly Derive: "Derive"
@@ -7,8 +7,8 @@ export interface DeriveF<F, Typeclass, TL0 = any, TL1 = any, TL2 = any, TL3 = an
   readonly TL2: TL2
   readonly TL3: TL3
   readonly derive: <K, NK extends string, SI, SO, X, In, S, Env, Err, A>(
-    fa: HKTTL<Typeclass, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => HKTTL<
+    fa: HKTFull<Typeclass, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => HKTFull<
     Typeclass,
     TL0,
     TL1,
@@ -23,7 +23,7 @@ export interface DeriveF<F, Typeclass, TL0 = any, TL1 = any, TL2 = any, TL3 = an
     S,
     Env,
     Err,
-    HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   >
 }
 
@@ -41,8 +41,8 @@ export interface DeriveK<
   readonly TL2: TL2
   readonly TL3: TL3
   readonly derive: <K, NK extends string, SI, SO, X, In, S, Env, Err, A>(
-    fa: KindTL<Typeclass, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => KindTL<
+    fa: KindFull<Typeclass, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => KindFull<
     Typeclass,
     TL0,
     TL1,
@@ -57,7 +57,7 @@ export interface DeriveK<
     S,
     Env,
     Err,
-    KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   >
 }
 
@@ -77,8 +77,8 @@ export interface DeriveKE<
   readonly TL3: TL3
   readonly _E: E
   readonly derive: <K, NK extends string, SI, SO, X, In, S, Env, A>(
-    fa: KindTL<Typeclass, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => KindTL<
+    fa: KindFull<Typeclass, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
+  ) => KindFull<
     Typeclass,
     TL0,
     TL1,
@@ -93,7 +93,7 @@ export interface DeriveKE<
     S,
     Env,
     E,
-    KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
+    KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
   >
 }
 

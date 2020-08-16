@@ -1,4 +1,6 @@
 import * as M from "../src"
+import * as DE from "../src/decoder/Error"
+import * as D from "../src/decoder/Sync"
 
 import * as T from "@matechs/preview/Effect"
 import * as E from "@matechs/preview/Either"
@@ -24,8 +26,13 @@ export const Person = M.make((F) =>
   })
 )
 
+export const decoder = pipe(
+  D.decoder(Person),
+  D.map(({ a, b }) => `${a} - ${b}`)
+)
+
 pipe(
-  M.decodeSync(Person)({
+  decoder({
     a: 0,
     b: "b",
     c: 1,
@@ -40,7 +47,7 @@ pipe(
       E.fold_(
         e,
         (err) => {
-          console.log(M.drawDecodeError(err))
+          console.log(DE.draw(err))
         },
         (res) => {
           console.log(res)

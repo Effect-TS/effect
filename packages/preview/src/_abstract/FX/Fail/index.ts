@@ -1,10 +1,10 @@
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../../HKT"
 
 export interface FailF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly fail: <E, S, SI>(
     e: E
-  ) => HKTTL<
+  ) => HKTFull<
     F,
     TL0,
     TL1,
@@ -27,7 +27,7 @@ export interface FailK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
   extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly fail: <E, S, SI>(
     e: E
-  ) => KindTL<
+  ) => KindFull<
     F,
     TL0,
     TL1,
@@ -51,7 +51,7 @@ export interface FailKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 
     HasE<E> {
   readonly fail: <S, SI>(
     e: E
-  ) => KindTL<
+  ) => KindFull<
     F,
     TL0,
     TL1,

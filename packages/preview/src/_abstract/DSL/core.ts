@@ -5,7 +5,7 @@ import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
 import { EnvironmentalF, EnvironmentalK, EnvironmentalKE } from "../FX/Environmental"
 import { FailF, FailK, FailKE } from "../FX/Fail"
 import { RunF, RunK, RunKE } from "../FX/Run"
-import { HKT, HKT3, HKTTL, KindTL, URIS } from "../HKT"
+import { HKT, HKT3, HKTFull, KindFull, URIS } from "../HKT"
 import { MonadF, MonadK, MonadKE } from "../Monad"
 
 /**
@@ -15,7 +15,7 @@ export function succeedF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3
   F: AnyKE<F, E, TL0, TL1, TL2, TL3> & CovariantKE<F, E, TL0, TL1, TL2, TL3>
 ): <A, S, SI, SO = SI>(
   a: () => A
-) => KindTL<
+) => KindFull<
   F,
   TL0,
   TL1,
@@ -36,7 +36,7 @@ export function succeedF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = 
   F: AnyK<F, TL0, TL1, TL2, TL3> & CovariantK<F, TL0, TL1, TL2, TL3>
 ): <A, S, SI, SO = SI>(
   a: () => A
-) => KindTL<
+) => KindFull<
   F,
   TL0,
   TL1,
@@ -57,7 +57,7 @@ export function succeedF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: AnyF<F, TL0, TL1, TL2, TL3> & CovariantF<F, TL0, TL1, TL2, TL3>
 ): <A, S, SI, SO = SI>(
   a: () => A
-) => HKTTL<
+) => HKTFull<
   F,
   TL0,
   TL1,
@@ -89,17 +89,17 @@ export function anyF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = a
   F: AnyKE<F, E, TL0, TL1, TL2, TL3> & CovariantKE<F, E, TL0, TL1, TL2, TL3>
 ): <A>(
   a: A
-) => KindTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, E, A>
 export function anyF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: AnyK<F, TL0, TL1, TL2, TL3> & CovariantK<F, TL0, TL1, TL2, TL3>
 ): <A>(
   a: A
-) => KindTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, any, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, any, A>
 export function anyF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: AnyF<F> & CovariantF<F>
 ): <A>(
   a: A
-) => HKTTL<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, any, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, any, any, any, any, any, any, any, any, any, A>
 export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
   return (a) =>
     pipe(
@@ -113,7 +113,7 @@ export function anyF<F>(F: AnyF<F> & CovariantF<F>): <A>(a: A) => HKT<F, A> {
  */
 export function doF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadKE<F, E, TL0, TL1, TL2, TL3>
-): <S, I, O = I>() => KindTL<
+): <S, I, O = I>() => KindFull<
   F,
   TL0,
   TL1,
@@ -132,7 +132,7 @@ export function doF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = an
 >
 export function doF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadK<F, TL0, TL1, TL2, TL3>
-): <S, I, O = I>() => KindTL<
+): <S, I, O = I>() => KindFull<
   F,
   TL0,
   TL1,
@@ -151,7 +151,7 @@ export function doF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
 >
 export function doF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadF<F, TL0, TL1, TL2, TL3>
-): <S, I, O = I>() => HKTTL<
+): <S, I, O = I>() => HKTFull<
   F,
   TL0,
   TL1,
@@ -183,10 +183,10 @@ export function bindF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = 
   F: MonadKE<F, E, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SO, SO2, X, I, S, R, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, A>
+  f: (_: K) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, A>
 ) => <SK, SKN extends string, SI, X2, I2, R2>(
-  mk: KindTL<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E, K>
-) => KindTL<
+  mk: KindFull<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E, K>
+) => KindFull<
   F,
   TL0,
   TL1,
@@ -207,10 +207,10 @@ export function bindF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any
   F: MonadK<F, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SO, SO2, X, I, S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, A>
+  f: (_: K) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, A>
 ) => <SK, SKN extends string, SI, X2, I2, R2, E2>(
-  mk: KindTL<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, K>
-) => KindTL<
+  mk: KindFull<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, K>
+) => KindFull<
   F,
   TL0,
   TL1,
@@ -231,10 +231,10 @@ export function bindF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadF<F, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SO, SO2, X, I, S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
-  f: (_: K) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, A>
+  f: (_: K) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, A>
 ) => <SK, SKN extends string, SI, X2, I2, R2, E2>(
-  mk: HKTTL<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, K>
-) => HKTTL<
+  mk: HKTFull<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, K>
+) => HKTFull<
   F,
   TL0,
   TL1,
@@ -276,17 +276,17 @@ export function bindF<F>(F: MonadF<F>) {
 export function chainF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadKE<F, E, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SO, SO2, X, I, S, R, A, B>(
-  f: (_: A) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, B>
+  f: (_: A) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, B>
 ) => <SK, SKN extends string, SI, X2, I2, R2>(
-  mk: KindTL<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO2, X2 | X, I & I2, S, R & R2, E, B>
+  mk: KindFull<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO2, X2 | X, I & I2, S, R & R2, E, B>
 export function chainF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadK<F, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SO, SO2, X, I, S, R, E, A, B>(
-  f: (_: A) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, B>
+  f: (_: A) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, B>
 ) => <SK, SKN extends string, SI, X2, I2, R2, E2>(
-  mk: KindTL<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, A>
-) => KindTL<
+  mk: KindFull<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, A>
+) => KindFull<
   F,
   TL0,
   TL1,
@@ -306,10 +306,10 @@ export function chainF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = an
 export function chainF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: MonadF<F, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SO, SO2, X, I, S, R, E, A, B>(
-  f: (_: A) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, B>
+  f: (_: A) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SO, SO2, X, I, S, R, E, B>
 ) => <SK, SKN extends string, SI, X2, I2, R2, E2>(
-  mk: HKTTL<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, A>
-) => HKTTL<
+  mk: HKTFull<F, TL0, TL1, TL2, TL3, SK, SKN, SI, SO, X2, I2, S, R2, E2, A>
+) => HKTFull<
   F,
   TL0,
   TL1,
@@ -337,18 +337,18 @@ export function chainF<F>(F: MonadF<F>) {
 export function accessMF<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalKE<F, E, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SI, SO, Y, X, S, R, R1, A>(
-  f: (r: R) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R & R1, E, A>
+  f: (r: R) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R & R1, E, A>
 export function accessMF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalK<F, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SI, SO, Y, X, S, R, R1, E, A>(
-  f: (r: R) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R & R1, E, A>
+  f: (r: R) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R & R1, E, A>
 export function accessMF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalF<F, TL0, TL1, TL2, TL3>
 ): <TK, TKN extends string, SI, SO, X, I, S, R, E, R0, A>(
-  f: (r: R0) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
-) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & R0, E, A>
+  f: (r: R0) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & R0, E, A>
 export function accessMF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalF<F, TL0, TL1, TL2, TL3>
 ): <E, R, R1, A>(f: (r: R) => HKT3<F, R1, E, A>) => HKT3<F, R & R1, E, A> {
@@ -374,8 +374,8 @@ export function provideSomeF<
 ): <R0, R>(
   f: (r: R0) => R
 ) => <TK, TKN extends string, SI, SO, X, I, S, A>(
-  fa: KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R0, E, A>
+  fa: KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<
   F extends URIS,
   TL0 = any,
@@ -387,15 +387,15 @@ export function provideSomeF<
 ): <R0, R>(
   f: (r: R0) => R
 ) => <TK, TKN extends string, SI, SO, X, I, S, E, A>(
-  fa: KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R0, E, A>
+  fa: KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalF<F, TL0, TL1, TL2, TL3>
 ): <R0, R>(
   f: (r: R0) => R
 ) => <TK, TKN extends string, SI, SO, X, I, S, E, A>(
-  fa: HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
-) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R0, E, A>
+  fa: HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R0, E, A>
 export function provideSomeF<F>(
   F: EnvironmentalF<F>
 ): <R0, R>(f: (r: R0) => R) => <E, A>(fa: HKT3<F, R, E, A>) => HKT3<F, R0, E, A> {
@@ -420,8 +420,8 @@ export function provideServiceF<
 ) => (
   Service: SR
 ) => <TK, TKN extends string, SI, SO, X, I, S, R, A>(
-  fa: KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+  fa: KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
 export function provideServiceF<
   F extends URIS,
   TL0 = any,
@@ -435,8 +435,8 @@ export function provideServiceF<
 ) => (
   Service: SR
 ) => <TK, TKN extends string, SI, SO, X, I, S, R, E, A>(
-  fa: KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+  fa: KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
 export function provideServiceF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalF<F, TL0, TL1, TL2, TL3>
 ): <SR>(
@@ -444,8 +444,8 @@ export function provideServiceF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
 ) => (
   Service: SR
 ) => <TK, TKN extends string, SI, SO, X, I, S, R, E, A>(
-  fa: HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
-) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
+  fa: HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R & Has<SR>, E, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, X, I, S, R, E, A>
 export function provideServiceF<F>(
   F: EnvironmentalF<F>
 ): <SR>(
@@ -470,8 +470,8 @@ export function accessServiceMF<
 ): <SR>(
   Has: Augmented<SR>
 ) => <TK, TKN extends string, SI, SO, Y, X, S, R1, A>(
-  f: (r: SR) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+  f: (r: SR) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
 export function accessServiceMF<
   F extends URIS,
   TL0 = any,
@@ -483,15 +483,15 @@ export function accessServiceMF<
 ): <SR>(
   Has: Augmented<SR>
 ) => <TK, TKN extends string, SI, SO, Y, X, S, R1, E, A>(
-  f: (r: SR) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+  f: (r: SR) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
 export function accessServiceMF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalF<F, TL0, TL1, TL2, TL3>
 ): <SR>(
   Has: Augmented<SR>
 ) => <TK, TKN extends string, SI, SO, Y, X, S, R1, E, A>(
-  f: (r: SR) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
-) => HKTTL<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
+  f: (r: SR) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1, E, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, TK, TKN, SI, SO, Y, X, S, R1 & Has<SR>, E, A>
 export function accessServiceMF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: EnvironmentalF<F, TL0, TL1, TL2, TL3>
 ): <SR>(
@@ -520,8 +520,8 @@ export function mapErrorF<
 ): (
   f: (e: E) => E
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
-  fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+  fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
 export function mapErrorF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: FailK<F, TL0, TL1, TL2, TL3> &
     RunK<F, TL0, TL1, TL2, TL3> &
@@ -529,8 +529,8 @@ export function mapErrorF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 =
 ): <E, E1>(
   f: (e: E) => E1
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
-  fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
-) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A>
+  fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A>
 export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: FailF<F, TL0, TL1, TL2, TL3> &
     RunF<F, TL0, TL1, TL2, TL3> &
@@ -538,8 +538,8 @@ export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
 ): <E, E1>(
   f: (e: E) => E1
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
-  fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
-) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A>
+  fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A>
 export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: FailF<F, TL0, TL1, TL2, TL3> &
     RunF<F, TL0, TL1, TL2, TL3> &
@@ -547,8 +547,8 @@ export function mapErrorF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
 ): <E, E1>(
   f: (e: E) => E1
 ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
-  fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
-) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A> {
+  fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E1, A> {
   return (f) => (fa) =>
     pipe(
       fa,

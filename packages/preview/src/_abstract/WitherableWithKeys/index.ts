@@ -1,6 +1,6 @@
 import { Option } from "../../Option"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
-import { HasURI, HKTTL, KeyFor, KindTL, URIS } from "../HKT"
+import { HasURI, HKTFull, KeyFor, KindFull, URIS } from "../HKT"
 
 export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
   <G, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -29,7 +29,7 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -47,8 +47,8 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
       Option<B>
     >
   ) => (
-    ta: HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -63,7 +63,7 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
     GSt,
     GEnv,
     GErr,
-    HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 
   <G extends URIS, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -92,7 +92,7 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -110,8 +110,8 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
       Option<B>
     >
   ) => (
-    ta: HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -126,7 +126,7 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
     GSt,
     GEnv,
     GErr,
-    HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 
   <G extends URIS, GErr, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -154,7 +154,7 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -172,8 +172,8 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
       Option<B>
     >
   ) => (
-    ta: HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -188,7 +188,7 @@ export interface WitherWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> 
     GSt,
     GEnv,
     GErr,
-    HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -230,7 +230,7 @@ export interface WitherWithKeysK<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -248,8 +248,8 @@ export interface WitherWithKeysK<
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -264,7 +264,7 @@ export interface WitherWithKeysK<
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 
   <G extends URIS, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -293,7 +293,7 @@ export interface WitherWithKeysK<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -311,8 +311,8 @@ export interface WitherWithKeysK<
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -327,7 +327,7 @@ export interface WitherWithKeysK<
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 
   <G extends URIS, GErr, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -355,7 +355,7 @@ export interface WitherWithKeysK<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -373,8 +373,8 @@ export interface WitherWithKeysK<
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -389,7 +389,7 @@ export interface WitherWithKeysK<
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -436,7 +436,7 @@ export interface WitherWithKeysKE<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -454,8 +454,8 @@ export interface WitherWithKeysKE<
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -470,7 +470,7 @@ export interface WitherWithKeysKE<
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 
   <G extends URIS, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -498,7 +498,7 @@ export interface WitherWithKeysKE<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -516,8 +516,8 @@ export interface WitherWithKeysKE<
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -532,7 +532,7 @@ export interface WitherWithKeysKE<
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 
   <G extends URIS, GErr, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
@@ -559,7 +559,7 @@ export interface WitherWithKeysKE<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<
+    ) => KindFull<
       G,
       GTL0,
       GTL1,
@@ -577,8 +577,8 @@ export interface WitherWithKeysKE<
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -593,7 +593,7 @@ export interface WitherWithKeysKE<
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -719,7 +719,7 @@ export function implemenCompactWithKeysF<F extends URIS, E>(): <
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -737,8 +737,8 @@ export function implemenCompactWithKeysF<F extends URIS, E>(): <
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -753,7 +753,7 @@ export function implemenCompactWithKeysF<F extends URIS, E>(): <
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
 ) => WitherWithKeysK<F, TL0, TL1, TL2, TL3>
 export function implemenCompactWithKeysF<F extends URIS>(): <
@@ -814,7 +814,7 @@ export function implemenCompactWithKeysF<F extends URIS>(): <
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<
+    ) => HKTFull<
       G,
       GTL0,
       GTL1,
@@ -832,8 +832,8 @@ export function implemenCompactWithKeysF<F extends URIS>(): <
       Option<B>
     >
   ) => (
-    ta: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    ta: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -848,7 +848,7 @@ export function implemenCompactWithKeysF<F extends URIS>(): <
     GSt,
     GEnv,
     GErr,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 ) => WitherWithKeysK<F, TL0, TL1, TL2, TL3>
 export function implemenCompactWithKeysF() {

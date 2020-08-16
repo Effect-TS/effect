@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -10,7 +10,7 @@ export interface ReduceF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     b: B,
     f: (b: B, a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
@@ -20,7 +20,7 @@ export interface ReduceK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = 
     b: B,
     f: (b: B, a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env, Err>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
   ) => B
 }
 
@@ -36,7 +36,7 @@ export interface ReduceKE<
     b: B,
     f: (b: B, a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, S, Env>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
   ) => B
 }
 

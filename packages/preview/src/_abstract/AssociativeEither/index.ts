@@ -1,5 +1,5 @@
 import * as E from "../../Either"
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * An associative binary operator that combines two values of types `F[A]`
@@ -8,10 +8,10 @@ import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
 export interface AssociativeEitherF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: HKTTL<F, TL0, TL1, TL2, TL3, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
+    fb: HKTFull<F, TL0, TL1, TL2, TL3, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, Err, A>(
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => HKTTL<
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => HKTFull<
     F,
     TL0,
     TL1,
@@ -38,10 +38,10 @@ export interface AssociativeEitherK<
   TL3 = any
 > extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, Err2, B>(
-    fb: KindTL<F, TL0, TL1, TL2, TL3, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
+    fb: KindFull<F, TL0, TL1, TL2, TL3, K2, NK2, SI2, SO2, X2, In2, S, Env2, Err2, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, Err, A>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
-  ) => KindTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, Err, A>
+  ) => KindFull<
     F,
     TL0,
     TL1,
@@ -69,10 +69,10 @@ export interface AssociativeEitherKE<
   TL3 = any
 > extends HasURI<F, TL0, TL1, TL2, TL3>, HasE<E> {
   readonly either: <K2, NK2 extends string, SI2, SO2, X2, In2, S, Env2, B>(
-    fb: KindTL<F, TL0, TL1, TL2, TL3, K2, NK2, SI2, SO2, X2, In2, S, Env2, E, B>
+    fb: KindFull<F, TL0, TL1, TL2, TL3, K2, NK2, SI2, SO2, X2, In2, S, Env2, E, B>
   ) => <K, NK extends string, SI, SO, X, In, Env, A>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
-  ) => KindTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, S, Env, E, A>
+  ) => KindFull<
     F,
     TL0,
     TL1,

@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `AssociativeFlatten` describes a type that can be "flattened" in an
@@ -29,7 +29,7 @@ export interface AssociativeFlattenF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = a
     Err1,
     A
   >(
-    fb: HKTTL<
+    fb: HKTFull<
       F,
       TL0,
       TL1,
@@ -44,9 +44,9 @@ export interface AssociativeFlattenF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = a
       S,
       Env,
       Err,
-      HKTTL<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
+      HKTFull<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => HKTTL<
+  ) => HKTFull<
     F,
     TL0,
     TL1,
@@ -91,7 +91,7 @@ export interface AssociativeFlattenK<
     Err1,
     A
   >(
-    fb: KindTL<
+    fb: KindFull<
       F,
       TL0,
       TL1,
@@ -106,9 +106,9 @@ export interface AssociativeFlattenK<
       S,
       Env,
       Err,
-      KindTL<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
+      KindFull<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => KindTL<
+  ) => KindFull<
     F,
     TL0,
     TL1,
@@ -152,7 +152,7 @@ export interface AssociativeFlattenKE<
     Env1,
     A
   >(
-    fb: KindTL<
+    fb: KindFull<
       F,
       TL0,
       TL1,
@@ -167,9 +167,9 @@ export interface AssociativeFlattenKE<
       S,
       Env,
       E,
-      KindTL<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, E, A>
+      KindFull<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, E, A>
     >
-  ) => KindTL<
+  ) => KindFull<
     F,
     TL0,
     TL1,

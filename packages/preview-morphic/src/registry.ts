@@ -26,7 +26,7 @@ export interface URItoInterpreterF<F, RDec, REnc, O, E> {
   _REnc: (_: REnc) => void
 }
 
-export type ITypes = "_O" | "_E" | "_IF" | "_A" | "_F"
+export type ITypes = "_O" | "_E" | "_IF" | "_A" | "_F" | "_RDec" | "_REnc"
 
 export type InterpreterURIS = Exclude<
   keyof URItoInterpreter<any, any, any, any, any>,

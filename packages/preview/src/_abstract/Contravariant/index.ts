@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -28,8 +28,8 @@ export interface ContravariantF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, B>
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
 export interface ContravariantK<
@@ -42,8 +42,8 @@ export interface ContravariantK<
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, B>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
 export interface ContravariantKE<
@@ -57,8 +57,8 @@ export interface ContravariantKE<
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, E, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, E, B>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, E, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, E, B>
 }
 
 export function makeContravariant<URI extends URIS, E>(): <

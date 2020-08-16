@@ -1,4 +1,4 @@
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant
@@ -27,8 +27,8 @@ export interface CovariantF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, A>
-  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, B>
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
 export interface CovariantK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
@@ -36,8 +36,8 @@ export interface CovariantK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env, Err>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, B>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, B>
 }
 
 export interface CovariantKE<
@@ -51,8 +51,8 @@ export interface CovariantKE<
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, NK extends string, SI, SO, X, In, St, Env>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, B>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, E, B>
 }
 
 export function makeCovariant<URI extends URIS, E>(): <

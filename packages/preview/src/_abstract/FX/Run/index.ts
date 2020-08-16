@@ -1,26 +1,26 @@
 import { Either } from "../../../_system/Either"
-import { HasE, HasURI, HKTTL, KindTL, URIS } from "../../HKT"
+import { HasE, HasURI, HKTFull, KindFull, URIS } from "../../HKT"
 
 export interface RunF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly run: <K, KN extends string, SI, SO, X, I, S, R, E, A>(
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, E, A>
-  ) => HKTTL<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, never, Either<E, A>>
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, E, A>
+  ) => HKTFull<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, never, Either<E, A>>
 }
 
 export interface RunK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly run: <K, KN extends string, SI, SO, X, I, S, R, E, A>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, E, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, never, Either<E, A>>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, E, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, never, Either<E, A>>
 }
 
 export interface RunKE<F extends URIS, E, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3>,
     HasE<E> {
   readonly run: <K, KN extends string, SI, SO, X, I, S, R, A>(
-    fa: KindTL<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, E, A>
-  ) => KindTL<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, never, Either<E, A>>
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, E, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, KN, SI, SO, X, I, S, R, never, Either<E, A>>
 }
 
 export function makeRun<URI extends URIS, E>(): <

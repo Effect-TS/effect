@@ -1,5 +1,5 @@
 import { CovariantF, CovariantK, CovariantKE } from "../Covariant"
-import { HKTTL, KeyFor, KindTL, URIS } from "../HKT"
+import { HKTFull, KeyFor, KindFull, URIS } from "../HKT"
 import { IdentityBothF, IdentityBothK, IdentityBothKE } from "../IdentityBoth"
 
 export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> {
@@ -29,10 +29,10 @@ export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
+    ) => HKTFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -47,7 +47,7 @@ export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     GS,
     GR,
     GE,
-    HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
     G: IdentityBothK<G, GTL0, GTL1, GTL2, GTL3> & CovariantK<G, GTL0, GTL1, GTL2, GTL3>
@@ -75,10 +75,10 @@ export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, Err, B>
+    ) => KindFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, Err, B>
   ) => (
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -93,7 +93,7 @@ export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     S,
     Env,
     Err,
-    HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS, GE, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
     G: IdentityBothKE<G, GE, GTL0, GTL1, GTL2, GTL3> &
@@ -121,10 +121,10 @@ export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, GE, B>
+    ) => KindFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, GE, B>
   ) => (
-    fa: HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -139,7 +139,7 @@ export interface ForeachWithKeysF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
     S,
     Env,
     GE,
-    HKTTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    HKTFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -181,10 +181,10 @@ export interface ForeachWithKeysK<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
+    ) => HKTFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -199,7 +199,7 @@ export interface ForeachWithKeysK<
     GS,
     GR,
     GE,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
     G: IdentityBothK<G, GTL0, GTL1, GTL2, GTL3> & CovariantK<G, GTL0, GTL1, GTL2, GTL3>
@@ -227,10 +227,10 @@ export interface ForeachWithKeysK<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, Err, B>
+    ) => KindFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, Err, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -245,7 +245,7 @@ export interface ForeachWithKeysK<
     S,
     Env,
     Err,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
   <G extends URIS, GE, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
     G: IdentityBothKE<G, GE, GTL0, GTL1, GTL2, GTL3> &
@@ -273,10 +273,10 @@ export interface ForeachWithKeysK<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => KindTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, GE, B>
+    ) => KindFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, GE, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => KindTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -291,7 +291,7 @@ export interface ForeachWithKeysK<
     S,
     Env,
     GE,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 }
 
@@ -339,10 +339,10 @@ export interface ForeachWithKeysKE<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKTTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
+    ) => HKTFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKTTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -357,7 +357,7 @@ export interface ForeachWithKeysKE<
     GS,
     GR,
     GE,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
     G: IdentityBothK<G, GTL0, GTL1, GTL2, GTL3> & CovariantK<G, GTL0, GTL1, GTL2, GTL3>
@@ -384,10 +384,10 @@ export interface ForeachWithKeysKE<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => KindTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, Err, B>
+    ) => KindFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, Err, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => KindTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -402,7 +402,7 @@ export interface ForeachWithKeysKE<
     S,
     Env,
     Err,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
   <G extends URIS, GE, GTL0 = any, GTL1 = any, GTL2 = any, GTL3 = any>(
     G: IdentityBothKE<G, GE, GTL0, GTL1, GTL2, GTL3> &
@@ -429,10 +429,10 @@ export interface ForeachWithKeysKE<
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => KindTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, GE, B>
+    ) => KindFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, X, In, S, Env, GE, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => KindTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => KindFull<
     G,
     GTL0,
     GTL1,
@@ -447,7 +447,7 @@ export interface ForeachWithKeysKE<
     S,
     Env,
     GE,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
 }
 
@@ -585,10 +585,10 @@ export function implementForeachWithKeysF<F extends URIS, E>(): <
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-    ) => HKTTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
+    ) => HKTFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
-  ) => HKTTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -603,7 +603,7 @@ export function implementForeachWithKeysF<F extends URIS, E>(): <
     GS,
     GR,
     GE,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, E, B>
   >
 ) => ForeachWithKeysKE<F, E, TL0, TL1, TL2, TL3>
 export function implementForeachWithKeysF<F extends URIS>(): <
@@ -655,10 +655,10 @@ export function implementForeachWithKeysF<F extends URIS>(): <
     f: (
       a: A,
       k: KeyFor<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-    ) => HKTTL<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
+    ) => HKTFull<G, GTL0, GTL1, GTL2, GTL3, GK, GKN, GSIO, GSIO, GX, GI, GS, GR, GE, B>
   ) => (
-    fa: KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
-  ) => HKTTL<
+    fa: KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, A>
+  ) => HKTFull<
     G,
     GTL0,
     GTL1,
@@ -673,7 +673,7 @@ export function implementForeachWithKeysF<F extends URIS>(): <
     GS,
     GR,
     GE,
-    KindTL<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
+    KindFull<F, TL0, TL1, TL2, TL3, FK, FKN, FSI, FSO, FX, FIn, FSt, FEnv, FErr, B>
   >
 ) => ForeachWithKeysK<F, TL0, TL1, TL2, TL3>
 export function implementForeachWithKeysF() {
