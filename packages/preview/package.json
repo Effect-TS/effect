@@ -160,6 +160,7 @@
       "Schedule",
       "Scope",
       "Semaphore",
+      "Show",
       "State",
       "Stream",
       "Stream/BufferedPull",

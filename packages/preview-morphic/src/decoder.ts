@@ -1,3 +1,5 @@
+import * as FA from "./FreeAssociative"
+import * as DE from "./decodeError"
 import { commonDSL } from "./dsl"
 import { PrimitivesKF, PrimitivesURI } from "./primitives"
 import {
@@ -11,20 +13,22 @@ import {
 
 import * as A from "@matechs/preview/Array"
 import * as E from "@matechs/preview/Either"
-import { constant, pipe, tuple } from "@matechs/preview/Function"
+import { constant, flow, pipe, tuple } from "@matechs/preview/Function"
 import * as R from "@matechs/preview/Record"
-import { mapErrorF, succeedF } from "@matechs/preview/_abstract/DSL/core"
+import { succeedF } from "@matechs/preview/_abstract/DSL/core"
 import { HKTTL, URIS } from "@matechs/preview/_abstract/HKT"
 
 export const DecoderURI = "DecoderURI"
 export type DecoderURI = typeof DecoderURI
 
+export type DecodeError = FA.FreeAssociative<DE.DecodeError<string>>
+
 export interface Decoder<F extends URIS, R, O> {
-  (i: unknown): MoKind<F, R, string[], O>
+  (i: unknown): MoKind<F, R, DecodeError, O>
 }
 
 export interface DecoderF<F, R, O> {
-  (i: unknown): MoHKT<F, R, string[], O>
+  (i: unknown): MoHKT<F, R, DecodeError, O>
 }
 
 declare module "./registry" {
@@ -76,7 +80,7 @@ export function primitivesDecoder<F>(
     },
     required: (D) => (i) => {
       if (typeof i !== "object" || i == null) {
-        return F.fail(["not an object"])
+        return F.fail(FA.of(DE.message("not an object")))
       }
 
       const keys = Object.keys(i)
@@ -85,9 +89,11 @@ export function primitivesDecoder<F>(
         D as R.Record<string, DecoderF<F, any, any>>,
         R.foreachWithKeysF(F)((v, k) => {
           if (!keys.includes(k)) {
-            return F.run(F.fail(prefix(k)(["object doesn't contain key"])))
+            return F.run(
+              F.fail(FA.of(DE.key(k)(FA.of(DE.message("object doesn't contain key")))))
+            )
           }
-          return pipe(v((i as any)[k]), mapErrorF(F)(prefix(k)), F.run)
+          return pipe(v((i as any)[k]), F.run, F.map(E.mapLeft(flow(DE.key(k), FA.of))))
         }),
         F.map(R.collect((k, v) => E.map_(v, (a) => tuple(k, a)))),
         packEither(F),
@@ -96,10 +102,6 @@ export function primitivesDecoder<F>(
       )
     }
   })
-}
-
-function prefix(k: string): (a: string[]) => string[] {
-  return (a) => a.map((e) => `${k}: ${e}`)
 }
 
 function arrayDecoder<F, R, O>(
@@ -115,7 +117,7 @@ function arrayDecoder<F, R, O>(
         F.flatten
       )
     } else {
-      return F.fail(["not an array"])
+      return F.fail(FA.of(DE.constant("not an array", i)))
     }
   }
 }
@@ -138,7 +140,7 @@ function packEither<F, R, O>(
     any,
     R,
     never,
-    A.Array<E.Either<string[], O>>
+    A.Array<E.Either<DecodeError, O>>
   >
 ) => HKTTL<
   F,
@@ -169,26 +171,26 @@ function packEither<F, R, O>(
     unknown,
     unknown,
     unknown,
-    string[],
+    DecodeError,
     any[]
   >
 > {
   return F.map((ae) => {
-    const errors = [] as string[]
+    let error: DecodeError | undefined = undefined
     const decoded = [] as any[]
 
     for (let k = 0; k < ae.length; k++) {
       const d = ae[k]
 
       if (d._tag === "Left") {
-        errors.push(...d.left)
+        error = error ? FA.combine(d.left)(error) : d.left
       } else {
         decoded.push(d.right)
       }
     }
 
-    if (errors.length > 0) {
-      return F.fail(errors)
+    if (error) {
+      return F.fail(error)
     } else {
       return succeedF(F)(constant(decoded))
     }
@@ -197,5 +199,7 @@ function packEither<F, R, O>(
 
 function stringDecoder<F>(F: BaseStackF<F>): DecoderF<F, unknown, string> {
   return (i) =>
-    typeof i === "string" ? succeedF(F)(constant(i)) : F.fail(["not a string"])
+    typeof i === "string"
+      ? succeedF(F)(constant(i))
+      : F.fail(FA.of(DE.constant("not a string", i)))
 }

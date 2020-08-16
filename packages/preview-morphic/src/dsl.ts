@@ -39,12 +39,10 @@ export interface DSL<F> {
     A
   >
 
-  recover: <S, SO, K2, KN2 extends string, X2, I2, R2, E2, A2>(
-    f: (
-      e: string[]
-    ) => HKTTL<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
+  recover: <S, SO, K2, KN2 extends string, X2, I2, R2, E, E2, A2>(
+    f: (e: E) => HKTTL<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
   ) => <K, KN extends string, SI, X, I, R, A>(
-    fa: HKTTL<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, string[], A>
+    fa: HKTTL<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, E, A>
   ) => HKTTL<
     F,
     any,
@@ -114,6 +112,7 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
     I,
     S,
     R,
+    E,
     A,
     K2,
     KN2 extends string,
@@ -123,10 +122,8 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
     E2,
     A2
   >(
-    fa: HKTTL<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, string[], A>,
-    f: (
-      e: string[]
-    ) => HKTTL<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
+    fa: HKTTL<F, any, any, any, any, K, KN, SI, SO, X, I, S, R, E, A>,
+    f: (e: E) => HKTTL<F, any, any, any, any, K2, KN2, SO, SO, X2, I2, S, R2, E2, A2>
   ) =>
     pipe(
       fa,
