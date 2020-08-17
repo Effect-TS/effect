@@ -2,12 +2,13 @@ import * as A from "../Array/core"
 import { Associative } from "../Associative"
 import { pipe, tuple } from "../Function"
 import { Identity, makeIdentity } from "../Identity"
-import { makeAny } from "../_abstract/Any"
-import { makeCovariant } from "../_abstract/Covariant"
-import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
+import { AnyK } from "../_abstract/Any"
+import { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
+import { implementForeachF, TraversableK } from "../_abstract/Traversable"
 import {
   implementForeachWithKeysF,
-  makeTraversableWithKeys
+  TraversableWithKeysK
 } from "../_abstract/TraversableWithKeys"
 import * as R from "../_system/Record"
 
@@ -33,22 +34,7 @@ declare module "../_abstract/HKT" {
   > {
     [RecordURI]: R.Record<NK, Out>
   }
-  interface URItoKeys<
-    TL0,
-    TL1,
-    TL2,
-    TL3,
-    K,
-    NK extends string,
-    SI,
-    SO,
-    X,
-    I,
-    S,
-    Env,
-    Err,
-    Out
-  > {
+  interface URItoKeys<TL0, TL1, TL2, TL3, K, NK extends string> {
     [RecordURI]: NK
   }
 }
@@ -56,21 +42,21 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `Record[+_: String, +_]`
  */
-export const Any = makeAny<RecordURI>()()({
+export const Any = instance<AnyK<RecordURI>>({
   any: () => ({})
 })
 
 /**
  * The `Covariant` instance for `Record[+_: String, +_]`
  */
-export const Covariant = makeCovariant<RecordURI>()()({
+export const Covariant = instance<CovariantK<RecordURI>>({
   map: R.map
 })
 
 /**
  * TraversableWithKeys's `foreachWithKeysF` for `Record[+_: String, +_]`.
  */
-export const foreachWithKeysF = implementForeachWithKeysF<RecordURI>()()((_) => {
+export const foreachWithKeysF = implementForeachWithKeysF<RecordURI>()((_) => {
   const I = getIdentitySpread<typeof _._b>()<typeof _._fkn>()
   return (G) => (f) => (fa) =>
     pipe(
@@ -95,21 +81,23 @@ export const foreachWithKeysF = implementForeachWithKeysF<RecordURI>()()((_) => 
 /**
  * Traversable's `foreachF` for `Record[+_: String, +_]`.
  */
-export const foreachF = implementForeachF<RecordURI>()()(() => (G) => (f) =>
+export const foreachF = implementForeachF<RecordURI>()(() => (G) => (f) =>
   foreachWithKeysF(G)((a) => f(a))
 )
 
 /**
  * The `Traversable` instance for `Record[+_: String, +_]`
  */
-export const Traversable = makeTraversable(Covariant)({
+export const Traversable = instance<TraversableK<RecordURI>>({
+  ...Covariant,
   foreachF
 })
 
 /**
  * The `TraversableWithKeys` instance for `Record[+_: String, +_]`
  */
-export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
+export const TraversableWithKeys = instance<TraversableWithKeysK<RecordURI>>({
+  ...Covariant,
   foreachWithKeysF
 })
 

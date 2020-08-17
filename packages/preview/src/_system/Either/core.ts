@@ -21,7 +21,7 @@ export type Either<E, A> = Left<E> | Right<A>
  * Constructs a new `Either` holding a `Right` value. This usually represents a successful value due to the right bias
  * of this structure
  */
-export function right<A = never>(a: A): Either<never, A> {
+export function right<A>(a: A): Either<never, A> {
   return { _tag: "Right", right: a }
 }
 
@@ -29,7 +29,7 @@ export function right<A = never>(a: A): Either<never, A> {
  * Constructs a new `Either` holding a `Left` value. This usually represents a failure, due to the right-bias of this
  * structure
  */
-export function left<E = never>(e: E): Either<E, never> {
+export function left<E>(e: E): Either<E, never> {
   return { _tag: "Left", left: e }
 }
 

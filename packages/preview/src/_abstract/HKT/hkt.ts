@@ -1,15 +1,77 @@
-export type HKT<URI, Out> = HKT2<URI, any, Out>
+import { HasURI } from "."
 
-export type HKT2<URI, Err, Out> = HKT3<URI, any, Err, Out>
+export type HKT_<URI, Out> = HKT<URI, any, any, any, any, Out>
 
-export type HKT3<URI, Env, Err, Out> = HKT4<URI, any, Env, Err, Out>
+export type HKT<URI, TL0, TL1, TL2, TL3, Out> = HKT2<URI, TL0, TL1, TL2, TL3, any, Out>
 
-export type HKT4<URI, St, Env, Err, Out> = HKT5<URI, any, St, Env, Err, Out>
-
-export type HKT5<URI, In, St, Env, Err, Out> = HKT6<URI, any, In, St, Env, Err, Out>
-
-export type HKT6<URI, X, In, St, Env, Err, Out> = HKT7<
+export type HKT2<URI, TL0, TL1, TL2, TL3, Err, Out> = HKT3<
   URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
+  any,
+  Err,
+  Out
+>
+
+export type HKT3_<URI, Env, Err, Out> = HKT4<
+  URI,
+  any,
+  any,
+  any,
+  any,
+  any,
+  Env,
+  Err,
+  Out
+>
+
+export type HKT3<URI, TL0, TL1, TL2, TL3, Env, Err, Out> = HKT4<
+  URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
+  any,
+  Env,
+  Err,
+  Out
+>
+
+export type HKT4<URI, TL0, TL1, TL2, TL3, St, Env, Err, Out> = HKT5<
+  URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
+  any,
+  St,
+  Env,
+  Err,
+  Out
+>
+
+export type HKT5<URI, TL0, TL1, TL2, TL3, In, St, Env, Err, Out> = HKT6<
+  URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
+  any,
+  In,
+  St,
+  Env,
+  Err,
+  Out
+>
+
+export type HKT6<URI, TL0, TL1, TL2, TL3, X, In, St, Env, Err, Out> = HKT7<
+  URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   any,
   X,
   In,
@@ -19,8 +81,12 @@ export type HKT6<URI, X, In, St, Env, Err, Out> = HKT7<
   Out
 >
 
-export type HKT7<URI, SO, X, In, St, Env, Err, Out> = HKT8<
+export type HKT7<URI, TL0, TL1, TL2, TL3, SO, X, In, St, Env, Err, Out> = HKT8<
   URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   any,
   SO,
   X,
@@ -31,8 +97,12 @@ export type HKT7<URI, SO, X, In, St, Env, Err, Out> = HKT8<
   Out
 >
 
-export type HKT8<URI, SI, SO, X, In, St, Env, Err, Out> = HKT9<
+export type HKT8<URI, TL0, TL1, TL2, TL3, SI, SO, X, In, St, Env, Err, Out> = HKT9<
   URI,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   any,
   SI,
   SO,
@@ -44,10 +114,13 @@ export type HKT8<URI, SI, SO, X, In, St, Env, Err, Out> = HKT9<
   Out
 >
 
-export type HKT9<URI, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKT10<
+export type HKT9<
   URI,
-  any,
-  NK,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
+  NK extends string,
   SI,
   SO,
   X,
@@ -56,9 +129,9 @@ export type HKT9<URI, NK extends string, SI, SO, X, In, St, Env, Err, Out> = HKT
   Env,
   Err,
   Out
->
+> = HKTFull<URI, TL0, TL1, TL2, TL3, any, NK, SI, SO, X, In, St, Env, Err, Out>
 
-export type HKT10<
+export type HKTFull_<
   URI,
   K,
   NK extends string,
@@ -71,72 +144,6 @@ export type HKT10<
   Err,
   Out
 > = HKTFull<URI, any, any, any, any, K, NK, SI, SO, X, In, St, Env, Err, Out>
-
-export type HKT11<
-  URI,
-  TL3,
-  K,
-  NK extends string,
-  SI,
-  SO,
-  X,
-  In,
-  St,
-  Env,
-  Err,
-  Out
-> = HKTFull<URI, any, any, any, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-
-export type HKT12<
-  URI,
-  TL2,
-  TL3,
-  K,
-  NK extends string,
-  SI,
-  SO,
-  X,
-  In,
-  St,
-  Env,
-  Err,
-  Out
-> = HKTFull<URI, any, any, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-
-export type HKT13<
-  URI,
-  TL1,
-  TL2,
-  TL3,
-  K,
-  NK extends string,
-  SI,
-  SO,
-  X,
-  In,
-  St,
-  Env,
-  Err,
-  Out
-> = HKTFull<URI, any, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
-
-export type HKT14<
-  URI,
-  TL0,
-  TL1,
-  TL2,
-  TL3,
-  K,
-  NK extends string,
-  SI,
-  SO,
-  X,
-  In,
-  St,
-  Env,
-  Err,
-  Out
-> = HKTFull<URI, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, In, St, Env, Err, Out>
 
 export interface HKTFull<
   URI,
@@ -154,12 +161,7 @@ export interface HKTFull<
   Env,
   Err,
   Out
-> {
-  readonly _URI: URI
-  readonly _TL0: TL0
-  readonly _TL1: TL1
-  readonly _TL2: TL2
-  readonly _TL3: TL3
+> extends HasURI<URI, TL0, TL1, TL2, TL3> {
   readonly _Out: () => Out
   readonly _Err: () => Err
   readonly _Env: (_: Env) => void

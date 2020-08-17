@@ -1,22 +1,6 @@
-import { HKTFull } from "./hkt"
+import { HKT } from "./hkt"
 
-export type AnyHKT = HKTFull<
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any
->
+export type AnyHKT = HKT<any, any, any, any, any, any>
 
 export type HKTTypeS<H extends AnyHKT> = H["_St"]
 

@@ -1,17 +1,18 @@
-import { constant } from "../Function"
+import { constant, identity } from "../Function"
 import { intersect } from "../Utils"
-import { makeAny } from "../_abstract/Any"
-import { makeApplicative } from "../_abstract/Applicative"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeAssociativeEither } from "../_abstract/AssociativeEither"
-import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
-import { makeCovariant } from "../_abstract/Covariant"
+import { AnyK } from "../_abstract/Any"
+import { ApplicativeK } from "../_abstract/Applicative"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import { AssociativeEitherK } from "../_abstract/AssociativeEither"
+import { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
+import { CovariantK } from "../_abstract/Covariant"
 import { sequenceSF } from "../_abstract/DSL"
-import { makeAccess } from "../_abstract/FX/Access"
-import { makeFail } from "../_abstract/FX/Fail"
-import { makeRecover } from "../_abstract/FX/Recover"
-import { makeIdentityBoth } from "../_abstract/IdentityBoth"
-import { makeMonad } from "../_abstract/Monad"
+import { AccessK } from "../_abstract/FX/Access"
+import { FailK } from "../_abstract/FX/Fail"
+import { RecoverK } from "../_abstract/FX/Recover"
+import { instance } from "../_abstract/HKT"
+import { IdentityBothK } from "../_abstract/IdentityBoth"
+import { MonadK } from "../_abstract/Monad"
 import * as X from "../_system/XPure"
 
 /**
@@ -44,35 +45,35 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `XPure[-_, +_, -_, +_, +_]`
  */
-export const Any = makeAny<XPureSuccessURI>()()({
+export const Any = instance<AnyK<XPureSuccessURI>>({
   any: () => X.succeed(constant({}))
 })
 
 /**
  * The `Covariant` instance for `XPure[-_, +_, -_, +_, +_]`
  */
-export const Covariant = makeCovariant<XPureSuccessURI>()()({
+export const Covariant = instance<CovariantK<XPureSuccessURI>>({
   map: X.map
 })
 
 /**
  * The `AssociativeBoth` instance for `XPure[-_, +_, -_, +_, +_]`
  */
-export const AssociativeBoth = makeAssociativeBoth<XPureSuccessURI>()()({
+export const AssociativeBoth = instance<AssociativeBothK<XPureSuccessURI>>({
   both: X.zip
 })
 
 /**
  * The `AssociativeEither` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
-export const AssociativeEither = makeAssociativeEither<XPureSuccessURI>()()({
+export const AssociativeEither = instance<AssociativeEitherK<XPureSuccessURI>>({
   either: X.orElseEither
 })
 
 /**
  * The `Access` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
-export const Access = makeAccess<XPureSuccessURI>()()({
+export const Access = instance<AccessK<XPureSuccessURI>>({
   access: X.access,
   provide: X.provideAll
 })
@@ -80,36 +81,36 @@ export const Access = makeAccess<XPureSuccessURI>()()({
 /**
  * The `Fail` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
-export const Fail = makeFail<XPureSuccessURI>()()({
+export const Fail = instance<FailK<XPureSuccessURI>>({
   fail: X.fail
 })
 
 /**
  * The `Recover` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
-export const Recover = makeRecover<XPureSuccessURI>()()({
+export const Recover = instance<RecoverK<XPureSuccessURI>>({
   recover: X.catchAll
 })
 
 /**
  * The `IdentityBoth` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
-export const IdentityBoth = makeIdentityBoth<XPureSuccessURI>()()(
+export const IdentityBoth = instance<IdentityBothK<XPureSuccessURI>>(
   intersect(Any, AssociativeBoth)
 )
 
 /**
  * The `Applicative` instance for `XPure[-_, +_, -_, +_, +_]`.
  */
-export const Applicative = makeApplicative<XPureSuccessURI>()()(
+export const Applicative = instance<ApplicativeK<XPureSuccessURI>>(
   intersect(IdentityBoth, Covariant)
 )
 
 /**
  * The `AssociativeFlatten` instance for `XPure[-_, +_, -_, +_, +_]`
  */
-export const AssociativeFlatten = makeAssociativeFlatten<XPureSuccessURI>()()({
-  flatten: (fa) => X.chain_(fa, (x) => x)
+export const AssociativeFlatten = instance<AssociativeFlattenK<XPureSuccessURI>>({
+  flatten: (fa) => X.chain_(fa, identity)
 })
 
 /**
@@ -120,7 +121,7 @@ export const sequenceS = sequenceSF(Applicative)
 /**
  * The `Monad` instance for `XPure[-_, +_, -_, +_, +_]`
  */
-export const Monad = makeMonad<XPureSuccessURI>()()({
+export const Monad = instance<MonadK<XPureSuccessURI>>({
   ...Any,
   ...AssociativeFlatten,
   ...Covariant

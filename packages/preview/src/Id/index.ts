@@ -1,9 +1,10 @@
-import { makeAny } from "../_abstract/Any"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
-import { makeCovariant } from "../_abstract/Covariant"
-import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
-import { makeMonad } from "../_abstract/Monad"
+import { AnyK } from "../_abstract/Any"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
+import { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
+import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
+import { MonadK } from "../_abstract/Monad"
 import { Generic, genericDef } from "../_abstract/Newtype"
 import { tuple } from "../_system/Function"
 
@@ -46,7 +47,7 @@ export function both<B>(fb: Id<B>) {
 /**
  * The `AssociativeBoth` instance for `Id`.
  */
-export const AssociativeBoth = makeAssociativeBoth<IdURI>()()({
+export const AssociativeBoth = instance<AssociativeBothK<IdURI>>({
   both
 })
 
@@ -60,14 +61,14 @@ export function flatten<A>(ffa: Id<Id<A>>) {
 /**
  * The `AssociativeFlatten` instance for `Id`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten<IdURI>()()({
+export const AssociativeFlatten = instance<AssociativeFlattenK<IdURI>>({
   flatten
 })
 
 /**
  * The `Any` instance for `Id`.
  */
-export const Any = makeAny<IdURI>()()({
+export const Any = instance<AnyK<IdURI>>({
   any: () => Id.wrap({})
 })
 
@@ -81,14 +82,14 @@ export function map<A, B>(f: (a: A) => B): (fa: Id<A>) => Id<B> {
 /**
  * The `Covariant` instance for `Id`.
  */
-export const Covariant = makeCovariant<IdURI>()()({
+export const Covariant = instance<CovariantK<IdURI>>({
   map
 })
 
 /**
  * The `IdentityFlatten` instance for `Id`.
  */
-export const IdentityFlatten = makeIdentityFlatten<IdURI>()()({
+export const IdentityFlatten = instance<IdentityFlattenK<IdURI>>({
   ...Any,
   ...AssociativeFlatten
 })
@@ -96,7 +97,7 @@ export const IdentityFlatten = makeIdentityFlatten<IdURI>()()({
 /**
  * The `Monad` instance for `Id`.
  */
-export const Monad = makeMonad<IdURI>()()({
+export const Monad = instance<MonadK<IdURI>>({
   ...Any,
   ...Covariant,
   ...AssociativeFlatten

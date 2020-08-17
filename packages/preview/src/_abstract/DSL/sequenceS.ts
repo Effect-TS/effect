@@ -1,8 +1,8 @@
 import { pipe, tuple } from "../../Function"
 import { EnforceNonEmptyRecord, UnionToIntersection } from "../../Utils"
 import * as A from "../../_system/Array"
-import { ApplicativeF, ApplicativeK, ApplicativeKE } from "../Applicative"
-import { HKT, HKT10, HKTFull, KindFull, URIS } from "../HKT"
+import { ApplicativeF, ApplicativeK } from "../Applicative"
+import { HKTFull, HKT_, KindFull, URIS } from "../HKT"
 import {
   InferEnvF,
   InferEnvK,
@@ -23,56 +23,6 @@ import {
 
 import { anyF } from "./core"
 
-export function sequenceSF<
-  F extends URIS,
-  E,
-  TL0 = any,
-  TL1 = any,
-  TL2 = any,
-  TL3 = any
->(
-  F: ApplicativeKE<F, E, TL0, TL1, TL2, TL3>
-): <SIO>() => <
-  S,
-  NER extends Record<
-    string,
-    KindFull<F, TL0, TL1, TL2, TL3, any, any, SIO, SIO, any, any, S, any, E, any>
-  >
->(
-  r: EnforceNonEmptyRecord<NER>
-) => KindFull<
-  F,
-  TL0,
-  TL1,
-  TL2,
-  TL3,
-  {
-    [K in keyof NER]: InferKK<F, NER[K]>
-  }[keyof NER],
-  {
-    [K in keyof NER]: InferNKK<F, NER[K]>
-  }[keyof NER],
-  SIO,
-  SIO,
-  {
-    [K in keyof NER]: InferXK<F, NER[K]>
-  }[keyof NER],
-  UnionToIntersection<
-    {
-      [K in keyof NER]: OrNever<InferInK<F, NER[K]>>
-    }[keyof NER]
-  >,
-  S,
-  UnionToIntersection<
-    {
-      [K in keyof NER]: OrNever<InferEnvK<F, NER[K]>>
-    }[keyof NER]
-  >,
-  E,
-  {
-    [K in keyof NER]: InferOutK<F, NER[K]>
-  }
->
 export function sequenceSF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: ApplicativeK<F, TL0, TL1, TL2, TL3>
 ): <SIO>() => <
@@ -128,8 +78,12 @@ export function sequenceSF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   >
 >(
   r: EnforceNonEmptyRecord<NER>
-) => HKT10<
+) => HKTFull<
   F,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   {
     [K in keyof NER]: InferKF<F, NER[K]>
   }[keyof NER],
@@ -161,7 +115,7 @@ export function sequenceSF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
 >
 export function sequenceSF<F>(
   F: ApplicativeF<F>
-): () => (r: Record<string, HKT<F, any>>) => HKT<F, Record<string, any>> {
+): () => (r: Record<string, HKT_<F, any>>) => HKT_<F, Record<string, any>> {
   return () => (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),

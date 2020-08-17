@@ -9,16 +9,17 @@
  */
 import { unsafeCoerce } from "../Function"
 import { intersect } from "../Utils"
-import { makeAny } from "../_abstract/Any"
-import { makeApplicative } from "../_abstract/Applicative"
+import { AnyK } from "../_abstract/Any"
+import { ApplicativeK } from "../_abstract/Applicative"
 import * as Associative from "../_abstract/Associative"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
 import * as Bounded from "../_abstract/Bounded"
-import { makeContravariant } from "../_abstract/Contravariant"
-import { makeCovariant } from "../_abstract/Covariant"
+import { ContravariantK } from "../_abstract/Contravariant"
+import { CovariantK } from "../_abstract/Covariant"
 import * as Eq from "../_abstract/Equal"
+import { instance } from "../_abstract/HKT"
 import * as Identity from "../_abstract/Identity"
-import { makeIdentityBoth } from "../_abstract/IdentityBoth"
+import { IdentityBothK } from "../_abstract/IdentityBoth"
 import * as Ord from "../_abstract/Ord"
 import * as Show from "../_abstract/Show"
 
@@ -28,6 +29,9 @@ export type Const<E, A> = E & {
 
 export const ConstURI = "Const"
 export type ConstURI = typeof ConstURI
+
+export const ConstFixURI = "ConstFix"
+export type ConstFixURI = typeof ConstFixURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
@@ -47,6 +51,11 @@ declare module "../_abstract/HKT" {
     Out
   > {
     readonly [ConstURI]: Const<Err, Out>
+    readonly [ConstFixURI]: Const<TL0, Out>
+  }
+
+  interface URItoErr<TL0, TL1, TL2, TL3, E> {
+    [ConstFixURI]: TL0
   }
 }
 
@@ -78,7 +87,7 @@ export function contramap<A, B>(f: (b: B) => A): <E>(fa: Const<E, A>) => Const<E
  * The `Any` instance for `Const[E, +_]`
  */
 export function getAny<E>(e: E) {
-  return makeAny<ConstURI, E>()()({
+  return instance<AnyK<ConstFixURI, E>>({
     any: makeConst(e)
   })
 }
@@ -87,7 +96,7 @@ export function getAny<E>(e: E) {
  * The `AssociativeBoth` instance for `Const[E, +_]`
  */
 export function getAssociativeBoth<E>(A: Associative.Associative<E>) {
-  return makeAssociativeBoth<ConstURI, E>()()({
+  return instance<AssociativeBothK<ConstFixURI, E>>({
     both: (fb) => (fa) => makeConst(A.combine(fb)(fa))()
   })
 }
@@ -95,14 +104,14 @@ export function getAssociativeBoth<E>(A: Associative.Associative<E>) {
 /**
  * The `Contravariant` instance for `Const[E, +_]`
  */
-export const Contravariant = makeContravariant<ConstURI>()()({
+export const Contravariant = instance<ContravariantK<ConstURI>>({
   contramap
 })
 
 /**
  * The `Covariant` instance for `Const[E, +_]`
  */
-export const Covariant = makeCovariant<ConstURI>()()({
+export const Covariant = instance<CovariantK<ConstURI>>({
   map
 })
 
@@ -110,7 +119,7 @@ export const Covariant = makeCovariant<ConstURI>()()({
  * The `IdentityBoth` instance for `Const[E, +_]`
  */
 export function getIdentityBoth<E>(I: Identity.Identity<E>) {
-  return makeIdentityBoth<ConstURI, E>()()(
+  return instance<IdentityBothK<ConstFixURI, E>>(
     intersect(getAny(I.identity), getAssociativeBoth(I))
   )
 }
@@ -119,7 +128,9 @@ export function getIdentityBoth<E>(I: Identity.Identity<E>) {
  * The `Applicative` instance for `Const[E, +_]`
  */
 export function getApplicative<E>(I: Identity.Identity<E>) {
-  return makeApplicative<ConstURI, E>()()(intersect(Covariant, getIdentityBoth(I)))
+  return instance<ApplicativeK<ConstFixURI, E>>(
+    intersect(Covariant, getIdentityBoth(I))
+  )
 }
 
 /**

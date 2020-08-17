@@ -80,7 +80,6 @@ export {
   Covariant,
   foreachF,
   foreachWithKeysF,
-  getCovariant,
   getTraversable,
   getTraversableWithKeys,
   makeForeachF,

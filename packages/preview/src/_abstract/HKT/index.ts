@@ -16,11 +16,6 @@ export {
 export { AnyHKT, HKTTypeS, HKTTypeSI, HKTTypeSO } from "./extract"
 export {
   HKT,
-  HKT10,
-  HKT11,
-  HKT12,
-  HKT13,
-  HKT14,
   HKT2,
   HKT3,
   HKT4,
@@ -29,7 +24,10 @@ export {
   HKT7,
   HKT8,
   HKT9,
-  HKTFull
+  HKTFull,
+  HKT_,
+  HKT3_,
+  HKTFull_
 } from "./hkt"
 export {
   InferEnvF,
@@ -49,13 +47,9 @@ export {
   OrNever
 } from "./infer"
 export { KeyFor, URItoKeys } from "./keys"
+export { ErrFor, URItoErr } from "./error"
 export {
   Kind,
-  Kind10,
-  Kind11,
-  Kind12,
-  Kind13,
-  Kind14,
   Kind2,
   Kind3,
   Kind4,
@@ -67,6 +61,8 @@ export {
   KindFull
 } from "./kind"
 export { URIS, URItoKind } from "./registry"
+export { Liebenitz } from "./liebenitz"
+export { instance } from "./instance"
 
 /**
  * Used to require URI in typeclasses
