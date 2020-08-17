@@ -4,7 +4,7 @@ import * as D from "../src/decoder/Sync"
 
 import * as T from "@matechs/preview/Effect"
 import * as E from "@matechs/preview/Either"
-import { pipe } from "@matechs/preview/Function"
+import { flow, pipe } from "@matechs/preview/Function"
 
 export interface Req {
   foo: string
@@ -18,7 +18,13 @@ export interface Req3 {
 
 export const Person = M.make((F) =>
   F.required({
-    a: F.string(),
+    a: F.string({
+      DecoderURI: ({ accessM, current, recover, succeed }) =>
+        flow(
+          current,
+          recover(() => accessM((_: Req) => succeed(`fallback: (${_.foo})`)))
+        )
+    }),
     b: F.string(),
     c: F.string(),
     d: F.string(),
@@ -26,20 +32,15 @@ export const Person = M.make((F) =>
   })
 )
 
-export const decoder = pipe(
-  D.decoder(Person),
-  D.map(({ a, b }) => `${a} - ${b}`)
-)
+export const decodePerson = D.decoder(Person)
 
 pipe(
-  decoder({
+  decodePerson({
     a: 0,
     b: "b",
-    c: 1,
-    d: 0,
-    e: {
-      foo: "ok"
-    }
+    c: "c",
+    d: "d",
+    e: "e"
   }),
   T.either,
   T.chain((e) =>
@@ -55,5 +56,8 @@ pipe(
       )
     })
   ),
+  T.provideAll<Req>({
+    foo: "foo"
+  }),
   T.runSync
 )

@@ -1,4 +1,3 @@
-import { identity } from "../../Function"
 import { CovariantF, CovariantK } from "../Covariant"
 import { HKTFull, HKT_, KindFull, URIS } from "../HKT"
 import { IdentityBothF, IdentityBothK } from "../IdentityBoth"
@@ -181,5 +180,5 @@ export function implementForeachF<
   >
 ) => ForeachK<F, TL0, TL1, TL2, TL3>
 export function implementForeachF() {
-  return identity as any
+  return (i: any) => i()
 }

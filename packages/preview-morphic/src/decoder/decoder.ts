@@ -40,6 +40,22 @@ declare module "../registry" {
   }
 }
 
+export function applyConfig<
+  C extends { [k in keyof C]: (a: any) => any },
+  K extends keyof C
+>(
+  config: C | undefined,
+  interpreter: K,
+  configInput: Parameters<C[K]>[0],
+  x: ReturnType<C[K]>
+): ReturnType<C[K]> {
+  if (config != null && config[interpreter]) {
+    return config[interpreter](configInput)
+  } else {
+    return x
+  }
+}
+
 export function primitivesInterpreter<F extends URIS>(
   F: AnyStackK<F>
 ): PrimitivesKF<DecoderURI, F, unknown, unknown>
@@ -50,36 +66,30 @@ export function primitivesInterpreter<F>(
   F: BaseStackF<F>
 ): PrimitivesKF<DecoderURI, F, unknown, unknown> {
   return makeInterpreter<PrimitivesURI, DecoderURI, F>()({
-    array: (D, c) => {
-      if (c) {
-        const md = c[DecoderURI]
-
-        if (md) {
-          return md({
-            child: D,
-            current: arrayDecoder(F, D),
-            ...commonDSL({ K: F })
-          })
-        }
-      }
-      return arrayDecoder(F, D)
-    },
-    string: (c) => {
-      if (c) {
-        const md = c[DecoderURI]
-
-        if (md) {
-          return md({
-            current: stringDecoder<F>(F),
-            ...commonDSL({ K: F })
-          })
-        }
-      }
-      return stringDecoder<F>(F)
-    },
+    array: (D, c) =>
+      applyConfig(
+        c,
+        DecoderURI,
+        {
+          child: D,
+          current: arrayDecoder(F, D),
+          ...commonDSL({ K: F })
+        },
+        arrayDecoder(F, D)
+      ),
+    string: (c) =>
+      applyConfig(
+        c,
+        DecoderURI,
+        {
+          current: stringDecoder(F),
+          ...commonDSL({ K: F })
+        },
+        stringDecoder(F)
+      ),
     required: (D) => (i) => {
       if (typeof i !== "object" || i == null) {
-        return F.fail(DE.error(i, "not an object"))
+        return F.fail(F.wrapErr(DE.error(i, "not an object")))
       }
 
       return pipe(
@@ -88,7 +98,7 @@ export function primitivesInterpreter<F>(
           return pipe(
             v((i as any)[k]),
             F.run,
-            F.map(E.mapLeft((e) => FA.of(DE.key(k, DE.required, e))))
+            F.map(E.mapLeft((e) => FA.of(DE.key(k, DE.required, F.unwrapErr(e)))))
           )
         }),
         F.map(R.collect((k, v) => E.map_(v, (a) => tuple(k, a)))),
@@ -113,7 +123,7 @@ function arrayDecoder<F, R, O, I>(
         F.flatten
       )
     } else {
-      return F.fail(DE.error(i, "not an array"))
+      return F.fail(F.wrapErr(DE.error(i, "not an array")))
     }
   }
 }
@@ -138,7 +148,7 @@ function packEither<F, R, O>(
     }
 
     if (error) {
-      return F.fail(error)
+      return F.fail(F.wrapErr(error))
     } else {
       return succeedF(F)(constant(decoded))
     }
@@ -149,7 +159,9 @@ function stringDecoder<F>(
   F: BaseStackF<F>
 ): DecoderF<F, unknown, string, unknown, DE.DecodeError> {
   return (i) =>
-    typeof i === "string" ? succeedF(F)(constant(i)) : F.fail(DE.error(i, "string"))
+    typeof i === "string"
+      ? succeedF(F)(constant(i))
+      : F.fail(F.wrapErr(DE.error(i, "string")))
 }
 
 export function contramapF<F extends URIS>(F: AnyStackK<F>) {

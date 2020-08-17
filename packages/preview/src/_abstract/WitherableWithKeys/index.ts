@@ -1,4 +1,3 @@
-import { identity } from "../../Function"
 import { Option } from "../../Option"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
 import { HasURI, HKTFull, HKT_, KeyFor, KindFull, URIS } from "../HKT"
@@ -312,5 +311,5 @@ export function implemenCompactWithKeysF<
   >
 ) => WitherWithKeysK<F, TL0, TL1, TL2, TL3>
 export function implemenCompactWithKeysF() {
-  return identity as any
+  return (i: any) => i()
 }

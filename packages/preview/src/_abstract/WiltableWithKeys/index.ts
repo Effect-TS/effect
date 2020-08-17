@@ -1,5 +1,4 @@
 import { Either } from "../../Either"
-import { identity } from "../../Function"
 import { Separated } from "../../_system/Utils"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
 import { HasURI, HKTFull, HKT_, KeyFor, KindFull, URIS } from "../HKT"
@@ -333,5 +332,5 @@ export function implementSeparateWithKeysF<
   >
 ) => WiltWithKeysK<F, TL0, TL1, TL2, TL3>
 export function implementSeparateWithKeysF() {
-  return identity as any
+  return (i: any) => i()
 }

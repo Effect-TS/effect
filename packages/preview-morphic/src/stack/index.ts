@@ -53,7 +53,9 @@ export const Sync: SyncStackK<SyncStackURI> = {
     T.accessM((r: R) => T.fromEither(() => X.runEither(X.provideAll(r)(xp)))),
   map: T.map,
   access: T.access,
-  provide: T.provideAll
+  provide: T.provideAll,
+  wrapErr: identity,
+  unwrapErr: identity
 }
 
 export const Pure: SyncStackK<PureStackURI> = {
@@ -71,7 +73,9 @@ export const Pure: SyncStackK<PureStackURI> = {
   fromXPure: identity,
   map: X.map,
   access: X.access,
-  provide: X.provideAll
+  provide: X.provideAll,
+  wrapErr: identity,
+  unwrapErr: identity
 }
 
 export const Async: AsyncStackK<AsyncStackURI> = {
@@ -91,5 +95,7 @@ export const Async: AsyncStackK<AsyncStackURI> = {
   map: TA.map,
   fromEffect: identity,
   access: TA.access,
-  provide: TA.provideAll
+  provide: TA.provideAll,
+  wrapErr: identity,
+  unwrapErr: identity
 }

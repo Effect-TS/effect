@@ -1,3 +1,4 @@
+import { IsoErr } from "./fx/IsoErr"
 import { FromEffectF, FromEffectK } from "./fx/effect"
 import { FromXPureF, FromXPureK } from "./fx/pure"
 import {
@@ -145,14 +146,16 @@ export type BaseStackF<F> = MonadF<F> &
   RunF<F> &
   ApplicativeF<F> &
   FromXPureF<F> &
-  EnvironmentalF<F>
+  EnvironmentalF<F> &
+  IsoErr<F>
 
 export type BaseStackK<F extends URIS> = MonadK<F> &
   FailK<F> &
   RunK<F> &
   ApplicativeK<F> &
   FromXPureK<F> &
-  EnvironmentalK<F>
+  EnvironmentalK<F> &
+  IsoErr<F>
 
 export interface SyncStackF<F> extends BaseStackF<F> {
   _stack: "SyncStack"

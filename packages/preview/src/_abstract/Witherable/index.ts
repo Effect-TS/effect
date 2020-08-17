@@ -1,4 +1,3 @@
-import { identity } from "../../Function"
 import { Option } from "../../Option"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
 import { HasURI, HKTFull, HKT_, KindFull, URIS } from "../HKT"
@@ -222,5 +221,5 @@ export function implementCompactF<
   >
 ) => WitherK<F, TL0, TL1, TL2, TL3>
 export function implementCompactF() {
-  return identity as any
+  return (i: any) => i()
 }

@@ -139,7 +139,6 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
   const chain = chainF(_.K)
   const accessM = accessMF(_.K)
   const accessServiceM = accessServiceMF(_.K)
-  const mapError = mapErrorF(_.K)
 
   return {
     succeed,
@@ -148,7 +147,7 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
     chain,
     accessM,
     accessServiceM,
-    mapError
+    mapError: (f) => mapErrorF(_.K)((e) => _.K.wrapErr(f(_.K.unwrapErr(e))))
   }
 }
 
