@@ -34,7 +34,7 @@ export interface G_<A> {
   A: A
 }
 
-export interface URItoKind<K, SI, SO, X, I, S, R, E, A> {
+export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF_]: F_<A>
   [UG_]: G_<A>
   [UF__]: F__<E, A>
@@ -64,17 +64,43 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
 // Lookups
 //
 
-export type URIS = keyof URItoKind<any, any, any, any, any, any, any, any, any>
+export type URIS = keyof URItoKind<any, any, any, any, any, any, any, any, any, any>
 
-export type Kind<URI extends URIS, K, SI, SO, X, I, S, R, E, A> = URI extends URIS
-  ? URItoKind<K, SI, SO, X, I, S, R, E, A>[URI]
-  : never
+export type Kind<
+  URI extends URIS,
+  N extends string,
+  K,
+  SI,
+  SO,
+  X,
+  I,
+  S,
+  R,
+  E,
+  A
+> = URI extends URIS ? URItoKind<N, K, SI, SO, X, I, S, R, E, A>[URI] : never
 
 export interface Auto {
   readonly Auto: unique symbol
 }
 
-export { FixE, FixI, FixK, FixR, FixS, FixX, OrE, OrI, OrK, OrR, OrS, OrX } from "./fix"
+export {
+  FixE,
+  FixI,
+  FixK,
+  FixN,
+  FixR,
+  FixS,
+  FixX,
+  OrE,
+  OrI,
+  OrK,
+  OrN,
+  OrR,
+  OrS,
+  OrX
+} from "./fix"
+export { instance } from "./instance"
 
 export interface Base<F> {
   F: F
@@ -84,5 +110,3 @@ export interface CompositionBase2<F, G> {
   F: F
   G: G
 }
-
-export { instance } from "./instance"

@@ -23,3 +23,7 @@ export type OrI<A, B> = A extends FixI<infer X> ? X : B
 export const FixK = genericDef("@newtype/FixK")
 export interface FixK<F> extends Generic<F, typeof FixK> {}
 export type OrK<A, B> = A extends FixK<infer X> ? X : B
+
+export const FixN = genericDef("@newtype/FixN")
+export interface FixN<F extends string> extends Generic<F, typeof FixK> {}
+export type OrN<A, B> = A extends FixN<infer X> ? X : B

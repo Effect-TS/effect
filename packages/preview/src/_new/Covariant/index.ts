@@ -7,6 +7,7 @@ import {
   OrE,
   OrI,
   OrK,
+  OrN,
   OrR,
   OrS,
   OrX,
@@ -18,9 +19,10 @@ import {
 export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <K, SI, SO, X, I, S, R, E>(
+  ) => <N extends string, K, SI, SO, X, I, S, R, E>(
     fa: Kind<
       F,
+      OrN<C, N>,
       OrK<C, K>,
       SI,
       SO,
@@ -33,6 +35,7 @@ export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
     >
   ) => Kind<
     F,
+    OrN<C, N>,
     OrK<C, K>,
     SI,
     SO,
@@ -53,9 +56,29 @@ export interface CovariantComposition<
 > extends CompositionBase2<F, G> {
   readonly map: <A, B>(
     f: (a: A) => B
-  ) => <FK, FSI, FSO, FX, FI, FS, FR, FE, GK, GSI, GSO, GX, GI, GS, GR, GE>(
+  ) => <
+    FN extends string,
+    FK,
+    FSI,
+    FSO,
+    FX,
+    FI,
+    FS,
+    FR,
+    FE,
+    GN extends string,
+    GK,
+    GSI,
+    GSO,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE
+  >(
     fa: Kind<
       F,
+      OrN<CF, FN>,
       OrK<CF, FK>,
       FSI,
       FSO,
@@ -66,6 +89,7 @@ export interface CovariantComposition<
       OrE<CF, FE>,
       Kind<
         G,
+        OrN<CG, GN>,
         OrK<CG, GK>,
         GSI,
         GSO,
@@ -79,6 +103,7 @@ export interface CovariantComposition<
     >
   ) => Kind<
     F,
+    OrN<CF, FN>,
     OrK<CF, FK>,
     FSI,
     FSO,
@@ -89,6 +114,7 @@ export interface CovariantComposition<
     OrE<CF, FE>,
     Kind<
       G,
+      OrN<CG, GN>,
       OrK<CG, GK>,
       GSI,
       GSO,

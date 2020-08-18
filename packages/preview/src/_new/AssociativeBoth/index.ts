@@ -1,9 +1,10 @@
-import { Auto, Base, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
+import { Auto, Base, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, URIS } from "../HKT"
 
 export interface AssociativeBoth<F extends URIS, C = Auto> extends Base<F> {
-  readonly both: <K2, SO, SO2, X2, I2, S, R2, E2, B>(
+  readonly both: <N2 extends string, K2, SO, SO2, X2, I2, S, R2, E2, B>(
     fb: Kind<
       F,
+      OrN<C, N2>,
       OrK<C, K2>,
       SO,
       SO2,
@@ -14,9 +15,10 @@ export interface AssociativeBoth<F extends URIS, C = Auto> extends Base<F> {
       OrE<C, E2>,
       B
     >
-  ) => <K, SI, X, I, R, E, A>(
+  ) => <N extends string, K, SI, X, I, R, E, A>(
     fa: Kind<
       F,
+      OrN<C, N>,
       OrK<C, K>,
       SI,
       SO,
@@ -29,6 +31,7 @@ export interface AssociativeBoth<F extends URIS, C = Auto> extends Base<F> {
     >
   ) => Kind<
     F,
+    OrN<C, N2>,
     OrK<C, K2>,
     SI,
     SO2,
