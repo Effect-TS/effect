@@ -30,7 +30,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> {
     OrK<C, K2>,
     SI,
     SO2,
-    OrX<C, X | X>,
+    OrX<C, X | X2>,
     OrI<C, I & I2>,
     OrS<C, S>,
     OrR<C, R & R2>,
