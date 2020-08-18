@@ -2,6 +2,7 @@ import {
   Auto,
   Base,
   CompositionBase2,
+  instance,
   Kind,
   OrE,
   OrI,
@@ -107,13 +108,8 @@ export function getCovariantComposition<
   CF = Auto,
   CG = Auto
 >(F: Covariant<F, CF>, G: Covariant<G, CG>): CovariantComposition<F, G, CF, CG>
-export function getCovariantComposition(
-  F: Covariant<UF_>,
-  G: Covariant<UG_>
-): CovariantComposition<UF_, UG_> {
-  return {
-    first: F.URI,
-    second: G.URI,
+export function getCovariantComposition(F: Covariant<UF_>, G: Covariant<UG_>) {
+  return instance<CovariantComposition<UF_, UG_>>({
     map: (f) => F.map(G.map(f))
-  }
+  })
 }
