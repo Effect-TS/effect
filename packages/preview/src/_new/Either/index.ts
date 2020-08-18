@@ -14,32 +14,30 @@ declare module "../HKT" {
 }
 
 export const Any: P.Any<EitherURI> = {
-  URI: EitherURI,
+  F: EitherURI,
   any: () => E.right({})
 }
 
-export const AssociativeBoth: P.AssociativeBoth<EitherURI> = {
-  URI: EitherURI,
+export const AssociativeBoth = P.instance<P.AssociativeBoth<EitherURI>>({
   both: E.zip
-}
+})
 
-export const AssociativeEither: P.AssociativeEither<EitherURI> = {
-  URI: EitherURI,
+export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI>>({
   either: (fb) => (fa) =>
     fa._tag === "Right"
       ? E.right(E.left(fa.right))
       : fb._tag === "Right"
       ? E.right(fb)
       : fb
-}
+})
 
 export const AssociativeFlatten: P.AssociativeFlatten<EitherURI> = {
-  URI: EitherURI,
+  F: EitherURI,
   flatten: E.flatten
 }
 
 export const Covariant: P.Covariant<EitherURI> = {
-  URI: EitherURI,
+  F: EitherURI,
   map: E.map
 }
 
@@ -56,7 +54,7 @@ export const Monad: P.Monad<EitherURI> = {
 }
 
 export const getValidationApplicative = getValidationF<EitherURI>({
-  URI: EitherURI,
+  F: EitherURI,
   any: Any.any,
   both: E.zip,
   fail: E.left,
@@ -90,7 +88,7 @@ export const foreachF = P.implementForeachF<EitherURI>()((_) => (G) => (f) => (f
 )
 
 export const Traversable: P.Traversable<EitherURI> = {
-  URI: EitherURI,
+  F: EitherURI,
   map: E.map,
   foreachF
 }

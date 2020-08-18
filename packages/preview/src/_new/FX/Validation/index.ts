@@ -14,7 +14,7 @@ export function getValidationF(
   F: Monad<UF__> & Run<UF__> & Fail<UF__> & Applicative<UF__>
 ): <Z>(A: Associative<Z>) => Applicative<UF__, FixE<Z>> {
   return <Z>(A: Associative<Z>): Applicative<UF__, FixE<Z>> => ({
-    URI: F.URI,
+    F: F.F,
     any: F.any,
     map: F.map,
     both: <B>(fb: F__<Z, B>) => <A>(fa: F__<Z, A>) =>

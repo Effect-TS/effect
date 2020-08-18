@@ -12,24 +12,21 @@ declare module "../HKT" {
 }
 
 export const Any: P.Any<ArrayURI> = {
-  URI: ArrayURI,
+  F: ArrayURI,
   any: () => []
 }
 
-export const AssociativeBoth: P.AssociativeBoth<ArrayURI> = {
-  URI: ArrayURI,
+export const AssociativeBoth = P.instance<P.AssociativeBoth<ArrayURI>>({
   both: A.zip
-}
+})
 
-export const AssociativeFlatten: P.AssociativeFlatten<ArrayURI> = {
-  URI: ArrayURI,
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<ArrayURI>>({
   flatten: A.flatten
-}
+})
 
-export const Covariant: P.Covariant<ArrayURI> = {
-  URI: ArrayURI,
+export const Covariant = P.instance<P.Covariant<ArrayURI>>({
   map: A.map
-}
+})
 
 export const Applicative: P.Applicative<ArrayURI> = {
   ...Any,
@@ -59,8 +56,7 @@ export const foreachF = P.implementForeachF<ArrayURI>()((_) => (G) => (f) => (fa
   )
 )
 
-export const Traversable: P.Traversable<ArrayURI> = {
-  URI: ArrayURI,
+export const Traversable = P.instance<P.Traversable<ArrayURI>>({
   map: A.map,
   foreachF
-}
+})

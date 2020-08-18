@@ -17,7 +17,7 @@ import {
   CompositionBase2
 } from "../HKT"
 
-export interface Foreach<F extends URIS, C = Auto> extends Base<F> {
+export interface Foreach<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
     GSIO,
     GK,
