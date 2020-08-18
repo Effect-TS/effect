@@ -10,6 +10,19 @@ export interface HKT<K, SI, SO, X, I, S, R, E, A> {
   A: A
 }
 
+export type Kind2<F extends URIS, E, A> = Kind<
+  F,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  E,
+  A
+>
+
 export const HKTURI = "HKTURI"
 export type HKTURI = typeof HKTURI
 

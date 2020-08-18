@@ -2,7 +2,7 @@ import * as E from "../../../_system/Either"
 import { pipe, tuple } from "../../../_system/Function"
 import { Erase } from "../../../_system/Utils"
 import { Associative } from "../../Associative"
-import { Auto, FixE, HKTURI, Kind, URIS } from "../../HKT"
+import { Auto, FixE, HKTURI, Kind2, URIS } from "../../HKT"
 import { Applicative, Monad } from "../../Prelude"
 import { Fail } from "../Fail"
 import { Run } from "../Run"
@@ -16,44 +16,30 @@ export function getValidationF<F extends HKTURI>(
   return <Z>(A: Associative<Z>): Applicative<F, FixE<Z>> => ({
     any: F.any,
     map: F.map,
-    both: <K2, SO, SO2, X2, I2, S, R2, B>(
-      fb: Kind<F, K2, SO, SO2, X2, I2, S, R2, Z, B>
-    ) => <K, SI, X, I, R, A>(fa: Kind<F, K, SI, SO, X, I, S, R, Z, A>) =>
+    both: <B>(fb: Kind2<F, Z, B>) => <A>(fa: Kind2<F, Z, A>) =>
       pipe(
         F.run(fa),
         F.both(F.run(fb)),
-        F.map(
-          ([maybeA, maybeB]): Kind<
-            F,
-            never,
-            SO2,
-            SO2,
-            never,
-            unknown,
-            S,
-            unknown,
-            Z,
-            readonly [A, B]
-          > =>
-            E.fold_(
-              maybeA,
-              (ea) =>
-                E.fold_(
-                  maybeB,
-                  (eb) => F.fail(A.combine(eb)(ea)),
-                  () => F.fail(ea)
-                ),
-              (a) =>
-                E.fold_(
-                  maybeB,
-                  (e) => F.fail(e),
-                  (b) =>
-                    pipe(
-                      F.any<S, SO2, SO2>(),
-                      F.map(() => tuple(a, b))
-                    )
-                )
-            )
+        F.map(([maybeA, maybeB]) =>
+          E.fold_(
+            maybeA,
+            (ea) =>
+              E.fold_(
+                maybeB,
+                (eb) => F.fail(A.combine(eb)(ea)),
+                () => F.fail(ea)
+              ),
+            (a) =>
+              E.fold_(
+                maybeB,
+                (e) => F.fail(e),
+                (b) =>
+                  pipe(
+                    F.any(),
+                    F.map(() => tuple(a, b))
+                  )
+              )
+          )
         ),
         F.flatten
       )
