@@ -79,3 +79,10 @@ export { FixE, FixI, FixK, FixR, FixS, FixX, OrE, OrI, OrK, OrR, OrS, OrX } from
 export interface Base<F> {
   URI: F
 }
+
+export interface CompositionBase2<F, G> {
+  // first outer
+  first: F
+  // second outer
+  second: G
+}
