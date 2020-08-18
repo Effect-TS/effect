@@ -1,5 +1,5 @@
 import * as E from "../../_system/Either"
-import { tuple } from "../../_system/Function"
+import { pipe, tuple } from "../../_system/Function"
 import { Associative } from "../Associative"
 import { getValidationF } from "../FX/Validation"
 import * as P from "../Prelude"
@@ -78,6 +78,21 @@ export function zipValidation<E>(
         ),
       (a) => E.fold_(fb, E.left, (b) => E.right(tuple(a, b)))
     )
+}
+
+export const foreachF = P.implementForeachF<EitherURI>()((_) => (G) => (f) => (fa) =>
+  E.isLeft(fa)
+    ? pipe(
+        G.any(),
+        G.map(() => fa)
+      )
+    : pipe(f(fa.right), G.map(E.right))
+)
+
+export const Traversable: P.Traversable<EitherURI> = {
+  URI: EitherURI,
+  map: E.map,
+  foreachF
 }
 
 export {
