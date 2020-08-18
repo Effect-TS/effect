@@ -1,9 +1,28 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base } from "../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../HKT"
 
 export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F> {
-  readonly flatten: <K, SI, SO, X, I, R, E, A, K2, SO2, X2, I2, S, R2, E2>(
+  readonly flatten: <
+    N extends string,
+    K,
+    SI,
+    SO,
+    X,
+    I,
+    R,
+    E,
+    A,
+    N2 extends string,
+    K2,
+    SO2,
+    X2,
+    I2,
+    S,
+    R2,
+    E2
+  >(
     ffa: Kind<
       F,
+      OrN<C, N2>,
       OrK<C, K2>,
       SI,
       SO,
@@ -14,6 +33,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F> {
       OrE<C, E2>,
       Kind<
         F,
+        OrN<C, N>,
         OrK<C, K>,
         SO,
         SO2,
@@ -27,6 +47,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F> {
     >
   ) => Kind<
     F,
+    OrN<C, N2>,
     OrK<C, K2>,
     SI,
     SO2,

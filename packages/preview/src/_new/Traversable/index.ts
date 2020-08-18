@@ -14,12 +14,14 @@ import {
   OrX,
   URIS,
   UG_,
-  CompositionBase2
+  CompositionBase2,
+  OrN
 } from "../HKT"
 
 export interface Foreach<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
     GSIO,
+    GN extends string,
     GK,
     GX,
     GI,
@@ -33,6 +35,7 @@ export interface Foreach<F extends URIS, C = Auto> {
       a: A
     ) => Kind<
       G,
+      OrN<GC, GN>,
       OrK<GC, GK>,
       GSIO,
       GSIO,
@@ -43,9 +46,10 @@ export interface Foreach<F extends URIS, C = Auto> {
       OrE<GC, GE>,
       B
     >
-  ) => <FK, FSI, FSO, FX, FI, FS, FR, FE>(
+  ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
     fa: Kind<
       F,
+      OrN<C, FN>,
       OrK<C, FK>,
       FSI,
       FSO,
@@ -58,6 +62,7 @@ export interface Foreach<F extends URIS, C = Auto> {
     >
   ) => Kind<
     G,
+    OrN<GC, GN>,
     OrK<GC, GK>,
     GSIO,
     GSIO,
@@ -68,6 +73,7 @@ export interface Foreach<F extends URIS, C = Auto> {
     OrE<GC, GE>,
     Kind<
       F,
+      OrN<C, FN>,
       OrK<C, FK>,
       FSI,
       FSO,
@@ -95,9 +101,35 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
     G: IdentityBoth<UF_> & Covariant<UF_>
   ) => (
     f: (a: A) => F_<B>
-  ) => <K, SI, SO, X, I, S, R, E>(
-    fa: Kind<F, K, SI, SO, X, I, S, R, E, A>
-  ) => F_<Kind<F, K, SI, SO, X, I, S, R, E, B>>
+  ) => <N extends string, K, SI, SO, X, I, S, R, E>(
+    fa: Kind<
+      F,
+      OrN<C, N>,
+      OrK<C, K>,
+      SI,
+      SO,
+      OrX<C, X>,
+      OrI<C, I>,
+      OrS<C, S>,
+      OrR<C, R>,
+      OrE<C, E>,
+      A
+    >
+  ) => F_<
+    Kind<
+      F,
+      OrN<C, N>,
+      OrK<C, K>,
+      SI,
+      SO,
+      OrX<C, X>,
+      OrI<C, I>,
+      OrS<C, S>,
+      OrR<C, R>,
+      OrE<C, E>,
+      B
+    >
+  >
 ) => Foreach<F, C>
 export function implementForeachF() {
   return (i: any) => i()
@@ -111,6 +143,7 @@ export interface ForeachComposition<
 > {
   <H extends URIS, CH = Auto>(H: IdentityBoth<H, CH> & Covariant<H, CH>): <
     HSIO,
+    HN extends string,
     HK,
     HX,
     HI,
@@ -124,6 +157,7 @@ export interface ForeachComposition<
       a: A
     ) => Kind<
       H,
+      OrN<CH, HN>,
       OrK<CH, HK>,
       HSIO,
       HSIO,
@@ -134,9 +168,29 @@ export interface ForeachComposition<
       OrE<CH, HE>,
       B
     >
-  ) => <FK, FSI, FSO, FX, FI, FS, FR, FE, GK, GSI, GSO, GX, GI, GS, GR, GE>(
+  ) => <
+    FN extends string,
+    FK,
+    FSI,
+    FSO,
+    FX,
+    FI,
+    FS,
+    FR,
+    FE,
+    GN extends string,
+    GK,
+    GSI,
+    GSO,
+    GX,
+    GI,
+    GS,
+    GR,
+    GE
+  >(
     fa: Kind<
       F,
+      OrN<CF, FN>,
       OrK<CF, FK>,
       FSI,
       FSO,
@@ -147,6 +201,7 @@ export interface ForeachComposition<
       OrE<CF, FE>,
       Kind<
         G,
+        OrN<CG, GN>,
         OrK<CG, GK>,
         GSI,
         GSO,
@@ -160,6 +215,7 @@ export interface ForeachComposition<
     >
   ) => Kind<
     H,
+    OrN<CH, HN>,
     OrK<CH, HK>,
     HSIO,
     HSIO,
@@ -170,6 +226,7 @@ export interface ForeachComposition<
     OrE<CH, HE>,
     Kind<
       F,
+      OrN<CF, FN>,
       OrK<CF, FK>,
       FSI,
       FSO,
@@ -180,6 +237,7 @@ export interface ForeachComposition<
       OrE<CF, FE>,
       Kind<
         G,
+        OrN<CG, GN>,
         OrK<CG, GK>,
         GSI,
         GSO,
