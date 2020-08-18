@@ -1,7 +1,7 @@
 import { Either } from "../../Either"
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base } from "../HKT"
 
-export interface AssociativeEither<F extends URIS, C = Auto> {
+export interface AssociativeEither<F extends URIS, C = Auto> extends Base<F> {
   readonly either: <K2, SI2, SO2, X2, I2, S, R2, E2, B>(
     fb: Kind<
       F,

@@ -1,6 +1,6 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base } from "../HKT"
 
-export interface Covariant<F extends URIS, C = Auto> {
+export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <K, SI, SO, X, I, S, R, E>(

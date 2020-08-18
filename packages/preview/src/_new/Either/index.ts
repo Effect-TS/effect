@@ -14,14 +14,17 @@ declare module "../HKT" {
 }
 
 export const Any: P.Any<EitherURI> = {
+  URI: EitherURI,
   any: () => E.right({})
 }
 
 export const AssociativeBoth: P.AssociativeBoth<EitherURI> = {
+  URI: EitherURI,
   both: E.zip
 }
 
 export const AssociativeEither: P.AssociativeEither<EitherURI> = {
+  URI: EitherURI,
   either: (fb) => (fa) =>
     fa._tag === "Right"
       ? E.right(E.left(fa.right))
@@ -31,10 +34,12 @@ export const AssociativeEither: P.AssociativeEither<EitherURI> = {
 }
 
 export const AssociativeFlatten: P.AssociativeFlatten<EitherURI> = {
+  URI: EitherURI,
   flatten: E.flatten
 }
 
 export const Covariant: P.Covariant<EitherURI> = {
+  URI: EitherURI,
   map: E.map
 }
 
@@ -51,6 +56,7 @@ export const Monad: P.Monad<EitherURI> = {
 }
 
 export const getValidationApplicative = getValidationF<EitherURI>({
+  URI: EitherURI,
   any: Any.any,
   both: E.zip,
   fail: E.left,
@@ -73,3 +79,66 @@ export function zipValidation<E>(
       (a) => E.fold_(fb, E.left, (b) => E.right(tuple(a, b)))
     )
 }
+
+export {
+  alt,
+  alt_,
+  ap,
+  ap_,
+  bimap,
+  bimap_,
+  chain,
+  chain_,
+  compact,
+  duplicate,
+  Either,
+  exists,
+  exists_,
+  extend,
+  extend_,
+  filterOrElse,
+  filterOrElse_,
+  flatten,
+  fold,
+  fold_,
+  fromNullable,
+  fromNullable_,
+  fromOption,
+  fromOption_,
+  fromPredicate,
+  fromPredicate_,
+  getOrElse,
+  getOrElse_,
+  isLeft,
+  isRight,
+  Left,
+  left,
+  map,
+  mapLeft,
+  mapLeft_,
+  map_,
+  merge,
+  orElse,
+  orElseEither,
+  orElseEither_,
+  orElse_,
+  parseJSON,
+  parseJSON_,
+  Right,
+  right,
+  stringifyJSON,
+  swap,
+  tap,
+  tap_,
+  toError,
+  tryCatch,
+  tryCatch_,
+  widenA,
+  widenE,
+  zip,
+  zipFirst,
+  zipFirst_,
+  zipSecond,
+  zipSecond_,
+  zip_
+} from "../../_system/Either"

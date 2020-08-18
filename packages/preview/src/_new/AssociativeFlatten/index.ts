@@ -1,6 +1,6 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base } from "../HKT"
 
-export interface AssociativeFlatten<F extends URIS, C = Auto> {
+export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F> {
   readonly flatten: <K, SI, SO, X, I, R, E, A, K2, SO2, X2, I2, S, R2, E2>(
     ffa: Kind<
       F,

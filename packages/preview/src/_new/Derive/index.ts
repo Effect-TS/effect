@@ -1,6 +1,6 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base } from "../HKT"
 
-export interface Derive<F extends URIS, Typeclass extends URIS, C = Auto> {
+export interface Derive<F extends URIS, Typeclass extends URIS, C = Auto> extends Base<F> {
   readonly derive: <K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       Typeclass,

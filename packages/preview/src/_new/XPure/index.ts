@@ -12,17 +12,21 @@ declare module "../HKT" {
 }
 
 export const Any: P.Any<XPureURI> = {
+  URI: XPureURI,
   any: () => X.succeed(constant({}))
 }
 
 export const AssociativeBoth: P.AssociativeBoth<XPureURI> = {
+  URI: XPureURI,
   both: X.zip
 }
 
 export const AssociativeEither: P.AssociativeEither<XPureURI> = {
+  URI: XPureURI,
   either: X.orElseEither
 }
 
 export const AssociativeFlatten: P.AssociativeFlatten<XPureURI> = {
+  URI: XPureURI,
   flatten: (ffa) => X.chain_(ffa, identity)
 }

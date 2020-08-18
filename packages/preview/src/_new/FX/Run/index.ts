@@ -1,7 +1,7 @@
 import { Either } from "../../../_system/Either"
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base } from "../../HKT"
 
-export interface Run<F extends URIS, C = Auto> {
+export interface Run<F extends URIS, C = Auto> extends Base<F> {
   readonly run: <K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       F,

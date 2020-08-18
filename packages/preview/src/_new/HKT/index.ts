@@ -10,20 +10,12 @@ export interface HKT<K, SI, SO, X, I, S, R, E, A> {
   A: A
 }
 
-export type Kind2<F extends URIS, E, A> = Kind<
-  F,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  any,
-  E,
-  A
->
+export interface HKT1<A> extends HKT<any, any, any, any, any, any, any, any, A> {}
+
+export interface HKT2<E, A> extends HKT<any, any, any, any, any, any, any, E, A> {}
 
 export const HKTURI = "HKTURI"
+
 export type HKTURI = typeof HKTURI
 
 export interface URItoKind<K, SI, SO, X, I, S, R, E, A> {
@@ -41,3 +33,7 @@ export interface Auto {
 }
 
 export { FixE, FixI, FixK, FixR, FixS, FixX, OrE, OrI, OrK, OrR, OrS, OrX } from "./fix"
+
+export interface Base<F> {
+  URI: F
+}
