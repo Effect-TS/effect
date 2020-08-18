@@ -14,5 +14,12 @@ export {
 } from "../Combined"
 export { Closure, makeClosure, ClosureURI } from "../Closure"
 export { Associative, makeAssociative } from "../Associative"
-export { Foreach, implementForeachF, Traversable } from "../Traversable"
+export {
+  Foreach,
+  implementForeachF,
+  Traversable,
+  ForeachComposition,
+  getTraversableComposition,
+  TraversableComposition
+} from "../Traversable"
 export { Identity, IdentityURI, deriveIdentity, makeIdentity } from "../Identity"
