@@ -6,8 +6,6 @@ import {
   HKT1,
   HKTURI,
   Kind,
-
-  //Kind1,
   OrE,
   OrI,
   OrK,
