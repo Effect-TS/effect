@@ -3,19 +3,19 @@ import { Covariant, CovariantComposition, getCovariantComposition } from "../Cov
 import {
   Auto,
   Base,
-  F_,
-  UF_,
+  CompositionBase2,
+  G_,
   Kind,
   OrE,
   OrI,
   OrK,
+  OrN,
   OrR,
   OrS,
   OrX,
-  URIS,
+  UF_,
   UG_,
-  CompositionBase2,
-  OrN
+  URIS
 } from "../HKT"
 
 export interface Foreach<F extends URIS, C = Auto> {
@@ -94,14 +94,23 @@ export interface Traversable<F extends URIS, C = Auto>
 }
 
 export function implementForeachF<F extends URIS, C = Auto>(): (
-  i: <A, B>(_: {
+  i: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(_: {
     A: A
     B: B
+    N: N
+    K: K
+    SI: SI
+    SO: SO
+    X: X
+    I: I
+    S: S
+    R: R
+    E: E
   }) => (
-    G: IdentityBoth<UF_> & Covariant<UF_>
+    G: IdentityBoth<UG_> & Covariant<UG_>
   ) => (
-    f: (a: A) => F_<B>
-  ) => <N extends string, K, SI, SO, X, I, S, R, E>(
+    f: (a: A) => G_<B>
+  ) => (
     fa: Kind<
       F,
       OrN<C, N>,
@@ -115,7 +124,7 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
       OrE<C, E>,
       A
     >
-  ) => F_<
+  ) => G_<
     Kind<
       F,
       OrN<C, N>,
