@@ -1,18 +1,18 @@
-export { Any } from "../Any"
-export { Associative, makeAssociative } from "../Associative"
-export { AssociativeBoth } from "../AssociativeBoth"
-export { AssociativeEither } from "../AssociativeEither"
-export { AssociativeFlatten } from "../AssociativeFlatten"
-export { Closure, ClosureURI, makeClosure } from "../Closure"
+export { Any } from "./Any"
+export { Associative, makeAssociative } from "./Associative"
+export { AssociativeBoth } from "./AssociativeBoth"
+export { AssociativeEither } from "./AssociativeEither"
+export { AssociativeFlatten } from "./AssociativeFlatten"
+export { Closure, ClosureURI, makeClosure } from "./Closure"
 export {
   Applicative,
   IdentityBoth,
   IdentityEither,
   IdentityFlatten,
   Monad
-} from "../Combined"
-export { Covariant, CovariantComposition, getCovariantComposition } from "../Covariant"
-export { Derive } from "../Derive"
+} from "./Combined"
+export { Covariant, CovariantComposition, getCovariantComposition } from "./Covariant"
+export { Derive } from "./Derive"
 export {
   Auto,
   Base,
@@ -47,9 +47,9 @@ export {
   UG_,
   URIS,
   URItoKind
-} from "../HKT"
-export { deriveIdentity, Identity, IdentityURI, makeIdentity } from "../Identity"
-export { None } from "../None"
+} from "./HKT"
+export { deriveIdentity, Identity, IdentityURI, makeIdentity } from "./Identity"
+export { None } from "./None"
 export {
   Foreach,
   ForeachComposition,
@@ -57,4 +57,4 @@ export {
   implementForeachF,
   Traversable,
   TraversableComposition
-} from "../Traversable"
+} from "./Traversable"

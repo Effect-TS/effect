@@ -1,12 +1,12 @@
-import { flow, tuple } from "../../Function"
-import * as R from "../../_system/Record"
+import { flow, tuple } from "../../../Function"
+import * as R from "../../../_system/Record"
+import * as P from "../../Prelude"
 import * as A from "../Array"
-import * as P from "../Prelude"
 
 export const RecordURI = "RecordURI"
 export type RecordURI = typeof RecordURI
 
-declare module "../HKT" {
+declare module "../../Prelude/HKT" {
   export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [RecordURI]: R.Record<N, A>
   }

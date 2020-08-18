@@ -1,4 +1,4 @@
-import { Either } from "../../../_system/Either"
+import { Either } from "../../../../_system/Either"
 import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../../HKT"
 
 export interface Run<F extends URIS, C = Auto> extends Base<F> {

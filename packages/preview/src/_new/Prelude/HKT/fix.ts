@@ -1,4 +1,4 @@
-import { Generic, genericDef } from "../../Newtype"
+import { Generic, genericDef } from "../../../Newtype"
 
 export const FixE = genericDef("@newtype/FixE")
 export interface FixE<F> extends Generic<F, typeof FixE> {}

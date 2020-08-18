@@ -1,11 +1,11 @@
-import { pipe } from "../../Function"
-import * as A from "../../_system/Array"
-import * as P from "../Prelude"
+import { pipe } from "../../../Function"
+import * as A from "../../../_system/Array"
+import * as P from "../../Prelude"
 
 export const ArrayURI = "ArrayURI"
 export type ArrayURI = typeof ArrayURI
 
-declare module "../HKT" {
+declare module "../../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [ArrayURI]: A.Array<A>
   }
@@ -188,4 +188,4 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../../_system/Array"
+} from "../../../_system/Array"

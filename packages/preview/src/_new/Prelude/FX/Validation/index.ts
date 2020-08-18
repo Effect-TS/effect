@@ -1,9 +1,9 @@
-import * as E from "../../../_system/Either"
-import { pipe, tuple } from "../../../_system/Function"
-import { Erase } from "../../../_system/Utils"
+import * as E from "../../../../_system/Either"
+import { pipe, tuple } from "../../../../_system/Function"
+import { Erase } from "../../../../_system/Utils"
 import { Associative } from "../../Associative"
+import { Applicative, Monad } from "../../Combined"
 import { Auto, FixE, instance, UF__, URIS } from "../../HKT"
-import { Applicative, Monad } from "../../Prelude"
 import { Fail } from "../Fail"
 import { Run } from "../Run"
 

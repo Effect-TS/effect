@@ -1,13 +1,13 @@
-import * as E from "../../_system/Either"
-import { pipe, tuple } from "../../_system/Function"
-import { Associative } from "../Associative"
-import { getValidationF } from "../FX/Validation"
-import * as P from "../Prelude"
+import * as E from "../../../_system/Either"
+import { pipe, tuple } from "../../../_system/Function"
+import * as P from "../../Prelude"
+import { Associative } from "../../Prelude/Associative"
+import { getValidationF } from "../../Prelude/FX/Validation"
 
 export const EitherURI = "EitherURI"
 export type EitherURI = typeof EitherURI
 
-declare module "../HKT" {
+declare module "../../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [EitherURI]: E.Either<E, A>
   }
@@ -151,4 +151,4 @@ export {
   zipSecond,
   zipSecond_,
   zip_
-} from "../../_system/Either"
+} from "../../../_system/Either"
