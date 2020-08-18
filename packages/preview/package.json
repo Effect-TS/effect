@@ -46,6 +46,8 @@
       "_new/Identity",
       "_new/None",
       "_new/Prelude",
+      "_new/Record",
+      "_new/Traversable",
       "_new/XPure",
       "_abstract",
       "_abstract/Any",
