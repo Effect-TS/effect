@@ -31,15 +31,13 @@ export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI>>({
       : fb
 })
 
-export const AssociativeFlatten: P.AssociativeFlatten<EitherURI> = {
-  F: EitherURI,
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EitherURI>>({
   flatten: E.flatten
-}
+})
 
-export const Covariant: P.Covariant<EitherURI> = {
-  F: EitherURI,
+export const Covariant = P.instance<P.Covariant<EitherURI>>({
   map: E.map
-}
+})
 
 export const Applicative: P.Applicative<EitherURI> = {
   ...Any,
@@ -87,11 +85,10 @@ export const foreachF = P.implementForeachF<EitherURI>()((_) => (G) => (f) => (f
     : pipe(f(fa.right), G.map(E.right))
 )
 
-export const Traversable: P.Traversable<EitherURI> = {
-  F: EitherURI,
+export const Traversable = P.instance<P.Traversable<EitherURI>>({
   map: E.map,
   foreachF
-}
+})
 
 export {
   alt,
