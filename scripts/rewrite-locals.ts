@@ -8,38 +8,7 @@ import { modifyGlob, onLeft, onRight, runMain } from "./_common"
 
 const GLOB_PATTERN = "build/**/*.@(ts|js)"
 
-const packages = [
-  "aio",
-  "contrib",
-  "core",
-  "test-jest",
-  "test",
-  "graceful",
-  "orm",
-  "tracing",
-  "uuid",
-  "zoo",
-  "browser",
-  "epics",
-  "rxjs",
-  "apollo",
-  "express",
-  "http-client-libcurl",
-  "http-client-fetch",
-  "http-client",
-  "koa",
-  "rpc-client",
-  "rpc",
-  "cqrs-es",
-  "cqrs",
-  "fancy",
-  "console",
-  "logger-pino",
-  "logger-winston",
-  "logger",
-  "morphic-alg",
-  "morphic"
-]
+const packages = ["preview"]
 
 export const replace = pipe(
   packages,

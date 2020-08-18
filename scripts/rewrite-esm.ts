@@ -18,31 +18,7 @@ const packages = [
   "parser-ts",
   "retry-ts",
   "hyper-ts",
-  "fp—ts-local-storage",
-  "@matechs/apollo",
-  "@matechs/console",
-  "@matechs/cqrs",
-  "@matechs/cqrs-es",
-  "@matechs/epics",
-  "@matechs/express",
-  "@matechs/koa",
-  "@matechs/fancy",
-  "@matechs/graceful",
-  "@matechs/http-client",
-  "@matechs/http-client-fetch",
-  "@matechs/http-client-libcurl",
-  "@matechs/logger",
-  "@matechs/logger-winston",
-  "@matechs/logger-pino",
-  "@matechs/orm",
-  "@matechs/rpc",
-  "@matechs/rpc-client",
-  "@matechs/rxjs",
-  "@matechs/tracing",
-  "@matechs/uuid",
-  "@matechs/zoo",
-  "@matechs/test",
-  "@matechs/test-jest"
+  "fp—ts-local-storage"
 ]
 
 const regexp = new RegExp(

@@ -1,8 +1,8 @@
 {
-  "name": "@matechs/preview",
-  "version": "0.0.3",
+  "name": "@effect-ts/preview",
+  "version": "0.0.0",
   "license": "MIT",
-  "private": false,
+  "private": true,
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
     "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
