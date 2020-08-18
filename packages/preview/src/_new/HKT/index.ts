@@ -7,7 +7,7 @@ export interface F_<A> {
   A: A
 }
 
-export const UF_ = "HKTFURI"
+export const UF_ = "F_"
 export type UF_ = typeof UF_
 
 //
@@ -19,14 +19,41 @@ export interface F__<E, A> {
   A: A
 }
 
-export const UF__ = "HKT2URI"
+export const UF__ = "F__"
 export type UF__ = typeof UF__
+
+//
+// Generic F[_, _, _]
+//
+export interface F___<R, E, A> {
+  URI: UF___
+  E: E
+  A: A
+  R: R
+}
+
+export const UF___ = "F___"
+export type UF___ = typeof UF___
+
+//
+// Generic F[_, _, _, _]
+//
+export interface F____<S, R, E, A> {
+  URI: UF____
+  E: E
+  A: A
+  R: R
+  S: S
+}
+
+export const UF____ = "F____"
+export type UF____ = typeof UF____
 
 //
 // Generic G
 //
 
-export const UG_ = "HKTGURI"
+export const UG_ = "G_"
 export type UG_ = typeof UG_
 
 export interface G_<A> {
@@ -38,6 +65,8 @@ export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF_]: F_<A>
   [UG_]: G_<A>
   [UF__]: F__<E, A>
+  [UF___]: F___<R, E, A>
+  [UF____]: F____<S, R, E, A>
 }
 
 //
