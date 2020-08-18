@@ -56,6 +56,83 @@ export type ArrayConfig<F, CRDec, CREnc, RDec, REnc, O, E> = {
   ) => InterpreterKindF<EncoderURI, F, CRDec, REnc, readonly O[], readonly E[]>
 }
 
+export type RequiredConfig<
+  F,
+  CRDec,
+  CREnc,
+  RDec,
+  REnc,
+  Types extends {
+    [k in keyof Types]: {
+      _RDec: any
+      _REnc: any
+      _E: any
+      _O: any
+    }
+  }
+> = {
+  [DecoderURI]?: (
+    _: {
+      current: InterpreterKindF<
+        DecoderURI,
+        F,
+        CRDec &
+          UnionToIntersection<
+            {
+              [k in keyof Types]: unknown extends Types[k]["_RDec"]
+                ? never
+                : Types[k]["_RDec"]
+            }[keyof Types]
+          >,
+        CREnc &
+          UnionToIntersection<
+            {
+              [k in keyof Types]: unknown extends Types[k]["_REnc"]
+                ? never
+                : Types[k]["_REnc"]
+            }[keyof Types]
+          >,
+        {
+          [k in keyof Types]: Types[k]["_O"]
+        },
+        {
+          [k in keyof Types]: Types[k]["_E"]
+        }
+      >
+      child: {
+        [k in keyof Types]: [Types[k]] extends [
+          {
+            _RDec: infer RDec
+            _REnc: infer REnc
+            _E: infer E
+            _O: infer O
+          }
+        ]
+          ? InterpreterKindF<DecoderURI, F, RDec, REnc, O, E>
+          : never
+      }
+    } & DSLFor<F>
+  ) => InterpreterKindF<
+    DecoderURI,
+    F,
+    RDec,
+    CREnc &
+      UnionToIntersection<
+        {
+          [k in keyof Types]: unknown extends Types[k]["_REnc"]
+            ? never
+            : Types[k]["_REnc"]
+        }[keyof Types]
+      >,
+    {
+      [k in keyof Types]: Types[k]["_O"]
+    },
+    {
+      [k in keyof Types]: Types[k]["_E"]
+    }
+  >
+}
+
 export interface PrimitivesF<IF, F extends URIS, CRDec, CREnc> {
   string: <RDec, REnc>(
     _?: StringConfig<F, CRDec, CREnc, RDec, REnc>
@@ -73,34 +150,38 @@ export interface PrimitivesF<IF, F extends URIS, CRDec, CREnc> {
   >
   required: <
     Types extends {
-      [k in keyof Types]: InterpreterHKT<IF, F, any, any, any, any>
-    }
+      [k in keyof Types]: InterpreterHKT<IF, F, unknown, unknown, any, any>
+    },
+    REnc,
+    RDec
   >(
-    _: Types
+    _: Types,
+    __?: RequiredConfig<F, CRDec, CREnc, RDec, REnc, Types>
   ) => InterpreterHKT<
     IF,
     F,
-    CRDec &
+    RDec &
+      CRDec &
       UnionToIntersection<
         {
-          [k in keyof Types]: unknown extends Parameters<Types[k]["_RDec"]>[0]
+          [k in keyof Types]: unknown extends Types[k]["_RDec"]
             ? never
-            : Parameters<Types[k]["_RDec"]>[0]
+            : Types[k]["_RDec"]
         }[keyof Types]
       >,
     CREnc &
       UnionToIntersection<
         {
-          [k in keyof Types]: unknown extends Parameters<Types[k]["_REnc"]>[0]
+          [k in keyof Types]: unknown extends Types[k]["_REnc"]
             ? never
-            : Parameters<Types[k]["_REnc"]>[0]
+            : Types[k]["_REnc"]
         }[keyof Types]
       >,
     {
-      [k in keyof Types]: ReturnType<Types[k]["_O"]>
+      [k in keyof Types]: Types[k]["_O"]
     },
     {
-      [k in keyof Types]: ReturnType<Types[k]["_E"]>
+      [k in keyof Types]: Types[k]["_E"]
     }
   >
 }
@@ -123,9 +204,30 @@ export interface PrimitivesK<IF extends InterpreterURIS, F extends URIS, CRDec, 
   required: <
     Types extends {
       [k in keyof Types]: InterpreterKind<IF, F, any, any, any, any>
-    }
+    },
+    RDec,
+    REnc
   >(
-    _: Types
+    _: Types,
+    __?: RequiredConfig<
+      F,
+      CRDec,
+      CREnc,
+      RDec,
+      REnc,
+      {
+        [k in keyof Types]: Types[k] extends [
+          InterpreterKind<IF, F, infer RD, infer RE, infer O, infer E>
+        ]
+          ? {
+              _RDec: RD
+              _REnc: RE
+              _E: O
+              _O: E
+            }
+          : never
+      }
+    >
   ) => InterpreterKind<
     IF,
     F,
@@ -188,9 +290,30 @@ export interface PrimitivesKF<IF extends InterpreterURIS, F, CRDec, CREnc> {
   required: <
     Types extends {
       [k in keyof Types]: InterpreterKindF<IF, F, any, any, any, any>
-    }
+    },
+    RDec,
+    REnc
   >(
-    _: Types
+    _: Types,
+    __?: RequiredConfig<
+      F,
+      CRDec,
+      CREnc,
+      RDec,
+      REnc,
+      {
+        [k in keyof Types]: Types[k] extends [
+          InterpreterKindF<IF, F, infer RD, infer RE, infer O, infer E>
+        ]
+          ? {
+              _RDec: RD
+              _REnc: RE
+              _E: O
+              _O: E
+            }
+          : never
+      }
+    >
   ) => InterpreterKindF<
     IF,
     F,

@@ -138,7 +138,7 @@ export function finalize<P extends AlgebraURIS, IF, F extends URIS>(): <RDec, RE
 ) => <R2Dec, R2Enc, O, E>(
   program: Program<P, O, E, R2Dec, R2Enc>
 ) => InterpreterHKT<IF, F, RDec & R2Dec, REnc & R2Enc, O, E> {
-  return (_) => (program) => program(_ as any)
+  return (_) => (program) => program(_ as any) as any
 }
 
 export type BaseStackF<F> = MonadF<F> &

@@ -1,7 +1,7 @@
 import { AsyncStackURI } from "./stack"
 import { AnyStackF, AsyncStackF, BaseStackF, foldStack, SyncStackF } from "./utils"
 
-import { constant, pipe } from "@matechs/preview/Function"
+import { constant, flow, pipe } from "@matechs/preview/Function"
 import { Augmented, Has } from "@matechs/preview/Has"
 import {
   accessMF,
@@ -98,6 +98,26 @@ export interface DSL<F> {
   ) => <K, NK extends string, SI, SO, X, In, St, Env, A>(
     fa: HKTFull<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E, A>
   ) => HKTFull<F, any, any, any, any, K, NK, SI, SO, X, In, St, Env, E1, A>
+
+  failure: <E>(
+    e: E
+  ) => HKTFull<
+    F,
+    any,
+    any,
+    any,
+    any,
+    never,
+    never,
+    unknown,
+    never,
+    never,
+    unknown,
+    unknown,
+    unknown,
+    E,
+    never
+  >
 }
 
 export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
@@ -139,6 +159,7 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
   const chain = chainF(_.K)
   const accessM = accessMF(_.K)
   const accessServiceM = accessServiceMF(_.K)
+  const failure = flow(_.K.wrapErr, _.K.fail)
 
   return {
     succeed,
@@ -147,7 +168,8 @@ export function dsl<F>(_: { K: BaseStackF<F> }): DSL<F> {
     chain,
     accessM,
     accessServiceM,
-    mapError: (f) => mapErrorF(_.K)((e) => _.K.wrapErr(f(_.K.unwrapErr(e))))
+    mapError: (f) => mapErrorF(_.K)((e) => _.K.wrapErr(f(_.K.unwrapErr(e)))),
+    failure
   }
 }
 

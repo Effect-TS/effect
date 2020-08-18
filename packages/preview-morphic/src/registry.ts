@@ -4,10 +4,10 @@ import { URIS } from "@matechs/preview/_abstract/HKT"
 export interface InterpreterHKT<URI, F, RDec, REnc, O, E> {
   readonly _URI: URI
   readonly _F: F
-  readonly _RDec: (_: RDec) => void
-  readonly _REnc: (_: REnc) => void
-  readonly _O: () => O
-  readonly _E: () => E
+  readonly _RDec: RDec
+  readonly _REnc: REnc
+  readonly _O: O
+  readonly _E: E
 }
 
 export interface URItoInterpreter<F extends URIS, RDec, REnc, O, E> {

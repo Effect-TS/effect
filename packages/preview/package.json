@@ -174,5 +174,6 @@
       "Utils",
       "XPure"
     ]
-  }
+  },
+  "dependencies": {}
 }

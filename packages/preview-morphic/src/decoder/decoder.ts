@@ -16,6 +16,7 @@ import * as A from "@matechs/preview/Array"
 import * as E from "@matechs/preview/Either"
 import { constant, pipe, tuple } from "@matechs/preview/Function"
 import * as R from "@matechs/preview/Record"
+import { UnionToIntersection } from "@matechs/preview/Utils"
 import { succeedF } from "@matechs/preview/_abstract/DSL/core"
 import { URIS } from "@matechs/preview/_abstract/HKT"
 
@@ -87,27 +88,77 @@ export function primitivesInterpreter<F>(
         },
         stringDecoder(F)
       ),
-    required: (D) => (i) => {
-      if (typeof i !== "object" || i == null) {
-        return F.fail(F.wrapErr(DE.error(i, "not an object")))
-      }
-
-      return pipe(
-        D as R.Record<string, DecoderF<F, any, any, unknown, DE.DecodeError>>,
-        R.foreachWithKeysF(F)((v, k) => {
-          return pipe(
-            v((i as any)[k]),
-            F.run,
-            F.map(E.mapLeft((e) => FA.of(DE.key(k, DE.required, F.unwrapErr(e)))))
-          )
-        }),
-        F.map(R.collect((k, v) => E.map_(v, (a) => tuple(k, a)))),
-        packEither(F),
-        F.flatten,
-        F.map(A.reduce({} as any, (b, a) => ({ ...b, [a[0]]: a[1] })))
+    required: (D, c) =>
+      applyConfig(
+        c,
+        DecoderURI,
+        {
+          current: requiredDecoder(F, D),
+          child: D,
+          ...commonDSL({ K: F })
+        } as any,
+        requiredDecoder(F, D)
       )
-    }
   })
+}
+
+function requiredDecoder<
+  F,
+  Types extends {
+    [k in keyof Types]: DecoderF<
+      F,
+      any,
+      any,
+      unknown,
+      FA.FreeAssociative<DE.ErrorNode<string>>
+    >
+  }
+>(
+  F: BaseStackF<F>,
+  D: Types
+): DecoderF<
+  F,
+  UnionToIntersection<
+    {
+      [k in keyof Types]: Types[k] extends [
+        DecoderF<F, infer X, any, unknown, FA.FreeAssociative<DE.ErrorNode<string>>>
+      ]
+        ? unknown extends X
+          ? never
+          : X
+        : never
+    }[keyof Types]
+  >,
+  {
+    [k in keyof Types]: [Types[k]] extends [
+      DecoderF<F, any, infer O, unknown, FA.FreeAssociative<DE.ErrorNode<string>>>
+    ]
+      ? O
+      : never
+  },
+  unknown,
+  FA.FreeAssociative<DE.ErrorNode<string>>
+> {
+  return (i) => {
+    if (typeof i !== "object" || i == null) {
+      return F.fail(F.wrapErr(DE.error(i, "not an object")))
+    }
+
+    return pipe(
+      D as R.Record<string, DecoderF<F, any, any, unknown, DE.DecodeError>>,
+      R.foreachWithKeysF(F)((v, k) => {
+        return pipe(
+          v((i as any)[k]),
+          F.run,
+          F.map(E.mapLeft((e) => FA.of(DE.key(k, DE.required, F.unwrapErr(e)))))
+        )
+      }),
+      F.map(R.collect((k, v) => E.map_(v, (a) => tuple(k, a)))),
+      packEither(F),
+      F.flatten,
+      F.map(A.reduce({} as any, (b, a) => ({ ...b, [a[0]]: a[1] })))
+    )
+  }
 }
 
 function arrayDecoder<F, R, O, I>(
