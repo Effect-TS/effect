@@ -1,35 +1,68 @@
-export interface HKT<K, SI, SO, X, I, S, R, E, A> {
-  //K: () => K
-  //SI: (_: SI) => void
-  //SO: () => SO
-  //X: () => X
-  //I: (_: I) => void
-  //S: S
-  //R: (_: R) => void
-  //E: () => E
-  //A: A
-  K: K
-  SI: SI
-  SO: SO
-  X: X
-  I: I
-  S: S
-  R: R
+//
+// Generic F
+//
+
+export interface F_<A> {
+  URI: UF_
+  A: A
+}
+
+export const UF_ = "HKTFURI"
+export type UF_ = typeof UF_
+
+//
+// Generic F[_, _]
+//
+export interface F__<E, A> {
+  URI: UF__
   E: E
   A: A
 }
 
-export interface HKT1<A> extends HKT<any, any, any, any, any, any, any, any, A> {}
+export const UF__ = "HKT2URI"
+export type UF__ = typeof UF__
 
-export interface HKT2<E, A> extends HKT<any, any, any, any, any, any, any, E, A> {}
+//
+// Generic G
+//
 
-export const HKTURI = "HKTURI"
+export const UG_ = "HKTGURI"
+export type UG_ = typeof UG_
 
-export type HKTURI = typeof HKTURI
+export interface G_<A> {
+  URI: UG_
+  A: A
+}
 
 export interface URItoKind<K, SI, SO, X, I, S, R, E, A> {
-  [HKTURI]: HKT<K, SI, SO, X, I, S, R, E, A>
+  [UF_]: F_<A>
+  [UG_]: G_<A>
+  [UF__]: F__<E, A>
 }
+
+//
+// Generic HKT with All the types
+//
+
+export const HKTFullURI = "HKTFullURI"
+export type HKTFullURI = typeof HKTFullURI
+
+export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
+  URI: HKTFullURI
+  K: () => K
+  SI: (_: SI) => void
+  SO: () => SO
+  X: () => X
+  I: (_: I) => void
+  S: S
+  R: (_: R) => void
+  E: () => E
+  A: A
+}
+
+//
+// Lookups
+//
 
 export type URIS = keyof URItoKind<any, any, any, any, any, any, any, any, any>
 

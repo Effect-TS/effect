@@ -1,19 +1,6 @@
 import { IdentityBoth } from "../Combined"
 import { Covariant } from "../Covariant"
-import {
-  Auto,
-  Base,
-  HKT1,
-  HKTURI,
-  Kind,
-  OrE,
-  OrI,
-  OrK,
-  OrR,
-  OrS,
-  OrX,
-  URIS
-} from "../HKT"
+import { Auto, Base, F_, UF_, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
 
 export interface Foreach<F extends URIS, C = Auto> extends Base<F> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
@@ -90,12 +77,12 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
     A: A
     B: B
   }) => (
-    G: IdentityBoth<HKTURI> & Covariant<HKTURI>
+    G: IdentityBoth<UF_> & Covariant<UF_>
   ) => (
-    f: (a: A) => HKT1<B>
+    f: (a: A) => F_<B>
   ) => <K, SI, SO, X, I, S, R, E>(
     fa: Kind<F, K, SI, SO, X, I, S, R, E, A>
-  ) => HKT1<Kind<F, K, SI, SO, X, I, S, R, E, B>>
+  ) => F_<Kind<F, K, SI, SO, X, I, S, R, E, B>>
 ) => Foreach<F, C>
 export function implementForeachF() {
   return (i: any) => i()

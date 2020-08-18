@@ -1,17 +1,4 @@
-import {
-  Auto,
-  Base,
-  HKT1,
-  HKTURI,
-  Kind,
-  OrE,
-  OrI,
-  OrK,
-  OrR,
-  OrS,
-  OrX,
-  URIS
-} from "../HKT"
+import { Auto, Base, Kind, OrE, OrI, OrK, OrR, OrS, OrX, UF_, UG_, URIS } from "../HKT"
 
 export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
   readonly map: <A, B>(
@@ -106,38 +93,12 @@ export function getCovariantComposition<
   CF = Auto,
   CG = Auto
 >(F: Covariant<F, CF>, G: Covariant<G, CG>): CovariantComposition<F, G, CF, CG>
-export function getCovariantComposition<F extends URIS, CF = Auto>(
-  F: Covariant<F, CF>,
-  G: Covariant<HKTURI>
-): CovariantComposition<F, HKTURI, CF> {
+export function getCovariantComposition(
+  F: Covariant<UF_>,
+  G: Covariant<UG_>
+): CovariantComposition<UF_, UG_> {
   return {
     URI: F.URI,
-    map: <A, B>(
-      f: (a: A) => B
-    ): (<FK, FSI, FSO, FX, FI, FS, FR, FE>(
-      fa: Kind<
-        F,
-        OrK<CF, FK>,
-        FSI,
-        FSO,
-        OrX<CF, FX>,
-        OrI<CF, FI>,
-        OrS<CF, FS>,
-        OrR<CF, FR>,
-        OrE<CF, FE>,
-        HKT1<A>
-      >
-    ) => Kind<
-      F,
-      OrK<CF, FK>,
-      FSI,
-      FSO,
-      OrX<CF, FX>,
-      OrI<CF, FI>,
-      OrS<CF, FS>,
-      OrR<CF, FR>,
-      OrE<CF, FE>,
-      HKT1<B>
-    >) => F.map(G.map(f))
+    map: (f) => F.map(G.map(f))
   }
 }
