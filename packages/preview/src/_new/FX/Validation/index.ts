@@ -20,26 +20,27 @@ export function getValidationF<F extends HKTURI>(
       pipe(
         F.run(fa),
         F.both(F.run(fb)),
-        F.map(([maybeA, maybeB]) =>
-          E.fold_(
-            maybeA,
-            (ea) =>
-              E.fold_(
-                maybeB,
-                (eb) => F.fail(A.combine(eb)(ea)),
-                () => F.fail(ea)
-              ),
-            (a) =>
-              E.fold_(
-                maybeB,
-                (e) => F.fail(e),
-                (b) =>
-                  pipe(
-                    F.any(),
-                    F.map(() => tuple(a, b))
-                  )
-              )
-          )
+        F.map(
+          ([maybeA, maybeB]): Kind2<F, Z, readonly [A, B]> =>
+            E.fold_(
+              maybeA,
+              (ea) =>
+                E.fold_(
+                  maybeB,
+                  (eb) => F.fail(A.combine(eb)(ea)),
+                  () => F.fail(ea)
+                ),
+              (a) =>
+                E.fold_(
+                  maybeB,
+                  (e) => F.fail(e),
+                  (b) =>
+                    pipe(
+                      F.any(),
+                      F.map(() => tuple(a, b))
+                    )
+                )
+            )
         ),
         F.flatten
       )
