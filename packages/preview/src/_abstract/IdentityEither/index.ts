@@ -8,56 +8,16 @@ import { NoneF, NoneK } from "../None"
  */
 export type IdentityEitherF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeEitherF<F, Fix0, Fix1, Fix2, Fix3> & NoneF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeEitherF<F, TL0, TL1, TL2, TL3> & NoneF<F, TL0, TL1, TL2, TL3>
 
 export type IdentityEitherK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeEitherK<F, Fix0, Fix1, Fix2, Fix3> & NoneK<F, Fix0, Fix1, Fix2, Fix3>
-
-export function makeIdentityEither<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<
-    IdentityEitherK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityEitherK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityEither<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityEither<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityEitherF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
-    ..._
-  })
-}
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeEitherK<F, TL0, TL1, TL2, TL3> & NoneK<F, TL0, TL1, TL2, TL3>

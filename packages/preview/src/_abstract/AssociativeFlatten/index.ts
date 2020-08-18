@@ -1,4 +1,4 @@
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `AssociativeFlatten` describes a type that can be "flattened" in an
@@ -8,8 +8,9 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  * resulting list. Because the operation is associative, the resulting list is
  * the same either way.
  */
-export interface AssociativeFlattenF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+
+export interface AssociativeFlattenF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly flatten: <
     K,
     NK extends string,
@@ -29,12 +30,12 @@ export interface AssociativeFlattenF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3
     Err1,
     A
   >(
-    fb: HKTFix<
+    fb: HKTFull<
       F,
-      Fix0,
-      Fix1,
-      Fix2,
-      Fix3,
+      TL0,
+      TL1,
+      TL2,
+      TL3,
       K,
       NK,
       SI,
@@ -44,14 +45,14 @@ export interface AssociativeFlattenF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3
       S,
       Env,
       Err,
-      HKTFix<F, Fix0, Fix1, Fix2, Fix3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
+      HKTFull<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => HKTFix<
+  ) => HKTFull<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K1,
     NK1,
     SI,
@@ -67,11 +68,11 @@ export interface AssociativeFlattenF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3
 
 export interface AssociativeFlattenK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly flatten: <
     K,
     NK extends string,
@@ -91,12 +92,12 @@ export interface AssociativeFlattenK<
     Err1,
     A
   >(
-    fb: KindFix<
+    fb: KindFull<
       F,
-      Fix0,
-      Fix1,
-      Fix2,
-      Fix3,
+      TL0,
+      TL1,
+      TL2,
+      TL3,
       K,
       NK,
       SI,
@@ -106,14 +107,14 @@ export interface AssociativeFlattenK<
       S,
       Env,
       Err,
-      KindFix<F, Fix0, Fix1, Fix2, Fix3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
+      KindFull<F, TL0, TL1, TL2, TL3, K1, NK1, SO, SO1, X1, In1, S, Env1, Err1, A>
     >
-  ) => KindFix<
+  ) => KindFull<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K1,
     NK1,
     SI,
@@ -125,56 +126,4 @@ export interface AssociativeFlattenK<
     Err | Err1,
     A
   >
-}
-
-export function makeAssociativeFlatten<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<
-    AssociativeFlattenK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => AssociativeFlattenK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeAssociativeFlatten<
-  URI,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  URI: URI
-): (
-  _: Omit<
-    AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeAssociativeFlatten<
-  URI,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  URI: URI
-): (
-  _: Omit<
-    AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => AssociativeFlattenF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
-    ..._
-  })
 }

@@ -8,68 +8,16 @@ import { URIS } from "../HKT"
  */
 export type IdentityFlattenF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeFlattenF<F, Fix0, Fix1, Fix2, Fix3> & AnyF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeFlattenF<F, TL0, TL1, TL2, TL3> & AnyF<F, TL0, TL1, TL2, TL3>
 
 export type IdentityFlattenK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeFlattenK<F, Fix0, Fix1, Fix2, Fix3> & AnyK<F, Fix0, Fix1, Fix2, Fix3>
-
-export function makeIdentityFlatten<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<
-    IdentityFlattenK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityFlattenK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityFlatten<
-  URI,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  URI: URI
-): (
-  _: Omit<
-    IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityFlatten<
-  URI,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  URI: URI
-): (
-  _: Omit<
-    IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityFlattenF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
-    ..._
-  })
-}
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeFlattenK<F, TL0, TL1, TL2, TL3> & AnyK<F, TL0, TL1, TL2, TL3>

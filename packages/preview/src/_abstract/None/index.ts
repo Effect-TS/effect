@@ -1,16 +1,16 @@
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * The identity for combining two values of types `F[A]` and `F[B]`
  */
-export interface NoneF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly none: <S, SI, SO = SI>() => HKTFix<
+export interface NoneF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
+  readonly none: <S, SI, SO = SI>() => HKTFull<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -24,14 +24,14 @@ export interface NoneF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
   >
 }
 
-export interface NoneK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
-  readonly none: <S, SI, SO = SI>() => KindFix<
+export interface NoneK<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
+  readonly none: <S, SI, SO = SI>() => KindFull<
     F,
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     never,
     never,
     SI,
@@ -43,35 +43,4 @@ export interface NoneK<F extends URIS, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 
     never,
     never
   >
-}
-
-export function makeNone<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<NoneK<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => NoneK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<NoneF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => NoneF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeNone<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<NoneF<URI, Fix0, Fix1, Fix2, Fix3>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => NoneF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
-    ..._
-  })
 }

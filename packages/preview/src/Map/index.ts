@@ -80,12 +80,11 @@ export {
   Covariant,
   foreachF,
   foreachWithKeysF,
-  getCovariant,
   getTraversable,
   getTraversableWithKeys,
   makeForeachF,
   makeForeachWithKeysF,
-  MapFixedURI,
+  KeyedMapURI,
   MapURI,
   Traversable,
   TraversableWithKeys

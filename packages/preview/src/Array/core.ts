@@ -1,34 +1,35 @@
 import { flow, pipe } from "../Function"
 import { intersect } from "../Utils"
-import { makeAny } from "../_abstract/Any"
-import { makeApplicative } from "../_abstract/Applicative"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
+import { AnyK } from "../_abstract/Any"
+import { ApplicativeK } from "../_abstract/Applicative"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
 import { makeClosure } from "../_abstract/Closure"
-import { makeCovariant } from "../_abstract/Covariant"
+import { CovariantK } from "../_abstract/Covariant"
 import { anyF } from "../_abstract/DSL"
-import { makeDerive } from "../_abstract/Derive"
+import { DeriveK } from "../_abstract/Derive"
 import * as Eq from "../_abstract/Equal"
-import { makeFoldMap } from "../_abstract/FoldMap"
-import { makeFoldable } from "../_abstract/Foldable"
+import { FoldMapK } from "../_abstract/FoldMap"
+import { FoldableK } from "../_abstract/Foldable"
+import { instance } from "../_abstract/HKT"
 import { Identity, makeIdentity } from "../_abstract/Identity"
-import { makeIdentityBoth } from "../_abstract/IdentityBoth"
-import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
-import { makeMonad } from "../_abstract/Monad"
+import { IdentityBothK } from "../_abstract/IdentityBoth"
+import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
+import { MonadK } from "../_abstract/Monad"
 import { Sum } from "../_abstract/Newtype"
-import { makeReduce } from "../_abstract/Reduce"
-import { makeReduceRight } from "../_abstract/ReduceRight"
-import { implementForeachF, makeTraversable } from "../_abstract/Traversable"
+import { ReduceK } from "../_abstract/Reduce"
+import { ReduceRightK } from "../_abstract/ReduceRight"
+import { implementForeachF, TraversableK } from "../_abstract/Traversable"
 import {
   implementForeachWithKeysF,
-  makeTraversableWithKeys
+  TraversableWithKeysK
 } from "../_abstract/TraversableWithKeys"
-import { implementSeparateF, makeWiltable } from "../_abstract/Wiltable"
+import { implementSeparateF, WiltableK } from "../_abstract/Wiltable"
 import {
   implementSeparateWithKeysF,
-  makeWiltableWithKeys
+  WiltableWithKeysK
 } from "../_abstract/WiltableWithKeys"
-import { implementCompactF, makeWitherable } from "../_abstract/Witherable"
+import { implementCompactF, WitherableK } from "../_abstract/Witherable"
 import { implemenCompactWithKeysF } from "../_abstract/WitherableWithKeys"
 import * as A from "../_system/Array"
 
@@ -40,10 +41,10 @@ export type ArrayURI = typeof ArrayURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -57,22 +58,7 @@ declare module "../_abstract/HKT" {
   > {
     [ArrayURI]: A.Array<Out>
   }
-  interface URItoKeys<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
-    K,
-    NK extends string,
-    SI,
-    SO,
-    X,
-    I,
-    S,
-    Env,
-    Err,
-    Out
-  > {
+  interface URItoKeys<TL0, TL1, TL2, TL3, K, NK extends string> {
     [ArrayURI]: number
   }
 }
@@ -105,57 +91,61 @@ export function Identity<A>() {
 /**
  * The `Any` instance for `Array<A>`.
  */
-export const Any = makeAny(ArrayURI)({
+export const Any = instance<AnyK<ArrayURI>>({
   any: () => []
 })
 
 /**
  * The `Covariant` instance for `Array<A>`.
  */
-export const Covariant = makeCovariant(ArrayURI)({
+export const Covariant = instance<CovariantK<ArrayURI>>({
   map: A.map
 })
 
 /**
  * The `Covariant` instance for `Array<A>`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(ArrayURI)({
+export const AssociativeFlatten = instance<AssociativeFlattenK<ArrayURI>>({
   flatten: A.flatten
 })
 
 /**
  * The `AssociativeBoth` instance for `Array<A>`.
  */
-export const AssociativeBoth = makeAssociativeBoth(ArrayURI)({
+export const AssociativeBoth = instance<AssociativeBothK<ArrayURI>>({
   both: A.zip
 })
 
 /**
  * The `IdentityBoth` instance for `Array<A>`.
  */
-export const IdentityBoth = makeIdentityBoth(ArrayURI)(intersect(Any, AssociativeBoth))
+export const IdentityBoth = instance<IdentityBothK<ArrayURI>>(
+  intersect(Any, AssociativeBoth)
+)
 
 /**
  * The `Applicative` instance for `Array<A>`.
  */
-export const Applicative = makeApplicative(ArrayURI)(intersect(Covariant, IdentityBoth))
+export const Applicative = instance<ApplicativeK<ArrayURI>>(
+  intersect(Covariant, IdentityBoth)
+)
 
 /**
  * The `IdentityFlatten` instance for `Array<A>`.
  */
-export const IdentityFlatten = makeIdentityFlatten(ArrayURI)(
+export const IdentityFlatten = instance<IdentityFlattenK<ArrayURI>>(
   intersect(Any, AssociativeFlatten)
 )
 
 /**
  * The `Monad` instance for `Array<A>`.
  */
-export const Monad = makeMonad(ArrayURI)(intersect(Covariant, IdentityFlatten))
+export const Monad = instance<MonadK<ArrayURI>>(intersect(Covariant, IdentityFlatten))
 
 /**
  * Traversable's `foreachF` for `Array`.
  */
-export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
+export const foreachF = implementForeachF<ArrayURI>()((_) => (G) => (f) => (fa) =>
   A.reduce_(fa, anyF(G)([] as typeof _.B[]), (b, a) =>
     pipe(
       b,
@@ -166,9 +156,9 @@ export const foreachF = implementForeachF(ArrayURI)((_) => (G) => (f) => (fa) =>
 )
 
 /**
- * TraversableWithKeys's `foreachF` for `Array`.
+ * TraversableWithKeys's `foreachWithKeysF` for `Array`.
  */
-export const foreachWithKeysF = implementForeachWithKeysF(ArrayURI)(
+export const foreachWithKeysF = implementForeachWithKeysF<ArrayURI>()(
   (_) => (G) => (f) => (fa) =>
     A.reduceWithIndex_(fa, anyF(G)([] as typeof _._b[]), (i, b, a) =>
       pipe(
@@ -182,24 +172,23 @@ export const foreachWithKeysF = implementForeachWithKeysF(ArrayURI)(
 /**
  * The `Traversable` instance for `Array`.
  */
-export const Traversable = makeTraversable(Covariant)({
+export const Traversable = instance<TraversableK<ArrayURI>>({
+  ...Covariant,
   foreachF
 })
 
 /**
  * The `TraversableWithKeys` instance for `Array`.
  */
-export const TraversableWithKeys = makeTraversableWithKeys(Covariant)({
+export const TraversableWithKeys = instance<TraversableWithKeysK<ArrayURI>>({
+  ...Covariant,
   foreachWithKeysF
 })
 
 /**
  * The `Derive<Array, Equal>` instance for `Equal<Array<A>>`.
  */
-export const DeriveEqual = makeDerive(
-  ArrayURI,
-  Eq.EqualURI
-)({
+export const DeriveEqual = instance<DeriveK<ArrayURI, Eq.EqualURI>>({
   derive: (eq) => getEqual(eq)
 })
 
@@ -257,74 +246,76 @@ export const foldMapWithIndex_: <I>(
 /**
  * The `FoldMap` instance for `Array<A>`.
  */
-export const FoldMap = makeFoldMap(ArrayURI)({
+export const FoldMap = instance<FoldMapK<ArrayURI>>({
   foldMap
 })
 
 /**
  * The `Reduce` instance for `Array<A>`.
  */
-export const Reduce = makeReduce(ArrayURI)({
+export const Reduce = instance<ReduceK<ArrayURI>>({
   reduce: A.reduce
 })
 
 /**
  * The `ReduceRight` instance for `Array<A>`.
  */
-export const ReduceRight = makeReduceRight(ArrayURI)({
+export const ReduceRight = instance<ReduceRightK<ArrayURI>>({
   reduce: A.reduceRight
 })
 
 /**
  * The `Foldable` instance for `Array<A>`.
  */
-export const Foldable = makeFoldable(ArrayURI)(intersect(FoldMap, Reduce, ReduceRight))
+export const Foldable = instance<FoldableK<ArrayURI>>(
+  intersect(FoldMap, Reduce, ReduceRight)
+)
 
 /**
  * Witherable's compactF for `Array<A>`.
  */
-export const compactF = implementCompactF(ArrayURI)((_) => (G) => (f) =>
+export const compactF = implementCompactF<ArrayURI>()((_) => (G) => (f) =>
   flow(foreachF(G)(f), G.map(A.compact))
 )
 
 /**
  * WitherableWithKeys's compactWithKeysF for `Array<A>`.
  */
-export const compactWithKeysF = implemenCompactWithKeysF(ArrayURI)((_) => (G) => (f) =>
-  flow(foreachWithKeysF(G)(f), G.map(A.compact))
-)
+export const compactWithKeysF = implemenCompactWithKeysF<
+  ArrayURI
+>()((_) => (G) => (f) => flow(foreachWithKeysF(G)(f), G.map(A.compact)))
 
 /**
  * The `Witherable` instance for `Array<A>`.
  */
-export const Witherable = makeWitherable(ArrayURI)({
+export const Witherable = instance<WitherableK<ArrayURI>>({
   compactF
 })
 
 /**
  * Wiltable's separateF for `Array<A>`.
  */
-export const separateF = implementSeparateF(ArrayURI)((_) => (G) => (f) =>
+export const separateF = implementSeparateF<ArrayURI>()((_) => (G) => (f) =>
   flow(foreachF(G)(f), G.map(A.separate))
 )
 
 /**
  * The `Wiltable` instance for `Array<A>`.
  */
-export const Wiltable = makeWiltable(ArrayURI)({
+export const Wiltable = instance<WiltableK<ArrayURI>>({
   separateF
 })
 
 /**
  * WiltableWithKeys's separateWithKeysF for `Array<A>`.
  */
-export const separateWithKeysF = implementSeparateWithKeysF(
+export const separateWithKeysF = implementSeparateWithKeysF<
   ArrayURI
-)((_) => (G) => (f) => flow(foreachWithKeysF(G)(f), G.map(A.separate)))
+>()((_) => (G) => (f) => flow(foreachWithKeysF(G)(f), G.map(A.separate)))
 
 /**
  * The `WiltableWithKeys` instance for `Array<A>`.
  */
-export const WiltableWithKeys = makeWiltableWithKeys(ArrayURI)({
+export const WiltableWithKeys = instance<WiltableWithKeysK<ArrayURI>>({
   separateWithKeysF
 })

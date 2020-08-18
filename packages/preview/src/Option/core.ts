@@ -1,6 +1,7 @@
-import { makeAny } from "../_abstract/Any"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeCovariant } from "../_abstract/Covariant"
+import { AnyK } from "../_abstract/Any"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
 import * as O from "../_system/Option"
 
 /**
@@ -11,10 +12,10 @@ export type OptionURI = typeof OptionURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -33,20 +34,20 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `Option[+_]`
  */
-export const Any = makeAny(OptionURI)({
+export const Any = instance<AnyK<OptionURI>>({
   any: () => O.some({})
 })
 
 /**
  * The `Covariant` instance for `Option[+_]`
  */
-export const Covariant = makeCovariant(OptionURI)({
+export const Covariant = instance<CovariantK<OptionURI>>({
   map: O.map
 })
 
 /**
  * The `AssociativeBoth` instance for `Option[+_]`
  */
-export const AssociativeBoth = makeAssociativeBoth(OptionURI)({
+export const AssociativeBoth = instance<AssociativeBothK<OptionURI>>({
   both: O.zip
 })

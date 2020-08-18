@@ -21,3 +21,5 @@ export {
   unsafeCoerce,
   untupled
 } from "./core"
+
+export { recursive } from "./safe"

@@ -1,13 +1,14 @@
 import { intersect } from "../../Utils"
 import * as A from "../../_system/Array"
 import * as E from "../../_system/Either"
-import { makeAny } from "../Any"
-import { makeAssociativeBoth } from "../AssociativeBoth"
-import { makeAssociativeEither } from "../AssociativeEither"
-import { makeContravariant } from "../Contravariant"
-import { makeIdentityBoth } from "../IdentityBoth"
-import { makeIdentityEither } from "../IdentityEither"
-import { makeNone } from "../None"
+import { AnyK } from "../Any"
+import { AssociativeBothK } from "../AssociativeBoth"
+import { AssociativeEitherK } from "../AssociativeEither"
+import { ContravariantK } from "../Contravariant"
+import { instance } from "../HKT"
+import { IdentityBothK } from "../IdentityBoth"
+import { IdentityEitherK } from "../IdentityEither"
+import { NoneK } from "../None"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be
@@ -25,10 +26,10 @@ export type EqualURI = typeof EqualURI
 
 declare module "../HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -82,7 +83,7 @@ export function both<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<readonly [A, B
 /**
  * The `AssociativeBoth` instance for `Equal`.
  */
-export const AssociativeBoth = makeAssociativeBoth(EqualURI)({
+export const AssociativeBoth = instance<AssociativeBothK<EqualURI>>({
   both
 })
 
@@ -104,7 +105,7 @@ export function either<B>(fb: Equal<B>): <A>(fa: Equal<A>) => Equal<E.Either<A, 
 /**
  * The `AssociativeEither` instance for `Equal`.
  */
-export const AssociativeEither = makeAssociativeEither(EqualURI)({
+export const AssociativeEither = instance<AssociativeEitherK<EqualURI>>({
   either
 })
 
@@ -120,33 +121,35 @@ export function contramap<A, B>(f: (a: B) => A): (fa: Equal<A>) => Equal<B> {
 /**
  * The `Contravariant` instance for `Equal`.
  */
-export const Contravariant = makeContravariant(EqualURI)({
+export const Contravariant = instance<ContravariantK<EqualURI>>({
   contramap
 })
 
 /**
  * The `Any` instance for `Equal`.
  */
-export const Any = makeAny(EqualURI)({
+export const Any = instance<AnyK<EqualURI>>({
   any: () => anyEqual
 })
 
 /**
  * The `IdentityBoth` instance for `Equal`.
  */
-export const IdentityBoth = makeIdentityBoth(EqualURI)(intersect(Any, AssociativeBoth))
+export const IdentityBoth = instance<IdentityBothK<EqualURI>>(
+  intersect(Any, AssociativeBoth)
+)
 
 /**
  * The `None` instance for `Equal`.
  */
-export const None = makeNone(EqualURI)({
+export const None = instance<NoneK<EqualURI>>({
   none: () => nothingEqual
 })
 
 /**
  * The `IdentityEither` instance for `Equal`.
  */
-export const IdentityEither = makeIdentityEither(EqualURI)(
+export const IdentityEither = instance<IdentityEitherK<EqualURI>>(
   intersect(None, AssociativeEither)
 )
 

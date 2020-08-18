@@ -1,4 +1,4 @@
-import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
+import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `Contravariant<F>` provides implicit evidence that `HKT<F, ->` is a
@@ -23,50 +23,25 @@ import { HasURI, HKTFix, KindFix, URIS } from "../HKT"
  * compares strings by computing their lengths with the provided function and
  * comparing those.
  */
-export interface ContravariantF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>
-  extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+export interface ContravariantF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
+  extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => HKTFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, B>
+    fa: HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => HKTFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, B>
 }
 
 export interface ContravariantK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> extends HasURI<F, Fix0, Fix1, Fix2, Fix3> {
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> extends HasURI<F, TL0, TL1, TL2, TL3> {
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <K, NK extends string, SI, SO, X, I, S, Env, Err>(
-    fa: KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, A>
-  ) => KindFix<F, Fix0, Fix1, Fix2, Fix3, K, NK, SI, SO, X, I, S, Env, Err, B>
-}
-
-export function makeContravariant<URI extends URIS>(
-  _: URI
-): (
-  _: Omit<ContravariantK<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => ContravariantK<URI>
-export function makeContravariant<URI>(
-  URI: URI
-): (
-  _: Omit<ContravariantF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => ContravariantF<URI>
-export function makeContravariant<URI>(
-  URI: URI
-): (
-  _: Omit<ContravariantF<URI>, "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3">
-) => ContravariantF<URI> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
-    ..._
-  })
+    fa: KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, A>
+  ) => KindFull<F, TL0, TL1, TL2, TL3, K, NK, SI, SO, X, I, S, Env, Err, B>
 }

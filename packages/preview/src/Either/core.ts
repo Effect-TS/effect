@@ -3,19 +3,20 @@ import * as Equal from "../Equal"
 import { flow, pipe, tuple } from "../Function"
 import { Failure } from "../Newtype"
 import { intersect } from "../Utils"
-import { makeAny } from "../_abstract/Any"
-import { ApplicativeK, makeApplicative } from "../_abstract/Applicative"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeAssociativeEither } from "../_abstract/AssociativeEither"
-import { makeAssociativeFlatten } from "../_abstract/AssociativeFlatten"
-import { makeCovariant } from "../_abstract/Covariant"
+import { AnyK } from "../_abstract/Any"
+import { ApplicativeK } from "../_abstract/Applicative"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import { AssociativeEitherK } from "../_abstract/AssociativeEither"
+import { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
+import { CovariantK } from "../_abstract/Covariant"
 import { sequenceSF, validationAssociativeBothF } from "../_abstract/DSL"
-import { makeFail } from "../_abstract/FX/Fail"
-import { makeIdentityErr } from "../_abstract/FX/IdentityErr"
-import { makeRecover } from "../_abstract/FX/Recover"
-import { makeIdentityBoth } from "../_abstract/IdentityBoth"
-import { makeIdentityFlatten } from "../_abstract/IdentityFlatten"
-import { makeMonad } from "../_abstract/Monad"
+import { FailK } from "../_abstract/FX/Fail"
+import { RecoverK } from "../_abstract/FX/Recover"
+import { RunK } from "../_abstract/FX/Run"
+import { instance } from "../_abstract/HKT"
+import { IdentityBothK } from "../_abstract/IdentityBoth"
+import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
+import { MonadK } from "../_abstract/Monad"
 import * as E from "../_system/Either"
 
 export const EitherURI = "Either"
@@ -29,10 +30,10 @@ export type ValidationURI = typeof ValidationURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -46,31 +47,32 @@ declare module "../_abstract/HKT" {
   > {
     [EitherURI]: E.Either<Err, Out>
     [FailureEitherURI]: Failure<E.Either<Out, Err>>
-    [ValidationURI]: E.Either<Fix0, Out>
+    [ValidationURI]: E.Either<TL0, Out>
   }
-  interface URItoErr<Fix0, Fix1, Fix2, Fix3, Err> {
-    [ValidationURI]: Fix0
+
+  interface URItoErr<TL0, TL1, TL2, TL3, E> {
+    [ValidationURI]: TL0
   }
 }
 
 /**
  * The `Covariant` instance for `Either`.
  */
-export const Covariant = makeCovariant(EitherURI)({
+export const Covariant = instance<CovariantK<EitherURI>>({
   map: E.map
 })
 
 /**
  * The `Any` instance for `Either`.
  */
-export const Any = makeAny(EitherURI)({
+export const Any = instance<AnyK<EitherURI>>({
   any: () => E.right({})
 })
 
 /**
  * The `AssociativeBoth` instance for `Either`.
  */
-export const AssociativeBoth = makeAssociativeBoth(EitherURI)({
+export const AssociativeBoth = instance<AssociativeBothK<EitherURI>>({
   both: E.zip
 })
 
@@ -104,7 +106,7 @@ export const zipFailure = <B, EB>(fb: Failure<E.Either<EB, B>>) => <A, EA>(
 /**
  * The `AssociativeBoth` instance for a failed `Either`
  */
-export const AssociativeFailureBoth = makeAssociativeBoth(FailureEitherURI)({
+export const AssociativeFailureBoth = instance<AssociativeBothK<FailureEitherURI>>({
   both: zipFailure
 })
 
@@ -131,7 +133,7 @@ export const either = <E1, B>(fb: E.Either<E1, B>) => <E, A>(
 /**
  * The `AssociativeEither` instance for `Either`.
  */
-export const AssociativeEither = makeAssociativeEither(EitherURI)({
+export const AssociativeEither = instance<AssociativeEitherK<EitherURI>>({
   either
 })
 
@@ -154,54 +156,56 @@ export const eitherFailure = <B, EB>(fb: Failure<E.Either<EB, B>>) => <A, EA>(
 /**
  * The `AssociativeEither` instance for a failed `Either`
  */
-export const AssociativeFailureEither = makeAssociativeEither(FailureEitherURI)({
+export const AssociativeFailureEither = instance<AssociativeEitherK<FailureEitherURI>>({
   either: eitherFailure
 })
 
 /**
  * The `AssociativeFlatten` instance for `Either`.
  */
-export const AssociativeFlatten = makeAssociativeFlatten(EitherURI)({
+export const AssociativeFlatten = instance<AssociativeFlattenK<EitherURI>>({
   flatten: E.flatten
 })
 
 /**
  * The `IdentityBoth` instance for `Either`.
  */
-export const IdentityBoth = makeIdentityBoth(EitherURI)(intersect(Any, AssociativeBoth))
+export const IdentityBoth = instance<IdentityBothK<EitherURI>>(
+  intersect(Any, AssociativeBoth)
+)
 
 /**
  * The `Applicative` instance for `Either`.
  */
-export const Applicative = makeApplicative(EitherURI)(
+export const Applicative = instance<ApplicativeK<EitherURI>>(
   intersect(Covariant, IdentityBoth)
 )
 
 /**
  * The `Fail` instance for `Either`.
  */
-export const Fail = makeFail(EitherURI)({
+export const Fail = instance<FailK<EitherURI>>({
   fail: E.left
 })
 
 /**
  * The `Recover` instance for `Either`.
  */
-export const Recover = makeRecover(EitherURI)({
-  recover: (f) => (e) => (e._tag === "Right" ? e : f(e.left))
+export const Recover = instance<RecoverK<EitherURI>>({
+  recover: (f) => (fa) => (fa._tag === "Left" ? f(fa.left) : fa)
 })
 
 /**
  * The `IdentityFlatten` instance for `Either`.
  */
-export const IdentityFlatten = makeIdentityFlatten(EitherURI)(
+export const IdentityFlatten = instance<IdentityFlattenK<EitherURI>>(
   intersect(Any, AssociativeFlatten)
 )
 
 /**
  * The `Monad` instance for `Either`.
  */
-export const Monad = makeMonad(EitherURI)(intersect(Covariant, IdentityFlatten))
+export const Monad = instance<MonadK<EitherURI>>(intersect(Covariant, IdentityFlatten))
 
 /**
  * Struct based applicative
@@ -214,138 +218,28 @@ export const sequenceS = sequenceSF(Applicative)()
 export const getEqual = Equal.either
 
 /**
- * Zips two eithers, merges lefts with `Associative<E>`
+ * The `Run` instance for `Either`
  */
-export function makeValidationZip<E>(
-  A: Associative<E>
-): <B>(fb: E.Either<E, B>) => <A>(fa: E.Either<E, A>) => E.Either<E, readonly [A, B]> {
-  const F = getValidationAssociativeBoth(A)
-  return F.both
-}
-
-/**
- * The `Any` instance for `Validation<E, *>`
- */
-export function getValidationAny<E>() {
-  return makeAny<ValidationURI, E>(ValidationURI)({
-    any: () => E.right({})
-  })
-}
-
-/**
- * The `Covariant` instance for `Validation<E, *>`
- */
-export function getValidationCovariant<E>() {
-  return makeCovariant<ValidationURI, E>(ValidationURI)({
-    map: E.map
-  })
-}
-
-/**
- * The `IdentityBoth` instance for `Validation<E, *>`
- */
-export function getValidationIdentityBoth<E>(A: Associative<E>) {
-  return makeIdentityBoth<ValidationURI, E>(ValidationURI)(
-    intersect(getValidationAny<E>(), getValidationAssociativeBoth(A))
-  )
-}
+export const Run = instance<RunK<EitherURI>>({
+  run: E.right
+})
 
 /**
  * The `Applicative` instance for `Validation<E, *>`
  */
-export function getValidationApplicative<E>(A: Associative<E>) {
-  return makeApplicative<ValidationURI, E>(ValidationURI)(
-    intersect(getValidationCovariant<E>(), getValidationIdentityBoth(A))
+export function getValidationApplicative<Z>(
+  A: Associative<Z>
+): ApplicativeK<ValidationURI, Z> {
+  return intersect(
+    Applicative,
+    validationAssociativeBothF<ValidationURI, Z>(
+      instance({
+        ...Applicative,
+        ...Monad,
+        ...Fail,
+        ...Run,
+        combineErr: A.combine
+      })
+    )
   )
-}
-
-/**
- * The `Fail` instance for `Validation<E, *>`
- */
-export function getValidationFail<E>() {
-  return makeFail<ValidationURI, E>(ValidationURI)({
-    fail: makeValidationFail<E>()
-  })
-}
-
-/**
- * Fail's fail for `Validation<E, *>`
- */
-export function makeValidationFail<E>(): (e: E) => E.Either<E, never> {
-  return E.left
-}
-
-/**
- * The `Recover` instance for `Validation<E, *>`
- */
-export function getValidationRecover<Z>() {
-  return makeRecover<ValidationURI, Z>(ValidationURI)({
-    recover: makeValidationRecover<Z>()
-  })
-}
-
-/**
- * Recover's recover for `Validation<E, *>`
- */
-export function makeValidationRecover<E>(): <A2>(
-  f: (e: E) => E.Either<E, A2>
-) => <A>(fa: E.Either<E, A>) => E.Either<E, A2 | A> {
-  return (f) => (fa) => {
-    switch (fa._tag) {
-      case "Left": {
-        return f(fa.left)
-      }
-      case "Right": {
-        return fa
-      }
-    }
-  }
-}
-
-/**
- * The `IdentityErr` instance for `Validation<E, *>`
- */
-export function getValidationIdentityErr<E>(A: Associative<E>) {
-  return makeIdentityErr<ValidationURI, E>(ValidationURI)({
-    combineErr: A.combine
-  })
-}
-
-/**
- * The `AssociativeFlatten` instance for `Validation<E, *>`
- */
-export function getValidationAssociativeFlatten<E>() {
-  return makeAssociativeFlatten<ValidationURI, E>(ValidationURI)({
-    flatten: E.flatten
-  })
-}
-
-/**
- * The `IdentityFlatten` instance for `Validation<E, *>`
- */
-export function getValidationIdentityFlatten<E>(A: Associative<E>) {
-  return makeIdentityFlatten<ValidationURI, E>(ValidationURI)(
-    intersect(getValidationAssociativeFlatten<E>(), getValidationAny<E>())
-  )
-}
-
-/**
- * The `AssociativeBoth` instance for `Validation<E, *>`
- */
-export function getValidationAssociativeBoth<E>(
-  A: Associative<E>
-): ApplicativeK<ValidationURI, E> {
-  const F = intersect(
-    getValidationAny<E>(),
-    getValidationRecover<E>(),
-    getValidationFail<E>(),
-    getValidationAssociativeFlatten<E>(),
-    getValidationCovariant<E>(),
-    getValidationIdentityErr(A),
-    makeAssociativeBoth<ValidationURI, E>(ValidationURI)({
-      both: E.zip
-    })
-  )
-
-  return intersect(F, validationAssociativeBothF<ValidationURI, E>(F))
 }

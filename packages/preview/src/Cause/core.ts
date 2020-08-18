@@ -1,7 +1,8 @@
 import { pipe, tuple } from "../Function"
-import { makeAny } from "../_abstract/Any"
-import { makeAssociativeBoth } from "../_abstract/AssociativeBoth"
-import { makeCovariant } from "../_abstract/Covariant"
+import { AnyK } from "../_abstract/Any"
+import { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
 import * as C from "../_system/Cause"
 
 /**
@@ -12,10 +13,10 @@ export type CauseURI = typeof CauseURI
 
 declare module "../_abstract/HKT" {
   interface URItoKind<
-    Fix0,
-    Fix1,
-    Fix2,
-    Fix3,
+    TL0,
+    TL1,
+    TL2,
+    TL3,
     K,
     NK extends string,
     SI,
@@ -34,21 +35,21 @@ declare module "../_abstract/HKT" {
 /**
  * The `Any` instance for `Cause[+_]`
  */
-export const Any = makeAny(CauseURI)({
+export const Any = instance<AnyK<CauseURI>>({
   any: () => C.Empty
 })
 
 /**
  * The `Covariant` instance for `Cause[+_]`
  */
-export const Covariant = makeCovariant(CauseURI)({
+export const Covariant = instance<CovariantK<CauseURI>>({
   map: C.map
 })
 
 /**
  * The `AssociativeBoth` instance for `Cause[+_]`
  */
-export const AssociativeBoth = makeAssociativeBoth(CauseURI)({
+export const AssociativeBoth = instance<AssociativeBothK<CauseURI>>({
   both: (fb) => (fa) =>
     pipe(
       fa,

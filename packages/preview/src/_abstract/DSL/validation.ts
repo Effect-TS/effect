@@ -1,59 +1,60 @@
 import { constant, flow, pipe, tuple } from "../../Function"
-import * as E from "../../_system/Either"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
-import {
-  AssociativeBothF,
-  AssociativeBothK,
-  makeAssociativeBoth
-} from "../AssociativeBoth"
-import { AssociativeFlattenF, AssociativeFlattenK } from "../AssociativeFlatten"
+import { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
 import { FailF, FailK } from "../FX/Fail"
-import { IdentityErrF, IdentityErrK } from "../FX/IdentityErr"
-import { RecoverF, RecoverK } from "../FX/Recover"
-import { castS, castSO, HKTTypeS, HKTTypeSO, URIS } from "../HKT"
+import { RunF, RunK } from "../FX/Run"
+import { castS, castSO, ErrFor, HKTTypeS, HKTTypeSO, instance, URIS } from "../HKT"
+import { MonadF, MonadK } from "../Monad"
 
 import { succeedF } from "./core"
 
+export interface AssociativeErr<F, TL0, TL1, TL2, TL3> {
+  combineErr: <E>(
+    y: ErrFor<F, TL0, TL1, TL2, TL3, E>
+  ) => <E2>(
+    x: ErrFor<F, TL0, TL1, TL2, TL3, E2>
+  ) => ErrFor<F, TL0, TL1, TL2, TL3, E | E2>
+}
+
+export type ValidationStackK<
+  F extends URIS,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = ApplicativeK<F, TL0, TL1, TL2, TL3> &
+  RunK<F, TL0, TL1, TL2, TL3> &
+  FailK<F, TL0, TL1, TL2, TL3> &
+  MonadK<F, TL0, TL1, TL2, TL3> &
+  AssociativeErr<F, TL0, TL1, TL2, TL3>
+
+export type ValidationStackF<
+  F,
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = ApplicativeF<F, TL0, TL1, TL2, TL3> &
+  RunF<F, TL0, TL1, TL2, TL3> &
+  FailF<F, TL0, TL1, TL2, TL3> &
+  MonadF<F, TL0, TL1, TL2, TL3> &
+  AssociativeErr<F, TL0, TL1, TL2, TL3>
+
 export function validationAssociativeBothF<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  F: ApplicativeK<F, Fix0, Fix1, Fix2, Fix3> &
-    RecoverK<F, Fix0, Fix1, Fix2, Fix3> &
-    FailK<F, Fix0, Fix1, Fix2, Fix3> &
-    IdentityErrK<F, Fix0, Fix1, Fix2, Fix3> &
-    AssociativeFlattenK<F, Fix0, Fix1, Fix2, Fix3>
-): AssociativeBothK<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>(F: ValidationStackK<F, TL0, TL1, TL2, TL3>): AssociativeBothK<F, TL0, TL1, TL2, TL3>
 export function validationAssociativeBothF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  F: ApplicativeF<F, Fix0, Fix1, Fix2, Fix3> &
-    RecoverF<F, Fix0, Fix1, Fix2, Fix3> &
-    FailF<F, Fix0, Fix1, Fix2, Fix3> &
-    IdentityErrF<F, Fix0, Fix1, Fix2, Fix3> &
-    AssociativeFlattenF<F, Fix0, Fix1, Fix2, Fix3>
-): AssociativeBothF<F, Fix0, Fix1, Fix2, Fix3>
-export function validationAssociativeBothF<
-  F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  F: ApplicativeF<F, Fix0, Fix1, Fix2, Fix3> &
-    RecoverF<F, Fix0, Fix1, Fix2, Fix3> &
-    FailF<F, Fix0, Fix1, Fix2, Fix3> &
-    IdentityErrF<F, Fix0, Fix1, Fix2, Fix3> &
-    AssociativeFlattenF<F, Fix0, Fix1, Fix2, Fix3>
-): AssociativeBothF<F, Fix0, Fix1, Fix2, Fix3> {
-  return makeAssociativeBoth<F, Fix0, Fix1, Fix2, Fix3>(F.URI)({
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+>(F: ValidationStackF<F, TL0, TL1, TL2, TL3>): AssociativeBothF<F, TL0, TL1, TL2, TL3> {
+  return instance<AssociativeBothF<F, TL0, TL1, TL2, TL3>>({
     both: (fb) => (fa) => {
       const coerce = flow(
         castS<HKTTypeS<typeof fa>>()(F.URI),
@@ -61,18 +62,8 @@ export function validationAssociativeBothF<
       )
 
       return pipe(
-        fa,
-        F.map(E.right),
-        F.recover((e) => succeedF(F)(constant(E.left(e)))),
-        F.map(E.compact),
-        F.both(
-          pipe(
-            fb,
-            F.map(E.right),
-            F.recover((e) => succeedF(F)(constant(E.left(e)))),
-            F.map(E.compact)
-          )
-        ),
+        F.run(fa),
+        F.both(F.run(fb)),
         F.map(([l, r]) => {
           switch (l._tag) {
             case "Left": {

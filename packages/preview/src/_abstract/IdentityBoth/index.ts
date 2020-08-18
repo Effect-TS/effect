@@ -8,56 +8,16 @@ import { URIS } from "../HKT"
  */
 export type IdentityBothF<
   F,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeBothF<F, Fix0, Fix1, Fix2, Fix3> & AnyF<F, Fix0, Fix1, Fix2, Fix3>
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeBothF<F, TL0, TL1, TL2, TL3> & AnyF<F, TL0, TL1, TL2, TL3>
 
 export type IdentityBothK<
   F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
-> = AssociativeBothK<F, Fix0, Fix1, Fix2, Fix3> & AnyK<F, Fix0, Fix1, Fix2, Fix3>
-
-export function makeIdentityBoth<
-  URI extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  _: URI
-): (
-  _: Omit<
-    IdentityBothK<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityBothK<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityBoth<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3>
-export function makeIdentityBoth<URI, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  URI: URI
-): (
-  _: Omit<
-    IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3>,
-    "URI" | "Fix0" | "Fix1" | "Fix2" | "Fix3"
-  >
-) => IdentityBothF<URI, Fix0, Fix1, Fix2, Fix3> {
-  return (_) => ({
-    URI,
-    Fix0: undefined as any,
-    Fix1: undefined as any,
-    Fix2: undefined as any,
-    Fix3: undefined as any,
-    ..._
-  })
-}
+  TL0 = any,
+  TL1 = any,
+  TL2 = any,
+  TL3 = any
+> = AssociativeBothK<F, TL0, TL1, TL2, TL3> & AnyK<F, TL0, TL1, TL2, TL3>

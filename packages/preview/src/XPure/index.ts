@@ -37,8 +37,11 @@ export {
   runState_,
   run_,
   succeed,
+  suspend,
+  sync,
   tap,
   tap_,
+  tryCatch,
   unit,
   update,
   XPure,
@@ -57,6 +60,8 @@ export {
   Covariant,
   Fail,
   IdentityBoth,
+  Monad,
+  Recover,
   sequenceS,
   XPureSuccessURI
 } from "./core"

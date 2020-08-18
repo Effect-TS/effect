@@ -2,305 +2,120 @@ import { pipe, tuple } from "../../Function"
 import { EnforceNonEmptyRecord, UnionToIntersection } from "../../Utils"
 import * as A from "../../_system/Array"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
-import { HKT, HKT10, HKTFix, Kind, KindFix, URIS } from "../HKT"
+import { HKTFull, HKT_, KindFull, URIS } from "../HKT"
+import {
+  InferEnvF,
+  InferEnvK,
+  InferErrF,
+  InferErrK,
+  InferInF,
+  InferInK,
+  InferKF,
+  InferKK,
+  InferNKF,
+  InferNKK,
+  InferOutF,
+  InferOutK,
+  InferXF,
+  InferXK,
+  OrNever
+} from "../HKT/infer"
 
 import { anyF } from "./core"
 
-export function sequenceSF<
-  F extends URIS,
-  Fix0 = any,
-  Fix1 = any,
-  Fix2 = any,
-  Fix3 = any
->(
-  F: ApplicativeK<F, Fix0, Fix1, Fix2, Fix3>
+export function sequenceSF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
+  F: ApplicativeK<F, TL0, TL1, TL2, TL3>
 ): <SIO>() => <
   S,
   NER extends Record<
     string,
-    KindFix<F, Fix0, Fix1, Fix2, Fix3, any, any, SIO, SIO, any, any, S, any, any, any>
+    KindFull<F, TL0, TL1, TL2, TL3, any, any, SIO, SIO, any, any, S, any, any, any>
   >
 >(
   r: EnforceNonEmptyRecord<NER>
-) => KindFix<
+) => KindFull<
   F,
-  Fix0,
-  Fix1,
-  Fix2,
-  Fix3,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, infer X, any, any, any, any, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? X
-      : never
+    [K in keyof NER]: InferKK<F, NER[K]>
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, infer X, any, any, any, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? X
-      : never
+    [K in keyof NER]: InferNKK<F, NER[K]>
   }[keyof NER],
   SIO,
   SIO,
   {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, any, any, any, infer X, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? X
-      : never
+    [K in keyof NER]: InferXK<F, NER[K]>
   }[keyof NER],
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [
-        Kind<
-          F,
-          any,
-          any,
-          any,
-          any,
-          infer X,
-          infer In,
-          infer S,
-          infer R,
-          infer E,
-          infer A
-        >
-      ]
-        ? unknown extends In
-          ? never
-          : In
-        : never
+      [K in keyof NER]: OrNever<InferInK<F, NER[K]>>
     }[keyof NER]
   >,
   S,
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [
-        Kind<
-          F,
-          any,
-          any,
-          any,
-          any,
-          infer X,
-          infer In,
-          infer S,
-          infer R,
-          infer E,
-          infer A
-        >
-      ]
-        ? unknown extends R
-          ? never
-          : R
-        : never
+      [K in keyof NER]: OrNever<InferEnvK<F, NER[K]>>
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, any, any, any, infer X, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? E
-      : never
+    [K in keyof NER]: InferErrK<F, NER[K]>
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [
-      Kind<F, any, any, any, any, infer X, infer In, infer S, infer S, infer E, infer A>
-    ]
-      ? A
-      : never
+    [K in keyof NER]: InferOutK<F, NER[K]>
   }
 >
-export function sequenceSF<F, Fix0 = any, Fix1 = any, Fix2 = any, Fix3 = any>(
-  F: ApplicativeF<F, Fix0, Fix1, Fix2, Fix3>
+export function sequenceSF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
+  F: ApplicativeF<F, TL0, TL1, TL2, TL3>
 ): <SIO>() => <
   S,
   NER extends Record<
     string,
-    HKTFix<F, Fix0, Fix1, Fix2, Fix3, any, any, SIO, SIO, any, any, S, any, any, any>
+    HKTFull<F, TL0, TL1, TL2, TL3, any, any, SIO, SIO, any, any, S, any, any, any>
   >
 >(
   r: EnforceNonEmptyRecord<NER>
-) => HKT10<
+) => HKTFull<
   F,
+  TL0,
+  TL1,
+  TL2,
+  TL3,
   {
-    [K in keyof NER]: [NER[K]] extends [
-      HKTFix<
-        F,
-        Fix0,
-        Fix1,
-        Fix2,
-        Fix3,
-        infer X,
-        any,
-        any,
-        any,
-        any,
-        infer In,
-        infer S,
-        infer S,
-        infer E,
-        infer A
-      >
-    ]
-      ? X
-      : never
+    [K in keyof NER]: InferKF<F, NER[K]>
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [
-      HKTFix<
-        F,
-        Fix0,
-        Fix1,
-        Fix2,
-        Fix3,
-        any,
-        infer X,
-        any,
-        any,
-        any,
-        infer In,
-        infer S,
-        infer S,
-        infer E,
-        infer A
-      >
-    ]
-      ? X
-      : never
+    [K in keyof NER]: InferNKF<F, NER[K]>
   }[keyof NER],
   SIO,
   SIO,
   {
-    [K in keyof NER]: [NER[K]] extends [
-      HKTFix<
-        F,
-        Fix0,
-        Fix1,
-        Fix2,
-        Fix3,
-        any,
-        any,
-        any,
-        any,
-        infer X,
-        infer In,
-        infer S,
-        infer S,
-        infer E,
-        infer A
-      >
-    ]
-      ? X
-      : never
+    [K in keyof NER]: InferXF<F, NER[K]>
   }[keyof NER],
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [
-        HKTFix<
-          F,
-          Fix0,
-          Fix1,
-          Fix2,
-          Fix3,
-          any,
-          any,
-          any,
-          any,
-          infer X,
-          infer In,
-          infer S,
-          infer R,
-          infer E,
-          infer A
-        >
-      ]
-        ? unknown extends In
-          ? never
-          : In
-        : never
+      [K in keyof NER]: OrNever<InferInF<F, NER[K]>>
     }[keyof NER]
   >,
   S,
   UnionToIntersection<
     {
-      [K in keyof NER]: [NER[K]] extends [
-        HKTFix<
-          F,
-          Fix0,
-          Fix1,
-          Fix2,
-          Fix3,
-          any,
-          any,
-          any,
-          any,
-          infer X,
-          infer In,
-          infer S,
-          infer R,
-          infer E,
-          infer A
-        >
-      ]
-        ? unknown extends R
-          ? never
-          : R
-        : never
+      [K in keyof NER]: OrNever<InferEnvF<F, NER[K]>>
     }[keyof NER]
   >,
   {
-    [K in keyof NER]: [NER[K]] extends [
-      HKTFix<
-        F,
-        Fix0,
-        Fix1,
-        Fix2,
-        Fix3,
-        any,
-        any,
-        any,
-        any,
-        infer X,
-        infer In,
-        infer S,
-        infer S,
-        infer E,
-        infer A
-      >
-    ]
-      ? E
-      : never
+    [K in keyof NER]: InferErrF<F, NER[K]>
   }[keyof NER],
   {
-    [K in keyof NER]: [NER[K]] extends [
-      HKTFix<
-        F,
-        Fix0,
-        Fix1,
-        Fix2,
-        Fix3,
-        any,
-        any,
-        any,
-        any,
-        infer X,
-        infer In,
-        infer S,
-        infer S,
-        infer E,
-        infer A
-      >
-    ]
-      ? A
-      : never
+    [K in keyof NER]: InferOutF<F, NER[K]>
   }
 >
 export function sequenceSF<F>(
   F: ApplicativeF<F>
-): () => (r: Record<string, HKT<F, any>>) => HKT<F, Record<string, any>> {
+): () => (r: Record<string, HKT_<F, any>>) => HKT_<F, Record<string, any>> {
   return () => (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
