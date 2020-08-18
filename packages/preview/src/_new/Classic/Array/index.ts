@@ -40,9 +40,8 @@ export const Monad: P.Monad<ArrayURI> = {
   ...AssociativeFlatten
 }
 
-export const foreachF = P.implementForeachF<ArrayURI>()((_) => (G) => (f) => (fa) =>
-  A.reduce_(
-    fa,
+export const foreachF = P.implementForeachF<ArrayURI>()((_) => (G) => (f) =>
+  A.reduce(
     pipe(
       G.any(),
       G.map(() => [] as typeof _.B[])
@@ -51,7 +50,10 @@ export const foreachF = P.implementForeachF<ArrayURI>()((_) => (G) => (f) => (fa
       pipe(
         b,
         G.both(f(a)),
-        G.map(([x, y]) => [...x, y])
+        G.map(([x, y]) => {
+          x.push(y)
+          return x
+        })
       )
   )
 )
