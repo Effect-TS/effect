@@ -1,6 +1,21 @@
 import { IdentityBoth } from "../Combined"
-import { Covariant } from "../Covariant"
-import { Auto, Base, F_, UF_, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
+import { Covariant, CovariantComposition, getCovariantComposition } from "../Covariant"
+import {
+  Auto,
+  Base,
+  F_,
+  UF_,
+  Kind,
+  OrE,
+  OrI,
+  OrK,
+  OrR,
+  OrS,
+  OrX,
+  URIS,
+  UG_,
+  CompositionBase2
+} from "../HKT"
 
 export interface Foreach<F extends URIS, C = Auto> extends Base<F> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
@@ -86,4 +101,124 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
 ) => Foreach<F, C>
 export function implementForeachF() {
   return (i: any) => i()
+}
+
+export interface ForeachComposition<
+  F extends URIS,
+  G extends URIS,
+  CF = Auto,
+  CG = Auto
+> {
+  <H extends URIS, CH = Auto>(H: IdentityBoth<H, CH> & Covariant<H, CH>): <
+    HSIO,
+    HK,
+    HX,
+    HI,
+    HS,
+    HR,
+    HE,
+    A,
+    B
+  >(
+    f: (
+      a: A
+    ) => Kind<
+      H,
+      OrK<CH, HK>,
+      HSIO,
+      HSIO,
+      OrX<CH, HX>,
+      OrI<CH, HI>,
+      OrS<CH, HS>,
+      OrR<CH, HR>,
+      OrE<CH, HE>,
+      B
+    >
+  ) => <FK, FSI, FSO, FX, FI, FS, FR, FE, GK, GSI, GSO, GX, GI, GS, GR, GE>(
+    fa: Kind<
+      F,
+      OrK<CF, FK>,
+      FSI,
+      FSO,
+      OrX<CF, FX>,
+      OrI<CF, FI>,
+      OrS<CF, FS>,
+      OrR<CF, FR>,
+      OrE<CF, FE>,
+      Kind<
+        G,
+        OrK<CG, GK>,
+        GSI,
+        GSO,
+        OrX<CG, GX>,
+        OrI<CG, GI>,
+        OrS<CG, GS>,
+        OrR<CG, GR>,
+        OrE<CG, GE>,
+        A
+      >
+    >
+  ) => Kind<
+    H,
+    OrK<CH, HK>,
+    HSIO,
+    HSIO,
+    OrX<CH, HX>,
+    OrI<CH, HI>,
+    OrS<CH, HS>,
+    OrR<CH, HR>,
+    OrE<CH, HE>,
+    Kind<
+      F,
+      OrK<CF, FK>,
+      FSI,
+      FSO,
+      OrX<CF, FX>,
+      OrI<CF, FI>,
+      OrS<CF, FS>,
+      OrR<CF, FR>,
+      OrE<CF, FE>,
+      Kind<
+        G,
+        OrK<CG, GK>,
+        GSI,
+        GSO,
+        OrX<CG, GX>,
+        OrI<CG, GI>,
+        OrS<CG, GS>,
+        OrR<CG, GR>,
+        OrE<CG, GE>,
+        B
+      >
+    >
+  >
+}
+
+export interface TraversableComposition<
+  F extends URIS,
+  G extends URIS,
+  CF = Auto,
+  CG = Auto
+> extends CompositionBase2<F, G>, CovariantComposition<F, G, CF, CG> {
+  readonly foreachF: ForeachComposition<F, G, CF, CG>
+}
+
+export function getTraversableComposition<
+  F extends URIS,
+  G extends URIS,
+  CF = Auto,
+  CG = Auto
+>(F: Traversable<F, CF>, G: Traversable<G, CG>): TraversableComposition<F, G, CF, CG>
+export function getTraversableComposition(
+  F: Traversable<UF_>,
+  G: Traversable<UG_>
+): TraversableComposition<UF_, UG_> {
+  return {
+    ...getCovariantComposition(F, G),
+    foreachF: (H) => {
+      const foreachF = F.foreachF(H)
+      const foreachG = G.foreachF(H)
+      return (f) => foreachF(foreachG(f))
+    }
+  }
 }
