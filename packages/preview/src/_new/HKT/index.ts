@@ -1,14 +1,12 @@
-import { Generic, genericDef } from "../../Newtype"
-
 export interface HKT<K, SI, SO, X, I, S, R, E, A> {
-  K: K
-  SI: SI
-  SO: SO
-  X: X
-  I: I
+  K: () => K
+  SI: (_: SI) => void
+  SO: () => SO
+  X: () => X
+  I: (_: I) => void
   S: S
-  R: R
-  E: E
+  R: (_: R) => void
+  E: () => E
   A: A
 }
 
@@ -29,8 +27,4 @@ export interface Auto {
   readonly Auto: unique symbol
 }
 
-export type Or<A, B> = A extends Fix<infer X> ? X : B
-
-export const Fix = genericDef("@newtype/Fix")
-
-export interface Fix<F> extends Generic<F, typeof Fix> {}
+export { FixE, FixI, FixK, FixR, FixS, FixX, OrE, OrI, OrK, OrR, OrS, OrX } from "./fix"

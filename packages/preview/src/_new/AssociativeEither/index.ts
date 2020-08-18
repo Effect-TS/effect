@@ -1,51 +1,43 @@
 import { Either } from "../../Either"
-import { Auto, Kind, Or, URIS } from "../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../HKT"
 
-export interface AssociativeEither<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> {
+export interface AssociativeEither<F extends URIS, C = Auto> {
   readonly either: <K2, SI2, SO2, X2, I2, S, R2, E2, B>(
     fb: Kind<
       F,
-      Or<FK, K2>,
+      OrK<C, K2>,
       SI2,
       SO2,
-      Or<FX, X2>,
-      Or<FI, I2>,
-      Or<FS, S>,
-      Or<FR, R2>,
-      Or<FE, E2>,
+      OrX<C, X2>,
+      OrI<C, I2>,
+      OrS<C, S>,
+      OrR<C, R2>,
+      OrE<C, E2>,
       B
     >
   ) => <K, SI, SO, X, I, R, E, A>(
     fa: Kind<
       F,
-      Or<FK, K>,
+      OrK<C, K>,
       SI,
       SO,
-      Or<FX, X>,
-      Or<FI, I>,
-      Or<FS, S>,
-      Or<FR, R>,
-      Or<FE, E>,
+      OrX<C, X>,
+      OrI<C, I>,
+      OrS<C, S>,
+      OrR<C, R>,
+      OrE<C, E>,
       A
     >
   ) => Kind<
     F,
-    Or<FK, K | K2>,
+    OrK<C, K | K2>,
     SI & SI2,
     SO | SO2,
-    Or<FX, X | X2>,
-    Or<FI, I & I2>,
-    Or<FS, S>,
-    Or<FR, R & R2>,
-    Or<FE, E | E2>,
+    OrX<C, X | X2>,
+    OrI<C, I & I2>,
+    OrS<C, S>,
+    OrR<C, R & R2>,
+    OrE<C, E | E2>,
     Either<A, B>
   >
 }

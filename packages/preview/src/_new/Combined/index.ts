@@ -4,52 +4,14 @@ import { URIS, Auto } from "../HKT"
 import { None } from "../None"
 import { AssociativeEither, AssociativeFlatten, Covariant } from "../Prelude"
 
-export type IdentityBoth<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> = AssociativeBoth<F, FK, FX, FI, FS, FR, FE> & Any<F, FK, FX, FI, FS, FR, FE>
+export type IdentityBoth<F extends URIS, C = Auto> = AssociativeBoth<F, C> & Any<F, C>
 
-export type IdentityEither<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> = AssociativeEither<F, FK, FX, FI, FS, FR, FE> & None<F, FK, FX, FI, FS, FR, FE>
+export type IdentityEither<F extends URIS, C = Auto> = AssociativeEither<F, C> &
+  None<F, C>
 
-export type IdentityFlatten<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> = AssociativeFlatten<F, FK, FX, FI, FS, FR, FE> & Any<F, FK, FX, FI, FS, FR, FE>
+export type IdentityFlatten<F extends URIS, C = Auto> = AssociativeFlatten<F, C> &
+  Any<F, C>
 
-export type Monad<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> = IdentityFlatten<F, FK, FX, FI, FS, FR, FE> & Covariant<F, FK, FX, FI, FS, FR, FE>
+export type Monad<F extends URIS, C = Auto> = IdentityFlatten<F, C> & Covariant<F, C>
 
-export type Applicative<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> = IdentityBoth<F, FK, FX, FI, FS, FR, FE> & Covariant<F, FK, FX, FI, FS, FR, FE>
+export type Applicative<F extends URIS, C = Auto> = IdentityBoth<F, C> & Covariant<F, C>

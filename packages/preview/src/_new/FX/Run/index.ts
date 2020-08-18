@@ -1,38 +1,30 @@
 import { Either } from "../../../_system/Either"
-import { Auto, Base, Kind, Or, URIS } from "../../HKT"
+import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS } from "../../HKT"
 
-export interface Run<
-  F extends URIS,
-  FK = Auto,
-  FX = Auto,
-  FI = Auto,
-  FS = Auto,
-  FR = Auto,
-  FE = Auto
-> extends Base<F> {
+export interface Run<F extends URIS, C = Auto> {
   readonly run: <K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       F,
-      Or<FK, K>,
+      OrK<C, K>,
       SI,
       SO,
-      Or<FX, X>,
-      Or<FI, I>,
-      Or<FS, S>,
-      Or<FR, R>,
-      Or<FE, E>,
+      OrX<C, X>,
+      OrI<C, I>,
+      OrS<C, S>,
+      OrR<C, R>,
+      OrE<C, E>,
       A
     >
   ) => Kind<
     F,
-    Or<FK, K>,
+    OrK<C, K>,
     SI,
     SO,
-    Or<FX, X>,
-    Or<FI, I>,
-    Or<FS, S>,
-    Or<FR, R>,
-    Or<FE, never>,
-    Either<Or<FE, E>, A>
+    OrX<C, X>,
+    OrI<C, I>,
+    OrS<C, S>,
+    OrR<C, R>,
+    OrE<C, never>,
+    Either<OrE<C, E>, A>
   >
 }
