@@ -12,7 +12,7 @@ declare module "../../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [RecordURI]: R.Record<N, A>
   }
-  interface URItoKey<N extends string, K> {
+  interface URItoIndex<N extends string, K> {
     [RecordURI]: N
   }
 }
@@ -46,6 +46,67 @@ export const ReduceRight = P.instance<P.ReduceRight<RecordURI>>({
   reduceRight: R.reduceRight
 })
 
-export const ReduceWithKey = P.instance<P.ReduceWithKey<RecordURI>>({
-  reduceWithKey: R.reduceWithIndex
+export const ReduceWithIndex = P.instance<P.ReduceWithIndex<RecordURI>>({
+  reduceWithIndex: R.reduceWithIndex
 })
+
+export {
+  collect,
+  collect_,
+  compact,
+  deleteAt,
+  deleteAt_,
+  empty,
+  every,
+  every_,
+  filter,
+  filterMap,
+  filterMapWithIndex,
+  filterMapWithIndex_,
+  filterMap_,
+  filterWithIndex,
+  filterWithIndex_,
+  filter_,
+  fromMutable,
+  hasOwnProperty,
+  insertAt,
+  insertAt_,
+  isEmpty,
+  keys,
+  lookup,
+  lookup_,
+  map,
+  mapWithIndex,
+  mapWithIndex_,
+  map_,
+  modifyAt,
+  modifyAt_,
+  partition,
+  partitionMap,
+  partitionMapWithIndex,
+  partitionMapWithIndex_,
+  partitionMap_,
+  partitionWithIndex,
+  partitionWithIndex_,
+  partition_,
+  pop,
+  pop_,
+  Record,
+  reduce,
+  reduceRight,
+  reduceRightWithIndex,
+  reduceRightWithIndex_,
+  reduceRight_,
+  reduceWithIndex,
+  reduceWithIndex_,
+  reduce_,
+  separate,
+  singleton,
+  size,
+  some,
+  some_,
+  toMutable,
+  toReadonlyArray,
+  updateAt,
+  updateAt_
+} from "@effect-ts/system/Record"
