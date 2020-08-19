@@ -93,7 +93,7 @@ export function chainF(F: Monad<UF_>) {
 
 export function accessMF<F extends URIS, C = Auto>(
   F: Access<F, C> & AssociativeFlatten<F, C>
-): <N extends string, K, SI, SO, X, I, S, R, E, A>(
+): <N extends string, K, SI, SO, X, I, S, R, R2, E, A>(
   f: (
     r: OrR<C, R>
   ) => Kind<
@@ -105,7 +105,7 @@ export function accessMF<F extends URIS, C = Auto>(
     OrX<C, X>,
     OrI<C, I>,
     OrS<C, S>,
-    OrR<C, R>,
+    OrR<C, R2>,
     OrE<C, E>,
     A
   >
@@ -118,12 +118,12 @@ export function accessMF<F extends URIS, C = Auto>(
   OrX<C, X>,
   OrI<C, I>,
   OrS<C, S>,
-  OrR<C, R>,
+  OrR<C, R & R2>,
   OrE<C, E>,
   A
 >
 export function accessMF(
   F: Access<UF___> & AssociativeFlatten<UF___>
-): <R, E, A>(f: (r: R) => F___<R, E, A>) => F___<R, E, A> {
+): <R, R2, E, A>(f: (r: R) => F___<R2, E, A>) => F___<R & R2, E, A> {
   return flow(F.access, F.flatten)
 }
