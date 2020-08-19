@@ -1,0 +1,9 @@
+remote_theme: pmarsceill/just-the-docs
+
+# Enable or disable the site search
+search_enabled: true
+
+# Aux links for the upper right navigation
+aux_links:
+  '@effect-ts/core on GitHub':
+    - 'https://github.com/Matechs-Garage/matechs-effect'

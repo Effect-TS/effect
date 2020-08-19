@@ -1,0 +1,68 @@
+{
+  "name": "@effect-ts/core",
+  "version": "0.0.0",
+  "license": "MIT",
+  "homepage": "https://github.com/Matechs-Garage/matechs-effect",
+  "private": true,
+  "scripts": {
+    "clean": "rimraf build tsbuildinfo",
+    "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
+    "build:es6": "tsc --build tsconfig.es6.json && ts-node ../../scripts/rewrite-esm.ts && babel build/esm/ -d build/esm/ -s --plugins annotate-pure-calls",
+    "build:post-process": "ts-node ../../scripts/rewrite-source-maps.ts && ts-node ../../scripts/rewrite-locals.ts",
+    "build": "yarn run build:lib && yarn run build:es6 && yarn run build:post-process",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
+    "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
+    "tc": "tsc --noEmit",
+    "doc": "docs-ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "directory": "build"
+  },
+  "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
+  "sideEffects": false,
+  "dependencies": {
+    "@effect-ts/system": "^0.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@types/node": "^14.0.5",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "docs-ts": "^0.5.1"
+  },
+  "config": {
+    "modules": [
+      "Classic",
+      "Classic/Associative",
+      "Classic/Array",
+      "Classic/Closure",
+      "Classic/Either",
+      "Classic/Equal",
+      "Classic/Identity",
+      "Classic/Iterable",
+      "Classic/Record",
+      "Effect",
+      "Prelude",
+      "Prelude/Any",
+      "Prelude/AssociativeBoth",
+      "Prelude/AssociativeEither",
+      "Prelude/AssociativeFlatten",
+      "Prelude/Combined",
+      "Prelude/CommutativeBoth",
+      "Prelude/CommutativeEither",
+      "Prelude/Contravariant",
+      "Prelude/Covariant",
+      "Prelude/Derive",
+      "Prelude/FX",
+      "Prelude/FX/Fail",
+      "Prelude/FX/Run",
+      "Prelude/FX/Validation",
+      "Prelude/HKT",
+      "Prelude/Newtype",
+      "Prelude/None",
+      "Prelude/Traversable",
+      "Pure"
+    ]
+  }
+}
