@@ -2,7 +2,23 @@ import { constant, flow } from "../../Function"
 import { Any } from "../Any"
 import { Monad } from "../Combined"
 import { Covariant } from "../Covariant"
-import { Auto, F_, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, UF_, URIS } from "../HKT"
+import { Access } from "../FX"
+import {
+  Auto,
+  F_,
+  F___,
+  Kind,
+  OrE,
+  OrI,
+  OrK,
+  OrN,
+  OrR,
+  OrS,
+  OrX,
+  UF_,
+  UF___,
+  URIS
+} from "../HKT"
 
 export function succeedF<F extends URIS, C = Auto>(
   F: Any<F, C> & Covariant<F, C>
@@ -72,4 +88,41 @@ export function chainF<F extends URIS, C = Auto>(
 >
 export function chainF(F: Monad<UF_>) {
   return <A, B>(f: (a: A) => F_<B>) => flow(F.map(f), F.flatten)
+}
+
+export function accessMF<F extends URIS, C = Auto>(
+  F: Access<F, C> & Monad<F, C>
+): <N extends string, K, SI, SO, X, I, S, R, E, A>(
+  f: (
+    r: OrR<C, R>
+  ) => Kind<
+    F,
+    OrN<C, N>,
+    OrK<C, K>,
+    SI,
+    SO,
+    OrX<C, X>,
+    OrI<C, I>,
+    OrS<C, S>,
+    OrR<C, R>,
+    OrE<C, E>,
+    A
+  >
+) => Kind<
+  F,
+  OrN<C, N>,
+  OrK<C, K>,
+  SI,
+  SO,
+  OrX<C, X>,
+  OrI<C, I>,
+  OrS<C, S>,
+  OrR<C, R>,
+  OrE<C, E>,
+  A
+>
+export function accessMF(
+  F: Access<UF___> & Monad<UF___>
+): <R, E, A>(f: (r: R) => F___<R, E, A>) => F___<R, E, A> {
+  return flow(F.access, F.flatten)
 }
