@@ -12,6 +12,8 @@ export {
 } from "./Combined"
 export { CommutativeBoth } from "./CommutativeBoth"
 export { CommutativeEither } from "./CommutativeEither"
+export { Compact } from "./Compact"
+export { Compactable } from "./Compactable"
 export { Contravariant, getContravariantComposition } from "./Contravariant"
 export { Covariant, CovariantComposition, getCovariantComposition } from "./Covariant"
 export { CovariantWithIndex } from "./CovariantWithIndex"
@@ -20,6 +22,7 @@ export { Foldable } from "./Foldable"
 export { FoldableWithIndex } from "./FoldableWithIndex"
 export { FoldMap, FoldMapFn } from "./FoldMap"
 export { FoldMapWithIndex, FoldMapWithIndexFn } from "./FoldMapWithIndex"
+export * as FX from "./FX"
 export {
   Auto,
   Base,
@@ -61,6 +64,7 @@ export { Reduce } from "./Reduce"
 export { ReduceRight } from "./ReduceRight"
 export { ReduceRightWithIndex, ReduceRightWithIndexFn } from "./ReduceRightWithIndex"
 export { ReduceWithIndex, ReduceWithIndexFn } from "./ReduceWithIndex"
+export { Separate } from "./Separate"
 export {
   Foreach,
   ForeachComposition,
@@ -82,8 +86,7 @@ export {
 } from "./WiltableWithIndex"
 export { implementCompactF, Wither, Witherable } from "./Witherable"
 export {
-  WitherWithIndex,
+  implementCompactWithIndexF,
   WitherableWithIndex,
-  implementCompactWithIndexF
+  WitherWithIndex
 } from "./WitherableWithIndex"
-export * as FX from "./FX"
