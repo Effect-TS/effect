@@ -59,7 +59,7 @@ export { Commutative, CommutativeURI, makeCommutative } from "../Classic/Commuta
 export { CommutativeBoth } from "./CommutativeBoth"
 export { CommutativeEither } from "./CommutativeEither"
 export { Contravariant, getContravariantComposition } from "./Contravariant"
-export { FoldMap } from "./FoldMap"
+export { FoldMap, FoldMapFn } from "./FoldMap"
 export { Reduce } from "./Reduce"
 export { ReduceRight } from "./ReduceRight"
 export { Foldable } from "./Foldable"
