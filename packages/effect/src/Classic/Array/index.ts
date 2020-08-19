@@ -98,6 +98,14 @@ export const WitherableWithIndex = P.instance<P.WitherableWithIndex<ArrayURI>>({
   compactWithIndexF
 })
 
+export const Compact = P.instance<P.Compact<ArrayURI>>({
+  compact: A.compact
+})
+
+export const Separate = P.instance<P.Separate<ArrayURI>>({
+  separate: A.separate
+})
+
 export {
   ap,
   ap_,
