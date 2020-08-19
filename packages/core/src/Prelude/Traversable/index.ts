@@ -266,7 +266,7 @@ export interface TraversableComposition<
   G extends URIS,
   CF = Auto,
   CG = Auto
-> extends CompositionBase2<F, G>, CovariantComposition<F, G, CF, CG> {
+> extends CompositionBase2<F, G, CF, CG>, CovariantComposition<F, G, CF, CG> {
   readonly foreachF: ForeachComposition<F, G, CF, CG>
 }
 
