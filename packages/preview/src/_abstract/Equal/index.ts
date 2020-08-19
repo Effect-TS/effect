@@ -1,6 +1,4 @@
 import { intersect } from "../../Utils"
-import * as A from "../../_system/Array"
-import * as E from "../../_system/Either"
 import { AnyK } from "../Any"
 import { AssociativeBothK } from "../AssociativeBoth"
 import { AssociativeEitherK } from "../AssociativeEither"
@@ -9,6 +7,9 @@ import { instance } from "../HKT"
 import { IdentityBothK } from "../IdentityBoth"
 import { IdentityEitherK } from "../IdentityEither"
 import { NoneK } from "../None"
+
+import * as A from "@effect-ts/system/Array"
+import * as E from "@effect-ts/system/Either"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be

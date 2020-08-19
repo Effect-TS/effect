@@ -4,4 +4,4 @@ export {
   make,
   pullElements,
   update
-} from "../../_system/Stream/BufferedPull"
+} from "@effect-ts/system/Stream/BufferedPull"

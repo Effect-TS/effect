@@ -10,4 +10,4 @@ export {
   set,
   unsafeMake,
   update
-} from "../_system/FiberRef"
+} from "@effect-ts/system/FiberRef"

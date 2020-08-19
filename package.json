@@ -1,7 +1,7 @@
 {
   "name": "effect-ts",
   "private": true,
-  "repository": "https://github.com/mikearnaldi/matechs-effect.git",
+  "repository": "https://github.com/Matechs-Garage/matechs-effect.git",
   "workspaces": [
     "packages/*"
   ],
@@ -54,7 +54,7 @@
     "retry-ts": "^0.1.2",
     "ts-jest": "^26.0.0",
     "ts-node": "^8.10.2",
-    "typescript": "rc",
+    "typescript": "^3.9.7",
     "ultra-runner": "^3.3.0",
     "yarn-deduplicate": "^2.0.0"
   },

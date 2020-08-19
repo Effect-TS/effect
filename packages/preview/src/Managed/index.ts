@@ -66,4 +66,4 @@ export {
   zipWithPar_,
   zipWith_,
   zip_
-} from "../_system/Managed"
+} from "@effect-ts/system/Managed"

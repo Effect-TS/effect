@@ -12,4 +12,4 @@ export {
   RandomURI,
   setSeed,
   withSeed
-} from "../_system/Random"
+} from "@effect-ts/system/Random"

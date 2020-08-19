@@ -136,4 +136,4 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../_system/Schedule"
+} from "@effect-ts/system/Schedule"

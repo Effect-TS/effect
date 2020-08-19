@@ -14,4 +14,4 @@ export {
   makeProcessMap,
   monitored,
   processMapLayer
-} from "../_system/ProcessManager"
+} from "@effect-ts/system/ProcessManager"

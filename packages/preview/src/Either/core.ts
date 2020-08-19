@@ -17,7 +17,8 @@ import { instance } from "../_abstract/HKT"
 import { IdentityBothK } from "../_abstract/IdentityBoth"
 import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
 import { MonadK } from "../_abstract/Monad"
-import * as E from "../_system/Either"
+
+import * as E from "@effect-ts/system/Either"
 
 export const EitherURI = "Either"
 export type EitherURI = typeof EitherURI

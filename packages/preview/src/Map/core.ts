@@ -6,11 +6,12 @@ import { Identity, makeIdentity } from "../_abstract/Identity"
 import { Ord } from "../_abstract/Ord"
 import * as Ordering from "../_abstract/Ordering"
 import { makeShow, Show } from "../_abstract/Show"
-import { Either, isLeft } from "../_system/Either/core"
-import * as M from "../_system/Map/core"
-import { Map } from "../_system/Map/core"
-import { MutableArray } from "../_system/Mutable"
-import { Separated } from "../_system/Utils"
+
+import { Either, isLeft } from "@effect-ts/system/Either/core"
+import * as M from "@effect-ts/system/Map/core"
+import { Map } from "@effect-ts/system/Map/core"
+import { MutableArray } from "@effect-ts/system/Mutable"
+import { Separated } from "@effect-ts/system/Utils"
 
 /**
  * Lookup key `K` returning `Option[(K, A)]` using strict equality of keys

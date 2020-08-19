@@ -50,4 +50,4 @@ export {
   unfoldChunkM,
   zipWith,
   zipWithSeq
-} from "../_system/Stream"
+} from "@effect-ts/system/Stream"

@@ -1,8 +1,9 @@
-import * as E from "../../../_system/Either"
-import { pipe, tuple } from "../../../_system/Function"
 import * as P from "../../Prelude"
-import { Associative } from "../../Prelude/Associative"
 import { getValidationF } from "../../Prelude/FX/Validation"
+import { Associative } from "../Associative"
+
+import * as E from "@effect-ts/system/Either"
+import { pipe, tuple } from "@effect-ts/system/Function"
 
 export const EitherURI = "EitherURI"
 export type EitherURI = typeof EitherURI
@@ -151,4 +152,4 @@ export {
   zipSecond,
   zipSecond_,
   zip_
-} from "../../../_system/Either"
+} from "@effect-ts/system/Either"

@@ -13,4 +13,4 @@ export {
   overridable,
   replaceServiceIn,
   replaceServiceIn_
-} from "../_system/Has"
+} from "@effect-ts/system/Has"

@@ -1,9 +1,7 @@
 export { Any } from "./Any"
-export { Associative, makeAssociative } from "./Associative"
 export { AssociativeBoth } from "./AssociativeBoth"
 export { AssociativeEither } from "./AssociativeEither"
 export { AssociativeFlatten } from "./AssociativeFlatten"
-export { Closure, ClosureURI, makeClosure } from "./Closure"
 export {
   Applicative,
   IdentityBoth,
@@ -48,7 +46,6 @@ export {
   URIS,
   URItoKind
 } from "./HKT"
-export { deriveIdentity, Identity, IdentityURI, makeIdentity } from "./Identity"
 export { None } from "./None"
 export {
   Foreach,
@@ -58,3 +55,7 @@ export {
   Traversable,
   TraversableComposition
 } from "./Traversable"
+export { Commutative, CommutativeURI, makeCommutative } from "../Classic/Commutative"
+export { CommutativeBoth } from "./CommutativeBoth"
+export { CommutativeEither } from "./CommutativeEither"
+export { Contravariant, getContravariantComposition } from "./Contravariant"

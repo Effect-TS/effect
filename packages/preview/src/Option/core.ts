@@ -2,7 +2,8 @@ import { AnyK } from "../_abstract/Any"
 import { AssociativeBothK } from "../_abstract/AssociativeBoth"
 import { CovariantK } from "../_abstract/Covariant"
 import { instance } from "../_abstract/HKT"
-import * as O from "../_system/Option"
+
+import * as O from "@effect-ts/system/Option"
 
 /**
  * Typelevel map entries

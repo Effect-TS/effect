@@ -59,7 +59,7 @@ export {
   zipSecond,
   zipSecond_,
   zip_
-} from "../_system/Either"
+} from "@effect-ts/system/Either"
 export {
   Any,
   Applicative,

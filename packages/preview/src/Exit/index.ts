@@ -47,4 +47,4 @@ export {
   zipRight_,
   zipWith,
   zipWith_
-} from "../_system/Exit"
+} from "@effect-ts/system/Exit"

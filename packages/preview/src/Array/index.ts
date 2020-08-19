@@ -125,7 +125,7 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../_system/Array"
+} from "@effect-ts/system/Array"
 export {
   Any,
   Applicative,

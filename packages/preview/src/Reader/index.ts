@@ -11,7 +11,8 @@ import { EnvironmentalK } from "../_abstract/FX/Environmental"
 import { instance } from "../_abstract/HKT"
 import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
 import { MonadK } from "../_abstract/Monad"
-import * as F from "../_system/XPure"
+
+import * as F from "@effect-ts/system/XPure"
 
 //
 // Module

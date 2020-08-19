@@ -13,7 +13,8 @@ import { RunK } from "../_abstract/FX/Run"
 import { instance } from "../_abstract/HKT"
 import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
 import { MonadK } from "../_abstract/Monad"
-import * as S from "../_system/Effect"
+
+import * as S from "@effect-ts/system/Effect"
 
 export const EffectAsyncURI = "EffectAsync"
 export type EffectAsyncURI = typeof EffectAsyncURI
@@ -412,4 +413,4 @@ export {
   zipWithPar_,
   zipWith_,
   zip_
-} from "../_system/Effect"
+} from "@effect-ts/system/Effect"

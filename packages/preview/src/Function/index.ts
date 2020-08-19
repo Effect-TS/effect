@@ -20,4 +20,4 @@ export {
   tupled,
   unsafeCoerce,
   untupled
-} from "../_system/Function"
+} from "@effect-ts/system/Function"

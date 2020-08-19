@@ -3,7 +3,8 @@ import { AnyK } from "../_abstract/Any"
 import { AssociativeBothK } from "../_abstract/AssociativeBoth"
 import { CovariantK } from "../_abstract/Covariant"
 import { instance } from "../_abstract/HKT"
-import * as C from "../_system/Cause"
+
+import * as C from "@effect-ts/system/Cause"
 
 /**
  * Typelevel map entries

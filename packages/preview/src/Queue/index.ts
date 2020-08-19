@@ -40,4 +40,4 @@ export {
   takeAllUpTo_,
   takeBetween,
   takeBetween_
-} from "../_system/Queue"
+} from "@effect-ts/system/Queue"

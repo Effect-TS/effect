@@ -3,9 +3,10 @@ import { ApplicativeK } from "../_abstract/Applicative"
 import { AssociativeBothK } from "../_abstract/AssociativeBoth"
 import { CovariantK } from "../_abstract/Covariant"
 import { instance } from "../_abstract/HKT"
-import * as T from "../_system/Effect"
-import * as L from "../_system/Layer"
-import * as M from "../_system/Managed"
+
+import * as T from "@effect-ts/system/Effect"
+import * as L from "@effect-ts/system/Layer"
+import * as M from "@effect-ts/system/Managed"
 
 export const LayerURI = "Layer"
 export type LayerURI = typeof LayerURI

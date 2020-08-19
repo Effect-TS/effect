@@ -54,4 +54,4 @@ export {
   updateSome_,
   update_,
   writeOnly
-} from "../_system/Ref"
+} from "@effect-ts/system/Ref"

@@ -1,8 +1,8 @@
-import { identity } from "../../_system/Function"
-
 import { HKTFull } from "./hkt"
 import { KindFull } from "./kind"
 import { URIS } from "./registry"
+
+import { identity } from "@effect-ts/system/Function"
 
 export function castErr<T>(): {
   <F extends URIS>(_?: F): <

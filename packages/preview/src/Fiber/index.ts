@@ -41,4 +41,4 @@ export {
   zipWith_,
   zip_,
   _tracing
-} from "../_system/Fiber"
+} from "@effect-ts/system/Fiber"

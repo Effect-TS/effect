@@ -2,7 +2,8 @@ import { AnyK } from "../_abstract/Any"
 import { AssociativeBothK } from "../_abstract/AssociativeBoth"
 import { CovariantK } from "../_abstract/Covariant"
 import { instance } from "../_abstract/HKT"
-import * as A from "../_system/NonEmptyArray"
+
+import * as A from "@effect-ts/system/NonEmptyArray"
 
 /**
  * Typelevel map entries

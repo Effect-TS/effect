@@ -52,4 +52,4 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../_system/NonEmptyArray"
+} from "@effect-ts/system/NonEmptyArray"

@@ -14,7 +14,8 @@ import { instance } from "../_abstract/HKT"
 import { IdentityBothK } from "../_abstract/IdentityBoth"
 import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
 import { MonadK } from "../_abstract/Monad"
-import * as T from "../_system/Effect"
+
+import * as T from "@effect-ts/system/Effect"
 
 /**
  * @category definitions

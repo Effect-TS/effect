@@ -49,7 +49,7 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../_system/XPure"
+} from "@effect-ts/system/XPure"
 export {
   Access,
   Any,

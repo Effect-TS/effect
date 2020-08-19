@@ -39,5 +39,5 @@ export {
   stripFailures,
   stripInterrupts,
   Then
-} from "../_system/Cause"
+} from "@effect-ts/system/Cause"
 export { Any, AssociativeBoth, CauseURI, Covariant } from "./core"

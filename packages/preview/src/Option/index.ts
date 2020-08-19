@@ -37,5 +37,5 @@ export {
   tryCatch,
   zipFirst,
   zipSecond
-} from "../_system/Option"
+} from "@effect-ts/system/Option"
 export { Any, AssociativeBoth, Covariant, OptionURI } from "./core"

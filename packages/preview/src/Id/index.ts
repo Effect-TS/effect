@@ -6,7 +6,8 @@ import { instance } from "../_abstract/HKT"
 import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
 import { MonadK } from "../_abstract/Monad"
 import { Generic, genericDef } from "../_abstract/Newtype"
-import { tuple } from "../_system/Function"
+
+import { tuple } from "@effect-ts/system/Function"
 
 export const Id = genericDef("@newtype/Id")
 

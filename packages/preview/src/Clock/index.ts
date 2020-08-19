@@ -8,4 +8,4 @@ export {
   sleep,
   withClock,
   withClockM
-} from "../_system/Clock"
+} from "@effect-ts/system/Clock"

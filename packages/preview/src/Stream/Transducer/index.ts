@@ -1,1 +1,1 @@
-export { Transducer, then, transducer } from "../../_system/Stream/Transducer"
+export { Transducer, then, transducer } from "@effect-ts/system/Stream/Transducer"

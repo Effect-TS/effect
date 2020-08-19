@@ -1,5 +1,4 @@
 import { Augmented, Has, HasURI } from "../../Has"
-import { pipe } from "../../_system/Function"
 import { AnyF, AnyK } from "../Any"
 import { CovariantF, CovariantK } from "../Covariant"
 import { EnvironmentalF, EnvironmentalK } from "../FX/Environmental"
@@ -7,6 +6,8 @@ import { FailF, FailK } from "../FX/Fail"
 import { RunF, RunK } from "../FX/Run"
 import { ErrFor, HKT3_, HKTFull, HKT_, KindFull, URIS } from "../HKT"
 import { MonadF, MonadK } from "../Monad"
+
+import { pipe } from "@effect-ts/system/Function"
 
 /**
  * Model (F: F[_]) => (a: A) => F[A] with default params

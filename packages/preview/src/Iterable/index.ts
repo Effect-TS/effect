@@ -12,4 +12,4 @@ export {
   reduceRight,
   reduceRight_,
   reduce_
-} from "../_system/Iterable"
+} from "@effect-ts/system/Iterable"

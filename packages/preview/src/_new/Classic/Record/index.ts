@@ -1,7 +1,9 @@
+import {} from "../../Prelude/HKT"
 import { flow, tuple } from "../../../Function"
-import * as R from "../../../_system/Record"
 import * as P from "../../Prelude"
 import * as A from "../Array"
+
+import * as R from "@effect-ts/system/Record"
 
 export const RecordURI = "RecordURI"
 export type RecordURI = typeof RecordURI

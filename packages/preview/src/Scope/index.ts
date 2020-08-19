@@ -9,4 +9,4 @@ export {
   globalScope,
   makeScope,
   unsafeMakeScope
-} from "../_system/Scope"
+} from "@effect-ts/system/Scope"

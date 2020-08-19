@@ -1,6 +1,7 @@
 import { pipe } from "../../../Function"
-import * as A from "../../../_system/Array"
 import * as P from "../../Prelude"
+
+import * as A from "@effect-ts/system/Array"
 
 export const ArrayURI = "ArrayURI"
 export type ArrayURI = typeof ArrayURI
@@ -190,4 +191,4 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../../../_system/Array"
+} from "@effect-ts/system/Array"

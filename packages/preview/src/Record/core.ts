@@ -10,7 +10,8 @@ import {
   implementForeachWithKeysF,
   TraversableWithKeysK
 } from "../_abstract/TraversableWithKeys"
-import * as R from "../_system/Record"
+
+import * as R from "@effect-ts/system/Record"
 
 export const RecordURI = "Record"
 export type RecordURI = typeof RecordURI

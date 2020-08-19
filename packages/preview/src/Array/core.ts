@@ -31,7 +31,8 @@ import {
 } from "../_abstract/WiltableWithKeys"
 import { implementCompactF, WitherableK } from "../_abstract/Witherable"
 import { implemenCompactWithKeysF } from "../_abstract/WitherableWithKeys"
-import * as A from "../_system/Array"
+
+import * as A from "@effect-ts/system/Array"
 
 /**
  * Typelevel map entries

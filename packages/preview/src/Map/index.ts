@@ -19,7 +19,7 @@ export {
   singleton,
   size,
   toMutable
-} from "../_system/Map"
+} from "@effect-ts/system/Map"
 export {
   collect,
   collect_,

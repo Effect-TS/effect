@@ -9,9 +9,10 @@ import {
   implementForeachWithKeysF,
   TraversableWithKeysK
 } from "../_abstract/TraversableWithKeys"
-import * as M from "../_system/Map/core"
 
 import { getKeys } from "./core"
+
+import * as M from "@effect-ts/system/Map/core"
 
 export const MapURI = "Map"
 export type MapURI = typeof MapURI

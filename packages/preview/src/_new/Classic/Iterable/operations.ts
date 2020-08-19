@@ -1,8 +1,9 @@
-import { pipe } from "../../../_system/Function"
-import { reduce, of, never, concat } from "../../../_system/Iterable"
 import * as P from "../../Prelude"
 
 import { IterableURI } from "./definitions"
+
+import { pipe } from "@effect-ts/system/Function"
+import { reduce, of, never, concat } from "@effect-ts/system/Iterable"
 
 export {
   ap,
@@ -21,7 +22,7 @@ export {
   reduceRight_,
   zip,
   zip_
-} from "../../../_system/Iterable"
+} from "@effect-ts/system/Iterable"
 
 export const foreachF = P.implementForeachF<IterableURI>()((_) => (G) => (f) =>
   reduce(

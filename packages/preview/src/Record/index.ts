@@ -57,7 +57,7 @@ export {
   toReadonlyArray,
   updateAt,
   updateAt_
-} from "../_system/Record"
+} from "@effect-ts/system/Record"
 export {
   Any,
   Covariant,

@@ -10,4 +10,4 @@ export {
   propagationAnd,
   propagationOr,
   track
-} from "../_system/Supervisor"
+} from "@effect-ts/system/Supervisor"

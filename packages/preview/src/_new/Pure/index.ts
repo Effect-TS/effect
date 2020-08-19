@@ -1,6 +1,7 @@
-import { constant, identity } from "../../_system/Function"
-import * as X from "../../_system/XPure"
 import * as P from "../Prelude"
+
+import { constant, identity } from "@effect-ts/system/Function"
+import * as X from "@effect-ts/system/XPure"
 
 export const XPureURI = "XPureURI"
 export type XPureURI = typeof XPureURI
@@ -82,4 +83,4 @@ export {
   zipWith,
   zipWith_,
   zip_
-} from "../../_system/XPure"
+} from "@effect-ts/system/XPure"

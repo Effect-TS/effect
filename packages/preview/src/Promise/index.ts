@@ -20,4 +20,4 @@ export {
   unsafeDone,
   unsafeMake,
   wait
-} from "../_system/Promise"
+} from "@effect-ts/system/Promise"

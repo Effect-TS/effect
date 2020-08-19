@@ -7,4 +7,4 @@ export {
   withPermitManaged,
   withPermits,
   withPermitsManaged
-} from "../_system/Semaphore"
+} from "@effect-ts/system/Semaphore"

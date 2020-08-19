@@ -1,1 +1,1 @@
-export { Push, emit, fail, more } from "../../_system/Stream/Push"
+export { Push, emit, fail, more } from "@effect-ts/system/Stream/Push"

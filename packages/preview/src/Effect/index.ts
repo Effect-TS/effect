@@ -251,7 +251,7 @@ export {
   zipWithPar_,
   zipWith_,
   zip_
-} from "../_system/Effect"
+} from "@effect-ts/system/Effect"
 export {
   Access,
   Any,

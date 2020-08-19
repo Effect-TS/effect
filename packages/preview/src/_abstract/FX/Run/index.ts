@@ -1,5 +1,6 @@
-import { Either } from "../../../_system/Either"
 import { ErrFor, HasURI, HKTFull, KindFull, URIS } from "../../HKT"
+
+import { Either } from "@effect-ts/system/Either"
 
 export interface RunF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {

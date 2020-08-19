@@ -1,6 +1,5 @@
 import { pipe, tuple } from "../../Function"
 import { EnforceNonEmptyRecord, UnionToIntersection } from "../../Utils"
-import * as A from "../../_system/Array"
 import { ApplicativeF, ApplicativeK } from "../Applicative"
 import { HKTFull, HKT_, KindFull, URIS } from "../HKT"
 import {
@@ -22,6 +21,8 @@ import {
 } from "../HKT/infer"
 
 import { anyF } from "./core"
+
+import * as A from "@effect-ts/system/Array"
 
 export function sequenceSF<F extends URIS, TL0 = any, TL1 = any, TL2 = any, TL3 = any>(
   F: ApplicativeK<F, TL0, TL1, TL2, TL3>

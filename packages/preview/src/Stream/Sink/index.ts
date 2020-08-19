@@ -8,4 +8,4 @@ export {
   fromPush,
   raceBoth,
   succeed
-} from "../../_system/Stream/Sink"
+} from "@effect-ts/system/Stream/Sink"

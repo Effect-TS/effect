@@ -13,7 +13,8 @@ import { RecoverK } from "../_abstract/FX/Recover"
 import { instance } from "../_abstract/HKT"
 import { IdentityBothK } from "../_abstract/IdentityBoth"
 import { MonadK } from "../_abstract/Monad"
-import * as X from "../_system/XPure"
+
+import * as X from "@effect-ts/system/XPure"
 
 /**
  * Typelevel map entries
