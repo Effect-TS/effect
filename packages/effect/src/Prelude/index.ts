@@ -79,3 +79,8 @@ export {
   WiltWithIndex
 } from "./WiltableWithIndex"
 export { implementCompactF, Wither, Witherable } from "./Witherable"
+export {
+  WitherWithIndex,
+  WitherableWithIndex,
+  implementCompactWithIndexF
+} from "./WitherableWithIndex"

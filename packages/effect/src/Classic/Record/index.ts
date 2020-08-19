@@ -2,7 +2,7 @@ import * as P from "../../Prelude"
 import * as A from "../Array"
 
 import * as E from "@effect-ts/system/Either"
-import { flow, tuple, pipe } from "@effect-ts/system/Function"
+import { flow, pipe, tuple } from "@effect-ts/system/Function"
 import * as O from "@effect-ts/system/Option"
 import * as R from "@effect-ts/system/Record"
 
@@ -120,15 +120,24 @@ export const WiltableWithIndex = P.instance<P.WiltableWithIndex<RecordURI>>({
 })
 
 export const compactF = P.implementCompactF<RecordURI>()(() => (G) => (f) =>
-  flow(
-    R.collect(tuple),
-    A.compactF(G)(([k, a]) => pipe(f(a), G.map(O.map((b) => tuple(k, b))))),
-    G.map(toRecord)
-  )
+  compactWithIndexF(G)((_, a) => f(a))
 )
 
 export const Witherable = P.instance<P.Witherable<RecordURI>>({
   compactF
+})
+
+export const compactWithIndexF = P.implementCompactWithIndexF<RecordURI>()(
+  () => (G) => (f) =>
+    flow(
+      R.collect(tuple),
+      A.compactF(G)(([k, a]) => pipe(f(k, a), G.map(O.map((b) => tuple(k, b))))),
+      G.map(toRecord)
+    )
+)
+
+export const WitherableWithIndex = P.instance<P.WitherableWithIndex<RecordURI>>({
+  compactWithIndexF
 })
 
 export {

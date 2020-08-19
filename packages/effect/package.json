@@ -102,6 +102,7 @@
       "Prelude/Wiltable",
       "Prelude/WiltableWithIndex",
       "Prelude/Witherable",
+      "Prelude/WitherableWithIndex",
       "Pure",
       "Utils"
     ]

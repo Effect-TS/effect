@@ -11,6 +11,9 @@ declare module "../../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [ArrayURI]: A.Array<A>
   }
+  interface URItoIndex<N extends string, K> {
+    [ArrayURI]: number
+  }
 }
 
 export const Any: P.Any<ArrayURI> = {
@@ -43,26 +46,36 @@ export const Monad: P.Monad<ArrayURI> = {
 }
 
 export const foreachF = P.implementForeachF<ArrayURI>()((_) => (G) => (f) =>
-  A.reduce(
-    pipe(
-      G.any(),
-      G.map(() => [] as typeof _.B[])
-    ),
-    (b, a) =>
-      pipe(
-        b,
-        G.both(f(a)),
-        G.map(([x, y]) => {
-          x.push(y)
-          return x
-        })
-      )
-  )
+  foreachWithIndexF(G)((_, a) => f(a))
 )
 
 export const Traversable = P.instance<P.Traversable<ArrayURI>>({
   map: A.map,
   foreachF
+})
+
+export const foreachWithIndexF = P.implementForeachWithIndexF<ArrayURI>()(
+  (_) => (G) => (f) =>
+    A.reduceWithIndex(
+      pipe(
+        G.any(),
+        G.map(() => [] as typeof _.B[])
+      ),
+      (k, b, a) =>
+        pipe(
+          b,
+          G.both(f(k, a)),
+          G.map(([x, y]) => {
+            x.push(y)
+            return x
+          })
+        )
+    )
+)
+
+export const TraversableWithIndex = P.instance<P.TraversableWithIndex<ArrayURI>>({
+  map: A.map,
+  foreachWithIndexF
 })
 
 export const separateF = P.implementSeparateF<ArrayURI>()((_) => (G) => (f) =>
@@ -79,6 +92,14 @@ export const compactF = P.implementCompactF<ArrayURI>()((_) => (G) => (f) =>
 
 export const Witherable = P.instance<P.Witherable<ArrayURI>>({
   compactF
+})
+
+export const compactWithIndexF = P.implementCompactWithIndexF<
+  ArrayURI
+>()((_) => (G) => (f) => flow(foreachWithIndexF(G)(f), G.map(A.compact)))
+
+export const WitherableWithIndex = P.instance<P.WitherableWithIndex<ArrayURI>>({
+  compactWithIndexF
 })
 
 export {
