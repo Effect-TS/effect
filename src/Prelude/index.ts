@@ -84,3 +84,4 @@ export {
   WitherableWithIndex,
   implementCompactWithIndexF
 } from "./WitherableWithIndex"
+export * as FX from "./FX"
