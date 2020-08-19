@@ -115,7 +115,6 @@ export function implementSeparateWithIndexF<F extends URIS, C = Auto>(): (
   i: <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE, A, B, B2>(_: {
     A: A
     B: B
-    C: C
     FN: FN
     FK: FK
     FSI: FSI
