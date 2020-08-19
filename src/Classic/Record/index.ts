@@ -23,20 +23,30 @@ export const Covariant = P.instance<P.Covariant<RecordURI>>({
 })
 
 export const foreachF = P.implementForeachF<RecordURI>()((_) => (G) => (f) =>
-  flow(
-    R.collect(tuple),
-    A.foreachF(G)(([k, a]) => G.map((b) => tuple(k, b))(f(a))),
-    G.map(
-      A.reduce({} as R.Record<typeof _.N, typeof _.B>, (b, [k, v]) =>
-        Object.assign(b, { [k]: v })
-      )
-    )
-  )
+  foreachWithIndexF(G)((_, a) => f(a))
 )
 
 export const Traversable = P.instance<P.Traversable<RecordURI>>({
   map: R.map,
   foreachF
+})
+
+export const foreachWithIndexF = P.implementForeachWithIndexF<RecordURI>()(
+  (_) => (G) => (f) =>
+    flow(
+      R.collect(tuple),
+      A.foreachF(G)(([k, a]) => G.map((b) => tuple(k, b))(f(k, a))),
+      G.map(
+        A.reduce({} as R.Record<typeof _.N, typeof _.B>, (b, [k, v]) =>
+          Object.assign(b, { [k]: v })
+        )
+      )
+    )
+)
+
+export const TraversableWithIndex = P.instance<P.TraversableWithIndex<RecordURI>>({
+  map: R.map,
+  foreachWithIndexF
 })
 
 export const Reduce = P.instance<P.Reduce<RecordURI>>({

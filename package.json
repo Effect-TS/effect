@@ -97,6 +97,7 @@
       "Prelude/ReduceRightWithIndex",
       "Prelude/ReduceWithIndex",
       "Prelude/Traversable",
+      "Prelude/TraversableWithIndex",
       "Prelude/Wiltable",
       "Pure",
       "Utils"
