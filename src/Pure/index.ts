@@ -13,10 +13,13 @@ declare module "../Prelude/HKT" {
   }
 }
 
-export const Any: P.Any<XPureURI> = {
-  F: XPureURI,
+export const Any: P.Any<XPureURI> = P.instance<P.Any<XPureURI>>({
   any: () => X.succeed(constant({}))
-}
+})
+
+export const Covariant = P.instance<P.Covariant<XPureURI>>({
+  map: X.map
+})
 
 export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI>>({
   both: X.zip
@@ -28,6 +31,12 @@ export const AssociativeEither = P.instance<P.AssociativeEither<XPureURI>>({
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<XPureURI>>({
   flatten: (ffa) => X.chain_(ffa, identity)
+})
+
+export const Applicative = P.instance<P.Applicative<XPureURI>>({
+  ...Any,
+  ...Covariant,
+  ...AssociativeBoth
 })
 
 export {

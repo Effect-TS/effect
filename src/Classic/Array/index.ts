@@ -1,7 +1,7 @@
 import * as P from "../../Prelude"
 
 import * as A from "@effect-ts/system/Array"
-import { pipe } from "@effect-ts/system/Function"
+import { pipe, flow } from "@effect-ts/system/Function"
 
 export const ArrayURI = "ArrayURI"
 
@@ -63,6 +63,14 @@ export const foreachF = P.implementForeachF<ArrayURI>()((_) => (G) => (f) =>
 export const Traversable = P.instance<P.Traversable<ArrayURI>>({
   map: A.map,
   foreachF
+})
+
+export const separateF = P.implementSeparateF<ArrayURI>()((_) => (G) => (f) =>
+  flow(foreachF(G)(f), G.map(A.separate))
+)
+
+export const Wiltable = P.instance<P.Wiltable<ArrayURI>>({
+  separateF
 })
 
 export {
