@@ -17,7 +17,9 @@ export { Covariant, CovariantComposition, getCovariantComposition } from "./Cova
 export { CovariantWithIndex } from "./CovariantWithIndex"
 export { Derive } from "./Derive"
 export { Foldable } from "./Foldable"
+export { FoldableWithIndex } from "./FoldableWithIndex"
 export { FoldMap, FoldMapFn } from "./FoldMap"
+export { FoldMapWithIndex, FoldMapWithIndexFn } from "./FoldMapWithIndex"
 export {
   Auto,
   Base,
