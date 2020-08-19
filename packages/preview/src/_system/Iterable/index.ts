@@ -136,6 +136,11 @@ export const of = <A>(a: A): Iterable<A> => ({
   [Symbol.iterator]: () => genOf(a)
 })
 
+export const never: Iterable<never> = {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  *[Symbol.iterator]() {}
+}
+
 export const foldMap = <M>(M: { empty: M; concat: (x: M, y: M) => M }) => <A>(
   f: (a: A, k: number) => M
 ) => (fa: Iterable<A>): M => {
