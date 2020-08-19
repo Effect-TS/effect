@@ -1,7 +1,7 @@
 import { Identity } from "../../Classic/Identity"
 import { Base, Kind, URIS, Auto, OrN, OrK, OrX, OrI, OrS, OrR, OrE } from "../HKT"
 
-export interface FoldMap<F extends URIS, C = Auto> extends Base<F> {
+export interface FoldMap<F extends URIS, C = Auto> extends Base<F, C> {
   readonly foldMap: FoldMapFn<F, C>
 }
 

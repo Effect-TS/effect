@@ -1,6 +1,6 @@
 import { Auto, Base, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, URIS } from "../HKT"
 
-export interface Any<F extends URIS, C = Auto> extends Base<F> {
+export interface Any<F extends URIS, C = Auto> extends Base<F, C> {
   readonly any: <S, SI, SO>() => Kind<
     F,
     OrN<C, any>,

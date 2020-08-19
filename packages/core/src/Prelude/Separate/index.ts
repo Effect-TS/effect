@@ -3,7 +3,7 @@ import { Auto, Base, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, URIS } from "../HK
 import { Either } from "@effect-ts/system/Either"
 import { Separated } from "@effect-ts/system/Utils"
 
-export interface Separate<F extends URIS, C = Auto> extends Base<F> {
+export interface Separate<F extends URIS, C = Auto> extends Base<F, C> {
   readonly separate: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(
     fa: Kind<
       F,

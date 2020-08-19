@@ -107,7 +107,7 @@ export interface WiltWithIndex<F extends URIS, C = Auto> {
   >
 }
 
-export interface WiltableWithIndex<F extends URIS, C = Auto> extends Base<F> {
+export interface WiltableWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly separateWithIndexF: WiltWithIndex<F, C>
 }
 

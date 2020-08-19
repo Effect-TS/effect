@@ -103,7 +103,7 @@ export interface Wilt<F extends URIS, C = Auto> {
   >
 }
 
-export interface Wiltable<F extends URIS, C = Auto> extends Base<F> {
+export interface Wiltable<F extends URIS, C = Auto> extends Base<F, C> {
   readonly separateF: Wilt<F, C>
 }
 
