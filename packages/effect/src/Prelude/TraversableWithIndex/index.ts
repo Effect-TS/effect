@@ -33,7 +33,7 @@ export interface ForeachWithIndex<F extends URIS, C = Auto> {
     FK
   >(
     f: (
-      k: IndexFor<F, FN, FK>,
+      k: IndexFor<F, OrN<C, FN>, OrK<C, FK>>,
       a: A
     ) => Kind<
       G,
@@ -111,7 +111,7 @@ export function implementForeachWithIndexF<F extends URIS, C = Auto>(): (
   }) => (
     G: IdentityBoth<UG_> & Covariant<UG_>
   ) => (
-    f: (k: IndexFor<F, N, K>, a: A) => G_<B>
+    f: (k: IndexFor<F, OrN<C, N>, OrK<C, K>>, a: A) => G_<B>
   ) => (
     fa: Kind<
       F,

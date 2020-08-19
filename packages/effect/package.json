@@ -83,6 +83,7 @@
       "Prelude/CommutativeEither",
       "Prelude/Contravariant",
       "Prelude/Covariant",
+      "Prelude/CovariantWithIndex",
       "Prelude/Derive",
       "Prelude/Foldable",
       "Prelude/FoldMap",
