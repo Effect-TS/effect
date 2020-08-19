@@ -9,8 +9,11 @@ export const RecordURI = "RecordURI"
 export type RecordURI = typeof RecordURI
 
 declare module "../../Prelude/HKT" {
-  export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [RecordURI]: R.Record<N, A>
+  }
+  interface URItoKey<N extends string, K> {
+    [RecordURI]: N
   }
 }
 
@@ -33,4 +36,16 @@ export const foreachF = P.implementForeachF<RecordURI>()((_) => (G) => (f) =>
 export const Traversable = P.instance<P.Traversable<RecordURI>>({
   map: R.map,
   foreachF
+})
+
+export const Reduce = P.instance<P.Reduce<RecordURI>>({
+  reduce: R.reduce
+})
+
+export const ReduceRight = P.instance<P.ReduceRight<RecordURI>>({
+  reduceRight: R.reduceRight
+})
+
+export const ReduceWithKey = P.instance<P.ReduceWithKey<RecordURI>>({
+  reduceWithKey: R.reduceWithIndex
 })
