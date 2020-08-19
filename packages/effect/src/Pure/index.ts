@@ -42,6 +42,7 @@ export const AssociativeBothV = P.instance<
 export const AssociativeBothF = P.instance<AssociativeBothFreeVariance<XPureURI>>({
   both: X.zip
 })
+
 //
 // end experiment
 //
