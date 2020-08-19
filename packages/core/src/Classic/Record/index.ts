@@ -3,6 +3,7 @@ import * as A from "../Array"
 
 import * as E from "@effect-ts/system/Either"
 import { flow, tuple, pipe } from "@effect-ts/system/Function"
+import * as O from "@effect-ts/system/Option"
 import * as R from "@effect-ts/system/Record"
 
 export const RecordURI = "RecordURI"
@@ -116,6 +117,18 @@ export const separateWithIndexF = P.implementSeparateWithIndexF<RecordURI>()(
 
 export const WiltableWithIndex = P.instance<P.WiltableWithIndex<RecordURI>>({
   separateWithIndexF
+})
+
+export const compactF = P.implementCompactF<RecordURI>()(() => (G) => (f) =>
+  flow(
+    R.collect(tuple),
+    A.compactF(G)(([k, a]) => pipe(f(a), G.map(O.map((b) => tuple(k, b))))),
+    G.map(toRecord)
+  )
+)
+
+export const Witherable = P.instance<P.Witherable<RecordURI>>({
+  compactF
 })
 
 export {
