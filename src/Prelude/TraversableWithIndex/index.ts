@@ -90,7 +90,7 @@ export interface ForeachWithIndex<F extends URIS, C = Auto> {
 }
 
 export interface TraversableWithIndex<F extends URIS, C = Auto>
-  extends Base<F>,
+  extends Base<F, C>,
     Covariant<F, C> {
   readonly foreachWithIndexF: ForeachWithIndex<F, C>
 }

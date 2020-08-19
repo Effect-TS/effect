@@ -1,6 +1,6 @@
 import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../HKT"
 
-export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F> {
+export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C> {
   readonly flatten: <
     N extends string,
     K,

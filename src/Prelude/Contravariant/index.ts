@@ -16,7 +16,7 @@ import {
   URIS
 } from "../HKT"
 
-export interface Contravariant<F extends URIS, C = Auto> extends Base<F> {
+export interface Contravariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly contramap: <A, B>(
     f: (a: B) => A
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(

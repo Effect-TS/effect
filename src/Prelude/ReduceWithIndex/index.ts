@@ -13,7 +13,7 @@ import {
   IndexFor
 } from "../HKT"
 
-export interface ReduceWithIndex<F extends URIS, C = Auto> extends Base<F> {
+export interface ReduceWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly reduceWithIndex: ReduceWithIndexFn<F, C>
 }
 

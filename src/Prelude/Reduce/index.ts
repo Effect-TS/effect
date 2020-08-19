@@ -1,6 +1,6 @@
 import { URIS, Auto, Base, Kind, OrN, OrK, OrX, OrI, OrS, OrR, OrE } from "../HKT"
 
-export interface Reduce<F extends URIS, C = Auto> extends Base<F> {
+export interface Reduce<F extends URIS, C = Auto> extends Base<F, C> {
   readonly reduce: <A, B>(
     b: B,
     f: (b: B, a: A) => B

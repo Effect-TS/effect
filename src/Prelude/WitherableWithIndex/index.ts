@@ -90,7 +90,7 @@ export interface WitherWithIndex<F extends URIS, C = Auto> {
   >
 }
 
-export interface WitherableWithIndex<F extends URIS, C = Auto> extends Base<F> {
+export interface WitherableWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly compactWithIndexF: WitherWithIndex<F, C>
 }
 

@@ -13,7 +13,7 @@ import {
   URIS
 } from "../HKT"
 
-export interface CovariantWithIndex<F extends URIS, C = Auto> extends Base<F> {
+export interface CovariantWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly mapWithIndex: <N extends string, K, A, B>(
     f: (k: IndexFor<F, OrN<C, N>, OrK<C, K>>, a: A) => B
   ) => <SI, SO, X, I, S, R, E>(

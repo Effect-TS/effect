@@ -16,7 +16,7 @@ import {
   URIS
 } from "../HKT"
 
-export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
+export interface Covariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
