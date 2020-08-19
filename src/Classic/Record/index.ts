@@ -71,16 +71,29 @@ export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<RecordURI>
 })
 
 export const foldMap: P.FoldMapFn<RecordURI> = (I) => (f) =>
-  R.reduce(I.identity, (b, a) => I.combine(f(a))(b))
+  foldMapWithIndex(I)((_, a) => f(a))
 
 export const FoldMap = P.instance<P.FoldMap<RecordURI>>({
   foldMap
+})
+
+export const foldMapWithIndex: P.FoldMapWithIndexFn<RecordURI> = (I) => (f) =>
+  R.reduceWithIndex(I.identity, (k, b, a) => I.combine(f(k, a))(b))
+
+export const FoldMapWithIndex = P.instance<P.FoldMapWithIndex<RecordURI>>({
+  foldMapWithIndex
 })
 
 export const Foldable: P.Foldable<RecordURI> = {
   ...FoldMap,
   ...Reduce,
   ...ReduceRight
+}
+
+export const FoldableWithIndex: P.FoldableWithIndex<RecordURI> = {
+  ...FoldMapWithIndex,
+  ...ReduceWithIndex,
+  ...ReduceRightWithIndex
 }
 
 export const toRecord = <K extends string, V>(
