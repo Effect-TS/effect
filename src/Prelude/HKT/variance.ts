@@ -51,6 +51,13 @@ export type MixAll<C, P extends Par, X, Y extends any[]> = C extends Cov<P>
   ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[number]>
   : X
 
+// composes a record of types to the base respecting variance from C
+export type MixAllS<C, P extends Par, X, Y> = C extends Cov<P>
+  ? Y[keyof Y]
+  : C extends Con<P>
+  ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[keyof Y]>
+  : X
+
 // used in subsequent definitions to either vary a paramter or keep it fixed to "First"
 export type Def<C, P extends Par, First, Current> = C extends Cov<P>
   ? Current
