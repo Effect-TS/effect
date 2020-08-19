@@ -22,6 +22,10 @@ export const Covariant = P.instance<P.Covariant<RecordURI>>({
   map: R.map
 })
 
+export const CovariantWithIndex = P.instance<P.CovariantWithIndex<RecordURI>>({
+  mapWithIndex: R.mapWithIndex
+})
+
 export const foreachF = P.implementForeachF<RecordURI>()((_) => (G) => (f) =>
   foreachWithIndexF(G)((_, a) => f(a))
 )
