@@ -54,8 +54,8 @@ export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<RecordURI>
   reduceRightWithIndex: R.reduceRightWithIndex
 })
 
-export const foldMap: P.FoldMapFn<RecordURI> = (I) => (f) => (fa) =>
-  R.reduce_(fa, I.identity, (b, a) => I.combine(f(a))(b))
+export const foldMap: P.FoldMapFn<RecordURI> = (I) => (f) =>
+  R.reduce(I.identity, (b, a) => I.combine(f(a))(b))
 
 export const FoldMap = P.instance<P.FoldMap<RecordURI>>({
   foldMap
