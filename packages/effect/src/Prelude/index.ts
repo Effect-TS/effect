@@ -74,7 +74,8 @@ export {
 } from "./TraversableWithIndex"
 export { implementSeparateF, Wilt, Wiltable } from "./Wiltable"
 export {
-  WiltWithIndex,
+  implementSeparateWithIndexF,
   WiltableWithIndex,
-  implementSeparateWithIndexF
+  WiltWithIndex
 } from "./WiltableWithIndex"
+export { implementCompactF, Wither, Witherable } from "./Witherable"
