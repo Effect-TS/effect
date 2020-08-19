@@ -79,15 +79,19 @@
       "Prelude/Contravariant",
       "Prelude/Covariant",
       "Prelude/Derive",
+      "Prelude/Foldable",
+      "Prelude/FoldMap",
       "Prelude/FX",
       "Prelude/FX/Fail",
       "Prelude/FX/Run",
       "Prelude/FX/Validation",
       "Prelude/HKT",
       "Prelude/None",
+      "Prelude/Reduce",
+      "Prelude/ReduceRight",
       "Prelude/Traversable",
       "Pure",
-      "Pure/Utils"
+      "Utils"
     ]
   }
 }
