@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "target": "ES5",
+    "module": "CommonJS",
+    "incremental": false,
+    "removeComments": false,
+    "lib": ["DOM"],
+    "baseUrl": "./src",
+    "paths": {
+      "@effect-ts/system/*": ["../../system/build/*"],
+      "@effect-ts/system": ["../../system/build"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["test", "node_modules"]
+}
