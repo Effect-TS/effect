@@ -37,6 +37,7 @@
       "Classic/Closure",
       "Classic/Either",
       "Classic/Equal",
+      "Classic/Has",
       "Classic/Identity",
       "Classic/Iterable",
       "Classic/Record",
@@ -65,6 +66,8 @@
       "Effect/Stream/Take",
       "Effect/Stream/Transducer",
       "Effect/Supervisor",
+      "Function",
+      "Newtype",
       "Prelude",
       "Prelude/Any",
       "Prelude/AssociativeBoth",
@@ -81,10 +84,10 @@
       "Prelude/FX/Run",
       "Prelude/FX/Validation",
       "Prelude/HKT",
-      "Prelude/Newtype",
       "Prelude/None",
       "Prelude/Traversable",
-      "Pure"
+      "Pure",
+      "Pure/Utils"
     ]
   }
 }
