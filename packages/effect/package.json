@@ -15,7 +15,7 @@
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "tsc --noEmit",
     "demo": "ts-node -r tsconfig-paths/register",
-    "doc": "rimraf docs && typedoc --tsconfig tsconfig.doc.json && rimraf ../../docs && mv docs ../../"
+    "doc": "rimraf docs && typedoc --tsconfig tsconfig.doc.json && rimraf ../../docs && mv docs ../../ && echo '' > ../../docs/.nojekyll"
   },
   "publishConfig": {
     "access": "public",
