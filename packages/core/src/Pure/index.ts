@@ -1,4 +1,5 @@
 import * as P from "../Prelude"
+import { sequenceSF } from "../Prelude/DSL"
 
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
@@ -50,6 +51,8 @@ export const Fail = P.instance<P.FX.Fail<XPureURI>>({
 export const Provide = P.instance<P.FX.Provide<XPureURI>>({
   provide: X.provideAll
 })
+
+export const sequenceS = sequenceSF(Applicative)
 
 export {
   access,

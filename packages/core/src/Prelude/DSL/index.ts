@@ -141,8 +141,9 @@ export function accessMF(
 
 export function sequenceSF<F extends URIS, C = Auto>(
   F: Applicative<F, C>
-): <SIO>() => <
+): <
   S,
+  SIO,
   NER extends Record<
     string,
     Kind<
@@ -212,8 +213,8 @@ export function sequenceSF<F extends URIS, C = Auto>(
 >
 export function sequenceSF(
   F: Applicative<UF_>
-): () => (r: Record<string, F_<any>>) => F_<Record<string, any>> {
-  return () => (r) =>
+): (r: Record<string, F_<any>>) => F_<Record<string, any>> {
+  return (r) =>
     pipe(
       Object.keys(r).map((k) => tuple(k, r[k])),
       A.reduce(succeedF(F)([] as readonly (readonly [string, any])[]), (b, a) =>
