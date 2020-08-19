@@ -88,25 +88,34 @@ export const toRecord = <K extends string, V>(
   A.reduce_(_, {} as R.Record<K, V>, (b, [k, v]) => Object.assign(b, { [k]: v }))
 
 export const separateF = P.implementSeparateF<RecordURI>()(() => (G) => (f) =>
-  flow(
-    R.collect(tuple),
-    A.separateF(G)(([k, a]) =>
-      pipe(
-        f(a),
-        G.map(
-          E.bimap(
-            (b) => tuple(k, b),
-            (a) => tuple(k, a)
-          )
-        )
-      )
-    ),
-    G.map(({ left, right }) => ({ left: toRecord(left), right: toRecord(right) }))
-  )
+  separateWithIndexF(G)((_, a) => f(a))
 )
 
 export const Wiltable = P.instance<P.Wiltable<RecordURI>>({
   separateF
+})
+
+export const separateWithIndexF = P.implementSeparateWithIndexF<RecordURI>()(
+  () => (G) => (f) =>
+    flow(
+      R.collect(tuple),
+      A.separateF(G)(([k, a]) =>
+        pipe(
+          f(k, a),
+          G.map(
+            E.bimap(
+              (b) => tuple(k, b),
+              (a) => tuple(k, a)
+            )
+          )
+        )
+      ),
+      G.map(({ left, right }) => ({ left: toRecord(left), right: toRecord(right) }))
+    )
+)
+
+export const WiltableWithIndex = P.instance<P.WiltableWithIndex<RecordURI>>({
+  separateWithIndexF
 })
 
 export {
