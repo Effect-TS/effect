@@ -59,26 +59,3 @@ export { Commutative, CommutativeURI, makeCommutative } from "../Classic/Commuta
 export { CommutativeBoth } from "./CommutativeBoth"
 export { CommutativeEither } from "./CommutativeEither"
 export { Contravariant, getContravariantComposition } from "./Contravariant"
-export {
-  And,
-  AndF,
-  BooleanProd,
-  BooleanSum,
-  Failure,
-  FailureIn,
-  FailureOut,
-  First,
-  Generic,
-  Last,
-  Max,
-  Min,
-  Or,
-  OrF,
-  Prod,
-  StringSum,
-  Sum,
-  TypeOf,
-  genericDef,
-  newtype,
-  typeDef
-} from "./Newtype"

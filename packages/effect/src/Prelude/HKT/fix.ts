@@ -1,4 +1,4 @@
-import { genericDef, Generic } from "../Newtype"
+import { genericDef, Generic } from "../../Newtype"
 
 export const FixE = genericDef("@newtype/FixE")
 
