@@ -100,6 +100,7 @@
       "Prelude/Traversable",
       "Prelude/TraversableWithIndex",
       "Prelude/Wiltable",
+      "Prelude/WiltableWithIndex",
       "Pure",
       "Utils"
     ]
