@@ -14,7 +14,7 @@
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "tsc --noEmit",
-    "doc": "docs-ts"
+    "doc": "docs-ts && rimraf ../../docs && mv docs ../../"
   },
   "publishConfig": {
     "access": "public",
