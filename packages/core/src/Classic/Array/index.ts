@@ -106,6 +106,10 @@ export const Separate = P.instance<P.Separate<ArrayURI>>({
   separate: A.separate
 })
 
+export const Extend = P.instance<P.Extend<ArrayURI>>({
+  extend: A.extend
+})
+
 export {
   ap,
   ap_,
