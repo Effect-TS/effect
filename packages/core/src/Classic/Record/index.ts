@@ -1,7 +1,8 @@
 import * as P from "../../Prelude"
 import * as A from "../Array"
 
-import { flow, tuple } from "@effect-ts/system/Function"
+import * as E from "@effect-ts/system/Either"
+import { flow, tuple, pipe } from "@effect-ts/system/Function"
 import * as R from "@effect-ts/system/Record"
 
 export const RecordURI = "RecordURI"
@@ -66,6 +67,33 @@ export const Foldable: P.Foldable<RecordURI> = {
   ...Reduce,
   ...ReduceRight
 }
+
+export const toRecord = <K extends string, V>(
+  _: A.Array<readonly [K, V]>
+): R.Record<K, V> =>
+  A.reduce_(_, {} as R.Record<K, V>, (b, [k, v]) => Object.assign(b, { [k]: v }))
+
+export const separateF = P.implementSeparateF<RecordURI>()(() => (G) => (f) =>
+  flow(
+    R.collect(tuple),
+    A.separateF(G)(([k, a]) =>
+      pipe(
+        f(a),
+        G.map(
+          E.bimap(
+            (b) => tuple(k, b),
+            (a) => tuple(k, a)
+          )
+        )
+      )
+    ),
+    G.map(({ left, right }) => ({ left: toRecord(left), right: toRecord(right) }))
+  )
+)
+
+export const Wiltable = P.instance<P.Wiltable<RecordURI>>({
+  separateF
+})
 
 export {
   collect,
