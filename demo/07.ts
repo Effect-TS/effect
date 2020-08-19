@@ -31,3 +31,5 @@ const C = X.sequenceS({
 console.log(A)
 console.log(result)
 console.log(X.runEither(C))
+
+X.AssociativeBothV.both(X.fail(0))(X.fail(""))
