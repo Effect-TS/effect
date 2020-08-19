@@ -1,13 +1,7 @@
-/**
- * @since 1.0.0
- */
 import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../HKT"
 
 import { Either } from "@effect-ts/system/Either"
 
-/**
- * @since 1.0.0
- */
 export interface AssociativeEither<F extends URIS, C = Auto> extends Base<F> {
   readonly either: <N2 extends string, K2, SI2, SO2, X2, I2, S, R2, E2, B>(
     fb: Kind<

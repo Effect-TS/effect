@@ -1,22 +1,12 @@
-/**
- * @since 1.0.0
- */
 import { URIS, Derive } from "../../Prelude"
 import { Associative } from "../Associative"
 
-/**
- * @since 1.0.0
- */
 export const IdentityURI = "Identity"
-/**
- * @since 1.0.0
- */
+
 export type IdentityURI = typeof IdentityURI
 
 /**
  * Equivalent to a Monoid
- *
- * @since 1.0.0
  */
 export interface Identity<A> extends Associative<A> {
   readonly identity: A
@@ -28,9 +18,6 @@ declare module "../../Prelude/HKT" {
   }
 }
 
-/**
- * @since 1.0.0
- */
 export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identity<A> {
   return {
     combine: op,
@@ -38,9 +25,6 @@ export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identit
   }
 }
 
-/**
- * @since 1.0.0
- */
 export function deriveIdentity<F extends URIS, A>(
   D: Derive<F, IdentityURI>,
   I: Identity<A>

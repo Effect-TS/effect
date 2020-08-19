@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import { IdentityBoth } from "../Combined"
 import { Covariant, CovariantComposition, getCovariantComposition } from "../Covariant"
 import {
@@ -21,9 +18,6 @@ import {
   URIS
 } from "../HKT"
 
-/**
- * @since 1.0.0
- */
 export interface Foreach<F extends URIS, C = Auto> {
   <G extends URIS, GC = Auto>(G: IdentityBoth<G, GC> & Covariant<G, GC>): <
     GSIO,
@@ -93,18 +87,12 @@ export interface Foreach<F extends URIS, C = Auto> {
   >
 }
 
-/**
- * @since 1.0.0
- */
 export interface Traversable<F extends URIS, C = Auto>
   extends Base<F>,
     Covariant<F, C> {
   readonly foreachF: Foreach<F, C>
 }
 
-/**
- * @since 1.0.0
- */
 export function implementForeachF<F extends URIS, C = Auto>(): (
   i: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(_: {
     A: A
@@ -156,9 +144,6 @@ export function implementForeachF() {
   return (i: any) => i()
 }
 
-/**
- * @since 1.0.0
- */
 export interface ForeachComposition<
   F extends URIS,
   G extends URIS,
@@ -276,9 +261,6 @@ export interface ForeachComposition<
   >
 }
 
-/**
- * @since 1.0.0
- */
 export interface TraversableComposition<
   F extends URIS,
   G extends URIS,
@@ -288,9 +270,6 @@ export interface TraversableComposition<
   readonly foreachF: ForeachComposition<F, G, CF, CG>
 }
 
-/**
- * @since 1.0.0
- */
 export function getTraversableComposition<
   F extends URIS,
   G extends URIS,

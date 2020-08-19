@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import {
   Auto,
   Base,
@@ -19,9 +16,6 @@ import {
   URIS
 } from "../HKT"
 
-/**
- * @since 1.0.0
- */
 export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
   readonly map: <A, B>(
     f: (a: A) => B
@@ -54,9 +48,6 @@ export interface Covariant<F extends URIS, C = Auto> extends Base<F> {
   >
 }
 
-/**
- * @since 1.0.0
- */
 export interface CovariantComposition<
   F extends URIS,
   G extends URIS,
@@ -137,9 +128,6 @@ export interface CovariantComposition<
   >
 }
 
-/**
- * @since 1.0.0
- */
 export function getCovariantComposition<
   F extends URIS,
   G extends URIS,

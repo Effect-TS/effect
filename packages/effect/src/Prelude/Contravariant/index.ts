@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import { CovariantComposition } from "../Covariant"
 import {
   Auto,
@@ -19,9 +16,6 @@ import {
   URIS
 } from "../HKT"
 
-/**
- * @since 1.0.0
- */
 export interface Contravariant<F extends URIS, C = Auto> extends Base<F> {
   readonly contramap: <A, B>(
     f: (a: B) => A
@@ -54,9 +48,6 @@ export interface Contravariant<F extends URIS, C = Auto> extends Base<F> {
   >
 }
 
-/**
- * @since 1.0.0
- */
 export function getContravariantComposition<
   F extends URIS,
   G extends URIS,

@@ -1,6 +1,3 @@
-/**
- * @since 1.0.0
- */
 import { Associative } from "../../../Classic/Associative"
 import { Applicative, Monad } from "../../Combined"
 import { Auto, FixE, instance, UF__, URIS } from "../../HKT"
@@ -11,9 +8,6 @@ import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
 import { Erase } from "@effect-ts/system/Utils"
 
-/**
- * @since 1.0.0
- */
 export function getValidationF<F extends URIS, C = Auto>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>
 ): <Z>(A: Associative<Z>) => Applicative<F, Erase<C, Auto> & FixE<Z>>
