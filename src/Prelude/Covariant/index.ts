@@ -53,7 +53,7 @@ export interface CovariantComposition<
   G extends URIS,
   CF = Auto,
   CG = Auto
-> extends CompositionBase2<F, G> {
+> extends CompositionBase2<F, G, CF, CG> {
   readonly map: <A, B>(
     f: (a: A) => B
   ) => <

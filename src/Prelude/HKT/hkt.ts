@@ -127,7 +127,9 @@ export interface Base<F, C = Auto> {
   C: C
 }
 
-export interface CompositionBase2<F, G> {
+export interface CompositionBase2<F, G, CF = Auto, CG = Auto> {
   F: F
   G: G
+  CF: CF
+  CG: CG
 }
