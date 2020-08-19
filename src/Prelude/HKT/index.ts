@@ -57,13 +57,13 @@ export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF____]: F____<S, R, E, A>
 }
 
-export interface URItoKey<N extends string, K> {}
+export interface URItoIndex<N extends string, K> {}
 
-export type KeyFor<F extends URIS, N extends string, K> = F extends keyof URItoKey<
+export type IndexFor<F extends URIS, N extends string, K> = F extends keyof URItoIndex<
   any,
   any
 >
-  ? URItoKey<N, K>[F]
+  ? URItoIndex<N, K>[F]
   : K
 
 export const HKTFullURI = "HKTFullURI"
