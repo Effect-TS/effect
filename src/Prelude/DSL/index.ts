@@ -1,5 +1,6 @@
 import { constant, flow } from "../../Function"
 import { Any } from "../Any"
+import { AssociativeFlatten } from "../AssociativeFlatten"
 import { Monad } from "../Combined"
 import { Covariant } from "../Covariant"
 import { Access } from "../FX"
@@ -91,7 +92,7 @@ export function chainF(F: Monad<UF_>) {
 }
 
 export function accessMF<F extends URIS, C = Auto>(
-  F: Access<F, C> & Monad<F, C>
+  F: Access<F, C> & AssociativeFlatten<F, C>
 ): <N extends string, K, SI, SO, X, I, S, R, E, A>(
   f: (
     r: OrR<C, R>
@@ -122,7 +123,7 @@ export function accessMF<F extends URIS, C = Auto>(
   A
 >
 export function accessMF(
-  F: Access<UF___> & Monad<UF___>
+  F: Access<UF___> & AssociativeFlatten<UF___>
 ): <R, E, A>(f: (r: R) => F___<R, E, A>) => F___<R, E, A> {
   return flow(F.access, F.flatten)
 }
