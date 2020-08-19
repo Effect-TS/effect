@@ -53,14 +53,19 @@ export const Monad: P.Monad<EitherURI> = {
   ...AssociativeFlatten
 }
 
-export const getValidationApplicative = getValidationF<EitherURI>({
-  F: EitherURI,
-  any: Any.any,
-  both: E.zip,
-  fail: E.left,
-  flatten: E.flatten,
-  map: E.map,
+export const Fail = P.instance<P.FX.Fail<EitherURI>>({
+  fail: E.left
+})
+
+export const Run = P.instance<P.FX.Run<EitherURI>>({
   run: E.right
+})
+
+export const getValidationApplicative = getValidationF<EitherURI>({
+  ...Monad,
+  ...Fail,
+  ...Applicative,
+  ...Run
 })
 
 export function zipValidation<E>(
