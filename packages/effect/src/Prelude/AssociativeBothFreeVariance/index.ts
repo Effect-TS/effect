@@ -41,11 +41,11 @@ export interface AssociativeBothFreeVariance<F extends URIS, C = Auto>
     OrK<C, K2>,
     SI,
     SO2,
-    OrX<C, Mix<C, "X", [X2, X]>>,
-    OrI<C, Mix<C, "I", [I2, I]>>,
+    OrX<C, Mix<C, "X", X2, X>>,
+    OrI<C, Mix<C, "I", I2, I>>,
     OrS<C, S>,
-    OrR<C, Mix<C, "R", [R2, R]>>,
-    OrE<C, Mix<C, "E", [E2, E]>>,
+    OrR<C, Mix<C, "R", R2, R>>,
+    OrE<C, Mix<C, "E", E2, E>>,
     readonly [A, B]
   >
 }
