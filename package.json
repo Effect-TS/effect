@@ -14,7 +14,8 @@
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
     "tc": "tsc --noEmit",
-    "demo": "ts-node -r tsconfig-paths/register"
+    "demo": "ts-node -r tsconfig-paths/register",
+    "doc": "rimraf docs && typedoc --tsconfig tsconfig.doc.json && rimraf ../../docs && mv docs ../../"
   },
   "publishConfig": {
     "access": "public",
@@ -28,7 +29,8 @@
   "devDependencies": {
     "@babel/cli": "^7.10.5",
     "@types/node": "^14.0.5",
-    "babel-plugin-annotate-pure-calls": "^0.4.0"
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "typedoc": "^0.18.0"
   },
   "config": {
     "modules": [
