@@ -1,6 +1,6 @@
 import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../../HKT"
 
-export interface Provide<F extends URIS, C = Auto> extends Base<F> {
+export interface Provide<F extends URIS, C = Auto> extends Base<F, C> {
   readonly provide: <R>(
     r: OrR<C, R>
   ) => <N extends string, K, SI, SO, X, I, S, E, A>(

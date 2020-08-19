@@ -122,8 +122,9 @@ export {
 
 export { instance } from "./instance"
 
-export interface Base<F> {
+export interface Base<F, C = Auto> {
   F: F
+  C: C
 }
 
 export interface CompositionBase2<F, G> {

@@ -88,7 +88,7 @@ export interface Foreach<F extends URIS, C = Auto> {
 }
 
 export interface Traversable<F extends URIS, C = Auto>
-  extends Base<F>,
+  extends Base<F, C>,
     Covariant<F, C> {
   readonly foreachF: Foreach<F, C>
 }

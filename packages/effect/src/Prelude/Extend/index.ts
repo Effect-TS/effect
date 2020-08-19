@@ -1,6 +1,6 @@
 import { Auto, Base, Kind, OrE, OrI, OrK, OrN, OrR, OrS, OrX, URIS } from "../HKT"
 
-export interface Extend<F extends URIS, C = Auto> extends Base<F> {
+export interface Extend<F extends URIS, C = Auto> extends Base<F, C> {
   readonly extend: <N extends string, K, SI, SO, X, I, S, R, E, A, B>(
     f: (
       _: Kind<

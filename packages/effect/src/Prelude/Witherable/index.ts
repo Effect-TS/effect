@@ -86,7 +86,7 @@ export interface Wither<F extends URIS, C = Auto> {
   >
 }
 
-export interface Witherable<F extends URIS, C = Auto> extends Base<F> {
+export interface Witherable<F extends URIS, C = Auto> extends Base<F, C> {
   readonly compactF: Wither<F, C>
 }
 

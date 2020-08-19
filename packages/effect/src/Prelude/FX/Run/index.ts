@@ -2,7 +2,7 @@ import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../..
 
 import { Either } from "@effect-ts/system/Either"
 
-export interface Run<F extends URIS, C = Auto> extends Base<F> {
+export interface Run<F extends URIS, C = Auto> extends Base<F, C> {
   readonly run: <N extends string, K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       F,

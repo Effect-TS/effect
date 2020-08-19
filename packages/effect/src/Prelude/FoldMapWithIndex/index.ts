@@ -14,7 +14,7 @@ import {
   IndexFor
 } from "../HKT"
 
-export interface FoldMapWithIndex<F extends URIS, C = Auto> extends Base<F> {
+export interface FoldMapWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly foldMapWithIndex: FoldMapWithIndexFn<F, C>
 }
 
