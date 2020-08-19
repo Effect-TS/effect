@@ -10,3 +10,4 @@ yarn-error.log
 .metals/
 .ultra.cache.json
 tsbuildinfo/
+del-tags.sh
