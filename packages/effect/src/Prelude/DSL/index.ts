@@ -1,18 +1,27 @@
-import { constant, flow } from "../../Function"
+import { constant, flow, pipe, tuple } from "../../Function"
+import { EnforceNonEmptyRecord, UnionToIntersection } from "../../Utils"
 import { Any } from "../Any"
 import { AssociativeFlatten } from "../AssociativeFlatten"
-import { Monad } from "../Combined"
+import { Applicative, Monad } from "../Combined"
 import { Covariant } from "../Covariant"
 import { Access } from "../FX"
 import {
   Auto,
   F_,
   F___,
+  InferA,
+  InferE,
+  InferI,
+  InferK,
+  InferN,
+  InferR,
+  InferX,
   Kind,
   OrE,
   OrI,
   OrK,
   OrN,
+  OrNever,
   OrR,
   OrS,
   OrX,
@@ -20,6 +29,8 @@ import {
   UF___,
   URIS
 } from "../HKT"
+
+import * as A from "@effect-ts/system/Array"
 
 export function succeedF<F extends URIS, C = Auto>(
   F: Any<F, C> & Covariant<F, C>
@@ -126,4 +137,98 @@ export function accessMF(
   F: Access<UF___> & AssociativeFlatten<UF___>
 ): <R, R2, E, A>(f: (r: R) => F___<R2, E, A>) => F___<R & R2, E, A> {
   return flow(F.access, F.flatten)
+}
+
+export function sequenceSF<F extends URIS, C = Auto>(
+  F: Applicative<F, C>
+): <SIO>() => <
+  S,
+  NER extends Record<
+    string,
+    Kind<
+      F,
+      OrN<C, any>,
+      OrK<C, any>,
+      SIO,
+      SIO,
+      OrX<C, any>,
+      OrI<C, any>,
+      OrS<C, S>,
+      OrR<C, any>,
+      OrE<C, any>,
+      any
+    >
+  >
+>(
+  r: EnforceNonEmptyRecord<NER>
+) => Kind<
+  F,
+  OrN<
+    C,
+    {
+      [K in keyof NER]: InferN<F, NER[K]>
+    }[keyof NER]
+  >,
+  OrK<
+    C,
+    {
+      [K in keyof NER]: InferK<F, NER[K]>
+    }[keyof NER]
+  >,
+  SIO,
+  SIO,
+  OrX<
+    C,
+    {
+      [K in keyof NER]: InferX<F, NER[K]>
+    }[keyof NER]
+  >,
+  OrI<
+    C,
+    UnionToIntersection<
+      {
+        [K in keyof NER]: OrNever<InferI<F, NER[K]>>
+      }[keyof NER]
+    >
+  >,
+  OrS<C, S>,
+  OrR<
+    C,
+    UnionToIntersection<
+      {
+        [K in keyof NER]: OrNever<InferR<F, NER[K]>>
+      }[keyof NER]
+    >
+  >,
+  OrE<
+    C,
+    {
+      [K in keyof NER]: InferE<F, NER[K]>
+    }[keyof NER]
+  >,
+  {
+    [K in keyof NER]: InferA<F, NER[K]>
+  }
+>
+export function sequenceSF(
+  F: Applicative<UF_>
+): () => (r: Record<string, F_<any>>) => F_<Record<string, any>> {
+  return () => (r) =>
+    pipe(
+      Object.keys(r).map((k) => tuple(k, r[k])),
+      A.reduce(succeedF(F)([] as readonly (readonly [string, any])[]), (b, a) =>
+        pipe(
+          b,
+          F.both(a[1]),
+          F.map(([x, y]) => [...x, tuple(a[0], y)])
+        )
+      ),
+      F.map((a) => {
+        const res = {}
+        a.forEach(([k, v]) => {
+          res[k] = v
+        })
+        return res
+      })
+    )
 }
