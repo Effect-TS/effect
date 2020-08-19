@@ -85,6 +85,7 @@
       "Prelude/Covariant",
       "Prelude/CovariantWithIndex",
       "Prelude/Derive",
+      "Prelude/DSL",
       "Prelude/Foldable",
       "Prelude/FoldMap",
       "Prelude/FX",
