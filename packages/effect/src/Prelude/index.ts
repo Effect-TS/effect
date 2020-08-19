@@ -1,3 +1,4 @@
+export { Commutative, CommutativeURI, makeCommutative } from "../Classic/Commutative"
 export { Any } from "./Any"
 export { AssociativeBoth } from "./AssociativeBoth"
 export { AssociativeEither } from "./AssociativeEither"
@@ -9,8 +10,13 @@ export {
   IdentityFlatten,
   Monad
 } from "./Combined"
+export { CommutativeBoth } from "./CommutativeBoth"
+export { CommutativeEither } from "./CommutativeEither"
+export { Contravariant, getContravariantComposition } from "./Contravariant"
 export { Covariant, CovariantComposition, getCovariantComposition } from "./Covariant"
 export { Derive } from "./Derive"
+export { Foldable } from "./Foldable"
+export { FoldMap, FoldMapFn } from "./FoldMap"
 export {
   Auto,
   Base,
@@ -46,7 +52,12 @@ export {
   URIS,
   URItoKind
 } from "./HKT"
+export { Invariant } from "./Invariant"
 export { None } from "./None"
+export { Reduce } from "./Reduce"
+export { ReduceRight } from "./ReduceRight"
+export { ReduceRightWithIndex, ReduceRightWithIndexFn } from "./ReduceRightWithIndex"
+export { ReduceWithIndex, ReduceWithIndexFn } from "./ReduceWithIndex"
 export {
   Foreach,
   ForeachComposition,
@@ -55,15 +66,9 @@ export {
   Traversable,
   TraversableComposition
 } from "./Traversable"
-export { Commutative, CommutativeURI, makeCommutative } from "../Classic/Commutative"
-export { CommutativeBoth } from "./CommutativeBoth"
-export { CommutativeEither } from "./CommutativeEither"
-export { Contravariant, getContravariantComposition } from "./Contravariant"
-export { FoldMap, FoldMapFn } from "./FoldMap"
-export { Reduce } from "./Reduce"
-export { ReduceRight } from "./ReduceRight"
-export { Foldable } from "./Foldable"
-export { ReduceWithIndex, ReduceWithIndexFn } from "./ReduceWithIndex"
-export { ReduceRightWithIndex, ReduceRightWithIndexFn } from "./ReduceRightWithIndex"
-export { Invariant } from "./Invariant"
-export { Wilt, Wiltable, implementSeparateF } from "./Wiltable"
+export {
+  ForeachWithIndex,
+  implementForeachWithIndexF,
+  TraversableWithIndex
+} from "./TraversableWithIndex"
+export { implementSeparateF, Wilt, Wiltable } from "./Wiltable"
