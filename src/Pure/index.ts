@@ -1,5 +1,7 @@
 import * as P from "../Prelude"
+import { AssociativeBothFreeVariance } from "../Prelude/AssociativeBothFreeVariance"
 import { sequenceSF } from "../Prelude/DSL"
+import { Con, Cov } from "../Prelude/HKT/variance"
 
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
@@ -25,6 +27,24 @@ export const Covariant = P.instance<P.Covariant<XPureURI>>({
 export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI>>({
   both: X.zip
 })
+
+//
+// experiment
+//
+export type Variance = Con<"R"> & Cov<"E">
+
+export const AssociativeBothV = P.instance<
+  AssociativeBothFreeVariance<XPureURI, Variance>
+>({
+  both: X.zip
+})
+
+export const AssociativeBothF = P.instance<AssociativeBothFreeVariance<XPureURI>>({
+  both: X.zip
+})
+//
+// end experiment
+//
 
 export const AssociativeEither = P.instance<P.AssociativeEither<XPureURI>>({
   either: X.orElseEither
