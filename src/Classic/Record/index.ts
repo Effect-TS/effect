@@ -153,6 +153,19 @@ export const WitherableWithIndex = P.instance<P.WitherableWithIndex<RecordURI>>(
   compactWithIndexF
 })
 
+export const Compact = P.instance<P.Compact<RecordURI>>({
+  compact: R.compact
+})
+
+export const Separate = P.instance<P.Separate<RecordURI>>({
+  separate: R.separate
+})
+
+export const Compactable: P.Compactable<RecordURI> = {
+  ...Separate,
+  ...Compact
+}
+
 export {
   collect,
   collect_,
