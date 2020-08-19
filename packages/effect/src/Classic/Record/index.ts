@@ -50,6 +50,10 @@ export const ReduceWithIndex = P.instance<P.ReduceWithIndex<RecordURI>>({
   reduceWithIndex: R.reduceWithIndex
 })
 
+export const ReduceRightWithIndex = P.instance<P.ReduceRightWithIndex<RecordURI>>({
+  reduceRightWithIndex: R.reduceRightWithIndex
+})
+
 export {
   collect,
   collect_,
