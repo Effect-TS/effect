@@ -1,7 +1,6 @@
 import * as E from "../src/Classic/Either"
 import * as R from "../src/Classic/Record"
-
-import { pipe } from "@effect-ts/system/Function"
+import { pipe } from "../src/Function"
 
 const result = pipe(
   { a: 0, b: 1 },
