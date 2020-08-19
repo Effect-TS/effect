@@ -39,6 +39,18 @@ export const Applicative = P.instance<P.Applicative<XPureURI>>({
   ...AssociativeBoth
 })
 
+export const Access = P.instance<P.FX.Access<XPureURI>>({
+  access: X.access
+})
+
+export const Fail = P.instance<P.FX.Fail<XPureURI>>({
+  fail: X.fail
+})
+
+export const Provide = P.instance<P.FX.Provide<XPureURI>>({
+  provide: X.provideAll
+})
+
 export {
   access,
   accessM,
