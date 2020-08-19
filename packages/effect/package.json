@@ -13,7 +13,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "yarn prettier && yarn lint --fix && yarn prettier",
     "prettier": "prettier --write \"./{src,test,demo}/**/*.ts\"",
-    "tc": "tsc --noEmit"
+    "tc": "tsc --noEmit",
+    "demo": "ts-node -r tsconfig-paths/register"
   },
   "publishConfig": {
     "access": "public",
@@ -96,6 +97,7 @@
       "Prelude/ReduceRightWithIndex",
       "Prelude/ReduceWithIndex",
       "Prelude/Traversable",
+      "Prelude/Wiltable",
       "Pure",
       "Utils"
     ]
