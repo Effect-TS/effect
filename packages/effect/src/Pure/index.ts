@@ -13,7 +13,7 @@ declare module "../Prelude/HKT" {
   }
 }
 
-export const Any: P.Any<XPureURI> = P.instance<P.Any<XPureURI>>({
+export const Any = P.instance<P.Any<XPureURI>>({
   any: () => X.succeed(constant({}))
 })
 
