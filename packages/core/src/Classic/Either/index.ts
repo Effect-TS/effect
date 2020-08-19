@@ -1,4 +1,5 @@
 import * as P from "../../Prelude"
+import { succeedF } from "../../Prelude/DSL"
 import { getValidationF } from "../../Prelude/FX/Validation"
 import { Associative } from "../Associative"
 
@@ -84,12 +85,7 @@ export function zipValidation<E>(
 }
 
 export const foreachF = P.implementForeachF<EitherURI>()((_) => (G) => (f) => (fa) =>
-  E.isLeft(fa)
-    ? pipe(
-        G.any(),
-        G.map(() => fa)
-      )
-    : pipe(f(fa.right), G.map(E.right))
+  E.isLeft(fa) ? succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
 )
 
 export const Traversable = P.instance<P.Traversable<EitherURI>>({

@@ -1,4 +1,5 @@
 import * as P from "../../Prelude"
+import { succeedF } from "../../Prelude/DSL"
 
 import * as A from "@effect-ts/system/Array"
 import { flow, pipe } from "@effect-ts/system/Function"
@@ -56,20 +57,15 @@ export const Traversable = P.instance<P.Traversable<ArrayURI>>({
 
 export const foreachWithIndexF = P.implementForeachWithIndexF<ArrayURI>()(
   (_) => (G) => (f) =>
-    A.reduceWithIndex(
+    A.reduceWithIndex(succeedF(G)([] as typeof _.B[]), (k, b, a) =>
       pipe(
-        G.any(),
-        G.map(() => [] as typeof _.B[])
-      ),
-      (k, b, a) =>
-        pipe(
-          b,
-          G.both(f(k, a)),
-          G.map(([x, y]) => {
-            x.push(y)
-            return x
-          })
-        )
+        b,
+        G.both(f(k, a)),
+        G.map(([x, y]) => {
+          x.push(y)
+          return x
+        })
+      )
     )
 )
 
