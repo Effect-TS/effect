@@ -28,11 +28,11 @@ export interface AssociativeBothFreeVariance<F extends URIS, C = Auto>
       OrK<C, K>,
       SI,
       SO,
-      Def<C, "X", OrX<C, X2>, OrX<C, X>>,
-      Def<C, "I", OrI<C, I2>, OrI<C, I>>,
+      OrX<C, Def<C, "X", X2, X>>,
+      OrI<C, Def<C, "I", I2, I>>,
       OrS<C, S>,
-      Def<C, "R", OrR<C, R2>, OrR<C, R>>,
-      Def<C, "E", OrE<C, E2>, OrE<C, E>>,
+      OrR<C, Def<C, "R", R2, R>>,
+      OrE<C, Def<C, "E", E2, E>>,
       A
     >
   ) => Kind<
@@ -41,11 +41,11 @@ export interface AssociativeBothFreeVariance<F extends URIS, C = Auto>
     OrK<C, K2>,
     SI,
     SO2,
-    Mix<C, "X", [OrX<C, X2>, OrX<C, X>]>,
-    Mix<C, "I", [OrI<C, I2>, OrI<C, I>]>,
+    OrX<C, Mix<C, "X", [X2, X]>>,
+    OrI<C, Mix<C, "I", [I2, I]>>,
     OrS<C, S>,
-    Mix<C, "R", [OrR<C, R2>, OrR<C, R>]>,
-    Mix<C, "E", [OrE<C, E2>, OrE<C, E>]>,
+    OrR<C, Mix<C, "R", [R2, R]>>,
+    OrE<C, Mix<C, "E", [E2, E]>>,
     readonly [A, B]
   >
 }
