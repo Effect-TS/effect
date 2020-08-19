@@ -93,7 +93,7 @@ export const Traversable = P.instance<P.Traversable<EitherURI>>({
   foreachF
 })
 
-export const sequenceS = DSL.sequenceSF(Applicative)()
+export const sequenceS = DSL.sequenceSF(Applicative)
 
 export {
   alt,
