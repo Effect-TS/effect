@@ -2,6 +2,10 @@
 // Experiment
 //
 
+import { UnionToIntersection } from "../../Utils"
+
+import { OrNever } from "./infer"
+
 // list of parameters
 export type Par = "I" | "R" | "E" | "X"
 
@@ -38,6 +42,13 @@ export type Mix3<C, P extends Par, X, Y, Z, K> = C extends Cov<P>
   ? X | Y | Z | K
   : C extends Con<P>
   ? X & Y & Z & K
+  : X
+
+// composes an array of types to the base respecting variance from C
+export type MixAll<C, P extends Par, X, Y extends any[]> = C extends Cov<P>
+  ? Y[number]
+  : C extends Con<P>
+  ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[number]>
   : X
 
 // used in subsequent definitions to either vary a paramter or keep it fixed to "First"
