@@ -1,19 +1,11 @@
-/**
- * @since 1.0.0
- */
 import * as P from "../../Prelude"
 import * as A from "../Array"
 
 import { flow, tuple } from "@effect-ts/system/Function"
 import * as R from "@effect-ts/system/Record"
 
-/**
- * @since 1.0.0
- */
 export const RecordURI = "RecordURI"
-/**
- * @since 1.0.0
- */
+
 export type RecordURI = typeof RecordURI
 
 declare module "../../Prelude/HKT" {
@@ -22,16 +14,10 @@ declare module "../../Prelude/HKT" {
   }
 }
 
-/**
- * @since 1.0.0
- */
 export const Covariant = P.instance<P.Covariant<RecordURI>>({
   map: R.map
 })
 
-/**
- * @since 1.0.0
- */
 export const foreachF = P.implementForeachF<RecordURI>()((_) => (G) => (f) =>
   flow(
     R.collect(tuple),
@@ -44,9 +30,6 @@ export const foreachF = P.implementForeachF<RecordURI>()((_) => (G) => (f) =>
   )
 )
 
-/**
- * @since 1.0.0
- */
 export const Traversable = P.instance<P.Traversable<RecordURI>>({
   map: R.map,
   foreachF

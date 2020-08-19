@@ -1,11 +1,5 @@
-/**
- * @since 1.0.0
- */
 import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../HKT"
 
-/**
- * @since 1.0.0
- */
 export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F> {
   readonly flatten: <
     N extends string,
