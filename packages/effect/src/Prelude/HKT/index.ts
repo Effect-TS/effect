@@ -9,7 +9,7 @@ export type UF_ = typeof UF_
 
 export interface F__<E, A> {
   URI: UF__
-  E: E
+  E: () => E
   A: A
 }
 
@@ -19,9 +19,9 @@ export type UF__ = typeof UF__
 
 export interface F___<R, E, A> {
   URI: UF___
-  E: E
+  R: (_: R) => void
+  E: () => E
   A: A
-  R: R
 }
 
 export const UF___ = "F___"
@@ -30,10 +30,10 @@ export type UF___ = typeof UF___
 
 export interface F____<S, R, E, A> {
   URI: UF____
-  E: E
-  A: A
-  R: R
   S: S
+  R: (_: R) => void
+  E: () => E
+  A: A
 }
 
 export const UF____ = "F____"
