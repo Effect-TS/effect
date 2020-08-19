@@ -51,6 +51,50 @@ function* genChain<A, B>(iterator: Iterator<A>, mapping: (a: A) => Iterable<B>) 
   }
 }
 
+// inspired from "Closing Iterables is a Leaky Abstraction" by Reginald Braithwaite
+// https://raganwald.com/2017/07/22/closing-iterables-is-a-leaky-abstraction.html
+const zipWith = <A, B, C>(
+  iterableA: Iterable<A>,
+  iterableB: Iterable<B>,
+  zipper: (a: A, b: B) => C
+): Iterable<C> => ({
+  [Symbol.iterator]() {
+    let done = false
+    const ia = iterableA[Symbol.iterator]()
+    const ib = iterableB[Symbol.iterator]()
+    return {
+      next() {
+        if (done) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+          return this.return!()
+        }
+
+        const va = ia.next()
+        const vb = ib.next()
+
+        return va.done || vb.done
+          ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            this.return!()
+          : { done: false, value: zipper(va.value, vb.value) }
+      },
+      return(value?: unknown) {
+        if (!done) {
+          done = true
+
+          if (typeof ia.return === "function") {
+            ia.return()
+          }
+          if (typeof ib.return === "function") {
+            ib.return()
+          }
+        }
+
+        return { done: true, value }
+      }
+    }
+  }
+})
+
 export const map = <A, B>(f: (a: A, k: number) => B) => (
   i: Iterable<A>
 ): Iterable<B> => ({
@@ -60,6 +104,15 @@ export const map = <A, B>(f: (a: A, k: number) => B) => (
 export const map_ = <A, B>(i: Iterable<A>, f: (a: A, k: number) => B): Iterable<B> => ({
   [Symbol.iterator]: () => genMap(i[Symbol.iterator](), f)
 })
+
+export const zip = <B>(fb: Iterable<B>) => <A>(
+  fa: Iterable<A>
+): Iterable<readonly [A, B]> => zipWith(fa, fb, (a, b) => [a, b] as const)
+
+export const zip_ = <A, B>(
+  fa: Iterable<A>,
+  fb: Iterable<B>
+): Iterable<readonly [A, B]> => zipWith(fa, fb, (a, b) => [a, b] as const)
 
 export const chain = <A, B>(f: (a: A) => Iterable<B>) => (
   i: Iterable<A>
