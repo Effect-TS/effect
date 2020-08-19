@@ -20,27 +20,25 @@ export interface Con<F extends Par> {
 }
 
 // composes 2 types according to variance specified in C
-export type Mix<C, P extends Par, Params extends [any, any]> = C extends Cov<P>
-  ? Params[0] | Params[1]
+export type Mix<C, P extends Par, X, Y> = C extends Cov<P>
+  ? X | Y
   : C extends Con<P>
-  ? Params[0] & Params[1]
-  : Params[0]
+  ? X & Y
+  : X
 
 // composes 3 types according to variance specified in C
-export type Mix2<C, P extends Par, Params extends [any, any, any]> = C extends Cov<P>
-  ? Params[0] | Params[1] | Params[2]
+export type Mix2<C, P extends Par, X, Y, Z> = C extends Cov<P>
+  ? X | Y | Z
   : C extends Con<P>
-  ? Params[0] & Params[1] & Params[2]
-  : Params[0]
+  ? X & Y & Z
+  : X
 
 // composes 4 types according to variance specified in C
-export type Mix3<C, P extends Par, Params extends [any, any, any, any]> = C extends Cov<
-  P
->
-  ? Params[0] | Params[1] | Params[2] | Params[3]
+export type Mix3<C, P extends Par, X, Y, Z, K> = C extends Cov<P>
+  ? X | Y | Z | K
   : C extends Con<P>
-  ? Params[0] & Params[1] & Params[2] & Params[3]
-  : Params[0]
+  ? X & Y & Z & K
+  : X
 
 // used in subsequent definitions to either vary a paramter or keep it fixed to "First"
 export type Def<C, P extends Par, First, Current> = C extends Cov<P>
