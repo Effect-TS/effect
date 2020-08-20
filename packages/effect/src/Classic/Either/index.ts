@@ -17,15 +17,15 @@ declare module "../../Prelude/HKT" {
   }
 }
 
-export const Any = P.instance<P.Any<EitherURI, V>>({
+export const Any = P.instance<P.Any<[EitherURI], V>>({
   any: () => E.right({})
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<EitherURI, V>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<[EitherURI], V>>({
   both: E.zip
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI, V>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<[EitherURI], V>>({
   either: (fb) => (fa) =>
     fa._tag === "Right"
       ? E.right(E.left(fa.right))
@@ -34,31 +34,31 @@ export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI, V>>({
       : fb
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EitherURI, V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<[EitherURI], V>>({
   flatten: E.flatten
 })
 
-export const Covariant = P.instance<P.Covariant<EitherURI, V>>({
+export const Covariant = P.instance<P.Covariant<[EitherURI], V>>({
   map: E.map
 })
 
-export const Applicative: P.Applicative<EitherURI, V> = {
+export const Applicative: P.Applicative<[EitherURI], V> = {
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 }
 
-export const Monad: P.Monad<EitherURI, V> = {
+export const Monad: P.Monad<[EitherURI], V> = {
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
 }
 
-export const Fail = P.instance<P.FX.Fail<EitherURI, V>>({
+export const Fail = P.instance<P.FX.Fail<[EitherURI], V>>({
   fail: E.left
 })
 
-export const Run = P.instance<P.FX.Run<EitherURI, V>>({
+export const Run = P.instance<P.FX.Run<[EitherURI], V>>({
   run: E.right
 })
 
@@ -84,11 +84,14 @@ export function zipValidation<E>(
     )
 }
 
-export const foreachF = P.implementForeachF<EitherURI, V>()((_) => (G) => (f) => (fa) =>
+export const foreachF = P.implementForeachF<
+  [EitherURI],
+  V
+>()((_) => (G) => (f) => (fa) =>
   E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
 )
 
-export const Traversable = P.instance<P.Traversable<EitherURI, V>>({
+export const Traversable = P.instance<P.Traversable<[EitherURI], V>>({
   map: E.map,
   foreachF
 })

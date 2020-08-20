@@ -1,5 +1,6 @@
-import type { Auto, Base, CompositionBase2, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
+import type { Auto, Base, CompositionBase2, OrFix, UF_, UG_ } from "../HKT"
 import { instance } from "../HKT"
+import type { Kind, URIS } from "../HKT/hkt"
 
 export interface Covariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly map: <A, B>(
@@ -119,8 +120,8 @@ export function getCovariantComposition<
   CF = Auto,
   CG = Auto
 >(F: Covariant<F, CF>, G: Covariant<G, CG>): CovariantComposition<F, G, CF, CG>
-export function getCovariantComposition(F: Covariant<UF_>, G: Covariant<UG_>) {
-  return instance<CovariantComposition<UF_, UG_>>({
+export function getCovariantComposition(F: Covariant<[UF_]>, G: Covariant<[UG_]>) {
+  return instance<CovariantComposition<[UF_], [UG_]>>({
     map: (f) => F.map(G.map(f))
   })
 }

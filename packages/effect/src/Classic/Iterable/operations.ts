@@ -24,7 +24,7 @@ export {
   zip_
 } from "@effect-ts/system/Iterable"
 
-export const foreachF = P.implementForeachF<IterableURI>()((_) => (G) => (f) =>
+export const foreachF = P.implementForeachF<[IterableURI]>()((_) => (G) => (f) =>
   reduce(succeedF(G)(never as Iterable<typeof _.B>), (b, a) =>
     pipe(
       b,

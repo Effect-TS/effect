@@ -102,7 +102,7 @@ export function implementForeachF<F extends URIS, C = Auto>(): (
     R: R
     E: E
   }) => (
-    G: IdentityBoth<UG_> & Covariant<UG_>
+    G: IdentityBoth<[UG_]> & Covariant<[UG_]>
   ) => (
     f: (a: A) => G_<B>
   ) => (
@@ -272,9 +272,9 @@ export function getTraversableComposition<
   CG = Auto
 >(F: Traversable<F, CF>, G: Traversable<G, CG>): TraversableComposition<F, G, CF, CG>
 export function getTraversableComposition(
-  F: Traversable<UF_>,
-  G: Traversable<UG_>
-): TraversableComposition<UF_, UG_> {
+  F: Traversable<[UF_]>,
+  G: Traversable<[UG_]>
+): TraversableComposition<[UF_], [UG_]> {
   return {
     ...getCovariantComposition(F, G),
     foreachF: (H) => {

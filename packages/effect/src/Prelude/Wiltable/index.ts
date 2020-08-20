@@ -107,7 +107,7 @@ export function implementSeparateF<F extends URIS, C = Auto>(): (
     FR: FR
     FE: FE
   }) => (
-    G: Applicative<UG_>
+    G: Applicative<[UG_]>
   ) => (
     f: (a: A) => G_<Either<B, B2>>
   ) => (
