@@ -5,7 +5,7 @@ import { ContravariantP, CovariantP } from "../Prelude/HKT"
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
 
-export type XPureVariance = ContravariantP<"R"> & CovariantP<"E">
+export type V = ContravariantP<"R"> & CovariantP<"E">
 
 export const XPureURI = "XPureURI"
 
@@ -17,41 +17,41 @@ declare module "../Prelude/HKT" {
   }
 }
 
-export const Any = P.instance<P.Any<XPureURI, XPureVariance>>({
+export const Any = P.instance<P.Any<XPureURI, V>>({
   any: () => X.succeed(constant({}))
 })
 
-export const Covariant = P.instance<P.Covariant<XPureURI>>({
+export const Covariant = P.instance<P.Covariant<XPureURI, V>>({
   map: X.map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI, XPureVariance>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI, V>>({
   both: X.zip
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<XPureURI>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<XPureURI, V>>({
   either: X.orElseEither
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<XPureURI>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<XPureURI, V>>({
   flatten: (ffa) => X.chain_(ffa, identity)
 })
 
-export const Applicative = P.instance<P.Applicative<XPureURI>>({
+export const Applicative = P.instance<P.Applicative<XPureURI, V>>({
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 })
 
-export const Access = P.instance<P.FX.Access<XPureURI>>({
+export const Access = P.instance<P.FX.Access<XPureURI, V>>({
   access: X.access
 })
 
-export const Fail = P.instance<P.FX.Fail<XPureURI>>({
+export const Fail = P.instance<P.FX.Fail<XPureURI, V>>({
   fail: X.fail
 })
 
-export const Provide = P.instance<P.FX.Provide<XPureURI>>({
+export const Provide = P.instance<P.FX.Provide<XPureURI, V>>({
   provide: X.provideAll
 })
 

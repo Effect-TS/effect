@@ -2,6 +2,7 @@ import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import { getValidationF } from "../../Prelude/FX/Validation"
 import { CovariantP } from "../../Prelude/HKT"
+import { InvariantP } from "../../Prelude/HKT/variance"
 import { Associative } from "../Associative"
 
 import * as E from "@effect-ts/system/Either"
@@ -96,6 +97,11 @@ export const Traversable = P.instance<P.Traversable<EitherURI, V>>({
 })
 
 export const sequenceS = DSL.sequenceSF(Applicative)
+
+// invariant
+export const invSequenceS = DSL.sequenceSF(
+  P.instance<P.Applicative<EitherURI, InvariantP<"E">>>(Applicative)
+)
 
 export {
   alt,
