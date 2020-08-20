@@ -1,7 +1,11 @@
+import { pipe } from "../Function"
 import * as P from "../Prelude"
 import { ContravariantP, CovariantP } from "../Prelude/HKT"
 
+import * as C from "@effect-ts/system/Cause"
 import * as T from "@effect-ts/system/Effect"
+import * as E from "@effect-ts/system/Either"
+import * as O from "@effect-ts/system/Option"
 
 const EffectURI = T.EffectURI
 type EffectURI = typeof EffectURI
@@ -18,12 +22,31 @@ export const Any = P.instance<P.Any<EffectURI, V>>({
   any: () => T.succeed({})
 })
 
+export class NoneError {
+  readonly _tag = "NoneError"
+}
+
 export const None = P.instance<P.None<EffectURI, V>>({
-  never: () => T.die(new Error("never should not be called"))
+  never: () => T.die(new NoneError())
 })
 
 export const AssociativeEither = P.instance<P.AssociativeEither<EffectURI, V>>({
-  either: T.orElseEither
+  either: (fb) => (fa) =>
+    T.foldCauseM_(
+      fa,
+      (c) =>
+        pipe(
+          c,
+          C.find((x) =>
+            x._tag === "Die" && x.value instanceof NoneError ? O.some(x.value) : O.none
+          ),
+          O.fold(
+            () => T.orElseEither_(T.halt(c), fb),
+            () => T.map_(fb, E.right)
+          )
+        ),
+      (a) => T.succeed(E.left(a))
+    )
 })
 
 export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EffectURI, V>>({
