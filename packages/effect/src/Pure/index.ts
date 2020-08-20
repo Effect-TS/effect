@@ -54,6 +54,12 @@ export const Provide = P.instance<P.FX.Provide<XPureURI, V>>({
   provide: X.provideAll
 })
 
+export const Monad = P.instance<P.Monad<XPureURI, V>>({
+  ...Any,
+  ...AssociativeFlatten,
+  ...Covariant
+})
+
 export const sequenceS = sequenceSF(Applicative)
 
 export {
