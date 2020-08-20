@@ -20,6 +20,12 @@ export type InferR<F extends URIS, K> = [K] extends [
   ? X
   : never
 
+export type InferS<F extends URIS, K> = [K] extends [
+  Kind<F, any, any, any, any, any, any, infer X, any, any, any>
+]
+  ? X
+  : never
+
 export type InferI<F extends URIS, K> = [K] extends [
   Kind<F, any, any, any, any, any, infer X, any, any, any, any>
 ]
