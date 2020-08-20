@@ -23,7 +23,7 @@ module.exports = {
     "prettier/@typescript-eslint", // Uses eslint-config-prettier to disable ESLint rules from @typescript-eslint/eslint-plugin that would conflict with prettier
     "plugin:prettier/recommended" // Enables eslint-plugin-prettier and displays prettier errors as ESLint errors. Make sure this is always the last configuration in the extends array.
   ],
-  plugins: ["import", "sort-destructure-keys"],
+  plugins: ["import", "sort-destructure-keys", "simple-import-sort"],
   rules: {
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/ban-types": "off",
@@ -36,20 +36,13 @@ module.exports = {
     "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/camelcase": "off",
     "sort-destructure-keys/sort-destructure-keys": "error",
+    "simple-import-sort/sort": "error",
     "import/no-unresolved": "error",
     "no-irregular-whitespace": "off",
-    "import/order": [
-      "error",
-      {
-        "newlines-between": "always",
-        pathGroups: [{ pattern: "@/**", group: "external", position: "after" }],
-        alphabetize: { order: "asc" },
-        groups: ["builtin", "external", "parent", "sibling", "index"]
-      }
-    ],
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-duplicates": "error",
+    "import/order": "off",
     "sort-imports": "off",
     "object-shorthand": "error",
     "prefer-destructuring": "off",
