@@ -37,10 +37,10 @@ export interface AssociativeBoth<F extends URIS, C = Auto> extends Base<F, C> {
     SI,
     SO2,
     OrX<C, X | X2>,
-    Mix<C, "I", [I2, I]>,
+    Mix<C, "I", I2, I>,
     OrS<C, S>,
-    Mix<C, "R", [R2, R]>,
-    Mix<C, "E", [E2, E]>,
+    Mix<C, "R", R2, R>,
+    Mix<C, "E", E2, E>,
     readonly [A, B]
   >
 }
