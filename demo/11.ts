@@ -1,9 +1,11 @@
 import type * as M from "@effect-ts/system/Map"
 
+import { getEitherM } from "../src/Classic/EitherT"
 import { identity } from "../src/Function"
 import * as P from "../src/Prelude"
 import type * as H from "../src/Prelude/HKT"
 import * as T from "../src/Pure"
+import { getReaderM } from "../src/Pure/ReaderT"
 
 type State<K, V> = M.Map<K, V>
 
@@ -30,4 +32,4 @@ export const getMonad = <K, V>() =>
     map: T.map
   })
 
-export const K = getMonad<string, number>()
+export const K = getReaderM(getEitherM(getMonad<string, number>()))
