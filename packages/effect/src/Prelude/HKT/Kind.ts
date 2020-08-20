@@ -2,18 +2,14 @@ import type { BaseURIS, URItoKind } from "./hkt"
 
 export type URIS = [BaseURIS, ...BaseURIS[]]
 
-type Union<B extends BaseURIS[]> = ((...y: B) => any) extends (...x: infer R) => any
-  ? R
-  : never
-
 export type UnionURI<G extends BaseURIS, F extends BaseURIS[]> = F extends BaseURIS[]
-  ? Union<[...F, G]>
+  ? [...F, G]
   : F
 
 export type InvertedUnionURI<
   G extends BaseURIS,
   F extends BaseURIS[]
-> = F extends BaseURIS[] ? Union<[G, ...F]> : F
+> = F extends BaseURIS[] ? [G, ...F] : F
 
 export type Kind<URI extends URIS, N extends string, K, SI, SO, X, I, S, R, E, A> = ((
   ...x: URI
