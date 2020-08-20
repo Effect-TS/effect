@@ -34,4 +34,4 @@ export {
   InferX,
   OrNever
 } from "./infer"
-export { ContravariantP, CovariantP, Initial, Intro, Mix, MixStruct } from "./variance"
+export { V, Initial, Intro, Mix, MixStruct } from "./variance"

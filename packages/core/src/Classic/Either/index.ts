@@ -1,8 +1,6 @@
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import { getValidationF } from "../../Prelude/FX/Validation"
-import { CovariantP } from "../../Prelude/HKT"
-import { InvariantP } from "../../Prelude/HKT/variance"
 import { Associative } from "../Associative"
 
 import * as E from "@effect-ts/system/Either"
@@ -12,7 +10,7 @@ export const EitherURI = "EitherURI"
 
 export type EitherURI = typeof EitherURI
 
-export type V = CovariantP<"E">
+export type V = P.V<"E", "+">
 
 declare module "../../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
@@ -100,7 +98,7 @@ export const sequenceS = DSL.sequenceSF(Applicative)
 
 // invariant
 export const invSequenceS = DSL.sequenceSF(
-  P.instance<P.Applicative<EitherURI, InvariantP<"E">>>(Applicative)
+  P.instance<P.Applicative<EitherURI, P.V<"E", "_">>>(Applicative)
 )
 
 export {

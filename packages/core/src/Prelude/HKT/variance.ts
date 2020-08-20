@@ -11,35 +11,18 @@ import { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 // list of parameters
 type Par = "I" | "R" | "S" | "E" | "X"
 
-// covariant flags
-export interface CovariantP<F extends Par> {
-  Covariant: {
-    F: () => F
-  }
-}
-
-// contravariant flags
-export interface ContravariantP<F extends Par> {
-  Contravariant: {
-    F: () => F
-  }
-}
-
-// invariant flags
-export interface InvariantP<F extends Par> {
-  Invariant: {
-    F: () => F
+export interface V<F extends Par, V extends "+" | "-" | "_"> {
+  Variance: {
+    [v in V]: () => F
   }
 }
 
 // composes types according to variance specified in C
-export type Mix<C, P extends Par, X extends NonEmptyArray<any>> = C extends InvariantP<
-  P
->
+export type Mix<C, P extends Par, X extends NonEmptyArray<any>> = C extends V<P, "_">
   ? X[0]
-  : C extends CovariantP<P>
+  : C extends V<P, "+">
   ? X[number]
-  : C extends ContravariantP<P>
+  : C extends V<P, "-">
   ? X extends [any, any]
     ? X[0] & X[1]
     : X extends [any, any, any]
@@ -54,26 +37,26 @@ export type Mix<C, P extends Par, X extends NonEmptyArray<any>> = C extends Inva
   : X[0]
 
 // composes a record of types to the base respecting variance from C
-export type MixStruct<C, P extends Par, X, Y> = C extends InvariantP<P>
+export type MixStruct<C, P extends Par, X, Y> = C extends V<P, "_">
   ? X
-  : C extends CovariantP<P>
+  : C extends V<P, "+">
   ? Y[keyof Y]
-  : C extends ContravariantP<P>
+  : C extends V<P, "-">
   ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[keyof Y]>
   : X
 
 // used in subsequent definitions to either vary a paramter or keep it fixed to "Fixed"
-export type Intro<C, P extends Par, Fixed, Current> = C extends InvariantP<P>
+export type Intro<C, P extends Par, Fixed, Current> = C extends V<P, "_">
   ? Fixed
-  : C extends CovariantP<P>
+  : C extends V<P, "+">
   ? Current
-  : C extends ContravariantP<P>
+  : C extends V<P, "-">
   ? Current
   : Fixed
 
 // initial type depending on variance of P in C (eg: initial Contravariant R = unknown, initial Covariant E = never)
-export type Initial<C, P extends Par> = C extends ContravariantP<P>
+export type Initial<C, P extends Par> = C extends V<P, "-">
   ? unknown
-  : C extends CovariantP<P>
+  : C extends V<P, "+">
   ? never
   : any

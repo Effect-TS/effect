@@ -1,7 +1,6 @@
 import { pipe } from "../Function"
 import * as P from "../Prelude"
 import { getValidationF } from "../Prelude/FX"
-import { ContravariantP, CovariantP } from "../Prelude/HKT"
 
 import * as C from "@effect-ts/system/Cause"
 import * as T from "@effect-ts/system/Effect"
@@ -11,7 +10,7 @@ import * as O from "@effect-ts/system/Option"
 const EffectURI = T.EffectURI
 type EffectURI = typeof EffectURI
 
-export type V = CovariantP<"E"> & CovariantP<"X"> & ContravariantP<"R">
+export type V = P.V<"E", "+"> & P.V<"X", "+"> & P.V<"R", "-">
 
 declare module "../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
