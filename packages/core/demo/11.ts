@@ -1,7 +1,7 @@
 import type * as M from "@effect-ts/system/Map"
 
 import * as EitherT from "../src/Classic/EitherT"
-import { identity } from "../src/Function"
+import { identity, pipe } from "../src/Function"
 import * as P from "../src/Prelude"
 import * as DSL from "../src/Prelude/DSL"
 import type * as H from "../src/Prelude/HKT"
@@ -33,8 +33,10 @@ export const getStoreMonad = <K, V>() =>
     map: T.map
   })
 
-export const K = ReaderT.getReaderM()(
-  EitherT.getEitherM()(getStoreMonad<string, number>())
+export const K = pipe(
+  getStoreMonad<string, number>(),
+  EitherT.getEitherM(),
+  ReaderT.getReaderM()
 )
 
 export const chain = DSL.chainF(K)
