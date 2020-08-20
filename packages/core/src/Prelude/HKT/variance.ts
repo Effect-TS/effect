@@ -9,7 +9,7 @@ import { OrNever } from "./infer"
 import { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 
 // list of parameters
-type Par = "I" | "R" | "S" | "E" | "X"
+type Par = "I" | "R" | "S" | "E" | "X" | "A"
 
 export interface V<F extends Par, V extends "+" | "-" | "_"> {
   Variance: {

@@ -1,4 +1,4 @@
-export type PS = "N" | "K" | "I" | "X" | "S" | "R" | "E"
+export type PS = "N" | "K" | "I" | "X" | "S" | "R" | "E" | "A"
 
 export interface Fix<P extends PS, F> {
   Fix: {
