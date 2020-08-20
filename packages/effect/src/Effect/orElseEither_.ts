@@ -1,6 +1,5 @@
 import * as E from "../Either"
-
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { map_ } from "./map_"
 import { ISucceed } from "./primitives"
 import { tryOrElse_ } from "./tryOrElse_"

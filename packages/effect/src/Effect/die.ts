@@ -1,5 +1,4 @@
 import { Die } from "../Cause/cause"
-
 import { halt } from "./core"
 
 /**

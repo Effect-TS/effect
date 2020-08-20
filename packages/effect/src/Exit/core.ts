@@ -2,11 +2,11 @@ import * as A from "../Array"
 import * as C from "../Cause/core"
 import { FiberFailure } from "../Cause/errors"
 import * as E from "../Either"
-import { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id"
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
-
-import { Exit, Failure, Success } from "./exit"
+import type { Exit } from "./exit"
+import { Failure, Success } from "./exit"
 
 export { Exit, Failure, Success } from "./exit"
 

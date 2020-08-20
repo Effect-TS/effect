@@ -1,6 +1,6 @@
 // minimize circularity by importing only a subset
 
-import { Effect } from "../Effect/effect"
+import type { Effect } from "../Effect/effect"
 
 export { bracketExit_ } from "../Effect/bracketExit_"
 export {

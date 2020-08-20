@@ -1,5 +1,5 @@
 import { chain_, effectTotal, suspend } from "./core"
-import { AsyncRE, Effect } from "./effect"
+import type { AsyncRE, Effect } from "./effect"
 import { foreachUnitPar_ } from "./foreachUnitPar_"
 
 /**

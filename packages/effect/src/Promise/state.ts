@@ -1,4 +1,4 @@
-import { AsyncE } from "../Effect/effect"
+import type { AsyncE } from "../Effect/effect"
 
 export type State<E, A> = Done<E, A> | Pending<E, A>
 

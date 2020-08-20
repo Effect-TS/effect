@@ -1,6 +1,5 @@
-import { FiberID } from "../Fiber/id"
-
-import { Effect } from "./effect"
+import type { FiberID } from "../Fiber/id"
+import type { Effect } from "./effect"
 import { onInterrupt_ } from "./onInterrupt_"
 
 /**

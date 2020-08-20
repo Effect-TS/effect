@@ -1,9 +1,13 @@
 import * as A from "../Array"
-import * as NA from "../NonEmptyArray"
-
-import { ExecutionStrategy, Parallel, ParallelN, Sequential } from "./ExecutionStrategy"
-import { Effect } from "./effect"
-import { validateExec_, validateParN_, validatePar_, validate_ } from "./validate_"
+import type * as NA from "../NonEmptyArray"
+import type { Effect } from "./effect"
+import type {
+  ExecutionStrategy,
+  Parallel,
+  ParallelN,
+  Sequential
+} from "./ExecutionStrategy"
+import { validate_, validateExec_, validatePar_, validateParN_ } from "./validate_"
 
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error

@@ -1,10 +1,9 @@
 import { identity } from "../Function"
-import { UnionToIntersection } from "../Utils"
-
-import { Effect } from "./effect"
-import { foreachParN_ } from "./foreachParN_"
-import { foreachPar_ } from "./foreachPar_"
+import type { UnionToIntersection } from "../Utils"
+import type { Effect } from "./effect"
 import { foreach_ } from "./foreach_"
+import { foreachPar_ } from "./foreachPar_"
+import { foreachParN_ } from "./foreachParN_"
 
 export type SequenceS<T extends Array<Effect<any, any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<infer S, any, any, any>] ? S : never

@@ -1,6 +1,5 @@
 import * as O from "../Option"
-
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { IOverrideForkScope } from "./primitives"
 import { forkScopeWith } from "./scope"
 

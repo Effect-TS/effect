@@ -1,7 +1,6 @@
-import { Cause } from "../Cause/cause"
-
+import type { Cause } from "../Cause/cause"
 import { chain_, foldCauseM_, halt, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Returns an effect that effectually "peeks" at the cause of the failure of

@@ -3,12 +3,13 @@
  */
 import * as A from "../Array"
 import { access, accessM, chain_, provideAll_, succeed } from "../Effect/core"
-import { Effect } from "../Effect/effect"
+import type { Effect } from "../Effect/effect"
 import { provide } from "../Effect/provide"
 import { pipe } from "../Function"
-import { Augmented, has, Has, HasURI, mergeEnvironments } from "../Has"
+import type { Augmented, Has } from "../Has"
+import { has, HasURI, mergeEnvironments } from "../Has"
 import * as R from "../Record"
-import { UnionToIntersection } from "../Utils"
+import type { UnionToIntersection } from "../Utils"
 
 /**
  * Access a record of services with the required Service Entries

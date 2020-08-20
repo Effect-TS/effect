@@ -1,5 +1,4 @@
 import { uninterruptible as statusUninterruptible } from "../Fiber/core"
-
 import { interruptStatus } from "./core"
 
 /**

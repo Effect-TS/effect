@@ -1,6 +1,5 @@
-import { pipe } from "../../Function"
 import * as T from "../_internal/effect"
-
+import { pipe } from "../../Function"
 import * as S from "./index"
 
 const bind = <S, R, E, A, K, N extends string>(

@@ -1,7 +1,8 @@
 /* adapted from https://github.com/gcanti/fp-ts */
 
 import type { Either } from "../Either/core"
-import { identity, Lazy, Predicate, Refinement, tuple } from "../Function/core"
+import type { Lazy, Predicate, Refinement } from "../Function/core"
+import { identity, tuple } from "../Function/core"
 
 /**
  * Definitions

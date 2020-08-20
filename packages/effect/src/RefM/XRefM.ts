@@ -1,6 +1,6 @@
-import { Ref } from "../Ref/XRef"
-import { Semaphore, withPermit } from "../Semaphore"
-
+import type { Ref } from "../Ref/XRef"
+import type { Semaphore } from "../Semaphore"
+import { withPermit } from "../Semaphore"
 import * as T from "./effect"
 
 /**

@@ -1,6 +1,5 @@
-import { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id"
 import { AtomicReference } from "../Support/AtomicReference"
-
 import { Promise } from "./promise"
 import { Pending } from "./state"
 

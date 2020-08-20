@@ -5,18 +5,17 @@
  */
 import { reduce_ } from "../Array"
 import { readService } from "../Effect/has"
-import { DefaultEnv, makeRuntime, Runtime } from "../Effect/runtime"
+import type { DefaultEnv, Runtime } from "../Effect/runtime"
+import { makeRuntime } from "../Effect/runtime"
 import { pipe, tuple } from "../Function"
 import { HasURI, mergeEnvironments } from "../Has"
-import { Managed } from "../Managed/managed"
-import { Finalizer } from "../Managed/releaseMap"
+import type { Managed } from "../Managed/managed"
+import type { Finalizer } from "../Managed/releaseMap"
 import * as RM from "../RefM"
-import { UnionToIntersection } from "../Utils"
-import { Erase } from "../Utils"
-
+import type { Erase, UnionToIntersection } from "../Utils"
+import * as T from "./deps"
 import { Layer } from "./Layer"
 import { HasMemoMap, MemoMap } from "./MemoMap"
-import * as T from "./deps"
 
 export { Layer } from "./Layer"
 

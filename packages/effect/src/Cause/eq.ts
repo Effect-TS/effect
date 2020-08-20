@@ -1,6 +1,5 @@
 import { equalsFiberID } from "../Fiber/id"
-
-import { Cause } from "./cause"
+import type { Cause } from "./cause"
 
 export function equalsCause<E>(x: Cause<E>, y: Cause<E>): boolean {
   switch (x._tag) {

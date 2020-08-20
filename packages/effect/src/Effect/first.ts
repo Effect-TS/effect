@@ -1,5 +1,5 @@
 import { chain_ } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Run that before self

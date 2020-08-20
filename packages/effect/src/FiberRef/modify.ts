@@ -1,7 +1,6 @@
-import { Sync } from "../Effect/effect"
+import type { Sync } from "../Effect/effect"
 import { IFiberRefModify } from "../Effect/primitives"
-
-import { FiberRef } from "./fiberRef"
+import type { FiberRef } from "./fiberRef"
 
 /**
  * Atomically modifies the `FiberRef` with the specified function, which computes

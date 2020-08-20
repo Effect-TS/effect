@@ -1,6 +1,8 @@
 /* adapted from https://github.com/gcanti/fp-ts */
-import { Lazy, Predicate, Refinement, tuple } from "../Function/core"
-import { isNone, Option } from "../Option/core"
+import type { Lazy, Predicate, Refinement } from "../Function/core"
+import { tuple } from "../Function/core"
+import type { Option } from "../Option/core"
+import { isNone } from "../Option/core"
 
 /**
  * Definitions

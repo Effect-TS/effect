@@ -1,10 +1,10 @@
+import * as T from "../_internal/effect"
 import * as A from "../../Array"
 import * as C from "../../Cause/core"
 import * as E from "../../Exit/api"
 import { pipe } from "../../Function"
 import * as O from "../../Option"
-import { Pull } from "../Pull"
-import * as T from "../_internal/effect"
+import type { Pull } from "../Pull"
 
 export type Take<E, A> = E.Exit<O.Option<E>, A.Array<A>>
 

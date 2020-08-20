@@ -1,8 +1,7 @@
-import { ExecutionStrategy } from "../Effect/ExecutionStrategy"
+import type { ExecutionStrategy } from "../Effect/ExecutionStrategy"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import * as R from "../Ref"
-
 import * as T from "./deps"
 
 export type Finalizer = (

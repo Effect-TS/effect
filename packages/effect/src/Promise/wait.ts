@@ -1,8 +1,7 @@
 import { effectMaybeAsyncInterrupt } from "../Effect/effectMaybeAsyncInterrupt"
 import * as E from "../Either"
-
 import { interruptJoiner } from "./interruptJoiner"
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 import { Pending } from "./state"
 
 /**

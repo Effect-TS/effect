@@ -1,8 +1,7 @@
 import { sequential } from "../Effect/ExecutionStrategy"
-
 import * as T from "./deps"
-import { Managed } from "./managed"
-import { ReleaseMap, Finalizer } from "./releaseMap"
+import type { Managed } from "./managed"
+import type { Finalizer, ReleaseMap } from "./releaseMap"
 
 export function internalEffect<S, R, E, A>(
   self: Managed<S, R, E, A>

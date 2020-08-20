@@ -1,8 +1,13 @@
-import { ExecutionStrategy, Sequential, Parallel, ParallelN } from "./ExecutionStrategy"
-import { Effect } from "./effect"
-import { foreachParN_ } from "./foreachParN_"
-import { foreachPar_ } from "./foreachPar_"
+import type { Effect } from "./effect"
+import type {
+  ExecutionStrategy,
+  Parallel,
+  ParallelN,
+  Sequential
+} from "./ExecutionStrategy"
 import { foreach_ } from "./foreach_"
+import { foreachPar_ } from "./foreachPar_"
+import { foreachParN_ } from "./foreachParN_"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` in parallel,

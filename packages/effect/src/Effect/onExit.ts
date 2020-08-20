@@ -1,9 +1,8 @@
-import { Cause } from "../Cause/cause"
-import { Exit } from "../Exit/exit"
-
+import type { Cause } from "../Cause/cause"
+import type { Exit } from "../Exit/exit"
 import { bracketExit_ } from "./bracketExit_"
 import { unit } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 export const onExit_ = <S, R, E, A, S2, R2, E2>(
   self: Effect<S, R, E, A>,

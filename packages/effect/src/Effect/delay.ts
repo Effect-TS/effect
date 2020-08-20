@@ -1,7 +1,6 @@
-import { HasClock } from "../Clock"
-
+import type { HasClock } from "../Clock"
 import { delay_ } from "./delay_"
-import { AsyncRE, Effect } from "./effect"
+import type { AsyncRE, Effect } from "./effect"
 
 /**
  * Delay the effect of n milliseconds

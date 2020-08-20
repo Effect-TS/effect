@@ -2,10 +2,11 @@
 
 import type { Either } from "../Either/core"
 import type { Predicate, Refinement } from "../Function/core"
-import { MutableArray } from "../Mutable"
-import { NonEmptyArray } from "../NonEmptyArray"
-import { isSome, none, Option, some } from "../Option"
-import { Separated } from "../Utils"
+import type { MutableArray } from "../Mutable"
+import type { NonEmptyArray } from "../NonEmptyArray"
+import type { Option } from "../Option"
+import { isSome, none, some } from "../Option"
+import type { Separated } from "../Utils"
 
 export type Array<A> = ReadonlyArray<A>
 

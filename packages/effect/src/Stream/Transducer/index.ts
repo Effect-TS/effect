@@ -1,8 +1,8 @@
-import * as A from "../../Array"
-import { pipe } from "../../Function"
-import * as O from "../../Option"
 import * as T from "../_internal/effect"
 import * as M from "../_internal/managed"
+import type * as A from "../../Array"
+import { pipe } from "../../Function"
+import * as O from "../../Option"
 
 // Contract notes for transducers:
 // - When a None is received, the transducer must flush all of its internal state

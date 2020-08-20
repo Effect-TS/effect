@@ -1,7 +1,6 @@
 import { Then } from "../Cause/cause"
-
 import { foldCauseM_, halt, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**

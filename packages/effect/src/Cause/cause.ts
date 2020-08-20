@@ -1,4 +1,4 @@
-import { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id"
 
 export type Cause<E> = Empty | Fail<E> | Die | Interrupt | Then<E> | Both<E>
 

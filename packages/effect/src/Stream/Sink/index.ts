@@ -1,3 +1,5 @@
+import * as T from "../_internal/effect"
+import * as M from "../_internal/managed"
 import * as A from "../../Array"
 import * as C from "../../Cause/core"
 import * as E from "../../Either"
@@ -7,8 +9,6 @@ import { pipe, tuple } from "../../Function"
 import * as O from "../../Option"
 import * as R from "../../Ref"
 import * as Push from "../Push"
-import * as T from "../_internal/effect"
-import * as M from "../_internal/managed"
 
 // Important notes while writing sinks and combinators:
 // - What return values for sinks mean:

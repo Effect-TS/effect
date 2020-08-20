@@ -1,6 +1,5 @@
 import { effectTotal } from "../Effect/core"
-
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Checks for completion of this Promise. Produces true if this promise has

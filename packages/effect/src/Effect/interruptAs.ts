@@ -1,6 +1,5 @@
 import { Interrupt } from "../Cause/cause"
-import { FiberID } from "../Fiber/id"
-
+import type { FiberID } from "../Fiber/id"
 import { halt } from "./core"
 
 /**

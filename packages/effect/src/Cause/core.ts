@@ -1,10 +1,10 @@
 import * as A from "../Array"
 import * as E from "../Either"
-import { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id"
 import { identity, pipe } from "../Function"
 import * as O from "../Option"
-
-import { Both, Cause, Empty, Fail, Then } from "./cause"
+import type { Cause } from "./cause"
+import { Both, Empty, Fail, Then } from "./cause"
 import { equalsCause } from "./eq"
 import { InterruptedException } from "./errors"
 

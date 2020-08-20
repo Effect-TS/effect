@@ -1,7 +1,6 @@
 import { die as effectDie } from "../Effect/die"
-
 import { completeWith } from "./completeWith"
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Kills the promise with the specified error, which will be propagated to all

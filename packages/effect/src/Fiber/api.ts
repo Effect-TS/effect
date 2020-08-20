@@ -3,7 +3,6 @@ import * as E from "../Either"
 import * as Exit from "../Exit/api"
 import * as IT from "../Iterable"
 import * as O from "../Option"
-
 import * as T from "./_internal/effect"
 import * as Fiber from "./core"
 
