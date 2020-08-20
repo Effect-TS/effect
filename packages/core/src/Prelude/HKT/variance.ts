@@ -72,8 +72,8 @@ export type Intro<C, P extends Par, Fixed, Current> = C extends InvariantP<P>
   : Fixed
 
 // initial type depending on variance of P in C (eg: initial Contravariant R = unknown, initial Covariant E = never)
-export type Initial<C, P extends Par, I> = C extends InvariantP<P>
-  ? I
+export type Initial<C, P extends Par> = C extends ContravariantP<P>
+  ? unknown
   : C extends CovariantP<P>
   ? never
-  : unknown
+  : any
