@@ -2,13 +2,6 @@ export {
   Auto,
   Base,
   CompositionBase2,
-  FixE,
-  FixI,
-  FixK,
-  FixN,
-  FixR,
-  FixS,
-  FixX,
   F_,
   F__,
   F___,
@@ -19,13 +12,6 @@ export {
   IndexFor,
   instance,
   Kind,
-  OrE,
-  OrI,
-  OrK,
-  OrN,
-  OrR,
-  OrS,
-  OrX,
   UF_,
   UF__,
   UF___,
@@ -33,7 +19,9 @@ export {
   UG_,
   URIS,
   URItoIndex,
-  URItoKind
+  URItoKind,
+  Fix,
+  OrFix
 } from "./hkt"
 
 export {

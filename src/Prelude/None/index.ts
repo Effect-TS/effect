@@ -1,17 +1,17 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../HKT"
+import { Auto, Kind, OrFix, URIS, Base } from "../HKT"
 
 export interface None<F extends URIS, C = Auto> extends Base<F, C> {
   readonly never: <S, SI, SO = SI>() => Kind<
     F,
-    OrN<C, never>,
-    OrK<C, never>,
+    OrFix<"N", C, never>,
+    OrFix<"K", C, never>,
     SI,
     SO,
-    OrX<C, never>,
-    OrI<C, unknown>,
-    OrS<C, S>,
-    OrR<C, unknown>,
-    OrE<C, never>,
+    OrFix<"X", C, never>,
+    OrFix<"I", C, unknown>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, unknown>,
+    OrFix<"E", C, never>,
     never
   >
 }

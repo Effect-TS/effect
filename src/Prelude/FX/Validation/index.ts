@@ -1,6 +1,6 @@
 import { Associative } from "../../../Classic/Associative"
 import { Applicative, Monad } from "../../Combined"
-import { Auto, FixE, instance, UF__, URIS } from "../../HKT"
+import { Auto, Fix, instance, UF__, URIS } from "../../HKT"
 import { Fail } from "../Fail"
 import { Run } from "../Run"
 
@@ -10,12 +10,12 @@ import { Erase } from "@effect-ts/system/Utils"
 
 export function getValidationF<F extends URIS, C = Auto>(
   F: Monad<F, C> & Run<F, C> & Fail<F, C> & Applicative<F, C>
-): <Z>(A: Associative<Z>) => Applicative<F, Erase<C, Auto> & FixE<Z>>
+): <Z>(A: Associative<Z>) => Applicative<F, Erase<C, Auto> & Fix<"E", Z>>
 export function getValidationF(
   F: Monad<UF__> & Run<UF__> & Fail<UF__> & Applicative<UF__>
-): <Z>(A: Associative<Z>) => Applicative<UF__, FixE<Z>> {
+): <Z>(A: Associative<Z>) => Applicative<UF__, Fix<"E", Z>> {
   return <Z>(A: Associative<Z>) =>
-    instance<Applicative<UF__, FixE<Z>>>({
+    instance<Applicative<UF__, Fix<"E", Z>>>({
       any: F.any,
       map: F.map,
       both: (fb) => (fa) =>

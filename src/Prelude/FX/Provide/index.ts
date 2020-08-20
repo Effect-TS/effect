@@ -1,33 +1,33 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../../HKT"
+import { Auto, Kind, OrFix, URIS, Base } from "../../HKT"
 
 export interface Provide<F extends URIS, C = Auto> extends Base<F, C> {
   readonly provide: <R>(
-    r: OrR<C, R>
+    r: OrFix<"R", C, R>
   ) => <N extends string, K, SI, SO, X, I, S, E, A>(
     fa: Kind<
       F,
-      OrN<C, N>,
-      OrK<C, K>,
+      OrFix<"N", C, N>,
+      OrFix<"K", C, K>,
       SI,
       SO,
-      OrX<C, X>,
-      OrI<C, I>,
-      OrS<C, S>,
-      OrR<C, R>,
-      OrE<C, E>,
+      OrFix<"X", C, X>,
+      OrFix<"I", C, I>,
+      OrFix<"S", C, S>,
+      OrFix<"R", C, R>,
+      OrFix<"E", C, E>,
       A
     >
   ) => Kind<
     F,
-    OrN<C, N>,
-    OrK<C, K>,
+    OrFix<"N", C, N>,
+    OrFix<"K", C, K>,
     SI,
     SO,
-    OrX<C, X>,
-    OrI<C, I>,
-    OrS<C, S>,
-    OrR<C, unknown>,
-    OrE<C, E>,
+    OrFix<"X", C, X>,
+    OrFix<"I", C, I>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, unknown>,
+    OrFix<"E", C, E>,
     A
   >
 }

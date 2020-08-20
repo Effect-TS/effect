@@ -17,14 +17,8 @@ import {
   InferR,
   InferX,
   Kind,
-  OrE,
-  OrI,
-  OrK,
-  OrN,
+  OrFix,
   OrNever,
-  OrR,
-  OrS,
-  OrX,
   UF_,
   UF___,
   URIS
@@ -38,15 +32,15 @@ export function succeedF<F extends URIS, C = Auto>(
   a: A
 ) => Kind<
   F,
-  OrN<C, N>,
-  OrK<C, K>,
+  OrFix<"N", C, N>,
+  OrFix<"K", C, K>,
   SI,
   SO,
-  OrX<C, never>,
-  OrI<C, unknown>,
-  OrS<C, S>,
-  OrR<C, unknown>,
-  OrE<C, never>,
+  OrFix<"X", C, never>,
+  OrFix<"I", C, unknown>,
+  OrFix<"S", C, S>,
+  OrFix<"R", C, unknown>,
+  OrFix<"E", C, never>,
   A
 >
 export function succeedF(F: Any<UF_> & Covariant<UF_>): <A>(a: A) => F_<A> {
@@ -60,42 +54,42 @@ export function chainF<F extends URIS, C = Auto>(
     a: A
   ) => Kind<
     F,
-    OrN<C, N2>,
-    OrK<C, K2>,
+    OrFix<"N", C, N2>,
+    OrFix<"K", C, K2>,
     SO,
     SO2,
-    OrX<C, X2>,
-    OrI<C, I2>,
-    OrS<C, S>,
-    OrR<C, R2>,
-    OrE<C, E2>,
+    OrFix<"X", C, X2>,
+    OrFix<"I", C, I2>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, R2>,
+    OrFix<"E", C, E2>,
     B
   >
 ) => <N extends string, K, SI, X, I, R, E>(
   fa: Kind<
     F,
-    OrN<C, N>,
-    OrK<C, K>,
+    OrFix<"N", C, N>,
+    OrFix<"K", C, K>,
     SI,
     SO,
-    OrX<C, X>,
-    OrI<C, I>,
-    OrS<C, S>,
-    OrR<C, R>,
-    OrE<C, E>,
+    OrFix<"X", C, X>,
+    OrFix<"I", C, I>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, R>,
+    OrFix<"E", C, E>,
     A
   >
 ) => Kind<
   F,
-  OrN<C, N2>,
-  OrK<C, K2>,
+  OrFix<"N", C, N2>,
+  OrFix<"K", C, K2>,
   SI,
   SO2,
-  OrX<C, X | X2>,
-  OrI<C, I & I2>,
-  OrS<C, S>,
-  OrR<C, R & R2>,
-  OrE<C, E | E2>,
+  OrFix<"X", C, X | X2>,
+  OrFix<"I", C, I & I2>,
+  OrFix<"S", C, S>,
+  OrFix<"R", C, R & R2>,
+  OrFix<"E", C, E | E2>,
   B
 >
 export function chainF(F: Monad<UF_>) {
@@ -106,31 +100,31 @@ export function accessMF<F extends URIS, C = Auto>(
   F: Access<F, C> & AssociativeFlatten<F, C>
 ): <N extends string, K, SI, SO, X, I, S, R, R2, E, A>(
   f: (
-    r: OrR<C, R>
+    r: OrFix<"R", C, R>
   ) => Kind<
     F,
-    OrN<C, N>,
-    OrK<C, K>,
+    OrFix<"N", C, N>,
+    OrFix<"K", C, K>,
     SI,
     SO,
-    OrX<C, X>,
-    OrI<C, I>,
-    OrS<C, S>,
-    OrR<C, R2>,
-    OrE<C, E>,
+    OrFix<"X", C, X>,
+    OrFix<"I", C, I>,
+    OrFix<"S", C, S>,
+    OrFix<"R", C, R2>,
+    OrFix<"E", C, E>,
     A
   >
 ) => Kind<
   F,
-  OrN<C, N>,
-  OrK<C, K>,
+  OrFix<"N", C, N>,
+  OrFix<"K", C, K>,
   SI,
   SO,
-  OrX<C, X>,
-  OrI<C, I>,
-  OrS<C, S>,
-  OrR<C, R & R2>,
-  OrE<C, E>,
+  OrFix<"X", C, X>,
+  OrFix<"I", C, I>,
+  OrFix<"S", C, S>,
+  OrFix<"R", C, R & R2>,
+  OrFix<"E", C, E>,
   A
 >
 export function accessMF(
@@ -148,15 +142,15 @@ export function sequenceSF<F extends URIS, C = Auto>(
     string,
     Kind<
       F,
-      OrN<C, any>,
-      OrK<C, any>,
+      OrFix<"N", C, any>,
+      OrFix<"K", C, any>,
       SIO,
       SIO,
-      OrX<C, any>,
-      OrI<C, any>,
-      OrS<C, S>,
-      OrR<C, any>,
-      OrE<C, any>,
+      OrFix<"X", C, any>,
+      OrFix<"I", C, any>,
+      OrFix<"S", C, S>,
+      OrFix<"R", C, any>,
+      OrFix<"E", C, any>,
       any
     >
   >
@@ -164,13 +158,15 @@ export function sequenceSF<F extends URIS, C = Auto>(
   r: EnforceNonEmptyRecord<NER>
 ) => Kind<
   F,
-  OrN<
+  OrFix<
+    "N",
     C,
     {
       [K in keyof NER]: InferN<F, NER[K]>
     }[keyof NER]
   >,
-  OrK<
+  OrFix<
+    "K",
     C,
     {
       [K in keyof NER]: InferK<F, NER[K]>
@@ -178,13 +174,15 @@ export function sequenceSF<F extends URIS, C = Auto>(
   >,
   SIO,
   SIO,
-  OrX<
+  OrFix<
+    "X",
     C,
     {
       [K in keyof NER]: InferX<F, NER[K]>
     }[keyof NER]
   >,
-  OrI<
+  OrFix<
+    "I",
     C,
     UnionToIntersection<
       {
@@ -192,8 +190,9 @@ export function sequenceSF<F extends URIS, C = Auto>(
       }[keyof NER]
     >
   >,
-  OrS<C, S>,
-  OrR<
+  OrFix<"S", C, S>,
+  OrFix<
+    "R",
     C,
     UnionToIntersection<
       {
@@ -201,7 +200,8 @@ export function sequenceSF<F extends URIS, C = Auto>(
       }[keyof NER]
     >
   >,
-  OrE<
+  OrFix<
+    "E",
     C,
     {
       [K in keyof NER]: InferE<F, NER[K]>
