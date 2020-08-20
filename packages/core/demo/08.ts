@@ -14,7 +14,9 @@ const result = validationSequenceS({
   b: T.succeed(1),
   c: T.succeed(2),
   d: T.fail("d"),
-  e: T.fail("e")
+  e: T.fail("e"),
+  f: T.access((_: { foo: string }) => 3),
+  g: T.access((_: { bar: string }) => 3)
 })
 
 pipe(
@@ -25,5 +27,9 @@ pipe(
       console.log(e)
     })
   ),
+  T.provideAll({
+    foo: "foo",
+    bar: "bar"
+  }),
   T.runSync
 )
