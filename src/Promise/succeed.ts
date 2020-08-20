@@ -1,7 +1,6 @@
 import { succeed as effectSucceed } from "../Effect/core"
-
 import { completeWith } from "./completeWith"
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Completes the promise with the specified value.

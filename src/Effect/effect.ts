@@ -1,4 +1,4 @@
-import { Instruction } from "./primitives"
+import type { Instruction } from "./primitives"
 
 export const _S = "_S"
 export const _R = "_R"

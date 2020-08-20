@@ -1,5 +1,5 @@
 import { chain_, unit } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Ignores the result of the effect replacing it with a void

@@ -4,25 +4,25 @@ import { FiberFailure } from "../Cause/errors"
 import { pretty } from "../Cause/pretty"
 // exit
 import { HasClock, LiveClock } from "../Clock"
-import { Exit } from "../Exit/exit"
+import type { Exit } from "../Exit/exit"
 // fiber
 import { FiberContext } from "../Fiber/context"
 import { interruptible } from "../Fiber/core"
 import { newFiberId } from "../Fiber/id"
-import { Callback, FiberStateDone } from "../Fiber/state"
+import type { Callback, FiberStateDone } from "../Fiber/state"
 // scope
 import { HasURI } from "../Has"
-import { Layer } from "../Layer/Layer"
+import type { Layer } from "../Layer/Layer"
 import { HasMemoMap, MemoMap } from "../Layer/MemoMap"
-import { Finalizer } from "../Managed/releaseMap"
+import type { Finalizer } from "../Managed/releaseMap"
 import { defaultRandom, HasRandom } from "../Random"
 import { unsafeMakeRefM } from "../RefM"
 import * as Scope from "../Scope"
 // supervisor
 import * as Supervisor from "../Supervisor"
-
 import { accessM, chain_, effectTotal, succeed } from "./core"
-import { Async, AsyncE, Effect, _I } from "./effect"
+import type { Async, AsyncE, Effect } from "./effect"
+import { _I } from "./effect"
 import { provideSome_ } from "./provideSome"
 
 // empty function

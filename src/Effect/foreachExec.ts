@@ -1,5 +1,10 @@
-import { ExecutionStrategy, Parallel, ParallelN, Sequential } from "./ExecutionStrategy"
-import { Effect, AsyncRE } from "./effect"
+import type { AsyncRE, Effect } from "./effect"
+import type {
+  ExecutionStrategy,
+  Parallel,
+  ParallelN,
+  Sequential
+} from "./ExecutionStrategy"
 import { foreachExec_ } from "./foreachExec_"
 
 /**

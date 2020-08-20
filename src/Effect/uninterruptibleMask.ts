@@ -1,8 +1,7 @@
-import { InterruptStatus } from "../Fiber/core"
-
+import type { InterruptStatus } from "../Fiber/core"
 import { checkInterrupt, interruptStatus_ } from "./core"
 import { disconnect } from "./disconnect"
-import { AsyncRE, Effect } from "./effect"
+import type { AsyncRE, Effect } from "./effect"
 import { interruptible } from "./interruptible"
 import { uninterruptible } from "./uninterruptible"
 

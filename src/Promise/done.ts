@@ -1,8 +1,7 @@
 import { done as effectDone } from "../Effect/done"
-import { Exit } from "../Exit/exit"
-
+import type { Exit } from "../Exit/exit"
 import { completeWith } from "./completeWith"
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Exits the promise with the specified exit, which will be propagated to all

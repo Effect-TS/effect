@@ -1,7 +1,6 @@
 import { effectTotal } from "../Effect/core"
-import { AsyncE, Sync } from "../Effect/effect"
-
-import { Promise } from "./promise"
+import type { AsyncE, Sync } from "../Effect/effect"
+import type { Promise } from "./promise"
 import { Done } from "./state"
 
 /**

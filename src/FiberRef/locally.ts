@@ -1,9 +1,8 @@
 import { bracket_ } from "../Effect/bracket_"
 import { chain } from "../Effect/core"
-import { Effect } from "../Effect/effect"
+import type { Effect } from "../Effect/effect"
 import { pipe } from "../Function"
-
-import { FiberRef } from "./fiberRef"
+import type { FiberRef } from "./fiberRef"
 import { get } from "./get"
 import { set } from "./set"
 

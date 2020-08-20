@@ -1,5 +1,4 @@
 import * as E from "../Either"
-
 import { chain_, effectTotal, succeed } from "./core"
 import { fail } from "./fail"
 

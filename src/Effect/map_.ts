@@ -1,5 +1,5 @@
 import { chain_, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Returns an effect whose success is mapped by the specified `f` function.

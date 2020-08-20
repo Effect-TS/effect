@@ -6,7 +6,6 @@ import * as NA from "../NonEmptyArray"
 import * as O from "../Option"
 import { nextDouble } from "../Random"
 import * as R from "../Ref"
-
 import * as Decision from "./Decision"
 import * as Driver from "./Driver"
 import * as T from "./effect"

@@ -1,4 +1,4 @@
-import * as C from "../Cause"
+import type * as C from "../Cause"
 
 export type Exit<E, A> = Success<A> | Failure<E>
 

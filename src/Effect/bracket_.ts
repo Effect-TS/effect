@@ -1,5 +1,5 @@
 import { bracketExit_ } from "./bracketExit_"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * When this effect represents acquisition of a resource (for example,

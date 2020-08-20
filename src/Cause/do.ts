@@ -1,6 +1,6 @@
 import { pipe } from "../Function"
-
-import { Cause, Fail } from "./cause"
+import type { Cause } from "./cause"
+import { Fail } from "./cause"
 import { chain, map } from "./core"
 
 const bind = <A, K, N extends string>(

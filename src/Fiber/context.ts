@@ -15,11 +15,12 @@ import * as suspend from "../Effect/core"
 import * as unit from "../Effect/core"
 import * as die from "../Effect/die"
 import * as done from "../Effect/done"
-import { Async, Effect, Sync, _I } from "../Effect/effect"
+import type { Async, Effect, Sync } from "../Effect/effect"
+import { _I } from "../Effect/effect"
 import * as fail from "../Effect/fail"
 import * as foreachUnit_ from "../Effect/foreachUnit_"
 import * as interruptAs from "../Effect/interruptAs"
-import { IFold, Instruction, IRaceWith } from "../Effect/primitives"
+import type { IFold, Instruction, IRaceWith } from "../Effect/primitives"
 import * as E from "../Either"
 // exit
 import * as Exit from "../Exit/api"
@@ -33,17 +34,10 @@ import * as Sup from "../Supervisor"
 // support
 import { AtomicReference } from "../Support/AtomicReference"
 import { defaultScheduler } from "../Support/Scheduler"
-
 // fiber
 import * as Fiber from "./core"
-import {
-  Callback,
-  FiberRefLocals,
-  FiberStateDone,
-  FiberStateExecuting,
-  initial,
-  interrupting
-} from "./state"
+import type { Callback, FiberRefLocals } from "./state"
+import { FiberStateDone, FiberStateExecuting, initial, interrupting } from "./state"
 import * as Status from "./status"
 
 // support

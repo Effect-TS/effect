@@ -1,10 +1,10 @@
-import * as Exit from "../Exit/exit"
-import * as Fiber from "../Fiber"
-import { Runtime } from "../Fiber/core"
+import type * as Exit from "../Exit/exit"
+import type * as Fiber from "../Fiber"
+import type { Runtime } from "../Fiber/core"
 import * as O from "../Option"
-import { globalScope, Scope } from "../Scope"
-
-import { AsyncR, Effect } from "./effect"
+import type { Scope } from "../Scope"
+import { globalScope } from "../Scope"
+import type { AsyncR, Effect } from "./effect"
 import { IFork, IGetForkScope, IRaceWith } from "./primitives"
 
 /**

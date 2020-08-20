@@ -1,5 +1,4 @@
 import { Fail } from "../Cause/cause"
-
 import { halt } from "./core"
 
 /**

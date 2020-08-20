@@ -1,7 +1,6 @@
 import { effectTotal } from "../Effect/core"
 import * as O from "../Option"
-
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Checks for completion of this Promise. Returns the result effect if this

@@ -1,15 +1,19 @@
 import * as A from "../Array"
 import * as E from "../Either"
-import * as NA from "../NonEmptyArray"
-
-import { ExecutionStrategy, Sequential, Parallel, ParallelN } from "./ExecutionStrategy"
+import type * as NA from "../NonEmptyArray"
 import { absolve } from "./absolve"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { either } from "./either"
-import { foreachExec_ } from "./foreachExec_"
-import { foreachParN_ } from "./foreachParN_"
-import { foreachPar_ } from "./foreachPar_"
+import type {
+  ExecutionStrategy,
+  Parallel,
+  ParallelN,
+  Sequential
+} from "./ExecutionStrategy"
 import { foreach_ } from "./foreach_"
+import { foreachExec_ } from "./foreachExec_"
+import { foreachPar_ } from "./foreachPar_"
+import { foreachParN_ } from "./foreachParN_"
 import { map_ } from "./map_"
 
 /**

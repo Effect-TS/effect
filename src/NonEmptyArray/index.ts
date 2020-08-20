@@ -6,8 +6,9 @@
 
 import * as A from "../Array"
 import type { Predicate, Refinement } from "../Function"
-import { MutableRecord } from "../Mutable"
-import { none, Option, some } from "../Option"
+import type { MutableRecord } from "../Mutable"
+import type { Option } from "../Option"
+import { none, some } from "../Option"
 
 export type NonEmptyArray<A> = A.Array<A> & {
   readonly 0: A

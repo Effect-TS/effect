@@ -1,8 +1,7 @@
-import { Cause } from "../Cause/cause"
+import type { Cause } from "../Cause/cause"
 import { isEmpty } from "../Cause/core"
-
 import { chain_, halt, unit } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 export const uncause = <S, R, E, A>(
   effect: Effect<S, R, never, Cause<E>>

@@ -1,5 +1,5 @@
 import { chain_ } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 export const ifM = <S, R, E>(b: Effect<S, R, E, boolean>) => <S1, R1, E1, A1>(
   onTrue: () => Effect<S1, R1, E1, A1>

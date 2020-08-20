@@ -1,7 +1,6 @@
-import { Exit } from "../Exit/exit"
-
+import type { Exit } from "../Exit/exit"
 import { bracketExit_ } from "./bracketExit_"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Acquires a resource, uses the resource, and then releases the resource.

@@ -1,5 +1,5 @@
 import { accessM, provideAll_ } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Provides some of the environment required to run this effect,

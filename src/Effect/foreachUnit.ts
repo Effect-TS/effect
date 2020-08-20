@@ -1,7 +1,6 @@
 import { foldMap } from "../Iterable"
-
 import { chain_, unit } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Applies the function `f` to each element of the `Iterable<A>` and runs

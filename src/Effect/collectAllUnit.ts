@@ -1,9 +1,8 @@
 import { identity } from "../Function"
-
-import { Effect } from "./effect"
-import { foreachUnitParN_ } from "./foreachUnitParN_"
-import { foreachUnitPar_ } from "./foreachUnitPar_"
+import type { Effect } from "./effect"
 import { foreachUnit_ } from "./foreachUnit_"
+import { foreachUnitPar_ } from "./foreachUnitPar_"
+import { foreachUnitParN_ } from "./foreachUnitParN_"
 
 /**
  * Evaluate each effect in the structure from left to right, and discard the
