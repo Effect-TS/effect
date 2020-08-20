@@ -1,6 +1,7 @@
 export {
   Auto,
   Base,
+  BaseURIS,
   CompositionBase2,
   Fix,
   F_,
@@ -11,7 +12,9 @@ export {
   HKTFull,
   HKTFullURI,
   IndexFor,
+  IndexForBase,
   instance,
+  InvertedUnionURI,
   Kind,
   OrFix,
   RestrictedKindURI,
