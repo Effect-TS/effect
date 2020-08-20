@@ -5,6 +5,7 @@ export interface Derive<F extends URIS, Typeclass extends URIS, C = Auto>
   readonly derive: <N extends string, K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       Typeclass,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -18,6 +19,7 @@ export interface Derive<F extends URIS, Typeclass extends URIS, C = Auto>
     >
   ) => Kind<
     Typeclass,
+    C,
     OrFix<"N", C, N>,
     OrFix<"K", C, K>,
     SI,
@@ -29,6 +31,7 @@ export interface Derive<F extends URIS, Typeclass extends URIS, C = Auto>
     OrFix<"E", C, E>,
     Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,

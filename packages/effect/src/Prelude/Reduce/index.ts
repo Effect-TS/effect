@@ -7,6 +7,7 @@ export interface Reduce<F extends URIS, C = Auto> extends Base<F, C> {
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,

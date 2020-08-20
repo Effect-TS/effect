@@ -23,6 +23,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
   >(
     ffa: Kind<
       F,
+      C,
       OrFix<"N", C, N2>,
       OrFix<"K", C, K2>,
       SI,
@@ -34,6 +35,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
       OrFix<"E", C, E2>,
       Kind<
         F,
+        C,
         OrFix<"N", C, N>,
         OrFix<"K", C, K>,
         SO,
@@ -48,6 +50,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
     >
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, N2>,
     OrFix<"K", C, K2>,
     SI,

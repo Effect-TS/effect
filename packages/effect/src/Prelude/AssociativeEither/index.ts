@@ -6,6 +6,7 @@ export interface AssociativeEither<F extends URIS, C = Auto> extends Base<F, C> 
   readonly either: <N2 extends string, K2, SI2, SO2, X2, I2, S2, R2, E2, B>(
     fb: Kind<
       F,
+      C,
       OrFix<"N", C, N2>,
       OrFix<"K", C, K2>,
       SI2,
@@ -20,6 +21,7 @@ export interface AssociativeEither<F extends URIS, C = Auto> extends Base<F, C> 
   ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -33,6 +35,7 @@ export interface AssociativeEither<F extends URIS, C = Auto> extends Base<F, C> 
     >
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, N | N2>,
     OrFix<"K", C, K | K2>,
     SI & SI2,
