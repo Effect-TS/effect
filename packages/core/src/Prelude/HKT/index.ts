@@ -14,11 +14,13 @@ export {
   instance,
   Kind,
   OrFix,
+  RestrictedKindURI,
   UF_,
   UF__,
   UF___,
   UF____,
   UG_,
+  UnionURI,
   URIS,
   URItoIndex,
   URItoKind
@@ -34,4 +36,4 @@ export {
   InferX,
   OrNever
 } from "./infer"
-export { V, Initial, Intro, Mix, MixStruct } from "./variance"
+export { Initial, Intro, Mix, MixStruct, V } from "./variance"
