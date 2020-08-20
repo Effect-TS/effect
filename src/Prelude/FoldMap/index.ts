@@ -11,6 +11,7 @@ export interface FoldMapFn<F extends URIS, C = Auto> {
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,

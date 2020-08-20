@@ -9,7 +9,7 @@ export const ReaderURI = "Reader"
 export type ReaderURI = typeof ReaderURI
 
 declare module "../../Prelude/HKT" {
-  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [ReaderURI]: Reader<R, A>
   }
 }

@@ -23,6 +23,7 @@ export interface WitherWithIndex<F extends URIS, C = Auto> {
       a: A
     ) => Kind<
       G,
+      GC,
       OrFix<"N", GC, GN>,
       OrFix<"K", GC, GK>,
       GSIO,
@@ -37,6 +38,7 @@ export interface WitherWithIndex<F extends URIS, C = Auto> {
   ) => <FSI, FSO, FX, FI, FS, FR, FE>(
     ta: Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -50,6 +52,7 @@ export interface WitherWithIndex<F extends URIS, C = Auto> {
     >
   ) => Kind<
     G,
+    GC,
     OrFix<"N", GC, GN>,
     OrFix<"K", GC, GK>,
     GSIO,
@@ -61,6 +64,7 @@ export interface WitherWithIndex<F extends URIS, C = Auto> {
     OrFix<"E", GC, GE>,
     Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -99,6 +103,7 @@ export function implementCompactWithIndexF<F extends URIS, C = Auto>(): (
   ) => (
     ta: Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -113,6 +118,7 @@ export function implementCompactWithIndexF<F extends URIS, C = Auto>(): (
   ) => G_<
     Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,

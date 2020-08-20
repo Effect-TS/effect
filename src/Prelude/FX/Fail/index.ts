@@ -5,6 +5,7 @@ export interface Fail<F extends URIS, C = Auto> extends Base<F, C> {
     e: OrFix<"E", C, E>
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, never>,
     OrFix<"K", C, never>,
     SI,

@@ -13,7 +13,7 @@ type EffectURI = typeof EffectURI
 export type V = P.V<"E", "+"> & P.V<"X", "+"> & P.V<"R", "-">
 
 declare module "../Prelude/HKT" {
-  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [EffectURI]: T.Effect<X, R, E, A>
   }
 }

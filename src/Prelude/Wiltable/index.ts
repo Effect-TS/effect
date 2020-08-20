@@ -22,6 +22,7 @@ export interface Wilt<F extends URIS, C = Auto> {
       a: A
     ) => Kind<
       G,
+      GC,
       OrFix<"N", GC, GN>,
       OrFix<"K", GC, GK>,
       GSIO,
@@ -36,6 +37,7 @@ export interface Wilt<F extends URIS, C = Auto> {
   ) => <FN extends string, FK, FSI, FSO, FX, FI, FS, FR, FE>(
     ta: Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -49,6 +51,7 @@ export interface Wilt<F extends URIS, C = Auto> {
     >
   ) => Kind<
     G,
+    GC,
     OrFix<"N", GC, GN>,
     OrFix<"K", GC, GK>,
     GSIO,
@@ -61,6 +64,7 @@ export interface Wilt<F extends URIS, C = Auto> {
     Separated<
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,
@@ -74,6 +78,7 @@ export interface Wilt<F extends URIS, C = Auto> {
       >,
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,
@@ -113,6 +118,7 @@ export function implementSeparateF<F extends URIS, C = Auto>(): (
   ) => (
     ta: Kind<
       F,
+      C,
       OrFix<"N", C, FN>,
       OrFix<"K", C, FK>,
       FSI,
@@ -128,6 +134,7 @@ export function implementSeparateF<F extends URIS, C = Auto>(): (
     Separated<
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,
@@ -141,6 +148,7 @@ export function implementSeparateF<F extends URIS, C = Auto>(): (
       >,
       Kind<
         F,
+        C,
         OrFix<"N", C, FN>,
         OrFix<"K", C, FK>,
         FSI,

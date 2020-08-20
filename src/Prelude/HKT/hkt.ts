@@ -51,7 +51,7 @@ export interface G_<A> {
   A: A
 }
 
-export interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+export interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
   [UF_]: F_<A>
   [UG_]: G_<A>
   [UF__]: F__<E, A>
@@ -96,7 +96,19 @@ export interface HKTFull<K, SI, SO, X, I, S, R, E, A> {
   A: A
 }
 
-export type BaseURIS = keyof URItoKind<any, any, any, any, any, any, any, any, any, any>
+export type BaseURIS = keyof URItoKind<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>
 
 export interface Auto {
   readonly Auto: unique symbol

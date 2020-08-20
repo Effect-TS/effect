@@ -5,6 +5,7 @@ export interface Extend<F extends URIS, C = Auto> extends Base<F, C> {
     f: (
       _: Kind<
         F,
+        C,
         OrFix<"N", C, N>,
         OrFix<"K", C, K>,
         SI,
@@ -20,6 +21,7 @@ export interface Extend<F extends URIS, C = Auto> extends Base<F, C> {
   ) => (
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -33,6 +35,7 @@ export interface Extend<F extends URIS, C = Auto> extends Base<F, C> {
     >
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, N>,
     OrFix<"K", C, K>,
     SI,

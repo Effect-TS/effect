@@ -8,6 +8,7 @@ export interface Covariant<F extends URIS, C = Auto> extends Base<F, C> {
   ) => <N extends string, K, SI, SO, X, I, S, R, E>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -21,6 +22,7 @@ export interface Covariant<F extends URIS, C = Auto> extends Base<F, C> {
     >
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, N>,
     OrFix<"K", C, K>,
     SI,
@@ -64,6 +66,7 @@ export interface CovariantComposition<
   >(
     fa: Kind<
       F,
+      CF,
       OrFix<"N", CF, FN>,
       OrFix<"K", CF, FK>,
       FSI,
@@ -75,6 +78,7 @@ export interface CovariantComposition<
       OrFix<"E", CF, FE>,
       Kind<
         G,
+        CG,
         OrFix<"N", CG, GN>,
         OrFix<"K", CG, GK>,
         GSI,
@@ -89,6 +93,7 @@ export interface CovariantComposition<
     >
   ) => Kind<
     F,
+    CF,
     OrFix<"N", CF, FN>,
     OrFix<"K", CF, FK>,
     FSI,
@@ -100,6 +105,7 @@ export interface CovariantComposition<
     OrFix<"E", CF, FE>,
     Kind<
       G,
+      CG,
       OrFix<"N", CG, GN>,
       OrFix<"K", CG, GK>,
       GSI,

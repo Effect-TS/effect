@@ -4,6 +4,7 @@ import type { Kind, URIS } from "../HKT/Kind"
 export interface Any<F extends URIS, C = Auto> extends Base<F, C> {
   readonly any: <N extends string, K, SI, SO>() => Kind<
     F,
+    C,
     OrFix<"N", C, N>,
     OrFix<"K", C, K>,
     SI,
