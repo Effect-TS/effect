@@ -118,4 +118,4 @@ export interface CompositionBase2<F, G, CF = Auto, CG = Auto> {
   CG: CG
 }
 
-export { Kind, URIS, RestrictedKindURI, UnionURI } from "./Kind"
+export { Kind, URIS, RestrictedKindURI, UnionURI, InvertedUnionURI } from "./Kind"

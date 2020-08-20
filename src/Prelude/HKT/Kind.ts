@@ -18,6 +18,19 @@ export type UnionURI<G extends BaseURIS, F extends RestrictedKindURI> = F extend
   ? [F[0], G]
   : F
 
+export type InvertedUnionURI<
+  G extends BaseURIS,
+  F extends RestrictedKindURI
+> = F extends [BaseURIS, BaseURIS, BaseURIS, BaseURIS]
+  ? [G, F[0], F[1], F[2], F[3]]
+  : F extends [BaseURIS, BaseURIS, BaseURIS]
+  ? [G, F[0], F[1], F[2]]
+  : F extends [BaseURIS, BaseURIS]
+  ? [G, F[0], F[1]]
+  : F extends [BaseURIS]
+  ? [G, F[0]]
+  : F
+
 export type Kind<
   URI extends URIS,
   N extends string,
