@@ -1,6 +1,6 @@
-import { AssociativeEitherF, AssociativeEitherK } from "../AssociativeEither"
-import { URIS } from "../HKT"
-import { NoneF, NoneK } from "../None"
+import type { AssociativeEitherF, AssociativeEitherK } from "../AssociativeEither"
+import type { URIS } from "../HKT"
+import type { NoneF, NoneK } from "../None"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to

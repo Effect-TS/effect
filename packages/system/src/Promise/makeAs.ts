@@ -1,6 +1,5 @@
 import { effectTotal } from "../Effect/core"
-import { FiberID } from "../Fiber/id"
-
+import type { FiberID } from "../Fiber/id"
 import { unsafeMake } from "./unsafeMake"
 
 /**

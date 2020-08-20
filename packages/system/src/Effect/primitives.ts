@@ -1,14 +1,14 @@
-import * as Cause from "../Cause/core"
-import * as Exit from "../Exit/exit"
-import { FiberContext } from "../Fiber/context"
-import * as Fiber from "../Fiber/core"
-import { FiberID } from "../Fiber/id"
-import { FiberRef } from "../FiberRef/fiberRef"
-import * as O from "../Option"
-import { Scope } from "../Scope"
-import { Supervisor } from "../Supervisor"
-
-import { Effect, AsyncRE, _A, _I, _S, _R, _E, _U, EffectURI } from "./effect"
+import type * as Cause from "../Cause/core"
+import type * as Exit from "../Exit/exit"
+import type { FiberContext } from "../Fiber/context"
+import type * as Fiber from "../Fiber/core"
+import type { FiberID } from "../Fiber/id"
+import type { FiberRef } from "../FiberRef/fiberRef"
+import type * as O from "../Option"
+import type { Scope } from "../Scope"
+import type { Supervisor } from "../Supervisor"
+import type { AsyncRE, Effect, EffectURI } from "./effect"
+import { _A, _E, _I, _R, _S, _U } from "./effect"
 
 //
 // @category Primitives

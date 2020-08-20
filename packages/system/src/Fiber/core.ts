@@ -1,13 +1,12 @@
-import * as Cause from "../Cause/core"
+import type * as Cause from "../Cause/core"
 import { succeed, unit } from "../Effect/core"
-import { Async, Sync } from "../Effect/effect"
+import type { Async, Sync } from "../Effect/effect"
 import * as Exit from "../Exit/core"
-import { FiberRef } from "../FiberRef/fiberRef"
+import type { FiberRef } from "../FiberRef/fiberRef"
 import * as O from "../Option"
-import { Scope } from "../Scope"
-
-import { FiberID } from "./id"
-import { Status } from "./status"
+import type { Scope } from "../Scope"
+import type { FiberID } from "./id"
+import type { Status } from "./status"
 
 export { equalsFiberID, FiberID, newFiberId, None } from "./id"
 

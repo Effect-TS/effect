@@ -1,6 +1,18 @@
-import { Auto, Kind, OrE, OrI, OrK, OrR, OrS, OrX, URIS, Base, OrN } from "../../HKT"
+import type { Either } from "@effect-ts/system/Either"
 
-import { Either } from "@effect-ts/system/Either"
+import type {
+  Auto,
+  Base,
+  Kind,
+  OrE,
+  OrI,
+  OrK,
+  OrN,
+  OrR,
+  OrS,
+  OrX,
+  URIS
+} from "../../HKT"
 
 export interface Run<F extends URIS, C = Auto> extends Base<F> {
   readonly run: <N extends string, K, SI, SO, X, I, S, R, E, A>(

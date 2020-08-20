@@ -1,7 +1,8 @@
 import * as C from "../_abstract/Closure"
 import * as Eq from "../_abstract/Equal"
 import * as I from "../_abstract/Identity"
-import { StringSum, Sum } from "../_abstract/Newtype"
+import type { Sum } from "../_abstract/Newtype"
+import { StringSum } from "../_abstract/Newtype"
 
 /**
  * @category closure

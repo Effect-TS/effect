@@ -1,4 +1,4 @@
-import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
+import type { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `AssociativeFlatten` describes a type that can be "flattened" in an

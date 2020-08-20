@@ -1,7 +1,7 @@
-import * as P from "../../Prelude"
-
 import * as A from "@effect-ts/system/Array"
-import * as E from "@effect-ts/system/Either"
+import type * as E from "@effect-ts/system/Either"
+
+import * as P from "../../Prelude"
 
 /**
  * `Equal[A]` provides implicit evidence that two values of type `A` can be

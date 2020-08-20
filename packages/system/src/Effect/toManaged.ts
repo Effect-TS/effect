@@ -1,7 +1,6 @@
 import { fromEffect, makeExit_ } from "../Managed/core"
-import { Managed } from "../Managed/managed"
-
-import { Effect } from "./effect"
+import type { Managed } from "../Managed/managed"
+import type { Effect } from "./effect"
 
 export const toManaged = <A = unknown, S = never, R = unknown>(
   release?: (a: A) => Effect<S, R, never, any>

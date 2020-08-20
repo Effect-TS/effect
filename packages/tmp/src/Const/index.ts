@@ -7,21 +7,21 @@
  * `Const` has some useful instances. For example, the `Applicative` instance allows us to collect results using a `Monoid`
  * while ignoring return values.
  */
+import type { AnyK } from "../_abstract/Any"
+import type { ApplicativeK } from "../_abstract/Applicative"
+import type * as Associative from "../_abstract/Associative"
+import type { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import type * as Bounded from "../_abstract/Bounded"
+import type { ContravariantK } from "../_abstract/Contravariant"
+import type { CovariantK } from "../_abstract/Covariant"
+import type * as Eq from "../_abstract/Equal"
+import { instance } from "../_abstract/HKT"
+import type * as Identity from "../_abstract/Identity"
+import type { IdentityBothK } from "../_abstract/IdentityBoth"
+import type * as Ord from "../_abstract/Ord"
+import * as Show from "../_abstract/Show"
 import { unsafeCoerce } from "../Function"
 import { intersect } from "../Utils"
-import { AnyK } from "../_abstract/Any"
-import { ApplicativeK } from "../_abstract/Applicative"
-import * as Associative from "../_abstract/Associative"
-import { AssociativeBothK } from "../_abstract/AssociativeBoth"
-import * as Bounded from "../_abstract/Bounded"
-import { ContravariantK } from "../_abstract/Contravariant"
-import { CovariantK } from "../_abstract/Covariant"
-import * as Eq from "../_abstract/Equal"
-import { instance } from "../_abstract/HKT"
-import * as Identity from "../_abstract/Identity"
-import { IdentityBothK } from "../_abstract/IdentityBoth"
-import * as Ord from "../_abstract/Ord"
-import * as Show from "../_abstract/Show"
 
 export type Const<E, A> = E & {
   readonly _A: A

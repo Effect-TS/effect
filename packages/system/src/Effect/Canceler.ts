@@ -1,4 +1,4 @@
-import { AsyncR } from "./effect"
+import type { AsyncR } from "./effect"
 
 /**
  * Canceler Definition

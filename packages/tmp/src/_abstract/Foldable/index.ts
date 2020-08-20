@@ -1,7 +1,7 @@
-import { FoldMapF, FoldMapK } from "../FoldMap"
-import { URIS } from "../HKT"
-import { ReduceF, ReduceK } from "../Reduce"
-import { ReduceRightF, ReduceRightK } from "../ReduceRight"
+import type { FoldMapF, FoldMapK } from "../FoldMap"
+import type { URIS } from "../HKT"
+import type { ReduceF, ReduceK } from "../Reduce"
+import type { ReduceRightF, ReduceRightK } from "../ReduceRight"
 
 export type FoldableF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> = FoldMapF<
   F,

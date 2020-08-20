@@ -1,8 +1,7 @@
 import { effectTotal } from "../Effect/core"
-import { Sync } from "../Effect/effect"
-import * as O from "../Option"
-
-import { Atomic } from "./XRef"
+import type { Sync } from "../Effect/effect"
+import type * as O from "../Option"
+import type { Atomic } from "./XRef"
 
 export const getAndSet = <A>(a: A) => (self: Atomic<A>): Sync<A> =>
   effectTotal(() => {

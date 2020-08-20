@@ -1,10 +1,10 @@
-import * as P from "../../Prelude"
-import * as A from "../Array"
-
 import * as E from "@effect-ts/system/Either"
 import { flow, pipe, tuple } from "@effect-ts/system/Function"
 import * as O from "@effect-ts/system/Option"
 import * as R from "@effect-ts/system/Record"
+
+import * as P from "../../Prelude"
+import * as A from "../Array"
 
 export const RecordURI = "Record"
 

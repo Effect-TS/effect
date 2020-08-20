@@ -1,5 +1,5 @@
-import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
-import { Identity } from "../Identity"
+import type { HasURI, HKTFull, KindFull, URIS } from "../HKT"
+import type { Identity } from "../Identity"
 
 export interface FoldMapF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any>
   extends HasURI<F, TL0, TL1, TL2, TL3> {

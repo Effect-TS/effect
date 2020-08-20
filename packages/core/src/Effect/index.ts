@@ -1,11 +1,11 @@
-import { pipe } from "../Function"
-import * as P from "../Prelude"
-import * as DSL from "../Prelude/DSL"
-
 import * as C from "@effect-ts/system/Cause"
 import * as T from "@effect-ts/system/Effect"
 import * as E from "@effect-ts/system/Either"
 import * as O from "@effect-ts/system/Option"
+
+import { pipe } from "../Function"
+import * as P from "../Prelude"
+import * as DSL from "../Prelude/DSL"
 
 const EffectURI = T.EffectURI
 type EffectURI = typeof EffectURI

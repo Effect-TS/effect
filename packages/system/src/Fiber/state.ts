@@ -1,8 +1,8 @@
 import * as C from "../Cause"
-import * as Exit from "../Exit"
-import { FiberRef } from "../FiberRef/fiberRef"
-
-import { Done, Running, Status } from "./status"
+import type * as Exit from "../Exit"
+import type { FiberRef } from "../FiberRef/fiberRef"
+import type { Status } from "./status"
+import { Done, Running } from "./status"
 
 export type FiberState<E, A> = FiberStateExecuting<E, A> | FiberStateDone<E, A>
 

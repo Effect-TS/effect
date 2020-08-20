@@ -1,4 +1,4 @@
-import { URIS, URItoKind } from "./registry"
+import type { URIS, URItoKind } from "./registry"
 
 export type Kind<URI extends URIS, TL0, TL1, TL2, TL3, Out> = Kind2<
   URI,

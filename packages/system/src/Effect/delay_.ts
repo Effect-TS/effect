@@ -1,7 +1,6 @@
-import { HasClock } from "../Clock"
-
+import type { HasClock } from "../Clock"
 import { chain_ } from "./core"
-import { AsyncRE, Effect } from "./effect"
+import type { AsyncRE, Effect } from "./effect"
 import { sleep } from "./sleep"
 
 /**

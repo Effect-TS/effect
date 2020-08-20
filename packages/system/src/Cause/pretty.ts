@@ -1,9 +1,8 @@
 import * as A from "../Array"
-import { FiberID } from "../Fiber/id"
+import type { FiberID } from "../Fiber/id"
 import { pipe } from "../Function"
 import * as O from "../Option"
-
-import { Cause } from "./cause"
+import type { Cause } from "./cause"
 
 //
 // @category PrettyPrint

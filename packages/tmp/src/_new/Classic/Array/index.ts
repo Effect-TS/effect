@@ -1,7 +1,7 @@
+import * as A from "@effect-ts/system/Array"
+
 import { pipe } from "../../../Function"
 import * as P from "../../Prelude"
-
-import * as A from "@effect-ts/system/Array"
 
 export const ArrayURI = "ArrayURI"
 export type ArrayURI = typeof ArrayURI

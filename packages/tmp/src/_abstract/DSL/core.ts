@@ -1,13 +1,14 @@
-import { Augmented, Has, HasURI } from "../../Has"
-import { AnyF, AnyK } from "../Any"
-import { CovariantF, CovariantK } from "../Covariant"
-import { EnvironmentalF, EnvironmentalK } from "../FX/Environmental"
-import { FailF, FailK } from "../FX/Fail"
-import { RunF, RunK } from "../FX/Run"
-import { ErrFor, HKT3_, HKTFull, HKT_, KindFull, URIS } from "../HKT"
-import { MonadF, MonadK } from "../Monad"
-
 import { pipe } from "@effect-ts/system/Function"
+
+import type { Augmented, Has } from "../../Has"
+import { HasURI } from "../../Has"
+import type { AnyF, AnyK } from "../Any"
+import type { CovariantF, CovariantK } from "../Covariant"
+import type { EnvironmentalF, EnvironmentalK } from "../FX/Environmental"
+import type { FailF, FailK } from "../FX/Fail"
+import type { RunF, RunK } from "../FX/Run"
+import type { ErrFor, HKT_, HKT3_, HKTFull, KindFull, URIS } from "../HKT"
+import type { MonadF, MonadK } from "../Monad"
 
 /**
  * Model (F: F[_]) => (a: A) => F[A] with default params

@@ -1,5 +1,5 @@
 import * as T from "./deps"
-import { ReleaseMap, Finalizer } from "./releaseMap"
+import type { Finalizer, ReleaseMap } from "./releaseMap"
 
 export const noop: Finalizer = () => T.unit
 

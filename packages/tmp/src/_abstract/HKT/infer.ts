@@ -1,6 +1,6 @@
-import { HKTFull } from "./hkt"
-import { KindFull } from "./kind"
-import { URIS } from "./registry"
+import type { HKTFull } from "./hkt"
+import type { KindFull } from "./kind"
+import type { URIS } from "./registry"
 
 export type OrNever<K> = unknown extends K ? never : K
 

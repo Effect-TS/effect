@@ -1,4 +1,4 @@
-import { HasURI, HKTFull, KindFull, URIS } from "../HKT"
+import type { HasURI, HKTFull, KindFull, URIS } from "../HKT"
 
 /**
  * `Covariant<F>` provides implicit evidence that `HKT<F, A>` is a covariant

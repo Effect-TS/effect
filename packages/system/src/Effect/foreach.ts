@@ -1,4 +1,4 @@
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foreach_ } from "./foreach_"
 
 /**

@@ -2,11 +2,10 @@
 // Experiment
 //
 
-import { UnionToIntersection } from "../../Utils"
+import type { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
 
-import { OrNever } from "./infer"
-
-import { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
+import type { UnionToIntersection } from "../../Utils"
+import type { OrNever } from "./infer"
 
 // list of parameters
 type Par = "I" | "R" | "S" | "E" | "X" | "A"

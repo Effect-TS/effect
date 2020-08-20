@@ -1,4 +1,4 @@
-import { URIS, Auto, Base, Kind, OrFix, IndexFor } from "../HKT"
+import type { Auto, Base, IndexFor, Kind, OrFix, URIS } from "../HKT"
 
 export interface ReduceRightWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly reduceRightWithIndex: ReduceRightWithIndexFn<F, C>

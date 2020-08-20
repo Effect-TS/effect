@@ -1,10 +1,9 @@
 import { Then } from "../Cause/cause"
 import { fold_ } from "../Exit/api"
-import { Exit } from "../Exit/exit"
-
+import type { Exit } from "../Exit/exit"
 import { chain_, foldCauseM_, halt } from "./core"
 import { done } from "./done"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { result } from "./result"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 

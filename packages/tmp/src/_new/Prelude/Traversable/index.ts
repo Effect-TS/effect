@@ -1,6 +1,7 @@
-import { IdentityBoth } from "../Combined"
-import { Covariant, CovariantComposition, getCovariantComposition } from "../Covariant"
-import {
+import type { IdentityBoth } from "../Combined"
+import type { Covariant, CovariantComposition } from "../Covariant"
+import { getCovariantComposition } from "../Covariant"
+import type {
   Auto,
   Base,
   CompositionBase2,

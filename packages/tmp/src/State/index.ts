@@ -1,15 +1,15 @@
-import { intersect } from "../Utils"
-import { AnyK } from "../_abstract/Any"
-import { ApplicativeK } from "../_abstract/Applicative"
-import { AssociativeBothK } from "../_abstract/AssociativeBoth"
-import { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
-import { CovariantK } from "../_abstract/Covariant"
+import * as F from "@effect-ts/system/XPure"
+
+import type { AnyK } from "../_abstract/Any"
+import type { ApplicativeK } from "../_abstract/Applicative"
+import type { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import type { AssociativeFlattenK } from "../_abstract/AssociativeFlatten"
+import type { CovariantK } from "../_abstract/Covariant"
 import { bindF, doF, sequenceSF } from "../_abstract/DSL"
 import { instance } from "../_abstract/HKT"
-import { IdentityFlattenK } from "../_abstract/IdentityFlatten"
-import { MonadK } from "../_abstract/Monad"
-
-import * as F from "@effect-ts/system/XPure"
+import type { IdentityFlattenK } from "../_abstract/IdentityFlatten"
+import type { MonadK } from "../_abstract/Monad"
+import { intersect } from "../Utils"
 
 //
 // Module

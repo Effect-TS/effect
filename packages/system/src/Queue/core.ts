@@ -1,11 +1,12 @@
 import * as A from "../Array"
 import { pipe } from "../Function"
 import { AtomicBoolean } from "../Support/AtomicBoolean"
-import { Bounded, MutableQueue, Unbounded } from "../Support/MutableQueue"
-
+import type { MutableQueue } from "../Support/MutableQueue"
+import { Bounded, Unbounded } from "../Support/MutableQueue"
 import * as T from "./effect"
 import * as P from "./promise"
-import { Queue, XQueue } from "./xqueue"
+import type { Queue } from "./xqueue"
+import { XQueue } from "./xqueue"
 
 export { Dequeue, Queue, XQueue } from "./xqueue"
 

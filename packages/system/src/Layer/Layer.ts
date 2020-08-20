@@ -1,7 +1,6 @@
-import { HasMemoMap } from "./MemoMap"
-import * as T from "./deps"
-
-import { memo, fresh } from "./index"
+import type * as T from "./deps"
+import { fresh, memo } from "./index"
+import type { HasMemoMap } from "./MemoMap"
 
 export class Layer<S, R, E, A> {
   constructor(readonly build: T.Managed<S, R, E, A>) {}

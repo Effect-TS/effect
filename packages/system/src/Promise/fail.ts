@@ -1,7 +1,6 @@
 import { fail as effectFail } from "../Effect/fail"
-
 import { completeWith } from "./completeWith"
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Fails the promise with the specified error, which will be propagated to all

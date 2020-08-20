@@ -1,4 +1,4 @@
-import { Auto, Kind, OrFix, URIS, Base, Intro, Mix } from "../HKT"
+import type { Auto, Base, Intro, Kind, Mix, OrFix, URIS } from "../HKT"
 
 export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C> {
   readonly flatten: <

@@ -1,8 +1,8 @@
+import * as DSL from "../src/_abstract/DSL"
 import * as E from "../src/Either"
 import { pipe } from "../src/Function"
 import { StringSum } from "../src/Newtype"
 import * as S from "../src/String"
-import * as DSL from "../src/_abstract/DSL"
 
 const validateS = DSL.sequenceSF(E.getValidationApplicative(S.SumIdentity))()
 

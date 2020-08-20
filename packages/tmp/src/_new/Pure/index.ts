@@ -1,7 +1,7 @@
-import * as P from "../Prelude"
-
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
+
+import type * as P from "../Prelude"
 
 export const XPureURI = "XPureURI"
 export type XPureURI = typeof XPureURI

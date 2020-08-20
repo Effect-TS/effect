@@ -1,7 +1,6 @@
-import { Layer } from "../Layer"
+import type { Layer } from "../Layer"
 import { use_ } from "../Managed/core"
-
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { provideSome_ } from "./provideSome"
 
 /**

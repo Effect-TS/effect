@@ -1,7 +1,7 @@
-import { CovariantF, CovariantK } from "../../Covariant"
-import { URIS } from "../../HKT"
-import { IdentityFlattenF, IdentityFlattenK } from "../../IdentityFlatten"
-import { AccessF, AccessK } from "../Access"
+import type { CovariantF, CovariantK } from "../../Covariant"
+import type { URIS } from "../../HKT"
+import type { IdentityFlattenF, IdentityFlattenK } from "../../IdentityFlatten"
+import type { AccessF, AccessK } from "../Access"
 
 export type EnvironmentalF<
   F,

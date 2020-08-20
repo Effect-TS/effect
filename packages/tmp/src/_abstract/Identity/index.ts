@@ -1,6 +1,6 @@
-import { Associative } from "../Associative"
-import { DeriveK } from "../Derive"
-import { URIS } from "../HKT"
+import type { Associative } from "../Associative"
+import type { DeriveK } from "../Derive"
+import type { URIS } from "../HKT"
 
 export const IdentityURI = "Identity"
 export type IdentityURI = typeof IdentityURI

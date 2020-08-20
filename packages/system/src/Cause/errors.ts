@@ -1,4 +1,4 @@
-import { Cause } from "./cause"
+import type { Cause } from "./cause"
 import { pretty } from "./pretty"
 
 //

@@ -1,7 +1,8 @@
 import * as C from "../_abstract/Closure"
 import * as Eq from "../_abstract/Equal"
 import * as I from "../_abstract/Identity"
-import { And, BooleanProd, BooleanSum, Or, Prod, Sum } from "../_abstract/Newtype"
+import type { Prod, Sum } from "../_abstract/Newtype"
+import { And, BooleanProd, BooleanSum, Or } from "../_abstract/Newtype"
 
 /**
  * @category closure

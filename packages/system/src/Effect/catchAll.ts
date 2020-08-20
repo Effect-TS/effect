@@ -1,5 +1,5 @@
 import { succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foldM_ } from "./foldM_"
 
 /**

@@ -1,4 +1,4 @@
-import { URIS, Auto, Base, Kind, OrFix } from "../HKT"
+import type { Auto, Base, Kind, OrFix, URIS } from "../HKT"
 
 export interface Reduce<F extends URIS, C = Auto> extends Base<F, C> {
   readonly reduce: <A, B>(

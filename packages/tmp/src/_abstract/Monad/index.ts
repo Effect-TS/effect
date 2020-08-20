@@ -1,6 +1,6 @@
-import { CovariantF, CovariantK } from "../Covariant"
-import { URIS } from "../HKT"
-import { IdentityFlattenF, IdentityFlattenK } from "../IdentityFlatten"
+import type { CovariantF, CovariantK } from "../Covariant"
+import type { URIS } from "../HKT"
+import type { IdentityFlattenF, IdentityFlattenK } from "../IdentityFlatten"
 
 export type MonadF<F, TL0 = any, TL1 = any, TL2 = any, TL3 = any> = IdentityFlattenF<
   F,

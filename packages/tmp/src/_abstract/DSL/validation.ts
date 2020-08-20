@@ -1,11 +1,11 @@
 import { constant, flow, pipe, tuple } from "../../Function"
-import { ApplicativeF, ApplicativeK } from "../Applicative"
-import { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
-import { FailF, FailK } from "../FX/Fail"
-import { RunF, RunK } from "../FX/Run"
-import { castS, castSO, ErrFor, HKTTypeS, HKTTypeSO, instance, URIS } from "../HKT"
-import { MonadF, MonadK } from "../Monad"
-
+import type { ApplicativeF, ApplicativeK } from "../Applicative"
+import type { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
+import type { FailF, FailK } from "../FX/Fail"
+import type { RunF, RunK } from "../FX/Run"
+import type { ErrFor, HKTTypeS, HKTTypeSO, URIS } from "../HKT"
+import { castS, castSO, instance } from "../HKT"
+import type { MonadF, MonadK } from "../Monad"
 import { succeedF } from "./core"
 
 export interface AssociativeErr<F, TL0, TL1, TL2, TL3> {

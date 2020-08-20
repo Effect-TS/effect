@@ -1,4 +1,4 @@
-import { Closure } from "../Closure"
+import type { Closure } from "../Closure"
 
 /**
  * The `Associative[A]` type class describes an associative binary operator

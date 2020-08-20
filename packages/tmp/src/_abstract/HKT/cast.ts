@@ -1,8 +1,8 @@
-import { HKTFull } from "./hkt"
-import { KindFull } from "./kind"
-import { URIS } from "./registry"
-
 import { identity } from "@effect-ts/system/Function"
+
+import type { HKTFull } from "./hkt"
+import type { KindFull } from "./kind"
+import type { URIS } from "./registry"
 
 export function castErr<T>(): {
   <F extends URIS>(_?: F): <

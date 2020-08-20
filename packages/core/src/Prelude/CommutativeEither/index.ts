@@ -1,5 +1,5 @@
-import { AssociativeEither } from "../AssociativeEither"
-import { Auto, URIS } from "../HKT"
+import type { AssociativeEither } from "../AssociativeEither"
+import type { Auto, URIS } from "../HKT"
 
 /**
  * A commutative binary operator that combines two values of types `F[A]` and

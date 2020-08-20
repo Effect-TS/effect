@@ -1,9 +1,8 @@
-import * as P from "../../Prelude"
-
-import { IterableURI } from "./definitions"
-
 import { pipe } from "@effect-ts/system/Function"
-import { reduce, of, never, concat } from "@effect-ts/system/Iterable"
+import { concat, never, of, reduce } from "@effect-ts/system/Iterable"
+
+import * as P from "../../Prelude"
+import type { IterableURI } from "./definitions"
 
 export {
   ap,

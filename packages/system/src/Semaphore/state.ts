@@ -1,5 +1,4 @@
-import * as E from "../Either"
-
+import type * as E from "../Either"
 import * as T from "./deps"
 
 export type Entry = [T.Promise<never, void>, number]

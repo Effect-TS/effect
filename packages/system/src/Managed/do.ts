@@ -1,5 +1,5 @@
 import { chain_, map_, succeedNow } from "./core"
-import { Managed } from "./managed"
+import type { Managed } from "./managed"
 
 const bind = <S, R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

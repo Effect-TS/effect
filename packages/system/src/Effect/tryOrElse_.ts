@@ -1,8 +1,7 @@
 import { keepDefects } from "../Cause/core"
 import * as O from "../Option"
-
 import { halt } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { IFold } from "./primitives"
 
 export const tryOrElse_ = <S, R, E, A, S2, R2, E2, A2, S3, R3, E3, A3>(

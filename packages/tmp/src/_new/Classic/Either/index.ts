@@ -1,9 +1,9 @@
-import * as P from "../../Prelude"
-import { getValidationF } from "../../Prelude/FX/Validation"
-import { Associative } from "../Associative"
-
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
+
+import * as P from "../../Prelude"
+import { getValidationF } from "../../Prelude/FX/Validation"
+import type { Associative } from "../Associative"
 
 export const EitherURI = "EitherURI"
 export type EitherURI = typeof EitherURI

@@ -1,5 +1,6 @@
 import { pipe } from "../../Function"
-import { typeDef, TypeOf, newtype } from "../../Newtype"
+import type { TypeOf } from "../../Newtype"
+import { newtype, typeDef } from "../../Newtype"
 
 const Ordering_ = typeDef<"lt" | "eq" | "gt">()("@newtype/Ordering")
 

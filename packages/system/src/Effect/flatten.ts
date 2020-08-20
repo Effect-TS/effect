@@ -1,7 +1,6 @@
 import { identity, pipe } from "../Function"
-
 import { chain } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 
 /**
  * Returns an effect that first executes the outer effect, and then executes

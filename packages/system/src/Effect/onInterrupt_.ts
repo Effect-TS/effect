@@ -1,8 +1,7 @@
 import * as Cause from "../Cause/core"
-import { FiberID } from "../Fiber/id"
-
+import type { FiberID } from "../Fiber/id"
 import { chain_, foldCauseM_, halt, succeed } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { uninterruptibleMask } from "./uninterruptibleMask"
 
 /**

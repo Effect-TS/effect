@@ -3,9 +3,9 @@ import { identity, pipe } from "../Function"
 import * as O from "../Option"
 import * as R from "../Ref"
 import { ImmutableQueue } from "../Support/ImmutableQueue"
-
 import * as T from "./deps"
-import { State, Entry, assertNonNegative, Acquisition } from "./state"
+import type { Entry, State } from "./state"
+import { Acquisition, assertNonNegative } from "./state"
 
 /**
  * An asynchronous semaphore, which is a generalization of a mutex. Semaphores

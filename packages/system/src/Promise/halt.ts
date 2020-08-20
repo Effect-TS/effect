@@ -1,8 +1,7 @@
-import { Cause } from "../Cause/cause"
+import type { Cause } from "../Cause/cause"
 import { halt as effectHalt } from "../Effect/core"
-
 import { completeWith } from "./completeWith"
-import { Promise } from "./promise"
+import type { Promise } from "./promise"
 
 /**
  * Halts the promise with the specified cause, which will be propagated to all

@@ -1,12 +1,12 @@
-import { AnyK } from "../_abstract/Any"
-import { ApplicativeK } from "../_abstract/Applicative"
-import { AssociativeBothK } from "../_abstract/AssociativeBoth"
-import { CovariantK } from "../_abstract/Covariant"
-import { instance } from "../_abstract/HKT"
-
 import * as T from "@effect-ts/system/Effect"
 import * as L from "@effect-ts/system/Layer"
 import * as M from "@effect-ts/system/Managed"
+
+import type { AnyK } from "../_abstract/Any"
+import type { ApplicativeK } from "../_abstract/Applicative"
+import type { AssociativeBothK } from "../_abstract/AssociativeBoth"
+import type { CovariantK } from "../_abstract/Covariant"
+import { instance } from "../_abstract/HKT"
 
 export const LayerURI = "Layer"
 export type LayerURI = typeof LayerURI

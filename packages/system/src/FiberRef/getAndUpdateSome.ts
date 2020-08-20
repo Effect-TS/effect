@@ -1,7 +1,6 @@
 import { pipe } from "../Function"
 import * as O from "../Option"
-
-import { FiberRef } from "./fiberRef"
+import type { FiberRef } from "./fiberRef"
 import { modify } from "./modify"
 
 /**

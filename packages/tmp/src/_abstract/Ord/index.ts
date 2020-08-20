@@ -1,4 +1,4 @@
-import { Equal } from "../Equal"
+import type { Equal } from "../Equal"
 import { Ordering } from "../Ordering"
 
 /**

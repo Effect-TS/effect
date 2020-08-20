@@ -1,11 +1,10 @@
-import { HasClock } from "../Clock"
+import type { HasClock } from "../Clock"
 import * as E from "../Either"
 import { pipe } from "../Function"
 import * as O from "../Option"
 import * as S from "../Schedule"
-
 import { chain } from "./core"
-import { Effect } from "./effect"
+import type { Effect } from "./effect"
 import { foldM } from "./foldM"
 import { map } from "./map"
 import { map_ } from "./map_"

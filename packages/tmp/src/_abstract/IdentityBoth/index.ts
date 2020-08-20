@@ -1,6 +1,6 @@
-import { AnyF, AnyK } from "../Any"
-import { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
-import { URIS } from "../HKT"
+import type { AnyF, AnyK } from "../Any"
+import type { AssociativeBothF, AssociativeBothK } from "../AssociativeBoth"
+import type { URIS } from "../HKT"
 
 /**
  * A binary operator that combines two values of types `F[A]` and `F[B]` to

@@ -1,4 +1,4 @@
-import { Auto, Kind, OrFix, URIS, Base } from "../../HKT"
+import type { Auto, Base, Kind, OrFix, URIS } from "../../HKT"
 
 export interface Fail<F extends URIS, C = Auto> extends Base<F, C> {
   readonly fail: <SI, SO, S, E, A = never>(

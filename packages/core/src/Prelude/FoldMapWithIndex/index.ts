@@ -1,5 +1,5 @@
-import { Identity } from "../../Classic/Identity"
-import { Base, Kind, URIS, Auto, OrFix, IndexFor } from "../HKT"
+import type { Identity } from "../../Classic/Identity"
+import type { Auto, Base, IndexFor, Kind, OrFix, URIS } from "../HKT"
 
 export interface FoldMapWithIndex<F extends URIS, C = Auto> extends Base<F, C> {
   readonly foldMapWithIndex: FoldMapWithIndexFn<F, C>
