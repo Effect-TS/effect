@@ -4,7 +4,7 @@ import { chainF } from "../src/Prelude/DSL"
 import * as R from "../src/Pure/Reader"
 import { getReaderM } from "../src/Pure/ReaderT"
 
-const M = pipe(A.Monad, getReaderM("X"), getReaderM("R"))
+const M = pipe(A.Monad, getReaderM("X"), getReaderM("I"))
 
 pipe(
   R.access((h: string) =>

@@ -6,7 +6,7 @@ import { chainF } from "../src/Prelude/DSL"
 import * as R from "../src/Pure/Reader"
 import { getReaderM } from "../src/Pure/ReaderT"
 
-const M = pipe(A.Monad, getEitherM, getReaderM("X"))
+const M = pipe(A.Monad, getEitherM(), getReaderM())
 
 pipe(
   R.access((k: number) => A.range(0, 10).map((n) => E.right(n + k))),
