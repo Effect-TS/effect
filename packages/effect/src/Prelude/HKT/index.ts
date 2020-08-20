@@ -17,7 +17,6 @@ export {
   InvertedUnionURI,
   Kind,
   OrFix,
-  RestrictedKindURI,
   UF_,
   UF__,
   UF___,
