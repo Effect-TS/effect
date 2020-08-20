@@ -354,3 +354,42 @@ export function provideServiceF(
       pipe(fa, F.provide(({ ...r, [H[HasURI].key]: S } as unknown) as R & Has<Service>))
     )
 }
+
+export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
+  F: Monad<F, C> & Access<F, C> & Provide<F, C>
+): <R, R0>(
+  f: (_: HKT.OrFix<"R", C, R0>) => HKT.OrFix<"R", C, R>
+) => <N extends string, K, SI, SO, X, I, S, E, A>(
+  fa: HKT.Kind<
+    F,
+    HKT.OrFix<"N", C, N>,
+    HKT.OrFix<"K", C, K>,
+    SI,
+    SO,
+    HKT.OrFix<"X", C, X>,
+    HKT.OrFix<"I", C, I>,
+    HKT.OrFix<"S", C, S>,
+    HKT.OrFix<"R", C, R>,
+    HKT.OrFix<"E", C, E>,
+    A
+  >
+) => HKT.Kind<
+  F,
+  HKT.OrFix<"N", C, N>,
+  HKT.OrFix<"K", C, K>,
+  SI,
+  SO,
+  HKT.OrFix<"X", C, X>,
+  HKT.OrFix<"I", C, I>,
+  HKT.OrFix<"S", C, S>,
+  HKT.OrFix<"R", C, R0>,
+  HKT.OrFix<"E", C, E>,
+  A
+>
+export function provideSomeF(
+  F: Monad<HKT.UF___> & Access<HKT.UF___> & Provide<HKT.UF___>
+) {
+  return <R0, R, E, A>(f: (r0: R0) => R) => (
+    fa: HKT.F___<R, E, A>
+  ): HKT.F___<R0, E, A> => accessMF(F)((r0: R0) => pipe(fa, F.provide(f(r0))))
+}

@@ -3,6 +3,7 @@ export {
   accessServiceMF,
   chainF,
   provideServiceF,
+  provideSomeF,
   sequenceSF,
   succeedF
 } from "./dsl"
