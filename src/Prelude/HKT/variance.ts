@@ -6,61 +6,74 @@ import { UnionToIntersection } from "../../Utils"
 
 import { OrNever } from "./infer"
 
+import { NonEmptyArray } from "@effect-ts/system/NonEmptyArray"
+
 // list of parameters
-export type Par = "I" | "R" | "E" | "X"
+type Par = "I" | "R" | "S" | "E" | "X"
 
 // covariant flags
-export interface Cov<F extends Par> {
+export interface CovariantP<F extends Par> {
   Covariant: {
     F: () => F
   }
 }
 
 // contravariant flags
-export interface Con<F extends Par> {
+export interface ContravariantP<F extends Par> {
   Contravariant: {
     F: () => F
   }
 }
 
-// composes 2 types according to variance specified in C
-export type Mix<C, P extends Par, X, Y> = C extends Cov<P>
-  ? X | Y
-  : C extends Con<P>
-  ? X & Y
-  : X
+// invariant flags
+export interface InvariantP<F extends Par> {
+  Invariant: {
+    F: () => F
+  }
+}
 
-// composes 3 types according to variance specified in C
-export type Mix2<C, P extends Par, X, Y, Z> = C extends Cov<P>
-  ? X | Y | Z
-  : C extends Con<P>
-  ? X & Y & Z
-  : X
-
-// composes 4 types according to variance specified in C
-export type Mix3<C, P extends Par, X, Y, Z, K> = C extends Cov<P>
-  ? X | Y | Z | K
-  : C extends Con<P>
-  ? X & Y & Z & K
-  : X
-
-// composes an array of types to the base respecting variance from C
-export type MixAll<C, P extends Par, X, Y extends any[]> = C extends Cov<P>
-  ? Y[number]
-  : C extends Con<P>
-  ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[number]>
-  : X
+// composes types according to variance specified in C
+export type Mix<C, P extends Par, X extends NonEmptyArray<any>> = C extends InvariantP<
+  P
+>
+  ? X[0]
+  : C extends CovariantP<P>
+  ? X[number]
+  : C extends ContravariantP<P>
+  ? X extends [any, any]
+    ? X[0] & X[1]
+    : X extends [any, any, any]
+    ? X[0] & X[1] & X[2]
+    : X extends [any, any, any, any]
+    ? X[0] & X[1] & X[2] & X[3]
+    : X extends [any, any, any, any, any]
+    ? X[0] & X[1] & X[2] & X[3] & X[3]
+    : X extends [any, any, any, any, any, any]
+    ? X[0] & X[1] & X[2] & X[3] & X[3] & X[4]
+    : UnionToIntersection<{ [k in keyof X]: OrNever<X[k]> }[keyof X]>
+  : X[0]
 
 // composes a record of types to the base respecting variance from C
-export type MixAllS<C, P extends Par, X, Y> = C extends Cov<P>
+export type MixStruct<C, P extends Par, X, Y> = C extends InvariantP<P>
+  ? X
+  : C extends CovariantP<P>
   ? Y[keyof Y]
-  : C extends Con<P>
+  : C extends ContravariantP<P>
   ? UnionToIntersection<{ [k in keyof Y]: OrNever<Y[k]> }[keyof Y]>
   : X
 
-// used in subsequent definitions to either vary a paramter or keep it fixed to "First"
-export type Def<C, P extends Par, First, Current> = C extends Cov<P>
+// used in subsequent definitions to either vary a paramter or keep it fixed to "Fixed"
+export type Intro<C, P extends Par, Fixed, Current> = C extends InvariantP<P>
+  ? Fixed
+  : C extends CovariantP<P>
   ? Current
-  : C extends Con<P>
+  : C extends ContravariantP<P>
   ? Current
-  : First
+  : Fixed
+
+// initial type depending on variance of P in C (eg: initial Contravariant R = unknown, initial Covariant E = never)
+export type Initial<C, P extends Par, I> = C extends InvariantP<P>
+  ? I
+  : C extends CovariantP<P>
+  ? never
+  : unknown

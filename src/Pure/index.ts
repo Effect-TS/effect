@@ -1,10 +1,11 @@
 import * as P from "../Prelude"
-import { AssociativeBothFreeVariance } from "../Prelude/AssociativeBothFreeVariance"
 import { sequenceSF } from "../Prelude/DSL"
-import { Con, Cov } from "../Prelude/HKT/variance"
+import { ContravariantP, CovariantP } from "../Prelude/HKT"
 
 import { constant, identity } from "@effect-ts/system/Function"
 import * as X from "@effect-ts/system/XPure"
+
+export type XPureVariance = ContravariantP<"R"> & CovariantP<"E">
 
 export const XPureURI = "XPureURI"
 
@@ -16,7 +17,7 @@ declare module "../Prelude/HKT" {
   }
 }
 
-export const Any = P.instance<P.Any<XPureURI>>({
+export const Any = P.instance<P.Any<XPureURI, XPureVariance>>({
   any: () => X.succeed(constant({}))
 })
 
@@ -24,28 +25,9 @@ export const Covariant = P.instance<P.Covariant<XPureURI>>({
   map: X.map
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<XPureURI, XPureVariance>>({
   both: X.zip
 })
-
-//
-// experiment
-//
-export type Variance = Con<"R"> & Cov<"E">
-
-export const AssociativeBothV = P.instance<
-  AssociativeBothFreeVariance<XPureURI, Variance>
->({
-  both: X.zip
-})
-
-export const AssociativeBothF = P.instance<AssociativeBothFreeVariance<XPureURI>>({
-  both: X.zip
-})
-
-//
-// end experiment
-//
 
 export const AssociativeEither = P.instance<P.AssociativeEither<XPureURI>>({
   either: X.orElseEither
