@@ -17,6 +17,7 @@ export function succeedF<F extends HKT.URIS, C = HKT.Auto>(
   a: A
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<"N", C, N>,
   HKT.OrFix<"K", C, K>,
   SI,
@@ -41,6 +42,7 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
     a: A
   ) => HKT.Kind<
     F,
+    C,
     HKT.OrFix<"N", C, N2>,
     HKT.OrFix<"K", C, K2>,
     SO,
@@ -55,6 +57,7 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
 ) => <N extends string, K, SI, X, I, S, R, E>(
   fa: HKT.Kind<
     F,
+    C,
     HKT.OrFix<"N", C, N>,
     HKT.OrFix<"K", C, K>,
     SI,
@@ -68,6 +71,7 @@ export function chainF<F extends HKT.URIS, C = HKT.Auto>(
   >
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<"N", C, N2>,
   HKT.OrFix<"K", C, K2>,
   SI,
@@ -90,6 +94,7 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
     r: HKT.OrFix<"R", C, R>
   ) => HKT.Kind<
     F,
+    C,
     HKT.OrFix<"N", C, N>,
     HKT.OrFix<"K", C, K>,
     SI,
@@ -103,6 +108,7 @@ export function accessMF<F extends HKT.URIS, C = HKT.Auto>(
   >
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<"N", C, N>,
   HKT.OrFix<"K", C, K>,
   SI,
@@ -133,6 +139,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
     string,
     HKT.Kind<
       F,
+      C,
       HKT.OrFix<"N", C, any>,
       HKT.OrFix<"K", C, any>,
       SIO,
@@ -151,6 +158,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
       string,
       HKT.Kind<
         F,
+        C,
         HKT.OrFix<"N", C, any>,
         HKT.OrFix<"K", C, any>,
         SIO,
@@ -165,6 +173,7 @@ export function sequenceSF<F extends HKT.URIS, C = HKT.Auto>(
     >
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<
     "N",
     C,
@@ -277,6 +286,7 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
     _: Service
   ) => HKT.Kind<
     F,
+    C,
     HKT.OrFix<"N", C, N>,
     HKT.OrFix<"K", C, K>,
     SI,
@@ -290,6 +300,7 @@ export function accessServiceMF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   >
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<"N", C, N>,
   HKT.OrFix<"K", C, K>,
   SI,
@@ -320,6 +331,7 @@ export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
 ) => <N extends string, K, SI, SO, X, I, S, R, E, A>(
   fa: HKT.Kind<
     F,
+    C,
     HKT.OrFix<"N", C, N>,
     HKT.OrFix<"K", C, K>,
     SI,
@@ -333,6 +345,7 @@ export function provideServiceF<F extends HKT.URIS, C extends HKT.V<"R", "-">>(
   >
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<"N", C, N>,
   HKT.OrFix<"K", C, K>,
   SI,
@@ -364,6 +377,7 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
 ) => <N extends string, K, SI, SO, X, I, S, E, A>(
   fa: HKT.Kind<
     F,
+    C,
     HKT.OrFix<"N", C, N>,
     HKT.OrFix<"K", C, K>,
     SI,
@@ -377,6 +391,7 @@ export function provideSomeF<F extends HKT.URIS, C = HKT.Auto>(
   >
 ) => HKT.Kind<
   F,
+  C,
   HKT.OrFix<"N", C, N>,
   HKT.OrFix<"K", C, K>,
   SI,

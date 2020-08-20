@@ -55,7 +55,7 @@
     "retry-ts": "^0.1.2",
     "ts-jest": "^26.0.0",
     "ts-node": "^8.10.2",
-    "typescript": "rc",
+    "typescript": "next",
     "ultra-runner": "^3.3.0",
     "yarn-deduplicate": "^2.0.0"
   },

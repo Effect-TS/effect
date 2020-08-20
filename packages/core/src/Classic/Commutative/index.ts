@@ -13,7 +13,7 @@ export const CommutativeURI = "Commutative"
 export type CommutativeURI = typeof CommutativeURI
 
 declare module "../../Prelude/HKT" {
-  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [CommutativeURI]: Commutative<A>
   }
 }

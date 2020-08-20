@@ -9,7 +9,7 @@ export const EitherURI = "EitherURI"
 export type EitherURI = typeof EitherURI
 
 declare module "../../Prelude/HKT" {
-  interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
+  interface URItoKind<D, N extends string, K, SI, SO, X, I, S, R, E, A> {
     [EitherURI]: E.Either<E, A>
   }
 }

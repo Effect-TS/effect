@@ -6,6 +6,7 @@ export interface Compact<F extends URIS, C = Auto> extends Base<F, C> {
   readonly compact: <N extends string, K, SI, SO, X, I, S, R, E, A>(
     fa: Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -19,6 +20,7 @@ export interface Compact<F extends URIS, C = Auto> extends Base<F, C> {
     >
   ) => Kind<
     F,
+    C,
     OrFix<"N", C, N>,
     OrFix<"K", C, K>,
     SI,

@@ -8,6 +8,7 @@ export interface Invariant<F extends URIS, C = Auto> extends Base<F, C> {
     f: <N extends string, K, SI, SO, X, I, S, R, E>(
       ma: Kind<
         F,
+        C,
         OrFix<"N", C, N>,
         OrFix<"K", C, K>,
         SI,
@@ -21,6 +22,7 @@ export interface Invariant<F extends URIS, C = Auto> extends Base<F, C> {
       >
     ) => Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
@@ -35,6 +37,7 @@ export interface Invariant<F extends URIS, C = Auto> extends Base<F, C> {
     g: <N extends string, K, SI, SO, X, I, S, R, E>(
       ma: Kind<
         F,
+        C,
         OrFix<"N", C, N>,
         OrFix<"K", C, K>,
         SI,
@@ -48,6 +51,7 @@ export interface Invariant<F extends URIS, C = Auto> extends Base<F, C> {
       >
     ) => Kind<
       F,
+      C,
       OrFix<"N", C, N>,
       OrFix<"K", C, K>,
       SI,
