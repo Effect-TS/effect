@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "homepage": "https://github.com/Matechs-Garage/matechs-effect",
-  "private": true,
+  "private": false,
   "scripts": {
     "clean": "rimraf build tsbuildinfo",
     "build:lib": "tsc --build tsconfig.build.json && ts-node ../../scripts/package.ts",
