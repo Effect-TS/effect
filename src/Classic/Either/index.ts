@@ -62,7 +62,7 @@ export const Run = P.instance<P.FX.Run<EitherURI, V>>({
   run: E.right
 })
 
-export const getValidationApplicative = P.FX.getValidationF({
+export const getValidationApplicative = DSL.getValidationF({
   ...Monad,
   ...Fail,
   ...Applicative,

@@ -98,7 +98,6 @@
       "Prelude/FX/Fail",
       "Prelude/FX/Provide",
       "Prelude/FX/Run",
-      "Prelude/FX/Validation",
       "Prelude/HKT",
       "Prelude/None",
       "Prelude/Reduce",

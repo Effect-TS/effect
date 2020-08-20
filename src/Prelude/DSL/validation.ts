@@ -1,9 +1,10 @@
-import { Associative } from "../../../Classic/Associative"
-import { Applicative, Monad } from "../../Combined"
-import { succeedF } from "../../DSL"
-import * as HKT from "../../HKT"
-import { Fail } from "../Fail"
-import { Run } from "../Run"
+import { Associative } from "../../Classic/Associative"
+import { Applicative, Monad } from "../Combined"
+import { Fail } from "../FX/Fail"
+import { Run } from "../FX/Run"
+import * as HKT from "../HKT"
+
+import { succeedF } from "./dsl"
 
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
