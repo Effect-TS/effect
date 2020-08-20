@@ -1,6 +1,5 @@
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
-import { getValidationF } from "../../Prelude/FX/Validation"
 import { Associative } from "../Associative"
 
 import * as E from "@effect-ts/system/Either"
@@ -63,7 +62,7 @@ export const Run = P.instance<P.FX.Run<EitherURI, V>>({
   run: E.right
 })
 
-export const getValidationApplicative = getValidationF({
+export const getValidationApplicative = P.FX.getValidationF({
   ...Monad,
   ...Fail,
   ...Applicative,
@@ -95,11 +94,6 @@ export const Traversable = P.instance<P.Traversable<EitherURI, V>>({
 })
 
 export const sequenceS = DSL.sequenceSF(Applicative)
-
-// invariant
-export const invSequenceS = DSL.sequenceSF(
-  P.instance<P.Applicative<EitherURI, P.V<"E", "_">>>(Applicative)
-)
 
 export {
   alt,
