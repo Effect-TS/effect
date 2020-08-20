@@ -4,8 +4,7 @@ import { succeedF } from "../../Prelude/DSL"
 import * as A from "@effect-ts/system/Array"
 import { flow, pipe } from "@effect-ts/system/Function"
 
-export const ArrayURI = "ArrayURI"
-
+export const ArrayURI = "Array"
 export type ArrayURI = typeof ArrayURI
 
 declare module "../../Prelude/HKT" {

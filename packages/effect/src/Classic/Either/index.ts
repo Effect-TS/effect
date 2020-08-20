@@ -6,7 +6,7 @@ import { Associative } from "../Associative"
 import * as E from "@effect-ts/system/Either"
 import { pipe, tuple } from "@effect-ts/system/Function"
 
-export const EitherURI = "EitherURI"
+export const EitherURI = "Either"
 
 export type EitherURI = typeof EitherURI
 
