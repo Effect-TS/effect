@@ -1,6 +1,6 @@
-import { Auto, Kind, OrFix, URIS, Base, Intro, Mix } from "../HKT"
+import type { Either } from "@effect-ts/system/Either"
 
-import { Either } from "@effect-ts/system/Either"
+import type { Auto, Base, Intro, Kind, Mix, OrFix, URIS } from "../HKT"
 
 export interface AssociativeEither<F extends URIS, C = Auto> extends Base<F, C> {
   readonly either: <N2 extends string, K2, SI2, SO2, X2, I2, S2, R2, E2, B>(

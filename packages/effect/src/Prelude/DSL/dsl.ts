@@ -1,11 +1,13 @@
+import * as A from "@effect-ts/system/Array"
+
 import { constant, flow, pipe, tuple } from "../../Function"
-import { EnforceNonEmptyRecord } from "../../Utils"
-import { Any } from "../Any"
-import { AssociativeFlatten } from "../AssociativeFlatten"
-import { Applicative, Monad } from "../Combined"
-import { Covariant } from "../Covariant"
-import { Access } from "../FX"
-import {
+import type { EnforceNonEmptyRecord } from "../../Utils"
+import type { Any } from "../Any"
+import type { AssociativeFlatten } from "../AssociativeFlatten"
+import type { Applicative, Monad } from "../Combined"
+import type { Covariant } from "../Covariant"
+import type { Access } from "../FX"
+import type {
   Auto,
   F_,
   F___,
@@ -27,8 +29,6 @@ import {
   UF___,
   URIS
 } from "../HKT"
-
-import * as A from "@effect-ts/system/Array"
 
 export function succeedF<F extends URIS, C = Auto>(
   F: Any<F, C> & Covariant<F, C>

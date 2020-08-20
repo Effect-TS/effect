@@ -1,5 +1,6 @@
-import { CovariantComposition } from "../Covariant"
-import { Auto, Base, instance, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
+import type { CovariantComposition } from "../Covariant"
+import type { Auto, Base, Kind, OrFix, UF_, UG_, URIS } from "../HKT"
+import { instance } from "../HKT"
 
 export interface Contravariant<F extends URIS, C = Auto> extends Base<F, C> {
   readonly contramap: <A, B>(

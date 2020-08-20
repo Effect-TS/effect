@@ -1,4 +1,4 @@
-import { Auto, Base, Initial, Kind, OrFix, URIS } from "../HKT"
+import type { Auto, Base, Initial, Kind, OrFix, URIS } from "../HKT"
 
 export interface None<F extends URIS, C = Auto> extends Base<F, C> {
   readonly never: <N extends string, K = unknown, SI = unknown, SO = unknown>() => Kind<
