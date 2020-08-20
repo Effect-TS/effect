@@ -90,7 +90,7 @@ export function implementCompactF<F extends URIS, C = Auto>(): (
     FR: FR
     FE: FE
   }) => (
-    G: Applicative<UG_>
+    G: Applicative<[UG_]>
   ) => (
     f: (a: A) => G_<Option<B>>
   ) => (

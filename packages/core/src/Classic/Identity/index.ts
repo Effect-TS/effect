@@ -26,7 +26,7 @@ export function makeIdentity<A>(identity: A, op: (y: A) => (x: A) => A): Identit
 }
 
 export function deriveIdentity<F extends URIS, A>(
-  D: Derive<F, IdentityURI>,
+  D: Derive<F, [IdentityURI]>,
   I: Identity<A>
 ) {
   return D.derive(I)

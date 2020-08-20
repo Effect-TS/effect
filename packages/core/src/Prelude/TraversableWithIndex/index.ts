@@ -94,7 +94,7 @@ export function implementForeachWithIndexF<F extends URIS, C = Auto>(): (
     R: R
     E: E
   }) => (
-    G: IdentityBoth<UG_> & Covariant<UG_>
+    G: IdentityBoth<[UG_]> & Covariant<[UG_]>
   ) => (
     f: (k: IndexFor<F, OrFix<"N", C, N>, OrFix<"K", C, K>>, a: A) => G_<B>
   ) => (

@@ -110,7 +110,7 @@ export function implementSeparateWithIndexF<F extends URIS, C = Auto>(): (
     FR: FR
     FE: FE
   }) => (
-    G: Applicative<UG_>
+    G: Applicative<[UG_]>
   ) => (
     f: (k: IndexFor<F, OrFix<"N", C, FN>, OrFix<"K", C, FK>>, a: A) => G_<Either<B, B2>>
   ) => (
