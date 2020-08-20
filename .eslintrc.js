@@ -47,6 +47,10 @@ module.exports = {
         groups: ["builtin", "external", "parent", "sibling", "index"]
       }
     ],
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-duplicates": "error",
+    "sort-imports": "off",
     "object-shorthand": "error",
     "prefer-destructuring": "off",
     "no-fallthrough": "off"
