@@ -9,11 +9,6 @@ const A = E.sequenceS({
   b: E.right(1),
   d: E.left("ok")
 })
-export const B = E.invSequenceS({
-  a: E.left(0),
-  b: E.right(1)
-  //c: E.left("1")
-})
 
 const ValidationApplicative = E.getValidationApplicative(
   makeAssociative<string>((r) => (l) => `${l} | ${r}`)
