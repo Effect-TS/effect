@@ -28,14 +28,42 @@ export const AssociativeEither = P.instance<P.AssociativeEither<EffectURI, V>>({
   either: T.orElseEither
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeBoth<EffectURI, V>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EffectURI, V>>({
+  flatten: T.flatten
+})
+
+export const AssociativeBoth = P.instance<P.AssociativeBoth<EffectURI, V>>({
   both: T.zip
+})
+
+export const Covariant = P.instance<P.Covariant<EffectURI, V>>({
+  map: T.map
 })
 
 export const IdentityEither: P.IdentityEither<EffectURI, AsyncV> = {
   ...Any,
   ...AssociativeEither,
   ...None
+}
+
+export const IdentityFlatten: P.IdentityFlatten<EffectURI, V> = {
+  ...Any,
+  ...AssociativeFlatten
+}
+
+export const IdentityBoth: P.IdentityBoth<EffectURI, V> = {
+  ...Any,
+  ...AssociativeBoth
+}
+
+export const Monad: P.Monad<EffectURI, V> = {
+  ...IdentityFlatten,
+  ...Covariant
+}
+
+export const Applicative: P.Applicative<EffectURI, V> = {
+  ...Covariant,
+  ...IdentityBoth
 }
 
 export {
