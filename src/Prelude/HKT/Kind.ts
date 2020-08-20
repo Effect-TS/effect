@@ -65,8 +65,8 @@ export type Kind<
               ? R
               : Q extends "E"
               ? E
-              : R
-            : R,
+              : X
+            : X,
           P extends "I"
             ? Q extends "X"
               ? X
@@ -76,8 +76,8 @@ export type Kind<
               ? R
               : Q extends "E"
               ? E
-              : R
-            : R,
+              : I
+            : I,
           P extends "S"
             ? Q extends "X"
               ? X
@@ -87,8 +87,8 @@ export type Kind<
               ? R
               : Q extends "E"
               ? E
-              : R
-            : R,
+              : S
+            : S,
           P extends "R"
             ? Q extends "X"
               ? X
@@ -100,7 +100,17 @@ export type Kind<
               ? E
               : R
             : R,
-          E,
+          P extends "E"
+            ? Q extends "X"
+              ? X
+              : Q extends "I"
+              ? I
+              : Q extends "S"
+              ? S
+              : Q extends "R"
+              ? R
+              : E
+            : E,
           Rest extends URIS ? Kind<Rest, D, N, K, SI, SO, X, I, S, R, E, A> : A
         >[F]
       : never
