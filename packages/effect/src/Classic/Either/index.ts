@@ -1,6 +1,7 @@
 import * as P from "../../Prelude"
 import * as DSL from "../../Prelude/DSL"
 import { getValidationF } from "../../Prelude/FX/Validation"
+import { CovariantP } from "../../Prelude/HKT"
 import { Associative } from "../Associative"
 
 import * as E from "@effect-ts/system/Either"
@@ -10,21 +11,23 @@ export const EitherURI = "EitherURI"
 
 export type EitherURI = typeof EitherURI
 
+export type V = CovariantP<"E">
+
 declare module "../../Prelude/HKT" {
   interface URItoKind<N extends string, K, SI, SO, X, I, S, R, E, A> {
     [EitherURI]: E.Either<E, A>
   }
 }
 
-export const Any = P.instance<P.Any<EitherURI>>({
+export const Any = P.instance<P.Any<EitherURI, V>>({
   any: () => E.right({})
 })
 
-export const AssociativeBoth = P.instance<P.AssociativeBoth<EitherURI>>({
+export const AssociativeBoth = P.instance<P.AssociativeBoth<EitherURI, V>>({
   both: E.zip
 })
 
-export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI>>({
+export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI, V>>({
   either: (fb) => (fa) =>
     fa._tag === "Right"
       ? E.right(E.left(fa.right))
@@ -33,31 +36,31 @@ export const AssociativeEither = P.instance<P.AssociativeEither<EitherURI>>({
       : fb
 })
 
-export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EitherURI>>({
+export const AssociativeFlatten = P.instance<P.AssociativeFlatten<EitherURI, V>>({
   flatten: E.flatten
 })
 
-export const Covariant = P.instance<P.Covariant<EitherURI>>({
+export const Covariant = P.instance<P.Covariant<EitherURI, V>>({
   map: E.map
 })
 
-export const Applicative: P.Applicative<EitherURI> = {
+export const Applicative: P.Applicative<EitherURI, V> = {
   ...Any,
   ...Covariant,
   ...AssociativeBoth
 }
 
-export const Monad: P.Monad<EitherURI> = {
+export const Monad: P.Monad<EitherURI, V> = {
   ...Any,
   ...Covariant,
   ...AssociativeFlatten
 }
 
-export const Fail = P.instance<P.FX.Fail<EitherURI>>({
+export const Fail = P.instance<P.FX.Fail<EitherURI, V>>({
   fail: E.left
 })
 
-export const Run = P.instance<P.FX.Run<EitherURI>>({
+export const Run = P.instance<P.FX.Run<EitherURI, V>>({
   run: E.right
 })
 
@@ -83,11 +86,11 @@ export function zipValidation<E>(
     )
 }
 
-export const foreachF = P.implementForeachF<EitherURI>()((_) => (G) => (f) => (fa) =>
+export const foreachF = P.implementForeachF<EitherURI, V>()((_) => (G) => (f) => (fa) =>
   E.isLeft(fa) ? DSL.succeedF(G)(fa) : pipe(f(fa.right), G.map(E.right))
 )
 
-export const Traversable = P.instance<P.Traversable<EitherURI>>({
+export const Traversable = P.instance<P.Traversable<EitherURI, V>>({
   map: E.map,
   foreachF
 })

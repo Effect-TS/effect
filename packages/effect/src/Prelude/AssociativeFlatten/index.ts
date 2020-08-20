@@ -1,4 +1,4 @@
-import { Auto, Kind, OrFix, URIS, Base } from "../HKT"
+import { Auto, Kind, OrFix, URIS, Base, Intro, Mix } from "../HKT"
 
 export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C> {
   readonly flatten: <
@@ -8,6 +8,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
     SO,
     X,
     I,
+    S,
     R,
     E,
     A,
@@ -16,7 +17,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
     SO2,
     X2,
     I2,
-    S,
+    S2,
     R2,
     E2
   >(
@@ -28,7 +29,7 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
       SO,
       OrFix<"X", C, X2>,
       OrFix<"I", C, I2>,
-      OrFix<"S", C, S>,
+      OrFix<"S", C, S2>,
       OrFix<"R", C, R2>,
       OrFix<"E", C, E2>,
       Kind<
@@ -37,11 +38,11 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
         OrFix<"K", C, K>,
         SO,
         SO2,
-        OrFix<"X", C, X>,
-        OrFix<"I", C, I>,
-        OrFix<"S", C, S>,
-        OrFix<"R", C, R>,
-        OrFix<"E", C, E>,
+        OrFix<"X", C, Intro<C, "X", X2, X>>,
+        OrFix<"I", C, Intro<C, "I", I2, I>>,
+        OrFix<"S", C, Intro<C, "S", S2, S>>,
+        OrFix<"R", C, Intro<C, "R", R2, R>>,
+        OrFix<"E", C, Intro<C, "E", E2, E>>,
         A
       >
     >
@@ -51,11 +52,11 @@ export interface AssociativeFlatten<F extends URIS, C = Auto> extends Base<F, C>
     OrFix<"K", C, K2>,
     SI,
     SO2,
-    OrFix<"X", C, X | X2>,
-    OrFix<"I", C, I & I2>,
-    OrFix<"S", C, S>,
-    OrFix<"R", C, R & R2>,
-    OrFix<"E", C, E | E2>,
+    OrFix<"X", C, Mix<C, "X", [X2, X]>>,
+    OrFix<"I", C, Mix<C, "I", [I2, I]>>,
+    OrFix<"S", C, Mix<C, "S", [S2, S]>>,
+    OrFix<"R", C, Mix<C, "R", [R2, R]>>,
+    OrFix<"E", C, Mix<C, "E", [E2, E]>>,
     A
   >
 }
