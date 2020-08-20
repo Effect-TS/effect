@@ -33,7 +33,9 @@ export const getStoreMonad = <K, V>() =>
     map: T.map
   })
 
-export const K = ReaderT.getReaderM(EitherT.getEitherM(getStoreMonad<string, number>()))
+export const K = ReaderT.getReaderM()(
+  EitherT.getEitherM(getStoreMonad<string, number>())
+)
 
 export const chain = DSL.chainF(K)
 
